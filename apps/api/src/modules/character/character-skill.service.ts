@@ -6,6 +6,7 @@ import {
   applyMasteryEffect,
   getSkillTemplate,
   getSkillTierDef,
+  itemByKey,
   realmByKey,
   skillByKey,
   type EffectiveSkill,
@@ -40,11 +41,17 @@ import { CurrencyService } from './currency.service';
  *   - `getEffectiveSkillFor(characterId, skillKey, baseSkill)` — pure helper
  *     cho `CombatService.action()` compose `applyMasteryEffect`. Legacy
  *     character (no row) → masteryLevel = 0 → no bonus.
+ *   - **Phase 11.2.D** `learnFromBook(characterId, inventoryItemId)` —
+ *     consume 1× `kind: 'SKILL_BOOK'` qua `ItemLedger` reason `SKILL_LEARN`,
+ *     atomic với `learn(skillKey, 'item_consume')`. Validate ownership +
+ *     `def.skillBook.skillKey` + unlocks. Throws `INVENTORY_ITEM_NOT_FOUND`
+ *     /`NOT_SKILL_BOOK`/`ALREADY_LEARNED` ngoài errors hiện có.
  *
  * KHÔNG implement:
- *   - Skill shard item flow (deferred 11.2.C — wire ItemLedger consume).
- *   - Evolution branch resolve (deferred 11.2.D — `evolveSkill`).
+ *   - Evolution branch resolve (deferred — `evolveSkill`).
  *   - Skill cooldown tracking ngoài encounter (deferred future).
+ *   - Skill book drop integration vào boss/dungeon reward pool (deferred
+ *     Phase 11.2.D++).
  */
 @Injectable()
 export class CharacterSkillService {
@@ -90,6 +97,113 @@ export class CharacterSkillService {
     }
 
     return this.getState(characterId);
+  }
+
+  /**
+   * Phase 11.2.D — consume 1× `kind: 'SKILL_BOOK'` để học skill được khai
+   * báo trong `ItemDef.skillBook.skillKey`. Atomic transaction:
+   *
+   *  1. Validate inventory row (ownership characterId, qty ≥ 1, kind =
+   *     'SKILL_BOOK', `def.skillBook?.skillKey` resolved).
+   *  2. Resolve `SkillTemplate` + validate `unlocks` (realm/sect/method)
+   *     — fail trước khi consume item.
+   *  3. Pre-check `CharacterSkill` đã tồn tại → throw `ALREADY_LEARNED`
+   *     (KHÔNG consume item).
+   *  4. Trong tx: insert `CharacterSkill { masteryLevel: 1, isEquipped:
+   *     false, source: 'item_consume' }` (catch P2002 → ALREADY_LEARNED
+   *     race-safe re-throw); decrement qty (delete row khi qty=1, else
+   *     qty--); ghi `ItemLedger` qtyDelta=-1 reason='SKILL_LEARN' với
+   *     refType='InventoryItem' refId=row.id + meta.skillKey.
+   *
+   * Server-authoritative: tất cả validation + state mutation chạy ở server,
+   * UI chỉ truyền `inventoryItemId`. Idempotent qua P2002 catch — race
+   * window giữa pre-check (3) và create (4) sẽ throw ALREADY_LEARNED và
+   * roll back consume.
+   */
+  async learnFromBook(
+    characterId: string,
+    inventoryItemId: string,
+  ): Promise<CharacterSkillLearnFromBookOut> {
+    if (!inventoryItemId) {
+      throw new CharacterSkillError('INVENTORY_ITEM_NOT_FOUND');
+    }
+    const inv = await this.prisma.inventoryItem.findUnique({
+      where: { id: inventoryItemId },
+    });
+    if (!inv || inv.characterId !== characterId || inv.qty < 1) {
+      throw new CharacterSkillError('INVENTORY_ITEM_NOT_FOUND');
+    }
+
+    const def = itemByKey(inv.itemKey);
+    if (!def || def.kind !== 'SKILL_BOOK' || !def.skillBook?.skillKey) {
+      throw new CharacterSkillError('NOT_SKILL_BOOK');
+    }
+    const skillKey = def.skillBook.skillKey;
+    const template = getSkillTemplate(skillKey);
+    if (!template) throw new CharacterSkillError('SKILL_NOT_FOUND');
+    if (!skillByKey(skillKey)) throw new CharacterSkillError('SKILL_NOT_FOUND');
+
+    const c = await this.loadCharForValidation(characterId);
+    await this.validateUnlocks(characterId, c, template);
+
+    // Pre-check ALREADY_LEARNED — UX (không consume item nếu đã học rồi).
+    const existed = await this.prisma.characterSkill.findUnique({
+      where: { characterId_skillKey: { characterId, skillKey } },
+    });
+    if (existed) throw new CharacterSkillError('ALREADY_LEARNED');
+
+    await this.prisma.$transaction(async (tx) => {
+      // Re-fetch row in tx để chống race với consumer khác.
+      const cur = await tx.inventoryItem.findUnique({
+        where: { id: inventoryItemId },
+      });
+      if (!cur || cur.characterId !== characterId || cur.qty < 1) {
+        throw new CharacterSkillError('INVENTORY_ITEM_NOT_FOUND');
+      }
+      try {
+        await tx.characterSkill.create({
+          data: {
+            characterId,
+            skillKey,
+            masteryLevel: 1,
+            isEquipped: false,
+            source: 'item_consume',
+          },
+        });
+      } catch (e) {
+        // P2002 = unique violation (đã học, race với grant khác). Không
+        // consume item, throw ALREADY_LEARNED để client retry safe.
+        if (
+          e instanceof Prisma.PrismaClientKnownRequestError &&
+          e.code === 'P2002'
+        ) {
+          throw new CharacterSkillError('ALREADY_LEARNED');
+        }
+        throw e;
+      }
+      if (cur.qty === 1) {
+        await tx.inventoryItem.delete({ where: { id: cur.id } });
+      } else {
+        await tx.inventoryItem.update({
+          where: { id: cur.id },
+          data: { qty: cur.qty - 1 },
+        });
+      }
+      await tx.itemLedger.create({
+        data: {
+          characterId,
+          itemKey: cur.itemKey,
+          qtyDelta: -1,
+          reason: 'SKILL_LEARN',
+          refType: 'InventoryItem',
+          refId: cur.id,
+          meta: { skillKey },
+        },
+      });
+    });
+
+    const state = await this.getState(characterId);
+    return { skillKey, consumedItemKey: def.key, state };
   }
 
   /**
@@ -492,7 +606,11 @@ export class CharacterSkillError extends Error {
       | 'REALM_NOT_FOUND'
       | 'REALM_TOO_LOW'
       | 'WRONG_SECT'
-      | 'METHOD_NOT_LEARNED',
+      | 'METHOD_NOT_LEARNED'
+      // Phase 11.2.D `learnFromBook`:
+      | 'INVENTORY_ITEM_NOT_FOUND'
+      | 'NOT_SKILL_BOOK'
+      | 'ALREADY_LEARNED',
   ) {
     super(code);
   }
@@ -528,6 +646,16 @@ export interface CharacterSkillUpgradeOut {
   linhThachSpent: number;
   shardSpent: number;
   shardRequired: number;
+}
+
+/** Phase 11.2.D — return của `learnFromBook` cho controller envelope. */
+export interface CharacterSkillLearnFromBookOut {
+  /** Key skill vừa học (echo cho client refresh UI). */
+  skillKey: string;
+  /** Item key đã consume (vd `'skill_book_kim_quang_tram'`). */
+  consumedItemKey: string;
+  /** Trạng thái mới sau khi học (kèm row vừa create). */
+  state: CharacterSkillStateOut;
 }
 
 // Re-export catalog cho consumers.

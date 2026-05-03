@@ -19,6 +19,15 @@ export type ItemKind =
   | 'PILL_MP'
   | 'PILL_EXP'
   | 'ORE'
+  /**
+   * Phase 11.2.D — bí kíp/thư trục dùng để học skill mới. Consume 1 stack
+   * qua `POST /character/skill/learn-from-book` → `CharacterSkillService.
+   * learnFromBook` sẽ validate `unlocks` của template, tạo
+   * `CharacterSkill { masteryLevel: 1, source: 'item_consume' }` và ghi
+   * `ItemLedger { qtyDelta: -1, reason: 'SKILL_LEARN' }` atomic. Item phải
+   * khai báo `skillBook: { skillKey: '...' }` trỏ tới `SkillTemplate.key`.
+   */
+  | 'SKILL_BOOK'
   | 'MISC';
 
 export interface ItemBonus {
@@ -35,6 +44,18 @@ export interface ItemEffect {
   exp?: number;
 }
 
+/**
+ * Phase 11.2.D — metadata cho item kind = 'SKILL_BOOK' liên kết tới
+ * `SkillTemplate.key`. Khi player consume, server gọi
+ * `CharacterSkillService.learnFromBook(...)` → validate `unlocks` →
+ * `learn(skillKey, source='item_consume')`. Idempotent qua
+ * `@@unique([characterId, skillKey])` (P2002 → ALREADY_LEARNED).
+ */
+export interface SkillBookMeta {
+  /** `SkillTemplate.key` ↔ `SkillDef.key`. Phải tồn tại trong catalog. */
+  skillKey: string;
+}
+
 export interface ItemDef {
   key: string;
   name: string;
@@ -47,6 +68,8 @@ export interface ItemDef {
   slot?: EquipSlot;
   bonuses?: ItemBonus;
   effect?: ItemEffect;
+  /** Phase 11.2.D — chỉ set khi `kind === 'SKILL_BOOK'`. */
+  skillBook?: SkillBookMeta;
   /** Giá tham khảo (linh thạch). */
   price: number;
 }
@@ -1047,6 +1070,77 @@ export const ITEMS: readonly ItemDef[] = [
     quality: 'HUYEN',
     stackable: true,
     price: 500,
+  },
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Phase 11.2.D — Skill Book Pack 1 (Ngũ Hành sơ cấp, +5 entries)
+  //
+  // Mục tiêu: cho player nguồn rare để học 5 skill basic-tier theo Ngũ
+  // Hành (Kim/Mộc/Thủy/Hỏa/Thổ) thay vì chỉ tự học khi đủ realm.
+  // Mỗi book trỏ tới đúng 1 `SkillTemplate.key`. Quality LINH (price 1500
+  // LT) — thấp hơn `linh_can_dan` (TIEN, 5000 LT) vì skill basic re-roll
+  // ít quan trọng hơn linh căn.
+  //
+  // Server-authoritative consume: `POST /character/skill/learn-from-book
+  // { inventoryItemId }` → `CharacterSkillService.learnFromBook` validate
+  // unlocks (realm/sect/method) → `learn(skillKey, source='item_consume')`
+  // idempotent qua P2002 → ALREADY_LEARNED. ItemLedger `SKILL_LEARN`
+  // qtyDelta=-1 atomic cùng InventoryItem decrement.
+  //
+  // Drop sourcing (forward-compat, deferred Phase 11.2.D++): mid/low pool
+  // boss tier ≥ Trúc Cơ + dungeon Ngũ Hành (kim_son_mach / moc_huyen_lam
+  // / thuy_long_uyen / hoa_diem_son / hoang_tho_huyet) match element.
+  // PR này chỉ đăng ký catalog + consume flow, drop integration tách PR.
+  // ─────────────────────────────────────────────────────────────────────
+  {
+    key: 'skill_book_kim_quang_tram',
+    name: 'Bí Kíp: Kim Quang Trảm',
+    description: 'Trục giấy linh ghi lại tâm pháp Kim Quang Trảm — đọc xong tan biến. Hệ Kim, sơ cấp.',
+    kind: 'SKILL_BOOK',
+    quality: 'LINH',
+    stackable: true,
+    skillBook: { skillKey: 'kim_quang_tram' },
+    price: 1500,
+  },
+  {
+    key: 'skill_book_moc_linh_truong_dieu',
+    name: 'Bí Kíp: Mộc Linh Trượng Diệu',
+    description: 'Trục gỗ thanh môn ghi pháp tiêu Mộc Linh Trượng Diệu — đọc xong tan biến. Hệ Mộc, sơ cấp.',
+    kind: 'SKILL_BOOK',
+    quality: 'LINH',
+    stackable: true,
+    skillBook: { skillKey: 'moc_linh_truong_dieu' },
+    price: 1500,
+  },
+  {
+    key: 'skill_book_thuy_kinh_phong_an',
+    name: 'Bí Kíp: Thủy Kính Phong Ấn',
+    description: 'Quyển ngọc băng thấu ghi tâm pháp Thủy Kính Phong Ấn — đọc xong tan biến. Hệ Thủy, sơ cấp.',
+    kind: 'SKILL_BOOK',
+    quality: 'LINH',
+    stackable: true,
+    skillBook: { skillKey: 'thuy_kinh_phong_an' },
+    price: 1500,
+  },
+  {
+    key: 'skill_book_hoa_xa_phun_diem',
+    name: 'Bí Kíp: Hỏa Xà Phun Diệm',
+    description: 'Trục đồng đỏ ghi pháp quyết Hỏa Xà Phun Diệm — đọc xong tan biến. Hệ Hỏa, sơ cấp.',
+    kind: 'SKILL_BOOK',
+    quality: 'LINH',
+    stackable: true,
+    skillBook: { skillKey: 'hoa_xa_phun_diem' },
+    price: 1500,
+  },
+  {
+    key: 'skill_book_thach_giap_ho_than',
+    name: 'Bí Kíp: Thạch Giáp Hộ Thân',
+    description: 'Trục đá thổ ghi pháp môn phòng ngự Thạch Giáp Hộ Thân — đọc xong tan biến. Hệ Thổ, sơ cấp.',
+    kind: 'SKILL_BOOK',
+    quality: 'LINH',
+    stackable: true,
+    skillBook: { skillKey: 'thach_giap_ho_than' },
+    price: 1500,
   },
 ];
 

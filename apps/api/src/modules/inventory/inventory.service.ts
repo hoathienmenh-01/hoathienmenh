@@ -51,7 +51,13 @@ export type ItemLedgerReason =
   // SpiritualRootService.reroll (server-authoritative). Negative qtyDelta=-1.
   // Atomic cùng SpiritualRootRollLog.create + Character update (grade/element
   // /secondary/purity/rerollCount++).
-  | 'SPIRITUAL_ROOT_REROLL';
+  | 'SPIRITUAL_ROOT_REROLL'
+  // Phase 11.2.D Skill book consume — consume 1× `skill_book_*` qua
+  // CharacterSkillService.learnFromBook (server-authoritative). Negative
+  // qtyDelta=-1. Atomic cùng InventoryItem decrement + CharacterSkill.create
+  // ({ masteryLevel: 1, source: 'item_consume' }). Idempotent qua P2002 →
+  // CharacterSkillError 'ALREADY_LEARNED' (item KHÔNG bị consume khi throw).
+  | 'SKILL_LEARN';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;

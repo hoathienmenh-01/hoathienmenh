@@ -78,6 +78,11 @@ const SkillKeyInput = z.object({
   skillKey: z.string().min(1).max(64),
 });
 
+/** Phase 11.2.D — body cho `POST /character/skill/learn-from-book`. */
+const SkillLearnFromBookInput = z.object({
+  inventoryItemId: z.string().min(1).max(64),
+});
+
 const GemSocketInput = z.object({
   equipmentInventoryItemId: z.string().min(1).max(64),
   gemKey: z.string().min(1).max(64),
@@ -425,6 +430,38 @@ export class CharacterController {
         parsed.data.skillKey,
       );
       return { ok: true, data: { upgrade: result } };
+    } catch (e) {
+      if (e instanceof CharacterSkillError) {
+        fail(e.code, mapSkillErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 11.2.D — consume 1× `kind: 'SKILL_BOOK'` item để học skill mới.
+   * Server-authoritative: validate ownership + kind + unlocks, ghi
+   * `ItemLedger { reason: 'SKILL_LEARN' }` atomic với CharacterSkill.create.
+   * Throws INVENTORY_ITEM_NOT_FOUND / NOT_SKILL_BOOK / ALREADY_LEARNED /
+   * SKILL_NOT_FOUND / REALM_TOO_LOW / WRONG_SECT / METHOD_NOT_LEARNED.
+   */
+  @Post('skill/learn-from-book')
+  @HttpCode(200)
+  async skillLearnFromBook(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.characterSkill) {
+      fail('CHARACTER_SKILL_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = SkillLearnFromBookInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const result = await this.characterSkill.learnFromBook(
+        character.id,
+        parsed.data.inventoryItemId,
+      );
+      return { ok: true, data: { learn: result } };
     } catch (e) {
       if (e instanceof CharacterSkillError) {
         fail(e.code, mapSkillErrorStatus(e.code));
@@ -1069,12 +1106,25 @@ function mapAchievementErrorStatus(
   }
 }
 
-/** Map CharacterSkillError code → HTTP status. */
+/**
+ * Map `CharacterSkillError` code → HTTP status.
+ *
+ * 404 NOT_FOUND nhóm: SKILL_NOT_FOUND / CHARACTER_NOT_FOUND / REALM_NOT_FOUND
+ * + INVENTORY_ITEM_NOT_FOUND (Phase 11.2.D `learnFromBook`).
+ *
+ * 409 CONFLICT nhóm: NOT_LEARNED / METHOD_NOT_LEARNED / TOO_MANY_EQUIPPED /
+ * MASTERY_MAX / REALM_TOO_LOW / WRONG_SECT + ALREADY_LEARNED (Phase 11.2.D
+ * — đã học, không consume) + NOT_SKILL_BOOK (Phase 11.2.D — item sai kind).
+ *
+ * 402 PAYMENT_REQUIRED: INSUFFICIENT_FUNDS (linh thạch shortage cho
+ * upgrade-mastery).
+ */
 function mapSkillErrorStatus(code: CharacterSkillError['code']): HttpStatus {
   switch (code) {
     case 'SKILL_NOT_FOUND':
     case 'CHARACTER_NOT_FOUND':
     case 'REALM_NOT_FOUND':
+    case 'INVENTORY_ITEM_NOT_FOUND':
       return HttpStatus.NOT_FOUND;
     case 'NOT_LEARNED':
     case 'METHOD_NOT_LEARNED':
@@ -1082,6 +1132,8 @@ function mapSkillErrorStatus(code: CharacterSkillError['code']): HttpStatus {
     case 'MASTERY_MAX':
     case 'REALM_TOO_LOW':
     case 'WRONG_SECT':
+    case 'ALREADY_LEARNED':
+    case 'NOT_SKILL_BOOK':
       return HttpStatus.CONFLICT;
     case 'INSUFFICIENT_FUNDS':
       return HttpStatus.PAYMENT_REQUIRED;
