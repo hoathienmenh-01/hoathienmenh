@@ -263,6 +263,28 @@ function learnButtonDisabled(talent: TalentDef): boolean {
   return false;
 }
 
+/**
+ * Phase 11.7.E++ — cooldown badge cho active talent đã học, đang còn lượt
+ * cooldown > 0. Passive talent / chưa học / cooldown=0 không hiện badge này.
+ * Server-authoritative: số lượt còn lại lấy từ Pinia `talentsStore.cooldownOf`
+ * sau mỗi lần fetch state hoặc trận combat refresh state.
+ */
+function cooldownBadgeVisible(talent: TalentDef): boolean {
+  if (talent.type !== 'active') return false;
+  if (!talentsStore.isLearned(talent.key)) return false;
+  return talentsStore.cooldownOf(talent.key) > 0;
+}
+
+/**
+ * Phase 11.7.E++ — "Sẵn sàng" badge cho active talent đã học, cooldown=0.
+ * Hiển thị trạng thái positive đối lập với cooldown badge (rose vs sky).
+ */
+function readyBadgeVisible(talent: TalentDef): boolean {
+  if (talent.type !== 'active') return false;
+  if (!talentsStore.isLearned(talent.key)) return false;
+  return talentsStore.cooldownOf(talent.key) === 0;
+}
+
 async function onLearn(talent: TalentDef): Promise<void> {
   if (learnButtonDisabled(talent)) return;
   const errCode = await talentsStore.learn(talent.key);
@@ -395,6 +417,21 @@ onMounted(async () => {
                 :data-testid="`talent-badge-learned-${talent.key}`"
               >
                 {{ t('talents.badge.learned') }}
+              </span>
+              <span
+                v-if="cooldownBadgeVisible(talent)"
+                class="px-2 py-0.5 rounded border text-[10px] uppercase tracking-wider bg-rose-700/40 text-rose-200 border-rose-500/40"
+                :data-testid="`talent-badge-cooldown-${talent.key}`"
+                :title="t('talents.cooldown.tooltip')"
+              >
+                {{ t('talents.badge.cooldown', { turns: talentsStore.cooldownOf(talent.key) }) }}
+              </span>
+              <span
+                v-else-if="readyBadgeVisible(talent)"
+                class="px-2 py-0.5 rounded border text-[10px] uppercase tracking-wider bg-sky-700/40 text-sky-200 border-sky-500/40"
+                :data-testid="`talent-badge-ready-${talent.key}`"
+              >
+                {{ t('talents.badge.ready') }}
               </span>
               <span
                 class="px-2 py-0.5 rounded border text-[10px] uppercase tracking-wider"

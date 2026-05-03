@@ -128,6 +128,28 @@ describe('TalentService.listLearned', () => {
     expect(list[0].def.name).toBe(getTalentDef('talent_kim_thien_co')!.name);
     expect(list[1].talentKey).toBe('talent_thuy_long_an');
   });
+
+  it('Phase 11.7.E++ — listLearned default cooldownTurnsRemaining = 0 cho talent vừa học', async () => {
+    const ctx = await makeUserChar(prisma, { realmKey: 'luyen_hu' });
+    await svc.learnTalent(ctx.characterId, 'talent_kim_thien_co');
+
+    const list = await svc.listLearned(ctx.characterId);
+    expect(list).toHaveLength(1);
+    expect(list[0].cooldownTurnsRemaining).toBe(0);
+  });
+
+  it('Phase 11.7.E++ — listLearned phản ánh cooldownTurnsRemaining sau setCooldown', async () => {
+    const ctx = await makeUserChar(prisma, { realmKey: 'luyen_hu' });
+    await svc.learnTalent(ctx.characterId, 'talent_kim_thien_co');
+
+    await prisma.$transaction(async (tx) => {
+      await svc.setCooldown(tx, ctx.characterId, 'talent_kim_thien_co', 5);
+    });
+
+    const list = await svc.listLearned(ctx.characterId);
+    expect(list).toHaveLength(1);
+    expect(list[0].cooldownTurnsRemaining).toBe(5);
+  });
 });
 
 describe('TalentService.getRemainingTalentPoints', () => {

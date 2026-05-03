@@ -727,6 +727,7 @@ export class CharacterController {
             learned: learned.map((l) => ({
               talentKey: l.talentKey,
               learnedAt: l.learnedAt.toISOString(),
+              cooldownTurnsRemaining: l.cooldownTurnsRemaining,
             })),
             spent,
             remaining,

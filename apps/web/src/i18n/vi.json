@@ -1173,7 +1173,12 @@
       "locked": "Chưa đủ điều kiện"
     },
     "badge": {
-      "learned": "Đã học"
+      "learned": "Đã học",
+      "cooldown": "CD {turns}",
+      "ready": "Sẵn sàng"
+    },
+    "cooldown": {
+      "tooltip": "Số lượt cần chờ trước khi cast lại"
     },
     "button": {
       "learn": "Học",

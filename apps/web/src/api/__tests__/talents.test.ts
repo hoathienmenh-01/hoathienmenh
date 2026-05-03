@@ -35,7 +35,11 @@ describe('api/talents — Phase 11.X.AT client', () => {
         data: {
           talents: {
             learned: [
-              { talentKey: 'talent_a', learnedAt: '2024-01-01T00:00:00Z' },
+              {
+                talentKey: 'talent_a',
+                learnedAt: '2024-01-01T00:00:00Z',
+                cooldownTurnsRemaining: 0,
+              },
             ],
             spent: 1,
             remaining: 4,
@@ -47,9 +51,34 @@ describe('api/talents — Phase 11.X.AT client', () => {
     const out = await getTalentsState();
     expect(getMock).toHaveBeenCalledWith('/character/talents/state');
     expect(out.learned).toHaveLength(1);
+    expect(out.learned[0].cooldownTurnsRemaining).toBe(0);
     expect(out.spent).toBe(1);
     expect(out.remaining).toBe(4);
     expect(out.budget).toBe(5);
+  });
+
+  it('Phase 11.7.E++ — getTalentsState parse cooldownTurnsRemaining > 0 cho active talent', async () => {
+    getMock.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        data: {
+          talents: {
+            learned: [
+              {
+                talentKey: 'active_dragon',
+                learnedAt: '2024-01-01T00:00:00Z',
+                cooldownTurnsRemaining: 3,
+              },
+            ],
+            spent: 2,
+            remaining: 0,
+            budget: 2,
+          },
+        },
+      },
+    });
+    const out = await getTalentsState();
+    expect(out.learned[0].cooldownTurnsRemaining).toBe(3);
   });
 
   it('getTalentsState: server error envelope → throws error object', async () => {

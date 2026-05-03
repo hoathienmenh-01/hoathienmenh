@@ -31,8 +31,16 @@ describe('useTalentsStore — Phase 11.X.AT', () => {
   it('fetchState: hydrate learned Map + spent + remaining + budget + loaded=true', async () => {
     mockedGet.mockResolvedValueOnce({
       learned: [
-        { talentKey: 'talent_a', learnedAt: '2024-01-01T00:00:00Z' },
-        { talentKey: 'talent_b', learnedAt: '2024-01-02T00:00:00Z' },
+        {
+          talentKey: 'talent_a',
+          learnedAt: '2024-01-01T00:00:00Z',
+          cooldownTurnsRemaining: 0,
+        },
+        {
+          talentKey: 'talent_b',
+          learnedAt: '2024-01-02T00:00:00Z',
+          cooldownTurnsRemaining: 0,
+        },
       ],
       spent: 3,
       remaining: 2,
@@ -48,9 +56,42 @@ describe('useTalentsStore — Phase 11.X.AT', () => {
     expect(s.loaded).toBe(true);
   });
 
+  it('Phase 11.7.E++ — fetchState hydrate cooldowns Map per learned row', async () => {
+    mockedGet.mockResolvedValueOnce({
+      learned: [
+        {
+          talentKey: 'passive_a',
+          learnedAt: '2024-01-01T00:00:00Z',
+          cooldownTurnsRemaining: 0,
+        },
+        {
+          talentKey: 'active_b',
+          learnedAt: '2024-01-02T00:00:00Z',
+          cooldownTurnsRemaining: 4,
+        },
+      ],
+      spent: 3,
+      remaining: 2,
+      budget: 5,
+    });
+    const s = useTalentsStore();
+    await s.fetchState();
+    expect(s.cooldowns.size).toBe(2);
+    expect(s.cooldownOf('passive_a')).toBe(0);
+    expect(s.cooldownOf('active_b')).toBe(4);
+    // Talent chưa học → cooldown 0 (default).
+    expect(s.cooldownOf('not_learned')).toBe(0);
+  });
+
   it('isLearned getter: trả true cho talent đã học, false cho chưa', async () => {
     mockedGet.mockResolvedValueOnce({
-      learned: [{ talentKey: 'talent_a', learnedAt: '2024-01-01T00:00:00Z' }],
+      learned: [
+        {
+          talentKey: 'talent_a',
+          learnedAt: '2024-01-01T00:00:00Z',
+          cooldownTurnsRemaining: 0,
+        },
+      ],
       spent: 1,
       remaining: 4,
       budget: 5,
@@ -82,6 +123,8 @@ describe('useTalentsStore — Phase 11.X.AT', () => {
     // budget=5, remaining=4 → spent = 1.
     expect(s.spent).toBe(1);
     expect(s.inFlight.has('talent_a')).toBe(false);
+    // Phase 11.7.E++ — talent vừa học cooldown=0.
+    expect(s.cooldownOf('talent_a')).toBe(0);
   });
 
   it('learn server error code: trả về code, không update learned', async () => {
@@ -171,7 +214,13 @@ describe('useTalentsStore — Phase 11.X.AT', () => {
 
   it('reset: xoá learned + spent + remaining + budget + loaded', async () => {
     mockedGet.mockResolvedValueOnce({
-      learned: [{ talentKey: 'talent_a', learnedAt: '2024-01-01T00:00:00Z' }],
+      learned: [
+        {
+          talentKey: 'talent_a',
+          learnedAt: '2024-01-01T00:00:00Z',
+          cooldownTurnsRemaining: 3,
+        },
+      ],
       spent: 1,
       remaining: 4,
       budget: 5,
@@ -179,8 +228,10 @@ describe('useTalentsStore — Phase 11.X.AT', () => {
     const s = useTalentsStore();
     await s.fetchState();
     expect(s.loaded).toBe(true);
+    expect(s.cooldowns.size).toBe(1);
     s.reset();
     expect(s.learned.size).toBe(0);
+    expect(s.cooldowns.size).toBe(0);
     expect(s.spent).toBe(0);
     expect(s.remaining).toBe(0);
     expect(s.budget).toBe(0);

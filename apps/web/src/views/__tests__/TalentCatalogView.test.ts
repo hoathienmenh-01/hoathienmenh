@@ -30,6 +30,7 @@ const toastPushMock = vi.fn();
 
 const talentsState = {
   learned: new Map<string, string>(),
+  cooldowns: new Map<string, number>(),
   spent: 0,
   remaining: 5,
   budget: 5,
@@ -37,6 +38,7 @@ const talentsState = {
   inFlight: new Set<string>(),
   isLearned: (k: string) => talentsState.learned.has(k),
   isLearning: (k: string) => talentsState.inFlight.has(k),
+  cooldownOf: (k: string) => talentsState.cooldowns.get(k) ?? 0,
   fetchState: fetchStateMock,
   learn: learnMock,
 };
@@ -141,7 +143,14 @@ const i18n = createI18n({
           of: '/{budget}',
           loading: 'Đang tải',
         },
-        badge: { learned: 'Đã học' },
+        badge: {
+          learned: 'Đã học',
+          cooldown: 'CD {turns}',
+          ready: 'Sẵn sàng',
+        },
+        cooldown: {
+          tooltip: 'Số lượt chờ',
+        },
         button: {
           learn: 'Học',
           learning: 'Đang học',
@@ -169,6 +178,7 @@ function mountView() {
 
 function resetState() {
   talentsState.learned = new Map();
+  talentsState.cooldowns = new Map();
   talentsState.spent = 0;
   talentsState.remaining = 5;
   talentsState.budget = 5;
@@ -558,5 +568,92 @@ describe('TalentCatalogView — Phase 11.X.AT learn flow', () => {
     }
     // Phải có ít nhất 1 talent realm cao hơn truc_co.
     expect(cards.length).toBeGreaterThan(0);
+  });
+});
+
+describe('TalentCatalogView — Phase 11.7.E++ cooldown badge', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    resetState();
+  });
+
+  function findActiveTalentLearnable() {
+    // Active talent với realmRequirement <= truc_co (mock character ở truc_co).
+    return TALENTS.find(
+      (t) =>
+        t.type === 'active' &&
+        (t.realmRequirement === 'truc_co' ||
+          t.realmRequirement === 'luyen_khi'),
+    );
+  }
+
+  it('active talent đã học, cooldown > 0 → render cooldown badge với CD {turns}', async () => {
+    const sample = findActiveTalentLearnable();
+    if (!sample) throw new Error('no early active talent in catalog');
+    talentsState.learned = new Map([[sample.key, '2024-01-01T00:00:00Z']]);
+    talentsState.cooldowns = new Map([[sample.key, 4]]);
+    const w = mountView();
+    await flushPromises();
+    const badge = w.find(`[data-testid="talent-badge-cooldown-${sample.key}"]`);
+    expect(badge.exists()).toBe(true);
+    expect(badge.text()).toContain('CD');
+    expect(badge.text()).toContain('4');
+    // Ready badge KHÔNG hiển thị khi cooldown > 0.
+    expect(
+      w.find(`[data-testid="talent-badge-ready-${sample.key}"]`).exists(),
+    ).toBe(false);
+  });
+
+  it('active talent đã học, cooldown = 0 → render ready badge thay vì cooldown', async () => {
+    const sample = findActiveTalentLearnable();
+    if (!sample) throw new Error('no early active talent in catalog');
+    talentsState.learned = new Map([[sample.key, '2024-01-01T00:00:00Z']]);
+    talentsState.cooldowns = new Map([[sample.key, 0]]);
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find(`[data-testid="talent-badge-cooldown-${sample.key}"]`).exists(),
+    ).toBe(false);
+    const ready = w.find(`[data-testid="talent-badge-ready-${sample.key}"]`);
+    expect(ready.exists()).toBe(true);
+    expect(ready.text()).toContain('Sẵn sàng');
+  });
+
+  it('passive talent đã học → KHÔNG render cooldown/ready badge dù có cooldown trong store', async () => {
+    const passive = TALENTS.find(
+      (t) =>
+        t.type === 'passive' &&
+        (t.realmRequirement === 'truc_co' ||
+          t.realmRequirement === 'luyen_khi'),
+    );
+    if (!passive) throw new Error('no early passive talent in catalog');
+    talentsState.learned = new Map([[passive.key, '2024-01-01T00:00:00Z']]);
+    // Defensive: kể cả nếu store có cooldown bất thường cho passive (server
+    // không bao giờ set), UI cũng không hiển thị badge cooldown/ready.
+    talentsState.cooldowns = new Map([[passive.key, 5]]);
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find(`[data-testid="talent-badge-cooldown-${passive.key}"]`).exists(),
+    ).toBe(false);
+    expect(
+      w.find(`[data-testid="talent-badge-ready-${passive.key}"]`).exists(),
+    ).toBe(false);
+  });
+
+  it('active talent CHƯA học → KHÔNG render cooldown/ready badge', async () => {
+    const sample = findActiveTalentLearnable();
+    if (!sample) throw new Error('no early active talent in catalog');
+    // Không set learned. Even if cooldowns map populated.
+    talentsState.cooldowns = new Map([[sample.key, 3]]);
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find(`[data-testid="talent-badge-cooldown-${sample.key}"]`).exists(),
+    ).toBe(false);
+    expect(
+      w.find(`[data-testid="talent-badge-ready-${sample.key}"]`).exists(),
+    ).toBe(false);
   });
 });

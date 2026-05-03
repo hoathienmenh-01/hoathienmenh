@@ -1173,7 +1173,12 @@
       "locked": "Locked"
     },
     "badge": {
-      "learned": "Learned"
+      "learned": "Learned",
+      "cooldown": "CD {turns}",
+      "ready": "Ready"
+    },
+    "cooldown": {
+      "tooltip": "Turns until you can cast again"
     },
     "button": {
       "learn": "Learn",
