@@ -24,6 +24,7 @@ import { TALENTS } from '@xuantoi/shared';
  */
 
 const replaceMock = vi.fn();
+const pushMock = vi.fn().mockResolvedValue(undefined);
 const learnMock = vi.fn();
 const fetchStateMock = vi.fn().mockResolvedValue(undefined);
 const toastPushMock = vi.fn();
@@ -65,7 +66,7 @@ vi.mock('@/stores/toast', () => ({
   }),
 }));
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ replace: replaceMock }),
+  useRouter: () => ({ replace: replaceMock, push: pushMock }),
 }));
 
 vi.mock('@/components/shell/AppShell.vue', () => ({
@@ -151,6 +152,15 @@ const i18n = createI18n({
         cooldown: {
           tooltip: 'Số lượt chờ',
         },
+        activeSection: {
+          title: 'Loadout',
+          subtitle: 'Vào trận để dùng',
+          empty: 'Chưa có thần thông',
+          count: '{count} đã học',
+          cast: 'Vào trận',
+          castOnCooldown: 'CD {turns}',
+          castHint: 'Vào hầm dùng {name}',
+        },
         button: {
           learn: 'Học',
           learning: 'Đang học',
@@ -186,6 +196,7 @@ function resetState() {
   learnMock.mockReset();
   fetchStateMock.mockClear();
   toastPushMock.mockClear();
+  pushMock.mockClear();
 }
 
 describe('TalentCatalogView — render & counts', () => {
@@ -655,5 +666,169 @@ describe('TalentCatalogView — Phase 11.7.E++ cooldown badge', () => {
     expect(
       w.find(`[data-testid="talent-badge-ready-${sample.key}"]`).exists(),
     ).toBe(false);
+  });
+});
+
+describe('TalentCatalogView — Phase 11.7.E+++ active section + cast button', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    resetState();
+  });
+
+  function activeTalents() {
+    return TALENTS.filter((t) => t.type === 'active');
+  }
+
+  it('section luôn render dù chưa học (empty state)', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="talents-active-section"]').exists()).toBe(
+      true,
+    );
+    expect(w.find('[data-testid="talents-active-empty"]').exists()).toBe(true);
+    // List KHÔNG render khi empty.
+    expect(w.find('[data-testid="talents-active-list"]').exists()).toBe(false);
+    // Count = 0.
+    expect(w.find('[data-testid="talents-active-count"]').text()).toContain(
+      '0',
+    );
+  });
+
+  it('chỉ render active talent đã học (passive đã học vẫn ẩn)', async () => {
+    const passive = TALENTS.find((t) => t.type === 'passive');
+    const active = activeTalents()[0];
+    if (!passive || !active) throw new Error('catalog missing fixtures');
+    talentsState.learned = new Map([
+      [passive.key, '2024-01-01T00:00:00Z'],
+      [active.key, '2024-01-01T00:00:00Z'],
+    ]);
+    const w = mountView();
+    await flushPromises();
+    // Active talent có row.
+    expect(
+      w.find(`[data-testid="talent-active-row-${active.key}"]`).exists(),
+    ).toBe(true);
+    // Passive đã học KHÔNG xuất hiện trong active section.
+    expect(
+      w.find(`[data-testid="talent-active-row-${passive.key}"]`).exists(),
+    ).toBe(false);
+    // Count = 1 (chỉ active).
+    expect(w.find('[data-testid="talents-active-count"]').text()).toContain(
+      '1',
+    );
+  });
+
+  it('cast button disabled + label "CD {turns}" khi cooldownOf > 0', async () => {
+    const active = activeTalents()[0];
+    if (!active) throw new Error('catalog missing active talent');
+    talentsState.learned = new Map([[active.key, '2024-01-01T00:00:00Z']]);
+    talentsState.cooldowns = new Map([[active.key, 3]]);
+    const w = mountView();
+    await flushPromises();
+    const btn = w.find(
+      `[data-testid="talent-active-cast-${active.key}"]`,
+    );
+    expect(btn.exists()).toBe(true);
+    expect(btn.attributes('disabled')).toBeDefined();
+    expect(btn.text()).toContain('3');
+    // Cooldown badge cũng render trong section.
+    expect(
+      w.find(`[data-testid="talent-active-cooldown-${active.key}"]`).exists(),
+    ).toBe(true);
+    // Ready badge ẨN khi cooldown > 0.
+    expect(
+      w.find(`[data-testid="talent-active-ready-${active.key}"]`).exists(),
+    ).toBe(false);
+  });
+
+  it('cast button enabled + ready badge khi cooldownOf=0', async () => {
+    const active = activeTalents()[0];
+    if (!active) throw new Error('catalog missing active talent');
+    talentsState.learned = new Map([[active.key, '2024-01-01T00:00:00Z']]);
+    talentsState.cooldowns = new Map([[active.key, 0]]);
+    const w = mountView();
+    await flushPromises();
+    const btn = w.find(
+      `[data-testid="talent-active-cast-${active.key}"]`,
+    );
+    expect(btn.exists()).toBe(true);
+    expect(btn.attributes('disabled')).toBeUndefined();
+    // Label = cast (không phải castOnCooldown).
+    expect(btn.text()).toContain('Vào trận');
+    // Ready badge render, cooldown badge ẨN.
+    expect(
+      w.find(`[data-testid="talent-active-ready-${active.key}"]`).exists(),
+    ).toBe(true);
+    expect(
+      w.find(`[data-testid="talent-active-cooldown-${active.key}"]`).exists(),
+    ).toBe(false);
+  });
+
+  it('click cast button khi sẵn sàng → toast hint + router.push("/dungeon")', async () => {
+    const active = activeTalents()[0];
+    if (!active) throw new Error('catalog missing active talent');
+    talentsState.learned = new Map([[active.key, '2024-01-01T00:00:00Z']]);
+    talentsState.cooldowns = new Map([[active.key, 0]]);
+    const w = mountView();
+    await flushPromises();
+    const btn = w.find(
+      `[data-testid="talent-active-cast-${active.key}"]`,
+    );
+    await btn.trigger('click');
+    await flushPromises();
+    expect(toastPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'success',
+        text: expect.stringContaining(active.name),
+      }),
+    );
+    expect(pushMock).toHaveBeenCalledWith('/dungeon');
+  });
+
+  it('click cast button KHI cooldown > 0 → KHÔNG toast, KHÔNG push (gate)', async () => {
+    const active = activeTalents()[0];
+    if (!active) throw new Error('catalog missing active talent');
+    talentsState.learned = new Map([[active.key, '2024-01-01T00:00:00Z']]);
+    talentsState.cooldowns = new Map([[active.key, 5]]);
+    const w = mountView();
+    await flushPromises();
+    const btn = w.find(
+      `[data-testid="talent-active-cast-${active.key}"]`,
+    );
+    // Disabled button — Vue test utils trigger vẫn fire onClick handler nhưng
+    // handler tự early-return. Verify không toast và không navigate.
+    await btn.trigger('click');
+    await flushPromises();
+    expect(toastPushMock).not.toHaveBeenCalled();
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it('sort: ready (cd=0) trước, sau đó cooldown nhỏ → lớn, rồi key ascending', async () => {
+    const active = activeTalents().slice(0, 3);
+    if (active.length < 3) throw new Error('catalog cần ≥3 active');
+    talentsState.learned = new Map(
+      active.map((t) => [t.key, '2024-01-01T00:00:00Z']),
+    );
+    // Setup: t0 cd=5, t1 cd=0 ready, t2 cd=2.
+    // Expected order: t1 (cd=0), t2 (cd=2), t0 (cd=5).
+    talentsState.cooldowns = new Map([
+      [active[0].key, 5],
+      [active[1].key, 0],
+      [active[2].key, 2],
+    ]);
+    const w = mountView();
+    await flushPromises();
+    const rows = w.findAll('[data-testid^="talent-active-row-"]');
+    expect(rows).toHaveLength(3);
+    expect(rows[0].attributes('data-testid')).toBe(
+      `talent-active-row-${active[1].key}`,
+    );
+    expect(rows[1].attributes('data-testid')).toBe(
+      `talent-active-row-${active[2].key}`,
+    );
+    expect(rows[2].attributes('data-testid')).toBe(
+      `talent-active-row-${active[0].key}`,
+    );
   });
 });
