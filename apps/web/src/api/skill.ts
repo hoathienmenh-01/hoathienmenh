@@ -66,6 +66,20 @@ export interface SkillUpgradeOut {
   shardSpent: number;
 }
 
+/**
+ * Phase 11.2.D — `POST /character/skill/learn-from-book` response shape.
+ *
+ * Mirror `CharacterSkillLearnFromBookOut` ở
+ * `apps/api/src/modules/character/character-skill.service.ts`. Server consume
+ * 1× `skill_book_*` qua ItemLedger reason `SKILL_LEARN`, atomic + idempotent
+ * (P2002 → ALREADY_LEARNED). UI confirm dialog → call → toast i18n.
+ */
+export interface SkillLearnFromBookOut {
+  skillKey: string;
+  consumedItemKey: string;
+  state: SkillState;
+}
+
 export async function getSkillState(): Promise<SkillState> {
   const { data } = await apiClient.get<Envelope<{ skill: SkillState }>>(
     '/character/skill',
@@ -101,4 +115,25 @@ export async function upgradeSkillMastery(
   );
   if (!data.ok || !data.data) throw data.error ?? fallbackError('skillUpgrade');
   return data.data.upgrade;
+}
+
+/**
+ * Phase 11.2.D — consume 1× skill book từ inventory để học skill.
+ *
+ * Server-authoritative: validate ownership/qty/kind/skillBook.skillKey/
+ * unlocks (realm/sect/method) + atomic tx (CharacterSkill.create + InventoryItem
+ * decrement + ItemLedger SKILL_LEARN). Idempotent qua P2002 catch — nếu đã học
+ * trước đó → throw `ALREADY_LEARNED`, item KHÔNG bị consume.
+ *
+ * Caller phải xác nhận từ user trước khi gọi (consume vĩnh viễn 1 cuốn).
+ */
+export async function learnSkillFromBook(
+  inventoryItemId: string,
+): Promise<SkillLearnFromBookOut> {
+  const { data } = await apiClient.post<
+    Envelope<{ learn: SkillLearnFromBookOut }>
+  >('/character/skill/learn-from-book', { inventoryItemId });
+  if (!data.ok || !data.data)
+    throw data.error ?? fallbackError('skillLearnFromBook');
+  return data.data.learn;
 }

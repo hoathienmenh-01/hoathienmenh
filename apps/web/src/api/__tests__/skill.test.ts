@@ -25,6 +25,7 @@ import {
   equipSkill,
   unequipSkill,
   upgradeSkillMastery,
+  learnSkillFromBook,
   type SkillState,
 } from '@/api/skill';
 
@@ -135,5 +136,62 @@ describe('api/skill — Phase 11.2.C client', () => {
     await expect(upgradeSkillMastery('kiem_khi_chem')).rejects.toMatchObject({
       code: 'INSUFFICIENT_FUNDS',
     });
+  });
+
+  it('learnSkillFromBook: POST /character/skill/learn-from-book with inventoryItemId, parse envelope', async () => {
+    const learn = {
+      skillKey: 'kim_quang_tram',
+      consumedItemKey: 'skill_book_kim_quang_tram',
+      state: STUB_STATE,
+    };
+    postMock.mockResolvedValueOnce({
+      data: { ok: true, data: { learn } },
+    });
+    const out = await learnSkillFromBook('inv-1');
+    expect(postMock).toHaveBeenCalledWith('/character/skill/learn-from-book', {
+      inventoryItemId: 'inv-1',
+    });
+    expect(out).toEqual(learn);
+  });
+
+  it('learnSkillFromBook: ALREADY_LEARNED → throws preserving code (idempotent retry safe)', async () => {
+    postMock.mockResolvedValueOnce({
+      data: {
+        ok: false,
+        error: { code: 'ALREADY_LEARNED', message: 'already' },
+      },
+    });
+    await expect(learnSkillFromBook('inv-1')).rejects.toMatchObject({
+      code: 'ALREADY_LEARNED',
+    });
+  });
+
+  it('learnSkillFromBook: REALM_TOO_LOW → throws preserving code', async () => {
+    postMock.mockResolvedValueOnce({
+      data: {
+        ok: false,
+        error: { code: 'REALM_TOO_LOW', message: 'too low' },
+      },
+    });
+    await expect(learnSkillFromBook('inv-1')).rejects.toMatchObject({
+      code: 'REALM_TOO_LOW',
+    });
+  });
+
+  it('learnSkillFromBook: NOT_SKILL_BOOK → throws preserving code', async () => {
+    postMock.mockResolvedValueOnce({
+      data: {
+        ok: false,
+        error: { code: 'NOT_SKILL_BOOK', message: 'wrong kind' },
+      },
+    });
+    await expect(learnSkillFromBook('inv-1')).rejects.toMatchObject({
+      code: 'NOT_SKILL_BOOK',
+    });
+  });
+
+  it('learnSkillFromBook: empty data → throws fallback error', async () => {
+    postMock.mockResolvedValueOnce({ data: { ok: true } });
+    await expect(learnSkillFromBook('inv-1')).rejects.toBeInstanceOf(Error);
   });
 });

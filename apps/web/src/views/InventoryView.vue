@@ -10,6 +10,7 @@ import {
   getGemDef,
   getRefineAttemptCost,
   itemByKey,
+  skillByKey,
   socketCapacityForQuality,
   type EquipSlot,
   type GemCompatibleSlot,
@@ -31,6 +32,7 @@ import {
   type InventoryView,
   type RefineResult,
 } from '@/api/inventory';
+import { learnSkillFromBook } from '@/api/skill';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
@@ -208,6 +210,47 @@ async function onUse(it: InventoryView): Promise<void> {
   try {
     items.value = await useItem(it.id);
     toast.push({ type: 'success', text: t('inventory.useToast', { name: it.item.name }) });
+  } catch (e) {
+    handleErr(e);
+  } finally {
+    submitting.value = false;
+  }
+}
+
+/**
+ * Phase 11.2.D — Render skill book consume button. Wire `POST
+ * /character/skill/learn-from-book` server-authoritative endpoint.
+ *
+ * Flow: button "Học" (gated bởi `kind==='SKILL_BOOK'` + có `skillBook.skillKey`
+ * + skill catalog tồn tại) → confirm dialog (mô tả tên skill + cảnh báo consume
+ * vĩnh viễn) → call `learnSkillFromBook(it.id)` → toast success / error map.
+ *
+ * Sau success, refresh inventory list từ `listInventory()` để đồng bộ qty thật
+ * (server có thể delete row khi qty=0).
+ */
+function skillBookSkillName(it: InventoryView): string | null {
+  if (it.item.kind !== 'SKILL_BOOK') return null;
+  const skillKey = it.item.skillBook?.skillKey;
+  if (!skillKey) return null;
+  return skillByKey(skillKey)?.name ?? null;
+}
+
+async function onLearnFromBook(it: InventoryView): Promise<void> {
+  if (submitting.value) return;
+  const skillName = skillBookSkillName(it);
+  if (!skillName) return;
+  const confirmed = window.confirm(
+    t('inventory.learnConfirm', { skill: skillName, book: it.item.name }),
+  );
+  if (!confirmed) return;
+  submitting.value = true;
+  try {
+    await learnSkillFromBook(it.id);
+    toast.push({
+      type: 'success',
+      text: t('inventory.learnToast', { skill: skillName }),
+    });
+    items.value = await listInventory();
   } catch (e) {
     handleErr(e);
   } finally {
@@ -460,6 +503,20 @@ function handleErr(e: unknown): void {
             <MButton v-if="it.item.effect" :loading="submitting" @click="onUse(it)">
               {{ t('inventory.use') }}
             </MButton>
+            <!-- Phase 11.2.D — Skill book consume button. Gate bởi kind==='SKILL_BOOK' + catalog tồn tại. -->
+            <template v-if="it.item.kind === 'SKILL_BOOK' && skillBookSkillName(it)">
+              <p
+                class="text-[10px] text-violet-200 text-right"
+                data-testid="skill-book-target"
+              >{{ t('inventory.learnTarget', { skill: skillBookSkillName(it) }) }}</p>
+              <MButton
+                :loading="submitting"
+                data-testid="skill-book-learn-button"
+                @click="onLearnFromBook(it)"
+              >
+                {{ t('inventory.learn') }}
+              </MButton>
+            </template>
             <!-- Phase 11.5.C — Refine block (chỉ hiển cho equipment slot, không cho consumable). -->
             <template v-if="it.item.slot">
               <p

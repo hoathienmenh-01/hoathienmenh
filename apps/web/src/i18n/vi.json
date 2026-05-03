@@ -49,7 +49,8 @@
       "skillState": "Không lấy được pháp quyển",
       "skillEquip": "Vận thuật pháp thất bại",
       "skillUnequip": "Gỡ thuật pháp thất bại",
-      "skillUpgrade": "Thăng cấp thuật pháp thất bại"
+      "skillUpgrade": "Thăng cấp thuật pháp thất bại",
+      "skillLearnFromBook": "Đọc bí kíp thất bại"
     }
   },
   "locale": {
@@ -572,6 +573,10 @@
     "takeOff": "Tháo",
     "equip": "Mang",
     "use": "Dùng",
+    "learn": "Học",
+    "learnTarget": "Học: {skill}",
+    "learnConfirm": "Đọc {book} để học {skill}? Bí kíp sẽ tan biến sau khi đọc.",
+    "learnToast": "Đã lĩnh hội thuật pháp {skill}.",
     "emptyAll": "Túi đồ trống — đi Luyện Khí Đường để nhặt chiến lợi phẩm.",
     "loadFailToast": "Không tải được túi đồ.",
     "equipToast": "Đã mang {name}.",
@@ -630,6 +635,13 @@
       "INSUFFICIENT_QTY": "Không đủ số lượng linh thạch.",
       "INVALID_SLOT_INDEX": "Slot không hợp lệ.",
       "GEM_UNAVAILABLE": "Khảm Bảo Đường tạm đóng cửa.",
+      "NOT_SKILL_BOOK": "Vật phẩm này không phải bí kíp.",
+      "ALREADY_LEARNED": "Đạo hữu đã lĩnh hội thuật pháp này rồi.",
+      "REALM_TOO_LOW": "Cảnh giới chưa đủ để lĩnh hội thuật pháp này.",
+      "WRONG_SECT": "Tông môn của đạo hữu không phù hợp với thuật pháp này.",
+      "METHOD_NOT_LEARNED": "Phải vận công pháp tương ứng trước khi học thuật pháp này.",
+      "SKILL_NOT_FOUND": "Bí kíp này không còn lưu hành — sách lệnh ngộ.",
+      "CHARACTER_SKILL_UNAVAILABLE": "Pháp Quyển Đường tạm đóng cửa.",
       "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
     }
   },
@@ -651,6 +663,7 @@
     "PILL_MP": "Đan MP",
     "PILL_EXP": "Đan EXP",
     "ORE": "Quặng",
+    "SKILL_BOOK": "Bí Kíp",
     "MISC": "Khác"
   },
   "quality": {
