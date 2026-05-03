@@ -98,7 +98,9 @@ export const BOSSES: readonly BossDef[] = [
     element: 'tho',
     regionKey: 'hoang_tho_huyet',
     monsterType: 'BOSS',
-    lowDropPool: ['huyet_tinh', 'co_thien_dan'],
+    // Phase 11.2.D+++ — skill_book_thach_giap_ho_than (hệ Thổ) added to
+    // lowDropPool (forward-compat phase 12 BossRewardService pity wire).
+    lowDropPool: ['huyet_tinh', 'co_thien_dan', 'skill_book_thach_giap_ho_than'],
   },
   {
     key: 'huyet_long_quan',
@@ -115,7 +117,8 @@ export const BOSSES: readonly BossDef[] = [
     element: 'hoa',
     regionKey: 'hoa_diem_son',
     monsterType: 'BOSS',
-    lowDropPool: ['huyet_tinh', 'yeu_dan', 'cuu_huyen_dan'],
+    // Phase 11.2.D+++ — skill_book_hoa_xa_phun_diem (hệ Hỏa) added.
+    lowDropPool: ['huyet_tinh', 'yeu_dan', 'cuu_huyen_dan', 'skill_book_hoa_xa_phun_diem'],
   },
 
   // ═════════════════════════════════════════════════════════════════════
@@ -150,7 +153,8 @@ export const BOSSES: readonly BossDef[] = [
     baseRewardLinhThach: 75000,
     topDropPool: ['cuu_u_bi_thuong', 'linh_van_bao'],
     midDropPool: ['huyet_phach_giap', 'co_thien_dan', 'cuu_huyen_dan'],
-    lowDropPool: ['linh_thao', 'huyet_tinh', 'tieu_phuc_dan'],
+    // Phase 11.2.D+++ — skill_book_moc_linh_truong_dieu (hệ Mộc) added.
+    lowDropPool: ['linh_thao', 'huyet_tinh', 'tieu_phuc_dan', 'skill_book_moc_linh_truong_dieu'],
     level: 18,
     element: 'moc',
     regionKey: 'moc_huyen_lam',
@@ -168,7 +172,8 @@ export const BOSSES: readonly BossDef[] = [
     baseRewardLinhThach: 95000,
     topDropPool: ['han_thiet_giap', 'cuu_u_bi_thuong'],
     midDropPool: ['huyet_phach_giap', 'cuu_huyen_dan', 'co_thien_dan'],
-    lowDropPool: ['han_ngoc', 'huyet_tinh', 'tieu_phuc_dan'],
+    // Phase 11.2.D+++ — skill_book_thuy_kinh_phong_an (hệ Thủy) added.
+    lowDropPool: ['han_ngoc', 'huyet_tinh', 'tieu_phuc_dan', 'skill_book_thuy_kinh_phong_an'],
     level: 20,
     element: 'thuy',
     regionKey: 'thuy_long_uyen',
@@ -186,7 +191,8 @@ export const BOSSES: readonly BossDef[] = [
     baseRewardLinhThach: 115000,
     topDropPool: ['tien_huyen_kiem', 'tien_huyen_giap'],
     midDropPool: ['huyet_phach_giap', 'cuu_huyen_dan', 'co_thien_dan'],
-    lowDropPool: ['tinh_thiet', 'huyet_tinh', 'cuu_huyen_dan'],
+    // Phase 11.2.D+++ — skill_book_kim_quang_tram (hệ Kim) added.
+    lowDropPool: ['tinh_thiet', 'huyet_tinh', 'cuu_huyen_dan', 'skill_book_kim_quang_tram'],
     level: 22,
     element: 'kim',
     regionKey: 'kim_son_mach',
@@ -206,7 +212,8 @@ export const BOSSES: readonly BossDef[] = [
     baseRewardLinhThach: 155000,
     topDropPool: ['than_phong_kiem', 'tien_huyen_giap', 'tien_van_dai'],
     midDropPool: ['cuu_u_bi_thuong', 'cuu_thien_dan', 'tien_van_dan'],
-    lowDropPool: ['yeu_dan', 'huyet_tinh', 'cuu_huyen_dan'],
+    // Phase 11.2.D+++ — skill_book_hoa_xa_phun_diem (hệ Hỏa) added.
+    lowDropPool: ['yeu_dan', 'huyet_tinh', 'cuu_huyen_dan', 'skill_book_hoa_xa_phun_diem'],
     level: 26,
     element: 'hoa',
     regionKey: 'hoa_diem_son',
@@ -224,7 +231,8 @@ export const BOSSES: readonly BossDef[] = [
     baseRewardLinhThach: 195000,
     topDropPool: ['tien_huyen_giap', 'tien_van_dai', 'hoang_tho_huyet_phu'],
     midDropPool: ['han_thiet_giap', 'cuu_thien_dan', 'tien_van_dan'],
-    lowDropPool: ['phu_van_ngoc', 'huyet_tinh', 'cuu_huyen_dan'],
+    // Phase 11.2.D+++ — skill_book_thach_giap_ho_than (hệ Thổ) added.
+    lowDropPool: ['phu_van_ngoc', 'huyet_tinh', 'cuu_huyen_dan', 'skill_book_thach_giap_ho_than'],
     level: 28,
     element: 'tho',
     regionKey: 'hoang_tho_huyet',
@@ -242,7 +250,8 @@ export const BOSSES: readonly BossDef[] = [
     baseRewardLinhThach: 235000,
     topDropPool: ['than_phong_kiem', 'tien_van_hai', 'moc_huyen_lam_phu'],
     midDropPool: ['cuu_u_bi_thuong', 'cuu_thien_dan', 'tien_van_dan'],
-    lowDropPool: ['linh_thao', 'yeu_dan', 'cuu_huyen_dan'],
+    // Phase 11.2.D+++ — skill_book_moc_linh_truong_dieu (hệ Mộc) added.
+    lowDropPool: ['linh_thao', 'yeu_dan', 'cuu_huyen_dan', 'skill_book_moc_linh_truong_dieu'],
     level: 30,
     element: 'moc',
     regionKey: 'moc_huyen_lam',
@@ -265,7 +274,8 @@ export const BOSSES: readonly BossDef[] = [
     // Reroll consumable, TIEN quality 5000 LT shop). midDropPool = top 2-3
     // reward (server `pickRandom`), ≈ 1/(N+1) chance per top 2-3 player.
     midDropPool: ['tien_huyen_kiem', 'cuu_thien_dan', 'tien_van_dan', 'linh_can_dan'],
-    lowDropPool: ['tien_kim_sa', 'tinh_thiet', 'cuu_huyen_dan'],
+    // Phase 11.2.D+++ — skill_book_kim_quang_tram (hệ Kim, boss element=kim).
+    lowDropPool: ['tien_kim_sa', 'tinh_thiet', 'cuu_huyen_dan', 'skill_book_kim_quang_tram'],
     level: 32,
     element: 'kim',
     regionKey: 'cuu_la_dien',
@@ -284,7 +294,8 @@ export const BOSSES: readonly BossDef[] = [
     topDropPool: ['than_phong_kiem', 'than_lan_giap', 'than_loi_dai'],
     // Phase 11.3.D++ — boss tier ≥ Hóa Thần drop `linh_can_dan`.
     midDropPool: ['tien_huyen_giap', 'cuu_thien_dan', 'nhan_tien_dan', 'linh_can_dan'],
-    lowDropPool: ['yeu_dan', 'tien_kim_sa', 'cuu_huyen_dan'],
+    // Phase 11.2.D+++ — skill_book_hoa_xa_phun_diem (hệ Hỏa) added.
+    lowDropPool: ['yeu_dan', 'tien_kim_sa', 'cuu_huyen_dan', 'skill_book_hoa_xa_phun_diem'],
     level: 34,
     element: 'hoa',
     regionKey: 'hoa_diem_son',
@@ -306,7 +317,8 @@ export const BOSSES: readonly BossDef[] = [
     // midDropPool drop `linh_can_dan` — endgame supply chain cho Linh Căn reroll.
     topDropPool: ['than_lan_giap', 'than_linh_tram', 'than_loi_dai', 'linh_can_dan'],
     midDropPool: ['tien_huyen_giap', 'nhan_tien_dan', 'cuu_thien_dan', 'linh_can_dan'],
-    lowDropPool: ['han_ngoc', 'phu_van_ngoc', 'cuu_huyen_dan'],
+    // Phase 11.2.D+++ — skill_book_thuy_kinh_phong_an (hệ Thủy) added.
+    lowDropPool: ['han_ngoc', 'phu_van_ngoc', 'cuu_huyen_dan', 'skill_book_thuy_kinh_phong_an'],
     level: 38,
     element: 'thuy',
     regionKey: 'thuy_long_uyen',
@@ -328,7 +340,19 @@ export const BOSSES: readonly BossDef[] = [
     // mid drop `linh_can_dan` — chance cao nhất cho top players.
     topDropPool: ['than_lan_giap', 'than_linh_tram', 'than_loi_dai', 'than_phach_chau', 'linh_can_dan'],
     midDropPool: ['than_phong_kiem', 'nhan_tien_dan', 'tien_van_dan', 'linh_can_dan'],
-    lowDropPool: ['tien_kim_sa', 'phu_van_ngoc', 'han_ngoc'],
+    // Phase 11.2.D+++ — cross-element endgame boss carry full Skill Book
+    // Pack 1 (5 element basic) ở lowDropPool — Phase 12 pity sẽ phân phối
+    // top 4-10 player; nguồn dual với DUNGEON_LOOT cho late-game farm.
+    lowDropPool: [
+      'tien_kim_sa',
+      'phu_van_ngoc',
+      'han_ngoc',
+      'skill_book_kim_quang_tram',
+      'skill_book_moc_linh_truong_dieu',
+      'skill_book_thuy_kinh_phong_an',
+      'skill_book_hoa_xa_phun_diem',
+      'skill_book_thach_giap_ho_than',
+    ],
     level: 44,
     element: null,
     regionKey: null,
