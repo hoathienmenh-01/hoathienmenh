@@ -148,6 +148,186 @@ describe('CharacterSkillService.learn', () => {
   });
 });
 
+describe('CharacterSkillService.learnFromBook (Phase 11.2.D consume)', () => {
+  /**
+   * Helper — tạo inventory row cho 1 itemKey với qty cho trước (default 1).
+   */
+  async function giveItem(
+    characterId: string,
+    itemKey: string,
+    qty: number = 1,
+  ) {
+    return prisma.inventoryItem.create({
+      data: { characterId, itemKey, qty },
+    });
+  }
+
+  it('happy path: consume skill_book_kim_quang_tram → CharacterSkill row + ledger SKILL_LEARN', async () => {
+    const f = await makeUserChar(prisma);
+    const inv = await giveItem(f.characterId, 'skill_book_kim_quang_tram', 1);
+
+    const out = await svc.learnFromBook(f.characterId, inv.id);
+    expect(out.skillKey).toBe('kim_quang_tram');
+    expect(out.consumedItemKey).toBe('skill_book_kim_quang_tram');
+
+    const row = await prisma.characterSkill.findUniqueOrThrow({
+      where: {
+        characterId_skillKey: {
+          characterId: f.characterId,
+          skillKey: 'kim_quang_tram',
+        },
+      },
+    });
+    expect(row.masteryLevel).toBe(1);
+    expect(row.isEquipped).toBe(false);
+    expect(row.source).toBe('item_consume');
+
+    // Inventory row đã bị xoá (qty=1 → delete).
+    const invAfter = await prisma.inventoryItem.findUnique({
+      where: { id: inv.id },
+    });
+    expect(invAfter).toBeNull();
+
+    // ItemLedger SKILL_LEARN qtyDelta=-1.
+    const ledger = await prisma.itemLedger.findMany({
+      where: {
+        characterId: f.characterId,
+        reason: 'SKILL_LEARN',
+      },
+    });
+    expect(ledger.length).toBe(1);
+    expect(ledger[0].itemKey).toBe('skill_book_kim_quang_tram');
+    expect(ledger[0].qtyDelta).toBe(-1);
+    expect(ledger[0].refType).toBe('InventoryItem');
+    expect(ledger[0].refId).toBe(inv.id);
+  });
+
+  it('qty=3 → decrement còn 2, KHÔNG delete row', async () => {
+    const f = await makeUserChar(prisma);
+    const inv = await giveItem(f.characterId, 'skill_book_moc_linh_truong_dieu', 3);
+
+    await svc.learnFromBook(f.characterId, inv.id);
+
+    const invAfter = await prisma.inventoryItem.findUniqueOrThrow({
+      where: { id: inv.id },
+    });
+    expect(invAfter.qty).toBe(2);
+  });
+
+  it('INVENTORY_ITEM_NOT_FOUND: id không tồn tại → throw, không ghi ledger', async () => {
+    const f = await makeUserChar(prisma);
+    await expect(
+      svc.learnFromBook(f.characterId, 'non-existent-id'),
+    ).rejects.toMatchObject({ code: 'INVENTORY_ITEM_NOT_FOUND' });
+    const ledger = await prisma.itemLedger.findMany({
+      where: { characterId: f.characterId },
+    });
+    expect(ledger.length).toBe(0);
+  });
+
+  it('INVENTORY_ITEM_NOT_FOUND: row của character khác → throw (ownership guard)', async () => {
+    const a = await makeUserChar(prisma);
+    const b = await makeUserChar(prisma);
+    const invB = await giveItem(b.characterId, 'skill_book_thuy_kinh_phong_an', 1);
+    await expect(
+      svc.learnFromBook(a.characterId, invB.id),
+    ).rejects.toMatchObject({ code: 'INVENTORY_ITEM_NOT_FOUND' });
+    // Ledger của B vẫn rỗng (a fail trước khi consume).
+    const ledger = await prisma.itemLedger.findMany({
+      where: { characterId: b.characterId },
+    });
+    expect(ledger.length).toBe(0);
+    // Inventory của B không bị giảm.
+    const invAfter = await prisma.inventoryItem.findUniqueOrThrow({
+      where: { id: invB.id },
+    });
+    expect(invAfter.qty).toBe(1);
+  });
+
+  it('NOT_SKILL_BOOK: itemKey không phải skill_book_* → throw, không consume', async () => {
+    const f = await makeUserChar(prisma);
+    const inv = await giveItem(f.characterId, 'huyet_chi_dan', 5);
+    await expect(
+      svc.learnFromBook(f.characterId, inv.id),
+    ).rejects.toMatchObject({ code: 'NOT_SKILL_BOOK' });
+    const invAfter = await prisma.inventoryItem.findUniqueOrThrow({
+      where: { id: inv.id },
+    });
+    expect(invAfter.qty).toBe(5);
+  });
+
+  it('ALREADY_LEARNED: skill đã trong CharacterSkill → throw, KHÔNG consume item', async () => {
+    const f = await makeUserChar(prisma);
+    // Giả lập đã học rồi
+    await prisma.characterSkill.create({
+      data: {
+        characterId: f.characterId,
+        skillKey: 'hoa_xa_phun_diem',
+        masteryLevel: 2,
+        source: 'admin_grant',
+      },
+    });
+    const inv = await giveItem(f.characterId, 'skill_book_hoa_xa_phun_diem', 1);
+    await expect(
+      svc.learnFromBook(f.characterId, inv.id),
+    ).rejects.toMatchObject({ code: 'ALREADY_LEARNED' });
+    // Item vẫn còn (không bị consume).
+    const invAfter = await prisma.inventoryItem.findUniqueOrThrow({
+      where: { id: inv.id },
+    });
+    expect(invAfter.qty).toBe(1);
+    // CharacterSkill mastery vẫn là 2 (không reset).
+    const row = await prisma.characterSkill.findUniqueOrThrow({
+      where: {
+        characterId_skillKey: {
+          characterId: f.characterId,
+          skillKey: 'hoa_xa_phun_diem',
+        },
+      },
+    });
+    expect(row.masteryLevel).toBe(2);
+  });
+
+  it('INVENTORY_ITEM_NOT_FOUND: inventoryItemId rỗng → throw sớm', async () => {
+    const f = await makeUserChar(prisma);
+    await expect(
+      svc.learnFromBook(f.characterId, ''),
+    ).rejects.toMatchObject({ code: 'INVENTORY_ITEM_NOT_FOUND' });
+  });
+
+  it('idempotent retry sau success: lần 2 → ALREADY_LEARNED, không consume thêm item', async () => {
+    const f = await makeUserChar(prisma);
+    const inv1 = await giveItem(f.characterId, 'skill_book_thach_giap_ho_than', 1);
+    await svc.learnFromBook(f.characterId, inv1.id);
+    // Tạo cuốn thứ 2 — kỳ vọng learnFromBook(2nd) throw ALREADY_LEARNED.
+    const inv2 = await giveItem(f.characterId, 'skill_book_thach_giap_ho_than', 1);
+    await expect(
+      svc.learnFromBook(f.characterId, inv2.id),
+    ).rejects.toMatchObject({ code: 'ALREADY_LEARNED' });
+    const invAfter = await prisma.inventoryItem.findUniqueOrThrow({
+      where: { id: inv2.id },
+    });
+    expect(invAfter.qty).toBe(1);
+  });
+
+  it('atomic guarantee: SKILL_NOT_FOUND nếu skillKey orphan (không xảy ra trong production catalog)', async () => {
+    // Catalog hiện không có item kind=SKILL_BOOK trỏ tới skill orphan
+    // (items-balance.test.ts đã enforce). Test này chỉ verify error path
+    // qua mock InventoryItem trỏ tới itemKey không tồn tại trong catalog.
+    const f = await makeUserChar(prisma);
+    const inv = await prisma.inventoryItem.create({
+      data: {
+        characterId: f.characterId,
+        itemKey: 'no_such_book',
+        qty: 1,
+      },
+    });
+    await expect(
+      svc.learnFromBook(f.characterId, inv.id),
+    ).rejects.toMatchObject({ code: 'NOT_SKILL_BOOK' });
+  });
+});
+
 describe('CharacterSkillService.upgradeMastery', () => {
   it('happy path: bump 1 → 2, trừ LinhThach theo curve, ghi ledger', async () => {
     const f = await makeUserChar(prisma, { linhThach: 100_000n });
