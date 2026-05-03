@@ -1193,8 +1193,14 @@ export const DUNGEON_LOOT: Record<string, readonly LootEntry[]> = {
   //     weight 20-35 (chính nguồn craft material)
   // Phase 11.2.D+++ — skill_book_<element> drop weight 3 (rare, low pool):
   //   ~3 / total ≈ 2.5–2.8% per loot roll, default rollDungeonLoot count=2
-  //   → ~5–5.5% per run; scope catalog metadata (DUNGEON_LOOT chưa wire vào
-  //   reward path runtime — Phase 11.3.D+++ sẽ wire qua DungeonRunService).
+  //   → ~5–5.5% per run.
+  // Phase 11.3.D+++ — DUNGEON_LOOT đã wire vào runtime reward path:
+  //   `apps/api/src/modules/combat/combat.service.ts` (action skill flow ~L576
+  //   + active talent flow ~L959) gọi `rollDungeonLoot(dungeon.key, 2)` khi
+  //   `EncounterStatus.WON` và grant qua `inventory.grant(loot, { reason:
+  //   'COMBAT_LOOT' })` → ItemLedger row + InventoryItem (stackable). Không
+  //   có DungeonRunService riêng — combat.service là single runtime cho
+  //   encounter + dungeon clear; tách service thừa scope hiện tại.
   //   Element match dungeon → book element (kim_son_mach → kim, etc.) đảm
   //   bảo người chơi farm dungeon đúng hệ Linh Căn để học skill cùng hệ.
   // Lưu ý: chỉ dùng item keys đã có ở `ITEMS`; không tạo orphan reference.
