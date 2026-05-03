@@ -161,11 +161,14 @@ async function onCast(talent: TalentDef): Promise<void> {
   if (castButtonDisabled(talent)) return;
   // Phase 11.7.E+++ — Cast = navigate to combat view. Toast hint cho UX
   // rõ ràng: thần thông chỉ phát động trong trận, không cast standalone.
+  // Phase 11.7.F — push talentKey vào query param để DungeonView pre-select
+  // và highlight button trong action panel (không auto-cast vì cần encounter
+  // ACTIVE + player confirm; chỉ là UX hint).
   toast.push({
     type: 'success',
     text: t('talents.activeSection.castHint', { name: talent.name }),
   });
-  await router.push('/dungeon');
+  await router.push({ path: '/dungeon', query: { talent: talent.key } });
 }
 
 function realmText(key: string): string {

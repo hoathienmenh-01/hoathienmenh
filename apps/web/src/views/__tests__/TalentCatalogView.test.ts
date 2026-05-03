@@ -765,7 +765,9 @@ describe('TalentCatalogView — Phase 11.7.E+++ active section + cast button', (
     ).toBe(false);
   });
 
-  it('click cast button khi sẵn sàng → toast hint + router.push("/dungeon")', async () => {
+  it('click cast button khi sẵn sàng → toast hint + router.push({ path: "/dungeon", query: { talent } })', async () => {
+    // Phase 11.7.F — push với query.talent để DungeonView pre-select +
+    // highlight button trong action panel (UX continuity Loadout → combat).
     const active = activeTalents()[0];
     if (!active) throw new Error('catalog missing active talent');
     talentsState.learned = new Map([[active.key, '2024-01-01T00:00:00Z']]);
@@ -783,7 +785,10 @@ describe('TalentCatalogView — Phase 11.7.E+++ active section + cast button', (
         text: expect.stringContaining(active.name),
       }),
     );
-    expect(pushMock).toHaveBeenCalledWith('/dungeon');
+    expect(pushMock).toHaveBeenCalledWith({
+      path: '/dungeon',
+      query: { talent: active.key },
+    });
   });
 
   it('click cast button KHI cooldown > 0 → KHÔNG toast, KHÔNG push (gate)', async () => {
