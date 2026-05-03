@@ -117,6 +117,57 @@ const counts = computed(() => ({
   active: TALENTS.filter((t) => t.type === 'active').length,
 }));
 
+/**
+ * Phase 11.7.E+++ — Loadout section ở đầu view: tách riêng nhóm thần thông
+ * chủ động đã học (đối tượng quan tâm chính của người chơi trong/ngoài combat)
+ * khỏi catalog grid bên dưới. Sort theo:
+ *   1. Sẵn sàng (cooldown=0) trước.
+ *   2. Trong nhóm cooldown > 0 thì cooldown nhỏ → lớn (sắp hết hồi trước).
+ *   3. Phá ngang theo `talent.key` cho deterministic.
+ * Catalog filters/status không ảnh hưởng tới section này — luôn show tất cả
+ * active đã học.
+ */
+const activeLearnedTalents = computed<readonly TalentDef[]>(() => {
+  const list = TALENTS.filter(
+    (talent) =>
+      talent.type === 'active' && talentsStore.isLearned(talent.key),
+  ).slice();
+  list.sort((a, b) => {
+    const ca = talentsStore.cooldownOf(a.key);
+    const cb = talentsStore.cooldownOf(b.key);
+    if (ca !== cb) return ca - cb;
+    return a.key.localeCompare(b.key);
+  });
+  return list;
+});
+
+/**
+ * Phase 11.7.E+++ — Cast button gate. Cast chỉ thực sự xảy ra trong combat
+ * (DungeonView/BossView gọi `POST /combat/action` với `skillKey=talentKey`),
+ * nên button ở đây navigate sang `/dungeon` thay vì gọi API trực tiếp. Disable
+ * khi cooldown > 0 (server-authoritative, persist trong DB).
+ */
+function castButtonDisabled(talent: TalentDef): boolean {
+  return talentsStore.cooldownOf(talent.key) > 0;
+}
+
+function castButtonLabel(talent: TalentDef): string {
+  const cd = talentsStore.cooldownOf(talent.key);
+  if (cd > 0) return t('talents.activeSection.castOnCooldown', { turns: cd });
+  return t('talents.activeSection.cast');
+}
+
+async function onCast(talent: TalentDef): Promise<void> {
+  if (castButtonDisabled(talent)) return;
+  // Phase 11.7.E+++ — Cast = navigate to combat view. Toast hint cho UX
+  // rõ ràng: thần thông chỉ phát động trong trận, không cast standalone.
+  toast.push({
+    type: 'success',
+    text: t('talents.activeSection.castHint', { name: talent.name }),
+  });
+  await router.push('/dungeon');
+}
+
 function realmText(key: string): string {
   const r = realmByKey(key);
   return r ? r.name : key;
@@ -330,6 +381,78 @@ onMounted(async () => {
           {{ t('talents.counts', { passive: counts.passive, active: counts.active }) }}
         </div>
       </header>
+
+      <!-- Phase 11.7.E+++ — Loadout section: thần thông chủ động đã học. -->
+      <section
+        class="bg-ink-900/40 border border-amber-500/30 rounded p-3 space-y-2"
+        data-testid="talents-active-section"
+      >
+        <header class="flex items-baseline justify-between gap-2 flex-wrap">
+          <h2 class="text-amber-200 text-base font-semibold">
+            {{ t('talents.activeSection.title') }}
+          </h2>
+          <span class="text-xs text-ink-300" data-testid="talents-active-count">
+            {{ t('talents.activeSection.count', { count: activeLearnedTalents.length }) }}
+          </span>
+        </header>
+        <p class="text-xs text-ink-300">{{ t('talents.activeSection.subtitle') }}</p>
+        <div
+          v-if="activeLearnedTalents.length === 0"
+          class="text-xs text-ink-400 italic py-2"
+          data-testid="talents-active-empty"
+        >
+          {{ t('talents.activeSection.empty') }}
+        </div>
+        <ul
+          v-else
+          class="space-y-2"
+          data-testid="talents-active-list"
+        >
+          <li
+            v-for="talent in activeLearnedTalents"
+            :key="talent.key"
+            class="bg-ink-700/40 border border-ink-300/20 rounded p-2 flex flex-wrap items-center gap-2 text-xs"
+            :data-testid="`talent-active-row-${talent.key}`"
+          >
+            <span class="text-amber-200 font-semibold">{{ talent.name }}</span>
+            <span
+              class="px-2 py-0.5 rounded border text-[10px] uppercase tracking-wider"
+              :class="elementClass(talent.element)"
+            >
+              {{ elementLabel(talent.element) }}
+            </span>
+            <span
+              v-if="talentsStore.cooldownOf(talent.key) > 0"
+              class="px-2 py-0.5 rounded border text-[10px] uppercase tracking-wider bg-rose-700/40 text-rose-200 border-rose-500/40"
+              :data-testid="`talent-active-cooldown-${talent.key}`"
+            >
+              {{ t('talents.badge.cooldown', { turns: talentsStore.cooldownOf(talent.key) }) }}
+            </span>
+            <span
+              v-else
+              class="px-2 py-0.5 rounded border text-[10px] uppercase tracking-wider bg-sky-700/40 text-sky-200 border-sky-500/40"
+              :data-testid="`talent-active-ready-${talent.key}`"
+            >
+              {{ t('talents.badge.ready') }}
+            </span>
+            <span class="text-ink-300 ml-auto" :data-testid="`talent-active-effect-${talent.key}`">
+              {{ effectSummary(talent) }}
+            </span>
+            <button
+              type="button"
+              class="px-3 py-1 rounded border tracking-wider"
+              :class="castButtonDisabled(talent)
+                ? 'bg-ink-700/30 text-ink-400 border-ink-300/20 cursor-not-allowed'
+                : 'bg-amber-700/40 text-amber-100 border-amber-500/40 hover:bg-amber-600/50'"
+              :disabled="castButtonDisabled(talent)"
+              :data-testid="`talent-active-cast-${talent.key}`"
+              @click="onCast(talent)"
+            >
+              {{ castButtonLabel(talent) }}
+            </button>
+          </li>
+        </ul>
+      </section>
 
       <section
         class="bg-ink-700/30 border border-ink-300/20 rounded p-3 flex flex-wrap items-center gap-3 text-xs"

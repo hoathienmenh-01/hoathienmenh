@@ -1193,6 +1193,15 @@
     "cooldown": {
       "tooltip": "Turns until you can cast again"
     },
+    "activeSection": {
+      "title": "Learned active talents",
+      "subtitle": "Triggered in combat: enter a dungeon or boss fight to cast. Cooldown persists across turns.",
+      "empty": "No active talents learned yet — see the catalog below to learn one.",
+      "count": "{count} learned",
+      "cast": "Use in combat",
+      "castOnCooldown": "On cooldown {turns}t",
+      "castHint": "Heading to the dungeon — select {name} in the action panel to cast."
+    },
     "button": {
       "learn": "Learn",
       "learning": "Learning…",

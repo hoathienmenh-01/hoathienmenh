@@ -1193,6 +1193,15 @@
     "cooldown": {
       "tooltip": "Số lượt cần chờ trước khi cast lại"
     },
+    "activeSection": {
+      "title": "Thần thông chủ động đã học",
+      "subtitle": "Phát động trong trận: vào hầm hoặc đấu boss để dùng. Cooldown lưu giữa các lượt.",
+      "empty": "Chưa học thần thông chủ động nào — vào catalog bên dưới để học.",
+      "count": "{count} đã học",
+      "cast": "Vào trận dùng",
+      "castOnCooldown": "Đang hồi {turns} lượt",
+      "castHint": "Đang dẫn vào hầm — chọn {name} trong action panel để phát động."
+    },
     "button": {
       "learn": "Học",
       "learning": "Đang học…",
