@@ -1147,6 +1147,11 @@ export const DUNGEON_LOOT: Record<string, readonly LootEntry[]> = {
     { itemKey: 'tien_kim_sa', weight: 8, qtyMin: 1, qtyMax: 2 },
     { itemKey: 'so_huyen_dan', weight: 12, qtyMin: 1, qtyMax: 2 },
     { itemKey: 'cuu_thien_dan', weight: 6, qtyMin: 1, qtyMax: 1 },
+    // Phase 11.3.D++ — dungeon hậu kỳ (Cửu La Điện single-boss endgame) drop
+    // `linh_can_dan` rare. Weight 1 trong tổng ~31 → ~3.2% per loot roll
+    // (rollDungeonLoot mặc định 2 lần → ~6.3% per run). Cùng drop chain với
+    // boss world ≥ Hóa Thần, đảm bảo end-game player có dual source.
+    { itemKey: 'linh_can_dan', weight: 1, qtyMin: 1, qtyMax: 1 },
   ],
 };
 

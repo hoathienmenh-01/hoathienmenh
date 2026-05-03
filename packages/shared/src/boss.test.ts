@@ -88,6 +88,52 @@ describe('BOSSES catalog integrity', () => {
     }
   });
 
+  describe('Phase 11.3.D++ — Linh Căn Đan endgame drop tuning', () => {
+    /**
+     * Boss tier ≥ Hóa Thần (`hoa_than` order=5) phải drop `linh_can_dan` ở
+     * mid/top pool. Tier dưới (truc_co/kim_dan/nguyen_anh) KHÔNG được có —
+     * tránh leak supply về early game làm vỡ rarity của Linh Căn Đan reroll.
+     */
+    const ENDGAME_REALM_KEYS = new Set([
+      'hoa_than',
+      'luyen_hu',
+      'hop_the',
+      'dai_thua',
+      'do_kiep',
+    ]);
+
+    it('mọi boss tier ≥ Hóa Thần đều drop linh_can_dan ở mid/top pool', () => {
+      const endgameBosses = BOSSES.filter((b) =>
+        ENDGAME_REALM_KEYS.has(b.recommendedRealm),
+      );
+      expect(endgameBosses.length, 'có ≥ 1 endgame boss để drop tune').toBeGreaterThan(0);
+      for (const b of endgameBosses) {
+        const pools = [...b.topDropPool, ...b.midDropPool];
+        expect(
+          pools.includes('linh_can_dan'),
+          `${b.key} (${b.recommendedRealm}) phải drop linh_can_dan`,
+        ).toBe(true);
+      }
+    });
+
+    it('boss tier < Hóa Thần KHÔNG drop linh_can_dan (rarity gate)', () => {
+      const earlyBosses = BOSSES.filter(
+        (b) => !ENDGAME_REALM_KEYS.has(b.recommendedRealm),
+      );
+      for (const b of earlyBosses) {
+        const pools = [
+          ...b.topDropPool,
+          ...b.midDropPool,
+          ...(b.lowDropPool ?? []),
+        ];
+        expect(
+          pools.includes('linh_can_dan'),
+          `${b.key} (${b.recommendedRealm}) KHÔNG được drop linh_can_dan`,
+        ).toBe(false);
+      }
+    });
+  });
+
   it('mid-tier boss mạnh hơn entry-tier (monotonic power scaling)', () => {
     // Boss index cao hơn trong array thường là tier cao hơn — atk + hp phải tăng.
     for (let i = 1; i < BOSSES.length; i++) {

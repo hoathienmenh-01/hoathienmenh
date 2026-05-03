@@ -261,7 +261,10 @@ export const BOSSES: readonly BossDef[] = [
     def: 125,
     baseRewardLinhThach: 295000,
     topDropPool: ['than_phong_kiem', 'than_lan_giap', 'cuu_la_dien_phu'],
-    midDropPool: ['tien_huyen_kiem', 'cuu_thien_dan', 'tien_van_dan'],
+    // Phase 11.3.D++ — boss tier ≥ Hóa Thần drop `linh_can_dan` (Linh Căn
+    // Reroll consumable, TIEN quality 5000 LT shop). midDropPool = top 2-3
+    // reward (server `pickRandom`), ≈ 1/(N+1) chance per top 2-3 player.
+    midDropPool: ['tien_huyen_kiem', 'cuu_thien_dan', 'tien_van_dan', 'linh_can_dan'],
     lowDropPool: ['tien_kim_sa', 'tinh_thiet', 'cuu_huyen_dan'],
     level: 32,
     element: 'kim',
@@ -279,7 +282,8 @@ export const BOSSES: readonly BossDef[] = [
     def: 140,
     baseRewardLinhThach: 380000,
     topDropPool: ['than_phong_kiem', 'than_lan_giap', 'than_loi_dai'],
-    midDropPool: ['tien_huyen_giap', 'cuu_thien_dan', 'nhan_tien_dan'],
+    // Phase 11.3.D++ — boss tier ≥ Hóa Thần drop `linh_can_dan`.
+    midDropPool: ['tien_huyen_giap', 'cuu_thien_dan', 'nhan_tien_dan', 'linh_can_dan'],
     lowDropPool: ['yeu_dan', 'tien_kim_sa', 'cuu_huyen_dan'],
     level: 34,
     element: 'hoa',
@@ -298,8 +302,10 @@ export const BOSSES: readonly BossDef[] = [
     atk: 440,
     def: 160,
     baseRewardLinhThach: 480000,
-    topDropPool: ['than_lan_giap', 'than_linh_tram', 'than_loi_dai'],
-    midDropPool: ['tien_huyen_giap', 'nhan_tien_dan', 'cuu_thien_dan'],
+    // Phase 11.3.D++ — boss tier Luyện Hư (≥ Hóa Thần) vừa topDropPool vừa
+    // midDropPool drop `linh_can_dan` — endgame supply chain cho Linh Căn reroll.
+    topDropPool: ['than_lan_giap', 'than_linh_tram', 'than_loi_dai', 'linh_can_dan'],
+    midDropPool: ['tien_huyen_giap', 'nhan_tien_dan', 'cuu_thien_dan', 'linh_can_dan'],
     lowDropPool: ['han_ngoc', 'phu_van_ngoc', 'cuu_huyen_dan'],
     level: 38,
     element: 'thuy',
@@ -318,8 +324,10 @@ export const BOSSES: readonly BossDef[] = [
     atk: 540,
     def: 185,
     baseRewardLinhThach: 680000,
-    topDropPool: ['than_lan_giap', 'than_linh_tram', 'than_loi_dai', 'than_phach_chau'],
-    midDropPool: ['than_phong_kiem', 'nhan_tien_dan', 'tien_van_dan'],
+    // Phase 11.3.D++ — boss tier Hợp Thể (endgame cross-element) có cả top &
+    // mid drop `linh_can_dan` — chance cao nhất cho top players.
+    topDropPool: ['than_lan_giap', 'than_linh_tram', 'than_loi_dai', 'than_phach_chau', 'linh_can_dan'],
+    midDropPool: ['than_phong_kiem', 'nhan_tien_dan', 'tien_van_dan', 'linh_can_dan'],
     lowDropPool: ['tien_kim_sa', 'phu_van_ngoc', 'han_ngoc'],
     level: 44,
     element: null,
