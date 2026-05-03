@@ -56,6 +56,43 @@ describe('DUNGEON_LOOT integrity', () => {
       }
     }
   });
+
+  describe('Phase 11.3.D++ — dungeon hậu kỳ drop linh_can_dan', () => {
+    /**
+     * Dungeon hậu kỳ (`cuu_la_dien` single-boss endgame instance) phải drop
+     * `linh_can_dan` rare cho Linh Căn reroll supply chain. Dungeon early/mid
+     * (`son_coc` / `hac_lam` / `yeu_thu_dong` / `kim_son_mach` / `moc_huyen_lam`
+     * / `thuy_long_uyen` / `hoa_diem_son` / `hoang_tho_huyet`) KHÔNG được leak.
+     */
+    it('cuu_la_dien drop linh_can_dan với weight ≥ 1', () => {
+      const entry = DUNGEON_LOOT.cuu_la_dien.find(
+        (e) => e.itemKey === 'linh_can_dan',
+      );
+      expect(entry, 'cuu_la_dien phải có linh_can_dan entry').toBeDefined();
+      expect(entry!.weight).toBeGreaterThanOrEqual(1);
+      expect(entry!.qtyMin).toBe(1);
+      expect(entry!.qtyMax).toBe(1);
+    });
+
+    it('dungeon early/mid KHÔNG có linh_can_dan (rarity gate)', () => {
+      const earlyDungeons = [
+        'son_coc',
+        'hac_lam',
+        'yeu_thu_dong',
+        'kim_son_mach',
+        'moc_huyen_lam',
+        'thuy_long_uyen',
+        'hoa_diem_son',
+        'hoang_tho_huyet',
+      ];
+      for (const key of earlyDungeons) {
+        const table = DUNGEON_LOOT[key];
+        expect(table, `dungeon ${key} không tồn tại`).toBeDefined();
+        const has = table.some((e) => e.itemKey === 'linh_can_dan');
+        expect(has, `${key} KHÔNG được drop linh_can_dan`).toBe(false);
+      }
+    });
+  });
 });
 
 describe('rollDungeonLoot', () => {
