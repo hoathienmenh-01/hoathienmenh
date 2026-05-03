@@ -74,7 +74,12 @@ describe('CharacterController.talentsState — Phase 11.X.AS', () => {
     const learnedAt = new Date('2026-05-01T12:00:00Z');
     const talent = {
       listLearned: async (_id: string) => [
-        { talentKey: 'kim_battery_passive', learnedAt, def: STUB_DEF },
+        {
+          talentKey: 'kim_battery_passive',
+          learnedAt,
+          cooldownTurnsRemaining: 0,
+          def: STUB_DEF,
+        },
       ],
       getRemainingTalentPoints: async (_id: string) => 4,
     } as unknown as TalentService;
@@ -83,7 +88,11 @@ describe('CharacterController.talentsState — Phase 11.X.AS', () => {
       ok: true;
       data: {
         talents: {
-          learned: Array<{ talentKey: string; learnedAt: string }>;
+          learned: Array<{
+            talentKey: string;
+            learnedAt: string;
+            cooldownTurnsRemaining: number;
+          }>;
           spent: number;
           remaining: number;
           budget: number;
@@ -92,11 +101,56 @@ describe('CharacterController.talentsState — Phase 11.X.AS', () => {
     };
     expect(res.ok).toBe(true);
     expect(res.data.talents.learned).toEqual([
-      { talentKey: 'kim_battery_passive', learnedAt: learnedAt.toISOString() },
+      {
+        talentKey: 'kim_battery_passive',
+        learnedAt: learnedAt.toISOString(),
+        cooldownTurnsRemaining: 0,
+      },
     ]);
     expect(res.data.talents.spent).toBe(1);
     expect(res.data.talents.remaining).toBe(4);
     expect(res.data.talents.budget).toBe(5);
+  });
+
+  it('GET /character/talents/state expose cooldownTurnsRemaining > 0 cho active talent vừa cast (Phase 11.7.E++)', async () => {
+    const learnedAt = new Date('2026-05-02T10:00:00Z');
+    const ACTIVE_DEF: TalentDef = {
+      key: 'hoa_dragon_strike_active',
+      type: 'active',
+      element: 'hoa',
+      realmRequired: 'truc_co',
+      talentPointCost: 2,
+      activeEffect: { kind: 'damage', value: 1.5, mpCost: 30, cooldownTurns: 5 },
+    } as unknown as TalentDef;
+    const talent = {
+      listLearned: async (_id: string) => [
+        {
+          talentKey: 'hoa_dragon_strike_active',
+          learnedAt,
+          cooldownTurnsRemaining: 4,
+          def: ACTIVE_DEF,
+        },
+      ],
+      getRemainingTalentPoints: async (_id: string) => 3,
+    } as unknown as TalentService;
+    const { controller } = makeController({ talent });
+    const res = (await controller.talentsState(makeReq())) as {
+      ok: true;
+      data: {
+        talents: {
+          learned: Array<{
+            talentKey: string;
+            learnedAt: string;
+            cooldownTurnsRemaining: number;
+          }>;
+        };
+      };
+    };
+    expect(res.data.talents.learned[0]).toEqual({
+      talentKey: 'hoa_dragon_strike_active',
+      learnedAt: learnedAt.toISOString(),
+      cooldownTurnsRemaining: 4,
+    });
   });
 
   it('GET /character/talents/state → 401 UNAUTHENTICATED nếu không có cookie', async () => {

@@ -127,11 +127,21 @@ export class TalentService {
    * List talent character đã học (kèm metadata từ catalog). Defensive: nếu
    * row có `talentKey` không còn trong catalog (legacy / catalog rename) thì
    * skip khỏi return list.
+   *
+   * Phase 11.7.E++ — bổ sung `cooldownTurnsRemaining` từ persistence (default 0
+   * cho legacy row / passive talent). Frontend dùng field này để hiển thị
+   * cooldown badge trên talent card mà không cần probe `getCooldownRemaining`
+   * theo từng key.
    */
   async listLearned(
     characterId: string,
   ): Promise<
-    Array<{ talentKey: string; learnedAt: Date; def: TalentDef }>
+    Array<{
+      talentKey: string;
+      learnedAt: Date;
+      cooldownTurnsRemaining: number;
+      def: TalentDef;
+    }>
   > {
     const rows = await this.prisma.characterTalent.findMany({
       where: { characterId },
@@ -140,12 +150,18 @@ export class TalentService {
     const result: Array<{
       talentKey: string;
       learnedAt: Date;
+      cooldownTurnsRemaining: number;
       def: TalentDef;
     }> = [];
     for (const row of rows) {
       const def = getTalentDef(row.talentKey);
       if (!def) continue;
-      result.push({ talentKey: row.talentKey, learnedAt: row.learnedAt, def });
+      result.push({
+        talentKey: row.talentKey,
+        learnedAt: row.learnedAt,
+        cooldownTurnsRemaining: row.cooldownTurnsRemaining ?? 0,
+        def,
+      });
     }
     return result;
   }

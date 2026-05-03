@@ -22,6 +22,11 @@ export interface TalentLearnedRow {
   talentKey: string;
   /** ISO timestamp from server. */
   learnedAt: string;
+  /**
+   * Phase 11.7.E++ — số lượt cooldown còn lại cho active talent. 0 nếu sẵn
+   * sàng cast hoặc passive talent. Server-authoritative — UI chỉ render badge.
+   */
+  cooldownTurnsRemaining: number;
 }
 
 export interface TalentsState {
@@ -32,7 +37,11 @@ export interface TalentsState {
 }
 
 export interface TalentLearnResult {
-  learn: TalentLearnedRow;
+  /**
+   * Row vừa học từ POST /character/talents/learn. Không có
+   * `cooldownTurnsRemaining` vì talent vừa học chưa cast → store mặc định = 0.
+   */
+  learn: { talentKey: string; learnedAt: string };
   remaining: number;
 }
 

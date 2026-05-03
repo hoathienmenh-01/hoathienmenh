@@ -7,6 +7,8 @@ import * as api from '@/api/talents';
  *
  * State mirror server `GET /character/talents/state`:
  *   - `learned`: Map<talentKey, ISO learnedAt> — set của talent đã học.
+ *   - `cooldowns`: Map<talentKey, cooldownTurnsRemaining> — số lượt cooldown
+ *     còn lại của active talent (Phase 11.7.E++). Passive luôn = 0.
  *   - `spent`: Số ngộ-đạo điểm đã spent (sum talentPointCost từ rows learned).
  *   - `remaining`: budget - spent (cached, server-authoritative).
  *   - `budget`: spent + remaining (derived khi fetch state).
@@ -23,6 +25,7 @@ import * as api from '@/api/talents';
  */
 export const useTalentsStore = defineStore('talents', () => {
   const learned = ref<Map<string, string>>(new Map());
+  const cooldowns = ref<Map<string, number>>(new Map());
   const spent = ref(0);
   const remaining = ref(0);
   const budget = ref(0);
@@ -37,12 +40,24 @@ export const useTalentsStore = defineStore('talents', () => {
     inFlight.value.has(talentKey),
   );
 
+  /**
+   * Phase 11.7.E++ — read cooldown turns remaining cho 1 talent. 0 nếu chưa
+   * học hoặc passive hoặc đã sẵn sàng cast. UI dùng để render badge + disable
+   * cast button (TalentView active section future).
+   */
+  const cooldownOf = computed(() => (talentKey: string) =>
+    cooldowns.value.get(talentKey) ?? 0,
+  );
+
   function applyState(state: api.TalentsState): void {
-    const next = new Map<string, string>();
+    const nextLearned = new Map<string, string>();
+    const nextCooldowns = new Map<string, number>();
     for (const row of state.learned) {
-      next.set(row.talentKey, row.learnedAt);
+      nextLearned.set(row.talentKey, row.learnedAt);
+      nextCooldowns.set(row.talentKey, row.cooldownTurnsRemaining);
     }
-    learned.value = next;
+    learned.value = nextLearned;
+    cooldowns.value = nextCooldowns;
     spent.value = state.spent;
     remaining.value = state.remaining;
     budget.value = state.budget;
@@ -68,6 +83,10 @@ export const useTalentsStore = defineStore('talents', () => {
       const newLearned = new Map(learned.value);
       newLearned.set(result.learn.talentKey, result.learn.learnedAt);
       learned.value = newLearned;
+      // Phase 11.7.E++ — talent vừa học chưa cast → cooldown=0.
+      const newCooldowns = new Map(cooldowns.value);
+      newCooldowns.set(result.learn.talentKey, 0);
+      cooldowns.value = newCooldowns;
       remaining.value = result.remaining;
       // budget invariant: budget = spent + remaining → spent = budget - remaining.
       // Khi learn xong server đã trừ điểm, ta compute spent từ budget cố định.
@@ -88,6 +107,7 @@ export const useTalentsStore = defineStore('talents', () => {
 
   function reset(): void {
     learned.value = new Map();
+    cooldowns.value = new Map();
     spent.value = 0;
     remaining.value = 0;
     budget.value = 0;
@@ -97,6 +117,7 @@ export const useTalentsStore = defineStore('talents', () => {
 
   return {
     learned,
+    cooldowns,
     spent,
     remaining,
     budget,
@@ -104,6 +125,7 @@ export const useTalentsStore = defineStore('talents', () => {
     inFlight,
     isLearned,
     isLearning,
+    cooldownOf,
     fetchState,
     learn,
     reset,
