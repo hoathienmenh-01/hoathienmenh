@@ -49,7 +49,8 @@
       "skillState": "Failed to load skill book",
       "skillEquip": "Failed to equip skill",
       "skillUnequip": "Failed to unequip skill",
-      "skillUpgrade": "Failed to upgrade skill mastery"
+      "skillUpgrade": "Failed to upgrade skill mastery",
+      "skillLearnFromBook": "Failed to read skill book"
     }
   },
   "locale": {
@@ -572,6 +573,10 @@
     "takeOff": "Unequip",
     "equip": "Equip",
     "use": "Use",
+    "learn": "Learn",
+    "learnTarget": "Learn: {skill}",
+    "learnConfirm": "Read {book} to learn {skill}? The book will be consumed.",
+    "learnToast": "Mastered the technique {skill}.",
     "emptyAll": "Inventory is empty — go to Sparring Hall to loot.",
     "loadFailToast": "Failed to load inventory.",
     "equipToast": "Equipped {name}.",
@@ -630,6 +635,13 @@
       "INSUFFICIENT_QTY": "Not enough gems.",
       "INVALID_SLOT_INDEX": "Invalid slot index.",
       "GEM_UNAVAILABLE": "Socketing hall is closed.",
+      "NOT_SKILL_BOOK": "This item is not a skill book.",
+      "ALREADY_LEARNED": "You have already mastered this technique.",
+      "REALM_TOO_LOW": "Your realm is too low to master this technique.",
+      "WRONG_SECT": "Your sect cannot master this technique.",
+      "METHOD_NOT_LEARNED": "You must equip the matching cultivation method first.",
+      "SKILL_NOT_FOUND": "This technique no longer exists in the catalog.",
+      "CHARACTER_SKILL_UNAVAILABLE": "Skill book hall is closed.",
       "UNKNOWN": "Something went wrong, please retry."
     }
   },
@@ -651,6 +663,7 @@
     "PILL_MP": "MP Pill",
     "PILL_EXP": "EXP Pill",
     "ORE": "Ore",
+    "SKILL_BOOK": "Skill Book",
     "MISC": "Misc"
   },
   "quality": {

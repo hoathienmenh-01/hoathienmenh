@@ -22,6 +22,8 @@ const refineEquipmentMock = vi.fn();
 const socketGemMock = vi.fn();
 const unsocketGemMock = vi.fn();
 const combineGemsApiMock = vi.fn();
+// Phase 11.2.D — skill book consume API mock.
+const learnSkillFromBookMock = vi.fn();
 
 vi.mock('@/api/inventory', async () => {
   const actual = await vi.importActual<typeof import('@/api/inventory')>(
@@ -37,6 +39,16 @@ vi.mock('@/api/inventory', async () => {
     socketGem: (...a: unknown[]) => socketGemMock(...a),
     unsocketGem: (...a: unknown[]) => unsocketGemMock(...a),
     combineGemsApi: (...a: unknown[]) => combineGemsApiMock(...a),
+  };
+});
+
+vi.mock('@/api/skill', async () => {
+  const actual = await vi.importActual<typeof import('@/api/skill')>(
+    '@/api/skill',
+  );
+  return {
+    ...actual,
+    learnSkillFromBook: (...a: unknown[]) => learnSkillFromBookMock(...a),
   };
 });
 
@@ -91,6 +103,10 @@ const i18n = createI18n({
         equip: 'Trang bị',
         takeOff: 'Tháo',
         use: 'Dùng',
+        learn: 'Học',
+        learnTarget: 'Học: {skill}',
+        learnConfirm: 'Đọc {book} để học {skill}? Bí kíp sẽ tan biến.',
+        learnToast: 'Đã lĩnh hội {skill}.',
         loadFailToast: 'Không tải được túi đồ.',
         equipToast: 'Đã trang bị {name}.',
         unequipToast: 'Đã tháo {slot}.',
@@ -123,6 +139,9 @@ const i18n = createI18n({
           SOCKETS_FULL: 'Lỗ khảm đã đầy.',
           NO_NEXT_TIER: 'Không thể hợp tiếp.',
           INSUFFICIENT_QTY: 'Không đủ linh thạch.',
+          ALREADY_LEARNED: 'Đã lĩnh hội rồi.',
+          REALM_TOO_LOW: 'Cảnh giới chưa đủ.',
+          NOT_SKILL_BOOK: 'Không phải bí kíp.',
           UNKNOWN: 'Có lỗi xảy ra.',
         },
         gem: {
@@ -227,6 +246,7 @@ beforeEach(() => {
   socketGemMock.mockReset();
   unsocketGemMock.mockReset();
   combineGemsApiMock.mockReset();
+  learnSkillFromBookMock.mockReset();
   routerReplaceMock.mockReset();
   toastPushMock.mockReset();
   authState.isAuthenticated = true;
@@ -529,6 +549,179 @@ describe('InventoryView — use flow', () => {
       type: 'error',
       text: 'Không sở hữu vật phẩm.',
     });
+  });
+});
+
+/**
+ * Phase 11.2.D — Skill book consume tests. Wire `learnSkillFromBook(it.id)`
+ * via `POST /character/skill/learn-from-book`. Flow: button "Học" gated bởi
+ * `kind==='SKILL_BOOK'` + `item.skillBook.skillKey` + skill catalog tồn tại,
+ * confirm dialog, success refresh inventory, error map qua inventory.errors.<code>.
+ */
+describe('InventoryView — Phase 11.2.D skill book consume flow', () => {
+  function makeSkillBook(over: Partial<InventoryView> = {}): InventoryView {
+    return makeInv({
+      id: 'i_sb',
+      itemKey: 'skill_book_kim_quang_tram',
+      qty: 1,
+      item: makeItemDef({
+        key: 'skill_book_kim_quang_tram',
+        name: 'Bí Kíp: Kim Quang Trảm',
+        kind: 'SKILL_BOOK',
+        slot: undefined,
+        bonuses: undefined,
+        stackable: true,
+        skillBook: { skillKey: 'kim_quang_tram' },
+      }),
+      ...over,
+    });
+  }
+
+  it('render button "Học" + target label cho SKILL_BOOK valid catalog', async () => {
+    listInventoryMock.mockResolvedValue([makeSkillBook()]);
+    const w = mountView();
+    await flushPromises();
+
+    const learnBtn = w.find('[data-testid="skill-book-learn-button"]');
+    expect(learnBtn.exists()).toBe(true);
+    expect(learnBtn.text()).toBe('Học');
+
+    const target = w.find('[data-testid="skill-book-target"]');
+    expect(target.exists()).toBe(true);
+    expect(target.text()).toContain('Kim Quang Trảm');
+  });
+
+  it('KHÔNG render button "Học" cho item kind khác (PILL/WEAPON/MISC)', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeInv({
+        item: makeItemDef({
+          key: 'pill_hp',
+          name: 'Hồi HP Đan',
+          kind: 'PILL_HP',
+          slot: undefined,
+          bonuses: undefined,
+          effect: { hp: 50 },
+        }),
+      }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="skill-book-learn-button"]').exists()).toBe(false);
+  });
+
+  it('confirm cancel → KHÔNG gọi API, KHÔNG toast', async () => {
+    listInventoryMock.mockResolvedValue([makeSkillBook()]);
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="skill-book-learn-button"]').trigger('click');
+    await flushPromises();
+
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(learnSkillFromBookMock).not.toHaveBeenCalled();
+    expect(toastPushMock).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
+  it('confirm OK → learnSkillFromBook(it.id) + toast success + refresh list', async () => {
+    const sb = makeSkillBook();
+    listInventoryMock.mockResolvedValueOnce([sb]).mockResolvedValueOnce([]);
+    learnSkillFromBookMock.mockResolvedValue({
+      skillKey: 'kim_quang_tram',
+      consumedItemKey: 'skill_book_kim_quang_tram',
+      state: { maxEquipped: 4, learned: [] },
+    });
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="skill-book-learn-button"]').trigger('click');
+    await flushPromises();
+
+    expect(learnSkillFromBookMock).toHaveBeenCalledWith('i_sb');
+    expect(toastPushMock).toHaveBeenCalledWith({
+      type: 'success',
+      text: 'Đã lĩnh hội Kim Quang Trảm.',
+    });
+    expect(listInventoryMock).toHaveBeenCalledTimes(2);
+    confirmSpy.mockRestore();
+  });
+
+  it('error ALREADY_LEARNED → toast error map từ inventory.errors.ALREADY_LEARNED (item KHÔNG bị consume)', async () => {
+    listInventoryMock.mockResolvedValue([makeSkillBook()]);
+    learnSkillFromBookMock.mockRejectedValue(
+      Object.assign(new Error('already'), { code: 'ALREADY_LEARNED' }),
+    );
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="skill-book-learn-button"]').trigger('click');
+    await flushPromises();
+
+    expect(toastPushMock).toHaveBeenCalledWith({
+      type: 'error',
+      text: 'Đã lĩnh hội rồi.',
+    });
+    confirmSpy.mockRestore();
+  });
+
+  it('error REALM_TOO_LOW → toast error map', async () => {
+    listInventoryMock.mockResolvedValue([makeSkillBook()]);
+    learnSkillFromBookMock.mockRejectedValue(
+      Object.assign(new Error('too low'), { code: 'REALM_TOO_LOW' }),
+    );
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="skill-book-learn-button"]').trigger('click');
+    await flushPromises();
+
+    expect(toastPushMock).toHaveBeenCalledWith({
+      type: 'error',
+      text: 'Cảnh giới chưa đủ.',
+    });
+    confirmSpy.mockRestore();
+  });
+
+  it('error NOT_SKILL_BOOK → toast error map (defensive — server-side guard)', async () => {
+    listInventoryMock.mockResolvedValue([makeSkillBook()]);
+    learnSkillFromBookMock.mockRejectedValue(
+      Object.assign(new Error('not book'), { code: 'NOT_SKILL_BOOK' }),
+    );
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="skill-book-learn-button"]').trigger('click');
+    await flushPromises();
+
+    expect(toastPushMock).toHaveBeenCalledWith({
+      type: 'error',
+      text: 'Không phải bí kíp.',
+    });
+    confirmSpy.mockRestore();
+  });
+
+  it('error UNKNOWN code → toast fallback inventory.errors.UNKNOWN', async () => {
+    listInventoryMock.mockResolvedValue([makeSkillBook()]);
+    learnSkillFromBookMock.mockRejectedValue(
+      Object.assign(new Error('weird'), { code: 'WEIRD_BACKEND_CODE' }),
+    );
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="skill-book-learn-button"]').trigger('click');
+    await flushPromises();
+
+    expect(toastPushMock).toHaveBeenCalledWith({
+      type: 'error',
+      text: 'Có lỗi xảy ra.',
+    });
+    confirmSpy.mockRestore();
   });
 });
 
