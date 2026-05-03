@@ -360,3 +360,80 @@ describe('Helper functions (Phase 10 PR-5)', () => {
     }
   });
 });
+
+describe('Phase 11.2.D+++ — skill book lowDropPool integration', () => {
+  /**
+   * Mỗi boss tier ≥ Trúc Cơ có element ∈ {kim,moc,thuy,hoa,tho} phải drop
+   * `skill_book_<element>` cùng hệ trong `lowDropPool` (forward-compat
+   * Phase 12 BossRewardService pity wire). Cross-element world boss
+   * endgame (`hon_nguyen_yeu_to`) carry full Skill Book Pack 1 (5 element).
+   *
+   * Catalog metadata only ở PR này — `lowDropPool` chưa wire vào reward
+   * runtime (Phase 12 sẽ wire share-ratio top 4-10 player).
+   */
+  const elementBook: Record<ElementKey, string> = {
+    kim: 'skill_book_kim_quang_tram',
+    moc: 'skill_book_moc_linh_truong_dieu',
+    thuy: 'skill_book_thuy_kinh_phong_an',
+    hoa: 'skill_book_hoa_xa_phun_diem',
+    tho: 'skill_book_thach_giap_ho_than',
+  };
+  const ALL_BOOKS = Object.values(elementBook);
+
+  it('mọi boss có element != null carry skill_book cùng hệ trong lowDropPool', () => {
+    for (const b of BOSSES) {
+      if (b.element == null) continue;
+      const expectedBook = elementBook[b.element];
+      expect(
+        b.lowDropPool,
+        `${b.key} (element=${b.element}) thiếu lowDropPool`,
+      ).toBeDefined();
+      expect(
+        b.lowDropPool!.includes(expectedBook),
+        `${b.key} lowDropPool thiếu ${expectedBook} (cùng hệ ${b.element})`,
+      ).toBe(true);
+    }
+  });
+
+  it('cross-element boss (element=null) carry full Skill Book Pack 1 (5 element)', () => {
+    const cross = BOSSES.filter((b) => (b.element ?? null) === null);
+    expect(cross.length, 'cần ≥ 1 cross-element boss').toBeGreaterThanOrEqual(1);
+    for (const b of cross) {
+      expect(b.lowDropPool, `${b.key} thiếu lowDropPool`).toBeDefined();
+      for (const book of ALL_BOOKS) {
+        expect(
+          b.lowDropPool!.includes(book),
+          `cross-element boss ${b.key} lowDropPool thiếu ${book}`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it('boss element != null KHÔNG carry skill_book khác hệ (element gate)', () => {
+    for (const b of BOSSES) {
+      if (b.element == null) continue;
+      if (!b.lowDropPool) continue;
+      const expectedBook = elementBook[b.element];
+      const otherBooks = ALL_BOOKS.filter((book) => book !== expectedBook);
+      for (const otherBook of otherBooks) {
+        expect(
+          b.lowDropPool.includes(otherBook),
+          `${b.key} (element=${b.element}) KHÔNG được carry ${otherBook} (chỉ ${expectedBook} hệ matching)`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it('mọi skill_book trong lowDropPool resolve qua ITEMS (no orphan)', () => {
+    for (const b of BOSSES) {
+      if (!b.lowDropPool) continue;
+      for (const k of b.lowDropPool) {
+        if (!k.startsWith('skill_book_')) continue;
+        expect(
+          ITEM_KEYS.has(k),
+          `${b.key} lowDropPool có dangling skill_book ${k}`,
+        ).toBe(true);
+      }
+    }
+  });
+});

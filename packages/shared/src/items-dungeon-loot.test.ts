@@ -57,6 +57,79 @@ describe('DUNGEON_LOOT integrity', () => {
     }
   });
 
+  describe('Phase 11.2.D+++ — skill book drop pool integration', () => {
+    /**
+     * Mỗi dungeon Ngũ Hành (kim_son_mach / moc_huyen_lam / thuy_long_uyen
+     * / hoa_diem_son / hoang_tho_huyet) phải drop đúng `skill_book_*` cùng
+     * hệ với element của dungeon (player farm dungeon đúng hệ Linh Căn để
+     * học skill cùng hệ). Weight thấp (rare) — không lấn át core loot
+     * (equipment / pill / material).
+     *
+     * Catalog metadata only ở PR này — DUNGEON_LOOT chưa wire vào reward
+     * runtime (Phase 11.3.D+++ DungeonRunService sẽ wire). Test enforce
+     * data integrity + naming convention + element match.
+     */
+    const dungeonElementBook: Record<string, string> = {
+      kim_son_mach: 'skill_book_kim_quang_tram',
+      moc_huyen_lam: 'skill_book_moc_linh_truong_dieu',
+      thuy_long_uyen: 'skill_book_thuy_kinh_phong_an',
+      hoa_diem_son: 'skill_book_hoa_xa_phun_diem',
+      hoang_tho_huyet: 'skill_book_thach_giap_ho_than',
+    };
+
+    it('mọi dungeon Ngũ Hành drop đúng skill_book cùng hệ', () => {
+      for (const [dungeonKey, expectedBook] of Object.entries(dungeonElementBook)) {
+        const table = DUNGEON_LOOT[dungeonKey];
+        expect(table, `dungeon ${dungeonKey} không tồn tại`).toBeDefined();
+        const entry = table.find((e) => e.itemKey === expectedBook);
+        expect(
+          entry,
+          `dungeon ${dungeonKey} thiếu drop ${expectedBook}`,
+        ).toBeDefined();
+        expect(entry!.weight, `${dungeonKey}.${expectedBook} weight`).toBeGreaterThanOrEqual(1);
+        expect(entry!.qtyMin, `${dungeonKey}.${expectedBook} qtyMin`).toBe(1);
+        expect(entry!.qtyMax, `${dungeonKey}.${expectedBook} qtyMax`).toBe(1);
+      }
+    });
+
+    it('skill book drop weight thấp (rare ≤ 5) — không lấn át core loot', () => {
+      for (const [dungeonKey, expectedBook] of Object.entries(dungeonElementBook)) {
+        const entry = DUNGEON_LOOT[dungeonKey].find((e) => e.itemKey === expectedBook);
+        expect(
+          entry!.weight,
+          `${dungeonKey}.${expectedBook} weight ${entry!.weight} > 5 (lấn át core loot)`,
+        ).toBeLessThanOrEqual(5);
+      }
+    });
+
+    it('dungeon early/legacy KHÔNG có skill_book leak (rarity gate)', () => {
+      const allBooks = Object.values(dungeonElementBook);
+      const earlyDungeons = ['son_coc', 'hac_lam', 'yeu_thu_dong'];
+      for (const dungeonKey of earlyDungeons) {
+        const table = DUNGEON_LOOT[dungeonKey];
+        for (const book of allBooks) {
+          const has = table.some((e) => e.itemKey === book);
+          expect(has, `${dungeonKey} KHÔNG được drop ${book}`).toBe(false);
+        }
+      }
+    });
+
+    it('mỗi dungeon Ngũ Hành chỉ drop skill_book cùng hệ (element gate)', () => {
+      // Cross-check: kim_son_mach KHÔNG được leak skill_book hệ khác.
+      for (const [dungeonKey, expectedBook] of Object.entries(dungeonElementBook)) {
+        const table = DUNGEON_LOOT[dungeonKey];
+        const otherBooks = Object.values(dungeonElementBook).filter((b) => b !== expectedBook);
+        for (const otherBook of otherBooks) {
+          const has = table.some((e) => e.itemKey === otherBook);
+          expect(
+            has,
+            `${dungeonKey} KHÔNG được drop ${otherBook} (chỉ ${expectedBook} hệ matching)`,
+          ).toBe(false);
+        }
+      }
+    });
+  });
+
   describe('Phase 11.3.D++ — dungeon hậu kỳ drop linh_can_dan', () => {
     /**
      * Dungeon hậu kỳ (`cuu_la_dien` single-boss endgame instance) phải drop

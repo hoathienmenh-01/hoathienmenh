@@ -1087,10 +1087,15 @@ export const ITEMS: readonly ItemDef[] = [
   // idempotent qua P2002 → ALREADY_LEARNED. ItemLedger `SKILL_LEARN`
   // qtyDelta=-1 atomic cùng InventoryItem decrement.
   //
-  // Drop sourcing (forward-compat, deferred Phase 11.2.D++): mid/low pool
-  // boss tier ≥ Trúc Cơ + dungeon Ngũ Hành (kim_son_mach / moc_huyen_lam
-  // / thuy_long_uyen / hoa_diem_son / hoang_tho_huyet) match element.
-  // PR này chỉ đăng ký catalog + consume flow, drop integration tách PR.
+  // Drop sourcing (Phase 11.2.D+++ wired catalog only):
+  //   - DUNGEON_LOOT 5 dungeon Ngũ Hành (kim_son_mach / moc_huyen_lam /
+  //     thuy_long_uyen / hoa_diem_son / hoang_tho_huyet) match element,
+  //     weight 3 (rare ~5% per default 2-roll run).
+  //   - boss.lowDropPool tier ≥ Trúc Cơ match element (kim/moc/thuy/hoa/tho)
+  //     + cross-element world boss endgame có cả 5 book (Phase 12 pity).
+  // Lưu ý: DUNGEON_LOOT chưa wire vào reward path runtime (Phase 11.3.D+++
+  // sẽ wire qua DungeonRunService); lowDropPool catalog metadata thuần
+  // (Phase 12 BossRewardService sẽ wire share-ratio).
   // ─────────────────────────────────────────────────────────────────────
   {
     key: 'skill_book_kim_quang_tram',
@@ -1186,6 +1191,12 @@ export const DUNGEON_LOOT: Record<string, readonly LootEntry[]> = {
   //   - Pill thường (HP/MP) weight 18-30 (consumable steady supply)
   //   - Material element-themed (linh_thao, tinh_thiet, han_ngoc, tien_kim_sa)
   //     weight 20-35 (chính nguồn craft material)
+  // Phase 11.2.D+++ — skill_book_<element> drop weight 3 (rare, low pool):
+  //   ~3 / total ≈ 2.5–2.8% per loot roll, default rollDungeonLoot count=2
+  //   → ~5–5.5% per run; scope catalog metadata (DUNGEON_LOOT chưa wire vào
+  //   reward path runtime — Phase 11.3.D+++ sẽ wire qua DungeonRunService).
+  //   Element match dungeon → book element (kim_son_mach → kim, etc.) đảm
+  //   bảo người chơi farm dungeon đúng hệ Linh Căn để học skill cùng hệ.
   // Lưu ý: chỉ dùng item keys đã có ở `ITEMS`; không tạo orphan reference.
   // ─────────────────────────────────────────────────────────────────────
   kim_son_mach: [
@@ -1196,6 +1207,8 @@ export const DUNGEON_LOOT: Record<string, readonly LootEntry[]> = {
     { itemKey: 'co_thien_dan', weight: 18, qtyMin: 1, qtyMax: 3 },
     { itemKey: 'thanh_lam_dan', weight: 22, qtyMin: 2, qtyMax: 4 },
     { itemKey: 'huyet_tinh', weight: 25, qtyMin: 2, qtyMax: 5 },
+    // Phase 11.2.D+++ — skill book hệ Kim, low weight rare
+    { itemKey: 'skill_book_kim_quang_tram', weight: 3, qtyMin: 1, qtyMax: 1 },
   ],
   moc_huyen_lam: [
     // Element: moc → linh_thao + lien_hoa_truong (mộc-themed)
@@ -1205,6 +1218,8 @@ export const DUNGEON_LOOT: Record<string, readonly LootEntry[]> = {
     { itemKey: 'thanh_lam_dan', weight: 25, qtyMin: 2, qtyMax: 4 },
     { itemKey: 'linh_lo_dan', weight: 22, qtyMin: 2, qtyMax: 4 },
     { itemKey: 'huyet_chi_dan', weight: 28, qtyMin: 2, qtyMax: 5 },
+    // Phase 11.2.D+++ — skill book hệ Mộc, low weight rare
+    { itemKey: 'skill_book_moc_linh_truong_dieu', weight: 3, qtyMin: 1, qtyMax: 1 },
   ],
   thuy_long_uyen: [
     // Element: thuy → han_ngoc + băng-themed
@@ -1214,6 +1229,8 @@ export const DUNGEON_LOOT: Record<string, readonly LootEntry[]> = {
     { itemKey: 'co_thien_dan', weight: 22, qtyMin: 2, qtyMax: 4 },
     { itemKey: 'tieu_phuc_dan', weight: 18, qtyMin: 1, qtyMax: 3 },
     { itemKey: 'huyet_tinh', weight: 28, qtyMin: 2, qtyMax: 5 },
+    // Phase 11.2.D+++ — skill book hệ Thủy, low weight rare
+    { itemKey: 'skill_book_thuy_kinh_phong_an', weight: 3, qtyMin: 1, qtyMax: 1 },
   ],
   hoa_diem_son: [
     // Element: hoa → xich_huyet_dao + cuu_la_giap + yeu_dan (hoả material)
@@ -1223,6 +1240,8 @@ export const DUNGEON_LOOT: Record<string, readonly LootEntry[]> = {
     { itemKey: 'yeu_dan', weight: 25, qtyMin: 2, qtyMax: 5 },
     { itemKey: 'cuu_huyen_dan', weight: 12, qtyMin: 1, qtyMax: 2 },
     { itemKey: 'co_thien_dan', weight: 18, qtyMin: 2, qtyMax: 4 },
+    // Phase 11.2.D+++ — skill book hệ Hỏa, low weight rare
+    { itemKey: 'skill_book_hoa_xa_phun_diem', weight: 3, qtyMin: 1, qtyMax: 1 },
   ],
   hoang_tho_huyet: [
     // Element: tho → than_lan_giap + yeu_phach_giap + phu_van_ngoc (thổ material)
@@ -1232,6 +1251,8 @@ export const DUNGEON_LOOT: Record<string, readonly LootEntry[]> = {
     { itemKey: 'tinh_thiet', weight: 25, qtyMin: 2, qtyMax: 4 },
     { itemKey: 'cuu_huyen_dan', weight: 14, qtyMin: 1, qtyMax: 3 },
     { itemKey: 'tieu_phuc_dan', weight: 18, qtyMin: 2, qtyMax: 4 },
+    // Phase 11.2.D+++ — skill book hệ Thổ, low weight rare
+    { itemKey: 'skill_book_thach_giap_ho_than', weight: 3, qtyMin: 1, qtyMax: 1 },
   ],
   cuu_la_dien: [
     // Single-boss endgame instance, drop hiếm THAN + TIEN
