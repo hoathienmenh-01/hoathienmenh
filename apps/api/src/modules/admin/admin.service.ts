@@ -3,6 +3,7 @@ import { CurrencyKind, Prisma, Role, TopupStatus } from '@prisma/client';
 import {
   ELEMENTS,
   SPIRITUAL_ROOT_GRADES,
+  expCostForStage,
   getSpiritualRootGradeDef,
   itemByKey,
   type ElementKey,
@@ -481,13 +482,29 @@ export class AdminService {
     }
     const target = await this.prisma.character.findUnique({
       where: { userId: targetUserId },
-      select: { id: true },
+      select: { id: true, exp: true, realmKey: true, realmStage: true },
     });
     if (!target) throw new AdminError('NOT_FOUND');
 
+    // Auto-advance stage 1..8 trong cùng realm — mirror
+    // `CultivationProcessor` line 134-140 logic. Bảo đảm grant-exp seed
+    // KHÔNG bypass server authority: state cuối tương đương player tu luyện
+    // tự nhiên đến khi exp = delta. Stage 9 PHẢI thủ công qua
+    // `POST /character/breakthrough` (quy tắc gameplay: peak breakthrough
+    // luôn manual). Auto-advance stop ở stage 9, exp tích luỹ tiếp như
+    // cultivation tick natural behavior.
+    let exp = target.exp + delta;
+    let realmStage = target.realmStage;
+    let cap = expCostForStage(target.realmKey, realmStage);
+    while (cap !== null && exp >= cap && realmStage < 9) {
+      exp -= cap;
+      realmStage += 1;
+      cap = expCostForStage(target.realmKey, realmStage);
+    }
+
     await this.prisma.character.update({
       where: { id: target.id },
-      data: { exp: { increment: delta } },
+      data: { exp, realmStage },
     });
 
     await this.audit(actorId, 'admin.exp.grant', {
@@ -495,6 +512,8 @@ export class AdminService {
       characterId: target.id,
       deltaExp: delta.toString(),
       reason,
+      realmStageAfter: realmStage,
+      expAfter: exp.toString(),
     });
 
     const state = await this.chars.findByUser(targetUserId);

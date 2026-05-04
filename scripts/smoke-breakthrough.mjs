@@ -95,6 +95,8 @@ const BASE = (process.env.SMOKE_API_BASE ?? 'http://localhost:3000').replace(/\/
 const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS ?? 10_000);
 const VERBOSE = process.env.SMOKE_VERBOSE === '1';
 const SECT_KEY = process.env.SMOKE_SECT_KEY ?? 'thanh_van';
+const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL ?? 'admin@example.com';
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? 'change-me-bootstrap-pass';
 
 // -----------------------------------------------------------------------------
 // Cookie jar — Node fetch không có cookie jar built-in, tự track set-cookie.
@@ -128,6 +130,17 @@ function storeSetCookie(res) {
 function cookieHeader() {
   if (cookieJar.size === 0) return undefined;
   return Array.from(cookieJar, ([k, v]) => `${k}=${v}`).join('; ');
+}
+
+/** Snapshot cookieJar để switch tạm sang admin rồi restore lại player. */
+function snapshotCookies() {
+  return new Map(cookieJar);
+}
+
+/** @param {Map<string,string>} snapshot */
+function restoreCookies(snapshot) {
+  cookieJar.clear();
+  for (const [k, v] of snapshot) cookieJar.set(k, v);
 }
 
 // -----------------------------------------------------------------------------
@@ -395,7 +408,119 @@ async function main() {
     assert(r.body?.error?.code === 'NOT_AT_PEAK', `breakthrough junk-body: expect code NOT_AT_PEAK (body bị ignore), got ${r.body?.error?.code}`);
   });
 
-  // 11. logout + POST /breakthrough → 401 UNAUTHENTICATED.
+  // -----------------------------------------------------------------------------
+  // POSITIVE PATH — admin seed grant-exp lên peak luyenkhi → manual breakthrough → realm advance.
+  //
+  // Foundation từ PR #383 admin seed harness BE:
+  //   POST /admin/users/:id/grant-exp với delta đủ lớn → service auto-advance
+  //   stage 1..8 (mirror cultivation processor), dừng ở stage 9 với exp >= cost(9).
+  //   Sau đó player /character/breakthrough → realm advance luyenkhi → truc_co.
+  //
+  // Anti-FE-self-grant invariant: tất cả mutation EXP/realm đều qua admin endpoint
+  // hoặc breakthrough endpoint. Không bypass authority — admin chỉ kích hoạt
+  // logic giống cultivation tick natural progression.
+  // -----------------------------------------------------------------------------
+
+  /** @type {Map<string,string>} */
+  let playerCookieSnap;
+
+  // 11. Snapshot player cookies + admin login → swap jar.
+  await step('admin login — swap cookie jar (player → admin)', async () => {
+    playerCookieSnap = snapshotCookies();
+    cookieJar.clear();
+    const r = await http('/api/_auth/login', {
+      method: 'POST',
+      body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    assertStatus(r, 200, 'admin login');
+    if (!r.body?.ok) throw new Error(`admin login: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const u = r.body?.data?.user;
+    assert(u?.role === 'ADMIN', `admin login: role phải ADMIN (cần bootstrap admin@example.com), got ${u?.role}`);
+  });
+
+  // 12. Admin POST /admin/users/:id/grant-exp { exp: '200000' } → 200 ok.
+  // luyenkhi sum cap stage 1..8 = 55031. Grant 200000 → service auto-advance
+  // stage 1→9, exp = 200000 - 55031 = 144969 (>= cost(9)=23613, đủ break).
+  await step('admin POST /admin/users/:id/grant-exp { exp: "200000" } → 200 ok (seed peak)', async () => {
+    if (!state.userId) throw new Error('state.userId missing — register chưa chạy');
+    const r = await http(`/api/admin/users/${state.userId}/grant-exp`, {
+      method: 'POST',
+      body: { exp: '200000', reason: 'smoke breakthrough peak seed' },
+    });
+    assertStatus(r, 200, 'admin/users/:id/grant-exp');
+    assert(
+      r.body?.ok === true && r.body?.data?.ok === true,
+      `grant-exp 200: shape mismatch, got ${JSON.stringify(r.body)}`,
+    );
+  });
+
+  // 13. Admin GET /admin/audit?action=admin.exp.grant → row >= 1 (seed audit).
+  await step('admin GET /admin/audit?action=admin.exp.grant — row >= 1 (audit từ step 12)', async () => {
+    const r = await http('/api/admin/audit?action=admin.exp.grant');
+    assertStatus(r, 200, 'admin/audit?action=admin.exp.grant');
+    const rows = r.body?.data?.rows ?? [];
+    assert(Array.isArray(rows) && rows.length >= 1, `audit grant-exp: phải >= 1 row, got ${rows?.length}`);
+    assert(rows[0].action === 'admin.exp.grant', `audit row[0].action: expect 'admin.exp.grant', got '${rows[0].action}'`);
+  });
+
+  // 14. Admin logout → restore player cookies.
+  await step('admin logout + restore player cookies', async () => {
+    const r = await http('/api/_auth/logout', { method: 'POST' });
+    assertStatus(r, [200, 204], 'admin logout');
+    cookieJar.clear();
+    restoreCookies(playerCookieSnap);
+  });
+
+  // 15. Player GET /character/me → verify state post-grant: realmStage=9, exp >= cost(9).
+  await step('character/me — post-grant: realmStage=9 + exp >= cost(9) (server-authoritative seed)', async () => {
+    const r = await http('/api/character/me');
+    assertStatus(r, 200, 'character/me post-grant');
+    const ch = r.body?.data?.character;
+    assert(ch, 'character/me: no character');
+    assert(ch.realmStage === 9, `realmStage post-grant: expect 9 (auto-advance từ stage 1), got ${ch.realmStage}`);
+    assert(ch.realmKey === 'luyenkhi', `realmKey post-grant: expect 'luyenkhi' (chưa cross realm), got '${ch.realmKey}'`);
+    const expBig = BigInt(ch.exp);
+    assert(
+      expBig >= 23613n,
+      `exp post-grant: expect >= cost(9)=23613 (đủ peak để break), got ${expBig}`,
+    );
+  });
+
+  // 16. POST /character/breakthrough → 200 ok + advance realm luyenkhi → truc_co.
+  await step('breakthrough → 200 ok + advance realm (luyenkhi → truc_co)', async () => {
+    const r = await http('/api/character/breakthrough', { method: 'POST' });
+    assertStatus(r, 200, 'breakthrough happy');
+    if (!r.body?.ok) throw new Error(`breakthrough: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const ch = r.body?.data?.character;
+    assert(ch, 'breakthrough: missing character in body');
+    assert(ch.realmKey === 'truc_co', `breakthrough advance: expect realmKey='truc_co' (next sau luyenkhi), got '${ch.realmKey}'`);
+    assert(ch.realmStage === 1, `breakthrough advance: expect realmStage=1 (reset sau cross realm), got ${ch.realmStage}`);
+  });
+
+  // 17. character/me — verify post-breakthrough state mirror response (realm advance + exp deducted + hp/mp scale 1.2x).
+  await step('character/me — post-breakthrough state mirror response (realm advance + exp deducted)', async () => {
+    const r = await http('/api/character/me');
+    assertStatus(r, 200, 'character/me post-break');
+    const ch = r.body?.data?.character;
+    assert(ch, 'character/me post-break: no character');
+    assert(ch.realmKey === 'truc_co', `post-break realmKey: expect 'truc_co', got '${ch.realmKey}'`);
+    assert(ch.realmStage === 1, `post-break realmStage: expect 1, got ${ch.realmStage}`);
+    // exp post-break = 144969 (seed) - 23613 (cost(9) luyenkhi) = 121356.
+    assert(ch.exp === '121356', `post-break exp: expect '121356' (144969 - 23613), got '${ch.exp}'`);
+    // HP/MP cap scale 1.2x sau cross realm — luyenkhi base 100/50 → 120/60.
+    assert(typeof ch.hpMax === 'number' && ch.hpMax > 0, `post-break hpMax phải number > 0, got ${ch.hpMax}`);
+    assert(typeof ch.mpMax === 'number' && ch.mpMax > 0, `post-break mpMax phải number > 0, got ${ch.mpMax}`);
+  });
+
+  // 18. POST /breakthrough lần 2 sau khi đã advance → 409 NOT_AT_PEAK (idempotent).
+  // Char giờ ở truc_co stage 1, exp=121356. cost(9) truc_co lớn hơn nhiều nên break thất bại (NOT_AT_PEAK).
+  await step('breakthrough — 409 NOT_AT_PEAK lần 2 sau advance (truc_co stage 1)', async () => {
+    const r = await http('/api/character/breakthrough', { method: 'POST' });
+    assertStatus(r, 409, 'breakthrough post-advance');
+    assert(r.body?.error?.code === 'NOT_AT_PEAK', `breakthrough post-advance: expect NOT_AT_PEAK, got ${r.body?.error?.code}`);
+  });
+
+  // 19. logout + POST /breakthrough → 401 UNAUTHENTICATED.
   await step('logout + breakthrough — 401 UNAUTHENTICATED post-logout', async () => {
     const logout = await http('/api/_auth/logout', { method: 'POST' });
     assertStatus(logout, [200, 204], 'logout');
