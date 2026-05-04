@@ -13,6 +13,7 @@
     "infra:down": "docker compose -f infra/docker-compose.dev.yml down",
     "backup:db": "bash scripts/backup-db.sh",
     "restore:db": "bash scripts/restore-db.sh",
+    "smoke:achievement": "node scripts/smoke-achievement.mjs",
     "smoke:admin": "node scripts/smoke-admin.mjs",
     "smoke:beta": "node scripts/smoke-beta.mjs",
     "smoke:breakthrough": "node scripts/smoke-breakthrough.mjs",
