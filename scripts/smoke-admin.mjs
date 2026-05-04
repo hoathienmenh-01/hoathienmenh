@@ -1772,17 +1772,29 @@ async function main() {
     },
   );
 
-  await step('player /character/me — exp == snapshot + 5000 (server-authoritative)', async () => {
+  await step('player /character/me — sau grant 5000 exp luyenkhi: auto-advance stage 1→3 + exp leftover (server-authoritative)', async () => {
     if (state.playerExpSnapshot === undefined) {
       throw new Error('playerExpSnapshot undefined — step 62 chưa chạy');
     }
     const r = await http(state.playerJar, '/api/character/me');
     assertStatus(r, 200, 'player/character/me after grant-exp');
-    const expAfter = BigInt(r.body?.data?.character?.exp ?? '0');
-    const expected = state.playerExpSnapshot + 5000n;
+    const ch = r.body?.data?.character;
+    const expAfter = BigInt(ch?.exp ?? '0');
+    // grantExp mirror cultivation processor auto-advance stage 1..8. luyenkhi
+    // cap1=1600 cap2=2240 → 0+5000 → 3400 stage 2 → 1160 stage 3 (cap3=3136 dừng).
+    // Final: exp=1160, stage=3, realm vẫn luyenkhi (stage 9 phải manual breakthrough).
+    assert(
+      ch?.realmStage === 3,
+      `realmStage post grant-5000: expect 3 (auto-advance từ stage 1), got ${ch?.realmStage}`,
+    );
+    assert(
+      ch?.realmKey === 'luyenkhi',
+      `realmKey post grant-5000: expect 'luyenkhi' (chưa cross realm), got '${ch?.realmKey}'`,
+    );
+    const expected = state.playerExpSnapshot + 5000n - 1600n - 2240n;
     assert(
       expAfter === expected,
-      `exp after grant: expect ${expected}, got ${expAfter} (snapshot ${state.playerExpSnapshot})`,
+      `exp after grant-5000: expect ${expected} (snapshot+5000-cap1-cap2), got ${expAfter} (snapshot ${state.playerExpSnapshot})`,
     );
   });
 

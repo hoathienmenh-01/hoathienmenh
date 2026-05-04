@@ -31,14 +31,16 @@ afterAll(async () => {
 });
 
 describe('AdminService.grantExp', () => {
-  it('grant 5000 exp → exp tăng đúng + audit row admin.exp.grant', async () => {
+  it('grant 500 exp dưới ngưỡng stage 1 (luyenkhi cap=1600) → exp tăng + stage giữ nguyên 1 + audit row', async () => {
     const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
     const player = await makeUserChar(prisma, { exp: 100n });
 
-    await admin.grantExp(adminU.userId, 'ADMIN', player.userId, 5000n, 'smoke seed');
+    await admin.grantExp(adminU.userId, 'ADMIN', player.userId, 500n, 'smoke seed');
 
     const c = await prisma.character.findUnique({ where: { id: player.characterId } });
-    expect(c?.exp).toBe(5100n);
+    expect(c?.exp).toBe(600n);
+    expect(c?.realmStage).toBe(1);
+    expect(c?.realmKey).toBe('luyenkhi');
 
     const audits = await prisma.adminAuditLog.findMany({
       where: { actorUserId: adminU.userId, action: 'admin.exp.grant' },
@@ -46,11 +48,43 @@ describe('AdminService.grantExp', () => {
     expect(audits).toHaveLength(1);
     const meta = audits[0].meta as Record<string, unknown>;
     expect(meta.targetUserId).toBe(player.userId);
-    expect(meta.deltaExp).toBe('5000');
+    expect(meta.deltaExp).toBe('500');
     expect(meta.reason).toBe('smoke seed');
+    expect(meta.realmStageAfter).toBe(1);
+    expect(meta.expAfter).toBe('600');
   });
 
-  it('grant exp 10^17 BigInt-safe → exp + delta đúng (không bị Number overflow)', async () => {
+  it('grant 5000 exp luyenkhi (vượt cap stage 1+2) → auto-advance stage 1→3 + exp leftover', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const player = await makeUserChar(prisma, { exp: 100n });
+
+    // luyenkhi cap1=1600, cap2=2240, cap3=3136. 5100 → stage 1→2 (-1600=3500)
+    // → stage 2→3 (-2240=1260) → stage 3 cap=3136 > 1260 → dừng.
+    await admin.grantExp(adminU.userId, 'ADMIN', player.userId, 5000n, 'auto-advance');
+
+    const c = await prisma.character.findUnique({ where: { id: player.characterId } });
+    expect(c?.exp).toBe(1260n);
+    expect(c?.realmStage).toBe(3);
+    expect(c?.realmKey).toBe('luyenkhi');
+  });
+
+  it('grant exp đủ peak luyenkhi → stage 9 + exp >= cost(9), KHÔNG auto-cross realm (manual breakthrough)', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const player = await makeUserChar(prisma, { exp: 0n });
+
+    // luyenkhi sum cap stage 1..8 = 1600+2240+3136+4390+6147+8605+12047+16866 = 55031
+    // (Math.round với 1.4^idx mid-rounding). Grant 200000 → stage 9, exp =
+    // 200000-55031 = 144969 (>= cost(9)=23613). Loop dừng tại stage 9 dù exp
+    // dư cao — peak phải manual /character/breakthrough.
+    await admin.grantExp(adminU.userId, 'ADMIN', player.userId, 200000n, 'peak seed');
+
+    const c = await prisma.character.findUnique({ where: { id: player.characterId } });
+    expect(c?.realmStage).toBe(9);
+    expect(c?.realmKey).toBe('luyenkhi');
+    expect(c?.exp).toBe(144969n);
+  });
+
+  it('grant exp 10^17 BigInt-safe → stage 9 + exp leftover BigInt-safe (không bị Number overflow)', async () => {
     const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
     const player = await makeUserChar(prisma, { exp: 1n });
     const big = 10n ** 17n;
@@ -58,7 +92,10 @@ describe('AdminService.grantExp', () => {
     await admin.grantExp(adminU.userId, 'ADMIN', player.userId, big, '');
 
     const c = await prisma.character.findUnique({ where: { id: player.characterId } });
-    expect(c?.exp).toBe(big + 1n);
+    // Sau auto-advance stage 1..8, exp = 10^17 + 1 - 55031 (sum cap luyenkhi).
+    expect(c?.realmStage).toBe(9);
+    expect(c?.realmKey).toBe('luyenkhi');
+    expect(c?.exp).toBe(big + 1n - 55031n);
   });
 
   it('exp = 0 → INVALID_INPUT (chỉ cộng dương)', async () => {
@@ -132,5 +169,6 @@ describe('AdminService.grantExp', () => {
 
     const c = await prisma.character.findUnique({ where: { id: player.characterId } });
     expect(c?.exp).toBe(50n);
+    expect(c?.realmStage).toBe(1);
   });
 });
