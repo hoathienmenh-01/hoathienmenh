@@ -108,11 +108,28 @@
  *  52. Admin GET /admin/audit?action=topup.approve → rows toàn entries match
  *      prefix 'topup.approve' (audit từ step 39 hiện diện).
  *  53. Admin GET /admin/audit?email=<adminEmail> → rows scoped về actor admin.
- *  54. Player → /admin/economy/report → 403 FORBIDDEN.
- *  55. Player → /admin/audit → 403 FORBIDDEN.
- *  56. Player → `/api/admin/stats` → 403 FORBIDDEN (admin guard reject PLAYER).
- *  57. Admin logout `/api/_auth/logout` → cookie cleared.
- *  58. Player logout `/api/_auth/logout` → cookie cleared.
+ *  54. Admin POST /admin/mail/broadcast {} → 400 INVALID_INPUT (zod miss
+ *      subject/body, admin.controller.ts L506).
+ *  55. Admin POST /admin/mail/broadcast {subject,body} → 200 ok + count >= 1
+ *      (player char đã onboard ở step 7 → broadcast chạm tới player). KHÔNG
+ *      reward tránh disturb invariant ledger ở step 16-17.
+ *  56. Player GET /mail/me → see broadcast mail subject từ step 55 (server
+ *      tạo Mail row cho mọi character qua mail.service.ts L252-285).
+ *  57. Admin GET /admin/users.csv → 200 + Content-Type 'text/csv' +
+ *      Content-Disposition attachment + X-Export-Total >= 2 (admin + player) +
+ *      X-Export-Rows >= 2 + body có CSV header line + >= 2 row data
+ *      (admin.controller.ts L169-226 + user-csv.ts USER_CSV_HEADER).
+ *  58. Admin GET /admin/users.csv?q=<playerEmail> → filter narrow X-Export-Total
+ *      = 1 (chỉ player match qua email contains).
+ *  59. Admin GET /admin/audit?action=user.exportCsv → rows >= 2 (audit từ step
+ *      57 + 58, admin.service.ts L224 audit qua exportUsers).
+ *  60. Player → /admin/economy/report → 403 FORBIDDEN.
+ *  61. Player → /admin/audit → 403 FORBIDDEN.
+ *  62. Player → `/api/admin/stats` → 403 FORBIDDEN (admin guard reject PLAYER).
+ *  63. Player → /admin/users.csv → 403 FORBIDDEN (admin guard reject PLAYER).
+ *  64. Player → /admin/mail/broadcast → 403 FORBIDDEN (admin guard reject PLAYER).
+ *  65. Admin logout `/api/_auth/logout` → cookie cleared.
+ *  66. Player logout `/api/_auth/logout` → cookie cleared.
  *
  * Chạy:
  *   pnpm smoke:admin
@@ -218,7 +235,7 @@ class CookieJar {
  * @param {CookieJar} jar
  * @param {string} pathname  — `/api/...`
  * @param {{ method?: string; body?: unknown }} [opts]
- * @returns {Promise<{ status: number; body: any }>}
+ * @returns {Promise<{ status: number; body: any; headers: Headers }>}
  */
 async function http(jar, pathname, opts = {}) {
   const url = `${BASE}${pathname}`;
@@ -252,7 +269,7 @@ async function http(jar, pathname, opts = {}) {
       body = await res.text().catch(() => null);
     }
     if (VERBOSE) console.log(`← ${res.status} ${method} ${pathname}`);
-    return { status: res.status, body };
+    return { status: res.status, body, headers: res.headers };
   } finally {
     clearTimeout(timer);
   }
@@ -402,6 +419,7 @@ function sumQtyDeltaForItem(entries, itemKey) {
  *   playerAfterMailLT?: bigint;
  *   giftCode?: string;
  *   mailId?: string;
+ *   broadcastSubject?: string;
  * }}
  */
 const state = {
@@ -1501,7 +1519,164 @@ async function main() {
     },
   );
 
-  // 54-55. PLAYER cookie → /api/admin/* read-only → 403 FORBIDDEN (admin guard).
+  // ─────────────────────────────────────────────────────────────────
+  // 54-56. Mail broadcast flow (admin.controller.ts L502-524 + mail.service.ts
+  // L252-285). Cover gap cuối cùng cho admin mail-side smoke (PR #381 đã cover
+  // mail/send qua step 11-14, broadcast còn thiếu).
+  //
+  //   - Zod negative: empty body → INVALID_INPUT (subject/body min 1 required).
+  //   - Happy: subject + body, NO reward → 200 ok + count >= 1 (player char đã
+  //     onboard ở step 7). KHÔNG đính reward để tránh disturb invariant
+  //     SUM(CurrencyLedger) == Character.linhThach ở step 16-17 đã chạy.
+  //   - Mail row visibility: player /mail/me trả mail mới có subject match.
+  //
+  // Note: mail.service.broadcast KHÔNG ghi AdminAuditLog (mirror mail/send,
+  // xem doc header step 15 + AI_HANDOFF_REPORT.md known gap). Smoke chỉ verify
+  // count + visibility contract, không assert audit footprint.
+  // ─────────────────────────────────────────────────────────────────
+
+  await step('admin POST /admin/mail/broadcast {} → 400 INVALID_INPUT (zod miss)', async () => {
+    const r = await http(state.adminJar, '/api/admin/mail/broadcast', {
+      method: 'POST',
+      body: {},
+    });
+    assertStatus(r, 400, 'admin mail broadcast zod miss');
+    assert(
+      r.body?.error?.code === 'INVALID_INPUT',
+      `expect error.code='INVALID_INPUT', got ${JSON.stringify(r.body?.error)}`,
+    );
+  });
+
+  await step('admin POST /admin/mail/broadcast {subject,body} → 200 ok count >= 1', async () => {
+    const subject = `Smoke Broadcast ${Date.now()}`;
+    state.broadcastSubject = subject;
+    const r = await http(state.adminJar, '/api/admin/mail/broadcast', {
+      method: 'POST',
+      body: {
+        subject,
+        body: 'Toàn server: smoke test broadcast — không reward.',
+        senderName: 'Thiên Đạo Sứ Giả',
+      },
+    });
+    assertStatus(r, 200, 'admin mail broadcast happy');
+    assert(r.body?.ok === true, `expect ok=true, got ${JSON.stringify(r.body)}`);
+    const count = r.body?.data?.count;
+    assert(
+      typeof count === 'number' && count >= 1,
+      `mail/broadcast: data.count phải >= 1 (player char đã onboard), got ${count}`,
+    );
+  });
+
+  await step('player GET /mail/me — see broadcast mail subject', async () => {
+    if (!state.broadcastSubject) throw new Error(`broadcastSubject undefined`);
+    const r = await http(state.playerJar, '/api/mail/me');
+    assertStatus(r, 200, 'player /mail/me post-broadcast');
+    const mails = r.body?.data?.mails ?? [];
+    assert(Array.isArray(mails), `mail/me: data.mails phải array`);
+    const found = mails.find((m) => m.subject === state.broadcastSubject);
+    assert(
+      found,
+      `mail/me: phải có mail subject='${state.broadcastSubject}' từ broadcast, got mails=${JSON.stringify(mails.map((m) => m.subject)).slice(0, 200)}`,
+    );
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // 57-59. Users CSV export flow (admin.controller.ts L169-226 + user-csv.ts).
+  // Cover gap cuối cho admin read-only ops smoke (PR #381 đã cover
+  // /admin/economy/report + /admin/audit filter, /admin/users.csv còn thiếu).
+  //
+  //   - Happy: text/csv content-type + Content-Disposition attachment +
+  //     X-Export-Total/Rows headers + CSV body có header line + >= 2 row data.
+  //   - Filter scope: q=<playerEmail> narrow xuống 1 row (admin.service.ts
+  //     L172-178 OR email contains insensitive + character.name contains).
+  //   - Audit footprint: admin.service.ts L224 audit `user.exportCsv` ghi cho
+  //     từng export call. Verify qua /admin/audit?action=user.exportCsv →
+  //     rows >= 2 (step 57 export all + step 58 export filter).
+  // ─────────────────────────────────────────────────────────────────
+
+  await step('admin GET /admin/users.csv — text/csv + headers + CSV body shape', async () => {
+    const r = await http(state.adminJar, '/api/admin/users.csv');
+    assertStatus(r, 200, 'admin users.csv all');
+    const ctype = r.headers.get('content-type') ?? '';
+    assert(
+      ctype.includes('text/csv'),
+      `users.csv: Content-Type phải chứa 'text/csv', got '${ctype}'`,
+    );
+    const cdisp = r.headers.get('content-disposition') ?? '';
+    assert(
+      cdisp.includes('attachment'),
+      `users.csv: Content-Disposition phải chứa 'attachment', got '${cdisp}'`,
+    );
+    const totalH = r.headers.get('x-export-total');
+    const rowsH = r.headers.get('x-export-rows');
+    assert(totalH !== null, `users.csv: X-Export-Total header phải tồn tại`);
+    assert(rowsH !== null, `users.csv: X-Export-Rows header phải tồn tại`);
+    const total = Number.parseInt(totalH ?? '0', 10);
+    const rows = Number.parseInt(rowsH ?? '0', 10);
+    assert(
+      total >= 2,
+      `users.csv: X-Export-Total phải >= 2 (admin + player), got ${total}`,
+    );
+    assert(
+      rows >= 2,
+      `users.csv: X-Export-Rows phải >= 2 (admin + player), got ${rows}`,
+    );
+    // Body là CSV string (không JSON wrap). Header line + >= 2 data line.
+    assert(typeof r.body === 'string', `users.csv: body phải string raw CSV, got ${typeof r.body}`);
+    const lines = r.body.split('\r\n').filter((l) => l.length > 0);
+    assert(
+      lines.length >= 3,
+      `users.csv: phải >= 3 line (header + >=2 data), got ${lines.length}`,
+    );
+    const header = lines[0];
+    // USER_CSV_HEADER (user-csv.ts L31-44): id,email,role,banned,createdAt,...
+    assert(
+      header.startsWith('id,email,role,banned,'),
+      `users.csv: header line phải bắt đầu 'id,email,role,banned,', got '${header.slice(0, 80)}'`,
+    );
+  });
+
+  await step('admin GET /admin/users.csv?q=<playerEmail> — filter narrow scope', async () => {
+    if (!state.playerEmail) throw new Error(`playerEmail undefined`);
+    const r = await http(
+      state.adminJar,
+      `/api/admin/users.csv?q=${encodeURIComponent(state.playerEmail)}`,
+    );
+    assertStatus(r, 200, 'admin users.csv filter');
+    const total = Number.parseInt(r.headers.get('x-export-total') ?? '0', 10);
+    assert(
+      total === 1,
+      `users.csv?q=${state.playerEmail}: X-Export-Total phải == 1 (chỉ player match qua email contains insensitive), got ${total}`,
+    );
+    assert(typeof r.body === 'string', `users.csv: body phải string`);
+    // Body chứa player email trong row data (case-insensitive find vì CSV preserve case).
+    assert(
+      r.body.toLowerCase().includes(state.playerEmail.toLowerCase()),
+      `users.csv: body phải chứa playerEmail '${state.playerEmail}'`,
+    );
+  });
+
+  await step(
+    'admin GET /admin/audit?action=user.exportCsv — rows >= 2 (audit từ step 57+58)',
+    async () => {
+      const r = await http(state.adminJar, '/api/admin/audit?action=user.exportCsv');
+      assertStatus(r, 200, 'admin/audit?action=user.exportCsv');
+      const rows = r.body?.data?.rows ?? [];
+      assert(Array.isArray(rows), 'audit?action=user.exportCsv: rows phải array');
+      assert(
+        rows.length >= 2,
+        `audit?action=user.exportCsv: phải >= 2 row (smoke step 57 + 58 đã trigger), got ${rows.length}`,
+      );
+      for (const row of rows) {
+        assert(
+          typeof row.action === 'string' && row.action.startsWith('user.exportCsv'),
+          `audit?action=user.exportCsv: row.action phải startsWith 'user.exportCsv', got '${row.action}'`,
+        );
+      }
+    },
+  );
+
+  // 60-62. PLAYER cookie → /api/admin/* read-only → 403 FORBIDDEN (admin guard).
   await step('player → /admin/economy/report → 403 FORBIDDEN', async () => {
     const r = await http(state.playerJar, '/api/admin/economy/report');
     assertStatus(r, 403, 'player → admin/economy/report');
@@ -1520,7 +1695,6 @@ async function main() {
     );
   });
 
-  // 56. PLAYER cookie → /api/admin/stats → 403 FORBIDDEN (admin guard, regression check).
   await step('player → /admin/stats → 403 FORBIDDEN', async () => {
     const r = await http(state.playerJar, '/api/admin/stats');
     assertStatus(r, 403, 'player → admin/stats');
@@ -1530,7 +1704,31 @@ async function main() {
     );
   });
 
-  // 32-33. Logout admin + player.
+  // 63-64. PLAYER → newly-covered admin endpoints → 403 FORBIDDEN regression.
+  await step('player → /admin/users.csv → 403 FORBIDDEN', async () => {
+    const r = await http(state.playerJar, '/api/admin/users.csv');
+    assertStatus(r, 403, 'player → admin/users.csv');
+    // Body là JSON error envelope dù endpoint return text/csv ở happy path
+    // (NestJS exception filter format JSON cho HttpException).
+    assert(
+      r.body?.error?.code === 'FORBIDDEN',
+      `player → admin/users.csv: expect error.code='FORBIDDEN', got ${JSON.stringify(r.body?.error)}`,
+    );
+  });
+
+  await step('player → /admin/mail/broadcast → 403 FORBIDDEN', async () => {
+    const r = await http(state.playerJar, '/api/admin/mail/broadcast', {
+      method: 'POST',
+      body: { subject: 'x', body: 'y' },
+    });
+    assertStatus(r, 403, 'player → admin/mail/broadcast');
+    assert(
+      r.body?.error?.code === 'FORBIDDEN',
+      `player → admin/mail/broadcast: expect error.code='FORBIDDEN', got ${JSON.stringify(r.body?.error)}`,
+    );
+  });
+
+  // 65-66. Logout admin + player.
   await step('admin logout', async () => {
     const r = await http(state.adminJar, '/api/_auth/logout', { method: 'POST' });
     assertStatus(r, 200, 'admin logout');
