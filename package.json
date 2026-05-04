@@ -20,6 +20,7 @@
     "smoke:cultivation": "node scripts/smoke-cultivation.mjs",
     "smoke:cultivation-method": "node scripts/smoke-cultivation-method.mjs",
     "smoke:economy": "node scripts/smoke-economy.mjs",
+    "smoke:skill": "node scripts/smoke-skill.mjs",
     "smoke:spiritual-root": "node scripts/smoke-spiritual-root.mjs",
     "smoke:topup": "node scripts/smoke-topup.mjs",
     "smoke:ws": "node scripts/smoke-ws.mjs"
