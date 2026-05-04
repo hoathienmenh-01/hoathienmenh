@@ -488,7 +488,14 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - KHÔNG schema migration, KHÔNG BE change, KHÔNG ledger, KHÔNG store contract change — pure FE UI polish per UI MODULE RULE.
 - Defer: realtime cooldown countdown WS push (Phase 11.7.H), TalentView E2E smoke với `E2E_FULL=1` cho cast → DungeonView highlight → cast in combat → cooldown badge update (Phase 11.X UI E2E smoke gap — partial coverage in 11.X.AY).
 
-#### 11.X.AY PR: Talent catalog UI E2E smoke (fresh char Loadout empty + filter row gate + sticky CSS + catalog grid render) — PENDING MERGE (this push)
+#### 11.X.AZ PR: smoke:cultivation HTTP smoke script (cultivate toggle state machine + idempotent + anti-FE-self-grant invariant) — PENDING MERGE (this push)
+
+- `scripts/smoke-cultivation.mjs` NEW Node 20 native fetch zero-install (mirror pattern `smoke-combat.mjs` cookie jar + step runner). 12-step cover register → onboard (cultivating mặc định false) → snapshot exp/realmTier/level/linhThach → toggle ON (false→true) → cross-check `/character/me` → idempotent ON (true→true vẫn ok) → toggle OFF (true→false) → cross-check OFF → idempotent OFF (false→false vẫn ok) → 400 INVALID_INPUT cho `cultivating: "invalid"` → 400 INVALID_INPUT cho missing field → logout → 401 UNAUTHENTICATED post-logout.
+- Anti-FE-self-grant invariant: cultivate toggle KHÔNG đụng exp/realmTier/level/linhThach giữa các step (snapshot before/after compare). Smoke chạy ~1s nên cultivation tick BullMQ 30s chưa fire → exp/realm deterministic.
+- `package.json` thêm `"smoke:cultivation": "node scripts/smoke-cultivation.mjs"` (alphabet order admin/beta/combat/cultivation/economy/ws).
+- KHÔNG schema migration, KHÔNG BE change, KHÔNG store contract change, KHÔNG ledger — pure smoke addition. KHÔNG yêu cầu admin login. Zero-install (native fetch + Node 20). Local verification: 12/12 OK 2 lần liên tiếp deterministic. Đóng "smoke gap polish" được handoff Recommended Next Roadmap đề xuất.
+
+#### 11.X.AY PR: Talent catalog UI E2E smoke (fresh char Loadout empty + filter row gate + sticky CSS + catalog grid render) — DONE ✅ (PR #358 merged)
 
 - `apps/web/e2e/golden.spec.ts` thêm SPEC #18 trong `Golden path — full stack required` describe block (gated bởi `E2E_FULL=1`). Reuses `registerAndOnboard()` helper cho fresh char seed. Fresh char không có realm để học bất kỳ talent nào trong catalog (lowest tier `truc_co`) + 0 talent point → spec verify static catalog render + Loadout empty state + filter gate path mà không cần admin seed.
 - Verify: route `/talents` resolve, Loadout section visible với class `md:sticky md:top-0 md:z-10` (Phase 11.7.G CSS), Loadout filter row HIDDEN cho fresh char (gate `activeLearnedTalents.length > 0`), Loadout empty state visible (`talents-active-empty`), filter-only empty state KHÔNG render, budget section spent=0 + remaining=0 (BE state wire), catalog filter selects (type/element/status) visible, catalog grid render ≥ 1 talent card (data từ `packages/shared/talents.ts`).
