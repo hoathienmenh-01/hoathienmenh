@@ -1,5 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { CurrencyKind, Prisma, Role, TopupStatus } from '@prisma/client';
+import {
+  ELEMENTS,
+  SPIRITUAL_ROOT_GRADES,
+  getSpiritualRootGradeDef,
+  itemByKey,
+  type ElementKey,
+  type SpiritualRootGrade,
+} from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { CharacterService } from '../character/character.service';
 import { CurrencyError, CurrencyService } from '../character/currency.service';
@@ -28,6 +36,8 @@ export class AdminError extends Error {
 const MAX_GRANT_LINH_THACH = 1_000_000_000n; // 1 tỷ
 const MAX_GRANT_TIEN_NGOC = 1_000_000;
 const MAX_REVOKE_QTY = 999; // chặn admin gõ nhầm lệnh revoke số khổng lồ
+const MAX_GRANT_QTY = 999; // mirror revoke cap cho admin grant item
+const MAX_GRANT_EXP = 10n ** 18n; // 10^18 — đủ cho mọi cảnh giới + buffer; chặn nhập sai BigInt
 const PAGE_SIZE = 30;
 
 export interface AdminUserRow {
@@ -430,6 +440,245 @@ export class AdminService {
       itemKey,
       qty,
       reason,
+    });
+
+    const state = await this.chars.findByUser(targetUserId);
+    if (state) this.realtime.emitToUser(targetUserId, 'state:update', state);
+  }
+
+  // ---------- seed harness (admin tooling cho QA / smoke positive-paths) ----------
+
+  /**
+   * Cộng EXP trực tiếp vào `Character.exp` — admin seed cho breakthrough
+   * smoke / cultivation method test / mission completion test.
+   *
+   *  - Chỉ cho phép `delta > 0` (không bao giờ trừ EXP — có thể phá realm
+   *    invariant nếu trừ xuống dưới 0).
+   *  - Cap `MAX_GRANT_EXP = 10^18` (đủ buffer trên realm cao nhất, chặn
+   *    nhập sai BigInt).
+   *  - MOD chỉ grant cho PLAYER; ADMIN grant được mọi role (mirror
+   *    `grant`/`revokeInventory` hierarchy).
+   *  - KHÔNG ghi `CurrencyLedger` — EXP không phải currency, không có ledger
+   *    schema. Audit duy nhất qua `AdminAuditLog action='admin.exp.grant'`.
+   *  - Sau update emit `state:update` qua realtime để client refresh exp UI.
+   */
+  async grantExp(
+    actorId: string,
+    actorRole: Role,
+    targetUserId: string,
+    delta: bigint,
+    reason: string,
+  ): Promise<void> {
+    if (actorId === targetUserId) throw new AdminError('CANNOT_TARGET_SELF');
+    if (delta <= 0n || delta > MAX_GRANT_EXP) throw new AdminError('INVALID_INPUT');
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { role: true },
+    });
+    if (!targetUser) throw new AdminError('NOT_FOUND');
+    if (actorRole !== 'ADMIN' && targetUser.role !== 'PLAYER') {
+      throw new AdminError('FORBIDDEN');
+    }
+    const target = await this.prisma.character.findUnique({
+      where: { userId: targetUserId },
+      select: { id: true },
+    });
+    if (!target) throw new AdminError('NOT_FOUND');
+
+    await this.prisma.character.update({
+      where: { id: target.id },
+      data: { exp: { increment: delta } },
+    });
+
+    await this.audit(actorId, 'admin.exp.grant', {
+      targetUserId,
+      characterId: target.id,
+      deltaExp: delta.toString(),
+      reason,
+    });
+
+    const state = await this.chars.findByUser(targetUserId);
+    if (state) this.realtime.emitToUser(targetUserId, 'state:update', state);
+  }
+
+  /**
+   * Cấp item vào túi player — admin seed cho item-consume smokes (skill
+   * book, linh_can_dan reroll, pill, equip).
+   *
+   *  - `qty` 1..999 — mirror revoke cap, chặn nhập sai số khổng lồ.
+   *  - `itemKey` phải tồn tại trong shared catalog (`itemByKey`) — chống
+   *    typo silent-noop (`InventoryService.grant` skip itemKey không có
+   *    def → audit empty, hành vi khó debug).
+   *  - MOD chỉ grant cho PLAYER; ADMIN grant được mọi role.
+   *  - Reuse `inventory.grant()` → tự động ghi `ItemLedger` với
+   *    `reason='ADMIN_GRANT'` + `actorUserId` + meta reason. Stackable
+   *    item gộp qty, non-stackable tạo row mới.
+   *  - Audit `AdminAuditLog action='admin.inventory.grant'`.
+   */
+  async grantItem(
+    actorId: string,
+    actorRole: Role,
+    targetUserId: string,
+    itemKey: string,
+    qty: number,
+    reason: string,
+  ): Promise<void> {
+    if (actorId === targetUserId) throw new AdminError('CANNOT_TARGET_SELF');
+    if (!Number.isInteger(qty) || qty <= 0 || qty > MAX_GRANT_QTY) {
+      throw new AdminError('INVALID_INPUT');
+    }
+    if (!itemKey || itemKey.length > 80) throw new AdminError('INVALID_INPUT');
+    if (!itemByKey(itemKey)) throw new AdminError('INVALID_INPUT');
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { role: true },
+    });
+    if (!targetUser) throw new AdminError('NOT_FOUND');
+    if (actorRole !== 'ADMIN' && targetUser.role !== 'PLAYER') {
+      throw new AdminError('FORBIDDEN');
+    }
+    const target = await this.prisma.character.findUnique({
+      where: { userId: targetUserId },
+      select: { id: true },
+    });
+    if (!target) throw new AdminError('NOT_FOUND');
+
+    await this.inventory.grant(target.id, [{ itemKey, qty }], {
+      reason: 'ADMIN_GRANT',
+      refType: 'User',
+      refId: targetUserId,
+      actorUserId: actorId,
+      extra: { reason },
+    });
+
+    await this.audit(actorId, 'admin.inventory.grant', {
+      targetUserId,
+      itemKey,
+      qty,
+      reason,
+    });
+
+    const state = await this.chars.findByUser(targetUserId);
+    if (state) this.realtime.emitToUser(targetUserId, 'state:update', state);
+  }
+
+  /**
+   * Override Linh căn / Spiritual Root — admin seed cho combat element
+   * smoke (kim/moc/thuy/hoa/tho controlled), spiritual root reroll smoke
+   * (force grade=than max tier).
+   *
+   *  - `grade` ∈ SPIRITUAL_ROOT_GRADES (5-tier).
+   *  - `primaryElement` ∈ ELEMENTS (5 ngũ hành).
+   *  - `secondaryElements` (optional): subset ELEMENTS, không trùng primary,
+   *    không duplicate, count phải khớp `secondaryElementCount` của grade
+   *    (pham=0, linh=1, huyen=2, tien=3, than=4). Nếu omit, server tự
+   *    derive theo thứ tự ELEMENTS skip primary (deterministic).
+   *  - `purity` (optional 1-100): default 100 — admin override luôn lấy
+   *    purity max trừ khi caller nói khác.
+   *  - MOD chỉ override cho PLAYER; ADMIN override được mọi role.
+   *  - Persist vào Character + insert `SpiritualRootRollLog` source='admin_grant'
+   *    (audit immutable trail; previousGrade/Element fields snapshot).
+   *  - Audit `AdminAuditLog action='admin.spiritualRoot.grant'`.
+   */
+  async grantSpiritualRoot(
+    actorId: string,
+    actorRole: Role,
+    targetUserId: string,
+    input: {
+      grade: SpiritualRootGrade;
+      primaryElement: ElementKey;
+      secondaryElements?: ElementKey[];
+      purity?: number;
+      reason: string;
+    },
+  ): Promise<void> {
+    if (actorId === targetUserId) throw new AdminError('CANNOT_TARGET_SELF');
+    if (!SPIRITUAL_ROOT_GRADES.includes(input.grade)) {
+      throw new AdminError('INVALID_INPUT');
+    }
+    if (!ELEMENTS.includes(input.primaryElement)) {
+      throw new AdminError('INVALID_INPUT');
+    }
+    const purity = input.purity ?? 100;
+    if (!Number.isInteger(purity) || purity < 1 || purity > 100) {
+      throw new AdminError('INVALID_INPUT');
+    }
+    const def = getSpiritualRootGradeDef(input.grade);
+    let secondary: ElementKey[];
+    if (input.secondaryElements === undefined) {
+      // Deterministic default — ELEMENTS order skip primary.
+      secondary = ELEMENTS.filter((e) => e !== input.primaryElement).slice(
+        0,
+        def.secondaryElementCount,
+      );
+    } else {
+      secondary = input.secondaryElements;
+      if (secondary.length !== def.secondaryElementCount) {
+        throw new AdminError('INVALID_INPUT');
+      }
+      const seen = new Set<ElementKey>();
+      for (const el of secondary) {
+        if (!ELEMENTS.includes(el)) throw new AdminError('INVALID_INPUT');
+        if (el === input.primaryElement) throw new AdminError('INVALID_INPUT');
+        if (seen.has(el)) throw new AdminError('INVALID_INPUT');
+        seen.add(el);
+      }
+    }
+
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { role: true },
+    });
+    if (!targetUser) throw new AdminError('NOT_FOUND');
+    if (actorRole !== 'ADMIN' && targetUser.role !== 'PLAYER') {
+      throw new AdminError('FORBIDDEN');
+    }
+    const target = await this.prisma.character.findUnique({
+      where: { userId: targetUserId },
+      select: {
+        id: true,
+        spiritualRootGrade: true,
+        primaryElement: true,
+        secondaryElements: true,
+        rootPurity: true,
+      },
+    });
+    if (!target) throw new AdminError('NOT_FOUND');
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.character.update({
+        where: { id: target.id },
+        data: {
+          spiritualRootGrade: input.grade,
+          primaryElement: input.primaryElement,
+          secondaryElements: secondary,
+          rootPurity: purity,
+        },
+      });
+      await tx.spiritualRootRollLog.create({
+        data: {
+          characterId: target.id,
+          source: 'admin_grant',
+          previousGrade: target.spiritualRootGrade,
+          newGrade: input.grade,
+          previousElement: target.primaryElement,
+          newElement: input.primaryElement,
+          previousSecondaryElements: target.secondaryElements,
+          newSecondaryElements: secondary,
+          previousPurity: target.spiritualRootGrade ? target.rootPurity : null,
+          newPurity: purity,
+        },
+      });
+    });
+
+    await this.audit(actorId, 'admin.spiritualRoot.grant', {
+      targetUserId,
+      characterId: target.id,
+      grade: input.grade,
+      primaryElement: input.primaryElement,
+      secondaryElements: secondary,
+      purity,
+      reason: input.reason,
     });
 
     const state = await this.chars.findByUser(targetUserId);
