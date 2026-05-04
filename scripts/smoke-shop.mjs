@@ -2,11 +2,11 @@
 /**
  * smoke-shop.mjs — NPC Shop endpoints smoke cho Xuân Tôi.
  *
- * Negative-path-focused. Positive buy path (POST /shop/buy với valid
- * itemKey + qty + đủ linh thạch → atomic spend currency + grant
- * inventory + ledger LedgerReason='SHOP_BUY') defer cho future smoke
- * với admin grant linh thạch hoặc gameplay automation (dungeon drop /
- * mail attachment / topup recharge).
+ * Negative-path-focused + positive buy path (Phase 9 deferred — unblocked
+ * PR #389 admin grant-currency endpoint). Positive: admin grant LinhThach
+ * 25 → POST /shop/buy {itemKey:'huyet_chi_dan', qty:1} → atomic spend
+ * + grant inventory + ledger SHOP_BUY (per service order: currency.applyTx
+ * → inventory.grantTx).
  *
  * Mục tiêu: cover 2 shop endpoints qua HTTP (`apps/api/src/modules/shop`):
  *   - `GET  /api/shop/npc` — list NPC shop entries (auth, không cần
@@ -37,7 +37,7 @@
  *     qty pass → catalog pass → stackable pass → char pass → atomic tx
  *     → currency.applyTx insufficient → INSUFFICIENT_FUNDS 409.
  *
- * 14-step:
+ * 20-step (was 14 negative-only — extended +6 positive-path post-#389):
  *   1.  `GET  /api/shop/npc` (no auth) → 401 UNAUTHENTICATED.
  *   2.  `POST /api/shop/buy` (no auth) → 401 UNAUTHENTICATED.
  *   3.  `POST /api/_auth/register` — fresh user.
@@ -95,8 +95,31 @@
  *                                                  → CurrencyError
  *                                                  → ShopError(INSUFFICIENT_FUNDS)
  *                                                  qua 409).
- *  14.  Anti-FE-self-grant snapshot + `POST /api/_auth/logout` +
- *       `GET /api/shop/npc` → 401.
+ *  13.5.Anti-FE-self-grant invariant snapshot — currency KHÔNG đổi
+ *                                                  qua 3 failed buys
+ *                                                  (cô lập trước
+ *                                                  positive seed).
+ *  14.  admin login + grant-currency LINH_THACH 25 (PR #389) +
+ *                                                  admin logout/
+ *                                                  restore player.
+ *  15.  `GET  /api/character/state` → linhThach=25 post-grant.
+ *  16.  `GET  /api/inventory` pre-buy → KHÔNG có huyet_chi_dan row.
+ *  17.  `POST /api/shop/buy` ({itemKey:'huyet_chi_dan', qty:1})
+ *                                                  post-grant 25 LT
+ *                                                  → 200 atomic spend
+ *                                                  25 LT + grant 1
+ *                                                  huyet_chi_dan +
+ *                                                  ledger SHOP_BUY
+ *                                                  (data.totalPrice=
+ *                                                  25, currency=LINH
+ *                                                  _THACH).
+ *  18.  `GET  /api/character/state` → linhThach=0 post-buy
+ *                                                  (atomic spend).
+ *  19.  `GET  /api/inventory` post-buy → huyet_chi_dan stack qty=1
+ *                                                  (server grantTx,
+ *                                                  KHÔNG do FE tự
+ *                                                  cộng).
+ *  20.  `POST /api/_auth/logout` + `GET /api/shop/npc` → 401.
  *
  * Chạy:
  *   pnpm smoke:shop
@@ -104,26 +127,29 @@
  *   node scripts/smoke-shop.mjs
  *
  * Env vars:
- *   SMOKE_API_BASE   — default "http://localhost:3000".
- *   SMOKE_TIMEOUT_MS — default 10000ms / request.
- *   SMOKE_VERBOSE    — "1" để log request/response (debug).
+ *   SMOKE_API_BASE       — default "http://localhost:3000".
+ *   SMOKE_TIMEOUT_MS     — default 10000ms / request.
+ *   SMOKE_VERBOSE        — "1" để log request/response (debug).
+ *   SMOKE_ADMIN_EMAIL    — default "admin@example.com" (bootstrap admin).
+ *   SMOKE_ADMIN_PASSWORD — default "change-me-bootstrap-pass".
  *
  * Yêu cầu môi trường:
  *   - `pnpm infra:up` (Postgres + Redis)
  *   - `pnpm --filter @xuantoi/api exec prisma migrate deploy`
+ *   - `pnpm --filter @xuantoi/api bootstrap` (seed admin user)
  *   - `pnpm --filter @xuantoi/api dev` (API listen :3000)
  *   - Tab khác: `pnpm smoke:shop`
  *
  * Mutation footprint:
- *   - 1 fresh user + 1 fresh character + auto-joined thanh_van sect
- *     (KHÔNG mua item thành công, KHÔNG đụng inventory, KHÔNG đụng
- *     ledger / currency).
+ *   - 1 fresh user + 1 fresh character + auto-joined thanh_van sect.
+ *   - Admin grant-currency 25 LT → 1 CurrencyLedger row
+ *     reason='ADMIN_GRANT' + 1 AdminAuditLog row action='admin.currency
+ *     .grant'.
+ *   - Shop buy 1× huyet_chi_dan → 1 CurrencyLedger row reason='SHOP_BUY'
+ *     delta=-25 + 1 ItemLedger row reason='SHOP_BUY' qty=+1 + 1
+ *     CharacterInventory row qty=1.
  *
  * Defer:
- *   - Positive buy path (admin grant 100 LT → POST /shop/buy
- *     {itemKey:'huyet_chi_dan', qty:1} → service success → atomic
- *     spend 25 LT + grant 1 huyết chỉ đan + ledger entry SHOP_BUY)
- *     yêu cầu admin currency.grantTx → defer.
  *   - INVALID_QTY 400 từ service (qty không integer hoặc bypass zod)
  *     defer cho simplicity — đã cover INVALID_INPUT 400 từ zod.
  *
@@ -145,6 +171,20 @@ const VERBOSE = process.env.SMOKE_VERBOSE === '1';
 // Items in NPC_SHOP catalog used for verification:
 const STACKABLE_PILL = 'huyet_chi_dan'; // stackable=true, price 25 LT.
 const NON_STACKABLE_WEAPON = 'so_kiem'; // stackable=false, price 30 LT.
+
+// Shop buy positive-path — admin grant-currency LinhThach 25 →
+// POST /shop/buy {itemKey:'huyet_chi_dan', qty:1} → atomic spend 25 LT
+// + grant 1 inventory stack + CurrencyLedger reason='SHOP_BUY' +
+// ItemLedger reason='SHOP_BUY' (per service order: currency.applyTx →
+// inventory.grantTx).
+const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL ?? 'admin@example.com';
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? 'change-me-bootstrap-pass';
+
+/** State giữa các step (giống smoke:skill cookie-jar swap pattern). */
+const state = {
+  /** @type {string | null} */
+  userId: null,
+};
 
 // -----------------------------------------------------------------------------
 // Cookie jar.
@@ -178,6 +218,17 @@ function storeSetCookie(res) {
 function cookieHeader() {
   if (cookieJar.size === 0) return undefined;
   return Array.from(cookieJar, ([k, v]) => `${k}=${v}`).join('; ');
+}
+
+/** Snapshot cookieJar để switch tạm sang admin rồi restore lại player. */
+function snapshotCookies() {
+  return new Map(cookieJar);
+}
+
+/** @param {Map<string,string>} snapshot */
+function restoreCookies(snapshot) {
+  cookieJar.clear();
+  for (const [k, v] of snapshot) cookieJar.set(k, v);
 }
 
 // -----------------------------------------------------------------------------
@@ -360,6 +411,7 @@ async function main() {
     if (!r.body?.ok)
       throw new Error(`register: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
     assert(r.body?.data?.user?.id, 'register: missing user.id');
+    state.userId = r.body?.data?.user?.id ?? null;
   });
 
   // 4. GET /shop/npc auth pre-onboard → 200 entries[] shape (no char
@@ -484,18 +536,127 @@ async function main() {
     assertErrorCode(r, 'INSUFFICIENT_FUNDS', 'POST /shop/buy fresh 0 LT');
   });
 
-  // 14. anti-FE-self-grant + logout + GET /shop/npc 401.
-  await step('anti-FE-self-grant + logout + GET /shop/npc 401', async () => {
-    const after = await fetchCharCurrencies();
+  // 13.5. anti-FE-self-grant invariant (failed buys 11-13): linhThach +
+  //       tienNgoc KHÔNG đổi qua 3 failed buys (catalog miss / stackable
+  //       fail / atomic INSUFFICIENT_FUNDS rollback). Snapshot trước positive
+  //       path để cô lập invariant chỉ với failed buys.
+  await step('anti-FE-self-grant — currency KHÔNG đổi qua 3 failed buys 11-13', async () => {
+    const afterFailed = await fetchCharCurrencies();
     assert(
-      after.linhThach === before.linhThach,
-      `linhThach VẪN ${before.linhThach} sau failed buys, got ${after.linhThach}`,
+      afterFailed.linhThach === before.linhThach,
+      `linhThach post-failed-buys: expect '${before.linhThach}', got '${afterFailed.linhThach}'`,
     );
     assert(
-      after.tienNgoc === before.tienNgoc,
-      `tienNgoc VẪN ${before.tienNgoc} sau failed buys, got ${after.tienNgoc}`,
+      afterFailed.tienNgoc === before.tienNgoc,
+      `tienNgoc post-failed-buys: expect ${before.tienNgoc}, got ${afterFailed.tienNgoc}`,
+    );
+  });
+
+  // ---------------------------------------------------------------------------
+  // POSITIVE PATH (Phase 9 deferred — unblocked PR #389 admin grant-currency).
+  //
+  // Snapshot before vs after invariant: linhThach 0 → 25 (admin grant) → 0
+  // (shop spend), inventory huyet_chi_dan KHÔNG có row pre-buy → qty=1 row
+  // post-buy. Atomic spend currency + grant inventory + 2 ledger entries
+  // (CurrencyLedger reason='SHOP_BUY' delta=-25 + ItemLedger reason='SHOP_BUY'
+  // qty=+1).
+  // ---------------------------------------------------------------------------
+
+  // 14. Snapshot player cookies + admin login swap → grant-currency 25 LT →
+  //     restore player cookies.
+  /** @type {Map<string,string> | null} */
+  let playerCookieSnap = null;
+  await step('admin login + grant-currency LINH_THACH 25 (seed shop buy)', async () => {
+    if (!state.userId) throw new Error('state.userId missing — register chưa chạy');
+    playerCookieSnap = snapshotCookies();
+    cookieJar.clear();
+    const login = await http('/api/_auth/login', {
+      method: 'POST',
+      body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    assertStatus(login, 200, 'admin login (shop buy seed)');
+    const u = login.body?.data?.user;
+    assert(u?.role === 'ADMIN', `admin login: role phải ADMIN, got ${u?.role}`);
+
+    const grant = await http(`/api/admin/users/${state.userId}/grant-currency`, {
+      method: 'POST',
+      body: {
+        currency: 'LINH_THACH',
+        delta: '25',
+        reason: 'smoke shop buy seed',
+      },
+    });
+    assertStatus(grant, 200, 'admin grant-currency 25 LT');
+    assert(
+      grant.body?.ok === true && grant.body?.data?.ok === true,
+      `grant-currency 25 LT: shape mismatch, got ${JSON.stringify(grant.body)}`,
     );
 
+    const logout = await http('/api/_auth/logout', { method: 'POST' });
+    assertStatus(logout, [200, 204], 'admin logout (shop buy seed)');
+    cookieJar.clear();
+    if (!playerCookieSnap) throw new Error('playerCookieSnap missing');
+    restoreCookies(playerCookieSnap);
+  });
+
+  // 15. GET /character/state → linhThach=25 (verify grant cộng đúng).
+  await step('GET /character/state — linhThach=25 post-grant', async () => {
+    const cur = await fetchCharCurrencies();
+    assert(
+      cur.linhThach === '25',
+      `linhThach post-grant: expect '25', got '${cur.linhThach}'`,
+    );
+  });
+
+  // 16. GET /api/inventory pre-buy: KHÔNG có huyet_chi_dan row.
+  await step(`GET /inventory pre-buy — KHÔNG có ${STACKABLE_PILL} row (chưa mua)`, async () => {
+    const r = await http('/api/inventory');
+    assertStatus(r, 200, 'GET /inventory pre-buy');
+    const items = r.body?.data?.items ?? [];
+    assert(Array.isArray(items), 'GET /inventory pre-buy: items not array');
+    const found = items.find((/** @type {any} */ it) => it.itemKey === STACKABLE_PILL);
+    assert(!found, `GET /inventory pre-buy: ${STACKABLE_PILL} đã có (expect chưa mua, got qty=${found?.qty})`);
+  });
+
+  // 17. POST /shop/buy huyet_chi_dan qty=1 → 200 atomic spend 25 LT + grant 1
+  //     inventory + ledger SHOP_BUY (currency.applyTx + inventory.grantTx).
+  await step(`POST /shop/buy — (${STACKABLE_PILL}, qty:1) post-grant 25 LT → 200 atomic`, async () => {
+    const r = await http('/api/shop/buy', {
+      method: 'POST',
+      body: { itemKey: STACKABLE_PILL, qty: 1 },
+    });
+    assertStatus(r, 200, 'POST /shop/buy positive');
+    if (!r.body?.ok) throw new Error(`shop/buy: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const data = r.body?.data;
+    assert(data, 'shop/buy positive: missing data');
+    assert(data.itemKey === STACKABLE_PILL, `shop/buy.itemKey: expect ${STACKABLE_PILL}, got ${data.itemKey}`);
+    assert(data.qty === 1, `shop/buy.qty: expect 1, got ${data.qty}`);
+    assert(data.totalPrice === 25, `shop/buy.totalPrice: expect 25, got ${data.totalPrice}`);
+    assert(data.currency === 'LINH_THACH', `shop/buy.currency: expect LINH_THACH, got ${data.currency}`);
+  });
+
+  // 18. GET /character/state → linhThach=0 post-spend (25 - 25 = 0, atomic).
+  await step('GET /character/state — linhThach=0 post-buy (25 LT - 25 LT)', async () => {
+    const cur = await fetchCharCurrencies();
+    assert(
+      cur.linhThach === '0',
+      `linhThach post-buy: expect '0' (25 grant - 25 spend), got '${cur.linhThach}'`,
+    );
+  });
+
+  // 19. GET /inventory post-buy → huyet_chi_dan stack qty=1 (grantTx
+  //     server-authoritative, KHÔNG do FE tự cộng).
+  await step(`GET /inventory post-buy — ${STACKABLE_PILL} qty=1 (server grantTx)`, async () => {
+    const r = await http('/api/inventory');
+    assertStatus(r, 200, 'GET /inventory post-buy');
+    const items = r.body?.data?.items ?? [];
+    const found = items.find((/** @type {any} */ it) => it.itemKey === STACKABLE_PILL);
+    assert(found, `GET /inventory post-buy: thiếu ${STACKABLE_PILL} stack (expect grantTx tạo row)`);
+    assert(found.qty === 1, `${STACKABLE_PILL}.qty: expect 1, got ${found.qty}`);
+  });
+
+  // 20. logout + GET /shop/npc 401.
+  await step('logout + GET /shop/npc 401', async () => {
     const logout = await http('/api/_auth/logout', { method: 'POST' });
     assertStatus(logout, [200, 204], 'logout');
     const npcAfter = await http('/api/shop/npc');
