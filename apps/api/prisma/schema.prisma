@@ -228,6 +228,14 @@ model Character {
   /// cost (linhThach + nguyên liệu cao cấp) cho L2..L9.
   alchemyFurnaceLevel Int @default(1)
 
+  /// Admin seed harness Phase 11.X — bonus talent point budget cộng dồn
+  /// trên `computeTalentPointBudget(realmOrder)` (3 realm = 1 điểm gốc).
+  /// Use-case: QA seed cho positive-path talent flow / Phase 11.X UI E2E
+  /// `talent learn → cast → cooldown` không cần advance realm. Default = 0
+  /// (không ảnh hưởng player thường). Mutate qua `POST /admin/users/:id/grant-talent-point`
+  /// (admin endpoint) — KHÔNG cho player tự cộng (anti-FE-self-grant).
+  bonusTalentPoints Int @default(0)
+
   sectId String?
   sect   Sect?   @relation(fields: [sectId], references: [id])
 
