@@ -377,6 +377,139 @@ describe('AdminService.grantCurrency', () => {
   });
 });
 
+// ───────────────── grantMethod ─────────────────
+
+describe('AdminService.grantMethod', () => {
+  it('happy path: ADMIN grant `cuu_cuc_kim_cuong_quyet` cho PLAYER → row source=admin + audit', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const player = await makeUserChar(prisma, { role: 'PLAYER' });
+
+    await admin.grantMethod(
+      adminU.userId,
+      'ADMIN',
+      player.userId,
+      'cuu_cuc_kim_cuong_quyet',
+      'phase 11.x smoke seed',
+    );
+
+    const rows = await prisma.characterCultivationMethod.findMany({
+      where: { characterId: player.characterId },
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].methodKey).toBe('cuu_cuc_kim_cuong_quyet');
+    expect(rows[0].source).toBe('admin');
+
+    const audits = await prisma.adminAuditLog.findMany({
+      where: { actorUserId: adminU.userId, action: 'admin.method.grant' },
+    });
+    expect(audits).toHaveLength(1);
+    const meta = audits[0].meta as Record<string, unknown>;
+    expect(meta.targetUserId).toBe(player.userId);
+    expect(meta.characterId).toBe(player.characterId);
+    expect(meta.methodKey).toBe('cuu_cuc_kim_cuong_quyet');
+    expect(meta.previousLearnedCount).toBe(0);
+    expect(meta.alreadyLearned).toBe(false);
+    expect(meta.reason).toBe('phase 11.x smoke seed');
+  });
+
+  it('idempotent: grant cùng method 2 lần → vẫn 1 row, lần 2 alreadyLearned=true (audit ghi cả 2 lần)', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const player = await makeUserChar(prisma, { role: 'PLAYER' });
+
+    await admin.grantMethod(adminU.userId, 'ADMIN', player.userId, 'cuu_cuc_kim_cuong_quyet', '');
+    await admin.grantMethod(adminU.userId, 'ADMIN', player.userId, 'cuu_cuc_kim_cuong_quyet', '');
+
+    const rows = await prisma.characterCultivationMethod.findMany({
+      where: { characterId: player.characterId, methodKey: 'cuu_cuc_kim_cuong_quyet' },
+    });
+    expect(rows).toHaveLength(1);
+
+    const audits = await prisma.adminAuditLog.findMany({
+      where: { actorUserId: adminU.userId, action: 'admin.method.grant' },
+      orderBy: { createdAt: 'asc' },
+    });
+    expect(audits).toHaveLength(2);
+    expect((audits[0].meta as Record<string, unknown>).alreadyLearned).toBe(false);
+    expect((audits[1].meta as Record<string, unknown>).alreadyLearned).toBe(true);
+    // previousLearnedCount lần 2 = 1 (đã có 1 row)
+    expect((audits[1].meta as Record<string, unknown>).previousLearnedCount).toBe(1);
+  });
+
+  it('bypass realm/sect validation — luyenkhi PLAYER grant truc_co-tier method OK (admin override)', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const player = await makeUserChar(prisma, {
+      role: 'PLAYER',
+      realmKey: 'luyenkhi',
+      realmStage: 1,
+    });
+
+    // `cuu_cuc_kim_cuong_quyet` requires realm `truc_co` (player ở luyenkhi).
+    // Service vẫn grant OK — admin override (mirror grantSpiritualRoot semantics).
+    await admin.grantMethod(adminU.userId, 'ADMIN', player.userId, 'cuu_cuc_kim_cuong_quyet', '');
+
+    const rows = await prisma.characterCultivationMethod.findMany({
+      where: { characterId: player.characterId },
+    });
+    expect(rows).toHaveLength(1);
+  });
+
+  it('INVALID_INPUT khi methodKey không có trong shared catalog', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const player = await makeUserChar(prisma, { role: 'PLAYER' });
+    await expect(
+      admin.grantMethod(adminU.userId, 'ADMIN', player.userId, 'no_such_method', ''),
+    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+  });
+
+  it('INVALID_INPUT khi methodKey rỗng', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const player = await makeUserChar(prisma, { role: 'PLAYER' });
+    await expect(
+      admin.grantMethod(adminU.userId, 'ADMIN', player.userId, '', ''),
+    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+  });
+
+  it('CANNOT_TARGET_SELF khi actor === target', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    await expect(
+      admin.grantMethod(adminU.userId, 'ADMIN', adminU.userId, 'cuu_cuc_kim_cuong_quyet', ''),
+    ).rejects.toMatchObject({ code: 'CANNOT_TARGET_SELF' });
+  });
+
+  it('NOT_FOUND khi target user không tồn tại', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    await expect(
+      admin.grantMethod(adminU.userId, 'ADMIN', 'no-such-user', 'cuu_cuc_kim_cuong_quyet', ''),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('FORBIDDEN khi MOD cố grant cho ADMIN', async () => {
+    const modU = await makeUserChar(prisma, { role: 'MOD' });
+    const adminTarget = await makeUserChar(prisma, { role: 'ADMIN' });
+    await expect(
+      admin.grantMethod(modU.userId, 'MOD', adminTarget.userId, 'cuu_cuc_kim_cuong_quyet', ''),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('MOD grant cho PLAYER → ok (role hierarchy mirror grantTalentPoint)', async () => {
+    const modU = await makeUserChar(prisma, { role: 'MOD' });
+    const player = await makeUserChar(prisma, { role: 'PLAYER' });
+
+    await admin.grantMethod(
+      modU.userId,
+      'MOD',
+      player.userId,
+      'cuu_cuc_kim_cuong_quyet',
+      'mod ok',
+    );
+
+    const rows = await prisma.characterCultivationMethod.findMany({
+      where: { characterId: player.characterId },
+    });
+    expect(rows).toHaveLength(1);
+  });
+});
+
 // ───────────────── Talent budget composition (talent.service tích hợp) ─────────────────
 
 describe('TalentService budget compose with bonusTalentPoints', () => {
@@ -395,5 +528,151 @@ describe('TalentService budget compose with bonusTalentPoints', () => {
     const c = await prisma.character.findUnique({ where: { id: player.characterId } });
     expect(c?.bonusTalentPoints).toBe(3);
     expect(c?.realmKey).toBe('luyenkhi');
+  });
+});
+
+// ───────────────── seedDailyLoginStreak ─────────────────
+
+describe('AdminService.seedDailyLoginStreak', () => {
+  it('happy path: ADMIN seed 6 days → 6 rows backdated, streakAtClaim 1..6, audit ghi đủ', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const player = await makeUserChar(prisma, { role: 'PLAYER' });
+
+    // Pin now để test deterministic (UTC midnight 2026-05-04).
+    const now = new Date('2026-05-04T12:00:00Z');
+    const result = await admin.seedDailyLoginStreak(
+      adminU.userId,
+      'ADMIN',
+      player.userId,
+      6,
+      'phase 11.x smoke seed',
+      now,
+    );
+
+    expect(result.rowsCreated).toBe(6);
+    expect(result.previousRowCount).toBe(0);
+    expect(result.newStreakWillBe).toBe(7);
+
+    const rows = await prisma.dailyLoginClaim.findMany({
+      where: { characterId: player.characterId },
+      orderBy: { claimDateLocal: 'asc' },
+    });
+    expect(rows).toHaveLength(6);
+    // Asia/Ho_Chi_Minh (default MISSION_RESET_TZ): 2026-05-04 12:00Z = 2026-05-04 19:00 ICT → todayDateLocal=2026-05-04.
+    // Yesterday=2026-05-03, day-2=2026-05-02, ..., day-6=2026-04-28.
+    expect(rows[0].claimDateLocal).toBe('2026-04-28');
+    expect(rows[0].streakAtClaim).toBe(1);
+    expect(rows[5].claimDateLocal).toBe('2026-05-03');
+    expect(rows[5].streakAtClaim).toBe(6);
+    // KHÔNG cộng tiền (admin chỉ seed historical).
+    expect(rows.every((r) => r.linhThachDelta === 0n)).toBe(true);
+
+    const audits = await prisma.adminAuditLog.findMany({
+      where: { actorUserId: adminU.userId, action: 'admin.daily_login.seed' },
+    });
+    expect(audits).toHaveLength(1);
+    const meta = audits[0].meta as Record<string, unknown>;
+    expect(meta.days).toBe(6);
+    expect(meta.rowsCreated).toBe(6);
+    expect(meta.previousRowCount).toBe(0);
+    // Loop seed từ day-N (oldest) → day-1 (yesterday): firstSeededDateLocal = oldest, lastSeededDateLocal = newest.
+    expect(meta.firstSeededDateLocal).toBe('2026-04-28');
+    expect(meta.lastSeededDateLocal).toBe('2026-05-03');
+  });
+
+  it('idempotent: seed cùng days 2 lần → row count vẫn = days, audit ghi rowsCreated=0 lần 2', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const player = await makeUserChar(prisma, { role: 'PLAYER' });
+    const now = new Date('2026-05-04T12:00:00Z');
+
+    const r1 = await admin.seedDailyLoginStreak(adminU.userId, 'ADMIN', player.userId, 3, '', now);
+    const r2 = await admin.seedDailyLoginStreak(adminU.userId, 'ADMIN', player.userId, 3, '', now);
+
+    expect(r1.rowsCreated).toBe(3);
+    expect(r2.rowsCreated).toBe(0);
+    expect(r2.previousRowCount).toBe(3);
+
+    const rows = await prisma.dailyLoginClaim.findMany({
+      where: { characterId: player.characterId },
+    });
+    expect(rows).toHaveLength(3);
+
+    const audits = await prisma.adminAuditLog.findMany({
+      where: { actorUserId: adminU.userId, action: 'admin.daily_login.seed' },
+    });
+    expect(audits).toHaveLength(2);
+  });
+
+  it('INVALID_INPUT khi days = 0', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const player = await makeUserChar(prisma, { role: 'PLAYER' });
+
+    await expect(
+      admin.seedDailyLoginStreak(adminU.userId, 'ADMIN', player.userId, 0, ''),
+    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+  });
+
+  it('INVALID_INPUT khi days > 30 (cap)', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const player = await makeUserChar(prisma, { role: 'PLAYER' });
+
+    await expect(
+      admin.seedDailyLoginStreak(adminU.userId, 'ADMIN', player.userId, 31, ''),
+    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+  });
+
+  it('INVALID_INPUT khi days không phải integer (vd 1.5)', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const player = await makeUserChar(prisma, { role: 'PLAYER' });
+
+    await expect(
+      admin.seedDailyLoginStreak(adminU.userId, 'ADMIN', player.userId, 1.5, ''),
+    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+  });
+
+  it('CANNOT_TARGET_SELF khi actor === target', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+
+    await expect(
+      admin.seedDailyLoginStreak(adminU.userId, 'ADMIN', adminU.userId, 6, ''),
+    ).rejects.toMatchObject({ code: 'CANNOT_TARGET_SELF' });
+  });
+
+  it('NOT_FOUND khi target user không tồn tại', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+
+    await expect(
+      admin.seedDailyLoginStreak(adminU.userId, 'ADMIN', 'no-such-user', 6, ''),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('FORBIDDEN khi MOD seed cho ADMIN', async () => {
+    const modU = await makeUserChar(prisma, { role: 'MOD' });
+    const adminTarget = await makeUserChar(prisma, { role: 'ADMIN' });
+
+    await expect(
+      admin.seedDailyLoginStreak(modU.userId, 'MOD', adminTarget.userId, 6, ''),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('MOD seed cho PLAYER → ok (role hierarchy mirror grantMethod)', async () => {
+    const modU = await makeUserChar(prisma, { role: 'MOD' });
+    const player = await makeUserChar(prisma, { role: 'PLAYER' });
+    const now = new Date('2026-05-04T12:00:00Z');
+
+    const result = await admin.seedDailyLoginStreak(
+      modU.userId,
+      'MOD',
+      player.userId,
+      6,
+      '',
+      now,
+    );
+
+    expect(result.rowsCreated).toBe(6);
+    const rows = await prisma.dailyLoginClaim.findMany({
+      where: { characterId: player.characterId },
+    });
+    expect(rows).toHaveLength(6);
   });
 });

@@ -4,6 +4,7 @@ import {
   ELEMENTS,
   SPIRITUAL_ROOT_GRADES,
   expCostForStage,
+  getCultivationMethodDef,
   getSpiritualRootGradeDef,
   itemByKey,
   realmByKey,
@@ -13,6 +14,11 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { CharacterService } from '../character/character.service';
 import { CurrencyError, CurrencyService } from '../character/currency.service';
+import {
+  addDaysLocal,
+  getLocalDateString,
+} from '../daily-login/daily-login.service';
+import { getMissionResetTz } from '../mission/mission.service';
 import { TopupService, type TopupOrderView } from '../topup/topup.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { InventoryService } from '../inventory/inventory.service';
@@ -41,6 +47,7 @@ const MAX_REVOKE_QTY = 999; // chặn admin gõ nhầm lệnh revoke số khổn
 const MAX_GRANT_QTY = 999; // mirror revoke cap cho admin grant item
 const MAX_GRANT_EXP = 10n ** 18n; // 10^18 — đủ cho mọi cảnh giới + buffer; chặn nhập sai BigInt
 const MAX_GRANT_TALENT_POINT = 99; // đủ buffer cho mọi tier talent (catalog max ~30 tổng cost), chặn nhập sai
+const MAX_SEED_DAILY_LOGIN_DAYS = 30; // 1 tháng — đủ smoke multi-day, chặn admin gõ nhầm seed lớn
 const PAGE_SIZE = 30;
 
 export interface AdminUserRow {
@@ -923,6 +930,204 @@ export class AdminService {
 
     const state = await this.chars.findByUser(targetUserId);
     if (state) this.realtime.emitToUser(targetUserId, 'state:update', state);
+  }
+
+  /**
+   * Cấp cho character quyền sở hữu 1 cultivation method (công pháp) mà bình
+   * thường phải qua dungeon drop / sect shop / boss drop / event để học. Use-case:
+   * positive-path smoke `smoke:cultivation-method` switch method (yêu cầu
+   * `bach_van_chu_tam_quyet` đã ở trong `learned[]`), Phase 11.X UI E2E
+   * cultivation method swap → expMultiplier change (boss combat / cultivation
+   * idle EXP scaling).
+   *
+   *  - `methodKey` phải tồn tại trong shared `CULTIVATION_METHODS` catalog
+   *    (`getCultivationMethodDef`) — chống typo silent-noop.
+   *  - **Bypass realm/sect/element validation** — admin override semantics
+   *    (mirror `grantSpiritualRoot` / `setRealm`). Player tự equip bằng
+   *    `POST /character/cultivation-method/equip` vẫn validate đầy đủ
+   *    (REALM_TOO_LOW / WRONG_SECT / FORBIDDEN_ELEMENT) — admin chỉ
+   *    seed dữ liệu, KHÔNG bypass equip gate.
+   *  - **Idempotent**: nếu character đã học method này (`@@unique([characterId,
+   *    methodKey])` trên `CharacterCultivationMethod`), P2002 được catch
+   *    → no-op (mirror `CultivationMethodService.learn` semantics). Audit
+   *    log vẫn ghi (caller có thể distinguish qua `alreadyLearned: true`
+   *    field).
+   *  - Source = `'admin'` (mirror `CultivationMethodSource` union).
+   *  - MOD chỉ grant cho PLAYER; ADMIN grant được mọi role (mirror
+   *    `grantSpiritualRoot` / `grantTalentPoint` hierarchy).
+   *  - Audit `AdminAuditLog action='admin.method.grant'` ghi previousLearnedCount
+   *    + alreadyLearned flag để rollback / verify.
+   */
+  async grantMethod(
+    actorId: string,
+    actorRole: Role,
+    targetUserId: string,
+    methodKey: string,
+    reason: string,
+  ): Promise<void> {
+    if (actorId === targetUserId) throw new AdminError('CANNOT_TARGET_SELF');
+    if (!methodKey || methodKey.length > 80) throw new AdminError('INVALID_INPUT');
+    if (!getCultivationMethodDef(methodKey)) throw new AdminError('INVALID_INPUT');
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { role: true },
+    });
+    if (!targetUser) throw new AdminError('NOT_FOUND');
+    if (actorRole !== 'ADMIN' && targetUser.role !== 'PLAYER') {
+      throw new AdminError('FORBIDDEN');
+    }
+    const target = await this.prisma.character.findUnique({
+      where: { userId: targetUserId },
+      select: { id: true },
+    });
+    if (!target) throw new AdminError('NOT_FOUND');
+
+    const previousLearnedCount = await this.prisma.characterCultivationMethod.count({
+      where: { characterId: target.id },
+    });
+
+    let alreadyLearned = false;
+    try {
+      await this.prisma.characterCultivationMethod.create({
+        data: {
+          characterId: target.id,
+          methodKey,
+          source: 'admin',
+        },
+      });
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        alreadyLearned = true;
+      } else {
+        throw e;
+      }
+    }
+
+    await this.audit(actorId, 'admin.method.grant', {
+      targetUserId,
+      characterId: target.id,
+      methodKey,
+      previousLearnedCount,
+      alreadyLearned,
+      reason,
+    });
+
+    const state = await this.chars.findByUser(targetUserId);
+    if (state) this.realtime.emitToUser(targetUserId, 'state:update', state);
+  }
+
+  /**
+   * Seed `dailyLoginClaim` rows cho `days` ngày liên tiếp ngay TRƯỚC hôm nay
+   * (yesterday, day-2, ..., day-days), mỗi row có `streakAtClaim` tăng dần
+   * 1..days. Use-case: positive-path smoke `smoke:daily-login` multi-day —
+   * test streak chain logic mà không cần đợi nhiều ngày thật / fake clock /
+   * Prisma migration thêm `nextEligibleAt`.
+   *
+   *  - `days` ∈ [1..30] — chặn admin gõ nhầm seed lớn.
+   *  - **KHÔNG cộng tiền**: admin chỉ seed historical claim rows
+   *    (cho streak chain). Today's claim của player vẫn cộng 100 LT
+   *    qua `CurrencyService.applyTx` (server-authoritative ledger).
+   *  - **Idempotent**: nếu row `(characterId, claimDateLocal)` đã tồn tại,
+   *    skip (tránh P2002). Audit ghi `rowsCreated` (số row mới insert)
+   *    + `previousRowCount` (số row tồn tại trước khi seed).
+   *  - Bypass real-time clock: dùng `MISSION_RESET_TZ` tính `todayDateLocal`
+   *    rồi `addDaysLocal(today, -i)` cho i=1..days. Sau seed,
+   *    `last.claimDateLocal` = yesterday → `claim()` của player hôm nay
+   *    sẽ thấy yesterday chain → newStreak = days + 1.
+   *  - MOD chỉ seed cho PLAYER; ADMIN seed được mọi role (mirror
+   *    `grantSpiritualRoot` / `grantTalentPoint` hierarchy).
+   *  - Audit `AdminAuditLog action='admin.daily_login.seed'` ghi
+   *    `rowsCreated`, `previousRowCount`, `days`, `firstSeededDateLocal`,
+   *    `lastSeededDateLocal` để rollback / verify.
+   */
+  async seedDailyLoginStreak(
+    actorId: string,
+    actorRole: Role,
+    targetUserId: string,
+    days: number,
+    reason: string,
+    now: Date = new Date(),
+  ): Promise<{ rowsCreated: number; previousRowCount: number; newStreakWillBe: number }> {
+    if (actorId === targetUserId) throw new AdminError('CANNOT_TARGET_SELF');
+    if (!Number.isInteger(days) || days < 1 || days > MAX_SEED_DAILY_LOGIN_DAYS) {
+      throw new AdminError('INVALID_INPUT');
+    }
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { role: true },
+    });
+    if (!targetUser) throw new AdminError('NOT_FOUND');
+    if (actorRole !== 'ADMIN' && targetUser.role !== 'PLAYER') {
+      throw new AdminError('FORBIDDEN');
+    }
+    const target = await this.prisma.character.findUnique({
+      where: { userId: targetUserId },
+      select: { id: true },
+    });
+    if (!target) throw new AdminError('NOT_FOUND');
+
+    const tz = getMissionResetTz();
+    const todayDateLocal = getLocalDateString(now, tz);
+
+    const previousRowCount = await this.prisma.dailyLoginClaim.count({
+      where: { characterId: target.id },
+    });
+
+    // Build N rows: oldest day-N (streak=1) → yesterday (streak=days).
+    let rowsCreated = 0;
+    let firstSeededDateLocal: string | null = null;
+    let lastSeededDateLocal: string | null = null;
+    for (let i = days; i >= 1; i--) {
+      const claimDateLocal = addDaysLocal(todayDateLocal, -i);
+      const streakAtClaim = days - i + 1;
+      try {
+        await this.prisma.dailyLoginClaim.create({
+          data: {
+            characterId: target.id,
+            claimDateLocal,
+            // Seed-only: KHÔNG cộng tiền thật (admin override). Lưu 0
+            // để audit rõ "đây là seed historical, KHÔNG phải claim thật".
+            linhThachDelta: 0n,
+            streakAtClaim,
+          },
+        });
+        rowsCreated++;
+        if (firstSeededDateLocal === null) firstSeededDateLocal = claimDateLocal;
+        lastSeededDateLocal = claimDateLocal;
+      } catch (e) {
+        if (
+          e instanceof Prisma.PrismaClientKnownRequestError &&
+          e.code === 'P2002'
+        ) {
+          // Idempotent: row đã có → skip.
+          continue;
+        }
+        throw e;
+      }
+    }
+
+    await this.audit(actorId, 'admin.daily_login.seed', {
+      targetUserId,
+      characterId: target.id,
+      days,
+      rowsCreated,
+      previousRowCount,
+      firstSeededDateLocal,
+      lastSeededDateLocal,
+      reason,
+    });
+
+    return {
+      rowsCreated,
+      previousRowCount,
+      // Sau seed, yesterday's streakAtClaim = days → today's claim → days + 1.
+      // Nếu seed hoàn toàn fresh (rowsCreated === days) → days + 1.
+      // Nếu đã có row yesterday từ trước → tùy chain, nhưng audit ghi đủ.
+      newStreakWillBe: days + 1,
+    };
   }
 
   // ---------- topup ----------
