@@ -44,9 +44,28 @@
  *  18. Admin revoke giftcode qua `/api/admin/giftcodes/:code/revoke` →
  *      `revokedAt` set (ISO timestamp).
  *  19. Player NEW (jar mới) redeem giftcode đã revoke → 409 CODE_REVOKED.
- *  20. Player → `/api/admin/stats` → 403 FORBIDDEN (admin guard reject PLAYER).
- *  21. Admin logout `/api/_auth/logout` → cookie cleared.
- *  22. Player logout `/api/_auth/logout` → cookie cleared.
+ *  20. Admin POST /admin/users/:id/role với role lạ → 400 INVALID_INPUT (zod).
+ *  21. Admin POST /admin/users/:id/role tự đổi role chính mình → 400
+ *      CANNOT_TARGET_SELF (anti self-demote lock-out).
+ *  22. Admin POST /admin/users/:id/role {role:'MOD'} promote PLAYER → 200 ok,
+ *      audit log `user.setRole` ghi nhận.
+ *  23. Player /api/_auth/session → role='MOD' (server-authoritative role
+ *      reflect ngay sau update; cookie cũ vẫn hợp lệ vì JWT chỉ chứa userId,
+ *      role lookup mỗi request từ DB).
+ *  24. Admin POST /admin/users/:id/role {role:'PLAYER'} demote MOD → 200 ok.
+ *  25. Player /api/_auth/session → role='PLAYER' (revert verify).
+ *  26. Admin POST /admin/users/:id/ban với body lạ → 400 INVALID_INPUT (zod).
+ *  27. Admin POST /admin/users/:id/ban {banned:true} → 200 ok, audit log
+ *      `user.ban` ghi nhận.
+ *  28. Player POST /api/_auth/login (banned) → 403 ACCOUNT_BANNED. Đây là
+ *      coverage cho defer item của PR #377 smoke:auth: "ACCOUNT_BANNED 403
+ *      cần admin endpoint ban user trước, orthogonal cho smoke:admin".
+ *  29. Admin POST /admin/users/:id/ban {banned:false} → 200 ok, audit log
+ *      `user.unban` ghi nhận.
+ *  30. Player POST /api/_auth/login (unbanned) → 200 ok (login restored).
+ *  31. Player → `/api/admin/stats` → 403 FORBIDDEN (admin guard reject PLAYER).
+ *  32. Admin logout `/api/_auth/logout` → cookie cleared.
+ *  33. Player logout `/api/_auth/logout` → cookie cleared.
  *
  * Chạy:
  *   pnpm smoke:admin
@@ -786,7 +805,185 @@ async function main() {
     assert(typeof mine.revokedAt === 'string', `giftcode list: revokedAt phải ISO string`);
   });
 
-  // 24. PLAYER cookie → /api/admin/* → 403 FORBIDDEN (admin guard).
+  // ---------------------------------------------------------------------------
+  // 24-25. Role flow: zod-fail + self-target guard + promote/demote round-trip.
+  //
+  //   Cover:
+  //     - Zod input contract: `role` phải là enum 'PLAYER'|'MOD'|'ADMIN'
+  //       (RoleInput, xem admin.dto.ts). Body lạ → 400 INVALID_INPUT trước
+  //       service.
+  //     - AdminService.setRole guards (admin.service.ts):
+  //         a) `actorRole !== 'ADMIN'` → FORBIDDEN (smoke chạy với ADMIN actor
+  //            nên không cover; xem admin.controller.test.ts +
+  //            admin.guard.test.ts).
+  //         b) `actorId === targetUserId` → CANNOT_TARGET_SELF (anti
+  //            self-demote lock-out, BAD_REQUEST 400).
+  //         c) `target` not found → NOT_FOUND 404.
+  //     - Server-authoritative role lookup: JWT chỉ chứa userId, mỗi request
+  //       lookup role tươi từ DB → setRole có hiệu lực ngay với cookie cũ.
+  //
+  //   Note: vitest đã cover setRole hierarchy (topup-admin.service.test.ts:172
+  //   self-target + admin.controller.test.ts L463 setRole permission). Smoke
+  //   verify HTTP contract end-to-end.
+  // ---------------------------------------------------------------------------
+
+  await step('admin POST /admin/users/:id/role — invalid role 400 INVALID_INPUT', async () => {
+    if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+    const r = await http(state.adminJar, `/api/admin/users/${state.playerUserId}/role`, {
+      method: 'POST',
+      body: { role: 'INVALID_ROLE' },
+    });
+    assertStatus(r, 400, 'admin role invalid');
+    assert(
+      r.body?.error?.code === 'INVALID_INPUT',
+      `expect error.code='INVALID_INPUT', got ${JSON.stringify(r.body?.error)}`,
+    );
+  });
+
+  await step('admin POST /admin/users/<adminUserId>/role — self-target → 400 CANNOT_TARGET_SELF', async () => {
+    if (!state.adminUserId) throw new Error(`adminUserId undefined`);
+    const r = await http(state.adminJar, `/api/admin/users/${state.adminUserId}/role`, {
+      method: 'POST',
+      body: { role: 'PLAYER' },
+    });
+    assertStatus(r, 400, 'admin role self-target');
+    assert(
+      r.body?.error?.code === 'CANNOT_TARGET_SELF',
+      `expect error.code='CANNOT_TARGET_SELF', got ${JSON.stringify(r.body?.error)}`,
+    );
+  });
+
+  await step('admin POST /admin/users/:id/role {role:MOD} — promote PLAYER → 200', async () => {
+    if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+    const r = await http(state.adminJar, `/api/admin/users/${state.playerUserId}/role`, {
+      method: 'POST',
+      body: { role: 'MOD' },
+    });
+    assertStatus(r, 200, 'admin role promote MOD');
+    assert(r.body?.ok === true, `expect ok=true, got ${JSON.stringify(r.body)}`);
+  });
+
+  await step('player /api/_auth/session — role=MOD (server-authoritative reflect)', async () => {
+    const r = await http(state.playerJar, '/api/_auth/session');
+    assertStatus(r, 200, 'player session post-promote');
+    const u = r.body?.data?.user;
+    assert(u, 'session: missing user');
+    assert(
+      u.role === 'MOD',
+      `session: role phải MOD sau promote, got ${u.role} (cookie cũ phải vẫn hợp lệ vì JWT chỉ chứa userId, role lookup mỗi request từ DB)`,
+    );
+  });
+
+  await step('admin POST /admin/users/:id/role {role:PLAYER} — demote MOD → 200', async () => {
+    if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+    const r = await http(state.adminJar, `/api/admin/users/${state.playerUserId}/role`, {
+      method: 'POST',
+      body: { role: 'PLAYER' },
+    });
+    assertStatus(r, 200, 'admin role demote PLAYER');
+    assert(r.body?.ok === true, `expect ok=true, got ${JSON.stringify(r.body)}`);
+  });
+
+  await step('player /api/_auth/session — role=PLAYER (revert verify)', async () => {
+    const r = await http(state.playerJar, '/api/_auth/session');
+    assertStatus(r, 200, 'player session post-demote');
+    const u = r.body?.data?.user;
+    assert(u, 'session: missing user');
+    assert(u.role === 'PLAYER', `session: role phải revert PLAYER, got ${u.role}`);
+  });
+
+  // ---------------------------------------------------------------------------
+  // 26-30. Ban flow: zod-fail + ban → login 403 ACCOUNT_BANNED → unban → login OK.
+  //
+  //   Cover:
+  //     - Zod BanInput: `banned` phải boolean. Body lạ → 400 INVALID_INPUT.
+  //     - AdminService.setBanned (admin.service.ts L254-269):
+  //         a) self-target → CANNOT_TARGET_SELF (vitest cover, smoke skip vì
+  //            đã verify trong setRole self-target ở step trên).
+  //         b) hierarchy: MOD chỉ ban PLAYER (smoke actor ADMIN nên irrelevant).
+  //         c) update User.banned + audit log `user.ban` / `user.unban`.
+  //     - AuthService.login (auth.service.ts L146-148): nếu `user.banned`
+  //       throw `AuthError('ACCOUNT_BANNED')` → controller statusForCode →
+  //       403 FORBIDDEN.
+  //
+  //   Đây là coverage cho defer item explicit của PR #377 smoke:auth:
+  //     "ACCOUNT_BANNED 403 cần admin endpoint ban user trước, orthogonal cho
+  //      smoke:admin".
+  //
+  //   Note quan trọng: ban KHÔNG tự revoke cookie hiện tại. Player vẫn login
+  //   được với cookie cũ cho tới khi cookie expire (15min) hoặc passwordVersion
+  //   bump qua change-password/reset-password. Do đó smoke phải chứng minh
+  //   ACCOUNT_BANNED qua login lại (POST /api/_auth/login fresh).
+  // ---------------------------------------------------------------------------
+
+  await step('admin POST /admin/users/:id/ban — invalid body 400 INVALID_INPUT', async () => {
+    if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+    const r = await http(state.adminJar, `/api/admin/users/${state.playerUserId}/ban`, {
+      method: 'POST',
+      body: { banned: 'yes' }, // string thay boolean → zod fail
+    });
+    assertStatus(r, 400, 'admin ban invalid body');
+    assert(
+      r.body?.error?.code === 'INVALID_INPUT',
+      `expect error.code='INVALID_INPUT', got ${JSON.stringify(r.body?.error)}`,
+    );
+  });
+
+  await step('admin POST /admin/users/:id/ban {banned:true} → 200', async () => {
+    if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+    const r = await http(state.adminJar, `/api/admin/users/${state.playerUserId}/ban`, {
+      method: 'POST',
+      body: { banned: true },
+    });
+    assertStatus(r, 200, 'admin ban set true');
+    assert(r.body?.ok === true, `expect ok=true, got ${JSON.stringify(r.body)}`);
+  });
+
+  await step('player POST /_auth/login (banned) → 403 ACCOUNT_BANNED', async () => {
+    if (!state.playerEmail || !state.playerPassword) {
+      throw new Error(`playerEmail/playerPassword undefined`);
+    }
+    const freshJar = new CookieJar();
+    const r = await http(freshJar, '/api/_auth/login', {
+      method: 'POST',
+      body: { email: state.playerEmail, password: state.playerPassword },
+    });
+    assertStatus(r, 403, 'banned login');
+    assert(
+      r.body?.error?.code === 'ACCOUNT_BANNED',
+      `expect error.code='ACCOUNT_BANNED', got ${JSON.stringify(r.body?.error)}`,
+    );
+  });
+
+  await step('admin POST /admin/users/:id/ban {banned:false} → 200', async () => {
+    if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+    const r = await http(state.adminJar, `/api/admin/users/${state.playerUserId}/ban`, {
+      method: 'POST',
+      body: { banned: false },
+    });
+    assertStatus(r, 200, 'admin ban set false');
+    assert(r.body?.ok === true, `expect ok=true, got ${JSON.stringify(r.body)}`);
+  });
+
+  await step('player POST /_auth/login (unbanned) → 200 ok', async () => {
+    if (!state.playerEmail || !state.playerPassword) {
+      throw new Error(`playerEmail/playerPassword undefined`);
+    }
+    // Reset playerJar để login với cookie sạch (bảo đảm test cover login flow,
+    // không phụ thuộc state cookie cũ).
+    state.playerJar.clear();
+    const r = await http(state.playerJar, '/api/_auth/login', {
+      method: 'POST',
+      body: { email: state.playerEmail, password: state.playerPassword },
+    });
+    assertStatus(r, 200, 'unbanned login');
+    const u = r.body?.data?.user;
+    assert(u, 'unbanned login: missing user');
+    assert(u.id === state.playerUserId, `unbanned login: user.id mismatch`);
+    assert(u.role === 'PLAYER', `unbanned login: role phải PLAYER, got ${u.role}`);
+  });
+
+  // 31. PLAYER cookie → /api/admin/* → 403 FORBIDDEN (admin guard).
   await step('player → /admin/stats → 403 FORBIDDEN', async () => {
     const r = await http(state.playerJar, '/api/admin/stats');
     assertStatus(r, 403, 'player → admin/stats');
@@ -796,7 +993,7 @@ async function main() {
     );
   });
 
-  // 25. Logout admin + player.
+  // 32-33. Logout admin + player.
   await step('admin logout', async () => {
     const r = await http(state.adminJar, '/api/_auth/logout', { method: 'POST' });
     assertStatus(r, 200, 'admin logout');
