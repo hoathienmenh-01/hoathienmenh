@@ -25,6 +25,7 @@
     "smoke:giftcode": "node scripts/smoke-giftcode.mjs",
     "smoke:leaderboard": "node scripts/smoke-leaderboard.mjs",
     "smoke:mail": "node scripts/smoke-mail.mjs",
+    "smoke:market": "node scripts/smoke-market.mjs",
     "smoke:mission": "node scripts/smoke-mission.mjs",
     "smoke:next-action": "node scripts/smoke-next-action.mjs",
     "smoke:skill": "node scripts/smoke-skill.mjs",
