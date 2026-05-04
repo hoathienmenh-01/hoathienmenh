@@ -99,6 +99,11 @@ const GrantMethodInput = z.object({
   methodKey: z.string().min(1).max(80),
   reason: z.string().max(200).default(''),
 });
+const SeedDailyLoginStreakInput = z.object({
+  /** Số ngày seed liên tiếp ngay TRƯỚC hôm nay (yesterday, day-2, ..., day-days). Service cap [1..30]. */
+  days: z.number().int().min(1).max(30),
+  reason: z.string().max(200).default(''),
+});
 const TopupActionInput = z.object({
   note: z.string().max(200).default(''),
 });
@@ -552,6 +557,38 @@ export class AdminController {
         parsed.data.reason,
       );
       return { ok: true, data: { ok: true } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Seed `dailyLoginClaim` rows cho `days` ngày liên tiếp trước hôm nay
+   * (yesterday, day-2, ..., day-days), mỗi row với `streakAtClaim` tăng dần
+   * 1..days. Use-case: positive-path smoke `smoke:daily-login` multi-day —
+   * test streak chain logic (player claim hôm nay → newStreak = days+1).
+   * KHÔNG cộng tiền (admin chỉ seed historical rows). Idempotent qua skip
+   * P2002. Audit `admin.daily_login.seed`.
+   */
+  @Post('users/:id/seed-daily-login-streak')
+  @HttpCode(200)
+  @RequireAdmin()
+  async seedDailyLoginStreak(
+    @Req() req: AdminReq,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = SeedDailyLoginStreakInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const result = await this.admin.seedDailyLoginStreak(
+        req.userId,
+        req.role,
+        id,
+        parsed.data.days,
+        parsed.data.reason,
+      );
+      return { ok: true, data: result };
     } catch (e) {
       this.handleErr(e);
     }

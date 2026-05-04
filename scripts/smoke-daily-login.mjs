@@ -64,7 +64,32 @@
  *                                                      KHÔNG cộng tiền
  *                                                      thêm — anti
  *                                                      -FE-self-grant).
- *  16. `POST /api/_auth/logout` + GET /me            → 401.
+ *  16. `POST /api/_auth/logout` user 1 + register user 2 + onboard.
+ *  17. (gộp vào 16) onboard user 2.
+ *  18. Snapshot player 2 jar + `POST /api/_auth/login` admin → swap jar.
+ *  19. `POST /api/admin/users/:id/seed-daily-login-streak` { days: 6 }
+ *                                                  → 200 ok, rowsCreated=6,
+ *                                                  previousRowCount=0,
+ *                                                  newStreakWillBe=7.
+ *  20. `GET  /api/admin/audit?action=admin.daily_login.seed`
+ *                                                  → row >= 1.
+ *  21. seed-daily-login-streak lần 2 idempotent     → rowsCreated=0,
+ *                                                  previousRowCount=6
+ *                                                  (P2002 skip).
+ *  22. admin logout + restore player 2 jar.
+ *  23. `GET  /api/daily-login/me`                   → currentStreak=6,
+ *                                                  canClaimToday=true
+ *                                                  (yesterday claim →
+ *                                                  chain).
+ *  24. `POST /api/daily-login/claim`                → claimed=true,
+ *                                                  newStreak=7,
+ *                                                  delta=100.
+ *  25. `GET  /api/character/state`                  → linhThach='100'
+ *                                                  (admin seed delta=0
+ *                                                  → only today's claim
+ *                                                  cộng tiền — anti
+ *                                                  -FE-self-grant).
+ *  26. `POST /api/_auth/logout` + GET /me           → 401.
  *
  * Anti-FE-self-grant invariant (per Luật bắt buộc — KHÔNG để FE tự cộng
  * tiền/streak qua double-claim):
@@ -74,6 +99,8 @@
  *   - `todayDateLocal` KHÔNG đổi (deterministic theo `MISSION_RESET_TZ`).
  *   - `character.linhThach` KHÔNG đổi qua idempotent claim — verify ledger
  *     applyTx KHÔNG được gọi 2 lần cho cùng characterId+claimDateLocal.
+ *   - admin seedDailyLoginStreak KHÔNG cộng tiền (delta=0 cho mọi historical
+ *     row) — chỉ today's claim cộng 100 LT qua CurrencyService.applyTx.
  *
  * Chạy:
  *   pnpm smoke:daily-login
@@ -81,10 +108,13 @@
  *   node scripts/smoke-daily-login.mjs
  *
  * Env vars:
- *   SMOKE_API_BASE     — default "http://localhost:3000".
- *   SMOKE_TIMEOUT_MS   — default 10000ms / request.
- *   SMOKE_VERBOSE      — "1" để log request/response (debug).
- *   SMOKE_SECT_KEY     — default "thanh_van".
+ *   SMOKE_API_BASE       — default "http://localhost:3000".
+ *   SMOKE_TIMEOUT_MS     — default 10000ms / request.
+ *   SMOKE_VERBOSE        — "1" để log request/response (debug).
+ *   SMOKE_SECT_KEY       — default "thanh_van".
+ *   SMOKE_ADMIN_EMAIL    — default "admin@example.com" (bootstrap admin
+ *                          từ INITIAL_ADMIN_EMAIL).
+ *   SMOKE_ADMIN_PASSWORD — default "change-me-bootstrap-pass".
  *
  * Yêu cầu môi trường (giống smoke:skill):
  *   - `pnpm infra:up` (Postgres + Redis)
@@ -109,6 +139,9 @@ const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS ?? 10_000);
 const VERBOSE = process.env.SMOKE_VERBOSE === '1';
 const SECT_KEY = process.env.SMOKE_SECT_KEY ?? 'thanh_van';
 const EXPECTED_REWARD = '100'; // DAILY_LOGIN_LINH_THACH = 100n.
+const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL ?? 'admin@example.com';
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? 'change-me-bootstrap-pass';
+const SEED_DAYS = 6;
 
 // -----------------------------------------------------------------------------
 // Cookie jar — Node fetch không có cookie jar built-in, tự track set-cookie.
@@ -142,6 +175,17 @@ function storeSetCookie(res) {
 function cookieHeader() {
   if (cookieJar.size === 0) return undefined;
   return Array.from(cookieJar, ([k, v]) => `${k}=${v}`).join('; ');
+}
+
+/** Snapshot toàn bộ jar (cho admin/player swap). @returns {Map<string,string>} */
+function snapshotCookies() {
+  return new Map(cookieJar);
+}
+
+/** Restore jar từ snapshot (clear current + replay). @param {Map<string,string>} snap */
+function restoreCookies(snap) {
+  cookieJar.clear();
+  for (const [k, v] of snap) cookieJar.set(k, v);
 }
 
 // -----------------------------------------------------------------------------
@@ -476,7 +520,163 @@ async function main() {
     );
   });
 
-  // 16. logout + GET /me → 401 UNAUTHENTICATED.
+  // -----------------------------------------------------------------------------
+  // Positive multi-day flow (admin seedDailyLoginStreak → player claim → newStreak=N+1).
+  // -----------------------------------------------------------------------------
+  // Cần fresh user 2 vì user 1 đã claim hôm nay (canClaimToday=false). Admin
+  // bootstrap qua INITIAL_ADMIN_EMAIL / INITIAL_ADMIN_PASSWORD ở apps/api/.env.
+
+  /** @type {string | null} */
+  let player2UserId = null;
+  /** @type {Map<string,string> | null} */
+  let player2CookieSnap = null;
+
+  // 16. Logout user 1 + register user 2 + onboard.
+  const email2 = randomEmail();
+  const password2 = randomPassword();
+  await step('logout user 1 + register user 2 (multi-day positive flow)', async () => {
+    const logout = await http('/api/_auth/logout', { method: 'POST' });
+    assertStatus(logout, [200, 204], 'logout user 1');
+    cookieJar.clear();
+    const r = await http('/api/_auth/register', {
+      method: 'POST',
+      body: { email: email2, password: password2 },
+    });
+    assertStatus(r, [200, 201], 'register user 2');
+    if (!r.body?.ok)
+      throw new Error(`register user 2: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    player2UserId = r.body?.data?.user?.id;
+    assert(player2UserId, 'register user 2: missing user.id');
+  });
+
+  // 17. Onboard user 2.
+  await step('onboard user 2', async () => {
+    const r = await http('/api/character/onboard', {
+      method: 'POST',
+      body: { name: randomCharName(), sectKey: SECT_KEY },
+    });
+    assertStatus(r, [200, 201], 'onboard user 2');
+    if (!r.body?.ok)
+      throw new Error(`onboard user 2: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+  });
+
+  // 18. Snapshot player 2 jar + admin login (jar swap).
+  await step('admin login — swap cookie jar (player 2 → admin)', async () => {
+    player2CookieSnap = snapshotCookies();
+    cookieJar.clear();
+    const r = await http('/api/_auth/login', {
+      method: 'POST',
+      body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    assertStatus(r, 200, 'admin login');
+    if (!r.body?.ok)
+      throw new Error(`admin login: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const u = r.body?.data?.user;
+    assert(u?.role === 'ADMIN', `admin login: role phải ADMIN (cần bootstrap admin@example.com), got ${u?.role}`);
+  });
+
+  // 19. Admin POST /admin/users/:id/seed-daily-login-streak {days:6} → 200 ok.
+  await step(`admin POST /admin/users/:id/seed-daily-login-streak { days: ${SEED_DAYS} } → 200 ok`, async () => {
+    if (!player2UserId) throw new Error('player2UserId missing — register chưa chạy');
+    const r = await http(`/api/admin/users/${player2UserId}/seed-daily-login-streak`, {
+      method: 'POST',
+      body: { days: SEED_DAYS, reason: 'smoke daily-login multi-day positive' },
+    });
+    assertStatus(r, 200, 'admin seed-daily-login-streak');
+    assert(
+      r.body?.ok === true && r.body?.data?.rowsCreated === SEED_DAYS,
+      `seed-daily-login-streak shape: expect rowsCreated=${SEED_DAYS}, got ${JSON.stringify(r.body).slice(0, 300)}`,
+    );
+    assert(
+      r.body?.data?.previousRowCount === 0,
+      `seed-daily-login-streak: expect previousRowCount=0 (fresh char), got ${r.body?.data?.previousRowCount}`,
+    );
+    assert(
+      r.body?.data?.newStreakWillBe === SEED_DAYS + 1,
+      `seed-daily-login-streak: expect newStreakWillBe=${SEED_DAYS + 1}, got ${r.body?.data?.newStreakWillBe}`,
+    );
+  });
+
+  // 20. Admin GET /admin/audit?action=admin.daily_login.seed → row >= 1.
+  await step('admin GET /admin/audit?action=admin.daily_login.seed — row >= 1', async () => {
+    const r = await http('/api/admin/audit?action=admin.daily_login.seed');
+    assertStatus(r, 200, 'admin/audit?action=admin.daily_login.seed');
+    const rows = r.body?.data?.rows ?? [];
+    assert(Array.isArray(rows) && rows.length >= 1, `audit seed: phải >= 1 row, got ${rows?.length}`);
+    assert(
+      rows[0].action === 'admin.daily_login.seed',
+      `audit row[0].action: expect 'admin.daily_login.seed', got '${rows[0].action}'`,
+    );
+  });
+
+  // 21. Idempotent: seed lại lần 2 → rowsCreated=0, previousRowCount=SEED_DAYS.
+  await step(`admin seed-daily-login-streak idempotent (2nd call) → rowsCreated=0, previousRowCount=${SEED_DAYS}`, async () => {
+    if (!player2UserId) throw new Error('player2UserId missing');
+    const r = await http(`/api/admin/users/${player2UserId}/seed-daily-login-streak`, {
+      method: 'POST',
+      body: { days: SEED_DAYS, reason: 'smoke daily-login idempotent' },
+    });
+    assertStatus(r, 200, 'admin seed-daily-login-streak idempotent');
+    assert(
+      r.body?.data?.rowsCreated === 0,
+      `seed idempotent: expect rowsCreated=0 (P2002 skip), got ${r.body?.data?.rowsCreated}`,
+    );
+    assert(
+      r.body?.data?.previousRowCount === SEED_DAYS,
+      `seed idempotent: expect previousRowCount=${SEED_DAYS}, got ${r.body?.data?.previousRowCount}`,
+    );
+  });
+
+  // 22. Admin logout + restore player 2 jar.
+  await step('admin logout + restore player 2 cookies', async () => {
+    const r = await http('/api/_auth/logout', { method: 'POST' });
+    assertStatus(r, [200, 204], 'admin logout');
+    cookieJar.clear();
+    if (!player2CookieSnap) throw new Error('player2CookieSnap missing');
+    restoreCookies(player2CookieSnap);
+  });
+
+  // 23. Player 2 GET /daily-login/me → currentStreak=SEED_DAYS, canClaimToday=true.
+  await step(`GET /daily-login/me — post-seed: currentStreak=${SEED_DAYS}, canClaimToday=true`, async () => {
+    const r = await http('/api/daily-login/me');
+    assertStatus(r, 200, 'GET /me post-seed');
+    const s = r.body?.data;
+    assert(
+      s?.currentStreak === SEED_DAYS,
+      `currentStreak post-seed: expect ${SEED_DAYS} (yesterday claim → chain), got ${s?.currentStreak}`,
+    );
+    assert(s?.canClaimToday === true, `canClaimToday post-seed: expect true (chưa claim hôm nay), got ${s?.canClaimToday}`);
+    assert(s?.nextRewardLinhThach === EXPECTED_REWARD, `nextRewardLinhThach: expect '${EXPECTED_REWARD}', got '${s?.nextRewardLinhThach}'`);
+  });
+
+  // 24. Player 2 POST /daily-login/claim → claimed=true, newStreak=SEED_DAYS+1, delta=100.
+  await step(`POST /daily-login/claim — multi-day positive claimed=true newStreak=${SEED_DAYS + 1}`, async () => {
+    const r = await http('/api/daily-login/claim', { method: 'POST' });
+    assertStatus(r, 200, 'POST /claim multi-day');
+    const data = r.body?.data;
+    assert(data?.claimed === true, `claimed: expect true (chưa claim hôm nay), got ${data?.claimed}`);
+    assert(
+      data?.linhThachDelta === EXPECTED_REWARD,
+      `linhThachDelta: expect '${EXPECTED_REWARD}', got '${data?.linhThachDelta}'`,
+    );
+    assert(
+      data?.newStreak === SEED_DAYS + 1,
+      `newStreak: expect ${SEED_DAYS + 1} (admin seeded ${SEED_DAYS} → +1 today), got ${data?.newStreak}`,
+    );
+  });
+
+  // 25. GET /character/state — linhThach=100 (only today's reward; seeded historicals delta=0).
+  await step("GET /character/state — linhThach='100' (admin seed delta=0, only today's claim cộng tiền)", async () => {
+    const r = await http('/api/character/state');
+    assertStatus(r, 200, 'GET /state post-multi-day');
+    const c = r.body?.data?.character;
+    assert(
+      c?.linhThach === EXPECTED_REWARD,
+      `linhThach post-multi-day: expect '${EXPECTED_REWARD}' (admin seed KHÔNG cộng tiền — chỉ today's claim 100 LT), got '${c?.linhThach}'`,
+    );
+  });
+
+  // 26. logout + GET /me → 401 UNAUTHENTICATED.
   await step('logout + GET /daily-login/me — 401 UNAUTHENTICATED', async () => {
     const logout = await http('/api/_auth/logout', { method: 'POST' });
     assertStatus(logout, [200, 204], 'logout');
