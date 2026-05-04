@@ -488,7 +488,15 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - KHÔNG schema migration, KHÔNG BE change, KHÔNG ledger, KHÔNG store contract change — pure FE UI polish per UI MODULE RULE.
 - Defer: realtime cooldown countdown WS push (Phase 11.7.H), TalentView E2E smoke với `E2E_FULL=1` cho cast → DungeonView highlight → cast in combat → cooldown badge update (Phase 11.X UI E2E smoke gap — partial coverage in 11.X.AY).
 
-#### 11.X.BB PR: smoke:breakthrough HTTP smoke script (breakthrough negative path state machine + anti-FE-self-grant invariant) — PENDING MERGE (this push)
+#### 11.X.BC PR: smoke:spiritual-root HTTP smoke script (linh căn state machine + lazy onboard idempotency + reroll negative path + anti-FE-self-grant invariant) — PENDING MERGE (this push)
+
+- `scripts/smoke-spiritual-root.mjs` NEW Node 20 native fetch zero-install (mirror pattern `smoke-breakthrough.mjs`). 13-step cover: 401 unauth (GET + POST reroll) → register → 404 NO_CHARACTER (GET + POST reroll) → onboard → snapshot {grade, primaryElement, secondaryElements (sorted joined), purity, rerollCount=0} → GET first time lazy auto-roll onboard + verify shape (grade ∈ pham/linh/huyen/tien/than, primaryElement ∈ kim/moc/thuy/hoa/tho, secondaryElements distinct from primary, purity ∈ [80,100]) → GET lần 2 IDEMPOTENT (state unchanged, rollOnboard log source='onboard' guard prevent re-roll) → POST reroll 409 LINH_CAN_DAN_INSUFFICIENT (fresh char 0 stack `linh_can_dan`) → state unchanged → idempotent fail 409 → state vẫn unchanged → logout 401.
+- Anti-FE-self-grant invariant: failed reroll KHÔNG đụng grade/primaryElement/secondaryElements/purity/rerollCount (snapshot before/after compare 2 lần — post-fail + post-idempotent-fail).
+- `package.json` thêm `"smoke:spiritual-root": "node scripts/smoke-spiritual-root.mjs"` (alphabet order admin/beta/breakthrough/combat/cultivation/economy/spiritual-root/topup/ws).
+- KHÔNG schema migration, KHÔNG BE change, KHÔNG store contract change, KHÔNG ledger — pure smoke addition. KHÔNG yêu cầu admin login. KHÔNG mutate dữ liệu real existing. Zero-install (native fetch + Node 20). Local verification: 13/13 OK 2 lần liên tiếp deterministic.
+- Defer: smoke:spiritual-root positive path (reroll thành công với inventory có `linh_can_dan`) yêu cầu admin seed item HOẶC dungeon drop pre-population — defer cho future smoke với admin secret.
+
+#### 11.X.BB PR: smoke:breakthrough HTTP smoke script (breakthrough negative path state machine + anti-FE-self-grant invariant) — DONE ✅ (PR #361 merged)
 
 - `scripts/smoke-breakthrough.mjs` NEW Node 20 native fetch zero-install (mirror pattern `smoke-topup.mjs` cookie jar + step runner + assertProgressionImmutable). 11-step cover negative path: 401 unauth → register → 404 NO_CHARACTER (logged in nhưng chưa onboard) → onboard → snapshot {realmKey, realmStage, exp, level, hpMax, mpMax} → 409 NOT_AT_PEAK fresh char (realmStage<9) → state unchanged → idempotent fail 409 → state vẫn unchanged → body junk vẫn 409 (endpoint server-authoritative không parse body — xác minh không thể tự nâng realmStage qua FE) → logout 401.
 - Anti-FE-self-grant invariant: failed breakthrough KHÔNG đụng realmKey/realmStage/exp/level/hpMax/mpMax (snapshot before/after compare 2 lần — post-fail + post-idempotent-fail).
