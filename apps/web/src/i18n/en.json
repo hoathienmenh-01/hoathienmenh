@@ -563,7 +563,15 @@
       "DUNGEON_NOT_FOUND": "Dungeon not found.",
       "ENCOUNTER_NOT_FOUND": "This fight no longer exists.",
       "ENCOUNTER_ENDED": "Fight has ended.",
+      "TALENT_NOT_LEARNED": "Talent not learned yet.",
+      "TALENT_NOT_ACTIVE": "Talent cannot be cast in combat.",
+      "TALENT_ON_COOLDOWN": "Talent is on cooldown.",
       "UNKNOWN": "Something went wrong, please retry."
+    },
+    "talents": {
+      "title": "Active Talents",
+      "cooldownLabel": "CD {turns}",
+      "preselected": "Loadout"
     }
   },
   "inventory": {

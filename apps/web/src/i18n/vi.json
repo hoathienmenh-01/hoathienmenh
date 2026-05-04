@@ -563,7 +563,15 @@
       "DUNGEON_NOT_FOUND": "Không tìm thấy ải.",
       "ENCOUNTER_NOT_FOUND": "Trận chiến không còn nữa.",
       "ENCOUNTER_ENDED": "Trận chiến đã kết thúc.",
+      "TALENT_NOT_LEARNED": "Chưa lĩnh ngộ thần thông này.",
+      "TALENT_NOT_ACTIVE": "Thần thông này không phát động được trong trận.",
+      "TALENT_ON_COOLDOWN": "Thần thông còn hồi.",
       "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
+    },
+    "talents": {
+      "title": "Thần thông chủ động",
+      "cooldownLabel": "Còn hồi {turns} lượt",
+      "preselected": "Loadout"
     }
   },
   "inventory": {
