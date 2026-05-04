@@ -156,6 +156,8 @@
 const BASE = (process.env.SMOKE_API_BASE ?? 'http://localhost:3000').replace(/\/+$/, '');
 const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS ?? 10_000);
 const VERBOSE = process.env.SMOKE_VERBOSE === '1';
+const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL ?? 'admin@example.com';
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? 'change-me-bootstrap-pass';
 
 // -----------------------------------------------------------------------------
 // Cookie jar.
@@ -163,6 +165,17 @@ const VERBOSE = process.env.SMOKE_VERBOSE === '1';
 
 /** @type {Map<string, string>} */
 const cookieJar = new Map();
+
+/** Snapshot cookieJar để switch tạm sang admin rồi restore lại player. */
+function snapshotCookies() {
+  return new Map(cookieJar);
+}
+
+/** @param {Map<string,string>} snapshot */
+function restoreCookies(snapshot) {
+  cookieJar.clear();
+  for (const [k, v] of snapshot) cookieJar.set(k, v);
+}
 
 /** @param {Response} res */
 function storeSetCookie(res) {
@@ -393,6 +406,8 @@ async function main() {
   // 5. Register fresh user.
   const email = randomEmail();
   const password = randomPassword();
+  /** @type {string | undefined} */
+  let playerUserId;
   await step('register', async () => {
     const r = await http('/api/_auth/register', {
       method: 'POST',
@@ -401,7 +416,8 @@ async function main() {
     assertStatus(r, [200, 201], 'register');
     if (!r.body?.ok)
       throw new Error(`register: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
-    assert(r.body?.data?.user?.id, 'register: missing user.id');
+    playerUserId = r.body?.data?.user?.id;
+    assert(playerUserId, 'register: missing user.id');
   });
 
   // 6. GET /inventory pre-onboard → 404 NO_CHARACTER (controller gate).
@@ -563,7 +579,180 @@ async function main() {
     );
   });
 
-  // 21. Logout + GET /inventory → 401.
+  // -----------------------------------------------------------------------------
+  // POSITIVE PATH — admin seed grant-item huyet_chi_dan/co_thien_dan/so_kiem
+  // → player /inventory/use (pill effect + ledger consume) + equip/unequip
+  // (weapon equippedSlot atomic update).
+  //
+  // Foundation từ PR #383 admin seed harness BE. Anti-FE-self-grant invariant
+  // giữ: tất cả grant đều qua admin endpoint (audit `admin.inventory.grant`),
+  // tất cả use/equip qua player endpoint (ledger USE/EQUIP_LOG).
+  // -----------------------------------------------------------------------------
+
+  /** @type {Map<string,string>} */
+  let playerCookieSnap;
+
+  // 21. Snapshot player cookies + admin login → swap jar.
+  await step('admin login — swap cookie jar (player → admin)', async () => {
+    playerCookieSnap = snapshotCookies();
+    cookieJar.clear();
+    const r = await http('/api/_auth/login', {
+      method: 'POST',
+      body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    assertStatus(r, 200, 'admin login');
+    if (!r.body?.ok)
+      throw new Error(`admin login: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const u = r.body?.data?.user;
+    assert(
+      u?.role === 'ADMIN',
+      `admin login: role phải ADMIN (cần bootstrap admin@example.com), got ${u?.role}`,
+    );
+  });
+
+  // 22. Admin POST /admin/users/:id/grant-item co_thien_dan qty=2 (PILL_EXP +500).
+  await step(
+    "admin POST /admin/users/:id/grant-item {itemKey:'co_thien_dan',qty:2} → 200 ok (seed exp pill)",
+    async () => {
+      if (!playerUserId) throw new Error('playerUserId missing');
+      const r = await http(`/api/admin/users/${playerUserId}/grant-item`, {
+        method: 'POST',
+        body: { itemKey: 'co_thien_dan', qty: 2, reason: 'smoke inventory use seed' },
+      });
+      assertStatus(r, 200, 'admin/users/:id/grant-item co_thien_dan');
+      assert(
+        r.body?.ok === true && r.body?.data?.ok === true,
+        `grant-item 200: shape mismatch, got ${JSON.stringify(r.body)}`,
+      );
+    },
+  );
+
+  // 23. Admin POST /admin/users/:id/grant-item so_kiem qty=1 (WEAPON, no effect).
+  await step(
+    "admin POST /admin/users/:id/grant-item {itemKey:'so_kiem',qty:1} → 200 ok (seed weapon)",
+    async () => {
+      if (!playerUserId) throw new Error('playerUserId missing');
+      const r = await http(`/api/admin/users/${playerUserId}/grant-item`, {
+        method: 'POST',
+        body: { itemKey: 'so_kiem', qty: 1, reason: 'smoke inventory equip seed' },
+      });
+      assertStatus(r, 200, 'admin/users/:id/grant-item so_kiem');
+      assert(
+        r.body?.ok === true && r.body?.data?.ok === true,
+        `grant-item 200: shape mismatch, got ${JSON.stringify(r.body)}`,
+      );
+    },
+  );
+
+  // 24. Admin logout → restore player cookies.
+  await step('admin logout + restore player cookies', async () => {
+    const r = await http('/api/_auth/logout', { method: 'POST' });
+    assertStatus(r, [200, 204], 'admin logout');
+    cookieJar.clear();
+    restoreCookies(playerCookieSnap);
+  });
+
+  // 25. Player GET /inventory → 2 stack rows (co_thien_dan qty=2, so_kiem qty=1).
+  /** @type {string | undefined} */
+  let pillId;
+  /** @type {string | undefined} */
+  let weaponId;
+  await step('GET /inventory — post-grant: 2 stack rows (co_thien_dan qty=2, so_kiem qty=1)', async () => {
+    const items = await fetchInventoryItems();
+    assert(items.length === 2, `inventory length post-grant: expect 2, got ${items.length}`);
+    const pill = items.find((i) => i.itemKey === 'co_thien_dan');
+    const weapon = items.find((i) => i.itemKey === 'so_kiem');
+    assert(pill, `inventory: thiếu co_thien_dan stack`);
+    assert(weapon, `inventory: thiếu so_kiem stack`);
+    assert(pill.qty === 2, `co_thien_dan qty: expect 2, got ${pill.qty}`);
+    assert(weapon.qty === 1, `so_kiem qty: expect 1, got ${weapon.qty}`);
+    pillId = pill.id;
+    weaponId = weapon.id;
+    assert(pillId && weaponId, 'inventory: missing inventoryItemId');
+  });
+
+  // 26. Snapshot exp before pill use.
+  const expBeforePill = BigInt((await http('/api/character/me')).body?.data?.character?.exp ?? '0');
+
+  // 27. POST /inventory/use co_thien_dan → 200 + items[] shape, qty 2→1.
+  await step("POST /inventory/use co_thien_dan → 200 (PILL_EXP +500, qty 2→1)", async () => {
+    if (!pillId) throw new Error('pillId missing');
+    const r = await http('/api/inventory/use', { method: 'POST', body: { inventoryItemId: pillId } });
+    assertStatus(r, 200, 'POST /inventory/use co_thien_dan');
+    if (!r.body?.ok) throw new Error(`use: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const items = r.body?.data?.items;
+    assert(Array.isArray(items), 'use: items not array');
+    const pill = items.find((/** @type {any} */ i) => i.id === pillId);
+    assert(pill, `use: pill row vẫn còn (qty 1)`);
+    assert(pill.qty === 1, `co_thien_dan qty post-use: expect 1, got ${pill.qty}`);
+  });
+
+  // 28. character/me — exp = before + 500 (server-authoritative pill effect).
+  await step('character/me — exp = before + 500 (PILL_EXP server-authoritative)', async () => {
+    const r = await http('/api/character/me');
+    assertStatus(r, 200, 'character/me post-pill');
+    const expAfter = BigInt(r.body?.data?.character?.exp ?? '0');
+    const expected = expBeforePill + 500n;
+    assert(
+      expAfter === expected,
+      `exp post-pill: expect ${expected} (before+500), got ${expAfter} (before ${expBeforePill})`,
+    );
+  });
+
+  // 29. POST /inventory/use so_kiem → 409 NOT_USABLE (weapon no effect).
+  await step('POST /inventory/use so_kiem → 409 NOT_USABLE (weapon không có effect)', async () => {
+    if (!weaponId) throw new Error('weaponId missing');
+    const r = await http('/api/inventory/use', { method: 'POST', body: { inventoryItemId: weaponId } });
+    assertStatus(r, 409, 'POST /inventory/use so_kiem');
+    assertErrorCode(r, 'NOT_USABLE', 'POST /inventory/use so_kiem');
+  });
+
+  // 30. POST /inventory/equip so_kiem → 200, equippedSlot='WEAPON'.
+  await step('POST /inventory/equip so_kiem → 200 (equippedSlot=WEAPON)', async () => {
+    if (!weaponId) throw new Error('weaponId missing');
+    const r = await http('/api/inventory/equip', { method: 'POST', body: { inventoryItemId: weaponId } });
+    assertStatus(r, 200, 'POST /inventory/equip so_kiem');
+    if (!r.body?.ok) throw new Error(`equip: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const items = r.body?.data?.items;
+    assert(Array.isArray(items), 'equip: items not array');
+    const weapon = items.find((/** @type {any} */ i) => i.id === weaponId);
+    assert(weapon, `equip: weapon row missing`);
+    assert(weapon.equippedSlot === 'WEAPON', `equip: equippedSlot expect 'WEAPON', got '${weapon.equippedSlot}'`);
+  });
+
+  // 31. POST /inventory/unequip {slot:'WEAPON'} → 200, equippedSlot=null.
+  await step("POST /inventory/unequip {slot:'WEAPON'} → 200 (equippedSlot=null)", async () => {
+    const r = await http('/api/inventory/unequip', { method: 'POST', body: { slot: 'WEAPON' } });
+    assertStatus(r, 200, 'POST /inventory/unequip WEAPON');
+    if (!r.body?.ok) throw new Error(`unequip: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const items = r.body?.data?.items;
+    assert(Array.isArray(items), 'unequip: items not array');
+    const weapon = items.find((/** @type {any} */ i) => i.id === weaponId);
+    assert(weapon, `unequip: weapon row missing`);
+    assert(weapon.equippedSlot === null, `unequip: equippedSlot expect null, got '${weapon.equippedSlot}'`);
+  });
+
+  // 32. POST /inventory/use co_thien_dan lần 2 → 200 (qty 1→0, row deleted).
+  await step('POST /inventory/use co_thien_dan #2 → 200 (qty 1→0, row deleted)', async () => {
+    if (!pillId) throw new Error('pillId missing');
+    const r = await http('/api/inventory/use', { method: 'POST', body: { inventoryItemId: pillId } });
+    assertStatus(r, 200, 'POST /inventory/use co_thien_dan #2');
+    const items = r.body?.data?.items;
+    assert(Array.isArray(items), 'use #2: items not array');
+    const pill = items.find((/** @type {any} */ i) => i.id === pillId);
+    assert(!pill, `use #2: pill row vẫn tồn tại (qty 0 phải delete)`);
+  });
+
+  // 33. POST /inventory/use co_thien_dan lần 3 → 404 INVENTORY_ITEM_NOT_FOUND
+  //     (consumed, row đã bị xoá).
+  await step('POST /inventory/use co_thien_dan #3 → 404 INVENTORY_ITEM_NOT_FOUND (consumed)', async () => {
+    if (!pillId) throw new Error('pillId missing');
+    const r = await http('/api/inventory/use', { method: 'POST', body: { inventoryItemId: pillId } });
+    assertStatus(r, 404, 'POST /inventory/use co_thien_dan #3');
+    assertErrorCode(r, 'INVENTORY_ITEM_NOT_FOUND', 'POST /inventory/use co_thien_dan #3');
+  });
+
+  // 34. Logout + GET /inventory → 401.
   await step('logout + GET /inventory 401 UNAUTHENTICATED', async () => {
     const logout = await http('/api/_auth/logout', { method: 'POST' });
     assertStatus(logout, [200, 204], 'logout');
