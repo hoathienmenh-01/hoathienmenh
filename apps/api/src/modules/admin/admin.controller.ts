@@ -52,6 +52,30 @@ const InventoryRevokeInput = z.object({
   qty: z.number().int().positive().max(999),
   reason: z.string().max(200).default(''),
 });
+const GrantExpInput = z.object({
+  /** EXP cộng — chỉ nhận positive BigInt (không trừ EXP). Decimal regex giới hạn 19 char. */
+  exp: z
+    .string()
+    .regex(/^\d{1,19}$/, 'exp must be a positive bigint up to 10^18'),
+  reason: z.string().max(200).default(''),
+});
+const GrantItemInput = z.object({
+  itemKey: z.string().min(1).max(80),
+  qty: z.number().int().positive().max(999),
+  reason: z.string().max(200).default(''),
+});
+const GrantSpiritualRootInput = z.object({
+  grade: z.enum(['pham', 'linh', 'huyen', 'tien', 'than']),
+  primaryElement: z.enum(['kim', 'moc', 'thuy', 'hoa', 'tho']),
+  /** Optional override; nếu omit, server tự derive theo ELEMENTS order skip primary. */
+  secondaryElements: z
+    .array(z.enum(['kim', 'moc', 'thuy', 'hoa', 'tho']))
+    .max(4)
+    .optional(),
+  /** Optional 1-100; default 100 (admin override = max purity). */
+  purity: z.number().int().min(1).max(100).optional(),
+  reason: z.string().max(200).default(''),
+});
 const TopupActionInput = z.object({
   note: z.string().max(200).default(''),
 });
@@ -292,6 +316,90 @@ export class AdminController {
         parsed.data.qty,
         parsed.data.reason,
       );
+      return { ok: true, data: { ok: true } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Admin seed harness — cộng EXP trực tiếp vào Character. Use-case:
+   * positive-path smoke breakthrough (EXP đủ next-realm), test cultivation
+   * method exp multiplier mà không phải chờ Nhập Định tick. Audit
+   * `admin.exp.grant`. KHÔNG ledger (EXP không phải currency).
+   */
+  @Post('users/:id/grant-exp')
+  @HttpCode(200)
+  @RequireAdmin()
+  async grantExp(@Req() req: AdminReq, @Param('id') id: string, @Body() body: unknown) {
+    const parsed = GrantExpInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      await this.admin.grantExp(
+        req.userId,
+        req.role,
+        id,
+        BigInt(parsed.data.exp),
+        parsed.data.reason,
+      );
+      return { ok: true, data: { ok: true } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Admin seed harness — cấp item vào túi. Use-case: positive-path smoke
+   * cho item-consume (skill book, linh_can_dan reroll, pill, equip) không
+   * phải chờ drop hoặc giftcode redeem. Reuse inventory.grant() →
+   * ItemLedger reason='ADMIN_GRANT'. Audit `admin.inventory.grant`.
+   */
+  @Post('users/:id/grant-item')
+  @HttpCode(200)
+  @RequireAdmin()
+  async grantItem(@Req() req: AdminReq, @Param('id') id: string, @Body() body: unknown) {
+    const parsed = GrantItemInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      await this.admin.grantItem(
+        req.userId,
+        req.role,
+        id,
+        parsed.data.itemKey,
+        parsed.data.qty,
+        parsed.data.reason,
+      );
+      return { ok: true, data: { ok: true } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Admin seed harness — override Linh căn / Spiritual Root. Use-case:
+   * positive-path smoke combat element (controlled grade=than +
+   * primaryElement=kim → max bonus), spiritual root reroll smoke (verify
+   * SpiritualRootRollLog source='admin_grant' insert + Character update).
+   * Audit `admin.spiritualRoot.grant`.
+   */
+  @Post('users/:id/grant-spiritual-root')
+  @HttpCode(200)
+  @RequireAdmin()
+  async grantSpiritualRoot(
+    @Req() req: AdminReq,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = GrantSpiritualRootInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      await this.admin.grantSpiritualRoot(req.userId, req.role, id, {
+        grade: parsed.data.grade,
+        primaryElement: parsed.data.primaryElement,
+        secondaryElements: parsed.data.secondaryElements,
+        purity: parsed.data.purity,
+        reason: parsed.data.reason,
+      });
       return { ok: true, data: { ok: true } };
     } catch (e) {
       this.handleErr(e);

@@ -123,13 +123,49 @@
  *      = 1 (chỉ player match qua email contains).
  *  59. Admin GET /admin/audit?action=user.exportCsv → rows >= 2 (audit từ step
  *      57 + 58, admin.service.ts L224 audit qua exportUsers).
- *  60. Player → /admin/economy/report → 403 FORBIDDEN.
- *  61. Player → /admin/audit → 403 FORBIDDEN.
- *  62. Player → `/api/admin/stats` → 403 FORBIDDEN (admin guard reject PLAYER).
- *  63. Player → /admin/users.csv → 403 FORBIDDEN (admin guard reject PLAYER).
- *  64. Player → /admin/mail/broadcast → 403 FORBIDDEN (admin guard reject PLAYER).
- *  65. Admin logout `/api/_auth/logout` → cookie cleared.
- *  66. Player logout `/api/_auth/logout` → cookie cleared.
+ *
+ *      ADMIN SEED HARNESS (foundation cho positive-path smokes — Phase 11.X):
+ *  60. Admin POST /admin/users/:id/grant-exp {} → 400 INVALID_INPUT (zod miss
+ *      exp regex `/^\d{1,19}$/`, admin.controller.ts GrantExpInput).
+ *  61. Admin POST /admin/users/:id/grant-exp {exp:'-1'} → 400 INVALID_INPUT
+ *      (zod regex reject negative, không bao giờ trừ EXP).
+ *  62. Player /character/me — snapshot exp trước grant (server-authoritative
+ *      reference point).
+ *  63. Admin POST /admin/users/:id/grant-exp {exp:'5000',reason:'smoke seed'}
+ *      → 200 ok (admin.service.ts grantExp + audit `admin.exp.grant`).
+ *  64. Player /character/me → exp == snapshot + 5000 (BigInt-safe increment,
+ *      Character.exp { increment: BigInt(delta) } qua prisma).
+ *  65. Admin POST /admin/users/:id/grant-item {itemKey:'fake_xyz',qty:1} → 400
+ *      INVALID_INPUT (admin.service.ts itemByKey() reject typo, no silent noop).
+ *  66. Admin POST /admin/users/:id/grant-item {itemKey:'huyet_chi_dan',qty:5,
+ *      reason:'smoke seed'} → 200 ok (audit `admin.inventory.grant` +
+ *      ItemLedger reason='ADMIN_GRANT' qua inventory.grant).
+ *  67. Player GET /inventory → huyet_chi_dan qty tăng đúng 5 (server-authoritative
+ *      ItemLedger ADMIN_GRANT row, stack vào row hiện có sau revoke ở step 49).
+ *  68. Admin POST /admin/users/:id/grant-spiritual-root {grade:'fake',
+ *      primaryElement:'kim'} → 400 INVALID_INPUT (zod enum reject).
+ *  69. Admin POST /admin/users/:id/grant-spiritual-root {grade:'than',
+ *      primaryElement:'kim'} → 200 ok (admin.service.ts grantSpiritualRoot +
+ *      audit `admin.spiritualRoot.grant` + SpiritualRootRollLog source='admin_grant'
+ *      tx-atomic với Character update).
+ *  70. Player GET /character/spiritual-root → grade='than' + primaryElement='kim'
+ *      + secondaryElements length=4 (server-authoritative state reflect ngay
+ *      sau admin override; spiritual-root.service.ts toStateOut từ Character row).
+ *  71. Admin GET /admin/audit?action=admin.exp.grant → rows >= 1 (audit từ step 63).
+ *  72. Admin GET /admin/audit?action=admin.inventory.grant → rows >= 1 (audit từ step 66).
+ *  73. Admin GET /admin/audit?action=admin.spiritualRoot.grant → rows >= 1 (audit từ step 69).
+ *
+ *      PLAYER 403 REGRESSION (admin guard reject PLAYER):
+ *  74. Player → /admin/economy/report → 403 FORBIDDEN.
+ *  75. Player → /admin/audit → 403 FORBIDDEN.
+ *  76. Player → `/api/admin/stats` → 403 FORBIDDEN (admin guard reject PLAYER).
+ *  77. Player → /admin/users.csv → 403 FORBIDDEN (admin guard reject PLAYER).
+ *  78. Player → /admin/mail/broadcast → 403 FORBIDDEN (admin guard reject PLAYER).
+ *  79. Player → /admin/users/:id/grant-exp → 403 FORBIDDEN.
+ *  80. Player → /admin/users/:id/grant-item → 403 FORBIDDEN.
+ *  81. Player → /admin/users/:id/grant-spiritual-root → 403 FORBIDDEN.
+ *  82. Admin logout `/api/_auth/logout` → cookie cleared.
+ *  83. Player logout `/api/_auth/logout` → cookie cleared.
  *
  * Chạy:
  *   pnpm smoke:admin
@@ -420,6 +456,8 @@ function sumQtyDeltaForItem(entries, itemKey) {
  *   giftCode?: string;
  *   mailId?: string;
  *   broadcastSubject?: string;
+ *   playerExpSnapshot?: bigint;
+ *   playerHuyetChiDanQtyBeforeGrant?: number;
  * }}
  */
 const state = {
@@ -1676,7 +1714,250 @@ async function main() {
     },
   );
 
-  // 60-62. PLAYER cookie → /api/admin/* read-only → 403 FORBIDDEN (admin guard).
+  // 60-73. ADMIN SEED HARNESS — 3 endpoints foundation cho positive-path smokes
+  // (breakthrough EXP seed / item-consume seed / spiritual-root override seed).
+  await step(
+    'admin POST /admin/users/:id/grant-exp {} → 400 INVALID_INPUT (zod miss exp)',
+    async () => {
+      if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+      const r = await http(state.adminJar, `/api/admin/users/${state.playerUserId}/grant-exp`, {
+        method: 'POST',
+        body: {},
+      });
+      assertStatus(r, 400, 'admin/users/:id/grant-exp empty body');
+      assert(
+        r.body?.error?.code === 'INVALID_INPUT',
+        `grant-exp {}: expect INVALID_INPUT, got ${JSON.stringify(r.body?.error)}`,
+      );
+    },
+  );
+
+  await step(
+    "admin POST /admin/users/:id/grant-exp {exp:'-1'} → 400 INVALID_INPUT (zod regex reject negative)",
+    async () => {
+      if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+      const r = await http(state.adminJar, `/api/admin/users/${state.playerUserId}/grant-exp`, {
+        method: 'POST',
+        body: { exp: '-1' },
+      });
+      assertStatus(r, 400, "admin/users/:id/grant-exp {exp:'-1'}");
+      assert(
+        r.body?.error?.code === 'INVALID_INPUT',
+        `grant-exp {-1}: expect INVALID_INPUT, got ${JSON.stringify(r.body?.error)}`,
+      );
+    },
+  );
+
+  await step('player /character/me — snapshot exp trước grant', async () => {
+    const r = await http(state.playerJar, '/api/character/me');
+    assertStatus(r, 200, 'player/character/me snapshot exp');
+    const expStr = r.body?.data?.character?.exp;
+    assert(typeof expStr === 'string', `character.exp phải là string BigInt-safe, got ${typeof expStr}`);
+    state.playerExpSnapshot = BigInt(expStr);
+  });
+
+  await step(
+    "admin POST /admin/users/:id/grant-exp {exp:'5000'} → 200 ok",
+    async () => {
+      if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+      const r = await http(state.adminJar, `/api/admin/users/${state.playerUserId}/grant-exp`, {
+        method: 'POST',
+        body: { exp: '5000', reason: 'smoke seed' },
+      });
+      assertStatus(r, 200, 'admin/users/:id/grant-exp happy');
+      assert(
+        r.body?.ok === true && r.body?.data?.ok === true,
+        `grant-exp 200: shape mismatch, got ${JSON.stringify(r.body)}`,
+      );
+    },
+  );
+
+  await step('player /character/me — exp == snapshot + 5000 (server-authoritative)', async () => {
+    if (state.playerExpSnapshot === undefined) {
+      throw new Error('playerExpSnapshot undefined — step 62 chưa chạy');
+    }
+    const r = await http(state.playerJar, '/api/character/me');
+    assertStatus(r, 200, 'player/character/me after grant-exp');
+    const expAfter = BigInt(r.body?.data?.character?.exp ?? '0');
+    const expected = state.playerExpSnapshot + 5000n;
+    assert(
+      expAfter === expected,
+      `exp after grant: expect ${expected}, got ${expAfter} (snapshot ${state.playerExpSnapshot})`,
+    );
+  });
+
+  await step(
+    "admin POST /admin/users/:id/grant-item {itemKey:'fake_xyz',qty:1} → 400 INVALID_INPUT (catalog reject)",
+    async () => {
+      if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+      const r = await http(state.adminJar, `/api/admin/users/${state.playerUserId}/grant-item`, {
+        method: 'POST',
+        body: { itemKey: 'fake_xyz', qty: 1 },
+      });
+      assertStatus(r, 400, 'admin/users/:id/grant-item fake itemKey');
+      assert(
+        r.body?.error?.code === 'INVALID_INPUT',
+        `grant-item fake: expect INVALID_INPUT, got ${JSON.stringify(r.body?.error)}`,
+      );
+    },
+  );
+
+  await step(
+    "admin POST /admin/users/:id/grant-item {itemKey:'huyet_chi_dan',qty:5} → 200 ok",
+    async () => {
+      if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+      // Snapshot inventory trước grant để verify delta đúng.
+      const invR = await http(state.playerJar, '/api/inventory');
+      assertStatus(invR, 200, 'player/inventory snapshot');
+      const items = invR.body?.data?.items ?? [];
+      const huyet = items.find((it) => it.itemKey === 'huyet_chi_dan');
+      state.playerHuyetChiDanQtyBeforeGrant = huyet?.qty ?? 0;
+
+      const r = await http(state.adminJar, `/api/admin/users/${state.playerUserId}/grant-item`, {
+        method: 'POST',
+        body: { itemKey: 'huyet_chi_dan', qty: 5, reason: 'smoke seed' },
+      });
+      assertStatus(r, 200, 'admin/users/:id/grant-item happy');
+      assert(
+        r.body?.ok === true && r.body?.data?.ok === true,
+        `grant-item 200: shape mismatch, got ${JSON.stringify(r.body)}`,
+      );
+    },
+  );
+
+  await step(
+    'player GET /inventory — huyet_chi_dan qty == snapshot + 5 (ItemLedger ADMIN_GRANT)',
+    async () => {
+      if (state.playerHuyetChiDanQtyBeforeGrant === undefined) {
+        throw new Error('playerHuyetChiDanQtyBeforeGrant undefined — step 66 chưa chạy');
+      }
+      const r = await http(state.playerJar, '/api/inventory');
+      assertStatus(r, 200, 'player/inventory after grant-item');
+      const items = r.body?.data?.items ?? [];
+      const huyet = items.find((it) => it.itemKey === 'huyet_chi_dan');
+      assert(huyet, `huyet_chi_dan phải tồn tại sau grant`);
+      const expected = state.playerHuyetChiDanQtyBeforeGrant + 5;
+      assert(
+        huyet.qty === expected,
+        `huyet_chi_dan qty: expect ${expected}, got ${huyet.qty} (snapshot ${state.playerHuyetChiDanQtyBeforeGrant})`,
+      );
+    },
+  );
+
+  await step(
+    "admin POST /admin/users/:id/grant-spiritual-root {grade:'fake'} → 400 INVALID_INPUT (zod enum reject)",
+    async () => {
+      if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+      const r = await http(
+        state.adminJar,
+        `/api/admin/users/${state.playerUserId}/grant-spiritual-root`,
+        {
+          method: 'POST',
+          body: { grade: 'fake', primaryElement: 'kim' },
+        },
+      );
+      assertStatus(r, 400, 'admin/users/:id/grant-spiritual-root invalid grade');
+      assert(
+        r.body?.error?.code === 'INVALID_INPUT',
+        `grant-spiritual-root invalid: expect INVALID_INPUT, got ${JSON.stringify(r.body?.error)}`,
+      );
+    },
+  );
+
+  await step(
+    "admin POST /admin/users/:id/grant-spiritual-root {grade:'than',primaryElement:'kim'} → 200 ok",
+    async () => {
+      if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+      const r = await http(
+        state.adminJar,
+        `/api/admin/users/${state.playerUserId}/grant-spiritual-root`,
+        {
+          method: 'POST',
+          body: { grade: 'than', primaryElement: 'kim', reason: 'smoke seed' },
+        },
+      );
+      assertStatus(r, 200, 'admin/users/:id/grant-spiritual-root happy');
+      assert(
+        r.body?.ok === true && r.body?.data?.ok === true,
+        `grant-spiritual-root 200: shape mismatch, got ${JSON.stringify(r.body)}`,
+      );
+    },
+  );
+
+  await step(
+    "player GET /character/spiritual-root — grade='than' + primaryElement='kim' + secondary len=4",
+    async () => {
+      const r = await http(state.playerJar, '/api/character/spiritual-root');
+      assertStatus(r, 200, 'player/character/spiritual-root after admin grant');
+      const sr = r.body?.data?.spiritualRoot;
+      assert(sr, `spiritualRoot phải tồn tại sau admin override`);
+      assert(sr.grade === 'than', `spiritualRoot.grade: expect 'than', got '${sr.grade}'`);
+      assert(
+        sr.primaryElement === 'kim',
+        `spiritualRoot.primaryElement: expect 'kim', got '${sr.primaryElement}'`,
+      );
+      assert(
+        Array.isArray(sr.secondaryElements) && sr.secondaryElements.length === 4,
+        `spiritualRoot.secondaryElements: expect length=4 (than tier), got ${JSON.stringify(sr.secondaryElements)}`,
+      );
+    },
+  );
+
+  await step(
+    'admin GET /admin/audit?action=admin.exp.grant — rows >= 1 (audit từ step 63)',
+    async () => {
+      const r = await http(state.adminJar, '/api/admin/audit?action=admin.exp.grant');
+      assertStatus(r, 200, 'admin/audit?action=admin.exp.grant');
+      const rows = r.body?.data?.rows ?? [];
+      assert(Array.isArray(rows), 'audit?action=admin.exp.grant: rows phải array');
+      assert(
+        rows.length >= 1,
+        `audit?action=admin.exp.grant: phải >= 1 row, got ${rows.length}`,
+      );
+      assert(
+        rows[0].action === 'admin.exp.grant',
+        `audit row.action: expect 'admin.exp.grant', got '${rows[0].action}'`,
+      );
+    },
+  );
+
+  await step(
+    'admin GET /admin/audit?action=admin.inventory.grant — rows >= 1 (audit từ step 66)',
+    async () => {
+      const r = await http(state.adminJar, '/api/admin/audit?action=admin.inventory.grant');
+      assertStatus(r, 200, 'admin/audit?action=admin.inventory.grant');
+      const rows = r.body?.data?.rows ?? [];
+      assert(Array.isArray(rows), 'audit?action=admin.inventory.grant: rows phải array');
+      assert(
+        rows.length >= 1,
+        `audit?action=admin.inventory.grant: phải >= 1 row, got ${rows.length}`,
+      );
+      assert(
+        rows[0].action === 'admin.inventory.grant',
+        `audit row.action: expect 'admin.inventory.grant', got '${rows[0].action}'`,
+      );
+    },
+  );
+
+  await step(
+    'admin GET /admin/audit?action=admin.spiritualRoot.grant — rows >= 1 (audit từ step 69)',
+    async () => {
+      const r = await http(state.adminJar, '/api/admin/audit?action=admin.spiritualRoot.grant');
+      assertStatus(r, 200, 'admin/audit?action=admin.spiritualRoot.grant');
+      const rows = r.body?.data?.rows ?? [];
+      assert(Array.isArray(rows), 'audit?action=admin.spiritualRoot.grant: rows phải array');
+      assert(
+        rows.length >= 1,
+        `audit?action=admin.spiritualRoot.grant: phải >= 1 row, got ${rows.length}`,
+      );
+      assert(
+        rows[0].action === 'admin.spiritualRoot.grant',
+        `audit row.action: expect 'admin.spiritualRoot.grant', got '${rows[0].action}'`,
+      );
+    },
+  );
+
+  // 74-78. PLAYER cookie → /api/admin/* read-only → 403 FORBIDDEN (admin guard).
   await step('player → /admin/economy/report → 403 FORBIDDEN', async () => {
     const r = await http(state.playerJar, '/api/admin/economy/report');
     assertStatus(r, 403, 'player → admin/economy/report');
@@ -1728,7 +2009,51 @@ async function main() {
     );
   });
 
-  // 65-66. Logout admin + player.
+  // 79-81. PLAYER → admin seed harness endpoints → 403 FORBIDDEN regression.
+  await step('player → /admin/users/:id/grant-exp → 403 FORBIDDEN', async () => {
+    if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+    const r = await http(state.playerJar, `/api/admin/users/${state.playerUserId}/grant-exp`, {
+      method: 'POST',
+      body: { exp: '1' },
+    });
+    assertStatus(r, 403, 'player → admin/users/:id/grant-exp');
+    assert(
+      r.body?.error?.code === 'FORBIDDEN',
+      `player → grant-exp: expect FORBIDDEN, got ${JSON.stringify(r.body?.error)}`,
+    );
+  });
+
+  await step('player → /admin/users/:id/grant-item → 403 FORBIDDEN', async () => {
+    if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+    const r = await http(state.playerJar, `/api/admin/users/${state.playerUserId}/grant-item`, {
+      method: 'POST',
+      body: { itemKey: 'huyet_chi_dan', qty: 1 },
+    });
+    assertStatus(r, 403, 'player → admin/users/:id/grant-item');
+    assert(
+      r.body?.error?.code === 'FORBIDDEN',
+      `player → grant-item: expect FORBIDDEN, got ${JSON.stringify(r.body?.error)}`,
+    );
+  });
+
+  await step('player → /admin/users/:id/grant-spiritual-root → 403 FORBIDDEN', async () => {
+    if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+    const r = await http(
+      state.playerJar,
+      `/api/admin/users/${state.playerUserId}/grant-spiritual-root`,
+      {
+        method: 'POST',
+        body: { grade: 'pham', primaryElement: 'kim' },
+      },
+    );
+    assertStatus(r, 403, 'player → admin/users/:id/grant-spiritual-root');
+    assert(
+      r.body?.error?.code === 'FORBIDDEN',
+      `player → grant-spiritual-root: expect FORBIDDEN, got ${JSON.stringify(r.body?.error)}`,
+    );
+  });
+
+  // 82-83. Logout admin + player.
   await step('admin logout', async () => {
     const r = await http(state.adminJar, '/api/_auth/logout', { method: 'POST' });
     assertStatus(r, 200, 'admin logout');
