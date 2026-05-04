@@ -187,6 +187,8 @@ Per [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §0:
 <details>
 <summary><strong>Executive Summary (pre-compact 2026-05-04)</strong> (click để mở)</summary>
 
+> ⚠️ **Snapshot tại thời điểm pre-compact 2026-05-04.** Ngôn ngữ "this session" / "in-flight PR" bên dưới KHÔNG phải trạng thái hiện tại — xem §1 ở đầu file cho trạng thái live.
+
 ## Current Executive Summary
 
 > **30 dòng đầu = đủ context.** Các dòng dưới `## Snapshots` là chi tiết theo session.
@@ -5069,14 +5071,13 @@ pnpm --filter @xuantoi/api exec prisma generate
 
 # Build
 pnpm build
+```
 
 </details>
 
 
 <details>
 <summary><strong>Appendix B — Key file paths for quick orientation</strong> (click để mở)</summary>
-
-```
 
 ## Appendix B — Key file paths for quick orientation
 
@@ -5095,6 +5096,11 @@ pnpm build
 | Shared entry | `packages/shared/src/index.ts` |
 | Realms catalog | `packages/shared/src/realms.ts` |
 | Mission catalog | `packages/shared/src/missions.ts` |
+| Docs hub | `docs/API.md`, `docs/SEEDING.md`, `docs/BALANCE.md`, `docs/BETA_CHECKLIST.md` |
 
 </details>
+
+---
+
+_Kết thúc báo cáo. Chúc AI kế nhiệm may mắn — hãy giữ nguyên tinh thần đạo hữu (hoathienmenh-01): thà chậm mà chắc, CI phải xanh, tiền phải ghi ledger, và đừng bao giờ push thẳng `main`._
 
