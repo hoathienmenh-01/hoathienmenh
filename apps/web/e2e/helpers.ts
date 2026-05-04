@@ -12,8 +12,8 @@
  * KHÔNG đụng admin endpoint, KHÔNG seed currency / item — fresh char chỉ có
  * starting linhThach (= 0 theo schema, hoặc số seed nếu economy patch sau).
  */
-import type { Page, APIResponse } from '@playwright/test';
-import { expect } from '@playwright/test';
+import type { Page, APIRequestContext, APIResponse } from '@playwright/test';
+import { expect, request as playwrightRequest } from '@playwright/test';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -255,6 +255,114 @@ export async function listInventoryApi(
   const res = await page.request.get(`${base}/api/inventory`);
   const data = (await expectOk(res, 'inventory')) as { items?: Array<Record<string, unknown>> };
   return data?.items ?? [];
+}
+
+const ADMIN_EMAIL_DEFAULT = 'admin@example.com';
+const ADMIN_PASSWORD_DEFAULT = 'change-me-bootstrap-pass';
+
+export interface AdminSeedTalentOptions {
+  /** Realm key cho `set-realm`. Default `kim_dan` (đủ để học active talent kim_quang_tram). */
+  realmKey?: string;
+  /** Realm stage 1..9. Default `1`. */
+  realmStage?: number;
+  /** Số talent point grant. Default `5` (đủ học 1-2 talent + dư). */
+  talentPoints?: number;
+}
+
+/**
+ * Phase 11.X UI E2E seed harness — admin login (separate `APIRequestContext`)
+ * gọi `set-realm` + `grant-talent-point` cho `targetUserId`, không đụng cookie
+ * jar của `page` (để player session không bị logout). Reuse PR #389 admin
+ * seed harness extension endpoints.
+ *
+ * Bootstrap requirement: `pnpm --filter @xuantoi/api bootstrap` phải tạo
+ * `admin@example.com` (hoặc env `E2E_ADMIN_EMAIL`/`E2E_ADMIN_PASSWORD` override).
+ *
+ * Throws nếu admin login fail (vd chưa bootstrap), `set-realm`/`grant-talent-point`
+ * fail (vd backend chưa migrate Phase 11.X.AS endpoint).
+ */
+export async function adminSeedTalent(
+  targetUserId: string,
+  opts: AdminSeedTalentOptions = {},
+): Promise<void> {
+  const realmKey = opts.realmKey ?? 'kim_dan';
+  const realmStage = opts.realmStage ?? 1;
+  const talentPoints = opts.talentPoints ?? 5;
+  const email = process.env.E2E_ADMIN_EMAIL ?? ADMIN_EMAIL_DEFAULT;
+  const password = process.env.E2E_ADMIN_PASSWORD ?? ADMIN_PASSWORD_DEFAULT;
+  const base = apiBase();
+
+  // Separate APIRequestContext — admin cookie jar tách biệt khỏi `page` để
+  // không invalidate player session mid-test.
+  const ctx: APIRequestContext = await playwrightRequest.newContext({ baseURL: base });
+  try {
+    const loginRes = await ctx.post(`${base}/api/_auth/login`, { data: { email, password } });
+    const loginBody = await loginRes.json().catch(() => null);
+    if (
+      loginRes.status() !== 200 ||
+      !loginBody?.ok ||
+      loginBody?.data?.user?.role !== 'ADMIN'
+    ) {
+      throw new Error(
+        `[e2e helpers] adminSeedTalent: admin login failed (status=${loginRes.status()}, ` +
+          `role=${loginBody?.data?.user?.role}). Bootstrap admin@example.com? ` +
+          `body=${JSON.stringify(loginBody).slice(0, 200)}`,
+      );
+    }
+
+    const setRealmRes = await ctx.post(`${base}/api/admin/users/${targetUserId}/set-realm`, {
+      data: { realmKey, realmStage, reason: 'e2e Phase 11.X UI talent seed' },
+    });
+    await expectOk(setRealmRes, `admin/users/${targetUserId}/set-realm`);
+
+    const grantTpRes = await ctx.post(
+      `${base}/api/admin/users/${targetUserId}/grant-talent-point`,
+      {
+        data: { delta: talentPoints, reason: 'e2e Phase 11.X UI talent seed' },
+      },
+    );
+    await expectOk(grantTpRes, `admin/users/${targetUserId}/grant-talent-point`);
+  } finally {
+    await ctx.dispose().catch(() => undefined);
+  }
+}
+
+/**
+ * Phase 11.X UI E2E talent cast harness — start son_coc encounter + 1 action
+ * dùng `skillKey=talentKey` (combat.service detect talent qua `getTalentDef`).
+ * Sau call này server set `cooldownTurnsRemaining = talent.activeEffect.cooldownTurns`
+ * cho `talentKey`. Trả về encounter status (`ACTIVE` / `WON` / `LOST`) + monster
+ * count để spec assert downstream.
+ *
+ * Helper KHÔNG abandon encounter sau cast — caller phải `abandonEncounter` hoặc
+ * fight tiếp nếu cần clean state. Cooldown persist server-side bất kể encounter
+ * status nên `/talents` reload vẫn thấy badge.
+ */
+export async function castTalentViaCombat(
+  page: Page,
+  dungeonKey: string,
+  talentKey: string,
+): Promise<{ encounterId: string; status: string }> {
+  const base = apiBase();
+  const startRes = await page.request.post(`${base}/api/combat/encounter/start`, {
+    data: { dungeonKey },
+  });
+  const startData = (await expectOk(startRes, `combat/encounter/start ${dungeonKey}`)) as
+    | { encounter?: { id?: string; status?: string } }
+    | undefined;
+  const encounterId = startData?.encounter?.id ?? '';
+  if (!encounterId) {
+    throw new Error('[e2e helpers] castTalentViaCombat: no encounter.id from start');
+  }
+
+  const actionRes = await page.request.post(
+    `${base}/api/combat/encounter/${encounterId}/action`,
+    { data: { skillKey: talentKey } },
+  );
+  const actionData = (await expectOk(actionRes, `combat/encounter/${encounterId}/action`)) as
+    | { encounter?: { status?: string } }
+    | undefined;
+  return { encounterId, status: actionData?.encounter?.status ?? 'UNKNOWN' };
 }
 
 /** Re-export expect để spec dùng cùng instance. */
