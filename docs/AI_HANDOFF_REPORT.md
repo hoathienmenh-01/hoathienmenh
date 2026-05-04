@@ -717,6 +717,21 @@
 
 ## Recent Changes (PR #33→#348 đã merged trên main; section này giữ 5-10 PR gần nhất theo HANDOFF REPORT STRUCTURE RULE)
 
+### docs(workflow): enforce batching and session PR limits — **PENDING MERGE (this push)**
+
+- **Branch**: `devin/<ts>-docs-workflow-batching`. **Base**: `main` post PR #385 merged. Docs-only PR.
+- **Vì sao**: Session 4/5 vừa rồi tạo 14 smoke PR liên tiếp #371..#385 mỗi PR cover 1 module gameplay (smoke:achievement / smoke:market / smoke:sect / smoke:boss / smoke:inventory / smoke:chat / smoke:auth / smoke:admin extended ...). Đáng lẽ gom batch 3-5 module/PR — micro-PR spam làm tốn CI round + loãng review attention. Cần ép batching ngay trong workflow rules.
+- **Files (2 docs file, runtime code zero risk)**:
+  - `docs/AI_WORKFLOW_RULES.md` — thêm 3 section mới:
+    - **SESSION PR LIMIT** (sau SPEED TARGET, trước NEXT TASK AUTO-SELECTION): quota 1–3 PR/session, breakdown 1 Medium feature + 1 Medium test/smoke batch + 1 Hotfix khi cần; PR thứ 4 bắt buộc justify trong PR body.
+    - **GOM TRƯỚC KHI TÁCH** (mục 4b trong NEXT TASK AUTO-SELECTION, ngay sau mục 4 "Ưu tiên Medium PR"): trước khi mở PR mới, kiểm tra task tiếp theo có cùng loại không — có thì thêm commit vào PR hiện tại. Ngưỡng tách ~1200 LOC là max chứ không phải target. Phân biệt **cùng loại** (smoke+smoke / catalog+catalog / i18n+i18n / balance test+balance test / UI polish+UI polish) vs **khác loại** (smoke → feature runtime / catalog → Prisma migration / test → service refactor).
+    - **PROMPT TEMPLATE** (trước "## Lịch sử"): 3 template paste-ready — Template A feature/module batch, Template B smoke test batch (gom N script vào 1 PR), Template C catalog content batch (catalog + balance + i18n trong 1 PR). Dùng 4-backtick fence để chứa code block markdown bên trong.
+    - Cập nhật `**Mode**` description thành "Fast but Safe Delivery Mode. Các luật workflow bên dưới là một bộ nhất quán và phải được áp dụng cùng nhau."
+    - Thêm entry `2026-05-04` đầu `## Lịch sử` ghi 3 thay đổi + lý do (PR #371..#385 micro-PR spam).
+  - `docs/AI_HANDOFF_REPORT.md` — Recent Changes entry này + Recommended Next Roadmap nhắc AI/dev sau áp dụng SESSION PR LIMIT + GOM TRƯỚC KHI TÁCH trước khi pick task. Executive Summary giữ nguyên (≤ 30 dòng).
+- **Risk**: docs-only, zero runtime risk. Rollback = revert 1 commit.
+- **CI**: docs-only NHƯ `ci.yml` không có path filter → `build` + `e2e-smoke` vẫn chạy. Chờ CI xanh trước khi báo Done (per TEST FAST PATH RULE "Docs-only" + SAFETY CORRECTION RULE).
+
 ### Phase 11.X.BO smoke:shop HTTP smoke script (2 shop endpoints npc/buy auth gate + GET /npc auth pre-onboard 200 entries[] shape (no char required) + zod INVALID_INPUT 400 (missing/min(1)/max(99)) + ITEM_NOT_IN_SHOP catalog miss TRƯỚC char check (pre/post-onboard) + NO_CHARACTER pre-onboard valid item + NON_STACKABLE_QTY_GT_1 400 (so_kiem stackable=false qty=2) + INSUFFICIENT_FUNDS 409 (post-onboard fresh 0 LT atomic tx fail) + anti-FE-self-grant invariant) — `test(scripts): smoke:shop HTTP smoke (14-step)` — **PENDING MERGE (this push)** (Local 14/14 OK 2 lần liên tiếp deterministic)
 
 - **Branch**: `devin/<ts>-smoke-shop`. **Base**: `main` post PR #373 merged. Anti-duplicate guard: `git log --oneline -10 origin/main` không match "smoke:shop" / "11.X.BO" → safe. Open PRs trước push: 0. Continued auto-select per AI_WORKFLOW_RULES.md "Auto-Select Safe Task" rule (CI green on main, no blockers, script-only PREFERRED).
@@ -3887,6 +3902,8 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 8. **NEXT TASK AUTO-SELECTION** — sau PR xanh, KHÔNG hỏi user (trừ explicit "đợi tôi"); đọc handoff + pick task giá trị cao nhất an toàn; ưu tiên Medium PR thay vì micro-PR; check anti-duplicate (`git log --oneline -10` đối chiếu task).
 
 **Ưu tiên PR mode**: Medium > Hotfix > Large. Tránh micro-PR pagination/filter/stats nếu thuộc cùng view.
+
+**Cập nhật 2026-05-04** (PR `docs(workflow): enforce batching and session PR limits`): trước khi pick task tiếp theo, AI/dev sau **BẮT BUỘC** đọc lại [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md), đặc biệt **SESSION PR LIMIT** (1–3 PR/session, PR thứ 4 phải justify) + **GOM TRƯỚC KHI TÁCH** (mục 4b: cùng loại → thêm commit vào PR hiện tại, KHÔNG mở PR mới). Mục tiêu: không lặp lại pattern PR #371..#385 (14 smoke PR liên tiếp mỗi PR 1 module). Nếu còn smoke/i18n/catalog/UI polish cùng loại đang chờ, **gom vào 1 batch PR** thay vì từng PR riêng. Có 3 **PROMPT TEMPLATE** (A feature, B smoke batch, C catalog batch) trong workflow rules để user paste khi giao task.
 
 ### Immediate (session 9n — sau khi session 9m đóng PR #160/#161/#162/#163/#164 merged vào main @ `d332a18`, 30/4 ~11:51 UTC)
 

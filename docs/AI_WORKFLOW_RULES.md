@@ -4,7 +4,7 @@
 
 Các luật chung (server-authoritative gameplay, ledger, idempotency, không push thẳng main, không merge khi CI đỏ, etc.) đã có ở các doc khác (`GAME_DESIGN_BIBLE.md`, `ECONOMY_MODEL.md`, `AI_HANDOFF_REPORT.md`). File này tập trung vào **delivery / scope rules** — cách chia PR, cách gom việc, cách không tạo micro-PR vô nghĩa.
 
-**Mode**: Fast but Safe Delivery Mode. Tất cả 8 luật bên dưới là một bộ nhất quán. Đừng đọc lẻ một luật rồi áp dụng — phải hiểu cả gói.
+**Mode**: Fast but Safe Delivery Mode. Các luật workflow bên dưới là một bộ nhất quán và phải được áp dụng cùng nhau.
 
 ---
 
@@ -289,6 +289,31 @@ Nếu một session **chỉ làm docs sync** mà không có blocker thật (ie. 
 
 ---
 
+## SESSION PR LIMIT
+
+Mỗi session ưu tiên **1–3 PR chất lượng cao**, không phải tối đa hoá số PR. Mục tiêu: giảm micro-PR spam, giảm CI overhead, giữ review attention tập trung vào diff có giá trị.
+
+### Quota mặc định mỗi session
+
+- **Tối đa 3 PR** nếu không có lý do rõ ràng. Chia điển hình:
+  - **1 Medium feature/runtime PR** (5-20 file, 200-1200 LOC) — đầu ra chính của session.
+  - **1 Medium test/smoke batch PR** nếu có nhiều test cùng loại đang chờ (vd 3-5 smoke script gameplay module, 3-5 vitest cùng service). Gom vào 1 PR thay vì mở từng PR riêng.
+  - **1 Hotfix PR** chỉ khi có lý do thật: CI đỏ trên main / bug critical / security / regression / docs sai nghiêm trọng. KHÔNG dùng slot Hotfix cho enhancement nhỏ.
+- **Nếu task còn lại đều cùng loại** (vd còn 5 smoke script chưa cover module nhỏ, hoặc 4 i18n key cùng view), **gom hết vào 1 PR**, không tách 5 PR.
+- **Nếu cần PR thứ 4 trở lên**, BẮT BUỘC giải thích trong PR body lý do vì sao không gom được vào 3 PR trước đó (vd: blocker cross-module bắt buộc tách, đụng Prisma migration phải tách layer, hotfix CI đỏ phải merge nhanh trước feature).
+
+### Anti-pattern bị reject
+
+- Mở 14 PR liên tiếp, mỗi PR 1 smoke script cùng pattern (vd PR #371..#385 mỗi PR cover 1 module gameplay) → đáng lẽ gom 3-5 module / batch.
+- Mở 3-4 PR cùng kiểu "thêm 1 i18n key" / "thêm 1 stats card" / "thêm 1 filter" cho nhiều view khác nhau → batch theo BATCHING RULE.
+- Mở PR thứ 4-5 trong cùng session mà không có 1 dòng justification trong PR body.
+
+### Khi 1 PR là đủ
+
+Nếu trong 1 session bạn chỉ kịp 1 Medium PR xanh, **đó là kết quả hợp lệ và tốt** — không cần ép thêm Hotfix giả tạo cho đủ quota. Quota là **giới hạn trên**, không phải target.
+
+---
+
 ## NEXT TASK AUTO-SELECTION
 
 Sau khi PR hiện tại CI xanh và an toàn:
@@ -301,6 +326,13 @@ Sau khi PR hiện tại CI xanh và an toàn:
    - Open PR/pending branch cần fix → take-over.
    - Task phase hiện tại trong roadmap → pick.
 4. **Ưu tiên Medium PR thay vì micro-PR** khi có thể gom (xem BATCHING RULE).
+4b. **GOM TRƯỚC KHI TÁCH** — sau khi xong 1 task, TRƯỚC khi mở PR mới, kiểm tra task tiếp theo có **cùng loại** với PR hiện tại không.
+   - Nếu **có**, thêm commit vào PR hiện tại. **KHÔNG mở PR mới.**
+   - **KHÔNG mở PR mới** cho từng smoke script, từng i18n key nhỏ, từng pagination/filter/stats nhỏ — gom vào PR hiện tại.
+   - Chỉ tách PR mới khi: (a) đổi loại task (vd smoke → feature runtime), (b) đụng rủi ro cao (Prisma migration / economy / cross-module), hoặc (c) PR hiện tại đã gần ngưỡng tối đa khoảng **1200 LOC** (Medium ceiling per BATCHING RULE).
+   - **KHÔNG ép PR phải đạt 1200 LOC** — đó là ngưỡng tối đa, không phải target. Một Medium PR 400 LOC xanh + an toàn hợp lệ hơn 1200 LOC nhồi diff giả.
+   - **Cùng loại** (gom được): smoke + smoke, catalog + catalog, i18n + i18n, balance test + balance test, UI polish + UI polish.
+   - **Khác loại** (phải tách): smoke → feature runtime, catalog → Prisma migration, test → service refactor, FE polish → backend endpoint mới.
 5. Tiếp tục đến khi:
    - Hết credit/session/tool timeout.
    - Không còn task an toàn.
@@ -313,7 +345,77 @@ Sau khi PR hiện tại CI xanh và an toàn:
 
 ---
 
+## PROMPT TEMPLATE
+
+Bộ template ngắn để paste vào prompt khi giao task cho AI/dev. Mục tiêu: ép batching ngay từ prompt, tránh AI tự tách micro-PR.
+
+### Template A — Feature/module batch
+
+> **Nhấn mạnh: 1 PR duy nhất nếu cùng module.** Không tách pagination/filter/stats/loading/empty/error/i18n/test thành nhiều PR.
+
+````markdown
+Task: <feature ngắn gọn, vd "Phase 11.X Tribulation history view">.
+
+Scope (1 PR duy nhất nếu cùng module — UI MODULE RULE):
+- API client + Pinia store + View/component.
+- Loading + empty + error state.
+- Filter + pagination + stats card (nếu thuộc cùng view).
+- i18n vi/en parity.
+- Unit/render test hoặc Playwright smoke.
+- Update docs/AI_HANDOFF_REPORT.md trong cùng PR.
+
+Không được:
+- Tách pagination/filter/stats thành PR riêng.
+- Mở PR docs(audit) sync handoff sau PR feat.
+- Tắt CI hoặc skip test cũ.
+
+Done = CI xanh + handoff cập nhật.
+````
+
+### Template B — Smoke test batch
+
+> **Nhấn mạnh: gom N smoke script vào 1 PR.** Không mở 1 PR / 1 script.
+
+````markdown
+Task: smoke HTTP cho <list module: vd shop + boss + chat>.
+
+Scope (1 PR duy nhất gom N smoke — BATCHING RULE):
+- Mỗi script: scripts/smoke-<module>.mjs (Node 20 native fetch, zero-install).
+- Cover auth gate + zod negative + service negative + 1-2 positive path nếu admin seed có sẵn.
+- Thêm pnpm script entry alphabet order trong package.json.
+- Update docs/AI_HANDOFF_REPORT.md (Recent Changes 1 entry chung cho batch).
+
+Không được:
+- Mở 1 PR / 1 smoke script.
+- Trộn smoke với feature runtime hoặc Prisma migration.
+
+Done = tất cả script chạy local OK 2 lần liên tiếp deterministic + CI xanh.
+````
+
+### Template C — Catalog content batch
+
+> **Nhấn mạnh: catalog + balance test + i18n trong 1 PR.** Không tách content khỏi balance/i18n.
+
+````markdown
+Task: thêm catalog <loại: vd 5 item tier huyen Mộc element>.
+
+Scope (1 PR duy nhất — CONTENT_PIPELINE):
+- packages/shared catalog entry mới + type tightening nếu cần.
+- Balance vitest cover stat budget + drop weight + cost (theo BALANCE_MODEL.md).
+- i18n vi/en key parity (tên + mô tả).
+- Update docs/CONTENT_PIPELINE.md + docs/BALANCE_MODEL.md + docs/AI_HANDOFF_REPORT.md.
+
+Không được:
+- Tách "add catalog" / "add balance test" / "add i18n" thành 3 PR.
+- Đổi runtime service trong cùng PR (tách layer nếu cần Prisma migration).
+
+Done = balance test xanh + i18n parity check pass + CI xanh.
+````
+
+---
+
 ## Lịch sử
 
+- **2026-05-04** — Thêm **SESSION PR LIMIT** (giới hạn 1–3 PR/session, breakdown 1 Medium feature + 1 Medium test batch + 1 Hotfix khi cần, PR thứ 4 phải justify), **GOM TRƯỚC KHI TÁCH** (mục 4b trong NEXT TASK AUTO-SELECTION — kiểm tra cùng loại trước khi mở PR mới, ngưỡng tách 1200 LOC là max chứ không phải target), và **PROMPT TEMPLATE** (3 template A/B/C ép batching từ prompt). Cập nhật mode description thành "Fast but Safe Delivery Mode. Các luật workflow bên dưới là một bộ nhất quán và phải được áp dụng cùng nhau." Lý do: session 4/5 vừa rồi tạo 14 smoke PR liên tiếp #371..#385 mỗi PR 1 module gameplay — đáng lẽ gom batch 3-5 module/PR. Mục tiêu: giảm micro-PR, giảm CI overhead, gom task cùng loại vào Medium PR. Author: Devin AI session 9r-26 follow-up.
 - **2026-05-03** — Tạo file. Author: Devin AI session 9r-26 take-over. Lý do: trong loop autonomous trước đó, một số UI module bị chia thành 4-5 micro-PR (vd Phase 11.6 Tribulation history split: PR #329 list view, #330 pagination, #332 filter, #333 stats summary, #334 docs sync), tốn CI thời gian + tốn review attention. Luật UI Module Rule giờ là gate.
 - **2026-05-03** — Mở rộng thành **Fast but Safe Delivery Mode**: thêm DOCS UPDATE RULE, HANDOFF REPORT STRUCTURE RULE, TEST FAST PATH RULE, BATCHING RULE, SAFETY CORRECTION RULE, SPEED TARGET, NEXT TASK AUTO-SELECTION. Mục tiêu: AI/dev sau làm nhanh hơn nhưng vẫn đúng (không ép minimum 100 dòng, không fake green, không tắt CI). Author: Devin AI session 9r-26.
