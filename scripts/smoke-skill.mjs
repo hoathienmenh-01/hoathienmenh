@@ -11,12 +11,18 @@
  * 0 LinhThach < 100 cost), anti-FE-self-grant invariant (failed equip/unequip
  * /upgrade KHÔNG đụng learned[]/maxEquipped/equippedKeys/masteryLevels).
  *
- * Smoke này KHÔNG cần admin seed → chỉ cover lazy auto-grant idempotent +
- * negative paths. Full positive path (upgrade-mastery với character có ≥100
- * LinhThach + equip skill khác sau khi học qua dungeon drop / sect grant /
- * skill book consume) yêu cầu admin seed `Character.linhThach` HOẶC
- * `CharacterSkill` row source='dungeon_drop'/'admin'/'skill_book' — defer cho
- * future smoke với admin secret.
+ * Phase 11.2.D positive-path EXTENSION (PR session post-#387): cover
+ * `POST /character/skill/learn-from-book` qua admin seed grant-item
+ * `skill_book_kim_quang_tram` (re-use admin grant-item endpoint từ PR #383
+ * + cookie-jar swap pattern từ PR #384 / #386). Verify ItemLedger qty=-1
+ * reason='SKILL_LEARN' atomic với CharacterSkill create source='item_consume',
+ * inventory row delete khi qty=0, /skill/equip + /skill/unequip happy-path,
+ * và idempotent re-equip không-no-op (kim_quang_tram qua DB update —
+ * khác basic_attack ngoại lệ).
+ *
+ * Upgrade-mastery positive (cần LinhThach ≥ 100) defer tới session sau khi
+ * admin seed harness extension (grant-currency LinhThach) merged — track
+ * trong AI_HANDOFF_REPORT.md Recommended Next Roadmap.
  *
  *   1. `GET  /api/character/skill` (no auth)                     → 401.
  *   2. `POST /api/character/skill/equip` (no auth)               → 401.
@@ -82,7 +88,70 @@
  *                                                                  state vẫn
  *                                                                  giống
  *                                                                  snapshot.
- *  16. `POST /api/_auth/logout` + GET /skill                     → 401.
+ *
+ *  // Positive-path Phase 11.2.D — admin grant skill_book → learn → equip
+ *  16. admin login + swap cookie jar (snapshot player → admin).
+ *  17. `POST /api/admin/users/:id/grant-item`                     → 200,
+ *                                                                  itemKey:
+ *                                                                  'skill_book
+ *                                                                  _kim_quang
+ *                                                                  _tram',
+ *                                                                  qty:1.
+ *  18. admin logout + restore player cookies.
+ *  19. `GET  /api/inventory`                                      → 200,
+ *                                                                  find
+ *                                                                  inventoryItem
+ *                                                                  Id của
+ *                                                                  skill_book
+ *                                                                  qty=1.
+ *  20. `POST /api/character/skill/learn-from-book`                → 200,
+ *                                                                  learn.skillKey
+ *                                                                  ='kim_quang
+ *                                                                  _tram',
+ *                                                                  consumed
+ *                                                                  ItemKey
+ *                                                                  ='skill_book
+ *                                                                  _kim_quang
+ *                                                                  _tram',
+ *                                                                  state.learned
+ *                                                                  contains
+ *                                                                  kim_quang
+ *                                                                  _tram
+ *                                                                  source=
+ *                                                                  'item_consume',
+ *                                                                  isEquipped
+ *                                                                  =false,
+ *                                                                  masteryLevel
+ *                                                                  =1.
+ *  21. `GET  /api/inventory`                                      → 200,
+ *                                                                  skill_book
+ *                                                                  row đã
+ *                                                                  removed
+ *                                                                  (qty 1→0
+ *                                                                  → row
+ *                                                                  delete).
+ *  22. `POST .../skill/equip` body                                → 200,
+ *      {skillKey:'kim_quang_tram'}                                   kim_quang
+ *                                                                  _tram.
+ *                                                                  isEquipped
+ *                                                                  =true.
+ *  23. `POST .../skill/unequip` body                              → 200,
+ *      {skillKey:'kim_quang_tram'}                                   kim_quang
+ *                                                                  _tram.
+ *                                                                  isEquipped
+ *                                                                  =false.
+ *  24. `POST .../skill/equip` body                                → 200
+ *      {skillKey:'kim_quang_tram'}                                   idempotent
+ *                                                                  re-equip,
+ *                                                                  isEquipped
+ *                                                                  =true.
+ *  25. `POST .../skill/learn-from-book` cùng inventoryItemId      → 404
+ *                                                                  INVENTORY
+ *                                                                  _ITEM_NOT
+ *                                                                  _FOUND
+ *                                                                  (đã consume,
+ *                                                                  row delete).
+ *  26. `POST /api/_auth/logout` + GET /skill                      → 401.
  *
  * Anti-FE-self-grant invariant (per Luật bắt buộc — KHÔNG để frontend tự cộng
  * skill / mastery / equip slot qua failed attempts):
@@ -90,16 +159,26 @@
  *   - `equippedKeys` (sorted joined) KHÔNG đổi.
  *   - `masteryLevels` (joined per skill) KHÔNG đổi qua failed upgrade-mastery.
  *
+ * Positive-path invariant:
+ *   - `learn-from-book` server-authoritative — chỉ tăng learned[] khi consume
+ *     SKILL_BOOK item qua ItemLedger atomic. UI KHÔNG tự cộng row.
+ *   - Re-call `learn-from-book` cùng inventoryItemId sau consume → 404
+ *     INVENTORY_ITEM_NOT_FOUND (anti double-grant).
+ *
  * Chạy:
  *   pnpm smoke:skill
  *   # hoặc trực tiếp:
  *   node scripts/smoke-skill.mjs
  *
  * Env vars:
- *   SMOKE_API_BASE     — default "http://localhost:3000".
- *   SMOKE_TIMEOUT_MS   — default 10000ms / request.
- *   SMOKE_VERBOSE      — "1" để log request/response (debug).
- *   SMOKE_SECT_KEY     — default "thanh_van".
+ *   SMOKE_API_BASE        — default "http://localhost:3000".
+ *   SMOKE_TIMEOUT_MS      — default 10000ms / request.
+ *   SMOKE_VERBOSE         — "1" để log request/response (debug).
+ *   SMOKE_SECT_KEY        — default "thanh_van".
+ *   SMOKE_ADMIN_EMAIL     — default "admin@example.com" (bootstrap admin).
+ *   SMOKE_ADMIN_PASSWORD  — default "change-me-bootstrap-pass".
+ *   SMOKE_LEARN_ITEM_KEY  — default "skill_book_kim_quang_tram" (luyenkhi).
+ *   SMOKE_LEARN_SKILL_KEY — default "kim_quang_tram" (target skill).
  *
  * Yêu cầu môi trường (giống smoke:cultivation-method):
  *   - `pnpm infra:up` (Postgres + Redis)
@@ -126,6 +205,22 @@ const SECT_KEY = process.env.SMOKE_SECT_KEY ?? 'thanh_van';
 const STARTER_SKILL_KEY = 'basic_attack';
 const SECT_SKILL_NOT_LEARNED = 'kiem_khi_chem'; // Thanh Vân sect skill — KHÔNG auto-grant qua onboard.
 const FAKE_SKILL_KEY = 'fake_xyz_unknown_skill_key';
+
+// Phase 11.2.D positive-path — admin grant skill_book → learn-from-book.
+// kim_quang_tram = basic tier, unlocks=[{kind:'realm',ref:'luyenkhi'}] →
+// fresh char (luyenkhi/thanh_van) học được không cần advance realm/sect.
+const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL ?? 'admin@example.com';
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? 'change-me-bootstrap-pass';
+const LEARN_ITEM_KEY = process.env.SMOKE_LEARN_ITEM_KEY ?? 'skill_book_kim_quang_tram';
+const LEARN_SKILL_KEY = process.env.SMOKE_LEARN_SKILL_KEY ?? 'kim_quang_tram';
+
+/** State giữa các step (giống smoke:spiritual-root cookie-jar swap pattern). */
+const state = {
+  /** @type {string | null} */
+  userId: null,
+  /** @type {string | null} */
+  inventoryItemId: null,
+};
 
 // -----------------------------------------------------------------------------
 // Cookie jar — Node fetch không có cookie jar built-in, tự track set-cookie.
@@ -159,6 +254,17 @@ function storeSetCookie(res) {
 function cookieHeader() {
   if (cookieJar.size === 0) return undefined;
   return Array.from(cookieJar, ([k, v]) => `${k}=${v}`).join('; ');
+}
+
+/** Snapshot cookieJar để switch tạm sang admin rồi restore lại player. */
+function snapshotCookies() {
+  return new Map(cookieJar);
+}
+
+/** @param {Map<string,string>} snapshot */
+function restoreCookies(snapshot) {
+  cookieJar.clear();
+  for (const [k, v] of snapshot) cookieJar.set(k, v);
 }
 
 // -----------------------------------------------------------------------------
@@ -376,7 +482,9 @@ async function main() {
     });
     assertStatus(r, [200, 201], 'register');
     if (!r.body?.ok) throw new Error(`register: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
-    assert(r.body?.data?.user?.id, 'register: missing user.id');
+    const userId = r.body?.data?.user?.id;
+    assert(userId, 'register: missing user.id');
+    state.userId = userId;
   });
 
   // 5. GET /skill khi chưa onboard → 404 NO_CHARACTER.
@@ -512,7 +620,153 @@ async function main() {
     assertSkillImmutable(initialSkill, after, 'POST equip-starter idempotent');
   });
 
-  // 16. logout + GET /skill → 401 UNAUTHENTICATED.
+  // -----------------------------------------------------------------------------
+  // POSITIVE PATH — admin seed grant-item skill_book → POST /skill/learn-from-book
+  // → /equip → /unequip → idempotent re-equip + ItemLedger consume verify.
+  //
+  // Foundation từ PR #383 admin grant-item + PR #384 / #386 cookie-jar swap.
+  // Service learnFromBook: pre-check INVENTORY_ITEM_NOT_FOUND/NOT_SKILL_BOOK/
+  // ALREADY_LEARNED → tx atomic CharacterSkill.create (source='item_consume',
+  // masteryLevel=1, isEquipped=false) + InventoryItem decrement/delete +
+  // ItemLedger qtyDelta=-1 reason='SKILL_LEARN' refType='InventoryItem'
+  // refId=inventoryItem.id meta.skillKey=skillKey. Re-call sau consume →
+  // 404 INVENTORY_ITEM_NOT_FOUND (anti double-grant).
+  // -----------------------------------------------------------------------------
+
+  /** @type {Map<string,string>} */
+  let playerCookieSnap;
+
+  // 16. Snapshot player cookies + admin login → swap jar.
+  await step('admin login — swap cookie jar (player → admin)', async () => {
+    playerCookieSnap = snapshotCookies();
+    cookieJar.clear();
+    const r = await http('/api/_auth/login', {
+      method: 'POST',
+      body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    assertStatus(r, 200, 'admin login');
+    if (!r.body?.ok) throw new Error(`admin login: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const u = r.body?.data?.user;
+    assert(u?.role === 'ADMIN', `admin login: role phải ADMIN (cần bootstrap admin@example.com), got ${u?.role}`);
+  });
+
+  // 17. Admin POST /admin/users/:id/grant-item skill_book qty=1 → 200.
+  await step(`admin POST /admin/users/:id/grant-item {itemKey:'${LEARN_ITEM_KEY}',qty:1} → 200 ok (seed learn-from-book)`, async () => {
+    if (!state.userId) throw new Error('state.userId missing — register chưa chạy');
+    const r = await http(`/api/admin/users/${state.userId}/grant-item`, {
+      method: 'POST',
+      body: { itemKey: LEARN_ITEM_KEY, qty: 1, reason: 'smoke skill learn-from-book seed' },
+    });
+    assertStatus(r, 200, 'admin grant-item skill_book');
+    assert(
+      r.body?.ok === true && r.body?.data?.ok === true,
+      `grant-item 200: shape mismatch, got ${JSON.stringify(r.body)}`,
+    );
+  });
+
+  // 18. Admin logout → restore player cookies.
+  await step('admin logout + restore player cookies', async () => {
+    const r = await http('/api/_auth/logout', { method: 'POST' });
+    assertStatus(r, [200, 204], 'admin logout');
+    cookieJar.clear();
+    restoreCookies(playerCookieSnap);
+  });
+
+  // 19. GET /inventory → 1 stack skill_book qty=1 → capture inventoryItemId.
+  await step(`GET /inventory — verify ${LEARN_ITEM_KEY} qty=1 + capture inventoryItemId`, async () => {
+    const r = await http('/api/inventory');
+    assertStatus(r, 200, 'GET /inventory post-grant');
+    const items = r.body?.data?.items ?? [];
+    const stack = items.find((/** @type {any} */ it) => it.itemKey === LEARN_ITEM_KEY);
+    assert(stack, `inventory: thiếu ${LEARN_ITEM_KEY} stack post-grant`);
+    assert(stack.qty === 1, `${LEARN_ITEM_KEY} qty post-grant: expect 1, got ${stack.qty}`);
+    assert(typeof stack.id === 'string' && stack.id.length > 0, `${LEARN_ITEM_KEY}: missing id`);
+    state.inventoryItemId = stack.id;
+  });
+
+  // 20. POST /skill/learn-from-book {inventoryItemId} → 200 + skill learned.
+  await step(`POST /skill/learn-from-book → 200 learn.skillKey=${LEARN_SKILL_KEY} (consume + create CharacterSkill)`, async () => {
+    if (!state.inventoryItemId) throw new Error('state.inventoryItemId missing — GET /inventory chưa chạy');
+    const r = await http('/api/character/skill/learn-from-book', {
+      method: 'POST',
+      body: { inventoryItemId: state.inventoryItemId },
+    });
+    assertStatus(r, 200, 'POST learn-from-book');
+    if (!r.body?.ok) throw new Error(`learn-from-book: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const out = r.body?.data?.learn;
+    assert(out?.skillKey === LEARN_SKILL_KEY, `learn.skillKey: expect ${LEARN_SKILL_KEY}, got ${out?.skillKey}`);
+    assert(out?.consumedItemKey === LEARN_ITEM_KEY, `learn.consumedItemKey: expect ${LEARN_ITEM_KEY}, got ${out?.consumedItemKey}`);
+    const sk = out?.state;
+    assert(sk, 'learn.state: missing');
+    const learned = (sk.learned ?? []).find((/** @type {any} */ row) => row.skillKey === LEARN_SKILL_KEY);
+    assert(learned, `learn.state.learned: thiếu skill ${LEARN_SKILL_KEY}`);
+    assert(learned.source === 'item_consume', `learn.source: expect 'item_consume', got ${learned.source}`);
+    assert(learned.masteryLevel === 1, `learn.masteryLevel: expect 1, got ${learned.masteryLevel}`);
+    assert(learned.isEquipped === false, `learn.isEquipped: expect false (chưa equip), got ${learned.isEquipped}`);
+  });
+
+  // 21. GET /inventory → skill_book row removed (qty 1→0 → row delete per service).
+  await step(`GET /inventory — ${LEARN_ITEM_KEY} row deleted (qty 1→0)`, async () => {
+    const r = await http('/api/inventory');
+    assertStatus(r, 200, 'GET /inventory post-learn');
+    const items = r.body?.data?.items ?? [];
+    const stack = items.find((/** @type {any} */ it) => it.itemKey === LEARN_ITEM_KEY);
+    assert(!stack, `inventory: ${LEARN_ITEM_KEY} row vẫn tồn tại (qty 0 phải delete per consume service)`);
+  });
+
+  // 22. POST /skill/equip {skillKey:LEARN_SKILL_KEY} → 200 + isEquipped=true.
+  await step(`POST /skill/equip {skillKey:${LEARN_SKILL_KEY}} → 200 isEquipped=true`, async () => {
+    const r = await http('/api/character/skill/equip', {
+      method: 'POST',
+      body: { skillKey: LEARN_SKILL_KEY },
+    });
+    assertStatus(r, 200, 'POST equip kim_quang_tram');
+    if (!r.body?.ok) throw new Error(`equip: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const sk = r.body?.data?.skill;
+    const learned = (sk?.learned ?? []).find((/** @type {any} */ row) => row.skillKey === LEARN_SKILL_KEY);
+    assert(learned?.isEquipped === true, `${LEARN_SKILL_KEY}.isEquipped: expect true post-equip, got ${learned?.isEquipped}`);
+  });
+
+  // 23. POST /skill/unequip {skillKey:LEARN_SKILL_KEY} → 200 + isEquipped=false.
+  await step(`POST /skill/unequip {skillKey:${LEARN_SKILL_KEY}} → 200 isEquipped=false`, async () => {
+    const r = await http('/api/character/skill/unequip', {
+      method: 'POST',
+      body: { skillKey: LEARN_SKILL_KEY },
+    });
+    assertStatus(r, 200, 'POST unequip kim_quang_tram');
+    if (!r.body?.ok) throw new Error(`unequip: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const sk = r.body?.data?.skill;
+    const learned = (sk?.learned ?? []).find((/** @type {any} */ row) => row.skillKey === LEARN_SKILL_KEY);
+    assert(learned?.isEquipped === false, `${LEARN_SKILL_KEY}.isEquipped: expect false post-unequip, got ${learned?.isEquipped}`);
+  });
+
+  // 24. POST /skill/equip lan 2 → 200 idempotent (DB update isEquipped=true again).
+  await step(`POST /skill/equip {skillKey:${LEARN_SKILL_KEY}} lần 2 → 200 idempotent re-equip`, async () => {
+    const r = await http('/api/character/skill/equip', {
+      method: 'POST',
+      body: { skillKey: LEARN_SKILL_KEY },
+    });
+    assertStatus(r, 200, 'POST equip-idem kim_quang_tram');
+    const sk = r.body?.data?.skill;
+    const learned = (sk?.learned ?? []).find((/** @type {any} */ row) => row.skillKey === LEARN_SKILL_KEY);
+    assert(learned?.isEquipped === true, `${LEARN_SKILL_KEY}.isEquipped: expect true post-re-equip, got ${learned?.isEquipped}`);
+  });
+
+  // 25. POST /skill/learn-from-book cùng inventoryItemId → 404 INVENTORY_ITEM_NOT_FOUND.
+  await step('POST /skill/learn-from-book cùng inventoryItemId → 404 INVENTORY_ITEM_NOT_FOUND (anti double-grant)', async () => {
+    if (!state.inventoryItemId) throw new Error('state.inventoryItemId missing');
+    const r = await http('/api/character/skill/learn-from-book', {
+      method: 'POST',
+      body: { inventoryItemId: state.inventoryItemId },
+    });
+    assertStatus(r, 404, 'POST learn-from-book consumed');
+    assert(
+      r.body?.error?.code === 'INVENTORY_ITEM_NOT_FOUND',
+      `learn-from-book consumed: expect INVENTORY_ITEM_NOT_FOUND, got ${r.body?.error?.code}`,
+    );
+  });
+
+  // 26. logout + GET /skill → 401 UNAUTHENTICATED.
   await step('logout + GET /skill — 401 UNAUTHENTICATED', async () => {
     const logout = await http('/api/_auth/logout', { method: 'POST' });
     assertStatus(logout, [200, 204], 'logout');
