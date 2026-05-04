@@ -21,6 +21,7 @@
     "smoke:cultivation-method": "node scripts/smoke-cultivation-method.mjs",
     "smoke:daily-login": "node scripts/smoke-daily-login.mjs",
     "smoke:economy": "node scripts/smoke-economy.mjs",
+    "smoke:leaderboard": "node scripts/smoke-leaderboard.mjs",
     "smoke:next-action": "node scripts/smoke-next-action.mjs",
     "smoke:skill": "node scripts/smoke-skill.mjs",
     "smoke:spiritual-root": "node scripts/smoke-spiritual-root.mjs",
