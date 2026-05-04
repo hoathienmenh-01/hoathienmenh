@@ -1,58 +1,85 @@
 #!/usr/bin/env node
 /**
  * smoke-mail.mjs — Mail inbox + unread-count + read + claim endpoints smoke
- * cho Xuân Tôi. Negative-path-only (positive claim path yêu cầu admin
- * `mail.sendToCharacter` để seed mail row → defer cho future smoke với
- * admin secret).
+ * cho Xuân Tôi. Bao gồm cả **negative path** (auth, validation, NOT_FOUND)
+ * và **positive path** (mail seed qua admin `POST /admin/mail/send` →
+ * read → claim → ledger MAIL_CLAIM + inventory grant → ALREADY_CLAIMED retry).
  *
- * Mục tiêu: cover 4 mail endpoints qua HTTP — `apps/api/src/modules/mail`.
- * Verify auth gate (401 unauth), NO_CHARACTER fallback (404 cho inbox/
- * read/claim, 200 count=0 silent cho unread-count), MAIL_NOT_FOUND 404,
- * INVALID_INPUT 400 (id > 80 char), shape contract cho empty inbox + zero
- * unread count.
+ * Mục tiêu: cover 4 mail endpoints (player) + 1 admin endpoint qua HTTP —
+ * `apps/api/src/modules/mail` + `apps/api/src/modules/admin/admin.controller.ts`
+ * (`POST /admin/mail/send`). Verify auth gate (401 unauth), NO_CHARACTER
+ * fallback (404 cho inbox/read/claim, 200 count=0 silent cho unread-count),
+ * MAIL_NOT_FOUND 404, INVALID_INPUT 400 (id > 80 char), shape contract cho
+ * empty + populated inbox, atomic ledger `MAIL_CLAIM` (currency.applyTx +
+ * inventory.grantTx) + idempotent ALREADY_CLAIMED 409.
  *
  *   1. `GET  /api/mail/me`             (no auth)         → 401.
  *   2. `GET  /api/mail/unread-count`   (no auth)         → 401.
  *   3. `POST /api/mail/{id}/read`      (no auth)         → 401.
  *   4. `POST /api/mail/{id}/claim`     (no auth)         → 401.
  *   5. `POST /api/_auth/register`                        — fresh user.
- *   6. `GET  /api/mail/me`             (pre-onboard)     → 404
- *                                                        NO_CHARACTER.
+ *   6. `GET  /api/mail/me`             (pre-onboard)     → 404 NO_CHARACTER.
  *   7. `GET  /api/mail/unread-count`   (pre-onboard)     → 200 count=0
- *                                                        (silent
- *                                                        fallback,
- *                                                        KHÔNG
- *                                                        throw).
- *   8. `POST /api/mail/abc/read`       (pre-onboard)     → 404
- *                                                        NO_CHARACTER.
- *   9. `POST /api/mail/abc/claim`      (pre-onboard)     → 404
- *                                                        NO_CHARACTER.
- *  10. `POST /api/character/onboard`                     — fresh char.
- *  11. `GET  /api/mail/me`             (fresh char)      → 200,
- *                                                        mails=[]
- *                                                        empty
- *                                                        inbox.
- *  12. `GET  /api/mail/unread-count`   (fresh char)      → 200,
- *                                                        count=0.
- *  13. `POST /api/mail/nonexistent-id/read`              → 404
- *                                                        MAIL_NOT_FOUND
- *                                                        (mail KHÔNG
- *                                                        thuộc về
- *                                                        char).
- *  14. `POST /api/mail/nonexistent-id/claim`             → 404
- *                                                        MAIL_NOT_FOUND.
- *  15. `POST /api/mail/{81-char-id}/read`                → 400
- *                                                        INVALID_INPUT
- *                                                        (IdParam
- *                                                        max(80)
- *                                                        violation).
- *  16. `POST /api/_auth/logout` + GET /mail/me           → 401.
+ *                                                          (silent fallback,
+ *                                                          KHÔNG throw).
+ *   8. `POST /api/mail/abc/read`       (pre-onboard)     → 404 NO_CHARACTER.
+ *   9. `POST /api/mail/abc/claim`      (pre-onboard)     → 404 NO_CHARACTER.
+ *  10. `POST /api/character/onboard`                     — fresh char (capture
+ *                                                          `state.characterId`
+ *                                                          cho admin mail/send).
+ *  11. `GET  /api/mail/me`             (fresh char)      → 200, mails=[]
+ *                                                          empty inbox.
+ *  12. `GET  /api/mail/unread-count`   (fresh char)      → 200, count=0.
+ *  13. `POST /api/mail/nonexistent-id/read`              → 404 MAIL_NOT_FOUND.
+ *  14. `POST /api/mail/nonexistent-id/claim`             → 404 MAIL_NOT_FOUND.
+ *  15. `POST /api/mail/{81-char-id}/read`                → 400 INVALID_INPUT
+ *                                                          (IdParam max(80)).
+ *  16. anti-FE-self-grant currency-unchanged sau failed claim/read attempts
+ *      (linhThach + tienNgoc giữ nguyên — fresh char `0/0`).
+ *  17. snapshot player cookies + admin login + `POST /admin/mail/send`
+ *      `{recipientCharacterId: state.characterId, rewardLinhThach: '150',
+ *      rewardItems: [{itemKey: 'huyet_chi_dan', qty: 2}]}` → 200 capture
+ *      `seededMailId`. Verify `mail.claimable === true`. Admin logout +
+ *      restore player cookies.
+ *  18. `GET  /api/mail/me`            (post-seed)        → 200 inbox chứa
+ *                                                          `seededMailId`,
+ *                                                          `readAt=null`,
+ *                                                          `claimedAt=null`,
+ *                                                          `claimable=true`.
+ *  19. `GET  /api/mail/unread-count`  (post-seed)        → 200 count=1.
+ *  20. `POST /api/mail/{seededMailId}/read`              → 200 `readAt`
+ *                                                          set non-null.
+ *  21. `GET  /api/mail/unread-count`  (post-read)        → 200 count=0.
+ *  22. `POST /api/mail/{seededMailId}/claim`             → 200 atomic
+ *                                                          `ledger.MAIL_CLAIM`
+ *                                                          (currency.applyTx
+ *                                                          LinhThach +150 +
+ *                                                          inventory.grantTx
+ *                                                          huyet_chi_dan +2),
+ *                                                          `claimedAt` set,
+ *                                                          `claimable=false`.
+ *  23. `POST /api/mail/{seededMailId}/claim` (retry)     → 409 ALREADY_CLAIMED
+ *                                                          (CAS guard
+ *                                                          `updateMany count
+ *                                                          !== 1`).
+ *  24. `GET  /api/character/state`    (post-claim)       → linhThach='150'
+ *                                                          (server-auth grant,
+ *                                                          KHÔNG do FE tự
+ *                                                          cộng).
+ *  25. `GET  /api/inventory`          (post-claim)       → `huyet_chi_dan`
+ *                                                          stack `qty=2`
+ *                                                          (server grantTx,
+ *                                                          anti-FE-self-grant).
+ *  26. `POST /api/_auth/logout` + GET /mail/me           → 401.
  *
- * Anti-FE-self-grant invariant (mặc dù không có positive claim ở smoke
- * này, vẫn verify gián tiếp): failed claim attempts (NO_CHARACTER /
- * MAIL_NOT_FOUND / INVALID_INPUT) KHÔNG đụng `linhThach` /
- * `tienNgoc` của character. Snapshot `/api/character/state` trước/sau
- * 4 claim fail attempt để chắc.
+ * Anti-FE-self-grant invariant:
+ *   - Failed claim attempts (NO_CHARACTER / MAIL_NOT_FOUND / INVALID_INPUT)
+ *     KHÔNG đụng `linhThach` / `tienNgoc` (step 16 verify).
+ *   - Positive claim ledger MAIL_CLAIM PHẢI thực sự cộng vào server-auth state
+ *     (step 24 `linhThach='150'` + step 25 `huyet_chi_dan qty=2`) — không phải
+ *     UI fake.
+ *   - Retry 409 ALREADY_CLAIMED giữ nguyên claimedAt + KHÔNG dup ledger row
+ *     (step 23 verify CAS guard).
  *
  * Chạy:
  *   pnpm smoke:mail
@@ -60,24 +87,27 @@
  *   node scripts/smoke-mail.mjs
  *
  * Env vars:
- *   SMOKE_API_BASE     — default "http://localhost:3000".
- *   SMOKE_TIMEOUT_MS   — default 10000ms / request.
- *   SMOKE_VERBOSE      — "1" để log request/response (debug).
- *   SMOKE_SECT_KEY     — default "thanh_van".
+ *   SMOKE_API_BASE       — default "http://localhost:3000".
+ *   SMOKE_TIMEOUT_MS     — default 10000ms / request.
+ *   SMOKE_VERBOSE        — "1" để log request/response (debug).
+ *   SMOKE_SECT_KEY       — default "thanh_van".
+ *   SMOKE_ADMIN_EMAIL    — default "admin@example.com" (cho mail/send seed,
+ *                           mirror `INITIAL_ADMIN_EMAIL` trong .env.example).
+ *   SMOKE_ADMIN_PASSWORD — default "change-me-bootstrap-pass".
  *
- * Yêu cầu môi trường (giống smoke:leaderboard):
+ * Yêu cầu môi trường (giống smoke:skill / smoke:shop positive-path BATCH):
  *   - `pnpm infra:up` (Postgres + Redis)
  *   - `pnpm --filter @xuantoi/api exec prisma migrate deploy`
+ *   - `pnpm --filter @xuantoi/api run bootstrap` (seed admin user
+ *      `INITIAL_ADMIN_EMAIL` + 3 sect)
  *   - `pnpm --filter @xuantoi/api dev` (API listen :3000)
  *   - Tab khác: `pnpm smoke:mail`
  *
- * Defer: positive claim path (mail with reward → claim → ledger
- * applyTx LINH_THACH/TIEN_NGOC + inventory.grantTx + character.exp
- * increment + claimedAt set + idempotent retry → ALREADY_CLAIMED 409)
- * yêu cầu admin `mail.sendToCharacter` để seed mail row → defer cho
- * future smoke với admin secret. Tương tự `MAIL_EXPIRED` (yêu cầu
- * mail row với `expiresAt < now`) và `NO_REWARD` (yêu cầu mail row
- * không có reward) cũng defer.
+ * Defer: `MAIL_EXPIRED` (yêu cầu mail row với `expiresAt < now`) +
+ * `NO_REWARD` (mail row không có reward) — yêu cầu admin endpoint hỗ trợ
+ * `expiresAt` past hoặc cờ `omitReward` → defer cho future smoke (cần thay
+ * đổi MailSendZ schema để allow `expiresAt < now()`, hoặc admin patch
+ * `Mail.expiresAt` direct).
  *
  * Exit code:
  *   0 — toàn bộ invariant OK.
@@ -94,6 +124,20 @@ const BASE = (process.env.SMOKE_API_BASE ?? 'http://localhost:3000').replace(/\/
 const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS ?? 10_000);
 const VERBOSE = process.env.SMOKE_VERBOSE === '1';
 const SECT_KEY = process.env.SMOKE_SECT_KEY ?? 'thanh_van';
+
+// Mail claim positive-path — admin POST /admin/mail/send {recipientCharacterId,
+// rewardLinhThach:'150', rewardItems:[{itemKey:'huyet_chi_dan', qty:2}]} →
+// player POST /mail/:id/read → /mail/:id/claim → atomic ledger MAIL_CLAIM
+// (currency.applyTx LinhThach + inventory.grantTx) + character state update.
+const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL ?? 'admin@example.com';
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? 'change-me-bootstrap-pass';
+const REWARD_ITEM_KEY = 'huyet_chi_dan';
+
+/** State giữa các step (giống smoke:skill cookie-jar swap pattern). */
+const state = {
+  /** @type {string | null} */
+  characterId: null,
+};
 
 // -----------------------------------------------------------------------------
 // Cookie jar — Node fetch không có cookie jar built-in, tự track set-cookie.
@@ -127,6 +171,18 @@ function storeSetCookie(res) {
 function cookieHeader() {
   if (cookieJar.size === 0) return undefined;
   return Array.from(cookieJar, ([k, v]) => `${k}=${v}`).join('; ');
+}
+
+/** Snapshot cookieJar (player session) trước khi swap qua admin login. */
+function snapshotCookies() {
+  return new Map(cookieJar);
+}
+
+/** Restore snapshot vào cookieJar (replace). */
+/** @param {Map<string,string>} snap */
+function restoreCookies(snap) {
+  cookieJar.clear();
+  for (const [k, v] of snap) cookieJar.set(k, v);
 }
 
 // -----------------------------------------------------------------------------
@@ -362,6 +418,7 @@ async function main() {
     if (!r.body?.ok)
       throw new Error(`onboard: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
     assert(r.body?.data?.character?.id, 'onboard: missing character.id');
+    state.characterId = r.body?.data?.character?.id ?? null;
   });
 
   // 11. GET /mail/me fresh char → 200 mails=[] empty inbox.
@@ -424,7 +481,146 @@ async function main() {
     );
   });
 
-  // 16. logout + GET /mail/me → 401.
+  // ---------------------------------------------------------------------------
+  // POSITIVE PATH (Phase 9 deferred — unblocked PR #381 admin mail/send).
+  //
+  // admin POST /admin/mail/send → mail row với rewardLinhThach=150 +
+  // rewardItems=[{huyet_chi_dan, qty:2}]. Player flow:
+  //   GET /mail/me      → 1 mail (claimable=true, readAt=null, claimedAt=null)
+  //   GET /unread-count → 1
+  //   POST /:id/read    → 200 readAt set
+  //   GET /unread-count → 0
+  //   POST /:id/claim   → 200 atomic ledger MAIL_CLAIM:
+  //                        - currency.applyTx LinhThach +150
+  //                        - inventory.grantTx huyet_chi_dan +2
+  //                        - claimedAt set, idempotent CAS guard
+  //   POST /:id/claim   → 409 ALREADY_CLAIMED (idempotent retry)
+  //   GET /character    → linhThach='150' (atomic grant verify)
+  //   GET /inventory    → huyet_chi_dan qty=2 (server grantTx verify)
+  // ---------------------------------------------------------------------------
+
+  // 16. Snapshot player cookies + admin login swap → mail/send → restore
+  //     player cookies. Capture mailId.
+  /** @type {string} */
+  let seededMailId = '';
+  await step('admin login + POST /admin/mail/send rewardLinhThach=150 + huyet_chi_dan x2', async () => {
+    if (!state.characterId) throw new Error('state.characterId missing — onboard chưa chạy');
+    const playerSnap = snapshotCookies();
+    cookieJar.clear();
+    const login = await http('/api/_auth/login', {
+      method: 'POST',
+      body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    assertStatus(login, 200, 'admin login (mail/send seed)');
+    const u = login.body?.data?.user;
+    assert(u?.role === 'ADMIN', `admin login: role phải ADMIN, got ${u?.role}`);
+
+    const send = await http('/api/admin/mail/send', {
+      method: 'POST',
+      body: {
+        recipientCharacterId: state.characterId,
+        subject: 'Smoke mail positive-path',
+        body: 'Test reward bundle — 150 LT + 2x huyet_chi_dan.',
+        senderName: 'Smoke Tester',
+        rewardLinhThach: '150',
+        rewardItems: [{ itemKey: REWARD_ITEM_KEY, qty: 2 }],
+      },
+    });
+    assertStatus(send, 200, 'POST /admin/mail/send');
+    if (!send.body?.ok) throw new Error(`mail/send: ok=false body=${JSON.stringify(send.body).slice(0, 200)}`);
+    const mail = send.body?.data?.mail;
+    assert(mail?.id, 'POST /admin/mail/send: missing data.mail.id');
+    assert(mail.rewardLinhThach === '150', `mail.rewardLinhThach: expect '150', got '${mail.rewardLinhThach}'`);
+    assert(Array.isArray(mail.rewardItems) && mail.rewardItems.length === 1, 'mail.rewardItems: expect 1 item');
+    assert(mail.claimable === true, `mail.claimable: expect true, got ${mail.claimable}`);
+    seededMailId = mail.id;
+
+    const logout = await http('/api/_auth/logout', { method: 'POST' });
+    assertStatus(logout, [200, 204], 'admin logout (mail/send seed)');
+    cookieJar.clear();
+    restoreCookies(playerSnap);
+  });
+
+  // 17. GET /mail/me → 200 list 1 mail (seededMailId, claimable=true,
+  //     readAt=null, claimedAt=null).
+  await step('GET /mail/me — 200 list contains seeded mail (claimable, unread, unclaimed)', async () => {
+    const r = await http('/api/mail/me');
+    assertStatus(r, 200, 'GET /mail/me post-seed');
+    const mails = r.body?.data?.mails ?? [];
+    assert(Array.isArray(mails), 'GET /mail/me post-seed: mails not array');
+    const mail = mails.find((/** @type {any} */ m) => m.id === seededMailId);
+    assert(mail, `GET /mail/me post-seed: thiếu seededMailId=${seededMailId} trong inbox`);
+    assert(mail.claimable === true, `mail.claimable: expect true, got ${mail.claimable}`);
+    assert(mail.readAt === null, `mail.readAt: expect null pre-read, got ${mail.readAt}`);
+    assert(mail.claimedAt === null, `mail.claimedAt: expect null pre-claim, got ${mail.claimedAt}`);
+    assert(mail.rewardLinhThach === '150', `mail.rewardLinhThach: expect '150', got '${mail.rewardLinhThach}'`);
+  });
+
+  // 18. GET /mail/unread-count → 200 count=1 (1 mail unread).
+  await step('GET /mail/unread-count — 200 count=1 post-seed', async () => {
+    const r = await http('/api/mail/unread-count');
+    assertStatus(r, 200, 'GET /mail/unread-count post-seed');
+    assert(r.body?.data?.count === 1, `count post-seed: expect 1, got ${r.body?.data?.count}`);
+  });
+
+  // 19. POST /mail/:id/read → 200 readAt set (idempotent — markRead service).
+  await step('POST /mail/:id/read — 200 readAt set', async () => {
+    const r = await http(`/api/mail/${seededMailId}/read`, { method: 'POST', body: {} });
+    assertStatus(r, 200, 'POST /mail/:id/read');
+    if (!r.body?.ok) throw new Error(`mail/read: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const mail = r.body?.data?.mail;
+    assert(mail, 'mail/read: missing data.mail');
+    assert(mail.readAt !== null, `mail.readAt post-read: expect non-null, got ${mail.readAt}`);
+  });
+
+  // 20. GET /mail/unread-count → 200 count=0 post-read.
+  await step('GET /mail/unread-count — 200 count=0 post-read', async () => {
+    const r = await http('/api/mail/unread-count');
+    assertStatus(r, 200, 'GET /mail/unread-count post-read');
+    assert(r.body?.data?.count === 0, `count post-read: expect 0, got ${r.body?.data?.count}`);
+  });
+
+  // 21. POST /mail/:id/claim → 200 atomic ledger MAIL_CLAIM (currency.applyTx
+  //     LinhThach +150 + inventory.grantTx huyet_chi_dan +2).
+  await step('POST /mail/:id/claim — 200 atomic ledger MAIL_CLAIM', async () => {
+    const r = await http(`/api/mail/${seededMailId}/claim`, { method: 'POST', body: {} });
+    assertStatus(r, 200, 'POST /mail/:id/claim');
+    if (!r.body?.ok) throw new Error(`mail/claim: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const mail = r.body?.data?.mail;
+    assert(mail, 'mail/claim: missing data.mail');
+    assert(mail.claimedAt !== null, `mail.claimedAt post-claim: expect non-null, got ${mail.claimedAt}`);
+    assert(mail.claimable === false, `mail.claimable post-claim: expect false, got ${mail.claimable}`);
+  });
+
+  // 22. POST /mail/:id/claim retry → 409 ALREADY_CLAIMED (idempotent CAS
+  //     guard `updateMany count !== 1`).
+  await step('POST /mail/:id/claim retry → 409 ALREADY_CLAIMED', async () => {
+    const r = await http(`/api/mail/${seededMailId}/claim`, { method: 'POST', body: {} });
+    assertStatus(r, 409, 'POST /mail/:id/claim retry');
+    assertErrorCode(r, 'ALREADY_CLAIMED', 'POST /mail/:id/claim retry');
+  });
+
+  // 23. GET /character/state → linhThach='150' (atomic ledger MAIL_CLAIM
+  //     applied — server-authoritative grant, KHÔNG do FE tự cộng).
+  await step('GET /character/state — linhThach=150 post-claim (server-auth)', async () => {
+    const cur = await fetchCharCurrencies();
+    assert(
+      cur.linhThach === '150',
+      `linhThach post-claim: expect '150' (was '0' pre-claim), got '${cur.linhThach}'`,
+    );
+  });
+
+  // 24. GET /inventory → huyet_chi_dan qty=2 (server grantTx — anti-FE-self-grant).
+  await step(`GET /inventory — ${REWARD_ITEM_KEY} qty=2 post-claim (server grantTx)`, async () => {
+    const r = await http('/api/inventory');
+    assertStatus(r, 200, 'GET /inventory post-claim');
+    const items = r.body?.data?.items ?? [];
+    const found = items.find((/** @type {any} */ it) => it.itemKey === REWARD_ITEM_KEY);
+    assert(found, `GET /inventory post-claim: thiếu ${REWARD_ITEM_KEY} stack`);
+    assert(found.qty === 2, `${REWARD_ITEM_KEY}.qty: expect 2, got ${found.qty}`);
+  });
+
+  // 25. logout + GET /mail/me → 401.
   await step('logout + GET /mail/me — 401 UNAUTHENTICATED', async () => {
     const logout = await http('/api/_auth/logout', { method: 'POST' });
     assertStatus(logout, [200, 204], 'logout');
