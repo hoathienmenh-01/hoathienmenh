@@ -59,6 +59,14 @@ const elementFilter = ref<ElementFilter>('all');
 const statusFilter = ref<StatusFilter>('all');
 
 /**
+ * Phase 11.7.G — Element filter dành riêng cho Loadout section. Khi user học
+ * nhiều active talent đa hệ, filter giúp focus theo hệ trước khi vào trận
+ * (vd. boss hệ Mộc → lọc Hoả/Kim cho damage_bonus). Độc lập với catalog
+ * filter bên dưới — KHÔNG ảnh hưởng grid catalog.
+ */
+const loadoutElementFilter = ref<ElementFilter>('all');
+
+/**
  * Map realmKey → realmOrder (deterministic từ shared `REALMS`). Dùng client-side
  * để tính realm gating khi server chưa fetch xong (server vẫn là source of
  * truth khi POST /learn).
@@ -140,6 +148,25 @@ const activeLearnedTalents = computed<readonly TalentDef[]>(() => {
   });
   return list;
 });
+
+/**
+ * Phase 11.7.G — Loadout view = `activeLearnedTalents` sau khi áp filter hệ.
+ * Sort order giữ nguyên (ready trước, cooldown asc, key tiebreak). Khi filter
+ * = 'all' → trả về `activeLearnedTalents` nguyên vẹn (giữ test backward-compat
+ * Phase 11.7.E+++/F).
+ */
+const filteredActiveLearnedTalents = computed<readonly TalentDef[]>(() => {
+  if (loadoutElementFilter.value === 'all') return activeLearnedTalents.value;
+  if (loadoutElementFilter.value === 'neutral') {
+    return activeLearnedTalents.value.filter((talent) => talent.element === null);
+  }
+  const want = loadoutElementFilter.value;
+  return activeLearnedTalents.value.filter((talent) => talent.element === want);
+});
+
+function clearLoadoutElementFilter(): void {
+  loadoutElementFilter.value = 'all';
+}
 
 /**
  * Phase 11.7.E+++ — Cast button gate. Cast chỉ thực sự xảy ra trong combat
@@ -385,9 +412,14 @@ onMounted(async () => {
         </div>
       </header>
 
-      <!-- Phase 11.7.E+++ — Loadout section: thần thông chủ động đã học. -->
+      <!--
+        Phase 11.7.E+++ — Loadout section: thần thông chủ động đã học.
+        Phase 11.7.G — Sticky positioning trên màn rộng (md trở lên) để Loadout
+        bám đỉnh viewport khi user scroll qua catalog grid dài + per-loadout
+        element filter để focus theo hệ trước khi vào trận.
+      -->
       <section
-        class="bg-ink-900/40 border border-amber-500/30 rounded p-3 space-y-2"
+        class="bg-ink-900/95 border border-amber-500/30 rounded p-3 space-y-2 backdrop-blur md:sticky md:top-0 md:z-10"
         data-testid="talents-active-section"
       >
         <header class="flex items-baseline justify-between gap-2 flex-wrap">
@@ -395,10 +427,40 @@ onMounted(async () => {
             {{ t('talents.activeSection.title') }}
           </h2>
           <span class="text-xs text-ink-300" data-testid="talents-active-count">
-            {{ t('talents.activeSection.count', { count: activeLearnedTalents.length }) }}
+            {{ t('talents.activeSection.count', { count: filteredActiveLearnedTalents.length }) }}
           </span>
         </header>
         <p class="text-xs text-ink-300">{{ t('talents.activeSection.subtitle') }}</p>
+        <div
+          v-if="activeLearnedTalents.length > 0"
+          class="flex flex-wrap items-center gap-2 text-xs"
+          data-testid="talents-active-filter-row"
+        >
+          <label class="text-ink-300" for="talents-active-filter-element-input">
+            {{ t('talents.activeSection.elementFilter.label') }}
+          </label>
+          <select
+            id="talents-active-filter-element-input"
+            v-model="loadoutElementFilter"
+            data-testid="talents-active-filter-element"
+            class="bg-ink-900 border border-ink-300/30 rounded px-2 py-1 text-ink-100"
+          >
+            <option value="all">{{ t('talents.activeSection.elementFilter.all') }}</option>
+            <option v-for="el in ELEMENTS" :key="el" :value="el">
+              {{ elementLabel(el) }}
+            </option>
+            <option value="neutral">{{ t('talents.element.neutral') }}</option>
+          </select>
+          <button
+            v-if="loadoutElementFilter !== 'all'"
+            type="button"
+            class="px-2 py-1 rounded border text-ink-200 border-ink-300/30 hover:bg-ink-700/40"
+            data-testid="talents-active-filter-reset"
+            @click="clearLoadoutElementFilter()"
+          >
+            {{ t('talents.activeSection.elementFilter.reset') }}
+          </button>
+        </div>
         <div
           v-if="activeLearnedTalents.length === 0"
           class="text-xs text-ink-400 italic py-2"
@@ -406,13 +468,20 @@ onMounted(async () => {
         >
           {{ t('talents.activeSection.empty') }}
         </div>
+        <div
+          v-else-if="filteredActiveLearnedTalents.length === 0"
+          class="text-xs text-ink-400 italic py-2"
+          data-testid="talents-active-filter-empty"
+        >
+          {{ t('talents.activeSection.elementFilter.empty') }}
+        </div>
         <ul
           v-else
           class="space-y-2"
           data-testid="talents-active-list"
         >
           <li
-            v-for="talent in activeLearnedTalents"
+            v-for="talent in filteredActiveLearnedTalents"
             :key="talent.key"
             class="bg-ink-700/40 border border-ink-300/20 rounded p-2 flex flex-wrap items-center gap-2 text-xs"
             :data-testid="`talent-active-row-${talent.key}`"

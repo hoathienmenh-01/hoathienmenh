@@ -1208,7 +1208,13 @@
       "count": "{count} learned",
       "cast": "Use in combat",
       "castOnCooldown": "On cooldown {turns}t",
-      "castHint": "Heading to the dungeon — select {name} in the action panel to cast."
+      "castHint": "Heading to the dungeon — select {name} in the action panel to cast.",
+      "elementFilter": {
+        "label": "Filter element:",
+        "all": "All",
+        "empty": "No active talents match this element — clear filter to see all.",
+        "reset": "Clear filter"
+      }
     },
     "button": {
       "learn": "Learn",
