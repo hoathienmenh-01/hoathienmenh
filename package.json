@@ -15,6 +15,7 @@
     "restore:db": "bash scripts/restore-db.sh",
     "smoke:achievement": "node scripts/smoke-achievement.mjs",
     "smoke:admin": "node scripts/smoke-admin.mjs",
+    "smoke:auth": "node scripts/smoke-auth.mjs",
     "smoke:beta": "node scripts/smoke-beta.mjs",
     "smoke:boss": "node scripts/smoke-boss.mjs",
     "smoke:breakthrough": "node scripts/smoke-breakthrough.mjs",
