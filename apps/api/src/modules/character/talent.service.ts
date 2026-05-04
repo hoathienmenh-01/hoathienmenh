@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
   REALMS,
-  canCharacterLearnTalent,
   composePassiveTalentMods,
   computeTalentPointBudget,
   getTalentDef,
@@ -81,9 +80,13 @@ export class TalentService {
       });
       if (existing) throw new TalentError('ALREADY_LEARNED');
 
-      // Sum talent point cost của talent đã học khác. Trừ thêm
-      // `character.bonusTalentPoints` (admin seed) khỏi spent — tương đương
-      // tăng budget mà không phải thay đổi shared catalog signature.
+      // Sum talent point cost của talent đã học khác. Budget = realm-derived
+      // base + `character.bonusTalentPoints` (admin seed). Compute total
+      // budget rồi check `remaining = budget - pointsAlreadySpent` ≥ cost
+      // — đảm bảo nhất quán với `getRemainingTalentPoints` (FE hiển thị
+      // "Còn X"). Trước đây dùng trick `effectiveSpent = max(0, spent - bonus)`
+      // pass vào `canCharacterLearnTalent`, nhưng clamp 0 khiến bonus KHÔNG có
+      // hiệu lực khi `pointsAlreadySpent < bonus` (vd char fresh chưa học gì).
       const learnedRows = await tx.characterTalent.findMany({
         where: { characterId },
         select: { talentKey: true },
@@ -95,28 +98,23 @@ export class TalentService {
         // Defensive: nếu catalog đổi key → talent học cũ count = 0 (không
         // throw, chỉ skip — character vẫn có thể học talent mới).
       }
-      const effectiveSpent = Math.max(
-        0,
-        pointsAlreadySpent - character.bonusTalentPoints,
-      );
 
-      const check = canCharacterLearnTalent(
-        def,
-        currentRealmOrder,
-        REALM_KEY_TO_ORDER,
-        effectiveSpent,
-      );
-      if (!check.canLearn) {
-        switch (check.reason) {
-          case 'realm_too_low':
-            throw new TalentError('REALM_TOO_LOW');
-          case 'insufficient_talent_points':
-            throw new TalentError('INSUFFICIENT_TALENT_POINTS');
-          case 'invalid_realm_requirement':
-            throw new TalentError('INVALID_REALM_REQUIREMENT');
-          default:
-            throw new TalentError('INSUFFICIENT_TALENT_POINTS');
-        }
+      // Realm gate first (canCharacterLearnTalent kiểm tra cùng logic).
+      const reqOrder = REALM_KEY_TO_ORDER.get(def.realmRequirement);
+      if (reqOrder === undefined) {
+        throw new TalentError('INVALID_REALM_REQUIREMENT');
+      }
+      if (currentRealmOrder < reqOrder) {
+        throw new TalentError('REALM_TOO_LOW');
+      }
+
+      // Budget = realm base + bonus (admin seed). Match getRemainingTalentPoints.
+      const totalBudget =
+        computeTalentPointBudget(currentRealmOrder) +
+        character.bonusTalentPoints;
+      const remaining = totalBudget - pointsAlreadySpent;
+      if (remaining < def.talentPointCost) {
+        throw new TalentError('INSUFFICIENT_TALENT_POINTS');
       }
 
       const created = await tx.characterTalent.create({

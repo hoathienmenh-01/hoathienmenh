@@ -2,7 +2,7 @@
  * E2E golden path — closed beta core loop.
  *
  * Mục tiêu: cover end-to-end các tương tác chính của user closed beta để
- * regression-safe trước khi mở rộng Phase 10 content scale. Coverage (16 spec):
+ * regression-safe trước khi mở rộng Phase 10 content scale. Coverage (19 spec):
  *   1. AuthView smoke (no backend)
  *   2. Register UI + 4-step onboarding + landing /home (full UI flow)
  *   3. Cultivate toggle ON/OFF (UI label flip + API state cross-check)
@@ -21,6 +21,7 @@
  *   16. Settings — page load + account info + change-password section (post-9q-7)
  *   17. Skill Book — auto-grant basic_attack + tier badge + equipped summary (Phase 11.2.C)
  *   18. Talent catalog — fresh char Loadout empty + filter row gate + sticky CSS + catalog grid render (Phase 11.7.G)
+ *   19. Talent learn → cast → cooldown badge — admin seed (PR #389) + UI learn click + API combat cast + cooldown badge UI (Phase 11.X UI E2E)
  *
  * Yêu cầu chạy local:
  *   1. `pnpm infra:up` (Postgres + Redis)
@@ -44,6 +45,8 @@ import {
   claimDailyLogin,
   buyShopItem,
   listInventoryApi,
+  adminSeedTalent,
+  castTalentViaCombat,
 } from './helpers';
 
 const FULL_E2E = process.env.E2E_FULL === '1';
@@ -665,8 +668,8 @@ test.describe('Golden path — full stack required', () => {
   //
   // KHÔNG bấm Học (fresh char không có talent point + chưa đủ realm cho
   // bất kỳ talent nào trong catalog), KHÔNG seed talent point — full
-  // learn → cast → cooldown flow defer cho QA manual smoke với character
-  // đã breakthrough hoặc admin seed (Phase 11.X future E2E_FULL=1 spec).
+  // learn → cast → cooldown flow cover ở SPEC #19 (Phase 11.X UI E2E,
+  // E2E_FULL=1 spec với admin seed PR #389 set-realm + grant-talent-point).
   // ===================================================================
   test('talent catalog — fresh char loadout empty + filter row gate + sticky CSS + catalog grid render', async ({
     page,
@@ -707,5 +710,137 @@ test.describe('Golden path — full stack required', () => {
     const cards = page.locator('[data-testid^="talent-card-"]');
     await expect(cards.first()).toBeVisible();
     expect(await cards.count()).toBeGreaterThan(0);
+  });
+
+  // ===================================================================
+  // SPEC #19 — Phase 11.X UI E2E talent learn → cast → cooldown badge.
+  //
+  // Goal: lock down full talent UX round-trip — học active talent qua UI
+  // (`talent-learn-${key}` button) + cast trong combat (programmatic
+  // `POST /combat/encounter/.../action` với skillKey=talentKey) + verify
+  // cooldown badge xuất hiện trên Loadout sau reload `/talents`.
+  //
+  // Foundation: PR #389 admin seed harness (`set-realm` + `grant-talent-point`)
+  // unblock setup deterministic — không cần character đã breakthrough sẵn.
+  // Reuse `talent_kim_quang_tram` (`kim_dan` realm, 2 TP cost, mp=30 ≤ fresh
+  // mpMax=50 thanh_van, cooldown=3, AOE damage 2× atk).
+  //
+  // Setup steps:
+  //   1. registerAndOnboard fresh char (sect default thanh_van).
+  //   2. adminSeedTalent(userId, { realmKey: 'kim_dan', stage: 1, tp: 5 }).
+  //      → admin login (separate APIRequestContext) + set-realm + grant-tp.
+  //
+  // Test steps:
+  //   3. Navigate `/talents`. Verify Loadout empty (fresh) + budget remaining=5.
+  //   4. Click `[data-testid="talent-learn-talent_kim_quang_tram"]` → wait
+  //      ready badge `talent-active-ready-talent_kim_quang_tram` visible
+  //      (cooldown=0 vừa học chưa cast). Loadout active count = 1.
+  //   5. castTalentViaCombat(page, 'son_coc', 'talent_kim_quang_tram').
+  //      → POST /combat/encounter/start { dungeonKey: 'son_coc' } + POST
+  //        /encounter/:id/action { skillKey: 'talent_kim_quang_tram' }.
+  //      Server set cooldownTurnsRemaining = 3 (catalog activeEffect.cooldownTurns).
+  //   6. Reload `/talents`. Verify cooldown badge
+  //      `talent-active-cooldown-talent_kim_quang_tram` visible + chứa "3"
+  //      (i18n `talents.badge.cooldown` formatString { turns: 3 }).
+  //
+  // Anti-FE-self-grant: spec KHÔNG mock cooldown FE-side; cooldown phải
+  // round-trip qua server (POST action → talents/state → cooldownOf > 0
+  // → badge visible). Nếu BE/FE wire stale → badge missing → spec fail.
+  //
+  // Yêu cầu environment: `pnpm --filter @xuantoi/api bootstrap` để seed
+  // admin@example.com (admin seed harness gating). Override email/password
+  // qua env `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD`.
+  // ===================================================================
+  test('talent learn → cast (combat) → cooldown badge — full Phase 11.X UI E2E', async ({
+    page,
+  }) => {
+    const TALENT_KEY = 'talent_kim_quang_tram';
+    const COOLDOWN_TURNS = 3;
+    // Admin grant delta. Tổng budget = `computeTalentPointBudget(realmOrder)` +
+    // `bonusTalentPoints`. Kim Đan realm order=3 → floor(3/3)=1 base → tổng
+    // budget = 1 + GRANT_DELTA (5) = 6. Sau khi học cost=2 → còn 4.
+    const GRANT_DELTA = 5;
+    const REALM_BASE_BUDGET = 1; // computeTalentPointBudget(kim_dan order=3)
+    const TOTAL_BUDGET = REALM_BASE_BUDGET + GRANT_DELTA; // 6
+    const LEARN_COST = 2; // talent_kim_quang_tram talentPointCost
+    const REMAINING_AFTER_LEARN = TOTAL_BUDGET - LEARN_COST; // 4
+
+    // 1. Onboard fresh char (sect thanh_van: mpMax=50 ≥ talent mpCost 30).
+    const seed = await registerAndOnboard(page, { emailPrefix: 'e2e_talent_full' });
+
+    // 2. Admin seed: setRealm kim_dan stage=1 + grantTalentPoint +5.
+    //    set-realm reset exp=0 (admin.service.setRealm) — không ảnh hưởng
+    //    talent flow vì học gate theo realmKey/realmStage không phải exp.
+    await adminSeedTalent(seed.userId, {
+      realmKey: 'kim_dan',
+      realmStage: 1,
+      talentPoints: GRANT_DELTA,
+    });
+
+    // 3. Visit /talents, verify pre-learn baseline.
+    await page.goto('/talents');
+    await expect(page).toHaveURL(/\/talents/);
+
+    // Loadout empty cho fresh char + budget remaining=TOTAL_BUDGET (realm base
+    // + admin grant) + spent=0 (chưa học gì).
+    await expect(page.locator('[data-testid="talents-active-empty"]')).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.locator('[data-testid="talents-budget-remaining"]')).toContainText(
+      String(TOTAL_BUDGET),
+    );
+    await expect(page.locator('[data-testid="talents-budget-spent"]')).toContainText('0');
+
+    // 4. Click "Học" (learn) button trên `talent_kim_quang_tram` card.
+    //    Server: POST /character/talents/learn { talentKey } → 200 + insert
+    //    `Talent` row. effectiveSpent = pointsAlreadySpent (2) - bonusTalentPoints
+    //    (5) clamp 0 → 0 ≤ budget(1). FE: talentsStore.learn() → mutate state
+    //    + re-render Loadout.
+    const learnBtn = page.locator(`[data-testid="talent-learn-${TALENT_KEY}"]`);
+    await expect(learnBtn).toBeEnabled();
+    await learnBtn.click();
+
+    // Loadout active row hiện ra (FE wire post-learn refresh).
+    await expect(page.locator(`[data-testid="talent-active-row-${TALENT_KEY}"]`)).toBeVisible({
+      timeout: 5_000,
+    });
+    // Ready badge (cooldown=0 vừa học chưa cast).
+    await expect(page.locator(`[data-testid="talent-active-ready-${TALENT_KEY}"]`)).toBeVisible();
+    // Cooldown badge KHÔNG render (cooldown=0).
+    await expect(
+      page.locator(`[data-testid="talent-active-cooldown-${TALENT_KEY}"]`),
+    ).toHaveCount(0);
+    // Budget update: spent=LEARN_COST, remaining=TOTAL_BUDGET-LEARN_COST.
+    await expect(page.locator('[data-testid="talents-budget-spent"]')).toContainText(
+      String(LEARN_COST),
+    );
+    await expect(page.locator('[data-testid="talents-budget-remaining"]')).toContainText(
+      String(REMAINING_AFTER_LEARN),
+    );
+
+    // 5. Cast trong combat (programmatic) — start son_coc encounter + 1 action
+    //    với skillKey=talentKey. Server set cooldownTurnsRemaining=3 cho
+    //    talent_kim_quang_tram (catalog activeEffect.cooldownTurns=3).
+    //
+    //    Lý do dùng API (không click DungeonView UI cast button): test
+    //    pyramid — combat encounter UI flow đã cover ở SPEC #15 (dungeon
+    //    list + entry button), `dungeon-talent-cast-${key}` đã cover ở
+    //    `apps/web/src/views/__tests__/DungeonView.test.ts`. Spec #19
+    //    isolate Phase 11.X UI E2E talent badge round-trip — cast path
+    //    chỉ cần trigger cooldown server-side để FE fetch & render.
+    await castTalentViaCombat(page, 'son_coc', TALENT_KEY);
+
+    // 6. Reload /talents → verify cooldown badge xuất hiện (server-authoritative).
+    //    talentsStore.fetchState() refetch /character/talents/state →
+    //    cooldownTurnsRemaining=3 → badge visible + ready badge ẩn.
+    await page.reload();
+    await expect(page.locator(`[data-testid="talent-active-row-${TALENT_KEY}"]`)).toBeVisible({
+      timeout: 10_000,
+    });
+    const cooldownBadge = page.locator(`[data-testid="talent-active-cooldown-${TALENT_KEY}"]`);
+    await expect(cooldownBadge).toBeVisible();
+    await expect(cooldownBadge).toContainText(String(COOLDOWN_TURNS));
+    // Ready badge ẩn (cooldown > 0 → mutex với ready).
+    await expect(page.locator(`[data-testid="talent-active-ready-${TALENT_KEY}"]`)).toHaveCount(0);
   });
 });
