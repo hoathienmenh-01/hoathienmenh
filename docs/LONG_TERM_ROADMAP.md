@@ -479,7 +479,7 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - 9 vitest mới trong `DungeonView.test.ts` cover section gate, button label cd vs name, cd > 0 disabled, click cast performAction, WON toast, route query highlight, cd > 0 KHÔNG highlight, no query KHÔNG fetchState, cast reset preselect.
 - KHÔNG schema migration, KHÔNG BE change — pure FE UI continuity addition.
 
-#### 11.7.G PR: TalentView Loadout sticky positioning + per-loadout element filter — IN-FLIGHT (PR #356 / this branch)
+#### 11.7.G PR: TalentView Loadout sticky positioning + per-loadout element filter — PENDING MERGE (PR #356, CI 5/5 GREEN first run)
 
 - `apps/web/src/views/TalentCatalogView.vue` — Loadout section thêm class `bg-ink-900/95 backdrop-blur md:sticky md:top-0 md:z-10` để bám đỉnh `<main>` scroll container (AppShell `<main>` `overflow-y-auto`) khi user scroll qua catalog grid 54-talent. Per-loadout element filter mới (independent với catalog filter ở section bên dưới): `loadoutElementFilter` ref + `filteredActiveLearnedTalents` computed (apply hệ filter trên `activeLearnedTalents`, giữ sort ready/cd/key) + `clearLoadoutElementFilter()` reset.
 - Filter row chỉ render khi `activeLearnedTalents.length > 0` (empty state vẫn clean). Filter-empty state riêng `talents-active-filter-empty` khi filter loại trừ tất cả learned (phân biệt với `talents-active-empty` khi user chưa học active nào). Reset button visible chỉ khi filter ≠ 'all'. Count text dùng `filteredActiveLearnedTalents.length`.
