@@ -756,7 +756,14 @@ test.describe('Golden path — full stack required', () => {
   }) => {
     const TALENT_KEY = 'talent_kim_quang_tram';
     const COOLDOWN_TURNS = 3;
-    const TALENT_POINTS = 5;
+    // Admin grant delta. Tổng budget = `computeTalentPointBudget(realmOrder)` +
+    // `bonusTalentPoints`. Kim Đan realm order=3 → floor(3/3)=1 base → tổng
+    // budget = 1 + GRANT_DELTA (5) = 6. Sau khi học cost=2 → còn 4.
+    const GRANT_DELTA = 5;
+    const REALM_BASE_BUDGET = 1; // computeTalentPointBudget(kim_dan order=3)
+    const TOTAL_BUDGET = REALM_BASE_BUDGET + GRANT_DELTA; // 6
+    const LEARN_COST = 2; // talent_kim_quang_tram talentPointCost
+    const REMAINING_AFTER_LEARN = TOTAL_BUDGET - LEARN_COST; // 4
 
     // 1. Onboard fresh char (sect thanh_van: mpMax=50 ≥ talent mpCost 30).
     const seed = await registerAndOnboard(page, { emailPrefix: 'e2e_talent_full' });
@@ -767,27 +774,28 @@ test.describe('Golden path — full stack required', () => {
     await adminSeedTalent(seed.userId, {
       realmKey: 'kim_dan',
       realmStage: 1,
-      talentPoints: TALENT_POINTS,
+      talentPoints: GRANT_DELTA,
     });
 
     // 3. Visit /talents, verify pre-learn baseline.
     await page.goto('/talents');
     await expect(page).toHaveURL(/\/talents/);
 
-    // Loadout empty cho fresh char + budget remaining=5 (admin grant) +
-    // spent=0 (chưa học gì).
+    // Loadout empty cho fresh char + budget remaining=TOTAL_BUDGET (realm base
+    // + admin grant) + spent=0 (chưa học gì).
     await expect(page.locator('[data-testid="talents-active-empty"]')).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.locator('[data-testid="talents-budget-remaining"]')).toContainText(
-      String(TALENT_POINTS),
+      String(TOTAL_BUDGET),
     );
     await expect(page.locator('[data-testid="talents-budget-spent"]')).toContainText('0');
 
     // 4. Click "Học" (learn) button trên `talent_kim_quang_tram` card.
     //    Server: POST /character/talents/learn { talentKey } → 200 + insert
-    //    `Talent` row + decrement bonusTalentPoints (5 → 3 sau cost=2).
-    //    FE: talentsStore.learn() → mutate state + re-render Loadout.
+    //    `Talent` row. effectiveSpent = pointsAlreadySpent (2) - bonusTalentPoints
+    //    (5) clamp 0 → 0 ≤ budget(1). FE: talentsStore.learn() → mutate state
+    //    + re-render Loadout.
     const learnBtn = page.locator(`[data-testid="talent-learn-${TALENT_KEY}"]`);
     await expect(learnBtn).toBeEnabled();
     await learnBtn.click();
@@ -802,9 +810,13 @@ test.describe('Golden path — full stack required', () => {
     await expect(
       page.locator(`[data-testid="talent-active-cooldown-${TALENT_KEY}"]`),
     ).toHaveCount(0);
-    // Budget update: spent=2 (talentPointCost), remaining=5-2=3.
-    await expect(page.locator('[data-testid="talents-budget-spent"]')).toContainText('2');
-    await expect(page.locator('[data-testid="talents-budget-remaining"]')).toContainText('3');
+    // Budget update: spent=LEARN_COST, remaining=TOTAL_BUDGET-LEARN_COST.
+    await expect(page.locator('[data-testid="talents-budget-spent"]')).toContainText(
+      String(LEARN_COST),
+    );
+    await expect(page.locator('[data-testid="talents-budget-remaining"]')).toContainText(
+      String(REMAINING_AFTER_LEARN),
+    );
 
     // 5. Cast trong combat (programmatic) — start son_coc encounter + 1 action
     //    với skillKey=talentKey. Server set cooldownTurnsRemaining=3 cho
