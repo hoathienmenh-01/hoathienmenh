@@ -28,6 +28,7 @@
     "smoke:market": "node scripts/smoke-market.mjs",
     "smoke:mission": "node scripts/smoke-mission.mjs",
     "smoke:next-action": "node scripts/smoke-next-action.mjs",
+    "smoke:sect": "node scripts/smoke-sect.mjs",
     "smoke:skill": "node scripts/smoke-skill.mjs",
     "smoke:spiritual-root": "node scripts/smoke-spiritual-root.mjs",
     "smoke:topup": "node scripts/smoke-topup.mjs",
