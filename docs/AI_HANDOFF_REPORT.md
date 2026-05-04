@@ -1,6 +1,191 @@
 # AI Handoff Report — Xuân Tôi
 
-> 👉 **AI/dev mới: ĐỌC [`docs/START_HERE.md`](./START_HERE.md) TRƯỚC.** File đó định tuyến bạn tới đúng doc theo mục đích (trạng thái / vision / roadmap / economy / content / balance / live ops).
+> 👉 **AI/dev mới: ĐỌC [`docs/START_HERE.md`](./START_HERE.md) TRƯỚC.** File đó định tuyến tới đúng doc theo mục đích (state / vision / roadmap / economy / content / balance / live ops).
+
+> **Cấu trúc post-compact 2026-05-04** (PR `docs(handoff): compact AI handoff report for faster continuation`): 6 section live ở đầu + Archive ở cuối giữ toàn bộ lịch sử (Snapshots PR #33→#391, Recent Changes Legacy, Completed Features, Project Reference đầy đủ Tech Stack / Architecture / DB / Gameplay / Run Locally / Rules, Old Recommended Next Roadmap, Exact PR Plan). Theo HANDOFF REPORT STRUCTURE RULE ở [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md): Executive Summary ≤ 30 dòng, Recent Changes 5-10 PR. **Không thông tin nào bị xoá** — chỉ tóm tắt + reorganize, full original content nằm trong Archive (dùng `<details>` collapsibles cho navigability).
+
+---
+
+## 1. Current Executive Summary
+
+- **Current `main` commit**: post PR #391 merged (smoke:mail claim positive-path qua admin POST /admin/mail/send, 16→26 step) + post PR #390 (smoke positive BATCH skill upgrade-mastery + shop buy qua admin grant-currency, skill 25→33 + shop 14→21 step) + post PR #389 (admin seed harness extension grant-talent-point + set-realm + grant-currency, foundation cho Phase 11.X UI E2E + future positive-path smokes).
+- **Current phase**: Phase 10 Content scale **CLOSED** ✅. Phase 11 Progression Depth catalog 11/11 + runtime persistence 10/10 + UI tracks merged. Phase 11.X UI E2E **UNGATED** — PR #389 admin seed harness đầy đủ 6 endpoint (grant-exp/grant-item/grant-spiritual-root/grant-talent-point/set-realm/grant-currency). Smoke scripts **25 module** complete (full HTTP coverage gameplay + admin + auth gateway). Detail ở `## 3. Current Phase Status`.
+- **Test baseline (post PR #391 merged)**: api **1696/1696 vitest** + shared **1055** + web **1022** (no delta — PR #390/#391 smoke-only nằm ngoài CI matrix). E2E_FULL=1 stack required cho UI E2E. Smoke scripts không nằm trong CI — verify manually qua `pnpm smoke:*`. Detail ở `## 5. Tests`.
+- **Open PR / pending branch**: 0 in-flight code PR (post PR #391 merge baseline). Older docs/audit in-flight (session 5/6 + 5/7) chưa rebase — xem GitHub PR list ở `https://github.com/hoathienmenh-01/xuantoi/pulls`.
+- **Known blocker live**: **0 Critical** hiện tại. **Medium còn open**: M7 CSP production deploy chưa test với CDN/asset domain khác, M10 Shop không có daily limit/rate-limit (closed beta acceptable). **Low còn open**: L1 (đã resolve PR F audit i18n nhưng remain identical en≡vi cho universal terms — đúng intent). Detail ở `## 4. Known Issues / Risks`.
+- **Phase 9 readiness** (snapshot session 9r-9): **11/15 Done**, **3 Partial** (cultivation breakthrough end-to-end, mission claim flow, mail UI — mail UI partial gap closed by PR #391 mail claim end-to-end runtime smoke). Detail [`BETA_CHECKLIST.md`](./BETA_CHECKLIST.md) §"Phase 9 readiness audit".
+- **Immediate next task** (3-5 ưu tiên cao nhất theo SESSION PR LIMIT + GOM TRƯỚC KHI TÁCH 4b — Medium PR > Hotfix > Large):
+  1. **Phase 11.X UI E2E smoke** (Medium PR, Template B) — Playwright test `talent learn → cast → cooldown badge` flow (cần `E2E_FULL=1` PG+Redis+API+Web stack; setup: setRealm kim_dan + grantTalentPoint +1 → click learn → click cast → assert cooldown badge update). Foundation đủ qua PR #389.
+  2. **Smoke positive-path follow-up BATCH** (Medium PR, Template B) — gom `smoke:cultivation-method` switch positive (cần admin grant-method-key endpoint hoặc reuse equipped via grant-item) + `smoke:daily-login` multi-day positive (cần admin advance-day hoặc set-streak — nhỏ migration field hoặc service helper) + `smoke:breakthrough` positive (set-realm stage=9 + grant-exp đủ cost → POST /character/breakthrough advance to truc_co — fully unblocked qua PR #389).
+  3. **Phase 12 entry** (chỉ khi Phase 11 ≥ 95%) — party/co-op dungeon catalog foundation (tham khảo [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §12 entry criteria).
+- **Anti-duplicate guard** (per NEXT TASK AUTO-SELECTION rule): trước khi pick task, MUST `git fetch origin main && git log --oneline -15` đối chiếu commit message với keyword task — vd "smoke:cultivation-method positive", "Phase 11.X E2E", "admin seed harness". Match → SKIP, pick task khác.
+- **Do NOT build yet** (anti-feature-creep): Real-time PvP (Phase 14), party/co-op dungeon (Phase 12 — wait for Phase 11 ≥ 95%), pet/wife gacha (Phase 16), voice chat, video streaming. Full list ở [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §0.
+
+---
+
+## 2. Recent Changes
+
+10 PR gần nhất merged trên main (newest đầu). Detail từng PR + scope đầy đủ ở `## 7. Archive / Historical Snapshots § Snapshots`.
+
+| PR | Title | Type | Scope summary |
+|---|---|---|---|
+| [#391](https://github.com/hoathienmenh-01/xuantoi/pull/391) | test(smoke): smoke:mail claim positive-path qua admin POST /admin/mail/send | smoke positive | smoke-mail.mjs 16→26 step: admin send {rewardLinhThach:'150', huyet_chi_dan x2} → player read → claim → atomic ledger MAIL_CLAIM + verify state linhThach='150' + inventory qty=2 + ALREADY_CLAIMED 409 retry CAS guard. Reuse cookie-jar swap pattern. Smoke verified locally 26/26 OK. |
+| [#390](https://github.com/hoathienmenh-01/xuantoi/pull/390) | feat(smoke): smoke:skill upgrade-mastery + smoke:shop buy positive-path qua admin grant-currency | smoke positive BATCH | smoke-skill 25→33 step (insert admin grant 200 LT → POST /skill/upgrade-mastery kim_quang_tram L1→L2 + atomic ledger SKILL_UPGRADE + INSUFFICIENT_FUNDS retry rollback) + smoke-shop 14→21 step (admin grant 25 LT → POST /shop/buy huyet_chi_dan qty=1 + ledger SHOP_BUY). +387/-32 LOC, 3 file. |
+| [#389](https://github.com/hoathienmenh-01/xuantoi/pull/389) | feat(admin): seed harness extension — grant-talent-point + set-realm + grant-currency | admin BE | 3 endpoint mới `POST /admin/users/:id/{grant-talent-point,set-realm,grant-currency}` + Prisma migration `Character.bonusTalentPoints` Int default 0 + TalentService budget compose. +25 vitest. Foundation cho Phase 11.X UI E2E + future positive-path smokes. |
+| [#388](https://github.com/hoathienmenh-01/xuantoi/pull/388) | test(smoke): smoke:skill positive-path admin grant skill_book → learn → equip → unequip → idempotent re-equip | smoke positive | smoke-skill 25 step. |
+| [#387](https://github.com/hoathienmenh-01/xuantoi/pull/387) | docs(workflow): enforce batching + SESSION PR LIMIT + GOM TRƯỚC KHI TÁCH 4b + PROMPT TEMPLATE | docs | AI_WORKFLOW_RULES.md add §SESSION PR LIMIT (1-3 PR/session) + §GOM TRƯỚC KHI TÁCH 4b (cùng loại → thêm commit, KHÔNG mở PR mới) + 3 PROMPT TEMPLATE (A feature/B smoke batch/C catalog batch). |
+| [#386](https://github.com/hoathienmenh-01/xuantoi/pull/386) | test(smoke): smoke:spiritual-root reroll positive-path qua admin grant linh_can_dan x2 | smoke positive | smoke-spiritual-root 13→24 step. |
+| [#385](https://github.com/hoathienmenh-01/xuantoi/pull/385) | test(smoke): smoke:inventory use/equip/unequip positive via admin grant-item | smoke positive | smoke-inventory positive-path. |
+| [#384](https://github.com/hoathienmenh-01/xuantoi/pull/384) | test(smoke): smoke:auth 9 endpoints + cookie-jar swap helper | smoke | smoke-auth full HTTP surface 9 endpoint + reusable snapshotCookies/restoreCookies helper. |
+| [#383](https://github.com/hoathienmenh-01/xuantoi/pull/383) | feat(admin): seed harness BE — grant-exp + grant-item + grant-spiritual-root | admin BE | 3 endpoint admin seed foundation cho positive-path smokes. |
+| [#382](https://github.com/hoathienmenh-01/xuantoi/pull/382) | test(smoke): smoke:economy admin audit filter | smoke | smoke-economy admin audit-ledger filter coverage. |
+
+> **PR #381 → #33** lịch sử đầy đủ: xem `## 7. Archive § Recent Changes Legacy`.
+
+---
+
+## 3. Current Phase Status
+
+| Phase | Title | Status | Note |
+|---|---|---|---|
+| 0–8 | Foundation: schema + auth + core gameplay (cultivation/combat/inventory/market/sect/chat/boss/admin/topup/giftcode/mail/mission) | **Done** ✅ | Full feature catalog ở `## 7. Archive § Completed Features (snapshot main @ 81706a9)`. |
+| 9 | Beta readiness (Phase 9.A→9.E sub-phases polish + smoke E2E + admin economy alerts + audit ledger CLI) | **11/15 Done, 3 Partial** | Partial: cultivation breakthrough end-to-end, mission claim flow, mail UI (mail gap closed by PR #391 mail claim runtime smoke). Detail [`BETA_CHECKLIST.md`](./BETA_CHECKLIST.md). |
+| 10 | Content scale (boss tier 2/3 + dungeon expand + market matchmaking + economy stress) | **5/5 CLOSED** ✅ | All sub-tracks merged. |
+| 11 | Progression Depth (cultivation method / talent / spiritual root / skill mastery / tribulation / refine / achievement / alchemy / pets / cosmetics / titles) | **catalog 11/11 + runtime 10/10 + UI tracks merged** | Phase 11.X UI E2E **UNGATED** post PR #389 admin seed harness extension. |
+| 11.X | UI E2E smoke Playwright (talent learn → cast → cooldown badge) | **Ready to start** | Cần `E2E_FULL=1` PG+Redis+API+Web stack. Foundation đủ. |
+| 12 | Party / co-op dungeon | **Not started — Blocked** | Wait Phase 11 ≥ 95%. Catalog foundation per [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §12 entry criteria. |
+| 13+ | Real-time PvP / pet gacha / voice / video streaming | **Not started** | Per LONG_TERM_ROADMAP §0 — explicitly DO NOT build yet. |
+
+**Smoke coverage** (post PR #391, 25 module): admin (3 entry: BE seed-harness #383+#389 + audit filter #382 + role/ban/topup/inventory/mail-broadcast/users-csv #377→#382), auth #384, achievement, beta, boss, breakthrough, chat, combat, cultivation-method, cultivation, daily-login, economy, giftcode, inventory #385, leaderboard, mail #391 (positive), market, mission, next-action, sect, shop #390 (positive), skill #390 (positive) #388 (skill book), spiritual-root #386 (positive), topup, ws.
+
+**Positive-path coverage** post-#391: 7 module có cả negative + positive HTTP path coverage (skill, shop, mail, inventory, spiritual-root, breakthrough, auth). Còn defer: cultivation-method switch positive, daily-login multi-day positive — pending admin endpoint hoặc service helper extension.
+
+---
+
+## 4. Known Issues / Risks
+
+### Live (Open) — cần action
+
+| # | Severity | Issue | Status / Plan |
+|---|---|---|---|
+| M7 | Medium | CSP production-ready nhưng chưa test deploy với CDN/asset domain khác. | **Open** — khi deploy cần review `script-src`, `connect-src`. |
+| M10 | Medium | Shop không có rate-limit + stock infinite + không daily limit. | **Open** — closed beta acceptable; sau beta thêm `dailyLimit` config. |
+
+### Resolved (5 ví dụ gần nhất — full list ở Archive)
+
+- ~~M9 Settings logout-all không bump `passwordVersion`~~ → Resolved PR #154/#155 (intentional trade-off documented `docs/SECURITY.md §1`, regression guard test trong `auth.service.test.ts`).
+- ~~M11 `GET /character/profile/:id` không có rate-limit riêng~~ → Resolved PR #62 (`PROFILE_RATE_LIMITER`, 120 req/IP/15min).
+- ~~M8 Admin guard MOD có quyền broad gần ADMIN~~ → Resolved PR E (`@RequireAdmin()` decorator + reflector trong AdminGuard, ADMIN-only cho grant/role-set/approve-topup/reject-topup/giftcode-create/giftcode-revoke/mail-send/mail-broadcast/boss-admin-spawn).
+- ~~M6 LogsModule (G3 cũ) chưa build~~ → Resolved PR #88 BE + PR #91 FE (`/logs/me?type=currency|item&limit=20&cursor=<opaque>` keyset pagination + `ActivityView.vue` + 24 ledger reason i18n).
+- ~~C-TSNARROW-RESOLVEFN main typecheck đỏ vue-tsc narrow `let resolveFn`~~ → Resolved session 9j task A (đổi pattern sang `resolveHolder: { current: ... }` ref-holder).
+
+> **Full historical issues** (Critical / High / Medium / Low + tất cả ~50 entries Resolved) ở `## 7. Archive § Section 16 Known Issues / Risks`.
+
+---
+
+## 5. Tests
+
+### Baseline (post PR #391 merged on main)
+
+| Workspace | Test count | Notes |
+|---|---|---|
+| `apps/api` | **1696 vitest** | +25 PR #389 admin-seed-harness-ext.service.test.ts (7 grantTalentPoint + 7 setRealm + 10 grantCurrency + 1 talent budget compose). PR #390/#391 smoke-only — không thêm vitest. |
+| `packages/shared` | **1055 vitest** | No delta gần đây. |
+| `apps/web` | **1022 vitest** | No delta gần đây. |
+| **Total** | **3773 vitest** | All green trên main. |
+
+### Smoke Scripts (Node 20 native fetch, không nằm trong CI matrix — manual verify qua `pnpm smoke:*`)
+
+25 smoke scripts, ~15 step trung bình, 4 endpoint coverage trung bình per module. Yêu cầu local stack: `pnpm infra:up` (PG+Redis+MinIO+MailHog) + `pnpm --filter @xuantoi/api exec prisma migrate deploy` + `pnpm --filter @xuantoi/api run bootstrap` + `pnpm --filter @xuantoi/api dev`.
+
+| Module | Script | Step count | Negative | Positive | Notes |
+|---|---|---|---|---|---|
+| achievement | `smoke:achievement` | ~12 | ✅ | ⚠️ partial | claim flow positive defer (cần admin grant achievement progress) |
+| admin | `smoke:admin` | ~32 (5 entry) | ✅ | ✅ | full admin surface (role/ban/topup/inventory/mail-broadcast/users-csv/economy-audit) |
+| auth | `smoke:auth` | 9 | ✅ | ✅ | PR #384 |
+| beta | `smoke:beta` | ~10 | ✅ | — | beta gating endpoints |
+| boss | `smoke:boss` | ~14 | ✅ | ⚠️ partial | boss attack positive defer (cần spawn admin) |
+| breakthrough | `smoke:breakthrough` | ~16 | ✅ | ⚠️ defer | positive: set-realm stage=9 + grant-exp đủ cost (foundation đủ qua PR #389) |
+| chat | `smoke:chat` | ~12 | ✅ | ✅ | world/sect chat with rate limit verify |
+| combat | `smoke:combat` | ~14 | ✅ | ⚠️ partial | encounter positive defer (cần grant-item dungeon key hoặc unlock) |
+| cultivation-method | `smoke:cultivation-method` | ~12 | ✅ | ⚠️ defer | switch positive defer (cần admin grant-method-key hoặc reuse equipped via grant-item kim_quang flow) |
+| cultivation | `smoke:cultivation` | ~14 | ✅ | ✅ | toggle on/off + 30s tick verify |
+| daily-login | `smoke:daily-login` | ~10 | ✅ | ⚠️ defer | multi-day positive defer (cần admin advance-day hoặc set-streak) |
+| economy | `smoke:economy` | ~14 | ✅ | ✅ | admin audit filter (PR #382) |
+| giftcode | `smoke:giftcode` | ~14 | ✅ | ✅ | redeem flow + admin create/revoke |
+| inventory | `smoke:inventory` | ~22 | ✅ | ✅ | PR #385 use/equip/unequip via admin grant-item |
+| leaderboard | `smoke:leaderboard` | ~10 | ✅ | ✅ | top-50 by realm + power |
+| **mail** | `smoke:mail` | **26** | ✅ | ✅ | **PR #391 positive (admin send 150 LT + huyet_chi_dan x2 → claim → ledger MAIL_CLAIM + ALREADY_CLAIMED retry)** |
+| market | `smoke:market` | ~14 | ✅ | ✅ | post/buy/cancel + 5% fee |
+| mission | `smoke:mission` | ~14 | ✅ | ✅ | track/claim flow |
+| next-action | `smoke:next-action` | ~8 | ✅ | ✅ | derived suggestions verify |
+| sect | `smoke:sect` | ~12 | ✅ | ✅ | join/leave/contribute |
+| **shop** | `smoke:shop` | **21** | ✅ | ✅ | **PR #390 positive (admin grant 25 LT → buy huyet_chi_dan qty=1 + ledger SHOP_BUY)** |
+| **skill** | `smoke:skill` | **33** | ✅ | ✅ | **PR #388 book learn + PR #390 upgrade-mastery (200 LT → kim_quang_tram L1→L2 + INSUFFICIENT_FUNDS rollback)** |
+| spiritual-root | `smoke:spiritual-root` | 24 | ✅ | ✅ | PR #386 reroll positive (admin grant linh_can_dan x2) |
+| topup | `smoke:topup` | ~14 | ✅ | ✅ | createOrder + admin approve/reject |
+| ws | `smoke:ws` | ~6 | ✅ | ✅ | WS auth + emit verify |
+
+### E2E (Playwright)
+
+- `apps/web/e2e/golden.spec.ts` — 16 spec golden path (register/onboard, mission VN tz, shop buy + ledger, settings change-password + logout-all, profile public, admin boss spawn, inventory↔ledger, dungeon, mail UI, settings).
+- CI job `e2e-smoke` (matrix postgres+redis, build api+web, run `E2E_SMOKE=1`) — chạy mỗi PR.
+- `E2E_FULL=1` gate cho full Phase 11.X UI E2E (talent learn → cast → cooldown) **chưa wire CI** — runtime manual test.
+
+### Còn thiếu (priority order)
+
+1. **Phase 11.X UI E2E** Playwright talent learn → cast → cooldown badge (E2E_FULL=1) — top priority next.
+2. **Smoke positive-path** cho cultivation-method / daily-login / breakthrough — defer pending admin endpoint extension hoặc service helper.
+3. **Concurrency tests**: `Inventory Promise.all race`, `Cultivation multi-instance lock`, `Chat Redis failover branch`, `Boss spawn cron auto`, `Realtime ban during connection` — Low priority.
+
+---
+
+## 6. Recommended Next Roadmap
+
+Per [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) §SESSION PR LIMIT (1-3 PR/session) + §GOM TRƯỚC KHI TÁCH 4b (cùng loại → batch trong 1 PR). Ưu tiên Medium PR > Hotfix > Large.
+
+### Top priority — next session
+
+1. **Phase 11.X UI E2E smoke** — Medium PR, Template B (E2E test). Playwright `talent learn → cast → cooldown badge` flow:
+   - **Setup**: spin up `E2E_FULL=1` stack PG+Redis+API+Web; admin seed `setRealm kim_dan` + `grantTalentPoint +1` qua admin endpoints (PR #389).
+   - **Test flow**: navigate `/talent` → click "Learn talent" → assert talent learned + point=0 → click "Cast" → assert cooldown badge update + `nextCastableAt > now`.
+   - **Expected file**: `apps/web/e2e/talent-flow.spec.ts` (1 spec, ~80 LOC).
+   - **Foundation**: đủ qua PR #389 admin seed harness extension (6 endpoint).
+
+2. **Smoke positive-path follow-up BATCH** — Medium PR, Template B (smoke batch). Gom 3 module:
+   - **smoke:cultivation-method switch positive** — cần admin grant-method-key endpoint hoặc reuse equipped via grant-item kim_quang flow.
+   - **smoke:daily-login multi-day positive** — cần admin advance-day hoặc set-streak (Prisma migration nhỏ thêm field hoặc service helper).
+   - **smoke:breakthrough positive** — set-realm stage=9 + grant-exp đủ cost → POST /character/breakthrough advance to truc_co. **Fully unblocked qua PR #389**, không cần catalog change.
+
+3. **Phase 12 entry** (chỉ khi Phase 11 ≥ 95%) — party/co-op dungeon catalog foundation. Tham khảo [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §12 entry criteria. **Wait** until Phase 11.X UI E2E land trên main.
+
+### Backlog (low priority, an toàn nếu credit còn)
+
+- **Concurrency tests** (Low): Inventory `Promise.all` race, Cultivation multi-instance lock, Chat Redis failover branch, Boss spawn cron auto, Realtime ban during connection.
+- **Doc compaction maintenance** (Low): khi Recent Changes vượt 10 entry → đẩy entry cũ nhất xuống Archive § Recent Changes Legacy.
+- **CSP production verify** (M7): khi deploy production cần test với CDN domain khác — review `script-src` / `connect-src`.
+- **Shop daily limit** (M10): post-beta thêm `dailyLimit` config + rate-limit per user.
+
+### Anti-feature-creep (DO NOT BUILD YET)
+
+Per [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §0:
+- Real-time PvP (Phase 14)
+- Party / co-op dungeon (Phase 12 — wait Phase 11 ≥ 95%)
+- Pet / wife gacha (Phase 16)
+- Voice chat
+- Video streaming
+
+---
+
+## 7. Archive / Historical Snapshots
+
+> Toàn bộ thông tin lịch sử (PR snapshots, Recent Changes Legacy, Completed Features, Tech Stack / Architecture / Database / Gameplay Flows / Realtime / Economy / Seed / i18n / How To Run Locally / How To Promote Admin / Rules For The Next AI / Appendices, Old Recommended Next Roadmap, Exact PR Plan) được giữ NGUYÊN trong các collapsible blocks dưới đây — không thông tin nào bị xoá khi compact.
+
+> **Tip điều hướng**: dùng `Ctrl+F` tìm PR number / phase tag / module name / section heading.
+
+
+<details>
+<summary><strong>Executive Summary (pre-compact 2026-05-04)</strong> (click để mở)</summary>
 
 ## Current Executive Summary
 
@@ -34,6 +219,13 @@
 ---
 
 ---
+
+
+</details>
+
+
+<details>
+<summary><strong>Executive Summary — Archive (Older PR History pre-#329)</strong> (click để mở)</summary>
 
 ## Executive Summary — Archive (Older PR History)
 
@@ -119,6 +311,13 @@
 - **Previous merged catalog PR**: [#238 feat(shared): Skill Pack Ngũ Hành expansion — +10 skill (5 kim_dan ULT + 5 mid passive role-gap, Phase 10 PR-2 v2)](https://github.com/hoathienmenh-01/xuantoi/pull/238) — Skill catalog 26→36, mỗi hệ Ngũ Hành phủ ≥2 ACTIVE + ≥2 PASSIVE + ≥1 ULT kim_dan; runtime auto-inherit `applyMasteryEffect` (Phase 11.2.B) + element multiplier (Phase 11.3.B).
 
 ---
+
+
+</details>
+
+
+<details>
+<summary><strong>Snapshots (full PR snapshot detail PR #167→#391)</strong> (click để mở)</summary>
 
 ## Snapshots
 
@@ -611,6 +810,13 @@
 >
 > **Blueprint gốc 04/05**: nay đã được commit vào `docs/04_TECH_STACK_VA_DATA_MODEL.md` + `docs/05_KICH_BAN_BUILD_VA_PROMPT_AI.md` kèm banner **"Historical blueprint, NOT the current source of truth"**. Khi có conflict giữa 04/05 và code hiện tại + report này → **tin code & report**, KHÔNG rollback hoặc rewrite project theo 04/05.
 
+
+</details>
+
+
+<details>
+<summary><strong>Project Reference §1 — Project Overview</strong> (click để mở)</summary>
+
 ---
 
 ## 1. Project Overview
@@ -621,6 +827,13 @@
 - **Stack**: monorepo pnpm. `apps/api` (NestJS 10 + Prisma 5 + Postgres 16 + Redis 7 + BullMQ + Socket.io). `apps/web` (Vue 3 + Vite + Pinia + Tailwind + vue-i18n + PWA). `packages/shared` (Zod + realms/items/missions catalog).
 - **Mục tiêu hiện tại**: **closed beta readiness**. Hầu hết feature Phase 0-8 + Mission + Mail + GiftCode đã merge. Còn lại polish + observability + content scale.
 - **Trạng thái**: repo build xanh, CI xanh trên PR #40 → #61. Sau khi PR #33→#61 merge (28/4 22:05 UTC): **259 test API + 47 test shared + 64 test web (vitest) = 370 test pass** — verified local 28/4 21:55 UTC với real Postgres + Redis. PR #62 pending merge sẽ bổ sung +3 API test → **373 tổng**. Smoke E2E pass 6/6 đã chạy ở PR #44 (`ce6da28..4d8af10`); sau đó chưa smoke runtime tích hợp sau khi PR #46..#62 merge — **Needs runtime smoke** cho leaderboard FE + register rate-limit + profile rate-limit + sidebar badges + onboarding checklist + economy alerts + next-action panel.
+
+
+</details>
+
+
+<details>
+<summary><strong>Project Reference §2 — Branch / CI / PR Status (legacy outdated)</strong> (click để mở)</summary>
 
 ---
 
@@ -721,6 +934,13 @@
   | #85 | test(web): L6b — SettingsView logout-all confirm modal integration — `apps/web/src/views/__tests__/SettingsView.test.ts` mount full SettingsView verify modal wired đúng (open trên click, confirm gọi `logoutAll`, navigate `/auth`, error map qua i18n, Escape đóng modal) | +7 vitest web — merge `bbb6718` (29/4 ~13:02 UTC) |
 
 - Các branch `devin/*` feature đã merge vẫn còn tồn tại ở origin — có thể xoá sau khi smoke test, không cần gấp. **Lưu ý**: branch `devin/1777398022-audit-pr-45-blueprint-docs` vẫn chứa commit `4ed913a` (Merge PR #47) chưa vào main — nguồn để cherry-pick/replay.
+
+
+</details>
+
+
+<details>
+<summary><strong>Recent Changes Legacy (full PR detail PR #33→#385)</strong> (click để mở)</summary>
 
 ---
 
@@ -3109,6 +3329,12 @@ Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typeche
 - **Helper `itemName(key, locale)` (L4)** — chưa làm; tách PR riêng khi cần catalog item l10n cho `MissionView/MailView/GiftCodeView/ShopView`.
 - **Old text về "PR #47 wired"**: trước đây session 4 ghi audit gap như "E2E Playwright scaffolded (PR #47) — wired" + "Web Vitest wired (PR #47)" — **sai** với trạng thái `main`. Chính sửa ô này trong audit session 5.
 
+</details>
+
+
+<details>
+<summary><strong>Completed Features (snapshot main @ 81706a9, 28/4 22:05 UTC)</strong> (click để mở)</summary>
+
 ---
 
 ## Completed Features (snapshot `main @ 81706a9` — 28/4 22:05 UTC)
@@ -3148,6 +3374,13 @@ Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typeche
 
 > Tất cả feature trên **đã merge code + test pass trong CI từng PR**, **chưa** smoke E2E sau khi tất cả merged đồng thời → mọi feature đánh `Needs runtime smoke` cho đến khi PR A (xem §21) chạy.
 
+
+</details>
+
+
+<details>
+<summary><strong>Project Reference §3 — Tech Stack</strong> (click để mở)</summary>
+
 ---
 
 ## 3. Tech Stack
@@ -3171,6 +3404,13 @@ Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typeche
 | i18n | `vue-i18n` 10 + `@intlify/unplugin-vue-i18n` |
 | Lint | ESLint 9 + `@vue/eslint-config-typescript`, `eslint-plugin-vue` |
 | Dev infra | docker-compose: postgres + redis + minio + mailhog |
+
+
+</details>
+
+
+<details>
+<summary><strong>Project Reference §4 — Repository Structure</strong> (click để mở)</summary>
 
 ---
 
@@ -3236,6 +3476,13 @@ xuantoi/
 ### .github/workflows
 
 - `ci.yml` — chạy postgres + redis service, pnpm install, prisma generate + migrate, typecheck, lint, test, build. 2 job: `api` + `web`. Matrix node 20.
+
+
+</details>
+
+
+<details>
+<summary><strong>Project Reference §5-7 — Backend / Frontend / Shared Architecture</strong> (click để mở)</summary>
 
 ---
 
@@ -3343,6 +3590,13 @@ Tất cả module trong `apps/api/src/modules/`. Controller thường tại `/<m
 
 **Test**: 3 file, 30 test.
 
+
+</details>
+
+
+<details>
+<summary><strong>Project Reference §8 — Database / Prisma Schema</strong> (click để mở)</summary>
+
 ---
 
 ## 8. Database / Prisma Schema
@@ -3398,6 +3652,13 @@ pnpm --filter @xuantoi/api exec prisma migrate reset --force --skip-seed
 - Không có migration rollback tự động — nếu cần, copy migration.sql vào một migration mới và viết `DROP`/revert thủ công.
 - `CurrencyLedger` index `(characterId, createdAt)` + `(reason, createdAt)` đủ cho query user + admin. Không có index `(actorUserId)` — thêm nếu cần query theo admin.
 - `MissionProgress` không có soft delete — reset cron tạo row mới theo period.
+
+
+</details>
+
+
+<details>
+<summary><strong>Project Reference §9 — Core Gameplay Flows</strong> (click để mở)</summary>
 
 ---
 
@@ -3528,6 +3789,13 @@ pnpm --filter @xuantoi/api exec prisma migrate reset --force --skip-seed
 - **Test**: `mission.service.test.ts` (19 test).
 - **Risk**: chưa có WS `mission:progress` — user phải refresh. Khi reset cron chạy lệch giờ (timezone) — mặc định UTC. Nếu cần VN timezone, phải adjust trong scheduler.
 
+
+</details>
+
+
+<details>
+<summary><strong>Project Reference §10 — WebSocket / Realtime</strong> (click để mở)</summary>
+
 ---
 
 ## 10. WebSocket / Realtime
@@ -3583,6 +3851,13 @@ File: `apps/api/src/modules/realtime/realtime.gateway.ts`.
   - reject no/invalid/expired token.
   - auto-join sect room khi có sectId.
 
+
+</details>
+
+
+<details>
+<summary><strong>Project Reference §11 — Economy / Ledger / Anti-Fraud</strong> (click để mở)</summary>
+
 ---
 
 ## 11. Economy / Ledger / Anti-Fraud
@@ -3613,6 +3888,13 @@ apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { incr
 **Risk còn lại**:
 - `ItemLedger` nên thêm khi bước sau — giúp audit duplication khi equip/unequip race + market fraud.
 - ~~`CurrencyLedger.actorUserId` chưa có index~~ — đã fix ở PR #43 (`@@index([actorUserId, createdAt])` cho cả CurrencyLedger và ItemLedger).
+
+
+</details>
+
+
+<details>
+<summary><strong>Project Reference §12 — Tests Detail (full table per module)</strong> (click để mở)</summary>
 
 ---
 
@@ -3658,6 +3940,13 @@ pnpm --filter @xuantoi/web test        # 484 test (51 file, vitest 2.1.9 happy-d
 pnpm test                              # toàn bộ — gộp shared + api + web
 ```
 
+
+</details>
+
+
+<details>
+<summary><strong>Project Reference §13 — Seed Data / Balance / Content</strong> (click để mở)</summary>
+
 ---
 
 ## 13. Seed Data / Balance / Content
@@ -3688,6 +3977,13 @@ pnpm test                              # toàn bộ — gộp shared + api + web
 - Chưa có content scale: chỉ 3 dungeon + 9 monster cho 28 cảnh giới → late-game sẽ trống.
 - Chưa có seed quest chain (cốt truyện NPC) — chỉ có mission daily/weekly/once tĩnh.
 
+
+</details>
+
+
+<details>
+<summary><strong>Project Reference §14 — i18n / PWA / UX</strong> (click để mở)</summary>
+
 ---
 
 ## 14. i18n / PWA / UX
@@ -3702,6 +3998,13 @@ pnpm test                              # toàn bộ — gộp shared + api + web
 | A Linh onboarding bilingual | OK | PR #18 + i18n PR #17 key `onboarding.alinh.*`. |
 | Loading / empty / error state | Phần lớn OK | AuthView + OnboardingView + DungeonView có state đủ. Một số view (Boss, Giftcode history) chưa có skeleton loader. |
 | Mobile responsive | **Chưa xác minh runtime** | Tailwind breakpoint có nhưng chưa smoke test trên viewport < 375px. |
+
+
+</details>
+
+
+<details>
+<summary><strong>Project Reference §15 — Docs</strong> (click để mở)</summary>
 
 ---
 
@@ -3727,6 +4030,13 @@ pnpm test                              # toàn bộ — gộp shared + api + web
 | `docs/QA_CHECKLIST.md` | **Có** (PR #50 + PR #113 + PR #152) | Smoke checklist 15 phút + Playwright how-to + pnpm smoke:beta. 13.8 KB. |
 | `docs/RUNTIME_SMOKE_9G.md` | **Có** (session 9g) | Runtime smoke test report. 9.2 KB. |
 | `docs/AI_HANDOFF_REPORT.md` | **Đang viết (file này)** | — |
+
+
+</details>
+
+
+<details>
+<summary><strong>Known Issues / Risks — Full History (Critical / High / Medium / Low + ~50 Resolved entries)</strong> (click để mở)</summary>
 
 ---
 
@@ -3780,6 +4090,13 @@ _(Trước commit `0e9c438`: Không có lỗi làm app không chạy / mất ti�
 | ~~L6~~ | ~~Settings dùng `window.confirm()` cho logout-all.~~ | **Resolved by PR #83** (Merged into main @ `78261eb`, 29/4 ~12:50 UTC) — `apps/web/src/components/ui/ConfirmModal.vue` reusable component (Teleport, danger styling, loading lock, Escape/backdrop cancel) + `SettingsView.submitLogoutAll` mở modal thay vì `window.confirm()`. Lint default-prop fix tại commit `ca85265`. +13 vitest ConfirmModal. **Integration test follow-up resolved by PR #85** (Merged into main @ `bbb6718`, 29/4 ~13:02 UTC) — `apps/web/src/views/__tests__/SettingsView.test.ts` mount full SettingsView verify modal wired đúng (7 test). |
 | ~~L7~~ | ~~`ADMIN_REVOKE` reason đã định nghĩa trong `ItemLedger` nhưng chưa có endpoint admin thực thi.~~ | **Resolved by PR #66** (Merged into main) — `POST /admin/inventory/revoke` endpoint, ledger reason `ADMIN_REVOKE`, audit log. File: `apps/api/src/modules/admin/admin.service.ts`. +9 test. |
 
+
+</details>
+
+
+<details>
+<summary><strong>Missing Pages / Missing APIs (legacy outdated)</strong> (click để mở)</summary>
+
 ---
 
 ## 17. Missing Pages / Missing APIs
@@ -3820,6 +4137,13 @@ _(Trước commit `0e9c438`: Không có lỗi làm app không chạy / mất ti�
 | `GET /api/me/next-actions` (smart onboarding) | **Có** (PR #49) | — |
 
 **Không có route FE đang gọi mà BE chưa có** — đã grep `apps/web/src/api/*.ts` khớp với `@Controller` tại `apps/api/src/modules/**/*.controller.ts`. Lưu ý: prefix global `/api`, auth controller tại `/_auth`, giftcode tại `/giftcodes`.
+
+
+</details>
+
+
+<details>
+<summary><strong>How To Run Locally (full step-by-step)</strong> (click để mở)</summary>
 
 ---
 
@@ -3873,6 +4197,13 @@ pnpm build
 - Minio: 9000 (+ console 9001)
 - Mailhog: 1025/8025
 
+
+</details>
+
+
+<details>
+<summary><strong>How To Promote Admin / Test Admin</strong> (click để mở)</summary>
+
 ---
 
 ## 19. How To Promote Admin / Test Admin
@@ -3919,6 +4250,13 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - **Grant currency** không có limit — admin có thể cộng 10^18 linhThach. Ghi audit nhưng không rollback.
 - **Broadcast mail với reward lớn** → mọi character đều nhận. Không thể unsend.
 - **Set role** — ~~mất quyền ADMIN nếu tự demote chính mình~~ **Resolved**: FE chặn self-demote (tooltip `selfDemoteBlocked` + disabled) + BE guard `CANNOT_TARGET_SELF` (test `topup-admin.service.test.ts`).
+
+
+</details>
+
+
+<details>
+<summary><strong>Old Recommended Next Roadmap (full backlog post-9n-C, superseded by new §6)</strong> (click để mở)</summary>
 
 ---
 
@@ -4108,6 +4446,13 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 26. **`POST /api/_auth/forgot-password` + `reset-password`** (email-based).
 27. **WS `mission:progress` push** (M3) + WS `mail:new` tích hợp test.
 28. ~~**`ADMIN_REVOKE` endpoint**~~ — đã chuyển lên Before Closed Beta (#10) chỗ còn thiếu thao tác admin recovery.
+
+
+</details>
+
+
+<details>
+<summary><strong>Exact PR Plan (legacy detailed PR planning history)</strong> (click để mở)</summary>
 
 ---
 
@@ -4641,6 +4986,13 @@ Các hạng mục smart-feature đề xuất (không bắt buộc — AI tự qu
 - **Roadmap kế (sau khi PR #79 merge)**: chọn 1 trong **Immediate §20.2/§20.3** — *M9 Daily Login Reward* (high value retention, idempotent qua `RewardClaimLog` đã có pattern) hoặc *G22 Admin Giftcode FE Panel* (consumer cho `GET /admin/giftcodes?q=&status=` đã merge PR #74, scope nhỏ, dễ test).
 - **Env config**: AI session này cũng đã suggest update `devin_env` cho repo: `pnpm install` → `pnpm prisma:generate` → `pnpm --filter @xuantoi/shared build` ở mỗi maintenance. Lý do: repo cần Prisma client + shared dist trước khi typecheck/test apps/api & apps/web (web vitest fail "Failed to resolve entry for package @xuantoi/shared" nếu không build shared trước).
 
+
+</details>
+
+
+<details>
+<summary><strong>Rules For The Next AI (LUẬT KHÔNG ĐƯỢC VI PHẠM + workflow rules + Nest DI / migration / security notes)</strong> (click để mở)</summary>
+
 ---
 
 ## 22. Rules For The Next AI
@@ -4686,6 +5038,13 @@ Các hạng mục smart-feature đề xuất (không bắt buộc — AI tự qu
 - Rate limit login 5 fail/15m/(ip+email).
 - `passwordVersion` tăng khi change-password → kill all active access.
 
+
+</details>
+
+
+<details>
+<summary><strong>Appendix A — Quick commands cheat sheet</strong> (click để mở)</summary>
+
 ---
 
 ## Appendix A — Quick commands cheat sheet
@@ -4710,6 +5069,13 @@ pnpm --filter @xuantoi/api exec prisma generate
 
 # Build
 pnpm build
+
+</details>
+
+
+<details>
+<summary><strong>Appendix B — Key file paths for quick orientation</strong> (click để mở)</summary>
+
 ```
 
 ## Appendix B — Key file paths for quick orientation
@@ -4729,8 +5095,6 @@ pnpm build
 | Shared entry | `packages/shared/src/index.ts` |
 | Realms catalog | `packages/shared/src/realms.ts` |
 | Mission catalog | `packages/shared/src/missions.ts` |
-| Docs hub | `docs/API.md`, `docs/SEEDING.md`, `docs/BALANCE.md`, `docs/BETA_CHECKLIST.md` |
 
----
+</details>
 
-_Kết thúc báo cáo. Chúc AI kế nhiệm may mắn — hãy giữ nguyên tinh thần đạo hữu (hoathienmenh-01): thà chậm mà chắc, CI phải xanh, tiền phải ghi ledger, và đừng bao giờ push thẳng `main`._
