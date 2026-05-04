@@ -82,9 +82,29 @@
  *  40. Player GET /character/me → tienNgoc == tienNgocBeforeApprove + 50
  *      (server-authoritative credit qua currency.applyTx).
  *  41. Admin POST /admin/topups/<id>/approve retry → 409 ALREADY_PROCESSED.
- *  42. Player → `/api/admin/stats` → 403 FORBIDDEN (admin guard reject PLAYER).
- *  43. Admin logout `/api/_auth/logout` → cookie cleared.
- *  44. Player logout `/api/_auth/logout` → cookie cleared.
+ *  42. Admin POST /admin/users/<adminUserId>/inventory/revoke self-target →
+ *      400 CANNOT_TARGET_SELF.
+ *  43. Admin POST /admin/users/:id/inventory/revoke {} → 400 INVALID_INPUT
+ *      (zod miss itemKey/qty).
+ *  44. Admin POST /admin/users/:id/inventory/revoke {itemKey,qty:1000} → 400
+ *      INVALID_INPUT (zod qty.max(999), MAX_REVOKE_QTY=999 admin.service.ts L30).
+ *  45. Admin POST /admin/users/:id/inventory/revoke {itemKey,qty:0} → 400
+ *      INVALID_INPUT (zod qty.positive()).
+ *  46. Admin POST /admin/users/<bogusUserId>/inventory/revoke {valid} → 404
+ *      NOT_FOUND (target user findUnique → null).
+ *  47. Admin POST /admin/users/:id/inventory/revoke {itemKey:'no_such_item',qty:1}
+ *      → 400 INVALID_INPUT (service ITEM_NOT_FOUND mapped sang INVALID_INPUT
+ *      trong AdminService.revokeInventory L420-425).
+ *  48. Admin POST /admin/users/:id/inventory/revoke {itemKey:'huyet_chi_dan',qty:10}
+ *      → 400 INVALID_INPUT (service INSUFFICIENT_QTY mapped, player chỉ có 3
+ *      huyet_chi_dan từ giftcode 2 + mail 1).
+ *  49. Admin POST /admin/users/:id/inventory/revoke {itemKey:'huyet_chi_dan',qty:1,
+ *      reason:'smoke test'} → 200 ok + audit log `admin.inventory.revoke` ghi nhận.
+ *  50. Player GET /api/inventory → huyet_chi_dan qty == 2 (3 - 1 revoke,
+ *      server-authoritative ItemLedger -1 entry).
+ *  51. Player → `/api/admin/stats` → 403 FORBIDDEN (admin guard reject PLAYER).
+ *  52. Admin logout `/api/_auth/logout` → cookie cleared.
+ *  53. Player logout `/api/_auth/logout` → cookie cleared.
  *
  * Chạy:
  *   pnpm smoke:admin
@@ -1173,7 +1193,194 @@ async function main() {
     );
   });
 
-  // 42. PLAYER cookie → /api/admin/* → 403 FORBIDDEN (admin guard).
+  // ─────────────────────────────────────────────────────────────────
+  // 42-50. Inventory revoke flow — admin endpoint mirrors grant.
+  //
+  // Player tới đây có 3 huyet_chi_dan (giftcode 2 + mail 1) trong inventory
+  // (xem step 22 INVARIANT verify trước đó). Smoke verify đầy đủ negative
+  // path + happy path:
+  //   - self-target → 400 CANNOT_TARGET_SELF (admin.service.ts L394).
+  //   - zod fail → 400 INVALID_INPUT (InventoryRevokeInput zod L50-54).
+  //   - target user not found → 404 NOT_FOUND (findUnique → null).
+  //   - inventory.revoke ITEM_NOT_FOUND/INSUFFICIENT_QTY → mapped 400
+  //     INVALID_INPUT (admin.service.ts L420-425).
+  //   - happy path → 200 ok + audit `admin.inventory.revoke`.
+  // ─────────────────────────────────────────────────────────────────
+
+  await step(
+    'admin POST /admin/users/<adminUserId>/inventory/revoke self-target → 400 CANNOT_TARGET_SELF',
+    async () => {
+      if (!state.adminUserId) throw new Error(`adminUserId undefined`);
+      const r = await http(
+        state.adminJar,
+        `/api/admin/users/${state.adminUserId}/inventory/revoke`,
+        {
+          method: 'POST',
+          body: { itemKey: 'huyet_chi_dan', qty: 1 },
+        },
+      );
+      assertStatus(r, 400, 'admin revoke self');
+      assert(
+        r.body?.error?.code === 'CANNOT_TARGET_SELF',
+        `expect error.code='CANNOT_TARGET_SELF', got ${JSON.stringify(r.body?.error)}`,
+      );
+    },
+  );
+
+  await step(
+    'admin POST /admin/users/:id/inventory/revoke {} → 400 INVALID_INPUT (zod miss)',
+    async () => {
+      if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+      const r = await http(
+        state.adminJar,
+        `/api/admin/users/${state.playerUserId}/inventory/revoke`,
+        {
+          method: 'POST',
+          body: {},
+        },
+      );
+      assertStatus(r, 400, 'admin revoke zod miss');
+      assert(
+        r.body?.error?.code === 'INVALID_INPUT',
+        `expect error.code='INVALID_INPUT', got ${JSON.stringify(r.body?.error)}`,
+      );
+    },
+  );
+
+  await step(
+    'admin POST /admin/users/:id/inventory/revoke {qty:1000} → 400 INVALID_INPUT (zod max 999)',
+    async () => {
+      if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+      const r = await http(
+        state.adminJar,
+        `/api/admin/users/${state.playerUserId}/inventory/revoke`,
+        {
+          method: 'POST',
+          body: { itemKey: 'huyet_chi_dan', qty: 1000 },
+        },
+      );
+      assertStatus(r, 400, 'admin revoke qty>999');
+      assert(
+        r.body?.error?.code === 'INVALID_INPUT',
+        `expect error.code='INVALID_INPUT', got ${JSON.stringify(r.body?.error)}`,
+      );
+    },
+  );
+
+  await step(
+    'admin POST /admin/users/:id/inventory/revoke {qty:0} → 400 INVALID_INPUT (zod positive)',
+    async () => {
+      if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+      const r = await http(
+        state.adminJar,
+        `/api/admin/users/${state.playerUserId}/inventory/revoke`,
+        {
+          method: 'POST',
+          body: { itemKey: 'huyet_chi_dan', qty: 0 },
+        },
+      );
+      assertStatus(r, 400, 'admin revoke qty=0');
+      assert(
+        r.body?.error?.code === 'INVALID_INPUT',
+        `expect error.code='INVALID_INPUT', got ${JSON.stringify(r.body?.error)}`,
+      );
+    },
+  );
+
+  await step(
+    'admin POST /admin/users/<bogusUserId>/inventory/revoke → 404 NOT_FOUND',
+    async () => {
+      // CUID-like bogus id (đúng format nhưng không match user nào).
+      const bogusUserId = 'cnotrealnotrealnotrealxyz';
+      const r = await http(
+        state.adminJar,
+        `/api/admin/users/${bogusUserId}/inventory/revoke`,
+        {
+          method: 'POST',
+          body: { itemKey: 'huyet_chi_dan', qty: 1 },
+        },
+      );
+      assertStatus(r, 404, 'admin revoke bogus user');
+      assert(
+        r.body?.error?.code === 'NOT_FOUND',
+        `expect error.code='NOT_FOUND', got ${JSON.stringify(r.body?.error)}`,
+      );
+    },
+  );
+
+  await step(
+    'admin POST /admin/users/:id/inventory/revoke {itemKey:no_such_item} → 400 INVALID_INPUT (ITEM_NOT_FOUND mapped)',
+    async () => {
+      if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+      const r = await http(
+        state.adminJar,
+        `/api/admin/users/${state.playerUserId}/inventory/revoke`,
+        {
+          method: 'POST',
+          body: { itemKey: 'no_such_item_xyz', qty: 1 },
+        },
+      );
+      assertStatus(r, 400, 'admin revoke ITEM_NOT_FOUND mapped');
+      assert(
+        r.body?.error?.code === 'INVALID_INPUT',
+        `expect error.code='INVALID_INPUT' (ITEM_NOT_FOUND mapped), got ${JSON.stringify(r.body?.error)}`,
+      );
+    },
+  );
+
+  await step(
+    'admin POST /admin/users/:id/inventory/revoke {qty:10} → 400 INVALID_INPUT (INSUFFICIENT_QTY mapped, player chỉ có 3)',
+    async () => {
+      if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+      const r = await http(
+        state.adminJar,
+        `/api/admin/users/${state.playerUserId}/inventory/revoke`,
+        {
+          method: 'POST',
+          body: { itemKey: 'huyet_chi_dan', qty: 10 },
+        },
+      );
+      assertStatus(r, 400, 'admin revoke INSUFFICIENT_QTY mapped');
+      assert(
+        r.body?.error?.code === 'INVALID_INPUT',
+        `expect error.code='INVALID_INPUT' (INSUFFICIENT_QTY mapped), got ${JSON.stringify(r.body?.error)}`,
+      );
+    },
+  );
+
+  await step(
+    'admin POST /admin/users/:id/inventory/revoke {qty:1} → 200 ok + audit',
+    async () => {
+      if (!state.playerUserId) throw new Error(`playerUserId undefined`);
+      const r = await http(
+        state.adminJar,
+        `/api/admin/users/${state.playerUserId}/inventory/revoke`,
+        {
+          method: 'POST',
+          body: { itemKey: 'huyet_chi_dan', qty: 1, reason: 'smoke test revoke' },
+        },
+      );
+      assertStatus(r, 200, 'admin revoke happy');
+      assert(r.body?.data?.ok === true, `expect data.ok=true, got ${JSON.stringify(r.body?.data)}`);
+    },
+  );
+
+  await step(
+    'player GET /api/inventory → huyet_chi_dan qty == 2 (3 - 1 revoke, server-authoritative)',
+    async () => {
+      const r = await http(state.playerJar, '/api/inventory');
+      assertStatus(r, 200, 'player /inventory after revoke');
+      const items = r.body?.data?.items ?? [];
+      const hcd = items.find((it) => it.itemKey === 'huyet_chi_dan');
+      assert(hcd, `inventory phải có item huyet_chi_dan sau revoke (revoke -1 còn lại 2)`);
+      assert(
+        Number(hcd.qty) === 2,
+        `huyet_chi_dan qty phải == 2 sau revoke -1 (giftcode 2 + mail 1 = 3 trừ 1 = 2), got ${hcd.qty}`,
+      );
+    },
+  );
+
+  // 51. PLAYER cookie → /api/admin/* → 403 FORBIDDEN (admin guard).
   await step('player → /admin/stats → 403 FORBIDDEN', async () => {
     const r = await http(state.playerJar, '/api/admin/stats');
     assertStatus(r, 403, 'player → admin/stats');
