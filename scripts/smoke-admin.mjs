@@ -63,9 +63,28 @@
  *  29. Admin POST /admin/users/:id/ban {banned:false} → 200 ok, audit log
  *      `user.unban` ghi nhận.
  *  30. Player POST /api/_auth/login (unbanned) → 200 ok (login restored).
- *  31. Player → `/api/admin/stats` → 403 FORBIDDEN (admin guard reject PLAYER).
- *  32. Admin logout `/api/_auth/logout` → cookie cleared.
- *  33. Player logout `/api/_auth/logout` → cookie cleared.
+ *  31. Player POST /topup/create {packageKey:'lien_xuan_50'} → 200 ok PENDING order #1.
+ *  32. Admin GET /admin/topups?status=PENDING → see order #1 trong list.
+ *  33. Admin POST /admin/topups/<id>/reject {note: 'x'.repeat(201)} → 400
+ *      INVALID_INPUT (zod TopupActionInput.note max 200).
+ *  34. Admin POST /admin/topups/<id>/reject {note:'spam fraud'} → 200 ok +
+ *      audit log `topup.reject` ghi nhận.
+ *  35. Player GET /topup/me → status REJECTED visible.
+ *  36. Admin POST /admin/topups/<id>/reject retry → 409 ALREADY_PROCESSED
+ *      (idempotent guard, AdminError.code='ALREADY_PROCESSED' map sang
+ *      HttpStatus.CONFLICT trong handleErr).
+ *  37. Player snapshot character.tienNgoc → tienNgocBeforeApprove.
+ *  38. Player POST /topup/create {packageKey:'lien_xuan_50'} → 200 ok PENDING
+ *      order #2 (anti-FE-self-grant: tienNgoc KHÔNG đổi cho tới khi approve).
+ *  39. Admin POST /admin/topups/<id>/approve {note:'verified'} → 200 ok + audit
+ *      log `topup.approve` + ledger CurrencyLedger row reason='ADMIN_TOPUP_APPROVE'
+ *      delta=+50 TIEN_NGOC.
+ *  40. Player GET /character/me → tienNgoc == tienNgocBeforeApprove + 50
+ *      (server-authoritative credit qua currency.applyTx).
+ *  41. Admin POST /admin/topups/<id>/approve retry → 409 ALREADY_PROCESSED.
+ *  42. Player → `/api/admin/stats` → 403 FORBIDDEN (admin guard reject PLAYER).
+ *  43. Admin logout `/api/_auth/logout` → cookie cleared.
+ *  44. Player logout `/api/_auth/logout` → cookie cleared.
  *
  * Chạy:
  *   pnpm smoke:admin
@@ -983,7 +1002,178 @@ async function main() {
     assert(u.role === 'PLAYER', `unbanned login: role phải PLAYER, got ${u.role}`);
   });
 
-  // 31. PLAYER cookie → /api/admin/* → 403 FORBIDDEN (admin guard).
+  // ---------------------------------------------------------------------------
+  // 31-41. Topup admin flow: create PENDING + reject + ALREADY_PROCESSED +
+  // approve + tienNgoc credit verify + ALREADY_PROCESSED retry.
+  //
+  //   Cover gap: smoke:topup chỉ cover user-side endpoints (packages/me/create
+  //   + max-pending guard) ở PR #360. Admin endpoints `POST /admin/topups/:id/
+  //   approve` + `reject` (admin.controller.ts L326-352) chưa có HTTP smoke.
+  //   Vitest có cover service unit (`topup-admin.service.test.ts`) nhưng
+  //   KHÔNG verify HTTP contract end-to-end (zod input → service guard →
+  //   ledger applyTx ADMIN_TOPUP_APPROVE → currency credit propagate
+  //   character.tienNgoc → audit log).
+  //
+  //   Dùng package nhỏ nhất `lien_xuan_50` (50 tienNgoc, bonus=0) → tienNgocAmount
+  //   == 50 (xem `TOPUP_PACKAGES` ở packages/shared/src/topup.ts L18-26 +
+  //   topup.service.ts L73 `pkg.tienNgoc + pkg.bonus`). Smoke không cần config
+  //   bonus/priceVND vì admin chỉ cần verify approve/reject trạng thái + credit.
+  //
+  //   Anti-FE-self-grant invariant: user POST /topup/create chỉ tạo PENDING
+  //   order, KHÔNG credit tienNgoc; chỉ sau admin approve mới credit. Verify
+  //   qua snapshot character.tienNgoc trước approve (sau create) === starting,
+  //   sau approve === starting + 50.
+  // ---------------------------------------------------------------------------
+
+  /** @type {string | undefined} order ID #1 dùng cho reject flow */
+  let topupOrderId1;
+  /** @type {string | undefined} order ID #2 dùng cho approve flow */
+  let topupOrderId2;
+  /** @type {bigint | undefined} */
+  let tienNgocBeforeApprove;
+
+  await step('player POST /topup/create {packageKey:lien_xuan_50} → 200 PENDING #1', async () => {
+    const r = await http(state.playerJar, '/api/topup/create', {
+      method: 'POST',
+      body: { packageKey: 'lien_xuan_50' },
+    });
+    assertStatus(r, 200, 'topup create #1');
+    const order = r.body?.data?.order;
+    assert(order, `topup create: missing data.order`);
+    assert(order.id, `topup create: missing data.order.id`);
+    assert(order.status === 'PENDING', `topup create: status phải PENDING, got ${order.status}`);
+    assert(
+      order.tienNgocAmount === 50,
+      `topup create lien_xuan_50: tienNgocAmount phải 50 (pkg.tienNgoc + pkg.bonus), got ${order.tienNgocAmount}`,
+    );
+    topupOrderId1 = order.id;
+  });
+
+  await step('admin GET /admin/topups?status=PENDING&email=<player> — see order #1', async () => {
+    if (!topupOrderId1) throw new Error(`topupOrderId1 undefined`);
+    if (!state.playerEmail) throw new Error(`playerEmail undefined`);
+    // Filter by email để scope rows về player hiện tại — tránh trộn với leftover
+    // orders từ smoke runs trước (PAGE_SIZE=30 trong admin.service.ts L31).
+    // listTopups response shape: { rows, total, page, pageSize } (xem
+    // admin.controller.ts L322-323 `{ ok: true, data: r }` với r từ listTopups).
+    const url = `/api/admin/topups?status=PENDING&page=0&email=${encodeURIComponent(state.playerEmail)}`;
+    const r = await http(state.adminJar, url);
+    assertStatus(r, 200, 'admin/topups list PENDING');
+    const rows = r.body?.data?.rows ?? [];
+    assert(Array.isArray(rows), `topups list: rows phải array`);
+    const mine = rows.find((o) => o.id === topupOrderId1);
+    assert(mine, `topups list?status=PENDING&email=${state.playerEmail}: không thấy order ${topupOrderId1} trong ${rows.length} rows`);
+    assert(mine.status === 'PENDING', `topups list: status phải PENDING, got ${mine.status}`);
+  });
+
+  await step('admin POST /admin/topups/<id>/reject {note:201chars} → 400 INVALID_INPUT', async () => {
+    if (!topupOrderId1) throw new Error(`topupOrderId1 undefined`);
+    const r = await http(state.adminJar, `/api/admin/topups/${topupOrderId1}/reject`, {
+      method: 'POST',
+      body: { note: 'x'.repeat(201) }, // zod TopupActionInput.note max 200
+    });
+    assertStatus(r, 400, 'admin reject note too long');
+    assert(
+      r.body?.error?.code === 'INVALID_INPUT',
+      `expect error.code='INVALID_INPUT', got ${JSON.stringify(r.body?.error)}`,
+    );
+  });
+
+  await step('admin POST /admin/topups/<id>/reject {note:spam} → 200 ok', async () => {
+    if (!topupOrderId1) throw new Error(`topupOrderId1 undefined`);
+    const r = await http(state.adminJar, `/api/admin/topups/${topupOrderId1}/reject`, {
+      method: 'POST',
+      body: { note: 'spam fraud' },
+    });
+    assertStatus(r, 200, 'admin reject ok');
+    assert(r.body?.ok === true, `expect ok=true, got ${JSON.stringify(r.body)}`);
+  });
+
+  await step('player GET /topup/me — status REJECTED visible', async () => {
+    if (!topupOrderId1) throw new Error(`topupOrderId1 undefined`);
+    const r = await http(state.playerJar, '/api/topup/me');
+    assertStatus(r, 200, 'player topup/me post-reject');
+    const orders = r.body?.data?.orders ?? [];
+    const mine = orders.find((o) => o.id === topupOrderId1);
+    assert(mine, `topup/me: không thấy order ${topupOrderId1}`);
+    assert(
+      mine.status === 'REJECTED',
+      `topup/me: order #1 status phải REJECTED sau reject, got ${mine.status}`,
+    );
+  });
+
+  await step('admin POST /admin/topups/<id>/reject retry → 409 ALREADY_PROCESSED', async () => {
+    if (!topupOrderId1) throw new Error(`topupOrderId1 undefined`);
+    const r = await http(state.adminJar, `/api/admin/topups/${topupOrderId1}/reject`, {
+      method: 'POST',
+      body: { note: 'retry' },
+    });
+    assertStatus(r, 409, 'admin reject retry');
+    assert(
+      r.body?.error?.code === 'ALREADY_PROCESSED',
+      `expect error.code='ALREADY_PROCESSED', got ${JSON.stringify(r.body?.error)}`,
+    );
+  });
+
+  await step('player /character/me — snapshot tienNgoc trước approve', async () => {
+    const r = await http(state.playerJar, '/api/character/me');
+    assertStatus(r, 200, 'character/me snapshot tienNgoc');
+    const tn = r.body?.data?.character?.tienNgoc;
+    assert(typeof tn === 'number', `character.tienNgoc phải number, got ${typeof tn}`);
+    tienNgocBeforeApprove = BigInt(tn);
+  });
+
+  await step('player POST /topup/create {packageKey:lien_xuan_50} → 200 PENDING #2', async () => {
+    const r = await http(state.playerJar, '/api/topup/create', {
+      method: 'POST',
+      body: { packageKey: 'lien_xuan_50' },
+    });
+    assertStatus(r, 200, 'topup create #2');
+    const order = r.body?.data?.order;
+    assert(order && order.id, `topup create #2: missing data.order.id`);
+    assert(order.status === 'PENDING', `topup create #2: status phải PENDING, got ${order.status}`);
+    topupOrderId2 = order.id;
+  });
+
+  await step('admin POST /admin/topups/<id>/approve {note:verified} → 200 ok', async () => {
+    if (!topupOrderId2) throw new Error(`topupOrderId2 undefined`);
+    const r = await http(state.adminJar, `/api/admin/topups/${topupOrderId2}/approve`, {
+      method: 'POST',
+      body: { note: 'verified bank transfer' },
+    });
+    assertStatus(r, 200, 'admin approve ok');
+    assert(r.body?.ok === true, `expect ok=true, got ${JSON.stringify(r.body)}`);
+  });
+
+  await step('player /character/me — tienNgoc credited +50 (server-authoritative)', async () => {
+    if (tienNgocBeforeApprove === undefined) {
+      throw new Error(`tienNgocBeforeApprove undefined`);
+    }
+    const r = await http(state.playerJar, '/api/character/me');
+    assertStatus(r, 200, 'character/me post-approve');
+    const tn = r.body?.data?.character?.tienNgoc;
+    assert(typeof tn === 'number', `character.tienNgoc phải number, got ${typeof tn}`);
+    const expected = tienNgocBeforeApprove + 50n;
+    assert(
+      BigInt(tn) === expected,
+      `character.tienNgoc post-approve phải ${expected}, got ${tn} (server credit qua currency.applyTx ADMIN_TOPUP_APPROVE)`,
+    );
+  });
+
+  await step('admin POST /admin/topups/<id>/approve retry → 409 ALREADY_PROCESSED', async () => {
+    if (!topupOrderId2) throw new Error(`topupOrderId2 undefined`);
+    const r = await http(state.adminJar, `/api/admin/topups/${topupOrderId2}/approve`, {
+      method: 'POST',
+      body: { note: 'retry' },
+    });
+    assertStatus(r, 409, 'admin approve retry');
+    assert(
+      r.body?.error?.code === 'ALREADY_PROCESSED',
+      `expect error.code='ALREADY_PROCESSED', got ${JSON.stringify(r.body?.error)}`,
+    );
+  });
+
+  // 42. PLAYER cookie → /api/admin/* → 403 FORBIDDEN (admin guard).
   await step('player → /admin/stats → 403 FORBIDDEN', async () => {
     const r = await http(state.playerJar, '/api/admin/stats');
     assertStatus(r, 403, 'player → admin/stats');
