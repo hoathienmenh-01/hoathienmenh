@@ -20,9 +20,15 @@
  * và idempotent re-equip không-no-op (kim_quang_tram qua DB update —
  * khác basic_attack ngoại lệ).
  *
- * Upgrade-mastery positive (cần LinhThach ≥ 100) defer tới session sau khi
- * admin seed harness extension (grant-currency LinhThach) merged — track
- * trong AI_HANDOFF_REPORT.md Recommended Next Roadmap.
+ * Phase 11.2.B upgrade-mastery positive-path EXTENSION (PR session post-#389):
+ * cover `POST /character/skill/upgrade-mastery` qua admin seed grant-currency
+ * `LINH_THACH 200` (re-use admin grant-currency endpoint từ PR #389 +
+ * cookie-jar swap). Verify CurrencyLedger reason='SKILL_UPGRADE' delta=-200
+ * atomic với masteryLevel L1→L2 bump trên kim_quang_tram (basic tier
+ * baseLinhThachCost=100, multiplier=2.0 → masteryLevels[1].linhThachCost
+ * = 100 * 2^(2-1) = 200 LT). Retry sau spend (balance=0) → 402
+ * INSUFFICIENT_FUNDS cho L2→L3 (cost 400) — atomic rollback giữ
+ * masteryLevel=2 (anti-FE-self-grant invariant).
  *
  *   1. `GET  /api/character/skill` (no auth)                     → 401.
  *   2. `POST /api/character/skill/equip` (no auth)               → 401.
@@ -151,7 +157,54 @@
  *                                                                  _FOUND
  *                                                                  (đã consume,
  *                                                                  row delete).
- *  26. `POST /api/_auth/logout` + GET /skill                      → 401.
+ *
+ *  // Positive-path Phase 11.2.B — admin grant-currency → upgrade-mastery
+ *  26. admin login + grant-currency LINH_THACH 200 + admin logout/restore.
+ *  27. `GET  /api/character/me`                                  → 200,
+ *                                                                  linhThach
+ *                                                                  =200
+ *                                                                  (verify
+ *                                                                  grant
+ *                                                                  cộng đúng).
+ *  28. `POST /api/character/skill/upgrade-mastery`               → 200,
+ *      body {skillKey:'kim_quang_tram'}                             upgrade
+ *                                                                  .previousLevel
+ *                                                                  =1, newLevel
+ *                                                                  =2,
+ *                                                                  linhThachSpent
+ *                                                                  =200.
+ *  29. `GET  /api/character/skill`                               → 200,
+ *                                                                  kim_quang
+ *                                                                  _tram.
+ *                                                                  masteryLevel
+ *                                                                  =2 (state
+ *                                                                  update
+ *                                                                  server-auth).
+ *  30. `GET  /api/character/me`                                  → 200,
+ *                                                                  linhThach
+ *                                                                  =0
+ *                                                                  (200 grant
+ *                                                                  - 200
+ *                                                                  spend,
+ *                                                                  atomic).
+ *  31. `POST /api/character/skill/upgrade-mastery` retry         → 402
+ *      body {skillKey:'kim_quang_tram'}                             INSUFFICIENT
+ *                                                                  _FUNDS
+ *                                                                  (cần 400
+ *                                                                  cho L2→L3,
+ *                                                                  balance=0).
+ *  32. `GET  /api/character/skill`                               → 200,
+ *                                                                  kim_quang
+ *                                                                  _tram.
+ *                                                                  masteryLevel
+ *                                                                  =2 KHÔNG
+ *                                                                  đổi qua
+ *                                                                  failed
+ *                                                                  retry
+ *                                                                  (atomic
+ *                                                                  rollback).
+ *
+ *  33. `POST /api/_auth/logout` + GET /skill                      → 401.
  *
  * Anti-FE-self-grant invariant (per Luật bắt buộc — KHÔNG để frontend tự cộng
  * skill / mastery / equip slot qua failed attempts):
@@ -164,6 +217,9 @@
  *     SKILL_BOOK item qua ItemLedger atomic. UI KHÔNG tự cộng row.
  *   - Re-call `learn-from-book` cùng inventoryItemId sau consume → 404
  *     INVENTORY_ITEM_NOT_FOUND (anti double-grant).
+ *   - `upgrade-mastery` server-authoritative — chỉ bump masteryLevel khi
+ *     CurrencyLedger SKILL_UPGRADE delta ghi atomic. INSUFFICIENT_FUNDS
+ *     rollback masteryLevel KHÔNG đổi (anti FE-self-grant).
  *
  * Chạy:
  *   pnpm smoke:skill
@@ -766,7 +822,141 @@ async function main() {
     );
   });
 
-  // 26. logout + GET /skill → 401 UNAUTHENTICATED.
+  // ---------------------------------------------------------------------------
+  // POSITIVE PATH — admin grant-currency LinhThach 200 → POST /skill/upgrade-mastery
+  // → verify CurrencyLedger SKILL_UPGRADE atomic + masteryLevel L1→L2 +
+  // INSUFFICIENT_FUNDS retry (post-spend, không đủ cho L2→L3 cost 400).
+  //
+  // Foundation từ PR #389 admin grant-currency endpoint (LinhThach BigInt-as-
+  // string + reuse `currency.applyTx({ reason:'ADMIN_GRANT' })` + audit
+  // `admin.currency.grant`). Service `CharacterSkillService.upgradeMastery`
+  // atomic tx: read row → check max → `currency.applyTx({ delta:-cost,
+  // reason:'SKILL_UPGRADE' })` → bump masteryLevel +1.
+  //
+  // Cost curve basic tier (skill kim_quang_tram): baseLinhThachCost=100,
+  // multiplier=2.0 → masteryLevels[newLevel-1].linhThachCost. L1→L2 cần
+  // masteryLevels[1].linhThachCost = 100 * 2^(2-1) = 200 LT. L2→L3 cần
+  // masteryLevels[2].linhThachCost = 100 * 2^(3-1) = 400 LT.
+  // ---------------------------------------------------------------------------
+
+  // 26. Snapshot player cookies + admin login → swap → grant-currency 200 LT.
+  await step('admin login + grant-currency LINH_THACH 200 (seed upgrade-mastery cost L1→L2)', async () => {
+    if (!state.userId) throw new Error('state.userId missing — register chưa chạy');
+    playerCookieSnap = snapshotCookies();
+    cookieJar.clear();
+    const login = await http('/api/_auth/login', {
+      method: 'POST',
+      body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    assertStatus(login, 200, 'admin login (upgrade-mastery seed)');
+    const u = login.body?.data?.user;
+    assert(u?.role === 'ADMIN', `admin login: role phải ADMIN, got ${u?.role}`);
+
+    const grant = await http(`/api/admin/users/${state.userId}/grant-currency`, {
+      method: 'POST',
+      body: {
+        currency: 'LINH_THACH',
+        delta: '200',
+        reason: 'smoke skill upgrade-mastery seed',
+      },
+    });
+    assertStatus(grant, 200, 'admin grant-currency 200 LT');
+    assert(
+      grant.body?.ok === true && grant.body?.data?.ok === true,
+      `grant-currency 200 LT: shape mismatch, got ${JSON.stringify(grant.body)}`,
+    );
+
+    const logout = await http('/api/_auth/logout', { method: 'POST' });
+    assertStatus(logout, [200, 204], 'admin logout (upgrade-mastery seed)');
+    cookieJar.clear();
+    restoreCookies(playerCookieSnap);
+  });
+
+  // 27. GET /character/me → linhThach=200 (verify grant cộng đúng).
+  await step('GET /character/me — linhThach=200 post-grant (admin → player ledger)', async () => {
+    const r = await http('/api/character/me');
+    assertStatus(r, 200, 'GET /character/me post-grant LT');
+    const ch = r.body?.data?.character;
+    assert(ch, 'GET /character/me post-grant LT: missing character');
+    const lt = BigInt(ch.linhThach ?? '0');
+    assert(
+      lt === 200n,
+      `linhThach post-grant: expect 200, got ${lt}`,
+    );
+  });
+
+  // 28. POST /skill/upgrade-mastery → 200 previousLevel=1 newLevel=2 spent=200.
+  await step(`POST /skill/upgrade-mastery {skillKey:${LEARN_SKILL_KEY}} → 200 L1→L2 spent=200 LT`, async () => {
+    const r = await http('/api/character/skill/upgrade-mastery', {
+      method: 'POST',
+      body: { skillKey: LEARN_SKILL_KEY },
+    });
+    assertStatus(r, 200, 'POST upgrade-mastery L1→L2');
+    if (!r.body?.ok) throw new Error(`upgrade-mastery: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const out = r.body?.data?.upgrade;
+    assert(out, 'upgrade-mastery: missing data.upgrade');
+    assert(out.skillKey === LEARN_SKILL_KEY, `upgrade.skillKey: expect ${LEARN_SKILL_KEY}, got ${out.skillKey}`);
+    assert(out.previousLevel === 1, `upgrade.previousLevel: expect 1, got ${out.previousLevel}`);
+    assert(out.newLevel === 2, `upgrade.newLevel: expect 2, got ${out.newLevel}`);
+    assert(out.linhThachSpent === 200, `upgrade.linhThachSpent: expect 200, got ${out.linhThachSpent}`);
+  });
+
+  // 29. GET /skill → kim_quang_tram.masteryLevel=2 (state update server-auth).
+  await step(`GET /skill — ${LEARN_SKILL_KEY}.masteryLevel=2 post-upgrade (server-authoritative)`, async () => {
+    const r = await http('/api/character/skill');
+    assertStatus(r, 200, 'GET /skill post-upgrade');
+    const sk = r.body?.data?.skill;
+    const learned = (sk?.learned ?? []).find((/** @type {any} */ row) => row.skillKey === LEARN_SKILL_KEY);
+    assert(learned, `GET /skill: thiếu ${LEARN_SKILL_KEY}`);
+    assert(
+      learned.masteryLevel === 2,
+      `${LEARN_SKILL_KEY}.masteryLevel: expect 2 post-upgrade, got ${learned.masteryLevel}`,
+    );
+  });
+
+  // 30. GET /character/me → linhThach=0 post-spend (200 - 200 = 0).
+  await step('GET /character/me — linhThach=0 post-upgrade (200 LT - 200 LT)', async () => {
+    const r = await http('/api/character/me');
+    assertStatus(r, 200, 'GET /character/me post-upgrade');
+    const ch = r.body?.data?.character;
+    const lt = BigInt(ch?.linhThach ?? '0');
+    assert(
+      lt === 0n,
+      `linhThach post-upgrade: expect 0 (200 grant - 200 spend), got ${lt}`,
+    );
+  });
+
+  // 31. POST /skill/upgrade-mastery lần 2 → 402 INSUFFICIENT_FUNDS (cần 400 cho
+  //     L2→L3, balance=0). Service throw INSUFFICIENT_FUNDS từ CurrencyError.
+  await step(
+    `POST /skill/upgrade-mastery ${LEARN_SKILL_KEY} retry → 402 INSUFFICIENT_FUNDS (cần 400 LT cho L2→L3, balance=0)`,
+    async () => {
+      const r = await http('/api/character/skill/upgrade-mastery', {
+        method: 'POST',
+        body: { skillKey: LEARN_SKILL_KEY },
+      });
+      assertStatus(r, 402, 'POST upgrade-mastery retry');
+      assert(
+        r.body?.error?.code === 'INSUFFICIENT_FUNDS',
+        `upgrade-mastery retry: expect INSUFFICIENT_FUNDS, got ${r.body?.error?.code}`,
+      );
+    },
+  );
+
+  // 32. GET /skill — masteryLevel=2 KHÔNG đổi qua failed upgrade
+  //     (anti-FE-self-grant invariant — atomic rollback khi INSUFFICIENT_FUNDS).
+  await step(`GET /skill — ${LEARN_SKILL_KEY}.masteryLevel=2 vẫn giữ qua failed retry (atomic rollback)`, async () => {
+    const r = await http('/api/character/skill');
+    assertStatus(r, 200, 'GET /skill post-failed-upgrade');
+    const sk = r.body?.data?.skill;
+    const learned = (sk?.learned ?? []).find((/** @type {any} */ row) => row.skillKey === LEARN_SKILL_KEY);
+    assert(
+      learned?.masteryLevel === 2,
+      `${LEARN_SKILL_KEY}.masteryLevel post-failed-upgrade: expect 2 (no change), got ${learned?.masteryLevel}`,
+    );
+  });
+
+  // 33. logout + GET /skill → 401 UNAUTHENTICATED.
   await step('logout + GET /skill — 401 UNAUTHENTICATED', async () => {
     const logout = await http('/api/_auth/logout', { method: 'POST' });
     assertStatus(logout, [200, 204], 'logout');
