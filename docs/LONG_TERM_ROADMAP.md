@@ -479,14 +479,21 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - 9 vitest mới trong `DungeonView.test.ts` cover section gate, button label cd vs name, cd > 0 disabled, click cast performAction, WON toast, route query highlight, cd > 0 KHÔNG highlight, no query KHÔNG fetchState, cast reset preselect.
 - KHÔNG schema migration, KHÔNG BE change — pure FE UI continuity addition.
 
-#### 11.7.G PR: TalentView Loadout sticky positioning + per-loadout element filter — PENDING MERGE (PR #356, CI 5/5 GREEN first run)
+#### 11.7.G PR: TalentView Loadout sticky positioning + per-loadout element filter — DONE ✅ (PR #356 merged)
 
 - `apps/web/src/views/TalentCatalogView.vue` — Loadout section thêm class `bg-ink-900/95 backdrop-blur md:sticky md:top-0 md:z-10` để bám đỉnh `<main>` scroll container (AppShell `<main>` `overflow-y-auto`) khi user scroll qua catalog grid 54-talent. Per-loadout element filter mới (independent với catalog filter ở section bên dưới): `loadoutElementFilter` ref + `filteredActiveLearnedTalents` computed (apply hệ filter trên `activeLearnedTalents`, giữ sort ready/cd/key) + `clearLoadoutElementFilter()` reset.
 - Filter row chỉ render khi `activeLearnedTalents.length > 0` (empty state vẫn clean). Filter-empty state riêng `talents-active-filter-empty` khi filter loại trừ tất cả learned (phân biệt với `talents-active-empty` khi user chưa học active nào). Reset button visible chỉ khi filter ≠ 'all'. Count text dùng `filteredActiveLearnedTalents.length`.
 - `apps/web/src/i18n/{vi,en}.json` thêm `talents.activeSection.elementFilter.{label,all,empty,reset}` (4 key × 2 locale).
 - 8 vitest mới trong `TalentCatalogView.test.ts` cover sticky CSS class, filter row gate empty/learned, default all → đủ active, filter=kim → chỉ kim, filter=neutral → chỉ neutral, filter loại trừ tất cả → filter-empty render, reset button toggle, sort order ready/cd asc giữa cùng hệ.
 - KHÔNG schema migration, KHÔNG BE change, KHÔNG ledger, KHÔNG store contract change — pure FE UI polish per UI MODULE RULE.
-- Defer: realtime cooldown countdown WS push (Phase 11.7.H), TalentView E2E smoke với `E2E_FULL=1` cho cast → DungeonView highlight → cast in combat → cooldown badge update (Phase 11.X UI E2E smoke gap).
+- Defer: realtime cooldown countdown WS push (Phase 11.7.H), TalentView E2E smoke với `E2E_FULL=1` cho cast → DungeonView highlight → cast in combat → cooldown badge update (Phase 11.X UI E2E smoke gap — partial coverage in 11.X.AY).
+
+#### 11.X.AY PR: Talent catalog UI E2E smoke (fresh char Loadout empty + filter row gate + sticky CSS + catalog grid render) — PENDING MERGE (this push)
+
+- `apps/web/e2e/golden.spec.ts` thêm SPEC #18 trong `Golden path — full stack required` describe block (gated bởi `E2E_FULL=1`). Reuses `registerAndOnboard()` helper cho fresh char seed. Fresh char không có realm để học bất kỳ talent nào trong catalog (lowest tier `truc_co`) + 0 talent point → spec verify static catalog render + Loadout empty state + filter gate path mà không cần admin seed.
+- Verify: route `/talents` resolve, Loadout section visible với class `md:sticky md:top-0 md:z-10` (Phase 11.7.G CSS), Loadout filter row HIDDEN cho fresh char (gate `activeLearnedTalents.length > 0`), Loadout empty state visible (`talents-active-empty`), filter-only empty state KHÔNG render, budget section spent=0 + remaining=0 (BE state wire), catalog filter selects (type/element/status) visible, catalog grid render ≥ 1 talent card (data từ `packages/shared/talents.ts`).
+- KHÔNG bấm Học (fresh char không đủ realm + không có talent point), KHÔNG seed talent point qua admin, KHÔNG bao phủ full cast → cooldown flow (defer cho future spec với character đã breakthrough hoặc admin seed). Pure FE wire E2E coverage Phase 11.7.E + 11.7.G.
+- KHÔNG schema migration, KHÔNG BE change, KHÔNG store contract change, KHÔNG ledger — pure E2E test addition. CI gate: spec gated `E2E_FULL=1` nên KHÔNG chạy trong `e2e-smoke` job (job hiện tại chỉ run AuthView smoke không backend). Local verification: `PLAYWRIGHT_BASE_URL=http://localhost:5173 PLAYWRIGHT_SKIP_WEBSERVER=1 E2E_FULL=1 pnpm --filter @xuantoi/web e2e --grep "talent catalog"` → 1 passed (2.2s) chống lại stack `pnpm infra:up` + `pnpm --filter @xuantoi/api dev` + `pnpm --filter @xuantoi/web dev`.
 
 #### 11.8.A PR: Buff/Debuff catalog foundation — DONE ✅ (this branch / merge target)
 

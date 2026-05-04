@@ -19,6 +19,8 @@
  *   14. Mail — page load + empty state cho fresh char (post-9q-7)
  *   15. Dungeon — list 3 dungeon + Sơn Cốc entry button enabled (post-9q-7)
  *   16. Settings — page load + account info + change-password section (post-9q-7)
+ *   17. Skill Book — auto-grant basic_attack + tier badge + equipped summary (Phase 11.2.C)
+ *   18. Talent catalog — fresh char Loadout empty + filter row gate + sticky CSS + catalog grid render (Phase 11.7.G)
  *
  * Yêu cầu chạy local:
  *   1. `pnpm infra:up` (Postgres + Redis)
@@ -641,5 +643,69 @@ test.describe('Golden path — full stack required', () => {
     await expect(page.locator('[data-testid="skill-book-filter-tier"]')).toBeVisible();
     await expect(page.locator('[data-testid="skill-book-filter-element"]')).toBeVisible();
     await expect(page.locator('[data-testid="skill-book-filter-equipped"]')).toBeVisible();
+  });
+
+  // ===================================================================
+  // SPEC #18 — Phase 11.7.G Talent catalog UI smoke (FE wire E2E).
+  //
+  // Visit `/talents` cho fresh char (chưa Trúc Cơ → 0 active learned, 0
+  // talent point). Verify FE catalog wire BE talents/state qua real
+  // HTTP cho:
+  //   - Page route + heading render.
+  //   - Loadout section visible + sticky CSS class hiện diện trên DOM
+  //     (`md:sticky`, `md:top-0`, `md:z-10`) — Phase 11.7.G css.
+  //   - Loadout filter row HIDDEN cho fresh char (gate
+  //     `activeLearnedTalents.length > 0`).
+  //   - Loadout empty state visible (`talents-active-empty`) — fresh char
+  //     never learned active.
+  //   - Budget section render với spent=0 + remaining=0 (BE state wire).
+  //   - Catalog filters (type/element/status) visible.
+  //   - Catalog grid render ≥ 1 talent card (catalog data load qua
+  //     shared/talents.ts → vue render).
+  //
+  // KHÔNG bấm Học (fresh char không có talent point + chưa đủ realm cho
+  // bất kỳ talent nào trong catalog), KHÔNG seed talent point — full
+  // learn → cast → cooldown flow defer cho QA manual smoke với character
+  // đã breakthrough hoặc admin seed (Phase 11.X future E2E_FULL=1 spec).
+  // ===================================================================
+  test('talent catalog — fresh char loadout empty + filter row gate + sticky CSS + catalog grid render', async ({
+    page,
+  }) => {
+    await registerAndOnboard(page, { emailPrefix: 'e2e_talents' });
+    await page.goto('/talents');
+
+    await expect(page).toHaveURL(/\/talents/);
+
+    // Loadout section visible + sticky CSS classes (Phase 11.7.G).
+    const loadout = page.locator('[data-testid="talents-active-section"]');
+    await expect(loadout).toBeVisible({ timeout: 10_000 });
+    const loadoutClass = await loadout.getAttribute('class');
+    expect(loadoutClass ?? '').toContain('md:sticky');
+    expect(loadoutClass ?? '').toContain('md:top-0');
+    expect(loadoutClass ?? '').toContain('md:z-10');
+
+    // Filter row HIDDEN cho fresh char (gate activeLearnedTalents.length > 0).
+    await expect(page.locator('[data-testid="talents-active-filter-row"]')).toHaveCount(0);
+
+    // Empty state visible (never-learned).
+    await expect(page.locator('[data-testid="talents-active-empty"]')).toBeVisible();
+
+    // Filter-only empty state KHÔNG render khi chưa learn talent nào.
+    await expect(page.locator('[data-testid="talents-active-filter-empty"]')).toHaveCount(0);
+
+    // Budget section render với spent=0 + remaining=0 (BE state wire).
+    await expect(page.locator('[data-testid="talents-budget-spent"]')).toContainText(/0/);
+    await expect(page.locator('[data-testid="talents-budget-remaining"]')).toContainText(/0/);
+
+    // Catalog filter selects visible (type / element / status).
+    await expect(page.locator('[data-testid="talents-filter-type"]')).toBeVisible();
+    await expect(page.locator('[data-testid="talents-filter-element"]')).toBeVisible();
+    await expect(page.locator('[data-testid="talents-filter-status"]')).toBeVisible();
+
+    // Catalog grid render ≥ 1 talent card (data từ packages/shared/talents.ts).
+    await expect(page.locator('[data-testid="talents-list"]')).toBeVisible();
+    const cards = page.locator('[data-testid^="talent-card-"]');
+    await expect(cards.first()).toBeVisible();
+    expect(await cards.count()).toBeGreaterThan(0);
   });
 });
