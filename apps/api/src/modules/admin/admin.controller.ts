@@ -94,6 +94,11 @@ const GrantCurrencyInput = z.object({
   delta: z.string().regex(/^-?\d{1,19}$/, 'delta must be a signed bigint up to 10^18'),
   reason: z.string().max(200).default(''),
 });
+const GrantMethodInput = z.object({
+  /** Cultivation method key trong shared `CULTIVATION_METHODS` catalog. Service validate vs catalog → INVALID_INPUT nếu typo. */
+  methodKey: z.string().min(1).max(80),
+  reason: z.string().max(200).default(''),
+});
 const TopupActionInput = z.object({
   note: z.string().max(200).default(''),
 });
@@ -511,6 +516,39 @@ export class AdminController {
           ? CurrencyKind.LINH_THACH
           : CurrencyKind.TIEN_NGOC,
         BigInt(parsed.data.delta),
+        parsed.data.reason,
+      );
+      return { ok: true, data: { ok: true } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Admin seed harness — cấp quyền sở hữu cultivation method (công pháp)
+   * cho character (mirror dungeon drop / sect shop / boss drop /
+   * event source). Use-case: positive-path smoke `smoke:cultivation-method`
+   * switch mở khốa `equippedMethodKey != STARTER`, Phase 11.X UI E2E
+   * cultivation method swap. Bypass realm/sect/element validation — admin
+   * override semantics. Idempotent qua P2002 catch (`@@unique([characterId,
+   * methodKey])`). Audit `admin.method.grant`.
+   */
+  @Post('users/:id/grant-method')
+  @HttpCode(200)
+  @RequireAdmin()
+  async grantMethod(
+    @Req() req: AdminReq,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = GrantMethodInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      await this.admin.grantMethod(
+        req.userId,
+        req.role,
+        id,
+        parsed.data.methodKey,
         parsed.data.reason,
       );
       return { ok: true, data: { ok: true } };

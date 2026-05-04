@@ -11,11 +11,12 @@
  * cao hơn (verify realm gate), anti-FE-self-grant invariant (failed equip
  * KHÔNG đụng equippedMethodKey/learned methodKeys).
  *
- * Smoke này KHÔNG cần admin seed → chỉ cover lazy auto-grant idempotent +
- * negative paths. Full positive path (equip method khác sau khi học qua
- * dungeon drop hoặc admin grant) yêu cầu admin seed `CharacterCultivationMethod`
- * row source='dungeon_drop' / 'admin' — defer cho future smoke với admin
- * secret.
+ * Phase 11.X positive path UNBLOCKED qua admin grant-method (PR sau #389) +
+ * grant-spiritual-root + set-realm: admin seed `CharacterCultivationMethod`
+ * row source='admin' + force primaryElement để tránh FORBIDDEN_ELEMENT
+ * non-deterministic + force realm để vượt REALM_TOO_LOW. Player
+ * sau đó tự equip qua public endpoint — admin KHÔNG bypass equip gate
+ * (validateLearnable vẫn chạy full).
  *
  *   1. `GET  /api/character/cultivation-method` (no auth)        → 401.
  *   2. `POST /api/character/cultivation-method/equip` (no auth)  → 401.
@@ -75,12 +76,57 @@
  *                                                                  state vẫn
  *                                                                  giống
  *                                                                  snapshot.
- *  14. `POST /api/_auth/logout` + GET /cultivation-method        → 401.
+ *  14. admin login + swap jar + set-realm truc_co s1 +            → 200 admin
+ *      grant-spiritual-root than/kim + grant-method                  seed harness
+ *      `cuu_cuc_kim_cuong_quyet` + grant-method idempotent           (positive path).
+ *      + admin logout + restore player jar.
+ *  15. `GET  /cultivation-method` (post-admin-seed)              → 200,
+ *                                                                  learned[]
+ *                                                                  có 2 row
+ *                                                                  (starter
+ *                                                                  + cuu_cuc),
+ *                                                                  equipped=
+ *                                                                  khai_thien
+ *                                                                  (admin
+ *                                                                  KHÔNG
+ *                                                                  auto-equip).
+ *  16. `POST .../equip` body {methodKey:'cuu_cuc_kim_cuong_quyet'} → 200
+ *                                                                  switch
+ *                                                                  positive
+ *                                                                  path (
+ *                                                                  realm
+ *                                                                  truc_co
+ *                                                                  + element
+ *                                                                  kim qua
+ *                                                                  forbidden
+ *                                                                  moc).
+ *  17. `POST .../equip` body {methodKey:'cuu_cuc_kim_cuong_quyet'} → 200
+ *                                                                  idempotent
+ *                                                                  re-equip
+ *                                                                  cuu_cuc
+ *                                                                  (state
+ *                                                                  unchanged).
+ *  18. `POST .../equip` body {methodKey:'khai_thien_quyet'}      → 200
+ *                                                                  switch
+ *                                                                  back
+ *                                                                  starter
+ *                                                                  (downgrade
+ *                                                                  always
+ *                                                                  OK — starter
+ *                                                                  unlock
+ *                                                                  phamnhan).
+ *  19. `POST /api/_auth/logout` + GET /cultivation-method        → 401.
  *
  * Anti-FE-self-grant invariant (per Luật bắt buộc — KHÔNG để frontend tự
  * thay đổi công pháp qua failed equip):
  *   - `equippedMethodKey` KHÔNG đổi qua failed attempts.
  *   - `learned[]` methodKeys KHÔNG có row mới (sorted joined compare).
+ *   - Admin grant-method **KHÔNG** auto-equip — chỉ insert row
+ *     `CharacterCultivationMethod` với source='admin'. Player phải
+ *     gọi `POST /equip` thủ công (server vẫn validate realm/sect/
+ *     element gate — admin KHÔNG bypass equip).
+ *   - Admin grant-method idempotent qua P2002 catch — gọi 2 lần
+ *     vẫn chỉ 1 row, audit ghi cả 2 lần với `alreadyLearned: true` lc 2.
  *
  * Chạy:
  *   pnpm smoke:cultivation-method
@@ -93,11 +139,14 @@
  *   SMOKE_VERBOSE      — "1" để log request/response (debug).
  *   SMOKE_SECT_KEY     — default "thanh_van".
  *   SMOKE_HIGH_TIER    — default "cuu_cuc_kim_cuong_quyet" (truc_co tier).
+ *   SMOKE_ADMIN_EMAIL    — default "admin@example.com" (bootstrap admin).
+ *   SMOKE_ADMIN_PASSWORD — default "change-me-bootstrap-pass" (bootstrap).
  *
  * Yêu cầu môi trường (giống smoke:spiritual-root):
  *   - `pnpm infra:up` (Postgres + Redis)
  *   - `pnpm --filter @xuantoi/api exec prisma migrate deploy`
- *   - `pnpm --filter @xuantoi/api bootstrap` (seed 3 sect)
+ *   - `pnpm --filter @xuantoi/api bootstrap` (seed 3 sect + admin
+ *     INITIAL_ADMIN_EMAIL/PASSWORD env cần match SMOKE_ADMIN_EMAIL/PASSWORD).
  *   - `pnpm --filter @xuantoi/api dev` (API listen :3000)
  *   - Tab khác: `pnpm smoke:cultivation-method`
  *
@@ -119,6 +168,15 @@ const SECT_KEY = process.env.SMOKE_SECT_KEY ?? 'thanh_van';
 const STARTER_METHOD_KEY = 'khai_thien_quyet';
 const HIGH_TIER_METHOD_KEY = process.env.SMOKE_HIGH_TIER ?? 'cuu_cuc_kim_cuong_quyet';
 const FAKE_METHOD_KEY = 'fake_xyz_unknown_cultivation_method_key';
+const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL ?? 'admin@example.com';
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? 'change-me-bootstrap-pass';
+
+// `cuu_cuc_kim_cuong_quyet` (truc_co tier, requiredSect=null,
+// forbiddenElements=['moc']). Force primaryElement='kim' qua admin
+// grant-spiritual-root để deterministic equip-pass (avoid 'moc'
+// non-deterministic onboard roll).
+const FORCE_PRIMARY_ELEMENT = 'kim';
+const FORCE_ROOT_GRADE = 'than'; // max grade để đủ secondaryElementCount=4.
 
 // -----------------------------------------------------------------------------
 // Cookie jar — Node fetch không có cookie jar built-in, tự track set-cookie.
@@ -152,6 +210,17 @@ function storeSetCookie(res) {
 function cookieHeader() {
   if (cookieJar.size === 0) return undefined;
   return Array.from(cookieJar, ([k, v]) => `${k}=${v}`).join('; ');
+}
+
+/** Snapshot cookieJar để switch tạm sang admin rồi restore lại player. */
+function snapshotCookies() {
+  return new Map(cookieJar);
+}
+
+/** @param {Map<string,string>} snapshot */
+function restoreCookies(snapshot) {
+  cookieJar.clear();
+  for (const [k, v] of snapshot) cookieJar.set(k, v);
 }
 
 // -----------------------------------------------------------------------------
@@ -329,6 +398,8 @@ async function main() {
   // 3. Register fresh user.
   const email = randomEmail();
   const password = randomPassword();
+  /** @type {{ userId: string | null }} */
+  const state = { userId: null };
   await step('register', async () => {
     const r = await http('/api/_auth/register', {
       method: 'POST',
@@ -336,7 +407,9 @@ async function main() {
     });
     assertStatus(r, [200, 201], 'register');
     if (!r.body?.ok) throw new Error(`register: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
-    assert(r.body?.data?.user?.id, 'register: missing user.id');
+    const userId = r.body?.data?.user?.id;
+    assert(typeof userId === 'string' && userId.length > 0, 'register: missing user.id');
+    state.userId = userId;
   });
 
   // 4. GET /cultivation-method khi chưa onboard → 404 NO_CHARACTER.
@@ -452,7 +525,170 @@ async function main() {
     assertCMImmutable(initialCM, after, 'POST equip-starter idempotent');
   });
 
-  // 14. logout + GET /cultivation-method → 401 UNAUTHENTICATED.
+  // ---------------------------------------------------------------------------
+  // POSITIVE PATH (Phase 11.X unblocked qua admin grant-method + grant-spiritual
+  // -root + set-realm seed harness).
+  //
+  // Snapshot before vs after invariant: equippedMethodKey starter → cuu_cuc
+  // → starter (player switch). learned[] starter-only → starter+cuu_cuc
+  // (admin grant + idempotent qua P2002 catch). Admin **KHÔNG** auto-equip
+  // method mới grant; player phải tự gọi POST /equip qua public endpoint
+  // (server vẫn validateLearnable — admin KHÔNG bypass equip gate).
+  // ---------------------------------------------------------------------------
+
+  // 14. Snapshot player cookies + admin login → swap jar → set-realm truc_co
+  //     s1 + grant-spiritual-root than/kim + grant-method cuu_cuc + grant-
+  //     method idempotent (verify P2002 catch) → admin logout → restore
+  //     player jar.
+  /** @type {Map<string,string> | null} */
+  let playerCookieSnap = null;
+  await step('admin login + set-realm truc_co + grant-root + grant-method (positive seed)', async () => {
+    if (!state.userId) throw new Error('state.userId missing — register chưa chạy');
+    playerCookieSnap = snapshotCookies();
+    cookieJar.clear();
+    const login = await http('/api/_auth/login', {
+      method: 'POST',
+      body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    assertStatus(login, 200, 'admin login (cm seed)');
+    const u = login.body?.data?.user;
+    assert(u?.role === 'ADMIN', `admin login: role phải ADMIN (cần bootstrap admin@example.com), got ${u?.role}`);
+
+    // Force realm → vượt REALM_TOO_LOW khi player equip cuu_cuc.
+    const setRealm = await http(`/api/admin/users/${state.userId}/set-realm`, {
+      method: 'POST',
+      body: { realmKey: 'truc_co', realmStage: 1, reason: 'smoke cm positive seed' },
+    });
+    assertStatus(setRealm, 200, 'admin set-realm truc_co s1');
+    assert(setRealm.body?.ok === true, `set-realm: shape mismatch, got ${JSON.stringify(setRealm.body)}`);
+
+    // Force primaryElement='kim' → vượt FORBIDDEN_ELEMENT khi player equip
+    // cuu_cuc_kim_cuong_quyet (forbidden=['moc']). Thần grade để secondary
+    // count=4 deterministic.
+    const setRoot = await http(`/api/admin/users/${state.userId}/grant-spiritual-root`, {
+      method: 'POST',
+      body: {
+        grade: FORCE_ROOT_GRADE,
+        primaryElement: FORCE_PRIMARY_ELEMENT,
+        purity: 100,
+        reason: 'smoke cm positive seed',
+      },
+    });
+    assertStatus(setRoot, 200, 'admin grant-spiritual-root than/kim');
+    assert(setRoot.body?.ok === true, `grant-spiritual-root: shape mismatch, got ${JSON.stringify(setRoot.body)}`);
+
+    // Grant method `cuu_cuc_kim_cuong_quyet` → insert row source='admin'.
+    const grant1 = await http(`/api/admin/users/${state.userId}/grant-method`, {
+      method: 'POST',
+      body: { methodKey: HIGH_TIER_METHOD_KEY, reason: 'smoke cm positive seed' },
+    });
+    assertStatus(grant1, 200, 'admin grant-method 1st');
+    assert(
+      grant1.body?.ok === true && grant1.body?.data?.ok === true,
+      `grant-method 1st: shape mismatch, got ${JSON.stringify(grant1.body)}`,
+    );
+
+    // Grant lại → P2002 catch → vẫn 200 OK (idempotent). Audit ghi 2 row
+    // với `alreadyLearned: true` cho lc 2 — verify qua admin-seed-harness-ext
+    // service test (vitest), không spam smoke.
+    const grant2 = await http(`/api/admin/users/${state.userId}/grant-method`, {
+      method: 'POST',
+      body: { methodKey: HIGH_TIER_METHOD_KEY, reason: 'smoke cm idempotent' },
+    });
+    assertStatus(grant2, 200, 'admin grant-method 2nd (idempotent)');
+    assert(
+      grant2.body?.ok === true && grant2.body?.data?.ok === true,
+      `grant-method 2nd: shape mismatch, got ${JSON.stringify(grant2.body)}`,
+    );
+
+    const logout = await http('/api/_auth/logout', { method: 'POST' });
+    assertStatus(logout, [200, 204], 'admin logout (cm seed)');
+    cookieJar.clear();
+    if (!playerCookieSnap) throw new Error('playerCookieSnap missing');
+    restoreCookies(playerCookieSnap);
+  });
+
+  // 15. GET /cultivation-method — learned[] post-admin-seed: starter +
+  //     cuu_cuc_kim_cuong_quyet (admin grant không dup), equipped vẫn=
+  //     starter (admin grant-method KHÔNG auto-equip).
+  /** @type {ReturnType<typeof snapshotCM>} */
+  let postSeedCM;
+  await step('GET /cultivation-method — post-admin-seed: learned starter+cuu_cuc, equipped vẫn starter', async () => {
+    const r = await http('/api/character/cultivation-method');
+    assertStatus(r, 200, 'GET post-seed');
+    if (!r.body?.ok) throw new Error(`GET post-seed: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const cm = r.body?.data?.cultivationMethod;
+    assert(cm, 'GET post-seed: missing data.cultivationMethod');
+    assert(
+      cm.equippedMethodKey === STARTER_METHOD_KEY,
+      `GET post-seed: equippedMethodKey phải vẫn starter (admin KHÔNG auto-equip), got ${cm.equippedMethodKey}`,
+    );
+    assert(Array.isArray(cm.learned), 'GET post-seed: learned phải array');
+    assert(
+      cm.learned.length === 2,
+      `GET post-seed: learned phải 2 row (starter + cuu_cuc, idempotent grant không dup), got ${cm.learned.length}`,
+    );
+    const seeded = cm.learned.find((/** @type {any} */ row) => row.methodKey === HIGH_TIER_METHOD_KEY);
+    assert(seeded, `GET post-seed: learned phải chứa ${HIGH_TIER_METHOD_KEY}`);
+    assert(seeded.source === 'admin', `GET post-seed: ${HIGH_TIER_METHOD_KEY} source phải 'admin', got ${seeded.source}`);
+    postSeedCM = snapshotCM(cm);
+  });
+
+  // 16. POST /equip cuu_cuc_kim_cuong_quyet → 200 switch positive (player
+  //     thủ công equip qua public endpoint, server validateLearnable
+  //     full — realm truc_co OK, sect null OK, element kim ko forbidden).
+  await step(`POST /equip ${HIGH_TIER_METHOD_KEY} — 200 switch positive (post-admin-seed)`, async () => {
+    const r = await http('/api/character/cultivation-method/equip', {
+      method: 'POST',
+      body: { methodKey: HIGH_TIER_METHOD_KEY },
+    });
+    assertStatus(r, 200, 'POST equip cuu_cuc');
+    if (!r.body?.ok) throw new Error(`POST equip cuu_cuc: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const cm = r.body?.data?.cultivationMethod;
+    assert(
+      cm?.equippedMethodKey === HIGH_TIER_METHOD_KEY,
+      `POST equip cuu_cuc: equippedMethodKey phải ${HIGH_TIER_METHOD_KEY}, got ${cm?.equippedMethodKey}`,
+    );
+    assert(Array.isArray(cm?.learned) && cm.learned.length === 2, `POST equip cuu_cuc: learned vẫn 2 row`);
+  });
+
+  // 17. POST /equip cuu_cuc_kim_cuong_quyet lần 2 → 200 idempotent
+  //     (state vẫn equipped=cuu_cuc, learned[] không dup).
+  await step(`POST /equip ${HIGH_TIER_METHOD_KEY} — 200 idempotent re-equip`, async () => {
+    const r = await http('/api/character/cultivation-method/equip', {
+      method: 'POST',
+      body: { methodKey: HIGH_TIER_METHOD_KEY },
+    });
+    assertStatus(r, 200, 'POST equip cuu_cuc idempotent');
+    const cm = r.body?.data?.cultivationMethod;
+    assert(
+      cm?.equippedMethodKey === HIGH_TIER_METHOD_KEY,
+      `POST equip cuu_cuc 2nd: equippedMethodKey phải ${HIGH_TIER_METHOD_KEY}`,
+    );
+    assert(Array.isArray(cm?.learned) && cm.learned.length === 2, `POST equip cuu_cuc 2nd: learned vẫn 2 row`);
+  });
+
+  // 18. POST /equip starter → 200 switch back (downgrade always OK — starter
+  //     unlock=phamnhan, mọi realm đều qualify).
+  await step(`POST /equip ${STARTER_METHOD_KEY} — 200 switch back to starter`, async () => {
+    const r = await http('/api/character/cultivation-method/equip', {
+      method: 'POST',
+      body: { methodKey: STARTER_METHOD_KEY },
+    });
+    assertStatus(r, 200, 'POST equip starter back');
+    const cm = r.body?.data?.cultivationMethod;
+    assert(
+      cm?.equippedMethodKey === STARTER_METHOD_KEY,
+      `POST equip starter back: equippedMethodKey phải ${STARTER_METHOD_KEY}`,
+    );
+    assert(Array.isArray(cm?.learned) && cm.learned.length === 2, `POST equip starter back: learned vẫn 2 row (không mất cuu_cuc)`);
+    // Anti-FE invariant: switch back không phải delete — learned snapshot
+    // post-seed vẫn match (cuu_cuc row vẫn tồn tại).
+    const after = snapshotCM(cm);
+    assert(after.learnedKeys === postSeedCM.learnedKeys, `POST equip starter back: learnedKeys lost cuu_cuc row`);
+  });
+
+  // 19. logout + GET /cultivation-method → 401 UNAUTHENTICATED.
   await step('logout + GET /cultivation-method — 401 UNAUTHENTICATED', async () => {
     const logout = await http('/api/_auth/logout', { method: 'POST' });
     assertStatus(logout, [200, 204], 'logout');
