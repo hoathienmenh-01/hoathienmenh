@@ -4,6 +4,7 @@ import {
   ELEMENTS,
   SPIRITUAL_ROOT_GRADES,
   expCostForStage,
+  getCultivationMethodDef,
   getSpiritualRootGradeDef,
   itemByKey,
   realmByKey,
@@ -918,6 +919,93 @@ export class AdminService {
       characterId: target.id,
       currency,
       delta: delta.toString(),
+      reason,
+    });
+
+    const state = await this.chars.findByUser(targetUserId);
+    if (state) this.realtime.emitToUser(targetUserId, 'state:update', state);
+  }
+
+  /**
+   * Cấp cho character quyền sở hữu 1 cultivation method (công pháp) mà bình
+   * thường phải qua dungeon drop / sect shop / boss drop / event để học. Use-case:
+   * positive-path smoke `smoke:cultivation-method` switch method (yêu cầu
+   * `bach_van_chu_tam_quyet` đã ở trong `learned[]`), Phase 11.X UI E2E
+   * cultivation method swap → expMultiplier change (boss combat / cultivation
+   * idle EXP scaling).
+   *
+   *  - `methodKey` phải tồn tại trong shared `CULTIVATION_METHODS` catalog
+   *    (`getCultivationMethodDef`) — chống typo silent-noop.
+   *  - **Bypass realm/sect/element validation** — admin override semantics
+   *    (mirror `grantSpiritualRoot` / `setRealm`). Player tự equip bằng
+   *    `POST /character/cultivation-method/equip` vẫn validate đầy đủ
+   *    (REALM_TOO_LOW / WRONG_SECT / FORBIDDEN_ELEMENT) — admin chỉ
+   *    seed dữ liệu, KHÔNG bypass equip gate.
+   *  - **Idempotent**: nếu character đã học method này (`@@unique([characterId,
+   *    methodKey])` trên `CharacterCultivationMethod`), P2002 được catch
+   *    → no-op (mirror `CultivationMethodService.learn` semantics). Audit
+   *    log vẫn ghi (caller có thể distinguish qua `alreadyLearned: true`
+   *    field).
+   *  - Source = `'admin'` (mirror `CultivationMethodSource` union).
+   *  - MOD chỉ grant cho PLAYER; ADMIN grant được mọi role (mirror
+   *    `grantSpiritualRoot` / `grantTalentPoint` hierarchy).
+   *  - Audit `AdminAuditLog action='admin.method.grant'` ghi previousLearnedCount
+   *    + alreadyLearned flag để rollback / verify.
+   */
+  async grantMethod(
+    actorId: string,
+    actorRole: Role,
+    targetUserId: string,
+    methodKey: string,
+    reason: string,
+  ): Promise<void> {
+    if (actorId === targetUserId) throw new AdminError('CANNOT_TARGET_SELF');
+    if (!methodKey || methodKey.length > 80) throw new AdminError('INVALID_INPUT');
+    if (!getCultivationMethodDef(methodKey)) throw new AdminError('INVALID_INPUT');
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { role: true },
+    });
+    if (!targetUser) throw new AdminError('NOT_FOUND');
+    if (actorRole !== 'ADMIN' && targetUser.role !== 'PLAYER') {
+      throw new AdminError('FORBIDDEN');
+    }
+    const target = await this.prisma.character.findUnique({
+      where: { userId: targetUserId },
+      select: { id: true },
+    });
+    if (!target) throw new AdminError('NOT_FOUND');
+
+    const previousLearnedCount = await this.prisma.characterCultivationMethod.count({
+      where: { characterId: target.id },
+    });
+
+    let alreadyLearned = false;
+    try {
+      await this.prisma.characterCultivationMethod.create({
+        data: {
+          characterId: target.id,
+          methodKey,
+          source: 'admin',
+        },
+      });
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        alreadyLearned = true;
+      } else {
+        throw e;
+      }
+    }
+
+    await this.audit(actorId, 'admin.method.grant', {
+      targetUserId,
+      characterId: target.id,
+      methodKey,
+      previousLearnedCount,
+      alreadyLearned,
       reason,
     });
 

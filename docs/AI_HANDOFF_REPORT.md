@@ -8,15 +8,15 @@
 
 ## 1. Current Executive Summary
 
-- **Current `main` commit**: post PR #391 merged (smoke:mail claim positive-path qua admin POST /admin/mail/send, 16→26 step) + post PR #390 (smoke positive BATCH skill upgrade-mastery + shop buy qua admin grant-currency, skill 25→33 + shop 14→21 step) + post PR #389 (admin seed harness extension grant-talent-point + set-realm + grant-currency, foundation cho Phase 11.X UI E2E + future positive-path smokes).
-- **Current phase**: Phase 10 Content scale **CLOSED** ✅. Phase 11 Progression Depth catalog 11/11 + runtime persistence 10/10 + UI tracks merged. Phase 11.X UI E2E **UNGATED** — PR #389 admin seed harness đầy đủ 6 endpoint (grant-exp/grant-item/grant-spiritual-root/grant-talent-point/set-realm/grant-currency). Smoke scripts **25 module** complete (full HTTP coverage gameplay + admin + auth gateway). Detail ở `## 3. Current Phase Status`.
-- **Test baseline (post PR #391 merged)**: api **1696/1696 vitest** + shared **1055** + web **1022** (no delta — PR #390/#391 smoke-only nằm ngoài CI matrix). E2E_FULL=1 stack required cho UI E2E. Smoke scripts không nằm trong CI — verify manually qua `pnpm smoke:*`. Detail ở `## 5. Tests`.
+- **Current `main` commit**: post PR #394 merged (admin grant-method endpoint + smoke:cultivation-method switch positive-path BATCH, 14→19 step) + post PR #391 merged (smoke:mail claim positive-path qua admin POST /admin/mail/send, 16→26 step) + post PR #390 (smoke positive BATCH skill upgrade-mastery + shop buy qua admin grant-currency, skill 25→33 + shop 14→21 step) + post PR #389 (admin seed harness extension grant-talent-point + set-realm + grant-currency, foundation cho Phase 11.X UI E2E + future positive-path smokes).
+- **Current phase**: Phase 10 Content scale **CLOSED** ✅. Phase 11 Progression Depth catalog 11/11 + runtime persistence 10/10 + UI tracks merged. Phase 11.X UI E2E **UNGATED** — PR #389 + #394 admin seed harness đầy đủ 7 endpoint (grant-exp/grant-item/grant-spiritual-root/grant-talent-point/set-realm/grant-currency/grant-method). Smoke scripts **25 module** complete (full HTTP coverage gameplay + admin + auth gateway), positive coverage 8/25. Detail ở `## 3. Current Phase Status`.
+- **Test baseline (post PR #394 merged)**: api **1705/1705 vitest** (+9 grantMethod) + shared **1055** + web **1022**. E2E_FULL=1 stack required cho UI E2E. Smoke scripts không nằm trong CI — verify manually qua `pnpm smoke:*`. Detail ở `## 5. Tests`.
 - **Open PR / pending branch**: 0 in-flight code PR (post PR #391 merge baseline). Older docs/audit in-flight (session 5/6 + 5/7) chưa rebase — xem GitHub PR list ở `https://github.com/hoathienmenh-01/xuantoi/pulls`.
 - **Known blocker live**: **0 Critical** hiện tại. **Medium còn open**: M7 CSP production deploy chưa test với CDN/asset domain khác, M10 Shop không có daily limit/rate-limit (closed beta acceptable). **Low còn open**: L1 (đã resolve PR F audit i18n nhưng remain identical en≡vi cho universal terms — đúng intent). Detail ở `## 4. Known Issues / Risks`.
 - **Phase 9 readiness** (snapshot session 9r-9): **11/15 Done**, **3 Partial** (cultivation breakthrough end-to-end, mission claim flow, mail UI — mail UI partial gap closed by PR #391 mail claim end-to-end runtime smoke). Detail [`BETA_CHECKLIST.md`](./BETA_CHECKLIST.md) §"Phase 9 readiness audit".
 - **Immediate next task** (3-5 ưu tiên cao nhất theo SESSION PR LIMIT + GOM TRƯỚC KHI TÁCH 4b — Medium PR > Hotfix > Large):
   1. **Phase 11.X UI E2E smoke** (Medium PR, Template B) — Playwright test `talent learn → cast → cooldown badge` flow (cần `E2E_FULL=1` PG+Redis+API+Web stack; setup: setRealm kim_dan + grantTalentPoint +1 → click learn → click cast → assert cooldown badge update). Foundation đủ qua PR #389.
-  2. **Smoke positive-path follow-up BATCH** (Medium PR, Template B) — gom `smoke:cultivation-method` switch positive (cần admin grant-method-key endpoint hoặc reuse equipped via grant-item) + `smoke:daily-login` multi-day positive (cần admin advance-day hoặc set-streak — nhỏ migration field hoặc service helper) + `smoke:breakthrough` positive (set-realm stage=9 + grant-exp đủ cost → POST /character/breakthrough advance to truc_co — fully unblocked qua PR #389).
+  2. **Smoke positive-path follow-up BATCH** (Medium PR, Template B) — gom `smoke:daily-login` multi-day positive (cần admin advance-day hoặc set-streak — nhỏ migration field hoặc service helper) + `smoke:breakthrough` positive (set-realm stage=9 + grant-exp đủ cost → POST /character/breakthrough advance to truc_co — fully unblocked qua PR #389). **smoke:cultivation-method switch positive DONE qua PR #394.**
   3. **Phase 12 entry** (chỉ khi Phase 11 ≥ 95%) — party/co-op dungeon catalog foundation (tham khảo [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §12 entry criteria).
 - **Anti-duplicate guard** (per NEXT TASK AUTO-SELECTION rule): trước khi pick task, MUST `git fetch origin main && git log --oneline -15` đối chiếu commit message với keyword task — vd "smoke:cultivation-method positive", "Phase 11.X E2E", "admin seed harness". Match → SKIP, pick task khác.
 - **Do NOT build yet** (anti-feature-creep): Real-time PvP (Phase 14), party/co-op dungeon (Phase 12 — wait for Phase 11 ≥ 95%), pet/wife gacha (Phase 16), voice chat, video streaming. Full list ở [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §0.
@@ -29,6 +29,7 @@
 
 | PR | Title | Type | Scope summary |
 |---|---|---|---|
+| [#394](https://github.com/hoathienmenh-01/xuantoi/pull/394) | feat(admin,smoke): admin grant-method endpoint + smoke:cultivation-method switch positive-path | admin BE + smoke positive BATCH | `POST /admin/users/:id/grant-method` (Zod {methodKey, reason}, role hierarchy mirror grantTalentPoint, idempotent qua P2002 catch — alreadyLearned audit, source='admin', bypass realm/sect validate — admin override). +9 vitest grantMethod (happy/idempotent/bypass/INVALID_INPUT ×2/CANNOT_TARGET_SELF/NOT_FOUND/FORBIDDEN/MOD→PLAYER ok). smoke-cultivation-method 14→19 step: admin set-realm truc_co + grant-spiritual-root than/kim + grant-method cuu_cuc_kim_cuong_quyet (idempotent 2nd grant) → player POST /equip cuu_cuc → GET state verify learned[2] + equipped switch + back to starter. |
 | [#391](https://github.com/hoathienmenh-01/xuantoi/pull/391) | test(smoke): smoke:mail claim positive-path qua admin POST /admin/mail/send | smoke positive | smoke-mail.mjs 16→26 step: admin send {rewardLinhThach:'150', huyet_chi_dan x2} → player read → claim → atomic ledger MAIL_CLAIM + verify state linhThach='150' + inventory qty=2 + ALREADY_CLAIMED 409 retry CAS guard. Reuse cookie-jar swap pattern. Smoke verified locally 26/26 OK. |
 | [#390](https://github.com/hoathienmenh-01/xuantoi/pull/390) | feat(smoke): smoke:skill upgrade-mastery + smoke:shop buy positive-path qua admin grant-currency | smoke positive BATCH | smoke-skill 25→33 step (insert admin grant 200 LT → POST /skill/upgrade-mastery kim_quang_tram L1→L2 + atomic ledger SKILL_UPGRADE + INSUFFICIENT_FUNDS retry rollback) + smoke-shop 14→21 step (admin grant 25 LT → POST /shop/buy huyet_chi_dan qty=1 + ledger SHOP_BUY). +387/-32 LOC, 3 file. |
 | [#389](https://github.com/hoathienmenh-01/xuantoi/pull/389) | feat(admin): seed harness extension — grant-talent-point + set-realm + grant-currency | admin BE | 3 endpoint mới `POST /admin/users/:id/{grant-talent-point,set-realm,grant-currency}` + Prisma migration `Character.bonusTalentPoints` Int default 0 + TalentService budget compose. +25 vitest. Foundation cho Phase 11.X UI E2E + future positive-path smokes. |
@@ -38,9 +39,8 @@
 | [#385](https://github.com/hoathienmenh-01/xuantoi/pull/385) | test(smoke): smoke:inventory use/equip/unequip positive via admin grant-item | smoke positive | smoke-inventory positive-path. |
 | [#384](https://github.com/hoathienmenh-01/xuantoi/pull/384) | test(smoke): smoke:auth 9 endpoints + cookie-jar swap helper | smoke | smoke-auth full HTTP surface 9 endpoint + reusable snapshotCookies/restoreCookies helper. |
 | [#383](https://github.com/hoathienmenh-01/xuantoi/pull/383) | feat(admin): seed harness BE — grant-exp + grant-item + grant-spiritual-root | admin BE | 3 endpoint admin seed foundation cho positive-path smokes. |
-| [#382](https://github.com/hoathienmenh-01/xuantoi/pull/382) | test(smoke): smoke:economy admin audit filter | smoke | smoke-economy admin audit-ledger filter coverage. |
 
-> **PR #381 → #33** lịch sử đầy đủ: xem `## 7. Archive § Recent Changes Legacy`.
+> **PR #382 → #33** lịch sử đầy đủ: xem `## 7. Archive § Recent Changes Legacy`.
 
 ---
 
@@ -56,9 +56,9 @@
 | 12 | Party / co-op dungeon | **Not started — Blocked** | Wait Phase 11 ≥ 95%. Catalog foundation per [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §12 entry criteria. |
 | 13+ | Real-time PvP / pet gacha / voice / video streaming | **Not started** | Per LONG_TERM_ROADMAP §0 — explicitly DO NOT build yet. |
 
-**Smoke coverage** (post PR #391, 25 module): admin (3 entry: BE seed-harness #383+#389 + audit filter #382 + role/ban/topup/inventory/mail-broadcast/users-csv #377→#382), auth #384, achievement, beta, boss, breakthrough, chat, combat, cultivation-method, cultivation, daily-login, economy, giftcode, inventory #385, leaderboard, mail #391 (positive), market, mission, next-action, sect, shop #390 (positive), skill #390 (positive) #388 (skill book), spiritual-root #386 (positive), topup, ws.
+**Smoke coverage** (post PR #394, 25 module): admin (4 entry: BE seed-harness #383+#389+#394 + audit filter #382 + role/ban/topup/inventory/mail-broadcast/users-csv #377→#382), auth #384, achievement, beta, boss, breakthrough, chat, combat, cultivation-method #394 (positive), cultivation, daily-login, economy, giftcode, inventory #385, leaderboard, mail #391 (positive), market, mission, next-action, sect, shop #390 (positive), skill #390 (positive) #388 (skill book), spiritual-root #386 (positive), topup, ws.
 
-**Positive-path coverage** post-#391: 7 module có cả negative + positive HTTP path coverage (skill, shop, mail, inventory, spiritual-root, breakthrough, auth). Còn defer: cultivation-method switch positive, daily-login multi-day positive — pending admin endpoint hoặc service helper extension.
+**Positive-path coverage** post-#394: 8 module có cả negative + positive HTTP path coverage (skill, shop, mail, inventory, spiritual-root, breakthrough, auth, **cultivation-method**). Còn defer: daily-login multi-day positive — pending admin advance-day endpoint hoặc service helper extension.
 
 ---
 
@@ -89,10 +89,10 @@
 
 | Workspace | Test count | Notes |
 |---|---|---|
-| `apps/api` | **1696 vitest** | +25 PR #389 admin-seed-harness-ext.service.test.ts (7 grantTalentPoint + 7 setRealm + 10 grantCurrency + 1 talent budget compose). PR #390/#391 smoke-only — không thêm vitest. |
+| `apps/api` | **1705 vitest** | +9 PR #394 admin-seed-harness-ext.service.test.ts grantMethod (happy + idempotent + bypass realm/sect + INVALID_INPUT ×2 + CANNOT_TARGET_SELF + NOT_FOUND + FORBIDDEN MOD→ADMIN + MOD→PLAYER ok). +25 PR #389 admin-seed-harness-ext.service.test.ts (7 grantTalentPoint + 7 setRealm + 10 grantCurrency + 1 talent budget compose). PR #390/#391 smoke-only — không thêm vitest. |
 | `packages/shared` | **1055 vitest** | No delta gần đây. |
 | `apps/web` | **1022 vitest** | No delta gần đây. |
-| **Total** | **3773 vitest** | All green trên main. |
+| **Total** | **3782 vitest** | All green trên main. |
 
 ### Smoke Scripts (Node 20 native fetch, không nằm trong CI matrix — manual verify qua `pnpm smoke:*`)
 
@@ -108,7 +108,7 @@
 | breakthrough | `smoke:breakthrough` | ~16 | ✅ | ⚠️ defer | positive: set-realm stage=9 + grant-exp đủ cost (foundation đủ qua PR #389) |
 | chat | `smoke:chat` | ~12 | ✅ | ✅ | world/sect chat with rate limit verify |
 | combat | `smoke:combat` | ~14 | ✅ | ⚠️ partial | encounter positive defer (cần grant-item dungeon key hoặc unlock) |
-| cultivation-method | `smoke:cultivation-method` | ~12 | ✅ | ⚠️ defer | switch positive defer (cần admin grant-method-key hoặc reuse equipped via grant-item kim_quang flow) |
+| **cultivation-method** | `smoke:cultivation-method` | **19** | ✅ | ✅ | **PR #394 positive (admin set-realm truc_co + grant-spiritual-root than/kim + grant-method cuu_cuc_kim_cuong_quyet → player equip + switch back to starter, idempotent grant-method P2002 catch)** |
 | cultivation | `smoke:cultivation` | ~14 | ✅ | ✅ | toggle on/off + 30s tick verify |
 | daily-login | `smoke:daily-login` | ~10 | ✅ | ⚠️ defer | multi-day positive defer (cần admin advance-day hoặc set-streak) |
 | economy | `smoke:economy` | ~14 | ✅ | ✅ | admin audit filter (PR #382) |
@@ -135,7 +135,7 @@
 ### Còn thiếu (priority order)
 
 1. **Phase 11.X UI E2E** Playwright talent learn → cast → cooldown badge (E2E_FULL=1) — top priority next.
-2. **Smoke positive-path** cho cultivation-method / daily-login / breakthrough — defer pending admin endpoint extension hoặc service helper.
+2. **Smoke positive-path** cho daily-login / breakthrough — defer pending admin endpoint extension hoặc service helper. **cultivation-method DONE qua PR #394.**
 3. **Concurrency tests**: `Inventory Promise.all race`, `Cultivation multi-instance lock`, `Chat Redis failover branch`, `Boss spawn cron auto`, `Realtime ban during connection` — Low priority.
 
 ---
@@ -152,8 +152,7 @@ Per [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) §SESSION PR LIMIT (1-3 PR/
    - **Expected file**: `apps/web/e2e/talent-flow.spec.ts` (1 spec, ~80 LOC).
    - **Foundation**: đủ qua PR #389 admin seed harness extension (6 endpoint).
 
-2. **Smoke positive-path follow-up BATCH** — Medium PR, Template B (smoke batch). Gom 3 module:
-   - **smoke:cultivation-method switch positive** — cần admin grant-method-key endpoint hoặc reuse equipped via grant-item kim_quang flow.
+2. **Smoke positive-path follow-up BATCH** — Medium PR, Template B (smoke batch). Gom 2 module (sau PR #394 đã done cultivation-method):
    - **smoke:daily-login multi-day positive** — cần admin advance-day hoặc set-streak (Prisma migration nhỏ thêm field hoặc service helper).
    - **smoke:breakthrough positive** — set-realm stage=9 + grant-exp đủ cost → POST /character/breakthrough advance to truc_co. **Fully unblocked qua PR #389**, không cần catalog change.
 
