@@ -108,6 +108,13 @@ jobs:
       # API listen port — Vite proxy /api + /ws sang port này.
       PORT: '3000'
 
+      # Bootstrap admin credentials cho CI E2E spec #19 (Phase 11.X UI E2E talent
+      # learn → cast → cooldown badge — admin seed harness PR #389/#394). Idempotent
+      # bootstrap script seed `admin@example.com` qua argon2id hash. CI scope only,
+      # KHÔNG dùng cho dev/staging/prod (tránh credential leak).
+      INITIAL_ADMIN_EMAIL: admin@example.com
+      INITIAL_ADMIN_PASSWORD: change-me-bootstrap-pass
+
       # NODE_ENV=development để dev fallback CORS cho phép `http://localhost:5173`
       # (xem `apps/api/src/main.ts` `corsConfig`). Production assert chạy lúc
       # bootstrap nếu NODE_ENV=production sẽ throw vì secret là placeholder.
@@ -133,6 +140,15 @@ jobs:
       - name: Apply migrations (Postgres service)
         working-directory: apps/api
         run: pnpm exec prisma migrate deploy
+
+      # Bootstrap admin user idempotent (`admin@example.com`) cho E2E spec #19
+      # (Phase 11.X UI E2E talent learn → cast → cooldown badge — adminSeedTalent
+      # helper qua POST /admin/users/:id/{set-realm,grant-talent-point}). Chạy
+      # trước khi API start để DB đã có admin row khi spec đầu tiên gọi login.
+      # Idempotent — không reset password user đã tồn tại (Rule 10).
+      - name: Bootstrap admin user (idempotent)
+        working-directory: apps/api
+        run: pnpm run bootstrap
 
       # `@xuantoi/shared` build cần thiết cho cả api dist và web dev (dual
       # ESM/CJS export qua tsup).
