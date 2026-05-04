@@ -102,9 +102,17 @@
  *      reason:'smoke test'} → 200 ok + audit log `admin.inventory.revoke` ghi nhận.
  *  50. Player GET /api/inventory → huyet_chi_dan qty == 2 (3 - 1 revoke,
  *      server-authoritative ItemLedger -1 entry).
- *  51. Player → `/api/admin/stats` → 403 FORBIDDEN (admin guard reject PLAYER).
- *  52. Admin logout `/api/_auth/logout` → cookie cleared.
- *  53. Player logout `/api/_auth/logout` → cookie cleared.
+ *  51. Admin GET /admin/economy/report → 200 + shape circulation totals +
+ *      topByLinhThach[] + topByTienNgoc[] (read-only whales monitoring,
+ *      admin.service.ts L772-859).
+ *  52. Admin GET /admin/audit?action=topup.approve → rows toàn entries match
+ *      prefix 'topup.approve' (audit từ step 39 hiện diện).
+ *  53. Admin GET /admin/audit?email=<adminEmail> → rows scoped về actor admin.
+ *  54. Player → /admin/economy/report → 403 FORBIDDEN.
+ *  55. Player → /admin/audit → 403 FORBIDDEN.
+ *  56. Player → `/api/admin/stats` → 403 FORBIDDEN (admin guard reject PLAYER).
+ *  57. Admin logout `/api/_auth/logout` → cookie cleared.
+ *  58. Player logout `/api/_auth/logout` → cookie cleared.
  *
  * Chạy:
  *   pnpm smoke:admin
@@ -1380,7 +1388,139 @@ async function main() {
     },
   );
 
-  // 51. PLAYER cookie → /api/admin/* → 403 FORBIDDEN (admin guard).
+  // ─────────────────────────────────────────────────────────────────
+  // 51-53. Admin economy/report + audit filter — read-only smokes.
+  //
+  // Endpoints chưa cover bởi smoke-admin trước đây:
+  //   - GET /admin/economy/report (admin.service.ts L772-859) — top whales +
+  //     circulation totals, ops dashboard.
+  //   - GET /admin/audit?action=<prefix>&email=<actor> filter — security/audit
+  //     traceability. Trước đây smoke chỉ verify ?action=user.grant; mở rộng
+  //     verify ?action=topup.approve (audit từ step 39 hiện diện) + ?email=
+  //     filter scope về admin actor.
+  //
+  // Cả 2 endpoint read-only, không gây side-effect; chạy nhanh trên DB nhỏ.
+  // ─────────────────────────────────────────────────────────────────
+
+  await step('admin GET /admin/economy/report — shape', async () => {
+    const r = await http(state.adminJar, '/api/admin/economy/report');
+    assertStatus(r, 200, 'admin/economy/report');
+    const data = r.body?.data;
+    assert(data, 'economy/report: missing data');
+    assert(typeof data.generatedAt === 'string', 'economy/report: generatedAt phải string');
+    const c = data.circulation;
+    assert(c, 'economy/report: missing circulation');
+    assert(
+      typeof c.linhThachTotal === 'string',
+      `economy/report: circulation.linhThachTotal phải string (BigInt-as-string), got ${typeof c.linhThachTotal}`,
+    );
+    assert(
+      typeof c.tienNgocTotal === 'number',
+      `economy/report: circulation.tienNgocTotal phải number, got ${typeof c.tienNgocTotal}`,
+    );
+    assert(
+      typeof c.tienNgocKhoaTotal === 'number',
+      `economy/report: circulation.tienNgocKhoaTotal phải number, got ${typeof c.tienNgocKhoaTotal}`,
+    );
+    assert(
+      typeof c.characterCount === 'number' && c.characterCount >= 1,
+      `economy/report: circulation.characterCount phải >= 1 (smoke đã onboard player), got ${c.characterCount}`,
+    );
+    assert(
+      typeof c.cultivatingCount === 'number',
+      'economy/report: circulation.cultivatingCount phải number',
+    );
+    assert(
+      Array.isArray(data.topByLinhThach),
+      'economy/report: topByLinhThach phải array',
+    );
+    assert(
+      Array.isArray(data.topByTienNgoc),
+      'economy/report: topByTienNgoc phải array',
+    );
+    // Shape của từng row.
+    if (data.topByLinhThach.length > 0) {
+      const row = data.topByLinhThach[0];
+      assert(typeof row.characterId === 'string', 'topByLinhThach[0].characterId phải string');
+      assert(typeof row.name === 'string', 'topByLinhThach[0].name phải string');
+      assert(typeof row.userEmail === 'string', 'topByLinhThach[0].userEmail phải string');
+      assert(
+        typeof row.linhThach === 'string',
+        `topByLinhThach[0].linhThach phải string (BigInt-as-string), got ${typeof row.linhThach}`,
+      );
+    }
+    if (data.topByTienNgoc.length > 0) {
+      const row = data.topByTienNgoc[0];
+      assert(typeof row.tienNgoc === 'number', 'topByTienNgoc[0].tienNgoc phải number');
+    }
+  });
+
+  await step(
+    'admin GET /admin/audit?action=topup.approve — rows match prefix + chứa audit từ step 39',
+    async () => {
+      const r = await http(state.adminJar, '/api/admin/audit?action=topup.approve');
+      assertStatus(r, 200, 'admin/audit?action=topup.approve');
+      const rows = r.body?.data?.rows ?? [];
+      assert(Array.isArray(rows), 'audit?action: rows phải array');
+      // Filter actionPrefix dùng startsWith (admin.service.ts L595).
+      // Smoke flow đã có 1 topup.approve audit từ step 39 (admin approve order #2).
+      assert(
+        rows.length >= 1,
+        `audit?action=topup.approve: phải có >= 1 row (smoke step 39 đã trigger), got ${rows.length}`,
+      );
+      for (const row of rows) {
+        assert(
+          typeof row.action === 'string' && row.action.startsWith('topup.approve'),
+          `audit?action=topup.approve: row.action phải startsWith 'topup.approve', got '${row.action}'`,
+        );
+      }
+    },
+  );
+
+  await step(
+    'admin GET /admin/audit?email=<adminEmail> — rows scoped về actor admin',
+    async () => {
+      const r = await http(state.adminJar, `/api/admin/audit?email=${encodeURIComponent(ADMIN_EMAIL)}`);
+      assertStatus(r, 200, 'admin/audit?email');
+      const rows = r.body?.data?.rows ?? [];
+      assert(Array.isArray(rows), 'audit?email: rows phải array');
+      assert(
+        rows.length >= 1,
+        `audit?email=${ADMIN_EMAIL}: phải có >= 1 row (smoke flow đã có nhiều admin actions), got ${rows.length}`,
+      );
+      for (const row of rows) {
+        assert(
+          row.actorEmail === ADMIN_EMAIL,
+          `audit?email: row.actorEmail phải == '${ADMIN_EMAIL}', got '${row.actorEmail}'`,
+        );
+        assert(
+          row.actorUserId === state.adminUserId,
+          `audit?email: row.actorUserId phải == admin id ${state.adminUserId}, got ${row.actorUserId}`,
+        );
+      }
+    },
+  );
+
+  // 54-55. PLAYER cookie → /api/admin/* read-only → 403 FORBIDDEN (admin guard).
+  await step('player → /admin/economy/report → 403 FORBIDDEN', async () => {
+    const r = await http(state.playerJar, '/api/admin/economy/report');
+    assertStatus(r, 403, 'player → admin/economy/report');
+    assert(
+      r.body?.error?.code === 'FORBIDDEN',
+      `player → admin/economy/report: expect error.code='FORBIDDEN', got ${JSON.stringify(r.body?.error)}`,
+    );
+  });
+
+  await step('player → /admin/audit → 403 FORBIDDEN', async () => {
+    const r = await http(state.playerJar, '/api/admin/audit');
+    assertStatus(r, 403, 'player → admin/audit');
+    assert(
+      r.body?.error?.code === 'FORBIDDEN',
+      `player → admin/audit: expect error.code='FORBIDDEN', got ${JSON.stringify(r.body?.error)}`,
+    );
+  });
+
+  // 56. PLAYER cookie → /api/admin/stats → 403 FORBIDDEN (admin guard, regression check).
   await step('player → /admin/stats → 403 FORBIDDEN', async () => {
     const r = await http(state.playerJar, '/api/admin/stats');
     assertStatus(r, 403, 'player → admin/stats');
