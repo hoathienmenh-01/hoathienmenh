@@ -488,7 +488,15 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - KHÔNG schema migration, KHÔNG BE change, KHÔNG ledger, KHÔNG store contract change — pure FE UI polish per UI MODULE RULE.
 - Defer: realtime cooldown countdown WS push (Phase 11.7.H), TalentView E2E smoke với `E2E_FULL=1` cho cast → DungeonView highlight → cast in combat → cooldown badge update (Phase 11.X UI E2E smoke gap — partial coverage in 11.X.AY).
 
-#### 11.X.BA PR: smoke:topup HTTP smoke script (topup order state machine + max pending guard + anti-FE-self-grant invariant) — PENDING MERGE (this push)
+#### 11.X.BB PR: smoke:breakthrough HTTP smoke script (breakthrough negative path state machine + anti-FE-self-grant invariant) — PENDING MERGE (this push)
+
+- `scripts/smoke-breakthrough.mjs` NEW Node 20 native fetch zero-install (mirror pattern `smoke-topup.mjs` cookie jar + step runner + assertProgressionImmutable). 11-step cover negative path: 401 unauth → register → 404 NO_CHARACTER (logged in nhưng chưa onboard) → onboard → snapshot {realmKey, realmStage, exp, level, hpMax, mpMax} → 409 NOT_AT_PEAK fresh char (realmStage<9) → state unchanged → idempotent fail 409 → state vẫn unchanged → body junk vẫn 409 (endpoint server-authoritative không parse body — xác minh không thể tự nâng realmStage qua FE) → logout 401.
+- Anti-FE-self-grant invariant: failed breakthrough KHÔNG đụng realmKey/realmStage/exp/level/hpMax/mpMax (snapshot before/after compare 2 lần — post-fail + post-idempotent-fail).
+- `package.json` thêm `"smoke:breakthrough": "node scripts/smoke-breakthrough.mjs"` (alphabet order admin/beta/breakthrough/combat/cultivation/economy/topup/ws).
+- KHÔNG schema migration, KHÔNG BE change, KHÔNG store contract change, KHÔNG ledger — pure smoke addition. KHÔNG yêu cầu admin login. KHÔNG mutate dữ liệu real existing. Zero-install (native fetch + Node 20). Local verification: 11/11 OK 2 lần liên tiếp deterministic. Đóng phan thứ ba của "smoke gap polish" được handoff Recommended Next Roadmap đề xuất.
+- Defer: smoke:breakthrough positive path (đột phá thành công sang realm cao hơn) yêu cầu admin seed `realmStage=9` + `exp ≥ expCostForStage(realmKey, 9)` HOẶC fast-forward script — defer cho future smoke với admin secret.
+
+#### 11.X.BA PR: smoke:topup HTTP smoke script (topup order state machine + max pending guard + anti-FE-self-grant invariant) — DONE ✅ (PR #360 merged)
 
 - `scripts/smoke-topup.mjs` NEW Node 20 native fetch zero-install (mirror pattern `smoke-cultivation.mjs` cookie jar + step runner). 16-step cover GET `/topup/packages` public + GET `/topup/me`/POST `/topup/create` unauth 401 + register → onboard → snapshot tienNgoc/linhThach → POST create flow (transferCode regex `^TOPUP-[A-Z2-9]{6}$` + tienNgocAmount = pkg.tienNgoc + pkg.bonus) → 400 INVALID_PACKAGE cho packageKey lạ → 400 INVALID_PACKAGE Zod cho body {} → fill thêm 4 PENDING (tổng 5 = MAX_PENDING_PER_USER) với transferCode unique pairwise → 429 TOO_MANY_PENDING → GET me 5 PENDING → logout 401.
 - Anti-FE-self-grant invariant: tienNgoc + linhThach KHÔNG đổi sau create order PENDING (server chỉ credit khi admin POST `/admin/topup/:id/approve` — ngoài scope smoke này, đã cover bởi `topup.controller.test.ts` admin path).
