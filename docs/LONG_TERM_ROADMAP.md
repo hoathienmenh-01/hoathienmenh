@@ -488,7 +488,14 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - KHÔNG schema migration, KHÔNG BE change, KHÔNG ledger, KHÔNG store contract change — pure FE UI polish per UI MODULE RULE.
 - Defer: realtime cooldown countdown WS push (Phase 11.7.H), TalentView E2E smoke với `E2E_FULL=1` cho cast → DungeonView highlight → cast in combat → cooldown badge update (Phase 11.X UI E2E smoke gap — partial coverage in 11.X.AY).
 
-#### 11.X.AZ PR: smoke:cultivation HTTP smoke script (cultivate toggle state machine + idempotent + anti-FE-self-grant invariant) — PENDING MERGE (this push)
+#### 11.X.BA PR: smoke:topup HTTP smoke script (topup order state machine + max pending guard + anti-FE-self-grant invariant) — PENDING MERGE (this push)
+
+- `scripts/smoke-topup.mjs` NEW Node 20 native fetch zero-install (mirror pattern `smoke-cultivation.mjs` cookie jar + step runner). 16-step cover GET `/topup/packages` public + GET `/topup/me`/POST `/topup/create` unauth 401 + register → onboard → snapshot tienNgoc/linhThach → POST create flow (transferCode regex `^TOPUP-[A-Z2-9]{6}$` + tienNgocAmount = pkg.tienNgoc + pkg.bonus) → 400 INVALID_PACKAGE cho packageKey lạ → 400 INVALID_PACKAGE Zod cho body {} → fill thêm 4 PENDING (tổng 5 = MAX_PENDING_PER_USER) với transferCode unique pairwise → 429 TOO_MANY_PENDING → GET me 5 PENDING → logout 401.
+- Anti-FE-self-grant invariant: tienNgoc + linhThach KHÔNG đổi sau create order PENDING (server chỉ credit khi admin POST `/admin/topup/:id/approve` — ngoài scope smoke này, đã cover bởi `topup.controller.test.ts` admin path).
+- `package.json` thêm `"smoke:topup": "node scripts/smoke-topup.mjs"` (alphabet order admin/beta/combat/cultivation/economy/topup/ws).
+- KHÔNG schema migration, KHÔNG BE change, KHÔNG store contract change, KHÔNG ledger — pure smoke addition. KHÔNG yêu cầu admin login (TopupController user-facing endpoints không yêu cầu admin role). KHÔNG gọi gateway thật. Zero-install (native fetch + Node 20). Local verification: 16/16 OK 2 lần liên tiếp deterministic. Đóng phan thứ hai của "smoke gap polish" được handoff Recommended Next Roadmap đề xuất.
+
+#### 11.X.AZ PR: smoke:cultivation HTTP smoke script (cultivate toggle state machine + idempotent + anti-FE-self-grant invariant) — DONE ✅ (PR #359 merged)
 
 - `scripts/smoke-cultivation.mjs` NEW Node 20 native fetch zero-install (mirror pattern `smoke-combat.mjs` cookie jar + step runner). 12-step cover register → onboard (cultivating mặc định false) → snapshot exp/realmTier/level/linhThach → toggle ON (false→true) → cross-check `/character/me` → idempotent ON (true→true vẫn ok) → toggle OFF (true→false) → cross-check OFF → idempotent OFF (false→false vẫn ok) → 400 INVALID_INPUT cho `cultivating: "invalid"` → 400 INVALID_INPUT cho missing field → logout → 401 UNAUTHENTICATED post-logout.
 - Anti-FE-self-grant invariant: cultivate toggle KHÔNG đụng exp/realmTier/level/linhThach giữa các step (snapshot before/after compare). Smoke chạy ~1s nên cultivation tick BullMQ 30s chưa fire → exp/realm deterministic.

@@ -18,6 +18,7 @@
     "smoke:combat": "node scripts/smoke-combat.mjs",
     "smoke:cultivation": "node scripts/smoke-cultivation.mjs",
     "smoke:economy": "node scripts/smoke-economy.mjs",
+    "smoke:topup": "node scripts/smoke-topup.mjs",
     "smoke:ws": "node scripts/smoke-ws.mjs"
   },
   "engines": {
