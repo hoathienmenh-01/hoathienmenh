@@ -471,6 +471,23 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - 12 vitest mới: 7 trong `talent.service.test.ts` (lifecycle, isolation, clamp, idempotent), 5 trong `combat.service.test.ts` (TALENT_ON_COOLDOWN reject, cooldown set on cast, skill flow tick, persist cross-encounter, MP_LOW reject không set cooldown).
 - Defer: UI cooldown badge (Phase 11.7.E++ FE), rate limiter `@Throttle` (Phase 11.7.E++), WebSocket realtime emit cooldown state (không cần — client probe khi mở Talent panel).
 
+#### 11.7.F PR: DungeonView talent cast buttons + pre-select highlight — DONE ✅ (PR #355 merged)
+
+- `apps/web/src/views/DungeonView.vue` — `learnedActiveTalents` computed (filter learned active, sort cooldown asc + key tiebreak); cast buttons trong action panel cùng `POST /combat/action` path skill (BE Phase 11.7.D đã accept talent.key); cooldown gate FE-side qua `talentsStore.cooldownOf > 0` (server vẫn re-validate); MP cost label + amber ring highlight cho preselect.
+- `route.query.talent` onMounted → `preselectedTalentKey` ref + auto `talentsStore.fetchState()` để sync cooldown trước khi render highlight; `TalentCatalogView.onCast` push `{ path: '/dungeon', query: { talent: talent.key } }` để continuity Loadout → action panel.
+- `apps/web/src/i18n/{vi,en}.json` thêm `dungeon.talents.{title,cooldownLabel,preselected}` + 3 error key (TALENT_NOT_LEARNED, TALENT_NOT_ACTIVE, TALENT_ON_COOLDOWN).
+- 9 vitest mới trong `DungeonView.test.ts` cover section gate, button label cd vs name, cd > 0 disabled, click cast performAction, WON toast, route query highlight, cd > 0 KHÔNG highlight, no query KHÔNG fetchState, cast reset preselect.
+- KHÔNG schema migration, KHÔNG BE change — pure FE UI continuity addition.
+
+#### 11.7.G PR: TalentView Loadout sticky positioning + per-loadout element filter — IN-FLIGHT (PR #356 / this branch)
+
+- `apps/web/src/views/TalentCatalogView.vue` — Loadout section thêm class `bg-ink-900/95 backdrop-blur md:sticky md:top-0 md:z-10` để bám đỉnh `<main>` scroll container (AppShell `<main>` `overflow-y-auto`) khi user scroll qua catalog grid 54-talent. Per-loadout element filter mới (independent với catalog filter ở section bên dưới): `loadoutElementFilter` ref + `filteredActiveLearnedTalents` computed (apply hệ filter trên `activeLearnedTalents`, giữ sort ready/cd/key) + `clearLoadoutElementFilter()` reset.
+- Filter row chỉ render khi `activeLearnedTalents.length > 0` (empty state vẫn clean). Filter-empty state riêng `talents-active-filter-empty` khi filter loại trừ tất cả learned (phân biệt với `talents-active-empty` khi user chưa học active nào). Reset button visible chỉ khi filter ≠ 'all'. Count text dùng `filteredActiveLearnedTalents.length`.
+- `apps/web/src/i18n/{vi,en}.json` thêm `talents.activeSection.elementFilter.{label,all,empty,reset}` (4 key × 2 locale).
+- 8 vitest mới trong `TalentCatalogView.test.ts` cover sticky CSS class, filter row gate empty/learned, default all → đủ active, filter=kim → chỉ kim, filter=neutral → chỉ neutral, filter loại trừ tất cả → filter-empty render, reset button toggle, sort order ready/cd asc giữa cùng hệ.
+- KHÔNG schema migration, KHÔNG BE change, KHÔNG ledger, KHÔNG store contract change — pure FE UI polish per UI MODULE RULE.
+- Defer: realtime cooldown countdown WS push (Phase 11.7.H), TalentView E2E smoke với `E2E_FULL=1` cho cast → DungeonView highlight → cast in combat → cooldown badge update (Phase 11.X UI E2E smoke gap).
+
 #### 11.8.A PR: Buff/Debuff catalog foundation — DONE ✅ (this branch / merge target)
 
 - `packages/shared/src/buffs.ts` NEW catalog 18 buff/debuff baseline (10 buff + 8 debuff).

@@ -1208,7 +1208,13 @@
       "count": "{count} đã học",
       "cast": "Vào trận dùng",
       "castOnCooldown": "Đang hồi {turns} lượt",
-      "castHint": "Đang dẫn vào hầm — chọn {name} trong action panel để phát động."
+      "castHint": "Đang dẫn vào hầm — chọn {name} trong action panel để phát động.",
+      "elementFilter": {
+        "label": "Lọc hệ:",
+        "all": "Tất cả",
+        "empty": "Không có thần thông chủ động phù hợp hệ — bỏ lọc để xem tất cả.",
+        "reset": "Bỏ lọc"
+      }
     },
     "button": {
       "learn": "Học",

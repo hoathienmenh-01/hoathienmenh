@@ -160,6 +160,12 @@ const i18n = createI18n({
           cast: 'Vào trận',
           castOnCooldown: 'CD {turns}',
           castHint: 'Vào hầm dùng {name}',
+          elementFilter: {
+            label: 'Lọc hệ:',
+            all: 'Tất cả',
+            empty: 'Không khớp hệ — bỏ lọc để xem tất cả',
+            reset: 'Bỏ lọc',
+          },
         },
         button: {
           learn: 'Học',
@@ -834,6 +840,210 @@ describe('TalentCatalogView — Phase 11.7.E+++ active section + cast button', (
     );
     expect(rows[2].attributes('data-testid')).toBe(
       `talent-active-row-${active[0].key}`,
+    );
+  });
+});
+
+describe('TalentCatalogView — Phase 11.7.G Loadout sticky + element filter', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    resetState();
+  });
+
+  function activeTalents() {
+    return TALENTS.filter((t) => t.type === 'active');
+  }
+
+  it('Loadout section có sticky CSS class (md:sticky md:top-0 md:z-10) cho desktop', async () => {
+    const w = mountView();
+    await flushPromises();
+    const section = w.find('[data-testid="talents-active-section"]');
+    expect(section.exists()).toBe(true);
+    const cls = section.attributes('class') ?? '';
+    expect(cls).toContain('md:sticky');
+    expect(cls).toContain('md:top-0');
+    expect(cls).toContain('md:z-10');
+  });
+
+  it('filter row chỉ render khi đã học ≥ 1 active talent (ẩn ở empty state)', async () => {
+    // Empty state: chưa học → filter row KHÔNG render.
+    const w1 = mountView();
+    await flushPromises();
+    expect(w1.find('[data-testid="talents-active-filter-row"]').exists()).toBe(
+      false,
+    );
+
+    // Học 1 active → filter row render.
+    const active = activeTalents()[0];
+    if (!active) throw new Error('catalog missing active talent');
+    talentsState.learned = new Map([[active.key, '2024-01-01T00:00:00Z']]);
+    const w2 = mountView();
+    await flushPromises();
+    expect(w2.find('[data-testid="talents-active-filter-row"]').exists()).toBe(
+      true,
+    );
+    expect(
+      w2.find('[data-testid="talents-active-filter-element"]').exists(),
+    ).toBe(true);
+  });
+
+  it('default filter=all → render đủ active talent đã học', async () => {
+    const learned = activeTalents().slice(0, 3);
+    if (learned.length < 3) throw new Error('catalog cần ≥3 active');
+    talentsState.learned = new Map(
+      learned.map((t) => [t.key, '2024-01-01T00:00:00Z']),
+    );
+    const w = mountView();
+    await flushPromises();
+    const rows = w.findAll('[data-testid^="talent-active-row-"]');
+    expect(rows).toHaveLength(3);
+    // Count reflects filtered length = 3.
+    expect(w.find('[data-testid="talents-active-count"]').text()).toContain(
+      '3',
+    );
+  });
+
+  it('filter=kim → chỉ render active learned hệ kim, count update', async () => {
+    const kimActive = activeTalents().find((t) => t.element === 'kim');
+    const mocActive = activeTalents().find((t) => t.element === 'moc');
+    if (!kimActive || !mocActive) {
+      throw new Error('catalog cần ít nhất 1 active kim + 1 active moc');
+    }
+    talentsState.learned = new Map([
+      [kimActive.key, '2024-01-01T00:00:00Z'],
+      [mocActive.key, '2024-01-01T00:00:00Z'],
+    ]);
+    const w = mountView();
+    await flushPromises();
+
+    // Trước filter: 2 row, count = 2.
+    expect(w.findAll('[data-testid^="talent-active-row-"]')).toHaveLength(2);
+
+    await w
+      .find('[data-testid="talents-active-filter-element"]')
+      .setValue('kim');
+    await flushPromises();
+
+    const rows = w.findAll('[data-testid^="talent-active-row-"]');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].attributes('data-testid')).toBe(
+      `talent-active-row-${kimActive.key}`,
+    );
+    expect(w.find('[data-testid="talents-active-count"]').text()).toContain(
+      '1',
+    );
+  });
+
+  it('filter=neutral → chỉ render active learned có element null', async () => {
+    const neutralActive = activeTalents().find((t) => t.element === null);
+    const elementalActive = activeTalents().find((t) => t.element !== null);
+    if (!neutralActive || !elementalActive) {
+      throw new Error('catalog cần ít nhất 1 active neutral + 1 elemental');
+    }
+    talentsState.learned = new Map([
+      [neutralActive.key, '2024-01-01T00:00:00Z'],
+      [elementalActive.key, '2024-01-01T00:00:00Z'],
+    ]);
+    const w = mountView();
+    await flushPromises();
+    await w
+      .find('[data-testid="talents-active-filter-element"]')
+      .setValue('neutral');
+    await flushPromises();
+    const rows = w.findAll('[data-testid^="talent-active-row-"]');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].attributes('data-testid')).toBe(
+      `talent-active-row-${neutralActive.key}`,
+    );
+  });
+
+  it('filter loại trừ tất cả → render filter-empty message thay vì list', async () => {
+    // Học chỉ 1 active hệ kim, lọc theo hệ moc → 0 match.
+    const kimActive = activeTalents().find((t) => t.element === 'kim');
+    if (!kimActive) throw new Error('catalog cần active kim');
+    talentsState.learned = new Map([[kimActive.key, '2024-01-01T00:00:00Z']]);
+    const w = mountView();
+    await flushPromises();
+    await w
+      .find('[data-testid="talents-active-filter-element"]')
+      .setValue('moc');
+    await flushPromises();
+
+    // List ẨN, filter-empty render.
+    expect(w.find('[data-testid="talents-active-list"]').exists()).toBe(false);
+    expect(
+      w.find('[data-testid="talents-active-filter-empty"]').exists(),
+    ).toBe(true);
+    // Empty (no learned) message KHÔNG render — đã có 1 learned.
+    expect(w.find('[data-testid="talents-active-empty"]').exists()).toBe(
+      false,
+    );
+    expect(w.find('[data-testid="talents-active-count"]').text()).toContain(
+      '0',
+    );
+  });
+
+  it('reset button hidden khi filter=all, hiện khi filter≠all, click reset → filter=all', async () => {
+    const kimActive = activeTalents().find((t) => t.element === 'kim');
+    if (!kimActive) throw new Error('catalog cần active kim');
+    talentsState.learned = new Map([[kimActive.key, '2024-01-01T00:00:00Z']]);
+    const w = mountView();
+    await flushPromises();
+
+    // Default filter=all → reset button ẨN.
+    expect(
+      w.find('[data-testid="talents-active-filter-reset"]').exists(),
+    ).toBe(false);
+
+    // Set filter=hoa → reset button HIỆN.
+    await w
+      .find('[data-testid="talents-active-filter-element"]')
+      .setValue('hoa');
+    await flushPromises();
+    const resetBtn = w.find('[data-testid="talents-active-filter-reset"]');
+    expect(resetBtn.exists()).toBe(true);
+
+    // Click reset → filter=all, list về full lại + reset button ẨN.
+    await resetBtn.trigger('click');
+    await flushPromises();
+    expect(
+      w.find('[data-testid="talents-active-filter-reset"]').exists(),
+    ).toBe(false);
+    const select = w.find('[data-testid="talents-active-filter-element"]')
+      .element as HTMLSelectElement;
+    expect(select.value).toBe('all');
+  });
+
+  it('filter giữ sort order ready trước, cooldown asc giữa active cùng hệ', async () => {
+    const kimActives = activeTalents().filter((t) => t.element === 'kim');
+    if (kimActives.length < 2) {
+      // Catalog có thể chỉ có 1 active kim — fall back: skip-style assert.
+      return;
+    }
+    const [a, b] = kimActives;
+    // a cd=3, b cd=0 → expect b trước a.
+    talentsState.learned = new Map([
+      [a.key, '2024-01-01T00:00:00Z'],
+      [b.key, '2024-01-01T00:00:00Z'],
+    ]);
+    talentsState.cooldowns = new Map([
+      [a.key, 3],
+      [b.key, 0],
+    ]);
+    const w = mountView();
+    await flushPromises();
+    await w
+      .find('[data-testid="talents-active-filter-element"]')
+      .setValue('kim');
+    await flushPromises();
+    const rows = w.findAll('[data-testid^="talent-active-row-"]');
+    expect(rows).toHaveLength(2);
+    expect(rows[0].attributes('data-testid')).toBe(
+      `talent-active-row-${b.key}`,
+    );
+    expect(rows[1].attributes('data-testid')).toBe(
+      `talent-active-row-${a.key}`,
     );
   });
 });
