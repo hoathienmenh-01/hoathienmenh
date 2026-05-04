@@ -139,6 +139,89 @@ describe('CombatService', () => {
     });
   });
 
+  // — Phase 11.3.D+++ DUNGEON_LOOT skill_book runtime wire ---------------
+  describe('DUNGEON_LOOT skill book drop wire (Phase 11.3.D+++)', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('action: clear kim_son_mach (4 quái) → ItemLedger COMBAT_LOOT chứa skill_book_kim_quang_tram + InventoryItem qty ≥ 1', async () => {
+      // Math.random=0.99 → loot roll cumulative pos = 0.99×105 = 103.95 (last
+      // bucket weight=3, cumulative 102-105) → pick skill_book_kim_quang_tram
+      // (last entry trong DUNGEON_LOOT.kim_son_mach). count=2 → cả 2 roll đều
+      // hit skill_book → InventoryItem qty=2 (stackable). Variance combat
+      // 0.85+0.99×0.3=1.147× — vẫn 1-shot do power=100000.
+      vi.spyOn(Math, 'random').mockReturnValue(0.99);
+
+      const u = await makeUserChar(prisma, {
+        stamina: 100,
+        power: 100000,
+        hp: 100000,
+        hpMax: 100000,
+        spirit: 100,
+      });
+      const enc = await combat.start(u.userId, 'kim_son_mach');
+
+      let view = enc;
+      // kim_son_mach có 4 monsters → tối đa 4 action.
+      for (let i = 0; i < 6; i++) {
+        view = await combat.action(u.userId, enc.id, {});
+        if (view.status !== EncounterStatus.ACTIVE) break;
+      }
+      expect(view.status).toBe(EncounterStatus.WON);
+
+      const skillBookLedger = await prisma.itemLedger.findMany({
+        where: {
+          characterId: u.characterId,
+          reason: 'COMBAT_LOOT',
+          itemKey: 'skill_book_kim_quang_tram',
+        },
+      });
+      expect(skillBookLedger.length).toBeGreaterThanOrEqual(1);
+      expect(skillBookLedger.every((r) => r.qtyDelta > 0)).toBe(true);
+
+      const inv = await prisma.inventoryItem.findFirst({
+        where: {
+          characterId: u.characterId,
+          itemKey: 'skill_book_kim_quang_tram',
+        },
+      });
+      expect(inv).not.toBeNull();
+      expect(inv!.qty).toBeGreaterThanOrEqual(1);
+    });
+
+    it('action: clear son_coc (legacy dungeon, không có skill_book trong DUNGEON_LOOT) → ItemLedger không chứa skill_book_*', async () => {
+      // Phase 11.2.D+++ chỉ thêm skill_book vào 5 ngũ hành dungeons; legacy
+      // son_coc/hac_lam/yeu_thu_dong vẫn drop loot legacy. Test gate này đảm
+      // bảo wire không leak skill_book vào dungeon early-game.
+      vi.spyOn(Math, 'random').mockReturnValue(0.99);
+
+      const u = await makeUserChar(prisma, {
+        stamina: 100,
+        power: 100000,
+        hp: 100000,
+        hpMax: 100000,
+      });
+      const enc = await combat.start(u.userId, 'son_coc');
+
+      let view = enc;
+      for (let i = 0; i < 5; i++) {
+        view = await combat.action(u.userId, enc.id, {});
+        if (view.status !== EncounterStatus.ACTIVE) break;
+      }
+      expect(view.status).toBe(EncounterStatus.WON);
+
+      const skillBookLedger = await prisma.itemLedger.findMany({
+        where: {
+          characterId: u.characterId,
+          reason: 'COMBAT_LOOT',
+          itemKey: { startsWith: 'skill_book_' },
+        },
+      });
+      expect(skillBookLedger.length).toBe(0);
+    });
+  });
+
   // — Phase 11.3.B Linh căn / Ngũ Hành element wire ----------------------
   describe('Linh căn / Ngũ Hành element wire (Phase 11.3.B)', () => {
     afterEach(() => {
