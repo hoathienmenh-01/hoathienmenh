@@ -65,7 +65,7 @@ export class TalentService {
     return this.prisma.$transaction(async (tx) => {
       const character = await tx.character.findUnique({
         where: { id: characterId },
-        select: { id: true, realmKey: true },
+        select: { id: true, realmKey: true, bonusTalentPoints: true },
       });
       if (!character) throw new TalentError('CHARACTER_NOT_FOUND');
 
@@ -81,7 +81,9 @@ export class TalentService {
       });
       if (existing) throw new TalentError('ALREADY_LEARNED');
 
-      // Sum talent point cost của talent đã học khác.
+      // Sum talent point cost của talent đã học khác. Trừ thêm
+      // `character.bonusTalentPoints` (admin seed) khỏi spent — tương đương
+      // tăng budget mà không phải thay đổi shared catalog signature.
       const learnedRows = await tx.characterTalent.findMany({
         where: { characterId },
         select: { talentKey: true },
@@ -93,12 +95,16 @@ export class TalentService {
         // Defensive: nếu catalog đổi key → talent học cũ count = 0 (không
         // throw, chỉ skip — character vẫn có thể học talent mới).
       }
+      const effectiveSpent = Math.max(
+        0,
+        pointsAlreadySpent - character.bonusTalentPoints,
+      );
 
       const check = canCharacterLearnTalent(
         def,
         currentRealmOrder,
         REALM_KEY_TO_ORDER,
-        pointsAlreadySpent,
+        effectiveSpent,
       );
       if (!check.canLearn) {
         switch (check.reason) {
@@ -173,7 +179,7 @@ export class TalentService {
   async getRemainingTalentPoints(characterId: string): Promise<number> {
     const character = await this.prisma.character.findUnique({
       where: { id: characterId },
-      select: { realmKey: true },
+      select: { realmKey: true, bonusTalentPoints: true },
     });
     if (!character) throw new TalentError('CHARACTER_NOT_FOUND');
 
@@ -181,7 +187,8 @@ export class TalentService {
     if (currentRealmOrder === undefined) {
       throw new TalentError('INVALID_REALM');
     }
-    const budget = computeTalentPointBudget(currentRealmOrder);
+    const budget =
+      computeTalentPointBudget(currentRealmOrder) + character.bonusTalentPoints;
     const learned = await this.listLearned(characterId);
     const spent = learned.reduce((s, l) => s + l.def.talentPointCost, 0);
     return budget - spent;

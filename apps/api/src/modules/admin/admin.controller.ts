@@ -15,7 +15,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
-import { Role, TopupStatus } from '@prisma/client';
+import { CurrencyKind, Role, TopupStatus } from '@prisma/client';
 import { z } from 'zod';
 import { AdminGuard } from './admin.guard';
 import { RequireAdmin } from './require-admin.decorator';
@@ -74,6 +74,24 @@ const GrantSpiritualRootInput = z.object({
     .optional(),
   /** Optional 1-100; default 100 (admin override = max purity). */
   purity: z.number().int().min(1).max(100).optional(),
+  reason: z.string().max(200).default(''),
+});
+const GrantTalentPointInput = z.object({
+  /** Số điểm bonus cộng vào `Character.bonusTalentPoints`. Chỉ positive (1..99). */
+  delta: z.number().int().positive().max(99),
+  reason: z.string().max(200).default(''),
+});
+const SetRealmInput = z.object({
+  /** Realm key (vd `truc_co`, `kim_dan`); validate vs `REALMS` catalog ở service. */
+  realmKey: z.string().min(1).max(80),
+  /** 1..realm.stages — service validate cap theo realm. Default 1 cho admin set quick. */
+  realmStage: z.number().int().min(1).max(9).default(1),
+  reason: z.string().max(200).default(''),
+});
+const GrantCurrencyInput = z.object({
+  currency: z.enum(['LINH_THACH', 'TIEN_NGOC']),
+  /** BigInt-as-string (mirror grant-exp pattern). Có thể âm để trừ. */
+  delta: z.string().regex(/^-?\d{1,19}$/, 'delta must be a signed bigint up to 10^18'),
   reason: z.string().max(200).default(''),
 });
 const TopupActionInput = z.object({
@@ -400,6 +418,101 @@ export class AdminController {
         purity: parsed.data.purity,
         reason: parsed.data.reason,
       });
+      return { ok: true, data: { ok: true } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Admin seed harness — cộng điểm ngộ đạo (talent point) bonus. Use-case:
+   * positive-path smoke talent flow / Phase 11.X UI E2E talent learn → cast →
+   * cooldown không cần advance realm. Server compose `bonusTalentPoints` trên
+   * `computeTalentPointBudget(realmOrder)` trong `TalentService.learnTalent`.
+   * Audit `admin.talentPoint.grant`.
+   */
+  @Post('users/:id/grant-talent-point')
+  @HttpCode(200)
+  @RequireAdmin()
+  async grantTalentPoint(
+    @Req() req: AdminReq,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = GrantTalentPointInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      await this.admin.grantTalentPoint(
+        req.userId,
+        req.role,
+        id,
+        parsed.data.delta,
+        parsed.data.reason,
+      );
+      return { ok: true, data: { ok: true } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Admin seed harness — override `Character.realmKey` + `realmStage`. Use-case:
+   * positive-path smoke breakthrough peak → next realm transition / cultivation
+   * method realm-gated test / talent realm requirement gate. Reset
+   * `Character.exp = 0` mỗi lần set-realm để tránh phá invariant của
+   * `CultivationProcessor`/`grantExp` auto-advance. Audit `admin.realm.set`
+   * ghi previousRealmKey/Stage để rollback.
+   */
+  @Post('users/:id/set-realm')
+  @HttpCode(200)
+  @RequireAdmin()
+  async setRealm(@Req() req: AdminReq, @Param('id') id: string, @Body() body: unknown) {
+    const parsed = SetRealmInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      await this.admin.setRealm(
+        req.userId,
+        req.role,
+        id,
+        parsed.data.realmKey,
+        parsed.data.realmStage,
+        parsed.data.reason,
+      );
+      return { ok: true, data: { ok: true } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Admin seed harness — cộng currency single-channel (LINH_THACH | TIEN_NGOC)
+   * qua `CurrencyService.applyTx`. Use-case: positive-path smoke cho skill
+   * upgrade-mastery (cần LinhThach), market post listing (cần LinhThach),
+   * daily-login claim (cần TienNgoc init). Reuse `currency.applyTx({ reason:
+   * 'ADMIN_GRANT' })` → ghi `CurrencyLedger` đầy đủ + `actorUserId` + meta
+   * reason. Anti-FE-self-grant invariant. Audit `admin.currency.grant`.
+   */
+  @Post('users/:id/grant-currency')
+  @HttpCode(200)
+  @RequireAdmin()
+  async grantCurrency(
+    @Req() req: AdminReq,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = GrantCurrencyInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      await this.admin.grantCurrency(
+        req.userId,
+        req.role,
+        id,
+        parsed.data.currency === 'LINH_THACH'
+          ? CurrencyKind.LINH_THACH
+          : CurrencyKind.TIEN_NGOC,
+        BigInt(parsed.data.delta),
+        parsed.data.reason,
+      );
       return { ok: true, data: { ok: true } };
     } catch (e) {
       this.handleErr(e);

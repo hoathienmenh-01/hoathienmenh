@@ -6,6 +6,7 @@ import {
   expCostForStage,
   getSpiritualRootGradeDef,
   itemByKey,
+  realmByKey,
   type ElementKey,
   type SpiritualRootGrade,
 } from '@xuantoi/shared';
@@ -39,6 +40,7 @@ const MAX_GRANT_TIEN_NGOC = 1_000_000;
 const MAX_REVOKE_QTY = 999; // chặn admin gõ nhầm lệnh revoke số khổng lồ
 const MAX_GRANT_QTY = 999; // mirror revoke cap cho admin grant item
 const MAX_GRANT_EXP = 10n ** 18n; // 10^18 — đủ cho mọi cảnh giới + buffer; chặn nhập sai BigInt
+const MAX_GRANT_TALENT_POINT = 99; // đủ buffer cho mọi tier talent (catalog max ~30 tổng cost), chặn nhập sai
 const PAGE_SIZE = 30;
 
 export interface AdminUserRow {
@@ -698,6 +700,225 @@ export class AdminService {
       secondaryElements: secondary,
       purity,
       reason: input.reason,
+    });
+
+    const state = await this.chars.findByUser(targetUserId);
+    if (state) this.realtime.emitToUser(targetUserId, 'state:update', state);
+  }
+
+  /**
+   * Cộng điểm ngộ đạo (talent point) bonus vào `Character.bonusTalentPoints` —
+   * admin seed cho talent learn smoke / Phase 11.X UI E2E talent flow không
+   * cần advance realm. Server compose `bonusTalentPoints` trên
+   * `computeTalentPointBudget(realmOrder)` trong `TalentService.learnTalent` +
+   * `getRemainingTalentPoints` (3 realm = 1 điểm gốc).
+   *
+   *  - Chỉ cho phép `delta > 0` (không bao giờ trừ — có thể phá invariant
+   *    của talent đã học khi remaining < 0).
+   *  - Cap `delta <= MAX_GRANT_TALENT_POINT = 99` (đủ buffer cho mọi tier
+   *    talent, chặn nhập sai số khổng lồ).
+   *  - Persist atomic via `{ increment }` — multiple admin có thể grant
+   *    parallel an toàn.
+   *  - MOD chỉ grant cho PLAYER; ADMIN grant được mọi role (mirror
+   *    `grant`/`grantExp` hierarchy).
+   *  - Audit `AdminAuditLog action='admin.talentPoint.grant'`.
+   */
+  async grantTalentPoint(
+    actorId: string,
+    actorRole: Role,
+    targetUserId: string,
+    delta: number,
+    reason: string,
+  ): Promise<void> {
+    if (actorId === targetUserId) throw new AdminError('CANNOT_TARGET_SELF');
+    if (
+      !Number.isInteger(delta) ||
+      delta <= 0 ||
+      delta > MAX_GRANT_TALENT_POINT
+    ) {
+      throw new AdminError('INVALID_INPUT');
+    }
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { role: true },
+    });
+    if (!targetUser) throw new AdminError('NOT_FOUND');
+    if (actorRole !== 'ADMIN' && targetUser.role !== 'PLAYER') {
+      throw new AdminError('FORBIDDEN');
+    }
+    const target = await this.prisma.character.findUnique({
+      where: { userId: targetUserId },
+      select: { id: true, bonusTalentPoints: true },
+    });
+    if (!target) throw new AdminError('NOT_FOUND');
+
+    const updated = await this.prisma.character.update({
+      where: { id: target.id },
+      data: { bonusTalentPoints: { increment: delta } },
+      select: { bonusTalentPoints: true },
+    });
+
+    await this.audit(actorId, 'admin.talentPoint.grant', {
+      targetUserId,
+      characterId: target.id,
+      delta,
+      reason,
+      bonusTalentPointsAfter: updated.bonusTalentPoints,
+    });
+
+    const state = await this.chars.findByUser(targetUserId);
+    if (state) this.realtime.emitToUser(targetUserId, 'state:update', state);
+  }
+
+  /**
+   * Override realm + realmStage character — admin seed cho positive-path
+   * smoke breakthrough / talent flow / cultivation method realm-gated test.
+   *
+   *  - `realmKey` phải tồn tại trong shared `REALMS` catalog (`realmByKey`)
+   *    — chống typo silent-noop.
+   *  - `realmStage` 1..`realm.stages` (peak realm `phamnhan`/`hu_khong_chi_ton`
+   *    có stages=1, mọi realm khác stages=9).
+   *  - Reset `Character.exp = 0` mỗi lần set-realm — tránh trường hợp grant
+   *    realm thấp với exp dồn cao = phá monotonic invariant của
+   *    `CultivationProcessor`/`grantExp` auto-advance.
+   *  - MOD chỉ override cho PLAYER; ADMIN override được mọi role.
+   *  - Audit `AdminAuditLog action='admin.realm.set'` ghi previousRealmKey/
+   *    Stage để rollback dễ dàng.
+   */
+  async setRealm(
+    actorId: string,
+    actorRole: Role,
+    targetUserId: string,
+    realmKey: string,
+    realmStage: number,
+    reason: string,
+  ): Promise<void> {
+    if (actorId === targetUserId) throw new AdminError('CANNOT_TARGET_SELF');
+    if (!realmKey || realmKey.length > 80) throw new AdminError('INVALID_INPUT');
+    const realm = realmByKey(realmKey);
+    if (!realm) throw new AdminError('INVALID_INPUT');
+    if (
+      !Number.isInteger(realmStage) ||
+      realmStage < 1 ||
+      realmStage > realm.stages
+    ) {
+      throw new AdminError('INVALID_INPUT');
+    }
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { role: true },
+    });
+    if (!targetUser) throw new AdminError('NOT_FOUND');
+    if (actorRole !== 'ADMIN' && targetUser.role !== 'PLAYER') {
+      throw new AdminError('FORBIDDEN');
+    }
+    const target = await this.prisma.character.findUnique({
+      where: { userId: targetUserId },
+      select: { id: true, realmKey: true, realmStage: true, exp: true },
+    });
+    if (!target) throw new AdminError('NOT_FOUND');
+
+    await this.prisma.character.update({
+      where: { id: target.id },
+      data: { realmKey, realmStage, exp: 0n },
+    });
+
+    await this.audit(actorId, 'admin.realm.set', {
+      targetUserId,
+      characterId: target.id,
+      previousRealmKey: target.realmKey,
+      previousRealmStage: target.realmStage,
+      previousExp: target.exp.toString(),
+      newRealmKey: realmKey,
+      newRealmStage: realmStage,
+      reason,
+    });
+
+    const state = await this.chars.findByUser(targetUserId);
+    if (state) this.realtime.emitToUser(targetUserId, 'state:update', state);
+  }
+
+  /**
+   * Cộng currency single-channel (LINH_THACH | TIEN_NGOC) qua
+   * `CurrencyService.applyTx` — admin seed cho positive-path smoke
+   * (skill upgrade-mastery cần LinhThach, market post listing cần
+   * LinhThach, daily-login claim cần TienNgoc init...).
+   *
+   *  - `delta` BigInt-as-string (cho nhất quán với grant-exp pattern). Có
+   *    thể âm để trừ. Cap theo currency:
+   *      - LINH_THACH: |delta| ≤ 1_000_000_000n (1 tỷ — mirror existing `grant`)
+   *      - TIEN_NGOC:  |delta| ≤ 1_000_000n      (1 triệu — mirror existing `grant`)
+   *  - Reuse `currency.applyTx({ reason: 'ADMIN_GRANT' })` → ghi
+   *    `CurrencyLedger` đầy đủ + `actorUserId` + meta reason. Anti-FE-self-
+   *    grant invariant (CurrencyLedger row immutable trail).
+   *  - Currency âm fail `INSUFFICIENT_FUNDS` (CurrencyError) → map về
+   *    `INVALID_INPUT` (mirror existing `grant`).
+   *  - MOD chỉ grant cho PLAYER; ADMIN grant được mọi role.
+   *  - Audit `AdminAuditLog action='admin.currency.grant'`.
+   *
+   * Khác `grant()` (cộng cùng lúc 2 currency): `grantCurrency()` 1 currency
+   * 1 call — semantics rõ ràng hơn cho seed harness scriptable
+   * (curl/playwright). 2 endpoint song song; admin UI vẫn dùng `grant`
+   * cho user-facing tooling.
+   */
+  async grantCurrency(
+    actorId: string,
+    actorRole: Role,
+    targetUserId: string,
+    currency: CurrencyKind,
+    delta: bigint,
+    reason: string,
+  ): Promise<void> {
+    if (actorId === targetUserId) throw new AdminError('CANNOT_TARGET_SELF');
+    if (delta === 0n) throw new AdminError('INVALID_INPUT');
+    const cap =
+      currency === CurrencyKind.LINH_THACH
+        ? MAX_GRANT_LINH_THACH
+        : BigInt(MAX_GRANT_TIEN_NGOC);
+    if (delta > cap || delta < -cap) throw new AdminError('INVALID_INPUT');
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { role: true },
+    });
+    if (!targetUser) throw new AdminError('NOT_FOUND');
+    if (actorRole !== 'ADMIN' && targetUser.role !== 'PLAYER') {
+      throw new AdminError('FORBIDDEN');
+    }
+    const target = await this.prisma.character.findUnique({
+      where: { userId: targetUserId },
+      select: { id: true },
+    });
+    if (!target) throw new AdminError('NOT_FOUND');
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await this.currency.applyTx(tx, {
+          characterId: target.id,
+          currency,
+          delta,
+          reason: 'ADMIN_GRANT',
+          refType: 'User',
+          refId: targetUserId,
+          actorUserId: actorId,
+          meta: { reason },
+        });
+      });
+    } catch (e) {
+      if (
+        e instanceof CurrencyError &&
+        (e.code === 'INSUFFICIENT_FUNDS' || e.code === 'INVALID_INPUT')
+      ) {
+        throw new AdminError('INVALID_INPUT');
+      }
+      throw e;
+    }
+
+    await this.audit(actorId, 'admin.currency.grant', {
+      targetUserId,
+      characterId: target.id,
+      currency,
+      delta: delta.toString(),
+      reason,
     });
 
     const state = await this.chars.findByUser(targetUserId);
