@@ -27,6 +27,8 @@ import {
   COMBAT_RNG_LOW,
   ELEMENT_CHARACTER_PRIMARY_BONUS,
   ELEMENT_CHARACTER_SECONDARY_BONUS,
+  METHOD_ELEMENT_PRIMARY_BONUS,
+  METHOD_ELEMENT_SECONDARY_BONUS,
   ELEMENT_COUNTERED_MULTIPLIER,
   ELEMENT_COUNTER_MULTIPLIER,
   ELEMENT_GENERATED_MULTIPLIER,
@@ -88,6 +90,8 @@ const NUMERIC_DIAL_KEYS_TO_CHECK = [
   'ELEMENT_SAME_ELEMENT_MULTIPLIER',
   'ELEMENT_CHARACTER_PRIMARY_BONUS',
   'ELEMENT_CHARACTER_SECONDARY_BONUS',
+  'METHOD_ELEMENT_PRIMARY_BONUS',
+  'METHOD_ELEMENT_SECONDARY_BONUS',
   'ELEMENT_LOG_AMPLIFY_THRESHOLD',
   'ELEMENT_LOG_DAMPEN_THRESHOLD',
   'ELEMENT_MODIFIER_ABSOLUTE_FLOOR',
@@ -139,6 +143,8 @@ describe('BALANCE_DIALS — finite & positive (anti-NaN/Infinity drift)', () => 
       'ELEMENT_SAME_ELEMENT_MULTIPLIER',
       'ELEMENT_CHARACTER_PRIMARY_BONUS',
       'ELEMENT_CHARACTER_SECONDARY_BONUS',
+      'METHOD_ELEMENT_PRIMARY_BONUS',
+      'METHOD_ELEMENT_SECONDARY_BONUS',
       'ELEMENT_LOG_AMPLIFY_THRESHOLD',
       'ELEMENT_LOG_DAMPEN_THRESHOLD',
       'ELEMENT_MODIFIER_ABSOLUTE_FLOOR',
@@ -211,6 +217,15 @@ describe('BALANCE_DIALS — pairwise ordering (min < max)', () => {
     expect(ELEMENT_CHARACTER_SECONDARY_BONUS).toBeGreaterThan(0);
     expect(ELEMENT_CHARACTER_SECONDARY_BONUS).toBeLessThanOrEqual(
       ELEMENT_CHARACTER_PRIMARY_BONUS,
+    );
+  });
+
+  it('method element bonus dials positive < 0.5 + secondary ≤ primary (Phase 11.1.E envelope)', () => {
+    expect(METHOD_ELEMENT_PRIMARY_BONUS).toBeGreaterThan(0);
+    expect(METHOD_ELEMENT_PRIMARY_BONUS).toBeLessThan(0.5);
+    expect(METHOD_ELEMENT_SECONDARY_BONUS).toBeGreaterThan(0);
+    expect(METHOD_ELEMENT_SECONDARY_BONUS).toBeLessThanOrEqual(
+      METHOD_ELEMENT_PRIMARY_BONUS,
     );
   });
 
@@ -352,6 +367,8 @@ describe('BALANCE_DIALS — aggregate snapshot (drift detection)', () => {
         sameElementMultiplier: BALANCE_DIALS.ELEMENT_SAME_ELEMENT_MULTIPLIER,
         characterPrimaryBonus: BALANCE_DIALS.ELEMENT_CHARACTER_PRIMARY_BONUS,
         characterSecondaryBonus: BALANCE_DIALS.ELEMENT_CHARACTER_SECONDARY_BONUS,
+        methodPrimaryBonus: BALANCE_DIALS.METHOD_ELEMENT_PRIMARY_BONUS,
+        methodSecondaryBonus: BALANCE_DIALS.METHOD_ELEMENT_SECONDARY_BONUS,
         logAmplifyThreshold: BALANCE_DIALS.ELEMENT_LOG_AMPLIFY_THRESHOLD,
         logDampenThreshold: BALANCE_DIALS.ELEMENT_LOG_DAMPEN_THRESHOLD,
         modifierAbsoluteFloor: BALANCE_DIALS.ELEMENT_MODIFIER_ABSOLUTE_FLOOR,
@@ -401,6 +418,8 @@ describe('BALANCE_DIALS — aggregate snapshot (drift detection)', () => {
           "generatedMultiplier": 0.85,
           "logAmplifyThreshold": 1.15,
           "logDampenThreshold": 0.9,
+          "methodPrimaryBonus": 0.1,
+          "methodSecondaryBonus": 0.05,
           "modifierAbsoluteCeil": 1.5,
           "modifierAbsoluteFloor": 0.6,
           "neutralMultiplier": 1,

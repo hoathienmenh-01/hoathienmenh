@@ -17,7 +17,10 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { MissionService } from '../mission/mission.service';
 import { AchievementService } from '../character/achievement.service';
 import { BuffService } from '../character/buff.service';
-import { methodExpMultiplierFor } from '../character/cultivation-method.service';
+import {
+  computeMethodElementAffinityForCharacter,
+  methodExpMultiplierFor,
+} from '../character/cultivation-method.service';
 import { TalentService } from '../character/talent.service';
 import { CULTIVATION_QUEUE } from './cultivation.queue';
 
@@ -66,6 +69,10 @@ export class CultivationProcessor extends WorkerHost {
         exp: true,
         spirit: true,
         spiritualRootGrade: true,
+        // Phase 11.1.E — primary/secondary cần cho method element affinity
+        // bonus compose. Legacy character (null/[]) → bonus 0 (identity).
+        primaryElement: true,
+        secondaryElements: true,
         equippedCultivationMethodKey: true,
       },
     });
@@ -103,6 +110,20 @@ export class CultivationProcessor extends WorkerHost {
         // Compose với linh căn cultivationMul. Legacy character (no method
         // equipped) → methodMul=1.0 → backward-compat.
         const methodMul = methodExpMultiplierFor(c.equippedCultivationMethodKey);
+        // Phase 11.1.E — Linh căn × Cultivation Method element affinity bonus.
+        // Compose: methodMul × (1 + bonus) trong đó bonus ∈ {0, 0.05, 0.1}:
+        //   - primary === method.element → +10% (`METHOD_ELEMENT_PRIMARY_BONUS`)
+        //   - method.element ∈ secondaryElements → +5% (`METHOD_ELEMENT_SECONDARY_BONUS`)
+        //   - khác hệ / method vô hệ / legacy null → 0 (identity)
+        // Source-of-truth: `cultivation-methods.ts` JSDoc top + helper
+        // `computeMethodElementAffinityForCharacter`. Element affinity là
+        // bonus EXP (≠ stat bonus / damage bonus combat — wire riêng).
+        const methodElementAffinityBonus = computeMethodElementAffinityForCharacter(
+          c.primaryElement,
+          c.secondaryElements,
+          c.equippedCultivationMethodKey,
+        );
+        const methodElementAffinityMul = 1 + methodElementAffinityBonus;
         // Phase 11.7.D + 11.7.E — Talent (Thần Thông) mods fetch ONCE per
         // character per tick. `expMul` wire vào EXP gain compose; `hpRegenFlat`
         // / `mpRegenFlat` (per-second values) wire vào hp/mp regen branch.
@@ -111,7 +132,8 @@ export class CultivationProcessor extends WorkerHost {
         //   - `talent_moc_linh_quy` (passive regen 5 hpMax per-second, Phase
         //     11.7.E — Mộc Linh Quy "Linh khí mộc tự hồi, +5 HP regen mỗi tick
         //     combat", giờ apply cả cultivation tick).
-        // Compose multiplicatively cultivationMul × method methodMul × talentExpMul.
+        // Compose multiplicatively: cultivationMul × methodMul ×
+        // methodElementAffinityMul × talentExpMul.
         // Compose additively buff + talent regen (cả hai đều "per-second flat").
         // Legacy character (no talent learned) hoặc service không inject →
         // talentMods=null → expMul=1.0, hpRegenFlat/mpRegenFlat=0 identity.
@@ -122,7 +144,13 @@ export class CultivationProcessor extends WorkerHost {
         const gain = BigInt(
           Math.max(
             1,
-            Math.round(baseGain * cultivationMul * methodMul * talentExpMul),
+            Math.round(
+              baseGain *
+                cultivationMul *
+                methodMul *
+                methodElementAffinityMul *
+                talentExpMul,
+            ),
           ),
         );
         let exp = c.exp + gain;

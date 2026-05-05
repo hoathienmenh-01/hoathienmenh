@@ -5,10 +5,15 @@ import {
   methodsByElement,
   methodsForSect,
   canLearnMethod,
+  computeMethodElementAffinityBonus,
   type CultivationMethodGrade,
 } from './cultivation-methods';
 import { ELEMENTS, type ElementKey, type SectKey } from './combat';
 import { REALMS } from './realms';
+import {
+  METHOD_ELEMENT_PRIMARY_BONUS,
+  METHOD_ELEMENT_SECONDARY_BONUS,
+} from './balance-dials';
 
 const REALM_KEYS = new Set(REALMS.map((r) => r.key));
 const VALID_GRADES: readonly CultivationMethodGrade[] = ['pham', 'huyen', 'tien', 'than'];
@@ -318,6 +323,101 @@ describe('CULTIVATION_METHODS catalog (Phase 11.1)', () => {
       expect(starter).toBeDefined();
       for (const e of ELEMENTS) {
         expect(canLearnMethod(starter!, e), `starter learn by ${e}`).toBe(true);
+      }
+    });
+  });
+
+  describe('computeMethodElementAffinityBonus (Phase 11.1.E)', () => {
+    it('methodElement === primaryElement → trả METHOD_ELEMENT_PRIMARY_BONUS (+10%)', () => {
+      expect(computeMethodElementAffinityBonus('kim', [], 'kim')).toBe(
+        METHOD_ELEMENT_PRIMARY_BONUS,
+      );
+      expect(computeMethodElementAffinityBonus('hoa', ['kim', 'moc'], 'hoa')).toBe(
+        METHOD_ELEMENT_PRIMARY_BONUS,
+      );
+    });
+
+    it('methodElement ∈ secondaryElements → trả METHOD_ELEMENT_SECONDARY_BONUS (+5%)', () => {
+      expect(computeMethodElementAffinityBonus('kim', ['hoa'], 'hoa')).toBe(
+        METHOD_ELEMENT_SECONDARY_BONUS,
+      );
+      expect(
+        computeMethodElementAffinityBonus('thuy', ['kim', 'moc', 'hoa'], 'moc'),
+      ).toBe(METHOD_ELEMENT_SECONDARY_BONUS);
+    });
+
+    it('primary trumps secondary — primary match check trước secondary list', () => {
+      // `methodElement = kim` khớp cả `primary=kim` lẫn `secondaryElements=[kim,moc]` (giả định
+      // — runtime dữ liệu KHÔNG nên có overlap, nhưng helper phải an toàn).
+      // Primary check trước → trả primary bonus.
+      expect(
+        computeMethodElementAffinityBonus('kim', ['kim', 'moc'], 'kim'),
+      ).toBe(METHOD_ELEMENT_PRIMARY_BONUS);
+    });
+
+    it('khác hệ (không primary, không secondary) → trả 0 (không bonus)', () => {
+      expect(computeMethodElementAffinityBonus('kim', ['moc'], 'hoa')).toBe(0);
+      expect(computeMethodElementAffinityBonus('hoa', [], 'thuy')).toBe(0);
+    });
+
+    it('methodElement === null (vô hệ — khai_thien_quyet, thai_hu_chan_kinh) → trả 0', () => {
+      // Vô hệ method KHÔNG thiên vị linh căn nào — bonus 0.
+      for (const e of ELEMENTS) {
+        expect(
+          computeMethodElementAffinityBonus(e, [], null),
+          `methodElement=null vs primary=${e}`,
+        ).toBe(0);
+        expect(
+          computeMethodElementAffinityBonus(e, ['moc', 'thuy'], null),
+          `methodElement=null vs primary=${e} + secondary`,
+        ).toBe(0);
+      }
+      expect(computeMethodElementAffinityBonus(null, [], null)).toBe(0);
+    });
+
+    it('legacy character (primaryElement=null, secondaryElements=[]) → trả 0 (backward-compat)', () => {
+      // Legacy character pre-Phase 11.3 → bonus = 0 → identity (gain × 1.0).
+      for (const e of ELEMENTS) {
+        expect(
+          computeMethodElementAffinityBonus(null, [], e),
+          `legacy null vs methodElement=${e}`,
+        ).toBe(0);
+      }
+    });
+
+    it('primary mismatch + secondary mismatch → 0 cho mọi element pair sai khớp', () => {
+      // Matrix 5×5: nếu primary khác methodElement và methodElement không
+      // trong secondaryElements → bonus 0.
+      for (const primary of ELEMENTS) {
+        for (const methodEl of ELEMENTS) {
+          if (primary === methodEl) continue; // chỉ test mismatch
+          expect(
+            computeMethodElementAffinityBonus(primary, [], methodEl),
+            `primary=${primary} vs method=${methodEl} (no secondary)`,
+          ).toBe(0);
+        }
+      }
+    });
+
+    it('matrix coverage 5×5 primary === method → đều trả PRIMARY bonus', () => {
+      for (const e of ELEMENTS) {
+        expect(
+          computeMethodElementAffinityBonus(e, [], e),
+          `primary=${e} vs method=${e}`,
+        ).toBe(METHOD_ELEMENT_PRIMARY_BONUS);
+      }
+    });
+
+    it('matrix coverage 5×5 secondary contains method → đều trả SECONDARY bonus', () => {
+      // primary khác methodElement, secondary chứa methodElement → secondary bonus.
+      for (const primary of ELEMENTS) {
+        for (const methodEl of ELEMENTS) {
+          if (primary === methodEl) continue;
+          expect(
+            computeMethodElementAffinityBonus(primary, [methodEl], methodEl),
+            `primary=${primary} vs method=${methodEl} ∈ secondaries`,
+          ).toBe(METHOD_ELEMENT_SECONDARY_BONUS);
+        }
       }
     });
   });

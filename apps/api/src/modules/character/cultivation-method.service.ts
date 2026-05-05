@@ -4,6 +4,7 @@ import {
   CULTIVATION_METHODS,
   ELEMENTS,
   STARTER_CULTIVATION_METHOD_KEY,
+  computeMethodElementAffinityBonus,
   getCultivationMethodDef,
   realmByKey,
   type CultivationMethodDef,
@@ -135,8 +136,19 @@ export class CultivationMethodService {
       return this.getState(characterId);
     }
 
+    // Phase 11.1.E — expose `equippedMethodElementAffinity` để UI render
+    // affinity bonus badge ("+10%" cùng hệ chính / "+5%" cùng hệ phụ /
+    // "0%" khác hệ hoặc method vô hệ). Server-authoritative — UI chỉ
+    // hiển thị, KHÔNG tự tính lại.
+    const equippedMethodElementAffinity = computeMethodElementAffinityForCharacter(
+      c.primaryElement,
+      c.secondaryElements,
+      c.equippedCultivationMethodKey,
+    );
+
     return {
       equippedMethodKey: c.equippedCultivationMethodKey,
+      equippedMethodElementAffinity,
       learned: learned.map((row) => ({
         methodKey: row.methodKey,
         source: row.source,
@@ -283,6 +295,40 @@ function isValidElement(e: string | null): e is ElementKey {
   return e !== null && (ELEMENTS as readonly string[]).includes(e);
 }
 
+/**
+ * Phase 11.1.E — Linh căn × Cultivation Method element affinity bonus
+ * adapter. Lookup method.element từ catalog rồi delegate vào pure helper
+ * `computeMethodElementAffinityBonus` (shared).
+ *
+ * Bypass nếu legacy character (key=null hoặc invalid) — return 0
+ * (identity, không bonus). Wire vào `CultivationProcessor.process` +
+ * `CultivationMethodService.getState` (state output).
+ *
+ * Cùng signature với `methodExpMultiplierFor` — input là Prisma raw fields
+ * (`primaryElement: string | null`, `secondaryElements: string[]`) để gọi
+ * trực tiếp từ processor select projection. Narrow ElementKey trong helper
+ * để không leak invalid string ra `computeMethodElementAffinityBonus`.
+ *
+ * @returns fraction bonus ∈ {0, 0.05, 0.1}. Caller compose:
+ *   `effectiveMul = methodMul × (1 + this)`.
+ */
+export function computeMethodElementAffinityForCharacter(
+  primaryElement: string | null,
+  secondaryElements: readonly string[],
+  equippedMethodKey: string | null,
+): number {
+  if (!equippedMethodKey) return 0;
+  const def = getCultivationMethodDef(equippedMethodKey);
+  if (!def) return 0;
+  const primary = isValidElement(primaryElement) ? primaryElement : null;
+  // Narrow secondaryElements (string[]) → ElementKey[] — drop invalid.
+  const secondaries: ElementKey[] = [];
+  for (const s of secondaryElements) {
+    if (isValidElement(s)) secondaries.push(s);
+  }
+  return computeMethodElementAffinityBonus(primary, secondaries, def.element);
+}
+
 const SECT_NAME_TO_KEY: Record<string, SectKey> = {
   'Thanh Vân Môn': 'thanh_van',
   'Huyền Thuỷ Cung': 'huyen_thuy',
@@ -316,6 +362,13 @@ export interface CultivationMethodLearnedRow {
 
 export interface CultivationMethodStateOut {
   equippedMethodKey: string | null;
+  /**
+   * Phase 11.1.E — Linh căn × Cultivation Method element affinity bonus
+   * fraction (`0` / `0.05` / `0.1`). UI render badge "+10%" nếu primary
+   * cùng hệ method, "+5%" nếu secondary cùng hệ, "0%" nếu khác hệ /
+   * method vô hệ. Server-authoritative — UI chỉ display, không tự tính.
+   */
+  equippedMethodElementAffinity: number;
   learned: CultivationMethodLearnedRow[];
 }
 

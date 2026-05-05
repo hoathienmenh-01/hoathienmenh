@@ -1,6 +1,5 @@
 /**
- * Công pháp / Cultivation Method — Phase 11.1 catalog foundation
- * (catalog-only, KHÔNG runtime).
+ * Công pháp / Cultivation Method — Phase 11.1 catalog + runtime wire.
  *
  * Hệ thống Công pháp:
  * - Mỗi nhân vật học (`learn`) công pháp tu luyện — multiplier `expGain` +
@@ -11,28 +10,36 @@
  * - Cùng sect mới học được method sect-locked (e.g. "Thanh Vân Tâm Pháp"
  *   chỉ Thanh Vân học).
  *
- * Hiện trạng PR (session 9r-9 Phase 11.1 catalog foundation):
- *   - Chỉ catalog metadata + helper function.
- *   - KHÔNG schema migration (`Character.cultivationMethodKey` future PR).
- *   - KHÔNG runtime hook (cultivation/stat service không đọc).
- *   - KHÔNG learn/equip service (future PR P11-1.B Cultivation Method
- *     runtime).
+ * Runtime wire:
+ *   - Phase 11.1.B — `learn`/`equip` service + onboard starter grant.
+ *   - Phase 11.1.B — `methodExpMultiplierFor` wire vào
+ *     `CultivationProcessor` EXP gain.
+ *   - Phase 11.1.D — `methodStatBonusFor` wire vào `CombatService.action`
+ *     atk/def multipliers.
+ *   - Phase 11.1.E — `computeMethodElementAffinityBonus` wire vào
+ *     `CultivationProcessor` cùng compose để Linh căn × Method element
+ *     match cộng bonus EXP gain (primary +10%, secondary +5%).
  *
  * Source of truth:
  *   - `docs/GAME_DESIGN_BIBLE.md` §C.5 Công pháp / Skill / Thần thông.
- *   - `docs/BALANCE_MODEL.md` §4.4 Cultivation rate (sẽ wire phase 11.3).
+ *   - `docs/BALANCE_MODEL.md` §4.4 Cultivation rate.
  *   - `docs/LONG_TERM_ROADMAP.md` Phase 11 PR 11.1 CultivationMethod model.
  *
  * Phase 11.0 `spiritual-root.ts` đã wire `elementMultiplier` helper.
- * CultivationMethod catalog này dùng cùng `ElementKey` từ `combat.ts` để
- * khi runtime, phase 11.3 sẽ compose:
+ * CultivationMethod catalog này dùng cùng `ElementKey` từ `combat.ts` —
+ * runtime compose:
  *
  *   effectiveExpRate = baseExpRate
  *                    * spiritualRoot.cultivationMultiplier
  *                    * cultivationMethod.expMultiplier
- *                    * (1 + matchingElementBonus)
+ *                    * (1 + matchingElementBonus)   ← Phase 11.1.E
+ *                    * talent.expMul
  */
 
+import {
+  METHOD_ELEMENT_PRIMARY_BONUS,
+  METHOD_ELEMENT_SECONDARY_BONUS,
+} from './balance-dials';
 import type { ElementKey, SectKey } from './combat';
 
 /**
@@ -396,4 +403,38 @@ export function canLearnMethod(
  */
 export function methodUnlockRealmKey(method: CultivationMethodDef): string {
   return method.unlockRealm;
+}
+
+/**
+ * Phase 11.1.E — Linh căn × Cultivation Method element affinity bonus.
+ *
+ * Pure helper trả về fraction bonus (KHÔNG phải multiplier) — caller compose:
+ *   effectiveMul = method.expMultiplier × (1 + computeMethodElementAffinityBonus(...))
+ *
+ * Quy tắc:
+ *   - `methodElement === null` (vô hệ — `khai_thien_quyet`,
+ *     `thai_hu_chan_kinh`) → bonus = 0 (không thiên vị linh căn nào).
+ *   - `primaryElement === methodElement` → bonus = `METHOD_ELEMENT_PRIMARY_BONUS`
+ *     (cùng hệ chính, +10%).
+ *   - `methodElement ∈ secondaryElements` → bonus = `METHOD_ELEMENT_SECONDARY_BONUS`
+ *     (cùng hệ phụ, +5%).
+ *   - Khác hệ hoặc legacy character (`primaryElement === null`) → bonus = 0.
+ *
+ * Backward-compat: legacy character pre-Phase 11.3 có `primaryElement=null` /
+ * `secondaryElements=[]` → bonus = 0 → identity (gain × 1.0). Wire trong
+ * `cultivation.processor.ts` qua `methodElementAffinityFor` adapter.
+ */
+export function computeMethodElementAffinityBonus(
+  primaryElement: ElementKey | null,
+  secondaryElements: readonly ElementKey[],
+  methodElement: ElementKey | null,
+): number {
+  if (methodElement === null) return 0;
+  if (primaryElement !== null && primaryElement === methodElement) {
+    return METHOD_ELEMENT_PRIMARY_BONUS;
+  }
+  if (secondaryElements.includes(methodElement)) {
+    return METHOD_ELEMENT_SECONDARY_BONUS;
+  }
+  return 0;
 }

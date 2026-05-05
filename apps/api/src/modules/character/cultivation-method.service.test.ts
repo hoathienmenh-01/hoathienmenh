@@ -4,6 +4,7 @@ import { PrismaService } from '../../common/prisma.service';
 import {
   CultivationMethodService,
   CultivationMethodError,
+  computeMethodElementAffinityForCharacter,
   methodExpMultiplierFor,
 } from './cultivation-method.service';
 import { makeUserChar, wipeAll } from '../../test-helpers';
@@ -305,6 +306,154 @@ describe('methodExpMultiplierFor pure helper (Phase 11.1.B)', () => {
 
   it('than key thai_hu_chan_kinh → catalog expMultiplier (1.6)', () => {
     expect(methodExpMultiplierFor('thai_hu_chan_kinh')).toBe(1.6);
+  });
+});
+
+describe('computeMethodElementAffinityForCharacter pure helper (Phase 11.1.E)', () => {
+  it('legacy null methodKey → 0 (no equipped)', () => {
+    expect(computeMethodElementAffinityForCharacter('hoa', [], null)).toBe(0);
+  });
+
+  it('invalid methodKey → 0 (defensive — bad data shouldn’t crash)', () => {
+    expect(
+      computeMethodElementAffinityForCharacter('hoa', [], 'khong_ton_tai'),
+    ).toBe(0);
+  });
+
+  it('vô hệ method (`khai_thien_quyet` element=null) + primary=hoa → 0', () => {
+    expect(
+      computeMethodElementAffinityForCharacter(
+        'hoa',
+        ['kim', 'moc'],
+        STARTER_CULTIVATION_METHOD_KEY,
+      ),
+    ).toBe(0);
+  });
+
+  it('primary=hoa + method=`liet_hoa_phap` (element=hoa) → 0.10', () => {
+    expect(
+      computeMethodElementAffinityForCharacter('hoa', [], 'liet_hoa_phap'),
+    ).toBe(0.1);
+  });
+
+  it('secondary contains hoa + method=liet_hoa_phap → 0.05', () => {
+    expect(
+      computeMethodElementAffinityForCharacter(
+        'kim',
+        ['hoa', 'moc'],
+        'liet_hoa_phap',
+      ),
+    ).toBe(0.05);
+  });
+
+  it('khác hệ — primary=kim secondary=[moc] vs method=liet_hoa_phap (hoa) → 0', () => {
+    expect(
+      computeMethodElementAffinityForCharacter(
+        'kim',
+        ['moc'],
+        'liet_hoa_phap',
+      ),
+    ).toBe(0);
+  });
+
+  it('legacy character primaryElement=null secondaryElements=[] → 0 (backward-compat)', () => {
+    expect(
+      computeMethodElementAffinityForCharacter(null, [], 'liet_hoa_phap'),
+    ).toBe(0);
+  });
+
+  it('invalid primary string ("kim_dan" — sai key) → coi như null → 0', () => {
+    // Defensive narrow — Prisma trả `string | null` nhưng catalog chỉ chấp
+    // nhận `ElementKey`. Bad data (typo / migration) không nên trigger bonus.
+    expect(
+      computeMethodElementAffinityForCharacter(
+        'kim_dan' as never,
+        [],
+        'liet_hoa_phap',
+      ),
+    ).toBe(0);
+  });
+
+  it('invalid secondaryElements (mixed valid + bogus) → narrow tốt, valid match vẫn trả bonus', () => {
+    expect(
+      computeMethodElementAffinityForCharacter(
+        'kim',
+        ['hoa', 'bogus' as never],
+        'liet_hoa_phap',
+      ),
+    ).toBe(0.05); // hoa valid → match
+  });
+});
+
+describe('CultivationMethodService.getState (Phase 11.1.E expose affinity)', () => {
+  it('character primary=hoa + equipped liet_hoa_phap → equippedMethodElementAffinity=0.10', async () => {
+    const f = await makeUserChar(prisma, {
+      realmKey: 'truc_co', // unlockRealm cho liet_hoa_phap
+      primaryElement: 'hoa',
+      secondaryElements: ['kim', 'moc'],
+    });
+    await svc.learn(f.characterId, 'liet_hoa_phap', 'admin_grant');
+    await svc.equip(f.characterId, 'liet_hoa_phap');
+
+    const state = await svc.getState(f.characterId);
+    expect(state.equippedMethodKey).toBe('liet_hoa_phap');
+    expect(state.equippedMethodElementAffinity).toBe(0.1);
+  });
+
+  it('character secondary contains hoa + equipped liet_hoa_phap → 0.05', async () => {
+    const f = await makeUserChar(prisma, {
+      realmKey: 'truc_co',
+      primaryElement: 'kim',
+      secondaryElements: ['hoa', 'moc'],
+    });
+    await svc.learn(f.characterId, 'liet_hoa_phap', 'admin_grant');
+    await svc.equip(f.characterId, 'liet_hoa_phap');
+
+    const state = await svc.getState(f.characterId);
+    expect(state.equippedMethodElementAffinity).toBe(0.05);
+  });
+
+  it('character primary=thuy + equipped thuy_long_ngam (element=thuy) → 0.10 primary match', async () => {
+    const f = await makeUserChar(prisma, {
+      realmKey: 'truc_co',
+      primaryElement: 'thuy',
+    });
+    await svc.learn(f.characterId, 'thuy_long_ngam', 'admin_grant');
+    await svc.equip(f.characterId, 'thuy_long_ngam');
+
+    const state = await svc.getState(f.characterId);
+    expect(state.equippedMethodElementAffinity).toBe(0.1);
+  });
+
+  it('character khác hệ (primary=hoa, no secondary) + equipped thuy_long_ngam (element=thuy) → 0', async () => {
+    const f = await makeUserChar(prisma, {
+      realmKey: 'truc_co',
+      primaryElement: 'hoa', // không trùng thuy + không bị forbidden ['tho']
+      secondaryElements: [],
+    });
+    await svc.learn(f.characterId, 'thuy_long_ngam', 'admin_grant');
+    await svc.equip(f.characterId, 'thuy_long_ngam');
+
+    const state = await svc.getState(f.characterId);
+    expect(state.equippedMethodElementAffinity).toBe(0);
+  });
+
+  it('character starter (vô hệ) primary=hoa → equippedMethodElementAffinity=0 (vô hệ method)', async () => {
+    const f = await makeUserChar(prisma, { primaryElement: 'hoa' });
+    await svc.grantStarterIfMissing(f.characterId);
+
+    const state = await svc.getState(f.characterId);
+    expect(state.equippedMethodKey).toBe(STARTER_CULTIVATION_METHOD_KEY);
+    // `khai_thien_quyet` element=null → bonus=0.
+    expect(state.equippedMethodElementAffinity).toBe(0);
+  });
+
+  it('legacy character không primaryElement + auto-grant starter → affinity=0', async () => {
+    const f = await makeUserChar(prisma);
+    // Auto lazy migration trigger trong getState (learned.length===0).
+    const state = await svc.getState(f.characterId);
+    expect(state.equippedMethodKey).toBe(STARTER_CULTIVATION_METHOD_KEY);
+    expect(state.equippedMethodElementAffinity).toBe(0);
   });
 });
 

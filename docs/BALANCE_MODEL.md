@@ -94,10 +94,11 @@ Khi thêm runtime (Phase 11.1.B + 11.3):
 
 - Linh căn (Phase 11.0 catalog): 1.0..1.8× cultivation rate (`SPIRITUAL_ROOT_GRADE_DEFS[].cultivationMultiplier`).
 - Cultivation method (Phase 11.1.A catalog): 1.0..1.8× cultivation rate (`CULTIVATION_METHODS[].expMultiplier`).
+- **Method × Linh căn element affinity (Phase 11.1.E DONE)**: 1.00..1.10× cultivation rate (`METHOD_ELEMENT_PRIMARY_BONUS=0.10` primary match / `METHOD_ELEMENT_SECONDARY_BONUS=0.05` secondary match / 0 vô hệ method hoặc khác hệ). Pure helper `computeMethodElementAffinityBonus` trong `packages/shared/src/cultivation-methods.ts`.
 - Sect aura: 1.0..1.2× cultivation rate (Phase 13).
 - Pill `tu_vi_dan`: 1.5× cultivation rate trong 1h.
 
-**Stack rule**: multiplicative cap 3.0× tổng (dial — bumped từ 2.5× để cover tien × tien hiếm-but-allowed; than × than = 1.8 × 1.8 = 3.24 → cap 3.0). Vượt → cap.
+**Stack rule**: multiplicative cap 3.0× tổng (dial — bumped từ 2.5× để cover tien × tien hiếm-but-allowed; than × than × affinity 1.10 = 1.8 × 1.8 × 1.1 = 3.564 → cap 3.0). Vượt → cap.
 
 ### 2.6 Skill mastery curve (phase 11.2.A)
 
@@ -301,7 +302,7 @@ Curve table (đã có sẵn trong `packages/shared/src/spiritual-root.ts`):
 - UI character profile display Linh căn.
 - Reroll service consume `linh_can_dan` ItemLedger + insert log `source='reroll'` + `rootRerollCount++`.
 
-### 2.9.4 Phase 11.1.B wire điểm — Cultivation Method (Công pháp) compose (DONE this PR)
+### 2.9.4 Phase 11.1.B wire điểm — Cultivation Method (Công pháp) compose (DONE)
 
 `CultivationProcessor.process()` compose method `expMultiplier` thêm vào gain công thức:
 
@@ -309,8 +310,20 @@ Curve table (đã có sẵn trong `packages/shared/src/spiritual-root.ts`):
 baseGain    = cultivationRateForRealm(realm) + floor(spirit/4)
 cultivMul   = isValidSpiritualRootGrade(grade) ? def.cultivationMultiplier : 1.0
 methodMul   = methodExpMultiplierFor(equippedCultivationMethodKey)  // 1.0 nếu null
-gain        = BigInt(max(1, round(baseGain * cultivMul * methodMul)))
+affMul      = 1 + computeMethodElementAffinityForCharacter(             // Phase 11.1.E
+                primaryElement,
+                secondaryElements,
+                equippedCultivationMethodKey
+              )                                                         // 1.00 / 1.05 / 1.10
+gain        = BigInt(max(1, round(baseGain * cultivMul * methodMul * affMul)))
 ```
+
+> Phase 11.1.E (this PR) thêm `affMul` factor — Linh căn × Cultivation Method
+> element affinity bonus. Multiplicative compose. Source-of-truth dial:
+> `METHOD_ELEMENT_PRIMARY_BONUS = 0.10` + `METHOD_ELEMENT_SECONDARY_BONUS = 0.05`
+> trong `packages/shared/src/balance-dials.ts`. Pure helper logic:
+> primary === method.element → +10%; method.element ∈ secondaryElements → +5%;
+> vô hệ method (element=null) hoặc legacy character (primaryElement=null) → 0.
 
 Curve table (đã có sẵn trong `packages/shared/src/cultivation-methods.ts`):
 
