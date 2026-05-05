@@ -239,20 +239,21 @@ model Character {
   sectId String?
   sect   Sect?   @relation(fields: [sectId], references: [id])
 
-  inventory              InventoryItem[]
-  ledger                 CurrencyLedger[]
-  itemLedger             ItemLedger[]
-  missionProgress        MissionProgress[]
-  mails                  Mail[]
-  dailyLoginClaims       DailyLoginClaim[]
-  spiritualRootRollLogs  SpiritualRootRollLog[]
-  cultivationMethods     CharacterCultivationMethod[]
-  characterSkills        CharacterSkill[]
-  tribulationAttemptLogs TribulationAttemptLog[]
-  buffs                  CharacterBuff[]
-  talents                CharacterTalent[]
-  titleUnlocks           CharacterTitleUnlock[]
-  achievements           CharacterAchievement[]
+  inventory               InventoryItem[]
+  ledger                  CurrencyLedger[]
+  itemLedger              ItemLedger[]
+  missionProgress         MissionProgress[]
+  mails                   Mail[]
+  dailyLoginClaims        DailyLoginClaim[]
+  spiritualRootRollLogs   SpiritualRootRollLog[]
+  cultivationMethods      CharacterCultivationMethod[]
+  characterSkills         CharacterSkill[]
+  tribulationAttemptLogs  TribulationAttemptLog[]
+  breakthroughAttemptLogs BreakthroughAttemptLog[]
+  buffs                   CharacterBuff[]
+  talents                 CharacterTalent[]
+  titleUnlocks            CharacterTitleUnlock[]
+  achievements            CharacterAchievement[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -394,6 +395,83 @@ model TribulationAttemptLog {
   @@index([tribulationKey, createdAt])
 }
 
+/// Phase 11 nâng cao §5 PR2 prep — audit log mỗi lần đột phá (success + fail).
+///
+/// Khác `TribulationAttemptLog` (vượt kiếp = realm transition gate, severity
+/// theo realm boundary): `BreakthroughAttemptLog` cover stage transition +
+/// realm cross thường ngày khi `realmStage=9 + đủ exp`. Mỗi attempt = 1 row
+/// (audit replay determinism qua `rngRoll` snapshot).
+///
+/// Schema design intent:
+///   - `chance` + 4 layer breakdown (`baseChance`, `rootPurityBonus`,
+///     `methodAffinityBonus`, `itemBonus`) — match `BreakthroughChanceBreakdown`
+///     từ `packages/shared/src/breakthrough-chance.ts`. `rawChance` = sum
+///     trước clamp; `chance` = `finalChance` clamp `[MIN, MAX]`.
+///   - `rngRoll ∈ [0, 1)` — server-resolved (deterministic seed-by-attemptId
+///     hoặc `Math.random` runtime); compare với `chance` → `success`.
+///   - `success=true` → realm/stage advance, `expAfter = expBefore - cost`.
+///     `success=false` → realm giữ nguyên, `expAfter = expBefore` (no loss
+///     ở MVP — closed-beta không nên trừ EXP nặng), `tamMaActive=true`,
+///     `tamMaExpiresAt = now + BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC`.
+///   - `idempotencyKey` (optional) — caller-provided UUID để debounce double
+///     submit. Postgres treats NULL distinct → unique constraint chỉ enforce
+///     khi caller pass key. Khuyến nghị format: `<userId>:<attemptIndex>`.
+///   - `attemptIndex` — thứ tự attempt cho character này (1..N), audit replay.
+///
+/// Forward-compat: model TỒN TẠI nhưng CharacterService.breakthrough() chưa
+/// log/tạo row (Phase 11 nâng cao §5 PR2 wire sẽ INSERT mỗi attempt). Idle
+/// table = no-op cho production runtime hiện tại.
+///
+/// Idempotency: Caller debounce qua `idempotencyKey`. Wipe cascade khi
+/// character xoá.
+model BreakthroughAttemptLog {
+  id                  String    @id @default(cuid())
+  characterId         String
+  character           Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Realm key trước attempt (vd `kim_dan`). Audit cross-realm transition.
+  fromRealmKey        String
+  /// Realm stage trước attempt (luôn = 9 ở MVP — peak gate enforce).
+  fromRealmStage      Int
+  /// Realm key sau attempt — `success`: next realm key. `fail`: same as `fromRealmKey`.
+  toRealmKey          String
+  /// Realm stage sau attempt — `success`: 1 (next realm fresh). `fail`: 9.
+  toRealmStage        Int
+  /// Final chance clamp `[BREAKTHROUGH_CHANCE_MIN, BREAKTHROUGH_CHANCE_MAX]` (display + audit).
+  chance              Float
+  /// Layer 1 baseline (`BREAKTHROUGH_CHANCE_BASE`).
+  baseChance          Float
+  /// Layer 2 bonus từ root purity (`purity * BREAKTHROUGH_ROOT_PURITY_BONUS_MAX`).
+  rootPurityBonus     Float
+  /// Layer 3 bonus từ method element affinity (primary / secondary / no-match).
+  methodAffinityBonus Float
+  /// Layer 4 aggregated item/pill/buff bonus (caller dồn trước, clamp `[0, MAX]`).
+  itemBonus           Float
+  /// Sum 4 layer trước clamp — audit transparency (debug "vì sao bonus thiếu").
+  rawChance           Float
+  /// RNG roll `[0, 1)` so sánh với `chance`. Persist cho replay determinism.
+  rngRoll             Float
+  /// Result.
+  success             Boolean
+  /// EXP snapshot trước attempt (BigInt — có thể vượt Number.MAX_SAFE_INTEGER).
+  expBefore           BigInt
+  /// EXP sau attempt — `success`: `expBefore - cost`. `fail`: `expBefore` (no loss MVP).
+  expAfter            BigInt
+  /// Tâm Ma debuff trigger (chỉ khi `success=false` — mọi fail đều apply ở MVP).
+  /// Wire qua `BuffService.applyBuff('tam_ma_light', 'breakthrough')` ở PR2 wire.
+  tamMaActive         Boolean   @default(false)
+  /// `now + BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC × 1000`. Null nếu không apply.
+  tamMaExpiresAt      DateTime?
+  /// Optional caller-provided idempotency key (format `<userId>:<attemptIndex>`).
+  idempotencyKey      String?
+  /// Thứ tự attempt cho character này (1..N) — audit replay.
+  attemptIndex        Int
+  createdAt           DateTime  @default(now())
+
+  @@unique([characterId, idempotencyKey])
+  @@index([characterId, createdAt])
+  @@index([characterId, success])
+}
+
 /// Phase 11.8.B Buff MVP — duration-based buff/debuff persistence.
 /// 1 row per (`characterId`, `buffKey`). `BuffService.applyBuff` dùng upsert:
 ///   - non-stackable: refresh `expiresAt` (catalog `BuffDef.stackable=false`).
@@ -444,18 +522,18 @@ model CharacterBuff {
 ///   - Active talent ("thần thông") execution `useActiveTalent` qua mp
 ///     consume + cooldown turns enforce trong combat tick (Phase 11.7.C).
 model CharacterTalent {
-  id                      String    @id @default(cuid())
-  characterId             String
-  character               Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  id                     String    @id @default(cuid())
+  characterId            String
+  character              Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
   /// Khoá tham chiếu `TALENTS` trong `packages/shared/src/talents.ts`.
-  talentKey               String
-  learnedAt               DateTime  @default(now())
+  talentKey              String
+  learnedAt              DateTime  @default(now())
   /// Phase 11.7.E — số lượt cooldown còn lại của active talent. 0 = sẵn sàng
   /// cast. Sau khi cast thành công trong combat, set =
   /// `talent.activeEffect.cooldownTurns`. Mỗi action combat tiếp theo
   /// (skill flow + active talent flow) decrement -1 cho tất cả row > 0.
   /// Passive talent luôn 0 (không cast nên không tick).
-  cooldownTurnsRemaining  Int       @default(0)
+  cooldownTurnsRemaining Int       @default(0)
 
   @@unique([characterId, talentKey])
   @@index([characterId, learnedAt])

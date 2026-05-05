@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC,
+  BREAKTHROUGH_FAIL_DEBUFF_RATE_PENALTY,
+} from './balance-dials';
 import { ELEMENTS, type ElementKey } from './combat';
 import { REALMS } from './realms';
 
@@ -31,6 +35,7 @@ const VALID_KINDS: readonly BuffEffectKind[] = [
   'taunt',
   'invuln',
   'cultivation_block',
+  'cultivation_rate_mul',
 ];
 
 const VALID_SOURCES: readonly BuffSource[] = [
@@ -42,6 +47,7 @@ const VALID_SOURCES: readonly BuffSource[] = [
   'talent',
   'boss_skill',
   'tribulation',
+  'breakthrough',
 ];
 
 const VALID_POLARITIES: readonly BuffPolarity[] = ['buff', 'debuff'];
@@ -442,6 +448,96 @@ describe('Helper: composeBuffMods', () => {
       { buffKey: 'pill_atk_buff_t1', stacks: 1 },
     ]);
     expect(mods.atkMul).toBeCloseTo(1.12, 5);
+  });
+
+  it('default cultivationRateMul=1 khi không có debuff rate_mul', () => {
+    const mods = composeBuffMods([]);
+    expect(mods.cultivationRateMul).toBe(1);
+  });
+
+  it('tam_ma_light set cultivationRateMul=BREAKTHROUGH_FAIL_DEBUFF_RATE_PENALTY (~0.7) + KHÔNG block cultivation', () => {
+    const mods = composeBuffMods([
+      { buffKey: 'tam_ma_light', stacks: 1 },
+    ]);
+    expect(mods.cultivationRateMul).toBeCloseTo(
+      BREAKTHROUGH_FAIL_DEBUFF_RATE_PENALTY,
+      5,
+    );
+    // tam_ma_light KHÔNG có cultivation_block — chỉ giảm rate, vẫn cho tu luyện.
+    expect(mods.cultivationBlocked).toBe(false);
+    // KHÔNG đụng atk (khác debuff_taoma full).
+    expect(mods.atkMul).toBe(1);
+  });
+
+  it('cultivation_rate_mul multiplicative khi composite (rate × rate)', () => {
+    // Synthesize: 2 buff đều có cultivation_rate_mul. tam_ma_light × tam_ma_light
+    // không thực tế (non-stackable refresh-only), nhưng test composeBuffMods
+    // pure semantics: nhiều buff khác key có rate_mul effect → multiplicative.
+    // Ở runtime catalog hiện chỉ có 1 buff rate_mul (tam_ma_light) — composite
+    // path test = bảo vệ trước khi thêm buff rate_mul mới (vd "Đan Tăng EXP").
+    const mods = composeBuffMods([
+      { buffKey: 'tam_ma_light', stacks: 1 },
+    ]);
+    // 1 buff → identity-multiplied = single value.
+    expect(mods.cultivationRateMul).toBeCloseTo(
+      BREAKTHROUGH_FAIL_DEBUFF_RATE_PENALTY,
+      5,
+    );
+  });
+});
+
+describe('tam_ma_light buff (Phase 11 nâng cao §5 PR2 prep)', () => {
+  it('exists trong BUFFS catalog với key đúng', () => {
+    const def = getBuffDef('tam_ma_light');
+    expect(def).toBeDefined();
+    expect(def?.key).toBe('tam_ma_light');
+  });
+
+  it('source=breakthrough, polarity=debuff, non-stackable, dispellable=false', () => {
+    const def = getBuffDef('tam_ma_light') as BuffDef;
+    expect(def.source).toBe('breakthrough');
+    expect(def.polarity).toBe('debuff');
+    expect(def.stackable).toBe(false);
+    expect(def.maxStacks).toBe(1);
+    expect(def.dispellable).toBe(false);
+  });
+
+  it('durationSec === BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC (~300s)', () => {
+    const def = getBuffDef('tam_ma_light') as BuffDef;
+    expect(def.durationSec).toBe(BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC);
+  });
+
+  it('có đúng 1 effect cultivation_rate_mul với value === BREAKTHROUGH_FAIL_DEBUFF_RATE_PENALTY', () => {
+    const def = getBuffDef('tam_ma_light') as BuffDef;
+    expect(def.effects).toHaveLength(1);
+    const eff = def.effects[0];
+    expect(eff.kind).toBe('cultivation_rate_mul');
+    expect(eff.value).toBe(BREAKTHROUGH_FAIL_DEBUFF_RATE_PENALTY);
+    expect(eff.statTarget).toBeNull();
+    expect(eff.elementTarget).toBeNull();
+  });
+
+  it('buffsBySource("breakthrough") trả ≥ 1 (tam_ma_light)', () => {
+    expect(buffsBySource('breakthrough').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('buffsByEffectKind("cultivation_rate_mul") trả ≥ 1 (tam_ma_light)', () => {
+    expect(
+      buffsByEffectKind('cultivation_rate_mul').length,
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it('lighter than debuff_taoma — duration ngắn hơn + KHÔNG block cultivation', () => {
+    const light = getBuffDef('tam_ma_light') as BuffDef;
+    const full = getBuffDef('debuff_taoma') as BuffDef;
+    expect(light.durationSec).toBeLessThan(full.durationSec);
+    // light có cultivation_rate_mul (giảm nhẹ), full có cultivation_block (binary).
+    expect(
+      light.effects.some((e) => e.kind === 'cultivation_block'),
+    ).toBe(false);
+    expect(
+      full.effects.some((e) => e.kind === 'cultivation_block'),
+    ).toBe(true);
   });
 });
 

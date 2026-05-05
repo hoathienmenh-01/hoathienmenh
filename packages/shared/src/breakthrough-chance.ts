@@ -30,6 +30,7 @@ import {
   BREAKTHROUGH_CHANCE_BASE,
   BREAKTHROUGH_CHANCE_MAX,
   BREAKTHROUGH_CHANCE_MIN,
+  BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC,
   BREAKTHROUGH_ITEM_BONUS_MAX,
   BREAKTHROUGH_METHOD_AFFINITY_BONUS,
   BREAKTHROUGH_ROOT_PURITY_BONUS_MAX,
@@ -189,4 +190,89 @@ function clampChance(x: number): number {
   if (x < BREAKTHROUGH_CHANCE_MIN) return BREAKTHROUGH_CHANCE_MIN;
   if (x > BREAKTHROUGH_CHANCE_MAX) return BREAKTHROUGH_CHANCE_MAX;
   return x;
+}
+
+/**
+ * Phase 11 nâng cao §5 PR2 prep — evaluate breakthrough attempt outcome.
+ *
+ * Pure function — KHÔNG side-effect, KHÔNG seed RNG. Caller (service) đã
+ * resolve `breakdown` qua `computeBreakthroughChance` + roll RNG (deterministic
+ * seed-by-attemptId hoặc `Math.random` runtime); function so sánh + return
+ * outcome shape cho service write log + apply debuff.
+ *
+ * **Contract**:
+ *   - `breakdown.reason !== 'OK'` → `success=false, debuffApplied=false`
+ *     (gate fail trước attempt: NOT_AT_PEAK / INSUFFICIENT_EXP — 409 throw,
+ *     không log attempt).
+ *   - `rngRoll < breakdown.finalChance` → `success=true, debuffApplied=false`.
+ *   - `rngRoll >= breakdown.finalChance` → `success=false, debuffApplied=true`,
+ *     debuff key = `'tam_ma_light'`, duration =
+ *     `BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC` (300s mặc định).
+ *
+ * **Forward-compat**: hiện endpoint `POST /character/breakthrough`
+ * deterministic — function này CHƯA wire vào runtime. Phase 11 nâng cao §5
+ * PR2 wire sẽ consume + log + apply `tam_ma_light` qua `BuffService`.
+ */
+export interface EvaluateBreakthroughOutcomeInput {
+  /** Breakdown từ `computeBreakthroughChance(...)`. Reason='OK' để attempt. */
+  readonly breakdown: BreakthroughChanceBreakdown;
+  /** RNG roll ∈ [0, 1). Throw nếu out-of-range hoặc NaN. */
+  readonly rngRoll: number;
+  /** Server time gốc cho `debuffExpiresAt` computation. */
+  readonly now: Date;
+}
+
+export interface EvaluateBreakthroughOutcomeResult {
+  readonly success: boolean;
+  readonly debuffApplied: boolean;
+  /** Buff catalog key (Phase 11 nâng cao §5 PR2 prep — `'tam_ma_light'`). */
+  readonly debuffKey: 'tam_ma_light' | null;
+  /** Duration giây (0 nếu không apply). */
+  readonly debuffDurationSec: number;
+  /** `now + durationSec` nếu apply, null nếu không. */
+  readonly debuffExpiresAt: Date | null;
+}
+
+export function evaluateBreakthroughOutcome(
+  input: EvaluateBreakthroughOutcomeInput,
+): EvaluateBreakthroughOutcomeResult {
+  if (
+    !Number.isFinite(input.rngRoll) ||
+    input.rngRoll < 0 ||
+    input.rngRoll >= 1
+  ) {
+    throw new Error(`rngRoll must be in [0, 1), got: ${input.rngRoll}`);
+  }
+  // Gate fail (NOT_AT_PEAK / INSUFFICIENT_EXP) — không attempt, không debuff.
+  if (input.breakdown.reason !== 'OK') {
+    return {
+      success: false,
+      debuffApplied: false,
+      debuffKey: null,
+      debuffDurationSec: 0,
+      debuffExpiresAt: null,
+    };
+  }
+  const success = input.rngRoll < input.breakdown.finalChance;
+  if (success) {
+    return {
+      success: true,
+      debuffApplied: false,
+      debuffKey: null,
+      debuffDurationSec: 0,
+      debuffExpiresAt: null,
+    };
+  }
+  // Fail → apply tam_ma_light. Duration từ dial.
+  const debuffDurationSec = BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC;
+  const debuffExpiresAt = new Date(
+    input.now.getTime() + debuffDurationSec * 1000,
+  );
+  return {
+    success: false,
+    debuffApplied: true,
+    debuffKey: 'tam_ma_light',
+    debuffDurationSec,
+    debuffExpiresAt,
+  };
 }
