@@ -25,12 +25,21 @@ import {
   CULTIVATION_RATE_REALM_MULT,
   COMBAT_RNG_HIGH,
   COMBAT_RNG_LOW,
-  ELEMENT_COUNTER_BONUS_MAX,
-  ELEMENT_COUNTER_PENALTY_MIN,
-  ELEMENT_GENERATE_BONUS,
-  ELEMENT_MODIFIER_ABSOLUTE_MAX,
-  ELEMENT_MODIFIER_ABSOLUTE_MIN,
-  ELEMENT_NEUTRAL_MODIFIER,
+  ELEMENT_CHARACTER_PRIMARY_BONUS,
+  ELEMENT_CHARACTER_SECONDARY_BONUS,
+  ELEMENT_COUNTERED_MULTIPLIER,
+  ELEMENT_COUNTER_MULTIPLIER,
+  ELEMENT_GENERATED_MULTIPLIER,
+  ELEMENT_GENERATE_MULTIPLIER,
+  ELEMENT_LOG_AMPLIFY_THRESHOLD,
+  ELEMENT_LOG_DAMPEN_THRESHOLD,
+  ELEMENT_MATRIX,
+  ELEMENT_MODIFIER_ABSOLUTE_CEIL,
+  ELEMENT_MODIFIER_ABSOLUTE_FLOOR,
+  ELEMENT_NAME_VI,
+  ELEMENT_NEUTRAL_MULTIPLIER,
+  ELEMENT_RELATION_LABEL_VI,
+  ELEMENT_SAME_ELEMENT_MULTIPLIER,
   BREAKTHROUGH_CHANCE_MAX,
   BREAKTHROUGH_CHANCE_MIN,
   ITEM_POWER_EQUIV_WEIGHTS,
@@ -38,10 +47,13 @@ import {
   MISSION_DAILY_BUDGET_BY_REALM_TIER,
   REALM_COST_SCALE,
   STAGE_COST_SCALE,
+  describeElementMatch,
+  validateElementalModifier,
   validateItemBudget,
   validateMissionRewardBudget,
   validateSkillBudget,
 } from './balance-dials';
+import { ELEMENTS } from './combat';
 import { CULTIVATION_TICK_BASE_EXP, CULTIVATION_TICK_MS } from './ws-events';
 import { STAMINA_REGEN_PER_TICK } from './combat';
 
@@ -68,12 +80,18 @@ const NUMERIC_DIAL_KEYS_TO_CHECK = [
   'MISSION_WEEKLY_DAILY_MULTIPLIER',
   'MISSION_ONCE_LINHTHACH_HARD_CAP',
   'MISSION_TIENNGOC_HARD_CAP',
-  'ELEMENT_NEUTRAL_MODIFIER',
-  'ELEMENT_COUNTER_BONUS_MAX',
-  'ELEMENT_COUNTER_PENALTY_MIN',
-  'ELEMENT_GENERATE_BONUS',
-  'ELEMENT_MODIFIER_ABSOLUTE_MIN',
-  'ELEMENT_MODIFIER_ABSOLUTE_MAX',
+  'ELEMENT_NEUTRAL_MULTIPLIER',
+  'ELEMENT_COUNTER_MULTIPLIER',
+  'ELEMENT_GENERATE_MULTIPLIER',
+  'ELEMENT_COUNTERED_MULTIPLIER',
+  'ELEMENT_GENERATED_MULTIPLIER',
+  'ELEMENT_SAME_ELEMENT_MULTIPLIER',
+  'ELEMENT_CHARACTER_PRIMARY_BONUS',
+  'ELEMENT_CHARACTER_SECONDARY_BONUS',
+  'ELEMENT_LOG_AMPLIFY_THRESHOLD',
+  'ELEMENT_LOG_DAMPEN_THRESHOLD',
+  'ELEMENT_MODIFIER_ABSOLUTE_FLOOR',
+  'ELEMENT_MODIFIER_ABSOLUTE_CEIL',
   'BREAKTHROUGH_CHANCE_MIN',
   'BREAKTHROUGH_CHANCE_MAX',
   'BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC',
@@ -113,12 +131,18 @@ describe('BALANCE_DIALS — finite & positive (anti-NaN/Infinity drift)', () => 
       'MISSION_WEEKLY_DAILY_MULTIPLIER',
       'MISSION_ONCE_LINHTHACH_HARD_CAP',
       'MISSION_TIENNGOC_HARD_CAP',
-      'ELEMENT_NEUTRAL_MODIFIER',
-      'ELEMENT_COUNTER_BONUS_MAX',
-      'ELEMENT_COUNTER_PENALTY_MIN',
-      'ELEMENT_GENERATE_BONUS',
-      'ELEMENT_MODIFIER_ABSOLUTE_MIN',
-      'ELEMENT_MODIFIER_ABSOLUTE_MAX',
+      'ELEMENT_NEUTRAL_MULTIPLIER',
+      'ELEMENT_COUNTER_MULTIPLIER',
+      'ELEMENT_GENERATE_MULTIPLIER',
+      'ELEMENT_COUNTERED_MULTIPLIER',
+      'ELEMENT_GENERATED_MULTIPLIER',
+      'ELEMENT_SAME_ELEMENT_MULTIPLIER',
+      'ELEMENT_CHARACTER_PRIMARY_BONUS',
+      'ELEMENT_CHARACTER_SECONDARY_BONUS',
+      'ELEMENT_LOG_AMPLIFY_THRESHOLD',
+      'ELEMENT_LOG_DAMPEN_THRESHOLD',
+      'ELEMENT_MODIFIER_ABSOLUTE_FLOOR',
+      'ELEMENT_MODIFIER_ABSOLUTE_CEIL',
       'BREAKTHROUGH_CHANCE_MIN',
       'BREAKTHROUGH_CHANCE_MAX',
       'BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC',
@@ -157,19 +181,37 @@ describe('BALANCE_DIALS — pairwise ordering (min < max)', () => {
     expect(COMBAT_RNG_LOW).toBeLessThan(COMBAT_RNG_HIGH);
   });
 
-  it('ELEMENT_COUNTER_PENALTY_MIN < NEUTRAL < COUNTER_BONUS_MAX', () => {
-    expect(ELEMENT_COUNTER_PENALTY_MIN).toBeLessThan(ELEMENT_NEUTRAL_MODIFIER);
-    expect(ELEMENT_NEUTRAL_MODIFIER).toBeLessThan(ELEMENT_COUNTER_BONUS_MAX);
+  it('ELEMENT_COUNTERED_MULTIPLIER < SAME < NEUTRAL < GENERATE < COUNTER (matrix ordering)', () => {
+    expect(ELEMENT_COUNTERED_MULTIPLIER).toBeLessThan(ELEMENT_GENERATED_MULTIPLIER);
+    expect(ELEMENT_GENERATED_MULTIPLIER).toBeLessThan(ELEMENT_SAME_ELEMENT_MULTIPLIER);
+    expect(ELEMENT_SAME_ELEMENT_MULTIPLIER).toBeLessThan(ELEMENT_NEUTRAL_MULTIPLIER);
+    expect(ELEMENT_NEUTRAL_MULTIPLIER).toBeLessThan(ELEMENT_GENERATE_MULTIPLIER);
+    expect(ELEMENT_GENERATE_MULTIPLIER).toBeLessThan(ELEMENT_COUNTER_MULTIPLIER);
   });
 
-  it('ELEMENT_GENERATE_BONUS giữa NEUTRAL và COUNTER_BONUS_MAX (sinh nhẹ hơn khắc)', () => {
-    expect(ELEMENT_GENERATE_BONUS).toBeGreaterThan(ELEMENT_NEUTRAL_MODIFIER);
-    expect(ELEMENT_GENERATE_BONUS).toBeLessThanOrEqual(ELEMENT_COUNTER_BONUS_MAX);
+  it('ELEMENT_GENERATE_MULTIPLIER nhẹ hơn ELEMENT_COUNTER_MULTIPLIER (sinh < khắc)', () => {
+    expect(ELEMENT_GENERATE_MULTIPLIER).toBeLessThan(ELEMENT_COUNTER_MULTIPLIER);
   });
 
-  it('ELEMENT_MODIFIER_ABSOLUTE_MIN ≤ COUNTER_PENALTY_MIN; COUNTER_BONUS_MAX ≤ ABSOLUTE_MAX', () => {
-    expect(ELEMENT_MODIFIER_ABSOLUTE_MIN).toBeLessThanOrEqual(ELEMENT_COUNTER_PENALTY_MIN);
-    expect(ELEMENT_COUNTER_BONUS_MAX).toBeLessThanOrEqual(ELEMENT_MODIFIER_ABSOLUTE_MAX);
+  it('ELEMENT_MODIFIER_ABSOLUTE_FLOOR ≤ countered (worst-case); ceiling ≥ counter+primary (best-case)', () => {
+    expect(ELEMENT_MODIFIER_ABSOLUTE_FLOOR).toBeLessThanOrEqual(ELEMENT_COUNTERED_MULTIPLIER);
+    expect(ELEMENT_COUNTER_MULTIPLIER + ELEMENT_CHARACTER_PRIMARY_BONUS).toBeLessThanOrEqual(
+      ELEMENT_MODIFIER_ABSOLUTE_CEIL,
+    );
+  });
+
+  it('ELEMENT_LOG_DAMPEN_THRESHOLD ≤ NEUTRAL ≤ ELEMENT_LOG_AMPLIFY_THRESHOLD', () => {
+    expect(ELEMENT_LOG_DAMPEN_THRESHOLD).toBeLessThanOrEqual(ELEMENT_NEUTRAL_MULTIPLIER);
+    expect(ELEMENT_LOG_AMPLIFY_THRESHOLD).toBeGreaterThanOrEqual(ELEMENT_NEUTRAL_MULTIPLIER);
+  });
+
+  it('character bonus dials positive < 0.5 (envelope)', () => {
+    expect(ELEMENT_CHARACTER_PRIMARY_BONUS).toBeGreaterThan(0);
+    expect(ELEMENT_CHARACTER_PRIMARY_BONUS).toBeLessThan(0.5);
+    expect(ELEMENT_CHARACTER_SECONDARY_BONUS).toBeGreaterThan(0);
+    expect(ELEMENT_CHARACTER_SECONDARY_BONUS).toBeLessThanOrEqual(
+      ELEMENT_CHARACTER_PRIMARY_BONUS,
+    );
   });
 
   it('BREAKTHROUGH_CHANCE_MIN < CHANCE_MAX', () => {
@@ -302,12 +344,18 @@ describe('BALANCE_DIALS — aggregate snapshot (drift detection)', () => {
         tienNgocHardCap: BALANCE_DIALS.MISSION_TIENNGOC_HARD_CAP,
       },
       element: {
-        neutralModifier: BALANCE_DIALS.ELEMENT_NEUTRAL_MODIFIER,
-        counterBonusMax: BALANCE_DIALS.ELEMENT_COUNTER_BONUS_MAX,
-        counterPenaltyMin: BALANCE_DIALS.ELEMENT_COUNTER_PENALTY_MIN,
-        generateBonus: BALANCE_DIALS.ELEMENT_GENERATE_BONUS,
-        modifierAbsoluteMin: BALANCE_DIALS.ELEMENT_MODIFIER_ABSOLUTE_MIN,
-        modifierAbsoluteMax: BALANCE_DIALS.ELEMENT_MODIFIER_ABSOLUTE_MAX,
+        neutralMultiplier: BALANCE_DIALS.ELEMENT_NEUTRAL_MULTIPLIER,
+        counterMultiplier: BALANCE_DIALS.ELEMENT_COUNTER_MULTIPLIER,
+        generateMultiplier: BALANCE_DIALS.ELEMENT_GENERATE_MULTIPLIER,
+        counteredMultiplier: BALANCE_DIALS.ELEMENT_COUNTERED_MULTIPLIER,
+        generatedMultiplier: BALANCE_DIALS.ELEMENT_GENERATED_MULTIPLIER,
+        sameElementMultiplier: BALANCE_DIALS.ELEMENT_SAME_ELEMENT_MULTIPLIER,
+        characterPrimaryBonus: BALANCE_DIALS.ELEMENT_CHARACTER_PRIMARY_BONUS,
+        characterSecondaryBonus: BALANCE_DIALS.ELEMENT_CHARACTER_SECONDARY_BONUS,
+        logAmplifyThreshold: BALANCE_DIALS.ELEMENT_LOG_AMPLIFY_THRESHOLD,
+        logDampenThreshold: BALANCE_DIALS.ELEMENT_LOG_DAMPEN_THRESHOLD,
+        modifierAbsoluteFloor: BALANCE_DIALS.ELEMENT_MODIFIER_ABSOLUTE_FLOOR,
+        modifierAbsoluteCeil: BALANCE_DIALS.ELEMENT_MODIFIER_ABSOLUTE_CEIL,
       },
       breakthrough: {
         chanceMin: BALANCE_DIALS.BREAKTHROUGH_CHANCE_MIN,
@@ -345,12 +393,18 @@ describe('BALANCE_DIALS — aggregate snapshot (drift detection)', () => {
           "marketTaxDefault": 0.05,
         },
         "element": {
-          "counterBonusMax": 1.15,
-          "counterPenaltyMin": 0.9,
-          "generateBonus": 1.05,
-          "modifierAbsoluteMax": 1.25,
-          "modifierAbsoluteMin": 0.8,
-          "neutralModifier": 1,
+          "characterPrimaryBonus": 0.1,
+          "characterSecondaryBonus": 0.05,
+          "counterMultiplier": 1.3,
+          "counteredMultiplier": 0.7,
+          "generateMultiplier": 1.2,
+          "generatedMultiplier": 0.85,
+          "logAmplifyThreshold": 1.15,
+          "logDampenThreshold": 0.9,
+          "modifierAbsoluteCeil": 1.5,
+          "modifierAbsoluteFloor": 0.6,
+          "neutralMultiplier": 1,
+          "sameElementMultiplier": 0.9,
         },
         "itemBudget": {
           "offSlotSoftCapMultiplier": 1.2,
@@ -623,5 +677,184 @@ describe('validateMissionRewardBudget', () => {
         rewards: { linhThach: 9999999 },
       }),
     ).toEqual([]);
+  });
+});
+
+describe('describeElementMatch — Ngũ Hành matrix breakdown', () => {
+  it('null attacker hoặc null defender → neutral 1.0, vi=null', () => {
+    expect(describeElementMatch(null, null)).toEqual({
+      multiplier: ELEMENT_NEUTRAL_MULTIPLIER,
+      relation: 'neutral',
+      vi: null,
+    });
+    expect(describeElementMatch('kim', null)).toEqual({
+      multiplier: ELEMENT_NEUTRAL_MULTIPLIER,
+      relation: 'neutral',
+      vi: null,
+    });
+    expect(describeElementMatch(null, 'moc')).toEqual({
+      multiplier: ELEMENT_NEUTRAL_MULTIPLIER,
+      relation: 'neutral',
+      vi: null,
+    });
+  });
+
+  it('Kim khắc Mộc → counter 1.30 + vi="Kim khắc Mộc"', () => {
+    expect(describeElementMatch('kim', 'moc')).toEqual({
+      multiplier: ELEMENT_COUNTER_MULTIPLIER,
+      relation: 'counter',
+      vi: 'Kim khắc Mộc',
+    });
+  });
+
+  it('Mộc tương sinh Hoả → generate 1.20 + vi="Mộc tương sinh Hoả"', () => {
+    expect(describeElementMatch('moc', 'hoa')).toEqual({
+      multiplier: ELEMENT_GENERATE_MULTIPLIER,
+      relation: 'generate',
+      vi: 'Mộc tương sinh Hoả',
+    });
+  });
+
+  it('Mộc bị Kim khắc → countered 0.70 + vi="Mộc bị Kim khắc"', () => {
+    expect(describeElementMatch('moc', 'kim')).toEqual({
+      multiplier: ELEMENT_COUNTERED_MULTIPLIER,
+      relation: 'countered',
+      vi: 'Mộc bị Kim khắc',
+    });
+  });
+
+  it('Hoả bị Mộc sinh → generated 0.85 + vi="Hoả bị Mộc sinh"', () => {
+    expect(describeElementMatch('hoa', 'moc')).toEqual({
+      multiplier: ELEMENT_GENERATED_MULTIPLIER,
+      relation: 'generated',
+      vi: 'Hoả bị Mộc sinh',
+    });
+  });
+
+  it('Kim cùng hệ Kim → same 0.90 + vi="Kim cùng hệ Kim"', () => {
+    expect(describeElementMatch('kim', 'kim')).toEqual({
+      multiplier: ELEMENT_SAME_ELEMENT_MULTIPLIER,
+      relation: 'same',
+      vi: 'Kim cùng hệ Kim',
+    });
+  });
+
+  it('5×5 matrix exhaustive: mỗi cặp có relation hợp lệ + multiplier ∈ {0.7, 0.85, 0.9, 1.2, 1.3}', () => {
+    const validMuls = new Set([
+      ELEMENT_COUNTERED_MULTIPLIER,
+      ELEMENT_GENERATED_MULTIPLIER,
+      ELEMENT_SAME_ELEMENT_MULTIPLIER,
+      ELEMENT_GENERATE_MULTIPLIER,
+      ELEMENT_COUNTER_MULTIPLIER,
+    ]);
+    for (const a of ELEMENTS) {
+      for (const d of ELEMENTS) {
+        const desc = describeElementMatch(a, d);
+        expect(desc.relation).not.toBe('neutral');
+        expect(validMuls.has(desc.multiplier)).toBe(true);
+        expect(desc.vi).not.toBeNull();
+        expect(desc.vi).toContain(ELEMENT_NAME_VI[a]);
+        expect(desc.vi).toContain(ELEMENT_NAME_VI[d]);
+      }
+    }
+  });
+
+  it('matrix self-consistency: counter(a,b)=1.30 ↔ countered(b,a)=0.70', () => {
+    for (const a of ELEMENTS) {
+      for (const d of ELEMENTS) {
+        const ad = describeElementMatch(a, d);
+        const da = describeElementMatch(d, a);
+        if (ad.relation === 'counter') {
+          expect(da.relation).toBe('countered');
+        }
+        if (ad.relation === 'generate') {
+          expect(da.relation).toBe('generated');
+        }
+        if (ad.relation === 'same') {
+          expect(da.relation).toBe('same');
+        }
+      }
+    }
+  });
+
+  it('label registry coverage: ELEMENT_NAME_VI và ELEMENT_RELATION_LABEL_VI cover all keys', () => {
+    for (const e of ELEMENTS) {
+      expect(typeof ELEMENT_NAME_VI[e]).toBe('string');
+      expect(ELEMENT_NAME_VI[e].length).toBeGreaterThan(0);
+    }
+    const relations = ['neutral', 'counter', 'generate', 'countered', 'generated', 'same'] as const;
+    for (const r of relations) {
+      expect(typeof ELEMENT_RELATION_LABEL_VI[r]).toBe('string');
+      expect(ELEMENT_RELATION_LABEL_VI[r].length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('ELEMENT_MATRIX — frozen 5×5 lookup', () => {
+  it('mỗi attacker có entry cho mỗi defender (5×5=25 cell)', () => {
+    for (const a of ELEMENTS) {
+      expect(Object.keys(ELEMENT_MATRIX[a])).toHaveLength(ELEMENTS.length);
+      for (const d of ELEMENTS) {
+        expect(typeof ELEMENT_MATRIX[a][d]).toBe('number');
+        expect(Number.isFinite(ELEMENT_MATRIX[a][d])).toBe(true);
+      }
+    }
+  });
+
+  it('ELEMENT_MATRIX[a][b] === describeElementMatch(a,b).multiplier (no drift)', () => {
+    for (const a of ELEMENTS) {
+      for (const d of ELEMENTS) {
+        expect(ELEMENT_MATRIX[a][d]).toBe(describeElementMatch(a, d).multiplier);
+      }
+    }
+  });
+
+  it('matrix immutable (frozen)', () => {
+    expect(Object.isFrozen(ELEMENT_MATRIX)).toBe(true);
+    expect(Object.isFrozen(ELEMENT_MATRIX.kim)).toBe(true);
+  });
+});
+
+describe('validateElementalModifier — envelope guard', () => {
+  it('value=1.0 (neutral) → empty errors', () => {
+    expect(validateElementalModifier({ source: 'skill_cast', value: 1.0 })).toEqual([]);
+  });
+
+  it('value=1.40 (counter 1.30 + primary 0.10) → empty errors (≤ ceil 1.5)', () => {
+    expect(
+      validateElementalModifier({
+        source: 'skill_cast',
+        value: ELEMENT_COUNTER_MULTIPLIER + ELEMENT_CHARACTER_PRIMARY_BONUS,
+      }),
+    ).toEqual([]);
+  });
+
+  it('value=0.65 (countered 0.70 - light overflow) → empty errors (≥ floor 0.6)', () => {
+    expect(validateElementalModifier({ source: 'talent_cast', value: 0.65 })).toEqual([]);
+  });
+
+  it('value=2.5 (vượt ceil 1.5) → error', () => {
+    const errs = validateElementalModifier({ source: 'broken_buff', value: 2.5 });
+    expect(errs).toHaveLength(1);
+    expect(errs[0]).toContain('vượt trần');
+    expect(errs[0]).toContain('broken_buff');
+  });
+
+  it('value=0.3 (dưới floor 0.6) → error', () => {
+    const errs = validateElementalModifier({ source: 'broken_debuff', value: 0.3 });
+    expect(errs).toHaveLength(1);
+    expect(errs[0]).toContain('dưới sàn');
+  });
+
+  it('value=NaN → error không finite', () => {
+    const errs = validateElementalModifier({ source: 'nan_skill', value: NaN });
+    expect(errs).toHaveLength(1);
+    expect(errs[0]).toContain('không finite');
+  });
+
+  it('value=Infinity → error không finite', () => {
+    const errs = validateElementalModifier({ source: 'inf_buff', value: Infinity });
+    expect(errs).toHaveLength(1);
+    expect(errs[0]).toContain('không finite');
   });
 });
