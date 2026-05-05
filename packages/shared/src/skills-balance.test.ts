@@ -222,14 +222,53 @@ describe('SKILL catalog — Ngũ Hành coverage (PR-2 v2 promise)', () => {
     }
   });
 
+  it('mỗi element có ≥ 1 skill ULT tier nguyen_anh (Phase 11 nâng cao §2 endgame layer)', () => {
+    for (const el of ELEMENTS) {
+      const elementSkills = skillsForElement(el);
+      const nguyenAnhSkills = elementSkills.filter((s) => s.unlockRealm === 'nguyen_anh');
+      expect(
+        nguyenAnhSkills.length,
+        `Hệ ${el.toUpperCase()} thiếu ULT tier nguyen_anh (nguyen_anh=${nguyenAnhSkills.length}, cần ≥ 1)`,
+      ).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('mỗi element có ≥ 1 ACTIVE ở mỗi tier early/mid/late (luyenkhi/truc_co/kim_dan)', () => {
+    const REQUIRED_TIERS = ['luyenkhi', 'truc_co', 'kim_dan'] as const;
+    for (const el of ELEMENTS) {
+      const actives = skillsForElement(el).filter((s) => (s.type ?? 'ACTIVE') === 'ACTIVE');
+      for (const tier of REQUIRED_TIERS) {
+        const inTier = actives.filter((s) => s.unlockRealm === tier);
+        expect(
+          inTier.length,
+          `Hệ ${el.toUpperCase()} thiếu ACTIVE tier ${tier} (count=${inTier.length}, cần ≥ 1)`,
+        ).toBeGreaterThanOrEqual(1);
+      }
+    }
+  });
+
+  it('mỗi element có ≥ 3 vai trò (role) khác nhau khi gộp ACTIVE + PASSIVE (Phase 11 nâng cao §2 role variety)', () => {
+    for (const el of ELEMENTS) {
+      const roles = new Set(
+        skillsForElement(el)
+          .map((s) => s.role ?? null)
+          .filter((r): r is NonNullable<typeof r> => r !== null),
+      );
+      expect(
+        roles.size,
+        `Hệ ${el.toUpperCase()} chỉ có ${roles.size} role (${[...roles].join(',')}), cần ≥ 3 role variety`,
+      ).toBeGreaterThanOrEqual(3);
+    }
+  });
+
   it('có ít nhất 1 skill vô hệ (element=null) ngoài basic_attack', () => {
     const noElement = SKILLS.filter((s) => (s.element ?? null) === null);
     expect(noElement.length).toBeGreaterThanOrEqual(2);
     expect(noElement.map((s) => s.key)).toContain(SKILL_BASIC_ATTACK.key);
   });
 
-  it('catalog ≥ 35 skill (Phase 10 PR-2 v2 growth target — Ngũ Hành expansion)', () => {
-    expect(SKILLS.length).toBeGreaterThanOrEqual(35);
+  it('catalog ≥ 45 skill (Phase 11 nâng cao §2 v3 expansion — nguyen_anh tier + role-gap fill)', () => {
+    expect(SKILLS.length).toBeGreaterThanOrEqual(45);
   });
 });
 

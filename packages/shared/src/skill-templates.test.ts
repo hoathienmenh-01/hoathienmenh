@@ -220,13 +220,26 @@ describe('SKILL_TEMPLATES coverage vs SKILLS', () => {
     }
   });
 
-  it('basic tier có nhiều entry nhất (entry-level skills)', () => {
+  it('early/mid tier dominate over endgame (basic + intermediate ≥ advanced + master + legendary)', () => {
+    // Phase 10 PR-2 heuristic cũ là `basic ≥ intermediate` — không scale tới
+    // Phase 11 nâng cao §2 v3 khi content mở rộng tier nguyen_anh + role-fill
+    // truc_co (intermediate naturally grows). Invariant mới: gộp early/mid
+    // (basic + intermediate) vẫn ≥ tổng advanced/master/legendary để giữ
+    // accessibility curve early-game friendly.
+    const earlyMid =
+      templatesByTier('basic').length + templatesByTier('intermediate').length;
+    const lateGame =
+      templatesByTier('advanced').length +
+      templatesByTier('master').length +
+      templatesByTier('legendary').length;
+    expect(
+      earlyMid,
+      `early/mid (basic+intermediate=${earlyMid}) phải ≥ late (advanced+master+legendary=${lateGame})`,
+    ).toBeGreaterThanOrEqual(lateGame);
+
+    // Legendary vẫn là tier rare nhất (≤ basic).
     const basicCount = templatesByTier('basic').length;
-    const intermediateCount = templatesByTier('intermediate').length;
     const legendaryCount = templatesByTier('legendary').length;
-    // basic ≥ intermediate (early game expansion)
-    expect(basicCount).toBeGreaterThanOrEqual(intermediateCount);
-    // legendary ít nhất (endgame rare)
     expect(legendaryCount).toBeLessThanOrEqual(basicCount);
   });
 });
