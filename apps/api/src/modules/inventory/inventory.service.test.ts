@@ -328,4 +328,95 @@ describe('InventoryService', () => {
       expect(rows[0].qty).toBe(5);
     });
   });
+
+  /**
+   * Phase 11.6.E — equipment elemental tribulation resist composer wire.
+   *
+   * Verify `equipElementResistMods(characterId)` query equipped items, lookup
+   * `ItemDef.bonuses.elementResist`, fold qua `composeEquippedItemElementResist`
+   * cho `TribulationService.attemptTribulation` consume.
+   */
+  describe('equipElementResistMods', () => {
+    it('character không trang bị → empty map', async () => {
+      const u = await makeUserChar(prisma);
+      const out = await inv.equipElementResistMods(u.characterId);
+      expect(out.size).toBe(0);
+    });
+
+    it('character trang bị item không có elementResist → empty map', async () => {
+      const u = await makeUserChar(prisma);
+      await inv.grant(u.characterId, [{ itemKey: 'pham_giap', qty: 1 }], {
+        reason: 'ADMIN_GRANT',
+      });
+      const armor = await prisma.inventoryItem.findFirstOrThrow({
+        where: { characterId: u.characterId, itemKey: 'pham_giap' },
+      });
+      await inv.equip(u.userId, armor.id);
+      const out = await inv.equipElementResistMods(u.characterId);
+      expect(out.size).toBe(0);
+    });
+
+    it('character trang bị 1× huyen_giap_phong_kim → map { kim: 0.95 }', async () => {
+      const u = await makeUserChar(prisma);
+      await inv.grant(u.characterId, [{ itemKey: 'huyen_giap_phong_kim', qty: 1 }], {
+        reason: 'ADMIN_GRANT',
+      });
+      const armor = await prisma.inventoryItem.findFirstOrThrow({
+        where: { characterId: u.characterId, itemKey: 'huyen_giap_phong_kim' },
+      });
+      await inv.equip(u.userId, armor.id);
+      const out = await inv.equipElementResistMods(u.characterId);
+      expect(out.size).toBe(1);
+      expect(out.get('kim')).toBeCloseTo(0.95, 6);
+    });
+
+    it('item ở inventory nhưng chưa equip → KHÔNG vào composer', async () => {
+      const u = await makeUserChar(prisma);
+      // grant nhưng không equip
+      await inv.grant(u.characterId, [{ itemKey: 'huyen_giap_phong_hoa', qty: 1 }], {
+        reason: 'ADMIN_GRANT',
+      });
+      const out = await inv.equipElementResistMods(u.characterId);
+      expect(out.size).toBe(0);
+    });
+
+    it('character đeo cả armor resist + weapon thường → chỉ armor resist contribute', async () => {
+      const u = await makeUserChar(prisma);
+      await inv.grant(
+        u.characterId,
+        [
+          { itemKey: 'huyen_giap_phong_thuy', qty: 1 },
+          { itemKey: 'so_kiem', qty: 1 },
+        ],
+        { reason: 'ADMIN_GRANT' },
+      );
+      const armor = await prisma.inventoryItem.findFirstOrThrow({
+        where: { characterId: u.characterId, itemKey: 'huyen_giap_phong_thuy' },
+      });
+      const weapon = await prisma.inventoryItem.findFirstOrThrow({
+        where: { characterId: u.characterId, itemKey: 'so_kiem' },
+      });
+      await inv.equip(u.userId, armor.id);
+      await inv.equip(u.userId, weapon.id);
+
+      const out = await inv.equipElementResistMods(u.characterId);
+      expect(out.size).toBe(1);
+      expect(out.get('thuy')).toBeCloseTo(0.95, 6);
+    });
+
+    it('orphan equipped item (itemKey không có trong catalog) → bỏ qua, không throw', async () => {
+      const u = await makeUserChar(prisma);
+      // Tạo trực tiếp 1 row orphan (mô phỏng catalog drift / DB legacy).
+      await prisma.inventoryItem.create({
+        data: {
+          characterId: u.characterId,
+          itemKey: 'orphan_armor_phantom',
+          qty: 1,
+          equippedSlot: 'ARMOR',
+        },
+      });
+      const out = await inv.equipElementResistMods(u.characterId);
+      expect(out.size).toBe(0);
+    });
+  });
 });

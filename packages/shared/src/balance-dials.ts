@@ -314,6 +314,36 @@ export const ELEMENT_MODIFIER_ABSOLUTE_CEIL = 1.5;
  */
 export const TALENT_ELEMENT_RESIST_VALUE = 0.95;
 
+// ---------------- Section 8.3: Equipment tribulation resist (Phase 11.6.E) ----
+//
+// Multiplier (< 1) áp lên damage taken từ wave hệ tương ứng trong tribulation,
+// đến từ `ItemBonus.elementResist` của trang bị đang đeo. Compose
+// multiplicatively trên top spiritual root resist (Phase 11.6.C) + talent
+// passive resist (Phase 11.6.D):
+//   effective = computeSpiritualRootTribulationResist(...)
+//             × computePassiveTalentTribulationResist(...)
+//             × computeEquipmentTribulationResist(...)
+// Floor/ceil clamp qua `ELEMENT_MODIFIER_ABSOLUTE_FLOOR/CEIL`.
+//
+// Worst-case stack budget khi composer cộng dồn tất cả layer:
+//   spiritual root primary (0.7)
+// × talent 5-stack (0.95⁵≈0.7738)
+// × equipment 5-stack (0.95⁵≈0.7738)
+// = 0.4193 — clamp về `ELEMENT_MODIFIER_ABSOLUTE_FLOOR=0.6`.
+//
+// Single-equipment floor 0.95 × spiritual best (0.7) = 0.665 — an toàn trong
+// envelope (clamp không kích hoạt cho 1 trang bị + linh căn).
+
+/**
+ * Multiplier mặc định cho 1 equipment có `ItemBonus.elementResist[<elem>]`
+ * bằng tier HUYEN (Phase 11.6.E baseline). value < 1 = giảm damage taken
+ * (0.95 = giảm 5%). Single source-of-truth cho 5 catalog armor
+ * `huyen_giap_phong_<elem>` trong `ITEMS`. Tier cao hơn (TIEN/THAN) có thể
+ * dùng giá trị mạnh hơn (0.92/0.90) — vẫn capped bởi
+ * `ELEMENT_MODIFIER_ABSOLUTE_FLOOR=0.6` ở runtime composer.
+ */
+export const EQUIPMENT_ELEMENT_RESIST_VALUE = 0.95;
+
 // ---------------- Helpers (matrix lookup + UI label) -------------------
 
 /**
@@ -565,6 +595,9 @@ export const BALANCE_DIALS = {
 
   // Talent tribulation resist (Phase 11.6.D)
   TALENT_ELEMENT_RESIST_VALUE,
+
+  // Equipment tribulation resist (Phase 11.6.E)
+  EQUIPMENT_ELEMENT_RESIST_VALUE,
 
   // Breakthrough (forward-compat)
   BREAKTHROUGH_CHANCE_MIN,

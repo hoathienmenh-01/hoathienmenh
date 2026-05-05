@@ -1,10 +1,12 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import type { EquipSlot, Prisma } from '@prisma/client';
 import {
+  composeEquippedItemElementResist,
   composeSocketBonus,
   getRefineStatMultiplier,
   itemByKey,
   itemOrGemByKey,
+  type ElementKey,
   type ItemDef,
   type RolledLoot,
 } from '@xuantoi/shared';
@@ -192,6 +194,43 @@ export class InventoryService {
       spiritBonus += Math.round(itemSpirit * mult);
     }
     return { atk, def, hpMaxBonus, mpMaxBonus, spiritBonus };
+  }
+
+  /**
+   * Phase 11.6.E — equipment elemental tribulation resist composer.
+   *
+   * Aggregate `ItemBonus.elementResist` từ TẤT CẢ trang bị đang đeo của
+   * character, fold qua {@link composeEquippedItemElementResist} (multiply
+   * stack per element). Trả `ReadonlyMap<ElementKey, number>` cho
+   * `TribulationService.attemptTribulation` `elementResistFn` consume.
+   *
+   * KHÔNG áp refine multiplier hay socket bonus — element resist là flat
+   * multiplier per item, không scale theo refine level (refine làm tăng raw
+   * stat, không tăng resist). Phase tương lai có thể wire socket gem element
+   * resist vào đây nếu thêm gem kind `element_resist`.
+   *
+   * Wire điểm: `apps/api/src/modules/character/tribulation.service.ts`
+   * inject `InventoryService` Optional (legacy test → fallback empty map).
+   * Compose chain: `rootResist × talentResist × equipmentResist`, clamp
+   * `[ELEMENT_MODIFIER_ABSOLUTE_FLOOR, ELEMENT_MODIFIER_ABSOLUTE_CEIL]` qua
+   * envelope chung.
+   *
+   * Empty map nếu character không trang bị nào có `elementResist` (legacy
+   * armor + weapon thông thường) — composer fallback identity 1.0.
+   */
+  async equipElementResistMods(
+    characterId: string,
+  ): Promise<ReadonlyMap<ElementKey, number>> {
+    const equipped = await this.prisma.inventoryItem.findMany({
+      where: { characterId, equippedSlot: { not: null } },
+    });
+    if (equipped.length === 0) {
+      return new Map<ElementKey, number>();
+    }
+    const bonuses = equipped
+      .map((r) => itemByKey(r.itemKey)?.bonuses)
+      .filter((b): b is NonNullable<typeof b> => b !== undefined);
+    return composeEquippedItemElementResist(bonuses);
   }
 
   /**
