@@ -18,15 +18,16 @@ Khi story design conflict với code, ưu tiên: code trên `main` > [`../AI_HAN
 
 ## 2. Current status
 
-**Catalog foundation DONE.** Phase 12 Story/NPC/Quest runtime = 0% (vẫn chưa wire DB).
+**Catalog foundation + quest runtime persistence DONE.** Reward claim (PR-3) chưa có.
 
 Hiện tại Phase 12 đã có:
 - **Phase 12.1** (catalog `MapDef` / `EncounterDef` / `DungeonDef`) — CLOSED ✅ (PR #397).
 - **Phase 12.2.A** (`DungeonDef.dailyLimit` server-side enforcement) — CLOSED ✅ (PR #421).
-- **Phase 12.2.B** (`DungeonTemplate` + `DungeonRun` multi-encounter runtime) — open (Prisma migration risk; xem [`../AI_HANDOFF_REPORT.md`](../AI_HANDOFF_REPORT.md) §1 immediate next task).
-- **Phase 12 Story PR-1** (Story / NPC / Quest catalog foundation) — CLOSED ✅ (PR docs(story+catalog): Phase 12 PR-1 Story/NPC/Quest catalog foundation).
+- **Phase 12.2.B** (`DungeonTemplate` + `DungeonRun` multi-encounter runtime) — open (Prisma migration risk; xem [`../AI_HANDOFF_REPORT.md`](../AI_HANDOFF_REPORT.md) §6 backlog).
+- **Phase 12 Story PR-1** (Story / NPC / Quest catalog foundation) — CLOSED ✅ (PR #425).
+- **Phase 12 Story PR-2** (Quest runtime persistence) — CLOSED ✅ (Prisma `QuestProgress` + `Character.storyChapter` + `QuestService.list/accept/progress/track` + 3 endpoints + CombatService kill hook + 41 test + smoke 16/16 step).
 
-**Story / NPC / Quest catalog**: 4 NPC + 15 quest + 6 dialogue line (3 cảnh giới đầu Phàm Nhân + Luyện Khí + Trúc Cơ). Runtime persistence chưa có — Phase 12 PR-2 sẽ thêm `QuestProgress` Prisma migration.
+**Story / NPC / Quest runtime**: 4 NPC + 15 quest + 6 dialogue line (3 cảnh giới đầu). `QuestProgress` Prisma model live; `QuestService` server-authoritative validation (realm gate + prereq + CAS guard); kill step auto-tracked qua `CombatService` fail-soft hook. Reward claim chưa có — Phase 12 PR-3 sẽ thêm `QuestService.claim` qua `RewardLedger`.
 
 ## 3. Implemented chapters
 
@@ -34,11 +35,11 @@ Hiện tại Phase 12 đã có:
 
 | # | Realm code | Main quest | Side quest catalog | Side quest runtime | NPC giao | Ngày | PR |
 |---|---|---|---|---|---|---|---|
-| 0 | `phamnhan` | `phamnhan_main_01` Hoa Thiên Tuyển Đồ | 4/4 (realm/sect/grind/npc) | 0/4 | Lăng Vân Sinh, Mộc Thanh Y | 2026-05-05 | PR-1 |
-| 1 | `luyenkhi` | `luyenkhi_main_01` Linh Khí Nhập Thể | 4/4 | 0/4 | Lăng Vân Sinh, Mộc Thanh Y, Hàn Dạ | 2026-05-05 | PR-1 |
-| 2 | `truc_co` | `truc_co_main_01` Trúc Đạo Cơ | 4/4 | 0/4 | Lăng Vân Sinh, Mộc Thanh Y, Tô Nguyệt Ly | 2026-05-05 | PR-1 |
+| 0 | `phamnhan` | `phamnhan_main_01` Hoa Thiên Tuyển Đồ | 4/4 (realm/sect/grind/npc) | 4/4 (accept/progress/track + storyChapter bump khi COMPLETED) | Lăng Vân Sinh, Mộc Thanh Y | 2026-05-05 | PR-1 + PR-2 |
+| 1 | `luyenkhi` | `luyenkhi_main_01` Linh Khí Nhập Thể | 4/4 | 4/4 | Lăng Vân Sinh, Mộc Thanh Y, Hàn Dạ | 2026-05-05 | PR-1 + PR-2 |
+| 2 | `truc_co` | `truc_co_main_01` Trúc Đạo Cơ | 4/4 | 4/4 | Lăng Vân Sinh, Mộc Thanh Y, Tô Nguyệt Ly | 2026-05-05 | PR-1 + PR-2 |
 
-**Runtime status**: catalog only ở PR-1 — Phase 12 PR-2 sẽ wire `QuestService.list/accept/progress/complete` với `QuestProgress` Prisma model. Side quest runtime cũng chờ PR-2.
+**Runtime status**: catalog (PR-1 #425) + persistence (PR-2 this PR — `QuestProgress` Prisma + `QuestService.list/accept/progress/track`) DONE. Reward claim wiring chờ PR-3.
 
 (Chuẩn bị để track 28 cảnh giới Phàm Nhân → Hư Không Chí Tôn — danh sách đầy đủ ở [`./TU_TIEN_LO_STORY_BIBLE.md`](./TU_TIEN_LO_STORY_BIBLE.md) §9.1.)
 
@@ -63,14 +64,14 @@ Hiện tại Phase 12 đã có:
 
 | Chain key | Realm range | NPC chính | Quest count | Catalog | Runtime | UI | Claim |
 |---|---|---|---|---|---|---|---|
-| `hoa_thien_main` | phamnhan → truc_co | Lăng Vân Sinh | 5 (3 main + 2 realm) | ✅ | Missing | Missing | Missing |
-| `moc_thanh_y_arc` | truc_co | Lăng Vân Sinh + Mộc Thanh Y | 1 (`truc_co_sect_01` Cứu Đại Sư Tỷ) | ✅ | Missing | Missing | Missing |
-| `han_da_rivalry` | luyenkhi+ | Hàn Dạ | 1 (`luyenkhi_npc_01` Lời Thách Đấu) | ✅ | Missing | Missing | Missing |
-| `to_nguyet_ly_hidden` | truc_co+ | Tô Nguyệt Ly | 1 (`truc_co_npc_01` Bóng Trong Sương) | ✅ | Missing | Missing | Missing |
+| `hoa_thien_main` | phamnhan → truc_co | Lăng Vân Sinh | 5 (3 main + 2 realm) | ✅ | ✅ (PR-2) | Missing | Missing |
+| `moc_thanh_y_arc` | truc_co | Lăng Vân Sinh + Mộc Thanh Y | 1 (`truc_co_sect_01` Cứu Đại Sư Tỷ) | ✅ | ✅ (PR-2) | Missing | Missing |
+| `han_da_rivalry` | luyenkhi+ | Hàn Dạ | 1 (`luyenkhi_npc_01` Lời Thách Đấu) | ✅ | ✅ (PR-2) | Missing | Missing |
+| `to_nguyet_ly_hidden` | truc_co+ | Tô Nguyệt Ly | 1 (`truc_co_npc_01` Bóng Trong Sương) | ✅ | ✅ (PR-2) | Missing | Missing |
 
 Standalone quest (no chain): 6 quest (3 sect + 3 grind).
 
-**Status**: catalog only — runtime wiring chờ Phase 12 PR-2, claim chờ PR-3, UI chờ PR-4 + PR-5.
+**Status**: catalog (PR-1) + runtime persistence (PR-2 — accept / progress / track / auto-COMPLETED) DONE. Claim chờ PR-3, UI chờ PR-4 + PR-5.
 
 (27 chuỗi quest cốt truyện đã design — danh sách đầy đủ ở [`./TU_TIEN_LO_STORY_BIBLE.md`](./TU_TIEN_LO_STORY_BIBLE.md) §11.)
 
@@ -83,9 +84,9 @@ Standalone quest (no chain): 6 quest (3 sect + 3 grind).
 | **Quest catalog** (`QuestDef` + `QuestStepDef` + `QuestRewardDef`) | **Done** ✅ | Static ở `packages/shared/src/quests.ts` (15 quest). 5 step kind: kill / collect / talk / explore / choice. PR-1 merged 2026-05-05. |
 | **NPC catalog** (`NpcDef`) | **Done** ✅ | Static ở `packages/shared/src/npcs.ts` (4 NPC). PR-1 merged 2026-05-05. |
 | **Dialogue catalog skeleton** (`DialogueLineDef` + `DialogueChoiceDef` + `DialogueBranchCondition`) | **Done** ✅ | Static ở `packages/shared/src/dialogues.ts` (6 line, branch `always` / `realm_min` / `quest_status` / `faction_member`). `pickDialogueForNpc()` helper PR-1 (chỉ implement `always` + `realm_min`; `quest_status` + `faction_member` chờ runtime PR-4). |
-| **QuestProgress** (per-character) | **Missing** | Prisma model với unique `(characterId, questKey)`. Trạng thái: `locked / available / accepted / completed / claimed`. **Cần Prisma migration**. Phase 12 PR-2. |
-| **Quest service** (`QuestService.list / accept / progress / complete`) | **Missing** | `apps/api/src/modules/quest/`. Server-authoritative validation: realm gate, prerequisite, faction (faction wire ở PR-4+). Phase 12 PR-2. |
-| **Story chapter tracking** | **Missing** | `Character.storyChapter` field hoặc `CharacterFlag` table. **Cần Prisma migration** (audit `apps/api/prisma/schema.prisma` trước). Phase 12 PR-2 hoặc PR-5. |
+| **QuestProgress** (per-character) | **Done** ✅ | Prisma model với unique `(characterId, questKey)` + status enum (`LOCKED / AVAILABLE / ACCEPTED / COMPLETED / CLAIMED`) + JSON `stepProgress` counters + timestamps. Migration `20260520000000_phase_12_pr2_quest_runtime`. PR-2 merged. |
+| **Quest service** (`QuestService.list / accept / progress / track`) | **Done** ✅ | `apps/api/src/modules/quest/`. Server-authoritative validation: realm gate (`Character.realmStage` order >= `QuestDef.requiredRealmOrder`), prerequisite quest, CAS guards (`where {id, status: OLD}`), fail-soft `track()` hook from `CombatService` kill events. PR-2 merged. |
+| **Story chapter tracking** | **Done** ✅ | `Character.storyChapter` Int field bumped khi main quest `COMPLETED` (chapter index = `realmOrder + 1`). PR-2 merged. |
 | **Reward claim** (`QuestService.claim`) | **Missing** | Đi qua `CurrencyService` / `ItemService` + `RewardLedger` + idempotency key `(characterId, QUEST_CLAIM, questKey)`. KHÔNG xây ledger riêng. Phase 12 PR-3. |
 | **Quest UI** (`QuestView.vue` + Pinia store) | **Missing** | List + filter (main/realm/sect/npc/grind) + loading/empty/error + i18n vi/en. Tuân UI MODULE RULE. Phase 12 PR-5. |
 | **NPC dialogue UI** (`NpcDialogueModal.vue`) | **Missing** | Branch text + choice button + portrait. Server endpoint `GET /npc/:id/dialogue` filter branch theo realm + quest_status. Phase 12 PR-4. |
@@ -105,15 +106,15 @@ Tách nhỏ, mỗi PR là 1 layer. Tuân BATCHING RULE + UI MODULE RULE.
 - §3-§5 progress tracker updated (chapters / NPCs / chains).
 - Tham khảo [`../CONTENT_PIPELINE.md`](../CONTENT_PIPELINE.md) cho naming + i18n parity (i18n parity sẽ wire ở PR-4 dialogue UI).
 
-### PR-2 — Quest runtime persistence (Medium, BE)
+### PR-2 — Quest runtime persistence — **CLOSED** ✅ (2026-05-05)
 
-- Prisma migration: `QuestProgress` (unique `(characterId, questId)`, status enum).
-- Prisma migration: `Character.storyChapter` field hoặc `CharacterFlag` (audit schema trước).
-- Service: `QuestService.list` (theo character) / `accept` / `progress` / `complete`. Server-authoritative validation: realm gate, prerequisite, faction.
-- Controller + REST API (xem [`../API.md`](../API.md) cập nhật).
-- Unit test + smoke script (`pnpm smoke:quest`).
-- KHÔNG claim reward yet (PR-3).
-- Update progress tracker.
+- Prisma migration `20260520000000_phase_12_pr2_quest_runtime`: `QuestProgress` model (unique `(characterId, questKey)`, status enum `LOCKED/AVAILABLE/ACCEPTED/COMPLETED/CLAIMED`, JSON `stepProgress`, timestamps) + `Character.storyChapter` Int field.
+- Service `apps/api/src/modules/quest/quest.service.ts`: `list()` lazy-create AVAILABLE rows, `accept()` realm gate + prereq + CAS guard, `progress()` dispatch step kind `talk/explore/choice` với auto-COMPLETED, `track()` fail-soft hook cho `kill/collect` step kind. CAS pattern `where {id, status: OLD_STATUS}` ngăn double-mutation.
+- Controller `quest.controller.ts`: `GET /quests/me`, `POST /quests/accept`, `POST /quests/progress`. Zod validators + error mapping (404/403/409).
+- `CombatService` wire fail-soft `quests?.track(char.id, 'kill', 'monster', monster.key, 1)` tại 2 kill hook (lính-monster + boss).
+- 41 test (`quest.service.test.ts` 22 + `quest.controller.test.ts` 19) covering realm gate / prereq lock / CAS guard / step dispatch / `storyChapter` bump.
+- Smoke `scripts/smoke-quest.mjs` 16/16 step (auth gate × 3, zod 400 × 2, NO_CHARACTER, post-onboard list, QUEST_UNKNOWN, QUEST_LOCKED_REALM, QUEST_LOCKED_PREREQUISITE, ACCEPTED, CAS double-accept QUEST_NOT_AVAILABLE, QUEST_STEP_UNKNOWN, QUEST_STEP_KIND_MISMATCH).
+- KHÔNG claim reward (PR-3) ✅.
 
 ### PR-3 — Quest claim / reward idempotency (Small, BE)
 

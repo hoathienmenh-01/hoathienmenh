@@ -236,6 +236,14 @@ model Character {
   /// (admin endpoint) — KHÔNG cho player tự cộng (anti-FE-self-grant).
   bonusTalentPoints Int @default(0)
 
+  /// Phase 12 Story PR-2 — server-authoritative story chapter cursor.
+  /// Tăng monotonic khi player complete main storyline gate quest
+  /// (`phamnhan_main_01` → `luyenkhi_main_01` → `truc_co_main_01` → …).
+  /// Default 0 = chưa bắt đầu Hoa Thiên Tuyển Đồ. Mutate ONLY qua
+  /// `QuestService` (KHÔNG admin endpoint, KHÔNG FE self-grant). Phase 12
+  /// PR-5 sẽ wire main storyline UI gate dựa trên field này.
+  storyChapter Int @default(0)
+
   sectId String?
   sect   Sect?   @relation(fields: [sectId], references: [id])
 
@@ -243,6 +251,7 @@ model Character {
   ledger                  CurrencyLedger[]
   itemLedger              ItemLedger[]
   missionProgress         MissionProgress[]
+  questProgress           QuestProgress[]
   mails                   Mail[]
   dailyLoginClaims        DailyLoginClaim[]
   spiritualRootRollLogs   SpiritualRootRollLog[]
@@ -642,6 +651,46 @@ model MissionProgress {
   @@unique([characterId, missionKey])
   @@index([characterId, claimed])
   @@index([period, windowEnd])
+}
+
+/// Phase 12 Story PR-2 — quest runtime persistence.
+///
+/// Catalog (`packages/shared/src/quests.ts`) là static; mỗi character có
+/// max 1 row per `questKey`. Status flow:
+///   - LOCKED       — `Character.realmStage` chưa đủ `requiredRealmOrder`
+///                    hoặc prerequisite quest chưa CLAIMED. Hidden khỏi UI list.
+///   - AVAILABLE    — đã thoả gate, sẵn sàng nhận. Lazy-create on `list`.
+///   - ACCEPTED     — player đã accept; track step progress.
+///   - COMPLETED    — tất cả step đạt `count`. Chờ Phase 12 PR-3 `claim`.
+///   - CLAIMED      — Phase 12 PR-3 sẽ set sau khi reward đi qua
+///                    `RewardLedger` idempotency `(characterId, QUEST_CLAIM, questKey)`.
+///
+/// `stepProgress` là JSON map `{ <stepId>: <currentCount> }` — server-authoritative,
+/// FE KHÔNG được tự cộng. Service chỉ cộng qua `progress()` (talk/explore/choice
+/// endpoint) hoặc `track()` (kill/collect hook từ CombatService/InventoryService).
+///
+/// Idempotency: `accept` dùng `where { id, status: AVAILABLE }` CAS guard chống
+/// double-accept; `progress` step kind kill dùng atomic `updateMany` với
+/// `currentAmount` guard chống concurrent kill increment double-count.
+model QuestProgress {
+  id           String    @id @default(cuid())
+  characterId  String
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  questKey     String
+  /// LOCKED | AVAILABLE | ACCEPTED | COMPLETED | CLAIMED.
+  status       String    @default("AVAILABLE")
+  /// Map `{ <stepId>: <currentCount> }`. Default `{}`. Khi `status='ACCEPTED'`
+  /// mọi step bắt đầu ở 0; service tự cộng tới `step.count` rồi chuyển COMPLETED.
+  stepProgress Json      @default("{}")
+  acceptedAt   DateTime?
+  completedAt  DateTime?
+  claimedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([characterId, questKey])
+  @@index([characterId, status])
+  @@index([status, completedAt])
 }
 
 model Mail {

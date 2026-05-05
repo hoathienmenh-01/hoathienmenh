@@ -33,6 +33,7 @@
     "smoke:market": "node scripts/smoke-market.mjs",
     "smoke:mission": "node scripts/smoke-mission.mjs",
     "smoke:next-action": "node scripts/smoke-next-action.mjs",
+    "smoke:quest": "node scripts/smoke-quest.mjs",
     "smoke:sect": "node scripts/smoke-sect.mjs",
     "smoke:shop": "node scripts/smoke-shop.mjs",
     "smoke:skill": "node scripts/smoke-skill.mjs",

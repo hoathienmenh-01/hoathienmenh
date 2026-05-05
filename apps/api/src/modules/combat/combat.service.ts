@@ -46,6 +46,7 @@ import { TitleService } from '../character/title.service';
 import { methodStatBonusFor } from '../character/cultivation-method.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { MissionService } from '../mission/mission.service';
+import { QuestService } from '../quest/quest.service';
 import { composePassiveTalentMods, type PassiveTalentMods } from '@xuantoi/shared';
 import { composeBuffMods, type BuffMods } from '@xuantoi/shared';
 import { composeTitleMods, type TitleMods } from '@xuantoi/shared';
@@ -177,6 +178,7 @@ export class CombatService {
     @Optional() private readonly talents?: TalentService,
     @Optional() private readonly buffs?: BuffService,
     @Optional() private readonly titles?: TitleService,
+    @Optional() private readonly quests?: QuestService,
   ) {}
 
   listDungeons() {
@@ -709,6 +711,10 @@ export class CombatService {
         if (this.achievements) {
           await this.achievements.trackEvent(char.id, 'KILL_MONSTER', 1);
         }
+        // Phase 12 Story PR-2 — quest kill step tracking, fail-soft.
+        if (this.quests) {
+          await this.quests.track(char.id, 'kill', 'monster', monster.key, 1);
+        }
       }
       if (nextStatus === EncounterStatus.WON) {
         await this.missions.track(char.id, 'CLEAR_DUNGEON', 1);
@@ -1114,6 +1120,10 @@ export class CombatService {
         await this.missions.track(char.id, 'KILL_MONSTER', 1);
         if (this.achievements) {
           await this.achievements.trackEvent(char.id, 'KILL_MONSTER', 1);
+        }
+        // Phase 12 Story PR-2 — quest kill step tracking, fail-soft.
+        if (this.quests) {
+          await this.quests.track(char.id, 'kill', 'monster', monster.key, 1);
         }
       }
       if (nextStatus === EncounterStatus.WON) {
