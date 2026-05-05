@@ -4,6 +4,43 @@
 
 ---
 
+## Always read first (mỗi session)
+
+3 file **bắt buộc đọc** khi bắt đầu phiên làm việc mới — đủ context cho hầu hết task:
+
+1. [`docs/START_HERE.md`](./START_HERE.md) ← **bạn đang ở đây** — bản đồ điều hướng docs.
+2. [`docs/AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) — Fast but Safe Delivery Mode + 8 luật delivery (UI Module / Docs Update / Handoff Structure / Test Fast Path / Batching / Safety Correction / Speed Target / Next Task Auto-Selection).
+3. [`docs/AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md) — snapshot trạng thái live (≤ **250 dòng**): Executive Summary + Recent Changes 10 PR + Phase Status + Known Issues + Tests/CI/Smoke + Recommended Next Roadmap. **Đầu file = mới nhất.**
+
+## Do not read every session
+
+Đọc CHỈ KHI cần tra cứu lịch sử / lore chi tiết — KHÔNG load mỗi session vì tốn token/quota:
+
+- [`docs/ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md) — lịch sử PR cũ (#33→#396), Completed Features snapshot, Project Reference đầy đủ (Tech Stack / Architecture / DB / Gameplay / Run Locally / Rules), Phase Summary Migrated, Smoke Detail Migrated. Tra cứu khi debug PR cũ hoặc audit history.
+- [`docs/archive/original-docx/`](./archive/original-docx/) — DOCX gốc archive (story bible, design docs). **KHÔNG đọc DOCX gốc mỗi session** — markdown design source ở [`docs/story/`](./story/) đã chứa đủ.
+- [`docs/04_TECH_STACK_VA_DATA_MODEL.md`](./04_TECH_STACK_VA_DATA_MODEL.md) phần Phase 0..8 — historical blueprint, code thật trên `main` ưu tiên hơn (chỉ §P9 cuối là long-term blueprint mới đáng đọc).
+- [`docs/05_KICH_BAN_BUILD_VA_PROMPT_AI.md`](./05_KICH_BAN_BUILD_VA_PROMPT_AI.md) phần Phase 0..8 — historical pointer (chỉ §P9 đáng đọc).
+
+## Read by task type
+
+| Task | Đọc |
+|---|---|
+| **Story / NPC / Quest / Phase 12 Story** | [`docs/story/PHASE12_STORY_PROGRESS.md`](./story/PHASE12_STORY_PROGRESS.md) **trước** (progress source of truth), sau đó [`docs/story/TU_TIEN_LO_STORY_BIBLE.md`](./story/TU_TIEN_LO_STORY_BIBLE.md) nếu cần lore chi tiết (28 cảnh giới, 9 NPC, 27 quest chain). **KHÔNG đọc DOCX gốc.** |
+| **Economy / currency / market / reward / ledger / mail reward / giftcode / topup** | [`docs/ECONOMY_MODEL.md`](./ECONOMY_MODEL.md) — 5 hard invariants + anti-abuse playbook. Vi phạm = data corruption. |
+| **Item / skill / monster / boss / dungeon / mission / quest / event / title / achievement (catalog)** | [`docs/CONTENT_PIPELINE.md`](./CONTENT_PIPELINE.md) + [`docs/BALANCE_MODEL.md`](./BALANCE_MODEL.md) — process step-by-step + naming convention + balance gate + curve + dial registry + decision log. |
+| **Test / smoke / E2E** | [`docs/QA_CHECKLIST.md`](./QA_CHECKLIST.md) — test scope + smoke pattern + E2E gate. Smoke detail per module → [`docs/ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md) § Smoke Detail. |
+| **Beta readiness** | [`docs/BETA_CHECKLIST.md`](./BETA_CHECKLIST.md) — checklist Phase 9.A→9.E sub-phases. |
+| **Live ops / event / admin / feature flag / maintenance** | [`docs/LIVE_OPS_MODEL.md`](./LIVE_OPS_MODEL.md) + [`docs/ADMIN_GUIDE.md`](./ADMIN_GUIDE.md) — EventConfig/Announcement/MaintenanceWindow/FeatureFlag/ConfigVersion lifecycle + permission matrix + admin panel. |
+| **Roadmap / phase planning / dependency rule** | [`docs/LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) — Phase 9 → 17 với DO-NOT-BUILD-YET list. |
+| **Game design / vision / core loop / 13 system** | [`docs/GAME_DESIGN_BIBLE.md`](./GAME_DESIGN_BIBLE.md) — vision + core loop + 13 system + product principles. |
+| **Run/setup local** | [`docs/RUN_LOCAL.md`](./RUN_LOCAL.md) + [`docs/SEEDING.md`](./SEEDING.md) + [`docs/TROUBLESHOOTING.md`](./TROUBLESHOOTING.md). |
+| **Deploy / release / security** | [`docs/DEPLOY.md`](./DEPLOY.md) + [`docs/RELEASE_NOTES.md`](./RELEASE_NOTES.md) + [`docs/SECURITY.md`](./SECURITY.md) + [`docs/BACKUP_RESTORE.md`](./BACKUP_RESTORE.md). |
+| **API endpoint reference (REST + WS)** | [`docs/API.md`](./API.md). |
+
+> §1 Decision Table bên dưới là phiên bản chi tiết của bảng này (cộng thêm column "Vì sao đọc"). Nếu chỉ cần routing nhanh thì đọc bảng trên là đủ.
+
+---
+
 ## 0. NGUYÊN TẮC NGUỒN SỰ THẬT (MUST READ)
 
 > **Fast but Safe Delivery Mode** — AI/dev mới phải tuân thủ [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) (8 luật: UI Module / Docs Update / Handoff Structure / Test Fast Path / Batching / Safety Correction / Speed Target / Next Task Auto-Selection). Mục tiêu: làm nhanh hơn nhưng vẫn đúng — KHÔNG ép minimum 100 dòng diff, KHÔNG fake green, KHÔNG tắt CI.
@@ -181,6 +218,7 @@ Còn lại đọc khi cần.
 
 ## 6. CHANGELOG
 
+- **2026-05-05 (PR docs(ai): compact handoff and add task-based docs navigation)** — Compact `AI_HANDOFF_REPORT.md` từ 217 dòng xuống ~160 dòng (cap mới ≤ 250 dòng theo HANDOFF REPORT STRUCTURE RULE). Migrate phase summary table (PR #33→#396) + smoke detail per-module table sang [`ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md) § Phase Summary Migrated 2026-05-05 + § Smoke Detail Migrated 2026-05-05. ARCHIVE header chuẩn hoá (`Archive — AI Handoff Report History` + note bắt buộc). Thêm 3 section đầu file `START_HERE.md`: **Always read first** (3 file), **Do not read every session** (ARCHIVE + DOCX + 04/05 historical), **Read by task type** (10-row task → docs map). Thêm rule trong [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md): cap 250 dòng cho `AI_HANDOFF_REPORT.md` + Docs-Only PR Exception clause (chỉ mở docs-only PR khi handoff lệch nặng / file vượt cap / dọn trạng thái đầu session / setup bộ docs mới). Runtime impact: NONE (no Prisma, no runtime code, no test changes). Author: Devin AI session 5/5.
 - **2026-05-05 (PR docs(story): add Tu Tien Lo story bible)** — Thêm [`story/TU_TIEN_LO_STORY_BIBLE.md`](./story/TU_TIEN_LO_STORY_BIBLE.md) (markdown chuyển hoá từ DOCX) + [`story/PHASE12_STORY_PROGRESS.md`](./story/PHASE12_STORY_PROGRESS.md) (progress tracker) + archive [`archive/original-docx/TuTienLo_Story_Bible.docx`](./archive/original-docx/TuTienLo_Story_Bible.docx). Cập nhật §1 decision table (thêm dòng story/NPC/quest), §3.2.1 (entry story docs), §4 DO/DON'T. Rule mới: task Phase 12 Story đọc progress tracker trước, không đọc DOCX gốc mỗi session. Runtime story/quest/NPC chưa implemented.
 - **2026-05-05 (PR docs(handoff): split archive)** — Tách `## 7. Archive` của `AI_HANDOFF_REPORT.md` thành file riêng [`ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md) (~4900 dòng lịch sử PR #33→#396 + Project Reference). `AI_HANDOFF_REPORT.md` còn ~200 dòng (Executive Summary + 5 section live). Cập nhật §2.1 (note chỉ đọc Executive Summary) + §3.2 (thêm entry ARCHIVE_HANDOFF.md). Lý do: AI session tiêu tốn ít token/quota hơn khi đọc context handoff. Author: Devin AI session 5/5.
 - **2026-05-03 (PR Fast-but-Safe Delivery Mode)** — Mở rộng `AI_WORKFLOW_RULES.md` thành 8 luật: UI Module Rule (giữ), Docs Update Rule, Handoff Report Structure Rule, Test Fast Path Rule, Batching Rule, Safety Correction Rule, Speed Target, Next Task Auto-Selection. Cập nhật §0 (Fast-but-Safe banner), §1 decision table, §2.1 + §2.2 role guides, §3.1 docs map, §5 TL;DR.

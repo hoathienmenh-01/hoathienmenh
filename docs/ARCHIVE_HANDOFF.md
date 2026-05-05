@@ -1,8 +1,8 @@
-# AI Handoff Archive — Xuân Tôi
+# Archive — AI Handoff Report History
 
-> **File này chứa lịch sử PR cũ. AI KHÔNG cần đọc file này mỗi session — chỉ tra cứu khi cần.**
+> File này chứa lịch sử PR cũ. AI KHÔNG cần đọc file này mỗi session — chỉ tra cứu khi cần điều tra PR/history cụ thể.
 >
-> **Mục đích**: Giữ toàn bộ thông tin lịch sử (Snapshots PR #33→#396, Recent Changes Legacy, Completed Features, Project Reference đầy đủ Tech Stack / Architecture / Database / Gameplay Flows / Realtime / Economy / Seed / i18n / How To Run Locally / How To Promote Admin / Rules For The Next AI / Appendices, Old Recommended Next Roadmap, Exact PR Plan) tách khỏi `AI_HANDOFF_REPORT.md` để file live (~30 dòng Executive Summary + 5 section live) đọc nhanh hơn, AI session tiêu tốn ít token/quota hơn.
+> **Mục đích**: Giữ toàn bộ thông tin lịch sử (Snapshots PR #33→#396, Recent Changes Legacy, Completed Features, Project Reference đầy đủ Tech Stack / Architecture / Database / Gameplay Flows / Realtime / Economy / Seed / i18n / How To Run Locally / How To Promote Admin / Rules For The Next AI / Appendices, Old Recommended Next Roadmap, Exact PR Plan, Phase Summary Migrated 2026-05-05, Smoke Detail Migrated 2026-05-05) tách khỏi `AI_HANDOFF_REPORT.md` để file live (≤ 250 dòng) đọc nhanh hơn, AI session tiêu tốn ít token/quota hơn.
 >
 > **Khi nào đọc file này**: chỉ khi cần tra cứu chi tiết một PR cụ thể (#33→#396), kiểm tra historical phase context, hoặc audit cleanup. Mặc định AI mới chỉ cần đọc Executive Summary của `AI_HANDOFF_REPORT.md` là đủ context.
 >
@@ -4938,4 +4938,62 @@ pnpm build
 ---
 
 _Kết thúc báo cáo. Chúc AI kế nhiệm may mắn — hãy giữ nguyên tinh thần đạo hữu (hoathienmenh-01): thà chậm mà chắc, CI phải xanh, tiền phải ghi ledger, và đừng bao giờ push thẳng `main`._
+
+
+---
+
+## Phase Summary Migrated 2026-05-05
+
+> Nội dung dưới đây migrated từ `AI_HANDOFF_REPORT.md` § 2.1 ngày 2026-05-05 (PR `docs(ai): compact handoff and add task-based docs navigation`). Lý do: bảng phase summary là historical, không thay đổi mỗi PR — đẩy về archive để giữ `AI_HANDOFF_REPORT.md` ≤ 250 dòng.
+
+### PR #33 → #396 — tóm tắt theo phase
+
+Mỗi phase 2-3 dòng tổng kết. Detail PR-by-PR ở § Recent Changes Legacy / § Snapshots bên trên.
+
+| Phase | PR range (~) | # PR | Tóm tắt |
+|---|---|---|---|
+| **0–8** Foundation | #1 → #32 | ~32 | Schema + auth + core gameplay: cultivation, combat, inventory, market, sect, chat, boss, admin, topup, giftcode, mail, mission, ledger, idempotency. **Done.** Full feature catalog ở § Completed Features (snapshot main @ 81706a9). |
+| **9** Beta readiness | #33 → ~#220 | ~120 | Closed-beta polish (Phase 9.A→9.E sub-phases): smoke E2E expand 16 spec golden path, admin economy alerts thresholds, audit-ledger CLI `--json` flag, password reset email service, daily-login + giftcode race tests, web vitest UI atoms (MButton/MToast/SkeletonBlock), i18n parity, Settings logout-all M9 trade-off, profile rate-limiter PROFILE_RATE_LIMITER, MOD vs ADMIN guard split, +50 issues resolved (M6/M8/M9/M11 etc). **11/15 Done, 3 Partial** (cultivation breakthrough end-to-end, mission claim flow, mail UI — mail closed by PR #391). |
+| **10** Content scale | ~#220 → ~#310 | ~50 | Boss tier 2/3 + dungeon expand + market matchmaking + economy stress + admin batch ops. **5/5 CLOSED.** All sub-tracks merged. |
+| **11** Progression Depth | ~#310 → ~#370 | ~60 | Cultivation method / talent / spiritual root / skill mastery / tribulation / refine / achievement / alchemy / pets / cosmetics / titles. **catalog 11/11 + runtime 10/10 + UI tracks merged.** Phase 11.X UI E2E **UNGATED** post PR #389 admin seed harness extension. |
+| **11.X** Smoke HTTP coverage | #371 → #385 | ~14 | 14 smoke HTTP scripts gameplay modules: auth, sect, market, achievement, mission, giftcode, mail, leaderboard, next-action, daily-login, skill, cultivation-method, spiritual-root, breakthrough, topup, cultivation, shop. Mỗi script ~13-17 step, deterministic 2 lần liên tiếp. **Done.** |
+| **11.X** Smoke positive-path batch | #385 → #396 | ~12 | smoke positive-path qua admin seed harness (PR #383 grant-exp/grant-item/grant-spiritual-root + PR #389 grant-talent-point/set-realm/grant-currency + PR #395 grant-method + PR #396 seedDailyLoginStreak): inventory, skill book learn, spiritual-root reroll, skill upgrade-mastery, shop buy, mail claim, cultivation-method switch, daily-login multi-day. **Done.** |
+| **11 nâng cao** §2/§3/§5/§6 + 11.6.C/D/E + 11.1.E | #398 → #420 | ~22 | §6 Balance dial (#398), §3 Elemental Combat MVP (#399), §2 Skill Ngũ Hành expansion (#400), §5 PR1/PR2/PR3 Tâm Ma debuff + Breakthrough log + UI (#413→#420), Phase 11.6.C/D/E elemental resist wire (#401/#409/#411/#412), Phase 11.1.E Cultivation Method element affinity wire (#405 BE + #408 FE badge). **All CLOSED.** |
+| **12** World Map & Dungeon | #397 + #421 | ~2 | 12.1 catalog CLOSED (#397). 12.2.A `DungeonDef.dailyLimit` enforcement CLOSED (#421). 12.2.B DungeonTemplate runtime is next. |
+
+---
+
+## Smoke Detail Migrated 2026-05-05
+
+> Nội dung dưới đây migrated từ `AI_HANDOFF_REPORT.md` § 5 Smoke Scripts table ngày 2026-05-05 (cùng PR `docs(ai): compact handoff`). Lý do: bảng 25-row per-module smoke detail không thay đổi mỗi PR feature — đẩy về archive để giữ handoff live ngắn.
+
+### Per-module smoke step count + endpoint coverage
+
+| Module | Script | Step count | Negative | Positive | Notes |
+|---|---|---|---|---|---|
+| achievement | `smoke:achievement` | ~12 | ✅ | ⚠️ partial | claim flow positive defer (cần admin grant achievement progress) |
+| admin | `smoke:admin` | ~32 (5 entry) | ✅ | ✅ | full admin surface (role/ban/topup/inventory/mail-broadcast/users-csv/economy-audit) |
+| auth | `smoke:auth` | 9 | ✅ | ✅ | PR #384 |
+| beta | `smoke:beta` | ~10 | ✅ | — | beta gating endpoints |
+| boss | `smoke:boss` | ~14 | ✅ | ⚠️ partial | boss attack positive defer (cần spawn admin) |
+| **breakthrough** | `smoke:breakthrough` | **19** | ✅ | ✅ | already DONE positive (commit 1c1dcd2: admin grant-exp 200000 → realm auto-advance stage=9 + exp >= cost(9)=23613 → POST /character/breakthrough → 200 ok advance luyenkhi → truc_co stage=1 + exp deducted) |
+| chat | `smoke:chat` | ~12 | ✅ | ✅ | world/sect chat with rate limit verify |
+| **combat** | `smoke:combat` | **~17** | ✅ | ✅ partial | encounter positive defer (cần grant-item dungeon key hoặc unlock). +3 step `cuu_la_dien` daily limit gate (Phase 12.2.A PR #421): start → abandon → start lần 2 → 409 DUNGEON_DAILY_LIMIT_REACHED. |
+| **cultivation-method** | `smoke:cultivation-method` | **19** | ✅ | ✅ | PR #394 positive (admin set-realm truc_co + grant-spiritual-root than/kim + grant-method cuu_cuc_kim_cuong_quyet → player equip + switch back to starter, idempotent grant-method P2002 catch) |
+| cultivation | `smoke:cultivation` | ~14 | ✅ | ✅ | toggle on/off + 30s tick verify |
+| **daily-login** | `smoke:daily-login` | **26** | ✅ | ✅ | positive (admin seedDailyLoginStreak days=6 → audit verify + idempotent → player /me streak=6 → POST /claim newStreak=7 delta=100 → linhThach='100' anti-FE-grant) |
+| economy | `smoke:economy` | ~14 | ✅ | ✅ | admin audit filter (PR #382) |
+| giftcode | `smoke:giftcode` | ~14 | ✅ | ✅ | redeem flow + admin create/revoke |
+| inventory | `smoke:inventory` | ~22 | ✅ | ✅ | PR #385 use/equip/unequip via admin grant-item |
+| leaderboard | `smoke:leaderboard` | ~10 | ✅ | ✅ | top-50 by realm + power |
+| **mail** | `smoke:mail` | **26** | ✅ | ✅ | PR #391 positive (admin send 150 LT + huyet_chi_dan x2 → claim → ledger MAIL_CLAIM + ALREADY_CLAIMED retry) |
+| market | `smoke:market` | ~14 | ✅ | ✅ | post/buy/cancel + 5% fee |
+| mission | `smoke:mission` | ~14 | ✅ | ✅ | track/claim flow |
+| next-action | `smoke:next-action` | ~8 | ✅ | ✅ | derived suggestions verify |
+| sect | `smoke:sect` | ~12 | ✅ | ✅ | join/leave/contribute |
+| **shop** | `smoke:shop` | **21** | ✅ | ✅ | PR #390 positive (admin grant 25 LT → buy huyet_chi_dan qty=1 + ledger SHOP_BUY) |
+| **skill** | `smoke:skill` | **33** | ✅ | ✅ | PR #388 book learn + PR #390 upgrade-mastery (200 LT → kim_quang_tram L1→L2 + INSUFFICIENT_FUNDS rollback) |
+| spiritual-root | `smoke:spiritual-root` | 24 | ✅ | ✅ | PR #386 reroll positive (admin grant linh_can_dan x2) |
+| topup | `smoke:topup` | ~14 | ✅ | ✅ | createOrder + admin approve/reject |
+| ws | `smoke:ws` | ~6 | ✅ | ✅ | WS auth + emit verify |
 
