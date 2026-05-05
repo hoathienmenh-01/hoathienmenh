@@ -38,6 +38,7 @@
     "smoke:skill": "node scripts/smoke-skill.mjs",
     "smoke:spiritual-root": "node scripts/smoke-spiritual-root.mjs",
     "smoke:topup": "node scripts/smoke-topup.mjs",
+    "smoke:tribulation": "node scripts/smoke-tribulation.mjs",
     "smoke:ws": "node scripts/smoke-ws.mjs"
   },
   "engines": {
