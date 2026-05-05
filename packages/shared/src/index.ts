@@ -23,3 +23,6 @@ export * from './shop';
 export * from './map-regions';
 export * from './balance-dials';
 export * from './breakthrough-chance';
+export * from './npcs';
+export * from './quests';
+export * from './dialogues';

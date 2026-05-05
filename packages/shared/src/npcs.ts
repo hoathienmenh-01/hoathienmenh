@@ -1,0 +1,143 @@
+/**
+ * NPC catalog — Phase 12 PR-1 (Story / NPC / Quest catalog foundation).
+ *
+ * Static catalog: KHÔNG lưu DB, KHÔNG runtime persistence ở PR này.
+ * Phase 12 PR-2 sẽ thêm `Character.storyChapter` + Prisma migration cho runtime.
+ * Phase 12 PR-4 sẽ thêm `NpcDialogueModal.vue` UI consumer + `GET /npc/:id/dialogue` endpoint.
+ *
+ * Source design: `docs/story/TU_TIEN_LO_STORY_BIBLE.md` §6 Dàn NPC trụ cột.
+ * Progress tracker: `docs/story/PHASE12_STORY_PROGRESS.md` §4 Implemented NPCs.
+ *
+ * Naming convention: `npc_<snake_case_name>`. Match story bible names; KHÔNG đổi sau khi merge
+ * (sẽ break runtime quest progress nếu Phase 12 PR-2 đã go-live).
+ *
+ * 9 NPC trụ cột tổng cộng trong story bible — PR này chỉ catalog 4 NPC unlock ở 3 cảnh giới đầu
+ * (Phàm Nhân + Luyện Khí + Trúc Cơ). 5 NPC còn lại (Huyết La Sát, Vạn Kim Nương, Bạch Đế Tử,
+ * Hoa Thiên Đạo Tổ, Tịch Thiên Đạo Chủ) sẽ thêm khi cảnh giới tương ứng được code.
+ */
+
+/**
+ * Faction map — 6 thế lực core trong story bible §5 + `wandering` cho NPC độc lập.
+ * Tịch Thiên Điện là phản diện chính (player KHÔNG join được trong gameplay PR này).
+ */
+export type NpcFaction =
+  | 'hoa_thien_mon'
+  | 'tich_thien_dien'
+  | 'huyen_kiem_tong'
+  | 'van_bao_thuong_hoi'
+  | 'huyet_ha_ma_tong'
+  | 'tien_dinh_bach_de'
+  | 'wandering';
+
+export interface NpcDef {
+  /** Unique key. Format `npc_<snake_case>`. */
+  key: string;
+  /** Display name (Vietnamese). */
+  name: string;
+  /** Tông môn / phe phái. `null` = NPC độc lập / chưa lộ phe. */
+  faction: NpcFaction | null;
+  /**
+   * Realm order tối thiểu để NPC này xuất hiện với player.
+   * Tham chiếu `REALMS[].order` trong `realms.ts`. Player với realm < này KHÔNG thấy NPC.
+   * Phase 12 PR-4 UI sẽ filter theo realmGateOrder vs character.realmOrder.
+   */
+  realmGateOrder: number;
+  /** Default dialogue id khi player click NPC lần đầu. Phải tồn tại trong `dialogues.ts`. */
+  defaultDialogueId: string;
+  /**
+   * Quest keys NPC này giao. Tham chiếu `QUESTS[].key` trong `quests.ts`.
+   * NPC có thể giao 0 quest (npc thông tin / merchant placeholder) hoặc nhiều quest.
+   */
+  questKeys: readonly string[];
+  /** Mô tả ngắn cho UI portrait + lore tooltip. */
+  description: string;
+  /** Tóm tắt lore — link tới story bible section. KHÔNG phải runtime gameplay text. */
+  loreSummary: string;
+}
+
+/**
+ * 4 NPC trụ cột unlock ở 3 cảnh giới đầu.
+ *
+ * - **Lăng Vân Sinh** (chưởng môn Hoa Thiên Môn): main quest giver từ Phàm Nhân → Trúc Cơ.
+ * - **Mộc Thanh Y** (đại sư tỷ): tutorial / sect / grind quest. Bị Tịch Linh Chủng ăn mòn — cần cứu ở Trúc Cơ.
+ * - **Hàn Dạ** (Huyền Kiếm Tông rival): unlock từ Luyện Khí. Lựa chọn bạn / đối thủ / kẻ thù.
+ * - **Tô Nguyệt Ly** (hậu nhân Hoa Thiên lưu đày): unlock từ Trúc Cơ. Hidden quest về truyền thừa bị xoá.
+ */
+export const NPCS: readonly NpcDef[] = [
+  {
+    key: 'npc_lang_van_sinh',
+    name: 'Lăng Vân Sinh',
+    faction: 'hoa_thien_mon',
+    realmGateOrder: 0, // Phàm Nhân
+    defaultDialogueId: 'dlg_lang_van_sinh_default',
+    questKeys: [
+      'phamnhan_main_01',
+      'phamnhan_realm_01',
+      'luyenkhi_main_01',
+      'truc_co_main_01',
+      'truc_co_realm_01',
+      'truc_co_sect_01',
+    ],
+    description: 'Chưởng môn Hoa Thiên Môn. Hiền hậu, nghèo, thâm sâu.',
+    loreSummary:
+      'Người giữ mảnh truyền thừa cuối cùng của Hoa Thiên. Sẵn sàng hy sinh để mở Hoa Thiên Sơn. Story bible §6.',
+  },
+  {
+    key: 'npc_moc_thanh_y',
+    name: 'Mộc Thanh Y',
+    faction: 'hoa_thien_mon',
+    realmGateOrder: 0, // Phàm Nhân
+    defaultDialogueId: 'dlg_moc_thanh_y_default',
+    questKeys: [
+      'phamnhan_sect_01',
+      'phamnhan_grind_01',
+      'phamnhan_npc_01',
+      'luyenkhi_realm_01',
+      'luyenkhi_sect_01',
+      'luyenkhi_grind_01',
+      'truc_co_grind_01',
+    ],
+    description: 'Đại sư tỷ Hoa Thiên Môn. Nghiêm khắc, ấm áp. Mộc hệ + alchemy.',
+    loreSummary:
+      'Bị Tịch Linh Chủng ăn mòn từ Trúc Cơ trở đi — main story sẽ cần player cứu. Story bible §6.',
+  },
+  {
+    key: 'npc_han_da',
+    name: 'Hàn Dạ',
+    faction: 'huyen_kiem_tong',
+    realmGateOrder: 1, // Luyện Khí
+    defaultDialogueId: 'dlg_han_da_default',
+    questKeys: ['luyenkhi_npc_01'],
+    description: 'Đệ tử Huyền Kiếm Tông. Lạnh, kiêu ngạo, trọng danh dự.',
+    loreSummary:
+      'Rival kiếm tu — có thể là bạn / đối thủ / kẻ thù tuỳ lựa chọn moral của player. Arena, duel, sword quests. Story bible §6.',
+  },
+  {
+    key: 'npc_to_nguyet_ly',
+    name: 'Tô Nguyệt Ly',
+    faction: null, // Hậu nhân Hoa Thiên lưu đày — phe ẩn
+    realmGateOrder: 2, // Trúc Cơ
+    defaultDialogueId: 'dlg_to_nguyet_ly_default',
+    questKeys: ['truc_co_npc_01'],
+    description: 'Hậu nhân nhánh Hoa Thiên lưu đày. Bí ẩn, thông minh.',
+    loreSummary:
+      'Biết vị trí truyền thừa Hoa Thiên đã bị xoá khỏi lịch sử. Hidden quest, ancient relics. Story bible §6.',
+  },
+] as const;
+
+export function npcByKey(key: string): NpcDef | undefined {
+  return NPCS.find((n) => n.key === key);
+}
+
+export function npcsByFaction(faction: NpcFaction): NpcDef[] {
+  return NPCS.filter((n) => n.faction === faction);
+}
+
+/**
+ * Trả về danh sách NPC available với character đang ở realm order `realmOrder`.
+ * Server-authoritative gate — tất cả NPC có `realmGateOrder <= realmOrder`.
+ * Phase 12 PR-2 / PR-4 sẽ dùng để filter NPC list cho UI.
+ */
+export function npcsAvailableAtRealm(realmOrder: number): NpcDef[] {
+  return NPCS.filter((n) => n.realmGateOrder <= realmOrder);
+}

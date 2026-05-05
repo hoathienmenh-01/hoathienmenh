@@ -18,20 +18,27 @@ Khi story design conflict với code, ưu tiên: code trên `main` > [`../AI_HAN
 
 ## 2. Current status
 
-**Not implemented yet.** Phase 12 Story/NPC/Quest runtime = 0%.
+**Catalog foundation DONE.** Phase 12 Story/NPC/Quest runtime = 0% (vẫn chưa wire DB).
 
 Hiện tại Phase 12 đã có:
 - **Phase 12.1** (catalog `MapDef` / `EncounterDef` / `DungeonDef`) — CLOSED ✅ (PR #397).
 - **Phase 12.2.A** (`DungeonDef.dailyLimit` server-side enforcement) — CLOSED ✅ (PR #421).
 - **Phase 12.2.B** (`DungeonTemplate` + `DungeonRun` multi-encounter runtime) — open (Prisma migration risk; xem [`../AI_HANDOFF_REPORT.md`](../AI_HANDOFF_REPORT.md) §1 immediate next task).
+- **Phase 12 Story PR-1** (Story / NPC / Quest catalog foundation) — CLOSED ✅ (PR docs(story+catalog): Phase 12 PR-1 Story/NPC/Quest catalog foundation).
 
-**Story / NPC / Quest catalog**: chưa bắt đầu.
+**Story / NPC / Quest catalog**: 4 NPC + 15 quest + 6 dialogue line (3 cảnh giới đầu Phàm Nhân + Luyện Khí + Trúc Cơ). Runtime persistence chưa có — Phase 12 PR-2 sẽ thêm `QuestProgress` Prisma migration.
 
 ## 3. Implemented chapters
 
 > Format: `<#> <realm_code>` — main quest + bao nhiêu side quest đã code, NPC giao quest, ngày + PR merge.
 
-**none.**
+| # | Realm code | Main quest | Side quest catalog | Side quest runtime | NPC giao | Ngày | PR |
+|---|---|---|---|---|---|---|---|
+| 0 | `phamnhan` | `phamnhan_main_01` Hoa Thiên Tuyển Đồ | 4/4 (realm/sect/grind/npc) | 0/4 | Lăng Vân Sinh, Mộc Thanh Y | 2026-05-05 | PR-1 |
+| 1 | `luyenkhi` | `luyenkhi_main_01` Linh Khí Nhập Thể | 4/4 | 0/4 | Lăng Vân Sinh, Mộc Thanh Y, Hàn Dạ | 2026-05-05 | PR-1 |
+| 2 | `truc_co` | `truc_co_main_01` Trúc Đạo Cơ | 4/4 | 0/4 | Lăng Vân Sinh, Mộc Thanh Y, Tô Nguyệt Ly | 2026-05-05 | PR-1 |
+
+**Runtime status**: catalog only ở PR-1 — Phase 12 PR-2 sẽ wire `QuestService.list/accept/progress/complete` với `QuestProgress` Prisma model. Side quest runtime cũng chờ PR-2.
 
 (Chuẩn bị để track 28 cảnh giới Phàm Nhân → Hư Không Chí Tôn — danh sách đầy đủ ở [`./TU_TIEN_LO_STORY_BIBLE.md`](./TU_TIEN_LO_STORY_BIBLE.md) §9.1.)
 
@@ -39,15 +46,31 @@ Hiện tại Phase 12 đã có:
 
 > Format: `NPC name` — faction, dialogue catalog status, quest count, ngày + PR merge.
 
-**none.**
+| NPC | Faction | Realm gate | Dialogue catalog | Dialogue UI | Quest giver count | Ngày | PR |
+|---|---|---|---|---|---|---|---|
+| Lăng Vân Sinh | hoa_thien_mon | 0 (phamnhan) | 2 line (default + truc_co branch) | Missing | 6 quest (3 main + realm + sect chain) | 2026-05-05 | PR-1 |
+| Mộc Thanh Y | hoa_thien_mon | 0 (phamnhan) | 2 line (default + luyen_khi branch) | Missing | 7 quest (sect/grind/npc + realm) | 2026-05-05 | PR-1 |
+| Hàn Dạ | huyen_kiem_tong | 1 (luyenkhi) | 1 line (default rivalry) | Missing | 1 quest (`luyenkhi_npc_01`) | 2026-05-05 | PR-1 |
+| Tô Nguyệt Ly | null (lưu đày) | 2 (truc_co) | 1 line (default hidden) | Missing | 1 quest (`truc_co_npc_01`) | 2026-05-05 | PR-1 |
 
-(Chuẩn bị để track 9 NPC trụ cột — danh sách ở [`./TU_TIEN_LO_STORY_BIBLE.md`](./TU_TIEN_LO_STORY_BIBLE.md) §6: Lăng Vân Sinh, Mộc Thanh Y, Hàn Dạ, Tô Nguyệt Ly, Huyết La Sát, Vạn Kim Nương, Bạch Đế Tử, Hoa Thiên Đạo Tổ, Tịch Thiên Đạo Chủ.)
+**Dialogue UI**: tất cả 4 NPC chờ Phase 12 PR-4 (`NpcDialogueModal.vue` + `GET /npc/:id/dialogue` endpoint).
+
+(Chuẩn bị để track 5 NPC còn lại — Huyết La Sát, Vạn Kim Nương, Bạch Đế Tử, Hoa Thiên Đạo Tổ, Tịch Thiên Đạo Chủ — sẽ thêm khi cảnh giới tương ứng được code.)
 
 ## 5. Implemented quest chains
 
 > Format: `<chain name>` — cảnh giới, NPC, số bước, status (catalog / runtime / UI / claim).
 
-**none.**
+| Chain key | Realm range | NPC chính | Quest count | Catalog | Runtime | UI | Claim |
+|---|---|---|---|---|---|---|---|
+| `hoa_thien_main` | phamnhan → truc_co | Lăng Vân Sinh | 5 (3 main + 2 realm) | ✅ | Missing | Missing | Missing |
+| `moc_thanh_y_arc` | truc_co | Lăng Vân Sinh + Mộc Thanh Y | 1 (`truc_co_sect_01` Cứu Đại Sư Tỷ) | ✅ | Missing | Missing | Missing |
+| `han_da_rivalry` | luyenkhi+ | Hàn Dạ | 1 (`luyenkhi_npc_01` Lời Thách Đấu) | ✅ | Missing | Missing | Missing |
+| `to_nguyet_ly_hidden` | truc_co+ | Tô Nguyệt Ly | 1 (`truc_co_npc_01` Bóng Trong Sương) | ✅ | Missing | Missing | Missing |
+
+Standalone quest (no chain): 6 quest (3 sect + 3 grind).
+
+**Status**: catalog only — runtime wiring chờ Phase 12 PR-2, claim chờ PR-3, UI chờ PR-4 + PR-5.
 
 (27 chuỗi quest cốt truyện đã design — danh sách đầy đủ ở [`./TU_TIEN_LO_STORY_BIBLE.md`](./TU_TIEN_LO_STORY_BIBLE.md) §11.)
 
@@ -57,29 +80,30 @@ Hiện tại Phase 12 đã có:
 
 | Module | Status | Ghi chú |
 |---|---|---|
-| **Quest model / service** (`QuestDef` static catalog + `Quest` runtime model nếu cần) | **Missing** | Catalog ở `packages/shared/src/quests.ts`; service ở `apps/api/src/quest/`. |
-| **QuestStep** (objective: `kill / collect / talk / explore / choice`) | **Missing** | Mỗi step có `targetType` + `targetId` + `count`. Static trong catalog. |
-| **QuestProgress** (per-character) | **Missing** | Prisma model với unique `(characterId, questId)`. Trạng thái: `locked / available / accepted / completed / claimed`. **Cần Prisma migration**. |
-| **NPC catalog** (`NpcDef`) | **Missing** | Static ở `packages/shared/src/npcs.ts`: `id`, `name`, `faction`, `realmGate`, `dialogueId`, `quests[]`. |
-| **Dialogue catalog** (`DialogueDef` + `DialogueLine[]`) | **Missing** | Static ở `packages/shared/src/dialogues.ts`. Branch theo `karma / faction / quest_flag`. |
-| **Story chapter tracking** | **Missing** | `Character.storyChapter` field hoặc `CharacterFlag` table. **Cần Prisma migration** (audit `apps/api/prisma/schema.prisma` trước). |
-| **Quest UI** (`QuestView.vue` + Pinia store) | **Missing** | List + filter (chính / phụ / tông môn / NPC / cày) + loading/empty/error + i18n vi/en. Tuân UI MODULE RULE. |
-| **NPC dialogue UI** (`NpcDialogueModal.vue`) | **Missing** | Branch text + choice button + portrait. |
-| **Reward claim** | Reuse | Đi qua `CurrencyService` / `ItemService` + `RewardLedger` + idempotency key `(characterId, QUEST_CLAIM, questId)`. KHÔNG xây ledger riêng. |
-| **Cơ duyên (kỳ ngộ) MVP** | Partial | `EncounterDef` đã có (Phase 12.1). Cần extend cho quest-driven flavor + cooldown log. |
+| **Quest catalog** (`QuestDef` + `QuestStepDef` + `QuestRewardDef`) | **Done** ✅ | Static ở `packages/shared/src/quests.ts` (15 quest). 5 step kind: kill / collect / talk / explore / choice. PR-1 merged 2026-05-05. |
+| **NPC catalog** (`NpcDef`) | **Done** ✅ | Static ở `packages/shared/src/npcs.ts` (4 NPC). PR-1 merged 2026-05-05. |
+| **Dialogue catalog skeleton** (`DialogueLineDef` + `DialogueChoiceDef` + `DialogueBranchCondition`) | **Done** ✅ | Static ở `packages/shared/src/dialogues.ts` (6 line, branch `always` / `realm_min` / `quest_status` / `faction_member`). `pickDialogueForNpc()` helper PR-1 (chỉ implement `always` + `realm_min`; `quest_status` + `faction_member` chờ runtime PR-4). |
+| **QuestProgress** (per-character) | **Missing** | Prisma model với unique `(characterId, questKey)`. Trạng thái: `locked / available / accepted / completed / claimed`. **Cần Prisma migration**. Phase 12 PR-2. |
+| **Quest service** (`QuestService.list / accept / progress / complete`) | **Missing** | `apps/api/src/modules/quest/`. Server-authoritative validation: realm gate, prerequisite, faction (faction wire ở PR-4+). Phase 12 PR-2. |
+| **Story chapter tracking** | **Missing** | `Character.storyChapter` field hoặc `CharacterFlag` table. **Cần Prisma migration** (audit `apps/api/prisma/schema.prisma` trước). Phase 12 PR-2 hoặc PR-5. |
+| **Reward claim** (`QuestService.claim`) | **Missing** | Đi qua `CurrencyService` / `ItemService` + `RewardLedger` + idempotency key `(characterId, QUEST_CLAIM, questKey)`. KHÔNG xây ledger riêng. Phase 12 PR-3. |
+| **Quest UI** (`QuestView.vue` + Pinia store) | **Missing** | List + filter (main/realm/sect/npc/grind) + loading/empty/error + i18n vi/en. Tuân UI MODULE RULE. Phase 12 PR-5. |
+| **NPC dialogue UI** (`NpcDialogueModal.vue`) | **Missing** | Branch text + choice button + portrait. Server endpoint `GET /npc/:id/dialogue` filter branch theo realm + quest_status. Phase 12 PR-4. |
+| **Cơ duyên (kỳ ngộ) MVP** | Partial | `EncounterDef` đã có (Phase 12.1). Cần extend cho quest-driven flavor + cooldown log. Phase 12 sau PR-5. |
 
 ## 7. Recommended Phase 12 PR plan
 
 Tách nhỏ, mỗi PR là 1 layer. Tuân BATCHING RULE + UI MODULE RULE.
 
-### PR-1 — Story / NPC / Quest catalog foundation (Small-Medium, BE + shared)
+### PR-1 — Story / NPC / Quest catalog foundation — **CLOSED** ✅ (2026-05-05)
 
-- Static catalog: `packages/shared/src/quests.ts` (3 cảnh giới đầu: Phàm Nhân + Luyện Khí + Trúc Cơ → 5 quest mỗi cảnh giới = 15 quest), `packages/shared/src/npcs.ts` (4 NPC: Lăng Vân Sinh / Mộc Thanh Y / Hàn Dạ / Tô Nguyệt Ly), `packages/shared/src/dialogues.ts` (skeleton dialogue).
-- Type schema (zod) + test key unique (mỗi `quest.id` + `npc.id` không trùng).
-- KHÔNG Prisma migration. KHÔNG runtime persistence yet.
-- KHÔNG UI yet.
-- Update [`PHASE12_STORY_PROGRESS.md`](./PHASE12_STORY_PROGRESS.md) §3-§5.
-- Tham khảo [`../CONTENT_PIPELINE.md`](../CONTENT_PIPELINE.md) cho naming + i18n parity.
+- Static catalog: `packages/shared/src/quests.ts` (15 quest cho Phàm Nhân + Luyện Khí + Trúc Cơ), `packages/shared/src/npcs.ts` (4 NPC: Lăng Vân Sinh / Mộc Thanh Y / Hàn Dạ / Tô Nguyệt Ly), `packages/shared/src/dialogues.ts` (6 skeleton dialogue line).
+- TypeScript interface + 45 integrity test (mỗi `quest.key` + `npc.key` + `dlg.id` unique, cross-catalog reference, naming convention).
+- KHÔNG Prisma migration ✅.
+- KHÔNG runtime persistence ✅.
+- KHÔNG UI ✅.
+- §3-§5 progress tracker updated (chapters / NPCs / chains).
+- Tham khảo [`../CONTENT_PIPELINE.md`](../CONTENT_PIPELINE.md) cho naming + i18n parity (i18n parity sẽ wire ở PR-4 dialogue UI).
 
 ### PR-2 — Quest runtime persistence (Medium, BE)
 
