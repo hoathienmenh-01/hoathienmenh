@@ -492,7 +492,39 @@ Hiện trạng:
 
 Curve giữ nguyên phase 11. Cap không tăng.
 
+### 4.6 SKILLS catalog Ngũ Hành coverage (Phase 11 nâng cao §2 v3 — DONE)
+
+Catalog `packages/shared/src/combat.ts`. Hiện 46 skill (Phase 10 PR-2 v1=29, PR-2 v2 +10=39, Phase 11 nâng cao §2 v3 +10=46). Test invariant: `packages/shared/src/skills-balance.test.ts` (30 test).
+
+**Element coverage matrix** (5 hệ × ACTIVE/PASSIVE × tier):
+
+| Hệ | luyenkhi ACTIVE | truc_co ACTIVE | kim_dan ULT | nguyen_anh ULT | PASSIVE | Roles distinct |
+|---|---|---|---|---|---|---|
+| KIM | DAMAGE | DAMAGE + HEAL | DAMAGE | DAMAGE | BUFF×2 | DAMAGE/HEAL/BUFF (3) |
+| MỘC | HEAL | DEBUFF + DAMAGE | HEAL | HEAL | BUFF/DEBUFF | HEAL/DAMAGE/DEBUFF/BUFF (4) |
+| THUỶ | CONTROL | HEAL + DAMAGE | CONTROL | CONTROL | BUFF×2 | CONTROL/HEAL/DAMAGE/BUFF (4) |
+| HOẢ | DAMAGE | DAMAGE + BUFF | DAMAGE | DAMAGE | BUFF/DEBUFF | DAMAGE/BUFF/DEBUFF (3) |
+| THỔ | BUFF | DAMAGE + CONTROL | DAMAGE | DAMAGE | BUFF×2 | BUFF/DAMAGE/CONTROL (3) |
+
+**Invariants enforced** (`skills-balance.test.ts > Ngũ Hành coverage`):
+- Mỗi element ≥ 2 ACTIVE + ≥ 2 PASSIVE.
+- Mỗi element ≥ 4 skill (combat picker depth).
+- Mỗi element ≥ 1 ACTIVE ở tier `luyenkhi` + `truc_co` + `kim_dan` (3-tier coverage).
+- Mỗi element ≥ 1 kim_dan ULT + ≥ 1 nguyen_anh ULT.
+- Mỗi element ≥ 3 distinct role (gộp ACTIVE + PASSIVE).
+- Catalog ≥ 45 skill.
+
+**Stat budget** (verified per element type, `skills-balance.test.ts > power budget`):
+- nguyen_anh ULT: atkScale 3.6–4.0 (≤ `SKILL_ATK_SCALE_HARD_CAP=5`), mpCost 75–80 (≤ 80), cooldown 5–6 (≤ 6), selfHealRatio ≤ 0.30, selfBloodCost ≤ 0.15.
+- truc_co tier: atkScale 0.7–2.7, mpCost 24–32, cooldown 3–4.
+- Element multiplier wire (Phase 11.3.B + Phase 11 nâng cao §3): tự động áp lên skill mới qua `describeElementMatch()` (xem §2.9.1).
+
+**SkillTemplate parity**: mỗi skill mới có entry tương ứng trong `packages/shared/src/skill-templates.ts` (test `skill-templates.test.ts > coverage vs SKILLS` enforce no orphan). Tier mapping:
+- 5 nguyen_anh ULT → `tier: 'master'` (whitelisted ở `TIER_OVERRIDE_ALLOWED` — atkScale 3.5+ thường infer legendary nhưng legendary reserved cho hoa_than+ ULT có evolution branches).
+- 5 truc_co role-fill → `tier: 'intermediate'` (theo inference).
+
 ---
+
 
 ## 5. DUNGEON & DROP CURVE
 

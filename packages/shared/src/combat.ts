@@ -930,6 +930,204 @@ export const SKILLS: readonly SkillDef[] = [
     unlockRealm: 'truc_co',
     cooldownTurns: 0,
   },
+
+  // ===================================================================
+  // Phase 11 nâng cao §2 — Skill Pack Ngũ Hành expansion v3 (+10 skill)
+  //
+  // Mục tiêu (theo `XuanToi_Phase11_NangCao_Report.docx` §2 "Skill học theo
+  // Ngũ Hành"):
+  //   1. Mở tier `nguyen_anh` (order=4) làm endgame layer mới — mỗi hệ +1
+  //      ACTIVE ULT (atkScale ≤ 4.0, mpCost ≤ 80, cooldown ≤ 6).
+  //   2. Lấp role gap mid-tier — mỗi hệ thêm 1 ACTIVE truc_co tier covering
+  //      role chưa có sẵn:
+  //        Kim → HEAL (hiện chỉ DAMAGE pure)
+  //        Mộc → DAMAGE pure (hiện HEAL/DEBUFF/HEAL_ULT)
+  //        Thuỷ → DAMAGE pure (hiện CONTROL/HEAL/CONTROL_ULT)
+  //        Hoả → BUFF (hiện DAMAGE pure ×3)
+  //        Thổ → CONTROL (hiện BUFF/DAMAGE/DAMAGE_ULT)
+  //
+  // Stat budget vẫn theo `BALANCE_MODEL.md` §4 + `balance-dials.ts`:
+  //   - SKILL_ATK_SCALE_HARD_CAP = 5
+  //   - SKILL_MP_COST_HARD_CAP = 80
+  //   - SKILL_SELF_HEAL_HARD_CAP = 0.5
+  //   - SKILL_SELF_BLOOD_HARD_CAP = 0.3
+  //   - SKILL_COOLDOWN_HARD_CAP = 6
+  //
+  // Element multiplier wire (Phase 11.3.B + Phase 11 nâng cao §3 PR #399)
+  // tự áp dụng — KHÔNG cần thay đổi runtime. Test bound trong
+  // `skills-balance.test.ts` (thêm invariant nguyen_anh tier coverage +
+  // role variety per element).
+  // ===================================================================
+
+  // ----- Hệ KIM — nguyen_anh ULT + truc_co HEAL role-fill -----
+  {
+    key: 'kim_quang_dao_thien',
+    name: 'Kim Quang Đảo Thiên',
+    description:
+      'ULT Kim hệ Nguyên Anh — kim quang đảo lộn càn khôn, vạn vật đều bị chém vụn, sát thương 4.0×, tốn 80 MP.',
+    mpCost: 80,
+    atkScale: 4,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'kim',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'nguyen_anh',
+    cooldownTurns: 6,
+  },
+  {
+    key: 'kim_loan_y_tham_phap',
+    name: 'Kim Loan Y Thẩm Pháp',
+    description:
+      'Bí thuật Kim hệ Trúc Cơ — kim loan đan kết nối linh khí trị thương, sát thương 0.7× và hồi 28% HP, tốn 30 MP.',
+    mpCost: 30,
+    atkScale: 0.7,
+    selfHealRatio: 0.28,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'kim',
+    type: 'ACTIVE',
+    role: 'HEAL',
+    unlockRealm: 'truc_co',
+    cooldownTurns: 3,
+  },
+
+  // ----- Hệ MỘC — nguyen_anh ULT + truc_co DAMAGE pure role-fill -----
+  {
+    key: 'moc_thuong_co_lam_thien',
+    name: 'Mộc Thượng Cổ Lâm Thiên',
+    description:
+      'ULT Mộc hệ Nguyên Anh — vạn cổ lâm sơn nuốt trọn đối thủ, sát thương 3.6× và hồi 30% HP, tốn 78 MP.',
+    mpCost: 78,
+    atkScale: 3.6,
+    selfHealRatio: 0.3,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'moc',
+    type: 'ACTIVE',
+    role: 'HEAL',
+    unlockRealm: 'nguyen_anh',
+    cooldownTurns: 5,
+  },
+  {
+    key: 'moc_kinh_thuong_thien',
+    name: 'Mộc Kình Thương Thiên',
+    description:
+      'Pháp quyết Mộc hệ Trúc Cơ — mộc kình hoá thương sắc nhọn xuyên không, sát thương 2.6×, tốn 30 MP.',
+    mpCost: 30,
+    atkScale: 2.6,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'moc',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'truc_co',
+    cooldownTurns: 3,
+  },
+
+  // ----- Hệ THUỶ — nguyen_anh ULT + truc_co DAMAGE pure role-fill -----
+  {
+    key: 'thuy_thien_dong_chuong',
+    name: 'Thuỷ Thiên Động Chưởng',
+    description:
+      'ULT Thuỷ hệ Nguyên Anh — thiên hà động chuyển ngàn vạn thuỷ long ào tới, sát thương 3.8× và phong toả, tốn 75 MP.',
+    mpCost: 75,
+    atkScale: 3.8,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'thuy',
+    type: 'ACTIVE',
+    role: 'CONTROL',
+    unlockRealm: 'nguyen_anh',
+    cooldownTurns: 6,
+  },
+  {
+    key: 'thuy_kinh_phong_dao',
+    name: 'Thuỷ Kình Phong Đao',
+    description:
+      'Pháp quyết Thuỷ hệ Trúc Cơ — thuỷ kình ngưng tụ thành đao chém vạn vật, sát thương 2.7×, tốn 32 MP.',
+    mpCost: 32,
+    atkScale: 2.7,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'thuy',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'truc_co',
+    cooldownTurns: 3,
+  },
+
+  // ----- Hệ HOẢ — nguyen_anh ULT + truc_co BUFF role-fill -----
+  {
+    key: 'hoa_phuong_de_quan',
+    name: 'Hoả Phượng Đế Quân',
+    description:
+      'ULT Hoả hệ Nguyên Anh — Phượng Hoàng Đế Quân giáng lâm, đốt 15% HP đổi sát thương 4.0×, tốn 78 MP.',
+    mpCost: 78,
+    atkScale: 4,
+    selfHealRatio: 0,
+    selfBloodCost: 0.15,
+    sect: null,
+    element: 'hoa',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'nguyen_anh',
+    cooldownTurns: 6,
+  },
+  {
+    key: 'hoa_diem_phap_y',
+    name: 'Hoả Diễm Pháp Y',
+    description:
+      'Pháp y Hoả hệ Trúc Cơ — hoả linh ngưng tụ quanh thân, vận khí tăng sát thương lâu dài, sát thương 1.0× tốn 24 MP (active buff).',
+    mpCost: 24,
+    atkScale: 1,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'hoa',
+    type: 'ACTIVE',
+    role: 'BUFF',
+    unlockRealm: 'truc_co',
+    cooldownTurns: 4,
+  },
+
+  // ----- Hệ THỔ — nguyen_anh ULT + truc_co CONTROL role-fill -----
+  {
+    key: 'tho_van_co_trach_thien',
+    name: 'Thổ Vạn Cổ Trạch Thiên',
+    description:
+      'ULT Thổ hệ Nguyên Anh — vạn cổ địa trạch ép trời đè đất, sát thương 3.6×, tốn 76 MP.',
+    mpCost: 76,
+    atkScale: 3.6,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'tho',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'nguyen_anh',
+    cooldownTurns: 5,
+  },
+  {
+    key: 'tho_huyen_son_phong_an',
+    name: 'Thổ Huyền Sơn Phong Ấn',
+    description:
+      'Pháp quyết Thổ hệ Trúc Cơ — thổ trầm ngưng kết thành sơn ấn phong toả đối thủ, sát thương 2.0×, tốn 28 MP.',
+    mpCost: 28,
+    atkScale: 2,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'tho',
+    type: 'ACTIVE',
+    role: 'CONTROL',
+    unlockRealm: 'truc_co',
+    cooldownTurns: 3,
+  },
 ];
 
 export function skillByKey(key: string): SkillDef | undefined {

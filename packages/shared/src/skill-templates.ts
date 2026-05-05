@@ -474,7 +474,39 @@ const TEMPLATE_SHORTHAND: readonly TemplateEntryShorthand[] = [
     notes: 'ULT Kim Đan Thổ hệ — atkScale 2.8, mpCost 65, cooldown 5 (area dmg).',
   },
 
-  // ----- Master tier (1) -----
+  // ----- Phase 11 nâng cao §2 v3 expansion — 5 truc_co role-fill (intermediate) -----
+  {
+    key: 'kim_loan_y_tham_phap',
+    tier: 'intermediate',
+    unlocks: [{ kind: 'realm', ref: 'truc_co' }],
+    notes: 'Role-fill Kim hệ HEAL truc_co tier — atkScale 0.7 + selfHealRatio 0.28, mpCost 30, cooldown 3.',
+  },
+  {
+    key: 'moc_kinh_thuong_thien',
+    tier: 'intermediate',
+    unlocks: [{ kind: 'realm', ref: 'truc_co' }],
+    notes: 'Role-fill Mộc hệ DAMAGE pure truc_co tier — atkScale 2.6, mpCost 30, cooldown 3.',
+  },
+  {
+    key: 'thuy_kinh_phong_dao',
+    tier: 'intermediate',
+    unlocks: [{ kind: 'realm', ref: 'truc_co' }],
+    notes: 'Role-fill Thuỷ hệ DAMAGE pure truc_co tier — atkScale 2.7, mpCost 32, cooldown 3.',
+  },
+  {
+    key: 'hoa_diem_phap_y',
+    tier: 'intermediate',
+    unlocks: [{ kind: 'realm', ref: 'truc_co' }],
+    notes: 'Role-fill Hoả hệ BUFF truc_co tier (active buff) — atkScale 1.0, mpCost 24, cooldown 4.',
+  },
+  {
+    key: 'tho_huyen_son_phong_an',
+    tier: 'intermediate',
+    unlocks: [{ kind: 'realm', ref: 'truc_co' }],
+    notes: 'Role-fill Thổ hệ CONTROL truc_co tier — atkScale 2.0, mpCost 28, cooldown 3.',
+  },
+
+  // ----- Master tier (1 legacy) -----
   {
     key: 'thanh_lien_hoan_sinh',
     tier: 'master',
@@ -483,6 +515,42 @@ const TEMPLATE_SHORTHAND: readonly TemplateEntryShorthand[] = [
       { kind: 'realm', ref: 'nguyen_anh' },
     ],
     notes: 'selfHealRatio 0.5 cứu mạng — master tier để giới hạn endgame access.',
+  },
+
+  // ----- Phase 11 nâng cao §2 v3 expansion — 5 nguyen_anh ULT (master) -----
+  // Classification: master tier (nguyen_anh-locked endgame). Although
+  // atkScale ≥ 3.5 trigger inferExpectedTier=legendary, master fits
+  // semantic hơn: legendary reserved cho hoa_than+ ULT với evolution
+  // branches (Phase 12 scope). Whitelisted in TIER_OVERRIDE_ALLOWED.
+  {
+    key: 'kim_quang_dao_thien',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'nguyen_anh' }],
+    notes: 'ULT Nguyên Anh Kim hệ — atkScale 4.0 baseline, mpCost 80, cooldown 6 (endgame DPS).',
+  },
+  {
+    key: 'moc_thuong_co_lam_thien',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'nguyen_anh' }],
+    notes: 'ULT Nguyên Anh Mộc hệ — atkScale 3.6 + selfHealRatio 0.30, mpCost 78, cooldown 5 (heal-combo).',
+  },
+  {
+    key: 'thuy_thien_dong_chuong',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'nguyen_anh' }],
+    notes: 'ULT Nguyên Anh Thuỷ hệ — atkScale 3.8, mpCost 75, cooldown 6 (control + dmg).',
+  },
+  {
+    key: 'hoa_phuong_de_quan',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'nguyen_anh' }],
+    notes: 'ULT Nguyên Anh Hoả hệ — atkScale 4.0 + selfBloodCost 0.15, mpCost 78, cooldown 6 (huyết tế nặng).',
+  },
+  {
+    key: 'tho_van_co_trach_thien',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'nguyen_anh' }],
+    notes: 'ULT Nguyên Anh Thổ hệ — atkScale 3.6, mpCost 76, cooldown 5 (area dmg).',
   },
 
   // ----- Legendary tier (2) — có evolution branches -----
@@ -782,4 +850,11 @@ const TIER_OVERRIDE_ALLOWED: ReadonlySet<string> = new Set([
   'kim_cuong_huyen_the', // passive truc_co → intermediate (rule khớp)
   'hoa_long_huyet_man', // passive truc_co → intermediate (rule khớp)
   'doc_lam_phu_mao', // DOT design intent intermediate (atkScale 1.5 < 2.0)
+  // Phase 11 nâng cao §2 v3 — nguyen_anh ULT atkScale ≥ 3.5 nhưng tier=master
+  // (legendary reserved cho hoa_than+ ULT với evolution branches Phase 12).
+  'kim_quang_dao_thien',
+  'moc_thuong_co_lam_thien',
+  'thuy_thien_dong_chuong',
+  'hoa_phuong_de_quan',
+  'tho_van_co_trach_thien',
 ]);
