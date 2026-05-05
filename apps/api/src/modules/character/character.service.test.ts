@@ -872,3 +872,159 @@ describe('CharacterService.attemptBreakthrough (Phase 11 nâng cao §5 PR2)', ()
     expect(buffs).toHaveLength(0);
   });
 });
+
+describe('CharacterService.listBreakthroughAttemptLogs (Phase 11 nâng cao §5 PR3 prep)', () => {
+  let charsWithBuffs: CharacterService;
+
+  beforeAll(async () => {
+    const { BuffService } = await import('./buff.service');
+    const buffSvc = new BuffService(prisma);
+    const realtime = new RealtimeService();
+    charsWithBuffs = new CharacterService(
+      prisma,
+      realtime,
+      undefined,
+      undefined,
+      undefined,
+      titleSvc,
+      undefined,
+      buffSvc,
+    );
+  });
+
+  it('character chưa có log → return empty array', async () => {
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      realmStage: 1,
+    });
+
+    const rows = await chars.listBreakthroughAttemptLogs(fix.characterId);
+    expect(rows).toEqual([]);
+  });
+
+  it('return rows sort theo createdAt DESC + BigInt cast → string + Date cast → ISO', async () => {
+    const cost = expCostForStage('luyenkhi', 9)!;
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      realmStage: 9,
+      exp: cost,
+    });
+
+    // Attempt 1 fail (apply tam_ma_light buff)
+    const o1 = await charsWithBuffs.attemptBreakthrough(
+      fix.userId,
+      () => 0.99,
+      new Date('2026-05-05T12:00:00Z'),
+    );
+    expect(o1.success).toBe(false);
+
+    // Reset stage to 9 + add exp lại để attempt thứ 2 (bypass NOT_AT_PEAK).
+    await prisma.character.update({
+      where: { id: fix.characterId },
+      data: { realmStage: 9, exp: cost },
+    });
+
+    // Attempt 2 success
+    const o2 = await charsWithBuffs.attemptBreakthrough(
+      fix.userId,
+      () => 0.0,
+      new Date('2026-05-05T12:01:00Z'),
+    );
+    expect(o2.success).toBe(true);
+
+    const rows = await chars.listBreakthroughAttemptLogs(fix.characterId);
+    expect(rows).toHaveLength(2);
+
+    // DESC: row[0] = attempt mới nhất (success).
+    expect(rows[0].success).toBe(true);
+    expect(rows[0].attemptIndex).toBe(2);
+    expect(rows[0].toRealmKey).toBe('truc_co');
+    expect(rows[0].tamMaActive).toBe(false);
+    expect(rows[0].tamMaExpiresAt).toBeNull();
+
+    // row[1] = attempt cũ (fail).
+    expect(rows[1].success).toBe(false);
+    expect(rows[1].attemptIndex).toBe(1);
+    expect(rows[1].toRealmKey).toBe('luyenkhi');
+    expect(rows[1].tamMaActive).toBe(true);
+    expect(typeof rows[1].tamMaExpiresAt).toBe('string');
+    expect(() => new Date(rows[1].tamMaExpiresAt!).toISOString()).not.toThrow();
+
+    // BigInt cast → string
+    expect(typeof rows[0].expBefore).toBe('string');
+    expect(typeof rows[0].expAfter).toBe('string');
+    expect(typeof rows[1].expBefore).toBe('string');
+    expect(typeof rows[1].expAfter).toBe('string');
+    expect(rows[1].expBefore).toBe(cost.toString());
+    expect(rows[1].expAfter).toBe(cost.toString()); // fail → no exp loss MVP
+
+    // createdAt → ISO
+    expect(typeof rows[0].createdAt).toBe('string');
+    expect(() => new Date(rows[0].createdAt).toISOString()).not.toThrow();
+
+    // Breakdown numeric fields preserved
+    expect(typeof rows[0].chance).toBe('number');
+    expect(typeof rows[0].baseChance).toBe('number');
+    expect(typeof rows[0].rngRoll).toBe('number');
+    expect(rows[0].rngRoll).toBeGreaterThanOrEqual(0);
+    expect(rows[0].rngRoll).toBeLessThan(1);
+  });
+
+  it('limit=N giới hạn số rows trả về (default 20)', async () => {
+    const cost = expCostForStage('luyenkhi', 9)!;
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      realmStage: 9,
+      exp: cost,
+    });
+
+    // Tạo 5 fail attempts liên tiếp (KHÔNG advance, KHÔNG trừ exp ở fail MVP).
+    for (let i = 0; i < 5; i++) {
+      await charsWithBuffs.attemptBreakthrough(fix.userId, () => 0.99);
+    }
+
+    const rowsAll = await chars.listBreakthroughAttemptLogs(fix.characterId);
+    expect(rowsAll).toHaveLength(5);
+
+    const rows3 = await chars.listBreakthroughAttemptLogs(fix.characterId, 3);
+    expect(rows3).toHaveLength(3);
+
+    // limit=0 → service clamp tới min 1.
+    const r0 = await chars.listBreakthroughAttemptLogs(fix.characterId, 0);
+    expect(r0).toHaveLength(1);
+
+    // limit < 0 → clamp tới min 1.
+    const rNeg = await chars.listBreakthroughAttemptLogs(fix.characterId, -5);
+    expect(rNeg).toHaveLength(1);
+
+    // limit vượt MAX → clamp về MAX (5 row, ko vượt thực tế).
+    const rMax = await chars.listBreakthroughAttemptLogs(
+      fix.characterId,
+      999_999,
+    );
+    expect(rMax).toHaveLength(5);
+  });
+
+  it('return rows chỉ của character được hỏi (no leak across users)', async () => {
+    const cost = expCostForStage('luyenkhi', 9)!;
+    const fixA = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      realmStage: 9,
+      exp: cost,
+    });
+    const fixB = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      realmStage: 9,
+      exp: cost,
+    });
+
+    await charsWithBuffs.attemptBreakthrough(fixA.userId, () => 0.99);
+    await charsWithBuffs.attemptBreakthrough(fixB.userId, () => 0.99);
+
+    const rowsA = await chars.listBreakthroughAttemptLogs(fixA.characterId);
+    expect(rowsA).toHaveLength(1);
+    const rowsB = await chars.listBreakthroughAttemptLogs(fixB.characterId);
+    expect(rowsB).toHaveLength(1);
+    expect(rowsA[0].id).not.toBe(rowsB[0].id);
+  });
+});

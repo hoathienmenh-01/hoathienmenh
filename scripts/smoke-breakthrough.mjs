@@ -720,6 +720,67 @@ async function main() {
     }
   });
 
+  // ----------------------------------------------------------------------------
+  // PR Phase 11 nâng cao §5 PR3 prep — `GET /character/breakthrough/log` smoke.
+  //   - Verify endpoint mới expose `BreakthroughAttemptLog` rows mirror outcome
+  //     từ step 18g (cùng RNG attempt). Default response shape `{ rows, limit }`.
+  //   - Auth: same player session (cookie restore từ step 18e).
+  //   - Idempotent GET, sort `createdAt` DESC, BigInt cast → string.
+  // ----------------------------------------------------------------------------
+
+  // 18i. GET /breakthrough/log (default limit=20) → 200 + rows.length >= 1 + shape.
+  await step('breakthrough/log default — 200 + row tương ứng attempt step 18g (BigInt cast)', async () => {
+    const r = await http('/api/character/breakthrough/log');
+    assertStatus(r, 200, 'breakthrough/log default');
+    const rows = r.body?.data?.rows;
+    const limit = r.body?.data?.limit;
+    assert(Array.isArray(rows), `breakthrough/log: rows phải array, got ${typeof rows}`);
+    assert(rows.length >= 1, `breakthrough/log: rows.length phải >= 1 sau attempt step 18g, got ${rows.length}`);
+    assert(limit === 20, `breakthrough/log: default limit phải 20, got ${limit}`);
+
+    // Row mới nhất (DESC) tương ứng attempt step 18g.
+    const r0 = rows[0];
+    assert(typeof r0.id === 'string' && r0.id.length > 0, 'row[0].id phải string non-empty');
+    assert(r0.fromRealmKey === 'truc_co', `row[0].fromRealmKey: expect 'truc_co', got '${r0.fromRealmKey}'`);
+    assert(r0.fromRealmStage === 9, `row[0].fromRealmStage: expect 9, got ${r0.fromRealmStage}`);
+    assert(typeof r0.success === 'boolean', `row[0].success phải boolean, got ${typeof r0.success}`);
+    // Self-consistency với attempt outcome step 18g (cùng RNG).
+    assert(r0.success === attemptOutcome.success, `row[0].success phải mirror outcome step 18g (${attemptOutcome.success}), got ${r0.success}`);
+    assert(r0.attemptIndex === attemptOutcome.attemptIndex, `row[0].attemptIndex phải mirror (${attemptOutcome.attemptIndex}), got ${r0.attemptIndex}`);
+    assert(r0.id === attemptOutcome.logId, `row[0].id phải = outcome.logId (${attemptOutcome.logId}), got '${r0.id}'`);
+
+    // BigInt cast → string.
+    assert(typeof r0.expBefore === 'string', `row[0].expBefore phải string (BigInt cast), got ${typeof r0.expBefore}`);
+    assert(typeof r0.expAfter === 'string', `row[0].expAfter phải string, got ${typeof r0.expAfter}`);
+
+    // createdAt → ISO parseable.
+    assert(typeof r0.createdAt === 'string', `row[0].createdAt phải string ISO, got ${typeof r0.createdAt}`);
+    assert(!Number.isNaN(new Date(r0.createdAt).getTime()), `row[0].createdAt phải parseable ISO, got '${r0.createdAt}'`);
+
+    // Numeric breakdown fields preserved.
+    assert(typeof r0.chance === 'number', 'row[0].chance phải number');
+    assert(typeof r0.baseChance === 'number', 'row[0].baseChance phải number');
+    assert(typeof r0.rngRoll === 'number' && r0.rngRoll >= 0 && r0.rngRoll < 1, `row[0].rngRoll ∈ [0,1), got ${r0.rngRoll}`);
+  });
+
+  // 18j. GET /breakthrough/log?limit=1 → cap đúng + ?limit=invalid → fallback default.
+  await step('breakthrough/log ?limit=1 cap + ?limit=invalid fallback default', async () => {
+    const r1 = await http('/api/character/breakthrough/log?limit=1');
+    assertStatus(r1, 200, 'breakthrough/log limit=1');
+    assert(r1.body?.data?.limit === 1, `limit=1: data.limit phải 1, got ${r1.body?.data?.limit}`);
+    assert(Array.isArray(r1.body?.data?.rows) && r1.body.data.rows.length <= 1, `limit=1: rows.length <= 1, got ${r1.body?.data?.rows?.length}`);
+
+    // Invalid `?limit=abc` → fallback default 20.
+    const rInvalid = await http('/api/character/breakthrough/log?limit=abc');
+    assertStatus(rInvalid, 200, 'breakthrough/log limit=invalid');
+    assert(rInvalid.body?.data?.limit === 20, `limit=abc fallback: data.limit phải 20, got ${rInvalid.body?.data?.limit}`);
+
+    // Cap > MAX (101) → MAX (100).
+    const rMax = await http('/api/character/breakthrough/log?limit=999');
+    assertStatus(rMax, 200, 'breakthrough/log limit=999');
+    assert(rMax.body?.data?.limit === 100, `limit=999 cap: data.limit phải 100, got ${rMax.body?.data?.limit}`);
+  });
+
   // 19. logout + POST /breakthrough → 401 UNAUTHENTICATED + /breakthrough/attempt mirror.
   await step('logout + breakthrough — 401 UNAUTHENTICATED post-logout', async () => {
     const logout = await http('/api/_auth/logout', { method: 'POST' });
@@ -734,6 +795,13 @@ async function main() {
     const r = await http('/api/character/breakthrough/attempt', { method: 'POST' });
     assertStatus(r, 401, 'breakthrough/attempt post-logout');
     assert(r.body?.error?.code === 'UNAUTHENTICATED', `breakthrough/attempt post-logout: expect code UNAUTHENTICATED, got ${r.body?.error?.code}`);
+  });
+
+  // 19c. GET /breakthrough/log sau logout → 401 UNAUTHENTICATED (cùng auth gate).
+  await step('breakthrough/log — 401 UNAUTHENTICATED post-logout', async () => {
+    const r = await http('/api/character/breakthrough/log');
+    assertStatus(r, 401, 'breakthrough/log post-logout');
+    assert(r.body?.error?.code === 'UNAUTHENTICATED', `breakthrough/log post-logout: expect code UNAUTHENTICATED, got ${r.body?.error?.code}`);
   });
 
   // -----------------------------------------------------------------------------
