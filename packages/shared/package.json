@@ -60,6 +60,11 @@
       "types": "./dist/boss.d.ts",
       "import": "./dist/boss.js",
       "require": "./dist/boss.cjs"
+    },
+    "./map-regions": {
+      "types": "./dist/map-regions.d.ts",
+      "import": "./dist/map-regions.js",
+      "require": "./dist/map-regions.cjs"
     }
   },
   "files": [

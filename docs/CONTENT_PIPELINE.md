@@ -27,7 +27,7 @@ Mục tiêu: thêm content **không phá CI**, **không lệch curve**, **không
 | Shop pack | `packages/shared/src/shop.ts` | (đã có) | Tunable |
 | **Quest chain** | (chưa có) | 0 | Phase 11 — DB-backed |
 | **Story chapter** | (chưa có) | 0 | Phase 11 — DB-backed |
-| **Map region** | (chưa có) | 0 | Phase 12 — DB-backed |
+| **Map region** | `packages/shared/src/map-regions.ts` | 9 region (Phase 12.1 catalog foundation: son_coc, hac_lam, moc_huyen_lam, yeu_thu_dong, kim_son_mach, thuy_long_uyen, hoa_diem_son, hoang_tho_huyet, cuu_la_dien) | Phase 12.1: ✅ static catalog (formalize regionKey đã dùng trong MONSTERS/DUNGEONS/BOSSES/MISSIONS); DB migration defer (admin tune-live không cần ngay — region geography lore-stable) |
 | **DungeonTemplate** | (chưa có, dùng static `DungeonDef`) | — | Phase 12 — migrate sang DB |
 | **Title (legacy row)** | (replaced by `packages/shared/src/titles.ts` Phase 11.9.A) | (see Title row above) | (resolved) |
 | **Achievement (legacy row)** | (replaced by `packages/shared/src/achievements.ts` Phase 11.10.A) | (see Achievement row above) | (resolved) |
@@ -43,7 +43,7 @@ Mục tiêu: thêm content **không phá CI**, **không lệch curve**, **không
 - Cần FE + BE share cùng key + type-safe (TypeScript).
 - Không cần admin tune live.
 
-Example: **realm**, **item**, **skill**, **monster**, **dungeon**, **mission**, **proverb**, **title** (cosmetic), **achievement**.
+Example: **realm**, **item**, **skill**, **monster**, **dungeon**, **mission**, **proverb**, **title** (cosmetic), **achievement**, **map region** (Phase 12.1 — region geography lore-stable, không cần admin tune live).
 
 ### 2.2 Khi nào DB
 
@@ -51,7 +51,7 @@ Example: **realm**, **item**, **skill**, **monster**, **dungeon**, **mission**, 
 - Content có **runtime state** per character (e.g. quest progress, achievement progress).
 - Content có **lifecycle** (start/end, status).
 
-Example: **EventConfig**, **MapRegion**, **DungeonTemplate** (instances qua `DungeonRun`), **Quest**+`QuestProgress`, **StoryChapter**+`NpcDialogue`, **MarketPriceBand`.
+Example: **EventConfig**, **DungeonTemplate** (instances qua `DungeonRun`), **Quest**+`QuestProgress`, **StoryChapter**+`NpcDialogue`, **MarketPriceBand`. (Phase 12.1: **MapRegion** đã làm static — DB migration defer trừ khi cần admin tune-live unlock threshold / sortOrder.)
 
 ### 2.3 Hybrid
 

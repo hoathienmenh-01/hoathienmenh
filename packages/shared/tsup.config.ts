@@ -13,6 +13,7 @@ export default defineConfig({
     'src/missions.ts',
     'src/topup.ts',
     'src/boss.ts',
+    'src/map-regions.ts',
   ],
   format: ['esm', 'cjs'],
   dts: true,
