@@ -628,6 +628,61 @@ export class CharacterService {
     };
   }
 
+  /**
+   * Phase 11 nâng cao §5 PR3 prep — read-only audit log của
+   * `BreakthroughAttemptLog` cho FE history view.
+   *
+   *   - Sort theo `createdAt` DESC (mới nhất đầu).
+   *   - Cap tại `BREAKTHROUGH_LOG_MAX_LIMIT` để tránh DOS (mirror
+   *     `TribulationService.listAttemptLogs` pattern).
+   *   - BigInt fields (`expBefore`, `expAfter`) cast → string (giữ
+   *     precision khi qua JSON serialize).
+   *   - DateTime fields (`tamMaExpiresAt`, `createdAt`) cast → ISO string.
+   *   - Character ownership check phải do caller (controller) làm trước:
+   *     resolve `characterId` từ session userId → tránh leak log của
+   *     character khác.
+   *
+   * @param characterId character id (server-trusted, đã resolve).
+   * @param limit số row tối đa. Default `BREAKTHROUGH_LOG_DEFAULT_LIMIT`,
+   *   cap tại `BREAKTHROUGH_LOG_MAX_LIMIT`.
+   * @returns array `BreakthroughAttemptLogView` (BigInt → string, Date → ISO).
+   */
+  async listBreakthroughAttemptLogs(
+    characterId: string,
+    limit: number = BREAKTHROUGH_LOG_DEFAULT_LIMIT,
+  ): Promise<BreakthroughAttemptLogView[]> {
+    const safeLimit = Math.max(
+      1,
+      Math.min(BREAKTHROUGH_LOG_MAX_LIMIT, Math.floor(limit)),
+    );
+    const rows = await this.prisma.breakthroughAttemptLog.findMany({
+      where: { characterId },
+      orderBy: { createdAt: 'desc' },
+      take: safeLimit,
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      fromRealmKey: r.fromRealmKey,
+      fromRealmStage: r.fromRealmStage,
+      toRealmKey: r.toRealmKey,
+      toRealmStage: r.toRealmStage,
+      chance: r.chance,
+      baseChance: r.baseChance,
+      rootPurityBonus: r.rootPurityBonus,
+      methodAffinityBonus: r.methodAffinityBonus,
+      itemBonus: r.itemBonus,
+      rawChance: r.rawChance,
+      rngRoll: r.rngRoll,
+      success: r.success,
+      expBefore: r.expBefore.toString(),
+      expAfter: r.expAfter.toString(),
+      tamMaActive: r.tamMaActive,
+      tamMaExpiresAt: r.tamMaExpiresAt ? r.tamMaExpiresAt.toISOString() : null,
+      attemptIndex: r.attemptIndex,
+      createdAt: r.createdAt.toISOString(),
+    }));
+  }
+
   private toState(c: CharRow): CharacterStatePayload {
     const expNext = expCostForStage(c.realmKey, c.realmStage);
     return {
@@ -676,3 +731,38 @@ export class CharacterService {
 }
 
 export { DomainError };
+
+/**
+ * Phase 11 nâng cao §5 PR3 prep — pagination defaults cho
+ * `listBreakthroughAttemptLogs`. MAX cap để tránh DOS qua `?limit=999999`.
+ * Mirror `TRIBULATION_LOG_*` pattern từ `tribulation.service.ts`.
+ */
+export const BREAKTHROUGH_LOG_DEFAULT_LIMIT = 20;
+export const BREAKTHROUGH_LOG_MAX_LIMIT = 100;
+
+/**
+ * Phase 11 nâng cao §5 PR3 prep — view-friendly shape của
+ * `BreakthroughAttemptLog` cho FE consume. BigInt fields cast → string
+ * (giữ precision khi qua JSON), DateTime cast → ISO string.
+ */
+export interface BreakthroughAttemptLogView {
+  id: string;
+  fromRealmKey: string;
+  fromRealmStage: number;
+  toRealmKey: string;
+  toRealmStage: number;
+  chance: number;
+  baseChance: number;
+  rootPurityBonus: number;
+  methodAffinityBonus: number;
+  itemBonus: number;
+  rawChance: number;
+  rngRoll: number;
+  success: boolean;
+  expBefore: string;
+  expAfter: string;
+  tamMaActive: boolean;
+  tamMaExpiresAt: string | null;
+  attemptIndex: number;
+  createdAt: string;
+}

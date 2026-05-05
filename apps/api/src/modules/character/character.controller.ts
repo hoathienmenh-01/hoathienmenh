@@ -15,6 +15,8 @@ import {
 import type { Request } from 'express';
 import { z } from 'zod';
 import {
+  BREAKTHROUGH_LOG_DEFAULT_LIMIT,
+  BREAKTHROUGH_LOG_MAX_LIMIT,
   BreakthroughError,
   CharacterService,
   type BreakthroughAttemptOutcome,
@@ -274,6 +276,34 @@ export class CharacterController {
       }
       throw e;
     }
+  }
+
+  /**
+   * Phase 11 nâng cao §5 PR3 prep — read-only audit log của
+   * `BreakthroughAttemptLog` cho FE history view.
+   *
+   *   - Auth gate (cookie session → userId → character).
+   *   - 404 `NO_CHARACTER` nếu user chưa onboard.
+   *   - Idempotent GET — không thay đổi state.
+   *   - Sort theo `createdAt` DESC (mới nhất đầu).
+   *   - Optional `?limit=N` (1..100, default 20). Invalid → fallback default.
+   *   - BigInt fields cast → string ở
+   *     `CharacterService.listBreakthroughAttemptLogs` để FE serialize an
+   *     toàn (ko mất precision).
+   *   - Response shape: `{ ok: true, data: { rows, limit } }` mirror
+   *     `tribulation/log` pattern.
+   */
+  @Get('breakthrough/log')
+  async breakthroughLog(@Req() req: Request, @Query('limit') limit?: string) {
+    const userId = await this.requireUserId(req);
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    const parsedLimit = parseBreakthroughLogLimit(limit);
+    const rows = await this.chars.listBreakthroughAttemptLogs(
+      character.id,
+      parsedLimit,
+    );
+    return { ok: true, data: { rows, limit: parsedLimit } };
   }
 
   /**
@@ -1112,6 +1142,20 @@ function parseTribulationLogLimit(limit: string | undefined): number {
   const n = Number(limit);
   if (!Number.isFinite(n) || n <= 0) return TRIBULATION_LOG_DEFAULT_LIMIT;
   return Math.min(TRIBULATION_LOG_MAX_LIMIT, Math.floor(n));
+}
+
+/**
+ * Phase 11 nâng cao §5 PR3 prep — parse `?limit=N` query string an toàn cho
+ * `GET /character/breakthrough/log`. Mirror `parseTribulationLogLimit`.
+ * Invalid (non-numeric, NaN, <=0) → fallback `BREAKTHROUGH_LOG_DEFAULT_LIMIT`.
+ * Cap > MAX → MAX. Service cũng có guard nhưng controller normalize trước
+ * để response shape `data.limit` luôn match thực tế cap.
+ */
+function parseBreakthroughLogLimit(limit: string | undefined): number {
+  if (limit === undefined || limit === '') return BREAKTHROUGH_LOG_DEFAULT_LIMIT;
+  const n = Number(limit);
+  if (!Number.isFinite(n) || n <= 0) return BREAKTHROUGH_LOG_DEFAULT_LIMIT;
+  return Math.min(BREAKTHROUGH_LOG_MAX_LIMIT, Math.floor(n));
 }
 
 /** Map TalentError code → HTTP status. */
