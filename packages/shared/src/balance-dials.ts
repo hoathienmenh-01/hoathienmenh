@@ -28,7 +28,7 @@
  */
 
 import { QUALITIES, type Quality } from './enums';
-import { STAMINA_REGEN_PER_TICK } from './combat';
+import { STAMINA_REGEN_PER_TICK, ELEMENTS, type ElementKey } from './combat';
 import {
   CULTIVATION_TICK_MS,
   CULTIVATION_TICK_BASE_EXP,
@@ -202,30 +202,224 @@ export const MISSION_ONCE_LINHTHACH_HARD_CAP = 200_000;
 export const MISSION_TIENNGOC_HARD_CAP = 100;
 
 // ---------------------------------------------------------------------------
-// 8. ELEMENTAL COMBAT MVP (forward-compat — Phase 11 nâng cao §3)
+// 8. ELEMENTAL COMBAT MATRIX (Phase 11 nâng cao §3 — Elemental Combat MVP)
 // ---------------------------------------------------------------------------
 //
-// Hiện chưa wire vào CombatService. Cap đặt sẵn để Phase 11 nâng cao §3
-// (Elemental Combat MVP PR 2 trong roadmap doc) implement không vượt
-// budget. Reference: `XuanToi_Phase11_NangCao_Report.docx` §3.
+// Production matrix wire vào `CombatService` + `BossService`. Source-of-truth
+// duy nhất cho `elementMultiplier()` ở `spiritual-root.ts`. Reference:
+// `docs/BALANCE_MODEL.md` §4.2 + `XuanToi_Phase11_NangCao_Report.docx` §3.
+//
+// Cycle Ngũ Hành tương khắc: Kim → Mộc → Thổ → Thuỷ → Hoả → Kim.
+// Cycle Ngũ Hành tương sinh:  Kim → Thuỷ → Mộc → Hoả → Thổ → Kim.
+//
+// Note design intent: doc spec MVP đề xuất "khắc hệ +10-15%, bị khắc -10%,
+// tương sinh +5%" (gentler). Implementation hiện tại aggressive hơn doc spec
+// (counter 1.30, sinh 1.20, bị khắc 0.70) — đã shipped + tested. Giữ nguyên
+// production reality để tránh re-tune combat behavior. Doc spec gentler
+// được chuyển thành **soft envelope** dùng bởi validator (xem Section 8.1).
 
-/** Đa modifier neutral (hệ trung tính / không thuộc tương sinh khắc). */
-export const ELEMENT_NEUTRAL_MODIFIER = 1.0;
+// ---------------- Matrix multipliers (production wire) -----------------
 
-/** Đa modifier khi attacker khắc defender — max bonus damage. */
-export const ELEMENT_COUNTER_BONUS_MAX = 1.15;
+/** Đa modifier neutral khi attacker hoặc defender vô hệ (`null`). */
+export const ELEMENT_NEUTRAL_MULTIPLIER = 1.0;
 
-/** Đa modifier khi attacker bị defender khắc — penalty damage. */
-export const ELEMENT_COUNTER_PENALTY_MIN = 0.9;
+/** Attacker khắc defender — `Kim → Mộc`, `Mộc → Thổ`, etc. (production +30%). */
+export const ELEMENT_COUNTER_MULTIPLIER = 1.3;
 
-/** Đa modifier khi attacker tương sinh defender (nhẹ hơn counter). */
-export const ELEMENT_GENERATE_BONUS = 1.05;
+/** Attacker tương sinh defender — `Kim → Thuỷ`, `Thuỷ → Mộc`, etc. (+20%). */
+export const ELEMENT_GENERATE_MULTIPLIER = 1.2;
 
-/** Sàn tuyệt đối modifier — không ai dropout dưới 0.8. */
-export const ELEMENT_MODIFIER_ABSOLUTE_MIN = 0.8;
+/** Attacker bị defender khắc (defender khắc attacker) — penalty 30%. */
+export const ELEMENT_COUNTERED_MULTIPLIER = 0.7;
 
-/** Trần tuyệt đối modifier — không ai stack vượt 1.25 (tránh power creep). */
-export const ELEMENT_MODIFIER_ABSOLUTE_MAX = 1.25;
+/** Attacker bị defender sinh (defender hấp thụ năng lượng) — penalty 15%. */
+export const ELEMENT_GENERATED_MULTIPLIER = 0.85;
+
+/** Same element collision — cùng triệt tiêu một phần. */
+export const ELEMENT_SAME_ELEMENT_MULTIPLIER = 0.9;
+
+// ---------------- Character primary/secondary affinity bonus -----------
+
+/** Bonus khi skill cùng `character.primaryElement` (top-up trên matrix base). */
+export const ELEMENT_CHARACTER_PRIMARY_BONUS = 0.1;
+
+/** Bonus khi skill ∈ `character.secondaryElements`. */
+export const ELEMENT_CHARACTER_SECONDARY_BONUS = 0.05;
+
+// ---------------- Combat log thresholds (UI hint) ----------------------
+
+/** Log "sát thương khuếch đại" khi total elementMul ≥ threshold (UI hint). */
+export const ELEMENT_LOG_AMPLIFY_THRESHOLD = 1.15;
+
+/** Log "sát thương suy giảm" khi total elementMul ≤ threshold (UI hint). */
+export const ELEMENT_LOG_DAMPEN_THRESHOLD = 0.9;
+
+// ---------------- Section 8.1: Absolute floor / ceiling (envelope) ------
+//
+// Sàn / trần tuyệt đối modifier (matrix value × character bonus × talent
+// bonus × buff bonus). Dùng bởi `validateElementalModifier()` validator để
+// guard khi compose nhiều layer modifier (talent passive + buff + matrix).
+// Floor 0.6 = `ELEMENT_COUNTERED_MULTIPLIER - ELEMENT_CHARACTER_PRIMARY_BONUS`
+// (worst case: skill bị khắc + lại không phải primary của char).
+// Ceil 1.5 = `ELEMENT_COUNTER_MULTIPLIER + ELEMENT_CHARACTER_PRIMARY_BONUS
+// + ELEMENT_CHARACTER_SECONDARY_BONUS` (best case rough headroom — runtime
+// chỉ stack primary OR secondary, không cả hai cùng skill).
+
+/** Sàn tuyệt đối tổng modifier sau khi compose tất cả layer. */
+export const ELEMENT_MODIFIER_ABSOLUTE_FLOOR = 0.6;
+
+/** Trần tuyệt đối tổng modifier sau khi compose tất cả layer. */
+export const ELEMENT_MODIFIER_ABSOLUTE_CEIL = 1.5;
+
+// ---------------- Helpers (matrix lookup + UI label) -------------------
+
+/**
+ * Ngũ Hành tương sinh — generative cycle. `a` sinh `b` means `a` nurtures
+ * `b` (e.g. Mộc sinh Hoả: gỗ tạo lửa).
+ */
+function _elementGenerates(element: ElementKey): ElementKey {
+  switch (element) {
+    case 'kim': return 'thuy';
+    case 'thuy': return 'moc';
+    case 'moc': return 'hoa';
+    case 'hoa': return 'tho';
+    case 'tho': return 'kim';
+  }
+}
+
+/** Ngũ Hành tương khắc — destructive cycle. */
+function _elementOvercomes(element: ElementKey): ElementKey {
+  switch (element) {
+    case 'kim': return 'moc';
+    case 'moc': return 'tho';
+    case 'tho': return 'thuy';
+    case 'thuy': return 'hoa';
+    case 'hoa': return 'kim';
+  }
+}
+
+export type ElementRelation =
+  | 'neutral'
+  | 'counter'
+  | 'generate'
+  | 'countered'
+  | 'generated'
+  | 'same';
+
+/** Tên Việt cho relation — dùng cho log + UI. */
+export const ELEMENT_RELATION_LABEL_VI: Readonly<Record<ElementRelation, string>> = {
+  neutral: 'vô hệ',
+  counter: 'tương khắc',
+  generate: 'tương sinh',
+  countered: 'bị khắc',
+  generated: 'bị sinh',
+  same: 'cùng hệ',
+} as const;
+
+/** Tên Việt cho element — dùng cho breakdown text "Kim khắc Mộc". */
+export const ELEMENT_NAME_VI: Readonly<Record<ElementKey, string>> = {
+  kim: 'Kim',
+  moc: 'Mộc',
+  thuy: 'Thuỷ',
+  hoa: 'Hoả',
+  tho: 'Thổ',
+} as const;
+
+export interface ElementMatchDescription {
+  multiplier: number;
+  relation: ElementRelation;
+  /** "Kim khắc Mộc" / "Thuỷ tương sinh Mộc" / "Hoả vô hệ" / `null` if both null. */
+  vi: string | null;
+}
+
+/**
+ * Resolve element relation + multiplier + Việt label cho 1 cặp `attacker` vs
+ * `defender`. Single source-of-truth — `elementMultiplier()` ở
+ * `spiritual-root.ts` import từ đây thay vì hard-code.
+ *
+ * Trả `vi=null` khi cả hai side `null` (vô hệ thuần — UI không cần hiển thị).
+ */
+export function describeElementMatch(
+  attacker: ElementKey | null,
+  defender: ElementKey | null,
+): ElementMatchDescription {
+  if (attacker === null || defender === null) {
+    return {
+      multiplier: ELEMENT_NEUTRAL_MULTIPLIER,
+      relation: 'neutral',
+      vi: null,
+    };
+  }
+  const aVi = ELEMENT_NAME_VI[attacker];
+  const dVi = ELEMENT_NAME_VI[defender];
+  if (attacker === defender) {
+    return {
+      multiplier: ELEMENT_SAME_ELEMENT_MULTIPLIER,
+      relation: 'same',
+      vi: `${aVi} cùng hệ ${dVi}`,
+    };
+  }
+  if (_elementOvercomes(attacker) === defender) {
+    return {
+      multiplier: ELEMENT_COUNTER_MULTIPLIER,
+      relation: 'counter',
+      vi: `${aVi} khắc ${dVi}`,
+    };
+  }
+  if (_elementGenerates(attacker) === defender) {
+    return {
+      multiplier: ELEMENT_GENERATE_MULTIPLIER,
+      relation: 'generate',
+      vi: `${aVi} tương sinh ${dVi}`,
+    };
+  }
+  if (_elementOvercomes(defender) === attacker) {
+    return {
+      multiplier: ELEMENT_COUNTERED_MULTIPLIER,
+      relation: 'countered',
+      vi: `${aVi} bị ${dVi} khắc`,
+    };
+  }
+  if (_elementGenerates(defender) === attacker) {
+    return {
+      multiplier: ELEMENT_GENERATED_MULTIPLIER,
+      relation: 'generated',
+      vi: `${aVi} bị ${dVi} sinh`,
+    };
+  }
+  // Unreachable — 5 elements cover all relations.
+  return {
+    multiplier: ELEMENT_NEUTRAL_MULTIPLIER,
+    relation: 'neutral',
+    vi: `${aVi} - ${dVi}`,
+  };
+}
+
+/**
+ * Element matrix giá trị 5×5 (read-only). Dùng cho dashboard / docs / test
+ * snapshot. KHÔNG dùng runtime — runtime call `describeElementMatch()` để
+ * lấy relation + label cùng lúc.
+ *
+ * Thứ tự: `ELEMENT_MATRIX[attacker][defender] = multiplier`.
+ */
+export const ELEMENT_MATRIX: Readonly<Record<ElementKey, Readonly<Record<ElementKey, number>>>> =
+  Object.freeze(
+    ELEMENTS.reduce(
+      (acc, attacker) => {
+        acc[attacker] = Object.freeze(
+          ELEMENTS.reduce(
+            (row, defender) => {
+              row[defender] = describeElementMatch(attacker, defender).multiplier;
+              return row;
+            },
+            {} as Record<ElementKey, number>,
+          ),
+        );
+        return acc;
+      },
+      {} as Record<ElementKey, Record<ElementKey, number>>,
+    ),
+  );
 
 // ---------------------------------------------------------------------------
 // 9. BREAKTHROUGH / TRIBULATION (forward-compat — Phase 11 nâng cao §5)
@@ -310,13 +504,19 @@ export const BALANCE_DIALS = {
   MISSION_ONCE_LINHTHACH_HARD_CAP,
   MISSION_TIENNGOC_HARD_CAP,
 
-  // Elemental combat (forward-compat)
-  ELEMENT_NEUTRAL_MODIFIER,
-  ELEMENT_COUNTER_BONUS_MAX,
-  ELEMENT_COUNTER_PENALTY_MIN,
-  ELEMENT_GENERATE_BONUS,
-  ELEMENT_MODIFIER_ABSOLUTE_MIN,
-  ELEMENT_MODIFIER_ABSOLUTE_MAX,
+  // Elemental combat (production matrix wire)
+  ELEMENT_NEUTRAL_MULTIPLIER,
+  ELEMENT_COUNTER_MULTIPLIER,
+  ELEMENT_GENERATE_MULTIPLIER,
+  ELEMENT_COUNTERED_MULTIPLIER,
+  ELEMENT_GENERATED_MULTIPLIER,
+  ELEMENT_SAME_ELEMENT_MULTIPLIER,
+  ELEMENT_CHARACTER_PRIMARY_BONUS,
+  ELEMENT_CHARACTER_SECONDARY_BONUS,
+  ELEMENT_LOG_AMPLIFY_THRESHOLD,
+  ELEMENT_LOG_DAMPEN_THRESHOLD,
+  ELEMENT_MODIFIER_ABSOLUTE_FLOOR,
+  ELEMENT_MODIFIER_ABSOLUTE_CEIL,
 
   // Breakthrough (forward-compat)
   BREAKTHROUGH_CHANCE_MIN,
@@ -477,6 +677,44 @@ export function validateMissionRewardBudget(input: MissionRewardInput): string[]
         `once mission ${input.key} linhThach=${lt} vượt cap ${MISSION_ONCE_LINHTHACH_HARD_CAP}`,
       );
     }
+  }
+  return errs;
+}
+
+/**
+ * Verify một composed elemental modifier (sau khi compose matrix × character
+ * bonus × talent bonus × buff bonus) nằm trong absolute floor/ceil. Trả về
+ * list error string.
+ *
+ * Caller pattern (Phase 11 nâng cao §3 + future talent/buff stacking):
+ * ```ts
+ * const total = matrixMul * charBonus * talentBonus * buffBonus;
+ * const errs = validateElementalModifier({ source: 'skill_cast', value: total });
+ * if (errs.length) logger.warn({ errs }, 'element modifier vượt envelope');
+ * ```
+ */
+export interface ElementalModifierInput {
+  /** Debug source label (skill_cast / talent_cast / monster_reply / etc). */
+  readonly source: string;
+  /** Composed multiplier value (sau khi nhân tất cả layer). */
+  readonly value: number;
+}
+
+export function validateElementalModifier(input: ElementalModifierInput): string[] {
+  const errs: string[] = [];
+  if (!Number.isFinite(input.value)) {
+    errs.push(`element modifier ${input.source}=${input.value} không finite`);
+    return errs;
+  }
+  if (input.value < ELEMENT_MODIFIER_ABSOLUTE_FLOOR) {
+    errs.push(
+      `element modifier ${input.source}=${input.value} dưới sàn ${ELEMENT_MODIFIER_ABSOLUTE_FLOOR}`,
+    );
+  }
+  if (input.value > ELEMENT_MODIFIER_ABSOLUTE_CEIL) {
+    errs.push(
+      `element modifier ${input.source}=${input.value} vượt trần ${ELEMENT_MODIFIER_ABSOLUTE_CEIL}`,
+    );
   }
   return errs;
 }

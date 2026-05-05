@@ -218,30 +218,51 @@ Phase 11.3.A runtime onboard auto-roll Linh căn server-authoritative khi tạo 
 - Vitest enforce: 10000 sample grade distribution ±5 percentage point của weight; 5000 sample primary element ±7 percentage point của 20% uniform.
 - Combined với cultivation method (×1.8 max) + linh căn (×2.5 max) + buff (×1.5 max) + title (×1.15 max) → grand total cap **5.0× theo §2.5** (multiplicative — bumped từ 3.5× để cover Thần linh căn × 2.5 hiếm-but-allowed). Vượt → cap.
 
-### 2.9.1 Phase 11.3.B wire điểm — Element multiplier vào CombatService (DONE this PR)
+### 2.9.1 Phase 11.3.B wire điểm — Element multiplier vào CombatService (DONE this PR; Phase 11 nâng cao §3 polish)
 
-`CombatService.action()` wire `characterSkillElementBonus(character, skill.element, monster.element)`:
+`CombatService.action()` wire `characterSkillElementBonus(character, skill.element, monster.element)`. **Phase 11 nâng cao §3 (DONE)** — centralize matrix vào `balance-dials.ts`, replace generic log "tương khắc/sinh" bằng breakdown text "Kim khắc Mộc" via `describeElementMatch()`:
 
 ```
 playerElementMul = elementMultiplier(skill.element, monster.element)  // base
-                 + (skill.element === character.primaryElement ? 0.10 : 0)
-                 + (character.secondaryElements.includes(skill.element) ? 0.05 : 0)
+                 + (skill.element === character.primaryElement ? ELEMENT_CHARACTER_PRIMARY_BONUS : 0)
+                 + (character.secondaryElements.includes(skill.element) ? ELEMENT_CHARACTER_SECONDARY_BONUS : 0)
 
-elementMultiplier(attacker, defender):
-  null vs * | * vs null  → 1.00 (vô hệ)
-  attacker === defender  → 0.90 (cùng hệ)
-  attacker overcomes def → 1.30 (tương khắc)
-  attacker generates def → 1.20 (tương sinh)
-  defender overcomes atk → 0.70 (bị khắc)
-  defender generates atk → 0.85 (bị sinh)
+elementMultiplier(attacker, defender):  // delegate sang describeElementMatch()
+  null vs * | * vs null  → ELEMENT_NEUTRAL_MULTIPLIER         (vô hệ)
+  attacker === defender  → ELEMENT_SAME_ELEMENT_MULTIPLIER    (cùng hệ)
+  attacker overcomes def → ELEMENT_COUNTER_MULTIPLIER         (tương khắc)
+  attacker generates def → ELEMENT_GENERATE_MULTIPLIER        (tương sinh)
+  defender overcomes atk → ELEMENT_COUNTERED_MULTIPLIER       (bị khắc)
+  defender generates atk → ELEMENT_GENERATED_MULTIPLIER       (bị sinh)
 ```
 
-- Tương khắc cycle: `kim → moc → tho → thuy → hoa → kim` (Kim Mộc Thổ Thuỷ Hoả).
-- Tương sinh cycle: `kim → thuy → moc → hoa → tho → kim` (kim sinh thuỷ, thuỷ sinh mộc, ...).
-- Player damage: `dmg = max(1, round(dmgBase * playerElementMul))`.
-- Monster counter: `reply = max(1, round(replyBase * elementMultiplier(monster.element, char.primaryElement)))`.
+| Constant (`balance-dials.ts`) | Value | Cặp | Ý nghĩa |
+| --- | --- | --- | --- |
+| `ELEMENT_COUNTER_MULTIPLIER` | **1.30** | Kim → Mộc, Mộc → Thổ, Thổ → Thuỷ, Thuỷ → Hoả, Hoả → Kim | Tương khắc, sát thương khuếch đại |
+| `ELEMENT_GENERATE_MULTIPLIER` | **1.20** | Kim → Thuỷ, Thuỷ → Mộc, Mộc → Hoả, Hoả → Thổ, Thổ → Kim | Tương sinh, sát thương khuếch đại nhẹ |
+| `ELEMENT_COUNTERED_MULTIPLIER` | **0.70** | nghịch của tương khắc | Bị defender khắc, sát thương suy giảm |
+| `ELEMENT_GENERATED_MULTIPLIER` | **0.85** | nghịch của tương sinh | Bị defender sinh, defender hấp thụ năng lượng |
+| `ELEMENT_SAME_ELEMENT_MULTIPLIER` | **0.90** | Kim vs Kim, Mộc vs Mộc... | Cùng hệ, triệt tiêu một phần |
+| `ELEMENT_NEUTRAL_MULTIPLIER` | **1.00** | null vs * hoặc * vs null | Vô hệ (basic attack vs untyped monster) |
+| `ELEMENT_CHARACTER_PRIMARY_BONUS` | **+0.10** | skill cùng `character.primaryElement` | Linh căn primary affinity |
+| `ELEMENT_CHARACTER_SECONDARY_BONUS` | **+0.05** | skill ∈ `character.secondaryElements` | Linh căn secondary affinity |
+| `ELEMENT_LOG_AMPLIFY_THRESHOLD` | **≥ 1.15** | trigger log "khuếch đại" | UX hint |
+| `ELEMENT_LOG_DAMPEN_THRESHOLD` | **≤ 0.90** | trigger log "suy giảm" | UX hint |
+| `ELEMENT_MODIFIER_ABSOLUTE_FLOOR` | **0.60** | envelope cho `validateElementalModifier` | Sàn tổng modifier sau compose tất cả layer |
+| `ELEMENT_MODIFIER_ABSOLUTE_CEIL` | **1.50** | envelope cho `validateElementalModifier` | Trần tổng modifier (counter 1.30 + primary 0.10 + secondary 0.05 + headroom) |
+
+**Note design intent**: `XuanToi_Phase11_NangCao_Report.docx` §3 đề xuất MVP "khắc hệ +10-15%, bị khắc -10%, tương sinh +5%" (gentler). Implementation Phase 11.3.B chọn aggressive hơn (counter +30%, sinh +20%, bị khắc -30%) — đã shipped + tested. Phase 11 nâng cao §3 KHÔNG re-tune values (rationale: avoid combat behavior shift), chỉ centralize hằng số + breakdown logging. Soft envelope (gentler doc spec) chuyển sang `validateElementalModifier()` validator dùng cho future talent/buff stacking.
+
+**Cycles** (5 element):
+- Tương khắc: `kim → moc → tho → thuy → hoa → kim` (Kim khắc Mộc, Mộc khắc Thổ, ...)
+- Tương sinh: `kim → thuy → moc → hoa → tho → kim` (Kim sinh Thuỷ, Thuỷ sinh Mộc, ...)
+
+**Wire điểm**:
+- Player damage (skill flow): `dmg = max(1, round(dmgBase * playerElementMul * talentElementMul * buffElementMul))`.
+- Player damage (talent active flow): same compose, parity với skill flow + breakdown log.
+- Monster counter: `reply = max(1, round(replyBase * elementMultiplier(monster.element, char.primaryElement) * buffDmgReduction))`.
 - Legacy character (`spiritualRootGrade=null`) → `charElementState=null` → bypass character bonus, chỉ áp `elementMultiplier` base → backward-compat preserved.
-- Log line trigger: `playerElementMul ≥ 1.15` → "Ngũ Hành tương khắc/sinh — sát thương khuếch đại ×N.NN", `≤ 0.90` → "lệch hệ — sát thương suy giảm ×N.NN".
+- Log line trigger: `playerElementMul ≥ ELEMENT_LOG_AMPLIFY_THRESHOLD (1.15)` → `Ngũ Hành Kim khắc Mộc — sát thương khuếch đại ×1.40`. `≤ ELEMENT_LOG_DAMPEN_THRESHOLD (0.90)` → `Ngũ Hành Kim cùng hệ Kim — sát thương suy giảm ×0.90`. Generic fallback `tương khắc/sinh` / `lệch hệ` chỉ kích hoạt khi `describeElementMatch.vi=null` (cả hai side đều null — không xảy ra runtime vì block đã guard `playerElementMul ≠ 1.0`).
 
 ### 2.9.2 Phase 11.3.C wire điểm — Cultivation + Stat bonus (DONE this PR)
 
@@ -841,16 +862,17 @@ Test invariant: `packages/shared/src/balance-dials.test.ts` (36 test, snapshot s
 | Skill | `SKILL_ATK_SCALE_HARD_CAP`, `SELF_HEAL_HARD_CAP`, `SELF_BLOOD_HARD_CAP`, `COOLDOWN_HARD_CAP`, `MP_COST_HARD_CAP` | trước inline trong `skills-balance.test.ts` | balance-dials |
 | Item | `ITEM_STAT_BUDGET_BY_QUALITY`, `OFF_SLOT_SOFT_CAP_MULTIPLIER`, `POWER_EQUIV_WEIGHTS` | trước inline trong `items-balance.test.ts` | balance-dials |
 | Mission | `MISSION_DAILY_BUDGET_BY_REALM_TIER`, `WEEKLY_DAILY_MULTIPLIER`, `ONCE_LINHTHACH_HARD_CAP`, `TIENNGOC_HARD_CAP` | trước inline trong `missions-balance.test.ts` | balance-dials |
-| Element (forward-compat — Phase 11 nâng cao §3) | `ELEMENT_NEUTRAL_MODIFIER`, `COUNTER_BONUS_MAX`, `COUNTER_PENALTY_MIN`, `GENERATE_BONUS`, `MODIFIER_ABSOLUTE_MIN/MAX` | (mới — chưa wire CombatService) | balance-dials |
+| Element (Phase 11 nâng cao §3 — DONE production wire) | `ELEMENT_NEUTRAL_MULTIPLIER`, `ELEMENT_COUNTER_MULTIPLIER`, `ELEMENT_GENERATE_MULTIPLIER`, `ELEMENT_COUNTERED_MULTIPLIER`, `ELEMENT_GENERATED_MULTIPLIER`, `ELEMENT_SAME_ELEMENT_MULTIPLIER`, `ELEMENT_CHARACTER_PRIMARY_BONUS`, `ELEMENT_CHARACTER_SECONDARY_BONUS`, `ELEMENT_LOG_AMPLIFY_THRESHOLD`, `ELEMENT_LOG_DAMPEN_THRESHOLD`, `ELEMENT_MODIFIER_ABSOLUTE_FLOOR`, `ELEMENT_MODIFIER_ABSOLUTE_CEIL`. Helpers: `describeElementMatch(a,b) → {multiplier, relation, vi}`, `ELEMENT_MATRIX[a][b]` (frozen 5×5), `validateElementalModifier(input)` | trước hardcode trong `spiritual-root.ts` (1.30/1.20/0.70/0.85/0.90) + log threshold trong `combat.service.ts` (1.15/0.9) | balance-dials |
 | Breakthrough (forward-compat — Phase 11 nâng cao §5) | `BREAKTHROUGH_CHANCE_MIN/MAX`, `FAIL_DEBUFF_DURATION_SEC`, `FAIL_DEBUFF_RATE_PENALTY` | (mới — chưa wire BreakthroughService) | balance-dials |
 | Economy | `MARKET_TAX_DEFAULT`, `DROP_WEIGHT_MAX_RATIO` | (mới — formalize §8.1 / §5.4) | balance-dials |
 
 ### 9.2 Validators (anti-content-creep guard)
 
-`balance-dials.ts` export 3 validator function trả `string[]` (rỗng khi pass):
+`balance-dials.ts` export 4 validator function trả `string[]` (rỗng khi pass):
 - `validateSkillBudget(input)` — atkScale / mpCost / selfHealRatio / selfBloodCost / cooldownTurns ≤ cap.
 - `validateItemBudget(input)` — single-stat ≤ cap quality + multi-stat power-equiv ≤ soft cap.
 - `validateMissionRewardBudget(input)` — linhThach ≤ daily/weekly/once cap, tienNgoc ≤ cap.
+- `validateElementalModifier(input)` — finite + ∈ `[ELEMENT_MODIFIER_ABSOLUTE_FLOOR..ELEMENT_MODIFIER_ABSOLUTE_CEIL]` envelope. Dùng cho future stacking (talent damage_bonus_by_element + buff damage_bonus_by_element + linh căn primary bonus) để guard tổng modifier không vượt 1.5× / dưới 0.6×.
 
 Caller dùng:
 ```ts

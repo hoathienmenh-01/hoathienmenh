@@ -217,6 +217,18 @@ describe('Spiritual Root catalog (Phase 11.0 prep)', () => {
         }
       }
     });
+
+    it('elementMultiplier delegate sang describeElementMatch (single source-of-truth)', async () => {
+      const { describeElementMatch } = await import('./balance-dials');
+      for (const a of ELEMENTS) {
+        for (const d of ELEMENTS) {
+          expect(elementMultiplier(a, d)).toBe(describeElementMatch(a, d).multiplier);
+        }
+      }
+      expect(elementMultiplier(null, null)).toBe(describeElementMatch(null, null).multiplier);
+      expect(elementMultiplier('kim', null)).toBe(describeElementMatch('kim', null).multiplier);
+      expect(elementMultiplier(null, 'moc')).toBe(describeElementMatch(null, 'moc').multiplier);
+    });
   });
 
   describe('validateSpiritualRootState', () => {

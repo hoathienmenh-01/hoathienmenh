@@ -35,6 +35,11 @@
 
 import type { ElementKey } from './combat';
 import { ELEMENTS } from './combat';
+import {
+  describeElementMatch,
+  ELEMENT_CHARACTER_PRIMARY_BONUS,
+  ELEMENT_CHARACTER_SECONDARY_BONUS,
+} from './balance-dials';
 
 /**
  * 5 grade linh căn theo `GAME_DESIGN_BIBLE.md` §C.4. Ordering từ thấp đến
@@ -224,23 +229,24 @@ export function elementOvercomes(element: ElementKey): ElementKey {
 
 /**
  * Damage multiplier dựa trên Ngũ Hành quan hệ giữa attacker.element và
- * defender.element:
+ * defender.element. **Source-of-truth là `describeElementMatch()` ở
+ * `balance-dials.ts`** — function này delegate sang dial registry để có
+ * single tuning point. Behavior identical:
  *
- *   - **Tương khắc** (attacker khắc defender): `1.30` (e.g. Kim → Mộc).
- *   - **Tương sinh** (attacker sinh defender): `1.20` (e.g. Mộc → Hoả).
- *     Note: tương sinh weaker than tương khắc — sinh chỉ là "thuận"
- *     theo cycle, không phá huỷ.
- *   - **Bị khắc** (attacker.element bị defender.element khắc): `0.70`
- *     (e.g. Mộc tấn Kim — defender mạnh hơn attacker).
- *   - **Bị sinh** (attacker.element bị defender.element sinh): `0.85`
- *     (defender hấp thụ năng lượng — penalty nhẹ).
- *   - **Cùng hệ** (same element): `0.90` (cùng nhau triệt tiêu một phần).
- *   - **Vô hệ** (`null` either side): `1.00` (neutral, không bonus).
+ *   - **Tương khắc** (attacker khắc defender): `ELEMENT_COUNTER_MULTIPLIER`
+ *     = `1.30` (e.g. Kim → Mộc).
+ *   - **Tương sinh** (attacker sinh defender): `ELEMENT_GENERATE_MULTIPLIER`
+ *     = `1.20` (e.g. Mộc → Hoả). Sinh weaker than khắc.
+ *   - **Bị khắc** (attacker bị defender khắc): `ELEMENT_COUNTERED_MULTIPLIER`
+ *     = `0.70` (defender mạnh hơn).
+ *   - **Bị sinh** (attacker bị defender sinh): `ELEMENT_GENERATED_MULTIPLIER`
+ *     = `0.85` (defender hấp thụ năng lượng).
+ *   - **Cùng hệ**: `ELEMENT_SAME_ELEMENT_MULTIPLIER` = `0.90`.
+ *   - **Vô hệ** (`null` either side): `ELEMENT_NEUTRAL_MULTIPLIER` = `1.00`.
  *
- * Phase 11.2 sẽ wire vào `CombatService.applySkillDamage` ở
- * `apps/api/src/modules/combat/combat.service.ts`. Hiện chỉ catalog helper
- * + unit test — combat runtime KHÔNG đọc field này (vẫn formula
- * `damage = atk * scale - def * 0.5` không có element modifier).
+ * Wired Phase 11.3.B vào `CombatService` (skill + talent flow + monster
+ * reply) + `BossService`. Phase 11 nâng cao §3 (this PR) centralize dial
+ * vào `balance-dials.ts` để admin dashboard / future re-tune dùng chung.
  *
  * Reference: `BALANCE_MODEL.md` §4.2 Element multiplier.
  */
@@ -248,14 +254,7 @@ export function elementMultiplier(
   attacker: ElementKey | null,
   defender: ElementKey | null,
 ): number {
-  if (attacker === null || defender === null) return 1.0;
-  if (attacker === defender) return 0.9;
-  if (elementOvercomes(attacker) === defender) return 1.3;
-  if (elementGenerates(attacker) === defender) return 1.2;
-  if (elementOvercomes(defender) === attacker) return 0.7;
-  if (elementGenerates(defender) === attacker) return 0.85;
-  // Unreachable — 5 elements, all relations covered above. Fallback safe.
-  return 1.0;
+  return describeElementMatch(attacker, defender).multiplier;
 }
 
 /**
@@ -346,7 +345,16 @@ export function characterSkillElementBonus(
 ): number {
   const baseMul = elementMultiplier(skillElement, targetElement);
   if (skillElement === null || character === null) return baseMul;
-  if (skillElement === character.primaryElement) return baseMul + 0.1;
-  if (character.secondaryElements.includes(skillElement)) return baseMul + 0.05;
+  if (skillElement === character.primaryElement) {
+    return baseMul + ELEMENT_CHARACTER_PRIMARY_BONUS;
+  }
+  if (character.secondaryElements.includes(skillElement)) {
+    return baseMul + ELEMENT_CHARACTER_SECONDARY_BONUS;
+  }
   return baseMul;
 }
+
+// Re-export `ELEMENT_NEUTRAL_MULTIPLIER` cho legacy callsite import shape (e.g.
+// `import { ELEMENT_NEUTRAL_MULTIPLIER } from '@xuantoi/shared/spiritual-root'`)
+// — convenience re-export, source-of-truth vẫn ở `balance-dials.ts`.
+export { ELEMENT_NEUTRAL_MULTIPLIER } from './balance-dials';

@@ -8,10 +8,13 @@ import {
 } from '@prisma/client';
 import {
   DUNGEONS,
+  ELEMENT_LOG_AMPLIFY_THRESHOLD,
+  ELEMENT_LOG_DAMPEN_THRESHOLD,
   SPIRITUAL_ROOT_GRADES,
   STAMINA_PER_ACTION,
   SKILL_BASIC_ATTACK,
   characterSkillElementBonus,
+  describeElementMatch,
   dungeonByKey,
   elementMultiplier,
   getSpiritualRootGradeDef,
@@ -349,16 +352,28 @@ export class CombatService {
       text: `Đạo hữu tung ${skill.name}, gây ${dmg} sát thương lên ${monster.name}.`,
       ts: Date.now(),
     });
-    if (playerElementMul >= 1.15) {
+    if (playerElementMul >= ELEMENT_LOG_AMPLIFY_THRESHOLD) {
+      const matchVi = describeElementMatch(
+        skill.element ?? null,
+        (monster.element ?? null) as ElementKey | null,
+      ).vi;
       log.push({
         side: 'system',
-        text: `Ngũ Hành tương khắc/sinh — sát thương khuếch đại ×${playerElementMul.toFixed(2)}.`,
+        text: matchVi
+          ? `Ngũ Hành ${matchVi} — sát thương khuếch đại ×${playerElementMul.toFixed(2)}.`
+          : `Ngũ Hành tương khắc/sinh — sát thương khuếch đại ×${playerElementMul.toFixed(2)}.`,
         ts: Date.now(),
       });
-    } else if (playerElementMul <= 0.9) {
+    } else if (playerElementMul <= ELEMENT_LOG_DAMPEN_THRESHOLD) {
+      const matchVi = describeElementMatch(
+        skill.element ?? null,
+        (monster.element ?? null) as ElementKey | null,
+      ).vi;
       log.push({
         side: 'system',
-        text: `Ngũ Hành lệch hệ — sát thương suy giảm ×${playerElementMul.toFixed(2)}.`,
+        text: matchVi
+          ? `Ngũ Hành ${matchVi} — sát thương suy giảm ×${playerElementMul.toFixed(2)}.`
+          : `Ngũ Hành lệch hệ — sát thương suy giảm ×${playerElementMul.toFixed(2)}.`,
         ts: Date.now(),
       });
     }
@@ -778,6 +793,33 @@ export class CombatService {
           text: `Đạo hữu phát động ${talent.name}${aoeLabel}, gây ${dmg} sát thương lên ${monster.name}.`,
           ts: Date.now(),
         });
+        // Phase 11 nâng cao §3 — parity với skill flow: log breakdown khi
+        // playerElementMul vượt amplify/dampen threshold.
+        if (playerElementMul >= ELEMENT_LOG_AMPLIFY_THRESHOLD) {
+          const matchVi = describeElementMatch(
+            talent.element,
+            (monster.element ?? null) as ElementKey | null,
+          ).vi;
+          log.push({
+            side: 'system',
+            text: matchVi
+              ? `Ngũ Hành ${matchVi} — sát thương khuếch đại ×${playerElementMul.toFixed(2)}.`
+              : `Ngũ Hành tương khắc/sinh — sát thương khuếch đại ×${playerElementMul.toFixed(2)}.`,
+            ts: Date.now(),
+          });
+        } else if (playerElementMul <= ELEMENT_LOG_DAMPEN_THRESHOLD) {
+          const matchVi = describeElementMatch(
+            talent.element,
+            (monster.element ?? null) as ElementKey | null,
+          ).vi;
+          log.push({
+            side: 'system',
+            text: matchVi
+              ? `Ngũ Hành ${matchVi} — sát thương suy giảm ×${playerElementMul.toFixed(2)}.`
+              : `Ngũ Hành lệch hệ — sát thương suy giảm ×${playerElementMul.toFixed(2)}.`,
+            ts: Date.now(),
+          });
+        }
         break;
       }
       case 'heal': {

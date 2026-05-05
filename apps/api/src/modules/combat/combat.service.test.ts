@@ -246,9 +246,10 @@ describe('CombatService', () => {
       // monster 'thanh_mang_xa' element=moc, hp=110, def=6.
       // dmgBase = (200 + 0)*1.7 - 6*0.5 = 340 - 3 = 337. multiplier = 1.30 (kim>moc khắc) + 0.10 (skill primary) = 1.40.
       // dmg = round(337 * 1.40) = 472. monsterHp 110 - 472 → kill, status ACTIVE next monster.
-      // → log line "tương khắc/sinh — sát thương khuếch đại ×1.40" có mặt.
+      // Phase 11 nâng cao §3 — log breakdown specific "Kim khắc Mộc" thay vì generic "tương khắc/sinh".
       const log = view.log.map((l) => l.text).join('\n');
-      expect(log).toContain('tương khắc/sinh');
+      expect(log).toContain('Kim khắc Mộc');
+      expect(log).toContain('sát thương khuếch đại');
       expect(log).toMatch(/×1\.40/);
     });
 
@@ -266,7 +267,8 @@ describe('CombatService', () => {
       const enc = await combat.start(u.userId, 'moc_huyen_lam');
       const view = await combat.action(u.userId, enc.id, { skillKey: 'kim_quang_tram' });
       const log = view.log.map((l) => l.text).join('\n');
-      expect(log).toContain('tương khắc/sinh');
+      expect(log).toContain('Kim khắc Mộc');
+      expect(log).toContain('sát thương khuếch đại');
       expect(log).toMatch(/×1\.30/);
     });
 
@@ -282,7 +284,8 @@ describe('CombatService', () => {
       const enc = await combat.start(u.userId, 'moc_huyen_lam');
       const view = await combat.action(u.userId, enc.id, { skillKey: 'kim_quang_tram' });
       const log = view.log.map((l) => l.text).join('\n');
-      expect(log).toContain('tương khắc/sinh');
+      expect(log).toContain('Kim khắc Mộc');
+      expect(log).toContain('sát thương khuếch đại');
       expect(log).toMatch(/×1\.30/);
     });
 
@@ -301,11 +304,12 @@ describe('CombatService', () => {
       // skillKey omitted → basic_attack, element undefined.
       const view = await combat.action(u.userId, enc.id, {});
       const log = view.log.map((l) => l.text).join('\n');
-      expect(log).not.toContain('tương khắc/sinh');
-      expect(log).not.toContain('lệch hệ');
+      expect(log).not.toContain('Kim khắc Mộc');
+      expect(log).not.toContain('sát thương khuếch đại');
+      expect(log).not.toContain('sát thương suy giảm');
     });
 
-    it('skill kim hệ vs monster kim → cùng hệ ×0.90 → log "lệch hệ" suy giảm', async () => {
+    it('skill kim hệ vs monster kim → cùng hệ ×0.90 → log breakdown "Kim cùng hệ Kim" suy giảm', async () => {
       vi.spyOn(Math, 'random').mockReturnValue(0.5);
       const u = await makeUserChar(prisma, {
         stamina: 100,
@@ -318,8 +322,34 @@ describe('CombatService', () => {
       const enc = await combat.start(u.userId, 'kim_son_mach');
       const view = await combat.action(u.userId, enc.id, { skillKey: 'kim_quang_tram' });
       const log = view.log.map((l) => l.text).join('\n');
-      expect(log).toContain('lệch hệ');
+      expect(log).toContain('Kim cùng hệ Kim');
+      expect(log).toContain('sát thương suy giảm');
       expect(log).toMatch(/×0\.90/);
+    });
+
+    // Phase 11 nâng cao §3 — vẫn chấp nhận fallback generic text khi `describeElementMatch.vi=null`
+    // (theo spec, không dropdown bảo vệ cho fallback path).
+    it('parity skill flow: chỉ log breakdown khi mul ≥ amplify threshold hoặc ≤ dampen threshold (mùa không bị sin/sinh)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        stamina: 100,
+        power: 200,
+        hp: 1000,
+        hpMax: 1000,
+        spiritualRootGrade: 'tien',
+        primaryElement: 'kim',
+        secondaryElements: ['thuy', 'hoa'],
+      });
+      // tho_dia_long dungeon (nếu có một monster element=tho)? Test fallback: skill kim hệ vs monster=tho → bị thổ sinh (countered? Tổ khắc Thuỷ. Kim sinh Thuỷ. Kim vs Tho: Kim ← Tho (tho sinh kim) → attacker kim bị defender tho sinh → generated 0.85 mult).
+      // 0.85 + 0.10 (kim primary) = 0.95 → KHÔNG ≤ 0.90 → KHÔNG log.
+      // Mục đích test: verify khi mul=0.95 (nằm giữa 0.90 và 1.15) thì KHÔNG log breakdown.
+      // Skip if no compatible dungeon — keep test simple by reusing existing kim vs kim same-element flow with character bonus 0.10 → 0.90 + 0.10 = 1.00 → không log.
+      const enc = await combat.start(u.userId, 'kim_son_mach');
+      const view = await combat.action(u.userId, enc.id, { skillKey: 'kim_quang_tram' });
+      const log = view.log.map((l) => l.text).join('\n');
+      // multiplier = 0.90 (cùng hẹ) + 0.10 (kim primary) = 1.00 → between threshold → KHÔNG log.
+      expect(log).not.toContain('sát thương khuếch đại');
+      expect(log).not.toContain('sát thương suy giảm');
     });
   });
 
