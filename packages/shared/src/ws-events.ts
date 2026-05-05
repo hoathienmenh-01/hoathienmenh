@@ -1,3 +1,6 @@
+import type { ElementKey } from './combat';
+import type { SpiritualRootGrade } from './spiritual-root';
+
 /**
  * WebSocket frame protocol — file 04 §5.
  *   { type, payload, ts }
@@ -65,6 +68,31 @@ export interface CharacterStatePayload {
    * runtime) sẽ áp modifier vào combat — MVP chỉ persist + audit.
    */
   taoMaUntil: string | null;
+  /**
+   * Phase 11.3.A — Linh căn / Spiritual Root state (mirror Prisma column).
+   * `null` cho legacy character pre-Phase-11.3 chưa lazy-roll lần đầu —
+   * `SpiritualRootService.getState()` (endpoint riêng `/api/character/spiritual-root`)
+   * sẽ auto-roll khi đọc lần đầu. FE có thể dùng cờ này để render placeholder
+   * trước khi gọi endpoint detail.
+   *
+   * Phase 11.6.C — wire vào tribulation kiếp resist multiplier (xem
+   * `computeSpiritualRootTribulationResist`); FE display để player biết
+   * primary/secondary element trước khi attempt tribulation.
+   */
+  spiritualRootGrade: SpiritualRootGrade | null;
+  /** Primary element (Ngũ Hành). `null` nếu chưa onboard linh căn. */
+  primaryElement: ElementKey | null;
+  /**
+   * Secondary elements (subset Ngũ Hành), array có thể empty cho `pham` grade
+   * hoặc legacy character. Order khớp Prisma column (insertion order, không
+   * canonical sort).
+   */
+  secondaryElements: ElementKey[];
+  /**
+   * Linh căn purity 0-100 — dùng cho Phase 11.3.B refine/reroll cost trong
+   * tương lai. Default 100 cho legacy + freshly-rolled root.
+   */
+  rootPurity: number;
 }
 
 export interface CultivateTickPayload {

@@ -144,11 +144,19 @@ describe('ws-events', () => {
         banned: false,
         tribulationCooldownAt: null,
         taoMaUntil: null,
+        spiritualRootGrade: null,
+        primaryElement: null,
+        secondaryElements: [],
+        rootPurity: 100,
       };
       expect(snap.role).toBe('PLAYER');
       expect(snap.sectKey).toBeNull();
       expect(snap.tribulationCooldownAt).toBeNull();
       expect(snap.taoMaUntil).toBeNull();
+      expect(snap.spiritualRootGrade).toBeNull();
+      expect(snap.primaryElement).toBeNull();
+      expect(snap.secondaryElements).toEqual([]);
+      expect(snap.rootPurity).toBe(100);
     });
 
     it('allows sectKey as valid literal thanh_van/huyen_thuy/tu_la', () => {
@@ -189,9 +197,90 @@ describe('ws-events', () => {
         banned: false,
         tribulationCooldownAt: '2026-05-02T07:00:00.000Z',
         taoMaUntil: '2026-05-02T08:00:00.000Z',
+        spiritualRootGrade: 'huyen',
+        primaryElement: 'thuy',
+        secondaryElements: ['tho', 'kim'],
+        rootPurity: 80,
       };
       expect(typeof snap.tribulationCooldownAt).toBe('string');
       expect(typeof snap.taoMaUntil).toBe('string');
+    });
+
+    it('Phase 11.3.A — accepts spiritualRoot fields populated', () => {
+      const snap: CharacterStatePayload = {
+        id: 'char_1',
+        name: 'Tester',
+        realmKey: 'kim_dan',
+        realmStage: 9,
+        level: 1,
+        exp: '0',
+        expNext: '100',
+        hp: 100,
+        hpMax: 100,
+        mp: 50,
+        mpMax: 50,
+        stamina: 100,
+        staminaMax: 100,
+        power: 10,
+        spirit: 10,
+        speed: 10,
+        luck: 5,
+        linhThach: '0',
+        tienNgoc: 0,
+        cultivating: false,
+        sectId: null,
+        sectKey: null,
+        role: 'PLAYER',
+        banned: false,
+        tribulationCooldownAt: null,
+        taoMaUntil: null,
+        spiritualRootGrade: 'huyen',
+        primaryElement: 'thuy',
+        secondaryElements: ['tho', 'kim'],
+        rootPurity: 80,
+      };
+      expect(snap.spiritualRootGrade).toBe('huyen');
+      expect(snap.primaryElement).toBe('thuy');
+      expect(snap.secondaryElements).toEqual(['tho', 'kim']);
+      expect(snap.rootPurity).toBe(80);
+    });
+
+    it('Phase 11.3.A — accepts legacy null spiritualRoot (pre-Phase-11.3)', () => {
+      const snap: CharacterStatePayload = {
+        id: 'char_legacy',
+        name: 'Legacy',
+        realmKey: 'luyen_khi_1',
+        realmStage: 1,
+        level: 1,
+        exp: '0',
+        expNext: '100',
+        hp: 100,
+        hpMax: 100,
+        mp: 50,
+        mpMax: 50,
+        stamina: 100,
+        staminaMax: 100,
+        power: 10,
+        spirit: 10,
+        speed: 10,
+        luck: 5,
+        linhThach: '0',
+        tienNgoc: 0,
+        cultivating: false,
+        sectId: null,
+        sectKey: null,
+        role: 'PLAYER',
+        banned: false,
+        tribulationCooldownAt: null,
+        taoMaUntil: null,
+        spiritualRootGrade: null,
+        primaryElement: null,
+        secondaryElements: [],
+        rootPurity: 100,
+      };
+      expect(snap.spiritualRootGrade).toBeNull();
+      expect(snap.primaryElement).toBeNull();
+      expect(snap.secondaryElements).toHaveLength(0);
     });
   });
 

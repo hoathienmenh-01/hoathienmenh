@@ -327,6 +327,18 @@ export class CharacterService {
         ? c.tribulationCooldownAt.toISOString()
         : null,
       taoMaUntil: c.taoMaUntil ? c.taoMaUntil.toISOString() : null,
+      // Phase 11.3.A — expose Spiritual Root state cho FE consume từ /me +
+      // state:update WS broadcast. `null` cho legacy character chưa lazy-roll.
+      // Cast Prisma `String?` → narrow union qua type assertion (server đã
+      // validate value lúc roll/grant; legacy null fallback giữ nguyên).
+      spiritualRootGrade:
+        (c.spiritualRootGrade as CharacterStatePayload['spiritualRootGrade']) ??
+        null,
+      primaryElement:
+        (c.primaryElement as CharacterStatePayload['primaryElement']) ?? null,
+      secondaryElements: (c.secondaryElements ??
+        []) as CharacterStatePayload['secondaryElements'],
+      rootPurity: c.rootPurity,
     };
   }
 }

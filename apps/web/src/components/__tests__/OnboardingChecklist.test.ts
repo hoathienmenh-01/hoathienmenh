@@ -66,6 +66,10 @@ function makeChar(overrides: Partial<CharacterStatePayload> = {}): CharacterStat
     banned: false,
     tribulationCooldownAt: null,
     taoMaUntil: null,
+    spiritualRootGrade: null,
+    primaryElement: null,
+    secondaryElements: [],
+    rootPurity: 100,
     ...overrides,
   };
 }
