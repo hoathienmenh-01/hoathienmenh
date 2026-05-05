@@ -526,6 +526,69 @@ describe('CharacterService.toState exposes tribulation timestamps (Phase 11.6.E)
   });
 });
 
+// ── Phase 11.3.A — CharacterService.toState exposes Spiritual Root state ──
+// Thêm để FE consume `/character/me` + `state:update` WS broadcast biết
+// linh căn grade + primary/secondary element + purity. Trước commit này, FE
+// phải gọi riêng `/api/character/spiritual-root` (Phase 11.3.A endpoint) →
+// extra round-trip + FE không có data lúc render lần đầu.
+describe('CharacterService.toState exposes Spiritual Root fields (Phase 11.3.A)', () => {
+  it('character chưa onboard linh căn → 4 field null/default (legacy backward-compat)', async () => {
+    const fx = await makeUserChar(prisma);
+    // makeUserChar legacy không seed spiritual root → null/default fallback.
+    await prisma.character.update({
+      where: { id: fx.characterId },
+      data: {
+        spiritualRootGrade: null,
+        primaryElement: null,
+        secondaryElements: [],
+        rootPurity: 100,
+      },
+    });
+    const state = await chars.findByUser(fx.userId);
+    expect(state).not.toBeNull();
+    expect(state!.spiritualRootGrade).toBeNull();
+    expect(state!.primaryElement).toBeNull();
+    expect(state!.secondaryElements).toEqual([]);
+    expect(state!.rootPurity).toBe(100);
+  });
+
+  it('character có linh căn populated → expose đủ grade + primary + secondary + purity', async () => {
+    const fx = await makeUserChar(prisma);
+    await prisma.character.update({
+      where: { id: fx.characterId },
+      data: {
+        spiritualRootGrade: 'huyen',
+        primaryElement: 'thuy',
+        secondaryElements: ['tho', 'kim'],
+        rootPurity: 80,
+      },
+    });
+    const state = await chars.findByUser(fx.userId);
+    expect(state!.spiritualRootGrade).toBe('huyen');
+    expect(state!.primaryElement).toBe('thuy');
+    expect(state!.secondaryElements).toEqual(['tho', 'kim']);
+    expect(state!.rootPurity).toBe(80);
+  });
+
+  it('character có primaryElement nhưng secondaryElements rỗng (pham grade) → primary + [] + purity', async () => {
+    const fx = await makeUserChar(prisma);
+    await prisma.character.update({
+      where: { id: fx.characterId },
+      data: {
+        spiritualRootGrade: 'pham',
+        primaryElement: 'kim',
+        secondaryElements: [],
+        rootPurity: 60,
+      },
+    });
+    const state = await chars.findByUser(fx.userId);
+    expect(state!.spiritualRootGrade).toBe('pham');
+    expect(state!.primaryElement).toBe('kim');
+    expect(state!.secondaryElements).toEqual([]);
+    expect(state!.rootPurity).toBe(60);
+  });
+});
+
 // ── Phase 11.10.G-2 — CharacterService.breakthrough BREAKTHROUGH achievement track ──
 // Symmetric với CultivationProcessor auto-tick BREAKTHROUGH track (line 196)
 // và TribulationService SUCCESS path (Phase 11.10.G). Manual peak breakthrough
