@@ -669,3 +669,206 @@ describe('CharacterService.breakthrough BREAKTHROUGH achievement track (Phase 11
     expect(rows).toHaveLength(0);
   });
 });
+
+// ── Phase 11 nâng cao §5 PR2 wire — CharacterService.attemptBreakthrough ──
+// RNG-based đột phá: success advance realm + log; fail apply tam_ma_light +
+// log (KHÔNG advance, KHÔNG trừ EXP). Khác `breakthrough()` deterministic.
+describe('CharacterService.attemptBreakthrough (Phase 11 nâng cao §5 PR2)', () => {
+  let charsWithBuffs: CharacterService;
+  let buffSvc: import('./buff.service').BuffService;
+
+  beforeAll(async () => {
+    const { BuffService } = await import('./buff.service');
+    buffSvc = new BuffService(prisma);
+    const realtime = new RealtimeService();
+    charsWithBuffs = new CharacterService(
+      prisma,
+      realtime,
+      undefined,
+      undefined,
+      undefined,
+      titleSvc,
+      undefined,
+      buffSvc,
+    );
+  });
+
+  it('SUCCESS path (rngRoll=0.0) → realm advance + log success + KHÔNG buff', async () => {
+    const cost = expCostForStage('luyenkhi', 9)!;
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      realmStage: 9,
+      exp: cost,
+    });
+
+    const outcome = await charsWithBuffs.attemptBreakthrough(
+      fix.userId,
+      () => 0.0,
+    );
+
+    expect(outcome.success).toBe(true);
+    expect(outcome.fromRealmKey).toBe('luyenkhi');
+    expect(outcome.toRealmKey).toBe('truc_co');
+    expect(outcome.toRealmStage).toBe(1);
+    expect(outcome.attemptIndex).toBe(1);
+    expect(outcome.debuffApplied).toBe(false);
+    expect(outcome.debuffKey).toBeNull();
+    expect(outcome.character.realmKey).toBe('truc_co');
+
+    // BreakthroughAttemptLog success row
+    const log = await prisma.breakthroughAttemptLog.findUniqueOrThrow({
+      where: { id: outcome.logId },
+    });
+    expect(log.success).toBe(true);
+    expect(log.toRealmKey).toBe('truc_co');
+    expect(log.tamMaActive).toBe(false);
+    expect(log.attemptIndex).toBe(1);
+
+    // KHÔNG có CharacterBuff `tam_ma_light`
+    const buffs = await prisma.characterBuff.findMany({
+      where: { characterId: fix.characterId },
+    });
+    expect(buffs).toHaveLength(0);
+  });
+
+  it('FAIL path (rngRoll=0.99) → KHÔNG advance + apply tam_ma_light + log fail', async () => {
+    const cost = expCostForStage('luyenkhi', 9)!;
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      realmStage: 9,
+      exp: cost,
+    });
+
+    const now = new Date('2026-05-05T12:00:00Z');
+    const outcome = await charsWithBuffs.attemptBreakthrough(
+      fix.userId,
+      () => 0.99,
+      now,
+    );
+
+    expect(outcome.success).toBe(false);
+    expect(outcome.fromRealmKey).toBe('luyenkhi');
+    expect(outcome.toRealmKey).toBe('luyenkhi'); // KHÔNG advance
+    expect(outcome.toRealmStage).toBe(9);
+    expect(outcome.debuffApplied).toBe(true);
+    expect(outcome.debuffKey).toBe('tam_ma_light');
+    expect(outcome.debuffExpiresAt).not.toBeNull();
+    expect(outcome.debuffExpiresAt!.getTime()).toBe(
+      now.getTime() + 300_000, // 300s
+    );
+
+    // Character KHÔNG advance, EXP KHÔNG trừ.
+    const after = await prisma.character.findUniqueOrThrow({
+      where: { id: fix.characterId },
+    });
+    expect(after.realmKey).toBe('luyenkhi');
+    expect(after.realmStage).toBe(9);
+    expect(after.exp).toBe(cost);
+
+    // Log fail
+    const log = await prisma.breakthroughAttemptLog.findUniqueOrThrow({
+      where: { id: outcome.logId },
+    });
+    expect(log.success).toBe(false);
+    expect(log.tamMaActive).toBe(true);
+    expect(log.tamMaExpiresAt).not.toBeNull();
+    expect(log.attemptIndex).toBe(1);
+    expect(log.expBefore).toBe(BigInt(cost));
+    expect(log.expAfter).toBe(BigInt(cost));
+
+    // CharacterBuff tam_ma_light tồn tại với source='breakthrough'
+    const buff = await prisma.characterBuff.findUniqueOrThrow({
+      where: {
+        characterId_buffKey: {
+          characterId: fix.characterId,
+          buffKey: 'tam_ma_light',
+        },
+      },
+    });
+    expect(buff.source).toBe('breakthrough');
+    expect(buff.expiresAt.getTime()).toBe(now.getTime() + 300_000);
+  });
+
+  it('NOT_AT_PEAK throw khi realmStage < 9 (no log row)', async () => {
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      realmStage: 5,
+    });
+
+    await expect(
+      charsWithBuffs.attemptBreakthrough(fix.userId, () => 0.0),
+    ).rejects.toMatchObject({ code: 'NOT_AT_PEAK' });
+
+    // KHÔNG có log row (gate fail trước attempt).
+    const logs = await prisma.breakthroughAttemptLog.findMany({
+      where: { characterId: fix.characterId },
+    });
+    expect(logs).toHaveLength(0);
+  });
+
+  it('NOT_AT_PEAK throw khi exp < cost', async () => {
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      realmStage: 9,
+      exp: 1n, // dưới cost
+    });
+
+    await expect(
+      charsWithBuffs.attemptBreakthrough(fix.userId, () => 0.0),
+    ).rejects.toMatchObject({ code: 'NOT_AT_PEAK' });
+  });
+
+  it('attemptIndex tăng dần qua nhiều attempt (lifetime counter)', async () => {
+    const cost = expCostForStage('luyenkhi', 9)!;
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      realmStage: 9,
+      exp: cost,
+    });
+
+    // Attempt 1 fail
+    const o1 = await charsWithBuffs.attemptBreakthrough(
+      fix.userId,
+      () => 0.99,
+    );
+    expect(o1.attemptIndex).toBe(1);
+
+    // Attempt 2 fail
+    const o2 = await charsWithBuffs.attemptBreakthrough(
+      fix.userId,
+      () => 0.99,
+    );
+    expect(o2.attemptIndex).toBe(2);
+  });
+
+  it('legacy bootstrap KHÔNG inject BuffService → fail vẫn log nhưng KHÔNG insert CharacterBuff (backward-compat)', async () => {
+    const cost = expCostForStage('luyenkhi', 9)!;
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      realmStage: 9,
+      exp: cost,
+    });
+
+    const realtime = new RealtimeService();
+    const charsNoBuffs = new CharacterService(prisma, realtime);
+
+    const outcome = await charsNoBuffs.attemptBreakthrough(
+      fix.userId,
+      () => 0.99,
+    );
+    expect(outcome.success).toBe(false);
+    expect(outcome.debuffApplied).toBe(true); // outcome shape vẫn say applied
+
+    // Log row vẫn tamMaActive=true (audit consistency).
+    const log = await prisma.breakthroughAttemptLog.findUniqueOrThrow({
+      where: { id: outcome.logId },
+    });
+    expect(log.tamMaActive).toBe(true);
+
+    // Nhưng KHÔNG có CharacterBuff row (BuffService chưa inject).
+    const buffs = await prisma.characterBuff.findMany({
+      where: { characterId: fix.characterId },
+    });
+    expect(buffs).toHaveLength(0);
+  });
+});

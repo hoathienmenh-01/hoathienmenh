@@ -14,7 +14,11 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { z } from 'zod';
-import { CharacterService } from './character.service';
+import {
+  BreakthroughError,
+  CharacterService,
+  type BreakthroughAttemptOutcome,
+} from './character.service';
 import { SpiritualRootError, SpiritualRootService } from './spiritual-root.service';
 import {
   CultivationMethodError,
@@ -231,6 +235,43 @@ export class CharacterController {
       const code = (e as { code?: string })?.code;
       if (code === 'NO_CHARACTER') fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
       if (code === 'NOT_AT_PEAK') fail('NOT_AT_PEAK', HttpStatus.CONFLICT);
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 11 nâng cao §5 PR2 wire — RNG-based breakthrough attempt endpoint.
+   *
+   * Khác `POST /breakthrough` (deterministic, luôn thành công nếu peak +
+   * đủ EXP), endpoint này:
+   *   - Compute `BreakthroughChanceBreakdown` (4 layer: base + rootPurity +
+   *     methodAffinity + itemBonus).
+   *   - Server roll RNG `[0, 1)` → success / fail.
+   *   - SUCCESS → realm advance + restats giống `breakthrough()` + INSERT
+   *     `BreakthroughAttemptLog{success:true}`.
+   *   - FAIL → KHÔNG advance, KHÔNG trừ EXP; apply `tam_ma_light` debuff
+   *     (300s, `cultivation_rate_mul ×0.7` áp EXP gain) + INSERT log.
+   *
+   * Response shape: `{ success, breakdown, rngRoll, attemptIndex, debuff,
+   * character }` (BigInt fields cast → string trong `character` qua
+   * `toState()`; `debuffExpiresAt` cast → ISO string defensive).
+   *
+   * Forward-compat: client cũ vẫn có thể gọi `POST /breakthrough` deterministic.
+   * UI Phase 11 nâng cao §5 PR3 sẽ migrate sang endpoint này.
+   */
+  @Post('breakthrough/attempt')
+  @HttpCode(200)
+  async breakthroughAttempt(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    try {
+      const outcome = await this.chars.attemptBreakthrough(userId);
+      return { ok: true, data: { outcome: toBreakthroughAttemptView(outcome) } };
+    } catch (e) {
+      if (e instanceof BreakthroughError) {
+        if (e.code === 'NO_CHARACTER') fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+        if (e.code === 'NOT_AT_PEAK') fail('NOT_AT_PEAK', HttpStatus.CONFLICT);
+        if (e.code === 'INVALID_RNG') fail('INVALID_RNG', HttpStatus.BAD_REQUEST);
+      }
       throw e;
     }
   }
@@ -1162,4 +1203,43 @@ function mapAlchemyErrorStatus(code: AlchemyError['code']): HttpStatus {
     default:
       return HttpStatus.BAD_REQUEST;
   }
+}
+
+/**
+ * Phase 11 nâng cao §5 PR2 wire — view mapper cho `BreakthroughAttemptOutcome`.
+ *
+ * Cast `Date` fields → ISO string (FE serialize chuẩn JSON), giữ nguyên
+ * `breakdown` (4 layer numbers, ≤6 decimal precision OK qua JSON), `rngRoll`
+ * (number), `attemptIndex` (int). `character` đã là `CharacterStatePayload`
+ * (BigInt → string trong `toState()`).
+ *
+ * Mirror pattern `TribulationAttemptOutcomeView` (Phase 11.6.B). Function
+ * pure — KHÔNG side-effect, để controller test/mock dễ.
+ */
+function toBreakthroughAttemptView(o: BreakthroughAttemptOutcome) {
+  return {
+    success: o.success,
+    fromRealmKey: o.fromRealmKey,
+    fromRealmStage: o.fromRealmStage,
+    toRealmKey: o.toRealmKey,
+    toRealmStage: o.toRealmStage,
+    breakdown: {
+      reason: o.breakdown.reason,
+      baseChance: o.breakdown.baseChance,
+      rootPurityBonus: o.breakdown.rootPurityBonus,
+      methodAffinityBonus: o.breakdown.methodAffinityBonus,
+      itemBonus: o.breakdown.itemBonus,
+      rawChance: o.breakdown.rawChance,
+      finalChance: o.breakdown.finalChance,
+    },
+    rngRoll: o.rngRoll,
+    attemptIndex: o.attemptIndex,
+    logId: o.logId,
+    debuff: {
+      applied: o.debuffApplied,
+      key: o.debuffKey,
+      expiresAt: o.debuffExpiresAt ? o.debuffExpiresAt.toISOString() : null,
+    },
+    character: o.character,
+  };
 }

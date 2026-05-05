@@ -542,6 +542,80 @@ describe('CultivationProcessor.process (tick)', () => {
     });
   });
 
+  // — Phase 11 nâng cao §5 PR2 wire — Buff cultivationRateMul (Tâm Ma light) --
+  // `tam_ma_light` source=`breakthrough` áp `cultivation_rate_mul ×0.7` vào
+  // EXP gain trong 300s. Khác `debuff_taoma` (block toàn bộ) — light variant
+  // chỉ scale rate, vẫn tu luyện được. Compose multiplicatif sau talentExpMul.
+  describe('Buff cultivationRateMul wire (Phase 11 nâng cao §5 PR2)', () => {
+    let processorWithBuffs: CultivationProcessor;
+    let buffSvc: BuffService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const missions = makeMissionService(prisma);
+      buffSvc = new BuffService(prisma);
+      processorWithBuffs = new CultivationProcessor(
+        prisma,
+        realtime,
+        missions,
+        undefined, // achievements
+        undefined, // talents
+        buffSvc,
+      );
+    });
+
+    it('character có tam_ma_light → EXP gain ×0.7 (vẫn tu luyện, KHÔNG block)', async () => {
+      const baseGain =
+        cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+      });
+      await buffSvc.applyBuff(f.characterId, 'tam_ma_light', 'breakthrough');
+
+      await processorWithBuffs.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      // Compose: baseGain × 0.7 (cultivationRateMul). Round → BigInt.
+      const expected = BigInt(Math.max(1, Math.round(baseGain * 0.7)));
+      expect(c.exp).toBe(expected);
+    });
+
+    it('character KHÔNG có tam_ma_light → EXP gain identity (×1.0)', async () => {
+      const baseGain =
+        cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+      });
+
+      await processorWithBuffs.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      expect(c.exp).toBe(BigInt(baseGain));
+    });
+
+    it('không inject BuffService → cultivationRateMul identity (1.0, không scale)', async () => {
+      const baseGain =
+        cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+      });
+      await buffSvc.applyBuff(f.characterId, 'tam_ma_light', 'breakthrough');
+
+      // `processor` (default) không inject BuffService.
+      await processor.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      // Service không inject → cultivationRateMul=1.0 → exp gain bình thường.
+      expect(c.exp).toBe(BigInt(baseGain));
+    });
+  });
+
   // — Phase 11.8.E — Buff hp/mpRegenFlat wire vào cultivation tick ----
   describe('Buff hp/mpRegenFlat wire (Phase 11.8.E)', () => {
     let processorWithBuffs: CultivationProcessor;
