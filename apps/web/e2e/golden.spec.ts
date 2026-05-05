@@ -2,7 +2,7 @@
  * E2E golden path — closed beta core loop.
  *
  * Mục tiêu: cover end-to-end các tương tác chính của user closed beta để
- * regression-safe trước khi mở rộng Phase 10 content scale. Coverage (19 spec):
+ * regression-safe trước khi mở rộng Phase 10 content scale. Coverage (20 spec):
  *   1. AuthView smoke (no backend)
  *   2. Register UI + 4-step onboarding + landing /home (full UI flow)
  *   3. Cultivate toggle ON/OFF (UI label flip + API state cross-check)
@@ -22,6 +22,7 @@
  *   17. Skill Book — auto-grant basic_attack + tier badge + equipped summary (Phase 11.2.C)
  *   18. Talent catalog — fresh char Loadout empty + filter row gate + sticky CSS + catalog grid render (Phase 11.7.G)
  *   19. Talent learn → cast → cooldown badge — admin seed (PR #389) + UI learn click + API combat cast + cooldown badge UI (Phase 11.X UI E2E)
+ *   20. Breakthrough attempt → outcome banner + history row appended (success/fail RNG branch, reload-persist) — admin seed (PR #383 grant-exp peak) + UI click attempt + RNG outcome banner + server-authoritative log persist (Phase 11 nâng cao §5 PR3 UI E2E)
  *
  * Yêu cầu chạy local:
  *   1. `pnpm infra:up` (Postgres + Redis)
@@ -46,6 +47,7 @@ import {
   buyShopItem,
   listInventoryApi,
   adminSeedTalent,
+  adminSeedBreakthroughPeak,
   castTalentViaCombat,
 } from './helpers';
 
@@ -842,5 +844,138 @@ test.describe('Golden path — full stack required', () => {
     await expect(cooldownBadge).toContainText(String(COOLDOWN_TURNS));
     // Ready badge ẩn (cooldown > 0 → mutex với ready).
     await expect(page.locator(`[data-testid="talent-active-ready-${TALENT_KEY}"]`)).toHaveCount(0);
+  });
+
+  // ===================================================================
+  // SPEC #20 — Phase 11 nâng cao §5 PR3 — Breakthrough UI history view E2E.
+  //
+  // Goal: lock down full Đột Phá Nâng Cao (RNG) round-trip — admin grant-exp
+  // peak luyenkhi → /breakthrough atPeak gate → click attempt → outcome
+  // banner (success OR fail variant) + chance breakdown + history row
+  // appended + reload-persist (server-authoritative log).
+  //
+  // Foundation:
+  //   - PR #383 admin seed harness `POST /admin/users/:id/grant-exp` (auto
+  //     stage-advance 1..8 + residual exp ≥ cost(9)).
+  //   - PR #413 shared `computeBreakthroughChance` formula + balance dials.
+  //   - PR #414 `BreakthroughAttemptLog` Prisma model + `tam_ma_light` buff.
+  //   - PR #415 `CharacterService.attemptBreakthrough` + RNG resolver +
+  //     `POST /character/breakthrough/attempt` endpoint (server-authoritative).
+  //   - PR #418 `GET /character/breakthrough/log` endpoint + `listBreakthroughAttemptLogs`.
+  //   - PR #419 BreakthroughView (`/breakthrough`) + Pinia store + i18n.
+  //
+  // Setup:
+  //   1. registerAndOnboard fresh char (luyenkhi stage 1, sect thanh_van).
+  //   2. adminSeedBreakthroughPeak(userId) → grant-exp '200000' (cumulative
+  //      cost 1..8 = 55031, residual = 144969 ≥ cost(9)=23613 → peak).
+  //
+  // Test:
+  //   3. Visit /breakthrough → assert title + atPeak gate satisfied + history
+  //      empty state visible + attempt button enabled.
+  //   4. Click `breakthrough-attempt-btn` → wait outcome banner. RNG
+  //      non-deterministic at runtime (Math.random per `CharacterService.attemptBreakthrough`)
+  //      → spec MUST accept either success OR fail branch via prefix locator.
+  //   5. Verify outcome banner shows transition + finalChance + rngRoll +
+  //      attemptIndex=1, breakdown summary present.
+  //   6. Verify exactly 1 history row appended (`breakthrough-history-row`)
+  //      với attemptIndex=1.
+  //   7. Reload `/breakthrough` → outcome banner gone (session-only state)
+  //      nhưng history row still visible (server-authoritative `BreakthroughAttemptLog` persist).
+  //
+  // Anti-FE-self-grant: spec KHÔNG mock RNG / KHÔNG bypass server. Outcome
+  // và history row đều round-trip qua `/character/breakthrough/attempt` +
+  // `/character/breakthrough/log` (RNG resolved server-side, log persisted
+  // qua Prisma). Nếu BE/FE wire stale → outcome banner missing hoặc history
+  // row count !== 1 → spec fail.
+  //
+  // Yêu cầu environment: `pnpm --filter @xuantoi/api bootstrap` để seed
+  // admin@example.com (admin seed harness gating). Override email/password
+  // qua env `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD`.
+  // ===================================================================
+  test('breakthrough attempt → outcome banner + history row appended (success/fail RNG branch) — Phase 11 nâng cao §5 PR3 UI E2E', async ({
+    page,
+  }) => {
+    // 1. Onboard fresh char (sect thanh_van mặc định, realm luyenkhi stage 1).
+    const seed = await registerAndOnboard(page, { emailPrefix: 'e2e_break_full' });
+
+    // 2. Admin grant-exp 200000 → server auto-advance luyenkhi stage 1→9 +
+    //    residual exp 144969 ≥ cost(9) 23613. Char now atPeak deterministic.
+    await adminSeedBreakthroughPeak(seed.userId);
+
+    // Cross-check qua /character/me — invariant pre-attempt.
+    const charPre = await waitCharacter(
+      page,
+      (c) => {
+        if (c.realmKey !== 'luyenkhi') return false;
+        if (c.realmStage !== 9) return false;
+        try {
+          return BigInt(String(c.exp ?? '0')) >= BigInt(String(c.expNext ?? '0'));
+        } catch {
+          return false;
+        }
+      },
+      { timeoutMs: 10_000, label: 'breakthrough peak seed' },
+    );
+    expect(charPre.realmKey).toBe('luyenkhi');
+    expect(charPre.realmStage).toBe(9);
+
+    // 3. Navigate /breakthrough → header + atPeak hint + empty history.
+    await page.goto('/breakthrough');
+    await expect(page).toHaveURL(/\/breakthrough/);
+
+    // Title + currentRealm dynamic text từ BreakthroughView.vue.
+    await expect(page.locator('h2')).toContainText('Đột Phá', { timeout: 10_000 });
+
+    // atPeak satisfied → attempt button enabled (vs notPeak → disabled).
+    const attemptBtn = page.locator('[data-testid="breakthrough-attempt-btn"]');
+    await expect(attemptBtn).toBeVisible();
+    await expect(attemptBtn).toBeEnabled();
+
+    // History empty state cho fresh char (chưa từng attempt RNG).
+    const historyRows = page.locator('[data-testid="breakthrough-history-row"]');
+    await expect(historyRows).toHaveCount(0);
+
+    // 4. Click attempt → server roll RNG + ghi BreakthroughAttemptLog +
+    //    apply success/fail branch. Outcome banner xuất hiện (FE consume
+    //    /character/breakthrough/attempt response, set bt.lastOutcome).
+    await attemptBtn.click();
+
+    // Outcome banner: spec accept either branch (RNG non-deterministic).
+    // Locator prefix match `breakthrough-outcome-success` OR
+    // `breakthrough-outcome-fail` — chỉ một biến thể visible per attempt.
+    const outcomeBanner = page.locator('[data-testid^="breakthrough-outcome-"]');
+    await expect(outcomeBanner).toBeVisible({ timeout: 10_000 });
+    await expect(outcomeBanner).toHaveCount(1);
+
+    // 5. Verify outcome banner internals — transition (luyenkhi/9 → next),
+    //    finalChance + rngRoll + attemptIndex#1.
+    await expect(outcomeBanner).toContainText('luyenkhi/9');
+    await expect(outcomeBanner).toContainText('#1');
+    // Breakdown summary collapsible (cursor-pointer text-ink-300) — verify
+    // label "Chi tiết tính tỷ lệ" present (i18n breakthrough.outcome.breakdownLabel).
+    await expect(outcomeBanner).toContainText('Chi tiết tính tỷ lệ');
+
+    // 6. History row appended — server-authoritative log persist → store
+    //    fetchHistory() refetch sau attempt → 1 row attemptIndex=1.
+    await expect(historyRows).toHaveCount(1, { timeout: 10_000 });
+    await expect(historyRows.first()).toContainText('#1');
+    // History row chứa transition luyenkhi/9 (fromRealm/Stage).
+    await expect(historyRows.first()).toContainText('luyenkhi/9');
+
+    // 7. Reload /breakthrough → session-only `lastOutcome` cleared (Pinia
+    //    state reset on mount), nhưng history row persist từ server log.
+    await page.reload();
+    await expect(page).toHaveURL(/\/breakthrough/);
+
+    // Outcome banner GONE post-reload (session-only state per Pinia store).
+    await expect(page.locator('[data-testid^="breakthrough-outcome-"]')).toHaveCount(0, {
+      timeout: 10_000,
+    });
+
+    // History row STILL visible — server `BreakthroughAttemptLog` persisted
+    // qua Prisma → fetchHistory() reload re-render row.
+    const historyRowsReload = page.locator('[data-testid="breakthrough-history-row"]');
+    await expect(historyRowsReload).toHaveCount(1, { timeout: 10_000 });
+    await expect(historyRowsReload.first()).toContainText('#1');
   });
 });
