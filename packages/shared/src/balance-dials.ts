@@ -296,6 +296,24 @@ export const ELEMENT_MODIFIER_ABSOLUTE_FLOOR = 0.6;
 /** Trần tuyệt đối tổng modifier sau khi compose tất cả layer. */
 export const ELEMENT_MODIFIER_ABSOLUTE_CEIL = 1.5;
 
+// ---------------- Section 8.2: Talent tribulation resist (Phase 11.6.D) ----
+//
+// Multiplier (< 1) áp lên damage taken từ wave hệ tương ứng trong tribulation.
+// Compose multiplicatively trên top spiritual root resist (Phase 11.6.C):
+//   effective = computeSpiritualRootTribulationResist(...)
+//             × computePassiveTalentTribulationResist(...)
+// Floor/ceil clamp qua `ELEMENT_MODIFIER_ABSOLUTE_FLOOR/CEIL`.
+//
+// 5-element resist sàn = 0.95⁵ ≈ 0.7738 (full stack), tới sàn floor 0.6 vẫn còn
+// headroom cho future Equipment resist layer (Phase 11.6.E follow-up).
+
+/**
+ * Multiplier mặc định cho 1 talent passive `kind: 'element_resist'`. value < 1
+ * = giảm damage taken (0.95 = giảm 5%). Single source-of-truth cho 5 talent
+ * `talent_<elem>_thien_giap` trong `TALENTS` catalog.
+ */
+export const TALENT_ELEMENT_RESIST_VALUE = 0.95;
+
 // ---------------- Helpers (matrix lookup + UI label) -------------------
 
 /**
@@ -544,6 +562,9 @@ export const BALANCE_DIALS = {
   ELEMENT_LOG_DAMPEN_THRESHOLD,
   ELEMENT_MODIFIER_ABSOLUTE_FLOOR,
   ELEMENT_MODIFIER_ABSOLUTE_CEIL,
+
+  // Talent tribulation resist (Phase 11.6.D)
+  TALENT_ELEMENT_RESIST_VALUE,
 
   // Breakthrough (forward-compat)
   BREAKTHROUGH_CHANCE_MIN,

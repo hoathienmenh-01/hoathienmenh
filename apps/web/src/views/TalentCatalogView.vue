@@ -271,6 +271,16 @@ function effectSummary(talent: TalentDef): string {
           element: t(`talents.element.${target}`),
         });
       }
+      case 'element_resist': {
+        // Phase 11.6.D — value < 1 (e.g. 0.95 = giảm 5% damage taken).
+        // pct hiển thị = round((1 - value) * 100).
+        const pct = Math.round((1 - eff.value) * 100);
+        const target = eff.elementTarget ?? 'kim';
+        return t('talents.effect.elementResist', {
+          pct,
+          element: t(`talents.element.${target}`),
+        });
+      }
       default:
         return talent.description;
     }

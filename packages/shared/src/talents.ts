@@ -34,13 +34,19 @@ export type TalentType = 'passive' | 'active';
  * - `drop_bonus`: + multiplier loot drop rate
  * - `exp_bonus`: + multiplier exp gain
  * - `damage_bonus`: + multiplier damage vs specific element (counter)
+ * - `element_resist`: × multiplier (< 1) vào damage taken từ specific element
+ *   wave (Phase 11.6.D Tribulation talent resist layer). `value` < 1 = resist
+ *   (vd 0.95 = giảm 5% damage); `elementTarget` = element của wave được
+ *   resist. Compose multiplicatively trên top spiritual root resist trong
+ *   {@link computePassiveTalentTribulationResist}.
  */
 export type PassiveTalentKind =
   | 'stat_mod'
   | 'regen'
   | 'drop_bonus'
   | 'exp_bonus'
-  | 'damage_bonus';
+  | 'damage_bonus'
+  | 'element_resist';
 
 /**
  * Sub-kind cho active "thần thông" effect.
@@ -199,6 +205,20 @@ export interface TalentDef {
  * damage_bonus path. Lore: tu sĩ thấu hiểu đạo tương sinh, hoá khí hệ mình
  * sinh ra trong đường công, đả thương kẻ địch hệ đó dễ dàng hơn. Sau PR này
  * **2/2 damage_bonus chain complete** (tương khắc 5/5 + tương sinh 5/5).)
+ * (Phase 11.6.D: thêm 5 talent `talent_kim_thien_giap` (kim), `talent_moc_thien_giap`
+ * (moc), `talent_thuy_thien_giap` (thuy), `talent_hoa_thien_giap` (hoa),
+ * `talent_tho_thien_giap` (tho) — `kind: 'element_resist'` `value: 0.95` (giảm 5%
+ * damage taken từ wave hệ tương ứng) — producers cho
+ * `composePassiveTalentMods.elementResistByElement`. **Hoàn tất 5-element
+ * tribulation resist coverage**. Wire vào `TribulationService.attemptTribulation`
+ * compose multiplicatively trên top spiritual root resist (Phase 11.6.C):
+ *   `effectiveResist = computeSpiritualRootTribulationResist(...) ×
+ *    computePassiveTalentTribulationResist(...)`
+ * Floor/ceil envelope qua `ELEMENT_MODIFIER_ABSOLUTE_FLOOR`/`CEIL`. Cùng
+ * `realmRequirement: 'kim_dan'` + `talentPointCost: 1` + `value: 0.95`.
+ * 5-element resist sàn = 0.95⁵ ≈ 0.7738 (full stack mọi resist), tới sàn
+ * floor 0.6 vẫn còn headroom. Equipment resist defer follow-up sau khi
+ * Equipment runtime module land.)
  *
  * Stable order: passive trước → active sau.
  */
@@ -987,6 +1007,96 @@ export const TALENTS: readonly TalentDef[] = [
     activeEffect: null,
   },
 
+  // ===== PASSIVE TALENTS — element_resist (Phase 11.6.D) =====
+  // Compose vào TribulationService.attemptTribulation: effective resist =
+  // computeSpiritualRootTribulationResist(...) × computePassiveTalentTribulationResist(...).
+  // value < 1 = resist (0.95 = giảm 5% damage taken từ wave element tương ứng).
+  {
+    key: 'talent_kim_thien_giap',
+    name: 'Kim Thiên Giáp',
+    description:
+      'Kim khí thiên giáng phủ thân, giảm 5% sát thương từ kim kiếp hệ Kim.',
+    type: 'passive',
+    element: 'kim',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'element_resist',
+      value: 0.95,
+      statTarget: null,
+      elementTarget: 'kim',
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_moc_thien_giap',
+    name: 'Mộc Thiên Giáp',
+    description:
+      'Mộc linh thiên giáng phủ thân, giảm 5% sát thương từ mộc kiếp hệ Mộc.',
+    type: 'passive',
+    element: 'moc',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'element_resist',
+      value: 0.95,
+      statTarget: null,
+      elementTarget: 'moc',
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_thuy_thien_giap',
+    name: 'Thuỷ Thiên Giáp',
+    description:
+      'Thuỷ khí thiên giáng phủ thân, giảm 5% sát thương từ thuỷ kiếp hệ Thuỷ.',
+    type: 'passive',
+    element: 'thuy',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'element_resist',
+      value: 0.95,
+      statTarget: null,
+      elementTarget: 'thuy',
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_hoa_thien_giap',
+    name: 'Hoả Thiên Giáp',
+    description:
+      'Hoả khí thiên giáng phủ thân, giảm 5% sát thương từ hoả kiếp hệ Hoả.',
+    type: 'passive',
+    element: 'hoa',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'element_resist',
+      value: 0.95,
+      statTarget: null,
+      elementTarget: 'hoa',
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_tho_thien_giap',
+    name: 'Thổ Thiên Giáp',
+    description:
+      'Thổ khí thiên giáng phủ thân, giảm 5% sát thương từ thổ kiếp hệ Thổ.',
+    type: 'passive',
+    element: 'tho',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'element_resist',
+      value: 0.95,
+      statTarget: null,
+      elementTarget: 'tho',
+    },
+    activeEffect: null,
+  },
+
   // ===== ACTIVE TALENTS / THẦN THÔNG (7) =====
   {
     key: 'talent_kim_quang_tram',
@@ -1227,6 +1337,15 @@ export interface PassiveTalentMods {
   readonly dropMul: number;
   readonly expMul: number;
   readonly damageBonusByElement: ReadonlyMap<ElementKey, number>;
+  /**
+   * Phase 11.6.D — multiplier (< 1) áp lên damage taken từ wave hệ tương ứng
+   * trong tribulation. Compose multiplicatively bởi `element_resist` passive
+   * talent (`value=0.95`). Wire vào `TribulationService.attemptTribulation`
+   * qua {@link computePassiveTalentTribulationResist}, multiply trên top
+   * spiritual root resist (Phase 11.6.C), clamp `[ELEMENT_MODIFIER_ABSOLUTE_FLOOR,
+   * ELEMENT_MODIFIER_ABSOLUTE_CEIL]`. Empty Map = identity (no resist).
+   */
+  readonly elementResistByElement: ReadonlyMap<ElementKey, number>;
 }
 
 export function composePassiveTalentMods(
@@ -1242,6 +1361,7 @@ export function composePassiveTalentMods(
   let dropMul = 1;
   let expMul = 1;
   const damageBonusByElement = new Map<ElementKey, number>();
+  const elementResistByElement = new Map<ElementKey, number>();
 
   for (const key of learnedTalentKeys) {
     const t = getTalentDef(key);
@@ -1279,6 +1399,10 @@ export function composePassiveTalentMods(
     } else if (eff.kind === 'damage_bonus' && eff.elementTarget) {
       const cur = damageBonusByElement.get(eff.elementTarget) ?? 1;
       damageBonusByElement.set(eff.elementTarget, cur * eff.value);
+    } else if (eff.kind === 'element_resist' && eff.elementTarget) {
+      // Phase 11.6.D: stack multiplicatively per element. value < 1 = resist.
+      const cur = elementResistByElement.get(eff.elementTarget) ?? 1;
+      elementResistByElement.set(eff.elementTarget, cur * eff.value);
     }
   }
 
@@ -1293,7 +1417,30 @@ export function composePassiveTalentMods(
     dropMul,
     expMul,
     damageBonusByElement,
+    elementResistByElement,
   };
+}
+
+/**
+ * Phase 11.6.D — derive tribulation resist multiplier từ talent đã học cho 1
+ * wave element. Pure deterministic helper (no I/O). Caller compose multiplicatively
+ * trên top spiritual root resist:
+ *   `effective = computeSpiritualRootTribulationResist(...) × computePassiveTalentTribulationResist(...)`
+ *
+ * - `null` element (Tâm Kiếp / vô hệ) → fallback `1.0` (no talent resist).
+ * - Element khớp `mods.elementResistByElement` → return stored multiplier (< 1).
+ * - Element không khớp → fallback `1.0` (identity, no effect).
+ *
+ * **KHÔNG** clamp envelope ở đây — caller (TribulationService) sẽ clamp tổng
+ * sau khi compose tất cả layer. Single-talent value=0.95 floor, 5-talent stack
+ * floor = 0.95⁵ ≈ 0.7738 — vẫn cao hơn `ELEMENT_MODIFIER_ABSOLUTE_FLOOR=0.6`.
+ */
+export function computePassiveTalentTribulationResist(
+  mods: PassiveTalentMods,
+  waveElement: ElementKey | null,
+): number {
+  if (waveElement === null) return 1.0;
+  return mods.elementResistByElement.get(waveElement) ?? 1.0;
 }
 
 export interface ActiveTalentResult {

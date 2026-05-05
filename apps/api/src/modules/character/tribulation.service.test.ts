@@ -11,6 +11,7 @@ import { AchievementService } from './achievement.service';
 import { BuffService } from './buff.service';
 import { CharacterService } from './character.service';
 import { CurrencyService } from './currency.service';
+import { TalentService } from './talent.service';
 import { TitleService } from './title.service';
 import {
   TribulationError,
@@ -32,8 +33,10 @@ let currency: CurrencyService;
 let svc: TribulationService;
 let titleSvc: TitleService;
 let buffSvc: BuffService;
+let talentSvc: TalentService;
 let svcWithTitles: TribulationService;
 let svcWithBuffs: TribulationService;
+let svcWithTalents: TribulationService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
@@ -41,6 +44,7 @@ beforeAll(() => {
   currency = new CurrencyService(prisma);
   titleSvc = new TitleService(prisma);
   buffSvc = new BuffService(prisma);
+  talentSvc = new TalentService(prisma);
   svc = new TribulationService(prisma, currency);
   svcWithTitles = new TribulationService(prisma, currency, titleSvc);
   svcWithBuffs = new TribulationService(
@@ -48,6 +52,15 @@ beforeAll(() => {
     currency,
     titleSvc,
     buffSvc,
+  );
+  // Phase 11.6.D — TalentService inject vào TribulationService cho resist tests.
+  svcWithTalents = new TribulationService(
+    prisma,
+    currency,
+    undefined,
+    undefined,
+    undefined,
+    talentSvc,
   );
 });
 
@@ -793,6 +806,159 @@ describe('TribulationService.attemptTribulation — element resist (Phase 11.6.C
       el === 'hoa' ? 0.7 : el === 'kim' ? 1.2 : 1.0,
     );
     expect(out.totalDamage).toBeLessThan(phamSim.totalDamage);
+  });
+});
+
+describe('TribulationService.attemptTribulation — talent resist (Phase 11.6.D)', () => {
+  /**
+   * Compose talent resist multiplicatively trên top spiritual root resist.
+   * - `kim_dan → nguyen_anh` minor lei waves = ['hoa','kim','hoa'].
+   * - `talent_hoa_thien_giap` (kind='element_resist' value=0.95
+   *   elementTarget='hoa') → 2 wave hoa nhân thêm 0.95.
+   * - Backward-compat: TalentService NOT inject (svc) → fallback identity 1.0.
+   */
+
+  it('TalentService NOT injected (svc) → backward-compat, totalDamage = baseline', async () => {
+    // svc constructor không có talents → fallback identity 1.0.
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 50_000 });
+    // Đảm bảo talent_hoa_thien_giap có học hay chưa cũng KHÔNG ảnh hưởng vì
+    // svc không inject TalentService.
+    await prisma.characterTalent.create({
+      data: { characterId: ctx.characterId, talentKey: 'talent_hoa_thien_giap' },
+    });
+
+    const def = getTribulationForBreakthrough('kim_dan', 'nguyen_anh')!;
+    const baselineSim = simulateTribulation(def, 50_000, () => 1.0);
+
+    const out = await svc.attemptTribulation(ctx.characterId, () => 0.99);
+
+    expect(out.success).toBe(true);
+    expect(out.totalDamage).toBe(baselineSim.totalDamage);
+  });
+
+  it('TalentService injected nhưng character chưa học talent → fallback identity, totalDamage = baseline', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 50_000 });
+
+    const def = getTribulationForBreakthrough('kim_dan', 'nguyen_anh')!;
+    const baselineSim = simulateTribulation(def, 50_000, () => 1.0);
+
+    const out = await svcWithTalents.attemptTribulation(
+      ctx.characterId,
+      () => 0.99,
+    );
+
+    expect(out.success).toBe(true);
+    expect(out.totalDamage).toBe(baselineSim.totalDamage);
+  });
+
+  it('character học talent_hoa_thien_giap → 2 wave hoa giảm 5%, wave kim không đổi', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 50_000 });
+    // Insert talent trực tiếp qua prisma (bypass realm/budget gate cho test
+    // đơn lẻ — gate đã được test riêng trong talent.service.test.ts).
+    await prisma.characterTalent.create({
+      data: { characterId: ctx.characterId, talentKey: 'talent_hoa_thien_giap' },
+    });
+
+    const def = getTribulationForBreakthrough('kim_dan', 'nguyen_anh')!;
+    const expectedSim = simulateTribulation(def, 50_000, (el) =>
+      el === 'hoa' ? 0.95 : 1.0,
+    );
+
+    const out = await svcWithTalents.attemptTribulation(
+      ctx.characterId,
+      () => 0.99,
+    );
+
+    expect(out.success).toBe(true);
+    expect(out.totalDamage).toBe(expectedSim.totalDamage);
+    // Sanity: < baseline 1.0 (do hoa wave nhân 0.95).
+    const baselineSim = simulateTribulation(def, 50_000, () => 1.0);
+    expect(out.totalDamage).toBeLessThan(baselineSim.totalDamage);
+  });
+
+  it('character học talent_kim_thien_giap → wave kim giảm 5%, 2 wave hoa không đổi', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 50_000 });
+    await prisma.characterTalent.create({
+      data: { characterId: ctx.characterId, talentKey: 'talent_kim_thien_giap' },
+    });
+
+    const def = getTribulationForBreakthrough('kim_dan', 'nguyen_anh')!;
+    const expectedSim = simulateTribulation(def, 50_000, (el) =>
+      el === 'kim' ? 0.95 : 1.0,
+    );
+
+    const out = await svcWithTalents.attemptTribulation(
+      ctx.characterId,
+      () => 0.99,
+    );
+
+    expect(out.success).toBe(true);
+    expect(out.totalDamage).toBe(expectedSim.totalDamage);
+  });
+
+  it('compose: học cả hoa + kim talent → 2 wave hoa × 0.95 + wave kim × 0.95', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 50_000 });
+    await prisma.characterTalent.createMany({
+      data: [
+        { characterId: ctx.characterId, talentKey: 'talent_hoa_thien_giap' },
+        { characterId: ctx.characterId, talentKey: 'talent_kim_thien_giap' },
+      ],
+    });
+
+    const def = getTribulationForBreakthrough('kim_dan', 'nguyen_anh')!;
+    const expectedSim = simulateTribulation(def, 50_000, (el) =>
+      el === 'hoa' ? 0.95 : el === 'kim' ? 0.95 : 1.0,
+    );
+
+    const out = await svcWithTalents.attemptTribulation(
+      ctx.characterId,
+      () => 0.99,
+    );
+
+    expect(out.success).toBe(true);
+    expect(out.totalDamage).toBe(expectedSim.totalDamage);
+  });
+
+  it('compose với spiritual root: pham primary=hoa + talent_hoa_thien_giap → wave hoa = 0.9 × 0.95, wave kim = 0.7 (countered, no talent kim)', async () => {
+    // Wave hoa với primary='hoa' = sameElement = 0.9 (Phase 11.6.C),
+    // compose talent resist 0.95 → 0.855.
+    // Wave kim attacker vs primary=hoa defender: hoa khắc kim → countered
+    // relation → 0.7 (Phase 11.6.C resist mạnh). KHÔNG có talent kim →
+    // talent resist 1.0 → final 0.7.
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 50_000 });
+    await prisma.character.update({
+      where: { id: ctx.characterId },
+      data: {
+        spiritualRootGrade: 'pham',
+        primaryElement: 'hoa',
+        secondaryElements: [],
+      },
+    });
+    await prisma.characterTalent.create({
+      data: { characterId: ctx.characterId, talentKey: 'talent_hoa_thien_giap' },
+    });
+
+    const def = getTribulationForBreakthrough('kim_dan', 'nguyen_anh')!;
+    const expectedSim = simulateTribulation(def, 50_000, (el) => {
+      if (el === 'hoa') return 0.9 * 0.95; // root sameElement × talent resist
+      if (el === 'kim') return 0.7; // root countered only (no talent)
+      return 1.0;
+    });
+
+    const out = await svcWithTalents.attemptTribulation(
+      ctx.characterId,
+      () => 0.99,
+    );
+
+    expect(out.success).toBe(true);
+    expect(out.totalDamage).toBe(expectedSim.totalDamage);
+    // Sanity: < pham primary=hoa baseline (no talent) — talent thêm resist hoa.
+    const phamBaselineSim = simulateTribulation(def, 50_000, (el) => {
+      if (el === 'hoa') return 0.9;
+      if (el === 'kim') return 0.7;
+      return 1.0;
+    });
+    expect(out.totalDamage).toBeLessThan(phamBaselineSim.totalDamage);
   });
 });
 
