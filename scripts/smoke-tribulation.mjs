@@ -7,11 +7,18 @@
  * gap" được liệt kê ở `docs/AI_HANDOFF_REPORT.md` — tribulation endpoint
  * chưa có HTTP smoke (mặc dù service test 1753/1753 vitest đã cover full).
  *
- * Smoke này KHÔNG cần admin seed → chỉ cover negative path + log endpoint
- * shape. Full positive path (đột phá kiếp thành công kim_dan→nguyen_anh,
- * apply Phase 11.6.C element resist trên live request) yêu cầu admin seed
- * `realmKey=kim_dan`+`realmStage=9`+`exp >= cost(9)` + spiritual root field
- * (Phase 11.3.A schema). Defer cho future smoke với admin secret nếu cần.
+ * Smoke COVER cả negative path (steps 1-17) + positive path admin-seeded
+ * (steps 18-28, mirror smoke-breakthrough.mjs). Positive path:
+ *   - admin login → swap cookie jar (player → admin)
+ *   - admin grant-spiritual-root: huyen primary='thuy' secondaries=['tho','kim']
+ *     (Phase 11.6.C resist demo seed)
+ *   - admin set-realm to 'kim_dan' stage=9 (peak, exp reset = 0)
+ *   - admin grant-exp 1 tỷ (đảm bảo > expCostForStage('kim_dan', 9))
+ *   - restore player jar → POST /tribulation → endpoint chạy simulateTribulation
+ *     với element resist multiplier từ Phase 11.6.C wire
+ *   - verify response shape valid (success | fail tolerant — RNG = Math.random
+ *     qua HTTP nondeterministic, smoke không assert exact outcome)
+ *   - verify log row written + 2nd attempt 409 (NOT_AT_PEAK | COOLDOWN_ACTIVE)
  *
  *   1. `POST /api/character/tribulation` (no auth)        → 401 UNAUTHENTICATED.
  *   2. `GET  /api/character/tribulation/log` (no auth)    → 401 UNAUTHENTICATED.
@@ -62,8 +69,38 @@
  *  17. `GET /api/character/tribulation/log?limit=999`     → 200, rows=[],
  *                                                            limit=100
  *                                                            (capped MAX).
- *  18. `POST /api/_auth/logout` + tribulation             → 401 UNAUTHENTICATED.
- *  19. `GET  /api/character/tribulation/log` post-logout  → 401 UNAUTHENTICATED.
+ *  18. `POST /api/_auth/login` (admin)                   — swap jar player→admin.
+ *  19. `POST /api/admin/users/:id/grant-spiritual-root`   — huyen thuy/tho/kim.
+ *  20. `POST /api/admin/users/:id/set-realm`              — kim_dan stage=9.
+ *  21. `POST /api/admin/users/:id/grant-exp`              — 1 tỷ exp.
+ *  22. (restore player jar) + `GET /api/character/me`     — verify char ID match.
+ *  23. `GET  /api/character/me`                           — verify post-seed state
+ *                                                            (kim_dan/9, primary=
+ *                                                            thuy, sec=[tho,kim],
+ *                                                            grade=huyen).
+ *  24. `POST /api/character/tribulation` (positive)       → 200 ok, success|fail
+ *                                                            tolerant. Verify
+ *                                                            response shape:
+ *                                                            tribulationKey,
+ *                                                            fromRealmKey=kim_dan,
+ *                                                            toRealmKey, waves,
+ *                                                            damage, finalHp,
+ *                                                            attemptIndex>=1,
+ *                                                            logId, branch
+ *                                                            (success→reward,
+ *                                                            fail→penalty).
+ *  25. `GET  /api/character/tribulation/log`              → 200, rows.length=1
+ *                                                            với log row khớp
+ *                                                            outcome (id, success,
+ *                                                            tribulationKey,
+ *                                                            fromRealmKey).
+ *  26. `POST /api/character/tribulation` (2nd)            → 409 NOT_AT_PEAK
+ *                                                            (nếu success →
+ *                                                            realm advance) HOẶC
+ *                                                            409 COOLDOWN_ACTIVE
+ *                                                            (nếu fail).
+ *  27. `POST /api/_auth/logout` + tribulation             → 401 UNAUTHENTICATED.
+ *  28. `GET  /api/character/tribulation/log` post-logout  → 401 UNAUTHENTICATED.
  *
  * Anti-FE-self-grant invariant (per Luật bắt buộc — KHÔNG để frontend tự
  * cộng EXP/realm/HP/MP qua failed tribulation attempt):
@@ -113,10 +150,25 @@ const BASE = (process.env.SMOKE_API_BASE ?? 'http://localhost:3000').replace(/\/
 const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS ?? 10_000);
 const VERBOSE = process.env.SMOKE_VERBOSE === '1';
 const SECT_KEY = process.env.SMOKE_SECT_KEY ?? 'thanh_van';
+const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL ?? 'admin@example.com';
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? 'change-me-bootstrap-pass';
 
 // Mirror constants từ apps/api/src/modules/character/tribulation.service.ts
 const TRIBULATION_LOG_DEFAULT_LIMIT = 20;
 const TRIBULATION_LOG_MAX_LIMIT = 100;
+
+// Phase 11.6.C resist demo seed: huyen grade với primary='thuy' + secondaries=
+// ['tho','kim'] để khi attempt kim_dan→nguyen_anh tribulation (waves nhiều
+// element), helper `computeSpiritualRootTribulationResist` apply runtime.
+// KHÔNG assert exact multiplier (RNG không deterministic qua HTTP) — chỉ
+// verify endpoint trả response shape valid + log row written.
+const POSITIVE_SEED_REALM_KEY = 'kim_dan';
+const POSITIVE_SEED_REALM_STAGE = 9;
+// Grant 1 tỷ EXP — đảm bảo > expCostForStage('kim_dan', 9) bigint cost.
+// `set-realm` reset exp = 0 trước khi grant-exp, nên tích luỹ đầy đủ residual.
+// `grant-exp` auto-advance stages 1..8 nhưng đã ở peak 9 → KHÔNG advance, exp
+// tích luỹ tiếp như cultivation tick natural behavior (admin.service.ts:500).
+const POSITIVE_SEED_EXP_DELTA = '1000000000';
 
 // -----------------------------------------------------------------------------
 // Cookie jar — Node fetch không có cookie jar built-in, tự track set-cookie.
@@ -150,6 +202,17 @@ function storeSetCookie(res) {
 function cookieHeader() {
   if (cookieJar.size === 0) return undefined;
   return Array.from(cookieJar, ([k, v]) => `${k}=${v}`).join('; ');
+}
+
+/** Snapshot cookieJar để switch tạm sang admin rồi restore lại player. */
+function snapshotCookies() {
+  return new Map(cookieJar);
+}
+
+/** @param {Map<string,string>} snapshot */
+function restoreCookies(snapshot) {
+  cookieJar.clear();
+  for (const [k, v] of snapshot) cookieJar.set(k, v);
 }
 
 // -----------------------------------------------------------------------------
@@ -554,7 +617,281 @@ async function main() {
     },
   );
 
-  // 18. POST /_auth/logout + tribulation → 401.
+  // ---------------------------------------------------------------------------
+  // POSITIVE PATH — admin seed cho player advance lên kim_dan stage=9 + spiritual
+  // root + đủ exp để satisfy `expCostForStage('kim_dan', 9)` invariant. Sau đó
+  // player POST /tribulation → endpoint chạy `simulateTribulation` với element
+  // resist multiplier từ Phase 11.6.C (`computeSpiritualRootTribulationResist`).
+  //
+  // Outcome non-deterministic (RNG = Math.random qua HTTP, không inject được).
+  // Smoke verify response shape valid + log row được write, không assert exact
+  // success/fail (cả 2 path đều có valid shape — fail vẫn 200 với `success:
+  // false` + `penalty` non-null thay vì `reward`).
+  //
+  // Anti-FE-self-grant invariant: tất cả mutation đều qua admin endpoint hoặc
+  // tribulation endpoint authoritative. Admin chỉ kích hoạt logic giống
+  // cultivation tick natural progression — không bypass server authority.
+  // ---------------------------------------------------------------------------
+
+  /** @type {Map<string,string>} */
+  let playerCookieSnap;
+
+  // 18. Snapshot player cookies + admin login → swap jar.
+  await step('admin login — swap cookie jar (player → admin)', async () => {
+    playerCookieSnap = snapshotCookies();
+    cookieJar.clear();
+    const r = await http('/api/_auth/login', {
+      method: 'POST',
+      body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    assertStatus(r, 200, 'admin login');
+    if (!r.body?.ok) {
+      throw new Error(`admin login: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    }
+    const u = r.body?.data?.user;
+    assert(
+      u?.role === 'ADMIN',
+      `admin login: role phải ADMIN (cần bootstrap admin@example.com), got ${u?.role}`,
+    );
+  });
+
+  // 19. Admin grant-spiritual-root: huyen primary='thuy' secondaries=['tho','kim'].
+  // Phase 11.6.C demo seed — primary thuy có quan hệ với hoa (khắc), kim
+  // (sinh primary), moc (sinh wave), tho (bị primary khắc); secondaries
+  // tho+kim cover counter+resonance bonus paths trong helper.
+  await step(
+    'admin grant-spiritual-root — huyen primary=thuy secondaries=[tho,kim] (Phase 11.6.C demo)',
+    async () => {
+      if (!state.userId) throw new Error('state.userId missing — register chưa chạy');
+      const r = await http(`/api/admin/users/${state.userId}/grant-spiritual-root`, {
+        method: 'POST',
+        body: {
+          grade: 'huyen',
+          primaryElement: 'thuy',
+          secondaryElements: ['tho', 'kim'],
+          purity: 80,
+          reason: 'smoke tribulation positive seed',
+        },
+      });
+      assertStatus(r, 200, 'admin/grant-spiritual-root');
+      assert(
+        r.body?.ok === true && r.body?.data?.ok === true,
+        `grant-spiritual-root: shape mismatch, got ${JSON.stringify(r.body).slice(0, 200)}`,
+      );
+    },
+  );
+
+  // 20. Admin set-realm to kim_dan stage=9. Reset exp = 0.
+  await step(
+    `admin set-realm — ${POSITIVE_SEED_REALM_KEY} stage=${POSITIVE_SEED_REALM_STAGE} (peak, exp reset = 0)`,
+    async () => {
+      const r = await http(`/api/admin/users/${state.userId}/set-realm`, {
+        method: 'POST',
+        body: {
+          realmKey: POSITIVE_SEED_REALM_KEY,
+          realmStage: POSITIVE_SEED_REALM_STAGE,
+          reason: 'smoke tribulation positive seed',
+        },
+      });
+      assertStatus(r, 200, 'admin/set-realm');
+      assert(
+        r.body?.ok === true && r.body?.data?.ok === true,
+        `set-realm: shape mismatch, got ${JSON.stringify(r.body).slice(0, 200)}`,
+      );
+    },
+  );
+
+  // 21. Admin grant-exp 1 tỷ → đảm bảo > expCostForStage('kim_dan', 9).
+  await step(
+    `admin grant-exp ${POSITIVE_SEED_EXP_DELTA} (đủ kim_dan stage=9 cost)`,
+    async () => {
+      const r = await http(`/api/admin/users/${state.userId}/grant-exp`, {
+        method: 'POST',
+        body: {
+          exp: POSITIVE_SEED_EXP_DELTA,
+          reason: 'smoke tribulation positive seed',
+        },
+      });
+      assertStatus(r, 200, 'admin/grant-exp');
+      assert(
+        r.body?.ok === true && r.body?.data?.ok === true,
+        `grant-exp: shape mismatch, got ${JSON.stringify(r.body).slice(0, 200)}`,
+      );
+    },
+  );
+
+  // 22. Restore player cookies — swap jar admin → player.
+  await step('restore player cookie jar (admin → player)', async () => {
+    if (!playerCookieSnap) throw new Error('playerCookieSnap chưa snapshot');
+    restoreCookies(playerCookieSnap);
+    // Sanity check: GET /me phải trả về player char không phải admin (admin
+    // không có character row).
+    const r = await http('/api/character/me');
+    assertStatus(r, 200, 'character/me post-restore');
+    const ch = r.body?.data?.character;
+    assert(ch?.id === state.characterId, `restore: characterId mismatch, got ${ch?.id}`);
+  });
+
+  // 23. GET /me — verify realm advance.
+  await step(
+    `character/me — verify post-seed realm (${POSITIVE_SEED_REALM_KEY} stage=${POSITIVE_SEED_REALM_STAGE}, exp >= cost)`,
+    async () => {
+      const r = await http('/api/character/me');
+      assertStatus(r, 200, 'character/me post-seed');
+      const ch = r.body?.data?.character;
+      assert(ch, 'character/me post-seed: no character');
+      assert(
+        ch.realmKey === POSITIVE_SEED_REALM_KEY,
+        `realmKey: expect ${POSITIVE_SEED_REALM_KEY}, got ${ch.realmKey}`,
+      );
+      assert(
+        ch.realmStage === POSITIVE_SEED_REALM_STAGE,
+        `realmStage: expect ${POSITIVE_SEED_REALM_STAGE}, got ${ch.realmStage}`,
+      );
+      // exp string vì BigInt — chỉ verify > 0 (admin grant đã chạy).
+      const expN = BigInt(String(ch.exp ?? '0'));
+      assert(expN > 0n, `exp post-grant: expect > 0, got ${ch.exp}`);
+    },
+  );
+
+  // 23b. GET /spiritual-root — verify root state via dedicated endpoint
+  // (Phase 11.3.A — `/character/me` view không expose primaryElement/secondary/
+  // grade fields, separate endpoint phụ trách spiritual root state).
+  await step(
+    'spiritual-root — verify post-seed state (huyen primary=thuy secondaries=[tho,kim])',
+    async () => {
+      const r = await http('/api/character/spiritual-root');
+      assertStatus(r, 200, 'spiritual-root post-seed');
+      const root = r.body?.data?.spiritualRoot;
+      assert(root, 'spiritual-root post-seed: no state');
+      assert(root.grade === 'huyen', `grade: expect 'huyen', got ${root.grade}`);
+      assert(
+        root.primaryElement === 'thuy',
+        `primaryElement: expect 'thuy', got ${root.primaryElement}`,
+      );
+      assert(
+        Array.isArray(root.secondaryElements) &&
+          root.secondaryElements.length === 2 &&
+          root.secondaryElements.includes('tho') &&
+          root.secondaryElements.includes('kim'),
+        `secondaryElements: expect ['tho','kim'], got ${JSON.stringify(root.secondaryElements)}`,
+      );
+    },
+  );
+
+  // 24. POST /tribulation — positive path. Outcome (success/fail) non-deterministic
+  // qua HTTP RNG, smoke verify response shape valid cả 2 branch.
+  /** @type {{ success: boolean; logId: string; toRealmKey: string; tribulationKey: string }} */
+  let outcome;
+  await step(
+    'tribulation — POST /tribulation positive path (success | fail tolerant, response shape valid)',
+    async () => {
+      const r = await http('/api/character/tribulation', { method: 'POST' });
+      assertStatus(r, 200, 'tribulation positive');
+      assert(r.body?.ok === true, `tribulation positive: ok=false`);
+      const data = r.body?.data?.tribulation;
+      assert(data, `tribulation positive: missing data.tribulation`);
+      assert(typeof data.success === 'boolean', `tribulation positive: success phải boolean`);
+      assert(
+        typeof data.tribulationKey === 'string' && data.tribulationKey.length > 0,
+        `tribulation positive: tribulationKey missing`,
+      );
+      assert(
+        data.fromRealmKey === POSITIVE_SEED_REALM_KEY,
+        `tribulation positive: fromRealmKey expect ${POSITIVE_SEED_REALM_KEY}, got ${data.fromRealmKey}`,
+      );
+      assert(
+        typeof data.toRealmKey === 'string' && data.toRealmKey.length > 0,
+        `tribulation positive: toRealmKey missing`,
+      );
+      assert(
+        typeof data.wavesCompleted === 'number' && data.wavesCompleted >= 0,
+        `tribulation positive: wavesCompleted phải number >= 0, got ${data.wavesCompleted}`,
+      );
+      assert(
+        typeof data.totalDamage === 'number' && data.totalDamage >= 0,
+        `tribulation positive: totalDamage phải number >= 0, got ${data.totalDamage}`,
+      );
+      assert(
+        typeof data.finalHp === 'number' && data.finalHp >= 0,
+        `tribulation positive: finalHp phải number >= 0, got ${data.finalHp}`,
+      );
+      assert(
+        typeof data.attemptIndex === 'number' && data.attemptIndex >= 1,
+        `tribulation positive: attemptIndex phải >= 1, got ${data.attemptIndex}`,
+      );
+      assert(
+        typeof data.logId === 'string' && data.logId.length > 0,
+        `tribulation positive: logId phải string non-empty (proof log row written)`,
+      );
+      // Branch shape: success → reward non-null + penalty=null; fail → ngược lại.
+      if (data.success) {
+        assert(data.reward !== null, `tribulation success: reward phải non-null`);
+        assert(data.penalty === null, `tribulation success: penalty phải null`);
+      } else {
+        assert(data.penalty !== null, `tribulation fail: penalty phải non-null`);
+        assert(data.reward === null, `tribulation fail: reward phải null`);
+      }
+      outcome = {
+        success: data.success,
+        logId: data.logId,
+        toRealmKey: data.toRealmKey,
+        tribulationKey: data.tribulationKey,
+      };
+      console.log(
+        `\n  ↳ outcome: ${data.success ? 'SUCCESS' : 'FAIL'} ` +
+          `tribulation=${data.tribulationKey} waves=${data.wavesCompleted} ` +
+          `damage=${data.totalDamage} finalHp=${data.finalHp}`,
+      );
+    },
+  );
+
+  // 25. GET /tribulation/log — verify 1 row written với log shape valid.
+  await step('tribulation/log — 200 rows.length=1 sau attempt (log row written)', async () => {
+    const r = await http('/api/character/tribulation/log');
+    assertStatus(r, 200, 'tribulation/log post-attempt');
+    const rows = r.body?.data?.rows;
+    assert(Array.isArray(rows), `tribulation/log post-attempt: rows array required`);
+    assert(rows.length === 1, `tribulation/log post-attempt: rows.length expect 1, got ${rows.length}`);
+    const row = rows[0];
+    assert(row.id === outcome.logId, `log row id mismatch: expect ${outcome.logId}, got ${row.id}`);
+    assert(
+      row.success === outcome.success,
+      `log row success mismatch: expect ${outcome.success}, got ${row.success}`,
+    );
+    assert(
+      row.tribulationKey === outcome.tribulationKey,
+      `log row tribulationKey mismatch: expect ${outcome.tribulationKey}, got ${row.tribulationKey}`,
+    );
+    assert(
+      row.fromRealmKey === POSITIVE_SEED_REALM_KEY,
+      `log row fromRealmKey mismatch: expect ${POSITIVE_SEED_REALM_KEY}, got ${row.fromRealmKey}`,
+    );
+    assert(typeof row.createdAt === 'string', `log row createdAt phải ISO string`);
+  });
+
+  // 26. POST /tribulation lần 2 — verify gate prevent abuse:
+  //   - Nếu vừa SUCCESS → realm advance, char giờ realmStage=1 → 409 NOT_AT_PEAK.
+  //   - Nếu vừa FAIL → cooldownAt set → 409 COOLDOWN_ACTIVE.
+  // Cả 2 đều 409, code khác nhau theo branch outcome.
+  await step('tribulation — 409 sau attempt (NOT_AT_PEAK if success | COOLDOWN_ACTIVE if fail)', async () => {
+    const r = await http('/api/character/tribulation', { method: 'POST' });
+    assertStatus(r, 409, 'tribulation post-attempt 2nd');
+    const code = r.body?.error?.code;
+    if (outcome.success) {
+      assert(
+        code === 'NOT_AT_PEAK',
+        `tribulation post-success-2nd: expect NOT_AT_PEAK (realm advanced → stage=1), got ${code}`,
+      );
+    } else {
+      assert(
+        code === 'COOLDOWN_ACTIVE',
+        `tribulation post-fail-2nd: expect COOLDOWN_ACTIVE, got ${code}`,
+      );
+    }
+  });
+
+  // 27. POST /_auth/logout + tribulation → 401.
   await step('logout + tribulation — 401 UNAUTHENTICATED post-logout', async () => {
     const logoutRes = await http('/api/_auth/logout', { method: 'POST' });
     assertStatus(logoutRes, [200, 204], 'logout');
@@ -566,7 +903,7 @@ async function main() {
     );
   });
 
-  // 19. GET /tribulation/log post-logout → 401.
+  // 28. GET /tribulation/log post-logout → 401.
   await step('tribulation/log — 401 UNAUTHENTICATED post-logout', async () => {
     const r = await http('/api/character/tribulation/log');
     assertStatus(r, 401, 'tribulation/log post-logout');

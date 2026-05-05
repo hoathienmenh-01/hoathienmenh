@@ -480,6 +480,89 @@ export interface TribulationAttemptOutcome {
   logId: string;
 }
 
+/**
+ * Phase 11.6.B view — HTTP-safe shape của `TribulationAttemptOutcome`.
+ * BigInt fields (`reward.expBonus`, `penalty.expBefore/After/Loss`) cast →
+ * string để Express JSON serialize không throw `Do not know how to serialize
+ * a BigInt`. Date fields cast → ISO string. Mirror pattern của
+ * `TribulationAttemptLogView` (Phase 11.6.F).
+ *
+ * Bug context: trước khi có view này, `CharacterController.tribulationAttempt`
+ * trả raw outcome → mọi attempt thành công HOẶC thất bại đều 500 ở HTTP level
+ * (BigInt serialize). Vitest service-level test KHÔNG catch vì JSON.stringify
+ * chỉ chạy ở Express response path. Smoke `pnpm smoke:tribulation` positive
+ * path expose bug.
+ */
+export interface TribulationAttemptOutcomeView {
+  success: boolean;
+  tribulationKey: string;
+  fromRealmKey: string;
+  toRealmKey: string;
+  severity: TribulationDef['severity'];
+  type: TribulationDef['type'];
+  wavesCompleted: number;
+  totalDamage: number;
+  finalHp: number;
+  attemptIndex: number;
+  reward: {
+    linhThach: number;
+    expBonus: string;
+    titleKey: string | null;
+  } | null;
+  penalty: {
+    expBefore: string;
+    expAfter: string;
+    expLoss: string;
+    cooldownAt: string;
+    taoMaActive: boolean;
+    taoMaExpiresAt: string | null;
+  } | null;
+  logId: string;
+}
+
+/**
+ * Phase 11.6.B view mapper — cast BigInt + Date → string cho HTTP JSON.
+ *
+ * @param outcome `TribulationAttemptOutcome` từ `attemptTribulation()`.
+ * @returns `TribulationAttemptOutcomeView` HTTP-safe.
+ */
+export function toAttemptOutcomeView(
+  outcome: TribulationAttemptOutcome,
+): TribulationAttemptOutcomeView {
+  return {
+    success: outcome.success,
+    tribulationKey: outcome.tribulationKey,
+    fromRealmKey: outcome.fromRealmKey,
+    toRealmKey: outcome.toRealmKey,
+    severity: outcome.severity,
+    type: outcome.type,
+    wavesCompleted: outcome.wavesCompleted,
+    totalDamage: outcome.totalDamage,
+    finalHp: outcome.finalHp,
+    attemptIndex: outcome.attemptIndex,
+    reward: outcome.reward
+      ? {
+          linhThach: outcome.reward.linhThach,
+          expBonus: outcome.reward.expBonus.toString(),
+          titleKey: outcome.reward.titleKey,
+        }
+      : null,
+    penalty: outcome.penalty
+      ? {
+          expBefore: outcome.penalty.expBefore.toString(),
+          expAfter: outcome.penalty.expAfter.toString(),
+          expLoss: outcome.penalty.expLoss.toString(),
+          cooldownAt: outcome.penalty.cooldownAt.toISOString(),
+          taoMaActive: outcome.penalty.taoMaActive,
+          taoMaExpiresAt: outcome.penalty.taoMaExpiresAt
+            ? outcome.penalty.taoMaExpiresAt.toISOString()
+            : null,
+        }
+      : null,
+    logId: outcome.logId,
+  };
+}
+
 export class TribulationError extends Error {
   constructor(
     public code:

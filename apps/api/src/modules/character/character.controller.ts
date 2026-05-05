@@ -31,6 +31,7 @@ import {
   TRIBULATION_LOG_MAX_LIMIT,
   TribulationError,
   TribulationService,
+  toAttemptOutcomeView,
 } from './tribulation.service';
 import {
   AchievementError,
@@ -610,7 +611,10 @@ export class CharacterController {
     if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
     try {
       const result = await this.tribulation.attemptTribulation(character.id);
-      return { ok: true, data: { tribulation: result } };
+      // Phase 11.6.B HTTP fix — cast BigInt + Date → string. Express JSON
+      // serialize không support BigInt → throw INTERNAL_ERROR cho mọi attempt
+      // (success/fail). View mirror `TribulationAttemptLogView` (Phase 11.6.F).
+      return { ok: true, data: { tribulation: toAttemptOutcomeView(result) } };
     } catch (e) {
       if (e instanceof TribulationError) {
         fail(e.code, mapTribulationErrorStatus(e.code));
