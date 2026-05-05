@@ -508,6 +508,34 @@ export const BREAKTHROUGH_CHANCE_MIN = 0.3;
 /** Success chance ceiling — luôn có rủi ro nhỏ (tu tiên flavor). */
 export const BREAKTHROUGH_CHANCE_MAX = 0.99;
 
+/**
+ * Base chance khi nhân vật đứng peak (realmStage=9) + đủ EXP, không có
+ * bonus root/method/item. Reasonable default để new player không nản —
+ * cộng dồn root purity + method affinity + pill bonus có thể đẩy gần
+ * `BREAKTHROUGH_CHANCE_MAX`. Phase 11 nâng cao §5 PR1.
+ */
+export const BREAKTHROUGH_CHANCE_BASE = 0.7;
+
+/**
+ * Bonus tối đa từ root purity (purity ∈ [0,1] → bonus ∈ [0, MAX]).
+ * Linear: bonus = purity * MAX. Encourage farm linh căn cao cấp.
+ */
+export const BREAKTHROUGH_ROOT_PURITY_BONUS_MAX = 0.15;
+
+/**
+ * Bonus chance khi method.elementKey === character.primaryElement.
+ * Khi method match secondary element → bonus / 2. Khuyến khích chọn
+ * method cùng hệ với linh căn (build coherency).
+ */
+export const BREAKTHROUGH_METHOD_AFFINITY_BONUS = 0.05;
+
+/**
+ * Cap bonus từ items / pills / buffs (đột phá đan, etc) — guard lại
+ * pay-to-win + power-creep. Caller dồn breakdown trước khi pass vào
+ * `computeBreakthroughChance` (server clamps tối đa).
+ */
+export const BREAKTHROUGH_ITEM_BONUS_MAX = 0.1;
+
 /** Tâm Ma debuff duration cap khi fail (giây). */
 export const BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC = 300;
 
@@ -602,6 +630,10 @@ export const BALANCE_DIALS = {
   // Breakthrough (forward-compat)
   BREAKTHROUGH_CHANCE_MIN,
   BREAKTHROUGH_CHANCE_MAX,
+  BREAKTHROUGH_CHANCE_BASE,
+  BREAKTHROUGH_ROOT_PURITY_BONUS_MAX,
+  BREAKTHROUGH_METHOD_AFFINITY_BONUS,
+  BREAKTHROUGH_ITEM_BONUS_MAX,
   BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC,
   BREAKTHROUGH_FAIL_DEBUFF_RATE_PENALTY,
 
