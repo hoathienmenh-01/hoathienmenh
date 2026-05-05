@@ -44,6 +44,7 @@ describe('api/cultivationMethod — Phase 11.1.C client', () => {
         data: {
           cultivationMethod: {
             equippedMethodKey: 'khai_thien_quyet',
+            equippedMethodElementAffinity: 0.1,
             learned: [STUB_LEARNED_ROW],
           },
         },
@@ -52,9 +53,43 @@ describe('api/cultivationMethod — Phase 11.1.C client', () => {
     const out = await getCultivationMethodState();
     expect(getMock).toHaveBeenCalledWith('/character/cultivation-method');
     expect(out.equippedMethodKey).toBe('khai_thien_quyet');
+    expect(out.equippedMethodElementAffinity).toBe(0.1);
     expect(out.learned).toHaveLength(1);
     expect(out.learned[0].methodKey).toBe('khai_thien_quyet');
     expect(out.learned[0].source).toBe('starter');
+  });
+
+  it('getCultivationMethodState: legacy server (no equippedMethodElementAffinity field) → default 0', async () => {
+    getMock.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        data: {
+          cultivationMethod: {
+            equippedMethodKey: 'khai_thien_quyet',
+            learned: [STUB_LEARNED_ROW],
+          },
+        },
+      },
+    });
+    const out = await getCultivationMethodState();
+    expect(out.equippedMethodElementAffinity).toBe(0);
+  });
+
+  it('equipCultivationMethod: server returns equippedMethodElementAffinity → forwarded', async () => {
+    postMock.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        data: {
+          cultivationMethod: {
+            equippedMethodKey: 'liet_hoa_phap',
+            equippedMethodElementAffinity: 0.05,
+            learned: [STUB_LEARNED_ROW],
+          },
+        },
+      },
+    });
+    const out = await equipCultivationMethod('liet_hoa_phap');
+    expect(out.equippedMethodElementAffinity).toBe(0.05);
   });
 
   it('getCultivationMethodState: server error envelope → throws error object preserving code', async () => {

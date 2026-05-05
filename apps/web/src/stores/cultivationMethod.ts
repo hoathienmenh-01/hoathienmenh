@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import * as api from '@/api/cultivationMethod';
 
@@ -22,15 +22,53 @@ import * as api from '@/api/cultivationMethod';
  */
 export const useCultivationMethodStore = defineStore('cultivationMethod', () => {
   const equippedMethodKey = ref<string | null>(null);
+  /**
+   * Phase 11.1.E — bonus fraction từ Linh căn × Method element affinity
+   * (`0` / `0.05` / `0.1`). Server-authoritative qua
+   * `CultivationMethodState.equippedMethodElementAffinity`.
+   */
+  const equippedMethodElementAffinity = ref(0);
   const learned = ref<api.CultivationMethodLearnedRow[]>([]);
   const loaded = ref(false);
   const inFlight = ref<Set<string>>(new Set());
 
   function applyState(state: api.CultivationMethodState): void {
     equippedMethodKey.value = state.equippedMethodKey;
+    equippedMethodElementAffinity.value = state.equippedMethodElementAffinity;
     learned.value = state.learned;
     loaded.value = true;
   }
+
+  /**
+   * Phase 11.1.E — UI badge label cho equipped method:
+   *   - `0.10` → `"+10%"` (primary element match)
+   *   - `0.05` → `"+5%"` (secondary element match)
+   *   - else → `null` (ẩn badge — vô hệ method / khác hệ / legacy)
+   *
+   * Format `+N%` (no decimal, integer percent) — caller render bên cạnh
+   * tên method qua `<span v-if="affinityPercentLabel">…</span>`.
+   */
+  const affinityPercentLabel = computed<string | null>(() => {
+    const f = equippedMethodElementAffinity.value;
+    if (f <= 0) return null;
+    const pct = Math.round(f * 100);
+    return `+${pct}%`;
+  });
+
+  /**
+   * Phase 11.1.E — hint i18n key tương ứng tier match (primary / secondary):
+   *   - `0.10` → `"cultivationMethod.affinity.primary"`
+   *   - `0.05` → `"cultivationMethod.affinity.secondary"`
+   *   - else → `null`
+   *
+   * Caller dùng để render tooltip / aria-label giải thích.
+   */
+  const affinityTierKey = computed<string | null>(() => {
+    const f = equippedMethodElementAffinity.value;
+    if (f >= 0.1) return 'cultivationMethod.affinity.primary';
+    if (f >= 0.05) return 'cultivationMethod.affinity.secondary';
+    return null;
+  });
 
   async function fetchState(): Promise<void> {
     const state = await api.getCultivationMethodState();
@@ -74,6 +112,7 @@ export const useCultivationMethodStore = defineStore('cultivationMethod', () => 
 
   function reset(): void {
     equippedMethodKey.value = null;
+    equippedMethodElementAffinity.value = 0;
     learned.value = [];
     loaded.value = false;
     inFlight.value = new Set();
@@ -81,9 +120,12 @@ export const useCultivationMethodStore = defineStore('cultivationMethod', () => 
 
   return {
     equippedMethodKey,
+    equippedMethodElementAffinity,
     learned,
     loaded,
     inFlight,
+    affinityPercentLabel,
+    affinityTierKey,
     fetchState,
     isEquipping,
     isEquipped,
