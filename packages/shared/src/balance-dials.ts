@@ -246,6 +246,31 @@ export const ELEMENT_CHARACTER_PRIMARY_BONUS = 0.1;
 /** Bonus khi skill ∈ `character.secondaryElements`. */
 export const ELEMENT_CHARACTER_SECONDARY_BONUS = 0.05;
 
+// ---------------- Cultivation method × Linh căn element affinity --------
+//
+// Phase 11 nâng cao §1+§4 — Linh căn × Cultivation Method element affinity
+// bonus on EXP gain. Giá trị "matchingElementBonus" được khai báo trong
+// `cultivation-methods.ts` JSDoc top + per-field, giờ wire vào runtime qua
+// `computeMethodElementAffinityBonus()` + `cultivation.processor.ts`. Khi
+// equipped method có `element=null` (vô hệ — `khai_thien_quyet`,
+// `thai_hu_chan_kinh`) bonus=0 để không thiên vị linh căn nào.
+//
+// Compose multiplicatively với `cultivationMethod.expMultiplier`:
+//   gain = baseGain × spiritualRoot.cultivationMul × method.expMul
+//        × (1 + matchingElementBonus) × talentExpMul
+
+/**
+ * Bonus khi `method.element === character.primaryElement` (cùng hệ chính
+ * — công pháp khớp linh căn chính).
+ */
+export const METHOD_ELEMENT_PRIMARY_BONUS = 0.1;
+
+/**
+ * Bonus khi `method.element ∈ character.secondaryElements` (cùng hệ phụ —
+ * công pháp khớp một trong các hệ phụ).
+ */
+export const METHOD_ELEMENT_SECONDARY_BONUS = 0.05;
+
 // ---------------- Combat log thresholds (UI hint) ----------------------
 
 /** Log "sát thương khuếch đại" khi total elementMul ≥ threshold (UI hint). */
@@ -513,6 +538,8 @@ export const BALANCE_DIALS = {
   ELEMENT_SAME_ELEMENT_MULTIPLIER,
   ELEMENT_CHARACTER_PRIMARY_BONUS,
   ELEMENT_CHARACTER_SECONDARY_BONUS,
+  METHOD_ELEMENT_PRIMARY_BONUS,
+  METHOD_ELEMENT_SECONDARY_BONUS,
   ELEMENT_LOG_AMPLIFY_THRESHOLD,
   ELEMENT_LOG_DAMPEN_THRESHOLD,
   ELEMENT_MODIFIER_ABSOLUTE_FLOOR,

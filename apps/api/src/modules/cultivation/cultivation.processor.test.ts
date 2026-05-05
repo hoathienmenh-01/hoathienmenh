@@ -188,7 +188,7 @@ describe('CultivationProcessor.process (tick)', () => {
 
   // — Phase 11.1.B Cultivation Method expMultiplier wire --------------------
   describe('Cultivation method expMultiplier wire (Phase 11.1.B)', () => {
-    it('character equip method huyen `liet_hoa_phap` (1.20×) compose với root than (1.80×) → gain × 2.16', async () => {
+    it('character equip method huyen `liet_hoa_phap` (1.20×) compose với root than (1.80×) + primary=hoa khớp method.element=hoa → gain × 2.376 (Phase 11.1.E affinity bonus +10%)', async () => {
       const baseGain = cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
       const f = await makeUserChar(prisma, {
         cultivating: true,
@@ -200,8 +200,9 @@ describe('CultivationProcessor.process (tick)', () => {
       });
       await processor.process(tickJob());
       const c = await prisma.character.findUniqueOrThrow({ where: { id: f.characterId } });
-      // Compose: baseGain × rootMul (1.80) × methodMul (1.20) → round.
-      expect(c.exp).toBe(BigInt(Math.round(baseGain * 1.8 * 1.2)));
+      // Compose: baseGain × rootMul (1.80) × methodMul (1.20) ×
+      //   affinityMul (1 + 0.10 primary bonus) → round.
+      expect(c.exp).toBe(BigInt(Math.round(baseGain * 1.8 * 1.2 * 1.1)));
     });
 
     it('character KHÔNG equip method (legacy null) → methodMul=1.0 (backward-compat)', async () => {
@@ -228,7 +229,7 @@ describe('CultivationProcessor.process (tick)', () => {
       expect(c.exp).toBe(BigInt(baseGain));
     });
 
-    it('character equip than-grade `thai_hu_chan_kinh` (1.60×) + root pham (1.0×) → gain × 1.60', async () => {
+    it('character equip than-grade `thai_hu_chan_kinh` (1.60×) + root pham (1.0×) → gain × 1.60 (vô hệ method → affinity=0)', async () => {
       const baseGain = cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
       const f = await makeUserChar(prisma, {
         cultivating: true,
@@ -239,7 +240,120 @@ describe('CultivationProcessor.process (tick)', () => {
       });
       await processor.process(tickJob());
       const c = await prisma.character.findUniqueOrThrow({ where: { id: f.characterId } });
+      // `thai_hu_chan_kinh` element=null → affinity bonus=0 → identity mul.
       expect(c.exp).toBe(BigInt(Math.round(baseGain * 1.6)));
+    });
+  });
+
+  // — Phase 11.1.E Linh căn × Cultivation Method element affinity bonus -----
+  describe('Cultivation method element affinity bonus wire (Phase 11.1.E)', () => {
+    it('primary=hoa khớp method.element=hoa (`liet_hoa_phap`) → +10% bonus compose với rootMul=1.0 + methodMul=1.20', async () => {
+      const baseGain = cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        spiritualRootGrade: 'pham', // root mul=1.0 → cô lập affinity
+        primaryElement: 'hoa',
+        equippedCultivationMethodKey: 'liet_hoa_phap',
+      });
+      await processor.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({ where: { id: f.characterId } });
+      // baseGain × 1.0 × 1.20 × (1 + 0.10) → round.
+      expect(c.exp).toBe(BigInt(Math.round(baseGain * 1.2 * 1.1)));
+    });
+
+    it('method.element=hoa ∈ secondaryElements=[hoa] → +5% secondary bonus', async () => {
+      const baseGain = cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        spiritualRootGrade: 'pham',
+        primaryElement: 'kim', // primary KHÔNG match hoa → kiểm secondary
+        secondaryElements: ['hoa', 'moc'],
+        equippedCultivationMethodKey: 'liet_hoa_phap', // element=hoa
+      });
+      await processor.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({ where: { id: f.characterId } });
+      // baseGain × 1.0 × 1.20 × (1 + 0.05) → round.
+      expect(c.exp).toBe(BigInt(Math.round(baseGain * 1.2 * 1.05)));
+    });
+
+    it('khác hệ (primary=kim, secondary=[moc], method.element=hoa) → bonus=0 (chỉ methodMul)', async () => {
+      const baseGain = cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        spiritualRootGrade: 'pham',
+        primaryElement: 'kim',
+        secondaryElements: ['moc'],
+        equippedCultivationMethodKey: 'liet_hoa_phap',
+      });
+      await processor.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({ where: { id: f.characterId } });
+      // baseGain × 1.0 × 1.20 × (1 + 0) → round.
+      expect(c.exp).toBe(BigInt(Math.round(baseGain * 1.2)));
+    });
+
+    it('vô hệ method (`thai_hu_chan_kinh` element=null) → bonus=0 (không thiên vị primary)', async () => {
+      const baseGain = cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        spiritualRootGrade: 'pham',
+        primaryElement: 'thuy',
+        secondaryElements: ['hoa', 'moc', 'kim', 'tho'],
+        equippedCultivationMethodKey: 'thai_hu_chan_kinh',
+      });
+      await processor.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({ where: { id: f.characterId } });
+      // `thai_hu_chan_kinh` element=null → bonus=0 → baseGain × 1.0 × 1.60.
+      expect(c.exp).toBe(BigInt(Math.round(baseGain * 1.6)));
+    });
+
+    it('primary trumps secondary — method.element=kim, primary=kim, secondary=[kim] → +10% (KHÔNG +5%)', async () => {
+      const baseGain = cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        spiritualRootGrade: 'pham',
+        primaryElement: 'kim',
+        secondaryElements: ['kim'], // overlap edge — runtime KHÔNG nên có
+        equippedCultivationMethodKey: 'cuu_cuc_kim_cuong_quyet', // element=kim
+      });
+      await processor.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({ where: { id: f.characterId } });
+      // `cuu_cuc_kim_cuong_quyet` huyen → methodMul=1.20 + primary affinity +10%.
+      expect(c.exp).toBe(BigInt(Math.round(baseGain * 1.2 * 1.1)));
+    });
+
+    it('legacy character (primaryElement=null, secondaryElements=[]) + method có element → bonus=0 (backward-compat)', async () => {
+      const baseGain = cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        spiritualRootGrade: 'pham',
+        // primaryElement=null + secondaryElements=[] (default Prisma)
+        equippedCultivationMethodKey: 'liet_hoa_phap', // element=hoa
+      });
+      await processor.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({ where: { id: f.characterId } });
+      // Legacy null → primary mismatch + secondary empty → bonus=0.
+      expect(c.exp).toBe(BigInt(Math.round(baseGain * 1.2)));
+    });
+
+    it('compose full stack — root than (1.80×) + method huyen kim (1.20×) + primary=kim → gain × 2.376', async () => {
+      const baseGain = cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        spiritualRootGrade: 'than',
+        primaryElement: 'kim',
+        equippedCultivationMethodKey: 'cuu_cuc_kim_cuong_quyet',
+      });
+      await processor.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({ where: { id: f.characterId } });
+      // baseGain × 1.80 × 1.20 × (1 + 0.10) = baseGain × 2.376 → round.
+      expect(c.exp).toBe(BigInt(Math.round(baseGain * 1.8 * 1.2 * 1.1)));
     });
   });
 
