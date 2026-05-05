@@ -12,7 +12,12 @@ import { BuffService } from './buff.service';
 import { CharacterService } from './character.service';
 import { CurrencyService } from './currency.service';
 import { TitleService } from './title.service';
-import { TribulationError, TribulationService } from './tribulation.service';
+import {
+  TribulationError,
+  TribulationService,
+  toAttemptOutcomeView,
+  type TribulationAttemptOutcome,
+} from './tribulation.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { makeUserChar, wipeAll } from '../../test-helpers';
@@ -1011,5 +1016,149 @@ describe('TribulationService BREAKTHROUGH achievement track (Phase 11.10.G)', ()
       where: { characterId: ctx.characterId },
     });
     expect(rows).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 11.6.B HTTP fix — `toAttemptOutcomeView` BigInt + Date → string mapper.
+// Bug: Express JSON serialize không handle BigInt → mọi attempt success/fail
+// đều 500 ở HTTP level. Vitest service-level KHÔNG catch vì JSON.stringify
+// chỉ chạy ở Express response path. View mapper cast bigint → string,
+// Date → ISO string trước khi return ra controller. Smoke `pnpm
+// smoke:tribulation` positive path expose bug và validate fix.
+// ---------------------------------------------------------------------------
+
+describe('toAttemptOutcomeView — BigInt + Date → string for HTTP JSON safety (Phase 11.6.B)', () => {
+  it('SUCCESS outcome → reward.expBonus bigint cast string, penalty=null', () => {
+    const outcome: TribulationAttemptOutcome = {
+      success: true,
+      tribulationKey: 'tribulation_kim_dan_nguyen_anh',
+      fromRealmKey: 'kim_dan',
+      toRealmKey: 'nguyen_anh',
+      severity: 'minor',
+      type: 'lei',
+      wavesCompleted: 3,
+      totalDamage: 3338,
+      finalHp: 162,
+      attemptIndex: 1,
+      reward: {
+        linhThach: 500,
+        expBonus: 12345678901234567890n,
+        titleKey: 'realm_nguyen_anh_master',
+      },
+      penalty: null,
+      logId: 'log-uuid-success',
+    };
+    const view = toAttemptOutcomeView(outcome);
+    expect(view.success).toBe(true);
+    expect(view.reward).not.toBeNull();
+    // BigInt > Number.MAX_SAFE_INTEGER → string preserve precision (chống lossy
+    // Number cast ở FE).
+    expect(view.reward!.expBonus).toBe('12345678901234567890');
+    expect(typeof view.reward!.expBonus).toBe('string');
+    expect(view.reward!.linhThach).toBe(500);
+    expect(view.reward!.titleKey).toBe('realm_nguyen_anh_master');
+    expect(view.penalty).toBeNull();
+    expect(view.logId).toBe('log-uuid-success');
+    // JSON.stringify must NOT throw (regression test cho bug).
+    expect(() => JSON.stringify(view)).not.toThrow();
+  });
+
+  it('FAIL outcome → penalty.{expBefore,expAfter,expLoss} bigint cast string, cooldownAt+taoMaExpiresAt Date cast ISO', () => {
+    const cooldownAt = new Date('2026-05-05T10:00:00.000Z');
+    const taoMaExpiresAt = new Date('2026-05-05T10:30:00.000Z');
+    const outcome: TribulationAttemptOutcome = {
+      success: false,
+      tribulationKey: 'tribulation_kim_dan_nguyen_anh',
+      fromRealmKey: 'kim_dan',
+      toRealmKey: 'nguyen_anh',
+      severity: 'minor',
+      type: 'lei',
+      wavesCompleted: 1,
+      totalDamage: 560,
+      finalHp: 0,
+      attemptIndex: 2,
+      reward: null,
+      penalty: {
+        expBefore: 1000000000n,
+        expAfter: 900000000n,
+        expLoss: 100000000n,
+        cooldownAt,
+        taoMaActive: true,
+        taoMaExpiresAt,
+      },
+      logId: 'log-uuid-fail',
+    };
+    const view = toAttemptOutcomeView(outcome);
+    expect(view.success).toBe(false);
+    expect(view.reward).toBeNull();
+    expect(view.penalty).not.toBeNull();
+    expect(view.penalty!.expBefore).toBe('1000000000');
+    expect(view.penalty!.expAfter).toBe('900000000');
+    expect(view.penalty!.expLoss).toBe('100000000');
+    expect(typeof view.penalty!.expBefore).toBe('string');
+    expect(typeof view.penalty!.expAfter).toBe('string');
+    expect(typeof view.penalty!.expLoss).toBe('string');
+    expect(view.penalty!.cooldownAt).toBe('2026-05-05T10:00:00.000Z');
+    expect(view.penalty!.taoMaActive).toBe(true);
+    expect(view.penalty!.taoMaExpiresAt).toBe('2026-05-05T10:30:00.000Z');
+    expect(() => JSON.stringify(view)).not.toThrow();
+  });
+
+  it('FAIL outcome với taoMaActive=false → taoMaExpiresAt null preserved', () => {
+    const outcome: TribulationAttemptOutcome = {
+      success: false,
+      tribulationKey: 'tribulation_kim_dan_nguyen_anh',
+      fromRealmKey: 'kim_dan',
+      toRealmKey: 'nguyen_anh',
+      severity: 'minor',
+      type: 'lei',
+      wavesCompleted: 0,
+      totalDamage: 800,
+      finalHp: 0,
+      attemptIndex: 1,
+      reward: null,
+      penalty: {
+        expBefore: 50000n,
+        expAfter: 45000n,
+        expLoss: 5000n,
+        cooldownAt: new Date('2026-05-05T10:00:00.000Z'),
+        taoMaActive: false,
+        taoMaExpiresAt: null,
+      },
+      logId: 'log-uuid-no-taoma',
+    };
+    const view = toAttemptOutcomeView(outcome);
+    expect(view.penalty!.taoMaActive).toBe(false);
+    expect(view.penalty!.taoMaExpiresAt).toBeNull();
+    expect(() => JSON.stringify(view)).not.toThrow();
+  });
+
+  it('regression — JSON.stringify(rawOutcome) THROWS (proof bug existed without view)', () => {
+    const rawOutcome: TribulationAttemptOutcome = {
+      success: false,
+      tribulationKey: 'tribulation_kim_dan_nguyen_anh',
+      fromRealmKey: 'kim_dan',
+      toRealmKey: 'nguyen_anh',
+      severity: 'minor',
+      type: 'lei',
+      wavesCompleted: 1,
+      totalDamage: 560,
+      finalHp: 0,
+      attemptIndex: 1,
+      reward: null,
+      penalty: {
+        expBefore: 1000000000n,
+        expAfter: 900000000n,
+        expLoss: 100000000n,
+        cooldownAt: new Date(),
+        taoMaActive: false,
+        taoMaExpiresAt: null,
+      },
+      logId: 'log-uuid-raw',
+    };
+    expect(() => JSON.stringify(rawOutcome)).toThrow(/BigInt/);
+    // Sau khi cast view, JSON.stringify phải pass.
+    expect(() => JSON.stringify(toAttemptOutcomeView(rawOutcome))).not.toThrow();
   });
 });
