@@ -1971,6 +1971,7 @@ describe('CombatService', () => {
         tauntActive: false,
         invulnActive: true,
         cultivationBlocked: false,
+        cultivationRateMul: 1,
       });
 
       const u = await makeUserChar(prisma, {
@@ -2017,6 +2018,7 @@ describe('CombatService', () => {
         tauntActive: false,
         invulnActive: true,
         cultivationBlocked: false,
+        cultivationRateMul: 1,
       });
 
       const u = await makeUserChar(prisma, {

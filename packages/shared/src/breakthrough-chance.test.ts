@@ -16,11 +16,16 @@ import {
   BREAKTHROUGH_CHANCE_BASE,
   BREAKTHROUGH_CHANCE_MAX,
   BREAKTHROUGH_CHANCE_MIN,
+  BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC,
   BREAKTHROUGH_ITEM_BONUS_MAX,
   BREAKTHROUGH_METHOD_AFFINITY_BONUS,
   BREAKTHROUGH_ROOT_PURITY_BONUS_MAX,
 } from './balance-dials';
-import { computeBreakthroughChance } from './breakthrough-chance';
+import {
+  computeBreakthroughChance,
+  evaluateBreakthroughOutcome,
+  type BreakthroughChanceBreakdown,
+} from './breakthrough-chance';
 
 const PEAK = {
   realmStage: 9,
@@ -339,5 +344,228 @@ describe('computeBreakthroughChance — composability + audit invariant', () => 
       10,
     );
     expect(r.finalChance).toBeCloseTo(r.rawChance, 10);
+  });
+});
+
+// ===========================================================================
+// evaluateBreakthroughOutcome — Phase 11 nâng cao §5 PR2 prep
+// ===========================================================================
+
+const NOW = new Date('2026-05-05T12:00:00Z');
+
+function okBreakdown(finalChance: number): BreakthroughChanceBreakdown {
+  return {
+    reason: 'OK',
+    baseChance: BREAKTHROUGH_CHANCE_BASE,
+    rootPurityBonus: 0,
+    methodAffinityBonus: 0,
+    itemBonus: 0,
+    rawChance: finalChance,
+    finalChance,
+  };
+}
+
+function gateBreakdown(
+  reason: 'NOT_AT_PEAK' | 'INSUFFICIENT_EXP',
+): BreakthroughChanceBreakdown {
+  return {
+    reason,
+    baseChance: 0,
+    rootPurityBonus: 0,
+    methodAffinityBonus: 0,
+    itemBonus: 0,
+    rawChance: 0,
+    finalChance: 0,
+  };
+}
+
+describe('evaluateBreakthroughOutcome — gate fail (NOT_AT_PEAK / INSUFFICIENT_EXP)', () => {
+  it('breakdown.reason=NOT_AT_PEAK → success=false, debuff=false', () => {
+    const r = evaluateBreakthroughOutcome({
+      breakdown: gateBreakdown('NOT_AT_PEAK'),
+      rngRoll: 0,
+      now: NOW,
+    });
+    expect(r.success).toBe(false);
+    expect(r.debuffApplied).toBe(false);
+    expect(r.debuffKey).toBeNull();
+    expect(r.debuffDurationSec).toBe(0);
+    expect(r.debuffExpiresAt).toBeNull();
+  });
+
+  it('breakdown.reason=INSUFFICIENT_EXP → success=false, debuff=false', () => {
+    const r = evaluateBreakthroughOutcome({
+      breakdown: gateBreakdown('INSUFFICIENT_EXP'),
+      rngRoll: 0.999,
+      now: NOW,
+    });
+    expect(r.success).toBe(false);
+    expect(r.debuffApplied).toBe(false);
+    expect(r.debuffKey).toBeNull();
+  });
+});
+
+describe('evaluateBreakthroughOutcome — success path (rngRoll < finalChance)', () => {
+  it('rngRoll=0 + chance=0.7 → success', () => {
+    const r = evaluateBreakthroughOutcome({
+      breakdown: okBreakdown(0.7),
+      rngRoll: 0,
+      now: NOW,
+    });
+    expect(r.success).toBe(true);
+    expect(r.debuffApplied).toBe(false);
+    expect(r.debuffKey).toBeNull();
+    expect(r.debuffExpiresAt).toBeNull();
+  });
+
+  it('rngRoll=0.69 + chance=0.7 → success (just under threshold)', () => {
+    const r = evaluateBreakthroughOutcome({
+      breakdown: okBreakdown(0.7),
+      rngRoll: 0.69,
+      now: NOW,
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it('rngRoll=0 + chance=BREAKTHROUGH_CHANCE_MAX (~0.99) → success', () => {
+    const r = evaluateBreakthroughOutcome({
+      breakdown: okBreakdown(BREAKTHROUGH_CHANCE_MAX),
+      rngRoll: 0,
+      now: NOW,
+    });
+    expect(r.success).toBe(true);
+  });
+});
+
+describe('evaluateBreakthroughOutcome — fail path (rngRoll >= finalChance) → tam_ma_light', () => {
+  it('rngRoll=0.7 + chance=0.7 → fail (rngRoll == chance, NOT strict <)', () => {
+    const r = evaluateBreakthroughOutcome({
+      breakdown: okBreakdown(0.7),
+      rngRoll: 0.7,
+      now: NOW,
+    });
+    expect(r.success).toBe(false);
+    expect(r.debuffApplied).toBe(true);
+    expect(r.debuffKey).toBe('tam_ma_light');
+  });
+
+  it('rngRoll=0.99 + chance=0.7 → fail + debuff applied', () => {
+    const r = evaluateBreakthroughOutcome({
+      breakdown: okBreakdown(0.7),
+      rngRoll: 0.99,
+      now: NOW,
+    });
+    expect(r.success).toBe(false);
+    expect(r.debuffApplied).toBe(true);
+    expect(r.debuffKey).toBe('tam_ma_light');
+    expect(r.debuffDurationSec).toBe(BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC);
+    expect(r.debuffExpiresAt).not.toBeNull();
+  });
+
+  it('debuffExpiresAt === now + BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC × 1000ms', () => {
+    const r = evaluateBreakthroughOutcome({
+      breakdown: okBreakdown(0.7),
+      rngRoll: 0.99,
+      now: NOW,
+    });
+    expect(r.debuffExpiresAt?.getTime()).toBe(
+      NOW.getTime() + BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC * 1000,
+    );
+  });
+
+  it('rngRoll=0.99 + chance=BREAKTHROUGH_CHANCE_MIN (~0.3) → fail', () => {
+    const r = evaluateBreakthroughOutcome({
+      breakdown: okBreakdown(BREAKTHROUGH_CHANCE_MIN),
+      rngRoll: 0.99,
+      now: NOW,
+    });
+    expect(r.success).toBe(false);
+    expect(r.debuffApplied).toBe(true);
+  });
+});
+
+describe('evaluateBreakthroughOutcome — defensive (rngRoll out-of-range)', () => {
+  it('throw nếu rngRoll < 0', () => {
+    expect(() =>
+      evaluateBreakthroughOutcome({
+        breakdown: okBreakdown(0.7),
+        rngRoll: -0.001,
+        now: NOW,
+      }),
+    ).toThrow();
+  });
+
+  it('throw nếu rngRoll === 1 (exclusive upper)', () => {
+    expect(() =>
+      evaluateBreakthroughOutcome({
+        breakdown: okBreakdown(0.7),
+        rngRoll: 1,
+        now: NOW,
+      }),
+    ).toThrow();
+  });
+
+  it('throw nếu rngRoll = NaN', () => {
+    expect(() =>
+      evaluateBreakthroughOutcome({
+        breakdown: okBreakdown(0.7),
+        rngRoll: NaN,
+        now: NOW,
+      }),
+    ).toThrow();
+  });
+
+  it('throw nếu rngRoll = Infinity', () => {
+    expect(() =>
+      evaluateBreakthroughOutcome({
+        breakdown: okBreakdown(0.7),
+        rngRoll: Infinity,
+        now: NOW,
+      }),
+    ).toThrow();
+  });
+});
+
+describe('evaluateBreakthroughOutcome — determinism (same input → same output)', () => {
+  it('cùng rngRoll + cùng breakdown → cùng result', () => {
+    const breakdown = okBreakdown(0.85);
+    const r1 = evaluateBreakthroughOutcome({
+      breakdown,
+      rngRoll: 0.5,
+      now: NOW,
+    });
+    const r2 = evaluateBreakthroughOutcome({
+      breakdown,
+      rngRoll: 0.5,
+      now: NOW,
+    });
+    expect(r1).toEqual(r2);
+  });
+
+  it('integration với computeBreakthroughChance — peak + đủ exp + rngRoll < finalChance → success', () => {
+    const breakdown = computeBreakthroughChance({
+      realmStage: 9,
+      expCurrent: 100_000n,
+      expCost: 23_613n,
+      rootPurity: 0.6,
+      rootPrimaryElement: 'kim',
+      methodElement: 'kim',
+      itemBonus: 0.05,
+    });
+    expect(breakdown.reason).toBe('OK');
+    // finalChance ~= 0.7 + 0.6*0.15 + 0.05 + 0.05 = 0.89
+    const success = evaluateBreakthroughOutcome({
+      breakdown,
+      rngRoll: 0.5,
+      now: NOW,
+    });
+    expect(success.success).toBe(true);
+    const fail = evaluateBreakthroughOutcome({
+      breakdown,
+      rngRoll: 0.95,
+      now: NOW,
+    });
+    expect(fail.success).toBe(false);
+    expect(fail.debuffKey).toBe('tam_ma_light');
   });
 });

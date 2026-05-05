@@ -29,6 +29,10 @@
  *   neutral cho effect không gắn hệ.
  */
 
+import {
+  BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC,
+  BREAKTHROUGH_FAIL_DEBUFF_RATE_PENALTY,
+} from './balance-dials';
 import type { ElementKey } from './combat';
 import type { StatTarget } from './talents';
 
@@ -48,6 +52,11 @@ export type BuffPolarity = 'buff' | 'debuff';
  * - `taunt`: force enemy AI nhắm target này (PvE only).
  * - `invuln`: ignore all damage (rất hiếm — ngắn duration).
  * - `cultivation_block`: block cultivation gain (Tâm Ma debuff).
+ * - `cultivation_rate_mul`: × multiplier vào cultivation rate (vd 0.7 = -30%
+ *    EXP gain). Phân biệt với `cultivation_block` (binary): rate_mul giảm
+ *    nhẹ, vẫn cho phép tu luyện (Tâm Ma "light" sau breakthrough fail).
+ *    Compose multiplicative per stack — wire vào `CultivationProcessor`
+ *    qua `BuffMods.cultivationRateMul` (Phase 11 nâng cao §5 PR2 wire).
  */
 export type BuffEffectKind =
   | 'stat_mod'
@@ -59,7 +68,8 @@ export type BuffEffectKind =
   | 'shield'
   | 'taunt'
   | 'invuln'
-  | 'cultivation_block';
+  | 'cultivation_block'
+  | 'cultivation_rate_mul';
 
 export type BuffSource =
   | 'pill'
@@ -69,7 +79,8 @@ export type BuffSource =
   | 'gear'
   | 'talent'
   | 'boss_skill'
-  | 'tribulation';
+  | 'tribulation'
+  | 'breakthrough';
 
 export interface BuffEffect {
   readonly kind: BuffEffectKind;
@@ -493,6 +504,34 @@ export const BUFFS: readonly BuffDef[] = [
       },
     ],
   },
+  // ----- BREAKTHROUGH TÂM MA NHẸ (Phase 11 nâng cao §5 PR2 prep) — 1 -----
+  // Forward-compat: catalog only. Runtime wire (apply trên breakthrough fail
+  // + consume cultivationRateMul trong CultivationProcessor) sẽ ở PR2 wire.
+  // Khác `debuff_taoma` (full): duration 5min vs 60min, rate × 0.7 vs full
+  // block, source=`breakthrough` vs `tribulation`. Match dial
+  // `BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC` + `BREAKTHROUGH_FAIL_DEBUFF_RATE_PENALTY`.
+  {
+    key: 'tam_ma_light',
+    name: 'Tâm Ma Nhẹ',
+    description:
+      'Sau khi đột phá thất bại — Tâm Ma nhiễu loạn nhẹ: tốc độ tu luyện ' +
+      '× 0.7 trong 5 phút. Tự hết, không cần dispel.',
+    polarity: 'debuff',
+    element: null,
+    source: 'breakthrough',
+    durationSec: BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC,
+    stackable: false,
+    maxStacks: 1,
+    dispellable: false,
+    effects: [
+      {
+        kind: 'cultivation_rate_mul',
+        value: BREAKTHROUGH_FAIL_DEBUFF_RATE_PENALTY,
+        statTarget: null,
+        elementTarget: null,
+      },
+    ],
+  },
 ];
 
 const BUFFS_BY_KEY = new Map<string, BuffDef>(
@@ -575,6 +614,13 @@ export interface BuffMods {
   readonly tauntActive: boolean;
   readonly invulnActive: boolean;
   readonly cultivationBlocked: boolean;
+  /**
+   * Multiplier áp lên cultivation rate (EXP/tick). Default 1 = không đổi.
+   * Compose multiplicative per stack qua `cultivation_rate_mul` effect.
+   * Forward-compat: `CultivationProcessor` chưa consume — sẽ wire ở Phase
+   * 11 nâng cao §5 PR2 wire (Tâm Ma debuff áp 0.7 sau breakthrough fail).
+   */
+  readonly cultivationRateMul: number;
 }
 
 export interface ActiveBuff {
@@ -598,6 +644,7 @@ export function composeBuffMods(
   let tauntActive = false;
   let invulnActive = false;
   let cultivationBlocked = false;
+  let cultivationRateMul = 1;
   const damageBonusByElement = new Map<ElementKey, number>();
   const damageReductionByElement = new Map<ElementKey, number>();
 
@@ -687,6 +734,12 @@ export function composeBuffMods(
           cultivationBlocked = true;
           break;
         }
+        case 'cultivation_rate_mul': {
+          // Multiplicative per stack — chained với mọi rate_mul effect khác
+          // (vd nhiều debuff cộng dồn). 1 = identity, < 1 = penalty.
+          cultivationRateMul *= Math.pow(eff.value, stacks);
+          break;
+        }
       }
     }
   }
@@ -707,6 +760,7 @@ export function composeBuffMods(
     tauntActive,
     invulnActive,
     cultivationBlocked,
+    cultivationRateMul,
   };
 }
 
