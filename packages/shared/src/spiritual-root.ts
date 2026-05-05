@@ -39,6 +39,9 @@ import {
   describeElementMatch,
   ELEMENT_CHARACTER_PRIMARY_BONUS,
   ELEMENT_CHARACTER_SECONDARY_BONUS,
+  ELEMENT_MODIFIER_ABSOLUTE_CEIL,
+  ELEMENT_MODIFIER_ABSOLUTE_FLOOR,
+  ELEMENT_NEUTRAL_MULTIPLIER,
 } from './balance-dials';
 
 /**
@@ -358,3 +361,107 @@ export function characterSkillElementBonus(
 // `import { ELEMENT_NEUTRAL_MULTIPLIER } from '@xuantoi/shared/spiritual-root'`)
 // — convenience re-export, source-of-truth vẫn ở `balance-dials.ts`.
 export { ELEMENT_NEUTRAL_MULTIPLIER } from './balance-dials';
+
+/**
+ * Phase 11.6.C — bonus discount cho mỗi `secondaryElement` trợ thủ kháng kiếp.
+ * Áp dụng khi:
+ *   - Secondary element trùng `waveElement` (cùng hệ resonance phụ).
+ *   - Secondary element khắc `waveElement` (e.g. secondary='thuy' khắc
+ *     wave='hoa'): elementOvercomes(secondary) === waveElement.
+ * Mỗi match secondary giảm thêm `ELEMENT_CHARACTER_SECONDARY_BONUS = 0.05` lên
+ * resist multiplier (resist nhỏ hơn = damage ít hơn). KHÔNG áp dụng cho
+ * tương sinh (sinh không trực tiếp kháng — empower-only). Cap [floor, ceil]
+ * envelope ở `ELEMENT_MODIFIER_ABSOLUTE_FLOOR/CEIL` để guard layered modifier.
+ *
+ * Reference: `BALANCE_MODEL.md` §4.2.B Tribulation element resist.
+ */
+
+/**
+ * Resolve elemental resist multiplier khi character với spiritual root chịu
+ * 1 wave kiếp có element `waveElement`. Trả `multiplier` để compose vào
+ * `simulateTribulation(elementResistFn)`:
+ *
+ *   - `multiplier = 1.0` → neutral, damage không đổi.
+ *   - `multiplier < 1.0` → resist (defender chịu ít damage hơn).
+ *   - `multiplier > 1.0` → weakness (defender chịu nhiều damage hơn).
+ *
+ * Logic Phase 11.6.C:
+ *   1. **Tâm Kiếp** (`waveElement === null`) → return `1.0`. Inner-demon
+ *      không phải Ngũ Hành; spiritual root không kháng được.
+ *   2. **Legacy character** (`primaryElement === null` — chưa onboard linh
+ *      căn) → return `1.0`. Backward-compat cho character pre-Phase 11.3.A.
+ *   3. **Primary element vs wave element** — base multiplier qua
+ *      `describeElementMatch(waveElement, primaryElement).multiplier`:
+ *      - `same` (cùng hệ): `0.9` (resist nhẹ — cùng hệ resonance).
+ *      - `counter` (wave khắc primary): `1.3` (weakness — kiếp khắc linh
+ *        căn, e.g. wave='kim' khắc primary='moc').
+ *      - `countered` (primary khắc wave): `0.7` (resist mạnh — linh căn
+ *        khắc kiếp, e.g. primary='thuy' khắc wave='hoa').
+ *      - `generate` (wave sinh primary): `1.2` (weakness — wave nuôi
+ *        linh căn nên xuyên thấu mạnh hơn).
+ *      - `generated` (primary sinh wave): `0.85` (resist nhẹ — linh căn
+ *        hấp thụ năng lượng kiếp).
+ *   4. **Secondary elements bonus** — mỗi secondary trùng wave element
+ *      HOẶC khắc wave element → giảm thêm `ELEMENT_CHARACTER_SECONDARY_BONUS
+ *      = 0.05` vào multiplier. Cap số match = số secondary (≤ 4 cho `than`
+ *      grade).
+ *   5. **Cap** [`ELEMENT_MODIFIER_ABSOLUTE_FLOOR=0.6`,
+ *      `ELEMENT_MODIFIER_ABSOLUTE_CEIL=1.5`] để khoá envelope.
+ *
+ * Ví dụ design cho Băng Kiếp (`waveElement='thuy'`):
+ *   - `primary='thuy'` (cùng hệ): base 0.9 → resist nhẹ.
+ *   - `primary='hoa', secondaries=['kim','tho']` (Hoả linh căn):
+ *     base = describeElementMatch('thuy', 'hoa').mul = 1.3 (thuy khắc hoa
+ *     → defender bị khắc → mul=1.3); secondary 'tho' khắc 'thuy' →
+ *     `-0.05` → final 1.25 (vẫn weakness, nhẹ hơn).
+ *   - `primary='tho', secondaries=['thuy','kim']` (Thổ linh căn): base
+ *     = describeElementMatch('thuy','tho').mul = 0.7 (tho khắc thuy →
+ *     defender khắc lại attacker → countered → mul=0.7); secondary
+ *     'thuy' = wave → resonance `-0.05` → 0.65 (resist mạnh, capped
+ *     bởi floor 0.6).
+ *
+ * Server-authoritative: gọi từ `TribulationService.attemptTribulation`
+ * thay cho hardcoded `() => 1.0` cũ. Catalog-only — KHÔNG cần Prisma
+ * migration.
+ *
+ * Wire vào: `apps/api/src/modules/character/tribulation.service.ts` Phase
+ * 11.6.C.
+ */
+export function computeSpiritualRootTribulationResist(
+  primaryElement: ElementKey | null,
+  secondaryElements: readonly ElementKey[],
+  waveElement: ElementKey | null,
+): number {
+  // Tâm kiếp (waveElement=null) → no element interaction.
+  if (waveElement === null) return ELEMENT_NEUTRAL_MULTIPLIER;
+  // Legacy character chưa onboard spiritual root → fallback neutral.
+  if (primaryElement === null) return ELEMENT_NEUTRAL_MULTIPLIER;
+
+  // Base: damage multiplier khi attacker=wave hit defender=primary.
+  // describeElementMatch trả về multiplier cho damage TO defender, đúng
+  // semantics của `elementResistFn` (mul=1.3 → defender chịu 1.3x damage).
+  let multiplier = describeElementMatch(waveElement, primaryElement).multiplier;
+
+  // Secondary modifier: secondary trợ thủ resist nếu (a) cùng wave element
+  // (resonance) hoặc (b) khắc wave element (counter). KHÔNG áp dụng cho
+  // tương sinh — sinh không trực tiếp giảm damage chịu vào.
+  for (const sec of secondaryElements) {
+    if (sec === waveElement) {
+      // Same-element resonance: -0.05.
+      multiplier -= ELEMENT_CHARACTER_SECONDARY_BONUS;
+    } else if (elementOvercomes(sec) === waveElement) {
+      // Secondary khắc wave: -0.05.
+      multiplier -= ELEMENT_CHARACTER_SECONDARY_BONUS;
+    }
+  }
+
+  // Cap envelope [floor, ceil] để guard khi compose layered modifier
+  // (talent passive + buff + future equipment resist).
+  if (multiplier < ELEMENT_MODIFIER_ABSOLUTE_FLOOR) {
+    return ELEMENT_MODIFIER_ABSOLUTE_FLOOR;
+  }
+  if (multiplier > ELEMENT_MODIFIER_ABSOLUTE_CEIL) {
+    return ELEMENT_MODIFIER_ABSOLUTE_CEIL;
+  }
+  return multiplier;
+}

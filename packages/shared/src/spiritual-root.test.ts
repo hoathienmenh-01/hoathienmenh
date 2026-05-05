@@ -9,9 +9,15 @@ import {
   elementMultiplier,
   validateSpiritualRootState,
   characterSkillElementBonus,
+  computeSpiritualRootTribulationResist,
   type SpiritualRootGrade,
 } from './spiritual-root';
 import { ELEMENTS, type ElementKey } from './combat';
+import {
+  ELEMENT_MODIFIER_ABSOLUTE_CEIL,
+  ELEMENT_MODIFIER_ABSOLUTE_FLOOR,
+  ELEMENT_NEUTRAL_MULTIPLIER,
+} from './balance-dials';
 
 describe('Spiritual Root catalog (Phase 11.0 prep)', () => {
   describe('SPIRITUAL_ROOT_GRADES tier list', () => {
@@ -371,6 +377,203 @@ describe('Spiritual Root catalog (Phase 11.0 prep)', () => {
       // Kim vs Kim cùng hệ 0.9 + character primary Kim (+0.1) = 1.0 (neutral).
       const r = characterSkillElementBonus(huyenChar, 'kim', 'kim');
       expect(r).toBeCloseTo(1.0, 2);
+    });
+  });
+
+  describe('computeSpiritualRootTribulationResist (Phase 11.6.C)', () => {
+    it('tâm kiếp (waveElement=null) → luôn return 1.0 dù primary là gì', () => {
+      // Tâm Kiếp ignore element regardless of root.
+      expect(computeSpiritualRootTribulationResist('thuy', ['hoa'], null)).toBe(
+        ELEMENT_NEUTRAL_MULTIPLIER,
+      );
+      expect(computeSpiritualRootTribulationResist('hoa', [], null)).toBe(
+        ELEMENT_NEUTRAL_MULTIPLIER,
+      );
+      expect(computeSpiritualRootTribulationResist(null, [], null)).toBe(
+        ELEMENT_NEUTRAL_MULTIPLIER,
+      );
+    });
+
+    it('legacy character (primaryElement=null) → 1.0 fallback (backward-compat)', () => {
+      for (const wave of ELEMENTS) {
+        expect(
+          computeSpiritualRootTribulationResist(null, [], wave),
+          `legacy vs wave=${wave}`,
+        ).toBe(ELEMENT_NEUTRAL_MULTIPLIER);
+      }
+    });
+
+    it('primary cùng hệ wave → 0.9 (resonance, resist nhẹ)', () => {
+      // Thuỷ root vs Băng kiếp (wave='thuy') → cùng hệ 0.9.
+      expect(computeSpiritualRootTribulationResist('thuy', [], 'thuy')).toBeCloseTo(
+        0.9,
+        2,
+      );
+      // Hoả root vs Hoả kiếp.
+      expect(computeSpiritualRootTribulationResist('hoa', [], 'hoa')).toBeCloseTo(
+        0.9,
+        2,
+      );
+    });
+
+    it('primary khắc wave → 0.7 (countered — root khắc lại kiếp, resist mạnh)', () => {
+      // Thổ khắc Thuỷ → primary='tho' vs wave='thuy' → 0.7.
+      expect(computeSpiritualRootTribulationResist('tho', [], 'thuy')).toBeCloseTo(
+        0.7,
+        2,
+      );
+      // Thuỷ khắc Hoả.
+      expect(computeSpiritualRootTribulationResist('thuy', [], 'hoa')).toBeCloseTo(
+        0.7,
+        2,
+      );
+      // Kim khắc Mộc.
+      expect(computeSpiritualRootTribulationResist('kim', [], 'moc')).toBeCloseTo(
+        0.7,
+        2,
+      );
+    });
+
+    it('wave khắc primary → 1.3 (counter — kiếp khắc linh căn, weakness)', () => {
+      // Hoả khắc Kim → primary='kim' vs wave='hoa' → 1.3.
+      expect(computeSpiritualRootTribulationResist('kim', [], 'hoa')).toBeCloseTo(
+        1.3,
+        2,
+      );
+      // Thuỷ khắc Hoả → primary='hoa' vs wave='thuy' → 1.3.
+      expect(computeSpiritualRootTribulationResist('hoa', [], 'thuy')).toBeCloseTo(
+        1.3,
+        2,
+      );
+    });
+
+    it('primary sinh wave → 0.85 (generated — linh căn hấp thụ, resist nhẹ)', () => {
+      // Mộc sinh Hoả → primary='moc' vs wave='hoa': "hoa bị sinh bởi moc" = generated 0.85.
+      expect(computeSpiritualRootTribulationResist('moc', [], 'hoa')).toBeCloseTo(
+        0.85,
+        2,
+      );
+      // Kim sinh Thuỷ → primary='kim' vs wave='thuy' → 0.85.
+      expect(computeSpiritualRootTribulationResist('kim', [], 'thuy')).toBeCloseTo(
+        0.85,
+        2,
+      );
+    });
+
+    it('wave sinh primary → 1.2 (generate — kiếp nuôi linh căn, weakness)', () => {
+      // Mộc sinh Hoả → primary='hoa' vs wave='moc' → "moc khi attack hoa: moc sinh hoa" = generate 1.2.
+      expect(computeSpiritualRootTribulationResist('hoa', [], 'moc')).toBeCloseTo(
+        1.2,
+        2,
+      );
+    });
+
+    it('secondary trùng wave → giảm thêm -0.05 (resonance phụ)', () => {
+      // Hoả root + secondary Thuỷ vs Thuỷ kiếp:
+      // base = describeElementMatch('thuy','hoa').mul = 1.3 (thuy khắc hoa)
+      // secondary 'thuy' = wave → -0.05 → 1.25.
+      expect(
+        computeSpiritualRootTribulationResist('hoa', ['thuy'], 'thuy'),
+      ).toBeCloseTo(1.25, 2);
+    });
+
+    it('secondary khắc wave → giảm thêm -0.05 (counter phụ)', () => {
+      // Hoả root + secondary Thổ vs Thuỷ kiếp:
+      // base = 1.3 (thuy khắc hoa); secondary 'tho' khắc 'thuy' (tho khắc thuy) → -0.05 → 1.25.
+      expect(
+        computeSpiritualRootTribulationResist('hoa', ['tho'], 'thuy'),
+      ).toBeCloseTo(1.25, 2);
+    });
+
+    it('secondary tương sinh wave → KHÔNG bonus (chỉ same/counter mới count)', () => {
+      // Hoả root + secondary Mộc vs Thuỷ kiếp:
+      // base = 1.3 (thuy khắc hoa); secondary 'moc' không cùng wave và không khắc wave (mộc khắc thổ) → unchanged 1.3.
+      expect(
+        computeSpiritualRootTribulationResist('hoa', ['moc'], 'thuy'),
+      ).toBeCloseTo(1.3, 2);
+    });
+
+    it('multi secondary đều count nếu mỗi cái match (each gets -0.05)', () => {
+      // Hoả root + secondaries [Thuỷ, Thổ] vs Thuỷ kiếp:
+      // base = 1.3; secondary 'thuy'=wave (-0.05); secondary 'tho' khắc 'thuy' (-0.05) → 1.20.
+      expect(
+        computeSpiritualRootTribulationResist('hoa', ['thuy', 'tho'], 'thuy'),
+      ).toBeCloseTo(1.2, 2);
+    });
+
+    it('cap floor: aggregate bonus không vượt floor 0.6', () => {
+      // Thổ khắc Thuỷ (primary=tho vs wave=thuy) → base 0.7
+      // + secondary 'thuy' = wave → -0.05 = 0.65
+      // + secondary 'tho' duplicate counter → won't apply (tho=primary, secondaries không trùng primary)
+      // → 0.65 vẫn > floor 0.6.
+      expect(
+        computeSpiritualRootTribulationResist('tho', ['thuy'], 'thuy'),
+      ).toBeCloseTo(0.65, 2);
+      // Stress floor: than grade với 4 secondary đều count.
+      // Primary='tho' vs wave='thuy' → base 0.7
+      // secondaries=['thuy','kim','hoa','moc']:
+      //   - 'thuy' = wave → -0.05
+      //   - 'kim' khắc 'moc' (not wave) → no
+      //   - 'hoa' khắc 'kim' (not wave) → no
+      //   - 'moc' khắc 'tho' (not wave) → no
+      // → 0.65 vẫn > 0.6. Cap không trigger ở case typical.
+      const r = computeSpiritualRootTribulationResist(
+        'tho',
+        ['thuy', 'kim', 'hoa', 'moc'],
+        'thuy',
+      );
+      expect(r).toBeGreaterThanOrEqual(ELEMENT_MODIFIER_ABSOLUTE_FLOOR);
+    });
+
+    it('cap ceil: 1.3 weakness + secondary tương sinh không count → vẫn 1.3 (≤ ceil 1.5)', () => {
+      // Primary='kim' vs wave='hoa' (hoa khắc kim) → base 1.3
+      // secondary='tho': hoa sinh tho → secondary 'tho' không cùng wave 'hoa' và elementOvercomes('tho')='thuy' không = wave → no bonus.
+      // → 1.3 ≤ ceil 1.5.
+      expect(
+        computeSpiritualRootTribulationResist('kim', ['tho'], 'hoa'),
+      ).toBeLessThanOrEqual(ELEMENT_MODIFIER_ABSOLUTE_CEIL);
+      expect(
+        computeSpiritualRootTribulationResist('kim', ['tho'], 'hoa'),
+      ).toBeCloseTo(1.3, 2);
+    });
+
+    it('luôn nằm trong [floor, ceil] envelope cho mọi combo', () => {
+      // Property test: stress mọi 5 primary × 5 wave + 0..4 random secondaries.
+      const samples: Array<{
+        primary: ElementKey;
+        secs: ElementKey[];
+        wave: ElementKey | null;
+      }> = [];
+      for (const primary of ELEMENTS) {
+        for (const wave of [...ELEMENTS, null]) {
+          // 0 secondary
+          samples.push({ primary, secs: [], wave });
+          // 1 secondary (each non-primary element)
+          for (const sec of ELEMENTS) {
+            if (sec === primary) continue;
+            samples.push({ primary, secs: [sec], wave });
+          }
+          // Full 4 secondary (than grade)
+          const secs = ELEMENTS.filter((e) => e !== primary);
+          samples.push({ primary, secs: [...secs], wave });
+        }
+      }
+      for (const { primary, secs, wave } of samples) {
+        const r = computeSpiritualRootTribulationResist(primary, secs, wave);
+        expect(r, `primary=${primary}, secs=${secs}, wave=${wave}`).toBeGreaterThanOrEqual(
+          ELEMENT_MODIFIER_ABSOLUTE_FLOOR,
+        );
+        expect(r, `primary=${primary}, secs=${secs}, wave=${wave}`).toBeLessThanOrEqual(
+          ELEMENT_MODIFIER_ABSOLUTE_CEIL,
+        );
+      }
+    });
+
+    it('readonly secondaryElements input (không mutate)', () => {
+      const secs: readonly ElementKey[] = Object.freeze(['thuy'] as ElementKey[]);
+      // Function nhận readonly array — verify TS signature đúng + không throw freeze error.
+      const r = computeSpiritualRootTribulationResist('hoa', secs, 'thuy');
+      expect(r).toBeCloseTo(1.25, 2);
     });
   });
 });

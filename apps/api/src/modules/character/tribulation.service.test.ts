@@ -672,6 +672,125 @@ describe('TribulationService.attemptTribulation with BuffService (Phase 11.8.D-2
   });
 });
 
+describe('TribulationService.attemptTribulation — element resist (Phase 11.6.C)', () => {
+  /**
+   * `kim_dan → nguyen_anh` minor lei kiếp có waves element=['hoa','kim','hoa']
+   * (xem TYPE_ELEMENTS['lei'] trong tribulation.ts). Test scenario chính:
+   *   - **Thuỷ primary** (khắc Hoả + sinh Kim → composite expectation):
+   *     wave[0]='hoa' (thuy khắc hoa = countered = 0.7),
+   *     wave[1]='kim' (kim sinh thuy = generate to defender = 1.2),
+   *     wave[2]='hoa' (0.7).
+   *   - **Hoả primary** (cùng wave hoa + sinh Kim với wave kim):
+   *     wave[0]='hoa' (cùng hệ = 0.9), wave[1]='kim' (kim sinh hoa
+   *     = wave sinh primary → generate-on-defender = 1.2 weakness),
+   *     wave[2]='hoa' (0.9).
+   *   - **Legacy** (primaryElement=null): tất cả 1.0 (backward-compat baseline).
+   */
+
+  it('Thuỷ primary character → primary khắc hoa wave + sinh kim wave → totalDamage giảm so baseline', async () => {
+    const baselineCtx = await setupCharAtKimDanPeak({ hpMax: 50_000 });
+    await prisma.character.update({
+      where: { id: baselineCtx.characterId },
+      data: {
+        spiritualRootGrade: 'pham',
+        primaryElement: 'thuy',
+        secondaryElements: [],
+      },
+    });
+
+    const def = getTribulationForBreakthrough('kim_dan', 'nguyen_anh')!;
+    const baseline1Sim = simulateTribulation(def, 50_000, () => 1.0);
+
+    const out = await svc.attemptTribulation(baselineCtx.characterId, () => 0.99);
+
+    expect(out.success).toBe(true);
+    // Thuỷ resist: hoa[0]=0.7, kim[1]=1.2, hoa[2]=0.7. Manual sim shows
+    // totalDamage < baseline (resist trên 2 wave hoa outweigh weakness 1 kim).
+    expect(out.totalDamage).toBeLessThan(baseline1Sim.totalDamage);
+    // Sanity: confirm matches deterministic resolver simulation
+    const expectedSim = simulateTribulation(def, 50_000, (el) =>
+      el === 'hoa' ? 0.7 : el === 'kim' ? 1.2 : 1.0,
+    );
+    expect(out.totalDamage).toBe(expectedSim.totalDamage);
+  });
+
+  it('Kim primary character → 2 wave hoa khắc kim primary → totalDamage tăng so baseline (weakness)', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 50_000 });
+    await prisma.character.update({
+      where: { id: ctx.characterId },
+      data: {
+        spiritualRootGrade: 'pham',
+        primaryElement: 'kim',
+        secondaryElements: [],
+      },
+    });
+
+    const def = getTribulationForBreakthrough('kim_dan', 'nguyen_anh')!;
+    const baselineSim = simulateTribulation(def, 50_000, () => 1.0);
+
+    const out = await svc.attemptTribulation(ctx.characterId, () => 0.99);
+
+    expect(out.success).toBe(true);
+    // Kim weakness: hoa[0]=1.3 (hoa khắc kim → counter), kim[1]=0.9 (cùng hệ),
+    // hoa[2]=1.3. Net effect: 2 wave hoa khắc primary > 1 wave kim cùng hệ
+    // → totalDamage > baseline.
+    const expectedSim = simulateTribulation(def, 50_000, (el) =>
+      el === 'hoa' ? 1.3 : el === 'kim' ? 0.9 : 1.0,
+    );
+    expect(out.totalDamage).toBe(expectedSim.totalDamage);
+    expect(out.totalDamage).toBeGreaterThan(baselineSim.totalDamage);
+  });
+
+  it('Legacy character (primaryElement=null) → backward-compat 1.0 fallback, totalDamage = baseline', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 50_000 });
+    // KHÔNG set primaryElement (vẫn null từ makeUserChar default).
+
+    const def = getTribulationForBreakthrough('kim_dan', 'nguyen_anh')!;
+    const baselineSim = simulateTribulation(def, 50_000, () => 1.0);
+
+    const out = await svc.attemptTribulation(ctx.characterId, () => 0.99);
+
+    expect(out.success).toBe(true);
+    expect(out.totalDamage).toBe(baselineSim.totalDamage);
+  });
+
+  it('huyen grade với 2 secondary trùng/khắc wave → resist sâu hơn pham', async () => {
+    // Setup: huyen primary='thuy' với secondaries=['tho','kim']
+    //   - wave[0]='hoa': primary thuy khắc hoa → 0.7;
+    //     secondary 'kim': elementOvercomes('kim')='moc' ≠ 'hoa' → no bonus.
+    //     secondary 'tho': elementOvercomes('tho')='thuy' ≠ 'hoa' → no bonus.
+    //     → final 0.7.
+    //   - wave[1]='kim': primary thuy: kim sinh thuy → wave sinh primary → 1.2;
+    //     secondary 'kim' = wave → resonance -0.05 = 1.15;
+    //     secondary 'tho': elementOvercomes('tho')='thuy' ≠ 'kim' → no.
+    //     → final 1.15.
+    //   - wave[2]='hoa': giống wave[0] = 0.7.
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 50_000 });
+    await prisma.character.update({
+      where: { id: ctx.characterId },
+      data: {
+        spiritualRootGrade: 'huyen',
+        primaryElement: 'thuy',
+        secondaryElements: ['tho', 'kim'],
+      },
+    });
+
+    const def = getTribulationForBreakthrough('kim_dan', 'nguyen_anh')!;
+    const out = await svc.attemptTribulation(ctx.characterId, () => 0.99);
+
+    expect(out.success).toBe(true);
+    const expectedSim = simulateTribulation(def, 50_000, (el) =>
+      el === 'hoa' ? 0.7 : el === 'kim' ? 1.15 : 1.0,
+    );
+    expect(out.totalDamage).toBe(expectedSim.totalDamage);
+    // Verify huyen 2-secondary giảm thêm so với pham primary='thuy' baseline:
+    const phamSim = simulateTribulation(def, 50_000, (el) =>
+      el === 'hoa' ? 0.7 : el === 'kim' ? 1.2 : 1.0,
+    );
+    expect(out.totalDamage).toBeLessThan(phamSim.totalDamage);
+  });
+});
+
 describe('TribulationService.listAttemptLogs (Phase 11.6.F)', () => {
   /**
    * Sau mỗi FAIL attempt, character.exp giảm + cooldown set + realmStage giữ

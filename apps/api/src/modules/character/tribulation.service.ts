@@ -1,8 +1,10 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { CurrencyKind } from '@prisma/client';
 import {
+  computeSpiritualRootTribulationResist,
   computeTribulationFailurePenalty,
   computeTribulationReward,
+  ELEMENTS,
   expCostForStage,
   getTribulationForBreakthrough,
   nextRealm,
@@ -39,9 +41,12 @@ import { TitleService } from './title.service';
  *       (EXP loss, cooldown, optional Tâm Ma debuff), set `hp=1` (knock down,
  *       không death), write `TribulationAttemptLog{success:false}`.
  *
- * Element resist (Phase 11.6.C tương lai) sẽ wire từ Spiritual Root primary
- * element + equipment resist multiplier. MVP dùng `() => 1.0` cố định
- * (không resist) để giữ scope nhỏ + deterministic test.
+ * Element resist (Phase 11.6.C — wired): wave element của mỗi
+ * `TribulationDef.waves[i].element` được resolve qua
+ * {@link computeSpiritualRootTribulationResist} dựa trên `Character.primaryElement`
+ * + `Character.secondaryElements`. Tâm Kiếp (`element=null`) luôn fallback 1.0.
+ * Legacy character (chưa onboard linh căn → primaryElement=null) cũng fallback
+ * 1.0 (backward-compat). Equipment resist là Phase 11.6.D tương lai.
  *
  * Idempotency: KHÔNG có natural key — caller phải debounce. Mỗi attempt = 1
  * row `TribulationAttemptLog` mới + 1 row `CurrencyLedger` (chỉ khi success).
@@ -107,9 +112,23 @@ export class TribulationService {
       });
       const attemptIndex = priorAttempts + 1;
 
-      // Element resist: MVP fixed 1.0 (no resist). Phase 11.6.C wire spiritual
-      // root primary element + equipment.
-      const elementResistFn = (_element: ElementKey | null) => 1.0;
+      // Element resist: Phase 11.6.C — wire Character.primaryElement +
+      // secondaryElements vào computeSpiritualRootTribulationResist. Defensive
+      // narrow primaryElement string → ElementKey union (Prisma trả về string?).
+      const primaryElement: ElementKey | null =
+        character.primaryElement && (ELEMENTS as readonly string[]).includes(character.primaryElement)
+          ? (character.primaryElement as ElementKey)
+          : null;
+      const secondaryElements: ElementKey[] = (character.secondaryElements ?? [])
+        .filter((e): e is ElementKey =>
+          (ELEMENTS as readonly string[]).includes(e),
+        );
+      const elementResistFn = (element: ElementKey | null): number =>
+        computeSpiritualRootTribulationResist(
+          primaryElement,
+          secondaryElements,
+          element,
+        );
 
       const sim = simulateTribulation(def, character.hpMax, elementResistFn);
 
