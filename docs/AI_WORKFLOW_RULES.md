@@ -127,11 +127,22 @@ Vẫn append mới ở đầu. Mỗi snapshot ~5-15 dòng cho 1 PR. Snapshot cho
 
 ### Khi nào compact
 
-Compact khi:
+Compact **bắt buộc** khi bất kỳ điều kiện nào dưới đây xảy ra:
 
 - Executive Summary > 30 dòng.
 - Recent Changes > 10 entries.
-- Total file > 3000 dòng (giảm từ 4000 từ 2026-05-05 sau khi tách `ARCHIVE_HANDOFF.md`).
+- **Total `AI_HANDOFF_REPORT.md` > 250 dòng** (cap cứng — siết từ 3000 dòng xuống 250 dòng từ 2026-05-05 sau audit thấy file 217 dòng đã chật + AI session đọc chậm). Đẩy entry cũ + section archive-worthy (phase summary table, smoke per-module detail, completed feature snapshot) sang [`ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md) ngay.
+
+`AI_HANDOFF_REPORT.md` chỉ chứa **trạng thái live hiện tại**:
+
+1. Current Executive Summary (≤ 30 dòng).
+2. Recent Changes (5–10 PR gần nhất).
+3. Current Phase Status.
+4. Open PR / pending branch (nếu có).
+5. Known Issues / Risks (live only — Resolved cũ → archive).
+6. Tests / CI / Smoke / E2E status hiện tại.
+7. Recommended Next Roadmap.
+8. Link tới `ARCHIVE_HANDOFF.md`.
 
 Compact KHÔNG xóa thông tin quan trọng. Phải:
 
@@ -141,11 +152,31 @@ Compact KHÔNG xóa thông tin quan trọng. Phải:
 
 ### Archive phải nằm file riêng
 
-**Archive section PHẢI nằm trong file riêng [`ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md), KHÔNG inline trong `AI_HANDOFF_REPORT.md`.** Tách từ 2026-05-05. Lý do: AI session tiêu tốn ít token/quota hơn khi chỉ đọc file live `AI_HANDOFF_REPORT.md` (~200-3000 dòng) thay vì phải load toàn bộ file gộp (~10000+ dòng). Khi compact:
+**Archive section PHẢI nằm trong file riêng [`ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md), KHÔNG inline trong `AI_HANDOFF_REPORT.md`.** Tách từ 2026-05-05. Lý do: AI session tiêu tốn ít token/quota hơn khi chỉ đọc file live `AI_HANDOFF_REPORT.md` (≤ 250 dòng) thay vì phải load toàn bộ file gộp (~5000+ dòng). Khi compact:
 
 - Move mọi snapshot/PR/section lịch sử sang `ARCHIVE_HANDOFF.md`.
 - Trong `AI_HANDOFF_REPORT.md` chỉ giữ placeholder `## 7. Archive (đã tách file riêng)` + 1 dòng link tham chiếu tới `ARCHIVE_HANDOFF.md`.
 - KHÔNG dump lại Archive content vào `<details>` collapsibles inline file live.
+
+ARCHIVE header bắt buộc (xem `ARCHIVE_HANDOFF.md` line 1-9):
+
+```
+# Archive — AI Handoff Report History
+
+> File này chứa lịch sử PR cũ. AI KHÔNG cần đọc file này mỗi session — chỉ tra cứu khi cần điều tra PR/history cụ thể.
+```
+
+### Docs-only PR — khi nào hợp lệ
+
+Docs-only PR (không kèm code change) **chỉ được mở khi**:
+
+- Handoff lệch nặng so với code trên `main` (vd snapshot bị stale 2-3 phase, PR đã merged nhưng chưa note).
+- File `AI_HANDOFF_REPORT.md` vượt cap 250 dòng → phải compact ngay.
+- Đầu session cần dọn trạng thái nhưng task chính chưa rõ scope.
+- Setup bộ docs mới (vd story bible, beta checklist, balance model setup) không gắn được với feature PR cụ thể.
+- Compact docs (chia file dài thành ARCHIVE, refactor START_HERE thành task-based nav, etc.).
+
+**Mọi docs sync bình thường** (cập nhật handoff sau khi merge feat/fix, cập nhật PHASE12_STORY_PROGRESS sau merge story PR, cập nhật CHANGELOG/RELEASE_NOTES) PHẢI nằm trong cùng PR feature — KHÔNG tách thành docs-only PR sync. Đây là một phần của DOCS UPDATE RULE: handoff sync = mandatory deliverable của mỗi PR feat/fix.
 
 ---
 
@@ -424,6 +455,7 @@ Done = balance test xanh + i18n parity check pass + CI xanh.
 
 ## Lịch sử
 
+- **2026-05-05 (PR docs(ai): compact handoff and add task-based docs navigation)** — Siết HANDOFF REPORT STRUCTURE RULE: (1) compact cap **giảm từ 3000 → 250 dòng** cho `AI_HANDOFF_REPORT.md` sau audit thấy 217 dòng đã chật + AI session đọc chậm; (2) liệt kê 8 section bắt buộc (Executive Summary ≤30, Recent Changes 5–10, Phase Status, Open PR, Known Issues live-only, Tests/CI/Smoke, Next Roadmap, link Archive); (3) thêm ARCHIVE header bắt buộc (`# Archive — AI Handoff Report History` + note "AI KHÔNG cần đọc mỗi session"); (4) thêm **DOCS-ONLY PR EXCEPTION** clause — docs-only PR chỉ hợp lệ khi handoff lệch nặng / file vượt cap / dọn trạng thái đầu session / setup bộ docs mới / compact docs; mọi docs sync bình thường PHẢI gắn với PR feature. Migrate phase summary table (PR #33→#396) + smoke per-module detail sang `ARCHIVE_HANDOFF.md`. Author: Devin AI session 5/5.
 - **2026-05-05** — Cập nhật **HANDOFF REPORT STRUCTURE RULE**: (1) compact threshold giảm từ 4000 dòng xuống **3000 dòng** sau khi tách Archive ra file riêng; (2) thêm rule **"Archive phải nằm file riêng"** — Archive section PHẢI ở [`ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md), KHÔNG inline trong `AI_HANDOFF_REPORT.md`. Lý do: AI session tiêu tốn ít token/quota hơn khi chỉ đọc file live (~200-3000 dòng) thay vì file gộp (~10000+ dòng). Author: Devin AI session 5/5.
 - **2026-05-04** — Thêm **SESSION PR LIMIT** (giới hạn 1–3 PR/session, breakdown 1 Medium feature + 1 Medium test batch + 1 Hotfix khi cần, PR thứ 4 phải justify), **GOM TRƯỚC KHI TÁCH** (mục 4b trong NEXT TASK AUTO-SELECTION — kiểm tra cùng loại trước khi mở PR mới, ngưỡng tách 1200 LOC là max chứ không phải target), và **PROMPT TEMPLATE** (3 template A/B/C ép batching từ prompt). Cập nhật mode description thành "Fast but Safe Delivery Mode. Các luật workflow bên dưới là một bộ nhất quán và phải được áp dụng cùng nhau." Lý do: session 4/5 vừa rồi tạo 14 smoke PR liên tiếp #371..#385 mỗi PR 1 module gameplay — đáng lẽ gom batch 3-5 module/PR. Mục tiêu: giảm micro-PR, giảm CI overhead, gom task cùng loại vào Medium PR. Author: Devin AI session 9r-26 follow-up.
 - **2026-05-03** — Tạo file. Author: Devin AI session 9r-26 take-over. Lý do: trong loop autonomous trước đó, một số UI module bị chia thành 4-5 micro-PR (vd Phase 11.6 Tribulation history split: PR #329 list view, #330 pagination, #332 filter, #333 stats summary, #334 docs sync), tốn CI thời gian + tốn review attention. Luật UI Module Rule giờ là gate.
