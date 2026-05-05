@@ -1363,6 +1363,10 @@
     "badge": {
       "equipped": "Active"
     },
+    "affinity": {
+      "primary": "Primary element match (+10%) — extra cultivation EXP bonus when your primary spiritual root element matches the method.",
+      "secondary": "Secondary element match (+5%) — extra cultivation EXP bonus when your secondary spiritual root element matches the method."
+    },
     "button": {
       "equip": "Activate",
       "equipping": "Activating…",

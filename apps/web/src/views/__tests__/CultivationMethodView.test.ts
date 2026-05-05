@@ -45,9 +45,12 @@ const STUB_LEARNED: LearnedRowStub[] = [
 
 interface MethodStoreStub {
   equippedMethodKey: string | null;
+  equippedMethodElementAffinity: number;
   learned: LearnedRowStub[];
   loaded: boolean;
   inFlight: Set<string>;
+  affinityPercentLabel: string | null;
+  affinityTierKey: string | null;
   fetchState: typeof fetchStateMock;
   equip: typeof equipMock;
   isEquipped: (k: string) => boolean;
@@ -57,9 +60,12 @@ interface MethodStoreStub {
 
 const methodState: MethodStoreStub = {
   equippedMethodKey: 'khai_thien_quyet',
+  equippedMethodElementAffinity: 0,
   learned: STUB_LEARNED,
   loaded: true,
   inFlight: new Set<string>(),
+  affinityPercentLabel: null,
+  affinityTierKey: null,
   fetchState: fetchStateMock,
   equip: equipMock,
   isEquipped: (k: string) => methodState.equippedMethodKey === k,
@@ -157,6 +163,10 @@ const i18n = createI18n({
         badge: {
           equipped: 'Đang vận',
         },
+        affinity: {
+          primary: 'Cùng hệ chính (+10%)',
+          secondary: 'Cùng hệ phụ (+5%)',
+        },
         button: {
           equip: 'Vận',
           equipping: 'Đang vận…',
@@ -181,6 +191,9 @@ function mountView() {
 
 function resetState() {
   methodState.equippedMethodKey = 'khai_thien_quyet';
+  methodState.equippedMethodElementAffinity = 0;
+  methodState.affinityPercentLabel = null;
+  methodState.affinityTierKey = null;
   methodState.learned = STUB_LEARNED;
   methodState.loaded = true;
   methodState.inFlight = new Set();
@@ -386,5 +399,75 @@ describe('CultivationMethodView — equip button', () => {
     );
     expect((btn.element as HTMLButtonElement).disabled).toBe(true);
     expect(btn.text()).toContain('Đang vận…');
+  });
+});
+
+describe('CultivationMethodView — Phase 11.1.E affinity badge render', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    resetState();
+  });
+
+  it('affinity primary (+10%): badge "+10%" render trong row equipped + summary', async () => {
+    methodState.equippedMethodKey = 'khai_thien_quyet';
+    methodState.equippedMethodElementAffinity = 0.1;
+    methodState.affinityPercentLabel = '+10%';
+    methodState.affinityTierKey = 'cultivationMethod.affinity.primary';
+    const w = mountView();
+    await flushPromises();
+    const badge = w.find(
+      '[data-testid="cultivation-method-affinity-badge-khai_thien_quyet"]',
+    );
+    expect(badge.exists()).toBe(true);
+    expect(badge.text()).toBe('+10%');
+    expect(badge.attributes('title')).toBe('Cùng hệ chính (+10%)');
+    expect(badge.attributes('aria-label')).toBe('Cùng hệ chính (+10%)');
+    expect(w.find('[data-testid="cultivation-method-equipped"]').text()).toContain('+10%');
+  });
+
+  it('affinity secondary (+5%): badge "+5%" + tooltip secondary', async () => {
+    methodState.equippedMethodKey = 'khai_thien_quyet';
+    methodState.equippedMethodElementAffinity = 0.05;
+    methodState.affinityPercentLabel = '+5%';
+    methodState.affinityTierKey = 'cultivationMethod.affinity.secondary';
+    const w = mountView();
+    await flushPromises();
+    const badge = w.find(
+      '[data-testid="cultivation-method-affinity-badge-khai_thien_quyet"]',
+    );
+    expect(badge.exists()).toBe(true);
+    expect(badge.text()).toBe('+5%');
+    expect(badge.attributes('title')).toBe('Cùng hệ phụ (+5%)');
+  });
+
+  it('affinity 0 (vô hệ / khác hệ / legacy): badge KHÔNG render', async () => {
+    methodState.equippedMethodKey = 'khai_thien_quyet';
+    methodState.equippedMethodElementAffinity = 0;
+    methodState.affinityPercentLabel = null;
+    methodState.affinityTierKey = null;
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find('[data-testid="cultivation-method-affinity-badge-khai_thien_quyet"]').exists(),
+    ).toBe(false);
+    expect(
+      w.find('[data-testid="cultivation-method-affinity-badge-cuu_cuc_kim_cuong_quyet"]').exists(),
+    ).toBe(false);
+  });
+
+  it('affinity badge KHÔNG render trên method KHÔNG equipped (chỉ render row đang vận)', async () => {
+    methodState.equippedMethodKey = 'khai_thien_quyet';
+    methodState.equippedMethodElementAffinity = 0.1;
+    methodState.affinityPercentLabel = '+10%';
+    methodState.affinityTierKey = 'cultivationMethod.affinity.primary';
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find('[data-testid="cultivation-method-affinity-badge-khai_thien_quyet"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="cultivation-method-affinity-badge-cuu_cuc_kim_cuong_quyet"]').exists(),
+    ).toBe(false);
   });
 });

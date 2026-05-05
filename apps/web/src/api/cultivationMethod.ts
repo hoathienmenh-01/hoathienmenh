@@ -34,24 +34,52 @@ export interface CultivationMethodLearnedRow {
 export interface CultivationMethodState {
   /** Method key currently equipped, or `null` if no method equipped (legacy fallback handled by server). */
   equippedMethodKey: string | null;
+  /**
+   * Phase 11.1.E — Linh căn × Cultivation Method element affinity bonus
+   * fraction (`0` / `0.05` / `0.1`). UI render badge "+10%" nếu primary
+   * cùng hệ method, "+5%" nếu secondary cùng hệ, ẩn nếu 0 (khác hệ /
+   * vô hệ method / legacy character). Server-authoritative — UI chỉ
+   * display, không tự tính.
+   *
+   * Backward-compat: nếu envelope cũ (pre-Phase 11.1.E) thiếu field này,
+   * client default 0 (no bonus) qua `?? 0` trong `getCultivationMethodState`.
+   */
+  equippedMethodElementAffinity: number;
   learned: CultivationMethodLearnedRow[];
 }
 
+/**
+ * Wire-shape — server có thể trả thiếu `equippedMethodElementAffinity` cho
+ * client connect tới API server pre-Phase-11.1.E. `normalize()` default 0.
+ */
+interface CultivationMethodStateWire {
+  equippedMethodKey: string | null;
+  equippedMethodElementAffinity?: number;
+  learned: CultivationMethodLearnedRow[];
+}
+
+function normalize(wire: CultivationMethodStateWire): CultivationMethodState {
+  return {
+    equippedMethodKey: wire.equippedMethodKey,
+    equippedMethodElementAffinity: wire.equippedMethodElementAffinity ?? 0,
+    learned: wire.learned,
+  };
+}
+
 export async function getCultivationMethodState(): Promise<CultivationMethodState> {
-  const { data } = await apiClient.get<Envelope<{ cultivationMethod: CultivationMethodState }>>(
-    '/character/cultivation-method',
-  );
+  const { data } = await apiClient.get<
+    Envelope<{ cultivationMethod: CultivationMethodStateWire }>
+  >('/character/cultivation-method');
   if (!data.ok || !data.data) throw data.error ?? fallbackError('cultivationMethodState');
-  return data.data.cultivationMethod;
+  return normalize(data.data.cultivationMethod);
 }
 
 export async function equipCultivationMethod(
   methodKey: string,
 ): Promise<CultivationMethodState> {
-  const { data } = await apiClient.post<Envelope<{ cultivationMethod: CultivationMethodState }>>(
-    '/character/cultivation-method/equip',
-    { methodKey },
-  );
+  const { data } = await apiClient.post<
+    Envelope<{ cultivationMethod: CultivationMethodStateWire }>
+  >('/character/cultivation-method/equip', { methodKey });
   if (!data.ok || !data.data) throw data.error ?? fallbackError('cultivationMethodEquip');
-  return data.data.cultivationMethod;
+  return normalize(data.data.cultivationMethod);
 }

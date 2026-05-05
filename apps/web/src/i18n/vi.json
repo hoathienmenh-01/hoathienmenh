@@ -1363,6 +1363,10 @@
     "badge": {
       "equipped": "Đang vận"
     },
+    "affinity": {
+      "primary": "Cùng hệ chính (+10%) — bonus EXP tu luyện cộng thêm khi linh căn chính cùng hệ với công pháp.",
+      "secondary": "Cùng hệ phụ (+5%) — bonus EXP tu luyện cộng thêm khi linh căn phụ cùng hệ với công pháp."
+    },
     "button": {
       "equip": "Vận công",
       "equipping": "Đang vận…",

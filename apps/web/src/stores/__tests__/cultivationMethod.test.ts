@@ -30,9 +30,12 @@ describe('useCultivationMethodStore — Phase 11.1.C', () => {
     vi.clearAllMocks();
   });
 
-  it('initial state: equippedMethodKey null, learned empty, not loaded, no inFlight', () => {
+  it('initial state: equippedMethodKey null, learned empty, not loaded, no inFlight, affinity 0', () => {
     const s = useCultivationMethodStore();
     expect(s.equippedMethodKey).toBeNull();
+    expect(s.equippedMethodElementAffinity).toBe(0);
+    expect(s.affinityPercentLabel).toBeNull();
+    expect(s.affinityTierKey).toBeNull();
     expect(s.learned).toEqual([]);
     expect(s.loaded).toBe(false);
     expect(s.inFlight.size).toBe(0);
@@ -41,6 +44,7 @@ describe('useCultivationMethodStore — Phase 11.1.C', () => {
   it('fetchState: hydrate equippedMethodKey + learned + loaded=true', async () => {
     mockedGet.mockResolvedValueOnce({
       equippedMethodKey: 'khai_thien_quyet',
+      equippedMethodElementAffinity: 0,
       learned: [STUB_LEARNED],
     });
     const s = useCultivationMethodStore();
@@ -51,9 +55,49 @@ describe('useCultivationMethodStore — Phase 11.1.C', () => {
     expect(s.loaded).toBe(true);
   });
 
+  it('fetchState: equippedMethodElementAffinity 0.10 → affinityPercentLabel "+10%" + tierKey primary', async () => {
+    mockedGet.mockResolvedValueOnce({
+      equippedMethodKey: 'liet_hoa_phap',
+      equippedMethodElementAffinity: 0.1,
+      learned: [STUB_LEARNED],
+    });
+    const s = useCultivationMethodStore();
+    await s.fetchState();
+    expect(s.equippedMethodElementAffinity).toBe(0.1);
+    expect(s.affinityPercentLabel).toBe('+10%');
+    expect(s.affinityTierKey).toBe('cultivationMethod.affinity.primary');
+  });
+
+  it('fetchState: equippedMethodElementAffinity 0.05 → affinityPercentLabel "+5%" + tierKey secondary', async () => {
+    mockedGet.mockResolvedValueOnce({
+      equippedMethodKey: 'liet_hoa_phap',
+      equippedMethodElementAffinity: 0.05,
+      learned: [STUB_LEARNED],
+    });
+    const s = useCultivationMethodStore();
+    await s.fetchState();
+    expect(s.equippedMethodElementAffinity).toBe(0.05);
+    expect(s.affinityPercentLabel).toBe('+5%');
+    expect(s.affinityTierKey).toBe('cultivationMethod.affinity.secondary');
+  });
+
+  it('fetchState: equippedMethodElementAffinity 0 (vô hệ / khác hệ) → label & tierKey null', async () => {
+    mockedGet.mockResolvedValueOnce({
+      equippedMethodKey: 'khai_thien_quyet',
+      equippedMethodElementAffinity: 0,
+      learned: [STUB_LEARNED],
+    });
+    const s = useCultivationMethodStore();
+    await s.fetchState();
+    expect(s.equippedMethodElementAffinity).toBe(0);
+    expect(s.affinityPercentLabel).toBeNull();
+    expect(s.affinityTierKey).toBeNull();
+  });
+
   it('isEquipped/isEquipping: true cho key đang equip / không cho key khác', async () => {
     mockedGet.mockResolvedValueOnce({
       equippedMethodKey: 'khai_thien_quyet',
+      equippedMethodElementAffinity: 0,
       learned: [STUB_LEARNED],
     });
     const s = useCultivationMethodStore();
@@ -70,6 +114,7 @@ describe('useCultivationMethodStore — Phase 11.1.C', () => {
     s.loaded = true;
     mockedEquip.mockResolvedValueOnce({
       equippedMethodKey: 'cuu_cuc_kim_cuong_quyet',
+      equippedMethodElementAffinity: 0,
       learned: [STUB_LEARNED, STUB_HUYEN],
     });
     const err = await s.equip('cuu_cuc_kim_cuong_quyet');
@@ -132,6 +177,7 @@ describe('useCultivationMethodStore — Phase 11.1.C', () => {
     expect(r2).toBe('IN_FLIGHT');
     resolveFn({
       equippedMethodKey: 'cuu_cuc_kim_cuong_quyet',
+      equippedMethodElementAffinity: 0,
       learned: [STUB_LEARNED, STUB_HUYEN],
     });
     await p1;
@@ -153,6 +199,7 @@ describe('useCultivationMethodStore — Phase 11.1.C', () => {
     expect(s.isEquipping('cuu_cuc_kim_cuong_quyet')).toBe(true);
     resolveFn({
       equippedMethodKey: 'cuu_cuc_kim_cuong_quyet',
+      equippedMethodElementAffinity: 0,
       learned: [STUB_LEARNED, STUB_HUYEN],
     });
     await p;

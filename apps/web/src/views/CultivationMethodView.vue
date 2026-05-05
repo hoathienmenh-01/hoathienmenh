@@ -144,11 +144,22 @@ onMounted(async () => {
           </p>
         </div>
         <div
-          class="text-xs text-ink-300"
+          class="text-xs text-ink-300 flex items-center gap-2"
           data-testid="cultivation-method-equipped"
         >
           <template v-if="methods.equippedMethodKey">
-            {{ t('cultivationMethod.equippedSummary', { key: methods.equippedMethodKey }) }}
+            <span>
+              {{ t('cultivationMethod.equippedSummary', { key: methods.equippedMethodKey }) }}
+            </span>
+            <span
+              v-if="methods.affinityPercentLabel && methods.affinityTierKey"
+              class="text-[10px] px-1.5 py-0.5 rounded border bg-emerald-700/40 text-emerald-200 border-emerald-500/40"
+              :data-testid="'cultivation-method-affinity-summary'"
+              :title="t(methods.affinityTierKey)"
+              :aria-label="t(methods.affinityTierKey)"
+            >
+              {{ methods.affinityPercentLabel }}
+            </span>
           </template>
           <template v-else>
             {{ t('cultivationMethod.equippedNone') }}
@@ -238,6 +249,19 @@ onMounted(async () => {
                 :data-testid="`cultivation-method-equipped-badge-${row.def.key}`"
               >
                 {{ t('cultivationMethod.badge.equipped') }}
+              </span>
+              <span
+                v-if="
+                  methods.isEquipped(row.def.key) &&
+                    methods.affinityPercentLabel &&
+                    methods.affinityTierKey
+                "
+                class="text-[10px] px-1.5 py-0.5 rounded border bg-amber-700/40 text-amber-200 border-amber-500/40"
+                :data-testid="`cultivation-method-affinity-badge-${row.def.key}`"
+                :title="t(methods.affinityTierKey)"
+                :aria-label="t(methods.affinityTierKey)"
+              >
+                {{ methods.affinityPercentLabel }}
               </span>
             </div>
           </header>
