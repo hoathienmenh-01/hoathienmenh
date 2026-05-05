@@ -5,6 +5,7 @@
  * `itemKey + qty + equippedSlot`, server lookup ItemDef bằng key này.
  */
 
+import type { ElementKey } from './combat';
 import type { EquipSlot, Quality } from './enums';
 
 export type ItemKind =
@@ -36,6 +37,28 @@ export interface ItemBonus {
   hpMax?: number;
   mpMax?: number;
   spirit?: number;
+  /**
+   * Phase 11.6.E — element-keyed multiplier (< 1) áp lên damage taken từ wave
+   * hệ tương ứng trong tribulation. Compose multiplicatively bởi
+   * {@link composeEquippedItemElementResist} ở runtime equipment aggregator.
+   *
+   * Convention:
+   * - Empty / undefined map = identity (no resist contribution).
+   * - Multiplier value < 1 = giảm damage taken (0.95 = giảm 5%).
+   * - Stack qua `multiplier(item) × ...` per element key trong map.
+   *
+   * Wire điểm: `InventoryService.equipElementResistMods(characterId)` →
+   * `TribulationService.attemptTribulation` `elementResistFn`. Compose order:
+   *   `effective = computeSpiritualRootTribulationResist(...)
+   *              × computePassiveTalentTribulationResist(...)
+   *              × computeEquipmentTribulationResist(...)`
+   * Tổng resist clamp envelope qua `[ELEMENT_MODIFIER_ABSOLUTE_FLOOR,
+   * ELEMENT_MODIFIER_ABSOLUTE_CEIL]` (`0.6..1.5`).
+   *
+   * KHÔNG dùng cho combat damage (combat dùng `damageBonus` matrix riêng
+   * trong `combat.ts` — Phase 11 nâng cao §3 Elemental Combat MVP).
+   */
+  elementResist?: Partial<Record<ElementKey, number>>;
 }
 
 export interface ItemEffect {
@@ -610,6 +633,74 @@ export const ITEMS: readonly ItemDef[] = [
     slot: 'ARMOR',
     bonuses: { def: 220, hpMax: 1100, spirit: 60 },
     price: 32000,
+  },
+
+  // ----- Phase 11.6.E — Giáp phòng kiếp Ngũ Hành (HUYEN, elementResist 5%) -----
+  // Giáp Huyền phẩm khắc phù chuyên giảm sát thương kiếp hệ tương ứng.
+  // `elementResist[<elem>] = 0.95` (= EQUIPMENT_ELEMENT_RESIST_VALUE) — wire vào
+  // `InventoryService.equipElementResistMods` → `TribulationService` element
+  // resist composition. Stat budget thấp hơn raw HUYEN armor (han_thiet_giap
+  // def=32/hpMax=110) — đánh đổi resist niche cho stat tổng. 5-element coverage
+  // mirror talent `talent_<elem>_thien_giap` (Phase 11.6.D).
+  {
+    key: 'huyen_giap_phong_kim',
+    name: 'Kim Phong Giáp',
+    description:
+      'Giáp Huyền phẩm khắc phù chế ngự khí kiếp hệ Kim, giảm 5% sát thương kim kiếp.',
+    kind: 'ARMOR',
+    quality: 'HUYEN',
+    stackable: false,
+    slot: 'ARMOR',
+    bonuses: { def: 22, hpMax: 80, elementResist: { kim: 0.95 } },
+    price: 900,
+  },
+  {
+    key: 'huyen_giap_phong_moc',
+    name: 'Mộc Phong Giáp',
+    description:
+      'Giáp Huyền phẩm dệt linh ti chế ngự khí kiếp hệ Mộc, giảm 5% sát thương mộc kiếp.',
+    kind: 'ARMOR',
+    quality: 'HUYEN',
+    stackable: false,
+    slot: 'ARMOR',
+    bonuses: { def: 22, hpMax: 80, elementResist: { moc: 0.95 } },
+    price: 900,
+  },
+  {
+    key: 'huyen_giap_phong_thuy',
+    name: 'Thuỷ Phong Giáp',
+    description:
+      'Giáp Huyền phẩm khắc băng văn chế ngự khí kiếp hệ Thuỷ, giảm 5% sát thương thuỷ kiếp.',
+    kind: 'ARMOR',
+    quality: 'HUYEN',
+    stackable: false,
+    slot: 'ARMOR',
+    bonuses: { def: 22, hpMax: 80, elementResist: { thuy: 0.95 } },
+    price: 900,
+  },
+  {
+    key: 'huyen_giap_phong_hoa',
+    name: 'Hoả Phong Giáp',
+    description:
+      'Giáp Huyền phẩm tôi luyện trong hoả lò chế ngự khí kiếp hệ Hoả, giảm 5% sát thương hoả kiếp.',
+    kind: 'ARMOR',
+    quality: 'HUYEN',
+    stackable: false,
+    slot: 'ARMOR',
+    bonuses: { def: 22, hpMax: 80, elementResist: { hoa: 0.95 } },
+    price: 900,
+  },
+  {
+    key: 'huyen_giap_phong_tho',
+    name: 'Thổ Phong Giáp',
+    description:
+      'Giáp Huyền phẩm khảm hậu thổ tinh chế ngự khí kiếp hệ Thổ, giảm 5% sát thương thổ kiếp.',
+    kind: 'ARMOR',
+    quality: 'HUYEN',
+    stackable: false,
+    slot: 'ARMOR',
+    bonuses: { def: 22, hpMax: 80, elementResist: { tho: 0.95 } },
+    price: 900,
   },
 
   // ----- Thắt lưng (BELT) — bổ sung HUYEN/TIEN/THAN -----
@@ -1317,3 +1408,81 @@ export const QUALITY_LABEL_VI: Record<Quality, string> = {
   TIEN: 'Tiên',
   THAN: 'Thần',
 };
+
+// ---------------------------------------------------------------------------
+// Phase 11.6.E — Equipment elemental tribulation resist composer
+// ---------------------------------------------------------------------------
+//
+// Pure helpers cho compose `ItemBonus.elementResist` từ list trang bị đang đeo
+// thành 1 `ReadonlyMap<ElementKey, number>` cho tribulation resist layer.
+// Mirror pattern của `composePassiveTalentMods.elementResistByElement` +
+// `computePassiveTalentTribulationResist` ở `talents.ts` (Phase 11.6.D).
+//
+// Wire điểm:
+//   `apps/api/src/modules/inventory/inventory.service.ts` →
+//   `equipElementResistMods(characterId)` query equipped InventoryItem rows,
+//   resolve ItemDef qua `itemByKey(...)`, gọi
+//   `composeEquippedItemElementResist(items.map((d) => d.bonuses).filter(...))`.
+//
+//   `apps/api/src/modules/character/tribulation.service.ts` →
+//   `attemptTribulation` `elementResistFn` gọi
+//   `computeEquipmentTribulationResist(equipMods, waveElement)` trong compose
+//   chain `rootResist × talentResist × equipmentResist`, clamp envelope qua
+//   `[ELEMENT_MODIFIER_ABSOLUTE_FLOOR, ELEMENT_MODIFIER_ABSOLUTE_CEIL]`.
+//
+// Worst-case stack budget: spiritual root best (0.7) × talent 5-stack
+// (0.95⁵≈0.7738) × equipment 5-stack (0.95⁵≈0.7738) = 0.4193, vẫn được clamp
+// về `ELEMENT_MODIFIER_ABSOLUTE_FLOOR=0.6`. Single-equipment floor 0.95 ×
+// spiritual best (0.7) = 0.665 → an toàn trong envelope.
+
+/**
+ * Compose `ItemBonus.elementResist` từ list bonus của tất cả trang bị
+ * đang đeo. Stack multiplicatively per element key. Thiếu key = identity
+ * (không contribute → không xuất hiện trong map output).
+ *
+ * Pure function — không I/O. Idempotent với input order (multiplication
+ * commutative).
+ *
+ * @param bonuses list `ItemBonus` từ trang bị đang đeo (caller filter ra
+ *   item không có bonuses hoặc không đeo).
+ * @returns `ReadonlyMap<ElementKey, number>` — value < 1 = resist multiplier.
+ *   Empty map nếu không trang bị nào có `elementResist`.
+ */
+export function composeEquippedItemElementResist(
+  bonuses: readonly ItemBonus[],
+): ReadonlyMap<ElementKey, number> {
+  const out = new Map<ElementKey, number>();
+  for (const b of bonuses) {
+    if (!b.elementResist) continue;
+    for (const [k, v] of Object.entries(b.elementResist)) {
+      if (v === undefined || !Number.isFinite(v) || v <= 0) continue;
+      const elem = k as ElementKey;
+      const cur = out.get(elem) ?? 1;
+      out.set(elem, cur * v);
+    }
+  }
+  return out;
+}
+
+/**
+ * Phase 11.6.E — derive tribulation resist multiplier từ trang bị đã compose
+ * cho 1 wave element. Pure deterministic helper (no I/O). Caller compose
+ * multiplicatively trên top spiritual root + talent resist:
+ *   `effective = computeSpiritualRootTribulationResist(...)
+ *              × computePassiveTalentTribulationResist(...)
+ *              × computeEquipmentTribulationResist(...)`
+ *
+ * - `null` element (Tâm Kiếp / vô hệ) → fallback `1.0` (no equipment resist).
+ * - Element khớp `equipmentMods` → return stored multiplier (< 1).
+ * - Element không khớp → fallback `1.0` (identity, no effect).
+ *
+ * **KHÔNG** clamp envelope ở đây — caller (TribulationService) sẽ clamp tổng
+ * sau khi compose tất cả layer.
+ */
+export function computeEquipmentTribulationResist(
+  equipmentMods: ReadonlyMap<ElementKey, number>,
+  waveElement: ElementKey | null,
+): number {
+  if (waveElement === null) return 1.0;
+  return equipmentMods.get(waveElement) ?? 1.0;
+}

@@ -34,9 +34,12 @@ let svc: TribulationService;
 let titleSvc: TitleService;
 let buffSvc: BuffService;
 let talentSvc: TalentService;
+let inventorySvc: InventoryService;
 let svcWithTitles: TribulationService;
 let svcWithBuffs: TribulationService;
 let svcWithTalents: TribulationService;
+let svcWithEquip: TribulationService;
+let svcWithTalentsEquip: TribulationService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
@@ -45,6 +48,10 @@ beforeAll(() => {
   titleSvc = new TitleService(prisma);
   buffSvc = new BuffService(prisma);
   talentSvc = new TalentService(prisma);
+  // Phase 11.6.E — InventoryService inject cho equipment resist tests.
+  const realtimeForEquip = new RealtimeService();
+  const charsForEquip = new CharacterService(prisma, realtimeForEquip);
+  inventorySvc = new InventoryService(prisma, realtimeForEquip, charsForEquip);
   svc = new TribulationService(prisma, currency);
   svcWithTitles = new TribulationService(prisma, currency, titleSvc);
   svcWithBuffs = new TribulationService(
@@ -61,6 +68,26 @@ beforeAll(() => {
     undefined,
     undefined,
     talentSvc,
+  );
+  // Phase 11.6.E — InventoryService inject only (no talent) cho equipment-only tests.
+  svcWithEquip = new TribulationService(
+    prisma,
+    currency,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    inventorySvc,
+  );
+  // Phase 11.6.E — Talent + Inventory inject cho stack compose tests.
+  svcWithTalentsEquip = new TribulationService(
+    prisma,
+    currency,
+    undefined,
+    undefined,
+    undefined,
+    talentSvc,
+    inventorySvc,
   );
 });
 
@@ -959,6 +986,194 @@ describe('TribulationService.attemptTribulation — talent resist (Phase 11.6.D)
       return 1.0;
     });
     expect(out.totalDamage).toBeLessThan(phamBaselineSim.totalDamage);
+  });
+});
+
+describe('TribulationService.attemptTribulation — equipment resist (Phase 11.6.E)', () => {
+  /**
+   * Compose equipment elementResist multiplicatively trên top spiritual root +
+   * talent resist. Catalog: 5 armor `huyen_giap_phong_<elem>` với
+   * `ItemBonus.elementResist[<elem>] = 0.95`.
+   *
+   * - `kim_dan → nguyen_anh` minor lei waves = ['hoa','kim','hoa'].
+   * - Equip `huyen_giap_phong_hoa` → 2 wave hoa nhân thêm 0.95.
+   * - Backward-compat: InventoryService NOT inject (svc) → fallback identity 1.0.
+   */
+
+  it('InventoryService NOT injected (svc) → backward-compat, totalDamage = baseline kể cả khi đeo armor resist', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 50_000 });
+    // Đeo armor resist nhưng svc không inject InventoryService → fallback 1.0.
+    await inventorySvc.grant(
+      ctx.characterId,
+      [{ itemKey: 'huyen_giap_phong_hoa', qty: 1 }],
+      { reason: 'ADMIN_GRANT' },
+    );
+    const armor = await prisma.inventoryItem.findFirstOrThrow({
+      where: { characterId: ctx.characterId, itemKey: 'huyen_giap_phong_hoa' },
+    });
+    await inventorySvc.equip(ctx.userId, armor.id);
+
+    const def = getTribulationForBreakthrough('kim_dan', 'nguyen_anh')!;
+    const baselineSim = simulateTribulation(def, 50_000, () => 1.0);
+
+    const out = await svc.attemptTribulation(ctx.characterId, () => 0.99);
+
+    expect(out.success).toBe(true);
+    expect(out.totalDamage).toBe(baselineSim.totalDamage);
+  });
+
+  it('InventoryService injected nhưng character không trang bị → fallback identity, totalDamage = baseline', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 50_000 });
+
+    const def = getTribulationForBreakthrough('kim_dan', 'nguyen_anh')!;
+    const baselineSim = simulateTribulation(def, 50_000, () => 1.0);
+
+    const out = await svcWithEquip.attemptTribulation(
+      ctx.characterId,
+      () => 0.99,
+    );
+
+    expect(out.success).toBe(true);
+    expect(out.totalDamage).toBe(baselineSim.totalDamage);
+  });
+
+  it('character đeo huyen_giap_phong_hoa → 2 wave hoa giảm 5%, wave kim không đổi', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 50_000 });
+    await inventorySvc.grant(
+      ctx.characterId,
+      [{ itemKey: 'huyen_giap_phong_hoa', qty: 1 }],
+      { reason: 'ADMIN_GRANT' },
+    );
+    const armor = await prisma.inventoryItem.findFirstOrThrow({
+      where: { characterId: ctx.characterId, itemKey: 'huyen_giap_phong_hoa' },
+    });
+    await inventorySvc.equip(ctx.userId, armor.id);
+
+    const def = getTribulationForBreakthrough('kim_dan', 'nguyen_anh')!;
+    const expectedSim = simulateTribulation(def, 50_000, (el) =>
+      el === 'hoa' ? 0.95 : 1.0,
+    );
+
+    const out = await svcWithEquip.attemptTribulation(
+      ctx.characterId,
+      () => 0.99,
+    );
+
+    expect(out.success).toBe(true);
+    expect(out.totalDamage).toBe(expectedSim.totalDamage);
+    // Sanity: < baseline 1.0 (do hoa wave nhân 0.95).
+    const baselineSim = simulateTribulation(def, 50_000, () => 1.0);
+    expect(out.totalDamage).toBeLessThan(baselineSim.totalDamage);
+  });
+
+  it('character đeo huyen_giap_phong_kim → wave kim giảm 5%, 2 wave hoa không đổi', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 50_000 });
+    await inventorySvc.grant(
+      ctx.characterId,
+      [{ itemKey: 'huyen_giap_phong_kim', qty: 1 }],
+      { reason: 'ADMIN_GRANT' },
+    );
+    const armor = await prisma.inventoryItem.findFirstOrThrow({
+      where: { characterId: ctx.characterId, itemKey: 'huyen_giap_phong_kim' },
+    });
+    await inventorySvc.equip(ctx.userId, armor.id);
+
+    const def = getTribulationForBreakthrough('kim_dan', 'nguyen_anh')!;
+    const expectedSim = simulateTribulation(def, 50_000, (el) =>
+      el === 'kim' ? 0.95 : 1.0,
+    );
+
+    const out = await svcWithEquip.attemptTribulation(
+      ctx.characterId,
+      () => 0.99,
+    );
+
+    expect(out.success).toBe(true);
+    expect(out.totalDamage).toBe(expectedSim.totalDamage);
+  });
+
+  it('compose: talent_hoa_thien_giap + huyen_giap_phong_hoa → 2 wave hoa × 0.95 × 0.95', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 50_000 });
+    await prisma.characterTalent.create({
+      data: { characterId: ctx.characterId, talentKey: 'talent_hoa_thien_giap' },
+    });
+    await inventorySvc.grant(
+      ctx.characterId,
+      [{ itemKey: 'huyen_giap_phong_hoa', qty: 1 }],
+      { reason: 'ADMIN_GRANT' },
+    );
+    const armor = await prisma.inventoryItem.findFirstOrThrow({
+      where: { characterId: ctx.characterId, itemKey: 'huyen_giap_phong_hoa' },
+    });
+    await inventorySvc.equip(ctx.userId, armor.id);
+
+    const def = getTribulationForBreakthrough('kim_dan', 'nguyen_anh')!;
+    const expectedSim = simulateTribulation(def, 50_000, (el) =>
+      el === 'hoa' ? 0.95 * 0.95 : 1.0,
+    );
+
+    const out = await svcWithTalentsEquip.attemptTribulation(
+      ctx.characterId,
+      () => 0.99,
+    );
+
+    expect(out.success).toBe(true);
+    expect(out.totalDamage).toBe(expectedSim.totalDamage);
+    // Sanity: < talent-only baseline (equipment thêm 5% resist hoa).
+    const talentOnlySim = simulateTribulation(def, 50_000, (el) =>
+      el === 'hoa' ? 0.95 : 1.0,
+    );
+    expect(out.totalDamage).toBeLessThan(talentOnlySim.totalDamage);
+  });
+
+  it('compose full stack: spiritual root + talent + equipment → 3-layer multiplicative', async () => {
+    // Pham primary=hoa (sameElement 0.9 hoa, countered 0.7 kim) +
+    // talent_hoa_thien_giap (0.95 hoa) + huyen_giap_phong_hoa (0.95 hoa).
+    // Wave hoa = 0.9 × 0.95 × 0.95 = 0.81225.
+    // Wave kim = 0.7 × 1.0 × 1.0 = 0.7 (no talent kim, no armor kim).
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 50_000 });
+    await prisma.character.update({
+      where: { id: ctx.characterId },
+      data: {
+        spiritualRootGrade: 'pham',
+        primaryElement: 'hoa',
+        secondaryElements: [],
+      },
+    });
+    await prisma.characterTalent.create({
+      data: { characterId: ctx.characterId, talentKey: 'talent_hoa_thien_giap' },
+    });
+    await inventorySvc.grant(
+      ctx.characterId,
+      [{ itemKey: 'huyen_giap_phong_hoa', qty: 1 }],
+      { reason: 'ADMIN_GRANT' },
+    );
+    const armor = await prisma.inventoryItem.findFirstOrThrow({
+      where: { characterId: ctx.characterId, itemKey: 'huyen_giap_phong_hoa' },
+    });
+    await inventorySvc.equip(ctx.userId, armor.id);
+
+    const def = getTribulationForBreakthrough('kim_dan', 'nguyen_anh')!;
+    const expectedSim = simulateTribulation(def, 50_000, (el) => {
+      if (el === 'hoa') return 0.9 * 0.95 * 0.95;
+      if (el === 'kim') return 0.7;
+      return 1.0;
+    });
+
+    const out = await svcWithTalentsEquip.attemptTribulation(
+      ctx.characterId,
+      () => 0.99,
+    );
+
+    expect(out.success).toBe(true);
+    expect(out.totalDamage).toBe(expectedSim.totalDamage);
+    // Sanity: full stack < talent-only stack < root-only baseline.
+    const rootOnlySim = simulateTribulation(def, 50_000, (el) => {
+      if (el === 'hoa') return 0.9;
+      if (el === 'kim') return 0.7;
+      return 1.0;
+    });
+    expect(out.totalDamage).toBeLessThan(rootOnlySim.totalDamage);
   });
 });
 

@@ -377,6 +377,9 @@ describe('BALANCE_DIALS — aggregate snapshot (drift detection)', () => {
       talentResist: {
         elementResistValue: BALANCE_DIALS.TALENT_ELEMENT_RESIST_VALUE,
       },
+      equipmentResist: {
+        elementResistValue: BALANCE_DIALS.EQUIPMENT_ELEMENT_RESIST_VALUE,
+      },
       breakthrough: {
         chanceMin: BALANCE_DIALS.BREAKTHROUGH_CHANCE_MIN,
         chanceMax: BALANCE_DIALS.BREAKTHROUGH_CHANCE_MAX,
@@ -427,6 +430,9 @@ describe('BALANCE_DIALS — aggregate snapshot (drift detection)', () => {
           "modifierAbsoluteFloor": 0.6,
           "neutralMultiplier": 1,
           "sameElementMultiplier": 0.9,
+        },
+        "equipmentResist": {
+          "elementResistValue": 0.95,
         },
         "itemBudget": {
           "offSlotSoftCapMultiplier": 1.2,

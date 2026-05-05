@@ -1,6 +1,7 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { CurrencyKind } from '@prisma/client';
 import {
+  computeEquipmentTribulationResist,
   computePassiveTalentTribulationResist,
   computeSpiritualRootTribulationResist,
   computeTribulationFailurePenalty,
@@ -18,6 +19,7 @@ import {
   type TribulationDef,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { InventoryService } from '../inventory/inventory.service';
 import { AchievementService } from './achievement.service';
 import { BuffService } from './buff.service';
 import { CurrencyService } from './currency.service';
@@ -59,7 +61,15 @@ import { TitleService } from './title.service';
  * `kind: 'element_resist' value: 0.95`. Tổng resist clamp envelope qua
  * `[ELEMENT_MODIFIER_ABSOLUTE_FLOOR, ELEMENT_MODIFIER_ABSOLUTE_CEIL]` (`0.6..1.5`).
  * `talents` Optional: legacy test (no talent inject) → fallback 1.0 (no extra
- * resist). Equipment resist defer Phase 11.6.E sau Equipment runtime module.
+ * resist).
+ *
+ * Equipment resist (Phase 11.6.E — wired): trên top talent resist, compose
+ * multiplicatively với {@link computeEquipmentTribulationResist} từ
+ * {@link InventoryService.equipElementResistMods}. Producer = 5 catalog armor
+ * `huyen_giap_phong_<elem>` (`ItemBonus.elementResist[<elem>] = 0.95`). Compose
+ * order: `rootResist × talentResist × equipmentResist`, clamp tổng theo cùng
+ * envelope `[FLOOR, CEIL]`. `inventory` Optional: legacy test (no inventory
+ * inject) → fallback empty map → identity 1.0 (no extra resist).
  *
  * Idempotency: KHÔNG có natural key — caller phải debounce. Mỗi attempt = 1
  * row `TribulationAttemptLog` mới + 1 row `CurrencyLedger` (chỉ khi success).
@@ -75,6 +85,12 @@ export class TribulationService {
     private readonly buffs?: BuffService,
     @Optional() private readonly achievements?: AchievementService,
     @Optional() private readonly talents?: TalentService,
+    // Phase 11.6.E — Optional + forwardRef vì InventoryModule ↔ CharacterModule
+    // có circular import (InventoryService inject CharacterService cho equip
+    // restat). Legacy test (no inventory inject) → fallback empty map.
+    @Optional()
+    @Inject(forwardRef(() => InventoryService))
+    private readonly inventory?: InventoryService,
   ) {}
 
   /**
@@ -146,6 +162,16 @@ export class TribulationService {
         talentMods = await this.talents.getMods(characterId);
       }
 
+      // Phase 11.6.E — compose equipment elementResist multiplicatively trên top
+      // talent resist. `inventory` Optional (legacy test) → empty map → identity
+      // 1.0. Lookup 1 lần / attempt vì equipment không đổi trong tx tribulation.
+      let equipmentResistMods: ReadonlyMap<ElementKey, number> = new Map();
+      if (this.inventory) {
+        equipmentResistMods = await this.inventory.equipElementResistMods(
+          characterId,
+        );
+      }
+
       const elementResistFn = (element: ElementKey | null): number => {
         const rootResist = computeSpiritualRootTribulationResist(
           primaryElement,
@@ -155,10 +181,15 @@ export class TribulationService {
         const talentResist = talentMods
           ? computePassiveTalentTribulationResist(talentMods, element)
           : 1.0;
-        const composed = rootResist * talentResist;
-        // Clamp envelope `[FLOOR, CEIL]` để future stack (equipment + buff) không
-        // làm resist âm hoặc bùng vượt 1.5×. Single-talent floor 0.95 × spiritual
-        // best-case 0.7 = 0.665 — vẫn cao hơn FLOOR=0.6.
+        const equipmentResist = computeEquipmentTribulationResist(
+          equipmentResistMods,
+          element,
+        );
+        const composed = rootResist * talentResist * equipmentResist;
+        // Clamp envelope `[FLOOR, CEIL]` để stack tất cả layer (root + talent +
+        // equipment + future buff) không làm resist âm hoặc vượt 1.5×. Worst-case
+        // stack: spiritual primary 0.7 × talent 5-stack 0.7738 × equipment 5-stack
+        // 0.7738 = 0.4193, clamp về FLOOR=0.6.
         if (composed < ELEMENT_MODIFIER_ABSOLUTE_FLOOR) return ELEMENT_MODIFIER_ABSOLUTE_FLOOR;
         if (composed > ELEMENT_MODIFIER_ABSOLUTE_CEIL) return ELEMENT_MODIFIER_ABSOLUTE_CEIL;
         return composed;
