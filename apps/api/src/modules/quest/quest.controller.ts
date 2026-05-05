@@ -29,6 +29,10 @@ const ProgressInput = z.object({
   amount: z.number().int().positive().max(100).optional(),
 });
 
+const ClaimInput = z.object({
+  questKey: z.string().min(1).max(80),
+});
+
 function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
   throw new HttpException({ ok: false, error: { code, message: code } }, status);
 }
@@ -84,12 +88,40 @@ export class QuestController {
     }
   }
 
+  // Phase 12 PR-3 — Quest claim reward.
+  // Auth gate (UNAUTHENTICATED 401) + Zod validate (INVALID_INPUT 400) +
+  // service errors (404 unknown / 409 not-completed / 409 already-claimed).
+  // BE-only mutation point: response trả về granted breakdown để FE render
+  // toast / animation, KHÔNG cộng currency phía FE.
+  @Post('claim')
+  @HttpCode(200)
+  async claim(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
+    if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    const parsed = ClaimInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const result = await this.quests.claim(userId, parsed.data.questKey);
+      return {
+        ok: true,
+        data: {
+          questKey: result.questKey,
+          claimedAt: result.claimedAt.toISOString(),
+          granted: result.granted,
+        },
+      };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
   private handleErr(e: unknown): never {
     if (e instanceof QuestError) {
       switch (e.code) {
         case 'NO_CHARACTER':
         case 'QUEST_UNKNOWN':
         case 'QUEST_STEP_UNKNOWN':
+        case 'QUEST_NOT_FOUND_PROGRESS':
           fail(e.code, HttpStatus.NOT_FOUND);
         // eslint-disable-next-line no-fallthrough
         case 'QUEST_LOCKED_REALM':
@@ -99,6 +131,8 @@ export class QuestController {
         case 'QUEST_NOT_AVAILABLE':
         case 'QUEST_NOT_ACCEPTED':
         case 'QUEST_STEP_KIND_MISMATCH':
+        case 'QUEST_NOT_COMPLETED':
+        case 'QUEST_ALREADY_CLAIMED':
           fail(e.code, HttpStatus.CONFLICT);
       }
     }

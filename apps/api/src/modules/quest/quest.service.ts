@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { CurrencyKind, Prisma } from '@prisma/client';
 import {
   QUESTS,
   questByKey,
@@ -10,6 +10,8 @@ import {
   type QuestStepKind,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { CurrencyService } from '../character/currency.service';
+import { InventoryService } from '../inventory/inventory.service';
 
 /**
  * Phase 12 Story PR-2 — Quest runtime persistence.
@@ -42,7 +44,11 @@ export class QuestError extends Error {
       | 'QUEST_NOT_AVAILABLE'
       | 'QUEST_NOT_ACCEPTED'
       | 'QUEST_STEP_UNKNOWN'
-      | 'QUEST_STEP_KIND_MISMATCH',
+      | 'QUEST_STEP_KIND_MISMATCH'
+      // Phase 12 Story PR-3 — Quest claim path.
+      | 'QUEST_NOT_FOUND_PROGRESS'
+      | 'QUEST_NOT_COMPLETED'
+      | 'QUEST_ALREADY_CLAIMED',
   ) {
     super(code);
   }
@@ -112,9 +118,33 @@ function isAllStepsDone(def: QuestDef, progress: Record<string, number>): boolea
   return true;
 }
 
+/**
+ * Output của `QuestService.claim()` — Phase 12 PR-3.
+ *
+ * Reward đã grant atomic trong `$transaction`; nếu transaction throw, currency/
+ * item/exp/congHien KHÔNG bị mutate (Prisma rollback) + status vẫn COMPLETED.
+ */
+export interface QuestClaimResult {
+  questKey: string;
+  claimedAt: Date;
+  granted: {
+    linhThach: number;
+    tienNgoc: number;
+    exp: number;
+    congHien: number;
+    items: Array<{ itemKey: string; qty: number }>;
+  };
+}
+
 @Injectable()
 export class QuestService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    // Phase 12 PR-3 — claim path. Wire qua `QuestModule` (CharacterModule
+    // export `CurrencyService`; InventoryModule export `InventoryService`).
+    private readonly currency: CurrencyService,
+    private readonly inventory: InventoryService,
+  ) {}
 
   /**
    * Trả về toàn bộ quest visible cho character — bao gồm AVAILABLE/ACCEPTED/COMPLETED/CLAIMED.
@@ -384,6 +414,135 @@ export class QuestService {
         await this.transitionToCompleted(row.id);
       }
     }
+  }
+
+  /**
+   * Phase 12 Story PR-3 — Quest claim reward.
+   *
+   * Atomic flow trong 1 `prisma.$transaction`:
+   *   1. CAS guard `updateMany({ where: { id, status: 'COMPLETED', claimedAt: null } })`
+   *      → set `status='CLAIMED'`, `claimedAt=now()`. Race-safe: 2 concurrent
+   *      claim cùng questKey, đúng 1 winner; loser nhận `QUEST_ALREADY_CLAIMED`
+   *      (count !== 1).
+   *   2. Grant linhThach / tienNgoc qua `CurrencyService.applyTx` với
+   *      `reason='QUEST_CLAIM'`, `refType='Quest'`, `refId=questKey` →
+   *      ghi `CurrencyLedger` row (1 / currency / claim).
+   *   3. Grant exp / congHien trực tiếp qua `tx.character.update({ increment })`
+   *      (mirror MissionService pattern; 2 cột này KHÔNG có ledger riêng).
+   *   4. Grant items qua `InventoryService.grantTx` với `reason='QUEST_CLAIM'` →
+   *      ghi `ItemLedger` rows (positive qtyDelta).
+   *
+   * Idempotency: composite `(characterId, QUEST_CLAIM, questKey)` thực thi
+   * qua CAS guard ở step 1 (ECONOMY_MODEL.md §3.5) — race winner duy nhất
+   * grant + ghi ledger; loser throw KHÔNG mutate.
+   *
+   * @throws QuestError('NO_CHARACTER') user chưa có character.
+   * @throws QuestError('QUEST_UNKNOWN') questKey không tồn tại trong catalog.
+   * @throws QuestError('QUEST_NOT_FOUND_PROGRESS') chưa từng accept (no row).
+   * @throws QuestError('QUEST_NOT_COMPLETED') status != COMPLETED.
+   * @throws QuestError('QUEST_ALREADY_CLAIMED') row.claimedAt đã set (CAS lose).
+   */
+  async claim(userId: string, questKey: string): Promise<QuestClaimResult> {
+    const def = questByKey(questKey);
+    if (!def) throw new QuestError('QUEST_UNKNOWN');
+
+    const char = await this.prisma.character.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!char) throw new QuestError('NO_CHARACTER');
+
+    const characterId = char.id;
+
+    return this.prisma.$transaction(async (tx) => {
+      const row = await tx.questProgress.findUnique({
+        where: { characterId_questKey: { characterId, questKey } },
+        select: { id: true, status: true, claimedAt: true },
+      });
+      if (!row) throw new QuestError('QUEST_NOT_FOUND_PROGRESS');
+      if (row.status === 'CLAIMED' || row.claimedAt !== null) {
+        throw new QuestError('QUEST_ALREADY_CLAIMED');
+      }
+      if (row.status !== 'COMPLETED') {
+        throw new QuestError('QUEST_NOT_COMPLETED');
+      }
+
+      // CAS race guard: chỉ set claimedAt nếu vẫn COMPLETED + claimedAt=null.
+      // Mirror AchievementService.claimReward pattern.
+      const claimedAt = new Date();
+      const upd = await tx.questProgress.updateMany({
+        where: { id: row.id, status: 'COMPLETED', claimedAt: null },
+        data: { status: 'CLAIMED', claimedAt },
+      });
+      if (upd.count !== 1) {
+        throw new QuestError('QUEST_ALREADY_CLAIMED');
+      }
+
+      const r = def.rewards;
+      const linhThach = r.linhThach ?? 0;
+      const tienNgoc = r.tienNgoc ?? 0;
+      const exp = r.exp ?? 0;
+      const congHien = r.congHien ?? 0;
+
+      if (linhThach > 0) {
+        await this.currency.applyTx(tx, {
+          characterId,
+          currency: CurrencyKind.LINH_THACH,
+          delta: BigInt(linhThach),
+          reason: 'QUEST_CLAIM',
+          refType: 'Quest',
+          refId: questKey,
+        });
+      }
+      if (tienNgoc > 0) {
+        await this.currency.applyTx(tx, {
+          characterId,
+          currency: CurrencyKind.TIEN_NGOC,
+          delta: BigInt(tienNgoc),
+          reason: 'QUEST_CLAIM',
+          refType: 'Quest',
+          refId: questKey,
+        });
+      }
+      if (exp > 0) {
+        await tx.character.update({
+          where: { id: characterId },
+          data: { exp: { increment: BigInt(exp) } },
+        });
+      }
+      if (congHien > 0) {
+        await tx.character.update({
+          where: { id: characterId },
+          data: { congHien: { increment: congHien } },
+        });
+      }
+
+      const granted: Array<{ itemKey: string; qty: number }> = [];
+      if (r.items && r.items.length > 0) {
+        const grantList = r.items.map((it) => ({
+          itemKey: it.itemKey,
+          qty: it.qty,
+        }));
+        await this.inventory.grantTx(tx, characterId, grantList, {
+          reason: 'QUEST_CLAIM',
+          refType: 'Quest',
+          refId: questKey,
+        });
+        granted.push(...grantList);
+      }
+
+      return {
+        questKey,
+        claimedAt,
+        granted: {
+          linhThach,
+          tienNgoc,
+          exp,
+          congHien,
+          items: granted,
+        },
+      };
+    });
   }
 
   private async transitionToCompleted(progressId: string): Promise<void> {

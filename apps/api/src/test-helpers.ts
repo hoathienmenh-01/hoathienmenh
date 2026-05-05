@@ -6,6 +6,7 @@ import { CurrencyService } from './modules/character/currency.service';
 import { InventoryService } from './modules/inventory/inventory.service';
 import { MissionService } from './modules/mission/mission.service';
 import { MissionWsEmitter } from './modules/mission/mission-ws.emitter';
+import { QuestService } from './modules/quest/quest.service';
 
 /**
  * Helpers cho integration test — tạo fixture user/character nhanh, không
@@ -143,6 +144,19 @@ export function makeMissionService(
   const currency = new CurrencyService(prisma);
   const inventory = new InventoryService(prisma, realtime, chars);
   return new MissionService(prisma, currency, inventory, emitter);
+}
+
+/**
+ * Phase 12 PR-3 — Dựng `QuestService` cho integration test (bypass DI container).
+ * Wire `CurrencyService` + `InventoryService` qua cùng pattern với
+ * `makeMissionService` để claim path đi qua ledger thật.
+ */
+export function makeQuestService(prisma: PrismaService): QuestService {
+  const realtime = new RealtimeService();
+  const chars = new CharacterService(prisma, realtime);
+  const currency = new CurrencyService(prisma);
+  const inventory = new InventoryService(prisma, realtime, chars);
+  return new QuestService(prisma, currency, inventory);
 }
 
 export const TEST_DATABASE_URL =

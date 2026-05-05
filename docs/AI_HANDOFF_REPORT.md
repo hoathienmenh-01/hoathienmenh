@@ -26,7 +26,8 @@
 
 | PR | Title | Type |
 |---|---|---|
-| **this PR** | `feat(api): Phase 12 PR-2 — Quest runtime persistence (QuestProgress Prisma + QuestService list/accept/progress/track + 3 endpoints + CombatService kill hook + 41 unit/controller test + smoke:quest 16 step)` | medium BE feature + Prisma migration |
+| **this PR** | `feat(api): Phase 12 PR-3 — Quest claim / reward idempotency (QuestService.claim qua CurrencyService.applyTx + InventoryService.grantTx + CAS guard claimedAt + concurrency test 2 parallel claim → 1 winner + smoke +4 step + 15 new test)` | medium BE feature + tests |
+| [#426](https://github.com/hoathienmenh-01/xuantoi/pull/426) | `feat(api): Phase 12 PR-2 — Quest runtime persistence (QuestProgress Prisma + QuestService list/accept/progress/track + 3 endpoints + CombatService kill hook + 41 unit/controller test + smoke:quest 16 step)` | medium BE feature + Prisma migration |
 | [#425](https://github.com/hoathienmenh-01/xuantoi/pull/425) | `feat(shared): Phase 12 PR-1 — Story/NPC/Quest catalog foundation (15 quest + 4 NPC + 6 dialogue + 45 integrity test cho 3 cảnh giới đầu)` | medium shared catalog + tests |
 | [#424](https://github.com/hoathienmenh-01/xuantoi/pull/424) | `docs(ai): compact handoff and add task-based docs navigation` — `AI_HANDOFF_REPORT.md` 217→159 + START_HERE 3-tier nav + cap 250 dòng + DOCS-ONLY PR EXCEPTION clause | docs only |
 | [#423](https://github.com/hoathienmenh-01/xuantoi/pull/423) | `docs(story): add Tu Tien Lo story bible and Phase 12 progress tracker` — DOCX archive + markdown bible (28 cảnh giới, 9 NPC, 27 quest chain) + progress tracker (5-PR Phase 12 roadmap) + START_HERE/handoff routing | docs only |
@@ -36,7 +37,6 @@
 | [#419](https://github.com/hoathienmenh-01/xuantoi/pull/419) | `feat(web): Phase 11 §5 PR3 FE — BreakthroughView UI history view + GET /breakthrough/log + POST /breakthrough/attempt + Pinia store + i18n + 48 test` | medium FE feature |
 | [#418](https://github.com/hoathienmenh-01/xuantoi/pull/418) | `feat(api): Phase 11 §5 PR3 backend prep — GET /character/breakthrough/log endpoint + listBreakthroughAttemptLogs service + 4 test + smoke +3 step` | small BE endpoint |
 | [#417](https://github.com/hoathienmenh-01/xuantoi/pull/417) | `test(smoke): smoke:breakthrough RNG positive-path qua admin grant-exp peak seed +6 step` | smoke positive-path |
-| [#416](https://github.com/hoathienmenh-01/xuantoi/pull/416) | `test(smoke): smoke:breakthrough extend cover POST /character/breakthrough/attempt +6 mirror negative-path step` | hotfix smoke extension |
 
 **Phase summary tables (PR #1 → #396) + smoke detail per-module + PR #414/#415**: tách sang [`ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md) § Phase Summary Migrated 2026-05-05 + § Smoke Detail Migrated 2026-05-05.
 

@@ -289,7 +289,7 @@ export const QUESTS: readonly QuestDef[] = [
     rewards: {
       linhThach: 40,
       exp: 60,
-      items: [{ itemKey: 'linh_khi_dan', qty: 1 }],
+      items: [{ itemKey: 'linh_lo_dan', qty: 1 }],
     },
     loreSummary:
       'Tutorial linh căn — choice flag sẽ ảnh hưởng dialogue branch ở Luyện Khí. Story bible §9.1 row 0 + §11.',
@@ -346,7 +346,7 @@ export const QUESTS: readonly QuestDef[] = [
     rewards: {
       linhThach: 300,
       exp: 800,
-      items: [{ itemKey: 'linh_khi_dan', qty: 3 }],
+      items: [{ itemKey: 'linh_lo_dan', qty: 3 }],
     },
     loreSummary:
       'Foreshadow Tịch Thiên Điện — main villain xuất hiện gián tiếp. Story bible §9.1 row 1 + §3.',
@@ -528,7 +528,7 @@ export const QUESTS: readonly QuestDef[] = [
     rewards: {
       linhThach: 800,
       exp: 2500,
-      items: [{ itemKey: 'cong_phap_so_cap', qty: 1 }],
+      items: [{ itemKey: 'co_thien_dan', qty: 1 }],
     },
     loreSummary:
       'Player chính thức nội môn. Choice ảnh hưởng skill / dungeon / faction reputation về sau. Story bible §9.1 row 2.',
@@ -626,7 +626,7 @@ export const QUESTS: readonly QuestDef[] = [
       linhThach: 600,
       exp: 1500,
       congHien: 100,
-      items: [{ itemKey: 'truc_co_dan', qty: 1 }],
+      items: [{ itemKey: 'co_thien_dan', qty: 1 }],
     },
     loreSummary:
       'Mộc Thanh Y arc — emotional beat đầu tiên. Tịch Thiên Điện gián tiếp. Story bible §6 + §11.',
