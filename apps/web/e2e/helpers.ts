@@ -328,6 +328,66 @@ export async function adminSeedTalent(
 }
 
 /**
+ * Phase 11 nâng cao §5 PR3 E2E seed harness — admin grant-exp để đẩy
+ * character đến peak realm (stage=9 + exp ≥ cost(9)) deterministic.
+ *
+ * Mirror pattern `adminSeedTalent`: separate `APIRequestContext` cho admin
+ * cookie jar không đụng player session. Reuse PR #383 admin seed harness
+ * `POST /admin/users/:id/grant-exp` — service tự auto-advance stages 1..8
+ * (consume cost mỗi stage) và dừng ở stage 9 với residual exp ≥ cost(9).
+ *
+ * Bootstrap requirement: `pnpm --filter @xuantoi/api bootstrap` phải tạo
+ * `admin@example.com` (hoặc env `E2E_ADMIN_EMAIL`/`E2E_ADMIN_PASSWORD` override).
+ *
+ * Default `expDelta='200000'` đủ cho fresh `luyenkhi` char: cumulative cost
+ * stage 1..8 = 55031 → residual 144969 ≥ cost(9) 23613 → peak achievable.
+ *
+ * Throws nếu admin login fail (chưa bootstrap), `grant-exp` fail (PR #383
+ * endpoint chưa migrate), hoặc response ok=false.
+ */
+export interface AdminSeedBreakthroughPeakOptions {
+  /** EXP delta string (BigInt-as-string). Default `'200000'` (luyenkhi peak). */
+  expDelta?: string;
+  /** Audit reason. Default `'e2e Phase 11 nâng cao §5 PR3 breakthrough peak seed'`. */
+  reason?: string;
+}
+
+export async function adminSeedBreakthroughPeak(
+  targetUserId: string,
+  opts: AdminSeedBreakthroughPeakOptions = {},
+): Promise<void> {
+  const expDelta = opts.expDelta ?? '200000';
+  const reason = opts.reason ?? 'e2e Phase 11 nâng cao §5 PR3 breakthrough peak seed';
+  const email = process.env.E2E_ADMIN_EMAIL ?? ADMIN_EMAIL_DEFAULT;
+  const password = process.env.E2E_ADMIN_PASSWORD ?? ADMIN_PASSWORD_DEFAULT;
+  const base = apiBase();
+
+  const ctx: APIRequestContext = await playwrightRequest.newContext({ baseURL: base });
+  try {
+    const loginRes = await ctx.post(`${base}/api/_auth/login`, { data: { email, password } });
+    const loginBody = await loginRes.json().catch(() => null);
+    if (
+      loginRes.status() !== 200 ||
+      !loginBody?.ok ||
+      loginBody?.data?.user?.role !== 'ADMIN'
+    ) {
+      throw new Error(
+        `[e2e helpers] adminSeedBreakthroughPeak: admin login failed (status=${loginRes.status()}, ` +
+          `role=${loginBody?.data?.user?.role}). Bootstrap admin@example.com? ` +
+          `body=${JSON.stringify(loginBody).slice(0, 200)}`,
+      );
+    }
+
+    const grantRes = await ctx.post(`${base}/api/admin/users/${targetUserId}/grant-exp`, {
+      data: { exp: expDelta, reason },
+    });
+    await expectOk(grantRes, `admin/users/${targetUserId}/grant-exp`);
+  } finally {
+    await ctx.dispose().catch(() => undefined);
+  }
+}
+
+/**
  * Phase 11.X UI E2E talent cast harness — start son_coc encounter + 1 action
  * dùng `skillKey=talentKey` (combat.service detect talent qua `getTalentDef`).
  * Sau call này server set `cooldownTurnsRemaining = talent.activeEffect.cooldownTurns`

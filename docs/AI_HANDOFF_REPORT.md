@@ -8,18 +8,18 @@
 
 ## 1. Current Executive Summary
 
-- **Current `main` commit**: post PR #418 merged (Phase 11 nâng cao §5 PR3 backend prep — `GET /character/breakthrough/log` endpoint + `listBreakthroughAttemptLogs` service + 4 service test + smoke +3 step). Pre-PR post #417 (smoke RNG positive-path `/breakthrough/attempt` qua admin grant-exp peak seed). **In-flight this PR**: Phase 11 nâng cao §5 PR3 FE — Breakthrough UI history view (Medium PR, mirror Tribulation pattern). Thêm `apps/web/src/api/breakthrough.ts` (155 LOC: `attemptBreakthrough` POST, `fetchAttemptLog` GET, týp `BreakthroughAttemptOutcomeView` + `BreakthroughAttemptLogView`), `apps/web/src/stores/breakthrough.ts` (241 LOC Pinia: state lastOutcome/history/filter/pagination, computed filteredHistory/historyHasMore/historyMaxReached/total/success/failCount, actions attempt/fetchHistory/loadMoreHistory/setHistoryFilter/clearLastOutcome/reset), `apps/web/src/views/BreakthroughView.vue` (~390 LOC: header + pre-attempt action card peak gate + outcome banner success/fail variants với chance breakdown collapsible + debuff indicator `tam_ma_light` + history list filters all/success/fail + load-more pagination + retry on error). Add route `/breakthrough` lazy + nav link in AppShell + i18n vi/en parity full block. Tests: 9 api client + 21 store + 18 view = +48 web test. Server-authoritative: RNG roll vẫn server-side, FE chỉ render outcome.dat đến từ endpoint + sync `useGameStore.fetchState` để reflect realm advance.
-- **Current phase**: Phase 10 Content scale **CLOSED** ✅. Phase 11 Progression Depth **COMPLETE** ✅ (catalog 11/11 + runtime persistence 10/10 + UI E2E spec #19 merged via #394). **Phase 11 nâng cao** (post-Phase-11 polish — 6 modules): §6 Balance dial **CLOSED** ✅ (PR #398). §3 Elemental Combat MVP **CLOSED** ✅ (PR #399). §2 Skill Ngũ Hành expansion **CLOSED** ✅ (PR #400). **Phase 11.6.C Spiritual Root × Tribulation element resist wire CLOSED** ✅ (PR #401). **Phase 11.1.E Cultivation Method element affinity wire CLOSED** ✅ (PR #405 backend + PR #408 FE badge). **Phase 11.6.D Talent passive element_resist wire CLOSED** ✅ (PR #409). **Phase 11.6.E Equipment elemental resist runtime CLOSED** ✅ (PR #411). **Phase 11.6.E FE tooltip render CLOSED** ✅ (PR #412). **Phase 11 nâng cao §5 PR1 CLOSED** ✅ (PR #413). **Phase 11 nâng cao §5 PR2 prep CLOSED** ✅ (PR #414). **Phase 11 nâng cao §5 PR2 wire CLOSED** ✅ (PR #415). **Phase 11 nâng cao §5 PR2 smoke negative-path CLOSED** ✅ (PR #416 — 6 mirror negative-path step). **Phase 11 nâng cao §5 PR2 smoke RNG positive-path CLOSED** ✅ (PR #417 — 6 positive-path step admin grant-exp peak seed). **Phase 11 nâng cao §5 PR3 backend prep CLOSED** ✅ (PR #418 — `GET /character/breakthrough/log` endpoint + `listBreakthroughAttemptLogs` service + 4 test + smoke +3 step). **Phase 11 nâng cao §5 PR3 FE IN-FLIGHT** (this PR — BreakthroughView consume + Pinia store + i18n + 48 web test). Phase 12 World Map & Dungeon **OPEN** — Phase 12.1 catalog **CLOSED** via #397; Phase 12.2 DungeonTemplate/DungeonRun runtime is next. Admin seed harness đầy đủ 8 endpoint. Smoke scripts **26 module** complete. Detail ở `## 3. Current Phase Status`.
-- **Test baseline (post PR #418 merged + breakthrough FE this PR)**: shared **1276/1276** (unchanged) + api **1813/1813** (unchanged — không touch BE) + web **1082/1082** (1034 baseline + **48 new** breakthrough test — 9 api client `attemptBreakthrough`/`fetchAttemptLog` outcome+log parsing + 21 Pinia store action+computed + 18 BreakthroughView render+interaction). 5 redis-dependent test (rate-limiter + health controller) cần Redis local — pass khi Redis container up. Smoke scripts **26 module** complete; `smoke:breakthrough` 34/34 OK deterministic. Detail ở `## 5. Tests`.
-- **Open PR / pending branch**: 1 in-flight FE Medium PR (this PR — Breakthrough UI history view consume `GET /breakthrough/log` + `POST /breakthrough/attempt`). PR #418 + #417 + #416 + #415 + #414 + #413 + #412 + #411 + #410 + #409 đã merged. Older docs/audit in-flight (session 5/6 + 5/7) chưa rebase — xem GitHub PR list ở `https://github.com/hoathienmenh-01/xuantoi/pulls`.
+- **Current `main` commit**: post PR #419 merged (Phase 11 nâng cao §5 PR3 FE — BreakthroughView `/breakthrough` view + Pinia store + api client + i18n + 48 web test). **In-flight this PR**: Phase 11 nâng cao §5 PR3 E2E — Playwright golden-path spec #20 cho `/breakthrough` flow (Small PR, FE-only). Adds `adminSeedBreakthroughPeak` helper (admin login + `POST /admin/users/:id/grant-exp` 200000 → auto-advance luyenkhi stage 1→9 + residual exp ≥ cost(9), reuse PR #383 admin seed harness) trong `apps/web/e2e/helpers.ts` + new spec (`breakthrough attempt → outcome banner + history row appended`) trong `golden.spec.ts`: register fresh char → seed peak → navigate `/breakthrough` → atPeak gate satisfied + history empty → click `breakthrough-attempt-btn` → wait outcome banner (`breakthrough-outcome-success` OR `-fail` prefix locator, RNG non-deterministic via Math.random) → verify transition `luyenkhi/9` + attemptIndex `#1` + breakdown summary visible → assert exactly 1 `breakthrough-history-row` → reload → outcome banner gone (session-only Pinia state) nhưng history row persist (server-authoritative `BreakthroughAttemptLog`). Server-authoritative invariant: spec KHÔNG mock RNG / KHÔNG bypass server — outcome + log đều round-trip qua `/character/breakthrough/attempt` + `/character/breakthrough/log`.
+- **Current phase**: Phase 10 Content scale **CLOSED** ✅. Phase 11 Progression Depth **COMPLETE** ✅ (catalog 11/11 + runtime persistence 10/10 + UI E2E spec #19 merged via #394). **Phase 11 nâng cao** (post-Phase-11 polish — 6 modules): §6 Balance dial **CLOSED** ✅ (PR #398). §3 Elemental Combat MVP **CLOSED** ✅ (PR #399). §2 Skill Ngũ Hành expansion **CLOSED** ✅ (PR #400). **Phase 11.6.C Spiritual Root × Tribulation element resist wire CLOSED** ✅ (PR #401). **Phase 11.1.E Cultivation Method element affinity wire CLOSED** ✅ (PR #405 backend + PR #408 FE badge). **Phase 11.6.D Talent passive element_resist wire CLOSED** ✅ (PR #409). **Phase 11.6.E Equipment elemental resist runtime CLOSED** ✅ (PR #411). **Phase 11.6.E FE tooltip render CLOSED** ✅ (PR #412). **Phase 11 nâng cao §5 PR1 CLOSED** ✅ (PR #413). **Phase 11 nâng cao §5 PR2 prep CLOSED** ✅ (PR #414). **Phase 11 nâng cao §5 PR2 wire CLOSED** ✅ (PR #415). **Phase 11 nâng cao §5 PR2 smoke negative-path CLOSED** ✅ (PR #416). **Phase 11 nâng cao §5 PR2 smoke RNG positive-path CLOSED** ✅ (PR #417). **Phase 11 nâng cao §5 PR3 backend prep CLOSED** ✅ (PR #418). **Phase 11 nâng cao §5 PR3 FE CLOSED** ✅ (PR #419 — BreakthroughView + Pinia store + i18n + 48 web test). **Phase 11 nâng cao §5 PR3 E2E IN-FLIGHT** (this PR — golden-path spec #20). Phase 12 World Map & Dungeon **OPEN** — Phase 12.1 catalog **CLOSED** via #397; Phase 12.2 DungeonTemplate/DungeonRun runtime is next sau §5 PR3 E2E land. Admin seed harness đầy đủ 8 endpoint. Smoke scripts **26 module** complete. Detail ở `## 3. Current Phase Status`.
+- **Test baseline (post PR #419 merged + breakthrough E2E spec this PR)**: shared **1276/1276** (unchanged) + api **1813/1813** (unchanged — E2E spec không touch BE) + web **1082/1082** (unchanged — E2E spec ở `apps/web/e2e/golden.spec.ts` ngoài Vitest matrix, gated by `E2E_FULL=1`). E2E golden-path **20/20 spec** (19 baseline + this PR spec #20 breakthrough). 5 redis-dependent test (rate-limiter + health controller) cần Redis local — pass khi Redis container up. Smoke scripts **26 module** complete; `smoke:breakthrough` 34/34 OK deterministic. Detail ở `## 5. Tests`.
+- **Open PR / pending branch**: 1 in-flight E2E Small PR (this PR — golden-path spec #20 breakthrough flow + `adminSeedBreakthroughPeak` helper). PR #419 + #418 + #417 + #416 + #415 + #414 + #413 + #412 + #411 + #410 đã merged. Older docs/audit in-flight chưa rebase — xem GitHub PR list ở `https://github.com/hoathienmenh-01/xuantoi/pulls`.
 - **Known blocker live**: **0 Critical** hiện tại. **Medium còn open**: M7 CSP production deploy chưa test với CDN/asset domain khác, M10 Shop không có daily limit/rate-limit (closed beta acceptable). **Low còn open**: L1 (đã resolve PR F audit i18n nhưng remain identical en≡vi cho universal terms — đúng intent). Detail ở `## 4. Known Issues / Risks`.
 - **Phase 9 readiness** (snapshot session 9r-9): **11/15 Done**, **3 Partial** (cultivation breakthrough end-to-end, mission claim flow, mail UI — mail UI partial gap closed by PR #391 mail claim end-to-end runtime smoke; daily-login partial gap closed by in-flight seedDailyLoginStreak smoke multi-day positive). Detail [`BETA_CHECKLIST.md`](./BETA_CHECKLIST.md) §"Phase 9 readiness audit".
 - **Immediate next task** (3-5 ưu tiên cao nhất theo SESSION PR LIMIT + GOM TRƯỚC KHI TÁCH 4b — Medium PR > Hotfix > Large):
-  1. **Phase 11 nâng cao §5 PR3 FE this PR land** (in-flight) — BreakthroughView consume `GET /breakthrough/log` + `POST /breakthrough/attempt` + Pinia store + i18n vi/en + 48 test.
-  2. **Phase 11 nâng cao §5 PR3 E2E spec** — Small PR, Template B. Playwright spec admin login → grant-exp peak → navigate `/breakthrough` → click attempt → assert outcome banner visible + history row appended (success/fail branches).
-  3. **smoke:cultivation-method positive-path** — Small PR, Template B. Admin grant book → `/method/learn` consume + equip + ALREADY_LEARNED idempotent. Mirror pattern `smoke:skill`.
-  4. **Phase 12.2 DungeonTemplate + DungeonRun runtime** — Medium PR, Template C. Prisma model `DungeonTemplate` + `DungeonRun` + service `startRun`/`nextEncounter`/`claimRun` happy-path + Prisma migration. **Risk**: Prisma migration + new module.
-- **Anti-duplicate guard** (per NEXT TASK AUTO-SELECTION rule): trước khi pick task, MUST `git fetch origin main && git log --oneline -15` đối chiếu commit message với keyword task — vd "smoke:cultivation-method positive", "Phase 11.X E2E", "admin seed harness". Match → SKIP, pick task khác.
+  1. **Phase 11 nâng cao §5 PR3 E2E this PR land** (in-flight) — golden-path spec #20 breakthrough flow + `adminSeedBreakthroughPeak` helper. Closes §5 PR3 chain.
+  2. **Phase 12.2 DungeonTemplate + DungeonRun runtime** — Medium PR, Template C. Prisma model `DungeonTemplate` + `DungeonRun` + service `startRun`/`nextEncounter`/`claimRun` happy-path + Prisma migration. **Risk**: Prisma migration + new module.
+  3. **smoke:daily-login multi-day positive** — Small PR, Template B. Cần admin advance-day hoặc set-streak (Prisma migration nhỏ thêm field hoặc service helper). Verify streak=7 reward = 100 LT delta + ledger DAILY_LOGIN_CLAIM.
+  4. **Concurrency tests** (Low) — Inventory `Promise.all` race, Cultivation multi-instance lock, Chat Redis failover branch, Boss spawn cron auto, Realtime ban during connection.
+- **Anti-duplicate guard** (per NEXT TASK AUTO-SELECTION rule): trước khi pick task, MUST `git fetch origin main && git log --oneline -15` đối chiếu commit message với keyword task — vd "smoke:daily-login positive", "Phase 12.2 DungeonTemplate", "admin advance-day". Match → SKIP, pick task khác.
 - **Do NOT build yet** (anti-feature-creep): Real-time PvP (Phase 14), party/co-op dungeon (Phase 12 — wait for Phase 11 ≥ 95%), pet/wife gacha (Phase 16), voice chat, video streaming. Full list ở [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §0.
 
 ---
@@ -30,7 +30,8 @@
 
 | PR | Title | Type |
 |---|---|---|
-| (in-flight) | `feat(web): Phase 11 nâng cao §5 PR3 FE — BreakthroughView UI history view consume GET /breakthrough/log + POST /breakthrough/attempt + Pinia store + i18n + 48 test` | medium FE feature |
+| (in-flight) | `test(web/e2e): Phase 11 nâng cao §5 PR3 E2E — golden-path spec #20 breakthrough flow + adminSeedBreakthroughPeak helper (admin grant-exp 200000 peak seed → click attempt → outcome banner success/fail RNG branch + history row reload-persist)` | small E2E spec |
+| [#419](https://github.com/hoathienmenh-01/xuantoi/pull/419) | `feat(web): Phase 11 nâng cao §5 PR3 FE — BreakthroughView UI history view consume GET /breakthrough/log + POST /breakthrough/attempt + Pinia store + i18n + 48 test` | medium FE feature |
 | [#418](https://github.com/hoathienmenh-01/xuantoi/pull/418) | `feat(api): Phase 11 nâng cao §5 PR3 backend prep — GET /character/breakthrough/log endpoint + listBreakthroughAttemptLogs service + 4 test + smoke +3 step` | small backend endpoint |
 | [#417](https://github.com/hoathienmenh-01/xuantoi/pull/417) | `test(smoke): smoke:breakthrough — RNG positive-path /breakthrough/attempt qua admin grant-exp peak seed (truc_co stage 9 → kim_dan or fail+tam_ma_light) +6 step` | smoke positive-path |
 | [#416](https://github.com/hoathienmenh-01/xuantoi/pull/416) | `test(smoke): smoke:breakthrough — extend cover POST /character/breakthrough/attempt (Phase 11 nâng cao §5 PR2 RNG endpoint) +6 mirror negative-path step` | hotfix smoke extension |
@@ -40,9 +41,6 @@
 | [#412](https://github.com/hoathienmenh-01/xuantoi/pull/412) | `feat(web): Phase 11.6.E FE — render bonuses.elementResist tooltip line trong InventoryView (huyen_giap_phong_<elem> armor)` | small FE feature + tests + i18n |
 | [#411](https://github.com/hoathienmenh-01/xuantoi/pull/411) | `feat(api,shared): Phase 11.6.E — Equipment elemental tribulation resist wire (huyen_giap_phong_<elem> armor + composer + InventoryService.equipElementResistMods + TribulationService 3-layer compose)` | medium feature + tests |
 | [#410](https://github.com/hoathienmenh-01/xuantoi/pull/410) | `docs(handoff): split archive section into ARCHIVE_HANDOFF.md để giảm token cost mỗi session` | docs compact |
-| [#409](https://github.com/hoathienmenh-01/xuantoi/pull/409) | `feat(api,shared,web): Phase 11.6.D — Talent passive element_resist wire vào TribulationService + 5 talent_*_thien_giap catalog` | medium feature + tests |
-| [#408](https://github.com/hoathienmenh-01/xuantoi/pull/408) | `feat(web): Phase 11.1.E FE — render +10%/+5% Method element affinity badge trên CultivationMethodView` | small FE feature + tests + i18n |
-| [#407](https://github.com/hoathienmenh-01/xuantoi/pull/407) | `ci(api,web): dập 2 text-level warning — eslint typeless + Vue router-link stubs` | hotfix CI/test infra |
 
 
 ### PR #33 → #396 — tóm tắt theo phase
@@ -101,14 +99,15 @@ Mỗi phase 2-3 dòng tổng kết. Detail PR-by-PR ở [`ARCHIVE_HANDOFF.md`](.
 
 ## 5. Tests
 
-### Baseline (post PR #412 merged on main + Phase 11 nâng cao §5 PR1 this PR)
+### Baseline (post PR #419 merged on main + Phase 11 nâng cao §5 PR3 E2E this PR)
 
 | Workspace | Test count | Notes |
 |---|---|---|
-| `apps/api` | **1812 vitest** | No delta — shared-only PR, không API thay đổi. Baseline carryover từ PR #411. |
-| `packages/shared` | **1251 vitest** | +34 Phase 11 nâng cao §5 PR1 this PR (`breakthrough-chance.test.ts` 33 spec gate NOT_AT_PEAK / INSUFFICIENT_EXP / OK + base + root-purity bonus monotonic + method-affinity primary/secondary/no-match + item-clamp [0..MAX] + final clamp [MIN..MAX] + composability audit + `balance-dials.test.ts` 56→59 tests +2 BREAKTHROUGH ordering & envelope + +1 ratio range) trên baseline 1217. |
-| `apps/web` | **1034 vitest** | No delta — shared-only PR. Baseline carryover từ PR #412. |
-| **Total** | **4097 vitest** | All green trên main + this PR locally. |
+| `apps/api` | **1813 vitest** | No delta — E2E-spec-only PR, không touch BE. Baseline carryover từ PR #418. |
+| `packages/shared` | **1276 vitest** | No delta — E2E-spec-only PR. Baseline carryover từ PR #414. |
+| `apps/web` | **1082 vitest** | No delta — E2E spec ở `apps/web/e2e/golden.spec.ts` ngoài Vitest matrix. Baseline carryover từ PR #419 (1034 → 1082 add 48 breakthrough FE test). |
+| `apps/web/e2e` | **20/20 spec** (gated `E2E_FULL=1`) | +1 spec #20 this PR (`breakthrough attempt → outcome banner + history row appended (success/fail RNG branch) — Phase 11 nâng cao §5 PR3 UI E2E`) trên baseline 19 spec. CI `e2e-smoke` job chỉ chạy spec #1 AuthView smoke (không gate). Full suite chạy local với `E2E_FULL=1` + stack live. |
+| **Total Vitest** | **4171 vitest** | All green trên main + this PR locally. |
 
 ### Smoke Scripts (Node 20 native fetch, không nằm trong CI matrix — manual verify qua `pnpm smoke:*`)
 
@@ -144,15 +143,15 @@ Mỗi phase 2-3 dòng tổng kết. Detail PR-by-PR ở [`ARCHIVE_HANDOFF.md`](.
 
 ### E2E (Playwright)
 
-- `apps/web/e2e/golden.spec.ts` — 16 spec golden path (register/onboard, mission VN tz, shop buy + ledger, settings change-password + logout-all, profile public, admin boss spawn, inventory↔ledger, dungeon, mail UI, settings).
-- CI job `e2e-smoke` (matrix postgres+redis, build api+web, run `E2E_SMOKE=1`) — chạy mỗi PR.
-- `E2E_FULL=1` gate cho full Phase 11.X UI E2E (talent learn → cast → cooldown) **chưa wire CI** — runtime manual test.
+- `apps/web/e2e/golden.spec.ts` — 20 spec golden path (auth smoke + 19 full-stack spec gated `E2E_FULL=1`): register/onboard, cultivate toggle, daily-login claim, mission tabs, shop browse + buy LT + ledger, inventory empty + equip, chat WORLD, leaderboard, profile public, logout, mail UI, dungeon, settings, spiritual-root reroll, skill-book, talent catalog, **#19 talent learn → cast → cooldown badge** (`golden.spec.ts:756-845`), **#20 breakthrough attempt → outcome banner + history row reload-persist** (`golden.spec.ts:895-981` this PR).
+- CI job `e2e-smoke` (matrix postgres+redis, build api+web, run `E2E_SMOKE=1`) — chạy spec #1 AuthView smoke mỗi PR.
+- `E2E_FULL=1` gate cho 19 full-stack spec (talent learn→cast→cooldown #19, breakthrough attempt+history #20) **chưa wire CI** — runtime manual test với `pnpm infra:up` + `pnpm --filter @xuantoi/api dev` + `pnpm --filter @xuantoi/web dev`.
 
 ### Còn thiếu (priority order)
 
-1. **Phase 11 nâng cao §5 PR2 — Tâm Ma debuff wire** vào BreakthroughService — top priority next (consume `computeBreakthroughChance` shared formula đã land).
-2. **Smoke positive-path** cho daily-login multi-day — defer pending admin endpoint extension. **breakthrough positive DONE qua scripts/smoke-breakthrough.mjs:411-513**, **cultivation-method DONE qua PR #394**.
-3. **Phase 11.X UI E2E talent learn → cast → cooldown badge — DONE** qua `apps/web/e2e/golden.spec.ts:754-843` (`E2E_FULL=1` gate test).
+1. **smoke:daily-login multi-day positive** — defer pending admin endpoint extension. **breakthrough positive DONE qua scripts/smoke-breakthrough.mjs:411-513**, **cultivation-method DONE qua PR #394**.
+2. **Phase 11.X UI E2E talent learn → cast → cooldown badge — DONE** qua `apps/web/e2e/golden.spec.ts:756-845` (#19, `E2E_FULL=1` gate test).
+3. **Phase 11 nâng cao §5 PR3 UI E2E breakthrough — DONE** qua `apps/web/e2e/golden.spec.ts:895-981` (#20, `E2E_FULL=1` gate test) **this PR**.
 4. **Concurrency tests**: `Inventory Promise.all race`, `Cultivation multi-instance lock`, `Chat Redis failover branch`, `Boss spawn cron auto`, `Realtime ban during connection` — Low priority.
 
 ---
@@ -163,21 +162,22 @@ Per [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) §SESSION PR LIMIT (1-3 PR/
 
 ### Top priority — next session
 
-> **Stale-doc correction**: roadmap cũ list "Phase 11.X UI E2E talent learn→cast→cooldown" + "smoke:breakthrough positive" là top priority — nhưng cả 2 đã DONE từ PR cũ:
-> - `apps/web/e2e/golden.spec.ts:754-843` (test `talent learn → cast (combat) → cooldown badge — full Phase 11.X UI E2E`) covers full flow.
-> - `scripts/smoke-breakthrough.mjs:411-513` (steps 11-19 admin grant-exp 200000 → advance stage 9 + cost → POST /character/breakthrough → truc_co stage=1).
+> **Stale-doc correction (2 lượt)**: roadmap cũ liệt kê §5 PR2 Tâm Ma debuff + §5 PR3 Breakthrough UI history là top priority — cả 2 đã DONE:
+> - §5 PR2 Tâm Ma debuff wire DONE qua PR #415 (`CharacterService.attemptBreakthrough` + `POST /character/breakthrough/attempt` + `tam_ma_light` buff apply on fail).
+> - §5 PR3 chain DONE qua PR #418 (BE log endpoint) + PR #419 (FE BreakthroughView) + this PR (E2E spec #20).
+> - smoke:tribulation HTTP coverage DONE qua `scripts/smoke-tribulation.mjs` (935 dòng existing).
 >
-> Do đó top priority chuyển sang Phase 11 nâng cao §5 chain (Đột phá nâng cao + Tâm Ma).
+> Do đó top priority chuyển sang Phase 12.2 DungeonTemplate runtime + smoke:daily-login multi-day positive + concurrency tests.
 
-1. **Phase 11 nâng cao §5 PR2 — Tâm Ma debuff wire** — Medium PR, Template C (Prisma migration + service). Wire `BreakthroughService.attempt()` consume `computeBreakthroughChance` (this PR) + deterministic RNG (per-character seed) → success advance realm; fail apply `tam_ma_light` buff (`BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC=300`s + `BREAKTHROUGH_FAIL_DEBUFF_RATE_PENALTY=0.7` cultivation rate). New Prisma migration `BreakthroughAttemptLog` + `Buff` extension. Idempotency key per attempt. Anti-FE-self-grant: KHÔNG để FE quyết success/fail.
+1. **Phase 12.2 DungeonTemplate + DungeonRun runtime** — Medium PR, Template C (Prisma + service). Prisma model `DungeonTemplate` + `DungeonRun` + service `startRun`/`nextEncounter`/`claimRun` happy-path + Prisma migration. **Risk**: Prisma migration + new module — yêu cầu pre-migration backup snapshot + smoke:dungeon-template extend ≥ 12 step. Phase 12.1 catalog đã CLOSED qua #397 — runtime là next phase work.
 
-2. **Phase 11 nâng cao §5 PR3 — Breakthrough UI history** — Medium PR, Template B (FE + E2E). Cultivation view → "Đột phá" button + chance breakdown tooltip (display `computeBreakthroughChance` breakdown từ /character/breakthrough/preview endpoint) + history list từ `BreakthroughAttemptLog`. E2E spec verify success/fail/Tâm Ma debuff visible, history reflect last attempt.
+2. **smoke:daily-login multi-day positive** — Small PR, Template B. Cần admin advance-day hoặc set-streak (Prisma migration nhỏ thêm field hoặc service helper). Verify streak=7 reward = 100 LT delta + ledger DAILY_LOGIN_CLAIM.
 
-3. **smoke:tribulation HTTP coverage** — Small PR, Template B. 19-step negative-path smoke cho `POST /api/character/tribulation` + `GET /api/character/tribulation/log` mirror pattern `smoke:breakthrough`. KHÔNG cần admin seed (gate fail trước khi simulation). Verify post-fail state immutable (anti-FE-self-grant).
+3. **Concurrency tests** — Small PR, Template B per scenario. Inventory `Promise.all` race (item dup), Cultivation multi-instance lock (Redis lease), Chat Redis failover branch, Boss spawn cron auto, Realtime ban during connection. Mỗi scenario ~50-150 LOC test. Có thể batch 2-3 cùng module nếu scope chặt.
 
-4. **smoke:daily-login multi-day positive** — Small PR, Template B. Cần admin advance-day hoặc set-streak (Prisma migration nhỏ thêm field hoặc service helper). Verify streak=7 reward = 100 LT delta + ledger DAILY_LOGIN_CLAIM.
+4. **CSP production verify** (M7 medium issue) — Hotfix PR khi deploy production. Test `script-src` / `connect-src` với CDN domain khác (vd assets.xuantoi.io). Hiện chưa block beta.
 
-5. **Phase 12.2 DungeonTemplate + DungeonRun runtime** — Medium PR, Template C (Prisma + service). Prisma model `DungeonTemplate` + `DungeonRun` + service `startRun`/`nextEncounter`/`claimRun` happy-path + Prisma migration. **Risk**: Prisma migration + new module.
+5. **Shop daily limit + rate-limit per user** (M10 medium issue) — Medium PR, Template C. Add `dailyLimit` config trong shop catalog + rate-limit redis key `rl:shop-buy:<userId>`. Defer post-beta theo handoff §4.
 
 ### Backlog (low priority, an toàn nếu credit còn)
 
