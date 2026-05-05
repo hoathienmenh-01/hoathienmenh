@@ -18,7 +18,7 @@ Khi story design conflict với code, ưu tiên: code trên `main` > [`../AI_HAN
 
 ## 2. Current status
 
-**Catalog foundation + quest runtime persistence + quest claim reward DONE.** Quest UI / NPC dialogue UI (PR-4 / PR-5) chưa có.
+**Catalog foundation + quest runtime persistence + quest claim reward + NPC dialogue UI DONE.** Quest UI list (PR-5) còn thiếu.
 
 Hiện tại Phase 12 đã có:
 - **Phase 12.1** (catalog `MapDef` / `EncounterDef` / `DungeonDef`) — CLOSED ✅ (PR #397).
@@ -27,6 +27,7 @@ Hiện tại Phase 12 đã có:
 - **Phase 12 Story PR-1** (Story / NPC / Quest catalog foundation) — CLOSED ✅ (PR #425).
 - **Phase 12 Story PR-2** (Quest runtime persistence) — CLOSED ✅ (PR #426).
 - **Phase 12 Story PR-3** (Quest claim / reward idempotency) — CLOSED ✅ (`QuestService.claim` qua `CurrencyService.applyTx` + `InventoryService.grantTx` + CAS guard trên `QuestProgress.claimedAt` + concurrency test + smoke +4 step).
+- **Phase 12 Story PR-4** (NPC dialogue UI) — DONE (`NpcModule` + 2 endpoint `GET /npcs/me` + `GET /npcs/:npcKey/dialogue` + server-authoritative branch picker theo `realm_min` / `quest_status` / `faction_member` placeholder + choice quest status annotation; FE `NpcView.vue` + `NpcDialogueModal.vue` + Pinia store + i18n vi/en + smoke 11 step + 26 BE test + 19 FE test).
 
 **Story / NPC / Quest runtime**: 4 NPC + 15 quest + 6 dialogue line (3 cảnh giới đầu). `QuestProgress` Prisma model live; `QuestService` server-authoritative validation (realm gate + prereq + CAS guard); kill step auto-tracked qua `CombatService` fail-soft hook; reward claim atomic qua ledger (`reason='QUEST_CLAIM'`, `refType='Quest'`, `refId=questKey`) đảm bảo idempotent (race-safe 1 winner / questKey).
 
@@ -50,12 +51,12 @@ Hiện tại Phase 12 đã có:
 
 | NPC | Faction | Realm gate | Dialogue catalog | Dialogue UI | Quest giver count | Ngày | PR |
 |---|---|---|---|---|---|---|---|
-| Lăng Vân Sinh | hoa_thien_mon | 0 (phamnhan) | 2 line (default + truc_co branch) | Missing | 6 quest (3 main + realm + sect chain) | 2026-05-05 | PR-1 |
-| Mộc Thanh Y | hoa_thien_mon | 0 (phamnhan) | 2 line (default + luyen_khi branch) | Missing | 7 quest (sect/grind/npc + realm) | 2026-05-05 | PR-1 |
-| Hàn Dạ | huyen_kiem_tong | 1 (luyenkhi) | 1 line (default rivalry) | Missing | 1 quest (`luyenkhi_npc_01`) | 2026-05-05 | PR-1 |
-| Tô Nguyệt Ly | null (lưu đày) | 2 (truc_co) | 1 line (default hidden) | Missing | 1 quest (`truc_co_npc_01`) | 2026-05-05 | PR-1 |
+| Lăng Vân Sinh | hoa_thien_mon | 0 (phamnhan) | 2 line (default + truc_co branch) | Done ✅ (PR-4) | 6 quest (3 main + realm + sect chain) | 2026-05-05 | PR-1 + PR-4 |
+| Mộc Thanh Y | hoa_thien_mon | 0 (phamnhan) | 2 line (default + luyen_khi branch) | Done ✅ (PR-4) | 7 quest (sect/grind/npc + realm) | 2026-05-05 | PR-1 + PR-4 |
+| Hàn Dạ | huyen_kiem_tong | 1 (luyenkhi) | 1 line (default rivalry) | Done ✅ (PR-4) | 1 quest (`luyenkhi_npc_01`) | 2026-05-05 | PR-1 + PR-4 |
+| Tô Nguyệt Ly | null (lưu đày) | 2 (truc_co) | 1 line (default hidden) | Done ✅ (PR-4) | 1 quest (`truc_co_npc_01`) | 2026-05-05 | PR-1 + PR-4 |
 
-**Dialogue UI**: tất cả 4 NPC chờ Phase 12 PR-4 (`NpcDialogueModal.vue` + `GET /npc/:id/dialogue` endpoint).
+**Dialogue UI**: 4 NPC đều có `NpcDialogueModal.vue` server-authoritative (Phase 12 PR-4). Branch picker server-side filter theo realm + quest status; choice annotate sẵn `acceptQuestStatus` cho FE để disable quest đã accept/claimed.
 
 (Chuẩn bị để track 5 NPC còn lại — Huyết La Sát, Vạn Kim Nương, Bạch Đế Tử, Hoa Thiên Đạo Tổ, Tịch Thiên Đạo Chủ — sẽ thêm khi cảnh giới tương ứng được code.)
 
@@ -90,7 +91,7 @@ Standalone quest (no chain): 6 quest (3 sect + 3 grind).
 | **Story chapter tracking** | **Done** ✅ | `Character.storyChapter` Int field bumped khi main quest `COMPLETED` (chapter index = `realmOrder + 1`). PR-2 merged. |
 | **Reward claim** (`QuestService.claim`) | **Done** ✅ | `apps/api/src/modules/quest/quest.service.ts:claim()`. CAS guard `updateMany({where:{id, status:'COMPLETED', claimedAt:null}})` → `status='CLAIMED'`. Grant linhThach/tienNgoc qua `CurrencyService.applyTx` (`reason='QUEST_CLAIM'`, `refType='Quest'`, `refId=questKey`); exp/congHien qua `tx.character.update`; items qua `InventoryService.grantTx`. Idempotency: race-safe 1 winner / questKey (concurrency test xác nhận 2 parallel claim → đúng 1 ledger row). PR-3 merged. |
 | **Quest UI** (`QuestView.vue` + Pinia store) | **Missing** | List + filter (main/realm/sect/npc/grind) + loading/empty/error + i18n vi/en. Tuân UI MODULE RULE. Phase 12 PR-5. |
-| **NPC dialogue UI** (`NpcDialogueModal.vue`) | **Missing** | Branch text + choice button + portrait. Server endpoint `GET /npc/:id/dialogue` filter branch theo realm + quest_status. Phase 12 PR-4. |
+| **NPC dialogue UI** (`NpcDialogueModal.vue` + `NpcView.vue`) | **Done** ✅ | Server endpoint `GET /npcs/me` (list visible) + `GET /npcs/:npcKey/dialogue` (refetch sau accept). Server-authoritative branch picker (`always` / `realm_min` / `quest_status` / `faction_member` placeholder) + sort specificity (highest first). Choice với `acceptQuestKey` annotate `acceptQuestStatus` (NOT_STARTED / AVAILABLE / ACCEPTED / COMPLETED / CLAIMED / LOCKED) — FE disable button đã accept. Pinia store cache dialogue trong list, force refetch sau quest accept. Phase 12 PR-4. |
 | **Cơ duyên (kỳ ngộ) MVP** | Partial | `EncounterDef` đã có (Phase 12.1). Cần extend cho quest-driven flavor + cooldown log. Phase 12 sau PR-5. |
 
 ## 7. Recommended Phase 12 PR plan
@@ -134,13 +135,28 @@ Tách nhỏ, mỗi PR là 1 layer. Tuân BATCHING RULE + UI MODULE RULE.
 - Smoke `scripts/smoke-quest.mjs` 20/20 step (PR-2 16 step + PR-3 4 step: claim auth gate 401, zod 400, QUEST_UNKNOWN 404, QUEST_NOT_FOUND_PROGRESS 404, QUEST_NOT_COMPLETED 409). Positive flow tới CLAIMED yeu cầu gameplay automation — cover trong concurrency test.
 - Tuân [`../ECONOMY_MODEL.md`](../ECONOMY_MODEL.md) §3 invariants: single mutation point qua `CurrencyService.applyTx` / `InventoryService.grantTx`; ledger row contract đầy đủ (`characterId`, `currency`, `delta`, `reason`, `refType`, `refId`, `createdAt`); idempotency qua CAS guard `claimedAt` (§3.5 mẫu `Achievement.claimedAt`).
 
-### PR-4 — NPC dialogue UI (Medium, FE + BE wiring)
+### PR-4 — NPC dialogue UI (Medium, FE + BE wiring) — **DONE**
 
-- BE endpoint: `GET /npc/:id/dialogue` (server filter branch theo karma/quest flag).
-- FE: `NpcDialogueModal.vue` + Pinia store + i18n vi/en + loading/empty/error.
-- FE: NPC list view trong Hoa Thiên Môn home (PR-5 expand).
-- Test render + Playwright smoke (xem `apps/web/e2e/`).
-- Update progress tracker.
+- **BE module** `apps/api/src/modules/npc/`:
+  - `NpcModule` (read-only — imports `AuthModule` only; không phụ thuộc `CharacterModule` / `InventoryModule` vì không mutate).
+  - `NpcService.listForUser(userId)` — load `Character.realmKey` + `QuestProgress[]` snapshot, filter NPC visible bằng `realmGateOrder <= character.realmOrder`, build `NpcView[]` kèm dialogue đã pick branch.
+  - `NpcService.getDialogueForNpc(userId, npcKey)` — validate NPC unlock + pick dialogue line; throw `NpcError` (NO_CHARACTER 404 / NPC_UNKNOWN 404 / NPC_LOCKED_REALM 403 / NO_DIALOGUE 404).
+  - `pickDialogue(npc, ctx)` — sort `DialogueLineDef` candidates theo `specificityScore` (`quest_status=4 > realm_min{order}+3 > faction_member=2 > always=1`) rồi return first match. `lineMatches()` cho `realm_min` so với `ctx.realmOrder`; cho `quest_status` so với `ctx.questStatus.get(questKey)`; cho `faction_member` placeholder (chưa có `Character.faction`).
+  - `annotateChoice(c, ctx)` — annotate `acceptQuestStatus` cho choice với `acceptQuestKey`: NOT_STARTED nếu QuestProgress chưa có row; còn lại return status từ DB. FE đọc field này để disable choice đã ACCEPTED/COMPLETED/CLAIMED/LOCKED.
+- **BE controller** `NpcController`:
+  - `GET /npcs/me` — auth gate + list. Envelope `{ok: true, data: {npcs}}`.
+  - `GET /npcs/:npcKey/dialogue` — auth gate + zod regex (`/^npc_[a-z0-9_]+$/`). Envelope `{ok: true, data: {dialogue}}`. Refresh dialogue sau quest accept (vì `quest_status` condition có thể đã đổi).
+  - `NpcModule` đã wire vào `app.module.ts`.
+- **FE module**:
+  - `apps/web/src/api/npc.ts` (typed client) + `apps/web/src/api/quest.ts` (minimal `acceptQuest()` cho dialogue choice — PR-5 expand).
+  - `apps/web/src/stores/npc.ts` (Pinia) — `npcs` / `loaded` / `loading` / `lastError` + `activeNpcKey` / `activeDialogue` / `dialogueLoading` / `dialogueError`. `openDialogue(key, {force})` ưu tiên cache trong list; `refreshActiveDialogue()` force fetch sau quest accept.
+  - `apps/web/src/views/NpcView.vue` (list visible NPC + click → mở modal) + `apps/web/src/components/NpcDialogueModal.vue` (Teleport overlay, render text + choices, click choice với `acceptQuestKey` → call `POST /quests/accept` → reload list + refetch dialogue + emit `questAccepted`).
+  - Router `/npcs` + nav `AppShell.vue` (人 Đạo Hữu / NPCs).
+  - i18n `npc.title / .subtitle / .talk / .empty / .visibleCount / .questCount / .faction.* / .errors.* / .dialogue.empty / .dialogue.acceptOk / .dialogue.questStatus.* / .dialogue.errors.*` cả VI và EN (parity test pass).
+- **Test**: 26 BE test (`npc.service.test.ts` 14 + `npc.controller.test.ts` 12) cover NO_CHARACTER / NPC_UNKNOWN / NPC_LOCKED_REALM / branch filter (default vs truc_co realm_min) / choice annotation (NOT_STARTED → ACCEPTED) / catalog integrity. 19 FE test (`NpcDialogueModal.test.ts` 10 + `stores/npc.test.ts` 9) cover render / loading / error / accept-quest happy + error path / disable-when-accepted / Esc + backdrop close / cache vs force refetch / reset.
+- **Smoke** `scripts/smoke-npc.mjs` 11 step: auth gate (401) cả 2 endpoint, register fresh user, NO_CHARACTER pre-onboard (404), onboard, list shape, INVALID_INPUT zod (400), NPC_UNKNOWN (404), NPC_LOCKED_REALM (403, truc_co gate vs luyenkhi char), positive dialogue (200) shape.
+- **Tuân** UI MODULE RULE: server-authoritative dialogue + quest status; FE chỉ render. KHÔNG có mutation endpoint mới — quest accept tái dùng `POST /quests/accept` (PR-2 #426).
+- Update §2 / §4 / §6 / §7 progress tracker.
 
 ### PR-5 — Main storyline Chapter 1 playable (Medium-Large, full stack)
 

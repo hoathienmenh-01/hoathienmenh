@@ -51,7 +51,9 @@
       "skillEquip": "Vận thuật pháp thất bại",
       "skillUnequip": "Gỡ thuật pháp thất bại",
       "skillUpgrade": "Thăng cấp thuật pháp thất bại",
-      "skillLearnFromBook": "Đọc bí kíp thất bại"
+      "skillLearnFromBook": "Đọc bí kíp thất bại",
+      "npc": "Không lấy được danh sách đạo hữu",
+      "quest": "Thao tác nhiệm vụ thất bại"
     }
   },
   "locale": {
@@ -282,7 +284,8 @@
       "skillBook": "Pháp Quyển",
       "achievements": "Thành Tựu",
       "tribulation": "Thiên Kiếp",
-      "breakthrough": "Đột Phá"
+      "breakthrough": "Đột Phá",
+      "npcs": "Đạo Hữu"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -1814,6 +1817,50 @@
       "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
       "IN_FLIGHT": "Đang xử lý…",
       "UNKNOWN": "Đột phá thất bại, thử lại."
+    }
+  },
+  "npc": {
+    "title": "Đạo Hữu Tương Phùng",
+    "subtitle": "Nghe các vị cao nhân giao việc, mở chuỗi cốt truyện của riêng con.",
+    "talk": "Đối thoại",
+    "empty": "Chưa có đạo hữu nào hữu duyên xuất hiện.",
+    "visibleCount": "Đạo hữu đã hiện: {n}",
+    "questCount": "Nhiệm vụ giao: {n}",
+    "faction": {
+      "hoa_thien_mon": "Hoa Thiên Môn",
+      "tich_thien_dien": "Tịch Thiên Điện",
+      "huyen_kiem_tong": "Huyền Kiếm Tông",
+      "van_bao_thuong_hoi": "Vạn Bảo Thương Hội",
+      "huyet_ha_ma_tong": "Huyết Hà Ma Tông",
+      "tien_dinh_bach_de": "Tiên Đình Bạch Đế",
+      "wandering": "Tản tu"
+    },
+    "errors": {
+      "NO_CHARACTER": "Chưa có nhân vật, hãy khai đạo trước.",
+      "UNAUTHENTICATED": "Phiên đăng nhập đã hết, đăng nhập lại.",
+      "UNKNOWN": "Không thể tải danh sách đạo hữu, thử lại."
+    },
+    "dialogue": {
+      "empty": "Đạo hữu này chưa có lời nào để nói.",
+      "acceptOk": "Đã nhận nhiệm vụ {quest}.",
+      "questStatus": {
+        "ACCEPTED": "Đã nhận",
+        "COMPLETED": "Đã hoàn thành",
+        "CLAIMED": "Đã lĩnh thưởng",
+        "LOCKED": "Chưa mở"
+      },
+      "errors": {
+        "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
+        "NO_CHARACTER": "Chưa có nhân vật.",
+        "NPC_UNKNOWN": "Đạo hữu này không tồn tại.",
+        "NPC_LOCKED_REALM": "Cảnh giới của con chưa đủ để gặp người này.",
+        "NO_DIALOGUE": "Đạo hữu này hôm nay không nói chuyện.",
+        "QUEST_UNKNOWN": "Nhiệm vụ này không tồn tại trong sổ thiên thư.",
+        "QUEST_LOCKED_REALM": "Cảnh giới chưa đủ để nhận nhiệm vụ này.",
+        "QUEST_LOCKED_PREREQUISITE": "Phải hoàn thành nhiệm vụ tiền đề trước.",
+        "QUEST_NOT_AVAILABLE": "Nhiệm vụ này không thể nhận lúc này.",
+        "UNKNOWN": "Không thể nhận nhiệm vụ, thử lại."
+      }
     }
   }
 }

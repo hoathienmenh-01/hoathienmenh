@@ -51,7 +51,9 @@
       "skillEquip": "Failed to equip skill",
       "skillUnequip": "Failed to unequip skill",
       "skillUpgrade": "Failed to upgrade skill mastery",
-      "skillLearnFromBook": "Failed to read skill book"
+      "skillLearnFromBook": "Failed to read skill book",
+      "npc": "Failed to load NPC list",
+      "quest": "Quest action failed"
     }
   },
   "locale": {
@@ -282,7 +284,8 @@
       "skillBook": "Skill Book",
       "achievements": "Achievements",
       "tribulation": "Tribulation",
-      "breakthrough": "Breakthrough"
+      "breakthrough": "Breakthrough",
+      "npcs": "NPCs"
     },
     "badge": {
       "bossActive": "World boss is live",
@@ -1814,6 +1817,50 @@
       "UNAUTHENTICATED": "Session expired.",
       "IN_FLIGHT": "Processing…",
       "UNKNOWN": "Breakthrough failed, please retry."
+    }
+  },
+  "npc": {
+    "title": "NPC Encounters",
+    "subtitle": "Hear elders out, accept their quests, unfold your storyline.",
+    "talk": "Talk",
+    "empty": "No NPC has appeared yet.",
+    "visibleCount": "Visible NPCs: {n}",
+    "questCount": "Quests offered: {n}",
+    "faction": {
+      "hoa_thien_mon": "Hoa Thiên Môn",
+      "tich_thien_dien": "Tịch Thiên Điện",
+      "huyen_kiem_tong": "Huyền Kiếm Tông",
+      "van_bao_thuong_hoi": "Vạn Bảo Thương Hội",
+      "huyet_ha_ma_tong": "Huyết Hà Ma Tông",
+      "tien_dinh_bach_de": "Tiên Đình Bạch Đế",
+      "wandering": "Wandering"
+    },
+    "errors": {
+      "NO_CHARACTER": "No character — onboard first.",
+      "UNAUTHENTICATED": "Session expired, please log in again.",
+      "UNKNOWN": "Failed to load NPC list, please retry."
+    },
+    "dialogue": {
+      "empty": "This NPC has nothing to say.",
+      "acceptOk": "Quest {quest} accepted.",
+      "questStatus": {
+        "ACCEPTED": "Accepted",
+        "COMPLETED": "Completed",
+        "CLAIMED": "Claimed",
+        "LOCKED": "Locked"
+      },
+      "errors": {
+        "UNAUTHENTICATED": "Session expired.",
+        "NO_CHARACTER": "No character.",
+        "NPC_UNKNOWN": "This NPC does not exist.",
+        "NPC_LOCKED_REALM": "Your realm is too low to meet this NPC.",
+        "NO_DIALOGUE": "This NPC has no dialogue line for now.",
+        "QUEST_UNKNOWN": "Quest does not exist.",
+        "QUEST_LOCKED_REALM": "Realm too low to accept this quest.",
+        "QUEST_LOCKED_PREREQUISITE": "Must complete prerequisite quest first.",
+        "QUEST_NOT_AVAILABLE": "Quest is not available right now.",
+        "UNKNOWN": "Failed to accept quest, please retry."
+      }
     }
   }
 }
