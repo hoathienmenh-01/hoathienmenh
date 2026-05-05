@@ -43,7 +43,7 @@ Khi tài liệu xung đột nhau, ưu tiên theo thứ tự sau:
 Đọc đủ **để không phá hệ thống**:
 
 1. [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) — **MUST READ.** Fast but Safe Delivery Mode (8 luật): UI Module Rule, Docs Update Rule, Handoff Report Structure Rule, Test Fast Path Rule, Batching Rule, Safety Correction Rule, Speed Target, Next Task Auto-Selection.
-2. [`AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md) — snapshot trên cùng. Biết hôm nay ở đâu.
+2. [`AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md) — snapshot trên cùng. Biết hôm nay ở đâu. **Để tiết kiệm token/quota: chỉ đọc Executive Summary (30 dòng đầu) là đủ. KHÔNG đọc [`ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md) (lịch sử PR cũ #33→#396) mỗi session — chỉ tra cứu khi cần.**
 3. [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §0 + phase tương ứng. Confirm dependency rule + entry criteria phase đó đã đạt.
 4. Doc chuyên biệt theo nội dung PR (xem §1).
 5. [`API.md`](./API.md) nếu touch route.
@@ -100,7 +100,8 @@ Khi tài liệu xung đột nhau, ưu tiên theo thứ tự sau:
 
 ### 3.2 Trạng thái + lịch sử
 
-- [`AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md) — snapshot mỗi PR. **Đầu file = mới nhất.**
+- [`AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md) — snapshot live (~200 dòng): Executive Summary + 5 section live. **Đầu file = mới nhất. AI chỉ cần đọc file này mỗi session.**
+- [`ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md) — **lịch sử PR cũ (#33→#396) + Project Reference đầy đủ (Tech Stack / Architecture / DB / Gameplay / Run Locally / Rules) — KHÔNG cần đọc mỗi session, chỉ tra cứu khi cần** (vd debug PR cũ, audit cleanup, tìm chi tiết phase context).
 - [`CHANGELOG.md`](./CHANGELOG.md) — changelog tổng.
 - [`RELEASE_NOTES.md`](./RELEASE_NOTES.md) — version note.
 
@@ -171,6 +172,7 @@ Còn lại đọc khi cần.
 
 ## 6. CHANGELOG
 
+- **2026-05-05 (PR docs(handoff): split archive)** — Tách `## 7. Archive` của `AI_HANDOFF_REPORT.md` thành file riêng [`ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md) (~4900 dòng lịch sử PR #33→#396 + Project Reference). `AI_HANDOFF_REPORT.md` còn ~200 dòng (Executive Summary + 5 section live). Cập nhật §2.1 (note chỉ đọc Executive Summary) + §3.2 (thêm entry ARCHIVE_HANDOFF.md). Lý do: AI session tiêu tốn ít token/quota hơn khi đọc context handoff. Author: Devin AI session 5/5.
 - **2026-05-03 (PR Fast-but-Safe Delivery Mode)** — Mở rộng `AI_WORKFLOW_RULES.md` thành 8 luật: UI Module Rule (giữ), Docs Update Rule, Handoff Report Structure Rule, Test Fast Path Rule, Batching Rule, Safety Correction Rule, Speed Target, Next Task Auto-Selection. Cập nhật §0 (Fast-but-Safe banner), §1 decision table, §2.1 + §2.2 role guides, §3.1 docs map, §5 TL;DR.
 - **2026-05-03 (PR UI Module Rule)** — Add `AI_WORKFLOW_RULES.md` to required reading (§1 decision table, §2.1 + §2.2 role guides, §3.1 docs map). Lý do: tránh chia một màn hình UI thành 4-5 micro-PR (UI Module Rule).
 - **2026-04-30** — Tạo file. Author: Devin AI session 9q (sau khi `docs/` đạt 25 file, AI mới dễ ngợp).

@@ -131,13 +131,21 @@ Compact khi:
 
 - Executive Summary > 30 dòng.
 - Recent Changes > 10 entries.
-- Total file > 4000 dòng.
+- Total file > 3000 dòng (giảm từ 4000 từ 2026-05-05 sau khi tách `ARCHIVE_HANDOFF.md`).
 
 Compact KHÔNG xóa thông tin quan trọng. Phải:
 
 - Tóm tắt theo phase (vd "Phase 11.10.A→G: AchievementService runtime + 4 catalog achievement BREAKTHROUGH track wired qua CharacterService/TribulationService/CultivationProcessor — PR #320..#339").
 - Giữ link tới PR cụ thể nếu có thông tin riêng (vd DI cycle fix PR #339).
-- Đẩy xuống section Archive cuối file, không xóa.
+- Đẩy xuống [`ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md), không xóa.
+
+### Archive phải nằm file riêng
+
+**Archive section PHẢI nằm trong file riêng [`ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md), KHÔNG inline trong `AI_HANDOFF_REPORT.md`.** Tách từ 2026-05-05. Lý do: AI session tiêu tốn ít token/quota hơn khi chỉ đọc file live `AI_HANDOFF_REPORT.md` (~200-3000 dòng) thay vì phải load toàn bộ file gộp (~10000+ dòng). Khi compact:
+
+- Move mọi snapshot/PR/section lịch sử sang `ARCHIVE_HANDOFF.md`.
+- Trong `AI_HANDOFF_REPORT.md` chỉ giữ placeholder `## 7. Archive (đã tách file riêng)` + 1 dòng link tham chiếu tới `ARCHIVE_HANDOFF.md`.
+- KHÔNG dump lại Archive content vào `<details>` collapsibles inline file live.
 
 ---
 
@@ -416,6 +424,7 @@ Done = balance test xanh + i18n parity check pass + CI xanh.
 
 ## Lịch sử
 
+- **2026-05-05** — Cập nhật **HANDOFF REPORT STRUCTURE RULE**: (1) compact threshold giảm từ 4000 dòng xuống **3000 dòng** sau khi tách Archive ra file riêng; (2) thêm rule **"Archive phải nằm file riêng"** — Archive section PHẢI ở [`ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md), KHÔNG inline trong `AI_HANDOFF_REPORT.md`. Lý do: AI session tiêu tốn ít token/quota hơn khi chỉ đọc file live (~200-3000 dòng) thay vì file gộp (~10000+ dòng). Author: Devin AI session 5/5.
 - **2026-05-04** — Thêm **SESSION PR LIMIT** (giới hạn 1–3 PR/session, breakdown 1 Medium feature + 1 Medium test batch + 1 Hotfix khi cần, PR thứ 4 phải justify), **GOM TRƯỚC KHI TÁCH** (mục 4b trong NEXT TASK AUTO-SELECTION — kiểm tra cùng loại trước khi mở PR mới, ngưỡng tách 1200 LOC là max chứ không phải target), và **PROMPT TEMPLATE** (3 template A/B/C ép batching từ prompt). Cập nhật mode description thành "Fast but Safe Delivery Mode. Các luật workflow bên dưới là một bộ nhất quán và phải được áp dụng cùng nhau." Lý do: session 4/5 vừa rồi tạo 14 smoke PR liên tiếp #371..#385 mỗi PR 1 module gameplay — đáng lẽ gom batch 3-5 module/PR. Mục tiêu: giảm micro-PR, giảm CI overhead, gom task cùng loại vào Medium PR. Author: Devin AI session 9r-26 follow-up.
 - **2026-05-03** — Tạo file. Author: Devin AI session 9r-26 take-over. Lý do: trong loop autonomous trước đó, một số UI module bị chia thành 4-5 micro-PR (vd Phase 11.6 Tribulation history split: PR #329 list view, #330 pagination, #332 filter, #333 stats summary, #334 docs sync), tốn CI thời gian + tốn review attention. Luật UI Module Rule giờ là gate.
 - **2026-05-03** — Mở rộng thành **Fast but Safe Delivery Mode**: thêm DOCS UPDATE RULE, HANDOFF REPORT STRUCTURE RULE, TEST FAST PATH RULE, BATCHING RULE, SAFETY CORRECTION RULE, SPEED TARGET, NEXT TASK AUTO-SELECTION. Mục tiêu: AI/dev sau làm nhanh hơn nhưng vẫn đúng (không ép minimum 100 dòng, không fake green, không tắt CI). Author: Devin AI session 9r-26.
