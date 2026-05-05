@@ -452,15 +452,28 @@ export class InventoryService {
     }
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.character.update({ where: { id: char.id }, data: updates });
-      if (inv.qty > 1) {
-        await tx.inventoryItem.update({
-          where: { id: inv.id },
-          data: { qty: inv.qty - 1 },
-        });
-      } else {
+      // Atomic decrement guard concurrent use() race trên cùng inventoryItemId
+      // (player double-click / network retry / bot grind). `updateMany` với
+      // filter `qty > 0` + `decrement: 1` đảm bảo chỉ N thread đầu tiên (với
+      // N = current qty) lấy được slot — thread thứ N+1+ thấy count=0 → throw
+      // INVENTORY_ITEM_NOT_FOUND. Trước đó: `data: { qty: inv.qty - 1 }` capture
+      // JS variable (đọc trước tx) → 2 thread cùng update qty=N-1 = item duplication
+      // EXPLOITABLE (tiêu effect 2 lần nhưng chỉ trừ 1 đan).
+      const decResult = await tx.inventoryItem.updateMany({
+        where: { id: inv.id, qty: { gt: 0 } },
+        data: { qty: { decrement: 1 } },
+      });
+      if (decResult.count === 0) {
+        throw new InventoryError('INVENTORY_ITEM_NOT_FOUND');
+      }
+      // Post-decrement: nếu row qty xuống 0 → delete (giữ invariant `qty >= 1`
+      // cho row sống). Refetch để biết qty chính xác sau atomic decrement.
+      const post = await tx.inventoryItem.findUnique({ where: { id: inv.id } });
+      if (post && post.qty === 0) {
         await tx.inventoryItem.delete({ where: { id: inv.id } });
       }
+
+      await tx.character.update({ where: { id: char.id }, data: updates });
       await this.writeLedgerTx(tx, char.id, inv.itemKey, -1, {
         reason: 'USE',
         refType: 'InventoryItem',
