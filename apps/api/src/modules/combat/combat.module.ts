@@ -7,6 +7,7 @@ import { RealtimeModule } from '../realtime/realtime.module';
 import { CharacterModule } from '../character/character.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { MissionModule } from '../mission/mission.module';
+import { QuestModule } from '../quest/quest.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { MissionModule } from '../mission/mission.module';
     CharacterModule,
     InventoryModule,
     MissionModule,
+    QuestModule,
   ],
   controllers: [CombatController],
   providers: [CombatService, PrismaService],

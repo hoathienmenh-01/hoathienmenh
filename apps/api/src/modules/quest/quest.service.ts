@@ -1,0 +1,452 @@
+import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import {
+  QUESTS,
+  questByKey,
+  REALMS,
+  realmByKey,
+  type QuestDef,
+  type QuestStepDef,
+  type QuestStepKind,
+} from '@xuantoi/shared';
+import { PrismaService } from '../../common/prisma.service';
+
+/**
+ * Phase 12 Story PR-2 — Quest runtime persistence.
+ *
+ * Service xoay quanh `QuestProgress` table + `Character.storyChapter`.
+ * Status flow: LOCKED → AVAILABLE → ACCEPTED → COMPLETED → CLAIMED (PR-3).
+ *
+ * Server-authoritative validation:
+ *   - Realm gate (`Character.realmStage` order >= `QuestDef.requiredRealmOrder`).
+ *   - Prerequisite (`QuestDef.prerequisiteQuestKey` phải CLAIMED — fallback
+ *     COMPLETED nếu chain quest chưa qua PR-3 claim path; PR-3 sẽ harden CLAIMED only).
+ *   - Status transitions only via service (FE KHÔNG được tự cộng).
+ *
+ * Idempotency:
+ *   - `accept` dùng CAS guard `where { id, status: AVAILABLE }`.
+ *   - `progress` step kind kill/collect dùng atomic `updateMany` cộng counter qua
+ *     re-read + write race-safe (chấp nhận eventual consistency cho quest tracking,
+ *     không phải currency-grade).
+ */
+
+export type QuestStatus = 'LOCKED' | 'AVAILABLE' | 'ACCEPTED' | 'COMPLETED' | 'CLAIMED';
+
+export class QuestError extends Error {
+  constructor(
+    public code:
+      | 'NO_CHARACTER'
+      | 'QUEST_UNKNOWN'
+      | 'QUEST_LOCKED_REALM'
+      | 'QUEST_LOCKED_PREREQUISITE'
+      | 'QUEST_NOT_AVAILABLE'
+      | 'QUEST_NOT_ACCEPTED'
+      | 'QUEST_STEP_UNKNOWN'
+      | 'QUEST_STEP_KIND_MISMATCH',
+  ) {
+    super(code);
+  }
+}
+
+export interface QuestStepView {
+  id: string;
+  kind: QuestStepKind;
+  description: string;
+  targetType: QuestStepDef['targetType'];
+  targetId: string;
+  count: number;
+  currentCount: number;
+  done: boolean;
+}
+
+export interface QuestProgressView {
+  key: string;
+  name: string;
+  description: string;
+  kind: QuestDef['kind'];
+  realmKey: string;
+  requiredRealmOrder: number;
+  giverNpcKey: string;
+  chainKey: string | null;
+  prerequisiteQuestKey: string | null;
+  status: QuestStatus;
+  steps: QuestStepView[];
+  /** Tất cả step.done. */
+  completable: boolean;
+  acceptedAt: string | null;
+  completedAt: string | null;
+  claimedAt: string | null;
+  rewards: QuestDef['rewards'];
+}
+
+/** Tham số input cho `progress()` — talk/explore/choice (kill/collect dùng `track()`). */
+export interface QuestProgressInput {
+  questKey: string;
+  stepId: string;
+  /** Cho talk/explore/choice = 1 (count fixed = 1). */
+  amount?: number;
+}
+
+/** Internal: parse `stepProgress` Json → Map. */
+function readStepProgress(raw: Prisma.JsonValue | null | undefined): Record<string, number> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === 'number' && Number.isFinite(v) && v >= 0) {
+      out[k] = Math.floor(v);
+    }
+  }
+  return out;
+}
+
+function emptyStepProgress(def: QuestDef): Record<string, number> {
+  const m: Record<string, number> = {};
+  for (const step of def.steps) m[step.id] = 0;
+  return m;
+}
+
+function isAllStepsDone(def: QuestDef, progress: Record<string, number>): boolean {
+  for (const step of def.steps) {
+    if ((progress[step.id] ?? 0) < step.count) return false;
+  }
+  return true;
+}
+
+@Injectable()
+export class QuestService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Trả về toàn bộ quest visible cho character — bao gồm AVAILABLE/ACCEPTED/COMPLETED/CLAIMED.
+   * LOCKED quest (chưa thoả realm gate hoặc prerequisite) ẨN khỏi response (FE chỉ thấy
+   * khi đã unlock).
+   *
+   * Lazy-create AVAILABLE row cho quest đã thoả gate nhưng chưa có row.
+   */
+  async listForUser(userId: string): Promise<QuestProgressView[]> {
+    const char = await this.prisma.character.findUnique({
+      where: { userId },
+      select: { id: true, realmKey: true, realmStage: true },
+    });
+    if (!char) throw new QuestError('NO_CHARACTER');
+    const realmOrder = realmByKey(char.realmKey)?.order ?? 0;
+
+    const rows = await this.prisma.questProgress.findMany({
+      where: { characterId: char.id },
+    });
+    const byKey = new Map(rows.map((r) => [r.questKey, r]));
+
+    const claimedKeys = new Set(
+      rows.filter((r) => r.status === 'CLAIMED' || r.status === 'COMPLETED').map((r) => r.questKey),
+    );
+
+    // Lazy-create AVAILABLE rows cho quest mới unlock (gate đã thoả + prereq satisfied).
+    const toCreate: Prisma.QuestProgressCreateManyInput[] = [];
+    for (const def of QUESTS) {
+      if (byKey.has(def.key)) continue;
+      if (def.requiredRealmOrder > realmOrder) continue;
+      if (def.prerequisiteQuestKey && !claimedKeys.has(def.prerequisiteQuestKey)) continue;
+      toCreate.push({
+        characterId: char.id,
+        questKey: def.key,
+        status: 'AVAILABLE',
+        stepProgress: emptyStepProgress(def) as Prisma.InputJsonValue,
+      });
+    }
+    if (toCreate.length > 0) {
+      await this.prisma.questProgress.createMany({
+        data: toCreate,
+        skipDuplicates: true,
+      });
+      const fresh = await this.prisma.questProgress.findMany({
+        where: { characterId: char.id, questKey: { in: toCreate.map((c) => c.questKey) } },
+      });
+      for (const r of fresh) byKey.set(r.questKey, r);
+    }
+
+    // Build view — chỉ render quest nào có row (đã unlock).
+    const views: QuestProgressView[] = [];
+    for (const def of QUESTS) {
+      const row = byKey.get(def.key);
+      if (!row) continue; // LOCKED — ẩn.
+      const progress = readStepProgress(row.stepProgress);
+      const steps: QuestStepView[] = def.steps.map((step) => ({
+        id: step.id,
+        kind: step.kind,
+        description: step.description,
+        targetType: step.targetType,
+        targetId: step.targetId,
+        count: step.count,
+        currentCount: Math.min(step.count, progress[step.id] ?? 0),
+        done: (progress[step.id] ?? 0) >= step.count,
+      }));
+      views.push({
+        key: def.key,
+        name: def.name,
+        description: def.description,
+        kind: def.kind,
+        realmKey: def.realmKey,
+        requiredRealmOrder: def.requiredRealmOrder,
+        giverNpcKey: def.giverNpcKey,
+        chainKey: def.chainKey,
+        prerequisiteQuestKey: def.prerequisiteQuestKey,
+        status: row.status as QuestStatus,
+        steps,
+        completable: row.status === 'ACCEPTED' && isAllStepsDone(def, progress),
+        acceptedAt: row.acceptedAt?.toISOString() ?? null,
+        completedAt: row.completedAt?.toISOString() ?? null,
+        claimedAt: row.claimedAt?.toISOString() ?? null,
+        rewards: def.rewards,
+      });
+    }
+    return views;
+  }
+
+  /**
+   * Player accept quest. Validate gate + prereq + status=AVAILABLE.
+   * CAS guard `where { id, status: AVAILABLE }` chống double-accept.
+   */
+  async accept(userId: string, questKey: string): Promise<QuestProgressView> {
+    const def = questByKey(questKey);
+    if (!def) throw new QuestError('QUEST_UNKNOWN');
+
+    const char = await this.prisma.character.findUnique({
+      where: { userId },
+      select: { id: true, realmKey: true },
+    });
+    if (!char) throw new QuestError('NO_CHARACTER');
+    const realmOrder = realmByKey(char.realmKey)?.order ?? 0;
+    if (def.requiredRealmOrder > realmOrder) {
+      throw new QuestError('QUEST_LOCKED_REALM');
+    }
+
+    if (def.prerequisiteQuestKey) {
+      const prereq = await this.prisma.questProgress.findUnique({
+        where: {
+          characterId_questKey: {
+            characterId: char.id,
+            questKey: def.prerequisiteQuestKey,
+          },
+        },
+        select: { status: true },
+      });
+      // Phase 12 PR-2 chấp nhận COMPLETED hoặc CLAIMED (claim path PR-3 chưa wire).
+      if (!prereq || (prereq.status !== 'COMPLETED' && prereq.status !== 'CLAIMED')) {
+        throw new QuestError('QUEST_LOCKED_PREREQUISITE');
+      }
+    }
+
+    // Lazy-create row nếu chưa có (do list chưa được gọi).
+    const existing = await this.prisma.questProgress.findUnique({
+      where: { characterId_questKey: { characterId: char.id, questKey } },
+    });
+    if (!existing) {
+      await this.prisma.questProgress.create({
+        data: {
+          characterId: char.id,
+          questKey,
+          status: 'AVAILABLE',
+          stepProgress: emptyStepProgress(def) as Prisma.InputJsonValue,
+        },
+      });
+    }
+
+    // CAS: AVAILABLE → ACCEPTED.
+    const upd = await this.prisma.questProgress.updateMany({
+      where: { characterId: char.id, questKey, status: 'AVAILABLE' },
+      data: { status: 'ACCEPTED', acceptedAt: new Date() },
+    });
+    if (upd.count !== 1) {
+      throw new QuestError('QUEST_NOT_AVAILABLE');
+    }
+
+    return this.viewOne(char.id, def);
+  }
+
+  /**
+   * Player tự khai báo progress cho step kind: talk / explore / choice.
+   * Kill / collect KHÔNG đi qua endpoint này — sẽ trigger qua `track()` trong
+   * service nội bộ (CombatService, InventoryService) chống FE self-cộng.
+   *
+   * Server validate: questKey accepted + step exists + step.kind ∈ talk/explore/choice.
+   * count cộng dồn tới step.count, không vượt. Khi tất cả step done → status COMPLETED.
+   */
+  async progress(userId: string, input: QuestProgressInput): Promise<QuestProgressView> {
+    const def = questByKey(input.questKey);
+    if (!def) throw new QuestError('QUEST_UNKNOWN');
+    const step = def.steps.find((s) => s.id === input.stepId);
+    if (!step) throw new QuestError('QUEST_STEP_UNKNOWN');
+    // Player-driven endpoint chỉ accept talk/explore/choice. kill/collect chỉ tăng qua `track()`.
+    if (step.kind !== 'talk' && step.kind !== 'explore' && step.kind !== 'choice') {
+      throw new QuestError('QUEST_STEP_KIND_MISMATCH');
+    }
+
+    const char = await this.prisma.character.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!char) throw new QuestError('NO_CHARACTER');
+
+    const row = await this.prisma.questProgress.findUnique({
+      where: { characterId_questKey: { characterId: char.id, questKey: def.key } },
+    });
+    if (!row || row.status !== 'ACCEPTED') {
+      throw new QuestError('QUEST_NOT_ACCEPTED');
+    }
+
+    const amount = Math.max(1, Math.floor(input.amount ?? 1));
+    const progress = readStepProgress(row.stepProgress);
+    const cur = progress[step.id] ?? 0;
+    const newAmt = Math.min(step.count, cur + amount);
+    if (newAmt !== cur) {
+      progress[step.id] = newAmt;
+      await this.prisma.questProgress.updateMany({
+        where: { id: row.id, status: 'ACCEPTED' },
+        data: { stepProgress: progress as Prisma.InputJsonValue },
+      });
+    }
+
+    // Auto-complete khi all steps done.
+    if (isAllStepsDone(def, progress)) {
+      await this.transitionToCompleted(row.id);
+    }
+
+    return this.viewOne(char.id, def);
+  }
+
+  /**
+   * Internal hook — gameplay services gọi sau khi player kill monster /
+   * collect item (fail-soft, KHÔNG throw bubble lên gameplay).
+   *
+   * Tự match `step.kind` + `step.targetType` + `step.targetId` của các quest
+   * ACCEPTED của character; cộng counter atomic.
+   *
+   * Use-case examples:
+   *   - CombatService: `await quests.track(charId, 'kill', 'monster', 'son_thu', 1)`.
+   *   - InventoryService grant: `await quests.track(charId, 'collect', 'item', 'linh_co', n)`.
+   */
+  async track(
+    characterId: string,
+    kind: 'kill' | 'collect',
+    targetType: QuestStepDef['targetType'],
+    targetId: string,
+    amount = 1,
+  ): Promise<void> {
+    if (amount <= 0) return;
+    const matchingQuestKeys: string[] = [];
+    for (const def of QUESTS) {
+      for (const step of def.steps) {
+        if (
+          step.kind === kind &&
+          step.targetType === targetType &&
+          step.targetId === targetId
+        ) {
+          matchingQuestKeys.push(def.key);
+          break;
+        }
+      }
+    }
+    if (matchingQuestKeys.length === 0) return;
+
+    const rows = await this.prisma.questProgress.findMany({
+      where: {
+        characterId,
+        questKey: { in: matchingQuestKeys },
+        status: 'ACCEPTED',
+      },
+    });
+    for (const row of rows) {
+      const def = questByKey(row.questKey);
+      if (!def) continue;
+      const progress = readStepProgress(row.stepProgress);
+      let changed = false;
+      for (const step of def.steps) {
+        if (
+          step.kind !== kind ||
+          step.targetType !== targetType ||
+          step.targetId !== targetId
+        ) {
+          continue;
+        }
+        const cur = progress[step.id] ?? 0;
+        if (cur >= step.count) continue;
+        const next = Math.min(step.count, cur + amount);
+        if (next === cur) continue;
+        progress[step.id] = next;
+        changed = true;
+      }
+      if (!changed) continue;
+      await this.prisma.questProgress.updateMany({
+        where: { id: row.id, status: 'ACCEPTED' },
+        data: { stepProgress: progress as Prisma.InputJsonValue },
+      });
+      if (isAllStepsDone(def, progress)) {
+        await this.transitionToCompleted(row.id);
+      }
+    }
+  }
+
+  private async transitionToCompleted(progressId: string): Promise<void> {
+    // CAS: ACCEPTED → COMPLETED. Đánh dấu hoàn thành; reward claim ở Phase 12 PR-3.
+    const upd = await this.prisma.questProgress.updateMany({
+      where: { id: progressId, status: 'ACCEPTED' },
+      data: { status: 'COMPLETED', completedAt: new Date() },
+    });
+    if (upd.count !== 1) return;
+
+    // Phase 12 PR-2 — bump `Character.storyChapter` khi main quest gate hoàn thành.
+    // (Tách riêng khỏi claim để storyline có thể tiến cả khi player chưa claim reward.)
+    const row = await this.prisma.questProgress.findUnique({
+      where: { id: progressId },
+      select: { characterId: true, questKey: true },
+    });
+    if (!row) return;
+    const def = questByKey(row.questKey);
+    if (!def || def.kind !== 'main') return;
+    // Chapter index = realmOrder + 1 (chapter 1 ≡ phamnhan main, chapter 2 ≡ luyenkhi main, ...).
+    const targetChapter = def.requiredRealmOrder + 1;
+    await this.prisma.character.updateMany({
+      where: { id: row.characterId, storyChapter: { lt: targetChapter } },
+      data: { storyChapter: targetChapter },
+    });
+  }
+
+  /** Build single view (sau accept/progress). */
+  private async viewOne(characterId: string, def: QuestDef): Promise<QuestProgressView> {
+    const row = await this.prisma.questProgress.findUnique({
+      where: { characterId_questKey: { characterId, questKey: def.key } },
+    });
+    if (!row) throw new QuestError('QUEST_NOT_AVAILABLE');
+    const progress = readStepProgress(row.stepProgress);
+    return {
+      key: def.key,
+      name: def.name,
+      description: def.description,
+      kind: def.kind,
+      realmKey: def.realmKey,
+      requiredRealmOrder: def.requiredRealmOrder,
+      giverNpcKey: def.giverNpcKey,
+      chainKey: def.chainKey,
+      prerequisiteQuestKey: def.prerequisiteQuestKey,
+      status: row.status as QuestStatus,
+      steps: def.steps.map((step) => ({
+        id: step.id,
+        kind: step.kind,
+        description: step.description,
+        targetType: step.targetType,
+        targetId: step.targetId,
+        count: step.count,
+        currentCount: Math.min(step.count, progress[step.id] ?? 0),
+        done: (progress[step.id] ?? 0) >= step.count,
+      })),
+      completable: row.status === 'ACCEPTED' && isAllStepsDone(def, progress),
+      acceptedAt: row.acceptedAt?.toISOString() ?? null,
+      completedAt: row.completedAt?.toISOString() ?? null,
+      claimedAt: row.claimedAt?.toISOString() ?? null,
+      rewards: def.rewards,
+    };
+  }
+}
+
+// Re-export catalog metadata for downstream callers.
+export { REALMS };
