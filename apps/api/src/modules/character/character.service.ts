@@ -1,14 +1,20 @@
 import { forwardRef, Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
+  computeBreakthroughChance,
+  evaluateBreakthroughOutcome,
   expCostForStage,
+  getCultivationMethodDef,
   nextRealm,
   titleForRealmMilestone,
+  type BreakthroughChanceBreakdown,
   type CharacterStatePayload,
+  type ElementKey,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { AchievementService } from './achievement.service';
+import { BuffService } from './buff.service';
 import { SpiritualRootService } from './spiritual-root.service';
 import { CultivationMethodService } from './cultivation-method.service';
 import { CharacterSkillService } from './character-skill.service';
@@ -38,6 +44,45 @@ class DomainError extends Error {
   constructor(public code: 'NAME_TAKEN' | 'ALREADY_ONBOARDED' | 'NO_CHARACTER' | 'NOT_AT_PEAK') {
     super(code);
   }
+}
+
+/**
+ * Phase 11 nâng cao §5 PR2 wire — error class cho `attemptBreakthrough()`.
+ * Tách bạch khỏi `DomainError` (deterministic `breakthrough()`) vì RNG path
+ * có thêm `INVALID_RNG` defensive throw khi caller pass roll out-of-range.
+ * Controller map → HTTP code:
+ *   - `NO_CHARACTER` → 404
+ *   - `NOT_AT_PEAK` → 409
+ *   - `INVALID_RNG` → 400 (caller bug, server tự throw nếu rng fn lỗi)
+ */
+export class BreakthroughError extends Error {
+  constructor(
+    public code: 'NO_CHARACTER' | 'NOT_AT_PEAK' | 'INVALID_RNG',
+  ) {
+    super(code);
+  }
+}
+
+/**
+ * Phase 11 nâng cao §5 PR2 wire — outcome shape của `attemptBreakthrough()`.
+ * Mirror `TribulationAttemptOutcome` pattern (Phase 11.6.B). FE consume
+ * `breakdown` cho tooltip, `rngRoll` cho replay debug, `success` cho UI
+ * branching, `debuff` fields cho Tâm Ma countdown render.
+ */
+export interface BreakthroughAttemptOutcome {
+  readonly success: boolean;
+  readonly fromRealmKey: string;
+  readonly fromRealmStage: number;
+  readonly toRealmKey: string;
+  readonly toRealmStage: number;
+  readonly breakdown: BreakthroughChanceBreakdown;
+  readonly rngRoll: number;
+  readonly attemptIndex: number;
+  readonly logId: string;
+  readonly debuffApplied: boolean;
+  readonly debuffKey: 'tam_ma_light' | null;
+  readonly debuffExpiresAt: Date | null;
+  readonly character: CharacterStatePayload;
 }
 
 type CharRow = Prisma.CharacterGetPayload<{ include: { sect: true; user: true } }>;
@@ -79,6 +124,11 @@ export class CharacterService {
     @Optional()
     @Inject(forwardRef(() => AchievementService))
     private readonly achievements?: AchievementService,
+    // Phase 11 nâng cao §5 PR2 wire — Optional cho backward-compat: legacy
+    // bootstrap (vd test deterministic `breakthrough()` không cần BuffService)
+    // tiếp tục pass undefined; chỉ `attemptBreakthrough()` consume nếu có.
+    @Optional()
+    private readonly buffs?: BuffService,
   ) {}
 
   async findByUser(userId: string) {
@@ -294,6 +344,288 @@ export class CharacterService {
     const state = this.toState(updated);
     this.realtime.emitToUser(userId, 'state:update', state);
     return state;
+  }
+
+  /**
+   * Phase 11 nâng cao §5 PR2 wire — RNG-based breakthrough attempt.
+   *
+   * Khác `breakthrough()` deterministic (luôn success):
+   *   - Compute `BreakthroughChanceBreakdown` qua `computeBreakthroughChance()`
+   *     (4 layer: base + rootPurity + methodAffinity + itemBonus).
+   *   - Roll RNG `[0, 1)` (default `Math.random`, test inject deterministic).
+   *   - `evaluateBreakthroughOutcome()` decide success/fail.
+   *   - SUCCESS → realm advance + restats + auto-unlock title + track
+   *     BREAKTHROUGH achievement (giống `breakthrough()`); INSERT
+   *     `BreakthroughAttemptLog{success:true}`.
+   *   - FAIL → KHÔNG advance realm, KHÔNG trừ EXP cost; apply `tam_ma_light`
+   *     debuff qua `BuffService.applyBuffTx` (nếu inject), INSERT
+   *     `BreakthroughAttemptLog{success:false, tamMaActive:true}`.
+   *
+   * **Forward-compat**: endpoint cũ `POST /character/breakthrough` (deterministic)
+   * vẫn giữ nguyên cho backward-compat client. PR3 wire UI sẽ migrate sang
+   * endpoint mới `POST /character/breakthrough/attempt`.
+   *
+   * **idempotencyKey**: caller debounce qua key. Composite UNIQUE
+   * `(characterId, idempotencyKey)` enforce ở DB → P2002 nếu dup. Caller có
+   * thể swallow + retry idempotent trên cùng key. PR2 chưa wire UI, key default
+   * null (NULL ≠ NULL trong Postgres → multiple rows OK).
+   *
+   * @param userId user id (server-trusted, đã resolve từ session).
+   * @param rng deterministic RNG source. Default `Math.random` runtime; test
+   *   inject `() => 0.0` lock-in success, `() => 0.99` lock-in fail.
+   * @param now timestamp gốc cho `tamMaExpiresAt` computation. Default
+   *   `new Date()`. Inject từ test để control timeline.
+   * @param idempotencyKey optional caller-supplied debounce key.
+   */
+  async attemptBreakthrough(
+    userId: string,
+    rng: () => number = Math.random,
+    now: Date = new Date(),
+    idempotencyKey?: string,
+  ): Promise<BreakthroughAttemptOutcome> {
+    const outcome = await this.prisma.$transaction(async (tx) => {
+      const c = await tx.character.findUnique({
+        where: { userId },
+        include: { sect: true, user: true },
+      });
+      if (!c) throw new BreakthroughError('NO_CHARACTER');
+
+      // Realm gate: peak (stage 9) + đủ EXP cost — giống `breakthrough()`.
+      if (c.realmStage < 9) throw new BreakthroughError('NOT_AT_PEAK');
+      const cost = expCostForStage(c.realmKey, 9);
+      if (cost === null || c.exp < cost) {
+        throw new BreakthroughError('NOT_AT_PEAK');
+      }
+
+      // Compute breakdown — pure shared formula. Defensive narrow string →
+      // ElementKey union (Prisma trả về string?), legacy character (no root
+      // / no method) → bonus layer = 0 fallback.
+      const primaryElement: ElementKey | undefined =
+        c.primaryElement && (['kim', 'moc', 'thuy', 'hoa', 'tho'] as const).includes(c.primaryElement as ElementKey)
+          ? (c.primaryElement as ElementKey)
+          : undefined;
+      const secondaryElements: ElementKey[] = (c.secondaryElements ?? []).filter(
+        (e): e is ElementKey =>
+          (['kim', 'moc', 'thuy', 'hoa', 'tho'] as const).includes(e as ElementKey),
+      );
+      const methodDef = c.equippedCultivationMethodKey
+        ? getCultivationMethodDef(c.equippedCultivationMethodKey)
+        : undefined;
+      const methodElement: ElementKey | undefined = methodDef?.element ?? undefined;
+      // `Character.rootPurity` schema = Int 0-100; formula expects [0, 1].
+      const rootPurityNorm = (c.rootPurity ?? 0) / 100;
+
+      const breakdown = computeBreakthroughChance({
+        realmStage: c.realmStage,
+        expCurrent: c.exp,
+        expCost: cost,
+        rootPurity: rootPurityNorm,
+        rootPrimaryElement: primaryElement,
+        rootSecondaryElements: secondaryElements,
+        methodElement,
+        // PR2 itemBonus = 0 (chưa có pill consumable wire). PR3+ sẽ aggregate
+        // từ active buff catalog (vd `pill_breakthrough_t1` itemBonus=0.05).
+        itemBonus: 0,
+      });
+
+      const rngRoll = rng();
+      if (!Number.isFinite(rngRoll) || rngRoll < 0 || rngRoll >= 1) {
+        throw new BreakthroughError('INVALID_RNG');
+      }
+
+      const result = evaluateBreakthroughOutcome({
+        breakdown,
+        rngRoll,
+        now,
+      });
+
+      // Đếm attempt index cho character (audit + tests). Mỗi attempt = 1 row
+      // mới — không reset khi cross realm (lifetime counter).
+      const priorAttempts = await tx.breakthroughAttemptLog.count({
+        where: { characterId: c.id },
+      });
+      const attemptIndex = priorAttempts + 1;
+
+      const next = nextRealm(c.realmKey);
+
+      if (result.success) {
+        // === SUCCESS PATH === realm advance + restats (giống `breakthrough()`).
+        const newRealm = next ? next.key : c.realmKey;
+        const newStage = next ? 1 : 9;
+        const newHpMax = Math.round(c.hpMax * 1.2);
+        const newMpMax = Math.round(c.mpMax * 1.2);
+
+        const updated = await tx.character.update({
+          where: { id: c.id },
+          data: {
+            realmKey: newRealm,
+            realmStage: newStage,
+            exp: c.exp - cost,
+            hpMax: newHpMax,
+            mpMax: newMpMax,
+            hp: newHpMax,
+            mp: newMpMax,
+          },
+          include: { sect: true, user: true },
+        });
+
+        const log = await tx.breakthroughAttemptLog.create({
+          data: {
+            characterId: c.id,
+            fromRealmKey: c.realmKey,
+            fromRealmStage: 9,
+            toRealmKey: newRealm,
+            toRealmStage: newStage,
+            chance: breakdown.finalChance,
+            baseChance: breakdown.baseChance,
+            rootPurityBonus: breakdown.rootPurityBonus,
+            methodAffinityBonus: breakdown.methodAffinityBonus,
+            itemBonus: breakdown.itemBonus,
+            rawChance: breakdown.rawChance,
+            rngRoll,
+            success: true,
+            expBefore: c.exp,
+            expAfter: c.exp - cost,
+            tamMaActive: false,
+            tamMaExpiresAt: null,
+            idempotencyKey: idempotencyKey ?? null,
+            attemptIndex,
+          },
+        });
+
+        return {
+          success: true as const,
+          fromRealmKey: c.realmKey,
+          fromRealmStage: 9,
+          toRealmKey: newRealm,
+          toRealmStage: newStage,
+          breakdown,
+          rngRoll,
+          attemptIndex,
+          logId: log.id,
+          debuffApplied: false,
+          debuffKey: null,
+          debuffExpiresAt: null,
+          character: updated,
+          newRealm,
+          hadNext: next !== null,
+        };
+      }
+
+      // === FAIL PATH === KHÔNG advance, KHÔNG trừ EXP. Apply `tam_ma_light`
+      // qua `BuffService.applyBuffTx` cùng tx (atomic — log + buff insert
+      // pass/fail nguyên khối). Legacy bootstrap (no BuffService inject) skip
+      // buff apply nhưng vẫn log `tamMaActive=true` cho audit consistency.
+      if (
+        this.buffs &&
+        result.debuffApplied &&
+        result.debuffKey &&
+        result.debuffExpiresAt
+      ) {
+        await this.buffs.applyBuffTx(
+          tx,
+          c.id,
+          result.debuffKey,
+          'breakthrough',
+          now,
+          result.debuffExpiresAt,
+        );
+      }
+
+      const log = await tx.breakthroughAttemptLog.create({
+        data: {
+          characterId: c.id,
+          fromRealmKey: c.realmKey,
+          fromRealmStage: 9,
+          toRealmKey: c.realmKey,
+          toRealmStage: 9,
+          chance: breakdown.finalChance,
+          baseChance: breakdown.baseChance,
+          rootPurityBonus: breakdown.rootPurityBonus,
+          methodAffinityBonus: breakdown.methodAffinityBonus,
+          itemBonus: breakdown.itemBonus,
+          rawChance: breakdown.rawChance,
+          rngRoll,
+          success: false,
+          expBefore: c.exp,
+          expAfter: c.exp,
+          tamMaActive: result.debuffApplied,
+          tamMaExpiresAt: result.debuffExpiresAt,
+          idempotencyKey: idempotencyKey ?? null,
+          attemptIndex,
+        },
+      });
+
+      return {
+        success: false as const,
+        fromRealmKey: c.realmKey,
+        fromRealmStage: 9,
+        toRealmKey: c.realmKey,
+        toRealmStage: 9,
+        breakdown,
+        rngRoll,
+        attemptIndex,
+        logId: log.id,
+        debuffApplied: result.debuffApplied,
+        debuffKey: result.debuffKey,
+        debuffExpiresAt: result.debuffExpiresAt,
+        character: c,
+        newRealm: c.realmKey,
+        hadNext: false,
+      };
+    });
+
+    // Post-tx side effects (success path only) — fail-soft như `breakthrough()`.
+    // Tribulation success post-tx pattern (Phase 11.10.G).
+    if (outcome.success && outcome.hadNext) {
+      if (this.titles) {
+        const titleDef = titleForRealmMilestone(outcome.newRealm);
+        if (titleDef) {
+          try {
+            await this.titles.unlockTitle(
+              outcome.character.id,
+              titleDef.key,
+              'realm_milestone',
+            );
+          } catch (err) {
+            this.logger.warn(
+              `attemptBreakthrough: failed to auto-unlock title ${titleDef.key} for char ${outcome.character.id}: ${(err as Error).message}`,
+            );
+          }
+        }
+      }
+      if (this.achievements) {
+        try {
+          await this.achievements.trackEvent(
+            outcome.character.id,
+            'BREAKTHROUGH',
+            1,
+          );
+        } catch (err) {
+          this.logger.warn(
+            `attemptBreakthrough: achievement BREAKTHROUGH track failed for char ${outcome.character.id}: ${(err as Error).message}`,
+          );
+        }
+      }
+    }
+
+    const state = this.toState(outcome.character);
+    this.realtime.emitToUser(userId, 'state:update', state);
+    return {
+      success: outcome.success,
+      fromRealmKey: outcome.fromRealmKey,
+      fromRealmStage: outcome.fromRealmStage,
+      toRealmKey: outcome.toRealmKey,
+      toRealmStage: outcome.toRealmStage,
+      breakdown: outcome.breakdown,
+      rngRoll: outcome.rngRoll,
+      attemptIndex: outcome.attemptIndex,
+      logId: outcome.logId,
+      debuffApplied: outcome.debuffApplied,
+      debuffKey: outcome.debuffKey,
+      debuffExpiresAt: outcome.debuffExpiresAt,
+      character: state,
+    };
   }
 
   private toState(c: CharRow): CharacterStatePayload {

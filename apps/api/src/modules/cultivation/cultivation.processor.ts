@@ -141,6 +141,12 @@ export class CultivationProcessor extends WorkerHost {
           ? await this.talents.getMods(c.id)
           : null;
         const talentExpMul = talentMods?.expMul ?? 1;
+        // Phase 11 nâng cao §5 PR2 wire — Tâm Ma debuff (`tam_ma_light`) áp
+        // `cultivation_rate_mul ×0.7` vào EXP gain trong 300s sau breakthrough
+        // fail. Compose multiplicatif sau talentExpMul (BuffMods.cultivationRateMul
+        // default 1 identity nếu không có buff). Pure debuff path (không stack
+        // buff khác hiện tại — single source `breakthrough` `tam_ma_light`).
+        const buffCultivationRateMul = buffMods?.cultivationRateMul ?? 1;
         const gain = BigInt(
           Math.max(
             1,
@@ -149,7 +155,8 @@ export class CultivationProcessor extends WorkerHost {
                 cultivationMul *
                 methodMul *
                 methodElementAffinityMul *
-                talentExpMul,
+                talentExpMul *
+                buffCultivationRateMul,
             ),
           ),
         );
