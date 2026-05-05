@@ -719,7 +719,7 @@ Verify pattern (xem `items-dungeon-loot.test.ts`):
 
 **Phase 11.7.A catalog đã có (session 9r-10 PR — `packages/shared/src/talents.ts`)**:
 
-**Passive talents (7) — always-on khi đã học:**
+**Passive talents (7 base + 5 element_resist từ Phase 11.6.D) — always-on khi đã học:**
 
 | Talent | Element | Realm req | Cost (pts) | Effect |
 |---|:---:|:---:|---:|---|
@@ -730,6 +730,13 @@ Verify pattern (xem `items-dungeon-loot.test.ts`):
 | Thổ Sơn Tướng | tho | truc_co | 1 | def × 1.10 |
 | Thiên Di | — | nguyen_anh | 2 | drop rate × 1.20 |
 | Ngộ Đạo | — | hoa_than | 2 | EXP gain × 1.15 |
+| Kim Thiên Giáp | kim | kim_dan | 1 | -5% damage taken từ wave hệ Kim trong tribulation (Phase 11.6.D) |
+| Mộc Thiên Giáp | moc | kim_dan | 1 | -5% damage taken từ wave hệ Mộc trong tribulation (Phase 11.6.D) |
+| Thuỷ Thiên Giáp | thuy | kim_dan | 1 | -5% damage taken từ wave hệ Thuỷ trong tribulation (Phase 11.6.D) |
+| Hoả Thiên Giáp | hoa | kim_dan | 1 | -5% damage taken từ wave hệ Hoả trong tribulation (Phase 11.6.D) |
+| Thổ Thiên Giáp | tho | kim_dan | 1 | -5% damage taken từ wave hệ Thổ trong tribulation (Phase 11.6.D) |
+
+**Phase 11.6.D dial**: `BALANCE_DIALS.TALENT_ELEMENT_RESIST_VALUE = 0.95` (giá trị multiplier cho mỗi talent `*_thien_giap`). Compose multiplicatively với spiritual root resist trong `TribulationService.attemptTribulation` (`effective = rootResist × talentResist`), clamp envelope `[ELEMENT_MODIFIER_ABSOLUTE_FLOOR=0.6, ELEMENT_MODIFIER_ABSOLUTE_CEIL=1.5]`. Single-talent floor `0.95 × 0.7 = 0.665` vẫn cao hơn floor → safe stack với equipment + buff layer tương lai. Wire qua `composePassiveTalentMods` (kind=`element_resist` build `elementResistByElement: ReadonlyMap<ElementKey, number>` field) + `computePassiveTalentTribulationResist(mods, waveElement)` pure helper.
 
 **Active talents / Thần Thông (7) — cooldown + mp cost:**
 

@@ -1171,6 +1171,7 @@
       "dropBonus": "+{pct}% rơi đồ",
       "expBonus": "+{pct}% kinh nghiệm",
       "damageBonus": "+{pct}% sát thương vs hệ {element}",
+      "elementResist": "-{pct}% sát thương từ hệ {element}",
       "aoe": "AoE",
       "single": "đơn mục tiêu",
       "activeDamage": "×{mul} sát thương ({aoe}) · {mp} MP · CD {cd} hiệp",

@@ -1171,6 +1171,7 @@
       "dropBonus": "+{pct}% drop rate",
       "expBonus": "+{pct}% experience",
       "damageBonus": "+{pct}% damage vs {element}",
+      "elementResist": "-{pct}% damage from {element}",
       "aoe": "AoE",
       "single": "single target",
       "activeDamage": "×{mul} damage ({aoe}) · {mp} MP · CD {cd} turns",

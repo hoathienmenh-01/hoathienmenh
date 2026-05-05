@@ -3,6 +3,7 @@ import {
   TALENTS,
   canCharacterLearnTalent,
   composePassiveTalentMods,
+  computePassiveTalentTribulationResist,
   computeTalentPointBudget,
   getTalentDef,
   simulateActiveTalent,
@@ -123,6 +124,22 @@ describe('PassiveTalentEffect shape', () => {
       const eff = t.passiveEffect;
       if (eff && (eff.kind === 'drop_bonus' || eff.kind === 'exp_bonus')) {
         expect(eff.value).toBeGreaterThan(1);
+      }
+    }
+  });
+
+  // Phase 11.6.D — element_resist invariants:
+  //   value < 1 (giảm damage) + elementTarget hợp lệ + statTarget null.
+  it('passive element_resist có elementTarget hợp lệ + value < 1', () => {
+    const valid: ElementKey[] = ['kim', 'moc', 'thuy', 'hoa', 'tho'];
+    for (const t of talentsByType('passive')) {
+      const eff = t.passiveEffect;
+      if (eff && eff.kind === 'element_resist') {
+        expect(eff.elementTarget).not.toBeNull();
+        if (eff.elementTarget) expect(valid).toContain(eff.elementTarget);
+        expect(eff.value).toBeGreaterThan(0);
+        expect(eff.value).toBeLessThan(1);
+        expect(eff.statTarget).toBeNull();
       }
     }
   });
@@ -1161,6 +1178,147 @@ describe('composePassiveTalentMods', () => {
   it('ignore invalid talent key', () => {
     const mods = composePassiveTalentMods(['talent_invalid_key']);
     expect(mods.atkMul).toBe(1);
+  });
+
+  // Phase 11.6.D — element_resist compose tests (5 producer
+  // talent_<elem>_thien_giap, value=0.95 multiplicative per elementTarget).
+  it('empty list → elementResistByElement empty Map (identity)', () => {
+    const mods = composePassiveTalentMods([]);
+    expect(mods.elementResistByElement.size).toBe(0);
+  });
+
+  it('kim_thien_giap → elementResistByElement[kim] = 0.95 (Phase 11.6.D producer kim resist)', () => {
+    const mods = composePassiveTalentMods(['talent_kim_thien_giap']);
+    expect(mods.elementResistByElement.get('kim')).toBeCloseTo(0.95, 5);
+    expect(mods.elementResistByElement.size).toBe(1);
+    // Verify isolation: stat mods + damage_bonus giữ identity vì chỉ
+    // element_resist path active.
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('moc_thien_giap → elementResistByElement[moc] = 0.95 (Phase 11.6.D moc resist)', () => {
+    const mods = composePassiveTalentMods(['talent_moc_thien_giap']);
+    expect(mods.elementResistByElement.get('moc')).toBeCloseTo(0.95, 5);
+    expect(mods.elementResistByElement.size).toBe(1);
+  });
+
+  it('thuy_thien_giap → elementResistByElement[thuy] = 0.95 (Phase 11.6.D thuy resist)', () => {
+    const mods = composePassiveTalentMods(['talent_thuy_thien_giap']);
+    expect(mods.elementResistByElement.get('thuy')).toBeCloseTo(0.95, 5);
+    expect(mods.elementResistByElement.size).toBe(1);
+  });
+
+  it('hoa_thien_giap → elementResistByElement[hoa] = 0.95 (Phase 11.6.D hoa resist)', () => {
+    const mods = composePassiveTalentMods(['talent_hoa_thien_giap']);
+    expect(mods.elementResistByElement.get('hoa')).toBeCloseTo(0.95, 5);
+    expect(mods.elementResistByElement.size).toBe(1);
+  });
+
+  it('tho_thien_giap → elementResistByElement[tho] = 0.95 (Phase 11.6.D tho resist)', () => {
+    const mods = composePassiveTalentMods(['talent_tho_thien_giap']);
+    expect(mods.elementResistByElement.get('tho')).toBeCloseTo(0.95, 5);
+    expect(mods.elementResistByElement.size).toBe(1);
+  });
+
+  it('combine all 5 element_resist producers → 5 distinct entries each 0.95 (5-element resist coverage, hoàn tất Phase 11.6.D)', () => {
+    const mods = composePassiveTalentMods([
+      'talent_kim_thien_giap',
+      'talent_moc_thien_giap',
+      'talent_thuy_thien_giap',
+      'talent_hoa_thien_giap',
+      'talent_tho_thien_giap',
+    ]);
+    // Hoàn tất 5-element tribulation resist coverage. Per-element multiplicative
+    // (mỗi entry độc lập) — khác với 5-element atk/def stack 1.1⁵=1.61051.
+    expect(mods.elementResistByElement.size).toBe(5);
+    expect(mods.elementResistByElement.get('kim')).toBeCloseTo(0.95, 5);
+    expect(mods.elementResistByElement.get('moc')).toBeCloseTo(0.95, 5);
+    expect(mods.elementResistByElement.get('thuy')).toBeCloseTo(0.95, 5);
+    expect(mods.elementResistByElement.get('hoa')).toBeCloseTo(0.95, 5);
+    expect(mods.elementResistByElement.get('tho')).toBeCloseTo(0.95, 5);
+    // Cross-stat: stat mods + damage_bonus giữ identity vì chỉ element_resist
+    // path active.
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  // Hypothetical stack same element (catalog hiện chỉ 1 talent / element nhưng
+  // future Equipment runtime có thể stack tiếp; verify multiplicative semantic).
+  it('stack 2 hypothetical kim resist talent → 0.95 × 0.95 = 0.9025 (multiplicative per element)', () => {
+    // Composer chỉ thấy talent đã học → 2 lần cùng key effectively là 1
+    // talent (key dedupe ở persistence layer). Verify với 2 talent KHÁC nhưng
+    // CÙNG elementTarget: catalog hiện không có 2 talent _resist cho cùng
+    // element, nên test bằng cách gọi composer với same key 2 lần (phản
+    // ánh đúng "dedupe expected — composer KHÔNG dedupe, chính persistence
+    // mới dedupe").
+    const mods = composePassiveTalentMods([
+      'talent_kim_thien_giap',
+      'talent_kim_thien_giap',
+    ]);
+    expect(mods.elementResistByElement.get('kim')).toBeCloseTo(0.9025, 5);
+  });
+});
+
+describe('computePassiveTalentTribulationResist (Phase 11.6.D)', () => {
+  it('null waveElement (Tâm Kiếp / vô hệ) → 1.0 fallback', () => {
+    const mods = composePassiveTalentMods(['talent_kim_thien_giap']);
+    expect(computePassiveTalentTribulationResist(mods, null)).toBe(1.0);
+  });
+
+  it('mods empty + element non-null → 1.0 identity', () => {
+    const mods = composePassiveTalentMods([]);
+    expect(computePassiveTalentTribulationResist(mods, 'kim')).toBe(1.0);
+    expect(computePassiveTalentTribulationResist(mods, 'thuy')).toBe(1.0);
+  });
+
+  it('kim resist learned, wave kim → 0.95 (matched element, talent active)', () => {
+    const mods = composePassiveTalentMods(['talent_kim_thien_giap']);
+    expect(computePassiveTalentTribulationResist(mods, 'kim')).toBeCloseTo(
+      0.95,
+      5,
+    );
+  });
+
+  it('kim resist learned, wave moc → 1.0 (mismatched element, no resist)', () => {
+    const mods = composePassiveTalentMods(['talent_kim_thien_giap']);
+    expect(computePassiveTalentTribulationResist(mods, 'moc')).toBe(1.0);
+  });
+
+  it('full 5-element stack → mỗi wave element có 0.95 resist độc lập', () => {
+    const mods = composePassiveTalentMods([
+      'talent_kim_thien_giap',
+      'talent_moc_thien_giap',
+      'talent_thuy_thien_giap',
+      'talent_hoa_thien_giap',
+      'talent_tho_thien_giap',
+    ]);
+    expect(computePassiveTalentTribulationResist(mods, 'kim')).toBeCloseTo(
+      0.95,
+      5,
+    );
+    expect(computePassiveTalentTribulationResist(mods, 'moc')).toBeCloseTo(
+      0.95,
+      5,
+    );
+    expect(computePassiveTalentTribulationResist(mods, 'thuy')).toBeCloseTo(
+      0.95,
+      5,
+    );
+    expect(computePassiveTalentTribulationResist(mods, 'hoa')).toBeCloseTo(
+      0.95,
+      5,
+    );
+    expect(computePassiveTalentTribulationResist(mods, 'tho')).toBeCloseTo(
+      0.95,
+      5,
+    );
   });
 });
 

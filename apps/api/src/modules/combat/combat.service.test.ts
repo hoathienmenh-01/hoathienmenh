@@ -925,6 +925,7 @@ describe('CombatService', () => {
         dropMul: 1,
         expMul: 1,
         damageBonusByElement: new Map(),
+        elementResistByElement: new Map(),
       });
 
       const buffedUser = await makeUserChar(prisma, {

@@ -1,9 +1,12 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { CurrencyKind } from '@prisma/client';
 import {
+  computePassiveTalentTribulationResist,
   computeSpiritualRootTribulationResist,
   computeTribulationFailurePenalty,
   computeTribulationReward,
+  ELEMENT_MODIFIER_ABSOLUTE_CEIL,
+  ELEMENT_MODIFIER_ABSOLUTE_FLOOR,
   ELEMENTS,
   expCostForStage,
   getTribulationForBreakthrough,
@@ -11,12 +14,14 @@ import {
   simulateTribulation,
   titleForRealmMilestone,
   type ElementKey,
+  type PassiveTalentMods,
   type TribulationDef,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { AchievementService } from './achievement.service';
 import { BuffService } from './buff.service';
 import { CurrencyService } from './currency.service';
+import { TalentService } from './talent.service';
 import { TitleService } from './title.service';
 
 /**
@@ -46,7 +51,15 @@ import { TitleService } from './title.service';
  * {@link computeSpiritualRootTribulationResist} dựa trên `Character.primaryElement`
  * + `Character.secondaryElements`. Tâm Kiếp (`element=null`) luôn fallback 1.0.
  * Legacy character (chưa onboard linh căn → primaryElement=null) cũng fallback
- * 1.0 (backward-compat). Equipment resist là Phase 11.6.D tương lai.
+ * 1.0 (backward-compat).
+ *
+ * Talent resist (Phase 11.6.D — wired): trên top spiritual root resist, compose
+ * multiplicatively với {@link computePassiveTalentTribulationResist} từ
+ * {@link TalentService.getMods}. Producer = 5 talent `talent_<elem>_thien_giap`
+ * `kind: 'element_resist' value: 0.95`. Tổng resist clamp envelope qua
+ * `[ELEMENT_MODIFIER_ABSOLUTE_FLOOR, ELEMENT_MODIFIER_ABSOLUTE_CEIL]` (`0.6..1.5`).
+ * `talents` Optional: legacy test (no talent inject) → fallback 1.0 (no extra
+ * resist). Equipment resist defer Phase 11.6.E sau Equipment runtime module.
  *
  * Idempotency: KHÔNG có natural key — caller phải debounce. Mỗi attempt = 1
  * row `TribulationAttemptLog` mới + 1 row `CurrencyLedger` (chỉ khi success).
@@ -61,6 +74,7 @@ export class TribulationService {
     private readonly titles?: TitleService,
     private readonly buffs?: BuffService,
     @Optional() private readonly achievements?: AchievementService,
+    @Optional() private readonly talents?: TalentService,
   ) {}
 
   /**
@@ -123,12 +137,32 @@ export class TribulationService {
         .filter((e): e is ElementKey =>
           (ELEMENTS as readonly string[]).includes(e),
         );
-      const elementResistFn = (element: ElementKey | null): number =>
-        computeSpiritualRootTribulationResist(
+
+      // Phase 11.6.D — compose talent passive resist multiplicatively trên top
+      // spiritual root resist. `talents` Optional (test/legacy bootstrap chưa
+      // inject) → fallback identity mods (no extra resist).
+      let talentMods: PassiveTalentMods | null = null;
+      if (this.talents) {
+        talentMods = await this.talents.getMods(characterId);
+      }
+
+      const elementResistFn = (element: ElementKey | null): number => {
+        const rootResist = computeSpiritualRootTribulationResist(
           primaryElement,
           secondaryElements,
           element,
         );
+        const talentResist = talentMods
+          ? computePassiveTalentTribulationResist(talentMods, element)
+          : 1.0;
+        const composed = rootResist * talentResist;
+        // Clamp envelope `[FLOOR, CEIL]` để future stack (equipment + buff) không
+        // làm resist âm hoặc bùng vượt 1.5×. Single-talent floor 0.95 × spiritual
+        // best-case 0.7 = 0.665 — vẫn cao hơn FLOOR=0.6.
+        if (composed < ELEMENT_MODIFIER_ABSOLUTE_FLOOR) return ELEMENT_MODIFIER_ABSOLUTE_FLOOR;
+        if (composed > ELEMENT_MODIFIER_ABSOLUTE_CEIL) return ELEMENT_MODIFIER_ABSOLUTE_CEIL;
+        return composed;
+      };
 
       const sim = simulateTribulation(def, character.hpMax, elementResistFn);
 

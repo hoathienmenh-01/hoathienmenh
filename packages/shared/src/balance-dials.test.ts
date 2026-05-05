@@ -374,6 +374,9 @@ describe('BALANCE_DIALS — aggregate snapshot (drift detection)', () => {
         modifierAbsoluteFloor: BALANCE_DIALS.ELEMENT_MODIFIER_ABSOLUTE_FLOOR,
         modifierAbsoluteCeil: BALANCE_DIALS.ELEMENT_MODIFIER_ABSOLUTE_CEIL,
       },
+      talentResist: {
+        elementResistValue: BALANCE_DIALS.TALENT_ELEMENT_RESIST_VALUE,
+      },
       breakthrough: {
         chanceMin: BALANCE_DIALS.BREAKTHROUGH_CHANCE_MIN,
         chanceMax: BALANCE_DIALS.BREAKTHROUGH_CHANCE_MAX,
@@ -498,6 +501,9 @@ describe('BALANCE_DIALS — aggregate snapshot (drift detection)', () => {
         "stamina": {
           "maxDefault": 100,
           "regenPerTick": 3,
+        },
+        "talentResist": {
+          "elementResistValue": 0.95,
         },
       }
     `);

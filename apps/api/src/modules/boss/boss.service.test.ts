@@ -1157,6 +1157,7 @@ describe('BossService', () => {
         dropMul: 1,
         expMul: 1,
         damageBonusByElement: new Map(),
+        elementResistByElement: new Map(),
       });
 
       const buffed = await makeUserChar(prisma, {
@@ -1194,6 +1195,7 @@ describe('BossService', () => {
         dropMul: 1,
         expMul: 1,
         damageBonusByElement: new Map(),
+        elementResistByElement: new Map(),
       });
 
       const a = await makeUserChar(prisma, {
@@ -1250,6 +1252,7 @@ describe('BossService', () => {
         dropMul: 1,
         expMul: 1,
         damageBonusByElement: new Map(),
+        elementResistByElement: new Map(),
       });
 
       const buffed = await makeUserChar(prisma, {
