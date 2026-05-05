@@ -562,6 +562,164 @@ async function main() {
     assert(r.body?.error?.code === 'NOT_AT_PEAK', `breakthrough/attempt post-advance: expect NOT_AT_PEAK, got ${r.body?.error?.code}`);
   });
 
+  // ----------------------------------------------------------------------------
+  // RNG positive-path /breakthrough/attempt (Phase 11 nâng cao §5 PR2):
+  //   - admin grant-exp 50000 → auto-advance truc_co stage 1 → 9 + thừa exp
+  //     vượt cost(stage 9 truc_co) ≈ 37781 (BASE_EXP=2560 × 1.4^8).
+  //   - POST /breakthrough/attempt → branch theo outcome (Math.random):
+  //       * success: char advance → kim_dan stage 1 + restats; debuff.applied=false.
+  //       * fail: char giữ truc_co stage 9; debuff.applied=true, key='tam_ma_light',
+  //         expiresAt ISO 300s sau now (BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC).
+  //   - Verify shape: success bool + breakdown 7 fields all number + rngRoll ∈ [0,1) +
+  //     attemptIndex ≥ 1 + logId truthy + debuff.{applied,key,expiresAt}.
+  //   - Verify GET /character/me mirror response (anti-FE-self-grant invariant).
+  // ----------------------------------------------------------------------------
+
+  /** @type {Map<string,string>} */
+  let playerCookieSnap2;
+
+  // 18c. admin login + swap cookie jar (player → admin).
+  await step('admin login (lần 2) — swap cookie jar player → admin (positive seed truc_co peak)', async () => {
+    playerCookieSnap2 = snapshotCookies();
+    cookieJar.clear();
+    const r = await http('/api/_auth/login', {
+      method: 'POST',
+      body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    assertStatus(r, 200, 'admin login lần 2');
+    if (!r.body?.ok) throw new Error(`admin login lần 2: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const u = r.body?.data?.user;
+    assert(u?.role === 'ADMIN', `admin login lần 2: role phải ADMIN, got ${u?.role}`);
+  });
+
+  // 18d. admin grant-exp 50000 → auto-advance truc_co stage 1 → 9 (+thừa exp).
+  //      Service grantExp auto-advance stages 1..8 (consume cost mỗi stage), char
+  //      kết thúc tại stage 9 với residual exp ≥ cost(9) → đủ điều kiện peak.
+  //      truc_co stages 1..8 cumulative cost ≈ 88056; cost(9) ≈ 37781; total ≈ 125837.
+  //      Char hiện exp=121356 + grant 50000 = 171356 → vượt 125837 → peak achievable.
+  await step('admin grant-exp 50000 — auto-advance truc_co stage 1 → 9 (positive seed peak)', async () => {
+    const r = await http(`/api/admin/users/${state.userId}/grant-exp`, {
+      method: 'POST',
+      body: { exp: '50000', reason: 'smoke-breakthrough-attempt-positive' },
+    });
+    assertStatus(r, 200, 'admin grant-exp lần 2');
+    assert(
+      r.body?.ok === true && r.body?.data?.ok === true,
+      `grant-exp lần 2: shape mismatch, got ${JSON.stringify(r.body)}`,
+    );
+  });
+
+  // 18e. admin logout + restore player cookies.
+  await step('admin logout (lần 2) + restore player cookies', async () => {
+    const logout = await http('/api/_auth/logout', { method: 'POST' });
+    assertStatus(logout, [200, 204], 'admin logout lần 2');
+    cookieJar.clear();
+    restoreCookies(playerCookieSnap2);
+  });
+
+  // 18f. character/me — verify post-grant state truc_co stage 9 + exp ≥ cost(9).
+  await step('character/me — post-grant: realmKey=truc_co stage=9 + exp ≥ cost(9) (~37781)', async () => {
+    const r = await http('/api/character/me');
+    assertStatus(r, 200, 'character/me post-grant lần 2');
+    const ch = r.body?.data?.character;
+    assert(ch, 'character/me post-grant lần 2: no character');
+    assert(ch.realmKey === 'truc_co', `post-grant realmKey: expect 'truc_co', got '${ch.realmKey}'`);
+    assert(ch.realmStage === 9, `post-grant realmStage: expect 9 (peak), got ${ch.realmStage}`);
+    // truc_co cost(9) = round(2560 × 1.4^8) = 37781. Char must have exp >= 37781.
+    const expNum = BigInt(ch.exp);
+    assert(expNum >= 37781n, `post-grant exp: phải >= 37781 (cost(9) truc_co), got ${ch.exp}`);
+  });
+
+  // 18g. POST /breakthrough/attempt → 200 ok + verify shape (success/breakdown/rngRoll/debuff).
+  //      Outcome non-deterministic (Math.random); branch logic ở step 18h.
+  /** @type {{ success:boolean, fromRealmKey:string, fromRealmStage:number, toRealmKey:string, toRealmStage:number, breakdown:{baseChance:number, rootPurityBonus:number, methodAffinityBonus:number, itemBonus:number, rawChance:number, finalChance:number, reason:string}, rngRoll:number, attemptIndex:number, logId:string, debuff:{applied:boolean, key:string|null, expiresAt:string|null}, character:any }|null} */
+  let attemptOutcome = null;
+  await step('breakthrough/attempt → 200 ok + verify shape (success/breakdown/rngRoll/debuff)', async () => {
+    const r = await http('/api/character/breakthrough/attempt', { method: 'POST' });
+    assertStatus(r, 200, 'breakthrough/attempt happy');
+    if (!r.body?.ok) throw new Error(`breakthrough/attempt: ok=false body=${JSON.stringify(r.body).slice(0, 300)}`);
+    const o = r.body?.data?.outcome;
+    assert(o, 'breakthrough/attempt: missing outcome in body');
+
+    // Shape: success bool.
+    assert(typeof o.success === 'boolean', `outcome.success phải boolean, got ${typeof o.success}`);
+
+    // Shape: from/to realm fields.
+    assert(o.fromRealmKey === 'truc_co', `outcome.fromRealmKey: expect 'truc_co', got '${o.fromRealmKey}'`);
+    assert(o.fromRealmStage === 9, `outcome.fromRealmStage: expect 9, got ${o.fromRealmStage}`);
+    assert(typeof o.toRealmKey === 'string' && o.toRealmKey.length > 0, `outcome.toRealmKey phải string non-empty, got '${o.toRealmKey}'`);
+    assert(typeof o.toRealmStage === 'number', `outcome.toRealmStage phải number, got ${typeof o.toRealmStage}`);
+
+    // Shape: breakdown 7 fields all number.
+    const b = o.breakdown;
+    assert(b, 'outcome.breakdown missing');
+    assert(typeof b.baseChance === 'number', `breakdown.baseChance phải number, got ${typeof b.baseChance}`);
+    assert(typeof b.rootPurityBonus === 'number', `breakdown.rootPurityBonus phải number, got ${typeof b.rootPurityBonus}`);
+    assert(typeof b.methodAffinityBonus === 'number', `breakdown.methodAffinityBonus phải number, got ${typeof b.methodAffinityBonus}`);
+    assert(typeof b.itemBonus === 'number', `breakdown.itemBonus phải number, got ${typeof b.itemBonus}`);
+    assert(typeof b.rawChance === 'number', `breakdown.rawChance phải number, got ${typeof b.rawChance}`);
+    assert(typeof b.finalChance === 'number', `breakdown.finalChance phải number, got ${typeof b.finalChance}`);
+    assert(typeof b.reason === 'string', `breakdown.reason phải string, got ${typeof b.reason}`);
+    assert(b.finalChance >= 0 && b.finalChance <= 1, `breakdown.finalChance phải ∈ [0, 1], got ${b.finalChance}`);
+
+    // Shape: rngRoll ∈ [0, 1).
+    assert(typeof o.rngRoll === 'number', `outcome.rngRoll phải number, got ${typeof o.rngRoll}`);
+    assert(o.rngRoll >= 0 && o.rngRoll < 1, `outcome.rngRoll phải ∈ [0, 1), got ${o.rngRoll}`);
+
+    // Shape: attemptIndex >= 1, logId truthy.
+    assert(typeof o.attemptIndex === 'number' && o.attemptIndex >= 1, `outcome.attemptIndex phải >= 1, got ${o.attemptIndex}`);
+    assert(typeof o.logId === 'string' && o.logId.length > 0, `outcome.logId phải string non-empty, got '${o.logId}'`);
+
+    // Shape: debuff object {applied, key, expiresAt}.
+    const d = o.debuff;
+    assert(d, 'outcome.debuff missing');
+    assert(typeof d.applied === 'boolean', `debuff.applied phải boolean, got ${typeof d.applied}`);
+
+    // Self-consistency: rngRoll < finalChance ↔ success.
+    const expectSuccess = o.rngRoll < b.finalChance;
+    assert(o.success === expectSuccess, `outcome.success self-consistency: rngRoll=${o.rngRoll} vs finalChance=${b.finalChance} → expect success=${expectSuccess}, got ${o.success}`);
+
+    // Self-consistency: success ⇒ debuff.applied=false; fail ⇒ debuff.applied=true (tam_ma_light).
+    if (o.success) {
+      assert(d.applied === false, `success ⇒ debuff.applied=false, got ${d.applied}`);
+      assert(d.key === null, `success ⇒ debuff.key=null, got '${d.key}'`);
+      assert(d.expiresAt === null, `success ⇒ debuff.expiresAt=null, got '${d.expiresAt}'`);
+    } else {
+      assert(d.applied === true, `fail ⇒ debuff.applied=true, got ${d.applied}`);
+      assert(d.key === 'tam_ma_light', `fail ⇒ debuff.key='tam_ma_light', got '${d.key}'`);
+      assert(typeof d.expiresAt === 'string' && d.expiresAt.length > 0, `fail ⇒ debuff.expiresAt phải ISO string, got '${d.expiresAt}'`);
+      // ISO parseable.
+      const exp = new Date(d.expiresAt);
+      assert(!Number.isNaN(exp.getTime()), `fail ⇒ debuff.expiresAt phải parseable ISO, got '${d.expiresAt}'`);
+    }
+
+    attemptOutcome = o;
+  });
+
+  // 18h. character/me — verify post-attempt state mirror outcome (anti-FE-self-grant).
+  //      success → realmKey='kim_dan' stage=1, exp deducted by cost(9) truc_co.
+  //      fail → realmKey='truc_co' stage=9 unchanged, exp unchanged.
+  await step('character/me — post-attempt state mirror outcome (success → kim_dan, fail → truc_co stage 9 unchanged)', async () => {
+    const r = await http('/api/character/me');
+    assertStatus(r, 200, 'character/me post-attempt');
+    const ch = r.body?.data?.character;
+    assert(ch, 'character/me post-attempt: no character');
+    assert(attemptOutcome, 'attemptOutcome chưa set từ step 18g');
+
+    if (attemptOutcome.success) {
+      // Success path: advance to next realm = kim_dan stage 1 + restats (HP/MP × 1.2x).
+      assert(ch.realmKey === 'kim_dan', `success post-attempt realmKey: expect 'kim_dan', got '${ch.realmKey}'`);
+      assert(ch.realmStage === 1, `success post-attempt realmStage: expect 1 (reset cross realm), got ${ch.realmStage}`);
+      // exp deducted by cost(9) = 37781.
+      const expNum = BigInt(ch.exp);
+      assert(expNum >= 0n, `success post-attempt exp phải >= 0, got ${ch.exp}`);
+    } else {
+      // Fail path: realm unchanged, exp unchanged (KHÔNG trừ EXP cost trên fail).
+      assert(ch.realmKey === 'truc_co', `fail post-attempt realmKey: expect 'truc_co' unchanged, got '${ch.realmKey}'`);
+      assert(ch.realmStage === 9, `fail post-attempt realmStage: expect 9 unchanged, got ${ch.realmStage}`);
+    }
+  });
+
   // 19. logout + POST /breakthrough → 401 UNAUTHENTICATED + /breakthrough/attempt mirror.
   await step('logout + breakthrough — 401 UNAUTHENTICATED post-logout', async () => {
     const logout = await http('/api/_auth/logout', { method: 'POST' });
