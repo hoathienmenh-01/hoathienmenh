@@ -20,18 +20,19 @@ const VALID_FACTIONS: NpcFaction[] = [
   'wandering',
 ];
 
-describe('NPCS catalog integrity (Phase 12 PR-1)', () => {
+describe('NPCS catalog integrity (Phase 12 PR-1 + Story Foundation Extension)', () => {
   it('has unique keys', () => {
     const keys = NPCS.map((n) => n.key);
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it('PR-1 catalogs exactly 4 NPC trụ cột', () => {
-    expect(NPCS).toHaveLength(4);
+  it('catalogs exactly 5 NPC trụ cột (5 cảnh giới đầu)', () => {
+    expect(NPCS).toHaveLength(5);
     expect(npcByKey('npc_lang_van_sinh')).toBeDefined();
     expect(npcByKey('npc_moc_thanh_y')).toBeDefined();
     expect(npcByKey('npc_han_da')).toBeDefined();
     expect(npcByKey('npc_to_nguyet_ly')).toBeDefined();
+    expect(npcByKey('npc_huyet_la_sat')).toBeDefined();
   });
 
   it('every NPC key starts with `npc_`', () => {
@@ -85,16 +86,26 @@ describe('NPCS catalog integrity (Phase 12 PR-1)', () => {
   it('npcsByFaction returns correct count', () => {
     expect(npcsByFaction('hoa_thien_mon').length).toBe(2); // Lăng Vân Sinh + Mộc Thanh Y
     expect(npcsByFaction('huyen_kiem_tong').length).toBe(1); // Hàn Dạ
-    expect(npcsByFaction('tich_thien_dien').length).toBe(0); // không có ở PR-1
+    expect(npcsByFaction('huyet_ha_ma_tong').length).toBe(1); // Huyết La Sát
+    expect(npcsByFaction('tich_thien_dien').length).toBe(0); // chưa có phản diện NPC
   });
 
   it('npcsAvailableAtRealm gates correctly', () => {
     expect(npcsAvailableAtRealm(0).length).toBe(2); // Lăng Vân Sinh + Mộc Thanh Y
     expect(npcsAvailableAtRealm(1).length).toBe(3); // + Hàn Dạ
     expect(npcsAvailableAtRealm(2).length).toBe(4); // + Tô Nguyệt Ly
+    expect(npcsAvailableAtRealm(3).length).toBe(5); // + Huyết La Sát (Kim Đan)
+    expect(npcsAvailableAtRealm(4).length).toBe(5); // Nguyên Anh không unlock NPC mới
   });
 
   it('Tô Nguyệt Ly faction is null (hậu nhân Hoa Thiên lưu đày)', () => {
     expect(npcByKey('npc_to_nguyet_ly')?.faction).toBeNull();
+  });
+
+  it('Huyết La Sát faction is huyet_ha_ma_tong và unlock từ Kim Đan', () => {
+    const hls = npcByKey('npc_huyet_la_sat');
+    expect(hls).toBeDefined();
+    expect(hls!.faction).toBe('huyet_ha_ma_tong');
+    expect(hls!.realmGateOrder).toBe(3);
   });
 });

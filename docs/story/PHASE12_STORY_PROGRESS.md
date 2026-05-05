@@ -18,7 +18,7 @@ Khi story design conflict với code, ưu tiên: code trên `main` > [`../AI_HAN
 
 ## 2. Current status
 
-**Catalog foundation + quest runtime persistence + quest claim reward + NPC dialogue UI DONE.** Quest UI list (PR-5) còn thiếu.
+**Catalog foundation + quest runtime persistence + quest claim reward + NPC dialogue UI DONE. Story Foundation Extension (Kim Đan + Nguyên Anh catalog) DONE.** Quest UI list (PR-5) còn thiếu.
 
 Hiện tại Phase 12 đã có:
 - **Phase 12.1** (catalog `MapDef` / `EncounterDef` / `DungeonDef`) — CLOSED ✅ (PR #397).
@@ -27,9 +27,12 @@ Hiện tại Phase 12 đã có:
 - **Phase 12 Story PR-1** (Story / NPC / Quest catalog foundation) — CLOSED ✅ (PR #425).
 - **Phase 12 Story PR-2** (Quest runtime persistence) — CLOSED ✅ (PR #426).
 - **Phase 12 Story PR-3** (Quest claim / reward idempotency) — CLOSED ✅ (`QuestService.claim` qua `CurrencyService.applyTx` + `InventoryService.grantTx` + CAS guard trên `QuestProgress.claimedAt` + concurrency test + smoke +4 step).
-- **Phase 12 Story PR-4** (NPC dialogue UI) — DONE (`NpcModule` + 2 endpoint `GET /npcs/me` + `GET /npcs/:npcKey/dialogue` + server-authoritative branch picker theo `realm_min` / `quest_status` / `faction_member` placeholder + choice quest status annotation; FE `NpcView.vue` + `NpcDialogueModal.vue` + Pinia store + i18n vi/en + smoke 11 step + 26 BE test + 19 FE test).
+- **Phase 12 Story PR-4** (NPC dialogue UI) — CLOSED ✅ (PR #428).
+- **Phase 12 Story Foundation Extension** (Kim Đan + Nguyên Anh catalog: +10 quest + 1 NPC + 5 dialogue line + integrity test) — OPEN (this PR).
 
-**Story / NPC / Quest runtime**: 4 NPC + 15 quest + 6 dialogue line (3 cảnh giới đầu). `QuestProgress` Prisma model live; `QuestService` server-authoritative validation (realm gate + prereq + CAS guard); kill step auto-tracked qua `CombatService` fail-soft hook; reward claim atomic qua ledger (`reason='QUEST_CLAIM'`, `refType='Quest'`, `refId=questKey`) đảm bảo idempotent (race-safe 1 winner / questKey).
+**Story / NPC / Quest runtime**: 5 NPC + 25 quest + 11 dialogue line (5 cảnh giới đầu: Phàm Nhân + Luyện Khí + Trúc Cơ + Kim Đan + Nguyên Anh). `QuestProgress` Prisma model live; `QuestService` server-authoritative validation (realm gate + prereq + CAS guard); kill step auto-tracked qua `CombatService` fail-soft hook; reward claim atomic qua ledger (`reason='QUEST_CLAIM'`, `refType='Quest'`, `refId=questKey`) đảm bảo idempotent (race-safe 1 winner / questKey).
+
+**Story Foundation Extension** chỉ mở rộng catalog static cho cảnh giới 3-4 — KHÔNG tác động runtime (không Prisma migration, không API mới, không UI mới). Quest mới gate bởi `requiredRealmOrder>=3` (Kim Đan) và `>=4` (Nguyên Anh) nên không ảnh hưởng player đang ở 3 cảnh giới đầu; `QuestService` hiện tại (PR-2/3) đã dùng catalog dynamically nên tự động pick up quest mới sau khi merge.
 
 ## 3. Implemented chapters
 
@@ -40,6 +43,8 @@ Hiện tại Phase 12 đã có:
 | 0 | `phamnhan` | `phamnhan_main_01` Hoa Thiên Tuyển Đồ | 4/4 (realm/sect/grind/npc) | 4/4 (accept/progress/track + storyChapter bump khi COMPLETED) | Lăng Vân Sinh, Mộc Thanh Y | 2026-05-05 | PR-1 + PR-2 |
 | 1 | `luyenkhi` | `luyenkhi_main_01` Linh Khí Nhập Thể | 4/4 | 4/4 | Lăng Vân Sinh, Mộc Thanh Y, Hàn Dạ | 2026-05-05 | PR-1 + PR-2 |
 | 2 | `truc_co` | `truc_co_main_01` Trúc Đạo Cơ | 4/4 | 4/4 | Lăng Vân Sinh, Mộc Thanh Y, Tô Nguyệt Ly | 2026-05-05 | PR-1 + PR-2 |
+| 3 | `kim_dan` | `kim_dan_main_01` Kết Đan Phong Ba | 4/4 (realm/sect/grind/npc) | catalog-only (PR-2/3 runtime auto-pick) | Lăng Vân Sinh, Mộc Thanh Y, Huyết La Sát | 2026-05-05 | Story Foundation Extension |
+| 4 | `nguyen_anh` | `nguyen_anh_main_01` Nguyên Anh Vấn Tâm | 4/4 | catalog-only (PR-2/3 runtime auto-pick) | Lăng Vân Sinh, Mộc Thanh Y, Huyết La Sát | 2026-05-05 | Story Foundation Extension |
 
 **Runtime status**: catalog (PR-1 #425) + persistence (PR-2 #426 — `QuestProgress` Prisma + `QuestService.list/accept/progress/track`) + claim (PR-3 — `QuestService.claim` + `CurrencyLedger`/`ItemLedger` rows) DONE.
 
@@ -51,14 +56,15 @@ Hiện tại Phase 12 đã có:
 
 | NPC | Faction | Realm gate | Dialogue catalog | Dialogue UI | Quest giver count | Ngày | PR |
 |---|---|---|---|---|---|---|---|
-| Lăng Vân Sinh | hoa_thien_mon | 0 (phamnhan) | 2 line (default + truc_co branch) | Done ✅ (PR-4) | 6 quest (3 main + realm + sect chain) | 2026-05-05 | PR-1 + PR-4 |
-| Mộc Thanh Y | hoa_thien_mon | 0 (phamnhan) | 2 line (default + luyen_khi branch) | Done ✅ (PR-4) | 7 quest (sect/grind/npc + realm) | 2026-05-05 | PR-1 + PR-4 |
+| Lăng Vân Sinh | hoa_thien_mon | 0 (phamnhan) | 4 line (default + truc_co + kim_dan + nguyen_anh) | Done ✅ (PR-4) | 10 quest (5 main + 4 realm + 1 sect) | 2026-05-05 | PR-1 + PR-4 + Extension |
+| Mộc Thanh Y | hoa_thien_mon | 0 (phamnhan) | 4 line (default + luyen_khi + kim_dan + nguyen_anh) | Done ✅ (PR-4) | 11 quest (4 sect + 5 grind + 1 npc + 1 realm) | 2026-05-05 | PR-1 + PR-4 + Extension |
 | Hàn Dạ | huyen_kiem_tong | 1 (luyenkhi) | 1 line (default rivalry) | Done ✅ (PR-4) | 1 quest (`luyenkhi_npc_01`) | 2026-05-05 | PR-1 + PR-4 |
 | Tô Nguyệt Ly | null (lưu đày) | 2 (truc_co) | 1 line (default hidden) | Done ✅ (PR-4) | 1 quest (`truc_co_npc_01`) | 2026-05-05 | PR-1 + PR-4 |
+| Huyết La Sát | huyet_ha_ma_tong | 3 (kim_dan) | 1 line (default ma đạo) | catalog-only (auto-pick UI sau merge) | 2 quest (`kim_dan_npc_01` + `nguyen_anh_npc_01`) | 2026-05-05 | Story Foundation Extension |
 
 **Dialogue UI**: 4 NPC đều có `NpcDialogueModal.vue` server-authoritative (Phase 12 PR-4). Branch picker server-side filter theo realm + quest status; choice annotate sẵn `acceptQuestStatus` cho FE để disable quest đã accept/claimed.
 
-(Chuẩn bị để track 5 NPC còn lại — Huyết La Sát, Vạn Kim Nương, Bạch Đế Tử, Hoa Thiên Đạo Tổ, Tịch Thiên Đạo Chủ — sẽ thêm khi cảnh giới tương ứng được code.)
+(Chuẩn bị để track 4 NPC còn lại — Vạn Kim Nương, Bạch Đế Tử, Hoa Thiên Đạo Tổ, Tịch Thiên Đạo Chủ — sẽ thêm khi cảnh giới tương ứng được code.)
 
 ## 5. Implemented quest chains
 
@@ -66,12 +72,13 @@ Hiện tại Phase 12 đã có:
 
 | Chain key | Realm range | NPC chính | Quest count | Catalog | Runtime | UI | Claim |
 |---|---|---|---|---|---|---|---|
-| `hoa_thien_main` | phamnhan → truc_co | Lăng Vân Sinh | 5 (3 main + 2 realm) | ✅ | ✅ (PR-2) | Missing | ✅ (PR-3) |
-| `moc_thanh_y_arc` | truc_co | Lăng Vân Sinh + Mộc Thanh Y | 1 (`truc_co_sect_01` Cứu Đại Sư Tỷ) | ✅ | ✅ (PR-2) | Missing | ✅ (PR-3) |
+| `hoa_thien_main` | phamnhan → nguyen_anh | Lăng Vân Sinh | 9 (5 main + 4 realm; +4 từ extension) | ✅ | ✅ (PR-2) | Missing | ✅ (PR-3) |
+| `moc_thanh_y_arc` | truc_co → nguyen_anh | Lăng Vân Sinh + Mộc Thanh Y | 3 (`truc_co_sect_01` + `kim_dan_sect_01` + `nguyen_anh_sect_01`; +2 từ extension) | ✅ | ✅ (PR-2) | Missing | ✅ (PR-3) |
 | `han_da_rivalry` | luyenkhi+ | Hàn Dạ | 1 (`luyenkhi_npc_01` Lời Thách Đấu) | ✅ | ✅ (PR-2) | Missing | ✅ (PR-3) |
 | `to_nguyet_ly_hidden` | truc_co+ | Tô Nguyệt Ly | 1 (`truc_co_npc_01` Bóng Trong Sương) | ✅ | ✅ (PR-2) | Missing | ✅ (PR-3) |
+| `huyet_la_sat_arc` | kim_dan → nguyen_anh | Huyết La Sát | 2 (`kim_dan_npc_01` Máu Trên Thềm Đá + `nguyen_anh_npc_01` Đêm Trảm Niệm) | ✅ (Extension) | ✅ (PR-2 auto-pick) | Missing | ✅ (PR-3 auto-pick) |
 
-Standalone quest (no chain): 6 quest (3 sect + 3 grind).
+Standalone quest (no chain): 8 quest (5 sect + 3 grind — Trúc Cơ sect rời vào `moc_thanh_y_arc`; Kim Đan + Nguyên Anh grind standalone).
 
 **Status**: catalog (PR-1) + runtime persistence (PR-2 — accept / progress / track / auto-COMPLETED) + claim (PR-3 — `QuestService.claim` ledger atomic) DONE. UI chờ PR-4 + PR-5.
 
@@ -83,9 +90,9 @@ Standalone quest (no chain): 6 quest (3 sect + 3 grind).
 
 | Module | Status | Ghi chú |
 |---|---|---|
-| **Quest catalog** (`QuestDef` + `QuestStepDef` + `QuestRewardDef`) | **Done** ✅ | Static ở `packages/shared/src/quests.ts` (15 quest). 5 step kind: kill / collect / talk / explore / choice. PR-1 merged 2026-05-05. |
-| **NPC catalog** (`NpcDef`) | **Done** ✅ | Static ở `packages/shared/src/npcs.ts` (4 NPC). PR-1 merged 2026-05-05. |
-| **Dialogue catalog skeleton** (`DialogueLineDef` + `DialogueChoiceDef` + `DialogueBranchCondition`) | **Done** ✅ | Static ở `packages/shared/src/dialogues.ts` (6 line, branch `always` / `realm_min` / `quest_status` / `faction_member`). `pickDialogueForNpc()` helper PR-1 (chỉ implement `always` + `realm_min`; `quest_status` + `faction_member` chờ runtime PR-4). |
+| **Quest catalog** (`QuestDef` + `QuestStepDef` + `QuestRewardDef`) | **Done** ✅ | Static ở `packages/shared/src/quests.ts` (25 quest — 5 cảnh giới đầu). 5 step kind: kill / collect / talk / explore / choice. PR-1 #425 merged 15 quest (3 cảnh giới); Story Foundation Extension thêm 10 quest cho Kim Đan + Nguyên Anh. |
+| **NPC catalog** (`NpcDef`) | **Done** ✅ | Static ở `packages/shared/src/npcs.ts` (5 NPC — 5 cảnh giới đầu). PR-1 #425 merged 4 NPC; Story Foundation Extension thêm Huyết La Sát. |
+| **Dialogue catalog skeleton** (`DialogueLineDef` + `DialogueChoiceDef` + `DialogueBranchCondition`) | **Done** ✅ | Static ở `packages/shared/src/dialogues.ts` (11 line, branch `always` / `realm_min` / `quest_status` / `faction_member`). `pickDialogueForNpc()` helper PR-1 (chỉ implement `always` + `realm_min`; `quest_status` + `faction_member` vẫn chỉ runtime PR-4). PR-1 #425 merged 8 line (default + 4 branch); Story Foundation Extension thêm 5 line (LVS kim_dan/nguyen_anh + MTY kim_dan/nguyen_anh + Huyết La Sát default). |
 | **QuestProgress** (per-character) | **Done** ✅ | Prisma model với unique `(characterId, questKey)` + status enum (`LOCKED / AVAILABLE / ACCEPTED / COMPLETED / CLAIMED`) + JSON `stepProgress` counters + timestamps. Migration `20260520000000_phase_12_pr2_quest_runtime`. PR-2 merged. |
 | **Quest service** (`QuestService.list / accept / progress / track`) | **Done** ✅ | `apps/api/src/modules/quest/`. Server-authoritative validation: realm gate (`Character.realmStage` order >= `QuestDef.requiredRealmOrder`), prerequisite quest, CAS guards (`where {id, status: OLD}`), fail-soft `track()` hook from `CombatService` kill events. PR-2 merged. |
 | **Story chapter tracking** | **Done** ✅ | `Character.storyChapter` Int field bumped khi main quest `COMPLETED` (chapter index = `realmOrder + 1`). PR-2 merged. |
@@ -157,6 +164,14 @@ Tách nhỏ, mỗi PR là 1 layer. Tuân BATCHING RULE + UI MODULE RULE.
 - **Smoke** `scripts/smoke-npc.mjs` 11 step: auth gate (401) cả 2 endpoint, register fresh user, NO_CHARACTER pre-onboard (404), onboard, list shape, INVALID_INPUT zod (400), NPC_UNKNOWN (404), NPC_LOCKED_REALM (403, truc_co gate vs luyenkhi char), positive dialogue (200) shape.
 - **Tuân** UI MODULE RULE: server-authoritative dialogue + quest status; FE chỉ render. KHÔNG có mutation endpoint mới — quest accept tái dùng `POST /quests/accept` (PR-2 #426).
 - Update §2 / §4 / §6 / §7 progress tracker.
+
+### Story Foundation Extension — Kim Đan + Nguyên Anh catalog (Small) — OPEN
+
+- Static catalog extension: `packages/shared/src/quests.ts` (+10 quest cho Kim Đan + Nguyên Anh, tổng 25), `packages/shared/src/npcs.ts` (+1 NPC Huyết La Sát, tổng 5), `packages/shared/src/dialogues.ts` (+5 dialogue line, tổng 11).
+- Chain mở rộng: `hoa_thien_main` 3 → 5 cảnh giới (main + realm), `moc_thanh_y_arc` 1 → 3 (truc_co → kim_dan → nguyen_anh), chain mới `huyet_la_sat_arc` (kim_dan → nguyen_anh).
+- Integrity test cap nhật: `quests.test.ts` regex + count + chain assertion + main exp scaling, `npcs.test.ts` count + faction + realm gate, `dialogues.test.ts` realm_min branch picker (kim_dan + nguyen_anh).
+- KHÔNG Prisma migration / KHÔNG runtime change / KHÔNG UI: catalog-only. Quest hiện hữu (PR-2/3) auto-pick quest mới qua `realmGateOrder >=3 / >=4`.
+- Reward band tuân [`../BALANCE_MODEL.md`](../BALANCE_MODEL.md) (main exp scale up theo realm; không âm).
 
 ### PR-5 — Main storyline Chapter 1 playable (Medium-Large, full stack)
 
