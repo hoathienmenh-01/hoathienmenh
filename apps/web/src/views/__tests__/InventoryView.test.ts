@@ -117,6 +117,7 @@ const i18n = createI18n({
           hpMax: 'HP Max +{v}',
           mpMax: 'MP Max +{v}',
           spirit: 'Thần +{v}',
+          elementResist: '-{pct}% sát thương từ hệ {element}',
         },
         refine: {
           button: 'Luyện Khí',
@@ -166,6 +167,15 @@ const i18n = createI18n({
         thuy: 'Thủy',
         hoa: 'Hỏa',
         tho: 'Thổ',
+      },
+      talents: {
+        element: {
+          kim: 'Kim',
+          moc: 'Mộc',
+          thuy: 'Thủy',
+          hoa: 'Hỏa',
+          tho: 'Thổ',
+        },
       },
       equipSlot: {
         WEAPON: 'Vũ Khí',
@@ -352,6 +362,66 @@ describe('InventoryView — render gear + unequipped', () => {
     // Không có nút Trang bị vì không có slot.
     const equipBtn = w.findAll('button').find((b) => b.text().includes('Trang bị'));
     expect(equipBtn).toBeUndefined();
+  });
+
+  // Phase 11.6.E — render `bonuses.elementResist` tooltip line.
+  it('render armor có elementResist (huyen_giap_phong_hoa) → "-5% sát thương từ hệ Hỏa"', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeInv({
+        id: 'i_armor',
+        equippedSlot: null,
+        item: makeItemDef({
+          key: 'huyen_giap_phong_hoa',
+          name: 'Huyền Giáp Phong Hỏa',
+          slot: 'ARMOR',
+          bonuses: {
+            def: 22,
+            hpMax: 80,
+            elementResist: { hoa: 0.95 },
+          },
+        }),
+      }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.text()).toContain('DEF +22');
+    expect(w.text()).toContain('HP Max +80');
+    expect(w.text()).toContain('-5% sát thương từ hệ Hỏa');
+  });
+
+  it('render armor multi-element resist → 2 line tooltip riêng cho mỗi element', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeInv({
+        id: 'i_armor_multi',
+        equippedSlot: null,
+        item: makeItemDef({
+          key: 'multi_resist_armor',
+          name: 'Giáp Đa Hệ',
+          slot: 'ARMOR',
+          bonuses: {
+            elementResist: { kim: 0.9, hoa: 0.95 },
+          },
+        }),
+      }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.text()).toContain('-10% sát thương từ hệ Kim');
+    expect(w.text()).toContain('-5% sát thương từ hệ Hỏa');
+  });
+
+  it('render item KHÔNG có elementResist → KHÔNG render tooltip line', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeInv({
+        id: 'i_plain',
+        equippedSlot: null,
+        item: makeItemDef({ bonuses: { atk: 10 } }),
+      }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.text()).toContain('ATK +10');
+    expect(w.text()).not.toContain('sát thương từ hệ');
   });
 });
 

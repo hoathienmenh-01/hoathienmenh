@@ -135,6 +135,21 @@ function bonusText(item: ItemDef): string {
   if (item.bonuses.hpMax) parts.push(t('inventory.bonus.hpMax', { v: item.bonuses.hpMax }));
   if (item.bonuses.mpMax) parts.push(t('inventory.bonus.mpMax', { v: item.bonuses.mpMax }));
   if (item.bonuses.spirit) parts.push(t('inventory.bonus.spirit', { v: item.bonuses.spirit }));
+  // Phase 11.6.E — render equipment elementResist tooltip. value < 1 (e.g.
+  // 0.95 = giảm 5% sát thương). pct hiển thị = round((1 - value) * 100).
+  // Element name reuse `talents.element.<elem>` (cùng pattern PR #409).
+  if (item.bonuses.elementResist) {
+    for (const [elem, value] of Object.entries(item.bonuses.elementResist)) {
+      if (typeof value !== 'number' || value <= 0 || value >= 1) continue;
+      const pct = Math.round((1 - value) * 100);
+      parts.push(
+        t('inventory.bonus.elementResist', {
+          pct,
+          element: t(`talents.element.${elem}`, elem),
+        }),
+      );
+    }
+  }
   return parts.join(' · ');
 }
 

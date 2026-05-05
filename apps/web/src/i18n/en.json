@@ -622,7 +622,8 @@
       "def": "+{v} DEF",
       "hpMax": "+{v} HP",
       "mpMax": "+{v} MP",
-      "spirit": "+{v} SPI"
+      "spirit": "+{v} SPI",
+      "elementResist": "-{pct}% damage from {element}"
     },
     "errors": {
       "INVENTORY_ITEM_NOT_FOUND": "Item no longer exists.",
