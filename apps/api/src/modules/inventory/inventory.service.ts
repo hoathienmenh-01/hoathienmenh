@@ -59,7 +59,14 @@ export type ItemLedgerReason =
   // qtyDelta=-1. Atomic cùng InventoryItem decrement + CharacterSkill.create
   // ({ masteryLevel: 1, source: 'item_consume' }). Idempotent qua P2002 →
   // CharacterSkillError 'ALREADY_LEARNED' (item KHÔNG bị consume khi throw).
-  | 'SKILL_LEARN';
+  | 'SKILL_LEARN'
+  // Phase 12 Story PR-3 — Quest claim item rewards. Wire qua
+  // `QuestService.claim → InventoryService.grantTx(positive qtyDelta)` với
+  // `refType='Quest'` + `refId=questKey`. CAS claim guard
+  // (`QuestProgress.claimedAt` updateMany) đảm bảo 1 winner / questKey
+  // → grant đúng 1 lần / questKey / character. Mirror cùng `CurrencyLedger`
+  // reason `QUEST_CLAIM` cho linhThach/tienNgoc (cùng `refId`).
+  | 'QUEST_CLAIM';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;

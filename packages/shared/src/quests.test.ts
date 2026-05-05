@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { REALMS } from './realms';
 import { NPCS } from './npcs';
+import { ITEMS } from './items';
 import {
   QUESTS,
   questByKey,
@@ -14,6 +15,7 @@ import type { QuestDef, QuestKind } from './quests';
 
 const REALM_KEYS = new Set(REALMS.map((r) => r.key));
 const NPC_KEYS = new Set(NPCS.map((n) => n.key));
+const ITEM_KEYS = new Set(ITEMS.map((it) => it.key));
 const VALID_KIND_REGEX = /^(phamnhan|luyenkhi|truc_co)_(main|realm|sect|npc|grind)_\d{2}$/;
 
 describe('QUESTS catalog integrity (Phase 12 PR-1)', () => {
@@ -115,6 +117,21 @@ describe('QUESTS catalog integrity (Phase 12 PR-1)', () => {
         for (const it of r.items) {
           expect(it.qty, `${q.key} item ${it.itemKey}`).toBeGreaterThan(0);
         }
+      }
+    }
+  });
+
+  // Phase 12 PR-3 — claim path đi qua `InventoryService.grantTx`. Item missing
+  // sẽ silently no-op ở runtime → reward bị drop. Validate cross-catalog ngay
+  // ở build time để chặn placeholder đi vào ledger gameplay.
+  it('every reward.items[].itemKey exists in ITEMS catalog', () => {
+    for (const q of QUESTS) {
+      if (!q.rewards.items) continue;
+      for (const it of q.rewards.items) {
+        expect(
+          ITEM_KEYS.has(it.itemKey),
+          `quest ${q.key} reward itemKey=${it.itemKey}`,
+        ).toBe(true);
       }
     }
   });

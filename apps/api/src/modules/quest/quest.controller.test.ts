@@ -1,15 +1,17 @@
 /**
  * Controller-level pure-unit tests cho `apps/api/src/modules/quest/quest.controller.ts`.
  *
- * 3 endpoint:
+ * 4 endpoint:
  *  - `GET /quests/me`: auth → list `QuestProgressView[]`.
  *  - `POST /quests/accept`: auth → zod ({ questKey }) → accept → return view.
  *  - `POST /quests/progress`: auth → zod ({ questKey, stepId, amount? }) → progress.
+ *  - `POST /quests/claim` (Phase 12 PR-3): auth → zod ({ questKey }) → claim → granted breakdown.
  *
  * Error mapping (`QuestError`):
- *  - `NO_CHARACTER` / `QUEST_UNKNOWN` / `QUEST_STEP_UNKNOWN` → 404
+ *  - `NO_CHARACTER` / `QUEST_UNKNOWN` / `QUEST_STEP_UNKNOWN` / `QUEST_NOT_FOUND_PROGRESS` → 404
  *  - `QUEST_LOCKED_REALM` / `QUEST_LOCKED_PREREQUISITE` → 403
- *  - `QUEST_NOT_AVAILABLE` / `QUEST_NOT_ACCEPTED` / `QUEST_STEP_KIND_MISMATCH` → 409
+ *  - `QUEST_NOT_AVAILABLE` / `QUEST_NOT_ACCEPTED` / `QUEST_STEP_KIND_MISMATCH` /
+ *    `QUEST_NOT_COMPLETED` / `QUEST_ALREADY_CLAIMED` → 409
  */
 import { describe, expect, it } from 'vitest';
 import { HttpException, HttpStatus } from '@nestjs/common';
@@ -17,6 +19,7 @@ import type { Request } from 'express';
 import { QuestController } from './quest.controller';
 import {
   QuestError,
+  type QuestClaimResult,
   type QuestProgressView,
   type QuestService,
 } from './quest.service';
@@ -45,6 +48,12 @@ function makeReq(cookie: string | undefined): Request {
   return { cookies: cookie ? { xt_access: cookie } : {} } as unknown as Request;
 }
 
+const STUB_CLAIM: QuestClaimResult = {
+  questKey: 'phamnhan_grind_01',
+  claimedAt: new Date('2026-05-05T00:00:00Z'),
+  granted: { linhThach: 50, tienNgoc: 0, exp: 80, congHien: 0, items: [] },
+};
+
 function makeController(
   opts: {
     authedUserId?: string | null;
@@ -54,6 +63,7 @@ function makeController(
       uid: string,
       input: { questKey: string; stepId: string; amount?: number },
     ) => Promise<QuestProgressView>;
+    claimImpl?: (uid: string, k: string) => Promise<QuestClaimResult>;
   } = {},
 ) {
   const auth = {
@@ -64,6 +74,7 @@ function makeController(
     listForUser: opts.listImpl ?? (async () => []),
     accept: opts.acceptImpl ?? (async () => STUB_VIEW),
     progress: opts.progressImpl ?? (async () => STUB_VIEW),
+    claim: opts.claimImpl ?? (async () => STUB_CLAIM),
   } as unknown as QuestService;
   return new QuestController(quests, auth);
 }
@@ -269,6 +280,91 @@ describe('QuestController.progress', () => {
     const c = makeController();
     const res = await c.progress(makeReq('tok'), { questKey: 'q1', stepId: 's1' });
     expect(res).toEqual({ ok: true, data: { quest: STUB_VIEW } });
+  });
+});
+
+describe('QuestController.claim — Phase 12 PR-3', () => {
+  it('null auth → 401', async () => {
+    const c = makeController({ authedUserId: null });
+    await expectHttpError(
+      c.claim(makeReq(undefined), { questKey: 'q1' }),
+      HttpStatus.UNAUTHORIZED,
+      'UNAUTHENTICATED',
+    );
+  });
+
+  it('zod missing questKey → 400 INVALID_INPUT', async () => {
+    const c = makeController();
+    await expectHttpError(
+      c.claim(makeReq('tok'), {}),
+      HttpStatus.BAD_REQUEST,
+      'INVALID_INPUT',
+    );
+  });
+
+  it('QUEST_UNKNOWN → 404', async () => {
+    const c = makeController({
+      claimImpl: async () => {
+        throw new QuestError('QUEST_UNKNOWN');
+      },
+    });
+    await expectHttpError(
+      c.claim(makeReq('tok'), { questKey: 'q1' }),
+      HttpStatus.NOT_FOUND,
+      'QUEST_UNKNOWN',
+    );
+  });
+
+  it('QUEST_NOT_FOUND_PROGRESS → 404', async () => {
+    const c = makeController({
+      claimImpl: async () => {
+        throw new QuestError('QUEST_NOT_FOUND_PROGRESS');
+      },
+    });
+    await expectHttpError(
+      c.claim(makeReq('tok'), { questKey: 'q1' }),
+      HttpStatus.NOT_FOUND,
+      'QUEST_NOT_FOUND_PROGRESS',
+    );
+  });
+
+  it('QUEST_NOT_COMPLETED → 409', async () => {
+    const c = makeController({
+      claimImpl: async () => {
+        throw new QuestError('QUEST_NOT_COMPLETED');
+      },
+    });
+    await expectHttpError(
+      c.claim(makeReq('tok'), { questKey: 'q1' }),
+      HttpStatus.CONFLICT,
+      'QUEST_NOT_COMPLETED',
+    );
+  });
+
+  it('QUEST_ALREADY_CLAIMED → 409', async () => {
+    const c = makeController({
+      claimImpl: async () => {
+        throw new QuestError('QUEST_ALREADY_CLAIMED');
+      },
+    });
+    await expectHttpError(
+      c.claim(makeReq('tok'), { questKey: 'q1' }),
+      HttpStatus.CONFLICT,
+      'QUEST_ALREADY_CLAIMED',
+    );
+  });
+
+  it('envelope ok { ok, data: { questKey, claimedAt, granted } }', async () => {
+    const c = makeController();
+    const res = await c.claim(makeReq('tok'), { questKey: 'phamnhan_grind_01' });
+    expect(res).toEqual({
+      ok: true,
+      data: {
+        questKey: 'phamnhan_grind_01',
+        claimedAt: '2026-05-05T00:00:00.000Z',
+        granted: STUB_CLAIM.granted,
+      },
+    });
   });
 });
 

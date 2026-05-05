@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { questByKey, QUESTS } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { QuestError, QuestService } from './quest.service';
-import { TEST_DATABASE_URL, makeUserChar, wipeAll } from '../../test-helpers';
+import { TEST_DATABASE_URL, makeQuestService, makeUserChar, wipeAll } from '../../test-helpers';
 
 let prisma: PrismaService;
 let quests: QuestService;
@@ -10,7 +10,7 @@ let quests: QuestService;
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
-  quests = new QuestService(prisma);
+  quests = makeQuestService(prisma);
 });
 
 beforeEach(async () => {
@@ -356,3 +356,198 @@ describe('QuestService.transitionToCompleted — Character.storyChapter bump', (
     expect(ch.storyChapter).toBe(0);
   });
 });
+
+// ============================================================================
+// Phase 12 PR-3 — claim path tests.
+// ============================================================================
+
+/**
+ * Helper: drive 1 quest tới COMPLETED state qua accept + progress/track.
+ */
+async function bringQuestToCompleted(
+  userId: string,
+  characterId: string,
+  questKey: string,
+): Promise<void> {
+  const def = questByKey(questKey);
+  if (!def) throw new Error(`unknown quest ${questKey}`);
+  await quests.accept(userId, questKey);
+  for (const step of def.steps) {
+    if (step.kind === 'kill' || step.kind === 'collect') {
+      await quests.track(characterId, step.kind, step.targetType, step.targetId, step.count);
+    } else {
+      for (let i = 0; i < step.count; i++) {
+        await quests.progress(userId, { questKey, stepId: step.id });
+      }
+    }
+  }
+}
+
+describe('QuestService.claim — Phase 12 PR-3', () => {
+  it('throws QUEST_UNKNOWN cho quest key không tồn tại', async () => {
+    const { userId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    await expect(quests.claim(userId, 'nonexistent_quest_99')).rejects.toThrow(
+      new QuestError('QUEST_UNKNOWN'),
+    );
+  });
+
+  it('throws NO_CHARACTER nếu user không có character', async () => {
+    await expect(quests.claim('non-existent-user', QUEST_PHAMNHAN_GRIND)).rejects.toThrow(
+      new QuestError('NO_CHARACTER'),
+    );
+  });
+
+  it('throws QUEST_NOT_FOUND_PROGRESS nếu quest chưa từng accept', async () => {
+    const { userId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    await expect(quests.claim(userId, QUEST_PHAMNHAN_GRIND)).rejects.toThrow(
+      new QuestError('QUEST_NOT_FOUND_PROGRESS'),
+    );
+  });
+
+  it('throws QUEST_NOT_COMPLETED nếu quest đang ACCEPTED (chưa xong steps)', async () => {
+    const { userId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    await quests.accept(userId, QUEST_PHAMNHAN_GRIND);
+    await expect(quests.claim(userId, QUEST_PHAMNHAN_GRIND)).rejects.toThrow(
+      new QuestError('QUEST_NOT_COMPLETED'),
+    );
+  });
+
+  it('claim COMPLETED quest grant linhThach + exp + congHien + items qua ledger', async () => {
+    const { userId, characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    const before = await prisma.character.findUniqueOrThrow({
+      where: { id: characterId },
+      select: { linhThach: true, tienNgoc: true, exp: true, congHien: true },
+    });
+    await bringQuestToCompleted(userId, characterId, QUEST_PHAMNHAN_GRIND);
+
+    const def = questByKey(QUEST_PHAMNHAN_GRIND)!;
+    const r = def.rewards;
+    const result = await quests.claim(userId, QUEST_PHAMNHAN_GRIND);
+
+    expect(result.questKey).toBe(QUEST_PHAMNHAN_GRIND);
+    expect(result.granted.linhThach).toBe(r.linhThach ?? 0);
+    expect(result.granted.tienNgoc).toBe(r.tienNgoc ?? 0);
+    expect(result.granted.exp).toBe(r.exp ?? 0);
+    expect(result.granted.congHien).toBe(r.congHien ?? 0);
+
+    // Status transitioned + claimedAt set.
+    const row = await prisma.questProgress.findUniqueOrThrow({
+      where: { characterId_questKey: { characterId, questKey: QUEST_PHAMNHAN_GRIND } },
+      select: { status: true, claimedAt: true },
+    });
+    expect(row.status).toBe('CLAIMED');
+    expect(row.claimedAt).not.toBeNull();
+
+    // Character stats bumped.
+    const after = await prisma.character.findUniqueOrThrow({
+      where: { id: characterId },
+      select: { linhThach: true, tienNgoc: true, exp: true, congHien: true },
+    });
+    expect(after.linhThach - before.linhThach).toBe(BigInt(r.linhThach ?? 0));
+    expect(after.tienNgoc - before.tienNgoc).toBe(r.tienNgoc ?? 0);
+    expect(after.exp - before.exp).toBe(BigInt(r.exp ?? 0));
+    expect(after.congHien - before.congHien).toBe(r.congHien ?? 0);
+
+    // Ledger contract: 1 row / currency có grant > 0.
+    const ledger = await prisma.currencyLedger.findMany({
+      where: { characterId, reason: 'QUEST_CLAIM', refId: QUEST_PHAMNHAN_GRIND },
+      orderBy: { createdAt: 'asc' },
+    });
+    expect(ledger.length).toBe(
+      ((r.linhThach ?? 0) > 0 ? 1 : 0) + ((r.tienNgoc ?? 0) > 0 ? 1 : 0),
+    );
+    for (const l of ledger) {
+      expect(l.refType).toBe('Quest');
+      expect(l.refId).toBe(QUEST_PHAMNHAN_GRIND);
+      expect(l.delta > 0n).toBe(true);
+    }
+  });
+
+  it('claim main quest grant items vào ItemLedger với reason=QUEST_CLAIM', async () => {
+    const { userId, characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    const def = questByKey(QUEST_PHAMNHAN_MAIN)!;
+    expect(def.rewards.items?.length ?? 0).toBeGreaterThan(0);
+
+    await bringQuestToCompleted(userId, characterId, QUEST_PHAMNHAN_MAIN);
+    const result = await quests.claim(userId, QUEST_PHAMNHAN_MAIN);
+    expect(result.granted.items.length).toBe(def.rewards.items!.length);
+
+    const itemLedger = await prisma.itemLedger.findMany({
+      where: { characterId, reason: 'QUEST_CLAIM', refId: QUEST_PHAMNHAN_MAIN },
+    });
+    expect(itemLedger.length).toBe(def.rewards.items!.length);
+    for (const il of itemLedger) {
+      expect(il.refType).toBe('Quest');
+      expect(il.qtyDelta > 0).toBe(true);
+    }
+
+    const inventoryRows = await prisma.inventoryItem.findMany({
+      where: { characterId, itemKey: { in: def.rewards.items!.map((it) => it.itemKey) } },
+    });
+    expect(inventoryRows.length).toBe(def.rewards.items!.length);
+    for (const it of def.rewards.items!) {
+      const row = inventoryRows.find((r) => r.itemKey === it.itemKey);
+      expect(row?.qty).toBe(it.qty);
+    }
+  });
+
+  it('claim lần 2 cùng quest throws QUEST_ALREADY_CLAIMED — KHÔNG ghi thêm ledger', async () => {
+    const { userId, characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    await bringQuestToCompleted(userId, characterId, QUEST_PHAMNHAN_GRIND);
+    await quests.claim(userId, QUEST_PHAMNHAN_GRIND);
+
+    const ledgerBefore = await prisma.currencyLedger.count({
+      where: { characterId, reason: 'QUEST_CLAIM' },
+    });
+
+    await expect(quests.claim(userId, QUEST_PHAMNHAN_GRIND)).rejects.toThrow(
+      new QuestError('QUEST_ALREADY_CLAIMED'),
+    );
+
+    const ledgerAfter = await prisma.currencyLedger.count({
+      where: { characterId, reason: 'QUEST_CLAIM' },
+    });
+    expect(ledgerAfter).toBe(ledgerBefore);
+  });
+
+  it('concurrency: 2 parallel claim cùng questKey → 1 grant + 1 ledger row, loser throws ALREADY_CLAIMED', async () => {
+    const { userId, characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    await bringQuestToCompleted(userId, characterId, QUEST_PHAMNHAN_GRIND);
+    const def = questByKey(QUEST_PHAMNHAN_GRIND)!;
+
+    const before = await prisma.character.findUniqueOrThrow({
+      where: { id: characterId },
+      select: { linhThach: true },
+    });
+
+    // Fire 2 parallel claim — đúng 1 winner.
+    const settled = await Promise.allSettled([
+      quests.claim(userId, QUEST_PHAMNHAN_GRIND),
+      quests.claim(userId, QUEST_PHAMNHAN_GRIND),
+    ]);
+    const fulfilled = settled.filter((s) => s.status === 'fulfilled');
+    const rejected = settled.filter((s) => s.status === 'rejected');
+    expect(fulfilled.length).toBe(1);
+    expect(rejected.length).toBe(1);
+    const rej = rejected[0] as PromiseRejectedResult;
+    expect(rej.reason).toBeInstanceOf(QuestError);
+    expect((rej.reason as QuestError).code).toBe('QUEST_ALREADY_CLAIMED');
+
+    // Đúng 1 ledger row / currency có grant.
+    const ledger = await prisma.currencyLedger.findMany({
+      where: { characterId, reason: 'QUEST_CLAIM', refId: QUEST_PHAMNHAN_GRIND },
+    });
+    const expectedLedgerRows =
+      ((def.rewards.linhThach ?? 0) > 0 ? 1 : 0) +
+      ((def.rewards.tienNgoc ?? 0) > 0 ? 1 : 0);
+    expect(ledger.length).toBe(expectedLedgerRows);
+
+    // Currency đã bump đúng 1 lần (KHÔNG double-grant).
+    const after = await prisma.character.findUniqueOrThrow({
+      where: { id: characterId },
+      select: { linhThach: true },
+    });
+    expect(after.linhThach - before.linhThach).toBe(BigInt(def.rewards.linhThach ?? 0));
+  });
+});
+

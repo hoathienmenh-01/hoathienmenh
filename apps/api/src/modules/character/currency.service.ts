@@ -32,7 +32,12 @@ export type LedgerReason =
   | 'TRIBULATION_REWARD'
   | 'ACHIEVEMENT_REWARD'
   | 'ALCHEMY_COST'
-  | 'ALCHEMY_FURNACE_UPGRADE';
+  | 'ALCHEMY_FURNACE_UPGRADE'
+  // Phase 12 Story PR-3 — Quest claim reward. Wire `QuestService.claim` qua
+  // `applyTx` cho linhThach/tienNgoc với `refType='Quest'` + `refId=questKey`.
+  // Idempotency lấy từ `QuestProgress.claimedAt` CAS guard (race-safe winner
+  // duy nhất ghi 1 ledger row / questKey).
+  | 'QUEST_CLAIM';
 
 export interface CurrencyApplyInput {
   characterId: string;

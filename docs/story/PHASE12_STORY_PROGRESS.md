@@ -18,16 +18,17 @@ Khi story design conflict với code, ưu tiên: code trên `main` > [`../AI_HAN
 
 ## 2. Current status
 
-**Catalog foundation + quest runtime persistence DONE.** Reward claim (PR-3) chưa có.
+**Catalog foundation + quest runtime persistence + quest claim reward DONE.** Quest UI / NPC dialogue UI (PR-4 / PR-5) chưa có.
 
 Hiện tại Phase 12 đã có:
 - **Phase 12.1** (catalog `MapDef` / `EncounterDef` / `DungeonDef`) — CLOSED ✅ (PR #397).
 - **Phase 12.2.A** (`DungeonDef.dailyLimit` server-side enforcement) — CLOSED ✅ (PR #421).
 - **Phase 12.2.B** (`DungeonTemplate` + `DungeonRun` multi-encounter runtime) — open (Prisma migration risk; xem [`../AI_HANDOFF_REPORT.md`](../AI_HANDOFF_REPORT.md) §6 backlog).
 - **Phase 12 Story PR-1** (Story / NPC / Quest catalog foundation) — CLOSED ✅ (PR #425).
-- **Phase 12 Story PR-2** (Quest runtime persistence) — CLOSED ✅ (Prisma `QuestProgress` + `Character.storyChapter` + `QuestService.list/accept/progress/track` + 3 endpoints + CombatService kill hook + 41 test + smoke 16/16 step).
+- **Phase 12 Story PR-2** (Quest runtime persistence) — CLOSED ✅ (PR #426).
+- **Phase 12 Story PR-3** (Quest claim / reward idempotency) — CLOSED ✅ (`QuestService.claim` qua `CurrencyService.applyTx` + `InventoryService.grantTx` + CAS guard trên `QuestProgress.claimedAt` + concurrency test + smoke +4 step).
 
-**Story / NPC / Quest runtime**: 4 NPC + 15 quest + 6 dialogue line (3 cảnh giới đầu). `QuestProgress` Prisma model live; `QuestService` server-authoritative validation (realm gate + prereq + CAS guard); kill step auto-tracked qua `CombatService` fail-soft hook. Reward claim chưa có — Phase 12 PR-3 sẽ thêm `QuestService.claim` qua `RewardLedger`.
+**Story / NPC / Quest runtime**: 4 NPC + 15 quest + 6 dialogue line (3 cảnh giới đầu). `QuestProgress` Prisma model live; `QuestService` server-authoritative validation (realm gate + prereq + CAS guard); kill step auto-tracked qua `CombatService` fail-soft hook; reward claim atomic qua ledger (`reason='QUEST_CLAIM'`, `refType='Quest'`, `refId=questKey`) đảm bảo idempotent (race-safe 1 winner / questKey).
 
 ## 3. Implemented chapters
 
@@ -39,7 +40,7 @@ Hiện tại Phase 12 đã có:
 | 1 | `luyenkhi` | `luyenkhi_main_01` Linh Khí Nhập Thể | 4/4 | 4/4 | Lăng Vân Sinh, Mộc Thanh Y, Hàn Dạ | 2026-05-05 | PR-1 + PR-2 |
 | 2 | `truc_co` | `truc_co_main_01` Trúc Đạo Cơ | 4/4 | 4/4 | Lăng Vân Sinh, Mộc Thanh Y, Tô Nguyệt Ly | 2026-05-05 | PR-1 + PR-2 |
 
-**Runtime status**: catalog (PR-1 #425) + persistence (PR-2 this PR — `QuestProgress` Prisma + `QuestService.list/accept/progress/track`) DONE. Reward claim wiring chờ PR-3.
+**Runtime status**: catalog (PR-1 #425) + persistence (PR-2 #426 — `QuestProgress` Prisma + `QuestService.list/accept/progress/track`) + claim (PR-3 — `QuestService.claim` + `CurrencyLedger`/`ItemLedger` rows) DONE.
 
 (Chuẩn bị để track 28 cảnh giới Phàm Nhân → Hư Không Chí Tôn — danh sách đầy đủ ở [`./TU_TIEN_LO_STORY_BIBLE.md`](./TU_TIEN_LO_STORY_BIBLE.md) §9.1.)
 
@@ -64,14 +65,14 @@ Hiện tại Phase 12 đã có:
 
 | Chain key | Realm range | NPC chính | Quest count | Catalog | Runtime | UI | Claim |
 |---|---|---|---|---|---|---|---|
-| `hoa_thien_main` | phamnhan → truc_co | Lăng Vân Sinh | 5 (3 main + 2 realm) | ✅ | ✅ (PR-2) | Missing | Missing |
-| `moc_thanh_y_arc` | truc_co | Lăng Vân Sinh + Mộc Thanh Y | 1 (`truc_co_sect_01` Cứu Đại Sư Tỷ) | ✅ | ✅ (PR-2) | Missing | Missing |
-| `han_da_rivalry` | luyenkhi+ | Hàn Dạ | 1 (`luyenkhi_npc_01` Lời Thách Đấu) | ✅ | ✅ (PR-2) | Missing | Missing |
-| `to_nguyet_ly_hidden` | truc_co+ | Tô Nguyệt Ly | 1 (`truc_co_npc_01` Bóng Trong Sương) | ✅ | ✅ (PR-2) | Missing | Missing |
+| `hoa_thien_main` | phamnhan → truc_co | Lăng Vân Sinh | 5 (3 main + 2 realm) | ✅ | ✅ (PR-2) | Missing | ✅ (PR-3) |
+| `moc_thanh_y_arc` | truc_co | Lăng Vân Sinh + Mộc Thanh Y | 1 (`truc_co_sect_01` Cứu Đại Sư Tỷ) | ✅ | ✅ (PR-2) | Missing | ✅ (PR-3) |
+| `han_da_rivalry` | luyenkhi+ | Hàn Dạ | 1 (`luyenkhi_npc_01` Lời Thách Đấu) | ✅ | ✅ (PR-2) | Missing | ✅ (PR-3) |
+| `to_nguyet_ly_hidden` | truc_co+ | Tô Nguyệt Ly | 1 (`truc_co_npc_01` Bóng Trong Sương) | ✅ | ✅ (PR-2) | Missing | ✅ (PR-3) |
 
 Standalone quest (no chain): 6 quest (3 sect + 3 grind).
 
-**Status**: catalog (PR-1) + runtime persistence (PR-2 — accept / progress / track / auto-COMPLETED) DONE. Claim chờ PR-3, UI chờ PR-4 + PR-5.
+**Status**: catalog (PR-1) + runtime persistence (PR-2 — accept / progress / track / auto-COMPLETED) + claim (PR-3 — `QuestService.claim` ledger atomic) DONE. UI chờ PR-4 + PR-5.
 
 (27 chuỗi quest cốt truyện đã design — danh sách đầy đủ ở [`./TU_TIEN_LO_STORY_BIBLE.md`](./TU_TIEN_LO_STORY_BIBLE.md) §11.)
 
@@ -87,7 +88,7 @@ Standalone quest (no chain): 6 quest (3 sect + 3 grind).
 | **QuestProgress** (per-character) | **Done** ✅ | Prisma model với unique `(characterId, questKey)` + status enum (`LOCKED / AVAILABLE / ACCEPTED / COMPLETED / CLAIMED`) + JSON `stepProgress` counters + timestamps. Migration `20260520000000_phase_12_pr2_quest_runtime`. PR-2 merged. |
 | **Quest service** (`QuestService.list / accept / progress / track`) | **Done** ✅ | `apps/api/src/modules/quest/`. Server-authoritative validation: realm gate (`Character.realmStage` order >= `QuestDef.requiredRealmOrder`), prerequisite quest, CAS guards (`where {id, status: OLD}`), fail-soft `track()` hook from `CombatService` kill events. PR-2 merged. |
 | **Story chapter tracking** | **Done** ✅ | `Character.storyChapter` Int field bumped khi main quest `COMPLETED` (chapter index = `realmOrder + 1`). PR-2 merged. |
-| **Reward claim** (`QuestService.claim`) | **Missing** | Đi qua `CurrencyService` / `ItemService` + `RewardLedger` + idempotency key `(characterId, QUEST_CLAIM, questKey)`. KHÔNG xây ledger riêng. Phase 12 PR-3. |
+| **Reward claim** (`QuestService.claim`) | **Done** ✅ | `apps/api/src/modules/quest/quest.service.ts:claim()`. CAS guard `updateMany({where:{id, status:'COMPLETED', claimedAt:null}})` → `status='CLAIMED'`. Grant linhThach/tienNgoc qua `CurrencyService.applyTx` (`reason='QUEST_CLAIM'`, `refType='Quest'`, `refId=questKey`); exp/congHien qua `tx.character.update`; items qua `InventoryService.grantTx`. Idempotency: race-safe 1 winner / questKey (concurrency test xác nhận 2 parallel claim → đúng 1 ledger row). PR-3 merged. |
 | **Quest UI** (`QuestView.vue` + Pinia store) | **Missing** | List + filter (main/realm/sect/npc/grind) + loading/empty/error + i18n vi/en. Tuân UI MODULE RULE. Phase 12 PR-5. |
 | **NPC dialogue UI** (`NpcDialogueModal.vue`) | **Missing** | Branch text + choice button + portrait. Server endpoint `GET /npc/:id/dialogue` filter branch theo realm + quest_status. Phase 12 PR-4. |
 | **Cơ duyên (kỳ ngộ) MVP** | Partial | `EncounterDef` đã có (Phase 12.1). Cần extend cho quest-driven flavor + cooldown log. Phase 12 sau PR-5. |
@@ -116,13 +117,22 @@ Tách nhỏ, mỗi PR là 1 layer. Tuân BATCHING RULE + UI MODULE RULE.
 - Smoke `scripts/smoke-quest.mjs` 16/16 step (auth gate × 3, zod 400 × 2, NO_CHARACTER, post-onboard list, QUEST_UNKNOWN, QUEST_LOCKED_REALM, QUEST_LOCKED_PREREQUISITE, ACCEPTED, CAS double-accept QUEST_NOT_AVAILABLE, QUEST_STEP_UNKNOWN, QUEST_STEP_KIND_MISMATCH).
 - KHÔNG claim reward (PR-3) ✅.
 
-### PR-3 — Quest claim / reward idempotency (Small, BE)
+### PR-3 — Quest claim / reward idempotency — **CLOSED** ✅ (2026-05-05)
 
-- Service: `QuestService.claim` — đi qua `CurrencyService` / `ItemService` + ghi `RewardLedger` row với idempotency key `(characterId, QUEST_CLAIM, questId)`.
-- Test concurrency: 2 parallel `claim()` cùng `questId` → chỉ 1 ledger row.
-- Tuân [`../ECONOMY_MODEL.md`](../ECONOMY_MODEL.md) §3 invariants.
-- Smoke +N step.
-- Update progress tracker.
+- Service: `QuestService.claim(userId, questKey)` (`apps/api/src/modules/quest/quest.service.ts`) — atomic `prisma.$transaction`:
+  1. CAS guard `updateMany({where:{id, status:'COMPLETED', claimedAt:null}, data:{status:'CLAIMED', claimedAt}})`. `count !== 1` → `QUEST_ALREADY_CLAIMED`.
+  2. Grant `linhThach` / `tienNgoc` qua `CurrencyService.applyTx(tx, {reason:'QUEST_CLAIM', refType:'Quest', refId:questKey})` → ghi `CurrencyLedger` row.
+  3. Grant `exp` / `congHien` qua `tx.character.update({increment})` (mirror `MissionService` pattern; KHÔNG có ledger riêng cho 2 cột này).
+  4. Grant items qua `InventoryService.grantTx(tx, characterId, list, {reason:'QUEST_CLAIM', refType:'Quest', refId:questKey})` → ghi `ItemLedger` rows.
+- Controller: `POST /quests/claim` (`quest.controller.ts`) — zod `{questKey}`, error mapping (`QUEST_UNKNOWN` / `QUEST_NOT_FOUND_PROGRESS` 404, `QUEST_NOT_COMPLETED` / `QUEST_ALREADY_CLAIMED` 409). Response envelope `{ok:true, data:{questKey, claimedAt, granted:{linhThach, tienNgoc, exp, congHien, items[]}}}`.
+- LedgerReason union: thêm `'QUEST_CLAIM'` vào `apps/api/src/modules/character/currency.service.ts` và `apps/api/src/modules/inventory/inventory.service.ts`.
+- Module wiring: `QuestModule` import `CharacterModule` + `InventoryModule` (không cần forwardRef — QuestService không có service khác import ngược vào).
+- Test:
+  - Service unit + concurrency (`quest.service.test.ts` 30 test tổng — 8 cho `claim`): success path, NO_CHARACTER, QUEST_UNKNOWN, QUEST_NOT_FOUND_PROGRESS, QUEST_NOT_COMPLETED, QUEST_ALREADY_CLAIMED, item grant qua `ItemLedger`, **concurrency 2 parallel claim → 1 winner + 1 ledger row** (`Promise.allSettled`).
+  - Controller (`quest.controller.test.ts` 26 test — 7 cho `claim`): auth gate 401, zod 400, error mapping (404/409), envelope shape.
+  - Catalog integrity (`packages/shared/src/quests.test.ts`): đảm bảo mọi `reward.items[].itemKey` tồn tại trong `ITEMS` catalog (fix 3 placeholder item: `linh_khi_dan` → `linh_lo_dan`, `truc_co_dan` → `co_thien_dan`, `cong_phap_so_cap` → `co_thien_dan`).
+- Smoke `scripts/smoke-quest.mjs` 20/20 step (PR-2 16 step + PR-3 4 step: claim auth gate 401, zod 400, QUEST_UNKNOWN 404, QUEST_NOT_FOUND_PROGRESS 404, QUEST_NOT_COMPLETED 409). Positive flow tới CLAIMED yeu cầu gameplay automation — cover trong concurrency test.
+- Tuân [`../ECONOMY_MODEL.md`](../ECONOMY_MODEL.md) §3 invariants: single mutation point qua `CurrencyService.applyTx` / `InventoryService.grantTx`; ledger row contract đầy đủ (`characterId`, `currency`, `delta`, `reason`, `refType`, `refId`, `createdAt`); idempotency qua CAS guard `claimedAt` (§3.5 mẫu `Achievement.claimedAt`).
 
 ### PR-4 — NPC dialogue UI (Medium, FE + BE wiring)
 

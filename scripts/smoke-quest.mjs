@@ -1,34 +1,44 @@
 #!/usr/bin/env node
 /**
- * smoke-quest.mjs — Quest list/accept/progress endpoints smoke cho Xuân Tôi.
- * Phase 12 Story PR-2 — covers `apps/api/src/modules/quest/`.
+ * smoke-quest.mjs — Quest list/accept/progress/claim endpoints smoke cho Xuân Tôi.
+ * Phase 12 Story PR-2 + PR-3 — covers `apps/api/src/modules/quest/`.
  *
- * Negative-path-heavy: positive claim path (reward grant via RewardLedger
- * idempotency) defer cho Phase 12 PR-3 (`smoke:quest-claim` future).
+ * Negative-path-heavy: positive flow tới CLAIMED (track kill → COMPLETED →
+ * claim) yêu cầu gameplay automation (combat hook). Smoke chỉ cover claim
+ * negative-path (auth gate, missing input, unknown quest, not-completed) —
+ * positive claim path đã cover trong unit/concurrency test
+ * (`apps/api/src/modules/quest/quest.service.test.ts §QuestService.claim`).
  *
  * Steps:
  *  1. GET  /api/quests/me                  (no auth)              → 401.
  *  2. POST /api/quests/accept              (no auth)              → 401.
  *  3. POST /api/quests/progress            (no auth)              → 401.
- *  4. POST /api/_auth/register                                    — fresh user.
- *  5. GET  /api/quests/me                  (pre-onboard)          → 404.
- *  6. POST /api/quests/accept     ({})                            → 400 INVALID_INPUT.
- *  7. POST /api/quests/progress   ({questKey:'q1'})               → 400 INVALID_INPUT.
- *  8. POST /api/character/onboard                                  — fresh char.
- *  9. GET  /api/quests/me                  (post-onboard)         → 200 array.
- * 10. POST /api/quests/accept     ({questKey: 'fake_xxx'})        → 404 QUEST_UNKNOWN.
- * 11. POST /api/quests/accept     ({questKey: 'luyenkhi_main_01'}) → 403 QUEST_LOCKED_REALM
+ *  4. POST /api/quests/claim               (no auth)              → 401.            (PR-3)
+ *  5. POST /api/_auth/register                                    — fresh user.
+ *  6. GET  /api/quests/me                  (pre-onboard)          → 404.
+ *  7. POST /api/quests/accept     ({})                            → 400 INVALID_INPUT.
+ *  8. POST /api/quests/progress   ({questKey:'q1'})               → 400 INVALID_INPUT.
+ *  9. POST /api/quests/claim      ({})                            → 400 INVALID_INPUT. (PR-3)
+ * 10. POST /api/character/onboard                                  — fresh char.
+ * 11. GET  /api/quests/me                  (post-onboard)         → 200 array.
+ * 12. POST /api/quests/accept     ({questKey: 'fake_xxx'})        → 404 QUEST_UNKNOWN.
+ * 13. POST /api/quests/accept     ({questKey: 'luyenkhi_main_01'}) → 403 QUEST_LOCKED_REALM
  *                                                                  (phamnhan char không đủ realm).
- * 12. POST /api/quests/accept     ({questKey: 'phamnhan_sect_01'}) → 403 QUEST_LOCKED_PREREQUISITE
+ * 14. POST /api/quests/accept     ({questKey: 'phamnhan_sect_01'}) → 403 QUEST_LOCKED_PREREQUISITE
  *                                                                  (cần phamnhan_main_01 COMPLETED trước).
- * 13. POST /api/quests/accept     ({questKey: 'phamnhan_grind_01'}) → 200 ACCEPTED.
- * 14. POST /api/quests/accept     ({questKey: 'phamnhan_grind_01'}) → 409 QUEST_NOT_AVAILABLE
+ * 15. POST /api/quests/accept     ({questKey: 'phamnhan_grind_01'}) → 200 ACCEPTED.
+ * 16. POST /api/quests/accept     ({questKey: 'phamnhan_grind_01'}) → 409 QUEST_NOT_AVAILABLE
  *                                                                  (CAS guard double-accept).
- * 15. POST /api/quests/progress   ({questKey: 'phamnhan_grind_01',
+ * 17. POST /api/quests/progress   ({questKey: 'phamnhan_grind_01',
  *                                    stepId: 'fake_step'})        → 404 QUEST_STEP_UNKNOWN.
- * 16. POST /api/quests/progress   ({questKey: 'phamnhan_grind_01',
+ * 18. POST /api/quests/progress   ({questKey: 'phamnhan_grind_01',
  *                                    stepId: 'step_01'})          → 409 QUEST_STEP_KIND_MISMATCH
  *                                                                  (kill step không qua progress).
+ * 19. POST /api/quests/claim      ({questKey: 'fake_xxx'})        → 404 QUEST_UNKNOWN. (PR-3)
+ * 20. POST /api/quests/claim      ({questKey: 'truc_co_main_01'}) → 404 QUEST_NOT_FOUND_PROGRESS
+ *                                                                  (chưa từng accept). (PR-3)
+ * 21. POST /api/quests/claim      ({questKey: 'phamnhan_grind_01'}) → 409 QUEST_NOT_COMPLETED
+ *                                                                  (đang ACCEPTED). (PR-3)
  *
  * Env vars:
  *   SMOKE_API_BASE     — default "http://localhost:3000".
@@ -167,7 +177,13 @@ async function main() {
     assert(r.status === 401, `expected 401, got ${r.status}`);
   });
 
-  // 4.
+  // 4. Phase 12 PR-3 — claim auth gate.
+  await step('POST /quests/claim no auth → 401', async () => {
+    const r = await http('/api/quests/claim', { method: 'POST', body: { questKey: 'phamnhan_grind_01' } });
+    assert(r.status === 401, `expected 401, got ${r.status}`);
+  });
+
+  // 5.
   await step('register fresh user', async () => {
     cookieJar.clear();
     const r = await http('/api/_auth/register', { method: 'POST', body: { email, password } });
@@ -188,14 +204,21 @@ async function main() {
     assert(r.body?.error?.code === 'INVALID_INPUT', `expected INVALID_INPUT, got ${r.body?.error?.code}`);
   });
 
-  // 7.
+  // 7. (now 8 in flow numbering — comments updated below)
   await step('POST /quests/progress missing stepId → 400 INVALID_INPUT', async () => {
     const r = await http('/api/quests/progress', { method: 'POST', body: { questKey: 'phamnhan_main_01' } });
     assert(r.status === 400, `expected 400, got ${r.status}`);
     assert(r.body?.error?.code === 'INVALID_INPUT', `expected INVALID_INPUT, got ${r.body?.error?.code}`);
   });
 
-  // 8.
+  // 9. Phase 12 PR-3 — claim zod validate.
+  await step('POST /quests/claim missing questKey → 400 INVALID_INPUT', async () => {
+    const r = await http('/api/quests/claim', { method: 'POST', body: {} });
+    assert(r.status === 400, `expected 400, got ${r.status}`);
+    assert(r.body?.error?.code === 'INVALID_INPUT', `expected INVALID_INPUT, got ${r.body?.error?.code}`);
+  });
+
+  // 10.
   await step('onboard fresh character', async () => {
     const r = await http('/api/character/onboard', {
       method: 'POST',
@@ -276,6 +299,29 @@ async function main() {
     });
     assert(r.status === 409, `expected 409, got ${r.status}`);
     assert(r.body?.error?.code === 'QUEST_STEP_KIND_MISMATCH', `expected QUEST_STEP_KIND_MISMATCH, got ${r.body?.error?.code}`);
+  });
+
+  // 19. Phase 12 PR-3 — claim quest unknown.
+  await step('POST /quests/claim fake_xxx → 404 QUEST_UNKNOWN', async () => {
+    const r = await http('/api/quests/claim', { method: 'POST', body: { questKey: 'fake_xxx_quest' } });
+    assert(r.status === 404, `expected 404, got ${r.status}`);
+    assert(r.body?.error?.code === 'QUEST_UNKNOWN', `expected QUEST_UNKNOWN, got ${r.body?.error?.code}`);
+  });
+
+  // 20. Phase 12 PR-3 — claim quest player chưa từng accept.
+  // truc_co_main_01 fresh char chưa unlock + chưa accept → no QuestProgress row → 404.
+  await step('POST /quests/claim truc_co_main_01 (chưa accept) → 404 QUEST_NOT_FOUND_PROGRESS', async () => {
+    const r = await http('/api/quests/claim', { method: 'POST', body: { questKey: 'truc_co_main_01' } });
+    assert(r.status === 404, `expected 404, got ${r.status}, body=${JSON.stringify(r.body)}`);
+    assert(r.body?.error?.code === 'QUEST_NOT_FOUND_PROGRESS', `expected QUEST_NOT_FOUND_PROGRESS, got ${r.body?.error?.code}`);
+  });
+
+  // 21. Phase 12 PR-3 — claim quest đang ACCEPTED (chưa COMPLETED).
+  // phamnhan_grind_01 đã accept ở step 15 nhưng chưa kill xong → status=ACCEPTED → 409.
+  await step('POST /quests/claim phamnhan_grind_01 (ACCEPTED) → 409 QUEST_NOT_COMPLETED', async () => {
+    const r = await http('/api/quests/claim', { method: 'POST', body: { questKey: 'phamnhan_grind_01' } });
+    assert(r.status === 409, `expected 409, got ${r.status}, body=${JSON.stringify(r.body)}`);
+    assert(r.body?.error?.code === 'QUEST_NOT_COMPLETED', `expected QUEST_NOT_COMPLETED, got ${r.body?.error?.code}`);
   });
 
   // Summary.
