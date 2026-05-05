@@ -314,6 +314,14 @@ async function main() {
     assert(r.body?.error?.code === 'UNAUTHENTICATED', `breakthrough unauth: expect code UNAUTHENTICATED, got ${r.body?.error?.code}`);
   });
 
+  // 1b. POST /breakthrough/attempt (Phase 11 nâng cao §5 PR2 RNG endpoint) chưa auth → 401.
+  //     Mirror invariant với endpoint cũ — auth gate trước requireUserId().
+  await step('breakthrough/attempt — 401 UNAUTHENTICATED khi chưa register', async () => {
+    const r = await http('/api/character/breakthrough/attempt', { method: 'POST' });
+    assertStatus(r, 401, 'breakthrough/attempt unauth');
+    assert(r.body?.error?.code === 'UNAUTHENTICATED', `breakthrough/attempt unauth: expect code UNAUTHENTICATED, got ${r.body?.error?.code}`);
+  });
+
   // 2. Register fresh user.
   const email = randomEmail();
   const password = randomPassword();
@@ -334,6 +342,13 @@ async function main() {
     const r = await http('/api/character/breakthrough', { method: 'POST' });
     assertStatus(r, 404, 'breakthrough no-char');
     assert(r.body?.error?.code === 'NO_CHARACTER', `breakthrough no-char: expect code NO_CHARACTER, got ${r.body?.error?.code}`);
+  });
+
+  // 3b. POST /breakthrough/attempt khi chưa onboard → 404 NO_CHARACTER (mirror invariant).
+  await step('breakthrough/attempt — 404 NO_CHARACTER khi chưa onboard', async () => {
+    const r = await http('/api/character/breakthrough/attempt', { method: 'POST' });
+    assertStatus(r, 404, 'breakthrough/attempt no-char');
+    assert(r.body?.error?.code === 'NO_CHARACTER', `breakthrough/attempt no-char: expect code NO_CHARACTER, got ${r.body?.error?.code}`);
   });
 
   // 4. Onboard character.
@@ -369,6 +384,25 @@ async function main() {
     const r = await http('/api/character/breakthrough', { method: 'POST' });
     assertStatus(r, 409, 'breakthrough not-at-peak');
     assert(r.body?.error?.code === 'NOT_AT_PEAK', `breakthrough not-at-peak: expect code NOT_AT_PEAK, got ${r.body?.error?.code}`);
+  });
+
+  // 6b. POST /breakthrough/attempt fresh char (realmStage<9) → 409 NOT_AT_PEAK.
+  //     RNG endpoint dùng cùng peak gate — không roll RNG nếu chưa peak.
+  await step('breakthrough/attempt — 409 NOT_AT_PEAK cho fresh char (realmStage<9)', async () => {
+    const r = await http('/api/character/breakthrough/attempt', { method: 'POST' });
+    assertStatus(r, 409, 'breakthrough/attempt not-at-peak');
+    assert(r.body?.error?.code === 'NOT_AT_PEAK', `breakthrough/attempt not-at-peak: expect code NOT_AT_PEAK, got ${r.body?.error?.code}`);
+  });
+
+  // 6c. character/me — anti-FE-self-grant: state unchanged sau /attempt fail.
+  //     /attempt KHÔNG rút EXP, KHÔNG advance khi NOT_AT_PEAK; KHÔNG ghi log.
+  await step('character/me — state unchanged sau /breakthrough/attempt fail (anti-FE-self-grant)', async () => {
+    const r = await http('/api/character/me');
+    assertStatus(r, 200, 'character/me post-attempt-fail');
+    const ch = r.body?.data?.character;
+    assert(ch, 'character/me post-attempt-fail: no character in body');
+    const after = snapshotProgression(ch);
+    assertProgressionImmutable(initialSnapshot, after, 'character/me post-attempt-fail');
   });
 
   // 7. character/me — verify state unchanged sau failed breakthrough (anti-FE-grant).
@@ -520,13 +554,28 @@ async function main() {
     assert(r.body?.error?.code === 'NOT_AT_PEAK', `breakthrough post-advance: expect NOT_AT_PEAK, got ${r.body?.error?.code}`);
   });
 
-  // 19. logout + POST /breakthrough → 401 UNAUTHENTICATED.
+  // 18b. POST /breakthrough/attempt sau khi đã advance → 409 NOT_AT_PEAK (mirror).
+  //      Char ở truc_co stage 1; /attempt cùng peak gate → không roll RNG.
+  await step('breakthrough/attempt — 409 NOT_AT_PEAK lần 2 sau advance (truc_co stage 1)', async () => {
+    const r = await http('/api/character/breakthrough/attempt', { method: 'POST' });
+    assertStatus(r, 409, 'breakthrough/attempt post-advance');
+    assert(r.body?.error?.code === 'NOT_AT_PEAK', `breakthrough/attempt post-advance: expect NOT_AT_PEAK, got ${r.body?.error?.code}`);
+  });
+
+  // 19. logout + POST /breakthrough → 401 UNAUTHENTICATED + /breakthrough/attempt mirror.
   await step('logout + breakthrough — 401 UNAUTHENTICATED post-logout', async () => {
     const logout = await http('/api/_auth/logout', { method: 'POST' });
     assertStatus(logout, [200, 204], 'logout');
     const r = await http('/api/character/breakthrough', { method: 'POST' });
     assertStatus(r, 401, 'breakthrough post-logout');
     assert(r.body?.error?.code === 'UNAUTHENTICATED', `breakthrough post-logout: expect code UNAUTHENTICATED, got ${r.body?.error?.code}`);
+  });
+
+  // 19b. POST /breakthrough/attempt sau logout → 401 UNAUTHENTICATED (mirror invariant).
+  await step('breakthrough/attempt — 401 UNAUTHENTICATED post-logout', async () => {
+    const r = await http('/api/character/breakthrough/attempt', { method: 'POST' });
+    assertStatus(r, 401, 'breakthrough/attempt post-logout');
+    assert(r.body?.error?.code === 'UNAUTHENTICATED', `breakthrough/attempt post-logout: expect code UNAUTHENTICATED, got ${r.body?.error?.code}`);
   });
 
   // -----------------------------------------------------------------------------
