@@ -100,6 +100,7 @@ class CombatError extends Error {
     public code:
       | 'NO_CHARACTER'
       | 'DUNGEON_NOT_FOUND'
+      | 'DUNGEON_DAILY_LIMIT_REACHED'
       | 'STAMINA_LOW'
       | 'ALREADY_IN_FIGHT'
       | 'ENCOUNTER_NOT_FOUND'
@@ -113,6 +114,53 @@ class CombatError extends Error {
   ) {
     super(code);
   }
+}
+
+/**
+ * Phase 12.2.A — Trả về offset của một IANA timezone tại một thời điểm cụ
+ * thể, đơn vị phút. UTC → 0, Asia/Ho_Chi_Minh → 420 (UTC+07, không DST).
+ * Mirror helper `tzOffsetMinutes` trong `mission.service.ts` để không tạo
+ * cyclical import (mission depends combat catalog meta).
+ */
+function tzOffsetMinutes(tz: string, at: Date): number {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    timeZoneName: 'longOffset',
+  });
+  const parts = fmt.formatToParts(at);
+  const name = parts.find((p) => p.type === 'timeZoneName')?.value ?? '';
+  const m = name.match(/GMT([+-])(\d{2}):(\d{2})/);
+  if (!m) return 0;
+  const sign = m[1] === '+' ? 1 : -1;
+  return sign * (parseInt(m[2], 10) * 60 + parseInt(m[3], 10));
+}
+
+/**
+ * Phase 12.2.A — Trả về Date đại diện 00:00 local của ngày hiện tại theo
+ * `tz`, dạng UTC. Dùng để bracket Prisma `count({ createdAt: { gte } })`
+ * khi enforce `DungeonDef.dailyLimit`. Mặc định `Asia/Ho_Chi_Minh` (UTC+07,
+ * không DST) — match `MISSION_RESET_TZ` zone.
+ */
+export function startOfLocalDay(now: Date, tz: string): Date {
+  const offMs = tzOffsetMinutes(tz, now) * 60_000;
+  const local = new Date(now.getTime() + offMs);
+  const startLocalUtc = Date.UTC(
+    local.getUTCFullYear(),
+    local.getUTCMonth(),
+    local.getUTCDate(),
+  );
+  return new Date(startLocalUtc - offMs);
+}
+
+/**
+ * Phase 12.2.A — Đọc env `MISSION_RESET_TZ` để xác định timezone của mốc
+ * reset DAILY (mirror `mission.service.ts`). Mặc định `Asia/Ho_Chi_Minh`.
+ * Combat reuse zone này để keep daily-bucket invariant đồng nhất giữa
+ * dungeon dailyLimit / mission DAILY / daily-login streak.
+ */
+function getCombatResetTz(): string {
+  const v = process.env.MISSION_RESET_TZ?.trim();
+  return v && v.length > 0 ? v : 'Asia/Ho_Chi_Minh';
 }
 
 @Injectable()
@@ -148,6 +196,28 @@ export class CombatService {
     if (!char) throw new CombatError('NO_CHARACTER');
     const dungeon = dungeonByKey(dungeonKey);
     if (!dungeon) throw new CombatError('DUNGEON_NOT_FOUND');
+
+    // Phase 12.2.A — Enforce `DungeonDef.dailyLimit` server-side. Catalog
+    // metadata (PR #397 Phase 10 PR-3 forward-compat) đến giờ chỉ được test
+    // ở shared layer; runtime chưa gate → players grind vô hạn (trái với
+    // BALANCE_MODEL.md §5.2). Đếm encounter row trong cửa sổ DAILY VN tz
+    // (00:00 ICT → 00:00 ICT next day) — bao gồm cả status ABANDONED/LOST/
+    // WON để slot daily đã "tiêu" không refund khi player rút sớm.
+    if (typeof dungeon.dailyLimit === 'number' && dungeon.dailyLimit > 0) {
+      const tz = getCombatResetTz();
+      const dayStart = startOfLocalDay(new Date(), tz);
+      const todayCount = await this.prisma.encounter.count({
+        where: {
+          characterId: char.id,
+          dungeonKey,
+          createdAt: { gte: dayStart },
+        },
+      });
+      if (todayCount >= dungeon.dailyLimit) {
+        throw new CombatError('DUNGEON_DAILY_LIMIT_REACHED');
+      }
+    }
+
     if (char.stamina < dungeon.staminaEntry) throw new CombatError('STAMINA_LOW');
 
     const existing = await this.prisma.encounter.findFirst({

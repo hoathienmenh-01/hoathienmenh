@@ -563,6 +563,7 @@
       "ALREADY_IN_FIGHT": "You are already in another fight.",
       "NO_CHARACTER": "No character yet.",
       "DUNGEON_NOT_FOUND": "Dungeon not found.",
+      "DUNGEON_DAILY_LIMIT_REACHED": "You have hit this dungeon's daily entry limit. Try again tomorrow.",
       "ENCOUNTER_NOT_FOUND": "This fight no longer exists.",
       "ENCOUNTER_ENDED": "Fight has ended.",
       "TALENT_NOT_LEARNED": "Talent not learned yet.",

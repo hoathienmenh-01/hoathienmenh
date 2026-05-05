@@ -476,6 +476,57 @@ async function main() {
     assert(enc === null || enc === undefined, `Encounter active sau khi end: ${JSON.stringify(enc)}`);
   });
 
+  // ───────────────────────────────────────────────────────────────────────
+  // Phase 12.2.A — DungeonDef.dailyLimit enforcement smoke
+  //
+  // Verify server-authoritative daily limit gate. Use `cuu_la_dien` (limit=1,
+  // staminaEntry=60) — chỉ cần 1 entry để fill slot. Char default stamina=100,
+  // sau son_coc flow còn ~80+, đủ cho 1 cuu_la_dien entry. Slot duy nhất sau
+  // entry 1 (kể cả khi abandon) — entry 2 phải reject 409
+  // DUNGEON_DAILY_LIMIT_REACHED (BEFORE stamina check, ngay cả khi stamina
+  // còn dưới 60).
+  // ───────────────────────────────────────────────────────────────────────
+
+  // 12a. Start cuu_la_dien lần 1 → tiêu slot daily 1/1.
+  let dailyLimitEnc = null;
+  await step('combat/encounter/start cuu_la_dien lần 1 — daily slot 1/1 (Phase 12.2.A)', async () => {
+    const r = await http('/api/combat/encounter/start', {
+      method: 'POST',
+      body: { dungeonKey: 'cuu_la_dien' },
+    });
+    assertStatus(r, 200, 'combat/encounter/start cuu_la_dien');
+    const enc = r.body?.data?.encounter;
+    if (!enc) throw new Error(`start cuu_la_dien: no encounter in body`);
+    assert(enc.status === 'ACTIVE', `cuu_la_dien encounter.status phải ACTIVE, got ${enc.status}`);
+    assert(enc.dungeon?.key === 'cuu_la_dien', `dungeon.key phải khớp: ${enc.dungeon?.key}`);
+    dailyLimitEnc = enc.id;
+  });
+
+  // 12b. Abandon cuu_la_dien — slot không refund.
+  await step('combat/encounter/:id/abandon cuu_la_dien — slot vẫn tiêu (Phase 12.2.A)', async () => {
+    const r = await http(`/api/combat/encounter/${dailyLimitEnc}/abandon`, {
+      method: 'POST',
+      body: {},
+    });
+    assertStatus(r, 200, 'abandon cuu_la_dien');
+    const enc = r.body?.data?.encounter;
+    assert(enc?.status === 'ABANDONED', `cuu_la_dien.status sau abandon: ${enc?.status}`);
+  });
+
+  // 12c. Start cuu_la_dien lần 2 → 409 DUNGEON_DAILY_LIMIT_REACHED.
+  await step('combat/encounter/start cuu_la_dien lần 2 → 409 DUNGEON_DAILY_LIMIT_REACHED (Phase 12.2.A)', async () => {
+    const r = await http('/api/combat/encounter/start', {
+      method: 'POST',
+      body: { dungeonKey: 'cuu_la_dien' },
+    });
+    assertStatus(r, 409, 'cuu_la_dien lần 2 daily-limit');
+    const code = r.body?.error?.code ?? r.body?.error;
+    assert(
+      code === 'DUNGEON_DAILY_LIMIT_REACHED',
+      `Expected DUNGEON_DAILY_LIMIT_REACHED, got ${JSON.stringify(r.body?.error)}`,
+    );
+  });
+
   // 13. Currency ledger invariant — SUM == character.linhThach.
   await step('INVARIANT: SUM(CurrencyLedger.LINH_THACH) == Character.linhThach', async () => {
     const r = await http('/api/character/me');

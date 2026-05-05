@@ -11,7 +11,8 @@
  * Error mapping via duck-typing (`(e as { code?: string }).code` switch — KHÔNG
  * `instanceof CombatError` vì class CombatError không export):
  *  - `NO_CHARACTER` / `DUNGEON_NOT_FOUND` / `ENCOUNTER_NOT_FOUND` → 404
- *  - `STAMINA_LOW` / `MP_LOW` / `SKILL_NOT_USABLE` / `ALREADY_IN_FIGHT` / `ENCOUNTER_ENDED` → 409
+ *  - `STAMINA_LOW` / `MP_LOW` / `SKILL_NOT_USABLE` / `ALREADY_IN_FIGHT` /
+ *    `ENCOUNTER_ENDED` / `DUNGEON_DAILY_LIMIT_REACHED` → 409
  *  - default → rethrow (không nuốt 500)
  *
  * Test này lock-in:
@@ -295,6 +296,8 @@ describe('CombatController', () => {
       ['SKILL_NOT_USABLE', HttpStatus.CONFLICT],
       ['ALREADY_IN_FIGHT', HttpStatus.CONFLICT],
       ['ENCOUNTER_ENDED', HttpStatus.CONFLICT],
+      // Phase 12.2.A — DungeonDef.dailyLimit enforcement → 409 CONFLICT
+      ['DUNGEON_DAILY_LIMIT_REACHED', HttpStatus.CONFLICT],
     ];
     for (const [code, status] of cases) {
       it(`error.code=${code} → ${status}`, async () => {
