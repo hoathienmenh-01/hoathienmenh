@@ -44,6 +44,7 @@
       "achievementsState": "Không lấy được trạng thái thành tựu",
       "achievementClaim": "Nhận thưởng thành tựu thất bại",
       "tribulation": "Vượt kiếp thất bại",
+      "breakthrough": "Đột phá thất bại",
       "spiritualRootState": "Không lấy được trạng thái linh căn",
       "spiritualRootReroll": "Tái khai linh căn thất bại",
       "skillState": "Không lấy được pháp quyển",
@@ -280,7 +281,8 @@
       "spiritualRoot": "Linh Căn",
       "skillBook": "Pháp Quyển",
       "achievements": "Thành Tựu",
-      "tribulation": "Thiên Kiếp"
+      "tribulation": "Thiên Kiếp",
+      "breakthrough": "Đột Phá"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -1746,6 +1748,71 @@
         "success": "Thành công {count}",
         "fail": "Thất bại {count}"
       }
+    }
+  },
+  "breakthrough": {
+    "title": "Đột Phá Nâng Cao",
+    "subtitle": "Đột phá theo cơ chế tỷ lệ — server roll RNG và quyết định thành/bại. Thất bại sẽ chiêu Tâm Ma Khinh.",
+    "currentRealm": "Cảnh giới hiện tại: {realm}",
+    "action": {
+      "title": "Khởi sự đột phá",
+      "peakHint": "Đã đạt Cửu Trọng và đủ kinh nghiệm — có thể đột phá.",
+      "notPeakHint": "Cần đạt Cửu Trọng và đủ kinh nghiệm cảnh giới hiện tại trước khi đột phá nâng cao.",
+      "chanceHint": "Tỷ lệ thành công sẽ tính tại lúc đột phá theo Linh Căn / Công Pháp / Item buff.",
+      "submit": "Đột phá nâng cao (RNG)"
+    },
+    "outcome": {
+      "successTitle": "Đột phá thành công",
+      "failTitle": "Tâm Ma quấy nhiễu — Đột phá thất bại",
+      "transition": "{from} → {to}",
+      "finalChance": "Tỷ lệ cuối",
+      "rngRoll": "Roll",
+      "attemptIndex": "Lượt thứ",
+      "breakdownLabel": "Chi tiết tính tỷ lệ",
+      "successToast": "Đột phá thành công — đăng tiến cảnh giới mới.",
+      "failToast": "Đột phá thất bại — bị Tâm Ma Khinh quấy nhiễu trong 5 phút.",
+      "debuffApplied": "Bị {key} áp dụng — sẽ tan sau {expiresIn}.",
+      "debuffExpired": "đã tan"
+    },
+    "breakdown": {
+      "baseChance": "Tỷ lệ gốc",
+      "rootPurityBonus": "Bonus Linh Căn",
+      "methodAffinityBonus": "Bonus Công Pháp",
+      "itemBonus": "Bonus item",
+      "rawChance": "Tỷ lệ thô",
+      "reason": "Lý do tính"
+    },
+    "history": {
+      "title": "Lịch sử đột phá",
+      "stats": "Tổng {total} · ✓{success} · ✗{fail}",
+      "empty": "Chưa có lần đột phá nâng cao nào.",
+      "noMatch": "Không có lượt nào khớp bộ lọc.",
+      "successBadge": "Thành công",
+      "failBadge": "Thất bại",
+      "chanceShort": "TL: {n}",
+      "rollShort": "Roll: {n}",
+      "tamMaIndicator": "Bị Tâm Ma Khinh quấy nhiễu",
+      "loadMore": "Tải thêm",
+      "maxReached": "Đã đạt giới hạn 100 lượt gần nhất.",
+      "maxReachedToast": "Đã đạt giới hạn 100 lượt gần nhất, không tải thêm được.",
+      "retry": "Tải lại",
+      "justNow": "vừa xong",
+      "minutesAgo": "{n} phút trước",
+      "hoursAgo": "{n} giờ trước",
+      "daysAgo": "{n} ngày trước",
+      "filter": {
+        "all": "Tất cả",
+        "success": "Thành công",
+        "fail": "Thất bại"
+      }
+    },
+    "errors": {
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "NOT_AT_PEAK": "Cần đạt Cửu Trọng và đủ kinh nghiệm trước khi đột phá.",
+      "INVALID_RNG": "Lỗi hệ thống RNG, thử lại sau.",
+      "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
+      "IN_FLIGHT": "Đang xử lý…",
+      "UNKNOWN": "Đột phá thất bại, thử lại."
     }
   }
 }

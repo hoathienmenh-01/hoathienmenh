@@ -44,6 +44,7 @@
       "achievementsState": "Failed to load achievements state",
       "achievementClaim": "Failed to claim achievement reward",
       "tribulation": "Tribulation attempt failed",
+      "breakthrough": "Breakthrough attempt failed",
       "spiritualRootState": "Failed to load spiritual root state",
       "spiritualRootReroll": "Spiritual root reroll failed",
       "skillState": "Failed to load skill book",
@@ -280,7 +281,8 @@
       "spiritualRoot": "Root",
       "skillBook": "Skill Book",
       "achievements": "Achievements",
-      "tribulation": "Tribulation"
+      "tribulation": "Tribulation",
+      "breakthrough": "Breakthrough"
     },
     "badge": {
       "bossActive": "World boss is live",
@@ -1746,6 +1748,71 @@
         "success": "Success {count}",
         "fail": "Fail {count}"
       }
+    }
+  },
+  "breakthrough": {
+    "title": "Advanced Breakthrough",
+    "subtitle": "Probability-based breakthrough — server rolls RNG and decides outcome. Failure invites Light Heart Demon.",
+    "currentRealm": "Current realm: {realm}",
+    "action": {
+      "title": "Begin breakthrough",
+      "peakHint": "Reached Cửu Trọng peak with full EXP — ready to break through.",
+      "notPeakHint": "Must reach Cửu Trọng peak with full EXP before advanced breakthrough.",
+      "chanceHint": "Success chance is computed at the moment of breakthrough from Spiritual Root / Cultivation Method / Item buffs.",
+      "submit": "Advanced breakthrough (RNG)"
+    },
+    "outcome": {
+      "successTitle": "Breakthrough succeeded",
+      "failTitle": "Heart Demon strikes — breakthrough failed",
+      "transition": "{from} → {to}",
+      "finalChance": "Final chance",
+      "rngRoll": "Roll",
+      "attemptIndex": "Attempt #",
+      "breakdownLabel": "Chance breakdown",
+      "successToast": "Breakthrough succeeded — realm advanced.",
+      "failToast": "Breakthrough failed — Light Heart Demon for 5 minutes.",
+      "debuffApplied": "{key} applied — fades in {expiresIn}.",
+      "debuffExpired": "expired"
+    },
+    "breakdown": {
+      "baseChance": "Base chance",
+      "rootPurityBonus": "Spiritual Root bonus",
+      "methodAffinityBonus": "Method bonus",
+      "itemBonus": "Item bonus",
+      "rawChance": "Raw chance",
+      "reason": "Reason"
+    },
+    "history": {
+      "title": "Breakthrough history",
+      "stats": "Total {total} · ✓{success} · ✗{fail}",
+      "empty": "No advanced breakthrough attempts yet.",
+      "noMatch": "No attempts match the current filter.",
+      "successBadge": "Success",
+      "failBadge": "Fail",
+      "chanceShort": "Chance: {n}",
+      "rollShort": "Roll: {n}",
+      "tamMaIndicator": "Light Heart Demon active",
+      "loadMore": "Load more",
+      "maxReached": "Reached the 100-attempt cap.",
+      "maxReachedToast": "Reached the 100-attempt cap, cannot load more.",
+      "retry": "Retry",
+      "justNow": "just now",
+      "minutesAgo": "{n} min ago",
+      "hoursAgo": "{n} hr ago",
+      "daysAgo": "{n} d ago",
+      "filter": {
+        "all": "All",
+        "success": "Success",
+        "fail": "Fail"
+      }
+    },
+    "errors": {
+      "NO_CHARACTER": "No character.",
+      "NOT_AT_PEAK": "Must reach Cửu Trọng peak with full EXP before breakthrough.",
+      "INVALID_RNG": "RNG system error, please retry.",
+      "UNAUTHENTICATED": "Session expired.",
+      "IN_FLIGHT": "Processing…",
+      "UNKNOWN": "Breakthrough failed, please retry."
     }
   }
 }

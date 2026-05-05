@@ -236,6 +236,13 @@ async function logout(): Promise<void> {
           劫 {{ t('shell.nav.tribulation') }}
         </RouterLink>
         <RouterLink
+          to="/breakthrough"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
+          破 {{ t('shell.nav.breakthrough') }}
+        </RouterLink>
+        <RouterLink
           to="/achievements"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"

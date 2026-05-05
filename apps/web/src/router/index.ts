@@ -141,6 +141,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/TribulationView.vue'),
   },
   {
+    path: '/breakthrough',
+    name: 'breakthrough',
+    component: () => import('@/views/BreakthroughView.vue'),
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/views/NotFoundView.vue'),
