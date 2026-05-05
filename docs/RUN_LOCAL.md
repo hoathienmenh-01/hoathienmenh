@@ -108,8 +108,13 @@ pnpm typecheck                                       # Vue + Nest + shared
 pnpm lint                                            # eslint
 pnpm --filter @xuantoi/api test                      # Vitest API (real Postgres + Redis)
 pnpm --filter @xuantoi/shared test                   # Vitest shared (Zod / catalog)
+pnpm test:balance                                    # Vitest shared — chỉ balance dial + *-balance (~2s, 196 test)
 pnpm build                                           # api + web + shared
 ```
+
+**`pnpm test:balance`** (Phase 11 nâng cao §6) chạy nhanh chỉ 7 file
+balance — `balance-dials.test.ts` + `{boss,dungeons,items,missions,monsters,skills}-balance.test.ts`. Dùng trước mỗi PR thêm content / tune
+hệ số (xem [`BALANCE_MODEL.md`](./BALANCE_MODEL.md) §10.5).
 
 Lưu ý: API test dùng database `mtt` thật. Test sẽ `wipeAll` trước mỗi case → **không** chạy chung lúc API dev đang phục vụ user thật. Để tách: dùng env `TEST_DATABASE_URL` trỏ vào DB riêng.
 

@@ -27,25 +27,17 @@ import {
   activeSkillsForSect,
   skillsForElement,
 } from './combat';
+import {
+  SKILL_ATK_SCALE_HARD_CAP as ATK_SCALE_HARD_CAP,
+  SKILL_SELF_HEAL_HARD_CAP as SELF_HEAL_HARD_CAP,
+  SKILL_SELF_BLOOD_HARD_CAP as SELF_BLOOD_HARD_CAP,
+  SKILL_COOLDOWN_HARD_CAP as COOLDOWN_HARD_CAP,
+  SKILL_MP_COST_HARD_CAP as MP_COST_HARD_CAP,
+} from './balance-dials';
 
 const VALID_ELEMENTS: ReadonlyArray<ElementKey | null> = [...ELEMENTS, null];
 const VALID_TYPES: ReadonlyArray<SkillType> = ['ACTIVE', 'PASSIVE'];
 const VALID_REALMS = new Set(REALMS.map((r) => r.key));
-
-/**
- * Source: docs/BALANCE_MODEL.md §4. Hard cap đặt theo cap phase 10/11
- * "skill cao nhất". Test này không cap số lượng skill ngắn — chỉ cap
- * upper bound stat budget để phòng power creep silent.
- */
-const ATK_SCALE_HARD_CAP = 5;
-const SELF_HEAL_HARD_CAP = 0.5;
-const SELF_BLOOD_HARD_CAP = 0.3;
-
-/** Phase 11 §4.3 — turn cooldown band. */
-const COOLDOWN_HARD_CAP = 6;
-
-/** Cap mpCost theo BALANCE_MODEL §4.4 — skill mạnh nhất hiện ~50 MP. */
-const MP_COST_HARD_CAP = 80;
 
 describe('SKILL catalog — required field contract', () => {
   it('mọi skill có key snake_case ASCII (≥ 2 ký tự, không dấu)', () => {

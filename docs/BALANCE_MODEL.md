@@ -821,9 +821,44 @@ Hiện tại: `packages/shared/src/topup.ts`. Các dial:
 
 ---
 
-## 9. BALANCE DIAL REGISTRY (proposed phase 11)
+## 9. BALANCE DIAL REGISTRY (Phase 11 nâng cao §6 — DONE)
 
-File: `packages/shared/src/balance-dials.ts` (mới).
+File: `packages/shared/src/balance-dials.ts` (đã land — Phase 11 nâng cao §6).
+Test invariant: `packages/shared/src/balance-dials.test.ts` (36 test, snapshot stable).
+
+### 9.1 Inventory & Ownership
+
+| Group | Dial | Source-of-truth nơi khác | Owner |
+|---|---|---|---|
+| Cultivation | `CULTIVATION_TICK_MS` | `ws-events.ts` (re-export) | balance-dials |
+| Cultivation | `CULTIVATION_TICK_BASE_EXP` | `ws-events.ts` (re-export) | balance-dials |
+| Cultivation | `CULTIVATION_RATE_REALM_MULT` | `realms.ts` (private const ngày trước) | balance-dials |
+| Cultivation | `CULTIVATION_BUFF_CAP` | (mới) | balance-dials |
+| Realm cost | `REALM_COST_BASE` / `REALM_COST_SCALE` / `STAGE_COST_SCALE` | `realms.ts` `calcExpCost` (formula) | balance-dials |
+| Stamina | `STAMINA_REGEN_PER_TICK` | `combat.ts` (re-export) | balance-dials |
+| Stamina | `STAMINA_MAX_DEFAULT` | (mới) | balance-dials |
+| Combat | `COMBAT_RNG_LOW` / `RNG_HIGH` / `MIN_DAMAGE` / `DEF_FACTOR` | (mới — formalize §4.1) | balance-dials |
+| Skill | `SKILL_ATK_SCALE_HARD_CAP`, `SELF_HEAL_HARD_CAP`, `SELF_BLOOD_HARD_CAP`, `COOLDOWN_HARD_CAP`, `MP_COST_HARD_CAP` | trước inline trong `skills-balance.test.ts` | balance-dials |
+| Item | `ITEM_STAT_BUDGET_BY_QUALITY`, `OFF_SLOT_SOFT_CAP_MULTIPLIER`, `POWER_EQUIV_WEIGHTS` | trước inline trong `items-balance.test.ts` | balance-dials |
+| Mission | `MISSION_DAILY_BUDGET_BY_REALM_TIER`, `WEEKLY_DAILY_MULTIPLIER`, `ONCE_LINHTHACH_HARD_CAP`, `TIENNGOC_HARD_CAP` | trước inline trong `missions-balance.test.ts` | balance-dials |
+| Element (forward-compat — Phase 11 nâng cao §3) | `ELEMENT_NEUTRAL_MODIFIER`, `COUNTER_BONUS_MAX`, `COUNTER_PENALTY_MIN`, `GENERATE_BONUS`, `MODIFIER_ABSOLUTE_MIN/MAX` | (mới — chưa wire CombatService) | balance-dials |
+| Breakthrough (forward-compat — Phase 11 nâng cao §5) | `BREAKTHROUGH_CHANCE_MIN/MAX`, `FAIL_DEBUFF_DURATION_SEC`, `FAIL_DEBUFF_RATE_PENALTY` | (mới — chưa wire BreakthroughService) | balance-dials |
+| Economy | `MARKET_TAX_DEFAULT`, `DROP_WEIGHT_MAX_RATIO` | (mới — formalize §8.1 / §5.4) | balance-dials |
+
+### 9.2 Validators (anti-content-creep guard)
+
+`balance-dials.ts` export 3 validator function trả `string[]` (rỗng khi pass):
+- `validateSkillBudget(input)` — atkScale / mpCost / selfHealRatio / selfBloodCost / cooldownTurns ≤ cap.
+- `validateItemBudget(input)` — single-stat ≤ cap quality + multi-stat power-equiv ≤ soft cap.
+- `validateMissionRewardBudget(input)` — linhThach ≤ daily/weekly/once cap, tienNgoc ≤ cap.
+
+Caller dùng:
+```ts
+const errs = validateSkillBudget(skillInput);
+expect(errs, errs.join('\n')).toEqual([]);
+```
+
+### 9.3 Reference snapshot (proposed shape — implementation đã có)
 
 ```ts
 export const BALANCE_DIALS = {
@@ -928,17 +963,28 @@ it('estimated daily linhThach gain per realm is in target band', () => {
 });
 ```
 
-### 10.5 `pnpm test:balance` script (phase 11)
+### 10.5 `pnpm test:balance` script (Phase 11 nâng cao §6 — DONE)
 
-Phase 11 thêm script tổng:
+Root script đã land:
 
 ```json
-"scripts": {
-  "test:balance": "pnpm --filter @xuantoi/shared test -- balance"
-}
+// xuantoi/package.json
+"test:balance": "pnpm --filter @xuantoi/shared test:balance"
+// packages/shared/package.json
+"test:balance": "vitest run balance"
 ```
 
-Run trước mỗi PR content scale.
+Filter pattern `balance` match 7 file: `balance-dials.test.ts` +
+`{boss,dungeons,items,missions,monsters,skills}-balance.test.ts` (196 test).
+
+**Run trước mỗi PR content scale** để verify dial chưa drift + content
+chưa vượt cap. AI/dev có lệnh kiểm tra nhanh, không cần chạy full
+shared test suite (1124 test, ~10s) khi chỉ tune balance.
+
+```bash
+$ pnpm test:balance
+# 7 test files, 196 tests, ~2s
+```
 
 ---
 
