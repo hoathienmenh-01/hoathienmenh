@@ -22,3 +22,4 @@ export * from './topup';
 export * from './shop';
 export * from './map-regions';
 export * from './balance-dials';
+export * from './breakthrough-chance';

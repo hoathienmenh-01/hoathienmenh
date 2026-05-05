@@ -42,8 +42,12 @@ import {
   ELEMENT_NEUTRAL_MULTIPLIER,
   ELEMENT_RELATION_LABEL_VI,
   ELEMENT_SAME_ELEMENT_MULTIPLIER,
+  BREAKTHROUGH_CHANCE_BASE,
   BREAKTHROUGH_CHANCE_MAX,
   BREAKTHROUGH_CHANCE_MIN,
+  BREAKTHROUGH_ITEM_BONUS_MAX,
+  BREAKTHROUGH_METHOD_AFFINITY_BONUS,
+  BREAKTHROUGH_ROOT_PURITY_BONUS_MAX,
   ITEM_POWER_EQUIV_WEIGHTS,
   ITEM_STAT_BUDGET_BY_QUALITY,
   MISSION_DAILY_BUDGET_BY_REALM_TIER,
@@ -98,6 +102,10 @@ const NUMERIC_DIAL_KEYS_TO_CHECK = [
   'ELEMENT_MODIFIER_ABSOLUTE_CEIL',
   'BREAKTHROUGH_CHANCE_MIN',
   'BREAKTHROUGH_CHANCE_MAX',
+  'BREAKTHROUGH_CHANCE_BASE',
+  'BREAKTHROUGH_ROOT_PURITY_BONUS_MAX',
+  'BREAKTHROUGH_METHOD_AFFINITY_BONUS',
+  'BREAKTHROUGH_ITEM_BONUS_MAX',
   'BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC',
   'BREAKTHROUGH_FAIL_DEBUFF_RATE_PENALTY',
   'MARKET_TAX_DEFAULT',
@@ -151,6 +159,10 @@ describe('BALANCE_DIALS — finite & positive (anti-NaN/Infinity drift)', () => 
       'ELEMENT_MODIFIER_ABSOLUTE_CEIL',
       'BREAKTHROUGH_CHANCE_MIN',
       'BREAKTHROUGH_CHANCE_MAX',
+      'BREAKTHROUGH_CHANCE_BASE',
+      'BREAKTHROUGH_ROOT_PURITY_BONUS_MAX',
+      'BREAKTHROUGH_METHOD_AFFINITY_BONUS',
+      'BREAKTHROUGH_ITEM_BONUS_MAX',
       'BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC',
       'BREAKTHROUGH_FAIL_DEBUFF_RATE_PENALTY',
       'DROP_WEIGHT_MAX_RATIO',
@@ -170,6 +182,10 @@ describe('BALANCE_DIALS — finite & positive (anti-NaN/Infinity drift)', () => 
       'MARKET_TAX_DEFAULT',
       'BREAKTHROUGH_CHANCE_MIN',
       'BREAKTHROUGH_CHANCE_MAX',
+      'BREAKTHROUGH_CHANCE_BASE',
+      'BREAKTHROUGH_ROOT_PURITY_BONUS_MAX',
+      'BREAKTHROUGH_METHOD_AFFINITY_BONUS',
+      'BREAKTHROUGH_ITEM_BONUS_MAX',
       'BREAKTHROUGH_FAIL_DEBUFF_RATE_PENALTY',
       'DROP_WEIGHT_MAX_RATIO',
     ] as const;
@@ -229,8 +245,22 @@ describe('BALANCE_DIALS — pairwise ordering (min < max)', () => {
     );
   });
 
-  it('BREAKTHROUGH_CHANCE_MIN < CHANCE_MAX', () => {
-    expect(BREAKTHROUGH_CHANCE_MIN).toBeLessThan(BREAKTHROUGH_CHANCE_MAX);
+  it('BREAKTHROUGH_CHANCE_MIN < CHANCE_BASE < CHANCE_MAX (Phase 11 nâng cao §5)', () => {
+    expect(BREAKTHROUGH_CHANCE_MIN).toBeLessThan(BREAKTHROUGH_CHANCE_BASE);
+    expect(BREAKTHROUGH_CHANCE_BASE).toBeLessThan(BREAKTHROUGH_CHANCE_MAX);
+  });
+
+  it('BREAKTHROUGH bonus envelope: BASE + ROOT_MAX + METHOD + ITEM_MAX ≤ CHANCE_MAX + tolerance', () => {
+    // Sum bonus tối đa không nên vượt CHANCE_MAX quá nhiều. Cho phép drift
+    // ≤ 0.05 vì final luôn clamp về CHANCE_MAX. Property test guard để
+    // tránh dial drift làm formula vô nghĩa.
+    const sumMax =
+      BREAKTHROUGH_CHANCE_BASE +
+      BREAKTHROUGH_ROOT_PURITY_BONUS_MAX +
+      BREAKTHROUGH_METHOD_AFFINITY_BONUS +
+      BREAKTHROUGH_ITEM_BONUS_MAX;
+    // Tolerance 0.05 — sum có thể đạt 1.0 (= MAX 0.99 + 0.01).
+    expect(sumMax).toBeLessThanOrEqual(BREAKTHROUGH_CHANCE_MAX + 0.05);
   });
 
   it('REALM_COST_SCALE > 1 và STAGE_COST_SCALE > 1 (cost realm cao luôn cao hơn realm thấp)', () => {
@@ -383,6 +413,10 @@ describe('BALANCE_DIALS — aggregate snapshot (drift detection)', () => {
       breakthrough: {
         chanceMin: BALANCE_DIALS.BREAKTHROUGH_CHANCE_MIN,
         chanceMax: BALANCE_DIALS.BREAKTHROUGH_CHANCE_MAX,
+        chanceBase: BALANCE_DIALS.BREAKTHROUGH_CHANCE_BASE,
+        rootPurityBonusMax: BALANCE_DIALS.BREAKTHROUGH_ROOT_PURITY_BONUS_MAX,
+        methodAffinityBonus: BALANCE_DIALS.BREAKTHROUGH_METHOD_AFFINITY_BONUS,
+        itemBonusMax: BALANCE_DIALS.BREAKTHROUGH_ITEM_BONUS_MAX,
         failDebuffDurationSec: BALANCE_DIALS.BREAKTHROUGH_FAIL_DEBUFF_DURATION_SEC,
         failDebuffRatePenalty: BALANCE_DIALS.BREAKTHROUGH_FAIL_DEBUFF_RATE_PENALTY,
       },
@@ -394,10 +428,14 @@ describe('BALANCE_DIALS — aggregate snapshot (drift detection)', () => {
     expect(snapshot).toMatchInlineSnapshot(`
       {
         "breakthrough": {
+          "chanceBase": 0.7,
           "chanceMax": 0.99,
           "chanceMin": 0.3,
           "failDebuffDurationSec": 300,
           "failDebuffRatePenalty": 0.7,
+          "itemBonusMax": 0.1,
+          "methodAffinityBonus": 0.05,
+          "rootPurityBonusMax": 0.15,
         },
         "combat": {
           "defFactor": 0.5,
