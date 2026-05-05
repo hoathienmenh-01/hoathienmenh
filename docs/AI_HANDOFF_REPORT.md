@@ -10,11 +10,11 @@
 
 ## 1. Current Executive Summary
 
-- **Current `main` commit**: post PR #425 merged (`feat(shared): Phase 12 PR-1 — Story/NPC/Quest catalog foundation` — 15 quest + 4 NPC + 6 dialogue line + 45 integrity test cho 3 cảnh giới đầu) + PR #424 (compact handoff) + PR #423 (Story Bible DOCX archive). Story design source live tại [`docs/story/`](./story/).
-- **Current phase**: Phase 10 **CLOSED** ✅. Phase 11 Progression Depth **COMPLETE** ✅. Phase 11 nâng cao **CLOSED** ✅. Phase 12 World Map & Dungeon **OPEN** — Phase 12.1 catalog **CLOSED** (#397), Phase 12.2.A `DungeonDef.dailyLimit` **CLOSED** ✅ (#421), **Phase 12 Story PR-1** catalog **CLOSED** ✅ (#425), **Phase 12 Story PR-2** Quest runtime persistence **CLOSED** ✅ via this PR (Prisma `QuestProgress` + `Character.storyChapter` + `QuestService.list/accept/progress/track` + 3 endpoints + CombatService kill hook + 41 unit/controller test + smoke:quest 16/16 step). Runtime quest reward claim (PR-3) chưa start.
-- **In-flight**: none (this PR = Phase 12 PR-2 Quest runtime persistence; Prisma migration `20260520000000_phase_12_pr2_quest_runtime` + 1 module + CombatService wiring).
-- **Test baseline (post Phase 12 PR-2 merged)**: api **1866** (+41 from `quest.service.test.ts` 22 + `quest.controller.test.ts` 19), shared **1321**, web **1082**, total **4269 vitest**. E2E golden-path **20/20 spec**. Smoke scripts **26 module** (+`smoke:quest` 16 step). 1 flaky chat rate-limit test passes on retry. CI expected GREEN.
-- **Top priority next session**: (1) **Phase 12 Story PR-3 Quest claim/reward idempotency** (`QuestService.claim` qua `RewardLedger` `(characterId, QUEST_CLAIM, questKey)` + ledger row + retry idempotent). Small-Medium; (2) Phase 12.2.B DungeonTemplate + DungeonRun runtime (Medium-Large, **Prisma**); (3) smoke:daily-login multi-day positive (Small); (4) Concurrency tests phase 2 backlog. Detail §6.
+- **Current `main` commit**: post PR #427 merged (`feat(api): Phase 12 PR-3 — Quest claim / reward idempotency` — `QuestService.claim` atomic ledger + CAS guard + concurrency test + smoke +4 step) + PR #426 (Phase 12 PR-2 Quest runtime persistence) + PR #425 (Phase 12 PR-1 catalog foundation). Story design source live tại [`docs/story/`](./story/).
+- **Current phase**: Phase 10 **CLOSED** ✅. Phase 11 Progression Depth **COMPLETE** ✅. Phase 11 nâng cao **CLOSED** ✅. Phase 12 World Map & Dungeon **OPEN** — Phase 12.1 catalog **CLOSED** (#397), Phase 12.2.A `DungeonDef.dailyLimit` **CLOSED** ✅ (#421), **Phase 12 Story PR-1** catalog **CLOSED** ✅ (#425), **Phase 12 Story PR-2** Quest runtime persistence **CLOSED** ✅ (#426), **Phase 12 Story PR-3** Quest claim/reward idempotency **CLOSED** ✅ (#427), **Phase 12 Story PR-4** NPC dialogue UI **CLOSED** ✅ via this PR (`NpcModule` + 2 endpoint server-authoritative branch picker + `NpcView.vue` + `NpcDialogueModal.vue` + Pinia store + i18n vi/en + 26 BE test + 19 FE test + smoke:npc 11 step). Main storyline Chapter 1 playable (PR-5) chưa start.
+- **In-flight**: none (this PR = Phase 12 PR-4 NPC dialogue UI; read-only `NpcModule` + 2 endpoint + 1 view + 1 modal + 1 Pinia store + smoke script).
+- **Test baseline (post Phase 12 PR-4 merged)**: api **1907** (+15 from `npc.service.test.ts` 14 + `npc.controller.test.ts` 12 — net +26 mới với 11 từ PR-3 đã baseline), shared **1321**, web **1101** (+19 from `NpcDialogueModal.test.ts` 10 + `stores/__tests__/npc.test.ts` 9), total **4329 vitest**. E2E golden-path **20/20 spec**. Smoke scripts **27 module** (+`smoke:npc` 11 step). 1 flaky chat rate-limit test passes on retry. CI expected GREEN.
+- **Top priority next session**: (1) **Phase 12 Story PR-5 Main storyline Chapter 1 playable** (`phamnhan_main_01` end-to-end quá trinh accept (NPC modal) → progress (kill via combat hook) → COMPLETED → claim → inventory + ledger; QuestView.vue list + filter UI; E2E spec golden-path). Medium-Large full-stack; (2) Phase 12.2.B DungeonTemplate + DungeonRun runtime (Medium-Large, **Prisma**); (3) smoke:daily-login multi-day positive (Small); (4) Concurrency tests phase 2 backlog. Detail §6.
 - **Open Critical/High issues**: none. Live medium issues: M7 (CSP production verify khi deploy), M10 (Shop daily limit + rate-limit per user). Detail §4.
 - **Blocker**: none.
 
@@ -26,7 +26,8 @@
 
 | PR | Title | Type |
 |---|---|---|
-| **this PR** | `feat(api): Phase 12 PR-3 — Quest claim / reward idempotency (QuestService.claim qua CurrencyService.applyTx + InventoryService.grantTx + CAS guard claimedAt + concurrency test 2 parallel claim → 1 winner + smoke +4 step + 15 new test)` | medium BE feature + tests |
+| **this PR** | `feat(web,api): Phase 12 PR-4 — NPC dialogue UI (NpcModule server-authoritative branch picker realm_min + quest_status + faction_member placeholder + choice quest status annotation; FE NpcView + NpcDialogueModal + Pinia store + i18n vi/en + smoke:npc 11 step + 45 new test)` | medium FE+BE feature + tests |
+| [#427](https://github.com/hoathienmenh-01/xuantoi/pull/427) | `feat(api): Phase 12 PR-3 — Quest claim / reward idempotency (QuestService.claim qua CurrencyService.applyTx + InventoryService.grantTx + CAS guard claimedAt + concurrency test 2 parallel claim → 1 winner + smoke +4 step + 15 new test)` | medium BE feature + tests |
 | [#426](https://github.com/hoathienmenh-01/xuantoi/pull/426) | `feat(api): Phase 12 PR-2 — Quest runtime persistence (QuestProgress Prisma + QuestService list/accept/progress/track + 3 endpoints + CombatService kill hook + 41 unit/controller test + smoke:quest 16 step)` | medium BE feature + Prisma migration |
 | [#425](https://github.com/hoathienmenh-01/xuantoi/pull/425) | `feat(shared): Phase 12 PR-1 — Story/NPC/Quest catalog foundation (15 quest + 4 NPC + 6 dialogue + 45 integrity test cho 3 cảnh giới đầu)` | medium shared catalog + tests |
 | [#424](https://github.com/hoathienmenh-01/xuantoi/pull/424) | `docs(ai): compact handoff and add task-based docs navigation` — `AI_HANDOFF_REPORT.md` 217→159 + START_HERE 3-tier nav + cap 250 dòng + DOCS-ONLY PR EXCEPTION clause | docs only |
@@ -51,10 +52,10 @@
 | 10 | Content scale | **5/5 CLOSED** ✅ | All sub-tracks merged. |
 | 11 | Progression Depth | **catalog 11/11 + runtime 10/10 + UI merged** | Phase 11 nâng cao (§2/§3/§5/§6 + 11.6.C/D/E + 11.1.E) tất cả CLOSED. |
 | 11.X | UI E2E smoke Playwright | **DONE** | Spec #19 talent learn→cast→cooldown + #20 breakthrough flow merged via #394/#420. |
-| 12 | World Map & Dungeon | **OPEN** | 12.1 catalog CLOSED (#397). 12.2.A `dailyLimit` enforcement CLOSED (#421). 12.2.B DungeonTemplate runtime is next. Story design source archived (#423). Story PR-1 catalog foundation CLOSED (#425). **Story PR-2 Quest runtime persistence** CLOSED (this PR — `QuestProgress` Prisma + `QuestService.list/accept/progress/track` + CombatService kill hook). Story PR-3 reward claim is next. |
+| 12 | World Map & Dungeon | **OPEN** | 12.1 catalog CLOSED (#397). 12.2.A `dailyLimit` enforcement CLOSED (#421). 12.2.B DungeonTemplate runtime is next. Story design source archived (#423). Story PR-1 catalog (#425) + PR-2 quest runtime (#426) + PR-3 quest claim (#427) CLOSED. **Story PR-4 NPC dialogue UI** CLOSED (this PR — `NpcModule` 2 endpoint server-authoritative + `NpcView.vue` + `NpcDialogueModal.vue` + Pinia store + i18n + smoke:npc + 45 test). Story PR-5 Chapter 1 playable end-to-end is next. |
 | 13+ | Real-time PvP / pet gacha / voice / streaming | **Not started** | Per [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §0 — explicitly DO NOT build yet. |
 
-**Smoke coverage**: 25 module (~15 step avg). 8 module có cả negative + positive path: skill / shop / mail / inventory / spiritual-root / breakthrough / auth / cultivation-method. Defer: daily-login multi-day positive (cần admin advance-day). Full per-module step count + endpoint coverage → [`ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md) § Smoke Detail Migrated 2026-05-05.
+**Smoke coverage**: 27 module (~15 step avg, +`smoke:quest` 20 step PR-3, +`smoke:npc` 11 step PR-4). 8 module có cả negative + positive path: skill / shop / mail / inventory / spiritual-root / breakthrough / auth / cultivation-method. Defer: daily-login multi-day positive (cần admin advance-day). Full per-module step count + endpoint coverage → [`ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md) § Smoke Detail Migrated 2026-05-05.
 
 ---
 
@@ -122,10 +123,10 @@ Per [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) §SESSION PR LIMIT (1-3 PR/
 
 2. **Phase 12 Story chain** — design source ở [`docs/story/TU_TIEN_LO_STORY_BIBLE.md`](./story/TU_TIEN_LO_STORY_BIBLE.md) + [`docs/story/PHASE12_STORY_PROGRESS.md`](./story/PHASE12_STORY_PROGRESS.md). 5-PR roadmap:
    - **PR-1** — Story/NPC/Quest catalog foundation (15 quest + 4 NPC + 6 dialogue cho 3 cảnh giới đầu). **CLOSED** ✅ (#425).
-   - **PR-2** — Quest runtime persistence (Prisma `QuestProgress` + `Character.storyChapter` + `QuestService.list/accept/progress/track` + 3 endpoints + CombatService kill hook). **CLOSED** ✅ (this PR).
-   - **PR-3** — Quest claim / reward idempotency (`QuestService.claim` qua `RewardLedger` + idempotency `(characterId, QUEST_CLAIM, questKey)`). Small. **NEXT.**
-   - **PR-4** — NPC dialogue UI (`NpcDialogueModal.vue` + `GET /npc/:id/dialogue` + Pinia + i18n). Medium FE+BE.
-   - **PR-5** — Main storyline Chapter 1 playable (`phamnhan_main_01` end-to-end + E2E spec). Medium-Large full-stack.
+   - **PR-2** — Quest runtime persistence (Prisma `QuestProgress` + `Character.storyChapter` + `QuestService.list/accept/progress/track` + 3 endpoints + CombatService kill hook). **CLOSED** ✅ (#426).
+   - **PR-3** — Quest claim / reward idempotency (`QuestService.claim` qua `CurrencyService.applyTx` + `InventoryService.grantTx` + CAS guard `QuestProgress.claimedAt` + concurrency test). **CLOSED** ✅ (#427).
+   - **PR-4** — NPC dialogue UI (`NpcModule` 2 endpoint + server-authoritative branch picker theo realm/quest_status + `NpcView.vue` + `NpcDialogueModal.vue` + Pinia store + i18n + 45 test + smoke:npc). **CLOSED** ✅ (this PR).
+   - **PR-5** — Main storyline Chapter 1 playable (`phamnhan_main_01` end-to-end + `QuestView.vue` list + E2E spec golden-path). Medium-Large full-stack. **NEXT.**
 
    Sau mỗi PR Phase 12 Story merged, AI **bắt buộc** cập nhật `docs/story/PHASE12_STORY_PROGRESS.md` trong cùng PR (DOCS UPDATE RULE).
 

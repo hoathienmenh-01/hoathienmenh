@@ -15,6 +15,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { OpsModule } from './modules/ops/ops.module';
 import { MissionModule } from './modules/mission/mission.module';
 import { QuestModule } from './modules/quest/quest.module';
+import { NpcModule } from './modules/npc/npc.module';
 import { GiftCodeModule } from './modules/giftcode/giftcode.module';
 import { MailModule } from './modules/mail/mail.module';
 import { EmailModule } from './modules/email/email.module';
@@ -45,6 +46,7 @@ import { RedisModule } from './common/redis.module';
     OpsModule,
     MissionModule,
     QuestModule,
+    NpcModule,
     GiftCodeModule,
     MailModule,
     EmailModule,
