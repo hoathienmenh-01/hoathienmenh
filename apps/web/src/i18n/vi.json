@@ -622,7 +622,8 @@
       "def": "+{v} thủ",
       "hpMax": "+{v} HP",
       "mpMax": "+{v} MP",
-      "spirit": "+{v} linh"
+      "spirit": "+{v} linh",
+      "elementResist": "-{pct}% sát thương từ hệ {element}"
     },
     "errors": {
       "INVENTORY_ITEM_NOT_FOUND": "Vật phẩm không còn nữa.",
