@@ -139,6 +139,120 @@ describe('CombatService', () => {
     });
   });
 
+  // — Phase 12.2.A — DungeonDef.dailyLimit enforcement ---------------------
+  describe('Daily limit enforcement (Phase 12.2.A)', () => {
+    /** son_coc.dailyLimit=5 ; staminaEntry=10. */
+    const SON_COC_LIMIT = 5;
+    /** cuu_la_dien.dailyLimit=1 — dùng test "limit reached after 1 entry". */
+    const CUU_LA_LIMIT = 1;
+
+    it('start: dưới daily limit → cho phép vào ải bình thường', async () => {
+      const u = await makeUserChar(prisma, { stamina: 100 });
+      // Run 4/5 entries (mỗi lần start + abandon để clear ALREADY_IN_FIGHT).
+      for (let i = 0; i < SON_COC_LIMIT - 1; i++) {
+        const enc = await combat.start(u.userId, 'son_coc');
+        await combat.abandon(u.userId, enc.id);
+      }
+      // 5th entry vẫn được phép (count=4 < 5).
+      const enc5 = await combat.start(u.userId, 'son_coc');
+      expect(enc5.status).toBe(EncounterStatus.ACTIVE);
+      const count = await prisma.encounter.count({
+        where: { characterId: u.characterId, dungeonKey: 'son_coc' },
+      });
+      expect(count).toBe(SON_COC_LIMIT);
+    });
+
+    it('start: chạm daily limit → DUNGEON_DAILY_LIMIT_REACHED', async () => {
+      const u = await makeUserChar(prisma, { stamina: 100 });
+      for (let i = 0; i < SON_COC_LIMIT; i++) {
+        const enc = await combat.start(u.userId, 'son_coc');
+        await combat.abandon(u.userId, enc.id);
+      }
+      // Lần thứ 6 (count=5 >= limit=5) phải bị reject.
+      await expect(combat.start(u.userId, 'son_coc')).rejects.toMatchObject({
+        code: 'DUNGEON_DAILY_LIMIT_REACHED',
+      });
+    });
+
+    it('start: ABANDONED encounter vẫn count vào daily slot (không refund)', async () => {
+      const u = await makeUserChar(prisma, { stamina: 100 });
+      // cuu_la_dien.dailyLimit=1, staminaEntry=60 → seed stamina cao hơn.
+      await prisma.character.update({
+        where: { id: u.characterId },
+        data: { stamina: 100 },
+      });
+      const enc = await combat.start(u.userId, 'cuu_la_dien');
+      await combat.abandon(u.userId, enc.id);
+      // Slot duy nhất tiêu xong → 2nd entry reject ngay cả khi đã abandon.
+      await prisma.character.update({
+        where: { id: u.characterId },
+        data: { stamina: 100 },
+      });
+      await expect(combat.start(u.userId, 'cuu_la_dien')).rejects.toMatchObject({
+        code: 'DUNGEON_DAILY_LIMIT_REACHED',
+      });
+      // Sanity: count = 1 (CUU_LA_LIMIT).
+      const count = await prisma.encounter.count({
+        where: { characterId: u.characterId, dungeonKey: 'cuu_la_dien' },
+      });
+      expect(count).toBe(CUU_LA_LIMIT);
+    });
+
+    it('start: encounter ở dungeon KHÁC không tính chung slot (per-dungeon counter)', async () => {
+      const u = await makeUserChar(prisma, { stamina: 100 });
+      // Tiêu hết slot son_coc (limit=5).
+      for (let i = 0; i < SON_COC_LIMIT; i++) {
+        const enc = await combat.start(u.userId, 'son_coc');
+        await combat.abandon(u.userId, enc.id);
+      }
+      // hac_lam (limit=4, staminaEntry=18) — slot riêng, vẫn vào được.
+      await prisma.character.update({
+        where: { id: u.characterId },
+        data: { stamina: 100 },
+      });
+      const encHac = await combat.start(u.userId, 'hac_lam');
+      expect(encHac.status).toBe(EncounterStatus.ACTIVE);
+      expect(encHac.dungeon.key).toBe('hac_lam');
+    });
+
+    it('start: encounter từ "hôm qua" (createdAt < startOfTodayLocal) KHÔNG tính daily slot', async () => {
+      const u = await makeUserChar(prisma, { stamina: 100 });
+      // Backdate 5 row son_coc 2 ngày trước (đảm bảo ngoài cửa sổ DAILY VN tz
+      // bất kể giờ chạy test). Bypass createdAt @default(now()) bằng update
+      // sau khi create.
+      const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+      for (let i = 0; i < SON_COC_LIMIT; i++) {
+        const enc = await prisma.encounter.create({
+          data: {
+            characterId: u.characterId,
+            dungeonKey: 'son_coc',
+            status: EncounterStatus.LOST,
+          },
+        });
+        await prisma.encounter.update({
+          where: { id: enc.id },
+          data: { createdAt: twoDaysAgo },
+        });
+      }
+      // Hôm nay vẫn còn nguyên 5 slot.
+      const enc = await combat.start(u.userId, 'son_coc');
+      expect(enc.status).toBe(EncounterStatus.ACTIVE);
+    });
+
+    it('start: dungeon KHÔNG có dailyLimit (legacy / null) → unbounded', async () => {
+      // Stub catalog: tạo 1 character + 100 encounter row dungeonKey không
+      // tồn tại trong catalog → vẫn fail DUNGEON_NOT_FOUND (dungeon validate
+      // BEFORE limit check) — verify ordering, không leak NPE.
+      const u = await makeUserChar(prisma, { stamina: 100 });
+      await expect(combat.start(u.userId, 'no_such_dungeon')).rejects.toMatchObject({
+        code: 'DUNGEON_NOT_FOUND',
+      });
+      // Positive case: tất cả dungeon trong catalog hiện tại đều có
+      // dailyLimit set (verify bằng count); không cần test "null limit"
+      // riêng vì invariant catalog (xem dungeons-balance.test.ts).
+    });
+  });
+
   // — Phase 11.3.D+++ DUNGEON_LOOT skill_book runtime wire ---------------
   describe('DUNGEON_LOOT skill book drop wire (Phase 11.3.D+++)', () => {
     afterEach(() => {

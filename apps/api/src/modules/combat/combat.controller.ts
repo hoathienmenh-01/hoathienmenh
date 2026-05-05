@@ -119,6 +119,7 @@ export class CombatController {
       case 'TALENT_NOT_LEARNED':
       case 'TALENT_NOT_ACTIVE':
       case 'TALENT_ON_COOLDOWN':
+      case 'DUNGEON_DAILY_LIMIT_REACHED':
         fail(code, HttpStatus.CONFLICT);
       // eslint-disable-next-line no-fallthrough
       default:

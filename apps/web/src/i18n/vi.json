@@ -563,6 +563,7 @@
       "ALREADY_IN_FIGHT": "Đạo hữu đã đang trong một trận chiến khác.",
       "NO_CHARACTER": "Chưa có nhân vật.",
       "DUNGEON_NOT_FOUND": "Không tìm thấy ải.",
+      "DUNGEON_DAILY_LIMIT_REACHED": "Hôm nay đã hết lượt vào ải này, mai quay lại.",
       "ENCOUNTER_NOT_FOUND": "Trận chiến không còn nữa.",
       "ENCOUNTER_ENDED": "Trận chiến đã kết thúc.",
       "TALENT_NOT_LEARNED": "Chưa lĩnh ngộ thần thông này.",
