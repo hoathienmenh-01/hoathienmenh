@@ -9,6 +9,7 @@
     "typecheck": "pnpm -r run typecheck",
     "lint": "pnpm -r run lint",
     "test": "pnpm -r run test",
+    "test:balance": "pnpm --filter @xuantoi/shared test:balance",
     "infra:up": "docker compose -f infra/docker-compose.dev.yml up -d",
     "infra:down": "docker compose -f infra/docker-compose.dev.yml down",
     "backup:db": "bash scripts/backup-db.sh",

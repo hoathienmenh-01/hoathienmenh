@@ -25,6 +25,12 @@ import {
 import { ELEMENTS, MONSTERS, DUNGEONS } from './combat';
 import { itemByKey } from './items';
 import { REALMS } from './realms';
+import {
+  MISSION_DAILY_BUDGET_BY_REALM_TIER,
+  MISSION_WEEKLY_DAILY_MULTIPLIER,
+  MISSION_ONCE_LINHTHACH_HARD_CAP,
+  MISSION_TIENNGOC_HARD_CAP,
+} from './balance-dials';
 
 const REALM_KEYS = new Set(REALMS.map((r) => r.key));
 // Hợp lệ region tham chiếu = region thực sự (theo monster/dungeon regionKey)
@@ -183,45 +189,42 @@ describe('MISSIONS — period & realm tier distribution (Phase 10 PR-4)', () => 
 });
 
 describe('MISSIONS — reward budget bound per realm tier (BALANCE_MODEL §7.1)', () => {
-  // Daily mission per realm tier — BALANCE_MODEL §7.1:
-  //   luyenkhi 500 / truc_co 1500 / kim_dan 4000 / nguyen_anh 10000.
-  // Cho phép +50% buffer vì mission lớn cuối tier (boss_hit, big quest).
-  const DAILY_BUDGET: Record<string, number> = {
-    luyenkhi: 800,
-    truc_co: 2300,
-    kim_dan: 6000,
-    nguyen_anh: 15000,
-  };
+  // Source of truth: `balance-dials.ts` MISSION_DAILY_BUDGET_BY_REALM_TIER /
+  // MISSION_WEEKLY_DAILY_MULTIPLIER / MISSION_ONCE_LINHTHACH_HARD_CAP /
+  // MISSION_TIENNGOC_HARD_CAP. Cho phép +50% buffer vì mission lớn cuối
+  // tier (boss_hit, big quest).
 
   it('mọi DAILY mission có realmTier không vượt budget linhThach', () => {
     for (const m of missionsByPeriod('DAILY')) {
-      if (m.realmTier && DAILY_BUDGET[m.realmTier] !== undefined) {
+      if (m.realmTier && MISSION_DAILY_BUDGET_BY_REALM_TIER[m.realmTier] !== undefined) {
+        const cap = MISSION_DAILY_BUDGET_BY_REALM_TIER[m.realmTier];
         const lt = m.rewards.linhThach ?? 0;
-        expect(lt, `daily mission ${m.key} (${m.realmTier}) linhThach`).toBeLessThanOrEqual(DAILY_BUDGET[m.realmTier]);
+        expect(lt, `daily mission ${m.key} (${m.realmTier}) linhThach`).toBeLessThanOrEqual(cap);
       }
     }
   });
 
-  it('mọi WEEKLY mission linhThach ≤ 5× DAILY tier budget', () => {
+  it(`mọi WEEKLY mission linhThach ≤ ${MISSION_WEEKLY_DAILY_MULTIPLIER}× DAILY tier budget`, () => {
     for (const m of missionsByPeriod('WEEKLY')) {
-      if (m.realmTier && DAILY_BUDGET[m.realmTier] !== undefined) {
+      if (m.realmTier && MISSION_DAILY_BUDGET_BY_REALM_TIER[m.realmTier] !== undefined) {
+        const cap = MISSION_DAILY_BUDGET_BY_REALM_TIER[m.realmTier] * MISSION_WEEKLY_DAILY_MULTIPLIER;
         const lt = m.rewards.linhThach ?? 0;
-        expect(lt, `weekly mission ${m.key} (${m.realmTier}) linhThach`).toBeLessThanOrEqual(DAILY_BUDGET[m.realmTier] * 5);
+        expect(lt, `weekly mission ${m.key} (${m.realmTier}) linhThach`).toBeLessThanOrEqual(cap);
       }
     }
   });
 
-  it('mọi ONCE mission linhThach không vượt 200000 (cap tuyệt đối, prevent runaway)', () => {
+  it(`mọi ONCE mission linhThach không vượt ${MISSION_ONCE_LINHTHACH_HARD_CAP} (cap tuyệt đối, prevent runaway)`, () => {
     for (const m of missionsByPeriod('ONCE')) {
       const lt = m.rewards.linhThach ?? 0;
-      expect(lt, `once mission ${m.key} linhThach`).toBeLessThanOrEqual(200_000);
+      expect(lt, `once mission ${m.key} linhThach`).toBeLessThanOrEqual(MISSION_ONCE_LINHTHACH_HARD_CAP);
     }
   });
 
-  it('tienNgoc reward chỉ xuất hiện ở weekly/once cao cấp (≤ 100 cap)', () => {
+  it(`tienNgoc reward chỉ xuất hiện ở weekly/once cao cấp (≤ ${MISSION_TIENNGOC_HARD_CAP} cap)`, () => {
     for (const m of MISSIONS) {
       if (m.rewards.tienNgoc !== undefined) {
-        expect(m.rewards.tienNgoc, `mission ${m.key} tienNgoc`).toBeLessThanOrEqual(100);
+        expect(m.rewards.tienNgoc, `mission ${m.key} tienNgoc`).toBeLessThanOrEqual(MISSION_TIENNGOC_HARD_CAP);
       }
     }
   });

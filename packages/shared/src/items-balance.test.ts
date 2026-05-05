@@ -16,24 +16,13 @@
  */
 import { describe, it, expect } from 'vitest';
 import { EQUIP_SLOTS, QUALITIES } from './enums';
-import { ITEMS, type ItemDef } from './items';
+import { ITEMS } from './items';
 import { getSkillTemplate } from './skill-templates';
-
-/**
- * Stat caps per quality. Source: docs/BALANCE_MODEL.md §3.3.
- * Number = max **per item** for that single stat. Multi-stat budget
- * (sum of stats × weight) capped softer ở off-slot test bên dưới.
- */
-const STAT_CAP: Record<
-  ItemDef['quality'],
-  { atk: number; def: number; hpMax: number; mpMax: number; spirit: number }
-> = {
-  PHAM: { atk: 10, def: 8, hpMax: 30, mpMax: 30, spirit: 5 },
-  LINH: { atk: 25, def: 20, hpMax: 80, mpMax: 80, spirit: 12 },
-  HUYEN: { atk: 60, def: 50, hpMax: 200, mpMax: 200, spirit: 30 },
-  TIEN: { atk: 200, def: 160, hpMax: 800, mpMax: 800, spirit: 100 },
-  THAN: { atk: 800, def: 600, hpMax: 3000, mpMax: 3000, spirit: 350 },
-};
+import {
+  ITEM_STAT_BUDGET_BY_QUALITY as STAT_CAP,
+  ITEM_OFF_SLOT_SOFT_CAP_MULTIPLIER,
+  ITEM_POWER_EQUIV_WEIGHTS,
+} from './balance-dials';
 
 describe('ITEMS — required field contract', () => {
   it('mọi item có key snake_case ASCII, ≥ 2 ký tự', () => {
@@ -200,22 +189,24 @@ describe('ITEMS — stat budget by quality (BALANCE_MODEL §3.3)', () => {
     }
   });
 
-  it('multi-stat power-equiv ≤ 1.2× atk cap (off-slot soft budget)', () => {
+  it('multi-stat power-equiv ≤ ITEM_OFF_SLOT_SOFT_CAP_MULTIPLIER × atk cap (off-slot soft budget)', () => {
     /**
      * Power-equiv weight: atk:1.0 / def:0.8 / hpMax:0.05 / mpMax:0.05 /
      * spirit:1.5 (BALANCE_MODEL §3.3 Multi-stat). Off-slot có thể
-     * lệch tối đa 1.2× cap atk của quality. Weapon (slot=WEAPON) vẫn
-     * apply cap atk 1.0× ở test atk ở trên — không cần check riêng.
+     * lệch tối đa ITEM_OFF_SLOT_SOFT_CAP_MULTIPLIER × cap atk của
+     * quality. Weapon (slot=WEAPON) vẫn apply cap atk 1.0× ở test atk
+     * ở trên — không cần check riêng.
      */
+    const w = ITEM_POWER_EQUIV_WEIGHTS;
     for (const item of equips) {
       const b = item.bonuses!;
       const eq =
-        (b.atk ?? 0) +
-        (b.def ?? 0) * 0.8 +
-        (b.hpMax ?? 0) * 0.05 +
-        (b.mpMax ?? 0) * 0.05 +
-        (b.spirit ?? 0) * 1.5;
-      const cap = STAT_CAP[item.quality].atk * 1.2;
+        (b.atk ?? 0) * w.atk +
+        (b.def ?? 0) * w.def +
+        (b.hpMax ?? 0) * w.hpMax +
+        (b.mpMax ?? 0) * w.mpMax +
+        (b.spirit ?? 0) * w.spirit;
+      const cap = STAT_CAP[item.quality].atk * ITEM_OFF_SLOT_SOFT_CAP_MULTIPLIER;
       expect(
         eq,
         `${item.key} (${item.quality}) power-equiv ${eq.toFixed(1)} > soft cap ${cap}`,

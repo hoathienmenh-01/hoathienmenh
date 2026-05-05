@@ -65,6 +65,11 @@
       "types": "./dist/map-regions.d.ts",
       "import": "./dist/map-regions.js",
       "require": "./dist/map-regions.cjs"
+    },
+    "./balance-dials": {
+      "types": "./dist/balance-dials.d.ts",
+      "import": "./dist/balance-dials.js",
+      "require": "./dist/balance-dials.cjs"
     }
   },
   "files": [
@@ -75,7 +80,8 @@
     "dev": "tsup --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "echo \"(shared) lint skipped\"",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:balance": "vitest run balance"
   },
   "dependencies": {
     "zod": "^3.23.8"
