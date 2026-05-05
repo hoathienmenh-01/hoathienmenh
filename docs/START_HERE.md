@@ -28,6 +28,7 @@ Khi tài liệu xung đột nhau, ưu tiên theo thứ tự sau:
 | **Biết game sẽ đi đâu, fantasy là gì, core loop, 13 gameplay system, product principles** | [`GAME_DESIGN_BIBLE.md`](./GAME_DESIGN_BIBLE.md) | Vision + thiết kế dài hạn. Đọc xong hiểu "Xuân Tôi muốn trở thành cái gì". |
 | **Biết phase nào nên làm tiếp, entry/exit criteria, module nào bị cấm chưa được build** | [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) | Phase 9 → 17 với dependency rule + DO-NOT-BUILD-YET list. |
 | **Sẽ đụng tiền/item/reward** (linh thạch, tiên ngọc, mail reward, giftcode, market, daily login, topup, ledger) | [`ECONOMY_MODEL.md`](./ECONOMY_MODEL.md) | 5 hard invariants + anti-abuse playbook. **Vi phạm = data corruption.** |
+| **Task liên quan cốt truyện / NPC / quest / Phase 12 Story** | [`story/PHASE12_STORY_PROGRESS.md`](./story/PHASE12_STORY_PROGRESS.md) **trước**, sau đó [`story/TU_TIEN_LO_STORY_BIBLE.md`](./story/TU_TIEN_LO_STORY_BIBLE.md) nếu cần lore chi tiết. | Progress tracker là source of truth cho phần đã code; story bible là design source. **KHÔNG đọc DOCX gốc** ([`archive/original-docx/TuTienLo_Story_Bible.docx`](./archive/original-docx/TuTienLo_Story_Bible.docx)) mỗi session — DOCX chỉ là archive/source reference. |
 | **Thêm content** (item, skill, monster, dungeon, mission, boss, quest, event, title, achievement) | [`CONTENT_PIPELINE.md`](./CONTENT_PIPELINE.md) | Process step-by-step + naming convention + balance gate + i18n parity. |
 | **Chỉnh số/curve** (EXP, power, drop weight, boss HP, mission reward, item budget) | [`BALANCE_MODEL.md`](./BALANCE_MODEL.md) | Curve + dial registry + test invariant + decision log. **Đừng đổi số bừa.** |
 | **Vận hành event/live ops** (chạy event Tết, thông báo, maintenance, feature flag, rollback config) | [`LIVE_OPS_MODEL.md`](./LIVE_OPS_MODEL.md) | EventConfig/Announcement/MaintenanceWindow/FeatureFlag/ConfigVersion lifecycle + permission matrix. |
@@ -105,6 +106,12 @@ Khi tài liệu xung đột nhau, ưu tiên theo thứ tự sau:
 - [`CHANGELOG.md`](./CHANGELOG.md) — changelog tổng.
 - [`RELEASE_NOTES.md`](./RELEASE_NOTES.md) — version note.
 
+### 3.2.1 Story / NPC / Quest design (Phase 12)
+
+- [`story/PHASE12_STORY_PROGRESS.md`](./story/PHASE12_STORY_PROGRESS.md) — **progress source of truth** cho phần story implementation. Cập nhật mỗi PR story/quest/NPC. AI đọc TRƯỚC story bible.
+- [`story/TU_TIEN_LO_STORY_BIBLE.md`](./story/TU_TIEN_LO_STORY_BIBLE.md) — design source: 28 cảnh giới, 9 NPC trụ cột, 27 quest chain, world map, lore. Markdown chuyển hoá từ DOCX gốc.
+- [`archive/original-docx/TuTienLo_Story_Bible.docx`](./archive/original-docx/TuTienLo_Story_Bible.docx) — DOCX gốc. **Archive only.** KHÔNG đọc mỗi session — markdown bible đã chứa đủ.
+
 ### 3.3 Historical blueprint (đọc sau khi đã đọc long-term)
 
 - [`04_TECH_STACK_VA_DATA_MODEL.md`](./04_TECH_STACK_VA_DATA_MODEL.md) — phần Phase 0..8 historical, phần §P9 long-term.
@@ -143,6 +150,7 @@ Khi tài liệu xung đột nhau, ưu tiên theo thứ tự sau:
 - **Mọi reward source có idempotency key** (`(characterId, sourceType, sourceKey)` unique).
 - **Mọi admin action ghi `AdminAuditLog`**.
 - **Update `AI_HANDOFF_REPORT.md`** sau mỗi PR (snapshot mới ở đầu file).
+- **Task story / NPC / quest / Phase 12 Story**: đọc [`story/PHASE12_STORY_PROGRESS.md`](./story/PHASE12_STORY_PROGRESS.md) trước, sau đó [`story/TU_TIEN_LO_STORY_BIBLE.md`](./story/TU_TIEN_LO_STORY_BIBLE.md) nếu cần lore chi tiết. Cập nhật progress tracker trong cùng PR (DOCS UPDATE RULE).
 
 ### DON'T
 
@@ -154,6 +162,7 @@ Khi tài liệu xung đột nhau, ưu tiên theo thứ tự sau:
 - ❌ KHÔNG xoá field Prisma — chỉ deprecate (xem `04` §P9.9).
 - ❌ KHÔNG modify static catalog (`packages/shared/src/*.ts`) mà không qua `CONTENT_PIPELINE.md`.
 - ❌ KHÔNG đổi số balance mà không update `BALANCE_MODEL.md` decision log.
+- ❌ KHÔNG đọc DOCX gốc [`archive/original-docx/TuTienLo_Story_Bible.docx`](./archive/original-docx/TuTienLo_Story_Bible.docx) mỗi session. Markdown bible [`story/TU_TIEN_LO_STORY_BIBLE.md`](./story/TU_TIEN_LO_STORY_BIBLE.md) đã chứa đủ design; DOCX chỉ là archive/source reference.
 
 ---
 
@@ -172,6 +181,7 @@ Còn lại đọc khi cần.
 
 ## 6. CHANGELOG
 
+- **2026-05-05 (PR docs(story): add Tu Tien Lo story bible)** — Thêm [`story/TU_TIEN_LO_STORY_BIBLE.md`](./story/TU_TIEN_LO_STORY_BIBLE.md) (markdown chuyển hoá từ DOCX) + [`story/PHASE12_STORY_PROGRESS.md`](./story/PHASE12_STORY_PROGRESS.md) (progress tracker) + archive [`archive/original-docx/TuTienLo_Story_Bible.docx`](./archive/original-docx/TuTienLo_Story_Bible.docx). Cập nhật §1 decision table (thêm dòng story/NPC/quest), §3.2.1 (entry story docs), §4 DO/DON'T. Rule mới: task Phase 12 Story đọc progress tracker trước, không đọc DOCX gốc mỗi session. Runtime story/quest/NPC chưa implemented.
 - **2026-05-05 (PR docs(handoff): split archive)** — Tách `## 7. Archive` của `AI_HANDOFF_REPORT.md` thành file riêng [`ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md) (~4900 dòng lịch sử PR #33→#396 + Project Reference). `AI_HANDOFF_REPORT.md` còn ~200 dòng (Executive Summary + 5 section live). Cập nhật §2.1 (note chỉ đọc Executive Summary) + §3.2 (thêm entry ARCHIVE_HANDOFF.md). Lý do: AI session tiêu tốn ít token/quota hơn khi đọc context handoff. Author: Devin AI session 5/5.
 - **2026-05-03 (PR Fast-but-Safe Delivery Mode)** — Mở rộng `AI_WORKFLOW_RULES.md` thành 8 luật: UI Module Rule (giữ), Docs Update Rule, Handoff Report Structure Rule, Test Fast Path Rule, Batching Rule, Safety Correction Rule, Speed Target, Next Task Auto-Selection. Cập nhật §0 (Fast-but-Safe banner), §1 decision table, §2.1 + §2.2 role guides, §3.1 docs map, §5 TL;DR.
 - **2026-05-03 (PR UI Module Rule)** — Add `AI_WORKFLOW_RULES.md` to required reading (§1 decision table, §2.1 + §2.2 role guides, §3.1 docs map). Lý do: tránh chia một màn hình UI thành 4-5 micro-PR (UI Module Rule).

@@ -30,6 +30,7 @@
 
 | PR | Title | Type |
 |---|---|---|
+| (in-flight) | `docs(story): add Tu Tien Lo story bible and Phase 12 progress tracker` — archive `docs/archive/original-docx/TuTienLo_Story_Bible.docx`, add `docs/story/TU_TIEN_LO_STORY_BIBLE.md` (markdown chuyển hoá: 28 cảnh giới, 9 NPC trụ cột, 27 quest chain, world map, lore-only vs Phase-12-codeable split), add `docs/story/PHASE12_STORY_PROGRESS.md` (progress source of truth + 5-PR Phase 12 roadmap), cập nhật `START_HERE.md` (decision table + §3.2.1 + DO/DON'T) + `AI_HANDOFF_REPORT.md` (§2 + §6 roadmap). **Runtime impact: NONE.** No Prisma migration, no runtime code, no test changes. Story/quest/NPC runtime chưa implemented. Next recommended: Phase 12 PR-1 Story/NPC/Quest catalog foundation. | docs only |
 | (in-flight) | `test(api): Inventory concurrency hardening — InventoryService.use() atomic decrement fix (eliminate item duplication race) + 5 concurrency regression test trong inventory.service.concurrency.test.ts (use qty=2/qty=1/qty=3-3concurrent/qty=2-4concurrent + equip slot uniqueness 30-round stress)` | medium BE bugfix + tests |
 | [#421](https://github.com/hoathienmenh-01/xuantoi/pull/421) | `feat(api): Phase 12.2.A — DungeonDef.dailyLimit server-side enforcement (CombatService.start gate + DUNGEON_DAILY_LIMIT_REACHED error + tzOffsetMinutes/startOfLocalDay/getCombatResetTz helpers + 6 unit test + 1 controller test + smoke +3 step + i18n vi/en)` | medium BE feature + tests |
 | [#420](https://github.com/hoathienmenh-01/xuantoi/pull/420) | `test(web/e2e): Phase 11 nâng cao §5 PR3 E2E — golden-path spec #20 breakthrough flow + adminSeedBreakthroughPeak helper (admin grant-exp 200000 peak seed → click attempt → outcome banner success/fail RNG branch + history row reload-persist)` | small E2E spec |
@@ -167,10 +168,21 @@ Per [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) §SESSION PR LIMIT (1-3 PR/
 > - §5 PR3 chain CLOSED ✅ qua PR #418 (BE log) + #419 (FE BreakthroughView) + #420 (E2E spec #20).
 > - Phase 12.2.A `DungeonDef.dailyLimit` enforcement CLOSED ✅ via PR #421. Phase 12.1 catalog CLOSED via #397.
 > - Inventory `use()` concurrency race FIXED via this PR.
+> - **Story Bible DOCX archived + markdown bible + Phase 12 story progress tracker created via this PR.** Runtime story/quest/NPC chưa implemented — next recommended task = Phase 12 PR-1 Story/NPC/Quest catalog foundation.
 >
-> Do đó top priority chuyển sang Phase 12.2.B DungeonTemplate runtime + smoke:daily-login multi-day positive + concurrency tests phase 2.
+> Do đó top priority chuyển sang Phase 12.2.B DungeonTemplate runtime + Phase 12 Story PR-1 catalog + smoke:daily-login multi-day positive + concurrency tests phase 2.
 
 1. **Phase 12.2.B DungeonTemplate + DungeonRun runtime** — Medium-Large PR, Template C (Prisma + service). Prisma model `DungeonTemplate` + `DungeonRun` + service `startRun`/`nextEncounter`/`claimRun` happy-path + Prisma migration. **Risk**: Prisma migration + new module — yêu cầu pre-migration backup snapshot + smoke:dungeon-template extend ≥ 12 step. Phase 12.2.A daily limit enforcement đã land qua PR #421 — dailyLimit invariant sẽ apply cho `DungeonRun.startRun()` reuse cùng `startOfLocalDay` helper.
+
+1.b. **Phase 12 Story chain** — design source moved into repo: [`docs/story/TU_TIEN_LO_STORY_BIBLE.md`](./story/TU_TIEN_LO_STORY_BIBLE.md) + [`docs/story/PHASE12_STORY_PROGRESS.md`](./story/PHASE12_STORY_PROGRESS.md). 5-PR roadmap:
+   - **Phase 12 PR-1** — Story/NPC/Quest catalog foundation (`packages/shared/src/quests.ts`, `npcs.ts`, `dialogues.ts` cho 3 cảnh giới đầu Phàm Nhân + Luyện Khí + Trúc Cơ = 15 quest + 4 NPC). Small-Medium, no Prisma migration.
+   - **Phase 12 PR-2** — Quest runtime persistence (Prisma `QuestProgress` + `Character.storyChapter` migration + `QuestService.list/accept/progress/complete` + smoke). Medium, **Prisma migration risk**.
+   - **Phase 12 PR-3** — Quest claim / reward idempotency (`QuestService.claim` qua `RewardLedger` + idempotency `(characterId, QUEST_CLAIM, questId)` + concurrency test). Small.
+   - **Phase 12 PR-4** — NPC dialogue UI (`NpcDialogueModal.vue` + `GET /npc/:id/dialogue` + Pinia + i18n). Medium FE+BE.
+   - **Phase 12 PR-5** — Main storyline Chapter 1 playable (`phamnhan_main_01` end-to-end + E2E spec). Medium-Large full-stack.
+   - Sau PR-5: Chapter 2..N expansion (mỗi cảnh giới 1 PR Medium hoặc gom 2-3 PR). Cảnh giới 17+ (Chuẩn Thánh trở lên) chỉ lore, chưa code (xem [`./LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) DO-NOT-BUILD-YET list).
+
+   Sau mỗi PR Phase 12 Story merged, AI **bắt buộc** cập nhật `docs/story/PHASE12_STORY_PROGRESS.md` trong cùng PR (DOCS UPDATE RULE).
 
 2. **smoke:daily-login multi-day positive** — Small PR, Template B. Cần admin advance-day hoặc set-streak (Prisma migration nhỏ thêm field hoặc service helper). Verify streak=7 reward = 100 LT delta + ledger DAILY_LOGIN_CLAIM.
 
