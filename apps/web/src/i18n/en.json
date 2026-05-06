@@ -917,6 +917,11 @@
     "defeatedToast": "{name} has fallen! Rewards distributed by rank.",
     "endedToast": "The boss has retreated (expired).",
     "damageToast": "Dealt {dmg} damage. (rank #{rank})",
+    "regionTabsLabel": "Region tabs",
+    "regionBadge": "Region",
+    "region": {
+      "world": "Cross-Region World"
+    },
     "errors": {
       "NO_CHARACTER": "No character yet.",
       "NO_ACTIVE_BOSS": "No active boss.",
@@ -926,6 +931,12 @@
       "MP_LOW": "Not enough qi.",
       "HP_LOW": "Not enough HP to blood-sacrifice.",
       "SKILL_NOT_USABLE": "Skill not from your sect.",
+      "INVALID_REGION_KEY": "Region not recognized.",
+      "INVALID_BOSS_KEY": "Boss not recognized.",
+      "INVALID_LEVEL": "Boss level invalid.",
+      "BOSS_ALREADY_ACTIVE": "A boss is already active in this region.",
+      "CONTROLLED": "You are controlled and cannot attack the boss.",
+      "CULTIVATION_BLOCKED": "Inner-demon block prevents you from attacking the boss.",
       "UNKNOWN": "Something went wrong."
     }
   },

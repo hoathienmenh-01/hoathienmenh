@@ -5,6 +5,7 @@ import { RouterLink, useRouter } from 'vue-router';
 import {
   SKILL_BASIC_ATTACK,
   activeSkillsForSect,
+  getMapRegionByKey,
   type SectKey,
   type SkillDef,
 } from '@xuantoi/shared';
@@ -13,7 +14,7 @@ import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
 import {
   attackBoss,
-  getCurrentBoss,
+  getActiveBosses,
   type BossView,
   type DefeatedRewardSlice,
 } from '@/api/boss';
@@ -27,14 +28,42 @@ const auth = useAuthStore();
 const game = useGameStore();
 const toast = useToastStore();
 const router = useRouter();
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
-const boss = ref<BossView | null>(null);
+// Phase 12.6 — multi-region boss state. Active list across regions sorted
+// theo regionKey ascending; selectedRegionKey track active tab; `boss`
+// computed = activeBosses[regionKey === selectedRegionKey] (giữ template
+// API ổn định cho subsequent code).
+const activeBosses = ref<BossView[]>([]);
+const selectedRegionKey = ref<string | null>(null);
 const submitting = ref(false);
 const cooldownLeft = ref(0); // ms còn lại
 const lastDefeatedRewards = ref<DefeatedRewardSlice[] | null>(null);
 let tickTimer: ReturnType<typeof setInterval> | null = null;
 const offHandlers: Array<() => void> = [];
+
+const boss = computed<BossView | null>(() => {
+  if (!selectedRegionKey.value) return activeBosses.value[0] ?? null;
+  return (
+    activeBosses.value.find((b) => b.regionKey === selectedRegionKey.value) ??
+    null
+  );
+});
+
+/**
+ * Phase 12.6 — region tab tự derive từ activeBosses. Mỗi tab hiển thị
+ * tên region (Vi/En theo locale) từ `MAP_REGIONS` catalog. Region key
+ * `'world'` (legacy world boss) không có row trong catalog; fallback
+ * dùng `boss.region.world` i18n key.
+ */
+function regionLabel(regionKey: string): string {
+  if (regionKey === 'world') {
+    return t('boss.region.world');
+  }
+  const def = getMapRegionByKey(regionKey);
+  if (!def) return regionKey;
+  return locale.value === 'en' ? def.nameEn : def.nameVi;
+}
 
 const sectKey = computed<SectKey | null>(() => game.character?.sectKey ?? null);
 const usableSkills = computed<SkillDef[]>(() => activeSkillsForSect(sectKey.value));
@@ -70,23 +99,33 @@ onMounted(async () => {
       leaderboardTop5: BossView['leaderboard'];
     }>('boss:update', (frame) => {
       const p = frame.payload;
-      if (!boss.value || boss.value.id !== p.id) return;
-      boss.value = {
-        ...boss.value,
+      // Phase 12.6 — find row trong activeBosses by id (multi-region —
+      // boss:update có thể từ region khác đang mở tab khác). Update
+      // in-place để Vue reactive theo array index.
+      const idx = activeBosses.value.findIndex((b) => b.id === p.id);
+      if (idx === -1) return;
+      const cur = activeBosses.value[idx];
+      const next: BossView = {
+        ...cur,
         currentHp: p.currentHp,
         status: p.status,
       };
       // Cập nhật top5 nhưng giữ phần dưới của bảng cũ.
-      if (boss.value && p.leaderboardTop5.length > 0) {
-        const existing = boss.value.leaderboard;
+      if (p.leaderboardTop5.length > 0) {
+        const existing = cur.leaderboard;
         const merged = [
           ...p.leaderboardTop5,
           ...existing.filter(
             (e) => !p.leaderboardTop5.some((t) => t.characterId === e.characterId),
           ),
         ];
-        boss.value = { ...boss.value, leaderboard: merged.slice(0, 20) };
+        next.leaderboard = merged.slice(0, 20);
       }
+      activeBosses.value = [
+        ...activeBosses.value.slice(0, idx),
+        next,
+        ...activeBosses.value.slice(idx + 1),
+      ];
     }),
   );
   offHandlers.push(
@@ -99,8 +138,10 @@ onMounted(async () => {
       currentHp: string;
       spawnedAt: string;
       expiresAt: string;
+      regionKey?: string;
     }>('boss:spawn', () => {
-      // Có boss mới — refetch để lấy đầy đủ thông tin.
+      // Có boss mới — refetch để lấy đầy đủ thông tin (multi-region:
+      // boss có thể spawn ở region khác → list active mới).
       void refresh();
       toast.push({ type: 'system', text: t('boss.spawnToast') });
     }),
@@ -112,8 +153,15 @@ onMounted(async () => {
       rewards: DefeatedRewardSlice[];
     }>('boss:defeated', (frame) => {
       const p = frame.payload;
-      if (boss.value?.id === p.id) {
-        boss.value = { ...boss.value, status: 'DEFEATED', currentHp: '0' };
+      // Flip status trong list (region của boss đó).
+      const idx = activeBosses.value.findIndex((b) => b.id === p.id);
+      if (idx !== -1) {
+        const cur = activeBosses.value[idx];
+        activeBosses.value = [
+          ...activeBosses.value.slice(0, idx),
+          { ...cur, status: 'DEFEATED', currentHp: '0' },
+          ...activeBosses.value.slice(idx + 1),
+        ];
       }
       lastDefeatedRewards.value = p.rewards;
       toast.push({ type: 'success', text: t('boss.defeatedToast', { name: p.name }) });
@@ -129,8 +177,14 @@ onMounted(async () => {
       rewards: DefeatedRewardSlice[];
     }>('boss:end', (frame) => {
       const p = frame.payload;
-      if (boss.value?.id === p.id) {
-        boss.value = { ...boss.value, status: 'EXPIRED' };
+      const idx = activeBosses.value.findIndex((b) => b.id === p.id);
+      if (idx !== -1) {
+        const cur = activeBosses.value[idx];
+        activeBosses.value = [
+          ...activeBosses.value.slice(0, idx),
+          { ...cur, status: 'EXPIRED' },
+          ...activeBosses.value.slice(idx + 1),
+        ];
       }
       lastDefeatedRewards.value = p.rewards;
       toast.push({ type: 'system', text: t('boss.endedToast') });
@@ -141,11 +195,20 @@ onMounted(async () => {
 
   // Tick local cho cooldown bar.
   tickTimer = setInterval(() => {
-    if (boss.value?.cooldownUntil) {
-      const ms = new Date(boss.value.cooldownUntil).getTime() - Date.now();
+    const cur = boss.value;
+    if (cur?.cooldownUntil) {
+      const ms = new Date(cur.cooldownUntil).getTime() - Date.now();
       cooldownLeft.value = Math.max(0, ms);
-      if (cooldownLeft.value === 0 && boss.value) {
-        boss.value = { ...boss.value, cooldownUntil: null };
+      if (cooldownLeft.value === 0) {
+        // Clear cooldown via activeBosses (boss.value là computed).
+        const idx = activeBosses.value.findIndex((b) => b.id === cur.id);
+        if (idx !== -1) {
+          activeBosses.value = [
+            ...activeBosses.value.slice(0, idx),
+            { ...activeBosses.value[idx], cooldownUntil: null },
+            ...activeBosses.value.slice(idx + 1),
+          ];
+        }
       }
     } else {
       cooldownLeft.value = 0;
@@ -161,27 +224,55 @@ onUnmounted(() => {
 
 async function refresh(): Promise<void> {
   try {
-    boss.value = await getCurrentBoss();
+    const list = await getActiveBosses();
+    activeBosses.value = list;
+    // Phase 12.6 — preserve selected region nếu vẫn còn ACTIVE; ngược lại
+    // chọn region đầu tiên (auto-select first tab cho UX). Null nếu không
+    // có ACTIVE boss nào (rare — heartbeat đảm bảo spawn theo region trong
+    // catalog).
+    if (
+      selectedRegionKey.value &&
+      list.some((b) => b.regionKey === selectedRegionKey.value)
+    ) {
+      // keep
+    } else {
+      selectedRegionKey.value = list[0]?.regionKey ?? null;
+    }
   } catch {
-    boss.value = null;
+    activeBosses.value = [];
+    selectedRegionKey.value = null;
   }
+}
+
+function selectRegion(regionKey: string): void {
+  selectedRegionKey.value = regionKey;
 }
 
 async function onAttack(): Promise<void> {
   if (submitting.value || !boss.value) return;
   if (cooldownLeft.value > 0) return;
   submitting.value = true;
+  const targetBoss = boss.value;
   try {
-    const r = await attackBoss(selectedSkill.value);
+    // Phase 12.6 — pass bossId explicit cho multi-region disambiguation.
+    // Server fallback "primary" nếu không truyền, nhưng UI multi-region
+    // phải bám đúng region tab đang mở.
+    const r = await attackBoss(selectedSkill.value, targetBoss.id);
     // Cập nhật ngay từ response để feedback tức thời (WS có thể chậm hơn).
-    if (boss.value) {
-      boss.value = {
-        ...boss.value,
-        currentHp: r.result.bossHp,
-        myDamage: r.result.myDamageTotal,
-        myRank: r.result.myRank,
-        cooldownUntil: new Date(Date.now() + 1500).toISOString(),
-      };
+    const idx = activeBosses.value.findIndex((b) => b.id === targetBoss.id);
+    if (idx !== -1) {
+      const cur = activeBosses.value[idx];
+      activeBosses.value = [
+        ...activeBosses.value.slice(0, idx),
+        {
+          ...cur,
+          currentHp: r.result.bossHp,
+          myDamage: r.result.myDamageTotal,
+          myRank: r.result.myRank,
+          cooldownUntil: new Date(Date.now() + 1500).toISOString(),
+        },
+        ...activeBosses.value.slice(idx + 1),
+      ];
     }
     if (r.defeated) {
       lastDefeatedRewards.value = r.defeated;
@@ -225,6 +316,36 @@ function timeLeftText(iso: string): string {
   <AppShell>
     <h2 class="text-xl tracking-widest mb-4">鬼 {{ t('boss.title') }}</h2>
 
+    <!-- Phase 12.6 — region tabs cho multi-region boss spawn. Mỗi tab
+         label = MAP_REGIONS catalog (Vi/En theo locale); fallback i18n
+         `boss.region.world` cho legacy world boss. Tab active highlight
+         amber; HP indicator nhỏ hiển thị %. -->
+    <nav
+      v-if="activeBosses.length > 1"
+      class="flex flex-wrap gap-2 mb-4"
+      role="tablist"
+      :aria-label="t('boss.regionTabsLabel')"
+    >
+      <button
+        v-for="ab in activeBosses"
+        :key="ab.id"
+        type="button"
+        role="tab"
+        :aria-selected="ab.regionKey === selectedRegionKey"
+        :class="[
+          'px-3 py-1 rounded border text-xs tracking-wider transition-colors',
+          ab.regionKey === selectedRegionKey
+            ? 'border-amber-400 bg-amber-400/20 text-amber-200'
+            : 'border-ink-300/40 bg-ink-700/30 text-ink-300 hover:bg-ink-700/50',
+        ]"
+        @click="selectRegion(ab.regionKey)"
+      >
+        {{ regionLabel(ab.regionKey) }}
+        <span class="ml-1 text-ink-300/60">·</span>
+        <span class="ml-1">Lv.{{ ab.level }}</span>
+      </button>
+    </nav>
+
     <div v-if="!boss" class="border border-ink-300/40 rounded p-6 bg-ink-700/30 text-center">
       <p class="text-ink-300">{{ t('boss.noneTitle') }}</p>
       <p class="text-xs text-ink-300/70 mt-2">
@@ -243,6 +364,10 @@ function timeLeftText(iso: string): string {
               <span class="text-xs text-ink-300 ml-2">Lv.{{ boss.level }}</span>
             </div>
             <div class="text-xs text-ink-300 mt-1">{{ boss.description }}</div>
+            <!-- Phase 12.6 — region badge dưới description. -->
+            <div class="text-[10px] text-ink-300/70 mt-1 tracking-wider uppercase">
+              {{ t('boss.regionBadge') }}: {{ regionLabel(boss.regionKey) }}
+            </div>
           </div>
           <div class="text-right">
             <div class="text-xs text-ink-300">{{ t('boss.timeLeft') }}</div>

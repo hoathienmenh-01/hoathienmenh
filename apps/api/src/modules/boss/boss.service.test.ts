@@ -60,6 +60,11 @@ async function spawnBoss(
       spawnedAt: new Date(),
       expiresAt: new Date(Date.now() + 60 * 60_000),
       rewardTotal: opts.rewardTotal ?? BigInt(def.baseRewardLinhThach) * BigInt(level),
+      // Phase 12.6 — sync test fixture với catalog regionKey để adminSpawn
+      // (auto-derive regionKey từ def) và heartbeatRegion query trúng row.
+      // `null` (legacy world boss) → 'world' (DB constant). Match
+      // `bossesByRegion()` mapping ở `packages/shared/src/boss.ts`.
+      regionKey: def.regionKey ?? 'world',
     },
   });
 }

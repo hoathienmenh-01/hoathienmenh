@@ -812,10 +812,17 @@ model WorldBoss {
   expiresAt   DateTime
   defeatedAt  DateTime?
   rewardTotal BigInt     @default(0)
+  // Phase 12.6 — region scope cho multi-region auto-spawn. Default 'world'
+  // legacy world boss; mới: 'hac_lam', 'kim_son_mach', v.v. (match
+  // `BossDef.regionKey` ở `packages/shared/src/boss.ts`). Partial unique
+  // index `WorldBoss_status_region_active_unique` enforce ≤1 ACTIVE per
+  // region (xem migration `20260523000000_phase_12_6_world_boss_region_key`).
+  regionKey   String     @default("world")
 
   damages BossDamage[]
 
   @@index([status, spawnedAt])
+  @@index([regionKey, status])
 }
 
 model BossDamage {

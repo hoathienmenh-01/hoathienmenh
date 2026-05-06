@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpException,
   HttpStatus,
+  Param,
   Post,
   Req,
   UseGuards,
@@ -22,13 +23,34 @@ const ACCESS_COOKIE = 'xt_access';
 
 const AttackInput = z.object({
   skillKey: z.string().max(64).optional(),
+  /**
+   * Phase 12.6 — bossId optional cho multi-region disambiguation. Nếu
+   * không truyền → fallback "primary" boss (1st ACTIVE found, most
+   * recent spawn) cho backwards-compat singleton UI Phase 7.
+   */
+  bossId: z.string().min(1).max(64).optional(),
 });
 
 const AdminSpawnInput = z.object({
   bossKey: z.string().min(1).max(64).optional(),
   level: z.number().int().min(1).max(10).optional(),
   force: z.boolean().optional(),
+  /**
+   * Phase 12.6 — explicit region cho admin spawn (default 'world' cho
+   * legacy world boss). Nếu `bossKey` cũng truyền in, def.regionKey
+   * phải match `regionKey` (catalog null → 'world'); mismatch → throw
+   * INVALID_BOSS_KEY.
+   */
+  regionKey: z.string().min(1).max(64).optional(),
 });
+
+/**
+ * Phase 12.6 — region key path validator. Conservative regex: lowercase
+ * alpha + underscore + digit (cùng convention với `RegionKey` union ở
+ * `@xuantoi/shared/src/map-regions.ts`). Match `'world'`, `'hac_lam'`,
+ * `'kim_son_mach'`, v.v. — reject path traversal hoặc special char.
+ */
+const REGION_KEY_PATTERN = /^[a-z][a-z0-9_]{0,63}$/;
 
 type AdminReq = Request & { userId: string; role: Role };
 
@@ -64,6 +86,32 @@ export class BossController {
     return { ok: true, data: { boss } };
   }
 
+  /**
+   * Phase 12.6 — list tất cả ACTIVE boss across regions. FE BossView dùng
+   * endpoint này để render region tabs. Sorted theo regionKey ascending
+   * (deterministic UI ordering).
+   */
+  @Get('active')
+  async active(@Req() req: Request) {
+    const { characterId } = await this.getViewer(req);
+    const bosses = await this.boss.listActive(characterId);
+    return { ok: true, data: { bosses } };
+  }
+
+  /**
+   * Phase 12.6 — boss ACTIVE trong region cụ thể (≤1 do partial unique
+   * `WorldBoss_status_region_active_unique`). Null nếu region trống slot.
+   */
+  @Get('region/:regionKey')
+  async region(@Req() req: Request, @Param('regionKey') regionKey: string) {
+    if (!REGION_KEY_PATTERN.test(regionKey)) {
+      fail('INVALID_REGION_KEY');
+    }
+    const { characterId } = await this.getViewer(req);
+    const boss = await this.boss.getCurrentByRegion(regionKey, characterId);
+    return { ok: true, data: { boss } };
+  }
+
   @Post('attack')
   @HttpCode(200)
   async attack(@Req() req: Request, @Body() body: unknown) {
@@ -72,7 +120,11 @@ export class BossController {
     const parsed = AttackInput.safeParse(body);
     if (!parsed.success) fail('INVALID_INPUT');
     try {
-      const r = await this.boss.attack(userId, parsed.data.skillKey);
+      const r = await this.boss.attack(
+        userId,
+        parsed.data.skillKey,
+        parsed.data.bossId,
+      );
       return { ok: true, data: r };
     } catch (e) {
       this.handleErr(e);
@@ -107,6 +159,9 @@ export class BossController {
         case 'SKILL_NOT_USABLE':
         case 'INVALID_BOSS_KEY':
         case 'INVALID_LEVEL':
+        // Phase 12.6 — INVALID_REGION_KEY thực ra surface qua `fail()` ở
+        // path validation chứ không vào BossError, nhưng giữ branch để
+        // exhaustive switch.
           fail(e.code, HttpStatus.BAD_REQUEST);
         // eslint-disable-next-line no-fallthrough
         case 'BOSS_DEFEATED':

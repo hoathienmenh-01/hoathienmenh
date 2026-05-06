@@ -7,13 +7,15 @@ import {
 } from '@nestjs/common';
 import { Prisma, BossStatus, CurrencyKind } from '@prisma/client';
 import {
-  BOSSES,
   BOSS_ATTACK_COOLDOWN_MS,
   BOSS_LIFETIME_MS,
   BOSS_RESPAWN_DELAY_MS,
   BOSS_STAMINA_PER_HIT,
   SKILL_BASIC_ATTACK,
+  WORLD_BOSS_REGION_KEY,
   bossByKey,
+  bossSpawnRegions,
+  bossesByRegion,
   characterSkillElementBonus,
   composeBuffMods,
   composePassiveTalentMods,
@@ -80,6 +82,13 @@ export interface BossView {
   status: BossStatus;
   spawnedAt: string;
   expiresAt: string;
+  /**
+   * Phase 12.6 — region scope cho multi-region auto-spawn. Match
+   * `WorldBoss.regionKey` ở Prisma layer. `'world'` cho legacy
+   * cross-region world boss, hoặc region key `hac_lam`/`kim_son_mach`/...
+   * tương ứng `MAP_REGIONS` catalog.
+   */
+  regionKey: string;
   leaderboard: BossLeaderboardRow[];
   myDamage: string | null;
   myRank: number | null;
@@ -160,6 +169,12 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
 
   // ---------- public API ----------
 
+  /**
+   * Trả về boss ACTIVE "primary" (most recent spawn) — backwards-compat
+   * với UI singleton mode (Phase 7). Phase 12.6 multi-region: dùng
+   * `listActive()` để list tất cả ACTIVE boss across regions, hoặc
+   * `getCurrentByRegion(regionKey)` để filter 1 region.
+   */
   async getCurrent(viewerCharId: string | null): Promise<BossView | null> {
     const boss = await this.prisma.worldBoss.findFirst({
       where: { status: BossStatus.ACTIVE },
@@ -169,9 +184,48 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     return this.toView(boss, viewerCharId);
   }
 
+  /**
+   * Phase 12.6 — list tất cả boss ACTIVE across regions. Sorted theo
+   * regionKey ascending (deterministic UI ordering); FE BossView render
+   * region tabs từ list này.
+   */
+  async listActive(viewerCharId: string | null): Promise<BossView[]> {
+    const bosses = await this.prisma.worldBoss.findMany({
+      where: { status: BossStatus.ACTIVE },
+      orderBy: [{ regionKey: 'asc' }, { spawnedAt: 'desc' }],
+    });
+    if (bosses.length === 0) return [];
+    return Promise.all(bosses.map((b) => this.toView(b, viewerCharId)));
+  }
+
+  /**
+   * Phase 12.6 — boss ACTIVE trong region cụ thể (≤1 do partial unique
+   * index `WorldBoss_status_region_active_unique`). Null nếu region
+   * trống slot.
+   */
+  async getCurrentByRegion(
+    regionKey: string,
+    viewerCharId: string | null,
+  ): Promise<BossView | null> {
+    const boss = await this.prisma.worldBoss.findFirst({
+      where: { status: BossStatus.ACTIVE, regionKey },
+      orderBy: { spawnedAt: 'desc' },
+    });
+    if (!boss) return null;
+    return this.toView(boss, viewerCharId);
+  }
+
+  /**
+   * Player attack boss. Phase 12.6 multi-region:
+   * - `bossId` truyền in → attack boss đó (chỉ check ACTIVE).
+   * - `bossId` không truyền → fallback "primary" boss (1st ACTIVE found,
+   *   most recent spawn) — backwards-compat với UI Phase 7 singleton.
+   *   Multi-region UI nên LUÔN truyền `bossId` để tránh ambiguity.
+   */
   async attack(
     userId: string,
     skillKey: string | undefined,
+    bossId?: string,
   ): Promise<{ result: AttackResult; defeated: DefeatedRewardSlice[] | null }> {
     const char = await this.prisma.character.findUnique({ where: { userId } });
     if (!char) throw new BossError('NO_CHARACTER');
@@ -212,11 +266,22 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       throw new BossError('COOLDOWN');
     }
 
-    const boss = await this.prisma.worldBoss.findFirst({
-      where: { status: BossStatus.ACTIVE },
-      orderBy: { spawnedAt: 'desc' },
-    });
+    // Phase 12.6 — bossId optional. Nếu truyền → attack đúng boss đó (cross-
+    // region disambiguation). Nếu không → fallback "primary" (1st ACTIVE,
+    // most recent spawn) cho backwards-compat singleton UI.
+    const boss = bossId
+      ? await this.prisma.worldBoss.findUnique({ where: { id: bossId } })
+      : await this.prisma.worldBoss.findFirst({
+          where: { status: BossStatus.ACTIVE },
+          orderBy: { spawnedAt: 'desc' },
+        });
     if (!boss) throw new BossError('NO_ACTIVE_BOSS');
+    if (boss.status !== BossStatus.ACTIVE) {
+      // bossId truyền in nhưng boss đã defeat/expire → surface đúng status.
+      throw new BossError(
+        boss.status === BossStatus.DEFEATED ? 'BOSS_DEFEATED' : 'NO_ACTIVE_BOSS',
+      );
+    }
     const def = bossByKey(boss.bossKey);
     if (!def) throw new BossError('NO_ACTIVE_BOSS');
 
@@ -519,16 +584,46 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     // (DB chậm hoặc distributeRewardsExpired đang grant reward), skip
     // tick mới thay vì chạy song song trên cùng process. Cross-process
     // (multi-pod) race vẫn cần partial unique index DB-level — xem
-    // `spawnNew` P2002 catch + migration `20260522000000_concurrency_boss_active_unique`.
+    // `spawnNew` P2002 catch + migration
+    // `20260523000000_phase_12_6_world_boss_region_key`.
     if (this.heartbeatRunning) {
       this.logger.debug('boss heartbeat: previous tick still in-flight, skip');
       return;
     }
     this.heartbeatRunning = true;
     try {
-      // 1) Expire boss quá hạn.
+      // Phase 12.6 — iterate distinct regions có ≥1 boss spawn-able trong
+      // catalog (`bossSpawnRegions()` returns sorted distinct region keys).
+      // Mỗi region 1 spawn slot (partial unique
+      // `WorldBoss_status_region_active_unique`). Heartbeat sequential:
+      // expire-if-overdue → spawn-if-empty per region. KHÔNG parallelize
+      // qua `Promise.all` vì distributeRewardsExpired() ghi ledger
+      // multi-row trong tx + spawn DB write có thể mâu thuẫn nếu cùng
+      // region 2× tick concurrent (re-entry guard handle); sequential
+      // là an toàn nhất.
+      for (const regionKey of bossSpawnRegions()) {
+        await this.heartbeatRegion(regionKey);
+      }
+    } finally {
+      this.heartbeatRunning = false;
+    }
+  }
+
+  /**
+   * Phase 12.6 — heartbeat tick cho 1 region cụ thể. Tách ra cho test +
+   * future BullMQ worker per-region rouchg.
+   *   1. Expire boss ACTIVE quá hạn → distribute 60% rewards.
+   *   2. Spawn boss mới nếu region trống slot và đã qua respawn delay
+   *      tính từ boss DEFEATED/EXPIRED gần nhất TRONG REGION ĐÓ.
+   *
+   * KHÔNG throw — log + swallow per region để 1 region lỗi không break
+   * heartbeat tick toàn hệ thống.
+   */
+  private async heartbeatRegion(regionKey: string): Promise<void> {
+    try {
+      // 1) Expire boss quá hạn trong region.
       const active = await this.prisma.worldBoss.findFirst({
-        where: { status: BossStatus.ACTIVE },
+        where: { status: BossStatus.ACTIVE, regionKey },
         orderBy: { spawnedAt: 'desc' },
       });
       if (active && active.expiresAt.getTime() <= Date.now()) {
@@ -548,42 +643,84 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
         }
       }
 
-      // 2) Spawn boss mới nếu không có ACTIVE và đã đủ delay.
+      // 2) Spawn boss mới nếu region trống slot và đã đủ delay.
       const stillActive = await this.prisma.worldBoss.findFirst({
-        where: { status: BossStatus.ACTIVE },
+        where: { status: BossStatus.ACTIVE, regionKey },
       });
       if (stillActive) return;
 
       const last = await this.prisma.worldBoss.findFirst({
-        where: { status: { in: [BossStatus.DEFEATED, BossStatus.EXPIRED] } },
+        where: {
+          status: { in: [BossStatus.DEFEATED, BossStatus.EXPIRED] },
+          regionKey,
+        },
         orderBy: { spawnedAt: 'desc' },
       });
       if (last) {
         const since = Date.now() - (last.defeatedAt ?? last.spawnedAt).getTime();
         if (since < BOSS_RESPAWN_DELAY_MS) return;
       }
-      // spawnNew có thể return null nếu race với heartbeat khác (multi-pod) —
-      // partial unique index P2002 → no-op. Heartbeat không cần action thêm.
-      await this.spawnNew();
-    } finally {
-      this.heartbeatRunning = false;
+      // spawnNew có thể return null nếu race với heartbeat khác (multi-pod)
+      // — partial unique index P2002 → no-op. Heartbeat không cần action
+      // thêm. Cross-region: race winner ở region X không block region Y.
+      await this.spawnNew({ regionKey });
+    } catch (e) {
+      this.logger.error(`boss heartbeat region ${regionKey}`, e as Error);
     }
   }
 
+  /**
+   * Phase 12.6 — spawn boss mới trong 1 region cụ thể (atomic, race-safe
+   * qua partial unique `WorldBoss_status_region_active_unique`).
+   *
+   *   - `overrides.def` (admin force) → dùng def đó; def.regionKey phải
+   *     match `overrides.regionKey` (caller validate trước).
+   *   - Auto-rotate (heartbeat): pick boss từ catalog filtered by
+   *     `regionKey` (`bossesByRegion`); rotate theo total spawn count
+   *     trong region đó (count `regionKey` filter để rotate per-region
+   *     deterministic — region trẻ chưa spawn lần nào → boss[0] of
+   *     region; region đã spawn N lần → boss[N % regionBosses.length]).
+   *
+   * Return null + log warn khi P2002 (race lost) — caller (heartbeat
+   * loop) no-op, caller (adminSpawn) throw `BOSS_ALREADY_ACTIVE`.
+   * Return null + log warn khi region không có boss spawn-able (catalog
+   * empty cho region đó — tránh insert NULL bossKey).
+   */
   private async spawnNew(
-    overrides: { def?: BossDef; level?: number } = {},
-  ): Promise<{ id: string; bossKey: string; level: number; maxHp: bigint } | null> {
+    overrides: { def?: BossDef; level?: number; regionKey?: string } = {},
+  ): Promise<{
+    id: string;
+    bossKey: string;
+    level: number;
+    maxHp: bigint;
+    regionKey: string;
+  } | null> {
+    const regionKey = overrides.regionKey ?? WORLD_BOSS_REGION_KEY;
     let def: BossDef;
     let level: number;
     if (overrides.def) {
       def = overrides.def;
       level = overrides.level ?? 1;
     } else {
-      // Auto-rotate: đếm tổng số boss đã spawn để chọn def.
-      // Level: ưu tiên override (admin truyền), fallback về auto-rotate.
-      const totalSpawned = await this.prisma.worldBoss.count();
-      def = BOSSES[totalSpawned % BOSSES.length];
-      level = overrides.level ?? Math.min(10, 1 + Math.floor(totalSpawned / BOSSES.length));
+      // Phase 12.6 — pick từ region catalog. `bossesByRegion('world')`
+      // map sang catalog regionKey=null (legacy world boss).
+      const candidates = bossesByRegion(regionKey);
+      if (candidates.length === 0) {
+        this.logger.warn(
+          `boss spawnNew: catalog không có boss cho region ${regionKey}, no-op`,
+        );
+        return null;
+      }
+      // Auto-rotate per region: count spawn IN THIS REGION → rotate idx.
+      // Level: ưu tiên override (admin truyền), fallback auto-rotate (region
+      // age tier).
+      const totalSpawnedInRegion = await this.prisma.worldBoss.count({
+        where: { regionKey },
+      });
+      def = candidates[totalSpawnedInRegion % candidates.length];
+      level =
+        overrides.level ??
+        Math.min(10, 1 + Math.floor(totalSpawnedInRegion / candidates.length));
     }
     const maxHp = BigInt(def.baseMaxHp) * BigInt(level);
 
@@ -600,24 +737,27 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
           spawnedAt: new Date(),
           expiresAt: new Date(Date.now() + BOSS_LIFETIME_MS),
           rewardTotal: BigInt(def.baseRewardLinhThach) * BigInt(level),
+          regionKey,
         },
       });
     } catch (e) {
-      // Concurrency phase 2 — boss spawn cron auto race backstop. The
-      // partial unique index `WorldBoss_status_active_unique` (migration
-      // `20260522000000_concurrency_boss_active_unique`) enforces that at
-      // most 1 row with `status = ACTIVE` can exist. A concurrent
-      // heartbeat() (multi-pod or in-process re-entry) that lost the race
-      // surfaces here as Prisma `P2002`. Treat as benign no-op: another
-      // ACTIVE boss already exists, so return `null` so the caller
-      // (heartbeat — no-op; adminSpawn — throw `BOSS_ALREADY_ACTIVE`)
-      // can branch appropriately. Re-throw any other error.
+      // Concurrency phase 2 + Phase 12.6 — boss spawn cron auto race
+      // backstop. Partial unique index
+      // `WorldBoss_status_region_active_unique` (migration
+      // `20260523000000_phase_12_6_world_boss_region_key`) enforces ≤1
+      // ACTIVE per region. Concurrent heartbeat() (multi-pod hoặc
+      // in-process re-entry, hoặc cross-region paralell race với
+      // adminSpawn cùng regionKey) lost race → Prisma `P2002`. Benign
+      // no-op: region đó đã có ACTIVE boss; return null cho caller
+      // (heartbeat — no-op; adminSpawn — throw `BOSS_ALREADY_ACTIVE`).
+      // Cross-region race KHÔNG conflict (region X spawn không block
+      // region Y).
       if (
         e instanceof Prisma.PrismaClientKnownRequestError &&
         e.code === 'P2002'
       ) {
         this.logger.warn(
-          'boss spawnNew: race lost on partial unique index (another ACTIVE boss exists), no-op',
+          `boss spawnNew region=${regionKey}: race lost on partial unique index (another ACTIVE boss exists in region), no-op`,
         );
         return null;
       }
@@ -633,21 +773,46 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       currentHp: created.currentHp.toString(),
       spawnedAt: created.spawnedAt.toISOString(),
       expiresAt: created.expiresAt.toISOString(),
+      regionKey: created.regionKey,
     });
-    this.logger.log(`Boss spawn: ${created.name} Lv.${created.level} maxHp=${maxHp}`);
-    return { id: created.id, bossKey: created.bossKey, level: created.level, maxHp };
+    this.logger.log(
+      `Boss spawn region=${created.regionKey}: ${created.name} Lv.${created.level} maxHp=${maxHp}`,
+    );
+    return {
+      id: created.id,
+      bossKey: created.bossKey,
+      level: created.level,
+      maxHp,
+      regionKey: created.regionKey,
+    };
   }
 
   /**
-   * Admin force-spawn 1 boss mới. Nếu đã có boss ACTIVE và `force=false` →
-   * throw BOSS_ALREADY_ACTIVE. Nếu force=true → expire boss cũ rồi spawn.
+   * Admin force-spawn 1 boss mới trong region cụ thể. Phase 12.6:
+   * - `regionKey` optional → default 'world' (legacy world boss).
+   * - Nếu đã có ACTIVE TRONG REGION ĐÓ và `force=false` → throw
+   *   BOSS_ALREADY_ACTIVE. Force=true → expire ACTIVE region đó rồi
+   *   spawn (KHÔNG ảnh hưởng region khác).
+   * - Nếu `bossKey` truyền in: validate def.regionKey match regionKey
+   *   (catalog null → 'world'); mismatch → throw INVALID_BOSS_KEY.
    *
    * Ghi `AdminAuditLog` action `BOSS_SPAWN` với meta đầy đủ.
    */
   async adminSpawn(
     actorId: string,
-    opts: { bossKey?: string; level?: number; force?: boolean } = {},
-  ): Promise<{ id: string; bossKey: string; level: number; maxHp: string }> {
+    opts: {
+      bossKey?: string;
+      level?: number;
+      force?: boolean;
+      regionKey?: string;
+    } = {},
+  ): Promise<{
+    id: string;
+    bossKey: string;
+    level: number;
+    maxHp: string;
+    regionKey: string;
+  }> {
     const level = opts.level ?? 1;
     if (!Number.isInteger(level) || level < 1 || level > 10) {
       throw new BossError('INVALID_LEVEL');
@@ -657,9 +822,27 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       def = bossByKey(opts.bossKey);
       if (!def) throw new BossError('INVALID_BOSS_KEY');
     }
+    // Phase 12.6 — regionKey resolution: ưu tiên opts.regionKey explicit,
+    // fallback derive từ def.regionKey (catalog null → 'world'), cuối cùng
+    // default 'world' (auto-rotate world boss khi không chỉ định gì). Nếu
+    // CẢ HAI explicit và def.regionKey mâu thuẫn → INVALID_BOSS_KEY.
+    let regionKey: string;
+    if (opts.regionKey) {
+      regionKey = opts.regionKey;
+      if (def) {
+        const defRegionKey = def.regionKey ?? WORLD_BOSS_REGION_KEY;
+        if (defRegionKey !== regionKey) {
+          throw new BossError('INVALID_BOSS_KEY');
+        }
+      }
+    } else if (def) {
+      regionKey = def.regionKey ?? WORLD_BOSS_REGION_KEY;
+    } else {
+      regionKey = WORLD_BOSS_REGION_KEY;
+    }
 
     const active = await this.prisma.worldBoss.findFirst({
-      where: { status: BossStatus.ACTIVE },
+      where: { status: BossStatus.ACTIVE, regionKey },
       orderBy: { spawnedAt: 'desc' },
     });
     // replacedBossId chỉ ghi vào audit khi force-expire thực sự diễn ra
@@ -671,7 +854,9 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       // Optimistic lock: chỉ flip ACTIVE → EXPIRED. Nếu giữa findFirst và đây
       // boss đã bị defeat (DEFEATED) bởi player thì skip — không ghi đè
       // historical record. updateMany với status=ACTIVE filter là cách
-      // an toàn để tránh race condition này.
+      // an toàn để tránh race condition này. Phase 12.6 — chỉ flip ACTIVE
+      // trong region requested (regionKey filter); region khác KHÔNG bị
+      // ảnh hưởng.
       const flip = await this.prisma.worldBoss.updateMany({
         where: { id: active.id, status: BossStatus.ACTIVE },
         data: { status: BossStatus.EXPIRED, defeatedAt: new Date() },
@@ -699,15 +884,16 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    const spawned = await this.spawnNew({ def, level });
+    const spawned = await this.spawnNew({ def, level, regionKey });
     if (!spawned) {
-      // Concurrency phase 2 — race window between `force=true` flip-EXPIRED
-      // and `worldBoss.create()`: a parallel heartbeat() spawned a fresh
-      // ACTIVE boss in between. The partial unique index rejected our
-      // create with P2002 → `spawnNew` returned null. Surface as
-      // `BOSS_ALREADY_ACTIVE` so the admin retries (with `force=true`
-      // again to force-replace the new race-winner). KHÔNG ghi audit
-      // log vì boss admin yêu cầu thực ra chưa được tạo.
+      // Concurrency phase 2 + Phase 12.6 — race window between `force=true`
+      // flip-EXPIRED and `worldBoss.create()`: parallel heartbeat() (cùng
+      // region) spawned fresh ACTIVE in between. Partial unique index
+      // rejected our create with P2002 → `spawnNew` returned null. Surface
+      // as `BOSS_ALREADY_ACTIVE` so admin retries (force=true để
+      // force-replace race winner). KHÔNG ghi audit log vì boss admin
+      // yêu cầu thực ra chưa được tạo. Cũng catch case region không có
+      // catalog boss spawn-able (defensive).
       throw new BossError('BOSS_ALREADY_ACTIVE');
     }
     await this.prisma.adminAuditLog.create({
@@ -720,6 +906,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
           level: spawned.level,
           forced: !!opts.force,
           replacedBossId,
+          regionKey: spawned.regionKey,
         } as Prisma.InputJsonValue,
       },
     });
@@ -728,6 +915,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       bossKey: spawned.bossKey,
       level: spawned.level,
       maxHp: spawned.maxHp.toString(),
+      regionKey: spawned.regionKey,
     };
   }
 
@@ -899,8 +1087,18 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async toView(
-    boss: { id: string; bossKey: string; name: string; level: number; maxHp: bigint;
-      currentHp: bigint; status: BossStatus; spawnedAt: Date; expiresAt: Date },
+    boss: {
+      id: string;
+      bossKey: string;
+      name: string;
+      level: number;
+      maxHp: bigint;
+      currentHp: bigint;
+      status: BossStatus;
+      spawnedAt: Date;
+      expiresAt: Date;
+      regionKey: string;
+    },
     viewerCharId: string | null,
   ): Promise<BossView> {
     const def = bossByKey(boss.bossKey);
@@ -942,6 +1140,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       status: boss.status,
       spawnedAt: boss.spawnedAt.toISOString(),
       expiresAt: boss.expiresAt.toISOString(),
+      regionKey: boss.regionKey,
       leaderboard: top.map((r, i) => ({
         rank: i + 1,
         characterId: r.characterId,

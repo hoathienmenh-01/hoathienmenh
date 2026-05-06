@@ -19,6 +19,13 @@ export interface BossView {
   status: 'ACTIVE' | 'DEFEATED' | 'EXPIRED';
   spawnedAt: string;
   expiresAt: string;
+  /**
+   * Phase 12.6 — region scope cho multi-region auto-spawn. `'world'` cho
+   * legacy cross-region world boss; ngược lại match `RegionKey` ở
+   * `@xuantoi/shared/src/map-regions.ts` (`'hac_lam'`, `'kim_son_mach'`,
+   * v.v.).
+   */
+  regionKey: string;
   leaderboard: BossLeaderboardRow[];
   myDamage: string | null;
   myRank: number | null;
@@ -68,11 +75,41 @@ export async function getCurrentBoss(): Promise<BossView | null> {
   return unwrap(data).boss;
 }
 
+/**
+ * Phase 12.6 — list ACTIVE boss across regions (sorted ascending theo
+ * regionKey). FE BossView dùng cho region tabs.
+ */
+export async function getActiveBosses(): Promise<BossView[]> {
+  const { data } = await apiClient.get<Envelope<{ bosses: BossView[] }>>(
+    '/boss/active',
+  );
+  return unwrap(data).bosses;
+}
+
+/**
+ * Phase 12.6 — single ACTIVE boss trong region cụ thể, hoặc null nếu
+ * region trống slot.
+ */
+export async function getCurrentBossByRegion(
+  regionKey: string,
+): Promise<BossView | null> {
+  const { data } = await apiClient.get<Envelope<{ boss: BossView | null }>>(
+    `/boss/region/${encodeURIComponent(regionKey)}`,
+  );
+  return unwrap(data).boss;
+}
+
+/**
+ * Phase 12.6 — attack boss. `bossId` optional cho multi-region
+ * disambiguation. Không truyền → server fallback "primary" (1st ACTIVE
+ * found, most recent spawn).
+ */
 export async function attackBoss(
   skillKey?: string,
+  bossId?: string,
 ): Promise<{ result: AttackResult; defeated: DefeatedRewardSlice[] | null }> {
   const { data } = await apiClient.post<
     Envelope<{ result: AttackResult; defeated: DefeatedRewardSlice[] | null }>
-  >('/boss/attack', { skillKey });
+  >('/boss/attack', { skillKey, bossId });
   return unwrap(data);
 }

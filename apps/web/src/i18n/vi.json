@@ -917,6 +917,11 @@
     "defeatedToast": "{name} đã bị hạ! Nhận thưởng theo BXH.",
     "endedToast": "Boss đã rút lui (hết hạn).",
     "damageToast": "Đả thương {dmg} điểm. (BXH #{rank})",
+    "regionTabsLabel": "Tab vùng",
+    "regionBadge": "Vùng",
+    "region": {
+      "world": "Cõi Liên Vùng"
+    },
     "errors": {
       "NO_CHARACTER": "Chưa có nhân vật.",
       "NO_ACTIVE_BOSS": "Hiện không có Boss nào.",
@@ -926,6 +931,12 @@
       "MP_LOW": "Linh khí không đủ.",
       "HP_LOW": "HP không đủ để dùng huyết tế.",
       "SKILL_NOT_USABLE": "Tâm pháp không thuộc tông của bạn.",
+      "INVALID_REGION_KEY": "Vùng không hợp lệ.",
+      "INVALID_BOSS_KEY": "Boss không tồn tại trong catalog.",
+      "INVALID_LEVEL": "Cấp Boss không hợp lệ.",
+      "BOSS_ALREADY_ACTIVE": "Vùng này đã có Boss đang ACTIVE.",
+      "CONTROLLED": "Đang bị khống chế, không thể tấn công Boss.",
+      "CULTIVATION_BLOCKED": "Đang bị tâm ma cản, không thể tấn công Boss.",
       "UNKNOWN": "Có lỗi xảy ra."
     }
   },
