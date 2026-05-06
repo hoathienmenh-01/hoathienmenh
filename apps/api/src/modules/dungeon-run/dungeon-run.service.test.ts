@@ -66,6 +66,22 @@ describe('DungeonRunService.listForUser', () => {
     expect(after.activeRun?.id).toBe(run.id);
     expect(after.available.find((d) => d.dungeon.key === SON_COC_KEY)?.dailyUsed).toBe(1);
   });
+
+  it('activeRun fallback COMPLETED+claimedAt=null sau khi run hoàn tất, ẩn sau khi CLAIMED', async () => {
+    const { userId } = await makeUserChar(prisma, { realmKey: 'luyenkhi' });
+    const run = await runs.startRun(userId, SON_COC_KEY);
+    // Advance đến hết để chuyển sang COMPLETED.
+    for (let i = 0; i < 3; i++) {
+      await runs.nextEncounter(userId, run.id);
+    }
+    const afterComplete = await runs.listForUser(userId);
+    expect(afterComplete.activeRun?.id).toBe(run.id);
+    expect(afterComplete.activeRun?.status).toBe('COMPLETED');
+    // Claim → CLAIMED, KHÔNG còn return ở activeRun.
+    await runs.claimRun(userId, run.id);
+    const afterClaim = await runs.listForUser(userId);
+    expect(afterClaim.activeRun).toBeNull();
+  });
 });
 
 describe('DungeonRunService.startRun', () => {

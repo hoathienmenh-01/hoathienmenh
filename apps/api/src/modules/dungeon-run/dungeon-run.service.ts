@@ -203,6 +203,10 @@ export class DungeonRunService {
   /**
    * GET /dungeons/me — list catalog với availability flag + active run nếu có.
    * Realm gate + daily-slot count + stamina-check tính per-dungeon.
+   *
+   * `activeRun` priority: ACTIVE run trước (đang chạy), fallback COMPLETED +
+   * `claimedAt = null` (player còn phải click claim qua UI). CLAIMED /
+   * ABANDONED runs KHÔNG return.
    */
   async listForUser(userId: string): Promise<DungeonListView> {
     const char = await this.prisma.character.findUnique({
@@ -256,10 +260,24 @@ export class DungeonRunService {
       });
     }
 
-    const active = await this.prisma.dungeonRun.findFirst({
+    // Active priority: ACTIVE run trước (đang chạy). Nếu không có ACTIVE thì
+    // fallback COMPLETED + chưa claim (player còn cần click claim button qua
+    // UI — FE chỉ render activeRun nên BE phải expose COMPLETED unclaimed run
+    // ở đây). CLAIMED/ABANDONED runs KHÔNG return (đã đóng vòng đời).
+    let active = await this.prisma.dungeonRun.findFirst({
       where: { characterId: char.id, status: DungeonRunStatus.ACTIVE },
       orderBy: { startedAt: 'desc' },
     });
+    if (!active) {
+      active = await this.prisma.dungeonRun.findFirst({
+        where: {
+          characterId: char.id,
+          status: DungeonRunStatus.COMPLETED,
+          claimedAt: null,
+        },
+        orderBy: { completedAt: 'desc' },
+      });
+    }
     return {
       available,
       activeRun: active ? this.toView(active) : null,
