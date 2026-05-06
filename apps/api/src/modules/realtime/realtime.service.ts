@@ -72,6 +72,37 @@ export class RealtimeService {
     return (this.userSockets.get(userId)?.size ?? 0) > 0;
   }
 
+  /**
+   * Force-disconnect tất cả socket của user (vd khi admin ban giữa
+   * session). Emit `error` frame với code/reason để client log + render
+   * banner trước khi `disconnect(true)`. Idempotent — gọi với userId
+   * không online thì no-op (return false). Trả về `true` nếu đã kick
+   * được >= 1 socket.
+   *
+   * Pattern: snapshot Set socket id (clone) trước khi loop để tránh mutate
+   * trong khi iterate (`detach` từ `handleDisconnect` callback sẽ xoá
+   * khỏi `userSockets`).
+   */
+  kickUser(userId: string, reason: string): boolean {
+    if (!this.server) return false;
+    const sockets = this.userSockets.get(userId);
+    if (!sockets || sockets.size === 0) return false;
+    const sids = [...sockets];
+    let kicked = 0;
+    for (const sid of sids) {
+      const sock = this.server.sockets.sockets.get(sid);
+      if (!sock) continue;
+      try {
+        sock.emit('error', { code: reason });
+      } catch {
+        // emit có thể throw nếu socket đã closing — ignore.
+      }
+      sock.disconnect(true);
+      kicked += 1;
+    }
+    return kicked > 0;
+  }
+
   countOnline(): number {
     return this.userSockets.size;
   }

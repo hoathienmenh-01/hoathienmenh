@@ -56,6 +56,23 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       const payload = await this.jwt.verifyAsync<{ sub: string }>(token, {
         secret: process.env.JWT_ACCESS_SECRET ?? 'dev-access-secret',
       });
+      // Ban check trên realtime path. Phase 2 concurrency hardening: JWT
+      // hợp lệ KHÔNG đủ — user có thể đã bị admin ban giữa lúc token còn
+      // sống (token TTL ~15 phút). Auth REST path đã chặn trên login/
+      // refresh/me (`auth.service.ts` `ACCOUNT_BANNED`); WS gateway
+      // trước fix bỏ sót, banned user vẫn nhận `state:update` /
+      // `chat:msg` / `cultivate:tick` cho đến khi token expire. Sau fix:
+      // `User.banned` true → emit error code `ACCOUNT_BANNED` + disconnect
+      // ngay, không attach socket vào `userSockets`.
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: { banned: true },
+      });
+      if (!user || user.banned) {
+        client.emit('error', { code: 'ACCOUNT_BANNED' });
+        client.disconnect(true);
+        return;
+      }
       client.data.userId = payload.sub;
       this.realtime.bind(this.server);
       this.realtime.attach(payload.sub, client.id);

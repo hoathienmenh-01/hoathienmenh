@@ -289,6 +289,16 @@ export class AdminService {
     }
     await this.prisma.user.update({ where: { id: targetUserId }, data: { banned } });
     await this.audit(actorId, banned ? 'user.ban' : 'user.unban', { targetUserId });
+    // Realtime path hardening: ban giữa session phải kick socket đang
+    // sống. JWT access-token TTL ~15 phút, không refresh sau khi banned
+    // (auth refresh path check `user.banned`), nhưng socket đã connect
+    // vẫn đứng im đến khi token expire — rò các event `state:update` /
+    // `chat:msg` / `cultivate:tick`. `RealtimeService.kickUser` emit
+    // `ACCOUNT_BANNED` rồi `disconnect(true)`. Idempotent, no-op nếu user
+    // không online. Chỉ kick khi `banned=true` (unban không cần kick).
+    if (banned) {
+      this.realtime.kickUser(targetUserId, 'ACCOUNT_BANNED');
+    }
   }
 
   async setRole(

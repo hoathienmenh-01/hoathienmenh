@@ -254,6 +254,90 @@ describe('RealtimeGateway — WS auth từ cookie', () => {
     expect(realtime.isOnline(u.userId)).toBe(false);
   });
 
+  // ─────────────────────────────────────────────────────────────────────
+  // Concurrency phase 2 — Ban during connection (Realtime hardening)
+  //
+  // Trước fix: `handleConnection` chỉ verify JWT signature/exp, KHÔNG
+  // check `User.banned`. JWT access-token TTL ~15 phút → user bị admin
+  // ban vẫn connect/nhận event đến khi token expire. Auth REST path đã
+  // chặn login/refresh/me bằng `ACCOUNT_BANNED` (auth.service.ts:148/
+  // 312/352) — gateway bỏ sót.
+  //
+  // Sau fix:
+  //  - `handleConnection`: query `user.banned` post-JWT-verify; banned →
+  //    emit `error{code:ACCOUNT_BANNED}` + `disconnect(true)`, không
+  //    attach socket vào `userSockets`.
+  //  - `RealtimeService.kickUser(userId, reason)`: snapshot socket id
+  //    set + iterate disconnect — idempotent.
+  //  - `AdminService.setBanned(banned=true)`: gọi
+  //    `realtime.kickUser(targetUserId, 'ACCOUNT_BANNED')` sau khi
+  //    Prisma update + audit.
+  // ─────────────────────────────────────────────────────────────────────
+  it('user banned trước khi connect → JWT hợp lệ vẫn bị disconnect (ACCOUNT_BANNED)', async () => {
+    const u = await makeUserChar(prisma);
+    // Ban user TRƯỚC khi connect — emulate admin đã ban xong, user
+    // chưa kịp logout.
+    await prisma.user.update({
+      where: { id: u.userId },
+      data: { banned: true },
+    });
+    const token = await signAccess(u.userId);
+    const sock = connect({ cookie: `${ACCESS_COOKIE}=${token}` });
+    let errFrame: { code?: string } | null = null;
+    sock.on('error', (frame: { code?: string }) => {
+      errFrame = frame;
+    });
+    try {
+      await waitClosed(sock);
+      expect(sock.connected).toBe(false);
+      // Không leak online state — banned user không attach.
+      expect(realtime.isOnline(u.userId)).toBe(false);
+      // Server emit error trước disconnect; client có thể nhận hoặc bỏ
+      // lỡ tuỳ timing transport. Nếu nhận thì code phải đúng.
+      if (errFrame !== null) {
+        expect((errFrame as { code?: string }).code).toBe('ACCOUNT_BANNED');
+      }
+    } finally {
+      sock.disconnect();
+    }
+  });
+
+  it('user đang connect → admin ban (kickUser) → socket bị disconnect, isOnline=false', async () => {
+    const u = await makeUserChar(prisma);
+    const sock = connect({ cookie: `${ACCESS_COOKIE}=${await signAccess(u.userId)}` });
+    try {
+      await waitConnect(sock);
+      await new Promise((r) => setTimeout(r, 100));
+      expect(sock.connected).toBe(true);
+      expect(realtime.isOnline(u.userId)).toBe(true);
+
+      // Race: trong khi connection còn sống, admin trigger kickUser
+      // (mô phỏng AdminService.setBanned wire). Service.kickUser snapshot
+      // socket id set + emit `error{code:ACCOUNT_BANNED}` + disconnect.
+      let kickErrFrame: { code?: string } | null = null;
+      sock.on('error', (frame: { code?: string }) => {
+        kickErrFrame = frame;
+      });
+      const ok = realtime.kickUser(u.userId, 'ACCOUNT_BANNED');
+      expect(ok).toBe(true);
+
+      await waitClosed(sock);
+      expect(sock.connected).toBe(false);
+      // Sau handleDisconnect → detach từ userSockets.
+      await new Promise((r) => setTimeout(r, 200));
+      expect(realtime.isOnline(u.userId)).toBe(false);
+      if (kickErrFrame !== null) {
+        expect((kickErrFrame as { code?: string }).code).toBe('ACCOUNT_BANNED');
+      }
+
+      // kickUser idempotent — gọi lại trên user đã offline → return false.
+      const ok2 = realtime.kickUser(u.userId, 'ACCOUNT_BANNED');
+      expect(ok2).toBe(false);
+    } finally {
+      sock.disconnect();
+    }
+  });
+
   it('user có sect → auto-join sect:<id> room → emitToRoom deliver', async () => {
     const u = await makeUserChar(prisma);
     const s = await prisma.sect.create({
