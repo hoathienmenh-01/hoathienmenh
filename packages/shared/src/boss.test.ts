@@ -7,6 +7,9 @@ import {
   BOSS_STAMINA_PER_HIT,
   BOSS_LIFETIME_MS,
   BOSS_RESPAWN_DELAY_MS,
+  WORLD_BOSS_REGION_KEY,
+  bossSpawnRegions,
+  bossesByRegion,
 } from './boss';
 import { ITEMS } from './items';
 
@@ -186,6 +189,54 @@ describe('pickBossByRotation()', () => {
   it('seed rất lớn vẫn resolve được boss hợp lệ (no out-of-range)', () => {
     const b = pickBossByRotation(999999);
     expect(BOSSES.map((x) => x.key)).toContain(b.key);
+  });
+});
+
+describe('Phase 12.6 — boss-by-region helpers', () => {
+  it('WORLD_BOSS_REGION_KEY = "world" (DB regionKey constant)', () => {
+    expect(WORLD_BOSS_REGION_KEY).toBe('world');
+  });
+
+  it('bossSpawnRegions() returns sorted distinct regions including "world" (cho catalog null regionKey)', () => {
+    const regions = bossSpawnRegions();
+    expect(regions.length).toBeGreaterThan(0);
+    // Sorted ascending — deterministic heartbeat ordering
+    const sorted = [...regions].sort();
+    expect(regions).toEqual(sorted);
+    // No duplicates
+    expect(new Set(regions).size).toBe(regions.length);
+  });
+
+  it('bossSpawnRegions() bao gồm WORLD_BOSS_REGION_KEY khi catalog có boss regionKey=null', () => {
+    const hasNullRegion = BOSSES.some((b) => b.regionKey === null || b.regionKey === undefined);
+    if (hasNullRegion) {
+      expect(bossSpawnRegions()).toContain(WORLD_BOSS_REGION_KEY);
+    }
+  });
+
+  it('bossesByRegion("world") trả về catalog boss với regionKey null/undefined', () => {
+    const worldBosses = bossesByRegion(WORLD_BOSS_REGION_KEY);
+    for (const b of worldBosses) {
+      expect(b.regionKey == null, `${b.key} should have regionKey null/undefined`).toBe(true);
+    }
+  });
+
+  it('bossesByRegion(specificRegion) returns chỉ boss của region đó', () => {
+    const regions = bossSpawnRegions().filter((r) => r !== WORLD_BOSS_REGION_KEY);
+    expect(regions.length).toBeGreaterThan(0);
+    for (const region of regions) {
+      const filtered = bossesByRegion(region);
+      expect(filtered.length, `region ${region} có ≥1 boss`).toBeGreaterThan(0);
+      for (const b of filtered) {
+        expect(b.regionKey, `${b.key} regionKey match`).toBe(region);
+      }
+    }
+  });
+
+  it('mỗi region trong bossSpawnRegions() có ≥1 boss spawn-able (catalog không leak orphan region)', () => {
+    for (const region of bossSpawnRegions()) {
+      expect(bossesByRegion(region).length, `region ${region} có ≥1 boss`).toBeGreaterThan(0);
+    }
   });
 });
 

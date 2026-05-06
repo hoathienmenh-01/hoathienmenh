@@ -1,15 +1,22 @@
 /**
- * BossService concurrency regression tests — Phase 12.X (concurrency phase 2).
+ * BossService concurrency regression tests — Phase 12.X (concurrency
+ * phase 2) + Phase 12.6 (per-region).
  *
  * Covers boss spawn cron auto race: 2+ concurrent `BossService.heartbeat()`
- * (or `spawnNew()`) ticks must NEVER produce 2 simultaneous ACTIVE
- * `WorldBoss` rows. Without the partial unique index
- * `WorldBoss_status_active_unique` (migration
- * `20260522000000_concurrency_boss_active_unique`), 2 heartbeats running on
- * different pods (or a single pod where the previous tick is still
- * in-flight) can each pass the `findFirst({status: ACTIVE}) === null`
- * check and both `worldBoss.create()` succeed → 2 ACTIVE bosses split
- * leaderboard / damage tracking / ledger.
+ * (or `spawnNew()`) ticks targeting cùng 1 region must NEVER produce 2
+ * simultaneous ACTIVE `WorldBoss` rows trong region đó. Without the
+ * partial unique index `WorldBoss_status_region_active_unique`
+ * (migration `20260523000000_phase_12_6_world_boss_region_key`,
+ * superseding `20260522000000_concurrency_boss_active_unique`), 2
+ * heartbeats running on different pods (or a single pod where the
+ * previous tick is still in-flight) can each pass the
+ * `findFirst({status: ACTIVE, regionKey}) === null` check and both
+ * `worldBoss.create()` succeed → 2 ACTIVE bosses split leaderboard /
+ * damage tracking / ledger trong cùng region.
+ *
+ * Phase 12.6 — Cross-region race (region X spawn parallel với region Y
+ * spawn) KHÔNG conflict (2 ACTIVE rows hợp lệ ở 2 region khác). Test
+ * cross-region isolation ở `boss.service.region.test.ts`.
  *
  * Test pattern: mirror `inventory.service.concurrency.test.ts` —
  *
@@ -97,16 +104,33 @@ type BossInternals = {
   spawnNew: (overrides?: {
     def?: ReturnType<typeof bossByKey>;
     level?: number;
-  }) => Promise<{ id: string; bossKey: string; level: number; maxHp: bigint } | null>;
+    regionKey?: string;
+  }) => Promise<{
+    id: string;
+    bossKey: string;
+    level: number;
+    maxHp: bigint;
+    regionKey: string;
+  } | null>;
 };
 const internals = () => boss as unknown as BossInternals;
+
+/**
+ * Phase 12.6 — fixture region resolver. Catalog null (legacy world boss)
+ * → 'world' (DB constant). Match `bossesByRegion()` mapping ở
+ * `packages/shared/src/boss.ts`.
+ */
+const DEF_REGION_KEY = DEF.regionKey ?? 'world';
 
 describe('BossService — concurrency regression (spawn cron auto race)', () => {
   // ─────────────────────────────────────────────────────────────────────
   // Race 1 — 5× concurrent spawnNew with no prior ACTIVE
   // ─────────────────────────────────────────────────────────────────────
-  it('5× concurrent spawnNew → exactly 1 ACTIVE row, 4 race-lost calls return null', async () => {
-    const results = await runConcurrent(() => internals().spawnNew(), 5);
+  it('5× concurrent spawnNew(sameRegion) → exactly 1 ACTIVE row trong region, 4 race-lost calls return null', async () => {
+    const results = await runConcurrent(
+      () => internals().spawnNew({ regionKey: DEF_REGION_KEY }),
+      5,
+    );
 
     const okCount = results.filter((r) => r.ok && r.value !== null).length;
     const nullCount = results.filter((r) => r.ok && r.value === null).length;
@@ -118,9 +142,9 @@ describe('BossService — concurrency regression (spawn cron auto race)', () => 
     expect(okCount).toBe(1);
     expect(nullCount).toBe(4);
 
-    // DB: exactly 1 ACTIVE row.
+    // DB: exactly 1 ACTIVE row trong region.
     const activeCount = await prisma.worldBoss.count({
-      where: { status: BossStatus.ACTIVE },
+      where: { status: BossStatus.ACTIVE, regionKey: DEF_REGION_KEY },
     });
     expect(activeCount).toBe(1);
 
@@ -133,7 +157,7 @@ describe('BossService — concurrency regression (spawn cron auto race)', () => 
   // ─────────────────────────────────────────────────────────────────────
   // Race 2 — spawnNew when ACTIVE already exists (cron-after-admin-spawn)
   // ─────────────────────────────────────────────────────────────────────
-  it('spawnNew khi đã có ACTIVE → returns null (no throw, không corrupt existing)', async () => {
+  it('spawnNew khi đã có ACTIVE trong region → returns null (no throw, không corrupt existing)', async () => {
     const def = bossByKey(DEF.key)!;
     const existing = await prisma.worldBoss.create({
       data: {
@@ -146,10 +170,11 @@ describe('BossService — concurrency regression (spawn cron auto race)', () => 
         spawnedAt: new Date(),
         expiresAt: new Date(Date.now() + 60 * 60_000),
         rewardTotal: BigInt(def.baseRewardLinhThach),
+        regionKey: DEF_REGION_KEY,
       },
     });
 
-    const r = await internals().spawnNew();
+    const r = await internals().spawnNew({ regionKey: DEF_REGION_KEY });
     expect(r).toBeNull();
 
     // Existing row giữ nguyên — không bị flip status, không bị decrement HP.
@@ -159,9 +184,9 @@ describe('BossService — concurrency regression (spawn cron auto race)', () => 
     expect(after.status).toBe(BossStatus.ACTIVE);
     expect(after.currentHp).toBe(BigInt(def.baseMaxHp));
 
-    // DB still exactly 1 ACTIVE row.
+    // DB still exactly 1 ACTIVE row trong region.
     const activeCount = await prisma.worldBoss.count({
-      where: { status: BossStatus.ACTIVE },
+      where: { status: BossStatus.ACTIVE, regionKey: DEF_REGION_KEY },
     });
     expect(activeCount).toBe(1);
   });
@@ -169,23 +194,37 @@ describe('BossService — concurrency regression (spawn cron auto race)', () => 
   // ─────────────────────────────────────────────────────────────────────
   // Race 3 — 2× concurrent heartbeat from "blank slate" (no ACTIVE)
   // ─────────────────────────────────────────────────────────────────────
-  it('2× concurrent heartbeat (no prior ACTIVE) → exactly 1 ACTIVE row sau race', async () => {
+  it('2× concurrent heartbeat (no prior ACTIVE) → exactly 1 ACTIVE row per region sau race', async () => {
     const results = await runConcurrent(() => internals().heartbeat(), 2);
 
     // Heartbeat không throw — 2 path:
     //   a) intra-process: heartbeatRunning flag → 2nd call skip,
-    //      1st call spawn. Result: 1 ACTIVE.
+    //      1st call spawn. Result: 1 ACTIVE per region (bossSpawnRegions
+    //      iterate sequential).
     //   b) flag cleared between (await microtask), 2 spawn race —
-    //      partial unique index → 1 winner + 1 P2002 swallowed.
+    //      partial unique index per region → 1 winner per region +
+    //      1 P2002 swallowed per region.
     expect(results.every((r) => r.ok)).toBe(true);
 
-    const activeCount = await prisma.worldBoss.count({
+    // Phase 12.6 — per-region invariant: ≤1 ACTIVE per region (partial
+    // unique index `WorldBoss_status_region_active_unique`). KHÔNG còn
+    // global "≤1 ACTIVE" — heartbeat loop spawn ở mọi region trong
+    // `bossSpawnRegions()` (~7 region cho catalog hiện tại).
+    const activeRows = await prisma.worldBoss.findMany({
       where: { status: BossStatus.ACTIVE },
+      select: { regionKey: true },
     });
-    expect(activeCount).toBe(1);
+    const regionsWithActive = new Set(activeRows.map((r) => r.regionKey));
+    // Mỗi region trong activeRows duy nhất 1 ACTIVE.
+    expect(activeRows.length).toBe(regionsWithActive.size);
+    // Total = số region có ACTIVE = số region trong catalog (heartbeat
+    // spawn được mỗi region).
+    expect(activeRows.length).toBeGreaterThanOrEqual(1);
 
+    // Bound trên: total bosses == ACTIVE count (no DEFEATED/EXPIRED yet
+    // do chỉ heartbeat duy nhất 2 lần parallel + clean DB).
     const totalCount = await prisma.worldBoss.count();
-    expect(totalCount).toBe(1);
+    expect(totalCount).toBe(activeRows.length);
   });
 
   // ─────────────────────────────────────────────────────────────────────
@@ -195,7 +234,7 @@ describe('BossService — concurrency regression (spawn cron auto race)', () => 
     const admin = await prisma.user.create({
       data: { email: `admin-${Date.now()}@xt.local`, passwordHash: 'x', role: 'ADMIN' },
     });
-    // Setup: 1 ACTIVE boss (admin sẽ force-replace).
+    // Setup: 1 ACTIVE boss trong region (admin sẽ force-replace).
     const def = bossByKey(DEF.key)!;
     await prisma.worldBoss.create({
       data: {
@@ -208,27 +247,36 @@ describe('BossService — concurrency regression (spawn cron auto race)', () => 
         spawnedAt: new Date(),
         expiresAt: new Date(Date.now() + 60 * 60_000),
         rewardTotal: BigInt(def.baseRewardLinhThach),
+        regionKey: DEF_REGION_KEY,
       },
     });
 
     // Race: admin force=true (flip ACTIVE→EXPIRED + spawn) song song với
-    // 1 spawnNew "as if" heartbeat. Outcomes hợp lệ:
+    // 1 spawnNew "as if" heartbeat — CÙNG region (test cùng-region race;
+    // cross-region test ở `boss.service.region.test.ts`). Outcomes hợp
+    // lệ trong region:
     //   (a) admin tới sau heartbeat: admin.findFirst thấy heartbeat-spawned
     //       boss (ACTIVE), force flip → spawn succeed.
     //   (b) admin force-flip win: heartbeat thấy không ACTIVE → spawn
     //       succeed → admin sau đó hit P2002 → throw BOSS_ALREADY_ACTIVE.
     //   (c) admin tới trước: flip cũ → admin spawnNew win → heartbeat
     //       hit P2002 → no-op.
-    // Bound trên: 1 ACTIVE sau race; nếu admin throw thì KHÔNG ghi audit
-    // log (bossId chưa được tạo); nếu admin succeed thì có audit.
+    // Bound trên: 1 ACTIVE trong region sau race; nếu admin throw thì
+    // KHÔNG ghi audit log (bossId chưa được tạo); nếu admin succeed thì
+    // có audit.
     const [adminResult] = await Promise.allSettled([
-      boss.adminSpawn(admin.id, { bossKey: DEF.key, level: 2, force: true }),
-      internals().spawnNew(),
+      boss.adminSpawn(admin.id, {
+        bossKey: DEF.key,
+        level: 2,
+        force: true,
+        regionKey: DEF_REGION_KEY,
+      }),
+      internals().spawnNew({ regionKey: DEF_REGION_KEY }),
     ]);
 
-    // 1 ACTIVE row only.
+    // 1 ACTIVE row trong region only.
     const activeCount = await prisma.worldBoss.count({
-      where: { status: BossStatus.ACTIVE },
+      where: { status: BossStatus.ACTIVE, regionKey: DEF_REGION_KEY },
     });
     expect(activeCount).toBe(1);
 

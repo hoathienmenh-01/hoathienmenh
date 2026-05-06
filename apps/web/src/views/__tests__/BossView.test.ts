@@ -16,14 +16,18 @@ import type { BossView, DefeatedRewardSlice, AttackResult } from '@/api/boss';
  * double-attack qua cooldown bypass. Thêm 11 test chống regression.
  */
 
-const getCurrentBossMock = vi.fn();
+const getActiveBossesMock = vi.fn();
 const attackBossMock = vi.fn();
 
 vi.mock('@/api/boss', async () => {
   const actual = await vi.importActual<typeof import('@/api/boss')>('@/api/boss');
   return {
     ...actual,
-    getCurrentBoss: (...a: unknown[]) => getCurrentBossMock(...a),
+    // Phase 12.6 — view chuyển sang `getActiveBosses` (list multi-region).
+    // `getCurrentBoss` legacy giữ cho external import nhưng view không
+    // dùng. Helper `setSingleBoss(boss)` ở dưới wrap về list[1] cho
+    // compat với test pattern cũ.
+    getActiveBosses: (...a: unknown[]) => getActiveBossesMock(...a),
     attackBoss: (...a: unknown[]) => attackBossMock(...a),
   };
 });
@@ -132,6 +136,8 @@ function makeBoss(overrides: Partial<BossView> = {}): BossView {
     status: 'ACTIVE',
     spawnedAt: '2026-04-30T00:00:00Z',
     expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    // Phase 12.6 — fixture default 'world' khớp catalog null mapping.
+    regionKey: 'world',
     leaderboard: [],
     myDamage: null,
     myRank: null,
@@ -165,7 +171,7 @@ function mountView() {
 beforeEach(() => {
   vi.useFakeTimers();
   setActivePinia(createPinia());
-  getCurrentBossMock.mockReset();
+  getActiveBossesMock.mockReset();
   attackBossMock.mockReset();
   routerReplaceMock.mockReset();
   toastPushMock.mockReset();
@@ -188,18 +194,21 @@ describe('BossView — onMounted routing & load', () => {
     mountView();
     await flushPromises();
     expect(routerReplaceMock).toHaveBeenCalledWith('/auth');
-    expect(getCurrentBossMock).not.toHaveBeenCalled();
+    expect(getActiveBossesMock).not.toHaveBeenCalled();
   });
 
   it('auth + không có boss → render noneTitle', async () => {
-    getCurrentBossMock.mockResolvedValue(null);
+    // Phase 12.6 — empty list → render noneTitle.
+    getActiveBossesMock.mockResolvedValue([]);
     const w = mountView();
     await flushPromises();
     expect(w.text()).toContain('Chưa có boss');
   });
 
   it('auth + có boss → render name + level + HP', async () => {
-    getCurrentBossMock.mockResolvedValue(makeBoss({ name: 'Test Boss', level: 42 }));
+    getActiveBossesMock.mockResolvedValue([
+      makeBoss({ name: 'Test Boss', level: 42 }),
+    ]);
     const w = mountView();
     await flushPromises();
     expect(w.text()).toContain('Test Boss');
@@ -208,8 +217,8 @@ describe('BossView — onMounted routing & load', () => {
     expect(w.text()).toContain('10000');
   });
 
-  it('getCurrentBoss throw → boss = null (silent fail)', async () => {
-    getCurrentBossMock.mockRejectedValue(new Error('network'));
+  it('getActiveBosses throw → boss = null (silent fail)', async () => {
+    getActiveBossesMock.mockRejectedValue(new Error('network'));
     const w = mountView();
     await flushPromises();
     expect(w.text()).toContain('Chưa có boss');
@@ -218,7 +227,7 @@ describe('BossView — onMounted routing & load', () => {
 
 describe('BossView — attack flow (reward safety)', () => {
   beforeEach(() => {
-    getCurrentBossMock.mockResolvedValue(makeBoss());
+    getActiveBossesMock.mockResolvedValue([makeBoss()]);
   });
 
   it('success: attackBoss + HP update + damage toast', async () => {
@@ -308,7 +317,9 @@ describe('BossView — attack flow (reward safety)', () => {
 
 describe('BossView — realtime WS events', () => {
   beforeEach(() => {
-    getCurrentBossMock.mockResolvedValue(makeBoss({ id: 'b1', currentHp: '8000' }));
+    getActiveBossesMock.mockResolvedValue([
+      makeBoss({ id: 'b1', currentHp: '8000' }),
+    ]);
   });
 
   it('đăng ký handlers cho boss:update, boss:spawn, boss:defeated, boss:end', async () => {

@@ -39,6 +39,8 @@ const STUB_BOSS: BossView = {
   status: 'ACTIVE' as BossView['status'],
   spawnedAt: '2026-04-30T12:00:00.000Z',
   expiresAt: '2026-04-30T13:00:00.000Z',
+  // Phase 12.6 — regionKey field cho multi-region support.
+  regionKey: 'world',
   leaderboard: [],
   myDamage: null,
   myRank: null,

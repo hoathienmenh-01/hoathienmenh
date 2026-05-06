@@ -379,12 +379,42 @@ export function bossesByElement(element: ElementKey | null): BossDef[] {
 }
 
 /**
- * Phase 10 PR-5 helper — filter boss theo regionKey. Phase 12
- * `BossSpawnService` sẽ dùng để rotate boss theo region (mỗi region có
- * spawn cadence riêng — `BALANCE_MODEL.md` §6.3).
+ * Phase 10 PR-5 helper — filter boss theo regionKey. Phase 12.6
+ * `BossService.heartbeat` dùng helper này để rotate boss theo region
+ * (mỗi region 1 spawn slot ACTIVE — partial unique index DB-level
+ * `WorldBoss_status_region_active_unique`). `null` regionKey trong
+ * catalog (vd `hon_nguyen_yeu_to`) map sang `WORLD_BOSS_REGION_KEY` =
+ * 'world' ở runtime DB layer (xem `bossSpawnRegions()`).
  */
 export function bossesByRegion(regionKey: string): BossDef[] {
+  if (regionKey === WORLD_BOSS_REGION_KEY) {
+    return BOSSES.filter((b) => !b.regionKey);
+  }
   return BOSSES.filter((b) => b.regionKey === regionKey);
+}
+
+/**
+ * Phase 12.6 — DB regionKey constant cho cross-region "world" boss
+ * (legacy `BossDef.regionKey === null`). `WorldBoss.regionKey` ở Prisma
+ * layer là `String NOT NULL DEFAULT 'world'`, nên catalog null phải map
+ * về 'world' trước khi insert. Cũng dùng làm fallback default cho
+ * `adminSpawn` khi không truyền regionKey.
+ */
+export const WORLD_BOSS_REGION_KEY = 'world';
+
+/**
+ * Phase 12.6 — danh sách distinct region có ≥1 boss spawn-able trong
+ * `BOSSES` catalog. Heartbeat loop iterate list này để check ACTIVE +
+ * spawn boss thiếu per region. `null` regionKey trong catalog (cross-
+ * region world boss) map về `WORLD_BOSS_REGION_KEY = 'world'`. Output
+ * sorted để deterministic test + heartbeat ordering.
+ */
+export function bossSpawnRegions(): string[] {
+  const set = new Set<string>();
+  for (const boss of BOSSES) {
+    set.add(boss.regionKey ?? WORLD_BOSS_REGION_KEY);
+  }
+  return Array.from(set).sort();
 }
 
 /**
