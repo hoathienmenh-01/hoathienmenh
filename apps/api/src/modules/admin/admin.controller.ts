@@ -88,6 +88,16 @@ const SetRealmInput = z.object({
   realmStage: z.number().int().min(1).max(9).default(1),
   reason: z.string().max(200).default(''),
 });
+const QuestTrackInput = z.object({
+  /** Step kind. talk/explore/choice phải qua POST /quests/progress (player-driven, server vẫn validate). */
+  kind: z.enum(['kill', 'collect']),
+  targetType: z.enum(['monster', 'item']),
+  /** vd "son_thu", "linh_co". Service validate format (1..80). */
+  targetId: z.string().min(1).max(80),
+  /** 1..999 — admin track tối đa 1 lần (catalog max step.count = 5). */
+  amount: z.number().int().positive().max(999),
+  reason: z.string().max(200).default(''),
+});
 const GrantCurrencyInput = z.object({
   currency: z.enum(['LINH_THACH', 'TIEN_NGOC']),
   /** BigInt-as-string (mirror grant-exp pattern). Có thể âm để trừ. */
@@ -397,6 +407,40 @@ export class AdminController {
         parsed.data.qty,
         parsed.data.reason,
       );
+      return { ok: true, data: { ok: true } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Phase 12 Story PR-5 — admin seed harness: bypass-track quest progress
+   * cho step kind kill/collect. Use-case: positive-flow E2E + smoke main
+   * storyline Chapter 1 (`phamnhan_main_01` step_03 kill 3 sơn thử)
+   * không phải spin combat loop thật. Reuse `QuestService.track()` →
+   * tự match ACCEPTED quest theo (kind, targetType, targetId), cộng
+   * counter atomic + auto-transition COMPLETED. Audit `admin.quest.track`.
+   * KHÔNG ledger (claim path mới ghi ledger). talk/explore/choice phải
+   * qua `POST /quests/progress` player-driven, không seed qua admin.
+   */
+  @Post('users/:id/quest-track')
+  @HttpCode(200)
+  @RequireAdmin()
+  async grantQuestTrack(
+    @Req() req: AdminReq,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = QuestTrackInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      await this.admin.grantQuestTrack(req.userId, req.role, id, {
+        kind: parsed.data.kind,
+        targetType: parsed.data.targetType,
+        targetId: parsed.data.targetId,
+        amount: parsed.data.amount,
+        reason: parsed.data.reason,
+      });
       return { ok: true, data: { ok: true } };
     } catch (e) {
       this.handleErr(e);

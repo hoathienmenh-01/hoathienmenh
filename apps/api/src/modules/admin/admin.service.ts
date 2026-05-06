@@ -14,6 +14,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { CharacterService } from '../character/character.service';
 import { CurrencyError, CurrencyService } from '../character/currency.service';
+import { QuestService } from '../quest/quest.service';
 import {
   addDaysLocal,
   getLocalDateString,
@@ -48,6 +49,7 @@ const MAX_GRANT_QTY = 999; // mirror revoke cap cho admin grant item
 const MAX_GRANT_EXP = 10n ** 18n; // 10^18 — đủ cho mọi cảnh giới + buffer; chặn nhập sai BigInt
 const MAX_GRANT_TALENT_POINT = 99; // đủ buffer cho mọi tier talent (catalog max ~30 tổng cost), chặn nhập sai
 const MAX_SEED_DAILY_LOGIN_DAYS = 30; // 1 tháng — đủ smoke multi-day, chặn admin gõ nhầm seed lớn
+const MAX_QUEST_TRACK_AMOUNT = 999; // đủ buffer mọi step.count (catalog max kill 5/collect 5), chặn admin gõ nhầm
 const PAGE_SIZE = 30;
 
 export interface AdminUserRow {
@@ -76,6 +78,7 @@ export class AdminService {
     private readonly realtime: RealtimeService,
     private readonly currency: CurrencyService,
     private readonly inventory: InventoryService,
+    private readonly quests: QuestService,
   ) {}
 
   // ---------- users ----------
@@ -584,6 +587,97 @@ export class AdminService {
       itemKey,
       qty,
       reason,
+    });
+
+    const state = await this.chars.findByUser(targetUserId);
+    if (state) this.realtime.emitToUser(targetUserId, 'state:update', state);
+  }
+
+  /**
+   * Phase 12 Story PR-5 — admin seed harness: bypass-track quest progress
+   * cho step kind kill/collect (vốn chỉ tăng qua gameplay hook
+   * `CombatService` / `InventoryService.grant`).
+   *
+   * Use-case: positive-flow E2E + smoke main storyline Chapter 1
+   * (`phamnhan_main_01` step_03 kill 3 sơn thử) không cần spin combat
+   * loop thật. Mirror `grantExp` / `grantItem` philosophy: admin seed
+   * giúp test harness, KHÔNG bypass server authority.
+   *
+   *  - `kind` ∈ {'kill','collect'} — talk/explore/choice phải qua
+   *    player-driven `POST /quests/progress` (server vẫn validate
+   *    AuthGuard + step kind), không seed qua admin.
+   *  - `targetType` ∈ {'monster','item'} — trùng `QuestStepDef.targetType`.
+   *  - `targetId` 1..80 ký tự (vd `son_thu`, `linh_co`).
+   *  - `amount` 1..999 — admin track tối đa 1 lần (catalog max step.count
+   *    = 5; cap 999 chặn admin gõ nhầm).
+   *  - MOD chỉ track cho PLAYER; ADMIN track được mọi role.
+   *  - Reuse `quests.track()` → match accept ACCEPTED quest có step
+   *    cùng (kind, targetType, targetId), cộng counter atomic + auto-
+   *    transition COMPLETED. Fail-soft: nếu không có quest match, no-op
+   *    (mirror gameplay hook behavior).
+   *  - KHÔNG ghi ledger (quest progress không phải currency/item ledger
+   *    mục — claim path ở `QuestService.claim` mới ghi `CurrencyLedger`/
+   *    `ItemLedger`). Audit qua `AdminAuditLog action='admin.quest.track'`.
+   */
+  async grantQuestTrack(
+    actorId: string,
+    actorRole: Role,
+    targetUserId: string,
+    input: {
+      kind: 'kill' | 'collect';
+      targetType: 'monster' | 'item';
+      targetId: string;
+      amount: number;
+      reason: string;
+    },
+  ): Promise<void> {
+    if (actorId === targetUserId) throw new AdminError('CANNOT_TARGET_SELF');
+    if (input.kind !== 'kill' && input.kind !== 'collect') {
+      throw new AdminError('INVALID_INPUT');
+    }
+    if (input.targetType !== 'monster' && input.targetType !== 'item') {
+      throw new AdminError('INVALID_INPUT');
+    }
+    if (!input.targetId || input.targetId.length > 80) {
+      throw new AdminError('INVALID_INPUT');
+    }
+    if (
+      !Number.isInteger(input.amount) ||
+      input.amount <= 0 ||
+      input.amount > MAX_QUEST_TRACK_AMOUNT
+    ) {
+      throw new AdminError('INVALID_INPUT');
+    }
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { role: true },
+    });
+    if (!targetUser) throw new AdminError('NOT_FOUND');
+    if (actorRole !== 'ADMIN' && targetUser.role !== 'PLAYER') {
+      throw new AdminError('FORBIDDEN');
+    }
+    const target = await this.prisma.character.findUnique({
+      where: { userId: targetUserId },
+      select: { id: true },
+    });
+    if (!target) throw new AdminError('NOT_FOUND');
+
+    await this.quests.track(
+      target.id,
+      input.kind,
+      input.targetType,
+      input.targetId,
+      input.amount,
+    );
+
+    await this.audit(actorId, 'admin.quest.track', {
+      targetUserId,
+      characterId: target.id,
+      kind: input.kind,
+      targetType: input.targetType,
+      targetId: input.targetId,
+      amount: input.amount,
+      reason: input.reason,
     });
 
     const state = await this.chars.findByUser(targetUserId);

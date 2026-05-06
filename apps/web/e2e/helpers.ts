@@ -425,5 +425,67 @@ export async function castTalentViaCombat(
   return { encounterId, status: actionData?.encounter?.status ?? 'UNKNOWN' };
 }
 
+/**
+ * Phase 12 Story PR-5 — admin seed harness: bypass-track quest step
+ * kind kill/collect cho positive-flow E2E (không phải spin combat thật).
+ *
+ * Reuse `POST /admin/users/:id/quest-track` (PR-5 service). Mirror
+ * `adminSeedTalent` pattern: separate `APIRequestContext` cho admin
+ * cookie jar không đụng player session.
+ *
+ * @param targetUserId user id của player (được seed quest progress).
+ * @param input        kind/targetType/targetId/amount cho `QuestService.track()`.
+ */
+export interface AdminQuestTrackInput {
+  kind: 'kill' | 'collect';
+  targetType: 'monster' | 'item';
+  targetId: string;
+  amount: number;
+  reason?: string;
+}
+
+export async function adminQuestTrack(
+  targetUserId: string,
+  input: AdminQuestTrackInput,
+): Promise<void> {
+  const email = process.env.E2E_ADMIN_EMAIL ?? ADMIN_EMAIL_DEFAULT;
+  const password = process.env.E2E_ADMIN_PASSWORD ?? ADMIN_PASSWORD_DEFAULT;
+  const base = apiBase();
+  const ctx: APIRequestContext = await playwrightRequest.newContext({ baseURL: base });
+  try {
+    const loginRes = await ctx.post(`${base}/api/_auth/login`, {
+      data: { email, password },
+    });
+    const loginBody = await loginRes.json().catch(() => null);
+    if (
+      loginRes.status() !== 200 ||
+      !loginBody?.ok ||
+      loginBody?.data?.user?.role !== 'ADMIN'
+    ) {
+      throw new Error(
+        `[e2e helpers] adminQuestTrack: admin login failed (status=${loginRes.status()}, ` +
+          `role=${loginBody?.data?.user?.role}). Bootstrap admin@example.com? ` +
+          `body=${JSON.stringify(loginBody).slice(0, 200)}`,
+      );
+    }
+
+    const trackRes = await ctx.post(
+      `${base}/api/admin/users/${targetUserId}/quest-track`,
+      {
+        data: {
+          kind: input.kind,
+          targetType: input.targetType,
+          targetId: input.targetId,
+          amount: input.amount,
+          reason: input.reason ?? 'e2e Phase 12 Story PR-5 chapter 1 playable seed',
+        },
+      },
+    );
+    await expectOk(trackRes, `admin/users/${targetUserId}/quest-track`);
+  } finally {
+    await ctx.dispose().catch(() => undefined);
+  }
+}
+
 /** Re-export expect để spec dùng cùng instance. */
 export { expect };
