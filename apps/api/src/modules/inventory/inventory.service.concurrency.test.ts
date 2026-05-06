@@ -22,7 +22,12 @@
  *
  *  3. **`revoke()` qty=N → Promise.all([revoke half, revoke half])** —
  *     verify atomic decrement không under-revoke. Bug cũ tương tự `use()`:
- *     `data: { qty: r.qty - take }` JS capture race.
+ *     `data: { qty: r.qty - take }` JS capture race. Phase 12.X concurrency
+ *     phase 2 (admin double-revoke race) thêm 3.A (split revoke 5+5 trên
+ *     qty=10 — ledger sum invariant) + 3.B (over-subscribe revoke 7+7 trên
+ *     qty=10 — exactly 1 succeed + 1 INSUFFICIENT_QTY). Fix dùng
+ *     `updateMany` + `deleteMany` guarded với filter `qty: { gte: take }` /
+ *     `qty: take` (parity với `use()` atomic decrement).
  *
  * Pattern test: dùng real PG fixtures (TEST_DATABASE_URL) + Promise.all
  * concurrent — KHÔNG mock prisma. Thread interleaving non-deterministic
@@ -257,6 +262,161 @@ describe('InventoryService — concurrency regression', () => {
         },
       });
       expect(ledgerUse).toHaveLength(2);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Race 3.A — `revoke()` qty=N → Promise.all([revoke half, revoke half])
+  // (Phase 12.X concurrency phase 2 — admin double-revoke race)
+  //
+  // Admin tool có thể trigger 2 `POST /admin/users/:id/revoke` song song
+  // (network retry / double-click / 2 admin cùng session). Bug cũ:
+  // `data: { qty: r.qty - take }` capture JS variable (đọc từ findMany
+  // trước tx commit) — cả 2 thread đọc qty=10, both write qty=10-5=5 →
+  // row giữ ở qty=5 (chỉ revoke 5 thật) NHƯNG ledger ghi 2 row -5 mỗi
+  // (sum -10) → audit ledger lệch DB row delta. SAU fix (`updateMany`
+  // guarded + `deleteMany` guarded): atomic, exactly N revoked.
+  //
+  // Invariant per round: |sum(ledger.qtyDelta)| === starting_qty -
+  // remaining_row_qty. Không silent under-revoke.
+  // ─────────────────────────────────────────────────────────────────────
+  describe('revoke() race — qty=10 với 2× revoke(5) Promise.all', () => {
+    /**
+     * Stress loop pump race window — vitest single-shot có thể không
+     * trigger PG row lock interleave. Loop 30 round, mỗi round wipe +
+     * recreate fixtures + Promise.all([revoke 5, revoke 5]) trên 1 row
+     * stackable qty=10. Bug cũ: row stays qty=5 + ledger -10 sum (audit
+     * lệch). Sau fix: row deleted + ledger -10 sum (consistent), HOẶC
+     * 1 fail INSUFFICIENT_QTY → row qty=5 + ledger -5 sum (consistent).
+     */
+    it('30× Promise.all([revoke 5, revoke 5]) on qty=10 → ledger sum khớp DB delta', async () => {
+      const ROUNDS = 30;
+      for (let i = 0; i < ROUNDS; i++) {
+        await wipeAll(prisma);
+        const u = await makeUserChar(prisma);
+        // Grant qty=10 huyet_chi_dan stackable → 1 row qty=10.
+        await inv.grant(
+          u.characterId,
+          [{ itemKey: 'huyet_chi_dan', qty: 10 }],
+          { reason: 'ADMIN_GRANT' },
+        );
+
+        const results = await runConcurrent(
+          () =>
+            inv.revoke(u.characterId, 'huyet_chi_dan', 5, {
+              actorUserId: 'admin-test',
+            }),
+          2,
+        );
+        const okCount = results.filter((r) => r.ok).length;
+        // Sau fix: 2 succeed (row deleted) HOẶC 1 succeed + 1 fail
+        // INSUFFICIENT_QTY (atomic guard detect concurrent → rollback).
+        // Trước fix: 2 succeed nhưng row leak qty=5 (under-revoke).
+        for (const r of results) {
+          if (!r.ok) {
+            expect(r.err).toBeInstanceOf(InventoryError);
+            expect((r.err as InventoryError).code).toBe('INSUFFICIENT_QTY');
+          }
+        }
+
+        // Audit invariant: ledger sum (negative) === DB delta (positive).
+        const after = await prisma.inventoryItem.findMany({
+          where: { characterId: u.characterId, itemKey: 'huyet_chi_dan' },
+        });
+        const remainingRow = after.reduce((s, r) => s + r.qty, 0);
+        const dbDelta = 10 - remainingRow;
+
+        const ledgerRev = await prisma.itemLedger.findMany({
+          where: {
+            characterId: u.characterId,
+            itemKey: 'huyet_chi_dan',
+            reason: 'ADMIN_REVOKE',
+          },
+        });
+        const ledgerSum = ledgerRev.reduce((s, l) => s + l.qtyDelta, 0);
+        expect(
+          -ledgerSum,
+          `Round ${i + 1}: ledger=${ledgerSum} dbDelta=${dbDelta} ok=${okCount} remaining=${remainingRow} — ledger phải khớp DB delta (no under-revoke / over-revoke)`,
+        ).toBe(dbDelta);
+
+        // Range sanity: 5 ≤ dbDelta ≤ 10. Nếu cả 2 succeed → 10. Nếu 1
+        // succeed + 1 fail → 5. KHÔNG được < 5 (1 succeed luôn revoke đủ
+        // 5) và KHÔNG > 10 (over-revoke không thể vì atomic guard).
+        expect(dbDelta).toBeGreaterThanOrEqual(5);
+        expect(dbDelta).toBeLessThanOrEqual(10);
+      }
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Race 3.B — `revoke()` qty=10 với 2× revoke(7) over-subscribe →
+  // exactly-one succeed (cả 2 không thể succeed vì 14 > 10).
+  // ─────────────────────────────────────────────────────────────────────
+  describe('revoke() race — qty=10 với 2× revoke(7) over-subscribe', () => {
+    /**
+     * Stress loop — Promise.all([revoke 7, revoke 7]) trên row qty=10.
+     * Total cần = 14 > 10 → KHÔNG thể cả 2 succeed. Bug cũ có thể cho
+     * 2 succeed (under-revoke 7+7=14 nhưng row chỉ giảm 7). Sau fix:
+     * exactly 1 succeed + 1 fail INSUFFICIENT_QTY (pre-check `total < qty`
+     * hoặc per-row guard catch concurrent decrement).
+     */
+    it('30× Promise.all([revoke 7, revoke 7]) on qty=10 → exactly 1 succeed + 1 INSUFFICIENT_QTY', async () => {
+      const ROUNDS = 30;
+      for (let i = 0; i < ROUNDS; i++) {
+        await wipeAll(prisma);
+        const u = await makeUserChar(prisma);
+        await inv.grant(
+          u.characterId,
+          [{ itemKey: 'huyet_chi_dan', qty: 10 }],
+          { reason: 'ADMIN_GRANT' },
+        );
+
+        const results = await runConcurrent(
+          () =>
+            inv.revoke(u.characterId, 'huyet_chi_dan', 7, {
+              actorUserId: 'admin-test',
+            }),
+          2,
+        );
+        const okCount = results.filter((r) => r.ok).length;
+        const errCount = results.filter((r) => !r.ok).length;
+
+        // Trước fix: có thể 2 succeed (cả 2 đọc total=10, both pass
+        // pre-check, both decrement row 10→3 nhưng JS-capture race →
+        // 1 thread overwrite → row stuck qty=3 với ledger -7+-7=-14 →
+        // ledger lệch DB delta). Sau fix: per-row guard `qty >= take`
+        // catch → 2nd thread throw → exactly 1 succeed.
+        expect(
+          okCount,
+          `Round ${i + 1}: expected exactly 1 succeed, got ${okCount}`,
+        ).toBe(1);
+        expect(errCount).toBe(1);
+
+        const failed = results.find((r) => !r.ok);
+        expect(failed).toBeDefined();
+        expect((failed as { err: unknown }).err).toBeInstanceOf(InventoryError);
+        expect(((failed as { err: InventoryError }).err).code).toBe(
+          'INSUFFICIENT_QTY',
+        );
+
+        // Audit ledger row count = 1 (đúng 1 ADMIN_REVOKE -7).
+        const ledgerRev = await prisma.itemLedger.findMany({
+          where: {
+            characterId: u.characterId,
+            itemKey: 'huyet_chi_dan',
+            reason: 'ADMIN_REVOKE',
+          },
+        });
+        expect(ledgerRev).toHaveLength(1);
+        expect(ledgerRev[0].qtyDelta).toBe(-7);
+
+        // DB delta = 7 → remaining row qty = 3.
+        const after = await prisma.inventoryItem.findMany({
+          where: { characterId: u.characterId, itemKey: 'huyet_chi_dan' },
+        });
+        const remainingRow = after.reduce((s, r) => s + r.qty, 0);
+        expect(remainingRow).toBe(3);
+      }
     });
   });
 
