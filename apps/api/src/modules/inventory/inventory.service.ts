@@ -378,17 +378,44 @@ export class InventoryService {
         if (ae !== be) return ae - be;
         return a.createdAt.getTime() - b.createdAt.getTime();
       });
+      // Atomic per-row guard chống concurrent revoke race (2 admin call song
+      // song trên cùng character/itemKey). Trước fix: `data: { qty: r.qty -
+      // take }` capture JS variable (đọc từ findMany trước tx commit) → 2
+      // thread cùng update qty=N-take = under-revoke (ledger ghi -N+ -N
+      // nhưng row chỉ giảm 1× take). Sau fix: `updateMany` + `deleteMany`
+      // với guard `qty: { gte: take }` / `qty: take` → chỉ 1 thread succeed
+      // nếu concurrent đụng cùng row, thread sau throw INSUFFICIENT_QTY →
+      // tx rollback giữ ledger-row delta consistent. Pattern parity với
+      // `use()` atomic decrement (Phase 12.X).
       for (const r of sorted) {
         if (remaining <= 0) break;
         const take = Math.min(r.qty, remaining);
         remaining -= take;
         if (r.qty === take) {
-          await tx.inventoryItem.delete({ where: { id: r.id } });
-        } else {
-          await tx.inventoryItem.update({
-            where: { id: r.id },
-            data: { qty: r.qty - take },
+          // Take whole row → guarded delete (chỉ delete nếu DB qty còn = take).
+          // Nếu concurrent revoke đã decrement row → count=0 → throw.
+          const delResult = await tx.inventoryItem.deleteMany({
+            where: { id: r.id, qty: take },
           });
+          if (delResult.count === 0) {
+            throw new InventoryError('INSUFFICIENT_QTY');
+          }
+        } else {
+          // Take partial → guarded decrement. Filter `qty >= take` đảm bảo
+          // row còn đủ (concurrent không lấy bớt). count=0 → throw.
+          const decResult = await tx.inventoryItem.updateMany({
+            where: { id: r.id, qty: { gte: take } },
+            data: { qty: { decrement: take } },
+          });
+          if (decResult.count === 0) {
+            throw new InventoryError('INSUFFICIENT_QTY');
+          }
+          // Post-decrement: nếu row qty xuống 0 (concurrent decrement xảy ra
+          // trước update của ta) → delete giữ invariant `qty >= 1` cho row sống.
+          const post = await tx.inventoryItem.findUnique({ where: { id: r.id } });
+          if (post && post.qty === 0) {
+            await tx.inventoryItem.delete({ where: { id: r.id } });
+          }
         }
       }
 
