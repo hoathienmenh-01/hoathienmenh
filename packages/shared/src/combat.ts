@@ -153,6 +153,41 @@ export const MONSTERS: readonly MonsterDef[] = [
 
   // Phase-10 cross-region BOSS (mid-late, kim đan đỉnh, mixed encounter)
   { key: 'cuu_la_huyen_quan',    name: 'Cửu La Huyền Quân',    level: 18, hp: 1700, atk: 160,def: 80, speed: 14, expDrop: 1380, linhThachDrop: 390,element: 'kim',  monsterType: 'BOSS',    regionKey: 'kim_son_mach' },
+
+  // ═════════════════════════════════════════════════════════════════════
+  // Phase 12 Story Foundation Late-game wire — Trúc Cơ → Nguyên Anh story monster
+  //
+  // Wire 8 placeholder targetId từ Story PR-1/Foundation Extension catalog
+  // (`tich_linh_anh`, `tam_ma_anh`, `tich_linh_quy`, `tich_thien_sat_thu`,
+  // `tam_ma_nguyen_anh`, `chap_niem_anh`, `ky_uc_meo`, `huyet_anh`) vào
+  // monster catalog. Khác PR-6 (alias `questTargetIds`): các placeholder này
+  // là entity riêng (linh ảnh / tâm ma / sát thủ tâm cảnh) — `MonsterDef.key`
+  // match thẳng placeholder để kill hook auto-track không cần wire alias.
+  //
+  // Stat curve theo SPIRIT/HUMANOID tier mid (BALANCE_MODEL.md §5.1):
+  //   - Trúc Cơ realm 2 (level 5-7): exp 100-175, lt 32-55.
+  //   - Kim Đan realm 3 (level 11): exp ~450, lt ~130.
+  //   - Nguyên Anh realm 4 (level 14-15): exp 720-880, lt 195-245.
+  //
+  // KHÔNG đặt vào dungeon (catalog only) — sẽ thêm vào encounter / dungeon
+  // template ở Phase 12.2.B (`DungeonTemplate` runtime) hoặc story-driven
+  // encounter sau. Catalog đủ để combat kill hook auto-track khi monster
+  // được spawn qua admin harness hoặc encounter mới.
+  // ═════════════════════════════════════════════════════════════════════
+
+  // Trúc Cơ tier (realm 2) — Linh Tuyền Động / Tâm Cảnh / Vô Trụ Cốc spirits
+  { key: 'tich_linh_anh',     name: 'Tịch Linh Ảnh',     level: 5,  hp: 150,  atk: 20, def: 8,  speed: 11, expDrop: 100, linhThachDrop: 32, element: null,  monsterType: 'SPIRIT',   regionKey: 'hac_lam' },
+  { key: 'tam_ma_anh',        name: 'Tâm Ma Ảnh',        level: 6,  hp: 195,  atk: 26, def: 10, speed: 10, expDrop: 130, linhThachDrop: 42, element: null,  monsterType: 'SPIRIT',   regionKey: 'hac_lam' },
+  { key: 'tich_linh_quy',     name: 'Tịch Linh Quỷ',     level: 7,  hp: 250,  atk: 32, def: 14, speed: 10, expDrop: 175, linhThachDrop: 55, element: 'moc', monsterType: 'SPIRIT',   regionKey: 'moc_huyen_lam' },
+
+  // Kim Đan tier (realm 3) — Tịch Thiên Điện assassins (HUMANOID, kim đan)
+  { key: 'tich_thien_sat_thu',name: 'Tịch Thiên Sát Thủ',level: 11, hp: 580,  atk: 75, def: 24, speed: 14, expDrop: 450, linhThachDrop: 130,element: 'kim', monsterType: 'HUMANOID', regionKey: 'kim_son_mach' },
+
+  // Nguyên Anh tier (realm 4) — tâm ma / ký ức / chấp niệm / huyết khí
+  { key: 'tam_ma_nguyen_anh', name: 'Tâm Ma Nguyên Anh', level: 14, hp: 940,  atk: 100,def: 38, speed: 11, expDrop: 740, linhThachDrop: 200,element: null,  monsterType: 'SPIRIT',   regionKey: 'hoang_tho_huyet' },
+  { key: 'chap_niem_anh',     name: 'Chấp Niệm Ảnh',     level: 15, hp: 1050, atk: 110,def: 42, speed: 12, expDrop: 850, linhThachDrop: 230,element: null,  monsterType: 'SPIRIT',   regionKey: 'hoang_tho_huyet' },
+  { key: 'ky_uc_meo',         name: 'Ký Ức Méo',         level: 14, hp: 920,  atk: 95, def: 36, speed: 11, expDrop: 720, linhThachDrop: 195,element: 'moc', monsterType: 'SPIRIT',   regionKey: 'moc_huyen_lam' },
+  { key: 'huyet_anh',         name: 'Huyết Ảnh',         level: 15, hp: 1080, atk: 115,def: 40, speed: 13, expDrop: 880, linhThachDrop: 245,element: null,  monsterType: 'HUMANOID', regionKey: 'hoang_tho_huyet' },
 ];
 
 export function monsterByKey(key: string): MonsterDef | undefined {

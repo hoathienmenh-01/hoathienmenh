@@ -367,14 +367,22 @@ describe('Monster questTargetIds (Phase 12 Story PR-6)', () => {
   });
 
   it('Phàm Nhân + Luyện Khí + Trúc Cơ + Kim Đan + Nguyên Anh grind quest đều có wire ≥1 monster', () => {
-    // PR-6 chỉ wire 7 placeholder thuộc "Chapter 1..5 grind/main quest playable"
-    // (son_thu / son_tac_dau_muc / bac_lang_quan / hac_moc_yeu / kim_son_yeu /
-    // kim_dan_yeu_thu / hoang_tho_quy). 8 placeholder còn lại (chap_niem_anh,
-    // huyet_anh, ky_uc_meo, tam_ma_anh, tam_ma_nguyen_anh, tich_linh_anh,
-    // tich_linh_quy, tich_thien_sat_thu) thuộc late-game Trúc Cơ/Kim Đan/Nguyên
-    // Anh main quest — sẽ wire ở Story Foundation Extension follow-up. Test
-    // này chỉ assert placeholder critical-path đã wire.
-    const criticalPath = [
+    // PR-6 wire 7 placeholder critical-path (Chapter 1..5 grind/main playable)
+    // qua `MonsterDef.questTargetIds` alias trên monster đã có sẵn (son_thu /
+    // son_tac_dau_muc / bac_lang_quan / hac_moc_yeu / kim_son_yeu /
+    // kim_dan_yeu_thu / hoang_tho_quy).
+    //
+    // Phase 12 Story Foundation Late-game wire (this PR) wire 8 placeholder
+    // còn lại (chap_niem_anh, huyet_anh, ky_uc_meo, tam_ma_anh,
+    // tam_ma_nguyen_anh, tich_linh_anh, tich_linh_quy, tich_thien_sat_thu)
+    // thuộc Trúc Cơ / Kim Đan / Nguyên Anh main quest qua MonsterDef.key
+    // match thẳng placeholder (key === placeholder, không cần alias).
+    //
+    // Sau cả 2 PR, mọi placeholder kill+monster trong QUESTS catalog phải
+    // resolve đến ≥ 1 MonsterDef qua `m.key === placeholder` HOẶC
+    // `m.questTargetIds.includes(placeholder)`.
+    const placeholders = [
+      // PR-6 critical-path (alias wire)
       'son_thu',
       'son_tac_dau_muc',
       'bac_lang_quan',
@@ -382,15 +390,74 @@ describe('Monster questTargetIds (Phase 12 Story PR-6)', () => {
       'kim_son_yeu',
       'kim_dan_yeu_thu',
       'hoang_tho_quy',
+      // Story Foundation Late-game wire (key match)
+      'tich_linh_anh',
+      'tam_ma_anh',
+      'tich_linh_quy',
+      'tich_thien_sat_thu',
+      'tam_ma_nguyen_anh',
+      'chap_niem_anh',
+      'ky_uc_meo',
+      'huyet_anh',
     ];
     const wired = new Set<string>();
     for (const m of MONSTERS) {
+      wired.add(m.key);
       for (const id of m.questTargetIds ?? []) wired.add(id);
     }
-    for (const placeholder of criticalPath) {
-      expect(wired, `critical-path placeholder ${placeholder}`).toContain(
-        placeholder,
-      );
+    for (const placeholder of placeholders) {
+      expect(wired, `placeholder ${placeholder}`).toContain(placeholder);
+    }
+  });
+
+  it('mọi quest step kind=kill+targetType=monster reachable từ ≥ 1 MonsterDef (no orphan placeholder)', () => {
+    // Invariant đầy đủ: nếu quest catalog có step yêu cầu kill monster X thì
+    // monster catalog phải có ≥ 1 entry resolve X — qua `key === X` HOẶC
+    // `questTargetIds.includes(X)`. Vi phạm = quest sẽ mãi không progress
+    // (silent fail-soft trong combat.service kill hook). Test này là backstop
+    // cho mọi PR catalog tương lai (ngăn drift trở lại trạng thái pre-PR-6).
+    const wired = new Set<string>();
+    for (const m of MONSTERS) {
+      wired.add(m.key);
+      for (const id of m.questTargetIds ?? []) wired.add(id);
+    }
+    const orphans: string[] = [];
+    for (const def of QUESTS) {
+      for (const step of def.steps) {
+        if (step.kind === 'kill' && step.targetType === 'monster') {
+          if (!wired.has(step.targetId)) {
+            orphans.push(`${def.key}:${step.id} → ${step.targetId}`);
+          }
+        }
+      }
+    }
+    expect(orphans, `orphan placeholder(s): ${orphans.join(', ')}`).toEqual([]);
+  });
+
+  it('8 placeholder Story Foundation Late-game match qua MonsterDef.key (không qua alias)', () => {
+    // 8 placeholder Trúc Cơ/Kim Đan/Nguyên Anh story (tâm ma / linh ảnh / sát
+    // thủ tâm cảnh) là entity riêng — wire qua `MonsterDef.key` match thẳng
+    // chứ KHÔNG dùng `questTargetIds` alias. Điều này khác PR-6 (alias trên
+    // monster đã có sẵn) và gives kill hook auto-track đơn giản hơn (không
+    // cần loop alias dedupe khi không có).
+    const lateGamePlaceholders = [
+      'tich_linh_anh',
+      'tam_ma_anh',
+      'tich_linh_quy',
+      'tich_thien_sat_thu',
+      'tam_ma_nguyen_anh',
+      'chap_niem_anh',
+      'ky_uc_meo',
+      'huyet_anh',
+    ];
+    for (const placeholder of lateGamePlaceholders) {
+      const m = monsterByKey(placeholder);
+      expect(m, `late-game monster ${placeholder}`).toBeDefined();
+      // KHÔNG có questTargetIds alias (key === placeholder, không cần wire alias).
+      expect(
+        m?.questTargetIds,
+        `late-game monster ${placeholder} questTargetIds`,
+      ).toBeUndefined();
     }
   });
 });
