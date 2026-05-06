@@ -53,7 +53,8 @@
       "skillUpgrade": "Failed to upgrade skill mastery",
       "skillLearnFromBook": "Failed to read skill book",
       "npc": "Failed to load NPC list",
-      "quest": "Quest action failed"
+      "quest": "Quest action failed",
+      "dungeonRun": "Dungeon expedition action failed"
     }
   },
   "locale": {
@@ -286,7 +287,8 @@
       "tribulation": "Tribulation",
       "breakthrough": "Breakthrough",
       "npcs": "NPCs",
-      "quests": "Quests"
+      "quests": "Quests",
+      "dungeonRun": "Dungeon Run"
     },
     "badge": {
       "bossActive": "World boss is live",
@@ -579,6 +581,80 @@
       "title": "Active Talents",
       "cooldownLabel": "CD {turns}",
       "preselected": "Loadout"
+    }
+  },
+  "dungeonRun": {
+    "title": "Dungeon Run",
+    "subtitle": "Multi-encounter expedition — clear all monsters then claim the completion bonus.",
+    "totalCount": "Total: {n}",
+    "startableCount": "Startable: {n}",
+    "activeBadge": "In progress",
+    "startableBadge": "Ready",
+    "progress": "Encounter {cur} / {total}",
+    "currentMonster": "Next monster",
+    "monsterStat": "Lv {lv} · HP {hp} · ATK {atk}",
+    "killedTitle": "Killed ({n})",
+    "rewardPreview": "+{linhThach} LT · +{tienNgoc} TN · +{exp} EXP",
+    "realmHint": "Recommended: {realm}",
+    "start": "Start",
+    "next": "Next encounter",
+    "claim": "Claim reward",
+    "startToast": "Started dungeon {name}.",
+    "advanceToast": "Encounter cleared — progress {cur}/{total}.",
+    "completedToast": "Dungeon completed — claim your reward.",
+    "claimToast": "Reward claimed — +{linhThach} LT · +{exp} EXP.",
+    "empty": "No dungeons available yet.",
+    "emptyFiltered": "No dungeons in {filter}.",
+    "filter": {
+      "all": "All",
+      "startable": "Ready",
+      "locked": "Locked"
+    },
+    "lockReason": {
+      "LOCKED_REALM": "Realm too low",
+      "DAILY_LIMIT": "Daily limit reached",
+      "STAMINA_LOW": "Stamina too low"
+    },
+    "metric": {
+      "encounters": "Encounters",
+      "stamina": "Stamina",
+      "dailyUsed": "Daily used",
+      "bonusReward": "Completion reward"
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "COMPLETED": "Completed",
+      "CLAIMED": "Claimed",
+      "ABANDONED": "Abandoned"
+    },
+    "reward": {
+      "linhThach": "+{n} Linh Thạch",
+      "tienNgoc": "+{n} Tiên Ngọc",
+      "exp": "+{n} EXP",
+      "item": "Item {itemKey} ×{qty}"
+    },
+    "claimModal": {
+      "title": "Dungeon reward claimed",
+      "subtitle": "Completed dungeon {templateKey}."
+    },
+    "errors": {
+      "UNAUTHENTICATED": "Session expired, please sign in again.",
+      "NO_CHARACTER": "No character yet.",
+      "DUNGEON_NOT_FOUND": "Dungeon not found.",
+      "DUNGEON_LOCKED_REALM": "Realm too low to enter this dungeon.",
+      "DUNGEON_DAILY_LIMIT_REACHED": "Daily entry limit reached, try again tomorrow.",
+      "STAMINA_LOW": "Stamina too low — wait for cultivation to recover.",
+      "ALREADY_IN_RUN": "You are already in another dungeon run.",
+      "RUN_NOT_FOUND": "Dungeon run not found.",
+      "RUN_NOT_OWNED": "Dungeon run does not belong to you.",
+      "RUN_NOT_ACTIVE": "Dungeon run is no longer active.",
+      "RUN_NOT_COMPLETED": "Complete the dungeon before claiming.",
+      "RUN_ALREADY_CLAIMED": "Reward already claimed.",
+      "RUN_NO_REWARD": "This dungeon has no completion reward.",
+      "NO_ACTIVE_RUN": "No active dungeon run.",
+      "INVALID_INPUT": "Invalid input.",
+      "UNKNOWN_ERROR": "Something went wrong, please retry.",
+      "UNKNOWN": "Something went wrong, please retry."
     }
   },
   "inventory": {
