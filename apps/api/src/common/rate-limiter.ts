@@ -51,6 +51,57 @@ export class RedisSlidingWindowRateLimiter implements RateLimiter {
   }
 }
 
+/**
+ * Wrapper rate limiter cho high-availability: ưu tiên gọi `primary`, nếu
+ * `primary.check()` throw (vd Redis disconnect / timeout / pipeline
+ * NOAUTH) thì fallback sang `fallback` thay vì propagate lỗi lên user.
+ *
+ * Concurrency phase 2 — Chat Redis failover branch. Trước fix: chat.module
+ * bind RedisSlidingWindowRateLimiter ở construction time; nếu Redis sống
+ * lúc bind nhưng chết runtime → `pipeline.exec()` throw → ChatService.send
+ * propagate ChatError(RATE_LIMITED) variant hoặc 500 Internal → user mất
+ * quyền chat. Sau fix: bind FailoverRateLimiter(redis, in-memory). Redis
+ * down → log warn lần đầu (không spam mỗi request) + dùng in-memory cho
+ * request hiện tại; cross-instance rate limit tạm thời degrade về
+ * per-instance, NHƯNG chat service không bị 500. Khi Redis recover →
+ * primary.check() success → quay lại Redis path tự động.
+ *
+ * Trade-off acceptable: spam window degrade từ "8 msg/30s toàn cluster"
+ * thành "8 msg/30s mỗi instance" trong khoảng Redis ngoài tầm với, đổi
+ * lại uptime. Vì spam abuser cần biết cluster size + đoán routing để
+ * vượt rate cao hơn → low-risk degradation.
+ */
+export class FailoverRateLimiter implements RateLimiter {
+  private warned = false;
+
+  constructor(
+    private readonly primary: RateLimiter,
+    private readonly fallback: RateLimiter,
+    private readonly logger: { warn: (msg: string) => void } = console,
+  ) {}
+
+  async check(key: string): Promise<RateLimitResult> {
+    try {
+      return await this.primary.check(key);
+    } catch (err) {
+      if (!this.warned) {
+        this.warned = true;
+        this.logger.warn(
+          `[FailoverRateLimiter] primary check failed, falling back to in-memory: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+      return this.fallback.check(key);
+    }
+  }
+
+  /** Reset warning flag — chỉ dùng cho test hoặc post-recovery probe. */
+  resetWarning(): void {
+    this.warned = false;
+  }
+}
+
 export class InMemorySlidingWindowRateLimiter implements RateLimiter {
   private readonly store = new Map<string, number[]>();
 
