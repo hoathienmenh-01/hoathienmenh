@@ -824,6 +824,7 @@
     "buy": "Buy",
     "empty": "Shop is empty.",
     "nonStackable": "1 per purchase",
+    "dailyLimit": "Daily cap: {n}",
     "buyOk": "Bought {qty} × {name} for {price} linh thạch.",
     "currency": {
       "linhThach": "linh thạch",
@@ -836,6 +837,8 @@
       "INVALID_QTY": "Invalid quantity.",
       "NON_STACKABLE_QTY_GT_1": "This item can only be bought 1 at a time.",
       "NO_CHARACTER": "You have not created a character.",
+      "SHOP_DAILY_LIMIT": "Daily purchase limit reached. Try again after reset.",
+      "RATE_LIMITED": "Buying too fast — please slow down and try again.",
       "UNAUTHENTICATED": "Session expired. Please log in again.",
       "UNKNOWN": "Something went wrong, please retry."
     }

@@ -133,6 +133,12 @@ onMounted(async () => {
             </span>
           </div>
           <p class="text-xs text-ink-300 leading-relaxed">{{ e.description }}</p>
+          <div
+            v-if="e.dailyLimit !== null"
+            class="text-[10px] uppercase tracking-wider text-ink-400"
+          >
+            {{ t('shop.dailyLimit', { n: e.dailyLimit }) }}
+          </div>
           <div class="flex items-center gap-2">
             <label v-if="e.stackable" class="text-xs text-ink-300 inline-flex items-center gap-1">
               {{ t('shop.qty') }}

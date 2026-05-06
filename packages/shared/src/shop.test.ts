@@ -41,6 +41,30 @@ describe('NPC_SHOP catalog integrity', () => {
       }
     }
   });
+
+  it('M10 — dailyLimit (nếu có) là integer dương', () => {
+    for (const entry of NPC_SHOP) {
+      if (entry.dailyLimit !== undefined) {
+        expect(
+          Number.isInteger(entry.dailyLimit),
+          `${entry.itemKey} dailyLimit must be integer`,
+        ).toBe(true);
+        expect(
+          entry.dailyLimit,
+          `${entry.itemKey} dailyLimit must be > 0`,
+        ).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('M10 — beta closed: tất cả entries đều có dailyLimit (anti-hoard)', () => {
+    for (const entry of NPC_SHOP) {
+      expect(
+        entry.dailyLimit,
+        `${entry.itemKey} should have dailyLimit during closed beta`,
+      ).toBeDefined();
+    }
+  });
 });
 
 describe('npcShopEntries()', () => {
@@ -84,5 +108,17 @@ describe('toShopEntryView()', () => {
     expect(view.price).toBe(entries[0].price);
     expect(view.currency).toBe(entries[0].entry.currency);
     expect(view.stackable).toBe(entries[0].def.stackable);
+  });
+
+  it('M10 — dailyLimit map đúng (number hoặc null)', () => {
+    const entries = npcShopEntries();
+    for (const x of entries) {
+      const view = toShopEntryView(x);
+      if (x.entry.dailyLimit === undefined) {
+        expect(view.dailyLimit).toBeNull();
+      } else {
+        expect(view.dailyLimit).toBe(x.entry.dailyLimit);
+      }
+    }
   });
 });

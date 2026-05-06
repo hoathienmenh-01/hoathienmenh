@@ -82,6 +82,7 @@ const i18n = createI18n({
         buy: 'Mua',
         qty: 'Số lượng',
         nonStackable: 'Không chồng được',
+        dailyLimit: 'Hạn mức hôm nay: {n}',
         buyOk: 'Đã mua {name} x{qty} ({price} LT)',
         currency: {
           linhThach: 'LT',
@@ -90,6 +91,8 @@ const i18n = createI18n({
         errors: {
           NOT_ENOUGH_BALANCE: 'Không đủ linh thạch.',
           ITEM_NOT_AVAILABLE: 'Vật phẩm không còn bán.',
+          SHOP_DAILY_LIMIT: 'Vượt hạn mức hôm nay.',
+          RATE_LIMITED: 'Mua quá nhanh.',
           loadFail: 'Không tải được shop.',
           UNKNOWN: 'Có lỗi xảy ra.',
         },
@@ -112,6 +115,7 @@ function makeEntry(over: Partial<ShopEntry> = {}): ShopEntry {
     price: 10,
     currency: 'LINH_THACH',
     stackable: true,
+    dailyLimit: null,
     ...over,
   };
 }
@@ -393,5 +397,56 @@ describe('ShopView — list fetch error', () => {
     });
     // Render empty state since entries still [].
     expect(w.text()).toContain('Cửa hàng trống.');
+  });
+});
+
+/**
+ * M10 — Daily purchase cap badge + RATE_LIMITED / SHOP_DAILY_LIMIT mapping.
+ */
+describe('ShopView — M10 daily limit + rate limit', () => {
+  it('entry có dailyLimit → render badge "Hạn mức hôm nay: N"', async () => {
+    listNpcShopMock.mockResolvedValue([makeEntry({ dailyLimit: 10 })]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.text()).toContain('Hạn mức hôm nay: 10');
+  });
+
+  it('entry KHÔNG có dailyLimit (null) → KHÔNG render badge', async () => {
+    listNpcShopMock.mockResolvedValue([makeEntry({ dailyLimit: null })]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.text()).not.toContain('Hạn mức hôm nay');
+  });
+
+  it('SHOP_DAILY_LIMIT → toast i18n đúng', async () => {
+    listNpcShopMock.mockResolvedValue([makeEntry()]);
+    buyFromShopMock.mockRejectedValue(
+      Object.assign(new Error('cap'), { code: 'SHOP_DAILY_LIMIT' }),
+    );
+    const w = mountView();
+    await flushPromises();
+    const btn = w.findAll('button').find((b) => b.text().includes('Mua'));
+    await btn!.trigger('click');
+    await flushPromises();
+    expect(toastPushMock).toHaveBeenCalledWith({
+      type: 'error',
+      text: 'Vượt hạn mức hôm nay.',
+    });
+  });
+
+  it('RATE_LIMITED → toast i18n đúng', async () => {
+    listNpcShopMock.mockResolvedValue([makeEntry()]);
+    buyFromShopMock.mockRejectedValue(
+      Object.assign(new Error('rl'), { code: 'RATE_LIMITED' }),
+    );
+    const w = mountView();
+    await flushPromises();
+    const btn = w.findAll('button').find((b) => b.text().includes('Mua'));
+    await btn!.trigger('click');
+    await flushPromises();
+    expect(toastPushMock).toHaveBeenCalledWith({
+      type: 'error',
+      text: 'Mua quá nhanh.',
+    });
   });
 });

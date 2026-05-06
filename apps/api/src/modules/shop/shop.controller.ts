@@ -66,6 +66,8 @@ export class ShopController {
         if (e.code === 'NO_CHARACTER') fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
         if (e.code === 'ITEM_NOT_IN_SHOP') fail('ITEM_NOT_IN_SHOP', HttpStatus.NOT_FOUND);
         if (e.code === 'INSUFFICIENT_FUNDS') fail('INSUFFICIENT_FUNDS', HttpStatus.CONFLICT);
+        if (e.code === 'SHOP_DAILY_LIMIT') fail('SHOP_DAILY_LIMIT', HttpStatus.CONFLICT);
+        if (e.code === 'RATE_LIMITED') fail('RATE_LIMITED', HttpStatus.TOO_MANY_REQUESTS);
         fail(e.code, HttpStatus.BAD_REQUEST);
       }
       throw e;

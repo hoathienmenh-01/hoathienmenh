@@ -14,6 +14,8 @@ export interface ShopEntry {
   price: number;
   currency: 'LINH_THACH' | 'TIEN_NGOC';
   stackable: boolean;
+  /** M10 — Daily purchase cap; null khi unlimited. */
+  dailyLimit: number | null;
 }
 
 interface Envelope<T> {

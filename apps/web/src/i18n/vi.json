@@ -824,6 +824,7 @@
     "buy": "Mua",
     "empty": "Tiệm trống.",
     "nonStackable": "1 cái / lượt mua",
+    "dailyLimit": "Hạn mức hôm nay: {n}",
     "buyOk": "Đã mua {qty} × {name} với {price} linh thạch.",
     "currency": {
       "linhThach": "linh thạch",
@@ -836,6 +837,8 @@
       "INVALID_QTY": "Số lượng không hợp lệ.",
       "NON_STACKABLE_QTY_GT_1": "Vật phẩm này chỉ mua 1 cái mỗi lần.",
       "NO_CHARACTER": "Bạn chưa tạo nhân vật.",
+      "SHOP_DAILY_LIMIT": "Vượt hạn mức mua hôm nay. Thử lại sau khi reset.",
+      "RATE_LIMITED": "Mua quá nhanh — vui lòng chậm lại và thử lại sau.",
       "UNAUTHENTICATED": "Vui lòng đăng nhập lại.",
       "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
     }
