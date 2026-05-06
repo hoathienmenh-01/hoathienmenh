@@ -55,6 +55,13 @@ export const NPC_SHOP: readonly ShopEntryDef[] = [
   { itemKey: 'hoi_nguyen_dan', currency: 'LINH_THACH', dailyLimit: 20 },
   // Pill EXP entry-tier (siết chặt hơn — tránh skip cultivation)
   { itemKey: 'co_thien_dan', currency: 'LINH_THACH', dailyLimit: 10 },
+  // Phase 11.10.E — Pill buff (atk/def/hp_regen/spirit). Stackable, dailyLimit
+  // chặt (5/người/ngày) tránh stack buff economy abuse vào PvP/boss event.
+  // Use sẽ apply BuffDef pill_*_buff_t1 qua InventoryService.use().
+  { itemKey: 'cuong_luc_dan', currency: 'LINH_THACH', dailyLimit: 5 },
+  { itemKey: 'thiet_bich_dan', currency: 'LINH_THACH', dailyLimit: 5 },
+  { itemKey: 'sinh_co_dan', currency: 'LINH_THACH', dailyLimit: 5 },
+  { itemKey: 'linh_tam_dan', currency: 'LINH_THACH', dailyLimit: 5 },
   // Ore — rare resource, low cap
   { itemKey: 'huyet_tinh', currency: 'LINH_THACH', dailyLimit: 10 },
   // Starter equipment phàm phẩm — non-stackable, 5 đủ trang bị 1 set

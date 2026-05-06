@@ -1,12 +1,15 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { BuffService } from '../character/buff.service';
 import { CharacterService } from '../character/character.service';
 import { InventoryService, InventoryError } from './inventory.service';
 import { TEST_DATABASE_URL, makeUserChar, wipeAll } from '../../test-helpers';
 
 let prisma: PrismaService;
 let inv: InventoryService;
+let invWithBuffs: InventoryService;
+let buffs: BuffService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
@@ -14,6 +17,9 @@ beforeAll(() => {
   const realtime = new RealtimeService();
   const chars = new CharacterService(prisma, realtime);
   inv = new InventoryService(prisma, realtime, chars);
+  // Phase 11.10.E — second instance with BuffService injected để test pill buff wire
+  buffs = new BuffService(prisma);
+  invWithBuffs = new InventoryService(prisma, realtime, chars, buffs);
 });
 
 beforeEach(async () => {
@@ -248,6 +254,143 @@ describe('InventoryService', () => {
       });
       await expect(inv.use(b.userId, pill.id)).rejects.toMatchObject({
         code: 'INVENTORY_ITEM_NOT_FOUND',
+      });
+    });
+
+    // ============================================================
+    // Phase 11.10.E — Pill → Buff apply wire
+    // ============================================================
+    describe('Phase 11.10.E — pill buff apply', () => {
+      it('use cuong_luc_dan → apply pill_atk_buff_t1 + decrement qty', async () => {
+        const u = await makeUserChar(prisma);
+        await invWithBuffs.grant(
+          u.characterId,
+          [{ itemKey: 'cuong_luc_dan', qty: 2 }],
+          { reason: 'ADMIN_GRANT' }
+        );
+        const pill = await prisma.inventoryItem.findFirstOrThrow({
+          where: { characterId: u.characterId, itemKey: 'cuong_luc_dan' },
+        });
+
+        const before = Date.now();
+        await invWithBuffs.use(u.userId, pill.id);
+
+        // Buff inserted với expiresAt ~ now + 60s
+        const buff = await prisma.characterBuff.findUniqueOrThrow({
+          where: {
+            characterId_buffKey: {
+              characterId: u.characterId,
+              buffKey: 'pill_atk_buff_t1',
+            },
+          },
+        });
+        expect(buff.source).toBe('pill');
+        expect(buff.stacks).toBe(1);
+        const expiresMs = buff.expiresAt.getTime();
+        expect(expiresMs).toBeGreaterThanOrEqual(before + 59 * 1000);
+        expect(expiresMs).toBeLessThanOrEqual(Date.now() + 61 * 1000);
+
+        // Pill qty decremented
+        const fresh = await prisma.inventoryItem.findUniqueOrThrow({
+          where: { id: pill.id },
+        });
+        expect(fresh.qty).toBe(1);
+      });
+
+      it('use 4 pill khác nhau → 4 buff distinct rows', async () => {
+        const u = await makeUserChar(prisma);
+        const pills = [
+          { itemKey: 'cuong_luc_dan', expectedBuff: 'pill_atk_buff_t1' },
+          { itemKey: 'thiet_bich_dan', expectedBuff: 'pill_def_buff_t1' },
+          { itemKey: 'sinh_co_dan', expectedBuff: 'pill_hp_regen_t1' },
+          { itemKey: 'linh_tam_dan', expectedBuff: 'pill_spirit_buff_t1' },
+        ];
+        await invWithBuffs.grant(
+          u.characterId,
+          pills.map((p) => ({ itemKey: p.itemKey, qty: 1 })),
+          { reason: 'ADMIN_GRANT' }
+        );
+        for (const p of pills) {
+          const inv2 = await prisma.inventoryItem.findFirstOrThrow({
+            where: { characterId: u.characterId, itemKey: p.itemKey },
+          });
+          await invWithBuffs.use(u.userId, inv2.id);
+        }
+        const allBuffs = await prisma.characterBuff.findMany({
+          where: { characterId: u.characterId },
+          orderBy: { buffKey: 'asc' },
+        });
+        expect(allBuffs.map((b) => b.buffKey).sort()).toEqual(
+          pills.map((p) => p.expectedBuff).sort()
+        );
+        expect(allBuffs.every((b) => b.source === 'pill' && b.stacks === 1)).toBe(true);
+      });
+
+      it('use cuong_luc_dan 2 lần liên tiếp → buff vẫn 1 row, refresh expiresAt (non-stackable)', async () => {
+        const u = await makeUserChar(prisma);
+        await invWithBuffs.grant(
+          u.characterId,
+          [{ itemKey: 'cuong_luc_dan', qty: 3 }],
+          { reason: 'ADMIN_GRANT' }
+        );
+        const pill = await prisma.inventoryItem.findFirstOrThrow({
+          where: { characterId: u.characterId, itemKey: 'cuong_luc_dan' },
+        });
+
+        await invWithBuffs.use(u.userId, pill.id);
+        const buff1 = await prisma.characterBuff.findUniqueOrThrow({
+          where: {
+            characterId_buffKey: {
+              characterId: u.characterId,
+              buffKey: 'pill_atk_buff_t1',
+            },
+          },
+        });
+        const firstExpires = buff1.expiresAt.getTime();
+
+        // Wait a short time then re-use
+        await new Promise((r) => setTimeout(r, 10));
+        await invWithBuffs.use(u.userId, pill.id);
+
+        const buff2 = await prisma.characterBuff.findUniqueOrThrow({
+          where: {
+            characterId_buffKey: {
+              characterId: u.characterId,
+              buffKey: 'pill_atk_buff_t1',
+            },
+          },
+        });
+        // Same id, refreshed expiresAt (non-stackable: stacks vẫn = 1)
+        expect(buff2.id).toBe(buff1.id);
+        expect(buff2.stacks).toBe(1);
+        expect(buff2.expiresAt.getTime()).toBeGreaterThan(firstExpires);
+
+        // Số row buff = 1 (idempotent UNIQUE)
+        const count = await prisma.characterBuff.count({
+          where: { characterId: u.characterId, buffKey: 'pill_atk_buff_t1' },
+        });
+        expect(count).toBe(1);
+      });
+
+      it('use pill mà không inject BuffService → vẫn decrement + character update, KHÔNG insert buff (legacy bootstrap)', async () => {
+        const u = await makeUserChar(prisma);
+        await inv.grant(
+          u.characterId,
+          [{ itemKey: 'cuong_luc_dan', qty: 1 }],
+          { reason: 'ADMIN_GRANT' }
+        );
+        const pill = await prisma.inventoryItem.findFirstOrThrow({
+          where: { characterId: u.characterId, itemKey: 'cuong_luc_dan' },
+        });
+        await inv.use(u.userId, pill.id);
+        const remaining = await prisma.inventoryItem.findUnique({
+          where: { id: pill.id },
+        });
+        expect(remaining).toBeNull();
+        const noBuffs = await prisma.characterBuff.findMany({
+          where: { characterId: u.characterId },
+        });
+        expect(noBuffs).toHaveLength(0);
       });
     });
   });

@@ -34,6 +34,7 @@ import {
   BREAKTHROUGH_FAIL_DEBUFF_RATE_PENALTY,
 } from './balance-dials';
 import type { ElementKey } from './combat';
+import { itemByKey } from './items';
 import type { StatTarget } from './talents';
 
 export type BuffPolarity = 'buff' | 'debuff';
@@ -568,6 +569,22 @@ export function buffsByElement(
  */
 export function buffsBySource(source: BuffSource): readonly BuffDef[] {
   return BUFFS.filter((b) => b.source === source);
+}
+
+/**
+ * Phase 11.10.E — cross-ref helper: tìm BuffDef sẽ apply khi player consume
+ * 1 item (pill/elixir). Dùng cho `InventoryService.use()` post-decrement +
+ * catalog cross-ref tests guard against drift.
+ *
+ * Trả về `undefined` nếu:
+ *   - itemKey không có trong catalog (`itemByKey` miss).
+ *   - item def không có `effect.buffKey` set.
+ *   - `effect.buffKey` trỏ tới buff không tồn tại (catalog drift).
+ */
+export function buffForItem(itemKey: string): BuffDef | undefined {
+  const item = itemByKey(itemKey);
+  if (!item || !item.effect?.buffKey) return undefined;
+  return getBuffDef(item.effect.buffKey);
 }
 
 /**

@@ -1,6 +1,7 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import type { EquipSlot, Prisma } from '@prisma/client';
 import {
+  buffForItem,
   composeEquippedItemElementResist,
   composeSocketBonus,
   getRefineStatMultiplier,
@@ -12,6 +13,7 @@ import {
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { BuffService } from '../character/buff.service';
 import { CharacterService } from '../character/character.service';
 
 /**
@@ -136,6 +138,11 @@ export class InventoryService {
     private readonly realtime: RealtimeService,
     @Inject(forwardRef(() => CharacterService))
     private readonly chars: CharacterService,
+    // Phase 11.10.E — Pill/elixir consume → apply BuffDef cùng tx với
+    // inventory decrement. Optional inject để giữ legacy bootstrap (test
+    // không có DI module) tiếp tục work — null = skip apply, không throw.
+    @Inject(forwardRef(() => BuffService))
+    private readonly buffs?: BuffService,
   ) {}
 
   async list(characterId: string): Promise<InventoryView[]> {
@@ -502,6 +509,16 @@ export class InventoryService {
       updates.exp = { increment: BigInt(def.effect.exp) };
     }
 
+    // Phase 11.10.E — Pill/elixir buff effect. Pre-resolve BuffDef trước khi
+    // mở tx để fail-fast nếu catalog drift (item declared `buffKey` nhưng
+    // buff không tồn tại) — tránh decrement inventory rồi mới phát hiện.
+    const buffDef = def.effect.buffKey ? buffForItem(inv.itemKey) : undefined;
+    if (def.effect.buffKey && !buffDef) {
+      // Catalog drift: item.effect.buffKey trỏ tới buff không tồn tại.
+      // Hard fail KHÔNG decrement — guard against silent loss of pill.
+      throw new InventoryError('ITEM_NOT_FOUND');
+    }
+
     await this.prisma.$transaction(async (tx) => {
       // Atomic decrement guard concurrent use() race trên cùng inventoryItemId
       // (player double-click / network retry / bot grind). `updateMany` với
@@ -530,6 +547,16 @@ export class InventoryService {
         refType: 'InventoryItem',
         refId: inv.id,
       });
+
+      // Phase 11.10.E — apply pill buff cùng tx với decrement (atomic):
+      // tx fail → buff KHÔNG insert + pill KHÔNG decrement (nguyên trạng).
+      // Idempotent qua `CharacterBuff` composite UNIQUE: non-stackable
+      // refresh `expiresAt`, stackable +1 stack cap `maxStacks` (4 pill
+      // baseline đều non-stackable). Optional `buffs` inject — legacy
+      // bootstrap (no DI) skip silently.
+      if (buffDef && this.buffs) {
+        await this.buffs.applyBuffTx(tx, char.id, buffDef.key, 'pill');
+      }
     });
 
     await this.refreshState(userId);

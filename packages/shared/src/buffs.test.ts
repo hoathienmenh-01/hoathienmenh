@@ -9,6 +9,7 @@ import { REALMS } from './realms';
 
 import {
   BUFFS,
+  buffForItem,
   buffsByEffectKind,
   buffsByElement,
   buffsByPolarity,
@@ -23,6 +24,7 @@ import {
   type BuffPolarity,
   type BuffSource,
 } from './buffs';
+import { ITEMS, itemByKey } from './items';
 
 const VALID_KINDS: readonly BuffEffectKind[] = [
   'stat_mod',
@@ -584,5 +586,71 @@ describe('Realm + element guard sanity', () => {
 
   it('REALMS định nghĩa phamnhan…hu_khong_chi_ton (buff không cần realm gate, nhưng catalog phải tồn tại)', () => {
     expect(REALMS.length).toBeGreaterThanOrEqual(20);
+  });
+});
+
+describe('Phase 11.10.E — Helper: buffForItem (pill → buff cross-ref)', () => {
+  it('item không tồn tại → undefined', () => {
+    expect(buffForItem('nonexistent_item')).toBeUndefined();
+  });
+
+  it('item không có effect.buffKey → undefined', () => {
+    // huyet_chi_dan chỉ có effect.hp, không buffKey
+    expect(buffForItem('huyet_chi_dan')).toBeUndefined();
+  });
+
+  it('item không có effect → undefined', () => {
+    // so_kiem là weapon, không effect
+    expect(buffForItem('so_kiem')).toBeUndefined();
+  });
+
+  it('cuong_luc_dan → pill_atk_buff_t1 (atk +12% 60s)', () => {
+    const buff = buffForItem('cuong_luc_dan');
+    expect(buff).toBeDefined();
+    expect(buff?.key).toBe('pill_atk_buff_t1');
+    expect(buff?.source).toBe('pill');
+    expect(buff?.polarity).toBe('buff');
+  });
+
+  it('thiet_bich_dan → pill_def_buff_t1 (def +15% 60s)', () => {
+    const buff = buffForItem('thiet_bich_dan');
+    expect(buff).toBeDefined();
+    expect(buff?.key).toBe('pill_def_buff_t1');
+  });
+
+  it('sinh_co_dan → pill_hp_regen_t1 (hp regen 30s)', () => {
+    const buff = buffForItem('sinh_co_dan');
+    expect(buff).toBeDefined();
+    expect(buff?.key).toBe('pill_hp_regen_t1');
+  });
+
+  it('linh_tam_dan → pill_spirit_buff_t1 (spirit +18% 90s)', () => {
+    const buff = buffForItem('linh_tam_dan');
+    expect(buff).toBeDefined();
+    expect(buff?.key).toBe('pill_spirit_buff_t1');
+  });
+
+  it('mọi item có effect.buffKey set phải lookup được trong catalog (drift guard)', () => {
+    for (const item of ITEMS) {
+      if (item.effect?.buffKey !== undefined) {
+        const buff = buffForItem(item.key);
+        expect(buff, `item ${item.key} buffKey=${item.effect.buffKey}`).toBeDefined();
+      }
+    }
+  });
+
+  it('mọi pill_*_buff_t1 trong catalog đều có ≥ 1 item link tới (no orphan buff)', () => {
+    const pillBuffKeys = BUFFS.filter((b) => b.source === 'pill').map((b) => b.key);
+    for (const buffKey of pillBuffKeys) {
+      const linkedItem = ITEMS.find((i) => i.effect?.buffKey === buffKey);
+      expect(linkedItem, `buff ${buffKey} có ít nhất 1 item link`).toBeDefined();
+    }
+  });
+
+  it('itemByKey + buffForItem composite — round-trip consistent', () => {
+    const item = itemByKey('cuong_luc_dan');
+    expect(item?.effect?.buffKey).toBe('pill_atk_buff_t1');
+    const buff = buffForItem('cuong_luc_dan');
+    expect(buff?.key).toBe(item?.effect?.buffKey);
   });
 });

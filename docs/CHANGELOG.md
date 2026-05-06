@@ -12,6 +12,15 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Added — Phase 11.10.E Title/Buff gameplay reward hooks — Pill → Buff wire (this PR)
+
+- **Pill → Buff apply**: 4 đan dược mới (Cương Lực Đan, Thiết Bích Đan, Sinh Cơ Đan, Linh Tâm Đan) khi `use()` sẽ apply BuffDef tương ứng (`pill_atk_buff_t1` +12% atk 60s, `pill_def_buff_t1` +15% def 60s, `pill_hp_regen_t1` hồi 5 HP/s 30s, `pill_spirit_buff_t1` +18% spirit 90s). Catalog buff đã có sẵn từ Phase 11.8.A nhưng **chưa được apply qua gameplay** — PR này wire 4 pill items qua `effect.buffKey` field mới + `InventoryService.use()` gọi `BuffService.applyBuffTx()` cùng tx (atomic — fail tx → buff KHÔNG insert + pill KHÔNG decrement).
+- **NPC shop**: 4 pill mới có sẵn ở NPC shop (Linh Thạch, dailyLimit 5/người/ngày — tránh stack buff abuse vào PvP/boss event).
+- **Audit Phase 11.10.E gameplay reward sources** — xác nhận 4/5 hook đã wire trước đó (realm breakthrough → realm milestone title via `character.service.ts:227,309,585`; achievement claim → title via `achievement.service.ts:425-435`; boss kill → title gián tiếp qua achievement `first_boss_kill`; dungeon clear → title gián tiếp qua achievement `first_dungeon_clear`; tribulation/breakthrough FAIL → tam_ma debuff). Pill → buff là gap thực sự duy nhất.
+- **Catalog cross-ref guard**: helper `buffForItem(itemKey)` shared package + 9 test cases drift guard (mọi item có `effect.buffKey` phải lookup được buff; mọi pill_*_buff_t1 phải có ≥ 1 item link tới — no orphan buff).
+- **Idempotent + race-safe**: `CharacterBuff` composite UNIQUE `(characterId, buffKey)` đảm bảo non-stackable refresh `expiresAt`, stackable +1 stack cap `maxStacks`. Pre-tx catalog drift guard (item declared `buffKey` nhưng buff không tồn tại → throw KHÔNG decrement).
+- Backward-compat: `InventoryService` 4th param `buffs?` optional — legacy bootstrap (test fixtures không inject) tiếp tục work, skip buff apply silently.
+
 ### Added — M10 Shop daily purchase limit + per-user rate limit (this PR)
 
 - **Per-item daily purchase cap**: mỗi entry trong NPC shop có thể đặt `dailyLimit` (opt-in). Player vượt cap → toast "Vượt hạn mức mua hôm nay. Thử lại sau khi reset". Reset 00:00 theo `MISSION_RESET_TZ` (mặc định `Asia/Ho_Chi_Minh`) — cùng mốc reset với daily mission / daily-login / dungeon `dailyLimit`. Mặc định cho closed beta: pills HP/MP = 20/ngày, đan exp + ore = 10/ngày, equipment phàm phẩm = 5/ngày.
