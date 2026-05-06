@@ -45,6 +45,9 @@ import {
 } from './achievement.service';
 import { TalentError, TalentService } from './talent.service';
 import { AlchemyError, AlchemyService } from './alchemy.service';
+import { TitleError, TitleService } from './title.service';
+import { BuffService } from './buff.service';
+import { getBuffDef, getTitleDef, TITLES } from '@xuantoi/shared';
 import { AuthService } from '../auth/auth.service';
 import {
   InMemorySlidingWindowRateLimiter,
@@ -121,6 +124,10 @@ const AlchemyCraftInput = z.object({
   recipeKey: z.string().min(1).max(64),
 });
 
+const TitleEquipInput = z.object({
+  titleKey: z.string().min(1).max(64),
+});
+
 /**
  * `POST /character/tribulation` body — không có input field. Server-authoritative
  * resolve transition từ `c.realmKey` → `nextRealm(c.realmKey)`. Tránh client
@@ -147,6 +154,8 @@ export class CharacterController {
     @Optional() private readonly achievement?: AchievementService,
     @Optional() private readonly talent?: TalentService,
     @Optional() private readonly alchemy?: AlchemyService,
+    @Optional() private readonly title?: TitleService,
+    @Optional() private readonly buff?: BuffService,
     @Optional() @Inject(PROFILE_RATE_LIMITER) profileLimiter?: RateLimiter,
   ) {
     this.profileLimiter =
@@ -1072,6 +1081,168 @@ export class CharacterController {
       }
       throw e;
     }
+  }
+
+  /**
+   * Phase 11.9.C — list owned titles + currently equipped + def metadata.
+   *
+   * Server-authoritative read:
+   *   - `owned`: array title đã unlock cho character (CharacterTitleUnlock
+   *     rows mapped với `def` metadata từ `TITLES` catalog). Sort theo
+   *     `unlockedAt asc` (chronological).
+   *   - `catalog`: full 26-title catalog snapshot — FE render lock state
+   *     bằng cách so sánh `owned[].titleKey` ∈ `catalog`.
+   *   - `equipped`: title đang equip (`Character.title`) hoặc `null`.
+   *
+   * Idempotent GET — không thay đổi state. Auth required, không có rate-limit
+   * riêng vì bound theo character của caller.
+   */
+  @Get('titles')
+  async titlesState(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.title) fail('TITLE_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const owned = await this.title.listOwned(character.id);
+      const equipped = await this.title.getEquipped(character.id);
+      return {
+        ok: true,
+        data: {
+          owned: owned.map((row) => ({
+            titleKey: row.titleKey,
+            source: row.source,
+            unlockedAt: row.unlockedAt.toISOString(),
+            def: row.def,
+          })),
+          catalog: TITLES,
+          equipped: equipped
+            ? { titleKey: equipped.titleKey, def: equipped.def }
+            : null,
+        },
+      };
+    } catch (e) {
+      if (e instanceof TitleError) {
+        fail(e.code, mapTitleErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 11.9.C — equip 1 title (single-slot). Validate ownership trước khi
+   * set `Character.title`. Re-equip cùng title an toàn (idempotent set).
+   *
+   * @throws TITLE_NOT_FOUND — titleKey không tồn tại trong catalog.
+   * @throws TITLE_NOT_OWNED — character chưa unlock title này.
+   *
+   * Trả về `{ character: CharacterStatePayload, equipped: { titleKey, def } }`.
+   * FE update store từ `character` (đã include `title` field).
+   */
+  @Post('title/equip')
+  @HttpCode(200)
+  async titleEquip(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.title) fail('TITLE_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const parsed = TitleEquipInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    if (!getTitleDef(parsed.data.titleKey)) {
+      fail('TITLE_NOT_FOUND', HttpStatus.NOT_FOUND);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      await this.title.equipTitle(character.id, parsed.data.titleKey);
+      const fresh = await this.chars.getStateOrThrow(userId);
+      const equipped = await this.title.getEquipped(character.id);
+      return {
+        ok: true,
+        data: {
+          character: fresh,
+          equipped: equipped
+            ? { titleKey: equipped.titleKey, def: equipped.def }
+            : null,
+        },
+      };
+    } catch (e) {
+      if (e instanceof TitleError) {
+        fail(e.code, mapTitleErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 11.9.C — unequip title hiện tại (clear `Character.title = null`).
+   * Idempotent — no-op nếu chưa equip.
+   *
+   * Trả về `{ character: CharacterStatePayload }`. FE update store.
+   */
+  @Post('title/unequip')
+  @HttpCode(200)
+  async titleUnequip(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.title) fail('TITLE_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      await this.title.unequipTitle(character.id);
+      const fresh = await this.chars.getStateOrThrow(userId);
+      return { ok: true, data: { character: fresh } };
+    } catch (e) {
+      if (e instanceof TitleError) {
+        fail(e.code, mapTitleErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 11.8.D — list active (non-expired) buffs cho character với def
+   * metadata. Auto-prune expired rows trước khi return — caller không cần
+   * worry về stale data.
+   *
+   * Returns array `{ buffKey, stacks, source, expiresAt, def }` sorted by
+   * `expiresAt asc` (sắp hết hạn lên đầu — UI render countdown convenient).
+   * Defensive skip catalog miss (key rename).
+   *
+   * Idempotent GET — không thay đổi state ngoại trừ side effect prune (acceptable
+   * — expired data invalid khắp mọi consumer).
+   */
+  @Get('buffs')
+  async buffsState(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.buff) fail('BUFF_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    const active = await this.buff.listActive(character.id);
+    const out = active.flatMap((row) => {
+      const def = getBuffDef(row.buffKey);
+      if (!def) return [];
+      return [
+        {
+          buffKey: row.buffKey,
+          stacks: row.stacks,
+          source: row.source,
+          expiresAt: row.expiresAt.toISOString(),
+          def,
+        },
+      ];
+    });
+    return { ok: true, data: { active: out } };
+  }
+}
+
+/** Map TitleError code → HTTP status (Phase 11.9.C). */
+function mapTitleErrorStatus(code: TitleError['code']): HttpStatus {
+  switch (code) {
+    case 'TITLE_NOT_FOUND':
+    case 'CHARACTER_NOT_FOUND':
+      return HttpStatus.NOT_FOUND;
+    case 'TITLE_NOT_OWNED':
+      return HttpStatus.CONFLICT;
+    default:
+      return HttpStatus.BAD_REQUEST;
   }
 }
 

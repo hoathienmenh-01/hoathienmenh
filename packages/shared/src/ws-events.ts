@@ -93,6 +93,14 @@ export interface CharacterStatePayload {
    * tương lai. Default 100 cho legacy + freshly-rolled root.
    */
   rootPurity: number;
+  /**
+   * Phase 11.9.C — equipped title key (single-slot cosmetic display). `null`
+   * khi character chưa equip title nào hoặc đã unequip (mặc định cho character
+   * mới chưa unlock title milestone). Server nguồn duy nhất; FE chỉ render
+   * — không tự set field này. Keys reference `TITLES` catalog ở
+   * `packages/shared/src/titles.ts`.
+   */
+  title: string | null;
 }
 
 export interface CultivateTickPayload {
