@@ -1,5 +1,10 @@
 import { i18n } from '@/i18n';
-import type { DungeonDef, DungeonRunReward, MonsterDef } from '@xuantoi/shared';
+import type {
+  DungeonDef,
+  DungeonRunReward,
+  MonsterDef,
+  RolledLoot,
+} from '@xuantoi/shared';
 import { apiClient } from './client';
 
 /**
@@ -52,6 +57,12 @@ export interface DungeonAvailabilityView {
 export interface DungeonRunKilledEntry {
   monsterKey: string;
   killedAt: string;
+  /**
+   * Phase 12.3 — random per-encounter loot drop đã grant qua server
+   * (reason `DUNGEON_LOOT`). FE chỉ render — KHÔNG tự cộng inventory.
+   * `undefined` cho legacy entry (run pre-Phase-12.3 hoặc loot table empty).
+   */
+  loot?: RolledLoot[];
 }
 
 export interface DungeonRunView {

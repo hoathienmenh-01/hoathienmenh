@@ -69,6 +69,7 @@ const messages = {
       currentMonster: 'Quái:',
       monsterStat: 'Lv {lv} HP {hp} ATK {atk}',
       killedTitle: 'Hạ ({n})',
+      lootedItem: '+{name} ×{qty}',
       rewardPreview: '+{linhThach} LT +{tienNgoc} TN +{exp} EXP',
       realmHint: 'Realm {realm}',
       start: 'Khởi',
@@ -263,6 +264,56 @@ describe('DungeonRunView — render', () => {
     expect(w.find('[data-testid="dungeon-run-active-progress"]').text()).toBe('Ải 1/3');
     expect(w.find('[data-testid="dungeon-run-next"]').exists()).toBe(true);
     expect(w.find('[data-testid="dungeon-run-claim"]').exists()).toBe(false);
+  });
+
+  it('Phase 12.3 — kill log render loot từ killedMonsters[i].loot', async () => {
+    fetchDungeonRunListMock.mockResolvedValue({
+      available: [],
+      activeRun: buildRun({
+        id: 'r1',
+        status: 'ACTIVE',
+        encounterIndex: 1,
+        totalEncounters: 3,
+        killedMonsters: [
+          {
+            monsterKey: 'son_thu_lon',
+            killedAt: '2026-05-06T00:00:30.000Z',
+            loot: [
+              { itemKey: 'huyet_chi_dan', qty: 2 },
+              { itemKey: 'so_kiem', qty: 1 },
+            ],
+          },
+        ],
+      }),
+    });
+    const w = mountView();
+    await flushPromises();
+    const lootEl = w.find('[data-testid="dungeon-run-killed-0-loot"]');
+    expect(lootEl.exists()).toBe(true);
+    // formatLoot fallback: itemByKey resolve → name; nếu không tìm được thì
+    // dùng itemKey raw. Bất kể 'huyet_chi_dan' tồn tại hay không trong items
+    // catalog, output phải chứa tên/key + qty.
+    expect(lootEl.text()).toContain('×2');
+    expect(lootEl.text()).toContain('×1');
+  });
+
+  it('Phase 12.3 — killedMonsters entry KHÔNG có loot field → không render loot span', async () => {
+    fetchDungeonRunListMock.mockResolvedValue({
+      available: [],
+      activeRun: buildRun({
+        id: 'r1',
+        status: 'ACTIVE',
+        encounterIndex: 1,
+        totalEncounters: 3,
+        killedMonsters: [
+          { monsterKey: 'son_thu_lon', killedAt: '2026-05-06T00:00:30.000Z' },
+        ],
+      }),
+    });
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="dungeon-run-killed-0"]').exists()).toBe(true);
+    expect(w.find('[data-testid="dungeon-run-killed-0-loot"]').exists()).toBe(false);
   });
 
   it('active run COMPLETED → claim button hiển thị + reward preview', async () => {

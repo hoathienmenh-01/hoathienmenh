@@ -594,6 +594,7 @@
     "currentMonster": "Quái sắp đối đầu",
     "monsterStat": "Lv {lv} · HP {hp} · Công {atk}",
     "killedTitle": "Đã hạ ({n})",
+    "lootedItem": "+{name} ×{qty}",
     "rewardPreview": "+{linhThach} LT · +{tienNgoc} TN · +{exp} EXP",
     "realmHint": "Đề nghị: {realm}",
     "start": "Khởi hành",

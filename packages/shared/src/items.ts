@@ -1289,11 +1289,13 @@ export const DUNGEON_LOOT: Record<string, readonly LootEntry[]> = {
   //   `apps/api/src/modules/combat/combat.service.ts` (action skill flow ~L576
   //   + active talent flow ~L959) gọi `rollDungeonLoot(dungeon.key, 2)` khi
   //   `EncounterStatus.WON` và grant qua `inventory.grant(loot, { reason:
-  //   'COMBAT_LOOT' })` → ItemLedger row + InventoryItem (stackable). Không
-  //   có DungeonRunService riêng — combat.service là single runtime cho
-  //   encounter + dungeon clear; tách service thừa scope hiện tại.
+  //   'COMBAT_LOOT' })` → ItemLedger row + InventoryItem (stackable).
   //   Element match dungeon → book element (kim_son_mach → kim, etc.) đảm
   //   bảo người chơi farm dungeon đúng hệ Linh Căn để học skill cùng hệ.
+  // Phase 12.3 — DungeonRunService.nextEncounter cũng gọi `rollDungeonLoot`
+  //   reuse cùng table này, grant với reason `DUNGEON_LOOT` + refType
+  //   `DungeonRun` (khác `COMBAT_LOOT` ở refType nên ledger phân biệt được
+  //   nguồn drop combat module vs dungeon-run module).
   // Lưu ý: chỉ dùng item keys đã có ở `ITEMS`; không tạo orphan reference.
   // ─────────────────────────────────────────────────────────────────────
   kim_son_mach: [

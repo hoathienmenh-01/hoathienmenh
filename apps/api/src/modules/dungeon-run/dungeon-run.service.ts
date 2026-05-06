@@ -11,9 +11,11 @@ import {
   dungeonByKey,
   monsterByKey,
   realmByKey,
+  rollDungeonLoot,
   type DungeonDef,
   type DungeonRunReward,
   type MonsterDef,
+  type RolledLoot,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
@@ -30,8 +32,12 @@ import { startOfLocalDay } from '../combat/combat.service';
  *    skill choice / MP / HP per encounter. Đơn giản hơn combat — phù hợp
  *    farm-loop sau khi player đã clear nội dung lần đầu via combat.
  *  - DungeonRun reward = bonus deterministic claim sau khi clear toàn bộ
- *    encounter (linhThach + tienNgoc + exp + items). Khác `DUNGEON_LOOT`
- *    của combat flow là per-encounter random drop.
+ *    encounter (linhThach + tienNgoc + exp + items, reason
+ *    `DUNGEON_RUN_REWARD`).
+ *  - Per-encounter loot drop (Phase 12.3) = random `rollDungeonLoot()`
+ *    pull từ `DUNGEON_LOOT[dungeon.key]` mỗi `next()` call, grant qua
+ *    `inventory.grant` reason `DUNGEON_LOOT` + refType `DungeonRun`.
+ *    Mirror combat.service `COMBAT_LOOT` (cùng drop table, khác refType).
  *
  * Server-authoritative invariants:
  *  - Realm gate: player.realmKey order >= dungeon.recommendedRealm order.
@@ -84,6 +90,19 @@ export interface DungeonAvailability {
   lockReason: 'LOCKED_REALM' | 'DAILY_LIMIT' | 'STAMINA_LOW' | null;
 }
 
+/**
+ * Phase 12.3 — Loot snapshot per killed monster. `loot` chính xác item drop
+ * đã được `inventory.grant` với reason `DUNGEON_LOOT` (refType `DungeonRun`,
+ * refId `run.id`). FE chỉ render — KHÔNG tự cộng inventory. Trường này có
+ * thể `undefined` cho killed entry legacy trước Phase 12.3 (đã COMPLETED
+ * hoặc lưu trong DB trước khi feature wire).
+ */
+export interface DungeonRunKilledEntry {
+  monsterKey: string;
+  killedAt: string;
+  loot?: RolledLoot[];
+}
+
 export interface DungeonRunView {
   id: string;
   templateKey: string;
@@ -93,7 +112,7 @@ export interface DungeonRunView {
   /** Monster `dungeon.monsters[encounterIndex]` (next monster cần đánh).
    * `null` khi run COMPLETED/CLAIMED/ABANDONED hoặc index out-of-range. */
   currentMonster: MonsterDef | null;
-  killedMonsters: Array<{ monsterKey: string; killedAt: string }>;
+  killedMonsters: DungeonRunKilledEntry[];
   startedAt: string;
   completedAt: string | null;
   claimedAt: string | null;
@@ -118,14 +137,29 @@ export interface DungeonClaimResult {
   };
 }
 
-interface KilledMonsterEntry {
-  monsterKey: string;
-  killedAt: string;
+function readRolledLoot(raw: unknown): RolledLoot[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: RolledLoot[] = [];
+  for (const item of raw) {
+    if (
+      item &&
+      typeof item === 'object' &&
+      !Array.isArray(item) &&
+      typeof (item as Record<string, unknown>).itemKey === 'string' &&
+      typeof (item as Record<string, unknown>).qty === 'number'
+    ) {
+      out.push({
+        itemKey: (item as Record<string, string>).itemKey,
+        qty: (item as Record<string, number>).qty,
+      });
+    }
+  }
+  return out;
 }
 
-function readKilledMonsters(json: Prisma.JsonValue | null): KilledMonsterEntry[] {
+function readKilledMonsters(json: Prisma.JsonValue | null): DungeonRunKilledEntry[] {
   if (!Array.isArray(json)) return [];
-  const out: KilledMonsterEntry[] = [];
+  const out: DungeonRunKilledEntry[] = [];
   for (const v of json) {
     if (
       v &&
@@ -134,10 +168,13 @@ function readKilledMonsters(json: Prisma.JsonValue | null): KilledMonsterEntry[]
       typeof (v as Record<string, unknown>).monsterKey === 'string' &&
       typeof (v as Record<string, unknown>).killedAt === 'string'
     ) {
-      out.push({
+      const entry: DungeonRunKilledEntry = {
         monsterKey: (v as Record<string, string>).monsterKey,
         killedAt: (v as Record<string, string>).killedAt,
-      });
+      };
+      const loot = readRolledLoot((v as Record<string, unknown>).loot);
+      if (loot && loot.length > 0) entry.loot = loot;
+      out.push(entry);
     }
   }
   return out;
@@ -349,7 +386,17 @@ export class DungeonRunService {
     const isLast = nextIndex >= dungeon.monsters.length;
     const nowIso = new Date().toISOString();
     const killed = readKilledMonsters(run.killedMonsters);
-    killed.push({ monsterKey, killedAt: nowIso });
+
+    // Phase 12.3 — per-encounter random loot drop từ `DUNGEON_LOOT[dungeon.key]`
+    // (mirror `combat.service` PR #251 wiring). Roll TRƯỚC CAS update để snapshot
+    // loot vào `killedMonsters` JSON cùng atomic write. Nếu CAS fail (race khác
+    // đã advance) → roll bị huỷ luôn, không grant. Nếu CAS pass nhưng `inventory.grant`
+    // throw sau đó → killed entry vẫn ghi loot đã roll, ledger row mất (mirror
+    // combat.service trade-off, fail-soft tránh block dungeon flow).
+    const loot = rollDungeonLoot(dungeon.key, 2);
+    const killedEntry: DungeonRunKilledEntry = { monsterKey, killedAt: nowIso };
+    if (loot.length > 0) killedEntry.loot = loot;
+    killed.push(killedEntry);
 
     // CAS guard: chỉ advance nếu vẫn ACTIVE + encounterIndex chưa thay đổi.
     const upd = await this.prisma.dungeonRun.updateMany({
@@ -362,6 +409,26 @@ export class DungeonRunService {
       },
     });
     if (upd.count !== 1) throw new DungeonRunError('RUN_NOT_ACTIVE');
+
+    // Grant loot sau CAS — đảm bảo 1 winner / encounter advance ghi đúng 1 ledger
+    // row. Reason `DUNGEON_LOOT` + refType `DungeonRun` + refId run.id. KHÔNG
+    // idempotent (mirror combat.service `COMBAT_LOOT`). Fail-soft try/catch tránh
+    // break flow nếu InventoryService throw — encounter đã advance không thể
+    // rollback ở point này (CAS đã consume).
+    if (loot.length > 0) {
+      try {
+        await this.inventory.grant(char.id, loot, {
+          reason: 'DUNGEON_LOOT',
+          refType: 'DungeonRun',
+          refId: run.id,
+          extra: { dungeonKey: dungeon.key, encounterIndex: idx },
+        });
+      } catch {
+        // fail-soft: loot grant lỗi không fail next() — encounter advance bền
+        // vững. Killed entry vẫn ghi loot đã roll cho FE display purposes;
+        // ItemLedger row mất là cost chấp nhận được (mirror combat.service).
+      }
+    }
 
     // Phase 12 PR-6 — quest kill step tracking, fail-soft. Mirror
     // `combat.service` flow: track `monster.key` + mọi `questTargetIds[*]`

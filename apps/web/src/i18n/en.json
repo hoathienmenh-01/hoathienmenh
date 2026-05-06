@@ -594,6 +594,7 @@
     "currentMonster": "Next monster",
     "monsterStat": "Lv {lv} · HP {hp} · ATK {atk}",
     "killedTitle": "Killed ({n})",
+    "lootedItem": "+{name} ×{qty}",
     "rewardPreview": "+{linhThach} LT · +{tienNgoc} TN · +{exp} EXP",
     "realmHint": "Recommended: {realm}",
     "start": "Start",
