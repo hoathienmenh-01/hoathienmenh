@@ -22,6 +22,10 @@ function makeFakeServer() {
   const calls: EmitCall[] = [];
   const socketJoins = new Map<string, string[]>();
   const socketLeaves = new Map<string, string[]>();
+  // Track socket-level emit (vd `sock.emit('error', {...})` từ kickUser)
+  // và disconnect call. Key by socket id (sid).
+  const socketEmits = new Map<string, Array<{ event: string; payload: unknown }>>();
+  const socketDisconnects = new Map<string, boolean>();
 
   const server = {
     emit: vi.fn((event: string, frame: unknown) => {
@@ -47,11 +51,27 @@ function makeFakeServer() {
             arr.push(room);
             socketLeaves.set(sid, arr);
           }),
+          emit: vi.fn((event: string, payload: unknown) => {
+            const arr = socketEmits.get(sid) ?? [];
+            arr.push({ event, payload });
+            socketEmits.set(sid, arr);
+            return true;
+          }),
+          disconnect: vi.fn((close?: boolean) => {
+            socketDisconnects.set(sid, close ?? false);
+          }),
         })),
       },
     },
   };
-  return { server, calls, socketJoins, socketLeaves };
+  return {
+    server,
+    calls,
+    socketJoins,
+    socketLeaves,
+    socketEmits,
+    socketDisconnects,
+  };
 }
 
 let svc: RealtimeService;
@@ -216,6 +236,45 @@ describe('RealtimeService.joinUserToRoom / leaveUserFromRoom', () => {
     svc.leaveUserFromRoom('u1', 'sect:abc');
     expect(socketLeaves.get('s1')).toEqual(['sect:abc']);
     expect(socketLeaves.get('s2')).toEqual(['sect:abc']);
+  });
+});
+
+describe('RealtimeService.kickUser — admin ban hardening', () => {
+  it('kickUser emit error{code} + disconnect tất cả socket của user, return true', () => {
+    const { server, socketEmits, socketDisconnects } = makeFakeServer();
+    svc.bind(server as unknown as Parameters<RealtimeService['bind']>[0]);
+    svc.attach('u1', 's1');
+    svc.attach('u1', 's2');
+
+    const ok = svc.kickUser('u1', 'ACCOUNT_BANNED');
+
+    expect(ok).toBe(true);
+    expect(socketEmits.get('s1')).toEqual([
+      { event: 'error', payload: { code: 'ACCOUNT_BANNED' } },
+    ]);
+    expect(socketEmits.get('s2')).toEqual([
+      { event: 'error', payload: { code: 'ACCOUNT_BANNED' } },
+    ]);
+    // disconnect(true) — close = true để force socket close.
+    expect(socketDisconnects.get('s1')).toBe(true);
+    expect(socketDisconnects.get('s2')).toBe(true);
+  });
+
+  it('kickUser idempotent — user không online → return false, không throw', () => {
+    const { server, socketEmits } = makeFakeServer();
+    svc.bind(server as unknown as Parameters<RealtimeService['bind']>[0]);
+
+    const ok = svc.kickUser('u-not-online', 'ACCOUNT_BANNED');
+
+    expect(ok).toBe(false);
+    expect(socketEmits.size).toBe(0);
+  });
+
+  it('kickUser no-op khi server chưa bind (return false, không throw)', () => {
+    // Không gọi bind() trước.
+    svc.attach('u1', 's1');
+    const ok = svc.kickUser('u1', 'ACCOUNT_BANNED');
+    expect(ok).toBe(false);
   });
 });
 
