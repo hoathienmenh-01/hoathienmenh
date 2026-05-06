@@ -53,7 +53,8 @@
       "skillUpgrade": "Thăng cấp thuật pháp thất bại",
       "skillLearnFromBook": "Đọc bí kíp thất bại",
       "npc": "Không lấy được danh sách đạo hữu",
-      "quest": "Thao tác nhiệm vụ thất bại"
+      "quest": "Thao tác nhiệm vụ thất bại",
+      "dungeonRun": "Thao tác phó bản thất bại"
     }
   },
   "locale": {
@@ -286,7 +287,8 @@
       "tribulation": "Thiên Kiếp",
       "breakthrough": "Đột Phá",
       "npcs": "Đạo Hữu",
-      "quests": "Nhiệm Vụ"
+      "quests": "Nhiệm Vụ",
+      "dungeonRun": "Bí Cảnh Hành"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -579,6 +581,80 @@
       "title": "Thần thông chủ động",
       "cooldownLabel": "Còn hồi {turns} lượt",
       "preselected": "Loadout"
+    }
+  },
+  "dungeonRun": {
+    "title": "Bí Cảnh Hành",
+    "subtitle": "Đoàn ải nhiều quái — vào bí cảnh, vượt từng ải, lĩnh thưởng kết thúc.",
+    "totalCount": "Bí cảnh: {n}",
+    "startableCount": "Có thể vào: {n}",
+    "activeBadge": "Đang vận hành",
+    "startableBadge": "Sẵn sàng",
+    "progress": "Ải {cur} / {total}",
+    "currentMonster": "Quái sắp đối đầu",
+    "monsterStat": "Lv {lv} · HP {hp} · Công {atk}",
+    "killedTitle": "Đã hạ ({n})",
+    "rewardPreview": "+{linhThach} LT · +{tienNgoc} TN · +{exp} EXP",
+    "realmHint": "Đề nghị: {realm}",
+    "start": "Khởi hành",
+    "next": "Vượt ải kế",
+    "claim": "Lĩnh thưởng",
+    "startToast": "Bí cảnh {name} đã khởi hành.",
+    "advanceToast": "Đã vượt ải — tiến độ {cur}/{total}.",
+    "completedToast": "Đã hoàn tất bí cảnh — sẵn sàng lĩnh thưởng.",
+    "claimToast": "Đã lĩnh thưởng — +{linhThach} LT · +{exp} EXP.",
+    "empty": "Chưa có bí cảnh khả dụng.",
+    "emptyFiltered": "Không có bí cảnh thuộc nhóm {filter}.",
+    "filter": {
+      "all": "Tất cả",
+      "startable": "Sẵn sàng",
+      "locked": "Bị khoá"
+    },
+    "lockReason": {
+      "LOCKED_REALM": "Cảnh giới chưa đủ",
+      "DAILY_LIMIT": "Hết lượt hôm nay",
+      "STAMINA_LOW": "Thiếu thể lực"
+    },
+    "metric": {
+      "encounters": "Số ải",
+      "stamina": "Thể lực",
+      "dailyUsed": "Lượt / ngày",
+      "bonusReward": "Thưởng kết thúc"
+    },
+    "status": {
+      "ACTIVE": "Đang vận hành",
+      "COMPLETED": "Hoàn tất",
+      "CLAIMED": "Đã lĩnh",
+      "ABANDONED": "Đã bỏ"
+    },
+    "reward": {
+      "linhThach": "+{n} Linh thạch",
+      "tienNgoc": "+{n} Tiên ngọc",
+      "exp": "+{n} EXP",
+      "item": "Linh bảo {itemKey} ×{qty}"
+    },
+    "claimModal": {
+      "title": "Lĩnh thưởng bí cảnh",
+      "subtitle": "Đã hoàn tất bí cảnh {templateKey}."
+    },
+    "errors": {
+      "UNAUTHENTICATED": "Phiên đã hết hạn, vui lòng đăng nhập lại.",
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "DUNGEON_NOT_FOUND": "Không tìm thấy bí cảnh.",
+      "DUNGEON_LOCKED_REALM": "Cảnh giới chưa đủ để vào bí cảnh này.",
+      "DUNGEON_DAILY_LIMIT_REACHED": "Hôm nay đã hết lượt vào bí cảnh này.",
+      "STAMINA_LOW": "Thể lực không đủ — đợi tu luyện hồi phục.",
+      "ALREADY_IN_RUN": "Đạo hữu đang trong một bí cảnh khác.",
+      "RUN_NOT_FOUND": "Không tìm thấy hành trình bí cảnh.",
+      "RUN_NOT_OWNED": "Hành trình bí cảnh không thuộc về đạo hữu.",
+      "RUN_NOT_ACTIVE": "Hành trình không còn hoạt động.",
+      "RUN_NOT_COMPLETED": "Phải hoàn tất bí cảnh trước khi lĩnh thưởng.",
+      "RUN_ALREADY_CLAIMED": "Phần thưởng đã được lĩnh trước đó.",
+      "RUN_NO_REWARD": "Bí cảnh này không có thưởng kết thúc.",
+      "NO_ACTIVE_RUN": "Chưa có bí cảnh đang vận hành.",
+      "INVALID_INPUT": "Yêu cầu không hợp lệ.",
+      "UNKNOWN_ERROR": "Có lỗi xảy ra, mời thử lại.",
+      "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
     }
   },
   "inventory": {
