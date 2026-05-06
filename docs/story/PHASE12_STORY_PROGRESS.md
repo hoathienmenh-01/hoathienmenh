@@ -90,7 +90,7 @@ Standalone quest (no chain): 6 quest (3 sect + 3 grind).
 | **Quest service** (`QuestService.list / accept / progress / track`) | **Done** ✅ | `apps/api/src/modules/quest/`. Server-authoritative validation: realm gate (`Character.realmStage` order >= `QuestDef.requiredRealmOrder`), prerequisite quest, CAS guards (`where {id, status: OLD}`), fail-soft `track()` hook from `CombatService` kill events. PR-2 merged. |
 | **Story chapter tracking** | **Done** ✅ | `Character.storyChapter` Int field bumped khi main quest `COMPLETED` (chapter index = `realmOrder + 1`). PR-2 merged. |
 | **Reward claim** (`QuestService.claim`) | **Done** ✅ | `apps/api/src/modules/quest/quest.service.ts:claim()`. CAS guard `updateMany({where:{id, status:'COMPLETED', claimedAt:null}})` → `status='CLAIMED'`. Grant linhThach/tienNgoc qua `CurrencyService.applyTx` (`reason='QUEST_CLAIM'`, `refType='Quest'`, `refId=questKey`); exp/congHien qua `tx.character.update`; items qua `InventoryService.grantTx`. Idempotency: race-safe 1 winner / questKey (concurrency test xác nhận 2 parallel claim → đúng 1 ledger row). PR-3 merged. |
-| **Quest UI** (`QuestView.vue` + Pinia store) | **Missing** | List + filter (main/realm/sect/npc/grind) + loading/empty/error + i18n vi/en. Tuân UI MODULE RULE. Phase 12 PR-5. |
+| **Quest UI** (`QuestView.vue` + Pinia store) | **Done** ✅ (Story Runtime MVP this PR) | List 25 quest + filter (main/realm/sect/npc/grind) + status badge (LOCKED/AVAILABLE/ACCEPTED/COMPLETED/CLAIMED) + accept/claim button gated by status (server-authoritative) + toggle expand step + reward + loading/empty/error + i18n vi/en parity. Pinia store `useQuestStore` mirror server `GET /quests/me` + dispatch `POST /quests/accept` + `POST /quests/claim` rồi reload list. Tuân UI MODULE RULE: 1 view = 1 PR. Phase 12 Story Runtime MVP. |
 | **NPC dialogue UI** (`NpcDialogueModal.vue` + `NpcView.vue`) | **Done** ✅ | Server endpoint `GET /npcs/me` (list visible) + `GET /npcs/:npcKey/dialogue` (refetch sau accept). Server-authoritative branch picker (`always` / `realm_min` / `quest_status` / `faction_member` placeholder) + sort specificity (highest first). Choice với `acceptQuestKey` annotate `acceptQuestStatus` (NOT_STARTED / AVAILABLE / ACCEPTED / COMPLETED / CLAIMED / LOCKED) — FE disable button đã accept. Pinia store cache dialogue trong list, force refetch sau quest accept. Phase 12 PR-4. |
 | **Cơ duyên (kỳ ngộ) MVP** | Partial | `EncounterDef` đã có (Phase 12.1). Cần extend cho quest-driven flavor + cooldown log. Phase 12 sau PR-5. |
 
@@ -165,6 +165,28 @@ Tách nhỏ, mỗi PR là 1 layer. Tuân BATCHING RULE + UI MODULE RULE.
 - E2E spec (golden-path): accept → progress → complete → claim → check inventory + ledger.
 - Smoke `pnpm smoke:quest` extended.
 - Update progress tracker §3 (Chapter 1 = `phamnhan` Done).
+
+### Story Foundation Extension — Kim Đan + Nguyên Anh catalog — **CLOSED** ✅ (2026-05-05)
+
+- Catalog-only extension: 15 quest → 25 (5 Kim Đan + 5 Nguyên Anh), 4 NPC → 5 (+ Huyết La Sát realm 3), 6 dialogue → 11.
+- Chain mới: `huyet_la_sat_arc` (2 step kim_dan → nguyen_anh) + extend `hoa_thien_main` (3 → 5 step) + `moc_thanh_y_arc` (1 → 3 step).
+- Integrity test: shared 1321 → 1328 (+7), regex `VALID_KIND_REGEX` thêm `kim_dan|nguyen_anh`, chain assertion mới (sequential prereq cross-realm), main exp scaling (1500→3500→8000→12500→22000).
+- KHÔNG Prisma migration ✅, KHÔNG runtime ✅, KHÔNG UI ✅.
+- `QuestService.list()` runtime hiện tại tự động pick up quest mới sau merge — gate `requiredRealmOrder>=3/4` không phá player ở 3 cảnh giới đầu.
+
+### Story Runtime MVP (Phase 12 PR-5 stub) — Quest UI list + accept + claim — **DONE** ✅ (2026-05-05, this PR)
+
+- **Scope (UI MODULE RULE — 1 view = 1 PR)**:
+  - `apps/web/src/views/QuestView.vue` — list 25 quest + filter (main/realm/sect/npc/grind) + status badge LOCKED/AVAILABLE/ACCEPTED/COMPLETED/CLAIMED + accept button (gated `status===AVAILABLE`) + claim button (gated `status===COMPLETED`) + toggle expand step + reward + loading/empty/error.
+  - `apps/web/src/stores/quest.ts` — Pinia store mirror server `GET /quests/me`. Action `accept(key)` / `claim(key)` reload list từ server. Computed `filteredQuests` / `activeCount` / `claimableCount` cho badge.
+  - `apps/web/src/api/quest.ts` — typed wrapper `fetchQuests` / `acceptQuest` / `claimQuest`. Re-export PR-4 acceptQuest signature giữ nguyên backward compat.
+  - Router `/quests` (name `quests`, auth-required), nav AppShell (sau `/npcs`).
+  - i18n vi/en parity (test pass): `quest.title / .subtitle / .totalCount / .empty / .emptyFiltered / .accept / .claim / .acceptOk / .claimOk / .acceptedHint / .claimedHint / .lockedHint / .filter.all / .kind.* / .stepKind.* / .status.* / .reward.* / .errors.*`.
+- **Server-authoritative**: tất cả mutation đi qua `POST /quests/accept` (PR-2 #426) + `POST /quests/claim` (PR-3 #427). FE KHÔNG tự cộng EXP/linhThach/item; chỉ render server response.
+- **Test**: `apps/web/src/stores/__tests__/quest.test.ts` (15 case) cover load happy/error/unknown / kindFilter / activeCount / claimableCount / accept happy/fail / claim happy/fail / reset. `apps/web/src/views/__tests__/QuestView.test.ts` (13 case) cover render list + status badge + loading + error + empty filtered / filter main+all toggle / accept button enable/disable theo status + toast / claim button gated COMPLETED + reload sau success / toggle expand chi tiết step+reward.
+- **Build/typecheck/lint**: web 1126/1126 PASS, repo typecheck PASS, repo lint PASS.
+- **KHÔNG Prisma migration**, **KHÔNG service mới**, **KHÔNG endpoint mới** — chỉ UI consume PR-2/3 sẵn có.
+- Update §6 Quest UI Done + §7 (this section).
 
 ### After PR-5: Chapter 2..N expansion
 
