@@ -15,25 +15,33 @@ import { CharacterModule } from '../character/character.module';
 import {
   RedisSlidingWindowRateLimiter,
   InMemorySlidingWindowRateLimiter,
+  FailoverRateLimiter,
   RateLimiter,
 } from '../../common/rate-limiter';
 import { REDIS_CONNECTION } from '../../common/redis.module';
 
 /**
  * Factory cho chat rate limiter: ưu tiên dùng Redis (sliding window,
- * chia sẻ state giữa các api instance). Nếu REDIS_CONNECTION không được
- * inject (vd. test setup), fallback về in-memory để không crash.
+ * chia sẻ state giữa các api instance). Wrap trong `FailoverRateLimiter`
+ * để Redis down runtime → fallback in-memory thay vì throw → user mất
+ * chat. Khi Redis recover → tự quay lại Redis path. Nếu REDIS_CONNECTION
+ * không inject (test setup) → in-memory only.
  */
 const chatRateLimiterProvider = {
   provide: CHAT_RATE_LIMITER,
   useFactory: (redis?: Redis): RateLimiter => {
     if (redis) {
-      return new RedisSlidingWindowRateLimiter(
+      const primary = new RedisSlidingWindowRateLimiter(
         redis,
         CHAT_RATE_LIMIT_WINDOW_MS,
         CHAT_RATE_LIMIT_MAX,
         'rl:chat',
       );
+      const fallback = new InMemorySlidingWindowRateLimiter(
+        CHAT_RATE_LIMIT_WINDOW_MS,
+        CHAT_RATE_LIMIT_MAX,
+      );
+      return new FailoverRateLimiter(primary, fallback);
     }
     return new InMemorySlidingWindowRateLimiter(
       CHAT_RATE_LIMIT_WINDOW_MS,
