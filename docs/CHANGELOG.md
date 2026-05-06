@@ -12,6 +12,14 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Added — M10 Shop daily purchase limit + per-user rate limit (this PR)
+
+- **Per-item daily purchase cap**: mỗi entry trong NPC shop có thể đặt `dailyLimit` (opt-in). Player vượt cap → toast "Vượt hạn mức mua hôm nay. Thử lại sau khi reset". Reset 00:00 theo `MISSION_RESET_TZ` (mặc định `Asia/Ho_Chi_Minh`) — cùng mốc reset với daily mission / daily-login / dungeon `dailyLimit`. Mặc định cho closed beta: pills HP/MP = 20/ngày, đan exp + ore = 10/ngày, equipment phàm phẩm = 5/ngày.
+- **Per-user rate limit**: 30 lần `POST /shop/buy` trong 60 giây mỗi user. Vượt → 429 + toast "Mua quá nhanh — vui lòng chậm lại và thử lại sau". Chặn script abuse / race exploit. Limit theo `userId` (không phải IP) → 1 acc share IP với người khác không liên đới.
+- **Anti-economy abuse**: cả 2 tầng pre-check trước transaction — KHÔNG trừ tiền khi reject. Rate limit dùng Redis sliding window (cross-instance) với `FailoverRateLimiter` wrapper → Redis down runtime fallback in-memory, KHÔNG bao giờ 500.
+- **FE shop**: mỗi entry hiện badge "Hạn mức hôm nay: N" khi có `dailyLimit`. i18n vi + en cho 2 error code mới.
+- Backend-only architecture: KHÔNG migration mới — daily count derive từ `ItemLedger` reason='SHOP_BUY' với index `(reason, createdAt)` đã có sẵn.
+
 ### Added — Phase 11.8.D Buff HUD + 11.9.C Title catalog/equip — FE wire (this PR)
 
 - **Title catalog UI** (`/titles`): xem 26 danh hiệu trong game (5 rarity × 6 source × 5 element), filter theo source/rarity/status, **trang bị** danh hiệu đã unlock (single-slot), **gỡ bỏ** equipped title. Topbar (lg+ screens) hiển thị tên danh hiệu đang trang bị màu vàng (`amber-200`) bên dưới tên nhân vật.

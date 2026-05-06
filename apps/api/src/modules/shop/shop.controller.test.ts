@@ -182,6 +182,8 @@ describe('ShopController', () => {
         ['NO_CHARACTER', HttpStatus.NOT_FOUND],
         ['ITEM_NOT_IN_SHOP', HttpStatus.NOT_FOUND],
         ['INSUFFICIENT_FUNDS', HttpStatus.CONFLICT],
+        ['SHOP_DAILY_LIMIT', HttpStatus.CONFLICT],
+        ['RATE_LIMITED', HttpStatus.TOO_MANY_REQUESTS],
         ['INVALID_QTY', HttpStatus.BAD_REQUEST],
         ['NON_STACKABLE_QTY_GT_1', HttpStatus.BAD_REQUEST],
       ];
