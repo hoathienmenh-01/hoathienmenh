@@ -9,6 +9,7 @@ import { RealtimeModule } from '../realtime/realtime.module';
 import { GiftCodeModule } from '../giftcode/giftcode.module';
 import { MailModule } from '../mail/mail.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { QuestModule } from '../quest/quest.module';
 import { PrismaService } from '../../common/prisma.service';
 
 @Module({
@@ -20,6 +21,7 @@ import { PrismaService } from '../../common/prisma.service';
     GiftCodeModule,
     MailModule,
     InventoryModule,
+    QuestModule,
   ],
   controllers: [AdminController],
   providers: [AdminService, AdminGuard, PrismaService],

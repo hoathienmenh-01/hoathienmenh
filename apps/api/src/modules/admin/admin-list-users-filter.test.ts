@@ -6,6 +6,7 @@ import { CharacterService } from '../character/character.service';
 import { CurrencyService } from '../character/currency.service';
 import { TopupService } from '../topup/topup.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { QuestService } from '../quest/quest.service';
 import { AdminService } from './admin.service';
 import { TEST_DATABASE_URL, makeUserChar, wipeAll } from '../../test-helpers';
 
@@ -20,7 +21,8 @@ beforeAll(() => {
   const currency = new CurrencyService(prisma);
   const topup = new TopupService(prisma);
   const inventory = new InventoryService(prisma, realtime, chars);
-  admin = new AdminService(prisma, chars, topup, realtime, currency, inventory);
+  const quests = new QuestService(prisma, currency, inventory);
+  admin = new AdminService(prisma, chars, topup, realtime, currency, inventory, quests);
 });
 
 beforeEach(async () => {

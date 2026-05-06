@@ -18,7 +18,7 @@ Khi story design conflict với code, ưu tiên: code trên `main` > [`../AI_HAN
 
 ## 2. Current status
 
-**Catalog foundation + quest runtime persistence + quest claim reward + NPC dialogue UI + Story Foundation Extension (Kim Đan + Nguyên Anh catalog) DONE. Story Runtime MVP (Quest UI list + accept/claim) IN-FLIGHT (this PR).** Main storyline Chapter 1 playable (PR-5) còn thiếu.
+**Catalog foundation + quest runtime persistence + quest claim reward + NPC dialogue UI + Story Foundation Extension (Kim Đan + Nguyên Anh catalog) + Story Runtime MVP (Quest UI list + accept/claim) DONE. Phase 12 Story PR-5 Main storyline Chapter 1 playable (`phamnhan_main_01` end-to-end accept → progress → admin track kill → claim + E2E golden-path) IN-FLIGHT (this PR).** Combat → quest auto-track wiring (PR-6) vẫn chờ.
 
 Hiện tại Phase 12 đã có:
 - **Phase 12.1** (catalog `MapDef` / `EncounterDef` / `DungeonDef`) — CLOSED ✅ (PR #397).
@@ -29,11 +29,14 @@ Hiện tại Phase 12 đã có:
 - **Phase 12 Story PR-3** (Quest claim / reward idempotency) — CLOSED ✅ (`QuestService.claim` qua `CurrencyService.applyTx` + `InventoryService.grantTx` + CAS guard trên `QuestProgress.claimedAt` + concurrency test + smoke +4 step).
 - **Phase 12 Story PR-4** (NPC dialogue UI) — CLOSED ✅ (PR #428).
 - **Phase 12 Story Foundation Extension** (Kim Đan + Nguyên Anh catalog: +10 quest + 1 NPC + 5 dialogue line + integrity test) — CLOSED ✅ (PR #429).
-- **Phase 12 Story Runtime MVP** (QuestView.vue list + filter + accept/claim UI consume PR-2/3 endpoints, server-authoritative) — OPEN (this PR).
+- **Phase 12 Story Runtime MVP** (QuestView.vue list + filter + accept/claim UI consume PR-2/3 endpoints, server-authoritative) — CLOSED ✅ (PR #430).
+- **Phase 12 Story PR-5 Main storyline Chapter 1 playable** (`phamnhan_main_01` end-to-end via UI + admin quest-track seed harness `POST /admin/users/:id/quest-track` wrap `QuestService.track()` cho kind kill/collect + 13 unit test + E2E golden-path §21 phamnhan_main_01 accept → progress talk×2 → admin track kill 3 son_thu → claim → ledger verify) — OPEN (this PR).
 
 **Story / NPC / Quest runtime**: 5 NPC + 25 quest + 11 dialogue line (5 cảnh giới đầu: Phàm Nhân + Luyện Khí + Trúc Cơ + Kim Đan + Nguyên Anh). `QuestProgress` Prisma model live; `QuestService` server-authoritative validation (realm gate + prereq + CAS guard); kill step auto-tracked qua `CombatService` fail-soft hook; reward claim atomic qua ledger (`reason='QUEST_CLAIM'`, `refType='Quest'`, `refId=questKey`) đảm bảo idempotent (race-safe 1 winner / questKey).
 
 **Story Foundation Extension** chỉ mở rộng catalog static cho cảnh giới 3-4 — KHÔNG tác động runtime (không Prisma migration, không API mới, không UI mới). Quest mới gate bởi `requiredRealmOrder>=3` (Kim Đan) và `>=4` (Nguyên Anh) nên không ảnh hưởng player đang ở 3 cảnh giới đầu; `QuestService` hiện tại (PR-2/3) đã dùng catalog dynamically nên tự động pick up quest mới sau khi merge.
+
+**PR-5 (this PR)** thêm admin seed harness `POST /admin/users/:id/quest-track` wrap `QuestService.track()` cho kind kill/collect (RBAC ADMIN/MOD, validate `kind/targetType/targetId/amount`, audit `admin.quest.track`, realtime `state:update` push). Endpoint chuẩn bị cho E2E golden-path (`phamnhan_main_01` end-to-end accept → progress talk×2 → admin track kill 3 son_thu → claim) và future smoke positive-path. Anti-abuse: KHÔNG seed talk/explore/choice (gameplay-driven only); CANNOT_TARGET_SELF; tối đa `amount=999/lan goi`. KHÔNG Prisma migration, KHÔNG endpoint cho player.
 
 ## 3. Implemented chapters
 
@@ -174,13 +177,20 @@ Tách nhỏ, mỗi PR là 1 layer. Tuân BATCHING RULE + UI MODULE RULE.
 - KHÔNG Prisma migration / KHÔNG runtime change / KHÔNG UI: catalog-only. Quest hiện hữu (PR-2/3) auto-pick quest mới qua `realmGateOrder >=3 / >=4`.
 - Reward band tuân [`../BALANCE_MODEL.md`](../BALANCE_MODEL.md) (main exp scale up theo realm; không âm).
 
-### PR-5 — Main storyline Chapter 1 playable (Medium-Large, full stack)
+### PR-5 — Main storyline Chapter 1 playable — **OPEN** (this PR)
 
-- Wire `phamnhan_main_01` (Hoa Thiên Tuyển Đồ) end-to-end: catalog → runtime → claim → UI list + filter + accept + claim → NPC dialogue.
-- Update `Character.storyChapter` khi claim main chapter quest.
-- E2E spec (golden-path): accept → progress → complete → claim → check inventory + ledger.
-- Smoke `pnpm smoke:quest` extended.
-- Update progress tracker §3 (Chapter 1 = `phamnhan` Done).
+- **Scope**: wire `phamnhan_main_01` (Hoa Thiên Tuyển Đồ) end-to-end UI flow + admin seed harness cho E2E.
+  - `apps/api/src/modules/admin/admin.service.ts` — `grantQuestTrack(actorId, actorRole, targetUserId, input)` wrap `QuestService.track(charId, kind, targetType, targetId, amount)`. Validate `kind∈{kill,collect}` + `targetType∈{monster,item}` + `amount∈[1,999]` + `CANNOT_TARGET_SELF` + RBAC ADMIN/MOD + audit `admin.quest.track` + realtime `state:update`.
+  - `apps/api/src/modules/admin/admin.controller.ts` — `POST /admin/users/:id/quest-track` zod validate + `RequireAdmin` guard + delegate to `AdminService.grantQuestTrack`.
+  - `apps/api/src/modules/admin/admin.module.ts` — import `QuestModule` để inject `QuestService`.
+  - `apps/api/src/modules/admin/admin-grant-quest-track.service.test.ts` — 13 unit test (positive single-shot, partial multi-call, validation kind/targetType/targetId/amount, RBAC, audit, fail-soft no-op khi không có ACCEPTED quest match, KHÔNG trùng monster mismatch).
+  - 13 admin test files cập nhật constructor add `quests: QuestService` (`new AdminService(prisma, chars, topup, realtime, currency, inventory, quests)`).
+  - `apps/web/e2e/helpers.ts` — `adminQuestTrack(targetUserId, input)` helper mirror `adminSeedTalent` pattern (separate `APIRequestContext` cho admin cookie jar không đụng player session).
+  - `apps/web/e2e/golden.spec.ts` §21 spec mới: onboard fresh char (luyenkhi/1 unlock phamnhan_main_01) → `/quests` row visible + AVAILABLE → click accept button → ACCEPTED → POST `/quests/progress` step_01+step_02 (talk×2) → `adminQuestTrack(seed.userId, {kind:'kill', targetType:'monster', targetId:'son_thu', amount:3})` → reload `/quests` COMPLETED → click claim → CLAIMED + `getCharacterMe()` linhThach +100 + exp delta + `listInventoryApi()` so_kiem qty ≥ 1.
+- **Test**: api 1907 → **1920** (+13 admin grant-quest-track), shared 1328 unchanged, web 1126 unchanged. E2E golden-path **20 → 21 spec**. Total **4361 → 4374 vitest**. Smoke `smoke-quest.mjs` doc cross-link tới E2E spec (positive flow đã cover qua E2E thay vì smoke vì smoke chưa có admin session helper).
+- **Server-authoritative**: KHÔNG endpoint mới cho player (admin endpoint guarded ADMIN/MOD). KHÔNG Prisma migration. KHÔNG FE state mutation. Tất cả ledger row do server tạo (PR-3 atomic claim).
+- **Anti-FE-self-grant**: spec KHÔNG fake ledger / KHÔNG bypass server. Tất cả mutation round-trip qua endpoint.
+- **Anti-abuse**: admin endpoint không seed talk/explore/choice (gameplay-driven only); CANNOT_TARGET_SELF; max amount 999.
 
 ### Story Foundation Extension — Kim Đan + Nguyên Anh catalog — **CLOSED** ✅ (2026-05-05)
 

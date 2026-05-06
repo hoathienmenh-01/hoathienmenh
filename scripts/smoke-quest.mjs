@@ -7,7 +7,11 @@
  * claim) yêu cầu gameplay automation (combat hook). Smoke chỉ cover claim
  * negative-path (auth gate, missing input, unknown quest, not-completed) —
  * positive claim path đã cover trong unit/concurrency test
- * (`apps/api/src/modules/quest/quest.service.test.ts §QuestService.claim`).
+ * (`apps/api/src/modules/quest/quest.service.test.ts §QuestService.claim`)
+ * + Phase 12 PR-5 E2E spec
+ * (`apps/web/e2e/golden.spec.ts §21 phamnhan_main_01 accept→progress→claim`)
+ * dùng `POST /admin/users/:id/quest-track` (admin seed harness PR-5) để
+ * bypass-track step kill mà không cần spin combat thật.
  *
  * Steps:
  *  1. GET  /api/quests/me                  (no auth)              → 401.
