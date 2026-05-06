@@ -14,12 +14,23 @@
  *   - type = `main` / `realm` / `sect` / `npc` / `grind`.
  *   - seq = 2-digit zero-padded số thứ tự trong cùng (realm, type).
  *
- * PR này catalog 15 quest cho 3 cảnh giới đầu (5 quest mỗi cảnh giới):
- *   - Phàm Nhân: phamnhan_main_01, phamnhan_realm_01, phamnhan_sect_01, phamnhan_grind_01, phamnhan_npc_01.
- *   - Luyện Khí: luyenkhi_main_01, luyenkhi_realm_01, luyenkhi_sect_01, luyenkhi_grind_01, luyenkhi_npc_01.
- *   - Trúc Cơ:   truc_co_main_01, truc_co_realm_01, truc_co_sect_01, truc_co_grind_01, truc_co_npc_01.
+ * Phase 12 PR-1 (#425) catalog 15 quest cho 3 cảnh giới đầu (5 quest mỗi cảnh giới).
+ * Phase 12 Story Foundation Extension (this PR) thêm 10 quest cho Kim Đan + Nguyên Anh
+ * (5 quest mỗi cảnh giới), nâng tổng catalog lên 25 quest cho 5 cảnh giới đầu:
+ *   - Phàm Nhân:  phamnhan_main_01, phamnhan_realm_01, phamnhan_sect_01, phamnhan_grind_01, phamnhan_npc_01.
+ *   - Luyện Khí:  luyenkhi_main_01, luyenkhi_realm_01, luyenkhi_sect_01, luyenkhi_grind_01, luyenkhi_npc_01.
+ *   - Trúc Cơ:    truc_co_main_01, truc_co_realm_01, truc_co_sect_01, truc_co_grind_01, truc_co_npc_01.
+ *   - Kim Đan:    kim_dan_main_01, kim_dan_realm_01, kim_dan_sect_01, kim_dan_grind_01, kim_dan_npc_01.
+ *   - Nguyên Anh: nguyen_anh_main_01, nguyen_anh_realm_01, nguyen_anh_sect_01, nguyen_anh_grind_01, nguyen_anh_npc_01.
+ *
+ * Chain key (cập nhật):
+ *   - `hoa_thien_main`: main chain xuyên 5 cảnh giới (Lăng Vân Sinh giao, hoa_thien_main thread main + realm).
+ *   - `moc_thanh_y_arc`: arc cứu Mộc Thanh Y, kéo dài Trúc Cơ → Kim Đan → Nguyên Anh (sect quests).
+ *   - `huyet_la_sat_arc`: arc moral choice ma đạo, Kim Đan → Nguyên Anh (npc quests).
  *
  * Reward band tham khảo `docs/BALANCE_MODEL.md`. Reward đi qua `RewardLedger` ở Phase 12 PR-3.
+ * Cảnh giới sau (Hoá Thần → Hư Không Chí Tôn) tách PR riêng theo recommended PR plan
+ * trong `docs/story/PHASE12_STORY_PROGRESS.md` §7.
  */
 
 /**
@@ -702,6 +713,485 @@ export const QUESTS: readonly QuestDef[] = [
     },
     loreSummary:
       'Hidden quest chain — endgame inheritance foreshadow. Branch trust → unlock Hoa Thiên Đạo Tổ relics ở Kim Đan. Story bible §6 + §11.',
+  },
+
+  // ============================================================================
+  // KIM ĐAN (realm order 3) — 5 quest
+  // ============================================================================
+  {
+    key: 'kim_dan_main_01',
+    name: 'Kết Đan Phong Ba',
+    description:
+      'Kết Kim Đan — Hạt Giống Vô Danh cộng hưởng khiến Tịch Thiên Điện phát hiện. Lăng Vân Sinh hộ pháp.',
+    kind: 'main',
+    realmKey: 'kim_dan',
+    requiredRealmOrder: 3,
+    giverNpcKey: 'npc_lang_van_sinh',
+    chainKey: 'hoa_thien_main',
+    prerequisiteQuestKey: 'truc_co_main_01',
+    steps: [
+      {
+        id: 'step_01',
+        kind: 'collect',
+        targetType: 'item',
+        targetId: 'hoi_nguyen_dan',
+        count: 1,
+        description: 'Chuẩn bị Hồi Nguyên Đan trước khi kết đan.',
+      },
+      {
+        id: 'step_02',
+        kind: 'kill',
+        targetType: 'monster',
+        targetId: 'tich_thien_sat_thu',
+        count: 3,
+        description: 'Đánh bại 3 Tịch Thiên Sát Thủ tới ám sát.',
+      },
+      {
+        id: 'step_03',
+        kind: 'choice',
+        targetType: 'choice',
+        targetId: 'choice_kim_dan_di_tuong',
+        count: 1,
+        description: 'Chọn Kim Đan dị tượng theo build (Pháp / Khí / Đan / Kiếm / Trận).',
+      },
+      {
+        id: 'step_04',
+        kind: 'talk',
+        targetType: 'npc',
+        targetId: 'npc_lang_van_sinh',
+        count: 1,
+        description: 'Báo cáo Lăng Vân Sinh sau khi kết đan thành công.',
+      },
+    ],
+    rewards: {
+      linhThach: 2000,
+      exp: 7500,
+      items: [{ itemKey: 'co_thien_dan', qty: 2 }],
+    },
+    loreSummary:
+      'Người chơi kết Kim Đan và bị Tịch Thiên Điện để ý. Mở Tịch Thiên tuyến (long-term). Story bible §9.1 row 3 + §11 (Ngày kết Kim Đan).',
+  },
+  {
+    key: 'kim_dan_realm_01',
+    name: 'Kim Đan Dị Tượng',
+    description:
+      'Kim Đan dị tượng cần ổn định — Lăng Vân Sinh đưa con vào Kim Sơn Mạch luyện đan tâm.',
+    kind: 'realm',
+    realmKey: 'kim_dan',
+    requiredRealmOrder: 3,
+    giverNpcKey: 'npc_lang_van_sinh',
+    chainKey: 'hoa_thien_main',
+    prerequisiteQuestKey: 'kim_dan_main_01',
+    steps: [
+      {
+        id: 'step_01',
+        kind: 'explore',
+        targetType: 'region',
+        targetId: 'kim_son_mach',
+        count: 1,
+        description: 'Vào Kim Sơn Mạch — bí cảnh Kim Đan tầng đầu.',
+      },
+      {
+        id: 'step_02',
+        kind: 'kill',
+        targetType: 'monster',
+        targetId: 'kim_son_yeu',
+        count: 6,
+        description: 'Đánh bại 6 Kim Sơn Yêu để giành linh thạch luyện đan.',
+      },
+      {
+        id: 'step_03',
+        kind: 'collect',
+        targetType: 'item',
+        targetId: 'thien_linh_ngoc',
+        count: 1,
+        description: 'Lấy Thiên Linh Ngọc — vật liệu luyện pháp bảo Kim Đan.',
+      },
+    ],
+    rewards: {
+      linhThach: 1200,
+      exp: 4000,
+      items: [{ itemKey: 'hoi_nguyen_dan', qty: 2 }],
+    },
+    loreSummary:
+      'Mở pháp bảo sơ cấp + bí cảnh Kim Đan. Foreshadow Kim Đan dị tượng affinity. Story bible §9.1 row 3.',
+  },
+  {
+    key: 'kim_dan_sect_01',
+    name: 'Phòng Tuyến Hoa Thiên',
+    description:
+      'Hoa Thiên Môn cần phòng tuyến mới — Mộc Thanh Y giao việc canh giữ Kim Đan tầng trận pháp dù bị Tịch Linh Chủng ăn mòn.',
+    kind: 'sect',
+    realmKey: 'kim_dan',
+    requiredRealmOrder: 3,
+    giverNpcKey: 'npc_moc_thanh_y',
+    chainKey: 'moc_thanh_y_arc',
+    prerequisiteQuestKey: 'truc_co_sect_01',
+    steps: [
+      {
+        id: 'step_01',
+        kind: 'explore',
+        targetType: 'region',
+        targetId: 'hoa_thien_kim_tran',
+        count: 1,
+        description: 'Vào Hoa Thiên Kim Trận — vòng phòng thủ thứ ba.',
+      },
+      {
+        id: 'step_02',
+        kind: 'kill',
+        targetType: 'monster',
+        targetId: 'kim_dan_yeu_thu',
+        count: 10,
+        description: 'Diệt 10 Kim Đan Yêu Thú đột kích trận pháp.',
+      },
+      {
+        id: 'step_03',
+        kind: 'collect',
+        targetType: 'item',
+        targetId: 'tran_phap_thach',
+        count: 3,
+        description: 'Khôi phục 3 Trận Pháp Thạch lõi.',
+      },
+      {
+        id: 'step_04',
+        kind: 'talk',
+        targetType: 'npc',
+        targetId: 'npc_moc_thanh_y',
+        count: 1,
+        description: 'Báo cáo Mộc Thanh Y — sư tỷ ngày càng yếu, cần thuốc.',
+      },
+    ],
+    rewards: {
+      linhThach: 1500,
+      exp: 3000,
+      congHien: 200,
+    },
+    loreSummary:
+      'Mộc arc tiếp diễn — Tịch Linh Chủng tăng cường, sư tỷ dần mất kiểm soát. Foreshadow Nguyên Anh tâm cảnh. Story bible §11 (Tâm ma đại sư tỷ).',
+  },
+  {
+    key: 'kim_dan_grind_01',
+    name: 'Săn Bạc Lang Quần',
+    description:
+      'Bạc Lang Quần Hắc Lâm phía bắc trỗi dậy — Mộc Thanh Y nhờ con thanh tẩy.',
+    kind: 'grind',
+    realmKey: 'kim_dan',
+    requiredRealmOrder: 3,
+    giverNpcKey: 'npc_moc_thanh_y',
+    chainKey: null,
+    prerequisiteQuestKey: null,
+    steps: [
+      {
+        id: 'step_01',
+        kind: 'kill',
+        targetType: 'monster',
+        targetId: 'bac_lang_quan',
+        count: 20,
+        description: 'Đánh bại 20 Bạc Lang Quần ở Hắc Lâm.',
+      },
+    ],
+    rewards: {
+      linhThach: 800,
+      exp: 1600,
+    },
+    loreSummary:
+      'Repeatable grind level 4 — drop Bạc Lang da để craft Kim Đan giáp.',
+  },
+  {
+    key: 'kim_dan_npc_01',
+    name: 'Máu Trên Thềm Đá',
+    description:
+      'Một thôn phụ thuộc Hoa Thiên bị diệt — dấu vết cho thấy chính đạo và ma đạo đều có mặt. Huyết La Sát muốn gặp con.',
+    kind: 'npc',
+    realmKey: 'kim_dan',
+    requiredRealmOrder: 3,
+    giverNpcKey: 'npc_huyet_la_sat',
+    chainKey: 'huyet_la_sat_arc',
+    prerequisiteQuestKey: 'kim_dan_main_01',
+    steps: [
+      {
+        id: 'step_01',
+        kind: 'explore',
+        targetType: 'region',
+        targetId: 'thanh_khe_thon',
+        count: 1,
+        description: 'Vào Thanh Khê Thôn điều tra hiện trường.',
+      },
+      {
+        id: 'step_02',
+        kind: 'collect',
+        targetType: 'item',
+        targetId: 'huyet_chi_dan',
+        count: 1,
+        description: 'Tìm Huyết Chỉ Đan — manh mối ma đạo.',
+      },
+      {
+        id: 'step_03',
+        kind: 'talk',
+        targetType: 'npc',
+        targetId: 'npc_huyet_la_sat',
+        count: 1,
+        description: 'Diện kiến Huyết La Sát — nghe sự thật về quá khứ Hoa Thiên.',
+      },
+      {
+        id: 'step_04',
+        kind: 'choice',
+        targetType: 'choice',
+        targetId: 'choice_huyet_la_sat_meeting',
+        count: 1,
+        description: 'Chọn lập trường: nghe / cảnh báo / từ chối Huyết La Sát.',
+      },
+    ],
+    rewards: {
+      linhThach: 1000,
+      exp: 2200,
+    },
+    loreSummary:
+      'Mở moral choice ma đạo flag. Huyết La Sát từng là đệ tử Hoa Thiên — reveal mặt tối chính đạo. Story bible §6 + §11 (Máu Trên Thềm Đá).',
+  },
+
+  // ============================================================================
+  // NGUYÊN ANH (realm order 4) — 5 quest
+  // ============================================================================
+  {
+    key: 'nguyen_anh_main_01',
+    name: 'Nguyên Anh Vấn Tâm',
+    description:
+      'Nguyên Anh xuất khiếu — người chơi đối mặt tâm ma và quan hệ NPC quá khứ. Lăng Vân Sinh đưa vào Tâm Cảnh Phong Ấn.',
+    kind: 'main',
+    realmKey: 'nguyen_anh',
+    requiredRealmOrder: 4,
+    giverNpcKey: 'npc_lang_van_sinh',
+    chainKey: 'hoa_thien_main',
+    prerequisiteQuestKey: 'kim_dan_main_01',
+    steps: [
+      {
+        id: 'step_01',
+        kind: 'explore',
+        targetType: 'region',
+        targetId: 'nguyen_anh_tam_canh',
+        count: 1,
+        description: 'Vào Tâm Cảnh Nguyên Anh — đối mặt ký ức quá khứ.',
+      },
+      {
+        id: 'step_02',
+        kind: 'kill',
+        targetType: 'monster',
+        targetId: 'tam_ma_nguyen_anh',
+        count: 5,
+        description: 'Đánh bại 5 Tâm Ma Nguyên Anh — phản chiếu lựa chọn quá khứ.',
+      },
+      {
+        id: 'step_03',
+        kind: 'choice',
+        targetType: 'choice',
+        targetId: 'choice_nguyen_anh_tam_dao',
+        count: 1,
+        description: 'Lựa chọn tâm đạo Nguyên Anh: Trảm tham / Trảm sợ / Trảm chấp.',
+      },
+      {
+        id: 'step_04',
+        kind: 'talk',
+        targetType: 'npc',
+        targetId: 'npc_lang_van_sinh',
+        count: 1,
+        description: 'Báo cáo Lăng Vân Sinh — tâm đạo đã định.',
+      },
+    ],
+    rewards: {
+      linhThach: 5000,
+      exp: 18000,
+      items: [{ itemKey: 'than_dan', qty: 1 }],
+    },
+    loreSummary:
+      'Trảm tâm ma + chọn tâm đạo (Trảm Tam Niệm prep). Foreshadow Chuẩn Thánh §9.1 row 17. Story bible §9.1 row 4 + §11.',
+  },
+  {
+    key: 'nguyen_anh_realm_01',
+    name: 'Tâm Cảnh Phá Chấp',
+    description:
+      'Sau khi định tâm đạo, Lăng Vân Sinh giao việc phá chấp — vào Tâm Cảnh Phong Ấn để mở Thanh Tâm Đan tầng cao.',
+    kind: 'realm',
+    realmKey: 'nguyen_anh',
+    requiredRealmOrder: 4,
+    giverNpcKey: 'npc_lang_van_sinh',
+    chainKey: 'hoa_thien_main',
+    prerequisiteQuestKey: 'nguyen_anh_main_01',
+    steps: [
+      {
+        id: 'step_01',
+        kind: 'explore',
+        targetType: 'region',
+        targetId: 'tam_canh_phong_an',
+        count: 1,
+        description: 'Vào Tâm Cảnh Phong Ấn lần thứ hai (deep sealing).',
+      },
+      {
+        id: 'step_02',
+        kind: 'collect',
+        targetType: 'item',
+        targetId: 'thanh_lam_dan',
+        count: 1,
+        description: 'Tìm Thanh Lam Đan — vật liệu Thanh Tâm cao cấp.',
+      },
+      {
+        id: 'step_03',
+        kind: 'kill',
+        targetType: 'monster',
+        targetId: 'chap_niem_anh',
+        count: 4,
+        description: 'Đánh bại 4 Chấp Niệm Ảnh.',
+      },
+    ],
+    rewards: {
+      linhThach: 3000,
+      exp: 9000,
+    },
+    loreSummary:
+      'Mở Thanh Tâm Đan tầng cao + foreshadow Trảm Tam Niệm Chuẩn Thánh. Story bible §9.1 row 4.',
+  },
+  {
+    key: 'nguyen_anh_sect_01',
+    name: 'Tâm Ma Của Đại Sư Tỷ',
+    description:
+      'Tịch Linh Chủng trong Mộc Thanh Y thức tỉnh — biến ký ức thành tâm cảnh. Cần vào tâm cảnh cứu sư tỷ.',
+    kind: 'sect',
+    realmKey: 'nguyen_anh',
+    requiredRealmOrder: 4,
+    giverNpcKey: 'npc_moc_thanh_y',
+    chainKey: 'moc_thanh_y_arc',
+    prerequisiteQuestKey: 'kim_dan_sect_01',
+    steps: [
+      {
+        id: 'step_01',
+        kind: 'explore',
+        targetType: 'region',
+        targetId: 'moc_thanh_y_tam_canh',
+        count: 1,
+        description: 'Vào tâm cảnh Mộc Thanh Y.',
+      },
+      {
+        id: 'step_02',
+        kind: 'kill',
+        targetType: 'monster',
+        targetId: 'ky_uc_meo',
+        count: 6,
+        description: 'Đánh bại 6 Ký Ức Méo — phản chiếu nỗi đau sư tỷ.',
+      },
+      {
+        id: 'step_03',
+        kind: 'collect',
+        targetType: 'item',
+        targetId: 'thanh_lam_dan',
+        count: 2,
+        description: 'Lấy 2 Thanh Lam Đan để chế Thanh Tâm Đan cứu sư tỷ.',
+      },
+      {
+        id: 'step_04',
+        kind: 'choice',
+        targetType: 'choice',
+        targetId: 'choice_moc_thanh_y_save',
+        count: 1,
+        description: 'Chọn hy sinh tài nguyên cứu nhanh hay cày thuốc dài hơi.',
+      },
+      {
+        id: 'step_05',
+        kind: 'talk',
+        targetType: 'npc',
+        targetId: 'npc_moc_thanh_y',
+        count: 1,
+        description: 'Đưa đan về cho Mộc Thanh Y — tỉnh hồi tâm cảnh.',
+      },
+    ],
+    rewards: {
+      linhThach: 4000,
+      exp: 12000,
+      congHien: 400,
+      items: [{ itemKey: 'than_dan', qty: 1 }],
+    },
+    loreSummary:
+      'Mộc arc cao trào — emotional beat lớn nhất Phase 12. Foreshadow Tịch Thiên Đạo Chủ. Story bible §11 (Tâm ma của đại sư tỷ).',
+  },
+  {
+    key: 'nguyen_anh_grind_01',
+    name: 'Hoang Thổ Huyết Tế',
+    description:
+      'Hoàng Thổ Huyệt linh khí ô nhiễm — Mộc Thanh Y nhờ con thanh tẩy yêu thú và thu mẫu đất.',
+    kind: 'grind',
+    realmKey: 'nguyen_anh',
+    requiredRealmOrder: 4,
+    giverNpcKey: 'npc_moc_thanh_y',
+    chainKey: null,
+    prerequisiteQuestKey: null,
+    steps: [
+      {
+        id: 'step_01',
+        kind: 'kill',
+        targetType: 'monster',
+        targetId: 'hoang_tho_quy',
+        count: 25,
+        description: 'Đánh bại 25 Hoàng Thổ Quỷ ở Hoàng Thổ Huyệt.',
+      },
+      {
+        id: 'step_02',
+        kind: 'collect',
+        targetType: 'item',
+        targetId: 'linh_thach_tho',
+        count: 100,
+        description: 'Thu 100 Linh Thạch Thô từ Hoàng Thổ Huyệt.',
+      },
+    ],
+    rewards: {
+      linhThach: 1800,
+      exp: 4500,
+    },
+    loreSummary:
+      'Repeatable grind level 5 — feeds Hoa Thiên kim trận + Nguyên Anh refining.',
+  },
+  {
+    key: 'nguyen_anh_npc_01',
+    name: 'Đêm Trảm Niệm',
+    description:
+      'Huyết La Sát đưa con vào đêm trảm niệm để chứng minh ma đạo không phải tà đạo. Lựa chọn nặng karma.',
+    kind: 'npc',
+    realmKey: 'nguyen_anh',
+    requiredRealmOrder: 4,
+    giverNpcKey: 'npc_huyet_la_sat',
+    chainKey: 'huyet_la_sat_arc',
+    prerequisiteQuestKey: 'kim_dan_npc_01',
+    steps: [
+      {
+        id: 'step_01',
+        kind: 'talk',
+        targetType: 'npc',
+        targetId: 'npc_huyet_la_sat',
+        count: 1,
+        description: 'Diện kiến Huyết La Sát ở Hoang Mộ.',
+      },
+      {
+        id: 'step_02',
+        kind: 'kill',
+        targetType: 'monster',
+        targetId: 'huyet_anh',
+        count: 8,
+        description: 'Đánh bại 8 Huyết Ảnh — vong hồn nuôi bằng huyết khí.',
+      },
+      {
+        id: 'step_03',
+        kind: 'choice',
+        targetType: 'choice',
+        targetId: 'choice_huyet_la_sat_judgement',
+        count: 1,
+        description: 'Lựa chọn cuối: tha / giết / hợp tác Huyết La Sát.',
+      },
+    ],
+    rewards: {
+      linhThach: 2500,
+      exp: 6000,
+      items: [{ itemKey: 'huyet_chi_dan', qty: 1 }],
+    },
+    loreSummary:
+      'Karma branch quyết định Huyết La Sát thành đồng minh / kẻ thù ở Hoá Thần. Mở ma đạo flag (long-term). Story bible §11 (Máu trên thềm đá).',
   },
 ] as const;
 

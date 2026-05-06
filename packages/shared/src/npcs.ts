@@ -11,9 +11,12 @@
  * Naming convention: `npc_<snake_case_name>`. Match story bible names; KHÔNG đổi sau khi merge
  * (sẽ break runtime quest progress nếu Phase 12 PR-2 đã go-live).
  *
- * 9 NPC trụ cột tổng cộng trong story bible — PR này chỉ catalog 4 NPC unlock ở 3 cảnh giới đầu
- * (Phàm Nhân + Luyện Khí + Trúc Cơ). 5 NPC còn lại (Huyết La Sát, Vạn Kim Nương, Bạch Đế Tử,
- * Hoa Thiên Đạo Tổ, Tịch Thiên Đạo Chủ) sẽ thêm khi cảnh giới tương ứng được code.
+ * 9 NPC trụ cột tổng cộng trong story bible — file này catalog 5 NPC unlock ở 5 cảnh giới đầu
+ * (Phàm Nhân + Luyện Khí + Trúc Cơ + Kim Đan + Nguyên Anh). 4 NPC còn lại (Vạn Kim Nương,
+ * Bạch Đế Tử, Hoa Thiên Đạo Tổ, Tịch Thiên Đạo Chủ) sẽ thêm khi cảnh giới tương ứng được code.
+ *
+ * Phase 12 PR-1 (#425) catalog 4 NPC đầu (Lăng Vân Sinh / Mộc Thanh Y / Hàn Dạ / Tô Nguyệt Ly).
+ * Phase 12 Story Foundation Extension (this PR) thêm Huyết La Sát unlock ở Kim Đan.
  */
 
 /**
@@ -56,12 +59,13 @@ export interface NpcDef {
 }
 
 /**
- * 4 NPC trụ cột unlock ở 3 cảnh giới đầu.
+ * 5 NPC trụ cột unlock ở 5 cảnh giới đầu.
  *
- * - **Lăng Vân Sinh** (chưởng môn Hoa Thiên Môn): main quest giver từ Phàm Nhân → Trúc Cơ.
- * - **Mộc Thanh Y** (đại sư tỷ): tutorial / sect / grind quest. Bị Tịch Linh Chủng ăn mòn — cần cứu ở Trúc Cơ.
+ * - **Lăng Vân Sinh** (chưởng môn Hoa Thiên Môn): main quest giver từ Phàm Nhân → Nguyên Anh.
+ * - **Mộc Thanh Y** (đại sư tỷ): tutorial / sect / grind quest. Bị Tịch Linh Chủng ăn mòn — arc cứu kéo dài Trúc Cơ → Nguyên Anh.
  * - **Hàn Dạ** (Huyền Kiếm Tông rival): unlock từ Luyện Khí. Lựa chọn bạn / đối thủ / kẻ thù.
  * - **Tô Nguyệt Ly** (hậu nhân Hoa Thiên lưu đày): unlock từ Trúc Cơ. Hidden quest về truyền thừa bị xoá.
+ * - **Huyết La Sát** (ma tu bị Hoa Thiên ruồng bỏ): unlock từ Kim Đan. Moral choice ma đạo flag.
  */
 export const NPCS: readonly NpcDef[] = [
   {
@@ -77,6 +81,10 @@ export const NPCS: readonly NpcDef[] = [
       'truc_co_main_01',
       'truc_co_realm_01',
       'truc_co_sect_01',
+      'kim_dan_main_01',
+      'kim_dan_realm_01',
+      'nguyen_anh_main_01',
+      'nguyen_anh_realm_01',
     ],
     description: 'Chưởng môn Hoa Thiên Môn. Hiền hậu, nghèo, thâm sâu.',
     loreSummary:
@@ -96,6 +104,10 @@ export const NPCS: readonly NpcDef[] = [
       'luyenkhi_sect_01',
       'luyenkhi_grind_01',
       'truc_co_grind_01',
+      'kim_dan_sect_01',
+      'kim_dan_grind_01',
+      'nguyen_anh_sect_01',
+      'nguyen_anh_grind_01',
     ],
     description: 'Đại sư tỷ Hoa Thiên Môn. Nghiêm khắc, ấm áp. Mộc hệ + alchemy.',
     loreSummary:
@@ -122,6 +134,17 @@ export const NPCS: readonly NpcDef[] = [
     description: 'Hậu nhân nhánh Hoa Thiên lưu đày. Bí ẩn, thông minh.',
     loreSummary:
       'Biết vị trí truyền thừa Hoa Thiên đã bị xoá khỏi lịch sử. Hidden quest, ancient relics. Story bible §6.',
+  },
+  {
+    key: 'npc_huyet_la_sat',
+    name: 'Huyết La Sát',
+    faction: 'huyet_ha_ma_tong',
+    realmGateOrder: 3, // Kim Đan
+    defaultDialogueId: 'dlg_huyet_la_sat_default',
+    questKeys: ['kim_dan_npc_01', 'nguyen_anh_npc_01'],
+    description: 'Ma tu bị ruồng bỏ. Tàn nhẫn nhưng có nỗi đau. Từng là đệ tử Hoa Thiên.',
+    loreSummary:
+      'Mở moral choice ma path: tha / giết / hợp tác. Reveal mặt tối Hoa Thiên Môn. Story bible §6 + §11 (Máu Trên Thềm Đá).',
   },
 ] as const;
 

@@ -209,6 +209,143 @@ export const DIALOGUES: readonly DialogueLineDef[] = [
       },
     ],
   },
+
+  // ============================================================================
+  // Lăng Vân Sinh — Kim Đan / Nguyên Anh branch
+  // ============================================================================
+  {
+    id: 'dlg_lang_van_sinh_kim_dan',
+    speakerNpcKey: 'npc_lang_van_sinh',
+    condition: { kind: 'realm_min', realmOrder: 3 }, // Kim Đan
+    text: 'Đệ tử… ta cảm thấy Hạt Giống Vô Danh đang cộng hưởng. Tịch Thiên Điện đã ngửi thấy con. Sẵn sàng kết đan chưa?',
+    choices: [
+      {
+        key: 'accept_kim_dan_main',
+        label: 'Xin nhận Kết Đan Phong Ba.',
+        acceptQuestKey: 'kim_dan_main_01',
+        closeDialogue: true,
+      },
+      {
+        key: 'accept_kim_dan_realm',
+        label: 'Xin nhận Kim Đan Dị Tượng.',
+        acceptQuestKey: 'kim_dan_realm_01',
+        closeDialogue: true,
+      },
+      {
+        key: 'leave',
+        label: 'Đệ tử xin cáo lui.',
+        closeDialogue: true,
+      },
+    ],
+  },
+  {
+    id: 'dlg_lang_van_sinh_nguyen_anh',
+    speakerNpcKey: 'npc_lang_van_sinh',
+    condition: { kind: 'realm_min', realmOrder: 4 }, // Nguyên Anh
+    text: 'Nguyên Anh xuất khiếu cần tâm vững. Con phải vào Tâm Cảnh Phong Ấn — đối mặt chính mình. Đi cùng ta nhé?',
+    choices: [
+      {
+        key: 'accept_nguyen_anh_main',
+        label: 'Xin nhận Nguyên Anh Vấn Tâm.',
+        acceptQuestKey: 'nguyen_anh_main_01',
+        closeDialogue: true,
+      },
+      {
+        key: 'accept_nguyen_anh_realm',
+        label: 'Xin nhận Tâm Cảnh Phá Chấp.',
+        acceptQuestKey: 'nguyen_anh_realm_01',
+        closeDialogue: true,
+      },
+      {
+        key: 'leave',
+        label: 'Đệ tử xin cáo lui.',
+        closeDialogue: true,
+      },
+    ],
+  },
+
+  // ============================================================================
+  // Mộc Thanh Y — Kim Đan / Nguyên Anh branch (arc cứu sư tỷ kéo dài)
+  // ============================================================================
+  {
+    id: 'dlg_moc_thanh_y_kim_dan',
+    speakerNpcKey: 'npc_moc_thanh_y',
+    condition: { kind: 'realm_min', realmOrder: 3 }, // Kim Đan
+    text: 'Sư đệ… Tịch Linh Chủng trong cơ thể ta lan rộng rồi. Hoa Thiên Kim Trận đang bị yêu thú phá. Đi giúp ta được không?',
+    choices: [
+      {
+        key: 'accept_kim_dan_sect',
+        label: 'Xin nhận Phòng Tuyến Hoa Thiên.',
+        acceptQuestKey: 'kim_dan_sect_01',
+        closeDialogue: true,
+      },
+      {
+        key: 'accept_kim_dan_grind',
+        label: 'Xin nhận Săn Bạc Lang Quần.',
+        acceptQuestKey: 'kim_dan_grind_01',
+        closeDialogue: true,
+      },
+      {
+        key: 'leave',
+        label: 'Đệ tử xin cáo lui.',
+        closeDialogue: true,
+      },
+    ],
+  },
+  {
+    id: 'dlg_moc_thanh_y_nguyen_anh',
+    speakerNpcKey: 'npc_moc_thanh_y',
+    condition: { kind: 'realm_min', realmOrder: 4 }, // Nguyên Anh
+    text: 'Tâm cảnh ta đã phong ấn… Nếu con vào, có thể không trở ra được. Nhưng nếu con không cứu — Tịch Linh Chủng sẽ ăn nốt linh thức ta.',
+    choices: [
+      {
+        key: 'accept_nguyen_anh_sect',
+        label: 'Đệ tử xin vào tâm cảnh sư tỷ (nhận Tâm Ma Của Đại Sư Tỷ).',
+        acceptQuestKey: 'nguyen_anh_sect_01',
+        closeDialogue: true,
+      },
+      {
+        key: 'accept_nguyen_anh_grind',
+        label: 'Xin nhận Hoang Thổ Huyết Tế trước.',
+        acceptQuestKey: 'nguyen_anh_grind_01',
+        closeDialogue: true,
+      },
+      {
+        key: 'leave',
+        label: 'Để đệ tử nghĩ thêm.',
+        closeDialogue: true,
+      },
+    ],
+  },
+
+  // ============================================================================
+  // Huyết La Sát — ma tu bị Hoa Thiên ruồng bỏ (Kim Đan unlock)
+  // ============================================================================
+  {
+    id: 'dlg_huyet_la_sat_default',
+    speakerNpcKey: 'npc_huyet_la_sat',
+    condition: { kind: 'realm_min', realmOrder: 3 }, // Kim Đan
+    text: 'Hậu bối Hoa Thiên… con muốn biết sự thật về tông môn của mình không? Hay con chỉ muốn nghe lời chưởng môn?',
+    choices: [
+      {
+        key: 'accept_kim_dan_npc',
+        label: 'Đệ tử xin nghe (nhận Máu Trên Thềm Đá).',
+        acceptQuestKey: 'kim_dan_npc_01',
+        closeDialogue: true,
+      },
+      {
+        key: 'accept_nguyen_anh_npc',
+        label: 'Tiếp tục đêm trảm niệm (nhận Đêm Trảm Niệm).',
+        acceptQuestKey: 'nguyen_anh_npc_01',
+        closeDialogue: true,
+      },
+      {
+        key: 'leave',
+        label: 'Ta không tin ma tu.',
+        closeDialogue: true,
+      },
+    ],
+  },
 ] as const;
 
 export function dialogueById(id: string): DialogueLineDef | undefined {
