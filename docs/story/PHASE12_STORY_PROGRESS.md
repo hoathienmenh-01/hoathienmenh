@@ -18,7 +18,7 @@ Khi story design conflict với code, ưu tiên: code trên `main` > [`../AI_HAN
 
 ## 2. Current status
 
-**Catalog foundation + quest runtime persistence + quest claim reward + NPC dialogue UI + Story Foundation Extension (Kim Đan + Nguyên Anh catalog) + Story Runtime MVP (Quest UI list + accept/claim) + Story PR-5 Main storyline Chapter 1 playable DONE. Phase 12 Story PR-6 Combat kill hook → quest auto-track (production-flow wire) IN-FLIGHT (this PR).**
+**Catalog foundation + quest runtime persistence + quest claim reward + NPC dialogue UI + Story Foundation Extension (Kim Đan + Nguyên Anh catalog) + Story Runtime MVP (Quest UI list + accept/claim) + Story PR-5 Main storyline Chapter 1 playable + Story PR-6 Combat kill hook → quest auto-track DONE. Phase 12 Story Foundation Late-game wire (8 monster catalog cho Trúc Cơ/Kim Đan/Nguyên Anh story placeholder) IN-FLIGHT (this PR).**
 
 Hiện tại Phase 12 đã có:
 - **Phase 12.1** (catalog `MapDef` / `EncounterDef` / `DungeonDef`) — CLOSED ✅ (PR #397).
@@ -31,7 +31,8 @@ Hiện tại Phase 12 đã có:
 - **Phase 12 Story Foundation Extension** (Kim Đan + Nguyên Anh catalog: +10 quest + 1 NPC + 5 dialogue line + integrity test) — CLOSED ✅ (PR #429).
 - **Phase 12 Story Runtime MVP** (QuestView.vue list + filter + accept/claim UI consume PR-2/3 endpoints, server-authoritative) — CLOSED ✅ (PR #430).
 - **Phase 12 Story PR-5 Main storyline Chapter 1 playable** (`phamnhan_main_01` end-to-end via UI + admin quest-track seed harness `POST /admin/users/:id/quest-track` wrap `QuestService.track()` cho kind kill/collect + 13 unit test + E2E golden-path §21 phamnhan_main_01 accept → progress talk×2 → admin track kill 3 son_thu → claim → ledger verify) — CLOSED ✅ (PR #431).
-- **Phase 12 Story PR-6 Combat kill hook → quest auto-track** (fix `monster.key` mismatch với quest placeholder targetId: thêm `MonsterDef.questTargetIds?: string[]` + map 7 monster sơn cốc/hắc lâm/kim sơn mạch/hoàng thổ huyết → quest placeholder + 5 integrity test + 5 integration test combat→quest progress→COMPLETED) — OPEN (this PR).
+- **Phase 12 Story PR-6 Combat kill hook → quest auto-track** (fix `monster.key` mismatch với quest placeholder targetId: thêm `MonsterDef.questTargetIds?: string[]` + map 7 monster sơn cốc/hắc lâm/kim sơn mạch/hoàng thổ huyết → quest placeholder + 5 integrity test + 5 integration test combat→quest progress→COMPLETED) — CLOSED ✅ (PR #432).
+- **Phase 12 Story Foundation Late-game wire** (8 monster catalog mới cho 8 placeholder Trúc Cơ/Kim Đan/Nguyên Anh story còn lại từ PR-6: `tich_linh_anh`, `tam_ma_anh`, `tich_linh_quy`, `tich_thien_sat_thu`, `tam_ma_nguyen_anh`, `chap_niem_anh`, `ky_uc_meo`, `huyet_anh` — `MonsterDef.key` match thẳng placeholder thay vì `questTargetIds` alias vì các placeholder này là entity riêng (linh ảnh / tâm ma / sát thủ tâm cảnh) chứ không phải tên trừu tượng cho monster đã có; stat curve theo SPIRIT/HUMANOID tier mid + region map vào hac_lam/moc_huyen_lam/kim_son_mach/hoang_tho_huyet) + 2 invariant test mới (orphan-free `kill+monster` step + late-game key-match shape) + cập nhật critical-path test scope từ 7 → 15 placeholder — OPEN (this PR).
 
 **Story / NPC / Quest runtime**: 5 NPC + 25 quest + 11 dialogue line (5 cảnh giới đầu: Phàm Nhân + Luyện Khí + Trúc Cơ + Kim Đan + Nguyên Anh). `QuestProgress` Prisma model live; `QuestService` server-authoritative validation (realm gate + prereq + CAS guard); kill step auto-tracked qua `CombatService` fail-soft hook; reward claim atomic qua ledger (`reason='QUEST_CLAIM'`, `refType='Quest'`, `refId=questKey`) đảm bảo idempotent (race-safe 1 winner / questKey).
 
@@ -41,7 +42,9 @@ Hiện tại Phase 12 đã có:
 
 **PR-6 (this PR)** — **Discovery + Fix**: kill hook đã tồn tại từ PR-2 tại `apps/api/src/modules/combat/combat.service.ts:716` và `:1126` nhưng gọi `QuestService.track(charId, 'kill', 'monster', monster.key, 1)` với `monster.key` (vd `son_thu_lon`) trong khi quest catalog dùng placeholder `targetId='son_thu'` — mismatch silent fail-soft, **không quest nào thực sự progress** trong production. Admin harness PR-5 chỉ là workaround cho E2E. PR-6 fix bằng cách thêm `MonsterDef.questTargetIds?: string[]` vào shared catalog + map 7 monster vào quest placeholder (son_thu_lon→son_thu, da_quan→son_tac_dau_muc, huyet_lang→bac_lang_quan, hac_yeu_xa→hac_moc_yeu, kim_quang_thach_giap→kim_son_yeu, kim_dieu_thuong_phong→kim_dan_yeu_thu, hoang_tho_cu_yeu→hoang_tho_quy). Kill hook (2 call-site) loop `track(charId, 'kill', 'monster', id, 1)` cho `id ∈ [monster.key, ...questTargetIds]` (Set dedupe chống double-count). 5 integration test verify kill encounter → `phamnhan_grind_01` step_01 progress + `phamnhan_main_01` step_03 progress → quest auto-COMPLETED. KHÔNG Prisma migration, KHÔNG endpoint mới, KHÔNG FE change.
 
-**Late-game placeholder still un-wired (8)**: `chap_niem_anh`, `huyet_anh`, `ky_uc_meo`, `tam_ma_anh`, `tam_ma_nguyen_anh`, `tich_linh_anh`, `tich_linh_quy`, `tich_thien_sat_thu` — thuộc Trúc Cơ/Kim Đan/Nguyên Anh main quest sậu chưa có monster catalog tương ứng. Story Foundation Extension follow-up sẽ thêm monster + map placeholder.
+**Late-game placeholder wire status (post Foundation Late-game wire)**: 8 placeholder Trúc Cơ/Kim Đan/Nguyên Anh story (`chap_niem_anh`, `huyet_anh`, `ky_uc_meo`, `tam_ma_anh`, `tam_ma_nguyen_anh`, `tich_linh_anh`, `tich_linh_quy`, `tich_thien_sat_thu`) đã có monster catalog tương ứng (this PR — `MonsterDef.key === placeholder`, không qua `questTargetIds` alias). Combat kill hook PR-6 sẽ auto-track quest progress khi monster bị kill — KHÔNG cần thay đổi runtime.
+
+**Pending: late-game encounter integration**: 8 monster mới chưa được đặt vào dungeon `monsters[]` array hoặc encounter spawn list — player chưa thực tế kill được qua `pnpm:smoke:combat` hoặc `son_coc`/`hac_lam` flow. Follow-up: extend dungeon `monsters[]` (vd `son_coc` thêm `tich_linh_anh` cho story-driven Trúc Cơ tier) hoặc tạo `DungeonTemplate` story instance ở Phase 12.2.B. Hiện tại admin harness `POST /admin/users/:id/quest-track` (PR-5) vẫn là cách duy nhất để verify late-game quest progression end-to-end.
 
 ## 3. Implemented chapters
 
@@ -151,7 +154,7 @@ Tách nhỏ, mỗi PR là 1 layer. Tuân BATCHING RULE + UI MODULE RULE.
 - Smoke `scripts/smoke-quest.mjs` 20/20 step (PR-2 16 step + PR-3 4 step: claim auth gate 401, zod 400, QUEST_UNKNOWN 404, QUEST_NOT_FOUND_PROGRESS 404, QUEST_NOT_COMPLETED 409). Positive flow tới CLAIMED yeu cầu gameplay automation — cover trong concurrency test.
 - Tuân [`../ECONOMY_MODEL.md`](../ECONOMY_MODEL.md) §3 invariants: single mutation point qua `CurrencyService.applyTx` / `InventoryService.grantTx`; ledger row contract đầy đủ (`characterId`, `currency`, `delta`, `reason`, `refType`, `refId`, `createdAt`); idempotency qua CAS guard `claimedAt` (§3.5 mẫu `Achievement.claimedAt`).
 
-### PR-4 — NPC dialogue UI (Medium, FE + BE wiring) — **DONE**
+### PR-4 — NPC dialogue UI (Medium, FE + BE wiring) — **CLOSED** ✅ (PR #428)
 
 - **BE module** `apps/api/src/modules/npc/`:
   - `NpcModule` (read-only — imports `AuthModule` only; không phụ thuộc `CharacterModule` / `InventoryModule` vì không mutate).
@@ -174,15 +177,7 @@ Tách nhỏ, mỗi PR là 1 layer. Tuân BATCHING RULE + UI MODULE RULE.
 - **Tuân** UI MODULE RULE: server-authoritative dialogue + quest status; FE chỉ render. KHÔNG có mutation endpoint mới — quest accept tái dùng `POST /quests/accept` (PR-2 #426).
 - Update §2 / §4 / §6 / §7 progress tracker.
 
-### Story Foundation Extension — Kim Đan + Nguyên Anh catalog (Small) — OPEN
-
-- Static catalog extension: `packages/shared/src/quests.ts` (+10 quest cho Kim Đan + Nguyên Anh, tổng 25), `packages/shared/src/npcs.ts` (+1 NPC Huyết La Sát, tổng 5), `packages/shared/src/dialogues.ts` (+5 dialogue line, tổng 11).
-- Chain mở rộng: `hoa_thien_main` 3 → 5 cảnh giới (main + realm), `moc_thanh_y_arc` 1 → 3 (truc_co → kim_dan → nguyen_anh), chain mới `huyet_la_sat_arc` (kim_dan → nguyen_anh).
-- Integrity test cap nhật: `quests.test.ts` regex + count + chain assertion + main exp scaling, `npcs.test.ts` count + faction + realm gate, `dialogues.test.ts` realm_min branch picker (kim_dan + nguyen_anh).
-- KHÔNG Prisma migration / KHÔNG runtime change / KHÔNG UI: catalog-only. Quest hiện hữu (PR-2/3) auto-pick quest mới qua `realmGateOrder >=3 / >=4`.
-- Reward band tuân [`../BALANCE_MODEL.md`](../BALANCE_MODEL.md) (main exp scale up theo realm; không âm).
-
-### PR-5 — Main storyline Chapter 1 playable — **OPEN** (this PR)
+### PR-5 — Main storyline Chapter 1 playable — **CLOSED** ✅ (PR #431)
 
 - **Scope**: wire `phamnhan_main_01` (Hoa Thiên Tuyển Đồ) end-to-end UI flow + admin seed harness cho E2E.
   - `apps/api/src/modules/admin/admin.service.ts` — `grantQuestTrack(actorId, actorRole, targetUserId, input)` wrap `QuestService.track(charId, kind, targetType, targetId, amount)`. Validate `kind∈{kill,collect}` + `targetType∈{monster,item}` + `amount∈[1,999]` + `CANNOT_TARGET_SELF` + RBAC ADMIN/MOD + audit `admin.quest.track` + realtime `state:update`.
@@ -218,6 +213,31 @@ Tách nhỏ, mỗi PR là 1 layer. Tuân BATCHING RULE + UI MODULE RULE.
 - **Build/typecheck/lint**: web 1126/1126 PASS, repo typecheck PASS, repo lint PASS.
 - **KHÔNG Prisma migration**, **KHÔNG service mới**, **KHÔNG endpoint mới** — chỉ UI consume PR-2/3 sẵn có.
 - Update §6 Quest UI Done + §7 (this section).
+
+### PR-6 — Combat kill hook → quest track auto-wire — **CLOSED** ✅ (PR #432)
+
+- **Discovery**: kill hook đã tồn tại từ PR-2 tại `apps/api/src/modules/combat/combat.service.ts:716` và `:1126` nhưng gọi `QuestService.track(charId, 'kill', 'monster', monster.key, 1)` với `monster.key` (vd `son_thu_lon`) trong khi quest catalog dùng placeholder `targetId='son_thu'` — mismatch silent fail-soft, **không quest nào thực sự progress** trong production.
+- **Shared**: `MonsterDef.questTargetIds?: string[]` alias field + map 7 monster sơn cốc/hắc lâm/kim sơn mạch/hoàng thổ huyết → quest placeholder (`son_thu_lon→son_thu`, `da_quan→son_tac_dau_muc`, `huyet_lang→bac_lang_quan`, `hac_yeu_xa→hac_moc_yeu`, `kim_quang_thach_giap→kim_son_yeu`, `kim_dieu_thuong_phong→kim_dan_yeu_thu`, `hoang_tho_cu_yeu→hoang_tho_quy`) + 5 integrity test.
+- **API**: kill hook (2 call-site) loop `track(charId, 'kill', 'monster', id, 1)` cho `id ∈ [monster.key, ...questTargetIds]` (Set dedupe chống double-count) + 5 integration test combat encounter → quest progress → COMPLETED.
+- **KHÔNG** Prisma migration, **KHÔNG** endpoint mới, **KHÔNG** FE change. Test baseline: api 1925 (+5 integration), shared 1333 (+5 invariants), web 1126.
+
+### Story Foundation Late-game wire — 8 monster catalog cho Trúc Cơ/Kim Đan/Nguyên Anh story placeholder — **OPEN** (this PR)
+
+- **Context**: PR-6 wire 7 critical-path placeholder qua `MonsterDef.questTargetIds` alias trên monster đã có. 8 placeholder còn lại (`tich_linh_anh`, `tam_ma_anh`, `tich_linh_quy`, `tich_thien_sat_thu`, `tam_ma_nguyen_anh`, `chap_niem_anh`, `ky_uc_meo`, `huyet_anh`) là entity riêng (linh ảnh / tâm ma / sát thủ tâm cảnh) — không có monster đã có để alias.
+- **Shared**: thêm 8 `MonsterDef` mới vào `packages/shared/src/combat.ts` (`MONSTERS.length` 36 → 44) với `key` match thẳng placeholder (vd `tich_linh_anh` → `MonsterDef{key:'tich_linh_anh'}` không cần alias).
+- **Stat curve** theo SPIRIT/HUMANOID tier mid (`docs/BALANCE_MODEL.md` §5.1):
+  - Trúc Cơ realm 2 (level 5-7): `tich_linh_anh` lvl 5 (hp 150 / atk 20 / exp 100), `tam_ma_anh` lvl 6 (hp 195 / atk 26 / exp 130), `tich_linh_quy` lvl 7 (hp 250 / atk 32 / exp 175).
+  - Kim Đan realm 3 (level 11): `tich_thien_sat_thu` lvl 11 (hp 580 / atk 75 / exp 450, HUMANOID kim đan, regionKey `kim_son_mach`).
+  - Nguyên Anh realm 4 (level 14-15): `tam_ma_nguyen_anh` lvl 14 (hp 940 / atk 100 / exp 740), `chap_niem_anh` lvl 15 (hp 1050 / atk 110 / exp 850), `ky_uc_meo` lvl 14 (hp 920 / atk 95 / exp 720, element moc), `huyet_anh` lvl 15 (hp 1080 / atk 115 / exp 880, HUMANOID).
+- **Region map**: `hac_lam` × 2 (`tich_linh_anh` + `tam_ma_anh`), `moc_huyen_lam` × 2 (`tich_linh_quy` + `ky_uc_meo`), `kim_son_mach` × 1 (`tich_thien_sat_thu`), `hoang_tho_huyet` × 3 (`tam_ma_nguyen_anh` + `chap_niem_anh` + `huyet_anh`).
+- **Test**: `packages/shared/src/combat.test.ts`:
+  - Mở rộng critical-path test scope `phamnhan/luyen_khi/truc_co/kim_dan/nguyen_anh` từ 7 → 15 placeholder (cover cả 8 mới).
+  - **Invariant orphan-free** mới: scan toàn bộ `QUESTS` catalog tìm step `kind:'kill', targetType:'monster'`, đảm bảo `targetId` resolve đến ≥ 1 `MonsterDef` qua `key === X` HOẶC `questTargetIds.includes(X)`. Test này backstop mọi PR catalog tương lai (ngăn drift trở lại trạng thái pre-PR-6).
+  - **Late-game key-match test** mới: 8 placeholder mới resolve qua `MonsterDef.key` match thẳng (không qua `questTargetIds` alias) — verify `monsterByKey(placeholder)` defined + `questTargetIds === undefined`.
+- **Runtime KHÔNG đổi**: kill hook PR-6 đã đúng pattern (loop `[monster.key, ...questTargetIds]`). 8 monster mới resolve trực tiếp qua `monster.key === placeholder`. Catalog đủ để combat kill hook auto-track quest progress khi monster bị spawn qua admin harness hoặc encounter/dungeon mới.
+- **KHÔNG** Prisma migration, **KHÔNG** endpoint mới, **KHÔNG** FE change. Test baseline: api 1925 (unchanged — runtime không đổi), shared **1335** (+2 invariant), web 1126.
+- **Pending follow-up**: 8 monster mới chưa được đặt vào dungeon `monsters[]` array hoặc encounter spawn list — player chưa thực tế kill được qua combat flow. Phase 12.2.B `DungeonTemplate` runtime hoặc story-driven encounter sẽ wire thêm. Hiện tại admin harness `POST /admin/users/:id/quest-track` (PR-5) vẫn là cách verify late-game quest progression.
+- Update §2 / §3 / §6 (catalog status) / §7 (this section).
 
 ### After PR-5: Chapter 2..N expansion
 
