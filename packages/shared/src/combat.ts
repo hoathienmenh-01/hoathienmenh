@@ -52,6 +52,16 @@ export interface MonsterDef {
    * `hoang_tho_huyet`). Phase 12 sẽ dùng để build map UI.
    */
   regionKey?: string | null;
+  /**
+   * **Phase 12 Story PR-6** — danh sách quest placeholder targetId mà monster
+   * này hoàn thành khi bị kill. Cho phép quest catalog dùng tên placeholder
+   * trừu tượng (vd `son_thu`, `bac_lang_quan`) trong khi monster catalog dùng
+   * tên cụ thể (vd `son_thu_lon`, `huyet_lang`). `CombatService` kill hook sẽ
+   * gọi `QuestService.track(charId, 'kill', 'monster', id, 1)` cho **mỗi**
+   * `id ∈ [monster.key, ...questTargetIds]` — tránh double-counting khi
+   * placeholder + real key trùng. Không định nghĩa = chỉ track key gốc.
+   */
+  questTargetIds?: string[];
 }
 
 export interface DungeonDef {
@@ -83,14 +93,14 @@ export const MONSTERS: readonly MonsterDef[] = [
   // ─────────────────────────────────────────────────────────────────────
   // Region: Sơn Cốc (Thổ/Mộc, luyện khí early)
   // ─────────────────────────────────────────────────────────────────────
-  { key: 'son_thu_lon',  name: 'Sơn Thử Lớn',     level: 1, hp: 30,  atk: 6,  def: 2,  speed: 6, expDrop: 12,  linhThachDrop: 5,  element: 'tho', monsterType: 'BEAST', regionKey: 'son_coc' },
-  { key: 'da_quan',      name: 'Đá Quan Yêu Tinh', level: 2, hp: 55,  atk: 9,  def: 4,  speed: 5, expDrop: 25,  linhThachDrop: 9,  element: 'tho', monsterType: 'BEAST', regionKey: 'son_coc' },
-  { key: 'huyet_lang',   name: 'Huyết Lang',      level: 3, hp: 80,  atk: 14, def: 5,  speed: 9, expDrop: 45,  linhThachDrop: 15, element: null,  monsterType: 'BEAST', regionKey: 'son_coc' },
+  { key: 'son_thu_lon',  name: 'Sơn Thử Lớn',     level: 1, hp: 30,  atk: 6,  def: 2,  speed: 6, expDrop: 12,  linhThachDrop: 5,  element: 'tho', monsterType: 'BEAST', regionKey: 'son_coc', questTargetIds: ['son_thu'] },
+  { key: 'da_quan',      name: 'Đá Quan Yêu Tinh', level: 2, hp: 55,  atk: 9,  def: 4,  speed: 5, expDrop: 25,  linhThachDrop: 9,  element: 'tho', monsterType: 'BEAST', regionKey: 'son_coc', questTargetIds: ['son_tac_dau_muc'] },
+  { key: 'huyet_lang',   name: 'Huyết Lang',      level: 3, hp: 80,  atk: 14, def: 5,  speed: 9, expDrop: 45,  linhThachDrop: 15, element: null,  monsterType: 'BEAST', regionKey: 'son_coc', questTargetIds: ['bac_lang_quan'] },
 
   // ─────────────────────────────────────────────────────────────────────
   // Region: Hắc Lâm (Mộc/âm khí, luyện khí cao / trúc cơ)
   // ─────────────────────────────────────────────────────────────────────
-  { key: 'hac_yeu_xa',   name: 'Hắc Yêu Xà',      level: 5, hp: 140, atk: 22, def: 8,  speed: 11, expDrop: 90,  linhThachDrop: 28, element: 'moc',  monsterType: 'BEAST',    regionKey: 'hac_lam' },
+  { key: 'hac_yeu_xa',   name: 'Hắc Yêu Xà',      level: 5, hp: 140, atk: 22, def: 8,  speed: 11, expDrop: 90,  linhThachDrop: 28, element: 'moc',  monsterType: 'BEAST',    regionKey: 'hac_lam', questTargetIds: ['hac_moc_yeu'] },
   { key: 'thi_quy',      name: 'Thi Quỷ',         level: 6, hp: 200, atk: 28, def: 12, speed: 8,  expDrop: 130, linhThachDrop: 40, element: null,   monsterType: 'SPIRIT',   regionKey: 'hac_lam' },
   { key: 'hac_lam_ma',   name: 'Hắc Lâm Ma',      level: 8, hp: 320, atk: 38, def: 18, speed: 12, expDrop: 220, linhThachDrop: 65, element: 'moc',  monsterType: 'HUMANOID', regionKey: 'hac_lam' },
 
@@ -112,10 +122,10 @@ export const MONSTERS: readonly MonsterDef[] = [
   // ═════════════════════════════════════════════════════════════════════
 
   // Region: Kim Sơn Mạch (Hệ KIM, trúc cơ → kim đan; mỏ kim)
-  { key: 'kim_quang_thach_giap', name: 'Kim Quang Thạch Giáp', level: 7,  hp: 230,  atk: 26, def: 20, speed: 7,  expDrop: 165,  linhThachDrop: 48,  element: 'kim', monsterType: 'BEAST',    regionKey: 'kim_son_mach' },
+  { key: 'kim_quang_thach_giap', name: 'Kim Quang Thạch Giáp', level: 7,  hp: 230,  atk: 26, def: 20, speed: 7,  expDrop: 165,  linhThachDrop: 48,  element: 'kim', monsterType: 'BEAST',    regionKey: 'kim_son_mach', questTargetIds: ['kim_son_yeu'] },
   { key: 'huyen_kim_lang_thu',   name: 'Huyền Kim Lang Thử',   level: 9,  hp: 360,  atk: 42, def: 22, speed: 13, expDrop: 280,  linhThachDrop: 80,  element: 'kim', monsterType: 'BEAST',    regionKey: 'kim_son_mach' },
   { key: 'tinh_thiet_kiem_linh', name: 'Tinh Thiết Kiếm Linh', level: 11, hp: 570,  atk: 70, def: 26, speed: 12, expDrop: 430,  linhThachDrop: 125, element: 'kim', monsterType: 'SPIRIT',   regionKey: 'kim_son_mach' },
-  { key: 'kim_dieu_thuong_phong',name: 'Kim Điêu Thượng Phong',level: 14, hp: 920,  atk: 105,def: 42, speed: 16, expDrop: 720,  linhThachDrop: 195, element: 'kim', monsterType: 'ELITE',    regionKey: 'kim_son_mach' },
+  { key: 'kim_dieu_thuong_phong',name: 'Kim Điêu Thượng Phong',level: 14, hp: 920,  atk: 105,def: 42, speed: 16, expDrop: 720,  linhThachDrop: 195, element: 'kim', monsterType: 'ELITE',    regionKey: 'kim_son_mach', questTargetIds: ['kim_dan_yeu_thu'] },
 
   // Region: Mộc Huyền Lâm (Hệ MỘC, luyện khí cao → trúc cơ; rừng cổ)
   { key: 'thanh_mang_xa',        name: 'Thanh Mang Xà',        level: 4,  hp: 110,  atk: 17, def: 6,  speed: 12, expDrop: 60,   linhThachDrop: 22, element: 'moc', monsterType: 'BEAST',    regionKey: 'moc_huyen_lam' },
@@ -137,7 +147,7 @@ export const MONSTERS: readonly MonsterDef[] = [
 
   // Region: Hoàng Thổ Huyệt (Hệ THỔ, kim đan → nguyên anh; mỏ thổ + tank)
   { key: 'thach_quang_yeu_thu',  name: 'Thạch Quang Yêu Thú',  level: 10, hp: 540,  atk: 48, def: 50, speed: 5,  expDrop: 380,  linhThachDrop: 110,element: 'tho', monsterType: 'BEAST',    regionKey: 'hoang_tho_huyet' },
-  { key: 'hoang_tho_cu_yeu',     name: 'Hoàng Thổ Cự Yêu',     level: 13, hp: 880,  atk: 78, def: 70, speed: 6,  expDrop: 660,  linhThachDrop: 180,element: 'tho', monsterType: 'ELITE',    regionKey: 'hoang_tho_huyet' },
+  { key: 'hoang_tho_cu_yeu',     name: 'Hoàng Thổ Cự Yêu',     level: 13, hp: 880,  atk: 78, def: 70, speed: 6,  expDrop: 660,  linhThachDrop: 180,element: 'tho', monsterType: 'ELITE',    regionKey: 'hoang_tho_huyet', questTargetIds: ['hoang_tho_quy'] },
   { key: 'thach_long_co_giap',   name: 'Thạch Long Cổ Giáp',   level: 17, hp: 1500, atk: 130,def: 110,speed: 7,  expDrop: 1180, linhThachDrop: 330,element: 'tho', monsterType: 'BOSS',     regionKey: 'hoang_tho_huyet' },
   { key: 'tho_dia_lao_tu',       name: 'Thổ Địa Lão Tử',       level: 20, hp: 2200, atk: 165,def: 130,speed: 8,  expDrop: 1700, linhThachDrop: 480,element: 'tho', monsterType: 'BOSS',     regionKey: 'hoang_tho_huyet' },
 

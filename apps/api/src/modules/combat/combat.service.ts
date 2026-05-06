@@ -711,9 +711,15 @@ export class CombatService {
         if (this.achievements) {
           await this.achievements.trackEvent(char.id, 'KILL_MONSTER', 1);
         }
-        // Phase 12 Story PR-2 — quest kill step tracking, fail-soft.
+        // Phase 12 Story PR-2 + PR-6 — quest kill step tracking, fail-soft.
+        // Track monster.key (real catalog) **và** monster.questTargetIds[*]
+        // (placeholder ánh xạ vào quest targetId trừu tượng như 'son_thu').
         if (this.quests) {
-          await this.quests.track(char.id, 'kill', 'monster', monster.key, 1);
+          const trackIds = new Set<string>([monster.key]);
+          for (const id of monster.questTargetIds ?? []) trackIds.add(id);
+          for (const id of trackIds) {
+            await this.quests.track(char.id, 'kill', 'monster', id, 1);
+          }
         }
       }
       if (nextStatus === EncounterStatus.WON) {
@@ -1121,9 +1127,15 @@ export class CombatService {
         if (this.achievements) {
           await this.achievements.trackEvent(char.id, 'KILL_MONSTER', 1);
         }
-        // Phase 12 Story PR-2 — quest kill step tracking, fail-soft.
+        // Phase 12 Story PR-2 + PR-6 — quest kill step tracking, fail-soft.
+        // Track monster.key (real catalog) **và** monster.questTargetIds[*]
+        // (placeholder ánh xạ vào quest targetId trừu tượng như 'son_thu').
         if (this.quests) {
-          await this.quests.track(char.id, 'kill', 'monster', monster.key, 1);
+          const trackIds = new Set<string>([monster.key]);
+          for (const id of monster.questTargetIds ?? []) trackIds.add(id);
+          for (const id of trackIds) {
+            await this.quests.track(char.id, 'kill', 'monster', id, 1);
+          }
         }
       }
       if (nextStatus === EncounterStatus.WON) {

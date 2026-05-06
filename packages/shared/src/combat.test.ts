@@ -14,6 +14,7 @@ import {
   type SectKey,
 } from './combat';
 import { realmByKey } from './realms';
+import { QUESTS } from './quests';
 
 /**
  * Combat catalog invariants — đảm bảo data game design không bị regression
@@ -308,5 +309,88 @@ describe('STAMINA constants', () => {
 
   it('STAMINA_REGEN_PER_TICK > 0', () => {
     expect(STAMINA_REGEN_PER_TICK).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * Phase 12 Story PR-6 — `MonsterDef.questTargetIds` ánh xạ monster catalog
+ * vào quest placeholder targetId. Bắt buộc invariants:
+ *   - Mỗi placeholder phải tồn tại trong ít nhất một quest step kind=kill +
+ *     targetType=monster (không cho dangling reference).
+ *   - Không trùng monster.key (tránh double-track khi placeholder + key giống
+ *     nhau hoàn toàn).
+ *   - Mỗi placeholder không trùng nhau trong cùng một MonsterDef
+ *     (Set semantics).
+ */
+describe('Monster questTargetIds (Phase 12 Story PR-6)', () => {
+  it('mỗi questTargetIds entry phải reference quest step kill+monster có sẵn', () => {
+    const validQuestTargets = new Set<string>();
+    for (const def of QUESTS) {
+      for (const step of def.steps) {
+        if (step.kind === 'kill' && step.targetType === 'monster') {
+          validQuestTargets.add(step.targetId);
+        }
+      }
+    }
+    for (const m of MONSTERS) {
+      if (!m.questTargetIds) continue;
+      for (const id of m.questTargetIds) {
+        expect(validQuestTargets, `monster ${m.key} questTarget ${id}`).toContain(
+          id,
+        );
+      }
+    }
+  });
+
+  it('questTargetIds không trùng monster.key (tránh double-track)', () => {
+    for (const m of MONSTERS) {
+      if (!m.questTargetIds) continue;
+      expect(m.questTargetIds, `monster ${m.key}`).not.toContain(m.key);
+    }
+  });
+
+  it('questTargetIds entries unique per monster', () => {
+    for (const m of MONSTERS) {
+      if (!m.questTargetIds) continue;
+      const set = new Set(m.questTargetIds);
+      expect(set.size, `monster ${m.key} dup questTargetIds`).toBe(
+        m.questTargetIds.length,
+      );
+    }
+  });
+
+  it('son_thu_lon mapped tới quest placeholder son_thu (Chapter 1 phamnhan playable)', () => {
+    const m = monsterByKey('son_thu_lon');
+    expect(m).toBeDefined();
+    expect(m?.questTargetIds).toBeDefined();
+    expect(m?.questTargetIds).toContain('son_thu');
+  });
+
+  it('Phàm Nhân + Luyện Khí + Trúc Cơ + Kim Đan + Nguyên Anh grind quest đều có wire ≥1 monster', () => {
+    // PR-6 chỉ wire 7 placeholder thuộc "Chapter 1..5 grind/main quest playable"
+    // (son_thu / son_tac_dau_muc / bac_lang_quan / hac_moc_yeu / kim_son_yeu /
+    // kim_dan_yeu_thu / hoang_tho_quy). 8 placeholder còn lại (chap_niem_anh,
+    // huyet_anh, ky_uc_meo, tam_ma_anh, tam_ma_nguyen_anh, tich_linh_anh,
+    // tich_linh_quy, tich_thien_sat_thu) thuộc late-game Trúc Cơ/Kim Đan/Nguyên
+    // Anh main quest — sẽ wire ở Story Foundation Extension follow-up. Test
+    // này chỉ assert placeholder critical-path đã wire.
+    const criticalPath = [
+      'son_thu',
+      'son_tac_dau_muc',
+      'bac_lang_quan',
+      'hac_moc_yeu',
+      'kim_son_yeu',
+      'kim_dan_yeu_thu',
+      'hoang_tho_quy',
+    ];
+    const wired = new Set<string>();
+    for (const m of MONSTERS) {
+      for (const id of m.questTargetIds ?? []) wired.add(id);
+    }
+    for (const placeholder of criticalPath) {
+      expect(wired, `critical-path placeholder ${placeholder}`).toContain(
+        placeholder,
+      );
+    }
   });
 });
