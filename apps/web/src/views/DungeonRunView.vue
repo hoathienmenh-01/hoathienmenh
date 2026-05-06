@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
-import { realmByKey, type DungeonDef } from '@xuantoi/shared';
+import { itemByKey, realmByKey, type DungeonDef, type RolledLoot } from '@xuantoi/shared';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useDungeonRunStore } from '@/stores/dungeonRun';
@@ -67,6 +67,20 @@ function realmDisplay(key: string): string {
 
 function dungeonName(d: DungeonDef): string {
   return d.name;
+}
+
+/**
+ * Phase 12.3 — format per-encounter loot drop ngắn gọn cho kill log.
+ * Resolve `itemByKey` để hiển thị tên người đọc, fallback `itemKey` raw.
+ * Output dạng `+itemName ×qty, +otherItem ×qty`.
+ */
+function formatLoot(loot: RolledLoot[]): string {
+  return loot
+    .map((l) => {
+      const name = itemByKey(l.itemKey)?.name ?? l.itemKey;
+      return t('dungeonRun.lootedItem', { name, qty: l.qty });
+    })
+    .join(', ');
 }
 
 function startDisabled(av: DungeonAvailabilityView): boolean {
@@ -265,7 +279,14 @@ onMounted(async () => {
               :key="`${k.monsterKey}-${idx}`"
               :data-testid="`dungeon-run-killed-${idx}`"
             >
-              {{ k.monsterKey }}
+              <span>{{ k.monsterKey }}</span>
+              <span
+                v-if="k.loot && k.loot.length > 0"
+                class="ml-2 text-emerald-300"
+                :data-testid="`dungeon-run-killed-${idx}-loot`"
+              >
+                {{ formatLoot(k.loot) }}
+              </span>
             </li>
           </ul>
         </div>

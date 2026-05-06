@@ -74,7 +74,16 @@ export type ItemLedgerReason =
   // 1 lần / runId / character. Mirror cùng `CurrencyLedger` reason
   // `DUNGEON_RUN_REWARD`. Khác `COMBAT_LOOT` (per-encounter random loot drop
   // trong combat flow turn-based, không idempotent — drop 1 lần per kill).
-  | 'DUNGEON_RUN_REWARD';
+  | 'DUNGEON_RUN_REWARD'
+  // Phase 12.3 — DungeonRun per-encounter loot drop. Wire qua
+  // `DungeonRunService.nextEncounter → InventoryService.grant(positive qtyDelta)`
+  // với `refType='DungeonRun'` + `refId=runId` + `extra={ dungeonKey,
+  // encounterIndex }`. KHÔNG idempotent — mỗi `next()` call drop 1 lần (mirror
+  // `COMBAT_LOOT`). Khác `DUNGEON_RUN_REWARD` (deterministic claim end-of-run,
+  // idempotent qua CAS `claimedAt`). Khác `COMBAT_LOOT` ở refType: ledger filter
+  // theo `refType` để telemetry / admin tách combat module vs dungeon-run module
+  // mặc dù nguồn drop table chung (`DUNGEON_LOOT`).
+  | 'DUNGEON_LOOT';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;

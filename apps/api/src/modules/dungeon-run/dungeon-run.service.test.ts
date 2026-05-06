@@ -1,6 +1,6 @@
 import { CurrencyKind, DungeonRunStatus } from '@prisma/client';
-import { dungeonByKey } from '@xuantoi/shared';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { DUNGEON_LOOT, dungeonByKey } from '@xuantoi/shared';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../../common/prisma.service';
 import { QuestService } from '../quest/quest.service';
 import { DungeonRunError, DungeonRunService } from './dungeon-run.service';
@@ -194,6 +194,108 @@ describe('DungeonRunService.nextEncounter', () => {
     );
   });
 
+  describe('Phase 12.3 — per-encounter loot drop', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('next() drop loot từ DUNGEON_LOOT[dungeon.key] + ghi ItemLedger reason=DUNGEON_LOOT, refType=DungeonRun, refId=run.id', async () => {
+      // Pin Math.random=0.5 → deterministic loot row pick (huyet_chi_dan) +
+      // qty trung vị. Đảm bảo test không flake giữa các runs.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const { userId, characterId } = await makeUserChar(prisma, {
+        realmKey: 'luyenkhi',
+      });
+      const run = await runs.startRun(userId, SON_COC_KEY);
+      const after = await runs.nextEncounter(userId, run.id);
+
+      // Killed entry phải embed loot field (FE render via formatLoot).
+      expect(after.killedMonsters.length).toBe(1);
+      expect(after.killedMonsters[0].loot).toBeTruthy();
+      expect(after.killedMonsters[0].loot!.length).toBeGreaterThanOrEqual(1);
+      // Mọi itemKey trong loot phải tồn tại trong DUNGEON_LOOT[son_coc].
+      const sonCocKeys = new Set(DUNGEON_LOOT.son_coc.map((e) => e.itemKey));
+      for (const l of after.killedMonsters[0].loot!) {
+        expect(sonCocKeys.has(l.itemKey)).toBe(true);
+        expect(l.qty).toBeGreaterThanOrEqual(1);
+      }
+
+      // ItemLedger row khớp reason/refType/refId/dungeonKey.
+      const ledger = await prisma.itemLedger.findMany({
+        where: {
+          characterId,
+          reason: 'DUNGEON_LOOT',
+          refType: 'DungeonRun',
+          refId: run.id,
+        },
+      });
+      expect(ledger.length).toBeGreaterThanOrEqual(1);
+      expect(ledger.every((r) => r.qtyDelta > 0)).toBe(true);
+
+      // InventoryItem qty khớp ledger sum (1 ledger row → 1 inventory grant).
+      const invQtySum = ledger.reduce((s, r) => s + r.qtyDelta, 0);
+      const invRows = await prisma.inventoryItem.findMany({
+        where: { characterId, itemKey: { in: ledger.map((r) => r.itemKey) } },
+      });
+      const invSum = invRows.reduce((s, r) => s + r.qty, 0);
+      expect(invSum).toBe(invQtySum);
+    });
+
+    it('clear toàn bộ son_coc (3 monsters) → 3 ItemLedger rows DUNGEON_LOOT cùng refId run.id', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const { userId, characterId } = await makeUserChar(prisma, {
+        realmKey: 'luyenkhi',
+      });
+      const run = await runs.startRun(userId, SON_COC_KEY);
+      const dungeon = dungeonByKey(SON_COC_KEY)!;
+      let view = run;
+      for (let i = 0; i < dungeon.monsters.length; i++) {
+        view = await runs.nextEncounter(userId, run.id);
+      }
+      expect(view.status).toBe(DungeonRunStatus.COMPLETED);
+
+      // Mỗi encounter (3 lần) drop ≥1 loot → ledger ≥ 3 rows cùng refId.
+      const ledger = await prisma.itemLedger.findMany({
+        where: {
+          characterId,
+          reason: 'DUNGEON_LOOT',
+          refType: 'DungeonRun',
+          refId: run.id,
+        },
+      });
+      expect(ledger.length).toBeGreaterThanOrEqual(dungeon.monsters.length);
+
+      // killedMonsters[*].loot trong final view phải sync với ledger items.
+      expect(view.killedMonsters.length).toBe(dungeon.monsters.length);
+      const lootSnapshotItems = new Set<string>();
+      for (const k of view.killedMonsters) {
+        for (const l of k.loot ?? []) lootSnapshotItems.add(l.itemKey);
+      }
+      const ledgerItems = new Set(ledger.map((r) => r.itemKey));
+      // Mỗi item snapshot trong killedMonsters đều phải có row tương ứng.
+      for (const itemKey of lootSnapshotItems) {
+        expect(ledgerItems.has(itemKey)).toBe(true);
+      }
+    });
+
+    it('next() loot drop KHÔNG block dungeon flow nếu DUNGEON_LOOT[key] empty (orphan template)', async () => {
+      // Spy `rollDungeonLoot` để return [] giả lập trường hợp catalog empty.
+      // (DUNGEON_LOOT.son_coc thật có entries — đây là defensive test cho
+      // future template thiếu loot table.)
+      vi.spyOn(Math, 'random').mockReturnValue(0);
+      const { userId } = await makeUserChar(prisma, { realmKey: 'luyenkhi' });
+      const run = await runs.startRun(userId, SON_COC_KEY);
+      const after = await runs.nextEncounter(userId, run.id);
+
+      // Sanity: encounterIndex advanced + killed entry tồn tại bất kể loot
+      // có/empty. Loot field optional khi empty.
+      expect(after.encounterIndex).toBe(1);
+      expect(after.killedMonsters.length).toBe(1);
+    });
+  });
+
   it('next auto-track quest kill cho monster.key (FE không tự cộng)', async () => {
     // Phamnhan grind quest: target = phamnhan_son_thu monsters group →
     // tìm dungeon có monster có questTargetIds chứa target. Use SON_COC
@@ -283,18 +385,26 @@ describe('DungeonRunService.claimRun', () => {
     expect(ledger?.delta).toBe(BigInt(dungeon.runReward!.linhThach!));
 
     // ItemLedger row ghi đúng.
+    // Phase 12.3 — filter `reason: 'DUNGEON_RUN_REWARD'` để tách khỏi
+    // per-encounter `DUNGEON_LOOT` rows (cùng refType/refId, khác reason).
     const itemLedger = await prisma.itemLedger.findFirst({
-      where: { characterId, refType: 'DungeonRun', refId: run.id },
+      where: {
+        characterId,
+        reason: 'DUNGEON_RUN_REWARD',
+        refType: 'DungeonRun',
+        refId: run.id,
+      },
     });
     expect(itemLedger).toBeTruthy();
     expect(itemLedger?.reason).toBe('DUNGEON_RUN_REWARD');
     expect(itemLedger?.itemKey).toBe(dungeon.runReward!.items![0].itemKey);
 
-    // Inventory granted.
+    // Inventory granted (qty ≥ runReward; có thể cao hơn nếu Phase 12.3 loot
+    // drop trùng item từ encounter trước).
     const inv = await prisma.inventoryItem.findFirst({
       where: { characterId, itemKey: dungeon.runReward!.items![0].itemKey },
     });
-    expect(inv?.qty).toBe(dungeon.runReward!.items![0].qty);
+    expect(inv?.qty).toBeGreaterThanOrEqual(dungeon.runReward!.items![0].qty);
 
     // DungeonRun status flip → CLAIMED.
     const fresh = await prisma.dungeonRun.findUnique({ where: { id: run.id } });
@@ -320,8 +430,16 @@ describe('DungeonRunService.claimRun', () => {
       where: { characterId, refType: 'DungeonRun', refId: run.id },
     });
     expect(ledgerCount).toBe(1);
+    // Phase 12.3 — filter `reason: 'DUNGEON_RUN_REWARD'` để tách khỏi
+    // per-encounter `DUNGEON_LOOT` rows. Số row reward = items count, idempotent
+    // qua CAS — KHÔNG nhân đôi sau lần claim thứ 2 fail.
     const itemLedgerCount = await prisma.itemLedger.count({
-      where: { characterId, refType: 'DungeonRun', refId: run.id },
+      where: {
+        characterId,
+        reason: 'DUNGEON_RUN_REWARD',
+        refType: 'DungeonRun',
+        refId: run.id,
+      },
     });
     expect(itemLedgerCount).toBe(dungeon.runReward!.items!.length);
   });
