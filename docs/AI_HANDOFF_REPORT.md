@@ -10,11 +10,11 @@
 
 ## 1. Current Executive Summary
 
-- **Current `main` commit**: post PR #440 merged (`feat(shared,web): Phase 12 Story discoverability — QuestView dungeon hint cho kill+monster step`) + PR #439 (Story Foundation Late-game encounter wire — 8 placeholder vào 4 dungeon monsters[]) + PR #438 (Phase 12.4 per-monster MonsterDef.lootTable polish) + PR #437 (DungeonRun listForUser activeRun fallback + E2E spec #22) + PR #436 (Phase 12.3 DungeonRun per-encounter loot wire) + PR #435 (Phase 12.2.C DungeonRun FE UI) + PR #434 (Phase 12.2.B DungeonTemplate + DungeonRun runtime) + PR #433 (Phase 12 Story Foundation Late-game wire) + PR #432 (Phase 12 Story PR-6 Combat kill hook → quest track) + PR #431 (Phase 12 Story PR-5 Chapter 1 playable). Story design source live tại [`docs/story/`](./story/).
-- **Current phase**: Phase 10 **CLOSED** ✅. Phase 11 Progression Depth **COMPLETE** ✅. Phase 11 nâng cao **CLOSED** ✅. Phase 12 World Map & Dungeon **OPEN** — Phase 12.1 catalog **CLOSED** (#397), Phase 12.2.A `DungeonDef.dailyLimit` **CLOSED** ✅ (#421), Phase 12 Story PR-1→PR-6 + Foundation Extension + Late-game wire all **CLOSED** ✅ (#425–#433), **Phase 12.2.B/C/12.3** **CLOSED** ✅ (#434–#436), **E2E spec #22 + listForUser fallback** **CLOSED** ✅ (#437), **Phase 12.4 per-monster MonsterDef.lootTable polish** **CLOSED** ✅ (#438), **Story Foundation Late-game encounter wire** **CLOSED** ✅ (#439), **Phase 12 Story discoverability — QuestView dungeon hint cho kill+monster step** **CLOSED** ✅ (#440). Next mở: Phase 12.5 dungeon balance tuning.
-- **In-flight**: none. Last merged: PR #440 (QuestView dungeon hint discoverability).
-- **Test baseline (post PR #440 merged)**: api **1975**, shared **1359**, web **1163**, total **4497 vitest**. E2E golden-path **22 spec**. Smoke scripts **28 module**. Numbers carry forward unchanged from PR #440 verification (shared 1359/1359 + web 1163/1163 + i18n parity 6/6 PASS).
-- **Top priority next session**: (1) Phase 12.5 dungeon balance tuning (HP/ATK curve cho 8 placeholder Trúc Cơ/Kim Đan/Nguyên Anh — hiện stat catalog seed minimal); (2) Concurrency tests phase 2 remainder (Cultivation multi-instance lock / Inventory `revoke()` race / Realtime ban during connection); (3) Shop daily limit + rate-limit per user (M10); (4) CSP production verify khi deploy (M7). Detail §6.
+- **Current `main` commit**: post PR #441 merged (`docs(handoff): sync post PR #440 merged state`) + PR #440 (Phase 12 Story discoverability QuestView dungeon hint) + PR #439 (Story Foundation Late-game encounter wire) + PR #438 (Phase 12.4 per-monster MonsterDef.lootTable polish) + PR #437 (DungeonRun listForUser activeRun fallback + E2E spec #22) + PR #436 (Phase 12.3 DungeonRun per-encounter loot wire) + PR #435 (Phase 12.2.C DungeonRun FE UI) + PR #434 (Phase 12.2.B DungeonTemplate + DungeonRun runtime) + PR #433 (Phase 12 Story Foundation Late-game wire) + PR #432 (Phase 12 Story PR-6 Combat kill hook → quest track). Story design source live tại [`docs/story/`](./story/).
+- **Current phase**: Phase 10 **CLOSED** ✅. Phase 11 Progression Depth **COMPLETE** ✅. Phase 11 nâng cao **CLOSED** ✅. Phase 12 World Map & Dungeon **OPEN** — Phase 12.1 catalog **CLOSED** (#397), Phase 12.2.A `DungeonDef.dailyLimit` **CLOSED** ✅ (#421), Phase 12 Story PR-1→PR-6 + Foundation Extension + Late-game wire all **CLOSED** ✅ (#425–#433), **Phase 12.2.B/C/12.3** **CLOSED** ✅ (#434–#436), **E2E spec #22 + listForUser fallback** **CLOSED** ✅ (#437), **Phase 12.4 per-monster MonsterDef.lootTable polish** **CLOSED** ✅ (#438), **Story Foundation Late-game encounter wire** **CLOSED** ✅ (#439), **Phase 12 Story discoverability — QuestView dungeon hint cho kill+monster step** **CLOSED** ✅ (#440), **docs handoff sync post #440** **CLOSED** ✅ (#441), **Phase 12.5 dungeon balance tuning** **CLOSED** ✅ (this PR). Next mở: Concurrency tests phase 2 remainder.
+- **In-flight**: this PR (Phase 12.5 dungeon balance tuning).
+- **Test baseline (post Phase 12.5 PR)**: api **1975**, shared **1370** (+11 từ Phase 12.5 dungeon-balance test block: 11 invariant cho 8 late-game placeholder), web **1163**, total **4508 vitest**. E2E golden-path **22 spec**. Smoke scripts **28 module**. API/web test count carryover unchanged (shared catalog only — no API/UI runtime change).
+- **Top priority next session**: (1) Concurrency tests phase 2 remainder (Cultivation multi-instance lock / Inventory `revoke()` race / Realtime ban during connection); (2) Shop daily limit + rate-limit per user (M10); (3) CSP production verify khi deploy (M7); (4) Phase 12 Story dialogue branch / DungeonTemplate story-instance (optional). Detail §6.
 - **Open Critical/High issues**: none. Live medium issues: M7 (CSP production verify khi deploy), M10 (Shop daily limit + rate-limit per user). Detail §4.
 - **Blocker**: none.
 
@@ -26,6 +26,8 @@
 
 | PR | Title | Type |
 |---|---|---|
+| this PR | `balance(shared): Phase 12.5 tune late-game story dungeon monsters — stat tuning HP/ATK/DEF/SPD/level + monsterType promotion (HUMANOID→ELITE tich_thien_sat_thu, SPIRIT→ELITE tam_ma_nguyen_anh, HUMANOID→BOSS huyet_anh) + 3 lootTable override Phase 12.4 convention (kim/tho themed equipment + skill_book pity + linh_can_dan rare pity cho huyet_anh BOSS endgame) + 11 invariant test dungeons-balance.test (level range / monsterType / lootTable convention / hp/atk > 0 / SPIRIT def ≤ peer); ky_uc_meo giữ nguyên là story-hard intentional tier gap (Nguyên Anh stat trong Trúc Cơ dungeon moc_huyen_lam, document ở BALANCE_MODEL §5.5)` | medium shared catalog + tests, no API change, no Prisma migration, no UI change |
+| [#441](https://github.com/hoathienmenh-01/xuantoi/pull/441) | `docs(handoff): sync post PR #440 merged state — AI_HANDOFF_REPORT.md current main = post PR #440 merged + PHASE12_STORY_PROGRESS QuestView dungeon hint CLOSED ✅ + Recommended Next Roadmap reorder (Phase 12.5 → Concurrency phase 2 → Shop daily limit → CSP)` | docs-only sync |
 | [#440](https://github.com/hoathienmenh-01/xuantoi/pull/440) | `feat(shared,web): Phase 12 Story discoverability — QuestView dungeon hint cho kill+monster step (shared helper findDungeonsForQuestPlaceholder resolve dungeon qua direct key match + MonsterDef.questTargetIds alias dedupe theo dungeon.key + FE QuestView.vue render line "📍 Tìm tại: {names}" inline dưới step + i18n vi/en parity quest.stepHint.foundIn + 5 shared test + 4 FE test); UX gap close: player giờ thấy ngay dungeon đi cho mỗi kill+monster step (8 late-game placeholder + 7 PR-6 critical-path) — KHÔNG cần tự tra catalog` | small shared+FE feature + tests, no API change, no Prisma migration |
 | [#439](https://github.com/hoathienmenh-01/xuantoi/pull/439) | `feat(shared): Story Foundation Late-game encounter wire — wire 8 placeholder Trúc Cơ/Kim Đan/Nguyên Anh vào 4 dungeon monsters[] (hac_lam +tich_linh_anh/tam_ma_anh, moc_huyen_lam +tich_linh_quy/ky_uc_meo, kim_son_mach +tich_thien_sat_thu, hoang_tho_huyet +tam_ma_nguyen_anh/chap_niem_anh/huyet_anh) + 1 invariant test reachable trong DUNGEONS.monsters[]` | small shared catalog + 1 test, no API/FE change, no Prisma migration |
 | [#438](https://github.com/hoathienmenh-01/xuantoi/pull/438) | `feat(shared,api): Phase 12.4 per-monster MonsterDef.lootTable polish — MonsterDef.lootTable?: readonly LootEntry[] (optional override) + rollMonsterLoot(monsterKey, n) helper + DungeonRunService.nextEncounter + CombatService WON paths ưu tiên monster.lootTable trước fallback rollDungeonLoot(dungeon.key, n); seed 5 boss/elite override (1 ELITE kim_dieu_thuong_phong + 4 BOSS thuy_thanh_long_vuong/chu_tuoc_huyet_dieu/tho_dia_lao_tu/cuu_la_huyen_quan) + 13 shared test items-monster-loot + 2 API integration test` | medium shared+api, **no Prisma migration**, **no FE change** |
@@ -35,7 +37,6 @@
 | [#434](https://github.com/hoathienmenh-01/xuantoi/pull/434) | `feat(api,shared): Phase 12.2.B DungeonTemplate + DungeonRun runtime — Prisma DungeonRun model + 4 endpoint (list/start/next/claim) + realm gate + daily limit + ownership + idempotent claim qua CurrencyService.applyTx/InventoryService.grantTx reason DUNGEON_RUN_REWARD + QuestService.track auto-wire khi nextEncounter + 44 unit/controller test + smoke 16 step` | large full-stack feature + Prisma migration `20260521000000_phase_12_2_b_dungeon_run` |
 | [#433](https://github.com/hoathienmenh-01/xuantoi/pull/433) | `feat(shared): Phase 12 Story Foundation Late-game wire — 8 monster catalog cho Trúc Cơ/Kim Đan/Nguyên Anh story placeholder + 2 invariant test` | medium shared catalog + tests |
 | [#432](https://github.com/hoathienmenh-01/xuantoi/pull/432) | `fix(api,shared): Phase 12 Story PR-6 — Combat kill hook → quest track auto-wire (fix monster.key mismatch with quest placeholder targetId, add MonsterDef.questTargetIds + 7 mappings + 5 integration tests)` | medium full-stack fix + tests, no Prisma migration, no new endpoint, no FE change |
-| [#431](https://github.com/hoathienmenh-01/xuantoi/pull/431) | `feat(api,web): Phase 12 Story PR-5 — Main storyline Chapter 1 playable (phamnhan_main_01 end-to-end accept → progress → claim, admin quest-track endpoint + E2E golden-path)` | medium full-stack feature + tests, **no Prisma migration**, **no new player endpoint** |
 
 
 
@@ -52,7 +53,7 @@
 | 10 | Content scale | **5/5 CLOSED** ✅ | All sub-tracks merged. |
 | 11 | Progression Depth | **catalog 11/11 + runtime 10/10 + UI merged** | Phase 11 nâng cao (§2/§3/§5/§6 + 11.6.C/D/E + 11.1.E) tất cả CLOSED. |
 | 11.X | UI E2E smoke Playwright | **DONE** | Spec #19 talent learn→cast→cooldown + #20 breakthrough flow merged via #394/#420. |
-| 12 | World Map & Dungeon | **OPEN** | 12.1 catalog CLOSED (#397). 12.2.A `dailyLimit` enforcement CLOSED (#421). Story PR-1→PR-6 + Foundation Extension + Late-game wire CLOSED (#425–#433). **12.2.B/C + 12.3** CLOSED ✅ (#434–#436). **E2E spec #22 dungeon-run flow** CLOSED ✅ (#437). **12.4 per-monster `MonsterDef.lootTable` polish** CLOSED ✅ (#438). **Story Foundation Late-game encounter wire** CLOSED ✅ (#439). **Story discoverability — QuestView dungeon hint cho kill+monster step** CLOSED ✅ (#440). Next: 12.5 dungeon balance tuning. |
+| 12 | World Map & Dungeon | **OPEN** | 12.1 catalog CLOSED (#397). 12.2.A `dailyLimit` enforcement CLOSED (#421). Story PR-1→PR-6 + Foundation Extension + Late-game wire CLOSED (#425–#433). **12.2.B/C + 12.3** CLOSED ✅ (#434–#436). **E2E spec #22 dungeon-run flow** CLOSED ✅ (#437). **12.4 per-monster `MonsterDef.lootTable` polish** CLOSED ✅ (#438). **Story Foundation Late-game encounter wire** CLOSED ✅ (#439). **Story discoverability — QuestView dungeon hint cho kill+monster step** CLOSED ✅ (#440). **docs handoff sync** CLOSED ✅ (#441). **12.5 dungeon balance tuning — 8 late-game story monster stat + lootTable** CLOSED ✅ (this PR). Next: optional dialogue branch / DungeonTemplate story-instance. |
 | 13+ | Real-time PvP / pet gacha / voice / streaming | **Not started** | Per [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §0 — explicitly DO NOT build yet. |
 
 **Smoke coverage**: 28 module (~15 step avg, +`smoke:quest` 20 step PR-3, +`smoke:npc` 11 step PR-4, +`smoke:dungeon-run` 16 step PR #434). 8 module có cả negative + positive path: skill / shop / mail / inventory / spiritual-root / breakthrough / auth / cultivation-method. Defer: daily-login multi-day positive (cần admin advance-day). Full per-module step count + endpoint coverage → [`ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md) § Smoke Detail Migrated 2026-05-05.
@@ -87,10 +88,10 @@
 
 | Workspace | Test count | Notes |
 |---|---|---|
-| `apps/api` | **1975** | Carryover từ PR #438 (PR #440 không thay đổi api test). |
-| `packages/shared` | **1359** | +5 từ PR #440 (`findDungeonsForQuestPlaceholder` invariant). |
-| `apps/web` | **1163** | +4 từ PR #440 (QuestView dungeon hint render 4 case). E2E spec thêm ngoài vitest matrix (Playwright). |
-| **Total** | **4497 vitest** | All green local. **GitHub CI runners**: verify khi PR push. |
+| `apps/api` | **1975** | Carryover từ PR #438 (Phase 12.5 shared catalog only — không thay đổi api test). |
+| `packages/shared` | **1370** | +11 từ Phase 12.5 (`dungeons-balance.test` block "Phase 12.5 late-game story monster balance" — invariant level range / monsterType / lootTable convention / hp/atk > 0 / SPIRIT def ≤ peer / huyet_anh BOSS hardest / sat_thu burst-glass). +5 carryover từ #440. |
+| `apps/web` | **1163** | Carryover từ PR #440 (Phase 12.5 shared catalog only — không thay đổi UI test). |
+| **Total** | **4508 vitest** | All green local. **GitHub CI runners**: verify khi PR push. |
 
 ### CI
 
@@ -119,13 +120,13 @@ Per [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) §SESSION PR LIMIT (1-3 PR/
 
 ### Top priority — next session
 
-1. **Phase 12.5 dungeon balance tuning** — Small PR, Template B. 8 placeholder Trúc Cơ/Kim Đan/Nguyên Anh hiện có stat catalog seed minimal — cần verify HP/ATK curve match realm tier (player Trúc Cơ stat baseline → `tich_linh_anh` lvl 5 phải killable ~2-3 hit; Nguyên Anh tier `huyet_anh` lvl 15 BOSS phải tank ~10+ hit). Có thể cần thêm `MonsterDef.lootTable` override cho boss (Phase 12.4 helper đã sẵn, chỉ cần seed override).
+1. **Concurrency tests phase 2** — Small-Medium PR, Template B per scenario. Inventory `use()` race FIXED via PR #422. Còn lại: Cultivation multi-instance lock (Redis lease — BullMQ Worker đã handle nhưng cần test backstop), Chat Redis failover branch, Boss spawn cron auto, Realtime ban during connection, Inventory `revoke()` similar JS-capture race (admin-only — `findMany` → for-loop delete không có atomic guard giữa 2 admin call song song). Mỗi scenario ~50-150 LOC test.
 
-2. **Concurrency tests phase 2** — Small-Medium PR, Template B per scenario. Inventory `use()` race FIXED via PR #422. Còn lại: Cultivation multi-instance lock (Redis lease — BullMQ Worker đã handle nhưng cần test backstop), Chat Redis failover branch, Boss spawn cron auto, Realtime ban during connection, Inventory `revoke()` similar JS-capture race (admin-only — `findMany` → for-loop delete không có atomic guard giữa 2 admin call song song). Mỗi scenario ~50-150 LOC test.
+2. **Shop daily limit + rate-limit per user** (M10) — Medium PR, Template C. Add `dailyLimit` config trong shop catalog + rate-limit redis key. Defer post-beta. **Note**: `startOfLocalDay` helper từ PR #421 đã reusable — shop có thể import lại thay vì duplicate.
 
-3. **Shop daily limit + rate-limit per user** (M10) — Medium PR, Template C. Add `dailyLimit` config trong shop catalog + rate-limit redis key. Defer post-beta. **Note**: `startOfLocalDay` helper từ PR #421 đã reusable — shop có thể import lại thay vì duplicate.
+3. **CSP production verify** (M7) — Hotfix khi deploy production. Test `script-src` / `connect-src` với CDN domain khác.
 
-4. **CSP production verify** (M7) — Hotfix khi deploy production. Test `script-src` / `connect-src` với CDN domain khác.
+4. **Phase 12 Story dialogue branch / DungeonTemplate story-instance** (optional, Medium-Large PR) — 8 placeholder kill milestone hiện có stat tuned (Phase 12.5) nhưng không có dialogue branch sau kill; hoặc tạo `DungeonTemplate` story-instance tách biệt từ farm dungeon (instance riêng → boss-rush single-shot). Defer tới khi Story PR-7 plan.
 
 ### Phase 12 Story chain status
 
@@ -135,6 +136,7 @@ Design source ở [`docs/story/TU_TIEN_LO_STORY_BIBLE.md`](./story/TU_TIEN_LO_ST
 - **Foundation Late-game wire** — 8 monster catalog (`tich_linh_anh`, `tam_ma_anh`, `tich_linh_quy`, `tich_thien_sat_thu`, `tam_ma_nguyen_anh`, `chap_niem_anh`, `ky_uc_meo`, `huyet_anh`). **CLOSED** ✅ (#433).
 - **Foundation Late-game encounter wire** — wire 8 placeholder vào 4 dungeon `monsters[]`. **CLOSED** ✅ (#439).
 - **QuestView dungeon hint** — close discoverability gap. **CLOSED** ✅ (#440).
+- **Phase 12.5 dungeon balance tuning** — stat HP/ATK/DEF/SPD/level + monsterType promotion (3 ELITE/BOSS) + 3 lootTable override + 11 invariant test. **CLOSED** ✅ (this PR).
 
 Next nâng cao Phase 12 Story (optional, nếu cần): thêm dialogue branch cho 8 placeholder kill milestone HOẶC tạo `DungeonTemplate` story-instance tách biệt từ farm dungeon (instance riêng → boss-rush single-shot). Sau mỗi PR Phase 12 Story merged, AI **bắt buộc** cập nhật `docs/story/PHASE12_STORY_PROGRESS.md` trong cùng PR (DOCS UPDATE RULE).
 
