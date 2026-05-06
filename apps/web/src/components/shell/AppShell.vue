@@ -257,6 +257,13 @@ async function logout(): Promise<void> {
           人 {{ t('shell.nav.npcs') }}
         </RouterLink>
         <RouterLink
+          to="/quests"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
+          冊 {{ t('shell.nav.quests') }}
+        </RouterLink>
+        <RouterLink
           to="/missions"
           class="px-3 py-2 rounded hover:bg-ink-700/60 relative"
           active-class="bg-ink-700/60 text-ink-50"

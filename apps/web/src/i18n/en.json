@@ -285,7 +285,8 @@
       "achievements": "Achievements",
       "tribulation": "Tribulation",
       "breakthrough": "Breakthrough",
-      "npcs": "NPCs"
+      "npcs": "NPCs",
+      "quests": "Quests"
     },
     "badge": {
       "bossActive": "World boss is live",
@@ -1861,6 +1862,68 @@
         "QUEST_NOT_AVAILABLE": "Quest is not available right now.",
         "UNKNOWN": "Failed to accept quest, please retry."
       }
+    }
+  },
+  "quest": {
+    "title": "Story Quests",
+    "subtitle": "Track and complete the main storyline chains of Hoa Thiên Lộ.",
+    "totalCount": "Visible: {n}",
+    "filteredCount": "Filtered: {n}",
+    "empty": "No quest in your celestial scroll yet.",
+    "emptyFiltered": "No {kind} quest available.",
+    "expand": "Show details",
+    "collapse": "Collapse",
+    "accept": "Accept",
+    "claim": "Claim",
+    "acceptOk": "Accepted quest {quest}.",
+    "claimOk": "Claimed reward for {quest}: +{linhThach} linh thach, +{exp} EXP.",
+    "acceptedHint": "Accepted, in progress",
+    "claimedHint": "Reward claimed",
+    "lockedHint": "Complete prerequisite first",
+    "steps": "Steps",
+    "rewards": "Rewards",
+    "filter": {
+      "all": "All"
+    },
+    "kind": {
+      "main": "Main",
+      "realm": "Realm",
+      "sect": "Sect",
+      "npc": "NPC",
+      "grind": "Grind"
+    },
+    "stepKind": {
+      "kill": "Kill",
+      "collect": "Collect",
+      "talk": "Talk",
+      "explore": "Explore",
+      "choice": "Choose"
+    },
+    "status": {
+      "LOCKED": "Locked",
+      "AVAILABLE": "Available",
+      "ACCEPTED": "In Progress",
+      "COMPLETED": "Completed",
+      "CLAIMED": "Claimed"
+    },
+    "reward": {
+      "linhThach": "{n} linh thach",
+      "tienNgoc": "{n} tien ngoc",
+      "exp": "{n} EXP",
+      "congHien": "{n} contribution",
+      "item": "{itemKey} ×{qty}"
+    },
+    "errors": {
+      "UNAUTHENTICATED": "Session expired.",
+      "NO_CHARACTER": "No character, please start one first.",
+      "QUEST_UNKNOWN": "This quest does not exist.",
+      "QUEST_LOCKED_REALM": "Realm too low to accept this quest.",
+      "QUEST_LOCKED_PREREQUISITE": "Must complete prerequisite quest first.",
+      "QUEST_NOT_AVAILABLE": "Quest is not available right now.",
+      "QUEST_NOT_FOUND_PROGRESS": "No progress data for this quest.",
+      "QUEST_NOT_COMPLETED": "Quest is not completed yet.",
+      "QUEST_ALREADY_CLAIMED": "Reward already claimed.",
+      "UNKNOWN": "Quest action failed, please retry."
     }
   }
 }

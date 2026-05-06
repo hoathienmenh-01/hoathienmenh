@@ -285,7 +285,8 @@
       "achievements": "Thành Tựu",
       "tribulation": "Thiên Kiếp",
       "breakthrough": "Đột Phá",
-      "npcs": "Đạo Hữu"
+      "npcs": "Đạo Hữu",
+      "quests": "Nhiệm Vụ"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -1861,6 +1862,68 @@
         "QUEST_NOT_AVAILABLE": "Nhiệm vụ này không thể nhận lúc này.",
         "UNKNOWN": "Không thể nhận nhiệm vụ, thử lại."
       }
+    }
+  },
+  "quest": {
+    "title": "Nhiệm Vụ Cốt Truyện",
+    "subtitle": "Theo dõi và hoàn thành các chuỗi nhiệm vụ chính tuyến của Hoa Thiên Lộ.",
+    "totalCount": "Đã hiện: {n}",
+    "filteredCount": "Đang lọc: {n}",
+    "empty": "Chưa có nhiệm vụ nào trong sổ thiên thư của con.",
+    "emptyFiltered": "Không có nhiệm vụ {kind} nào.",
+    "expand": "Xem chi tiết",
+    "collapse": "Thu gọn",
+    "accept": "Nhận nhiệm vụ",
+    "claim": "Nhận thưởng",
+    "acceptOk": "Đã nhận nhiệm vụ {quest}.",
+    "claimOk": "Đã nhận thưởng {quest}: +{linhThach} linh thạch, +{exp} EXP.",
+    "acceptedHint": "Đã nhận, đang thực hiện",
+    "claimedHint": "Đã lĩnh thưởng",
+    "lockedHint": "Cần hoàn thành nhiệm vụ trước",
+    "steps": "Các bước",
+    "rewards": "Phần thưởng",
+    "filter": {
+      "all": "Tất cả"
+    },
+    "kind": {
+      "main": "Chính tuyến",
+      "realm": "Đột phá",
+      "sect": "Tông môn",
+      "npc": "Đạo hữu",
+      "grind": "Tu luyện"
+    },
+    "stepKind": {
+      "kill": "Diệt",
+      "collect": "Thu thập",
+      "talk": "Đối thoại",
+      "explore": "Khám phá",
+      "choice": "Chọn lựa"
+    },
+    "status": {
+      "LOCKED": "Khoá",
+      "AVAILABLE": "Có thể nhận",
+      "ACCEPTED": "Đang thực hiện",
+      "COMPLETED": "Hoàn thành",
+      "CLAIMED": "Đã lĩnh thưởng"
+    },
+    "reward": {
+      "linhThach": "{n} linh thạch",
+      "tienNgoc": "{n} tiên ngọc",
+      "exp": "{n} EXP",
+      "congHien": "{n} cống hiến",
+      "item": "{itemKey} ×{qty}"
+    },
+    "errors": {
+      "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
+      "NO_CHARACTER": "Chưa có nhân vật, hãy khai đạo trước.",
+      "QUEST_UNKNOWN": "Nhiệm vụ này không tồn tại.",
+      "QUEST_LOCKED_REALM": "Cảnh giới chưa đủ để nhận nhiệm vụ này.",
+      "QUEST_LOCKED_PREREQUISITE": "Phải hoàn thành nhiệm vụ tiền đề trước.",
+      "QUEST_NOT_AVAILABLE": "Nhiệm vụ này không thể nhận lúc này.",
+      "QUEST_NOT_FOUND_PROGRESS": "Chưa có dữ liệu nhiệm vụ này.",
+      "QUEST_NOT_COMPLETED": "Nhiệm vụ chưa hoàn thành, không thể lĩnh thưởng.",
+      "QUEST_ALREADY_CLAIMED": "Đã lĩnh thưởng nhiệm vụ này rồi.",
+      "UNKNOWN": "Thao tác nhiệm vụ thất bại, thử lại."
     }
   }
 }

@@ -37,6 +37,7 @@ const EXPECTED: RouteExpect[] = [
   { name: 'leaderboard', path: '/leaderboard' },
   { name: 'settings', path: '/settings' },
   { name: 'talents', path: '/talents' },
+  { name: 'quests', path: '/quests' },
   { name: 'not-found', path: '/:pathMatch(.*)*', public: true },
 ];
 
