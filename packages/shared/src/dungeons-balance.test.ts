@@ -97,6 +97,36 @@ describe('DUNGEONS monsters reference', () => {
       ).toBeGreaterThanOrEqual(3);
     }
   });
+
+  it('Phase 12 Story Foundation Late-game wire: 8 placeholder reachable trong DUNGEONS.monsters[]', () => {
+    // Invariant: 8 placeholder Trúc Cơ/Kim Đan/Nguyên Anh story (`tich_linh_anh`,
+    // `tam_ma_anh`, `tich_linh_quy`, `tich_thien_sat_thu`, `tam_ma_nguyen_anh`,
+    // `chap_niem_anh`, `ky_uc_meo`, `huyet_anh`) phải xuất hiện ở ≥ 1 dungeon
+    // `monsters[]` để player thực kill được qua DungeonRun encounter loop. Trước
+    // wire này (PR #433), monster catalog có nhưng dungeon `monsters[]` không
+    // chứa → player chỉ track quest qua admin harness `POST /admin/users/:id/
+    // quest-track` (PR-5). Test backstop ngăn drift trở lại.
+    const lateGamePlaceholders = [
+      'tich_linh_anh',
+      'tam_ma_anh',
+      'tich_linh_quy',
+      'tich_thien_sat_thu',
+      'tam_ma_nguyen_anh',
+      'chap_niem_anh',
+      'ky_uc_meo',
+      'huyet_anh',
+    ];
+    const reachable = new Set<string>();
+    for (const d of DUNGEONS) {
+      for (const mk of d.monsters) reachable.add(mk);
+    }
+    for (const placeholder of lateGamePlaceholders) {
+      expect(
+        reachable.has(placeholder),
+        `late-game placeholder ${placeholder} không reachable trong dungeons.monsters[]`,
+      ).toBe(true);
+    }
+  });
 });
 
 describe('DUNGEONS staminaEntry budget (BALANCE_MODEL §5.1)', () => {

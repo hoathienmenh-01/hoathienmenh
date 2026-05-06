@@ -342,7 +342,10 @@ export const DUNGEONS: readonly DungeonDef[] = [
     name: 'Hắc Lâm',
     description: 'Hắc lâm âm khí dày đặc, thi quỷ và yêu xà nương bóng tối.',
     recommendedRealm: 'truc_co',
-    monsters: ['hac_yeu_xa', 'thi_quy', 'hac_lam_ma'],
+    // Phase 12 Story Foundation Late-game wire — thêm `tich_linh_anh` (lvl 5) +
+    // `tam_ma_anh` (lvl 6) story SPIRIT placeholder (xem `combat.test.ts >
+    // Phase 12 Story late-game placeholder reachable in DUNGEONS.monsters[]`).
+    monsters: ['hac_yeu_xa', 'thi_quy', 'hac_lam_ma', 'tich_linh_anh', 'tam_ma_anh'],
     staminaEntry: 18,
     element: 'moc',
     regionKey: 'hac_lam',
@@ -376,7 +379,9 @@ export const DUNGEONS: readonly DungeonDef[] = [
     name: 'Kim Sơn Mạch',
     description: 'Mỏ kim cổ xưa — kiếm linh và kim quang thạch giáp tuần ranh, đồng tử kim quang chỉ rõ kẻ trộm tinh thiết.',
     recommendedRealm: 'kim_dan',
-    monsters: ['kim_quang_thach_giap', 'huyen_kim_lang_thu', 'tinh_thiet_kiem_linh', 'kim_dieu_thuong_phong'],
+    // Phase 12 Story Foundation Late-game wire — thêm `tich_thien_sat_thu` (lvl 11
+    // HUMANOID kim đan) cho placeholder Kim Đan story chain.
+    monsters: ['kim_quang_thach_giap', 'huyen_kim_lang_thu', 'tinh_thiet_kiem_linh', 'kim_dieu_thuong_phong', 'tich_thien_sat_thu'],
     staminaEntry: 32,
     element: 'kim',
     regionKey: 'kim_son_mach',
@@ -388,7 +393,11 @@ export const DUNGEONS: readonly DungeonDef[] = [
     name: 'Mộc Huyền Lâm',
     description: 'Rừng cổ thiên niên — cổ thụ chi linh và thiên la cổ yêu nương theo huyết khí ngàn năm.',
     recommendedRealm: 'truc_co',
-    monsters: ['thanh_mang_xa', 'tang_diep_yeu_phu', 'co_thu_chi_linh', 'thien_la_co_yeu'],
+    // Phase 12 Story Foundation Late-game wire — thêm `tich_linh_quy` (lvl 7
+    // SPIRIT moc, Trúc Cơ) + `ky_uc_meo` (lvl 14 SPIRIT moc, Nguyên Anh tier
+    // đặt cuối list cho story-driven hard-encounter; player Trúc Cơ phải đợi
+    // lên Kim Đan/Nguyên Anh mới qua dễ — narrative-driven, không grind farm).
+    monsters: ['thanh_mang_xa', 'tang_diep_yeu_phu', 'co_thu_chi_linh', 'thien_la_co_yeu', 'tich_linh_quy', 'ky_uc_meo'],
     staminaEntry: 22,
     element: 'moc',
     regionKey: 'moc_huyen_lam',
@@ -424,7 +433,11 @@ export const DUNGEONS: readonly DungeonDef[] = [
     name: 'Hoàng Thổ Huyệt',
     description: 'Huyệt thổ ngàn năm — Thạch Long Cổ Giáp và Thổ Địa Lão Tử trấn giữ kho tàng địa mạch.',
     recommendedRealm: 'nguyen_anh',
-    monsters: ['thach_quang_yeu_thu', 'hoang_tho_cu_yeu', 'thach_long_co_giap', 'tho_dia_lao_tu'],
+    // Phase 12 Story Foundation Late-game wire — thêm 3 placeholder Nguyên Anh
+    // tier (`tam_ma_nguyen_anh` lvl 14, `chap_niem_anh` lvl 15, `huyet_anh` lvl
+    // 15) cho story chain tâm ma / chấp niệm / huyết ảnh end-game. Đặt sau boss
+    // `tho_dia_lao_tu` để run flow boss → mini-encounter chain → optional claim.
+    monsters: ['thach_quang_yeu_thu', 'hoang_tho_cu_yeu', 'thach_long_co_giap', 'tho_dia_lao_tu', 'tam_ma_nguyen_anh', 'chap_niem_anh', 'huyet_anh'],
     staminaEntry: 48,
     element: 'tho',
     regionKey: 'hoang_tho_huyet',
