@@ -12,6 +12,7 @@ import {
   monsterByKey,
   realmByKey,
   rollDungeonLoot,
+  rollMonsterLoot,
   type DungeonDef,
   type DungeonRunReward,
   type MonsterDef,
@@ -405,13 +406,14 @@ export class DungeonRunService {
     const nowIso = new Date().toISOString();
     const killed = readKilledMonsters(run.killedMonsters);
 
-    // Phase 12.3 — per-encounter random loot drop từ `DUNGEON_LOOT[dungeon.key]`
-    // (mirror `combat.service` PR #251 wiring). Roll TRƯỚC CAS update để snapshot
-    // loot vào `killedMonsters` JSON cùng atomic write. Nếu CAS fail (race khác
-    // đã advance) → roll bị huỷ luôn, không grant. Nếu CAS pass nhưng `inventory.grant`
-    // throw sau đó → killed entry vẫn ghi loot đã roll, ledger row mất (mirror
-    // combat.service trade-off, fail-soft tránh block dungeon flow).
-    const loot = rollDungeonLoot(dungeon.key, 2);
+    // Phase 12.3 — per-encounter random loot drop. Phase 12.4: ưu tiên
+    // `monster.lootTable` (boss/elite override) → fallback `DUNGEON_LOOT[dungeon.key]`.
+    // Roll TRƯỚC CAS update để snapshot loot vào `killedMonsters` JSON cùng
+    // atomic write. Nếu CAS fail (race khác đã advance) → roll bị huỷ luôn,
+    // không grant. Nếu CAS pass nhưng `inventory.grant` throw sau đó → killed
+    // entry vẫn ghi loot đã roll, ledger row mất (fail-soft tránh block flow).
+    const monsterLoot = rollMonsterLoot(monsterKey, 2);
+    const loot = monsterLoot.length > 0 ? monsterLoot : rollDungeonLoot(dungeon.key, 2);
     const killedEntry: DungeonRunKilledEntry = { monsterKey, killedAt: nowIso };
     if (loot.length > 0) killedEntry.loot = loot;
     killed.push(killedEntry);

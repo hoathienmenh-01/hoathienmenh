@@ -584,6 +584,23 @@ Verify pattern (xem `items-dungeon-loot.test.ts`):
 - Không weight = 0.
 - qtyMin ≤ qtyMax.
 
+**Phase 12.4 — Per-monster `MonsterDef.lootTable` override** (xem `items-monster-loot.test.ts`):
+
+`MonsterDef.lootTable?: readonly LootEntry[]` — optional override cho boss/elite. Resolve: `monster.lootTable.length > 0 ? rollMonsterLoot(monster.key, n) : rollDungeonLoot(dungeon.key, n)`.
+
+Convention:
+- Chỉ `monsterType ∈ {ELITE, BOSS}` được override (test enforce). BEAST/SPIRIT/HUMANOID dùng dungeon-level fallback.
+- Bias toward themed equipment (weight 5-8) + skill_book pity weight 5-6 (cao hơn dungeon-level 2-3).
+- Endgame BOSS có thể có pity drop rare (vd `cuu_la_huyen_quan` weight 3 cho `linh_can_dan` vs dungeon weight 1).
+- Single entry KHÔNG vượt 80% probability (tránh boss-loot dominate).
+
+Seed Phase 12.4 (5 monsters):
+- ELITE `kim_dieu_thuong_phong` (kim_son_mach): `than_phong_kiem`, `tinh_thiet`, `skill_book_kim_quang_tram`, `co_thien_dan`.
+- BOSS `thuy_thanh_long_vuong` (thuy_long_uyen): `cuu_u_bi_thuong`, `han_thiet_giap`, `han_ngoc`, `skill_book_thuy_kinh_phong_an`, `co_thien_dan`.
+- BOSS `chu_tuoc_huyet_dieu` (hoa_diem_son): `tu_la_dao`, `cuu_la_giap`, `yeu_dan`, `cuu_huyen_dan`, `skill_book_hoa_xa_phun_diem`.
+- BOSS `tho_dia_lao_tu` (hoang_tho_huyet final): `than_lan_giap`, `yeu_phach_giap`, `phu_van_ngoc`, `cuu_huyen_dan`, `skill_book_thach_giap_ho_than`.
+- BOSS `cuu_la_huyen_quan` (cuu_la_dien endgame): `than_dan`, `tien_huyen_kiem`, `tien_huyen_giap`, `tien_kim_sa`, `cuu_thien_dan`, `linh_can_dan`.
+
 ### 5.4 Gem socket budget (phase 11.4.A)
 
 **Phase 11.4.A catalog đã có (session 9r-10 PR — `packages/shared/src/gems.ts`)**:

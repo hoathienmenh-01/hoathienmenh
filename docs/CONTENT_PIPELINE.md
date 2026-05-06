@@ -151,10 +151,16 @@ Mỗi content type có 1 contract chung:
    - **Forward-compat (Phase 10 PR-3+, optional, recommended)**: `element: ElementKey | null` (Ngũ Hành theme), `regionKey: string | null` (link với monster region), `dailyLimit: number` ∈ [1,10] (phase 11.5 sẽ enforce qua `DungeonRun` service).
    - **Stamina budget** (`BALANCE_MODEL.md` §5.1): luyenkhi ≤ 15, truc_co ≤ 30, kim_dan ≤ 40, nguyen_anh ≤ 65. Bound bằng `dungeons-balance.test.ts`.
 3. Append `DUNGEON_LOOT[<key>]` với weight + qty range. Mọi `itemKey` phải resolve qua `itemByKey`. Mỗi loot table cần ≥ 3 entries (variety guarantee). Phải có entry cho mọi dungeon (no orphan parity).
-4. Test pass: `monsters-balance.test.ts` (catalog integrity, element coverage ≥ 1 BOSS/ELITE / element, region coverage ≥ 2 monster / region) + `dungeons-balance.test.ts` (recommendedRealm valid, monster ref valid, stamina budget, element coverage ≥ 1 dungeon / element, DUNGEON_LOOT parity).
-5. **Combat runtime KHÔNG đọc `element`/`monsterType`/`regionKey`/`dailyLimit`** ở phase 10 (catalog only). Phase 11.3 sẽ wire `elementMultiplier(skill.element, target.element)` qua `BALANCE_MODEL.md §4.2`. Phase 11.5 sẽ wire `dailyLimit` enforce.
-6. **Helpers** (Phase 10 PR-3+): `monstersByElement(elem)` / `dungeonsByElement(elem)` / `monstersByRegion(regionKey)` / `dungeonsByRegion(regionKey)` cho phase 11+ AI/UI compose.
-7. PR title: `feat(shared): monster & dungeon pack N (+M monster, +K dungeon, ngũ hành)`.
+4. **Phase 12.4 — Per-monster `MonsterDef.lootTable` override** (optional, recommended cho BOSS/ELITE):
+   - Define `lootTable: readonly LootEntry[]` trực tiếp trên `MonsterDef` để override `DUNGEON_LOOT[dungeon.key]`. `DungeonRunService.nextEncounter` + `CombatService` WON path sẽ ưu tiên `monster.lootTable` (nếu defined + non-empty) trước fallback `rollDungeonLoot(dungeon.key, n)`.
+   - Convention: chỉ `monsterType ∈ {ELITE, BOSS}` (test `items-monster-loot.test.ts` enforce). BEAST/SPIRIT/HUMANOID dùng dungeon-level fallback.
+   - Mỗi entry: `weight > 0`, `qtyMin ≥ 1`, `qtyMin ≤ qtyMax`, `itemKey` resolve qua `itemByKey` (no orphan).
+   - Single entry KHÔNG vượt 80% probability (anti-domination). Bias toward themed equipment (weight 5-8) + skill_book pity weight 5-6 (cao hơn dungeon-level 2-3).
+   - Pattern: `lootTable: [{ itemKey: 'than_phong_kiem', weight: 8, qtyMin: 1, qtyMax: 1 }, ...]`.
+5. Test pass: `monsters-balance.test.ts` (catalog integrity, element coverage ≥ 1 BOSS/ELITE / element, region coverage ≥ 2 monster / region) + `dungeons-balance.test.ts` (recommendedRealm valid, monster ref valid, stamina budget, element coverage ≥ 1 dungeon / element, DUNGEON_LOOT parity) + `items-monster-loot.test.ts` (Phase 12.4 override integrity + roll behavior).
+6. **Combat runtime KHÔNG đọc `element`/`monsterType`/`regionKey`/`dailyLimit`** ở phase 10 (catalog only). Phase 11.3 sẽ wire `elementMultiplier(skill.element, target.element)` qua `BALANCE_MODEL.md §4.2`. Phase 11.5 sẽ wire `dailyLimit` enforce.
+7. **Helpers** (Phase 10 PR-3+): `monstersByElement(elem)` / `dungeonsByElement(elem)` / `monstersByRegion(regionKey)` / `dungeonsByRegion(regionKey)` cho phase 11+ AI/UI compose. Phase 12.4: `rollMonsterLoot(monsterKey, count)` (returns `[]` nếu monster không tồn tại / không có lootTable).
+8. PR title: `feat(shared): monster & dungeon pack N (+M monster, +K dungeon, ngũ hành)`.
 
 ### 4.4 Mission
 
