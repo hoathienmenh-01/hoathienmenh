@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './modules/auth/auth.module';
 import { CharacterModule } from './modules/character/character.module';
 import { CombatModule } from './modules/combat/combat.module';
+import { DungeonRunModule } from './modules/dungeon-run/dungeon-run.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { MarketModule } from './modules/market/market.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
@@ -36,6 +37,7 @@ import { RedisModule } from './common/redis.module';
     CharacterModule,
     CultivationModule,
     CombatModule,
+    DungeonRunModule,
     InventoryModule,
     MarketModule,
     SectModule,

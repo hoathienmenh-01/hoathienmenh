@@ -66,7 +66,15 @@ export type ItemLedgerReason =
   // (`QuestProgress.claimedAt` updateMany) đảm bảo 1 winner / questKey
   // → grant đúng 1 lần / questKey / character. Mirror cùng `CurrencyLedger`
   // reason `QUEST_CLAIM` cho linhThach/tienNgoc (cùng `refId`).
-  | 'QUEST_CLAIM';
+  | 'QUEST_CLAIM'
+  // Phase 12.2.B — DungeonRun completion reward bonus item grant. Wire qua
+  // `DungeonRunService.claim → InventoryService.grantTx(positive qtyDelta)`
+  // với `refType='DungeonRun'` + `refId=runId`. CAS claim guard
+  // (`DungeonRun.claimedAt` updateMany) đảm bảo 1 winner / runId → grant đúng
+  // 1 lần / runId / character. Mirror cùng `CurrencyLedger` reason
+  // `DUNGEON_RUN_REWARD`. Khác `COMBAT_LOOT` (per-encounter random loot drop
+  // trong combat flow turn-based, không idempotent — drop 1 lần per kill).
+  | 'DUNGEON_RUN_REWARD';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;
