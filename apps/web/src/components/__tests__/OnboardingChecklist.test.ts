@@ -70,6 +70,7 @@ function makeChar(overrides: Partial<CharacterStatePayload> = {}): CharacterStat
     primaryElement: null,
     secondaryElements: [],
     rootPurity: 100,
+    title: null,
     ...overrides,
   };
 }

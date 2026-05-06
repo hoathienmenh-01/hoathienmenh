@@ -41,8 +41,12 @@ Tóm tắt mọi endpoint REST + WebSocket event đang có ở `@xuantoi/api`. M
 | POST   | `/character/onboard`     | Yes  | Body `{ name, sectKey: 'thanh_van' \| 'huyen_thuy' \| 'tu_la' }`. |
 | POST   | `/character/cultivate`   | Yes  | Body `{ cultivating: boolean }`. Bật/tắt Nhập Định (tick qua cron BullMQ). |
 | POST   | `/character/breakthrough` | Yes | Đột phá cảnh giới khi đủ EXP + đỉnh stage. |
+| GET    | `/character/titles`        | Yes | Phase 11.9.C — `{ owned[], catalog (26 def), equipped }`. `owned[]` sort `unlockedAt asc`. |
+| POST   | `/character/title/equip`   | Yes | Phase 11.9.C — `{ titleKey }` → set `Character.title`. 404 `TITLE_NOT_FOUND` khi key ∉ catalog; 409 `TITLE_NOT_OWNED` khi chưa unlock. Idempotent re-equip. |
+| POST   | `/character/title/unequip` | Yes | Phase 11.9.C — clear `Character.title = null`. Idempotent (no-op khi đang null). |
+| GET    | `/character/buffs`         | Yes | Phase 11.8.D — list `active[]` non-expired, auto-prune trước khi return. Sort `expiresAt asc`. Mỗi entry `{ buffKey, stacks, source, expiresAt (ISO), def }`. |
 
-Tick EXP thực hiện bởi BullMQ processor `cultivation.processor.ts`. WS event `cultivate:tick` emit per-user khi tick xong.
+Tick EXP thực hiện bởi BullMQ processor `cultivation.processor.ts`. WS event `cultivate:tick` emit per-user khi tick xong. `CharacterStatePayload.title: string \| null` (Phase 11.9.C) push qua `state:update` event để FE hiển thị title đang trang bị trong topbar.
 
 ## Combat PvE — `CombatController`
 

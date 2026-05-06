@@ -54,7 +54,11 @@
       "skillLearnFromBook": "Failed to read skill book",
       "npc": "Failed to load NPC list",
       "quest": "Quest action failed",
-      "dungeonRun": "Dungeon expedition action failed"
+      "dungeonRun": "Dungeon expedition action failed",
+      "titlesState": "Failed to load titles",
+      "titleEquip": "Failed to equip title",
+      "titleUnequip": "Failed to unequip title",
+      "buffsState": "Failed to load buff state"
     }
   },
   "locale": {
@@ -284,6 +288,7 @@
       "spiritualRoot": "Root",
       "skillBook": "Skill Book",
       "achievements": "Achievements",
+      "titles": "Titles",
       "tribulation": "Tribulation",
       "breakthrough": "Breakthrough",
       "npcs": "NPCs",
@@ -2015,6 +2020,86 @@
       "QUEST_NOT_COMPLETED": "Quest is not completed yet.",
       "QUEST_ALREADY_CLAIMED": "Reward already claimed.",
       "UNKNOWN": "Quest action failed, please retry."
+    }
+  },
+  "titles": {
+    "title": "Titles",
+    "subtitle": "Equip a title to display your standing. Only one title can be active at a time.",
+    "summary": "Unlocked: {owned}/{total}",
+    "equippedLabel": "Currently equipped",
+    "loading": "Loading titles…",
+    "empty": "No titles match the selected filter.",
+    "filter": {
+      "source": "Source",
+      "rarity": "Rarity",
+      "status": "Status",
+      "all": "All",
+      "shown": "Shown: {shown}/{total}"
+    },
+    "rarity": {
+      "common": "Common",
+      "rare": "Rare",
+      "epic": "Epic",
+      "legendary": "Legendary",
+      "mythic": "Mythic"
+    },
+    "source": {
+      "realm_milestone": "Realm",
+      "element_mastery": "Element",
+      "achievement": "Achievement",
+      "sect_rank": "Sect",
+      "event": "Event",
+      "donation": "Donation"
+    },
+    "element": {
+      "kim": "Metal",
+      "moc": "Wood",
+      "thuy": "Water",
+      "hoa": "Fire",
+      "tho": "Earth"
+    },
+    "status": {
+      "owned": "Unlocked",
+      "locked": "Locked",
+      "equipped": "Equipped"
+    },
+    "stat": {
+      "atk": "ATK",
+      "def": "DEF",
+      "hpMax": "Max HP",
+      "mpMax": "Max MP",
+      "spirit": "Spirit"
+    },
+    "flavor": {
+      "bonus": "{stat} +{pct}%",
+      "none": "No flavor bonus"
+    },
+    "button": {
+      "equip": "Equip",
+      "unequip": "Unequip",
+      "locked": "Locked",
+      "working": "Working…"
+    },
+    "toast": {
+      "equipped": "Equipped: {name}",
+      "unequipped": "Unequipped: {name}"
+    },
+    "errors": {
+      "TITLE_NOT_FOUND": "This title does not exist.",
+      "TITLE_NOT_OWNED": "You have not unlocked this title.",
+      "ALREADY_EQUIPPED": "Title is already equipped.",
+      "NOT_EQUIPPED": "No title is currently equipped.",
+      "IN_FLIGHT": "Previous action still in progress, please wait.",
+      "TITLE_UNAVAILABLE": "Title feature is not available.",
+      "NO_CHARACTER": "No character found, create one first.",
+      "INVALID_INPUT": "Invalid input.",
+      "UNKNOWN": "Title action failed, please retry."
+    }
+  },
+  "buffs": {
+    "bar": {
+      "aria": "Active buffs and debuffs",
+      "empty": "No active status."
     }
   }
 }

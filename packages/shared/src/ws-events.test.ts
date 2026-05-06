@@ -148,6 +148,7 @@ describe('ws-events', () => {
         primaryElement: null,
         secondaryElements: [],
         rootPurity: 100,
+        title: null,
       };
       expect(snap.role).toBe('PLAYER');
       expect(snap.sectKey).toBeNull();
@@ -201,6 +202,7 @@ describe('ws-events', () => {
         primaryElement: 'thuy',
         secondaryElements: ['tho', 'kim'],
         rootPurity: 80,
+        title: null,
       };
       expect(typeof snap.tribulationCooldownAt).toBe('string');
       expect(typeof snap.taoMaUntil).toBe('string');
@@ -238,11 +240,13 @@ describe('ws-events', () => {
         primaryElement: 'thuy',
         secondaryElements: ['tho', 'kim'],
         rootPurity: 80,
+        title: 'realm_kim_dan_adept',
       };
       expect(snap.spiritualRootGrade).toBe('huyen');
       expect(snap.primaryElement).toBe('thuy');
       expect(snap.secondaryElements).toEqual(['tho', 'kim']);
       expect(snap.rootPurity).toBe(80);
+      expect(snap.title).toBe('realm_kim_dan_adept');
     });
 
     it('Phase 11.3.A — accepts legacy null spiritualRoot (pre-Phase-11.3)', () => {
@@ -277,6 +281,7 @@ describe('ws-events', () => {
         primaryElement: null,
         secondaryElements: [],
         rootPurity: 100,
+        title: null,
       };
       expect(snap.spiritualRootGrade).toBeNull();
       expect(snap.primaryElement).toBeNull();

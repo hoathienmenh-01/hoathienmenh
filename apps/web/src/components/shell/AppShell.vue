@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { getTitleDef } from '@xuantoi/shared';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useBadgesStore } from '@/stores/badges';
 import { useRoute, useRouter } from 'vue-router';
+import BuffBar from './BuffBar.vue';
 import ChatPanel from './ChatPanel.vue';
 import LocaleSwitcher from './LocaleSwitcher.vue';
 
@@ -41,6 +43,18 @@ onUnmounted(() => {
 const expPct = computed(() => Math.round(game.expProgress * 100));
 const realmText = computed(() => game.realmFullName || '—');
 const cultivating = computed(() => game.character?.cultivating ?? false);
+/**
+ * Phase 11.9.C — equipped title hiển thị trong header. Server source là
+ * `Character.title` (CharacterStatePayload.title). Render `nameVi` từ
+ * catalog `TITLES` để text không phải mã key.
+ */
+const equippedTitleName = computed<string | null>(() => {
+  const key = game.character?.title;
+  if (!key) return null;
+  const def = getTitleDef(key);
+  if (!def) return null;
+  return def.nameVi;
+});
 const isStaff = computed(() => {
   const r = game.character?.role;
   return r === 'ADMIN' || r === 'MOD';
@@ -72,8 +86,22 @@ async function logout(): Promise<void> {
       <div class="text-sm text-ink-300 hidden md:block">{{ t('app.tagline') }}</div>
 
       <div class="ml-auto flex items-center gap-4 text-xs">
+        <div
+          v-if="game.character"
+          class="hidden lg:flex items-center"
+          data-testid="shell-buffbar"
+        >
+          <BuffBar />
+        </div>
         <div v-if="game.character" class="hidden md:flex flex-col items-end">
           <span class="text-ink-50 font-bold">{{ game.character.name }}</span>
+          <span
+            v-if="equippedTitleName"
+            class="text-amber-200"
+            data-testid="shell-equipped-title"
+          >
+            {{ equippedTitleName }}
+          </span>
           <span class="text-ink-300">{{ realmText }}</span>
         </div>
         <div v-if="game.character" class="w-40 hidden md:block">
@@ -255,6 +283,14 @@ async function logout(): Promise<void> {
           active-class="bg-ink-700/60 text-ink-50"
         >
           成 {{ t('shell.nav.achievements') }}
+        </RouterLink>
+        <RouterLink
+          to="/titles"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+          data-testid="shell-nav-titles"
+        >
+          號 {{ t('shell.nav.titles') }}
         </RouterLink>
         <RouterLink
           to="/npcs"

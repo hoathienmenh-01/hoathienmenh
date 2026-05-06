@@ -54,7 +54,11 @@
       "skillLearnFromBook": "Đọc bí kíp thất bại",
       "npc": "Không lấy được danh sách đạo hữu",
       "quest": "Thao tác nhiệm vụ thất bại",
-      "dungeonRun": "Thao tác phó bản thất bại"
+      "dungeonRun": "Thao tác phó bản thất bại",
+      "titlesState": "Không lấy được danh hiệu",
+      "titleEquip": "Trang bị danh hiệu thất bại",
+      "titleUnequip": "Gỡ danh hiệu thất bại",
+      "buffsState": "Không lấy được trạng thái buff"
     }
   },
   "locale": {
@@ -284,6 +288,7 @@
       "spiritualRoot": "Linh Căn",
       "skillBook": "Pháp Quyển",
       "achievements": "Thành Tựu",
+      "titles": "Danh Hiệu",
       "tribulation": "Thiên Kiếp",
       "breakthrough": "Đột Phá",
       "npcs": "Đạo Hữu",
@@ -2015,6 +2020,86 @@
       "QUEST_NOT_COMPLETED": "Nhiệm vụ chưa hoàn thành, không thể lĩnh thưởng.",
       "QUEST_ALREADY_CLAIMED": "Đã lĩnh thưởng nhiệm vụ này rồi.",
       "UNKNOWN": "Thao tác nhiệm vụ thất bại, thử lại."
+    }
+  },
+  "titles": {
+    "title": "Danh Hiệu",
+    "subtitle": "Trang bị danh hiệu để tỏ rõ đạo hành. Mỗi đạo hữu chỉ trang bị 1 danh hiệu.",
+    "summary": "Đã mở: {owned}/{total}",
+    "equippedLabel": "Đang trang bị",
+    "loading": "Đang truy vấn danh hiệu…",
+    "empty": "Không có danh hiệu phù hợp bộ lọc.",
+    "filter": {
+      "source": "Nguồn",
+      "rarity": "Phẩm",
+      "status": "Trạng thái",
+      "all": "Tất cả",
+      "shown": "Hiển: {shown}/{total}"
+    },
+    "rarity": {
+      "common": "Phàm",
+      "rare": "Linh",
+      "epic": "Bảo",
+      "legendary": "Tiên",
+      "mythic": "Thần"
+    },
+    "source": {
+      "realm_milestone": "Cảnh Giới",
+      "element_mastery": "Ngũ Hành",
+      "achievement": "Thành Tựu",
+      "sect_rank": "Tông Môn",
+      "event": "Sự Kiện",
+      "donation": "Cúng Dường"
+    },
+    "element": {
+      "kim": "Kim",
+      "moc": "Mộc",
+      "thuy": "Thuỷ",
+      "hoa": "Hoả",
+      "tho": "Thổ"
+    },
+    "status": {
+      "owned": "Đã mở",
+      "locked": "Chưa mở",
+      "equipped": "Đang trang bị"
+    },
+    "stat": {
+      "atk": "Công",
+      "def": "Phòng",
+      "hpMax": "HP tối đa",
+      "mpMax": "MP tối đa",
+      "spirit": "Linh"
+    },
+    "flavor": {
+      "bonus": "{stat} +{pct}%",
+      "none": "Không có hiệu ứng phụ"
+    },
+    "button": {
+      "equip": "Trang bị",
+      "unequip": "Gỡ bỏ",
+      "locked": "Chưa mở",
+      "working": "Đang xử lý…"
+    },
+    "toast": {
+      "equipped": "Đã trang bị: {name}",
+      "unequipped": "Đã gỡ: {name}"
+    },
+    "errors": {
+      "TITLE_NOT_FOUND": "Danh hiệu này không tồn tại.",
+      "TITLE_NOT_OWNED": "Đạo hữu chưa mở danh hiệu này.",
+      "ALREADY_EQUIPPED": "Danh hiệu đã được trang bị.",
+      "NOT_EQUIPPED": "Hiện chưa trang bị danh hiệu nào.",
+      "IN_FLIGHT": "Thao tác trước chưa xong, đợi chút.",
+      "TITLE_UNAVAILABLE": "Tính năng danh hiệu chưa khả dụng.",
+      "NO_CHARACTER": "Chưa có nhân vật, hãy khai đạo trước.",
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "UNKNOWN": "Thao tác danh hiệu thất bại, thử lại."
+    }
+  },
+  "buffs": {
+    "bar": {
+      "aria": "Trạng thái buff/debuff đang hiệu lực",
+      "empty": "Không có trạng thái nào."
     }
   }
 }
