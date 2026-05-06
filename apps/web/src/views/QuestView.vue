@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
+import { findDungeonsForQuestPlaceholder } from '@xuantoi/shared';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useQuestStore } from '@/stores/quest';
@@ -62,6 +63,21 @@ function isClaimed(q: QuestProgressView): boolean {
 
 function isLocked(q: QuestProgressView): boolean {
   return q.status === 'LOCKED';
+}
+
+/**
+ * Phase 12 Story discoverability hint — cho `kill+monster` step, resolve
+ * dungeon nào player có thể gặp `step.targetId` qua DungeonRun. Dùng shared
+ * helper `findDungeonsForQuestPlaceholder` (resolve cả direct key match lẫn
+ * `MonsterDef.questTargetIds` alias). Trả về string formatted "name1, name2"
+ * hoặc `null` nếu không có dungeon nào (orphan placeholder hoặc step không
+ * phải kill+monster).
+ */
+function dungeonHintFor(step: QuestProgressView['steps'][number]): string | null {
+  if (step.kind !== 'kill' || step.targetType !== 'monster') return null;
+  const dungeons = findDungeonsForQuestPlaceholder(step.targetId);
+  if (dungeons.length === 0) return null;
+  return dungeons.map((d) => d.name).join(', ');
 }
 
 async function onAccept(q: QuestProgressView): Promise<void> {
@@ -327,6 +343,13 @@ onMounted(async () => {
                   </span>
                   <span class="ml-2 text-amber-200">
                     {{ step.currentCount }}/{{ step.count }}
+                  </span>
+                  <span
+                    v-if="dungeonHintFor(step)"
+                    class="block ml-6 text-[11px] text-emerald-300/80"
+                    :data-testid="`quest-step-hint-${q.key}-${step.id}`"
+                  >
+                    📍 {{ t('quest.stepHint.foundIn', { dungeons: dungeonHintFor(step) }) }}
                   </span>
                 </li>
               </ul>

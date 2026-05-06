@@ -1976,6 +1976,9 @@
       "explore": "Explore",
       "choice": "Choose"
     },
+    "stepHint": {
+      "foundIn": "Found in: {dungeons}"
+    },
     "status": {
       "LOCKED": "Locked",
       "AVAILABLE": "Available",

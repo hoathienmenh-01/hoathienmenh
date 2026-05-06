@@ -490,6 +490,47 @@ export function dungeonsByRegion(regionKey: string): DungeonDef[] {
   return DUNGEONS.filter((d) => d.regionKey === regionKey);
 }
 
+/**
+ * Phase 12 Story discoverability helper — trả về danh sách dungeon mà player
+ * có thể gặp `placeholderId` qua `DungeonRunService.nextEncounter`. Resolve
+ * theo 2 đường:
+ *
+ *  1. **Direct key match**: dungeon `monsters[]` chứa thẳng `placeholderId`
+ *     (vd 8 placeholder Phase 12 Story late-game `tich_linh_anh` /
+ *     `tam_ma_anh` / ... — wire qua `MonsterDef.key === placeholder`).
+ *  2. **Alias match qua `MonsterDef.questTargetIds`**: dungeon `monsters[]`
+ *     chứa monster có `questTargetIds.includes(placeholderId)` (vd 7
+ *     placeholder PR-6 critical-path: `son_thu_lon` → alias `son_thu`,
+ *     `da_quan` → alias `son_tac_dau_muc`, ...).
+ *
+ * Dùng cho FE QuestView "📍 Tìm tại: {dungeonNames}" hint cho `kill+monster`
+ * step. Server-authoritative — FE chỉ render từ shared catalog data, KHÔNG
+ * tự suy luận. Dedupe theo `dungeon.key` (1 placeholder có thể alias qua N
+ * monster cùng dungeon).
+ *
+ * Trả về mảng rỗng nếu placeholder chưa wire vào dungeon nào (orphan
+ * placeholder — invariant test `dungeons-balance.test.ts` ngăn drift).
+ */
+export function findDungeonsForQuestPlaceholder(
+  placeholderId: string,
+): DungeonDef[] {
+  const found = new Map<string, DungeonDef>();
+  for (const d of DUNGEONS) {
+    for (const monsterKey of d.monsters) {
+      if (monsterKey === placeholderId) {
+        found.set(d.key, d);
+        break;
+      }
+      const m = monsterByKey(monsterKey);
+      if (m?.questTargetIds?.includes(placeholderId)) {
+        found.set(d.key, d);
+        break;
+      }
+    }
+  }
+  return Array.from(found.values());
+}
+
 export type SectKey = 'thanh_van' | 'huyen_thuy' | 'tu_la';
 
 /**

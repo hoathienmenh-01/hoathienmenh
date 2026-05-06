@@ -76,6 +76,7 @@ const messages = {
         grind: 'Grind',
       },
       stepKind: { kill: 'Diệt', collect: 'Thu', talk: 'Talk', explore: 'Explore', choice: 'Chọn' },
+      stepHint: { foundIn: 'Tìm tại: {dungeons}' },
       status: {
         LOCKED: 'Khoá',
         AVAILABLE: 'Sẵn',
@@ -373,5 +374,130 @@ describe('QuestView — toggle expand', () => {
     expect(w.find('[data-testid="quest-details-q1"]').exists()).toBe(true);
     expect(w.find('[data-testid="quest-details-q1"]').text()).toContain('100');
     expect(w.find('[data-testid="quest-details-q1"]').text()).toContain('1500');
+  });
+});
+
+describe('QuestView — Phase 12 Story dungeon hint cho kill+monster step', () => {
+  // Hint render qua shared helper `findDungeonsForQuestPlaceholder`. Dùng
+  // monster key thật từ catalog để test resolve thật (không mock helper) —
+  // close E2E loop catalog → helper → FE render.
+
+  it('kill+monster step với targetId wired vào dungeon → render "Tìm tại: <dungeon name>" hint', async () => {
+    fetchQuestsMock.mockResolvedValue([
+      buildQuest({
+        key: 'q_late_game',
+        status: 'ACCEPTED',
+        steps: [
+          {
+            id: 'step1',
+            // `tich_linh_anh` lvl 5 wire vào `hac_lam` dungeon (PR #439).
+            kind: 'kill',
+            description: 'Diệt 5 Tịch Linh Ảnh',
+            targetType: 'monster',
+            targetId: 'tich_linh_anh',
+            count: 5,
+            currentCount: 2,
+            done: false,
+          },
+        ],
+      }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="quest-toggle-q_late_game"]').trigger('click');
+    await flushPromises();
+    const hint = w.find(
+      '[data-testid="quest-step-hint-q_late_game-step1"]',
+    );
+    expect(hint.exists()).toBe(true);
+    // Dungeon `hac_lam` có name "Hắc Lâm" trong catalog.
+    expect(hint.text()).toContain('Hắc Lâm');
+    expect(hint.text()).toContain('Tìm tại');
+  });
+
+  it('kill+monster step với targetId qua questTargetIds alias → resolve hint qua alias', async () => {
+    fetchQuestsMock.mockResolvedValue([
+      buildQuest({
+        key: 'q_pr6',
+        status: 'ACCEPTED',
+        steps: [
+          {
+            id: 'step1',
+            // `son_thu` placeholder của PR-6 critical-path — alias trên
+            // `son_thu_lon` (lvl 1, wire vào `son_coc` dungeon).
+            kind: 'kill',
+            description: 'Diệt 3 Sơn Thú',
+            targetType: 'monster',
+            targetId: 'son_thu',
+            count: 3,
+            currentCount: 0,
+            done: false,
+          },
+        ],
+      }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="quest-toggle-q_pr6"]').trigger('click');
+    await flushPromises();
+    const hint = w.find('[data-testid="quest-step-hint-q_pr6-step1"]');
+    expect(hint.exists()).toBe(true);
+    expect(hint.text()).toContain('Tìm tại');
+  });
+
+  it('kill+monster step với targetId orphan → KHÔNG render hint (no dungeon match)', async () => {
+    fetchQuestsMock.mockResolvedValue([
+      buildQuest({
+        key: 'q_orphan',
+        status: 'ACCEPTED',
+        steps: [
+          {
+            id: 'step1',
+            kind: 'kill',
+            description: 'Diệt orphan',
+            targetType: 'monster',
+            targetId: 'this_monster_not_in_any_dungeon',
+            count: 1,
+            currentCount: 0,
+            done: false,
+          },
+        ],
+      }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="quest-toggle-q_orphan"]').trigger('click');
+    await flushPromises();
+    expect(
+      w.find('[data-testid="quest-step-hint-q_orphan-step1"]').exists(),
+    ).toBe(false);
+  });
+
+  it('non-kill step (vd talk) → KHÔNG render hint', async () => {
+    fetchQuestsMock.mockResolvedValue([
+      buildQuest({
+        key: 'q_talk',
+        status: 'ACCEPTED',
+        steps: [
+          {
+            id: 'step1',
+            kind: 'talk',
+            description: 'Đối thoại sư phụ',
+            targetType: 'npc',
+            targetId: 'npc_master',
+            count: 1,
+            currentCount: 0,
+            done: false,
+          },
+        ],
+      }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="quest-toggle-q_talk"]').trigger('click');
+    await flushPromises();
+    expect(
+      w.find('[data-testid="quest-step-hint-q_talk-step1"]').exists(),
+    ).toBe(false);
   });
 });

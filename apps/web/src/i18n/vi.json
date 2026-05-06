@@ -1976,6 +1976,9 @@
       "explore": "Khám phá",
       "choice": "Chọn lựa"
     },
+    "stepHint": {
+      "foundIn": "Tìm tại: {dungeons}"
+    },
     "status": {
       "LOCKED": "Khoá",
       "AVAILABLE": "Có thể nhận",

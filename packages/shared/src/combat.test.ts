@@ -8,6 +8,7 @@ import {
   STAMINA_REGEN_PER_TICK,
   monsterByKey,
   dungeonByKey,
+  findDungeonsForQuestPlaceholder,
   skillByKey,
   skillsForSect,
   rollDamage,
@@ -458,6 +459,98 @@ describe('Monster questTargetIds (Phase 12 Story PR-6)', () => {
         m?.questTargetIds,
         `late-game monster ${placeholder} questTargetIds`,
       ).toBeUndefined();
+    }
+  });
+});
+
+describe('findDungeonsForQuestPlaceholder (Phase 12 Story discoverability helper)', () => {
+  // Helper resolve dungeon nào player có thể gặp 1 quest placeholder qua
+  // `DungeonRunService.nextEncounter`. Resolve theo 2 đường: direct key match
+  // HOẶC alias match qua `MonsterDef.questTargetIds`. Dùng cho FE QuestView
+  // "📍 Tìm tại: ..." hint cho `kill+monster` step.
+
+  it('resolve qua direct key match — 8 late-game placeholder reachable', () => {
+    // Phase 12 Story Foundation Late-game encounter wire (PR #439) đã wire 8
+    // placeholder vào dungeon `monsters[]` array. Mỗi placeholder phải resolve
+    // ≥ 1 dungeon — nếu không, hint UI sẽ trống (player không biết đi đâu).
+    const lateGamePlaceholders = [
+      'tich_linh_anh',
+      'tam_ma_anh',
+      'tich_linh_quy',
+      'tich_thien_sat_thu',
+      'tam_ma_nguyen_anh',
+      'chap_niem_anh',
+      'ky_uc_meo',
+      'huyet_anh',
+    ];
+    for (const placeholder of lateGamePlaceholders) {
+      const dungeons = findDungeonsForQuestPlaceholder(placeholder);
+      expect(
+        dungeons.length,
+        `late-game ${placeholder} dungeon count`,
+      ).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('resolve qua questTargetIds alias — 7 PR-6 critical-path placeholder reachable', () => {
+    // PR #432 (Phase 12 Story PR-6) wire 7 placeholder qua
+    // `MonsterDef.questTargetIds` alias trên monster đã có sẵn (vd
+    // `son_thu_lon` có alias `son_thu`). Helper phải resolve được cả 2 đường
+    // (direct key + alias) để FE hint không bỏ sót quest critical-path.
+    const aliasPlaceholders = [
+      'son_thu',
+      'son_tac_dau_muc',
+      'bac_lang_quan',
+      'hac_moc_yeu',
+      'kim_son_yeu',
+      'kim_dan_yeu_thu',
+      'hoang_tho_quy',
+    ];
+    for (const placeholder of aliasPlaceholders) {
+      const dungeons = findDungeonsForQuestPlaceholder(placeholder);
+      expect(
+        dungeons.length,
+        `alias ${placeholder} dungeon count`,
+      ).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('orphan placeholder → mảng rỗng (defensive)', () => {
+    // Placeholder không tồn tại trong catalog (vd typo/dead code) → helper
+    // trả về `[]` chứ không throw. FE render hint placeholder text fallback.
+    const dungeons = findDungeonsForQuestPlaceholder('this_placeholder_does_not_exist');
+    expect(dungeons).toEqual([]);
+  });
+
+  it('dedupe theo dungeon.key — 1 placeholder qua N alias cùng dungeon → 1 entry', () => {
+    // Edge case: nếu 2 monster cùng dungeon đều có alias trỏ tới placeholder,
+    // helper phải dedupe theo `dungeon.key` (không trả về 2 entry trùng).
+    // Hiện tại catalog chưa có case này nhưng test backstop phòng future drift.
+    const dungeons = findDungeonsForQuestPlaceholder('son_thu');
+    const uniqueKeys = new Set(dungeons.map((d) => d.key));
+    expect(dungeons.length, 'dedupe parity').toBe(uniqueKeys.size);
+  });
+
+  it('verify region match cho 8 late-game placeholder (regression cho PR #439 wire)', () => {
+    // PR #439 wire 8 placeholder vào 4 dungeon theo region map từ #433. Test
+    // backstop verify mapping concrete (nếu data drift, helper trả sai).
+    const expectedMapping: Record<string, string[]> = {
+      tich_linh_anh: ['hac_lam'],
+      tam_ma_anh: ['hac_lam'],
+      tich_linh_quy: ['moc_huyen_lam'],
+      ky_uc_meo: ['moc_huyen_lam'],
+      tich_thien_sat_thu: ['kim_son_mach'],
+      tam_ma_nguyen_anh: ['hoang_tho_huyet'],
+      chap_niem_anh: ['hoang_tho_huyet'],
+      huyet_anh: ['hoang_tho_huyet'],
+    };
+    for (const [placeholder, expectedDungeons] of Object.entries(expectedMapping)) {
+      const dungeons = findDungeonsForQuestPlaceholder(placeholder);
+      const dungeonKeys = dungeons.map((d) => d.key).sort();
+      expect(
+        dungeonKeys,
+        `${placeholder} region mapping`,
+      ).toEqual(expectedDungeons.sort());
     }
   });
 });
