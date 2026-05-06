@@ -601,6 +601,39 @@ Seed Phase 12.4 (5 monsters):
 - BOSS `tho_dia_lao_tu` (hoang_tho_huyet final): `than_lan_giap`, `yeu_phach_giap`, `phu_van_ngoc`, `cuu_huyen_dan`, `skill_book_thach_giap_ho_than`.
 - BOSS `cuu_la_huyen_quan` (cuu_la_dien endgame): `than_dan`, `tien_huyen_kiem`, `tien_huyen_giap`, `tien_kim_sa`, `cuu_thien_dan`, `linh_can_dan`.
 
+**Phase 12.5 — Late-game story monster tuning** (xem `dungeons-balance.test.ts` describe `Phase 12.5 late-game story monster balance`):
+
+8 placeholder Trúc Cơ → Nguyên Anh story (`tich_linh_anh`, `tam_ma_anh`, `tich_linh_quy`, `tich_thien_sat_thu`, `tam_ma_nguyen_anh`, `chap_niem_anh`, `ky_uc_meo`, `huyet_anh`) đã wire vào dungeon ở PR #439, stat catalog seed minimal. Phase 12.5 verify HP/ATK/DEF/SPD/level + monsterType match realm tier dungeon placement, thêm lootTable override cho ELITE/BOSS theo convention §5.4 trên.
+
+Classification + tuning rationale:
+
+| Monster | Dungeon | Realm tier | Type | Level | HP / ATK / DEF / SPD | Old → New (Phase 12.5) | Reason |
+|---|---|---|---|---|---|---|---|
+| `tich_linh_anh` | hac_lam | Trúc Cơ early | SPIRIT | 5 | 130 / 20 / 6 / 11 | hp 150→130, def 8→6 | Soften early entry. Killable ~2-3 hit cho Trúc Cơ player (per spec). SPIRIT intangible flavor. |
+| `tam_ma_anh` | hac_lam | Trúc Cơ early | SPIRIT | 6 | 215 / 30 / 12 / 10 | hp 195→215, atk 26→30, def 10→12, exp 130→145, lt 42→48 | Match peer `thi_quy` lvl 6 SPIRIT (200/28/12). "Tâm ma story pressure" → khó hơn `tich_linh_anh`. |
+| `tich_linh_quy` | moc_huyen_lam | Trúc Cơ mid | SPIRIT | 7 | 250 / 32 / 14 / 10 | (unchanged) | Đã nằm giữa lvl 6 (180) và lvl 8 (320). "Khó vừa". |
+| `tich_thien_sat_thu` | kim_son_mach | Kim Đan | **ELITE** | 11 | 480 / 95 / 22 / 17 | **HUMANOID→ELITE**, hp 580→480, atk 75→95, def 24→22, speed 14→17, exp 450→480, lt 130→145 +lootTable | Burst-glass assassin. Speed 17 = max in kim_son_mach (cùng `kim_dieu_thuong_phong`). Promote ELITE để có lootTable override per spec. |
+| `tam_ma_nguyen_anh` | hoang_tho_huyet | Nguyên Anh | **ELITE** | 15 | 1100 / 110 / 56 / 11 | **SPIRIT→ELITE**, lvl 14→15, hp 940→1100, def 38→56, exp 740→880, lt 200→235 +lootTable | Tank/pressure flavor. Mid-tier giữa lvl 13 ELITE `hoang_tho_cu_yeu` (880) và lvl 17 BOSS `thach_long_co_giap` (1500). |
+| `chap_niem_anh` | hoang_tho_huyet | Nguyên Anh | SPIRIT | 15 | 1050 / 110 / 42 / 12 | (unchanged) | Stat trung-cao SPIRIT. Combat runtime chưa support debuff/control flavor mà placeholder name ngụ ý → chờ Phase 13+ status effect system mới re-tune. |
+| `ky_uc_meo` | moc_huyen_lam | (Nguyên Anh stat) | SPIRIT | 14 | 920 / 95 / 36 / 11 | (unchanged) | **STORY-HARD INTENTIONAL TIER GAP**. Nguyên Anh-tier stat trong Trúc Cơ dungeon `moc_huyen_lam`. Quest `nguyen_anh_grind_01` (requiredRealmOrder 4) yêu cầu kill 6 → monster phải Nguyên Anh-tier. Trade-off: Trúc Cơ player vào dungeon sẽ wipe ở encounter cuối (design intentional — không phải farm spot cho realm Trúc Cơ). Nguyên Anh player có thể clear toàn dungeon dễ dàng. |
+| `huyet_anh` | hoang_tho_huyet | Nguyên Anh endgame | **BOSS** | 16 | 1700 / 145 / 70 / 14 | **HUMANOID→BOSS**, lvl 15→16, hp 1080→1700, atk 115→145, def 40→70, speed 13→14, exp 880→1350, lt 245→380 +lootTable | "Hardest in 8-pack" per spec. Tank ~10+ hit cho Nguyên Anh player đúng tier. Mid-tier giữa lvl 17 BOSS `thach_long_co_giap` (1500) và lvl 20 BOSS `tho_dia_lao_tu` final (2200). |
+
+Loot override Phase 12.5 (3 monsters mới — total 12 entries):
+- ELITE `tich_thien_sat_thu` (kim_son_mach): `than_phong_kiem` w7 / `tinh_thiet` w22 / `co_thien_dan` w14 / `skill_book_kim_quang_tram` w6. Sum 49. Max ratio 22/49 ≈ 45%. Khác `kim_dieu_thuong_phong`: assassin không drop `co_thien_dan` weight cao (giữ thị trường pill ổn định).
+- ELITE `tam_ma_nguyen_anh` (hoang_tho_huyet): `yeu_phach_giap` w7 / `phu_van_ngoc` w25 / `cuu_huyen_dan` w16 / `skill_book_thach_giap_ho_than` w6. Sum 54. Max ratio 25/54 ≈ 46%. Khác `tho_dia_lao_tu` BOSS: ELITE không drop `than_lan_giap` (giữ TIEN tho-armor cho BOSS final).
+- BOSS `huyet_anh` (hoang_tho_huyet endgame story): `huyet_phach_giap` w5 / `mau_huyet_dai` w5 / `phu_van_ngoc` w24 / `cuu_huyen_dan` w18 / `skill_book_thach_giap_ho_than` w6 / `linh_can_dan` w2. Sum 60. Max ratio 24/60 = 40%. `linh_can_dan` rare pity ~3.3% parity với `cuu_la_huyen_quan` endgame BOSS (~3.2%).
+
+Invariant (xem `dungeons-balance.test.ts` `Phase 12.5 late-game story monster balance`):
+- Tất cả 8 key tồn tại + reachable trong dungeon đã map (regression PR #439).
+- HP/ATK > 0, def ≥ 0, speed > 0, expDrop/linhThachDrop > 0.
+- Level nằm trong range hợp lý theo tier (Trúc Cơ 4-9, Kim Đan 10-13, Nguyên Anh 13-18).
+- `monsterType` khớp classification SPIRIT/HUMANOID/ELITE/BOSS.
+- ELITE/BOSS có `lootTable` length > 0; SPIRIT/HUMANOID không có (convention §5.4).
+- LootTable itemKey resolve qua `itemByKey`, weight > 0, qtyMin ≥ 1, qtyMin ≤ qtyMax.
+- `huyet_anh` BOSS hp ≥ tất cả 7 placeholder khác (hardest in pack).
+- `tich_thien_sat_thu` burst-glass: atk ≥ peer ELITE `kim_dieu_thuong_phong` − 15, speed ≥ peer, hp < peer.
+- 3 SPIRIT Trúc Cơ (`tich_linh_anh`, `tam_ma_anh`, `tich_linh_quy`) def ≤ 1.2 × peer BEAST/HUMANOID cùng level (intangible flavor).
+
 ### 5.4 Gem socket budget (phase 11.4.A)
 
 **Phase 11.4.A catalog đã có (session 9r-10 PR — `packages/shared/src/gems.ts`)**:

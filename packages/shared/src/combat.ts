@@ -291,30 +291,109 @@ export const MONSTERS: readonly MonsterDef[] = [
   // là entity riêng (linh ảnh / tâm ma / sát thủ tâm cảnh) — `MonsterDef.key`
   // match thẳng placeholder để kill hook auto-track không cần wire alias.
   //
-  // Stat curve theo SPIRIT/HUMANOID tier mid (BALANCE_MODEL.md §5.1):
-  //   - Trúc Cơ realm 2 (level 5-7): exp 100-175, lt 32-55.
-  //   - Kim Đan realm 3 (level 11): exp ~450, lt ~130.
-  //   - Nguyên Anh realm 4 (level 14-15): exp 720-880, lt 195-245.
+  // Stat curve theo SPIRIT/HUMANOID tier mid (BALANCE_MODEL.md §5.1) +
+  // **Phase 12.5 dungeon balance tuning** (xem BALANCE_MODEL.md §5.4
+  // "Phase 12.5 — Late-game story monster tuning" appendix):
+  //   - Trúc Cơ realm 2 (level 5-7): exp 100-175, lt 32-55. SPIRIT mềm hơn
+  //     BEAST cùng level (đại diện cho "linh ảnh / tâm ma" intangible).
+  //   - Kim Đan realm 3 (level 11): ELITE assassin burst-glass (low HP / high
+  //     ATK + speed = 17 max in dungeon).
+  //   - Nguyên Anh realm 4 (level 15-16): ELITE tâm ma tank/pressure (def
+  //     cao) + BOSS huyết khí endgame (~10+ hit player đúng tier).
   //
-  // KHÔNG đặt vào dungeon (catalog only) — sẽ thêm vào encounter / dungeon
-  // template ở Phase 12.2.B (`DungeonTemplate` runtime) hoặc story-driven
-  // encounter sau. Catalog đủ để combat kill hook auto-track khi monster
-  // được spawn qua admin harness hoặc encounter mới.
+  // ELITE/BOSS có `lootTable` override (themed equipment + skill_book pity)
+  // theo convention Phase 12.4 (xem `items-monster-loot.test.ts`).
   // ═════════════════════════════════════════════════════════════════════
 
-  // Trúc Cơ tier (realm 2) — Linh Tuyền Động / Tâm Cảnh / Vô Trụ Cốc spirits
-  { key: 'tich_linh_anh',     name: 'Tịch Linh Ảnh',     level: 5,  hp: 150,  atk: 20, def: 8,  speed: 11, expDrop: 100, linhThachDrop: 32, element: null,  monsterType: 'SPIRIT',   regionKey: 'hac_lam' },
-  { key: 'tam_ma_anh',        name: 'Tâm Ma Ảnh',        level: 6,  hp: 195,  atk: 26, def: 10, speed: 10, expDrop: 130, linhThachDrop: 42, element: null,  monsterType: 'SPIRIT',   regionKey: 'hac_lam' },
+  // Trúc Cơ tier (realm 2) — Linh Tuyền Động / Tâm Cảnh / Vô Trụ Cốc spirits.
+  // SPIRIT type → "linh ảnh / tâm ma" intangible: HP/DEF nhẹ hơn BEAST
+  // cùng level. Phase 12.5 nerf nhẹ tich_linh_anh (hp 150→130, def 8→6) để
+  // killable ~2-3 hit cho Trúc Cơ early; bump tam_ma_anh (hp 195→215, atk
+  // 26→30, def 10→12) để khó hơn tich_linh_anh + match peer thi_quy lvl 6
+  // SPIRIT (hp 200/28/12) — story tâm ma pressure.
+  { key: 'tich_linh_anh',     name: 'Tịch Linh Ảnh',     level: 5,  hp: 130,  atk: 20, def: 6,  speed: 11, expDrop: 100, linhThachDrop: 32, element: null,  monsterType: 'SPIRIT',   regionKey: 'hac_lam' },
+  { key: 'tam_ma_anh',        name: 'Tâm Ma Ảnh',        level: 6,  hp: 215,  atk: 30, def: 12, speed: 10, expDrop: 145, linhThachDrop: 48, element: null,  monsterType: 'SPIRIT',   regionKey: 'hac_lam' },
   { key: 'tich_linh_quy',     name: 'Tịch Linh Quỷ',     level: 7,  hp: 250,  atk: 32, def: 14, speed: 10, expDrop: 175, linhThachDrop: 55, element: 'moc', monsterType: 'SPIRIT',   regionKey: 'moc_huyen_lam' },
 
-  // Kim Đan tier (realm 3) — Tịch Thiên Điện assassins (HUMANOID, kim đan)
-  { key: 'tich_thien_sat_thu',name: 'Tịch Thiên Sát Thủ',level: 11, hp: 580,  atk: 75, def: 24, speed: 14, expDrop: 450, linhThachDrop: 130,element: 'kim', monsterType: 'HUMANOID', regionKey: 'kim_son_mach' },
+  // Kim Đan tier (realm 3) — Tịch Thiên Điện assassin (ELITE kim_dan).
+  // Phase 12.5 promote HUMANOID→ELITE + burst-glass tuning (hp 580→480, atk
+  // 75→95, speed 14→17 = max in kim_son_mach for assassin agility, def
+  // 24→22 thinner armor) + add lootTable override (TIEN kim weapon
+  // `than_phong_kiem` shared với kim_dieu_thuong_phong + tinh_thiet boost +
+  // skill_book_kim_quang_tram pity). Player Kim Đan đối mặt burst nhưng có
+  // thể killable 4-5 hit nếu đủ atk.
+  { key: 'tich_thien_sat_thu',name: 'Tịch Thiên Sát Thủ',level: 11, hp: 480,  atk: 95, def: 22, speed: 17, expDrop: 480, linhThachDrop: 145,element: 'kim', monsterType: 'ELITE', regionKey: 'kim_son_mach',
+    lootTable: [
+      // Phase 12.5 — ELITE override: bias toward themed kim weapon + tinh_thiet
+      // boost (qty 2-5 vs dungeon 1-3). skill_book_kim_quang_tram pity weight 6
+      // (vs dungeon 3) cho assassin kill chain. Khác kim_dieu_thuong_phong:
+      // assassin không drop co_thien_dan (giữ thị trường pill ổn định).
+      { itemKey: 'than_phong_kiem', weight: 7, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'tinh_thiet', weight: 22, qtyMin: 2, qtyMax: 5 },
+      { itemKey: 'co_thien_dan', weight: 14, qtyMin: 1, qtyMax: 2 },
+      { itemKey: 'skill_book_kim_quang_tram', weight: 6, qtyMin: 1, qtyMax: 1 },
+    ],
+  },
 
-  // Nguyên Anh tier (realm 4) — tâm ma / ký ức / chấp niệm / huyết khí
-  { key: 'tam_ma_nguyen_anh', name: 'Tâm Ma Nguyên Anh', level: 14, hp: 940,  atk: 100,def: 38, speed: 11, expDrop: 740, linhThachDrop: 200,element: null,  monsterType: 'SPIRIT',   regionKey: 'hoang_tho_huyet' },
-  { key: 'chap_niem_anh',     name: 'Chấp Niệm Ảnh',     level: 15, hp: 1050, atk: 110,def: 42, speed: 12, expDrop: 850, linhThachDrop: 230,element: null,  monsterType: 'SPIRIT',   regionKey: 'hoang_tho_huyet' },
-  { key: 'ky_uc_meo',         name: 'Ký Ức Méo',         level: 14, hp: 920,  atk: 95, def: 36, speed: 11, expDrop: 720, linhThachDrop: 195,element: 'moc', monsterType: 'SPIRIT',   regionKey: 'moc_huyen_lam' },
-  { key: 'huyet_anh',         name: 'Huyết Ảnh',         level: 15, hp: 1080, atk: 115,def: 40, speed: 13, expDrop: 880, linhThachDrop: 245,element: null,  monsterType: 'HUMANOID', regionKey: 'hoang_tho_huyet' },
+  // Nguyên Anh tier (realm 4) — tâm ma / ký ức / chấp niệm / huyết khí.
+  //
+  // tam_ma_nguyen_anh: SPIRIT→ELITE promotion (Phase 12.5). Lvl 14→15, hp
+  // 940→1100, def 38→56 cho tank/pressure flavor. Mid-tier giữa lvl 13 ELITE
+  // hoang_tho_cu_yeu (hp 880) và lvl 17 BOSS thach_long_co_giap (hp 1500).
+  // +lootTable: yeu_phach_giap (shared với tho_dia_lao_tu) + phu_van_ngoc
+  // boost + cuu_huyen_dan (TIEN pill) + skill_book_thach_giap_ho_than pity.
+  //
+  // chap_niem_anh: giữ nguyên — SPIRIT mid Nguyên Anh stat trung-cao
+  // (combat runtime chưa support debuff/control flavor mà placeholder name
+  // ngụ ý; chờ Phase 13+ status effect system mới wire — lúc đó re-tune).
+  //
+  // ky_uc_meo: **giữ nguyên** stat lvl 14 SPIRIT (Nguyên Anh tier) trong
+  // moc_huyen_lam (recommendedRealm `truc_co`) — **STORY-HARD ENCOUNTER
+  // INTENTIONAL TIER GAP**. Quest `nguyen_anh_grind_01` (requiredRealmOrder
+  // 4) yêu cầu kill 6 ky_uc_meo nên monster phải Nguyên Anh-tier; nhưng
+  // moc_huyen_lam là Trúc Cơ dungeon. Trade-off: Trúc Cơ player vào dungeon
+  // sẽ wipe ở encounter cuối ky_uc_meo — design intentional ("story phản
+  // chiếu nỗi đau sư tỷ" — không phải farm spot cho realm Trúc Cơ).
+  // Nguyên Anh player có thể clear toàn dungeon dễ dàng (acceptable: kim
+  // dan/nguyên anh player thường skip Trúc Cơ dungeon, chỉ vào để kill
+  // ky_uc_meo cho story quest). Document ở BALANCE_MODEL §5.4 appendix.
+  //
+  // huyet_anh: HUMANOID→BOSS promotion (Phase 12.5). Lvl 15→16, hp
+  // 1080→1700, atk 115→145, def 40→70, speed 13→14, exp/lt buff. Endgame
+  // story BOSS "hardest in 8-pack" — tank ~10+ hit cho Nguyên Anh player.
+  // Mid-tier giữa lvl 17 BOSS thach_long_co_giap (1500) và lvl 20 BOSS
+  // tho_dia_lao_tu final (2200). +lootTable: themed huyết equipment
+  // (huyet_phach_giap + mau_huyet_dai) + phu_van_ngoc + cuu_huyen_dan +
+  // skill_book pity + linh_can_dan rare pity (parity cuu_la_huyen_quan
+  // endgame BOSS, weight 2/60 ≈ 3.3%).
+  { key: 'tam_ma_nguyen_anh', name: 'Tâm Ma Nguyên Anh', level: 15, hp: 1100, atk: 110, def: 56, speed: 11, expDrop: 880, linhThachDrop: 235, element: null,  monsterType: 'ELITE', regionKey: 'hoang_tho_huyet',
+    lootTable: [
+      // Phase 12.5 — ELITE override: tank tâm ma pressure → tho-themed armor
+      // + phu_van_ngoc boost + skill_book pity. Không drop linh_can_dan (giữ
+      // rare pity cho BOSS huyet_anh + cuu_la_huyen_quan endgame only).
+      { itemKey: 'yeu_phach_giap', weight: 7, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'phu_van_ngoc', weight: 25, qtyMin: 2, qtyMax: 4 },
+      { itemKey: 'cuu_huyen_dan', weight: 16, qtyMin: 2, qtyMax: 3 },
+      { itemKey: 'skill_book_thach_giap_ho_than', weight: 6, qtyMin: 1, qtyMax: 1 },
+    ],
+  },
+  { key: 'chap_niem_anh',     name: 'Chấp Niệm Ảnh',     level: 15, hp: 1050, atk: 110, def: 42, speed: 12, expDrop: 850, linhThachDrop: 230, element: null,  monsterType: 'SPIRIT',   regionKey: 'hoang_tho_huyet' },
+  { key: 'ky_uc_meo',         name: 'Ký Ức Méo',         level: 14, hp: 920,  atk: 95,  def: 36, speed: 11, expDrop: 720, linhThachDrop: 195, element: 'moc', monsterType: 'SPIRIT',   regionKey: 'moc_huyen_lam' },
+  { key: 'huyet_anh',         name: 'Huyết Ảnh',         level: 16, hp: 1700, atk: 145, def: 70, speed: 14, expDrop: 1350, linhThachDrop: 380, element: null,  monsterType: 'BOSS', regionKey: 'hoang_tho_huyet',
+    lootTable: [
+      // Phase 12.5 — BOSS override (story endgame hardest in 8-pack): themed
+      // huyết equipment (huyet_phach_giap + mau_huyet_dai) weight 5 mỗi (TIEN
+      // tier rare drop). phu_van_ngoc boost qty 2-4. cuu_huyen_dan pity 18.
+      // skill_book pity 6. linh_can_dan rare pity weight 2 (~3.3%) parity
+      // với cuu_la_huyen_quan endgame BOSS.
+      { itemKey: 'huyet_phach_giap', weight: 5, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'mau_huyet_dai', weight: 5, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'phu_van_ngoc', weight: 24, qtyMin: 2, qtyMax: 4 },
+      { itemKey: 'cuu_huyen_dan', weight: 18, qtyMin: 2, qtyMax: 3 },
+      { itemKey: 'skill_book_thach_giap_ho_than', weight: 6, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'linh_can_dan', weight: 2, qtyMin: 1, qtyMax: 1 },
+    ],
+  },
 ];
 
 export function monsterByKey(key: string): MonsterDef | undefined {

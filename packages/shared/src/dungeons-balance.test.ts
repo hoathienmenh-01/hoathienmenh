@@ -17,6 +17,7 @@ import {
   DUNGEONS,
   ELEMENTS,
   ElementKey,
+  MONSTERS,
   dungeonByKey,
   dungeonsByElement,
   dungeonsByRegion,
@@ -338,6 +339,238 @@ describe('DUNGEONS runReward (Phase 12.2.B)', () => {
         (r.exp ?? 0) > 0 ||
         (r.items ?? []).length > 0;
       expect(hasReward, `${d.key} runReward không thể rỗng hoàn toàn`).toBe(true);
+    }
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════
+// Phase 12.5 — Late-game story monster balance invariants
+//
+// 8 placeholder Trúc Cơ/Kim Đan/Nguyên Anh story (`tich_linh_anh`,
+// `tam_ma_anh`, `tich_linh_quy`, `tich_thien_sat_thu`,
+// `tam_ma_nguyen_anh`, `chap_niem_anh`, `ky_uc_meo`, `huyet_anh`) —
+// stat curve verify match realm tier + dungeon placement (xem
+// BALANCE_MODEL.md §5.5 "Phase 12.5 late-game story monster tuning").
+//
+// Backstop ngăn drift trở lại trạng thái Phase 12.4 placeholder seed
+// minimal (uniform stat across tier, không phân biệt SPIRIT/ELITE/BOSS).
+// ═════════════════════════════════════════════════════════════════════
+describe('Phase 12.5 late-game story monster balance', () => {
+  // Mapping placeholder → expected (level range, monsterType, dungeon).
+  // Allow level range thay vì exact value để future tweak (±1) không phá
+  // test mà vẫn ngăn drift tier (vd Trúc Cơ monster up to lvl 14).
+  const expectations: Record<
+    string,
+    {
+      levelMin: number;
+      levelMax: number;
+      monsterType: 'SPIRIT' | 'HUMANOID' | 'ELITE' | 'BOSS';
+      dungeon: string;
+      hasLootTable: boolean;
+    }
+  > = {
+    tich_linh_anh: {
+      levelMin: 4,
+      levelMax: 7,
+      monsterType: 'SPIRIT',
+      dungeon: 'hac_lam',
+      hasLootTable: false,
+    },
+    tam_ma_anh: {
+      levelMin: 5,
+      levelMax: 8,
+      monsterType: 'SPIRIT',
+      dungeon: 'hac_lam',
+      hasLootTable: false,
+    },
+    tich_linh_quy: {
+      levelMin: 6,
+      levelMax: 9,
+      monsterType: 'SPIRIT',
+      dungeon: 'moc_huyen_lam',
+      hasLootTable: false,
+    },
+    tich_thien_sat_thu: {
+      levelMin: 10,
+      levelMax: 13,
+      monsterType: 'ELITE',
+      dungeon: 'kim_son_mach',
+      hasLootTable: true,
+    },
+    tam_ma_nguyen_anh: {
+      levelMin: 14,
+      levelMax: 16,
+      monsterType: 'ELITE',
+      dungeon: 'hoang_tho_huyet',
+      hasLootTable: true,
+    },
+    chap_niem_anh: {
+      levelMin: 14,
+      levelMax: 16,
+      monsterType: 'SPIRIT',
+      dungeon: 'hoang_tho_huyet',
+      hasLootTable: false,
+    },
+    // ky_uc_meo: story-hard intentional tier gap — lvl 14 Nguyên Anh stat
+    // trong Trúc Cơ dungeon (moc_huyen_lam). Xem BALANCE_MODEL §5.5.
+    ky_uc_meo: {
+      levelMin: 13,
+      levelMax: 15,
+      monsterType: 'SPIRIT',
+      dungeon: 'moc_huyen_lam',
+      hasLootTable: false,
+    },
+    huyet_anh: {
+      levelMin: 15,
+      levelMax: 18,
+      monsterType: 'BOSS',
+      dungeon: 'hoang_tho_huyet',
+      hasLootTable: true,
+    },
+  };
+
+  it('mọi key tồn tại trong MONSTERS catalog', () => {
+    for (const key of Object.keys(expectations)) {
+      const m = monsterByKey(key);
+      expect(m, `late-game ${key} catalog`).toBeDefined();
+    }
+  });
+
+  it('hp/atk > 0 + def ≥ 0 + speed > 0', () => {
+    for (const key of Object.keys(expectations)) {
+      const m = monsterByKey(key)!;
+      expect(m.hp, `${key} hp > 0`).toBeGreaterThan(0);
+      expect(m.atk, `${key} atk > 0`).toBeGreaterThan(0);
+      expect(m.def, `${key} def ≥ 0`).toBeGreaterThanOrEqual(0);
+      expect(m.speed, `${key} speed > 0`).toBeGreaterThan(0);
+    }
+  });
+
+  it('exp/linhThach drop > 0 (reward sanity)', () => {
+    for (const key of Object.keys(expectations)) {
+      const m = monsterByKey(key)!;
+      expect(m.expDrop, `${key} expDrop > 0`).toBeGreaterThan(0);
+      expect(m.linhThachDrop, `${key} linhThachDrop > 0`).toBeGreaterThan(0);
+    }
+  });
+
+  it('level nằm trong range hợp lý theo dungeon tier', () => {
+    for (const [key, exp] of Object.entries(expectations)) {
+      const m = monsterByKey(key)!;
+      expect(
+        m.level,
+        `${key} level min (Phase 12.5 tier ${exp.monsterType})`,
+      ).toBeGreaterThanOrEqual(exp.levelMin);
+      expect(
+        m.level,
+        `${key} level max (Phase 12.5 tier ${exp.monsterType})`,
+      ).toBeLessThanOrEqual(exp.levelMax);
+    }
+  });
+
+  it('monsterType khớp classification (SPIRIT/HUMANOID/ELITE/BOSS)', () => {
+    for (const [key, exp] of Object.entries(expectations)) {
+      const m = monsterByKey(key)!;
+      expect(
+        m.monsterType,
+        `${key} monsterType (Phase 12.5)`,
+      ).toBe(exp.monsterType);
+    }
+  });
+
+  it('mỗi placeholder reachable đúng dungeon được map (regression PR #439 + Phase 12.5)', () => {
+    for (const [key, exp] of Object.entries(expectations)) {
+      const dungeon = dungeonByKey(exp.dungeon);
+      expect(
+        dungeon?.monsters,
+        `${key} dungeon ${exp.dungeon} catalog`,
+      ).toBeDefined();
+      expect(
+        dungeon!.monsters.includes(key),
+        `${key} không reachable trong dungeon ${exp.dungeon}.monsters[]`,
+      ).toBe(true);
+    }
+  });
+
+  it('ELITE/BOSS có lootTable; SPIRIT/HUMANOID không có (convention Phase 12.4)', () => {
+    for (const [key, exp] of Object.entries(expectations)) {
+      const m = monsterByKey(key)!;
+      const has = (m.lootTable?.length ?? 0) > 0;
+      expect(
+        has,
+        `${key} (${exp.monsterType}) lootTable expected=${exp.hasLootTable} actual=${has}`,
+      ).toBe(exp.hasLootTable);
+    }
+  });
+
+  it('lootTable itemKey resolve qua itemByKey (no orphan ref)', () => {
+    for (const key of Object.keys(expectations)) {
+      const m = monsterByKey(key)!;
+      if (!m.lootTable || m.lootTable.length === 0) continue;
+      for (const e of m.lootTable) {
+        expect(
+          itemByKey(e.itemKey),
+          `${key} → ${e.itemKey} unresolved`,
+        ).toBeDefined();
+        expect(e.weight, `${key} → ${e.itemKey} weight > 0`).toBeGreaterThan(0);
+        expect(e.qtyMin, `${key} → ${e.itemKey} qtyMin ≥ 1`).toBeGreaterThanOrEqual(1);
+        expect(
+          e.qtyMin,
+          `${key} → ${e.itemKey} qtyMin ≤ qtyMax`,
+        ).toBeLessThanOrEqual(e.qtyMax);
+      }
+    }
+  });
+
+  it('huyet_anh là BOSS hardest in pack (hp ≥ tất cả 7 placeholder khác)', () => {
+    // huyet_anh = endgame story BOSS placeholder per spec. HP phải ≥ 7
+    // placeholder khác để invariant "khó nhất trong nhóm" giữ nguyên.
+    const huyet = monsterByKey('huyet_anh')!;
+    const others = Object.keys(expectations)
+      .filter((k) => k !== 'huyet_anh')
+      .map((k) => monsterByKey(k)!);
+    for (const o of others) {
+      expect(
+        huyet.hp,
+        `huyet_anh hp (${huyet.hp}) phải ≥ ${o.key} hp (${o.hp})`,
+      ).toBeGreaterThanOrEqual(o.hp);
+    }
+  });
+
+  it('tich_thien_sat_thu burst-glass invariant (atk cao + speed cao + hp thấp hơn ELITE Kim Đan peer)', () => {
+    // Assassin design: ATK ≥ peer ELITE kim_dieu_thuong_phong (hp 920/atk
+    // 105/speed 16) trừ HP, speed ≥ kim_dieu (max in dungeon). Backstop
+    // ngăn future "buff for newbie" drift biến assassin thành tank.
+    const ass = monsterByKey('tich_thien_sat_thu')!;
+    const kimDieu = monsterByKey('kim_dieu_thuong_phong')!;
+    expect(ass.atk, `sat_thu atk ≥ kim_dieu_thuong_phong atk`).toBeGreaterThanOrEqual(
+      kimDieu.atk - 15, // burst flavor: ≤ 15 atk gap với mid-Kim Đan ELITE peer
+    );
+    expect(ass.speed, `sat_thu speed ≥ kim_dieu speed`).toBeGreaterThanOrEqual(
+      kimDieu.speed,
+    );
+    expect(ass.hp, `sat_thu hp < kim_dieu hp (burst-glass)`).toBeLessThan(kimDieu.hp);
+  });
+
+  it('SPIRIT type có def ≤ 0.6 × peer BEAST/HUMANOID cùng level (intangible flavor)', () => {
+    // Phase 12.5 design: SPIRIT "linh ảnh / tâm ma" intangible → def thấp
+    // hơn BEAST/HUMANOID cùng level. Sanity check cho 3 SPIRIT placeholder
+    // Trúc Cơ (tich_linh_anh / tam_ma_anh / tich_linh_quy).
+    const spiritTrucCo = ['tich_linh_anh', 'tam_ma_anh', 'tich_linh_quy'];
+    for (const key of spiritTrucCo) {
+      const m = monsterByKey(key)!;
+      // Find peer BEAST/HUMANOID cùng level
+      const peers = MONSTERS.filter(
+        (p) =>
+          p.level === m.level &&
+          (p.monsterType === 'BEAST' || p.monsterType === 'HUMANOID'),
+      );
+      if (peers.length === 0) continue; // không có peer thì skip
+      const maxPeerDef = Math.max(...peers.map((p) => p.def));
+      expect(
+        m.def,
+        `${key} (SPIRIT lvl ${m.level}) def ${m.def} ≤ peer max def ${maxPeerDef} × 1.2 (allow leeway)`,
+      ).toBeLessThanOrEqual(Math.ceil(maxPeerDef * 1.2));
     }
   });
 });

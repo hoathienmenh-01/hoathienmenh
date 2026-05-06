@@ -18,7 +18,7 @@ Khi story design conflict với code, ưu tiên: code trên `main` > [`../AI_HAN
 
 ## 2. Current status
 
-**Catalog foundation + quest runtime persistence + quest claim reward + NPC dialogue UI + Story Foundation Extension (Kim Đan + Nguyên Anh catalog) + Story Runtime MVP (Quest UI list + accept/claim) + Story PR-5 Main storyline Chapter 1 playable + Story PR-6 Combat kill hook → quest auto-track + Story Foundation Late-game wire + Phase 12.2.B DungeonTemplate + DungeonRun runtime + Phase 12.3 Inventory grant wire + Phase 12.4 per-monster `MonsterDef.lootTable` polish + Story Foundation Late-game encounter wire + Story discoverability QuestView dungeon hint DONE (post PR #440 merged).**
+**Catalog foundation + quest runtime persistence + quest claim reward + NPC dialogue UI + Story Foundation Extension (Kim Đan + Nguyên Anh catalog) + Story Runtime MVP (Quest UI list + accept/claim) + Story PR-5 Main storyline Chapter 1 playable + Story PR-6 Combat kill hook → quest auto-track + Story Foundation Late-game wire + Phase 12.2.B DungeonTemplate + DungeonRun runtime + Phase 12.3 Inventory grant wire + Phase 12.4 per-monster `MonsterDef.lootTable` polish + Story Foundation Late-game encounter wire + Story discoverability QuestView dungeon hint + Phase 12.5 late-game story dungeon monster balance tuning DONE (this PR).**
 
 Hiện tại Phase 12 đã có:
 - **Phase 12.1** (catalog `MapDef` / `EncounterDef` / `DungeonDef`) — CLOSED ✅ (PR #397).
@@ -264,6 +264,14 @@ Tách nhỏ, mỗi PR là 1 layer. Tuân BATCHING RULE + UI MODULE RULE.
 - **Test**: 5 shared test (4 success path: 8 late-game direct match + 7 PR-6 alias resolve + dedupe parity + region match concrete; 1 orphan defensive `[]`) + 4 FE test (direct match `tich_linh_anh→Hắc Lâm` + alias resolve `son_thu→...` + orphan no-render + non-kill no-render).
 - **UX gap close**: player giờ thấy ngay dungeon đi cho mỗi `kill+monster` quest step (8 late-game placeholder + 7 PR-6 critical-path) — KHÔNG cần tự tra catalog.
 - **KHÔNG** Prisma migration, **KHÔNG** endpoint mới, **KHÔNG** API change. Test baseline: shared **1359** (+5), web **1163** (+4), api 1975 unchanged.
+
+### Phase 12.5 — Late-game story dungeon monster balance tuning — **CLOSED** ✅ (this PR)
+
+- **Shared catalog**: tune HP/ATK/DEF/SPD/level + monsterType promotion cho 8 placeholder Trúc Cơ → Nguyên Anh story (`tich_linh_anh`, `tam_ma_anh`, `tich_linh_quy`, `tich_thien_sat_thu`, `tam_ma_nguyen_anh`, `chap_niem_anh`, `ky_uc_meo`, `huyet_anh`) trong `packages/shared/src/combat.ts`. Promotion: `tich_thien_sat_thu` HUMANOID→ELITE (assassin burst-glass), `tam_ma_nguyen_anh` SPIRIT→ELITE (tank/pressure), `huyet_anh` HUMANOID→BOSS (endgame "hardest in 8-pack" tank ~10+ hit).
+- **Loot tuning**: 3 lootTable override mới theo Phase 12.4 convention (chỉ ELITE/BOSS) — kim/tho themed equipment + skill_book pity + `linh_can_dan` rare pity cho `huyet_anh` BOSS endgame (parity với `cuu_la_huyen_quan`).
+- **Story-hard intentional tier gap**: `ky_uc_meo` giữ nguyên Nguyên Anh stat trong Trúc Cơ dungeon `moc_huyen_lam` — design intentional cho quest `nguyen_anh_grind_01` (Trúc Cơ player vào dungeon sẽ wipe ở encounter cuối — không phải farm spot cho realm Trúc Cơ). Document rationale chi tiết ở `BALANCE_MODEL.md §5.4` appendix.
+- **Test**: 11 invariant test mới trong `dungeons-balance.test.ts` describe block "Phase 12.5 late-game story monster balance" (level range / monsterType / lootTable convention / hp/atk > 0 / SPIRIT def ≤ peer / huyet_anh hardest / sat_thu burst-glass).
+- **KHÔNG** Prisma migration, **KHÔNG** UI change, **KHÔNG** API runtime change. API runtime not changed; shared catalog + invariant tests only. Test baseline: shared **1370** (+11), api 1975 unchanged, web 1163 unchanged.
 
 ### After PR-5: Chapter 2..N expansion
 
