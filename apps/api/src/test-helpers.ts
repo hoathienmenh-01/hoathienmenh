@@ -7,6 +7,7 @@ import { InventoryService } from './modules/inventory/inventory.service';
 import { MissionService } from './modules/mission/mission.service';
 import { MissionWsEmitter } from './modules/mission/mission-ws.emitter';
 import { QuestService } from './modules/quest/quest.service';
+import { DungeonRunService } from './modules/dungeon-run/dungeon-run.service';
 
 /**
  * Helpers cho integration test — tạo fixture user/character nhanh, không
@@ -114,6 +115,7 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.bossDamage.deleteMany({});
   await prisma.worldBoss.deleteMany({});
   await prisma.encounter.deleteMany({});
+  await prisma.dungeonRun.deleteMany({});
   await prisma.chatMessage.deleteMany({});
   await prisma.listing.deleteMany({});
   await prisma.inventoryItem.deleteMany({});
@@ -157,6 +159,27 @@ export function makeQuestService(prisma: PrismaService): QuestService {
   const currency = new CurrencyService(prisma);
   const inventory = new InventoryService(prisma, realtime, chars);
   return new QuestService(prisma, currency, inventory);
+}
+
+/**
+ * Phase 12.2.B — Dựng `DungeonRunService` cho integration test (bypass DI
+ * container). Wire `CurrencyService` + `InventoryService` + `QuestService`
+ * qua cùng pattern với `makeQuestService` để claim path đi qua ledger thật
+ * và quest-track auto-progress.
+ */
+export function makeDungeonRunService(prisma: PrismaService): {
+  runs: DungeonRunService;
+  quests: QuestService;
+  inventory: InventoryService;
+  currency: CurrencyService;
+} {
+  const realtime = new RealtimeService();
+  const chars = new CharacterService(prisma, realtime);
+  const currency = new CurrencyService(prisma);
+  const inventory = new InventoryService(prisma, realtime, chars);
+  const quests = new QuestService(prisma, currency, inventory);
+  const runs = new DungeonRunService(prisma, currency, inventory, quests);
+  return { runs, quests, inventory, currency };
 }
 
 export const TEST_DATABASE_URL =

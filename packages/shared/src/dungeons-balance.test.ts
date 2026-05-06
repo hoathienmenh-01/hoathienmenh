@@ -231,3 +231,83 @@ describe('DUNGEONS daily totals (sanity check)', () => {
     expect(total, `total dailyLimit elemental dungeons`).toBeLessThanOrEqual(30);
   });
 });
+
+// ═════════════════════════════════════════════════════════════════════
+// Phase 12.2.B — DungeonRun completion reward invariants
+// runReward = bonus deterministic claim sau khi clear toàn bộ encounter,
+// khác với DUNGEON_LOOT (per-encounter random drop). Reward grant atomic
+// qua CurrencyService.applyTx (linhThach/tienNgoc) + InventoryService
+// .grantTx (items) + tx.character.update (exp) với reason='DUNGEON_RUN
+// _REWARD' + refType='DungeonRun' + refId=runId. CAS guard
+// DungeonRun.claimedAt=null đảm bảo idempotent.
+// ═════════════════════════════════════════════════════════════════════
+describe('DUNGEONS runReward (Phase 12.2.B)', () => {
+  it('mọi dungeon trong catalog hiện tại đều khai báo runReward', () => {
+    for (const d of DUNGEONS) {
+      expect(d.runReward, `dungeon ${d.key} runReward`).toBeDefined();
+    }
+  });
+
+  it('linhThach/tienNgoc/exp nếu set là integer dương (≥ 0)', () => {
+    for (const d of DUNGEONS) {
+      if (!d.runReward) continue;
+      const r = d.runReward;
+      if (r.linhThach != null) {
+        expect(Number.isInteger(r.linhThach), `${d.key} linhThach integer`).toBe(true);
+        expect(r.linhThach, `${d.key} linhThach min`).toBeGreaterThanOrEqual(0);
+      }
+      if (r.tienNgoc != null) {
+        expect(Number.isInteger(r.tienNgoc), `${d.key} tienNgoc integer`).toBe(true);
+        expect(r.tienNgoc, `${d.key} tienNgoc min`).toBeGreaterThanOrEqual(0);
+      }
+      if (r.exp != null) {
+        expect(Number.isInteger(r.exp), `${d.key} exp integer`).toBe(true);
+        expect(r.exp, `${d.key} exp min`).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+
+  it('items nếu set: itemKey resolve qua itemByKey (no orphan) + qty integer dương', () => {
+    for (const d of DUNGEONS) {
+      const items = d.runReward?.items;
+      if (!items) continue;
+      for (const it of items) {
+        expect(itemByKey(it.itemKey), `${d.key} runReward item ${it.itemKey}`).toBeDefined();
+        expect(Number.isInteger(it.qty), `${d.key} runReward qty ${it.itemKey} integer`).toBe(true);
+        expect(it.qty, `${d.key} runReward qty ${it.itemKey} min`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('reward scale tăng theo recommendedRealm tier (sanity check, không quá tier sau)', () => {
+    // Heuristic: linhThach band per realm (BALANCE_MODEL §5.3 economy):
+    //   luyenkhi   ≤ 100, truc_co ≤ 200, kim_dan ≤ 350, nguyen_anh ≤ 1500
+    const CAPS: Record<string, number> = {
+      luyenkhi: 100,
+      truc_co: 200,
+      kim_dan: 350,
+      nguyen_anh: 1500,
+    };
+    for (const d of DUNGEONS) {
+      const cap = CAPS[d.recommendedRealm];
+      if (cap == null || d.runReward?.linhThach == null) continue;
+      expect(
+        d.runReward.linhThach,
+        `${d.key} (${d.recommendedRealm}) linhThach ≤ ${cap}`,
+      ).toBeLessThanOrEqual(cap);
+    }
+  });
+
+  it('runReward không hoàn toàn rỗng (≥ 1 trường có giá trị > 0)', () => {
+    for (const d of DUNGEONS) {
+      if (!d.runReward) continue;
+      const r = d.runReward;
+      const hasReward =
+        (r.linhThach ?? 0) > 0 ||
+        (r.tienNgoc ?? 0) > 0 ||
+        (r.exp ?? 0) > 0 ||
+        (r.items ?? []).length > 0;
+      expect(hasReward, `${d.key} runReward không thể rỗng hoàn toàn`).toBe(true);
+    }
+  });
+});

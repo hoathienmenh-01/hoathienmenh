@@ -64,6 +64,26 @@ export interface MonsterDef {
   questTargetIds?: string[];
 }
 
+/**
+ * **Phase 12.2.B** — DungeonRun completion reward (deterministic). Khác với
+ * `DUNGEON_LOOT` (per-encounter random drop trong combat flow), `runReward`
+ * là **bonus một-lần** khi player hoàn tất hết encounter trong run + claim
+ * via `POST /dungeon-runs/:runId/claim`.
+ *
+ * Cộng atomic qua `CurrencyService.applyTx` (linhThach/tienNgoc với
+ * `reason='DUNGEON_RUN_REWARD'` + `refType='DungeonRun'` + `refId=runId`)
+ * + `InventoryService.grantTx` (items với cùng `reason`/`refType`/`refId`)
+ * + `tx.character.update({ exp: { increment } })` cho exp (giống QUEST_CLAIM
+ * pattern). CAS guard `DungeonRun.claimedAt=null` đảm bảo idempotent — race
+ * 2 claim cùng runId, đúng 1 winner ghi 1 ledger row / runId.
+ */
+export interface DungeonRunReward {
+  linhThach?: number;
+  tienNgoc?: number;
+  exp?: number;
+  items?: ReadonlyArray<{ itemKey: string; qty: number }>;
+}
+
 export interface DungeonDef {
   key: string;
   name: string;
@@ -83,10 +103,18 @@ export interface DungeonDef {
   /** Region key — phase 10 PR-3 grouping. */
   regionKey?: string | null;
   /**
-   * Daily entry limit — phase 10 PR-3 metadata. Phase 11.5 (`DungeonRun`
-   * service) sẽ enforce; hiện tại catalog only.
+   * Daily entry limit — phase 10 PR-3 metadata. Phase 12.2.A `combat.service`
+   * (single-encounter flow) + Phase 12.2.B `DungeonRunService` (multi-encounter
+   * runtime) đều enforce server-side. `null` / undefined = không giới hạn.
    */
   dailyLimit?: number;
+  /**
+   * **Phase 12.2.B** — Completion bonus khi player clear toàn bộ encounter +
+   * claim. Reward grant atomic qua ledger (xem `DungeonRunReward` doc).
+   * `null` / undefined = chỉ có per-encounter random loot, không bonus claim
+   * (legacy or single-boss endgame placeholder).
+   */
+  runReward?: DungeonRunReward;
 }
 
 export const MONSTERS: readonly MonsterDef[] = [
@@ -208,6 +236,7 @@ export const DUNGEONS: readonly DungeonDef[] = [
     element: 'tho',
     regionKey: 'son_coc',
     dailyLimit: 5,
+    runReward: { linhThach: 50, exp: 100, items: [{ itemKey: 'huyet_chi_dan', qty: 1 }] },
   },
   {
     key: 'hac_lam',
@@ -219,6 +248,7 @@ export const DUNGEONS: readonly DungeonDef[] = [
     element: 'moc',
     regionKey: 'hac_lam',
     dailyLimit: 4,
+    runReward: { linhThach: 120, exp: 250, items: [{ itemKey: 'huyet_tinh', qty: 1 }] },
   },
   {
     key: 'yeu_thu_dong',
@@ -230,6 +260,7 @@ export const DUNGEONS: readonly DungeonDef[] = [
     element: 'kim',
     regionKey: 'yeu_thu_dong',
     dailyLimit: 3,
+    runReward: { linhThach: 250, tienNgoc: 1, exp: 600, items: [{ itemKey: 'co_thien_dan', qty: 1 }] },
   },
 
   // ═════════════════════════════════════════════════════════════════════
@@ -251,6 +282,7 @@ export const DUNGEONS: readonly DungeonDef[] = [
     element: 'kim',
     regionKey: 'kim_son_mach',
     dailyLimit: 3,
+    runReward: { linhThach: 280, tienNgoc: 1, exp: 650, items: [{ itemKey: 'tinh_thiet', qty: 1 }] },
   },
   {
     key: 'moc_huyen_lam',
@@ -262,6 +294,7 @@ export const DUNGEONS: readonly DungeonDef[] = [
     element: 'moc',
     regionKey: 'moc_huyen_lam',
     dailyLimit: 4,
+    runReward: { linhThach: 150, exp: 320, items: [{ itemKey: 'linh_thao', qty: 2 }] },
   },
   {
     key: 'thuy_long_uyen',
@@ -273,6 +306,7 @@ export const DUNGEONS: readonly DungeonDef[] = [
     element: 'thuy',
     regionKey: 'thuy_long_uyen',
     dailyLimit: 3,
+    runReward: { linhThach: 280, tienNgoc: 1, exp: 650, items: [{ itemKey: 'han_ngoc', qty: 1 }] },
   },
   {
     key: 'hoa_diem_son',
@@ -284,6 +318,7 @@ export const DUNGEONS: readonly DungeonDef[] = [
     element: 'hoa',
     regionKey: 'hoa_diem_son',
     dailyLimit: 2,
+    runReward: { linhThach: 500, tienNgoc: 2, exp: 1200, items: [{ itemKey: 'yeu_dan', qty: 1 }] },
   },
   {
     key: 'hoang_tho_huyet',
@@ -295,6 +330,7 @@ export const DUNGEONS: readonly DungeonDef[] = [
     element: 'tho',
     regionKey: 'hoang_tho_huyet',
     dailyLimit: 2,
+    runReward: { linhThach: 600, tienNgoc: 2, exp: 1400, items: [{ itemKey: 'co_thien_dan', qty: 2 }] },
   },
   {
     key: 'cuu_la_dien',
@@ -306,6 +342,7 @@ export const DUNGEONS: readonly DungeonDef[] = [
     element: 'kim',
     regionKey: 'kim_son_mach',
     dailyLimit: 1,
+    runReward: { linhThach: 1000, tienNgoc: 5, exp: 2500, items: [{ itemKey: 'cuu_huyen_dan', qty: 1 }] },
   },
 ];
 

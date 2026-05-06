@@ -37,7 +37,13 @@ export type LedgerReason =
   // `applyTx` cho linhThach/tienNgoc với `refType='Quest'` + `refId=questKey`.
   // Idempotency lấy từ `QuestProgress.claimedAt` CAS guard (race-safe winner
   // duy nhất ghi 1 ledger row / questKey).
-  | 'QUEST_CLAIM';
+  | 'QUEST_CLAIM'
+  // Phase 12.2.B — DungeonRun completion reward bonus. Wire
+  // `DungeonRunService.claim` qua `applyTx` cho linhThach/tienNgoc với
+  // `refType='DungeonRun'` + `refId=runId`. Idempotency lấy từ
+  // `DungeonRun.claimedAt` CAS guard (race-safe winner duy nhất ghi 1 ledger
+  // row / runId). Khác `COMBAT_LOOT` (per-encounter random drop loot table).
+  | 'DUNGEON_RUN_REWARD';
 
 export interface CurrencyApplyInput {
   characterId: string;

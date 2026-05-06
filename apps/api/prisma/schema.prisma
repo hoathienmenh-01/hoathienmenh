@@ -881,6 +881,59 @@ model Encounter {
   @@index([characterId, status])
 }
 
+/// Phase 12.2.B — DungeonRun runtime status. Khác `Encounter` (single
+/// turn-based monster) — DungeonRun là multi-encounter expedition flow:
+/// player call `next` để auto-resolve 1 encounter / lần (kill monster +
+/// quest track + advance), khi hết list `monsters` thì status=COMPLETED,
+/// claim reward bonus → CLAIMED. ABANDONED = player drop run, slot daily
+/// vẫn bị tiêu (anti-grind).
+enum DungeonRunStatus {
+  ACTIVE
+  COMPLETED
+  CLAIMED
+  ABANDONED
+}
+
+/// Phase 12.2.B — DungeonRun runtime persistence (multi-encounter expedition).
+/// Khác `Encounter`:
+///   - `Encounter` = single turn-based combat (CombatService action loop).
+///   - `DungeonRun` = expedition flow auto-resolve mỗi `next()` call.
+/// Cùng catalog `DUNGEONS` (shared/combat.ts), cùng dailyLimit accounting
+/// (count rows trong cửa sổ DAILY VN tz `startOfLocalDay`), cùng quest kill
+/// hook (`QuestService.track('kill','monster',monsterKey)` per encounter).
+///
+/// Reward claim atomic qua `CurrencyService.applyTx` + `InventoryService
+/// .grantTx` + `tx.character.update({ exp })` với `reason='DUNGEON_RUN
+/// _REWARD'` + `refType='DungeonRun'` + `refId=runId`. Idempotent qua CAS
+/// guard `claimedAt=null` updateMany pattern (mirror QuestService.claim
+/// Phase 12 PR-3).
+///
+/// Indexes:
+///   - `[characterId, status]` cho list active run + filter status.
+///   - `[characterId, startedAt]` cho dailyLimit count.
+///   - `[characterId, templateKey, startedAt]` cho per-dungeon dailyLimit.
+model DungeonRun {
+  id              String           @id @default(cuid())
+  characterId     String
+  /// Match `DungeonDef.key` từ shared catalog `DUNGEONS`.
+  templateKey     String
+  status          DungeonRunStatus @default(ACTIVE)
+  /// Index của monster hiện tại trong `dungeon.monsters[]` (0..N).
+  /// Khi `encounterIndex == monsters.length` → COMPLETED (claim sẵn sàng).
+  encounterIndex  Int              @default(0)
+  /// JSON list `[{ monsterKey, killedAt: ISO string }]` — log resolution
+  /// tracking, dùng cho debug + Phase 12.5 stats UI.
+  killedMonsters  Json             @default("[]")
+  startedAt       DateTime         @default(now())
+  completedAt     DateTime?
+  claimedAt       DateTime?
+  updatedAt       DateTime         @updatedAt
+
+  @@index([characterId, status])
+  @@index([characterId, startedAt])
+  @@index([characterId, templateKey, startedAt])
+}
+
 model GiftCode {
   id               String               @id @default(cuid())
   /// Normalized upper-case, unique trên toàn hệ.
