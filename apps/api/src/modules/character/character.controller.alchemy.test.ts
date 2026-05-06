@@ -79,6 +79,8 @@ function makeController(opts: ControllerOpts = {}) {
     undefined, // achievement
     undefined, // talent
     alchemy,
+    undefined, // title
+    undefined, // buff
     undefined, // profileLimiter
   );
   return { controller };

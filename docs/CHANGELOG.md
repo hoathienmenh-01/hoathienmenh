@@ -10,7 +10,14 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
-> Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire) (this PR).
+> Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
+
+### Added — Phase 11.8.D Buff HUD + 11.9.C Title catalog/equip — FE wire (this PR)
+
+- **Title catalog UI** (`/titles`): xem 26 danh hiệu trong game (5 rarity × 6 source × 5 element), filter theo source/rarity/status, **trang bị** danh hiệu đã unlock (single-slot), **gỡ bỏ** equipped title. Topbar (lg+ screens) hiển thị tên danh hiệu đang trang bị màu vàng (`amber-200`) bên dưới tên nhân vật.
+- **Buff HUD** (topbar): hiển thị các buff/debuff đang active dưới dạng pill (xanh lá = buff, hồng = debuff) với countdown timer auto-update mỗi giây và tự động fetch lại khi có buff hết hạn. Format thời gian: `<60s = "30s"`, `<60m = "5m30s"`, `≥1h = "1h05m"`. Stacks > 1 hiển thị `×N`.
+- **i18n**: vi + en đầy đủ cho menu sidebar (`號 Danh Hiệu`), TitleView, BuffBar HUD, 9 error code (`TITLE_NOT_FOUND`, `TITLE_NOT_OWNED`, `ALREADY_EQUIPPED`, `NOT_EQUIPPED`, `IN_FLIGHT`, ...).
+- Backend đã có 4 endpoint trên main; PR này chỉ wire FE (không Prisma migration).
 
 ---
 

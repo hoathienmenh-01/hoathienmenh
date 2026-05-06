@@ -55,16 +55,18 @@ function makeController(opts: ControllerOpts = {}) {
   const controller = new CharacterController(
     chars,
     auth,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
+    undefined, // spiritualRoot
+    undefined, // cultivationMethod
+    undefined, // characterSkill
+    undefined, // gem
+    undefined, // refine
+    undefined, // tribulation
+    undefined, // achievement
     talent,
-    undefined,
-    undefined,
+    undefined, // alchemy
+    undefined, // title
+    undefined, // buff
+    undefined, // profileLimiter
   );
   return { controller };
 }

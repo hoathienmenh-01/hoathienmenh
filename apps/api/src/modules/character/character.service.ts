@@ -726,6 +726,11 @@ export class CharacterService {
       secondaryElements: (c.secondaryElements ??
         []) as CharacterStatePayload['secondaryElements'],
       rootPurity: c.rootPurity,
+      // Phase 11.9.C — expose equipped title cho FE consume từ /me + state:update
+      // WS broadcast. `null` khi character chưa equip (mặc định) hoặc đã unequip.
+      // Server nguồn duy nhất — FE không tự set field này. Catalog key reference
+      // ở `packages/shared/src/titles.ts`.
+      title: c.title ?? null,
     };
   }
 }
