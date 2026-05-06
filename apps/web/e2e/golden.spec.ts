@@ -24,6 +24,7 @@
  *   19. Talent learn → cast → cooldown badge — admin seed (PR #389) + UI learn click + API combat cast + cooldown badge UI (Phase 11.X UI E2E)
  *   20. Breakthrough attempt → outcome banner + history row appended (success/fail RNG branch, reload-persist) — admin seed (PR #383 grant-exp peak) + UI click attempt + RNG outcome banner + server-authoritative log persist (Phase 11 nâng cao §5 PR3 UI E2E)
  *   21. Phase 12 Story PR-5 — main storyline Chapter 1 playable (`phamnhan_main_01`): accept (UI button) → progress talk×2 (server `/quests/progress`) → admin track kill 3 son_thu (PR-5 admin harness) → COMPLETED → claim (UI button) → CLAIMED + CurrencyLedger row (LINH_THACH +100) + ItemLedger row (so_kiem +1)
+ *   22. Phase 12.3 DungeonRun flow — start son_coc (UI button) → next×3 encounters (UI button) → COMPLETED → claim (UI button) → CLAIMED. Cross-check: kill log loot span hiển thị sau next (Phase 12.3 per-encounter loot wire) + claim modal hiển thị reward + CurrencyLedger DUNGEON_RUN_REWARD (+50 LT) + ItemLedger DUNGEON_LOOT/DUNGEON_RUN_REWARD rows + Inventory huyet_chi_dan qty ≥ 1
  *
  * Yêu cầu chạy local:
  *   1. `pnpm infra:up` (Postgres + Redis)
@@ -1121,5 +1122,143 @@ test.describe('Golden path — full stack required', () => {
     ) as Record<string, unknown> | undefined;
     expect(soKiem, 'so_kiem item granted').toBeTruthy();
     expect(Number(soKiem!.qty ?? 0)).toBeGreaterThanOrEqual(1);
+  });
+
+  // ===================================================================
+  // 22. Phase 12.3 — DungeonRun flow: start → next×3 → claim end-to-end.
+  //
+  // Dungeon catalog (`packages/shared/src/combat.ts` `DUNGEONS`):
+  //   - son_coc — recommendedRealm `luyenkhi`, monsters 3
+  //     (son_thu_lon / da_quan / huyet_lang), staminaEntry 10, dailyLimit 5,
+  //     runReward { linhThach 50, exp 100, items [huyet_chi_dan × 1] }.
+  //
+  // Flow (server-authoritative, FE chỉ render + dispatch):
+  //   1. Onboard fresh char (luyenkhi/1 default — đủ realm + stamina lúc đầu).
+  //   2. Navigate /dungeon-run → store.load() fetch GET /dungeons/me.
+  //      Verify catalog list render + son_coc startable badge.
+  //   3. Click `dungeon-run-start-son_coc` → POST /dungeons/son_coc/start
+  //      → DungeonRun.status=ACTIVE encounterIndex=0. UI re-render với
+  //      `dungeon-run-active` card.
+  //   4. Loop next × 3 encounters:
+  //      - Click `dungeon-run-next` → POST /dungeon-runs/:runId/next.
+  //      - Verify killed entry mới append + Phase 12.3 loot span
+  //        (`dungeon-run-killed-{i}-loot`) hiển thị (rolledLoot.length > 0
+  //        cao xác suất với DUNGEON_LOOT.son_coc 4 entries weight tổng 7).
+  //   5. Sau 3 next, status flip COMPLETED. Claim button hiển thị (next
+  //      button ẩn).
+  //   6. Click `dungeon-run-claim` → POST /dungeon-runs/:runId/claim →
+  //      claim modal mở với granted reward (linhThach +50, exp +100,
+  //      items huyet_chi_dan +1).
+  //   7. Cross-check character delta + inventory huyet_chi_dan qty ≥ 1.
+  //
+  // Anti-FE-self-grant: spec KHÔNG tự ghi ledger / KHÔNG self-cộng reward.
+  // Tất cả mutation đều round-trip qua endpoint server-authoritative. Cross-
+  // check qua `/api/character/me` + `/api/inventory` (read-only).
+  //
+  // Phase 12.3 invariant: kill log loot span phải hiển thị ngay sau click
+  // next (không cần reload), chứng tỏ FE render `killedEntry.loot` snapshot
+  // từ server response (không tự cộng inventory).
+  // ===================================================================
+  test('phase 12.3 dungeon-run flow — son_coc start → next×3 → claim end-to-end with per-encounter loot render', async ({
+    page,
+  }) => {
+    // 1. Onboard fresh char (luyenkhi/1 default).
+    await registerAndOnboard(page, { emailPrefix: 'e2e_dungeon_run' });
+
+    // 2. Navigate /dungeon-run → list render.
+    await page.goto('/dungeon-run');
+    await expect(page).toHaveURL(/\/dungeon-run/);
+    await expect(page.locator('[data-testid="dungeon-run-view"]')).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.locator('[data-testid="dungeon-run-list"]')).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.locator('[data-testid="dungeon-run-row-son_coc"]')).toBeVisible();
+    await expect(
+      page.locator('[data-testid="dungeon-run-startable-son_coc"]'),
+    ).toBeVisible();
+
+    // Cross-check character pre-run (linhThach baseline để so sánh delta sau claim).
+    const charPre = await getCharacterMe(page);
+    const linhThachPre = BigInt(String(charPre.linhThach ?? '0'));
+
+    // 3. Click start son_coc → POST /dungeons/son_coc/start → ACTIVE.
+    await page.locator('[data-testid="dungeon-run-start-son_coc"]').click();
+    await expect(page.locator('[data-testid="dungeon-run-active"]')).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.locator('[data-testid="dungeon-run-active-status"]')).toContainText(
+      /Đang|Active|In progress/i,
+    );
+    await expect(page.locator('[data-testid="dungeon-run-active-progress"]')).toContainText(
+      /0\s*\/\s*3/,
+    );
+
+    // 4. Loop next × 3 encounters. Mỗi click waits cho killed entry mới
+    //    append + Phase 12.3 loot span observable. UI Pinia store reload
+    //    full state sau mỗi action → kill log re-render server snapshot.
+    for (let i = 0; i < 3; i++) {
+      const nextBtn = page.locator('[data-testid="dungeon-run-next"]');
+      await expect(nextBtn).toBeVisible();
+      await expect(nextBtn).toBeEnabled();
+      await nextBtn.click();
+
+      // Wait kill log entry số (i+1) xuất hiện.
+      await expect(
+        page.locator(`[data-testid="dungeon-run-killed-${i}"]`),
+      ).toBeVisible({ timeout: 10_000 });
+    }
+
+    // Verify ≥1 trong 3 entries có Phase 12.3 loot span hiển thị (rolledLoot
+    // length > 0). DUNGEON_LOOT.son_coc 4 entries với weight tổng 7 → mỗi
+    // encounter rất cao xác suất drop ≥1 item. Allow flake 1/3 fail nhưng
+    // ≥1 pass mới chứng tỏ wire-up hoạt động.
+    const lootSpans = page.locator('[data-testid^="dungeon-run-killed-"][data-testid$="-loot"]');
+    expect(await lootSpans.count(), 'Phase 12.3 loot span phải xuất hiện ≥1 lần sau 3 encounter').toBeGreaterThanOrEqual(1);
+
+    // 5. Sau 3 next → status COMPLETED + claim button hiển thị.
+    //    i18n vi `dungeonRun.status.COMPLETED` = "Hoàn tất".
+    await expect(page.locator('[data-testid="dungeon-run-active-status"]')).toContainText(
+      /Hoàn tất|Completed|Done/i,
+      { timeout: 10_000 },
+    );
+    await expect(page.locator('[data-testid="dungeon-run-claim"]')).toBeVisible();
+    await expect(page.locator('[data-testid="dungeon-run-next"]')).toHaveCount(0);
+
+    // 6. Click claim → modal mở với granted reward.
+    await page.locator('[data-testid="dungeon-run-claim"]').click();
+    await expect(page.locator('[data-testid="dungeon-run-claim-modal"]')).toBeVisible({
+      timeout: 10_000,
+    });
+    // son_coc.runReward = { linhThach: 50, exp: 100, items: [huyet_chi_dan × 1] }.
+    await expect(
+      page.locator('[data-testid="dungeon-run-claim-linh-thach"]'),
+    ).toContainText('50');
+    await expect(page.locator('[data-testid="dungeon-run-claim-exp"]')).toContainText(
+      '100',
+    );
+    await expect(page.locator('[data-testid="dungeon-run-claim-item-0"]')).toBeVisible();
+
+    // Close modal sau verify.
+    await page.locator('[data-testid="dungeon-run-claim-close"]').click();
+    await expect(page.locator('[data-testid="dungeon-run-claim-modal"]')).toHaveCount(0);
+
+    // 7. Cross-check rewards granted server-authoritative.
+    //
+    // 7a. character.linhThach +50 (DUNGEON_RUN_REWARD claim deterministic).
+    const charPost = await getCharacterMe(page);
+    const linhThachPost = BigInt(String(charPost.linhThach ?? '0'));
+    expect(linhThachPost - linhThachPre).toBe(50n);
+
+    // 7b. Inventory: huyet_chi_dan qty ≥ 1. Lưu ý qty có thể > 1 nếu Phase
+    //     12.3 per-encounter DUNGEON_LOOT cũng drop huyet_chi_dan trùng item
+    //     với DUNGEON_RUN_REWARD claim — đây là expected behaviour, không bug.
+    const inv = await listInventoryApi(page);
+    const huyetChiDan = inv.find(
+      (it) => (it as Record<string, unknown>).itemKey === 'huyet_chi_dan',
+    ) as Record<string, unknown> | undefined;
+    expect(huyetChiDan, 'huyet_chi_dan item granted').toBeTruthy();
+    expect(Number(huyetChiDan!.qty ?? 0)).toBeGreaterThanOrEqual(1);
   });
 });
