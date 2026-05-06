@@ -14,9 +14,11 @@ import { CombatService } from './combat.service';
 import {
   TEST_DATABASE_URL,
   makeMissionService,
+  makeQuestService,
   makeUserChar,
   wipeAll,
 } from '../../test-helpers';
+import { QuestService } from '../quest/quest.service';
 
 let prisma: PrismaService;
 let combat: CombatService;
@@ -2823,5 +2825,235 @@ describe('CombatService', () => {
         ),
       ).toBe(0);
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 12 Story PR-6 — Combat → quest auto-track integration tests.
+//
+// Verify rằng kill hook ở `CombatService.action` (line ~716) gọi
+// `QuestService.track()` với:
+//   1) `monster.key` (real catalog key)
+//   2) `monster.questTargetIds[*]` (placeholder mappings từ shared catalog)
+// và quest catalog dùng targetId placeholder (vd `son_thu`) progress đúng khi
+// player kill quái real (vd `son_thu_lon`).
+//
+// Chapter 1 critical path: `phamnhan_main_01` step_03 + `phamnhan_grind_01`
+// step_01 (kill `son_thu` placeholder × 3 / × 10) — match `son_thu_lon` trong
+// dungeon `son_coc`.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('CombatService → QuestService auto-track integration (Phase 12 Story PR-6)', () => {
+  let combatWithQuests: CombatService;
+  let questService: QuestService;
+
+  beforeAll(() => {
+    process.env.DATABASE_URL = TEST_DATABASE_URL;
+    const realtime = new RealtimeService();
+    const chars = new CharacterService(prisma, realtime);
+    const inventory = new InventoryService(prisma, realtime, chars);
+    const currency = new CurrencyService(prisma);
+    const missions = makeMissionService(prisma);
+    questService = makeQuestService(prisma);
+    combatWithQuests = new CombatService(
+      prisma,
+      realtime,
+      chars,
+      inventory,
+      currency,
+      missions,
+      undefined, // characterSkill
+      undefined, // achievements
+      undefined, // talents
+      undefined, // buffs
+      undefined, // titles
+      questService,
+    );
+  });
+
+  it('kill 1 son_thu_lon trong son_coc → phamnhan_grind_01 step_01 progress = 1 (qua placeholder questTargetIds)', async () => {
+    const u = await makeUserChar(prisma, {
+      stamina: 100,
+      power: 200, // 1-shot son_thu_lon (hp 30)
+      hp: 1000,
+      hpMax: 1000,
+    });
+
+    // Accept quest grind trước khi kill (auto-AVAILABLE qua list lazy-create).
+    await questService.listForUser(u.userId);
+    await questService.accept(u.userId, 'phamnhan_grind_01');
+
+    const enc = await combatWithQuests.start(u.userId, 'son_coc');
+    // Đánh trúng quái đầu (son_thu_lon) → 1-shot kill.
+    const view = await combatWithQuests.action(u.userId, enc.id, {});
+    expect(view.status).toBe(EncounterStatus.ACTIVE); // còn 2 quái nữa
+    // Verify quest progress incremented qua placeholder `son_thu`.
+    const row = await prisma.questProgress.findUniqueOrThrow({
+      where: {
+        characterId_questKey: {
+          characterId: u.characterId,
+          questKey: 'phamnhan_grind_01',
+        },
+      },
+    });
+    expect(row.status).toBe('ACCEPTED');
+    const progress = row.stepProgress as Record<string, number>;
+    expect(progress.step_01).toBe(1);
+  });
+
+  it('clear son_coc (3 quái: son_thu_lon + da_quan + huyet_lang) → phamnhan_grind_01 step_01 = 1 (chỉ son_thu_lon match), phamnhan_main_01 step_03 = 1', async () => {
+    const u = await makeUserChar(prisma, {
+      stamina: 100,
+      power: 500,
+      hp: 1000,
+      hpMax: 1000,
+    });
+    await questService.listForUser(u.userId);
+    await questService.accept(u.userId, 'phamnhan_grind_01');
+    // phamnhan_main_01 step_03 cũng kill `son_thu` × 3 — accept trước khi clear.
+    // Need to progress talk steps trước (step_01 + step_02 talk LVS + MTY).
+    await questService.accept(u.userId, 'phamnhan_main_01');
+    await questService.progress(u.userId, {
+      questKey: 'phamnhan_main_01',
+      stepId: 'step_01',
+    });
+    await questService.progress(u.userId, {
+      questKey: 'phamnhan_main_01',
+      stepId: 'step_02',
+    });
+
+    const enc = await combatWithQuests.start(u.userId, 'son_coc');
+    let view = enc;
+    for (let i = 0; i < 3; i += 1) {
+      view = await combatWithQuests.action(u.userId, enc.id, {});
+      if (view.status !== EncounterStatus.ACTIVE) break;
+    }
+    expect(view.status).toBe(EncounterStatus.WON);
+
+    const grindRow = await prisma.questProgress.findUniqueOrThrow({
+      where: {
+        characterId_questKey: {
+          characterId: u.characterId,
+          questKey: 'phamnhan_grind_01',
+        },
+      },
+    });
+    const grindProgress = grindRow.stepProgress as Record<string, number>;
+    // Chỉ son_thu_lon (questTargetIds=['son_thu']) match. da_quan +
+    // huyet_lang map sang son_tac_dau_muc + bac_lang_quan, không match
+    // phamnhan_grind_01 step_01 (`son_thu`).
+    expect(grindProgress.step_01).toBe(1);
+    expect(grindRow.status).toBe('ACCEPTED');
+
+    const mainRow = await prisma.questProgress.findUniqueOrThrow({
+      where: {
+        characterId_questKey: {
+          characterId: u.characterId,
+          questKey: 'phamnhan_main_01',
+        },
+      },
+    });
+    const mainProgress = mainRow.stepProgress as Record<string, number>;
+    // step_01 + step_02 talk = 1+1, step_03 kill son_thu = 1 (mới kill 1).
+    expect(mainProgress.step_01).toBe(1);
+    expect(mainProgress.step_02).toBe(1);
+    expect(mainProgress.step_03).toBe(1);
+    // Quest chưa COMPLETED (step_03 cần count=3).
+    expect(mainRow.status).toBe('ACCEPTED');
+  });
+
+  it('kill da_quan (questTargetIds=[son_tac_dau_muc]) → KHÔNG progress phamnhan_grind_01 (mismatch placeholder)', async () => {
+    const u = await makeUserChar(prisma, {
+      stamina: 100,
+      power: 200,
+      hp: 1000,
+      hpMax: 1000,
+    });
+    await questService.listForUser(u.userId);
+    await questService.accept(u.userId, 'phamnhan_grind_01');
+
+    // son_coc có thứ tự [son_thu_lon, da_quan, huyet_lang]. Kill 2 quái đầu:
+    // hit 1 = son_thu_lon (match), hit 2 = da_quan (mismatch).
+    const enc = await combatWithQuests.start(u.userId, 'son_coc');
+    await combatWithQuests.action(u.userId, enc.id, {}); // kill son_thu_lon
+    await combatWithQuests.action(u.userId, enc.id, {}); // kill da_quan
+
+    const row = await prisma.questProgress.findUniqueOrThrow({
+      where: {
+        characterId_questKey: {
+          characterId: u.characterId,
+          questKey: 'phamnhan_grind_01',
+        },
+      },
+    });
+    const progress = row.stepProgress as Record<string, number>;
+    // step_01 = 1 chỉ từ son_thu_lon (questTargetIds.son_thu) — da_quan
+    // (questTargetIds.son_tac_dau_muc) không tăng phamnhan_grind_01.
+    expect(progress.step_01).toBe(1);
+    expect(row.status).toBe('ACCEPTED');
+  });
+
+  it('kill flow KHÔNG accept quest → KHÔNG tạo QuestProgress row (track() no-op cho ACCEPTED quest)', async () => {
+    const u = await makeUserChar(prisma, {
+      stamina: 100,
+      power: 200,
+      hp: 1000,
+      hpMax: 1000,
+    });
+    // KHÔNG gọi accept.
+    const enc = await combatWithQuests.start(u.userId, 'son_coc');
+    await combatWithQuests.action(u.userId, enc.id, {}); // kill son_thu_lon
+
+    const row = await prisma.questProgress.findUnique({
+      where: {
+        characterId_questKey: {
+          characterId: u.characterId,
+          questKey: 'phamnhan_grind_01',
+        },
+      },
+    });
+    // QuestService.list() lazy-create AVAILABLE; nhưng test không gọi list →
+    // KHÔNG có row.
+    expect(row).toBeNull();
+  });
+
+  it('quest đã COMPLETED → kill thêm KHÔNG tăng step (step.count cap)', async () => {
+    const u = await makeUserChar(prisma, {
+      stamina: 200,
+      power: 500,
+      hp: 1000,
+      hpMax: 1000,
+    });
+    await questService.listForUser(u.userId);
+    await questService.accept(u.userId, 'phamnhan_main_01');
+    await questService.progress(u.userId, {
+      questKey: 'phamnhan_main_01',
+      stepId: 'step_01',
+    });
+    await questService.progress(u.userId, {
+      questKey: 'phamnhan_main_01',
+      stepId: 'step_02',
+    });
+
+    // Cần kill 3 son_thu_lon, nhưng son_coc chỉ có 1 son_thu_lon mỗi instance.
+    // Spin 3 instance liên tiếp.
+    for (let run = 0; run < 3; run += 1) {
+      const enc = await combatWithQuests.start(u.userId, 'son_coc');
+      let view = enc;
+      for (let i = 0; i < 5 && view.status === EncounterStatus.ACTIVE; i += 1) {
+        view = await combatWithQuests.action(u.userId, enc.id, {});
+      }
+    }
+
+    const row = await prisma.questProgress.findUniqueOrThrow({
+      where: {
+        characterId_questKey: {
+          characterId: u.characterId,
+          questKey: 'phamnhan_main_01',
+        },
+      },
+    });
+    expect(row.status).toBe('COMPLETED');
+    const progress = row.stepProgress as Record<string, number>;
+    expect(progress.step_03).toBe(3); // cap tại count=3, không vượt.
   });
 });
