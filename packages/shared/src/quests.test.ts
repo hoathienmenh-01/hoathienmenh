@@ -16,23 +16,24 @@ import type { QuestDef, QuestKind } from './quests';
 const REALM_KEYS = new Set(REALMS.map((r) => r.key));
 const NPC_KEYS = new Set(NPCS.map((n) => n.key));
 const ITEM_KEYS = new Set(ITEMS.map((it) => it.key));
-const VALID_KIND_REGEX = /^(phamnhan|luyenkhi|truc_co)_(main|realm|sect|npc|grind)_\d{2}$/;
+const VALID_KIND_REGEX = /^(phamnhan|luyenkhi|truc_co|kim_dan|nguyen_anh)_(main|realm|sect|npc|grind)_\d{2}$/;
+const CATALOGED_REALMS = ['phamnhan', 'luyenkhi', 'truc_co', 'kim_dan', 'nguyen_anh'];
 
-describe('QUESTS catalog integrity (Phase 12 PR-1)', () => {
+describe('QUESTS catalog integrity (Phase 12 PR-1 + Story Foundation Extension)', () => {
   it('has unique keys', () => {
     const keys = QUESTS.map((q) => q.key);
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it('catalog covers exactly 15 quest (5 per 3 realms đầu)', () => {
-    expect(QUESTS).toHaveLength(15);
-    expect(questsByRealm('phamnhan')).toHaveLength(5);
-    expect(questsByRealm('luyenkhi')).toHaveLength(5);
-    expect(questsByRealm('truc_co')).toHaveLength(5);
+  it('catalog covers exactly 25 quest (5 per 5 realms đầu)', () => {
+    expect(QUESTS).toHaveLength(25);
+    for (const realm of CATALOGED_REALMS) {
+      expect(questsByRealm(realm), `realm=${realm}`).toHaveLength(5);
+    }
   });
 
   it('every quest has 1 main + 1 realm + 1 sect + 1 grind + 1 npc per realm', () => {
-    for (const realm of ['phamnhan', 'luyenkhi', 'truc_co']) {
+    for (const realm of CATALOGED_REALMS) {
       const inRealm = questsByRealm(realm);
       const kinds: QuestKind[] = ['main', 'realm', 'sect', 'npc', 'grind'];
       for (const kind of kinds) {
@@ -145,26 +146,68 @@ describe('QUESTS catalog integrity (Phase 12 PR-1)', () => {
     }
   });
 
-  it('main quest chain hoa_thien_main is sequential across 3 realms', () => {
+  it('main quest chain hoa_thien_main is sequential across 5 realms', () => {
     const chain = questsByChain('hoa_thien_main');
-    expect(chain.length).toBeGreaterThanOrEqual(3);
+    expect(chain.length).toBeGreaterThanOrEqual(5);
     const phamnhanMain = chain.find((q) => q.key === 'phamnhan_main_01');
     const luyenkhiMain = chain.find((q) => q.key === 'luyenkhi_main_01');
     const trucCoMain = chain.find((q) => q.key === 'truc_co_main_01');
+    const kimDanMain = chain.find((q) => q.key === 'kim_dan_main_01');
+    const nguyenAnhMain = chain.find((q) => q.key === 'nguyen_anh_main_01');
     expect(phamnhanMain).toBeDefined();
     expect(luyenkhiMain).toBeDefined();
     expect(trucCoMain).toBeDefined();
+    expect(kimDanMain).toBeDefined();
+    expect(nguyenAnhMain).toBeDefined();
     expect(luyenkhiMain!.prerequisiteQuestKey).toBe('phamnhan_main_01');
     expect(trucCoMain!.prerequisiteQuestKey).toBe('luyenkhi_main_01');
+    expect(kimDanMain!.prerequisiteQuestKey).toBe('truc_co_main_01');
+    expect(nguyenAnhMain!.prerequisiteQuestKey).toBe('kim_dan_main_01');
+  });
+
+  it('moc_thanh_y_arc is sequential across truc_co → kim_dan → nguyen_anh', () => {
+    const chain = questsByChain('moc_thanh_y_arc');
+    expect(chain.length).toBe(3);
+    const trucCoSect = chain.find((q) => q.key === 'truc_co_sect_01');
+    const kimDanSect = chain.find((q) => q.key === 'kim_dan_sect_01');
+    const nguyenAnhSect = chain.find((q) => q.key === 'nguyen_anh_sect_01');
+    expect(trucCoSect).toBeDefined();
+    expect(kimDanSect).toBeDefined();
+    expect(nguyenAnhSect).toBeDefined();
+    expect(kimDanSect!.prerequisiteQuestKey).toBe('truc_co_sect_01');
+    expect(nguyenAnhSect!.prerequisiteQuestKey).toBe('kim_dan_sect_01');
+  });
+
+  it('huyet_la_sat_arc is sequential across kim_dan → nguyen_anh', () => {
+    const chain = questsByChain('huyet_la_sat_arc');
+    expect(chain.length).toBe(2);
+    const kimDanNpc = chain.find((q) => q.key === 'kim_dan_npc_01');
+    const nguyenAnhNpc = chain.find((q) => q.key === 'nguyen_anh_npc_01');
+    expect(kimDanNpc).toBeDefined();
+    expect(nguyenAnhNpc).toBeDefined();
+    expect(kimDanNpc!.prerequisiteQuestKey).toBe('kim_dan_main_01');
+    expect(nguyenAnhNpc!.prerequisiteQuestKey).toBe('kim_dan_npc_01');
   });
 
   it('main quest reward exp > grind quest reward exp (in same realm)', () => {
-    for (const realm of ['phamnhan', 'luyenkhi', 'truc_co']) {
+    for (const realm of CATALOGED_REALMS) {
       const inRealm = questsByRealm(realm);
       const main = inRealm.find((q) => q.kind === 'main')!;
       const grind = inRealm.find((q) => q.kind === 'grind')!;
       expect(main.rewards.exp ?? 0, `realm=${realm}`).toBeGreaterThan(grind.rewards.exp ?? 0);
     }
+  });
+
+  it('main quest reward exp scales up across realms (gate breakthrough)', () => {
+    const phamnhanExp = QUESTS.find((q) => q.key === 'phamnhan_main_01')!.rewards.exp!;
+    const luyenkhiExp = QUESTS.find((q) => q.key === 'luyenkhi_main_01')!.rewards.exp!;
+    const trucCoExp = QUESTS.find((q) => q.key === 'truc_co_main_01')!.rewards.exp!;
+    const kimDanExp = QUESTS.find((q) => q.key === 'kim_dan_main_01')!.rewards.exp!;
+    const nguyenAnhExp = QUESTS.find((q) => q.key === 'nguyen_anh_main_01')!.rewards.exp!;
+    expect(luyenkhiExp).toBeGreaterThan(phamnhanExp);
+    expect(trucCoExp).toBeGreaterThan(luyenkhiExp);
+    expect(kimDanExp).toBeGreaterThan(trucCoExp);
+    expect(nguyenAnhExp).toBeGreaterThan(kimDanExp);
   });
 
   it('questByKey resolves known keys, returns undefined for unknown', () => {
@@ -173,26 +216,32 @@ describe('QUESTS catalog integrity (Phase 12 PR-1)', () => {
   });
 
   it('questsByGiver returns correct count', () => {
-    // Lăng Vân Sinh: 6 quest
-    expect(questsByGiver('npc_lang_van_sinh').length).toBe(6);
+    // Lăng Vân Sinh: 10 quest (6 from PR-1 + 4 from extension: kim_dan main/realm + nguyen_anh main/realm)
+    expect(questsByGiver('npc_lang_van_sinh').length).toBe(10);
+    // Mộc Thanh Y: 11 quest (7 from PR-1 + 4 from extension: kim_dan sect/grind + nguyen_anh sect/grind)
+    expect(questsByGiver('npc_moc_thanh_y').length).toBe(11);
     // Hàn Dạ: 1 quest
     expect(questsByGiver('npc_han_da').length).toBe(1);
     // Tô Nguyệt Ly: 1 quest
     expect(questsByGiver('npc_to_nguyet_ly').length).toBe(1);
+    // Huyết La Sát: 2 quest (kim_dan_npc_01 + nguyen_anh_npc_01)
+    expect(questsByGiver('npc_huyet_la_sat').length).toBe(2);
   });
 
-  it('questsByKind returns correct count (3 of each)', () => {
-    expect(questsByKind('main')).toHaveLength(3);
-    expect(questsByKind('realm')).toHaveLength(3);
-    expect(questsByKind('sect')).toHaveLength(3);
-    expect(questsByKind('npc')).toHaveLength(3);
-    expect(questsByKind('grind')).toHaveLength(3);
+  it('questsByKind returns correct count (5 of each)', () => {
+    expect(questsByKind('main')).toHaveLength(5);
+    expect(questsByKind('realm')).toHaveLength(5);
+    expect(questsByKind('sect')).toHaveLength(5);
+    expect(questsByKind('npc')).toHaveLength(5);
+    expect(questsByKind('grind')).toHaveLength(5);
   });
 
   it('questsAvailableAtRealm gates correctly', () => {
     expect(questsAvailableAtRealm(0).length).toBe(5); // chỉ phamnhan
     expect(questsAvailableAtRealm(1).length).toBe(10); // phamnhan + luyenkhi
-    expect(questsAvailableAtRealm(2).length).toBe(15); // all 3 realms
+    expect(questsAvailableAtRealm(2).length).toBe(15); // + truc_co
+    expect(questsAvailableAtRealm(3).length).toBe(20); // + kim_dan
+    expect(questsAvailableAtRealm(4).length).toBe(25); // all 5 realms
   });
 
   it('chain key consistency: quest in same chain must be in adjacent realms', () => {
