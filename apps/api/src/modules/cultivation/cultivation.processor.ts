@@ -174,10 +174,38 @@ export class CultivationProcessor extends WorkerHost {
           cap = expCostForStage(realmKey, realmStage);
         }
 
-        await this.prisma.character.update({
-          where: { id: c.id },
+        // Concurrency phase 2 hardening — multi-instance lock backstop.
+        // Trước fix: `prisma.character.update({ data: { exp, realmStage } })`
+        // ABSOLUTE write của giá trị `c.exp + gain` đọc từ findMany. Nếu 2
+        // worker (BullMQ stalled-job re-pickup, multi-node API, lock
+        // expiration race) cùng process tick → 2 read snapshot khác nhau,
+        // 2 write absolute → tuỳ timing có thể double-grant EXP (W2 đọc
+        // sau W1 commit → W2 thấy `exp+gain`, viết `exp+2*gain`). BullMQ
+        // Worker.lockDuration giảm xác suất nhưng không phải absolute
+        // guarantee.
+        // Sau fix: `updateMany` với CAS guard `where: { id, exp: c.exp,
+        // realmStage: c.realmStage, cultivating: true }` — chỉ 1 thread
+        // succeed nếu cùng race trên 1 character; thread sau count=0 →
+        // `continue` skip side effects (hp/mp regen, mission/achievement
+        // track, realtime emit). `cultivating: true` cũng guard race với
+        // user stop cultivating giữa findMany và update.
+        const updateResult = await this.prisma.character.updateMany({
+          where: {
+            id: c.id,
+            exp: c.exp,
+            realmStage: c.realmStage,
+            cultivating: true,
+          },
           data: { exp, realmStage },
         });
+        if (updateResult.count === 0) {
+          // CAS miss — character đã được tick xử lý song song hoặc
+          // user đã stop cultivating. Skip toàn bộ side effects để
+          // không double-count mission/achievement và không emit
+          // realtime spurious. Đây là backstop chính cho multi-instance
+          // race + stop-during-tick race.
+          continue;
+        }
 
         // Phase 11.8.E + 11.7.E — Buff `hpRegenFlat` / `mpRegenFlat` wire +
         // Talent regen wire. Catalog values là per-second (vd
@@ -186,7 +214,8 @@ export class CultivationProcessor extends WorkerHost {
         // buff + talent regen (cả hai đều flat per-second values). Mỗi tick =
         // 30s → tổng hồi = `(buff + talent) × tickSeconds`. Cap LEAST(hp+delta,
         // hpMax) qua raw SQL để không vượt cap. Skip nếu cả hp/mp regen = 0
-        // (avoid no-op write).
+        // (avoid no-op write). Đặt SAU CAS guard để 2 worker race chỉ
+        // regen 1 lần (CAS thắng), không double-regen.
         const totalHpRegenFlat =
           (buffMods?.hpRegenFlat ?? 0) + (talentMods?.hpRegenFlat ?? 0);
         const totalMpRegenFlat =

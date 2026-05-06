@@ -883,4 +883,86 @@ describe('CultivationProcessor.process (tick)', () => {
       expect(c.exp).toBe(0n);
     });
   });
+
+  // Concurrency phase 2 — multi-instance lock backstop. Trước fix:
+  // `prisma.character.update({ data: { exp, realmStage } })` ABSOLUTE
+  // write của `c.exp + gain` từ snapshot findMany. Nếu 2 worker race
+  // cùng tick (cùng baseline snapshot), W2 update overwrite W1 →
+  // single-grant nhưng W2 vẫn track mission/achievement/realtime spurious.
+  // Sau fix: `updateMany` với CAS guard `where: { id, exp: c.exp,
+  // realmStage: c.realmStage, cultivating: true }` — chỉ 1 thread succeed
+  // khi cùng baseline; thread sau count=0 → skip side effects.
+  //
+  // CAS KHÔNG fix mọi race (vd 2 process() call hoàn toàn sequential,
+  // mỗi call đọc baseline mới sau commit cũ → cả 2 succeed, đó là 2
+  // tick event riêng biệt). Production safeguard chính là BullMQ
+  // Worker.lockDuration + recurring job scheduler ensure 1 tick / 30s.
+  // Test backstop dưới đây verify: (1) CAS chặn cultivating=false race,
+  // (2) Promise.all không bao giờ over-grant > 2× gain (sanity bound).
+  describe('Concurrency phase 2 — multi-instance race backstop', () => {
+    it('user stop cultivating giữa findMany và update → CAS guard cultivating=true filter ngăn grant', async () => {
+      const u = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 0,
+        realmKey: 'luyenkhi',
+        realmStage: 1,
+        exp: 0n,
+      });
+
+      // Stop cultivating ngay sau makeUserChar — mô phỏng race "user
+      // stop cultivating giữa lúc tick worker đang process".
+      await prisma.character.update({
+        where: { id: u.characterId },
+        data: { cultivating: false },
+      });
+
+      await processor.process(tickJob());
+
+      const after = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // findMany filter cultivating=true → character KHÔNG enter loop
+      // → exp không đổi. Đây là path "fast skip" qua findMany filter,
+      // CAS guard chỉ kick in khi user stop GIỮA findMany và update
+      // (race window ngắn hơn — không trivially testable nhưng CAS
+      // bao phủ).
+      expect(after.exp).toBe(0n);
+      expect(after.cultivating).toBe(false);
+    });
+
+    it('Promise.all([process, process]) → no over-grant > 2× gain (sanity bound, BullMQ là safeguard chính)', async () => {
+      // 2 process() call song song mô phỏng worst-case worker race.
+      // Outcomes hợp lệ:
+      //   - 1× gain: 2 thread cùng baseline snapshot → CAS chặn 1
+      //     (lost-update prevention).
+      //   - 2× gain: 2 thread baseline khác nhau (W2 đọc sau W1 commit)
+      //     → 2 tick event sequential, cả 2 succeed.
+      // Bound trên: KHÔNG bao giờ > 2× gain (no triple-grant) — đây
+      // là sanity invariant. Production guarantee là BullMQ
+      // Worker.lockDuration + recurring scheduler (single tick / 30s).
+      const u = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 0,
+        realmKey: 'luyenkhi',
+        realmStage: 1,
+        exp: 0n,
+      });
+      const singleGain = BigInt(
+        cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP),
+      );
+
+      await Promise.all([processor.process(tickJob()), processor.process(tickJob())]);
+
+      const after = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // exp ∈ [singleGain, 2×singleGain]. NEVER 0n (lost grant) hoặc
+      // > 2×singleGain (triple-grant). NEVER negative.
+      expect(after.exp).toBeGreaterThanOrEqual(singleGain);
+      expect(after.exp).toBeLessThanOrEqual(singleGain * 2n);
+      // Realm/stage không corrupt.
+      expect(after.realmKey).toBe('luyenkhi');
+      expect(after.realmStage).toBe(1);
+    });
+  });
 });

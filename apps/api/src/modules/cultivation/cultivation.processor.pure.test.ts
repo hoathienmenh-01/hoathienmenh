@@ -36,7 +36,7 @@ function makeDeps() {
     $executeRawUnsafe: vi.fn().mockResolvedValue(0),
     character: {
       findMany: vi.fn().mockResolvedValue([]),
-      update: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
   };
   const realtime = {
@@ -78,7 +78,7 @@ describe('CultivationProcessor pure unit', () => {
     const { prisma, realtime, processor } = makeDeps();
     prisma.character.findMany.mockResolvedValue([]);
     await processor.process(tickJob());
-    expect(prisma.character.update).not.toHaveBeenCalled();
+    expect(prisma.character.updateMany).not.toHaveBeenCalled();
     expect(realtime.emitToUser).not.toHaveBeenCalled();
   });
 
@@ -93,8 +93,13 @@ describe('CultivationProcessor pure unit', () => {
       cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) +
         Math.floor(8 / 4),
     );
-    expect(prisma.character.update).toHaveBeenCalledWith({
-      where: { id: 'char-1' },
+    expect(prisma.character.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'char-1',
+        exp: 0n,
+        realmStage: 1,
+        cultivating: true,
+      },
       data: { exp: expectedGain, realmStage: 1 },
     });
 
@@ -124,8 +129,13 @@ describe('CultivationProcessor pure unit', () => {
         Math.floor(8 / 4),
     );
     const expectedExp = cap1 - 1n + gain - cap1;
-    expect(prisma.character.update).toHaveBeenCalledWith({
-      where: { id: 'char-1' },
+    expect(prisma.character.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'char-1',
+        exp: cap1 - 1n,
+        realmStage: 1,
+        cultivating: true,
+      },
       data: { exp: expectedExp, realmStage: 2 },
     });
 
@@ -151,8 +161,13 @@ describe('CultivationProcessor pure unit', () => {
       cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) +
         Math.floor(8 / 4),
     );
-    expect(prisma.character.update).toHaveBeenCalledWith({
-      where: { id: 'char-1' },
+    expect(prisma.character.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'char-1',
+        exp: cap9 - 1n,
+        realmStage: 9,
+        cultivating: true,
+      },
       data: { exp: cap9 - 1n + gain, realmStage: 9 },
     });
   });
@@ -166,7 +181,7 @@ describe('CultivationProcessor pure unit', () => {
     await processor.process(tickJob());
 
     // EXP still updated despite mission failure
-    expect(prisma.character.update).toHaveBeenCalled();
+    expect(prisma.character.updateMany).toHaveBeenCalled();
     // Payload still emitted
     expect(realtime.emitToUser).toHaveBeenCalled();
   });
@@ -216,9 +231,9 @@ describe('CultivationProcessor pure unit', () => {
     const c1 = makeChar({ id: 'char-1', userId: 'user-1' });
     const c2 = makeChar({ id: 'char-2', userId: 'user-2' });
     prisma.character.findMany.mockResolvedValue([c1, c2]);
-    prisma.character.update
+    prisma.character.updateMany
       .mockRejectedValueOnce(new Error('DB error for char-1'))
-      .mockResolvedValueOnce({});
+      .mockResolvedValueOnce({ count: 1 });
 
     await processor.process(tickJob());
 
