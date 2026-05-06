@@ -199,11 +199,13 @@ export const MONSTERS: readonly MonsterDef[] = [
     lootTable: [
       // Phase 12.4 — ELITE override: bias toward themed weapon + nâng skill_book
       // weight (3 → 5) so với dungeon-level fallback. Higher tinh_thiet qty
-      // (3-6 vs 2-5) reward player kill được elite encounter.
+      // (3-6 vs 2-5) reward player kill được elite encounter. Convention: giữ
+      // skill_book ở vị trí cuối + parity với DUNGEON_LOOT.kim_son_mach (last
+      // bucket) để invariant random=0.99 trong combat.service.test vẫn hit.
       { itemKey: 'than_phong_kiem', weight: 8, qtyMin: 1, qtyMax: 1 },
       { itemKey: 'tinh_thiet', weight: 25, qtyMin: 3, qtyMax: 6 },
-      { itemKey: 'skill_book_kim_quang_tram', weight: 5, qtyMin: 1, qtyMax: 1 },
       { itemKey: 'co_thien_dan', weight: 15, qtyMin: 2, qtyMax: 3 },
+      { itemKey: 'skill_book_kim_quang_tram', weight: 5, qtyMin: 1, qtyMax: 1 },
     ],
   },
 
