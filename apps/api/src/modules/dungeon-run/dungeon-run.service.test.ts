@@ -1,5 +1,5 @@
 import { CurrencyKind, DungeonRunStatus } from '@prisma/client';
-import { DUNGEON_LOOT, dungeonByKey } from '@xuantoi/shared';
+import { DUNGEON_LOOT, dungeonByKey, monsterByKey } from '@xuantoi/shared';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../../common/prisma.service';
 import { QuestService } from '../quest/quest.service';
@@ -482,5 +482,77 @@ describe('DungeonRunService.claimRun', () => {
       where: { characterId, refType: 'DungeonRun', refId: run.id },
     });
     expect(ledgerCount).toBe(1);
+  });
+});
+
+describe('Phase 12.4 — per-monster lootTable override', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const THUY_LONG_UYEN_KEY = 'thuy_long_uyen'; // BOSS cuối = thuy_thanh_long_vuong (có lootTable)
+
+  it('boss với lootTable → loot pulled từ monster.lootTable, KHÔNG từ DUNGEON_LOOT[dungeon.key]', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+    const { userId, characterId } = await makeUserChar(prisma, {
+      realmKey: 'kim_dan', // thuy_long_uyen require kim_dan
+    });
+    const run = await runs.startRun(userId, THUY_LONG_UYEN_KEY);
+    const dungeon = dungeonByKey(THUY_LONG_UYEN_KEY)!;
+
+    // Advance tới boss cuối (index = monsters.length - 1)
+    let view = run;
+    for (let i = 0; i < dungeon.monsters.length; i++) {
+      view = await runs.nextEncounter(userId, run.id);
+    }
+    expect(view.status).toBe(DungeonRunStatus.COMPLETED);
+
+    // Boss cuối = thuy_thanh_long_vuong → có lootTable override
+    const bossKey = dungeon.monsters[dungeon.monsters.length - 1];
+    const boss = monsterByKey(bossKey)!;
+    expect(boss.lootTable).toBeDefined();
+    expect(boss.lootTable!.length).toBeGreaterThan(0);
+
+    // Loot ghi trong killed entry cuối phải thuộc boss.lootTable itemKeys
+    const bossKilled = view.killedMonsters[view.killedMonsters.length - 1];
+    expect(bossKilled.loot).toBeTruthy();
+    const bossLootKeys = new Set(boss.lootTable!.map((e) => e.itemKey));
+    for (const l of bossKilled.loot!) {
+      expect(
+        bossLootKeys.has(l.itemKey),
+        `loot ${l.itemKey} NOT in boss.lootTable — phải là override, không fallback dungeon`,
+      ).toBe(true);
+    }
+
+    // ItemLedger rows cho encounter cuối (boss) phải reference boss loot items
+    const allLedger = await prisma.itemLedger.findMany({
+      where: {
+        characterId,
+        reason: 'DUNGEON_LOOT',
+        refType: 'DungeonRun',
+        refId: run.id,
+      },
+    });
+    expect(allLedger.length).toBeGreaterThanOrEqual(dungeon.monsters.length);
+  });
+
+  it('monster BEAST không có lootTable → fallback DUNGEON_LOOT[dungeon.key] (regression)', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+    const { userId } = await makeUserChar(prisma, { realmKey: 'luyenkhi' });
+    const run = await runs.startRun(userId, SON_COC_KEY);
+    const after = await runs.nextEncounter(userId, run.id);
+
+    // First monster son_coc = son_thu_lon (BEAST, no lootTable)
+    const firstMonster = monsterByKey('son_thu_lon')!;
+    expect(firstMonster.lootTable).toBeUndefined();
+
+    // Loot phải đến từ DUNGEON_LOOT.son_coc
+    expect(after.killedMonsters[0].loot).toBeTruthy();
+    const sonCocKeys = new Set(DUNGEON_LOOT.son_coc.map((e) => e.itemKey));
+    for (const l of after.killedMonsters[0].loot!) {
+      expect(sonCocKeys.has(l.itemKey), `${l.itemKey} not in DUNGEON_LOOT.son_coc`).toBe(true);
+    }
   });
 });

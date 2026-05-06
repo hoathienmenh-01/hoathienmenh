@@ -23,6 +23,7 @@ import {
   monsterByKey,
   rollDamage,
   rollDungeonLoot,
+  rollMonsterLoot,
   simulateActiveTalent,
   skillByKey,
   type DungeonDef,
@@ -660,7 +661,9 @@ export class CombatService {
 
     const lootView: EncounterRewardLoot[] = [];
     if (nextStatus === EncounterStatus.WON) {
-      const loot = rollDungeonLoot(dungeon.key, 2);
+      // Phase 12.4 — ưu tiên monster.lootTable (boss/elite override)
+      const monsterLoot = rollMonsterLoot(monster.key, 2);
+      const loot = monsterLoot.length > 0 ? monsterLoot : rollDungeonLoot(dungeon.key, 2);
       if (loot.length > 0) {
         await this.inventory.grant(char.id, loot, {
           reason: 'COMBAT_LOOT',
@@ -1080,7 +1083,9 @@ export class CombatService {
 
     const lootView: EncounterRewardLoot[] = [];
     if (nextStatus === EncounterStatus.WON) {
-      const loot = rollDungeonLoot(dungeon.key, 2);
+      // Phase 12.4 — ưu tiên monster.lootTable (boss/elite override)
+      const monsterLoot = rollMonsterLoot(monster.key, 2);
+      const loot = monsterLoot.length > 0 ? monsterLoot : rollDungeonLoot(dungeon.key, 2);
       if (loot.length > 0) {
         await this.inventory.grant(char.id, loot, {
           reason: 'COMBAT_LOOT',

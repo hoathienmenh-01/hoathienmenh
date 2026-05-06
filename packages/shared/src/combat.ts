@@ -24,6 +24,26 @@ export const MONSTER_TYPES: readonly MonsterType[] = [
   'BOSS',
 ];
 
+/**
+ * Drop table entry — single rollable row trong loot table.
+ *
+ * Sống trong `combat.ts` (không phải `items.ts`) để `MonsterDef.lootTable`
+ * có thể tham chiếu mà không tạo circular import (`items.ts` đã import
+ * `ElementKey` từ `combat.ts`). Helper roll thực tế (`rollDungeonLoot`,
+ * `rollMonsterLoot`) vẫn ở `items.ts` vì cần `itemByKey` để validate.
+ */
+export interface LootEntry {
+  itemKey: string;
+  weight: number;
+  qtyMin: number;
+  qtyMax: number;
+}
+
+export interface RolledLoot {
+  itemKey: string;
+  qty: number;
+}
+
 export interface MonsterDef {
   key: string;
   name: string;
@@ -62,6 +82,28 @@ export interface MonsterDef {
    * placeholder + real key trùng. Không định nghĩa = chỉ track key gốc.
    */
   questTargetIds?: string[];
+  /**
+   * **Phase 12.4** — per-monster loot table override. Khi defined +
+   * non-empty, `DungeonRunService.nextEncounter` (và tương tự ở
+   * `CombatService` WON path) **ưu tiên** roll từ table này thay vì
+   * `DUNGEON_LOOT[dungeon.key]`. Mục đích: cho boss/elite có drop chain
+   * thematic riêng (vd boss endgame `cuu_la_huyen_quan` drop pity
+   * `linh_can_dan` weight cao hơn dungeon-level fallback).
+   *
+   * Resolve:
+   *   - `monster.lootTable` defined + length > 0 → roll qua `rollMonsterLoot`.
+   *   - else → fallback `rollDungeonLoot(dungeon.key, n)` (existing path).
+   *
+   * Validation (vitest items-monster-loot.test.ts):
+   *   - `weight > 0` mọi entry.
+   *   - `qtyMin ≥ 1`, `qtyMin ≤ qtyMax`.
+   *   - `itemKey` resolve qua `itemByKey` (no orphan ref).
+   *
+   * Không define = identity (dungeon-level fallback). Convention: chỉ override
+   * cho monster `monsterType ∈ {ELITE, BOSS}` để tránh boss-loot leak vào
+   * BEAST routine drop.
+   */
+  lootTable?: readonly LootEntry[];
 }
 
 /**
@@ -153,7 +195,17 @@ export const MONSTERS: readonly MonsterDef[] = [
   { key: 'kim_quang_thach_giap', name: 'Kim Quang Thạch Giáp', level: 7,  hp: 230,  atk: 26, def: 20, speed: 7,  expDrop: 165,  linhThachDrop: 48,  element: 'kim', monsterType: 'BEAST',    regionKey: 'kim_son_mach', questTargetIds: ['kim_son_yeu'] },
   { key: 'huyen_kim_lang_thu',   name: 'Huyền Kim Lang Thử',   level: 9,  hp: 360,  atk: 42, def: 22, speed: 13, expDrop: 280,  linhThachDrop: 80,  element: 'kim', monsterType: 'BEAST',    regionKey: 'kim_son_mach' },
   { key: 'tinh_thiet_kiem_linh', name: 'Tinh Thiết Kiếm Linh', level: 11, hp: 570,  atk: 70, def: 26, speed: 12, expDrop: 430,  linhThachDrop: 125, element: 'kim', monsterType: 'SPIRIT',   regionKey: 'kim_son_mach' },
-  { key: 'kim_dieu_thuong_phong',name: 'Kim Điêu Thượng Phong',level: 14, hp: 920,  atk: 105,def: 42, speed: 16, expDrop: 720,  linhThachDrop: 195, element: 'kim', monsterType: 'ELITE',    regionKey: 'kim_son_mach', questTargetIds: ['kim_dan_yeu_thu'] },
+  { key: 'kim_dieu_thuong_phong',name: 'Kim Điêu Thượng Phong',level: 14, hp: 920,  atk: 105,def: 42, speed: 16, expDrop: 720,  linhThachDrop: 195, element: 'kim', monsterType: 'ELITE',    regionKey: 'kim_son_mach', questTargetIds: ['kim_dan_yeu_thu'],
+    lootTable: [
+      // Phase 12.4 — ELITE override: bias toward themed weapon + nâng skill_book
+      // weight (3 → 5) so với dungeon-level fallback. Higher tinh_thiet qty
+      // (3-6 vs 2-5) reward player kill được elite encounter.
+      { itemKey: 'than_phong_kiem', weight: 8, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'tinh_thiet', weight: 25, qtyMin: 3, qtyMax: 6 },
+      { itemKey: 'skill_book_kim_quang_tram', weight: 5, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'co_thien_dan', weight: 15, qtyMin: 2, qtyMax: 3 },
+    ],
+  },
 
   // Region: Mộc Huyền Lâm (Hệ MỘC, luyện khí cao → trúc cơ; rừng cổ)
   { key: 'thanh_mang_xa',        name: 'Thanh Mang Xà',        level: 4,  hp: 110,  atk: 17, def: 6,  speed: 12, expDrop: 60,   linhThachDrop: 22, element: 'moc', monsterType: 'BEAST',    regionKey: 'moc_huyen_lam' },
@@ -165,22 +217,67 @@ export const MONSTERS: readonly MonsterDef[] = [
   { key: 'thuy_lan_yeu',         name: 'Thuỷ Lân Yêu',         level: 6,  hp: 195,  atk: 25, def: 10, speed: 12, expDrop: 125,  linhThachDrop: 38, element: 'thuy', monsterType: 'BEAST',    regionKey: 'thuy_long_uyen' },
   { key: 'han_tinh_quy_phach',   name: 'Hàn Tinh Quỷ Phách',   level: 9,  hp: 380,  atk: 44, def: 22, speed: 11, expDrop: 290,  linhThachDrop: 88, element: 'thuy', monsterType: 'SPIRIT',   regionKey: 'thuy_long_uyen' },
   { key: 'huyen_thuy_giao_long', name: 'Huyền Thuỷ Giao Long', level: 13, hp: 820,  atk: 95, def: 42, speed: 14, expDrop: 640,  linhThachDrop: 175,element: 'thuy', monsterType: 'ELITE',    regionKey: 'thuy_long_uyen' },
-  { key: 'thuy_thanh_long_vuong',name: 'Thuỷ Thanh Long Vương',level: 17, hp: 1450, atk: 140,def: 56, speed: 13, expDrop: 1100, linhThachDrop: 320,element: 'thuy', monsterType: 'BOSS',     regionKey: 'thuy_long_uyen' },
+  { key: 'thuy_thanh_long_vuong',name: 'Thuỷ Thanh Long Vương',level: 17, hp: 1450, atk: 140,def: 56, speed: 13, expDrop: 1100, linhThachDrop: 320,element: 'thuy', monsterType: 'BOSS',     regionKey: 'thuy_long_uyen',
+    lootTable: [
+      // Phase 12.4 — BOSS override: equipment + skill_book pity weight 6
+      // (vs dungeon weight 3). han_ngoc qty boost 2-4 (vs 1-3) reward
+      // boss-only kill.
+      { itemKey: 'cuu_u_bi_thuong', weight: 6, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'han_thiet_giap', weight: 6, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'han_ngoc', weight: 30, qtyMin: 2, qtyMax: 4 },
+      { itemKey: 'skill_book_thuy_kinh_phong_an', weight: 6, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'co_thien_dan', weight: 20, qtyMin: 2, qtyMax: 4 },
+    ],
+  },
 
   // Region: Hoả Diệm Sơn (Hệ HOẢ, kim đan → nguyên anh; núi lửa)
   { key: 'hoa_yen_thu',          name: 'Hoả Yến Thử',          level: 9,  hp: 320,  atk: 50, def: 14, speed: 15, expDrop: 240,  linhThachDrop: 70, element: 'hoa', monsterType: 'BEAST',    regionKey: 'hoa_diem_son' },
   { key: 'xich_diem_yeu_xa',     name: 'Xích Diệm Yêu Xà',     level: 12, hp: 580,  atk: 78, def: 30, speed: 14, expDrop: 470,  linhThachDrop: 145,element: 'hoa', monsterType: 'BEAST',    regionKey: 'hoa_diem_son' },
   { key: 'hoa_long_chi_linh',    name: 'Hoả Long Chi Linh',    level: 16, hp: 1280, atk: 130,def: 50, speed: 13, expDrop: 990,  linhThachDrop: 270,element: 'hoa', monsterType: 'ELITE',    regionKey: 'hoa_diem_son' },
-  { key: 'chu_tuoc_huyet_dieu',  name: 'Chu Tước Huyết Điêu',  level: 19, hp: 1800, atk: 175,def: 65, speed: 17, expDrop: 1450, linhThachDrop: 410,element: 'hoa', monsterType: 'BOSS',     regionKey: 'hoa_diem_son' },
+  { key: 'chu_tuoc_huyet_dieu',  name: 'Chu Tước Huyết Điêu',  level: 19, hp: 1800, atk: 175,def: 65, speed: 17, expDrop: 1450, linhThachDrop: 410,element: 'hoa', monsterType: 'BOSS',     regionKey: 'hoa_diem_son',
+    lootTable: [
+      // Phase 12.4 — BOSS override: rare TIEN weapon `tu_la_dao` weight 5
+      // (vs dungeon weight 2). yeu_dan qty boost 3-5 (vs 2-5). Skill book
+      // pity weight 6 cho boss kill.
+      { itemKey: 'tu_la_dao', weight: 5, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'cuu_la_giap', weight: 6, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'yeu_dan', weight: 30, qtyMin: 3, qtyMax: 5 },
+      { itemKey: 'cuu_huyen_dan', weight: 15, qtyMin: 2, qtyMax: 3 },
+      { itemKey: 'skill_book_hoa_xa_phun_diem', weight: 6, qtyMin: 1, qtyMax: 1 },
+    ],
+  },
 
   // Region: Hoàng Thổ Huyệt (Hệ THỔ, kim đan → nguyên anh; mỏ thổ + tank)
   { key: 'thach_quang_yeu_thu',  name: 'Thạch Quang Yêu Thú',  level: 10, hp: 540,  atk: 48, def: 50, speed: 5,  expDrop: 380,  linhThachDrop: 110,element: 'tho', monsterType: 'BEAST',    regionKey: 'hoang_tho_huyet' },
   { key: 'hoang_tho_cu_yeu',     name: 'Hoàng Thổ Cự Yêu',     level: 13, hp: 880,  atk: 78, def: 70, speed: 6,  expDrop: 660,  linhThachDrop: 180,element: 'tho', monsterType: 'ELITE',    regionKey: 'hoang_tho_huyet', questTargetIds: ['hoang_tho_quy'] },
   { key: 'thach_long_co_giap',   name: 'Thạch Long Cổ Giáp',   level: 17, hp: 1500, atk: 130,def: 110,speed: 7,  expDrop: 1180, linhThachDrop: 330,element: 'tho', monsterType: 'BOSS',     regionKey: 'hoang_tho_huyet' },
-  { key: 'tho_dia_lao_tu',       name: 'Thổ Địa Lão Tử',       level: 20, hp: 2200, atk: 165,def: 130,speed: 8,  expDrop: 1700, linhThachDrop: 480,element: 'tho', monsterType: 'BOSS',     regionKey: 'hoang_tho_huyet' },
+  { key: 'tho_dia_lao_tu',       name: 'Thổ Địa Lão Tử',       level: 20, hp: 2200, atk: 165,def: 130,speed: 8,  expDrop: 1700, linhThachDrop: 480,element: 'tho', monsterType: 'BOSS',     regionKey: 'hoang_tho_huyet',
+    lootTable: [
+      // Phase 12.4 — BOSS override (final boss hoang_tho_huyet): equipment
+      // weight 6 + skill book pity 6 + cuu_huyen_dan tier-up (weight 18 vs
+      // dungeon 14). phu_van_ngoc qty boost 2-4 (vs 1-3).
+      { itemKey: 'than_lan_giap', weight: 6, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'yeu_phach_giap', weight: 6, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'phu_van_ngoc', weight: 30, qtyMin: 2, qtyMax: 4 },
+      { itemKey: 'cuu_huyen_dan', weight: 18, qtyMin: 2, qtyMax: 3 },
+      { itemKey: 'skill_book_thach_giap_ho_than', weight: 6, qtyMin: 1, qtyMax: 1 },
+    ],
+  },
 
   // Phase-10 cross-region BOSS (mid-late, kim đan đỉnh, mixed encounter)
-  { key: 'cuu_la_huyen_quan',    name: 'Cửu La Huyền Quân',    level: 18, hp: 1700, atk: 160,def: 80, speed: 14, expDrop: 1380, linhThachDrop: 390,element: 'kim',  monsterType: 'BOSS',    regionKey: 'kim_son_mach' },
+  { key: 'cuu_la_huyen_quan',    name: 'Cửu La Huyền Quân',    level: 18, hp: 1700, atk: 160,def: 80, speed: 14, expDrop: 1380, linhThachDrop: 390,element: 'kim',  monsterType: 'BOSS',    regionKey: 'kim_son_mach',
+    lootTable: [
+      // Phase 12.4 — BOSS override (cuu_la_dien single-boss endgame): tier-up
+      // mọi rare drop từ dungeon-level. than_dan/tien_huyen_kiem/giap weight
+      // x2-3, linh_can_dan pity weight 3 (vs dungeon 1) reward endgame kill.
+      { itemKey: 'than_dan', weight: 3, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'tien_huyen_kiem', weight: 4, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'tien_huyen_giap', weight: 4, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'tien_kim_sa', weight: 12, qtyMin: 1, qtyMax: 3 },
+      { itemKey: 'cuu_thien_dan', weight: 10, qtyMin: 1, qtyMax: 2 },
+      { itemKey: 'linh_can_dan', weight: 3, qtyMin: 1, qtyMax: 1 },
+    ],
+  },
 
   // ═════════════════════════════════════════════════════════════════════
   // Phase 12 Story Foundation Late-game wire — Trúc Cơ → Nguyên Anh story monster

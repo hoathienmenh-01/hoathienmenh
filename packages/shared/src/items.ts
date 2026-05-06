@@ -5,7 +5,8 @@
  * `itemKey + qty + equippedSlot`, server lookup ItemDef bằng key này.
  */
 
-import type { ElementKey } from './combat';
+import type { ElementKey, LootEntry, RolledLoot } from './combat';
+import { monsterByKey } from './combat';
 import type { EquipSlot, Quality } from './enums';
 
 export type ItemKind =
@@ -1244,13 +1245,10 @@ export function itemByKey(key: string): ItemDef | undefined {
   return ITEMS.find((i) => i.key === key);
 }
 
-/** Drop table theo dungeon: list { itemKey, weight, qtyMin, qtyMax }. */
-export interface LootEntry {
-  itemKey: string;
-  weight: number;
-  qtyMin: number;
-  qtyMax: number;
-}
+// LootEntry + RolledLoot types live in combat.ts (Phase 12.4 — avoid circular
+// import since MonsterDef.lootTable needs LootEntry). Re-export for backward
+// compat with external consumers that import from '@xuantoi/shared'.
+export type { LootEntry, RolledLoot } from './combat';
 
 export const DUNGEON_LOOT: Record<string, readonly LootEntry[]> = {
   son_coc: [
@@ -1369,15 +1367,13 @@ export const DUNGEON_LOOT: Record<string, readonly LootEntry[]> = {
   ],
 };
 
-export interface RolledLoot {
-  itemKey: string;
-  qty: number;
-}
-
-/** Roll 1-2 entry từ drop table, áp dụng weight. */
-export function rollDungeonLoot(dungeonKey: string, count = 2): RolledLoot[] {
-  const table = DUNGEON_LOOT[dungeonKey];
-  if (!table || table.length === 0) return [];
+/**
+ * Generic weighted loot roll. Internal helper shared by `rollDungeonLoot` and
+ * `rollMonsterLoot`. `count` times picks 1 entry proportional to `weight`,
+ * random qty in `[qtyMin, qtyMax]`.
+ */
+function rollLootTable(table: readonly LootEntry[], count: number): RolledLoot[] {
+  if (table.length === 0) return [];
   const total = table.reduce((s, e) => s + e.weight, 0);
   const out: RolledLoot[] = [];
   for (let i = 0; i < count; i++) {
@@ -1393,6 +1389,26 @@ export function rollDungeonLoot(dungeonKey: string, count = 2): RolledLoot[] {
     }
   }
   return out;
+}
+
+/** Roll 1-2 entry từ drop table dungeon, áp dụng weight. */
+export function rollDungeonLoot(dungeonKey: string, count = 2): RolledLoot[] {
+  const table = DUNGEON_LOOT[dungeonKey];
+  if (!table || table.length === 0) return [];
+  return rollLootTable(table, count);
+}
+
+/**
+ * **Phase 12.4** — Roll loot từ `MonsterDef.lootTable` (per-monster override).
+ * Trả `[]` nếu monster không tồn tại hoặc không define lootTable.
+ *
+ * Caller (DungeonRunService.nextEncounter, CombatService WON path) sẽ check
+ * `rollMonsterLoot(monsterKey, n)` — nếu empty → fallback `rollDungeonLoot`.
+ */
+export function rollMonsterLoot(monsterKey: string, count = 2): RolledLoot[] {
+  const monster = monsterByKey(monsterKey);
+  if (!monster?.lootTable || monster.lootTable.length === 0) return [];
+  return rollLootTable(monster.lootTable, count);
 }
 
 export const QUALITY_COLOR: Record<Quality, string> = {
