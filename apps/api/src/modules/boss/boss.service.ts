@@ -120,6 +120,15 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
   /** characterId → last attack ms (rate-limit). */
   private readonly cooldowns = new Map<string, number>();
   private timer: ReturnType<typeof setInterval> | null = null;
+  /**
+   * Concurrency phase 2 — in-process re-entry guard. Nếu tick trước vẫn
+   * đang chạy (DB chậm, distribute reward backlog), `setInterval` 30s
+   * vẫn fire next tick — flag này skip overlap thay vì 2 heartbeat song
+   * song trên cùng process. Cross-process race vẫn cần partial unique
+   * index `WorldBoss_status_active_unique` (DB-level backstop) — flag
+   * chỉ là tối ưu intra-process.
+   */
+  private heartbeatRunning = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -506,48 +515,64 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
   // ---------- private helpers ----------
 
   private async heartbeat(): Promise<void> {
-    // 1) Expire boss quá hạn.
-    const active = await this.prisma.worldBoss.findFirst({
-      where: { status: BossStatus.ACTIVE },
-      orderBy: { spawnedAt: 'desc' },
-    });
-    if (active && active.expiresAt.getTime() <= Date.now()) {
-      const def = bossByKey(active.bossKey);
-      const flip = await this.prisma.worldBoss.updateMany({
-        where: { id: active.id, status: BossStatus.ACTIVE },
-        data: { status: BossStatus.EXPIRED, defeatedAt: new Date() },
+    // In-process re-entry guard. Nếu previous tick còn đang chạy
+    // (DB chậm hoặc distributeRewardsExpired đang grant reward), skip
+    // tick mới thay vì chạy song song trên cùng process. Cross-process
+    // (multi-pod) race vẫn cần partial unique index DB-level — xem
+    // `spawnNew` P2002 catch + migration `20260522000000_concurrency_boss_active_unique`.
+    if (this.heartbeatRunning) {
+      this.logger.debug('boss heartbeat: previous tick still in-flight, skip');
+      return;
+    }
+    this.heartbeatRunning = true;
+    try {
+      // 1) Expire boss quá hạn.
+      const active = await this.prisma.worldBoss.findFirst({
+        where: { status: BossStatus.ACTIVE },
+        orderBy: { spawnedAt: 'desc' },
       });
-      if (flip.count > 0 && def) {
-        // Cũng phân thưởng giảm cho người tham gia (60% pool).
-        const slices = await this.distributeRewardsExpired(active.id, def);
-        this.realtime.broadcast('boss:end', {
-          id: active.id,
-          status: 'EXPIRED',
-          rewards: slices,
+      if (active && active.expiresAt.getTime() <= Date.now()) {
+        const def = bossByKey(active.bossKey);
+        const flip = await this.prisma.worldBoss.updateMany({
+          where: { id: active.id, status: BossStatus.ACTIVE },
+          data: { status: BossStatus.EXPIRED, defeatedAt: new Date() },
         });
+        if (flip.count > 0 && def) {
+          // Cũng phân thưởng giảm cho người tham gia (60% pool).
+          const slices = await this.distributeRewardsExpired(active.id, def);
+          this.realtime.broadcast('boss:end', {
+            id: active.id,
+            status: 'EXPIRED',
+            rewards: slices,
+          });
+        }
       }
-    }
 
-    // 2) Spawn boss mới nếu không có ACTIVE và đã đủ delay.
-    const stillActive = await this.prisma.worldBoss.findFirst({
-      where: { status: BossStatus.ACTIVE },
-    });
-    if (stillActive) return;
+      // 2) Spawn boss mới nếu không có ACTIVE và đã đủ delay.
+      const stillActive = await this.prisma.worldBoss.findFirst({
+        where: { status: BossStatus.ACTIVE },
+      });
+      if (stillActive) return;
 
-    const last = await this.prisma.worldBoss.findFirst({
-      where: { status: { in: [BossStatus.DEFEATED, BossStatus.EXPIRED] } },
-      orderBy: { spawnedAt: 'desc' },
-    });
-    if (last) {
-      const since = Date.now() - (last.defeatedAt ?? last.spawnedAt).getTime();
-      if (since < BOSS_RESPAWN_DELAY_MS) return;
+      const last = await this.prisma.worldBoss.findFirst({
+        where: { status: { in: [BossStatus.DEFEATED, BossStatus.EXPIRED] } },
+        orderBy: { spawnedAt: 'desc' },
+      });
+      if (last) {
+        const since = Date.now() - (last.defeatedAt ?? last.spawnedAt).getTime();
+        if (since < BOSS_RESPAWN_DELAY_MS) return;
+      }
+      // spawnNew có thể return null nếu race với heartbeat khác (multi-pod) —
+      // partial unique index P2002 → no-op. Heartbeat không cần action thêm.
+      await this.spawnNew();
+    } finally {
+      this.heartbeatRunning = false;
     }
-    await this.spawnNew();
   }
 
   private async spawnNew(
     overrides: { def?: BossDef; level?: number } = {},
-  ): Promise<{ id: string; bossKey: string; level: number; maxHp: bigint }> {
+  ): Promise<{ id: string; bossKey: string; level: number; maxHp: bigint } | null> {
     let def: BossDef;
     let level: number;
     if (overrides.def) {
@@ -562,19 +587,42 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     }
     const maxHp = BigInt(def.baseMaxHp) * BigInt(level);
 
-    const created = await this.prisma.worldBoss.create({
-      data: {
-        bossKey: def.key,
-        name: def.name,
-        level,
-        maxHp,
-        currentHp: maxHp,
-        status: BossStatus.ACTIVE,
-        spawnedAt: new Date(),
-        expiresAt: new Date(Date.now() + BOSS_LIFETIME_MS),
-        rewardTotal: BigInt(def.baseRewardLinhThach) * BigInt(level),
-      },
-    });
+    let created;
+    try {
+      created = await this.prisma.worldBoss.create({
+        data: {
+          bossKey: def.key,
+          name: def.name,
+          level,
+          maxHp,
+          currentHp: maxHp,
+          status: BossStatus.ACTIVE,
+          spawnedAt: new Date(),
+          expiresAt: new Date(Date.now() + BOSS_LIFETIME_MS),
+          rewardTotal: BigInt(def.baseRewardLinhThach) * BigInt(level),
+        },
+      });
+    } catch (e) {
+      // Concurrency phase 2 — boss spawn cron auto race backstop. The
+      // partial unique index `WorldBoss_status_active_unique` (migration
+      // `20260522000000_concurrency_boss_active_unique`) enforces that at
+      // most 1 row with `status = ACTIVE` can exist. A concurrent
+      // heartbeat() (multi-pod or in-process re-entry) that lost the race
+      // surfaces here as Prisma `P2002`. Treat as benign no-op: another
+      // ACTIVE boss already exists, so return `null` so the caller
+      // (heartbeat — no-op; adminSpawn — throw `BOSS_ALREADY_ACTIVE`)
+      // can branch appropriately. Re-throw any other error.
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        this.logger.warn(
+          'boss spawnNew: race lost on partial unique index (another ACTIVE boss exists), no-op',
+        );
+        return null;
+      }
+      throw e;
+    }
 
     this.realtime.broadcast('boss:spawn', {
       id: created.id,
@@ -652,6 +700,16 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     }
 
     const spawned = await this.spawnNew({ def, level });
+    if (!spawned) {
+      // Concurrency phase 2 — race window between `force=true` flip-EXPIRED
+      // and `worldBoss.create()`: a parallel heartbeat() spawned a fresh
+      // ACTIVE boss in between. The partial unique index rejected our
+      // create with P2002 → `spawnNew` returned null. Surface as
+      // `BOSS_ALREADY_ACTIVE` so the admin retries (with `force=true`
+      // again to force-replace the new race-winner). KHÔNG ghi audit
+      // log vì boss admin yêu cầu thực ra chưa được tạo.
+      throw new BossError('BOSS_ALREADY_ACTIVE');
+    }
     await this.prisma.adminAuditLog.create({
       data: {
         actorUserId: actorId,
