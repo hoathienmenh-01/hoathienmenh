@@ -37,12 +37,19 @@ describe('catalog integrity', () => {
       }
     });
 
-    it('pills have effect with at least one of hp/mp/exp', () => {
+    it('pills have effect with at least one of hp/mp/exp/buffKey', () => {
+      // Phase 11.10.E — pill effect có thể là buffKey (apply BuffDef qua
+      // InventoryService.use → BuffService.applyBuffTx) thay vì hp/mp/exp tức thì.
       const pills = ITEMS.filter((i) => i.kind.startsWith('PILL'));
       for (const p of pills) {
         expect(p.effect).toBeDefined();
-        const hasEffect = (p.effect?.hp ?? 0) + (p.effect?.mp ?? 0) + (p.effect?.exp ?? 0);
-        expect(hasEffect).toBeGreaterThan(0);
+        const hasInstant =
+          (p.effect?.hp ?? 0) + (p.effect?.mp ?? 0) + (p.effect?.exp ?? 0);
+        const hasBuff = p.effect?.buffKey !== undefined;
+        expect(
+          hasInstant > 0 || hasBuff,
+          `pill ${p.key} phải có ít nhất 1 effect (hp/mp/exp/buffKey)`
+        ).toBe(true);
       }
     });
   });

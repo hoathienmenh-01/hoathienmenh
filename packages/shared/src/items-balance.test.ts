@@ -105,12 +105,16 @@ describe('ITEMS — equipment integrity', () => {
 describe('ITEMS — pill / consumable integrity', () => {
   const pills = ITEMS.filter((i) => i.kind.startsWith('PILL'));
 
-  it('mọi pill có effect với ≥ 1 stat dương', () => {
+  it('mọi pill có effect với ≥ 1 stat dương hoặc buffKey (Phase 11.10.E)', () => {
     for (const p of pills) {
       expect(p.effect, `pill ${p.key} thiếu effect`).toBeDefined();
       const e = p.effect!;
       const sum = (e.hp ?? 0) + (e.mp ?? 0) + (e.exp ?? 0);
-      expect(sum, `pill ${p.key} effect toàn 0`).toBeGreaterThan(0);
+      const hasBuff = e.buffKey !== undefined;
+      expect(
+        sum > 0 || hasBuff,
+        `pill ${p.key} effect toàn 0 và không có buffKey`
+      ).toBe(true);
     }
   });
 

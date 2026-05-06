@@ -66,6 +66,15 @@ export interface ItemEffect {
   hp?: number;
   mp?: number;
   exp?: number;
+  /**
+   * Phase 11.10.E — pill/elixir consume → apply BuffDef key cùng tx với
+   * decrement inventory (`InventoryService.use()` wire `BuffService.applyBuffTx`).
+   * Idempotent qua `CharacterBuff` composite UNIQUE: non-stackable refresh
+   * `expiresAt`, stackable +1 stack cap `maxStacks`.
+   *
+   * Cross-ref guard: `buffForItem(itemKey)` lookup khỏi catalog drift / typo.
+   */
+  buffKey?: string;
 }
 
 /**
@@ -462,6 +471,51 @@ export const ITEMS: readonly ItemDef[] = [
     quality: 'TIEN',
     stackable: true,
     price: 5000,
+  },
+
+  // Phase 11.10.E — Pill buff đan dược. Use sẽ apply BuffDef tương ứng qua
+  // `InventoryService.use()` → `BuffService.applyBuffTx`. 4 pill này pair
+  // 1-1 với 4 buff `pill_*_buff_t1` đã có trong `buffs.ts` (description
+  // catalog buff đã reference tên đan: "Sau khi uống Cương Lực Đan...").
+  {
+    key: 'cuong_luc_dan',
+    name: 'Cương Lực Đan',
+    description: 'Đan dược cương kim, +12% công kích trong 60 giây sau khi uống.',
+    kind: 'PILL_HP',
+    quality: 'LINH',
+    stackable: true,
+    effect: { buffKey: 'pill_atk_buff_t1' },
+    price: 200,
+  },
+  {
+    key: 'thiet_bich_dan',
+    name: 'Thiết Bích Đan',
+    description: 'Đan dược kiên cố, +15% phòng ngự trong 60 giây sau khi uống.',
+    kind: 'PILL_HP',
+    quality: 'LINH',
+    stackable: true,
+    effect: { buffKey: 'pill_def_buff_t1' },
+    price: 200,
+  },
+  {
+    key: 'sinh_co_dan',
+    name: 'Sinh Cơ Đan',
+    description: 'Đan dược tái sinh, hồi 5 HP/giây trong 30 giây sau khi uống.',
+    kind: 'PILL_HP',
+    quality: 'LINH',
+    stackable: true,
+    effect: { buffKey: 'pill_hp_regen_t1' },
+    price: 180,
+  },
+  {
+    key: 'linh_tam_dan',
+    name: 'Linh Tâm Đan',
+    description: 'Đan dược thông linh, +18% spirit trong 90 giây sau khi uống.',
+    kind: 'PILL_HP',
+    quality: 'LINH',
+    stackable: true,
+    effect: { buffKey: 'pill_spirit_buff_t1' },
+    price: 250,
   },
 
   // ===================================================================
