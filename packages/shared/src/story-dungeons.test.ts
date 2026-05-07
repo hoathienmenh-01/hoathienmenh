@@ -156,6 +156,16 @@ describe('validateStoryDungeonCatalog', () => {
   it('returns no issues for current catalog', () => {
     expect(validateStoryDungeonCatalog()).toEqual([]);
   });
+
+  it('mọi rewardHint.items[].itemKey resolve qua ITEMS catalog (no orphan)', async () => {
+    const { ITEMS } = await import('./items');
+    const itemKeys = new Set(ITEMS.map((i) => i.key));
+    for (const d of STORY_DUNGEONS) {
+      for (const it of d.rewardHint?.items ?? []) {
+        expect(itemKeys.has(it.itemKey), `${d.key} rewardHint item ${it.itemKey}`).toBe(true);
+      }
+    }
+  });
 });
 
 describe('storyDungeonsForQuest helper', () => {

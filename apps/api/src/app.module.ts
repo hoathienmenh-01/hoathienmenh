@@ -54,6 +54,7 @@ import { RedisModule } from './common/redis.module';
     QuestModule,
     NpcModule,
     StoryDialogueModule,
+    StoryDungeonModule,
     GiftCodeModule,
     MailModule,
     EmailModule,

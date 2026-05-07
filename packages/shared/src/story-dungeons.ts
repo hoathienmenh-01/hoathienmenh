@@ -44,6 +44,7 @@
 
 import { BOSSES } from './boss';
 import { MONSTERS } from './combat';
+import { ITEMS } from './items';
 import { isMapRegionKey, type RegionKey } from './map-regions';
 import { QUESTS, type QuestStepDef } from './quests';
 import { realmByKey } from './realms';
@@ -161,7 +162,7 @@ export const STORY_DUNGEONS: readonly StoryDungeonTemplateDef[] = [
     rewardHint: {
       linhThach: 80,
       exp: 150,
-      items: [{ itemKey: 'huyet_chi_dan', qty: 1 }],
+      items: [{ itemKey: 'linh_lo_dan', qty: 1 }],
     },
     oneTime: true,
     enabled: true,
@@ -185,8 +186,8 @@ export const STORY_DUNGEONS: readonly StoryDungeonTemplateDef[] = [
     bossKey: null,
     rewardHint: {
       linhThach: 200,
-      exp: 360,
-      items: [{ itemKey: 'huyet_tinh', qty: 1 }],
+      exp: 480,
+      items: [{ itemKey: 'co_thien_dan', qty: 1 }],
     },
     oneTime: true,
     enabled: true,
@@ -214,10 +215,13 @@ export const STORY_DUNGEONS: readonly StoryDungeonTemplateDef[] = [
     ],
     bossKey: null,
     rewardHint: {
-      linhThach: 320,
-      tienNgoc: 1,
-      exp: 720,
-      items: [{ itemKey: 'linh_thao', qty: 2 }],
+      linhThach: 600,
+      tienNgoc: 5,
+      exp: 1200,
+      items: [
+        { itemKey: 'cuu_huyen_dan', qty: 1 },
+        { itemKey: 'tinh_thiet', qty: 2 },
+      ],
     },
     oneTime: true,
     enabled: true,
@@ -245,10 +249,13 @@ export const STORY_DUNGEONS: readonly StoryDungeonTemplateDef[] = [
     ],
     bossKey: null,
     rewardHint: {
-      linhThach: 480,
-      tienNgoc: 2,
-      exp: 1200,
-      items: [{ itemKey: 'tinh_thiet', qty: 1 }],
+      linhThach: 1500,
+      tienNgoc: 20,
+      exp: 2800,
+      items: [
+        { itemKey: 'linh_can_dan', qty: 1 },
+        { itemKey: 'phu_van_ngoc', qty: 3 },
+      ],
     },
     oneTime: true,
     enabled: true,
@@ -378,7 +385,8 @@ export interface StoryDungeonCatalogIssue {
  *   - `bossKey` (nếu set) resolve qua `BossDef.key` + region match.
  *   - `entryDialogueKey` / `clearDialogueKey` (nếu set) resolve qua
  *     `STORY_DIALOGUES[].id`.
- *   - `rewardHint` integer dương (nếu có).
+ *   - `rewardHint` integer dương (nếu có) + `items[].itemKey` resolve qua
+ *     `ITEMS` catalog + `qty > 0`.
  *   - `oneTime` / `enabled` boolean.
  */
 export function validateStoryDungeonCatalog(): StoryDungeonCatalogIssue[] {
@@ -443,7 +451,11 @@ export function validateStoryDungeonCatalog(): StoryDungeonCatalogIssue[] {
       if (r.exp != null && (!Number.isInteger(r.exp) || r.exp < 0)) {
         push(`rewardHint.exp invalid`);
       }
+      const itemKeys = new Set(ITEMS.map((i) => i.key));
       for (const it of r.items ?? []) {
+        if (!itemKeys.has(it.itemKey)) {
+          push(`rewardHint.items itemKey ${it.itemKey} not in ITEMS catalog`);
+        }
         if (!Number.isInteger(it.qty) || it.qty <= 0) {
           push(`rewardHint.items qty invalid for ${it.itemKey}`);
         }
