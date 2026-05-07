@@ -13,6 +13,8 @@ import {
   BOSS_STAMINA_PER_HIT,
   SKILL_BASIC_ATTACK,
   WORLD_BOSS_REGION_KEY,
+  activeScheduledBossEventForRegion,
+  liveOpsEventForBossSpawn,
   bossByKey,
   bossSpawnRegions,
   bossesByRegion,
@@ -649,6 +651,45 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       });
       if (stillActive) return;
 
+      // Phase 13.0 §B — Scheduled boss check. Nếu region đang có 1 BOSS
+      // LiveOpsEvent ACTIVE (slot window): force-spawn đúng `bossKey` của
+      // event đó, BYPASS auto-rotate + respawn delay. Slot dedup: nếu đã
+      // có WorldBoss với cùng (regionKey, bossKey) `spawnedAt >= slotStart`
+      // → no-op (slot đã trigger lần này). Sau slot end, fall-through về
+      // logic auto-rotate cũ.
+      const scheduled = activeScheduledBossEventForRegion(
+        regionKey,
+        new Date(),
+      );
+      if (scheduled) {
+        const slotAlreadySpawned = await this.prisma.worldBoss.findFirst({
+          where: {
+            regionKey,
+            bossKey: scheduled.ev.bossKey,
+            spawnedAt: { gte: scheduled.slotStart },
+          },
+          select: { id: true },
+        });
+        if (slotAlreadySpawned) {
+          // Slot này đã spawn 1 lần (boss có thể đang ACTIVE vẫn được lọc
+          // bởi check `stillActive` ở trên; hoặc DEFEATED/EXPIRED — không
+          // respawn cùng slot). No-op.
+          return;
+        }
+        const def = bossByKey(scheduled.ev.bossKey!);
+        if (def) {
+          // Force-spawn scheduled boss bất kể respawn delay (slot prio
+          // hơn rotation cooldown). spawnSource log qua AdminAuditLog
+          // tránh schema migration — tracking via `bossKey + spawnedAt
+          // >= slotStart` đủ cho slot dedup.
+          await this.spawnNew({ def, regionKey });
+          return;
+        }
+        this.logger.warn(
+          `boss heartbeat: scheduled event ${scheduled.ev.key} bossKey=${scheduled.ev.bossKey} không tồn tại trong BOSSES catalog, fall-through rotation`,
+        );
+      }
+
       const last = await this.prisma.worldBoss.findFirst({
         where: {
           status: { in: [BossStatus.DEFEATED, BossStatus.EXPIRED] },
@@ -1048,6 +1089,65 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
           refId: bossId,
           extra: { rank, bossKey: def.key },
         });
+      }
+      // Phase 13.0 §C — Reward hooks (title + buff). Inside cùng tx với
+      // currency/inventory grant để rollback toàn bộ nếu service throw.
+      // Defensive: skip nếu DI không inject (legacy test harness, optional).
+      // 1. Title participation: mọi character damage boss → unlock
+      //    `achievement_first_boss` (idempotent qua composite UNIQUE).
+      // 2. Title event Huyết Nguyệt: nếu boss spawn từ
+      //    event_huyet_nguyet_weekend slot → thêm `event_huyet_nguyet_2026`.
+      // 3. Buff top damage: rank 1 → apply `event_double_drop` (1h).
+      if (this.titles) {
+        try {
+          await this.titles.unlockTitleTx(
+            tx,
+            row.characterId,
+            'achievement_first_boss',
+            'achievement',
+          );
+        } catch (e) {
+          // Idempotent: composite unique race → log + continue, không
+          // rollback grant currency/items vì title chỉ là cosmetic +
+          // unlock đã có từ trước (TitleService throws TITLE_NOT_OWNED
+          // khi equip — unlockTitleTx safe).
+          this.logger.warn(
+            `boss reward hook: unlock achievement_first_boss for char ${row.characterId} failed: ${(e as Error).message}`,
+          );
+        }
+        const ev = liveOpsEventForBossSpawn(
+          def.key,
+          boss.regionKey,
+          boss.spawnedAt,
+        );
+        if (ev?.key === 'event_huyet_nguyet_weekend') {
+          try {
+            await this.titles.unlockTitleTx(
+              tx,
+              row.characterId,
+              'event_huyet_nguyet_2026',
+              'event',
+            );
+          } catch (e) {
+            this.logger.warn(
+              `boss reward hook: unlock event_huyet_nguyet_2026 for char ${row.characterId} failed: ${(e as Error).message}`,
+            );
+          }
+        }
+      }
+      if (this.buffs && rank === 1) {
+        try {
+          await this.buffs.applyBuffTx(
+            tx,
+            row.characterId,
+            'event_double_drop',
+            'event',
+          );
+        } catch (e) {
+          this.logger.warn(
+            `boss reward hook: apply event_double_drop for char ${row.characterId} failed: ${(e as Error).message}`,
+          );
+        }
       }
       slices.push({
         rank,

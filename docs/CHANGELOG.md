@@ -12,7 +12,19 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Added — Phase 11.10.E Title/Buff gameplay reward hooks — Pill → Buff wire (this PR)
+### Added — Phase 13.0 LiveOps & Retention Suite (this PR)
+
+- **LiveOps Event Calendar (shared)**: catalog mới `LIVE_OPS_EVENTS` định nghĩa 5 sự kiện scheduled: 3 boss daily (12:00 / 19:00 / 22:00 ICT) + 1 boss tuần Huyết Nguyệt (Thứ Bảy 21:00 ICT) + 2 buff event (`event_daily_exp_rush` 18:00-21:00, `event_weekly_dungeon_double_drop` Chủ Nhật cả ngày). Helpers `liveOpsEventsForToday()`, `activeLiveOpsEvents()`, `nextLiveOpsEvent()`, `bossScheduleForToday()`, `liveOpsEventForBossSpawn()` deterministic, timezone mặc định `Asia/Ho_Chi_Minh` reuse `MISSION_RESET_TZ`.
+- **Scheduled Boss Spawn**: `BossService.tickHeartbeat()` mở rộng đọc schedule, mỗi region check active slot. Spawn nếu slot active + region không có ACTIVE boss + chưa spawn `(regionKey, bossKey, spawnedAt >= slotStart)` (slot dedup query-based, idempotent qua parallel heartbeat). Cuối tuần Thứ Bảy 21:00 → Cửu La Thiên Đế xuất thế ở Cửu La Điện. Giữ nguyên adminSpawn + boss-by-region unique guard + attack/reward.
+- **Reward Hooks (Title + Buff)**: khi boss bị hạ và distribute reward — mọi participant unlock title `achievement_first_boss` (idempotent), top-1 damage rank apply buff `event_double_drop` (1h), nếu boss spawn từ slot Huyết Nguyệt → mọi participant unlock title mới `event_huyet_nguyet_2026` (epic, +3% atk flavor stat). Tx-safe defensive try-catch — nếu title/buff fail, gameplay reward (linh thạch/item) vẫn rollback đúng.
+- **`/liveops/today` API**: endpoint pure compute (no auth) trả retention dashboard snapshot — `nowIso`, `timezone`, `todayEvents`, `activeEvents`, `nextEvent` (countdown), `bossSchedule` (3-4 slot status upcoming/active/completed), `suggestedActivities` (priority-sorted CTA hints). Chi tiết shape ở `docs/API.md`.
+- **FE Today Activity Panel** (`HomeView`): "Hoạt Động Hôm Nay" — danh sách suggested CTA, sự kiện đang mở, lịch boss hôm nay với status badge. CTA buttons "Đi Boss" / "Vào Bí Cảnh" / "Xem Nhiệm Vụ". i18n vi/en cho 5 event + 4 boss + 4 region. API error → fallback message, không crash.
+- **FE BossView Schedule UI**: section "Lịch Boss hôm nay" trên đầu BossView — hiển thị giờ + boss + region + status (active/upcoming/completed) + countdown nếu sắp tới. Không phá active boss tabs hiện có.
+- **FE Notification**: `LiveOpsNotice` component renderless, poll `/liveops/today` mỗi 60s — push toast warning khi có boss upcoming ≤ 15 phút. Anti-spam: per-slot flag persistent qua sessionStorage (mỗi slot chỉ 1 toast / session); toast store cũng có anti-spam riêng theo (type+text) 1200ms.
+- **Catalog**: title +1 (`event_huyet_nguyet_2026` epic event-source). Buff catalog không thay đổi.
+- KHÔNG Prisma migration. KHÔNG ảnh hưởng economy chính (chi tiết balance ở `docs/BALANCE_MODEL.md` §6.4).
+
+### Added — Phase 11.10.E Title/Buff gameplay reward hooks — Pill → Buff wire (PR #451)
 
 - **Pill → Buff apply**: 4 đan dược mới (Cương Lực Đan, Thiết Bích Đan, Sinh Cơ Đan, Linh Tâm Đan) khi `use()` sẽ apply BuffDef tương ứng (`pill_atk_buff_t1` +12% atk 60s, `pill_def_buff_t1` +15% def 60s, `pill_hp_regen_t1` hồi 5 HP/s 30s, `pill_spirit_buff_t1` +18% spirit 90s). Catalog buff đã có sẵn từ Phase 11.8.A nhưng **chưa được apply qua gameplay** — PR này wire 4 pill items qua `effect.buffKey` field mới + `InventoryService.use()` gọi `BuffService.applyBuffTx()` cùng tx (atomic — fail tx → buff KHÔNG insert + pill KHÔNG decrement).
 - **NPC shop**: 4 pill mới có sẵn ở NPC shop (Linh Thạch, dailyLimit 5/người/ngày — tránh stack buff abuse vào PvP/boss event).

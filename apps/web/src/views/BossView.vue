@@ -20,6 +20,7 @@ import {
 } from '@/api/boss';
 import { on } from '@/ws/client';
 import AppShell from '@/components/shell/AppShell.vue';
+import BossSchedulePanel from '@/components/BossSchedulePanel.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { itemName } from '@/lib/itemName';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
@@ -315,6 +316,9 @@ function timeLeftText(iso: string): string {
 <template>
   <AppShell>
     <h2 class="text-xl tracking-widest mb-4">鬼 {{ t('boss.title') }}</h2>
+
+    <!-- Phase 13.0 §E — Lịch Boss hôm nay (LiveOps schedule). -->
+    <BossSchedulePanel />
 
     <!-- Phase 12.6 — region tabs cho multi-region boss spawn. Mỗi tab
          label = MAP_REGIONS catalog (Vi/En theo locale); fallback i18n

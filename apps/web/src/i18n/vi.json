@@ -948,6 +948,71 @@
       "UNKNOWN": "Có lỗi xảy ra."
     }
   },
+  "liveopsToday": {
+    "title": "Hoạt Động Hôm Nay",
+    "loading": "Đang tải lịch sự kiện…",
+    "error": "Không tải được lịch sự kiện. Mời thử lại sau.",
+    "noSuggestion": "Hiện chưa có sự kiện hot. Hẹn giờ kế tiếp xem boss schedule bên dưới.",
+    "activeEventsTitle": "Sự kiện đang mở",
+    "bossScheduleTitle": "Lịch Boss hôm nay",
+    "startIn": "khởi {time}",
+    "spawnSoonToast": "Boss sắp xuất hiện trong {time}.",
+    "bossStatus": {
+      "upcoming": "Sắp tới",
+      "active": "Đang mở",
+      "completed": "Đã qua"
+    },
+    "cta": {
+      "goBoss": "Đi Boss",
+      "goDungeon": "Vào Bí Cảnh",
+      "goMission": "Xem Nhiệm Vụ"
+    }
+  },
+  "liveops": {
+    "event": {
+      "boss_daily_noon_hoa_diem_son": {
+        "title": "Boss Trưa: Hỏa Long Tổ Sư",
+        "desc": "Hỏa Long Tổ Sư xuất thế ở Hỏa Diệm Sơn lúc 12:00 mỗi ngày.",
+        "reward": "Linh thạch + đồ luyện đan hỏa hệ."
+      },
+      "boss_daily_evening_kim_son_mach": {
+        "title": "Boss Tối: Kim Phách Long Điêu",
+        "desc": "Kim Phách Long Điêu xuất thế ở Kim Sơn Mạch lúc 19:00 mỗi ngày.",
+        "reward": "Linh thạch + đồ rèn kim hệ."
+      },
+      "boss_daily_night_hoang_tho_huyet": {
+        "title": "Boss Đêm: Yêu Vương Thổ Huyết",
+        "desc": "Yêu Vương Thổ Huyết xuất thế ở Hoàng Thổ Huyệt lúc 22:00 mỗi ngày.",
+        "reward": "Linh thạch + đan dược thổ hệ."
+      },
+      "event_huyet_nguyet_weekend": {
+        "title": "Huyết Nguyệt Cuối Tuần: Cửu La Thiên Đế",
+        "desc": "Tối Thứ Bảy 21:00, Cửu La Thiên Đế giáng lâm Cửu La Điện dưới ánh trăng máu.",
+        "reward": "Linh thạch lớn + danh hiệu Huyết Nguyệt Quân."
+      },
+      "event_daily_exp_rush": {
+        "title": "Linh Khí Tăng Tốc",
+        "desc": "Mỗi ngày 18:00-21:00 ICT: tu luyện hấp thụ +25% linh khí."
+      },
+      "event_weekly_dungeon_double_drop": {
+        "title": "Thiên Đạo Ban Phúc",
+        "desc": "Chủ Nhật cả ngày: drop bí cảnh ×2."
+      }
+    },
+    "boss": {
+      "hoa_long_to_su": "Hỏa Long Tổ Sư",
+      "kim_phach_long_dieu": "Kim Phách Long Điêu",
+      "yeu_vuong_tho_huyet": "Yêu Vương Thổ Huyết",
+      "cuu_la_thien_de": "Cửu La Thiên Đế"
+    },
+    "region": {
+      "hoa_diem_son": "Hỏa Diệm Sơn",
+      "kim_son_mach": "Kim Sơn Mạch",
+      "hoang_tho_huyet": "Hoàng Thổ Huyệt",
+      "cuu_la_dien": "Cửu La Điện",
+      "world": "Cõi Liên Vùng"
+    }
+  },
   "topup": {
     "title": "Nạp Tiên Ngọc",
     "intro": "Tiên ngọc dùng cho gacha tiên duyên, mở đặc quyền VIP, mua skin & item Tiên phẩm độc nhất.",
