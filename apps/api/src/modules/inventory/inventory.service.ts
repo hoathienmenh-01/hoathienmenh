@@ -85,7 +85,14 @@ export type ItemLedgerReason =
   // idempotent qua CAS `claimedAt`). Khác `COMBAT_LOOT` ở refType: ledger filter
   // theo `refType` để telemetry / admin tách combat module vs dungeon-run module
   // mặc dù nguồn drop table chung (`DUNGEON_LOOT`).
-  | 'DUNGEON_LOOT';
+  | 'DUNGEON_LOOT'
+  // Phase 12.8.B — Story Dungeon claim reward bonus item grant. Wire qua
+  // `StoryDungeonService.claim → InventoryService.grantTx(positive qtyDelta)`
+  // với `refType='StoryDungeonRun'` + `refId=runId`. CAS claim guard
+  // (`StoryDungeonRun.claimedAt` updateMany) đảm bảo 1 winner / runId →
+  // grant đúng 1 lần / runId / character. Mirror cùng `CurrencyLedger`
+  // reason `STORY_DUNGEON_REWARD` cho linhThach/tienNgoc.
+  | 'STORY_DUNGEON_REWARD';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;

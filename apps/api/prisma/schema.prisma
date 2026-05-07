@@ -970,6 +970,72 @@ model DungeonRun {
   @@index([characterId, templateKey, startedAt])
 }
 
+/// Phase 12.8.B — StoryDungeonRun runtime status. Khác `DungeonRun`:
+/// story dungeon = đoạn cốt truyện gắn với main quest, có quest gate +
+/// minRealm gate + `oneTime` enforcement (catalog `STORY_DUNGEONS`). Status
+/// flow: ACTIVE → CLEARED → CLAIMED. FAILED reserved cho tương lai (player
+/// chết / quit) — Phase 12.8.B chưa wire FAILED transition (KHÔNG migrate).
+enum StoryDungeonRunStatus {
+  ACTIVE
+  CLEARED
+  CLAIMED
+  FAILED
+}
+
+/// Phase 12.8.B — StoryDungeonRun runtime persistence (story arc dungeon).
+///
+/// Tách riêng khỏi `DungeonRun` (farm dungeon) vì:
+///   - Khác catalog: `STORY_DUNGEONS` (shared/story-dungeons.ts) thay vì
+///     `DUNGEONS` (shared/combat.ts). Story dungeon gate bằng quest +
+///     minRealm + oneTime, không gate stamina/dailyLimit.
+///   - Khác lifecycle: status enum tách riêng (ACTIVE/CLEARED/CLAIMED/
+///     FAILED) — không reuse `DungeonRunStatus.COMPLETED` để keep semantic
+///     rõ ràng.
+///   - Khác reward path: `STORY_DUNGEON_REWARD` reason riêng cho ledger
+///     audit; `refType='StoryDungeonRun'` + `refId=runId`.
+///
+/// One-time enforcement: nếu `STORY_DUNGEONS[key].oneTime=true`, service
+/// reject `start` nếu đã có row `claimedAt != null` cho `(characterId,
+/// templateKey)`. Pre-claim ACTIVE run được resume (idempotent) để chống
+/// double-create khi network retry.
+///
+/// Quest integration: khi `clear` thành công, service set
+/// `stepProgress[requiredQuestStep]` = step.count + auto-COMPLETE quest
+/// nếu mọi step đã đạt count. Re-clear không double-progress (CAS guard
+/// `status=ACTIVE` updateMany).
+///
+/// Reward claim atomic qua `CurrencyService.applyTx` + `InventoryService
+/// .grantTx` + `tx.character.update({ exp })` với `reason='STORY_DUNGEON
+/// _REWARD'`. Idempotent qua CAS guard `claimedAt=null` updateMany
+/// (mirror DungeonRun + QuestService.claim Phase 12 PR-3).
+///
+/// Indexes:
+///   - `[characterId, status]` cho list active run + filter status.
+///   - `[characterId, templateKey, status]` cho one-time check + idempotent
+///     start (resume pre-claim ACTIVE run).
+///   - `[characterId, startedAt]` cho audit history view.
+model StoryDungeonRun {
+  id             String                @id @default(cuid())
+  characterId    String
+  /// Match `StoryDungeonTemplateDef.key` từ shared catalog `STORY_DUNGEONS`.
+  templateKey    String
+  status         StoryDungeonRunStatus @default(ACTIVE)
+  /// Index của monster hiện tại trong `template.monsterKeys[]` (0..N).
+  /// Khi `currentStep == monsterKeys.length` → CLEARED (claim sẵn sàng).
+  currentStep    Int                   @default(0)
+  /// JSON list `[{ monsterKey, killedAt: ISO string }]` — log resolution
+  /// tracking, dùng cho debug + future stats.
+  killedMonsters Json                  @default("[]")
+  startedAt      DateTime              @default(now())
+  clearedAt      DateTime?
+  claimedAt      DateTime?
+  updatedAt      DateTime              @updatedAt
+
+  @@index([characterId, status])
+  @@index([characterId, templateKey, status])
+  @@index([characterId, startedAt])
+}
+
 model GiftCode {
   id               String               @id @default(cuid())
   /// Normalized upper-case, unique trên toàn hệ.

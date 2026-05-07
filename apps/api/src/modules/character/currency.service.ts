@@ -55,7 +55,14 @@ export type LedgerReason =
   // linhThach/tienNgoc với `refType='StoryDialogueNode'` + `refId=nodeId`.
   // Idempotency lấy từ `Character.storyDialogueSeen` (mark_seen + grant ALWAYS
   // đi đôi → choice grant chỉ chạy 1 lần / node). Reward cap STORY_DIALOGUE_REWARD_CAP.
-  | 'STORY_DIALOGUE_REWARD';
+  | 'STORY_DIALOGUE_REWARD'
+  // Phase 12.8.B — Story Dungeon claim reward bonus. Wire
+  // `StoryDungeonService.claim` qua `applyTx` cho linhThach/tienNgoc với
+  // `refType='StoryDungeonRun'` + `refId=runId`. Idempotency lấy từ
+  // `StoryDungeonRun.claimedAt` CAS guard (race-safe winner duy nhất ghi 1
+  // ledger row / runId). Khác `DUNGEON_RUN_REWARD` (farm dungeon catalog
+  // `DUNGEONS`) ở catalog source + refType.
+  | 'STORY_DUNGEON_REWARD';
 
 export interface CurrencyApplyInput {
   characterId: string;
