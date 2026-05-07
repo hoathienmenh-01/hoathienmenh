@@ -265,7 +265,41 @@ Tách nhỏ, mỗi PR là 1 layer. Tuân BATCHING RULE + UI MODULE RULE.
 - **UX gap close**: player giờ thấy ngay dungeon đi cho mỗi `kill+monster` quest step (8 late-game placeholder + 7 PR-6 critical-path) — KHÔNG cần tự tra catalog.
 - **KHÔNG** Prisma migration, **KHÔNG** endpoint mới, **KHÔNG** API change. Test baseline: shared **1359** (+5), web **1163** (+4), api 1975 unchanged.
 
-### Phase 12.5 — Late-game story dungeon monster balance tuning — **CLOSED** ✅ (this PR)
+### Phase 12 Story PR-7 — Story Dialogue Foundation (branching NPC dialogue) — **IN-FLIGHT** (this PR)
+
+- **Scope**: thêm nền **đối thoại NPC phân nhánh** cho main quest, song song với existing `pickDialogueForNpc()` (PR-1 — quick-accept dialogue) — story giờ không còn chỉ là kill/claim. KHÔNG full story dungeon, KHÔNG cutscene, KHÔNG rewrite quest, KHÔNG PvP/pet/gacha (out of scope).
+- **Shared catalog** `packages/shared/src/story-dialogues.ts`:
+  - Type `DialogueNodeDef { nodeId, npcKey, questKey?, text, oncePerCharacter?, choices: DialogueChoiceDef[] }` + `DialogueChoiceDef { key, label, conditions?, effects?, nextNodeId?, oncePerCharacter? }`.
+  - 4 condition kind: `quest_status` (NOT_STARTED / ACCEPTED / COMPLETED / CLAIMED), `flag` (Character.storyFlags), `seen_node` (Character.storyDialogueSeen), `realm_min` (realmOrder gate).
+  - 4 effect kind: `mark_seen` (push nodeId vào seen array), `set_flag` (set flagKey=value), `give_reward` (linhThach/tienNgoc/exp idempotent), `advance_quest_step` (chỉ chạy nếu quest ACCEPTED + step matches).
+  - Helpers: `findStoryDialogueNode(nodeId)`, `getStoryDialogueRoot(npcKey, ctx)` (resolve entry node đầu tiên ALL conditions pass), `evaluateChoiceConditions(choice, ctx)` (server-authoritative).
+  - Seed 5 dialogue node cho 3 NPC chính (Lăng Vân Sinh `phamnhan` arc giới thiệu sect + Mộc Thanh Y `luyenkhi` arc + Huyết La Sát `kim_dan` arc) — story foundation, sẽ mở rộng các PR sau.
+- **Prisma migration** `20260602000000_phase_12_story_dialogue_foundation`: thêm 2 cột Json trên `Character`:
+  - `storyDialogueSeen` (default `[]`) — array `nodeId` đã seen, dedupe trong tx.
+  - `storyFlags` (default `{}`) — KV store `flagKey: string` → `value: string`. Server-only state; FE refetch qua `GET /character/state`.
+- **API** `apps/api/src/modules/story-dialogue/`:
+  - Module + service + controller. Endpoint:
+    - `GET /story/dialogue/:npcKey` — load Character + QuestProgress rows → `getStoryDialogueRoot(npcKey, ctx)` → trả `StoryDialogueNodeView { nodeId, npcKey, questKey?, text, seen, choices: [{ key, label, available, unavailableReason: 'quest_status:foo=accepted' \| 'flag:bar=baz' \| 'already_applied' \| null, nextNodeId?, alreadyApplied }] }`. Choice fail condition vẫn render với `available=false` để FE explain.
+    - `POST /story/dialogue/:npcKey/choice` — Zod body `{ nodeId, choiceKey }`. Atomic `prisma.$transaction`: assert node hợp lệ + choice available + chưa apply (nếu `oncePerCharacter`) → apply effects theo thứ tự: mark_seen → set_flag → give_reward (qua `CurrencyService.applyTx` với reason `STORY_DIALOGUE_CHOICE`, refType `StoryDialogueChoice`, refId `${nodeId}:${choiceKey}` — composite UNIQUE `(characterId, refType, refId)` chống double-grant nếu retry) → advance_quest_step (chỉ chạy nếu quest ACCEPTED + step matches; nếu sai → reject TOÀN BỘ effects, không partial apply).
+  - Trả `{ effectsApplied, granted: { linhThach, tienNgoc, exp }, flags, seen, nextNode | null }`. FE refetch state qua `GET /character/state` trong handler.
+- **FE** `apps/web/src/`:
+  - `api/storyDialogue.ts` — typed wrapper `fetchStoryDialogue(npcKey)` / `submitStoryDialogueChoice(npcKey, nodeId, choiceKey)`.
+  - `stores/storyDialogue.ts` — Pinia store. Action `open(npcKey)` load node, `pickChoice(choiceKey)` submit + navigate `nextNode` (hoặc clear node nếu null), `close()` reset state. Tracks `loading / submitting / error / activeNpcKey / node / lastResult`.
+  - `components/StoryDialogueModal.vue` — Teleport modal song song với existing `NpcDialogueModal.vue` (quick-accept). Render NPC name + text + choices. Choice không pass condition disable + show hint `Đã chọn` (`alreadyApplied`) hoặc `Chưa mở` (`unavailableReason`). Reward toast (linhThach/tienNgoc) khi `give_reward` apply. Esc/backdrop close. Modal visibility = parent prop `npcKey` (parent owns store cleanup qua `@close` handler) — tránh re-render race khi store.close() unmount Teleport.
+  - `views/NpcView.vue` — thêm 2 modal pattern: existing quick-accept cho dialogue line PR-1 + new story dialogue cho branching nodes PR-7.
+- **i18n** vi/en parity (`apps/web/src/i18n/{vi,en}.json`):
+  - `storyDialogue.title` (Hội thoại cốt truyện / Story Dialogue), `.talk` (Tâm sự / Talk), `.alreadyChosen` (Đã chọn / Already chosen), `.locked` (Chưa mở / Not unlocked), `.empty` (... / ...), `.linhThach` / `.tienNgoc` (reward toast labels).
+  - `storyDialogue.errors.{UNKNOWN, INVALID_CHOICE, NPC_NOT_FOUND, STORY_DIALOGUE_NOT_AVAILABLE, NODE_NOT_FOUND, CHOICE_NOT_FOUND, CHOICE_LOCKED, CHOICE_ALREADY_APPLIED, QUEST_STEP_LOCKED, INVALID_INPUT, NO_CHARACTER, UNAUTHENTICATED}` mapped tới error code server.
+- **Test** (+33):
+  - Shared (+5): `story-dialogues.test.ts` — catalog invariant (mọi `nextNodeId` resolve, `nodeId` unique trong scope `npcKey`, `oncePerCharacter` chỉ trên choice có effect grant), helper `getStoryDialogueRoot` resolve theo condition, `evaluateChoiceConditions` cho 4 kind condition.
+  - API (+16): `story-dialogue.service.test.ts` — GET success/locked/missing-NPC, POST mark_seen/set_flag/give_reward (idempotent + double-claim guard), advance_quest_step success + QUEST_STEP_LOCKED, CHOICE_LOCKED, CHOICE_ALREADY_APPLIED, NODE_NOT_FOUND, atomic rollback (nếu effect cuối fail → revert seen/flags/grant).
+  - Web (+12): `StoryDialogueModal.test.ts` — render text + choices, disabled choice (locked / already), click pickChoice gọi store + emit effectsApplied, error i18n mapping, Esc close, loading state; store open/pickChoice (navigate nextNode + clear khi null) / close reset state.
+- **Verification**: shared typecheck ✅ + test ✅, api typecheck ✅ + test ✅, web typecheck ✅ + `--run StoryDialogue` 12 PASS ✅, `pnpm build` ✅.
+- **Server-authoritative**: FE chỉ render `StoryDialogueNodeView`. Conditions / effects evaluate server-side; client KHÔNG bypass. Reward grant idempotent qua `CurrencyService.applyTx` composite UNIQUE.
+- **Anti-abuse**: `give_reward` capped catalog-only; `advance_quest_step` chỉ chạy nếu quest ACCEPTED + step matches (không skip locked step). Catalog invariant test ngăn drift.
+- Update §2 / §6 (Dialogue branching status) / §7 (this section).
+
+### Phase 12.5 — Late-game story dungeon monster balance tuning — **CLOSED** ✅ (PR #44x)
 
 - **Shared catalog**: tune HP/ATK/DEF/SPD/level + monsterType promotion cho 8 placeholder Trúc Cơ → Nguyên Anh story (`tich_linh_anh`, `tam_ma_anh`, `tich_linh_quy`, `tich_thien_sat_thu`, `tam_ma_nguyen_anh`, `chap_niem_anh`, `ky_uc_meo`, `huyet_anh`) trong `packages/shared/src/combat.ts`. Promotion: `tich_thien_sat_thu` HUMANOID→ELITE (assassin burst-glass), `tam_ma_nguyen_anh` SPIRIT→ELITE (tank/pressure), `huyet_anh` HUMANOID→BOSS (endgame "hardest in 8-pack" tank ~10+ hit).
 - **Loot tuning**: 3 lootTable override mới theo Phase 12.4 convention (chỉ ELITE/BOSS) — kim/tho themed equipment + skill_book pity + `linh_can_dan` rare pity cho `huyet_anh` BOSS endgame (parity với `cuu_la_huyen_quan`).

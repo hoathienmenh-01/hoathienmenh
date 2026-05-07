@@ -254,6 +254,22 @@ model Character {
   /// PR-5 sẽ wire main storyline UI gate dựa trên field này.
   storyChapter Int @default(0)
 
+  /// Phase 12 Story Dialogue Foundation — set các `StoryDialogueNodeDef.id` đã
+  /// thấy. Lưu Json array of string id. Idempotent — `mark_seen` effect đẩy id
+  /// vào set, dedupe via `Set([...prev, id])`. Phục vụ:
+  ///   - condition `seen`/`not_seen` filter visibility node tiếp theo;
+  ///   - FE highlight choice đã chọn (PR-tiếp).
+  /// Mutate ONLY qua `StoryDialogueService.applyChoice` (server-authoritative).
+  storyDialogueSeen Json @default("[]")
+
+  /// Phase 12 Story Dialogue Foundation — flag map cho story branching.
+  /// `Record<string, string | number | boolean>` — flagKey → primitive value.
+  /// Effect `set_flag` ghi đè (last-write-wins). Phục vụ:
+  ///   - condition `flag_equals`/`flag_set`/`flag_unset` rẽ nhánh hội thoại;
+  ///   - PR sau: gating reward / sect / faction.
+  /// Mutate ONLY qua `StoryDialogueService.applyChoice`.
+  storyFlags Json @default("{}")
+
   sectId String?
   sect   Sect?   @relation(fields: [sectId], references: [id])
 

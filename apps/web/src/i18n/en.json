@@ -2040,6 +2040,32 @@
       }
     }
   },
+  "storyDialogue": {
+    "title": "Story dialogue",
+    "talk": "Discuss",
+    "alreadyChosen": "Already chosen",
+    "locked": "Locked",
+    "empty": "This NPC has nothing to discuss right now.",
+    "linhThach": "Linh Thạch",
+    "tienNgoc": "Tiên Ngọc",
+    "errors": {
+      "UNAUTHENTICATED": "Session expired.",
+      "NO_CHARACTER": "No character.",
+      "NPC_UNKNOWN": "This NPC does not exist.",
+      "NPC_LOCKED_REALM": "Your realm is too low to meet this NPC.",
+      "NO_DIALOGUE": "This NPC has no dialogue line for now.",
+      "NODE_UNKNOWN": "Dialogue node not found.",
+      "NODE_NPC_MISMATCH": "Dialogue node does not belong to this NPC.",
+      "CHOICE_UNKNOWN": "Choice not found.",
+      "INVALID_CHOICE": "Choice is not valid right now.",
+      "ALREADY_APPLIED": "Choice has already been made.",
+      "QUEST_NOT_ACCEPTED": "Accept the quest first before continuing.",
+      "QUEST_STEP_LOCKED": "Complete the previous step first.",
+      "QUEST_STEP_KIND_MISMATCH": "This quest step cannot be advanced via dialogue.",
+      "INVALID_INPUT": "Invalid input.",
+      "UNKNOWN": "Failed to continue dialogue, please retry."
+    }
+  },
   "quest": {
     "title": "Story Quests",
     "subtitle": "Track and complete the main storyline chains of Hoa Thiên Lộ.",

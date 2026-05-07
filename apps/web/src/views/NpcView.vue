@@ -7,6 +7,8 @@ import { useGameStore } from '@/stores/game';
 import { useNpcStore } from '@/stores/npc';
 import AppShell from '@/components/shell/AppShell.vue';
 import NpcDialogueModal from '@/components/NpcDialogueModal.vue';
+import StoryDialogueModal from '@/components/StoryDialogueModal.vue';
+import { useStoryDialogueStore } from '@/stores/storyDialogue';
 import type { NpcView as NpcViewModel } from '@/api/npc';
 
 /**
@@ -23,6 +25,7 @@ import type { NpcView as NpcViewModel } from '@/api/npc';
 const auth = useAuthStore();
 const game = useGameStore();
 const npcStore = useNpcStore();
+const storyDialogue = useStoryDialogueStore();
 const router = useRouter();
 const { t } = useI18n();
 
@@ -47,6 +50,25 @@ async function open(npc: NpcViewModel): Promise<void> {
 
 function close(): void {
   npcStore.closeDialogue();
+}
+
+const activeStoryNpc = computed<NpcViewModel | null>(() => {
+  if (!storyDialogue.activeNpcKey) return null;
+  return npcStore.findNpc(storyDialogue.activeNpcKey) ?? null;
+});
+
+async function openStory(npc: NpcViewModel): Promise<void> {
+  await storyDialogue.open(npc.key);
+}
+
+function closeStory(): void {
+  storyDialogue.close();
+}
+
+async function onStoryEffectsApplied(): Promise<void> {
+  // Refresh NPC list (faction quest counts + dialogue branch may have shifted)
+  // and game state (linhThach + exp may have been granted).
+  await Promise.all([npcStore.load(), game.fetchState().catch(() => null)]);
 }
 
 onMounted(async () => {
@@ -128,14 +150,24 @@ onMounted(async () => {
             <span class="text-xs text-ink-300">
               {{ t('npc.questCount', { n: n.questCount }) }}
             </span>
-            <button
-              type="button"
-              class="px-3 py-1.5 rounded border border-amber-400/40 bg-amber-700/30 text-amber-100 hover:bg-amber-700/50 transition text-sm"
-              :data-testid="`npc-talk-${n.key}`"
-              @click="open(n)"
-            >
-              {{ t('npc.talk') }}
-            </button>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="px-3 py-1.5 rounded border border-amber-400/40 bg-amber-700/30 text-amber-100 hover:bg-amber-700/50 transition text-sm"
+                :data-testid="`npc-talk-${n.key}`"
+                @click="open(n)"
+              >
+                {{ t('npc.talk') }}
+              </button>
+              <button
+                type="button"
+                class="px-3 py-1.5 rounded border border-violet-400/40 bg-violet-700/30 text-violet-100 hover:bg-violet-700/50 transition text-sm"
+                :data-testid="`npc-story-${n.key}`"
+                @click="openStory(n)"
+              >
+                {{ t('storyDialogue.talk') }}
+              </button>
+            </div>
           </div>
         </li>
       </ul>
@@ -145,6 +177,13 @@ onMounted(async () => {
         :npc-name="activeNpc?.name ?? ''"
         :description="activeNpc?.description ?? ''"
         @close="close"
+      />
+
+      <StoryDialogueModal
+        :npc-key="activeStoryNpc?.key ?? null"
+        :npc-name="activeStoryNpc?.name ?? ''"
+        @close="closeStory"
+        @effects-applied="onStoryEffectsApplied"
       />
     </div>
   </AppShell>
