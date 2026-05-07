@@ -90,8 +90,35 @@ Tick EXP thực hiện bởi BullMQ processor `cultivation.processor.ts`. WS eve
 | Method | Path                | Auth  | Mô tả |
 |--------|---------------------|-------|-------|
 | GET    | `/boss/current`     | Yes   | Boss đang active + top 10 damage. |
-| POST   | `/boss/:id/attack`  | Yes   | Đánh boss; khi HP ≤ 0 → distribute reward theo rank (top 1 = 50%). |
+| POST   | `/boss/:id/attack`  | Yes   | Đánh boss; khi HP ≤ 0 → distribute reward theo rank (top 1 = 50%). Phase 13.0 §C: reward hooks unlock title `achievement_first_boss` (mọi participant), apply buff `event_double_drop` (top-1, 1h), unlock title `event_huyet_nguyet_2026` nếu spawn từ Huyết Nguyệt slot. |
 | POST   | `/boss/admin/spawn` | ADMIN | Spawn boss thủ công. Audit `BOSS_SPAWN`. |
+
+**Phase 13.0 §B — scheduled boss heartbeat**: BossService heartbeat (mỗi N giây) đọc `bossScheduleForToday(now, MISSION_RESET_TZ)` từ shared `LIVE_OPS_EVENTS`, mỗi region check active/upcoming slot. Spawn nếu slot active + region không có `WorldBoss` ACTIVE + chưa có spawn `(regionKey, bossKey, spawnedAt >= slotStart)` (slot dedup, idempotent qua parallel heartbeat). KHÔNG schema migration — slot dedup query-based.
+
+## LiveOps — `LiveOpsController` (Phase 13.0 §D)
+
+| Method | Path             | Auth | Mô tả |
+|--------|------------------|------|-------|
+| GET    | `/liveops/today` | None | Pure compute (< 1ms) trả retention dashboard snapshot. |
+
+**Response shape** (`200 OK`):
+
+```json
+{
+  "ok": true,
+  "data": {
+    "nowIso": "2026-05-09T14:30:00.000Z",
+    "timezone": "Asia/Ho_Chi_Minh",
+    "todayEvents": [{ "key": "...", "type": "BOSS|DAILY|WEEKLY|LIMITED|STORY", "titleI18nKey": "liveops.event.<key>.title", "descriptionI18nKey": "...", "rewardHintI18nKey?": "...", "bossKey?": "...", "regionKey?": "...", "dailyTime?": "12:00", "daysOfWeek?": [6], "durationMinutes?": 30 }],
+    "activeEvents": [/* same shape, filter active at nowIso */],
+    "nextEvent": { /* shape + slotStartIso, slotEndIso, secondsUntilStart */ } | null,
+    "bossSchedule": [{ "key": "...", "bossKey": "...", "regionKey": "...", "slotStartIso": "...", "slotEndIso": "...", "status": "upcoming|active|completed", "secondsUntilStart": 0 }],
+    "suggestedActivities": [{ "key": "...", "kind": "boss|event|daily|weekly", "titleI18nKey": "...", "bossKey?": "...", "regionKey?": "...", "secondsUntilStart?": 0 }]
+  }
+}
+```
+
+Override timezone qua env `LIVEOPS_TZ` (default `Asia/Ho_Chi_Minh` reuse `MISSION_RESET_TZ`). Không cache HTTP — backend pure compute đủ nhanh; FE auto refresh 60s.
 
 ## Daily Login — `DailyLoginController` (PR #80, M9)
 

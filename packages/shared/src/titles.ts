@@ -407,6 +407,24 @@ export const TITLES: readonly TitleDef[] = [
     unlockSectRole: null,
     flavorStatBonus: null,
   },
+  // Phase 13.0 §C — Huyết Nguyệt weekly boss event participation reward.
+  // Unlock cho character damage Cuu La Thien De trong Saturday 21:00 slot
+  // (event_huyet_nguyet_weekend). Wire qua BossService.distributeRewards
+  // hook — nếu spawnedAt/regionKey/bossKey match LiveOpsEventDef, mọi
+  // participant (mọi BossDamage row) nhận title (idempotent).
+  {
+    key: 'event_huyet_nguyet_2026',
+    nameVi: 'Huyết Nguyệt Quân',
+    nameEn: 'Blood Moon Warrior',
+    description: 'Tham gia tuần sự kiện Huyết Nguyệt — đối đầu Cửu La Thiên Đế dưới ánh trăng máu.',
+    rarity: 'epic',
+    source: 'event',
+    element: null,
+    unlockRealmKey: null,
+    unlockAchievementKey: null,
+    unlockSectRole: null,
+    flavorStatBonus: { statTarget: 'atk', value: 1.03 },
+  },
 
   // ===== DONATION — 1 (placeholder Phase 16+) =====
   {

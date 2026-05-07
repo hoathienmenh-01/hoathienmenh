@@ -887,6 +887,36 @@ Top 10 damager guarantee 1 item drop. Bottom 90% probabilistic.
 | World hon_nguyen+ | 24h | 6h |
 | Event boss | manual | event duration |
 
+### 6.4 LiveOps Boss Schedule (Phase 13.0)
+
+Static catalog `LIVE_OPS_EVENTS` trong `packages/shared/src/liveops.ts` định nghĩa 5 event scheduled — gồm 4 boss spawn slot daily/weekly + 2 buff event không spawn boss. Schedule reuse `Asia/Ho_Chi_Minh` (UTC+07) qua `MISSION_RESET_TZ` để consistency với mission reset.
+
+**Schedule table:**
+
+| Time (ICT) | Day | Event key | Boss | Region | Slot duration | Lý do |
+|---|---|---|---|---|---|---|
+| 12:00 | Daily | `boss_daily_noon_hoa_diem_son` | `hoa_long_to_su` | `hoa_diem_son` | 30 min | Mid-day retention check-in (lunch break) |
+| 19:00 | Daily | `boss_daily_evening_kim_son_mach` | `kim_phach_long_dieu` | `kim_son_mach` | 30 min | Prime evening engagement window |
+| 22:00 | Daily | `boss_daily_night_hoang_tho_huyet` | `yeu_vuong_tho_huyet` | `hoang_tho_huyet` | 30 min | Late-night player retention |
+| 21:00 | Saturday | `event_huyet_nguyet_weekend` | `cuu_la_thien_de` | `cuu_la_dien` | 60 min | Weekly highlight raid (Huyết Nguyệt) |
+| 18:00 | Daily | `event_daily_exp_rush` | — (buff event) | — | 180 min | EXP +25% during prime time |
+| 00:00 | Sunday | `event_weekly_dungeon_double_drop` | — (buff event) | — | 1440 min | Weekend dungeon engagement boost |
+
+**Reward hook table (Phase 13.0 §C):**
+
+| Condition | Reward | Target | Lý do balance |
+|---|---|---|---|
+| Bất kỳ char damage boss → distribute reward | Title `achievement_first_boss` | Mọi participant | Onboarding hook — khuyến khích lần đầu tham gia boss |
+| Top-1 damage rank | Buff `event_double_drop` (1h) | Top damage character | Reward elite raid contribution; buff timed nên không phá farm balance dài hạn |
+| Spawn từ slot `event_huyet_nguyet_weekend` | Title `event_huyet_nguyet_2026` (epic) | Mọi participant | Weekly highlight prestige reward — flavor `+3% atk` (cosmetic, không phá power curve) |
+
+**Balance rationale:**
+- Schedule không cấp reward "thêm" ngoài standard boss reward — chỉ thêm title (cosmetic + small flavor stat) + 1h buff. KHÔNG ảnh hưởng main economy (linh thạch reward distribute giữ nguyên §6.2).
+- Buff `event_double_drop` đã được defined trước trong `BUFFS` catalog — duration 1h chỉ kích hoạt sau boss kill, không stack với daily login buff.
+- Title flavor stat bonus cap `+3%` mỗi title — tổng các title cùng equip vẫn dưới power curve cap (§3.4).
+- Activity panel (§D `LiveOpsTodayPanel`) **chỉ hiển thị**, KHÔNG cấp reward trực tiếp — pure UX retention layer.
+- Notice (§F `LiveOpsNotice`) là client-side toast nhắc trước boss 15 min, không grant gameplay advantage.
+
 ---
 
 ## 7. MISSION REWARD CURVE

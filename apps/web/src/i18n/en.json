@@ -948,6 +948,71 @@
       "UNKNOWN": "Something went wrong."
     }
   },
+  "liveopsToday": {
+    "title": "Today's Activities",
+    "loading": "Loading event schedule…",
+    "error": "Could not load event schedule. Try again later.",
+    "noSuggestion": "No hot events right now. Check the boss schedule below.",
+    "activeEventsTitle": "Active events",
+    "bossScheduleTitle": "Today's boss schedule",
+    "startIn": "starts in {time}",
+    "spawnSoonToast": "A boss will spawn in {time}.",
+    "bossStatus": {
+      "upcoming": "Upcoming",
+      "active": "Active",
+      "completed": "Completed"
+    },
+    "cta": {
+      "goBoss": "Go Boss",
+      "goDungeon": "Enter Dungeon",
+      "goMission": "View Missions"
+    }
+  },
+  "liveops": {
+    "event": {
+      "boss_daily_noon_hoa_diem_son": {
+        "title": "Noon Boss: Fire Dragon Patriarch",
+        "desc": "Fire Dragon Patriarch appears at Hoa Diem Son daily at 12:00.",
+        "reward": "Spirit stones + fire-element alchemy materials."
+      },
+      "boss_daily_evening_kim_son_mach": {
+        "title": "Evening Boss: Golden Soul Dragon Eagle",
+        "desc": "Golden Soul Dragon Eagle appears at Kim Son Mach daily at 19:00.",
+        "reward": "Spirit stones + metal-element forge materials."
+      },
+      "boss_daily_night_hoang_tho_huyet": {
+        "title": "Night Boss: Demon King of Earth Cavern",
+        "desc": "Demon King of Earth Cavern appears at Hoang Tho Huyet daily at 22:00.",
+        "reward": "Spirit stones + earth-element pills."
+      },
+      "event_huyet_nguyet_weekend": {
+        "title": "Blood Moon Weekend: Nine-Net Heavenly Emperor",
+        "desc": "Saturday 21:00 ICT, the Nine-Net Heavenly Emperor descends to Cuu La Dien under the blood moon.",
+        "reward": "Big spirit stones + Blood Moon Warrior title."
+      },
+      "event_daily_exp_rush": {
+        "title": "Spirit Surge",
+        "desc": "Daily 18:00-21:00 ICT: cultivation absorption +25%."
+      },
+      "event_weekly_dungeon_double_drop": {
+        "title": "Heaven's Blessing",
+        "desc": "Sunday all day: dungeon drops ×2."
+      }
+    },
+    "boss": {
+      "hoa_long_to_su": "Fire Dragon Patriarch",
+      "kim_phach_long_dieu": "Golden Soul Dragon Eagle",
+      "yeu_vuong_tho_huyet": "Demon King of Earth Cavern",
+      "cuu_la_thien_de": "Nine-Net Heavenly Emperor"
+    },
+    "region": {
+      "hoa_diem_son": "Fire Mountain",
+      "kim_son_mach": "Golden Vein",
+      "hoang_tho_huyet": "Earth Cavern",
+      "cuu_la_dien": "Nine-Net Hall",
+      "world": "Worldwide"
+    }
+  },
   "topup": {
     "title": "Top Up Tien Ngoc",
     "intro": "Tien Ngoc is used for gacha, VIP perks, and unique skins & items.",

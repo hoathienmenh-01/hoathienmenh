@@ -12,6 +12,8 @@ import MButton from '@/components/ui/MButton.vue';
 import NextActionPanel from '@/components/NextActionPanel.vue';
 import OnboardingChecklist from '@/components/OnboardingChecklist.vue';
 import DailyLoginCard from '@/components/DailyLoginCard.vue';
+import LiveOpsTodayPanel from '@/components/LiveOpsTodayPanel.vue';
+import LiveOpsNotice from '@/components/LiveOpsNotice.vue';
 import { extractApiErrorCode } from '@/lib/apiError';
 
 const auth = useAuthStore();
@@ -90,6 +92,8 @@ async function onBreakthrough(): Promise<void> {
   <AppShell>
     <OnboardingChecklist v-if="game.character" class="mb-4" />
     <DailyLoginCard v-if="game.character" class="mb-4" />
+    <LiveOpsTodayPanel v-if="game.character" class="mb-4" />
+    <LiveOpsNotice v-if="game.character" />
     <NextActionPanel v-if="game.character" class="mb-6" />
     <div v-if="game.character" class="grid gap-6 lg:grid-cols-[2fr_1fr]">
       <section class="rounded border border-ink-300/40 bg-ink-700/30 p-5">
