@@ -103,53 +103,74 @@ export class BuffService {
 
     const expiresAt = expiresAtOverride ?? computeBuffExpiresAt(now, def);
 
-    const existing = await tx.characterBuff.findUnique({
-      where: {
-        characterId_buffKey: { characterId, buffKey },
-      },
-    });
-
-    if (!existing) {
-      const created = await tx.characterBuff.create({
-        data: {
+    // Race-safe pattern (Phase 13.0 audit pass #4): try insert-or-ignore
+    // first qua `createMany({ skipDuplicates: true })` (atomic
+    // `INSERT … ON CONFLICT DO NOTHING` ở Postgres). Prisma's `upsert` KHÔNG
+    // atomic (find-then-create) → 2 tx concurrent cùng (characterId, buffKey)
+    // race loser hits P2002 + tx abort → boss reward hook lost subsequent
+    // ops (currency/inventory grant) dù try/catch swallowed P2002.
+    //
+    // Nếu count > 0 (race winner) → trả về row mới với stacks=1.
+    // Nếu count === 0 (existing row) → UPDATE để bump stacks (cap maxStacks)
+    // + refresh expiresAt + source. Stacks race có window nhỏ (2 caller cùng
+    // miss existing → cùng compute newStacks=1) nhưng acceptable: stackable
+    // buff về source-of-truth là expiresAt + count, non-stackable không bị
+    // ảnh hưởng. UPDATE never throws P2002 → tx outer an toàn.
+    const { count } = await tx.characterBuff.createMany({
+      data: [
+        {
           characterId,
           buffKey,
           stacks: 1,
           source,
           expiresAt,
         },
+      ],
+      skipDuplicates: true,
+    });
+
+    if (count === 0) {
+      // Existing row → bump stacks (atomic increment cap maxStacks) + refresh.
+      // Source có thể đổi (vd buff stat từ pill rồi từ event refresh) —
+      // ghi nhận source mới nhất.
+      const existing = await tx.characterBuff.findUniqueOrThrow({
+        where: {
+          characterId_buffKey: { characterId, buffKey },
+        },
+        select: { stacks: true },
       });
-      return {
-        buffKey: created.buffKey,
-        stacks: created.stacks,
-        source: created.source as BuffSource,
-        expiresAt: created.expiresAt,
-      };
+      const newStacks = def.stackable
+        ? Math.min(existing.stacks + 1, def.maxStacks)
+        : existing.stacks;
+      await tx.characterBuff.update({
+        where: {
+          characterId_buffKey: { characterId, buffKey },
+        },
+        data: {
+          stacks: newStacks,
+          expiresAt,
+          source,
+        },
+      });
     }
 
-    // Stackable → increment cap maxStacks. Non-stackable → giữ nguyên stacks.
-    const newStacks = def.stackable
-      ? Math.min(existing.stacks + 1, def.maxStacks)
-      : existing.stacks;
-
-    const updated = await tx.characterBuff.update({
+    const row = await tx.characterBuff.findUniqueOrThrow({
       where: {
         characterId_buffKey: { characterId, buffKey },
       },
-      data: {
-        stacks: newStacks,
-        expiresAt,
-        // Source có thể đổi (vd buff stat từ pill rồi từ event refresh) —
-        // ghi nhận source mới nhất.
-        source,
+      select: {
+        buffKey: true,
+        stacks: true,
+        source: true,
+        expiresAt: true,
       },
     });
 
     return {
-      buffKey: updated.buffKey,
-      stacks: updated.stacks,
-      source: updated.source as BuffSource,
-      expiresAt: updated.expiresAt,
+      buffKey: row.buffKey,
+      stacks: row.stacks,
+      source: row.source as BuffSource,
+      expiresAt: row.expiresAt,
     };
   }
 

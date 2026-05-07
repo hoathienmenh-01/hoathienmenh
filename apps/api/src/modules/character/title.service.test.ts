@@ -371,3 +371,43 @@ describe('TitleError', () => {
     expect(e instanceof TitleError).toBe(true);
   });
 });
+
+// Phase 13.0 audit pass #4 — Bug #7: pre-fix unlockTitleTx dùng
+// findUnique-then-create pattern; 2 boss reward hook concurrent (cùng
+// character, cùng titleKey) → both see no existing → both call create →
+// race loser hits P2002 + Postgres aborts tx. Boss reward hook try/catch
+// swallowed P2002 nhưng tx vẫn aborted → subsequent currency/inventory
+// grant cũng fail (tx rollback) → mất reward kinh tế. Fix: refactor sang
+// `createMany({ skipDuplicates: true })` — dịch sang Postgres
+// `INSERT … ON CONFLICT DO NOTHING`, đúng atomic, không bao giờ throw
+// P2002. Prisma's `upsert` KHÔNG atomic (find-then-create) nên không
+// dùng được cho race-safe path.
+describe('TitleService.unlockTitle — race regression', () => {
+  it('2 unlock concurrent cùng (char, titleKey) → cả 2 commit, không throw P2002', async () => {
+    const ctx = await makeUserChar(prisma);
+
+    // Pre-fix: 1 trong 2 throw P2002 (nhưng wrapper unlockTitle có $tx riêng,
+    // nên P2002 thoát ra ngoài → caller phải tự catch). Post-fix: cả 2
+    // succeed; rows count = 1.
+    const [r1, r2] = await Promise.all([
+      svc.unlockTitle(
+        ctx.characterId,
+        'achievement_first_boss',
+        'achievement',
+      ),
+      svc.unlockTitle(
+        ctx.characterId,
+        'achievement_first_boss',
+        'achievement',
+      ),
+    ]);
+
+    expect(r1.titleKey).toBe('achievement_first_boss');
+    expect(r2.titleKey).toBe('achievement_first_boss');
+
+    const rows = await prisma.characterTitleUnlock.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(rows).toHaveLength(1);
+  });
+});

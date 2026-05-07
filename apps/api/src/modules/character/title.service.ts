@@ -85,24 +85,24 @@ export class TitleService {
     });
     if (!character) throw new TitleError('CHARACTER_NOT_FOUND');
 
-    const existing = await tx.characterTitleUnlock.findUnique({
-      where: { characterId_titleKey: { characterId, titleKey } },
+    // Atomic insert-or-ignore (INSERT … ON CONFLICT DO NOTHING) — race-safe so
+    // that concurrent boss reward hooks for the SAME (characterId, titleKey)
+    // don't throw P2002 mid-tx and abort the wrapping transaction (Phase 13.0
+    // audit pass #4). Prisma's `upsert` is NOT atomic at Postgres level
+    // (find-then-update/create), nhưng `createMany({ skipDuplicates: true })`
+    // dịch sang `INSERT … ON CONFLICT DO NOTHING` — đúng atomic.
+    await tx.characterTitleUnlock.createMany({
+      data: [{ characterId, titleKey, source }],
+      skipDuplicates: true,
     });
-    if (existing) {
-      return {
-        titleKey: existing.titleKey,
-        source: existing.source as TitleSource,
-        unlockedAt: existing.unlockedAt,
-      };
-    }
-
-    const created = await tx.characterTitleUnlock.create({
-      data: { characterId, titleKey, source },
+    const row = await tx.characterTitleUnlock.findUniqueOrThrow({
+      where: { characterId_titleKey: { characterId, titleKey } },
+      select: { titleKey: true, source: true, unlockedAt: true },
     });
     return {
-      titleKey: created.titleKey,
-      source: created.source as TitleSource,
-      unlockedAt: created.unlockedAt,
+      titleKey: row.titleKey,
+      source: row.source as TitleSource,
+      unlockedAt: row.unlockedAt,
     };
   }
 

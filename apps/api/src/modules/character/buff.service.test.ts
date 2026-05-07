@@ -264,6 +264,37 @@ describe('BuffService.applyBuffTx (Phase 11.8.D-1 tx-aware variant)', () => {
     });
     expect(rows).toHaveLength(1);
   });
+
+  // Phase 13.0 audit pass #4 — Bug #8: pre-fix applyBuffTx dùng
+  // findUnique-then-create pattern; 2 tx outer concurrent với cùng
+  // (characterId, buffKey) → both see no existing → both call create →
+  // race loser hits P2002 + tx aborts ở Postgres level. Caller (boss reward
+  // hook) try/catch swallowed P2002 nhưng tx vẫn aborted → subsequent ops
+  // (currency/inventory grant) cũng fail. Fix: refactor sang `createMany`
+  // với `skipDuplicates: true` (dịch sang `INSERT … ON CONFLICT DO NOTHING`
+  // ở Postgres — đúng atomic, không throw P2002), kèm UPDATE branch khi
+  // count=0 (existing row). Prisma's `upsert` KHÔNG atomic
+  // (find-then-create) nên không dùng được cho race-safe path.
+  it('applyBuffTx race-safe: 2 wrappers concurrent cùng (char, buffKey) → cả 2 commit, không throw P2002', async () => {
+    const ctx = await makeUserChar(prisma, {});
+    const now = new Date('2026-05-02T00:00:00Z');
+
+    // 2 concurrent wrappers (mỗi wrapper là tx riêng) — pre-fix: 1 trong 2
+    // throw P2002. Post-fix: cả 2 succeed (idempotent upsert).
+    const [r1, r2] = await Promise.all([
+      svc.applyBuff(ctx.characterId, 'pill_atk_buff_t1', 'pill', now),
+      svc.applyBuff(ctx.characterId, 'pill_atk_buff_t1', 'pill', now),
+    ]);
+
+    expect(r1.buffKey).toBe('pill_atk_buff_t1');
+    expect(r2.buffKey).toBe('pill_atk_buff_t1');
+
+    // Cuối cùng chỉ có 1 row (composite UNIQUE).
+    const rows = await prisma.characterBuff.findMany({
+      where: { characterId: ctx.characterId, buffKey: 'pill_atk_buff_t1' },
+    });
+    expect(rows).toHaveLength(1);
+  });
 });
 
 describe('BuffService.removeBuff', () => {
