@@ -107,10 +107,10 @@ describe('SectWarService.addContributionTx', () => {
     const sect = await makeSect(prisma);
     const u = await makeUserChar(prisma, { sectId: sect.id });
     const res = await prisma.$transaction((tx) =>
-      // @ts-expect-error — intentional invalid activity key
       sectWar.addContributionTx(tx, {
         characterId: u.characterId,
-        activityKey: 'invalid_activity_key',
+        // Cast: server cố tình bảo vệ runtime nếu hook thượng nguồn truyền key sai.
+        activityKey: 'invalid_activity_key' as unknown as 'dungeon_clear',
         sourceId: 'x',
       }),
     );

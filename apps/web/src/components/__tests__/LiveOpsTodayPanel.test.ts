@@ -46,6 +46,7 @@ const i18n = createI18n({
           goBoss: 'Đi Boss',
           goDungeon: 'Vào Bí Cảnh',
           goMission: 'Xem Nhiệm Vụ',
+          goSectWar: 'Tông Môn Chiến',
         },
       },
       liveops: {
@@ -227,6 +228,17 @@ describe('LiveOpsTodayPanel', () => {
     const goMis = btns.find((b) => b.text() === 'Xem Nhiệm Vụ');
     await goMis!.trigger('click');
     expect(routerPushMock).toHaveBeenCalledWith({ name: 'missions' });
+  });
+
+  it('Phase 13.1.A — CTA "Tông Môn Chiến" hiện trên LiveOps panel + click route name=sect-war', async () => {
+    getLiveOpsTodayMock.mockResolvedValueOnce(SAMPLE_RESPONSE);
+    const w = mountPanel();
+    await flushPromises();
+    const cta = w.find('[data-testid="liveops-cta-sect-war"]');
+    expect(cta.exists()).toBe(true);
+    expect(cta.text()).toBe('Tông Môn Chiến');
+    await cta.trigger('click');
+    expect(routerPushMock).toHaveBeenCalledWith({ name: 'sect-war' });
   });
 
   it('boss schedule slot time format theo tz từ API (Asia/Ho_Chi_Minh = ICT) — không theo browser TZ', async () => {

@@ -12,6 +12,26 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Added — Phase 13.1.A Sect War Core, Contribution, Leaderboard & Weekly Reward (this PR)
+
+- **Tông Môn Chiến tuần lễ** — bảng xếp hạng tông môn theo tuần (`weekKey = ISO 'YYYY-Www'`, timezone `Asia/Ho_Chi_Minh`, season chạy Thứ Hai 00:00 → Chủ Nhật 23:59 ICT).
+- **5 nguồn điểm gameplay** (server-authoritative, idempotent qua `(weekKey, sourceType, sourceId, characterId)` UNIQUE):
+  - Daily login claim → +5 điểm/ngày (cap 7/tuần).
+  - Dungeon clear (claim DungeonRun) → +10 điểm/lần (cap 50/ngày).
+  - Boss participation (≥1 đòn đánh, distributeRewards) → +15 điểm (cap 120/tuần).
+  - Boss top damage rank-1 → +25 bonus (cap 100/tuần).
+  - Quest claim → +8 điểm (cap 80/tuần).
+- **Reward tier tuần** (claim qua `POST /sect-war/claim`, `(weekKey, characterId)` UNIQUE chống double claim):
+  - Rank 1 → 5,000 LT + 200 TN + title `sect_war_champion`.
+  - Rank 2-3 → 2,500 LT + 100 TN.
+  - Rank 4-10 → 1,000 LT + 50 TN.
+  - Participation (cá nhân ≥ 50 điểm, không cần rank) → 200 LT.
+- **API mới**: `GET /sect-war/current` (snapshot tuần), `GET /sect-war/leaderboard` (top sect), `GET /sect-war/me` (status cá nhân + breakdown), `POST /sect-war/claim` (atomic CAS qua composite UNIQUE — race-safe, 1 claim duy nhất khi 2 request concurrent).
+- **Hook gameplay** (defensive try-catch trong tx — title/buff fail KHÔNG rollback economy reward chính): DungeonRunService.claim, BossService.distributeRewards (participation + topDamage), DailyLoginService.claim, QuestService.claim. Character không có sect → no-op (return null, không ghi row).
+- **Web UI** `/sect-war` — countdown tuần, my progress + breakdown, leaderboard top sect (highlight tông của tôi), bảng activity rules + reward tier, claim button gating (`canClaim` = hasSect + eligibleTier + !alreadyClaimed). HomeView LiveOps panel thêm CTA "Tông Môn Chiến". i18n vi/en đầy đủ.
+- **Prisma migration `20260524000000_phase_13_1_a_sect_war_core`**: `SectWarContribution` + `SectWarWeeklyRewardClaim` table mới với composite UNIQUE chống double-add và double-claim. Rollback risk: thấp — drop 2 table không ảnh hưởng module khác.
+- **Anti-abuse**: dailyCap/weeklyCap enforce trong service (KHÔNG thể bypass qua FE), contribution KHÔNG thể tự thêm (mọi nguồn đi qua hook server-side), claim chống race qua composite UNIQUE + transaction.
+
 ### Fixed — Phase 13.0 audit pass #4: TitleService + BuffService P2002 race (this PR)
 
 - **`TitleService.unlockTitleTx()` race**: pattern `findUnique → if not exists → create` KHÔNG atomic. 2 boss reward hook concurrent cùng `(characterId, titleKey)` (vd participant tham gia 2 boss defeat sát nhau, hoặc 2 cluster pod chạy heartbeat song song) → cả 2 thấy không tồn tại → cả 2 gọi `tx.characterTitleUnlock.create` → race loser hits Prisma `P2002` (unique constraint) → Postgres aborts entire `$transaction`. Boss reward hook có `try/catch` swallow log warn nhưng tx outer đã aborted → **subsequent currency + inventory grant cũng fail** (tx rollback) → **player mất reward kinh tế**. **Fix**: refactor sang `tx.characterTitleUnlock.createMany({ data: [...], skipDuplicates: true })` — Prisma dịch sang Postgres `INSERT … ON CONFLICT DO NOTHING`, đúng atomic, không bao giờ throw P2002. (Prisma's `upsert` KHÔNG atomic — nó là find-then-update/create — đã thử và fail race test.)

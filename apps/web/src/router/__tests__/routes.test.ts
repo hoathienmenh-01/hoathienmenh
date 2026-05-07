@@ -26,6 +26,7 @@ const EXPECTED: RouteExpect[] = [
   { name: 'market', path: '/market' },
   { name: 'shop', path: '/shop' },
   { name: 'sect', path: '/sect' },
+  { name: 'sect-war', path: '/sect-war' },
   { name: 'boss', path: '/boss' },
   { name: 'missions', path: '/missions' },
   { name: 'mail', path: '/mail' },

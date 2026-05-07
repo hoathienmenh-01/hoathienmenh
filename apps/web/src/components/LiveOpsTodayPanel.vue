@@ -129,6 +129,10 @@ function gotoDungeon(): void {
 function gotoMission(): void {
   router.push({ name: 'missions' });
 }
+
+function gotoSectWar(): void {
+  router.push({ name: 'sect-war' });
+}
 </script>
 
 <template>
@@ -297,6 +301,14 @@ function gotoMission(): void {
           @click="gotoMission"
         >
           {{ t('liveopsToday.cta.goMission') }}
+        </button>
+        <button
+          type="button"
+          data-testid="liveops-cta-sect-war"
+          class="rounded border border-amber-300/40 px-3 py-1 text-xs uppercase tracking-widest text-amber-200 hover:bg-amber-300/10"
+          @click="gotoSectWar"
+        >
+          {{ t('liveopsToday.cta.goSectWar') }}
         </button>
       </div>
     </template>
