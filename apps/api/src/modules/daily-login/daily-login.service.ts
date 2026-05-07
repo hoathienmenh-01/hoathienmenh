@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { CurrencyKind, Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
 import { getMissionResetTz } from '../mission/mission.service';
+import { SectWarService } from '../sect-war/sect-war.service';
 
 export class DailyLoginError extends Error {
   constructor(public code: 'NO_CHARACTER') {
@@ -64,6 +65,7 @@ export class DailyLoginService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
+    @Optional() private readonly sectWar?: SectWarService,
   ) {}
 
   private async getCharacterIdByUser(userId: string): Promise<string> {
@@ -145,6 +147,22 @@ export class DailyLoginService {
           refId: todayDateLocal,
           meta: { streakAtClaim: newStreak },
         });
+        // Phase 13.1.A — Sect War contribution hook. Idempotent qua
+        // (weekKey, characterId, activityKey, sourceType, sourceId)
+        // với sourceId = todayDateLocal — re-claim cùng ngày không double.
+        // Fail-soft: daily login đã grant currency, sect war chỉ là cosmetic.
+        if (this.sectWar) {
+          try {
+            await this.sectWar.addContributionTx(tx, {
+              characterId,
+              activityKey: 'daily_login',
+              sourceId: todayDateLocal,
+              now,
+            });
+          } catch {
+            // swallow — sect-war không phá flow.
+          }
+        }
       });
       return {
         claimed: true,

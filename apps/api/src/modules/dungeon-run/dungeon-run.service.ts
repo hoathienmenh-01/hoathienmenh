@@ -23,6 +23,7 @@ import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { QuestService } from '../quest/quest.service';
 import { startOfLocalDay } from '../combat/combat.service';
+import { SectWarService } from '../sect-war/sect-war.service';
 
 /**
  * Phase 12.2.B — DungeonRun runtime service.
@@ -199,6 +200,7 @@ export class DungeonRunService {
     private readonly currency: CurrencyService,
     private readonly inventory: InventoryService,
     @Optional() private readonly quests?: QuestService,
+    @Optional() private readonly sectWar?: SectWarService,
   ) {}
 
   /**
@@ -560,6 +562,23 @@ export class DungeonRunService {
           refId: run.id,
         });
         grantedItems.push(...grantList);
+      }
+
+      // Phase 13.1.A — Sect War contribution hook. Fail-soft: nếu sect-war
+      // ghi điểm fail thì dungeon claim vẫn thành công (player đã grant
+      // currency/items/exp). Idempotent qua composite UNIQUE
+      // `(weekKey, characterId, activityKey, sourceType, sourceId)` —
+      // retry endpoint cùng runId không double điểm.
+      if (this.sectWar) {
+        try {
+          await this.sectWar.addContributionTx(tx, {
+            characterId,
+            activityKey: 'dungeon_clear',
+            sourceId: run.id,
+          });
+        } catch {
+          // swallow — sect-war là cosmetic + không phá flow chính.
+        }
       }
 
       return {

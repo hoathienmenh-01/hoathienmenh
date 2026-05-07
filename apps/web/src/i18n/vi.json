@@ -966,7 +966,8 @@
     "cta": {
       "goBoss": "Đi Boss",
       "goDungeon": "Vào Bí Cảnh",
-      "goMission": "Xem Nhiệm Vụ"
+      "goMission": "Xem Nhiệm Vụ",
+      "goSectWar": "Tông Môn Chiến"
     }
   },
   "liveops": {
@@ -2181,6 +2182,118 @@
     "bar": {
       "aria": "Trạng thái buff/debuff đang hiệu lực",
       "empty": "Không có trạng thái nào."
+    }
+  },
+  "sectWar": {
+    "title": "Tông Môn Chiến",
+    "subtitle": "Tuần lễ tranh đoạt — góp điểm cho Tông để giành thưởng tuần.",
+    "loading": "Đang tải dữ liệu Tông Môn Chiến…",
+    "weekKey": "Tuần {wk}",
+    "season": {
+      "label": "Tuần hiện tại: {wk}",
+      "remaining": "Còn lại {d} ngày {h} giờ {m} phút",
+      "ended": "Đã kết thúc",
+      "range": "Từ {start} đến {end}"
+    },
+    "myProgress": {
+      "title": "Tiến độ cá nhân",
+      "noSect": "Đạo hữu chưa gia nhập Tông Môn — không thể đóng góp tuần này.",
+      "sect": "Tông Môn",
+      "sectRank": "Hạng Tông",
+      "sectPoints": "Điểm Tông",
+      "personalPoints": "Điểm cá nhân",
+      "breakdown": "Chi tiết đóng góp",
+      "noContrib": "Chưa có đóng góp nào trong tuần này."
+    },
+    "leaderboard": {
+      "title": "Bảng xếp hạng tuần",
+      "empty": "Chưa có Tông Môn nào ghi điểm tuần này.",
+      "youTag": "(Tông của tôi)",
+      "col": {
+        "rank": "Hạng",
+        "sect": "Tông Môn",
+        "points": "Điểm",
+        "contributors": "Thành viên góp"
+      }
+    },
+    "rules": {
+      "title": "Cách kiếm điểm",
+      "col": {
+        "activity": "Hoạt động",
+        "points": "Điểm",
+        "dailyCap": "Trần ngày",
+        "weeklyCap": "Trần tuần"
+      }
+    },
+    "activity": {
+      "daily_login": {
+        "label": "Điểm danh hằng ngày",
+        "desc": "Điểm danh hằng ngày — góp 5 điểm cho Tông."
+      },
+      "dungeon_clear": {
+        "label": "Hoàn thành Bí Cảnh",
+        "desc": "Mỗi lần claim Bí Cảnh — góp 10 điểm (cap 50/ngày)."
+      },
+      "boss_participation": {
+        "label": "Tham chiến Boss",
+        "desc": "Tham gia gây sát thương Boss — góp 15 điểm (cap 120/tuần)."
+      },
+      "boss_top_damage": {
+        "label": "Top sát thương Boss",
+        "desc": "Đứng đầu sát thương Boss — bonus 25 điểm (cap 100/tuần)."
+      },
+      "quest_complete": {
+        "label": "Hoàn thành Nhiệm Vụ",
+        "desc": "Mỗi lần claim Nhiệm Vụ — góp 8 điểm (cap 80/tuần)."
+      }
+    },
+    "reward": {
+      "title": "Thưởng tuần",
+      "col": {
+        "tier": "Hạng thưởng",
+        "rankRange": "Phạm vi",
+        "reward": "Phần thưởng"
+      },
+      "linhThach": "{n} Linh Thạch",
+      "tienNgoc": "{n} Tiên Ngọc",
+      "titleAward": "Danh hiệu: {k}",
+      "buff": "Buff: {k}",
+      "items": "{n} vật phẩm",
+      "claimBtn": "Nhận thưởng",
+      "alreadyClaimed": "Đã nhận thưởng tuần này.",
+      "requireSect": "Cần gia nhập Tông Môn để nhận thưởng.",
+      "notEligible": "Tông chưa đủ điều kiện nhận thưởng tuần.",
+      "eligibleHint": "Đủ điều kiện nhận thưởng: {tier}",
+      "claimToast": "Tông hạng #{rank} — đã nhận {linhThach} Linh Thạch + {tienNgoc} Tiên Ngọc."
+    },
+    "tier": {
+      "rank_1": {
+        "label": "Quán quân",
+        "desc": "Tông hạng 1 — phần thưởng đỉnh."
+      },
+      "rank_2_3": {
+        "label": "Á quân",
+        "desc": "Tông hạng 2-3."
+      },
+      "rank_4_10": {
+        "label": "Top 10",
+        "desc": "Tông hạng 4-10."
+      },
+      "participation": {
+        "label": "Tham gia",
+        "desc": "Cá nhân ≥ 50 điểm — không cần hạng cao."
+      },
+      "rankSingle": "Hạng {rank}",
+      "rankRange": "Hạng {from}–{to}",
+      "rankFromOnly": "Hạng {from} trở xuống"
+    },
+    "errors": {
+      "SECT_REQUIRED": "Cần gia nhập Tông Môn trước.",
+      "SECT_WAR_NOT_CLAIMABLE": "Chưa đến thời điểm nhận thưởng.",
+      "SECT_WAR_ALREADY_CLAIMED": "Đã nhận thưởng tuần này rồi.",
+      "SECT_WAR_NO_REWARD": "Tông không đủ điều kiện nhận thưởng tuần.",
+      "NO_CHARACTER": "Chưa có nhân vật, hãy khai đạo trước.",
+      "UNKNOWN": "Thao tác Tông Môn Chiến thất bại, thử lại."
     }
   }
 }

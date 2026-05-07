@@ -1177,6 +1177,48 @@ $ pnpm test:balance
 
 ---
 
+## 11.13 SECT WAR (Phase 13.1.A)
+
+> Tông Môn Chiến tuần lễ — competitive guild leaderboard với weekly reward source. KHÔNG ảnh hưởng economy chính (LT/TN reward bounded, không stack với daily mission/giftcode pool).
+
+### 11.13.1 Activity points table
+
+| Activity              | Points | Daily cap | Weekly cap | Source idempotency key                        | Reasoning |
+|-----------------------|-------:|----------:|-----------:|-----------------------------------------------|-----------|
+| `daily_login`         |   5    |     —     |    7×5=35  | `(weekKey, DailyLoginClaim, dayKey, charId)`  | Bám điểm danh đã có; daily-login claim 1 lần/ngày qua schema, weeklyCap = 7 đã tự nhiên. |
+| `dungeon_clear`       |  10    |    50     |       —    | `(weekKey, DungeonRun, dungeonRunId, charId)` | DungeonRun.claim đã idempotent qua state UNIQUE; cap 50/ngày = 5 dungeon claim/ngày, đủ cho farm thường, chặn macro. |
+| `boss_participation`  |  15    |     —     |   120      | `(weekKey, WorldBoss, bossId+'/p', charId)`   | Boss daily 12/19/22 ICT × 7 ngày ≈ 21 boss + 1 weekly Huyết Nguyệt = 22 lần × 15 = 330 → cap 120 chặn AFK farm dame nhỏ. |
+| `boss_top_damage`     |  25    |     —     |   100      | `(weekKey, WorldBoss, bossId+'/top', charId)` | Top-1 thưởng nhẹ; cap 100 = 4 lần top/tuần, tránh 1 tài khoản dominate hoàn toàn. |
+| `quest_complete`      |   8    |     —     |    80      | `(weekKey, Quest, questClaimId, charId)`      | Quest claim đã có UNIQUE per claim; cap 80/tuần = 10 quest/tuần, vừa đủ cho main quest line không cản progression. |
+
+**Anti-abuse invariants**:
+- Mọi nguồn point đi qua hook server-side trong tx — KHÔNG có endpoint FE để tự thêm point.
+- Composite UNIQUE `(weekKey, sourceType, sourceId, characterId)` đảm bảo retry hook (network flap, replay) chỉ ghi 1 lần.
+- Cap aggregate trong tx trước insert → atomic (race-safe khi 2 hook concurrent cùng activity).
+- Character không có sect → no-op (return null), KHÔNG ghi row → switch sect mid-week không carry điểm cũ.
+
+### 11.13.2 Weekly reward tier
+
+| Rank          | Linh Thạch | Tiên Ngọc | Title                  | Eligibility                       | Balance reasoning |
+|---------------|-----------:|----------:|------------------------|-----------------------------------|-------------------|
+| 1             |     5,000  |      200  | `sect_war_champion`    | sectRank = 1                      | Top sect: ~52 LT/ngày × 7 + bonus 1.4k → cao hơn daily mission tổng tuần (~3k LT) ×1.7, đủ flex cho leader sect. |
+| 2-3           |     2,500  |      100  | —                      | sectRank ∈ [2,3]                  | Á quân: ~50% rank 1, vẫn đáng tham gia. |
+| 4-10          |     1,000  |       50  | —                      | sectRank ∈ [4,10]                 | Mid-tier: small reward để khuyến khích sect mới tham gia. |
+| Participation |       200  |        0  | —                      | personalPoints ≥ 50 (bất kể rank) | Cá nhân tích cực dù sect yếu — pity prize tránh Pareto-loser. |
+
+**Curve**: tổng max LT phát hành / tuần ≈ (5,000 × 1) + (2,500 × 2) + (1,000 × 7) + (200 × N participation). Với N ~ 100 active sect war player → 200 × 100 = 20,000. Tổng max ≈ 37,000 LT/tuần. Compared với boss reward + dungeon farm + daily mission tổng pool ~500k LT/tuần khi 100 active players → sect war = ~7% additional source. Acceptable inflation.
+
+**Title**: chỉ rank-1 mới có title `sect_war_champion` (epic source=event tương đương `event_huyet_nguyet_2026`). KHÔNG stack với title khác (single equip slot). Tiêu chí prestige.
+
+### 11.13.3 weekKey timezone & race
+
+- `weekKey = ISO 'YYYY-Www'` qua `sectWarWeekKey(now, tz)`. Dùng `MISSION_RESET_TZ` (default `Asia/Ho_Chi_Minh`).
+- Season chạy Thứ Hai 00:00 ICT → Chủ Nhật 23:59 ICT. Reset week = activity carry-over reset (contribution row mới weekKey mới, leaderboard mới).
+- **Claim race**: 2 request `POST /sect-war/claim` cùng user concurrent → composite UNIQUE `(weekKey, characterId)` trên `SectWarWeeklyRewardClaim` đảm bảo race winner only — race loser hits P2002 → service translate sang `SECT_WAR_ALREADY_CLAIMED` (regression test cover).
+- **Cap race**: 2 hook concurrent cùng activity (vd: 2 dungeon claim same second) → service aggregate trong cùng tx + UNIQUE constraint trên contribution row chống cả 2 phía. Test cover trong `sect-war.service.test.ts`.
+
+---
+
 ## 12. CHANGELOG
 
 - **2026-04-30** — Initial creation. Author: Devin AI session 9q.

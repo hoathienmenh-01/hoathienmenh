@@ -61,6 +61,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/SectView.vue'),
   },
   {
+    path: '/sect-war',
+    name: 'sect-war',
+    component: () => import('@/views/SectWarView.vue'),
+  },
+  {
     path: '/boss',
     name: 'boss',
     component: () => import('@/views/BossView.vue'),

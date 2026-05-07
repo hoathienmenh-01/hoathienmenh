@@ -1019,3 +1019,76 @@ model DailyLoginClaim {
   @@unique([characterId, claimDateLocal])
   @@index([characterId, createdAt])
 }
+
+/// Phase 13.1.A — Sect War (Tông Môn Chiến) tuần lễ contribution log.
+/// Mỗi row = 1 lần activity → cộng `points` cho `sectId` trong `weekKey`.
+///
+/// Idempotency: composite UNIQUE
+/// `(weekKey, characterId, activityKey, sourceType, sourceId)`. Cùng activity
+/// + cùng sourceId trong cùng tuần chỉ ghi 1 row (retry endpoint không double).
+/// `sourceId = null` cũng được phép (vd activity không có dependent entity);
+/// trong PostgreSQL NULL ≠ NULL ⇒ multiple null rows được phép. Activity hooks
+/// hiện tại luôn có sourceId không null (DungeonRun.id, WorldBoss.id+charId,
+/// claimDateLocal, questKey).
+///
+/// `sectId` snapshot tại commit time — nếu character đổi sect giữa tuần
+/// (rời + join sect khác), điểm cũ vẫn ở sect cũ (history-true). Leaderboard
+/// aggregate sum theo `sectId` trong `weekKey`.
+///
+/// Indexes:
+///   - `[weekKey, sectId]` cho leaderboard sum query.
+///   - `[weekKey, characterId]` cho personal status / breakdown.
+///   - UNIQUE composite cho idempotency.
+model SectWarContribution {
+  id           String   @id @default(cuid())
+  /// ISO week key, format `YYYY-Www` (vd "2026-W19").
+  weekKey      String
+  sectId       String
+  characterId  String
+  /// Match `SectWarActivityKey` từ shared catalog.
+  activityKey  String
+  /// Match `SectWarSourceType` (vd "DungeonRun", "WorldBoss", "DailyLoginClaim", "Quest").
+  sourceType   String
+  /// Optional source entity id (vd dungeonRunId / bossId+characterId / claimDateLocal / questKey).
+  sourceId     String?
+  /// Số điểm cộng vào sect — server-authoritative từ catalog (FE không gửi).
+  points       Int
+  createdAt    DateTime @default(now())
+
+  @@unique([weekKey, characterId, activityKey, sourceType, sourceId])
+  @@index([weekKey, sectId])
+  @@index([weekKey, characterId])
+  @@index([weekKey, createdAt])
+}
+
+/// Phase 13.1.A — Sect War weekly reward claim log.
+/// Mỗi (weekKey, characterId) có tối đa 1 hàng — unique constraint đảm bảo
+/// không double-claim race-safe.
+///
+/// `rewardTierKey` snapshot tại claim time (vd "rank_1", "rank_2_3",
+/// "rank_4_10", "participation"). Catalog tier có thể thay đổi qua phase,
+/// nhưng row đã claim giữ tier cũ làm audit/replay safe.
+///
+/// `sectId` snapshot — nếu character đổi sect sau khi claim, không reset.
+/// `pointsAtClaim` snapshot personal points dùng để check eligibility
+/// (participation tier yêu cầu ≥ minPersonalPoints).
+model SectWarWeeklyRewardClaim {
+  id            String   @id @default(cuid())
+  /// ISO week key (`YYYY-Www`).
+  weekKey       String
+  sectId        String
+  characterId   String
+  /// Match `SectWarRewardTierKey` từ shared catalog.
+  rewardTierKey String
+  /// Snapshot points cá nhân tại thời điểm claim (audit + breakdown view).
+  pointsAtClaim Int
+  /// Snapshot rank của Sect tại claim time (1-based).
+  sectRankAtClaim Int
+  /// Snapshot tổng điểm Sect tại claim time.
+  sectPointsAtClaim Int
+  claimedAt     DateTime @default(now())
+
+  @@unique([weekKey, characterId])
+  @@index([weekKey, sectId])
+  @@index([characterId, claimedAt])
+}

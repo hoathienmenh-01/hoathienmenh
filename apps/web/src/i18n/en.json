@@ -966,7 +966,8 @@
     "cta": {
       "goBoss": "Go Boss",
       "goDungeon": "Enter Dungeon",
-      "goMission": "View Missions"
+      "goMission": "View Missions",
+      "goSectWar": "Sect War"
     }
   },
   "liveops": {
@@ -2181,6 +2182,118 @@
     "bar": {
       "aria": "Active buffs and debuffs",
       "empty": "No active status."
+    }
+  },
+  "sectWar": {
+    "title": "Sect War",
+    "subtitle": "Weekly competition — earn points for your sect to win weekly rewards.",
+    "loading": "Loading Sect War data…",
+    "weekKey": "Week {wk}",
+    "season": {
+      "label": "Current week: {wk}",
+      "remaining": "{d}d {h}h {m}m remaining",
+      "ended": "Ended",
+      "range": "From {start} to {end}"
+    },
+    "myProgress": {
+      "title": "My progress",
+      "noSect": "You have not joined a sect — you cannot contribute this week.",
+      "sect": "Sect",
+      "sectRank": "Sect rank",
+      "sectPoints": "Sect points",
+      "personalPoints": "Personal points",
+      "breakdown": "Contribution breakdown",
+      "noContrib": "No contributions yet this week."
+    },
+    "leaderboard": {
+      "title": "Weekly leaderboard",
+      "empty": "No sect has scored points this week.",
+      "youTag": "(My sect)",
+      "col": {
+        "rank": "Rank",
+        "sect": "Sect",
+        "points": "Points",
+        "contributors": "Contributors"
+      }
+    },
+    "rules": {
+      "title": "How to earn points",
+      "col": {
+        "activity": "Activity",
+        "points": "Points",
+        "dailyCap": "Daily cap",
+        "weeklyCap": "Weekly cap"
+      }
+    },
+    "activity": {
+      "daily_login": {
+        "label": "Daily login",
+        "desc": "Daily check-in — contributes 5 points to your sect."
+      },
+      "dungeon_clear": {
+        "label": "Dungeon clear",
+        "desc": "Each dungeon claim — 10 points (50/day cap)."
+      },
+      "boss_participation": {
+        "label": "Boss participation",
+        "desc": "Damage participation — 15 points (120/week cap)."
+      },
+      "boss_top_damage": {
+        "label": "Boss top damage",
+        "desc": "Top boss damage — +25 bonus (100/week cap)."
+      },
+      "quest_complete": {
+        "label": "Quest complete",
+        "desc": "Each quest claim — 8 points (80/week cap)."
+      }
+    },
+    "reward": {
+      "title": "Weekly rewards",
+      "col": {
+        "tier": "Tier",
+        "rankRange": "Range",
+        "reward": "Reward"
+      },
+      "linhThach": "{n} Spirit Stones",
+      "tienNgoc": "{n} Immortal Jade",
+      "titleAward": "Title: {k}",
+      "buff": "Buff: {k}",
+      "items": "{n} item(s)",
+      "claimBtn": "Claim reward",
+      "alreadyClaimed": "Already claimed this week.",
+      "requireSect": "Join a sect to claim weekly rewards.",
+      "notEligible": "Your sect is not eligible for weekly reward.",
+      "eligibleHint": "Eligible for: {tier}",
+      "claimToast": "Sect #{rank} — received {linhThach} Spirit Stones + {tienNgoc} Immortal Jade."
+    },
+    "tier": {
+      "rank_1": {
+        "label": "Champion",
+        "desc": "Sect rank 1 — top reward."
+      },
+      "rank_2_3": {
+        "label": "Runner-up",
+        "desc": "Sect rank 2-3."
+      },
+      "rank_4_10": {
+        "label": "Top 10",
+        "desc": "Sect rank 4-10."
+      },
+      "participation": {
+        "label": "Participation",
+        "desc": "Personal ≥ 50 points — rank not required."
+      },
+      "rankSingle": "Rank {rank}",
+      "rankRange": "Rank {from}–{to}",
+      "rankFromOnly": "Rank {from} and below"
+    },
+    "errors": {
+      "SECT_REQUIRED": "You need to join a sect first.",
+      "SECT_WAR_NOT_CLAIMABLE": "Reward not claimable yet.",
+      "SECT_WAR_ALREADY_CLAIMED": "Already claimed this week.",
+      "SECT_WAR_NO_REWARD": "Your sect did not qualify for weekly reward.",
+      "NO_CHARACTER": "No character — please create one first.",
+      "UNKNOWN": "Sect War action failed, please retry."
     }
   }
 }

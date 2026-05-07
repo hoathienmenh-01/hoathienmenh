@@ -28,6 +28,8 @@ Mục tiêu: economy KHÔNG vỡ trong 12-24 tháng vận hành, kể cả khi:
 | `congDuc` | `Int` | **Reserved (đạo đức)** | (chưa dùng — nguyên thuỷ cho karma system) | (chưa dùng) | TBD |
 | `chienCongTongMon` | `Int` | **Sect war point** | sect war kill (phase 13) | season reward | No |
 
+> Phase 13.1.A note: điểm Tông Môn Chiến tuần KHÔNG lưu vào `chienCongTongMon` — Phase 13.1.A dùng `SectWarContribution` row (per-week, per-source) làm source of truth. `chienCongTongMon` reserve cho Sect Shop currency dài hạn (Phase 13.1.B). Phase 13.1.A chỉ source weekly leaderboard rank → Linh Thạch / Tiên Ngọc / Title qua `POST /sect-war/claim`.
+
 ### 1.2 Long-term: thêm currency type
 
 | Currency | Khi nào | Lý do |

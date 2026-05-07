@@ -217,6 +217,26 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 | `mission:progress`   | server → user  | `{ characterId, changes: MissionProgressChange[] }` (PR #63 — throttle 500ms). |
 | `mail:new`           | server → user  | (kế hoạch) Khi admin gửi mail mới. |
 
+## Sect War — `SectWarController` (prefix `/sect-war`)
+
+> Phase 13.1.A — Tông Môn Chiến theo tuần. weekKey = ISO `YYYY-Www`, timezone reuse `MISSION_RESET_TZ`. Mọi state authoritative ở server; FE chỉ render.
+
+| Method | Path                       | Auth | Mô tả |
+|--------|----------------------------|------|-------|
+| GET    | `/sect-war/current`        | Yes  | Snapshot tuần hiện tại: `{ weekKey, season{startsAtIso,endsAtIso,timezone}, activities[], rewardTiers[], leaderboard[], me }`. `activities` + `rewardTiers` mirror shared catalog (server snapshot, FE không cần import shared). |
+| GET    | `/sect-war/leaderboard?weekKey=` | Yes | `{ weekKey, rows: [{ rank, sectId, sectName, points, contributors }] }`. weekKey query optional (default current). |
+| GET    | `/sect-war/me`             | Yes  | `{ weekKey, hasSect, sectId, sectName, personalPoints, breakdown[], sectRank, sectPoints, eligibleTierKey, alreadyClaimed, canClaim }`. |
+| POST   | `/sect-war/claim`          | Yes  | Claim weekly reward. Atomic CAS qua composite UNIQUE `(weekKey, characterId)`. Trả `{ weekKey, rewardTierKey, granted{linhThach,tienNgoc}, sectRank, personalPoints }`. |
+
+**Sect War error codes**:
+- `SECT_REQUIRED` — character chưa gia nhập tông môn.
+- `SECT_WAR_NOT_CLAIMABLE` — sect không có rank đủ điều kiện trong tuần (rank > 10) và personal points < participation threshold.
+- `SECT_WAR_ALREADY_CLAIMED` — đã claim tuần này (composite UNIQUE).
+- `SECT_WAR_NO_REWARD` — không có tier nào áp dụng (no-op safety).
+- `NO_CHARACTER` — chưa có nhân vật.
+
+**Idempotency** contribution: composite UNIQUE `(weekKey, sourceType, sourceId, characterId)` trên `SectWarContribution`. Hook gameplay (DungeonRun.claim, Boss.distributeRewards, DailyLogin.claim, Quest.claim) gọi `addContributionTx` trong cùng transaction — retry hook → P2002 silently skipped (return null). Daily/weekly cap enforce qua aggregate query trong cùng tx trước insert.
+
 ## Error codes (chuẩn hoá)
 
 - **Auth**: `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `RATE_LIMITED`, `PASSWORD_CHANGED`, `REUSED_REFRESH_TOKEN`, `BANNED`, `INVALID_INPUT`.
@@ -224,6 +244,7 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 - **Combat**: `IN_COMBAT`, `NO_ENCOUNTER`, `ENCOUNTER_NOT_ACTIVE`.
 - **Market**: `ITEM_NOT_FOUND`, `NOT_OWNER`, `NOT_ENOUGH_FUNDS`, `LISTING_SOLD`.
 - **Sect**: `ALREADY_IN_SECT`, `NOT_IN_SECT`, `NOT_ENOUGH_FUNDS`.
+- **Sect War**: `SECT_REQUIRED`, `SECT_WAR_NOT_CLAIMABLE`, `SECT_WAR_ALREADY_CLAIMED`, `SECT_WAR_NO_REWARD`, `NO_CHARACTER`.
 - **Boss**: `NO_ACTIVE_BOSS`, `BOSS_DEAD`, `COOLDOWN`.
 - **Topup/Admin**: `TOO_MANY_PENDING`, `ALREADY_PROCESSED`, `FORBIDDEN`, `NOT_FOUND`.
 - **Giftcode**: `CODE_NOT_FOUND`, `CODE_EXPIRED`, `CODE_REVOKED`, `CODE_EXHAUSTED`, `ALREADY_REDEEMED`, `CODE_EXISTS` (admin create — PR #84), `NO_CHARACTER`, `INVALID_INPUT`.

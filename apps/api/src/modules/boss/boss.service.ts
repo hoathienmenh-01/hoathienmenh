@@ -43,6 +43,7 @@ import { TitleService } from '../character/title.service';
 import { methodStatBonusFor } from '../character/cultivation-method.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { MissionService } from '../mission/mission.service';
+import { SectWarService } from '../sect-war/sect-war.service';
 
 export class BossError extends Error {
   constructor(
@@ -152,6 +153,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     @Optional() private readonly talents?: TalentService,
     @Optional() private readonly buffs?: BuffService,
     @Optional() private readonly titles?: TitleService,
+    @Optional() private readonly sectWar?: SectWarService,
   ) {}
 
   onModuleInit(): void {
@@ -1147,6 +1149,36 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
           this.logger.warn(
             `boss reward hook: apply event_double_drop for char ${row.characterId} failed: ${(e as Error).message}`,
           );
+        }
+      }
+      // Phase 13.1.A — Sect War contribution hooks. Mọi participant nhận
+      // `boss_participation`; rank 1 thêm `boss_top_damage` bonus. Source
+      // ID composite `bossId:characterId` đảm bảo idempotency cùng boss
+      // không cộng 2 lần (nếu distributeRewards retry / replay).
+      if (this.sectWar) {
+        try {
+          await this.sectWar.addContributionTx(tx, {
+            characterId: row.characterId,
+            activityKey: 'boss_participation',
+            sourceId: `${bossId}:${row.characterId}`,
+          });
+        } catch (e) {
+          this.logger.warn(
+            `boss reward hook: sect-war boss_participation for char ${row.characterId} failed: ${(e as Error).message}`,
+          );
+        }
+        if (rank === 1) {
+          try {
+            await this.sectWar.addContributionTx(tx, {
+              characterId: row.characterId,
+              activityKey: 'boss_top_damage',
+              sourceId: `${bossId}:${row.characterId}`,
+            });
+          } catch (e) {
+            this.logger.warn(
+              `boss reward hook: sect-war boss_top_damage for char ${row.characterId} failed: ${(e as Error).message}`,
+            );
+          }
         }
       }
       slices.push({
