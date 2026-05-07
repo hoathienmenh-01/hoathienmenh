@@ -280,6 +280,35 @@ export class StoryDungeonService {
     return buildView(template, this.computeStatus(template, ctx));
   }
 
+  /**
+   * Phase 12.8.C — surface ACTIVE / CLEARED-but-unclaimed run cho FE list
+   * UI biết "tôi đang trong run nào" + render run panel inline khi reload
+   * trang. Trả `null` nếu không có run cần xử lý:
+   *  - run đã CLAIMED / FAILED → coi như không còn (FE không cần render
+   *    panel runtime).
+   *  - 1 character chỉ có tối đa 1 ACTIVE run (`startRun` invariant
+   *    `ALREADY_IN_RUN`); nếu có nhiều CLEARED chưa claim → ưu tiên cái
+   *    `startedAt` mới nhất.
+   *  - template legacy / disabled → trả `null` defensive (FE không có
+   *    catalog entry để render).
+   */
+  async getActiveRun(userId: string): Promise<StoryDungeonRunView | null> {
+    const characterId = await this.requireCharacterId(userId);
+    const run = await this.prisma.storyDungeonRun.findFirst({
+      where: {
+        characterId,
+        status: {
+          in: [StoryDungeonRunStatus.ACTIVE, StoryDungeonRunStatus.CLEARED],
+        },
+      },
+      orderBy: { startedAt: 'desc' },
+    });
+    if (!run) return null;
+    const template = storyDungeonByKey(run.templateKey);
+    if (!template) return null;
+    return this.toView(run, template);
+  }
+
   // ──────────────────────────────────────────────────────────────────────
   // Phase 12.8.B runtime API
   // ──────────────────────────────────────────────────────────────────────

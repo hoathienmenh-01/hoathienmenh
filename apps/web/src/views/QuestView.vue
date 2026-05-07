@@ -6,9 +6,11 @@ import { findDungeonsForQuestPlaceholder } from '@xuantoi/shared';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useQuestStore } from '@/stores/quest';
+import { useStoryDungeonStore } from '@/stores/storyDungeon';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import type { QuestKind, QuestProgressView } from '@/api/quest';
+import type { StoryDungeonView } from '@/api/storyDungeon';
 
 /**
  * Phase 12 Story Runtime MVP (PR-5) — Quest list view.
@@ -25,6 +27,7 @@ import type { QuestKind, QuestProgressView } from '@/api/quest';
 const auth = useAuthStore();
 const game = useGameStore();
 const questStore = useQuestStore();
+const storyDungeonStore = useStoryDungeonStore();
 const toast = useToastStore();
 const router = useRouter();
 const { t } = useI18n();
@@ -78,6 +81,35 @@ function dungeonHintFor(step: QuestProgressView['steps'][number]): string | null
   const dungeons = findDungeonsForQuestPlaceholder(step.targetId);
   if (dungeons.length === 0) return null;
   return dungeons.map((d) => d.name).join(', ');
+}
+
+/**
+ * Phase 12.8.C — Story Dungeon discoverability hint cho QuestView.
+ * Trả về story dungeon entry nếu quest này required-by 1 story dungeon
+ * (catalog `requiredQuestKey`). UI render CTA "Vào bí cảnh cốt truyện"
+ * khi quest đang ACCEPTED + dungeon `available` (chưa locked / cleared).
+ *
+ * `cleared` template vẫn render CTA để player thấy hint nhưng button
+ * disabled — story dungeon đã clear không thể start lại (oneTime).
+ */
+function storyDungeonForQuest(q: QuestProgressView): StoryDungeonView | null {
+  return storyDungeonStore.findDungeonForQuest(q.key) ?? null;
+}
+
+function shouldShowStoryDungeonCta(q: QuestProgressView): boolean {
+  // Hiển thị CTA cho ACCEPTED + AVAILABLE (player có context vào dungeon).
+  // Ẩn cho LOCKED / CLAIMED — player đã đi qua hoặc chưa unlock quest.
+  if (q.status !== 'ACCEPTED' && q.status !== 'AVAILABLE') return false;
+  const sd = storyDungeonForQuest(q);
+  if (!sd) return false;
+  // Quest gate đã pass nhưng character chưa đủ realm → server returns
+  // status='locked'. Vẫn show CTA để player biết tồn tại bí cảnh — page
+  // story-dungeons sẽ render lý do locked.
+  return true;
+}
+
+function gotoStoryDungeons(): void {
+  router.push('/story-dungeons');
 }
 
 async function onAccept(q: QuestProgressView): Promise<void> {
@@ -140,6 +172,9 @@ onMounted(async () => {
     return;
   }
   await questStore.load();
+  // Load story dungeon catalog cho CTA "Vào bí cảnh cốt truyện". Fail-soft —
+  // nếu fetch fail, CTA chỉ không hiển thị, không crash list quest.
+  await storyDungeonStore.load().catch(() => null);
 });
 </script>
 
@@ -271,6 +306,16 @@ onMounted(async () => {
                   ? t('quest.collapse')
                   : t('quest.expand')
               }}
+            </button>
+
+            <button
+              v-if="shouldShowStoryDungeonCta(q)"
+              type="button"
+              class="text-[11px] px-2 py-0.5 rounded border border-violet-400/50 bg-violet-700/30 text-violet-100 hover:bg-violet-700/50 transition"
+              :data-testid="`quest-story-dungeon-cta-${q.key}`"
+              @click="gotoStoryDungeons()"
+            >
+              📜 {{ t('quest.storyDungeonCta') }}
             </button>
 
             <button

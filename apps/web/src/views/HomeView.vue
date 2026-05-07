@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import { useGameStore } from '@/stores/game';
 import { useBadgesStore } from '@/stores/badges';
+import { useStoryDungeonStore } from '@/stores/storyDungeon';
 import { getCharacter } from '@/api/character';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
@@ -21,6 +22,7 @@ const router = useRouter();
 const toast = useToastStore();
 const game = useGameStore();
 const badges = useBadgesStore();
+const storyDungeonStore = useStoryDungeonStore();
 const { t } = useI18n();
 
 const submitting = ref(false);
@@ -36,6 +38,22 @@ const atPeak = computed(() => {
   return c.realmStage === 9 && BigInt(c.exp) >= BigInt(c.expNext);
 });
 
+/**
+ * Phase 12.8.C — Home story dungeon CTA. Hiển thị card khi:
+ *  - có ≥1 dungeon `available` (player có thể vào ngay), HOẶC
+ *  - có activeRun đang dở (resume).
+ * Click → push `/story-dungeons`.
+ */
+const storyDungeonCtaVisible = computed(
+  () =>
+    storyDungeonStore.loaded &&
+    (storyDungeonStore.hasAnyAvailable || storyDungeonStore.hasActiveRun),
+);
+const storyDungeonAvailableCount = computed(
+  () => storyDungeonStore.availableCount,
+);
+const storyDungeonHasActive = computed(() => storyDungeonStore.hasActiveRun);
+
 onMounted(async () => {
   await auth.hydrate();
   if (!auth.isAuthenticated) {
@@ -50,6 +68,9 @@ onMounted(async () => {
   await game.fetchState();
   game.bindSocket();
   badges.refresh();
+  // Phase 12.8.C — fetch story dungeon catalog cho Home CTA. Fail-soft —
+  // không block render trang chính nếu API fail.
+  storyDungeonStore.load().catch(() => null);
 });
 
 async function toggleCultivate(): Promise<void> {
@@ -106,6 +127,26 @@ async function onBreakthrough(): Promise<void> {
       </div>
       <MButton @click="router.push('/sect-war?tab=missions')">
         {{ t('homeLiveOps.openBtn') }}
+      </MButton>
+    </section>
+    <!-- Phase 12.8.C — Story Dungeon CTA. -->
+    <section
+      v-if="game.character && storyDungeonCtaVisible"
+      class="mb-4 rounded border border-violet-400/40 bg-ink-700/30 p-3 flex items-center justify-between gap-3"
+      data-testid="home-story-dungeon-cta"
+    >
+      <div class="min-w-0">
+        <div class="text-sm text-violet-200">{{ t('home.storyDungeon.title') }}</div>
+        <div class="text-xs text-ink-300/80 truncate">
+          {{
+            storyDungeonHasActive
+              ? t('home.storyDungeon.descActive')
+              : t('home.storyDungeon.descAvailable', { n: storyDungeonAvailableCount })
+          }}
+        </div>
+      </div>
+      <MButton @click="router.push('/story-dungeons')">
+        {{ t('home.storyDungeon.openBtn') }}
       </MButton>
     </section>
     <NextActionPanel v-if="game.character" class="mb-6" />

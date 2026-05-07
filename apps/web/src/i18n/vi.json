@@ -55,6 +55,7 @@
       "npc": "Không lấy được danh sách đạo hữu",
       "quest": "Thao tác nhiệm vụ thất bại",
       "dungeonRun": "Thao tác phó bản thất bại",
+      "storyDungeon": "Thao tác bí cảnh cốt truyện thất bại",
       "titlesState": "Không lấy được danh hiệu",
       "titleEquip": "Trang bị danh hiệu thất bại",
       "titleUnequip": "Gỡ danh hiệu thất bại",
@@ -177,6 +178,12 @@
     },
     "lastTick": "Tick gần nhất: +{gain} EXP · {time}",
     "loadingChar": "Đang tải đạo cơ…",
+    "storyDungeon": {
+      "title": "Bí Cảnh Cốt Truyện",
+      "descAvailable": "Có {n} bí cảnh cốt truyện chờ đạo hữu nhập cảnh.",
+      "descActive": "Đạo hữu đang trong một bí cảnh cốt truyện chưa hoàn tất.",
+      "openBtn": "Vào bí cảnh"
+    },
     "nextAction": {
       "title": "Đạo Lộ Gợi Ý",
       "loading": "Đang xét vận trình…",
@@ -293,7 +300,8 @@
       "breakthrough": "Đột Phá",
       "npcs": "Đạo Hữu",
       "quests": "Nhiệm Vụ",
-      "dungeonRun": "Bí Cảnh Hành"
+      "dungeonRun": "Bí Cảnh Hành",
+      "storyDungeons": "Bí Cảnh Cốt Truyện"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -658,6 +666,96 @@
       "RUN_ALREADY_CLAIMED": "Phần thưởng đã được lĩnh trước đó.",
       "RUN_NO_REWARD": "Bí cảnh này không có thưởng kết thúc.",
       "NO_ACTIVE_RUN": "Chưa có bí cảnh đang vận hành.",
+      "INVALID_INPUT": "Yêu cầu không hợp lệ.",
+      "UNKNOWN_ERROR": "Có lỗi xảy ra, mời thử lại.",
+      "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
+    }
+  },
+  "storyDungeon": {
+    "title": "Bí Cảnh Cốt Truyện",
+    "subtitle": "Vào bí cảnh gắn với cốt truyện chính — vượt từng bước, lĩnh phần thưởng đặc biệt.",
+    "totalCount": "Bí cảnh: {n}",
+    "availableCount": "Có thể vào: {n}",
+    "lockedCount": "Đang khoá: {n}",
+    "clearedCount": "Đã thông quan: {n}",
+    "regionHint": "Khu vực: {region}",
+    "realmHint": "Đề nghị: {realm}",
+    "rewardPreview": "+{linhThach} LT · +{tienNgoc} TN · +{exp} EXP",
+    "oneTimeBadge": "Chỉ một lần",
+    "start": "Khởi hành",
+    "resume": "Tiếp tục",
+    "startToast": "Bí cảnh {name} đã khởi hành.",
+    "advanceToast": "Đã tiến — bước {cur}/{total}.",
+    "readyToClearToast": "Đã hạ hết quái — sẵn sàng kết thúc.",
+    "clearToast": "Bí cảnh đã hoàn tất — sẵn sàng lĩnh thưởng.",
+    "claimToast": "Đã lĩnh thưởng — +{linhThach} LT · +{exp} EXP.",
+    "empty": "Chưa có bí cảnh cốt truyện khả dụng.",
+    "emptyFiltered": "Không có bí cảnh thuộc nhóm {filter}.",
+    "filter": {
+      "all": "Tất cả",
+      "available": "Có thể vào",
+      "locked": "Đang khoá",
+      "cleared": "Đã thông"
+    },
+    "status": {
+      "available": "Có thể vào",
+      "locked": "Đang khoá",
+      "cleared": "Đã thông"
+    },
+    "metric": {
+      "requiredQuest": "Nhiệm vụ yêu cầu",
+      "encounters": "Số bước",
+      "boss": "Đại ma",
+      "bonusReward": "Thưởng kết thúc"
+    },
+    "run": {
+      "activeBadge": "Đang trong bí cảnh",
+      "progress": "Bước {cur}/{total}",
+      "currentMonster": "Quái sắp đối đầu",
+      "monsterStat": "Lv {lv} · HP {hp} · Công {atk}",
+      "killedTitle": "Đã hạ ({n})",
+      "bossHint": "Đại ma cuối: {name}",
+      "rewardPreview": "+{linhThach} LT · +{tienNgoc} TN · +{exp} EXP",
+      "realmHint": "Cảnh giới đề nghị: {realm}",
+      "advance": "Tiến bước",
+      "clear": "Kết thúc bí cảnh",
+      "claim": "Lĩnh thưởng",
+      "entryDialogue": "Lời thoại đầu",
+      "clearDialogue": "Lời thoại kết"
+    },
+    "runStatus": {
+      "ACTIVE": "Đang vận hành",
+      "CLEARED": "Đã thông",
+      "CLAIMED": "Đã lĩnh",
+      "FAILED": "Thất bại"
+    },
+    "dialogue": {
+      "narratorFallback": "Người dẫn chuyện",
+      "empty": "Chưa có nội dung lời thoại."
+    },
+    "reward": {
+      "modalTitle": "Lĩnh thưởng bí cảnh cốt truyện",
+      "modalSubtitle": "Đã hoàn tất bí cảnh {templateKey}.",
+      "linhThach": "+{n} Linh thạch",
+      "tienNgoc": "+{n} Tiên ngọc",
+      "exp": "+{n} EXP",
+      "item": "{name} ×{qty}"
+    },
+    "errors": {
+      "UNAUTHENTICATED": "Phiên đã hết hạn, vui lòng đăng nhập lại.",
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "DUNGEON_NOT_FOUND": "Không tìm thấy bí cảnh cốt truyện.",
+      "DUNGEON_LOCKED": "Bí cảnh đang khoá — chưa đạt điều kiện nhiệm vụ hoặc cảnh giới.",
+      "DUNGEON_ALREADY_CLEARED": "Bí cảnh chỉ một lần này đã hoàn tất trước đó.",
+      "ALREADY_IN_RUN": "Đạo hữu đang trong một bí cảnh khác — hoàn tất trước.",
+      "RUN_NOT_FOUND": "Không tìm thấy hành trình bí cảnh.",
+      "RUN_NOT_OWNED": "Hành trình bí cảnh không thuộc về đạo hữu.",
+      "RUN_NOT_ACTIVE": "Hành trình không còn hoạt động.",
+      "RUN_STEP_INVALID": "Bước hiện tại không hợp lệ — tải lại để đồng bộ.",
+      "RUN_NOT_CLEARED": "Phải hoàn tất bí cảnh trước khi lĩnh thưởng.",
+      "RUN_ALREADY_CLAIMED": "Phần thưởng đã được lĩnh trước đó.",
+      "RUN_NO_REWARD": "Bí cảnh này không có thưởng kết thúc.",
+      "NO_ACTIVE_RUN": "Chưa có hành trình bí cảnh đang vận hành.",
       "INVALID_INPUT": "Yêu cầu không hợp lệ.",
       "UNKNOWN_ERROR": "Có lỗi xảy ra, mời thử lại.",
       "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
@@ -2082,6 +2180,7 @@
     "acceptedHint": "Đã nhận, đang thực hiện",
     "claimedHint": "Đã lĩnh thưởng",
     "lockedHint": "Cần hoàn thành nhiệm vụ trước",
+    "storyDungeonCta": "Vào bí cảnh cốt truyện",
     "steps": "Các bước",
     "rewards": "Phần thưởng",
     "filter": {
