@@ -55,6 +55,7 @@
       "npc": "Failed to load NPC list",
       "quest": "Quest action failed",
       "dungeonRun": "Dungeon expedition action failed",
+      "storyDungeon": "Story dungeon action failed",
       "titlesState": "Failed to load titles",
       "titleEquip": "Failed to equip title",
       "titleUnequip": "Failed to unequip title",
@@ -177,6 +178,12 @@
     },
     "lastTick": "Last tick: +{gain} EXP · {time}",
     "loadingChar": "Loading character…",
+    "storyDungeon": {
+      "title": "Story Dungeon",
+      "descAvailable": "{n} story dungeon(s) ready to enter.",
+      "descActive": "You have an unfinished story dungeon run.",
+      "openBtn": "Open"
+    },
     "nextAction": {
       "title": "Next Actions",
       "loading": "Checking your status…",
@@ -293,7 +300,8 @@
       "breakthrough": "Breakthrough",
       "npcs": "NPCs",
       "quests": "Quests",
-      "dungeonRun": "Dungeon Run"
+      "dungeonRun": "Dungeon Run",
+      "storyDungeons": "Story Dungeons"
     },
     "badge": {
       "bossActive": "World boss is live",
@@ -658,6 +666,96 @@
       "RUN_ALREADY_CLAIMED": "Reward already claimed.",
       "RUN_NO_REWARD": "This dungeon has no completion reward.",
       "NO_ACTIVE_RUN": "No active dungeon run.",
+      "INVALID_INPUT": "Invalid input.",
+      "UNKNOWN_ERROR": "Something went wrong, please retry.",
+      "UNKNOWN": "Something went wrong, please retry."
+    }
+  },
+  "storyDungeon": {
+    "title": "Story Dungeon",
+    "subtitle": "Story-tied dungeons — clear each step to advance the main story and earn special rewards.",
+    "totalCount": "Dungeons: {n}",
+    "availableCount": "Available: {n}",
+    "lockedCount": "Locked: {n}",
+    "clearedCount": "Cleared: {n}",
+    "regionHint": "Region: {region}",
+    "realmHint": "Recommended: {realm}",
+    "rewardPreview": "+{linhThach} LT · +{tienNgoc} TN · +{exp} EXP",
+    "oneTimeBadge": "One-time",
+    "start": "Enter",
+    "resume": "Resume",
+    "startToast": "Started story dungeon {name}.",
+    "advanceToast": "Advanced — step {cur}/{total}.",
+    "readyToClearToast": "All encounters cleared — ready to finish.",
+    "clearToast": "Story dungeon cleared — ready to claim.",
+    "claimToast": "Reward claimed — +{linhThach} LT · +{exp} EXP.",
+    "empty": "No story dungeons available yet.",
+    "emptyFiltered": "No story dungeons in {filter}.",
+    "filter": {
+      "all": "All",
+      "available": "Available",
+      "locked": "Locked",
+      "cleared": "Cleared"
+    },
+    "status": {
+      "available": "Available",
+      "locked": "Locked",
+      "cleared": "Cleared"
+    },
+    "metric": {
+      "requiredQuest": "Required quest",
+      "encounters": "Steps",
+      "boss": "Boss",
+      "bonusReward": "Completion reward"
+    },
+    "run": {
+      "activeBadge": "In progress",
+      "progress": "Step {cur}/{total}",
+      "currentMonster": "Next monster",
+      "monsterStat": "Lv {lv} · HP {hp} · ATK {atk}",
+      "killedTitle": "Defeated ({n})",
+      "bossHint": "Final boss: {name}",
+      "rewardPreview": "+{linhThach} LT · +{tienNgoc} TN · +{exp} EXP",
+      "realmHint": "Recommended realm: {realm}",
+      "advance": "Advance",
+      "clear": "Clear dungeon",
+      "claim": "Claim reward",
+      "entryDialogue": "Entry dialogue",
+      "clearDialogue": "Clear dialogue"
+    },
+    "runStatus": {
+      "ACTIVE": "Active",
+      "CLEARED": "Cleared",
+      "CLAIMED": "Claimed",
+      "FAILED": "Failed"
+    },
+    "dialogue": {
+      "narratorFallback": "Narrator",
+      "empty": "No dialogue content."
+    },
+    "reward": {
+      "modalTitle": "Story dungeon reward claimed",
+      "modalSubtitle": "Completed story dungeon {templateKey}.",
+      "linhThach": "+{n} Linh Thạch",
+      "tienNgoc": "+{n} Tiên Ngọc",
+      "exp": "+{n} EXP",
+      "item": "{name} ×{qty}"
+    },
+    "errors": {
+      "UNAUTHENTICATED": "Session expired, please sign in again.",
+      "NO_CHARACTER": "No character yet.",
+      "DUNGEON_NOT_FOUND": "Story dungeon not found.",
+      "DUNGEON_LOCKED": "Dungeon locked — quest gate or realm not satisfied.",
+      "DUNGEON_ALREADY_CLEARED": "This one-time dungeon was already cleared.",
+      "ALREADY_IN_RUN": "You are already in another story dungeon — finish it first.",
+      "RUN_NOT_FOUND": "Story dungeon run not found.",
+      "RUN_NOT_OWNED": "This run does not belong to you.",
+      "RUN_NOT_ACTIVE": "Run is no longer active.",
+      "RUN_STEP_INVALID": "Step is invalid — reload to sync state.",
+      "RUN_NOT_CLEARED": "Clear the dungeon before claiming.",
+      "RUN_ALREADY_CLAIMED": "Reward already claimed.",
+      "RUN_NO_REWARD": "This dungeon has no completion reward.",
+      "NO_ACTIVE_RUN": "No active story dungeon run.",
       "INVALID_INPUT": "Invalid input.",
       "UNKNOWN_ERROR": "Something went wrong, please retry.",
       "UNKNOWN": "Something went wrong, please retry."
@@ -2082,6 +2180,7 @@
     "acceptedHint": "Accepted, in progress",
     "claimedHint": "Reward claimed",
     "lockedHint": "Complete prerequisite first",
+    "storyDungeonCta": "Enter story dungeon",
     "steps": "Steps",
     "rewards": "Rewards",
     "filter": {

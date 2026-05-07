@@ -75,12 +75,32 @@ export class StoryDungeonController {
   @Get()
   async list(
     @Req() req: Request,
-  ): Promise<{ ok: true; data: { dungeons: StoryDungeonView[] } }> {
+  ): Promise<{
+    ok: true;
+    data: { dungeons: StoryDungeonView[]; activeRun: StoryDungeonRunView | null };
+  }> {
     const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
     if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
     try {
+      // Phase 12.8.C — bundle activeRun cùng list response để FE không phải
+      // race với /story/dungeons + /story/dungeons/:key (đã idempotent
+      // start). Nếu user không có character → catch ở dungeons listForUser
+      // first, getActiveRun fail-soft trả null (NO_CHARACTER → null).
       const dungeons = await this.service.listForUser(userId);
-      return { ok: true, data: { dungeons } };
+      let activeRun: StoryDungeonRunView | null = null;
+      try {
+        activeRun = await this.service.getActiveRun(userId);
+      } catch (innerErr) {
+        if (
+          innerErr instanceof StoryDungeonError &&
+          innerErr.code === 'NO_CHARACTER'
+        ) {
+          activeRun = null;
+        } else {
+          throw innerErr;
+        }
+      }
+      return { ok: true, data: { dungeons, activeRun } };
     } catch (e) {
       this.handleErr(e);
     }
