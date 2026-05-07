@@ -443,6 +443,101 @@ export async function adminRevokeGiftcode(code: string): Promise<AdminGiftCodeRo
   return unwrap(data).code;
 }
 
+// ───────── Phase 13.1.B — Admin LiveOps Controls ─────────
+
+export interface AdminLiveOpsOverrideView {
+  key: string;
+  enabled: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+  reason: string | null;
+  updatedBy: string;
+  updatedAt: string;
+  createdAt: string;
+}
+
+export interface AdminLiveOpsEventStatusView {
+  key: string;
+  type: 'DAILY' | 'WEEKLY' | 'WINDOW';
+  catalogEnabled: boolean;
+  effectiveEnabled: boolean;
+  override: AdminLiveOpsOverrideView | null;
+  titleI18nKey: string;
+  descriptionI18nKey: string;
+  dailyTime?: string;
+  durationMinutes?: number;
+  daysOfWeek?: ReadonlyArray<number>;
+  regionKey?: string;
+  bossKey?: string;
+  startTime?: string;
+  endTime?: string;
+}
+
+export interface AdminLiveOpsStatusView {
+  tz: string;
+  events: ReadonlyArray<AdminLiveOpsEventStatusView>;
+  todayKeys: ReadonlyArray<string>;
+  activeKeys: ReadonlyArray<string>;
+}
+
+export interface AdminLiveOpsToggleInput {
+  key: string;
+  enabled: boolean;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  reason?: string | null;
+}
+
+export interface AdminSectWarStatusView {
+  weekKey: string;
+  totalSects: number;
+  totalContributors: number;
+  totalContributions: number;
+  topSects: ReadonlyArray<{
+    sectId: string;
+    sectName: string;
+    points: number;
+    contributors: number;
+  }>;
+}
+
+export async function adminLiveOpsStatus(): Promise<AdminLiveOpsStatusView> {
+  const { data } = await apiClient.get<Envelope<AdminLiveOpsStatusView>>(
+    '/admin/liveops',
+  );
+  return unwrap(data);
+}
+
+export async function adminLiveOpsToggle(
+  input: AdminLiveOpsToggleInput,
+): Promise<AdminLiveOpsOverrideView> {
+  const { data } = await apiClient.post<Envelope<AdminLiveOpsOverrideView>>(
+    '/admin/liveops/event/toggle',
+    input,
+  );
+  return unwrap(data);
+}
+
+export async function adminSectWarStatus(
+  weekKey?: string,
+): Promise<AdminSectWarStatusView> {
+  const url = weekKey
+    ? `/admin/sect-war/status?weekKey=${encodeURIComponent(weekKey)}`
+    : '/admin/sect-war/status';
+  const { data } = await apiClient.get<Envelope<AdminSectWarStatusView>>(url);
+  return unwrap(data);
+}
+
+export async function adminSectWarRecalculate(input: {
+  weekKey?: string;
+  reason?: string;
+}): Promise<{ noop: true; weekKey: string }> {
+  const { data } = await apiClient.post<
+    Envelope<{ noop: true; weekKey: string }>
+  >('/admin/sect-war/recalculate', input);
+  return unwrap(data);
+}
+
 /**
  * Compute display status từ row fields. Mirror BE logic — `revokedAt` thắng,
  * sau đó `expiresAt < now` → EXPIRED, sau đó `redeemCount >= maxRedeems` → EXHAUSTED,

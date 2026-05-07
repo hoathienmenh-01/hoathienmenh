@@ -44,6 +44,7 @@ import type { TopupOrderView } from '@/api/topup';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
 import ConfirmModal from '@/components/ui/ConfirmModal.vue';
+import AdminLiveOpsPanel from '@/components/AdminLiveOpsPanel.vue';
 import {
   computeGiftcodeRevokeImpact,
   mapGiftcodeRevokeErrorKey,
@@ -57,7 +58,7 @@ const toast = useToastStore();
 const router = useRouter();
 const { t } = useI18n();
 
-type Tab = 'stats' | 'users' | 'topups' | 'audit' | 'giftcodes' | 'boss';
+type Tab = 'stats' | 'users' | 'topups' | 'audit' | 'giftcodes' | 'boss' | 'liveops';
 const tab = ref<Tab>('stats');
 const stats = ref<AdminStats | null>(null);
 const alerts = ref<AdminEconomyAlerts | null>(null);
@@ -730,7 +731,7 @@ const isAdmin = () => game.character?.role === 'ADMIN';
 
       <nav class="flex gap-1 border-b border-ink-300/30 text-sm">
         <button
-          v-for="tk in (['stats','users','topups','audit','giftcodes','boss'] as const)"
+          v-for="tk in (['stats','users','topups','audit','giftcodes','boss','liveops'] as const)"
           :key="tk"
           class="px-3 py-2 relative"
           :class="tab === tk ? 'border-b-2 border-amber-300 text-ink-50' : 'text-ink-300'"
@@ -1653,6 +1654,11 @@ const isAdmin = () => game.character?.role === 'ADMIN';
           @confirm="confirmGiftcodeRevoke"
           @cancel="cancelGiftcodeRevoke"
         />
+      </section>
+
+      <!-- LIVEOPS TAB (Phase 13.1.B) -->
+      <section v-if="tab === 'liveops'" class="space-y-3" data-testid="admin-liveops-section">
+        <AdminLiveOpsPanel />
       </section>
 
       <!-- BOSS TAB -->

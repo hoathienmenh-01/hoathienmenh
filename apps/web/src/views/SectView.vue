@@ -149,6 +149,18 @@ const myStash = computed(() => game.character?.linhThach ?? '0');
   <AppShell>
     <h2 class="text-xl tracking-widest mb-4">{{ t('sect.title') }}</h2>
 
+    <!-- Phase 13.1.B — Sect War CTA. -->
+    <section
+      class="mb-4 rounded border border-amber-300/30 bg-ink-700/30 p-3 flex items-center justify-between gap-3"
+      data-test="sect-war-cta"
+    >
+      <div class="min-w-0">
+        <div class="text-sm text-amber-200">{{ t('sectCta.warTitle') }}</div>
+        <div class="text-xs text-ink-300/80 truncate">{{ t('sectCta.warDesc') }}</div>
+      </div>
+      <MButton @click="router.push('/sect-war')">{{ t('sectCta.warBtn') }}</MButton>
+    </section>
+
     <div class="flex gap-2 mb-4">
       <MButton
         :class="tab === 'mine' ? '!bg-ink-50 !text-ink-900' : ''"

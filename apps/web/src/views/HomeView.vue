@@ -94,6 +94,20 @@ async function onBreakthrough(): Promise<void> {
     <DailyLoginCard v-if="game.character" class="mb-4" />
     <LiveOpsTodayPanel v-if="game.character" class="mb-4" />
     <LiveOpsNotice v-if="game.character" />
+    <!-- Phase 13.1.B — Sect mission CTA. -->
+    <section
+      v-if="game.character"
+      class="mb-4 rounded border border-amber-300/30 bg-ink-700/30 p-3 flex items-center justify-between gap-3"
+      data-test="home-sect-mission-cta"
+    >
+      <div class="min-w-0">
+        <div class="text-sm text-amber-200">{{ t('homeLiveOps.sectMissionTitle') }}</div>
+        <div class="text-xs text-ink-300/80 truncate">{{ t('homeLiveOps.sectMissionDesc') }}</div>
+      </div>
+      <MButton @click="router.push('/sect-war?tab=missions')">
+        {{ t('homeLiveOps.openBtn') }}
+      </MButton>
+    </section>
     <NextActionPanel v-if="game.character" class="mb-6" />
     <div v-if="game.character" class="grid gap-6 lg:grid-cols-[2fr_1fr]">
       <section class="rounded border border-ink-300/40 bg-ink-700/30 p-5">

@@ -1073,7 +1073,8 @@
       "topups": "Top-ups",
       "audit": "Audit",
       "giftcodes": "Giftcodes",
-      "boss": "Boss"
+      "boss": "Boss",
+      "liveops": "LiveOps"
     },
     "stats": {
       "users": "Users",
@@ -2294,6 +2295,166 @@
       "SECT_WAR_NO_REWARD": "Your sect did not qualify for weekly reward.",
       "NO_CHARACTER": "No character — please create one first.",
       "UNKNOWN": "Sect War action failed, please retry."
+    },
+    "tab": {
+      "overview": "Overview",
+      "leaderboard": "Leaderboard",
+      "missions": "Sect Missions",
+      "shop": "Sect Shop",
+      "rewards": "Weekly Rewards"
     }
+  },
+  "sectMission": {
+    "title": "Sect Missions",
+    "loading": "Loading sect missions…",
+    "balance": "Contribution: {balance} (lifetime {lifetime})",
+    "noSect": "Join a sect to access sect missions.",
+    "empty": "No missions available.",
+    "dailyHeader": "Daily Missions",
+    "weeklyHeader": "Weekly Missions",
+    "progress": "{cur}/{tar}",
+    "claimBtn": "Claim",
+    "claimed": "Claimed",
+    "notReady": "Not yet",
+    "reward": {
+      "contrib": "{n} contribution",
+      "linhThach": "{n} Linh Thach",
+      "tienNgoc": "{n} Tien Ngoc",
+      "item": "{k} ×{n}"
+    },
+    "toast": {
+      "claimed": "Completed: {title} — +{contrib} contribution."
+    },
+    "missions": {
+      "daily_dungeon_clear_3": {
+        "title": "Clear 3 dungeons today",
+        "desc": "Clear 3 dungeon instances today.",
+        "hint": "Visit /dungeon and clear 3 instances."
+      },
+      "daily_boss_participation_1": {
+        "title": "Hit 1 Boss",
+        "desc": "Participate by dealing damage to at least 1 boss today.",
+        "hint": "Go to /boss to join."
+      },
+      "daily_boss_damage_500": {
+        "title": "Deal 500 boss damage",
+        "desc": "Total boss damage today ≥ 500.",
+        "hint": "Join boss fights and accumulate damage."
+      },
+      "weekly_quest_clear_5": {
+        "title": "Complete 5 weekly quests",
+        "desc": "Claim quest reward 5 times this week.",
+        "hint": "Visit /quests to claim."
+      },
+      "weekly_breakthrough_success_1": {
+        "title": "Successful breakthrough x1",
+        "desc": "Succeed at least 1 breakthrough this week.",
+        "hint": "Visit /breakthrough to attempt."
+      }
+    },
+    "errors": {
+      "NO_CHARACTER": "No character.",
+      "SECT_REQUIRED": "Join a sect first.",
+      "MISSION_NOT_FOUND": "Mission not found.",
+      "MISSION_NOT_READY": "Mission requirement not yet complete.",
+      "ALREADY_CLAIMED": "Mission reward already claimed.",
+      "UNKNOWN": "Could not claim — please retry."
+    }
+  },
+  "sectShop": {
+    "title": "Sect Shop",
+    "loading": "Loading shop…",
+    "empty": "Sect shop is empty.",
+    "noSect": "Join a sect to access the sect shop.",
+    "balance": "Spendable contribution: {balance}",
+    "cost": "{n} contribution",
+    "daily": "Daily: {n}/{m}",
+    "weekly": "Weekly: {n}/{m}",
+    "minLevel": "Sect level required ≥{n}",
+    "nonStackable": "Non-stackable",
+    "buyBtn": "Buy",
+    "maxBuyable": "Max buyable: {n}",
+    "col": {
+      "item": "Item",
+      "cost": "Cost",
+      "limit": "Limit",
+      "qty": "Qty"
+    },
+    "items": {
+      "qiSparkPill": "Qi Spark Pill",
+      "yangshenPill": "Yangshen Pill",
+      "spiritStoneSmall": "Small Spirit Stone",
+      "earthBambooFiber": "Earth Bamboo Fiber",
+      "moonBlossomSilk": "Moon Blossom Silk",
+      "blacksmithIron": "Refined Iron Bar",
+      "buffShopFocus": "Focus Charm"
+    },
+    "toast": {
+      "bought": "Bought {item} ×{qty} — −{cost} contribution."
+    },
+    "errors": {
+      "NO_CHARACTER": "No character.",
+      "SECT_REQUIRED": "Join a sect first.",
+      "ENTRY_NOT_FOUND": "Item no longer available.",
+      "INVALID_QTY": "Invalid quantity.",
+      "NON_STACKABLE_QTY_GT_1": "Non-stackable item — only 1 per buy.",
+      "INSUFFICIENT_CONTRIBUTION": "Insufficient contribution.",
+      "DAILY_LIMIT": "Daily limit reached.",
+      "WEEKLY_LIMIT": "Weekly limit reached.",
+      "SECT_LEVEL_REQUIRED": "Sect level too low.",
+      "RATE_LIMITED": "Too many requests — wait a few seconds.",
+      "UNKNOWN": "Could not buy — please retry."
+    }
+  },
+  "adminLiveOps": {
+    "title": "LiveOps Controls",
+    "tz": "TZ {tz}",
+    "loading": "Loading LiveOps data…",
+    "todayCount": "Today: {n}",
+    "activeCount": "Active: {n}",
+    "today": "TODAY",
+    "active": "ACTIVE",
+    "statusOn": "ON",
+    "statusOff": "OFF",
+    "enableBtn": "Enable",
+    "disableBtn": "Disable",
+    "reasonPlaceholder": "Reason (audit)",
+    "confirmToggle": "Confirm change {key} → {on}?",
+    "confirmRecalc": "Confirm recalculate Sect War for current week? (no-op in PR 13.1.B)",
+    "col": {
+      "key": "Key",
+      "type": "Type",
+      "status": "Status",
+      "override": "Override",
+      "reason": "Reason"
+    },
+    "toast": {
+      "toggled": "Changed {key} → {on}",
+      "recalculated": "Sect War recalculate audited (no-op)."
+    },
+    "sectWar": {
+      "title": "Sect War status",
+      "summary": "Week {week}: {sects} sects · {contributors} contributors · {contributions} entries",
+      "topHeader": "Top 10 Sects",
+      "row": "{points} pts · {contributors} contributors",
+      "recalcBtn": "Recalculate (no-op)",
+      "unavailable": "Sect War data unavailable."
+    },
+    "errors": {
+      "EVENT_NOT_FOUND": "Event not found.",
+      "INVALID_INPUT": "Invalid parameters.",
+      "FORBIDDEN": "Insufficient permissions.",
+      "UNKNOWN": "LiveOps action failed — please retry."
+    }
+  },
+  "homeLiveOps": {
+    "sectMissionTitle": "Sect Missions",
+    "sectMissionDesc": "Complete daily/weekly missions to earn contribution.",
+    "openBtn": "Open Sect War"
+  },
+  "sectCta": {
+    "warTitle": "Sect War",
+    "warDesc": "Compete weekly leaderboard, take sect missions and shop.",
+    "warBtn": "Open Sect War"
   }
 }
