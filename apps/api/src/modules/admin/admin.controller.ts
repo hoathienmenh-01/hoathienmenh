@@ -17,9 +17,14 @@ import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 import { CurrencyKind, Role, TopupStatus } from '@prisma/client';
 import { z } from 'zod';
+import { sectWarWeekKey } from '@xuantoi/shared';
 import { AdminGuard } from './admin.guard';
 import { RequireAdmin } from './require-admin.decorator';
 import { AdminError, AdminService } from './admin.service';
+import {
+  AdminLiveOpsError,
+  AdminLiveOpsService,
+} from './admin-liveops.service';
 import {
   clampStaleHours,
   resolveEconomyAlertsBounds,
@@ -163,6 +168,7 @@ export class AdminController {
     private readonly giftCodes: GiftCodeService,
     private readonly mailService: MailService,
     private readonly config: ConfigService,
+    private readonly liveOps: AdminLiveOpsService,
   ) {
     this.economyAlertsBounds = resolveEconomyAlertsBounds(
       (key) => this.config.get<string>(key),
@@ -863,7 +869,100 @@ export class AdminController {
     }
   }
 
+  // ───────── Phase 13.1.B — Admin LiveOps Controls ─────────
+
+  /**
+   * GET /admin/liveops — list catalog + DB overrides + computed today/active.
+   * Read-only; KHÔNG audit.
+   */
+  @Get('liveops')
+  async liveOpsStatus() {
+    const data = await this.liveOps.getStatus();
+    return { ok: true, data };
+  }
+
+  /**
+   * POST /admin/liveops/event/toggle — upsert override + audit log.
+   * Body: { key, enabled, startsAt?, endsAt?, reason? }.
+   */
+  @Post('liveops/event/toggle')
+  @HttpCode(200)
+  @RequireAdmin()
+  async liveOpsToggle(@Req() req: AdminReq, @Body() body: unknown) {
+    const Z = z.object({
+      key: z.string().min(1).max(80),
+      enabled: z.boolean(),
+      startsAt: z.string().datetime().optional(),
+      endsAt: z.string().datetime().optional(),
+      reason: z.string().max(200).optional(),
+    });
+    const parsed = Z.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const data = await this.liveOps.toggleEvent(req.userId, {
+        key: parsed.data.key,
+        enabled: parsed.data.enabled,
+        startsAt: parsed.data.startsAt ? new Date(parsed.data.startsAt) : null,
+        endsAt: parsed.data.endsAt ? new Date(parsed.data.endsAt) : null,
+        reason: parsed.data.reason ?? null,
+      });
+      return { ok: true, data };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * GET /admin/sect-war/status?weekKey=YYYY-Www — read-only snapshot.
+   * `weekKey` optional; default = current ISO week.
+   */
+  @Get('sect-war/status')
+  async sectWarStatus(@Query('weekKey') weekKey?: string) {
+    const key = weekKey && /^\d{4}-W\d{2}$/.test(weekKey)
+      ? weekKey
+      : sectWarWeekKey(new Date());
+    const data = await this.liveOps.getSectWarStatus(key);
+    return { ok: true, data };
+  }
+
+  /**
+   * POST /admin/sect-war/recalculate — placeholder no-op cho Phase 13.2.
+   * Body: { weekKey?, reason? }.
+   */
+  @Post('sect-war/recalculate')
+  @HttpCode(200)
+  @RequireAdmin()
+  async sectWarRecalculate(@Req() req: AdminReq, @Body() body: unknown) {
+    const Z = z.object({
+      weekKey: z
+        .string()
+        .regex(/^\d{4}-W\d{2}$/)
+        .optional(),
+      reason: z.string().max(200).optional(),
+    });
+    const parsed = Z.safeParse(body ?? {});
+    if (!parsed.success) fail('INVALID_INPUT');
+    const weekKey = parsed.data.weekKey ?? sectWarWeekKey(new Date());
+    try {
+      const data = await this.liveOps.recalculateSectWar(
+        req.userId,
+        weekKey,
+        parsed.data.reason,
+      );
+      return { ok: true, data };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
   private handleErr(e: unknown): never {
+    if (e instanceof AdminLiveOpsError) {
+      const status =
+        e.code === 'EVENT_NOT_FOUND'
+          ? HttpStatus.NOT_FOUND
+          : HttpStatus.BAD_REQUEST;
+      fail(e.code, status);
+    }
     if (e instanceof AdminError) {
       const status =
         e.code === 'NOT_FOUND'

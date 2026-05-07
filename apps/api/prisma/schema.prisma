@@ -191,6 +191,16 @@ model Character {
   congDuc          Int    @default(0)
   chienCongTongMon Int    @default(0)
 
+  /// Phase 13.1.B — Sect contribution balance (currency cho Sect Shop).
+  /// `sectContribBalance` = spendable, mutate qua `SectContributionLedger`
+  /// transactional pattern. Earn từ `SECT_MISSION_CLAIM`, optional admin grant.
+  /// Spend qua `SECT_SHOP_BUY` (negative delta) — atomic CAS guard
+  /// `gte` đảm bảo non-negative race-safe (mirror linhThach pattern).
+  /// `sectContribLifetime` = tổng đã earn (audit only, không trừ khi spend).
+  /// Phân biệt với `congHien` (legacy "đóng góp tu vi" treasury — KHÔNG đổi).
+  sectContribBalance  Int @default(0)
+  sectContribLifetime Int @default(0)
+
   settings    Json    @default("{}")
   cultivating Boolean @default(false)
 
@@ -263,6 +273,9 @@ model Character {
   talents                 CharacterTalent[]
   titleUnlocks            CharacterTitleUnlock[]
   achievements            CharacterAchievement[]
+  sectMissionClaims       SectMissionClaim[]
+  sectShopPurchases       SectShopPurchase[]
+  sectContributionLedger  SectContributionLedger[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1091,4 +1104,112 @@ model SectWarWeeklyRewardClaim {
   @@unique([weekKey, characterId])
   @@index([weekKey, sectId])
   @@index([characterId, claimedAt])
+}
+
+/// Phase 13.1.B — Sect Mission claim log (idempotency dedupe).
+/// Mỗi `(characterId, missionKey, periodKey)` tối đa 1 row — UNIQUE đảm bảo
+/// claim không double dù retry. `periodKey` format:
+///   - DAILY  → `YYYY-MM-DD` theo `MISSION_RESET_TZ` (Asia/Ho_Chi_Minh).
+///   - WEEKLY → `YYYY-Www` ISO week (cùng helper với SectWar).
+///
+/// `rewardContributionGranted` snapshot tại claim time (audit).
+model SectMissionClaim {
+  id                        String    @id @default(cuid())
+  characterId               String
+  character                 Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Match key trong shared `SECT_MISSIONS` catalog.
+  missionKey                String
+  /// Period key dùng để dedupe — mission DAILY/WEEKLY đổi key mỗi reset.
+  periodKey                 String
+  /// Snapshot reward contribution đã trao (positive Int).
+  rewardContributionGranted Int
+  claimedAt                 DateTime  @default(now())
+
+  @@unique([characterId, missionKey, periodKey])
+  @@index([characterId, claimedAt])
+  @@index([missionKey, periodKey])
+}
+
+/// Phase 13.1.B — Sect Shop purchase log + idempotency / window aggregation.
+/// Mỗi row = 1 lần buy (multiple buys của cùng entry trong cùng ngày tạo
+/// nhiều row). Daily/weekly limit compute từ SUM `qty` trong window.
+///
+/// `contributionSpent` snapshot cost (`def.contributionCost * qty`) tại
+/// commit time — catalog có thể đổi giá tương lai, row đã ghi giữ nguyên
+/// audit trail.
+model SectShopPurchase {
+  id                String    @id @default(cuid())
+  characterId       String
+  character         Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Match key trong shared `SECT_SHOP_ENTRIES`.
+  entryKey          String
+  /// Item key shipped (snapshot — match `SectShopEntryDef.itemKey`).
+  itemKey           String
+  qty               Int
+  contributionSpent Int
+  /// Period key DAILY (`YYYY-MM-DD` theo `MISSION_RESET_TZ`) tại commit time —
+  /// dùng SUM(qty) trong window làm `dailyLimit` enforcement (faster query
+  /// hơn so với date-range filter, indexable).
+  dailyPeriodKey    String
+  /// Period key WEEKLY (`YYYY-Www` ISO) tại commit time — dùng SUM(qty) cho
+  /// `weeklyLimit` enforcement.
+  weeklyPeriodKey   String
+  createdAt         DateTime  @default(now())
+
+  @@index([characterId, entryKey, dailyPeriodKey])
+  @@index([characterId, entryKey, weeklyPeriodKey])
+  @@index([characterId, createdAt])
+}
+
+/// Phase 13.1.B — Sect Contribution Ledger.
+/// Mỗi mutate `Character.sectContribBalance` + `sectContribLifetime` ghi 1
+/// row. `delta` ký:
+///   - dương: earn (mission claim, admin grant, optional sect war reward).
+///   - âm:    spend (sect shop buy).
+///
+/// Reason whitelist:
+///   - `SECT_MISSION_CLAIM`
+///   - `SECT_SHOP_BUY`
+///   - `SECT_CONTRIBUTION_SPEND`
+///   - `ADMIN_GRANT`
+///   - `SECT_WAR_REWARD`
+///
+/// `refType + refId` trace ngược source — vd `Mission`/missionKey,
+/// `SectShop`/entryKey, `SectWarWeeklyRewardClaim`/weekKey.
+model SectContributionLedger {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  delta       Int
+  reason      String
+  refType     String?
+  refId       String?
+  meta        Json      @default("{}")
+  actorUserId String?
+  createdAt   DateTime  @default(now())
+
+  @@index([characterId, createdAt])
+  @@index([reason, createdAt])
+}
+
+/// Phase 13.1.B — LiveOps event override (admin LiveOps controls).
+/// Mỗi row = override 1 event key trong `LIVE_OPS_EVENTS` catalog. `enabled`
+/// toggle (false = ẩn event khỏi `liveOpsEventsForToday`). `startsAt`/`endsAt`
+/// optional override window (caller dùng cho hot-fix Limited Time Event).
+///
+/// `updatedBy` (User.id) audit trail; `reason` for log/debug. UNIQUE `key`
+/// → upsert pattern (insert nếu chưa có, update nếu đã tồn tại).
+model LiveOpsEventOverride {
+  id          String    @id @default(cuid())
+  /// LiveOps event key (match `LIVE_OPS_EVENTS[*].key`).
+  key         String    @unique
+  enabled     Boolean
+  startsAt    DateTime?
+  endsAt      DateTime?
+  reason      String?
+  updatedBy   String
+  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now())
+
+  @@index([enabled, updatedAt])
 }

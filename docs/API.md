@@ -237,6 +237,58 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 
 **Idempotency** contribution: composite UNIQUE `(weekKey, characterId, activityKey, sourceType, sourceId)` trên `SectWarContribution`. Hook gameplay (DungeonRun.claim, Boss.distributeRewards, DailyLogin.claim, Quest.claim) gọi `addContributionTx` trong cùng transaction — retry hook → P2002 silently skipped (return null). Daily cap window theo `MISSION_RESET_TZ` (default `Asia/Ho_Chi_Minh`, 00:00 ICT) — đồng nhất với dungeon dailyLimit / mission DAILY / daily-login streak. Weekly cap qua ISO week (Mon 00:00 ICT → Sun 23:59 ICT).
 
+## Sect Missions — `SectMissionController` (prefix `/sect`, Phase 13.1.B)
+
+> Phase 13.1.B — daily/weekly mission Tông Môn cộng `congHien` (= `Character.contribBalance`). Catalog ở [`packages/shared/src/sect-missions.ts`](../packages/shared/src/sect-missions.ts). Server-authoritative; FE chỉ render.
+
+| Method | Path                          | Auth | Mô tả |
+|--------|-------------------------------|------|-------|
+| GET    | `/sect/missions`              | Yes  | Snapshot mission list của character. Response `{ contribLifetime, contribBalance, sectId, sectName, missions: SectMissionView[] }`. Mỗi `SectMissionView` gồm `{ key, cadence: 'DAILY'\|'WEEKLY', activityKey, target, rewardContribution, rewardCurrency?, rewardCurrencyAmount?, rewardItemKey?, rewardItemQty?, titleI18nKey, descriptionI18nKey, progress, ready, claimed, periodKey, periodStartIso, periodEndIso }`. `progress` derive từ `SectWarContribution` rows hoặc `Character` snapshot trong period window. `claimed` true nếu đã có row `SectMissionClaim(characterId, missionKey, periodKey)`. |
+| POST   | `/sect/missions/:key/claim`   | Yes  | `:key` = mission key (ví dụ `sect_daily_dungeon_3`). Atomic transaction: assert `progress >= target` + insert `SectMissionClaim(characterId, missionKey, periodKey)` (P2002 → `MISSION_ALREADY_CLAIMED`) + cộng `Character.contribBalance` + `contribLifetime` + (optional) cộng `linhThach` qua `CurrencyService` + (optional) grant item qua `InventoryService.grantTx`. Ledger `SECT_MISSION_CLAIM`. Trả `{ missionKey, cadence, periodKey, rewardContribution, contribBalanceAfter, contribLifetimeAfter, rewardLinhThach? }`. |
+
+**Sect Mission error codes**:
+- `SECT_REQUIRED` — `Character.sectId == null` (chưa gia nhập tông môn).
+- `MISSION_NOT_FOUND` — `:key` không có trong catalog.
+- `MISSION_NOT_READY` — `progress < target`.
+- `MISSION_ALREADY_CLAIMED` — đã claim cho cùng `(characterId, missionKey, periodKey)`.
+- `NO_CHARACTER` — chưa có nhân vật.
+
+## Sect Shop — `SectShopController` (prefix `/sect`, Phase 13.1.B)
+
+> Phase 13.1.B — spend `congHien` đổi consumable/material. 5 entry catalog ở [`packages/shared/src/sect-shop.ts`](../packages/shared/src/sect-shop.ts). Atomic CAS, race-safe, rate-limited.
+
+| Method | Path                | Auth | Mô tả |
+|--------|---------------------|------|-------|
+| GET    | `/sect/shop`        | Yes  | Snapshot catalog + per-character usage. Response `{ contribBalance, contribLifetime, sectId, sectName, entries: SectShopEntryView[] }`. Mỗi `SectShopEntryView` gồm `{ key, itemKey, contributionCost, dailyLimit?, weeklyLimit?, dailyUsed, weeklyUsed, requiredSectLevel?, labelI18nKey, descriptionI18nKey, stackable, maxStack? }`. `dailyUsed` / `weeklyUsed` aggregate từ `SectShopPurchase.qty` trong period window theo `MISSION_RESET_TZ`. |
+| POST   | `/sect/shop/buy`    | Yes  | `{ entryKey: string, qty: number }` (qty >= 1). Pre-checks ngoài transaction: rate-limit (`RATE_LIMITED` 429 nếu vượt 30 req/60s), entry exists (`ENTRY_NOT_FOUND`), sectId (`SECT_REQUIRED`), stackable check (`NON_STACKABLE_QTY_GT_1` nếu qty>1 cho item non-stackable), daily/weekly limit (`SHOP_DAILY_LIMIT_REACHED` / `SHOP_WEEKLY_LIMIT_REACHED`). Transaction: CAS `prisma.character.updateMany({ where: { id, contribBalance: { gte: cost*qty } } })` (count=0 → `INSUFFICIENT_CONTRIB`) + `InventoryService.grantTx(tx, charId, itemKey, qty, 'SECT_SHOP_BUY')` + insert `SectShopPurchase` row. Ledger `SECT_SHOP_BUY`. Trả `{ entryKey, itemKey, qty, totalCost, contribBalanceAfter, dailyUsedAfter, weeklyUsedAfter }`. |
+
+**Sect Shop error codes**:
+- `SECT_REQUIRED` — chưa gia nhập tông môn.
+- `ENTRY_NOT_FOUND` — `entryKey` không có trong catalog.
+- `INSUFFICIENT_CONTRIB` — `contribBalance < cost*qty` (CAS reject — KHÔNG trừ tiền).
+- `SHOP_DAILY_LIMIT_REACHED` — `dailyUsed + qty > dailyLimit`.
+- `SHOP_WEEKLY_LIMIT_REACHED` — `weeklyUsed + qty > weeklyLimit`.
+- `NON_STACKABLE_QTY_GT_1` — defensive guard `qty > 1` cho item non-stackable.
+- `RATE_LIMITED` (429) — vượt 30 req/60s per user (Redis primary + in-memory fallback).
+- `INVALID_INPUT` — qty < 1 hoặc kiểu sai.
+- `NO_CHARACTER` — chưa có nhân vật.
+
+## Admin LiveOps Controls — `AdminLiveOpsController` (Phase 13.1.B)
+
+> Phase 13.1.B — admin override LiveOps event toggles + sect-war status/recalculate. Mọi endpoint role `ADMIN` (`AdminGuard`).
+
+| Method | Path                              | Auth  | Mô tả |
+|--------|-----------------------------------|-------|-------|
+| GET    | `/admin/liveops`                  | ADMIN | Status snapshot. Response `{ nowIso, timezone, eventsTotal, eventsActive, eventsToday, events: AdminLiveOpsEventStatus[], sectWar: AdminSectWarSummary }`. Mỗi `AdminLiveOpsEventStatus` gồm `{ key, type, titleI18nKey, scheduledEnabled (catalog default), overrideEnabled? (LiveOpsEventOverride.enabled nếu có), effectiveEnabled, lastOverrideAt? (ISO), lastOverrideBy? (User.email) }`. `AdminSectWarSummary` = `{ weekKey, season{startsAtIso,endsAtIso,timezone}, sectsRanked, contributionsThisWeek }`. |
+| POST   | `/admin/liveops/event/toggle`     | ADMIN | `{ eventKey: string, enabled: boolean }`. Upsert `LiveOpsEventOverride(eventKey)` → `{ enabled, updatedAt, updatedBy: actorUserId }`. Audit log `ADMIN_LIVEOPS_OVERRIDE` (`{ actor, eventKey, enabled, prev: oldEnabled }`). Trả `{ eventKey, enabled, prev, overrideAt }`. |
+| GET    | `/admin/sect-war/status`          | ADMIN | Read-only sect-war diagnostic. Response `{ weekKey, season{startsAtIso,endsAtIso,timezone}, sectsRanked, contributionsThisWeek, leaderboard[] (top N), claimsThisWeek }`. KHÔNG mutation. |
+| POST   | `/admin/sect-war/recalculate`     | ADMIN | No-op điểm contribution (read-only audit response). Trả `{ weekKey, recalculatedAt: ISO, contributionsScanned, leaderboardSize, message: 'recalc_no_op' }`. KHÔNG sửa contribution rows hoặc claim rows hiện có. (Future: nếu thêm logic recompute, vẫn phải atomic + audit). |
+
+**Admin LiveOps error codes**:
+- `FORBIDDEN` — không phải ADMIN (qua `AdminGuard` chặn trước controller).
+- `EVENT_NOT_FOUND` — `eventKey` không có trong catalog `LIVE_OPS_EVENTS`.
+- `INVALID_INPUT` — body sai shape (zod).
+
 ## Error codes (chuẩn hoá)
 
 - **Auth**: `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `RATE_LIMITED`, `PASSWORD_CHANGED`, `REUSED_REFRESH_TOKEN`, `BANNED`, `INVALID_INPUT`.

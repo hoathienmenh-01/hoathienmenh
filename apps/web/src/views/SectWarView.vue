@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
@@ -15,18 +15,42 @@ import SectWarLeaderboardPanel from '@/components/SectWarLeaderboardPanel.vue';
 import SectWarMyProgressPanel from '@/components/SectWarMyProgressPanel.vue';
 import SectWarActivityRulesPanel from '@/components/SectWarActivityRulesPanel.vue';
 import SectWarRewardPanel from '@/components/SectWarRewardPanel.vue';
+import SectMissionPanel from '@/components/SectMissionPanel.vue';
+import SectShopPanel from '@/components/SectShopPanel.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
+
+type SectWarTab = 'overview' | 'leaderboard' | 'missions' | 'shop' | 'rewards';
+const ALL_TABS: ReadonlyArray<SectWarTab> = [
+  'overview',
+  'leaderboard',
+  'missions',
+  'shop',
+  'rewards',
+];
 
 const auth = useAuthStore();
 const game = useGameStore();
 const toast = useToastStore();
 const router = useRouter();
+const route = useRoute();
 const { t } = useI18n();
 
 const state = ref<SectWarCurrent | null>(null);
 const loading = ref(true);
 const submitting = ref(false);
 const error = ref<string | null>(null);
+
+const queryTab = (route.query.tab as string | undefined) ?? '';
+const initialTab: SectWarTab = (ALL_TABS as ReadonlyArray<string>).includes(queryTab)
+  ? (queryTab as SectWarTab)
+  : 'overview';
+const tab = ref<SectWarTab>(initialTab);
+
+function setTab(next: SectWarTab): void {
+  tab.value = next;
+  // Persist via query để deep-link/back works.
+  router.replace({ query: { ...route.query, tab: next } }).catch(() => null);
+}
 
 const remainingMs = ref<number>(0);
 let timerHandle: ReturnType<typeof setInterval> | null = null;
@@ -136,21 +160,56 @@ async function onClaim(): Promise<void> {
         </div>
       </section>
 
-      <SectWarMyProgressPanel :me="state.me" />
+      <nav
+        class="flex flex-wrap gap-2 text-xs"
+        role="tablist"
+        data-test="sect-war-tabs"
+      >
+        <button
+          v-for="key in ALL_TABS"
+          :key="key"
+          type="button"
+          role="tab"
+          :aria-selected="tab === key"
+          class="px-3 py-1 rounded border tracking-widest uppercase"
+          :class="tab === key
+            ? 'border-amber-300/70 text-amber-200 bg-ink-700/40'
+            : 'border-ink-300/40 text-ink-300 hover:border-amber-300/40'"
+          :data-test="`sect-war-tab-${key}`"
+          @click="setTab(key)"
+        >
+          {{ t(`sectWar.tab.${key}`) }}
+        </button>
+      </nav>
 
-      <SectWarLeaderboardPanel
-        :rows="state.leaderboard"
-        :my-sect-id="state.me.sectId"
-      />
+      <section v-if="tab === 'overview'" data-test="sect-war-tab-content-overview">
+        <SectWarMyProgressPanel :me="state.me" />
+        <SectWarActivityRulesPanel class="mt-4" :activities="state.activities" />
+      </section>
 
-      <SectWarRewardPanel
-        :tiers="state.rewardTiers"
-        :me="state.me"
-        :submitting="submitting"
-        @claim="onClaim"
-      />
+      <section v-else-if="tab === 'leaderboard'" data-test="sect-war-tab-content-leaderboard">
+        <SectWarLeaderboardPanel
+          :rows="state.leaderboard"
+          :my-sect-id="state.me.sectId"
+        />
+      </section>
 
-      <SectWarActivityRulesPanel :activities="state.activities" />
+      <section v-else-if="tab === 'missions'" data-test="sect-war-tab-content-missions">
+        <SectMissionPanel />
+      </section>
+
+      <section v-else-if="tab === 'shop'" data-test="sect-war-tab-content-shop">
+        <SectShopPanel />
+      </section>
+
+      <section v-else-if="tab === 'rewards'" data-test="sect-war-tab-content-rewards">
+        <SectWarRewardPanel
+          :tiers="state.rewardTiers"
+          :me="state.me"
+          :submitting="submitting"
+          @claim="onClaim"
+        />
+      </section>
     </div>
   </AppShell>
 </template>

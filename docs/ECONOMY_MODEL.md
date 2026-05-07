@@ -122,10 +122,33 @@ Mục tiêu: economy KHÔNG vỡ trong 12-24 tháng vận hành, kể cả khi:
 
 ### 2.4 congHien / chienCongTongMon (sect)
 
-- `congHien`: gain qua sect mission, donate. Spend qua sect shop.
-- `chienCongTongMon`: gain qua sect war kill. Spend qua season reward.
+#### 2.4.1 congHien (Phase 13.1.B — DONE)
 
-Source/sink chi tiết phase 13.
+`congHien` = `Character.contribBalance` (Int, ≥ 0). Lifetime tổng = `Character.contribLifetime` (audit-only, không spend được).
+
+#### Sources
+
+- `SectMissionService.claim()` — Phase 13.1.B daily/weekly mission catalog ([`packages/shared/src/sect-missions.ts`](../packages/shared/src/sect-missions.ts)). Reason `SECT_MISSION_CLAIM`. Idempotent qua composite UNIQUE `SectMissionClaim(characterId, missionKey, periodKey)` — DAILY periodKey `YYYY-MM-DD`, WEEKLY periodKey `YYYY-Www` (ICT).
+- (Future) Donate Sect resources — phase 13.2.
+
+#### Sinks
+
+- `SectShopService.buy()` — Phase 13.1.B 5-entry shop catalog ([`packages/shared/src/sect-shop.ts`](../packages/shared/src/sect-shop.ts)). Reason `SECT_SHOP_BUY`. Atomic CAS spend qua `prisma.character.updateMany({ where: { id, contribBalance: { gte: cost } } })` — count=0 → throw `INSUFFICIENT_CONTRIB` không trừ tiền không grant item.
+
+#### Race protection (Phase 13.1.B)
+
+- **Atomic transaction**: claim mission + buy shop entry chạy trong `prisma.$transaction(async (tx) => { ... })`. Mọi side-effect (decrement balance + ItemLedger + InventoryService.grantTx + SectShopPurchase row + CurrencyLedger reward) nằm cùng tx → fail giữa chừng → rollback toàn bộ.
+- **No negative balance**: CAS guard `contribBalance: { gte: cost*qty }` ép DB invariant. Race 2 buy concurrent → loser get count=0 → reject. Test cover trong `sect-shop.service.test.ts`.
+- **Idempotency claim**: composite UNIQUE `(characterId, missionKey, periodKey)` → P2002 → translate `MISSION_ALREADY_CLAIMED` HTTP 409. Retry hook không double-grant.
+- **Idempotency buy**: KHÔNG idempotent (mỗi buy là 1 user-intent transaction). Nhưng daily/weekly limit aggregate `SectShopPurchase.qty` trong period → cap ép race-double-spend.
+- **Rate limit**: 30 req/60s per user qua `FailoverRateLimiter` (Redis primary + in-memory fallback). Spam → `RATE_LIMITED` 429, KHÔNG enter transaction.
+- **NON_STACKABLE_QTY_GT_1 guard**: items hiện tại đều stackable, nhưng defensive check trước transaction → reject `qty > 1` cho item non-stackable mà không trừ tiền.
+- **Item grant rollback**: `InventoryService.grantTx` lỗi (P2002 unique slot, max stack overflow, etc) → toàn bộ tx rollback → contribBalance không bị trừ. Ledger `SECT_SHOP_BUY` chỉ được ghi khi tx commit.
+- **Sect required**: `Character.sectId == null` → reject mọi mission claim + buy shop với `SECT_REQUIRED`.
+
+#### 2.4.2 chienCongTongMon (Phase 13.1.A)
+
+`chienCongTongMon`: gain qua sect war kill. Spend qua season reward (xem ECONOMY_MODEL §11.13.2 ở BALANCE_MODEL.md).
 
 ---
 

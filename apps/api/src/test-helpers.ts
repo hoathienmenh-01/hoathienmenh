@@ -101,6 +101,12 @@ export async function makeUserChar(
 /** Xoá hết các bảng phụ thuộc Character/User để test bắt đầu sạch. */
 export async function wipeAll(prisma: PrismaService): Promise<void> {
   // Thứ tự: con trước cha (FK cascade phần lớn rồi nhưng explicit cho rõ).
+  // Phase 13.1.B — Sect mission claims, shop purchases, contribution ledger,
+  // liveops overrides phải xoá trước Character/Sect.
+  await prisma.sectMissionClaim.deleteMany({});
+  await prisma.sectShopPurchase.deleteMany({});
+  await prisma.sectContributionLedger.deleteMany({});
+  await prisma.liveOpsEventOverride.deleteMany({});
   // Phase 13.1.A — Sect War tables phải xoá trước Character/Sect.
   await prisma.sectWarWeeklyRewardClaim.deleteMany({});
   await prisma.sectWarContribution.deleteMany({});

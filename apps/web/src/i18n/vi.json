@@ -1073,7 +1073,8 @@
       "topups": "Đơn nạp",
       "audit": "Nhật ký",
       "giftcodes": "Giftcode",
-      "boss": "Boss"
+      "boss": "Boss",
+      "liveops": "LiveOps"
     },
     "stats": {
       "users": "Người dùng",
@@ -2294,6 +2295,166 @@
       "SECT_WAR_NO_REWARD": "Tông không đủ điều kiện nhận thưởng tuần.",
       "NO_CHARACTER": "Chưa có nhân vật, hãy khai đạo trước.",
       "UNKNOWN": "Thao tác Tông Môn Chiến thất bại, thử lại."
+    },
+    "tab": {
+      "overview": "Tổng quan",
+      "leaderboard": "Bảng xếp hạng",
+      "missions": "Nhiệm vụ Tông",
+      "shop": "Shop Tông",
+      "rewards": "Thưởng tuần"
     }
+  },
+  "sectMission": {
+    "title": "Nhiệm vụ Tông Môn",
+    "loading": "Đang tải nhiệm vụ Tông Môn…",
+    "balance": "Cống hiến: {balance} (lifetime {lifetime})",
+    "noSect": "Cần gia nhập Tông Môn để nhận nhiệm vụ.",
+    "empty": "Chưa có nhiệm vụ.",
+    "dailyHeader": "Nhiệm vụ ngày",
+    "weeklyHeader": "Nhiệm vụ tuần",
+    "progress": "{cur}/{tar}",
+    "claimBtn": "Nhận thưởng",
+    "claimed": "Đã nhận",
+    "notReady": "Chưa đủ",
+    "reward": {
+      "contrib": "{n} cống hiến",
+      "linhThach": "{n} Linh Thạch",
+      "tienNgoc": "{n} Tiên Ngọc",
+      "item": "{k} ×{n}"
+    },
+    "toast": {
+      "claimed": "Hoàn thành: {title} — +{contrib} cống hiến."
+    },
+    "missions": {
+      "daily_dungeon_clear_3": {
+        "title": "Quét 3 Bí Cảnh hôm nay",
+        "desc": "Hoàn thành 3 lần Bí Cảnh trong ngày.",
+        "hint": "Đi vào /dungeon và quét đủ 3 bí cảnh."
+      },
+      "daily_boss_participation_1": {
+        "title": "Đánh 1 Boss",
+        "desc": "Tham gia gây sát thương ít nhất 1 Boss trong ngày.",
+        "hint": "Vào /boss để tham chiến."
+      },
+      "daily_boss_damage_500": {
+        "title": "Góp 500 sát thương Boss",
+        "desc": "Tổng sát thương Boss trong ngày ≥ 500.",
+        "hint": "Tham chiến Boss và tích lũy sát thương."
+      },
+      "weekly_quest_clear_5": {
+        "title": "Hoàn thành 5 Nhiệm Vụ tuần",
+        "desc": "Claim đủ 5 lần phần thưởng nhiệm vụ trong tuần.",
+        "hint": "Vào /quests để claim nhiệm vụ."
+      },
+      "weekly_breakthrough_success_1": {
+        "title": "Đột phá thành công 1 lần",
+        "desc": "Đột phá thành công ít nhất 1 lần trong tuần.",
+        "hint": "Vào /breakthrough để đột phá."
+      }
+    },
+    "errors": {
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "SECT_REQUIRED": "Cần gia nhập Tông Môn.",
+      "MISSION_NOT_FOUND": "Nhiệm vụ không tồn tại.",
+      "MISSION_NOT_READY": "Chưa hoàn thành đủ điều kiện.",
+      "ALREADY_CLAIMED": "Đã nhận thưởng nhiệm vụ này.",
+      "UNKNOWN": "Không thể nhận thưởng — thử lại."
+    }
+  },
+  "sectShop": {
+    "title": "Shop Tông Môn",
+    "loading": "Đang tải Shop…",
+    "empty": "Shop Tông trống.",
+    "noSect": "Cần gia nhập Tông Môn để mở Shop.",
+    "balance": "Cống hiến khả dụng: {balance}",
+    "cost": "{n} cống hiến",
+    "daily": "Ngày: {n}/{m}",
+    "weekly": "Tuần: {n}/{m}",
+    "minLevel": "Yêu cầu Tông cấp ≥{n}",
+    "nonStackable": "Không cộng dồn",
+    "buyBtn": "Mua",
+    "maxBuyable": "Có thể mua tối đa {n}",
+    "col": {
+      "item": "Vật phẩm",
+      "cost": "Giá",
+      "limit": "Giới hạn",
+      "qty": "SL"
+    },
+    "items": {
+      "qiSparkPill": "Linh Khí Đan",
+      "yangshenPill": "Dưỡng Thần Đan",
+      "spiritStoneSmall": "Linh Thạch Nhỏ",
+      "earthBambooFiber": "Sợi Trúc Hoàng Tâm",
+      "moonBlossomSilk": "Tơ Hoa Nguyệt",
+      "blacksmithIron": "Tinh Thiết Hiệu Nghiệm",
+      "buffShopFocus": "Bùa Tinh Thần Tập Trung"
+    },
+    "toast": {
+      "bought": "Mua {item} ×{qty} — −{cost} cống hiến."
+    },
+    "errors": {
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "SECT_REQUIRED": "Cần gia nhập Tông Môn.",
+      "ENTRY_NOT_FOUND": "Mặt hàng không còn.",
+      "INVALID_QTY": "Số lượng không hợp lệ.",
+      "NON_STACKABLE_QTY_GT_1": "Vật phẩm không cộng dồn — chỉ mua 1.",
+      "INSUFFICIENT_CONTRIBUTION": "Không đủ điểm cống hiến.",
+      "DAILY_LIMIT": "Đã đạt giới hạn ngày.",
+      "WEEKLY_LIMIT": "Đã đạt giới hạn tuần.",
+      "SECT_LEVEL_REQUIRED": "Tông cấp chưa đủ.",
+      "RATE_LIMITED": "Quá nhiều yêu cầu — chờ vài giây.",
+      "UNKNOWN": "Không thể mua — thử lại."
+    }
+  },
+  "adminLiveOps": {
+    "title": "LiveOps Controls",
+    "tz": "TZ {tz}",
+    "loading": "Đang tải dữ liệu LiveOps…",
+    "todayCount": "Hôm nay: {n}",
+    "activeCount": "Đang chạy: {n}",
+    "today": "TODAY",
+    "active": "ACTIVE",
+    "statusOn": "ON",
+    "statusOff": "OFF",
+    "enableBtn": "Bật",
+    "disableBtn": "Tắt",
+    "reasonPlaceholder": "Lý do (audit)",
+    "confirmToggle": "Xác nhận đổi trạng thái {key} → {on}?",
+    "confirmRecalc": "Xác nhận recalculate Sect War tuần hiện tại? (no-op trong PR 13.1.B)",
+    "col": {
+      "key": "Key",
+      "type": "Loại",
+      "status": "Trạng thái",
+      "override": "Override",
+      "reason": "Lý do"
+    },
+    "toast": {
+      "toggled": "Đã đổi {key} → {on}",
+      "recalculated": "Sect War đã được audit (no-op)."
+    },
+    "sectWar": {
+      "title": "Sect War status",
+      "summary": "Tuần {week}: {sects} Tông · {contributors} thành viên · {contributions} bản ghi",
+      "topHeader": "Top 10 Tông",
+      "row": "{points} điểm · {contributors} thành viên",
+      "recalcBtn": "Recalculate (no-op)",
+      "unavailable": "Không lấy được dữ liệu Sect War."
+    },
+    "errors": {
+      "EVENT_NOT_FOUND": "Sự kiện không tồn tại.",
+      "INVALID_INPUT": "Tham số không hợp lệ.",
+      "FORBIDDEN": "Không đủ quyền.",
+      "UNKNOWN": "Thao tác LiveOps thất bại — thử lại."
+    }
+  },
+  "homeLiveOps": {
+    "sectMissionTitle": "Nhiệm vụ Tông Môn",
+    "sectMissionDesc": "Hoàn thành nhiệm vụ ngày/tuần để nhận điểm cống hiến.",
+    "openBtn": "Mở Tông Môn Chiến"
+  },
+  "sectCta": {
+    "warTitle": "Tông Môn Chiến",
+    "warDesc": "Đua bảng xếp hạng tuần, nhận nhiệm vụ và Shop Tông.",
+    "warBtn": "Vào Tông Môn Chiến"
   }
 }

@@ -29,9 +29,25 @@ vi.mock('@/api/sectWar', async () => {
   };
 });
 
-const routerReplaceMock = vi.fn();
+// router.replace phải trả Promise vì SectWarView gọi .catch() trên kết quả.
+const routerReplaceMock = vi.fn().mockResolvedValue(undefined);
+// Phase 13.1.B SectWarView dùng useRoute() để đọc `query.tab` → quyết định
+// tab khởi tạo. Mỗi test có thể set `routeQuery.tab` trước khi mount để
+// chọn tab (overview/leaderboard/missions/shop/rewards).
+const routeQuery: { tab?: string } = {};
 vi.mock('vue-router', () => ({
   useRouter: () => ({ replace: routerReplaceMock }),
+  useRoute: () => ({
+    query: routeQuery,
+    params: {},
+    path: '/sect-war',
+    name: 'SectWar',
+    fullPath: '/sect-war',
+    hash: '',
+    matched: [],
+    redirectedFrom: undefined,
+    meta: {},
+  }),
 }));
 
 const toastPushMock = vi.fn();
@@ -235,10 +251,14 @@ beforeEach(() => {
   getCurrentMock.mockReset();
   claimMock.mockReset();
   routerReplaceMock.mockReset();
+  // Restore Promise resolution behaviour sau mockReset (SectWarView gọi .catch).
+  routerReplaceMock.mockResolvedValue(undefined);
   toastPushMock.mockReset();
   authState.isAuthenticated = true;
   authState.hydrate.mockReset();
   authState.hydrate.mockResolvedValue(undefined);
+  // Reset tab về overview default cho mỗi test (Phase 13.1.B tab system).
+  delete routeQuery.tab;
 });
 
 describe('SectWarView — auth gate', () => {
@@ -252,7 +272,7 @@ describe('SectWarView — auth gate', () => {
 });
 
 describe('SectWarView — render flow', () => {
-  it('auth + load thành công → render leaderboard rows + my progress + reward tiers + activity rules', async () => {
+  it('auth + load thành công → render overview/leaderboard/rewards tabs (Phase 13.1.B tab system)', async () => {
     getCurrentMock.mockResolvedValue(makeCurrent());
     const w = mountView();
     await flushPromises();
@@ -260,27 +280,30 @@ describe('SectWarView — render flow', () => {
     expect(w.find('[data-test="sect-war-content"]').exists()).toBe(true);
     expect(w.find('[data-test="sect-war-loading"]').exists()).toBe(false);
 
-    // Leaderboard rows
-    const lbRows = w.findAll('[data-test="sect-war-leaderboard-row"]');
-    expect(lbRows.length).toBe(2);
-    expect(lbRows[0].text()).toContain('Huyền Thủy');
-    expect(lbRows[1].text()).toContain('Thanh Vân');
-    expect(lbRows[1].text()).toContain('(Tông của tôi)');
-
-    // My progress
+    // Default tab=overview: my-progress + activity rules visible.
     const me = w.find('[data-test="sect-war-my-progress"]');
     expect(me.exists()).toBe(true);
     expect(me.text()).toContain('Thanh Vân');
     expect(me.text()).toContain('120');
     expect(me.text()).toContain('Bí cảnh');
 
-    // Activity rules
     const acts = w.findAll('[data-test="sect-war-activity-row"]');
     expect(acts.length).toBe(2);
     expect(acts[0].text()).toContain('Điểm danh');
     expect(acts[0].text()).toContain('+10');
 
-    // Reward rows
+    // Switch to leaderboard tab.
+    await w.find('[data-test="sect-war-tab-leaderboard"]').trigger('click');
+    await flushPromises();
+    const lbRows = w.findAll('[data-test="sect-war-leaderboard-row"]');
+    expect(lbRows.length).toBe(2);
+    expect(lbRows[0].text()).toContain('Huyền Thủy');
+    expect(lbRows[1].text()).toContain('Thanh Vân');
+    expect(lbRows[1].text()).toContain('(Tông của tôi)');
+
+    // Switch to rewards tab.
+    await w.find('[data-test="sect-war-tab-rewards"]').trigger('click');
+    await flushPromises();
     const rewardRows = w.findAll('[data-test="sect-war-reward-row"]');
     expect(rewardRows.length).toBe(3);
     expect(rewardRows[0].text()).toContain('5000');
@@ -307,15 +330,20 @@ describe('SectWarView — render flow', () => {
     const w = mountView();
     await flushPromises();
 
+    // Overview tab: no-sect fallback hiển thị trên my-progress.
     const myProg = w.find('[data-test="sect-war-my-progress"]');
     expect(myProg.find('[data-test="sect-war-no-sect"]').exists()).toBe(true);
 
+    // Switch to rewards tab để check claim button disabled.
+    await w.find('[data-test="sect-war-tab-rewards"]').trigger('click');
+    await flushPromises();
     const claimBtn = w.find('[data-test="sect-war-claim-button"]');
     expect(claimBtn.exists()).toBe(true);
     expect(claimBtn.attributes('disabled')).toBeDefined();
   });
 
   it('alreadyClaimed → claim button disabled + render alreadyClaimed hint', async () => {
+    routeQuery.tab = 'rewards';
     getCurrentMock.mockResolvedValue(
       makeCurrent({
         me: makeMe({ alreadyClaimed: true, canClaim: false }),
@@ -331,6 +359,7 @@ describe('SectWarView — render flow', () => {
 
 describe('SectWarView — claim flow', () => {
   it('canClaim=true → click claim → claimSectWarReward gọi + toast success + refresh', async () => {
+    routeQuery.tab = 'rewards';
     getCurrentMock.mockResolvedValueOnce(makeCurrent());
     claimMock.mockResolvedValue({
       weekKey: '2026-W18',
@@ -360,6 +389,7 @@ describe('SectWarView — claim flow', () => {
   });
 
   it('claim error SECT_WAR_NOT_CLAIMABLE → toast mapped', async () => {
+    routeQuery.tab = 'rewards';
     getCurrentMock.mockResolvedValue(makeCurrent());
     claimMock.mockRejectedValue(
       Object.assign(new Error('not yet'), { code: 'SECT_WAR_NOT_CLAIMABLE' }),
@@ -377,6 +407,7 @@ describe('SectWarView — claim flow', () => {
   });
 
   it('claim error UNKNOWN code → fallback i18n UNKNOWN', async () => {
+    routeQuery.tab = 'rewards';
     getCurrentMock.mockResolvedValue(makeCurrent());
     claimMock.mockRejectedValue(
       Object.assign(new Error('boom'), { code: 'WEIRD_INTERNAL' }),
