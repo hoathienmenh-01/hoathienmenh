@@ -8,6 +8,7 @@ import { MissionService } from './modules/mission/mission.service';
 import { MissionWsEmitter } from './modules/mission/mission-ws.emitter';
 import { QuestService } from './modules/quest/quest.service';
 import { DungeonRunService } from './modules/dungeon-run/dungeon-run.service';
+import { StoryDungeonService } from './modules/story-dungeon/story-dungeon.service';
 
 /**
  * Helpers cho integration test — tạo fixture user/character nhanh, không
@@ -125,6 +126,7 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.worldBoss.deleteMany({});
   await prisma.encounter.deleteMany({});
   await prisma.dungeonRun.deleteMany({});
+  await prisma.storyDungeonRun.deleteMany({});
   await prisma.chatMessage.deleteMany({});
   await prisma.listing.deleteMany({});
   await prisma.inventoryItem.deleteMany({});
@@ -189,6 +191,27 @@ export function makeDungeonRunService(prisma: PrismaService): {
   const quests = new QuestService(prisma, currency, inventory);
   const runs = new DungeonRunService(prisma, currency, inventory, quests);
   return { runs, quests, inventory, currency };
+}
+
+/**
+ * Phase 12.8.B — Dựng `StoryDungeonService` cho integration test (bypass DI
+ * container). Wire `CurrencyService` + `InventoryService` + `QuestService`
+ * qua cùng pattern với `makeDungeonRunService` để claim path đi qua ledger
+ * thật và quest-track auto-progress qua advance/clear.
+ */
+export function makeStoryDungeonService(prisma: PrismaService): {
+  story: StoryDungeonService;
+  quests: QuestService;
+  inventory: InventoryService;
+  currency: CurrencyService;
+} {
+  const realtime = new RealtimeService();
+  const chars = new CharacterService(prisma, realtime);
+  const currency = new CurrencyService(prisma);
+  const inventory = new InventoryService(prisma, realtime, chars);
+  const quests = new QuestService(prisma, currency, inventory);
+  const story = new StoryDungeonService(prisma, currency, inventory, quests);
+  return { story, quests, inventory, currency };
 }
 
 export const TEST_DATABASE_URL =
