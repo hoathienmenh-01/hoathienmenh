@@ -40,6 +40,7 @@
     "smoke:shop": "node scripts/smoke-shop.mjs",
     "smoke:skill": "node scripts/smoke-skill.mjs",
     "smoke:spiritual-root": "node scripts/smoke-spiritual-root.mjs",
+    "smoke:story-dungeon": "node scripts/smoke-story-dungeon.mjs",
     "smoke:topup": "node scripts/smoke-topup.mjs",
     "smoke:tribulation": "node scripts/smoke-tribulation.mjs",
     "smoke:ws": "node scripts/smoke-ws.mjs"
