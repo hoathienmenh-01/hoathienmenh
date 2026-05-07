@@ -12,6 +12,15 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Internal — Daily-login extended coverage (this PR)
+
+- **Mở rộng `daily-login` test sau PR #460**: `apps/api/src/modules/daily-login/daily-login.extended.test.ts` (+6 vitest) lock thêm 3 nhóm scenario quan trọng:
+  1. **Streak 30 ngày liên tục** → streak monotonic 1→30, balance += 3000 LT, 30 row `CurrencyLedger` reason `DAILY_LOGIN`, 30 row `DailyLoginClaim` với `streakAtClaim` đồng nhất. Locks catalog flat 100 LT/ngày — nếu tương lai catalog escalate (vd ngày 7/14/21/30 bonus) thì test failed có chủ đích để buộc chỉnh sync test+docs cùng PR đó.
+  2. **Race-condition `Promise.all`**: 5 claim concurrent cùng `(userId, now)` → đúng 1 winner +100 LT, 4 loser idempotent (`claimed=false`, `linhThachDelta='0'`, balance KHÔNG cộng 2 lần). Cover composite UNIQUE `(characterId, claimDateLocal)` + P2002 fallback path. Thêm 10 claim trên 2 ngày liên tiếp (5+5 race) → 2 winner, streak monotonic 1→2 sau race.
+  3. **Controller-level DB-backed smoke** qua `DailyLoginController.me()`/`.claim()` với `AuthService` stub (KHÔNG đụng JWT/Redis): flow 4 step (status pre-claim → claim → status post-claim → reclaim idempotent) verify envelope `{ ok:true, data }` + state DB đồng nhất. Bonus: 401 khi không cookie, 404 mapping cho user không có character.
+- **Risk / rollback**: zero — pure test file, KHÔNG sửa service / controller / endpoint / Prisma schema. Revert = xoá file. Không ảnh hưởng test baseline khác. Chạy được trên local (PG up) + GitHub CI (PG service container).
+- **Verification**: api typecheck ✅ / `pnpm --filter @xuantoi/api test -- --run daily-login` 34 PASS ✅ / `pnpm --filter @xuantoi/api test -- --run daily` 34 PASS ✅ / api test full **2129** (+6) ✅ / pnpm build ✅.
+
 ### Internal — Daily-login multi-day smoke positive (PR #460)
 
 - **Multi-day integration test** `apps/api/src/modules/daily-login/daily-login.multi-day.test.ts` (5 case, +5 vitest) cho `DailyLoginService.claim(userId, now)` qua test-clock injection — service signature đã hỗ trợ `now: Date` param từ Phase 11 nên KHÔNG mở endpoint dev mới. Cover:
