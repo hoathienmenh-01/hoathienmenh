@@ -133,7 +133,20 @@ function makeController(stubs: ServiceStubs = {}): AdminController {
   const config = {
     get: stubs.configGet ?? (() => undefined),
   } as unknown as ConfigService;
-  return new AdminController(adminSvc, giftSvc, mailSvc, config);
+  // Phase 13.1.B — AdminLiveOpsService stub.
+  const liveOpsSvc = {
+    getStatus: async () => ({ tz: 'Asia/Bangkok', events: [], todayKeys: [], activeKeys: [] }),
+    toggleEvent: async () => ({} as never),
+    getSectWarStatus: async () => ({
+      weekKey: '',
+      totalSects: 0,
+      totalContributors: 0,
+      totalContributions: 0,
+      topSects: [],
+    }),
+    recalculateSectWar: async () => ({ noop: true as const, weekKey: '' }),
+  } as unknown as import('./admin-liveops.service').AdminLiveOpsService;
+  return new AdminController(adminSvc, giftSvc, mailSvc, config, liveOpsSvc);
 }
 
 async function expectHttpError(

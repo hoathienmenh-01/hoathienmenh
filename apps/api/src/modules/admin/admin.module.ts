@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { AdminGuard } from './admin.guard';
+import { AdminLiveOpsService } from './admin-liveops.service';
 import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
 import { TopupModule } from '../topup/topup.module';
@@ -12,6 +13,8 @@ import { InventoryModule } from '../inventory/inventory.module';
 import { QuestModule } from '../quest/quest.module';
 import { PrismaService } from '../../common/prisma.service';
 
+// Phase 13.1.B — register `AdminLiveOpsService` for liveops controls +
+// sect-war read-only status / recalculate placeholder.
 @Module({
   imports: [
     AuthModule,
@@ -24,7 +27,7 @@ import { PrismaService } from '../../common/prisma.service';
     QuestModule,
   ],
   controllers: [AdminController],
-  providers: [AdminService, AdminGuard, PrismaService],
-  exports: [AdminGuard],
+  providers: [AdminService, AdminGuard, AdminLiveOpsService, PrismaService],
+  exports: [AdminGuard, AdminLiveOpsService],
 })
 export class AdminModule {}
