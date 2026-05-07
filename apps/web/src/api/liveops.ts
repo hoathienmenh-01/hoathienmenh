@@ -31,6 +31,7 @@ export interface BossScheduleViewModel {
   slotEndIso: string;
   status: BossSlotStatus;
   secondsUntilStart: number;
+  rewardHintI18nKey?: string;
 }
 
 export interface SuggestedActivity {
@@ -40,6 +41,7 @@ export interface SuggestedActivity {
   bossKey?: string;
   regionKey?: string;
   secondsUntilStart?: number;
+  rewardHintI18nKey?: string;
 }
 
 export interface LiveOpsTodayResponse {

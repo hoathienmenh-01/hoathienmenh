@@ -108,8 +108,8 @@ onMounted(async () => {
   try {
     dungeons.value = (await listDungeons()) as DungeonDef[];
     encounter.value = await getActiveEncounter();
-  } catch (e) {
-    console.error(e);
+  } catch {
+    // Soft-fail: empty list/encounter render placeholder. UI handles gracefully.
   }
 });
 

@@ -506,6 +506,8 @@ export interface BossScheduleSlot {
   readonly slotStart: Date;
   readonly slotEnd: Date;
   readonly status: 'upcoming' | 'active' | 'completed';
+  /** Reward hint i18n key — UI hiển thị "Thưởng: ..." (text-only). */
+  readonly rewardHintI18nKey?: string;
 }
 
 export function bossScheduleForToday(
@@ -537,6 +539,7 @@ export function bossScheduleForToday(
       slotStart: start,
       slotEnd: end,
       status,
+      rewardHintI18nKey: ev.rewardHintI18nKey,
     });
   }
   out.sort((a, b) => a.slotStart.getTime() - b.slotStart.getTime());

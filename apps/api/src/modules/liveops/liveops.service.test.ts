@@ -108,4 +108,39 @@ describe('LiveOpsService.today()', () => {
     const out = svc.today(now);
     expect(out.timezone).toBe('UTC');
   });
+
+  it('Phase 13.0 audit pass #5 — rewardHintI18nKey propagated trên bossSchedule + suggested + activeEvents', () => {
+    // Repro: trước fix, BossScheduleViewModel + SuggestedActivity DTO không
+    // expose rewardHintI18nKey → FE không thể render. Sau fix: 3 vị trí đều
+    // pass-through từ catalog.
+    const now = new Date('2026-05-06T05:15:00Z'); // Wed 12:15 ICT — noon active
+    const out = svc.today(now);
+
+    // bossSchedule slots
+    const noon = out.bossSchedule.find((s) => s.bossKey === 'hoa_long_to_su');
+    expect(noon?.rewardHintI18nKey).toBe(
+      'liveops.event.boss_daily_noon_hoa_diem_son.reward',
+    );
+
+    // suggested activities (active boss → first slot)
+    const sug = out.suggestedActivities[0];
+    expect(sug?.rewardHintI18nKey).toBe(
+      'liveops.event.boss_daily_noon_hoa_diem_son.reward',
+    );
+  });
+
+  it('Phase 13.0 audit pass #5 — rewardHintI18nKey propagated trên active non-boss event suggestion', () => {
+    // Wed 07:30 ICT = 00:30 UTC → daily_exp_rush_morning ACTIVE.
+    const now = new Date('2026-05-06T00:30:00Z');
+    const out = svc.today(now);
+
+    // Suggested activities: boss noon đang upcoming + daily exp rush active
+    // (non-boss). Cả 2 phải có rewardHintI18nKey.
+    const dailySug = out.suggestedActivities.find(
+      (s) => s.titleI18nKey === 'liveops.event.daily_exp_rush_morning.title',
+    );
+    expect(dailySug?.rewardHintI18nKey).toBe(
+      'liveops.event.daily_exp_rush_morning.reward',
+    );
+  });
 });
