@@ -2438,11 +2438,38 @@
       "topHeader": "Top 10 Sects",
       "row": "{points} pts · {contributors} contributors",
       "recalcBtn": "Recalculate (no-op)",
+      "snapshotBtn": "Snapshot (audit)",
+      "snapshotting": "Recording snapshot…",
+      "confirmSnapshot": "Record current Sect War snapshot to audit log?",
+      "toast": {
+        "snapshot": "Sect War snapshot recorded in audit."
+      },
       "unavailable": "Sect War data unavailable."
+    },
+    "boss": {
+      "title": "Force Boss Spawn",
+      "help": "Emergency boss spawn by region. Audited as ADMIN_FORCE_BOSS_SCHEDULE.",
+      "regionLabel": "Region",
+      "regionPlaceholder": "— select region —",
+      "bossKeyLabel": "Boss key",
+      "bossKeyPlaceholder": "auto",
+      "levelLabel": "Level",
+      "reasonLabel": "Reason",
+      "reasonPlaceholder": "Reason (audit)",
+      "forceLabel": "Force replace",
+      "submitBtn": "Spawn",
+      "submitting": "Spawning…",
+      "errorRegionRequired": "Select a region before spawning.",
+      "confirm": "Confirm spawn boss {bossKey} lvl {level} in {region}?",
+      "toast": {
+        "spawned": "Spawned {bossKey} lvl {level} in {region}."
+      }
     },
     "errors": {
       "EVENT_NOT_FOUND": "Event not found.",
       "INVALID_INPUT": "Invalid parameters.",
+      "INVALID_BOSS_KEY": "Boss key does not match region.",
+      "BOSS_ALREADY_ACTIVE": "Boss already active in this region; enable Force to replace.",
       "FORBIDDEN": "Insufficient permissions.",
       "UNKNOWN": "LiveOps action failed — please retry."
     }

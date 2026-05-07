@@ -42,6 +42,12 @@ const AdminSpawnInput = z.object({
    * INVALID_BOSS_KEY.
    */
   regionKey: z.string().min(1).max(64).optional(),
+  /**
+   * Phase 13.1.C — optional admin intent string ghi vào audit
+   * `ADMIN_FORCE_BOSS_SCHEDULE` (paper trail). Trim whitespace + cap
+   * 200 ký tự. Empty/whitespace-only → null trong audit meta.
+   */
+  reason: z.string().max(200).optional(),
 });
 
 /**

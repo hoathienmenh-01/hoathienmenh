@@ -6,7 +6,9 @@ import {
   adminLiveOpsStatus,
   adminLiveOpsToggle,
   adminSectWarRecalculate,
+  adminSectWarSnapshot,
   adminSectWarStatus,
+  adminSpawnBoss,
   type AdminLiveOpsEventStatusView,
   type AdminLiveOpsStatusView,
   type AdminSectWarStatusView,
@@ -15,10 +17,13 @@ import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 /**
  * Phase 13.1.B — Admin LiveOps Panel.
+ * Phase 13.1.C — extend với Force Boss Spawn (region/bossKey/level/reason)
+ * + Sect War snapshot-for-record (POST /admin/sect-war/snapshot).
  *
  * Hiển thị catalog LiveOps events + override + computed today/active. Cho phép
  * admin toggle enabled/disabled (với optional reason), gọi sect-war status,
- * recalculate placeholder. Mọi mutation luôn yêu cầu confirm prompt.
+ * recalculate placeholder, force spawn boss theo region, snapshot sect-war.
+ * Mọi mutation luôn yêu cầu confirm prompt.
  */
 
 const { t } = useI18n();
@@ -30,6 +35,17 @@ const loading = ref(true);
 const error = ref<string | null>(null);
 const togglingKey = ref<string | null>(null);
 const reasonByKey = ref<Record<string, string>>({});
+
+// Phase 13.1.C — Force Boss Spawn form state.
+const bossForm = ref({
+  regionKey: '',
+  bossKey: '',
+  level: 1,
+  force: false,
+  reason: '',
+});
+const bossSubmitting = ref(false);
+const snapshotSubmitting = ref(false);
 
 onMounted(async () => {
   await Promise.all([refreshStatus(), refreshSectWar()]);
@@ -96,8 +112,81 @@ async function onRecalc(): Promise<void> {
   }
 }
 
+// Phase 13.1.C — Force Boss Spawn handler.
+async function onForceSpawn(): Promise<void> {
+  if (bossSubmitting.value) return;
+  const region = bossForm.value.regionKey.trim();
+  if (!region) {
+    toast.push({ type: 'error', text: t('adminLiveOps.boss.errorRegionRequired') });
+    return;
+  }
+  if (!confirm(
+    t('adminLiveOps.boss.confirm', {
+      region,
+      bossKey: bossForm.value.bossKey || '(auto)',
+      level: bossForm.value.level,
+    }),
+  )) {
+    return;
+  }
+  bossSubmitting.value = true;
+  try {
+    const r = await adminSpawnBoss({
+      regionKey: region,
+      bossKey: bossForm.value.bossKey.trim() || undefined,
+      level: bossForm.value.level,
+      force: bossForm.value.force,
+      reason: bossForm.value.reason.trim() || undefined,
+    });
+    toast.push({
+      type: 'success',
+      text: t('adminLiveOps.boss.toast.spawned', {
+        bossKey: r.bossKey,
+        region: r.regionKey,
+        level: r.level,
+      }),
+    });
+    bossForm.value.reason = '';
+  } catch (e) {
+    const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
+    toast.push({ type: 'error', text: t(`adminLiveOps.errors.${code}`, code) });
+  } finally {
+    bossSubmitting.value = false;
+  }
+}
+
+// Phase 13.1.C — Sect War snapshot-for-record handler.
+async function onSnapshot(): Promise<void> {
+  if (snapshotSubmitting.value) return;
+  if (!confirm(t('adminLiveOps.sectWar.confirmSnapshot'))) return;
+  snapshotSubmitting.value = true;
+  try {
+    const r = await adminSectWarSnapshot({});
+    sectWar.value = r;
+    toast.push({ type: 'success', text: t('adminLiveOps.sectWar.toast.snapshot') });
+  } catch (e) {
+    const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
+    toast.push({ type: 'error', text: t(`adminLiveOps.errors.${code}`, code) });
+  } finally {
+    snapshotSubmitting.value = false;
+  }
+}
+
 const todaySet = computed(() => new Set(status.value?.todayKeys ?? []));
 const activeSet = computed(() => new Set(status.value?.activeKeys ?? []));
+
+/**
+ * Phase 13.1.C — region select options derived từ catalog BOSS events
+ * trong status response (server-truth). Fallback empty nếu chưa load.
+ */
+const bossRegionOptions = computed<string[]>(() => {
+  const events = status.value?.events ?? [];
+  const set = new Set<string>();
+  for (const ev of events) {
+    if (ev.regionKey) set.add(ev.regionKey);
+  }
+  return Array.from(set).sort();
+});
 
 defineExpose({ refreshStatus, refreshSectWar });
 </script>
@@ -201,6 +290,86 @@ defineExpose({ refreshStatus, refreshSectWar });
 
       <hr class="border-ink-300/20" />
 
+      <!-- Phase 13.1.C — Force Boss Spawn section. -->
+      <section class="text-xs space-y-2" data-test="admin-liveops-boss">
+        <div class="uppercase tracking-widest text-ink-300">
+          {{ t('adminLiveOps.boss.title') }}
+        </div>
+        <div class="text-ink-300/70">
+          {{ t('adminLiveOps.boss.help') }}
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+          <label class="flex flex-col gap-0.5">
+            <span class="text-ink-300/70">{{ t('adminLiveOps.boss.regionLabel') }}</span>
+            <select
+              v-model="bossForm.regionKey"
+              class="bg-ink-800 border border-ink-300/30 rounded px-1 py-0.5"
+              data-test="admin-liveops-boss-region"
+            >
+              <option value="">{{ t('adminLiveOps.boss.regionPlaceholder') }}</option>
+              <option v-for="r in bossRegionOptions" :key="r" :value="r">{{ r }}</option>
+            </select>
+          </label>
+          <label class="flex flex-col gap-0.5">
+            <span class="text-ink-300/70">{{ t('adminLiveOps.boss.bossKeyLabel') }}</span>
+            <input
+              v-model="bossForm.bossKey"
+              type="text"
+              maxlength="64"
+              class="bg-ink-800 border border-ink-300/30 rounded px-1 py-0.5"
+              :placeholder="t('adminLiveOps.boss.bossKeyPlaceholder')"
+              data-test="admin-liveops-boss-key"
+            />
+          </label>
+          <label class="flex flex-col gap-0.5">
+            <span class="text-ink-300/70">{{ t('adminLiveOps.boss.levelLabel') }}</span>
+            <input
+              v-model.number="bossForm.level"
+              type="number"
+              min="1"
+              max="10"
+              step="1"
+              class="bg-ink-800 border border-ink-300/30 rounded px-1 py-0.5"
+              data-test="admin-liveops-boss-level"
+            />
+          </label>
+          <label class="flex flex-col gap-0.5">
+            <span class="text-ink-300/70">{{ t('adminLiveOps.boss.reasonLabel') }}</span>
+            <input
+              v-model="bossForm.reason"
+              type="text"
+              maxlength="200"
+              class="bg-ink-800 border border-ink-300/30 rounded px-1 py-0.5"
+              :placeholder="t('adminLiveOps.boss.reasonPlaceholder')"
+              data-test="admin-liveops-boss-reason"
+            />
+          </label>
+          <div class="flex items-end gap-2">
+            <label class="flex items-center gap-1 text-ink-200">
+              <input
+                v-model="bossForm.force"
+                type="checkbox"
+                data-test="admin-liveops-boss-force"
+              />
+              {{ t('adminLiveOps.boss.forceLabel') }}
+            </label>
+            <button
+              type="button"
+              class="ml-auto px-3 py-1 rounded border border-rose-300/40 text-rose-200 disabled:opacity-50"
+              :disabled="bossSubmitting"
+              data-test="admin-liveops-boss-submit"
+              @click="onForceSpawn"
+            >
+              {{ bossSubmitting
+                ? t('adminLiveOps.boss.submitting')
+                : t('adminLiveOps.boss.submitBtn') }}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <hr class="border-ink-300/20" />
+
       <div class="flex items-center justify-between" data-test="admin-liveops-sectwar">
         <div class="text-sm">
           <div class="text-xs uppercase tracking-widest text-ink-300">
@@ -218,14 +387,27 @@ defineExpose({ refreshStatus, refreshSectWar });
             {{ t('adminLiveOps.sectWar.unavailable') }}
           </div>
         </div>
-        <button
-          type="button"
-          class="px-3 py-1 rounded border border-amber-300/40 text-amber-200 text-xs"
-          data-test="admin-liveops-recalc"
-          @click="onRecalc"
-        >
-          {{ t('adminLiveOps.sectWar.recalcBtn') }}
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="px-3 py-1 rounded border border-sky-300/40 text-sky-200 text-xs disabled:opacity-50"
+            :disabled="snapshotSubmitting"
+            data-test="admin-liveops-snapshot"
+            @click="onSnapshot"
+          >
+            {{ snapshotSubmitting
+              ? t('adminLiveOps.sectWar.snapshotting')
+              : t('adminLiveOps.sectWar.snapshotBtn') }}
+          </button>
+          <button
+            type="button"
+            class="px-3 py-1 rounded border border-amber-300/40 text-amber-200 text-xs"
+            data-test="admin-liveops-recalc"
+            @click="onRecalc"
+          >
+            {{ t('adminLiveOps.sectWar.recalcBtn') }}
+          </button>
+        </div>
       </div>
 
       <div v-if="sectWar && sectWar.topSects.length > 0" class="text-xs">

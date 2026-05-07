@@ -100,6 +100,27 @@ interface ServiceStubs {
   mailSend?: MailService['sendToCharacter'];
   mailBroadcast?: MailService['broadcast'];
   configGet?: (key: string) => string | undefined;
+  /**
+   * Phase 13.1.C — stub `AdminLiveOpsService.snapshotSectWarStatus(actorId,
+   * weekKey, reason?)` cho test endpoint POST /admin/sect-war/snapshot.
+   * Default stub trả empty week — override khi test cần assert call args.
+   */
+  liveOpsSnapshot?: (
+    actorUserId: string,
+    weekKey: string,
+    reason?: string,
+  ) => Promise<{
+    weekKey: string;
+    totalSects: number;
+    totalContributors: number;
+    totalContributions: number;
+    topSects: ReadonlyArray<{
+      sectId: string;
+      sectName: string | null;
+      points: number;
+      contributors: number;
+    }>;
+  }>;
 }
 
 function makeController(stubs: ServiceStubs = {}): AdminController {
@@ -133,7 +154,7 @@ function makeController(stubs: ServiceStubs = {}): AdminController {
   const config = {
     get: stubs.configGet ?? (() => undefined),
   } as unknown as ConfigService;
-  // Phase 13.1.B — AdminLiveOpsService stub.
+  // Phase 13.1.B + 13.1.C — AdminLiveOpsService stub.
   const liveOpsSvc = {
     getStatus: async () => ({ tz: 'Asia/Bangkok', events: [], todayKeys: [], activeKeys: [] }),
     toggleEvent: async () => ({} as never),
@@ -145,6 +166,17 @@ function makeController(stubs: ServiceStubs = {}): AdminController {
       topSects: [],
     }),
     recalculateSectWar: async () => ({ noop: true as const, weekKey: '' }),
+    // Phase 13.1.C — snapshot read-after-audit. Default stub mirrors a
+    // snapshot of empty week; tests that need to assert call args replace
+    // this with a custom stub.
+    snapshotSectWarStatus: stubs.liveOpsSnapshot ??
+      (async () => ({
+        weekKey: '',
+        totalSects: 0,
+        totalContributors: 0,
+        totalContributions: 0,
+        topSects: [],
+      })),
   } as unknown as import('./admin-liveops.service').AdminLiveOpsService;
   return new AdminController(adminSvc, giftSvc, mailSvc, config, liveOpsSvc);
 }
@@ -1261,6 +1293,87 @@ describe('AdminController', () => {
         }) as AdminService['setBanned'],
       });
       await expect(c.ban(makeReq(), 'u1', { banned: true })).rejects.toBe(boom);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Phase 13.1.C — POST /admin/sect-war/snapshot endpoint
+  // ─────────────────────────────────────────────────────────────────────
+  describe('POST /admin/sect-war/snapshot', () => {
+    it('200 + truyền actorId/weekKey/reason vào liveOps.snapshotSectWarStatus', async () => {
+      const calls: Array<[string, string, string | undefined]> = [];
+      const c = makeController({
+        liveOpsSnapshot: async (uid, wk, r) => {
+          calls.push([uid, wk, r]);
+          return {
+            weekKey: wk,
+            totalSects: 1,
+            totalContributors: 2,
+            totalContributions: 3,
+            topSects: [{ sectId: 's1', sectName: 'A', points: 100, contributors: 2 }],
+          };
+        },
+      });
+      const r = await c.sectWarSnapshot(makeReq({ userId: 'admin-7' }), {
+        weekKey: '2030-W30',
+        reason: 'audit',
+      });
+      expect(r.ok).toBe(true);
+      expect(r.data.weekKey).toBe('2030-W30');
+      expect(r.data.totalSects).toBe(1);
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toEqual(['admin-7', '2030-W30', 'audit']);
+    });
+
+    it('weekKey thiếu → fallback computed week (truyền chuỗi YYYY-WNN xuống service)', async () => {
+      const captured: Array<string> = [];
+      const c = makeController({
+        liveOpsSnapshot: async (_uid, wk) => {
+          captured.push(wk);
+          return {
+            weekKey: wk,
+            totalSects: 0,
+            totalContributors: 0,
+            totalContributions: 0,
+            topSects: [],
+          };
+        },
+      });
+      const r = await c.sectWarSnapshot(makeReq(), {});
+      expect(r.ok).toBe(true);
+      expect(captured).toHaveLength(1);
+      expect(captured[0]).toMatch(/^\d{4}-W\d{2}$/);
+    });
+
+    it('weekKey sai format → 400 INVALID_INPUT, KHÔNG gọi service', async () => {
+      const captured: Array<string> = [];
+      const c = makeController({
+        liveOpsSnapshot: async (_uid, wk) => {
+          captured.push(wk);
+          return {
+            weekKey: wk,
+            totalSects: 0,
+            totalContributors: 0,
+            totalContributions: 0,
+            topSects: [],
+          };
+        },
+      });
+      await expectHttpError(
+        c.sectWarSnapshot(makeReq(), { weekKey: 'bad-week-key' }),
+        HttpStatus.BAD_REQUEST,
+        'INVALID_INPUT',
+      );
+      expect(captured).toHaveLength(0);
+    });
+
+    it('reason quá 200 ký tự → 400 INVALID_INPUT', async () => {
+      const c = makeController();
+      await expectHttpError(
+        c.sectWarSnapshot(makeReq(), { reason: 'x'.repeat(201) }),
+        HttpStatus.BAD_REQUEST,
+        'INVALID_INPUT',
+      );
     });
   });
 });

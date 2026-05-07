@@ -91,7 +91,7 @@ Tick EXP thực hiện bởi BullMQ processor `cultivation.processor.ts`. WS eve
 |--------|---------------------|-------|-------|
 | GET    | `/boss/current`     | Yes   | Boss đang active + top 10 damage. |
 | POST   | `/boss/:id/attack`  | Yes   | Đánh boss; khi HP ≤ 0 → distribute reward theo rank (top 1 = 50%). Phase 13.0 §C: reward hooks unlock title `achievement_first_boss` (mọi participant), apply buff `event_double_drop` (top-1, 1h), unlock title `event_huyet_nguyet_2026` nếu spawn từ Huyết Nguyệt slot. |
-| POST   | `/boss/admin/spawn` | ADMIN | Spawn boss thủ công. Audit `BOSS_SPAWN`. |
+| POST   | `/boss/admin/spawn` | ADMIN | Spawn boss thủ công. Body `{ bossKey?: string, regionKey?: BossRegionKey, level?: 1\|2\|3, reason?: string≤200 }`. Audit kép: legacy `BOSS_SPAWN` (backwards-compatible) **+** Phase 13.1.C `ADMIN_FORCE_BOSS_SCHEDULE` cùng meta `{ bossKey, regionKey, level, bossId, scheduledEventKey?: string\|null, reason: string\|null }`. `reason` trim; whitespace-only → `null`. Response `{ id, bossKey, name, level, regionKey, currentHp, maxHp }`. |
 
 **Phase 13.0 §B — scheduled boss heartbeat**: BossService heartbeat (mỗi N giây) đọc `bossScheduleForToday(now, MISSION_RESET_TZ)` từ shared `LIVE_OPS_EVENTS`, mỗi region check active/upcoming slot. Spawn nếu slot active + region không có `WorldBoss` ACTIVE + chưa có spawn `(regionKey, bossKey, spawnedAt >= slotStart)` (slot dedup, idempotent qua parallel heartbeat). KHÔNG schema migration — slot dedup query-based.
 
@@ -273,9 +273,9 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 - `INVALID_INPUT` — qty < 1 hoặc kiểu sai.
 - `NO_CHARACTER` — chưa có nhân vật.
 
-## Admin LiveOps Controls — `AdminLiveOpsController` (Phase 13.1.B)
+## Admin LiveOps Controls — `AdminLiveOpsController` (Phase 13.1.B + Phase 13.1.C)
 
-> Phase 13.1.B — admin override LiveOps event toggles + sect-war status/recalculate. Mọi endpoint role `ADMIN` (`AdminGuard`).
+> Phase 13.1.B — admin override LiveOps event toggles + sect-war status/recalculate. Phase 13.1.C — sect-war read-after-audit snapshot + force-spawn boss (xem `POST /boss/admin/spawn` ở §Boss). Mọi endpoint role `ADMIN` (`AdminGuard`).
 
 | Method | Path                              | Auth  | Mô tả |
 |--------|-----------------------------------|-------|-------|
@@ -283,11 +283,17 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 | POST   | `/admin/liveops/event/toggle`     | ADMIN | `{ eventKey: string, enabled: boolean }`. Upsert `LiveOpsEventOverride(eventKey)` → `{ enabled, updatedAt, updatedBy: actorUserId }`. Audit log `ADMIN_LIVEOPS_OVERRIDE` (`{ actor, eventKey, enabled, prev: oldEnabled }`). Trả `{ eventKey, enabled, prev, overrideAt }`. |
 | GET    | `/admin/sect-war/status`          | ADMIN | Read-only sect-war diagnostic. Response `{ weekKey, season{startsAtIso,endsAtIso,timezone}, sectsRanked, contributionsThisWeek, leaderboard[] (top N), claimsThisWeek }`. KHÔNG mutation. |
 | POST   | `/admin/sect-war/recalculate`     | ADMIN | No-op điểm contribution (read-only audit response). Trả `{ weekKey, recalculatedAt: ISO, contributionsScanned, leaderboardSize, message: 'recalc_no_op' }`. KHÔNG sửa contribution rows hoặc claim rows hiện có. (Future: nếu thêm logic recompute, vẫn phải atomic + audit). |
+| POST   | `/admin/sect-war/snapshot`        | ADMIN | **Phase 13.1.C** — read-after-audit snapshot. Body `{ weekKey?: 'YYYY-Www', reason?: string≤200 }` (weekKey thiếu → fallback computed week hiện tại). Service gọi `getSectWarStatus(weekKey)` rồi ghi 1 audit `ADMIN_SECT_WAR_STATUS` cùng `meta { targetType: 'SectWarWeek', targetId: weekKey, summary: { totalSects, totalContributors, totalContributions, topSectIds: string[≤3] }, reason: string\|null }`. `reason` trim; whitespace-only → `null`. **KHÔNG mutate** contribution rows hoặc claim rows. Response identical với `GET /admin/sect-war/status` cho `weekKey` đó. |
 
 **Admin LiveOps error codes**:
 - `FORBIDDEN` — không phải ADMIN (qua `AdminGuard` chặn trước controller).
 - `EVENT_NOT_FOUND` — `eventKey` không có trong catalog `LIVE_OPS_EVENTS`.
-- `INVALID_INPUT` — body sai shape (zod).
+- `INVALID_INPUT` — body sai shape (zod). Áp dụng cho `weekKey` không match `/^\d{4}-W\d{2}$/`, `reason > 200 char`, `eventKey/level/regionKey` invalid.
+
+**Audit log entries (Phase 13.1.C)**:
+- `ADMIN_LIVEOPS_OVERRIDE` — toggle event override (Phase 13.1.B).
+- `ADMIN_FORCE_BOSS_SCHEDULE` — force-spawn boss qua `POST /boss/admin/spawn` (cùng meta với legacy `BOSS_SPAWN` audit row, kèm `reason` + optional `scheduledEventKey`). Backwards-compatible: consumers cũ vẫn đọc `BOSS_SPAWN`.
+- `ADMIN_SECT_WAR_STATUS` — read-after-audit snapshot qua `POST /admin/sect-war/snapshot`.
 
 ## Error codes (chuẩn hoá)
 

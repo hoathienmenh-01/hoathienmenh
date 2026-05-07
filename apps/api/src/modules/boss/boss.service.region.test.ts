@@ -343,6 +343,77 @@ describe('BossService — Phase 12.6 region isolation', () => {
   // ─────────────────────────────────────────────────────────────────────
   // Test 8 — Migration backfill: legacy WorldBoss row default 'world'
   // ─────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────
+  // Phase 13.1.C — adminSpawn dual audit (BOSS_SPAWN + ADMIN_FORCE_BOSS_SCHEDULE)
+  // ─────────────────────────────────────────────────────────────────────
+  it('adminSpawn ghi 2 audit row (BOSS_SPAWN + ADMIN_FORCE_BOSS_SCHEDULE) cùng meta + reason; KHÔNG có schedule match → scheduledEventKey=null', async () => {
+    const { a } = pickTwoRegions();
+    const candidatesA = bossesByRegion(a);
+    const defA = candidatesA[0];
+    const admin = await prisma.user.create({
+      data: { email: `admin-${Date.now()}@xt.local`, passwordHash: 'x', role: 'ADMIN' },
+    });
+    const r = await boss.adminSpawn(admin.id, {
+      bossKey: defA.key,
+      level: 2,
+      regionKey: a,
+      reason: 'incident smoke',
+    });
+    expect(r.regionKey).toBe(a);
+
+    const audits = await prisma.adminAuditLog.findMany({
+      where: { actorUserId: admin.id },
+      orderBy: { createdAt: 'asc' },
+    });
+    expect(audits).toHaveLength(2);
+
+    const legacy = audits.find((x) => x.action === 'BOSS_SPAWN');
+    const phase13 = audits.find((x) => x.action === 'ADMIN_FORCE_BOSS_SCHEDULE');
+    expect(legacy).toBeDefined();
+    expect(phase13).toBeDefined();
+
+    const legacyMeta = legacy!.meta as Record<string, unknown>;
+    expect(legacyMeta.bossKey).toBe(defA.key);
+    expect(legacyMeta.regionKey).toBe(a);
+    expect(legacyMeta.level).toBe(2);
+    expect(legacyMeta.bossId).toBe(r.id);
+
+    const phase13Meta = phase13!.meta as Record<string, unknown>;
+    expect(phase13Meta.bossKey).toBe(defA.key);
+    expect(phase13Meta.regionKey).toBe(a);
+    expect(phase13Meta.level).toBe(2);
+    expect(phase13Meta.bossId).toBe(r.id);
+    expect(phase13Meta.reason).toBe('incident smoke');
+    // BOSS event với cùng bossKey+region đang slot mở: scheduledEventKey
+    // có thể là string hoặc null tuỳ catalog runtime — chỉ assert key tồn tại.
+    expect('scheduledEventKey' in phase13Meta).toBe(true);
+  });
+
+  it('adminSpawn không truyền reason → reason=null trong audit ADMIN_FORCE_BOSS_SCHEDULE', async () => {
+    const { a } = pickTwoRegions();
+    const admin = await prisma.user.create({
+      data: { email: `admin-${Date.now()}@xt.local`, passwordHash: 'x', role: 'ADMIN' },
+    });
+    await boss.adminSpawn(admin.id, { regionKey: a });
+    const phase13 = await prisma.adminAuditLog.findFirstOrThrow({
+      where: { actorUserId: admin.id, action: 'ADMIN_FORCE_BOSS_SCHEDULE' },
+    });
+    const meta = phase13.meta as Record<string, unknown>;
+    expect(meta.reason).toBeNull();
+  });
+
+  it('adminSpawn với reason whitespace-only → reason=null trong audit (trim)', async () => {
+    const { a } = pickTwoRegions();
+    const admin = await prisma.user.create({
+      data: { email: `admin-${Date.now()}@xt.local`, passwordHash: 'x', role: 'ADMIN' },
+    });
+    await boss.adminSpawn(admin.id, { regionKey: a, reason: '   ' });
+    const phase13 = await prisma.adminAuditLog.findFirstOrThrow({
+      where: { actorUserId: admin.id, action: 'ADMIN_FORCE_BOSS_SCHEDULE' },
+    });
+    expect((phase13.meta as Record<string, unknown>).reason).toBeNull();
+  });
+
   it('schema default regionKey="world" + ACTIVE row insert without regionKey → backfilled "world"', async () => {
     // Bỏ explicit regionKey field — Prisma schema default phải kick in
     // và set 'world' (matching migration `ADD COLUMN ... DEFAULT 'world'
