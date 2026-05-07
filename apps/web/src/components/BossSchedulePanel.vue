@@ -134,6 +134,13 @@ function countdown(secs: number): string {
             {{ bossDisplay(slot) }} · {{ regionDisplay(slot) }}
           </div>
           <div
+            v-if="slot.rewardHintI18nKey"
+            :data-testid="`boss-schedule-reward-${slot.key}`"
+            class="text-[10px] text-ink-300"
+          >
+            {{ t('liveopsToday.rewardHintLabel') }}: {{ t(slot.rewardHintI18nKey, slot.rewardHintI18nKey) }}
+          </div>
+          <div
             v-if="slot.status === 'upcoming' && slot.secondsUntilStart > 0"
             class="text-[10px] text-amber-300"
           >

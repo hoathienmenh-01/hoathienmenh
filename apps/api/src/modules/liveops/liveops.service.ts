@@ -65,6 +65,8 @@ export interface BossScheduleViewModel {
   readonly slotEndIso: string;
   readonly status: BossScheduleSlot['status'];
   readonly secondsUntilStart: number;
+  /** Reward hint i18n key — UI render "Thưởng: ..." dưới boss/region. */
+  readonly rewardHintI18nKey?: string;
 }
 
 export interface SuggestedActivity {
@@ -79,6 +81,8 @@ export interface SuggestedActivity {
   readonly regionKey?: string;
   /** Optional cho countdown UI. */
   readonly secondsUntilStart?: number;
+  /** Reward hint i18n key — UI render "Thưởng: ..." dưới CTA. */
+  readonly rewardHintI18nKey?: string;
 }
 
 @Injectable()
@@ -160,6 +164,7 @@ export class LiveOpsService {
       slotEndIso: slot.slotEnd.toISOString(),
       status: slot.status,
       secondsUntilStart: secs,
+      rewardHintI18nKey: slot.rewardHintI18nKey,
     };
   }
 
@@ -181,6 +186,7 @@ export class LiveOpsService {
         titleI18nKey: `liveops.event.${activeBossSlot.key}.title`,
         bossKey: activeBossSlot.bossKey,
         regionKey: activeBossSlot.regionKey,
+        rewardHintI18nKey: activeBossSlot.rewardHintI18nKey,
       });
     } else {
       // 2. Boss upcoming — show next.
@@ -197,6 +203,7 @@ export class LiveOpsService {
           bossKey: upcomingBoss.bossKey,
           regionKey: upcomingBoss.regionKey,
           secondsUntilStart: secs,
+          rewardHintI18nKey: upcomingBoss.rewardHintI18nKey,
         });
       }
     }
@@ -208,6 +215,7 @@ export class LiveOpsService {
         key: `event_active_${ev.key}`,
         kind: ev.type === 'DAILY' ? 'daily' : ev.type === 'WEEKLY' ? 'weekly' : 'event',
         titleI18nKey: ev.titleI18nKey,
+        rewardHintI18nKey: ev.rewardHintI18nKey,
       });
     }
 
@@ -232,6 +240,7 @@ export class LiveOpsService {
         bossKey: nextHit.ev.bossKey,
         regionKey: nextHit.ev.regionKey,
         secondsUntilStart: secs,
+        rewardHintI18nKey: nextHit.ev.rewardHintI18nKey,
       });
     }
 

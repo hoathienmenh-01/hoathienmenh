@@ -36,6 +36,7 @@ const i18n = createI18n({
         activeEventsTitle: 'Sự kiện đang mở',
         bossScheduleTitle: 'Lịch Boss hôm nay',
         startIn: 'Còn {time}',
+        rewardHintLabel: 'Thưởng',
         bossStatus: {
           upcoming: 'Sắp tới',
           active: 'Đang mở',
@@ -49,7 +50,14 @@ const i18n = createI18n({
       },
       liveops: {
         event: {
-          boss_daily_noon_hoa_diem_son: { title: 'Boss Trưa: Hỏa Long' },
+          boss_daily_noon_hoa_diem_son: {
+            title: 'Boss Trưa: Hỏa Long',
+            reward: 'Linh thạch + đồ luyện đan hỏa hệ.',
+          },
+          daily_exp_rush_morning: {
+            title: 'Triêu Quang Lộ Khí',
+            reward: 'Tu vi tăng nhanh trong giờ vàng buổi sáng.',
+          },
         },
         boss: { hoa_long_to_su: 'Hỏa Long Tổ Sư' },
         region: { hoa_diem_son: 'Hỏa Diệm Sơn' },
@@ -232,6 +240,78 @@ describe('LiveOpsTodayPanel', () => {
     expect(sched.exists()).toBe(true);
     expect(sched.text()).toContain('12:00'); // 05:00 UTC → ICT 12:00.
     expect(sched.text()).toContain('19:00'); // 12:00 UTC → ICT 19:00.
+  });
+
+  it('Phase 13.0 audit pass #5 — render rewardHintI18nKey (suggested + active non-boss + bossSchedule)', async () => {
+    // Repro: trước fix, FE catalog/API/i18n đều có rewardHint nhưng 2 panel
+    // không bao giờ render → feature dead. Sau fix: render 3 vị trí.
+    getLiveOpsTodayMock.mockResolvedValueOnce({
+      ...SAMPLE_RESPONSE,
+      activeEvents: [
+        {
+          key: 'daily_exp_rush_morning',
+          type: 'DAILY',
+          titleI18nKey: 'liveops.event.daily_exp_rush_morning.title',
+          descriptionI18nKey: 'liveops.event.daily_exp_rush_morning.desc',
+          rewardHintI18nKey: 'liveops.event.daily_exp_rush_morning.reward',
+        },
+      ],
+      bossSchedule: [
+        {
+          ...SAMPLE_RESPONSE.bossSchedule[0],
+          rewardHintI18nKey: 'liveops.event.boss_daily_noon_hoa_diem_son.reward',
+        },
+      ],
+      suggestedActivities: [
+        {
+          key: 'boss_active_boss_daily_noon_hoa_diem_son',
+          kind: 'boss',
+          titleI18nKey: 'liveops.event.boss_daily_noon_hoa_diem_son.title',
+          bossKey: 'hoa_long_to_su',
+          regionKey: 'hoa_diem_son',
+          rewardHintI18nKey: 'liveops.event.boss_daily_noon_hoa_diem_son.reward',
+        },
+      ],
+    });
+    const w = mountPanel();
+    await flushPromises();
+
+    // 1. Suggested CTA reward hint render.
+    const sugReward = w.find(
+      '[data-testid="liveops-suggestion-reward-boss_active_boss_daily_noon_hoa_diem_son"]',
+    );
+    expect(sugReward.exists()).toBe(true);
+    expect(sugReward.text()).toContain('Thưởng');
+    expect(sugReward.text()).toContain('Linh thạch + đồ luyện đan hỏa hệ');
+
+    // 2. Active non-boss event reward hint render.
+    const evReward = w.find(
+      '[data-testid="liveops-active-event-reward-daily_exp_rush_morning"]',
+    );
+    expect(evReward.exists()).toBe(true);
+    expect(evReward.text()).toContain('Tu vi tăng nhanh trong giờ vàng buổi sáng');
+
+    // 3. Boss schedule slot reward hint render.
+    const schedReward = w.find(
+      '[data-testid="liveops-schedule-reward-boss_daily_noon_hoa_diem_son"]',
+    );
+    expect(schedReward.exists()).toBe(true);
+    expect(schedReward.text()).toContain('Linh thạch + đồ luyện đan hỏa hệ');
+  });
+
+  it('rewardHintI18nKey absent (legacy/empty) → KHÔNG render reward row', async () => {
+    // SAMPLE_RESPONSE base không có rewardHintI18nKey → no reward rows render.
+    getLiveOpsTodayMock.mockResolvedValueOnce(SAMPLE_RESPONSE);
+    const w = mountPanel();
+    await flushPromises();
+
+    expect(
+      w.find('[data-testid="liveops-suggestion-reward-boss_active_boss_daily_noon_hoa_diem_son"]')
+        .exists(),
+    ).toBe(false);
+    expect(
+      w.find('[data-testid="liveops-schedule-reward-boss_daily_noon_hoa_diem_son"]').exists(),
+    ).toBe(false);
   });
 
   it('per-suggestion CTA button KHÔNG render cho non-boss kind (active daily event)', async () => {

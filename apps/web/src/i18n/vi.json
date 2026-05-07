@@ -957,6 +957,7 @@
     "bossScheduleTitle": "Lịch Boss hôm nay",
     "startIn": "Còn {time}",
     "spawnSoonToast": "Boss sắp xuất hiện trong {time}.",
+    "rewardHintLabel": "Thưởng",
     "bossStatus": {
       "upcoming": "Sắp tới",
       "active": "Đang mở",

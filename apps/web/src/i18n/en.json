@@ -957,6 +957,7 @@
     "bossScheduleTitle": "Today's boss schedule",
     "startIn": "starts in {time}",
     "spawnSoonToast": "A boss will spawn in {time}.",
+    "rewardHintLabel": "Reward",
     "bossStatus": {
       "upcoming": "Upcoming",
       "active": "Active",

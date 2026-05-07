@@ -173,13 +173,22 @@ function gotoMission(): void {
               : 'border-amber-500/50 bg-amber-500/10'
           "
         >
-          <span class="flex-1">
-            <span class="font-medium">{{ suggestionLabel(s) }}</span>
+          <span class="flex-1 flex flex-col gap-0.5">
+            <span>
+              <span class="font-medium">{{ suggestionLabel(s) }}</span>
+              <span
+                v-if="s.secondsUntilStart && s.secondsUntilStart > 0"
+                class="ml-2 text-xs text-ink-300"
+              >
+                · {{ t('liveopsToday.startIn', { time: formatCountdown(s.secondsUntilStart) }) }}
+              </span>
+            </span>
             <span
-              v-if="s.secondsUntilStart && s.secondsUntilStart > 0"
-              class="ml-2 text-xs text-ink-300"
+              v-if="s.rewardHintI18nKey"
+              :data-testid="`liveops-suggestion-reward-${s.key}`"
+              class="text-[11px] text-ink-300"
             >
-              · {{ t('liveopsToday.startIn', { time: formatCountdown(s.secondsUntilStart) }) }}
+              {{ t('liveopsToday.rewardHintLabel') }}: {{ t(s.rewardHintI18nKey, s.rewardHintI18nKey) }}
             </span>
           </span>
           <button
@@ -213,9 +222,16 @@ function gotoMission(): void {
           <li
             v-for="ev in activeEventsNonBoss"
             :key="ev.key"
-            class="text-sm text-ink-100"
+            class="text-sm text-ink-100 flex flex-col gap-0.5"
           >
-            • {{ t(ev.titleI18nKey, ev.titleI18nKey) }}
+            <span>• {{ t(ev.titleI18nKey, ev.titleI18nKey) }}</span>
+            <span
+              v-if="ev.rewardHintI18nKey"
+              :data-testid="`liveops-active-event-reward-${ev.key}`"
+              class="ml-3 text-[11px] text-ink-300"
+            >
+              {{ t('liveopsToday.rewardHintLabel') }}: {{ t(ev.rewardHintI18nKey, ev.rewardHintI18nKey) }}
+            </span>
           </li>
         </ul>
       </div>
@@ -243,6 +259,13 @@ function gotoMission(): void {
               <span class="text-[10px] text-ink-400">
                 {{ t(`liveops.boss.${slot.bossKey}`, slot.bossKey) }}
                 · {{ t(`liveops.region.${slot.regionKey}`, slot.regionKey) }}
+              </span>
+              <span
+                v-if="slot.rewardHintI18nKey"
+                :data-testid="`liveops-schedule-reward-${slot.key}`"
+                class="text-[10px] text-ink-300"
+              >
+                {{ t('liveopsToday.rewardHintLabel') }}: {{ t(slot.rewardHintI18nKey, slot.rewardHintI18nKey) }}
               </span>
             </span>
             <span class="shrink-0 text-[10px] uppercase tracking-widest">

@@ -52,9 +52,8 @@ async function refresh(): Promise<void> {
   loading.value = true;
   try {
     entries.value = await listNpcShop();
-  } catch (e) {
+  } catch {
     toast.push({ type: 'error', text: t('shop.errors.loadFail') });
-    console.error(e);
   } finally {
     loading.value = false;
   }

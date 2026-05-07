@@ -27,6 +27,7 @@ const i18n = createI18n({
         loading: 'Đang tải lịch sự kiện…',
         bossScheduleTitle: 'Lịch Boss hôm nay',
         startIn: 'Còn {time}',
+        rewardHintLabel: 'Thưởng',
         bossStatus: {
           upcoming: 'Sắp tới',
           active: 'Đang mở',
@@ -35,7 +36,10 @@ const i18n = createI18n({
       },
       liveops: {
         event: {
-          boss_daily_noon_hoa_diem_son: { title: 'Boss Trưa: Hỏa Long' },
+          boss_daily_noon_hoa_diem_son: {
+            title: 'Boss Trưa: Hỏa Long',
+            reward: 'Linh thạch + đồ luyện đan hỏa hệ.',
+          },
           boss_daily_evening_kim_son_mach: { title: 'Boss Tối: Kim Phách' },
         },
         boss: {
@@ -136,6 +140,40 @@ describe('BossSchedulePanel', () => {
     await flushPromises();
 
     expect(w.find('[data-testid="boss-schedule-panel"]').exists()).toBe(false);
+  });
+
+  it('Phase 13.0 audit pass #5 — render rewardHintI18nKey trên slot khi API cung cấp', async () => {
+    // Repro: trước fix BossScheduleSlot không expose rewardHint → BossView
+    // schedule slot không hiển thị thưởng cho player. Sau fix: render dòng
+    // "Thưởng: ..." dưới boss/region.
+    getLiveOpsTodayMock.mockResolvedValueOnce({
+      ...SAMPLE,
+      bossSchedule: [
+        {
+          ...SAMPLE.bossSchedule[0],
+          rewardHintI18nKey: 'liveops.event.boss_daily_noon_hoa_diem_son.reward',
+        },
+      ],
+    });
+    const w = mountPanel();
+    await flushPromises();
+
+    const reward = w.find(
+      '[data-testid="boss-schedule-reward-boss_daily_noon_hoa_diem_son"]',
+    );
+    expect(reward.exists()).toBe(true);
+    expect(reward.text()).toContain('Thưởng');
+    expect(reward.text()).toContain('Linh thạch + đồ luyện đan hỏa hệ');
+  });
+
+  it('rewardHintI18nKey absent → KHÔNG render reward row', async () => {
+    getLiveOpsTodayMock.mockResolvedValueOnce(SAMPLE);
+    const w = mountPanel();
+    await flushPromises();
+
+    expect(
+      w.find('[data-testid="boss-schedule-reward-boss_daily_noon_hoa_diem_son"]').exists(),
+    ).toBe(false);
   });
 
   it('slot time format theo tz từ API (Asia/Ho_Chi_Minh) — không theo browser TZ', async () => {

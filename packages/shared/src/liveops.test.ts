@@ -357,4 +357,20 @@ describe('LiveOpsEvent — bossScheduleForToday', () => {
   it('default tz = LIVE_OPS_DEFAULT_TZ', () => {
     expect(LIVE_OPS_DEFAULT_TZ).toBe('Asia/Ho_Chi_Minh');
   });
+
+  it('Phase 13.0 audit pass #5 — propagates rewardHintI18nKey từ catalog vào slot', () => {
+    // Repro: trước fix BossScheduleSlot không có rewardHintI18nKey → API +
+    // FE không thể render reward hint cho boss schedule. Sau fix: copy field
+    // từ catalog (LiveOpsEventDef.rewardHintI18nKey) sang slot.
+    const now = new Date('2026-05-07T05:00:00Z'); // Thu 12:00 ICT
+    const slots = bossScheduleForToday(now, 'Asia/Ho_Chi_Minh');
+    const noon = slots.find((s) => s.key === 'boss_daily_noon_hoa_diem_son')!;
+    expect(noon.rewardHintI18nKey).toBe(
+      'liveops.event.boss_daily_noon_hoa_diem_son.reward',
+    );
+    const evening = slots.find((s) => s.key === 'boss_daily_evening_kim_son_mach')!;
+    expect(evening.rewardHintI18nKey).toBe(
+      'liveops.event.boss_daily_evening_kim_son_mach.reward',
+    );
+  });
 });
