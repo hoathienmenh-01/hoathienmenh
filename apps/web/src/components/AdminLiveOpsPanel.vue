@@ -50,7 +50,7 @@ async function refreshStatus(): Promise<void> {
 async function refreshSectWar(): Promise<void> {
   try {
     sectWar.value = await adminSectWarStatus();
-  } catch (e) {
+  } catch {
     // Non-fatal; show inline warning.
     sectWar.value = null;
   }
@@ -61,7 +61,6 @@ async function onToggle(ev: AdminLiveOpsEventStatusView): Promise<void> {
   // Effective = catalog AND (override absent OR override.enabled).
   // Click "disable" if currently effectiveEnabled, else "enable".
   const nextEnabled = !ev.effectiveEnabled;
-  // eslint-disable-next-line no-alert
   if (!confirm(t('adminLiveOps.confirmToggle', { key: ev.key, on: String(nextEnabled) }))) {
     return;
   }
@@ -86,7 +85,6 @@ async function onToggle(ev: AdminLiveOpsEventStatusView): Promise<void> {
 }
 
 async function onRecalc(): Promise<void> {
-  // eslint-disable-next-line no-alert
   if (!confirm(t('adminLiveOps.confirmRecalc'))) return;
   try {
     await adminSectWarRecalculate({});
