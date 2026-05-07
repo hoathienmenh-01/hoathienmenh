@@ -20,8 +20,9 @@ vi.mock('@/api/character', () => ({
 }));
 
 const routerReplaceMock = vi.fn();
+const routerPushMock = vi.fn();
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ replace: routerReplaceMock }),
+  useRouter: () => ({ replace: routerReplaceMock, push: routerPushMock }),
 }));
 
 const toastPushMock = vi.fn();
@@ -86,6 +87,17 @@ vi.mock('@/stores/badges', () => ({
   useBadgesStore: () => badgesState,
 }));
 
+const storyDungeonState = {
+  loaded: false,
+  hasAnyAvailable: false,
+  hasActiveRun: false,
+  availableCount: 0,
+  load: vi.fn().mockResolvedValue(undefined),
+};
+vi.mock('@/stores/storyDungeon', () => ({
+  useStoryDungeonStore: () => storyDungeonState,
+}));
+
 vi.mock('@/components/shell/AppShell.vue', () => ({
   default: {
     name: 'AppShellStub',
@@ -144,6 +156,17 @@ const i18n = createI18n({
           luck: 'May',
         },
         lastTick: 'Tu vi +{gain} lúc {time}.',
+        storyDungeon: {
+          title: 'Bí Cảnh Cốt Truyện',
+          descActive: 'Bạn đang trong 1 bí cảnh cốt truyện.',
+          descAvailable: 'Có {n} bí cảnh đang chờ khám phá.',
+          openBtn: 'Vào bí cảnh',
+        },
+      },
+      homeLiveOps: {
+        sectMissionTitle: 'Sect Mission',
+        sectMissionDesc: 'desc',
+        openBtn: 'Mở',
       },
       auth: {
         errors: {
@@ -196,6 +219,11 @@ describe('HomeView — onMounted routing branches', () => {
     gameState.setCultivating = vi.fn().mockResolvedValue(undefined);
     gameState.breakthrough = vi.fn().mockResolvedValue(undefined);
     badgesState.refresh = vi.fn().mockResolvedValue(undefined);
+    storyDungeonState.loaded = false;
+    storyDungeonState.hasAnyAvailable = false;
+    storyDungeonState.hasActiveRun = false;
+    storyDungeonState.availableCount = 0;
+    storyDungeonState.load = vi.fn().mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -256,6 +284,11 @@ describe('HomeView — render với character', () => {
     gameState.setCultivating = vi.fn().mockResolvedValue(undefined);
     gameState.breakthrough = vi.fn().mockResolvedValue(undefined);
     badgesState.refresh = vi.fn().mockResolvedValue(undefined);
+    storyDungeonState.loaded = false;
+    storyDungeonState.hasAnyAvailable = false;
+    storyDungeonState.hasActiveRun = false;
+    storyDungeonState.availableCount = 0;
+    storyDungeonState.load = vi.fn().mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -327,5 +360,124 @@ describe('HomeView — render với character', () => {
     expect(toastPushMock).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'warning', text: 'Chưa đủ duyên đột phá.' }),
     );
+  });
+});
+
+describe('HomeView — Phase 12.8 Story Dungeon CTA', () => {
+  // Cover §F mục 7: Home CTA visible khi store.loaded && (hasAnyAvailable || hasActiveRun).
+  // Click → router.push('/story-dungeons'). Fail-soft: store.load throw → vẫn render Home.
+
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    authState.isAuthenticated = true;
+    getCharacterMock.mockResolvedValue({ id: 'c1' });
+    gameState.character = buildChar();
+    gameState.fetchState = vi.fn().mockResolvedValue(undefined);
+    gameState.bindSocket = vi.fn();
+    gameState.setCultivating = vi.fn().mockResolvedValue(undefined);
+    gameState.breakthrough = vi.fn().mockResolvedValue(undefined);
+    badgesState.refresh = vi.fn().mockResolvedValue(undefined);
+    storyDungeonState.loaded = false;
+    storyDungeonState.hasAnyAvailable = false;
+    storyDungeonState.hasActiveRun = false;
+    storyDungeonState.availableCount = 0;
+    storyDungeonState.load = vi.fn().mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    wrapper?.unmount();
+    wrapper = null;
+    document.body.innerHTML = '';
+  });
+
+  it('store.loaded=true + hasAnyAvailable=true → render CTA + label desc available với count', async () => {
+    storyDungeonState.loaded = true;
+    storyDungeonState.hasAnyAvailable = true;
+    storyDungeonState.availableCount = 3;
+    mountView();
+    await flushPromises();
+    const cta = document.querySelector('[data-testid="home-story-dungeon-cta"]');
+    expect(cta).not.toBeNull();
+    expect(cta?.textContent).toContain('Bí Cảnh Cốt Truyện');
+    expect(cta?.textContent).toContain('3');
+  });
+
+  it('store.loaded=true + hasActiveRun=true (no available) → render CTA + label desc active', async () => {
+    storyDungeonState.loaded = true;
+    storyDungeonState.hasAnyAvailable = false;
+    storyDungeonState.hasActiveRun = true;
+    storyDungeonState.availableCount = 0;
+    mountView();
+    await flushPromises();
+    const cta = document.querySelector('[data-testid="home-story-dungeon-cta"]');
+    expect(cta).not.toBeNull();
+    expect(cta?.textContent).toContain('Bạn đang trong 1 bí cảnh cốt truyện.');
+  });
+
+  it('store.loaded=false → KHÔNG render CTA (chưa fetch xong)', async () => {
+    storyDungeonState.loaded = false;
+    storyDungeonState.hasAnyAvailable = true;
+    storyDungeonState.hasActiveRun = true;
+    storyDungeonState.availableCount = 5;
+    mountView();
+    await flushPromises();
+    expect(document.querySelector('[data-testid="home-story-dungeon-cta"]')).toBeNull();
+  });
+
+  it('store.loaded=true + cả hasAnyAvailable + hasActiveRun = false → KHÔNG render CTA', async () => {
+    storyDungeonState.loaded = true;
+    storyDungeonState.hasAnyAvailable = false;
+    storyDungeonState.hasActiveRun = false;
+    storyDungeonState.availableCount = 0;
+    mountView();
+    await flushPromises();
+    expect(document.querySelector('[data-testid="home-story-dungeon-cta"]')).toBeNull();
+  });
+
+  it('chưa có character → KHÔNG render CTA dù store.loaded=true', async () => {
+    gameState.character = null;
+    getCharacterMock.mockResolvedValue(null);
+    storyDungeonState.loaded = true;
+    storyDungeonState.hasAnyAvailable = true;
+    storyDungeonState.availableCount = 1;
+    mountView();
+    await flushPromises();
+    expect(document.querySelector('[data-testid="home-story-dungeon-cta"]')).toBeNull();
+  });
+
+  it('click CTA "Vào bí cảnh" → router.push("/story-dungeons")', async () => {
+    storyDungeonState.loaded = true;
+    storyDungeonState.hasAnyAvailable = true;
+    storyDungeonState.availableCount = 1;
+    mountView();
+    await flushPromises();
+    const cta = document.querySelector(
+      '[data-testid="home-story-dungeon-cta"]',
+    ) as HTMLElement;
+    expect(cta).not.toBeNull();
+    const btn = Array.from(cta.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Vào bí cảnh'),
+    ) as HTMLButtonElement | undefined;
+    expect(btn).toBeDefined();
+    btn!.click();
+    await flushPromises();
+    expect(routerPushMock).toHaveBeenCalledWith('/story-dungeons');
+  });
+
+  it('storyDungeonStore.load throw → home vẫn render bình thường (fail-soft)', async () => {
+    storyDungeonState.load = vi.fn().mockRejectedValue(new Error('boom'));
+    storyDungeonState.loaded = false;
+    mountView();
+    await flushPromises();
+    // Character section vẫn render (verify HomeView không crash khi load throw)
+    expect(document.body.innerHTML).toContain('Tiêu Viêm');
+    expect(document.querySelector('[data-testid="home-story-dungeon-cta"]')).toBeNull();
+  });
+
+  it('onMounted gọi storyDungeonStore.load() sau khi character loaded', async () => {
+    mountView();
+    await flushPromises();
+    expect(storyDungeonState.load).toHaveBeenCalledOnce();
   });
 });

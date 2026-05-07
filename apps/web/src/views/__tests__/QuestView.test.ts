@@ -14,6 +14,18 @@ vi.mock('@/api/quest', () => ({
   claimQuest: (...a: unknown[]) => claimQuestMock(...a),
 }));
 
+const fetchStoryDungeonListMock = vi.fn();
+vi.mock('@/api/storyDungeon', () => ({
+  fetchStoryDungeonList: (...a: unknown[]) => fetchStoryDungeonListMock(...a),
+  fetchStoryDungeon: vi.fn(),
+  startStoryDungeon: vi.fn(),
+  advanceStoryDungeon: vi.fn(),
+  clearStoryDungeon: vi.fn(),
+  claimStoryDungeon: vi.fn(),
+}));
+
+const routerPushMock = vi.fn();
+
 vi.mock('@/components/shell/AppShell.vue', () => ({
   default: {
     name: 'AppShellStub',
@@ -42,7 +54,7 @@ vi.mock('@/stores/toast', () => ({
 }));
 
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ replace: vi.fn(), push: routerPushMock }),
 }));
 
 import QuestView from '@/views/QuestView.vue';
@@ -147,6 +159,11 @@ beforeEach(() => {
   acceptQuestMock.mockReset();
   claimQuestMock.mockReset();
   toastPushMock.mockReset();
+  fetchStoryDungeonListMock.mockReset();
+  // Default: no story dungeons available — existing tests don't expect CTAs.
+  // CTA-specific tests override this in their setup.
+  fetchStoryDungeonListMock.mockResolvedValue({ dungeons: [], activeRun: null });
+  routerPushMock.mockReset();
 });
 
 describe('QuestView — render', () => {
@@ -499,5 +516,133 @@ describe('QuestView — Phase 12 Story dungeon hint cho kill+monster step', () =
     expect(
       w.find('[data-testid="quest-step-hint-q_talk-step1"]').exists(),
     ).toBe(false);
+  });
+});
+
+describe('QuestView — Phase 12.8 Story Dungeon CTA', () => {
+  // Cover §F mục 6: CTA "Vào bí cảnh cốt truyện" hiển thị đúng status quest +
+  // chỉ khi storyDungeonStore có entry match `requiredQuestKey`. Click → router.push
+  // tới `/story-dungeons` (player navigate vào StoryDungeonView để start).
+  //
+  // Mock `fetchStoryDungeonListMock` ở từng test riêng để cover từng trạng thái —
+  // beforeEach đã default empty list (no CTA).
+
+  const sdView = {
+    key: 'sd_q1',
+    titleI18nKey: 'story.sd_q1.title',
+    descriptionI18nKey: 'story.sd_q1.desc',
+    titleVi: 'Bí Cảnh Sơn Cốc',
+    descriptionVi: 'desc',
+    requiredQuestKey: 'q_main',
+    requiredQuestStep: null,
+    regionKey: 'son_coc',
+    recommendedRealm: 'phamnhan',
+    minRealmKey: null,
+    npcKey: null,
+    entryDialogueKey: null,
+    clearDialogueKey: null,
+    monsters: [],
+    boss: null,
+    rewardHint: null,
+    oneTime: true,
+    status: 'available' as const,
+  };
+
+  it('quest ACCEPTED + có story dungeon match → render CTA quest-story-dungeon-cta-{key}', async () => {
+    fetchStoryDungeonListMock.mockResolvedValue({
+      dungeons: [sdView],
+      activeRun: null,
+    });
+    fetchQuestsMock.mockResolvedValue([
+      buildQuest({ key: 'q_main', status: 'ACCEPTED', kind: 'main' }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="quest-story-dungeon-cta-q_main"]').exists()).toBe(true);
+    w.unmount();
+  });
+
+  it('quest AVAILABLE + có story dungeon match → render CTA', async () => {
+    fetchStoryDungeonListMock.mockResolvedValue({
+      dungeons: [sdView],
+      activeRun: null,
+    });
+    fetchQuestsMock.mockResolvedValue([
+      buildQuest({ key: 'q_main', status: 'AVAILABLE', kind: 'main' }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="quest-story-dungeon-cta-q_main"]').exists()).toBe(true);
+    w.unmount();
+  });
+
+  it('quest LOCKED + có story dungeon match → KHÔNG render CTA', async () => {
+    fetchStoryDungeonListMock.mockResolvedValue({
+      dungeons: [sdView],
+      activeRun: null,
+    });
+    fetchQuestsMock.mockResolvedValue([
+      buildQuest({ key: 'q_main', status: 'LOCKED', kind: 'main' }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="quest-story-dungeon-cta-q_main"]').exists()).toBe(false);
+    w.unmount();
+  });
+
+  it('quest CLAIMED + có story dungeon match → KHÔNG render CTA (đã đi qua)', async () => {
+    fetchStoryDungeonListMock.mockResolvedValue({
+      dungeons: [sdView],
+      activeRun: null,
+    });
+    fetchQuestsMock.mockResolvedValue([
+      buildQuest({ key: 'q_main', status: 'CLAIMED', kind: 'main' }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="quest-story-dungeon-cta-q_main"]').exists()).toBe(false);
+    w.unmount();
+  });
+
+  it('quest ACCEPTED + KHÔNG có story dungeon match → KHÔNG render CTA', async () => {
+    fetchStoryDungeonListMock.mockResolvedValue({
+      dungeons: [{ ...sdView, requiredQuestKey: 'other_quest' }],
+      activeRun: null,
+    });
+    fetchQuestsMock.mockResolvedValue([
+      buildQuest({ key: 'q_main', status: 'ACCEPTED', kind: 'main' }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="quest-story-dungeon-cta-q_main"]').exists()).toBe(false);
+    w.unmount();
+  });
+
+  it('storyDungeonStore.load fail → CTA fail-soft (KHÔNG crash + KHÔNG CTA)', async () => {
+    fetchStoryDungeonListMock.mockRejectedValue({ code: 'NO_CHARACTER' });
+    fetchQuestsMock.mockResolvedValue([
+      buildQuest({ key: 'q_main', status: 'ACCEPTED', kind: 'main' }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    // Quest list vẫn render bình thường
+    expect(w.find('[data-testid="quest-row-q_main"]').exists()).toBe(true);
+    expect(w.find('[data-testid="quest-story-dungeon-cta-q_main"]').exists()).toBe(false);
+    w.unmount();
+  });
+
+  it('click CTA → router.push("/story-dungeons")', async () => {
+    fetchStoryDungeonListMock.mockResolvedValue({
+      dungeons: [sdView],
+      activeRun: null,
+    });
+    fetchQuestsMock.mockResolvedValue([
+      buildQuest({ key: 'q_main', status: 'ACCEPTED', kind: 'main' }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="quest-story-dungeon-cta-q_main"]').trigger('click');
+    expect(routerPushMock).toHaveBeenCalledWith('/story-dungeons');
+    w.unmount();
   });
 });
