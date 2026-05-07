@@ -40,11 +40,26 @@ export const DEFAULT_SECTS: Array<{ name: string; description: string }> = [
       'Tông môn ven biển, tinh thông thuỷ pháp và đan đạo. Lưỡng nghi điều hoà, thiên về phòng ngự và hồi phục.',
   },
   {
-    name: 'Tu La Điện',
+    name: 'Tu La Tông',
     description:
       'Tà phái cường thế, tu luyện sát đạo và tinh huyết công pháp. Môn quy hà khắc, sức mạnh là tất cả.',
   },
 ];
+
+/**
+ * Sect name aliases — old name → canonical name. Khi bootstrap chạy lại, nếu
+ * thấy một sect ghi tên cũ thì rename sang tên chuẩn để các service mapping
+ * (`SECT_NAME_TO_KEY` ở character/combat/cultivation/skill/leaderboard) match
+ * đúng. Idempotent — chạy lần 2 sẽ không thấy sect cũ và không làm gì.
+ *
+ * Lý do: bootstrap trước đây seed `'Tu La Điện'` nhưng tất cả runtime check
+ * dùng `'Tu La Tông'` → player sect này bị mất sectKey, mất sect-locked
+ * cultivation/skill, mất leaderboard sect mapping. Rename DB row để fix các
+ * env hiện hữu.
+ */
+export const SECT_NAME_ALIASES: Record<string, string> = {
+  'Tu La Điện': 'Tu La Tông',
+};
 
 export interface BootstrapInput {
   email: string;
@@ -111,11 +126,27 @@ async function ensureAdmin(
   return { userId: created.id, email: created.email, action: 'created' };
 }
 
+async function renameSectAliases(prisma: Pick<PrismaClient, 'sect'>): Promise<void> {
+  for (const [oldName, newName] of Object.entries(SECT_NAME_ALIASES)) {
+    const old = await prisma.sect.findUnique({ where: { name: oldName } });
+    if (!old) continue;
+    const collision = await prisma.sect.findUnique({ where: { name: newName } });
+    if (collision) {
+      // Cả tên cũ và tên mới cùng tồn tại — không tự merge để tránh data loss.
+      // Caller (ops) cần thủ công xử lý character đang trỏ sectId cũ.
+      // Idempotent path: bỏ qua, ensureSects() bên dưới sẽ giữ row tên mới.
+      continue;
+    }
+    await prisma.sect.update({ where: { id: old.id }, data: { name: newName } });
+  }
+}
+
 async function ensureSects(
   prisma: Pick<PrismaClient, 'sect'>,
   input: BootstrapInput,
 ): Promise<BootstrapResult['sects']> {
   if (input.skipSects) return [];
+  await renameSectAliases(prisma);
   const out: BootstrapResult['sects'] = [];
   for (const seed of DEFAULT_SECTS) {
     const existing = await prisma.sect.findUnique({ where: { name: seed.name } });

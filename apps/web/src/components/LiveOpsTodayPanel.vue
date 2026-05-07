@@ -52,6 +52,9 @@ function formatCountdown(secs: number | undefined): string {
   return `${m}m`;
 }
 
+const DEFAULT_DISPLAY_TZ = 'Asia/Ho_Chi_Minh';
+const displayTz = computed(() => data.value?.timezone ?? DEFAULT_DISPLAY_TZ);
+
 const activeEventsNonBoss = computed(() => {
   if (!data.value) return [];
   return data.value.activeEvents.filter((ev) => ev.type !== 'BOSS');
@@ -77,11 +80,28 @@ function statusClass(status: BossScheduleViewModel['status']): string {
   return 'border-ink-300/40 bg-ink-700/30 text-ink-300';
 }
 
+/**
+ * Format slot time in API-supplied timezone (defaults to Asia/Ho_Chi_Minh).
+ *
+ * Slot ISO timestamps đến từ catalog đã đặt theo Asia/Ho_Chi_Minh; nếu render
+ * theo browser TZ (vd UTC) thì user sẽ thấy "boss trưa" lúc 05:00 — sai.
+ * Hardcode tz từ API response để slot time consistent giữa các region.
+ */
 function localTime(iso: string): string {
-  const d = new Date(iso);
-  const h = d.getHours().toString().padStart(2, '0');
-  const m = d.getMinutes().toString().padStart(2, '0');
-  return `${h}:${m}`;
+  try {
+    return new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: displayTz.value,
+    }).format(new Date(iso));
+  } catch {
+    // Fallback (Intl không support tz) — render theo browser TZ tốt hơn crash.
+    const d = new Date(iso);
+    const h = d.getHours().toString().padStart(2, '0');
+    const m = d.getMinutes().toString().padStart(2, '0');
+    return `${h}:${m}`;
+  }
 }
 
 function suggestionLabel(s: SuggestedActivity): string {
@@ -91,11 +111,11 @@ function suggestionLabel(s: SuggestedActivity): string {
 }
 
 function gotoSuggested(s: SuggestedActivity): void {
+  // Per-suggestion button chỉ render cho kind='boss' (template v-if).
+  // Defensive: vẫn check để không route sai khi caller mở rộng.
   if (s.kind === 'boss') {
     router.push({ name: 'boss' });
-    return;
   }
-  // Generic CTA: dashboard không route — giữ nguyên Home.
 }
 
 function gotoBoss(): void {
@@ -163,6 +183,7 @@ function gotoMission(): void {
             </span>
           </span>
           <button
+            v-if="s.kind === 'boss'"
             type="button"
             class="shrink-0 rounded border border-ink-300/40 px-3 py-1 text-xs uppercase tracking-widest hover:bg-ink-300/10"
             @click="gotoSuggested(s)"
