@@ -1219,6 +1219,63 @@ $ pnpm test:balance
 
 ---
 
+## 11.14 SECT MISSIONS, SECT SHOP & ADMIN LIVEOPS (Phase 13.1.B)
+
+### 11.14.1 Sect Mission catalog
+
+Phase 13.1.B thêm 5 mission Tông Môn (3 daily + 2 weekly) cộng `congHien` (= `Character.contribBalance`) khi claim. Catalog ở [`packages/shared/src/sect-missions.ts`](../packages/shared/src/sect-missions.ts).
+
+| Key                              | Cadence | Goal                  | Target | Reward |
+|----------------------------------|---------|-----------------------|-------:|--------|
+| `sect_daily_dungeon_3`           | DAILY   | dungeon_clear         |     3  | +30 contribution |
+| `sect_daily_boss_participate`    | DAILY   | boss_participate      |     1  | +40 contribution |
+| `sect_daily_boss_damage`         | DAILY   | boss_damage proxy     |    25  | +35 contribution |
+| `sect_weekly_quest_5`            | WEEKLY  | quest_complete        |     5  | +150 contribution + 500 LT |
+| `sect_weekly_breakthrough_1`     | WEEKLY  | breakthrough_success  |     1  | +200 contribution + 800 LT |
+
+**Curve rationale**:
+- DAILY tổng = 30 + 40 + 35 = **105 contribution/day** (đạt nhanh trong 1 phiên).
+- WEEKLY tổng = 150 + 200 = **350 contribution/week** (yêu cầu multi-session).
+- Player active mỗi tuần ≈ 105 × 7 + 350 = **1085 contribution** → đủ mua **5 huyết_chi_đan/ngày + 1 cổ_thiên_đan/tuần** (xem §11.14.2 sect shop).
+- **Period reset TZ**: `Asia/Ho_Chi_Minh`. DAILY periodKey = `YYYY-MM-DD`; WEEKLY = ISO `YYYY-Www` (reuse `sectWarWeekKey`).
+
+### 11.14.2 Sect Shop catalog
+
+5 entries dạng "spend `congHien` đổi consumable/material". Catalog ở [`packages/shared/src/sect-shop.ts`](../packages/shared/src/sect-shop.ts).
+
+| Entry key                        | Item             | Cost (contribution) | Daily limit | Weekly limit |
+|----------------------------------|------------------|--------------------:|------------:|-------------:|
+| `sect_shop_huyet_chi_dan`        | huyet_chi_dan    | 50                  | 5           | —            |
+| `sect_shop_thanh_lam_dan`        | thanh_lam_dan    | 250                 | 3           | —            |
+| `sect_shop_co_thien_dan`         | co_thien_dan     | 200                 | —           | 3            |
+| `sect_shop_huyet_tinh`           | huyet_tinh       | 80                  | —           | 10           |
+| `sect_shop_than_dan`             | than_dan         | 5000                | —           | 1            |
+
+**Curve rationale**:
+- Pill phổ thông (`huyet_chi_dan` 50, `thanh_lam_dan` 250) — daily cap, hỗ trợ healing/MP recovery hằng ngày.
+- Pill mid-tier (`co_thien_dan` 200) — weekly cap 3, exp dan tier vừa.
+- Material (`huyet_tinh` 80) — weekly cap 10, dùng craft/refine.
+- Endgame (`than_dan` 5000) — weekly cap 1, save-up reward (~5 tuần spend).
+- Tổng max spend tuần ≈ 50×35 + 250×21 + 200×3 + 80×10 + 5000×1 ≈ **13,800 contribution/week** — gấp ~13× active player earning, đảm bảo multi-week save-up cho high-tier.
+
+### 11.14.3 Anti-abuse caps
+
+- **Mission claim**: composite UNIQUE `(characterId, missionKey, periodKey)` trong DB chống double-claim. Server reject `MISSION_ALREADY_CLAIMED` khi retry cùng period.
+- **Mission progress**: derive từ `SectWarContribution` rows (đã ghi từ gameplay hooks) hoặc `Character` snapshot (breakthrough). Service KHÔNG có endpoint FE để tự thêm progress → KHÔNG có gap exploit.
+- **Shop daily/weekly limit**: aggregate `SectShopPurchase.qty` trong period window theo `MISSION_RESET_TZ`. Atomic check trong tx trước khi trừ contribution → chống race-double-spend.
+- **Shop CAS**: `Character.contribBalance` decrement qua `updateMany({ where: { id, contribBalance: { gte: cost } } })` → race winner accept, loser get count=0 → `INSUFFICIENT_CONTRIB` (không trừ tiền, không grant item).
+- **Shop rate limit**: 30 req/60s per user qua `FailoverRateLimiter` (Redis primary + in-memory fallback). Spam buy → `RATE_LIMITED` 429.
+- **NON_STACKABLE_QTY_GT_1 guard**: defensive — items hiện tại đều stackable, nhưng future non-stackable item → reject `qty > 1` ngay tại service trước transaction.
+- **Item grant rollback**: `InventoryService.grantTx` chạy trong cùng `prisma.$transaction` với contribution decrement → fail → toàn bộ tx rollback (không phát sinh side-effect).
+- **Sect required**: `Character.sectId == null` → reject cả claim mission và buy shop với `SECT_REQUIRED`.
+
+### 11.14.4 Admin LiveOps controls
+
+`/admin/liveops` (status), `/admin/liveops/event/toggle` (override), `/admin/sect-war/{status,recalculate}` chỉ accessible cho `User.role = ADMIN` qua `AdminGuard`. Mọi toggle ghi audit log `ADMIN_LIVEOPS_OVERRIDE` (actor + eventKey + enabled + timestamp). Recalculate hiện là no-op response (read-only audit), KHÔNG phá contribution rows hiện có.
+
+---
+
 ## 12. CHANGELOG
 
 - **2026-04-30** — Initial creation. Author: Devin AI session 9q.
+- **2026-05-07** — Phase 13.1.B Sect Missions + Sect Shop + Admin LiveOps section added (§11.14).
