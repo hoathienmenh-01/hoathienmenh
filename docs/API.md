@@ -273,6 +273,51 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 - `INVALID_INPUT` — qty < 1 hoặc kiểu sai.
 - `NO_CHARACTER` — chưa có nhân vật.
 
+## Story Dungeon — `StoryDungeonController` (prefix `/story/dungeons`, Phase 12.8.A)
+
+> Phase 12.8.A Story Dungeon Catalog + API Foundation — read-only catalog API cho UI map view. Catalog ở [`packages/shared/src/story-dungeons.ts`](../packages/shared/src/story-dungeons.ts) (`STORY_DUNGEONS`). Server-authoritative status compute (`'locked'/'available'/'cleared'`) dựa trên `Character.realmKey` + `QuestProgress.stepProgress`. **KHÔNG mutation, KHÔNG runtime advance/claim — Phase 12.8.B sẽ wire `StoryDungeonRun` Prisma + 4 endpoint runtime.**
+
+| Method | Path                       | Auth | Mô tả |
+|--------|----------------------------|------|-------|
+| GET    | `/story/dungeons`          | Yes  | List catalog `enabled=true` + status compute. Service flow: (1) load `Character` (`realmKey`), (2) `realmByKey(realmKey).order` → realmOrder, (3) load `QuestProgress` rows → `Map<questKey, status>` + `Map<questKey, stepProgress>`, (4) for each `STORY_DUNGEONS[].enabled=true`: `computeStoryDungeonStatus(template, ctx)` → `'locked'/'available'/'cleared'`, (5) hydrate `monsterByKey` + optional `bossByKey` cho preview. Response `{ ok: true, data: { dungeons: StoryDungeonView[] } }`. |
+| GET    | `/story/dungeons/:key`     | Yes  | Single template view + status. `:key` regex `^story_dgn_[a-z0-9_]+$` (zod). 404 `DUNGEON_NOT_FOUND` nếu key không tồn tại HOẶC `enabled=false` (admin toggle). |
+
+**`StoryDungeonView` shape**:
+```ts
+{
+  key: string;                                      // 'story_dgn_phamnhan_back_mountain'
+  titleI18nKey: string;                             // 'story_dungeon.<key>.title'
+  descriptionI18nKey: string;
+  titleVi: string;                                  // hard-coded VN fallback
+  descriptionVi: string;
+  requiredQuestKey: string;                         // 'phamnhan_realm_01'
+  requiredQuestStep: string | null;                 // 'step_01' | null = chỉ cần quest accepted
+  regionKey: string;                                // RegionKey ∈ map-regions.ts
+  recommendedRealm: string;                         // RealmDef.key (UI hint)
+  minRealmKey: string | null;                       // gate; player.realm.order < min → locked
+  npcKey: string | null;                            // NpcDef.key
+  entryDialogueKey: string | null;                  // STORY_DIALOGUES[].id; Phase 12.8.B sẽ wire trigger
+  clearDialogueKey: string | null;
+  monsters: { key, name, element, level }[];        // hydrated qua monsterByKey
+  boss: { key, name, recommendedRealm, regionKey } | null;
+  rewardHint: { linhThach?, tienNgoc?, exp?, items?: { itemKey, qty }[] } | null;
+  oneTime: boolean;
+  status: 'locked' | 'available' | 'cleared';       // server-authoritative
+}
+```
+
+**Status compute logic** (`computeStoryDungeonStatus`):
+- `template.minRealmKey && realmOrder < min.order` → `locked`.
+- `questState[requiredQuestKey] === 'CLAIMED'` → `cleared`.
+- `questState[requiredQuestKey]` ∉ `{ACCEPTED, COMPLETED}` → `locked`.
+- Có `requiredQuestStep` + state `ACCEPTED` + `stepProgress[step] < step.count` → `locked`.
+- `state === 'COMPLETED'` (mọi step coi như đạt) → `available`.
+- Else → `available`.
+
+**Catalog seed** (Phase 12.8.A): 4 entries gắn 4 main quest đầu tiên — Phàm Nhân Hậu Sơn Linh Tuyền Động (`phamnhan_realm_01:step_01` — `son_coc`, no minRealm), Luyện Khí Hắc Lâm Tâm Thử (`luyenkhi_main_01:step_02` — `hac_lam`, minRealm=`luyenkhi`), Trúc Cơ Mộc Huyền Lâm Ký Ức Cổ Thụ (`truc_co_main_01:step_03` — `moc_huyen_lam`, minRealm=`truc_co`), Kim Đan Kim Sơn Thiên Lò Lệnh (`kim_dan_main_01:step_02` — `kim_son_mach`, minRealm=`kim_dan`).
+
+**Read-only invariants**: KHÔNG Prisma migration, KHÔNG mutation, KHÔNG `RewardLedger`. Service chỉ đọc `Character.realmKey` + `QuestProgress` qua `PrismaService.findUnique` + `findMany` — KHÔNG re-enter `QuestService` / `DungeonRunService` / `CurrencyService`. Phase 12.8.B sẽ thêm: (1) `StoryDungeonRun` Prisma model với composite UNIQUE `(characterId, templateKey)` cho oneTime guard, (2) 4 endpoint mutation (`POST /story/dungeons/:key/start`, `POST /story/dungeon-runs/:runId/next`, `POST /story/dungeon-runs/:runId/claim`, `POST /story/dungeon-runs/:runId/abandon`), (3) reward grant atomic qua `CurrencyService.applyTx` reason `STORY_DUNGEON_REWARD` + `InventoryService.grantTx` (composite UNIQUE `(characterId, refType, refId)` chống double-grant), (4) auto-advance quest step khi clear (`QuestService.track('kill','monster', ...)` cho mỗi monster trong template hoặc explicit `advance_quest_step` cho narrative step), (5) entry/clear dialogue trigger.
+
 ## Story Dialogue — `StoryDialogueController` (prefix `/story/dialogue`, Phase 12 Story PR-7)
 
 > Phase 12 Story Dialogue Foundation — branching NPC dialogue catalog cho main quest. Catalog ở [`packages/shared/src/story-dialogues.ts`](../packages/shared/src/story-dialogues.ts) (`STORY_DIALOGUES`, helpers `findStoryDialogueNode`, `getStoryDialogueRoot`). Server-authoritative: FE chỉ render `StoryDialogueNodeView` mà server đã filter theo quest/flag/seen.

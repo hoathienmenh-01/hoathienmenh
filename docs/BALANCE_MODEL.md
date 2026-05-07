@@ -634,6 +634,32 @@ Invariant (xem `dungeons-balance.test.ts` `Phase 12.5 late-game story monster ba
 - `tich_thien_sat_thu` burst-glass: atk ≥ peer ELITE `kim_dieu_thuong_phong` − 15, speed ≥ peer, hp < peer.
 - 3 SPIRIT Trúc Cơ (`tich_linh_anh`, `tam_ma_anh`, `tich_linh_quy`) def ≤ 1.2 × peer BEAST/HUMANOID cùng level (intangible flavor).
 
+### 5.7 Story Dungeon reward hint (Phase 12.8.A)
+
+`packages/shared/src/story-dungeons.ts` `STORY_DUNGEONS[<key>].rewardHint?: { linhThach?, tienNgoc?, exp?, items?: { itemKey, qty }[] }`. Đây là **hint** UI hiển thị (không phải reward thực) — Phase 12.8.B mới grant atomic qua `CurrencyService.applyTx` reason `STORY_DUNGEON_REWARD` + `InventoryService.grantTx`. `tienNgoc` trong hint vẫn là cap bởi `linh_thach_to_tien_ngoc` ratio để tránh false-promise.
+
+Curve catalog seed Phase 12.8.A (4 entry):
+
+| Story dungeon key | Realm tier | Quest gate | linhThach | tienNgoc | exp | items (qty) | Notes |
+|---|---|---:|---:|---:|---:|---|---|
+| `story_dgn_phamnhan_back_mountain` | Phàm Nhân | `phamnhan_realm_01:step_01` | 80 | — | 150 | `linh_lo_dan` ×1 | Entry instance — match `phamnhan_grind_01` claim 100 LT + 200 EXP nhưng nhỏ hơn vì story onboarding đã có quest claim parallel. |
+| `story_dgn_luyenkhi_hac_lam_trial` | Luyện Khí | `luyenkhi_main_01:step_02` (minRealm) | 200 | — | 480 | `co_thien_dan` ×1 | Match peer `luyenkhi_main_01` claim 250 LT + 600 EXP scaled down 20% vì oneTime + bypass dungeon stamina. |
+| `story_dgn_truc_co_co_thu_ky` | Trúc Cơ | `truc_co_main_01:step_03` (minRealm) | 600 | 5 | 1200 | `cuu_huyen_dan` ×1 + `tinh_thiet` ×2 | First story dungeon có `tienNgoc` (premium reward) — tier mid-game justify ratio 5 tien_ngoc ≈ 500 LT. |
+| `story_dgn_kim_dan_kim_son_thien_lo` | Kim Đan | `kim_dan_main_01:step_02` (minRealm) | 1500 | 20 | 2800 | `linh_can_dan` ×1 + `phu_van_ngoc` ×3 | Endgame seed — `linh_can_dan` parity với boss endgame (Phase 12.4 §5.4 `cuu_la_huyen_quan` weight 1). |
+
+Convention (Phase 12.8.A):
+- `oneTime: true` → reward grant 1 lần / character / template (Phase 12.8.B sẽ enforce qua composite UNIQUE `(characterId, refType, refId)` trên `CurrencyLedger` + `ItemLedger`).
+- `linhThach` hint nằm trong band của tier (Phàm Nhân 50-150, Luyện Khí 100-300, Trúc Cơ 400-800, Kim Đan 1k-2k) — match §5.3 dungeon clear range.
+- `exp` hint ≈ 2 × `linhThach` (rough heuristic — `LINH_THACH_PER_EXP ≈ 0.5`).
+- `items[]` chỉ chọn từ `ITEMS` catalog (invariant `validateStoryDungeonCatalog` reject orphan).
+- `qty` ≥ 1; non-stackable items chỉ qty=1 (test enforce).
+- KHÔNG grant skill_book hoặc title trong story dungeon hint (Phase 12.8.B mới wire — title qua quest claim, skill_book qua dungeon-run regular).
+
+Invariant (xem `story-dungeons.test.ts` describe `validateStoryDungeonCatalog`):
+- Mọi `rewardHint.items[].itemKey` resolve qua `itemByKey`.
+- `rewardHint.{linhThach, tienNgoc, exp}` integer ≥ 0.
+- `rewardHint.items[].qty` ≥ 1.
+
 ### 5.4 Gem socket budget (phase 11.4.A)
 
 **Phase 11.4.A catalog đã có (session 9r-10 PR — `packages/shared/src/gems.ts`)**:

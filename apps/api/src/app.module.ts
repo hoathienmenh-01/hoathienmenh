@@ -18,6 +18,7 @@ import { MissionModule } from './modules/mission/mission.module';
 import { QuestModule } from './modules/quest/quest.module';
 import { NpcModule } from './modules/npc/npc.module';
 import { StoryDialogueModule } from './modules/story-dialogue/story-dialogue.module';
+import { StoryDungeonModule } from './modules/story-dungeon/story-dungeon.module';
 import { GiftCodeModule } from './modules/giftcode/giftcode.module';
 import { MailModule } from './modules/mail/mail.module';
 import { EmailModule } from './modules/email/email.module';
