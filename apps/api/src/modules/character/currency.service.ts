@@ -49,7 +49,13 @@ export type LedgerReason =
   // với `refType='SectWarWeeklyRewardClaim'` + `refId=weekKey`. Idempotency
   // lấy từ `SectWarWeeklyRewardClaim` UNIQUE `(weekKey, characterId)` CAS
   // guard — race-safe 2 concurrent claim chỉ 1 ledger row.
-  | 'SECT_WAR_REWARD';
+  | 'SECT_WAR_REWARD'
+  // Phase 12 Story Dialogue Foundation — small reward grant từ choice effect
+  // `give_reward`. Wire `StoryDialogueService.applyChoice` qua `applyTx` cho
+  // linhThach/tienNgoc với `refType='StoryDialogueNode'` + `refId=nodeId`.
+  // Idempotency lấy từ `Character.storyDialogueSeen` (mark_seen + grant ALWAYS
+  // đi đôi → choice grant chỉ chạy 1 lần / node). Reward cap STORY_DIALOGUE_REWARD_CAP.
+  | 'STORY_DIALOGUE_REWARD';
 
 export interface CurrencyApplyInput {
   characterId: string;

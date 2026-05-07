@@ -2040,6 +2040,32 @@
       }
     }
   },
+  "storyDialogue": {
+    "title": "Hội thoại cốt truyện",
+    "talk": "Tâm sự",
+    "alreadyChosen": "Đã chọn",
+    "locked": "Chưa mở",
+    "empty": "Đạo hữu này chưa có chuyện gì để bàn.",
+    "linhThach": "Linh thạch",
+    "tienNgoc": "Tiên ngọc",
+    "errors": {
+      "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "NPC_UNKNOWN": "Đạo hữu này không tồn tại.",
+      "NPC_LOCKED_REALM": "Cảnh giới của con chưa đủ để gặp người này.",
+      "NO_DIALOGUE": "Đạo hữu này hôm nay không có lời để nói.",
+      "NODE_UNKNOWN": "Đoạn hội thoại này không tồn tại.",
+      "NODE_NPC_MISMATCH": "Đoạn hội thoại không thuộc về đạo hữu này.",
+      "CHOICE_UNKNOWN": "Lựa chọn này không tồn tại.",
+      "INVALID_CHOICE": "Lựa chọn này không hợp lệ lúc này.",
+      "ALREADY_APPLIED": "Lựa chọn này đã chọn rồi.",
+      "QUEST_NOT_ACCEPTED": "Phải nhận nhiệm vụ trước khi tiếp lời.",
+      "QUEST_STEP_LOCKED": "Phải hoàn thành bước trước đó của nhiệm vụ.",
+      "QUEST_STEP_KIND_MISMATCH": "Bước nhiệm vụ này không tiếp được qua đối thoại.",
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "UNKNOWN": "Không thể tiếp tục đối thoại, thử lại."
+    }
+  },
   "quest": {
     "title": "Nhiệm Vụ Cốt Truyện",
     "subtitle": "Theo dõi và hoàn thành các chuỗi nhiệm vụ chính tuyến của Hoa Thiên Lộ.",

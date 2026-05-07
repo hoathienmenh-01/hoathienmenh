@@ -273,6 +273,34 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 - `INVALID_INPUT` — qty < 1 hoặc kiểu sai.
 - `NO_CHARACTER` — chưa có nhân vật.
 
+## Story Dialogue — `StoryDialogueController` (prefix `/story/dialogue`, Phase 12 Story PR-7)
+
+> Phase 12 Story Dialogue Foundation — branching NPC dialogue catalog cho main quest. Catalog ở [`packages/shared/src/story-dialogues.ts`](../packages/shared/src/story-dialogues.ts) (`STORY_DIALOGUES`, helpers `findStoryDialogueNode`, `getStoryDialogueRoot`). Server-authoritative: FE chỉ render `StoryDialogueNodeView` mà server đã filter theo quest/flag/seen.
+
+| Method | Path                                  | Auth | Mô tả |
+|--------|---------------------------------------|------|-------|
+| GET    | `/story/dialogue/:npcKey`             | Yes  | Trả node hội thoại story hiện tại cho NPC. Service resolve qua: (1) load `Character` (`storyChapter`, `storyFlags`, `storyDialogueSeen`, `realmCode`), (2) load `QuestProgress` rows của character, (3) `getStoryDialogueRoot(npcKey, ctx)` chọn entry node đầu tiên `ALL conditions` pass. Response `StoryDialogueNodeView { nodeId, npcKey, questKey?, text (i18n key hoặc raw), seen, choices: StoryDialogueChoiceView[] }`. Mỗi choice gồm `{ key, label, available, unavailableReason: 'quest_status:foo=accepted' \| 'flag:bar=baz' \| 'already_applied' \| null, nextNodeId?, alreadyApplied }`. Choice không pass condition vẫn render với `available=false` để FE explain lý do. |
+| POST   | `/story/dialogue/:npcKey/choice`      | Yes  | Body `{ nodeId: string, choiceKey: string }`. Atomic transaction: assert node hợp lệ + choice available + chưa apply (nếu `oncePerCharacter`) → apply effects theo thứ tự catalog: `mark_seen` (push vào `Character.storyDialogueSeen` JSON), `set_flag` (set `Character.storyFlags[key]=value`), `give_reward` (gọi `CurrencyService.applyTx` với reason `STORY_DIALOGUE_CHOICE`, refType `StoryDialogueChoice`, refId `${nodeId}:${choiceKey}` — idempotent qua composite UNIQUE chống double-grant), `advance_quest_step` (chỉ chạy nếu quest ACCEPTED + step hợp lệ + chưa COMPLETED → gọi `QuestService.track`). Trả `{ effectsApplied: StoryDialogueEffectView[], granted: { linhThach, tienNgoc, exp }, flags: Record<string,string>, seen: string[], nextNode: StoryDialogueNodeView \| null }`. `nextNode` resolve `choice.nextNodeId` qua condition mới (sau effect). |
+
+**Choice condition kinds**:
+- `quest_status` — `{ kind: 'quest_status', questKey, status: 'NOT_STARTED'\|'ACCEPTED'\|'COMPLETED'\|'CLAIMED' }`. Match với `QuestProgress` của character (NOT_STARTED nếu không có row).
+- `flag` — `{ kind: 'flag', flagKey, value? }`. Match `Character.storyFlags[flagKey] === value` (hoặc tồn tại nếu không có `value`).
+- `seen_node` — `{ kind: 'seen_node', nodeId }`. Match `Character.storyDialogueSeen.includes(nodeId)`.
+- `realm_min` — `{ kind: 'realm_min', realmCode }`. Match `realmOrder(character.realmCode) >= realmOrder(realmCode)`.
+
+**Story Dialogue error codes**:
+- `NPC_NOT_FOUND` — `npcKey` không có trong shared catalog `NPCS`.
+- `STORY_DIALOGUE_NOT_AVAILABLE` — NPC không có entry node nào pass condition cho character này (chưa unlock dialog).
+- `NODE_NOT_FOUND` — `nodeId` body không tồn tại trong catalog dưới `npcKey` đó.
+- `CHOICE_NOT_FOUND` — `choiceKey` body không tồn tại trên node.
+- `CHOICE_LOCKED` — choice tồn tại nhưng `available=false` server-side (condition fail giữa GET và POST hoặc client bypass).
+- `CHOICE_ALREADY_APPLIED` — choice `oncePerCharacter` đã apply trước đó.
+- `QUEST_STEP_LOCKED` — `advance_quest_step` effect chỉ hợp lệ nếu quest ACCEPTED + step matches; nếu sai → reject TOÀN BỘ effects (không partial apply).
+- `INVALID_INPUT` — body sai shape (zod).
+- `NO_CHARACTER` — chưa có nhân vật.
+
+**Idempotency / atomicity**: toàn bộ effects apply trong cùng `prisma.$transaction`. `give_reward` qua `CurrencyService.applyTx(tx, charId, { linhThach?, tienNgoc?, exp? }, { reason: 'STORY_DIALOGUE_CHOICE', refType: 'StoryDialogueChoice', refId: '${nodeId}:${choiceKey}' })` — composite UNIQUE `(characterId, refType, refId)` chống double-grant nếu retry. `mark_seen` dedupe array client-side trong tx. `set_flag` overwrite key. KHÔNG WebSocket push (FE refetch state qua next `GET /character/state` trong handler).
+
 ## Admin LiveOps Controls — `AdminLiveOpsController` (Phase 13.1.B + Phase 13.1.C)
 
 > Phase 13.1.B — admin override LiveOps event toggles + sect-war status/recalculate. Phase 13.1.C — sect-war read-after-audit snapshot + force-spawn boss (xem `POST /boss/admin/spawn` ở §Boss). Mọi endpoint role `ADMIN` (`AdminGuard`).
@@ -311,6 +339,7 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 - **Daily login**: `NO_CHARACTER`.
 - **Shop**: `ITEM_NOT_FOUND`, `NOT_ENOUGH_FUNDS`, `INVALID_INPUT`.
 - **Logs (M6)**: `NO_CHARACTER`, `INVALID_CURSOR`, `INVALID_INPUT`.
+- **Story Dialogue (Phase 12 Story PR-7)**: `NPC_NOT_FOUND`, `STORY_DIALOGUE_NOT_AVAILABLE`, `NODE_NOT_FOUND`, `CHOICE_NOT_FOUND`, `CHOICE_LOCKED`, `CHOICE_ALREADY_APPLIED`, `QUEST_STEP_LOCKED`, `INVALID_INPUT`, `NO_CHARACTER`.
 
 ## Environment
 
