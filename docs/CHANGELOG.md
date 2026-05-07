@@ -12,6 +12,17 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Internal — Daily-login multi-day smoke positive (this PR)
+
+- **Multi-day integration test** `apps/api/src/modules/daily-login/daily-login.multi-day.test.ts` (5 case, +5 vitest) cho `DailyLoginService.claim(userId, now)` qua test-clock injection — service signature đã hỗ trợ `now: Date` param từ Phase 11 nên KHÔNG mở endpoint dev mới. Cover:
+  1. Chuỗi 7 ngày liên tục → streak monotonic 1→7, +700 LT, 7 row `CurrencyLedger` reason `DAILY_LOGIN`, 7 row `DailyLoginClaim` với `claimDateLocal` monotonic +1.
+  2. Reward ngày 7 = `DAILY_LOGIN_LINH_THACH` flat catalog (100 LT/ngày, không escalate — closed beta lock).
+  3. Double-claim cùng ngày giữa chuỗi 7 ngày → idempotent (`claimed=false`, `linhThachDelta='0'`, streak preserved, không cộng tiền 2 lần).
+  4. Missed day giữa chuỗi → streak reset về 1 ở ngày sau (anti free-streak), tổng LT đúng theo số ngày thực claim.
+  5. Timezone boundary VN ICT: 16:30 UTC vs 17:30 UTC = khác local date (cross VN midnight 17:00 UTC); và cùng ngày VN nhưng 22h UTC sau → idempotent (anti tz-shift double-claim).
+- **Risk / rollback**: zero — pure test file, KHÔNG sửa service / controller / endpoint / Prisma schema. Revert = xoá file. Không ảnh hưởng test baseline khác.
+- **Verification**: api typecheck ✅ / api test full **2123** (+5) ✅ / pnpm build ✅. Pre-existing flaky `chat.service.test.ts` rate-limit pass on retry, không liên quan.
+
 ### Added — Phase 13.1.B Sect Missions, Sect Shop & Admin LiveOps Controls (PR #459)
 
 - **Sect Mission system** — daily/weekly mission Tông Môn cộng `congHien` (= `Character.contribBalance`). 5 entry catalog: 3 DAILY (`sect_daily_dungeon_3` +30, `sect_daily_boss_participate` +40, `sect_daily_boss_damage` +35) + 2 WEEKLY (`sect_weekly_quest_5` +150 contrib +500 LT, `sect_weekly_breakthrough_1` +200 contrib +800 LT). Active player ~1085 contribution/tuần. Reset DAILY 00:00 ICT, WEEKLY ISO week (Mon 00:00 → Sun 23:59 ICT), reuse `MISSION_RESET_TZ`.
