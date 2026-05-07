@@ -58,7 +58,6 @@ const filteredDungeons = computed<StoryDungeonViewModel[]>(() => {
 
 const totalCount = computed(() => store.totalCount);
 const availableCount = computed(() => store.availableCount);
-const lockedCount = computed(() => store.lockedCount);
 const clearedCount = computed(() => store.clearedCount);
 const filteredCount = computed(() => filteredDungeons.value.length);
 
