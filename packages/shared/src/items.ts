@@ -536,7 +536,7 @@ export const ITEMS: readonly ItemDef[] = [
   {
     key: 'tu_la_dao',
     name: 'Tu La Đao',
-    description: 'Yêu đao tế bằng huyết tinh, hợp đệ tử Tu La Điện sơ nhập đạo.',
+    description: 'Yêu đao tế bằng huyết tinh, hợp đệ tử Tu La Tông sơ nhập đạo.',
     kind: 'WEAPON',
     quality: 'PHAM',
     stackable: false,
@@ -924,7 +924,7 @@ export const ITEMS: readonly ItemDef[] = [
   {
     key: 'tu_la_huyet_phach',
     name: 'Tu La Huyết Phách',
-    description: 'Pháp bảo Tu La Điện, tế huyết khắc cốt, công sát kinh người.',
+    description: 'Pháp bảo Tu La Tông, tế huyết khắc cốt, công sát kinh người.',
     kind: 'ARTIFACT',
     quality: 'TIEN',
     stackable: false,

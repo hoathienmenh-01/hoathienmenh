@@ -26,7 +26,7 @@ const i18n = createI18n({
       liveopsToday: {
         loading: 'Đang tải lịch sự kiện…',
         bossScheduleTitle: 'Lịch Boss hôm nay',
-        startIn: 'khởi {time}',
+        startIn: 'Còn {time}',
         bossStatus: {
           upcoming: 'Sắp tới',
           active: 'Đang mở',
@@ -116,7 +116,7 @@ describe('BossSchedulePanel', () => {
     );
     expect(eve.exists()).toBe(true);
     expect(eve.text()).toContain('Sắp tới');
-    expect(eve.text()).toContain('khởi 6h 45m');
+    expect(eve.text()).toContain('Còn 6h 45m');
   });
 
   it('API error → panel ẩn (không crash)', async () => {
@@ -136,5 +136,24 @@ describe('BossSchedulePanel', () => {
     await flushPromises();
 
     expect(w.find('[data-testid="boss-schedule-panel"]').exists()).toBe(false);
+  });
+
+  it('slot time format theo tz từ API (Asia/Ho_Chi_Minh) — không theo browser TZ', async () => {
+    // Repro Bug #2: slot ISO `05:00:00Z` = ICT 12:00 (UTC+7). User browser ở
+    // bất kỳ TZ nào cũng phải thấy 12:00 (đúng theo catalog VN), không phải
+    // 05:00 (UTC) hay 13:00 (CEST) v.v.
+    getLiveOpsTodayMock.mockResolvedValueOnce(SAMPLE);
+    const w = mountPanel();
+    await flushPromises();
+
+    const noon = w.find(
+      '[data-testid="boss-schedule-item-boss_daily_noon_hoa_diem_son"]',
+    );
+    expect(noon.text()).toContain('12:00'); // 05:00 UTC → ICT 12:00.
+
+    const eve = w.find(
+      '[data-testid="boss-schedule-item-boss_daily_evening_kim_son_mach"]',
+    );
+    expect(eve.text()).toContain('19:00'); // 12:00 UTC → ICT 19:00.
   });
 });

@@ -74,7 +74,8 @@ Script idempotent (xem `apps/api/scripts/bootstrap.ts`):
 
 - Tạo user ADMIN nếu chưa có (đọc `INITIAL_ADMIN_EMAIL` + `INITIAL_ADMIN_PASSWORD`).
 - Nếu user đã có với role PLAYER → promote ADMIN, **không** đổi password.
-- Upsert 3 sect: Thanh Vân Môn, Huyền Thuỷ Cung, Tu La Điện.
+- Upsert 3 sect: Thanh Vân Môn, Huyền Thuỷ Cung, Tu La Tông.
+- Auto-rename sect cũ `Tu La Điện` → `Tu La Tông` nếu DB còn tồn tại (alignment fix cho service mappings).
 
 Chạy lại an toàn — không tạo duplicate, không reset password admin có sẵn.
 

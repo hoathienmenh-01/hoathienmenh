@@ -35,7 +35,7 @@ const i18n = createI18n({
         noSuggestion: 'Hiện chưa có sự kiện hot.',
         activeEventsTitle: 'Sự kiện đang mở',
         bossScheduleTitle: 'Lịch Boss hôm nay',
-        startIn: 'khởi {time}',
+        startIn: 'Còn {time}',
         bossStatus: {
           upcoming: 'Sắp tới',
           active: 'Đang mở',
@@ -175,7 +175,7 @@ describe('LiveOpsTodayPanel', () => {
 
     const sug = w.find('[data-testid="liveops-suggestions"]');
     expect(sug.exists()).toBe(true);
-    expect(sug.text()).toContain('khởi 6h 45m');
+    expect(sug.text()).toContain('Còn 6h 45m');
   });
 
   it('API error → render error placeholder, KHÔNG crash', async () => {
@@ -219,5 +219,48 @@ describe('LiveOpsTodayPanel', () => {
     const goMis = btns.find((b) => b.text() === 'Xem Nhiệm Vụ');
     await goMis!.trigger('click');
     expect(routerPushMock).toHaveBeenCalledWith({ name: 'missions' });
+  });
+
+  it('boss schedule slot time format theo tz từ API (Asia/Ho_Chi_Minh = ICT) — không theo browser TZ', async () => {
+    // ISO `05:00:00Z` = ICT 12:00 (UTC+7). User browser dù ở UTC hay ICT đều
+    // thấy 12:00 — slot time consistent giữa các region.
+    getLiveOpsTodayMock.mockResolvedValueOnce(SAMPLE_RESPONSE);
+    const w = mountPanel();
+    await flushPromises();
+
+    const sched = w.find('[data-testid="liveops-boss-schedule"]');
+    expect(sched.exists()).toBe(true);
+    expect(sched.text()).toContain('12:00'); // 05:00 UTC → ICT 12:00.
+    expect(sched.text()).toContain('19:00'); // 12:00 UTC → ICT 19:00.
+  });
+
+  it('per-suggestion CTA button KHÔNG render cho non-boss kind (active daily event)', async () => {
+    // Repro Bug #3: trước khi fix, non-boss suggestion vẫn render nút "Đi Boss"
+    // nhưng click không làm gì → dead button. Sau fix: ẩn nút per-row.
+    getLiveOpsTodayMock.mockResolvedValueOnce({
+      ...SAMPLE_RESPONSE,
+      suggestedActivities: [
+        {
+          key: 'event_active_daily_exp_rush_morning',
+          kind: 'daily',
+          titleI18nKey: 'liveops.event.event_daily_exp_rush.title',
+        },
+      ],
+    });
+    const w = mountPanel();
+    await flushPromises();
+
+    const sug = w.find('[data-testid="liveops-suggestions"]');
+    expect(sug.exists()).toBe(true);
+    // Suggestion li tồn tại nhưng không có button bên trong.
+    const sugButtons = sug.findAll('button');
+    expect(sugButtons.length).toBe(0);
+
+    // Bottom CTA strip vẫn render 3 generic button.
+    const allButtons = w.findAll('button');
+    const labels = allButtons.map((b) => b.text());
+    expect(labels).toContain('Đi Boss');
+    expect(labels).toContain('Vào Bí Cảnh');
+    expect(labels).toContain('Xem Nhiệm Vụ');
   });
 });

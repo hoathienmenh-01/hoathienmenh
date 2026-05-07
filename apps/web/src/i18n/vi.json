@@ -955,7 +955,7 @@
     "noSuggestion": "Hiện chưa có sự kiện hot. Hẹn giờ kế tiếp xem boss schedule bên dưới.",
     "activeEventsTitle": "Sự kiện đang mở",
     "bossScheduleTitle": "Lịch Boss hôm nay",
-    "startIn": "khởi {time}",
+    "startIn": "Còn {time}",
     "spawnSoonToast": "Boss sắp xuất hiện trong {time}.",
     "bossStatus": {
       "upcoming": "Sắp tới",

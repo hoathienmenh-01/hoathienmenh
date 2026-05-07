@@ -46,11 +46,28 @@ const bossSchedule = computed<BossScheduleViewModel[]>(() => {
   return data.value.bossSchedule;
 });
 
+const DEFAULT_DISPLAY_TZ = 'Asia/Ho_Chi_Minh';
+const displayTz = computed(() => data.value?.timezone ?? DEFAULT_DISPLAY_TZ);
+
+/**
+ * Format slot time in API-supplied timezone (defaults to Asia/Ho_Chi_Minh).
+ * Slot ISO timestamps đến từ catalog đã đặt theo Asia/Ho_Chi_Minh; render theo
+ * browser TZ sẽ sai cho user ngoài ICT. Hardcode tz để consistent giữa region.
+ */
 function localTime(iso: string): string {
-  const d = new Date(iso);
-  const h = d.getHours().toString().padStart(2, '0');
-  const m = d.getMinutes().toString().padStart(2, '0');
-  return `${h}:${m}`;
+  try {
+    return new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: displayTz.value,
+    }).format(new Date(iso));
+  } catch {
+    const d = new Date(iso);
+    const h = d.getHours().toString().padStart(2, '0');
+    const m = d.getMinutes().toString().padStart(2, '0');
+    return `${h}:${m}`;
+  }
 }
 
 function statusLabel(status: BossScheduleViewModel['status']): string {

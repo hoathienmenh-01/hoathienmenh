@@ -148,4 +148,57 @@ describe('bootstrap script', () => {
     expect(r.sects).toHaveLength(0);
     expect(await prisma.sect.count()).toBe(0);
   });
+
+  it('rename alias: sect cũ "Tu La Điện" được rename về "Tu La Tông", giữ nguyên id (character.sectId an toàn)', async () => {
+    // Pre-seed sect cũ (mô phỏng DB legacy).
+    const oldSect = await prisma.sect.create({
+      data: { name: 'Tu La Điện', description: 'legacy desc' },
+    });
+
+    await runBootstrap(prisma, { email: TEST_EMAIL, password: TEST_PASSWORD });
+
+    // Sect renamed in-place — id giữ nguyên, character.sectId (nếu có) vẫn ref đúng.
+    const renamed = await prisma.sect.findUnique({ where: { id: oldSect.id } });
+    expect(renamed?.name).toBe('Tu La Tông');
+
+    const oldNameRow = await prisma.sect.findUnique({ where: { name: 'Tu La Điện' } });
+    expect(oldNameRow).toBeNull();
+
+    // Tổng số sect = 3 (rename, không tạo thêm).
+    expect(await prisma.sect.count()).toBe(DEFAULT_SECTS.length);
+  });
+
+  it('rename alias: idempotent — chạy lần 2 khi đã có "Tu La Tông" thì không touch', async () => {
+    await runBootstrap(prisma, { email: TEST_EMAIL, password: TEST_PASSWORD });
+    const before = await prisma.sect.findUniqueOrThrow({ where: { name: 'Tu La Tông' } });
+
+    // Lần 2: không có 'Tu La Điện', ensureSects() vẫn idempotent.
+    await runBootstrap(prisma, { email: TEST_EMAIL, password: TEST_PASSWORD });
+
+    const after = await prisma.sect.findUniqueOrThrow({ where: { name: 'Tu La Tông' } });
+    expect(after.id).toBe(before.id);
+    expect(await prisma.sect.count()).toBe(DEFAULT_SECTS.length);
+  });
+
+  it('rename alias: cả tên cũ + tên mới cùng tồn tại → giữ tên mới, không merge tự động', async () => {
+    // Edge case: ops thủ công tạo "Tu La Tông" trước khi chạy bootstrap, nhưng
+    // "Tu La Điện" cũ vẫn còn → không merge để tránh data loss character.
+    const newSect = await prisma.sect.create({
+      data: { name: 'Tu La Tông', description: 'new desc' },
+    });
+    const oldSect = await prisma.sect.create({
+      data: { name: 'Tu La Điện', description: 'legacy desc' },
+    });
+
+    await runBootstrap(prisma, {
+      email: TEST_EMAIL,
+      password: TEST_PASSWORD,
+      skipAdmin: true,
+    });
+
+    const newAfter = await prisma.sect.findUniqueOrThrow({ where: { id: newSect.id } });
+    expect(newAfter.name).toBe('Tu La Tông');
+    const oldAfter = await prisma.sect.findUnique({ where: { id: oldSect.id } });
+    expect(oldAfter?.name).toBe('Tu La Điện'); // không rename → không merge.
+  });
 });
