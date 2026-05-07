@@ -17,6 +17,8 @@ import {
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
+import { startOfLocalDay } from '../combat/combat.service';
+import { getMissionResetTz } from '../mission/mission.service';
 
 /**
  * Phase 13.1.A — Sect War (Tông Môn Chiến) tuần lễ runtime service.
@@ -170,11 +172,14 @@ export class SectWarService {
       if (used + def.points > def.weeklyCap) return null;
     }
     if (def.dailyCap !== undefined && def.dailyCap > 0) {
-      // Daily window: same calendar day local TZ. Dùng `createdAt` filter
-      // theo UTC midnight diff (heuristic — cùng ngày trong vi-VN, có thể
-      // off ±1h nhưng cap bảo thủ).
-      const dayStart = new Date(now);
-      dayStart.setUTCHours(0, 0, 0, 0);
+      // Daily window: 00:00 → 24:00 local theo `MISSION_RESET_TZ`
+      // (default `Asia/Ho_Chi_Minh`). Reuse `startOfLocalDay()` từ
+      // combat.service để đồng nhất với dungeon dailyLimit / mission DAILY /
+      // daily-login streak — đảm bảo sect war daily cap reset cùng mốc 00:00 ICT.
+      // Trước đây dùng `setUTCHours(0,0,0,0)` (UTC midnight = 07:00 ICT) ⇒
+      // cap bị drift +7h, có thể lách bằng cách clear dungeon trước 07:00 ICT.
+      const tz = getMissionResetTz();
+      const dayStart = startOfLocalDay(now, tz);
       const agg = await tx.sectWarContribution.aggregate({
         where: {
           weekKey,

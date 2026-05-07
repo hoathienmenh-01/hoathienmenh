@@ -12,10 +12,15 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Added — Phase 13.1.A Sect War Core, Contribution, Leaderboard & Weekly Reward (this PR)
+### Fixed — Post Phase 13.1.A Sect War hardening audit (this PR)
+
+- **`SectWarService.addContributionTx` daily cap drift +7h**: query daily-cap window dùng `setUTCHours(0,0,0,0)` (= 07:00 ICT) thay vì `startOfLocalDay(now, MISSION_RESET_TZ)` (= 00:00 ICT). Hệ quả: cap reset không đồng nhất với dungeon dailyLimit / mission DAILY / daily-login streak. Trên closed beta `Asia/Ho_Chi_Minh`, player có thể lách `dungeon_clear` cap 50/ngày bằng cách clear trước 07:00 ICT — rows hôm trước @ 23:00 ICT (= 16:00 UTC) vẫn cùng ISO week (weekKey filter pass) nhưng bị nhóm sai vào "hôm nay" theo cửa sổ UTC. **Fix**: import `startOfLocalDay` từ `combat.service` + `getMissionResetTz` từ `mission.service`, dùng cùng pattern với các module daily/weekly khác. **+1 regression test** `sect-war.service.test.ts` reproduce: pre-insert 5 dungeon_clear contributions @ Mon 23:00 ICT (cap exact), call addContributionTx với now=Tue 01:00 ICT (cùng ISO week 20) — pre-fix cap hit reject; post-fix cap reset accept.
+- **`docs/API.md` composite UNIQUE order**: ghi sai `(weekKey, sourceType, sourceId, characterId)` (thiếu `activityKey`). Fix: `(weekKey, characterId, activityKey, sourceType, sourceId)` match Prisma schema. Cập nhật doc cũng thêm note daily cap window theo `MISSION_RESET_TZ`.
+
+### Added — Phase 13.1.A Sect War Core, Contribution, Leaderboard & Weekly Reward (PR #457)
 
 - **Tông Môn Chiến tuần lễ** — bảng xếp hạng tông môn theo tuần (`weekKey = ISO 'YYYY-Www'`, timezone `Asia/Ho_Chi_Minh`, season chạy Thứ Hai 00:00 → Chủ Nhật 23:59 ICT).
-- **5 nguồn điểm gameplay** (server-authoritative, idempotent qua `(weekKey, sourceType, sourceId, characterId)` UNIQUE):
+- **5 nguồn điểm gameplay** (server-authoritative, idempotent qua `(weekKey, characterId, activityKey, sourceType, sourceId)` UNIQUE):
   - Daily login claim → +5 điểm/ngày (cap 7/tuần).
   - Dungeon clear (claim DungeonRun) → +10 điểm/lần (cap 50/ngày).
   - Boss participation (≥1 đòn đánh, distributeRewards) → +15 điểm (cap 120/tuần).
