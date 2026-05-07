@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { CurrencyKind, Prisma } from '@prisma/client';
 import {
   QUESTS,
@@ -12,6 +12,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { SectWarService } from '../sect-war/sect-war.service';
 
 /**
  * Phase 12 Story PR-2 — Quest runtime persistence.
@@ -144,6 +145,7 @@ export class QuestService {
     // export `CurrencyService`; InventoryModule export `InventoryService`).
     private readonly currency: CurrencyService,
     private readonly inventory: InventoryService,
+    @Optional() private readonly sectWar?: SectWarService,
   ) {}
 
   /**
@@ -529,6 +531,23 @@ export class QuestService {
           refId: questKey,
         });
         granted.push(...grantList);
+      }
+
+      // Phase 13.1.A — Sect War contribution hook. Idempotent qua composite
+      // UNIQUE `(weekKey, characterId, activityKey, sourceType, sourceId)`
+      // với sourceId = questKey — re-claim cùng quest không double điểm
+      // (đồng thời CAS `claimedAt` ở trên đã ngăn double-claim hard).
+      // Fail-soft: quest reward đã grant.
+      if (this.sectWar) {
+        try {
+          await this.sectWar.addContributionTx(tx, {
+            characterId,
+            activityKey: 'quest_complete',
+            sourceId: questKey,
+          });
+        } catch {
+          // swallow — sect-war không phá flow.
+        }
       }
 
       return {

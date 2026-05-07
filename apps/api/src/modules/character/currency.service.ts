@@ -43,7 +43,13 @@ export type LedgerReason =
   // `refType='DungeonRun'` + `refId=runId`. Idempotency lấy từ
   // `DungeonRun.claimedAt` CAS guard (race-safe winner duy nhất ghi 1 ledger
   // row / runId). Khác `COMBAT_LOOT` (per-encounter random drop loot table).
-  | 'DUNGEON_RUN_REWARD';
+  | 'DUNGEON_RUN_REWARD'
+  // Phase 13.1.A — Sect War weekly reward claim. Wire
+  // `SectWarService.claimWeeklyReward` qua `applyTx` cho linhThach/tienNgoc
+  // với `refType='SectWarWeeklyRewardClaim'` + `refId=weekKey`. Idempotency
+  // lấy từ `SectWarWeeklyRewardClaim` UNIQUE `(weekKey, characterId)` CAS
+  // guard — race-safe 2 concurrent claim chỉ 1 ledger row.
+  | 'SECT_WAR_REWARD';
 
 export interface CurrencyApplyInput {
   characterId: string;
