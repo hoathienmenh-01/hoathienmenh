@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { LIVE_OPS_EVENTS } from '@xuantoi/shared';
 import vi from '../vi.json';
 import en from '../en.json';
 
@@ -89,5 +90,29 @@ describe('i18n parity vi vs en', () => {
     expect(flatEn.get('shell.badge.bossActive')).toBeTruthy();
     expect(flatVi.get('shell.badge.topupPending')).toBeTruthy();
     expect(flatEn.get('shell.badge.topupPending')).toBeTruthy();
+  });
+
+  // Phase 13.0 audit pass #3 — Bug #6: catalog event keys must have matching
+  // i18n entries (titleI18nKey/descriptionI18nKey/rewardHintI18nKey). Trước
+  // khi fix: catalog có 4 key (daily_exp_rush_morning, daily_dungeon_rush_evening,
+  // weekly_sect_aura_sunday, limited_lunar_new_year_2027) nhưng i18n chỉ có 2
+  // orphan key (event_daily_exp_rush, event_weekly_dungeon_double_drop) → khi
+  // event ACTIVE, FE render raw key string thay vì translated title.
+  it('mọi LIVE_OPS_EVENTS titleI18nKey/descriptionI18nKey phải tồn tại trong vi.json', () => {
+    const missing: string[] = [];
+    for (const ev of LIVE_OPS_EVENTS) {
+      if (!flatVi.has(ev.titleI18nKey)) missing.push(ev.titleI18nKey);
+      if (!flatVi.has(ev.descriptionI18nKey)) missing.push(ev.descriptionI18nKey);
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it('mọi LIVE_OPS_EVENTS titleI18nKey/descriptionI18nKey phải tồn tại trong en.json', () => {
+    const missing: string[] = [];
+    for (const ev of LIVE_OPS_EVENTS) {
+      if (!flatEn.has(ev.titleI18nKey)) missing.push(ev.titleI18nKey);
+      if (!flatEn.has(ev.descriptionI18nKey)) missing.push(ev.descriptionI18nKey);
+    }
+    expect(missing).toEqual([]);
   });
 });
