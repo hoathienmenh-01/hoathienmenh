@@ -12,7 +12,7 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Internal — Daily-login multi-day smoke positive (this PR)
+### Internal — Daily-login multi-day smoke positive (PR #460)
 
 - **Multi-day integration test** `apps/api/src/modules/daily-login/daily-login.multi-day.test.ts` (5 case, +5 vitest) cho `DailyLoginService.claim(userId, now)` qua test-clock injection — service signature đã hỗ trợ `now: Date` param từ Phase 11 nên KHÔNG mở endpoint dev mới. Cover:
   1. Chuỗi 7 ngày liên tục → streak monotonic 1→7, +700 LT, 7 row `CurrencyLedger` reason `DAILY_LOGIN`, 7 row `DailyLoginClaim` với `claimDateLocal` monotonic +1.
@@ -60,7 +60,7 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 - **Prisma migration `20260524000000_phase_13_1_a_sect_war_core`**: `SectWarContribution` + `SectWarWeeklyRewardClaim` table mới với composite UNIQUE chống double-add và double-claim. Rollback risk: thấp — drop 2 table không ảnh hưởng module khác.
 - **Anti-abuse**: dailyCap/weeklyCap enforce trong service (KHÔNG thể bypass qua FE), contribution KHÔNG thể tự thêm (mọi nguồn đi qua hook server-side), claim chống race qua composite UNIQUE + transaction.
 
-### Fixed — Phase 13.0 audit pass #4: TitleService + BuffService P2002 race (this PR)
+### Fixed — Phase 13.0 audit pass #4: TitleService + BuffService P2002 race (PR #455)
 
 - **`TitleService.unlockTitleTx()` race**: pattern `findUnique → if not exists → create` KHÔNG atomic. 2 boss reward hook concurrent cùng `(characterId, titleKey)` (vd participant tham gia 2 boss defeat sát nhau, hoặc 2 cluster pod chạy heartbeat song song) → cả 2 thấy không tồn tại → cả 2 gọi `tx.characterTitleUnlock.create` → race loser hits Prisma `P2002` (unique constraint) → Postgres aborts entire `$transaction`. Boss reward hook có `try/catch` swallow log warn nhưng tx outer đã aborted → **subsequent currency + inventory grant cũng fail** (tx rollback) → **player mất reward kinh tế**. **Fix**: refactor sang `tx.characterTitleUnlock.createMany({ data: [...], skipDuplicates: true })` — Prisma dịch sang Postgres `INSERT … ON CONFLICT DO NOTHING`, đúng atomic, không bao giờ throw P2002. (Prisma's `upsert` KHÔNG atomic — nó là find-then-update/create — đã thử và fail race test.)
 - **`BuffService.applyBuffTx()` race**: cùng pattern. Concurrent top-1 boss reward → race loser P2002 → boss reward tx aborted → mất reward. **Fix**: `createMany skipDuplicates` cho insert path (atomic), nếu count=0 (existing row) thì UPDATE với newStacks computed pre-call. Stacks count race window vẫn tồn tại nhưng nhỏ + không phá tx outer (UPDATE không throw P2002). Non-stackable buff không bị ảnh hưởng (newStacks = existing.stacks).
@@ -72,7 +72,7 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 - **`docs/BALANCE_MODEL.md` §6.4 schedule table stale**: 2 row buff event ghi sai key cũ + sai dailyTime/durationMinutes (`event_daily_exp_rush 18:00 180min`, `event_weekly_dungeon_double_drop 00:00 1440min`). **Fix**: viết lại 4 row đúng với catalog hiện tại (3 daily 60min + 1 weekly Sunday 720min + 1 LIMITED disabled). Schedule reasoning rationale giữ nguyên (không phá economy).
 - **Test fixture `LiveOpsTodayPanel.test.ts`**: `event_daily_exp_rush` key trong fixture cũng được chuẩn hoá sang `daily_exp_rush_morning` cho consistency với catalog (test logic không đổi).
 
-### Added — Phase 13.0 LiveOps & Retention Suite (this PR)
+### Added — Phase 13.0 LiveOps & Retention Suite (PR #452)
 
 - **LiveOps Event Calendar (shared)**: catalog mới `LIVE_OPS_EVENTS` định nghĩa 5 sự kiện scheduled: 3 boss daily (12:00 / 19:00 / 22:00 ICT) + 1 boss tuần Huyết Nguyệt (Thứ Bảy 21:00 ICT) + 2 buff event (`event_daily_exp_rush` 18:00-21:00, `event_weekly_dungeon_double_drop` Chủ Nhật cả ngày). Helpers `liveOpsEventsForToday()`, `activeLiveOpsEvents()`, `nextLiveOpsEvent()`, `bossScheduleForToday()`, `liveOpsEventForBossSpawn()` deterministic, timezone mặc định `Asia/Ho_Chi_Minh` reuse `MISSION_RESET_TZ`.
 - **Scheduled Boss Spawn**: `BossService.tickHeartbeat()` mở rộng đọc schedule, mỗi region check active slot. Spawn nếu slot active + region không có ACTIVE boss + chưa spawn `(regionKey, bossKey, spawnedAt >= slotStart)` (slot dedup query-based, idempotent qua parallel heartbeat). Cuối tuần Thứ Bảy 21:00 → Cửu La Thiên Đế xuất thế ở Cửu La Điện. Giữ nguyên adminSpawn + boss-by-region unique guard + attack/reward.
@@ -93,7 +93,7 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 - **Idempotent + race-safe**: `CharacterBuff` composite UNIQUE `(characterId, buffKey)` đảm bảo non-stackable refresh `expiresAt`, stackable +1 stack cap `maxStacks`. Pre-tx catalog drift guard (item declared `buffKey` nhưng buff không tồn tại → throw KHÔNG decrement).
 - Backward-compat: `InventoryService` 4th param `buffs?` optional — legacy bootstrap (test fixtures không inject) tiếp tục work, skip buff apply silently.
 
-### Added — M10 Shop daily purchase limit + per-user rate limit (this PR)
+### Added — M10 Shop daily purchase limit + per-user rate limit (PR #450)
 
 - **Per-item daily purchase cap**: mỗi entry trong NPC shop có thể đặt `dailyLimit` (opt-in). Player vượt cap → toast "Vượt hạn mức mua hôm nay. Thử lại sau khi reset". Reset 00:00 theo `MISSION_RESET_TZ` (mặc định `Asia/Ho_Chi_Minh`) — cùng mốc reset với daily mission / daily-login / dungeon `dailyLimit`. Mặc định cho closed beta: pills HP/MP = 20/ngày, đan exp + ore = 10/ngày, equipment phàm phẩm = 5/ngày.
 - **Per-user rate limit**: 30 lần `POST /shop/buy` trong 60 giây mỗi user. Vượt → 429 + toast "Mua quá nhanh — vui lòng chậm lại và thử lại sau". Chặn script abuse / race exploit. Limit theo `userId` (không phải IP) → 1 acc share IP với người khác không liên đới.
@@ -101,7 +101,7 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 - **FE shop**: mỗi entry hiện badge "Hạn mức hôm nay: N" khi có `dailyLimit`. i18n vi + en cho 2 error code mới.
 - Backend-only architecture: KHÔNG migration mới — daily count derive từ `ItemLedger` reason='SHOP_BUY' với index `(reason, createdAt)` đã có sẵn.
 
-### Added — Phase 11.8.D Buff HUD + 11.9.C Title catalog/equip — FE wire (this PR)
+### Added — Phase 11.8.D Buff HUD + 11.9.C Title catalog/equip — FE wire (PR #449)
 
 - **Title catalog UI** (`/titles`): xem 26 danh hiệu trong game (5 rarity × 6 source × 5 element), filter theo source/rarity/status, **trang bị** danh hiệu đã unlock (single-slot), **gỡ bỏ** equipped title. Topbar (lg+ screens) hiển thị tên danh hiệu đang trang bị màu vàng (`amber-200`) bên dưới tên nhân vật.
 - **Buff HUD** (topbar): hiển thị các buff/debuff đang active dưới dạng pill (xanh lá = buff, hồng = debuff) với countdown timer auto-update mỗi giây và tự động fetch lại khi có buff hết hạn. Format thời gian: `<60s = "30s"`, `<60m = "5m30s"`, `≥1h = "1h05m"`. Stacks > 1 hiển thị `×N`.
