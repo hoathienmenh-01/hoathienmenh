@@ -61,6 +61,7 @@ import { RedisModule } from './common/redis.module';
     DailyLoginModule,
     LogsModule,
     LiveOpsModule,
+    SectWarModule,
   ],
 })
 export class AppModule {}
