@@ -118,6 +118,56 @@ describe('SectWarService.addContributionTx', () => {
     const rows = await prisma.sectWarContribution.findMany({});
     expect(rows).toHaveLength(0);
   });
+
+  it('regression post-audit: daily cap window theo ICT 00:00 (không phải UTC 00:00)', async () => {
+    // Trước fix: `setUTCHours(0,0,0,0)` ⇒ dayStart = 00:00 UTC = 07:00 ICT,
+    // nên contribution lúc 23:00 ICT hôm trước vẫn bị tính vào daily cap
+    // hôm sau (drift +7h). Sau fix: `startOfLocalDay(now, ICT)` ⇒ dayStart
+    // = 00:00 ICT — cap reset đúng nửa đêm Việt Nam, đồng nhất với
+    // dungeon dailyLimit / mission DAILY / daily-login streak.
+    const sect = await makeSect(prisma);
+    const u = await makeUserChar(prisma, { sectId: sect.id });
+    // `now` = Tue May 12 2026 01:00 ICT (= Mon May 11 2026 18:00 UTC).
+    // ISO week 20 (Mon May 11 → Sun May 17 ICT) — match prior row weekKey.
+    const now = new Date('2026-05-11T18:00:00.000Z');
+    const weekKey = sectWarWeekKey(now);
+    // Prior 5 contributions @ Mon May 11 23:00 ICT (= Mon May 11 16:00 UTC).
+    // Khác ICT calendar day với `now` (Mon vs Tue) ⇒ daily cap phải reset.
+    const prevDay = new Date('2026-05-11T16:00:00.000Z');
+    for (let i = 0; i < 5; i++) {
+      await prisma.sectWarContribution.create({
+        data: {
+          weekKey,
+          sectId: sect.id,
+          characterId: u.characterId,
+          activityKey: 'dungeon_clear',
+          sourceType: 'DungeonRun',
+          sourceId: `dr-prev-${i}`,
+          points: 10,
+          createdAt: prevDay,
+        },
+      });
+    }
+    // dungeon_clear: points=10, dailyCap=50. Prior 5 × 10 = 50 = exact cap.
+    // OLD: dayStart 00:00 UTC = 07:00 ICT ⇒ 5 prior rows tại 23:00 ICT đều
+    // được tính ⇒ used=50, used+10>50 ⇒ reject (null).
+    // NEW: dayStart 00:00 ICT (Tue) ⇒ prior rows tại 23:00 ICT (Mon) loại
+    // ra ⇒ used=0, used+10≤50 ⇒ accept (1 row mới).
+    const res = await prisma.$transaction((tx) =>
+      sectWar.addContributionTx(tx, {
+        characterId: u.characterId,
+        activityKey: 'dungeon_clear',
+        sourceId: 'dr-new',
+        now,
+      }),
+    );
+    expect(res).not.toBeNull();
+    expect(res!.points).toBe(10);
+    const all = await prisma.sectWarContribution.findMany({
+      where: { characterId: u.characterId },
+    });
+    expect(all).toHaveLength(6);
+  });
 });
 
 describe('SectWarService.getLeaderboard', () => {

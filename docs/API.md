@@ -235,7 +235,7 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 - `SECT_WAR_NO_REWARD` — không có tier nào áp dụng (no-op safety).
 - `NO_CHARACTER` — chưa có nhân vật.
 
-**Idempotency** contribution: composite UNIQUE `(weekKey, sourceType, sourceId, characterId)` trên `SectWarContribution`. Hook gameplay (DungeonRun.claim, Boss.distributeRewards, DailyLogin.claim, Quest.claim) gọi `addContributionTx` trong cùng transaction — retry hook → P2002 silently skipped (return null). Daily/weekly cap enforce qua aggregate query trong cùng tx trước insert.
+**Idempotency** contribution: composite UNIQUE `(weekKey, characterId, activityKey, sourceType, sourceId)` trên `SectWarContribution`. Hook gameplay (DungeonRun.claim, Boss.distributeRewards, DailyLogin.claim, Quest.claim) gọi `addContributionTx` trong cùng transaction — retry hook → P2002 silently skipped (return null). Daily cap window theo `MISSION_RESET_TZ` (default `Asia/Ho_Chi_Minh`, 00:00 ICT) — đồng nhất với dungeon dailyLimit / mission DAILY / daily-login streak. Weekly cap qua ISO week (Mon 00:00 ICT → Sun 23:59 ICT).
 
 ## Error codes (chuẩn hoá)
 
