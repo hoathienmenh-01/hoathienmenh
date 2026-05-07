@@ -12,6 +12,12 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Fixed — Phase 13.0 audit pass #3: i18n key catalog mismatch + BALANCE schedule stale (this PR)
+
+- **i18n vi/en bị lệch catalog event keys** (`liveops.event.*`): catalog có 4 key (`daily_exp_rush_morning` 07:00 60min, `daily_dungeon_rush_evening` 20:00 60min, `weekly_sect_aura_sunday` Chủ Nhật 06:00 720min, `limited_lunar_new_year_2027` Feb 2027 7-day disabled) nhưng i18n chỉ có 2 orphan key (`event_daily_exp_rush`, `event_weekly_dungeon_double_drop`) còn lại từ phiên bản trước của Phase 13.0. **Hệ quả**: khi 1 trong 4 event này active (vd 07:00-08:00 ICT exp rush), `LiveOpsTodayPanel` render `liveops.event.daily_exp_rush_morning.title` literal thay vì "Triêu Quang Lộ Khí". **Fix**: thêm 4 entry mới + xoá 2 orphan trong vi.json/en.json, viết lại nội dung match catalog dailyTime/durationMinutes; thêm 2 parity test trong `apps/web/src/i18n/__tests__/parity.test.ts` walk `LIVE_OPS_EVENTS` assert `titleI18nKey` + `descriptionI18nKey` tồn tại trong cả vi và en (regression guard cho mọi catalog rename tương lai).
+- **`docs/BALANCE_MODEL.md` §6.4 schedule table stale**: 2 row buff event ghi sai key cũ + sai dailyTime/durationMinutes (`event_daily_exp_rush 18:00 180min`, `event_weekly_dungeon_double_drop 00:00 1440min`). **Fix**: viết lại 4 row đúng với catalog hiện tại (3 daily 60min + 1 weekly Sunday 720min + 1 LIMITED disabled). Schedule reasoning rationale giữ nguyên (không phá economy).
+- **Test fixture `LiveOpsTodayPanel.test.ts`**: `event_daily_exp_rush` key trong fixture cũng được chuẩn hoá sang `daily_exp_rush_morning` cho consistency với catalog (test logic không đổi).
+
 ### Added — Phase 13.0 LiveOps & Retention Suite (this PR)
 
 - **LiveOps Event Calendar (shared)**: catalog mới `LIVE_OPS_EVENTS` định nghĩa 5 sự kiện scheduled: 3 boss daily (12:00 / 19:00 / 22:00 ICT) + 1 boss tuần Huyết Nguyệt (Thứ Bảy 21:00 ICT) + 2 buff event (`event_daily_exp_rush` 18:00-21:00, `event_weekly_dungeon_double_drop` Chủ Nhật cả ngày). Helpers `liveOpsEventsForToday()`, `activeLiveOpsEvents()`, `nextLiveOpsEvent()`, `bossScheduleForToday()`, `liveOpsEventForBossSpawn()` deterministic, timezone mặc định `Asia/Ho_Chi_Minh` reuse `MISSION_RESET_TZ`.

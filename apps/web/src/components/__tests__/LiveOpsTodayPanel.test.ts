@@ -73,10 +73,10 @@ const SAMPLE_RESPONSE: LiveOpsTodayResponse = {
       regionKey: 'hoa_diem_son',
     },
     {
-      key: 'event_daily_exp_rush',
+      key: 'daily_exp_rush_morning',
       type: 'DAILY',
-      titleI18nKey: 'liveops.event.event_daily_exp_rush.title',
-      descriptionI18nKey: 'liveops.event.event_daily_exp_rush.desc',
+      titleI18nKey: 'liveops.event.daily_exp_rush_morning.title',
+      descriptionI18nKey: 'liveops.event.daily_exp_rush_morning.desc',
     },
   ],
   activeEvents: [
@@ -243,7 +243,7 @@ describe('LiveOpsTodayPanel', () => {
         {
           key: 'event_active_daily_exp_rush_morning',
           kind: 'daily',
-          titleI18nKey: 'liveops.event.event_daily_exp_rush.title',
+          titleI18nKey: 'liveops.event.daily_exp_rush_morning.title',
         },
       ],
     });

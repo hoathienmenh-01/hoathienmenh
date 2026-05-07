@@ -990,13 +990,25 @@
         "desc": "Tối Thứ Bảy 21:00, Cửu La Thiên Đế giáng lâm Cửu La Điện dưới ánh trăng máu.",
         "reward": "Linh thạch lớn + danh hiệu Huyết Nguyệt Quân."
       },
-      "event_daily_exp_rush": {
-        "title": "Linh Khí Tăng Tốc",
-        "desc": "Mỗi ngày 18:00-21:00 ICT: tu luyện hấp thụ +25% linh khí."
+      "daily_exp_rush_morning": {
+        "title": "Triêu Quang Lộ Khí",
+        "desc": "Mỗi ngày 07:00-08:00 ICT: tu luyện hấp thụ +25% linh khí buổi sáng.",
+        "reward": "Tu vi tăng nhanh trong giờ vàng buổi sáng."
       },
-      "event_weekly_dungeon_double_drop": {
-        "title": "Thiên Đạo Ban Phúc",
-        "desc": "Chủ Nhật cả ngày: drop bí cảnh ×2."
+      "daily_dungeon_rush_evening": {
+        "title": "Hoàng Hôn Nhập Cảnh",
+        "desc": "Mỗi ngày 20:00-21:00 ICT: drop bí cảnh ×2 trong giờ vàng tối.",
+        "reward": "Drop bí cảnh ×2 trong giờ vàng buổi tối."
+      },
+      "weekly_sect_aura_sunday": {
+        "title": "Chủ Nhật Tông Khí",
+        "desc": "Chủ Nhật 06:00-18:00 ICT: tông khí lan toả, tu luyện cộng đồng tăng aura.",
+        "reward": "Aura tông môn cộng thêm tu vi cuối tuần."
+      },
+      "limited_lunar_new_year_2027": {
+        "title": "Lễ Hội Tết Nguyên Đán 2027",
+        "desc": "Tuần Tết Nguyên Đán 2027: drop quà Tết + thưởng Tiên Đăng giới hạn.",
+        "reward": "Quà Tết + Tiên Đăng giới hạn (chưa kích hoạt)."
       }
     },
     "boss": {

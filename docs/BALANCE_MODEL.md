@@ -899,8 +899,10 @@ Static catalog `LIVE_OPS_EVENTS` trong `packages/shared/src/liveops.ts` định 
 | 19:00 | Daily | `boss_daily_evening_kim_son_mach` | `kim_phach_long_dieu` | `kim_son_mach` | 30 min | Prime evening engagement window |
 | 22:00 | Daily | `boss_daily_night_hoang_tho_huyet` | `yeu_vuong_tho_huyet` | `hoang_tho_huyet` | 30 min | Late-night player retention |
 | 21:00 | Saturday | `event_huyet_nguyet_weekend` | `cuu_la_thien_de` | `cuu_la_dien` | 60 min | Weekly highlight raid (Huyết Nguyệt) |
-| 18:00 | Daily | `event_daily_exp_rush` | — (buff event) | — | 180 min | EXP +25% during prime time |
-| 00:00 | Sunday | `event_weekly_dungeon_double_drop` | — (buff event) | — | 1440 min | Weekend dungeon engagement boost |
+| 07:00 | Daily | `daily_exp_rush_morning` | — (buff event) | — | 60 min | Morning EXP +25% (early-bird retention) |
+| 20:00 | Daily | `daily_dungeon_rush_evening` | — (buff event) | — | 60 min | Evening dungeon drops ×2 (prime time engagement) |
+| 06:00 | Sunday | `weekly_sect_aura_sunday` | — (buff event) | — | 720 min | Sunday daytime sect aura cultivation boost |
+| 2027-02-06 → 2027-02-13 | Limited (disabled) | `limited_lunar_new_year_2027` | — (buff event) | — | 7 days | Lunar New Year 2027 festival placeholder |
 
 **Reward hook table (Phase 13.0 §C):**
 
