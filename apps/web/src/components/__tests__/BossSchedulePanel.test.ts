@@ -26,7 +26,7 @@ const i18n = createI18n({
       liveopsToday: {
         loading: 'Đang tải lịch sự kiện…',
         bossScheduleTitle: 'Lịch Boss hôm nay',
-        startIn: 'khởi {time}',
+        startIn: 'Còn {time}',
         bossStatus: {
           upcoming: 'Sắp tới',
           active: 'Đang mở',
@@ -116,7 +116,7 @@ describe('BossSchedulePanel', () => {
     );
     expect(eve.exists()).toBe(true);
     expect(eve.text()).toContain('Sắp tới');
-    expect(eve.text()).toContain('khởi 6h 45m');
+    expect(eve.text()).toContain('Còn 6h 45m');
   });
 
   it('API error → panel ẩn (không crash)', async () => {

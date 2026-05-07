@@ -35,7 +35,7 @@ const i18n = createI18n({
         noSuggestion: 'Hiện chưa có sự kiện hot.',
         activeEventsTitle: 'Sự kiện đang mở',
         bossScheduleTitle: 'Lịch Boss hôm nay',
-        startIn: 'khởi {time}',
+        startIn: 'Còn {time}',
         bossStatus: {
           upcoming: 'Sắp tới',
           active: 'Đang mở',
@@ -175,7 +175,7 @@ describe('LiveOpsTodayPanel', () => {
 
     const sug = w.find('[data-testid="liveops-suggestions"]');
     expect(sug.exists()).toBe(true);
-    expect(sug.text()).toContain('khởi 6h 45m');
+    expect(sug.text()).toContain('Còn 6h 45m');
   });
 
   it('API error → render error placeholder, KHÔNG crash', async () => {
