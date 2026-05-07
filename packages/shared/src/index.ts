@@ -27,6 +27,7 @@ export * from './npcs';
 export * from './quests';
 export * from './dialogues';
 export * from './story-dialogues';
+export * from './story-dungeons';
 export * from './liveops';
 export * from './sect-war';
 export * from './sect-missions';
