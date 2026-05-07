@@ -2438,11 +2438,38 @@
       "topHeader": "Top 10 Tông",
       "row": "{points} điểm · {contributors} thành viên",
       "recalcBtn": "Recalculate (no-op)",
+      "snapshotBtn": "Lưu snapshot (audit)",
+      "snapshotting": "Đang ghi snapshot…",
+      "confirmSnapshot": "Xác nhận ghi snapshot Sect War tuần hiện tại vào audit log?",
+      "toast": {
+        "snapshot": "Sect War snapshot đã ghi vào audit."
+      },
       "unavailable": "Không lấy được dữ liệu Sect War."
+    },
+    "boss": {
+      "title": "Force Boss Spawn",
+      "help": "Spawn boss khẩn cấp theo region. Audit ADMIN_FORCE_BOSS_SCHEDULE.",
+      "regionLabel": "Region",
+      "regionPlaceholder": "— chọn region —",
+      "bossKeyLabel": "Boss key",
+      "bossKeyPlaceholder": "auto",
+      "levelLabel": "Level",
+      "reasonLabel": "Lý do",
+      "reasonPlaceholder": "Lý do (audit)",
+      "forceLabel": "Force replace",
+      "submitBtn": "Spawn",
+      "submitting": "Đang spawn…",
+      "errorRegionRequired": "Cần chọn region trước khi spawn.",
+      "confirm": "Xác nhận spawn boss {bossKey} lvl {level} tại {region}?",
+      "toast": {
+        "spawned": "Đã spawn {bossKey} lvl {level} tại {region}."
+      }
     },
     "errors": {
       "EVENT_NOT_FOUND": "Sự kiện không tồn tại.",
       "INVALID_INPUT": "Tham số không hợp lệ.",
+      "INVALID_BOSS_KEY": "Boss key không khớp với region.",
+      "BOSS_ALREADY_ACTIVE": "Boss đang active trong region này, bật Force để thay thế.",
       "FORBIDDEN": "Không đủ quyền.",
       "UNKNOWN": "Thao tác LiveOps thất bại — thử lại."
     }

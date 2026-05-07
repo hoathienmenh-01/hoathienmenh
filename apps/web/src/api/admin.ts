@@ -361,6 +361,16 @@ export interface AdminBossSpawnInput {
   bossKey?: string;
   level?: number;
   force?: boolean;
+  /**
+   * Phase 12.6 — explicit region (default 'world' cho legacy world boss).
+   * Nếu cùng `bossKey`, def.regionKey phải match (catalog null → 'world').
+   */
+  regionKey?: string;
+  /**
+   * Phase 13.1.C — optional admin intent ghi vào audit
+   * `ADMIN_FORCE_BOSS_SCHEDULE`. Cap 200 ký tự (BE validate).
+   */
+  reason?: string;
 }
 
 export interface AdminBossSpawnResult {
@@ -368,6 +378,8 @@ export interface AdminBossSpawnResult {
   bossKey: string;
   level: number;
   maxHp: string;
+  /** Phase 12.6 — region của spawned boss (echo từ BE). */
+  regionKey: string;
 }
 
 export async function adminSpawnBoss(
@@ -535,6 +547,22 @@ export async function adminSectWarRecalculate(input: {
   const { data } = await apiClient.post<
     Envelope<{ noop: true; weekKey: string }>
   >('/admin/sect-war/recalculate', input);
+  return unwrap(data);
+}
+
+/**
+ * Phase 13.1.C — POST /admin/sect-war/snapshot. Read-after-audit snapshot:
+ * trả nguyên bản `getSectWarStatus(weekKey)` + ghi audit `ADMIN_SECT_WAR_STATUS`
+ * (compliance / handoff paper trail). KHÔNG mutate dữ liệu sect war.
+ */
+export async function adminSectWarSnapshot(input: {
+  weekKey?: string;
+  reason?: string;
+}): Promise<AdminSectWarStatusView> {
+  const { data } = await apiClient.post<Envelope<AdminSectWarStatusView>>(
+    '/admin/sect-war/snapshot',
+    input,
+  );
   return unwrap(data);
 }
 

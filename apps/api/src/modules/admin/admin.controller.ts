@@ -955,6 +955,38 @@ export class AdminController {
     }
   }
 
+  /**
+   * Phase 13.1.C — POST /admin/sect-war/snapshot. Read-after-audit
+   * snapshot: trả nguyên bản `getSectWarStatus(weekKey)` + ghi audit
+   * `ADMIN_SECT_WAR_STATUS` (compliance / handoff paper trail). KHÔNG
+   * mutate dữ liệu sect war. Body: { weekKey?, reason? }.
+   */
+  @Post('sect-war/snapshot')
+  @HttpCode(200)
+  @RequireAdmin()
+  async sectWarSnapshot(@Req() req: AdminReq, @Body() body: unknown) {
+    const Z = z.object({
+      weekKey: z
+        .string()
+        .regex(/^\d{4}-W\d{2}$/)
+        .optional(),
+      reason: z.string().max(200).optional(),
+    });
+    const parsed = Z.safeParse(body ?? {});
+    if (!parsed.success) fail('INVALID_INPUT');
+    const weekKey = parsed.data.weekKey ?? sectWarWeekKey(new Date());
+    try {
+      const data = await this.liveOps.snapshotSectWarStatus(
+        req.userId,
+        weekKey,
+        parsed.data.reason,
+      );
+      return { ok: true, data };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
   private handleErr(e: unknown): never {
     if (e instanceof AdminLiveOpsError) {
       const status =

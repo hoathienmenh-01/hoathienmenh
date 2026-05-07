@@ -17,6 +17,9 @@ const adminLiveOpsStatusMock = vi.fn();
 const adminLiveOpsToggleMock = vi.fn();
 const adminSectWarStatusMock = vi.fn();
 const adminSectWarRecalculateMock = vi.fn();
+// Phase 13.1.C — additional mocks for advanced controls.
+const adminSpawnBossMock = vi.fn();
+const adminSectWarSnapshotMock = vi.fn();
 
 vi.mock('@/api/admin', () => ({
   adminLiveOpsStatus: (...a: unknown[]) => adminLiveOpsStatusMock(...a),
@@ -24,6 +27,8 @@ vi.mock('@/api/admin', () => ({
   adminSectWarStatus: (...a: unknown[]) => adminSectWarStatusMock(...a),
   adminSectWarRecalculate: (...a: unknown[]) =>
     adminSectWarRecalculateMock(...a),
+  adminSpawnBoss: (...a: unknown[]) => adminSpawnBossMock(...a),
+  adminSectWarSnapshot: (...a: unknown[]) => adminSectWarSnapshotMock(...a),
 }));
 
 import AdminLiveOpsPanel from '@/components/AdminLiveOpsPanel.vue';
@@ -70,13 +75,36 @@ const i18n = createI18n({
             '{week} · {sects} sects · {contributors} contributors · {contributions} entries',
           unavailable: 'Không khả dụng.',
           recalcBtn: 'Recalculate',
+          snapshotBtn: 'Snapshot',
+          snapshotting: 'Snapping…',
+          confirmSnapshot: 'Snapshot sect war?',
+          toast: { snapshot: 'Snapshot OK.' },
           topHeader: 'Top Sects',
           row: '{points} điểm · {contributors} người',
+        },
+        boss: {
+          title: 'Force Boss Spawn',
+          help: 'Spawn boss khẩn cấp.',
+          regionLabel: 'Region',
+          regionPlaceholder: '— region —',
+          bossKeyLabel: 'Boss',
+          bossKeyPlaceholder: 'auto',
+          levelLabel: 'Level',
+          reasonLabel: 'Lý do',
+          reasonPlaceholder: 'Lý do',
+          forceLabel: 'Force',
+          submitBtn: 'Spawn',
+          submitting: 'Spawning…',
+          errorRegionRequired: 'Cần region.',
+          confirm: 'Spawn {bossKey} lvl {level} tại {region}?',
+          toast: { spawned: 'Spawned {bossKey} lvl {level} ở {region}.' },
         },
         errors: {
           UNAUTHORIZED: 'Không có quyền.',
           EVENT_NOT_FOUND: 'Sự kiện không tồn tại.',
           INVALID_INPUT: 'Input không hợp lệ.',
+          INVALID_BOSS_KEY: 'Boss key sai.',
+          BOSS_ALREADY_ACTIVE: 'Boss đang active.',
           UNKNOWN: 'Không thể thao tác.',
         },
         events: {
@@ -117,6 +145,8 @@ const SAMPLE_STATUS: AdminLiveOpsStatusView = {
       },
       titleI18nKey: 'adminLiveOps.events.ev2.title',
       descriptionI18nKey: 'adminLiveOps.events.ev2.title',
+      regionKey: 'son_coc',
+      bossKey: 'sky_dragon',
     },
   ],
   todayKeys: ['ev1'],
@@ -256,5 +286,119 @@ describe('AdminLiveOpsPanel', () => {
 
     expect(w.find('[data-test="admin-liveops-error"]').exists()).toBe(true);
     expect(w.text()).toContain('Không thể thao tác.');
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Phase 13.1.C — Force Boss Spawn + Sect War Snapshot UI
+  // ─────────────────────────────────────────────────────────────────────
+  it('render Force Boss Spawn section: region select có option "son_coc" từ catalog event regionKey', async () => {
+    adminLiveOpsStatusMock.mockResolvedValueOnce(SAMPLE_STATUS);
+    adminSectWarStatusMock.mockResolvedValueOnce(SAMPLE_SECTWAR);
+    const w = mountPanel();
+    await flushPromises();
+
+    expect(w.find('[data-test="admin-liveops-boss"]').exists()).toBe(true);
+    const region = w.find<HTMLSelectElement>('[data-test="admin-liveops-boss-region"]');
+    expect(region.exists()).toBe(true);
+    const optionVals = region
+      .findAll('option')
+      .map((o) => (o.element as HTMLOptionElement).value);
+    expect(optionVals).toContain('son_coc');
+  });
+
+  it('force spawn submit: gọi adminSpawnBoss với region/bossKey/level/force/reason; toast success', async () => {
+    adminLiveOpsStatusMock.mockResolvedValueOnce(SAMPLE_STATUS);
+    adminSectWarStatusMock.mockResolvedValueOnce(SAMPLE_SECTWAR);
+    adminSpawnBossMock.mockResolvedValueOnce({
+      id: 'boss-1',
+      bossKey: 'sky_dragon',
+      level: 3,
+      maxHp: '999999',
+      regionKey: 'son_coc',
+    });
+    const w = mountPanel();
+    await flushPromises();
+
+    await w.find('[data-test="admin-liveops-boss-region"]').setValue('son_coc');
+    await w.find('[data-test="admin-liveops-boss-key"]').setValue('sky_dragon');
+    await w.find('[data-test="admin-liveops-boss-level"]').setValue('3');
+    await w.find('[data-test="admin-liveops-boss-force"]').setValue(true);
+    await w.find('[data-test="admin-liveops-boss-reason"]').setValue('incident smoke');
+
+    await w.find('[data-test="admin-liveops-boss-submit"]').trigger('click');
+    await flushPromises();
+
+    expect(adminSpawnBossMock).toHaveBeenCalledTimes(1);
+    expect(adminSpawnBossMock).toHaveBeenCalledWith({
+      regionKey: 'son_coc',
+      bossKey: 'sky_dragon',
+      level: 3,
+      force: true,
+      reason: 'incident smoke',
+    });
+  });
+
+  it('force spawn không chọn region → toast error, KHÔNG gọi adminSpawnBoss', async () => {
+    adminLiveOpsStatusMock.mockResolvedValueOnce(SAMPLE_STATUS);
+    adminSectWarStatusMock.mockResolvedValueOnce(SAMPLE_SECTWAR);
+    const w = mountPanel();
+    await flushPromises();
+
+    // Region empty by default.
+    await w.find('[data-test="admin-liveops-boss-submit"]').trigger('click');
+    await flushPromises();
+    expect(adminSpawnBossMock).not.toHaveBeenCalled();
+  });
+
+  it('force spawn API error (BOSS_ALREADY_ACTIVE) → toast i18n error code; KHÔNG crash', async () => {
+    adminLiveOpsStatusMock.mockResolvedValueOnce(SAMPLE_STATUS);
+    adminSectWarStatusMock.mockResolvedValueOnce(SAMPLE_SECTWAR);
+    const err = Object.assign(new Error('BOSS_ALREADY_ACTIVE'), {
+      code: 'BOSS_ALREADY_ACTIVE',
+    });
+    adminSpawnBossMock.mockRejectedValueOnce(err);
+    const w = mountPanel();
+    await flushPromises();
+
+    await w.find('[data-test="admin-liveops-boss-region"]').setValue('son_coc');
+    await w.find('[data-test="admin-liveops-boss-submit"]').trigger('click');
+    await flushPromises();
+
+    expect(adminSpawnBossMock).toHaveBeenCalledTimes(1);
+    // Panel still mounted (no crash).
+    expect(w.find('[data-test="admin-liveops-panel"]').exists()).toBe(true);
+  });
+
+  it('snapshot button click: gọi adminSectWarSnapshot, refresh sectWar view', async () => {
+    adminLiveOpsStatusMock.mockResolvedValueOnce(SAMPLE_STATUS);
+    adminSectWarStatusMock.mockResolvedValueOnce(SAMPLE_SECTWAR);
+    adminSectWarSnapshotMock.mockResolvedValueOnce({
+      ...SAMPLE_SECTWAR,
+      totalSects: 5,
+    });
+    const w = mountPanel();
+    await flushPromises();
+
+    await w.find('[data-test="admin-liveops-snapshot"]').trigger('click');
+    await flushPromises();
+
+    expect(adminSectWarSnapshotMock).toHaveBeenCalledWith({});
+    // Panel re-rendered with updated sect war data.
+    expect(w.text()).toContain('5 sects');
+  });
+
+  it('snapshot API error → toast error; panel KHÔNG crash', async () => {
+    adminLiveOpsStatusMock.mockResolvedValueOnce(SAMPLE_STATUS);
+    adminSectWarStatusMock.mockResolvedValueOnce(SAMPLE_SECTWAR);
+    const err = Object.assign(new Error('UNKNOWN'), { code: 'UNKNOWN' });
+    adminSectWarSnapshotMock.mockRejectedValueOnce(err);
+    const w = mountPanel();
+    await flushPromises();
+
+    await w.find('[data-test="admin-liveops-snapshot"]').trigger('click');
+    await flushPromises();
+
+    expect(adminSectWarSnapshotMock).toHaveBeenCalledTimes(1);
+    expect(w.find('[data-test="admin-liveops-panel"]').exists()).toBe(true);
   });
 });

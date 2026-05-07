@@ -326,6 +326,40 @@ export class AdminLiveOpsService {
     return { noop: true, weekKey };
   }
 
+  /**
+   * Phase 13.1.C — Admin LiveOps Advanced Controls.
+   *
+   * POST /admin/sect-war/snapshot — record-for-audit sect war state. Read
+   * snapshot via `getSectWarStatus(weekKey)` rồi ghi 1 audit row
+   * `ADMIN_SECT_WAR_STATUS` để paper-trail rằng admin X đã review state
+   * sect war week Y vào thời điểm Z (compliance / handoff). KHÔNG mutate
+   * dữ liệu sect war.
+   *
+   * Khác biệt với GET /admin/sect-war/status:
+   *   - GET = auto-fetch FE refresh, KHÔNG audit (tránh log spam).
+   *   - POST snapshot = explicit "ghi nhận trạng thái cho hồ sơ" — admin
+   *     bấm nút trên panel.
+   */
+  async snapshotSectWarStatus(
+    actorUserId: string,
+    weekKey: string,
+    reason?: string,
+  ): Promise<SectWarStatusView> {
+    const snapshot = await this.getSectWarStatus(weekKey);
+    await this.writeAudit(actorUserId, 'ADMIN_SECT_WAR_STATUS', {
+      targetType: 'SectWarWeek',
+      targetId: weekKey,
+      reason: reason?.trim() || null,
+      summary: {
+        totalSects: snapshot.totalSects,
+        totalContributors: snapshot.totalContributors,
+        totalContributions: snapshot.totalContributions,
+        topSectIds: snapshot.topSects.slice(0, 3).map((s) => s.sectId),
+      },
+    });
+    return snapshot;
+  }
+
   /** Helper internal — meta cast cho audit.write. */
   static metaToJson(meta: Record<string, unknown>): Prisma.InputJsonValue {
     return meta as Prisma.InputJsonValue;

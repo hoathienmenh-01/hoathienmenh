@@ -839,7 +839,16 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
    * - Nếu `bossKey` truyền in: validate def.regionKey match regionKey
    *   (catalog null → 'world'); mismatch → throw INVALID_BOSS_KEY.
    *
-   * Ghi `AdminAuditLog` action `BOSS_SPAWN` với meta đầy đủ.
+   * Phase 13.1.C — Admin LiveOps Advanced Controls:
+   * Ghi 2 audit row trong cùng action:
+   *   1. `BOSS_SPAWN` (legacy, full spawn meta) — backwards-compat với
+   *      mọi audit consumer hiện hữu.
+   *   2. `ADMIN_FORCE_BOSS_SCHEDULE` (new) — admin tooling intent log với
+   *      `scheduledEventKey` (lookup từ LiveOps catalog nếu bossKey +
+   *      regionKey + spawnedAt match BOSS event đang active) + optional
+   *      `reason` từ admin để gắn paper trail.
+   * Cả 2 row được ghi atomic (cùng pattern dual-audit) — nếu boss create
+   * thành công nhưng audit fail thì throw nguyên trạng.
    */
   async adminSpawn(
     actorId: string,
@@ -848,6 +857,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       level?: number;
       force?: boolean;
       regionKey?: string;
+      reason?: string;
     } = {},
   ): Promise<{
     id: string;
@@ -939,19 +949,44 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       // catalog boss spawn-able (defensive).
       throw new BossError('BOSS_ALREADY_ACTIVE');
     }
-    await this.prisma.adminAuditLog.create({
-      data: {
-        actorUserId: actorId,
-        action: 'BOSS_SPAWN',
-        meta: {
-          bossId: spawned.id,
-          bossKey: spawned.bossKey,
-          level: spawned.level,
-          forced: !!opts.force,
-          replacedBossId,
-          regionKey: spawned.regionKey,
-        } as Prisma.InputJsonValue,
-      },
+    // Phase 13.1.C — dual audit. Lookup scheduledEventKey nếu boss spawn
+    // rơi đúng slot LiveOps BOSS event (cùng bossKey + regionKey + slot
+    // window). Null nếu spawn ngoài lịch (admin pure force).
+    const scheduledEvent = liveOpsEventForBossSpawn(
+      spawned.bossKey,
+      spawned.regionKey,
+      new Date(),
+    );
+    const reason = opts.reason?.trim() || null;
+    await this.prisma.adminAuditLog.createMany({
+      data: [
+        {
+          actorUserId: actorId,
+          action: 'BOSS_SPAWN',
+          meta: {
+            bossId: spawned.id,
+            bossKey: spawned.bossKey,
+            level: spawned.level,
+            forced: !!opts.force,
+            replacedBossId,
+            regionKey: spawned.regionKey,
+          } as Prisma.InputJsonValue,
+        },
+        {
+          actorUserId: actorId,
+          action: 'ADMIN_FORCE_BOSS_SCHEDULE',
+          meta: {
+            bossId: spawned.id,
+            bossKey: spawned.bossKey,
+            level: spawned.level,
+            forced: !!opts.force,
+            replacedBossId,
+            regionKey: spawned.regionKey,
+            scheduledEventKey: scheduledEvent?.key ?? null,
+            reason,
+          } as Prisma.InputJsonValue,
+        },
+      ],
     });
     return {
       id: spawned.id,
