@@ -71,6 +71,7 @@ import { RedisModule } from './common/redis.module';
     LiveOpsModule,
     SectWarModule,
     SectSeasonModule,
+    TerritoryModule,
   ],
 })
 export class AppModule {}
