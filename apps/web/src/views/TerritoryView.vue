@@ -235,7 +235,7 @@ const myRegionRows = computed(() => territory.me?.regions ?? []);
         <div
           v-if="
             selectedRegionKey &&
-            territory.leaderboardLoading[selectedRegionKey]
+              territory.leaderboardLoading[selectedRegionKey]
           "
           class="text-ink-300 text-sm"
           data-test="territory-leaderboard-loading"
@@ -245,7 +245,7 @@ const myRegionRows = computed(() => territory.me?.regions ?? []);
         <div
           v-else-if="
             selectedRegionKey &&
-            territory.leaderboardError[selectedRegionKey]
+              territory.leaderboardError[selectedRegionKey]
           "
           class="text-rose-300 text-sm"
           data-test="territory-leaderboard-error"
