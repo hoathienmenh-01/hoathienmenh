@@ -67,6 +67,16 @@
     "vi": "Tiếng Việt",
     "en": "English"
   },
+  "elementBadge": {
+    "neutral": "Neutral",
+    "element": {
+      "kim": "Metal",
+      "moc": "Wood",
+      "thuy": "Water",
+      "hoa": "Fire",
+      "tho": "Earth"
+    }
+  },
   "toast": {
     "title": {
       "info": "Info",

@@ -12,6 +12,41 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Added — Phase 14.2.A Elemental Combat Foundation (this PR)
+
+- **Ngũ Hành đi vào combat** — Skill / monster / equipment vốn đã có `element` (Phase 10/11) giờ thực sự ảnh hưởng damage qua một lớp "foundation" mỏng: skill cùng hệ với spirit-root nhân nhẹ (đã có Phase 11), thêm monster có `elementalResist` cản skill nhất định, trang bị có `elementalAtkBonus` cộng nhẹ % sát thương cho 1 hệ. Toàn bộ pipeline clamp envelope `[0.5×, 1.6×]` — KHÔNG phá balance hiện tại; monster/equipment chưa khai báo dữ liệu sẽ rơi về neutral 1.0×.
+- **Shared (`packages/shared/src/elemental.ts`)** — module mới chuyên trách lớp 14.2.A:
+  - `ElementType` (`WOOD/FIRE/EARTH/METAL/WATER`) alias English bổ sung cho `ElementKey` (`kim/moc/thuy/hoa/tho`) Vietnamese sẵn có; converter `elementTypeToKey` / `elementKeyToType` round-trip; `parseElementType` permissive (chấp nhận lowercase/null/undefined/garbage → null an toàn).
+  - `elementalAdvantage(attacker, defender)` trả về `'counter' | 'generate' | 'countered' | 'generated' | 'same' | 'neutral'` mô tả chu trình tương sinh / tương khắc.
+  - `elementalMultiplier(attacker, defender)` → number, neutral 1.0 nếu thiếu element, counter 1.5×, countered 0.7×, generate 1.1×, generated 0.9× (giữ envelope nhẹ, nằm trong `[0.6, 1.5]`).
+  - `composeMonsterElementalResist(resist, skillElement)` — null/empty/skill vô hệ → 1.0×; clamp floor `ELEMENT_MONSTER_RESIST_FLOOR=0.7` chống gear-check đơ.
+  - `composeEquipmentElementalAtkBonus(bonuses[], skillElement)` — additive stack giữa nhiều món, per-item cap `ELEMENT_EQUIPMENT_ATK_BONUS_CEIL=0.10`, total cap `ELEMENT_EQUIPMENT_ATK_BONUS_TOTAL_CEIL=0.20`.
+  - `applyElementalCombatAdjustment({ skillElement, attackerPrimary, attackerSecondary, defenderElement, monsterResist, equipmentBonuses })` — pipeline 3 lớp: (1) base advantage × character spirit-root bonus, (2) × monster resist, (3) × `(1 + equipBonus)`; clamp final `[ELEMENT_COMBAT_ADJUSTMENT_FLOOR=0.5, ELEMENT_COMBAT_ADJUSTMENT_CEIL=1.6]` + return metadata `{ multiplier, advantage, monsterResistMul, equipBonus }` cho combat log.
+  - 51 unit test bao phủ converter round-trip / parser permissive / cycle Ngũ Hành / clamp / cap / dial sanity.
+- **Shared types**:
+  - `MonsterDef.elementalResist?: Partial<Record<ElementKey, number>>` — multiplier `≤ 1` cho từng skill element. Khác với `MonsterDef.element` (affinity của chính monster) — `elementalResist` là **kháng** vs incoming skill element. Vd boss băng `huyen_bang_kiep_lang` có `element='thuy'` + `elementalResist={ hoa: 0.85 }` (kháng 15% sát thương Hoả). Floor đã clamp sẵn nên data sai cũng không phá game.
+  - `ItemBonus.elementalAtkBonus?: ElementalAtkBonus` — record `Partial<Record<ElementKey, number>>` cộng % atk cho hệ tương ứng. Thiết kế: dùng cho ngọc/pháp khí buff hệ, không phải atk gốc — KHÔNG đụng các bonus vốn có (atk/def/hpMax/...).
+  - `ELEMENTS` constant array (`['kim','moc','thuy','hoa','tho']`) export thêm cho FE iterate.
+- **API combat (`apps/api/src/modules/combat/combat.service.ts`)** — wire `applyElementalCombatAdjustment` vào damage flow trong `action()` (skill path) và `actionViaActiveTalent()` (talent path) với parity. Pipeline: (a) lấy `skillElement` / `talentElementKey` từ catalog, (b) lấy character primary/secondary spirit-root từ `getOrCreateSpiritRootSet`, (c) lấy `monster.elementalResist`, (d) gọi `inventory.equipElementalAtkBonus(characterId, element)` → tổng cap'd, (e) compose qua `applyElementalCombatAdjustment` → multiplier × `Math.max(1, atk - def)`. Bảo toàn nhân `characterSkillElementBonus` (Phase 11) — KHÔNG double-apply.
+- **API combat log** — non-trivial event mới (skip khi neutral 1.0×):
+  - `monsterResistMul < 0.95` → `"<monster> kháng hệ <element> ×0.85."`
+  - `equipBonus ≥ 0.05` → `"Trang bị tăng 8% sát thương hệ <element>."`
+- **API inventory (`apps/api/src/modules/inventory/inventory.service.ts`)** — thêm `equipElementalAtkBonus(characterId, skillElement)` đọc các slot equipped, gom `bonuses.elementalAtkBonus` của từng item, gọi `composeEquipmentElementalAtkBonus` (cap'd) → trả về số cộng additive cho combat.
+- **FE component `apps/web/src/components/ElementBadge.vue`** — atom hiển thị Ngũ Hành affinity:
+  - Props: `element` (ElementKey | ElementType | string | null, permissive), `showNeutral` (default `false`), `size` (`sm`/`md`).
+  - i18n namespace `elementBadge.element.<key>` + `elementBadge.neutral` (vi/en parity).
+  - Color coding: kim → ink-200, moc → emerald-300, thuy → sky-300, hoa → rose-300, tho → amber-300; neutral → ink-300.
+  - `data-testid="element-badge-<key>"` + `data-element` attribute cho test stable.
+  - 26 test bao phủ render rules / parse permissive / color class / size variant.
+- **FE views integration**:
+  - `SkillBookView.vue` — replace inline element span bằng `<ElementBadge>` (giữ nguyên `data-testid="skill-book-element-<key>"`, hiện neutral khi skill vô hệ).
+  - `DungeonView.vue` — thêm badge cạnh tên monster (chỉ render khi monster có element, no badge cho monster vô hệ — giữ UI compact).
+- **Docs**:
+  - `docs/BALANCE_MODEL.md` — bổ sung mục "Phase 14.2.A — Elemental combat foundation dials" liệt kê 5 dial mới + envelope final clamp + ý nghĩa.
+  - `docs/AI_HANDOFF_REPORT.md` — entry "Phase 14.2.A".
+  - `docs/CHANGELOG.md` — entry này.
+- **Out of scope (Phase 14.2.A)**: rewrite combat pipeline, Spiritual Root runtime mở rộng (vẫn dùng Phase 11), data populate `elementalResist` cho toàn bộ monster catalog, populate `elementalAtkBonus` cho item catalog (data PR sau, foundation đã sẵn), large UI refactor.
+
 ### Added — Phase 12.10.A NPC Affinity & Relationship Foundation (this PR)
 
 - **NPC giờ có điểm thân tình (affinity) riêng** — Mở nền móng quan hệ NPC: mỗi (character, NPC) có 1 điểm số từ `minScore..maxScore` (per-NPC catalog), tăng/giảm qua dialogue choice + future quest reward, vượt mốc `AFFINITY_TIERS` (Xa Lạ → Quen Biết → Bằng Hữu → Tri Giao → Tri Kỷ) sẽ unlock dialogue/quest mới. Phase 12.10.A KHÔNG ship gift/shop NPC — chỉ foundation runtime + FE relationship panel + dialogue change_affinity hook.

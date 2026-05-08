@@ -70,6 +70,11 @@
       "types": "./dist/balance-dials.d.ts",
       "import": "./dist/balance-dials.js",
       "require": "./dist/balance-dials.cjs"
+    },
+    "./elemental": {
+      "types": "./dist/elemental.d.ts",
+      "import": "./dist/elemental.js",
+      "require": "./dist/elemental.cjs"
     }
   },
   "files": [

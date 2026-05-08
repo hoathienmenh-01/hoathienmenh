@@ -13,7 +13,9 @@ import {
   SPIRITUAL_ROOT_GRADES,
   STAMINA_PER_ACTION,
   SKILL_BASIC_ATTACK,
+  applyElementalCombatAdjustment,
   characterSkillElementBonus,
+  composeMonsterElementalResist,
   describeElementMatch,
   dungeonByKey,
   elementMultiplier,
@@ -410,9 +412,33 @@ export class CombatService {
         ? buffMods.damageBonusByElement.get(skillElement) ?? 1
         : 1;
 
+    // Phase 14.2.A — Elemental Combat Foundation layer (additive bonus).
+    // Compose:
+    //   monsterResist = composeMonsterElementalResist(monster.elementalResist, skill.element)
+    //   equipBonus    = await inventory.equipElementalAtkBonus(charId, skill.element)
+    //   phase142Mul   = monsterResist × (1 + equipBonus)
+    // Multiplicative với playerElementMul (Phase 11). KHÔNG override —
+    // foundation layer phụ. Fallback `1.0` nếu skill vô hệ hoặc legacy
+    // monster/equipment chưa khai báo. Pipeline KHÔNG re-apply base
+    // multiplier (đã có trong playerElementMul).
+    const monsterResistMul = composeMonsterElementalResist(
+      monster.elementalResist,
+      skillElement,
+    );
+    const equipElementBonus = await this.inventory.equipElementalAtkBonus(
+      char.id,
+      skillElement,
+    );
+    const phase142Mul = monsterResistMul * (1 + equipElementBonus);
+
     // — Player attack (Phase 11.2.B — atkScale + mpCost từ mastery curve)
     const dmgBase = rollDamage(effPower, monster.def, effective.atkScale);
-    const dmg = Math.max(1, Math.round(dmgBase * playerElementMul * talentElementMul * buffElementMul));
+    const dmg = Math.max(
+      1,
+      Math.round(
+        dmgBase * playerElementMul * talentElementMul * buffElementMul * phase142Mul,
+      ),
+    );
     let monsterHp = state.monsterHp - dmg;
     charMp -= effective.mpCost;
     if (skill.selfBloodCost > 0) {
@@ -447,6 +473,23 @@ export class CombatService {
         text: matchVi
           ? `Ngũ Hành ${matchVi} — sát thương suy giảm ×${playerElementMul.toFixed(2)}.`
           : `Ngũ Hành lệch hệ — sát thương suy giảm ×${playerElementMul.toFixed(2)}.`,
+        ts: Date.now(),
+      });
+    }
+    // Phase 14.2.A — log monster resist / equipment bonus khi non-trivial
+    // (resist < 0.95 hoặc equipBonus ≥ 0.05). Ngắn gọn, tách biệt với Phase
+    // 11 chain log. Skip khi vô hệ skill (skillElement null) — đã neutral 1.0.
+    if (skillElement !== null && monsterResistMul < 0.95) {
+      log.push({
+        side: 'system',
+        text: `${monster.name} kháng hệ ${skillElement} ×${monsterResistMul.toFixed(2)}.`,
+        ts: Date.now(),
+      });
+    }
+    if (skillElement !== null && equipElementBonus >= 0.05) {
+      log.push({
+        side: 'system',
+        text: `Trang bị tăng ${(equipElementBonus * 100).toFixed(0)}% sát thương hệ ${skillElement}.`,
         ts: Date.now(),
       });
     }
@@ -851,6 +894,21 @@ export class CombatService {
       throw new CombatError('CONTROLLED');
     }
 
+    // Phase 14.2.A — Elemental Combat Foundation layer (parity với skill flow).
+    // Compose monsterResist × (1 + equipBonus) cho talent active damage path.
+    // Fallback `1.0` nếu talent.element null hoặc legacy monster/equipment chưa
+    // khai báo. Multiplicative với playerElementMul/talentElementMul/buffElementMul.
+    const talentElementKey = talent.element ?? null;
+    const monsterResistMul = composeMonsterElementalResist(
+      monster.elementalResist,
+      talentElementKey,
+    );
+    const equipElementBonus = await this.inventory.equipElementalAtkBonus(
+      char.id,
+      talentElementKey,
+    );
+    const phase142Mul = monsterResistMul * (1 + equipElementBonus);
+
     const result = simulateActiveTalent(talent, char.power, char.spirit);
 
     // Apply effect.
@@ -870,7 +928,13 @@ export class CombatService {
       case 'damage': {
         const dmg = Math.max(
           1,
-          Math.round(result.damage * playerElementMul * talentElementMul * buffElementMul),
+          Math.round(
+            result.damage *
+              playerElementMul *
+              talentElementMul *
+              buffElementMul *
+              phase142Mul,
+          ),
         );
         monsterHp = state.monsterHp - dmg;
         log.push({
@@ -902,6 +966,22 @@ export class CombatService {
             text: matchVi
               ? `Ngũ Hành ${matchVi} — sát thương suy giảm ×${playerElementMul.toFixed(2)}.`
               : `Ngũ Hành lệch hệ — sát thương suy giảm ×${playerElementMul.toFixed(2)}.`,
+            ts: Date.now(),
+          });
+        }
+        // Phase 14.2.A — log monster resist / equipment bonus khi non-trivial.
+        // Parity với skill flow (action()).
+        if (talentElementKey !== null && monsterResistMul < 0.95) {
+          log.push({
+            side: 'system',
+            text: `${monster.name} kháng hệ ${talentElementKey} ×${monsterResistMul.toFixed(2)}.`,
+            ts: Date.now(),
+          });
+        }
+        if (talentElementKey !== null && equipElementBonus >= 0.05) {
+          log.push({
+            side: 'system',
+            text: `Trang bị tăng ${(equipElementBonus * 100).toFixed(0)}% sát thương hệ ${talentElementKey}.`,
             ts: Date.now(),
           });
         }

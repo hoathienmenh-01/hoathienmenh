@@ -297,6 +297,42 @@ Curve table (đã có sẵn trong `packages/shared/src/spiritual-root.ts`):
 - Stat bonus applied **trước** rollDamage → max impact tại Thần linh căn (×1.30 power, ×1.30 def).
 - Combined với element multiplier (1.40 max) + cultivation method (×1.8 max) + buff (×1.5 max) + title (×1.15 max) → grand total cap **5.0× theo §2.5** (multiplicative). Vượt → cap.
 
+### 2.9.3 Phase 14.2.A — Elemental combat foundation dials (DONE this PR)
+
+Phase 14.2.A bổ sung **lớp foundation** cho Ngũ Hành combat — giữ nguyên Phase 11.3.B chain (skill element vs character primary/secondary spirit-root) đồng thời thêm hai layer dữ liệu optional cho monster + equipment. Pipeline pure-function `applyElementalCombatAdjustment` (`packages/shared/src/elemental.ts`) compose 3 layer + clamp envelope:
+
+```
+base = elementalMultiplier(skillElement, defenderElement)
+     + (skillElement === attackerPrimary ? CHARACTER_PRIMARY_BONUS : 0)
+     + (skillElement ∈ attackerSecondary ? CHARACTER_SECONDARY_BONUS : 0)
+mResist  = composeMonsterElementalResist(monster.elementalResist, skillElement)   // ≥ FLOOR (0.7)
+eqBonus  = composeEquipmentElementalAtkBonus(equipment.elementalAtkBonus[], skill)   // ≤ TOTAL_CEIL (0.20)
+final    = clamp(base × mResist × (1 + eqBonus), ADJUSTMENT_FLOOR, ADJUSTMENT_CEIL)
+```
+
+| Constant (`elemental.ts`) | Value | Áp lên | Ý nghĩa |
+| --- | --- | --- | --- |
+| `ELEMENT_MONSTER_RESIST_FLOOR` | **0.70** | `composeMonsterElementalResist` | Sàn cho monster.elementalResist[skillElement] — chống data sai làm gear-check 0× |
+| `ELEMENT_EQUIPMENT_ATK_BONUS_CEIL` | **0.10** | per-item `elementalAtkBonus[skillElement]` | Trần 1 món trang bị, chống outlier item dữ liệu |
+| `ELEMENT_EQUIPMENT_ATK_BONUS_TOTAL_CEIL` | **0.20** | tổng equipped slot `elementalAtkBonus[skillElement]` | Trần tổng stack 6 slot trang bị (additive), chống full-set roll cùng hệ |
+| `ELEMENT_COMBAT_ADJUSTMENT_FLOOR` | **0.50** | `applyElementalCombatAdjustment` final | Sàn tổng pipeline (base × mResist × (1+eqBonus)) — guard runtime vs invalid data |
+| `ELEMENT_COMBAT_ADJUSTMENT_CEIL` | **1.60** | `applyElementalCombatAdjustment` final | Trần tổng — counter (1.30) + primary (0.10) + secondary (0.05) + eqBonus (0.20) ≈ 1.65 (theoretical) → clamp 1.60 = headroom 0.05 |
+
+**Note design intent**:
+- `ELEMENT_MONSTER_RESIST_FLOOR=0.7` chọn nhẹ — không phá Phase 11.3.B counter `1.30×`. Một boss data `elementalResist[hoa]=0.5` (data sai) sẽ cap về 0.7, vẫn cho phép player damage normally.
+- `ELEMENT_EQUIPMENT_ATK_BONUS_TOTAL_CEIL=0.20` ≈ +20% damage một hệ — tương đương 1 grade spiritual-root (Huyền Linh Căn statBonus 10%), nhưng chỉ 1 hệ (hệ khác = 0 stack).
+- Final clamp `[0.5, 1.6]` rộng hơn `validateElementalModifier` envelope `[0.6, 1.5]` của Phase 11 nâng cao §3 (vì bao gồm equipment layer mới, có thể đẩy lên 1.65 lý thuyết).
+
+**Wire điểm** (`apps/api/src/modules/combat/combat.service.ts`):
+- `action()` (skill flow) + `actionViaActiveTalent()` (talent flow) parity: cùng compose qua `applyElementalCombatAdjustment` + cùng cấu trúc log.
+- `inventory.service.ts` exposes `equipElementalAtkBonus(characterId, skillElement)` — đọc các slot equipped, gom `bonuses.elementalAtkBonus`, gọi `composeEquipmentElementalAtkBonus` (cap'd) → trả về số cộng additive cho combat.
+- Combat log non-trivial events:
+  - `monsterResistMul < 0.95` → `"<monster> kháng hệ <element> ×<x.xx>."`
+  - `equipBonus ≥ 0.05` → `"Trang bị tăng <yy>% sát thương hệ <element>."`
+  - Skip log khi neutral 1.0× → log impact thấp khi data chưa populate.
+
+**Tương tác với Phase 11.3.B**: `characterSkillElementBonus` (Phase 11) vẫn áp **trước** Phase 14.2.A pipeline trong combat service damage flow. KHÔNG double-apply: 14.2.A pipeline lấy `skillElement` + `attackerPrimary`/`attackerSecondary` riêng từ `getOrCreateSpiritRootSet`, compose `base` qua `elementalMultiplier` + character bonus chỉ 1 lần. Phase 11.3.B `characterSkillElementBonus` chỉ phản ánh primary/secondary linh căn — Phase 14.2.A `base` đã bao gồm phần đó nên 2 layer là 2 wire điểm độc lập, không cộng dồn.
+
 ### 2.9.3 Phase 11.3.D wire điểm (Pending)
 
 - UI character profile display Linh căn.

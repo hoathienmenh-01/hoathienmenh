@@ -2,6 +2,7 @@ import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import type { EquipSlot, Prisma } from '@prisma/client';
 import {
   buffForItem,
+  composeEquipmentElementalAtkBonus,
   composeEquippedItemElementResist,
   composeSocketBonus,
   getRefineStatMultiplier,
@@ -276,6 +277,37 @@ export class InventoryService {
       .map((r) => itemByKey(r.itemKey)?.bonuses)
       .filter((b): b is NonNullable<typeof b> => b !== undefined);
     return composeEquippedItemElementResist(bonuses);
+  }
+
+  /**
+   * **Phase 14.2.A** — compose Ngũ Hành combat ATK bonus từ trang bị đang đeo
+   * cho 1 skill element. Trả additive bonus (e.g. `0.07` = +7% damage). Stack
+   * additive across equipped items, capped per-item + total qua
+   * {@link composeEquipmentElementalAtkBonus}. Pure delegate; consume bởi
+   * `CombatService.action` / `actionViaActiveTalent` Phase 14.2.A pipeline.
+   *
+   * Empty / `0` nếu:
+   *   - Không trang bị nào có `ItemBonus.elementalAtkBonus` (legacy default).
+   *   - `skillElement` null (vô hệ skill / basic attack).
+   *   - Catalog chưa khai báo bonus cho element này.
+   *
+   * Khác `equipElementResistMods` (tribulation kháng kiếp) — `equipElementalAtkBonus`
+   * là **bonus tấn công** trong combat. 2 method độc lập, đọc 2 field riêng
+   * (`elementResist` vs `elementalAtkBonus`).
+   */
+  async equipElementalAtkBonus(
+    characterId: string,
+    skillElement: ElementKey | null,
+  ): Promise<number> {
+    if (skillElement === null) return 0;
+    const equipped = await this.prisma.inventoryItem.findMany({
+      where: { characterId, equippedSlot: { not: null } },
+    });
+    if (equipped.length === 0) return 0;
+    const bonuses = equipped
+      .map((r) => itemByKey(r.itemKey)?.bonuses)
+      .filter((b): b is NonNullable<typeof b> => b !== undefined);
+    return composeEquipmentElementalAtkBonus(bonuses, skillElement);
   }
 
   /**
