@@ -2873,5 +2873,61 @@
         "latestSect": "Tông gần nhất"
       }
     }
+  },
+  "territory": {
+    "title": "Lãnh Địa Tông Môn",
+    "subtitle": "Ảnh hưởng vùng đất — Tông Môn nào hoạt động nhiều nhất sẽ chiếm lĩnh.",
+    "loading": "Đang tải dữ liệu Lãnh Địa…",
+    "tab": {
+      "overview": "Tổng quan",
+      "leaderboard": "Bảng xếp hạng",
+      "me": "Tông của tôi"
+    },
+    "overview": {
+      "empty": "Chưa có dữ liệu vùng đất.",
+      "summary": "{pts} điểm · {contributors} thành viên đóng góp",
+      "topSect": "Đứng đầu: {name} ({pts} điểm)",
+      "noTopSect": "Chưa có Tông Môn nào ghi điểm."
+    },
+    "leaderboard": {
+      "empty": "Chưa có Tông Môn nào ghi điểm trong vùng này.",
+      "pickHint": "Chọn một vùng đất ở phía trên để xem bảng xếp hạng.",
+      "youTag": "(Tông của tôi)",
+      "col": {
+        "rank": "Hạng",
+        "sect": "Tông Môn",
+        "points": "Điểm",
+        "contributors": "Thành viên góp"
+      }
+    },
+    "me": {
+      "noSect": "Đạo hữu chưa gia nhập Tông Môn — chưa có ảnh hưởng vùng đất.",
+      "header": "Tông Môn: {sect}",
+      "col": {
+        "region": "Vùng đất",
+        "rank": "Hạng",
+        "sectPoints": "Điểm Tông",
+        "personalPoints": "Cá nhân"
+      }
+    },
+    "source": {
+      "dungeon_clear": {
+        "label": "Hoàn thành Bí Cảnh",
+        "desc": "Mỗi lần claim Bí Cảnh trong vùng — góp 8 điểm (cap 60/ngày)."
+      },
+      "boss_participation": {
+        "label": "Tham chiến Boss",
+        "desc": "Tham gia gây sát thương Boss vùng — góp 12 điểm (cap 96/tuần)."
+      },
+      "boss_top_damage": {
+        "label": "Top sát thương Boss",
+        "desc": "Đứng đầu sát thương Boss vùng — bonus 20 điểm (cap 80/tuần)."
+      }
+    },
+    "errors": {
+      "NO_CHARACTER": "Chưa có nhân vật, hãy khai đạo trước.",
+      "REGION_INVALID": "Vùng đất không tồn tại.",
+      "UNKNOWN": "Không tải được dữ liệu Lãnh Địa, thử lại."
+    }
   }
 }

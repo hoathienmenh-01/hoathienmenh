@@ -71,6 +71,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/SectWarView.vue'),
   },
   {
+    path: '/territory',
+    name: 'territory',
+    component: () => import('@/views/TerritoryView.vue'),
+  },
+  {
     path: '/boss',
     name: 'boss',
     component: () => import('@/views/BossView.vue'),

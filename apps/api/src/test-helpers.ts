@@ -115,6 +115,8 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // Phase 13.1.A — Sect War tables phải xoá trước Character/Sect.
   await prisma.sectWarWeeklyRewardClaim.deleteMany({});
   await prisma.sectWarContribution.deleteMany({});
+  // Phase 14.0.A — Sect Territory Influence (xoá trước Character/Sect).
+  await prisma.sectTerritoryInfluence.deleteMany({});
   await prisma.itemLedger.deleteMany({});
   await prisma.currencyLedger.deleteMany({});
   await prisma.tribulationAttemptLog.deleteMany({});

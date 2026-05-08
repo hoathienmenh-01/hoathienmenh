@@ -6,6 +6,8 @@ import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { QuestModule } from '../quest/quest.module';
+import { SectWarModule } from '../sect-war/sect-war.module';
+import { TerritoryModule } from '../territory/territory.module';
 
 /**
  * Phase 12.2.B — DungeonRun runtime module.
@@ -20,7 +22,14 @@ import { QuestModule } from '../quest/quest.module';
  *                        khi resolve encounter (mirror `combat.service` PR-6).
  */
 @Module({
-  imports: [AuthModule, CharacterModule, InventoryModule, QuestModule],
+  imports: [
+    AuthModule,
+    CharacterModule,
+    InventoryModule,
+    QuestModule,
+    SectWarModule,
+    TerritoryModule,
+  ],
   controllers: [DungeonRunController],
   providers: [DungeonRunService, PrismaService],
   exports: [DungeonRunService],
