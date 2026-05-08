@@ -13,7 +13,6 @@ import {
   SPIRITUAL_ROOT_GRADES,
   STAMINA_PER_ACTION,
   SKILL_BASIC_ATTACK,
-  applyElementalCombatAdjustment,
   characterSkillElementBonus,
   composeMonsterElementalResist,
   describeElementMatch,
