@@ -2124,6 +2124,7 @@
       "INVALID_RNG": "RNG system error, please retry.",
       "UNAUTHENTICATED": "Session expired.",
       "IN_FLIGHT": "Processing…",
+      "TRIBULATION_REQUIRED": "This realm requires passing the Heavenly Tribulation — redirecting to Tribulation page.",
       "UNKNOWN": "Breakthrough failed, please retry."
     }
   },
