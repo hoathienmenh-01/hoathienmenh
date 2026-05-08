@@ -1,12 +1,13 @@
 /**
- * Phase 14.0.A — Sect Territory Influence Foundation Pinia store.
+ * Phase 14.0.A + 14.0.B — Sect Territory Pinia store.
  *
- * Read-only store: 3 fetcher cho 3 endpoint (regions list / per-region
- * leaderboard / personal view). Server-authoritative; FE KHÔNG mutate.
+ * Read-only fetcher cho regions / leaderboard / me / history. Phase 14.0.B
+ * thêm history cache theo regionKey + admin settlement triggers.
  *
- * Race-protected: mỗi fetcher có flag `loading` riêng để fetch song song
- * (regions + me) không đè trạng thái lẫn nhau. Leaderboard cache theo
- * `regionKey` để chuyển tab giữa các region không fetch lại không cần thiết.
+ * Server-authoritative; FE KHÔNG mutate điểm. Race-protected: mỗi fetcher
+ * có flag `loading` riêng để fetch song song không đè trạng thái lẫn nhau.
+ * Leaderboard / history cache theo `regionKey` để chuyển tab giữa các
+ * region không fetch lại không cần thiết.
  */
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
@@ -28,6 +29,19 @@ export const useTerritoryStore = defineStore('territory', () => {
   const leaderboards = ref<Record<string, api.TerritoryLeaderboardView>>({});
   const leaderboardLoading = ref<Record<string, boolean>>({});
   const leaderboardError = ref<Record<string, string | null>>({});
+
+  /**
+   * Phase 14.0.B — settlement history cache per region. Tương tự
+   * leaderboard cache. Sau settlement trigger, store gọi
+   * `invalidateRegion(regionKey)` để force refresh.
+   */
+  const histories = ref<Record<string, api.TerritoryRegionHistoryView>>({});
+  const historyLoading = ref<Record<string, boolean>>({});
+  const historyError = ref<Record<string, string | null>>({});
+
+  const settleLoading = ref(false);
+  const settleError = ref<string | null>(null);
+  const lastSettleResult = ref<api.TerritorySettlementRunResult | null>(null);
 
   function extractCode(e: unknown): string {
     return (
@@ -98,6 +112,93 @@ export const useTerritoryStore = defineStore('territory', () => {
     }
   }
 
+  async function fetchHistory(
+    regionKey: string,
+    opts: { force?: boolean } = {},
+  ): Promise<string | null> {
+    if (historyLoading.value[regionKey]) return 'IN_FLIGHT';
+    if (!opts.force && histories.value[regionKey]) return null;
+    historyLoading.value = {
+      ...historyLoading.value,
+      [regionKey]: true,
+    };
+    historyError.value = {
+      ...historyError.value,
+      [regionKey]: null,
+    };
+    try {
+      const data = await api.getTerritoryRegionHistory(regionKey);
+      histories.value = { ...histories.value, [regionKey]: data };
+      return null;
+    } catch (e) {
+      const code = extractCode(e);
+      historyError.value = {
+        ...historyError.value,
+        [regionKey]: code,
+      };
+      return code;
+    } finally {
+      historyLoading.value = {
+        ...historyLoading.value,
+        [regionKey]: false,
+      };
+    }
+  }
+
+  /**
+   * Phase 14.0.B — admin trigger settlement (toàn bộ region) với
+   * `periodKey` optional (server fallback `previousTerritoryPeriodKey()`).
+   * Sau khi thành công, store invalidate cache regions/leaderboard/history
+   * và refetch regions để FE thấy owner mới ngay.
+   */
+  async function adminSettleAll(periodKey?: string): Promise<string | null> {
+    if (settleLoading.value) return 'IN_FLIGHT';
+    settleLoading.value = true;
+    settleError.value = null;
+    try {
+      const res = await api.adminTerritorySettleAll(periodKey);
+      lastSettleResult.value = res;
+      // Invalidate caches → refetch regions (owner đổi).
+      histories.value = {};
+      leaderboards.value = {};
+      await fetchRegions();
+      return null;
+    } catch (e) {
+      const code = extractCode(e);
+      settleError.value = code;
+      return code;
+    } finally {
+      settleLoading.value = false;
+    }
+  }
+
+  async function adminSettleRegion(
+    regionKey: string,
+    periodKey?: string,
+  ): Promise<string | null> {
+    if (settleLoading.value) return 'IN_FLIGHT';
+    settleLoading.value = true;
+    settleError.value = null;
+    try {
+      await api.adminTerritorySettleRegion(regionKey, periodKey);
+      // Invalidate region caches → refetch regions + history mới.
+      const newHist = { ...histories.value };
+      delete newHist[regionKey];
+      histories.value = newHist;
+      const newLb = { ...leaderboards.value };
+      delete newLb[regionKey];
+      leaderboards.value = newLb;
+      await fetchRegions();
+      return null;
+    } catch (e) {
+      const code = extractCode(e);
+      settleError.value = code;
+      return code;
+    } finally {
+      settleLoading.value = false;
+    }
+  }
+
   function reset(): void {
     regions.value = null;
     regionsLoading.value = false;
@@ -108,6 +209,12 @@ export const useTerritoryStore = defineStore('territory', () => {
     leaderboards.value = {};
     leaderboardLoading.value = {};
     leaderboardError.value = {};
+    histories.value = {};
+    historyLoading.value = {};
+    historyError.value = {};
+    settleLoading.value = false;
+    settleError.value = null;
+    lastSettleResult.value = null;
   }
 
   return {
@@ -120,9 +227,18 @@ export const useTerritoryStore = defineStore('territory', () => {
     leaderboards,
     leaderboardLoading,
     leaderboardError,
+    histories,
+    historyLoading,
+    historyError,
+    settleLoading,
+    settleError,
+    lastSettleResult,
     fetchRegions,
     fetchMe,
     fetchLeaderboard,
+    fetchHistory,
+    adminSettleAll,
+    adminSettleRegion,
     reset,
   };
 });

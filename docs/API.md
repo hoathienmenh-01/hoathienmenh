@@ -86,16 +86,20 @@ Tick EXP thực hiện bởi BullMQ processor `cultivation.processor.ts`. WS eve
 | GET    | `/chat/world?limit=N` | Yes  | Lịch sử world chat. |
 | POST   | `/chat/send`          | Yes  | Gửi. Rate limit 8 msg / 30s / player (Redis). |
 
-## Territory — `TerritoryController` (Phase 14.0.A)
+## Territory — `TerritoryController` (Phase 14.0.A + 14.0.B)
 
-Lớp **Sect Territory Influence Foundation** — read-only views cho Sect Influence Leaderboard theo region.
+Lớp **Sect Territory Influence + Settlement** — read views cho Influence Leaderboard theo region + Settlement (chiếm vùng) thật.
 Server-authoritative; FE KHÔNG mutate. Mọi điểm influence chỉ được cộng qua **gameplay hook** (dungeon clear / boss participation / boss top damage) — KHÔNG có endpoint mutate trực tiếp.
+Settlement (Phase 14.0.B) chỉ trigger qua admin endpoint hoặc cron weekly job (chưa wire trong PR này).
 
-| Method | Path                                          | Auth | Mô tả |
-|--------|-----------------------------------------------|------|-------|
-| GET    | `/territory/regions`                          | Yes  | List 9 region (`MAP_REGIONS` parity) + `totalPoints` + `contributors` + `topSect` snapshot. Region không có influence vẫn xuất hiện với `totalPoints=0`, `topSect=null`. Sort theo `MapRegionDef.sortOrder`. |
-| GET    | `/territory/regions/:regionKey/leaderboard`   | Yes  | Top 10 sect trong region, `points` desc, tie-break `sectId` asc. Throw 404 `REGION_INVALID` nếu key không hợp lệ. |
-| GET    | `/territory/me`                               | Yes  | Personal view: per-region rank/points của sect user + `personalPoints` cá nhân. Character không có sect → `hasSect=false`, `regions[]` đầy đủ với `sectPoints=0`/`sectRank=null`. Throw 404 `NO_CHARACTER` nếu user chưa onboard. |
+| Method | Path                                          | Auth   | Mô tả |
+|--------|-----------------------------------------------|--------|-------|
+| GET    | `/territory/regions`                          | Yes    | List 9 region (`MAP_REGIONS` parity) + `totalPoints` + `contributors` + `topSect` snapshot **+ owner**: `ownerSectId? / ownerSectName? / ownerPeriodKey? / ownerSettledAt?` (Phase 14.0.B). Region không có influence vẫn xuất hiện với `totalPoints=0`, `topSect=null`. Sort theo `MapRegionDef.sortOrder`. |
+| GET    | `/territory/regions/:regionKey/leaderboard`   | Yes    | Top 10 sect trong region, `points` desc, tie-break `sectId` asc. Throw 404 `REGION_INVALID` nếu key không hợp lệ. |
+| GET    | `/territory/regions/:regionKey/history`       | Yes    | (Phase 14.0.B) Settlement history per region — DESC theo `settledAt`, default limit 20 (clamp 1..100 qua `?limit=`). Response `{ regionKey, current: TerritoryRegionOwnerLite \| null, snapshots: TerritorySettlementSnapshotView[] }`. Throw 404 `REGION_INVALID`. |
+| GET    | `/territory/me`                               | Yes    | Personal view: per-region rank/points của sect user + `personalPoints` cá nhân. Character không có sect → `hasSect=false`, `regions[]` đầy đủ với `sectPoints=0`/`sectRank=null`. Throw 404 `NO_CHARACTER` nếu user chưa onboard. |
+| POST   | `/admin/territory/settle`                     | ADMIN  | (Phase 14.0.B) Settle **all 9 regions** cho `?periodKey=…`. `periodKey` validate qua `isTerritoryPeriodKey` (ISO week `YYYY-Www` hoặc `manual_*`). Nếu không truyền → fallback `previousTerritoryPeriodKey()` (tuần trước). Response `TerritorySettlementRunResult { periodKey, settledAt, snapshots[], skippedRegions[] }`. Idempotent qua UNIQUE `(regionKey, periodKey)` — gọi lại cùng `periodKey` trả cùng snapshot id. Non-admin → 403 `ADMIN_ONLY`. Invalid `periodKey` → 400 `PERIOD_INVALID`. |
+| POST   | `/admin/territory/regions/:regionKey/settle`  | ADMIN  | (Phase 14.0.B) Manual settle 1 region (debug/override). Body/query `periodKey` cùng convention như endpoint trên. Response `{ snapshot: TerritorySettlementSnapshotView \| null, skipped: boolean, regionKey, periodKey }`. 404 `REGION_INVALID`, 400 `PERIOD_INVALID`, 403 `ADMIN_ONLY`. |
 
 **Influence sources (Phase 14.0.A)** — chỉ ghi điểm qua hook chạy trong tx của gameplay flow:
 

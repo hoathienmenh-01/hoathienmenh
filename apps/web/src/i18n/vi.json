@@ -2887,7 +2887,11 @@
       "empty": "Chưa có dữ liệu vùng đất.",
       "summary": "{pts} điểm · {contributors} thành viên đóng góp",
       "topSect": "Đứng đầu: {name} ({pts} điểm)",
-      "noTopSect": "Chưa có Tông Môn nào ghi điểm."
+      "noTopSect": "Chưa có Tông Môn nào ghi điểm.",
+      "owner": "Chủ: {name}",
+      "noOwner": "Chưa có chủ vùng — chờ kết toán.",
+      "ownerSettled": "Kết toán: {period}",
+      "ownerBadge": "Đang chiếm giữ"
     },
     "leaderboard": {
       "empty": "Chưa có Tông Môn nào ghi điểm trong vùng này.",
@@ -2924,9 +2928,30 @@
         "desc": "Đứng đầu sát thương Boss vùng — bonus 20 điểm (cap 80/tuần)."
       }
     },
+    "history": {
+      "title": "Lịch sử kết toán",
+      "empty": "Vùng đất chưa được kết toán lần nào.",
+      "viewMore": "Xem lịch sử",
+      "current": "Chủ hiện tại: {name} (kỳ {period})",
+      "currentNone": "Chưa có chủ vùng.",
+      "row": "{period} · {sect} ({pts} điểm) · runner-up {runner} ({rpts})",
+      "rowNoRunner": "{period} · {sect} ({pts} điểm)"
+    },
+    "admin": {
+      "title": "Quản trị: Kết toán Lãnh Địa",
+      "subtitle": "Chốt chủ sở hữu cho mọi vùng dựa trên điểm ảnh hưởng hiện tại. Idempotent theo periodKey.",
+      "periodLabel": "Period key (vd 2026-W23 hoặc manual_xx)",
+      "settleAll": "Kết toán toàn bộ",
+      "settleRegion": "Kết toán vùng này",
+      "running": "Đang kết toán…",
+      "lastResult": "Kết toán {period}: thắng {wins} vùng · bỏ qua {skip} vùng (không có điểm)."
+    },
     "errors": {
       "NO_CHARACTER": "Chưa có nhân vật, hãy khai đạo trước.",
       "REGION_INVALID": "Vùng đất không tồn tại.",
+      "PERIOD_INVALID": "Period key không hợp lệ (yêu cầu ISO week YYYY-Www hoặc manual_*).",
+      "ADMIN_ONLY": "Chỉ ADMIN mới được kết toán Lãnh Địa.",
+      "UNAUTHENTICATED": "Vui lòng đăng nhập lại.",
       "UNKNOWN": "Không tải được dữ liệu Lãnh Địa, thử lại."
     }
   }

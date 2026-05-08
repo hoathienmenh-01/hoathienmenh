@@ -12,6 +12,42 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Added — Phase 14.0.B Sect Territory Settlement and Region Ownership (this PR)
+
+- **Lãnh Địa Tông Môn — chiếm vùng thật** — Influence Leaderboard từ Phase 14.0.A giờ có thể được **kết toán (settlement)** thành quyền sở hữu vùng đất. Mỗi region có 1 `ownerSectId` hiện tại, kèm `periodKey` (ISO week hoặc admin-manual) và `settledAt`. Tông top influence trong vùng tại thời điểm settle sẽ chiếm vùng — nếu không có Tông nào ghi điểm thì vùng được skip (không có chủ).
+- **Shared (`packages/shared/src/territory.ts`)** — extend layer 14.0.A:
+  - Thêm 4 type DTO mới: `TerritorySettlementSnapshotView`, `TerritoryRegionHistoryView`, `TerritorySettlementRunResult`, `TerritoryRegionOwnerLite`. Extend `TerritoryRegionView` với `ownerSectId/ownerSectName/ownerPeriodKey/ownerSettledAt`.
+  - 2 regex period validator: `TERRITORY_PERIOD_ISO_WEEK_RE` (`^\d{4}-W(0[1-9]|[1-4]\d|5[0-3])$`) + `TERRITORY_PERIOD_MANUAL_RE` (`^manual_[a-z0-9_-]{1,40}$`).
+  - 3 helper pure: `isTerritoryPeriodKey(key)`, `territoryPeriodKeyForDate(date)` ISO 8601 week format `YYYY-Www` (handle year boundary), `previousTerritoryPeriodKey(now?)`. 6 unit test mới phủ catalog edge case + boundary.
+- **Prisma model + migration**:
+  - `SectTerritoryRegionState` (1 row / region): `regionKey @id`, `ownerSectId? FK SET NULL`, `ownerSectName?` denormalized, `periodKey?`, `settledAt`, `updatedAt`. Cho FE/runtime O(1) lookup chủ vùng hiện tại.
+  - `SectTerritorySettlementSnapshot` (history per period): `id`, `regionKey`, `periodKey`, winner+runner-up denormalized id+name+points, `totalSects`, `totalPoints`, `settledAt`, `settledBy?` (admin/cron). UNIQUE `(regionKey, periodKey)` đảm bảo race-safe + idempotent.
+  - Migration `20260608000000_phase_14_0_b_territory_settlement` thuần thêm 2 table mới — KHÔNG đụng `SectTerritoryInfluence` (giữ nguyên Phase 14.0.A data).
+- **API runtime mới (`apps/api/src/modules/territory/territory-settlement.service.ts`)**:
+  - `settleRegion(regionKey, periodKey, opts?)` — entry point chính. Idempotent qua UNIQUE: gọi 2 lần cùng `(regionKey, periodKey)` luôn return cùng snapshot id, KỂ CẢ KHI influence tăng giữa 2 call. Race-safe: 2 call đồng thời cùng key → 1 winner ghi, loser fetch lại row đã ghi (catch P2002). Skip empty regions: region không có influence → `skipped=true`, KHÔNG ghi snapshot/state. Tie-break deterministic: sect cùng điểm → `sectId.localeCompare` ASC chọn winner.
+  - `settleAllRegions(periodKey)` — settle 9 region tuần tự, trả `TerritorySettlementRunResult { periodKey, settledAt, snapshots[], skippedRegions[] }`.
+  - `getRegionHistory(regionKey, limit?)` — DESC theo `settledAt`, limit clamp 1..100 default 20. Throw `REGION_INVALID`.
+  - `getOwnerStateMap()` — O(1) Map<regionKey, RegionState> cho enrichment + foundation cho region buff Phase 14.0.C.
+- **API routes mới**:
+  - `GET /territory/regions` extend trả `ownerSectId/ownerSectName/ownerPeriodKey/ownerSettledAt` per region.
+  - `GET /territory/regions/:regionKey/history` (auth) — 404 `REGION_INVALID`.
+  - `POST /admin/territory/settle?periodKey=…` (admin-only via `@RequireAdmin()` + `AdminGuard`) — fallback `previousTerritoryPeriodKey()` nếu không truyền `periodKey`. Non-admin → 403 `ADMIN_ONLY`. Validate `periodKey` qua `isTerritoryPeriodKey` trước khi gọi service.
+  - `POST /admin/territory/regions/:regionKey/settle` (admin-only) — manual settle 1 region (dùng cho tie-break debug hoặc admin override).
+- **FE layer**:
+  - `apps/web/src/api/territory.ts` extend với 3 type + 3 fetcher: `getTerritoryRegionHistory(regionKey)`, `adminTerritorySettleAll(periodKey?)`, `adminTerritorySettleRegion(regionKey, periodKey?)`.
+  - `apps/web/src/stores/territory.ts` extend với history cache (`Record<regionKey, TerritoryRegionHistoryView>`), `historyLoading/historyError` per-region, `settleLoading/settleError/lastSettleResult` admin state. `fetchHistory(regionKey, opts?)`/`adminSettleAll(periodKey?)`/`adminSettleRegion(regionKey, periodKey?)` race-protected (IN_FLIGHT guard).
+  - `TerritoryView.vue`:
+    - **Overview tab**: mỗi region row giờ có badge "Đang chiếm giữ" (chỉ render khi `ownerSectId`) + dòng "Chủ: {name} · Kết toán: {period}" / fallback "Chưa có chủ".
+    - **Leaderboard tab**: thêm history panel hiển thị current owner header + DESC snapshots (winner / runner-up / points / period) + empty state + loading/error placeholder.
+    - **Admin panel** (chỉ render khi `auth.user?.role === 'ADMIN'`): period text input (ISO week hoặc `manual_*`) + "Settle all" button + "Settle region" button (chỉ khi đã chọn region) + result summary "{period}: {wins} wins · {skip} skip" + error display.
+  - i18n vi/en parity full key `territory.overview.{owner,noOwner,ownerSettled,ownerBadge}` + `territory.history.{title,empty,current,currentNone,row,rowNoRunner}` + `territory.admin.{title,subtitle,periodLabel,settleAll,settleRegion,running,lastResult}`.
+- **Tests +56**:
+  - Shared `--run territory` 23 PASS (+6 mới: ISO week regex match/reject, manual_xxx regex, isTerritoryPeriodKey, territoryPeriodKeyForDate ISO 8601, year-boundary 2025-12-29 → 2026-W01, previousTerritoryPeriodKey).
+  - API `--run territory` 49 PASS — `territory-settlement.service.test.ts` +21 (empty skip, snapshot ghi + region state upsert, idempotent qua UNIQUE, idempotent kể cả khi influence tăng giữa 2 call, tie-break `localeCompare` ASC, điểm cao thắng + runner-up theo điểm, REGION_INVALID/PERIOD_INVALID throw, manual_xx accept, 2 period parallel update region state, settleAllRegions 1 winner + 8 skipped, idempotent settleAll, getRegionHistory DESC + empty + REGION_INVALID, getOwnerStateMap empty/match, TerritoryService.getRegions owner enrichment null/match) + `admin-territory.controller.test.ts` +12 (settleAll OK + fallback `previousTerritoryPeriodKey`, PERIOD_INVALID 400 trước khi gọi service, settleOne OK + skipped, REGION_INVALID 404, manual_xx accept, settledBy=req.userId, rethrow service errors).
+  - API `--run admin` 356 PASS (admin guard non-admin reject covered cross-controller).
+  - Web `--run Territory` 15 PASS (+8 mới: owner null không render badge, owner set → badge + "Chủ: {name}" + "Kết toán: {period}", history panel fetch on tab + DESC snapshots + empty state, admin panel hidden cho PLAYER, visible cho ADMIN, settle all → API call + result display, settle region → API call + history refresh, ADMIN_ONLY error fallback).
+- **Verification**: shared typecheck + 1685 PASS / api typecheck + territory 49 + admin 356 PASS / web typecheck + Territory 15 PASS / lint clean / pnpm build ✅. KHÔNG xóa influence cũ trong PR này (rủi ro cao). Foundation cho region buff Phase 14.0.C: `getOwnerStateMap()` ready để combat layer query owner và apply buff.
+
 ### Added — Phase 14.0.A Sect Territory Influence Foundation (this PR)
 
 - **Lãnh Địa Tông Môn — lớp ảnh hưởng vùng đất foundation** — Mỗi region (`MAP_REGIONS` 9 entry: son_coc, hac_lam, yeu_thu_dong, kim_son_mach, moc_huyen_lam, thuy_long_uyen, hoa_diem_son, hoang_tho_huyet, cuu_la_dien) giờ có **Sect Influence Leaderboard** riêng. Boss/dungeon trong region tự cộng điểm cho Tông của character clear/tham chiến — Tông nào hoạt động nhiều nhất sẽ rank cao trong vùng. **KHÔNG** có settlement capture / siege / region-wide buff / decay — defer Phase 14.0.B+ (cần cap thực tế + season reset thì cycling mới có ý nghĩa).

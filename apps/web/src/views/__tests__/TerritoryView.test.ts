@@ -6,10 +6,13 @@ import type {
   TerritoryRegionsView,
   TerritoryLeaderboardView,
   TerritoryMyView,
+  TerritoryRegionHistoryView,
+  TerritorySettlementRunResult,
+  TerritoryRegionView,
 } from '@/api/territory';
 
 /**
- * Phase 14.0.A — TerritoryView smoke + flow tests.
+ * Phase 14.0.A + 14.0.B — TerritoryView smoke + flow tests.
  *
  * Cover:
  *   - Auth gate (unauth → redirect /auth, no API calls).
@@ -17,11 +20,16 @@ import type {
  *   - No-sect state (me tab fallback).
  *   - Switch tab + region pick triggers leaderboard fetch.
  *   - Load error fallback.
+ *   - Phase 14.0.B: owner badge + history panel render
+ *   - Phase 14.0.B: admin panel visibility + settlement trigger
  */
 
 const getRegionsMock = vi.fn();
 const getMeMock = vi.fn();
 const getLeaderboardMock = vi.fn();
+const getHistoryMock = vi.fn();
+const adminSettleAllMock = vi.fn();
+const adminSettleRegionMock = vi.fn();
 
 vi.mock('@/api/territory', async () => {
   const actual =
@@ -32,6 +40,10 @@ vi.mock('@/api/territory', async () => {
     getTerritoryMe: (...a: unknown[]) => getMeMock(...a),
     getTerritoryRegionLeaderboard: (...a: unknown[]) =>
       getLeaderboardMock(...a),
+    getTerritoryRegionHistory: (...a: unknown[]) => getHistoryMock(...a),
+    adminTerritorySettleAll: (...a: unknown[]) => adminSettleAllMock(...a),
+    adminTerritorySettleRegion: (...a: unknown[]) =>
+      adminSettleRegionMock(...a),
   };
 });
 
@@ -52,9 +64,14 @@ vi.mock('vue-router', () => ({
   }),
 }));
 
-const authState = {
+const authState: {
+  isAuthenticated: boolean;
+  hydrate: ReturnType<typeof vi.fn>;
+  user: { role: 'PLAYER' | 'MOD' | 'ADMIN' } | null;
+} = {
   isAuthenticated: true,
   hydrate: vi.fn().mockResolvedValue(undefined),
+  user: { role: 'PLAYER' },
 };
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => authState,
@@ -88,6 +105,10 @@ const i18n = createI18n({
           summary: '{pts} điểm · {contributors} TV',
           topSect: 'Đứng đầu: {name} ({pts})',
           noTopSect: 'Chưa có Tông',
+          owner: 'Chủ: {name}',
+          noOwner: 'Chưa có chủ',
+          ownerSettled: 'Kết toán: {period}',
+          ownerBadge: 'Đang chiếm giữ',
         },
         leaderboard: {
           empty: 'Chưa có Tông nào',
@@ -115,12 +136,35 @@ const i18n = createI18n({
           REGION_INVALID: 'Vùng không tồn tại',
           UNKNOWN: 'Lỗi không rõ',
         },
+        history: {
+          title: 'Lịch sử',
+          empty: 'Chưa kết toán',
+          viewMore: 'Xem',
+          current: 'Chủ: {name} (kỳ {period})',
+          currentNone: 'Chưa có chủ',
+          row: '{period} · {sect} ({pts}) · runner-up {runner} ({rpts})',
+          rowNoRunner: '{period} · {sect} ({pts})',
+        },
+        admin: {
+          title: 'Admin',
+          subtitle: 'Settle',
+          periodLabel: 'Period',
+          settleAll: 'Settle all',
+          settleRegion: 'Settle region',
+          running: 'Running…',
+          lastResult: 'Settled {period}: {wins} wins · {skip} skip',
+        },
       },
     },
   },
 });
 
-function makeRegions(): TerritoryRegionsView {
+function makeRegions(over: {
+  ownerSon?: Pick<
+    TerritoryRegionView,
+    'ownerSectId' | 'ownerSectName' | 'ownerPeriodKey' | 'ownerSettledAt'
+  >;
+} = {}): TerritoryRegionsView {
   return {
     regions: [
       {
@@ -137,6 +181,10 @@ function makeRegions(): TerritoryRegionsView {
         topSectId: 'sect-1',
         topSectName: 'Thanh Vân',
         topSectPoints: 64,
+        ownerSectId: over.ownerSon?.ownerSectId ?? null,
+        ownerSectName: over.ownerSon?.ownerSectName ?? null,
+        ownerPeriodKey: over.ownerSon?.ownerPeriodKey ?? null,
+        ownerSettledAt: over.ownerSon?.ownerSettledAt ?? null,
       },
       {
         regionKey: 'kim_son_mach',
@@ -152,8 +200,82 @@ function makeRegions(): TerritoryRegionsView {
         topSectId: null,
         topSectName: null,
         topSectPoints: 0,
+        ownerSectId: null,
+        ownerSectName: null,
+        ownerPeriodKey: null,
+        ownerSettledAt: null,
       },
     ],
+  };
+}
+
+function makeHistory(
+  over: Partial<TerritoryRegionHistoryView> = {},
+): TerritoryRegionHistoryView {
+  return {
+    regionKey: 'son_coc',
+    currentOwnerSectId: 'sect-1',
+    currentOwnerSectName: 'Thanh Vân',
+    currentPeriodKey: '2026-W23',
+    currentSettledAt: '2026-06-01T00:00:00.000Z',
+    snapshots: [
+      {
+        id: 'snap-1',
+        regionKey: 'son_coc',
+        periodKey: '2026-W23',
+        winnerSectId: 'sect-1',
+        winnerSectName: 'Thanh Vân',
+        winnerPoints: 64,
+        runnerUpSectId: 'sect-2',
+        runnerUpSectName: 'Huyền Thuỷ',
+        runnerUpPoints: 16,
+        totalSects: 2,
+        totalPoints: 80,
+        settledAt: '2026-06-01T00:00:00.000Z',
+        settledBy: 'admin1',
+      },
+      {
+        id: 'snap-2',
+        regionKey: 'son_coc',
+        periodKey: '2026-W22',
+        winnerSectId: 'sect-2',
+        winnerSectName: 'Huyền Thuỷ',
+        winnerPoints: 32,
+        runnerUpSectId: null,
+        runnerUpSectName: null,
+        runnerUpPoints: 0,
+        totalSects: 1,
+        totalPoints: 32,
+        settledAt: '2026-05-25T00:00:00.000Z',
+        settledBy: null,
+      },
+    ],
+    ...over,
+  };
+}
+
+function makeRunResult(): TerritorySettlementRunResult {
+  return {
+    periodKey: '2026-W23',
+    settledAt: '2026-06-01T00:00:00.000Z',
+    snapshots: [
+      {
+        id: 'snap-1',
+        regionKey: 'son_coc',
+        periodKey: '2026-W23',
+        winnerSectId: 'sect-1',
+        winnerSectName: 'Thanh Vân',
+        winnerPoints: 64,
+        runnerUpSectId: null,
+        runnerUpSectName: null,
+        runnerUpPoints: 0,
+        totalSects: 1,
+        totalPoints: 64,
+        settledAt: '2026-06-01T00:00:00.000Z',
+        settledBy: 'admin1',
+      },
+    ],
+    skippedRegions: ['kim_son_mach'],
   };
 }
 
@@ -215,9 +337,13 @@ beforeEach(() => {
   getRegionsMock.mockReset();
   getMeMock.mockReset();
   getLeaderboardMock.mockReset();
+  getHistoryMock.mockReset();
+  adminSettleAllMock.mockReset();
+  adminSettleRegionMock.mockReset();
   routerReplaceMock.mockReset();
   routerReplaceMock.mockResolvedValue(undefined);
   authState.isAuthenticated = true;
+  authState.user = { role: 'PLAYER' };
   authState.hydrate.mockReset();
   authState.hydrate.mockResolvedValue(undefined);
   delete routeQuery.tab;
@@ -341,5 +467,212 @@ describe('TerritoryView — load error fallback', () => {
 
     expect(w.find('[data-test="territory-error"]').exists()).toBe(true);
     expect(w.text()).toContain('Chưa có nhân vật');
+  });
+});
+
+describe('TerritoryView — Phase 14.0.B owner display', () => {
+  it('region không có owner → KHÔNG render badge "Đang chiếm giữ"', async () => {
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    const w = mountView();
+    await flushPromises();
+
+    expect(
+      w.find('[data-test="territory-region-owner-badge"]').exists(),
+    ).toBe(false);
+    const ownerBlocks = w.findAll('[data-test="territory-region-owner"]');
+    // 2 region đều render block — nội dung "Chưa có chủ".
+    expect(ownerBlocks.length).toBe(2);
+    expect(ownerBlocks[0].text()).toContain('Chưa có chủ');
+    expect(ownerBlocks[1].text()).toContain('Chưa có chủ');
+  });
+
+  it('region có owner → render badge + "Chủ: <name>" + period', async () => {
+    getRegionsMock.mockResolvedValue(
+      makeRegions({
+        ownerSon: {
+          ownerSectId: 'sect-1',
+          ownerSectName: 'Thanh Vân',
+          ownerPeriodKey: '2026-W23',
+          ownerSettledAt: '2026-06-01T00:00:00.000Z',
+        },
+      }),
+    );
+    getMeMock.mockResolvedValue(makeMe());
+    const w = mountView();
+    await flushPromises();
+
+    const badges = w.findAll('[data-test="territory-region-owner-badge"]');
+    expect(badges.length).toBe(1);
+    expect(badges[0].text()).toContain('Đang chiếm giữ');
+    expect(badges[0].attributes('data-owner-sect-id')).toBe('sect-1');
+
+    const ownerRow = w
+      .findAll('[data-test="territory-region-row"]')
+      .find((r) => r.attributes('data-region-key') === 'son_coc')!;
+    expect(ownerRow.text()).toContain('Chủ: Thanh Vân');
+    expect(ownerRow.text()).toContain('Kết toán: 2026-W23');
+  });
+});
+
+describe('TerritoryView — Phase 14.0.B history panel', () => {
+  it('vào leaderboard tab → fetch history + render snapshots DESC', async () => {
+    getRegionsMock.mockResolvedValue(
+      makeRegions({
+        ownerSon: {
+          ownerSectId: 'sect-1',
+          ownerSectName: 'Thanh Vân',
+          ownerPeriodKey: '2026-W23',
+          ownerSettledAt: '2026-06-01T00:00:00.000Z',
+        },
+      }),
+    );
+    getMeMock.mockResolvedValue(makeMe());
+    getLeaderboardMock.mockResolvedValue(makeLeaderboard('son_coc'));
+    getHistoryMock.mockResolvedValue(makeHistory());
+    const w = mountView();
+    await flushPromises();
+
+    await w.find('[data-test="territory-tab-leaderboard"]').trigger('click');
+    await flushPromises();
+
+    expect(getHistoryMock).toHaveBeenCalledWith('son_coc');
+    const panel = w.find('[data-test="territory-history-panel"]');
+    expect(panel.exists()).toBe(true);
+    const rows = panel.findAll('[data-test="territory-history-row"]');
+    expect(rows.length).toBe(2);
+    expect(rows[0].attributes('data-period-key')).toBe('2026-W23');
+    expect(rows[0].text()).toContain('Thanh Vân');
+    expect(rows[0].text()).toContain('Huyền Thuỷ');
+    expect(rows[1].attributes('data-period-key')).toBe('2026-W22');
+
+    const current = w.find('[data-test="territory-history-current"]');
+    expect(current.text()).toContain('Thanh Vân');
+    expect(current.text()).toContain('2026-W23');
+  });
+
+  it('region chưa từng settle → empty state', async () => {
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getLeaderboardMock.mockResolvedValue(makeLeaderboard('son_coc'));
+    getHistoryMock.mockResolvedValue(
+      makeHistory({
+        currentOwnerSectId: null,
+        currentOwnerSectName: null,
+        currentPeriodKey: null,
+        currentSettledAt: null,
+        snapshots: [],
+      }),
+    );
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-leaderboard"]').trigger('click');
+    await flushPromises();
+
+    expect(w.find('[data-test="territory-history-empty"]').exists()).toBe(
+      true,
+    );
+    expect(w.find('[data-test="territory-history-current"]').text()).toContain(
+      'Chưa có chủ',
+    );
+  });
+});
+
+describe('TerritoryView — Phase 14.0.B admin panel', () => {
+  it('user PLAYER → KHÔNG render admin panel', async () => {
+    authState.user = { role: 'PLAYER' };
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getLeaderboardMock.mockResolvedValue(makeLeaderboard('son_coc'));
+    getHistoryMock.mockResolvedValue(makeHistory());
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-leaderboard"]').trigger('click');
+    await flushPromises();
+
+    expect(w.find('[data-test="territory-admin-panel"]').exists()).toBe(false);
+  });
+
+  it('user ADMIN → render admin panel + click Settle all triggers API', async () => {
+    authState.user = { role: 'ADMIN' };
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getLeaderboardMock.mockResolvedValue(makeLeaderboard('son_coc'));
+    getHistoryMock.mockResolvedValue(makeHistory());
+    adminSettleAllMock.mockResolvedValue(makeRunResult());
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-leaderboard"]').trigger('click');
+    await flushPromises();
+
+    expect(w.find('[data-test="territory-admin-panel"]').exists()).toBe(true);
+
+    const input = w.find<HTMLInputElement>(
+      '[data-test="territory-admin-period-input"]',
+    );
+    await input.setValue('2026-W23');
+    await w.find('[data-test="territory-admin-settle-all"]').trigger('click');
+    await flushPromises();
+
+    expect(adminSettleAllMock).toHaveBeenCalledWith('2026-W23');
+    expect(w.find('[data-test="territory-admin-result"]').text()).toContain(
+      '2026-W23',
+    );
+  });
+
+  it('user ADMIN + click Settle region → API region call + history refresh', async () => {
+    authState.user = { role: 'ADMIN' };
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getLeaderboardMock.mockResolvedValue(makeLeaderboard('son_coc'));
+    getHistoryMock.mockResolvedValue(makeHistory());
+    adminSettleRegionMock.mockResolvedValue({
+      regionKey: 'son_coc',
+      periodKey: '2026-W23',
+      skipped: false,
+      snapshot: makeHistory().snapshots[0],
+    });
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-leaderboard"]').trigger('click');
+    await flushPromises();
+
+    getHistoryMock.mockClear();
+    await w
+      .find<HTMLInputElement>('[data-test="territory-admin-period-input"]')
+      .setValue('2026-W23');
+    await w
+      .find('[data-test="territory-admin-settle-region"]')
+      .trigger('click');
+    await flushPromises();
+
+    expect(adminSettleRegionMock).toHaveBeenCalledWith(
+      'son_coc',
+      '2026-W23',
+    );
+    // Force refetch history sau khi settle.
+    expect(getHistoryMock).toHaveBeenCalledWith('son_coc');
+  });
+
+  it('admin settle thất bại với ADMIN_ONLY → render error', async () => {
+    authState.user = { role: 'ADMIN' };
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getLeaderboardMock.mockResolvedValue(makeLeaderboard('son_coc'));
+    getHistoryMock.mockResolvedValue(makeHistory());
+    adminSettleAllMock.mockRejectedValue(
+      Object.assign(new Error('forbidden'), { code: 'ADMIN_ONLY' }),
+    );
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-leaderboard"]').trigger('click');
+    await flushPromises();
+
+    await w.find('[data-test="territory-admin-settle-all"]').trigger('click');
+    await flushPromises();
+
+    const err = w.find('[data-test="territory-admin-error"]');
+    expect(err.exists()).toBe(true);
+    expect(err.text()).toContain('Lỗi không rõ');
   });
 });

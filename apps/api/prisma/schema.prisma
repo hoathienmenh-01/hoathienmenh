@@ -1504,3 +1504,49 @@ model SectTerritoryInfluence {
   @@index([regionKey, characterId])
   @@index([regionKey, createdAt])
 }
+
+/// Phase 14.0.B — Territory Region Ownership State.
+/// Tracks current owner sect of each region. Exactly 1 row per regionKey.
+/// Updated atomically during settlement. ownerSectId NULL = unclaimed.
+///
+/// Rollback: DROP bảng — hooks đọc owner sẽ no-op khi bảng vắng mặt.
+model SectTerritoryRegionState {
+  regionKey     String   @id
+  ownerSectId   String?
+  ownerSectName String?
+  periodKey     String?
+  settledAt     DateTime?
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+
+  @@index([ownerSectId])
+}
+
+/// Phase 14.0.B — Territory Settlement Snapshot (history).
+/// Mỗi row = 1 settlement event cho 1 region trong 1 period.
+/// Idempotency: UNIQUE `(regionKey, periodKey)` — gọi settlement nhiều lần
+/// cùng period chỉ ghi 1 row (P2002 swallow → read existing).
+///
+/// `winnerSectName` denormalized snapshot — audit trail không đổi khi sect
+/// rename. `winnerPoints` / `runnerUpSectId` cho context.
+///
+/// Rollback: DROP bảng — independent, no FK.
+model SectTerritorySettlementSnapshot {
+  id              String   @id @default(cuid())
+  regionKey       String
+  periodKey       String
+  winnerSectId    String?
+  winnerSectName  String?
+  winnerPoints    Int      @default(0)
+  runnerUpSectId  String?
+  runnerUpSectName String?
+  runnerUpPoints  Int      @default(0)
+  totalSects      Int      @default(0)
+  totalPoints     Int      @default(0)
+  settledAt       DateTime @default(now())
+  settledBy       String?
+
+  @@unique([regionKey, periodKey])
+  @@index([periodKey])
+  @@index([regionKey, settledAt])
+}

@@ -20,6 +20,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { startOfLocalDay } from '../combat/combat.service';
 import { getMissionResetTz } from '../mission/mission.service';
+import { TerritorySettlementService } from './territory-settlement.service';
 
 /**
  * Phase 14.0.A — Sect Territory Influence Foundation runtime service.
@@ -64,7 +65,10 @@ interface RegionAggRow {
 export class TerritoryService {
   private readonly logger = new Logger(TerritoryService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly settlement: TerritorySettlementService,
+  ) {}
 
   // ────────────────────────────────────────────────────────────────────
   // Contribution hook (server-authoritative entry point)
@@ -231,10 +235,15 @@ export class TerritoryService {
       for (const s of sects) sectNames.set(s.id, s.name);
     }
 
+    // Phase 14.0.B — enrich owner state from `SectTerritoryRegionState`.
+    // Region chưa settle → ownerSect* = null (FE hiển thị `—`).
+    const ownerStateMap = await this.settlement.getOwnerStateMap();
+
     const regions: TerritoryRegionView[] = MAP_REGIONS.map((r) => {
       const rows = byRegion.get(r.key) ?? [];
       const totalPoints = rows.reduce((a, b) => a + b.points, 0);
       const top = rows[0];
+      const owner = ownerStateMap.get(r.key) ?? null;
       return {
         regionKey: r.key,
         nameVi: r.nameVi,
@@ -249,6 +258,12 @@ export class TerritoryService {
         topSectId: top?.sectId ?? null,
         topSectName: top ? sectNames.get(top.sectId) ?? top.sectId : null,
         topSectPoints: top?.points ?? 0,
+        ownerSectId: owner?.ownerSectId ?? null,
+        ownerSectName: owner?.ownerSectName ?? null,
+        ownerPeriodKey: owner?.periodKey ?? null,
+        ownerSettledAt: owner?.settledAt
+          ? owner.settledAt.toISOString()
+          : null,
       };
     });
 
@@ -410,7 +425,10 @@ export class TerritoryService {
 // Errors
 // ────────────────────────────────────────────────────────────────────────
 
-export type TerritoryErrorCode = 'NO_CHARACTER' | 'REGION_INVALID';
+export type TerritoryErrorCode =
+  | 'NO_CHARACTER'
+  | 'REGION_INVALID'
+  | 'PERIOD_INVALID';
 
 export class TerritoryError extends Error {
   readonly code: TerritoryErrorCode;

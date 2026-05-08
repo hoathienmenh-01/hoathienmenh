@@ -2887,7 +2887,11 @@
       "empty": "No territory data yet.",
       "summary": "{pts} pts · {contributors} contributors",
       "topSect": "Leader: {name} ({pts} pts)",
-      "noTopSect": "No sect has scored yet."
+      "noTopSect": "No sect has scored yet.",
+      "owner": "Owner: {name}",
+      "noOwner": "No owner yet — awaiting settlement.",
+      "ownerSettled": "Settled: {period}",
+      "ownerBadge": "Holding"
     },
     "leaderboard": {
       "empty": "No sect has scored in this region yet.",
@@ -2924,9 +2928,30 @@
         "desc": "Top damage on a regional boss — 20 pts bonus (cap 80/week)."
       }
     },
+    "history": {
+      "title": "Settlement history",
+      "empty": "Region has never been settled.",
+      "viewMore": "View history",
+      "current": "Current owner: {name} (period {period})",
+      "currentNone": "No owner yet.",
+      "row": "{period} · {sect} ({pts} pts) · runner-up {runner} ({rpts})",
+      "rowNoRunner": "{period} · {sect} ({pts} pts)"
+    },
+    "admin": {
+      "title": "Admin: Territory Settlement",
+      "subtitle": "Crown owners for every region from current influence. Idempotent per periodKey.",
+      "periodLabel": "Period key (e.g. 2026-W23 or manual_xx)",
+      "settleAll": "Settle all regions",
+      "settleRegion": "Settle this region",
+      "running": "Settling…",
+      "lastResult": "Settled {period}: {wins} regions won · {skip} skipped (no points)."
+    },
     "errors": {
       "NO_CHARACTER": "No character yet — start your journey first.",
       "REGION_INVALID": "Region not found.",
+      "PERIOD_INVALID": "Period key invalid (must be ISO week YYYY-Www or manual_*).",
+      "ADMIN_ONLY": "Only ADMIN can run territory settlement.",
+      "UNAUTHENTICATED": "Please sign in again.",
       "UNKNOWN": "Could not load territory data, please retry."
     }
   }
