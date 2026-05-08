@@ -12,6 +12,43 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Added — Phase 12.10.A NPC Affinity & Relationship Foundation (this PR)
+
+- **NPC giờ có điểm thân tình (affinity) riêng** — Mở nền móng quan hệ NPC: mỗi (character, NPC) có 1 điểm số từ `minScore..maxScore` (per-NPC catalog), tăng/giảm qua dialogue choice + future quest reward, vượt mốc `AFFINITY_TIERS` (Xa Lạ → Quen Biết → Bằng Hữu → Tri Giao → Tri Kỷ) sẽ unlock dialogue/quest mới. Phase 12.10.A KHÔNG ship gift/shop NPC — chỉ foundation runtime + FE relationship panel + dialogue change_affinity hook.
+- **Shared catalog** (`packages/shared/src/npc-affinity.ts`):
+  - `AffinityTierDef` 5 tier universal `xa_la`(-1000) / `quen_biet`(10) / `ban_huu`(30) / `tri_giao`(60) / `tri_ky`(100), `order` 0..4 stable, label vi/en parity.
+  - `NpcAffinityDef` per-NPC: `initialScore` / `minScore` / `maxScore` / `unlockHints[]` (mỗi hint gắn `tierKey` + i18n description). Catalog 5 NPC trụ cột (Lăng Vân Sinh / Mộc Thanh Y / Hàn Dạ / Tô Nguyệt Ly / Huyết La Sát) với cap min/max khác nhau theo bản chất (đồng môn ≤ 200, rival ≤ 150, ma tu ≤ 100; floor -50 đến -100).
+  - Helpers `affinityTierForScore` / `nextAffinityTierForScore` / `npcAffinityDefForKey` / `clampAffinityScore` / `validateNpcAffinityCatalog` — pure, KHÔNG đụng runtime.
+  - Hard cap `AFFINITY_DELTA_CAP_PER_CHOICE = 20` + `AFFINITY_DELTA_CAP_PER_QUEST_REWARD = 40` — validator + service runtime double-check chống farm.
+  - Dialogue effect mới `change_affinity { npcKey, delta }` + condition mới `affinity_min { npcKey, score }` (trong `story-dialogues.ts`); validator catalog kiểm tra `delta` trong cap + npcKey ∈ catalog.
+  - Test catalog Hàn Dạ +2 node (`story_dlg_han_da_friendly_chat` với choice `+10` warm / `-5` cold, `story_dlg_han_da_inner_secret` gate `affinity_min:han_da≥30`) — minh hoạ full flow.
+- **Prisma migration `20260606000000_phase_12_10_a_character_npc_affinity`**: thêm 1 table `CharacterNpcAffinity` (`id` PK / `characterId` FK cascade / `npcKey` / `score` Int / `createdAt` / `updatedAt`) + composite UNIQUE `(characterId, npcKey)` + index `(characterId)` cho list view + `(npcKey)` cho admin audit. Additive — KHÔNG đụng `Character` / `StoryDialogue` runtime model.
+- **API mới**:
+  - `NpcAffinityService.addAffinityTx(tx, { characterId, npcKey, delta, source })` — atomic upsert + clamp `[minScore, maxScore]` + return tier diff (`previousTier` / `newTier` / `tierChanged`). Caller chịu trách nhiệm idempotency guard.
+  - `NpcAffinityService.addAffinity(...)` — convenience wrapper mở `$transaction` mới (admin/test path).
+  - `NpcAffinityService.listForCharacter(characterId)` / `getForNpc(characterId, npcKey)` / `loadScoreMap(characterId)` — read view, lazy fallback `initialScore`.
+  - **`GET /story/npc-affinity`** (auth) → list affinity cho TẤT CẢ NPC trong catalog `NPC_AFFINITY` (lazy fallback `initialScore` khi chưa có row), kèm `caps: { perChoice, perQuestReward }`.
+  - **`GET /story/npc-affinity/:npcKey`** (auth) → get single NPC affinity view (`score` / `currentTier` / `nextTier` + `pointsToReach` / `unlocks[]` với `reached` flag).
+- **Story dialogue integration** (`apps/api/src/modules/story-dialogue/story-dialogue.service.ts`):
+  - `evaluateCondition` handle `affinity_min` (lookup `CharCtx.affinityByNpc`).
+  - `applyChoice` apply `change_affinity` effect bên trong cùng `$transaction` với `give_reward` / `set_flag` / `mark_seen` — atomic. Pre-flight cap check `|delta| ≤ AFFINITY_DELTA_CAP_PER_CHOICE`.
+  - **Idempotency**: dialogue choice retry KHÔNG double-grant — `change_affinity` được kê vào `hasGrantEffect` nhánh, `seen.includes(node.id)` → throw `ALREADY_APPLIED` mirror pattern `give_reward`.
+  - `loadCtx` load affinity score map qua `NpcAffinityService.loadScoreMap`.
+  - Response `StoryDialogueChoiceResult.affinityChanges[]` (1 entry / `change_affinity` effect đã apply): `{ npcKey, delta, previousScore, newScore, tierChanged, previousTierKey, newTierKey, newTierLabel }` cho FE toast + tier-up badge.
+- **FE relationship panel + dialogue affinity feedback**:
+  - `apps/web/src/components/NpcAffinityPanel.vue` mới — list 5 NPC từ catalog với name + score progress bar (`(score - min) / (max - min)` × 100%) + current tier label + next tier hint ("Còn X điểm để lên Y") + unlock list (per tier; `reached` ✓ marker) + max-tier reached state. `data-testid` đầy đủ cho test.
+  - `apps/web/src/api/npcAffinity.ts` API client (`fetchNpcAffinities` / `fetchNpcAffinity`) + `apps/web/src/stores/npcAffinity.ts` Pinia store (`load` / `refresh` / `findByNpcKey` / `reset`).
+  - `NpcView.vue` mount `NpcAffinityPanel` + auto-refresh sau dialogue effect apply.
+  - `StoryDialogueModal.vue` show toast `+N thân thiện` + tier-up toast khi `tierChanged=true`.
+  - i18n vi/en parity: `npcAffinity.title/subtitle/empty/nextTierHint/maxTierReached/errors.*` + `storyDialogue.affinityDelta/tierUp`.
+- **Tests +43**:
+  - **Shared** (`packages/shared/src/npc-affinity.test.ts` mới + `story-dialogues.test.ts` extend, +18+5=23 case): catalog invariant (5 NPC ∈ NPCS / unique / min<max / initialScore in bounds / unlockHints tier valid); tier ladder integrity (order 0..4 / strict ascending minScore); `affinityTierForScore` boundary (xa_la / quen_biet / ban_huu / tri_giao / tri_ky); `nextAffinityTierForScore` (max → null); `clampAffinityScore`; story-dialogue validator cover `change_affinity` cap + `affinity_min` npcKey ∈ catalog.
+  - **API** (`apps/api/src/modules/npc-affinity/npc-affinity.service.test.ts` mới + `story-dialogue.service.test.ts` extend): service add lazy-create + positive/negative delta + clamp min/max + INVALID_DELTA + CAP_EXCEEDED + NPC_AFFINITY_UNKNOWN + tierChanged detection + listForCharacter fallback initialScore + getForNpc fallback + loadScoreMap + resolveScore static helper; dialogue affinity integration `+10` warm choice persisted, `-5` cold choice persisted, retry `ALREADY_APPLIED` no double-grant, `affinity_min` gate hide locked node + reject `INVALID_CHOICE` reason `affinity_min`, seed score ≥30 unlock node + apply effects, tier-cross detection `xa_la → quen_biet`.
+  - **FE** (`apps/web/src/components/__tests__/NpcAffinityPanel.test.ts` mới, +12 case): empty/loading/error state; render NPC name+score+tier+next-hint+unlocks; max-tier render; progress bar width math; refresh button; autoLoad mount; store load/error/findByNpcKey/reset.
+- **Risk / rollback**: thấp. 1 migration mới (additive table), KHÔNG đụng `Character` / `StoryDialogue` schema. Rollback = revert PR + drop `CharacterNpcAffinity`. Story dialogue integration backward-compatible — choice không có `change_affinity` / node không có `affinity_min` → 0 effect.
+- **Out of scope** (defer Phase 12.10.B): NPC gift system, NPC shop, quest reward `change_affinity` (quest catalog chưa support `affinityRewards`), affinity ledger truy vết granular, admin grant endpoint.
+- **Verification**: shared typecheck ✅ / shared 1580 PASS ✅ / api typecheck ✅ / web typecheck ✅ / web `--run NpcAffinity StoryDialogue` 26 PASS ✅ / pnpm build (pending CI).
+
 ### Added — Phase 13.2.B Sect Season Milestones + Rewards (this PR)
 
 - **Sect Season giờ có claim thưởng thật** — Phase 13.2.A đã ship foundation read-only (13 mùa × 4 tuần, 5 tier milestone catalog). Phase 13.2.B mở claim runtime: player đạt milestone (bronze 100pt → silver 500pt → gold 1500pt → platinum 3500pt → diamond 7500pt) bấm nút **Nhận thưởng** để nhận `linhThach` / `tienNgoc` / item / title / buff. **Idempotent + race-safe**: 1 milestone = 1 claim/character (CAS guard qua `SectSeasonClaim` UNIQUE `(characterId, seasonKey, milestoneKey)`).

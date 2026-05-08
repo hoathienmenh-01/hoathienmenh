@@ -58,11 +58,24 @@ async function handleChoice(choiceKey: string): Promise<void> {
   const result = await store.pickChoice(choiceKey);
   if (!result) return;
   // Show reward toast if any.
-  const { granted } = result;
+  const { granted, affinityChanges } = result;
   const parts: string[] = [];
   if (granted.linhThach > 0) parts.push(`+${granted.linhThach} ${t('storyDialogue.linhThach')}`);
   if (granted.tienNgoc > 0) parts.push(`+${granted.tienNgoc} ${t('storyDialogue.tienNgoc')}`);
   if (granted.exp > 0) parts.push(`+${granted.exp} EXP`);
+  // Phase 12.10.A — affinity change toast (1 per change_affinity effect).
+  for (const ch of affinityChanges) {
+    const sign = ch.delta >= 0 ? '+' : '';
+    parts.push(
+      t('storyDialogue.affinityDelta', { sign, delta: ch.delta }),
+    );
+    if (ch.tierChanged) {
+      toast.push({
+        type: 'success',
+        text: t('storyDialogue.tierUp', { tier: ch.newTierLabel }),
+      });
+    }
+  }
   if (parts.length > 0) {
     toast.push({ type: 'success', text: parts.join(', ') });
   }

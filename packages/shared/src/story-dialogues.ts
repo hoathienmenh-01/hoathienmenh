@@ -42,6 +42,10 @@
 
 import { NPCS } from './npcs';
 import { QUESTS } from './quests';
+import {
+  AFFINITY_DELTA_CAP_PER_CHOICE,
+  npcAffinityDefForKey,
+} from './npc-affinity';
 
 /** Story flag value — chỉ scalar primitive cho dễ serialize JSON + invariant test. */
 export type StoryFlagValue = string | number | boolean;
@@ -71,7 +75,13 @@ export type StoryDialogueCondition =
    * (`Character.storyDialogueChoices[nodeId] === choiceKey`). Cho phép
    * NPC nhớ lựa chọn cũ + render follow-up branching khác nhau.
    */
-  | { kind: 'choice_made'; nodeId: string; choiceKey: string };
+  | { kind: 'choice_made'; nodeId: string; choiceKey: string }
+  /**
+   * Phase 12.10.A — match khi `CharacterNpcAffinity[npcKey].score >= score`.
+   * Gate node/choice theo điểm thân thiện với NPC. Nếu character chưa có
+   * row, server fallback `initialScore` của catalog (`NpcAffinityDef`).
+   */
+  | { kind: 'affinity_min'; npcKey: string; score: number };
 
 /**
  * Effect áp dụng server-side khi player chọn choice. Apply tuần tự theo thứ tự
@@ -100,7 +110,16 @@ export type StoryDialogueEffect =
    * Phase 12.9 — xoá flag khỏi `Character.storyFlags` (no-op nếu chưa set).
    * Cho phép plot reversal trong arc kết thúc (vd apology xoá relation flag).
    */
-  | { kind: 'clear_flag'; flagKey: string };
+  | { kind: 'clear_flag'; flagKey: string }
+  /**
+   * Phase 12.10.A — cộng `delta` điểm thân thiện vào
+   * `CharacterNpcAffinity[npcKey].score` (server clamp `[minScore, maxScore]`).
+   * `delta` có thể âm (giảm thân thiện). Cap `|delta| <=
+   * AFFINITY_DELTA_CAP_PER_CHOICE` enforce ở `validateStoryDialogueCatalog()`.
+   * Idempotency: gắn `change_affinity` vào `hasGrantEffect` group → re-pick
+   * cùng choice với node đã `seen` throw `ALREADY_APPLIED` (giống `give_reward`).
+   */
+  | { kind: 'change_affinity'; npcKey: string; delta: number };
 
 /**
  * Choice trong story dialogue node. `label` là Vietnamese hardcoded; `labelEn`
@@ -451,6 +470,90 @@ export const STORY_DIALOGUES: readonly StoryDialogueNodeDef[] = [
       },
     ],
   },
+
+  // ============================================================================
+  // Phase 12.10.A — Lăng Vân Sinh affinity arc (foundation).
+  //
+  //   intro (seen) → friendly_chat (warm/polite/cold) → inner_secret (gated 30)
+  //
+  // friendly_chat repeatable một lần (do `not_seen` self) — exercise
+  // change_affinity effect + ALREADY_APPLIED idempotency. inner_secret gate
+  // theo `affinity_min` ban_huu (30) — exercise locked-by-affinity rule.
+  // ============================================================================
+  {
+    id: 'story_dlg_lang_van_sinh_friendly_chat',
+    npcKey: 'npc_lang_van_sinh',
+    conditions: [
+      { kind: 'realm_min', realmOrder: 0 },
+      { kind: 'seen', nodeId: 'story_dlg_lang_van_sinh_chapter_1_intro' },
+      { kind: 'not_seen', nodeId: 'story_dlg_lang_van_sinh_friendly_chat' },
+    ],
+    text: 'Đệ tử quay lại — ta đang pha trà. Nói chuyện đôi câu cũng hay, hay con vẫn còn lạnh lùng?',
+    textEn:
+      'You have returned, disciple — I was brewing tea. A few words would be welcome, or do you remain distant?',
+    choices: [
+      {
+        key: 'warm',
+        label: 'Đệ tử ngồi cùng chưởng môn, xin nghe đôi lời.',
+        labelEn: 'I sit with you, sect master, and listen gladly.',
+        effects: [
+          { kind: 'change_affinity', npcKey: 'npc_lang_van_sinh', delta: 10 },
+          { kind: 'mark_seen' },
+        ],
+      },
+      {
+        key: 'polite',
+        label: 'Đệ tử lễ phép cúi đầu, chỉ chào hỏi rồi đi.',
+        labelEn: 'I bow politely, greet, and take my leave.',
+        effects: [{ kind: 'mark_seen' }],
+      },
+      {
+        key: 'cold',
+        label: 'Đệ tử không có gì để nói. Cáo lui.',
+        labelEn: 'I have nothing to say. I take my leave.',
+        effects: [
+          { kind: 'change_affinity', npcKey: 'npc_lang_van_sinh', delta: -5 },
+          { kind: 'mark_seen' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'story_dlg_lang_van_sinh_inner_secret',
+    npcKey: 'npc_lang_van_sinh',
+    /**
+     * Gate theo affinity ban_huu (30). Khi player đạt mốc bằng cách lặp choice
+     * `warm` ở các dialogue về sau (hoặc admin seed), node specificity 4 (do
+     * `affinity_min`) > intro/friendly_chat (2/3) → server pick ưu tiên.
+     */
+    conditions: [
+      { kind: 'realm_min', realmOrder: 0 },
+      { kind: 'affinity_min', npcKey: 'npc_lang_van_sinh', score: 30 },
+      { kind: 'not_seen', nodeId: 'story_dlg_lang_van_sinh_inner_secret' },
+    ],
+    text: 'Đệ tử… nay ta xem con là tri giao. Có vài chuyện về cố nhân Hoa Thiên, ta muốn kể con nghe.',
+    textEn:
+      'Disciple… now I count you a true friend. There are matters of Hoa Thiên elders past that I wish to share with you.',
+    choices: [
+      {
+        key: 'listen',
+        label: 'Đệ tử cung kính lắng nghe.',
+        labelEn: 'I listen with respect.',
+        effects: [
+          { kind: 'change_affinity', npcKey: 'npc_lang_van_sinh', delta: 5 },
+          { kind: 'set_flag', flagKey: 'lang_van_sinh_secret_unlocked', value: true },
+          { kind: 'give_reward', linhThach: 50, exp: 30 },
+          { kind: 'mark_seen' },
+        ],
+      },
+      {
+        key: 'demur',
+        label: 'Đệ tử không dám nghe chuyện riêng tông môn lúc này.',
+        labelEn: 'I dare not pry into sect matters at this moment.',
+        effects: [{ kind: 'mark_seen' }],
+      },
+    ],
+  },
 ] as const;
 
 // ============================================================================
@@ -493,6 +596,11 @@ export function storyDialogueNodeSpecificity(node: StoryDialogueNodeDef): number
       case 'flag_equals':
         score = 4;
         break;
+      // Phase 12.10.A — affinity_min ngang flag_*: gate theo state riêng, KHÔNG
+      // thường dùng chung với quest_status/choice_made nên giữ tier 4.
+      case 'affinity_min':
+        score = 4;
+        break;
       case 'quest_status':
       case 'choice_made':
         score = 5;
@@ -521,6 +629,22 @@ export function totalChoiceReward(choice: StoryDialogueChoiceDef): {
     exp += e.exp ?? 0;
   }
   return { linhThach, tienNgoc, exp };
+}
+
+/**
+ * Phase 12.10.A — tổng `change_affinity.delta` per (npcKey) trong 1 choice.
+ * Nhiều `change_affinity` cùng npcKey trong 1 choice cộng dồn (catalog không
+ * giới hạn — service apply tuần tự). Validator dùng để check cap absolute.
+ */
+export function totalChoiceAffinityDelta(
+  choice: StoryDialogueChoiceDef,
+): ReadonlyArray<{ npcKey: string; delta: number }> {
+  const map = new Map<string, number>();
+  for (const e of choice.effects ?? []) {
+    if (e.kind !== 'change_affinity') continue;
+    map.set(e.npcKey, (map.get(e.npcKey) ?? 0) + e.delta);
+  }
+  return [...map.entries()].map(([npcKey, delta]) => ({ npcKey, delta }));
 }
 
 /**
@@ -608,6 +732,21 @@ export function validateStoryDialogueCatalog(): string[] {
         );
       }
     }
+    // Phase 12.10.A — affinity_min reference NPC catalog + clamp range hợp lệ.
+    if (cond.kind === 'affinity_min') {
+      if (!npcKeys.has(cond.npcKey)) {
+        errs.push(`${where} affinity_min references unknown npcKey ${cond.npcKey}`);
+      } else {
+        const def = npcAffinityDefForKey(cond.npcKey);
+        if (def) {
+          if (cond.score < def.minScore || cond.score > def.maxScore) {
+            errs.push(
+              `${where} affinity_min score ${cond.score} for ${cond.npcKey} out of bounds [${def.minScore},${def.maxScore}]`,
+            );
+          }
+        }
+      }
+    }
   }
 
   for (const node of STORY_DIALOGUES) {
@@ -673,6 +812,30 @@ export function validateStoryDialogueCatalog(): string[] {
                 `Node ${node.id} choice ${choice.key} advance_quest_step stepId ${e.stepId} not in quest ${e.questKey}`,
               );
             }
+          }
+        }
+        // Phase 12.10.A — change_affinity reference NPC catalog + cap delta.
+        if (e.kind === 'change_affinity') {
+          if (!npcKeys.has(e.npcKey)) {
+            errs.push(
+              `Node ${node.id} choice ${choice.key} change_affinity npcKey ${e.npcKey} not found`,
+            );
+          } else if (!npcAffinityDefForKey(e.npcKey)) {
+            errs.push(
+              `Node ${node.id} choice ${choice.key} change_affinity npcKey ${e.npcKey} has no affinity catalog entry`,
+            );
+          }
+          if (Math.abs(e.delta) > AFFINITY_DELTA_CAP_PER_CHOICE) {
+            errs.push(
+              `Node ${node.id} choice ${choice.key} change_affinity |delta|=${Math.abs(
+                e.delta,
+              )} > cap ${AFFINITY_DELTA_CAP_PER_CHOICE}`,
+            );
+          }
+          if (e.delta === 0) {
+            errs.push(
+              `Node ${node.id} choice ${choice.key} change_affinity delta is 0 (no-op effect)`,
+            );
           }
         }
       }
