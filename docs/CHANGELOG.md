@@ -12,7 +12,30 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Added — Phase 12.8.D Story Dungeon UI Test Coverage (this PR)
+### Added — Phase 12.8.E Story Dungeon Smoke Coverage (this PR)
+
+- **Story Dungeon giờ có smoke/E2E coverage end-to-end** — Phase 12.8.A/B/C/D đã ship catalog + runtime + FE + UI test coverage, nhưng chưa có smoke chạy real HTTP end-to-end. Phase 12.8.E thêm `scripts/smoke-story-dungeon.mjs` 35-step Node script chạy fetch-based vs API local cover full player flow từ register → onboard → quest gating → start → advance → clear → claim → verify quest progress + double-claim/non-owner reject + data isolation. **Test-only PR, no runtime change** — KHÔNG đụng component code, KHÔNG sửa runtime, KHÔNG migration.
+- **Smoke flow covered** (35 step):
+  - **Auth gates (6 step)**: GET /story/dungeons, GET /story/dungeons/:key, POST /story/dungeons/:key/start, POST /story/dungeons/:runId/advance, POST /story/dungeons/:runId/clear, POST /story/dungeons/:runId/claim → all 401 khi không cookie.
+  - **Pre-onboard (1 step)**: GET /story/dungeons → 404 NO_CHARACTER.
+  - **Onboard player1 (1 step)**: register + onboard với phamnhan default sect.
+  - **Quest gating prep (5 step)**: GET /story/dungeons post-onboard → list với target locked, POST /story/dungeons/:key/start pre-quest → 403 DUNGEON_LOCKED, drive `phamnhan_main_01` to COMPLETED via /quests/accept + /quests/progress (talk×2 step_01/step_02) + admin login + admin /api/admin/users/:id/quest-track (kill son_thu ×3 step_03), GET /quests/me → phamnhan_main_01 COMPLETED.
+  - **Story quest accept + progress (2 step)**: POST /quests/accept phamnhan_realm_01 → 200 ACCEPTED, POST /quests/progress phamnhan_realm_01 step_01 explore → 200.
+  - **Start ACTIVE (3 step)**: GET /story/dungeons → target now status=available, POST /story/dungeons/story_dgn_phamnhan_back_mountain/start → 200 ACTIVE, idempotent retry → same runId.
+  - **Advance + clear (5 step)**: premature clear 409 RUN_STEP_INVALID, advance×3 → currentStep=3, advance out-of-range 409 RUN_STEP_INVALID, clear → 200 CLEARED, re-clear 409 RUN_NOT_ACTIVE.
+  - **Verify quest progress (1 step)**: GET /quests/me → phamnhan_realm_01 ACCEPTED step_01 progress=1 (không regression).
+  - **Claim reward (3 step)**: claim → 200 granted reward (80 LT + 150 EXP + 1 linh_lo_dan), double-claim 409 RUN_ALREADY_CLAIMED, oneTime re-start 409 DUNGEON_ALREADY_CLEARED.
+  - **Player2 non-owner + isolation (4 step)**: register + onboard player2 → POST /story/dungeons/:runId/advance non-owner 403 RUN_NOT_OWNED, claim non-owner 403 RUN_NOT_OWNED, GET /story/dungeons (player2) → activeRun=null target locked.
+- **package.json wire**: thêm `"smoke:story-dungeon": "node scripts/smoke-story-dungeon.mjs"` vào root scripts (29 smoke total).
+- **Env vars** (override default): `SMOKE_API_BASE` (default `http://localhost:3000`), `SMOKE_TIMEOUT_MS` (default 10000), `SMOKE_VERBOSE` (default off), `SMOKE_SECT_KEY` (default `thanh_van`), `SMOKE_ADMIN_EMAIL` (default `admin@example.com`), `SMOKE_ADMIN_PASSWORD` (default `change-me-bootstrap-pass`).
+- **Local stack required**: `pnpm infra:up` (Postgres + Redis) + `pnpm --filter @xuantoi/api exec prisma migrate deploy` + `pnpm --filter @xuantoi/api bootstrap` (admin seed) + `pnpm --filter @xuantoi/api dev`.
+- **Bugs found**: 0. Smoke 35/35 step PASS local trên main (không phát sinh fix runtime).
+- **Risk / rollback**: tối thiểu — test-only PR, không đụng runtime/component code/i18n/migration. Rollback = revert `scripts/smoke-story-dungeon.mjs` + 1 line `package.json` + docs delta.
+- **Out of scope**: KHÔNG rewrite Story Dungeon runtime; KHÔNG thêm story dungeon mới; KHÔNG dialogue branch nâng cao; KHÔNG Phase 13.2; KHÔNG PvP/pet/gacha/auction.
+- **Verification**: api typecheck ✅ / api `--run story` 59 PASS ✅ / api `--run dungeon` 82 PASS ✅ / web typecheck ✅ / web `--run StoryDungeon` 74 PASS ✅ / web `--run Quest` 36 PASS ✅ / pnpm build ✅ / `pnpm smoke:story-dungeon` 35/35 PASS local.
+- **Next roadmap**: (1) Phase 12 Story Dialogue Branch advanced (multi-step branching tree + flag effects + give_reward expansion); (2) Phase 13.2 Cross-sect seasonal expansion; (3) CSP production verify khi deploy (M7); (4) Admin LiveOps advanced controls schedule editor / event preview / dry-run mode.
+
+### Added — Phase 12.8.D Story Dungeon UI Test Coverage (PR #468)
 
 - **Story Dungeon FE giờ có test coverage đầy đủ §F gap** — Phase 12.8.C (PR #467 merged on main) đã ship full FE wire (4 component + Quest/Home CTA + i18n + store) nhưng chỉ có 16 store-level test trong `stores/__tests__/storyDungeon.test.ts`. Phase 12.8.D fill **§F web test coverage gap**: 4 component test file mới + extend 2 view test với CTA cases. **Test-only PR, no runtime change** — KHÔNG đụng component code, KHÔNG sửa runtime, KHÔNG migration.
 - **4 component test file mới**:
