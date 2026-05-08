@@ -27,6 +27,8 @@ export interface StoryDialogueChoiceView {
   unavailableReason: string | null;
   nextNodeId: string | null;
   alreadyApplied: boolean;
+  /** Phase 12.9 — player đã từng pick exact choice này ở node parent. */
+  previouslyChosen: boolean;
 }
 
 export interface StoryDialogueNodeView {
@@ -36,6 +38,8 @@ export interface StoryDialogueNodeView {
   text: string;
   textEn?: string;
   seen: boolean;
+  /** Phase 12.9 — choiceKey đã pick gần nhất ở node này, null nếu chưa. */
+  previousChoiceKey: string | null;
   choices: StoryDialogueChoiceView[];
 }
 
@@ -44,6 +48,8 @@ export interface StoryDialogueChoiceResult {
   granted: { linhThach: number; tienNgoc: number; exp: number };
   flags: Record<string, string | number | boolean>;
   seen: ReadonlyArray<string>;
+  /** Phase 12.9 — snapshot map nodeId → choiceKey sau apply. */
+  choices: Readonly<Record<string, string>>;
   nextNode: StoryDialogueNodeView | null;
 }
 

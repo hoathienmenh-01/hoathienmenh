@@ -12,7 +12,43 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Added — Phase 12.8.E Story Dungeon Smoke Coverage (this PR)
+### Added — Phase 12.9 Story Dialogue Branch Advanced (this PR)
+
+- **NPC giờ nhớ lựa chọn cũ + đối thoại phân nhánh nhiều bước** — Phase 12 Story Dialogue Foundation (PR #464) đã ship single-step branching với `flag_equals` / `quest_status` / `seen` / `realm_min`. Phase 12.9 nâng cấp thành multi-step branching tree: NPC nhớ choice cũ qua `Character.storyDialogueChoices` (Json map nodeId → choiceKey, last-write-wins per node) + render followup node khác nhau theo path đã đi. Player apologize khi chọn nhầm path "rival" → flag được clear → narrative revert sang "neutral". KHÔNG đụng dungeon runtime, KHÔNG cutscene lớn, KHÔNG rewrite quest system.
+- **2 type mới**:
+  - **Condition `choice_made { nodeId, choiceKey }`** — match khi `storyDialogueChoices[nodeId] === choiceKey`. Specificity = 5 (cùng band `quest_status`) → server pick followup node trước fallback intro. Validator two-pass verify nodeId + choiceKey ref đúng trong catalog.
+  - **Effect `clear_flag { flagKey }`** — xoá entry khỏi `storyFlags` (no-op nếu chưa set). Cho plot reversal / apology arc — không động chạm flag khác. `storyDialogueAllFlagKeys()` cover cả `set_flag` + `clear_flag` để invariant validate flag set consistency.
+- **Hàn Dạ multi-step tree** (4 node minh hoạ — tổng catalog Phase 12.9 thêm 3 node mới ngoài `first_meet` đã có):
+  - `story_dlg_han_da_first_meet` — root. 2 choice: `rival` set `han_da_relation = rival` + mark seen; `neutral` set `han_da_relation = neutral` + mark seen.
+  - `story_dlg_han_da_followup_rival` — gate `choice_made(first_meet, rival)` + `not_seen` self. 2 choice: `spar` set `han_da_spar_arranged = true` + mark seen; `decline` mark seen.
+  - `story_dlg_han_da_followup_neutral` — gate `choice_made(first_meet, neutral)` + `not_seen` self. Choice friendly chat → mark seen.
+  - `story_dlg_han_da_resolution_apology` — gate `seen(followup_rival)` + `flag_equals(han_da_relation, rival)` + `not_seen` self. Choice `apologize` carries `clear_flag(han_da_relation)` (revert sang neutral path) + mark seen — KHÔNG đụng `han_da_spar_arranged` để giữ lịch sử spar.
+- **Prisma migration** `20260604000000_phase_12_9_story_dialogue_branch_advanced` — thêm `Character.storyDialogueChoices Json @default('{}')` (nodeId → choiceKey, last-write-wins per node). Backwards-compatible: existing players default `{}` không break flow.
+- **API runtime extend** (`StoryDialogueService`):
+  - `CharCtx.choices: Readonly<Record<string,string>>` thêm vào context cùng `flags` / `seen` / `questStatus`.
+  - `loadCtx()` đọc `Character.storyDialogueChoices` qua helper `readJsonChoiceMap` (ignore non-string values).
+  - `evaluateCondition()` handle `choice_made` (return `ctx.choices[nodeId] === choiceKey`).
+  - `summarizeConditionForReason()` thêm shape `'choice_made:nodeId=key'` cho FE debug `unavailableReason`.
+  - `applyChoice()` ghi `choices[node.id] = choice.key` last-write-wins TRƯỚC khi handle effects (nên `choice_made` ở node tiếp theo thấy ngay) + handle `clear_flag` (delete entry khỏi flags map) + persist `storyDialogueChoices` cùng `storyDialogueSeen` / `storyFlags`.
+- **Response shape** (extend, backwards-compatible):
+  - `StoryDialogueChoiceView.previouslyChosen: boolean` — `storyDialogueChoices[parentNodeId] === key`. KHÔNG disable button — chỉ hint cho FE.
+  - `StoryDialogueNodeView.previousChoiceKey: string \| null` — last-pick at this node.
+  - `StoryDialogueChoiceResult.choices: Readonly<Record<string,string>>` — snapshot map post-apply, để FE store sync cho `choice_made` render đúng ở node tiếp theo.
+- **FE polish** (`StoryDialogueModal.vue`):
+  - Thêm v-else-if branch render badge "Đã chọn lần trước" khi `c.previouslyChosen=true && c.available=true && !c.alreadyApplied`. `data-testid="story-dialogue-last-{key}"`. Amber-300 italic hint, KHÔNG disable button.
+  - Hover/border màu khác (`border-amber-300/40`) khi previously chosen — visual cue nhẹ.
+  - `alreadyApplied` v-else-if vẫn precedence (chain v-if > v-else-if) — KHÔNG double-render hint.
+- **i18n vi/en parity**: `storyDialogue.lastChosen` (vi: "Đã chọn lần trước", en: "Picked last time").
+- **Tests**: +14 case (shared +5 / api +7 / web +2):
+  - **Shared** (`packages/shared/src/story-dialogues.test.ts`): `storyDialogueNodeSpecificity` rank `choice_made` same band `quest_status`; catalog ≥ 1 node per implemented effect kind (mark_seen/advance_quest_step/give_reward/set_flag/clear_flag); validator reject orphan `choice_made(nodeId, key)` ref; `storyDialogueAllFlagKeys()` cover `clear_flag`; Hàn Dạ multi-step tree round-trip resolution.
+  - **API** (`apps/api/src/modules/story-dialogue/story-dialogue.service.test.ts`): pick rival → server pick `followup_rival` (specificity); pick neutral → server pick `followup_neutral`; followup_rival visibility fail INVALID_CHOICE nếu chưa pick rival; clear_flag xoá han_da_relation + persist + giữ han_da_spar_arranged; clear_flag no-op khi flag chưa set (idempotent semantic); previouslyChosen wiring true sau pick + reset seen; storyDialogueChoices last-write-wins multi-pick.
+  - **Web** (`apps/web/src/components/__tests__/StoryDialogueModal.test.ts`): previouslyChosen=true render badge + giữ button enable; alreadyApplied precedence trên previouslyChosen — KHÔNG render last-chosen badge khi alreadyApplied=true.
+- **Anti-feature-creep** (theo scope user request): KHÔNG rewrite quest system, KHÔNG cutscene lớn, KHÔNG dungeon runtime mới, KHÔNG PvP/pet/gacha/auction, KHÔNG Phase 13.2.
+- **Risk / rollback**: low — migration thêm column với default empty `{}` (backwards-compatible), API extend response shape (FE optional field consume); rollback = revert PR + `prisma migrate resolve --rolled-back 20260604000000_phase_12_9_story_dialogue_branch_advanced`.
+- **Verification**: shared typecheck ✅ + test (catalog + branching invariant) PASS / api typecheck ✅ + `--run story` PASS + `--run dialogue` PASS / web typecheck ✅ + `--run Dialogue` PASS / pnpm build ✅.
+- **Next roadmap**: (1) Phase 12.10 Story dialogue smoke + Playwright E2E (Node smoke `pnpm smoke:story-dialogue` cover branching pick + previously-chosen revisit + locked reject + Playwright spec navigation); (2) mở rộng Hàn Dạ tree với give_reward gắn theo path; (3) thêm dialogue branch cho 8 placeholder kill milestone Phase 12 Foundation Late-game; (4) Phase 13.2 Cross-sect seasonal expansion.
+
+### Added — Phase 12.8.E Story Dungeon Smoke Coverage (PR #469)
 
 - **Story Dungeon giờ có smoke/E2E coverage end-to-end** — Phase 12.8.A/B/C/D đã ship catalog + runtime + FE + UI test coverage, nhưng chưa có smoke chạy real HTTP end-to-end. Phase 12.8.E thêm `scripts/smoke-story-dungeon.mjs` 35-step Node script chạy fetch-based vs API local cover full player flow từ register → onboard → quest gating → start → advance → clear → claim → verify quest progress + double-claim/non-owner reject + data isolation. **Test-only PR, no runtime change** — KHÔNG đụng component code, KHÔNG sửa runtime, KHÔNG migration.
 - **Smoke flow covered** (35 step):
