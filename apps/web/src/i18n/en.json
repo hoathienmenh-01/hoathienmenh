@@ -1945,7 +1945,12 @@
       "rewardTitle": "Special title",
       "penaltyExpLoss": "EXP lost",
       "penaltyCooldown": "Cooldown",
-      "penaltyTaoMa": "Heart-Demon debuff"
+      "penaltyTaoMa": "Heart-Demon debuff",
+      "previewTitle": "Estimated outcome",
+      "successChance": "Success chance",
+      "affinity": "Element affinity",
+      "supports": "Supports",
+      "supportsEmpty": "No support items active."
     },
     "unit": {
       "minutes": "min"

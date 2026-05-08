@@ -44,6 +44,19 @@ export const useTribulationStore = defineStore('tribulation', () => {
   const lastError = ref<string | null>(null);
 
   /**
+   * Phase 14.3.A — preview state cho upcoming kiếp.
+   *   - `preview === undefined`: chưa fetch (initial).
+   *   - `preview === null`: server trả null (transition KHÔNG cần kiếp —
+   *     low-tier hoặc realm cuối).
+   *   - `preview === TribulationPreviewView`: snapshot deterministic,
+   *     không trigger RNG/log. Caller dùng `successChance.final` cho UI %
+   *     hint, `supports[]` cho tooltip nguồn bonus, v.v.
+   */
+  const preview = ref<api.TribulationPreviewView | null | undefined>(undefined);
+  const previewLoading = ref(false);
+  const previewError = ref<string | null>(null);
+
+  /**
    * Phase 11.6.G — history of past attempts. `null` = chưa fetch (initial),
    * `[]` = fetched but empty (chưa attempt lần nào). `historyLoading`/
    * `historyError` cho UI loading + retry banner.
@@ -144,6 +157,34 @@ export const useTribulationStore = defineStore('tribulation', () => {
   }
 
   /**
+   * Phase 14.3.A — fetch preview snapshot từ
+   * `GET /character/tribulation/preview`. Idempotent. Race-protected via
+   * `previewLoading`. `null` = transition không cần kiếp; non-null =
+   * deterministic estimate (server không roll RNG, không ghi log).
+   *
+   * Trả về error code (string) hoặc `null` thành công.
+   */
+  async function fetchPreview(): Promise<string | null> {
+    if (previewLoading.value) return 'IN_FLIGHT';
+    previewLoading.value = true;
+    previewError.value = null;
+    try {
+      const res = await api.fetchTribulationPreview();
+      preview.value = res;
+      return null;
+    } catch (e) {
+      const code =
+        (e as { code?: string }).code ??
+        (e as { error?: { code?: string } }).error?.code ??
+        'UNKNOWN';
+      previewError.value = code;
+      return code;
+    } finally {
+      previewLoading.value = false;
+    }
+  }
+
+  /**
    * Server-authoritative attempt. Returns error code (string) on failure,
    * `null` on success (caller phải xem `lastOutcome.success` để biết kiếp
    * thành công hay thất bại).
@@ -232,6 +273,9 @@ export const useTribulationStore = defineStore('tribulation', () => {
     historyError.value = null;
     historyLimit.value = api.TRIBULATION_LOG_DEFAULT_LIMIT;
     historyFilter.value = 'all';
+    preview.value = undefined;
+    previewLoading.value = false;
+    previewError.value = null;
   }
 
   return {
@@ -249,7 +293,11 @@ export const useTribulationStore = defineStore('tribulation', () => {
     historyTotalCount,
     historySuccessCount,
     historyFailCount,
+    preview,
+    previewLoading,
+    previewError,
     clearLastOutcome,
+    fetchPreview,
     attempt,
     fetchHistory,
     loadMoreHistory,

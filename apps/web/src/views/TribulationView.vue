@@ -300,6 +300,9 @@ onMounted(async () => {
   game.bindSocket();
   // Phase 11.6.G — fetch tribulation history (idempotent GET).
   tribulation.fetchHistory().catch(() => null);
+  // Phase 14.3.A — fetch preview snapshot song song (read-only deterministic
+  // estimate, không trigger RNG/log).
+  tribulation.fetchPreview().catch(() => null);
   // Phase 11.6.E — live countdown ticker (1 Hz), đủ smooth + đủ rẻ.
   tickerHandle = setInterval(() => {
     nowMs.value = Date.now();
@@ -535,6 +538,68 @@ onUnmounted(() => {
           <div data-testid="tribulation-waves">
             <span class="text-ink-300">{{ t('tribulation.field.waves') }}:</span>
             <span class="text-ink-100 ml-1">{{ upcomingDef.waves.length }}</span>
+          </div>
+        </div>
+
+        <!--
+          Phase 14.3.A — preview panel (success chance + supports).
+          Server-authoritative deterministic estimate (không roll RNG, không
+          ghi log). Hiển thị final %, breakdown base/affinity/supports nếu
+          có. Empty supports list trong foundation phase.
+        -->
+        <div
+          v-if="tribulation.preview"
+          class="border-t border-ink-300/20 pt-2 space-y-1 text-xs"
+          data-testid="tribulation-preview-panel"
+        >
+          <h3 class="text-ink-300 mb-1">{{ t('tribulation.field.previewTitle') }}</h3>
+          <div data-testid="tribulation-preview-success-chance">
+            <span class="text-ink-300">{{ t('tribulation.field.successChance') }}:</span>
+            <span class="text-amber-200 ml-1 font-semibold">
+              {{ Math.round(tribulation.preview.successChance.final * 100) }}%
+            </span>
+          </div>
+          <div
+            v-if="tribulation.preview.successChance.affinity !== 0"
+            data-testid="tribulation-preview-affinity"
+          >
+            <span class="text-ink-300">{{ t('tribulation.field.affinity') }}:</span>
+            <span
+              :class="[
+                'ml-1',
+                tribulation.preview.successChance.affinity > 0
+                  ? 'text-emerald-200'
+                  : 'text-rose-200',
+              ]"
+            >
+              {{ tribulation.preview.successChance.affinity > 0 ? '+' : '' }}{{
+                Math.round(tribulation.preview.successChance.affinity * 100)
+              }}%
+            </span>
+          </div>
+          <div
+            v-if="tribulation.preview.supports.length > 0"
+            class="space-y-0.5"
+            data-testid="tribulation-preview-supports"
+          >
+            <div class="text-ink-300">{{ t('tribulation.field.supports') }}:</div>
+            <ul class="pl-2 space-y-0.5">
+              <li
+                v-for="(s, idx) in tribulation.preview.supports"
+                :key="`${s.source}-${s.key}-${idx}`"
+                class="text-emerald-200"
+                :data-testid="`tribulation-preview-support-${idx}`"
+              >
+                +{{ Math.round(s.bonus * 100) }}% — {{ s.source }}/{{ s.key }}
+              </li>
+            </ul>
+          </div>
+          <div
+            v-else
+            class="text-ink-300/70"
+            data-testid="tribulation-preview-supports-empty"
+          >
+            {{ t('tribulation.field.supportsEmpty') }}
           </div>
         </div>
 

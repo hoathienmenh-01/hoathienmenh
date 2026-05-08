@@ -340,7 +340,10 @@ describe('CharacterService.breakthrough with TitleService (Phase 11.9.C)', () =>
     expect(rows[0].source).toBe('realm_milestone');
   });
 
-  it('breakthrough hoa_than → luyen_hu (không có title milestone) → KHÔNG insert row', async () => {
+  // Phase 14.3.A — `hoa_than → luyen_hu` đã có catalog kiếp.
+  // `breakthrough()` được gate-block bằng `TRIBULATION_REQUIRED`; route
+  // tribulation `attemptTribulation()` xử lý title path tương tự (Phase 11.9.C-2).
+  it('breakthrough hoa_than → luyen_hu BLOCKED bởi TRIBULATION_REQUIRED gate (Phase 14.3.A)', async () => {
     const cost = expCostForStage('hoa_than', 9)!;
     const fix = await makeUserChar(prisma, {
       realmKey: 'hoa_than',
@@ -350,8 +353,9 @@ describe('CharacterService.breakthrough with TitleService (Phase 11.9.C)', () =>
 
     expect(titleForRealmMilestone('luyen_hu')).toBeUndefined();
 
-    const state = await charsWithTitles.breakthrough(fix.userId);
-    expect(state.realmKey).toBe('luyen_hu');
+    await expect(charsWithTitles.breakthrough(fix.userId)).rejects.toThrow(
+      'TRIBULATION_REQUIRED',
+    );
 
     const rows = await prisma.characterTitleUnlock.findMany({
       where: { characterId: fix.characterId },
@@ -402,6 +406,72 @@ describe('CharacterService.breakthrough with TitleService (Phase 11.9.C)', () =>
       where: { characterId: fix.characterId },
     });
     expect(rows.length).toBe(0);
+  });
+});
+
+// ── Phase 14.3.A — CharacterService.breakthrough TRIBULATION_REQUIRED gate ──
+describe('Phase 14.3.A — breakthrough() TRIBULATION_REQUIRED gate', () => {
+  it('low-tier (luyenkhi → truc_co): KHÔNG có catalog kiếp → breakthrough pass-through', async () => {
+    const cost = expCostForStage('luyenkhi', 9)!;
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      realmStage: 9,
+      exp: cost,
+    });
+    const state = await chars.breakthrough(fix.userId);
+    expect(state.realmKey).toBe('truc_co');
+    expect(state.realmStage).toBe(1);
+  });
+
+  it('truc_co → kim_dan: chưa có catalog kiếp → breakthrough pass-through', async () => {
+    const cost = expCostForStage('truc_co', 9)!;
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'truc_co',
+      realmStage: 9,
+      exp: cost,
+    });
+    const state = await chars.breakthrough(fix.userId);
+    expect(state.realmKey).toBe('kim_dan');
+  });
+
+  it('kim_dan → nguyen_anh: catalog có kiếp → throw TRIBULATION_REQUIRED, KHÔNG advance', async () => {
+    const cost = expCostForStage('kim_dan', 9)!;
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'kim_dan',
+      realmStage: 9,
+      exp: cost + 1000n,
+    });
+    await expect(chars.breakthrough(fix.userId)).rejects.toThrow(
+      'TRIBULATION_REQUIRED',
+    );
+    // Character KHÔNG bị mutate.
+    const after = await prisma.character.findUniqueOrThrow({
+      where: { id: fix.characterId },
+    });
+    expect(after.realmKey).toBe('kim_dan');
+    expect(after.realmStage).toBe(9);
+    expect(after.exp).toBe(cost + 1000n);
+  });
+
+  it('kim_dan stage<9 → vẫn throw NOT_AT_PEAK trước khi check kiếp', async () => {
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'kim_dan',
+      realmStage: 5,
+      exp: 0n,
+    });
+    await expect(chars.breakthrough(fix.userId)).rejects.toThrow('NOT_AT_PEAK');
+  });
+
+  it('hu_khong_chi_ton (realm cuối, không nextRealm) → KHÔNG advance, giữ nguyên realm', async () => {
+    const cost = expCostForStage('hu_khong_chi_ton', 9);
+    if (cost === null) return;
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'hu_khong_chi_ton',
+      realmStage: 9,
+      exp: cost,
+    });
+    const state = await chars.breakthrough(fix.userId);
+    expect(state.realmKey).toBe('hu_khong_chi_ton');
   });
 });
 

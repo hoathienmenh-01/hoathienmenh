@@ -4,6 +4,7 @@ import { setActivePinia, createPinia } from 'pinia';
 vi.mock('@/api/tribulation', () => ({
   attemptTribulation: vi.fn(),
   fetchAttemptLog: vi.fn(),
+  fetchTribulationPreview: vi.fn(),
   TRIBULATION_LOG_DEFAULT_LIMIT: 20,
   TRIBULATION_LOG_MAX_LIMIT: 100,
 }));
@@ -291,6 +292,118 @@ describe('useTribulationStore — Phase 11.6.G fetchHistory', () => {
     expect(s.history).toBeNull();
     expect(s.historyLoading).toBe(false);
     expect(s.historyError).toBeNull();
+  });
+});
+
+// ── Phase 14.3.A — fetchPreview tests ────────────────────────────────────
+const mockedFetchPreview = vi.mocked(api.fetchTribulationPreview);
+
+const STUB_PREVIEW: api.TribulationPreviewView = {
+  requirement: true,
+  fromRealmKey: 'kim_dan',
+  toRealmKey: 'nguyen_anh',
+  atPeak: true,
+  def: {
+    key: 'tribulation_kim_dan_nguyen_anh',
+    name: 'Tiểu Lôi Kiếp',
+    description: 'Lôi kiếp đầu tiên',
+    type: 'lei',
+    severity: 'minor',
+    wavesCount: 3,
+  },
+  successChance: { base: 0.75, affinity: 0, supports: 0, final: 0.75 },
+  supports: [],
+  supportTotalBonus: 0,
+  rewardHint: { linhThach: 1000, expBonus: '50000', titleKey: null },
+  penaltyHint: {
+    expLossRatio: 0.1,
+    cooldownMinutes: 30,
+    taoMaDebuffChance: 0.4,
+    taoMaDebuffDurationMinutes: 15,
+  },
+  cooldownAt: null,
+  taoMaUntil: null,
+};
+
+describe('useTribulationStore — Phase 14.3.A fetchPreview', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+  });
+
+  it('initial state: preview undefined, previewLoading false, previewError null', () => {
+    const s = useTribulationStore();
+    expect(s.preview).toBeUndefined();
+    expect(s.previewLoading).toBe(false);
+    expect(s.previewError).toBeNull();
+  });
+
+  it('fetchPreview success → preview populated, return null', async () => {
+    mockedFetchPreview.mockResolvedValueOnce(STUB_PREVIEW);
+    const s = useTribulationStore();
+    const err = await s.fetchPreview();
+    expect(err).toBeNull();
+    expect(s.preview).not.toBeNull();
+    expect(s.preview).not.toBeUndefined();
+    expect(s.preview!.def.key).toBe('tribulation_kim_dan_nguyen_anh');
+    expect(s.preview!.successChance.final).toBeCloseTo(0.75);
+    expect(s.previewLoading).toBe(false);
+    expect(s.previewError).toBeNull();
+  });
+
+  it('fetchPreview returns null (low-tier) → preview === null, return null', async () => {
+    mockedFetchPreview.mockResolvedValueOnce(null);
+    const s = useTribulationStore();
+    const err = await s.fetchPreview();
+    expect(err).toBeNull();
+    expect(s.preview).toBeNull();
+  });
+
+  it('fetchPreview server reject UNAUTHENTICATED → previewError set, return code', async () => {
+    mockedFetchPreview.mockRejectedValueOnce({ code: 'UNAUTHENTICATED' });
+    const s = useTribulationStore();
+    const err = await s.fetchPreview();
+    expect(err).toBe('UNAUTHENTICATED');
+    expect(s.previewError).toBe('UNAUTHENTICATED');
+    expect(s.preview).toBeUndefined();
+  });
+
+  it('fetchPreview unknown error → trả "UNKNOWN"', async () => {
+    mockedFetchPreview.mockRejectedValueOnce(new Error('boom'));
+    const s = useTribulationStore();
+    const err = await s.fetchPreview();
+    expect(err).toBe('UNKNOWN');
+    expect(s.previewError).toBe('UNKNOWN');
+  });
+
+  it('fetchPreview double-call → second returns IN_FLIGHT (race protect)', async () => {
+    let resolveFn!: (v: api.TribulationPreviewView | null) => void;
+    mockedFetchPreview.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveFn = resolve;
+        }),
+    );
+    const s = useTribulationStore();
+    const p1 = s.fetchPreview();
+    expect(s.previewLoading).toBe(true);
+    const r2 = await s.fetchPreview();
+    expect(r2).toBe('IN_FLIGHT');
+    expect(mockedFetchPreview).toHaveBeenCalledTimes(1);
+    resolveFn(STUB_PREVIEW);
+    await p1;
+    expect(s.previewLoading).toBe(false);
+  });
+
+  it('reset clear preview + previewLoading + previewError', () => {
+    const s = useTribulationStore();
+    s.preview = STUB_PREVIEW;
+    s.previewLoading = true;
+    s.previewError = 'X';
+    s.reset();
+    expect(s.preview).toBeUndefined();
+    expect(s.previewLoading).toBe(false);
+    expect(s.previewError).toBeNull();
   });
 });
 

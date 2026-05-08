@@ -790,6 +790,35 @@ Invariant (xem `story-dungeons.test.ts` describe `validateStoryDungeonCatalog`):
 
 **Stack interaction with all systems (Phase 11.4 + 11.5 + 11.6)**: tribulation `effectiveDamage = wave.baseDamage × elementResist(character)`, where `elementResist = 1.0 - resistPercentage`. ResistPercentage tính từ: spiritualRoot.affinity + equipment elemental gear + cultivationMethod.elementBonus. Player muốn pass kiếp phải stack toàn bộ system: linh căn + công pháp + trang bị + refine + gem cùng hệ.
 
+### 5.6.1 Tribulation foundation dial (phase 14.3.A)
+
+**Phase 14.3.A** thêm 1 lớp foundation **trên** Phase 11.6.A/B (KHÔNG đụng catalog/wave/runtime cũ). Dial chính ở `packages/shared/src/tribulation-foundation.ts`:
+
+| Dial | Value | Mục đích |
+|---|---:|---|
+| `TRIBULATION_BASE_SUCCESS_CHANCE.minor` | 0.75 | Floor success chance cho minor kiếp (kim_dan→nguyen_anh, nguyen_anh→hoa_than). |
+| `TRIBULATION_BASE_SUCCESS_CHANCE.major` | 0.55 | Major (hoa_than → dai_thua range). |
+| `TRIBULATION_BASE_SUCCESS_CHANCE.heavenly` | 0.35 | Heavenly cross-tier (dai_thua→do_kiep, do_kiep→nhan_tien). |
+| `TRIBULATION_BASE_SUCCESS_CHANCE.saint` | 0.20 | Saint endgame (chuan_thanh→thanh_nhan). |
+| `TRIBULATION_ELEMENT_AFFINITY_BONUS` | +0.05 | Bonus khi spirit-root primary khắc kiep element (e.g. `thuy` vs `hoa` Hoả Kiếp). |
+| `TRIBULATION_ELEMENT_AFFINITY_PENALTY` | -0.05 | Penalty khi kiep element khắc primary spirit-root (e.g. `thuy` Băng vs `hoa` primary). |
+| `TRIBULATION_SUPPORT_PER_ENTRY_CEIL` | +0.10 | Cap mỗi nguồn (1 item / 1 buff / 1 talent / 1 equip slot). Chống single-source spam. |
+| `TRIBULATION_SUPPORT_TOTAL_CEIL` | +0.30 | Cap tổng support stack — giữ tension dù farm full bộ phù. |
+| `TRIBULATION_SUCCESS_CHANCE_FLOOR` | 0.05 | Final floor — không bao giờ 0% để player có hope. |
+| `TRIBULATION_SUCCESS_CHANCE_CEIL` | 0.95 | Final ceil — không bao giờ 100% để giữ stake; force player vẫn lo về fail. |
+
+**Formula** (deterministic, server-authoritative, KHÔNG roll RNG):
+
+```
+final = clamp(base + affinity + supports, FLOOR, CEIL)
+```
+
+- `base` = `TRIBULATION_BASE_SUCCESS_CHANCE[def.severity]`.
+- `affinity` ∈ {-0.05, 0, +0.05} — dùng `elementalAdvantage(primaryRoot, kiepElement)` từ Phase 14.2.A. `tam` (Tâm Kiếp) null element → affinity = 0.
+- `supports` = `min(sum(entry.bonus per entry capped at PER_ENTRY_CEIL), TOTAL_CEIL)`.
+
+**Tuning rationale**: Phase 14.3.A foundation **KHÔNG ship per-source provider** — `supports[]` empty trong runtime đầu. Hậu Phase (14.3.B/C) sẽ wire item `tribulation_support` bonus, buff `kiep_van_phu`, talent `do_kiep_thien_phu`, equipment `tribulation_resist`. Cap envelope đã chọn để khi data ship đầy đủ, player full bộ pháp khí + buff vẫn chỉ tới `0.95` ceil — không bypass kiếp bằng farm.
+
 ### 5.7 Alchemy curve (phase 11.X.A)
 
 **Phase 11.X.A catalog đã có (session 9r-10 PR — `packages/shared/src/alchemy.ts`)**:

@@ -40,7 +40,8 @@ Tóm tắt mọi endpoint REST + WebSocket event đang có ở `@xuantoi/api`. M
 | GET    | `/character/state`       | Yes  | Giống `me` + 404 NO_CHARACTER nếu chưa onboard. |
 | POST   | `/character/onboard`     | Yes  | Body `{ name, sectKey: 'thanh_van' \| 'huyen_thuy' \| 'tu_la' }`. |
 | POST   | `/character/cultivate`   | Yes  | Body `{ cultivating: boolean }`. Bật/tắt Nhập Định (tick qua cron BullMQ). |
-| POST   | `/character/breakthrough` | Yes | Đột phá cảnh giới khi đủ EXP + đỉnh stage. |
+| POST   | `/character/breakthrough` | Yes | Đột phá cảnh giới khi đủ EXP + đỉnh stage. **Phase 14.3.A**: nếu transition kế tiếp có `TribulationDef` (kim_dan→nguyen_anh trở lên), throw `TRIBULATION_REQUIRED` để FE redirect tới `/tribulation`. Low-tier (luyenkhi→truc_co, truc_co→kim_dan) tiếp tục dùng path cũ. |
+| GET    | `/character/tribulation/preview` | Yes | **Phase 14.3.A** — read-only deterministic preview. Trả `{ preview }` với `preview = null` nếu transition không cần kiếp (low-tier hoặc realm cuối) hoặc `TribulationPreview` shape `{ requirement, fromRealmKey, toRealmKey, atPeak, def, successChance: { base, affinity, supports, final }, supports[], supportTotalBonus, rewardHint, penaltyHint, cooldownAt, taoMaUntil }`. KHÔNG roll RNG, KHÔNG ghi `TribulationAttemptLog`. Server-authoritative success-chance estimate, `final ∈ [0.05, 0.95]`. |
 | GET    | `/character/titles`        | Yes | Phase 11.9.C — `{ owned[], catalog (26 def), equipped }`. `owned[]` sort `unlockedAt asc`. |
 | POST   | `/character/title/equip`   | Yes | Phase 11.9.C — `{ titleKey }` → set `Character.title`. 404 `TITLE_NOT_FOUND` khi key ∉ catalog; 409 `TITLE_NOT_OWNED` khi chưa unlock. Idempotent re-equip. |
 | POST   | `/character/title/unequip` | Yes | Phase 11.9.C — clear `Character.title = null`. Idempotent (no-op khi đang null). |

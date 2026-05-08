@@ -29,6 +29,34 @@ interface CharacterStub {
 type HistoryFilterStub = 'all' | 'success' | 'fail';
 type HistoryRowStub = { id: string; success: boolean };
 
+interface PreviewStubDef {
+  key: string;
+  name: string;
+  description: string;
+  type: string;
+  severity: string;
+  wavesCount: number;
+}
+interface PreviewStub {
+  requirement: true;
+  fromRealmKey: string;
+  toRealmKey: string;
+  atPeak: boolean;
+  def: PreviewStubDef;
+  successChance: { base: number; affinity: number; supports: number; final: number };
+  supports: { source: string; key: string; bonus: number }[];
+  supportTotalBonus: number;
+  rewardHint: { linhThach: number; expBonus: string; titleKey: string | null };
+  penaltyHint: {
+    expLossRatio: number;
+    cooldownMinutes: number;
+    taoMaDebuffChance: number;
+    taoMaDebuffDurationMinutes: number;
+  };
+  cooldownAt: string | null;
+  taoMaUntil: string | null;
+}
+
 interface TribulationStateStub {
   lastOutcome: unknown;
   inFlight: boolean;
@@ -40,6 +68,10 @@ interface TribulationStateStub {
   historyHasMore: boolean;
   historyMaxReached: boolean;
   historyFilter: HistoryFilterStub;
+  // Phase 14.3.A — preview state mock
+  preview: PreviewStub | null | undefined;
+  previewLoading: boolean;
+  previewError: string | null;
   // Derived getter — mirror Pinia computed `filteredHistory` để existing
   // Phase 11.6.G tests vẫn pass mà không cần set 2 field.
   readonly filteredHistory: HistoryRowStub[] | null;
@@ -52,6 +84,7 @@ interface TribulationStateStub {
   fetchHistory: ReturnType<typeof vi.fn>;
   loadMoreHistory: ReturnType<typeof vi.fn>;
   setHistoryFilter: ReturnType<typeof vi.fn>;
+  fetchPreview: ReturnType<typeof vi.fn>;
 }
 
 const replaceMock = vi.fn();
@@ -66,6 +99,8 @@ const setHistoryFilterMock = vi.fn((filter: HistoryFilterStub) => {
 });
 const fetchStateMock = vi.fn().mockResolvedValue(undefined);
 const toastPushMock = vi.fn();
+// Phase 14.3.A — fetchPreview mock (idempotent, returns null on success).
+const fetchPreviewMock = vi.fn().mockResolvedValue(null);
 
 const tribulationState: TribulationStateStub = {
   lastOutcome: null,
@@ -78,6 +113,9 @@ const tribulationState: TribulationStateStub = {
   historyHasMore: false,
   historyMaxReached: false,
   historyFilter: 'all',
+  preview: undefined,
+  previewLoading: false,
+  previewError: null,
   get filteredHistory(): HistoryRowStub[] | null {
     const rows = this.history;
     if (!rows) return null;
@@ -99,6 +137,7 @@ const tribulationState: TribulationStateStub = {
   fetchHistory: fetchHistoryMock,
   loadMoreHistory: loadMoreHistoryMock,
   setHistoryFilter: setHistoryFilterMock,
+  fetchPreview: fetchPreviewMock,
 };
 
 const gameState: { character: CharacterStub | null; realmFullName: string } = {
@@ -283,6 +322,9 @@ function resetState() {
   tribulationState.historyHasMore = false;
   tribulationState.historyMaxReached = false;
   tribulationState.historyFilter = 'all';
+  tribulationState.preview = undefined;
+  tribulationState.previewLoading = false;
+  tribulationState.previewError = null;
   // filteredHistory is a getter — derived from history+historyFilter; no reset.
   gameState.character = { realmKey: 'kim_dan', realmStage: 9 };
   gameState.realmFullName = 'Kim Đan Cửu Trọng';
@@ -300,6 +342,8 @@ function resetState() {
   });
   fetchStateMock.mockReset();
   fetchStateMock.mockResolvedValue(undefined);
+  fetchPreviewMock.mockReset();
+  fetchPreviewMock.mockResolvedValue(null);
   toastPushMock.mockClear();
   replaceMock.mockClear();
 }
@@ -438,6 +482,206 @@ describe('TribulationView — upcoming card render (kim_dan → nguyen_anh)', ()
     await flushPromises();
     const btn = w.find('[data-testid="tribulation-attempt-button"]');
     expect(btn.attributes('disabled')).toBeDefined();
+  });
+});
+
+// ── Phase 14.3.A — preview panel render ─────────────────────────────────
+describe('TribulationView — Phase 14.3.A preview panel', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    resetState();
+  });
+
+  it('onMounted gọi fetchPreview()', async () => {
+    mountView();
+    await flushPromises();
+    expect(fetchPreviewMock).toHaveBeenCalled();
+  });
+
+  it('preview panel KHÔNG render khi store.preview chưa fetch (undefined)', async () => {
+    tribulationState.preview = undefined;
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-preview-panel"]').exists()).toBe(false);
+  });
+
+  it('preview panel KHÔNG render khi store.preview === null (low-tier)', async () => {
+    tribulationState.preview = null;
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-preview-panel"]').exists()).toBe(false);
+  });
+
+  it('preview panel render success chance khi có preview', async () => {
+    tribulationState.preview = {
+      requirement: true,
+      fromRealmKey: 'kim_dan',
+      toRealmKey: 'nguyen_anh',
+      atPeak: true,
+      def: {
+        key: 'tribulation_kim_dan_nguyen_anh',
+        name: 'Tiểu Lôi Kiếp',
+        description: 'd',
+        type: 'lei',
+        severity: 'minor',
+        wavesCount: 3,
+      },
+      successChance: { base: 0.75, affinity: 0, supports: 0, final: 0.75 },
+      supports: [],
+      supportTotalBonus: 0,
+      rewardHint: { linhThach: 1000, expBonus: '50000', titleKey: null },
+      penaltyHint: {
+        expLossRatio: 0.1,
+        cooldownMinutes: 30,
+        taoMaDebuffChance: 0.4,
+        taoMaDebuffDurationMinutes: 15,
+      },
+      cooldownAt: null,
+      taoMaUntil: null,
+    };
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-preview-panel"]').exists()).toBe(true);
+    const chance = w.find('[data-testid="tribulation-preview-success-chance"]');
+    expect(chance.exists()).toBe(true);
+    expect(chance.text()).toContain('75%');
+  });
+
+  it('preview panel render affinity khi affinity != 0 (positive bonus)', async () => {
+    tribulationState.preview = {
+      requirement: true,
+      fromRealmKey: 'kim_dan',
+      toRealmKey: 'nguyen_anh',
+      atPeak: true,
+      def: {
+        key: 'tribulation_kim_dan_nguyen_anh',
+        name: 'Tiểu Lôi Kiếp',
+        description: 'd',
+        type: 'lei',
+        severity: 'minor',
+        wavesCount: 3,
+      },
+      successChance: { base: 0.75, affinity: 0.05, supports: 0, final: 0.8 },
+      supports: [],
+      supportTotalBonus: 0,
+      rewardHint: { linhThach: 1000, expBonus: '50000', titleKey: null },
+      penaltyHint: {
+        expLossRatio: 0.1,
+        cooldownMinutes: 30,
+        taoMaDebuffChance: 0.4,
+        taoMaDebuffDurationMinutes: 15,
+      },
+      cooldownAt: null,
+      taoMaUntil: null,
+    };
+    const w = mountView();
+    await flushPromises();
+    const aff = w.find('[data-testid="tribulation-preview-affinity"]');
+    expect(aff.exists()).toBe(true);
+    expect(aff.text()).toContain('+5%');
+  });
+
+  it('preview panel KHÔNG render affinity khi affinity == 0', async () => {
+    tribulationState.preview = {
+      requirement: true,
+      fromRealmKey: 'kim_dan',
+      toRealmKey: 'nguyen_anh',
+      atPeak: true,
+      def: {
+        key: 'tribulation_kim_dan_nguyen_anh',
+        name: 'Tiểu Lôi Kiếp',
+        description: 'd',
+        type: 'lei',
+        severity: 'minor',
+        wavesCount: 3,
+      },
+      successChance: { base: 0.75, affinity: 0, supports: 0, final: 0.75 },
+      supports: [],
+      supportTotalBonus: 0,
+      rewardHint: { linhThach: 1000, expBonus: '50000', titleKey: null },
+      penaltyHint: {
+        expLossRatio: 0.1,
+        cooldownMinutes: 30,
+        taoMaDebuffChance: 0.4,
+        taoMaDebuffDurationMinutes: 15,
+      },
+      cooldownAt: null,
+      taoMaUntil: null,
+    };
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-preview-affinity"]').exists()).toBe(false);
+  });
+
+  it('preview panel render supports list khi có entries', async () => {
+    tribulationState.preview = {
+      requirement: true,
+      fromRealmKey: 'kim_dan',
+      toRealmKey: 'nguyen_anh',
+      atPeak: true,
+      def: {
+        key: 'tribulation_kim_dan_nguyen_anh',
+        name: 'Tiểu Lôi Kiếp',
+        description: 'd',
+        type: 'lei',
+        severity: 'minor',
+        wavesCount: 3,
+      },
+      successChance: { base: 0.75, affinity: 0, supports: 0.1, final: 0.85 },
+      supports: [
+        { source: 'item', key: 'lei_kiep_phu', bonus: 0.05 },
+        { source: 'buff', key: 'thien_lei_phu', bonus: 0.05 },
+      ],
+      supportTotalBonus: 0.1,
+      rewardHint: { linhThach: 1000, expBonus: '50000', titleKey: null },
+      penaltyHint: {
+        expLossRatio: 0.1,
+        cooldownMinutes: 30,
+        taoMaDebuffChance: 0.4,
+        taoMaDebuffDurationMinutes: 15,
+      },
+      cooldownAt: null,
+      taoMaUntil: null,
+    };
+    const w = mountView();
+    await flushPromises();
+    const list = w.find('[data-testid="tribulation-preview-supports"]');
+    expect(list.exists()).toBe(true);
+    expect(w.find('[data-testid="tribulation-preview-support-0"]').exists()).toBe(true);
+    expect(w.find('[data-testid="tribulation-preview-support-1"]').exists()).toBe(true);
+  });
+
+  it('preview panel render supports-empty khi supports list rỗng', async () => {
+    tribulationState.preview = {
+      requirement: true,
+      fromRealmKey: 'kim_dan',
+      toRealmKey: 'nguyen_anh',
+      atPeak: true,
+      def: {
+        key: 'tribulation_kim_dan_nguyen_anh',
+        name: 'Tiểu Lôi Kiếp',
+        description: 'd',
+        type: 'lei',
+        severity: 'minor',
+        wavesCount: 3,
+      },
+      successChance: { base: 0.75, affinity: 0, supports: 0, final: 0.75 },
+      supports: [],
+      supportTotalBonus: 0,
+      rewardHint: { linhThach: 1000, expBonus: '50000', titleKey: null },
+      penaltyHint: {
+        expLossRatio: 0.1,
+        cooldownMinutes: 30,
+        taoMaDebuffChance: 0.4,
+        taoMaDebuffDurationMinutes: 15,
+      },
+      cooldownAt: null,
+      taoMaUntil: null,
+    };
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-preview-supports-empty"]').exists()).toBe(true);
   });
 });
 

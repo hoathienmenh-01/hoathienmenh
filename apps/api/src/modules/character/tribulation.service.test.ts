@@ -1543,3 +1543,115 @@ describe('toAttemptOutcomeView — BigInt + Date → string for HTTP JSON safety
     expect(() => JSON.stringify(toAttemptOutcomeView(rawOutcome))).not.toThrow();
   });
 });
+
+// ── Phase 14.3.A — TribulationService.previewTribulation (read-only) ──
+describe('Phase 14.3.A — TribulationService.previewTribulation', () => {
+  it('character ở kim_dan stage 9 + đủ EXP → preview cho transition kim_dan→nguyen_anh', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    const preview = await svc.previewTribulation(ctx.characterId);
+    expect(preview).not.toBeNull();
+    expect(preview!.requirement).toBe(true);
+    expect(preview!.fromRealmKey).toBe('kim_dan');
+    expect(preview!.toRealmKey).toBe('nguyen_anh');
+    expect(preview!.atPeak).toBe(true);
+    expect(preview!.def.key).toBe('tribulation_kim_dan_nguyen_anh');
+    expect(preview!.def.severity).toBe('minor');
+    expect(preview!.def.type).toBe('lei');
+    expect(preview!.def.wavesCount).toBe(3);
+    expect(preview!.successChance.base).toBe(0.75); // minor base
+    expect(preview!.successChance.final).toBeCloseTo(0.75);
+    expect(preview!.supports).toEqual([]);
+    expect(preview!.supportTotalBonus).toBe(0);
+    expect(preview!.cooldownAt).toBeNull();
+    expect(preview!.taoMaUntil).toBeNull();
+    // Reward hint BigInt → string.
+    expect(typeof preview!.rewardHint.expBonus).toBe('string');
+    expect(preview!.rewardHint.linhThach).toBeGreaterThan(0);
+    // Penalty hint pass-through.
+    expect(preview!.penaltyHint.cooldownMinutes).toBe(30); // minor
+    expect(preview!.penaltyHint.expLossRatio).toBeCloseTo(0.1);
+  });
+
+  it('character ở stage<9 → preview vẫn trả def, atPeak=false', async () => {
+    const ctx = await makeUserChar(prisma, {
+      realmKey: 'kim_dan',
+      realmStage: 5,
+      exp: 0n,
+      hp: 10_000,
+      hpMax: 10_000,
+      mp: 200,
+      mpMax: 200,
+      linhThach: 0n,
+    });
+    const preview = await svc.previewTribulation(ctx.characterId);
+    expect(preview).not.toBeNull();
+    expect(preview!.atPeak).toBe(false);
+    expect(preview!.def.key).toBe('tribulation_kim_dan_nguyen_anh');
+  });
+
+  it('character ở low-tier (luyenkhi) → no kiếp def → null', async () => {
+    const ctx = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      realmStage: 9,
+      exp: (expCostForStage('luyenkhi', 9) ?? 0n) + 100n,
+      hp: 1000,
+      hpMax: 1000,
+      mp: 100,
+      mpMax: 100,
+      linhThach: 0n,
+    });
+    const preview = await svc.previewTribulation(ctx.characterId);
+    expect(preview).toBeNull();
+  });
+
+  it('character ở thanh_nhan (đỉnh, không nextRealm) → null', async () => {
+    const ctx = await makeUserChar(prisma, {
+      realmKey: 'thanh_nhan',
+      realmStage: 9,
+      exp: 0n,
+      hp: 1_000_000,
+      hpMax: 1_000_000,
+      mp: 200,
+      mpMax: 200,
+      linhThach: 0n,
+    });
+    const preview = await svc.previewTribulation(ctx.characterId);
+    expect(preview).toBeNull();
+  });
+
+  it('không mutate state — gọi 2 lần liên tiếp trả cùng kết quả + KHÔNG insert log row', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    const a = await svc.previewTribulation(ctx.characterId);
+    const b = await svc.previewTribulation(ctx.characterId);
+    expect(a).toEqual(b);
+
+    const logs = await prisma.tribulationAttemptLog.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(logs.length).toBe(0);
+
+    // Character row unchanged.
+    const after = await prisma.character.findUnique({
+      where: { id: ctx.characterId },
+    });
+    expect(after!.realmKey).toBe('kim_dan');
+    expect(after!.realmStage).toBe(9);
+  });
+
+  it('character không tồn tại → throw CHARACTER_NOT_FOUND', async () => {
+    await expect(
+      svc.previewTribulation('00000000-0000-0000-0000-000000000000'),
+    ).rejects.toThrow(TribulationError);
+  });
+
+  it('cooldown active → cooldownAt cast → ISO string', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    const future = new Date(Date.now() + 60 * 60_000);
+    await prisma.character.update({
+      where: { id: ctx.characterId },
+      data: { tribulationCooldownAt: future },
+    });
+    const preview = await svc.previewTribulation(ctx.characterId);
+    expect(preview!.cooldownAt).toBe(future.toISOString());
+  });
+});

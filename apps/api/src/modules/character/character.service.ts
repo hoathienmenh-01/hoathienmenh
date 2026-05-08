@@ -7,6 +7,7 @@ import {
   getCultivationMethodDef,
   nextRealm,
   titleForRealmMilestone,
+  tribulationRequiredForBreakthrough,
   type BreakthroughChanceBreakdown,
   type CharacterStatePayload,
   type ElementKey,
@@ -41,7 +42,14 @@ const SECT_STARTING_STATS: Record<
 };
 
 class DomainError extends Error {
-  constructor(public code: 'NAME_TAKEN' | 'ALREADY_ONBOARDED' | 'NO_CHARACTER' | 'NOT_AT_PEAK') {
+  constructor(
+    public code:
+      | 'NAME_TAKEN'
+      | 'ALREADY_ONBOARDED'
+      | 'NO_CHARACTER'
+      | 'NOT_AT_PEAK'
+      | 'TRIBULATION_REQUIRED',
+  ) {
     super(code);
   }
 }
@@ -272,6 +280,15 @@ export class CharacterService {
 
   /**
    * Đột phá khi đạt đỉnh (trọng 9). Yêu cầu exp >= cost(stage=9).
+   *
+   * Phase 14.3.A — gate `TRIBULATION_REQUIRED`: nếu `nextRealm()` transition
+   * có `TribulationDef` trong catalog (`tribulationRequiredForBreakthrough`),
+   * route này KHÔNG advance realm — throw `TRIBULATION_REQUIRED` để FE
+   * redirect player sang `POST /character/tribulation`. Đảm bảo player
+   * không bypass kiếp bằng manual breakthrough endpoint.
+   *
+   * Low-tier transitions (phamnhan→luyenkhi, luyenkhi→truc_co, truc_co→kim_dan)
+   * KHÔNG có catalog entry → gate pass-through, behavior cũ giữ nguyên.
    */
   async breakthrough(userId: string): Promise<CharacterStatePayload> {
     const c = await this.prisma.character.findUnique({ where: { userId } });
@@ -282,6 +299,9 @@ export class CharacterService {
     if (cost === null || c.exp < cost) throw new DomainError('NOT_AT_PEAK');
 
     const next = nextRealm(c.realmKey);
+    if (tribulationRequiredForBreakthrough(c.realmKey, next?.key)) {
+      throw new DomainError('TRIBULATION_REQUIRED');
+    }
     const newRealm = next ? next.key : c.realmKey;
     const newStage = next ? 1 : 9;
 
