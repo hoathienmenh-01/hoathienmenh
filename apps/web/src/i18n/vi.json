@@ -2684,5 +2684,102 @@
     "warTitle": "Tông Môn Chiến",
     "warDesc": "Đua bảng xếp hạng tuần, nhận nhiệm vụ và Shop Tông.",
     "warBtn": "Vào Tông Môn Chiến"
+  },
+  "sectSeason": {
+    "tabLabel": "Mùa giải",
+    "loading": "Đang tải dữ liệu mùa giải…",
+    "outOfRange": "Hiện không có mùa giải đang chạy. Quay lại sau khi mùa mới mở.",
+    "season": {
+      "label": "Mùa giải",
+      "fallbackLabel": "Mùa {k}",
+      "keyLabel": "{k}",
+      "range": "{start} → {end} ({weeks} tuần)",
+      "remaining": "Còn {d}d {h}h {m}m",
+      "ended": "Mùa đã kết thúc",
+      "names": {
+        "s1": "Mùa Khai Nguyên",
+        "s2": "Mùa Linh Triều",
+        "s3": "Mùa Thanh Vân",
+        "s4": "Mùa Đan Hỏa",
+        "s5": "Mùa Phá Quan",
+        "s6": "Mùa Trùng Vân",
+        "s7": "Mùa Quang Diệp",
+        "s8": "Mùa Vân Du",
+        "s9": "Mùa Hắc Phong",
+        "s10": "Mùa Ngân Hà",
+        "s11": "Mùa Thiên Cơ",
+        "s12": "Mùa Tử Khôi",
+        "s13": "Mùa Tận Thế"
+      },
+      "namesDesc": {
+        "s1": "Mùa khởi đầu của Tông Môn — đặt nền cho hệ thống mùa giải.",
+        "s2": "Mùa linh khí trào dâng, các Tông tranh tài tích lũy điểm.",
+        "s3": "Mây xanh hội tụ — mùa đua thứ ba.",
+        "s4": "Mùa đan hỏa — luyện đan và đối kháng tuần.",
+        "s5": "Mùa phá quan — cải cách điểm cống hiến.",
+        "s6": "Mùa trùng vân — đỉnh cao luyện tập.",
+        "s7": "Mùa quang diệp — ánh sáng lá rơi.",
+        "s8": "Mùa vân du — phiêu bạt giang hồ.",
+        "s9": "Mùa hắc phong — gió đen tràn về.",
+        "s10": "Mùa ngân hà — sao trời rực rỡ.",
+        "s11": "Mùa thiên cơ — bí thuật truyền đời.",
+        "s12": "Mùa tử khôi — thanh trừ hỗn loạn.",
+        "s13": "Mùa tận thế — chuẩn bị đại biến."
+      }
+    },
+    "myProgress": {
+      "title": "Tiến độ cá nhân",
+      "noData": "Chưa có dữ liệu mùa giải cho bạn.",
+      "sect": "Tông Môn",
+      "noSect": "Chưa gia nhập Tông",
+      "personalPoints": "Điểm cống hiến mùa",
+      "weeksContributed": "Tuần đóng góp",
+      "weeksOf": "{contributed}/{total}",
+      "nextHint": "Còn {need} điểm để đạt {label}."
+    },
+    "milestone": {
+      "title": "Cột mốc mùa giải",
+      "achieved": "Đã đạt",
+      "locked": "Chưa đạt",
+      "required": "{n} điểm",
+      "names": {
+        "bronze": "Đồng",
+        "silver": "Bạc",
+        "gold": "Vàng",
+        "platinum": "Bạch Kim",
+        "diamond": "Kim Cương"
+      },
+      "namesDesc": {
+        "bronze": "Mở rương đầu mùa.",
+        "silver": "Hộp quà bạc — vật liệu Tông.",
+        "gold": "Hộp quà vàng — đan dược Tông.",
+        "platinum": "Bùa Tinh Thần Tập Trung + Linh Thạch.",
+        "diamond": "Danh hiệu mùa + Linh Thạch lớn."
+      }
+    },
+    "leaderboard": {
+      "title": "Bảng xếp hạng Tông",
+      "empty": "Chưa có Tông nào tích điểm.",
+      "youTag": "(Tông của bạn)",
+      "col": {
+        "rank": "Hạng",
+        "sect": "Tông",
+        "points": "Điểm",
+        "contributors": "Thành viên",
+        "weeks": "Tuần"
+      }
+    },
+    "reward": {
+      "linhThach": "{n} linh thạch",
+      "tienNgoc": "{n} tiên ngọc",
+      "items": "{n} vật phẩm",
+      "titleAward": "Danh hiệu {k}",
+      "buff": "Buff {k}"
+    },
+    "errors": {
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "SEASON_NOT_FOUND": "Mùa giải không tồn tại.",
+      "UNKNOWN": "Không tải được dữ liệu mùa giải — thử lại."
+    }
   }
 }

@@ -2684,5 +2684,102 @@
     "warTitle": "Sect War",
     "warDesc": "Compete weekly leaderboard, take sect missions and shop.",
     "warBtn": "Open Sect War"
+  },
+  "sectSeason": {
+    "tabLabel": "Season",
+    "loading": "Loading season data…",
+    "outOfRange": "No season is currently active. Check back when the next season starts.",
+    "season": {
+      "label": "Season",
+      "fallbackLabel": "Season {k}",
+      "keyLabel": "{k}",
+      "range": "{start} → {end} ({weeks} weeks)",
+      "remaining": "Ends in {d}d {h}h {m}m",
+      "ended": "Season ended",
+      "names": {
+        "s1": "Season of Origin",
+        "s2": "Season of Spirit Tide",
+        "s3": "Season of Cyan Cloud",
+        "s4": "Season of Pill Fire",
+        "s5": "Season of Breakthrough",
+        "s6": "Season of Layered Cloud",
+        "s7": "Season of Bright Leaves",
+        "s8": "Season of Drifting Cloud",
+        "s9": "Season of Black Wind",
+        "s10": "Season of Galaxy",
+        "s11": "Season of Heavenly Mechanism",
+        "s12": "Season of Purple Helm",
+        "s13": "Season of End Times"
+      },
+      "namesDesc": {
+        "s1": "Inaugural season — establishes the season foundation.",
+        "s2": "Spirit qi surges — sects compete for points.",
+        "s3": "Cyan clouds gather — the third season.",
+        "s4": "Pill fire — alchemy and weekly contests.",
+        "s5": "Breakthrough — refining contribution mechanics.",
+        "s6": "Layered cloud — peak training season.",
+        "s7": "Bright leaves — autumnal radiance.",
+        "s8": "Drifting cloud — wandering jianghu.",
+        "s9": "Black wind — dark winds rise.",
+        "s10": "Galaxy — stars blaze across the sky.",
+        "s11": "Heavenly mechanism — secret arts.",
+        "s12": "Purple helm — purging chaos.",
+        "s13": "End times — preparing for cataclysm."
+      }
+    },
+    "myProgress": {
+      "title": "Personal progress",
+      "noData": "No season data for you yet.",
+      "sect": "Sect",
+      "noSect": "No sect joined",
+      "personalPoints": "Season points",
+      "weeksContributed": "Weeks contributed",
+      "weeksOf": "{contributed}/{total}",
+      "nextHint": "{need} more points to reach {label}."
+    },
+    "milestone": {
+      "title": "Season milestones",
+      "achieved": "Achieved",
+      "locked": "Locked",
+      "required": "{n} pts",
+      "names": {
+        "bronze": "Bronze",
+        "silver": "Silver",
+        "gold": "Gold",
+        "platinum": "Platinum",
+        "diamond": "Diamond"
+      },
+      "namesDesc": {
+        "bronze": "Open the early-season chest.",
+        "silver": "Silver chest — sect crafting materials.",
+        "gold": "Gold chest — sect pills.",
+        "platinum": "Focus charm + Spirit Stones.",
+        "diamond": "Season title + large Spirit Stones."
+      }
+    },
+    "leaderboard": {
+      "title": "Sect leaderboard",
+      "empty": "No sect has scored yet.",
+      "youTag": "(your sect)",
+      "col": {
+        "rank": "Rank",
+        "sect": "Sect",
+        "points": "Points",
+        "contributors": "Members",
+        "weeks": "Weeks"
+      }
+    },
+    "reward": {
+      "linhThach": "{n} spirit stones",
+      "tienNgoc": "{n} immortal jade",
+      "items": "{n} items",
+      "titleAward": "Title {k}",
+      "buff": "Buff {k}"
+    },
+    "errors": {
+      "NO_CHARACTER": "No character.",
+      "SEASON_NOT_FOUND": "Season not found.",
+      "UNKNOWN": "Failed to load season — try again."
+    }
   }
 }
