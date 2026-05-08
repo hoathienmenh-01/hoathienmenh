@@ -37,6 +37,31 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ### Added — Phase R1 Production Readiness — CSP, env, healthcheck, deploy docs (PR #473)
 
+### Added — Phase 13.2.C Sect Season History + Hall of Fame (PR #474)
+
+- **Tông Môn giờ có lịch sử mùa giải + bảng vinh danh tích lũy** — Phase 13.2.A đã ship Sect Season Foundation (mùa giải 4 tuần × 13 mùa, leaderboard live + milestone progression read-only). Phase 13.2.C ship **snapshot mùa kết thúc** + **Hall of Fame** tích lũy quán quân/MVP qua các mùa, tạo nền cho Phase 13.2.B+ season settlement runtime sau này. Vẫn read-only end-user (KHÔNG grant reward, KHÔNG title award), nhưng **có Prisma migration** cho 3 bảng snapshot.
+- **Shared types mới** (`packages/shared/src/sect-season.ts`):
+  - **`SECT_SEASON_TOP_MEMBERS = 10`** — top 10 individual contributors lưu mỗi mùa.
+  - **`SectSeasonHistorySectEntry`** — `{ rank, sectId, sectName, points, contributors, weeksContributed }` (parity field với leaderboard live + audit-correct sectName tại finalize).
+  - **`SectSeasonHistoryMemberEntry`** — `{ rank, characterId, characterName, sectId|null, sectName|null, points }` (member có thể không thuộc Sect tại lúc finalize).
+  - **`SectSeasonHistorySummary`** — `{ seasonKey, finalizedAt, totalSects, totalContributors, totalPoints, champion: SectSeasonHistorySectEntry|null, mvp: SectSeasonHistoryMemberEntry|null }` cho list view nhanh không JOIN.
+  - **`SectSeasonHistoryView`** — `{ seasonKey, finalizedAt, totalSects, totalContributors, totalPoints, sects: SectSeasonHistorySectEntry[], topMembers: SectSeasonHistoryMemberEntry[] }` cho detail view.
+  - **`SectSeasonHistoryListView`** — `{ seasons: SectSeasonHistorySummary[] }` (newest first by `finalizedAt desc`).
+  - **`SectHallOfFameSectEntry`** — `{ sectId, sectName, championships, podiums, appearances, bestRank, totalPoints, latestSeasonKey }`.
+  - **`SectHallOfFameMemberEntry`** — `{ characterId, characterName, mvps, podiums, appearances, bestRank, totalPoints, latestSeasonKey, latestSectName: string|null }`.
+  - **`SectHallOfFameView`** — `{ sects, members, totalSeasonsFinalized }` cho aggregate cumulative.
+- **Prisma migration `20260605000000_phase_13_2_c_sect_season_history`**:
+  - `SectSeasonSnapshot { id PK, seasonKey UNIQUE, finalizedAt, totalSects, totalContributors, totalPoints, championSectId?, championSectName?, championPoints?, mvpCharacterId?, mvpCharacterName?, mvpSectId?, mvpSectName?, mvpPoints? }` — denormalized champion/MVP cho list không JOIN. `seasonKey` UNIQUE = guard double-snapshot ở DB level.
+  - `SectSeasonSectRank { id PK, seasonId FK, rank, sectId, sectName, points, contributors, weeksContributed }` + composite UNIQUE `(seasonId, rank)` + `(seasonId, sectId)`.
+  - `SectSeasonTopMember { id PK, seasonId FK, rank, characterId, characterName, sectId?, sectName?, points }` + composite UNIQUE `(seasonId, rank)` + `(seasonId, characterId)`.
+  - `Character` nhận `sectSeasonTopMembers SectSeasonTopMember[]` reverse relation (no schema impact, chỉ là query helper).
+  - **Migration KHÔNG đụng `SectWarContribution`/`SectWarRewardClaim`/`Character`/`Sect` schema hiện có** — chỉ thêm 3 bảng mới.
+- **API mới** (read-only player-facing):
+  - **`GET /sect-season/history`** (no auth) → list tất cả mùa đã chốt newest first; mỗi entry có `champion`/`mvp` denormalized cho list view nhanh; empty array khi chưa có mùa nào finalized.
+  - **`GET /sect-season/history/:seasonKey`** (no auth) → detail snapshot 1 mùa (full sect leaderboard `rank asc` + top 10 member `rank asc`); 404 `SNAPSHOT_NOT_FOUND` khi mùa chưa finalize / 404 `SEASON_NOT_FOUND` khi `seasonKey` ∉ catalog.
+  - **`GET /sect-season/hall-of-fame`** (no auth) → aggregate cumulative qua tất cả snapshot. Sect ordering: `championships desc → podiums desc → totalPoints desc → sectId asc`. Member ordering: `mvps desc → podiums desc → totalPoints desc → characterId asc`. `bestRank` = min rank đã đạt; `latestSeasonKey` = mùa gần nhất tham gia.
+- **Verification**: shared typecheck ✅ / api typecheck ✅ + `--run sect-season` 31 PASS ✅ + `--run sect-war` 15 PASS ✅ / web typecheck ✅ + `--run SectSeason` 14 PASS ✅ / pnpm build ✅.
+
 - **API ready hơn cho staging/production deploy** — Trước PR này, `apps/api/src/main.ts` đã có CSP + healthcheck + secret guard nhưng logic mix trong `bootstrap()`, **không có unit test** cho các nhánh production. PR R1: extract pure helper sang `bootstrap-config.ts` (testable, không cần boot Nest), thêm 26 lock-in test cho CSP/CORS/secret + 6 lock-in test chống commit `.env` thật, doc hóa env list + deploy smoke checklist + CSP troubleshooting. **KHÔNG đụng gameplay**, **KHÔNG migration**, **KHÔNG đổi runtime LiveOps/SectWar/Phase 13.2.x**.
 - **Pure config helpers** (`apps/api/src/bootstrap-config.ts`):
   - **`assertProductionSecrets(env=process.env)`** — no-op khi `NODE_ENV !== 'production'`. Trong prod: throw nếu thiếu `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`, throw nếu giá trị thuộc `INSECURE_DEFAULTS = { 'change-me-access-secret', 'change-me-refresh-secret', 'dev-access-secret', 'dev-refresh-secret' }`. Message tiếng Việt rõ ràng (`[xuantoi/api] Production phải có env: ...` / `[xuantoi/api] Production không được dùng giá trị mặc định cho ...`).

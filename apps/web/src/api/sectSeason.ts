@@ -14,6 +14,11 @@
  *   - GET /sect-season/milestones — Phase 13.2.B catalog snapshot.
  *   - POST /sect-season/milestones/:key/claim — Phase 13.2.B claim, idempotent
  *     qua `SectSeasonClaim` UNIQUE CAS guard.
+ *
+ * Phase 13.2.C — History + Hall of Fame (server-derived snapshots):
+ *   - GET /sect-season/history — list newest-first season summaries.
+ *   - GET /sect-season/history/:seasonKey — full leaderboard + top members.
+ *   - GET /sect-season/hall-of-fame — aggregate honors across all seasons.
  */
 import { apiClient } from './client';
 
@@ -144,6 +149,7 @@ export async function getSectSeasonMe(
   return data.data ?? null;
 }
 
+
 /** Phase 13.2.B — Lấy snapshot milestone catalog (read-only, không cần auth). */
 export async function getSectSeasonMilestones(): Promise<SectSeasonMilestonesView> {
   const { data } = await apiClient.get<Envelope<SectSeasonMilestonesView>>(
@@ -163,6 +169,104 @@ export async function claimSectSeasonMilestone(
 ): Promise<SectSeasonClaimResult> {
   const { data } = await apiClient.post<Envelope<SectSeasonClaimResult>>(
     `/sect-season/milestones/${encodeURIComponent(milestoneKey)}/claim`,
+  );
+  return unwrap(data);
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Phase 13.2.C — History + Hall of Fame
+// ────────────────────────────────────────────────────────────────────
+
+export interface SectSeasonHistorySectEntry {
+  rank: number;
+  sectId: string;
+  sectName: string;
+  points: number;
+  contributors: number;
+  weeksContributed: number;
+}
+
+export interface SectSeasonHistoryMemberEntry {
+  rank: number;
+  characterId: string;
+  characterName: string;
+  sectId: string | null;
+  sectName: string | null;
+  points: number;
+}
+
+export interface SectSeasonHistorySummary {
+  seasonKey: string;
+  finalizedAt: string;
+  totalSects: number;
+  totalContributors: number;
+  totalPoints: number;
+  champion: SectSeasonHistorySectEntry | null;
+  mvp: SectSeasonHistoryMemberEntry | null;
+}
+
+export interface SectSeasonHistoryView {
+  seasonKey: string;
+  finalizedAt: string;
+  totalSects: number;
+  totalContributors: number;
+  totalPoints: number;
+  sects: ReadonlyArray<SectSeasonHistorySectEntry>;
+  topMembers: ReadonlyArray<SectSeasonHistoryMemberEntry>;
+}
+
+export interface SectSeasonHistoryListView {
+  seasons: ReadonlyArray<SectSeasonHistorySummary>;
+}
+
+export interface SectHallOfFameSectEntry {
+  sectId: string;
+  sectName: string;
+  championships: number;
+  podiums: number;
+  appearances: number;
+  bestRank: number;
+  totalPoints: number;
+  latestSeasonKey: string;
+}
+
+export interface SectHallOfFameMemberEntry {
+  characterId: string;
+  characterName: string;
+  mvps: number;
+  podiums: number;
+  appearances: number;
+  bestRank: number;
+  totalPoints: number;
+  latestSeasonKey: string;
+  latestSectName: string | null;
+}
+
+export interface SectHallOfFameView {
+  sects: ReadonlyArray<SectHallOfFameSectEntry>;
+  members: ReadonlyArray<SectHallOfFameMemberEntry>;
+  totalSeasonsFinalized: number;
+}
+
+export async function getSectSeasonHistory(): Promise<SectSeasonHistoryListView> {
+  const { data } = await apiClient.get<Envelope<SectSeasonHistoryListView>>(
+    '/sect-season/history',
+  );
+  return unwrap(data);
+}
+
+export async function getSectSeasonHistoryDetail(
+  seasonKey: string,
+): Promise<SectSeasonHistoryView> {
+  const { data } = await apiClient.get<Envelope<SectSeasonHistoryView>>(
+    `/sect-season/history/${encodeURIComponent(seasonKey)}`,
+  );
+  return unwrap(data);
+}
+
+export async function getSectSeasonHallOfFame(): Promise<SectHallOfFameView> {
+  const { data } = await apiClient.get<Envelope<SectHallOfFameView>>(
+    '/sect-season/hall-of-fame',
   );
   return unwrap(data);
 }

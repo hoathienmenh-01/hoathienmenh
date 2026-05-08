@@ -1317,6 +1317,87 @@ model SectSeasonClaim {
   @@index([seasonKey, milestoneKey])
 }
 
+/// Phase 13.2.C — Sect Season Snapshot header (Hall of Fame foundation).
+/// Mỗi `seasonKey` đã chốt có tối đa 1 row. PRIMARY KEY trên `seasonKey`
+/// đảm bảo idempotent snapshot — caller `snapshotSeason()` lần đầu insert
+/// thành công, lần sau return existing (no-op).
+///
+/// Denormalized champion/mvp slice phục vụ history list view không cần
+/// JOIN sang `SectSeasonSectRank` / `SectSeasonTopMember`. Snapshot tên
+/// tại `finalizedAt` — nếu sect rename / character rename về sau, history
+/// view vẫn show tên cũ (audit-correct).
+///
+/// Rollback: DROP table — không ảnh hưởng `SectWarContribution` (no FK).
+model SectSeasonSnapshot {
+  /// Stable season key (vd `season_2026_s2`) match shared `SECT_SEASONS[*].key`.
+  seasonKey         String   @id
+  finalizedAt       DateTime @default(now())
+  /// Tổng số sect có ít nhất 1 contribution row trong season window.
+  totalSects        Int
+  /// Tổng số character có ít nhất 1 contribution row trong season window.
+  totalContributors Int
+  /// Tổng `points` cộng dồn của mọi contribution row trong season.
+  totalPoints       Int
+  /// Snapshot rank-1 sect (null nếu season không có contribution nào).
+  championSectId    String?
+  championSectName  String?
+  championPoints    Int?
+  /// Snapshot top-1 cá nhân (null nếu không có contributor nào).
+  mvpCharacterId    String?
+  mvpCharacterName  String?
+  mvpSectId         String?
+  mvpSectName       String?
+  mvpPoints         Int?
+
+  @@index([finalizedAt(sort: Desc)])
+}
+
+/// Phase 13.2.C — Sect Season Sect Rank row (snapshot rank-row của Sect
+/// trong 1 season đã chốt). TOP N (default 10) theo total points.
+///
+/// UNIQUE `(seasonKey, sectId)` đảm bảo 1 sect chỉ có 1 row / season.
+/// UNIQUE `(seasonKey, rank)` đảm bảo rank không trùng. Cả 2 ghi trong
+/// cùng tx với `SectSeasonSnapshot` insert → rollback nguyên khối.
+model SectSeasonSectRank {
+  id               String @id @default(cuid())
+  seasonKey        String
+  sectId           String
+  /// Snapshot tên sect tại finalize.
+  sectName         String
+  /// 1-based rank trong season (1 = top).
+  rank             Int
+  points           Int
+  contributors     Int
+  weeksContributed Int
+
+  @@unique([seasonKey, sectId])
+  @@unique([seasonKey, rank])
+  @@index([seasonKey])
+  @@index([sectId, rank])
+}
+
+/// Phase 13.2.C — Sect Season Top Member (snapshot cá nhân top-N
+/// contributor trong 1 season). UNIQUE `(seasonKey, characterId)` đảm bảo
+/// 1 character / season. UNIQUE `(seasonKey, rank)` đảm bảo rank không
+/// trùng. Tên + sect snapshot tại finalize — nếu character rename / đổi
+/// sect, hall of fame vẫn reflect đúng season cũ.
+model SectSeasonTopMember {
+  id            String  @id @default(cuid())
+  seasonKey     String
+  characterId   String
+  characterName String
+  /// Sect tại thời điểm finalize (null nếu character không có sect).
+  sectId        String?
+  sectName      String?
+  /// 1-based rank cá nhân trong season.
+  rank          Int
+  points        Int
+
+  @@unique([seasonKey, characterId])
+  @@unique([seasonKey, rank])
+  @@index([seasonKey])
+  @@index([characterId, rank])
+}
 /// Phase 13.1.B — LiveOps event override (admin LiveOps controls).
 /// Mỗi row = override 1 event key trong `LIVE_OPS_EVENTS` catalog. `enabled`
 /// toggle (false = ẩn event khỏi `liveOpsEventsForToday`). `startsAt`/`endsAt`

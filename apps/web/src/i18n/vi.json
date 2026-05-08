@@ -2427,7 +2427,9 @@
       "leaderboard": "Bảng xếp hạng",
       "missions": "Nhiệm vụ Tông",
       "shop": "Shop Tông",
-      "rewards": "Thưởng tuần"
+      "rewards": "Thưởng tuần",
+      "season": "Mùa giải",
+      "hallOfFame": "Vinh Danh"
     }
   },
   "sectMission": {
@@ -2790,6 +2792,54 @@
       "SECT_SEASON_NOT_ELIGIBLE": "Chưa đủ điểm để nhận cột mốc này.",
       "SECT_SEASON_ALREADY_CLAIMED": "Bạn đã nhận thưởng cột mốc này rồi.",
       "UNKNOWN": "Không tải được dữ liệu mùa giải — thử lại."
+    },
+    "history": {
+      "title": "Lịch sử mùa giải",
+      "loading": "Đang tải lịch sử mùa giải…",
+      "empty": "Chưa có mùa giải nào kết thúc.",
+      "finalizedAt": "Chốt lúc {at}",
+      "totalsLine": "{sects} Tông · {contributors} thành viên · {points} điểm",
+      "championLabel": "Tông quán quân",
+      "noChampion": "Không có Tông tích điểm",
+      "mvpLabel": "Cá nhân xuất sắc",
+      "noMvp": "Không có cá nhân tích điểm",
+      "viewDetail": "Xem chi tiết",
+      "back": "← Quay lại danh sách",
+      "detail": {
+        "sectsTitle": "Bảng xếp hạng Tông",
+        "membersTitle": "Cá nhân tích cực",
+        "emptySects": "Không có Tông tích điểm trong mùa.",
+        "emptyMembers": "Không có cá nhân tích điểm trong mùa.",
+        "noSect": "(không Tông)"
+      },
+      "errors": {
+        "SNAPSHOT_NOT_FOUND": "Mùa giải này chưa được chốt.",
+        "SEASON_NOT_FOUND": "Mùa giải không tồn tại.",
+        "UNKNOWN": "Không tải được lịch sử mùa giải — thử lại."
+      }
+    },
+    "hallOfFame": {
+      "title": "Hall of Fame",
+      "subtitle": "Bảng vinh danh — tích lũy thành tích qua các mùa.",
+      "totalsLine": "{seasons} mùa đã chốt",
+      "loading": "Đang tải bảng vinh danh…",
+      "empty": "Chưa có mùa nào được vinh danh.",
+      "sectsTitle": "Tông Môn vinh danh",
+      "membersTitle": "Cá nhân vinh danh",
+      "noLatestSect": "(không Tông)",
+      "col": {
+        "rank": "#",
+        "sect": "Tông",
+        "member": "Đạo hữu",
+        "championships": "Quán quân",
+        "mvps": "MVP",
+        "podiums": "Top 3",
+        "appearances": "Mùa góp",
+        "bestRank": "Hạng cao nhất",
+        "totalPoints": "Tổng điểm",
+        "latest": "Mùa gần nhất",
+        "latestSect": "Tông gần nhất"
+      }
     }
   }
 }

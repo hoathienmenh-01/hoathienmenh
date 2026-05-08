@@ -10,6 +10,10 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { SectSeasonError, SectSeasonService } from './sect-season.service';
+import {
+  SectSeasonHistoryError,
+  SectSeasonHistoryService,
+} from './sect-season-history.service';
 import { AuthService } from '../auth/auth.service';
 
 const ACCESS_COOKIE = 'xt_access';
@@ -43,6 +47,7 @@ function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
 export class SectSeasonController {
   constructor(
     private readonly sectSeason: SectSeasonService,
+    private readonly sectSeasonHistory: SectSeasonHistoryService,
     private readonly auth: AuthService,
   ) {}
 
@@ -116,6 +121,40 @@ export class SectSeasonController {
     }
   }
 
+  /**
+   * Phase 13.2.C — Liệt kê toàn bộ season đã chốt snapshot (newest first).
+   * Public read — bảng vinh danh là thông tin meta đã hiển thị ở Sect War.
+   */
+  @Get('history')
+  async history() {
+    const data = await this.sectSeasonHistory.listHistory();
+    return { ok: true, data };
+  }
+
+  /**
+   * Phase 13.2.C — Detail 1 season đã chốt: full top-N sect + top-N cá
+   * nhân. 404 nếu chưa snapshot (`SNAPSHOT_NOT_FOUND`).
+   */
+  @Get('history/:seasonKey')
+  async historyDetail(@Param('seasonKey') seasonKey: string) {
+    try {
+      const data = await this.sectSeasonHistory.getHistory(seasonKey);
+      return { ok: true, data };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Phase 13.2.C — Hall of Fame aggregate qua mọi season đã chốt. Trả
+   * `sects` + `members` đã sort theo championships/mvps desc.
+   */
+  @Get('hall-of-fame')
+  async hallOfFame() {
+    const data = await this.sectSeasonHistory.getHallOfFame();
+    return { ok: true, data };
+  }
+
   private handleErr(e: unknown): never {
     if (e instanceof SectSeasonError) {
       switch (e.code) {
@@ -128,6 +167,18 @@ export class SectSeasonController {
           fail(e.code, HttpStatus.BAD_REQUEST);
         // eslint-disable-next-line no-fallthrough
         case 'SECT_SEASON_ALREADY_CLAIMED':
+          fail(e.code, HttpStatus.CONFLICT);
+      }
+    }
+    if (e instanceof SectSeasonHistoryError) {
+      switch (e.code) {
+        case 'SEASON_NOT_FOUND':
+          fail(e.code, HttpStatus.NOT_FOUND);
+        // eslint-disable-next-line no-fallthrough
+        case 'SNAPSHOT_NOT_FOUND':
+          fail(e.code, HttpStatus.NOT_FOUND);
+        // eslint-disable-next-line no-fallthrough
+        case 'SEASON_NOT_ENDED':
           fail(e.code, HttpStatus.CONFLICT);
       }
     }
