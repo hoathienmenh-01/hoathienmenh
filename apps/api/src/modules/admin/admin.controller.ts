@@ -913,6 +913,60 @@ export class AdminController {
   }
 
   /**
+   * Phase 13.1.D — GET /admin/liveops/schedule-preview.
+   *
+   * Read-only aggregate cho admin xem trước:
+   *   - Active events (đã overlay override DB).
+   *   - Top 5 slot kế tiếp / event catalog (search 7 ngày).
+   *   - Boss schedule today + week.
+   *   - Sect War season tuần hiện tại + status snapshot.
+   *   - Toàn bộ override hiện đang lưu trong DB.
+   *
+   * KHÔNG audit (read-only refresh; tránh log spam khi FE poll).
+   */
+  @Get('liveops/schedule-preview')
+  async liveOpsSchedulePreview() {
+    const data = await this.liveOps.schedulePreview();
+    return { ok: true, data };
+  }
+
+  /**
+   * Phase 13.1.D — POST /admin/liveops/dry-run.
+   *
+   * Simulate event/boss execution KHÔNG ghi reward / spawn boss / mutate
+   * DB. Trả result giả lập + ghi 1 audit `ADMIN_LIVEOPS_DRY_RUN` (compliance
+   * paper trail). ADMIN-only (asset/economic-impact gate qua @RequireAdmin).
+   *
+   * Body: { kind: 'event' | 'boss', key, regionKey?, level?, reason? }.
+   */
+  @Post('liveops/dry-run')
+  @HttpCode(200)
+  @RequireAdmin()
+  async liveOpsDryRun(@Req() req: AdminReq, @Body() body: unknown) {
+    const Z = z.object({
+      kind: z.enum(['event', 'boss']),
+      key: z.string().min(1).max(80),
+      regionKey: z.string().min(1).max(80).optional(),
+      level: z.number().int().min(1).max(99).optional(),
+      reason: z.string().max(200).optional(),
+    });
+    const parsed = Z.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const data = await this.liveOps.dryRun(req.userId, {
+        kind: parsed.data.kind,
+        key: parsed.data.key,
+        regionKey: parsed.data.regionKey,
+        level: parsed.data.level,
+        reason: parsed.data.reason,
+      });
+      return { ok: true, data };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
    * GET /admin/sect-war/status?weekKey=YYYY-Www — read-only snapshot.
    * `weekKey` optional; default = current ISO week.
    */
@@ -990,7 +1044,7 @@ export class AdminController {
   private handleErr(e: unknown): never {
     if (e instanceof AdminLiveOpsError) {
       const status =
-        e.code === 'EVENT_NOT_FOUND'
+        e.code === 'EVENT_NOT_FOUND' || e.code === 'BOSS_NOT_FOUND'
           ? HttpStatus.NOT_FOUND
           : HttpStatus.BAD_REQUEST;
       fail(e.code, status);

@@ -364,27 +364,32 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 
 **Idempotency / atomicity**: toàn bộ effects apply trong cùng `prisma.$transaction`. `give_reward` qua `CurrencyService.applyTx(tx, charId, { linhThach?, tienNgoc?, exp? }, { reason: 'STORY_DIALOGUE_CHOICE', refType: 'StoryDialogueChoice', refId: '${nodeId}:${choiceKey}' })` — composite UNIQUE `(characterId, refType, refId)` chống double-grant nếu retry. `mark_seen` dedupe array client-side trong tx. `set_flag` overwrite key. KHÔNG WebSocket push (FE refetch state qua next `GET /character/state` trong handler).
 
-## Admin LiveOps Controls — `AdminLiveOpsController` (Phase 13.1.B + Phase 13.1.C)
+## Admin LiveOps Controls — `AdminLiveOpsController` (Phase 13.1.B + Phase 13.1.C + Phase 13.1.D)
 
-> Phase 13.1.B — admin override LiveOps event toggles + sect-war status/recalculate. Phase 13.1.C — sect-war read-after-audit snapshot + force-spawn boss (xem `POST /boss/admin/spawn` ở §Boss). Mọi endpoint role `ADMIN` (`AdminGuard`).
+> Phase 13.1.B — admin override LiveOps event toggles + sect-war status/recalculate. Phase 13.1.C — sect-war read-after-audit snapshot + force-spawn boss (xem `POST /boss/admin/spawn` ở §Boss). Phase 13.1.D — schedule preview (read-only) + dry-run (event/boss giả lập, KHÔNG mutate). Mọi endpoint role `ADMIN`/`MOD` (`AdminGuard`); endpoint mutation đánh dấu `ADMIN-only` qua `@RequireAdmin()`.
 
 | Method | Path                              | Auth  | Mô tả |
 |--------|-----------------------------------|-------|-------|
-| GET    | `/admin/liveops`                  | ADMIN | Status snapshot. Response `{ nowIso, timezone, eventsTotal, eventsActive, eventsToday, events: AdminLiveOpsEventStatus[], sectWar: AdminSectWarSummary }`. Mỗi `AdminLiveOpsEventStatus` gồm `{ key, type, titleI18nKey, scheduledEnabled (catalog default), overrideEnabled? (LiveOpsEventOverride.enabled nếu có), effectiveEnabled, lastOverrideAt? (ISO), lastOverrideBy? (User.email) }`. `AdminSectWarSummary` = `{ weekKey, season{startsAtIso,endsAtIso,timezone}, sectsRanked, contributionsThisWeek }`. |
+| GET    | `/admin/liveops`                  | ADMIN/MOD | Status snapshot. Response `{ nowIso, timezone, eventsTotal, eventsActive, eventsToday, events: AdminLiveOpsEventStatus[], sectWar: AdminSectWarSummary }`. Mỗi `AdminLiveOpsEventStatus` gồm `{ key, type, titleI18nKey, scheduledEnabled (catalog default), overrideEnabled? (LiveOpsEventOverride.enabled nếu có), effectiveEnabled, lastOverrideAt? (ISO), lastOverrideBy? (User.email) }`. `AdminSectWarSummary` = `{ weekKey, season{startsAtIso,endsAtIso,timezone}, sectsRanked, contributionsThisWeek }`. |
 | POST   | `/admin/liveops/event/toggle`     | ADMIN | `{ eventKey: string, enabled: boolean }`. Upsert `LiveOpsEventOverride(eventKey)` → `{ enabled, updatedAt, updatedBy: actorUserId }`. Audit log `ADMIN_LIVEOPS_OVERRIDE` (`{ actor, eventKey, enabled, prev: oldEnabled }`). Trả `{ eventKey, enabled, prev, overrideAt }`. |
-| GET    | `/admin/sect-war/status`          | ADMIN | Read-only sect-war diagnostic. Response `{ weekKey, season{startsAtIso,endsAtIso,timezone}, sectsRanked, contributionsThisWeek, leaderboard[] (top N), claimsThisWeek }`. KHÔNG mutation. |
+| GET    | `/admin/sect-war/status`          | ADMIN/MOD | Read-only sect-war diagnostic. Response `{ weekKey, season{startsAtIso,endsAtIso,timezone}, sectsRanked, contributionsThisWeek, leaderboard[] (top N), claimsThisWeek }`. KHÔNG mutation. |
 | POST   | `/admin/sect-war/recalculate`     | ADMIN | No-op điểm contribution (read-only audit response). Trả `{ weekKey, recalculatedAt: ISO, contributionsScanned, leaderboardSize, message: 'recalc_no_op' }`. KHÔNG sửa contribution rows hoặc claim rows hiện có. (Future: nếu thêm logic recompute, vẫn phải atomic + audit). |
 | POST   | `/admin/sect-war/snapshot`        | ADMIN | **Phase 13.1.C** — read-after-audit snapshot. Body `{ weekKey?: 'YYYY-Www', reason?: string≤200 }` (weekKey thiếu → fallback computed week hiện tại). Service gọi `getSectWarStatus(weekKey)` rồi ghi 1 audit `ADMIN_SECT_WAR_STATUS` cùng `meta { targetType: 'SectWarWeek', targetId: weekKey, summary: { totalSects, totalContributors, totalContributions, topSectIds: string[≤3] }, reason: string\|null }`. `reason` trim; whitespace-only → `null`. **KHÔNG mutate** contribution rows hoặc claim rows. Response identical với `GET /admin/sect-war/status` cho `weekKey` đó. |
+| GET    | `/admin/liveops/schedule-preview` | ADMIN/MOD | **Phase 13.1.D** — read-only snapshot. Response `{ tz, nowIso, activeEvents[], upcomingEvents[], bossScheduleToday[], bossScheduleWeek[], sectWar: { season, status }, overrides[] }`. `activeEvents` overlay `LiveOpsEventOverride` (chỉ event có `effectiveEnabled=true` tại `now`). `upcomingEvents` = top N slot (≤5 / event catalog) trong 7 ngày kế, kèm `catalogEnabled`/`effectiveEnabled`/`slotStartIso`/`slotEndIso`. `bossScheduleToday`/`bossScheduleWeek` (7 ngày) group theo `localDate`, status `upcoming`/`active`/`completed`. `sectWar.season` = `currentSectWarSeason(now)`, `sectWar.status` = `getSectWarStatus(weekKey)`. `overrides[]` = full `LiveOpsEventOverride` rows order by `updatedAt desc`. **KHÔNG mutate**, **KHÔNG audit**. |
+| POST   | `/admin/liveops/dry-run`          | ADMIN | **Phase 13.1.D** — giả lập event/boss execution KHÔNG mutate. Body `{ kind: 'event'\|'boss', key: string≤80, regionKey?: string≤80, level?: 1..99, reason?: string≤200 }`. `kind='event'` → trả `{ kind:'event', key, type, titleI18nKey, descriptionI18nKey, catalogEnabled, effectiveEnabled, override (DB row hoặc null), nextSlotStartIso, nextSlotEndIso, regionKey?, bossKey?, simulated:true, reason: string\|null, simulatedAt: ISO }`. `kind='boss'` → trả `{ kind:'boss', bossKey, bossName, regionKey, level (clamp 1..99), simulatedMaxHp: bigint string, simulatedReward: { baseLinhThach, topDropPool[], midDropPool[], lowDropPool[] }, recommendedRealm, simulated:true, reason, simulatedAt }`. **KHÔNG ghi `LedgerEntry` / KHÔNG `prisma.worldBoss.create` / KHÔNG `LiveOpsEventOverride` upsert**; chỉ ghi 1 audit `ADMIN_LIVEOPS_DRY_RUN` với `meta { kind, targetType: 'LiveOpsEvent'\|'Boss', targetId: key, regionKey?, level?, reason: string\|null }`. |
 
 **Admin LiveOps error codes**:
-- `FORBIDDEN` — không phải ADMIN (qua `AdminGuard` chặn trước controller).
-- `EVENT_NOT_FOUND` — `eventKey` không có trong catalog `LIVE_OPS_EVENTS`.
-- `INVALID_INPUT` — body sai shape (zod). Áp dụng cho `weekKey` không match `/^\d{4}-W\d{2}$/`, `reason > 200 char`, `eventKey/level/regionKey` invalid.
+- `FORBIDDEN` — không phải ADMIN/MOD (qua `AdminGuard` chặn trước controller).
+- `ADMIN_ONLY` — endpoint `@RequireAdmin()` (toggle/recalculate/snapshot/dry-run) bị MOD gọi.
+- `EVENT_NOT_FOUND` — `eventKey` (toggle) hoặc `key` (dry-run kind=event) không có trong catalog `LIVE_OPS_EVENTS`.
+- `BOSS_NOT_FOUND` — dry-run `kind='boss'` với `key` không có trong catalog boss (`bossByKey`).
+- `INVALID_INPUT` — body sai shape (zod). Áp dụng cho `weekKey` không match `/^\d{4}-W\d{2}$/`, `reason > 200 char`, `eventKey/level/regionKey` invalid, `kind` không thuộc `{event,boss}`.
 
-**Audit log entries (Phase 13.1.C)**:
+**Audit log entries (Phase 13.1.C + Phase 13.1.D)**:
 - `ADMIN_LIVEOPS_OVERRIDE` — toggle event override (Phase 13.1.B).
 - `ADMIN_FORCE_BOSS_SCHEDULE` — force-spawn boss qua `POST /boss/admin/spawn` (cùng meta với legacy `BOSS_SPAWN` audit row, kèm `reason` + optional `scheduledEventKey`). Backwards-compatible: consumers cũ vẫn đọc `BOSS_SPAWN`.
 - `ADMIN_SECT_WAR_STATUS` — read-after-audit snapshot qua `POST /admin/sect-war/snapshot`.
+- `ADMIN_LIVEOPS_DRY_RUN` — Phase 13.1.D dry-run (event hoặc boss). `meta` luôn có `kind`/`targetType`/`targetId`/`reason`; nếu `kind='boss'` kèm `regionKey`/`level`. Schedule preview (`GET /admin/liveops/schedule-preview`) **KHÔNG ghi audit** (read-only).
 
 ## Error codes (chuẩn hoá)
 

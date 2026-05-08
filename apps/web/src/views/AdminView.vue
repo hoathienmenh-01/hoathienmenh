@@ -45,6 +45,8 @@ import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
 import ConfirmModal from '@/components/ui/ConfirmModal.vue';
 import AdminLiveOpsPanel from '@/components/AdminLiveOpsPanel.vue';
+import AdminLiveOpsSchedulePreviewPanel from '@/components/AdminLiveOpsSchedulePreviewPanel.vue';
+import AdminLiveOpsDryRunPanel from '@/components/AdminLiveOpsDryRunPanel.vue';
 import {
   computeGiftcodeRevokeImpact,
   mapGiftcodeRevokeErrorKey,
@@ -1656,9 +1658,11 @@ const isAdmin = () => game.character?.role === 'ADMIN';
         />
       </section>
 
-      <!-- LIVEOPS TAB (Phase 13.1.B) -->
+      <!-- LIVEOPS TAB (Phase 13.1.B + 13.1.D) -->
       <section v-if="tab === 'liveops'" class="space-y-3" data-testid="admin-liveops-section">
         <AdminLiveOpsPanel />
+        <AdminLiveOpsSchedulePreviewPanel />
+        <AdminLiveOpsDryRunPanel />
       </section>
 
       <!-- BOSS TAB -->
