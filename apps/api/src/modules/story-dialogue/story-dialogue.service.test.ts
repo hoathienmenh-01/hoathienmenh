@@ -197,13 +197,14 @@ describe('StoryDialogueService.applyChoice — happy paths', () => {
     expect(result.effectsApplied).toEqual([]); // ask_seed không có effect — chỉ navigate.
   });
 
-  it('choice closeDialogue (no nextNodeId) → re-pick best node hoặc null nếu node hiện tại đã seen', async () => {
+  it('choice closeDialogue (no nextNodeId) → server re-pick best matching node sau pick', async () => {
     const { userId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
     const result = await service.applyChoice(userId, NPC_LANG, NODE_LANG_INTRO, 'doubt');
-    // 'doubt' set_flag + mark_seen, không nextNodeId. Node intro đã seen + condition
-    // intro vẫn match (realm_min: 0 không có not_seen) → service KHÔNG return cùng
-    // node để tránh loop. Trả null = đóng modal.
-    expect(result.nextNode).toBeNull();
+    // 'doubt' set_flag + mark_seen, không nextNodeId. Sau khi mark_seen intro,
+    // node `friendly_chat` (Phase 12.10.A) match điều kiện (seen:intro +
+    // not_seen:self) nên server pick node đó làm follow-up. Service KHÔNG return
+    // chính node intro để tránh loop.
+    expect(result.nextNode?.nodeId).toBe('story_dlg_lang_van_sinh_friendly_chat');
   });
 });
 

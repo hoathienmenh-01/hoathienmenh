@@ -411,6 +411,23 @@ export class StoryDialogueService {
       throw new StoryDialogueError('NPC_LOCKED_REALM');
     }
 
+    // Idempotency guard for grant effects (give_reward / advance_quest_step /
+    // change_affinity). Phase 12.10.A bổ sung change_affinity vào group:
+    // re-pick choice cùng node đã `seen` → reject ALREADY_APPLIED (mirror
+    // give_reward) để không farm affinity bằng retry. Check NÀY trước
+    // node-visibility để node có `not_seen:self` self-condition (vd
+    // friendly_chat) trả ALREADY_APPLIED chứ không INVALID_CHOICE — `seen`
+    // state là marker chính xác hơn cho "đã chạy".
+    const hasGrantEffect = (choice.effects ?? []).some(
+      (e) =>
+        e.kind === 'give_reward' ||
+        e.kind === 'advance_quest_step' ||
+        e.kind === 'change_affinity',
+    );
+    if (hasGrantEffect && ctx.seen.includes(node.id)) {
+      throw new StoryDialogueError('ALREADY_APPLIED');
+    }
+
     // Re-validate node visibility (player có thể stale state).
     const nodeCondResult = evaluateAllConditions(node.conditions, ctx);
     if (!nodeCondResult.ok) {
@@ -427,20 +444,6 @@ export class StoryDialogueService {
         'INVALID_CHOICE',
         `choice condition failed: ${summarizeConditionForReason(choiceCondResult.failedCondition)}`,
       );
-    }
-
-    // Idempotency guard for grant effects (give_reward / advance_quest_step /
-    // change_affinity). Phase 12.10.A bổ sung change_affinity vào group:
-    // re-pick choice cùng node đã `seen` → reject ALREADY_APPLIED (mirror
-    // give_reward) để không farm affinity bằng retry.
-    const hasGrantEffect = (choice.effects ?? []).some(
-      (e) =>
-        e.kind === 'give_reward' ||
-        e.kind === 'advance_quest_step' ||
-        e.kind === 'change_affinity',
-    );
-    if (hasGrantEffect && ctx.seen.includes(node.id)) {
-      throw new StoryDialogueError('ALREADY_APPLIED');
     }
 
     // Pre-flight: validate change_affinity (npcKey ∈ catalog, |delta| ≤ cap).
