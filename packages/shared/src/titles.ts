@@ -49,6 +49,7 @@ export type TitleRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic';
  *    threshold OR equipping ≥3 element-themed item (Phase 11.9.B logic).
  * - `achievement`: unlock khi specific achievement complete (Phase 11.10).
  * - `sect_rank`: unlock khi sect role match (`initiate`/`inner`/`elder`).
+ * - `sect_season`: unlock khi season milestone claim grant title (Phase 13.2.B).
  * - `event`: unlock khi event participation match (Phase 15+).
  * - `donation`: unlock khi cumulative topup tier match (Phase 16+).
  */
@@ -57,6 +58,7 @@ export type TitleSource =
   | 'element_mastery'
   | 'achievement'
   | 'sect_rank'
+  | 'sect_season'
   | 'event'
   | 'donation';
 

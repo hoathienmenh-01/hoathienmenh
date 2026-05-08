@@ -4,6 +4,7 @@ import {
   HttpException,
   HttpStatus,
   Param,
+  Post,
   Query,
   Req,
 } from '@nestjs/common';
@@ -22,21 +23,25 @@ function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
 }
 
 /**
- * Phase 13.2.A — Sect Season (Mùa Tông Môn) REST endpoints.
+ * Phase 13.2.A foundation + Phase 13.2.B claim — Sect Season (Mùa Tông Môn)
+ * REST endpoints.
  *
- * Endpoints (read-only):
+ * Read endpoints (require auth ngoại trừ leaderboard):
  *   - `GET /sect-season/current` — full state (season, milestones,
  *     leaderboard top 10, me).
  *   - `GET /sect-season/leaderboard?seasonKey=...` — top 10 sects (current
  *     nếu không truyền seasonKey).
  *   - `GET /sect-season/me?seasonKey=...` — personal status (current nếu
- *     không truyền seasonKey).
+ *     không truyền seasonKey) bao gồm claimed/claimable milestone keys.
+ *   - `GET /sect-season/milestones` — snapshot common milestone catalog
+ *     (Phase 13.2.B; FE tham chiếu nhanh, không cần cookie).
  *
- * `current` + `me` require auth (cookie `xt_access`); `leaderboard` public
- * vì sect ranking là thông tin meta đã hiển thị ở Sect War weekly.
+ * Mutation endpoints (Phase 13.2.B):
+ *   - `POST /sect-season/milestones/:milestoneKey/claim?seasonKey=...` —
+ *     claim reward khi đạt mốc. Idempotent qua DB UNIQUE; race-safe.
  *
- * KHÔNG có endpoint mutation — Phase 13.2.A chỉ read aggregation. Reward
- * claim sẽ ở Phase 13.2.B+ (cần audit table + idempotent claim row).
+ * `current` + `me` + `claim` require auth (cookie `xt_access`); `leaderboard`
+ * + `milestones` public vì là thông tin meta catalog/ranking.
  */
 @Controller('sect-season')
 export class SectSeasonController {
@@ -74,6 +79,42 @@ export class SectSeasonController {
     const userId = await this.getUserId(req);
     try {
       const data = await this.sectSeason.getMyStatus(userId, seasonKey);
+      return { ok: true, data };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  @Get('milestones')
+  milestones() {
+    const data = { milestones: this.sectSeason.listMilestones() };
+    return { ok: true, data };
+  }
+
+  /**
+   * Phase 13.2.B — claim milestone reward.
+   *
+   * Body-less POST: tham số đến từ URL path (`milestoneKey`) + query
+   * (`seasonKey`). Trả `granted` snapshot reward đã grant + `pointsAtClaim`
+   * + `claimedAtIso`.
+   *
+   * Error mapping:
+   *   - 401 UNAUTHENTICATED — cookie thiếu/sai.
+   *   - 400 SEASON_KEY_REQUIRED — query `seasonKey` rỗng.
+   *   - 404 NO_CHARACTER / SEASON_NOT_FOUND / SECT_SEASON_MILESTONE_NOT_FOUND.
+   *   - 400 SECT_SEASON_NOT_ELIGIBLE — chưa đủ requiredPoints.
+   *   - 409 SECT_SEASON_ALREADY_CLAIMED — claim trước đó (idempotency hit).
+   */
+  @Post('milestones/:milestoneKey/claim')
+  async claim(
+    @Req() req: Request,
+    @Param('milestoneKey') milestoneKey: string,
+    @Query('seasonKey') seasonKey?: string,
+  ) {
+    const userId = await this.getUserId(req);
+    if (!seasonKey) fail('SEASON_KEY_REQUIRED', HttpStatus.BAD_REQUEST);
+    try {
+      const data = await this.sectSeason.claimMilestone(userId, seasonKey, milestoneKey);
       return { ok: true, data };
     } catch (e) {
       this.handleErr(e);
@@ -118,10 +159,15 @@ export class SectSeasonController {
     if (e instanceof SectSeasonError) {
       switch (e.code) {
         case 'NO_CHARACTER':
+        case 'SEASON_NOT_FOUND':
+        case 'SECT_SEASON_MILESTONE_NOT_FOUND':
           fail(e.code, HttpStatus.NOT_FOUND);
         // eslint-disable-next-line no-fallthrough
-        case 'SEASON_NOT_FOUND':
-          fail(e.code, HttpStatus.NOT_FOUND);
+        case 'SECT_SEASON_NOT_ELIGIBLE':
+          fail(e.code, HttpStatus.BAD_REQUEST);
+        // eslint-disable-next-line no-fallthrough
+        case 'SECT_SEASON_ALREADY_CLAIMED':
+          fail(e.code, HttpStatus.CONFLICT);
       }
     }
     if (e instanceof SectSeasonHistoryError) {

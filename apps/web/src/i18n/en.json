@@ -2691,6 +2691,7 @@
     "tabLabel": "Season",
     "loading": "Loading season data…",
     "outOfRange": "No season is currently active. Check back when the next season starts.",
+    "dismiss": "Dismiss",
     "season": {
       "label": "Season",
       "fallbackLabel": "Season {k}",
@@ -2743,6 +2744,9 @@
       "title": "Season milestones",
       "achieved": "Achieved",
       "locked": "Locked",
+      "claimed": "Claimed",
+      "claim": "Claim reward",
+      "claiming": "Claiming…",
       "required": "{n} pts",
       "names": {
         "bronze": "Bronze",
@@ -2758,6 +2762,9 @@
         "platinum": "Focus charm + Spirit Stones.",
         "diamond": "Season title + large Spirit Stones."
       }
+    },
+    "claimResult": {
+      "title": "Claimed milestone {key}"
     },
     "leaderboard": {
       "title": "Sect leaderboard",
@@ -2781,6 +2788,9 @@
     "errors": {
       "NO_CHARACTER": "No character.",
       "SEASON_NOT_FOUND": "Season not found.",
+      "SECT_SEASON_MILESTONE_NOT_FOUND": "Milestone not found.",
+      "SECT_SEASON_NOT_ELIGIBLE": "Not enough points to claim this milestone.",
+      "SECT_SEASON_ALREADY_CLAIMED": "You have already claimed this milestone.",
       "UNKNOWN": "Failed to load season — try again."
     },
     "history": {

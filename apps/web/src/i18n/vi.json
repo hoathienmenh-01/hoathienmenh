@@ -2691,6 +2691,7 @@
     "tabLabel": "Mùa giải",
     "loading": "Đang tải dữ liệu mùa giải…",
     "outOfRange": "Hiện không có mùa giải đang chạy. Quay lại sau khi mùa mới mở.",
+    "dismiss": "Đóng",
     "season": {
       "label": "Mùa giải",
       "fallbackLabel": "Mùa {k}",
@@ -2743,6 +2744,9 @@
       "title": "Cột mốc mùa giải",
       "achieved": "Đã đạt",
       "locked": "Chưa đạt",
+      "claimed": "Đã nhận",
+      "claim": "Nhận thưởng",
+      "claiming": "Đang nhận…",
       "required": "{n} điểm",
       "names": {
         "bronze": "Đồng",
@@ -2758,6 +2762,9 @@
         "platinum": "Bùa Tinh Thần Tập Trung + Linh Thạch.",
         "diamond": "Danh hiệu mùa + Linh Thạch lớn."
       }
+    },
+    "claimResult": {
+      "title": "Đã nhận thưởng cột mốc {key}"
     },
     "leaderboard": {
       "title": "Bảng xếp hạng Tông",
@@ -2781,6 +2788,9 @@
     "errors": {
       "NO_CHARACTER": "Chưa có nhân vật.",
       "SEASON_NOT_FOUND": "Mùa giải không tồn tại.",
+      "SECT_SEASON_MILESTONE_NOT_FOUND": "Cột mốc mùa giải không tồn tại.",
+      "SECT_SEASON_NOT_ELIGIBLE": "Chưa đủ điểm để nhận cột mốc này.",
+      "SECT_SEASON_ALREADY_CLAIMED": "Bạn đã nhận thưởng cột mốc này rồi.",
       "UNKNOWN": "Không tải được dữ liệu mùa giải — thử lại."
     },
     "history": {

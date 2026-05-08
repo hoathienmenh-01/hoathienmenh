@@ -62,7 +62,15 @@ export type LedgerReason =
   // `StoryDungeonRun.claimedAt` CAS guard (race-safe winner duy nhất ghi 1
   // ledger row / runId). Khác `DUNGEON_RUN_REWARD` (farm dungeon catalog
   // `DUNGEONS`) ở catalog source + refType.
-  | 'STORY_DUNGEON_REWARD';
+  | 'STORY_DUNGEON_REWARD'
+  // Phase 13.2.B — Sect Season milestone claim reward. Wire
+  // `SectSeasonService.claimMilestone` qua `applyTx` cho linhThach/tienNgoc
+  // với `refType='SectSeasonClaim'` + `refId={seasonKey}:{milestoneKey}`.
+  // Idempotency lấy từ `SectSeasonClaim` UNIQUE `(characterId, seasonKey,
+  // milestoneKey)` CAS guard — race-safe 2 concurrent claim chỉ 1 ledger row.
+  // Khác `SECT_WAR_REWARD` (weekly tier) ở scope: season aggregate 4-week
+  // window personal points → 5 milestone tier monotonic increasing.
+  | 'SECT_SEASON_REWARD';
 
 export interface CurrencyApplyInput {
   characterId: string;

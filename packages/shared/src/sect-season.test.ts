@@ -22,8 +22,10 @@ import {
   currentSectSeason,
   sectSeasonAchievedMilestones,
   sectSeasonByKey,
+  sectSeasonClaimableMilestones,
   sectSeasonMilestoneByKey,
   sectSeasonNextMilestone,
+  sectSeasonRewardSummary,
   sectSeasonWeekKeys,
   validateSectSeason,
   validateSectSeasonMilestone,
@@ -364,5 +366,91 @@ describe('SectSeason — milestone progress derivation', () => {
 
   it('sectSeasonNextMilestone(99999) = null', () => {
     expect(sectSeasonNextMilestone(99999)).toBeNull();
+  });
+});
+
+// Phase 13.2.B — claim helpers
+describe('SectSeason — sectSeasonClaimableMilestones', () => {
+  it('points 0 → claimable=[]', () => {
+    expect(sectSeasonClaimableMilestones(0, [])).toEqual([]);
+  });
+
+  it('points 100 + claimed=[] → claimable=[bronze]', () => {
+    const c = sectSeasonClaimableMilestones(100, []);
+    expect(c.map((m) => m.key)).toEqual(['milestone_bronze']);
+  });
+
+  it('points 100 + claimed=[bronze] → claimable=[]', () => {
+    const c = sectSeasonClaimableMilestones(100, ['milestone_bronze']);
+    expect(c).toEqual([]);
+  });
+
+  it('points 7500 + claimed=[bronze,gold] → claimable=[silver,platinum,diamond]', () => {
+    const c = sectSeasonClaimableMilestones(7500, ['milestone_bronze', 'milestone_gold']);
+    expect(c.map((m) => m.key)).toEqual([
+      'milestone_silver',
+      'milestone_platinum',
+      'milestone_diamond',
+    ]);
+  });
+
+  it('claimable order stable theo catalog (asc requiredPoints)', () => {
+    const c = sectSeasonClaimableMilestones(7500, []);
+    const reqs = c.map((m) => m.requiredPoints);
+    for (let i = 1; i < reqs.length; i++) {
+      expect(reqs[i]).toBeGreaterThan(reqs[i - 1]);
+    }
+  });
+
+  it('points âm → claimable=[]', () => {
+    expect(sectSeasonClaimableMilestones(-50, [])).toEqual([]);
+  });
+
+  it('claimedKeys ngoài catalog không crash + bị bỏ qua', () => {
+    const c = sectSeasonClaimableMilestones(100, ['milestone_unknown']);
+    expect(c.map((m) => m.key)).toEqual(['milestone_bronze']);
+  });
+});
+
+describe('SectSeason — sectSeasonRewardSummary', () => {
+  it('reward đầy đủ → echo exact + items array shape', () => {
+    const sum = sectSeasonRewardSummary({
+      linhThach: 1000,
+      tienNgoc: 5,
+      items: [
+        { itemKey: 'spirit_pill_lv1', qty: 3 },
+        { itemKey: 'sect_token', qty: 1 },
+      ],
+      titleKey: 'season_champion',
+      buffKey: 'season_aura',
+    });
+    expect(sum.linhThach).toBe(1000);
+    expect(sum.tienNgoc).toBe(5);
+    expect(sum.items).toEqual([
+      { itemKey: 'spirit_pill_lv1', qty: 3 },
+      { itemKey: 'sect_token', qty: 1 },
+    ]);
+    expect(sum.titleKey).toBe('season_champion');
+    expect(sum.buffKey).toBe('season_aura');
+  });
+
+  it('reward rỗng → 0/empty/null defaults (FE không cần defensive)', () => {
+    const sum = sectSeasonRewardSummary({});
+    expect(sum.linhThach).toBe(0);
+    expect(sum.tienNgoc).toBe(0);
+    expect(sum.items).toEqual([]);
+    expect(sum.titleKey).toBeNull();
+    expect(sum.buffKey).toBeNull();
+  });
+
+  it('mọi catalog milestone → sum.linhThach + sum.tienNgoc tăng theo catalog ordering (heuristic)', () => {
+    const score = (m: { reward: { linhThach?: number; tienNgoc?: number } }) =>
+      sectSeasonRewardSummary(m.reward).linhThach +
+      sectSeasonRewardSummary(m.reward).tienNgoc * 5;
+    for (let i = 1; i < SECT_SEASON_MILESTONES.length; i++) {
+      expect(score(SECT_SEASON_MILESTONES[i])).toBeGreaterThanOrEqual(
+        score(SECT_SEASON_MILESTONES[i - 1]),
+      );
+    }
   });
 });

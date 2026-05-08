@@ -4,9 +4,15 @@ import { SectSeasonHistoryService } from './sect-season-history.service';
 import { SectSeasonController } from './sect-season.controller';
 import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
+import { CharacterModule } from '../character/character.module';
+import { InventoryModule } from '../inventory/inventory.module';
 
+// Phase 13.2.B — wire `CurrencyService` / `TitleService` / `BuffService` từ
+// CharacterModule + `InventoryService` từ InventoryModule cho
+// `SectSeasonService.claimMilestone` reward grant. Constructor inject
+// `@Optional()` để Phase 13.2.A read-only test (chỉ Prisma) vẫn pass.
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, CharacterModule, InventoryModule],
   controllers: [SectSeasonController],
   providers: [SectSeasonService, SectSeasonHistoryService, PrismaService],
   exports: [SectSeasonService, SectSeasonHistoryService],

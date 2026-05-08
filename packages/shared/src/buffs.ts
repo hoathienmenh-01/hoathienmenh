@@ -76,6 +76,7 @@ export type BuffSource =
   | 'pill'
   | 'skill'
   | 'sect_aura'
+  | 'sect_season'
   | 'event'
   | 'gear'
   | 'talent'
