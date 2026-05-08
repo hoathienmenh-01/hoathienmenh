@@ -26,6 +26,7 @@ import {
 } from '@/api/combat';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import ElementBadge from '@/components/ElementBadge.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 const auth = useAuthStore();
@@ -268,7 +269,14 @@ function handleErr(e: unknown): void {
 
         <div v-if="encounter.monster" class="space-y-2">
           <div class="flex justify-between text-sm">
-            <span>{{ encounter.monster.name }} · Lv.{{ encounter.monster.level }}</span>
+            <span class="flex items-center gap-2">
+              <span>{{ encounter.monster.name }} · Lv.{{ encounter.monster.level }}</span>
+              <ElementBadge
+                :element="encounter.monster.element ?? null"
+                size="sm"
+                :data-testid="`dungeon-monster-element-${encounter.monster.key}`"
+              />
+            </span>
             <span>{{ encounter.monsterHp }} / {{ encounter.monster.hp }}</span>
           </div>
           <div class="h-2 rounded bg-ink-900/60 overflow-hidden">

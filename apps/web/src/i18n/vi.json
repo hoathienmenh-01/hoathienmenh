@@ -67,6 +67,16 @@
     "vi": "Tiếng Việt",
     "en": "English"
   },
+  "elementBadge": {
+    "neutral": "Vô hệ",
+    "element": {
+      "kim": "Kim",
+      "moc": "Mộc",
+      "thuy": "Thuỷ",
+      "hoa": "Hoả",
+      "tho": "Thổ"
+    }
+  },
   "toast": {
     "title": {
       "info": "Tin tức",

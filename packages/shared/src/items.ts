@@ -60,6 +60,26 @@ export interface ItemBonus {
    * trong `combat.ts` — Phase 11 nâng cao §3 Elemental Combat MVP).
    */
   elementResist?: Partial<Record<ElementKey, number>>;
+  /**
+   * **Phase 14.2.A** — element-keyed bonus damage `≥ 0` (additive %) áp lên
+   * sát thương gây ra **trong combat** khi cast skill cùng hệ. Khác với
+   * `elementResist` (kháng kiếp tribulation) — `elementalAtkBonus` là
+   * **bonus tấn công** vs target có element relation phù hợp.
+   *
+   * Convention:
+   * - Empty / undefined map = no bonus (legacy default).
+   * - Value `0.05` = +5% damage khi cast skill cùng hệ.
+   * - Stack additive qua `composeEquipmentElementalAtkBonus()` (sum bonuses
+   *   từ tất cả trang bị đeo, cap per-item + total).
+   *
+   * Cap per-item `ELEMENT_EQUIPMENT_ATK_BONUS_CEIL=0.10` + tổng additive
+   * `ELEMENT_EQUIPMENT_ATK_BONUS_TOTAL_CEIL=0.20` ở `elemental.ts` để Phase
+   * 14.2.A foundation không phá tier progression. Combat runtime đọc qua
+   * `applyElementalCombatAdjustment` pipeline trong `CombatService`.
+   *
+   * Không define = không bonus (legacy + foundation default — fallback 0).
+   */
+  elementalAtkBonus?: Partial<Record<ElementKey, number>>;
 }
 
 export interface ItemEffect {
