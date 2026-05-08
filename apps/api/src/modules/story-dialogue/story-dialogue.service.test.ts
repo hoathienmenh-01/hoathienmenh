@@ -15,6 +15,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { CurrencyKind, Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
+import { NpcAffinityService } from '../npc-affinity/npc-affinity.service';
 import {
   StoryDialogueError,
   StoryDialogueService,
@@ -28,7 +29,8 @@ beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
   const currency = new CurrencyService(prisma);
-  service = new StoryDialogueService(prisma, currency);
+  const affinity = new NpcAffinityService(prisma);
+  service = new StoryDialogueService(prisma, currency, affinity);
 });
 
 beforeEach(async () => {
@@ -482,5 +484,122 @@ describe('Phase 12.9 — choice_made + clear_flag + multi-step branching', () =>
     const map = char?.storyDialogueChoices as Record<string, unknown>;
     expect(map[NODE_HAN_FIRST]).toBe('rival');
     expect(map[NODE_HAN_FOLLOWUP_RIVAL]).toBe('decline');
+  });
+});
+
+// =============================================================================
+// Phase 12.10.A — change_affinity effect + affinity_min condition.
+// Coverage:
+//   - friendly_chat warm/cold add/subtract affinity once (ALREADY_APPLIED on retry)
+//   - inner_secret gated by affinity_min (HIDDEN until threshold reached)
+//   - inner_secret visible after farming friendly_chat warm path
+// =============================================================================
+const NODE_LANG_FRIENDLY = 'story_dlg_lang_van_sinh_friendly_chat';
+const NODE_LANG_SECRET = 'story_dlg_lang_van_sinh_inner_secret';
+
+describe('Phase 12.10.A — change_affinity + affinity_min', () => {
+  it('warm choice adds +10 affinity once + persisted in CharacterNpcAffinity', async () => {
+    const { userId, characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    // intro must be seen first — exercise its no-grant choice 'doubt'.
+    await service.applyChoice(userId, NPC_LANG, NODE_LANG_INTRO, 'doubt');
+
+    const result = await service.applyChoice(userId, NPC_LANG, NODE_LANG_FRIENDLY, 'warm');
+    expect(result.affinityChanges).toHaveLength(1);
+    const ch = result.affinityChanges[0]!;
+    expect(ch.npcKey).toBe(NPC_LANG);
+    expect(ch.delta).toBe(10);
+    expect(ch.previousScore).toBe(0);
+    expect(ch.newScore).toBe(10);
+
+    const row = await prisma.characterNpcAffinity.findUnique({
+      where: { characterId_npcKey: { characterId, npcKey: NPC_LANG } },
+    });
+    expect(row?.score).toBe(10);
+  });
+
+  it('cold choice subtracts -5 affinity (clamped at minScore)', async () => {
+    const { userId, characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    await service.applyChoice(userId, NPC_LANG, NODE_LANG_INTRO, 'doubt');
+    const result = await service.applyChoice(userId, NPC_LANG, NODE_LANG_FRIENDLY, 'cold');
+    expect(result.affinityChanges[0]?.delta).toBe(-5);
+    // Score = clamp[-100, 100](0 + -5) = -5 (catalog minScore = -50 for Lang).
+    expect(result.affinityChanges[0]?.newScore).toBe(-5);
+    const row = await prisma.characterNpcAffinity.findUnique({
+      where: { characterId_npcKey: { characterId, npcKey: NPC_LANG } },
+    });
+    expect(row?.score).toBe(-5);
+  });
+
+  it('idempotency — re-pick warm at friendly_chat throws ALREADY_APPLIED + KHÔNG double-grant', async () => {
+    const { userId, characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    await service.applyChoice(userId, NPC_LANG, NODE_LANG_INTRO, 'doubt');
+    await service.applyChoice(userId, NPC_LANG, NODE_LANG_FRIENDLY, 'warm');
+    try {
+      await service.applyChoice(userId, NPC_LANG, NODE_LANG_FRIENDLY, 'warm');
+      throw new Error('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(StoryDialogueError);
+      expect((e as StoryDialogueError).code).toBe('ALREADY_APPLIED');
+    }
+    // Score still 10 (no double-grant).
+    const row = await prisma.characterNpcAffinity.findUnique({
+      where: { characterId_npcKey: { characterId, npcKey: NPC_LANG } },
+    });
+    expect(row?.score).toBe(10);
+  });
+
+  it('inner_secret HIDDEN khi affinity dưới threshold (listForNpc filter)', async () => {
+    const { userId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    await service.applyChoice(userId, NPC_LANG, NODE_LANG_INTRO, 'doubt');
+    const visible = await service.listForNpc(userId, NPC_LANG);
+    const ids = visible.map((n) => n.nodeId);
+    expect(ids).not.toContain(NODE_LANG_SECRET);
+  });
+
+  it('inner_secret HIDDEN — applyChoice trả INVALID_CHOICE khi affinity chưa đạt', async () => {
+    const { userId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    await service.applyChoice(userId, NPC_LANG, NODE_LANG_INTRO, 'doubt');
+    try {
+      await service.applyChoice(userId, NPC_LANG, NODE_LANG_SECRET, 'listen');
+      throw new Error('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(StoryDialogueError);
+      expect((e as StoryDialogueError).code).toBe('INVALID_CHOICE');
+      expect((e as StoryDialogueError).detail).toMatch(/affinity_min/);
+    }
+  });
+
+  it('inner_secret visible sau khi seed affinity ≥ 30 → applyChoice listen success', async () => {
+    const { userId, characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    await service.applyChoice(userId, NPC_LANG, NODE_LANG_INTRO, 'doubt');
+    // Seed score = 30 trực tiếp DB (test path).
+    await prisma.characterNpcAffinity.create({
+      data: { characterId, npcKey: NPC_LANG, score: 30 },
+    });
+    // Seed friendly_chat seen (mark as already-done) để node hiện tại không re-pick.
+    const visible = await service.listForNpc(userId, NPC_LANG);
+    const ids = visible.map((n) => n.nodeId);
+    expect(ids).toContain(NODE_LANG_SECRET);
+
+    const result = await service.applyChoice(userId, NPC_LANG, NODE_LANG_SECRET, 'listen');
+    // listen effects: change_affinity +5, set_flag, give_reward, mark_seen.
+    expect(result.effectsApplied.map((e) => e.kind)).toContain('change_affinity');
+    expect(result.effectsApplied.map((e) => e.kind)).toContain('set_flag');
+    expect(result.effectsApplied.map((e) => e.kind)).toContain('give_reward');
+    expect(result.affinityChanges).toHaveLength(1);
+    expect(result.affinityChanges[0]?.delta).toBe(5);
+    expect(result.affinityChanges[0]?.newScore).toBe(35);
+    expect(result.granted.linhThach).toBe(50);
+    expect(result.granted.exp).toBe(30);
+  });
+
+  it('tierChanged true khi cross threshold (xa_la → quen_biet ≥ 10)', async () => {
+    const { userId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    await service.applyChoice(userId, NPC_LANG, NODE_LANG_INTRO, 'doubt');
+    const result = await service.applyChoice(userId, NPC_LANG, NODE_LANG_FRIENDLY, 'warm');
+    // 0 → 10. xa_la (≥0) → quen_biet (≥10) — tierChanged.
+    expect(result.affinityChanges[0]?.tierChanged).toBe(true);
+    expect(result.affinityChanges[0]?.previousTierKey).toBe('xa_la');
+    expect(result.affinityChanges[0]?.newTierKey).toBe('quen_biet');
   });
 });

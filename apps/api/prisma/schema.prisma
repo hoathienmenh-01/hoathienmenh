@@ -300,6 +300,7 @@ model Character {
   sectShopPurchases       SectShopPurchase[]
   sectContributionLedger  SectContributionLedger[]
   sectSeasonClaims        SectSeasonClaim[]
+  npcAffinities           CharacterNpcAffinity[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -659,6 +660,40 @@ model CharacterAchievement {
   @@unique([characterId, achievementKey])
   @@index([characterId, completedAt])
   @@index([characterId, claimedAt])
+}
+
+/// Phase 12.10.A — NPC Affinity & Relationship Foundation.
+///
+/// Mỗi cặp `(characterId, npcKey)` duy nhất 1 row (composite UNIQUE) — `score`
+/// mutate atomic qua `NpcAffinityService.addAffinityTx()`:
+///   - upsert lazy: row mới được create với `score = NPC_AFFINITY[npcKey].initialScore`
+///     khi character lần đầu gain affinity với NPC đó (hoặc service eager
+///     `ensureRow`).
+///   - atomic add: `update {score: { increment: delta }}` rồi server clamp
+///     `[minScore, maxScore]` (catalog `NpcAffinityDef`).
+///   - idempotency: caller (StoryDialogueService.applyChoice) wrap trong cùng
+///     `$transaction` với mark_seen + grant effects → re-pick choice cùng
+///     node đã `seen` throw `ALREADY_APPLIED` (mirror `give_reward`).
+///
+/// `npcKey` reference `NPCS[].key` (catalog tĩnh ở `packages/shared/src/npcs.ts`).
+/// KHÔNG FK ra Sect/NPC table (NPC là catalog, không có DB row riêng).
+///
+/// Phase tiếp (12.10.B+) sẽ thêm `CharacterNpcGiftLog` (nguồn gain affinity
+/// thứ 2) + `CharacterNpcRelationFlag` (rival/friend mutex) — pattern giữ nguyên.
+model CharacterNpcAffinity {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Reference `NPCS[].key` (catalog) — KHÔNG FK (NPC là catalog tĩnh).
+  npcKey      String
+  /// Điểm thân thiện hiện tại — clamp `[minScore, maxScore]` của catalog
+  /// `NPC_AFFINITY[npcKey]`. Default mirror `initialScore` (thường 0).
+  score       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([characterId, npcKey])
+  @@index([characterId])
 }
 
 enum MissionPeriod {

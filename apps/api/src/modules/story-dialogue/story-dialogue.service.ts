@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CurrencyKind, Prisma } from '@prisma/client';
 import {
+  AFFINITY_DELTA_CAP_PER_CHOICE,
   npcByKey,
   questByKey,
   realmByKey,
@@ -17,6 +18,7 @@ import {
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
+import { NpcAffinityService } from '../npc-affinity/npc-affinity.service';
 
 /**
  * Phase 12 Story Dialogue Foundation — branching dialogue runtime.
@@ -113,6 +115,27 @@ export interface StoryDialogueNodeView {
   choices: StoryDialogueChoiceView[];
 }
 
+/**
+ * Phase 12.10.A — change_affinity result snapshot (cho FE hiển thị toast
+ * "+5 thân thiện với Lãng Vân Sinh", và badge "lên tier Bằng Hữu" khi
+ * tierChanged=true). 1 entry per change_affinity effect đã apply.
+ */
+export interface StoryDialogueAffinityChange {
+  npcKey: string;
+  /** Delta caller request (có thể âm hoặc dương; clamp ở score, không clamp ở delta). */
+  delta: number;
+  /** Score trước apply (post-lazy-create). */
+  previousScore: number;
+  /** Score sau apply (clamped `[minScore, maxScore]`). */
+  newScore: number;
+  /** True nếu tier đổi sau apply. */
+  tierChanged: boolean;
+  previousTierKey: string;
+  newTierKey: string;
+  /** VI label tier mới — FE toast. */
+  newTierLabel: string;
+}
+
 export interface StoryDialogueChoiceResult {
   /** Effects đã apply (cho FE hiển thị toast). */
   effectsApplied: ReadonlyArray<StoryDialogueEffect>;
@@ -127,6 +150,11 @@ export interface StoryDialogueChoiceResult {
    * cho condition `choice_made` render ở node tiếp theo).
    */
   choices: Readonly<Record<string, string>>;
+  /**
+   * Phase 12.10.A — affinity changes per `change_affinity` effect đã apply.
+   * Empty array nếu choice không có change_affinity effect.
+   */
+  affinityChanges: ReadonlyArray<StoryDialogueAffinityChange>;
   /** Node tiếp theo (default cho npc nếu choice không có nextNodeId; null = đóng modal). */
   nextNode: StoryDialogueNodeView | null;
 }
@@ -143,6 +171,12 @@ interface CharCtx {
   seen: ReadonlyArray<string>;
   /** Phase 12.9 — nodeId → choiceKey (last-write-wins). */
   choices: Readonly<Record<string, string>>;
+  /**
+   * Phase 12.10.A — npcKey → affinity score (`CharacterNpcAffinity.score`).
+   * Map missing key → fallback `NPC_AFFINITY[npcKey].initialScore` qua
+   * `NpcAffinityService.resolveScore`. Dùng evaluate `affinity_min` condition.
+   */
+  affinityByNpc: Map<string, number>;
 }
 
 function readJsonArray(raw: Prisma.JsonValue | null | undefined): string[] {
@@ -226,6 +260,10 @@ function evaluateCondition(cond: StoryDialogueCondition, ctx: CharCtx): boolean 
       return !ctx.seen.includes(cond.nodeId);
     case 'choice_made':
       return ctx.choices[cond.nodeId] === cond.choiceKey;
+    case 'affinity_min': {
+      const cur = NpcAffinityService.resolveScore(ctx.affinityByNpc, cond.npcKey);
+      return cur >= cond.score;
+    }
   }
 }
 
@@ -260,6 +298,8 @@ function summarizeConditionForReason(cond: StoryDialogueCondition): string {
       return `not_seen:${cond.nodeId}`;
     case 'choice_made':
       return `choice_made:${cond.nodeId}=${cond.choiceKey}`;
+    case 'affinity_min':
+      return `affinity_min:${cond.npcKey}>=${cond.score}`;
   }
 }
 
@@ -330,6 +370,7 @@ export class StoryDialogueService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
+    private readonly affinity: NpcAffinityService,
   ) {}
 
   async getDialogue(userId: string, npcKey: string): Promise<StoryDialogueNodeView> {
@@ -388,12 +429,29 @@ export class StoryDialogueService {
       );
     }
 
-    // Idempotency guard for grant effects (give_reward / advance_quest_step).
+    // Idempotency guard for grant effects (give_reward / advance_quest_step /
+    // change_affinity). Phase 12.10.A bổ sung change_affinity vào group:
+    // re-pick choice cùng node đã `seen` → reject ALREADY_APPLIED (mirror
+    // give_reward) để không farm affinity bằng retry.
     const hasGrantEffect = (choice.effects ?? []).some(
-      (e) => e.kind === 'give_reward' || e.kind === 'advance_quest_step',
+      (e) =>
+        e.kind === 'give_reward' ||
+        e.kind === 'advance_quest_step' ||
+        e.kind === 'change_affinity',
     );
     if (hasGrantEffect && ctx.seen.includes(node.id)) {
       throw new StoryDialogueError('ALREADY_APPLIED');
+    }
+
+    // Pre-flight: validate change_affinity (npcKey ∈ catalog, |delta| ≤ cap).
+    for (const e of choice.effects ?? []) {
+      if (e.kind !== 'change_affinity') continue;
+      if (Math.abs(e.delta) > AFFINITY_DELTA_CAP_PER_CHOICE) {
+        throw new StoryDialogueError(
+          'INVALID_CHOICE',
+          `change_affinity |delta|=${Math.abs(e.delta)} > ${AFFINITY_DELTA_CAP_PER_CHOICE}`,
+        );
+      }
     }
 
     // Pre-flight cap check (defensive — catalog test invariant cũng verify).
@@ -464,6 +522,7 @@ export class StoryDialogueService {
       };
       const granted = { linhThach: 0, tienNgoc: 0, exp: 0 };
       const applied: StoryDialogueEffect[] = [];
+      const affinityChanges: StoryDialogueAffinityChange[] = [];
 
       // Always mark node seen (mark_seen implicit + idempotent set semantics).
       seen.add(node.id);
@@ -555,6 +614,29 @@ export class StoryDialogueService {
             applied.push(e);
             break;
           }
+          case 'change_affinity': {
+            // Idempotency đã guard ở `hasGrantEffect && seen.includes(node.id)`
+            // phía trên — tới đây tx safe để add. `addAffinityTx` clamp
+            // `[minScore, maxScore]` của catalog `NPC_AFFINITY[npcKey]`.
+            const res = await this.affinity.addAffinityTx(tx, {
+              characterId: ctx.characterId,
+              npcKey: e.npcKey,
+              delta: e.delta,
+              source: 'STORY_DIALOGUE_CHOICE',
+            });
+            affinityChanges.push({
+              npcKey: res.npcKey,
+              delta: e.delta,
+              previousScore: res.previousScore,
+              newScore: res.newScore,
+              tierChanged: res.tierChanged,
+              previousTierKey: res.previousTier.key,
+              newTierKey: res.newTier.key,
+              newTierLabel: res.newTier.label,
+            });
+            applied.push(e);
+            break;
+          }
         }
       }
 
@@ -573,6 +655,7 @@ export class StoryDialogueService {
         flags: flags as StoryFlagMap,
         seen: [...seen],
         choices: choices as Readonly<Record<string, string>>,
+        affinityChanges,
       };
     });
 
@@ -599,6 +682,7 @@ export class StoryDialogueService {
       flags: result.flags,
       seen: result.seen,
       choices: result.choices,
+      affinityChanges: result.affinityChanges,
       nextNode: nextNode ? buildNodeView(nextNode, ctxAfter) : null,
     };
   }
@@ -644,6 +728,7 @@ export class StoryDialogueService {
       questStatusByKey.set(r.questKey, status);
       questStepProgressByKey.set(r.questKey, readStepProgressJson(r.stepProgress));
     }
+    const affinityByNpc = await this.affinity.loadScoreMap(char.id);
     return {
       characterId: char.id,
       realmOrder,
@@ -652,6 +737,7 @@ export class StoryDialogueService {
       flags: readJsonFlagMap(char.storyFlags),
       seen: readJsonArray(char.storyDialogueSeen),
       choices: readJsonChoiceMap(char.storyDialogueChoices),
+      affinityByNpc,
     };
   }
 }

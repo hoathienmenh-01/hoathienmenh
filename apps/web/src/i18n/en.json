@@ -2163,6 +2163,23 @@
       "QUEST_STEP_KIND_MISMATCH": "This quest step cannot be advanced via dialogue.",
       "INVALID_INPUT": "Invalid input.",
       "UNKNOWN": "Failed to continue dialogue, please retry."
+    },
+    "affinityDelta": "{sign}{delta} affinity",
+    "tierUp": "Relationship advanced: {tier}"
+  },
+  "npcAffinity": {
+    "title": "NPC Relationships",
+    "subtitle": "Each NPC has their own bond — dialogue and quests deepen your connection.",
+    "empty": "No relationships forged yet.",
+    "nextTierHint": "{points} more points to reach {tier}.",
+    "maxTierReached": "Bond at its peak.",
+    "errors": {
+      "UNAUTHENTICATED": "Session expired.",
+      "NO_CHARACTER": "No character.",
+      "NPC_UNKNOWN": "This NPC has no relationship profile.",
+      "NPC_AFFINITY_UNKNOWN": "This NPC has no relationship profile.",
+      "INVALID_INPUT": "Invalid input.",
+      "UNKNOWN": "Failed to load relationships, please retry."
     }
   },
   "quest": {

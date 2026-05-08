@@ -43,6 +43,18 @@ export interface StoryDialogueNodeView {
   choices: StoryDialogueChoiceView[];
 }
 
+export interface StoryDialogueAffinityChange {
+  npcKey: string;
+  delta: number;
+  previousScore: number;
+  newScore: number;
+  tierChanged: boolean;
+  previousTierKey: string;
+  newTierKey: string;
+  /** VI label tier mới — FE toast. */
+  newTierLabel: string;
+}
+
 export interface StoryDialogueChoiceResult {
   effectsApplied: ReadonlyArray<{ kind: string; [k: string]: unknown }>;
   granted: { linhThach: number; tienNgoc: number; exp: number };
@@ -50,6 +62,8 @@ export interface StoryDialogueChoiceResult {
   seen: ReadonlyArray<string>;
   /** Phase 12.9 — snapshot map nodeId → choiceKey sau apply. */
   choices: Readonly<Record<string, string>>;
+  /** Phase 12.10.A — affinity changes per `change_affinity` effect. */
+  affinityChanges: ReadonlyArray<StoryDialogueAffinityChange>;
   nextNode: StoryDialogueNodeView | null;
 }
 

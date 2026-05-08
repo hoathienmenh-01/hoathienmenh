@@ -189,13 +189,14 @@ describe('STORY_DIALOGUES catalog invariant', () => {
     expect(totalChoiceReward(choice)).toEqual({ linhThach: 30, tienNgoc: 1, exp: 5 });
   });
 
-  it('catalog includes at least one node per existing implemented effect kind (mark_seen, advance_quest_step, give_reward, set_flag, clear_flag)', () => {
+  it('catalog includes at least one node per existing implemented effect kind (mark_seen, advance_quest_step, give_reward, set_flag, clear_flag, change_affinity)', () => {
     const seen = {
       mark_seen: false,
       advance_quest_step: false,
       give_reward: false,
       set_flag: false,
       clear_flag: false,
+      change_affinity: false,
     };
     for (const n of STORY_DIALOGUES) {
       for (const c of n.choices) {
@@ -210,6 +211,7 @@ describe('STORY_DIALOGUES catalog invariant', () => {
       give_reward: true,
       set_flag: true,
       clear_flag: true,
+      change_affinity: true,
     });
   });
 

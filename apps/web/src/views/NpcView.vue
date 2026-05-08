@@ -5,7 +5,9 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useNpcStore } from '@/stores/npc';
+import { useNpcAffinityStore } from '@/stores/npcAffinity';
 import AppShell from '@/components/shell/AppShell.vue';
+import NpcAffinityPanel from '@/components/NpcAffinityPanel.vue';
 import NpcDialogueModal from '@/components/NpcDialogueModal.vue';
 import StoryDialogueModal from '@/components/StoryDialogueModal.vue';
 import { useStoryDialogueStore } from '@/stores/storyDialogue';
@@ -25,6 +27,7 @@ import type { NpcView as NpcViewModel } from '@/api/npc';
 const auth = useAuthStore();
 const game = useGameStore();
 const npcStore = useNpcStore();
+const npcAffinityStore = useNpcAffinityStore();
 const storyDialogue = useStoryDialogueStore();
 const router = useRouter();
 const { t } = useI18n();
@@ -66,9 +69,14 @@ function closeStory(): void {
 }
 
 async function onStoryEffectsApplied(): Promise<void> {
-  // Refresh NPC list (faction quest counts + dialogue branch may have shifted)
-  // and game state (linhThach + exp may have been granted).
-  await Promise.all([npcStore.load(), game.fetchState().catch(() => null)]);
+  // Refresh NPC list (faction quest counts + dialogue branch may have shifted),
+  // game state (linhThach + exp may have been granted), and affinity panel
+  // (Phase 12.10.A — change_affinity effect mutates affinity score).
+  await Promise.all([
+    npcStore.load(),
+    game.fetchState().catch(() => null),
+    npcAffinityStore.refresh().catch(() => null),
+  ]);
 }
 
 onMounted(async () => {
@@ -82,7 +90,10 @@ onMounted(async () => {
     router.replace('/onboarding');
     return;
   }
-  await npcStore.load();
+  await Promise.all([
+    npcStore.load(),
+    npcAffinityStore.load().catch(() => null),
+  ]);
 });
 </script>
 
@@ -171,6 +182,8 @@ onMounted(async () => {
           </div>
         </li>
       </ul>
+
+      <NpcAffinityPanel :auto-load="false" />
 
       <NpcDialogueModal
         :npc-key="activeNpc?.key ?? null"

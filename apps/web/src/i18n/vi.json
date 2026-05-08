@@ -2163,6 +2163,23 @@
       "QUEST_STEP_KIND_MISMATCH": "Bước nhiệm vụ này không tiếp được qua đối thoại.",
       "INVALID_INPUT": "Dữ liệu không hợp lệ.",
       "UNKNOWN": "Không thể tiếp tục đối thoại, thử lại."
+    },
+    "affinityDelta": "{sign}{delta} thân thiện",
+    "tierUp": "Quan hệ đã thăng tiến: {tier}"
+  },
+  "npcAffinity": {
+    "title": "Quan Hệ Đạo Hữu",
+    "subtitle": "Mỗi NPC có thân tình riêng — đối thoại, nhiệm vụ giúp con kết duyên sâu hơn.",
+    "empty": "Chưa kết duyên cùng đạo hữu nào.",
+    "nextTierHint": "Còn {points} điểm để lên {tier}.",
+    "maxTierReached": "Đã đạt đỉnh quan hệ.",
+    "errors": {
+      "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "NPC_UNKNOWN": "Đạo hữu này không có hồ sơ thân tình.",
+      "NPC_AFFINITY_UNKNOWN": "Đạo hữu này không có hồ sơ thân tình.",
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "UNKNOWN": "Không thể tải quan hệ, thử lại."
     }
   },
   "quest": {

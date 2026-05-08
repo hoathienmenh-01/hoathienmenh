@@ -190,6 +190,7 @@ describe('StoryDialogueModal — render & interaction', () => {
       flags: { attitude: 'respect' },
       seen: ['story_dlg_test_intro'],
       choices: { story_dlg_test_intro: 'respect' },
+      affinityChanges: [],
       nextNode: null,
     });
     const w = mountModal();
@@ -332,6 +333,7 @@ describe('useStoryDialogueStore', () => {
       flags: {},
       seen: ['story_dlg_test_intro'],
       choices: { story_dlg_test_intro: 'respect' },
+      affinityChanges: [],
       nextNode: next,
     });
     const result = await store.pickChoice('respect');
@@ -349,6 +351,7 @@ describe('useStoryDialogueStore', () => {
       flags: {},
       seen: ['story_dlg_test_intro'],
       choices: { story_dlg_test_intro: 'respect' },
+      affinityChanges: [],
       nextNode: null,
     });
     await store.pickChoice('respect');
