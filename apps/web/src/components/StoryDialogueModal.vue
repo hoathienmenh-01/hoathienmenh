@@ -168,7 +168,9 @@ onBeforeUnmount(() => {
                 class="w-full text-left px-3 py-2 rounded border transition flex items-center justify-between gap-3"
                 :class="
                   c.available && !c.alreadyApplied
-                    ? 'border-ink-300/30 bg-ink-700/40 text-ink-50 hover:bg-ink-700/70'
+                    ? c.previouslyChosen
+                      ? 'border-amber-300/40 bg-ink-700/50 text-ink-50 hover:bg-ink-700/70'
+                      : 'border-ink-300/30 bg-ink-700/40 text-ink-50 hover:bg-ink-700/70'
                     : 'border-ink-300/15 bg-ink-800/30 text-ink-400 cursor-not-allowed opacity-60'
                 "
                 :data-testid="`story-dialogue-choice-${c.key}`"
@@ -193,6 +195,13 @@ onBeforeUnmount(() => {
                   class="text-xs text-ink-400 italic"
                 >
                   {{ t('storyDialogue.locked') }}
+                </span>
+                <span
+                  v-else-if="c.previouslyChosen"
+                  :data-testid="`story-dialogue-last-${c.key}`"
+                  class="text-xs text-amber-300 italic"
+                >
+                  {{ t('storyDialogue.lastChosen') }}
                 </span>
               </button>
             </li>

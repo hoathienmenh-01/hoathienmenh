@@ -13,7 +13,6 @@ import {
   liveOpsEventsForToday,
   localPartsInTz,
   nextLiveOpsEvent,
-  sectWarWeekKey,
   type BossDef,
   type BossScheduleSlot,
   type LiveOpsEventDef,
