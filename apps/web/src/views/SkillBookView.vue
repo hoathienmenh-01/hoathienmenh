@@ -38,6 +38,7 @@ import { useSkillStore } from '@/stores/skill';
 import { useToastStore } from '@/stores/toast';
 import type { SkillTier, SkillView } from '@/api/skill';
 import AppShell from '@/components/shell/AppShell.vue';
+import ElementBadge from '@/components/ElementBadge.vue';
 
 type TierFilter = 'all' | SkillTier;
 type ElementFilter = 'all' | ElementKey | 'none';
@@ -316,17 +317,12 @@ onMounted(async () => {
               >
                 {{ t(`skillBook.tier.${row.view.tier}`) }}
               </span>
-              <span
-                class="text-[10px] px-1.5 py-0.5 rounded border bg-ink-700/40 text-ink-200 border-ink-300/30"
+              <ElementBadge
+                :element="row.def.element ?? null"
+                :show-neutral="true"
+                size="sm"
                 :data-testid="`skill-book-element-${row.view.skillKey}`"
-              >
-                <template v-if="row.def.element">
-                  {{ t(`skillBook.element.${row.def.element}`) }}
-                </template>
-                <template v-else>
-                  {{ t('skillBook.element.none') }}
-                </template>
-              </span>
+              />
               <span
                 v-if="row.view.isEquipped"
                 class="text-[10px] px-1.5 py-0.5 rounded border bg-emerald-700/40 text-emerald-200 border-emerald-500/40"

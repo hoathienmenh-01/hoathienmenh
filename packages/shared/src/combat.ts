@@ -104,6 +104,26 @@ export interface MonsterDef {
    * BEAST routine drop.
    */
   lootTable?: readonly LootEntry[];
+  /**
+   * **Phase 14.2.A** — optional Ngũ Hành combat resist. Map skill element →
+   * multiplier `≤ 1` (giảm sát thương chịu vào). Khác với `element`
+   * (monster's own affinity) — `elementalResist` là **kháng** vs incoming
+   * skill element. Vd boss băng `huyen_bang_kiep_lang` có `element='thuy'` +
+   * `elementalResist={ hoa: 0.85 }` (kháng 15% sát thương Hoả).
+   *
+   * Convention:
+   *   - `1.0` hoặc undefined = neutral (không kháng).
+   *   - `< 1` = monster resist (giảm sát thương).
+   *   - `> 1` = vulnerability (Phase 14.2.A foundation chưa wire weakness;
+   *     reserved cho future PR).
+   *
+   * Floor `ELEMENT_MONSTER_RESIST_FLOOR=0.7` ở `elemental.ts` — catalog
+   * không nên đặt resist quá mạnh (giảm > 30% damage) ở foundation phase.
+   * Combat runtime đọc qua `composeMonsterElementalResist`.
+   *
+   * Không define = không kháng (legacy + foundation default — fallback neutral).
+   */
+  elementalResist?: Partial<Record<ElementKey, number>>;
 }
 
 /**

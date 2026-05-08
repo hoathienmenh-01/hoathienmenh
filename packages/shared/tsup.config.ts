@@ -15,6 +15,7 @@ export default defineConfig({
     'src/boss.ts',
     'src/map-regions.ts',
     'src/balance-dials.ts',
+    'src/elemental.ts',
   ],
   format: ['esm', 'cjs'],
   dts: true,
