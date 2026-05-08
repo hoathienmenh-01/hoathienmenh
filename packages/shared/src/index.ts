@@ -18,6 +18,7 @@ export * from './spiritual-root';
 export * from './talents';
 export * from './titles';
 export * from './tribulation';
+export * from './tribulation-foundation';
 export * from './topup';
 export * from './shop';
 export * from './map-regions';

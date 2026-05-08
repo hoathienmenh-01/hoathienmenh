@@ -246,6 +246,11 @@ export class CharacterController {
       const code = (e as { code?: string })?.code;
       if (code === 'NO_CHARACTER') fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
       if (code === 'NOT_AT_PEAK') fail('NOT_AT_PEAK', HttpStatus.CONFLICT);
+      // Phase 14.3.A — gate manual breakthrough cho realm transition cần kiếp.
+      // FE phải redirect player sang `POST /character/tribulation`.
+      if (code === 'TRIBULATION_REQUIRED') {
+        fail('TRIBULATION_REQUIRED', HttpStatus.CONFLICT);
+      }
       throw e;
     }
   }
@@ -695,6 +700,42 @@ export class CharacterController {
       // serialize không support BigInt → throw INTERNAL_ERROR cho mọi attempt
       // (success/fail). View mirror `TribulationAttemptLogView` (Phase 11.6.F).
       return { ok: true, data: { tribulation: toAttemptOutcomeView(result) } };
+    } catch (e) {
+      if (e instanceof TribulationError) {
+        fail(e.code, mapTribulationErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 14.3.A — Tribulation preview (read-only).
+   *
+   * Trả snapshot kiếp sắp tới cho character + ước tính success chance
+   * deterministic + reward/penalty hint. KHÔNG mutate state, KHÔNG roll
+   * RNG. FE TribulationView dùng để render preview panel trước khi player
+   * click "Vượt kiếp".
+   *
+   *   - Auth gate (cookie session → userId → character).
+   *   - Idempotent GET — không thay đổi state.
+   *   - 200 + `{ preview: null }` nếu transition hiện tại không có catalog
+   *     entry (low-tier breakthrough hoặc đã ở đỉnh) — FE render empty.
+   *   - 200 + `{ preview: TribulationPreview }` nếu có def cho transition.
+   *   - 503 nếu module chưa wire (`TRIBULATION_UNAVAILABLE`).
+   *   - BigInt `rewardHint.expBonus` cast → string ở
+   *     `summarizeTribulationRewardHint` (FE serialize an toàn).
+   */
+  @Get('tribulation/preview')
+  async tribulationPreview(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.tribulation) {
+      fail('TRIBULATION_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const preview = await this.tribulation.previewTribulation(character.id);
+      return { ok: true, data: { preview } };
     } catch (e) {
       if (e instanceof TribulationError) {
         fail(e.code, mapTribulationErrorStatus(e.code));

@@ -1,11 +1,13 @@
 import { forwardRef, Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { CurrencyKind } from '@prisma/client';
 import {
+  composeTribulationSupports,
   computeEquipmentTribulationResist,
   computePassiveTalentTribulationResist,
   computeSpiritualRootTribulationResist,
   computeTribulationFailurePenalty,
   computeTribulationReward,
+  computeTribulationSuccessChance,
   ELEMENT_MODIFIER_ABSOLUTE_CEIL,
   ELEMENT_MODIFIER_ABSOLUTE_FLOOR,
   ELEMENTS,
@@ -13,10 +15,16 @@ import {
   getTribulationForBreakthrough,
   nextRealm,
   simulateTribulation,
+  summarizeTribulationPenaltyHint,
+  summarizeTribulationRewardHint,
   titleForRealmMilestone,
   type ElementKey,
   type PassiveTalentMods,
   type TribulationDef,
+  type TribulationPenaltyHint,
+  type TribulationRewardHint,
+  type TribulationSuccessChanceBreakdown,
+  type TribulationSupportEntry,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { InventoryService } from '../inventory/inventory.service';
@@ -428,6 +436,104 @@ export class TribulationService {
   }
 
   /**
+   * Phase 14.3.A — Tribulation preview (read-only).
+   *
+   * Trả về snapshot kiếp sắp tới cho character + ước tính success chance
+   * deterministic + reward/penalty hint. KHÔNG mutate state, KHÔNG roll RNG,
+   * KHÔNG chạy `simulateTribulation` (giữ runtime simulate exclusive cho
+   * `attemptTribulation`).
+   *
+   * Use case:
+   *   - FE TribulationView preview panel: hiển thị "%kiếp" + reward + penalty
+   *     trước khi player click "Vượt kiếp".
+   *   - FE breakthrough route: nếu `requirement=true`, hiển thị warning
+   *     "Realm này yêu cầu kiếp" + redirect button.
+   *
+   * Shape:
+   *   - `requirement: true` khi catalog có `TribulationDef` cho transition.
+   *   - `def`: `TribulationDef` snapshot (catalog read).
+   *   - `successChance`: deterministic estimate (`computeTribulationSuccessChance`).
+   *   - `supports`: composed support list (Phase 14.3.A foundation: empty
+   *     mảng — sub-PR sẽ collect từ items/buffs/talents).
+   *   - `rewardHint` / `penaltyHint`: BigInt-safe summary cho FE.
+   *   - `cooldownAt` / `taoMaUntil`: pass-through từ character row.
+   *   - `atPeak`: `realmStage===9 && exp>=cost(9)`.
+   *
+   * Server-authoritative: caller phải resolve `characterId` từ session
+   * userId trước khi gọi. Trả `null` (không throw) nếu transition không
+   * có catalog entry — FE render empty state.
+   *
+   * @param characterId character id (server-trusted).
+   * @returns `TribulationPreview` hoặc `null` nếu không có kiếp cho realm
+   *   hiện tại (đã đỉnh, transition low-tier, hoặc no nextRealm).
+   */
+  async previewTribulation(
+    characterId: string,
+  ): Promise<TribulationPreview | null> {
+    const character = await this.prisma.character.findUnique({
+      where: { id: characterId },
+    });
+    if (!character) throw new TribulationError('CHARACTER_NOT_FOUND');
+
+    const next = nextRealm(character.realmKey);
+    if (!next) return null;
+    const def = getTribulationForBreakthrough(character.realmKey, next.key);
+    if (!def) return null;
+
+    const cost = expCostForStage(character.realmKey, 9);
+    const atPeak =
+      character.realmStage >= 9 && cost !== null && character.exp >= cost;
+
+    const primaryElement: ElementKey | null =
+      character.primaryElement &&
+      (ELEMENTS as readonly string[]).includes(character.primaryElement)
+        ? (character.primaryElement as ElementKey)
+        : null;
+    const secondaryElements: ElementKey[] = (
+      character.secondaryElements ?? []
+    ).filter((e): e is ElementKey =>
+      (ELEMENTS as readonly string[]).includes(e),
+    );
+
+    // Phase 14.3.A foundation — supports list khởi tạo rỗng. Sub-PR sẽ
+    // populate từ items/buffs/talents. Để empty array thay vì optional để
+    // FE render uniform.
+    const supports = composeTribulationSupports([]);
+    const successChance = computeTribulationSuccessChance({
+      def,
+      primaryElement,
+      secondaryElements,
+      supports,
+    });
+
+    return {
+      requirement: true,
+      fromRealmKey: character.realmKey,
+      toRealmKey: next.key,
+      atPeak,
+      def: {
+        key: def.key,
+        name: def.name,
+        description: def.description,
+        type: def.type,
+        severity: def.severity,
+        wavesCount: def.waves.length,
+      },
+      successChance,
+      supports: supports.entries,
+      supportTotalBonus: supports.totalBonus,
+      rewardHint: summarizeTribulationRewardHint(def),
+      penaltyHint: summarizeTribulationPenaltyHint(def),
+      cooldownAt: character.tribulationCooldownAt
+        ? character.tribulationCooldownAt.toISOString()
+        : null,
+      taoMaUntil: character.taoMaUntil
+        ? character.taoMaUntil.toISOString()
+        : null,
+    };
+  }
+
+  /**
    * Phase 11.6.F — list recent tribulation attempt logs cho 1 character.
    *
    * Trả về tối đa `limit` row gần nhất (sort theo `createdAt` DESC). Idempotent
@@ -516,6 +622,49 @@ export interface TribulationAttemptLogView {
   attemptIndex: number;
   taoMaRoll: number;
   createdAt: string;
+}
+
+/**
+ * Phase 14.3.A — Tribulation preview shape (read-only).
+ *
+ * Mirror server preview struct cho FE. BigInt cast → string trong
+ * `rewardHint.expBonus`. Date cast → ISO string trong `cooldownAt`/
+ * `taoMaUntil`. `def` chỉ expose subset (`key/name/description/type/
+ * severity/wavesCount`) — không expose full `waves[]` để giảm payload
+ * (FE tooltip chỉ cần count).
+ */
+export interface TribulationPreview {
+  /** `true` khi catalog có `TribulationDef` cho transition hiện tại. */
+  requirement: true;
+  /** Realm hiện tại của character (peak gate vẫn check riêng). */
+  fromRealmKey: string;
+  /** Realm sau khi vượt kiếp thành công (`nextRealm(from).key`). */
+  toRealmKey: string;
+  /** `realmStage===9 && exp>=cost(stage=9)` — eligible attempt. */
+  atPeak: boolean;
+  /** Subset def cho FE — không expose toàn bộ waves[]. */
+  def: {
+    key: string;
+    name: string;
+    description: string;
+    type: TribulationDef['type'];
+    severity: TribulationDef['severity'];
+    wavesCount: number;
+  };
+  /** Deterministic estimate (KHÔNG roll RNG). */
+  successChance: TribulationSuccessChanceBreakdown;
+  /** Composed list — Phase 14.3.A foundation: empty. */
+  supports: readonly TribulationSupportEntry[];
+  /** Pass-through `composeTribulationSupports.totalBonus`. */
+  supportTotalBonus: number;
+  /** BigInt-safe reward summary. */
+  rewardHint: TribulationRewardHint;
+  /** Penalty summary 1:1 từ `TribulationDef`. */
+  penaltyHint: TribulationPenaltyHint;
+  /** ISO string nếu còn cooldown active; null nếu đã hết hoặc chưa có. */
+  cooldownAt: string | null;
+  /** ISO string nếu còn Tâm Ma debuff active; null nếu hết hoặc chưa có. */
+  taoMaUntil: string | null;
 }
 
 export interface TribulationAttemptOutcome {

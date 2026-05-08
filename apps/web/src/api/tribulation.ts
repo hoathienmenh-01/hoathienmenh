@@ -153,3 +153,80 @@ export async function fetchAttemptLog(
   if (!data.ok || !data.data) throw data.error ?? fallbackError('tribulation');
   return data.data;
 }
+
+// ── Phase 14.3.A — preview shape (read-only deterministic estimate) ─────────
+
+/** Mirror server `TribulationDef` subset surfaced trong preview. */
+export interface TribulationPreviewDefView {
+  key: string;
+  name: string;
+  description: string;
+  type: string;
+  severity: string;
+  wavesCount: number;
+}
+
+/** Mirror `TribulationSuccessChanceBreakdown` từ shared layer. */
+export interface TribulationSuccessChanceBreakdownView {
+  base: number;
+  affinity: number;
+  supports: number;
+  final: number;
+}
+
+/** Mirror `ComposedTribulationSupport.entries[]`. */
+export interface TribulationSupportEntryView {
+  source: string;
+  key: string;
+  bonus: number;
+}
+
+/** Mirror `TribulationRewardHint` (BigInt-safe — `expBonus` là string). */
+export interface TribulationRewardHintView {
+  linhThach: number;
+  expBonus: string;
+  titleKey: string | null;
+}
+
+/** Mirror `TribulationPenaltyHint`. */
+export interface TribulationPenaltyHintView {
+  expLossRatio: number;
+  cooldownMinutes: number;
+  taoMaDebuffChance: number;
+  taoMaDebuffDurationMinutes: number;
+}
+
+/**
+ * Mirror server `TribulationPreview`. Read-only — không trigger RNG/log.
+ * `null` nếu transition tiếp theo KHÔNG cần kiếp (low-tier hoặc realm cuối).
+ */
+export interface TribulationPreviewView {
+  requirement: true;
+  fromRealmKey: string;
+  toRealmKey: string;
+  atPeak: boolean;
+  def: TribulationPreviewDefView;
+  successChance: TribulationSuccessChanceBreakdownView;
+  supports: TribulationSupportEntryView[];
+  supportTotalBonus: number;
+  rewardHint: TribulationRewardHintView;
+  penaltyHint: TribulationPenaltyHintView;
+  cooldownAt: string | null;
+  taoMaUntil: string | null;
+}
+
+/**
+ * Phase 14.3.A — GET /character/tribulation/preview.
+ *
+ * Server-authoritative read-only — recompute success chance + supports +
+ * reward/penalty hint từ character state. Không trigger attempt/log/RNG.
+ * Server trả `data.preview = null` nếu transition kế tiếp KHÔNG có catalog
+ * kiếp (e.g. low-tier hoặc realm cuối).
+ */
+export async function fetchTribulationPreview(): Promise<TribulationPreviewView | null> {
+  const { data } = await apiClient.get<
+    Envelope<{ preview: TribulationPreviewView | null }>
+  >('/character/tribulation/preview');
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('tribulation');
+  return data.data.preview;
+}

@@ -12,6 +12,31 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Added — Phase 14.3.A Breakthrough Tribulation Foundation (this PR)
+
+- **Đột phá cảnh giới giờ có lớp Thiên Kiếp gating chính thức** — Phase 11.6.A đã ship catalog `TribulationDef` (8 entry: kim_dan→nguyen_anh, nguyen_anh→hoa_than, hoa_than→luyen_hu, luyen_hu→hop_the, hop_the→dai_thua, dai_thua→do_kiep, do_kiep→nhan_tien, chuan_thanh→thanh_nhan) + Phase 11.6.B đã ship runtime `attemptTribulation()` (8 wave deterministic + reward + Tâm Ma penalty). Phase 14.3.A bổ sung **lớp foundation** mỏng để: (1) UI biết trước cảnh giới kế tiếp có cần kiếp không; (2) UI ước lượng % thành công trước khi vượt; (3) breakthrough endpoint từ chối bypass khi realm yêu cầu kiếp. KHÔNG rewrite Phase 11.6.B — chỉ wrap thêm helpers + 1 endpoint preview + 1 gate.
+- **Shared (`packages/shared/src/tribulation-foundation.ts`)** — module mới chuyên trách lớp 14.3.A:
+  - `tribulationRequiredForBreakthrough(fromRealmKey, toRealmKey)` → boolean. Lookup `TRIBULATIONS` catalog; trả `true` ↔ catalog có entry `(fromRealmKey, toRealmKey)`. Pure, deterministic.
+  - `composeTribulationSupports(entries)` → `{ entries[], totalBonus }`. Additive bonus từ items/buffs/talents/equipment. Per-entry cap `TRIBULATION_SUPPORT_PER_ENTRY_CEIL=0.10`, total cap `TRIBULATION_SUPPORT_TOTAL_CEIL=0.30` — chống stack vô hạn.
+  - `computeTribulationSuccessChance({ def, primaryElement, supportTotalBonus })` → `{ base, affinity, supports, final }`. Base theo `severity` (`minor=0.75 / major=0.55 / heavenly=0.35 / saint=0.20`). Affinity ±0.05 nếu primary spirit-root khắc/bị khắc kiep element (dùng `elementalAdvantage` từ Phase 14.2.A). Final clamp envelope `[TRIBULATION_SUCCESS_CHANCE_FLOOR=0.05, TRIBULATION_SUCCESS_CHANCE_CEIL=0.95]` — giữ tension, KHÔNG cho 0%/100%.
+  - `summarizeTribulationRewardHint(def)` / `summarizeTribulationPenaltyHint(def)` — pure shape compactor cho FE preview panel (không snapshot RNG).
+  - Re-export qua `packages/shared/src/index.ts`. 25 unit test bao phủ catalog detection / cap clamp / chance envelope / element affinity / hint shape.
+- **API mới (`apps/api/src/modules/character`)**:
+  - `TribulationService.previewTribulation(characterId)` → `TribulationPreview | null`. Read-only deterministic snapshot — KHÔNG roll RNG, KHÔNG ghi `TribulationAttemptLog`. Fetch character → tính `nextRealmKey` từ `realms.ts` ladder → nếu transition không có catalog entry (low-tier hoặc realm cuối) trả `null`. Có entry → compose supports (Phase 14.3.A: empty list — defer per-source provider) → compute success chance → trả `{ requirement: true, fromRealmKey, toRealmKey, atPeak, def, successChance, supports[], supportTotalBonus, rewardHint, penaltyHint, cooldownAt, taoMaUntil }`.
+  - **`GET /character/tribulation/preview`** (auth) — wrap `previewTribulation`. Idempotent. Server-authoritative.
+  - **`CharacterService.breakthrough()` add `TRIBULATION_REQUIRED` gate** — trước khi cấp realm mới, check `tribulationRequiredForBreakthrough(currentRealm, nextRealm)`. Nếu `true` → throw `TRIBULATION_REQUIRED` (FE catch và redirect tới `/tribulation`). Low-tier transition (luyenkhi→truc_co, truc_co→kim_dan) tiếp tục dùng breakthrough thường. Phase 14.3.A KHÔNG đụng pipeline cũ — chỉ thêm 1 guard sớm.
+  - 18 test mới (13 tribulation preview + 5 character service gate). Tổng 114 character/tribulation test pass.
+- **FE layer**:
+  - `apps/web/src/api/tribulation.ts` — bổ sung 7 interface mirror server preview shape (`TribulationPreviewView` + 5 sub-shape) + `fetchTribulationPreview()` client. BigInt-safe (`expBonus` là string).
+  - `apps/web/src/stores/tribulation.ts` — thêm `preview: TribulationPreviewView | null | undefined` (3-state: chưa fetch / không cần kiếp / có kiếp), `previewLoading`, `previewError`, action `fetchPreview()` race-protected (`IN_FLIGHT` guard). `reset()` clear preview state.
+  - `apps/web/src/views/TribulationView.vue` — `onMounted` gọi `fetchPreview()` song song `fetchHistory()`. Bổ sung **preview panel** trong upcoming card hiển thị `final %` (round), affinity badge ±5% (chỉ render khi affinity ≠ 0), supports list (foundation phase rỗng → empty hint), `data-testid` đầy đủ.
+  - i18n vi/en parity: `tribulation.field.previewTitle` / `successChance` / `affinity` / `supports` / `supportsEmpty`.
+  - 16 FE test mới (7 store fetchPreview + 9 view preview panel). Tổng 143 tribulation FE test pass.
+- **Docs**: entry này + AI_HANDOFF_REPORT + BALANCE_MODEL (dial table) + API.md (preview endpoint).
+- **Out of scope (Phase 14.3.A)**: per-source support provider (item/buff/talent/equipment registry), preview cooldown auto-refresh khi state thay đổi, multi-character support, advanced tribulation UI (countdown / element pictogram lớn).
+- **Risk / rollback**: thấp. Lớp foundation thuần wrap; không migration; không đụng RNG/log path. Rollback = revert PR. Đã verify breakthrough cũ vẫn work (low-tier `truc_co → kim_dan` không bị block).
+- **Verification**: shared `--run tribulation-foundation` 25 PASS ✅ / api `--run tribulation` 70 PASS ✅ / api `--run character.service` 44 PASS ✅ / web `--run tribulation` 143 PASS ✅.
+
 ### Added — Phase 12.10.A NPC Affinity & Relationship Foundation (this PR)
 
 - **NPC giờ có điểm thân tình (affinity) riêng** — Mở nền móng quan hệ NPC: mỗi (character, NPC) có 1 điểm số từ `minScore..maxScore` (per-NPC catalog), tăng/giảm qua dialogue choice + future quest reward, vượt mốc `AFFINITY_TIERS` (Xa Lạ → Quen Biết → Bằng Hữu → Tri Giao → Tri Kỷ) sẽ unlock dialogue/quest mới. Phase 12.10.A KHÔNG ship gift/shop NPC — chỉ foundation runtime + FE relationship panel + dialogue change_affinity hook.

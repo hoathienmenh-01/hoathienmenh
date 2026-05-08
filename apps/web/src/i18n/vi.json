@@ -1935,7 +1935,12 @@
       "rewardTitle": "Danh hiệu đặc biệt",
       "penaltyExpLoss": "Mất kinh nghiệm",
       "penaltyCooldown": "Cooldown",
-      "penaltyTaoMa": "Tâm Ma debuff"
+      "penaltyTaoMa": "Tâm Ma debuff",
+      "previewTitle": "Dự đoán kết quả",
+      "successChance": "Tỷ lệ vượt kiếp",
+      "affinity": "Khắc chế ngũ hành",
+      "supports": "Hỗ trợ",
+      "supportsEmpty": "Chưa có hỗ trợ kích hoạt."
     },
     "unit": {
       "minutes": "phút"
