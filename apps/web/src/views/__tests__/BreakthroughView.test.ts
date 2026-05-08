@@ -60,6 +60,7 @@ interface BreakthroughStateStub {
 }
 
 const replaceMock = vi.fn();
+const pushMock = vi.fn();
 const attemptMock = vi.fn();
 const clearLastOutcomeMock = vi.fn();
 const fetchHistoryMock = vi.fn().mockResolvedValue(null);
@@ -137,7 +138,7 @@ vi.mock('@/stores/toast', () => ({
   }),
 }));
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ replace: replaceMock }),
+  useRouter: () => ({ replace: replaceMock, push: pushMock }),
 }));
 
 vi.mock('@/components/shell/AppShell.vue', () => ({
@@ -226,6 +227,7 @@ const i18n = createI18n({
           NOT_AT_PEAK: 'Chưa peak',
           UNAUTHENTICATED: 'Hết phiên',
           IN_FLIGHT: 'Đang xử lý',
+          TRIBULATION_REQUIRED: 'Cảnh giới này cần vượt Thiên Kiếp',
           UNKNOWN: 'Lỗi',
         },
       },
@@ -398,6 +400,28 @@ describe('BreakthroughView — Phase 11 nâng cao §5 PR3', () => {
     expect(attemptMock).toHaveBeenCalled();
     const last = toastPushMock.mock.calls[toastPushMock.mock.calls.length - 1][0];
     expect(last.type).toBe('warning');
+    w.unmount();
+  });
+
+  // Phase 14.3.B — server signal "cảnh giới này cần vượt Thiên Kiếp".
+  // Backend trả 409 CONFLICT với code TRIBULATION_REQUIRED khi player ở
+  // peak realm cao (ví dụ kim_dan stage 9 đủ EXP) và transition đòi kiếp.
+  // FE phải toast "Cảnh giới này cần vượt Thiên Kiếp" + redirect /tribulation
+  // để player thấy preview success chance + supports.
+  it('click attempt → TRIBULATION_REQUIRED → toast info + router.push(/tribulation)', async () => {
+    gameState.character = { realmKey: 'kim_dan', realmStage: 9, exp: '1000', expNext: '1000' };
+    attemptMock.mockResolvedValueOnce('TRIBULATION_REQUIRED');
+    const w = mountView();
+    await flushPromises();
+    await w.get('[data-testid="breakthrough-attempt-btn"]').trigger('click');
+    await flushPromises();
+    expect(attemptMock).toHaveBeenCalled();
+    // Toast info (không phải warning) — đây là redirect signal, không lỗi.
+    const lastToast = toastPushMock.mock.calls[toastPushMock.mock.calls.length - 1][0];
+    expect(lastToast.type).toBe('info');
+    expect(lastToast.text).toContain('Thiên Kiếp');
+    // Router push sang /tribulation.
+    expect(pushMock).toHaveBeenCalledWith('/tribulation');
     w.unmount();
   });
 

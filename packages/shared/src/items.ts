@@ -80,6 +80,27 @@ export interface ItemBonus {
    * Không define = không bonus (legacy + foundation default — fallback 0).
    */
   elementalAtkBonus?: Partial<Record<ElementKey, number>>;
+  /**
+   * **Phase 14.3.B** — additive bonus to tribulation success chance khi item
+   * này được trong inventory (consumable hỗ trợ vượt kiếp) hoặc đang đeo
+   * (equipment hỗ trợ vượt kiếp). Convention positive value (e.g. `0.05` =
+   * +5% success chance).
+   *
+   * - PILL kind (consumable hỗ trợ vượt kiếp): preview KHÔNG consume; entry
+   *   chỉ surface trong supports list nếu inventory có ít nhất 1 stack.
+   *   Hậu kỳ Phase 14.3.B-W (ngoài scope) sẽ wire consume khi player
+   *   confirm attempt.
+   * - EQUIPMENT kind (item đang đeo có hộ phù): entry surface trong supports
+   *   nếu `equippedSlot != null`. Không cap per-item ngoài
+   *   `TRIBULATION_SUPPORT_PER_ENTRY_CEIL` (`0.1`) ở
+   *   {@link composeTribulationSupports}.
+   *
+   * Cap composition: foundation per-entry/total cap (`0.1` / `0.3`) đảm bảo
+   * stack rộng vẫn không lật tỉ lệ vượt kiếp khỏi tier progression.
+   *
+   * Không define = no support (default — legacy items).
+   */
+  tribulationSupport?: number;
 }
 
 export interface ItemEffect {
@@ -1073,6 +1094,54 @@ export const ITEMS: readonly ItemDef[] = [
     stackable: true,
     effect: { exp: 18000 },
     price: 9000,
+  },
+
+  // ----- Phase 14.3.B — Đan dược hỗ trợ vượt kiếp -----
+  // Inventory items có `tribulationSupport` > 0 → surface trong supports[]
+  // của tribulation preview (read-only). Chưa wire consume — Phase 14.3.B-W
+  // sẽ thêm consume khi player confirm attempt. Cap per-entry cộng thêm
+  // `0.10` (per-entry ceil) đảm bảo single pill không bypass tỉ lệ vượt kiếp.
+  {
+    key: 'thuan_kiep_dan',
+    name: 'Thuận Kiếp Đan',
+    description:
+      'Đan dược hộ thân khi vượt kiếp — tăng 5% tỉ lệ thành công thiên kiếp. ' +
+      'Ngậm trong miệng trước khi phi thăng, hương đan dịu nhẹ trợ tâm cảnh.',
+    kind: 'PILL_HP',
+    quality: 'HUYEN',
+    stackable: true,
+    bonuses: { tribulationSupport: 0.05 },
+    effect: { hp: 200 },
+    price: 1500,
+  },
+  {
+    key: 'tu_kiep_dan',
+    name: 'Tử Kiếp Đan',
+    description:
+      'Đan dược tiên phẩm cứu mạng giữa thiên kiếp — tăng 8% tỉ lệ thành công ' +
+      'thiên kiếp. Linh hồn hộ phù, vô cùng quý hiếm.',
+    kind: 'PILL_HP',
+    quality: 'TIEN',
+    stackable: true,
+    bonuses: { tribulationSupport: 0.08 },
+    effect: { hp: 800 },
+    price: 6000,
+  },
+  // ----- Phase 14.3.B — Hộ phù equipment hỗ trợ vượt kiếp -----
+  // Equipment items có `tribulationSupport` (đeo ARTIFACT_2 slot) → surface
+  // trong supports[] của tribulation preview nếu equippedSlot != null.
+  {
+    key: 'ho_kiep_phu',
+    name: 'Hộ Kiếp Phù',
+    description:
+      'Phù lục cổ Tiên phẩm khắc trên ngọc lam, đeo bên hông trợ tâm cảnh ' +
+      'vượt kiếp — tăng 6% tỉ lệ thành công thiên kiếp khi mang theo.',
+    kind: 'ARTIFACT',
+    quality: 'TIEN',
+    stackable: false,
+    slot: 'ARTIFACT_2',
+    bonuses: { spirit: 12, tribulationSupport: 0.06 },
+    price: 8500,
   },
 
   // ----- Nguyên liệu (ORE/herb/material) -----

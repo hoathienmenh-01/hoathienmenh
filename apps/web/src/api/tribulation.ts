@@ -166,19 +166,39 @@ export interface TribulationPreviewDefView {
   wavesCount: number;
 }
 
-/** Mirror `TribulationSuccessChanceBreakdown` từ shared layer. */
+/**
+ * Mirror `TribulationSuccessChanceBreakdown` từ shared layer.
+ *
+ * Phase 14.3.B: align với server response —
+ *   - `supportBonus`: tổng additive supports bonus (sau clamp).
+ *   - `elementAdjustment`: bonus/penalty Ngũ Hành affinity primary vs kiếp.
+ *   - `raw`: `base + supportBonus + elementAdjustment` (pre-clamp).
+ *   - `floorHit` / `ceilHit`: warning UX khi clamp về [FLOOR, CEIL].
+ */
 export interface TribulationSuccessChanceBreakdownView {
   base: number;
-  affinity: number;
-  supports: number;
+  supportBonus: number;
+  elementAdjustment: number;
+  raw: number;
   final: number;
+  floorHit: boolean;
+  ceilHit: boolean;
 }
 
-/** Mirror `ComposedTribulationSupport.entries[]`. */
+/**
+ * Mirror `ComposedTribulationSupport.entries[]` + `TribulationSupportEntry`.
+ *
+ * Phase 14.3.B: tooltip-friendly fields:
+ *   - `source`: 'item' | 'buff' | 'equipment' | 'talent' | 'spirit_root'.
+ *   - `label`: tên hiển thị FE (catalog name) — optional, fallback `key`.
+ *   - `element`: hệ Ngũ Hành nếu entry là element resist/affinity.
+ */
 export interface TribulationSupportEntryView {
   source: string;
   key: string;
   bonus: number;
+  label?: string | null;
+  element?: string | null;
 }
 
 /** Mirror `TribulationRewardHint` (BigInt-safe — `expBonus` là string). */

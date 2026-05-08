@@ -542,10 +542,11 @@ onUnmounted(() => {
         </div>
 
         <!--
-          Phase 14.3.A — preview panel (success chance + supports).
+          Phase 14.3.A/B — preview panel (success chance + supports).
           Server-authoritative deterministic estimate (không roll RNG, không
-          ghi log). Hiển thị final %, breakdown base/affinity/supports nếu
-          có. Empty supports list trong foundation phase.
+          ghi log). Hiển thị final %, breakdown base/elementAdjustment/
+          supportBonus, danh sách supports với label + element badge,
+          và cap warnings (per-entry / total) khi server clamp.
         -->
         <div
           v-if="tribulation.preview"
@@ -560,20 +561,38 @@ onUnmounted(() => {
             </span>
           </div>
           <div
-            v-if="tribulation.preview.successChance.affinity !== 0"
+            v-if="tribulation.preview.successChance.elementAdjustment !== 0"
             data-testid="tribulation-preview-affinity"
           >
             <span class="text-ink-300">{{ t('tribulation.field.affinity') }}:</span>
             <span
               :class="[
                 'ml-1',
-                tribulation.preview.successChance.affinity > 0
+                tribulation.preview.successChance.elementAdjustment > 0
                   ? 'text-emerald-200'
                   : 'text-rose-200',
               ]"
             >
-              {{ tribulation.preview.successChance.affinity > 0 ? '+' : '' }}{{
-                Math.round(tribulation.preview.successChance.affinity * 100)
+              {{ tribulation.preview.successChance.elementAdjustment > 0 ? '+' : '' }}{{
+                Math.round(tribulation.preview.successChance.elementAdjustment * 100)
+              }}%
+            </span>
+          </div>
+          <div
+            v-if="tribulation.preview.successChance.supportBonus !== 0"
+            data-testid="tribulation-preview-support-bonus"
+          >
+            <span class="text-ink-300">{{ t('tribulation.field.supportBonus') }}:</span>
+            <span
+              :class="[
+                'ml-1',
+                tribulation.preview.successChance.supportBonus > 0
+                  ? 'text-emerald-200'
+                  : 'text-rose-200',
+              ]"
+            >
+              {{ tribulation.preview.successChance.supportBonus > 0 ? '+' : '' }}{{
+                Math.round(tribulation.preview.successChance.supportBonus * 100)
               }}%
             </span>
           </div>
@@ -590,7 +609,22 @@ onUnmounted(() => {
                 class="text-emerald-200"
                 :data-testid="`tribulation-preview-support-${idx}`"
               >
-                +{{ Math.round(s.bonus * 100) }}% — {{ s.source }}/{{ s.key }}
+                <span
+                  class="inline-block px-1 mr-1 rounded bg-ink-700/40 text-ink-200 uppercase text-[10px]"
+                  :data-testid="`tribulation-preview-support-${idx}-source`"
+                >
+                  {{ t(`tribulation.supportSource.${s.source}`) }}
+                </span>
+                <span
+                  class="text-ink-100"
+                  :data-testid="`tribulation-preview-support-${idx}-label`"
+                >{{ s.label || s.key }}</span>
+                <span
+                  v-if="s.element"
+                  class="ml-1 text-[10px] text-amber-200"
+                  :data-testid="`tribulation-preview-support-${idx}-element`"
+                >({{ t(`tribulation.element.${s.element}`) }})</span>
+                <span class="ml-1">+{{ Math.round(s.bonus * 100) }}%</span>
               </li>
             </ul>
           </div>
@@ -600,6 +634,20 @@ onUnmounted(() => {
             data-testid="tribulation-preview-supports-empty"
           >
             {{ t('tribulation.field.supportsEmpty') }}
+          </div>
+          <div
+            v-if="tribulation.preview.successChance.ceilHit"
+            class="text-amber-300 text-[11px]"
+            data-testid="tribulation-preview-cap-warning"
+          >
+            {{ t('tribulation.field.capWarningCeil') }}
+          </div>
+          <div
+            v-else-if="tribulation.preview.successChance.floorHit"
+            class="text-rose-300 text-[11px]"
+            data-testid="tribulation-preview-floor-warning"
+          >
+            {{ t('tribulation.field.capWarningFloor') }}
           </div>
         </div>
 

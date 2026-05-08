@@ -1950,8 +1950,25 @@
       "previewTitle": "Dự đoán kết quả",
       "successChance": "Tỷ lệ vượt kiếp",
       "affinity": "Khắc chế ngũ hành",
+      "supportBonus": "Tổng hỗ trợ",
       "supports": "Hỗ trợ",
-      "supportsEmpty": "Chưa có hỗ trợ kích hoạt."
+      "supportsEmpty": "Chưa có hỗ trợ kích hoạt.",
+      "capWarningCeil": "Đã chạm trần bonus tối đa — thêm hỗ trợ không tăng tỷ lệ.",
+      "capWarningFloor": "Đã chạm sàn tối thiểu — không thể giảm thêm."
+    },
+    "supportSource": {
+      "item": "Vật phẩm",
+      "buff": "Buff",
+      "equipment": "Trang bị",
+      "talent": "Thiên phú",
+      "spirit_root": "Linh căn"
+    },
+    "element": {
+      "kim": "Kim",
+      "moc": "Mộc",
+      "thuy": "Thuỷ",
+      "hoa": "Hoả",
+      "tho": "Thổ"
     },
     "unit": {
       "minutes": "phút"
@@ -2107,6 +2124,7 @@
       "INVALID_RNG": "Lỗi hệ thống RNG, thử lại sau.",
       "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
       "IN_FLIGHT": "Đang xử lý…",
+      "TRIBULATION_REQUIRED": "Cảnh giới này cần vượt Thiên Kiếp — chuyển sang trang Thiên Kiếp.",
       "UNKNOWN": "Đột phá thất bại, thử lại."
     }
   },

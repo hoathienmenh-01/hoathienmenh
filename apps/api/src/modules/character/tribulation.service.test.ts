@@ -40,6 +40,9 @@ let svcWithBuffs: TribulationService;
 let svcWithTalents: TribulationService;
 let svcWithEquip: TribulationService;
 let svcWithTalentsEquip: TribulationService;
+// Phase 14.3.B — full inject (titles + buffs + talents + inventory) cho preview
+// supports tests cần đọc cả 4 nguồn cùng lúc.
+let svcFull: TribulationService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
@@ -85,6 +88,17 @@ beforeAll(() => {
     currency,
     undefined,
     undefined,
+    undefined,
+    talentSvc,
+    inventorySvc,
+  );
+  // Phase 14.3.B — full inject (titles + buffs + talents + inventory) cho
+  // preview supports populated tests.
+  svcFull = new TribulationService(
+    prisma,
+    currency,
+    titleSvc,
+    buffSvc,
     undefined,
     talentSvc,
     inventorySvc,
@@ -1653,5 +1667,233 @@ describe('Phase 14.3.A — TribulationService.previewTribulation', () => {
     });
     const preview = await svc.previewTribulation(ctx.characterId);
     expect(preview!.cooldownAt).toBe(future.toISOString());
+  });
+});
+
+// ── Phase 14.3.B — Tribulation Support Providers (preview) ──────────────
+//
+// Cover preview với supports populated từ inventory item / equipped item /
+// active buff / learned talent qua các provider helpers shared. Verify:
+//   - supports[] không còn empty khi player có hỗ trợ.
+//   - source label (item/equipment/buff/talent) trong từng entry.
+//   - successChance.support cộng dồn vào final.
+//   - preview KHÔNG mutate state (inventory.qty, buff.stacks, char.realmStage
+//     không thay đổi).
+//   - low-tier (luyenkhi peak) → null vẫn giữ (preview path low-tier không
+//     bị break).
+describe('Phase 14.3.B — TribulationService.previewTribulation supports populated', () => {
+  it('inventory có Thuận Kiếp Đan + Tử Kiếp Đan → 2 entry source=item', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    await prisma.inventoryItem.create({
+      data: {
+        characterId: ctx.characterId,
+        itemKey: 'thuan_kiep_dan',
+        qty: 3,
+      },
+    });
+    await prisma.inventoryItem.create({
+      data: {
+        characterId: ctx.characterId,
+        itemKey: 'tu_kiep_dan',
+        qty: 1,
+      },
+    });
+
+    const preview = await svcFull.previewTribulation(ctx.characterId);
+    expect(preview).not.toBeNull();
+    const itemEntries = preview!.supports.filter((s) => s.source === 'item');
+    expect(itemEntries).toHaveLength(2);
+    const keys = itemEntries.map((e) => e.key).sort();
+    expect(keys).toEqual(['thuan_kiep_dan', 'tu_kiep_dan']);
+    // Total bonus = 0.05 + 0.08 = 0.13.
+    expect(preview!.supportTotalBonus).toBeCloseTo(0.13);
+    expect(preview!.successChance.supportBonus).toBeCloseTo(0.13);
+    // Final = base 0.75 + supportBonus 0.13 = 0.88 (no other modifiers).
+    expect(preview!.successChance.final).toBeCloseTo(0.88);
+  });
+
+  it('Hộ Kiếp Phù equipped → entry source=equipment + total bonus +0.06', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    await prisma.inventoryItem.create({
+      data: {
+        characterId: ctx.characterId,
+        itemKey: 'ho_kiep_phu',
+        qty: 1,
+        equippedSlot: 'ARTIFACT_2',
+      },
+    });
+
+    const preview = await svcFull.previewTribulation(ctx.characterId);
+    const equipEntries = preview!.supports.filter(
+      (s) => s.source === 'equipment',
+    );
+    expect(equipEntries).toHaveLength(1);
+    expect(equipEntries[0].key).toBe('ho_kiep_phu');
+    expect(preview!.supportTotalBonus).toBeCloseTo(0.06);
+  });
+
+  it('active buff Thuận Kiếp Đan Ấn → entry source=buff + total bonus +0.05', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    await buffSvc.applyBuff(ctx.characterId, 'thuan_kiep_dan_aura', 'pill');
+
+    const preview = await svcFull.previewTribulation(ctx.characterId);
+    const buffEntries = preview!.supports.filter((s) => s.source === 'buff');
+    expect(buffEntries).toHaveLength(1);
+    expect(buffEntries[0].key).toBe('thuan_kiep_dan_aura');
+    expect(preview!.supportTotalBonus).toBeCloseTo(0.05);
+  });
+
+  it('learned talent talent_kim_thien_giap + wave có element kim → entry source=talent', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    await prisma.characterTalent.create({
+      data: {
+        characterId: ctx.characterId,
+        talentKey: 'talent_kim_thien_giap',
+      },
+    });
+
+    const preview = await svcFull.previewTribulation(ctx.characterId);
+    const talentEntries = preview!.supports.filter(
+      (s) => s.source === 'talent',
+    );
+    // tribulation kim_dan→nguyen_anh waves = ['hoa', 'kim', 'hoa'] — match
+    // wave element kim → entry.
+    expect(talentEntries.length).toBeGreaterThanOrEqual(1);
+    const kimEntry = talentEntries.find(
+      (e) => e.key === 'talent_kim_thien_giap',
+    );
+    expect(kimEntry).toBeDefined();
+    expect(kimEntry!.bonus).toBeCloseTo(0.05);
+    expect(kimEntry!.element).toBe('kim');
+  });
+
+  it('mix nhiều nguồn (item + equipment + buff + talent) → total clamp ≤ 0.30', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    // item: thuan_kiep_dan (+0.05) + tu_kiep_dan (+0.08) = 0.13
+    await prisma.inventoryItem.create({
+      data: { characterId: ctx.characterId, itemKey: 'thuan_kiep_dan', qty: 1 },
+    });
+    await prisma.inventoryItem.create({
+      data: { characterId: ctx.characterId, itemKey: 'tu_kiep_dan', qty: 1 },
+    });
+    // equipment: ho_kiep_phu (+0.06) = 0.06
+    await prisma.inventoryItem.create({
+      data: {
+        characterId: ctx.characterId,
+        itemKey: 'ho_kiep_phu',
+        qty: 1,
+        equippedSlot: 'ARTIFACT_2',
+      },
+    });
+    // buff: thuan_kiep_dan_aura (+0.05)
+    await buffSvc.applyBuff(ctx.characterId, 'thuan_kiep_dan_aura', 'pill');
+    // talent: talent_kim_thien_giap (+0.05) + talent_hoa_thien_giap (+0.05)
+    // Cả 2 elements 'kim' và 'hoa' đều có trong tribulation lei waves.
+    await prisma.characterTalent.create({
+      data: {
+        characterId: ctx.characterId,
+        talentKey: 'talent_kim_thien_giap',
+      },
+    });
+    await prisma.characterTalent.create({
+      data: {
+        characterId: ctx.characterId,
+        talentKey: 'talent_hoa_thien_giap',
+      },
+    });
+
+    const preview = await svcFull.previewTribulation(ctx.characterId);
+    // Tổng raw = 0.05 + 0.08 + 0.06 + 0.05 + 0.05 + 0.05 = 0.34 → clamp 0.30.
+    expect(preview!.supportTotalBonus).toBeCloseTo(0.3);
+    // Source label đầy đủ.
+    const sources = new Set(preview!.supports.map((s) => s.source));
+    expect(sources.has('item')).toBe(true);
+    expect(sources.has('equipment')).toBe(true);
+    expect(sources.has('buff')).toBe(true);
+    expect(sources.has('talent')).toBe(true);
+  });
+
+  it('preview KHÔNG mutate inventory/buff/character (read-only)', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    await prisma.inventoryItem.create({
+      data: { characterId: ctx.characterId, itemKey: 'thuan_kiep_dan', qty: 3 },
+    });
+    await buffSvc.applyBuff(ctx.characterId, 'thuan_kiep_dan_aura', 'pill');
+
+    // Snapshot.
+    const charBefore = await prisma.character.findUnique({
+      where: { id: ctx.characterId },
+    });
+    const invBefore = await prisma.inventoryItem.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    const buffsBefore = await prisma.characterBuff.findMany({
+      where: { characterId: ctx.characterId },
+    });
+
+    await svcFull.previewTribulation(ctx.characterId);
+    await svcFull.previewTribulation(ctx.characterId);
+    await svcFull.previewTribulation(ctx.characterId);
+
+    // No log row written.
+    const logs = await prisma.tribulationAttemptLog.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(logs).toHaveLength(0);
+
+    // Inventory qty không bị decrement.
+    const invAfter = await prisma.inventoryItem.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(invAfter).toHaveLength(invBefore.length);
+    expect(invAfter[0].qty).toBe(invBefore[0].qty);
+
+    // Buff stacks không bị consume.
+    const buffsAfter = await prisma.characterBuff.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(buffsAfter).toHaveLength(buffsBefore.length);
+    expect(buffsAfter[0].stacks).toBe(buffsBefore[0].stacks);
+
+    // Character realm/exp unchanged.
+    const charAfter = await prisma.character.findUnique({
+      where: { id: ctx.characterId },
+    });
+    expect(charAfter!.realmKey).toBe(charBefore!.realmKey);
+    expect(charAfter!.realmStage).toBe(charBefore!.realmStage);
+    expect(charAfter!.exp).toBe(charBefore!.exp);
+  });
+
+  it('legacy svc (no inventory/buff/talent inject) → fallback supports rỗng (backward-compat)', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    // Add item + buff nhưng dùng svc baseline (không inject InventoryService /
+    // BuffService / TalentService) → KHÔNG fetch → supports rỗng.
+    await prisma.inventoryItem.create({
+      data: { characterId: ctx.characterId, itemKey: 'thuan_kiep_dan', qty: 1 },
+    });
+    const preview = await svc.previewTribulation(ctx.characterId);
+    expect(preview!.supports).toEqual([]);
+    expect(preview!.supportTotalBonus).toBe(0);
+  });
+
+  it('low-tier (luyenkhi peak) → preview vẫn null (no kiếp def cho transition này)', async () => {
+    const ctx = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      realmStage: 9,
+      exp: (expCostForStage('luyenkhi', 9) ?? 0n) + 100n,
+      hp: 1000,
+      hpMax: 1000,
+      mp: 100,
+      mpMax: 100,
+      linhThach: 0n,
+    });
+    // Player có 1 đan và 1 buff hỗ trợ — không quan trọng vì transition này
+    // không có TribulationDef → preview return null.
+    await prisma.inventoryItem.create({
+      data: { characterId: ctx.characterId, itemKey: 'thuan_kiep_dan', qty: 1 },
+    });
+    await buffSvc.applyBuff(ctx.characterId, 'thuan_kiep_dan_aura', 'pill');
+    const preview = await svcFull.previewTribulation(ctx.characterId);
+    expect(preview).toBeNull();
   });
 });

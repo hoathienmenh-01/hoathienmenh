@@ -19,6 +19,7 @@ export * from './talents';
 export * from './titles';
 export * from './tribulation';
 export * from './tribulation-foundation';
+export * from './tribulation-support-providers';
 export * from './topup';
 export * from './shop';
 export * from './map-regions';

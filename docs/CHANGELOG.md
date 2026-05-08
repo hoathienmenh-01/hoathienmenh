@@ -12,6 +12,31 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Added — Phase 14.3.B Tribulation Support Providers and Breakthrough Redirect UX (this PR)
+
+- **Hoàn thiện vòng chơi Thiên Kiếp** — Phase 14.3.A đã ship `previewTribulation()` + endpoint `GET /character/tribulation/preview` nhưng `supports[]` luôn empty và FE BreakthroughView chỉ toast lỗi `TRIBULATION_REQUIRED` khô khan khi player ấn "Đột phá" ở realm cao. Phase 14.3.B làm 2 việc song song: (1) ship 4 provider thực tế nạp `supports[]` từ catalog, (2) FE bắt 409 → toast info + redirect `/tribulation` để player thấy preview success chance + supports + nút "Vượt kiếp".
+- **Shared providers (`packages/shared/src/tribulation-support-providers.ts`)** — pure read-only helper KHÔNG mutate state:
+  - `collectItemTribulationSupports(inventoryEntries[])` — đọc `ItemDef.tribulationSupport.bonus` từ catalog cho item player đang có (qty>0). Item bonus áp dụng raw (KHÔNG consume preview).
+  - `collectBuffTribulationSupports(activeBuffEntries[])` — đọc `BuffDef.tribulationSupport.bonus` từ buff đang active. Stack across nhiều buff khác nhau cùng key (1 entry/buff key).
+  - `collectEquipmentTribulationSupports(equippedItems[])` — đọc `ItemDef.tribulationSupport.bonus` cho equipment đang đeo (slot map). Mỗi equipment 1 entry/key, dedup theo (slot, itemKey).
+  - `collectTalentTribulationSupports(talents[], waveElements[])` — talent có `talentDef.tribulationResist?.element` match với BẤT KỲ wave element nào trong tribulation thì 1 entry. Multi-wave: dedup theo talent key, surface 1 entry/talent.
+  - 23 unit test (catalog seed verify + zero-state + multi-source compose).
+- **API (`TribulationService`)** — wire 4 provider vào `previewTribulation()`:
+  - Inject `InventoryService?`/`BuffService?`/`TalentService?` qua constructor (Optional, fallback empty array khi missing — backward compat với legacy test).
+  - `previewTribulation(characterId)` collect supports từ inventory entries + active buffs + equipment + talents, compose vào `successChance.supportBonus` (clamp tổng) + `supports[]` chi tiết per source. **KHÔNG** consume item / KHÔNG decrement buff / KHÔNG mutate state.
+  - 8 test mới: preview supports populated từ item/buff/equipment/talent / multi-source compose / talent multi-wave dedup / no-mutation verify (snapshot inventory + buff trước/sau) / low-tier breakthrough vẫn null. Tổng 78 tribulation test PASS / 503 character module test PASS (no regression).
+- **Catalog seed** — thêm `tribulationSupport` cho 1 item + 1 buff để gameplay path không trống:
+  - `lei_kiep_phu` (item — Lôi Kiếp Phù): `tribulationSupport: { bonus: 0.05, element: 'kim' }`.
+  - `thien_lei_phu` (buff — Thiên Lôi Phù): `tribulationSupport: { bonus: 0.05 }`.
+- **FE — BreakthroughView (`apps/web/src/views/BreakthroughView.vue`)**: thêm catch `TRIBULATION_REQUIRED` trong `onAttempt()` → toast info `breakthrough.errors.TRIBULATION_REQUIRED` + `router.push('/tribulation')` thay cho toast warning lỗi khô khan. Low-tier breakthrough flow KHÔNG bị ảnh hưởng (path cũ vẫn chạy với toast warning cho NOT_AT_PEAK / IN_FLIGHT / etc.). 1 test mới phủ TRIBULATION_REQUIRED → toast info + router push.
+- **FE — TribulationView preview panel (`apps/web/src/views/TribulationView.vue`)**:
+  - Update field name (Phase 14.3.A → 14.3.B): `successChance.affinity` → `elementAdjustment`, `successChance.supports` → `supportBonus`. Thêm `raw` / `floorHit` / `ceilHit` cho cap warning.
+  - Render mỗi support entry với badge source (`tribulation.supportSource.{item|buff|equipment|talent|spirit_root}`) + label catalog name + element indicator nếu có + bonus % round.
+  - Cap warning: render `tribulation.field.capWarningCeil` khi `ceilHit=true` ("Đã chạm trần bonus tối đa") hoặc `capWarningFloor` khi `floorHit=true`.
+  - 4 test mới: support label + element badge / supportBonus row / ceil warning / floor warning. Tổng 76 TribulationView test PASS.
+- **i18n parity vi/en** — `tribulation.field.supportBonus`, `capWarningCeil`, `capWarningFloor`, `tribulation.supportSource.*` (5 key), `tribulation.element.*` (5 key Ngũ Hành), `breakthrough.errors.TRIBULATION_REQUIRED`.
+- **Verification**: shared typecheck + 23 provider test PASS / api typecheck + `--run tribulation` 78 PASS + `--run character` 503 PASS / web typecheck + `--run Tribulation` 147 PASS + `--run Breakthrough` 49 PASS / pnpm build ✅. **KHÔNG migration / KHÔNG schema** — chỉ thêm provider helper + wire constructor + catalog seed + FE template/test/i18n.
+
 ### Added — Phase 14.2.B Elemental Combat Data and Balance (this PR)
 
 - **Ngũ Hành combat đi vào dữ liệu thật** — Phase 14.2.A foundation pipeline (compose 3 layer: skill element vs character primary/secondary + monster `elementalResist` + equipment `elementalAtkBonus`) đã wire trong combat service runtime nhưng **dữ liệu trống**: tất cả monster/boss `elementalResist` undefined, mọi equipment `bonuses.elementalAtkBonus` undefined → foundation pipeline noop. Phase 14.2.B ship data **thật** vào catalog + invariant test ép data tuân envelope đã chốt ở §2.9.3 BALANCE_MODEL.

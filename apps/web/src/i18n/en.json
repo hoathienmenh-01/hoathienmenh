@@ -1950,8 +1950,25 @@
       "previewTitle": "Estimated outcome",
       "successChance": "Success chance",
       "affinity": "Element affinity",
+      "supportBonus": "Total supports",
       "supports": "Supports",
-      "supportsEmpty": "No support items active."
+      "supportsEmpty": "No support items active.",
+      "capWarningCeil": "Hit max bonus cap — extra supports won't increase the chance.",
+      "capWarningFloor": "Hit min floor — cannot reduce further."
+    },
+    "supportSource": {
+      "item": "Item",
+      "buff": "Buff",
+      "equipment": "Equipment",
+      "talent": "Talent",
+      "spirit_root": "Spiritual Root"
+    },
+    "element": {
+      "kim": "Metal",
+      "moc": "Wood",
+      "thuy": "Water",
+      "hoa": "Fire",
+      "tho": "Earth"
     },
     "unit": {
       "minutes": "min"

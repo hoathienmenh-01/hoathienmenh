@@ -1,6 +1,10 @@
 import { forwardRef, Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { CurrencyKind } from '@prisma/client';
 import {
+  collectBuffTribulationSupports,
+  collectEquipmentTribulationSupports,
+  collectItemTribulationSupports,
+  collectTalentTribulationSupports,
   composeTribulationSupports,
   computeEquipmentTribulationResist,
   computePassiveTalentTribulationResist,
@@ -495,10 +499,38 @@ export class TribulationService {
       (ELEMENTS as readonly string[]).includes(e),
     );
 
-    // Phase 14.3.A foundation — supports list khởi tạo rỗng. Sub-PR sẽ
-    // populate từ items/buffs/talents. Để empty array thay vì optional để
-    // FE render uniform.
-    const supports = composeTribulationSupports([]);
+    // Phase 14.3.B — collect support entries từ inventory/buff/equipment/
+    // talent. Mỗi service Optional ở constructor nên fallback []` khi inject
+    // thiếu (legacy test path / future phase pruning).
+    const inventoryRows = this.inventory
+      ? await this.inventory.list(characterId)
+      : [];
+    const itemEntries = collectItemTribulationSupports(inventoryRows);
+    const equipmentEntries =
+      collectEquipmentTribulationSupports(inventoryRows);
+
+    const activeBuffs = this.buffs ? await this.buffs.listActive(characterId) : [];
+    const buffEntries = collectBuffTribulationSupports(activeBuffs);
+
+    const learnedTalents = this.talents
+      ? await this.talents.listLearned(characterId)
+      : [];
+    const waveElements: (ElementKey | null)[] = def.waves.map(
+      (w) => w.element,
+    );
+    const talentEntries = collectTalentTribulationSupports(
+      learnedTalents.map((l) => l.talentKey),
+      waveElements,
+    );
+
+    // KHÔNG mutate state: composeTribulationSupports + collect* helpers đều
+    // pure. Inventory/buff fetch đều read-only Prisma findMany.
+    const supports = composeTribulationSupports([
+      ...itemEntries,
+      ...equipmentEntries,
+      ...buffEntries,
+      ...talentEntries,
+    ]);
     const successChance = computeTribulationSuccessChance({
       def,
       primaryElement,
