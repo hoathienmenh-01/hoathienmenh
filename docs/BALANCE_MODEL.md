@@ -1327,13 +1327,13 @@ Catalog ở [`packages/shared/src/sect-season.ts`](../packages/shared/src/sect-s
 
 | Milestone key | requiredPoints | Phần thưởng (Phase 13.2.A KHÔNG grant — chỉ display) |
 |---------------|----------------|------------------------------------------------------|
-| `bronze`      | 100            | 50 linh thạch                                       |
-| `silver`      | 500            | 200 linh thạch + 5 Linh Khí Đan                      |
-| `gold`        | 2 000          | 1 000 linh thạch + 3 Dưỡng Thần Đan                  |
-| `platinum`    | 5 000          | 2 500 linh thạch + 1 Bùa Tinh Thần Tập Trung         |
-| `diamond`     | 7 500          | 5 000 linh thạch + 1 Tiên Ngọc + danh hiệu mùa       |
+| `milestone_bronze`   | 100            | 50 linh thạch                                       |
+| `milestone_silver`   | 500            | 200 linh thạch + 5 Linh Khí Đan                      |
+| `milestone_gold`     | 1 500          | 1 000 linh thạch + 3 Dưỡng Thần Đan                  |
+| `milestone_platinum` | 3 500          | 2 500 linh thạch + 1 Bùa Tinh Thần Tập Trung         |
+| `milestone_diamond`  | 7 500          | 5 000 linh thạch + 1 Tiên Ngọc + danh hiệu mùa       |
 
-Quy đổi 7 500 điểm trong 4 tuần = **~1 875 điểm/tuần** ≈ 75% Sect War weekly cap player tier hardcore. Tier casual (≈ 500-700 điểm/tuần) sẽ chase được `silver` (500pt sau 1-2 tuần) và `gold` (2 000pt sau 3-4 tuần). Tier bot/idle (< 100pt/tuần) thậm chí có thể không qua `bronze`.
+Quy đổi 7 500 điểm trong 4 tuần = **~1 875 điểm/tuần** ≈ 75% Sect War weekly cap player tier hardcore. Tier casual (≈ 500-700 điểm/tuần) sẽ chase được `milestone_silver` (500pt sau 1-2 tuần) và `milestone_gold` (1 500pt sau 3-4 tuần). Tier bot/idle (< 100pt/tuần) thậm chí có thể không qua `milestone_bronze`.
 
 **Validators fail-fast** (`validateSectSeasonMilestonesMonotonic`):
 - Key unique trong list.
