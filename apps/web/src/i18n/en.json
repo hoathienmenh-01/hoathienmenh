@@ -2427,7 +2427,9 @@
       "leaderboard": "Leaderboard",
       "missions": "Sect Missions",
       "shop": "Sect Shop",
-      "rewards": "Weekly Rewards"
+      "rewards": "Weekly Rewards",
+      "season": "Season",
+      "hallOfFame": "Hall of Fame"
     }
   },
   "sectMission": {
@@ -2780,6 +2782,54 @@
       "NO_CHARACTER": "No character.",
       "SEASON_NOT_FOUND": "Season not found.",
       "UNKNOWN": "Failed to load season — try again."
+    },
+    "history": {
+      "title": "Season history",
+      "loading": "Loading season history…",
+      "empty": "No seasons have ended yet.",
+      "finalizedAt": "Finalized {at}",
+      "totalsLine": "{sects} sects · {contributors} members · {points} points",
+      "championLabel": "Champion sect",
+      "noChampion": "No sect scored",
+      "mvpLabel": "Most valuable cultivator",
+      "noMvp": "No cultivator scored",
+      "viewDetail": "View details",
+      "back": "← Back to list",
+      "detail": {
+        "sectsTitle": "Sect leaderboard",
+        "membersTitle": "Top contributors",
+        "emptySects": "No sect scored in this season.",
+        "emptyMembers": "No cultivator scored in this season.",
+        "noSect": "(no sect)"
+      },
+      "errors": {
+        "SNAPSHOT_NOT_FOUND": "This season has not been finalized yet.",
+        "SEASON_NOT_FOUND": "Season not found.",
+        "UNKNOWN": "Failed to load season history — try again."
+      }
+    },
+    "hallOfFame": {
+      "title": "Hall of Fame",
+      "subtitle": "Cumulative honors across all finalized seasons.",
+      "totalsLine": "{seasons} finalized seasons",
+      "loading": "Loading Hall of Fame…",
+      "empty": "No seasons have been honored yet.",
+      "sectsTitle": "Honored sects",
+      "membersTitle": "Honored cultivators",
+      "noLatestSect": "(no sect)",
+      "col": {
+        "rank": "#",
+        "sect": "Sect",
+        "member": "Cultivator",
+        "championships": "Champ",
+        "mvps": "MVP",
+        "podiums": "Top 3",
+        "appearances": "Seasons",
+        "bestRank": "Best rank",
+        "totalPoints": "Total points",
+        "latest": "Latest season",
+        "latestSect": "Latest sect"
+      }
     }
   }
 }
