@@ -150,6 +150,21 @@ function bonusText(item: ItemDef): string {
       );
     }
   }
+  // Phase 14.2.B — render equipment elementalAtkBonus tooltip. value > 0
+  // (e.g. 0.05 = +5% damage skill cùng hệ). pct hiển thị = round(value*100).
+  // Element name reuse `talents.element.<elem>` (cùng pattern elementResist).
+  if (item.bonuses.elementalAtkBonus) {
+    for (const [elem, value] of Object.entries(item.bonuses.elementalAtkBonus)) {
+      if (typeof value !== 'number' || value <= 0) continue;
+      const pct = Math.round(value * 100);
+      parts.push(
+        t('inventory.bonus.elementalAtkBonus', {
+          pct,
+          element: t(`talents.element.${elem}`, elem),
+        }),
+      );
+    }
+  }
   return parts.join(' · ');
 }
 

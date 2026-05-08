@@ -696,7 +696,7 @@ export const ITEMS: readonly ItemDef[] = [
     stackable: false,
     slot: 'ARMOR',
     // Phase 14.2.B — hàn thiết giáp → +4% damage skill hệ Thuỷ (giáp ngoại lệ
-    // dành cho tư siê hệ băng — ngoài Huền Giáp Phong Thuỷ elementResist).
+    // dành cho tu sĩ hệ băng — ngoài Huyền Giáp Phong Thuỷ elementResist).
     bonuses: { def: 32, hpMax: 110, elementalAtkBonus: { thuy: 0.04 } },
     price: 750,
   },

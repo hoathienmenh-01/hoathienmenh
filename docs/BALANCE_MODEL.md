@@ -333,6 +333,34 @@ final    = clamp(base × mResist × (1 + eqBonus), ADJUSTMENT_FLOOR, ADJUSTMENT_
 
 **Tương tác với Phase 11.3.B**: `characterSkillElementBonus` (Phase 11) vẫn áp **trước** Phase 14.2.A pipeline trong combat service damage flow. KHÔNG double-apply: 14.2.A pipeline lấy `skillElement` + `attackerPrimary`/`attackerSecondary` riêng từ `getOrCreateSpiritRootSet`, compose `base` qua `elementalMultiplier` + character bonus chỉ 1 lần. Phase 11.3.B `characterSkillElementBonus` chỉ phản ánh primary/secondary linh căn — Phase 14.2.A `base` đã bao gồm phần đó nên 2 layer là 2 wire điểm độc lập, không cộng dồn.
 
+### 2.9.3.1 Phase 14.2.B — Elemental combat data + balance (DONE this PR)
+
+Phase 14.2.B nâng cấp Phase 14.2.A từ pure-function pipeline trống dữ liệu thành **gameplay thật**. KHÔNG đụng dial constant ở §2.9.3 (envelope giữ nguyên), chỉ ship data + invariant test verify catalog tuân envelope.
+
+**Catalog data ship**:
+
+| Catalog file | Field | Số entry | Range chọn |
+| --- | --- | --- | --- |
+| `packages/shared/src/boss.ts` | `BossDef.elementalResist` | 6 boss | resist `[0.7, 0.92]` cho 1–2 hệ counter (giữ floor `0.70`) |
+| `packages/shared/src/monsters.ts` | `MonsterDef.elementalResist` | 8 monster mid/late | resist `[0.7, 0.95]` cho 1 hệ counter |
+| `packages/shared/src/items.ts` | `ItemBonus.elementalAtkBonus` | 6 equipment (3 weapon + 3 amulet) | per-item `[0.05, 0.10]` cho 1 hệ (giữ ceil `0.10`) |
+
+**Tuning rationale**:
+
+- **Resist 0.70 floor (KHÔNG nới)**: counter ×1.30 vs resist 0.7 → effective `1.30 × 0.7 = 0.91×` — dưới neutral 1.0× nhẹ. Player vẫn hơn neutral khi đánh bằng skill counter lên boss có resist, nhưng không spike như khi vô resist (1.30×). Nếu nới floor xuống 0.5 thì counter `1.30 × 0.5 = 0.65×` — player counter sẽ damage **kém hơn** neutral skill, phá design intent của Phase 11.3.B.
+- **Per-item ceil 0.10 (KHÔNG nới)**: 1 weapon `+10%` skill kim ≈ ½ counter advantage. Stack 2 món cùng hệ kim (weapon + amulet) `+0.05+0.10 = +0.15` → cap về `0.20` total ceil chỉ đạt được khi farm full bộ. Anti-power-creep: player không thể stack 6 món cùng hệ → cap. Test invariant `composeEquipmentElementalAtkBonus` 6-slot worst-case verify clamp đúng.
+- **Anti-power-creep guardrail invariant**: test `packages/shared/src/__tests__/elemental-data.test.ts` ép foundation pipeline ở **countered case + max bonus + min monster resist** (worst-case combo player thua) vẫn ở dưới `1.0×` — KHÔNG có cách nào để equipment bonus + linh-căn primary biến counter loss thành win. Concretely: countered ×0.70 × resist 0.7 (defender resist hệ player) × (1 + 0.20) eqBonus = `0.70 × 0.7 × 1.2 = 0.588×` — vẫn loss zone, KHÔNG vượt `1.0×`.
+
+**Invariant tests** (`packages/shared/src/__tests__/elemental-data.test.ts` — 35 case):
+- Catalog vs floor: ép mọi `BossDef.elementalResist[*]` ≥ `ELEMENT_MONSTER_RESIST_FLOOR=0.70` (catch data sai từ designer).
+- Catalog vs ceil: ép mọi `ItemBonus.elementalAtkBonus[*]` ≤ `ELEMENT_EQUIPMENT_ATK_BONUS_CEIL=0.10` (catch outlier item).
+- Gear-stack 6-slot worst case: simulate full-set 6 món cùng hệ + cap `composeEquipmentElementalAtkBonus` ≤ `ELEMENT_EQUIPMENT_ATK_BONUS_TOTAL_CEIL=0.20`.
+- Anti-power-creep envelope: countered + max bonus + min resist `< 1.0×` (player KHÔNG bypass counter loss bằng farm).
+
+**API integration tests** (`apps/api/src/modules/combat/combat.service.test.ts` Phase 14.2.B suite +5 case): xem §1 Executive Summary trên — verify foundation pipeline KHÔNG re-apply Phase 11.3.B base multiplier (deterministic test với `Math.random=0.5` + `tien` grade `statBonusPercent=0.18` → expected `dmg=659` integer match).
+
+**KHÔNG nới dial Phase 14.2.A** — pipeline foundation, floor, ceil giữ nguyên. Phase 14.2.C tương lai có thể tune `ELEMENT_COUNTER_MULTIPLIER` / `ELEMENT_GENERATE_MULTIPLIER` theo metric thực tế khi player base lớn.
+
 ### 2.9.3 Phase 11.3.D wire điểm (Pending)
 
 - UI character profile display Linh căn.

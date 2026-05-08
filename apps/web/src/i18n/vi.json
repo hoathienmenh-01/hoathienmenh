@@ -820,7 +820,8 @@
       "hpMax": "+{v} HP",
       "mpMax": "+{v} MP",
       "spirit": "+{v} linh",
-      "elementResist": "-{pct}% sát thương từ hệ {element}"
+      "elementResist": "-{pct}% sát thương từ hệ {element}",
+      "elementalAtkBonus": "+{pct}% sát thương skill hệ {element}"
     },
     "errors": {
       "INVENTORY_ITEM_NOT_FOUND": "Vật phẩm không còn nữa.",

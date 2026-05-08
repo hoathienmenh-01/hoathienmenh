@@ -400,8 +400,8 @@ export const BOSSES: readonly BossDef[] = [
     regionKey: null,
     monsterType: 'BOSS',
     // Phase 14.2.B — endgame hợp thể cross-element boss kháng đều 5 hệ,
-    // mỗi hệ mất 15% damage. Tổng damage giảm đồng đều không úvour hệ nào —
-    // ý nghĩa thiet kế: counter strategy không work, phải raw DPS.
+    // mỗi hệ mất 15% damage. Tổng damage giảm đồng đều không ưu hệ nào —
+    // ý nghĩa thiết kế: counter strategy không work, phải raw DPS.
     elementalResist: { kim: 0.85, moc: 0.85, thuy: 0.85, hoa: 0.85, tho: 0.85 },
   },
 ];

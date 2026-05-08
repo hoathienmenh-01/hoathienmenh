@@ -118,6 +118,7 @@ const i18n = createI18n({
           mpMax: 'MP Max +{v}',
           spirit: 'Thần +{v}',
           elementResist: '-{pct}% sát thương từ hệ {element}',
+          elementalAtkBonus: '+{pct}% sát thương skill hệ {element}',
         },
         refine: {
           button: 'Luyện Khí',
@@ -422,6 +423,64 @@ describe('InventoryView — render gear + unequipped', () => {
     await flushPromises();
     expect(w.text()).toContain('ATK +10');
     expect(w.text()).not.toContain('sát thương từ hệ');
+  });
+
+  // Phase 14.2.B — render `bonuses.elementalAtkBonus` tooltip line.
+  it('render weapon có elementalAtkBonus (kim 0.05) → "+5% sát thương skill hệ Kim"', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeInv({
+        id: 'i_kim_blade',
+        equippedSlot: null,
+        item: makeItemDef({
+          key: 'diem_phong_dao',
+          name: 'Điểm Phong Đao',
+          slot: 'WEAPON',
+          bonuses: {
+            atk: 25,
+            elementalAtkBonus: { kim: 0.05 },
+          },
+        }),
+      }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.text()).toContain('ATK +25');
+    expect(w.text()).toContain('+5% sát thương skill hệ Kim');
+  });
+
+  it('render weapon multi-element atk bonus → 2 line tooltip riêng cho mỗi element', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeInv({
+        id: 'i_multi_bonus',
+        equippedSlot: null,
+        item: makeItemDef({
+          key: 'multi_bonus_weapon',
+          name: 'Đa Hệ Kiếm',
+          slot: 'WEAPON',
+          bonuses: {
+            elementalAtkBonus: { kim: 0.05, hoa: 0.1 },
+          },
+        }),
+      }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.text()).toContain('+5% sát thương skill hệ Kim');
+    expect(w.text()).toContain('+10% sát thương skill hệ Hỏa');
+  });
+
+  it('render item KHÔNG có elementalAtkBonus → KHÔNG render tooltip line', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeInv({
+        id: 'i_plain_atk',
+        equippedSlot: null,
+        item: makeItemDef({ bonuses: { atk: 10 } }),
+      }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.text()).toContain('ATK +10');
+    expect(w.text()).not.toContain('sát thương skill hệ');
   });
 });
 

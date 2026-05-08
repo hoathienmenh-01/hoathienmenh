@@ -12,7 +12,31 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Added — Phase 14.0.B Sect Territory Settlement and Region Ownership (this PR)
+### Added — Phase 14.2.B Elemental Combat Data and Balance (this PR)
+
+- **Ngũ Hành combat đi vào dữ liệu thật** — Phase 14.2.A foundation pipeline (compose 3 layer: skill element vs character primary/secondary + monster `elementalResist` + equipment `elementalAtkBonus`) đã wire trong combat service runtime nhưng **dữ liệu trống**: tất cả monster/boss `elementalResist` undefined, mọi equipment `bonuses.elementalAtkBonus` undefined → foundation pipeline noop. Phase 14.2.B ship data **thật** vào catalog + invariant test ép data tuân envelope đã chốt ở §2.9.3 BALANCE_MODEL.
+- **Shared catalog data ship**:
+  - `packages/shared/src/boss.ts` — thêm `elementalResist` cho 6 boss world/region (giữ floor `ELEMENT_MONSTER_RESIST_FLOOR=0.70` per §2.9.3): mỗi boss resist 1–2 hệ counter của hệ chính boss (e.g. boss hệ Hỏa resist hệ Thủy `0.7` + hệ Mộc `0.85`).
+  - `packages/shared/src/monsters.ts` — thêm `elementalResist` cho 8 monster mid/late game tại các region đặc thù (`hoa_diem_son`, `kim_son_mach`, `thuy_long_uyen`, `moc_huyen_lam`, `hoang_tho_huyet`).
+  - `packages/shared/src/items.ts` — thêm `bonuses.elementalAtkBonus` cho 6 equipment (3 weapon kim/moc/hoa + 3 amulet thuy/tho/kim) — per-item `[0.05, 0.10]` giữ ceil `ELEMENT_EQUIPMENT_ATK_BONUS_CEIL=0.10` per §2.9.3.
+- **Shared invariant tests** (`packages/shared/src/__tests__/elemental-data.test.ts` — 35 case):
+  - Catalog vs floor/ceil: ép mọi `BossDef.elementalResist[*]` ≥ `0.70` + mọi `ItemBonus.elementalAtkBonus[*]` ≤ `0.10` (catch outlier data từ designer trong tương lai).
+  - Gear-stack 6-slot worst case: simulate player full-set 6 món cùng hệ → `composeEquipmentElementalAtkBonus` clamp ≤ `ELEMENT_EQUIPMENT_ATK_BONUS_TOTAL_CEIL=0.20`.
+  - Anti-power-creep envelope: countered case + max bonus + min monster resist worst-case combo player thua vẫn `< 1.0×` (concretely `0.70 × 0.7 × 1.2 = 0.588×`) — KHÔNG có cách nào để player bypass counter loss bằng farm gear cùng hệ.
+- **API combat integration tests** (`apps/api/src/modules/combat/combat.service.test.ts` Phase 14.2.B suite +5 case):
+  - **Baseline** — counter skill (kim) vs monster vô resist + char không equip elementalAtkBonus → KHÔNG log "kháng hệ" / "Trang bị tăng" (foundation noop, threshold guard `resist < 0.95` hoặc `bonus ≥ 0.05` mới fire log).
+  - **Equipment bonus** — char equip weapon `diem_phong_dao` (kim 0.05) → damage tăng + log "Trang bị tăng 5% sát thương hệ kim".
+  - **Monster resist** — boss `kim_giap_la_ha` có resist hệ Thủy 0.85 → damage giảm vs skill thủy + log "kháng hệ thủy ×0.85".
+  - **No double-apply** (deterministic `Math.random=0.5`, `tien` grade statBonusPercent 18%, weapon `diem_phong_dao` kim 0.05 vs `thanh_mang_xa` moc no resist) → expected `dmg = round(448 × 1.40 × 1.0 × 1.0 × 1.05) = 659` integer match. Verify pipeline KHÔNG re-apply base counter ×1.30 lần 2.
+  - **Null-element skill** (e.g. talent vô element) → foundation pipeline noop (resist/bonus không áp dụng), KHÔNG fire log thừa.
+- **FE polish** — `apps/web/src/views/InventoryView.vue`:
+  - Thêm tooltip line "+X% sát thương skill hệ {Element}" cho equipment có `bonuses.elementalAtkBonus` (song song với `elementResist` đã có từ Phase 11.6.E pattern).
+  - i18n vi/en parity key mới `inventory.bonus.elementalAtkBonus`.
+  - +3 InventoryView test (single bonus / multi-element / KHÔNG bonus → KHÔNG render line).
+- **Verification**: shared typecheck + 1685+ PASS (catalog floor/ceil invariant) / api typecheck + `--run combat` PASS (Phase 14.2.B suite +5) / web typecheck + `--run InventoryView` 57 PASS / pnpm build ✅. **KHÔNG migration / KHÔNG schema / KHÔNG đụng combat pipeline runtime** (Phase 14.2.A đã wire) — chỉ thêm data + test integration + 1 FE tooltip line.
+- **KHÔNG nới dial Phase 14.2.A** — `ELEMENT_MONSTER_RESIST_FLOOR=0.70`, `ELEMENT_EQUIPMENT_ATK_BONUS_CEIL=0.10`, `ELEMENT_EQUIPMENT_ATK_BONUS_TOTAL_CEIL=0.20`, `ELEMENT_COMBAT_ADJUSTMENT_FLOOR=0.50`, `ELEMENT_COMBAT_ADJUSTMENT_CEIL=1.60` giữ nguyên. Phase 14.2.C tương lai có thể tune theo metric thực tế khi player base lớn.
+
+### Added — Phase 14.0.B Sect Territory Settlement and Region Ownership (PR #481)
 
 - **Lãnh Địa Tông Môn — chiếm vùng thật** — Influence Leaderboard từ Phase 14.0.A giờ có thể được **kết toán (settlement)** thành quyền sở hữu vùng đất. Mỗi region có 1 `ownerSectId` hiện tại, kèm `periodKey` (ISO week hoặc admin-manual) và `settledAt`. Tông top influence trong vùng tại thời điểm settle sẽ chiếm vùng — nếu không có Tông nào ghi điểm thì vùng được skip (không có chủ).
 - **Shared (`packages/shared/src/territory.ts`)** — extend layer 14.0.A:
