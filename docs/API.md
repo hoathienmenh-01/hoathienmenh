@@ -237,6 +237,22 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 
 **Idempotency** contribution: composite UNIQUE `(weekKey, characterId, activityKey, sourceType, sourceId)` trên `SectWarContribution`. Hook gameplay (DungeonRun.claim, Boss.distributeRewards, DailyLogin.claim, Quest.claim) gọi `addContributionTx` trong cùng transaction — retry hook → P2002 silently skipped (return null). Daily cap window theo `MISSION_RESET_TZ` (default `Asia/Ho_Chi_Minh`, 00:00 ICT) — đồng nhất với dungeon dailyLimit / mission DAILY / daily-login streak. Weekly cap qua ISO week (Mon 00:00 ICT → Sun 23:59 ICT).
 
+## Sect Season — `SectSeasonController` (prefix `/sect-season`, Phase 13.2.A)
+
+> Phase 13.2.A — mùa giải dài hạn cho Tông Môn. Catalog ở [`packages/shared/src/sect-season.ts`](../packages/shared/src/sect-season.ts). 13 mùa × 4 tuần ISO (≈ 1 năm) phủ `2026-03-30 → 2027-03-28 ICT`, mỗi mùa start Monday 00:00 ICT (`MISSION_RESET_TZ` = `Asia/Ho_Chi_Minh`). 5 milestone cá nhân monotonic increasing (bronze 100pt → silver 500pt → gold 2000pt → platinum 5000pt → diamond 7500pt). **Read-only Phase 13.2.A** — KHÔNG migration, KHÔNG INSERT/UPDATE; service derive điểm season qua `groupBy SectWarContribution where weekKey IN sectSeasonWeekKeys(season)` aggregation. **KHÔNG có claim endpoint** — Phase 13.2.A chỉ display preview milestone; claim sẽ ở Phase 13.2.B+.
+
+| Method | Path                                  | Auth | Mô tả |
+|--------|---------------------------------------|------|-------|
+| GET    | `/sect-season/current`                | Yes  | Snapshot full state mùa hiện tại: `{ seasonKey, season{key,startsAtIso,endsAtIso,durationWeeks,timezone,labelI18nKey,descriptionI18nKey}, milestones[], leaderboard[], me }`. `season` server snapshot từ catalog (FE không cần import shared). Khi out-of-season (out of all 13 windows): `seasonKey=null`, `season=null`, `milestones=[]`, `leaderboard=[]`, `me=null`. |
+| GET    | `/sect-season/leaderboard?seasonKey=` | No   | Top 10 sect tổng hợp theo season: `{ seasonKey, rows: [{ rank, sectId, sectName, points, contributors, weeksContributed }] }`. `seasonKey` query optional (default `currentSectSeason(now).key`). Aggregation: `prisma.sectWarContribution.groupBy by characterId/sectId where weekKey IN sectSeasonWeekKeys(season)` → sum points → top 10 tie-break `(points desc, sectId asc)`. `weeksContributed` = distinct weekKey count cho sect đó. |
+| GET    | `/sect-season/me?seasonKey=`          | Yes  | Personal status mùa: `{ seasonKey, hasSect, sectId, sectName, personalPoints, weeksContributed, achievedMilestoneKeys[], nextMilestoneKey }` hoặc `null` khi out-of-season. `personalPoints` = sum `SectWarContribution.points` của character qua `weekKey IN sectSeasonWeekKeys(season)`. `achievedMilestoneKeys[]` = derive từ `sectSeasonAchievedMilestones(personalPoints)`; `nextMilestoneKey` = `sectSeasonNextMilestone(personalPoints)?.key ?? null`. `hasSect=false` khi `Character.sectId == null` — vẫn trả `personalPoints` để player thấy lịch sử trước khi join sect. |
+
+**Sect Season error codes**:
+- `NO_CHARACTER` — chưa có nhân vật (chỉ áp dụng cho `/current` + `/me`).
+- `SEASON_NOT_FOUND` — `seasonKey` query không có trong catalog.
+
+**Idempotency** read-only: KHÔNG có write path. Aggregation đọc trực tiếp từ `SectWarContribution` (Phase 13.1.A composite UNIQUE đã chống double-add gameplay hooks). `currentSectSeason(now)` resolve theo `MISSION_RESET_TZ` Monday 00:00 ICT — đồng nhất với Sect War tuần / mission DAILY/WEEKLY / daily-login streak / Sect Season window.
+
 ## Sect Missions — `SectMissionController` (prefix `/sect`, Phase 13.1.B)
 
 > Phase 13.1.B — daily/weekly mission Tông Môn cộng `congHien` (= `Character.contribBalance`). Catalog ở [`packages/shared/src/sect-missions.ts`](../packages/shared/src/sect-missions.ts). Server-authoritative; FE chỉ render.

@@ -17,15 +17,17 @@ import SectWarActivityRulesPanel from '@/components/SectWarActivityRulesPanel.vu
 import SectWarRewardPanel from '@/components/SectWarRewardPanel.vue';
 import SectMissionPanel from '@/components/SectMissionPanel.vue';
 import SectShopPanel from '@/components/SectShopPanel.vue';
+import SectSeasonPanel from '@/components/SectSeasonPanel.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
-type SectWarTab = 'overview' | 'leaderboard' | 'missions' | 'shop' | 'rewards';
+type SectWarTab = 'overview' | 'leaderboard' | 'missions' | 'shop' | 'rewards' | 'season';
 const ALL_TABS: ReadonlyArray<SectWarTab> = [
   'overview',
   'leaderboard',
   'missions',
   'shop',
   'rewards',
+  'season',
 ];
 
 const auth = useAuthStore();
@@ -209,6 +211,10 @@ async function onClaim(): Promise<void> {
           :submitting="submitting"
           @claim="onClaim"
         />
+      </section>
+
+      <section v-else-if="tab === 'season'" data-test="sect-war-tab-content-season">
+        <SectSeasonPanel :my-sect-id="state.me.sectId" />
       </section>
     </div>
   </AppShell>

@@ -1299,9 +1299,69 @@ Phase 13.1.B thêm 5 mission Tông Môn (3 daily + 2 weekly) cộng `congHien` (
 
 `/admin/liveops` (status), `/admin/liveops/event/toggle` (override), `/admin/sect-war/{status,recalculate}` chỉ accessible cho `User.role = ADMIN` qua `AdminGuard`. Mọi toggle ghi audit log `ADMIN_LIVEOPS_OVERRIDE` (actor + eventKey + enabled + timestamp). Recalculate hiện là no-op response (read-only audit), KHÔNG phá contribution rows hiện có.
 
+## 11.15 SECT SEASON FOUNDATION (Phase 13.2.A)
+
+### 11.15.1 Season window
+
+Phase 13.2.A mở foundation Sect Season — chuỗi mùa giải dài hạn dành cho Tông Môn, build trên top Sect War tuần (Phase 13.1.A). 13 mùa liên tiếp × **4 tuần ISO/mùa** (tổng ≈ 52 tuần ≈ 1 năm) phủ `2026-03-30 → 2027-03-28 ICT`. Mỗi mùa start **Monday 00:00 ICT** (`MISSION_RESET_TZ` = `Asia/Ho_Chi_Minh`, UTC+07) → đồng nhất với daily-login streak / mission DAILY/WEEKLY reset / Sect War ISO week boundary.
+
+Catalog ở [`packages/shared/src/sect-season.ts`](../packages/shared/src/sect-season.ts):
+
+| Hằng số                        | Giá trị                                  | Ghi chú |
+|---------------------------------|------------------------------------------|---------|
+| `SECT_SEASONS.length`           | 13                                       | Mỗi mùa key = `s1`..`s13`. |
+| `durationWeeks` mỗi mùa         | 4                                        | Đủ ngắn để cảm nhận khác biệt giữa các mùa, đủ dài để player chase milestone. |
+| `timezone`                      | `Asia/Ho_Chi_Minh`                       | UTC+07. |
+| Window đầu                      | `2026-03-30T17:00:00.000Z` (Mon 2026-W14 ICT) | Mùa khai nguyên `s1`. |
+| Window cuối                     | `2027-03-22T17:00:00.000Z` (Mon 2027-W12 ICT) | Mùa tận thế `s13`. |
+| `SECT_SEASON_LEADERBOARD_TOP`   | 10                                       | Top 10 sect mỗi mùa (server-cap, FE không tự cap). |
+
+**Aggregation read-only**: `personalPoints` season = sum `SectWarContribution.points` của character qua `weekKey IN sectSeasonWeekKeys(season)` (4 weekKey ISO × season). Hệ quả:
+- KHÔNG cần migration mới — Phase 13.2.A reuse `SectWarContribution` table Phase 13.1.A.
+- KHÔNG có rate-limit / write path — pure read.
+- `weeksContributed` = distinct `weekKey` count cho character/sect đó (tối đa = `durationWeeks` = 4).
+
+### 11.15.2 Personal milestone curve
+
+5 cột mốc cá nhân monotonic increasing — cố ý gap rộng để player có động lực cày qua nhiều tuần thay vì chỉ 1 tuần burst:
+
+| Milestone key | requiredPoints | Phần thưởng (Phase 13.2.A KHÔNG grant — chỉ display) |
+|---------------|----------------|------------------------------------------------------|
+| `bronze`      | 100            | 50 linh thạch                                       |
+| `silver`      | 500            | 200 linh thạch + 5 Linh Khí Đan                      |
+| `gold`        | 2 000          | 1 000 linh thạch + 3 Dưỡng Thần Đan                  |
+| `platinum`    | 5 000          | 2 500 linh thạch + 1 Bùa Tinh Thần Tập Trung         |
+| `diamond`     | 7 500          | 5 000 linh thạch + 1 Tiên Ngọc + danh hiệu mùa       |
+
+Quy đổi 7 500 điểm trong 4 tuần = **~1 875 điểm/tuần** ≈ 75% Sect War weekly cap player tier hardcore. Tier casual (≈ 500-700 điểm/tuần) sẽ chase được `silver` (500pt sau 1-2 tuần) và `gold` (2 000pt sau 3-4 tuần). Tier bot/idle (< 100pt/tuần) thậm chí có thể không qua `bronze`.
+
+**Validators fail-fast** (`validateSectSeasonMilestonesMonotonic`):
+- Key unique trong list.
+- `requiredPoints` strictly increasing — không bao giờ có 2 milestone cùng `requiredPoints`.
+- Reward phải có ít nhất 1 trường non-empty (`linhThach > 0` hoặc `tienNgoc > 0` hoặc `items.length > 0` hoặc `titleKey != null` hoặc `buffKey != null`).
+
+### 11.15.3 Read-only safety
+
+Phase 13.2.A **KHÔNG có endpoint write**: chỉ 3 endpoint GET (`/sect-season/current`, `/sect-season/leaderboard`, `/sect-season/me`). Hệ quả:
+- KHÔNG có audit log Sect Season.
+- KHÔNG có ledger entry mới (reward chưa grant).
+- KHÔNG có race condition / CAS guard / idempotency key (read-only aggregation).
+
+**Tie-break determinism**: leaderboard tổng hợp top 10 sect tie-break `(points desc, sectId asc)` — giống Sect War tuần Phase 13.1.A pattern. Đảm bảo deterministic ordering khi nhiều sect cùng điểm.
+
+**Out-of-season fallback**: `currentSectSeason(now)` return `null` khi `now` ngoài cả 13 window. API endpoint trả `seasonKey=null` / `season=null` / `me=null` — FE render banner "Hiện không có mùa giải đang chạy" (KHÔNG crash, KHÔNG empty leaderboard mặc định).
+
+### 11.15.4 Roadmap to Phase 13.2.B+
+
+Phase 13.2.A foundation only. Phase 13.2.B+ sẽ thêm:
+- **13.2.B**: Reward claim atomic per milestone — composite UNIQUE `(seasonKey, characterId, milestoneKey)` chống double-claim, ledger `SECT_SEASON_MILESTONE_CLAIM`, FE claim button.
+- **13.2.C**: Cross-sect tournament bracket — top 4-8 sect cuối mùa head-to-head bracket.
+- **Admin season tooling**: force resolve / freeze leaderboard / hot-swap milestone catalog.
+
 ---
 
 ## 12. CHANGELOG
 
 - **2026-04-30** — Initial creation. Author: Devin AI session 9q.
 - **2026-05-07** — Phase 13.1.B Sect Missions + Sect Shop + Admin LiveOps section added (§11.14).
+- **2026-05-08** — Phase 13.2.A Sect Season Foundation section added (§11.15) — 13 mùa × 4 tuần, 5 milestone bronze→diamond, read-only aggregation từ `SectWarContribution`.

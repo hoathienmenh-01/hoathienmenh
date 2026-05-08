@@ -436,3 +436,17 @@ describe('SectWarView — load error fallback', () => {
     expect(w.find('[data-test="sect-war-error"]').text()).toContain('Chưa có nhân vật');
   });
 });
+
+describe('SectWarView — Phase 13.2.A season tab', () => {
+  it('switch tab=season → render SectSeasonPanel slot (data-test="sect-war-tab-content-season")', async () => {
+    routeQuery.tab = 'season';
+    getCurrentMock.mockResolvedValue(makeCurrent());
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-test="sect-war-tab-content-season"]').exists()).toBe(true);
+    // SectSeasonPanel mounts inside slot — check root marker (panel chính nó
+    // tự fetch /sect-season/current; KHÔNG mock ở đây vì SectWarView KHÔNG
+    // chuyền dữ liệu — chỉ cần slot tồn tại để xác nhận tab integration).
+    expect(w.find('[data-test="sect-season-panel"]').exists()).toBe(true);
+  });
+});

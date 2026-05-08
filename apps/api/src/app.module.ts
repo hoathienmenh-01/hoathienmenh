@@ -30,6 +30,7 @@ import { DailyLoginModule } from './modules/daily-login/daily-login.module';
 import { LogsModule } from './modules/logs/logs.module';
 import { LiveOpsModule } from './modules/liveops/liveops.module';
 import { SectWarModule } from './modules/sect-war/sect-war.module';
+import { SectSeasonModule } from './modules/sect-season/sect-season.module';
 import { RedisModule } from './common/redis.module';
 
 @Module({
@@ -66,6 +67,7 @@ import { RedisModule } from './common/redis.module';
     LogsModule,
     LiveOpsModule,
     SectWarModule,
+    SectSeasonModule,
   ],
 })
 export class AppModule {}
