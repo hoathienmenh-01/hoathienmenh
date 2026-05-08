@@ -469,6 +469,245 @@ describe('CombatService', () => {
     });
   });
 
+  // — Phase 14.2.B Elemental Combat Data and Balance ------------------------
+  // Wire-level integration test cho `composeMonsterElementalResist` +
+  // `equipElementalAtkBonus` + pipeline `phase142Mul = monsterResistMul ×
+  // (1 + equipBonus)` trong `combat.service.ts:414-440`. Foundation layer
+  // (Phase 14.2.A) đã có shared unit tests trong `elemental.test.ts`; PR này
+  // cover end-to-end damage path:
+  //   - skill counter element + monster vô resist + char không equip → bonus
+  //     log silent, Phase 11 advantage log vẫn fire.
+  //   - char equip item có `elementalAtkBonus[skillElement]` → damage tăng
+  //     + log "Trang bị tăng X% sát thương hệ ...".
+  //   - monster có `elementalResist[skillElement]` → damage giảm + log
+  //     "<MonsterName> kháng hệ ... ×0.X.".
+  //   - pipeline KHÔNG double-apply base multiplier — verify bằng damage
+  //     deterministic (Math.random=0.5) khớp công thức tay tính.
+  //   - skill vô hệ (element=null) → foundation noop (resist=1.0, bonus=0).
+  describe('Elemental Combat Data and Balance (Phase 14.2.B)', () => {
+    let inv: InventoryService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      inv = new InventoryService(prisma, realtime, chars);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('counter skill vs monster vô elementalResist + char không equip elementalAtkBonus → KHÔNG log "kháng hệ" / "Trang bị tăng" (baseline)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // moc_huyen_lam first monster `thanh_mang_xa` (level 4, hp 110, def 6,
+      // moc, KHÔNG `elementalResist`). Skill `kim_quang_tram` (kim) khắc moc
+      // → ×1.30 (Phase 11.3.B). Foundation layer (14.2.A) → noop:
+      // monsterResistMul = 1.0, equipBonus = 0 → phase142Mul = 1.0 (identity).
+      const u = await makeUserChar(prisma, {
+        stamina: 100,
+        power: 200,
+        hp: 1000,
+        hpMax: 1000,
+        spiritualRootGrade: 'tien',
+        primaryElement: 'kim',
+        secondaryElements: ['thuy', 'hoa'],
+      });
+      const enc = await combat.start(u.userId, 'moc_huyen_lam');
+      const view = await combat.action(u.userId, enc.id, { skillKey: 'kim_quang_tram' });
+      const log = view.log.map((l) => l.text).join('\n');
+      // Phase 11.3.B advantage log vẫn fire — Phase 14.2 KHÔNG override.
+      expect(log).toContain('Kim khắc Mộc');
+      expect(log).toContain('sát thương khuếch đại');
+      // Phase 14.2.B foundation: monster vô resist → KHÔNG log; equipBonus=0
+      // → KHÔNG log. Threshold: resist < 0.95 hoặc bonus ≥ 0.05 mới log.
+      expect(log).not.toContain('kháng hệ');
+      expect(log).not.toContain('Trang bị tăng');
+    });
+
+    it('character equip item có elementalAtkBonus[skillElement] → damage > baseline + log "Trang bị tăng X% sát thương hệ kim"', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Baseline: char không equip → equip.atk=0 + equipBonus=0.
+      // moc_huyen_lam first monster `thanh_mang_xa` (hp 110, def 6, moc).
+      // Skill `kim_quang_tram` (atkScale 1.7, kim).
+      const baseUser = await makeUserChar(prisma, {
+        stamina: 100,
+        power: 200,
+        hp: 1000,
+        hpMax: 1000,
+        spiritualRootGrade: 'tien',
+        primaryElement: 'kim',
+        secondaryElements: ['thuy', 'hoa'],
+      });
+      const baseEnc = await combat.start(baseUser.userId, 'moc_huyen_lam');
+      const baseView = await combat.action(baseUser.userId, baseEnc.id, {
+        skillKey: 'kim_quang_tram',
+      });
+      const baseDmg = parseInt(
+        baseView.log.find((l) => l.text.includes('sát thương'))!.text.match(/gây (\d+)/)![1],
+        10,
+      );
+      const baseLog = baseView.log.map((l) => l.text).join('\n');
+      expect(baseLog).not.toContain('Trang bị tăng');
+
+      // Equip: `diem_phong_dao` (HUYEN WEAPON, atk 25, hpMax 30,
+      // elementalAtkBonus.kim 0.05). 0.05 ≥ 0.05 → bonus log fire.
+      const equipUser = await makeUserChar(prisma, {
+        stamina: 100,
+        power: 200,
+        hp: 1000,
+        hpMax: 1000,
+        spiritualRootGrade: 'tien',
+        primaryElement: 'kim',
+        secondaryElements: ['thuy', 'hoa'],
+      });
+      await inv.grant(
+        equipUser.characterId,
+        [{ itemKey: 'diem_phong_dao', qty: 1 }],
+        { reason: 'ADMIN_GRANT' },
+      );
+      const weapon = await prisma.inventoryItem.findFirstOrThrow({
+        where: { characterId: equipUser.characterId, itemKey: 'diem_phong_dao' },
+      });
+      await inv.equip(equipUser.userId, weapon.id);
+
+      const equipEnc = await combat.start(equipUser.userId, 'moc_huyen_lam');
+      const equipView = await combat.action(equipUser.userId, equipEnc.id, {
+        skillKey: 'kim_quang_tram',
+      });
+      const equipLog = equipView.log.map((l) => l.text).join('\n');
+      const equipDmg = parseInt(
+        equipView.log.find((l) => l.text.includes('sát thương'))!.text.match(/gây (\d+)/)![1],
+        10,
+      );
+
+      // Equipped damage > baseline (do +atk 25 + element bonus 5%).
+      expect(equipDmg).toBeGreaterThan(baseDmg);
+      // Phase 14.2.B foundation log: bonus ≥ 0.05 → log fire.
+      expect(equipLog).toContain('Trang bị tăng 5% sát thương hệ kim');
+    });
+
+    it('boss có elementalResist[skillElement] → log "<Boss> kháng hệ <element> ×0.X" + Phase 11 advantage log vẫn xuất hiện', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // cuu_la_dien staminaEntry=60, monster `cuu_la_huyen_quan` (BOSS, kim,
+      // hp 1700, def 80, elementalResist={kim:0.8, hoa:0.9}). Skill
+      // `hoa_xa_phun_diem` element hoa → khắc kim ×1.30. Foundation:
+      // monsterResistMul = 0.90 (kháng hoa) → phase142Mul = 0.90.
+      const u = await makeUserChar(prisma, {
+        stamina: 200,
+        power: 300,
+        hp: 5000,
+        hpMax: 5000,
+        mp: 200,
+        mpMax: 200,
+        spiritualRootGrade: 'tien',
+        primaryElement: 'hoa',
+        secondaryElements: ['kim', 'thuy'],
+      });
+      const enc = await combat.start(u.userId, 'cuu_la_dien');
+      const view = await combat.action(u.userId, enc.id, {
+        skillKey: 'hoa_xa_phun_diem',
+      });
+      const log = view.log.map((l) => l.text).join('\n');
+      // Phase 11.3.B advantage log vẫn fire (hoa khắc kim ×1.30 + char hoa
+      // primary +0.10 = ×1.40).
+      expect(log).toContain('Hoả khắc Kim');
+      expect(log).toContain('sát thương khuếch đại');
+      // Phase 14.2.B foundation: kháng hoa 0.90 < 0.95 → log fire.
+      expect(log).toMatch(/Cửu La Huyền Quân kháng hệ hoa ×0\.90\./);
+    });
+
+    it('no double-apply: dmg = playerElementMul × monsterResistMul × (1 + equipBonus); Phase 14.2 KHÔNG re-apply base multiplier', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Setup deterministic: char `tien` grade kim primary equip
+      // `diem_phong_dao` (atk 25, kim 0.05). moc_huyen_lam first monster
+      // `thanh_mang_xa` (hp 110, def 6, moc, no resist).
+      //
+      // Pipeline expected (combat.service.ts §263-440):
+      //   effPower         = (200 + 25) × 1.18 (tien statBonusPercent 18%) = 265.5
+      //   variance         = 0.85 + 0.5 × 0.3                              = 1.0
+      //   dmgBase          = round((265.5 × 1.7 - 6 × 0.5) × 1.0)          = 448
+      //   playerElementMul = 1.30 (kim khắc moc) + 0.10 (kim primary)      = 1.40
+      //   talentElementMul = 1.0 (no talent learned)
+      //   buffElementMul   = 1.0 (no buff)
+      //   monsterResistMul = 1.0 (thanh_mang_xa vô resist)
+      //   equipBonus       = 0.05 (diem_phong_dao kim)
+      //   phase142Mul      = 1.0 × (1 + 0.05)                              = 1.05
+      //   dmg              = round(448 × 1.40 × 1.0 × 1.0 × 1.05)          = 659
+      //
+      // Nếu Phase 14.2 double-apply base multiplier (kim khắc moc lần 2),
+      // dmg sẽ là round(448 × 1.40 × 1.30 × 1.05) = 856 → fail.
+      const u = await makeUserChar(prisma, {
+        stamina: 100,
+        power: 200,
+        hp: 1000,
+        hpMax: 1000,
+        spiritualRootGrade: 'tien',
+        primaryElement: 'kim',
+      });
+      await inv.grant(
+        u.characterId,
+        [{ itemKey: 'diem_phong_dao', qty: 1 }],
+        { reason: 'ADMIN_GRANT' },
+      );
+      const weapon = await prisma.inventoryItem.findFirstOrThrow({
+        where: { characterId: u.characterId, itemKey: 'diem_phong_dao' },
+      });
+      await inv.equip(u.userId, weapon.id);
+
+      const enc = await combat.start(u.userId, 'moc_huyen_lam');
+      const view = await combat.action(u.userId, enc.id, {
+        skillKey: 'kim_quang_tram',
+      });
+      const log = view.log.map((l) => l.text).join('\n');
+      const dmg = parseInt(
+        view.log.find((l) => l.text.includes('sát thương'))!.text.match(/gây (\d+)/)![1],
+        10,
+      );
+
+      expect(dmg).toBe(659);
+      // Foundation log resist KHÔNG xuất hiện (monster vô resist).
+      expect(log).not.toContain('kháng hệ');
+      // Foundation log bonus XUẤT hiện (0.05 ≥ threshold).
+      expect(log).toContain('Trang bị tăng 5% sát thương hệ kim');
+      // Phase 11 advantage ×1.40 vẫn log đúng (KHÔNG bị Phase 14.2 ghi đè).
+      expect(log).toMatch(/×1\.40/);
+    });
+
+    it('skill vô hệ (element=null) → composeMonsterElementalResist=1.0 + equipElementalAtkBonus=0 → phase142Mul identity, KHÔNG log foundation', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Char equip `diem_phong_dao` (kim 0.05) NHƯNG dùng `basic_attack` vô
+      // hệ. composeMonsterElementalResist(_, null)=1.0,
+      // equipElementalAtkBonus(_, null)=0 → phase142Mul=1.0 (identity, KHÔNG
+      // bonus). Validate skillElement=null guard không leak equipment bonus
+      // dù char đã equip.
+      const u = await makeUserChar(prisma, {
+        stamina: 100,
+        power: 200,
+        hp: 1000,
+        hpMax: 1000,
+        spiritualRootGrade: 'tien',
+        primaryElement: 'kim',
+      });
+      await inv.grant(
+        u.characterId,
+        [{ itemKey: 'diem_phong_dao', qty: 1 }],
+        { reason: 'ADMIN_GRANT' },
+      );
+      const weapon = await prisma.inventoryItem.findFirstOrThrow({
+        where: { characterId: u.characterId, itemKey: 'diem_phong_dao' },
+      });
+      await inv.equip(u.userId, weapon.id);
+
+      const enc = await combat.start(u.userId, 'moc_huyen_lam');
+      // skillKey omitted → SKILL_BASIC_ATTACK, element undefined.
+      const view = await combat.action(u.userId, enc.id, {});
+      const log = view.log.map((l) => l.text).join('\n');
+      // basic_attack vô hệ → bonus/resist log đều KHÔNG fire.
+      expect(log).not.toContain('Trang bị tăng');
+      expect(log).not.toContain('kháng hệ');
+    });
+  });
+
   // — Phase 11.3.C statBonusPercent wire vào combat power -------------------
   describe('Linh căn statBonusPercent wire vào atk/def (Phase 11.3.C)', () => {
     afterEach(() => {

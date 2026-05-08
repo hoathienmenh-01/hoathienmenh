@@ -148,7 +148,8 @@ export const ITEMS: readonly ItemDef[] = [
     quality: 'LINH',
     stackable: false,
     slot: 'WEAPON',
-    bonuses: { atk: 12, spirit: 2 },
+    // Phase 14.2.B — hắc thiết kim phẩm → nhẹ +3% damage skill hệ Kim.
+    bonuses: { atk: 12, spirit: 2, elementalAtkBonus: { kim: 0.03 } },
     price: 180,
   },
   {
@@ -159,7 +160,8 @@ export const ITEMS: readonly ItemDef[] = [
     quality: 'HUYEN',
     stackable: false,
     slot: 'WEAPON',
-    bonuses: { atk: 25, hpMax: 30 },
+    // Phase 14.2.B — huyền đao gió rít → +5% damage skill hệ Kim.
+    bonuses: { atk: 25, hpMax: 30, elementalAtkBonus: { kim: 0.05 } },
     price: 720,
   },
 
@@ -258,7 +260,8 @@ export const ITEMS: readonly ItemDef[] = [
     quality: 'TIEN',
     stackable: false,
     slot: 'WEAPON',
-    bonuses: { atk: 60, hpMax: 120, spirit: 6 },
+    // Phase 14.2.B — tiên phẩm hắc thép → +6% damage skill hệ Kim.
+    bonuses: { atk: 60, hpMax: 120, spirit: 6, elementalAtkBonus: { kim: 0.06 } },
     price: 9000,
   },
   {
@@ -443,7 +446,8 @@ export const ITEMS: readonly ItemDef[] = [
     quality: 'HUYEN',
     stackable: false,
     slot: 'ARTIFACT_2',
-    bonuses: { hpMax: 150, mpMax: 80, spirit: 5 },
+    // Phase 14.2.B — huyền kim toạ → +4% damage skill hệ Thổ (hậu thổ tinh).
+    bonuses: { hpMax: 150, mpMax: 80, spirit: 5, elementalAtkBonus: { tho: 0.04 } },
     price: 1200,
   },
   {
@@ -561,7 +565,8 @@ export const ITEMS: readonly ItemDef[] = [
     quality: 'PHAM',
     stackable: false,
     slot: 'WEAPON',
-    bonuses: { atk: 6 },
+    // Phase 14.2.B — huyết đao sơ cấp → +3% damage skill hệ Hoả.
+    bonuses: { atk: 6, elementalAtkBonus: { hoa: 0.03 } },
     price: 38,
   },
   {
@@ -583,7 +588,8 @@ export const ITEMS: readonly ItemDef[] = [
     quality: 'PHAM',
     stackable: false,
     slot: 'WEAPON',
-    bonuses: { atk: 5, mpMax: 20, spirit: 2 },
+    // Phase 14.2.B — trượng trúc sơ cấp → +3% damage skill hệ Mộc.
+    bonuses: { atk: 5, mpMax: 20, spirit: 2, elementalAtkBonus: { moc: 0.03 } },
     price: 50,
   },
   {
@@ -594,7 +600,8 @@ export const ITEMS: readonly ItemDef[] = [
     quality: 'LINH',
     stackable: false,
     slot: 'WEAPON',
-    bonuses: { atk: 18, spirit: 3 },
+    // Phase 14.2.B — lãnh phong kiếm → +4% damage skill hệ Kim.
+    bonuses: { atk: 18, spirit: 3, elementalAtkBonus: { kim: 0.04 } },
     price: 200,
   },
   {
@@ -605,7 +612,8 @@ export const ITEMS: readonly ItemDef[] = [
     quality: 'LINH',
     stackable: false,
     slot: 'WEAPON',
-    bonuses: { atk: 22, def: 4 },
+    // Phase 14.2.B — đao tế huyết → +4% damage skill hệ Hoả.
+    bonuses: { atk: 22, def: 4, elementalAtkBonus: { hoa: 0.04 } },
     price: 220,
   },
   {
@@ -616,7 +624,8 @@ export const ITEMS: readonly ItemDef[] = [
     quality: 'LINH',
     stackable: false,
     slot: 'WEAPON',
-    bonuses: { atk: 14, mpMax: 40, spirit: 6 },
+    // Phase 14.2.B — pháp trượng linh phẩm sen → +5% damage skill hệ Mộc.
+    bonuses: { atk: 14, mpMax: 40, spirit: 6, elementalAtkBonus: { moc: 0.05 } },
     price: 230,
   },
   {
@@ -627,7 +636,8 @@ export const ITEMS: readonly ItemDef[] = [
     quality: 'HUYEN',
     stackable: false,
     slot: 'WEAPON',
-    bonuses: { atk: 38, hpMax: 60, spirit: 8 },
+    // Phase 14.2.B — huyền thương u minh → +6% damage skill hệ Thuỷ.
+    bonuses: { atk: 38, hpMax: 60, spirit: 8, elementalAtkBonus: { thuy: 0.06 } },
     price: 850,
   },
   {
@@ -638,7 +648,8 @@ export const ITEMS: readonly ItemDef[] = [
     quality: 'TIEN',
     stackable: false,
     slot: 'WEAPON',
-    bonuses: { atk: 130, hpMax: 150, spirit: 20 },
+    // Phase 14.2.B — tiên phẩm thần phong → +8% damage skill hệ Kim (cap dưới 0.10).
+    bonuses: { atk: 130, hpMax: 150, spirit: 20, elementalAtkBonus: { kim: 0.08 } },
     price: 7500,
   },
 
@@ -684,7 +695,9 @@ export const ITEMS: readonly ItemDef[] = [
     quality: 'HUYEN',
     stackable: false,
     slot: 'ARMOR',
-    bonuses: { def: 32, hpMax: 110 },
+    // Phase 14.2.B — hàn thiết giáp → +4% damage skill hệ Thuỷ (giáp ngoại lệ
+    // dành cho tu sĩ hệ băng — ngoài Huyền Giáp Phong Thuỷ elementResist).
+    bonuses: { def: 32, hpMax: 110, elementalAtkBonus: { thuy: 0.04 } },
     price: 750,
   },
   {
@@ -938,7 +951,8 @@ export const ITEMS: readonly ItemDef[] = [
     quality: 'HUYEN',
     stackable: false,
     slot: 'ARTIFACT_3',
-    bonuses: { def: 35, hpMax: 130 },
+    // Phase 14.2.B — huyền ấn phù → +4% damage skill hệ Thổ.
+    bonuses: { def: 35, hpMax: 130, elementalAtkBonus: { tho: 0.04 } },
     price: 900,
   },
   {
@@ -949,7 +963,8 @@ export const ITEMS: readonly ItemDef[] = [
     quality: 'TIEN',
     stackable: false,
     slot: 'ARTIFACT_2',
-    bonuses: { atk: 90, hpMax: 350, spirit: 25 },
+    // Phase 14.2.B — pháp bảo tiên phẩm huyết tinh → +5% damage skill hệ Hoả.
+    bonuses: { atk: 90, hpMax: 350, spirit: 25, elementalAtkBonus: { hoa: 0.05 } },
     price: 6800,
   },
   {

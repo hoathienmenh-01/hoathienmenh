@@ -76,6 +76,25 @@ export interface BossDef {
    * `midDropPool` ở runtime cũ.
    */
   lowDropPool?: readonly string[];
+  /**
+   * **Phase 14.2.B** — optional Ngũ Hành combat resist cho boss. Map skill
+   * element → multiplier `≤ 1` (giảm sát thương chịu vào). Khác với
+   * `element` (boss's own affinity) — `elementalResist` là **kháng** vs
+   * incoming skill element. Vd boss băng `bang_phach_long_de` có
+   * `element='thuy'` + `elementalResist={ thuy: 0.75, tho: 0.85 }` (kháng
+   * 25% sát thương Thuỷ và 15% sát thương Thổ — boss đỉnh tier resist
+   * mạnh hơn monster ELITE thường).
+   *
+   * Convention identical với {@link MonsterDef.elementalResist} — `1.0` /
+   * undefined = neutral, `< 1` = resist, `> 1` reserved cho future weakness.
+   * Floor `ELEMENT_MONSTER_RESIST_FLOOR=0.7` ở `elemental.ts` áp chung
+   * cho cả monster và boss. Combat runtime đọc qua
+   * `composeMonsterElementalResist` (cùng helper với MonsterDef khi boss
+   * spawn thành encounter monster).
+   *
+   * Không define = không kháng (legacy + foundation default — fallback neutral).
+   */
+  elementalResist?: Partial<Record<ElementKey, number>>;
 }
 
 export const BOSSES: readonly BossDef[] = [
@@ -101,6 +120,9 @@ export const BOSSES: readonly BossDef[] = [
     // Phase 11.2.D+++ — skill_book_thach_giap_ho_than (hệ Thổ) added to
     // lowDropPool (forward-compat phase 12 BossRewardService pity wire).
     lowDropPool: ['huyet_tinh', 'co_thien_dan', 'skill_book_thach_giap_ho_than'],
+    // Phase 14.2.B — boss hệ Thổ entry-tier kháng nhẹ tấn công Thổ (bản thân
+    // affinity), còn trong safe range ≥ floor 0.7.
+    elementalResist: { tho: 0.85 },
   },
   {
     key: 'huyet_long_quan',
@@ -119,6 +141,8 @@ export const BOSSES: readonly BossDef[] = [
     monsterType: 'BOSS',
     // Phase 11.2.D+++ — skill_book_hoa_xa_phun_diem (hệ Hỏa) added.
     lowDropPool: ['huyet_tinh', 'yeu_dan', 'cuu_huyen_dan', 'skill_book_hoa_xa_phun_diem'],
+    // Phase 14.2.B — boss hệ Hoả entry-tier kháng nhẹ tấn công Hoả (affinity).
+    elementalResist: { hoa: 0.85 },
   },
 
   // ═════════════════════════════════════════════════════════════════════
@@ -159,6 +183,8 @@ export const BOSSES: readonly BossDef[] = [
     element: 'moc',
     regionKey: 'moc_huyen_lam',
     monsterType: 'BOSS',
+    // Phase 14.2.B — boss hệ Mộc entry-tier kháng nhẹ tấn công Mộc (affinity).
+    elementalResist: { moc: 0.85 },
   },
   {
     key: 'thuy_thanh_long_de',
@@ -178,6 +204,8 @@ export const BOSSES: readonly BossDef[] = [
     element: 'thuy',
     regionKey: 'thuy_long_uyen',
     monsterType: 'BOSS',
+    // Phase 14.2.B — long đế Thuỷ kháng Thuỷ + nhẹ Hoả (counter Thuỷ).
+    elementalResist: { thuy: 0.8, hoa: 0.9 },
   },
   {
     key: 'kim_phach_long_dieu',
@@ -197,6 +225,8 @@ export const BOSSES: readonly BossDef[] = [
     element: 'kim',
     regionKey: 'kim_son_mach',
     monsterType: 'BOSS',
+    // Phase 14.2.B — boss hệ Kim mạnh kháng đòn cuối Kim đan tier.
+    elementalResist: { kim: 0.8 },
   },
 
   // Tier nguyen_anh (world pham mid) ────────────────────────────────────
@@ -218,6 +248,8 @@ export const BOSSES: readonly BossDef[] = [
     element: 'hoa',
     regionKey: 'hoa_diem_son',
     monsterType: 'BOSS',
+    // Phase 14.2.B — nguyên anh boss hệ Hoả kháng Hoả đậm hơn entry tier.
+    elementalResist: { hoa: 0.8 },
   },
   {
     key: 'thach_long_co_de',
@@ -237,6 +269,8 @@ export const BOSSES: readonly BossDef[] = [
     element: 'tho',
     regionKey: 'hoang_tho_huyet',
     monsterType: 'BOSS',
+    // Phase 14.2.B — nguyên anh boss hệ Thổ kháng Thổ + nhẹ Mộc (counter Thổ).
+    elementalResist: { tho: 0.8, moc: 0.9 },
   },
   {
     key: 'cuu_u_yeu_hau',
@@ -256,6 +290,8 @@ export const BOSSES: readonly BossDef[] = [
     element: 'moc',
     regionKey: 'moc_huyen_lam',
     monsterType: 'BOSS',
+    // Phase 14.2.B — nguyên anh boss hệ Mộc kháng Mộc đậm hơn entry tier.
+    elementalResist: { moc: 0.8 },
   },
 
   // Tier hoa_than (world late pham) ─────────────────────────────────────
@@ -280,6 +316,8 @@ export const BOSSES: readonly BossDef[] = [
     element: 'kim',
     regionKey: 'cuu_la_dien',
     monsterType: 'BOSS',
+    // Phase 14.2.B — hoá thần kim boss kháng Kim + nhẹ Hoả (counter Kim).
+    elementalResist: { kim: 0.8, hoa: 0.9 },
   },
   {
     key: 'hoa_long_to_su',
@@ -300,6 +338,8 @@ export const BOSSES: readonly BossDef[] = [
     element: 'hoa',
     regionKey: 'hoa_diem_son',
     monsterType: 'BOSS',
+    // Phase 14.2.B — hoá thần hỏa long kháng mạnh Hoả + Thuỷ (counter Hoả).
+    elementalResist: { hoa: 0.75, thuy: 0.85 },
   },
 
   // Tier luyen_hu (world late) ──────────────────────────────────────────
@@ -323,6 +363,8 @@ export const BOSSES: readonly BossDef[] = [
     element: 'thuy',
     regionKey: 'thuy_long_uyen',
     monsterType: 'BOSS',
+    // Phase 14.2.B — luyện hư băng long kháng mạnh Thuỷ + Thổ (counter Thuỷ).
+    elementalResist: { thuy: 0.75, tho: 0.85 },
   },
 
   // Tier hop_the (cross-element world boss endgame) ─────────────────────
@@ -357,6 +399,10 @@ export const BOSSES: readonly BossDef[] = [
     element: null,
     regionKey: null,
     monsterType: 'BOSS',
+    // Phase 14.2.B — endgame hợp thể cross-element boss kháng đều 5 hệ,
+    // mỗi hệ mất 15% damage. Tổng damage giảm đồng đều không ưu hệ nào —
+    // ý nghĩa thiết kế: counter strategy không work, phải raw DPS.
+    elementalResist: { kim: 0.85, moc: 0.85, thuy: 0.85, hoa: 0.85, tho: 0.85 },
   },
 ];
 
