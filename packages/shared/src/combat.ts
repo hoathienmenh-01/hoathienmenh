@@ -214,8 +214,8 @@ export const MONSTERS: readonly MonsterDef[] = [
   // Region: Kim Sơn Mạch (Hệ KIM, trúc cơ → kim đan; mỏ kim)
   { key: 'kim_quang_thach_giap', name: 'Kim Quang Thạch Giáp', level: 7,  hp: 230,  atk: 26, def: 20, speed: 7,  expDrop: 165,  linhThachDrop: 48,  element: 'kim', monsterType: 'BEAST',    regionKey: 'kim_son_mach', questTargetIds: ['kim_son_yeu'] },
   { key: 'huyen_kim_lang_thu',   name: 'Huyền Kim Lang Thử',   level: 9,  hp: 360,  atk: 42, def: 22, speed: 13, expDrop: 280,  linhThachDrop: 80,  element: 'kim', monsterType: 'BEAST',    regionKey: 'kim_son_mach' },
-  { key: 'tinh_thiet_kiem_linh', name: 'Tinh Thiết Kiếm Linh', level: 11, hp: 570,  atk: 70, def: 26, speed: 12, expDrop: 430,  linhThachDrop: 125, element: 'kim', monsterType: 'SPIRIT',   regionKey: 'kim_son_mach' },
-  { key: 'kim_dieu_thuong_phong',name: 'Kim Điêu Thượng Phong',level: 14, hp: 920,  atk: 105,def: 42, speed: 16, expDrop: 720,  linhThachDrop: 195, element: 'kim', monsterType: 'ELITE',    regionKey: 'kim_son_mach', questTargetIds: ['kim_dan_yeu_thu'],
+  { key: 'tinh_thiet_kiem_linh', name: 'Tinh Thiết Kiếm Linh', level: 11, hp: 570,  atk: 70, def: 26, speed: 12, expDrop: 430,  linhThachDrop: 125, element: 'kim', monsterType: 'SPIRIT',   regionKey: 'kim_son_mach', elementalResist: { kim: 0.9 } },
+  { key: 'kim_dieu_thuong_phong',name: 'Kim Điêu Thượng Phong',level: 14, hp: 920,  atk: 105,def: 42, speed: 16, expDrop: 720,  linhThachDrop: 195, element: 'kim', monsterType: 'ELITE',    regionKey: 'kim_son_mach', questTargetIds: ['kim_dan_yeu_thu'], elementalResist: { kim: 0.85 },
     lootTable: [
       // Phase 12.4 — ELITE override: bias toward themed weapon + nâng skill_book
       // weight (3 → 5) so với dungeon-level fallback. Higher tinh_thiet qty
@@ -232,14 +232,14 @@ export const MONSTERS: readonly MonsterDef[] = [
   // Region: Mộc Huyền Lâm (Hệ MỘC, luyện khí cao → trúc cơ; rừng cổ)
   { key: 'thanh_mang_xa',        name: 'Thanh Mang Xà',        level: 4,  hp: 110,  atk: 17, def: 6,  speed: 12, expDrop: 60,   linhThachDrop: 22, element: 'moc', monsterType: 'BEAST',    regionKey: 'moc_huyen_lam' },
   { key: 'tang_diep_yeu_phu',    name: 'Tàng Diệp Yêu Phụ',    level: 6,  hp: 180,  atk: 24, def: 11, speed: 9,  expDrop: 115,  linhThachDrop: 34, element: 'moc', monsterType: 'HUMANOID', regionKey: 'moc_huyen_lam' },
-  { key: 'co_thu_chi_linh',      name: 'Cổ Thụ Chi Linh',      level: 8,  hp: 320,  atk: 30, def: 28, speed: 5,  expDrop: 215,  linhThachDrop: 60, element: 'moc', monsterType: 'SPIRIT',   regionKey: 'moc_huyen_lam' },
-  { key: 'thien_la_co_yeu',      name: 'Thiên La Cổ Yêu',      level: 11, hp: 620,  atk: 64, def: 32, speed: 10, expDrop: 460,  linhThachDrop: 130,element: 'moc', monsterType: 'ELITE',    regionKey: 'moc_huyen_lam' },
+  { key: 'co_thu_chi_linh',      name: 'Cổ Thụ Chi Linh',      level: 8,  hp: 320,  atk: 30, def: 28, speed: 5,  expDrop: 215,  linhThachDrop: 60, element: 'moc', monsterType: 'SPIRIT',   regionKey: 'moc_huyen_lam', elementalResist: { moc: 0.9 } },
+  { key: 'thien_la_co_yeu',      name: 'Thiên La Cổ Yêu',      level: 11, hp: 620,  atk: 64, def: 32, speed: 10, expDrop: 460,  linhThachDrop: 130,element: 'moc', monsterType: 'ELITE',    regionKey: 'moc_huyen_lam', elementalResist: { moc: 0.85 } },
 
   // Region: Thuỷ Long Uyên (Hệ THUỶ, trúc cơ → kim đan; hồ sâu)
   { key: 'thuy_lan_yeu',         name: 'Thuỷ Lân Yêu',         level: 6,  hp: 195,  atk: 25, def: 10, speed: 12, expDrop: 125,  linhThachDrop: 38, element: 'thuy', monsterType: 'BEAST',    regionKey: 'thuy_long_uyen' },
   { key: 'han_tinh_quy_phach',   name: 'Hàn Tinh Quỷ Phách',   level: 9,  hp: 380,  atk: 44, def: 22, speed: 11, expDrop: 290,  linhThachDrop: 88, element: 'thuy', monsterType: 'SPIRIT',   regionKey: 'thuy_long_uyen' },
-  { key: 'huyen_thuy_giao_long', name: 'Huyền Thuỷ Giao Long', level: 13, hp: 820,  atk: 95, def: 42, speed: 14, expDrop: 640,  linhThachDrop: 175,element: 'thuy', monsterType: 'ELITE',    regionKey: 'thuy_long_uyen' },
-  { key: 'thuy_thanh_long_vuong',name: 'Thuỷ Thanh Long Vương',level: 17, hp: 1450, atk: 140,def: 56, speed: 13, expDrop: 1100, linhThachDrop: 320,element: 'thuy', monsterType: 'BOSS',     regionKey: 'thuy_long_uyen',
+  { key: 'huyen_thuy_giao_long', name: 'Huyền Thuỷ Giao Long', level: 13, hp: 820,  atk: 95, def: 42, speed: 14, expDrop: 640,  linhThachDrop: 175,element: 'thuy', monsterType: 'ELITE',    regionKey: 'thuy_long_uyen', elementalResist: { thuy: 0.85 } },
+  { key: 'thuy_thanh_long_vuong',name: 'Thuỷ Thanh Long Vương',level: 17, hp: 1450, atk: 140,def: 56, speed: 13, expDrop: 1100, linhThachDrop: 320,element: 'thuy', monsterType: 'BOSS',     regionKey: 'thuy_long_uyen', elementalResist: { thuy: 0.8, hoa: 0.9 },
     lootTable: [
       // Phase 12.4 — BOSS override: equipment + skill_book pity weight 6
       // (vs dungeon weight 3). han_ngoc qty boost 2-4 (vs 1-3) reward
@@ -255,8 +255,8 @@ export const MONSTERS: readonly MonsterDef[] = [
   // Region: Hoả Diệm Sơn (Hệ HOẢ, kim đan → nguyên anh; núi lửa)
   { key: 'hoa_yen_thu',          name: 'Hoả Yến Thử',          level: 9,  hp: 320,  atk: 50, def: 14, speed: 15, expDrop: 240,  linhThachDrop: 70, element: 'hoa', monsterType: 'BEAST',    regionKey: 'hoa_diem_son' },
   { key: 'xich_diem_yeu_xa',     name: 'Xích Diệm Yêu Xà',     level: 12, hp: 580,  atk: 78, def: 30, speed: 14, expDrop: 470,  linhThachDrop: 145,element: 'hoa', monsterType: 'BEAST',    regionKey: 'hoa_diem_son' },
-  { key: 'hoa_long_chi_linh',    name: 'Hoả Long Chi Linh',    level: 16, hp: 1280, atk: 130,def: 50, speed: 13, expDrop: 990,  linhThachDrop: 270,element: 'hoa', monsterType: 'ELITE',    regionKey: 'hoa_diem_son' },
-  { key: 'chu_tuoc_huyet_dieu',  name: 'Chu Tước Huyết Điêu',  level: 19, hp: 1800, atk: 175,def: 65, speed: 17, expDrop: 1450, linhThachDrop: 410,element: 'hoa', monsterType: 'BOSS',     regionKey: 'hoa_diem_son',
+  { key: 'hoa_long_chi_linh',    name: 'Hoả Long Chi Linh',    level: 16, hp: 1280, atk: 130,def: 50, speed: 13, expDrop: 990,  linhThachDrop: 270,element: 'hoa', monsterType: 'ELITE',    regionKey: 'hoa_diem_son', elementalResist: { hoa: 0.85 } },
+  { key: 'chu_tuoc_huyet_dieu',  name: 'Chu Tước Huyết Điêu',  level: 19, hp: 1800, atk: 175,def: 65, speed: 17, expDrop: 1450, linhThachDrop: 410,element: 'hoa', monsterType: 'BOSS',     regionKey: 'hoa_diem_son', elementalResist: { hoa: 0.8 },
     lootTable: [
       // Phase 12.4 — BOSS override: rare TIEN weapon `tu_la_dao` weight 5
       // (vs dungeon weight 2). yeu_dan qty boost 3-5 (vs 2-5). Skill book
@@ -271,9 +271,9 @@ export const MONSTERS: readonly MonsterDef[] = [
 
   // Region: Hoàng Thổ Huyệt (Hệ THỔ, kim đan → nguyên anh; mỏ thổ + tank)
   { key: 'thach_quang_yeu_thu',  name: 'Thạch Quang Yêu Thú',  level: 10, hp: 540,  atk: 48, def: 50, speed: 5,  expDrop: 380,  linhThachDrop: 110,element: 'tho', monsterType: 'BEAST',    regionKey: 'hoang_tho_huyet' },
-  { key: 'hoang_tho_cu_yeu',     name: 'Hoàng Thổ Cự Yêu',     level: 13, hp: 880,  atk: 78, def: 70, speed: 6,  expDrop: 660,  linhThachDrop: 180,element: 'tho', monsterType: 'ELITE',    regionKey: 'hoang_tho_huyet', questTargetIds: ['hoang_tho_quy'] },
-  { key: 'thach_long_co_giap',   name: 'Thạch Long Cổ Giáp',   level: 17, hp: 1500, atk: 130,def: 110,speed: 7,  expDrop: 1180, linhThachDrop: 330,element: 'tho', monsterType: 'BOSS',     regionKey: 'hoang_tho_huyet' },
-  { key: 'tho_dia_lao_tu',       name: 'Thổ Địa Lão Tử',       level: 20, hp: 2200, atk: 165,def: 130,speed: 8,  expDrop: 1700, linhThachDrop: 480,element: 'tho', monsterType: 'BOSS',     regionKey: 'hoang_tho_huyet',
+  { key: 'hoang_tho_cu_yeu',     name: 'Hoàng Thổ Cự Yêu',     level: 13, hp: 880,  atk: 78, def: 70, speed: 6,  expDrop: 660,  linhThachDrop: 180,element: 'tho', monsterType: 'ELITE',    regionKey: 'hoang_tho_huyet', questTargetIds: ['hoang_tho_quy'], elementalResist: { tho: 0.85 } },
+  { key: 'thach_long_co_giap',   name: 'Thạch Long Cổ Giáp',   level: 17, hp: 1500, atk: 130,def: 110,speed: 7,  expDrop: 1180, linhThachDrop: 330,element: 'tho', monsterType: 'BOSS',     regionKey: 'hoang_tho_huyet', elementalResist: { tho: 0.8 } },
+  { key: 'tho_dia_lao_tu',       name: 'Thổ Địa Lão Tử',       level: 20, hp: 2200, atk: 165,def: 130,speed: 8,  expDrop: 1700, linhThachDrop: 480,element: 'tho', monsterType: 'BOSS',     regionKey: 'hoang_tho_huyet', elementalResist: { tho: 0.8, moc: 0.9 },
     lootTable: [
       // Phase 12.4 — BOSS override (final boss hoang_tho_huyet): equipment
       // weight 6 + skill book pity 6 + cuu_huyen_dan tier-up (weight 18 vs
@@ -287,7 +287,7 @@ export const MONSTERS: readonly MonsterDef[] = [
   },
 
   // Phase-10 cross-region BOSS (mid-late, kim đan đỉnh, mixed encounter)
-  { key: 'cuu_la_huyen_quan',    name: 'Cửu La Huyền Quân',    level: 18, hp: 1700, atk: 160,def: 80, speed: 14, expDrop: 1380, linhThachDrop: 390,element: 'kim',  monsterType: 'BOSS',    regionKey: 'kim_son_mach',
+  { key: 'cuu_la_huyen_quan',    name: 'Cửu La Huyền Quân',    level: 18, hp: 1700, atk: 160,def: 80, speed: 14, expDrop: 1380, linhThachDrop: 390,element: 'kim',  monsterType: 'BOSS',    regionKey: 'kim_son_mach', elementalResist: { kim: 0.8, hoa: 0.9 },
     lootTable: [
       // Phase 12.4 — BOSS override (cuu_la_dien single-boss endgame): tier-up
       // mọi rare drop từ dungeon-level. than_dan/tien_huyen_kiem/giap weight
@@ -342,7 +342,7 @@ export const MONSTERS: readonly MonsterDef[] = [
   // `than_phong_kiem` shared với kim_dieu_thuong_phong + tinh_thiet boost +
   // skill_book_kim_quang_tram pity). Player Kim Đan đối mặt burst nhưng có
   // thể killable 4-5 hit nếu đủ atk.
-  { key: 'tich_thien_sat_thu',name: 'Tịch Thiên Sát Thủ',level: 11, hp: 480,  atk: 95, def: 22, speed: 17, expDrop: 480, linhThachDrop: 145,element: 'kim', monsterType: 'ELITE', regionKey: 'kim_son_mach',
+  { key: 'tich_thien_sat_thu',name: 'Tịch Thiên Sát Thủ',level: 11, hp: 480,  atk: 95, def: 22, speed: 17, expDrop: 480, linhThachDrop: 145,element: 'kim', monsterType: 'ELITE', regionKey: 'kim_son_mach', elementalResist: { kim: 0.85 },
     lootTable: [
       // Phase 12.5 — ELITE override: bias toward themed kim weapon + tinh_thiet
       // boost (qty 2-5 vs dungeon 1-3). skill_book_kim_quang_tram pity weight 6

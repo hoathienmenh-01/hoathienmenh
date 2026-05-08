@@ -15,7 +15,8 @@
  *      [floor, ceil] tuyệt đối.
  */
 import { describe, expect, it } from 'vitest';
-import { ELEMENTS, type ElementKey } from './combat';
+import { ELEMENTS, MONSTERS, type ElementKey } from './combat';
+import { BOSSES } from './boss';
 import {
   ELEMENT_COMBAT_ADJUSTMENT_CEIL,
   ELEMENT_COMBAT_ADJUSTMENT_FLOOR,
@@ -33,6 +34,7 @@ import {
   parseElementType,
   type ElementType,
 } from './elemental';
+import { ITEMS } from './items';
 
 describe('ElementType ↔ ElementKey converter', () => {
   it('ELEMENT_TYPES có 5 entry English', () => {
@@ -467,5 +469,260 @@ describe('Phase 14.2.A — Type-level smoke', () => {
   it('ElementType là union literal', () => {
     const t: ElementType = 'WOOD';
     expect(t).toBe('WOOD');
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────
+// Phase 14.2.B — Elemental Combat Data invariants & integration
+//
+// Test catalog data (monster/boss elementalResist + equipment
+// elementalAtkBonus) tuân thủ balance dial Phase 14.2.A:
+//   - resist ∈ [FLOOR, 1.0]; key ∈ ELEMENTS
+//   - bonus ∈ (0, CEIL]; key ∈ ELEMENTS
+//   - coverage ≥ N entries / element (đảm bảo data có nội dung)
+//   - stack-cap: equip bộ themed full → bonus tổng ≤ TOTAL_CEIL
+//   - integration: counter element vs monster yếu hệ → damage tăng;
+//     resist → damage giảm; bonus stack → damage tăng nhưng cap.
+// ──────────────────────────────────────────────────────────────────────
+describe('Phase 14.2.B — Monster catalog elementalResist invariants', () => {
+  const monstersWithResist = MONSTERS.filter(
+    (m) => m.elementalResist !== undefined,
+  );
+
+  it('có ≥ 5 monster với elementalResist (đảm bảo catalog populated)', () => {
+    expect(monstersWithResist.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('mọi entry resist value ∈ [FLOOR, 1.0]', () => {
+    for (const m of monstersWithResist) {
+      const resist = m.elementalResist!;
+      for (const [k, v] of Object.entries(resist)) {
+        expect(Number.isFinite(v)).toBe(true);
+        expect(v).toBeGreaterThanOrEqual(ELEMENT_MONSTER_RESIST_FLOOR);
+        expect(v).toBeLessThanOrEqual(1);
+        expect((ELEMENTS as readonly string[]).includes(k)).toBe(true);
+      }
+    }
+  });
+
+  it('coverage Ngũ Hành: ≥ 1 monster resist mỗi hệ kim/moc/thuy/hoa/tho', () => {
+    for (const elem of ELEMENTS) {
+      const found = monstersWithResist.some(
+        (m) => m.elementalResist![elem] !== undefined,
+      );
+      expect(found).toBe(true);
+    }
+  });
+
+  it('composeMonsterElementalResist từ catalog data ≤ 1 + ≥ FLOOR', () => {
+    for (const m of monstersWithResist) {
+      for (const elem of ELEMENTS) {
+        const v = composeMonsterElementalResist(m.elementalResist, elem);
+        expect(v).toBeGreaterThanOrEqual(ELEMENT_MONSTER_RESIST_FLOOR);
+        expect(v).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+});
+
+describe('Phase 14.2.B — Boss catalog elementalResist invariants', () => {
+  const bossesWithResist = BOSSES.filter(
+    (b) => b.elementalResist !== undefined,
+  );
+
+  it('có ≥ 5 boss với elementalResist (catalog populated)', () => {
+    expect(bossesWithResist.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('mọi entry resist value ∈ [FLOOR, 1.0]', () => {
+    for (const b of bossesWithResist) {
+      const resist = b.elementalResist!;
+      for (const [k, v] of Object.entries(resist)) {
+        expect(Number.isFinite(v)).toBe(true);
+        expect(v).toBeGreaterThanOrEqual(ELEMENT_MONSTER_RESIST_FLOOR);
+        expect(v).toBeLessThanOrEqual(1);
+        expect((ELEMENTS as readonly string[]).includes(k)).toBe(true);
+      }
+    }
+  });
+
+  it('coverage Ngũ Hành: ≥ 1 boss resist mỗi hệ', () => {
+    for (const elem of ELEMENTS) {
+      const found = bossesWithResist.some(
+        (b) => b.elementalResist![elem] !== undefined,
+      );
+      expect(found).toBe(true);
+    }
+  });
+
+  it('boss element identity: nếu boss có element X thì resist X (boss đỉnh tier kháng affinity)', () => {
+    // Sanity: boss tier mạnh resist hệ chính của mình. Loose check — chỉ
+    // verify cho bosses có element matching, không yêu cầu mọi boss.
+    const matchedAffinity = bossesWithResist.filter(
+      (b) => b.element !== null && b.elementalResist![b.element!] !== undefined,
+    );
+    expect(matchedAffinity.length).toBeGreaterThanOrEqual(5);
+  });
+});
+
+describe('Phase 14.2.B — Equipment catalog elementalAtkBonus invariants', () => {
+  const itemsWithBonus = ITEMS.filter(
+    (i) => i.bonuses?.elementalAtkBonus !== undefined,
+  );
+
+  it('có ≥ 5 equipment với elementalAtkBonus (catalog populated)', () => {
+    expect(itemsWithBonus.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('mọi item bonus value ∈ (0, CEIL]', () => {
+    for (const item of itemsWithBonus) {
+      const bonus = item.bonuses!.elementalAtkBonus!;
+      for (const [k, v] of Object.entries(bonus)) {
+        expect(Number.isFinite(v)).toBe(true);
+        expect(v).toBeGreaterThan(0);
+        expect(v).toBeLessThanOrEqual(ELEMENT_EQUIPMENT_ATK_BONUS_CEIL);
+        expect((ELEMENTS as readonly string[]).includes(k)).toBe(true);
+      }
+    }
+  });
+
+  it('coverage Ngũ Hành: ≥ 1 item bonus mỗi hệ kim/moc/thuy/hoa/tho', () => {
+    for (const elem of ELEMENTS) {
+      const found = itemsWithBonus.some(
+        (i) => i.bonuses!.elementalAtkBonus![elem] !== undefined,
+      );
+      expect(found).toBe(true);
+    }
+  });
+
+  it('chỉ equip item (kind = WEAPON / ARMOR / ARTIFACT) có elementalAtkBonus (consumable không nên có)', () => {
+    for (const item of itemsWithBonus) {
+      expect(['WEAPON', 'ARMOR', 'ARTIFACT']).toContain(item.kind);
+    }
+  });
+
+  it('compose stack từ catalog data: equip bộ Kim full (4 weapon) → tổng bonus ≤ TOTAL_CEIL', () => {
+    const kimItems = itemsWithBonus.filter(
+      (i) => i.bonuses!.elementalAtkBonus!.kim !== undefined,
+    );
+    expect(kimItems.length).toBeGreaterThanOrEqual(2);
+    const total = composeEquipmentElementalAtkBonus(
+      kimItems.map((i) => i.bonuses!),
+      'kim',
+    );
+    expect(total).toBeGreaterThan(0);
+    expect(total).toBeLessThanOrEqual(ELEMENT_EQUIPMENT_ATK_BONUS_TOTAL_CEIL);
+  });
+
+  it('compose stack từ catalog data: mọi hệ → tổng bonus ≤ TOTAL_CEIL', () => {
+    for (const elem of ELEMENTS) {
+      const sameElem = itemsWithBonus.filter(
+        (i) => i.bonuses!.elementalAtkBonus![elem] !== undefined,
+      );
+      const total = composeEquipmentElementalAtkBonus(
+        sameElem.map((i) => i.bonuses!),
+        elem,
+      );
+      expect(total).toBeGreaterThanOrEqual(0);
+      expect(total).toBeLessThanOrEqual(ELEMENT_EQUIPMENT_ATK_BONUS_TOTAL_CEIL);
+    }
+  });
+});
+
+describe('Phase 14.2.B — Combat integration with catalog data', () => {
+  // Helper: tạo monster mock để test pipeline trực tiếp.
+  const fakeMonster = (elementalResist: Partial<Record<ElementKey, number>>) => ({
+    elementalResist,
+  });
+
+  it('skill khắc chế (Kim → Mộc) vs monster yếu hệ → multiplier > 1', () => {
+    // Mộc có element=moc, kim quang tram (kim) khắc moc → counter base 1.3.
+    const out = applyElementalCombatAdjustment({
+      skillElement: 'kim',
+      targetElement: 'moc',
+    });
+    expect(out.multiplier).toBeGreaterThan(1);
+    expect(out.relation).toBe('counter');
+  });
+
+  it('boss có resist Kim 0.8 → multiplier giảm đúng tỷ lệ vs no-resist baseline', () => {
+    const baseline = applyElementalCombatAdjustment({
+      skillElement: 'kim',
+      targetElement: 'kim', // same hệ → base 0.9
+    });
+    const withResist = applyElementalCombatAdjustment({
+      skillElement: 'kim',
+      targetElement: 'kim',
+      monsterElementalResist: { kim: 0.8 },
+    });
+    // baseline.multiplier = 0.9 × 1.0 = 0.9
+    // withResist.multiplier = 0.9 × 0.8 = 0.72
+    expect(withResist.multiplier).toBeLessThan(baseline.multiplier);
+    expect(withResist.multiplier).toBeCloseTo(baseline.multiplier * 0.8, 4);
+  });
+
+  it('monster resist clamp về FLOOR khi catalog set < FLOOR', () => {
+    // Catalog set resist 0.5 (under floor 0.7) → should clamp to FLOOR.
+    const out = applyElementalCombatAdjustment({
+      skillElement: 'kim',
+      targetElement: null,
+      monsterElementalResist: { kim: 0.5 },
+    });
+    expect(out.monsterResistMultiplier).toBe(ELEMENT_MONSTER_RESIST_FLOOR);
+  });
+
+  it('equipment bonus +0.10 → multiplier tăng 10% (additive nhân vào pipeline)', () => {
+    const baseline = applyElementalCombatAdjustment({
+      skillElement: 'kim',
+      targetElement: null,
+    });
+    const withBonus = applyElementalCombatAdjustment({
+      skillElement: 'kim',
+      targetElement: null,
+      equipmentBonuses: [{ elementalAtkBonus: { kim: 0.1 } }],
+    });
+    expect(withBonus.multiplier).toBeCloseTo(baseline.multiplier * 1.1, 4);
+  });
+
+  it('equipment bonus stack (4 themed kim items) → bonus capped trong TOTAL_CEIL', () => {
+    // 4 kim items: 0.04 + 0.05 + 0.06 + 0.08 = 0.23 → cap 0.20.
+    const itemsKimAll = ITEMS.filter(
+      (i) => i.bonuses?.elementalAtkBonus?.kim !== undefined,
+    ).map((i) => i.bonuses!);
+    const total = composeEquipmentElementalAtkBonus(itemsKimAll, 'kim');
+    expect(total).toBeLessThanOrEqual(ELEMENT_EQUIPMENT_ATK_BONUS_TOTAL_CEIL);
+    // Verify catalog có tối thiểu 4 kim items (test design); nếu fewer
+    // bonus không reach cap nhưng vẫn ≤ ceil.
+  });
+
+  it('full pipeline counter + resist + bonus compose multiplicatively (no double-apply)', () => {
+    // Counter base × monster resist × (1 + equip bonus). Verify mỗi layer
+    // chỉ apply 1 lần — nếu double-apply thì multiplier sẽ vượt expected.
+    const out = applyElementalCombatAdjustment({
+      skillElement: 'kim',
+      targetElement: 'moc', // counter
+      monsterElementalResist: { kim: 0.85 },
+      equipmentBonuses: [{ elementalAtkBonus: { kim: 0.07 } }],
+    });
+    // Expected: baseMultiplier (1.3) × 0.85 × 1.07 ≈ 1.182
+    const expected = out.baseMultiplier * 0.85 * 1.07;
+    expect(out.multiplier).toBeCloseTo(expected, 4);
+    // Sanity: nếu double-apply (1.3² × 0.85² × 1.07²) sẽ ~1.4
+    expect(out.multiplier).toBeLessThan(out.baseMultiplier * 0.85 * 1.07 + 0.01);
+  });
+
+  it('countered (Mộc → Kim) + equipment bonus full stack → multiplier vẫn < 1 (anti power-creep)', () => {
+    // Foundation phase 14.2.A đảm bảo equipment bonus nhẹ (max 20% total)
+    // không thể flip countered (~0.7) thành amplify.
+    const items = Array.from({ length: 5 }, () => ({
+      elementalAtkBonus: { moc: 0.1 },
+    }));
+    const out = applyElementalCombatAdjustment({
+      skillElement: 'moc',
+      targetElement: 'kim',
+      equipmentBonuses: items,
+    });
+    // 0.7 × 1.0 × (1 + 0.2) = 0.84 < 1 → vẫn dampen.
+    expect(out.multiplier).toBeLessThan(1);
   });
 });
