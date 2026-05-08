@@ -566,6 +566,144 @@ export async function adminSectWarSnapshot(input: {
   return unwrap(data);
 }
 
+// ───────── Phase 13.1.D — Admin LiveOps Schedule Preview & Dry-run ─────────
+
+export type AdminLiveOpsEventTypeView =
+  | 'DAILY'
+  | 'WEEKLY'
+  | 'LIMITED'
+  | 'BOSS'
+  | 'STORY';
+
+export interface AdminLiveOpsActiveEventView {
+  key: string;
+  type: AdminLiveOpsEventTypeView;
+  titleI18nKey: string;
+  descriptionI18nKey: string;
+  slotStartIso: string;
+  slotEndIso: string;
+  regionKey?: string;
+  bossKey?: string;
+  rewardHintI18nKey?: string;
+}
+
+export interface AdminLiveOpsUpcomingEventView {
+  key: string;
+  type: AdminLiveOpsEventTypeView;
+  titleI18nKey: string;
+  descriptionI18nKey: string;
+  catalogEnabled: boolean;
+  effectiveEnabled: boolean;
+  slotStartIso: string;
+  slotEndIso: string;
+  regionKey?: string;
+  bossKey?: string;
+  rewardHintI18nKey?: string;
+}
+
+export interface AdminLiveOpsBossScheduleSlotView {
+  key: string;
+  bossKey: string;
+  regionKey: string;
+  slotStartIso: string;
+  slotEndIso: string;
+  status: 'upcoming' | 'active' | 'completed';
+  rewardHintI18nKey?: string;
+  catalogEnabled: boolean;
+  effectiveEnabled: boolean;
+  localDate: string;
+}
+
+export interface AdminLiveOpsSectWarSeasonView {
+  weekKey: string;
+  startsAtIso: string;
+  endsAtIso: string;
+  timezone: string;
+}
+
+export interface AdminLiveOpsSchedulePreviewView {
+  nowIso: string;
+  tz: string;
+  activeEvents: ReadonlyArray<AdminLiveOpsActiveEventView>;
+  upcomingEvents: ReadonlyArray<AdminLiveOpsUpcomingEventView>;
+  bossScheduleToday: ReadonlyArray<AdminLiveOpsBossScheduleSlotView>;
+  bossScheduleWeek: ReadonlyArray<AdminLiveOpsBossScheduleSlotView>;
+  sectWar: {
+    season: AdminLiveOpsSectWarSeasonView;
+    status: AdminSectWarStatusView;
+  };
+  overrides: ReadonlyArray<AdminLiveOpsOverrideView>;
+}
+
+export type AdminLiveOpsDryRunKind = 'event' | 'boss';
+
+export interface AdminLiveOpsDryRunInput {
+  kind: AdminLiveOpsDryRunKind;
+  key: string;
+  regionKey?: string;
+  level?: number;
+  reason?: string;
+}
+
+export interface AdminLiveOpsDryRunEventResult {
+  kind: 'event';
+  key: string;
+  type: AdminLiveOpsEventTypeView;
+  titleI18nKey: string;
+  descriptionI18nKey: string;
+  catalogEnabled: boolean;
+  effectiveEnabled: boolean;
+  override: AdminLiveOpsOverrideView | null;
+  nextSlotStartIso: string | null;
+  nextSlotEndIso: string | null;
+  regionKey?: string;
+  bossKey?: string;
+  rewardHintI18nKey?: string;
+  simulated: true;
+  reason: string | null;
+  simulatedAt: string;
+}
+
+export interface AdminLiveOpsDryRunBossResult {
+  kind: 'boss';
+  bossKey: string;
+  bossName: string;
+  regionKey: string;
+  level: number;
+  simulatedMaxHp: string;
+  simulatedReward: {
+    baseLinhThach: number;
+    topDropPool: ReadonlyArray<string>;
+    midDropPool: ReadonlyArray<string>;
+    lowDropPool: ReadonlyArray<string>;
+  };
+  recommendedRealm: string;
+  simulated: true;
+  reason: string | null;
+  simulatedAt: string;
+}
+
+export type AdminLiveOpsDryRunResult =
+  | AdminLiveOpsDryRunEventResult
+  | AdminLiveOpsDryRunBossResult;
+
+export async function adminLiveOpsSchedulePreview(): Promise<AdminLiveOpsSchedulePreviewView> {
+  const { data } = await apiClient.get<Envelope<AdminLiveOpsSchedulePreviewView>>(
+    '/admin/liveops/schedule-preview',
+  );
+  return unwrap(data);
+}
+
+export async function adminLiveOpsDryRun(
+  input: AdminLiveOpsDryRunInput,
+): Promise<AdminLiveOpsDryRunResult> {
+  const { data } = await apiClient.post<Envelope<AdminLiveOpsDryRunResult>>(
+    '/admin/liveops/dry-run',
+    input,
+  );
+  return unwrap(data);
+}
+
 /**
  * Compute display status từ row fields. Mirror BE logic — `revokedAt` thắng,
  * sau đó `expiresAt < now` → EXPIRED, sau đó `redeemCount >= maxRedeems` → EXHAUSTED,

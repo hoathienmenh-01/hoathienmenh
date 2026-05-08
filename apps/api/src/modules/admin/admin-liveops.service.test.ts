@@ -15,7 +15,11 @@
  *     `ADMIN_SECT_WAR_RECALCULATE` audit, KHÔNG đụng tới contribution rows.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { LIVE_OPS_DEFAULT_TZ, LIVE_OPS_EVENTS } from '@xuantoi/shared';
+import {
+  LIVE_OPS_DEFAULT_TZ,
+  LIVE_OPS_EVENTS,
+  bossByKey,
+} from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { AdminLiveOpsService } from './admin-liveops.service';
 import {
@@ -494,5 +498,267 @@ describe('AdminLiveOpsService.snapshotSectWarStatus', () => {
       where: { actorUserId: adminU.userId, action: 'ADMIN_SECT_WAR_STATUS' },
     });
     expect((audit.meta as Record<string, unknown>).reason).toBeNull();
+  });
+});
+
+/**
+ * Phase 13.1.D — schedulePreview: read-only aggregate cho admin xem trước
+ * lịch event/boss/sect war/override. KHÔNG mutate, KHÔNG audit.
+ */
+describe('AdminLiveOpsService.schedulePreview', () => {
+  it('trả về tz + nowIso + activeEvents + upcomingEvents + bossSchedule + sectWar + overrides; KHÔNG mutate DB', async () => {
+    const beforeOverrides = await prisma.liveOpsEventOverride.findMany({});
+    const beforeAudit = await prisma.adminAuditLog.findMany({});
+
+    const view = await svc.schedulePreview();
+
+    expect(view.tz).toBe(LIVE_OPS_DEFAULT_TZ);
+    expect(typeof view.nowIso).toBe('string');
+    expect(Array.isArray(view.activeEvents)).toBe(true);
+    expect(Array.isArray(view.upcomingEvents)).toBe(true);
+    expect(Array.isArray(view.bossScheduleToday)).toBe(true);
+    expect(Array.isArray(view.bossScheduleWeek)).toBe(true);
+    expect(view.sectWar).toBeDefined();
+    expect(typeof view.sectWar.season.weekKey).toBe('string');
+    expect(view.sectWar.status.weekKey).toBe(view.sectWar.season.weekKey);
+    expect(Array.isArray(view.overrides)).toBe(true);
+
+    // Read-only — KHÔNG mutate override row, KHÔNG ghi audit.
+    const afterOverrides = await prisma.liveOpsEventOverride.findMany({});
+    const afterAudit = await prisma.adminAuditLog.findMany({});
+    expect(afterOverrides.length).toBe(beforeOverrides.length);
+    expect(afterAudit.length).toBe(beforeAudit.length);
+  });
+
+  it('override.enabled=false được reflect trong overrides[] với enabled=false (admin biết event đang OFF)', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const targetKey = LIVE_OPS_EVENTS[0].key;
+    await prisma.liveOpsEventOverride.create({
+      data: {
+        key: targetKey,
+        enabled: false,
+        startsAt: null,
+        endsAt: null,
+        reason: 'preview test',
+        updatedBy: adminU.userId,
+      },
+    });
+
+    const view = await svc.schedulePreview();
+    const ovr = view.overrides.find((o) => o.key === targetKey);
+    expect(ovr).toBeDefined();
+    expect(ovr!.enabled).toBe(false);
+    expect(ovr!.reason).toBe('preview test');
+    expect(ovr!.updatedBy).toBe(adminU.userId);
+
+    // activeEvents KHÔNG chứa key này (override.enabled=false → effective=false).
+    expect(view.activeEvents.find((e) => e.key === targetKey)).toBeUndefined();
+  });
+
+  it('upcomingEvents có shape đầy đủ (catalogEnabled / effectiveEnabled / slotStartIso / slotEndIso)', async () => {
+    const view = await svc.schedulePreview();
+    for (const ev of view.upcomingEvents) {
+      expect(typeof ev.key).toBe('string');
+      expect(typeof ev.type).toBe('string');
+      expect(typeof ev.titleI18nKey).toBe('string');
+      expect(typeof ev.catalogEnabled).toBe('boolean');
+      expect(typeof ev.effectiveEnabled).toBe('boolean');
+      expect(typeof ev.slotStartIso).toBe('string');
+      expect(typeof ev.slotEndIso).toBe('string');
+      // start <= end
+      expect(
+        new Date(ev.slotStartIso).getTime(),
+      ).toBeLessThanOrEqual(new Date(ev.slotEndIso).getTime());
+    }
+  });
+});
+
+/**
+ * Phase 13.1.D — dryRun: simulate event/boss execution KHÔNG mutate DB
+ * (KHÔNG ghi reward, KHÔNG insert WorldBoss). Ghi 1 audit nhẹ
+ * `ADMIN_LIVEOPS_DRY_RUN`.
+ */
+describe('AdminLiveOpsService.dryRun event', () => {
+  it('event ok: trả result với key/type/effectiveEnabled/simulated=true; ghi 1 audit ADMIN_LIVEOPS_DRY_RUN', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const targetKey = LIVE_OPS_EVENTS[0].key;
+
+    const beforeOverrides = await prisma.liveOpsEventOverride.findMany({});
+    const beforeWorldBoss = await prisma.worldBoss.findMany({});
+    const beforeLedger = await prisma.currencyLedger.findMany({});
+
+    const r = await svc.dryRun(adminU.userId, {
+      kind: 'event',
+      key: targetKey,
+      reason: 'preview event',
+    });
+    expect(r.kind).toBe('event');
+    if (r.kind !== 'event') return;
+    expect(r.key).toBe(targetKey);
+    expect(typeof r.catalogEnabled).toBe('boolean');
+    expect(typeof r.effectiveEnabled).toBe('boolean');
+    expect(r.simulated).toBe(true);
+    expect(r.reason).toBe('preview event');
+    expect(typeof r.simulatedAt).toBe('string');
+
+    // Audit row được ghi.
+    const audit = await prisma.adminAuditLog.findFirstOrThrow({
+      where: { actorUserId: adminU.userId, action: 'ADMIN_LIVEOPS_DRY_RUN' },
+    });
+    const meta = audit.meta as Record<string, unknown>;
+    expect(meta.kind).toBe('event');
+    expect(meta.targetType).toBe('LiveOpsEvent');
+    expect(meta.targetId).toBe(targetKey);
+    expect(meta.reason).toBe('preview event');
+
+    // KHÔNG mutate override / worldboss / ledger.
+    const afterOverrides = await prisma.liveOpsEventOverride.findMany({});
+    const afterWorldBoss = await prisma.worldBoss.findMany({});
+    const afterLedger = await prisma.currencyLedger.findMany({});
+    expect(afterOverrides.length).toBe(beforeOverrides.length);
+    expect(afterWorldBoss.length).toBe(beforeWorldBoss.length);
+    expect(afterLedger.length).toBe(beforeLedger.length);
+  });
+
+  it('event với override DB → effectiveEnabled=false được reflect; KHÔNG bypass override', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const targetKey = LIVE_OPS_EVENTS[0].key;
+    await prisma.liveOpsEventOverride.create({
+      data: {
+        key: targetKey,
+        enabled: false,
+        updatedBy: adminU.userId,
+      },
+    });
+
+    const r = await svc.dryRun(adminU.userId, {
+      kind: 'event',
+      key: targetKey,
+    });
+    expect(r.kind).toBe('event');
+    if (r.kind !== 'event') return;
+    expect(r.effectiveEnabled).toBe(false);
+    expect(r.override).not.toBeNull();
+    expect(r.override!.enabled).toBe(false);
+  });
+
+  it('event EVENT_NOT_FOUND: key không có trong catalog → throw, KHÔNG ghi audit', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    await expect(
+      svc.dryRun(adminU.userId, {
+        kind: 'event',
+        key: 'totally_unknown_event_xyz',
+      }),
+    ).rejects.toMatchObject({ code: 'EVENT_NOT_FOUND' });
+
+    const audits = await prisma.adminAuditLog.findMany({
+      where: { action: 'ADMIN_LIVEOPS_DRY_RUN' },
+    });
+    expect(audits).toHaveLength(0);
+  });
+});
+
+describe('AdminLiveOpsService.dryRun boss', () => {
+  it('boss ok: trả result với simulatedMaxHp + simulatedReward (catalog drops, KHÔNG grant); KHÔNG insert WorldBoss', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    // Use first available boss def from shared catalog (multi-region keys).
+    const allBossKeys = [
+      'yeu_vuong_tho_huyet',
+      'huyet_long_quan',
+      'moc_dinh_co_yeu',
+    ];
+    let bossKey: string | null = null;
+    for (const k of allBossKeys) {
+      if (bossByKey(k)) {
+        bossKey = k;
+        break;
+      }
+    }
+    expect(bossKey).not.toBeNull();
+    if (!bossKey) return;
+
+    const beforeWorldBoss = await prisma.worldBoss.findMany({});
+    const beforeLedger = await prisma.currencyLedger.findMany({});
+
+    const r = await svc.dryRun(adminU.userId, {
+      kind: 'boss',
+      key: bossKey,
+      level: 5,
+      reason: 'preview boss',
+    });
+    expect(r.kind).toBe('boss');
+    if (r.kind !== 'boss') return;
+    expect(r.bossKey).toBe(bossKey);
+    expect(r.level).toBe(5);
+    expect(typeof r.simulatedMaxHp).toBe('string');
+    expect(BigInt(r.simulatedMaxHp)).toBeGreaterThan(0n);
+    expect(r.simulatedReward.baseLinhThach).toBeGreaterThanOrEqual(0);
+    expect(Array.isArray(r.simulatedReward.topDropPool)).toBe(true);
+    expect(Array.isArray(r.simulatedReward.midDropPool)).toBe(true);
+    expect(Array.isArray(r.simulatedReward.lowDropPool)).toBe(true);
+    expect(r.simulated).toBe(true);
+    expect(r.reason).toBe('preview boss');
+
+    // Audit row được ghi.
+    const audit = await prisma.adminAuditLog.findFirstOrThrow({
+      where: { actorUserId: adminU.userId, action: 'ADMIN_LIVEOPS_DRY_RUN' },
+    });
+    const meta = audit.meta as Record<string, unknown>;
+    expect(meta.kind).toBe('boss');
+    expect(meta.targetType).toBe('Boss');
+    expect(meta.targetId).toBe(bossKey);
+    expect(meta.level).toBe(5);
+    expect(meta.reason).toBe('preview boss');
+
+    // KHÔNG insert WorldBoss row, KHÔNG ledger.
+    const afterWorldBoss = await prisma.worldBoss.findMany({});
+    const afterLedger = await prisma.currencyLedger.findMany({});
+    expect(afterWorldBoss.length).toBe(beforeWorldBoss.length);
+    expect(afterLedger.length).toBe(beforeLedger.length);
+  });
+
+  it('boss BOSS_NOT_FOUND: key không có trong catalog → throw, KHÔNG ghi audit', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    await expect(
+      svc.dryRun(adminU.userId, {
+        kind: 'boss',
+        key: 'totally_unknown_boss_xyz',
+      }),
+    ).rejects.toMatchObject({ code: 'BOSS_NOT_FOUND' });
+    const audits = await prisma.adminAuditLog.findMany({
+      where: { action: 'ADMIN_LIVEOPS_DRY_RUN' },
+    });
+    expect(audits).toHaveLength(0);
+  });
+
+  it('boss level clamp: level=0/-1 → coerce 1, level=999 → clamp 99', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const allBossKeys = ['huyet_ma', 'phong_yeu', 'son_thu_lon'];
+    let bossKey: string | null = null;
+    for (const k of allBossKeys) {
+      if (bossByKey(k)) {
+        bossKey = k;
+        break;
+      }
+    }
+    if (!bossKey) return;
+
+    const r1 = await svc.dryRun(adminU.userId, {
+      kind: 'boss',
+      key: bossKey,
+      level: 0,
+    });
+    expect(r1.kind).toBe('boss');
+    if (r1.kind !== 'boss') return;
+    expect(r1.level).toBe(1);
+
+    const r2 = await svc.dryRun(adminU.userId, {
+      kind: 'boss',
+      key: bossKey,
+      level: 9999,
+    });
+    expect(r2.kind).toBe('boss');
+    if (r2.kind !== 'boss') return;
+    expect(r2.level).toBe(99);
   });
 });
