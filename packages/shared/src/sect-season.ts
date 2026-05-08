@@ -130,6 +130,169 @@ export interface SectSeasonMyStatusView {
 }
 
 // ────────────────────────────────────────────────────────────────────────
+// History snapshot + Hall of Fame types (Phase 13.2.C)
+// ────────────────────────────────────────────────────────────────────────
+
+/**
+ * Phase 13.2.C — Snapshot 1 row sect rank trong season đã chốt.
+ *
+ * Mirror runtime `SectSeasonSectRank` schema. `sectName` snapshot tên tại
+ * thời điểm finalize (không follow rename về sau — audit-correct).
+ */
+export interface SectSeasonHistorySectEntry {
+  readonly rank: number;
+  readonly sectId: string;
+  readonly sectName: string;
+  readonly points: number;
+  readonly contributors: number;
+  readonly weeksContributed: number;
+}
+
+/**
+ * Phase 13.2.C — Snapshot 1 row top contributor cá nhân trong season đã
+ * chốt. Mirror runtime `SectSeasonTopMember` schema.
+ *
+ * `sectId`/`sectName` nullable: character không có sect tại lúc finalize
+ * (vd rời sect giữa season nhưng trước đó đã ghi điểm). Phase 13.2.C
+ * không attempt re-attribute — snapshot tên + sect ngay tại finalize.
+ */
+export interface SectSeasonHistoryMemberEntry {
+  readonly rank: number;
+  readonly characterId: string;
+  readonly characterName: string;
+  readonly sectId: string | null;
+  readonly sectName: string | null;
+  readonly points: number;
+}
+
+/**
+ * Phase 13.2.C — Summary 1 season đã chốt cho list view.
+ *
+ * Denormalized champion (rank-1 sect) + mvp (rank-1 cá nhân) trực tiếp
+ * trong row để FE list không cần fetch detail từng season. Detail view
+ * (full leaderboard + topMembers) gọi qua `GET /sect-season/history/:key`.
+ *
+ * `champion`/`mvp` null nếu season hoàn toàn không có contribution
+ * (snapshot empty — vẫn được tạo với totals=0 để mark "đã chốt").
+ */
+export interface SectSeasonHistorySummary {
+  readonly seasonKey: string;
+  /** ISO timestamp lúc tạo snapshot. */
+  readonly finalizedAt: string;
+  readonly totalSects: number;
+  readonly totalContributors: number;
+  readonly totalPoints: number;
+  readonly champion: SectSeasonHistorySectEntry | null;
+  readonly mvp: SectSeasonHistoryMemberEntry | null;
+}
+
+/**
+ * Phase 13.2.C — Detail view 1 season đã chốt: full top-N sect leaderboard
+ * + top-N cá nhân. Sort theo `rank` ascending.
+ */
+export interface SectSeasonHistoryView {
+  readonly seasonKey: string;
+  readonly finalizedAt: string;
+  readonly totalSects: number;
+  readonly totalContributors: number;
+  readonly totalPoints: number;
+  readonly sects: ReadonlyArray<SectSeasonHistorySectEntry>;
+  readonly topMembers: ReadonlyArray<SectSeasonHistoryMemberEntry>;
+}
+
+/**
+ * Phase 13.2.C — List view: tất cả season đã chốt + summary mỗi season.
+ *
+ * Order: `finalizedAt` descending (newest first) — UX bias toward recent
+ * memorable seasons.
+ */
+export interface SectSeasonHistoryListView {
+  readonly seasons: ReadonlyArray<SectSeasonHistorySummary>;
+}
+
+/**
+ * Phase 13.2.C — Aggregated Hall of Fame entry cho 1 sect across multiple
+ * seasons.
+ *
+ *   - `championships` = số lần sect đứng rank-1 trong các season đã chốt.
+ *   - `podiums`       = số lần sect đứng top-3.
+ *   - `appearances`   = số season sect có rank row (top-N theo
+ *     `LEADERBOARD_TOP`).
+ *   - `totalPoints`   = tổng `points` cộng dồn qua mọi season đã chốt.
+ *   - `bestRank`      = rank tốt nhất từng đạt (1 = best).
+ *   - `latestSeasonKey` = season key gần nhất sect xuất hiện (cho UX badge).
+ */
+export interface SectHallOfFameSectEntry {
+  readonly sectId: string;
+  readonly sectName: string;
+  readonly championships: number;
+  readonly podiums: number;
+  readonly appearances: number;
+  readonly bestRank: number;
+  readonly totalPoints: number;
+  readonly latestSeasonKey: string;
+}
+
+/**
+ * Phase 13.2.C — Aggregated Hall of Fame entry cho 1 character across
+ * multiple seasons.
+ *
+ *   - `mvps`            = số lần character đứng rank-1 cá nhân.
+ *   - `podiums`         = số lần character đứng top-3 cá nhân.
+ *   - `appearances`     = số season có row trong `SectSeasonTopMember`
+ *     (= số lần lọt top-N).
+ *   - `totalPoints`     = tổng `points` cộng dồn qua mọi season đã chốt
+ *     (chỉ cộng từ row đã lọt top-N — KHÔNG aggregate full
+ *     `SectWarContribution` để tránh phụ thuộc dữ liệu thô).
+ *   - `latestSeasonKey` / `latestSectName` = season + sect gần nhất
+ *     (cho UX badge: "current sect" + "last seen").
+ */
+export interface SectHallOfFameMemberEntry {
+  readonly characterId: string;
+  readonly characterName: string;
+  readonly mvps: number;
+  readonly podiums: number;
+  readonly appearances: number;
+  readonly bestRank: number;
+  readonly totalPoints: number;
+  readonly latestSeasonKey: string;
+  readonly latestSectName: string | null;
+}
+
+/**
+ * Phase 13.2.C — Hall of Fame view aggregate.
+ *
+ * Order:
+ *   - `sects`: championships desc → podiums desc → totalPoints desc →
+ *     sectName asc.
+ *   - `members`: mvps desc → podiums desc → totalPoints desc →
+ *     characterName asc.
+ *
+ * Caller có thể slice client-side (vd top 10) — server trả full list nhưng
+ * size luôn bounded vì `SectSeasonSectRank` / `SectSeasonTopMember` đã
+ * top-N per season (= LEADERBOARD_TOP * #seasons finalized).
+ */
+export interface SectHallOfFameView {
+  readonly sects: ReadonlyArray<SectHallOfFameSectEntry>;
+  readonly members: ReadonlyArray<SectHallOfFameMemberEntry>;
+  readonly totalSeasonsFinalized: number;
+}
+
+/**
+ * Phase 13.2.C — Compact entry types cho FE rendering. Re-export alias để
+ * khớp tên trong spec PR. Caller có thể dùng `SectHallOfFameEntry` như
+ * union nếu component generic.
+ */
+export type SectHallOfFameEntry = SectHallOfFameSectEntry | SectHallOfFameMemberEntry;
+
+/**
+ * Phase 13.2.C — Số lượng top member / season được snapshot. Match
+ * `LEADERBOARD_TOP` của Sect War để FE rendering đồng nhất (top 10 sect +
+ * top 10 cá nhân / season đã chốt).
+ */
+export const SECT_SEASON_TOP_MEMBERS = 10;
+
+// ────────────────────────────────────────────────────────────────────────
 // Catalog
 // ────────────────────────────────────────────────────────────────────────
 

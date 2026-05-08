@@ -18,9 +18,17 @@ import SectWarRewardPanel from '@/components/SectWarRewardPanel.vue';
 import SectMissionPanel from '@/components/SectMissionPanel.vue';
 import SectShopPanel from '@/components/SectShopPanel.vue';
 import SectSeasonPanel from '@/components/SectSeasonPanel.vue';
+import SectSeasonHistoryPanel from '@/components/SectSeasonHistoryPanel.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
-type SectWarTab = 'overview' | 'leaderboard' | 'missions' | 'shop' | 'rewards' | 'season';
+type SectWarTab =
+  | 'overview'
+  | 'leaderboard'
+  | 'missions'
+  | 'shop'
+  | 'rewards'
+  | 'season'
+  | 'hallOfFame';
 const ALL_TABS: ReadonlyArray<SectWarTab> = [
   'overview',
   'leaderboard',
@@ -28,6 +36,7 @@ const ALL_TABS: ReadonlyArray<SectWarTab> = [
   'shop',
   'rewards',
   'season',
+  'hallOfFame',
 ];
 
 const auth = useAuthStore();
@@ -215,6 +224,13 @@ async function onClaim(): Promise<void> {
 
       <section v-else-if="tab === 'season'" data-test="sect-war-tab-content-season">
         <SectSeasonPanel :my-sect-id="state.me.sectId" />
+      </section>
+
+      <section
+        v-else-if="tab === 'hallOfFame'"
+        data-test="sect-war-tab-content-hallOfFame"
+      >
+        <SectSeasonHistoryPanel />
       </section>
     </div>
   </AppShell>
