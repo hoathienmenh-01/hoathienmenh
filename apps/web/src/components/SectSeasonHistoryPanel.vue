@@ -12,7 +12,7 @@
  *     "Chưa có mùa nào được vinh danh".
  *   - Detail view: nếu API throw SNAPSHOT_NOT_FOUND → fallback i18n message.
  */
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
   getSectSeasonHallOfFame,
@@ -20,7 +20,6 @@ import {
   getSectSeasonHistoryDetail,
   type SectHallOfFameView,
   type SectSeasonHistoryListView,
-  type SectSeasonHistorySummary,
   type SectSeasonHistoryView,
 } from '@/api/sectSeason';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
@@ -36,13 +35,6 @@ const detail = ref<SectSeasonHistoryView | null>(null);
 const detailLoading = ref(false);
 const detailError = ref<string | null>(null);
 const selectedSeasonKey = ref<string | null>(null);
-
-const seasonNameMap = computed<Record<string, string>>(() => {
-  // Lấy tên season từ shared i18n key — server không trả label trong
-  // history list để tránh duplicate catalog. Map seasonKey →
-  // sectSeason.season.names.{suffix} dựa theo convention `season_YYYY_sX`.
-  return {};
-});
 
 function seasonLabel(seasonKey: string): string {
   const parts = seasonKey.split('_');
@@ -102,10 +94,6 @@ function backToList(): void {
   detailError.value = null;
 }
 
-function rememberSummary(seasonKey: string): SectSeasonHistorySummary | null {
-  if (!list.value) return null;
-  return list.value.seasons.find((s) => s.seasonKey === seasonKey) ?? null;
-}
 </script>
 
 <template>
