@@ -1,35 +1,46 @@
 /**
- * Sect Season (Mùa Tông Môn) — Phase 13.2.A foundation catalog & helpers.
+ * Sect Season (Mùa Tông Môn) — Phase 13.2.A foundation + Phase 13.2.B
+ * milestone claim helpers.
  *
- * Pure data + deterministic helpers. KHÔNG runtime/schema/migration. Phase
- * 13.2.A chỉ mở foundation read-only:
+ * Pure data + deterministic helpers. KHÔNG runtime/schema/migration. Catalog
+ * snapshot:
  *   - Định nghĩa season catalog (4-tuần / season, stable key `season_YYYY_sN`).
  *   - Định nghĩa personal milestone catalog (5 mốc tiến độ cá nhân theo
  *     contribution points trong season).
  *   - Helper `currentSectSeason(now, tz)` / `sectSeasonByKey(key)` /
  *     `sectSeasonWeekKeys(season)` / `sectSeasonAchievedMilestones(points)`.
- *   - Validation invariants — không runtime claim, không reward grant lớn.
+ *   - Phase 13.2.B: `sectSeasonClaimableMilestones` (achieved AND not yet
+ *     claimed) + `sectSeasonRewardSummary` formatter helpers cho FE.
+ *   - Validation invariants — runtime claim được implement ở Phase 13.2.B
+ *     trong `SectSeasonService.claimMilestone` (CAS guard qua DB UNIQUE).
  *
  * Bối cảnh:
  *   - Sect War tuần lễ (Phase 13.1.A) đã có; Sect Missions/Shop (13.1.B) đã
- *     có. Phase 13.2.A đứng trên top như một "long-form season" view: cộng
- *     dồn `SectWarContribution` qua nhiều tuần (default 4 tuần) → ra
- *     leaderboard + personal milestone progress.
- *   - KHÔNG đụng `SectWarContribution` schema, KHÔNG ghi reward thật, KHÔNG
- *     làm season claim trong PR này (xem Out-of-scope).
+ *     có. Phase 13.2.A foundation đứng trên top như một "long-form season"
+ *     view: cộng dồn `SectWarContribution` qua nhiều tuần (default 4 tuần)
+ *     → ra leaderboard + personal milestone progress.
+ *   - Phase 13.2.B build trên foundation đó: thêm reward claim per-milestone
+ *     thông qua `SectSeasonClaim` table (UNIQUE `(characterId, seasonKey,
+ *     milestoneKey)` chống double claim + race condition).
+ *   - KHÔNG đụng `SectWarContribution` schema, KHÔNG sửa weekly reward.
  *
- * Out-of-scope (Phase 13.2.B+):
- *   - Season reward claim runtime (CurrencyService grant + ledger).
+ * Out-of-scope (Phase 13.2.C+):
  *   - PvP realtime, auction, diplomacy, alliance, sect-vs-sect war.
  *   - Editor CMS lớn cho season catalog (admin tool drag-drop, schedule cron).
- *   - Per-season milestone customization (Phase 13.2.A dùng common milestone
+ *   - Per-season milestone customization (Phase 13.2.A/B dùng common milestone
  *     catalog cho mọi season để giữ FE đơn giản).
+ *   - Season-end snapshot/archive cron rollover.
  *
  * Anti-abuse / safety:
  *   - Season key ổn định YYYY_sN — không reuse across years.
  *   - Catalog timezone fix `Asia/Ho_Chi_Minh` để khớp Sect War weekly reset.
  *   - Milestone monotonic increasing (points strictly higher → reward không
  *     được giảm); validate ở test guard.
+ *   - Claim window: chỉ claim được milestone trong season còn active hoặc đã
+ *     kết thúc nhưng chưa expire (Phase 13.2.B cho phép claim mọi season key
+ *     trong catalog — server-authoritative kiểm `personalPoints` snapshot).
+ *   - Reward grant scale economy-safe: tổng 5 milestone < 25k linhThach +
+ *     1k tienNgoc < weekly Sect War top tier — tránh inflation (BALANCE_MODEL).
  */
 
 import { SECT_WAR_DEFAULT_TZ, sectWarWeekKey } from './sect-war';
@@ -127,6 +138,46 @@ export interface SectSeasonMyStatusView {
   readonly weeksContributed: number;
   readonly achievedMilestoneKeys: ReadonlyArray<string>;
   readonly nextMilestoneKey: string | null;
+  /**
+   * Phase 13.2.B — milestone đã claim (có row `SectSeasonClaim`).
+   * Subset của `achievedMilestoneKeys` (claim chỉ chạy được sau khi đạt).
+   */
+  readonly claimedMilestoneKeys: ReadonlyArray<string>;
+  /**
+   * Phase 13.2.B — milestone đạt nhưng chưa claim (achieved \ claimed).
+   * FE render claim button enabled cho mọi key trong list này.
+   */
+  readonly claimableMilestoneKeys: ReadonlyArray<string>;
+}
+
+/**
+ * Phase 13.2.B — kết quả của 1 lần claim thành công.
+ *
+ * `granted` snapshot reward thực tế đã trao (linhThach/tienNgoc/items),
+ * dùng cho FE render reward toast/modal. `claimedAt` là server timestamp
+ * (UTC ISO) — KHÔNG dùng client clock.
+ */
+export interface SectSeasonClaimResult {
+  readonly seasonKey: string;
+  readonly milestoneKey: string;
+  readonly granted: {
+    readonly linhThach: number;
+    readonly tienNgoc: number;
+    readonly items: ReadonlyArray<{ readonly itemKey: string; readonly qty: number }>;
+    readonly titleKey: string | null;
+    readonly buffKey: string | null;
+  };
+  readonly pointsAtClaim: number;
+  readonly claimedAtIso: string;
+}
+
+/**
+ * Phase 13.2.B — milestone catalog view DTO (response của
+ * `GET /sect-season/milestones`). Chỉ là snapshot catalog `SECT_SEASON_MILESTONES`
+ * cho FE — server không cần hit DB cho endpoint này.
+ */
+export interface SectSeasonMilestonesView {
+  readonly milestones: ReadonlyArray<SectSeasonMilestoneDef>;
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -494,4 +545,47 @@ export function validateSectSeasonMilestonesMonotonic(
     }
   }
   return null;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Phase 13.2.B — claim helpers
+// ────────────────────────────────────────────────────────────────────────
+
+/**
+ * Trả mảng milestone đạt nhưng chưa claim — input là `personalPoints` +
+ * tập key đã claim. Pure helper, dùng cho FE render claim button enabled
+ * state và server cross-check trước khi gọi `claimMilestone`.
+ *
+ * Order stable theo catalog (ascending requiredPoints) → FE render top-down.
+ */
+export function sectSeasonClaimableMilestones(
+  personalPoints: number,
+  claimedKeys: ReadonlyArray<string>,
+): SectSeasonMilestoneDef[] {
+  const achieved = sectSeasonAchievedMilestones(personalPoints);
+  if (achieved.length === 0) return [];
+  const claimed = new Set(claimedKeys);
+  return achieved.filter((m) => !claimed.has(m.key));
+}
+
+/**
+ * Tổng hợp reward grant thành object dễ hiển thị (FE toast / modal).
+ *
+ * Default 0/[]/null cho field optional → FE không cần defensive check.
+ * KHÔNG dùng cho currency apply (server gọi trực tiếp `def.reward`).
+ */
+export function sectSeasonRewardSummary(reward: SectSeasonRewardGrant): {
+  linhThach: number;
+  tienNgoc: number;
+  items: ReadonlyArray<{ itemKey: string; qty: number }>;
+  titleKey: string | null;
+  buffKey: string | null;
+} {
+  return {
+    linhThach: reward.linhThach ?? 0,
+    tienNgoc: reward.tienNgoc ?? 0,
+    items: reward.items?.map((it) => ({ itemKey: it.itemKey, qty: it.qty })) ?? [],
+    titleKey: reward.titleKey ?? null,
+    buffKey: reward.buffKey ?? null,
+  };
 }

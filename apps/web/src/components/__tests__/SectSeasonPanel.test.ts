@@ -1,13 +1,19 @@
 /**
  * Phase 13.2.A — SectSeasonPanel tests.
+ * Phase 13.2.B — extended với claim flow (claimable button, claimed badge,
+ * locked state, claim success result, claim error toast).
  *
- * Mock /sect-season/current; verify:
+ * Mock /sect-season/current + /sect-season/milestones/:k/claim; verify:
  *   - render header season label + countdown.
  *   - render personal progress (points, weeks).
  *   - render milestone list with achieved/locked status.
  *   - render leaderboard with mySectId highlight.
  *   - out-of-range fallback (season=null).
  *   - error state KHÔNG crash.
+ *   - Phase 13.2.B: claim button enable/disable theo claimableMilestoneKeys.
+ *   - Phase 13.2.B: claim success → result toast + refresh state.
+ *   - Phase 13.2.B: claim error → error toast (i18n code).
+ *   - Phase 13.2.B: claimed milestone → "Đã nhận" badge thay button.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
@@ -15,13 +21,15 @@ import { createI18n } from 'vue-i18n';
 import { createPinia, setActivePinia } from 'pinia';
 
 const getSectSeasonCurrentMock = vi.fn();
+const claimSectSeasonMilestoneMock = vi.fn();
 
 vi.mock('@/api/sectSeason', () => ({
   getSectSeasonCurrent: (...a: unknown[]) => getSectSeasonCurrentMock(...a),
+  claimSectSeasonMilestone: (...a: unknown[]) => claimSectSeasonMilestoneMock(...a),
 }));
 
 import SectSeasonPanel from '@/components/SectSeasonPanel.vue';
-import type { SectSeasonCurrent } from '@/api/sectSeason';
+import type { SectSeasonClaimResult, SectSeasonCurrent } from '@/api/sectSeason';
 
 const i18n = createI18n({
   legacy: false,
@@ -32,6 +40,7 @@ const i18n = createI18n({
       sectSeason: {
         loading: 'Đang tải dữ liệu mùa giải…',
         outOfRange: 'Hiện không có mùa giải đang chạy.',
+        dismiss: 'Đóng',
         season: {
           fallbackLabel: 'Mùa {k}',
           keyLabel: '{k}',
@@ -55,9 +64,15 @@ const i18n = createI18n({
           title: 'Cột mốc mùa giải',
           achieved: 'Đã đạt',
           locked: 'Chưa đạt',
+          claimed: 'Đã nhận',
+          claim: 'Nhận thưởng',
+          claiming: 'Đang nhận…',
           required: '{n} điểm',
           names: { bronze: 'Đồng', silver: 'Bạc' },
           namesDesc: { bronze: 'Mở rương đầu mùa.', silver: 'Hộp quà bạc.' },
+        },
+        claimResult: {
+          title: 'Đã nhận thưởng cột mốc {key}',
         },
         leaderboard: {
           title: 'Bảng xếp hạng Tông',
@@ -81,6 +96,9 @@ const i18n = createI18n({
         errors: {
           NO_CHARACTER: 'Chưa có nhân vật.',
           SEASON_NOT_FOUND: 'Mùa giải không tồn tại.',
+          SECT_SEASON_MILESTONE_NOT_FOUND: 'Cột mốc mùa giải không tồn tại.',
+          SECT_SEASON_NOT_ELIGIBLE: 'Chưa đủ điểm để nhận cột mốc này.',
+          SECT_SEASON_ALREADY_CLAIMED: 'Bạn đã nhận thưởng cột mốc này rồi.',
           UNKNOWN: 'Không tải được dữ liệu mùa giải — thử lại.',
         },
       },
@@ -146,6 +164,8 @@ const SAMPLE: SectSeasonCurrent = {
     weeksContributed: 1,
     achievedMilestoneKeys: ['bronze'],
     nextMilestoneKey: 'silver',
+    claimedMilestoneKeys: [],
+    claimableMilestoneKeys: ['bronze'],
   },
 };
 
@@ -162,6 +182,7 @@ describe('SectSeasonPanel', () => {
     vi.useFakeTimers();
     vi.setSystemTime(NOW);
     getSectSeasonCurrentMock.mockReset();
+    claimSectSeasonMilestoneMock.mockReset();
   });
 
   afterEach(() => {
@@ -276,5 +297,129 @@ describe('SectSeasonPanel', () => {
     resolveFn!(SAMPLE);
     await flushPromises();
     expect(w.find('[data-test="sect-season-loading"]').exists()).toBe(false);
+  });
+
+  // Phase 13.2.B — claim flow.
+
+  it('claim button render cho milestone trong claimableMilestoneKeys', async () => {
+    getSectSeasonCurrentMock.mockResolvedValueOnce(SAMPLE);
+    const w = mountPanel();
+    await flushPromises();
+
+    // Bronze claimable → button visible.
+    const btn = w.find('[data-test="sect-season-milestone-claim-bronze"]');
+    expect(btn.exists()).toBe(true);
+    expect(btn.text()).toContain('Nhận thưởng');
+    expect((btn.element as HTMLButtonElement).disabled).toBe(false);
+
+    // Silver locked (chưa achieved) → KHÔNG có button claim, có locked label.
+    expect(w.find('[data-test="sect-season-milestone-claim-silver"]').exists()).toBe(
+      false,
+    );
+    expect(w.find('[data-test="sect-season-milestone-locked-silver"]').exists()).toBe(
+      true,
+    );
+  });
+
+  it('claim success → result toast render + reload state', async () => {
+    // Initial load: bronze claimable.
+    getSectSeasonCurrentMock.mockResolvedValueOnce(SAMPLE);
+    const claimResult: SectSeasonClaimResult = {
+      seasonKey: 's1',
+      milestoneKey: 'bronze',
+      granted: {
+        linhThach: 50,
+        tienNgoc: 0,
+        items: [],
+        titleKey: null,
+        buffKey: null,
+      },
+      pointsAtClaim: 150,
+      claimedAtIso: '2026-04-05T03:01:00.000Z',
+    };
+    claimSectSeasonMilestoneMock.mockResolvedValueOnce(claimResult);
+    // After claim: refresh() → bronze trong claimedMilestoneKeys, claimable rỗng.
+    getSectSeasonCurrentMock.mockResolvedValueOnce({
+      ...SAMPLE,
+      me: {
+        ...SAMPLE.me!,
+        claimedMilestoneKeys: ['bronze'],
+        claimableMilestoneKeys: [],
+      },
+    });
+
+    const w = mountPanel();
+    await flushPromises();
+
+    await w.find('[data-test="sect-season-milestone-claim-bronze"]').trigger('click');
+    await flushPromises();
+
+    expect(claimSectSeasonMilestoneMock).toHaveBeenCalledWith('bronze');
+    // Result toast render với reward summary.
+    const toast = w.find('[data-test="sect-season-claim-result"]');
+    expect(toast.exists()).toBe(true);
+    expect(toast.text()).toContain('bronze');
+    expect(
+      w.find('[data-test="sect-season-claim-result-summary"]').text(),
+    ).toContain('linh thạch');
+
+    // After refresh, claim button bị thay bởi "Đã nhận" badge.
+    expect(w.find('[data-test="sect-season-milestone-claim-bronze"]').exists()).toBe(
+      false,
+    );
+    expect(w.find('[data-test="sect-season-milestone-claimed-bronze"]').exists()).toBe(
+      true,
+    );
+    expect(w.find('[data-test="sect-season-milestone-claimed-bronze"]').text()).toBe(
+      'Đã nhận',
+    );
+
+    // Dismiss toast → ẩn.
+    await w.find('[data-test="sect-season-claim-result-dismiss"]').trigger('click');
+    await flushPromises();
+    expect(w.find('[data-test="sect-season-claim-result"]').exists()).toBe(false);
+  });
+
+  it('claim error: error code map → i18n toast', async () => {
+    getSectSeasonCurrentMock.mockResolvedValueOnce(SAMPLE);
+    claimSectSeasonMilestoneMock.mockRejectedValueOnce(
+      Object.assign(new Error('SECT_SEASON_ALREADY_CLAIMED'), {
+        code: 'SECT_SEASON_ALREADY_CLAIMED',
+      }),
+    );
+
+    const w = mountPanel();
+    await flushPromises();
+    await w.find('[data-test="sect-season-milestone-claim-bronze"]').trigger('click');
+    await flushPromises();
+
+    const toast = w.find('[data-test="sect-season-claim-error"]');
+    expect(toast.exists()).toBe(true);
+    expect(toast.text()).toContain('Bạn đã nhận thưởng cột mốc này rồi.');
+
+    // Dismiss → ẩn.
+    await w.find('[data-test="sect-season-claim-error-dismiss"]').trigger('click');
+    await flushPromises();
+    expect(w.find('[data-test="sect-season-claim-error"]').exists()).toBe(false);
+  });
+
+  it('claimed milestone render "Đã nhận" badge thay vì button', async () => {
+    getSectSeasonCurrentMock.mockResolvedValueOnce({
+      ...SAMPLE,
+      me: {
+        ...SAMPLE.me!,
+        claimedMilestoneKeys: ['bronze'],
+        claimableMilestoneKeys: [],
+      },
+    });
+    const w = mountPanel();
+    await flushPromises();
+
+    expect(w.find('[data-test="sect-season-milestone-claim-bronze"]').exists()).toBe(
+      false,
+    );
+    expect(w.find('[data-test="sect-season-milestone-claimed-bronze"]').exists()).toBe(
+      true,
+    );
   });
 });

@@ -92,7 +92,14 @@ export type ItemLedgerReason =
   // (`StoryDungeonRun.claimedAt` updateMany) đảm bảo 1 winner / runId →
   // grant đúng 1 lần / runId / character. Mirror cùng `CurrencyLedger`
   // reason `STORY_DUNGEON_REWARD` cho linhThach/tienNgoc.
-  | 'STORY_DUNGEON_REWARD';
+  | 'STORY_DUNGEON_REWARD'
+  // Phase 13.2.B — Sect Season milestone claim item grant. Wire qua
+  // `SectSeasonService.claimMilestone → InventoryService.grantTx(positive
+  // qtyDelta)` với `refType='SectSeasonClaim'` + `refId={seasonKey}:{milestoneKey}`.
+  // CAS claim guard (UNIQUE `(characterId, seasonKey, milestoneKey)`) đảm
+  // bảo 1 winner / milestone / character → grant đúng 1 lần. Mirror cùng
+  // `CurrencyLedger` reason `SECT_SEASON_REWARD` cho linhThach/tienNgoc.
+  | 'SECT_SEASON_REWARD';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;

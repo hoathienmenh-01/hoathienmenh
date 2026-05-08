@@ -1,5 +1,6 @@
 /**
  * Phase 13.2.A — SectSeasonService integration tests.
+ * Phase 13.2.B — Milestones + Rewards (claim runtime).
  *
  * Cover:
  *   - resolveSeason: lookup by key + fallback currentSectSeason(now).
@@ -7,17 +8,30 @@
  *     weeksContributed.
  *   - getMyStatus: personalPoints + achieved/next milestone derivation,
  *     hasSect=false fallback, NO_CHARACTER throw.
+ *     Phase 13.2.B — claimedMilestoneKeys + claimableMilestoneKeys.
  *   - getCurrent: full state cho user trong season hiện hành; out-of-season
  *     fallback (seasonKey=null).
  *   - listSeasons: catalog snapshot.
+ *   - listMilestones: milestone catalog snapshot (Phase 13.2.B).
+ *   - claimMilestone (Phase 13.2.B): success grant currency + ledger row,
+ *     reject NOT_ELIGIBLE, ALREADY_CLAIMED, race-safe concurrent.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { CurrencyKind } from '@prisma/client';
 import {
   SECT_SEASONS,
+  SECT_SEASON_MILESTONES,
   sectSeasonByKey,
+  sectSeasonMilestoneByKey,
   sectSeasonWeekKeys,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { RealtimeService } from '../realtime/realtime.service';
+import { CharacterService } from '../character/character.service';
+import { CurrencyService } from '../character/currency.service';
+import { InventoryService } from '../inventory/inventory.service';
+import { TitleService } from '../character/title.service';
+import { BuffService } from '../character/buff.service';
 import { SectSeasonError, SectSeasonService } from './sect-season.service';
 import {
   TEST_DATABASE_URL,
@@ -27,12 +41,22 @@ import {
 } from '../../test-helpers';
 
 let prisma: PrismaService;
+let currency: CurrencyService;
+let inventory: InventoryService;
+let title: TitleService;
+let buff: BuffService;
 let sectSeason: SectSeasonService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
-  sectSeason = new SectSeasonService(prisma);
+  const realtime = new RealtimeService();
+  const chars = new CharacterService(prisma, realtime);
+  currency = new CurrencyService(prisma);
+  buff = new BuffService(prisma);
+  inventory = new InventoryService(prisma, realtime, chars, buff);
+  title = new TitleService(prisma);
+  sectSeason = new SectSeasonService(prisma, currency, inventory, title, buff);
 });
 
 beforeEach(async () => {
@@ -342,5 +366,275 @@ describe('SectSeasonService.listSeasons', () => {
     const list = sectSeason.listSeasons();
     expect(list.length).toBe(SECT_SEASONS.length);
     expect(list[0].key).toBe('season_2026_s1');
+  });
+});
+
+describe('SectSeasonService.listMilestones (Phase 13.2.B)', () => {
+  it('trả full milestone catalog snapshot', () => {
+    const list = sectSeason.listMilestones();
+    expect(list.length).toBe(SECT_SEASON_MILESTONES.length);
+    expect(list[0].key).toBe('milestone_bronze');
+    // Monotonic ascending requiredPoints (catalog invariant đã test ở shared,
+    // ở đây chỉ smoke-check service wrap đúng order).
+    for (let i = 1; i < list.length; i++) {
+      expect(list[i].requiredPoints).toBeGreaterThan(list[i - 1].requiredPoints);
+    }
+  });
+});
+
+describe('SectSeasonService.getMyStatus — claim view (Phase 13.2.B)', () => {
+  it('chưa claim row nào → claimedMilestoneKeys=[] + claimableMilestoneKeys = achieved', async () => {
+    const sectA = await makeSect(prisma);
+    const u = await makeUserChar(prisma, { sectId: sectA.id });
+    const season = sectSeasonByKey('season_2026_s2')!;
+    const weekKeys = sectSeasonWeekKeys(season);
+
+    await seedContribution({
+      weekKey: weekKeys[0],
+      sectId: sectA.id,
+      characterId: u.characterId,
+      activityKey: 'dungeon_clear',
+      sourceType: 'DungeonRun',
+      sourceId: 'dr-claimable',
+      points: 600,
+    });
+
+    const res = await sectSeason.getMyStatus(u.userId, season.key);
+    expect(res!.personalPoints).toBe(600);
+    expect(res!.achievedMilestoneKeys).toEqual([
+      'milestone_bronze',
+      'milestone_silver',
+    ]);
+    expect(res!.claimedMilestoneKeys).toEqual([]);
+    expect(res!.claimableMilestoneKeys).toEqual([
+      'milestone_bronze',
+      'milestone_silver',
+    ]);
+  });
+
+  it('claim 1 milestone → claimedKeys reflect + claimableKeys excluded', async () => {
+    const sectA = await makeSect(prisma);
+    const u = await makeUserChar(prisma, { sectId: sectA.id, linhThach: 0n });
+    const season = sectSeasonByKey('season_2026_s2')!;
+    const weekKeys = sectSeasonWeekKeys(season);
+
+    await seedContribution({
+      weekKey: weekKeys[0],
+      sectId: sectA.id,
+      characterId: u.characterId,
+      activityKey: 'dungeon_clear',
+      sourceType: 'DungeonRun',
+      sourceId: 'dr-1',
+      points: 600,
+    });
+    await sectSeason.claimMilestone(u.userId, season.key, 'milestone_bronze');
+
+    const res = await sectSeason.getMyStatus(u.userId, season.key);
+    expect(res!.claimedMilestoneKeys).toEqual(['milestone_bronze']);
+    expect(res!.claimableMilestoneKeys).toEqual(['milestone_silver']);
+  });
+});
+
+describe('SectSeasonService.claimMilestone (Phase 13.2.B)', () => {
+  it('milestone không tồn tại → SECT_SEASON_MILESTONE_NOT_FOUND', async () => {
+    const u = await makeUserChar(prisma);
+    await expect(
+      sectSeason.claimMilestone(u.userId, 'season_2026_s2', 'milestone_unknown'),
+    ).rejects.toMatchObject({ code: 'SECT_SEASON_MILESTONE_NOT_FOUND' });
+  });
+
+  it('season không tồn tại → SEASON_NOT_FOUND', async () => {
+    const u = await makeUserChar(prisma);
+    await expect(
+      sectSeason.claimMilestone(u.userId, 'season_9999_s99', 'milestone_bronze'),
+    ).rejects.toMatchObject({ code: 'SEASON_NOT_FOUND' });
+  });
+
+  it('user không có character → NO_CHARACTER', async () => {
+    await expect(
+      sectSeason.claimMilestone('non-existent-user-id', 'season_2026_s2', 'milestone_bronze'),
+    ).rejects.toMatchObject({ code: 'NO_CHARACTER' });
+  });
+
+  it('chưa đủ điểm → SECT_SEASON_NOT_ELIGIBLE (no row, no ledger)', async () => {
+    const sectA = await makeSect(prisma);
+    const u = await makeUserChar(prisma, { sectId: sectA.id });
+    // Không seed contribution → personalPoints=0 < 100 (bronze).
+    await expect(
+      sectSeason.claimMilestone(u.userId, 'season_2026_s2', 'milestone_bronze'),
+    ).rejects.toMatchObject({ code: 'SECT_SEASON_NOT_ELIGIBLE' });
+
+    const claims = await prisma.sectSeasonClaim.findMany({
+      where: { characterId: u.characterId },
+    });
+    expect(claims).toHaveLength(0);
+    const ledger = await prisma.currencyLedger.findMany({
+      where: { characterId: u.characterId, reason: 'SECT_SEASON_REWARD' },
+    });
+    expect(ledger).toHaveLength(0);
+  });
+
+  it('eligible bronze → grant currency + ghi claim row + ledger SECT_SEASON_REWARD', async () => {
+    const sectA = await makeSect(prisma);
+    const u = await makeUserChar(prisma, { sectId: sectA.id, linhThach: 0n });
+    const season = sectSeasonByKey('season_2026_s2')!;
+    const weekKeys = sectSeasonWeekKeys(season);
+
+    await seedContribution({
+      weekKey: weekKeys[0],
+      sectId: sectA.id,
+      characterId: u.characterId,
+      activityKey: 'dungeon_clear',
+      sourceType: 'DungeonRun',
+      sourceId: 'dr-bronze',
+      points: 150,
+    });
+
+    const milestone = sectSeasonMilestoneByKey('milestone_bronze')!;
+    const res = await sectSeason.claimMilestone(u.userId, season.key, 'milestone_bronze');
+
+    expect(res.seasonKey).toBe(season.key);
+    expect(res.milestoneKey).toBe('milestone_bronze');
+    expect(res.pointsAtClaim).toBe(150);
+    expect(res.granted.linhThach).toBe(milestone.reward.linhThach ?? 0);
+    expect(res.granted.tienNgoc).toBe(milestone.reward.tienNgoc ?? 0);
+    expect(typeof res.claimedAtIso).toBe('string');
+
+    const c = await prisma.character.findUniqueOrThrow({
+      where: { id: u.characterId },
+    });
+    expect(c.linhThach).toBe(BigInt(res.granted.linhThach));
+
+    const claim = await prisma.sectSeasonClaim.findFirst({
+      where: { characterId: u.characterId, milestoneKey: 'milestone_bronze' },
+    });
+    expect(claim).not.toBeNull();
+    expect(claim!.seasonKey).toBe(season.key);
+    expect(claim!.pointsAtClaim).toBe(150);
+
+    if (res.granted.linhThach > 0) {
+      const ledger = await prisma.currencyLedger.findFirst({
+        where: {
+          characterId: u.characterId,
+          reason: 'SECT_SEASON_REWARD',
+          currency: CurrencyKind.LINH_THACH,
+        },
+      });
+      expect(ledger).not.toBeNull();
+      expect(ledger!.refType).toBe('SectSeasonClaim');
+      expect(ledger!.refId).toBe(`${season.key}:milestone_bronze`);
+      expect(ledger!.delta).toBe(BigInt(res.granted.linhThach));
+    }
+  });
+
+  it('claim 2 lần liên tiếp cùng milestone → SECT_SEASON_ALREADY_CLAIMED', async () => {
+    const sectA = await makeSect(prisma);
+    const u = await makeUserChar(prisma, { sectId: sectA.id });
+    const season = sectSeasonByKey('season_2026_s2')!;
+    const weekKeys = sectSeasonWeekKeys(season);
+
+    await seedContribution({
+      weekKey: weekKeys[0],
+      sectId: sectA.id,
+      characterId: u.characterId,
+      activityKey: 'dungeon_clear',
+      sourceType: 'DungeonRun',
+      sourceId: 'dr-twice',
+      points: 200,
+    });
+
+    await sectSeason.claimMilestone(u.userId, season.key, 'milestone_bronze');
+    await expect(
+      sectSeason.claimMilestone(u.userId, season.key, 'milestone_bronze'),
+    ).rejects.toMatchObject({ code: 'SECT_SEASON_ALREADY_CLAIMED' });
+
+    const claims = await prisma.sectSeasonClaim.findMany({
+      where: { characterId: u.characterId, milestoneKey: 'milestone_bronze' },
+    });
+    expect(claims).toHaveLength(1);
+  });
+
+  it('claim multiple milestone tier khác nhau → cùng character, KHÔNG lẫn refId', async () => {
+    const sectA = await makeSect(prisma);
+    const u = await makeUserChar(prisma, { sectId: sectA.id, linhThach: 0n });
+    const season = sectSeasonByKey('season_2026_s2')!;
+    const weekKeys = sectSeasonWeekKeys(season);
+
+    await seedContribution({
+      weekKey: weekKeys[0],
+      sectId: sectA.id,
+      characterId: u.characterId,
+      activityKey: 'dungeon_clear',
+      sourceType: 'DungeonRun',
+      sourceId: 'dr-multi',
+      points: 800,
+    });
+
+    const r1 = await sectSeason.claimMilestone(u.userId, season.key, 'milestone_bronze');
+    const r2 = await sectSeason.claimMilestone(u.userId, season.key, 'milestone_silver');
+
+    expect(r1.milestoneKey).toBe('milestone_bronze');
+    expect(r2.milestoneKey).toBe('milestone_silver');
+
+    const claims = await prisma.sectSeasonClaim.findMany({
+      where: { characterId: u.characterId },
+      orderBy: { milestoneKey: 'asc' },
+    });
+    expect(claims.map((c) => c.milestoneKey)).toEqual([
+      'milestone_bronze',
+      'milestone_silver',
+    ]);
+
+    const ledgers = await prisma.currencyLedger.findMany({
+      where: {
+        characterId: u.characterId,
+        reason: 'SECT_SEASON_REWARD',
+        currency: CurrencyKind.LINH_THACH,
+      },
+    });
+    const refIds = new Set(ledgers.map((l) => l.refId));
+    expect(refIds.has(`${season.key}:milestone_bronze`)).toBe(true);
+    expect(refIds.has(`${season.key}:milestone_silver`)).toBe(true);
+  });
+
+  it('concurrent claim race: 2 promise đồng thời → chỉ 1 success, 1 ALREADY_CLAIMED', async () => {
+    const sectA = await makeSect(prisma);
+    const u = await makeUserChar(prisma, { sectId: sectA.id, linhThach: 0n });
+    const season = sectSeasonByKey('season_2026_s2')!;
+    const weekKeys = sectSeasonWeekKeys(season);
+
+    await seedContribution({
+      weekKey: weekKeys[0],
+      sectId: sectA.id,
+      characterId: u.characterId,
+      activityKey: 'dungeon_clear',
+      sourceType: 'DungeonRun',
+      sourceId: 'dr-race',
+      points: 200,
+    });
+
+    const [a, b] = await Promise.allSettled([
+      sectSeason.claimMilestone(u.userId, season.key, 'milestone_bronze'),
+      sectSeason.claimMilestone(u.userId, season.key, 'milestone_bronze'),
+    ]);
+    const successes = [a, b].filter((r) => r.status === 'fulfilled');
+    const failures = [a, b].filter((r) => r.status === 'rejected');
+    expect(successes).toHaveLength(1);
+    expect(failures).toHaveLength(1);
+
+    const claims = await prisma.sectSeasonClaim.findMany({
+      where: { characterId: u.characterId, milestoneKey: 'milestone_bronze' },
+    });
+    expect(claims).toHaveLength(1);
+
+    const ledgers = await prisma.currencyLedger.findMany({
+      where: {
+        characterId: u.characterId,
+        reason: 'SECT_SEASON_REWARD',
+        currency: CurrencyKind.LINH_THACH,
+        refId: `${season.key}:milestone_bronze`,
+      },
+    });
+    expect(ledgers).toHaveLength(1);
   });
 });

@@ -1,21 +1,29 @@
 <script setup lang="ts">
 /**
  * Phase 13.2.A — Sect Season tab nội dung.
+ * Phase 13.2.B — Milestones + Rewards (claim button + result modal).
  *
  * Render:
  *   - Header season hiện tại (label + countdown).
  *   - Personal status: total points, weeks contributed, milestone progress.
- *   - Milestone preview list (achieved icon + reward summary).
+ *   - Milestone list với 3 state:
+ *       claimable → claim button enabled (Phase 13.2.B).
+ *       claimed   → "Đã nhận" badge.
+ *       locked    → progress bar, no button.
+ *   - Reward summary inline + claim result toast (last claim).
  *   - Leaderboard top 10 sect cho season.
- *   - Out-of-season fallback (FE chỉ hiện info banner, không crash).
+ *   - Out-of-season fallback.
  *
- * KHÔNG có claim button — Phase 13.2.A read-only. Reward claim sẽ ở
- * Phase 13.2.B+.
+ * Server-authoritative — FE KHÔNG self-derive achieved/claimable. Sau khi
+ * claim thành công, gọi `refresh()` để reload `me.claimedMilestoneKeys`
+ * + `claimableMilestoneKeys`.
  */
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
+  claimSectSeasonMilestone,
   getSectSeasonCurrent,
+  type SectSeasonClaimResult,
   type SectSeasonCurrent,
   type SectSeasonMilestone,
 } from '@/api/sectSeason';
@@ -34,6 +42,11 @@ const error = ref<string | null>(null);
 const remainingMs = ref<number>(0);
 let timerHandle: ReturnType<typeof setInterval> | null = null;
 
+/** Phase 13.2.B — claim flow state. */
+const claimingKey = ref<string | null>(null);
+const claimError = ref<string | null>(null);
+const claimResult = ref<SectSeasonClaimResult | null>(null);
+
 const remainingText = computed(() => {
   if (!state.value?.season) return '';
   if (remainingMs.value <= 0) return t('sectSeason.season.ended');
@@ -49,6 +62,12 @@ const weeksContributed = computed(() => state.value?.me?.weeksContributed ?? 0);
 const achievedKeys = computed(
   () => new Set(state.value?.me?.achievedMilestoneKeys ?? []),
 );
+const claimedKeys = computed(
+  () => new Set(state.value?.me?.claimedMilestoneKeys ?? []),
+);
+const claimableKeys = computed(
+  () => new Set(state.value?.me?.claimableMilestoneKeys ?? []),
+);
 const nextMilestone = computed(() => {
   const nextKey = state.value?.me?.nextMilestoneKey;
   if (!nextKey) return null;
@@ -63,6 +82,38 @@ function progressPercent(milestone: SectSeasonMilestone): number {
 
 function isAchieved(milestone: SectSeasonMilestone): boolean {
   return achievedKeys.value.has(milestone.key);
+}
+
+function isClaimed(milestone: SectSeasonMilestone): boolean {
+  return claimedKeys.value.has(milestone.key);
+}
+
+function isClaimable(milestone: SectSeasonMilestone): boolean {
+  return claimableKeys.value.has(milestone.key);
+}
+
+async function onClaim(milestone: SectSeasonMilestone): Promise<void> {
+  if (claimingKey.value) return;
+  claimingKey.value = milestone.key;
+  claimError.value = null;
+  try {
+    const res = await claimSectSeasonMilestone(milestone.key);
+    claimResult.value = res;
+    // Reload state để reflect claimedMilestoneKeys/claimableMilestoneKeys mới.
+    await refresh();
+  } catch (e) {
+    claimError.value = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
+  } finally {
+    claimingKey.value = null;
+  }
+}
+
+function dismissClaimResult(): void {
+  claimResult.value = null;
+}
+
+function dismissClaimError(): void {
+  claimError.value = null;
 }
 
 function rewardSummary(milestone: SectSeasonMilestone): string {
@@ -249,9 +300,111 @@ function startCountdown(): void {
                   :style="{ width: progressPercent(m) + '%' }"
                 />
               </div>
+              <!-- Phase 13.2.B — claim button / claimed badge / locked label. -->
+              <div class="mt-2 flex items-center gap-2 flex-wrap">
+                <button
+                  v-if="isClaimable(m)"
+                  type="button"
+                  class="text-xs px-3 py-1 rounded border border-amber-300 bg-amber-300/20 text-amber-100 hover:bg-amber-300/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                  :disabled="claimingKey !== null"
+                  :data-test="`sect-season-milestone-claim-${m.key}`"
+                  @click="onClaim(m)"
+                >
+                  {{
+                    claimingKey === m.key
+                      ? t('sectSeason.milestone.claiming')
+                      : t('sectSeason.milestone.claim')
+                  }}
+                </button>
+                <span
+                  v-else-if="isClaimed(m)"
+                  class="text-xs px-2 py-0.5 rounded border border-emerald-300/40 bg-emerald-300/10 text-emerald-200"
+                  :data-test="`sect-season-milestone-claimed-${m.key}`"
+                >
+                  {{ t('sectSeason.milestone.claimed') }}
+                </span>
+                <span
+                  v-else-if="isAchieved(m)"
+                  class="text-xs text-amber-200/70"
+                  :data-test="`sect-season-milestone-achieved-${m.key}`"
+                >
+                  {{ t('sectSeason.milestone.achieved') }}
+                </span>
+                <span
+                  v-else
+                  class="text-xs text-ink-300/60"
+                  :data-test="`sect-season-milestone-locked-${m.key}`"
+                >
+                  {{ t('sectSeason.milestone.locked') }}
+                </span>
+              </div>
             </div>
           </li>
         </ul>
+        <!-- Phase 13.2.B — claim error toast. -->
+        <div
+          v-if="claimError"
+          class="mt-3 rounded border border-rose-300/40 bg-rose-500/10 text-rose-200 text-sm p-3 flex items-center justify-between gap-3"
+          data-test="sect-season-claim-error"
+        >
+          <span>
+            {{
+              t(
+                `sectSeason.errors.${claimError}`,
+                t('sectSeason.errors.UNKNOWN'),
+              )
+            }}
+          </span>
+          <button
+            type="button"
+            class="text-xs px-2 py-0.5 rounded border border-rose-300/40 hover:bg-rose-500/20"
+            data-test="sect-season-claim-error-dismiss"
+            @click="dismissClaimError"
+          >
+            {{ t('sectSeason.dismiss') }}
+          </button>
+        </div>
+        <!-- Phase 13.2.B — claim result toast (last successful claim). -->
+        <div
+          v-if="claimResult"
+          class="mt-3 rounded border border-emerald-300/40 bg-emerald-500/10 text-emerald-100 text-sm p-3 flex items-start justify-between gap-3"
+          data-test="sect-season-claim-result"
+        >
+          <div>
+            <div class="font-medium">
+              {{
+                t('sectSeason.claimResult.title', {
+                  key: claimResult.milestoneKey,
+                })
+              }}
+            </div>
+            <div class="text-xs text-emerald-200/80 mt-1" data-test="sect-season-claim-result-summary">
+              <span v-if="claimResult.granted.linhThach > 0" class="mr-2">
+                {{ t('sectSeason.reward.linhThach', { n: claimResult.granted.linhThach }) }}
+              </span>
+              <span v-if="claimResult.granted.tienNgoc > 0" class="mr-2">
+                {{ t('sectSeason.reward.tienNgoc', { n: claimResult.granted.tienNgoc }) }}
+              </span>
+              <span v-if="claimResult.granted.items.length > 0" class="mr-2">
+                {{ t('sectSeason.reward.items', { n: claimResult.granted.items.length }) }}
+              </span>
+              <span v-if="claimResult.granted.titleKey" class="mr-2">
+                {{ t('sectSeason.reward.titleAward', { k: claimResult.granted.titleKey }) }}
+              </span>
+              <span v-if="claimResult.granted.buffKey" class="mr-2">
+                {{ t('sectSeason.reward.buff', { k: claimResult.granted.buffKey }) }}
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="text-xs px-2 py-0.5 rounded border border-emerald-300/40 hover:bg-emerald-500/20"
+            data-test="sect-season-claim-result-dismiss"
+            @click="dismissClaimResult"
+          >
+            {{ t('sectSeason.dismiss') }}
+          </button>
+        </div>
       </section>
 
       <!-- Leaderboard -->

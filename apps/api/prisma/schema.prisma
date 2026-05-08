@@ -299,6 +299,7 @@ model Character {
   sectMissionClaims       SectMissionClaim[]
   sectShopPurchases       SectShopPurchase[]
   sectContributionLedger  SectContributionLedger[]
+  sectSeasonClaims        SectSeasonClaim[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1279,6 +1280,41 @@ model SectContributionLedger {
 
   @@index([characterId, createdAt])
   @@index([reason, createdAt])
+}
+
+/// Phase 13.2.B — Sect Season milestone claim log (idempotency dedupe).
+///
+/// Mỗi `(characterId, seasonKey, milestoneKey)` tối đa 1 row — UNIQUE đảm
+/// bảo claim không double dù retry hoặc race (2 promise concurrent → P2002
+/// trên row thứ 2). CAS guard kết hợp với insert trước, currency/inventory
+/// grant sau cùng tx — fail bất kỳ bước nào sẽ rollback toàn bộ.
+///
+/// `seasonKey` snapshot — nếu sau này admin retire một season key cũ,
+/// row claim cũ vẫn giữ nguyên cho audit.
+/// `milestoneKey` snapshot match `SECT_SEASON_MILESTONES[*].key`.
+/// `pointsAtClaim` snapshot personal points tại commit time — dùng cho
+/// audit, breakdown view, và replay nếu catalog requiredPoints đổi.
+/// `rewardSnapshot` JSON copy của `def.reward` tại claim time — đảm bảo
+/// audit trail vẫn rõ dù catalog reward đổi giá trị tương lai.
+model SectSeasonClaim {
+  id             String    @id @default(cuid())
+  characterId    String
+  character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Match key trong shared `SECT_SEASONS` catalog (vd `season_2026_s2`).
+  seasonKey      String
+  /// Match key trong shared `SECT_SEASON_MILESTONES` catalog (vd `milestone_silver`).
+  milestoneKey   String
+  /// Snapshot personal points tại commit time (audit + replay safe).
+  pointsAtClaim  Int
+  /// Snapshot reward grant `{ linhThach?, tienNgoc?, items?, titleKey?,
+  /// buffKey? }` tại commit time. Catalog reward có thể đổi tương lai —
+  /// row đã claim giữ snapshot làm audit/replay safe.
+  rewardSnapshot Json
+  claimedAt      DateTime  @default(now())
+
+  @@unique([characterId, seasonKey, milestoneKey])
+  @@index([characterId, claimedAt])
+  @@index([seasonKey, milestoneKey])
 }
 
 /// Phase 13.1.B — LiveOps event override (admin LiveOps controls).
