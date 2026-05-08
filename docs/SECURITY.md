@@ -2,6 +2,8 @@
 
 Tóm tắt các kiểm soát an ninh đang có và các điểm còn cần cải thiện. Đối tượng: admin/dev đánh giá threat model trước khi cho closed beta + người contribute code mới biết invariant cần giữ.
 
+> Companion: [`docs/PRODUCTION_CHECKLIST.md`](./PRODUCTION_CHECKLIST.md) — env list bắt buộc + smoke check sau deploy + CSP troubleshooting (Phase R1). Implementation: <ref_file file="apps/api/src/bootstrap-config.ts" /> + lock-in test <ref_file file="apps/api/src/bootstrap-config.test.ts" /> + <ref_file file="apps/api/src/security-secret-leak.test.ts" />.
+
 ## 1. Authentication
 
 - **Password hash**: argon2id (`argon2@^0.41`). Tham số: `memoryCost = 64 MiB`, `timeCost = 3`, `parallelism = 1`. Tham số được hard-code 1 chỗ tại `auth.service.ts` + `scripts/bootstrap.ts`.

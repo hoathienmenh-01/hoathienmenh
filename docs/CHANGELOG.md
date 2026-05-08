@@ -12,7 +12,30 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Added — Phase 13.2.A Sect Season Foundation (this PR)
+### Added — Phase R1 Production Readiness — CSP, env, healthcheck, deploy docs (this PR)
+
+- **API ready hơn cho staging/production deploy** — Trước PR này, `apps/api/src/main.ts` đã có CSP + healthcheck + secret guard nhưng logic mix trong `bootstrap()`, **không có unit test** cho các nhánh production. PR R1: extract pure helper sang `bootstrap-config.ts` (testable, không cần boot Nest), thêm 26 lock-in test cho CSP/CORS/secret + 6 lock-in test chống commit `.env` thật, doc hóa env list + deploy smoke checklist + CSP troubleshooting. **KHÔNG đụng gameplay**, **KHÔNG migration**, **KHÔNG đổi runtime LiveOps/SectWar/Phase 13.2.x**.
+- **Pure config helpers** (`apps/api/src/bootstrap-config.ts`):
+  - **`assertProductionSecrets(env=process.env)`** — no-op khi `NODE_ENV !== 'production'`. Trong prod: throw nếu thiếu `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`, throw nếu giá trị thuộc `INSECURE_DEFAULTS = { 'change-me-access-secret', 'change-me-refresh-secret', 'dev-access-secret', 'dev-refresh-secret' }`. Message tiếng Việt rõ ràng (`[xuantoi/api] Production phải có env: ...` / `[xuantoi/api] Production không được dùng giá trị mặc định cho ...`).
+  - **`corsConfig(env=process.env)`** — prod: throw nếu thiếu `CORS_ORIGINS`, csv parse trim+filter, return `{ origin: string[], credentials: true }`. Dev: dùng `CORS_ORIGINS` nếu có, fallback `['http://localhost:5173']` (Vite default).
+  - **`helmetConfig(env=process.env)`** — dev: `{ contentSecurityPolicy: false }` (tắt để Vite HMR/inline script). Prod: 11 directive `defaultSrc/scriptSrc/styleSrc 'self'`, `imgSrc 'self' data:`, `connectSrc 'self'`, `fontSrc 'self' data:`, `objectSrc 'none'`, `baseUri 'self'`, `formAction 'self'`, `frameAncestors 'none'`, `upgradeInsecureRequests` + HSTS 180 ngày `includeSubDomains`, `referrerPolicy no-referrer`, `crossOriginResourcePolicy same-site`, `crossOriginEmbedderPolicy false`. KHÔNG `'unsafe-inline'`/`'unsafe-eval'`/wildcard `*`.
+  - `main.ts` simplified: import 3 helper, `bootstrap()` call `assertProductionSecrets()` rồi `NestFactory.create(AppModule, { cors: corsConfig() })` + `app.use(helmet(helmetConfig()))`.
+- **Healthcheck** (đã ship trước, audit-only — KHÔNG đổi):
+  - `GET /api/healthz` → 200 `{ ok, uptimeMs, ts }` liveness.
+  - `GET /api/readyz` → 200 `{ ok, checks: { db: { ok, latencyMs }, redis: { ok, latencyMs } } }` hoặc 503 nếu DB/Redis fail (load balancer rotate instance ra).
+  - `GET /api/version` → meta `{ name, version, gitSha, ts }` (commit SHA cho deploy verify).
+- **Tests mới**:
+  - `apps/api/src/bootstrap-config.test.ts` (+26 case): `assertProductionSecrets` 8 case (dev no-op × 3, missing JWT_ACCESS/REFRESH, both insecure default × 4 cho ACCESS/REFRESH, length-only validation cho prod minimum); `corsConfig` 6 case (dev fallback, dev csv parse, dev empty, prod missing throw, prod csv parse, prod single origin); `helmetConfig` 12 case (dev tắt CSP, prod CSP đủ 11 directive, KHÔNG unsafe-inline/eval/wildcard, HSTS 15552000 includeSubDomains preload=false, referrer-policy no-referrer, CORP same-site, COEP false, object-src + frame-ancestors none).
+  - `apps/api/src/security-secret-leak.test.ts` (+6 case): `apps/api/.env.example` chỉ chứa placeholder (length < 32 hoặc trong `ALLOWED_PLACEHOLDERS`); `apps/web/.env.example` không có key match `SECRET|PASSWORD|TOKEN|PRIVATE_KEY` không-prefix `VITE_`; `apps/api/.env` + `apps/web/.env` được `git check-ignore` reject; root `.gitignore` có rule `.env` + whitelist `!.env.example`.
+- **Docs mới**:
+  - `docs/PRODUCTION_CHECKLIST.md` — 5 section: env list bắt buộc/khuyến nghị/anti-pattern; deploy smoke checklist (health probe, CSP header `curl -I`, auth+session, core gameplay loop, admin+audit, cleanup); CSP troubleshooting (inline script, WebSocket cross-domain, CDN style/font, image data: URI, iframe embed, verify CSP nhanh local); lock-in test inventory; rollback nguyên tắc.
+  - `docs/DEPLOY.md` + `docs/SECURITY.md` — companion banner cross-link tới `PRODUCTION_CHECKLIST.md`.
+- **Risk / rollback**: thấp. R1 **append-only** + 1 file refactor (`main.ts` chỉ extract helper sang file mới — behavior identical). KHÔNG migration, KHÔNG schema, KHÔNG đụng module/controller nào ngoài `main.ts`. Rollback = revert PR.
+- **Out of scope** (theo scope user request): KHÔNG sửa gameplay, KHÔNG làm Phase 13.2.B+, KHÔNG đổi secret thật, KHÔNG commit `.env` thật, KHÔNG deploy prod thật trong session này (chỉ verify config).
+- **Verification**: api typecheck ✅ / api `--run health` 13 PASS ✅ (10 unit + 3 integration) / api `--run security-secret-leak` 6 PASS ✅ / api `--run bootstrap-config` 26 PASS ✅ / api lint ✅ / pnpm build ✅.
+- **Next roadmap**: (1) env-driven CSP `connectSrc` cho FE khác domain (hiện hard-code `'self'`); (2) Phase 13.2.B Sect Season Reward Claim (deferred to gameplay PR); (3) Dockerfile + `docker-compose.prod.yml` để có image deploy cho VPS / fly.io / k8s; (4) preview deploy trên Vercel/Netlify cho staging E2E test.
+
+### Added — Phase 13.2.A Sect Season Foundation (PR #472)
 
 - **Tông Môn giờ có mùa giải dài hạn** — Phase 13.1.A/B/C/D đã ship Sect War tuần (`SectWarContribution`, `SectWarRewardClaim`, leaderboard tuần, missions, shop, admin LiveOps preview/dry-run). Phase 13.2.A mở foundation cho **Sect Season** — chuỗi mùa giải 4 tuần × 13 mùa (≈ 1 năm) phủ `2026-03-30 → 2027-03-28 ICT`, derive điểm season từ weekly contribution **read-only** (KHÔNG mutate, KHÔNG migration, KHÔNG reward claim) + 1 tab UI Season trong `/sect-war` cho player xem milestone progression + leaderboard mùa.
 - **Shared catalog mới** (`packages/shared/src/sect-season.ts`):

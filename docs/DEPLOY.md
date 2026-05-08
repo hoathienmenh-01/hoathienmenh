@@ -2,6 +2,8 @@
 
 Hướng dẫn deploy `apps/api` (NestJS) + `apps/web` (Vite SPA + PWA) lên môi trường staging / production. Repo chưa có `Dockerfile`/`docker-compose.prod.yml` chính thức → tài liệu này mô tả nguyên tắc chung + ví dụ minimal.
 
+> Companion: [`docs/PRODUCTION_CHECKLIST.md`](./PRODUCTION_CHECKLIST.md) — env list bắt buộc + smoke check sau deploy + CSP troubleshooting (Phase R1).
+
 ## 1. Kiến trúc deploy đề xuất
 
 ```
