@@ -37,6 +37,7 @@ import type {
   SectSeasonMyStatusView,
 } from '@xuantoi/shared';
 import type { AuthService } from '../auth/auth.service';
+import type { SectSeasonHistoryService } from './sect-season-history.service';
 
 const STUB_LB: SectSeasonLeaderboardView = {
   seasonKey: 'season_2026_s2',
@@ -99,7 +100,8 @@ function makeController(
     listMilestones: opts.milestonesImpl ?? (() => STUB_MILESTONES),
     claimMilestone: opts.claimImpl ?? (async () => STUB_CLAIM_RESULT),
   } as unknown as SectSeasonService;
-  return new SectSeasonController(sectSeason, auth);
+  const sectSeasonHistory = {} as unknown as SectSeasonHistoryService;
+  return new SectSeasonController(sectSeason, sectSeasonHistory, auth);
 }
 
 async function expectHttpError(p: Promise<unknown>, status: number, code: string) {
