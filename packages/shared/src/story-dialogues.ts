@@ -7,19 +7,31 @@
  *
  *   - Mỗi `StoryDialogueNodeDef` là một line text + nhiều `StoryDialogueChoiceDef`.
  *   - Choice có `effects[]` server-side: `mark_seen`, `advance_quest_step`,
- *     `give_reward`, `set_flag` (ECONOMY_MODEL §3 — tiny rewards, không break balance).
+ *     `give_reward`, `set_flag`, `clear_flag` (ECONOMY_MODEL §3 — tiny rewards,
+ *     không break balance). `clear_flag` cho phép plot reversal sau khi player
+ *     đổi quan hệ với NPC (vd apology arc).
  *   - Choice có thể `nextNodeId` → modal load tiếp node mới.
  *   - Node có `conditions[]` — chỉ visible khi mọi condition true. Server filter
  *     khi `GET /story/dialogue/:npcKey` (specificity score: highest first).
  *   - Choice cũng có `conditions[]` — disabled (nhưng vẫn render) nếu fail, để
  *     player thấy "lựa chọn bị khoá" thay vì biến mất bí ẩn.
  *
+ * Phase 12.9 Story Dialogue Branch Advanced thêm:
+ *   - Condition `choice_made { nodeId, choiceKey }` — branch theo lựa chọn
+ *     player đã pick ở node trước (NPC nhớ lựa chọn cũ → followup khác nhau).
+ *   - Effect `clear_flag` — cho phép undo `set_flag` trong arc kết thúc.
+ *   - Multi-step branching tree (vd Hàn Dạ first_meet → followup_rival/neutral
+ *     → resolution_apology) chứng minh NPC nhớ + branch + revert được.
+ *
  * Persistence:
  *   - `Character.storyDialogueSeen` (Json array of nodeId) — mark-seen idempotent.
- *   - `Character.storyFlags` (Json map flagKey → value) — set-flag idempotent.
+ *   - `Character.storyDialogueChoices` (Json map nodeId → choiceKey, Phase 12.9)
+ *     — last-write-wins per node, dùng cho `choice_made` condition.
+ *   - `Character.storyFlags` (Json map flagKey → value) — set-flag idempotent;
+ *     `clear_flag` xoá entry.
  *   - Quest progress vẫn đi qua `QuestProgress` (PR-2) + `QuestService.progress`.
  *
- * Source design: spec Phase 12 Story Dialogue Foundation (this PR).
+ * Source design: spec Phase 12 Story Dialogue Foundation + Phase 12.9 advanced.
  *
  * Naming convention: `story_dlg_<npc_key>_<arc>_<seq>`.
  *
@@ -53,7 +65,13 @@ export type StoryDialogueCondition =
   | { kind: 'flag_set'; flagKey: string }
   | { kind: 'flag_unset'; flagKey: string }
   | { kind: 'seen'; nodeId: string }
-  | { kind: 'not_seen'; nodeId: string };
+  | { kind: 'not_seen'; nodeId: string }
+  /**
+   * Phase 12.9 — match khi player đã pick `choiceKey` ở `nodeId` trước đó
+   * (`Character.storyDialogueChoices[nodeId] === choiceKey`). Cho phép
+   * NPC nhớ lựa chọn cũ + render follow-up branching khác nhau.
+   */
+  | { kind: 'choice_made'; nodeId: string; choiceKey: string };
 
 /**
  * Effect áp dụng server-side khi player chọn choice. Apply tuần tự theo thứ tự
@@ -77,7 +95,12 @@ export type StoryDialogueEffect =
       tienNgoc?: number;
       exp?: number;
     }
-  | { kind: 'set_flag'; flagKey: string; value: StoryFlagValue };
+  | { kind: 'set_flag'; flagKey: string; value: StoryFlagValue }
+  /**
+   * Phase 12.9 — xoá flag khỏi `Character.storyFlags` (no-op nếu chưa set).
+   * Cho phép plot reversal trong arc kết thúc (vd apology xoá relation flag).
+   */
+  | { kind: 'clear_flag'; flagKey: string };
 
 /**
  * Choice trong story dialogue node. `label` là Vietnamese hardcoded; `labelEn`
@@ -312,6 +335,122 @@ export const STORY_DIALOGUES: readonly StoryDialogueNodeDef[] = [
       },
     ],
   },
+
+  // ============================================================================
+  // Hàn Dạ — Phase 12.9 multi-step branching tree.
+  //
+  //   first_meet (rival) → followup_rival (spar / decline) → resolution_apology
+  //   first_meet (neutral) → followup_neutral (study / part)
+  //
+  // Server pick node theo specificity: `choice_made` (5) cao hơn `flag_equals` (4),
+  // nên followup_rival/neutral pick \u01b0u tiên hơn các node fallback. Resolution
+  // arc dùng `clear_flag` để xoá `han_da_relation` (revert sang neutral).
+  // ============================================================================
+  {
+    id: 'story_dlg_han_da_followup_rival',
+    npcKey: 'npc_han_da',
+    conditions: [
+      { kind: 'realm_min', realmOrder: 1 },
+      {
+        kind: 'choice_made',
+        nodeId: 'story_dlg_han_da_first_meet',
+        choiceKey: 'rival',
+      },
+      { kind: 'not_seen', nodeId: 'story_dlg_han_da_followup_rival' },
+    ],
+    text: 'Lần trước đệ tử nói kiếm sẽ trả lời. Hôm nay ta chờ — một chiêu, không hơn không kém.',
+    textEn:
+      'Last time you said your sword would answer. Today I wait — one strike, no more, no less.',
+    choices: [
+      {
+        key: 'spar',
+        label: 'Đệ tử chấp nhận. Một chiêu, kiếm trả lời.',
+        labelEn: 'I accept. One strike, my sword answers.',
+        effects: [
+          { kind: 'set_flag', flagKey: 'han_da_spar_arranged', value: true },
+          { kind: 'give_reward', linhThach: 30 },
+          { kind: 'mark_seen' },
+        ],
+      },
+      {
+        key: 'decline',
+        label: 'Đệ tử rút lại lời cũ. Hôm nay không tiện.',
+        labelEn: 'I take back my words. Today is not the time.',
+        effects: [{ kind: 'mark_seen' }],
+      },
+    ],
+  },
+  {
+    id: 'story_dlg_han_da_followup_neutral',
+    npcKey: 'npc_han_da',
+    conditions: [
+      { kind: 'realm_min', realmOrder: 1 },
+      {
+        kind: 'choice_made',
+        nodeId: 'story_dlg_han_da_first_meet',
+        choiceKey: 'neutral',
+      },
+      { kind: 'not_seen', nodeId: 'story_dlg_han_da_followup_neutral' },
+    ],
+    text: 'Đệ tử không gây sự thì ta không phiền. Nhưng kiếm cô đơn thì rỉ — muốn cùng ta luyện một chiêu không?',
+    textEn:
+      'If you do not quarrel, I do not mind. Yet a lonely sword rusts — care to drill a strike with me?',
+    choices: [
+      {
+        key: 'study',
+        label: 'Đệ tử xin học. Phiền huynh chỉ giáo.',
+        labelEn: 'I beg to learn. Please instruct me.',
+        effects: [
+          { kind: 'set_flag', flagKey: 'han_da_mentor', value: true },
+          { kind: 'give_reward', linhThach: 20, exp: 30 },
+          { kind: 'mark_seen' },
+        ],
+      },
+      {
+        key: 'part_ways',
+        label: 'Đệ tử cảm tạ, song đường ai nấy đi.',
+        labelEn: 'I thank you, but our paths must part.',
+        effects: [{ kind: 'mark_seen' }],
+      },
+    ],
+  },
+  {
+    id: 'story_dlg_han_da_resolution_apology',
+    npcKey: 'npc_han_da',
+    /**
+     * Visible khi player đã chấp nhận spar (rival path) nhưng giờ muốn xin lỗi.
+     * Effect `clear_flag` xoá `han_da_relation` flag (revert sang neutral) —
+     * mirror narrative reconciliation. KHÔNG đụng `han_da_spar_arranged` (giữ
+     * lịch sử spar). Specificity: choice_made + flag_equals + seen + not_seen
+     * → max(5,4,3) = 5 (cao hơn first_meet/followup chuẩn).
+     */
+    conditions: [
+      { kind: 'realm_min', realmOrder: 1 },
+      { kind: 'flag_equals', flagKey: 'han_da_relation', value: 'rival' },
+      { kind: 'seen', nodeId: 'story_dlg_han_da_followup_rival' },
+      { kind: 'not_seen', nodeId: 'story_dlg_han_da_resolution_apology' },
+    ],
+    text: 'Sau trận đấu hôm trước, đệ tử nghĩ lại — kiếm thật không đáng vung vào người đồng môn. Xin huynh xí xoá lời cũ.',
+    textEn:
+      'After our duel, I have reflected — a sword should not be drawn upon a fellow disciple. Please forget my earlier words.',
+    choices: [
+      {
+        key: 'apologize',
+        label: 'Đệ tử xin lỗi. Quan hệ cũ, xí xoá.',
+        labelEn: 'I apologize. Let the old enmity be erased.',
+        effects: [
+          { kind: 'clear_flag', flagKey: 'han_da_relation' },
+          { kind: 'mark_seen' },
+        ],
+      },
+      {
+        key: 'stand',
+        label: 'Đệ tử giữ lời. Kiếm vẫn còn.',
+        labelEn: 'I stand by my words. The sword remains.',
+        effects: [{ kind: 'mark_seen' }],
+      },
+    ],
+  },
 ] as const;
 
 // ============================================================================
@@ -328,7 +467,8 @@ export function storyDialogueNodesByNpc(npcKey: string): StoryDialogueNodeDef[] 
 
 /**
  * Score node theo condition specificity (dùng để pick ưu tiên):
- *   `quest_status` > `flag_equals`/`flag_set` > `seen`/`not_seen` > `realm_min` > `always`.
+ *   `quest_status`/`choice_made` > `flag_equals`/`flag_set` > `seen`/`not_seen`
+ *   > `realm_min` > `always`.
  *
  * Trong cùng kind, lấy max của tất cả condition (vd `realm_min` cao hơn ưu tiên hơn).
  */
@@ -354,6 +494,7 @@ export function storyDialogueNodeSpecificity(node: StoryDialogueNodeDef): number
         score = 4;
         break;
       case 'quest_status':
+      case 'choice_made':
         score = 5;
         break;
     }
@@ -400,7 +541,7 @@ export function storyDialogueAllFlagKeys(): readonly string[] {
         }
       }
       for (const e of choice.effects ?? []) {
-        if (e.kind === 'set_flag') keys.add(e.flagKey);
+        if (e.kind === 'set_flag' || e.kind === 'clear_flag') keys.add(e.flagKey);
       }
     }
   }
@@ -439,6 +580,36 @@ export function validateStoryDialogueCatalog(): string[] {
   const questKeys = new Set(QUESTS.map((q) => q.key));
   const ids = new Set<string>();
 
+  // Collect (nodeId → set of choiceKey) trước để validate `choice_made` /
+  // `seen` / `not_seen` reference vào node + choice có tồn tại.
+  const choiceMap = new Map<string, Set<string>>();
+  for (const node of STORY_DIALOGUES) {
+    const set = new Set<string>();
+    for (const c of node.choices) set.add(c.key);
+    choiceMap.set(node.id, set);
+  }
+
+  function validateConditionRef(
+    where: string,
+    cond: StoryDialogueCondition,
+  ): void {
+    if (cond.kind === 'seen' || cond.kind === 'not_seen') {
+      if (!choiceMap.has(cond.nodeId)) {
+        errs.push(`${where} ${cond.kind} references unknown nodeId ${cond.nodeId}`);
+      }
+    }
+    if (cond.kind === 'choice_made') {
+      const set = choiceMap.get(cond.nodeId);
+      if (!set) {
+        errs.push(`${where} choice_made references unknown nodeId ${cond.nodeId}`);
+      } else if (!set.has(cond.choiceKey)) {
+        errs.push(
+          `${where} choice_made references unknown choiceKey ${cond.choiceKey} in node ${cond.nodeId}`,
+        );
+      }
+    }
+  }
+
   for (const node of STORY_DIALOGUES) {
     if (ids.has(node.id)) errs.push(`Duplicate node id: ${node.id}`);
     ids.add(node.id);
@@ -452,6 +623,9 @@ export function validateStoryDialogueCatalog(): string[] {
       errs.push(`Node ${node.id} references unknown questKey ${node.questKey}`);
     }
     if (node.text.length === 0) errs.push(`Node ${node.id} text is empty`);
+    for (const c of node.conditions ?? []) {
+      validateConditionRef(`Node ${node.id}`, c);
+    }
 
     const choiceKeys = new Set<string>();
     for (const choice of node.choices) {
@@ -466,6 +640,9 @@ export function validateStoryDialogueCatalog(): string[] {
         errs.push(
           `Node ${node.id} choice ${choice.key} nextNodeId ${choice.nextNodeId} not found`,
         );
+      }
+      for (const c of choice.conditions ?? []) {
+        validateConditionRef(`Node ${node.id} choice ${choice.key}`, c);
       }
       const reward = totalChoiceReward(choice);
       if (reward.linhThach > STORY_DIALOGUE_REWARD_CAP.linhThach) {

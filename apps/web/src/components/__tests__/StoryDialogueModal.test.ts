@@ -33,6 +33,7 @@ const i18n = createI18n({
         talk: 'Tâm sự',
         alreadyChosen: 'Đã chọn',
         locked: 'Chưa mở',
+        lastChosen: 'Đã chọn lần trước',
         empty: 'Đạo hữu này chưa có chuyện gì để bàn.',
         linhThach: 'Linh thạch',
         tienNgoc: 'Tiên ngọc',
@@ -52,6 +53,7 @@ function makeNode(): api.StoryDialogueNodeView {
     questKey: null,
     text: 'Lời chào của trưởng môn.',
     seen: false,
+    previousChoiceKey: null,
     choices: [
       {
         key: 'respect',
@@ -60,6 +62,7 @@ function makeNode(): api.StoryDialogueNodeView {
         unavailableReason: null,
         nextNodeId: null,
         alreadyApplied: false,
+        previouslyChosen: false,
       },
       {
         key: 'doubt',
@@ -68,6 +71,7 @@ function makeNode(): api.StoryDialogueNodeView {
         unavailableReason: null,
         nextNodeId: null,
         alreadyApplied: false,
+        previouslyChosen: false,
       },
       {
         key: 'locked',
@@ -76,6 +80,7 @@ function makeNode(): api.StoryDialogueNodeView {
         unavailableReason: 'quest_status:foo=accepted',
         nextNodeId: null,
         alreadyApplied: false,
+        previouslyChosen: false,
       },
       {
         key: 'already',
@@ -84,6 +89,7 @@ function makeNode(): api.StoryDialogueNodeView {
         unavailableReason: 'already_applied',
         nextNodeId: null,
         alreadyApplied: true,
+        previouslyChosen: false,
       },
     ],
   };
@@ -183,6 +189,7 @@ describe('StoryDialogueModal — render & interaction', () => {
       granted: { linhThach: 20, tienNgoc: 0, exp: 0 },
       flags: { attitude: 'respect' },
       seen: ['story_dlg_test_intro'],
+      choices: { story_dlg_test_intro: 'respect' },
       nextNode: null,
     });
     const w = mountModal();
@@ -234,6 +241,56 @@ describe('StoryDialogueModal — render & interaction', () => {
       document.querySelector('[data-testid="story-dialogue-loading"]')?.textContent,
     ).toContain('Đang tải…');
   });
+
+  // Phase 12.9 — "Đã chọn lần trước" badge khi previouslyChosen=true.
+  it('previouslyChosen=true → render last-chosen badge + giữ button enable', async () => {
+    const store = useStoryDialogueStore();
+    const node = makeNode();
+    // Mark `respect` as previously chosen (player từng pick — giờ revisit node).
+    node.previousChoiceKey = 'respect';
+    node.choices = node.choices.map((c) =>
+      c.key === 'respect' ? { ...c, previouslyChosen: true } : c,
+    );
+    store.node = node;
+    store.activeNpcKey = 'npc_test';
+    const w = mountModal();
+    await w.vm.$nextTick();
+    const respectBtn = document.querySelector(
+      '[data-testid="story-dialogue-choice-respect"]',
+    ) as HTMLButtonElement;
+    // Badge node được render (dedicated data-testid).
+    const badge = document.querySelector('[data-testid="story-dialogue-last-respect"]');
+    expect(badge).not.toBeNull();
+    expect(badge?.textContent).toContain('Đã chọn lần trước');
+    // Button vẫn enable — previouslyChosen KHÔNG block re-pick.
+    expect(respectBtn.disabled).toBe(false);
+    // Choice khác không có badge.
+    const doubtBadge = document.querySelector('[data-testid="story-dialogue-last-doubt"]');
+    expect(doubtBadge).toBeNull();
+  });
+
+  it('alreadyApplied có precedence trên previouslyChosen — chỉ render "Đã chọn" hint', async () => {
+    const store = useStoryDialogueStore();
+    const node = makeNode();
+    node.previousChoiceKey = 'already';
+    node.choices = node.choices.map((c) =>
+      c.key === 'already' ? { ...c, previouslyChosen: true } : c,
+    );
+    store.node = node;
+    store.activeNpcKey = 'npc_test';
+    const w = mountModal();
+    await w.vm.$nextTick();
+    const alreadyBtn = document.querySelector(
+      '[data-testid="story-dialogue-choice-already"]',
+    ) as HTMLButtonElement;
+    // alreadyApplied disabled + render "Đã chọn" hint, KHÔNG render last-chosen badge
+    // (alreadyChosen v-else-if chain win trước previouslyChosen).
+    expect(alreadyBtn.disabled).toBe(true);
+    expect(alreadyBtn.textContent).toContain('Đã chọn');
+    expect(alreadyBtn.textContent).not.toContain('Đã chọn lần trước');
+    const lastBadge = document.querySelector('[data-testid="story-dialogue-last-already"]');
+    expect(lastBadge).toBeNull();
+  });
 });
 
 describe('useStoryDialogueStore', () => {
@@ -274,6 +331,7 @@ describe('useStoryDialogueStore', () => {
       granted: { linhThach: 0, tienNgoc: 0, exp: 0 },
       flags: {},
       seen: ['story_dlg_test_intro'],
+      choices: { story_dlg_test_intro: 'respect' },
       nextNode: next,
     });
     const result = await store.pickChoice('respect');
@@ -290,6 +348,7 @@ describe('useStoryDialogueStore', () => {
       granted: { linhThach: 20, tienNgoc: 0, exp: 0 },
       flags: {},
       seen: ['story_dlg_test_intro'],
+      choices: { story_dlg_test_intro: 'respect' },
       nextNode: null,
     });
     await store.pickChoice('respect');

@@ -88,6 +88,13 @@ export interface StoryDialogueChoiceView {
    * FE highlight "đã chọn" để player không quay lại pick lại.
    */
   alreadyApplied: boolean;
+  /**
+   * Phase 12.9 — player đã từng pick exact choice này ở node này (
+   * `Character.storyDialogueChoices[parentNodeId] === key`). FE gắn badge
+   * "đã chọn lần trước" giúp player nhất quán branching path. Khác
+   * `alreadyApplied`: không disable button — chỉ hiển thị hint.
+   */
+  previouslyChosen: boolean;
 }
 
 export interface StoryDialogueNodeView {
@@ -98,6 +105,11 @@ export interface StoryDialogueNodeView {
   textEn?: string;
   /** Đã từng pick choice ở node này (mark_seen đã chạy). */
   seen: boolean;
+  /**
+   * Phase 12.9 — choiceKey đã pick gần nhất ở node này (null nếu chưa).
+   * Server-authoritative từ `Character.storyDialogueChoices[nodeId]`.
+   */
+  previousChoiceKey: string | null;
   choices: StoryDialogueChoiceView[];
 }
 
@@ -110,6 +122,11 @@ export interface StoryDialogueChoiceResult {
   flags: StoryFlagMap;
   /** Tập node id đã seen sau khi apply. */
   seen: ReadonlyArray<string>;
+  /**
+   * Phase 12.9 — snapshot map nodeId → choiceKey sau apply (để FE store sync
+   * cho condition `choice_made` render ở node tiếp theo).
+   */
+  choices: Readonly<Record<string, string>>;
   /** Node tiếp theo (default cho npc nếu choice không có nextNodeId; null = đóng modal). */
   nextNode: StoryDialogueNodeView | null;
 }
@@ -124,6 +141,8 @@ interface CharCtx {
   questStepProgressByKey: Map<string, Record<string, number>>;
   flags: StoryFlagMap;
   seen: ReadonlyArray<string>;
+  /** Phase 12.9 — nodeId → choiceKey (last-write-wins). */
+  choices: Readonly<Record<string, string>>;
 }
 
 function readJsonArray(raw: Prisma.JsonValue | null | undefined): string[] {
@@ -138,6 +157,17 @@ function readJsonFlagMap(raw: Prisma.JsonValue | null | undefined): StoryFlagMap
     if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
       out[k] = v;
     }
+  }
+  return out;
+}
+
+function readJsonChoiceMap(
+  raw: Prisma.JsonValue | null | undefined,
+): Record<string, string> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === 'string' && v.length > 0) out[k] = v;
   }
   return out;
 }
@@ -194,6 +224,8 @@ function evaluateCondition(cond: StoryDialogueCondition, ctx: CharCtx): boolean 
       return ctx.seen.includes(cond.nodeId);
     case 'not_seen':
       return !ctx.seen.includes(cond.nodeId);
+    case 'choice_made':
+      return ctx.choices[cond.nodeId] === cond.choiceKey;
   }
 }
 
@@ -226,6 +258,8 @@ function summarizeConditionForReason(cond: StoryDialogueCondition): string {
       return `seen:${cond.nodeId}`;
     case 'not_seen':
       return `not_seen:${cond.nodeId}`;
+    case 'choice_made':
+      return `choice_made:${cond.nodeId}=${cond.choiceKey}`;
   }
 }
 
@@ -257,6 +291,7 @@ function buildChoiceView(
   );
   const parentSeen = ctx.seen.includes(parentNode.id);
   const alreadyApplied = parentSeen && hasGrantEffect;
+  const previouslyChosen = ctx.choices[parentNode.id] === choice.key;
   let available = condResult.ok && !alreadyApplied;
   let reason: string | null = null;
   if (!condResult.ok) {
@@ -273,6 +308,7 @@ function buildChoiceView(
     unavailableReason: reason,
     nextNodeId: choice.nextNodeId ?? null,
     alreadyApplied,
+    previouslyChosen,
   };
 }
 
@@ -284,6 +320,7 @@ function buildNodeView(node: StoryDialogueNodeDef, ctx: CharCtx): StoryDialogueN
     text: node.text,
     textEn: node.textEn,
     seen: ctx.seen.includes(node.id),
+    previousChoiceKey: ctx.choices[node.id] ?? null,
     choices: node.choices.map((c) => buildChoiceView(c, node, ctx)),
   };
 }
@@ -412,16 +449,26 @@ export class StoryDialogueService {
       // Re-load row fresh inside tx (for race-safe seen/flags update).
       const charRow = await tx.character.findUnique({
         where: { id: ctx.characterId },
-        select: { id: true, storyDialogueSeen: true, storyFlags: true },
+        select: {
+          id: true,
+          storyDialogueSeen: true,
+          storyFlags: true,
+          storyDialogueChoices: true,
+        },
       });
       if (!charRow) throw new StoryDialogueError('NO_CHARACTER');
       const seen = new Set(readJsonArray(charRow.storyDialogueSeen));
       const flags: Record<string, StoryFlagValue> = { ...readJsonFlagMap(charRow.storyFlags) };
+      const choices: Record<string, string> = {
+        ...readJsonChoiceMap(charRow.storyDialogueChoices),
+      };
       const granted = { linhThach: 0, tienNgoc: 0, exp: 0 };
       const applied: StoryDialogueEffect[] = [];
 
       // Always mark node seen (mark_seen implicit + idempotent set semantics).
       seen.add(node.id);
+      // Phase 12.9 — last-write-wins choice memory cho `choice_made` condition.
+      choices[node.id] = choice.key;
 
       for (const e of choice.effects ?? []) {
         switch (e.kind) {
@@ -431,6 +478,10 @@ export class StoryDialogueService {
             break;
           case 'set_flag':
             flags[e.flagKey] = e.value;
+            applied.push(e);
+            break;
+          case 'clear_flag':
+            delete flags[e.flagKey];
             applied.push(e);
             break;
           case 'give_reward': {
@@ -512,6 +563,7 @@ export class StoryDialogueService {
         data: {
           storyDialogueSeen: [...seen] as Prisma.InputJsonValue,
           storyFlags: flags as Prisma.InputJsonValue,
+          storyDialogueChoices: choices as Prisma.InputJsonValue,
         },
       });
 
@@ -520,6 +572,7 @@ export class StoryDialogueService {
         granted,
         flags: flags as StoryFlagMap,
         seen: [...seen],
+        choices: choices as Readonly<Record<string, string>>,
       };
     });
 
@@ -545,6 +598,7 @@ export class StoryDialogueService {
       granted: result.granted,
       flags: result.flags,
       seen: result.seen,
+      choices: result.choices,
       nextNode: nextNode ? buildNodeView(nextNode, ctxAfter) : null,
     };
   }
@@ -569,6 +623,7 @@ export class StoryDialogueService {
         realmKey: true,
         storyDialogueSeen: true,
         storyFlags: true,
+        storyDialogueChoices: true,
       },
     });
     if (!char) throw new StoryDialogueError('NO_CHARACTER');
@@ -596,6 +651,7 @@ export class StoryDialogueService {
       questStepProgressByKey,
       flags: readJsonFlagMap(char.storyFlags),
       seen: readJsonArray(char.storyDialogueSeen),
+      choices: readJsonChoiceMap(char.storyDialogueChoices),
     };
   }
 }

@@ -338,3 +338,149 @@ describe('StoryDialogueService.applyChoice — validation', () => {
     expect(ids).toContain(NODE_LANG_SEED);
   });
 });
+
+// =============================================================================
+// Phase 12.9 Story Dialogue Branch Advanced — choice_made gating + clear_flag
+// + storyDialogueChoices persistence + multi-step Hàn Dạ branching tree.
+// =============================================================================
+
+const NPC_HAN = 'npc_han_da';
+const NODE_HAN_FIRST = 'story_dlg_han_da_first_meet';
+const NODE_HAN_FOLLOWUP_RIVAL = 'story_dlg_han_da_followup_rival';
+const NODE_HAN_FOLLOWUP_NEUTRAL = 'story_dlg_han_da_followup_neutral';
+const NODE_HAN_RESOLUTION = 'story_dlg_han_da_resolution_apology';
+
+describe('Phase 12.9 — choice_made + clear_flag + multi-step branching', () => {
+  it('choice_made: server picks followup_rival sau khi player chọn rival ở first_meet', async () => {
+    const { userId, characterId } = await makeUserChar(prisma, { realmKey: 'luyenkhi' });
+    // Pick rival → set flag + mark seen + persist storyDialogueChoices[first_meet]=rival.
+    const r1 = await service.applyChoice(userId, NPC_HAN, NODE_HAN_FIRST, 'rival');
+    expect(r1.flags.han_da_relation).toBe('rival');
+    expect(r1.choices[NODE_HAN_FIRST]).toBe('rival');
+    // storyDialogueChoices persisted.
+    const charAfter = await prisma.character.findUnique({ where: { id: characterId } });
+    const choicesMap = charAfter?.storyDialogueChoices as Record<string, unknown>;
+    expect(choicesMap[NODE_HAN_FIRST]).toBe('rival');
+
+    // GET /story/dialogue/npc_han_da → server pick followup_rival (specificity choice_made = 5).
+    const next = await service.getDialogue(userId, NPC_HAN);
+    expect(next.nodeId).toBe(NODE_HAN_FOLLOWUP_RIVAL);
+    // FE buildView truyền previousChoiceKey cho node first_meet để badge "đã chọn lần trước"…
+    // …nhưng ta đang ở node followup_rival, previousChoiceKey null vì chưa pick.
+    expect(next.previousChoiceKey).toBeNull();
+  });
+
+  it('choice_made: server picks followup_neutral sau khi player chọn neutral', async () => {
+    const { userId } = await makeUserChar(prisma, { realmKey: 'luyenkhi' });
+    await service.applyChoice(userId, NPC_HAN, NODE_HAN_FIRST, 'neutral');
+    const next = await service.getDialogue(userId, NPC_HAN);
+    expect(next.nodeId).toBe(NODE_HAN_FOLLOWUP_NEUTRAL);
+  });
+
+  it('choice_made: applyChoice cho followup_rival.spar reject nếu chưa pick rival ở first_meet', async () => {
+    const { userId } = await makeUserChar(prisma, { realmKey: 'luyenkhi' });
+    // KHÔNG pick first_meet trước → node followup_rival visibility fail (choice_made).
+    try {
+      await service.applyChoice(userId, NPC_HAN, NODE_HAN_FOLLOWUP_RIVAL, 'spar');
+      throw new Error('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(StoryDialogueError);
+      expect((e as StoryDialogueError).code).toBe('INVALID_CHOICE');
+      expect((e as StoryDialogueError).detail).toMatch(/choice_made:.*rival/);
+    }
+  });
+
+  it('clear_flag effect xoá entry khỏi storyFlags + persist', async () => {
+    const { userId, characterId } = await makeUserChar(prisma, { realmKey: 'luyenkhi' });
+    // Setup full path: first_meet rival → followup_rival spar → resolution_apology apologize.
+    await service.applyChoice(userId, NPC_HAN, NODE_HAN_FIRST, 'rival');
+    await service.applyChoice(userId, NPC_HAN, NODE_HAN_FOLLOWUP_RIVAL, 'spar');
+    // Trước khi apologize: han_da_relation = rival, han_da_spar_arranged = true.
+    const before = await prisma.character.findUnique({ where: { id: characterId } });
+    const flagsBefore = before?.storyFlags as Record<string, unknown>;
+    expect(flagsBefore.han_da_relation).toBe('rival');
+    expect(flagsBefore.han_da_spar_arranged).toBe(true);
+    // Apologize → clear_flag(han_da_relation) + mark_seen.
+    const r = await service.applyChoice(userId, NPC_HAN, NODE_HAN_RESOLUTION, 'apologize');
+    expect(r.effectsApplied.map((e) => e.kind)).toEqual(['clear_flag', 'mark_seen']);
+    expect(r.flags.han_da_relation).toBeUndefined();
+    // han_da_spar_arranged không bị động chạm.
+    expect(r.flags.han_da_spar_arranged).toBe(true);
+    // DB persisted.
+    const after = await prisma.character.findUnique({ where: { id: characterId } });
+    const flagsAfter = after?.storyFlags as Record<string, unknown>;
+    expect(flagsAfter.han_da_relation).toBeUndefined();
+    expect(flagsAfter.han_da_spar_arranged).toBe(true);
+  });
+
+  it('clear_flag là no-op nếu flag chưa từng set (idempotent semantic)', async () => {
+    const { userId, characterId } = await makeUserChar(prisma, { realmKey: 'luyenkhi' });
+    // Setup: first_meet neutral (KHÔNG set han_da_relation=rival).
+    await service.applyChoice(userId, NPC_HAN, NODE_HAN_FIRST, 'neutral');
+    // resolution_apology yêu cầu flag_equals=rival → INVALID_CHOICE node-level, không reach
+    // clear_flag effect. Đảm bảo path neutral không vô tình kích hoạt clear_flag.
+    try {
+      await service.applyChoice(userId, NPC_HAN, NODE_HAN_RESOLUTION, 'apologize');
+      throw new Error('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(StoryDialogueError);
+      expect((e as StoryDialogueError).code).toBe('INVALID_CHOICE');
+    }
+    const after = await prisma.character.findUnique({ where: { id: characterId } });
+    const flagsAfter = after?.storyFlags as Record<string, unknown>;
+    // han_da_relation = neutral (unchanged), không bị clear nhầm.
+    expect(flagsAfter.han_da_relation).toBe('neutral');
+  });
+
+  it('previouslyChosen flag set đúng trên StoryDialogueChoiceView khi node tái mở', async () => {
+    const { userId } = await makeUserChar(prisma, { realmKey: 'luyenkhi' });
+    // Pick rival ở first_meet → seen + storyDialogueChoices[first_meet]=rival.
+    await service.applyChoice(userId, NPC_HAN, NODE_HAN_FIRST, 'rival');
+    // Direct listForNpc để lấy node first_meet và verify previouslyChosen.
+    // (getDialogue sẽ pick followup_rival vì specificity cao hơn → cần listForNpc).
+    const nodes = await service.listForNpc(userId, NPC_HAN);
+    const firstMeet = nodes.find((n) => n.nodeId === NODE_HAN_FIRST);
+    // first_meet có condition not_seen → KHÔNG visible nữa (đã seen).
+    expect(firstMeet).toBeUndefined();
+    // Tuy nhiên previousChoiceKey nằm trên node hiện tại (followup_rival). Verify field
+    // populated khi build view cho followup_rival.
+    const followup = nodes.find((n) => n.nodeId === NODE_HAN_FOLLOWUP_RIVAL);
+    expect(followup).toBeDefined();
+    // followup_rival chưa pick → previousChoiceKey null + previouslyChosen=false trên mọi choice.
+    expect(followup!.previousChoiceKey).toBeNull();
+    for (const c of followup!.choices) {
+      expect(c.previouslyChosen).toBe(false);
+    }
+  });
+
+  it('previouslyChosen=true sau khi pick lại same choice (mark_seen-only re-pick path)', async () => {
+    // Build a synthetic-ish scenario: pick neutral ở first_meet, sau đó mở lại first_meet
+    // bằng cách reset seen → kiểm tra previouslyChosen vẫn đúng.
+    const { userId, characterId } = await makeUserChar(prisma, { realmKey: 'luyenkhi' });
+    await service.applyChoice(userId, NPC_HAN, NODE_HAN_FIRST, 'neutral');
+    // Manually clear seen to simulate "node revisitable" scenario (not real flow but
+    // verifies previousChoiceKey wiring on buildNodeView).
+    await prisma.character.update({
+      where: { id: characterId },
+      data: { storyDialogueSeen: [] as Prisma.InputJsonValue },
+    });
+    const nodes = await service.listForNpc(userId, NPC_HAN);
+    const firstMeet = nodes.find((n) => n.nodeId === NODE_HAN_FIRST);
+    expect(firstMeet).toBeDefined();
+    expect(firstMeet!.previousChoiceKey).toBe('neutral');
+    const neutralChoice = firstMeet!.choices.find((c) => c.key === 'neutral');
+    expect(neutralChoice!.previouslyChosen).toBe(true);
+    const rivalChoice = firstMeet!.choices.find((c) => c.key === 'rival');
+    expect(rivalChoice!.previouslyChosen).toBe(false);
+  });
+
+  it('storyDialogueChoices persisted across multiple choices (last-write-wins per node)', async () => {
+    const { userId, characterId } = await makeUserChar(prisma, { realmKey: 'luyenkhi' });
+    await service.applyChoice(userId, NPC_HAN, NODE_HAN_FIRST, 'rival');
+    await service.applyChoice(userId, NPC_HAN, NODE_HAN_FOLLOWUP_RIVAL, 'decline');
+    const char = await prisma.character.findUnique({ where: { id: characterId } });
+    const map = char?.storyDialogueChoices as Record<string, unknown>;
+    expect(map[NODE_HAN_FIRST]).toBe('rival');
+    expect(map[NODE_HAN_FOLLOWUP_RIVAL]).toBe('decline');
+  });
+});

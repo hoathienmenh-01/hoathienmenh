@@ -264,11 +264,18 @@ model Character {
 
   /// Phase 12 Story Dialogue Foundation — flag map cho story branching.
   /// `Record<string, string | number | boolean>` — flagKey → primitive value.
-  /// Effect `set_flag` ghi đè (last-write-wins). Phục vụ:
+  /// Effect `set_flag` ghi đè (last-write-wins); Phase 12.9 effect `clear_flag`
+  /// xoá entry. Phục vụ:
   ///   - condition `flag_equals`/`flag_set`/`flag_unset` rẽ nhánh hội thoại;
   ///   - PR sau: gating reward / sect / faction.
   /// Mutate ONLY qua `StoryDialogueService.applyChoice`.
   storyFlags Json @default("{}")
+
+  /// Phase 12.9 Story Dialogue Branch Advanced — map nodeId → choiceKey
+  /// (last-write-wins per node) cho condition `choice_made`. Cho phép NPC
+  /// "nhớ" lựa chọn cũ + render multi-step branching tree khác nhau theo
+  /// path player đã đi. Mutate ONLY qua `StoryDialogueService.applyChoice`.
+  storyDialogueChoices Json @default("{}")
 
   sectId String?
   sect   Sect?   @relation(fields: [sectId], references: [id])
