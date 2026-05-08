@@ -1111,7 +1111,7 @@ export const ITEMS: readonly ItemDef[] = [
     quality: 'HUYEN',
     stackable: true,
     bonuses: { tribulationSupport: 0.05 },
-    effect: { hp: 200 },
+    effect: { hp: 200, buffKey: 'thuan_kiep_dan_aura' },
     price: 1500,
   },
   {
