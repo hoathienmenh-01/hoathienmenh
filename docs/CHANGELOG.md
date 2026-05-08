@@ -12,6 +12,48 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Added — Phase 14.0.A Sect Territory Influence Foundation (this PR)
+
+- **Lãnh Địa Tông Môn — lớp ảnh hưởng vùng đất foundation** — Mỗi region (`MAP_REGIONS` 9 entry: son_coc, hac_lam, yeu_thu_dong, kim_son_mach, moc_huyen_lam, thuy_long_uyen, hoa_diem_son, hoang_tho_huyet, cuu_la_dien) giờ có **Sect Influence Leaderboard** riêng. Boss/dungeon trong region tự cộng điểm cho Tông của character clear/tham chiến — Tông nào hoạt động nhiều nhất sẽ rank cao trong vùng. **KHÔNG** có settlement capture / siege / region-wide buff / decay — defer Phase 14.0.B+ (cần cap thực tế + season reset thì cycling mới có ý nghĩa).
+- **Shared (`packages/shared/src/territory.ts`)** — module mới chuyên trách lớp 14.0.A:
+  - `TerritoryInfluenceSourceDef` (3 entry): `dungeon_clear` 8 pts (dailyCap 60, weeklyCap 420), `boss_participation` 12 pts (weeklyCap 96), `boss_top_damage` 20 pts (weeklyCap 80). Soft envelope tổng / character / region / week ≈ 596 pts.
+  - `TerritoryRegionDef` parity 1-1 với `MAP_REGIONS`. `influenceCap = +Infinity` ở Phase 14.0.A (no enforcement).
+  - Helpers: `territorySourceByKey()`, `territoryRegionByKey()`, `isTerritoryInfluenceSourceKey()`, `validateTerritoryCatalog()`, `territoryMaxPersonalPointsPerWeek()`. Pure, deterministic.
+  - DTO interfaces cho 3 read endpoint: `TerritoryRegionView` / `TerritoryRegionsView` / `TerritoryLeaderboardRow` / `TerritoryLeaderboardView` / `TerritoryMyRegionRow` / `TerritoryMyView`. Re-export qua `packages/shared/src/index.ts`.
+  - 16 unit test bao phủ catalog parity + region/source lookup + cap dial validation + envelope formula.
+- **Prisma model + migration**:
+  - `SectTerritoryInfluence` ledger row mới — `(regionKey, sectId, characterId, sourceKey, sourceType, sourceId, points, createdAt)`. Composite UNIQUE `(regionKey, characterId, sourceKey, sourceType, sourceId)` cho idempotency runtime hook. Index `(regionKey, sectId)` cho leaderboard groupBy + `(characterId, regionKey)` cho personal view.
+  - Migration `20260607000000_phase_14_0_a_sect_territory_influence` thêm 1 table mới — KHÔNG đụng schema cũ. `wipeAll(prisma)` test helper cleanup row trước Character/Sect.
+- **API mới (`apps/api/src/modules/territory`)**:
+  - `TerritoryService.addInfluenceTx(tx, params)` — entry point duy nhất cho gameplay hook. Tx-aware (atomic với dungeon claim / boss reward parent flow). Idempotent qua composite UNIQUE — caller retry an toàn. Cap enforcement (daily/weekly) compute trước insert; reject = return null (no-op, gameplay flow vẫn thành công). Character không có sect → no-op skip. Region/source key invalid → no-op. **KHÔNG throw** — gameplay path không phá nếu territory ghi điểm fail.
+  - `TerritoryService.getRegions()` → list 9 region + total influence + top sect snapshot. Region không có influence vẫn xuất hiện với `totalPoints=0`, `topSect=null`. Sort theo `MapRegionDef.sortOrder`.
+  - `TerritoryService.getRegionLeaderboard(regionKey)` → top 10 sect trong region, descending điểm, tie-break sectId asc. Throw `REGION_INVALID` nếu key không hợp lệ.
+  - `TerritoryService.getMyTerritory(userId)` → personal view: per-region rank/points của sect user + personal contribution. Character không có sect → `hasSect=false`, regions list đầy đủ với `sectPoints=0`, `sectRank=null`, `personalPoints` cá nhân. Throw `NO_CHARACTER` nếu user chưa onboard.
+  - **`GET /territory/regions`** (auth) — wrap `getRegions`.
+  - **`GET /territory/regions/:regionKey/leaderboard`** (auth) — wrap `getRegionLeaderboard`. 404 `REGION_INVALID`.
+  - **`GET /territory/me`** (auth) — wrap `getMyTerritory`. 404 `NO_CHARACTER`.
+  - 16 test mới (idempotency, cap enforcement, leaderboard correctness, personal view, no-sect handling, cross-region isolation).
+- **Integration hooks (fail-soft pattern, mirror sect-war)**:
+  - `DungeonRunService.claimRun()` — sau sect-war hook, gọi `territory.addInfluenceTx()` với `regionKey` từ `dungeonByKey(template).regionKey`. Legacy/non-region dungeon (no `regionKey`) skip. SourceId = `run.id` → composite UNIQUE đảm bảo claim retry không double điểm. `try/catch` swallow.
+  - `BossService.distributeRewards()` — mọi participant rank 1+ gọi `boss_participation` hook; rank 1 thêm `boss_top_damage` bonus hook. RegionKey = `boss.regionKey` (legacy `'world'` skip vì không phải `MAP_REGIONS` region). SourceId = `${bossId}:${characterId}` → composite UNIQUE đảm bảo retry không double. `try/catch` swallow + warn log.
+  - **KHÔNG** hook sect-mission — mission không gắn region (defer Phase 14.0.B+ nếu cần).
+- **FE layer**:
+  - `apps/web/src/api/territory.ts` — 6 interface mirror server DTO + 3 fetcher (`getTerritoryRegions`, `getTerritoryRegionLeaderboard(regionKey)`, `getTerritoryMe`). Read-only.
+  - `apps/web/src/stores/territory.ts` — Pinia store `useTerritoryStore` với 3 fetcher race-protected (`IN_FLIGHT` guard) + leaderboard cache theo `regionKey` (chuyển tab giữa region không refetch).
+  - `apps/web/src/views/TerritoryView.vue` — view mới với 3 tab: **overview** (region list + total influence + top sect), **leaderboard** (region picker + top 10 table với highlight my-sect row), **me** (per-region rank table cho sect user, fallback no-sect). Auth gate redirect `/auth`. Deep-link query `?tab=…&region=…`. `data-testid` đầy đủ.
+  - Route `/territory` đăng ký trong `router/index.ts`.
+  - i18n vi/en parity: `territory.title/subtitle/loading/tab/overview/leaderboard/me/source/errors`.
+  - 7 FE test mới (auth gate / overview render / leaderboard fetch / region pick switch / me rank table / no-sect fallback / load error fallback).
+- **Docs**: entry này + AI_HANDOFF_REPORT (phần "Recent Changes" dự kiến updater sau khi PR merge) + BALANCE_MODEL (territory dial table) + API.md (3 endpoint mới + breakthrough hook integration note).
+- **Out of scope (Phase 14.0.A)**:
+  - Decay theo thời gian / season reset persistence (defer 14.0.B+).
+  - Settlement capture / siege flow / region-wide buff khi Tông giữ region (defer 14.x).
+  - Region-buff khi Tông ở rank 1 (defer 14.0.C+).
+  - Sect mission hook — mission không gắn region (defer cần thiết kế lại sect mission scope).
+  - Admin tooling cho territory (recalc, audit snapshot).
+- **Risk / rollback**: thấp. Lớp foundation thuần wrap với fail-soft hook; KHÔNG đụng dungeon/boss/sect-war reward path. Migration thuần thêm table mới, không sửa table cũ. Rollback = revert PR + drop bảng `SectTerritoryInfluence`.
+- **Verification**: shared `--run territory` 16 PASS ✅ / api `--run territory` 16 PASS ✅ / api `--run dungeon-run` 50 PASS ✅ / api `--run boss` 117 PASS ✅ / api `--run sect` 146 PASS ✅ / web `--run Territory` 7 PASS ✅. Web `typecheck` PASS ✅.
+
 ### Added — Phase 14.3.A Breakthrough Tribulation Foundation (this PR)
 
 - **Đột phá cảnh giới giờ có lớp Thiên Kiếp gating chính thức** — Phase 11.6.A đã ship catalog `TribulationDef` (8 entry: kim_dan→nguyen_anh, nguyen_anh→hoa_than, hoa_than→luyen_hu, luyen_hu→hop_the, hop_the→dai_thua, dai_thua→do_kiep, do_kiep→nhan_tien, chuan_thanh→thanh_nhan) + Phase 11.6.B đã ship runtime `attemptTribulation()` (8 wave deterministic + reward + Tâm Ma penalty). Phase 14.3.A bổ sung **lớp foundation** mỏng để: (1) UI biết trước cảnh giới kế tiếp có cần kiếp không; (2) UI ước lượng % thành công trước khi vượt; (3) breakthrough endpoint từ chối bypass khi realm yêu cầu kiếp. KHÔNG rewrite Phase 11.6.B — chỉ wrap thêm helpers + 1 endpoint preview + 1 gate.

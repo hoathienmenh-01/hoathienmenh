@@ -86,6 +86,31 @@ Tick EXP thực hiện bởi BullMQ processor `cultivation.processor.ts`. WS eve
 | GET    | `/chat/world?limit=N` | Yes  | Lịch sử world chat. |
 | POST   | `/chat/send`          | Yes  | Gửi. Rate limit 8 msg / 30s / player (Redis). |
 
+## Territory — `TerritoryController` (Phase 14.0.A)
+
+Lớp **Sect Territory Influence Foundation** — read-only views cho Sect Influence Leaderboard theo region.
+Server-authoritative; FE KHÔNG mutate. Mọi điểm influence chỉ được cộng qua **gameplay hook** (dungeon clear / boss participation / boss top damage) — KHÔNG có endpoint mutate trực tiếp.
+
+| Method | Path                                          | Auth | Mô tả |
+|--------|-----------------------------------------------|------|-------|
+| GET    | `/territory/regions`                          | Yes  | List 9 region (`MAP_REGIONS` parity) + `totalPoints` + `contributors` + `topSect` snapshot. Region không có influence vẫn xuất hiện với `totalPoints=0`, `topSect=null`. Sort theo `MapRegionDef.sortOrder`. |
+| GET    | `/territory/regions/:regionKey/leaderboard`   | Yes  | Top 10 sect trong region, `points` desc, tie-break `sectId` asc. Throw 404 `REGION_INVALID` nếu key không hợp lệ. |
+| GET    | `/territory/me`                               | Yes  | Personal view: per-region rank/points của sect user + `personalPoints` cá nhân. Character không có sect → `hasSect=false`, `regions[]` đầy đủ với `sectPoints=0`/`sectRank=null`. Throw 404 `NO_CHARACTER` nếu user chưa onboard. |
+
+**Influence sources (Phase 14.0.A)** — chỉ ghi điểm qua hook chạy trong tx của gameplay flow:
+
+| Source key             | Points | Daily cap | Weekly cap | Trigger |
+|------------------------|--------|-----------|------------|---------|
+| `dungeon_clear`        | 8      | 60        | 420        | `DungeonRunService.claimRun()` khi dungeon template có `regionKey`. SourceId = `runId`. |
+| `boss_participation`   | 12     | —         | 96         | `BossService.distributeRewards()` cho mọi participant rank ≥ 1 với boss có `regionKey ∈ MAP_REGIONS`. SourceId = `${bossId}:${characterId}`. |
+| `boss_top_damage`      | 20     | —         | 80         | Cộng thêm cho rank-1 participant khi boss có `regionKey ∈ MAP_REGIONS`. SourceId = `${bossId}:${characterId}` (sourceKey khác → composite UNIQUE riêng row). |
+
+Idempotency qua composite UNIQUE `(regionKey, characterId, sourceKey, sourceType, sourceId)` ở table `SectTerritoryInfluence` — caller retry an toàn, KHÔNG ghi double điểm.
+
+Cap enforcement compute trước insert; reject = no-op (return `null` từ `addInfluenceTx`). Hook chạy trong `try/catch` swallow → gameplay flow KHÔNG fail nếu territory ghi điểm fail.
+
+Character không có sect → `addInfluenceTx` skip silent (không ghi row, không throw).
+
 ## Boss — `BossController`
 
 | Method | Path                | Auth  | Mô tả |

@@ -2873,5 +2873,61 @@
         "latestSect": "Latest sect"
       }
     }
+  },
+  "territory": {
+    "title": "Sect Territory",
+    "subtitle": "Regional influence — the most active sect dominates each region.",
+    "loading": "Loading territory data…",
+    "tab": {
+      "overview": "Overview",
+      "leaderboard": "Leaderboard",
+      "me": "My Sect"
+    },
+    "overview": {
+      "empty": "No territory data yet.",
+      "summary": "{pts} pts · {contributors} contributors",
+      "topSect": "Leader: {name} ({pts} pts)",
+      "noTopSect": "No sect has scored yet."
+    },
+    "leaderboard": {
+      "empty": "No sect has scored in this region yet.",
+      "pickHint": "Pick a region above to view its leaderboard.",
+      "youTag": "(your sect)",
+      "col": {
+        "rank": "Rank",
+        "sect": "Sect",
+        "points": "Points",
+        "contributors": "Contributors"
+      }
+    },
+    "me": {
+      "noSect": "Join a sect to start contributing regional influence.",
+      "header": "Sect: {sect}",
+      "col": {
+        "region": "Region",
+        "rank": "Rank",
+        "sectPoints": "Sect pts",
+        "personalPoints": "My pts"
+      }
+    },
+    "source": {
+      "dungeon_clear": {
+        "label": "Dungeon clear",
+        "desc": "Each dungeon clear in the region — 8 pts (cap 60/day)."
+      },
+      "boss_participation": {
+        "label": "Boss participation",
+        "desc": "Damage a regional boss — 12 pts (cap 96/week)."
+      },
+      "boss_top_damage": {
+        "label": "Top boss damage",
+        "desc": "Top damage on a regional boss — 20 pts bonus (cap 80/week)."
+      }
+    },
+    "errors": {
+      "NO_CHARACTER": "No character yet — start your journey first.",
+      "REGION_INVALID": "Region not found.",
+      "UNKNOWN": "Could not load territory data, please retry."
+    }
   }
 }

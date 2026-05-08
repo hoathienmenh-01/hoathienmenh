@@ -8,6 +8,8 @@ import { CharacterModule } from '../character/character.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { MissionModule } from '../mission/mission.module';
 import { AdminModule } from '../admin/admin.module';
+import { SectWarModule } from '../sect-war/sect-war.module';
+import { TerritoryModule } from '../territory/territory.module';
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { AdminModule } from '../admin/admin.module';
     InventoryModule,
     MissionModule,
     AdminModule,
+    SectWarModule,
+    TerritoryModule,
   ],
   controllers: [BossController],
   providers: [BossService, PrismaService],

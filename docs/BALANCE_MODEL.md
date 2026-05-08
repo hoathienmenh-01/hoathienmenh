@@ -1425,8 +1425,64 @@ Phase 13.2.A foundation only. Phase 13.2.B+ sẽ thêm:
 
 ---
 
+## 11.16 SECT TERRITORY INFLUENCE FOUNDATION (Phase 14.0.A)
+
+Phase 14.0.A mở foundation cho **Lãnh Địa Tông Môn** — mỗi region trong `MAP_REGIONS` (9 region: son_coc, hac_lam, yeu_thu_dong, kim_son_mach, moc_huyen_lam, thuy_long_uyen, hoa_diem_son, hoang_tho_huyet, cuu_la_dien) có Sect Influence Leaderboard riêng. Boss/dungeon trong region tự cộng điểm cho Tông của character clear/tham chiến → Tông nào hoạt động nhiều nhất sẽ rank cao trong vùng. **KHÔNG** có settlement capture / siege / region-wide buff / decay — defer Phase 14.0.B+.
+
+### 11.16.1 Influence source dial
+
+3 source = 3 hook gameplay đã có. Caller đảm bảo idempotent qua `sourceId` (run.id / boss×character).
+
+| Source key             | Points / hit | Daily cap | Weekly cap | Trigger                                                                                       |
+|------------------------|--------------|-----------|------------|-----------------------------------------------------------------------------------------------|
+| `dungeon_clear`        | 8            | 60        | 420        | `DungeonRunService.claimRun()` khi dungeon template có `regionKey ∈ MAP_REGIONS`. Source = `runId`. |
+| `boss_participation`   | 12           | —         | 96         | `BossService.distributeRewards()` cho mọi participant rank ≥ 1 với boss có `regionKey ∈ MAP_REGIONS`. Source = `${bossId}:${characterId}`. |
+| `boss_top_damage`      | 20           | —         | 80         | Cộng thêm cho rank-1 participant khi boss có `regionKey ∈ MAP_REGIONS`. Source = `${bossId}:${characterId}` (sourceKey khác → row riêng). |
+
+**Soft envelope tổng / character / region / week**: `60 × 7 + 96 + 80 = 596` pts. Đây là cap lý thuyết "siêu hardcore farm 7 ngày/region" — thực tế tier mainstream sẽ < 200 pts/region/week.
+
+Quy đổi sang sect influence: 30 thành viên active → ~10k-15k pts/region/week trên top sect. Sect ít active → vẫn lên bảng nhưng sẽ trail xa.
+
+### 11.16.2 Cap enforcement
+
+Cap compute trước insert ở `TerritoryService.addInfluenceTx`:
+- **Daily window**: row `createdAt` trong cùng calendar-day theo `MISSION_RESET_TZ` (Asia/Ho_Chi_Minh, UTC+07).
+- **Weekly window**: row `createdAt` trong cùng ISO week (Mon-Sun) theo cùng timezone.
+
+Reject = no-op (return `null`); KHÔNG throw, KHÔNG ghi row. Hook ở gameplay flow chạy `try/catch` swallow → cap reach KHÔNG fail dungeon claim / boss reward.
+
+### 11.16.3 Idempotency
+
+Composite UNIQUE `(regionKey, characterId, sourceKey, sourceType, sourceId)` ở table `SectTerritoryInfluence` — caller retry an toàn (gameplay tx commit retry / claim retry không double điểm). Sect đổi (kick/leave/join) sau khi điểm đã ghi → row giữ `sectId` snapshot tại lúc ghi (KHÔNG migrate sang sect mới).
+
+### 11.16.4 Read API surface
+
+| Endpoint                                          | Purpose                                                                 |
+|---------------------------------------------------|-------------------------------------------------------------------------|
+| `GET /territory/regions`                          | List 9 region + total influence + top sect.                             |
+| `GET /territory/regions/:regionKey/leaderboard`   | Top 10 sect trong region (`points` desc, tie-break `sectId` asc).       |
+| `GET /territory/me`                               | Personal view: per-region rank/points của sect user + personal contribution. |
+
+Read-only — server-authoritative; FE KHÔNG mutate trực tiếp. Mọi điểm chỉ vào qua hook.
+
+### 11.16.5 Out of scope (Phase 14.0.A)
+
+- **Decay theo thời gian / season reset** (defer 14.0.B+).
+- **Settlement capture / siege / region-wide buff** khi Tông giữ region (defer 14.x).
+- **Sect mission hook** — mission không gắn region (defer cần thiết kế lại sect mission scope).
+- **Admin tooling** (recalc influence, audit snapshot).
+
+### 11.16.6 Roadmap to Phase 14.0.B+
+
+- **14.0.B**: Decay (linear/season reset) + reward redistribute end-of-week (sect rank 1-3 lấy buff/title slot).
+- **14.0.C**: Region-wide buff khi Tông rank 1 trong region (tăng cultivation rate / drop rate cho member trong khu vực đó).
+- **14.0.D**: Settlement node trong region — sect chiếm giữ → siege phase với attackers / defenders.
+
+---
+
 ## 12. CHANGELOG
 
 - **2026-04-30** — Initial creation. Author: Devin AI session 9q.
 - **2026-05-07** — Phase 13.1.B Sect Missions + Sect Shop + Admin LiveOps section added (§11.14).
 - **2026-05-08** — Phase 13.2.A Sect Season Foundation section added (§11.15) — 13 mùa × 4 tuần, 5 milestone bronze→diamond, read-only aggregation từ `SectWarContribution`.
+- **2026-05-08** — Phase 14.0.A Sect Territory Influence Foundation section added (§11.16) — 9 region influence leaderboard, 3 source (dungeon_clear/boss_participation/boss_top_damage) với daily/weekly cap, idempotent composite UNIQUE.

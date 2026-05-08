@@ -44,6 +44,7 @@ import { methodStatBonusFor } from '../character/cultivation-method.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { MissionService } from '../mission/mission.service';
 import { SectWarService } from '../sect-war/sect-war.service';
+import { TerritoryService } from '../territory/territory.service';
 
 export class BossError extends Error {
   constructor(
@@ -154,6 +155,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     @Optional() private readonly buffs?: BuffService,
     @Optional() private readonly titles?: TitleService,
     @Optional() private readonly sectWar?: SectWarService,
+    @Optional() private readonly territory?: TerritoryService,
   ) {}
 
   onModuleInit(): void {
@@ -1212,6 +1214,40 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
           } catch (e) {
             this.logger.warn(
               `boss reward hook: sect-war boss_top_damage for char ${row.characterId} failed: ${(e as Error).message}`,
+            );
+          }
+        }
+      }
+
+      // Phase 14.0.A — Sect Territory influence hook. Cùng pattern sect-war
+      // (mọi participant `boss_participation`; rank 1 thêm `boss_top_damage`
+      // bonus). RegionKey từ `boss.regionKey` ở Prisma (legacy `'world'`
+      // skip vì không phải MAP_REGIONS region). Idempotent qua composite
+      // UNIQUE — sourceId `${bossId}:${row.characterId}`.
+      if (this.territory && boss.regionKey && boss.regionKey !== 'world') {
+        try {
+          await this.territory.addInfluenceTx(tx, {
+            characterId: row.characterId,
+            regionKey: boss.regionKey,
+            sourceKey: 'boss_participation',
+            sourceId: `${bossId}:${row.characterId}`,
+          });
+        } catch (e) {
+          this.logger.warn(
+            `boss reward hook: territory boss_participation for char ${row.characterId} failed: ${(e as Error).message}`,
+          );
+        }
+        if (rank === 1) {
+          try {
+            await this.territory.addInfluenceTx(tx, {
+              characterId: row.characterId,
+              regionKey: boss.regionKey,
+              sourceKey: 'boss_top_damage',
+              sourceId: `${bossId}:${row.characterId}`,
+            });
+          } catch (e) {
+            this.logger.warn(
+              `boss reward hook: territory boss_top_damage for char ${row.characterId} failed: ${(e as Error).message}`,
             );
           }
         }

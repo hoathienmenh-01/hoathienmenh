@@ -24,6 +24,7 @@ import { InventoryService } from '../inventory/inventory.service';
 import { QuestService } from '../quest/quest.service';
 import { startOfLocalDay } from '../combat/combat.service';
 import { SectWarService } from '../sect-war/sect-war.service';
+import { TerritoryService } from '../territory/territory.service';
 
 /**
  * Phase 12.2.B — DungeonRun runtime service.
@@ -201,6 +202,7 @@ export class DungeonRunService {
     private readonly inventory: InventoryService,
     @Optional() private readonly quests?: QuestService,
     @Optional() private readonly sectWar?: SectWarService,
+    @Optional() private readonly territory?: TerritoryService,
   ) {}
 
   /**
@@ -578,6 +580,26 @@ export class DungeonRunService {
           });
         } catch {
           // swallow — sect-war là cosmetic + không phá flow chính.
+        }
+      }
+
+      // Phase 14.0.A — Sect Territory influence hook. Fail-soft pattern
+      // giống sect-war: dungeon claim vẫn thành công nếu territory ghi
+      // fail. Idempotent qua composite UNIQUE
+      // `(regionKey, characterId, sourceKey, sourceType, sourceId)` —
+      // retry cùng runId không double điểm. RegionKey từ catalog
+      // `dungeonByKey(run.templateKey).regionKey` — không có region thì
+      // skip (legacy / non-region dungeon).
+      if (this.territory && dungeon.regionKey) {
+        try {
+          await this.territory.addInfluenceTx(tx, {
+            characterId,
+            regionKey: dungeon.regionKey,
+            sourceKey: 'dungeon_clear',
+            sourceId: run.id,
+          });
+        } catch {
+          // swallow — territory là cosmetic + không phá flow chính.
         }
       }
 

@@ -1,0 +1,128 @@
+/**
+ * Phase 14.0.A — Sect Territory Influence Foundation Pinia store.
+ *
+ * Read-only store: 3 fetcher cho 3 endpoint (regions list / per-region
+ * leaderboard / personal view). Server-authoritative; FE KHÔNG mutate.
+ *
+ * Race-protected: mỗi fetcher có flag `loading` riêng để fetch song song
+ * (regions + me) không đè trạng thái lẫn nhau. Leaderboard cache theo
+ * `regionKey` để chuyển tab giữa các region không fetch lại không cần thiết.
+ */
+import { ref } from 'vue';
+import { defineStore } from 'pinia';
+import * as api from '@/api/territory';
+
+export const useTerritoryStore = defineStore('territory', () => {
+  const regions = ref<api.TerritoryRegionsView | null>(null);
+  const regionsLoading = ref(false);
+  const regionsError = ref<string | null>(null);
+
+  const me = ref<api.TerritoryMyView | null>(null);
+  const meLoading = ref(false);
+  const meError = ref<string | null>(null);
+
+  /**
+   * Cache leaderboard per region. Key: regionKey, Value: leaderboard view.
+   * Chuyển tab giữa region trong cùng phiên không cần re-fetch.
+   */
+  const leaderboards = ref<Record<string, api.TerritoryLeaderboardView>>({});
+  const leaderboardLoading = ref<Record<string, boolean>>({});
+  const leaderboardError = ref<Record<string, string | null>>({});
+
+  function extractCode(e: unknown): string {
+    return (
+      (e as { code?: string }).code ??
+      (e as { error?: { code?: string } }).error?.code ??
+      'UNKNOWN'
+    );
+  }
+
+  async function fetchRegions(): Promise<string | null> {
+    if (regionsLoading.value) return 'IN_FLIGHT';
+    regionsLoading.value = true;
+    regionsError.value = null;
+    try {
+      regions.value = await api.getTerritoryRegions();
+      return null;
+    } catch (e) {
+      const code = extractCode(e);
+      regionsError.value = code;
+      return code;
+    } finally {
+      regionsLoading.value = false;
+    }
+  }
+
+  async function fetchMe(): Promise<string | null> {
+    if (meLoading.value) return 'IN_FLIGHT';
+    meLoading.value = true;
+    meError.value = null;
+    try {
+      me.value = await api.getTerritoryMe();
+      return null;
+    } catch (e) {
+      const code = extractCode(e);
+      meError.value = code;
+      return code;
+    } finally {
+      meLoading.value = false;
+    }
+  }
+
+  async function fetchLeaderboard(regionKey: string): Promise<string | null> {
+    if (leaderboardLoading.value[regionKey]) return 'IN_FLIGHT';
+    leaderboardLoading.value = {
+      ...leaderboardLoading.value,
+      [regionKey]: true,
+    };
+    leaderboardError.value = {
+      ...leaderboardError.value,
+      [regionKey]: null,
+    };
+    try {
+      const data = await api.getTerritoryRegionLeaderboard(regionKey);
+      leaderboards.value = { ...leaderboards.value, [regionKey]: data };
+      return null;
+    } catch (e) {
+      const code = extractCode(e);
+      leaderboardError.value = {
+        ...leaderboardError.value,
+        [regionKey]: code,
+      };
+      return code;
+    } finally {
+      leaderboardLoading.value = {
+        ...leaderboardLoading.value,
+        [regionKey]: false,
+      };
+    }
+  }
+
+  function reset(): void {
+    regions.value = null;
+    regionsLoading.value = false;
+    regionsError.value = null;
+    me.value = null;
+    meLoading.value = false;
+    meError.value = null;
+    leaderboards.value = {};
+    leaderboardLoading.value = {};
+    leaderboardError.value = {};
+  }
+
+  return {
+    regions,
+    regionsLoading,
+    regionsError,
+    me,
+    meLoading,
+    meError,
+    leaderboards,
+    leaderboardLoading,
+    leaderboardError,
+    fetchRegions,
+    fetchMe,
+    fetchLeaderboard,
+    reset,
+  };
+});
