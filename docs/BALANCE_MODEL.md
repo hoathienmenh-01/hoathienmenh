@@ -1468,15 +1468,84 @@ Read-only — server-authoritative; FE KHÔNG mutate trực tiếp. Mọi điể
 ### 11.16.5 Out of scope (Phase 14.0.A)
 
 - **Decay theo thời gian / season reset** (defer 14.0.B+).
-- **Settlement capture / siege / region-wide buff** khi Tông giữ region (defer 14.x).
 - **Sect mission hook** — mission không gắn region (defer cần thiết kế lại sect mission scope).
 - **Admin tooling** (recalc influence, audit snapshot).
 
 ### 11.16.6 Roadmap to Phase 14.0.B+
 
-- **14.0.B**: Decay (linear/season reset) + reward redistribute end-of-week (sect rank 1-3 lấy buff/title slot).
-- **14.0.C**: Region-wide buff khi Tông rank 1 trong region (tăng cultivation rate / drop rate cho member trong khu vực đó).
+- **14.0.B** ✅ (this PR): Settlement & Region Ownership — kết toán theo period (ISO week hoặc admin manual), top sect chiếm vùng, snapshot history, FE owner badge.
+- **14.0.C**: Region-wide buff khi Tông sở hữu region (tăng cultivation rate / drop rate cho member trong khu vực đó). Foundation ready qua `getOwnerStateMap()`.
 - **14.0.D**: Settlement node trong region — sect chiếm giữ → siege phase với attackers / defenders.
+- **14.0.E**: Decay (linear/season reset) + reward redistribute end-of-week (sect rank 1-3 lấy buff/title slot).
+
+---
+
+## 11.17 SECT TERRITORY SETTLEMENT (Phase 14.0.B)
+
+Phase 14.0.B biến influence leaderboard (14.0.A) thành **chiếm vùng thật**. Cuối tuần (cron — chưa wire trong PR này) hoặc admin trigger settlement, top sect theo influence chiếm region trong period đó.
+
+### 11.17.1 Period key
+
+- **ISO 8601 week**: `YYYY-Www` (vd `2026-W19`). Compute qua `territoryPeriodKeyForDate(date)` shared helper. Boundary handle: `2025-12-29` thuộc về `2026-W01` (ISO 8601 spec).
+- **Admin manual**: `manual_*` (vd `manual_test_2026_05_08`). Regex `^manual_[a-z0-9_-]{1,40}$`. Dùng cho admin override / debug / hotfix.
+- **Validate**: `isTerritoryPeriodKey(key)` — guard input từ user/admin trước khi insert.
+- **Default**: nếu admin endpoint không truyền `periodKey`, fallback `previousTerritoryPeriodKey()` (tuần trước theo Asia/Ho_Chi_Minh).
+
+### 11.17.2 Settlement algorithm
+
+```
+settleRegion(regionKey, periodKey, opts?):
+  1. validate regionKey (REGION_INVALID throw nếu sai)
+  2. validate periodKey (PERIOD_INVALID throw nếu sai)
+  3. findUnique SectTerritorySettlementSnapshot WHERE (regionKey, periodKey)
+     → nếu tồn tại: return existing (idempotent path, KHÔNG overwrite)
+  4. groupBy SectTerritoryInfluence WHERE regionKey
+     SELECT sectId, SUM(points) GROUP BY sectId
+  5. nếu rỗng: return { skipped: true } (KHÔNG ghi snapshot/state)
+  6. sort: points DESC, sectId.localeCompare ASC (deterministic tie-break)
+  7. resolve sect names cho winner + runner-up (qua Sect.findMany)
+  8. transaction:
+     a. snapshot = create SectTerritorySettlementSnapshot { ... } (catch P2002 → return existing)
+     b. upsert SectTerritoryRegionState { regionKey, ownerSectId, ownerSectName, periodKey, settledAt }
+        — lưu ý: chỉ overwrite state nếu period mới >= state.periodKey (compare ISO string lexicographic)
+  9. return snapshot
+```
+
+**Tie-break invariant**: 2 sect cùng điểm trong region → sect có `sectId` nhỏ hơn theo `localeCompare` thắng. Deterministic, KHÔNG random.
+
+**Idempotency invariant**: `settleRegion(r, p)` gọi 2 lần luôn return cùng snapshot id, KỂ CẢ KHI influence tăng giữa 2 call (do step 3 short-circuit trước groupBy).
+
+**Race-safety invariant**: 2 `settleRegion(r, p)` đồng thời → UNIQUE `(regionKey, periodKey)` đảm bảo chỉ 1 row. Loser catch P2002 → fetch lại row đã ghi → return.
+
+**Skip empty regions**: region không có row trong `SectTerritoryInfluence` (filter theo `regionKey`) → `skipped: true`, KHÔNG ghi snapshot/state. Region không có chủ vẫn render trên FE với `ownerSectId = null`.
+
+### 11.17.3 Region state (current owner)
+
+`SectTerritoryRegionState` (1 row / region) dùng cho FE/runtime O(1) lookup chủ vùng hiện tại — KHÔNG join từ snapshot table mỗi lần render.
+
+- `regionKey @id` — primary key.
+- `ownerSectId? FK Sect SET NULL` — nếu sect bị delete, owner clear (KHÔNG cascade history snapshot).
+- `ownerSectName?` — denormalized snapshot tại lúc settle. KHÔNG sync khi sect đổi tên (history).
+- `periodKey?` — period chiến thắng. Cho FE hiển thị "Kết toán: {period}".
+- `settledAt`, `updatedAt`.
+
+### 11.17.4 Snapshot history
+
+`SectTerritorySettlementSnapshot` lưu mọi lần settle (1 row / region / period). Audit + history view + future season reward.
+
+- UNIQUE `(regionKey, periodKey)` — race-safe + idempotent.
+- Denormalized: `winnerSectId/Name/Points`, `runnerUpSectId/Name/Points` (nullable nếu chỉ có 1 sect).
+- `totalSects`, `totalPoints` — tổng influence trong region tại lúc settle.
+- `settledBy?` — nullable. Cron settle → null. Admin endpoint settle → `req.userId`.
+
+### 11.17.5 Out of scope (Phase 14.0.B)
+
+- **Decay theo thời gian** — period sau KHÔNG reset điểm influence (defer 14.0.E).
+- **Influence cleanup** — KHÔNG xóa row `SectTerritoryInfluence` cũ (defer + cần audit log trước).
+- **Region-wide buff** — owner chiếm vùng nhưng KHÔNG tự cộng buff (defer 14.0.C).
+- **Cron weekly job** — chỉ admin trigger trong PR này; cron schedule wire trong phase sau.
+- **Settlement notification** (in-game/discord) — defer.
+- **Siege / contestable region** — defer 14.0.D.
 
 ---
 
@@ -1486,3 +1555,4 @@ Read-only — server-authoritative; FE KHÔNG mutate trực tiếp. Mọi điể
 - **2026-05-07** — Phase 13.1.B Sect Missions + Sect Shop + Admin LiveOps section added (§11.14).
 - **2026-05-08** — Phase 13.2.A Sect Season Foundation section added (§11.15) — 13 mùa × 4 tuần, 5 milestone bronze→diamond, read-only aggregation từ `SectWarContribution`.
 - **2026-05-08** — Phase 14.0.A Sect Territory Influence Foundation section added (§11.16) — 9 region influence leaderboard, 3 source (dungeon_clear/boss_participation/boss_top_damage) với daily/weekly cap, idempotent composite UNIQUE.
+- **2026-05-08** — Phase 14.0.B Sect Territory Settlement & Region Ownership section added (§11.17) — period key (ISO week + manual_*), idempotent + race-safe settleRegion, deterministic tie-break, skip empty regions, snapshot history với UNIQUE (regionKey, periodKey), region state denormalized cho O(1) owner lookup.

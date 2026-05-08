@@ -130,6 +130,27 @@ export interface TerritoryRegionView {
   readonly topSectId: string | null;
   readonly topSectName: string | null;
   readonly topSectPoints: number;
+  /**
+   * Phase 14.0.B — current owner sect ID. `null` = chưa được settle hoặc
+   * lần settlement gần nhất không có sect đủ điểm. Snapshot từ
+   * `SectTerritoryRegionState`.
+   */
+  readonly ownerSectId: string | null;
+  /**
+   * Owner sect name snapshot tại settlement time (denormalized — không
+   * đổi khi sect rename sau khi chiếm).
+   */
+  readonly ownerSectName: string | null;
+  /**
+   * Period key của lần settlement gần nhất xác lập owner. `null` nếu
+   * chưa settle.
+   */
+  readonly ownerPeriodKey: string | null;
+  /**
+   * ISO timestamp của lần settlement gần nhất xác lập owner. `null` nếu
+   * chưa settle.
+   */
+  readonly ownerSettledAt: string | null;
 }
 
 export interface TerritoryRegionsView {
@@ -155,6 +176,57 @@ export interface TerritoryMyView {
   readonly sectId: string | null;
   readonly sectName: string | null;
   readonly regions: ReadonlyArray<TerritoryMyRegionRow>;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Phase 14.0.B — Settlement
+// ────────────────────────────────────────────────────────────────────────
+
+/**
+ * 1 settlement event cho 1 region trong 1 period.
+ *
+ * `winnerSectName` denormalized snapshot tại settlement time. `winnerSectId`
+ * có thể `null` nếu region không có sect đủ điểm tại period đó (skip
+ * empty region) — entry vẫn ghi để audit "đã chạy settlement vào period
+ * này nhưng region rỗng".
+ *
+ * `periodKey` ISO week format `YYYY-Www` (vd `2026-W23`) hoặc admin
+ * custom (vd `manual_<ts>`). Format được validate ở caller.
+ */
+export interface TerritorySettlementSnapshotView {
+  readonly id: string;
+  readonly regionKey: RegionKey;
+  readonly periodKey: string;
+  readonly winnerSectId: string | null;
+  readonly winnerSectName: string | null;
+  readonly winnerPoints: number;
+  readonly runnerUpSectId: string | null;
+  readonly runnerUpSectName: string | null;
+  readonly runnerUpPoints: number;
+  readonly totalSects: number;
+  readonly totalPoints: number;
+  readonly settledAt: string;
+  readonly settledBy: string | null;
+}
+
+export interface TerritoryRegionHistoryView {
+  readonly regionKey: RegionKey;
+  readonly currentOwnerSectId: string | null;
+  readonly currentOwnerSectName: string | null;
+  readonly currentPeriodKey: string | null;
+  readonly currentSettledAt: string | null;
+  readonly snapshots: ReadonlyArray<TerritorySettlementSnapshotView>;
+}
+
+/**
+ * Result của 1 settlement run (1 region hoặc all regions). Dùng cho admin
+ * trigger response để FE hiển thị tóm tắt.
+ */
+export interface TerritorySettlementRunResult {
+  readonly periodKey: string;
+  readonly settledAt: string;
+  readonly snapshots: ReadonlyArray<TerritorySettlementSnapshotView>;
+  readonly skippedRegions: ReadonlyArray<RegionKey>;
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -352,4 +424,66 @@ export function territoryMaxPersonalPointsPerWeek(): number {
     total += wk;
   }
   return total;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Phase 14.0.B — Settlement period key
+// ────────────────────────────────────────────────────────────────────────
+
+/**
+ * Regex match cho ISO week settlement period (vd `2026-W23`).
+ *
+ * Settlement period key có 2 dạng:
+ *   1. ISO week: `YYYY-Www` (vd `2026-W23`) — dùng cho cron-based weekly
+ *      settlement và admin trigger không truyền key tường minh.
+ *   2. Manual admin override: `manual_<id>` — admin trigger với key tự do
+ *      (lowercase a-z 0-9 _- only, length 1..40).
+ *
+ * Validate ở caller — runtime hook KHÔNG validate (server-authoritative).
+ */
+export const TERRITORY_PERIOD_ISO_WEEK_RE = /^\d{4}-W(0[1-9]|[1-4]\d|5[0-3])$/;
+export const TERRITORY_PERIOD_MANUAL_RE = /^manual_[a-z0-9_-]{1,40}$/;
+
+export function isTerritoryPeriodKey(key: string): boolean {
+  return (
+    TERRITORY_PERIOD_ISO_WEEK_RE.test(key) ||
+    TERRITORY_PERIOD_MANUAL_RE.test(key)
+  );
+}
+
+/**
+ * Compute ISO week period key cho 1 Date instance theo UTC.
+ *
+ * Format: `YYYY-Www` (vd `2026-W23`), nhất quán với sect war week key
+ * format. Tuần ISO bắt đầu thứ Hai, tuần 1 là tuần chứa thứ Năm đầu tiên
+ * của năm (ISO 8601).
+ *
+ * Dùng cho cron-based weekly settlement (chốt sau khi tuần kết thúc) và
+ * fallback khi admin trigger không truyền key tường minh.
+ */
+export function territoryPeriodKeyForDate(date: Date): string {
+  // Thuật toán ISO week (Date.UTC để tránh timezone shift):
+  const d = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  );
+  // Set to Thursday of current week (ISO week is the week containing Thu).
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNum = Math.ceil(
+    ((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
+  );
+  return `${d.getUTCFullYear()}-W${weekNum.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Compute period key cho tuần TRƯỚC (settlement chốt sau khi tuần kết thúc).
+ * Reduce 7 ngày từ `now` → return ISO week key.
+ *
+ * Dùng cho weekly cron job: chạy thứ Hai 00:05 ICT chốt territory tuần
+ * trước.
+ */
+export function previousTerritoryPeriodKey(now: Date = new Date()): string {
+  const d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  return territoryPeriodKeyForDate(d);
 }

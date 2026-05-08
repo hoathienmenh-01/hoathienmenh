@@ -8,6 +8,11 @@ import {
   isTerritoryInfluenceSourceKey,
   validateTerritoryCatalog,
   territoryMaxPersonalPointsPerWeek,
+  isTerritoryPeriodKey,
+  territoryPeriodKeyForDate,
+  previousTerritoryPeriodKey,
+  TERRITORY_PERIOD_ISO_WEEK_RE,
+  TERRITORY_PERIOD_MANUAL_RE,
 } from './territory';
 
 describe('Phase 14.0.A — territory catalog parity', () => {
@@ -129,5 +134,59 @@ describe('Phase 14.0.A — territoryMaxPersonalPointsPerWeek', () => {
     // dungeon_clear weeklyCap 420 + boss_participation weeklyCap 96 +
     // boss_top_damage weeklyCap 80 = 596.
     expect(territoryMaxPersonalPointsPerWeek()).toBe(596);
+  });
+});
+
+describe('Phase 14.0.B — territory period key validators', () => {
+  it('TERRITORY_PERIOD_ISO_WEEK_RE match ISO week YYYY-Www', () => {
+    expect(TERRITORY_PERIOD_ISO_WEEK_RE.test('2026-W23')).toBe(true);
+    expect(TERRITORY_PERIOD_ISO_WEEK_RE.test('2026-W01')).toBe(true);
+    expect(TERRITORY_PERIOD_ISO_WEEK_RE.test('2026-W53')).toBe(true);
+    // Invalid format
+    expect(TERRITORY_PERIOD_ISO_WEEK_RE.test('2026-w23')).toBe(false);
+    expect(TERRITORY_PERIOD_ISO_WEEK_RE.test('26-W23')).toBe(false);
+    expect(TERRITORY_PERIOD_ISO_WEEK_RE.test('2026-W3')).toBe(false);
+    expect(TERRITORY_PERIOD_ISO_WEEK_RE.test('2026W23')).toBe(false);
+  });
+
+  it('TERRITORY_PERIOD_MANUAL_RE match manual_xxx', () => {
+    expect(TERRITORY_PERIOD_MANUAL_RE.test('manual_admin_001')).toBe(true);
+    expect(TERRITORY_PERIOD_MANUAL_RE.test('manual_x')).toBe(true);
+    expect(TERRITORY_PERIOD_MANUAL_RE.test('manual')).toBe(false);
+    expect(TERRITORY_PERIOD_MANUAL_RE.test('Manual_x')).toBe(false);
+  });
+
+  it('isTerritoryPeriodKey accept ISO week + manual_*', () => {
+    expect(isTerritoryPeriodKey('2026-W23')).toBe(true);
+    expect(isTerritoryPeriodKey('manual_x')).toBe(true);
+    expect(isTerritoryPeriodKey('2026-W23-extra')).toBe(false);
+    expect(isTerritoryPeriodKey('')).toBe(false);
+    expect(isTerritoryPeriodKey('weekly_x')).toBe(false);
+  });
+
+  it('territoryPeriodKeyForDate trả ISO week format', () => {
+    // 2026-06-01 (Monday) → ISO week 23 of 2026.
+    const k = territoryPeriodKeyForDate(new Date('2026-06-01T12:00:00Z'));
+    expect(k).toBe('2026-W23');
+    expect(isTerritoryPeriodKey(k)).toBe(true);
+  });
+
+  it('territoryPeriodKeyForDate handle ISO year boundary correctly', () => {
+    // 2025-12-29 (Monday) → ISO week 1 of 2026 (theo ISO 8601 rule).
+    const k = territoryPeriodKeyForDate(new Date('2025-12-29T12:00:00Z'));
+    expect(k).toBe('2026-W01');
+  });
+
+  it('previousTerritoryPeriodKey trả ISO week của tuần trước', () => {
+    const prev = previousTerritoryPeriodKey(
+      new Date('2026-06-08T12:00:00Z'),
+    );
+    // 2026-06-08 = W24, vậy prev = W23.
+    expect(prev).toBe('2026-W23');
+  });
+
+  it('previousTerritoryPeriodKey không có arg → ok (uses now())', () => {
+    const prev = previousTerritoryPeriodKey();
+    expect(isTerritoryPeriodKey(prev)).toBe(true);
   });
 });

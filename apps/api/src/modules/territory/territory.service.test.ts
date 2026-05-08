@@ -16,6 +16,7 @@ import {
 import { MAP_REGIONS } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { TerritoryService, TerritoryError } from './territory.service';
+import { TerritorySettlementService } from './territory-settlement.service';
 import {
   TEST_DATABASE_URL,
   makeUserChar,
@@ -25,11 +26,13 @@ import {
 
 let prisma: PrismaService;
 let territory: TerritoryService;
+let settlement: TerritorySettlementService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
-  territory = new TerritoryService(prisma);
+  settlement = new TerritorySettlementService(prisma);
+  territory = new TerritoryService(prisma, settlement);
 });
 
 beforeEach(async () => {
