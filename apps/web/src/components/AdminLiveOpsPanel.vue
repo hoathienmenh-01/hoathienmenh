@@ -3,12 +3,14 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToastStore } from '@/stores/toast';
 import {
+  adminLiveOpsRunWeeklyCycle,
   adminLiveOpsStatus,
   adminLiveOpsToggle,
   adminSectWarRecalculate,
   adminSectWarSnapshot,
   adminSectWarStatus,
   adminSpawnBoss,
+  type AdminLiveOpsCronWeeklyCycleSummary,
   type AdminLiveOpsEventStatusView,
   type AdminLiveOpsStatusView,
   type AdminSectWarStatusView,
@@ -46,6 +48,14 @@ const bossForm = ref({
 });
 const bossSubmitting = ref(false);
 const snapshotSubmitting = ref(false);
+
+// Phase 13.2.D + 14.0.F — Weekly cycle force-run state.
+const weeklyCycleForm = ref({
+  periodKey: '',
+  bypassLease: false,
+});
+const weeklyCycleSubmitting = ref(false);
+const weeklyCycleResult = ref<AdminLiveOpsCronWeeklyCycleSummary | null>(null);
 
 onMounted(async () => {
   await Promise.all([refreshStatus(), refreshSectWar()]);
@@ -152,6 +162,29 @@ async function onForceSpawn(): Promise<void> {
     toast.push({ type: 'error', text: t(`adminLiveOps.errors.${code}`, code) });
   } finally {
     bossSubmitting.value = false;
+  }
+}
+
+// Phase 13.2.D + 14.0.F — Weekly cycle force-run handler.
+async function onRunWeeklyCycle(): Promise<void> {
+  if (weeklyCycleSubmitting.value) return;
+  if (!confirm(t('adminLiveOps.weeklyCycle.confirm'))) return;
+  weeklyCycleSubmitting.value = true;
+  try {
+    const r = await adminLiveOpsRunWeeklyCycle({
+      periodKey: weeklyCycleForm.value.periodKey.trim() || undefined,
+      bypassLease: weeklyCycleForm.value.bypassLease,
+    });
+    weeklyCycleResult.value = r;
+    toast.push({
+      type: 'success',
+      text: t('adminLiveOps.weeklyCycle.toast.ok'),
+    });
+  } catch (e) {
+    const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
+    toast.push({ type: 'error', text: t(`adminLiveOps.errors.${code}`, code) });
+  } finally {
+    weeklyCycleSubmitting.value = false;
   }
 }
 
@@ -364,6 +397,84 @@ defineExpose({ refreshStatus, refreshSectWar });
                 ? t('adminLiveOps.boss.submitting')
                 : t('adminLiveOps.boss.submitBtn') }}
             </button>
+          </div>
+        </div>
+      </section>
+
+      <hr class="border-ink-300/20" />
+
+      <!-- Phase 13.2.D + 14.0.F — Weekly cycle force-run section. -->
+      <section class="text-xs space-y-2" data-test="admin-liveops-weekly-cycle">
+        <div class="uppercase tracking-widest text-ink-300">
+          {{ t('adminLiveOps.weeklyCycle.title') }}
+        </div>
+        <div class="text-ink-300/70">
+          {{ t('adminLiveOps.weeklyCycle.help') }}
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
+          <label class="flex flex-col gap-0.5">
+            <span class="text-ink-300/70">
+              {{ t('adminLiveOps.weeklyCycle.periodLabel') }}
+            </span>
+            <input
+              v-model="weeklyCycleForm.periodKey"
+              type="text"
+              maxlength="64"
+              class="bg-ink-800 border border-ink-300/30 rounded px-1 py-0.5"
+              :placeholder="t('adminLiveOps.weeklyCycle.periodPlaceholder')"
+              data-test="admin-liveops-weekly-period"
+            />
+          </label>
+          <label class="flex items-center gap-1 text-ink-200">
+            <input
+              v-model="weeklyCycleForm.bypassLease"
+              type="checkbox"
+              data-test="admin-liveops-weekly-bypass"
+            />
+            {{ t('adminLiveOps.weeklyCycle.bypassLeaseLabel') }}
+          </label>
+          <div class="md:col-span-2 flex items-end">
+            <button
+              type="button"
+              class="ml-auto px-3 py-1 rounded border border-amber-300/40 text-amber-200 disabled:opacity-50"
+              :disabled="weeklyCycleSubmitting"
+              data-test="admin-liveops-weekly-submit"
+              @click="onRunWeeklyCycle"
+            >
+              {{ weeklyCycleSubmitting
+                ? t('adminLiveOps.weeklyCycle.submitting')
+                : t('adminLiveOps.weeklyCycle.submitBtn') }}
+            </button>
+          </div>
+        </div>
+        <div
+          v-if="weeklyCycleResult"
+          class="text-ink-200/90"
+          data-test="admin-liveops-weekly-summary"
+        >
+          {{ t('adminLiveOps.weeklyCycle.summary', {
+            settled: weeklyCycleResult.territory.territorySettled,
+            skipped: weeklyCycleResult.territory.territorySkipped,
+            mails: weeklyCycleResult.territory.rewardMailsCreated,
+            already: weeklyCycleResult.territory.rewardSkippedAlreadyGranted,
+            snapshots: weeklyCycleResult.sectSeason.seasonSnapshotsCreated,
+          }) }}
+          <div
+            v-if="weeklyCycleResult.territory.errors.length || weeklyCycleResult.sectSeason.errors.length"
+            class="mt-1 text-rose-300"
+            data-test="admin-liveops-weekly-errors"
+          >
+            <div class="text-[10px] uppercase tracking-widest">
+              {{ t('adminLiveOps.weeklyCycle.errorsLabel') }}
+            </div>
+            <ul class="list-disc pl-4">
+              <li v-for="(err, i) in weeklyCycleResult.territory.errors" :key="`t-${i}`">
+                {{ err.stage }}: {{ err.message }}
+              </li>
+              <li v-for="(err, i) in weeklyCycleResult.sectSeason.errors" :key="`s-${i}`">
+                {{ err.stage }}: {{ err.message }}
+              </li>
+            </ul>
           </div>
         </div>
       </section>

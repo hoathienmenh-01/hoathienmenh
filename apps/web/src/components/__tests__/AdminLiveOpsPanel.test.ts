@@ -20,6 +20,8 @@ const adminSectWarRecalculateMock = vi.fn();
 // Phase 13.1.C — additional mocks for advanced controls.
 const adminSpawnBossMock = vi.fn();
 const adminSectWarSnapshotMock = vi.fn();
+// Phase 13.2.D + 14.0.F — Weekly cycle force-run mock.
+const adminLiveOpsRunWeeklyCycleMock = vi.fn();
 
 vi.mock('@/api/admin', () => ({
   adminLiveOpsStatus: (...a: unknown[]) => adminLiveOpsStatusMock(...a),
@@ -29,6 +31,8 @@ vi.mock('@/api/admin', () => ({
     adminSectWarRecalculateMock(...a),
   adminSpawnBoss: (...a: unknown[]) => adminSpawnBossMock(...a),
   adminSectWarSnapshot: (...a: unknown[]) => adminSectWarSnapshotMock(...a),
+  adminLiveOpsRunWeeklyCycle: (...a: unknown[]) =>
+    adminLiveOpsRunWeeklyCycleMock(...a),
 }));
 
 import AdminLiveOpsPanel from '@/components/AdminLiveOpsPanel.vue';
@@ -105,7 +109,22 @@ const i18n = createI18n({
           INVALID_INPUT: 'Input không hợp lệ.',
           INVALID_BOSS_KEY: 'Boss key sai.',
           BOSS_ALREADY_ACTIVE: 'Boss đang active.',
+          PERIOD_INVALID: 'Period invalid.',
           UNKNOWN: 'Không thể thao tác.',
+        },
+        weeklyCycle: {
+          title: 'Chu kỳ tuần',
+          help: 'Force-run weekly cycle.',
+          periodLabel: 'Period',
+          periodPlaceholder: 'auto',
+          bypassLeaseLabel: 'Bypass lease',
+          submitBtn: 'Run weekly cycle',
+          submitting: 'Running…',
+          confirm: 'Run weekly cycle?',
+          summary:
+            'Settled {settled} · Skipped {skipped} · Mail {mails} (already {already}) · Snapshots {snapshots}',
+          errorsLabel: 'Errors',
+          toast: { ok: 'Weekly cycle done.' },
         },
         events: {
           ev1: { title: 'Daily Login Reset' },
@@ -400,5 +419,75 @@ describe('AdminLiveOpsPanel', () => {
 
     expect(adminSectWarSnapshotMock).toHaveBeenCalledTimes(1);
     expect(w.find('[data-test="admin-liveops-panel"]').exists()).toBe(true);
+  });
+
+  // Phase 13.2.D + 14.0.F — Weekly cycle force-run UI.
+  it('weekly cycle: render section + submit gọi adminLiveOpsRunWeeklyCycle với input từ form', async () => {
+    adminLiveOpsStatusMock.mockResolvedValueOnce(SAMPLE_STATUS);
+    adminSectWarStatusMock.mockResolvedValueOnce(SAMPLE_SECTWAR);
+    adminLiveOpsRunWeeklyCycleMock.mockResolvedValueOnce({
+      startedAt: '2026-01-01T00:00:00.000Z',
+      finishedAt: '2026-01-01T00:00:01.000Z',
+      skippedAlreadyDone: false,
+      triggeredBy: 'admin1',
+      territory: {
+        periodKey: '2026-W19',
+        territorySettled: 3,
+        territorySkipped: 6,
+        territoryDecaySkipped: false,
+        territoryDecayDelta: -10,
+        rewardMailsCreated: 7,
+        rewardSkippedAlreadyGranted: 0,
+        errors: [],
+      },
+      sectSeason: {
+        seasonSnapshotsCreated: 1,
+        seasonSnapshotsSkipped: 0,
+        seasonsProcessed: ['season_2026_s1'],
+        errors: [],
+      },
+    });
+    const w = mountPanel();
+    await flushPromises();
+
+    expect(w.find('[data-test="admin-liveops-weekly-cycle"]').exists()).toBe(true);
+
+    const periodInput = w.find('[data-test="admin-liveops-weekly-period"]');
+    await periodInput.setValue('2026-W19');
+    const bypassInput = w.find('[data-test="admin-liveops-weekly-bypass"]');
+    await bypassInput.setValue(true);
+
+    await w.find('[data-test="admin-liveops-weekly-submit"]').trigger('click');
+    await flushPromises();
+
+    expect(adminLiveOpsRunWeeklyCycleMock).toHaveBeenCalledWith({
+      periodKey: '2026-W19',
+      bypassLease: true,
+    });
+    // Summary line rendered.
+    const summary = w.find('[data-test="admin-liveops-weekly-summary"]');
+    expect(summary.exists()).toBe(true);
+    expect(summary.text()).toContain('Settled 3');
+    expect(summary.text()).toContain('Mail 7');
+    expect(summary.text()).toContain('Snapshots 1');
+  });
+
+  it('weekly cycle: PERIOD_INVALID error → toast error, panel không crash', async () => {
+    adminLiveOpsStatusMock.mockResolvedValueOnce(SAMPLE_STATUS);
+    adminSectWarStatusMock.mockResolvedValueOnce(SAMPLE_SECTWAR);
+    const err = Object.assign(new Error('PERIOD_INVALID'), {
+      code: 'PERIOD_INVALID',
+    });
+    adminLiveOpsRunWeeklyCycleMock.mockRejectedValueOnce(err);
+    const w = mountPanel();
+    await flushPromises();
+
+    await w.find('[data-test="admin-liveops-weekly-submit"]').trigger('click');
+    await flushPromises();
+
+    expect(adminLiveOpsRunWeeklyCycleMock).toHaveBeenCalledTimes(1);
+    expect(w.find('[data-test="admin-liveops-panel"]').exists()).toBe(true);
+    // Summary KHÔNG render khi error.
+    expect(w.find('[data-test="admin-liveops-weekly-summary"]').exists()).toBe(false);
   });
 });

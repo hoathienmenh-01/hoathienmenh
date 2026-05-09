@@ -12,6 +12,51 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Added — Phase 13.2.D + 14.0.F Season/Territory Automation Cron (this PR)
+
+- **Cron tuần tự động hóa weekly cycle** — territory tự settle tuần
+  trước, tự decay influence sau settle, tự gọi reward mail service
+  (Phase 14.0.E). Sect Season tự snapshot mọi season đã hết hạn (history
+  + Hall of Fame). KHÔNG còn phụ thuộc admin bấm tay (vẫn giữ override).
+- **Schedule mặc định** (cấu hình qua env, default disabled cho local/test):
+  - Territory weekly cycle: `5 0 * * 1` (Mon 00:05 UTC) —
+    `TERRITORY_WEEKLY_SETTLE_CRON`.
+  - Sect Season snapshot: `15 0 * * *` (00:15 UTC daily) —
+    `SECT_SEASON_SNAPSHOT_CRON`. Chỉ snapshot season nào đã `endsAtIso ≤
+    now`, idempotent qua UNIQUE `seasonKey`.
+- **Race-safety + idempotency**:
+  - Optimistic Redis lease (`SET NX EX` + Lua compare-and-delete) ngăn
+    2 node cùng leader chạy. Lease fail-open nếu Redis vắng — DB
+    UNIQUE guard mới là final barrier.
+  - Settlement, decay log, reward grant, season snapshot đều có DB
+    UNIQUE → P2002 catch graceful → trả existing → fail-soft errors[].
+- **Admin force-run endpoints** (ADMIN-only via `AdminGuard` +
+  `@RequireAdmin()`):
+  - `POST /admin/liveops/run-weekly-cycle` — chạy combo
+    territory + sect season; body `{ periodKey?, bypassLease? }`.
+  - `POST /admin/territory/cron/run-now` — chỉ chạy phần territory.
+  - `POST /admin/sect-season/cron/run-now` — chỉ chạy phần sect season.
+  - Response gồm `territorySettled`, `territorySkipped`,
+    `territoryDecaySkipped`, `territoryDecayDelta`, `rewardMailsCreated`,
+    `rewardSkippedAlreadyGranted`, `seasonSnapshotsCreated`,
+    `seasonSnapshotsSkipped`, `errors`. Audit ghi
+    `ADMIN_LIVEOPS_RUN_WEEKLY_CYCLE` /
+    `ADMIN_LIVEOPS_TERRITORY_CRON_RUN` /
+    `ADMIN_LIVEOPS_SECT_SEASON_CRON_RUN` (no secret in meta).
+- **FE admin panel**: AdminLiveOpsPanel thêm section "Chu kỳ tuần
+  (Cron)" (role-gated ADMIN) — input `periodKey` optional, checkbox
+  `bypassLease`, button "Chạy chu kỳ tuần" + summary line + fail-soft
+  errors list.
+- **Env vars mới** (`docs/DEPLOY.md` §LiveOps Cron):
+  `TERRITORY_CRON_ENABLED`, `TERRITORY_CRON_TZ`,
+  `TERRITORY_WEEKLY_SETTLE_CRON`, `SECT_SEASON_CRON_ENABLED`,
+  `SECT_SEASON_SNAPSHOT_CRON`, `LIVEOPS_CRON_LEASE_TTL_SEC`. Default
+  cron disabled — explicit opt-in production.
+- **Reward distribution cho sect season**: defer (TODO trong
+  `liveops-cron.service.ts`) — cần design pass riêng để align với
+  Currency/Title/Buff service. Snapshot history + Hall of Fame đã đủ
+  để FE render bảng vinh danh.
+
 ### Added — Phase 14.0.E Territory Owner Reward Mail Service (this PR)
 
 - **Tông Môn chiếm Lãnh Địa được nhận thưởng tuần** — sect thắng/rank 1
