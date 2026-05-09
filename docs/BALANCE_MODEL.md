@@ -1645,8 +1645,62 @@ Mỗi period (ISO week hoặc manual key) admin có thể trigger decay để gi
 
 ### 11.18.6 Roadmap to Phase 14.0.D+
 
-- **14.0.D**: Territory Weekly War Loop — cron auto-settle + auto-decay theo ISO week, hall-of-fame archive, sect war reward integration.
-- **14.0.E**: Reward redistribute end-of-week — sect rank 1-3 / runner-up bonus shop currency.
+- **14.0.E**: Cron auto-settle + reward mail — Redis lease / DB guard race-safe; owner reward (linh thach + contrib + sect title); Hall of Fame archive.
+- **14.0.F**: Region siege node — defenders / attackers timeline, soft PvP.
+
+---
+
+## 11.19 SECT TERRITORY WEEKLY WAR LOOP (Phase 14.0.D)
+
+Phase 14.0.A đã ship influence (`SectTerritoryInfluence`), 14.0.B đã ship settlement + ownership (`SectTerritoryRegionState`/`SectTerritorySettlementSnapshot`), 14.0.C đã ship region buff + decay. Phase 14.0.D đóng vòng chơi cạnh tranh theo tuần — period key, countdown, region standings, history, admin trigger.
+
+### 11.19.1 Period rule (deterministic ISO week, UTC)
+
+- **Period key format**: `YYYY-Www` (ISO 8601 week, e.g., `2026-W23`). KHÔNG dùng calendar week (Sun-Sat) — dùng **ISO week** (Mon-Sun) để align với phần lớn server gameplay quốc tế.
+- **Boundary**:
+  - `startsAt = Monday 00:00:00.000 UTC` của tuần.
+  - `endsAt = Monday 00:00:00.000 UTC` của tuần kế tiếp (= `nextResetAt`).
+  - Cửa sổ là `[startsAt, endsAt)` (left-closed, right-open) — đảm bảo không trùng.
+- **Helpers shared (`packages/shared/src/territory-period.ts`)** đều **pure** (nhận `now: Date` optional, default `new Date()`) — fake-date testable:
+  - `currentTerritoryPeriodKey(now?)` → string.
+  - `previousTerritoryPeriodKey(now?)` → string (đã có từ 14.0.B/C).
+  - `nextTerritoryResetAt(now?)` → Date (= `endsAt` của period hiện tại).
+  - `territoryPeriodWindow(periodKey)` → `{ startsAt: Date, endsAt: Date }` (throw `PERIOD_INVALID` nếu key không hợp lệ).
+  - `isTerritoryPeriodKey(key)` → boolean.
+- **Timezone rationale**: UTC là nguồn duy nhất — KHÔNG hỗ trợ timezone client/admin local. Lý do: tránh DST + race khi nhiều admin ở múi giờ khác trigger settle. Client hiển thị qua `toLocaleString()` ở FE, KHÔNG round-trip.
+
+### 11.19.2 Settlement algorithm cho war loop
+
+- **Endpoint admin trigger**: `POST /admin/territory/war/settle-current` (khác `/admin/territory/settle` của 14.0.B vốn settle previous period). War endpoint chốt **period hiện tại** — phục vụ admin/test cắt sớm tuần. Production thực tế (Phase 14.0.E) sẽ có cron auto-settle previous period vào Monday 00:00 UTC.
+- **Idempotent + race-safe** qua UNIQUE `(regionKey, periodKey)` của `SectTerritorySettlementSnapshot` — gọi 2 lần cùng `periodKey` → cùng snapshot id (snapshot row đã tồn tại, KHÔNG ghi đè).
+- **No-influence rule** (sticky owner):
+  - Region không có sect đủ điểm (`SectTerritoryInfluence.points` ≤ 0 cho periodKey đang chốt) → **KHÔNG ghi snapshot**, **KHÔNG đổi** `SectTerritoryRegionState`. Region đã có owner kỳ trước → giữ owner. Region chưa từng có owner → giữ trạng thái no-owner.
+  - Liệt kê trong `result.skippedRegions[]`.
+  - Lý do: owner cần "duy trì điểm" mới giữ vùng — nếu sect chiếm xong rồi bỏ chơi, người khác có thể giành kỳ kế. NHƯNG nếu KHÔNG ai có điểm → KHÔNG cướp được vùng từ sect cũ (nếu họ chưa quay lại vẫn giữ). Tránh "vacuum churn" làm region nhảy random qua các tuần ít người.
+- **Tie-break**: deterministic `sectId.localeCompare()` ASC (cùng quy tắc 14.0.B). Reproducible giữa các lần gọi và môi trường.
+- **`ownersAfter`**: result trả về **9 region** snapshot owner sau settle để FE refresh state không cần round-trip thêm. Region skip → `ownerSectId/Name = null` (giữ trạng thái cũ — FE đọc thêm từ `getRegionsView` nếu cần verify).
+
+### 11.19.3 Read API surface (war panel)
+
+- `GET /territory/war/current` → state cho countdown panel + 9 region card với top 3 standings.
+- `GET /territory/war/regions/:regionKey` → region detail (top 10 + 5 settlement gần nhất).
+- `GET /territory/war/history?limit=` → entries DESC settledAt, group periodKey (default 8, cap 32).
+- Tất cả **public** — không cần auth (đồng bộ với `/territory/regions` Phase 14.0.B/C).
+
+### 11.19.4 Out of scope (Phase 14.0.D)
+
+- **Cron tự động cuối tuần**: defer Phase 14.0.E. Hiện tại **admin trigger only** qua endpoint mới — production cần Redis lease (e.g., `SET NX PX`) + DB guard (settled snapshot UNIQUE) trước khi enable cron để tránh race khi 2 worker chạy cùng lúc.
+- **Reward / mail cho owner sect**: defer 14.0.E. Hiện tại owner chỉ hưởng region buff (Phase 14.0.C wire dungeon reward fail-soft) — chưa có thưởng linh thach / contrib / item / mail.
+- **Decay tự động trước/sau settle**: tách Phase 14.0.C admin trigger riêng (`POST /admin/territory/decay`). Admin có thể chạy decay rồi mới settle (hoặc ngược lại) — không bind vào pipeline tự động.
+- **Siege / diplomacy / PvP realtime / auction**: out of phase.
+- **Hall of Fame archive cũ**: defer 14.0.E (snapshot history vẫn nằm trong `SectTerritorySettlementSnapshot`, chưa có UI Hall of Fame).
+
+### 11.19.5 Roadmap to Phase 14.0.E+
+
+- **14.0.E**: Cron auto-settle + reward mail.
+  - Cron Monday 00:00 UTC chạy `settleCurrentPeriod({periodKey: previousTerritoryPeriodKey()})` với Redis lease lock 5 phút + idempotent recheck via UNIQUE.
+  - Owner sect rank 1 region → mail linh thach + contrib + region title.
+  - Hall of Fame archive snapshot > 16 tuần qua bảng riêng (`SectTerritorySettlementHallOfFame` chỉ giữ runner-up, max points, settled time).
 - **14.0.F**: Region siege node — defenders / attackers timeline, soft PvP.
 
 ---
@@ -1659,3 +1713,4 @@ Mỗi period (ISO week hoặc manual key) admin có thể trigger decay để gi
 - **2026-05-08** — Phase 14.0.A Sect Territory Influence Foundation section added (§11.16) — 9 region influence leaderboard, 3 source (dungeon_clear/boss_participation/boss_top_damage) với daily/weekly cap, idempotent composite UNIQUE.
 - **2026-05-08** — Phase 14.0.B Sect Territory Settlement & Region Ownership section added (§11.17) — period key (ISO week + manual_*), idempotent + race-safe settleRegion, deterministic tie-break, skip empty regions, snapshot history với UNIQUE (regionKey, periodKey), region state denormalized cho O(1) owner lookup.
 - **2026-05-09** — Phase 14.0.C Sect Territory Region Buff + Influence Decay section added (§11.18) — 5 buff catalog (EXP/LinhThạch/Element/Defense, value cap 10%, runtime wire dungeon reward owner-only fail-soft), influence decay default 25%/period cap 50%, idempotent UNIQUE `(periodKey)` admin trigger.
+- **2026-05-09** — Phase 14.0.D Territory Weekly War Loop section added (§11.19) — period key UTC ISO week + helpers, settle-current admin endpoint với no-influence sticky owner rule + deterministic tie-break, war state/region/history read API, FE countdown + 9 region card + history + admin button. KHÔNG cron tự động (defer 14.0.E).

@@ -2916,7 +2916,8 @@
     "tab": {
       "overview": "Tổng quan",
       "leaderboard": "Bảng xếp hạng",
-      "me": "Tông của tôi"
+      "me": "Tông của tôi",
+      "war": "Tranh Đoạt"
     },
     "overview": {
       "empty": "Chưa có dữ liệu vùng đất.",
@@ -3033,6 +3034,30 @@
       "decayRunning": "Đang chạy suy giảm…",
       "decayLastResult": "Suy giảm {period}: -{delta} điểm · {rows} dòng · {bpsPercent}%.",
       "decaySkipped": "Đã chạy suy giảm cho {period} trước đó — bỏ qua."
+    },
+    "war": {
+      "title": "Tranh Đoạt Lãnh Địa Hàng Tuần",
+      "subtitle": "Tông môn tranh đoạt vùng theo tuần. Cuối tuần (Thứ Hai 00:00 UTC) chốt owner mới.",
+      "countdownLabel": "Còn lại",
+      "currentPeriod": "Tuần hiện tại: {period}",
+      "previousPeriod": "Tuần trước: {period}",
+      "windowFmt": "{from} → {to}",
+      "regionContestedBadge": "Tranh chấp",
+      "regionOwner": "Chủ: {name}",
+      "regionLeadMargin": "Hơn kém: {pts}",
+      "regionNoContenders": "Chưa có tông môn tranh đoạt tuần này.",
+      "standingsTitle": "Top 3 đang dẫn đầu",
+      "standingsRow": "#{rank} {sect} — {pts} điểm",
+      "leaderTag": "DẪN ĐẦU",
+      "contributorsHint": "{n} TV",
+      "historyTitle": "Lịch sử tuần",
+      "historyEmpty": "Chưa có dữ liệu lịch sử.",
+      "historyRow": "{period} · chốt {settled} · {wins} vùng đã chốt",
+      "adminTitle": "Admin — Chốt Tuần Hiện Tại",
+      "adminSubtitle": "Chốt owner ngay trong tuần (idempotent qua periodKey + region). Dùng cho test/fast-forward.",
+      "adminSettleButton": "Chốt Tuần Hiện Tại",
+      "adminSettleRunning": "Đang chốt…",
+      "adminLastResult": "Đã chốt {period}: thắng {wins} vùng · bỏ qua {skip} vùng (không có điểm)."
     },
     "errors": {
       "NO_CHARACTER": "Chưa có nhân vật, hãy khai đạo trước.",

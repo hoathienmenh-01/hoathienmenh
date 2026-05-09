@@ -316,3 +316,56 @@ describe('AdminTerritoryController.settleOne', () => {
     expect((err as Error).message).toBe('boom');
   });
 });
+
+describe('AdminTerritoryController.settleWarCurrent', () => {
+  it('ok → service nhận req.userId vào settledBy + return data', async () => {
+    const calls: Array<{ settledBy: string | null }> = [];
+    const c = makeController({
+      settleCurrentPeriod: (async (opts) => {
+        calls.push({ settledBy: opts?.settledBy ?? null });
+        return {
+          periodKey: '2026-W23',
+          settledAt: new Date().toISOString(),
+          snapshots: [sampleSnapshot],
+          skippedRegions: ['kim_son_mach'],
+          ownersAfter: [],
+        };
+      }) as TerritoryWarService['settleCurrentPeriod'],
+    });
+    const r = await c.settleWarCurrent(makeReq({ userId: 'admin77' }));
+    expect(r.ok).toBe(true);
+    expect(r.data.snapshots).toHaveLength(1);
+    expect(r.data.skippedRegions).toEqual(['kim_son_mach']);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].settledBy).toBe('admin77');
+  });
+
+  it('service throw PERIOD_INVALID → 400', async () => {
+    const c = makeController({
+      settleCurrentPeriod: (async () => {
+        throw new TerritoryError('PERIOD_INVALID');
+      }) as TerritoryWarService['settleCurrentPeriod'],
+    });
+    await expectHttpError(
+      c.settleWarCurrent(makeReq()),
+      400,
+      'PERIOD_INVALID',
+    );
+  });
+
+  it('service throw error khác → rethrow nguyên', async () => {
+    const c = makeController({
+      settleCurrentPeriod: (async () => {
+        throw new Error('boom');
+      }) as TerritoryWarService['settleCurrentPeriod'],
+    });
+    let err: unknown = null;
+    try {
+      await c.settleWarCurrent(makeReq());
+    } catch (e) {
+      err = e;
+    }
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).toBe('boom');
+  });
+});

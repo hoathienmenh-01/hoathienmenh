@@ -192,6 +192,82 @@ const decayBpsPercent = computed(() => {
   if (!r) return '';
   return (Math.round((r.decayBps / 10000) * 1000) / 10).toString();
 });
+
+// ────────────────────────────────────────────────────────────────────
+// Phase 14.0.D — Weekly War Loop
+// ────────────────────────────────────────────────────────────────────
+
+/**
+ * Tick FE clock mỗi 1s để countdown panel re-render. Server vẫn là
+ * source of truth — `warState.endsAt` (UTC ISO) gọi từ API; tick chỉ
+ * lo update DOM. Stop tick khi unmount tránh leak khi rời view.
+ */
+const nowMs = ref(Date.now());
+let _warTick: ReturnType<typeof setInterval> | null = null;
+onMounted(() => {
+  _warTick = setInterval(() => {
+    nowMs.value = Date.now();
+  }, 1000);
+});
+onBeforeUnmount(() => {
+  if (_warTick) clearInterval(_warTick);
+  _warTick = null;
+});
+
+const warTimeRemainingMs = computed<number>(() => {
+  if (!territory.warState) return 0;
+  const ends = new Date(territory.warState.endsAt).getTime();
+  if (!Number.isFinite(ends)) return 0;
+  return Math.max(0, ends - nowMs.value);
+});
+
+function fmtCountdown(ms: number): string {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d}d ${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
+const warCountdownText = computed(() => fmtCountdown(warTimeRemainingMs.value));
+
+function fmtRangeShort(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  // YYYY-MM-DD HH:mm UTC.
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const hh = String(d.getUTCHours()).padStart(2, '0');
+  const min = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}Z`;
+}
+
+// Lazy fetch khi user vào tab war (cache trong store — chỉ fetch lần đầu).
+watch(
+  tab,
+  async (next) => {
+    if (next !== 'war') return;
+    const tasks: Array<Promise<unknown>> = [];
+    if (!territory.warState && !territory.warStateLoading) {
+      tasks.push(territory.fetchWarCurrent());
+    }
+    if (!territory.warHistory && !territory.warHistoryLoading) {
+      tasks.push(territory.fetchWarHistory(8));
+    }
+    if (tasks.length > 0) await Promise.all(tasks);
+  },
+  { immediate: true },
+);
+
+async function onAdminSettleWarCurrent(): Promise<void> {
+  await territory.adminSettleCurrentWar();
+  // Refresh history to reflect new snapshot.
+  await territory.fetchWarHistory(8);
+}
 </script>
 
 <template>
@@ -764,6 +840,301 @@ const decayBpsPercent = computed(() => {
                   bpsPercent: decayBpsPercent,
                 })
               }}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        v-else-if="tab === 'war'"
+        data-test="territory-tab-content-war"
+      >
+        <div data-test="territory-war-content">
+          <header class="mb-3">
+            <h3 class="text-sm tracking-widest uppercase text-amber-200">
+              {{ t('territory.war.title') }}
+            </h3>
+            <p class="text-xs text-ink-300/80 mt-1">
+              {{ t('territory.war.subtitle') }}
+            </p>
+          </header>
+
+          <div
+            v-if="territory.warStateLoading && !territory.warState"
+            class="text-ink-300 text-sm"
+            data-test="territory-war-loading"
+          >
+            {{ t('territory.loading') }}
+          </div>
+          <div
+            v-else-if="territory.warStateError && !territory.warState"
+            class="text-rose-300 text-sm"
+            data-test="territory-war-error"
+          >
+            {{
+              t(
+                `territory.errors.${territory.warStateError}`,
+                t('territory.errors.UNKNOWN'),
+              )
+            }}
+          </div>
+          <div v-else-if="territory.warState" class="space-y-4">
+            <!-- Period header + countdown -->
+            <div
+              class="rounded border border-amber-300/40 bg-ink-700/30 p-3 flex flex-wrap items-center justify-between gap-3"
+              data-test="territory-war-period-panel"
+            >
+              <div>
+                <div class="text-amber-300 text-sm tracking-widest">
+                  {{
+                    t('territory.war.currentPeriod', {
+                      period: territory.warState.periodKey,
+                    })
+                  }}
+                </div>
+                <div class="text-[11px] text-ink-300/80 mt-0.5">
+                  {{
+                    t('territory.war.windowFmt', {
+                      from: fmtRangeShort(territory.warState.startsAt),
+                      to: fmtRangeShort(territory.warState.endsAt),
+                    })
+                  }}
+                </div>
+                <div
+                  class="text-[11px] text-ink-300/70 mt-0.5"
+                  data-test="territory-war-previous-period"
+                >
+                  {{
+                    t('territory.war.previousPeriod', {
+                      period: territory.warState.previousPeriodKey,
+                    })
+                  }}
+                </div>
+              </div>
+              <div class="text-right">
+                <div
+                  class="text-[10px] tracking-widest uppercase text-ink-300/70"
+                >
+                  {{ t('territory.war.countdownLabel') }}
+                </div>
+                <div
+                  class="text-amber-200 text-lg font-mono"
+                  data-test="territory-war-countdown"
+                >
+                  {{ warCountdownText }}
+                </div>
+              </div>
+            </div>
+
+            <!-- 9 region cards -->
+            <ul class="space-y-2" data-test="territory-war-region-list">
+              <li
+                v-for="r in territory.warState.regions"
+                :key="r.regionKey"
+                class="rounded border border-ink-300/40 bg-ink-700/20 p-3"
+                data-test="territory-war-region-card"
+                :data-region-key="r.regionKey"
+              >
+                <div
+                  class="flex flex-wrap items-center justify-between gap-2"
+                >
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-amber-300 text-sm">
+                      {{ regionName(r) }}
+                    </span>
+                    <span
+                      v-if="r.contested"
+                      class="px-2 py-0.5 rounded-full border border-rose-300/70 text-[10px] tracking-widest uppercase text-rose-200 bg-rose-300/10"
+                      data-test="territory-war-region-contested"
+                    >
+                      {{ t('territory.war.regionContestedBadge') }}
+                    </span>
+                    <span
+                      v-if="r.currentOwnerSectId"
+                      class="px-2 py-0.5 rounded-full border border-amber-300/70 text-[10px] tracking-widest uppercase text-amber-200 bg-amber-300/10"
+                      data-test="territory-war-region-owner"
+                      :data-owner-sect-id="r.currentOwnerSectId"
+                    >
+                      {{
+                        t('territory.war.regionOwner', {
+                          name:
+                            r.currentOwnerSectName ?? r.currentOwnerSectId,
+                        })
+                      }}
+                    </span>
+                  </div>
+                  <div
+                    v-if="r.leaderSectId"
+                    class="text-[11px] text-ink-300/80"
+                    data-test="territory-war-region-margin"
+                  >
+                    {{
+                      t('territory.war.regionLeadMargin', {
+                        pts: r.leadMargin,
+                      })
+                    }}
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <div
+                    v-if="r.topStandings.length === 0"
+                    class="text-xs italic text-ink-300/70"
+                    data-test="territory-war-region-empty"
+                  >
+                    {{ t('territory.war.regionNoContenders') }}
+                  </div>
+                  <div v-else>
+                    <div
+                      class="text-[10px] tracking-widest uppercase text-ink-300/70 mb-1"
+                    >
+                      {{ t('territory.war.standingsTitle') }}
+                    </div>
+                    <ul class="space-y-1">
+                      <li
+                        v-for="row in r.topStandings"
+                        :key="row.sectId"
+                        class="text-xs flex items-center justify-between border-t border-ink-300/20 pt-1 first:border-t-0 first:pt-0"
+                        :class="
+                          row.sectId === territory.me?.sectId
+                            ? 'text-amber-200'
+                            : 'text-ink-300/90'
+                        "
+                        data-test="territory-war-region-standing"
+                        :data-sect-id="row.sectId"
+                      >
+                        <span>
+                          {{
+                            t('territory.war.standingsRow', {
+                              rank: row.rank,
+                              sect: row.sectName,
+                              pts: row.points,
+                            })
+                          }}
+                          <span
+                            v-if="row.isLeader"
+                            class="ml-1 px-1 py-0 rounded bg-amber-300/20 text-amber-200 text-[10px] tracking-widest uppercase"
+                          >
+                            {{ t('territory.war.leaderTag') }}
+                          </span>
+                        </span>
+                        <span class="text-[11px] text-ink-300/70">
+                          {{
+                            t('territory.war.contributorsHint', {
+                              n: row.contributors,
+                            })
+                          }}
+                        </span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </li>
+            </ul>
+
+            <!-- History panel -->
+            <div
+              class="border-t border-ink-300/20 pt-3"
+              data-test="territory-war-history-panel"
+            >
+              <h4
+                class="text-xs tracking-widest uppercase text-amber-200 mb-2"
+              >
+                {{ t('territory.war.historyTitle') }}
+              </h4>
+              <div
+                v-if="territory.warHistoryLoading && !territory.warHistory"
+                class="text-ink-300 text-xs"
+                data-test="territory-war-history-loading"
+              >
+                {{ t('territory.loading') }}
+              </div>
+              <div
+                v-else-if="
+                  territory.warHistory &&
+                    territory.warHistory.entries.length === 0
+                "
+                class="text-xs italic text-ink-300/70"
+                data-test="territory-war-history-empty"
+              >
+                {{ t('territory.war.historyEmpty') }}
+              </div>
+              <ul
+                v-else-if="territory.warHistory"
+                class="space-y-1 text-xs"
+                data-test="territory-war-history-list"
+              >
+                <li
+                  v-for="e in territory.warHistory.entries"
+                  :key="e.periodKey"
+                  class="rounded border border-ink-300/30 bg-ink-700/20 px-2 py-1"
+                  data-test="territory-war-history-row"
+                  :data-period-key="e.periodKey"
+                >
+                  {{
+                    t('territory.war.historyRow', {
+                      period: e.periodKey,
+                      settled: fmtRangeShort(e.settledAt),
+                      wins: e.snapshots.length,
+                    })
+                  }}
+                </li>
+              </ul>
+            </div>
+
+            <!-- Admin settle current button -->
+            <div
+              v-if="isAdmin"
+              class="border-t border-ink-300/20 pt-3 space-y-2"
+              data-test="territory-war-admin-panel"
+            >
+              <h4
+                class="text-xs tracking-widest uppercase text-amber-200"
+              >
+                {{ t('territory.war.adminTitle') }}
+              </h4>
+              <p class="text-[11px] text-ink-300/80">
+                {{ t('territory.war.adminSubtitle') }}
+              </p>
+              <button
+                type="button"
+                :disabled="territory.warSettleLoading"
+                class="px-3 py-1 rounded border border-amber-300/70 text-amber-200 text-xs tracking-widest uppercase hover:bg-amber-300/10 disabled:opacity-50"
+                data-test="territory-war-admin-settle"
+                @click="onAdminSettleWarCurrent"
+              >
+                {{
+                  territory.warSettleLoading
+                    ? t('territory.war.adminSettleRunning')
+                    : t('territory.war.adminSettleButton')
+                }}
+              </button>
+              <div
+                v-if="territory.warSettleError"
+                class="text-rose-300 text-xs"
+                data-test="territory-war-admin-error"
+              >
+                {{
+                  t(
+                    `territory.errors.${territory.warSettleError}`,
+                    t('territory.errors.UNKNOWN'),
+                  )
+                }}
+              </div>
+              <div
+                v-if="territory.lastWarSettleResult"
+                class="text-xs text-ink-300/90"
+                data-test="territory-war-admin-result"
+              >
+                {{
+                  t('territory.war.adminLastResult', {
+                    period: territory.lastWarSettleResult.periodKey,
+                    wins:
+                      territory.lastWarSettleResult.snapshots.length,
+                    skip:
+                      territory.lastWarSettleResult.skippedRegions.length,
+                  })
+                }}
+              </div>
             </div>
           </div>
         </div>
