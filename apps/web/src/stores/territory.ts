@@ -237,6 +237,82 @@ export const useTerritoryStore = defineStore('territory', () => {
     }
   }
 
+  // ────────────────────────────────────────────────────────────────────
+  // Phase 14.0.D — Weekly War Loop state
+  // ────────────────────────────────────────────────────────────────────
+
+  const warState = ref<api.TerritoryWarStateView | null>(null);
+  const warStateLoading = ref(false);
+  const warStateError = ref<string | null>(null);
+
+  const warHistory = ref<api.TerritoryWarHistoryView | null>(null);
+  const warHistoryLoading = ref(false);
+  const warHistoryError = ref<string | null>(null);
+
+  const warSettleLoading = ref(false);
+  const warSettleError = ref<string | null>(null);
+  const lastWarSettleResult =
+    ref<api.TerritoryWarSettleCurrentResult | null>(null);
+
+  async function fetchWarCurrent(): Promise<string | null> {
+    if (warStateLoading.value) return 'IN_FLIGHT';
+    warStateLoading.value = true;
+    warStateError.value = null;
+    try {
+      warState.value = await api.getTerritoryWarCurrent();
+      return null;
+    } catch (e) {
+      const code = extractCode(e);
+      warStateError.value = code;
+      return code;
+    } finally {
+      warStateLoading.value = false;
+    }
+  }
+
+  async function fetchWarHistory(limit?: number): Promise<string | null> {
+    if (warHistoryLoading.value) return 'IN_FLIGHT';
+    warHistoryLoading.value = true;
+    warHistoryError.value = null;
+    try {
+      warHistory.value = await api.getTerritoryWarHistory(limit);
+      return null;
+    } catch (e) {
+      const code = extractCode(e);
+      warHistoryError.value = code;
+      return code;
+    } finally {
+      warHistoryLoading.value = false;
+    }
+  }
+
+  /**
+   * Phase 14.0.D — admin settle period HIỆN TẠI (idempotent qua UNIQUE
+   * `(regionKey, periodKey)`). Sau khi xong, invalidate war state +
+   * regions cache (owner đổi) + history cache.
+   */
+  async function adminSettleCurrentWar(): Promise<string | null> {
+    if (warSettleLoading.value) return 'IN_FLIGHT';
+    warSettleLoading.value = true;
+    warSettleError.value = null;
+    try {
+      const res = await api.adminTerritoryWarSettleCurrent();
+      lastWarSettleResult.value = res;
+      // Owner đổi → invalidate caches phụ thuộc.
+      histories.value = {};
+      leaderboards.value = {};
+      warHistory.value = null;
+      await Promise.all([fetchRegions(), fetchWarCurrent()]);
+      return null;
+    } catch (e) {
+      const code = extractCode(e);
+      warSettleError.value = code;
+      return code;
+    } finally {
+      warSettleLoading.value = false;
+    }
+  }
+
   function reset(): void {
     regions.value = null;
     regionsLoading.value = false;
@@ -256,6 +332,15 @@ export const useTerritoryStore = defineStore('territory', () => {
     decayLoading.value = false;
     decayError.value = null;
     lastDecayResult.value = null;
+    warState.value = null;
+    warStateLoading.value = false;
+    warStateError.value = null;
+    warHistory.value = null;
+    warHistoryLoading.value = false;
+    warHistoryError.value = null;
+    warSettleLoading.value = false;
+    warSettleError.value = null;
+    lastWarSettleResult.value = null;
   }
 
   return {
@@ -277,6 +362,15 @@ export const useTerritoryStore = defineStore('territory', () => {
     decayLoading,
     decayError,
     lastDecayResult,
+    warState,
+    warStateLoading,
+    warStateError,
+    warHistory,
+    warHistoryLoading,
+    warHistoryError,
+    warSettleLoading,
+    warSettleError,
+    lastWarSettleResult,
     fetchRegions,
     fetchMe,
     fetchLeaderboard,
@@ -284,6 +378,9 @@ export const useTerritoryStore = defineStore('territory', () => {
     adminSettleAll,
     adminSettleRegion,
     adminDecay,
+    fetchWarCurrent,
+    fetchWarHistory,
+    adminSettleCurrentWar,
     reset,
   };
 });

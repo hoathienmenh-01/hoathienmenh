@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Phase 14.0.A + 14.0.B — Sect Territory view.
+ * Phase 14.0.A + 14.0.B + 14.0.C + 14.0.D — Sect Territory view.
  *
  * Render section:
  *   1. Region list (overview): tổng influence + top sect snapshot + Phase
@@ -8,13 +8,16 @@
  *   2. Per-region leaderboard + history panel: chọn region từ list → fetch
  *      top 10 sect + N snapshot settlement gần nhất.
  *   3. My sect rank: per-region rank/points của sect user (nếu có).
- *   4. Admin panel (chỉ admin): trigger settlement toàn bộ hoặc từng region.
+ *   4. Phase 14.0.D — War tab (weekly war loop): countdown, current
+ *      periodKey, region contested state, top 3 sect standings, lịch sử
+ *      tuần, admin settle-current button.
+ *   5. Admin panel (chỉ admin): trigger settlement toàn bộ hoặc từng region.
  *
  * FE read-only — server-authoritative. Influence ghi điểm xảy ra ở
  * server qua hook fail-soft (dungeon claim, boss reward). Settlement chỉ
  * xảy ra ở admin trigger / cron (server-authoritative, FE chỉ trigger).
  */
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
@@ -22,11 +25,12 @@ import { useTerritoryStore } from '@/stores/territory';
 import AppShell from '@/components/shell/AppShell.vue';
 import type { TerritoryRegionBuffPreviewLite } from '@/api/territory';
 
-type TerritoryTab = 'overview' | 'leaderboard' | 'me';
+type TerritoryTab = 'overview' | 'leaderboard' | 'me' | 'war';
 const ALL_TABS: ReadonlyArray<TerritoryTab> = [
   'overview',
   'leaderboard',
   'me',
+  'war',
 ];
 
 const auth = useAuthStore();
