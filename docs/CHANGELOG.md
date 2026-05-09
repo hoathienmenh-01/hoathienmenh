@@ -199,6 +199,50 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
   - `docs/CHANGELOG.md` — entry này.
 - **Out of scope (Phase 14.2.A)**: rewrite combat pipeline, Spiritual Root runtime mở rộng (vẫn dùng Phase 11), data populate `elementalResist` cho toàn bộ monster catalog, populate `elementalAtkBonus` cho item catalog (data PR sau, foundation đã sẵn), large UI refactor.
 
+### Added — Phase 12.10.B NPC Gift and Quest Affinity Rewards (this PR)
+
+- **Tặng quà NPC + nhiệm vụ tăng affinity** — Mở rộng Phase 12.10.A: bây giờ player có thể tặng item từ inventory cho NPC để tăng `affinity` (giới hạn `dailyLimit` per NPC/character/day), và một số quest reward chính tuyến cộng thẳng affinity cho NPC liên quan. Cả 2 path đều atomic + idempotent + respect cap Phase 12.10.A (`AFFINITY_DELTA_CAP_PER_QUEST_REWARD = 40`).
+- **Shared catalog** (`packages/shared/src/npc-gift.ts` mới):
+  - `NpcGiftPreferenceDef { npcKey, dailyLimit, acceptedItems[], loreNote, loreNoteEn }` — mỗi NPC có 3–4 item tương xứng theo personality (Lăng Vân Sinh nhận đan dược chính phái + sách kiếm phổ; Mộc Thanh Y nhận thảo dược; Tô Nguyệt Ly nhận ngọc; v.v.).
+  - `NpcAcceptedGiftItem { itemKey, affinityMin, affinityMax, flavor, flavorEn }` — affinity range per item (vd Lăng Vân Sinh nhận `linh_lo_dan` cho `[5..8]`); service runtime random uniform trong khoảng đó.
+  - 5 NPC catalog parity với Phase 12.10.A (Lăng Vân Sinh / Mộc Thanh Y / Hàn Dạ / Tô Nguyệt Ly / Huyết La Sát) — mỗi NPC `dailyLimit ∈ [3..5]`, totalDailyMaxAffinity ≤ `NPC_GIFT_AFFINITY_DELTA_CAP_PER_GIFT × dailyLimit = 8 × 5 = 40` ≤ Phase 12.10.A daily ceiling.
+  - Constant `NPC_GIFT_AFFINITY_DELTA_CAP_PER_GIFT = 8` + `NPC_GIFT_DAILY_LIMIT_CAP = 5` — ép catalog không drift.
+  - Helpers `npcGiftPreferenceForKey` / `validateNpcGiftCatalog` / `acceptedGiftItemFor` — pure read-only.
+- **Quest reward affinity** (`packages/shared/src/quests.ts`):
+  - `QuestRewardDef.affinity?: QuestAffinityRewardDef[]` — array entry `{ npcKey, delta }`. Validate `|delta| ≤ AFFINITY_DELTA_CAP_PER_QUEST_REWARD` + `npcKey ∈ NPC_AFFINITY`.
+  - 6 quest sample mỗi realm có affinity rewards (`phamnhan_main_01` +5 Lăng Vân Sinh / +3 Mộc Thanh Y, `tutien_main_01` thêm Tô Nguyệt Ly, v.v.) — minh hoạ flow + làm seed cho narrative designer mở rộng sau.
+- **Prisma migration `20260609000000_phase_12_10_b_character_npc_gift_log`**: thêm 1 table `CharacterNpcGiftLog` (`id` PK / `characterId` FK cascade / `npcKey` / `itemKey` / `affinityDelta` / `dayBucket` `YYYY-MM-DD` UTC / `sequence` Int / `createdAt`) + composite UNIQUE `(characterId, npcKey, dayBucket, sequence)` chống race-double-insert + index `(characterId, dayBucket)` cho daily count query. Additive — KHÔNG đụng `CharacterNpcAffinity` (Phase 12.10.A) / `Inventory*` runtime model.
+- **API mới**:
+  - `NpcAffinityService.giftNpc({ characterId, npcKey, itemKey, now? })` — atomic transaction:
+    1. Validate NPC ∈ `NPC_AFFINITY` + có gift catalog (`NPC_GIFT_NOT_CONFIGURED` nếu thiếu).
+    2. Validate `itemKey ∈ acceptedItems[npcKey]` (`ITEM_NOT_ACCEPTED`).
+    3. Count `CharacterNpcGiftLog` hôm nay (UTC bucket) — `DAILY_LIMIT_REACHED` nếu đạt `dailyLimit`.
+    4. Inventory `consume(characterId, itemKey, qty=1, reason='NPC_GIFT')` — throw `ITEM_NOT_IN_INVENTORY` nếu không đủ.
+    5. Compute random `affinityDelta` ∈ `[affinityMin, affinityMax]`, clamp ≤ `NPC_GIFT_AFFINITY_DELTA_CAP_PER_GIFT`.
+    6. `addAffinityTx(tx, { characterId, npcKey, delta, source: 'NPC_GIFT' })` — apply qua Phase 12.10.A path.
+    7. Insert `CharacterNpcGiftLog` row với `sequence = count + 1`. P2002 (race) → retry 1 lần với count mới.
+    8. Return view `{ npcKey, itemKey, affinityDelta, previousScore, newScore, tierChanged, dayBucket, sequence, remainingToday, dailyLimit }`.
+  - `NpcAffinityService.getDailyGiftCounts(characterId, now?)` — Map<npcKey, { used, limit, remaining }> cho FE locked state badge.
+  - `NpcAffinityService.dayBucketFor(date)` static helper UTC `YYYY-MM-DD`.
+  - **`POST /story/npc-affinity/:npcKey/gift`** (auth) → body `{ itemKey }`, response `{ affinity: NpcAffinityView, gift: NpcGiftResultView }`. Status 4xx mã: `NPC_GIFT_NOT_CONFIGURED` / `ITEM_NOT_ACCEPTED` / `ITEM_NOT_IN_INVENTORY` / `DAILY_LIMIT_REACHED` / `INVALID_INPUT`.
+  - **`GET /story/npc-affinity/gift/daily`** (auth) → list daily counts cho TẤT CẢ NPC trong catalog; FE dùng để render `usedToday/dailyLimit` indicator + lock button khi `remaining = 0`.
+- **Quest claim affinity reward** (`apps/api/src/modules/quest/quest.service.ts`):
+  - `claim()` sau CAS guard (status `COMPLETED` → `CLAIMED` + `claimedAt` set) đi qua nhánh mới: nếu `def.rewards.affinity?.length > 0` → loop apply `npcAffinity.addAffinityTx(tx, { characterId, npcKey, delta, source: 'QUEST_REWARD:<key>' })`. CAS guard đảm bảo idempotent — call lần 2 → `QUEST_ALREADY_CLAIMED`, KHÔNG double-grant affinity (verified bằng concurrency test 2 parallel claim → 1 fulfilled / 1 rejected, score chỉ +delta đúng 1 lần).
+  - `QuestService.claim()` constructor inject `NpcAffinityService`. `QuestModule` providers append, `test-helpers.makeQuestService` wire production-shape.
+  - Response `claimQuest()` thêm field `granted.affinity[]` cho FE toast tier-up sau claim.
+- **FE gift action**:
+  - `apps/web/src/components/NpcAffinityPanel.vue` — section gift mới ở mỗi card NPC: select item dropdown (label = item name + range `(N–M)`) + button "Trao quà" + daily indicator "Hôm nay X/Y" + lore note italic (per-NPC tone). Toast `+N thân tình` (auto-dismiss 3.5s) + tier-up badge khi `tierChanged=true`. Locked state khi `remainingToday = 0` → button disabled label "Hết lượt (X/Y)". Inline error code-mapped (`ITEM_NOT_IN_INVENTORY` / `DAILY_LIMIT_REACHED` / etc.) khi reject.
+  - `apps/web/src/api/npcAffinity.ts` thêm `giftNpc` / `fetchNpcGiftDaily` + types `NpcGiftResultView` / `NpcGiftDailyCount`.
+  - `apps/web/src/stores/npcAffinity.ts` thêm `dailyCounts` map + `dailyLoaded` flag + `giftLoading` (npcKey đang gift) + `giftError` + `lastGift` + `loadDaily()` / `giftNpc(npcKey, itemKey)` / `clearLastGift()` / `dailyFor(npcKey, fallbackLimit)`. Sau success: in-place update affinity row + dailyCounts row — KHÔNG full reload.
+  - i18n vi/en parity: `npcAffinity.giftLabel/giftButton/giftLocked/giftDaily/giftSuccess/giftTierUp/giftErrors.*` (8 code error mapping).
+- **Tests +27**:
+  - **Shared** (`packages/shared/src/npc-gift.test.ts` mới, +9 case): catalog invariant (acceptedItems unique / item key ∈ ITEMS / affinityMin ≤ affinityMax / dailyLimit ≤ cap / npcKey ∈ NPC_AFFINITY); `validateNpcGiftCatalog` reject duplicate / invalid item / over-cap delta; `npcGiftPreferenceForKey` happy + miss; `acceptedGiftItemFor` happy + miss.
+  - **API** (`apps/api/src/modules/npc-affinity/npc-affinity.service.test.ts` extend, +8 case): gift success consume 1 stack + add affinity + log row + ItemLedger `NPC_GIFT` + view fields; reject `ITEM_NOT_IN_INVENTORY` (no leak log/affinity); reject `ITEM_NOT_ACCEPTED` (no consume); reject `NPC_GIFT_NOT_CONFIGURED`; reject `DAILY_LIMIT_REACHED` sau `dailyLimit` lần thành công; daily reset (dayBucket khác → sequence reset); `getDailyGiftCounts` used/limit/remaining; `dayBucketFor` UTC ISO boundary.
+  - **API** (`apps/api/src/modules/quest/quest.service.test.ts` extend, +4 case): claim trả `granted.affinity` + lazy-create row CharacterNpcAffinity; claim lần 2 throws `QUEST_ALREADY_CLAIMED` + KHÔNG double-grant; concurrency 2 parallel claim → 1 fulfilled + score +delta đúng 1 lần (CAS guard); quest không có `rewards.affinity` → `granted.affinity = []`.
+  - **FE** (`apps/web/src/components/__tests__/NpcAffinityPanel.test.ts` extend, +6 case): render gift section (button + select + daily indicator); click gift button → store.giftNpc + toast "+N" + daily indicator update + score in-place; toast tier-up khi `tierChanged=true`; locked state khi `remainingToday=0` (button disabled + "Hết lượt"); inline error `ITEM_NOT_IN_INVENTORY` không toast / không daily update; autoLoad gọi `loadDaily()` mount.
+- **Verification**: shared typecheck + 9 catalog test PASS / api typecheck + `--run npc-affinity` 25 PASS + `--run quest` 73 PASS / web typecheck + `--run NpcAffinity` 18 PASS / pnpm build ✅.
+- **Out of scope (Phase 12.10.B)**: NPC gift shop UI (catalog browse trong panel), gift refund/un-gift, gift cooldown ngoài daily (e.g. weekly tier-gate), affinity decay per-day, NPC counter-gift (NPC tặng lại player), audit dashboard cho gift abuse.
+
 ### Added — Phase 12.10.A NPC Affinity & Relationship Foundation (this PR)
 
 - **NPC giờ có điểm thân tình (affinity) riêng** — Mở nền móng quan hệ NPC: mỗi (character, NPC) có 1 điểm số từ `minScore..maxScore` (per-NPC catalog), tăng/giảm qua dialogue choice + future quest reward, vượt mốc `AFFINITY_TIERS` (Xa Lạ → Quen Biết → Bằng Hữu → Tri Giao → Tri Kỷ) sẽ unlock dialogue/quest mới. Phase 12.10.A KHÔNG ship gift/shop NPC — chỉ foundation runtime + FE relationship panel + dialogue change_affinity hook.

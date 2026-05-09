@@ -8,6 +8,7 @@ import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { TopupService } from '../topup/topup.service';
 import { QuestService } from '../quest/quest.service';
+import { NpcAffinityService } from '../npc-affinity/npc-affinity.service';
 import { AdminService } from './admin.service';
 import { TEST_DATABASE_URL, makeUserChar, wipeAll } from '../../test-helpers';
 
@@ -23,7 +24,9 @@ beforeAll(() => {
   const currency = new CurrencyService(prisma);
   topup = new TopupService(prisma);
   const inventory = new InventoryService(prisma, realtime, chars);
-  const quests = new QuestService(prisma, currency, inventory);
+  // Phase 12.10.B — QuestService cần NpcAffinityService cho rewards.affinity.
+  const npcAffinity = new NpcAffinityService(prisma, inventory);
+  const quests = new QuestService(prisma, currency, inventory, npcAffinity);
   admin = new AdminService(prisma, chars, topup, realtime, currency, inventory, quests);
 });
 

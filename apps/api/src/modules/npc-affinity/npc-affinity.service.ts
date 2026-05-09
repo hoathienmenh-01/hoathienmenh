@@ -5,17 +5,23 @@ import {
   AFFINITY_DELTA_CAP_PER_QUEST_REWARD,
   AFFINITY_TIERS,
   NPC_AFFINITY,
+  NPC_GIFT_PREFERENCES,
+  acceptedGiftItemFor,
   affinityTierForScore,
   clampAffinityScore,
+  computeGiftAffinityDelta,
+  itemByKey,
   nextAffinityTierForScore,
   npcAffinityDefForKey,
   npcByKey,
+  npcGiftPreferenceForKey,
   type AffinityTierDef,
   type AffinityUnlockHint,
   type NpcAffinityDef,
   type NpcDef,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { InventoryService } from '../inventory/inventory.service';
 
 /**
  * Phase 12.10.A — NPC Affinity & Relationship Foundation.
@@ -41,10 +47,11 @@ import { PrismaService } from '../../common/prisma.service';
  * `CharacterNpcAffinityLedger` nếu cần truy vết granular.
  */
 
-/** Source code dùng cho audit / metric (chưa persist — Phase 12.10.B). */
+/** Source code dùng cho audit / metric. Phase 12.10.B thêm `GIFT`. */
 export type NpcAffinitySource =
   | 'STORY_DIALOGUE_CHOICE'
   | 'QUEST_REWARD'
+  | 'GIFT'
   | 'ADMIN_GRANT'
   | 'TEST';
 
@@ -55,7 +62,12 @@ export class NpcAffinityError extends Error {
       | 'NPC_UNKNOWN'
       | 'NPC_AFFINITY_UNKNOWN'
       | 'INVALID_DELTA'
-      | 'CAP_EXCEEDED',
+      | 'CAP_EXCEEDED'
+      // Phase 12.10.B — gift path errors.
+      | 'NPC_GIFT_NOT_CONFIGURED'
+      | 'ITEM_NOT_ACCEPTED'
+      | 'ITEM_NOT_IN_INVENTORY'
+      | 'DAILY_LIMIT_REACHED',
     public detail?: string,
   ) {
     super(detail ? `${code}: ${detail}` : code);
@@ -127,9 +139,49 @@ export interface AddAffinityResult {
 /** Tx type alias mirror Prisma `$transaction((tx) => ...)` callback param. */
 export type AffinityTx = Prisma.TransactionClient;
 
+/**
+ * Phase 12.10.B — input cho `giftNpcTx` / `giftNpc`.
+ *
+ * Server compute `affinityDelta` từ catalog (`computeGiftAffinityDelta`) →
+ * KHÔNG cho client truyền delta. Client chỉ truyền `npcKey` + `itemKey`.
+ */
+export interface GiftNpcInput {
+  characterId: string;
+  npcKey: string;
+  itemKey: string;
+  /** Optional override `Date.now()` cho test deterministic dayBucket. */
+  now?: Date;
+}
+
+export interface GiftNpcResult {
+  npcKey: string;
+  itemKey: string;
+  /** Delta affinity đã apply (clamped). */
+  affinityDelta: number;
+  /** Score trước khi apply (post-lazy-create). */
+  previousScore: number;
+  /** Score sau khi apply (clamped). */
+  newScore: number;
+  /** Tier thay đổi sau apply. */
+  tierChanged: boolean;
+  previousTier: AffinityTierDef;
+  newTier: AffinityTierDef;
+  /** ISO `YYYY-MM-DD` UTC bucket gift đã ghi. */
+  dayBucket: string;
+  /** Sequence trong ngày — bắt đầu 1, ≤ `dailyLimit`. */
+  sequence: number;
+  /** Số gift còn lại trong ngày sau gift này (≥ 0). */
+  remainingToday: number;
+  /** Snapshot daily limit của catalog (FE display tiện). */
+  dailyLimit: number;
+}
+
 @Injectable()
 export class NpcAffinityService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly inventory: InventoryService,
+  ) {}
 
   /**
    * Atomic add affinity bên trong existing transaction. Caller chịu trách
@@ -228,6 +280,208 @@ export class NpcAffinityService {
    */
   async addAffinity(input: AddAffinityInput): Promise<AddAffinityResult> {
     return this.prisma.$transaction((tx) => this.addAffinityTx(tx, input));
+  }
+
+  /**
+   * Phase 12.10.B — gift item cho NPC. Atomic 4-step inside `$transaction`:
+   *   1. Validate `npcKey` ∈ `NPC_GIFT_PREFERENCES`, `itemKey` ∈ `acceptedItems`.
+   *   2. Count gift hôm nay (`CharacterNpcGiftLog` rows / dayBucket) →
+   *      enforce `dailyLimit`.
+   *   3. Atomic decrement 1 stack `itemKey` qua `inventory.consumeOneByItemKeyTx`.
+   *   4. Insert `CharacterNpcGiftLog` row (composite UNIQUE
+   *      `(characterId, npcKey, dayBucket, sequence)` → CAS guard).
+   *   5. Apply affinity qua `addAffinityTx` (lazy-create + clamp).
+   *
+   * Tất cả 5 step trong cùng `$transaction` → all-or-nothing. Race condition:
+   *   - 2 gift cùng lúc cùng dayBucket: count = (sequence+1)? cho cả 2 thread →
+   *     thread A insert seq=2 OK, thread B race insert seq=2 → P2002 → retry
+   *     1 lần với seq=3 (cap `dailyLimit` lần thử trước khi throw
+   *     `DAILY_LIMIT_REACHED`).
+   *   - Item race: nếu inventory cạn giữa count + decrement → throw
+   *     `ITEM_NOT_IN_INVENTORY` (mapped từ `INVENTORY_ITEM_NOT_FOUND`).
+   *
+   * Caller dùng `now` override cho test deterministic dayBucket.
+   */
+  async giftNpcTx(
+    tx: AffinityTx,
+    input: GiftNpcInput,
+  ): Promise<GiftNpcResult> {
+    const giftDef = npcGiftPreferenceForKey(input.npcKey);
+    if (!giftDef) {
+      throw new NpcAffinityError('NPC_GIFT_NOT_CONFIGURED', input.npcKey);
+    }
+    const accepted = acceptedGiftItemFor(input.npcKey, input.itemKey);
+    if (!accepted) {
+      throw new NpcAffinityError('ITEM_NOT_ACCEPTED', input.itemKey);
+    }
+    if (!itemByKey(input.itemKey)) {
+      // Catalog drift guard: gift catalog reference item không tồn tại trong
+      // ITEMS. Validator catalog đã enforce nhưng giữ runtime guard.
+      throw new NpcAffinityError('ITEM_NOT_ACCEPTED', `${input.itemKey} not in catalog`);
+    }
+
+    const now = input.now ?? new Date();
+    const dayBucket = NpcAffinityService.dayBucketFor(now);
+
+    // Count gift today: server-authoritative daily limit. UNIQUE constraint
+    // sẽ catch concurrent insert race (P2002 → retry seq+1).
+    const todayCount = await tx.characterNpcGiftLog.count({
+      where: {
+        characterId: input.characterId,
+        npcKey: input.npcKey,
+        dayBucket,
+      },
+    });
+    if (todayCount >= giftDef.dailyLimit) {
+      throw new NpcAffinityError(
+        'DAILY_LIMIT_REACHED',
+        `${input.npcKey} reached ${giftDef.dailyLimit}/day`,
+      );
+    }
+    const sequence = todayCount + 1;
+
+    // Compute server-authoritative delta từ catalog (midpoint deterministic).
+    const affinityDelta = computeGiftAffinityDelta(accepted);
+
+    // Step 3: atomic decrement 1 stack of itemKey. Throws InventoryError
+    // 'INVENTORY_ITEM_NOT_FOUND' nếu inventory cạn → map sang
+    // NpcAffinityError 'ITEM_NOT_IN_INVENTORY'.
+    try {
+      await this.inventory.consumeOneByItemKeyTx(tx, input.characterId, input.itemKey, {
+        reason: 'NPC_GIFT',
+        refType: 'NpcGift',
+        refId: `${input.npcKey}:${dayBucket}:${sequence}`,
+        extra: { npcKey: input.npcKey, itemKey: input.itemKey, dayBucket, sequence },
+      });
+    } catch (err) {
+      if (
+        err &&
+        typeof err === 'object' &&
+        'code' in err &&
+        (err as { code?: string }).code === 'INVENTORY_ITEM_NOT_FOUND'
+      ) {
+        throw new NpcAffinityError('ITEM_NOT_IN_INVENTORY', input.itemKey);
+      }
+      if (
+        err &&
+        typeof err === 'object' &&
+        'code' in err &&
+        (err as { code?: string }).code === 'ITEM_NOT_FOUND'
+      ) {
+        throw new NpcAffinityError('ITEM_NOT_ACCEPTED', `${input.itemKey} not in ITEMS catalog`);
+      }
+      throw err;
+    }
+
+    // Step 4: apply affinity (lazy-create + clamp). Cap pre-checked above
+    // (≤ NPC_GIFT_AFFINITY_DELTA_CAP_PER_GIFT < AFFINITY_DELTA_CAP_PER_QUEST_REWARD).
+    const affinityResult = await this.addAffinityTx(tx, {
+      characterId: input.characterId,
+      npcKey: input.npcKey,
+      delta: affinityDelta,
+      source: 'GIFT',
+    });
+
+    // Step 5: insert audit log. Composite UNIQUE catch race với concurrent
+    // gift cùng (npc, dayBucket, seq) → P2002 → caller retry (`giftNpc`
+    // wrapper) với updated count.
+    await tx.characterNpcGiftLog.create({
+      data: {
+        characterId: input.characterId,
+        npcKey: input.npcKey,
+        itemKey: input.itemKey,
+        affinityDelta,
+        previousScore: affinityResult.previousScore,
+        newScore: affinityResult.newScore,
+        dayBucket,
+        sequence,
+      },
+    });
+
+    const remainingToday = Math.max(0, giftDef.dailyLimit - sequence);
+
+    return {
+      npcKey: input.npcKey,
+      itemKey: input.itemKey,
+      affinityDelta,
+      previousScore: affinityResult.previousScore,
+      newScore: affinityResult.newScore,
+      tierChanged: affinityResult.tierChanged,
+      previousTier: affinityResult.previousTier,
+      newTier: affinityResult.newTier,
+      dayBucket,
+      sequence,
+      remainingToday,
+      dailyLimit: giftDef.dailyLimit,
+    };
+  }
+
+  /**
+   * Convenience wrapper — open new `$transaction` + retry once trên P2002 race
+   * (UNIQUE `(characterId, npcKey, dayBucket, sequence)`).
+   */
+  async giftNpc(input: GiftNpcInput): Promise<GiftNpcResult> {
+    try {
+      return await this.prisma.$transaction((tx) => this.giftNpcTx(tx, input));
+    } catch (err) {
+      // P2002 race retry once — concurrent gift insert chiếm sequence trước.
+      // Sau retry, daily limit count đã updated → throw DAILY_LIMIT_REACHED
+      // nếu thực sự đầy.
+      if (this.isUniqueConstraintError(err)) {
+        return await this.prisma.$transaction((tx) => this.giftNpcTx(tx, input));
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Phase 12.10.B — daily count breakdown / NPC dùng cho FE panel hiển thị
+   * "Còn 2/3 hôm nay". Caller pass `now` cho deterministic test.
+   */
+  async getDailyGiftCounts(
+    characterId: string,
+    now: Date = new Date(),
+  ): Promise<Map<string, { used: number; limit: number; remaining: number }>> {
+    const dayBucket = NpcAffinityService.dayBucketFor(now);
+    const rows = await this.prisma.characterNpcGiftLog.groupBy({
+      by: ['npcKey'],
+      where: { characterId, dayBucket },
+      _count: { _all: true },
+    });
+    const usedByNpc = new Map<string, number>(
+      rows.map((r) => [r.npcKey, r._count._all]),
+    );
+    const out = new Map<string, { used: number; limit: number; remaining: number }>();
+    for (const def of NPC_GIFT_PREFERENCES) {
+      const used = usedByNpc.get(def.npcKey) ?? 0;
+      out.set(def.npcKey, {
+        used,
+        limit: def.dailyLimit,
+        remaining: Math.max(0, def.dailyLimit - used),
+      });
+    }
+    return out;
+  }
+
+  /**
+   * UTC ISO date `YYYY-MM-DD`. Daily reset boundary: 00:00 UTC. Lý do dùng
+   * UTC thay timezone vận hành VN (UTC+7): tránh DST drift, đơn giản test.
+   * Phase 12.10.B-W (ngoài scope) sẽ xét `Character.timezone` nếu bổ sung.
+   */
+  static dayBucketFor(date: Date): string {
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(date.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  private isUniqueConstraintError(err: unknown): boolean {
+    return (
+      typeof err === 'object' &&
+      err !== null &&
+      'code' in err &&
+      (err as { code?: string }).code === 'P2002'
+    );
   }
 
   /**

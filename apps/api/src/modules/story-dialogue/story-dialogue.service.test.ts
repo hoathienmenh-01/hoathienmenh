@@ -15,7 +15,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { CurrencyKind, Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
+import { CharacterService } from '../character/character.service';
+import { InventoryService } from '../inventory/inventory.service';
 import { NpcAffinityService } from '../npc-affinity/npc-affinity.service';
+import { RealtimeService } from '../realtime/realtime.service';
 import {
   StoryDialogueError,
   StoryDialogueService,
@@ -29,7 +32,12 @@ beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
   const currency = new CurrencyService(prisma);
-  const affinity = new NpcAffinityService(prisma);
+  // Phase 12.10.B — NpcAffinityService inject InventoryService cho gift path,
+  // dialogue test không gift nhưng constructor signature cần đủ args.
+  const realtime = new RealtimeService();
+  const chars = new CharacterService(prisma, realtime);
+  const inventory = new InventoryService(prisma, realtime, chars);
+  const affinity = new NpcAffinityService(prisma, inventory);
   service = new StoryDialogueService(prisma, currency, affinity);
 });
 

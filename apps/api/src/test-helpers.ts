@@ -6,6 +6,7 @@ import { CurrencyService } from './modules/character/currency.service';
 import { InventoryService } from './modules/inventory/inventory.service';
 import { MissionService } from './modules/mission/mission.service';
 import { MissionWsEmitter } from './modules/mission/mission-ws.emitter';
+import { NpcAffinityService } from './modules/npc-affinity/npc-affinity.service';
 import { QuestService } from './modules/quest/quest.service';
 import { DungeonRunService } from './modules/dungeon-run/dungeon-run.service';
 import { StoryDungeonService } from './modules/story-dungeon/story-dungeon.service';
@@ -179,7 +180,11 @@ export function makeQuestService(prisma: PrismaService): QuestService {
   const chars = new CharacterService(prisma, realtime);
   const currency = new CurrencyService(prisma);
   const inventory = new InventoryService(prisma, realtime, chars);
-  return new QuestService(prisma, currency, inventory);
+  // Phase 12.10.B — quest claim grant `rewards.affinity` qua NpcAffinityService.
+  // Wire ở đây để integration test claim path đi qua npcAffinity thật (không
+  // mock) — match production wiring trong QuestModule.
+  const npcAffinity = new NpcAffinityService(prisma, inventory);
+  return new QuestService(prisma, currency, inventory, npcAffinity);
 }
 
 /**
@@ -198,7 +203,9 @@ export function makeDungeonRunService(prisma: PrismaService): {
   const chars = new CharacterService(prisma, realtime);
   const currency = new CurrencyService(prisma);
   const inventory = new InventoryService(prisma, realtime, chars);
-  const quests = new QuestService(prisma, currency, inventory);
+  // Phase 12.10.B — quest claim grant `rewards.affinity` qua NpcAffinityService.
+  const npcAffinity = new NpcAffinityService(prisma, inventory);
+  const quests = new QuestService(prisma, currency, inventory, npcAffinity);
   const runs = new DungeonRunService(prisma, currency, inventory, quests);
   return { runs, quests, inventory, currency };
 }
@@ -219,7 +226,9 @@ export function makeStoryDungeonService(prisma: PrismaService): {
   const chars = new CharacterService(prisma, realtime);
   const currency = new CurrencyService(prisma);
   const inventory = new InventoryService(prisma, realtime, chars);
-  const quests = new QuestService(prisma, currency, inventory);
+  // Phase 12.10.B — quest claim grant `rewards.affinity` qua NpcAffinityService.
+  const npcAffinity = new NpcAffinityService(prisma, inventory);
+  const quests = new QuestService(prisma, currency, inventory, npcAffinity);
   const story = new StoryDungeonService(prisma, currency, inventory, quests);
   return { story, quests, inventory, currency };
 }

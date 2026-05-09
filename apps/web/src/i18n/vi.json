@@ -2207,6 +2207,12 @@
     "empty": "Chưa kết duyên cùng đạo hữu nào.",
     "nextTierHint": "Còn {points} điểm để lên {tier}.",
     "maxTierReached": "Đã đạt đỉnh quan hệ.",
+    "giftLabel": "Tặng",
+    "giftButton": "Trao quà",
+    "giftLocked": "Hết lượt ({used}/{limit})",
+    "giftDaily": "Hôm nay {used}/{limit}",
+    "giftSuccess": "Thân tình +{delta}",
+    "giftTierUp": "Đã lên cảnh giới {tier}",
     "errors": {
       "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
       "NO_CHARACTER": "Chưa có nhân vật.",
@@ -2214,6 +2220,16 @@
       "NPC_AFFINITY_UNKNOWN": "Đạo hữu này không có hồ sơ thân tình.",
       "INVALID_INPUT": "Dữ liệu không hợp lệ.",
       "UNKNOWN": "Không thể tải quan hệ, thử lại."
+    },
+    "giftErrors": {
+      "NPC_GIFT_NOT_CONFIGURED": "Đạo hữu này chưa nhận quà.",
+      "ITEM_NOT_ACCEPTED": "Đạo hữu không nhận vật phẩm này.",
+      "ITEM_NOT_IN_INVENTORY": "Túi đồ không có vật phẩm.",
+      "DAILY_LIMIT_REACHED": "Đã hết lượt tặng hôm nay.",
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "UNKNOWN": "Không thể tặng quà, thử lại."
     }
   },
   "quest": {

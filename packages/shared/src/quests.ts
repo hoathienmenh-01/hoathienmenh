@@ -68,6 +68,23 @@ export interface QuestStepDef {
   description: string;
 }
 
+/**
+ * Phase 12.10.B — quest reward affinity entry.
+ *
+ * Mỗi quest có thể grant affinity cho nhiều NPC (vd main quest "Hoa Thiên
+ * Tuyển Đồ" grant Lăng Vân Sinh + Mộc Thanh Y vì cả 2 đều xuất hiện trong
+ * cốt truyện). `npcKey` phải ∈ `NPC_AFFINITY` catalog. `delta` phải > 0 và ≤
+ * `AFFINITY_DELTA_CAP_PER_QUEST_REWARD` (catalog validator enforce).
+ *
+ * Idempotency: `QuestService.claim` CAS guard
+ * `updateMany({ id, status: 'COMPLETED', claimedAt: null })` đảm bảo affinity
+ * apply ĐÚNG 1 LẦN ngay cả khi player retry claim.
+ */
+export interface QuestAffinityRewardDef {
+  npcKey: string;
+  delta: number;
+}
+
 export interface QuestRewardDef {
   /** Linh Thạch (currency main). KHÔNG được < 0. */
   linhThach?: number;
@@ -79,6 +96,12 @@ export interface QuestRewardDef {
   congHien?: number;
   /** Items reward. Item key match `ITEMS[].key`. */
   items?: ReadonlyArray<{ itemKey: string; qty: number }>;
+  /**
+   * Phase 12.10.B — affinity reward apply qua `NpcAffinityService.addAffinityTx`
+   * trong cùng `QuestService.claim` transaction. CAS guard
+   * (`claimedAt`) đảm bảo idempotent.
+   */
+  affinity?: ReadonlyArray<QuestAffinityRewardDef>;
 }
 
 export interface QuestDef {
@@ -166,6 +189,12 @@ export const QUESTS: readonly QuestDef[] = [
       linhThach: 100,
       exp: 200,
       items: [{ itemKey: 'so_kiem', qty: 1 }],
+      // Phase 12.10.B — main quest gặp Lăng Vân Sinh + Mộc Thanh Y → affinity
+      // foundation cho 2 NPC trục cốt truyện đầu game.
+      affinity: [
+        { npcKey: 'npc_lang_van_sinh', delta: 5 },
+        { npcKey: 'npc_moc_thanh_y', delta: 3 },
+      ],
     },
     loreSummary:
       'Onboarding chính tuyến. Hạt Giống Vô Danh trong hậu sơn lộ ra khi player giết Sơn Thử cuối cùng. Story bible §9.1 row 0.',
@@ -210,6 +239,8 @@ export const QUESTS: readonly QuestDef[] = [
     rewards: {
       linhThach: 50,
       exp: 100,
+      // Phase 12.10.B — Lăng Vân Sinh tin tưởng giao tìm Hạt Giống → +affinity.
+      affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }],
     },
     loreSummary:
       'Hạt Giống = mảnh truyền thừa Hoa Thiên Đạo Tổ. Mở foreshadow endgame inheritance. Story bible §6 + §9.1.',
@@ -239,6 +270,8 @@ export const QUESTS: readonly QuestDef[] = [
       linhThach: 30,
       exp: 50,
       congHien: 10,
+      // Phase 12.10.B — Mộc Thanh Y kiểm tra tâm tính → +affinity khiêm nhường.
+      affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }],
     },
     loreSummary: 'Sect daily prototype. Mộc Thanh Y dạy "tâm tu trước thân tu". Story bible §11.',
   },
@@ -301,6 +334,8 @@ export const QUESTS: readonly QuestDef[] = [
       linhThach: 40,
       exp: 60,
       items: [{ itemKey: 'linh_lo_dan', qty: 1 }],
+      // Phase 12.10.B — Mộc Thanh Y giảng linh căn → +affinity dạy đệ tử mới.
+      affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 6 }],
     },
     loreSummary:
       'Tutorial linh căn — choice flag sẽ ảnh hưởng dialogue branch ở Luyện Khí. Story bible §9.1 row 0 + §11.',
@@ -358,6 +393,8 @@ export const QUESTS: readonly QuestDef[] = [
       linhThach: 300,
       exp: 800,
       items: [{ itemKey: 'linh_lo_dan', qty: 3 }],
+      // Phase 12.10.B — main quest Lăng Vân Sinh Luyện Khí gate.
+      affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 8 }],
     },
     loreSummary:
       'Foreshadow Tịch Thiên Điện — main villain xuất hiện gián tiếp. Story bible §9.1 row 1 + §3.',
@@ -491,6 +528,9 @@ export const QUESTS: readonly QuestDef[] = [
     rewards: {
       linhThach: 80,
       exp: 120,
+      // Phase 12.10.B — Hàn Dạ rivalry khởi động — bất kể nhận / từ chối
+      // đều tăng nhận thức của 2 bên. Affinity thấp nhưng không âm.
+      affinity: [{ npcKey: 'npc_han_da', delta: 4 }],
     },
     loreSummary:
       'Mở rivalry chain với Hàn Dạ — branch karma sẽ kéo dài qua Trúc Cơ + Kim Đan. Story bible §6.',
@@ -540,6 +580,9 @@ export const QUESTS: readonly QuestDef[] = [
       linhThach: 800,
       exp: 2500,
       items: [{ itemKey: 'co_thien_dan', qty: 1 }],
+      // Phase 12.10.B — Trúc Cơ main quest — Lăng Vân Sinh trao Trúc Cơ Đan,
+      // chính thức nội môn. Affinity step lớn nhất cho Lăng Vân Sinh.
+      affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 10 }],
     },
     loreSummary:
       'Player chính thức nội môn. Choice ảnh hưởng skill / dungeon / faction reputation về sau. Story bible §9.1 row 2.',
@@ -710,6 +753,9 @@ export const QUESTS: readonly QuestDef[] = [
     rewards: {
       linhThach: 300,
       exp: 600,
+      // Phase 12.10.B — Tô Nguyệt Ly hidden chain — gặp lần đầu, affinity
+      // foundation. Player tiếp tục gift sau để unlock dialogue Kim Đan.
+      affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 6 }],
     },
     loreSummary:
       'Hidden quest chain — endgame inheritance foreshadow. Branch trust → unlock Hoa Thiên Đạo Tổ relics ở Kim Đan. Story bible §6 + §11.',
@@ -945,6 +991,9 @@ export const QUESTS: readonly QuestDef[] = [
     rewards: {
       linhThach: 1000,
       exp: 2200,
+      // Phase 12.10.B — Huyết La Sát arc — affinity foundation cho ma đạo
+      // moral chain. Player nghe / cảnh báo / từ chối vẫn nhận baseline.
+      affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 5 }],
     },
     loreSummary:
       'Mở moral choice ma đạo flag. Huyết La Sát từng là đệ tử Hoa Thiên — reveal mặt tối chính đạo. Story bible §6 + §11 (Máu Trên Thềm Đá).',
@@ -1108,6 +1157,9 @@ export const QUESTS: readonly QuestDef[] = [
       exp: 12000,
       congHien: 400,
       items: [{ itemKey: 'than_dan', qty: 1 }],
+      // Phase 12.10.B — Nguyên Anh Mộc arc cao trào. Affinity reward toàn
+      // catalog (cap 40 — dùng 15 vẫn an toàn) cho Mộc Thanh Y.
+      affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 15 }],
     },
     loreSummary:
       'Mộc arc cao trào — emotional beat lớn nhất Phase 12. Foreshadow Tịch Thiên Đạo Chủ. Story bible §11 (Tâm ma của đại sư tỷ).',
@@ -1189,6 +1241,8 @@ export const QUESTS: readonly QuestDef[] = [
       linhThach: 2500,
       exp: 6000,
       items: [{ itemKey: 'huyet_chi_dan', qty: 1 }],
+      // Phase 12.10.B — đêm trảm niệm — chain tiếp với Huyết La Sát.
+      affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 8 }],
     },
     loreSummary:
       'Karma branch quyết định Huyết La Sát thành đồng minh / kẻ thù ở Hoá Thần. Mở ma đạo flag (long-term). Story bible §11 (Máu trên thềm đá).',

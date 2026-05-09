@@ -100,7 +100,15 @@ export type ItemLedgerReason =
   // CAS claim guard (UNIQUE `(characterId, seasonKey, milestoneKey)`) đảm
   // bảo 1 winner / milestone / character → grant đúng 1 lần. Mirror cùng
   // `CurrencyLedger` reason `SECT_SEASON_REWARD` cho linhThach/tienNgoc.
-  | 'SECT_SEASON_REWARD';
+  | 'SECT_SEASON_REWARD'
+  // Phase 12.10.B — NPC gift item consume. Wire qua
+  // `NpcAffinityService.giftNpcTx → consumeOneByItemKeyTx(negative qtyDelta=-1)`
+  // với `refType='CharacterNpcGiftLog'` + `refId={giftLogId}`. CAS guard
+  // qua `CharacterNpcGiftLog` composite UNIQUE `(characterId, npcKey,
+  // dayBucket, sequence)` đảm bảo daily limit + atomic decrement + grant
+  // affinity all-or-nothing. KHÔNG mirror `CurrencyLedger` (gift không tiêu
+  // currency).
+  | 'NPC_GIFT';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;
@@ -384,6 +392,61 @@ export class InventoryService {
         meta: meta.extra ?? {},
       },
     });
+  }
+
+  /**
+   * Phase 12.10.B — atomic "consume 1 stack of `itemKey`" inside an existing
+   * transaction. Mirror `use()` decrement pattern (race-safe `updateMany` với
+   * filter `qty > 0`) nhưng KHÔNG resolve qua `inventoryItemId` (vì caller
+   * `NpcAffinityService.giftNpcTx` chỉ biết `itemKey`).
+   *
+   * Algorithm:
+   *   1. Find first non-equipped row với `qty >= 1` (deterministic order theo
+   *      `createdAt` ASC — oldest stack first, không phá row đang đeo).
+   *   2. `updateMany({ id, qty: { gt: 0 } }, { qty: { decrement: 1 } })` →
+   *      atomic decrement. Race với concurrent gift / use → một thread thắng,
+   *      thread kia thấy count=0 → throw `INVENTORY_ITEM_NOT_FOUND`.
+   *   3. Post-decrement: nếu qty xuống 0 → delete row.
+   *   4. Write ledger (`qtyDelta=-1`, `meta.reason=meta.reason`).
+   *
+   * Caller chịu trách nhiệm wrap toàn bộ logic (consume + grant affinity +
+   * gift log create) trong cùng `$transaction` cho atomic all-or-nothing.
+   *
+   * Throws:
+   *   - `ITEM_NOT_FOUND` — itemKey không thuộc catalog.
+   *   - `INVENTORY_ITEM_NOT_FOUND` — character không có row qty>=1 (gift KHÔNG
+   *     consume row đang `equippedSlot != null` để tránh tháo trang bị bất ngờ).
+   */
+  async consumeOneByItemKeyTx(
+    tx: Prisma.TransactionClient,
+    characterId: string,
+    itemKey: string,
+    meta: ItemLedgerMeta,
+  ): Promise<void> {
+    const def = itemByKey(itemKey);
+    if (!def) throw new InventoryError('ITEM_NOT_FOUND');
+    const candidate = await tx.inventoryItem.findFirst({
+      where: { characterId, itemKey, equippedSlot: null, qty: { gt: 0 } },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+    if (!candidate) throw new InventoryError('INVENTORY_ITEM_NOT_FOUND');
+    const decResult = await tx.inventoryItem.updateMany({
+      where: { id: candidate.id, qty: { gt: 0 } },
+      data: { qty: { decrement: 1 } },
+    });
+    if (decResult.count === 0) {
+      // Race: concurrent gift / use chiếm slot. Throw để caller rollback tx.
+      throw new InventoryError('INVENTORY_ITEM_NOT_FOUND');
+    }
+    const post = await tx.inventoryItem.findUnique({
+      where: { id: candidate.id },
+      select: { qty: true },
+    });
+    if (post && post.qty === 0) {
+      await tx.inventoryItem.delete({ where: { id: candidate.id } });
+    }
+    await this.writeLedgerTx(tx, characterId, itemKey, -1, meta);
   }
 
   /**

@@ -15,10 +15,14 @@ import {
   AFFINITY_DELTA_CAP_PER_QUEST_REWARD,
   affinityTierForScore,
   npcAffinityDefForKey,
+  npcGiftPreferenceForKey,
   NPC_AFFINITY,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { TEST_DATABASE_URL, makeUserChar, wipeAll } from '../../test-helpers';
+import { CharacterService } from '../character/character.service';
+import { RealtimeService } from '../realtime/realtime.service';
+import { InventoryService } from '../inventory/inventory.service';
 import {
   NpcAffinityError,
   NpcAffinityService,
@@ -26,11 +30,15 @@ import {
 
 let prisma: PrismaService;
 let service: NpcAffinityService;
+let inventory: InventoryService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
-  service = new NpcAffinityService(prisma);
+  const realtime = new RealtimeService();
+  const chars = new CharacterService(prisma, realtime);
+  inventory = new InventoryService(prisma, realtime, chars);
+  service = new NpcAffinityService(prisma, inventory);
 });
 
 beforeEach(async () => {
@@ -294,5 +302,245 @@ describe('NpcAffinityService.loadScoreMap', () => {
   it('resolveScore returns map value khi có row', () => {
     const map = new Map<string, number>([[NPC_LANG, 42]]);
     expect(NpcAffinityService.resolveScore(map, NPC_LANG)).toBe(42);
+  });
+});
+
+/**
+ * Phase 12.10.B — gift integration test.
+ *
+ * Coverage:
+ *   - gift success: consume 1 stack, +affinity, log row insert.
+ *   - reject ITEM_NOT_IN_INVENTORY: character không có item.
+ *   - reject ITEM_NOT_ACCEPTED: item ngoài catalog NPC.
+ *   - reject NPC_GIFT_NOT_CONFIGURED: NPC không có gift catalog.
+ *   - reject DAILY_LIMIT_REACHED: vượt `dailyLimit`.
+ *   - daily reset: dayBucket khác → count reset (giả lập = `now` override).
+ *   - getDailyGiftCounts trả used/limit/remaining đúng.
+ */
+describe('NpcAffinityService.giftNpc', () => {
+  const NPC_LANG = 'npc_lang_van_sinh';
+  const ACCEPTED_ITEM = 'linh_lo_dan';
+
+  it('success: consume 1 stack + add affinity + log row + return view', async () => {
+    const { characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    const giftDef = npcGiftPreferenceForKey(NPC_LANG)!;
+    const affDef = npcAffinityDefForKey(NPC_LANG)!;
+
+    await inventory.grant(
+      characterId,
+      [{ itemKey: ACCEPTED_ITEM, qty: 3 }],
+      { reason: 'ADMIN_GRANT' },
+    );
+
+    const res = await service.giftNpc({
+      characterId,
+      npcKey: NPC_LANG,
+      itemKey: ACCEPTED_ITEM,
+    });
+
+    expect(res.npcKey).toBe(NPC_LANG);
+    expect(res.itemKey).toBe(ACCEPTED_ITEM);
+    expect(res.affinityDelta).toBeGreaterThan(0);
+    expect(res.previousScore).toBe(affDef.initialScore);
+    expect(res.newScore).toBe(affDef.initialScore + res.affinityDelta);
+    expect(res.sequence).toBe(1);
+    expect(res.dailyLimit).toBe(giftDef.dailyLimit);
+    expect(res.remainingToday).toBe(giftDef.dailyLimit - 1);
+
+    // Inventory: qty giảm còn 2.
+    const inv = await prisma.inventoryItem.findFirstOrThrow({
+      where: { characterId, itemKey: ACCEPTED_ITEM },
+    });
+    expect(inv.qty).toBe(2);
+
+    // Log row inserted.
+    const log = await prisma.characterNpcGiftLog.findFirstOrThrow({
+      where: { characterId, npcKey: NPC_LANG },
+    });
+    expect(log.itemKey).toBe(ACCEPTED_ITEM);
+    expect(log.affinityDelta).toBe(res.affinityDelta);
+    expect(log.sequence).toBe(1);
+
+    // ItemLedger row inserted với reason NPC_GIFT.
+    const ledger = await prisma.itemLedger.findFirstOrThrow({
+      where: { characterId, itemKey: ACCEPTED_ITEM, qtyDelta: -1 },
+    });
+    expect(ledger.reason).toBe('NPC_GIFT');
+
+    // Affinity row updated.
+    const aff = await prisma.characterNpcAffinity.findUnique({
+      where: { characterId_npcKey: { characterId, npcKey: NPC_LANG } },
+      select: { score: true },
+    });
+    expect(aff?.score).toBe(res.newScore);
+  });
+
+  it('reject ITEM_NOT_IN_INVENTORY: character không có item', async () => {
+    const { characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+
+    await expect(
+      service.giftNpc({
+        characterId,
+        npcKey: NPC_LANG,
+        itemKey: ACCEPTED_ITEM,
+      }),
+    ).rejects.toThrow(/ITEM_NOT_IN_INVENTORY/);
+
+    // Không leak log row hoặc affinity update.
+    const logCount = await prisma.characterNpcGiftLog.count({
+      where: { characterId },
+    });
+    expect(logCount).toBe(0);
+    const affCount = await prisma.characterNpcAffinity.count({
+      where: { characterId },
+    });
+    expect(affCount).toBe(0);
+  });
+
+  it('reject ITEM_NOT_ACCEPTED: item ngoài catalog NPC', async () => {
+    const { characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    // `so_kiem` không nằm trong acceptedItems của npc_lang_van_sinh.
+    await inventory.grant(
+      characterId,
+      [{ itemKey: 'so_kiem', qty: 1 }],
+      { reason: 'ADMIN_GRANT' },
+    );
+    await expect(
+      service.giftNpc({
+        characterId,
+        npcKey: NPC_LANG,
+        itemKey: 'so_kiem',
+      }),
+    ).rejects.toThrow(/ITEM_NOT_ACCEPTED/);
+
+    // Inventory không bị consume.
+    const inv = await prisma.inventoryItem.findFirstOrThrow({
+      where: { characterId, itemKey: 'so_kiem' },
+    });
+    expect(inv.qty).toBe(1);
+  });
+
+  it('reject NPC_GIFT_NOT_CONFIGURED: NPC trong affinity catalog nhưng không có gift catalog', async () => {
+    // Sanity: nếu mọi NPC đều có gift catalog thì test này skip.
+    const noGift = NPC_AFFINITY.find((d) => !npcGiftPreferenceForKey(d.npcKey));
+    if (!noGift) return;
+    const { characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    await expect(
+      service.giftNpc({
+        characterId,
+        npcKey: noGift.npcKey,
+        itemKey: ACCEPTED_ITEM,
+      }),
+    ).rejects.toThrow(/NPC_GIFT_NOT_CONFIGURED/);
+  });
+
+  it('reject DAILY_LIMIT_REACHED: gift đến `dailyLimit` lần là OK, lần kế throw', async () => {
+    const { characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    const giftDef = npcGiftPreferenceForKey(NPC_LANG)!;
+    // Cấp đủ item cho `dailyLimit + 1` lần để chứng minh limit, không phải
+    // do hết item.
+    await inventory.grant(
+      characterId,
+      [{ itemKey: ACCEPTED_ITEM, qty: giftDef.dailyLimit + 1 }],
+      { reason: 'ADMIN_GRANT' },
+    );
+
+    for (let i = 0; i < giftDef.dailyLimit; i++) {
+      const res = await service.giftNpc({
+        characterId,
+        npcKey: NPC_LANG,
+        itemKey: ACCEPTED_ITEM,
+      });
+      expect(res.sequence).toBe(i + 1);
+      expect(res.remainingToday).toBe(giftDef.dailyLimit - (i + 1));
+    }
+
+    await expect(
+      service.giftNpc({
+        characterId,
+        npcKey: NPC_LANG,
+        itemKey: ACCEPTED_ITEM,
+      }),
+    ).rejects.toThrow(/DAILY_LIMIT_REACHED/);
+
+    // Sau khi reject, inventory vẫn còn 1 (lần gift cuối KHÔNG consume).
+    const inv = await prisma.inventoryItem.findFirstOrThrow({
+      where: { characterId, itemKey: ACCEPTED_ITEM },
+    });
+    expect(inv.qty).toBe(1);
+  });
+
+  it('daily reset: dayBucket khác → count reset', async () => {
+    const { characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    const giftDef = npcGiftPreferenceForKey(NPC_LANG)!;
+    await inventory.grant(
+      characterId,
+      [{ itemKey: ACCEPTED_ITEM, qty: giftDef.dailyLimit + 1 }],
+      { reason: 'ADMIN_GRANT' },
+    );
+
+    // Day 1 — fill limit.
+    const day1 = new Date('2026-06-01T05:00:00Z');
+    for (let i = 0; i < giftDef.dailyLimit; i++) {
+      await service.giftNpc({
+        characterId,
+        npcKey: NPC_LANG,
+        itemKey: ACCEPTED_ITEM,
+        now: day1,
+      });
+    }
+
+    // Day 2 — count reset, gift sequence=1 lại.
+    const day2 = new Date('2026-06-02T05:00:00Z');
+    const res = await service.giftNpc({
+      characterId,
+      npcKey: NPC_LANG,
+      itemKey: ACCEPTED_ITEM,
+      now: day2,
+    });
+    expect(res.sequence).toBe(1);
+    expect(res.dayBucket).toBe('2026-06-02');
+  });
+
+  it('getDailyGiftCounts trả used/limit/remaining đúng', async () => {
+    const { characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    const giftDef = npcGiftPreferenceForKey(NPC_LANG)!;
+    await inventory.grant(
+      characterId,
+      [{ itemKey: ACCEPTED_ITEM, qty: 2 }],
+      { reason: 'ADMIN_GRANT' },
+    );
+
+    // Trước gift: count = 0.
+    const before = await service.getDailyGiftCounts(characterId);
+    expect(before.get(NPC_LANG)).toEqual({
+      used: 0,
+      limit: giftDef.dailyLimit,
+      remaining: giftDef.dailyLimit,
+    });
+
+    // Gift 2 lần.
+    await service.giftNpc({ characterId, npcKey: NPC_LANG, itemKey: ACCEPTED_ITEM });
+    await service.giftNpc({ characterId, npcKey: NPC_LANG, itemKey: ACCEPTED_ITEM });
+
+    const after = await service.getDailyGiftCounts(characterId);
+    expect(after.get(NPC_LANG)).toEqual({
+      used: 2,
+      limit: giftDef.dailyLimit,
+      remaining: giftDef.dailyLimit - 2,
+    });
+  });
+
+  it('dayBucketFor trả ISO YYYY-MM-DD UTC', () => {
+    expect(NpcAffinityService.dayBucketFor(new Date('2026-06-09T00:00:00Z'))).toBe(
+      '2026-06-09',
+    );
+    expect(NpcAffinityService.dayBucketFor(new Date('2026-06-09T23:59:59Z'))).toBe(
+      '2026-06-09',
+    );
+    // Boundary: VN 07:00 → UTC 00:00 → next UTC day.
+    expect(NpcAffinityService.dayBucketFor(new Date('2026-06-10T00:00:00Z'))).toBe(
+      '2026-06-10',
+    );
   });
 });

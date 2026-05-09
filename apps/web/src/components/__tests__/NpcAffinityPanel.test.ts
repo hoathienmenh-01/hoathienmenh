@@ -10,6 +10,9 @@ import type { NpcAffinityView } from '@/api/npcAffinity';
 vi.mock('@/api/npcAffinity', () => ({
   fetchNpcAffinities: vi.fn(),
   fetchNpcAffinity: vi.fn(),
+  // Phase 12.10.B — gift API mocks.
+  giftNpc: vi.fn(),
+  fetchNpcGiftDaily: vi.fn(),
 }));
 
 const i18n = createI18n({
@@ -23,6 +26,7 @@ const i18n = createI18n({
       common: {
         refresh: 'Làm mới',
         loadingData: 'Đang tải dữ liệu…',
+        loading: 'Đang xử lý…',
       },
       npcAffinity: {
         title: 'Quan Hệ Đạo Hữu',
@@ -30,8 +34,20 @@ const i18n = createI18n({
         empty: 'Chưa kết duyên cùng đạo hữu nào.',
         nextTierHint: 'Còn {points} điểm để lên {tier}.',
         maxTierReached: 'Đã đạt đỉnh quan hệ.',
+        // Phase 12.10.B
+        giftLabel: 'Tặng',
+        giftButton: 'Trao quà',
+        giftLocked: 'Hết lượt ({used}/{limit})',
+        giftDaily: 'Hôm nay {used}/{limit}',
+        giftSuccess: 'Thân tình +{delta}',
+        giftTierUp: 'Đã lên cảnh giới {tier}',
         errors: {
           UNKNOWN: 'Không thể tải quan hệ.',
+        },
+        giftErrors: {
+          ITEM_NOT_IN_INVENTORY: 'Túi đồ không có vật phẩm.',
+          DAILY_LIMIT_REACHED: 'Đã hết lượt tặng hôm nay.',
+          UNKNOWN: 'Không thể tặng quà.',
         },
       },
     },
@@ -211,6 +227,211 @@ describe('NpcAffinityPanel', () => {
     await flushPromises();
     expect(api.fetchNpcAffinities).toHaveBeenCalledTimes(1);
     expect(w.find('[data-testid="npc-affinity-name-npc_lang_van_sinh"]').exists()).toBe(true);
+  });
+});
+
+// ============================================================================
+// Phase 12.10.B — gift action UI flow.
+// ============================================================================
+
+describe('NpcAffinityPanel — Phase 12.10.B gift flow', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.mocked(api.fetchNpcAffinities).mockReset();
+    vi.mocked(api.fetchNpcGiftDaily).mockReset();
+    vi.mocked(api.giftNpc).mockReset();
+  });
+
+  function seedStore(opts: {
+    affinity?: NpcAffinityView;
+    daily?: api.NpcGiftDailyCount;
+  } = {}): ReturnType<typeof useNpcAffinityStore> {
+    const store = useNpcAffinityStore();
+    store.affinities = [opts.affinity ?? makeAffinity()];
+    store.loaded = true;
+    if (opts.daily) {
+      store.dailyCounts[opts.daily.npcKey] = opts.daily;
+      store.dailyLoaded = true;
+    }
+    return store;
+  }
+
+  it('renders gift section khi NPC có gift preference (button + select + daily indicator)', async () => {
+    seedStore();
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    const section = w.find('[data-testid="npc-affinity-gift-npc_lang_van_sinh"]');
+    expect(section.exists()).toBe(true);
+    expect(
+      w.find('[data-testid="npc-affinity-gift-button-npc_lang_van_sinh"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="npc-affinity-gift-select-npc_lang_van_sinh"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="npc-affinity-gift-daily-npc_lang_van_sinh"]').text(),
+    ).toContain('Hôm nay 0/');
+    // Initial state — button không locked.
+    const btn = w.find('[data-testid="npc-affinity-gift-button-npc_lang_van_sinh"]')
+      .element as HTMLButtonElement;
+    expect(btn.disabled).toBe(false);
+    expect(btn.textContent).toContain('Trao quà');
+  });
+
+  it('click gift button → store.giftNpc + toast hiển thị "+N"', async () => {
+    seedStore();
+    vi.mocked(api.giftNpc).mockResolvedValue({
+      affinity: makeAffinity({ score: 41 }),
+      gift: {
+        npcKey: 'npc_lang_van_sinh',
+        itemKey: 'linh_lo_dan',
+        affinityDelta: 6,
+        previousScore: 35,
+        newScore: 41,
+        tierChanged: false,
+        dayBucket: '2026-06-01',
+        sequence: 1,
+        remainingToday: 4,
+        dailyLimit: 5,
+      },
+    });
+    const w = mountPanel();
+    await w.vm.$nextTick();
+
+    const btn = w.find('[data-testid="npc-affinity-gift-button-npc_lang_van_sinh"]')
+      .element as HTMLButtonElement;
+    btn.click();
+    await flushPromises();
+
+    expect(api.giftNpc).toHaveBeenCalledWith('npc_lang_van_sinh', 'linh_lo_dan');
+
+    // Toast row hiện ra với delta.
+    const toast = w.find('[data-testid="npc-affinity-gift-toast-npc_lang_van_sinh"]');
+    expect(toast.exists()).toBe(true);
+    expect(toast.text()).toContain('Thân tình +6');
+
+    // Daily indicator update từ 0/5 → 1/5.
+    expect(
+      w.find('[data-testid="npc-affinity-gift-daily-npc_lang_van_sinh"]').text(),
+    ).toContain('Hôm nay 1/');
+
+    // Affinity score row update — refresh trong template.
+    expect(
+      w.find('[data-testid="npc-affinity-score-npc_lang_van_sinh"]').text(),
+    ).toContain('41/');
+  });
+
+  it('toast tier-up hiển thị khi tierChanged=true', async () => {
+    seedStore();
+    vi.mocked(api.giftNpc).mockResolvedValue({
+      affinity: makeAffinity({
+        score: 60,
+        currentTier: {
+          key: 'tri_giao',
+          label: 'Tri Giao',
+          labelEn: 'Confidant',
+          minScore: 60,
+          order: 3,
+        },
+        nextTier: null,
+      }),
+      gift: {
+        npcKey: 'npc_lang_van_sinh',
+        itemKey: 'linh_lo_dan',
+        affinityDelta: 25,
+        previousScore: 35,
+        newScore: 60,
+        tierChanged: true,
+        dayBucket: '2026-06-01',
+        sequence: 1,
+        remainingToday: 4,
+        dailyLimit: 5,
+      },
+    });
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    const btn = w.find('[data-testid="npc-affinity-gift-button-npc_lang_van_sinh"]')
+      .element as HTMLButtonElement;
+    btn.click();
+    await flushPromises();
+
+    const toast = w.find('[data-testid="npc-affinity-gift-toast-npc_lang_van_sinh"]');
+    expect(toast.text()).toContain('Đã lên cảnh giới Tri Giao');
+  });
+
+  it('button locked khi remainingToday=0 (label "Hết lượt")', async () => {
+    seedStore({
+      daily: {
+        npcKey: 'npc_lang_van_sinh',
+        dayBucket: '2026-06-01',
+        usedToday: 5,
+        dailyLimit: 5,
+        remainingToday: 0,
+      },
+    });
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    const btn = w.find('[data-testid="npc-affinity-gift-button-npc_lang_van_sinh"]')
+      .element as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    expect(btn.textContent).toContain('Hết lượt (5/5)');
+
+    // Daily indicator hiện 5/5.
+    expect(
+      w.find('[data-testid="npc-affinity-gift-daily-npc_lang_van_sinh"]').text(),
+    ).toContain('Hôm nay 5/5');
+
+    // Click không trigger api.
+    btn.click();
+    await flushPromises();
+    expect(api.giftNpc).not.toHaveBeenCalled();
+  });
+
+  it('inline error hiện khi gift reject (ITEM_NOT_IN_INVENTORY)', async () => {
+    seedStore();
+    vi.mocked(api.giftNpc).mockRejectedValue({ code: 'ITEM_NOT_IN_INVENTORY' });
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    const btn = w.find('[data-testid="npc-affinity-gift-button-npc_lang_van_sinh"]')
+      .element as HTMLButtonElement;
+    btn.click();
+    await flushPromises();
+
+    const err = w.find('[data-testid="npc-affinity-gift-error-npc_lang_van_sinh"]');
+    expect(err.exists()).toBe(true);
+    expect(err.text()).toContain('Túi đồ không có vật phẩm');
+
+    // Không có toast khi error.
+    expect(
+      w.find('[data-testid="npc-affinity-gift-toast-npc_lang_van_sinh"]').exists(),
+    ).toBe(false);
+
+    // Daily count KHÔNG update.
+    expect(
+      w.find('[data-testid="npc-affinity-gift-daily-npc_lang_van_sinh"]').text(),
+    ).toContain('Hôm nay 0/');
+  });
+
+  it('autoLoad=true gọi store.loadDaily() khi mount', async () => {
+    vi.mocked(api.fetchNpcAffinities).mockResolvedValue({
+      affinities: [makeAffinity()],
+      caps: { perChoice: 20, perQuestReward: 40 },
+    });
+    vi.mocked(api.fetchNpcGiftDaily).mockResolvedValue([
+      {
+        npcKey: 'npc_lang_van_sinh',
+        dayBucket: '2026-06-01',
+        usedToday: 2,
+        dailyLimit: 5,
+        remainingToday: 3,
+      },
+    ]);
+    const w = mountPanel({ autoLoad: true });
+    await flushPromises();
+    expect(api.fetchNpcGiftDaily).toHaveBeenCalledTimes(1);
+    expect(
+      w.find('[data-testid="npc-affinity-gift-daily-npc_lang_van_sinh"]').text(),
+    ).toContain('Hôm nay 2/');
   });
 });
 
