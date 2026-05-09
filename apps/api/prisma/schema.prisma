@@ -303,6 +303,8 @@ model Character {
   sectSeasonClaims        SectSeasonClaim[]
   npcAffinities           CharacterNpcAffinity[]
   npcGiftLogs             CharacterNpcGiftLog[]
+  dailyRewardBuckets      CharacterDailyRewardBucket[]
+  rewardCapEvents         RewardCapEvent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -462,32 +464,32 @@ model TribulationAttemptLog {
 /// vẫn được tạo trong resolve (1:1 mapping qua `resolvedAttemptLogId`).
 /// Encounter row chỉ là session state cho 2-phase UX.
 model TribulationEncounter {
-  id                       String    @id @default(cuid())
-  characterId              String
-  character                Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  tribulationKey           String
-  fromRealmKey             String
-  toRealmKey               String
+  id                      String    @id @default(cuid())
+  characterId             String
+  character               Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  tribulationKey          String
+  fromRealmKey            String
+  toRealmKey              String
   /// Encounter catalog key (`tribulation_encounter_<element>`).
-  encounterKey             String
+  encounterKey            String
   /// `TribulationEncounterEffectType` ∈ {BURST, SUSTAIN, POISON_RECOVERY,
   /// ARMOR_CRIT, DEFENSE_ENDURANCE}.
-  effectType               String
+  effectType              String
   /// `ElementKey` ∈ {kim, moc, thuy, hoa, tho}.
-  element                  String
+  element                 String
   /// `TribulationEncounterDifficulty` (alias `TribulationSeverity`).
-  difficulty               String
+  difficulty              String
   /// Snapshot list các item key player chọn lúc start. Empty nếu không
   /// chọn item hỗ trợ. Resolve sẽ recalc support từ list này (server-side).
-  selectedSupportItemKeys  String[]
+  selectedSupportItemKeys String[]
   /// State machine: 'pending' (started, chưa resolve) | 'resolved' (đã
   /// resolve thành 1 attempt log) | 'cancelled' (future, chưa dùng).
-  state                    String    @default("pending")
-  startedAt                DateTime  @default(now())
-  resolvedAt               DateTime?
+  state                   String    @default("pending")
+  startedAt               DateTime  @default(now())
+  resolvedAt              DateTime?
   /// Pointer 1:1 sang `TribulationAttemptLog` khi đã resolved. NULL khi
   /// state='pending'.
-  resolvedAttemptLogId     String?
+  resolvedAttemptLogId    String?
 
   @@index([characterId, state])
   @@index([characterId, startedAt])
@@ -1089,21 +1091,21 @@ enum DungeonRunStatus {
 ///   - `[characterId, startedAt]` cho dailyLimit count.
 ///   - `[characterId, templateKey, startedAt]` cho per-dungeon dailyLimit.
 model DungeonRun {
-  id              String           @id @default(cuid())
-  characterId     String
+  id             String           @id @default(cuid())
+  characterId    String
   /// Match `DungeonDef.key` từ shared catalog `DUNGEONS`.
-  templateKey     String
-  status          DungeonRunStatus @default(ACTIVE)
+  templateKey    String
+  status         DungeonRunStatus @default(ACTIVE)
   /// Index của monster hiện tại trong `dungeon.monsters[]` (0..N).
   /// Khi `encounterIndex == monsters.length` → COMPLETED (claim sẵn sàng).
-  encounterIndex  Int              @default(0)
+  encounterIndex Int              @default(0)
   /// JSON list `[{ monsterKey, killedAt: ISO string }]` — log resolution
   /// tracking, dùng cho debug + Phase 12.5 stats UI.
-  killedMonsters  Json             @default("[]")
-  startedAt       DateTime         @default(now())
-  completedAt     DateTime?
-  claimedAt       DateTime?
-  updatedAt       DateTime         @updatedAt
+  killedMonsters Json             @default("[]")
+  startedAt      DateTime         @default(now())
+  completedAt    DateTime?
+  claimedAt      DateTime?
+  updatedAt      DateTime         @updatedAt
 
   @@index([characterId, status])
   @@index([characterId, startedAt])
@@ -1275,20 +1277,20 @@ model DailyLoginClaim {
 ///   - `[weekKey, characterId]` cho personal status / breakdown.
 ///   - UNIQUE composite cho idempotency.
 model SectWarContribution {
-  id           String   @id @default(cuid())
+  id          String   @id @default(cuid())
   /// ISO week key, format `YYYY-Www` (vd "2026-W19").
-  weekKey      String
-  sectId       String
-  characterId  String
+  weekKey     String
+  sectId      String
+  characterId String
   /// Match `SectWarActivityKey` từ shared catalog.
-  activityKey  String
+  activityKey String
   /// Match `SectWarSourceType` (vd "DungeonRun", "WorldBoss", "DailyLoginClaim", "Quest").
-  sourceType   String
+  sourceType  String
   /// Optional source entity id (vd dungeonRunId / bossId+characterId / claimDateLocal / questKey).
-  sourceId     String?
+  sourceId    String?
   /// Số điểm cộng vào sect — server-authoritative từ catalog (FE không gửi).
-  points       Int
-  createdAt    DateTime @default(now())
+  points      Int
+  createdAt   DateTime @default(now())
 
   @@unique([weekKey, characterId, activityKey, sourceType, sourceId])
   @@index([weekKey, sectId])
@@ -1308,20 +1310,20 @@ model SectWarContribution {
 /// `pointsAtClaim` snapshot personal points dùng để check eligibility
 /// (participation tier yêu cầu ≥ minPersonalPoints).
 model SectWarWeeklyRewardClaim {
-  id            String   @id @default(cuid())
+  id                String   @id @default(cuid())
   /// ISO week key (`YYYY-Www`).
-  weekKey       String
-  sectId        String
-  characterId   String
+  weekKey           String
+  sectId            String
+  characterId       String
   /// Match `SectWarRewardTierKey` từ shared catalog.
-  rewardTierKey String
+  rewardTierKey     String
   /// Snapshot points cá nhân tại thời điểm claim (audit + breakdown view).
-  pointsAtClaim Int
+  pointsAtClaim     Int
   /// Snapshot rank của Sect tại claim time (1-based).
-  sectRankAtClaim Int
+  sectRankAtClaim   Int
   /// Snapshot tổng điểm Sect tại claim time.
   sectPointsAtClaim Int
-  claimedAt     DateTime @default(now())
+  claimedAt         DateTime @default(now())
 
   @@unique([weekKey, characterId])
   @@index([weekKey, sectId])
@@ -1530,6 +1532,7 @@ model SectSeasonTopMember {
   @@index([seasonKey])
   @@index([characterId, rank])
 }
+
 /// Phase 13.1.B — LiveOps event override (admin LiveOps controls).
 /// Mỗi row = override 1 event key trong `LIVE_OPS_EVENTS` catalog. `enabled`
 /// toggle (false = ẩn event khỏi `liveOpsEventsForToday`). `startsAt`/`endsAt`
@@ -1538,16 +1541,16 @@ model SectSeasonTopMember {
 /// `updatedBy` (User.id) audit trail; `reason` for log/debug. UNIQUE `key`
 /// → upsert pattern (insert nếu chưa có, update nếu đã tồn tại).
 model LiveOpsEventOverride {
-  id          String    @id @default(cuid())
+  id        String    @id @default(cuid())
   /// LiveOps event key (match `LIVE_OPS_EVENTS[*].key`).
-  key         String    @unique
-  enabled     Boolean
-  startsAt    DateTime?
-  endsAt      DateTime?
-  reason      String?
-  updatedBy   String
-  updatedAt   DateTime  @updatedAt
-  createdAt   DateTime  @default(now())
+  key       String    @unique
+  enabled   Boolean
+  startsAt  DateTime?
+  endsAt    DateTime?
+  reason    String?
+  updatedBy String
+  updatedAt DateTime  @updatedAt
+  createdAt DateTime  @default(now())
 
   @@index([enabled, updatedAt])
 }
@@ -1608,13 +1611,13 @@ model SectTerritoryInfluence {
 ///
 /// Rollback: DROP bảng — hooks đọc owner sẽ no-op khi bảng vắng mặt.
 model SectTerritoryRegionState {
-  regionKey     String   @id
+  regionKey     String    @id
   ownerSectId   String?
   ownerSectName String?
   periodKey     String?
   settledAt     DateTime?
-  updatedAt     DateTime @updatedAt
-  createdAt     DateTime @default(now())
+  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now())
 
   @@index([ownerSectId])
 }
@@ -1629,19 +1632,19 @@ model SectTerritoryRegionState {
 ///
 /// Rollback: DROP bảng — independent, no FK.
 model SectTerritorySettlementSnapshot {
-  id              String   @id @default(cuid())
-  regionKey       String
-  periodKey       String
-  winnerSectId    String?
-  winnerSectName  String?
-  winnerPoints    Int      @default(0)
-  runnerUpSectId  String?
+  id               String   @id @default(cuid())
+  regionKey        String
+  periodKey        String
+  winnerSectId     String?
+  winnerSectName   String?
+  winnerPoints     Int      @default(0)
+  runnerUpSectId   String?
   runnerUpSectName String?
-  runnerUpPoints  Int      @default(0)
-  totalSects      Int      @default(0)
-  totalPoints     Int      @default(0)
-  settledAt       DateTime @default(now())
-  settledBy       String?
+  runnerUpPoints   Int      @default(0)
+  totalSects       Int      @default(0)
+  totalPoints      Int      @default(0)
+  settledAt        DateTime @default(now())
+  settledBy        String?
 
   @@unique([regionKey, periodKey])
   @@index([periodKey])
@@ -1660,14 +1663,14 @@ model SectTerritorySettlementSnapshot {
 /// Rollback: DROP bảng — independent, no FK. Gọi decay lần kế tiếp
 /// sẽ chạy lại từ đầu (không có log → không idempotency).
 model SectTerritoryDecayLog {
-  id            String   @id @default(cuid())
-  periodKey     String   @unique
-  decayBps      Int
-  rowsAffected  Int      @default(0)
-  pointsBefore  Int      @default(0)
-  pointsAfter   Int      @default(0)
-  triggeredBy   String?
-  triggeredAt   DateTime @default(now())
+  id           String   @id @default(cuid())
+  periodKey    String   @unique
+  decayBps     Int
+  rowsAffected Int      @default(0)
+  pointsBefore Int      @default(0)
+  pointsAfter  Int      @default(0)
+  triggeredBy  String?
+  triggeredAt  DateTime @default(now())
 
   @@index([triggeredAt])
 }
@@ -1704,4 +1707,86 @@ model TerritoryOwnerRewardGrant {
   @@index([regionKey])
   @@index([sectId])
   @@index([characterId])
+}
+
+/// Phase 16.5 — Daily Reward Cap accum bucket per `(characterId, dayBucket, source)`.
+///
+/// Mục tiêu: theo dõi tổng EXP / linhThach mà 1 character đã được grant
+/// trong 1 ngày local từ 1 nguồn cụ thể (CULTIVATION/DUNGEON/MISSION).
+/// Service `RewardCapService.applyCapTx` đọc + update row này trong cùng
+/// transaction với grant để cap chính xác (race-safe).
+///
+/// `dayBucket` = `YYYY-MM-DD` theo timezone reset (env
+/// `DAILY_REWARD_CAP_TZ`, default `Asia/Ho_Chi_Minh`) — KHÔNG dùng
+/// `DateTime` để tránh phụ thuộc giờ chính xác commit time + tránh
+/// conflict timezone. Reset tự nhiên qua thay đổi `dayBucket` chuỗi
+/// (no cron cần). Sang ngày mới: lookup miss → bucket mới với accum=0.
+///
+/// `source` = `RewardSource` từ shared catalog
+/// (`packages/shared/src/daily-reward-cap.ts`) — string để forward-compat
+/// thêm source mới mà không cần migration enum.
+///
+/// Idempotency: `@@unique([characterId, dayBucket, source])` — cùng
+/// character + ngày + source chỉ có 1 row. Race 2 grant concurrent →
+/// upsert + CAS guard `expAccum`/`linhThachAccum` cũ; thread thua
+/// retry compute cap với accum mới (xem `RewardCapService.applyCapTx`).
+///
+/// Indexes:
+///   - UNIQUE composite (idempotency).
+///   - `[dayBucket]` cho admin/ops query "ai chạm cap hôm nay".
+///   - `[characterId, source]` (đã ở UNIQUE prefix) cho lookup nhanh.
+model CharacterDailyRewardBucket {
+  id             String    @id @default(cuid())
+  characterId    String
+  character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// `YYYY-MM-DD` theo timezone reset (default Asia/Ho_Chi_Minh).
+  dayBucket      String
+  /// `RewardSource`: 'CULTIVATION' | 'DUNGEON' | 'MISSION' (forward-compat).
+  source         String
+  /// Tổng EXP đã được grant từ source này trong dayBucket. BigInt khớp Character.exp.
+  expAccum       BigInt    @default(0)
+  /// Tổng linh thạch đã được grant từ source này trong dayBucket. BigInt khớp Character.linhThach.
+  linhThachAccum BigInt    @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([characterId, dayBucket, source])
+  @@index([dayBucket])
+}
+
+/// Phase 16.5 — Reward cap event log (audit trail).
+///
+/// Ghi MỖI lần `applyCapTx` quyết định cap > 0 (`wasCapped=true`) — vd
+/// player request 100 EXP nhưng chỉ grant 30, log lại 70 EXP bị cắt
+/// để admin / anomaly scanner sau này có dữ liệu ngữ cảnh.
+///
+/// KHÔNG ghi khi `wasCapped=false` (giữ table nhỏ + signal-noise cao).
+/// Admin truy vấn theo `(characterId, dayBucket)` để hiểu vì sao 1
+/// player chạm cap.
+///
+/// `requested*` / `granted*` / `cappedAmount*` đều BigInt khớp domain
+/// values. `reason` text mô tả ngắn (vd "exp cap reached for DUNGEON").
+/// `meta` JSONB cho ngữ cảnh thêm (refType, refId, dungeon templateKey,
+/// missionKey, …) — query dễ qua Prisma JSON path.
+model RewardCapEvent {
+  id                 String    @id @default(cuid())
+  characterId        String
+  character          Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  dayBucket          String
+  source             String
+  requestedExp       BigInt
+  requestedLinhThach BigInt
+  grantedExp         BigInt
+  grantedLinhThach   BigInt
+  cappedExp          BigInt
+  cappedLinhThach    BigInt
+  reason             String
+  refType            String?
+  refId              String?
+  meta               Json      @default("{}")
+  createdAt          DateTime  @default(now())
+
+  @@index([characterId, dayBucket])
+  @@index([dayBucket, source])
+  @@index([createdAt])
 }

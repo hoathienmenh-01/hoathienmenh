@@ -35,11 +35,13 @@ import { SectSeasonModule } from './modules/sect-season/sect-season.module';
 import { TerritoryModule } from './modules/territory/territory.module';
 import { LiveOpsCronModule } from './modules/liveops-cron/liveops-cron.module';
 import { RedisModule } from './common/redis.module';
+import { EconomyModule } from './modules/economy/economy.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     RedisModule,
+    EconomyModule,
     AuthModule,
     RealtimeModule,
     CharacterModule,

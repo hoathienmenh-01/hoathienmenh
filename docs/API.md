@@ -202,7 +202,7 @@ Override timezone qua env `LIVEOPS_TZ` (default `Asia/Ho_Chi_Minh` reuse `MISSIO
 | Method | Path                  | Auth | Mô tả |
 |--------|-----------------------|------|-------|
 | GET    | `/missions/me`        | Yes  | Progress daily/weekly/once của player + `serverDateLocal`. Reset theo `MISSION_RESET_TZ`. |
-| POST   | `/missions/:id/claim` | Yes  | Nhận thưởng khi `progress >= target`. Idempotent qua `claimedAt`. |
+| POST   | `/missions/:id/claim` | Yes  | Nhận thưởng khi `progress >= target`. Idempotent qua `claimedAt`. **Phase 16.5 update**: response thêm `{ missions, claim: { missionKey, granted: { exp, linhThach, tienNgoc }, capped, cappedAmount?, dailyCapRemaining: { exp, linhThach } } }` từ `RewardCapService.applyCapTx` (per-character / per-day / per-source MISSION cap). Ledger ghi số grant THỰC. |
 
 WS push: `mission:progress` (PR #63) emit sau `MissionService.track()` qua `MissionWsEmitter` throttle 500ms/user.
 

@@ -52,6 +52,8 @@ const STUB_CLAIM: DungeonClaimResult = {
   templateKey: 'son_coc',
   claimedAt: new Date('2026-05-06T00:00:00Z'),
   granted: { linhThach: 50, tienNgoc: 0, exp: 100, items: [{ itemKey: 'huyet_chi_dan', qty: 1 }] },
+  capped: false,
+  dailyCapRemaining: { exp: 2300, linhThach: 550 },
 };
 
 function makeReq(cookie: string | undefined): Request {

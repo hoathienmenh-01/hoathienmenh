@@ -15,6 +15,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { MissionService } from '../mission/mission.service';
+import { RewardCapService } from '../economy/reward-cap.service';
 import { AchievementService } from '../character/achievement.service';
 import { BuffService } from '../character/buff.service';
 import {
@@ -43,6 +44,7 @@ export class CultivationProcessor extends WorkerHost {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
     private readonly missions: MissionService,
+    private readonly rewardCap: RewardCapService,
     @Optional() private readonly achievements?: AchievementService,
     @Optional() private readonly talents?: TalentService,
     @Optional() private readonly buffs?: BuffService,
@@ -147,7 +149,7 @@ export class CultivationProcessor extends WorkerHost {
         // default 1 identity nếu không có buff). Pure debuff path (không stack
         // buff khác hiện tại — single source `breakthrough` `tam_ma_light`).
         const buffCultivationRateMul = buffMods?.cultivationRateMul ?? 1;
-        const gain = BigInt(
+        const requestedGain = BigInt(
           Math.max(
             1,
             Math.round(
@@ -160,52 +162,84 @@ export class CultivationProcessor extends WorkerHost {
             ),
           ),
         );
-        let exp = c.exp + gain;
-        let realmKey = c.realmKey;
-        let realmStage = c.realmStage;
-        let brokeThrough = false;
 
-        // Auto break-through trong cùng cảnh giới (stage < 9). Stage 9 cần thủ công.
-        let cap = expCostForStage(realmKey, realmStage);
-        while (cap !== null && exp >= cap && realmStage < 9) {
-          exp -= cap;
-          realmStage += 1;
-          brokeThrough = true;
-          cap = expCostForStage(realmKey, realmStage);
-        }
+        // Phase 16.5 — Daily Reward Cap. Wrap cap apply + CAS update vào
+        // 1 transaction để bucket accum + character.exp atomic. Nếu CAS
+        // miss (race với worker khác cùng tick), throw để Prisma rollback
+        // toàn bộ transaction (bucket update revert) — không double-count.
+        // Cap = 0 (đã hết quota) → vẫn rollback bucket (chưa add) nhưng
+        // skip side effects (mission track, realtime emit).
+        const txOutcome = await this.prisma.$transaction(async (tx) => {
+          const cap = await this.rewardCap.applyCapTx(tx, {
+            characterId: c.id,
+            source: 'CULTIVATION',
+            requestedExp: requestedGain,
+            requestedLinhThach: 0n,
+            realmKey: c.realmKey,
+            refType: 'CultivationTick',
+            meta: { jobName: job.name },
+          });
 
-        // Concurrency phase 2 hardening — multi-instance lock backstop.
-        // Trước fix: `prisma.character.update({ data: { exp, realmStage } })`
-        // ABSOLUTE write của giá trị `c.exp + gain` đọc từ findMany. Nếu 2
-        // worker (BullMQ stalled-job re-pickup, multi-node API, lock
-        // expiration race) cùng process tick → 2 read snapshot khác nhau,
-        // 2 write absolute → tuỳ timing có thể double-grant EXP (W2 đọc
-        // sau W1 commit → W2 thấy `exp+gain`, viết `exp+2*gain`). BullMQ
-        // Worker.lockDuration giảm xác suất nhưng không phải absolute
-        // guarantee.
-        // Sau fix: `updateMany` với CAS guard `where: { id, exp: c.exp,
-        // realmStage: c.realmStage, cultivating: true }` — chỉ 1 thread
-        // succeed nếu cùng race trên 1 character; thread sau count=0 →
-        // `continue` skip side effects (hp/mp regen, mission/achievement
-        // track, realtime emit). `cultivating: true` cũng guard race với
-        // user stop cultivating giữa findMany và update.
-        const updateResult = await this.prisma.character.updateMany({
-          where: {
-            id: c.id,
-            exp: c.exp,
-            realmStage: c.realmStage,
-            cultivating: true,
-          },
-          data: { exp, realmStage },
+          if (cap.grantedExp === 0n) {
+            // Hết cap ngày — skip tick này. Stamina regen ở batch
+            // ngoài transaction đã chạy, mission track / achievement /
+            // realtime emit skip.
+            return { kind: 'capped' as const, cap };
+          }
+
+          const grantedGain = cap.grantedExp;
+          let exp = c.exp + grantedGain;
+          let realmKey = c.realmKey;
+          let realmStage = c.realmStage;
+          let brokeThrough = false;
+
+          let stageCost = expCostForStage(realmKey, realmStage);
+          while (stageCost !== null && exp >= stageCost && realmStage < 9) {
+            exp -= stageCost;
+            realmStage += 1;
+            brokeThrough = true;
+            stageCost = expCostForStage(realmKey, realmStage);
+          }
+
+          const updateResult = await tx.character.updateMany({
+            where: {
+              id: c.id,
+              exp: c.exp,
+              realmStage: c.realmStage,
+              cultivating: true,
+            },
+            data: { exp, realmStage },
+          });
+          if (updateResult.count === 0) {
+            // CAS miss — throw để rollback bucket update.
+            throw new Error('CAS_MISS');
+          }
+          return {
+            kind: 'granted' as const,
+            grantedGain,
+            exp,
+            realmStage,
+            brokeThrough,
+            cap,
+          };
+        }).catch((err: unknown) => {
+          if (err instanceof Error && err.message === 'CAS_MISS') {
+            return { kind: 'cas_miss' as const };
+          }
+          throw err;
         });
-        if (updateResult.count === 0) {
-          // CAS miss — character đã được tick xử lý song song hoặc
-          // user đã stop cultivating. Skip toàn bộ side effects để
-          // không double-count mission/achievement và không emit
-          // realtime spurious. Đây là backstop chính cho multi-instance
-          // race + stop-during-tick race.
+
+        if (txOutcome.kind === 'cas_miss' || txOutcome.kind === 'capped') {
+          // CAS miss hoặc đã cap → skip side effects (mission track,
+          // hp/mp regen, realtime emit). Bucket update đã rollback (CAS)
+          // hoặc giữ nguyên 0 grant (cap).
           continue;
         }
+
+        const exp = txOutcome.exp;
+        const realmStage = txOutcome.realmStage;
+        const realmKey = c.realmKey;
+        const brokeThrough = txOutcome.brokeThrough;
 
         // Phase 11.8.E + 11.7.E — Buff `hpRegenFlat` / `mpRegenFlat` wire +
         // Talent regen wire. Catalog values là per-second (vd
@@ -245,7 +279,11 @@ export class CultivationProcessor extends WorkerHost {
             'CULTIVATE_SECONDS',
             cultivateSeconds,
           );
-          await this.missions.track(c.id, 'GAIN_EXP', Number(gain));
+          await this.missions.track(
+            c.id,
+            'GAIN_EXP',
+            Number(txOutcome.grantedGain),
+          );
           if (brokeThrough) {
             await this.missions.track(c.id, 'BREAKTHROUGH', 1);
           }
@@ -255,7 +293,11 @@ export class CultivationProcessor extends WorkerHost {
               'CULTIVATE_SECONDS',
               cultivateSeconds,
             );
-            await this.achievements.trackEvent(c.id, 'GAIN_EXP', Number(gain));
+            await this.achievements.trackEvent(
+              c.id,
+              'GAIN_EXP',
+              Number(txOutcome.grantedGain),
+            );
             if (brokeThrough) {
               await this.achievements.trackEvent(c.id, 'BREAKTHROUGH', 1);
             }
@@ -269,7 +311,7 @@ export class CultivationProcessor extends WorkerHost {
         const expNext = expCostForStage(realmKey, realmStage);
         const payload: CultivateTickPayload = {
           characterId: c.id,
-          expGained: gain.toString(),
+          expGained: txOutcome.grantedGain.toString(),
           exp: exp.toString(),
           expNext: (expNext ?? 0n).toString(),
           realmKey,

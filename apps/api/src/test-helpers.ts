@@ -10,6 +10,7 @@ import { NpcAffinityService } from './modules/npc-affinity/npc-affinity.service'
 import { NpcRelationshipChainService } from './modules/npc-affinity/npc-relationship-chain.service';
 import { QuestService } from './modules/quest/quest.service';
 import { DungeonRunService } from './modules/dungeon-run/dungeon-run.service';
+import { RewardCapService } from './modules/economy/reward-cap.service';
 import { StoryDungeonService } from './modules/story-dungeon/story-dungeon.service';
 
 /**
@@ -126,6 +127,10 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // Phase 14.0.E — Territory Owner Reward grant audit (xoá trước Mail/
   // Character — `mailId` nullable không có FK, nhưng explicit cho rõ).
   await prisma.territoryOwnerRewardGrant.deleteMany({});
+  // Phase 16.5 — Daily Reward Cap (xoá trước Character — FK cascade
+  // nhưng explicit cho rõ thứ tự reset state giữa test runs).
+  await prisma.rewardCapEvent.deleteMany({});
+  await prisma.characterDailyRewardBucket.deleteMany({});
   await prisma.itemLedger.deleteMany({});
   await prisma.currencyLedger.deleteMany({});
   // Phase 14.3.D — encounter session rows (nullable resolvedAttemptLogId
@@ -174,7 +179,8 @@ export function makeMissionService(
   const chars = new CharacterService(prisma, realtime);
   const currency = new CurrencyService(prisma);
   const inventory = new InventoryService(prisma, realtime, chars);
-  return new MissionService(prisma, currency, inventory, emitter);
+  const rewardCap = new RewardCapService(prisma);
+  return new MissionService(prisma, currency, inventory, rewardCap, emitter);
 }
 
 /**
@@ -213,7 +219,14 @@ export function makeDungeonRunService(prisma: PrismaService): {
   // Phase 12.10.B — quest claim grant `rewards.affinity` qua NpcAffinityService.
   const npcAffinity = new NpcAffinityService(prisma, inventory);
   const quests = new QuestService(prisma, currency, inventory, npcAffinity);
-  const runs = new DungeonRunService(prisma, currency, inventory, quests);
+  const rewardCap = new RewardCapService(prisma);
+  const runs = new DungeonRunService(
+    prisma,
+    currency,
+    inventory,
+    rewardCap,
+    quests,
+  );
   return { runs, quests, inventory, currency };
 }
 

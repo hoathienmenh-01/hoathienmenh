@@ -12,6 +12,7 @@ import { CharacterModule } from '../character/character.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { RealtimeService } from '../realtime/realtime.service';
+import { EconomyModule } from '../economy/economy.module';
 
 const missionWsEmitterProvider = {
   provide: MISSION_WS_EMITTER,
@@ -25,6 +26,7 @@ const missionWsEmitterProvider = {
     CharacterModule,
     InventoryModule,
     RealtimeModule,
+    EconomyModule,
     BullModule.forRootAsync({
       useFactory: () => ({
         connection: {

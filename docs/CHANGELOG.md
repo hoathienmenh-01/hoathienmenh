@@ -12,6 +12,59 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Added — Phase 16.5 Daily Reward Cap (this PR)
+
+- **`packages/shared/src/daily-reward-cap.ts`**: catalog
+  `DAILY_REWARD_CAP_BY_REALM_AND_SOURCE` (`expCap` + `linhThachCap` per realm
+  per source — `CULTIVATION` / `DUNGEON` / `MISSION`), helper
+  `dailyRewardCapFor(realmKey, source)`, type-guard `isRewardSource`, pure
+  decision math `computeCapDecision(accum, cap, requested)`. Cap scale theo
+  realm tier (phamnhan/luyenkhi/truc_co ×1, kim_dan/nguyen_anh/hoa_than ×3,
+  luyen_hu+ ×8). Invariant test cap tăng dần theo realm order.
+- **Prisma model `CharacterDailyRewardBucket`** (per-character, per-day,
+  per-source accum của EXP + linhThạch — UNIQUE
+  `(characterId, dayBucket, source)`) + **`RewardCapEvent`** (audit log chỉ
+  ghi khi `wasCapped=true` để giữ table sạch). Migration
+  `20260613000000_phase_16_5_daily_reward_cap`.
+- **`apps/api/src/modules/economy/reward-cap.service.ts`**: service
+  `RewardCapService.applyCapTx(tx, input)` — gọi INSIDE 1 `$transaction`
+  của caller, race-safe qua Postgres `INSERT ... ON CONFLICT DO UPDATE`
+  (atomic row-lock acquisition — không cần CAS retry, không livelock dưới
+  high contention). Trả `{ grantedExp, grantedLinhThach, cappedExp,
+  cappedLinhThach, wasCapped, remainingExp, remainingLinhThach, dayBucket }`.
+  Audit log auto-insert nếu `wasCapped=true`. Day bucket reset Asia/Ho_Chi_Minh
+  (override env `DAILY_REWARD_CAP_TZ`).
+- **Wire vào 3 nguồn reward chính**:
+  - `MissionService.claim` — gọi `applyCapTx` trước currency grant + ledger
+    ghi `delta = cap.grantedLinhThach` (KHÔNG ghi requested). Trả
+    `MissionClaimResult` với `{ capped, cappedAmount?, dailyCapRemaining }`.
+  - `DungeonRunService.claimRun` — tương tự; `DungeonClaimResult` thêm
+    `{ capped, cappedAmount?, dailyCapRemaining }`.
+  - `CultivationProcessor.process` (tick) — wrap cap apply + character CAS
+    update trong 1 `$transaction`. Tick KHÔNG grant linhThach (chỉ EXP) →
+    `requestedLinhThach=0n`; outcome 'capped'/'cas_miss' → skip side effects
+    (mission track, realtime emit) để không double-count.
+- **API tests** (`reward-cap.service.test.ts`, 17 tests): under-cap, over-cap,
+  exhausted, multiple grants accumulate, per-source isolation, day bucket
+  reset, higher realm cap, audit log granted/capped đúng (KHÔNG ghi
+  requested), 5 concurrent grants không vượt cap, negative coerce → 0n,
+  zero request không tạo bucket dư, `getDailyRewardCapTz` env override,
+  `dayBucketFor` Asia/Ho_Chi_Minh boundary 17:00 UTC.
+- **FE graceful toast** (`MissionView.vue`, `DungeonRunView.vue`): khi
+  `claim.capped=true` push toast `info` "Hôm nay bạn đã đạt giới hạn nhận
+  thưởng nguồn này." — optional chaining bảo đảm pre-16.5 server (server
+  chưa update) KHÔNG crash FE. Cấu trúc `claimMission` API contract đổi
+  từ `Promise<MissionProgressView[]>` → `Promise<{ missions, claim? }>`.
+- **Env `apps/api/.env.example`**: thêm `DAILY_REWARD_CAP_TZ=Asia/Ho_Chi_Minh`
+  (override timezone cho dev/test reproducible).
+- **Anti-abuse**: vì cap PER SOURCE, người chơi farm 1 nguồn không ăn vào
+  nguồn khác (vd hết DUNGEON cap thì MISSION vẫn full). Cap exp tier-1
+  (CULTIVATION 6000, DUNGEON 2400, MISSION 1500) đủ cho ~4–6 hour casual
+  play / day, không gây retention loss.
+- **KHÔNG cap admin grant** (admin path không gọi `applyCapTx`). Audit
+  trong `docs/ECONOMY_MODEL.md`. KHÔNG làm anomaly scanner / market price
+  band / admin alert (out of scope, follow-up Phase 16.6+).
+
 ### Added — Phase 17.4 Backup/Restore Automation + RUNBOOK (this PR)
 
 - **`scripts/backup-db.sh` Phase 17.4 update**: filename

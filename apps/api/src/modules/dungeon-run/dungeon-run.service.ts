@@ -23,6 +23,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { RewardCapService } from '../economy/reward-cap.service';
 import { QuestService } from '../quest/quest.service';
 import { startOfLocalDay } from '../combat/combat.service';
 import { SectWarService } from '../sect-war/sect-war.service';
@@ -157,6 +158,14 @@ export interface DungeonClaimResult {
       exp: number;
     };
   };
+  /**
+   * Phase 16.5 — Daily reward cap result. `capped=true` khi total
+   * EXP/linhThach grant từ DUNGEON đã chạm ngưỡng ngày. `granted` ở
+   * trên đã là số THỰC SAU CAP (không lừa player).
+   */
+  capped: boolean;
+  cappedAmount?: { exp: number; linhThach: number };
+  dailyCapRemaining: { exp: number; linhThach: number };
 }
 
 function readRolledLoot(raw: unknown): RolledLoot[] | undefined {
@@ -219,6 +228,7 @@ export class DungeonRunService {
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
     private readonly inventory: InventoryService,
+    private readonly rewardCap: RewardCapService,
     @Optional() private readonly quests?: QuestService,
     @Optional() private readonly sectWar?: SectWarService,
     @Optional() private readonly territory?: TerritoryService,
@@ -508,7 +518,7 @@ export class DungeonRunService {
   async claimRun(userId: string, runId: string): Promise<DungeonClaimResult> {
     const char = await this.prisma.character.findUnique({
       where: { userId },
-      select: { id: true },
+      select: { id: true, realmKey: true },
     });
     if (!char) throw new DungeonRunError('NO_CHARACTER');
 
@@ -561,8 +571,33 @@ export class DungeonRunService {
       const linhThachBonus = buffApplied
         ? Math.floor(linhThachBase * buffApplied.linhThachMul) - linhThachBase
         : 0;
-      const linhThach = linhThachBase + linhThachBonus;
-      const exp = expBase + expBonus;
+      const linhThachRequested = linhThachBase + linhThachBonus;
+      const expRequested = expBase + expBonus;
+
+      // Phase 16.5 — Daily Reward Cap. Cap apply trên total = base +
+      // territory bonus (bonus là legitimate game-state buff, vẫn tính
+      // vào ngân sách ngày). tienNgoc + items KHÔNG cap ở phase này
+      // (phase 16.5 scope chỉ EXP + linhThach — premium currency tienNgoc
+      // và items đi qua audit khác).
+      const cap = await this.rewardCap.applyCapTx(tx, {
+        characterId,
+        source: 'DUNGEON',
+        requestedExp: BigInt(expRequested),
+        requestedLinhThach: BigInt(linhThachRequested),
+        realmKey: char.realmKey,
+        refType: 'DungeonRun',
+        refId: run.id,
+        meta: {
+          templateKey: run.templateKey,
+          baseExp: expBase,
+          baseLinhThach: linhThachBase,
+          territoryBonusExp: expBonus,
+          territoryBonusLinhThach: linhThachBonus,
+        },
+      });
+
+      const linhThach = Number(cap.grantedLinhThach);
+      const exp = Number(cap.grantedExp);
 
       if (linhThach > 0) {
         await this.currency.applyTx(tx, {
@@ -668,6 +703,17 @@ export class DungeonRunService {
           items: grantedItems,
         },
         territoryBuff,
+        capped: cap.wasCapped,
+        cappedAmount: cap.wasCapped
+          ? {
+              exp: Number(cap.cappedExp),
+              linhThach: Number(cap.cappedLinhThach),
+            }
+          : undefined,
+        dailyCapRemaining: {
+          exp: Number(cap.remainingExp),
+          linhThach: Number(cap.remainingLinhThach),
+        },
       };
     });
   }

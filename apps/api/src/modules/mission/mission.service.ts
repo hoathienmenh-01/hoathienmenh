@@ -11,6 +11,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { RewardCapService } from '../economy/reward-cap.service';
 import { MissionWsEmitter } from './mission-ws.emitter';
 
 export const MISSION_WS_EMITTER = 'MISSION_WS_EMITTER';
@@ -25,6 +26,19 @@ export class MissionError extends Error {
   ) {
     super(code);
   }
+}
+
+/**
+ * Phase 16.5 — Result trả về từ `MissionService.claim()` sau khi áp daily
+ * reward cap. FE render toast nhẹ khi `capped=true`. `granted` luôn là số
+ * THỰC ĐÃ vào kho (sau cap), `cappedAmount` chỉ có khi bị cắt.
+ */
+export interface MissionClaimResult {
+  missionKey: string;
+  granted: { exp: number; linhThach: number; tienNgoc: number };
+  capped: boolean;
+  cappedAmount?: { exp: number; linhThach: number };
+  dailyCapRemaining: { exp: number; linhThach: number };
 }
 
 export interface MissionProgressView {
@@ -136,6 +150,7 @@ export class MissionService {
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
     private readonly inventory: InventoryService,
+    private readonly rewardCap: RewardCapService,
     @Optional()
     @Inject(MISSION_WS_EMITTER)
     private readonly wsEmitter: MissionWsEmitter | null = null,
@@ -261,16 +276,19 @@ export class MissionService {
     }
   }
 
-  async claim(userId: string, missionKey: string): Promise<void> {
+  async claim(
+    userId: string,
+    missionKey: string,
+  ): Promise<MissionClaimResult> {
     const def = missionByKey(missionKey);
     if (!def) throw new MissionError('MISSION_UNKNOWN');
     const char = await this.prisma.character.findUnique({
       where: { userId },
-      select: { id: true },
+      select: { id: true, realmKey: true },
     });
     if (!char) throw new MissionError('NO_CHARACTER');
 
-    await this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx) => {
       const row = await tx.missionProgress.findUnique({
         where: {
           characterId_missionKey: {
@@ -297,11 +315,30 @@ export class MissionService {
       if (upd.count !== 1) throw new MissionError('ALREADY_CLAIMED');
 
       const r = def.rewards;
-      if (r.linhThach && r.linhThach > 0) {
+
+      // Phase 16.5 — Daily Reward Cap. Apply BEFORE granting để cap
+      // tổng EXP/linhThach/ngày/source. tienNgoc + congHien + items
+      // KHÔNG cap ở phase này (scope giới hạn EXP + linhThach — premium
+      // currency tienNgoc và sect-influence congHien đi qua audit khác).
+      const reqExp = r.exp && r.exp > 0 ? BigInt(r.exp) : 0n;
+      const reqLinh =
+        r.linhThach && r.linhThach > 0 ? BigInt(r.linhThach) : 0n;
+      const cap = await this.rewardCap.applyCapTx(tx, {
+        characterId: char.id,
+        source: 'MISSION',
+        requestedExp: reqExp,
+        requestedLinhThach: reqLinh,
+        realmKey: char.realmKey,
+        refType: 'MissionProgress',
+        refId: row.id,
+        meta: { missionKey },
+      });
+
+      if (cap.grantedLinhThach > 0n) {
         await this.currency.applyTx(tx, {
           characterId: char.id,
           currency: CurrencyKind.LINH_THACH,
-          delta: BigInt(r.linhThach),
+          delta: cap.grantedLinhThach,
           reason: 'MISSION_CLAIM',
           refType: 'MISSION',
           refId: missionKey,
@@ -317,10 +354,10 @@ export class MissionService {
           refId: missionKey,
         });
       }
-      if (r.exp && r.exp > 0) {
+      if (cap.grantedExp > 0n) {
         await tx.character.update({
           where: { id: char.id },
-          data: { exp: { increment: BigInt(r.exp) } },
+          data: { exp: { increment: cap.grantedExp } },
         });
       }
       if (r.congHien && r.congHien > 0) {
@@ -342,6 +379,26 @@ export class MissionService {
           },
         );
       }
+
+      return {
+        missionKey,
+        granted: {
+          exp: Number(cap.grantedExp),
+          linhThach: Number(cap.grantedLinhThach),
+          tienNgoc: r.tienNgoc ?? 0,
+        },
+        capped: cap.wasCapped,
+        cappedAmount: cap.wasCapped
+          ? {
+              exp: Number(cap.cappedExp),
+              linhThach: Number(cap.cappedLinhThach),
+            }
+          : undefined,
+        dailyCapRemaining: {
+          exp: Number(cap.remainingExp),
+          linhThach: Number(cap.remainingLinhThach),
+        },
+      };
     });
   }
 

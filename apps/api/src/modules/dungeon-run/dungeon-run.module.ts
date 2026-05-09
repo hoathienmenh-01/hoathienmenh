@@ -8,6 +8,7 @@ import { InventoryModule } from '../inventory/inventory.module';
 import { QuestModule } from '../quest/quest.module';
 import { SectWarModule } from '../sect-war/sect-war.module';
 import { TerritoryModule } from '../territory/territory.module';
+import { EconomyModule } from '../economy/economy.module';
 
 /**
  * Phase 12.2.B — DungeonRun runtime module.
@@ -29,6 +30,7 @@ import { TerritoryModule } from '../territory/territory.module';
     QuestModule,
     SectWarModule,
     TerritoryModule,
+    EconomyModule,
   ],
   controllers: [DungeonRunController],
   providers: [DungeonRunService, PrismaService],

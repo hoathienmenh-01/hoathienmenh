@@ -10,6 +10,7 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { BuffService } from '../character/buff.service';
 import { TalentService } from '../character/talent.service';
 import { CultivationProcessor } from './cultivation.processor';
+import { RewardCapService } from '../economy/reward-cap.service';
 import {
   TEST_DATABASE_URL,
   makeMissionService,
@@ -25,7 +26,8 @@ beforeAll(() => {
   prisma = new PrismaService();
   const realtime = new RealtimeService(); // unbound — emitToUser sẽ no-op.
   const missions = makeMissionService(prisma);
-  processor = new CultivationProcessor(prisma, realtime, missions);
+  const rewardCap = new RewardCapService(prisma);
+  processor = new CultivationProcessor(prisma, realtime, missions, rewardCap);
 });
 
 beforeEach(async () => {
@@ -366,10 +368,12 @@ describe('CultivationProcessor.process (tick)', () => {
       const realtime = new RealtimeService();
       const missions = makeMissionService(prisma);
       talentSvc = new TalentService(prisma);
+      const rewardCap = new RewardCapService(prisma);
       processorWithTalents = new CultivationProcessor(
         prisma,
         realtime,
         missions,
+        rewardCap,
         undefined, // achievements
         talentSvc,
       );
@@ -460,10 +464,12 @@ describe('CultivationProcessor.process (tick)', () => {
       const realtime = new RealtimeService();
       const missions = makeMissionService(prisma);
       buffSvc = new BuffService(prisma);
+      const rewardCap = new RewardCapService(prisma);
       processorWithBuffs = new CultivationProcessor(
         prisma,
         realtime,
         missions,
+        rewardCap,
         undefined, // achievements
         undefined, // talents
         buffSvc,
@@ -554,10 +560,12 @@ describe('CultivationProcessor.process (tick)', () => {
       const realtime = new RealtimeService();
       const missions = makeMissionService(prisma);
       buffSvc = new BuffService(prisma);
+      const rewardCap = new RewardCapService(prisma);
       processorWithBuffs = new CultivationProcessor(
         prisma,
         realtime,
         missions,
+        rewardCap,
         undefined, // achievements
         undefined, // talents
         buffSvc,
@@ -625,10 +633,12 @@ describe('CultivationProcessor.process (tick)', () => {
       const realtime = new RealtimeService();
       const missions = makeMissionService(prisma);
       buffSvc = new BuffService(prisma);
+      const rewardCap = new RewardCapService(prisma);
       processorWithBuffs = new CultivationProcessor(
         prisma,
         realtime,
         missions,
+        rewardCap,
         undefined, // achievements
         undefined, // talents
         buffSvc,
@@ -766,10 +776,12 @@ describe('CultivationProcessor.process (tick)', () => {
       const missions = makeMissionService(prisma);
       talentSvc = new TalentService(prisma);
       buffSvc = new BuffService(prisma);
+      const rewardCap = new RewardCapService(prisma);
       processorWithTalentRegen = new CultivationProcessor(
         prisma,
         realtime,
         missions,
+        rewardCap,
         undefined, // achievements
         talentSvc,
         buffSvc,
