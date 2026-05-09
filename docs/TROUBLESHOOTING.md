@@ -238,9 +238,51 @@ Nếu root cause là (3) bug service — mở issue ngay, PR fix service + viế
 
 Không nên **tắt alerts** — thresholds là guard rail phát hiện deadlock payment.
 
-## 17. Liên kết khác
+## 17. Sentry không gửi event / log thiếu requestId (Phase 17.3)
+
+**Triệu chứng A**: Production lỗi 5xx, nhưng Sentry dashboard trống.
+
+**Nguyên nhân**: Sentry mặc định **disabled**. Cần explicit env.
+
+**Xử lý**:
+```bash
+# Backend
+SENTRY_ENABLED=true
+SENTRY_DSN_API=https://<key>@<host>/<project>
+SENTRY_ENVIRONMENT=production
+
+# Frontend (build-time)
+VITE_SENTRY_ENABLED=true
+VITE_SENTRY_DSN_WEB=https://<key>@<host>/<project>
+```
+
+Sau khi set, restart API + rebuild FE. Xem `docs/DEPLOY.md §12.2`.
+
+**Triệu chứng B**: Log line không có `requestId`.
+
+**Nguyên nhân**: Endpoint nằm trong skip list (`/api/healthz`, `/api/readyz`)
+hoặc middleware chưa register (custom Express `app.use()` trước
+`createRequestLoggerMiddleware`).
+
+**Xử lý**: kiểm tra `apps/api/src/main.ts` có gọi
+`app.use(createRequestLoggerMiddleware())` ngay sau `cookieParser`.
+
+**Triệu chứng C**: Log line chứa raw `authorization: Bearer xxx` (KHÔNG redact).
+
+**Nguyên nhân nghiêm trọng** — secret leak. Pino redact paths phải
+exact-match. Nếu có nested 2-level (vd `req.user.headers.authorization`),
+1-level wildcard `*.authorization` KHÔNG cover.
+
+**Xử lý**:
+1. **Khẩn**: rotate token bị leak ngay.
+2. Mở `apps/api/src/observability/logger.ts`, thêm path tường minh
+   vào `REDACT_PATHS`.
+3. Add test reproduce → assertions `expect(output).not.toContain('<token>')`.
+
+## 18. Liên kết khác
 
 - Setup local: `docs/RUN_LOCAL.md`.
 - Deploy: `docs/DEPLOY.md`.
 - Admin ops: `docs/ADMIN_GUIDE.md`.
 - Bảo mật: `docs/SECURITY.md`.
+- Observability: `docs/DEPLOY.md §12` (Pino + Sentry).

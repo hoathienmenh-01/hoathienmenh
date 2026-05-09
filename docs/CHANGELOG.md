@@ -12,7 +12,43 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Added — Phase 13.2.D + 14.0.F Season/Territory Automation Cron (this PR)
+### Added — Phase 17.3 Sentry + Pino Structured Logs (this PR)
+
+- **Backend Sentry error tracking** (`@sentry/node`). Disabled mặc định;
+  bật qua `SENTRY_ENABLED=true` + `SENTRY_DSN_API`. Capture unhandled
+  exceptions trong `AllExceptionsFilter` (chỉ 5xx + non-Http error).
+  Tag `requestId` + user context. `sendDefaultPii: false` —
+  KHÔNG gửi IP/cookie/header.
+- **Frontend Sentry Vue** (`@sentry/vue`). Disabled mặc định; bật qua
+  `VITE_SENTRY_ENABLED=true` + `VITE_SENTRY_DSN_WEB`. Init sau
+  `createApp` + trước `mount`. Router integration optional cho
+  performance traces.
+- **Pino structured logs** + adapter `PinoNestLogger` route mọi
+  `Logger` call của NestJS xuống Pino. JSON 1-line/event ra stdout.
+  Schema có `service`, `env`, `requestId`, `method`, `path`,
+  `statusCode`, `durationMs`, `userId`, `characterId`, `msg`.
+- **Request middleware** `createRequestLoggerMiddleware()` — gán
+  UUID `requestId` mỗi request (hoặc tôn trọng upstream
+  `x-request-id` shape an toàn `[A-Za-z0-9._-]{1..64}`), set response
+  header để FE Sentry attach. Skip log path `/api/healthz`,
+  `/api/readyz`. Strip query string khỏi log (tránh leak query token).
+- **Redact policy** — Pino tự `[REDACTED]` mọi field/path:
+  `req.headers.authorization|cookie|x-api-key`,
+  `res.headers["set-cookie"]`, top-level + `*.<field>` (1-level)
+  `password`, `passwordHash`, `token`, `accessToken`, `refreshToken`,
+  `apiKey`, `secret`, `authorization`, `cookie`, `session`,
+  `creditCard`, `cardNumber`, `cvv`.
+- **LOG_LEVEL** env (`trace|debug|info|warn|error|fatal`). Default
+  `info` (production), `debug` (dev), `warn` (test).
+- **Tests**: +71 (43 obs API: logger redact 16 + sentry 16 + request
+  middleware 11; +12 web sentry; +16 web full suite passing).
+- **Docs**: `apps/api/.env.example`, `apps/web/.env.example`,
+  `docs/DEPLOY.md §12` (3 sub-sections: Pino logs, Sentry, audit),
+  `docs/TROUBLESHOOTING.md §17` (3 triệu chứng: Sentry trống,
+  thiếu requestId, raw token leak), `docs/AI_HANDOFF_REPORT.md`,
+  `docs/CHANGELOG.md`.
+
+### Added — Phase 13.2.D + 14.0.F Season/Territory Automation Cron
 
 - **Cron tuần tự động hóa weekly cycle** — territory tự settle tuần
   trước, tự decay influence sau settle, tự gọi reward mail service

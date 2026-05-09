@@ -189,6 +189,80 @@ API trả CSP nghiêm ngặt khi `NODE_ENV=production` (xem `apps/api/src/main.t
 
 ## 12. Quan sát / log
 
-- API log JSON qua `pino` ra stdout. Pipe vào CloudWatch / Loki / Datadog.
-- Metric: hiện chưa có `/metrics` endpoint. Khuyến nghị bổ sung Prometheus exporter post-beta.
-- Audit nhỏ: `AdminAuditLog` table + `CurrencyLedger`.
+### 12.1. Pino structured logs (Phase 17.3)
+
+Backend log JSON 1-line-per-event qua `pino`. Adapter `PinoNestLogger`
+route mọi `Logger` call của NestJS xuống Pino → toàn bộ log app đều
+structured + auto-redact secret.
+
+**Env vars**:
+
+| Env | Default | Mô tả |
+|---|---|---|
+| `LOG_LEVEL` | `info` (production), `debug` (dev), `warn` (test) | `trace\|debug\|info\|warn\|error\|fatal`. |
+
+**Schema log line** (request-done):
+```json
+{"level":"info","time":"2026-05-09T12:34:56.789Z","service":"xuantoi-api","env":"production","requestId":"6f8c…","method":"POST","path":"/api/auth/login","statusCode":200,"durationMs":42,"userId":"…","msg":"request done"}
+```
+
+**Redact policy** (case-sensitive paths, censored `[REDACTED]`):
+- `req.headers.authorization`, `req.headers.cookie`, `req.headers["x-api-key"]`, `res.headers["set-cookie"]`.
+- Bất cứ field nào (1-level wildcard `*.<field>` + top-level): `password`, `passwordHash`, `token`, `accessToken`, `refreshToken`, `apiKey`, `secret`, `authorization`, `cookie`, `session`, `creditCard`, `cardNumber`, `cvv`.
+
+Pipe stdout/stderr container → log aggregator (Loki, Datadog, CloudWatch).
+Filter qua `service: "xuantoi-api"` + `env`. Search `requestId` để
+trace 1 request từ FE → BE.
+
+### 12.2. Sentry error tracking (Phase 17.3)
+
+Sentry **disabled mặc định** (dev/test/CI không cần DSN). Production
+opt-in qua env.
+
+**Env vars BE** (`apps/api/.env`):
+
+| Env | Default | Mô tả |
+|---|---|---|
+| `SENTRY_ENABLED` | `false` | Master switch. `true\|1\|yes\|on` → bật. |
+| `SENTRY_DSN_API` | (empty) | DSN từ Sentry project. **KHÔNG commit DSN thật vào git.** |
+| `SENTRY_ENVIRONMENT` | `NODE_ENV` | Vd `staging`/`production`. |
+| `SENTRY_TRACES_SAMPLE_RATE` | `0` | `0..1`. Khuyến nghị `0.05`–`0.1` ở production để giảm cost. |
+| `SENTRY_RELEASE` | (empty) | Tag release (vd git SHA). |
+
+**Env vars FE** (`apps/web/.env.production`):
+
+| Env | Default | Mô tả |
+|---|---|---|
+| `VITE_SENTRY_ENABLED` | `false` | Master switch. |
+| `VITE_SENTRY_DSN_WEB` | (empty) | DSN frontend project (KHÁC backend DSN). **KHÔNG commit thật.** |
+| `VITE_SENTRY_ENVIRONMENT` | `MODE` | Build-time. |
+| `VITE_SENTRY_TRACES_SAMPLE_RATE` | `0` | Khuyến nghị `0.05` production. |
+| `VITE_SENTRY_RELEASE` | (empty) | Tag release. |
+
+**Sample rate khuyến nghị**:
+- Closed beta nhỏ (< 100 user): `1.0` (capture all) để debug nhanh.
+- Soft launch (< 10k user): `0.1` (10%).
+- Production scale: `0.01`–`0.05`.
+
+**Disable nhanh** (nếu Sentry quota cạn / SDK gây sự cố): set
+`SENTRY_ENABLED=false` (BE) hoặc `VITE_SENTRY_ENABLED=false` (FE) +
+restart. Không cần code change.
+
+**Tra requestId khi user báo lỗi**:
+1. User báo lỗi (vd "submit form 500"). Thu thập `x-request-id` header
+   từ DevTools → Network → response headers (FE auto-attach từ BE).
+2. Tìm log line trong aggregator: `requestId: "6f8c…"` → thấy stack
+   trace + path + userId.
+3. Mở Sentry → search tag `requestId:6f8c…` → thấy event tương ứng.
+
+### 12.3. Audit / business log
+
+- `AdminAuditLog` table — admin action audit (immutable).
+- `CurrencyLedger` — economy audit (mọi grant/spend).
+
+Không thay thế Sentry — đây là **business audit**, không phải error tracking.
+
+### 12.4. Metrics
+
+Hiện chưa có `/metrics` endpoint. Khuyến nghị bổ sung Prometheus
+exporter post-beta (Phase 17.4+).
