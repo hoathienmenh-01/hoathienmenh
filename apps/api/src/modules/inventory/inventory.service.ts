@@ -108,7 +108,21 @@ export type ItemLedgerReason =
   // dayBucket, sequence)` đảm bảo daily limit + atomic decrement + grant
   // affinity all-or-nothing. KHÔNG mirror `CurrencyLedger` (gift không tiêu
   // currency).
-  | 'NPC_GIFT';
+  | 'NPC_GIFT'
+  // Phase 14.3.C — Tribulation support item consume khi player attempt thiên
+  // kiếp với selectedSupportItemKeys non-empty. Wire qua
+  // `TribulationService.attemptTribulation → consumeOneByItemKeyTx(negative
+  // qtyDelta=-1)` per selected key, **trong cùng transaction** với
+  // `TribulationAttemptLog.create` + `Character.update` (success path)
+  // hoặc penalty apply (fail path). `refType='TribulationAttemptLog'` +
+  // `refId={logId}` để link audit consume → attempt outcome.
+  //
+  // Failed attempt vẫn consume item — design choice để player phải tính toán
+  // build trước khi attempt, không thể "lãng phí" thử rồi refund.
+  // Atomic guarantee: nếu consume fail (qty đã=0 do race) → throw
+  // SUPPORT_ITEM_MISSING → rollback toàn bộ tx (KHÔNG ghi log, KHÔNG mất exp,
+  // KHÔNG cooldown). Player retry an toàn.
+  | 'TRIBULATION_SUPPORT_CONSUME';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;
@@ -118,7 +132,7 @@ export interface ItemLedgerMeta {
   extra?: Prisma.InputJsonValue;
 }
 
-class InventoryError extends Error {
+export class InventoryError extends Error {
   constructor(
     public code:
       | 'NO_CHARACTER'
@@ -677,5 +691,3 @@ export class InventoryService {
     if (state) this.realtime.emitToUser(userId, 'state:update', state);
   }
 }
-
-export { InventoryError };

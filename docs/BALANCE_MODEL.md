@@ -862,7 +862,42 @@ final = clamp(base + affinity + supports, FLOOR, CEIL)
 
 **Catalog seed Phase 14.3.B**: 1 item (`lei_kiep_phu` Lôi Kiếp Phù `+0.05` element `kim`) + 1 buff (`thien_lei_phu` Thiên Lôi Phù `+0.05`) để gameplay path không trống. Designer có thể thêm catalog entry mới mà KHÔNG đụng provider runtime — provider tự pick up `tribulationSupport` field nếu có.
 
-**No-mutation guarantee**: API test verify `inventory.qty` + `buff.stacks` snapshot trước/sau preview match exact. Item bonus áp dụng raw (KHÔNG consume preview); attempt thật (Phase 14.3.C tương lai) sẽ consume một số item khi roll RNG.
+**No-mutation guarantee**: API test verify `inventory.qty` + `buff.stacks` snapshot trước/sau preview match exact. Item bonus áp dụng raw (KHÔNG consume preview); attempt thật (Phase 14.3.C) consume item khi player chủ động chọn — xem §5.6.3.
+
+### 5.6.3 Tribulation support item consumption (phase 14.3.C)
+
+**Phase 14.3.C** đóng vòng chơi Thiên Kiếp: player **chủ động chọn** item hỗ trợ trước khi attempt → server consume in tx → server-side recalc bonus từ 4 nguồn → KHÔNG tin FE bonus value.
+
+**Selection cap (shared `packages/shared/src/tribulation-support-validate.ts`)**:
+
+| Constant | Value | Purpose |
+|---|---|---|
+| `TRIBULATION_MAX_SELECTED_SUPPORT_ITEMS` | `3` | Player chọn tối đa 3 item per attempt — chống farm UI spam + cap bonus envelope. |
+| `TRIBULATION_SUPPORT_PER_ENTRY_CEIL` | `+0.10` | Per-entry cap (Phase 14.3.A giữ nguyên). |
+| `TRIBULATION_SUPPORT_TOTAL_CEIL` | `+0.30` | Total cap (Phase 14.3.A giữ nguyên). |
+
+**Catalog rule**: chỉ item có `ItemDef.tribulationSupport` + `kind ∈ {PILL_HP, PILL_MP, PILL_EXP, MISC}` mới consume được. **Equipment KHÔNG consume** — equipment vẫn cộng bonus qua `collectEquipmentTribulationSupports` provider Phase 14.3.B (read-only, không consume).
+
+**Server-side recalc (anti-cheat)**: Phase 14.3.C attempt KHÔNG dùng `previewTribulation()` snapshot bonus. Service tự re-resolve `composedSupports` từ 4 nguồn (selectedItems + equipment + buffs + talents) → cap envelope per-entry/total → tách thành `damageSupports` (exclude talents — talent đã apply qua `elementResistFn`) cho damage multiplier. **Hash composition**: identical với preview math nhưng ràng buộc thêm `selectedItems ∈ inventory(player) ∩ catalog(consumable)`. Item nào không thuộc selection sẽ KHÔNG cộng bonus (item bonus đến từ provider Phase 14.3.B vẫn áp cho item player đang giữ — KHÔNG consume; selectedItems là tập con để consume + bonus).
+
+**Atomicity**: tx flow:
+
+```
+BEGIN
+  SELECT FOR UPDATE inventory(character, itemKey) WHERE qty>0  -- pre-check ownership
+  INSERT TribulationAttemptLog (placeholder)
+  FOR EACH selectedKey:
+    consumeOneByItemKeyTx(tx, characterId, key, { reason: 'TRIBULATION_SUPPORT_CONSUME', refType: 'TribulationAttemptLog', refId: logId })
+  recalc supports → simulate kiếp deterministic
+  UPDATE TribulationAttemptLog với outcome + consumedSupportItems[]
+COMMIT
+```
+
+Pre-check ownership trước khi consume — fail (qty=0 hoặc race với `consumeItem` khác) → throw `SUPPORT_ITEM_MISSING` → tx rollback → KHÔNG mất EXP.
+
+**Dual consumption (success + fail path)**: cả 2 path đều consume item — design choice "no free retry with refund". Nếu fail kiếp + mất EXP, item KHÔNG hoàn về (xem `docs/ECONOMY_MODEL.md` §5.6.3).
+
+**Cap envelope (Phase 14.3.C giữ nguyên Phase 14.3.A/B)**: player chọn 3 item × `+0.10` ceil per-entry = `+0.30` raw → cap total `+0.30` → áp `0.95` final ceil. Stack với equipment (4-5 slot × `+0.10` cap đến tổng `+0.30`) + buff (`+0.05` typical) + talent (varies) → cap total `+0.30` toàn bộ → KHÔNG bypass `0.95`. Selection KHÔNG raise total ceil — chỉ là 1 trong 4 nguồn input.
 
 ### 5.7 Alchemy curve (phase 11.X.A)
 

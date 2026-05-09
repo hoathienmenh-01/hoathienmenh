@@ -188,13 +188,19 @@ export const useTribulationStore = defineStore('tribulation', () => {
    * Server-authoritative attempt. Returns error code (string) on failure,
    * `null` on success (caller phải xem `lastOutcome.success` để biết kiếp
    * thành công hay thất bại).
+   *
+   * Phase 14.3.C — `selectedSupportItemKeys?` (≤ 3 keys, thuộc shared
+   * `listTribulationSupportConsumables()`). Server verify ownership in tx +
+   * consume in tx. FE chỉ gửi keys; server resolve label + recalc bonus.
    */
-  async function attempt(): Promise<string | null> {
+  async function attempt(
+    selectedSupportItemKeys?: readonly string[],
+  ): Promise<string | null> {
     if (inFlight.value) return 'IN_FLIGHT';
     inFlight.value = true;
     lastError.value = null;
     try {
-      const outcome = await api.attemptTribulation();
+      const outcome = await api.attemptTribulation(selectedSupportItemKeys);
       lastOutcome.value = outcome;
       return null;
     } catch (e) {

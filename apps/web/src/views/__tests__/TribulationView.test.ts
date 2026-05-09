@@ -69,6 +69,14 @@ interface PreviewStub {
   };
   cooldownAt: string | null;
   taoMaUntil: string | null;
+  // Phase 14.3.C — selection-related fields trong preview shape
+  availableSupportItems: {
+    itemKey: string;
+    label: string;
+    bonus: number;
+    qty: number;
+  }[];
+  maxSelectedSupportItems: number;
 }
 
 interface TribulationStateStub {
@@ -243,6 +251,17 @@ const i18n = createI18n({
           capWarningCeil: 'Đã chạm trần',
           capWarningFloor: 'Đã chạm sàn',
           supportsEmpty: 'Không có hỗ trợ',
+          previewTitle: 'Dự đoán',
+          selectionTitle: 'Chọn vật phẩm hỗ trợ',
+          selectionHint: 'Tối đa {max}',
+          selectionEmpty: 'Chưa có vật phẩm hỗ trợ',
+          selectionLimitReached: 'Đã đạt giới hạn {max}',
+          selectionPredictedTotal: 'Tổng bonus dự kiến',
+          selectionItemQty: 'Còn {qty}',
+          selectionItemBonus: '+{bonus}%',
+          consumedTitle: 'Vật phẩm đã tiêu hao',
+          consumedItem: '{label} (−1)',
+          consumedNone: 'Không dùng vật phẩm',
         },
         supportSource: {
           item: 'Vật phẩm',
@@ -402,6 +421,17 @@ const STUB_SUCCESS_OUTCOME = {
   },
   penalty: null,
   logId: 'log-1',
+  consumedSupportItems: [],
+  supportTotalBonus: 0,
+  successChance: {
+    base: 0.7,
+    supportBonus: 0,
+    elementAdjustment: 0,
+    raw: 0.7,
+    final: 0.7,
+    floorHit: false,
+    ceilHit: false,
+  },
 };
 
 const STUB_FAIL_OUTCOME = {
@@ -425,6 +455,17 @@ const STUB_FAIL_OUTCOME = {
     taoMaExpiresAt: '2026-05-02T08:00:00.000Z',
   },
   logId: 'log-2',
+  consumedSupportItems: [],
+  supportTotalBonus: 0,
+  successChance: {
+    base: 0.7,
+    supportBonus: 0,
+    elementAdjustment: 0,
+    raw: 0.7,
+    final: 0.7,
+    floorHit: false,
+    ceilHit: false,
+  },
 };
 
 describe('TribulationView — empty state', () => {
@@ -583,6 +624,8 @@ describe('TribulationView — Phase 14.3.A preview panel', () => {
       },
       cooldownAt: null,
       taoMaUntil: null,
+      availableSupportItems: [],
+      maxSelectedSupportItems: 3,
     };
     const w = mountView();
     await flushPromises();
@@ -626,6 +669,8 @@ describe('TribulationView — Phase 14.3.A preview panel', () => {
       },
       cooldownAt: null,
       taoMaUntil: null,
+      availableSupportItems: [],
+      maxSelectedSupportItems: 3,
     };
     const w = mountView();
     await flushPromises();
@@ -668,6 +713,8 @@ describe('TribulationView — Phase 14.3.A preview panel', () => {
       },
       cooldownAt: null,
       taoMaUntil: null,
+      availableSupportItems: [],
+      maxSelectedSupportItems: 3,
     };
     const w = mountView();
     await flushPromises();
@@ -723,6 +770,8 @@ describe('TribulationView — Phase 14.3.A preview panel', () => {
       },
       cooldownAt: null,
       taoMaUntil: null,
+      availableSupportItems: [],
+      maxSelectedSupportItems: 3,
     };
     const w = mountView();
     await flushPromises();
@@ -766,6 +815,8 @@ describe('TribulationView — Phase 14.3.A preview panel', () => {
       },
       cooldownAt: null,
       taoMaUntil: null,
+      availableSupportItems: [],
+      maxSelectedSupportItems: 3,
     };
     const w = mountView();
     await flushPromises();
@@ -823,6 +874,8 @@ describe('TribulationView — Phase 14.3.A preview panel', () => {
       },
       cooldownAt: null,
       taoMaUntil: null,
+      availableSupportItems: [],
+      maxSelectedSupportItems: 3,
     };
     const w = mountView();
     await flushPromises();
@@ -878,6 +931,8 @@ describe('TribulationView — Phase 14.3.A preview panel', () => {
       },
       cooldownAt: null,
       taoMaUntil: null,
+      availableSupportItems: [],
+      maxSelectedSupportItems: 3,
     };
     const w = mountView();
     await flushPromises();
@@ -922,6 +977,8 @@ describe('TribulationView — Phase 14.3.A preview panel', () => {
       },
       cooldownAt: null,
       taoMaUntil: null,
+      availableSupportItems: [],
+      maxSelectedSupportItems: 3,
     };
     const w = mountView();
     await flushPromises();
@@ -969,6 +1026,8 @@ describe('TribulationView — Phase 14.3.A preview panel', () => {
       },
       cooldownAt: null,
       taoMaUntil: null,
+      availableSupportItems: [],
+      maxSelectedSupportItems: 3,
     };
     const w = mountView();
     await flushPromises();
@@ -1751,5 +1810,216 @@ describe('TribulationView — Phase 11.6.K history stats', () => {
     // Use Node.DOCUMENT_POSITION_FOLLOWING constant (=4) to avoid bitwise op.
     const pos = stats.compareDocumentPosition(filter);
     expect(pos === Node.DOCUMENT_POSITION_FOLLOWING).toBe(true);
+  });
+});
+
+// ── Phase 14.3.C — support item selection UI + consumed display ─────────────
+
+const STUB_PREVIEW_WITH_ITEMS: PreviewStub = {
+  requirement: true,
+  fromRealmKey: 'kim_dan',
+  toRealmKey: 'nguyen_anh',
+  atPeak: true,
+  def: {
+    key: 'tribulation_kim_dan_nguyen_anh',
+    name: 'Tiểu Lôi Kiếp',
+    description: 'd',
+    type: 'lei',
+    severity: 'minor',
+    wavesCount: 3,
+  },
+  successChance: {
+    base: 0.75,
+    supportBonus: 0,
+    elementAdjustment: 0,
+    raw: 0.75,
+    final: 0.75,
+    floorHit: false,
+    ceilHit: false,
+  },
+  supports: [],
+  supportTotalBonus: 0,
+  rewardHint: { linhThach: 1000, expBonus: '50000', titleKey: null },
+  penaltyHint: {
+    expLossRatio: 0.1,
+    cooldownMinutes: 30,
+    taoMaDebuffChance: 0.4,
+    taoMaDebuffDurationMinutes: 15,
+  },
+  cooldownAt: null,
+  taoMaUntil: null,
+  availableSupportItems: [
+    { itemKey: 'thuan_kiep_dan', label: 'Thuận Kiếp Đan', bonus: 0.05, qty: 3 },
+    { itemKey: 'tu_kiep_dan', label: 'Tứ Kiếp Đan', bonus: 0.08, qty: 1 },
+  ],
+  maxSelectedSupportItems: 3,
+};
+
+describe('TribulationView — Phase 14.3.C support item selection', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    resetState();
+  });
+
+  it('render selection panel với title + hint khi có preview', async () => {
+    tribulationState.preview = STUB_PREVIEW_WITH_ITEMS;
+    const w = mountView();
+    await flushPromises();
+    const panel = w.find('[data-testid="tribulation-selection-panel"]');
+    expect(panel.exists()).toBe(true);
+    expect(panel.text()).toContain('Chọn vật phẩm hỗ trợ');
+    expect(
+      w.find('[data-testid="tribulation-selection-hint"]').exists(),
+    ).toBe(true);
+  });
+
+  it('render danh sách item với label + qty + bonus', async () => {
+    tribulationState.preview = STUB_PREVIEW_WITH_ITEMS;
+    const w = mountView();
+    await flushPromises();
+    const list = w.find('[data-testid="tribulation-selection-list"]');
+    expect(list.exists()).toBe(true);
+    const labelA = w.find('[data-testid="tribulation-selection-label-thuan_kiep_dan"]');
+    expect(labelA.text()).toBe('Thuận Kiếp Đan');
+    const qtyA = w.find('[data-testid="tribulation-selection-qty-thuan_kiep_dan"]');
+    expect(qtyA.text()).toContain('3');
+    const bonusA = w.find('[data-testid="tribulation-selection-bonus-thuan_kiep_dan"]');
+    expect(bonusA.text()).toContain('5');
+  });
+
+  it('render empty hint khi availableSupportItems rỗng', async () => {
+    tribulationState.preview = {
+      ...STUB_PREVIEW_WITH_ITEMS,
+      availableSupportItems: [],
+    };
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find('[data-testid="tribulation-selection-empty"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="tribulation-selection-list"]').exists(),
+    ).toBe(false);
+  });
+
+  it('toggle checkbox cập nhật predicted bonus tổng', async () => {
+    tribulationState.preview = STUB_PREVIEW_WITH_ITEMS;
+    const w = mountView();
+    await flushPromises();
+    // Chưa select → predicted KHÔNG render
+    expect(
+      w.find('[data-testid="tribulation-selection-predicted"]').exists(),
+    ).toBe(false);
+    // Select 1 item (5%)
+    const cb = w.find(
+      '[data-testid="tribulation-selection-checkbox-thuan_kiep_dan"]',
+    );
+    await cb.trigger('change');
+    await flushPromises();
+    const predicted1 = w.find('[data-testid="tribulation-selection-predicted"]');
+    expect(predicted1.exists()).toBe(true);
+    expect(predicted1.text()).toContain('5%');
+    // Select thêm 1 item (8%) → tổng 13%
+    const cb2 = w.find(
+      '[data-testid="tribulation-selection-checkbox-tu_kiep_dan"]',
+    );
+    await cb2.trigger('change');
+    await flushPromises();
+    expect(
+      w.find('[data-testid="tribulation-selection-predicted"]').text(),
+    ).toContain('13%');
+  });
+
+  it('attempt POST gửi selectedSupportItemKeys', async () => {
+    tribulationState.preview = STUB_PREVIEW_WITH_ITEMS;
+    attemptMock.mockResolvedValueOnce(null);
+    const w = mountView();
+    await flushPromises();
+    await w
+      .find('[data-testid="tribulation-selection-checkbox-thuan_kiep_dan"]')
+      .trigger('change');
+    await flushPromises();
+    await w.find('[data-testid="tribulation-attempt-button"]').trigger('click');
+    await flushPromises();
+    expect(attemptMock).toHaveBeenCalled();
+    const args = attemptMock.mock.calls[0];
+    expect(args).toBeDefined();
+    expect(args?.[0]).toEqual(['thuan_kiep_dan']);
+  });
+
+  it('attempt với empty selection gửi []', async () => {
+    tribulationState.preview = STUB_PREVIEW_WITH_ITEMS;
+    attemptMock.mockResolvedValueOnce(null);
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="tribulation-attempt-button"]').trigger('click');
+    await flushPromises();
+    expect(attemptMock).toHaveBeenCalled();
+    const args = attemptMock.mock.calls[0];
+    expect(args?.[0]).toEqual([]);
+  });
+
+  it('outcome banner hiển thị consumed items khi server trả non-empty', async () => {
+    tribulationState.lastOutcome = {
+      ...STUB_SUCCESS_OUTCOME,
+      consumedSupportItems: [
+        { itemKey: 'thuan_kiep_dan', label: 'Thuận Kiếp Đan', bonus: 0.05 },
+      ],
+    };
+    const w = mountView();
+    await flushPromises();
+    const consumedBlock = w.find('[data-testid="tribulation-outcome-consumed"]');
+    expect(consumedBlock.exists()).toBe(true);
+    const consumed0 = w.find('[data-testid="tribulation-outcome-consumed-0"]');
+    expect(consumed0.exists()).toBe(true);
+    expect(consumed0.text()).toContain('Thuận Kiếp Đan');
+  });
+
+  it('outcome banner hiển thị "no items used" khi consumedSupportItems rỗng', async () => {
+    tribulationState.lastOutcome = STUB_SUCCESS_OUTCOME;
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find('[data-testid="tribulation-outcome-consumed-empty"]').exists(),
+    ).toBe(true);
+  });
+
+  it('attempt error SUPPORT_ITEM_MISSING → toast.error với i18n key', async () => {
+    tribulationState.preview = STUB_PREVIEW_WITH_ITEMS;
+    attemptMock.mockResolvedValueOnce('SUPPORT_ITEM_MISSING');
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="tribulation-attempt-button"]').trigger('click');
+    await flushPromises();
+    const errorToasts = toastPushMock.mock.calls.filter(
+      ([arg]) => (arg as { type: string }).type === 'error',
+    );
+    expect(errorToasts.length).toBeGreaterThan(0);
+  });
+
+  it('attempt success → clear selectedSupportItemKeys (UI reset)', async () => {
+    tribulationState.preview = STUB_PREVIEW_WITH_ITEMS;
+    attemptMock.mockImplementationOnce(async () => {
+      tribulationState.lastOutcome = STUB_SUCCESS_OUTCOME;
+      return null;
+    });
+    const w = mountView();
+    await flushPromises();
+    // Select 1 item
+    await w
+      .find('[data-testid="tribulation-selection-checkbox-thuan_kiep_dan"]')
+      .trigger('change');
+    await flushPromises();
+    expect(
+      w.find('[data-testid="tribulation-selection-predicted"]').exists(),
+    ).toBe(true);
+    // Click attempt
+    await w.find('[data-testid="tribulation-attempt-button"]').trigger('click');
+    await flushPromises();
+    // Predicted hidden again (selection cleared)
+    expect(
+      w.find('[data-testid="tribulation-selection-predicted"]').exists(),
+    ).toBe(false);
   });
 });

@@ -58,6 +58,31 @@ export interface TribulationPenaltyView {
   taoMaExpiresAt: string | null;
 }
 
+/**
+ * Phase 14.3.C — consumed support item entry trong outcome view.
+ * Server resolve label + bonus từ catalog (FE không tự tra catalog để
+ * giữ source-of-truth ở server / shared package).
+ */
+export interface TribulationConsumedSupportItemView {
+  itemKey: string;
+  label: string;
+  bonus: number;
+}
+
+/**
+ * Phase 14.3.C — successChance breakdown trong outcome (mirror preview).
+ * Cho phép FE so sánh predicted vs actual sau attempt nếu cần.
+ */
+export interface TribulationSuccessChanceBreakdownOutcomeView {
+  base: number;
+  supportBonus: number;
+  elementAdjustment: number;
+  raw: number;
+  final: number;
+  floorHit: boolean;
+  ceilHit: boolean;
+}
+
 /** Outcome trả về sau 1 attempt. Mirror `TribulationAttemptOutcome` server. */
 export interface TribulationOutcomeView {
   success: boolean;
@@ -76,18 +101,38 @@ export interface TribulationOutcomeView {
   penalty: TribulationPenaltyView | null;
   /** Audit log id (`TribulationAttemptLog.id`). */
   logId: string;
+  /**
+   * Phase 14.3.C — danh sách consumed support items (label resolved từ
+   * server catalog). Empty array nếu attempt KHÔNG dùng item hỗ trợ.
+   */
+  consumedSupportItems: TribulationConsumedSupportItemView[];
+  /** Phase 14.3.C — total support bonus đã apply (sau cap). */
+  supportTotalBonus: number;
+  /** Phase 14.3.C — successChance breakdown server-side recalc. */
+  successChance: TribulationSuccessChanceBreakdownOutcomeView;
 }
 
 /**
  * POST /character/tribulation — server-authoritative tribulation attempt.
  *
+ * Phase 14.3.C — body có thể include `selectedSupportItemKeys: string[]`
+ * (≤ 3 keys, chỉ consumable support items theo shared validator). Server
+ * verify ownership in tx + consume in tx + recalc support bonus from
+ * scratch (không tin FE bonus values).
+ *
  * Throw object preserving `code` từ envelope (test fixture compat) hoặc
  * fallback Error nếu data vắng.
  */
-export async function attemptTribulation(): Promise<TribulationOutcomeView> {
+export async function attemptTribulation(
+  selectedSupportItemKeys?: readonly string[],
+): Promise<TribulationOutcomeView> {
+  const body =
+    selectedSupportItemKeys && selectedSupportItemKeys.length > 0
+      ? { selectedSupportItemKeys: [...selectedSupportItemKeys] }
+      : {};
   const { data } = await apiClient.post<
     Envelope<{ tribulation: TribulationOutcomeView }>
-  >('/character/tribulation', {});
+  >('/character/tribulation', body);
   if (!data.ok || !data.data) throw data.error ?? fallbackError('tribulation');
   return data.data.tribulation;
 }
@@ -220,6 +265,18 @@ export interface TribulationPenaltyHintView {
  * Mirror server `TribulationPreview`. Read-only — không trigger RNG/log.
  * `null` nếu transition tiếp theo KHÔNG cần kiếp (low-tier hoặc realm cuối).
  */
+/**
+ * Phase 14.3.C — entry trong `availableSupportItems[]` của preview.
+ * Server-resolved từ shared catalog × inventory qty (read-only, KHÔNG mutate).
+ * FE dùng để render danh sách checkbox cho user chọn.
+ */
+export interface TribulationAvailableSupportItemView {
+  itemKey: string;
+  label: string;
+  bonus: number;
+  qty: number;
+}
+
 export interface TribulationPreviewView {
   requirement: true;
   fromRealmKey: string;
@@ -233,6 +290,17 @@ export interface TribulationPreviewView {
   penaltyHint: TribulationPenaltyHintView;
   cooldownAt: string | null;
   taoMaUntil: string | null;
+  /**
+   * Phase 14.3.C — consumable support items player có thể chọn (qty>0,
+   * `equippedSlot=null`). FE render thành checkbox UI; selected keys gửi
+   * cùng attempt body để server consume.
+   */
+  availableSupportItems: TribulationAvailableSupportItemView[];
+  /**
+   * Phase 14.3.C — số item hỗ trợ tối đa được chọn 1 lần attempt
+   * (`TRIBULATION_MAX_SELECTED_SUPPORT_ITEMS`, hiện = 3).
+   */
+  maxSelectedSupportItems: number;
 }
 
 /**

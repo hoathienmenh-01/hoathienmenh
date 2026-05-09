@@ -47,6 +47,17 @@ const STUB_SUCCESS_OUTCOME: TribulationOutcomeView = {
   },
   penalty: null,
   logId: 'log-1',
+  consumedSupportItems: [],
+  supportTotalBonus: 0,
+  successChance: {
+    base: 0.7,
+    supportBonus: 0,
+    elementAdjustment: 0,
+    raw: 0.7,
+    final: 0.7,
+    floorHit: false,
+    ceilHit: false,
+  },
 };
 
 const STUB_FAIL_OUTCOME: TribulationOutcomeView = {
@@ -70,6 +81,17 @@ const STUB_FAIL_OUTCOME: TribulationOutcomeView = {
     taoMaExpiresAt: '2026-05-02T08:00:00.000Z',
   },
   logId: 'log-2',
+  consumedSupportItems: [],
+  supportTotalBonus: 0,
+  successChance: {
+    base: 0.7,
+    supportBonus: 0,
+    elementAdjustment: 0,
+    raw: 0.7,
+    final: 0.7,
+    floorHit: false,
+    ceilHit: false,
+  },
 };
 
 describe('api/tribulation — Phase 11.6.D client', () => {

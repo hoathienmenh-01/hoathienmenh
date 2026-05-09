@@ -12,7 +12,28 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Added — Phase 14.0.D Territory Weekly War Loop (this PR)
+### Added — Phase 14.3.C Tribulation Support Item Consumption (this PR)
+
+- **Đóng vòng chơi Thiên Kiếp** — Phase 14.3.A đã ship preview snapshot, 14.3.B đã ship 4 support providers + redirect UX. Phase 14.3.C đóng vòng cuối: player **chọn item hỗ trợ** trước khi attempt → server verify ownership + **consume item** trong cùng transaction với attempt → server **recalc** support bonus từ 4 nguồn (selected items + equipment + buffs + talents) → **không tin** FE bonus value.
+- **Shared (`packages/shared/src/tribulation-support-validate.ts`)**: `TRIBULATION_MAX_SELECTED_SUPPORT_ITEMS = 3`, `isTribulationSupportConsumable()` (PILL_HP / PILL_MP / PILL_EXP / MISC, KHÔNG equipment), `listTribulationSupportConsumables()`, `validateTribulationSupportSelection()`, `buildSelectedSupportItemEntries()`, `TribulationSupportSelectionError` enum (`INVALID_INPUT` / `TOO_MANY_SELECTED` / `DUPLICATE_SELECTED` / `INVALID_SUPPORT_ITEM`).
+- **API (`POST /character/tribulation`)**: body mới `{ selectedSupportItemKeys?: string[] }` (≤ 3 keys). Server verify ownership in tx → consume in tx (atomic) → recalc bonus server-side từ 4 nguồn (composedSupports cho FE display KHÔNG bị double-count với talent's elementResistFn; damageSupports cho damage multiplier exclude talents). Ledger reason `TRIBULATION_SUPPORT_CONSUME` với `refType=TribulationAttemptLog`. Cả success path + fail path đều consume item (no free retry). Idempotent: pre-check ownership → consume fail → throw `SUPPORT_ITEM_MISSING` → tx rollback → KHÔNG mất EXP.
+- **API endpoint mở rộng**:
+  - `GET /character/tribulation/preview` (read-only, KHÔNG mutate inventory) thêm fields: `availableSupportItems[]` (server-resolved từ catalog × inventory qty), `maxSelectedSupportItems` (= 3).
+  - `POST /character/tribulation` body chấp nhận `selectedSupportItemKeys?`. Outcome thêm: `consumedSupportItems[]` (label resolved server-side), `supportTotalBonus`, `successChance` (breakdown đầy đủ).
+- **FE (`apps/web/src/views/TribulationView.vue`)**: Selection panel với checkbox multi-select (cap = preview.maxSelectedSupportItems = 3), label + qty + bonus per item, predicted total bonus, "items consumed regardless of outcome" hint. Outcome banner thêm consumed items list (success + fail path). Sau attempt: clear selection + refetch preview để sync inventory.
+- **i18n**: 11 keys vi/en parity (`selectionTitle/selectionHint/selectionEmpty/selectionLimitReached/selectionPredictedTotal/selectionItemQty/selectionItemBonus/consumedTitle/consumedItem/consumedNone`) + 6 error keys (`INVALID_SUPPORT_SELECTION/TOO_MANY_SUPPORT_ITEMS/DUPLICATE_SUPPORT_ITEM/INVALID_SUPPORT_ITEM/SUPPORT_ITEM_MISSING/INVENTORY_UNAVAILABLE`).
+- **Tests +60**:
+  - shared `--run tribulation` 124 PASS (+24 tribulation-support-validate: catalog isConsumable / listConsumables / validate selection / build entries / cap rejection / duplicate rejection / unknown item / non-consumable / max items / type narrowing).
+  - api `--run tribulation` 90 PASS (+12 Phase 14.3.C: empty selection no consume / valid consume + recalc / invalid item reject / missing item reject / cap enforcement / preview availableSupportItems / preview no mutate / fail path consume / idempotency / ledger written / no double consume).
+  - web `--run Tribulation` 157 PASS (+10 selection UI: render panel / list with label/qty/bonus / empty hint / predicted bonus update / attempt sends selected keys / empty selection sends [] / outcome consumed display / consumed empty hint / error toast / clear after attempt).
+- **Verification**: shared typecheck + `--run tribulation` 124 PASS / api typecheck + `--run tribulation` 90 PASS + `--run cultivation` 95 PASS + `--run inventory` 91 PASS / web typecheck + `--run Tribulation` 157 PASS + `--run Breakthrough` 49 PASS / pnpm build ✅.
+- **Out of scope (defer)**:
+  - Combat thiên kiếp phức tạp (multi-wave skill UI).
+  - Encounter system (NPC tương tác trong kiếp).
+  - Auto-buy missing item nếu inventory không đủ.
+  - Refund mechanic khi attempt bị server reject sau khi consume (hiện tại pre-check ownership → reject TRƯỚC khi consume, nên không cần refund).
+
+### Added — Phase 14.0.D Territory Weekly War Loop
 
 - **Lãnh Địa — vòng chơi cạnh tranh theo tuần** — Phase 14.0.A đã ship influence, 14.0.B đã ship settlement + ownership, 14.0.C đã ship region buff + decay. Phase 14.0.D đóng vòng chơi: thêm period tuần, countdown, region standings, settlement history, admin trigger chốt sớm.
 - **Period rule (deterministic UTC ISO week)**: tuần bắt đầu Thứ Hai 00:00 UTC, kết thúc Thứ Hai 00:00 UTC kế tiếp; `periodKey = YYYY-Www`. Helpers shared `currentTerritoryPeriodKey()`, `previousTerritoryPeriodKey()`, `nextTerritoryResetAt()`, `territoryPeriodWindow()`, `isTerritoryPeriodKey()` — tất cả pure, fake-date testable, KHÔNG phụ thuộc timezone máy.
