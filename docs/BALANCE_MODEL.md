@@ -462,6 +462,32 @@ Phase 14.2.D thêm **identity metadata** cho dungeon/boss để player biết "d
 
 **KHÔNG nới dial Phase 14.2.A/B** — pipeline foundation, floor `0.70`, ceil `0.50` giữ nguyên. Phase 14.2.D pure UI/data — designer thêm flavor/recommendation cho content existing, không thay đổi power-curve.
 
+### 2.9.6 Phase 12.10.C — NPC Affinity Shop balance (DONE this PR)
+
+Phase 12.10.C thêm **NPC affinity shop** mở khoá theo tier. Mỗi NPC chính có 2–3 item nhỏ; tier càng cao item càng đắt + giới hạn càng thấp. Tránh phá economy (cap cost theo tier, cap daily-purchase per NPC).
+
+**Cost cap theo tier (LINH_THACH)** — validator enforce:
+
+| Tier            | Min score | Max cost (LT) |
+|-----------------|-----------|---------------|
+| `xa_la`         | 0         | ≤ 250         |
+| `quen_biet`     | 10        | ≤ 250         |
+| `ban_huu`       | 30        | ≤ 1500        |
+| `tri_giao`      | 60        | ≤ 2500        |
+| `tri_ky`        | 100       | ≤ 2500        |
+
+**TIEN_NGOC items**: chỉ mở từ `tri_giao` trở lên, cost ≤ 50 TN per item. Mỗi NPC chỉ có ≤ 1 item TN, weekly limit ≤ 1.
+
+**Stock cap (anti-grind)** — validator enforce:
+- `stockType === 'daily'`: `dailyLimit ∈ [1, 10]`
+- `stockType === 'weekly'`: `weeklyLimit ∈ [1, 5]`
+- `stockType === 'unlimited'`: rare item KHÔNG được dùng, low-cost consumable only.
+- Sum daily-limit của tất cả item per NPC ≤ 30 (giả sử player chăm 1 NPC vẫn không kéo > 30 item/day → tránh tự nuôi inventory rare-pill).
+
+**No double-grant guarantee**: buy flow là Prisma `$transaction` atomic — re-check tier + window count trước spend, nếu fail rollback toàn bộ. ItemLedger row (`reason='NPC_SHOP_BUY'`) tạo sau grant nên window count luôn nhất quán với inventory.
+
+**KHÔNG bán item phá economy**: catalog không có S+ tier weapon/armor/skillbook power-creep — chỉ có rare consumable (pill, food, focus item) + skillbook elemental basic (đã có trong base catalog) + cosmetic-flavor item. Designer thêm item mới phải qua review balance.
+
 ### 2.9.5 Phase 11.1.C wire điểm (Pending)
 
 - UI character profile display equipped method (icon + grade + multiplier tooltip).

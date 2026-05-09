@@ -109,6 +109,13 @@ export type ItemLedgerReason =
   // affinity all-or-nothing. KHÔNG mirror `CurrencyLedger` (gift không tiêu
   // currency).
   | 'NPC_GIFT'
+  // Phase 12.10.C — NPC Affinity Shop purchase. Wire
+  // `NpcAffinityShopService.buyTx → grantTx(positive qtyDelta)` với
+  // `refType='NpcAffinityShop'` + `refId='${npcKey}:${itemKey}'`. Daily/weekly
+  // limit enforce qua aggregate (`reason='NPC_SHOP_BUY'`, `refId`) +
+  // `createdAt` window (start of local day / week MISSION_RESET_TZ). Mirror
+  // cùng `CurrencyLedger` reason `NPC_SHOP_BUY` cho linhThach/tienNgoc.
+  | 'NPC_SHOP_BUY'
   // Phase 14.3.C — Tribulation support item consume khi player attempt thiên
   // kiếp với selectedSupportItemKeys non-empty. Wire qua
   // `TribulationService.attemptTribulation → consumeOneByItemKeyTx(negative

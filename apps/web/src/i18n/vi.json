@@ -2330,6 +2330,35 @@
       "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
       "NO_CHARACTER": "Chưa có nhân vật.",
       "UNKNOWN": "Không thể tặng quà, thử lại."
+    },
+    "shopToggle": "Cửa hàng & ưu đãi đặc biệt",
+    "shop": {
+      "buy": "Mua",
+      "lockedShort": "Khoá",
+      "limitReached": "Hết lượt",
+      "linhThach": "linh thạch",
+      "tienNgoc": "tiên ngọc",
+      "locked": "Cần đạt {tier}",
+      "dailyStock": "Hôm nay {used}/{limit}",
+      "weeklyStock": "Tuần này {used}/{limit}",
+      "unlimitedStock": "Không giới hạn"
+    },
+    "shopErrors": {
+      "NPC_AFFINITY_UNKNOWN": "Đạo hữu này không có cửa hàng.",
+      "ITEM_NOT_IN_SHOP": "Vật phẩm không có trong cửa hàng.",
+      "INSUFFICIENT_AFFINITY_TIER": "Quan hệ chưa đủ để mua.",
+      "INSUFFICIENT_FUNDS": "Không đủ linh thạch / tiên ngọc.",
+      "DAILY_LIMIT_REACHED": "Hết lượt mua hôm nay.",
+      "WEEKLY_LIMIT_REACHED": "Hết lượt mua tuần này.",
+      "INVALID_QTY": "Số lượng không hợp lệ.",
+      "NON_STACKABLE_QTY_GT_1": "Vật phẩm không thể mua nhiều hơn 1.",
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "UNKNOWN": "Không thể mua, thử lại."
+    },
+    "unlocks": {
+      "title": "Cơ duyên ẩn",
+      "dialogueLabel": "Đối thoại",
+      "questLabel": "Nhiệm vụ"
     }
   },
   "quest": {

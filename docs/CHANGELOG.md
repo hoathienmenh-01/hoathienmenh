@@ -12,7 +12,76 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Added — Phase 14.2.D Elemental Dungeon and Boss Identity (this PR)
+### Added — Phase 12.10.C NPC Shop and Hidden Unlocks (this PR)
+
+- **NPC Affinity tier mở khoá nội dung** — Phase 12.10.C biến quan hệ NPC
+  thành cổng mở khoá thật: shop của NPC chỉ bán item theo tier cụ thể
+  (tier càng cao càng đắt + giới hạn càng thấp), và một số dialogue/quest
+  chỉ xuất hiện khi tier đủ. Player có lý do giữ quan hệ thay vì tặng quà
+  một lần rồi quên.
+- **Shared (`packages/shared/src/npc-affinity-shop.ts` mới + `npc-hidden-unlocks.ts` mới)**:
+  - `NpcAffinityShopItemDef` — `npcKey`, `itemKey`, `requiredAffinityTier`,
+    `cost` (LINH_THACH/TIEN_NGOC), `stockType` (`unlimited|daily|weekly`),
+    `dailyLimit?`/`weeklyLimit?`, `unlockHint(Vi/En)`.
+  - `NPC_AFFINITY_SHOPS` catalog — 15 entry trên 5 NPC chính. Mỗi NPC có
+    vài item nhỏ, tier cao mới mở item hiếm với limit thấp.
+  - Helper: `npcShopForAffinity(npcKey, tier)` (filter unlocked tier-aware),
+    `npcAffinityShopItem(npcKey, itemKey)`, `toNpcAffinityShopItemView()`.
+  - `validateNpcAffinityShopCatalog()` invariants — item ref tồn tại trong
+    `ITEMS`, NPC ref trong `NPC_AFFINITY`, tier ref trong `AFFINITY_TIERS`,
+    cost positive integer, stockType ↔ daily/weekly limit consistent,
+    per-NPC daily limit sum ≤30 (anti-grind cap), tier cost cap
+    (xa_la/quen_biet ≤250 LT, ban_huu ≤1500 LT, tri_giao/tri_ky ≤2500 LT).
+  - `NpcHiddenDialogueUnlockDef` / `NpcHiddenQuestUnlockDef` —
+    `requiredAffinityTier` + `unlockReason(Vi/En)`. Catalog gắn dialogue
+    `story_dlg_lang_van_sinh_inner_secret` (ban_huu) + một số quest tier
+    cao. Helper `npcHiddenUnlocksForAffinity(npcKey, tier)` trả combined
+    list, marked `unlocked` flag, sort locked-first theo tier order.
+- **API (`apps/api/src/modules/npc-affinity/npc-affinity-shop.service.ts` mới)**:
+  - `GET /story/npc-affinity/:npcKey/shop` — list entry với
+    `currentTier`/`unlocked`/`purchased`/`remaining`/`limitReached` state.
+    Daily/weekly window count từ `ItemLedger` (`reason='NPC_SHOP_BUY'` +
+    `refId='${npcKey}:${itemKey}'`).
+  - `POST /story/npc-affinity/:npcKey/shop/buy` — atomic Prisma
+    `$transaction`: re-check tier, count purchased trong window, verify
+    `dailyLimit`/`weeklyLimit`, spend currency qua `CurrencyService.applyTx`
+    (negative delta), grant item qua `InventoryService.grantTx`, ledger row
+    `reason='NPC_SHOP_BUY'` + `refType='NpcAffinityShop'`.
+  - `GET /story/npc-affinity/:npcKey/unlocks` — combined dialogue/quest
+    hidden unlock list với `unlocked` flag.
+  - Error codes: `INSUFFICIENT_AFFINITY_TIER` (403), `INSUFFICIENT_FUNDS`
+    (400), `DAILY_LIMIT_REACHED`/`WEEKLY_LIMIT_REACHED` (429),
+    `ITEM_NOT_IN_SHOP`/`NPC_AFFINITY_UNKNOWN` (404), `INVALID_QTY`/
+    `NON_STACKABLE_QTY_GT_1` (400).
+  - `CurrencyLedgerReason` + `ItemLedgerReason` thêm `'NPC_SHOP_BUY'`.
+- **Web (`apps/web/src/components/NpcAffinityPanel.vue` extend +
+  `apps/web/src/api/npcAffinity.ts` extend + `apps/web/src/stores/npcAffinity.ts` extend)**:
+  - Mỗi NPC card có toggle "Cửa hàng & ưu đãi đặc biệt" (collapsed default).
+    Lazy load shop + unlocks khi mở.
+  - Item entry: tên + cost + currency, lock badge với required tier label
+    cho item chưa unlock, daily/weekly stock indicator (`Hôm nay 1/5`,
+    `Tuần này 0/1`), buy button disabled khi locked/limit/loading.
+  - Hidden unlocks list dưới shop — dialogue/quest entry với tier label +
+    unlock reason + ✓ marker khi unlocked.
+  - Error states: shop load error, buy error (insufficient tier/funds/limit).
+  - i18n keys mới `npcAffinity.shop.*`, `npcAffinity.shopErrors.*`,
+    `npcAffinity.unlocks.*` (vi + en parity).
+- **Tests** (Phase 12.10.C backstop):
+  - **Shared**: `npc-affinity-shop.test.ts` (validate catalog + tier monoto
+    nicity + view conversion + i18n non-empty + per-NPC daily-limit cap),
+    `npc-hidden-unlocks.test.ts` (validate refs + helper unlocked logic).
+  - **API**: `npc-affinity-shop.service.test.ts` (17 test) — list shop tier
+    filter, buy success path (currency spend + inventory grant + ledger
+    `NPC_SHOP_BUY`), `INSUFFICIENT_AFFINITY_TIER`, `INSUFFICIENT_FUNDS`,
+    `DAILY_LIMIT_REACHED`, `WEEKLY_LIMIT_REACHED`, `ITEM_NOT_IN_SHOP`,
+    `NPC_AFFINITY_UNKNOWN`, item grant once, listUnlocks tier-aware,
+    `startOfLocalWeek` Monday-start helper.
+  - **Web**: `NpcAffinityPanel.test.ts` (7 test mới) — toggle collapsed
+    default, click toggle loads shop+unlocks, locked items dimmed +
+    disabled buy, click buy calls API, buy error state, hidden unlocks
+    list, daily/weekly stock indicators.
+
+### Added — Phase 14.2.D Elemental Dungeon and Boss Identity
 
 - **Dungeon/boss có bản sắc Ngũ Hành** — Phase 14.2.D thêm element identity metadata cho dungeon + boss. Player thấy "dungeon hệ Hoả → khuyến nghị dùng skill Thuỷ", "boss này khắc bởi Mộc và kháng Thuỷ", "loot hợp với hệ Kim". Combat damage **KHÔNG đổi** — vẫn dùng `elementalMultiplier` (Phase 11.3.B) + `composeMonsterElementalResist` (Phase 14.2.B). Field mới chỉ là UI hint.
 - **Shared (`packages/shared/src/elemental-identity.ts` mới + extend `combat.ts`/`boss.ts`)**:

@@ -70,7 +70,13 @@ export type LedgerReason =
   // milestoneKey)` CAS guard — race-safe 2 concurrent claim chỉ 1 ledger row.
   // Khác `SECT_WAR_REWARD` (weekly tier) ở scope: season aggregate 4-week
   // window personal points → 5 milestone tier monotonic increasing.
-  | 'SECT_SEASON_REWARD';
+  | 'SECT_SEASON_REWARD'
+  // Phase 12.10.C — NPC Affinity Shop purchase. Wire
+  // `NpcAffinityShopService.buyTx` qua `applyTx` cho linhThach/tienNgoc với
+  // `refType='NpcAffinityShop'` + `refId='${npcKey}:${itemKey}'`. Daily/weekly
+  // limit enforce qua `ItemLedger` aggregate (mirror reason). Atomic
+  // transaction: spend currency + grant inventory + write ledger 1-shot.
+  | 'NPC_SHOP_BUY';
 
 export interface CurrencyApplyInput {
   characterId: string;
