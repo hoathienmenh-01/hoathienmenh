@@ -315,7 +315,7 @@ watch(
                 class="flex-1 bg-ink-700 border border-ink-300/20 rounded px-2 py-1 text-xs text-ink-50"
                 :disabled="
                   store.giftLoading === aff.npcKey ||
-                  dailyState(giftPrefFor(aff.npcKey)!).locked
+                    dailyState(giftPrefFor(aff.npcKey)!).locked
                 "
                 :data-testid="`npc-affinity-gift-select-${aff.npcKey}`"
               >
@@ -334,7 +334,7 @@ watch(
               class="text-xs px-3 py-1 rounded bg-amber-700/40 text-amber-100 hover:bg-amber-700/60 disabled:opacity-50 disabled:cursor-not-allowed"
               :disabled="
                 store.giftLoading === aff.npcKey ||
-                dailyState(giftPrefFor(aff.npcKey)!).locked
+                  dailyState(giftPrefFor(aff.npcKey)!).locked
               "
               :data-testid="`npc-affinity-gift-button-${aff.npcKey}`"
               @click="onGift(aff.npcKey)"
@@ -379,7 +379,7 @@ watch(
           <div
             v-if="
               giftToast &&
-              giftToast.npcKey === aff.npcKey
+                giftToast.npcKey === aff.npcKey
             "
             class="text-xs text-emerald-300 flex items-center gap-2"
             :data-testid="`npc-affinity-gift-toast-${aff.npcKey}`"
@@ -404,8 +404,8 @@ watch(
           <p
             v-if="
               store.giftError &&
-              store.giftLoading === null &&
-              dailyState(giftPrefFor(aff.npcKey)!).locked === false
+                store.giftLoading === null &&
+                dailyState(giftPrefFor(aff.npcKey)!).locked === false
             "
             class="text-xs text-rose-300"
             :data-testid="`npc-affinity-gift-error-${aff.npcKey}`"
