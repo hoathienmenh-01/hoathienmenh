@@ -12,6 +12,35 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Added — Phase 14.0.E Territory Owner Reward Mail Service (this PR)
+
+- **Tông Môn chiếm Lãnh Địa được nhận thưởng tuần** — sect thắng/rank 1
+  từng region (theo `SectTerritorySettlementSnapshot`) được gửi mail
+  reward cho TẤT CẢ thành viên hiện tại tại thời điểm trigger. Reward
+  weekly-safe gồm `linhThach` (200..800) + `exp` (100..400) + 1–2
+  `itemRewards` low-tier per region; tổng cap nếu 1 sect chiếm cả 9
+  region ≈ 4500 linthach + 2400 exp + 12 item / tuần — thấp hơn mission
+  daily/dungeon mid-tier rất nhiều, KHÔNG phá economy.
+- **Idempotency + race-safe**: composite UNIQUE
+  `(periodKey, regionKey, characterId)` ở
+  `TerritoryOwnerRewardGrant` đảm bảo gọi lại cùng `periodKey` KHÔNG gửi
+  mail trùng. Concurrent admin trigger → chỉ 1 winner ghi grant row +
+  tạo mail (P2002 swallow → trả `existed`).
+- **Snapshot rule**: nhận thưởng theo MEMBER HIỆN TẠI tại thời điểm
+  grant. Member rời sect trước trigger → KHÔNG nhận; member join sau
+  settlement (trước trigger) → NHẬN. Rule đơn giản này tránh phải lưu
+  member-snapshot riêng khi settle (tradeoff đã ghi rõ ở
+  `BALANCE_MODEL.md` §11.20).
+- **Admin endpoint**: `POST /admin/territory/rewards/grant-weekly`
+  body `{ periodKey?, dryRun? }` (ADMIN-only, MOD reject với
+  `ADMIN_ONLY` 403). `dryRun` đếm "would create" KHÔNG mutate
+  state. Default `periodKey = previousTerritoryPeriodKey()`.
+- **FE admin panel**: TerritoryView tab "Tranh Đoạt" thêm nút
+  "Gửi Thưởng Lãnh Địa Tuần" (role-gated ADMIN), render summary
+  (regionsProcessed / mailsCreated / skip*).
+- **NO cron tự động trong PR này** — chỉ admin trigger để verify.
+  Cron handoff: Phase 13.2.D + 14.0.F Season/Territory Automation.
+
 ### Internal — Post Phase 14 / 12.10 Integration Audit + Smoke Hardening (this PR)
 
 - **Audit-only PR**, KHÔNG feature mới — hardening sau 8 PR liên tiếp

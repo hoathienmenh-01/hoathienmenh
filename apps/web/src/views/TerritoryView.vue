@@ -268,6 +268,16 @@ async function onAdminSettleWarCurrent(): Promise<void> {
   // Refresh history to reflect new snapshot.
   await territory.fetchWarHistory(8);
 }
+
+/**
+ * Phase 14.0.E — admin trigger grant weekly territory owner reward mail.
+ * Idempotent server-side; gọi lại cùng tuần KHÔNG gửi mail trùng. UI
+ * không cần refresh state khác (mail nằm ở Mailbox, không phải state
+ * của TerritoryView).
+ */
+async function onAdminGrantWeeklyTerritoryReward(): Promise<void> {
+  await territory.adminGrantWeeklyTerritoryReward();
+}
 </script>
 
 <template>
@@ -1134,6 +1144,70 @@ async function onAdminSettleWarCurrent(): Promise<void> {
                       territory.lastWarSettleResult.skippedRegions.length,
                   })
                 }}
+              </div>
+
+              <!-- Phase 14.0.E — admin grant weekly territory owner reward mail -->
+              <div
+                class="border-t border-ink-300/10 pt-3 mt-3 space-y-2"
+                data-test="territory-reward-admin-panel"
+              >
+                <h5
+                  class="text-[11px] tracking-widest uppercase text-amber-200"
+                >
+                  {{ t('territory.reward.adminTitle') }}
+                </h5>
+                <p class="text-[11px] text-ink-300/80">
+                  {{ t('territory.reward.adminSubtitle') }}
+                </p>
+                <button
+                  type="button"
+                  :disabled="territory.rewardGrantLoading"
+                  class="px-3 py-1 rounded border border-amber-300/70 text-amber-200 text-xs tracking-widest uppercase hover:bg-amber-300/10 disabled:opacity-50"
+                  data-test="territory-reward-admin-grant"
+                  @click="onAdminGrantWeeklyTerritoryReward"
+                >
+                  {{
+                    territory.rewardGrantLoading
+                      ? t('territory.reward.adminGrantRunning')
+                      : t('territory.reward.adminGrantButton')
+                  }}
+                </button>
+                <div
+                  v-if="territory.rewardGrantError"
+                  class="text-rose-300 text-xs"
+                  data-test="territory-reward-admin-error"
+                >
+                  {{
+                    t(
+                      `territory.errors.${territory.rewardGrantError}`,
+                      t('territory.errors.UNKNOWN'),
+                    )
+                  }}
+                </div>
+                <div
+                  v-if="territory.lastRewardGrantResult"
+                  class="text-xs text-ink-300/90"
+                  data-test="territory-reward-admin-result"
+                >
+                  {{
+                    t('territory.reward.adminLastResult', {
+                      period:
+                        territory.lastRewardGrantResult.periodKey,
+                      regions:
+                        territory.lastRewardGrantResult.regionsProcessed,
+                      mails:
+                        territory.lastRewardGrantResult.mailsCreated,
+                      skipAlready:
+                        territory.lastRewardGrantResult
+                          .skippedAlreadyGranted,
+                      skipNoWinner:
+                        territory.lastRewardGrantResult.skippedNoWinner,
+                      skipNoMembers:
+                        territory.lastRewardGrantResult
+                          .skippedNoMembers,
+                    })
+                  }}
+                </div>
               </div>
             </div>
           </div>

@@ -123,6 +123,9 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // (xoá trước Sect; tự FK tới Sect SET NULL nhưng explicit cho rõ).
   await prisma.sectTerritorySettlementSnapshot.deleteMany({});
   await prisma.sectTerritoryRegionState.deleteMany({});
+  // Phase 14.0.E — Territory Owner Reward grant audit (xoá trước Mail/
+  // Character — `mailId` nullable không có FK, nhưng explicit cho rõ).
+  await prisma.territoryOwnerRewardGrant.deleteMany({});
   await prisma.itemLedger.deleteMany({});
   await prisma.currencyLedger.deleteMany({});
   // Phase 14.3.D — encounter session rows (nullable resolvedAttemptLogId

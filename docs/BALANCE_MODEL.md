@@ -1862,11 +1862,68 @@ Phase 14.0.A đã ship influence (`SectTerritoryInfluence`), 14.0.B đã ship se
 
 ### 11.19.5 Roadmap to Phase 14.0.E+
 
-- **14.0.E**: Cron auto-settle + reward mail.
-  - Cron Monday 00:00 UTC chạy `settleCurrentPeriod({periodKey: previousTerritoryPeriodKey()})` với Redis lease lock 5 phút + idempotent recheck via UNIQUE.
-  - Owner sect rank 1 region → mail linh thach + contrib + region title.
-  - Hall of Fame archive snapshot > 16 tuần qua bảng riêng (`SectTerritorySettlementHallOfFame` chỉ giữ runner-up, max points, settled time).
-- **14.0.F**: Region siege node — defenders / attackers timeline, soft PvP.
+- **14.0.E**: Reward mail cho owner sect (admin trigger). **DONE this PR**.
+  - Cron auto-settle defer Phase 14.0.F (cần Redis lease lock 5 phút + idempotent recheck via UNIQUE).
+  - Hall of Fame archive snapshot > 16 tuần qua bảng riêng — defer Phase 14.0.G.
+- **14.0.F**: Cron Season/Territory Automation — auto-trigger `grantWeeklyOwnerRewardMail(previousTerritoryPeriodKey())` sau settlement.
+- **14.0.G**: Region siege node — defenders / attackers timeline, soft PvP.
+
+---
+
+## 11.20 SECT TERRITORY OWNER REWARD MAIL (Phase 14.0.E)
+
+Phase 14.0.D đã có settlement weekly + region ownership state. Phase 14.0.E ship **reward mail** cho member sect chiếm region — đóng vòng "earn ⇒ chiếm ⇒ nhận thưởng".
+
+### 11.20.1 Reward catalog (`packages/shared/src/territory-owner-reward.ts`)
+
+`TERRITORY_OWNER_REWARDS` 1-1 parity với `MAP_REGIONS` (9 entries). Reward tier scale theo `unlockRealmKey` của region (early-game region nhận ít hơn late-game region để cân bằng effort).
+
+| Region | LinhThạch | EXP | Items |
+|---|---|---|---|
+| `son_coc` | 200 | 100 | 2× `huyet_chi_dan` |
+| `hac_lam` | 250 | 120 | 2× `linh_lo_dan` |
+| `moc_huyen_lam` | 300 | 150 | 2× `thanh_lam_dan` |
+| `yeu_thu_dong` | 400 | 200 | 2× `huyet_chi_dan`, 1× `linh_lo_dan` |
+| `kim_son_mach` | 400 | 200 | 1× `linh_lo_dan`, 2× `huyet_tinh` |
+| `thuy_long_uyen` | 400 | 200 | 2× `linh_lo_dan`, 1× `thanh_lam_dan` |
+| `hoa_diem_son` | 500 | 250 | 2× `linh_lo_dan`, 1× `co_thien_dan` |
+| `hoang_tho_huyet` | 500 | 250 | 2× `linh_lo_dan`, 1× `co_thien_dan` |
+| `cuu_la_dien` | 800 | 400 | 1× `co_thien_dan`, 2× `huyet_tinh` |
+
+**Caps** (validated bằng `validateTerritoryOwnerRewardCatalog()`): `linhThach ≤ 1000`, `exp ≤ 600`, `itemRewards.length ≤ 3`, `qty ≤ 5`. Mọi reward đều ≥ 0.
+
+### 11.20.2 Economy budget worst-case
+
+Nếu 1 sect độc chiếm cả 9 region (extreme — chưa từng quan sát trong test):
+- `linhThach`: 200+250+300+400+400+400+500+500+800 = **3 750/tuần** chia cho N member.
+- `exp`: 100+120+150+200+200+200+250+250+400 = **1 870/tuần** mỗi member (mail dạng EXP claim, KHÔNG cộng dồn theo member).
+- Item: ~16 entries × ≤2 qty = ≤32 item nhỏ.
+
+So sánh với mission daily ~500-1000 linthach/ngày × 7 = 3500-7000 linthach/tuần → reward territory ≈ 50-100% mission income, KHÔNG phá economy. Realistic 1-3 region/sect → 600-1500 linthach/tuần.
+
+### 11.20.3 Idempotency model
+
+Bảng `TerritoryOwnerRewardGrant` UNIQUE `(periodKey, regionKey, characterId)`:
+- Gọi `grantWeeklyOwnerRewardMail(periodKey)` lần thứ 2 cùng `periodKey` → 0 mail mới (toàn bộ skipped, count vào `skippedAlreadyGranted`).
+- Concurrent admin trigger → P2002 unique violation → loser swallow trả `existed`. Chỉ 1 mail tạo per (period, region, character).
+- Transaction wrap: `INSERT grant → INSERT mail → UPDATE grant.mailId`. P2002 ở step 1 → rollback toàn bộ tx (mail chưa kịp tạo).
+
+### 11.20.4 Member snapshot rule
+
+**Quyết định**: nhận thưởng theo MEMBER HIỆN TẠI tại thời điểm trigger (`Character.sectId === winnerSectId` lúc query). KHÔNG snapshot member tại thời điểm settlement.
+
+Tradeoff:
+- **Pro (chosen)**: Đơn giản, không cần bảng `TerritorySettlementMemberSnapshot` riêng. Member rời sect trước trigger → KHÔNG nhận (hợp lý — họ rời thì không nên ăn thưởng).
+- **Pro 2**: Member join sau settlement (trước trigger) → NHẬN. Sect mới recruit có incentive.
+- **Con**: Sect có thể "mass invite + grant + kick" trong 1 phiên admin trigger để gaming. Mitigation: admin trigger có audit (`triggeredBy`) + grant row giữ lịch sử.
+- Alternative bị reject: snapshot member tại thời điểm settle → cần bảng riêng + logic xử lý member-không-còn-trong-sect (mail vẫn gửi?). Phức tạp không cần thiết cho closed-beta.
+
+### 11.20.5 Out of scope (Phase 14.0.E)
+
+- **Cron tự động** trigger: defer Phase 13.2.D + 14.0.F (Season/Territory Automation Cron).
+- **Reward title/buff runtime**: chỉ mail-based reward. Title/buff dài hạn defer phase sau (cần thêm pattern title catalog clean trước).
+- **Diff reward theo rank** (chỉ rank 1 nhận, không có reward cho runner-up). Có thể thêm tier 2 nếu data telemetry cho thấy cần balance.
+- **Ledger entry runtime**: `linhThach` / `exp` / `items` đi qua mail (`recipientId`, claim qua `MAIL_CLAIM` ledger reason đã có). Audit trail riêng ở `TerritoryOwnerRewardGrant.rewardJson` snapshot.
 
 ---
 

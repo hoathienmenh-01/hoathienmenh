@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AdminTerritoryController } from './admin-territory.controller';
 import { TerritoryController } from './territory.controller';
 import { TerritoryDecayService } from './territory-decay.service';
+import { TerritoryRewardService } from './territory-reward.service';
 import { TerritorySettlementService } from './territory-settlement.service';
 import { TerritoryService } from './territory.service';
 import { TerritoryWarService } from './territory-war.service';
@@ -44,6 +45,7 @@ import { AuthModule } from '../auth/auth.module';
     TerritorySettlementService,
     TerritoryDecayService,
     TerritoryWarService,
+    TerritoryRewardService,
     PrismaService,
   ],
   exports: [
@@ -51,6 +53,7 @@ import { AuthModule } from '../auth/auth.module';
     TerritorySettlementService,
     TerritoryDecayService,
     TerritoryWarService,
+    TerritoryRewardService,
   ],
 })
 export class TerritoryModule {}

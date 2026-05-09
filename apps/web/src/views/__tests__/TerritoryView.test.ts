@@ -12,6 +12,7 @@ import type {
   TerritoryWarStateView,
   TerritoryWarHistoryView,
   TerritoryWarSettleCurrentResult,
+  TerritoryRewardGrantSummary,
 } from '@/api/territory';
 
 /**
@@ -37,6 +38,7 @@ const adminDecayMock = vi.fn();
 const getWarCurrentMock = vi.fn();
 const getWarHistoryMock = vi.fn();
 const adminWarSettleCurrentMock = vi.fn();
+const adminGrantWeeklyRewardsMock = vi.fn();
 
 vi.mock('@/api/territory', async () => {
   const actual =
@@ -56,6 +58,8 @@ vi.mock('@/api/territory', async () => {
     getTerritoryWarHistory: (...a: unknown[]) => getWarHistoryMock(...a),
     adminTerritoryWarSettleCurrent: (...a: unknown[]) =>
       adminWarSettleCurrentMock(...a),
+    adminTerritoryGrantWeeklyRewards: (...a: unknown[]) =>
+      adminGrantWeeklyRewardsMock(...a),
   };
 });
 
@@ -231,10 +235,28 @@ const i18n = createI18n({
           adminSettleRunning: 'Đang chốt…',
           adminLastResult: 'Đã chốt {period}: {wins} thắng · {skip} bỏ qua.',
         },
+        reward: {
+          adminTitle: 'Admin Reward',
+          adminSubtitle: 'Sub',
+          adminGrantButton: 'Gửi Thưởng Lãnh Địa Tuần',
+          adminGrantRunning: 'Đang gửi…',
+          adminLastResult:
+            'Đã xử lý {period}: {regions} vùng · gửi {mails} thư · bỏ qua {skipAlready} đã gửi · {skipNoWinner} không có chủ · {skipNoMembers} tông môn rỗng.',
+        },
+        errors2: {},
+      },
+      territory_extra_errors: {
+        PERIOD_INVALID: 'Period key không hợp lệ',
       },
     },
   },
 });
+
+// Patch i18n vi messages: nhúng PERIOD_INVALID vào territory.errors (test
+// helper inline tránh sửa cấu trúc cũ — chỉ thêm key cần cho Phase 14.0.E).
+(i18n.global.messages.value as unknown as { vi: { territory: { errors: Record<string, string> } } })
+  .vi.territory.errors.PERIOD_INVALID =
+  'Period key không hợp lệ (yêu cầu ISO week YYYY-Www hoặc manual_*).';
 
 function makeRegions(over: {
   ownerSon?: Pick<
@@ -453,6 +475,7 @@ beforeEach(() => {
   getWarCurrentMock.mockReset();
   getWarHistoryMock.mockReset();
   adminWarSettleCurrentMock.mockReset();
+  adminGrantWeeklyRewardsMock.mockReset();
   routerReplaceMock.mockReset();
   routerReplaceMock.mockResolvedValue(undefined);
   authState.isAuthenticated = true;
@@ -1345,5 +1368,121 @@ describe('TerritoryView — Phase 14.0.D weekly war tab', () => {
     const result = w.find('[data-test="territory-war-admin-result"]');
     expect(result.exists()).toBe(true);
     expect(result.text()).toContain('2026-W23');
+  });
+});
+
+function makeRewardGrantResult(
+  overrides: Partial<TerritoryRewardGrantSummary> = {},
+): TerritoryRewardGrantSummary {
+  return {
+    periodKey: '2026-W19',
+    regionsProcessed: 9,
+    mailsCreated: 5,
+    skippedAlreadyGranted: 1,
+    skippedNoWinner: 4,
+    skippedNoMembers: 0,
+    dryRun: false,
+    regions: [],
+    ...overrides,
+  };
+}
+
+describe('TerritoryView — Phase 14.0.E admin reward grant button', () => {
+  beforeEach(() => {
+    routeQuery.tab = 'war';
+    routeQuery.region = undefined;
+  });
+
+  it('PLAYER role → button KHÔNG hiển thị', async () => {
+    authState.user = { role: 'PLAYER' };
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getWarCurrentMock.mockResolvedValue(makeWarState());
+    getWarHistoryMock.mockResolvedValue(makeWarHistory());
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-war"]').trigger('click');
+    await flushPromises();
+
+    expect(
+      w.find('[data-test="territory-reward-admin-panel"]').exists(),
+    ).toBe(false);
+    expect(
+      w.find('[data-test="territory-reward-admin-grant"]').exists(),
+    ).toBe(false);
+  });
+
+  it('ADMIN role → panel + button hiển thị', async () => {
+    authState.user = { role: 'ADMIN' };
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getWarCurrentMock.mockResolvedValue(makeWarState());
+    getWarHistoryMock.mockResolvedValue(makeWarHistory());
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-war"]').trigger('click');
+    await flushPromises();
+
+    expect(
+      w.find('[data-test="territory-reward-admin-panel"]').exists(),
+    ).toBe(true);
+    const btn = w.find('[data-test="territory-reward-admin-grant"]');
+    expect(btn.exists()).toBe(true);
+    // Result chưa có vì chưa click.
+    expect(
+      w.find('[data-test="territory-reward-admin-result"]').exists(),
+    ).toBe(false);
+  });
+
+  it('ADMIN click → service được gọi + render summary', async () => {
+    authState.user = { role: 'ADMIN' };
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getWarCurrentMock.mockResolvedValue(makeWarState());
+    getWarHistoryMock.mockResolvedValue(makeWarHistory());
+    adminGrantWeeklyRewardsMock.mockResolvedValue(makeRewardGrantResult());
+
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-war"]').trigger('click');
+    await flushPromises();
+
+    const btn = w.find('[data-test="territory-reward-admin-grant"]');
+    await btn.trigger('click');
+    await flushPromises();
+
+    expect(adminGrantWeeklyRewardsMock).toHaveBeenCalledTimes(1);
+    const result = w.find('[data-test="territory-reward-admin-result"]');
+    expect(result.exists()).toBe(true);
+    const txt = result.text();
+    expect(txt).toContain('2026-W19'); // periodKey
+    expect(txt).toContain('9'); // regionsProcessed
+    expect(txt).toContain('5'); // mailsCreated
+  });
+
+  it('ADMIN service error → render error code', async () => {
+    authState.user = { role: 'ADMIN' };
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getWarCurrentMock.mockResolvedValue(makeWarState());
+    getWarHistoryMock.mockResolvedValue(makeWarHistory());
+    adminGrantWeeklyRewardsMock.mockRejectedValue(
+      Object.assign(new Error('PERIOD_INVALID'), { code: 'PERIOD_INVALID' }),
+    );
+
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-war"]').trigger('click');
+    await flushPromises();
+
+    await w
+      .find('[data-test="territory-reward-admin-grant"]')
+      .trigger('click');
+    await flushPromises();
+
+    const errBox = w.find('[data-test="territory-reward-admin-error"]');
+    expect(errBox.exists()).toBe(true);
+    // i18n vi key `territory.errors.PERIOD_INVALID` → "Period key không hợp lệ ..."
+    expect(errBox.text()).toContain('Period key');
   });
 });

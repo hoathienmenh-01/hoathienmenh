@@ -251,6 +251,11 @@ export const useTerritoryStore = defineStore('territory', () => {
 
   const warSettleLoading = ref(false);
   const warSettleError = ref<string | null>(null);
+  // Phase 14.0.E — admin grant weekly territory owner reward state.
+  const rewardGrantLoading = ref(false);
+  const rewardGrantError = ref<string | null>(null);
+  const lastRewardGrantResult =
+    ref<api.TerritoryRewardGrantSummary | null>(null);
   const lastWarSettleResult =
     ref<api.TerritoryWarSettleCurrentResult | null>(null);
 
@@ -313,6 +318,30 @@ export const useTerritoryStore = defineStore('territory', () => {
     }
   }
 
+  /**
+   * Phase 14.0.E — admin trigger grant weekly territory owner reward
+   * mail. Idempotent server-side qua UNIQUE `(periodKey, regionKey,
+   * characterId)`. Default `dryRun=false` (mutate state).
+   */
+  async function adminGrantWeeklyTerritoryReward(
+    opts: { periodKey?: string; dryRun?: boolean } = {},
+  ): Promise<string | null> {
+    if (rewardGrantLoading.value) return 'IN_FLIGHT';
+    rewardGrantLoading.value = true;
+    rewardGrantError.value = null;
+    try {
+      const res = await api.adminTerritoryGrantWeeklyRewards(opts);
+      lastRewardGrantResult.value = res;
+      return null;
+    } catch (e) {
+      const code = extractCode(e);
+      rewardGrantError.value = code;
+      return code;
+    } finally {
+      rewardGrantLoading.value = false;
+    }
+  }
+
   function reset(): void {
     regions.value = null;
     regionsLoading.value = false;
@@ -341,6 +370,9 @@ export const useTerritoryStore = defineStore('territory', () => {
     warSettleLoading.value = false;
     warSettleError.value = null;
     lastWarSettleResult.value = null;
+    rewardGrantLoading.value = false;
+    rewardGrantError.value = null;
+    lastRewardGrantResult.value = null;
   }
 
   return {
@@ -371,6 +403,9 @@ export const useTerritoryStore = defineStore('territory', () => {
     warSettleLoading,
     warSettleError,
     lastWarSettleResult,
+    rewardGrantLoading,
+    rewardGrantError,
+    lastRewardGrantResult,
     fetchRegions,
     fetchMe,
     fetchLeaderboard,
@@ -381,6 +416,7 @@ export const useTerritoryStore = defineStore('territory', () => {
     fetchWarCurrent,
     fetchWarHistory,
     adminSettleCurrentWar,
+    adminGrantWeeklyTerritoryReward,
     reset,
   };
 });

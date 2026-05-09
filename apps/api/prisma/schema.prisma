@@ -1671,3 +1671,37 @@ model SectTerritoryDecayLog {
 
   @@index([triggeredAt])
 }
+
+/// Phase 14.0.E — Territory Owner Reward Mail Grant audit row.
+/// 1 row = 1 (periodKey, regionKey, characterId) tuple. UNIQUE composite
+/// `(periodKey, regionKey, characterId)` enforce idempotency: admin gọi
+/// `POST /admin/territory/rewards/grant-weekly` nhiều lần cùng `periodKey`
+/// KHÔNG gửi mail trùng cho cùng character. `mailId` nullable cho dryRun
+/// hoặc trường hợp grant row đã tạo nhưng mail chưa create xong (race
+/// recover: grant row giữ vai trò "lock", mail create theo sau in cùng
+/// transaction — `mailId` set đúng id sau khi mail thành công).
+///
+/// `rewardJson` denormalized snapshot reward def tại thời điểm grant
+/// (linhThach / exp / itemRewards) — audit trail không đổi nếu catalog
+/// shared thay đổi sau này. `sectId` snapshot tại thời điểm grant
+/// (member rời sect sau grant vẫn giữ row history sect cũ).
+///
+/// Rollback: DROP bảng — independent (FK nullable Mail / Character không
+/// constraint). Caller cleanup mail + ledger nếu rollback grant batch.
+model TerritoryOwnerRewardGrant {
+  id          String   @id @default(cuid())
+  periodKey   String
+  regionKey   String
+  sectId      String
+  characterId String
+  mailId      String?
+  /// JSON snapshot reward def: { linhThach, exp, itemRewards: [{itemKey, qty}] }.
+  rewardJson  Json
+  grantedAt   DateTime @default(now())
+
+  @@unique([periodKey, regionKey, characterId])
+  @@index([periodKey])
+  @@index([regionKey])
+  @@index([sectId])
+  @@index([characterId])
+}

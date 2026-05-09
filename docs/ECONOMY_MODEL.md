@@ -68,6 +68,7 @@ Mục tiêu: economy KHÔNG vỡ trong 12-24 tháng vận hành, kể cả khi:
 | Boss damage reward | `boss.service.ts` `distributeRewards` | `BOSS_REWARD` | Per `(bossId, characterId)` — verify với `BossDamage` row |
 | Mission claim | `mission.service.ts` `claimReward` | `MISSION_CLAIM` | `MissionProgress.claimed` flag |
 | Mail claim | `mail.service.ts` `claimMail` | `MAIL_CLAIM` | `Mail.claimedAt` not null |
+| Territory owner reward (Phase 14.0.E) | `territory-reward.service.ts` `grantWeeklyOwnerRewardMail` → `mail.service.ts` `sendToCharacter` | `MAIL_CLAIM` (khi member claim mail) | `TerritoryOwnerRewardGrant` UNIQUE `(periodKey, regionKey, characterId)` — gọi lại cùng `periodKey` KHÔNG tạo mail mới |
 | Gift code redeem | `giftcode.service.ts` `redeem` | `GIFT_CODE_REDEEM` | `GiftCodeRedemption` unique |
 | Daily login claim | `daily-login.service.ts` `claim` | `DAILY_LOGIN` | `DailyLoginClaim` unique `(characterId, claimDateLocal)` |
 | Market sell (income) | `market.service.ts` `buy` | `MARKET_SELL` | Per `Listing.id` |
@@ -515,3 +516,4 @@ Xem pattern tham khảo: `apps/api/src/modules/daily-login/daily-login.service.t
 ## 10. CHANGELOG
 
 - **2026-04-30** — Initial creation. Author: Devin AI session 9q.
+- **2026-05-09** — Phase 14.0.E Territory Owner Reward Mail — thêm source `linhThach`/EXP/item dạng mail từ catalog `TERRITORY_OWNER_REWARDS` cho member sect chiếm region. Idempotent qua `TerritoryOwnerRewardGrant` UNIQUE `(periodKey, regionKey, characterId)`. Worst-case 1 sect cả 9 region ≈ 3750 linhThach + 1870 EXP / member / tuần (≤ 50–100% mission daily income).

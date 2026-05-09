@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   HttpException,
@@ -21,6 +22,7 @@ import { AdminGuard } from '../admin/admin.guard';
 import { RequireAdmin } from '../admin/require-admin.decorator';
 import { TerritoryDecayService } from './territory-decay.service';
 import { TerritoryError } from './territory.service';
+import { TerritoryRewardService } from './territory-reward.service';
 import { TerritorySettlementService } from './territory-settlement.service';
 import { TerritoryWarService } from './territory-war.service';
 
@@ -43,6 +45,19 @@ const DecayQuery = z
     decayBps: z
       .string()
       .regex(/^[0-9]+$/)
+      .optional(),
+  })
+  .strict();
+
+/**
+ * Phase 14.0.E — Admin reward grant body schema. `dryRun` accept "true" /
+ * "false" string (form-urlencoded) hoặc native boolean (JSON body).
+ */
+const GrantWeeklyBody = z
+  .object({
+    periodKey: z.string().min(1).max(64).optional(),
+    dryRun: z
+      .union([z.boolean(), z.literal('true'), z.literal('false')])
       .optional(),
   })
   .strict();
@@ -76,6 +91,7 @@ export class AdminTerritoryController {
     private readonly settlement: TerritorySettlementService,
     private readonly decayService: TerritoryDecayService,
     private readonly warService: TerritoryWarService,
+    private readonly rewardService: TerritoryRewardService,
   ) {}
 
   @Post('settle')
@@ -218,6 +234,57 @@ export class AdminTerritoryController {
       const data = await this.warService.settleCurrentPeriod({
         settledBy: req.userId ?? null,
       });
+      return { ok: true, data };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Phase 14.0.E — Grant weekly territory owner reward mail cho mọi
+   * region đã settle tại `periodKey`. Idempotent qua UNIQUE
+   * `(periodKey, regionKey, characterId)` ở `TerritoryOwnerRewardGrant`.
+   *
+   * Body (JSON, tất cả optional):
+   *   - `periodKey?: string` — fallback `previousTerritoryPeriodKey()`.
+   *   - `dryRun?: boolean | 'true' | 'false'` — KHÔNG mutate state nếu
+   *     true.
+   *
+   * Response: `TerritoryRewardGrantSummary`
+   *   `{ periodKey, regionsProcessed, mailsCreated, skippedAlreadyGranted,
+   *     skippedNoWinner, skippedNoMembers, dryRun, regions[] }`.
+   *
+   * Lỗi:
+   *   - `UNAUTHENTICATED` 401 — chưa login.
+   *   - `ADMIN_ONLY` 403 — login MOD (không phải ADMIN).
+   *   - `INVALID_INPUT` 400 — body schema fail.
+   *   - `PERIOD_INVALID` 400 — periodKey không match ISO week | manual_*.
+   */
+  @Post('rewards/grant-weekly')
+  @RequireAdmin()
+  async grantWeeklyOwnerReward(
+    @Body() rawBody: unknown,
+    @Req() req: Request & { userId?: string },
+  ) {
+    const body = rawBody && typeof rawBody === 'object' ? rawBody : {};
+    const parsed = GrantWeeklyBody.safeParse(body);
+    if (!parsed.success) {
+      fail('INVALID_INPUT', HttpStatus.BAD_REQUEST);
+    }
+    const periodKey = parsed.data.periodKey ?? previousTerritoryPeriodKey();
+    if (!isTerritoryPeriodKey(periodKey)) {
+      fail('PERIOD_INVALID', HttpStatus.BAD_REQUEST);
+    }
+    const dryRun =
+      parsed.data.dryRun === true || parsed.data.dryRun === 'true';
+    try {
+      const data = await this.rewardService.grantWeeklyOwnerRewardMail(
+        periodKey,
+        {
+          dryRun,
+          triggeredBy: req.userId ?? null,
+        },
+      );
       return { ok: true, data };
     } catch (e) {
       this.handleErr(e);

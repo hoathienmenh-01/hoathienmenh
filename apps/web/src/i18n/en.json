@@ -3221,6 +3221,13 @@
       "adminSettleRunning": "Settling…",
       "adminLastResult": "Settled {period}: {wins} regions won · {skip} skipped (no points)."
     },
+    "reward": {
+      "adminTitle": "Admin — Weekly Territory Reward",
+      "adminSubtitle": "Send mail rewards to members of sects that hold territories (idempotent per periodKey + region + character). Defaults to last week.",
+      "adminGrantButton": "Grant Weekly Territory Rewards",
+      "adminGrantRunning": "Granting…",
+      "adminLastResult": "Processed {period}: {regions} regions · {mails} mails sent · {skipAlready} already granted · {skipNoWinner} no winner · {skipNoMembers} sect empty."
+    },
     "errors": {
       "NO_CHARACTER": "No character yet — start your journey first.",
       "REGION_INVALID": "Region not found.",
