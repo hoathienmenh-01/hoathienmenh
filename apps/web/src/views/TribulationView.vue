@@ -212,7 +212,10 @@ function fmtNum(n: number | string): string {
 
 async function onAttempt(): Promise<void> {
   if (buttonDisabled.value) return;
-  const errCode = await tribulation.attempt();
+  // Phase 14.3.C — gửi selected support item keys; server consume in tx +
+  // recalc bonus server-side (FE chỉ là UI hint, KHÔNG authority).
+  const selected = [...selectedSupportItemKeys.value];
+  const errCode = await tribulation.attempt(selected);
   if (errCode === null) {
     // attempt accepted — outcome populated in store
     const outcome = tribulation.lastOutcome;
@@ -229,10 +232,15 @@ async function onAttempt(): Promise<void> {
         text: t('tribulation.attempt.failToast'),
       });
     }
+    // Phase 14.3.C — clear selection sau attempt (items đã consumed; preview
+    // sẽ refetch sang availableSupportItems mới).
+    selectedSupportItemKeys.value = [];
     // refetch state để cập nhật realmKey/realmStage/exp/linhThach
     await game.fetchState().catch(() => null);
     // Phase 11.6.G — refetch history sau khi attempt accept (1 row mới được ghi).
     await tribulation.fetchHistory().catch(() => null);
+    // Phase 14.3.C — refetch preview để availableSupportItems sync với inventory mới.
+    await tribulation.fetchPreview().catch(() => null);
   } else {
     const key = `tribulation.errors.${errCode}`;
     const text = t(key);
@@ -288,6 +296,63 @@ const showOutcome = ref<boolean>(false);
 function dismissOutcome(): void {
   showOutcome.value = false;
   tribulation.clearLastOutcome();
+}
+
+/**
+ * Phase 14.3.C — selected support item keys (≤ N=preview.maxSelectedSupportItems).
+ * Reset khi rời page hoặc dismissOutcome (sau attempt thì server đã consume,
+ * stale selection KHÔNG còn hợp lệ).
+ */
+const selectedSupportItemKeys = ref<string[]>([]);
+
+const maxSelectedSupportItems = computed<number>(() => {
+  return tribulation.preview?.maxSelectedSupportItems ?? 3;
+});
+
+const availableSupportItems = computed(() => {
+  return tribulation.preview?.availableSupportItems ?? [];
+});
+
+const selectionLimitReached = computed<boolean>(() => {
+  return (
+    selectedSupportItemKeys.value.length >= maxSelectedSupportItems.value
+  );
+});
+
+/**
+ * Phase 14.3.C — predicted bonus tổng từ selected items (additive sum, KHÔNG
+ * apply per-entry/total cap ở client side — server có authority cap; đây
+ * chỉ là estimate visual).
+ */
+const predictedSupportItemBonus = computed<number>(() => {
+  let sum = 0;
+  for (const key of selectedSupportItemKeys.value) {
+    const entry = availableSupportItems.value.find((e) => e.itemKey === key);
+    if (entry) sum += entry.bonus;
+  }
+  return sum;
+});
+
+function isSupportSelected(itemKey: string): boolean {
+  return selectedSupportItemKeys.value.includes(itemKey);
+}
+
+function toggleSupportItem(itemKey: string): void {
+  const idx = selectedSupportItemKeys.value.indexOf(itemKey);
+  if (idx >= 0) {
+    selectedSupportItemKeys.value.splice(idx, 1);
+    return;
+  }
+  if (selectedSupportItemKeys.value.length >= maxSelectedSupportItems.value) {
+    toast.push({
+      type: 'warning',
+      text: t('tribulation.field.selectionLimitReached', {
+        max: maxSelectedSupportItems.value,
+      }),
+    });
+    return;
+  }
+  selectedSupportItemKeys.value.push(itemKey);
 }
 
 onMounted(async () => {
@@ -468,6 +533,40 @@ onUnmounted(() => {
                 })
               }}
             </div>
+          </div>
+
+          <!--
+            Phase 14.3.C — consumed support items display (success + fail
+            paths). Server resolve labels từ catalog. Empty render hint
+            "no items used" để rõ ràng UX.
+          -->
+          <div class="mt-2 space-y-0.5" data-testid="tribulation-outcome-consumed">
+            <div class="text-ink-300 text-[11px]">
+              {{ t('tribulation.field.consumedTitle') }}:
+            </div>
+            <ul
+              v-if="tribulation.lastOutcome.consumedSupportItems.length > 0"
+              class="pl-2 space-y-0.5"
+            >
+              <li
+                v-for="(item, idx) in tribulation.lastOutcome.consumedSupportItems"
+                :key="`${item.itemKey}-${idx}`"
+                class="text-amber-200 text-[11px]"
+                :data-testid="`tribulation-outcome-consumed-${idx}`"
+              >
+                {{ t('tribulation.field.consumedItem', { label: item.label }) }}
+                <span class="text-ink-300 ml-1">
+                  (+{{ Math.round(item.bonus * 100) }}%)
+                </span>
+              </li>
+            </ul>
+            <p
+              v-else
+              class="text-ink-300/70 text-[11px]"
+              data-testid="tribulation-outcome-consumed-empty"
+            >
+              {{ t('tribulation.field.consumedNone') }}
+            </p>
           </div>
         </div>
       </section>
@@ -692,6 +791,101 @@ onUnmounted(() => {
               ·
               {{ upcomingDef.failurePenalty.taoMaDebuffDurationMinutes }} {{ t('tribulation.unit.minutes') }}
             </span>
+          </div>
+        </div>
+
+        <!--
+          Phase 14.3.C — support item selection panel.
+          - Hiển thị `availableSupportItems` từ preview (qty>0, consumable
+            kind theo shared validator).
+          - Checkbox multi-select; cap = `maxSelectedSupportItems` (3).
+          - Predicted bonus tổng (additive sum, KHÔNG cap client-side; server
+            có authority cap khi attempt).
+          - Tooltip ghi rõ "selected items consumed regardless of outcome".
+        -->
+        <div
+          v-if="tribulation.preview"
+          class="border-t border-ink-300/20 pt-2 space-y-1 text-xs"
+          data-testid="tribulation-selection-panel"
+        >
+          <h3 class="text-ink-300 mb-1">
+            {{ t('tribulation.field.selectionTitle') }}
+          </h3>
+          <p
+            class="text-[11px] text-ink-300/80"
+            data-testid="tribulation-selection-hint"
+          >
+            {{
+              t('tribulation.field.selectionHint', {
+                max: maxSelectedSupportItems,
+              })
+            }}
+          </p>
+          <ul
+            v-if="availableSupportItems.length > 0"
+            class="space-y-1 mt-1"
+            data-testid="tribulation-selection-list"
+          >
+            <li
+              v-for="entry in availableSupportItems"
+              :key="entry.itemKey"
+              :data-testid="`tribulation-selection-item-${entry.itemKey}`"
+              class="flex items-center gap-2"
+            >
+              <label
+                class="flex items-center gap-2 cursor-pointer flex-1"
+                :class="{
+                  'opacity-50 cursor-not-allowed':
+                    !isSupportSelected(entry.itemKey) && selectionLimitReached,
+                }"
+              >
+                <input
+                  type="checkbox"
+                  :checked="isSupportSelected(entry.itemKey)"
+                  :disabled="
+                    !isSupportSelected(entry.itemKey) && selectionLimitReached
+                  "
+                  :data-testid="`tribulation-selection-checkbox-${entry.itemKey}`"
+                  class="accent-emerald-500"
+                  @change="toggleSupportItem(entry.itemKey)"
+                />
+                <span
+                  class="text-ink-100"
+                  :data-testid="`tribulation-selection-label-${entry.itemKey}`"
+                >{{ entry.label }}</span>
+                <span
+                  class="text-[10px] text-ink-300"
+                  :data-testid="`tribulation-selection-qty-${entry.itemKey}`"
+                >
+                  {{ t('tribulation.field.selectionItemQty', { qty: entry.qty }) }}
+                </span>
+                <span
+                  class="text-emerald-200 ml-auto"
+                  :data-testid="`tribulation-selection-bonus-${entry.itemKey}`"
+                >
+                  {{
+                    t('tribulation.field.selectionItemBonus', {
+                      bonus: Math.round(entry.bonus * 100),
+                    })
+                  }}
+                </span>
+              </label>
+            </li>
+          </ul>
+          <p
+            v-else
+            class="text-ink-300/70 text-[11px]"
+            data-testid="tribulation-selection-empty"
+          >
+            {{ t('tribulation.field.selectionEmpty') }}
+          </p>
+          <div
+            v-if="selectedSupportItemKeys.length > 0"
+            class="mt-1 text-emerald-200 text-[11px]"
+            data-testid="tribulation-selection-predicted"
+          >
+            {{ t('tribulation.field.selectionPredictedTotal') }}:
+            +{{ Math.round(predictedSupportItemBonus * 100) }}%
           </div>
         </div>
 

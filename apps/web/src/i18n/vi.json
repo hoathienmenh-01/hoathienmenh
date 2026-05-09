@@ -1954,7 +1954,17 @@
       "supports": "Hỗ trợ",
       "supportsEmpty": "Chưa có hỗ trợ kích hoạt.",
       "capWarningCeil": "Đã chạm trần bonus tối đa — thêm hỗ trợ không tăng tỷ lệ.",
-      "capWarningFloor": "Đã chạm sàn tối thiểu — không thể giảm thêm."
+      "capWarningFloor": "Đã chạm sàn tối thiểu — không thể giảm thêm.",
+      "selectionTitle": "Chọn vật phẩm hỗ trợ",
+      "selectionHint": "Mỗi lần vượt kiếp dùng tối đa {max} vật phẩm. Vật phẩm đã chọn sẽ bị tiêu hao bất kể kiếp thắng hay bại.",
+      "selectionEmpty": "Chưa có vật phẩm hỗ trợ trong túi đồ.",
+      "selectionLimitReached": "Đã đạt giới hạn {max} vật phẩm chọn cho lần này.",
+      "selectionPredictedTotal": "Tổng bonus dự kiến từ vật phẩm",
+      "selectionItemQty": "Còn {qty}",
+      "selectionItemBonus": "+{bonus}%",
+      "consumedTitle": "Vật phẩm đã tiêu hao",
+      "consumedItem": "{label} (−1)",
+      "consumedNone": "Không dùng vật phẩm hỗ trợ."
     },
     "supportSource": {
       "item": "Vật phẩm",
@@ -2021,6 +2031,12 @@
       "INVALID_RNG": "Lỗi hệ thống, thử lại sau.",
       "TRIBULATION_UNAVAILABLE": "Hệ thống vượt kiếp tạm khoá.",
       "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "INVALID_SUPPORT_SELECTION": "Lựa chọn vật phẩm hỗ trợ không hợp lệ.",
+      "TOO_MANY_SUPPORT_ITEMS": "Chỉ được chọn tối đa 3 vật phẩm hỗ trợ.",
+      "DUPLICATE_SUPPORT_ITEM": "Không được chọn trùng cùng một vật phẩm.",
+      "INVALID_SUPPORT_ITEM": "Vật phẩm này không thể dùng để hỗ trợ vượt kiếp.",
+      "SUPPORT_ITEM_MISSING": "Vật phẩm hỗ trợ không còn trong túi đồ.",
+      "INVENTORY_UNAVAILABLE": "Hệ thống túi đồ tạm khoá.",
       "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
       "IN_FLIGHT": "Đang xử lý…",
       "UNKNOWN": "Vượt kiếp thất bại, thử lại."

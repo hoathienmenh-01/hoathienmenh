@@ -1,6 +1,7 @@
 import { forwardRef, Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { CurrencyKind } from '@prisma/client';
 import {
+  buildSelectedSupportItemEntries,
   collectBuffTribulationSupports,
   collectEquipmentTribulationSupports,
   collectItemTribulationSupports,
@@ -17,18 +18,25 @@ import {
   ELEMENTS,
   expCostForStage,
   getTribulationForBreakthrough,
+  itemByKey,
+  listTribulationSupportConsumables,
   nextRealm,
   simulateTribulation,
   summarizeTribulationPenaltyHint,
   summarizeTribulationRewardHint,
   titleForRealmMilestone,
+  TRIBULATION_MAX_SELECTED_SUPPORT_ITEMS,
+  validateTribulationSupportSelection,
+  type ComposedTribulationSupports,
   type ElementKey,
+  type ItemDef,
   type PassiveTalentMods,
   type TribulationDef,
   type TribulationPenaltyHint,
   type TribulationRewardHint,
   type TribulationSuccessChanceBreakdown,
   type TribulationSupportEntry,
+  type TribulationSupportSelectionError,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { InventoryService } from '../inventory/inventory.service';
@@ -118,7 +126,21 @@ export class TribulationService {
     characterId: string,
     rng: () => number = Math.random,
     now: Date = new Date(),
+    options: TribulationAttemptOptions = {},
   ): Promise<TribulationAttemptOutcome> {
+    const selectedKeysRaw = options.selectedSupportItemKeys ?? [];
+    // Phase 14.3.C — pure validate (catalog + dedupe + cap). KHÔNG check
+    // inventory ở đây vì cần tx; ownership check inside tx.
+    const validateResult = validateTribulationSupportSelection(selectedKeysRaw);
+    if (!validateResult.ok) {
+      throw new TribulationError(
+        mapSupportSelectionErrorToTribulationCode(validateResult.code),
+      );
+    }
+    const selectedKeys: readonly string[] = validateResult.entries.map(
+      (e: TribulationSupportEntry) => e.key,
+    );
+
     const outcome = await this.prisma.$transaction(async (tx) => {
       const character = await tx.character.findUnique({
         where: { id: characterId },
@@ -154,6 +176,21 @@ export class TribulationService {
       });
       const attemptIndex = priorAttempts + 1;
 
+      // Phase 14.3.C — Pre-check inventory ownership trong tx. Selected key
+      // phải có ít nhất 1 stack unequipped (qty>0, equippedSlot=null) tại thời
+      // điểm attempt. Nếu missing/insufficient → reject TRƯỚC khi sim/log →
+      // KHÔNG burn EXP, KHÔNG cooldown. Player retry an toàn (idempotent).
+      // Race condition: 2 attempt song song cùng key → 1 trúng consume,
+      // 1 fail ở consumeOneByItemKeyTx (decResult.count===0) → throw → tx
+      // rollback. Cả 2 đều atomic.
+      for (const key of selectedKeys) {
+        const owned = await tx.inventoryItem.findFirst({
+          where: { characterId, itemKey: key, equippedSlot: null, qty: { gt: 0 } },
+          select: { id: true },
+        });
+        if (!owned) throw new TribulationError('SUPPORT_ITEM_MISSING');
+      }
+
       // Element resist: Phase 11.6.C — wire Character.primaryElement +
       // secondaryElements vào computeSpiritualRootTribulationResist. Defensive
       // narrow primaryElement string → ElementKey union (Prisma trả về string?).
@@ -184,6 +221,87 @@ export class TribulationService {
         );
       }
 
+      // Phase 14.3.C — server-side recalc composedSupports cho attempt.
+      // KHÔNG tin FE-sent bonus value: build entries từ
+      //   - selectedKeys (validated, bonus từ catalog)
+      //   - equipment supports (đeo on character — passive, KHÔNG consume)
+      //   - buff supports (active buff — passive)
+      //   - talent supports (learned talent — passive)
+      // Inventory items KHÔNG selected → KHÔNG đóng góp bonus (player phải
+      // explicit chọn để consume). Compose qua foundation clamp per-entry +
+      // total → totalBonus ∈ [-TRIBULATION_SUPPORT_TOTAL_CEIL, +ditto].
+      const selectedItemEntries = buildSelectedSupportItemEntries(selectedKeys);
+      const supportEntries: TribulationSupportEntry[] = [...selectedItemEntries];
+
+      // Equipment supports — collect từ inventory rows (equippedSlot != null).
+      // Đọc qua tx vì tx.inventoryItem.findMany sẽ thấy state đã sync với
+      // pre-check ownership ở trên + sẽ guard nếu equipped item bị thay đổi
+      // trong race window.
+      const allRows = await tx.inventoryItem.findMany({
+        where: { characterId },
+        select: { itemKey: true, qty: true, equippedSlot: true },
+      });
+      const supportRows = allRows.map((r) => ({
+        itemKey: r.itemKey,
+        qty: r.qty,
+        equippedSlot: r.equippedSlot,
+      }));
+      supportEntries.push(...collectEquipmentTribulationSupports(supportRows));
+
+      // Buff supports — active buffs có BuffDef.tribulationSupport.
+      if (this.buffs) {
+        const activeBuffs = await this.buffs.listActive(characterId, now);
+        supportEntries.push(...collectBuffTribulationSupports(activeBuffs));
+      }
+
+      // Talent supports — learned talents có element_resist matching wave
+      // element của kiếp sắp tới.
+      if (this.talents) {
+        const learnedTalents = await this.talents.listLearned(characterId);
+        const waveElements: (ElementKey | null)[] = def.waves.map(
+          (w) => w.element,
+        );
+        supportEntries.push(
+          ...collectTalentTribulationSupports(
+            learnedTalents.map((l) => l.talentKey),
+            waveElements,
+          ),
+        );
+      }
+
+      const composedSupports = composeTribulationSupports(supportEntries);
+      // Phase 14.3.C — successChance breakdown server-side (parity với
+      // preview). Persist vào response để FE/audit so sánh với preview pre-
+      // attempt. Bao gồm TẤT CẢ supports (item/equipment/buff/talent) —
+      // mirror Phase 14.3.B preview semantics.
+      const successChanceBreakdown = computeTribulationSuccessChance({
+        def,
+        primaryElement,
+        secondaryElements,
+        supports: composedSupports,
+      });
+      // Damage-layer supportMultiplier dùng RIÊNG composition KHÔNG bao gồm
+      // talent supports — vì talent element_resist đã được áp via
+      // `computePassiveTalentTribulationResist` ở elementResistFn (avoid
+      // double-count). Item / buff / equipment có dedicated `tribulationSupport`
+      // field độc lập với element_resist nên KHÔNG double-count.
+      //
+      // Convention:
+      //   damageSupports.totalBonus = 0.13 → supportMultiplier = 0.87
+      //   → damage layer × 0.87 (giảm 13% sát thương kiếp).
+      // Stack multiplicative: clamped(elementLayer) × supportMultiplier.
+      // Sàn 0.5 guard nếu cap config bị đẩy bất thường > 0.5.
+      const damageSupports = composeTribulationSupports([
+        ...selectedItemEntries,
+        ...collectEquipmentTribulationSupports(supportRows),
+        ...(this.buffs
+          ? collectBuffTribulationSupports(
+              await this.buffs.listActive(characterId, now),
+            )
+          : []),
+      ]);
+      const supportMultiplier = Math.max(0.5, 1 - damageSupports.totalBonus);
+
       const elementResistFn = (element: ElementKey | null): number => {
         const rootResist = computeSpiritualRootTribulationResist(
           primaryElement,
@@ -202,9 +320,10 @@ export class TribulationService {
         // equipment + future buff) không làm resist âm hoặc vượt 1.5×. Worst-case
         // stack: spiritual primary 0.7 × talent 5-stack 0.7738 × equipment 5-stack
         // 0.7738 = 0.4193, clamp về FLOOR=0.6.
-        if (composed < ELEMENT_MODIFIER_ABSOLUTE_FLOOR) return ELEMENT_MODIFIER_ABSOLUTE_FLOOR;
-        if (composed > ELEMENT_MODIFIER_ABSOLUTE_CEIL) return ELEMENT_MODIFIER_ABSOLUTE_CEIL;
-        return composed;
+        let clamped = composed;
+        if (clamped < ELEMENT_MODIFIER_ABSOLUTE_FLOOR) clamped = ELEMENT_MODIFIER_ABSOLUTE_FLOOR;
+        if (clamped > ELEMENT_MODIFIER_ABSOLUTE_CEIL) clamped = ELEMENT_MODIFIER_ABSOLUTE_CEIL;
+        return clamped * supportMultiplier;
       };
 
       const sim = simulateTribulation(def, character.hpMax, elementResistFn);
@@ -275,6 +394,17 @@ export class TribulationService {
           });
         }
 
+        // Phase 14.3.C — consume selected support items (success path) trong
+        // cùng tx, sau khi log row đã có id (refId pointer). Nếu consume fail
+        // (race) → throw → rollback toàn bộ tx (KHÔNG mất realm advance,
+        // currency, log).
+        await this.consumeSelectedSupportItemsTx(
+          tx,
+          characterId,
+          selectedKeys,
+          log.id,
+        );
+
         // Phase 11.9.C-2 — auto-unlock realm milestone title (atomic trong
         // cùng tx). Idempotent qua `CharacterTitleUnlock` composite UNIQUE.
         // Skip nếu (a) `titles` chưa inject (test/legacy), (b) realm mới
@@ -325,6 +455,9 @@ export class TribulationService {
           },
           penalty: null,
           logId: log.id,
+          consumedSupportItemKeys: [...selectedKeys],
+          supportTotalBonus: composedSupports.totalBonus,
+          successChance: successChanceBreakdown,
         };
       }
 
@@ -394,6 +527,17 @@ export class TribulationService {
         },
       });
 
+      // Phase 14.3.C — consume selected support items (fail path) trong cùng
+      // tx, sau khi log row đã có id. Failed attempt VẪN consume — design
+      // choice: player phải tính toán trước khi attempt, không thể "lãng
+      // phí" 1 lần thử rồi refund. Doc rõ ở `docs/ECONOMY_MODEL.md`.
+      await this.consumeSelectedSupportItemsTx(
+        tx,
+        characterId,
+        selectedKeys,
+        log.id,
+      );
+
       return {
         success: false,
         tribulationKey: def.key,
@@ -415,6 +559,9 @@ export class TribulationService {
           taoMaExpiresAt: penalty.taoMaExpiresAt,
         },
         logId: log.id,
+        consumedSupportItemKeys: [...selectedKeys],
+        supportTotalBonus: composedSupports.totalBonus,
+        successChance: successChanceBreakdown,
       };
     });
 
@@ -437,6 +584,56 @@ export class TribulationService {
     }
 
     return outcome;
+  }
+
+  /**
+   * Phase 14.3.C — consume danh sách selected support items trong cùng tx
+   * với attempt log + character update. Mỗi key consume **1 stack** (không
+   * dùng qty multiplier — bonus per-key đã pre-clamp ở
+   * {@link composeTribulationSupports}).
+   *
+   * Race safety: nếu inventory row qty đã = 0 (concurrent consume ở tx khác)
+   * → `consumeOneByItemKeyTx` throw `INVENTORY_ITEM_NOT_FOUND`. Helper convert
+   * sang `TribulationError('SUPPORT_ITEM_MISSING')` để controller map BAD
+   * REQUEST. Tx rollback toàn bộ → KHÔNG mất EXP, KHÔNG cooldown.
+   *
+   * Inventory absent: nếu `this.inventory` chưa inject (legacy test path)
+   * VÀ player chọn ≥ 1 item → throw `INVENTORY_UNAVAILABLE`. Empty selection
+   * → no-op.
+   *
+   * @param tx Prisma transaction client từ `prisma.$transaction`.
+   * @param characterId character id.
+   * @param selectedKeys keys đã validate (catalog + dedupe + cap).
+   * @param logId TribulationAttemptLog.id cho ledger refType+refId pointer.
+   */
+  private async consumeSelectedSupportItemsTx(
+    tx: Parameters<Parameters<PrismaService['$transaction']>[0]>[0],
+    characterId: string,
+    selectedKeys: readonly string[],
+    logId: string,
+  ): Promise<void> {
+    if (selectedKeys.length === 0) return;
+    if (!this.inventory) {
+      throw new TribulationError('INVENTORY_UNAVAILABLE');
+    }
+    for (const key of selectedKeys) {
+      try {
+        await this.inventory.consumeOneByItemKeyTx(tx, characterId, key, {
+          reason: 'TRIBULATION_SUPPORT_CONSUME',
+          refType: 'TribulationAttemptLog',
+          refId: logId,
+        });
+      } catch (e) {
+        const code = (e as { code?: string }).code;
+        if (
+          code === 'INVENTORY_ITEM_NOT_FOUND' ||
+          code === 'INSUFFICIENT_QTY'
+        ) {
+          throw new TribulationError('SUPPORT_ITEM_MISSING');
+        }
+        throw e;
+      }
+    }
   }
 
   /**
@@ -538,6 +735,24 @@ export class TribulationService {
       supports,
     });
 
+    // Phase 14.3.C — build availableSupportItems từ catalog + inventory rows.
+    // Mỗi consumable support item key → 1 entry với qty (sum across rows).
+    // Equipment supports / buff / talent KHÔNG include — chúng auto active.
+    const consumableDefs = listTribulationSupportConsumables();
+    const qtyByKey = new Map<string, number>();
+    for (const r of inventoryRows) {
+      if (r.equippedSlot !== null) continue;
+      qtyByKey.set(r.itemKey, (qtyByKey.get(r.itemKey) ?? 0) + r.qty);
+    }
+    const availableSupportItems = consumableDefs
+      .map((d: ItemDef) => ({
+        itemKey: d.key,
+        label: d.name,
+        bonus: d.bonuses?.tribulationSupport ?? 0,
+        qty: qtyByKey.get(d.key) ?? 0,
+      }))
+      .filter((e: { qty: number }) => e.qty > 0);
+
     return {
       requirement: true,
       fromRealmKey: character.realmKey,
@@ -562,6 +777,8 @@ export class TribulationService {
       taoMaUntil: character.taoMaUntil
         ? character.taoMaUntil.toISOString()
         : null,
+      availableSupportItems,
+      maxSelectedSupportItems: TRIBULATION_MAX_SELECTED_SUPPORT_ITEMS,
     };
   }
 
@@ -697,6 +914,24 @@ export interface TribulationPreview {
   cooldownAt: string | null;
   /** ISO string nếu còn Tâm Ma debuff active; null nếu hết hoặc chưa có. */
   taoMaUntil: string | null;
+  /**
+   * Phase 14.3.C — danh sách consumable support items player có thể chọn để
+   * consume khi attempt. Mỗi entry: `{itemKey, label, bonus, qty}`. FE render
+   * checkbox/select UI từ list này. KHÔNG include equipment / buff / talent
+   * supports — chúng passive auto-active. Cap UX: max
+   * {@link TRIBULATION_MAX_SELECTED_SUPPORT_ITEMS} = 3 selected/attempt.
+   */
+  availableSupportItems: ReadonlyArray<{
+    itemKey: string;
+    label: string;
+    bonus: number;
+    qty: number;
+  }>;
+  /**
+   * Phase 14.3.C — cap số selected items tối đa cho 1 attempt (server
+   * authoritative). FE đọc để clamp checkbox count.
+   */
+  maxSelectedSupportItems: number;
 }
 
 export interface TribulationAttemptOutcome {
@@ -724,6 +959,22 @@ export interface TribulationAttemptOutcome {
     taoMaExpiresAt: Date | null;
   } | null;
   logId: string;
+  /**
+   * Phase 14.3.C — danh sách itemKey đã consume (1 stack/key) trong attempt.
+   * Empty array nếu player attempt không chọn item. FE render "đã dùng X
+   * vật phẩm" sau response.
+   */
+  consumedSupportItemKeys: readonly string[];
+  /**
+   * Phase 14.3.C — total bonus support đã dùng (đã clamp per-entry + total
+   * server-side). FE so sánh với predicted bonus tính local trước attempt.
+   */
+  supportTotalBonus: number;
+  /**
+   * Phase 14.3.C — server-side breakdown success chance (parity với preview).
+   * Persist cho FE audit + future replay.
+   */
+  successChance: TribulationSuccessChanceBreakdown;
 }
 
 /**
@@ -764,6 +1015,16 @@ export interface TribulationAttemptOutcomeView {
     taoMaExpiresAt: string | null;
   } | null;
   logId: string;
+  /** Phase 14.3.C — items consumed during attempt. */
+  consumedSupportItems: ReadonlyArray<{
+    itemKey: string;
+    label: string;
+    bonus: number;
+  }>;
+  /** Phase 14.3.C — total bonus (after clamp) applied to attempt. */
+  supportTotalBonus: number;
+  /** Phase 14.3.C — server-side success-chance breakdown for audit/UX. */
+  successChance: TribulationSuccessChanceBreakdown;
 }
 
 /**
@@ -806,6 +1067,16 @@ export function toAttemptOutcomeView(
         }
       : null,
     logId: outcome.logId,
+    consumedSupportItems: outcome.consumedSupportItemKeys.map((k) => {
+      const def: ItemDef | undefined = itemByKey(k);
+      return {
+        itemKey: k,
+        label: def?.name ?? k,
+        bonus: def?.bonuses?.tribulationSupport ?? 0,
+      };
+    }),
+    supportTotalBonus: outcome.supportTotalBonus,
+    successChance: outcome.successChance,
   };
 }
 
@@ -817,8 +1088,55 @@ export class TribulationError extends Error {
       | 'NO_NEXT_REALM'
       | 'NO_TRIBULATION_FOR_TRANSITION'
       | 'COOLDOWN_ACTIVE'
-      | 'INVALID_RNG',
+      | 'INVALID_RNG'
+      // Phase 14.3.C — selection validation errors.
+      | 'INVALID_SUPPORT_SELECTION'
+      | 'TOO_MANY_SUPPORT_ITEMS'
+      | 'DUPLICATE_SUPPORT_ITEM'
+      | 'INVALID_SUPPORT_ITEM'
+      | 'SUPPORT_ITEM_MISSING'
+      | 'INVENTORY_UNAVAILABLE',
   ) {
     super(code);
   }
+}
+
+/**
+ * Phase 14.3.C — map shared `TribulationSupportSelectionError` →
+ * {@link TribulationError} code. Used khi pure validator reject input để
+ * service throw consistent error class (controller layer chỉ catch 1 class).
+ */
+export function mapSupportSelectionErrorToTribulationCode(
+  code: TribulationSupportSelectionError,
+):
+  | 'INVALID_SUPPORT_SELECTION'
+  | 'TOO_MANY_SUPPORT_ITEMS'
+  | 'DUPLICATE_SUPPORT_ITEM'
+  | 'INVALID_SUPPORT_ITEM' {
+  switch (code) {
+    case 'INVALID_INPUT':
+      return 'INVALID_SUPPORT_SELECTION';
+    case 'TOO_MANY_SELECTED':
+      return 'TOO_MANY_SUPPORT_ITEMS';
+    case 'DUPLICATE_SELECTED':
+      return 'DUPLICATE_SUPPORT_ITEM';
+    case 'INVALID_SUPPORT_ITEM':
+      return 'INVALID_SUPPORT_ITEM';
+    default: {
+      const _exhaustive: never = code;
+      return _exhaustive;
+    }
+  }
+}
+
+/**
+ * Phase 14.3.C — options arg cho {@link TribulationService.attemptTribulation}.
+ *
+ * - `selectedSupportItemKeys`: list catalog itemKey player chọn để consume khi
+ *   attempt. Mỗi key validate qua {@link validateTribulationSupportSelection}
+ *   (≤ {@link TRIBULATION_MAX_SELECTED_SUPPORT_ITEMS}, no duplicate, valid
+ *   catalog support consumable). Empty/undefined = no item consumed.
+ */
+export interface TribulationAttemptOptions {
+  selectedSupportItemKeys?: readonly string[];
 }

@@ -32,6 +32,17 @@ const STUB_SUCCESS: api.TribulationOutcomeView = {
   },
   penalty: null,
   logId: 'log-1',
+  consumedSupportItems: [],
+  supportTotalBonus: 0,
+  successChance: {
+    base: 0.7,
+    supportBonus: 0,
+    elementAdjustment: 0,
+    raw: 0.7,
+    final: 0.7,
+    floorHit: false,
+    ceilHit: false,
+  },
 };
 
 const STUB_FAIL: api.TribulationOutcomeView = {
@@ -55,6 +66,17 @@ const STUB_FAIL: api.TribulationOutcomeView = {
     taoMaExpiresAt: null,
   },
   logId: 'log-2',
+  consumedSupportItems: [],
+  supportTotalBonus: 0,
+  successChance: {
+    base: 0.7,
+    supportBonus: 0,
+    elementAdjustment: 0,
+    raw: 0.7,
+    final: 0.7,
+    floorHit: false,
+    ceilHit: false,
+  },
 };
 
 describe('useTribulationStore — Phase 11.6.D', () => {
@@ -331,6 +353,8 @@ const STUB_PREVIEW: api.TribulationPreviewView = {
   },
   cooldownAt: null,
   taoMaUntil: null,
+  availableSupportItems: [],
+  maxSelectedSupportItems: 3,
 };
 
 describe('useTribulationStore — Phase 14.3.A fetchPreview', () => {

@@ -687,15 +687,23 @@ export class CharacterController {
    */
   @Post('tribulation')
   @HttpCode(200)
-  async tribulationAttempt(@Req() req: Request) {
+  async tribulationAttempt(@Req() req: Request, @Body() body: unknown) {
     const userId = await this.requireUserId(req);
     if (!this.tribulation) {
       fail('TRIBULATION_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
     }
     const character = await this.chars.findByUser(userId);
     if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    // Phase 14.3.C — parse `selectedSupportItemKeys` (defensive narrow). Accept
+    // empty/missing body cho backward-compat (legacy attempt without selection).
+    const selectedSupportItemKeys = parseSelectedSupportItemKeys(body);
     try {
-      const result = await this.tribulation.attemptTribulation(character.id);
+      const result = await this.tribulation.attemptTribulation(
+        character.id,
+        Math.random,
+        new Date(),
+        { selectedSupportItemKeys },
+      );
       // Phase 11.6.B HTTP fix — cast BigInt + Date → string. Express JSON
       // serialize không support BigInt → throw INTERNAL_ERROR cho mọi attempt
       // (success/fail). View mirror `TribulationAttemptLogView` (Phase 11.6.F).
@@ -1337,10 +1345,48 @@ function mapTribulationErrorStatus(
     case 'COOLDOWN_ACTIVE':
       return HttpStatus.CONFLICT;
     case 'INVALID_RNG':
+    case 'INVENTORY_UNAVAILABLE':
       return HttpStatus.INTERNAL_SERVER_ERROR;
+    // Phase 14.3.C — selection / inventory rejections.
+    case 'INVALID_SUPPORT_SELECTION':
+    case 'TOO_MANY_SUPPORT_ITEMS':
+    case 'DUPLICATE_SUPPORT_ITEM':
+    case 'INVALID_SUPPORT_ITEM':
+    case 'SUPPORT_ITEM_MISSING':
+      return HttpStatus.BAD_REQUEST;
     default:
       return HttpStatus.BAD_REQUEST;
   }
+}
+
+/**
+ * Phase 14.3.C — parse `selectedSupportItemKeys` từ POST /character/tribulation
+ * body. Accept:
+ *   - Missing body (undefined) → empty.
+ *   - Body without `selectedSupportItemKeys` → empty (backward-compat).
+ *   - Body với `selectedSupportItemKeys: string[]` → return mảng.
+ *   - Anything else → throw HTTP 400 — service-side validate sẽ catch lại
+ *     defensive nếu bypass.
+ *
+ * KHÔNG validate catalog/duplicate ở đây — service validate qua
+ * `validateTribulationSupportSelection`. Controller chỉ shape narrow.
+ */
+function parseSelectedSupportItemKeys(body: unknown): readonly string[] {
+  if (body === undefined || body === null) return [];
+  if (typeof body !== 'object') {
+    fail('INVALID_BODY', HttpStatus.BAD_REQUEST);
+  }
+  const raw = (body as Record<string, unknown>).selectedSupportItemKeys;
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) {
+    fail('INVALID_SUPPORT_SELECTION', HttpStatus.BAD_REQUEST);
+  }
+  for (const k of raw as unknown[]) {
+    if (typeof k !== 'string') {
+      fail('INVALID_SUPPORT_SELECTION', HttpStatus.BAD_REQUEST);
+    }
+  }
+  return raw as readonly string[];
 }
 
 /**

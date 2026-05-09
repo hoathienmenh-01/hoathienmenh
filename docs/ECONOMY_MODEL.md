@@ -232,8 +232,26 @@ Mỗi reward source phải có cơ chế "claim chỉ 1 lần":
 | Topup approve | state machine: `PENDING → APPROVED` (nếu đã APPROVED, retry no-op) |
 | Boss reward | `BossDamage` row tồn tại + 1 lần distribute per boss |
 | Dungeon encounter loot | `Encounter.id` ref + status check `WON` |
+| Tribulation support consume (Phase 14.3.C) | tx flow: pre-check `inventory(character, itemKey).qty>0` → consume → fail → throw `SUPPORT_ITEM_MISSING` → tx rollback (KHÔNG mất EXP). `ItemLedger` `reason=TRIBULATION_SUPPORT_CONSUME` `refType=TribulationAttemptLog` `refId=logId` để admin trace ra attempt log gốc. |
 
 **Long-term**: cân nhắc thêm `RewardClaimLog(characterId, sourceType, sourceKey, claimedAt)` unique làm single mechanism. Hiện đang phân tán theo từng module — ổn nhưng dễ miss khi thêm source mới. Đề xuất phase 15-16 unify.
+
+### 3.6 Tribulation support item consumption (phase 14.3.C)
+
+**Source/sink contract**: `POST /character/tribulation` body `{ selectedSupportItemKeys?: string[] }` (≤ 3 keys). Mỗi key consume `qty=1` từ `InventoryItem` qua `consumeOneByItemKeyTx(tx, characterId, key, { reason: 'TRIBULATION_SUPPORT_CONSUME', refType: 'TribulationAttemptLog', refId: logId })` — sink path. KHÔNG có source path đối ứng (item không respawn / refund).
+
+**Catalog rule**: chỉ item kind `PILL_HP / PILL_MP / PILL_EXP / MISC` có `ItemDef.tribulationSupport` field mới consume được. Equipment KHÔNG consume — equipment vẫn cộng bonus qua provider Phase 14.3.B (read-only, không sink).
+
+**Dual consumption (success + fail path)**: design choice "no free retry with refund" — cả 2 outcome path đều consume:
+
+- **Success path**: kiếp pass → reward `linhThach` + `expBonus` → consume item (đã consume trong tx trước outcome roll).
+- **Fail path**: kiếp fail → mất EXP + cooldown + chance taoMa → consume item KHÔNG hoàn về.
+
+Lý do design: nếu refund khi fail → player abuse high-bonus item kiếp đến khi roll qua → "free farm" item bonus envelope. Dual consumption + cap envelope (xem `BALANCE_MODEL.md` §5.6.3) giữ item là **resource cost thực** — player phải tính toán giá trị item vs success chance, không chỉ stack max.
+
+**Anti-cheat (server-side recalc)**: attempt KHÔNG dùng FE `bonus` value. Server tự re-resolve `composedSupports` từ 4 nguồn (selectedItems + equipment + buffs + talents) → cap envelope per-entry/total → áp damage multiplier. Player không thể cheat bằng cách gửi `selectedSupportItemKeys` rỗng + FE bonus cao — bonus bị recalc về 0 nếu không có item/equipment/buff/talent thật.
+
+**Per-attempt sink ceiling**: tối đa 3 item × `qty=1` = 3 pill per attempt. Cooldown sau attempt (success: realm transition, fail: cooldown phút) giới hạn velocity → KHÔNG abuse spam attempt để đốt item.
 
 ---
 

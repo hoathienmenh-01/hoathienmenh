@@ -1954,7 +1954,17 @@
       "supports": "Supports",
       "supportsEmpty": "No support items active.",
       "capWarningCeil": "Hit max bonus cap — extra supports won't increase the chance.",
-      "capWarningFloor": "Hit min floor — cannot reduce further."
+      "capWarningFloor": "Hit min floor — cannot reduce further.",
+      "selectionTitle": "Select support items",
+      "selectionHint": "Up to {max} items per attempt. Selected items are consumed regardless of success or failure.",
+      "selectionEmpty": "No support items in your inventory.",
+      "selectionLimitReached": "Reached limit of {max} items for this attempt.",
+      "selectionPredictedTotal": "Predicted total bonus from items",
+      "selectionItemQty": "Have {qty}",
+      "selectionItemBonus": "+{bonus}%",
+      "consumedTitle": "Items consumed",
+      "consumedItem": "{label} (−1)",
+      "consumedNone": "No support items used."
     },
     "supportSource": {
       "item": "Item",
@@ -2021,6 +2031,12 @@
       "INVALID_RNG": "System error, please retry.",
       "TRIBULATION_UNAVAILABLE": "Tribulation system is temporarily unavailable.",
       "INVALID_INPUT": "Invalid input.",
+      "INVALID_SUPPORT_SELECTION": "Invalid support item selection.",
+      "TOO_MANY_SUPPORT_ITEMS": "You can select at most 3 support items.",
+      "DUPLICATE_SUPPORT_ITEM": "Duplicate support items are not allowed.",
+      "INVALID_SUPPORT_ITEM": "This item cannot be used as a tribulation support.",
+      "SUPPORT_ITEM_MISSING": "Selected support item is no longer in your inventory.",
+      "INVENTORY_UNAVAILABLE": "Inventory system is temporarily unavailable.",
       "UNAUTHENTICATED": "Session expired.",
       "IN_FLIGHT": "Processing…",
       "UNKNOWN": "Tribulation attempt failed, please retry."
