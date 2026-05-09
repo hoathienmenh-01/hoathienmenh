@@ -781,6 +781,116 @@ export class CharacterController {
   }
 
   /**
+   * Phase 14.3.D — Tribulation Encounter (read-only current view).
+   *
+   * Trả snapshot encounter sắp tới (hoặc đang pending) cho character. UI
+   * dùng để render encounter panel + status badges + element advantage.
+   *
+   *   - Auth gate (cookie session → userId → character).
+   *   - Idempotent GET — không thay đổi state.
+   *   - 200 + `{ encounter: null }` nếu transition hiện tại không có catalog
+   *     entry (low-tier breakthrough hoặc đã ở đỉnh).
+   *   - 200 + `{ encounter: TribulationEncounterCurrentView }` nếu có def.
+   *   - 503 nếu module chưa wire (`TRIBULATION_UNAVAILABLE`).
+   *
+   * Routing convention: encounter endpoints nested under existing
+   * `/character/tribulation/*` (cultivation controller chưa tách module).
+   * Spec gốc viết `/cultivation/tribulation/encounter/*` — alias cùng
+   * resource, tài liệu API ghi route thực tế.
+   */
+  @Get('tribulation/encounter/current')
+  async tribulationEncounterCurrent(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.tribulation) {
+      fail('TRIBULATION_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const encounter = await this.tribulation.getCurrentEncounter(character.id);
+      return { ok: true, data: { encounter } };
+    } catch (e) {
+      if (e instanceof TribulationError) {
+        fail(e.code, mapTribulationErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 14.3.D — start a tribulation encounter session.
+   *
+   * Server-authoritative: validate peak gate + selection (catalog/dedupe/
+   * cap), tạo row `TribulationEncounter{state: 'pending'}` snapshot
+   * `selectedSupportItemKeys`. KHÔNG consume item ở đây (consume diễn ra
+   * trong resolve).
+   *
+   * Idempotent re-call: pending row cùng `tribulationKey` → trả về row đó.
+   *   - 200 + `{ encounter: TribulationEncounterRowView }` khi tạo/return.
+   *   - 409 `ENCOUNTER_ALREADY_PENDING` nếu pending row khác tribulationKey.
+   *   - 4xx khi peak gate/selection fail (mirror attempt errors).
+   */
+  @Post('tribulation/encounter/start')
+  @HttpCode(200)
+  async tribulationEncounterStart(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.tribulation) {
+      fail('TRIBULATION_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    const selectedSupportItemKeys = parseSelectedSupportItemKeys(body);
+    try {
+      const encounter = await this.tribulation.startEncounter(character.id, {
+        selectedSupportItemKeys,
+      });
+      return { ok: true, data: { encounter } };
+    } catch (e) {
+      if (e instanceof TribulationError) {
+        fail(e.code, mapTribulationErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 14.3.D — resolve a pending encounter.
+   *
+   * Server-authoritative: simulate kiếp + consume selected items + atomic
+   * update character/currency/log + transition state pending → resolved.
+   *
+   * Idempotency: re-call sau khi state='resolved' → re-fetch cached
+   * outcome từ persisted attempt log; KHÔNG double breakthrough, KHÔNG
+   * double consume support, KHÔNG double reward.
+   *
+   *   - 200 + `{ tribulation: TribulationAttemptOutcomeView }` (success/fail).
+   *   - 404 `NO_PENDING_ENCOUNTER` nếu không có row pending/resolved.
+   *   - 4xx khi runtime gate fail (cooldown, character not found, etc).
+   */
+  @Post('tribulation/encounter/resolve')
+  @HttpCode(200)
+  async tribulationEncounterResolve(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.tribulation) {
+      fail('TRIBULATION_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const result = await this.tribulation.resolveEncounter(character.id);
+      return {
+        ok: true,
+        data: { tribulation: toAttemptOutcomeView(result) },
+      };
+    } catch (e) {
+      if (e instanceof TribulationError) {
+        fail(e.code, mapTribulationErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
    * Phase 11.10.E Achievement state — return server-authoritative state cho
    * UI achievement screen: tất cả visible achievement merge với progress
    * /completedAt/claimedAt.
@@ -1354,6 +1464,11 @@ function mapTribulationErrorStatus(
     case 'INVALID_SUPPORT_ITEM':
     case 'SUPPORT_ITEM_MISSING':
       return HttpStatus.BAD_REQUEST;
+    // Phase 14.3.D — encounter system rejections.
+    case 'NO_PENDING_ENCOUNTER':
+      return HttpStatus.NOT_FOUND;
+    case 'ENCOUNTER_ALREADY_PENDING':
+      return HttpStatus.CONFLICT;
     default:
       return HttpStatus.BAD_REQUEST;
   }

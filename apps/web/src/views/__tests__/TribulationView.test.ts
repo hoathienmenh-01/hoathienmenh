@@ -107,6 +107,70 @@ interface TribulationStateStub {
   loadMoreHistory: ReturnType<typeof vi.fn>;
   setHistoryFilter: ReturnType<typeof vi.fn>;
   fetchPreview: ReturnType<typeof vi.fn>;
+  // Phase 14.3.D — encounter mock state.
+  encounter: EncounterCurrentStub | null | undefined;
+  encounterLoading: boolean;
+  encounterError: string | null;
+  encounterStarting: boolean;
+  encounterResolving: boolean;
+  readonly encounterPending: boolean;
+  fetchEncounter: ReturnType<typeof vi.fn>;
+  startEncounter: ReturnType<typeof vi.fn>;
+  resolveEncounter: ReturnType<typeof vi.fn>;
+}
+
+// Phase 14.3.D — encounter spec stub.
+interface EncounterRowStub {
+  id: string;
+  tribulationKey: string;
+  fromRealmKey: string;
+  toRealmKey: string;
+  encounterKey: string;
+  effectType: string;
+  element: string;
+  difficulty: string;
+  selectedSupportItemKeys: string[];
+  state: string;
+  startedAt: string;
+  resolvedAt: string | null;
+  resolvedAttemptLogId: string | null;
+}
+interface EncounterCurrentStub {
+  requirement: true;
+  atPeak: boolean;
+  fromRealmKey: string;
+  toRealmKey: string;
+  tribulationKey: string;
+  severity: string;
+  type: string;
+  encounter: {
+    key: string;
+    element: string;
+    effectType: string;
+    name: string;
+    description: string;
+    difficulty: string;
+    phaseCount: number;
+    successThreshold: number;
+    requiredPowerHint: number;
+    failPenaltyMultiplier: number;
+    rewardHintMultiplier: number;
+    playerHpMax: number;
+    playerPrimaryElement: string | null;
+    elementAdvantage: number;
+  };
+  successChance: {
+    base: number;
+    supportBonus: number;
+    elementAdjustment: number;
+    raw: number;
+    final: number;
+    floorHit: boolean;
+    ceilHit: boolean;
+  } | null;
+  pending: EncounterRowStub | null;
+  cooldownAt: string | null;
+  taoMaUntil: string | null;
 }
 
 const replaceMock = vi.fn();
@@ -123,6 +187,11 @@ const fetchStateMock = vi.fn().mockResolvedValue(undefined);
 const toastPushMock = vi.fn();
 // Phase 14.3.A — fetchPreview mock (idempotent, returns null on success).
 const fetchPreviewMock = vi.fn().mockResolvedValue(null);
+// Phase 14.3.D — encounter store mocks.
+const fetchEncounterMock = vi.fn().mockResolvedValue(null);
+const startEncounterMock = vi.fn().mockResolvedValue(null);
+const resolveEncounterMock = vi.fn().mockResolvedValue(null);
+const pushMock = vi.fn();
 
 const tribulationState: TribulationStateStub = {
   lastOutcome: null,
@@ -160,6 +229,19 @@ const tribulationState: TribulationStateStub = {
   loadMoreHistory: loadMoreHistoryMock,
   setHistoryFilter: setHistoryFilterMock,
   fetchPreview: fetchPreviewMock,
+  // Phase 14.3.D — encounter mock state.
+  encounter: undefined,
+  encounterLoading: false,
+  encounterError: null,
+  encounterStarting: false,
+  encounterResolving: false,
+  get encounterPending(): boolean {
+    const row = this.encounter?.pending;
+    return !!row && row.state === 'pending';
+  },
+  fetchEncounter: fetchEncounterMock,
+  startEncounter: startEncounterMock,
+  resolveEncounter: resolveEncounterMock,
 };
 
 const gameState: { character: CharacterStub | null; realmFullName: string } = {
@@ -194,7 +276,7 @@ vi.mock('@/stores/toast', () => ({
   }),
 }));
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ replace: replaceMock }),
+  useRouter: () => ({ replace: replaceMock, push: pushMock }),
 }));
 
 vi.mock('@/components/shell/AppShell.vue', () => ({
@@ -320,6 +402,36 @@ const i18n = createI18n({
           NOT_AT_PEAK: 'Chưa đỉnh',
           COOLDOWN_ACTIVE: 'Cooldown',
           UNKNOWN: 'Lỗi',
+          NO_PENDING_ENCOUNTER: 'Chưa có Thiên Kiếp',
+          ENCOUNTER_ALREADY_PENDING: 'Đã có Thiên Kiếp',
+        },
+        encounter: {
+          name: { hoa: 'Hỏa Kiếp', thuy: 'Thủy Kiếp', moc: 'Mộc Kiếp', kim: 'Kim Kiếp', tho: 'Thổ Kiếp' },
+          element: { hoa: 'Hỏa', thuy: 'Thủy', moc: 'Mộc', kim: 'Kim', tho: 'Thổ' },
+          effectType: {
+            BURST: 'Sát thương dồn',
+            SUSTAIN: 'Trường cửu',
+            POISON_RECOVERY: 'Độc / hồi phục',
+            ARMOR_CRIT: 'Giáp / chí mạng',
+            DEFENSE_ENDURANCE: 'Phòng / kháng',
+          },
+          advantage: {
+            sameElement: 'Đồng hệ',
+            advantage: 'Khắc kiếp',
+            neutral: 'Trung tính',
+            disadvantageMild: 'Bị sinh kiếp',
+            disadvantageSevere: 'Bị khắc kiếp',
+          },
+          statePending: 'Đang chờ vượt',
+          startedToast: 'Đã chuẩn bị Thiên Kiếp.',
+          field: { phaseCount: 'Số đợt', difficulty: 'Cấp độ', powerHint: 'Sức mạnh khuyến nghị' },
+          button: {
+            start: 'Bắt đầu kiếp',
+            starting: 'Đang khởi động',
+            resolve: 'Vượt kiếp',
+            resolving: 'Đang vượt',
+          },
+          cta: { returnCultivation: 'Quay lại tu luyện' },
         },
         history: {
           title: 'Lịch sử',
@@ -401,6 +513,85 @@ function resetState() {
   fetchPreviewMock.mockResolvedValue(null);
   toastPushMock.mockClear();
   replaceMock.mockClear();
+  // Phase 14.3.D — encounter resets.
+  tribulationState.encounter = undefined;
+  tribulationState.encounterLoading = false;
+  tribulationState.encounterError = null;
+  tribulationState.encounterStarting = false;
+  tribulationState.encounterResolving = false;
+  fetchEncounterMock.mockReset();
+  fetchEncounterMock.mockResolvedValue(null);
+  startEncounterMock.mockReset();
+  startEncounterMock.mockResolvedValue(null);
+  resolveEncounterMock.mockReset();
+  resolveEncounterMock.mockResolvedValue(null);
+  pushMock.mockClear();
+}
+
+// Phase 14.3.D — stub helpers.
+function makeEncounterStub(opts: {
+  pending?: boolean;
+  element?: string;
+  effectType?: string;
+  advantage?: number;
+} = {}): EncounterCurrentStub {
+  const element = opts.element ?? 'hoa';
+  const effectType = opts.effectType ?? 'BURST';
+  const advantage = opts.advantage ?? 0;
+  const pendingRow: EncounterRowStub | null = opts.pending
+    ? {
+        id: 'enc-1',
+        tribulationKey: 'kim_dan_to_nguyen_anh',
+        fromRealmKey: 'kim_dan',
+        toRealmKey: 'nguyen_anh',
+        encounterKey: `tribulation_encounter_${element}`,
+        effectType,
+        element,
+        difficulty: 'minor',
+        selectedSupportItemKeys: [],
+        state: 'pending',
+        startedAt: '2026-06-11T00:00:00.000Z',
+        resolvedAt: null,
+        resolvedAttemptLogId: null,
+      }
+    : null;
+  return {
+    requirement: true,
+    atPeak: true,
+    fromRealmKey: 'kim_dan',
+    toRealmKey: 'nguyen_anh',
+    tribulationKey: 'kim_dan_to_nguyen_anh',
+    severity: 'minor',
+    type: 'lei',
+    encounter: {
+      key: `tribulation_encounter_${element}`,
+      element,
+      effectType,
+      name: 'Hỏa Kiếp',
+      description: 'Mô tả encounter test',
+      difficulty: 'minor',
+      phaseCount: 3,
+      successThreshold: 0.6,
+      requiredPowerHint: 5000,
+      failPenaltyMultiplier: 1.0,
+      rewardHintMultiplier: 1.0,
+      playerHpMax: 10000,
+      playerPrimaryElement: null,
+      elementAdvantage: advantage,
+    },
+    successChance: {
+      base: 0.7,
+      supportBonus: 0,
+      elementAdjustment: 0,
+      raw: 0.7,
+      final: 0.7,
+      floorHit: false,
+      ceilHit: false,
+    },
+    pending: pendingRow,
+    cooldownAt: null,
+    taoMaUntil: null,
+  };
 }
 
 const STUB_SUCCESS_OUTCOME = {
@@ -2021,5 +2212,166 @@ describe('TribulationView — Phase 14.3.C support item selection', () => {
     expect(
       w.find('[data-testid="tribulation-selection-predicted"]').exists(),
     ).toBe(false);
+  });
+});
+
+// ── Phase 14.3.D — Tribulation Encounter UI tests ──────────────────────────
+
+describe('TribulationView — encounter panel render (Phase 14.3.D)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    resetState();
+  });
+
+  it('hiển thị encounter panel khi store.encounter truthy', async () => {
+    tribulationState.encounter = makeEncounterStub();
+    const w = mountView();
+    await flushPromises();
+    const panel = w.find('[data-testid="tribulation-encounter-panel"]');
+    expect(panel.exists()).toBe(true);
+    expect(
+      w.find('[data-testid="tribulation-encounter-element-badge"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="tribulation-encounter-effect-badge"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="tribulation-encounter-advantage-badge"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="tribulation-encounter-phase-count"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="tribulation-encounter-power-hint"]').exists(),
+    ).toBe(true);
+  });
+
+  it('hiển thị start button khi pending=false', async () => {
+    tribulationState.encounter = makeEncounterStub({ pending: false });
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find('[data-testid="tribulation-encounter-start-button"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="tribulation-encounter-resolve-button"]').exists(),
+    ).toBe(false);
+    expect(
+      w.find('[data-testid="tribulation-encounter-pending-badge"]').exists(),
+    ).toBe(false);
+  });
+
+  it('hiển thị resolve button khi pending=true', async () => {
+    tribulationState.encounter = makeEncounterStub({ pending: true });
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find('[data-testid="tribulation-encounter-start-button"]').exists(),
+    ).toBe(false);
+    expect(
+      w.find('[data-testid="tribulation-encounter-resolve-button"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="tribulation-encounter-pending-badge"]').exists(),
+    ).toBe(true);
+  });
+});
+
+describe('TribulationView — encounter actions (Phase 14.3.D)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    resetState();
+  });
+
+  it('click start button → store.startEncounter called + toast success', async () => {
+    tribulationState.encounter = makeEncounterStub({ pending: false });
+    const w = mountView();
+    await flushPromises();
+    await w
+      .find('[data-testid="tribulation-encounter-start-button"]')
+      .trigger('click');
+    await flushPromises();
+    expect(startEncounterMock).toHaveBeenCalledTimes(1);
+    expect(toastPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'success' }),
+    );
+  });
+
+  it('click resolve button → store.resolveEncounter called + outcome handled', async () => {
+    tribulationState.encounter = makeEncounterStub({ pending: true });
+    resolveEncounterMock.mockImplementation(async () => {
+      tribulationState.lastOutcome = STUB_SUCCESS_OUTCOME;
+      return null;
+    });
+    const w = mountView();
+    await flushPromises();
+    await w
+      .find('[data-testid="tribulation-encounter-resolve-button"]')
+      .trigger('click');
+    await flushPromises();
+    expect(resolveEncounterMock).toHaveBeenCalledTimes(1);
+    expect(toastPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'success' }),
+    );
+  });
+
+  it('resolve fail → toast warning', async () => {
+    tribulationState.encounter = makeEncounterStub({ pending: true });
+    resolveEncounterMock.mockImplementation(async () => {
+      tribulationState.lastOutcome = STUB_FAIL_OUTCOME;
+      return null;
+    });
+    const w = mountView();
+    await flushPromises();
+    await w
+      .find('[data-testid="tribulation-encounter-resolve-button"]')
+      .trigger('click');
+    await flushPromises();
+    expect(resolveEncounterMock).toHaveBeenCalledTimes(1);
+    expect(toastPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'warning' }),
+    );
+  });
+
+  it('resolve error → toast error với i18n key', async () => {
+    tribulationState.encounter = makeEncounterStub({ pending: true });
+    resolveEncounterMock.mockResolvedValueOnce('NO_PENDING_ENCOUNTER');
+    const w = mountView();
+    await flushPromises();
+    await w
+      .find('[data-testid="tribulation-encounter-resolve-button"]')
+      .trigger('click');
+    await flushPromises();
+    expect(toastPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error' }),
+    );
+  });
+
+  it('CTA cultivation hiển thị khi lastOutcome.success=true; click → router.push', async () => {
+    tribulationState.encounter = makeEncounterStub({ pending: false });
+    tribulationState.lastOutcome = STUB_SUCCESS_OUTCOME;
+    const w = mountView();
+    await flushPromises();
+    const cta = w.find('[data-testid="tribulation-encounter-return-cultivation"]');
+    expect(cta.exists()).toBe(true);
+    await cta.trigger('click');
+    expect(pushMock).toHaveBeenCalledWith('/cultivation');
+  });
+
+  it('start button disabled khi pending=true (idempotent guard)', async () => {
+    tribulationState.encounter = makeEncounterStub({ pending: true });
+    const w = mountView();
+    await flushPromises();
+    // Start button không render khi pending → check resolve button visible.
+    expect(
+      w.find('[data-testid="tribulation-encounter-start-button"]').exists(),
+    ).toBe(false);
+    expect(
+      w
+        .find('[data-testid="tribulation-encounter-resolve-button"]')
+        .attributes('disabled'),
+    ).toBeUndefined();
   });
 });

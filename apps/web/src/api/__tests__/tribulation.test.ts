@@ -264,3 +264,139 @@ describe('api/tribulation — Phase 11.6.G fetchAttemptLog', () => {
     expect(TRIBULATION_LOG_MAX_LIMIT).toBe(100);
   });
 });
+
+// ── Phase 14.3.D — Encounter API client tests ──────────────────────────────
+
+import {
+  fetchTribulationEncounterCurrent,
+  startTribulationEncounter,
+  resolveTribulationEncounter,
+  type TribulationEncounterCurrentView,
+  type TribulationEncounterRowView,
+} from '@/api/tribulation';
+
+const STUB_ENCOUNTER_VIEW: TribulationEncounterCurrentView = {
+  requirement: true,
+  atPeak: true,
+  fromRealmKey: 'kim_dan',
+  toRealmKey: 'nguyen_anh',
+  tribulationKey: 'kim_dan_to_nguyen_anh',
+  severity: 'minor',
+  type: 'lei',
+  encounter: {
+    key: 'tribulation_encounter_hoa',
+    element: 'hoa',
+    effectType: 'BURST',
+    name: 'Hỏa Kiếp',
+    description: 'desc',
+    difficulty: 'minor',
+    phaseCount: 3,
+    successThreshold: 0.6,
+    requiredPowerHint: 5000,
+    failPenaltyMultiplier: 1.0,
+    rewardHintMultiplier: 1.0,
+    playerHpMax: 10000,
+    playerPrimaryElement: null,
+    elementAdvantage: 0,
+  },
+  successChance: {
+    base: 0.7,
+    supportBonus: 0,
+    elementAdjustment: 0,
+    raw: 0.7,
+    final: 0.7,
+    floorHit: false,
+    ceilHit: false,
+  },
+  pending: null,
+  cooldownAt: null,
+  taoMaUntil: null,
+};
+
+const STUB_ENCOUNTER_ROW: TribulationEncounterRowView = {
+  id: 'enc-1',
+  tribulationKey: 'kim_dan_to_nguyen_anh',
+  fromRealmKey: 'kim_dan',
+  toRealmKey: 'nguyen_anh',
+  encounterKey: 'tribulation_encounter_hoa',
+  effectType: 'BURST',
+  element: 'hoa',
+  difficulty: 'minor',
+  selectedSupportItemKeys: [],
+  state: 'pending',
+  startedAt: '2026-06-11T00:00:00.000Z',
+  resolvedAt: null,
+  resolvedAttemptLogId: null,
+};
+
+describe('fetchTribulationEncounterCurrent / start / resolve (Phase 14.3.D)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('fetchTribulationEncounterCurrent: GET /character/tribulation/encounter/current trả encounter view', async () => {
+    getMock.mockResolvedValueOnce({
+      data: { ok: true, data: { encounter: STUB_ENCOUNTER_VIEW } },
+    });
+    const res = await fetchTribulationEncounterCurrent();
+    expect(getMock).toHaveBeenCalledWith(
+      '/character/tribulation/encounter/current',
+    );
+    expect(res).toEqual(STUB_ENCOUNTER_VIEW);
+  });
+
+  it('fetchTribulationEncounterCurrent: trả null khi server trả null', async () => {
+    getMock.mockResolvedValueOnce({
+      data: { ok: true, data: { encounter: null } },
+    });
+    const res = await fetchTribulationEncounterCurrent();
+    expect(res).toBeNull();
+  });
+
+  it('startTribulationEncounter: POST với selectedSupportItemKeys', async () => {
+    postMock.mockResolvedValueOnce({
+      data: { ok: true, data: { encounter: STUB_ENCOUNTER_ROW } },
+    });
+    const res = await startTribulationEncounter(['thuan_kiep_dan']);
+    expect(postMock).toHaveBeenCalledWith(
+      '/character/tribulation/encounter/start',
+      { selectedSupportItemKeys: ['thuan_kiep_dan'] },
+    );
+    expect(res).toEqual(STUB_ENCOUNTER_ROW);
+  });
+
+  it('startTribulationEncounter: POST không kèm body khi không chọn items', async () => {
+    postMock.mockResolvedValueOnce({
+      data: { ok: true, data: { encounter: STUB_ENCOUNTER_ROW } },
+    });
+    await startTribulationEncounter();
+    expect(postMock).toHaveBeenCalledWith(
+      '/character/tribulation/encounter/start',
+      {},
+    );
+  });
+
+  it('resolveTribulationEncounter: POST trả TribulationOutcomeView', async () => {
+    postMock.mockResolvedValueOnce({
+      data: { ok: true, data: { tribulation: STUB_SUCCESS_OUTCOME } },
+    });
+    const res = await resolveTribulationEncounter();
+    expect(postMock).toHaveBeenCalledWith(
+      '/character/tribulation/encounter/resolve',
+      {},
+    );
+    expect(res).toEqual(STUB_SUCCESS_OUTCOME);
+  });
+
+  it('resolveTribulationEncounter: throws server error', async () => {
+    postMock.mockResolvedValueOnce({
+      data: {
+        ok: false,
+        error: { code: 'NO_PENDING_ENCOUNTER', message: 'no encounter' },
+      },
+    });
+    await expect(resolveTribulationEncounter()).rejects.toMatchObject({
+      code: 'NO_PENDING_ENCOUNTER',
+    });
+  });
+});

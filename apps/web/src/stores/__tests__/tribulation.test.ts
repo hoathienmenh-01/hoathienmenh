@@ -5,6 +5,10 @@ vi.mock('@/api/tribulation', () => ({
   attemptTribulation: vi.fn(),
   fetchAttemptLog: vi.fn(),
   fetchTribulationPreview: vi.fn(),
+  // Phase 14.3.D — encounter API mocks.
+  fetchTribulationEncounterCurrent: vi.fn(),
+  startTribulationEncounter: vi.fn(),
+  resolveTribulationEncounter: vi.fn(),
   TRIBULATION_LOG_DEFAULT_LIMIT: 20,
   TRIBULATION_LOG_MAX_LIMIT: 100,
 }));
@@ -810,5 +814,167 @@ describe('useTribulationStore — Phase 11.6.K stats', () => {
     expect(s.historyTotalCount).toBe(0);
     expect(s.historySuccessCount).toBe(0);
     expect(s.historyFailCount).toBe(0);
+  });
+});
+
+// ── Phase 14.3.D — Encounter store tests ───────────────────────────────────
+
+const STUB_ENCOUNTER: api.TribulationEncounterCurrentView = {
+  requirement: true,
+  atPeak: true,
+  fromRealmKey: 'kim_dan',
+  toRealmKey: 'nguyen_anh',
+  tribulationKey: 'kim_dan_to_nguyen_anh',
+  severity: 'minor',
+  type: 'lei',
+  encounter: {
+    key: 'tribulation_encounter_hoa',
+    element: 'hoa',
+    effectType: 'BURST',
+    name: 'Hỏa Kiếp',
+    description: 'desc',
+    difficulty: 'minor',
+    phaseCount: 3,
+    successThreshold: 0.6,
+    requiredPowerHint: 5000,
+    failPenaltyMultiplier: 1.0,
+    rewardHintMultiplier: 1.0,
+    playerHpMax: 10000,
+    playerPrimaryElement: null,
+    elementAdvantage: 0,
+  },
+  successChance: {
+    base: 0.7,
+    supportBonus: 0,
+    elementAdjustment: 0,
+    raw: 0.7,
+    final: 0.7,
+    floorHit: false,
+    ceilHit: false,
+  },
+  pending: null,
+  cooldownAt: null,
+  taoMaUntil: null,
+};
+
+const STUB_ENCOUNTER_PENDING_ROW: api.TribulationEncounterRowView = {
+  id: 'enc-1',
+  tribulationKey: 'kim_dan_to_nguyen_anh',
+  fromRealmKey: 'kim_dan',
+  toRealmKey: 'nguyen_anh',
+  encounterKey: 'tribulation_encounter_hoa',
+  effectType: 'BURST',
+  element: 'hoa',
+  difficulty: 'minor',
+  selectedSupportItemKeys: [],
+  state: 'pending',
+  startedAt: '2026-06-11T00:00:00.000Z',
+  resolvedAt: null,
+  resolvedAttemptLogId: null,
+};
+
+describe('useTribulationStore — Phase 14.3.D encounter actions', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+  });
+
+  it('fetchEncounter populate store.encounter; encounterPending=false khi pending=null', async () => {
+    vi.mocked(api.fetchTribulationEncounterCurrent).mockResolvedValueOnce(
+      STUB_ENCOUNTER,
+    );
+    const s = useTribulationStore();
+    expect(s.encounter).toBeUndefined();
+    const err = await s.fetchEncounter();
+    expect(err).toBeNull();
+    expect(s.encounter).toEqual(STUB_ENCOUNTER);
+    expect(s.encounterPending).toBe(false);
+  });
+
+  it('fetchEncounter trả null khi server trả null (low-tier transition)', async () => {
+    vi.mocked(api.fetchTribulationEncounterCurrent).mockResolvedValueOnce(null);
+    const s = useTribulationStore();
+    const err = await s.fetchEncounter();
+    expect(err).toBeNull();
+    expect(s.encounter).toBeNull();
+    expect(s.encounterPending).toBe(false);
+  });
+
+  it('encounterPending=true khi encounter.pending.state="pending"', async () => {
+    const withPending: api.TribulationEncounterCurrentView = {
+      ...STUB_ENCOUNTER,
+      pending: STUB_ENCOUNTER_PENDING_ROW,
+    };
+    vi.mocked(api.fetchTribulationEncounterCurrent).mockResolvedValueOnce(
+      withPending,
+    );
+    const s = useTribulationStore();
+    await s.fetchEncounter();
+    expect(s.encounterPending).toBe(true);
+  });
+
+  it('startEncounter call API + refetch current; pending populated sau call', async () => {
+    vi.mocked(api.startTribulationEncounter).mockResolvedValueOnce(
+      STUB_ENCOUNTER_PENDING_ROW,
+    );
+    vi.mocked(api.fetchTribulationEncounterCurrent).mockResolvedValueOnce({
+      ...STUB_ENCOUNTER,
+      pending: STUB_ENCOUNTER_PENDING_ROW,
+    });
+    const s = useTribulationStore();
+    const err = await s.startEncounter(['thuan_kiep_dan']);
+    expect(err).toBeNull();
+    expect(api.startTribulationEncounter).toHaveBeenCalledWith([
+      'thuan_kiep_dan',
+    ]);
+    expect(s.encounterPending).toBe(true);
+  });
+
+  it('startEncounter fail → trả error code, encounter giữ nguyên', async () => {
+    vi.mocked(api.startTribulationEncounter).mockRejectedValueOnce({
+      code: 'ENCOUNTER_ALREADY_PENDING',
+    });
+    const s = useTribulationStore();
+    const err = await s.startEncounter();
+    expect(err).toBe('ENCOUNTER_ALREADY_PENDING');
+    expect(s.encounterError).toBe('ENCOUNTER_ALREADY_PENDING');
+  });
+
+  it('resolveEncounter populate lastOutcome + refetch encounter', async () => {
+    vi.mocked(api.resolveTribulationEncounter).mockResolvedValueOnce(
+      STUB_SUCCESS,
+    );
+    vi.mocked(api.fetchTribulationEncounterCurrent).mockResolvedValueOnce({
+      ...STUB_ENCOUNTER,
+      pending: { ...STUB_ENCOUNTER_PENDING_ROW, state: 'resolved' },
+    });
+    const s = useTribulationStore();
+    const err = await s.resolveEncounter();
+    expect(err).toBeNull();
+    expect(s.lastOutcome).toEqual(STUB_SUCCESS);
+    expect(s.encounterPending).toBe(false);
+  });
+
+  it('resolveEncounter fail → trả error code', async () => {
+    vi.mocked(api.resolveTribulationEncounter).mockRejectedValueOnce({
+      code: 'NO_PENDING_ENCOUNTER',
+    });
+    const s = useTribulationStore();
+    const err = await s.resolveEncounter();
+    expect(err).toBe('NO_PENDING_ENCOUNTER');
+    expect(s.encounterError).toBe('NO_PENDING_ENCOUNTER');
+  });
+
+  it('reset() clear encounter state', async () => {
+    vi.mocked(api.fetchTribulationEncounterCurrent).mockResolvedValueOnce(
+      STUB_ENCOUNTER,
+    );
+    const s = useTribulationStore();
+    await s.fetchEncounter();
+    expect(s.encounter).toEqual(STUB_ENCOUNTER);
+    s.reset();
+    expect(s.encounter).toBeUndefined();
+    expect(s.encounterError).toBeNull();
+    expect(s.encounterLoading).toBe(false);
   });
 });

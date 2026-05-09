@@ -899,6 +899,36 @@ Pre-check ownership trước khi consume — fail (qty=0 hoặc race với `cons
 
 **Cap envelope (Phase 14.3.C giữ nguyên Phase 14.3.A/B)**: player chọn 3 item × `+0.10` ceil per-entry = `+0.30` raw → cap total `+0.30` → áp `0.95` final ceil. Stack với equipment (4-5 slot × `+0.10` cap đến tổng `+0.30`) + buff (`+0.05` typical) + talent (varies) → cap total `+0.30` toàn bộ → KHÔNG bypass `0.95`. Selection KHÔNG raise total ceil — chỉ là 1 trong 4 nguồn input.
 
+### 5.6.4 Tribulation encounter system (phase 14.3.D)
+
+**Phase 14.3.D** thêm 1 lớp encounter view-only **trên** Phase 14.3.A/B/C runtime (KHÔNG đổi simulation deterministic, KHÔNG đổi balance dial). Dial chính ở `packages/shared/src/tribulation-encounter.ts`:
+
+| Element | EffectType | Difficulty | PhaseCount | SuccessThreshold | FailPenaltyMultiplier | RewardHintMultiplier |
+|:---:|:---:|:---:|---:|---:|---:|---:|
+| `hoa` | BURST | minor | 3 | 0.55 | 1.0 | 1.0 |
+| `thuy` | SUSTAIN | major | 4 | 0.55 | 1.0 | 1.0 |
+| `moc` | POISON_RECOVERY | minor | 3 | 0.55 | 1.0 | 1.0 |
+| `kim` | ARMOR_CRIT | major | 4 | 0.55 | 1.0 | 1.0 |
+| `tho` | DEFENSE_ENDURANCE | heavenly | 5 | 0.55 | 1.0 | 1.0 |
+
+**Element advantage matrix** (`describeTribulationEncounterAdvantage(playerPrimary, encounterElement)`):
+
+| | enc=kim | enc=moc | enc=thuy | enc=hoa | enc=tho |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| `player=kim` | +2 | +1 (kim phá moc) | -1 (kim sinh thuy) | -2 (hoa phá kim) | +1 (tho sinh kim) |
+| `player=moc` | -2 | +2 | +1 (thuy sinh moc) | -1 (moc sinh hoa) | +1 (moc phá tho) |
+| `player=thuy` | +1 (kim sinh thuy) | -1 (thuy sinh moc) | +2 | +1 (thuy phá hoa) | -2 |
+| `player=hoa` | +1 (hoa phá kim) | +1 (moc sinh hoa) | -2 | +2 | -1 (hoa sinh tho) |
+| `player=tho` | -1 (tho sinh kim) | -2 | +1 (tho phá thuy) | +1 (hoa sinh tho) | +2 |
+
+Semantics: `+2` = đồng hệ (player primary == encounter element). `+1` = player advantage — player counters encounter (player phá encounter) hoặc encounter generates player (player nhận sinh khí). `0` = trung tính. `-1` = player feeds encounter (player sinh encounter → encounter mạnh thêm). `-2` = encounter counter player (encounter phá player → player yếu nhất).
+
+**Tuning rationale**: Phase 14.3.D KHÔNG ship damage/penalty multiplier khác `1.0` — encounter là layer view-only over `runAttemptInTx` extracted helper. Simulation deterministic giữ nguyên Phase 11.6.A/B math (waves × element-modified damage × hp × support cap). Designer Phase tương lai có thể tune `failPenaltyMultiplier` / `rewardHintMultiplier` per encounter để gameplay flavor đổi mà KHÔNG đụng simulation.
+
+**State machine**: `pending → resolved` (no `cancelled` state). Idempotent re-call `start` cùng `tribulationKey` trả pending hiện có (KHÔNG tạo mới). Idempotent re-call `resolve` sau resolved trả cached outcome reconstructed từ `TribulationAttemptLog` (KHÔNG double breakthrough/consume/reward). Mỗi character chỉ có 1 pending row tại 1 thời điểm.
+
+**Out of scope (defer)**: realtime combat per phase (button-based skill rotation, mp consume per skill), animation/cutscene, multi-encounter chain (mỗi transition 1 encounter), penalty nặng làm mất nhân vật (giữ Phase 14.3.A penalty: expLoss + cooldown + taoMa).
+
 ### 5.7 Alchemy curve (phase 11.X.A)
 
 **Phase 11.X.A catalog đã có (session 9r-10 PR — `packages/shared/src/alchemy.ts`)**:

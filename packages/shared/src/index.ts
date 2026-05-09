@@ -18,6 +18,7 @@ export * from './spiritual-root';
 export * from './talents';
 export * from './titles';
 export * from './tribulation';
+export * from './tribulation-encounter';
 export * from './tribulation-foundation';
 export * from './tribulation-support-providers';
 export * from './tribulation-support-validate';
