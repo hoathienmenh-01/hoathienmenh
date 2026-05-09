@@ -26,6 +26,7 @@ import { AdminTerritoryController } from './admin-territory.controller';
 import { TerritoryError } from './territory.service';
 import type { TerritoryDecayService } from './territory-decay.service';
 import type { TerritorySettlementService } from './territory-settlement.service';
+import type { TerritoryWarService } from './territory-war.service';
 
 type AdminReq = Request & { userId?: string };
 
@@ -41,6 +42,7 @@ interface ServiceStubs {
   settleRegion?: TerritorySettlementService['settleRegion'];
   decay?: TerritoryDecayService['decay'];
   getDecayHistory?: TerritoryDecayService['getDecayHistory'];
+  settleCurrentPeriod?: TerritoryWarService['settleCurrentPeriod'];
 }
 
 function makeController(stubs: ServiceStubs = {}): AdminTerritoryController {
@@ -72,7 +74,20 @@ function makeController(stubs: ServiceStubs = {}): AdminTerritoryController {
       })),
     getDecayHistory: stubs.getDecayHistory ?? (async () => []),
   } as unknown as TerritoryDecayService;
-  return new AdminTerritoryController(settlement, decayService);
+  const warService = {
+    settleCurrentPeriod:
+      stubs.settleCurrentPeriod ??
+      (async (opts) => ({
+        periodKey: '2026-W23',
+        settledAt: new Date().toISOString(),
+        snapshots: [],
+        skippedRegions: [],
+        ownersAfter: [],
+        // Echo settledBy nếu test cần verify (ignored bởi non-spy stub).
+        ...((opts?.settledBy ? {} : {}) as Record<string, never>),
+      })),
+  } as unknown as TerritoryWarService;
+  return new AdminTerritoryController(settlement, decayService, warService);
 }
 
 async function expectHttpError(
