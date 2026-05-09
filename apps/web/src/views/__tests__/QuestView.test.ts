@@ -109,6 +109,12 @@ const messages = {
         UNKNOWN: 'Lỗi',
       },
     },
+    // Phase 12.10.D — chain tag i18n (QuestView reuse `npcAffinity.chains.tag`).
+    npcAffinity: {
+      chains: {
+        tag: 'Duyên phận',
+      },
+    },
   },
 };
 
@@ -643,6 +649,29 @@ describe('QuestView — Phase 12.8 Story Dungeon CTA', () => {
     await flushPromises();
     await w.find('[data-testid="quest-story-dungeon-cta-q_main"]').trigger('click');
     expect(routerPushMock).toHaveBeenCalledWith('/story-dungeons');
+    w.unmount();
+  });
+});
+
+describe('QuestView — Phase 12.10.D relationship chain tag', () => {
+  it('renders "Duyên phận" tag cho quest thuộc relationship chain catalog', async () => {
+    // luyenkhi_npc_01 nằm trong relchain_han_da_truce — catalog chain.
+    fetchQuestsMock.mockResolvedValue([
+      buildQuest({
+        key: 'luyenkhi_npc_01',
+        status: 'ACCEPTED',
+        kind: 'npc',
+      }),
+      buildQuest({ key: 'q_other', status: 'AVAILABLE', kind: 'main' }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find('[data-testid="quest-chain-tag-luyenkhi_npc_01"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="quest-chain-tag-q_other"]').exists(),
+    ).toBe(false);
     w.unmount();
   });
 });

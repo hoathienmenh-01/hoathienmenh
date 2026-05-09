@@ -76,7 +76,15 @@ export type LedgerReason =
   // `refType='NpcAffinityShop'` + `refId='${npcKey}:${itemKey}'`. Daily/weekly
   // limit enforce qua `ItemLedger` aggregate (mirror reason). Atomic
   // transaction: spend currency + grant inventory + write ledger 1-shot.
-  | 'NPC_SHOP_BUY';
+  | 'NPC_SHOP_BUY'
+  // Phase 12.10.D — NPC Relationship Quest Chain claim. Wire qua
+  // `NpcRelationshipChainService.claimChain → applyTx` cho linhThach/tienNgoc
+  // với `refType='NpcRelationshipChain'` + `refId=chainKey`. Idempotency lấy
+  // từ `Character.storyFlags['relchain_<chainKey>_claimed']` JSON-path CAS
+  // guard — race-safe: 2 concurrent claim cùng chainKey, đúng 1 winner ghi
+  // ledger row. Reward cap thấp hơn quest (linhThach ≤ 500, tienNgoc ≤ 10)
+  // theo `NPC_RELATIONSHIP_CHAIN_*_CAP` (shared catalog).
+  | 'NPC_RELATIONSHIP_CHAIN_REWARD';
 
 export interface CurrencyApplyInput {
   characterId: string;

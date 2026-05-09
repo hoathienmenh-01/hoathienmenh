@@ -2359,6 +2359,39 @@
       "title": "Hidden bonds",
       "dialogueLabel": "Dialogue",
       "questLabel": "Quest"
+    },
+    "chains": {
+      "title": "Relationship Quest Chains",
+      "empty": "No bond quest chains unlocked with this NPC yet.",
+      "stateClaimed": "Completed",
+      "stateLocked": "Locked",
+      "stateClaimable": "Ready to claim",
+      "stateInProgress": "In progress",
+      "lockedHint": "Requires {tier}",
+      "rewardAffinity": "+{n} affinity",
+      "claim": "Claim reward",
+      "claimedShort": "Claimed",
+      "locked": "Locked",
+      "notReady": "Not ready",
+      "tag": "Bond chain",
+      "questStatus": {
+        "LOCKED": "Locked",
+        "AVAILABLE": "Available",
+        "ACCEPTED": "In progress",
+        "COMPLETED": "Done",
+        "CLAIMED": "Claimed"
+      }
+    },
+    "chainErrors": {
+      "CHAIN_UNKNOWN": "Quest chain not found.",
+      "CHAIN_LOCKED_TIER": "Relationship tier too low to claim.",
+      "CHAIN_NOT_COMPLETABLE": "All chain quests must be completed first.",
+      "CHAIN_ALREADY_CLAIMED": "Chain reward already claimed.",
+      "CHAIN_NPC_MISMATCH": "This chain is not for this NPC.",
+      "NO_CHARACTER": "No character.",
+      "INVALID_INPUT": "Invalid input.",
+      "UNAUTHENTICATED": "Session expired.",
+      "UNKNOWN": "Cannot claim chain reward, please retry."
     }
   },
   "quest": {

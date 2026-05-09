@@ -39,6 +39,14 @@ export const useNpcAffinityStore = defineStore('npcAffinity', () => {
   const unlocks = ref<Record<string, api.NpcUnlocksView>>({});
   const unlocksLoading = ref<string | null>(null);
 
+  // Phase 12.10.D — Relationship Quest Chain state per NPC.
+  const chains = ref<Record<string, api.NpcRelationshipChainView[]>>({});
+  const chainsLoading = ref<string | null>(null);
+  const chainsError = ref<string | null>(null);
+  const claimChainLoading = ref<string | null>(null); // `${npcKey}:${chainKey}`
+  const claimChainError = ref<string | null>(null);
+  const lastChainClaim = ref<api.NpcRelationshipChainClaimReceipt | null>(null);
+
   const count = computed(() => affinities.value.length);
 
   function findByNpcKey(npcKey: string): api.NpcAffinityView | undefined {
@@ -204,6 +212,72 @@ export const useNpcAffinityStore = defineStore('npcAffinity', () => {
     lastBuy.value = null;
   }
 
+  // ==================================================================
+  // Phase 12.10.D — Relationship Quest Chain
+  // ==================================================================
+
+  /**
+   * Load chains cho 1 NPC. Idempotent — gọi sau mỗi quest claim/dialogue
+   * effect để refresh trạng thái progress + completable.
+   */
+  async function loadChains(npcKey: string): Promise<void> {
+    chainsLoading.value = npcKey;
+    chainsError.value = null;
+    try {
+      const result = await api.fetchNpcQuestChains(npcKey);
+      chains.value = { ...chains.value, [npcKey]: result.chains };
+    } catch (e) {
+      chainsError.value =
+        (e as { code?: string }).code ??
+        (e as { error?: { code?: string } }).error?.code ??
+        'UNKNOWN';
+    } finally {
+      chainsLoading.value = null;
+    }
+  }
+
+  /**
+   * Claim chain reward — atomic POST. Trả receipt nếu success; null nếu lỗi
+   * (caller đọc `claimChainError`). Khi success, store cập nhật chain entry
+   * + affinity in-place — không cần full reload.
+   */
+  async function claimChain(
+    npcKey: string,
+    chainKey: string,
+  ): Promise<api.NpcRelationshipChainClaimReceipt | null> {
+    claimChainLoading.value = `${npcKey}:${chainKey}`;
+    claimChainError.value = null;
+    try {
+      const result = await api.claimNpcQuestChain(npcKey, chainKey);
+      const list = (chains.value[npcKey] ?? []).slice();
+      const idx = list.findIndex((c) => c.chainKey === chainKey);
+      if (idx >= 0) list[idx] = result.chain;
+      chains.value = { ...chains.value, [npcKey]: list };
+      // Cập nhật affinity score nếu chain reward gồm affinity.
+      const affIdx = affinities.value.findIndex((a) => a.npcKey === npcKey);
+      if (affIdx >= 0) {
+        affinities.value[affIdx] = {
+          ...affinities.value[affIdx],
+          score: result.receipt.newAffinityScore,
+        };
+      }
+      lastChainClaim.value = result.receipt;
+      return result.receipt;
+    } catch (e) {
+      claimChainError.value =
+        (e as { code?: string }).code ??
+        (e as { error?: { code?: string } }).error?.code ??
+        'UNKNOWN';
+      return null;
+    } finally {
+      claimChainLoading.value = null;
+    }
+  }
+
+  function clearLastChainClaim(): void {
+    lastChainClaim.value = null;
+  }
+
   function reset(): void {
     affinities.value = [];
     caps.value = null;
@@ -223,6 +297,12 @@ export const useNpcAffinityStore = defineStore('npcAffinity', () => {
     lastBuy.value = null;
     unlocks.value = {};
     unlocksLoading.value = null;
+    chains.value = {};
+    chainsLoading.value = null;
+    chainsError.value = null;
+    claimChainLoading.value = null;
+    claimChainError.value = null;
+    lastChainClaim.value = null;
   }
 
   return {
@@ -259,5 +339,15 @@ export const useNpcAffinityStore = defineStore('npcAffinity', () => {
     buyShopItem,
     loadUnlocks,
     clearLastBuy,
+    // Phase 12.10.D
+    chains,
+    chainsLoading,
+    chainsError,
+    claimChainLoading,
+    claimChainError,
+    lastChainClaim,
+    loadChains,
+    claimChain,
+    clearLastChainClaim,
   };
 });
