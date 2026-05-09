@@ -847,6 +847,23 @@ final = clamp(base + affinity + supports, FLOOR, CEIL)
 
 **Tuning rationale**: Phase 14.3.A foundation **KHÔNG ship per-source provider** — `supports[]` empty trong runtime đầu. Hậu Phase (14.3.B/C) sẽ wire item `tribulation_support` bonus, buff `kiep_van_phu`, talent `do_kiep_thien_phu`, equipment `tribulation_resist`. Cap envelope đã chọn để khi data ship đầy đủ, player full bộ pháp khí + buff vẫn chỉ tới `0.95` ceil — không bypass kiếp bằng farm.
 
+### 5.6.2 Tribulation support providers (phase 14.3.B)
+
+**Phase 14.3.B** ship 4 provider thật wire vào `previewTribulation()` — `supports[]` không còn empty khi player có data thật. Provider pure read-only, **KHÔNG mutate state** (preview là deterministic snapshot).
+
+| Provider | Source | Catalog field | Dedup |
+|---|---|---|---|
+| `collectItemTribulationSupports` | inventory entries (qty>0) | `ItemDef.tribulationSupport: { bonus, element? }` | by item key |
+| `collectBuffTribulationSupports` | active buffs (non-expired) | `BuffDef.tribulationSupport: { bonus, element? }` | by buff key |
+| `collectEquipmentTribulationSupports` | equipped items (slot map) | `ItemDef.tribulationSupport` | by (slot, itemKey) |
+| `collectTalentTribulationSupports` | learned talents + tribulation wave elements | `TalentDef.tribulationResist: { element, bonus }` | by talent key (1 entry / talent matching ANY wave element) |
+
+**Cap envelope giữ nguyên Phase 14.3.A** — `TRIBULATION_SUPPORT_PER_ENTRY_CEIL=+0.10`, `TRIBULATION_SUPPORT_TOTAL_CEIL=+0.30`, `TRIBULATION_SUCCESS_CHANCE_CEIL=0.95`. Hash composition: mỗi provider trả `TribulationSupportEntry[]` → tribulation service compose tất cả entries → cap per-entry → sum → cap total → wire vào `successChance.supportBonus`. Player full bộ (item + buff + equipment + talent matching) hiện chỉ tới `min(sum, 0.30)` total ceil — không bypass `0.95` final ceil.
+
+**Catalog seed Phase 14.3.B**: 1 item (`lei_kiep_phu` Lôi Kiếp Phù `+0.05` element `kim`) + 1 buff (`thien_lei_phu` Thiên Lôi Phù `+0.05`) để gameplay path không trống. Designer có thể thêm catalog entry mới mà KHÔNG đụng provider runtime — provider tự pick up `tribulationSupport` field nếu có.
+
+**No-mutation guarantee**: API test verify `inventory.qty` + `buff.stacks` snapshot trước/sau preview match exact. Item bonus áp dụng raw (KHÔNG consume preview); attempt thật (Phase 14.3.C tương lai) sẽ consume một số item khi roll RNG.
+
 ### 5.7 Alchemy curve (phase 11.X.A)
 
 **Phase 11.X.A catalog đã có (session 9r-10 PR — `packages/shared/src/alchemy.ts`)**:

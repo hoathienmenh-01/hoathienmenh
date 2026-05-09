@@ -43,8 +43,22 @@ interface PreviewStub {
   toRealmKey: string;
   atPeak: boolean;
   def: PreviewStubDef;
-  successChance: { base: number; affinity: number; supports: number; final: number };
-  supports: { source: string; key: string; bonus: number }[];
+  successChance: {
+    base: number;
+    supportBonus: number;
+    elementAdjustment: number;
+    raw: number;
+    final: number;
+    floorHit: boolean;
+    ceilHit: boolean;
+  };
+  supports: {
+    source: string;
+    key: string;
+    bonus: number;
+    label?: string | null;
+    element?: string | null;
+  }[];
   supportTotalBonus: number;
   rewardHint: { linhThach: number; expBonus: string; titleKey: string | null };
   penaltyHint: {
@@ -221,6 +235,28 @@ const i18n = createI18n({
           penaltyExpLoss: 'Mất EXP',
           penaltyCooldown: 'Cooldown',
           penaltyTaoMa: 'Tâm Ma',
+          successChance: 'Tỷ lệ',
+          base: 'Cơ bản',
+          affinity: 'Ngũ Hành',
+          supports: 'Hỗ trợ',
+          supportBonus: 'Tổng hỗ trợ',
+          capWarningCeil: 'Đã chạm trần',
+          capWarningFloor: 'Đã chạm sàn',
+          supportsEmpty: 'Không có hỗ trợ',
+        },
+        supportSource: {
+          item: 'Vật phẩm',
+          buff: 'Buff',
+          equipment: 'Trang bị',
+          talent: 'Thiên phú',
+          spirit_root: 'Linh căn',
+        },
+        element: {
+          kim: 'Kim',
+          moc: 'Mộc',
+          thuy: 'Thủy',
+          hoa: 'Hỏa',
+          tho: 'Thổ',
         },
         unit: { minutes: 'phút' },
         button: {
@@ -527,7 +563,15 @@ describe('TribulationView — Phase 14.3.A preview panel', () => {
         severity: 'minor',
         wavesCount: 3,
       },
-      successChance: { base: 0.75, affinity: 0, supports: 0, final: 0.75 },
+      successChance: {
+        base: 0.75,
+        supportBonus: 0,
+        elementAdjustment: 0,
+        raw: 0.75,
+        final: 0.75,
+        floorHit: false,
+        ceilHit: false,
+      },
       supports: [],
       supportTotalBonus: 0,
       rewardHint: { linhThach: 1000, expBonus: '50000', titleKey: null },
@@ -548,7 +592,7 @@ describe('TribulationView — Phase 14.3.A preview panel', () => {
     expect(chance.text()).toContain('75%');
   });
 
-  it('preview panel render affinity khi affinity != 0 (positive bonus)', async () => {
+  it('preview panel render affinity khi elementAdjustment != 0 (positive bonus)', async () => {
     tribulationState.preview = {
       requirement: true,
       fromRealmKey: 'kim_dan',
@@ -562,7 +606,15 @@ describe('TribulationView — Phase 14.3.A preview panel', () => {
         severity: 'minor',
         wavesCount: 3,
       },
-      successChance: { base: 0.75, affinity: 0.05, supports: 0, final: 0.8 },
+      successChance: {
+        base: 0.75,
+        supportBonus: 0,
+        elementAdjustment: 0.05,
+        raw: 0.8,
+        final: 0.8,
+        floorHit: false,
+        ceilHit: false,
+      },
       supports: [],
       supportTotalBonus: 0,
       rewardHint: { linhThach: 1000, expBonus: '50000', titleKey: null },
@@ -582,7 +634,7 @@ describe('TribulationView — Phase 14.3.A preview panel', () => {
     expect(aff.text()).toContain('+5%');
   });
 
-  it('preview panel KHÔNG render affinity khi affinity == 0', async () => {
+  it('preview panel KHÔNG render affinity khi elementAdjustment == 0', async () => {
     tribulationState.preview = {
       requirement: true,
       fromRealmKey: 'kim_dan',
@@ -596,7 +648,15 @@ describe('TribulationView — Phase 14.3.A preview panel', () => {
         severity: 'minor',
         wavesCount: 3,
       },
-      successChance: { base: 0.75, affinity: 0, supports: 0, final: 0.75 },
+      successChance: {
+        base: 0.75,
+        supportBonus: 0,
+        elementAdjustment: 0,
+        raw: 0.75,
+        final: 0.75,
+        floorHit: false,
+        ceilHit: false,
+      },
       supports: [],
       supportTotalBonus: 0,
       rewardHint: { linhThach: 1000, expBonus: '50000', titleKey: null },
@@ -628,10 +688,30 @@ describe('TribulationView — Phase 14.3.A preview panel', () => {
         severity: 'minor',
         wavesCount: 3,
       },
-      successChance: { base: 0.75, affinity: 0, supports: 0.1, final: 0.85 },
+      successChance: {
+        base: 0.75,
+        supportBonus: 0.1,
+        elementAdjustment: 0,
+        raw: 0.85,
+        final: 0.85,
+        floorHit: false,
+        ceilHit: false,
+      },
       supports: [
-        { source: 'item', key: 'lei_kiep_phu', bonus: 0.05 },
-        { source: 'buff', key: 'thien_lei_phu', bonus: 0.05 },
+        {
+          source: 'item',
+          key: 'lei_kiep_phu',
+          bonus: 0.05,
+          label: 'Lôi Kiếp Phù',
+          element: 'kim',
+        },
+        {
+          source: 'buff',
+          key: 'thien_lei_phu',
+          bonus: 0.05,
+          label: 'Thiên Lôi Phù',
+          element: null,
+        },
       ],
       supportTotalBonus: 0.1,
       rewardHint: { linhThach: 1000, expBonus: '50000', titleKey: null },
@@ -666,7 +746,15 @@ describe('TribulationView — Phase 14.3.A preview panel', () => {
         severity: 'minor',
         wavesCount: 3,
       },
-      successChance: { base: 0.75, affinity: 0, supports: 0, final: 0.75 },
+      successChance: {
+        base: 0.75,
+        supportBonus: 0,
+        elementAdjustment: 0,
+        raw: 0.75,
+        final: 0.75,
+        floorHit: false,
+        ceilHit: false,
+      },
       supports: [],
       supportTotalBonus: 0,
       rewardHint: { linhThach: 1000, expBonus: '50000', titleKey: null },
@@ -682,6 +770,214 @@ describe('TribulationView — Phase 14.3.A preview panel', () => {
     const w = mountView();
     await flushPromises();
     expect(w.find('[data-testid="tribulation-preview-supports-empty"]').exists()).toBe(true);
+  });
+
+  // Phase 14.3.B — supports rendering details + cap warnings.
+
+  it('preview panel render support label + element badge khi entry có label/element', async () => {
+    tribulationState.preview = {
+      requirement: true,
+      fromRealmKey: 'kim_dan',
+      toRealmKey: 'nguyen_anh',
+      atPeak: true,
+      def: {
+        key: 'tribulation_kim_dan_nguyen_anh',
+        name: 'Tiểu Lôi Kiếp',
+        description: 'd',
+        type: 'lei',
+        severity: 'minor',
+        wavesCount: 3,
+      },
+      successChance: {
+        base: 0.75,
+        supportBonus: 0.08,
+        elementAdjustment: 0,
+        raw: 0.83,
+        final: 0.83,
+        floorHit: false,
+        ceilHit: false,
+      },
+      supports: [
+        {
+          source: 'item',
+          key: 'lei_kiep_phu',
+          bonus: 0.05,
+          label: 'Lôi Kiếp Phù',
+          element: 'kim',
+        },
+        {
+          source: 'talent',
+          key: 'talent_kim_thien_giap',
+          bonus: 0.03,
+          label: 'Kim Thiên Giáp',
+          element: 'kim',
+        },
+      ],
+      supportTotalBonus: 0.08,
+      rewardHint: { linhThach: 1000, expBonus: '50000', titleKey: null },
+      penaltyHint: {
+        expLossRatio: 0.1,
+        cooldownMinutes: 30,
+        taoMaDebuffChance: 0.4,
+        taoMaDebuffDurationMinutes: 15,
+      },
+      cooldownAt: null,
+      taoMaUntil: null,
+    };
+    const w = mountView();
+    await flushPromises();
+    const list = w.find('[data-testid="tribulation-preview-supports"]');
+    expect(list.exists()).toBe(true);
+    expect(
+      w.find('[data-testid="tribulation-preview-support-0-source"]').text(),
+    ).toContain('Vật phẩm');
+    expect(
+      w.find('[data-testid="tribulation-preview-support-0-label"]').text(),
+    ).toBe('Lôi Kiếp Phù');
+    expect(
+      w.find('[data-testid="tribulation-preview-support-0-element"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="tribulation-preview-support-1-source"]').text(),
+    ).toContain('Thiên phú');
+  });
+
+  it('preview panel render supportBonus row khi totalBonus != 0', async () => {
+    tribulationState.preview = {
+      requirement: true,
+      fromRealmKey: 'kim_dan',
+      toRealmKey: 'nguyen_anh',
+      atPeak: true,
+      def: {
+        key: 'tribulation_kim_dan_nguyen_anh',
+        name: 'Tiểu Lôi Kiếp',
+        description: 'd',
+        type: 'lei',
+        severity: 'minor',
+        wavesCount: 3,
+      },
+      successChance: {
+        base: 0.75,
+        supportBonus: 0.1,
+        elementAdjustment: 0,
+        raw: 0.85,
+        final: 0.85,
+        floorHit: false,
+        ceilHit: false,
+      },
+      supports: [
+        { source: 'item', key: 'lei_kiep_phu', bonus: 0.1, label: 'L', element: null },
+      ],
+      supportTotalBonus: 0.1,
+      rewardHint: { linhThach: 1000, expBonus: '50000', titleKey: null },
+      penaltyHint: {
+        expLossRatio: 0.1,
+        cooldownMinutes: 30,
+        taoMaDebuffChance: 0.4,
+        taoMaDebuffDurationMinutes: 15,
+      },
+      cooldownAt: null,
+      taoMaUntil: null,
+    };
+    const w = mountView();
+    await flushPromises();
+    const node = w.find('[data-testid="tribulation-preview-support-bonus"]');
+    expect(node.exists()).toBe(true);
+    expect(node.text()).toContain('+10%');
+  });
+
+  it('preview panel render ceil cap warning khi successChance.ceilHit=true', async () => {
+    tribulationState.preview = {
+      requirement: true,
+      fromRealmKey: 'kim_dan',
+      toRealmKey: 'nguyen_anh',
+      atPeak: true,
+      def: {
+        key: 'tribulation_kim_dan_nguyen_anh',
+        name: 'Tiểu Lôi Kiếp',
+        description: 'd',
+        type: 'lei',
+        severity: 'minor',
+        wavesCount: 3,
+      },
+      successChance: {
+        base: 0.9,
+        supportBonus: 0.3,
+        elementAdjustment: 0.05,
+        raw: 1.25,
+        final: 0.95,
+        floorHit: false,
+        ceilHit: true,
+      },
+      supports: [
+        { source: 'item', key: 'a', bonus: 0.3, label: 'Item A', element: null },
+      ],
+      supportTotalBonus: 0.3,
+      rewardHint: { linhThach: 1000, expBonus: '50000', titleKey: null },
+      penaltyHint: {
+        expLossRatio: 0.1,
+        cooldownMinutes: 30,
+        taoMaDebuffChance: 0.4,
+        taoMaDebuffDurationMinutes: 15,
+      },
+      cooldownAt: null,
+      taoMaUntil: null,
+    };
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find('[data-testid="tribulation-preview-cap-warning"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="tribulation-preview-floor-warning"]').exists(),
+    ).toBe(false);
+  });
+
+  it('preview panel render floor warning khi successChance.floorHit=true', async () => {
+    tribulationState.preview = {
+      requirement: true,
+      fromRealmKey: 'kim_dan',
+      toRealmKey: 'nguyen_anh',
+      atPeak: true,
+      def: {
+        key: 'tribulation_kim_dan_nguyen_anh',
+        name: 'Tiểu Lôi Kiếp',
+        description: 'd',
+        type: 'lei',
+        severity: 'minor',
+        wavesCount: 3,
+      },
+      successChance: {
+        base: 0.3,
+        supportBonus: -0.3,
+        elementAdjustment: -0.05,
+        raw: -0.05,
+        final: 0.05,
+        floorHit: true,
+        ceilHit: false,
+      },
+      supports: [
+        { source: 'buff', key: 'b', bonus: -0.3, label: 'Bad', element: null },
+      ],
+      supportTotalBonus: -0.3,
+      rewardHint: { linhThach: 1000, expBonus: '50000', titleKey: null },
+      penaltyHint: {
+        expLossRatio: 0.1,
+        cooldownMinutes: 30,
+        taoMaDebuffChance: 0.4,
+        taoMaDebuffDurationMinutes: 15,
+      },
+      cooldownAt: null,
+      taoMaUntil: null,
+    };
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find('[data-testid="tribulation-preview-floor-warning"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="tribulation-preview-cap-warning"]').exists(),
+    ).toBe(false);
   });
 });
 

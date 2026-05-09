@@ -116,6 +116,24 @@ export interface BuffDef {
   readonly dispellable: boolean;
   /** Effects (1+). Server compose multiplicative cho stat_mod / damage_bonus, additive cho regen / shield. */
   readonly effects: readonly BuffEffect[];
+  /**
+   * **Phase 14.3.B** — additive bonus to tribulation success chance khi buff
+   * này active. Convention positive value (e.g. `0.05` = +5% success chance);
+   * negative value (debuff Tâm Ma) giảm tỉ lệ thành công.
+   *
+   * Tribulation preview (`previewTribulation()`) đọc list active buffs qua
+   * `BuffService.listActive()` và surface entries có `tribulationSupport != 0`
+   * vào `supports[]`. Per-entry cap `TRIBULATION_SUPPORT_PER_ENTRY_CEIL`
+   * (`0.1`) clamp magnitude để 1 buff đơn không override base chance.
+   *
+   * Stacks count: nếu `stackable: true`, mỗi stack cộng dồn linearly trước
+   * khi clamp per-entry — total tribulation bonus = `stacks × tribulationSupport`,
+   * sau đó clamp `[-0.1, 0.1]`. Tâm Ma debuff source `tribulation` /
+   * `breakthrough` sẽ giảm — entry âm (e.g. `-0.05`).
+   *
+   * Không define = no support (default — legacy buffs).
+   */
+  readonly tribulationSupport?: number;
 }
 
 /**
@@ -330,6 +348,32 @@ export const BUFFS: readonly BuffDef[] = [
         elementTarget: null,
       },
     ],
+  },
+  // Phase 14.3.B — Buff hỗ trợ vượt kiếp (đan dược / aura tông môn).
+  // `tribulationSupport: +0.05` = +5% tỉ lệ thành công thiên kiếp khi active.
+  // Surface trong `previewTribulation()` supports[] qua provider `buff`.
+  {
+    key: 'thuan_kiep_dan_aura',
+    name: 'Thuận Kiếp Đan Ấn',
+    description:
+      'Sau khi uống Thuận Kiếp Đan, tâm cảnh kiên định +5% tỉ lệ thành công ' +
+      'thiên kiếp trong 10 phút.',
+    polarity: 'buff',
+    element: null,
+    source: 'pill',
+    durationSec: 600,
+    stackable: false,
+    maxStacks: 1,
+    dispellable: false,
+    effects: [
+      {
+        kind: 'stat_mod',
+        value: 1.0,
+        statTarget: 'spirit',
+        elementTarget: null,
+      },
+    ],
+    tribulationSupport: 0.05,
   },
 
   // ===== DEBUFFS =====

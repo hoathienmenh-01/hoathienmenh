@@ -118,6 +118,19 @@ async function onAttempt(): Promise<void> {
   try {
     const code = await bt.attempt();
     if (code) {
+      // Phase 14.3.B — server signal "cảnh giới này cần vượt Thiên Kiếp".
+      // Backend trả 409 CONFLICT với code TRIBULATION_REQUIRED khi player ở
+      // peak realm cao và transition đòi kiếp (ví dụ kim_dan → nguyen_anh).
+      // Thay vì chỉ hiện toast lỗi khô khan, redirect sang /tribulation để
+      // player thấy preview success chance + supports + button "Vượt kiếp".
+      if (code === 'TRIBULATION_REQUIRED') {
+        toast.push({
+          type: 'info',
+          text: t('breakthrough.errors.TRIBULATION_REQUIRED'),
+        });
+        await router.push('/tribulation');
+        return;
+      }
       const key = `breakthrough.errors.${code}`;
       const fallback = t('breakthrough.errors.UNKNOWN');
       const text = locale.value && key ? t(key) : fallback;
