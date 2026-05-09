@@ -2207,6 +2207,12 @@
     "empty": "No relationships forged yet.",
     "nextTierHint": "{points} more points to reach {tier}.",
     "maxTierReached": "Bond at its peak.",
+    "giftLabel": "Gift",
+    "giftButton": "Offer gift",
+    "giftLocked": "Out of gifts ({used}/{limit})",
+    "giftDaily": "Today {used}/{limit}",
+    "giftSuccess": "+{delta} affinity",
+    "giftTierUp": "Reached {tier}",
     "errors": {
       "UNAUTHENTICATED": "Session expired.",
       "NO_CHARACTER": "No character.",
@@ -2214,6 +2220,16 @@
       "NPC_AFFINITY_UNKNOWN": "This NPC has no relationship profile.",
       "INVALID_INPUT": "Invalid input.",
       "UNKNOWN": "Failed to load relationships, please retry."
+    },
+    "giftErrors": {
+      "NPC_GIFT_NOT_CONFIGURED": "This NPC does not accept gifts.",
+      "ITEM_NOT_ACCEPTED": "This NPC does not accept this item.",
+      "ITEM_NOT_IN_INVENTORY": "Item not in your inventory.",
+      "DAILY_LIMIT_REACHED": "Out of gifts for today.",
+      "INVALID_INPUT": "Invalid input.",
+      "UNAUTHENTICATED": "Session expired.",
+      "NO_CHARACTER": "No character.",
+      "UNKNOWN": "Failed to offer gift, please retry."
     }
   },
   "quest": {

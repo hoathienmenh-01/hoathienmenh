@@ -5,6 +5,7 @@ import {
   questByKey,
   REALMS,
   realmByKey,
+  type QuestAffinityRewardDef,
   type QuestDef,
   type QuestStepDef,
   type QuestStepKind,
@@ -12,6 +13,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { NpcAffinityService } from '../npc-affinity/npc-affinity.service';
 import { SectWarService } from '../sect-war/sect-war.service';
 
 /**
@@ -134,6 +136,13 @@ export interface QuestClaimResult {
     exp: number;
     congHien: number;
     items: Array<{ itemKey: string; qty: number }>;
+    /**
+     * Phase 12.10.B — affinity grants applied trong cùng claim transaction.
+     * Empty array nếu quest không có `rewards.affinity`. CAS guard
+     * (`updateMany({ status: 'COMPLETED', claimedAt: null })`) đảm bảo apply
+     * đúng 1 lần ngay cả khi player retry claim.
+     */
+    affinity: Array<QuestAffinityRewardDef>;
   };
 }
 
@@ -145,6 +154,9 @@ export class QuestService {
     // export `CurrencyService`; InventoryModule export `InventoryService`).
     private readonly currency: CurrencyService,
     private readonly inventory: InventoryService,
+    // Phase 12.10.B — quest reward affinity grant. Wire qua
+    // `NpcAffinityModule.exports.NpcAffinityService`.
+    private readonly npcAffinity: NpcAffinityService,
     @Optional() private readonly sectWar?: SectWarService,
   ) {}
 
@@ -533,6 +545,26 @@ export class QuestService {
         granted.push(...grantList);
       }
 
+      // Phase 12.10.B — quest reward affinity grant. CAS guard
+      // (`updateMany({ status: 'COMPLETED', claimedAt: null })`) ở trên đã
+      // đảm bảo claim chỉ run đúng 1 lần / quest / character → addAffinityTx
+      // tự nhiên idempotent (không cần extra `seen` set như story dialogue).
+      // Sai catalog (`npcKey` không thuộc `NPC_AFFINITY`) → throw inside tx
+      // → rollback toàn bộ claim. Validator catalog ở `validateQuestCatalog`
+      // (test-only) đảm bảo không drift.
+      const affinityGranted: QuestAffinityRewardDef[] = [];
+      if (r.affinity && r.affinity.length > 0) {
+        for (const aff of r.affinity) {
+          await this.npcAffinity.addAffinityTx(tx, {
+            characterId,
+            npcKey: aff.npcKey,
+            delta: aff.delta,
+            source: 'QUEST_REWARD',
+          });
+          affinityGranted.push({ npcKey: aff.npcKey, delta: aff.delta });
+        }
+      }
+
       // Phase 13.1.A — Sect War contribution hook. Idempotent qua composite
       // UNIQUE `(weekKey, characterId, activityKey, sourceType, sourceId)`
       // với sourceId = questKey — re-claim cùng quest không double điểm
@@ -559,6 +591,7 @@ export class QuestService {
           exp,
           congHien,
           items: granted,
+          affinity: affinityGranted,
         },
       };
     });

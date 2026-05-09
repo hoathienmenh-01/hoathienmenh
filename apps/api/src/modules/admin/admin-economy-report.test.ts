@@ -16,6 +16,7 @@ import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { TopupService } from '../topup/topup.service';
 import { QuestService } from '../quest/quest.service';
+import { NpcAffinityService } from '../npc-affinity/npc-affinity.service';
 import { AdminService } from './admin.service';
 import { TEST_DATABASE_URL, makeUserChar, wipeAll } from '../../test-helpers';
 
@@ -30,7 +31,7 @@ beforeAll(() => {
   const currency = new CurrencyService(prisma);
   const topup = new TopupService(prisma);
   const inventory = new InventoryService(prisma, realtime, chars);
-  const quests = new QuestService(prisma, currency, inventory);
+  const quests = new QuestService(prisma, currency, inventory, new NpcAffinityService(prisma, inventory));
   admin = new AdminService(prisma, chars, topup, realtime, currency, inventory, quests);
 });
 

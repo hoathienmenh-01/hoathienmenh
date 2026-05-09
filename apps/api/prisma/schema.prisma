@@ -301,6 +301,7 @@ model Character {
   sectContributionLedger  SectContributionLedger[]
   sectSeasonClaims        SectSeasonClaim[]
   npcAffinities           CharacterNpcAffinity[]
+  npcGiftLogs             CharacterNpcGiftLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -694,6 +695,52 @@ model CharacterNpcAffinity {
 
   @@unique([characterId, npcKey])
   @@index([characterId])
+}
+
+/// Phase 12.10.B — NPC gift audit log + daily limit enforcement.
+///
+/// Mỗi gift / NPC / character ghi 1 row. Service `NpcAffinityService.giftNpcTx`
+/// count rows trong cùng UTC day cho `(characterId, npcKey, dayBucket)` để
+/// enforce `dailyLimit` của catalog `NPC_GIFT_PREFERENCES[npcKey]`.
+///
+/// `dayBucket`: ISO date `YYYY-MM-DD` (UTC). Composite UNIQUE
+/// `(characterId, npcKey, dayBucket, sequence)` cho phép multi-gift / day
+/// (sequence 1..dailyLimit) nhưng vẫn unique-per-row cho idempotency CAS
+/// (gift submit retry với cùng `clientNonce` không double).
+///
+/// Audit fields:
+/// - `itemKey`: item đã consume (reference `ITEMS[]` catalog).
+/// - `affinityDelta`: delta affinity đã apply (mirror `addAffinityTx` result).
+/// - `previousScore`/`newScore`: snapshot trước/sau apply (clamped).
+///
+/// `Quest` reward affinity (Phase 12.10.B integration) KHÔNG ghi vào table này
+/// — chỉ dùng cho gift path. Quest dùng `QuestProgress.claimedAt` CAS guard +
+/// `addAffinityTx` (atomic cùng claim transaction).
+model CharacterNpcGiftLog {
+  id            String    @id @default(cuid())
+  characterId   String
+  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Reference `NPCS[].key` (catalog) — KHÔNG FK.
+  npcKey        String
+  /// Reference `ITEMS[].key` (catalog) — KHÔNG FK.
+  itemKey       String
+  /// Delta affinity đã apply (catalog `NPC_GIFT_PREFERENCES[npcKey].acceptedItems[].affinityMin..Max`).
+  affinityDelta Int
+  /// Score affinity trước khi apply gift (post-lazy-create initialScore).
+  previousScore Int
+  /// Score affinity sau khi apply gift (clamped `[minScore, maxScore]`).
+  newScore      Int
+  /// ISO `YYYY-MM-DD` UTC — daily bucket cho rate limit count.
+  dayBucket     String
+  /// Sequence trong ngày (1..dailyLimit). Composite UNIQUE giúp service
+  /// CAS-style insert: nếu (char,npc,day,seq) đã tồn tại → race với gift
+  /// concurrent → retry seq+1.
+  sequence      Int
+  createdAt     DateTime  @default(now())
+
+  @@unique([characterId, npcKey, dayBucket, sequence])
+  @@index([characterId, npcKey, dayBucket])
+  @@index([characterId, dayBucket])
 }
 
 enum MissionPeriod {

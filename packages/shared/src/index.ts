@@ -27,6 +27,7 @@ export * from './balance-dials';
 export * from './breakthrough-chance';
 export * from './npcs';
 export * from './npc-affinity';
+export * from './npc-gift';
 export * from './quests';
 export * from './dialogues';
 export * from './story-dialogues';

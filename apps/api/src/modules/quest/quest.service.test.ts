@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { questByKey, QUESTS } from '@xuantoi/shared';
+import { questByKey, npcAffinityDefForKey, QUESTS } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { QuestError, QuestService } from './quest.service';
 import { TEST_DATABASE_URL, makeQuestService, makeUserChar, wipeAll } from '../../test-helpers';
@@ -548,6 +548,115 @@ describe('QuestService.claim — Phase 12 PR-3', () => {
       select: { linhThach: true },
     });
     expect(after.linhThach - before.linhThach).toBe(BigInt(def.rewards.linhThach ?? 0));
+  });
+});
+
+// ============================================================================
+// Phase 12.10.B — claim path applies affinity rewards (idempotent).
+// ============================================================================
+
+describe('QuestService.claim — Phase 12.10.B affinity rewards', () => {
+  /**
+   * `phamnhan_main_01` có `rewards.affinity` cho 2 NPC (Lăng Vân Sinh +5,
+   * Mộc Thanh Y +3). Quest này không yêu cầu prereq + bring-to-completed
+   * tự động qua `bringQuestToCompleted` helper (talk + kill `son_thu`).
+   */
+  const QUEST_KEY = 'phamnhan_main_01';
+
+  it('claim trả granted.affinity và lazy-create row CharacterNpcAffinity tương ứng', async () => {
+    const { userId, characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    const def = questByKey(QUEST_KEY)!;
+    expect(def.rewards.affinity?.length ?? 0).toBeGreaterThan(0);
+
+    await bringQuestToCompleted(userId, characterId, QUEST_KEY);
+    const result = await quests.claim(userId, QUEST_KEY);
+
+    // result.granted.affinity bằng catalog.
+    expect(result.granted.affinity).toEqual(def.rewards.affinity);
+
+    // Mỗi NPC có row updated với score = initialScore + delta.
+    for (const aff of def.rewards.affinity!) {
+      const initial = npcAffinityDefForKey(aff.npcKey)!.initialScore;
+      const row = await prisma.characterNpcAffinity.findUnique({
+        where: { characterId_npcKey: { characterId, npcKey: aff.npcKey } },
+        select: { score: true },
+      });
+      expect(row?.score, `${aff.npcKey} score`).toBe(initial + aff.delta);
+    }
+  });
+
+  it('claim lần 2 idempotent: throws QUEST_ALREADY_CLAIMED + KHÔNG double-grant affinity', async () => {
+    const { userId, characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    const def = questByKey(QUEST_KEY)!;
+    await bringQuestToCompleted(userId, characterId, QUEST_KEY);
+
+    // Lần 1 — success.
+    await quests.claim(userId, QUEST_KEY);
+
+    // Snapshot affinity sau lần 1.
+    const snapshot = new Map<string, number>();
+    for (const aff of def.rewards.affinity!) {
+      const row = await prisma.characterNpcAffinity.findUniqueOrThrow({
+        where: { characterId_npcKey: { characterId, npcKey: aff.npcKey } },
+        select: { score: true },
+      });
+      snapshot.set(aff.npcKey, row.score);
+    }
+
+    // Lần 2 — phải throw.
+    await expect(quests.claim(userId, QUEST_KEY)).rejects.toThrow(
+      new QuestError('QUEST_ALREADY_CLAIMED'),
+    );
+
+    // Affinity score không thay đổi sau lần 2.
+    for (const aff of def.rewards.affinity!) {
+      const row = await prisma.characterNpcAffinity.findUniqueOrThrow({
+        where: { characterId_npcKey: { characterId, npcKey: aff.npcKey } },
+        select: { score: true },
+      });
+      expect(row.score, `${aff.npcKey} không double-grant`).toBe(
+        snapshot.get(aff.npcKey),
+      );
+    }
+  });
+
+  it('concurrency: 2 parallel claim → đúng 1 affinity grant per NPC (CAS guard)', async () => {
+    const { userId, characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    const def = questByKey(QUEST_KEY)!;
+    await bringQuestToCompleted(userId, characterId, QUEST_KEY);
+
+    const settled = await Promise.allSettled([
+      quests.claim(userId, QUEST_KEY),
+      quests.claim(userId, QUEST_KEY),
+    ]);
+    const fulfilled = settled.filter((s) => s.status === 'fulfilled');
+    const rejected = settled.filter((s) => s.status === 'rejected');
+    expect(fulfilled.length).toBe(1);
+    expect(rejected.length).toBe(1);
+
+    // Mỗi NPC chỉ +delta đúng 1 lần (initialScore + delta).
+    for (const aff of def.rewards.affinity!) {
+      const initial = npcAffinityDefForKey(aff.npcKey)!.initialScore;
+      const row = await prisma.characterNpcAffinity.findUniqueOrThrow({
+        where: { characterId_npcKey: { characterId, npcKey: aff.npcKey } },
+        select: { score: true },
+      });
+      expect(row.score, `${aff.npcKey} đúng 1 grant`).toBe(initial + aff.delta);
+    }
+  });
+
+  it('quest không có rewards.affinity → result.granted.affinity = []', async () => {
+    // Tìm 1 quest không có affinity rewards (có nhiều quest grind/realm
+    // không có affinity). Nếu mọi quest đều có affinity, test này skip.
+    const noAff = QUESTS.find(
+      (q) => q.realmKey === 'phamnhan' && (q.rewards.affinity?.length ?? 0) === 0,
+    );
+    if (!noAff) return;
+
+    const { userId, characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+    await bringQuestToCompleted(userId, characterId, noAff.key);
+    const result = await quests.claim(userId, noAff.key);
+    expect(result.granted.affinity).toEqual([]);
   });
 });
 

@@ -51,7 +51,7 @@ function makeReq(cookie: string | undefined): Request {
 const STUB_CLAIM: QuestClaimResult = {
   questKey: 'phamnhan_grind_01',
   claimedAt: new Date('2026-05-05T00:00:00Z'),
-  granted: { linhThach: 50, tienNgoc: 0, exp: 80, congHien: 0, items: [] },
+  granted: { linhThach: 50, tienNgoc: 0, exp: 80, congHien: 0, items: [], affinity: [] },
 };
 
 function makeController(
