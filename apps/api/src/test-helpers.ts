@@ -124,6 +124,10 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // (xoá trước Sect; tự FK tới Sect SET NULL nhưng explicit cho rõ).
   await prisma.sectTerritorySettlementSnapshot.deleteMany({});
   await prisma.sectTerritoryRegionState.deleteMany({});
+  // Phase 14.0.C — Sect Territory Decay log (UNIQUE periodKey). Phase
+  // Audit-1 fix: thiếu wipe gây pollution giữa file test (vd.
+  // `liveops-cron.service.test.ts` thấy `decaySkipped=true` từ run cũ).
+  await prisma.sectTerritoryDecayLog.deleteMany({});
   // Phase 14.0.E — Territory Owner Reward grant audit (xoá trước Mail/
   // Character — `mailId` nullable không có FK, nhưng explicit cho rõ).
   await prisma.territoryOwnerRewardGrant.deleteMany({});
