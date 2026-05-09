@@ -33,6 +33,7 @@ import { LiveOpsModule } from './modules/liveops/liveops.module';
 import { SectWarModule } from './modules/sect-war/sect-war.module';
 import { SectSeasonModule } from './modules/sect-season/sect-season.module';
 import { TerritoryModule } from './modules/territory/territory.module';
+import { AdminEconomySafetyModule } from './modules/admin-economy-safety/admin-economy-safety.module';
 import { LiveOpsCronModule } from './modules/liveops-cron/liveops-cron.module';
 import { RedisModule } from './common/redis.module';
 import { EconomyModule } from './modules/economy/economy.module';
@@ -79,6 +80,9 @@ import { EconomyModule } from './modules/economy/economy.module';
     // SAU TerritoryModule + SectSeasonModule vì cron module import 2
     // module đó để inject services. AdminModule cũng đã import xong.
     LiveOpsCronModule,
+    // Phase 16.6 — Economy Anti-cheat (ledger checker + anomaly
+    // scanner cron + admin endpoints). SAU AdminModule + EconomyModule.
+    AdminEconomySafetyModule,
   ],
 })
 export class AppModule {}
