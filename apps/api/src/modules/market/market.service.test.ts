@@ -273,4 +273,95 @@ describe('MarketService', () => {
       code: 'NOT_OWNER',
     });
   });
+
+  // -----------------------------------------------------------------
+  // Phase 16.6 — Market Price Band tests
+  // -----------------------------------------------------------------
+
+  it('post: pricePerUnit < band.minPrice (PHAM 10) → PRICE_TOO_LOW', async () => {
+    const seller = await makeUserChar(prisma);
+    const inv = await giveItem(seller.characterId, 5);
+    await expect(
+      market.post(seller.userId, {
+        inventoryItemId: inv.id,
+        qty: 1,
+        pricePerUnit: 1n, // band PHAM = [10, 1000]
+      }),
+    ).rejects.toMatchObject({ code: 'PRICE_TOO_LOW' });
+
+    // Inventory KHÔNG bị trừ vì throw trong transaction → rollback.
+    const remaining = await prisma.inventoryItem.findUnique({
+      where: { id: inv.id },
+    });
+    expect(remaining?.qty).toBe(5);
+  });
+
+  it('post: pricePerUnit > band.maxPrice (PHAM 1000) → PRICE_TOO_HIGH', async () => {
+    const seller = await makeUserChar(prisma);
+    const inv = await giveItem(seller.characterId, 5);
+    await expect(
+      market.post(seller.userId, {
+        inventoryItemId: inv.id,
+        qty: 1,
+        pricePerUnit: 999_999_999n,
+      }),
+    ).rejects.toMatchObject({ code: 'PRICE_TOO_HIGH' });
+
+    // Inventory rollback intact.
+    const remaining = await prisma.inventoryItem.findUnique({
+      where: { id: inv.id },
+    });
+    expect(remaining?.qty).toBe(5);
+  });
+
+  it('post: pricePerUnit = band.minPrice (boundary) → success', async () => {
+    const seller = await makeUserChar(prisma);
+    const inv = await giveItem(seller.characterId, 1);
+    const view = await market.post(seller.userId, {
+      inventoryItemId: inv.id,
+      qty: 1,
+      pricePerUnit: 10n, // = band.minPrice
+    });
+    expect(view.status).toBe('ACTIVE');
+  });
+
+  it('post: pricePerUnit = band.maxPrice (boundary) → success', async () => {
+    const seller = await makeUserChar(prisma);
+    const inv = await giveItem(seller.characterId, 1);
+    const view = await market.post(seller.userId, {
+      inventoryItemId: inv.id,
+      qty: 1,
+      pricePerUnit: 1000n, // = band.maxPrice
+    });
+    expect(view.status).toBe('ACTIVE');
+  });
+
+  it('post: existing ACTIVE listings KHÔNG bị mutate khi band check áp dụng cho post mới', async () => {
+    // Setup: tạo listing trước (price 100 PHAM trong band).
+    const seller = await makeUserChar(prisma);
+    const inv1 = await giveItem(seller.characterId, 1);
+    const before = await market.post(seller.userId, {
+      inventoryItemId: inv1.id,
+      qty: 1,
+      pricePerUnit: 100n,
+    });
+
+    // Post listing thứ 2 ngoài band → reject.
+    const inv2 = await giveItem(seller.characterId, 1);
+    await expect(
+      market.post(seller.userId, {
+        inventoryItemId: inv2.id,
+        qty: 1,
+        pricePerUnit: 5n,
+      }),
+    ).rejects.toMatchObject({ code: 'PRICE_TOO_LOW' });
+
+    // Listing cũ vẫn ACTIVE, qty = 1, price 100.
+    const stillActive = await prisma.listing.findUnique({
+      where: { id: before.id },
+    });
+    expect(stillActive?.status).toBe('ACTIVE');
+    expect(stillActive?.qty).toBe(1);
+    expect(stillActive?.pricePerUnit).toBe(100n);
+  });
 });

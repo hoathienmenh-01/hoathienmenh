@@ -133,6 +133,8 @@ export class MarketController {
       case 'ITEM_EQUIPPED':
       case 'INVALID_QTY':
       case 'INVALID_PRICE':
+      case 'PRICE_TOO_LOW':
+      case 'PRICE_TOO_HIGH':
       case 'LISTING_INACTIVE':
       case 'CANNOT_BUY_OWN':
       case 'NOT_OWNER':
