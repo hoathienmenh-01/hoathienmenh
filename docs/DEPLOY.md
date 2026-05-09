@@ -170,9 +170,39 @@ API trả CSP nghiêm ngặt khi `NODE_ENV=production` (xem `apps/api/src/main.t
 
 | Resource | Cách backup |
 |---|---|
-| Postgres | `pg_dump` định kỳ (managed RDS thường tự backup point-in-time). Test restore ít nhất 1 lần / tháng. |
+| Postgres | `pnpm backup:db` (script `scripts/backup-db.sh` Phase 17.4) định kỳ qua cron, hoặc managed RDS point-in-time. Test restore ít nhất 1 lần / tháng. |
 | Redis | Không cần backup hard state (chỉ cache + queue). Khi restart, BullMQ job đang queued sẽ mất nếu không có persistence. Bật `appendonly yes` hoặc dùng managed Redis có persistence. |
 | MinIO | Backup bucket `xuantoi-*` qua `mc mirror` lên S3 thật. |
+
+### 9.1. Backup/Restore script env (Phase 17.4)
+
+| Env | Default | Mô tả |
+|---|---|---|
+| `BACKUP_DIR` | `./backups` | Thư mục ghi `xuantoi-<TS>.sql.gz`. Production khuyến nghị absolute path ngoài repo. |
+| `BACKUP_RETENTION_DAYS` | `0` (disabled) | Tự xoá `xuantoi-*.sql.gz` cũ hơn N ngày sau backup. Ops khuyến nghị `7`. |
+| `DRY_RUN` | `0` | Backup script chỉ in plan, không chạy `pg_dump` (dùng debug cron). |
+| `USE_DOCKER` | `auto` | `1`: ép `pg_dump`/`psql` qua `docker exec xuantoi-pg`; `0`: dùng host binary; `auto`: detect. |
+| `CONFIRM_RESTORE` | _(empty)_ | Restore script: `YES` bypass interactive prompt (cron/CI). Legacy alias `ASSUME_YES=1` vẫn hoạt động. |
+| `ALLOW_PRODUCTION_RESTORE` | _(empty)_ | Restore script: phải set `YES` tường minh khi `NODE_ENV=production` — nếu không, script CHẶN với exit 9. |
+| `RUN_PRISMA_MIGRATE` | `0` | Restore script: `1` để chạy `prisma migrate deploy` ngay sau restore. |
+| `STRICT` | `0` | Verify-restore: `1` ép fail (exit 6) nếu `User`/`Character` table empty. |
+| `API_HEALTHCHECK_URL` | _(empty)_ | Verify-restore: optional URL `/api/healthz` để probe sau restore. |
+
+**Cron mẫu** (closed beta, daily 02:00 + 7 ngày retention):
+```cron
+0 2 * * * cd /opt/xuantoi && BACKUP_DIR=/var/backups/xuantoi BACKUP_RETENTION_DAYS=7 pnpm backup:db >> /var/log/xuantoi-backup.log 2>&1
+```
+
+**Restore vào staging** (KHÔNG production trừ khi opt-in):
+```bash
+CONFIRM_RESTORE=YES \
+  DATABASE_URL=postgresql://<user>:<pass>@<staging>:5432/mtt \
+  pnpm restore:db /var/backups/xuantoi/xuantoi-<TS>.sql.gz
+
+DATABASE_URL=... pnpm verify:restore
+```
+
+Chi tiết workflow + checklist disaster recovery xem `docs/BACKUP_RESTORE.md` + `docs/RUNBOOK.md` §2.10.
 
 ## 10. Smoke checklist sau deploy
 

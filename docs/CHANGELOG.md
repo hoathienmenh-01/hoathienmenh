@@ -12,7 +12,46 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Added — Phase 17.3 Sentry + Pino Structured Logs (this PR)
+### Added — Phase 17.4 Backup/Restore Automation + RUNBOOK (this PR)
+
+- **`scripts/backup-db.sh` Phase 17.4 update**: filename
+  `xuantoi-<YYYYMMDD-HHMMSS>.sql.gz`, `BACKUP_RETENTION_DAYS` auto-prune
+  glob `xuantoi-*.sql.gz` cũ hơn N ngày sau backup thành công, `DRY_RUN=1`
+  in plan không chạy `pg_dump`, mask password trong stdout, fail-fast khi
+  thiếu env / thiếu tooling. Exit codes 0/2/3/4/5 cho từng failure mode.
+- **`scripts/restore-db.sh` Phase 17.4 update**: gate `CONFIRM_RESTORE=YES`
+  (alias legacy `ASSUME_YES=1` vẫn còn), production guard
+  `ALLOW_PRODUCTION_RESTORE=YES` ép phải set tường minh khi
+  `NODE_ENV=production` (mặc định CHẶN với exit 9), optional
+  `RUN_PRISMA_MIGRATE=1` chạy `prisma migrate deploy` ngay sau restore,
+  terminate active sessions trước DROP DATABASE, validate gzip integrity
+  trước khi destructive operation.
+- **`scripts/verify-restore.sh` MỚI**: connect probe `SELECT 1`, kiểm
+  schema có ≥ 21 table public, count critical tables (`User`, `Character`,
+  `Sect`, `CurrencyLedger`, `ItemLedger`, `InventoryItem`, `Mail`,
+  `TopupOrder`, `AdminAuditLog`, `_prisma_migrations`), latest applied
+  prisma migration, optional API healthcheck via `API_HEALTHCHECK_URL`.
+  `STRICT=1` ép fail nếu `User`/`Character` rỗng (DB rỗng sau restore).
+- **`docs/RUNBOOK.md` MỚI**: incident severity ladder P0–P3, playbook
+  Postgres down / Redis down / WS không realtime / cron chạy trùng /
+  reward mail trùng / player mất currency / topup lỗi / JWT secret leak /
+  deploy rollback / backup restore disaster recovery / contact escalation.
+  Cron daily backup mẫu (`BACKUP_RETENTION_DAYS=7`), production restore
+  procedure với sign-off + maintenance window. KHÔNG đưa secret/DSN thật.
+- **Tests**: `apps/api/scripts/ops-scripts.test.ts` MỚI — bash-n syntax
+  check + restore-db production guard + missing-arg + non-existent file +
+  password mask + DRY_RUN backup + naming pattern guard + RUNBOOK.md
+  presence + npm script presence (15 case).
+- **Docs**: `apps/api/.env.example` thêm `BACKUP_DIR` /
+  `BACKUP_RETENTION_DAYS` / `CONFIRM_RESTORE` / `ALLOW_PRODUCTION_RESTORE`
+  / `RUN_PRISMA_MIGRATE` placeholder. `docs/DEPLOY.md` §9.1 bảng env mới.
+  `docs/BACKUP_RESTORE.md` sync naming + new flags + verify section.
+  `docs/TROUBLESHOOTING.md` cross-link RUNBOOK ở header. `docs/CHANGELOG.md`
+  + `docs/AI_HANDOFF_REPORT.md` sync.
+- **npm scripts root**: `verify:restore` mới (`backup:db` / `restore:db`
+  đã có từ trước).
+
+### Added — Phase 17.3 Sentry + Pino Structured Logs
 
 - **Backend Sentry error tracking** (`@sentry/node`). Disabled mặc định;
   bật qua `SENTRY_ENABLED=true` + `SENTRY_DSN_API`. Capture unhandled

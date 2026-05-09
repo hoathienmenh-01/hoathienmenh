@@ -2,6 +2,8 @@
 
 Các lỗi thường gặp khi chạy local hoặc deploy. Mỗi mục: triệu chứng → nguyên nhân → cách xử lý.
 
+> **Production incident** (DB down / cron grant trùng / mất currency / restore disaster) **KHÔNG** ở đây — xem `docs/RUNBOOK.md` (Phase 17.4): severity P0–P3 ladder, playbook Postgres/Redis/WS/cron/reward mail/ledger/topup/deploy rollback/backup restore + escalation checklist. File này chỉ cover lỗi dev/local + symptom → fix riêng lẻ.
+
 ## 1. `pnpm install` lỗi peer dependency
 
 **Triệu chứng**: warning `peer dependency mismatch` hoặc `ERR_PNPM_PEER_DEP_ISSUES`.
