@@ -77,6 +77,24 @@
       "tho": "Earth"
     }
   },
+  "skillTagBadge": {
+    "tag": {
+      "HEAL": "Heal",
+      "DOT": "DoT",
+      "BURST": "Burst",
+      "SHIELD": "Shield",
+      "CRIT": "Crit",
+      "CONTROL": "Control"
+    },
+    "tooltip": {
+      "HEAL": "Heal — restore HP to self on cast.",
+      "DOT": "Damage-over-time — burn/poison the target for 3 turns.",
+      "BURST": "Burst — high single-turn damage payload.",
+      "SHIELD": "Shield — absorb monster reply damage this turn.",
+      "CRIT": "Critical — high crit / armor-pierce damage.",
+      "CONTROL": "Control — slow or stun the opponent."
+    }
+  },
   "toast": {
     "title": {
       "info": "Info",
@@ -1760,8 +1778,12 @@
       "tier": "Tier",
       "element": "Element",
       "equipped": "State",
+      "tag": "Type",
       "all": "All",
       "shown": "Showing {shown}/{total} (catalog {catalog})"
+    },
+    "elementIdentity": {
+      "neutral": "Neutral — not bound to the Five Elements"
     },
     "tier": {
       "basic": "Basic",

@@ -361,6 +361,36 @@ Phase 14.2.B nâng cấp Phase 14.2.A từ pure-function pipeline trống dữ l
 
 **KHÔNG nới dial Phase 14.2.A** — pipeline foundation, floor, ceil giữ nguyên. Phase 14.2.C tương lai có thể tune `ELEMENT_COUNTER_MULTIPLIER` / `ELEMENT_GENERATE_MULTIPLIER` theo metric thực tế khi player base lớn.
 
+### 2.9.3.2 Phase 14.2.C — Elemental skill tree expansion (DONE this PR)
+
+Phase 14.2.C biến Ngũ Hành từ damage/resist multiplier thành **hệ kỹ năng có hướng chơi riêng**: Mộc = hồi/độc, Hỏa = burst/thiêu, Thổ = khiên/khống, Kim = xuyên/chí, Thủy = control/hồi linh. KHÔNG đụng damage formula, KHÔNG đụng dial 14.2.A, chỉ thêm tag side-effect dial.
+
+**Skill tag side-effect dial** (`packages/shared/src/elemental-skills.ts`):
+
+| Const | Value | Áp dụng | Mục tiêu balance |
+| --- | --- | --- | --- |
+| `SKILL_TAG_DOT_DAMAGE_RATIO` | **0.15** | DOT perTurn damage = `floor(skillDmg × 0.15)` | DOT 1 lượt ≈ 15% sát thương 1-shot — sub-linear vs raw skill, anti-cheese |
+| `SKILL_TAG_DOT_TURNS` | **3** | DOT persist 3 lượt | Tổng DOT = `~45%` sát thương 1-shot extra trong 3 lượt → tier sát thương ngang skill cùng level nhưng trải dài |
+| `SKILL_TAG_SHIELD_HP_RATIO` | **0.10** | Shield absorb = `floor(hpMax × 0.10)` | Shield ≈ 10% hpMax — đủ chặn 1 reply trung bình monster, không phá tank build |
+
+**Tuning rationale**:
+
+- **DOT 0.15 × 3 = 0.45 (KHÔNG nới)**: Tổng DOT sub-linear vs raw skill (vd Mộc Độc Vạn Trường atkScale 1.5 vs Mộc Sinh Trượng atkScale 1.7). Player chọn DOT là chọn **trade upfront damage cho damage trải lượt** + áp lực kill timer. Nếu nới ratio 0.20 → tổng 60% → DOT skill out-DPS skill non-DOT cùng atkScale → meta lệch về DOT only. Hold 0.15.
+- **DOT 3 lượt (KHÔNG nới dài hơn)**: 3 lượt đủ để nhìn thấy effect (UX cảm nhận được DOT) nhưng không quá dài (4-5 lượt sẽ khoá monster hp chỉ qua 1 cast → bypass cooldown). Single-active model (overwrite policy) — re-cast DOT sẽ refresh nhưng không stack — anti-DOT-stacking abuse.
+- **SHIELD 0.10 hpMax (KHÔNG nới)**: Vào lượt cast monster reply trung bình ≈ 5-15% hpMax. Shield 10% chặn 1 reply trung bình + lower bound. Single-use, KHÔNG persist sang lượt sau → player phải chọn cast shield có timing (reactive vs predictive). Nếu nới 0.15 → 1 shield = 1.5 reply → shield = on-demand invuln, phá design intent.
+- **Anti-burst-cheese**: SHIELD áp **TRƯỚC** buff shield (compose tuần tự skill → buff → remaining damage). Skill shield single-cast 10% + buff shield (Phase 11.8.A đã có) compose → tổng < `0.30` (skill 0.10 + buff cap ~0.20) đủ chặn burst nhưng KHÔNG phá thang reply progression.
+
+**Skill catalog invariant** (`packages/shared/src/elemental-skills.test.ts` — 48 case):
+
+- Mỗi `ElementKey` có ≥ 2 skill (5 hệ × 2 = ≥10) — `findElementIdentityCoverageGaps` ép mọi `primaryTags` của hệ có ít nhất 1 skill match.
+- `validateSkillTag(skill, tag)`: invalid tag → reject; DOT/SHIELD/CONTROL **YÊU CẦU** `skill.element != null` (passive vô hệ không thể tag side-effect).
+- `computeSkillAffinityDelta`: primary `+0.10`, secondary `+0.05`, không match `0.0` — match Phase 11.3.B `characterSkillElementBonus` semantics.
+- Side-effect dial range: `0 < SKILL_TAG_DOT_DAMAGE_RATIO ≤ 0.20`, `1 ≤ SKILL_TAG_DOT_TURNS ≤ 5`, `0 < SKILL_TAG_SHIELD_HP_RATIO ≤ 0.15` — sentinel để future tune không vượt anti-cheese threshold.
+
+**API integration tests** (`apps/api/src/modules/combat/combat.service.test.ts` Phase 14.2.C suite +6 case): DOT cast → `monsterDot` persist với `turnsLeft=3`; DOT tick → log "chịu N sát thương DOT" + decrement; DOT clear khi monster killed (chuyển monster mới); SHIELD cast → log "Khiên \<element\> hấp thu N sát thương phản kích"; SHIELD KHÔNG persist sang turn 2 (state không lưu `playerShield`); legacy skill (`kim_quang_tram`, không tags) → KHÔNG set monsterDot, KHÔNG log shield.
+
+**KHÔNG đổi**: Damage formula, character affinity bonus (Phase 11.3.B `characterSkillElementBonus` 0.7..1.40), monster resist (Phase 14.2.B 0.7 floor), equipment elementalAtkBonus (Phase 14.2.B 0.10/0.20 cap). Tag side-effect chỉ thêm **side-channel** (DOT damage post-skill, Shield absorb post-cast), KHÔNG re-multiply skill damage.
+
 ### 2.9.3 Phase 11.3.D wire điểm (Pending)
 
 - UI character profile display Linh căn.

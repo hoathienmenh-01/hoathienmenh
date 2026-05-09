@@ -28,9 +28,13 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import {
   SKILLS,
+  SKILL_TAGS,
+  describeSkillElementIdentity,
+  getSkillElementIdentity,
   skillByKey,
   type ElementKey,
   type SkillDef,
+  type SkillTag,
 } from '@xuantoi/shared';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
@@ -39,10 +43,12 @@ import { useToastStore } from '@/stores/toast';
 import type { SkillTier, SkillView } from '@/api/skill';
 import AppShell from '@/components/shell/AppShell.vue';
 import ElementBadge from '@/components/ElementBadge.vue';
+import SkillTagBadge from '@/components/SkillTagBadge.vue';
 
 type TierFilter = 'all' | SkillTier;
 type ElementFilter = 'all' | ElementKey | 'none';
 type EquippedFilter = 'all' | 'equipped' | 'unequipped';
+type TagFilter = 'all' | SkillTag;
 
 interface SkillRow {
   view: SkillView;
@@ -59,6 +65,14 @@ const { t } = useI18n();
 const tierFilter = ref<TierFilter>('all');
 const elementFilter = ref<ElementFilter>('all');
 const equippedFilter = ref<EquippedFilter>('all');
+const tagFilter = ref<TagFilter>('all');
+
+/**
+ * Phase 14.2.C — Convenience: list all skill tags for filter dropdown.
+ * Re-export from `@xuantoi/shared` (`SKILL_TAGS`) — keep FE in sync với
+ * shared catalog.
+ */
+const tagOptions: readonly SkillTag[] = SKILL_TAGS;
 
 const rows = computed<SkillRow[]>(() => {
   return skills.learned
@@ -83,9 +97,24 @@ const filtered = computed<SkillRow[]>(() => {
     }
     if (equippedFilter.value === 'equipped' && !r.view.isEquipped) return false;
     if (equippedFilter.value === 'unequipped' && r.view.isEquipped) return false;
+    if (tagFilter.value !== 'all') {
+      const tags = r.def.tags ?? [];
+      if (!tags.includes(tagFilter.value)) return false;
+    }
     return true;
   });
 });
+
+/**
+ * Phase 14.2.C — Element identity tooltip text. Render khi skill có
+ * element non-null. Gồm name + theme + playstyle, dùng ở `<header>` ngay
+ * cạnh ElementBadge.
+ */
+function elementIdentityTooltip(element: ElementKey | null): string {
+  if (element === null) return t('skillBook.elementIdentity.neutral');
+  const id = getSkillElementIdentity(element);
+  return `${describeSkillElementIdentity(element)} — ${id.playstyle}`;
+}
 
 const counts = computed(() => ({
   total: rows.value.length,
@@ -270,6 +299,19 @@ onMounted(async () => {
             <option value="unequipped">{{ t('skillBook.equipFilter.unequipped') }}</option>
           </select>
         </div>
+        <div class="flex items-center gap-2">
+          <label class="text-ink-300">{{ t('skillBook.filter.tag') }}</label>
+          <select
+            v-model="tagFilter"
+            data-testid="skill-book-filter-tag"
+            class="bg-ink-900 border border-ink-300/30 rounded px-2 py-1 text-ink-100"
+          >
+            <option value="all">{{ t('skillBook.filter.all') }}</option>
+            <option v-for="tg in tagOptions" :key="tg" :value="tg">
+              {{ t(`skillTagBadge.tag.${tg}`) }}
+            </option>
+          </select>
+        </div>
         <span class="ml-auto text-ink-300" data-testid="skill-book-count">
           {{
             t('skillBook.filter.shown', {
@@ -317,11 +359,23 @@ onMounted(async () => {
               >
                 {{ t(`skillBook.tier.${row.view.tier}`) }}
               </span>
-              <ElementBadge
-                :element="row.def.element ?? null"
-                :show-neutral="true"
+              <span
+                :title="elementIdentityTooltip(row.def.element ?? null)"
+                :data-testid="`skill-book-element-tooltip-${row.view.skillKey}`"
+              >
+                <ElementBadge
+                  :element="row.def.element ?? null"
+                  :show-neutral="true"
+                  size="sm"
+                  :data-testid="`skill-book-element-${row.view.skillKey}`"
+                />
+              </span>
+              <SkillTagBadge
+                v-for="tg in row.def.tags ?? []"
+                :key="tg"
+                :tag="tg"
                 size="sm"
-                :data-testid="`skill-book-element-${row.view.skillKey}`"
+                :data-testid="`skill-book-tag-${row.view.skillKey}-${tg.toLowerCase()}`"
               />
               <span
                 v-if="row.view.isEquipped"
@@ -334,6 +388,14 @@ onMounted(async () => {
           </header>
 
           <p class="text-xs text-ink-300">{{ row.def.description }}</p>
+
+          <p
+            v-if="row.def.element"
+            class="text-[11px] text-ink-300 italic"
+            :data-testid="`skill-book-identity-${row.view.skillKey}`"
+          >
+            {{ describeSkillElementIdentity(row.def.element) }}
+          </p>
 
           <div class="text-xs space-y-1">
             <div

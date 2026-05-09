@@ -13,6 +13,9 @@ import {
   SPIRITUAL_ROOT_GRADES,
   STAMINA_PER_ACTION,
   SKILL_BASIC_ATTACK,
+  SKILL_TAG_DOT_DAMAGE_RATIO,
+  SKILL_TAG_DOT_TURNS,
+  SKILL_TAG_SHIELD_HP_RATIO,
   characterSkillElementBonus,
   composeMonsterElementalResist,
   describeElementMatch,
@@ -33,6 +36,7 @@ import {
   type MonsterDef,
   type SectKey,
   type SkillDef,
+  type SkillTag,
   type SpiritualRootGrade,
   type TalentDef,
 } from '@xuantoi/shared';
@@ -53,9 +57,35 @@ import { composePassiveTalentMods, type PassiveTalentMods } from '@xuantoi/share
 import { composeBuffMods, type BuffMods } from '@xuantoi/shared';
 import { composeTitleMods, type TitleMods } from '@xuantoi/shared';
 
+/**
+ * Phase 14.2.C — Active DOT (burn / poison) trên monster hiện tại. Set khi
+ * player cast skill có `tags: ['DOT']`. Tick `perTurnDamage` HP mỗi lượt
+ * (tổng `turnsLeft = SKILL_TAG_DOT_TURNS`). Reset khi chuyển sang monster
+ * mới (state.monsterIndex thay đổi).
+ *
+ * Single-active model — re-cast DOT skill (cùng hoặc khác hệ) sẽ overwrite
+ * `monsterDot` (refresh turnsLeft + perTurnDamage). Đơn giản hoá so với
+ * stack — đủ cho Phase 14.2.C foundation.
+ */
+export interface EncounterMonsterDot {
+  /** Source skill key (vd `moc_doc_van_truong`). */
+  skillKey: string;
+  /** Element của DOT — log line + cycle-aware UI. */
+  element: ElementKey;
+  /** Sát thương mỗi lượt (đã cap qua dial DOT_DAMAGE_RATIO). */
+  perTurnDamage: number;
+  /** Số lượt còn lại — decrement sau mỗi player action tick. */
+  turnsLeft: number;
+}
+
 export interface EncounterState {
   monsterIndex: number;
   monsterHp: number;
+  /**
+   * Phase 14.2.C — Active DOT trên monster hiện tại. `undefined` (legacy)
+   * = không có DOT. Reset khi `monsterIndex` thay đổi.
+   */
+  monsterDot?: EncounterMonsterDot;
 }
 
 export interface EncounterLogLine {
@@ -450,6 +480,56 @@ export class CombatService {
       text: `Đạo hữu tung ${skill.name}, gây ${dmg} sát thương lên ${monster.name}.`,
       ts: Date.now(),
     });
+
+    // Phase 14.2.C — Skill identity tag dispatch.
+    // `skillTags` mặc định `[]` cho legacy skill (backward-compat).
+    const skillTags: readonly SkillTag[] = skill.tags ?? [];
+    // Tick existing monsterDot ngay sau player damage (trước khi check
+    // monster chết) — DOT có thể kill monster nếu monsterHp đã thấp.
+    let nextMonsterDot: EncounterMonsterDot | undefined =
+      state.monsterDot && state.monsterDot.turnsLeft > 0 ? { ...state.monsterDot } : undefined;
+    if (nextMonsterDot && monsterHp > 0) {
+      const tickDmg = Math.max(0, Math.floor(nextMonsterDot.perTurnDamage));
+      if (tickDmg > 0) {
+        monsterHp = monsterHp - tickDmg;
+        log.push({
+          side: 'system',
+          text: `${monster.name} chịu ${tickDmg} sát thương DOT (hệ ${nextMonsterDot.element}).`,
+          ts: Date.now(),
+        });
+      }
+      nextMonsterDot.turnsLeft -= 1;
+      if (nextMonsterDot.turnsLeft <= 0) nextMonsterDot = undefined;
+    }
+    // Apply NEW DOT từ skill cast (overwrite single-active model). Snapshot
+    // sát thương 1-shot tại lượt cast để DOT damage không drift theo buff.
+    if (skillTags.includes('DOT') && skill.element != null && monsterHp > 0) {
+      const perTurn = Math.max(1, Math.floor(dmg * SKILL_TAG_DOT_DAMAGE_RATIO));
+      nextMonsterDot = {
+        skillKey: skill.key,
+        element: skill.element,
+        perTurnDamage: perTurn,
+        turnsLeft: SKILL_TAG_DOT_TURNS,
+      };
+      log.push({
+        side: 'system',
+        text: `${monster.name} bị nhiễm ${describeElementMatch(skill.element, null).vi || `hệ ${skill.element}`} — DOT ${perTurn} sát thương / lượt × ${SKILL_TAG_DOT_TURNS} lượt.`,
+        ts: Date.now(),
+      });
+    }
+    // Compute SHIELD absorb (same-turn) — sẽ apply trong monster reply
+    // branch, KHÔNG persist sang turn sau (single-use).
+    const skillShieldAbsorb =
+      skillTags.includes('SHIELD') && skill.element != null
+        ? Math.max(1, Math.floor(char.hpMax * SKILL_TAG_SHIELD_HP_RATIO))
+        : 0;
+    if (skillShieldAbsorb > 0) {
+      log.push({
+        side: 'system',
+        text: `Khiên ${skill.element} dựng — sẵn sàng hấp thu ${skillShieldAbsorb} sát thương phản kích.`,
+        ts: Date.now(),
+      });
+    }
     if (playerElementMul >= ELEMENT_LOG_AMPLIFY_THRESHOLD) {
       const matchVi = describeElementMatch(
         skill.element ?? null,
@@ -507,7 +587,10 @@ export class CombatService {
     }
 
     let nextStatus: EncounterStatus = EncounterStatus.ACTIVE;
-    let nextState: EncounterState = { ...state, monsterHp };
+    // Phase 14.2.C — `nextMonsterDot` được set ở DOT tick / new cast block ở
+    // trên. Đính kèm vào nextState ngay từ đầu, sẽ bị reset ở nhánh monster
+    // chết (chuyển monster mới hoặc WON).
+    let nextState: EncounterState = { ...state, monsterHp, monsterDot: nextMonsterDot };
     let reward: EncounterView['reward'] = null;
     let expGain = 0n;
     let linhThachGain = 0n;
@@ -536,10 +619,13 @@ export class CombatService {
           text: `Chinh phục ${dungeon.name} thành công, đạo hữu thoát quan.`,
           ts: Date.now(),
         });
+        // Phase 14.2.C — clear DOT khi WON (encounter kết thúc).
         nextState = { monsterIndex: nextIdx, monsterHp: 0 };
       } else {
         const nextMonster = monsterByKey(dungeon.monsters[nextIdx]);
         if (nextMonster) {
+          // Phase 14.2.C — clear DOT khi chuyển monster mới (monster cũ
+          // chết, DOT không carry-over).
           nextState = { monsterIndex: nextIdx, monsterHp: nextMonster.hp };
           log.push({
             side: 'system',
@@ -602,6 +688,21 @@ export class CombatService {
           ts: Date.now(),
         });
       } else {
+        // Phase 14.2.C — skill SHIELD absorb (single-use, same-turn) áp
+        // TRƯỚC buff shield. Compose tuần tự: skill shield → buff shield →
+        // remaining damage. Skill shield không persist sang turn sau.
+        let remainingReply = reply;
+        if (skillShieldAbsorb > 0) {
+          const absorbedSkill = Math.min(skillShieldAbsorb, remainingReply);
+          remainingReply -= absorbedSkill;
+          if (absorbedSkill > 0) {
+            log.push({
+              side: 'system',
+              text: `Khiên ${skill.element} hấp thu ${absorbedSkill} sát thương phản kích.`,
+              ts: Date.now(),
+            });
+          }
+        }
         // Phase 11.X.N — Buff shield (talent_shield_phong: 30% hpMax, etc.)
         // absorb monster reply damage. `shieldAbsorb = floor(char.hpMax *
         // buffMods.shieldHpMaxRatio)` re-applied mỗi turn còn buff active
@@ -610,8 +711,8 @@ export class CombatService {
         // không injected hoặc no shield buff. KHÔNG mutate buff DB row —
         // duration-based, không depletion-based.
         const shieldAbsorb = Math.floor(char.hpMax * buffMods.shieldHpMaxRatio);
-        const absorbed = Math.min(shieldAbsorb, reply);
-        const netReply = reply - absorbed;
+        const absorbed = Math.min(shieldAbsorb, remainingReply);
+        const netReply = remainingReply - absorbed;
         if (absorbed > 0) {
           log.push({
             side: 'system',

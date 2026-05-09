@@ -600,6 +600,77 @@ const TEMPLATE_SHORTHAND: readonly TemplateEntryShorthand[] = [
     ],
     notes: 'Tuyệt kỹ Tu La — atkScale 4.5 baseline, evolution Phase 11.2.B.',
   },
+
+  // ===== Phase 14.2.C — Elemental Skill Tree Expansion (11 skills) =====
+  // Identity-tagged skill mỗi hệ. Tier theo `inferExpectedTier` (luyenkhi
+  // → basic, truc_co → intermediate). KHÔNG override → không cần
+  // TIER_OVERRIDE_ALLOWED.
+  {
+    key: 'moc_xuan_phong_phuc_sinh',
+    tier: 'basic',
+    unlocks: [{ kind: 'realm', ref: 'luyenkhi' }],
+    notes: 'Phase 14.2.C Mộc HEAL — atkScale 1.0 + selfHeal 0.25, mpCost 22, cd 3.',
+  },
+  {
+    key: 'moc_doc_van_truong',
+    tier: 'intermediate',
+    unlocks: [{ kind: 'realm', ref: 'truc_co' }],
+    notes: 'Phase 14.2.C Mộc DOT — atkScale 1.5 + 3-turn poison, mpCost 26, cd 2.',
+  },
+  {
+    key: 'moc_thien_sinh_chu',
+    tier: 'intermediate',
+    unlocks: [{ kind: 'realm', ref: 'truc_co' }],
+    notes: 'Phase 14.2.C Mộc HEAL late-luyenkhi — atkScale 0.8 + selfHeal 0.28, mpCost 28, cd 4.',
+  },
+  {
+    key: 'hoa_phen_diem_kiep',
+    tier: 'intermediate',
+    unlocks: [{ kind: 'realm', ref: 'truc_co' }],
+    notes: 'Phase 14.2.C Hoả BURST — atkScale 2.6, mpCost 38, cd 4 (single-shot bộc phát).',
+  },
+  {
+    key: 'hoa_thieu_diem_phap',
+    tier: 'basic',
+    unlocks: [{ kind: 'realm', ref: 'luyenkhi' }],
+    notes: 'Phase 14.2.C Hoả DOT burn — atkScale 1.5 + 3-turn burn, mpCost 24, cd 2.',
+  },
+  {
+    key: 'tho_kim_son_ho_phap',
+    tier: 'basic',
+    unlocks: [{ kind: 'realm', ref: 'luyenkhi' }],
+    notes: 'Phase 14.2.C Thổ SHIELD — atkScale 0.5 + 10% HP shield, mpCost 20, cd 3.',
+  },
+  {
+    key: 'tho_huyen_thach_trong_giap',
+    tier: 'intermediate',
+    unlocks: [{ kind: 'realm', ref: 'truc_co' }],
+    notes: 'Phase 14.2.C Thổ SHIELD mid — atkScale 0.4 + 10% HP shield (truc_co tier), mpCost 24, cd 4.',
+  },
+  {
+    key: 'kim_xuyen_giap_thien_thich',
+    tier: 'basic',
+    unlocks: [{ kind: 'realm', ref: 'luyenkhi' }],
+    notes: 'Phase 14.2.C Kim CRIT — atkScale 1.8 (xuyên giáp), mpCost 24, cd 2.',
+  },
+  {
+    key: 'kim_phong_nhan_quyet',
+    tier: 'intermediate',
+    unlocks: [{ kind: 'realm', ref: 'truc_co' }],
+    notes: 'Phase 14.2.C Kim CRIT+BURST — atkScale 2.4, mpCost 32, cd 3.',
+  },
+  {
+    key: 'thuy_lam_dieu_quyet',
+    tier: 'basic',
+    unlocks: [{ kind: 'realm', ref: 'luyenkhi' }],
+    notes: 'Phase 14.2.C Thuỷ CONTROL — atkScale 1.4 (slow flavor), mpCost 22, cd 2.',
+  },
+  {
+    key: 'thuy_lam_quy_thuy_tam',
+    tier: 'intermediate',
+    unlocks: [{ kind: 'realm', ref: 'truc_co' }],
+    notes: 'Phase 14.2.C Thuỷ HEAL — atkScale 0.8 + selfHeal 0.18, mpCost 18, cd 3.',
+  },
 ];
 
 /**
