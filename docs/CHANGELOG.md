@@ -12,7 +12,27 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Added — Phase 12.10.D NPC Relationship Quest Chain (this PR)
+### Internal — Post Phase 14 / 12.10 Integration Audit + Smoke Hardening (this PR)
+
+- **Audit-only PR**, KHÔNG feature mới — hardening sau 8 PR liên tiếp
+  (#486 Region Buff/Decay, #487 Territory War, #488 Tribulation Item
+  Consume, #489 Tribulation Encounter, #490 Elemental Skills, #491
+  Elemental Dungeon/Boss, #492 NPC Shop, #493 NPC Relationship Chains).
+- **Docs reconciliation**: `AI_HANDOFF_REPORT.md` cập nhật PR # đầy đủ
+  thay placeholder `(PR #?)`, Phase Status table thêm 8 entry mới, Recent
+  Changes prepend audit row, Roadmap thay (`13.2.D Cron Automation`/
+  `14.0.E Reward Mail`/`14.3.E Mini-Battle Mechanics`).
+- **API.md**: bổ sung 2 endpoint thiếu — `GET /admin/territory/decay/history?limit=`
+  (clamp 1..100, default 20) + `GET /character/tribulation/log?limit=`
+  (clamp 1..100, default 20, response `{ ok, data: { rows, limit } }`).
+- **Tests +6**: SkillBookView element/tag filter smoke (4 case F.6 audit
+  checklist) + i18n parity test cho `TERRITORY_REGION_BUFFS.labelI18nKey`
+  /`descriptionI18nKey` ⊆ vi+en (2 case).
+- **Verification**: shared 1972 PASS / web `--run Skill` 59 PASS
+  (+4 filter) / web `--run i18n` 10 PASS (+2 territory parity).
+- **KHÔNG migration / KHÔNG runtime change**.
+
+### Added — Phase 12.10.D NPC Relationship Quest Chain (PR #493)
 
 - **Tuyến nhiệm vụ duyên phận** — NPC quan trọng giờ có chuỗi quest gắn
   với mức độ thân tình (`affinity tier`). Quest unlock dần theo tier; sau
