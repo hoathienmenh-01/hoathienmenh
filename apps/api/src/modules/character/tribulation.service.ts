@@ -27,7 +27,6 @@ import {
   titleForRealmMilestone,
   TRIBULATION_MAX_SELECTED_SUPPORT_ITEMS,
   validateTribulationSupportSelection,
-  type ComposedTribulationSupports,
   type ElementKey,
   type ItemDef,
   type PassiveTalentMods,
