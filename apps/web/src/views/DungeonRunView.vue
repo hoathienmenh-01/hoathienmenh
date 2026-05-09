@@ -156,6 +156,17 @@ async function onClaim(): Promise<void> {
         exp: result.granted.exp,
       }),
     });
+    // Phase 16.5 — Daily Reward Cap toast nhẹ khi server cắt phần thưởng.
+    // Optional chaining bảo đảm pre-16.5 server không crash FE.
+    if (result.capped) {
+      toast.push({
+        type: 'info',
+        text:
+          t('dungeonRun.dailyCapReached', '__missing__') === '__missing__'
+            ? 'Hôm nay bạn đã đạt giới hạn nhận thưởng nguồn này.'
+            : t('dungeonRun.dailyCapReached'),
+      });
+    }
   } catch (e) {
     const code =
       (e as { code?: string }).code ??

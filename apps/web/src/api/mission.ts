@@ -51,12 +51,31 @@ export async function listMissions(): Promise<MissionProgressView[]> {
   return unwrap(data).missions;
 }
 
+/**
+ * Phase 16.5 — Daily Reward Cap. Mission claim trả thêm `claim` object
+ * với cap info (capped, cappedAmount, dailyCapRemaining). Optional cho
+ * compat với pre-16.5 server (sẽ không tồn tại field).
+ */
+export interface MissionClaimInfo {
+  missionKey: string;
+  granted: { exp: number; linhThach: number; tienNgoc: number };
+  capped: boolean;
+  cappedAmount?: { exp: number; linhThach: number };
+  dailyCapRemaining: { exp: number; linhThach: number };
+}
+
+export interface MissionClaimResult {
+  missions: MissionProgressView[];
+  /** Optional — chỉ tồn tại khi server >= Phase 16.5. */
+  claim?: MissionClaimInfo;
+}
+
 export async function claimMission(
   missionKey: string,
-): Promise<MissionProgressView[]> {
-  const { data } = await apiClient.post<Envelope<{ missions: MissionProgressView[] }>>(
-    '/missions/claim',
-    { missionKey },
-  );
-  return unwrap(data).missions;
+): Promise<MissionClaimResult> {
+  const { data } = await apiClient.post<
+    Envelope<{ missions: MissionProgressView[]; claim?: MissionClaimInfo }>
+  >('/missions/claim', { missionKey });
+  const payload = unwrap(data);
+  return { missions: payload.missions, claim: payload.claim };
 }

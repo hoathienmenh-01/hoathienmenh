@@ -80,8 +80,20 @@ async function onClaim(m: MissionProgressView): Promise<void> {
   if (claiming.value) return;
   claiming.value = m.key;
   try {
-    missions.value = await claimMission(m.key);
+    const result = await claimMission(m.key);
+    missions.value = result.missions;
     toast.push({ type: 'success', text: t('mission.claimToast', { name: m.name }) });
+    // Phase 16.5 — Daily Reward Cap: nếu server bảo capped=true → toast nhẹ
+    // báo người chơi biết. Optional chaining bảo đảm pre-16.5 server không
+    // crash FE (claim undefined → skip).
+    if (result.claim?.capped) {
+      toast.push({
+        type: 'info',
+        text: t('mission.dailyCapReached', '__missing__') === '__missing__'
+          ? 'Hôm nay bạn đã đạt giới hạn nhận thưởng nguồn này.'
+          : t('mission.dailyCapReached'),
+      });
+    }
     await game.fetchState().catch(() => null);
   } catch (e) {
     handleErr(e);

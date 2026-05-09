@@ -517,3 +517,36 @@ Xem pattern tham khảo: `apps/api/src/modules/daily-login/daily-login.service.t
 
 - **2026-04-30** — Initial creation. Author: Devin AI session 9q.
 - **2026-05-09** — Phase 14.0.E Territory Owner Reward Mail — thêm source `linhThach`/EXP/item dạng mail từ catalog `TERRITORY_OWNER_REWARDS` cho member sect chiếm region. Idempotent qua `TerritoryOwnerRewardGrant` UNIQUE `(periodKey, regionKey, characterId)`. Worst-case 1 sect cả 9 region ≈ 3750 linhThach + 1870 EXP / member / tuần (≤ 50–100% mission daily income).
+- **2026-05-09** — Phase 16.5 Daily Reward Cap — anti-abuse layer cho 3 nguồn chính (CULTIVATION / DUNGEON / MISSION). Per-character, per-day, per-source bucket `CharacterDailyRewardBucket` accum EXP + linhThach grant; cap scale theo realm tier. Service `RewardCapService.applyCapTx(tx, input)` race-safe qua Postgres `INSERT ... ON CONFLICT DO UPDATE` (atomic row-lock). Audit `RewardCapEvent` chỉ ghi khi `wasCapped=true`. Ledger ghi số THỰC grant (KHÔNG ghi requested). Day bucket reset Asia/Ho_Chi_Minh. **KHÔNG cap admin grant** — admin path không gọi service. Cap tier-1 (phamnhan): CULTIVATION 6000 EXP / DUNGEON 2400 EXP + 600 linh / MISSION 1500 EXP + 500 linh — đủ ~4–6h casual play. Tier kim_dan ×3, luyen_hu+ ×8.
+
+### 10.1 Daily Reward Cap design (Phase 16.5)
+
+**Catalog**: `DAILY_REWARD_CAP_BY_REALM_AND_SOURCE` ở `packages/shared/src/daily-reward-cap.ts`:
+
+```
+phamnhan/luyenkhi/truc_co (×1):
+  CULTIVATION  exp 6000   linh    0
+  DUNGEON      exp 2400   linh  600
+  MISSION      exp 1500   linh  500
+kim_dan/nguyen_anh/hoa_than (×3):
+  CULTIVATION  exp 18000  linh    0
+  DUNGEON      exp  7200  linh 1800
+  MISSION      exp  4500  linh 1500
+luyen_hu/dai_thua/do_kiep (×8):
+  CULTIVATION  exp 48000  linh    0
+  DUNGEON      exp 19200  linh 4800
+  MISSION      exp 12000  linh 4000
+```
+
+**Race safety**: dùng Postgres `INSERT ... ON CONFLICT DO UPDATE` thay vì CAS retry — Prisma interactive transaction abort cả tx khi P2002 (UNIQUE violation), nên CAS retry pattern không khả thi. ON CONFLICT DO UPDATE acquires row lock atomically; concurrent calls cùng `(characterId, dayBucket, source)` block chờ lock, sau đó đọc accum đã được commit → tính decision → update.
+
+**Scope**: KHÔNG wire territory / daily login / season / topup (admin) trong PR này. KHÔNG làm anomaly scanner / market price band / admin alert (Phase 16.6+).
+
+**API response shape**: claim endpoints trả thêm `{ capped: boolean, cappedAmount?: { exp, linhThach }, dailyCapRemaining: { exp, linhThach } }`. Pre-16.5 client KHÔNG crash vì FE dùng optional chaining.
+
+### 10.2 Daily Reward Cap follow-ups
+
+- **Phase 16.6 — Ledger Checker + Economy Anomaly Scanner**: scan `CurrencyLedger` daily anomaly, alert admin nếu 1 character vượt baseline (ví dụ: 10× percentile-99). Tận dụng `RewardCapEvent` audit trail.
+- **Phase 16.7 — Market Price Band**: catalog min/max per item; auction reject listing ngoài band.
+- **Phase 16.8 — Admin Grant Alert**: webhook khi admin grant > threshold (vd 100k linhThach).
+- **Phase 16.9 — Territory + Daily Login + Season cap**: wire 3 nguồn còn lại nếu telemetry cho thấy abuse.

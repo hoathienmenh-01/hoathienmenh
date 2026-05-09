@@ -56,9 +56,9 @@ export class MissionController {
     const parsed = ClaimInput.safeParse(body);
     if (!parsed.success) fail('INVALID_INPUT');
     try {
-      await this.missions.claim(userId, parsed.data.missionKey);
+      const claim = await this.missions.claim(userId, parsed.data.missionKey);
       const missions = await this.missions.listForUser(userId);
-      return { ok: true, data: { missions } };
+      return { ok: true, data: { missions, claim } };
     } catch (e) {
       this.handleErr(e);
     }

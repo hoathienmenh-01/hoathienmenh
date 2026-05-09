@@ -190,7 +190,8 @@ describe('MissionView — claim flow vitest', () => {
     });
     const after = { ...before, claimed: true };
     listMissionsMock.mockResolvedValue([before]);
-    claimMissionMock.mockResolvedValue([after]);
+    // Phase 16.5 — claimMission trả `{ missions, claim? }` (claim optional).
+    claimMissionMock.mockResolvedValue({ missions: [after] });
 
     const w = mountView();
     await flushPromises();

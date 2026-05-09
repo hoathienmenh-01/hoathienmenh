@@ -95,6 +95,14 @@ export interface DungeonClaimResult {
     exp: number;
     items: Array<{ itemKey: string; qty: number }>;
   };
+  /**
+   * Phase 16.5 — Daily Reward Cap. Optional cho compat với pre-16.5 server.
+   * `capped=true` khi exp/linhThach grant đã bị cắt do hết cap nguồn DUNGEON
+   * trong ngày. FE render toast nhẹ + vẫn hiển thị `granted` thực.
+   */
+  capped?: boolean;
+  cappedAmount?: { exp: number; linhThach: number };
+  dailyCapRemaining?: { exp: number; linhThach: number };
 }
 
 /**

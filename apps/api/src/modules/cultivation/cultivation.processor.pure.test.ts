@@ -32,12 +32,17 @@ function makeChar(overrides: Record<string, unknown> = {}) {
 }
 
 function makeDeps() {
+  // Mock prisma — `$transaction(cb)` invokes cb with cùng prisma mock
+  // làm tx (CultivationProcessor wrap cap+CAS update trong tx).
   const prisma = {
     $executeRawUnsafe: vi.fn().mockResolvedValue(0),
     character: {
       findMany: vi.fn().mockResolvedValue([]),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
+    $transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) =>
+      cb(prisma),
+    ),
   };
   const realtime = {
     emitToUser: vi.fn(),
@@ -45,12 +50,34 @@ function makeDeps() {
   const missions = {
     track: vi.fn().mockResolvedValue(undefined),
   };
+  // Mock applyCapTx — pass-through (grantedExp = requestedExp). Cho phép
+  // pure test exercise đầy đủ EXP/realmStage logic mà không cần DB.
+  const rewardCap = {
+    applyCapTx: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _tx: unknown,
+          input: { requestedExp: bigint; requestedLinhThach: bigint },
+        ) => ({
+          grantedExp: input.requestedExp,
+          grantedLinhThach: input.requestedLinhThach,
+          cappedExp: 0n,
+          cappedLinhThach: 0n,
+          wasCapped: false,
+          remainingExp: 999999n,
+          remainingLinhThach: 999999n,
+          dayBucket: '2026-01-01',
+        }),
+      ),
+  };
   const processor = new CultivationProcessor(
     prisma as never,
     realtime as never,
     missions as never,
+    rewardCap as never,
   );
-  return { prisma, realtime, missions, processor };
+  return { prisma, realtime, missions, rewardCap, processor };
 }
 
 function tickJob() {
