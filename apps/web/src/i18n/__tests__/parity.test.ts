@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { LIVE_OPS_EVENTS } from '@xuantoi/shared';
+import { LIVE_OPS_EVENTS, TERRITORY_REGION_BUFFS } from '@xuantoi/shared';
 import vi from '../vi.json';
 import en from '../en.json';
 
@@ -112,6 +112,29 @@ describe('i18n parity vi vs en', () => {
     for (const ev of LIVE_OPS_EVENTS) {
       if (!flatEn.has(ev.titleI18nKey)) missing.push(ev.titleI18nKey);
       if (!flatEn.has(ev.descriptionI18nKey)) missing.push(ev.descriptionI18nKey);
+    }
+    expect(missing).toEqual([]);
+  });
+
+  // Phase 14.0.C — territory buff catalog i18n parity audit (post phase 14
+  // hardening). Mỗi `TERRITORY_REGION_BUFFS[i].labelI18nKey` /
+  // `descriptionI18nKey` phải tồn tại trong cả 2 locale file, nếu không FE
+  // sẽ render raw key string (vd `territory.buff.son_coc_exp.label`) thay vì
+  // text dịch — UX bug khó phát hiện ở build time.
+  it('mọi TERRITORY_REGION_BUFFS labelI18nKey/descriptionI18nKey phải tồn tại trong vi.json', () => {
+    const missing: string[] = [];
+    for (const b of TERRITORY_REGION_BUFFS) {
+      if (!flatVi.has(b.labelI18nKey)) missing.push(b.labelI18nKey);
+      if (!flatVi.has(b.descriptionI18nKey)) missing.push(b.descriptionI18nKey);
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it('mọi TERRITORY_REGION_BUFFS labelI18nKey/descriptionI18nKey phải tồn tại trong en.json', () => {
+    const missing: string[] = [];
+    for (const b of TERRITORY_REGION_BUFFS) {
+      if (!flatEn.has(b.labelI18nKey)) missing.push(b.labelI18nKey);
+      if (!flatEn.has(b.descriptionI18nKey)) missing.push(b.descriptionI18nKey);
     }
     expect(missing).toEqual([]);
   });

@@ -9,7 +9,9 @@ import { setActivePinia, createPinia } from 'pinia';
  * Bao phủ:
  *  - Loading + empty states.
  *  - Render skill card với tier badge + element badge + mastery + effective.
- *  - Filters: tier / element / equipped (none / equipped / unequipped).
+ *  - Filters: tier / element / tag / equipped (none / equipped / unequipped).
+ *    Phase 14.2.C audit (post-phase-14 hardening) — element + tag filter
+ *    smoke test (F.6) đảm bảo dropdown wire vào shared catalog không crash.
  *  - Equip / Unequip / Upgrade flows: success toast + error code → error toast.
  *  - Equip button disabled khi đang in-flight.
  *  - Upgrade button disabled khi mastery=max.
@@ -88,9 +90,37 @@ const skillThuy: SkillViewStub = {
   nextLevelShardCost: null,
 };
 
+// Phase 14.2.C signature skill — element=kim, no tags.
+const skillKim: SkillViewStub = {
+  skillKey: 'kim_quang_tram',
+  tier: 'intermediate',
+  masteryLevel: 1,
+  maxMastery: 5,
+  isEquipped: false,
+  source: 'sect',
+  learnedAt: '2026-05-03T17:00:03.000Z',
+  effective: { atkScale: 1.7, mpCost: 12, cooldownTurns: 1 },
+  nextLevelLinhThachCost: 200,
+  nextLevelShardCost: 0,
+};
+
+// Phase 14.2.C signature skill — element=moc, tag=HEAL.
+const skillMocHeal: SkillViewStub = {
+  skillKey: 'moc_xuan_phong_phuc_sinh',
+  tier: 'intermediate',
+  masteryLevel: 1,
+  maxMastery: 5,
+  isEquipped: false,
+  source: 'sect',
+  learnedAt: '2026-05-03T17:00:04.000Z',
+  effective: { atkScale: 1.0, mpCost: 22, cooldownTurns: 3 },
+  nextLevelLinhThachCost: 200,
+  nextLevelShardCost: 0,
+};
+
 const skillStore: SkillStoreStub = {
   maxEquipped: 4,
-  learned: [skillBasic, skillKiem, skillThuy],
+  learned: [skillBasic, skillKiem, skillThuy, skillKim, skillMocHeal],
   loaded: true,
   inFlight: new Set(),
   equippedCount: 2,
@@ -147,7 +177,8 @@ const i18n = createI18n({
         loading: 'Đang tải',
         empty: 'Trống',
         equippedSummary: 'Vận: {equipped}/{max}',
-        filter: { tier: 'Cấp', element: 'Hệ', equipped: 'Trạng thái', all: 'Tất cả', shown: '{shown}/{total} ({catalog})' },
+        filter: { tier: 'Cấp', element: 'Hệ', equipped: 'Trạng thái', tag: 'Loại', all: 'Tất cả', shown: '{shown}/{total} ({catalog})' },
+        elementIdentity: { neutral: 'Vô hệ' },
         tier: { basic: 'Sơ', intermediate: 'Trung', advanced: 'Cao', master: 'Đại sư', legendary: 'Huyền thoại' },
         element: { kim: 'Kim', moc: 'Mộc', thuy: 'Thuỷ', hoa: 'Hoả', tho: 'Thổ', none: 'Vô' },
         equipFilter: { equipped: 'Đang vận', unequipped: 'Chưa' },
@@ -171,6 +202,25 @@ const i18n = createI18n({
           UNKNOWN: 'Lỗi',
         },
       },
+      // Phase 14.2.C — SkillTagBadge i18n keys cho tag dropdown.
+      skillTagBadge: {
+        tag: {
+          HEAL: 'Hồi',
+          DOT: 'Độc',
+          BURST: 'Bùng',
+          SHIELD: 'Khiên',
+          CRIT: 'Bạo',
+          CONTROL: 'Khống',
+        },
+        tooltip: {
+          HEAL: 'Hồi máu',
+          DOT: 'DoT',
+          BURST: 'Burst',
+          SHIELD: 'Shield',
+          CRIT: 'Crit',
+          CONTROL: 'Control',
+        },
+      },
     },
   },
 });
@@ -185,6 +235,8 @@ function resetStore() {
     { ...skillBasic },
     { ...skillKiem },
     { ...skillThuy },
+    { ...skillKim },
+    { ...skillMocHeal },
   ];
   skillStore.loaded = true;
   skillStore.inFlight = new Set();
@@ -270,6 +322,56 @@ describe('SkillBookView — render & filters', () => {
     await flushPromises();
     expect(w.find('[data-testid="skill-book-card-kiem_khi_chem"]').exists()).toBe(true);
     expect(w.find('[data-testid="skill-book-card-basic_attack"]').exists()).toBe(false);
+  });
+
+  // Phase 14.2.C audit (post-phase-14 hardening) — element + tag filter
+  // smoke (F.6 trong audit checklist). Đảm bảo dropdown wire vào shared
+  // catalog (`skillByKey().def.element / .tags`) không crash khi filter
+  // theo element hoặc tag, và filter logic chính xác.
+  it('filter element=kim chỉ giữ skill có def.element=kim', async () => {
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="skill-book-filter-element"]').setValue('kim');
+    await flushPromises();
+    expect(w.find('[data-testid="skill-book-card-kim_quang_tram"]').exists()).toBe(true);
+    expect(w.find('[data-testid="skill-book-card-basic_attack"]').exists()).toBe(false);
+    expect(w.find('[data-testid="skill-book-card-thuy_tieu_phu"]').exists()).toBe(false);
+    expect(w.find('[data-testid="skill-book-card-moc_xuan_phong_phuc_sinh"]').exists()).toBe(false);
+  });
+
+  it('filter element=none chỉ giữ skill có def.element=null (vô hệ)', async () => {
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="skill-book-filter-element"]').setValue('none');
+    await flushPromises();
+    // basic_attack/kiem_khi_chem/thuy_tieu_phu là vô hệ trong shared catalog.
+    expect(w.find('[data-testid="skill-book-card-basic_attack"]').exists()).toBe(true);
+    expect(w.find('[data-testid="skill-book-card-kim_quang_tram"]').exists()).toBe(false);
+    expect(w.find('[data-testid="skill-book-card-moc_xuan_phong_phuc_sinh"]').exists()).toBe(false);
+  });
+
+  it('filter tag=HEAL chỉ giữ skill có HEAL trong def.tags', async () => {
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="skill-book-filter-tag"]').setValue('HEAL');
+    await flushPromises();
+    expect(w.find('[data-testid="skill-book-card-moc_xuan_phong_phuc_sinh"]').exists()).toBe(true);
+    expect(w.find('[data-testid="skill-book-card-kim_quang_tram"]').exists()).toBe(false);
+    expect(w.find('[data-testid="skill-book-card-basic_attack"]').exists()).toBe(false);
+  });
+
+  it('filter element + tag combine không crash, kết quả empty hợp lệ', async () => {
+    const w = mountView();
+    await flushPromises();
+    // kim element + HEAL tag → moc_xuan_phong_phuc_sinh (moc/HEAL) bị element
+    // filter loại; không có kim+HEAL nào → empty kết quả nhưng view không crash.
+    await w.find('[data-testid="skill-book-filter-element"]').setValue('kim');
+    await w.find('[data-testid="skill-book-filter-tag"]').setValue('HEAL');
+    await flushPromises();
+    expect(w.find('[data-testid="skill-book-card-kim_quang_tram"]').exists()).toBe(false);
+    expect(w.find('[data-testid="skill-book-card-moc_xuan_phong_phuc_sinh"]').exists()).toBe(false);
+    // View vẫn render được (count UI vẫn còn).
+    expect(w.find('[data-testid="skill-book-count"]').exists()).toBe(true);
   });
 });
 
