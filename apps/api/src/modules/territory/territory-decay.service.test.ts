@@ -26,8 +26,7 @@ import {
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { TerritoryDecayService } from './territory-decay.service';
-import { TerritoryError } from './territory.service';
-import { TerritoryService } from './territory.service';
+import { TerritoryError, TerritoryService } from './territory.service';
 import { TerritorySettlementService } from './territory-settlement.service';
 import {
   TEST_DATABASE_URL,
@@ -38,14 +37,14 @@ import {
 
 let prisma: PrismaService;
 let decay: TerritoryDecayService;
-let territory: TerritoryService;
 let settlement: TerritorySettlementService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
   settlement = new TerritorySettlementService(prisma);
-  territory = new TerritoryService(prisma, settlement);
+  // territory service constructed for type-checking but not exercised here.
+  void new TerritoryService(prisma, settlement);
   decay = new TerritoryDecayService(prisma);
 });
 
