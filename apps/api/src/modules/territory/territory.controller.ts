@@ -12,6 +12,7 @@ import {
 import type { Request } from 'express';
 import { TerritoryError, TerritoryService } from './territory.service';
 import { TerritorySettlementService } from './territory-settlement.service';
+import { TerritoryWarService } from './territory-war.service';
 import { AuthService } from '../auth/auth.service';
 
 const ACCESS_COOKIE = 'xt_access';
@@ -42,6 +43,7 @@ export class TerritoryController {
   constructor(
     private readonly territory: TerritoryService,
     private readonly settlement: TerritorySettlementService,
+    private readonly war: TerritoryWarService,
     private readonly auth: AuthService,
   ) {}
 
@@ -91,6 +93,34 @@ export class TerritoryController {
     } catch (e) {
       this.handleErr(e);
     }
+  }
+
+  // ────────────────────────────────────────────────────────────────────
+  // Phase 14.0.D — Weekly War Loop endpoints (public read-only)
+  // ────────────────────────────────────────────────────────────────────
+
+  @Get('war/current')
+  async warCurrent() {
+    const data = await this.war.getCurrentTerritoryWarState();
+    return { ok: true, data };
+  }
+
+  @Get('war/regions/:regionKey')
+  async warRegion(@Param('regionKey') regionKey: string) {
+    try {
+      const data = await this.war.getRegionWarStatus(regionKey);
+      return { ok: true, data };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  @Get('war/history')
+  async warHistory(
+    @Query('limit', new DefaultValuePipe(8), ParseIntPipe) limit: number,
+  ) {
+    const data = await this.war.getWarHistory(limit);
+    return { ok: true, data };
   }
 
   private handleErr(e: unknown): never {

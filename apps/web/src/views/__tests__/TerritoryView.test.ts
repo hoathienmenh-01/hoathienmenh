@@ -9,6 +9,9 @@ import type {
   TerritoryRegionHistoryView,
   TerritorySettlementRunResult,
   TerritoryRegionView,
+  TerritoryWarStateView,
+  TerritoryWarHistoryView,
+  TerritoryWarSettleCurrentResult,
 } from '@/api/territory';
 
 /**
@@ -31,6 +34,9 @@ const getHistoryMock = vi.fn();
 const adminSettleAllMock = vi.fn();
 const adminSettleRegionMock = vi.fn();
 const adminDecayMock = vi.fn();
+const getWarCurrentMock = vi.fn();
+const getWarHistoryMock = vi.fn();
+const adminWarSettleCurrentMock = vi.fn();
 
 vi.mock('@/api/territory', async () => {
   const actual =
@@ -46,6 +52,10 @@ vi.mock('@/api/territory', async () => {
     adminTerritorySettleRegion: (...a: unknown[]) =>
       adminSettleRegionMock(...a),
     adminTerritoryDecay: (...a: unknown[]) => adminDecayMock(...a),
+    getTerritoryWarCurrent: (...a: unknown[]) => getWarCurrentMock(...a),
+    getTerritoryWarHistory: (...a: unknown[]) => getWarHistoryMock(...a),
+    adminTerritoryWarSettleCurrent: (...a: unknown[]) =>
+      adminWarSettleCurrentMock(...a),
   };
 });
 
@@ -101,6 +111,7 @@ const i18n = createI18n({
           overview: 'Tổng quan',
           leaderboard: 'Bảng xếp hạng',
           me: 'Tông của tôi',
+          war: 'Tranh Đoạt',
         },
         overview: {
           empty: 'Chưa có dữ liệu',
@@ -195,6 +206,30 @@ const i18n = createI18n({
           decayRunning: 'Running decay…',
           decayLastResult: 'Decay {period}: -{delta} pts · {rows} rows · {bpsPercent}%.',
           decaySkipped: 'Decay {period} skipped.',
+        },
+        war: {
+          title: 'Tranh Đoạt Tuần',
+          subtitle: 'Sub',
+          countdownLabel: 'Còn lại',
+          currentPeriod: 'Tuần: {period}',
+          previousPeriod: 'Tuần trước: {period}',
+          windowFmt: '{from} → {to}',
+          regionContestedBadge: 'Tranh chấp',
+          regionOwner: 'Chủ: {name}',
+          regionLeadMargin: 'Hơn kém: {pts}',
+          regionNoContenders: 'Chưa có',
+          standingsTitle: 'Top 3',
+          standingsRow: '#{rank} {sect} — {pts} điểm',
+          leaderTag: 'DẪN ĐẦU',
+          contributorsHint: '{n} TV',
+          historyTitle: 'Lịch sử tuần',
+          historyEmpty: 'Chưa có',
+          historyRow: '{period} · {settled} · {wins}',
+          adminTitle: 'Admin Settle Current Week',
+          adminSubtitle: 'Sub',
+          adminSettleButton: 'Chốt Tuần',
+          adminSettleRunning: 'Đang chốt…',
+          adminLastResult: 'Đã chốt {period}: {wins} thắng · {skip} bỏ qua.',
         },
       },
     },
@@ -415,6 +450,9 @@ beforeEach(() => {
   adminSettleAllMock.mockReset();
   adminSettleRegionMock.mockReset();
   adminDecayMock.mockReset();
+  getWarCurrentMock.mockReset();
+  getWarHistoryMock.mockReset();
+  adminWarSettleCurrentMock.mockReset();
   routerReplaceMock.mockReset();
   routerReplaceMock.mockResolvedValue(undefined);
   authState.isAuthenticated = true;
@@ -1035,5 +1073,277 @@ describe('TerritoryView — Phase 14.0.C admin decay', () => {
     const err = w.find('[data-test="territory-admin-decay-error"]');
     expect(err.exists()).toBe(true);
     expect(err.text()).toContain('Tỷ lệ suy giảm không hợp lệ');
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// Phase 14.0.D — Weekly War Loop tests
+// ────────────────────────────────────────────────────────────────────────────
+
+function makeWarState(
+  over: Partial<TerritoryWarStateView> = {},
+): TerritoryWarStateView {
+  // Tạo `endsAt` ở tương lai để countdown > 0.
+  const now = new Date('2026-06-01T00:00:00.000Z');
+  const endsAt = new Date(now.getTime() + 3 * 86400 * 1000); // +3d
+  return {
+    periodKey: '2026-W23',
+    previousPeriodKey: '2026-W22',
+    startsAt: '2026-06-01T00:00:00.000Z',
+    endsAt: endsAt.toISOString(),
+    nextResetAt: endsAt.toISOString(),
+    serverNow: now.toISOString(),
+    timeRemainingMs: 3 * 86400 * 1000,
+    regions: [
+      {
+        regionKey: 'son_coc',
+        nameVi: 'Sơn Cốc',
+        nameEn: 'Son Coc',
+        sortOrder: 1,
+        totalPoints: 80,
+        contestedSectCount: 2,
+        leaderSectId: 'sect-1',
+        leaderSectName: 'Thanh Vân',
+        leaderPoints: 64,
+        leadMargin: 48,
+        contested: true,
+        currentOwnerSectId: 'sect-prev',
+        currentOwnerSectName: 'Old Owner',
+        currentOwnerPeriodKey: '2026-W22',
+        topStandings: [
+          {
+            rank: 1,
+            sectId: 'sect-1',
+            sectName: 'Thanh Vân',
+            points: 64,
+            contributors: 4,
+            isLeader: true,
+          },
+          {
+            rank: 2,
+            sectId: 'sect-2',
+            sectName: 'Huyền Thuỷ',
+            points: 16,
+            contributors: 2,
+            isLeader: false,
+          },
+        ],
+      },
+      {
+        regionKey: 'kim_son_mach',
+        nameVi: 'Kim Sơn Mạch',
+        nameEn: 'Kim Son Mach',
+        sortOrder: 2,
+        totalPoints: 0,
+        contestedSectCount: 0,
+        leaderSectId: null,
+        leaderSectName: null,
+        leaderPoints: 0,
+        leadMargin: 0,
+        contested: false,
+        currentOwnerSectId: null,
+        currentOwnerSectName: null,
+        currentOwnerPeriodKey: null,
+        topStandings: [],
+      },
+    ],
+    ...over,
+  };
+}
+
+function makeWarHistory(
+  over: Partial<TerritoryWarHistoryView> = {},
+): TerritoryWarHistoryView {
+  return {
+    entries: [
+      {
+        periodKey: '2026-W22',
+        startsAt: '2026-05-25T00:00:00.000Z',
+        endsAt: '2026-06-01T00:00:00.000Z',
+        settledAt: '2026-06-01T00:01:00.000Z',
+        snapshots: [
+          {
+            id: 'snap-h1',
+            regionKey: 'son_coc',
+            periodKey: '2026-W22',
+            winnerSectId: 'sect-prev',
+            winnerSectName: 'Old Owner',
+            winnerPoints: 50,
+            runnerUpSectId: null,
+            runnerUpSectName: null,
+            runnerUpPoints: 0,
+            totalSects: 1,
+            totalPoints: 50,
+            settledAt: '2026-06-01T00:01:00.000Z',
+            settledBy: 'admin1',
+          },
+        ],
+      },
+    ],
+    ...over,
+  };
+}
+
+function makeWarSettleResult(): TerritoryWarSettleCurrentResult {
+  return {
+    periodKey: '2026-W23',
+    settledAt: '2026-06-01T00:05:00.000Z',
+    snapshots: [
+      {
+        id: 'snap-w23',
+        regionKey: 'son_coc',
+        periodKey: '2026-W23',
+        winnerSectId: 'sect-1',
+        winnerSectName: 'Thanh Vân',
+        winnerPoints: 64,
+        runnerUpSectId: 'sect-2',
+        runnerUpSectName: 'Huyền Thuỷ',
+        runnerUpPoints: 16,
+        totalSects: 2,
+        totalPoints: 80,
+        settledAt: '2026-06-01T00:05:00.000Z',
+        settledBy: 'admin1',
+      },
+    ],
+    skippedRegions: ['kim_son_mach'],
+    ownersAfter: [
+      {
+        regionKey: 'son_coc',
+        ownerSectId: 'sect-1',
+        ownerSectName: 'Thanh Vân',
+        periodKey: '2026-W23',
+        settledAt: '2026-06-01T00:05:00.000Z',
+      },
+      {
+        regionKey: 'kim_son_mach',
+        ownerSectId: null,
+        ownerSectName: null,
+        periodKey: null,
+        settledAt: null,
+      },
+    ],
+  };
+}
+
+describe('TerritoryView — Phase 14.0.D weekly war tab', () => {
+  it('tab "war" có button trong tablist + click chuyển content', async () => {
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getWarCurrentMock.mockResolvedValue(makeWarState());
+    getWarHistoryMock.mockResolvedValue(makeWarHistory());
+    const w = mountView();
+    await flushPromises();
+
+    const tabBtn = w.find('[data-test="territory-tab-war"]');
+    expect(tabBtn.exists()).toBe(true);
+
+    await tabBtn.trigger('click');
+    await flushPromises();
+
+    expect(w.find('[data-test="territory-war-content"]').exists()).toBe(true);
+    expect(getWarCurrentMock).toHaveBeenCalled();
+    expect(getWarHistoryMock).toHaveBeenCalled();
+  });
+
+  it('render countdown + period panel + 9 region cards với standings', async () => {
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getWarCurrentMock.mockResolvedValue(makeWarState());
+    getWarHistoryMock.mockResolvedValue(makeWarHistory());
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-war"]').trigger('click');
+    await flushPromises();
+
+    expect(
+      w.find('[data-test="territory-war-period-panel"]').exists(),
+    ).toBe(true);
+    expect(w.find('[data-test="territory-war-countdown"]').text().length).toBeGreaterThan(0);
+
+    const cards = w.findAll('[data-test="territory-war-region-card"]');
+    expect(cards.length).toBe(2);
+    // Card son_coc: contested badge + owner + standings.
+    expect(cards[0].find('[data-test="territory-war-region-contested"]').exists()).toBe(true);
+    expect(cards[0].find('[data-test="territory-war-region-owner"]').text()).toContain('Old Owner');
+    const standings = cards[0].findAll('[data-test="territory-war-region-standing"]');
+    expect(standings.length).toBe(2);
+    expect(standings[0].text()).toContain('Thanh Vân');
+    expect(standings[0].text()).toContain('DẪN ĐẦU');
+    // Card kim_son_mach: empty state.
+    expect(cards[1].find('[data-test="territory-war-region-empty"]').exists()).toBe(true);
+  });
+
+  it('history panel render khi có entries', async () => {
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getWarCurrentMock.mockResolvedValue(makeWarState());
+    getWarHistoryMock.mockResolvedValue(makeWarHistory());
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-war"]').trigger('click');
+    await flushPromises();
+
+    expect(w.find('[data-test="territory-war-history-panel"]').exists()).toBe(true);
+    const rows = w.findAll('[data-test="territory-war-history-row"]');
+    expect(rows.length).toBe(1);
+    expect(rows[0].text()).toContain('2026-W22');
+  });
+
+  it('history panel empty state khi entries rỗng', async () => {
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getWarCurrentMock.mockResolvedValue(makeWarState());
+    getWarHistoryMock.mockResolvedValue({ entries: [] });
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-war"]').trigger('click');
+    await flushPromises();
+
+    expect(w.find('[data-test="territory-war-history-empty"]').exists()).toBe(true);
+    expect(w.findAll('[data-test="territory-war-history-row"]').length).toBe(0);
+  });
+
+  it('PLAYER role → KHÔNG có admin settle button', async () => {
+    authState.user = { role: 'PLAYER' };
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getWarCurrentMock.mockResolvedValue(makeWarState());
+    getWarHistoryMock.mockResolvedValue(makeWarHistory());
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-war"]').trigger('click');
+    await flushPromises();
+
+    expect(w.find('[data-test="territory-war-admin-panel"]').exists()).toBe(false);
+    expect(w.find('[data-test="territory-war-admin-settle"]').exists()).toBe(false);
+  });
+
+  it('ADMIN role → admin button click triggers service + render result', async () => {
+    authState.user = { role: 'ADMIN' };
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getWarCurrentMock.mockResolvedValue(makeWarState());
+    getWarHistoryMock
+      .mockResolvedValueOnce(makeWarHistory())
+      .mockResolvedValueOnce(makeWarHistory());
+    adminWarSettleCurrentMock.mockResolvedValue(makeWarSettleResult());
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-war"]').trigger('click');
+    await flushPromises();
+
+    expect(w.find('[data-test="territory-war-admin-panel"]').exists()).toBe(true);
+    const btn = w.find('[data-test="territory-war-admin-settle"]');
+    expect(btn.exists()).toBe(true);
+
+    await btn.trigger('click');
+    await flushPromises();
+
+    expect(adminWarSettleCurrentMock).toHaveBeenCalled();
+    // Sau khi settle → fetchWarHistory được gọi lại lần 2 (refresh).
+    expect(getWarHistoryMock).toHaveBeenCalledTimes(2);
+    const result = w.find('[data-test="territory-war-admin-result"]');
+    expect(result.exists()).toBe(true);
+    expect(result.text()).toContain('2026-W23');
   });
 });

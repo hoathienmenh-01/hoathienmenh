@@ -536,3 +536,274 @@ export function previousTerritoryPeriodKey(now: Date = new Date()): string {
   const d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   return territoryPeriodKeyForDate(d);
 }
+
+// ────────────────────────────────────────────────────────────────────────
+// Phase 14.0.D — Territory Weekly War Loop helpers + types
+// ────────────────────────────────────────────────────────────────────────
+
+/**
+ * Phase 14.0.D — current ISO week period key (UTC).
+ *
+ * Alias cho `territoryPeriodKeyForDate(now)` để code đọc tự nhiên ở
+ * runtime hook ("chốt period hiện tại" ↔ "kỳ tuần này").
+ */
+export function currentTerritoryPeriodKey(now: Date = new Date()): string {
+  return territoryPeriodKeyForDate(now);
+}
+
+/**
+ * Phase 14.0.D — Mốc reset tuần kế tiếp theo UTC.
+ *
+ * Trả về `Date` đại diện mốc Thứ Hai 00:00:00 UTC kế tiếp `now`. Convention:
+ *   - Nếu `now` đúng 00:00:00.000 UTC ngày Thứ Hai → vẫn đẩy về 7 ngày sau
+ *     (mốc reset tiếp theo, không phải mốc reset hiện tại).
+ *   - Nếu `now` ở giữa tuần → đẩy về Thứ Hai gần nhất phía trước rồi cộng
+ *     7 ngày, lúc nào cũng > now.
+ *
+ * Dùng cho FE countdown ("còn bao nhiêu giây tới reset") và
+ * `territoryPeriodWindow()` lấy `endsAt`.
+ */
+export function nextTerritoryResetAt(now: Date = new Date()): Date {
+  // ISO week boundary là 00:00 UTC Thứ Hai. Convert getUTCDay() (0=Sun..6=Sat)
+  // sang ISO day (1=Mon..7=Sun) để tính khoảng cách.
+  const isoDay = now.getUTCDay() === 0 ? 7 : now.getUTCDay();
+  const startOfToday = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+  );
+  // Mốc Thứ Hai 00:00 UTC tuần hiện tại (lùi `isoDay - 1` ngày từ today).
+  const currentMonday = startOfToday - (isoDay - 1) * 86400000;
+  // Mốc Thứ Hai 00:00 UTC tuần kế tiếp.
+  const nextMonday = currentMonday + 7 * 86400000;
+  return new Date(nextMonday);
+}
+
+/**
+ * Phase 14.0.D — Cửa sổ thời gian của 1 ISO week period.
+ *
+ * Trả về `{ startsAt, endsAt }` UTC cho period key dạng `YYYY-Www`.
+ *   - `startsAt` = Thứ Hai 00:00 UTC của tuần (ISO week start).
+ *   - `endsAt` = Thứ Hai 00:00 UTC của tuần kế tiếp (exclusive).
+ *
+ * Hành vi:
+ *   - Period key không hợp lệ (không khớp regex ISO week, không phải
+ *     `manual_*`) → trả `null`.
+ *   - Period key dạng `manual_<id>` → trả `null` (không có cửa sổ
+ *     thời gian xác định).
+ */
+export function territoryPeriodWindow(
+  periodKey: string,
+): { startsAt: Date; endsAt: Date } | null {
+  if (!TERRITORY_PERIOD_ISO_WEEK_RE.test(periodKey)) return null;
+  const m = /^(\d{4})-W(\d{2})$/.exec(periodKey);
+  if (!m) return null;
+  const year = Number.parseInt(m[1], 10);
+  const week = Number.parseInt(m[2], 10);
+  if (!Number.isFinite(year) || !Number.isFinite(week)) return null;
+  // ISO 8601: tuần 1 là tuần chứa Thứ Năm đầu năm. Thứ Hai tuần 1:
+  //   - bắt đầu từ ngày 4/1 (luôn nằm trong tuần 1) → lùi về Thứ Hai.
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const isoDayJan4 = jan4.getUTCDay() === 0 ? 7 : jan4.getUTCDay();
+  const week1Monday = new Date(jan4.getTime() - (isoDayJan4 - 1) * 86400000);
+  const startsAt = new Date(week1Monday.getTime() + (week - 1) * 7 * 86400000);
+  const endsAt = new Date(startsAt.getTime() + 7 * 86400000);
+  return { startsAt, endsAt };
+}
+
+/** Kết quả validate `periodKey` — dùng cho controller / runtime hook. */
+export type TerritoryPeriodValidationCode =
+  | 'PERIOD_INVALID_FORMAT'
+  | 'PERIOD_EMPTY'
+  | 'PERIOD_TOO_LONG';
+
+export interface TerritoryPeriodValidationResult {
+  readonly ok: boolean;
+  readonly code: TerritoryPeriodValidationCode | null;
+  readonly kind: 'iso_week' | 'manual' | null;
+}
+
+/**
+ * Phase 14.0.D — structured validate cho `periodKey`.
+ *
+ * Wraps `isTerritoryPeriodKey()` thêm lý do fail (empty / too long /
+ * invalid format) cho admin tooling + log audit. Runtime hook đa số
+ * vẫn dùng boolean `isTerritoryPeriodKey()` (light-weight).
+ */
+export function validateTerritoryPeriodKey(
+  periodKey: string,
+): TerritoryPeriodValidationResult {
+  if (typeof periodKey !== 'string' || periodKey.length === 0) {
+    return { ok: false, code: 'PERIOD_EMPTY', kind: null };
+  }
+  if (periodKey.length > 64) {
+    return { ok: false, code: 'PERIOD_TOO_LONG', kind: null };
+  }
+  if (TERRITORY_PERIOD_ISO_WEEK_RE.test(periodKey)) {
+    return { ok: true, code: null, kind: 'iso_week' };
+  }
+  if (TERRITORY_PERIOD_MANUAL_RE.test(periodKey)) {
+    return { ok: true, code: null, kind: 'manual' };
+  }
+  return { ok: false, code: 'PERIOD_INVALID_FORMAT', kind: null };
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Phase 14.0.D — Weekly War view types
+// ────────────────────────────────────────────────────────────────────────
+
+/**
+ * Standing 1 sect trong 1 region cho war state hiện tại. Top-N (mặc định 3
+ * cho overview, 10 cho region detail). Reuse cấu trúc tương tự
+ * `TerritoryLeaderboardRow`, thêm tỉ lệ điểm và flag `isLeader`.
+ */
+export interface TerritoryRegionWarStandingView {
+  readonly rank: number;
+  readonly sectId: string;
+  readonly sectName: string;
+  readonly points: number;
+  readonly contributors: number;
+  /** True nếu sect đang dẫn đầu (rank === 1). */
+  readonly isLeader: boolean;
+}
+
+/**
+ * Tóm tắt war state cho 1 region trong period hiện tại — dùng cho
+ * `GET /territory/war/current` (mỗi region 1 entry).
+ */
+export interface TerritoryRegionWarSummaryView {
+  readonly regionKey: RegionKey;
+  readonly nameVi: string;
+  readonly nameEn: string;
+  readonly sortOrder: number;
+  /** Tổng điểm influence trong region cho period hiện tại. */
+  readonly totalPoints: number;
+  /** Số sect có điểm > 0 trong region (≥ 0). */
+  readonly contestedSectCount: number;
+  /** Sect dẫn đầu hiện tại (nếu có). */
+  readonly leaderSectId: string | null;
+  readonly leaderSectName: string | null;
+  readonly leaderPoints: number;
+  /**
+   * Khoảng cách điểm leader - runner-up. Nếu chỉ 1 sect có điểm,
+   * `leadMargin = leaderPoints` (không có challenger).
+   */
+  readonly leadMargin: number;
+  /**
+   * True nếu region có ≥ 2 sect đang tranh (FE hiển thị badge "ĐANG
+   * TRANH ĐOẠT"). Nếu chỉ 1 sect → false (region đang được "giữ").
+   */
+  readonly contested: boolean;
+  /** Owner đã chốt từ kỳ trước (snapshot từ `SectTerritoryRegionState`). */
+  readonly currentOwnerSectId: string | null;
+  readonly currentOwnerSectName: string | null;
+  readonly currentOwnerPeriodKey: string | null;
+  /** Top 3 standings (rank 1..3) — order by points DESC, sectId ASC. */
+  readonly topStandings: ReadonlyArray<TerritoryRegionWarStandingView>;
+}
+
+/**
+ * Snapshot owner snapshot cho 1 region (sau settlement). Dùng cho
+ * `TerritoryWarSettleCurrentResult.ownersAfter`.
+ */
+export interface TerritoryRegionOwnerSnapshotView {
+  readonly regionKey: RegionKey;
+  readonly ownerSectId: string | null;
+  readonly ownerSectName: string | null;
+  readonly periodKey: string | null;
+  readonly settledAt: string | null;
+}
+
+/**
+ * Phase 14.0.D — Top-level state response cho
+ * `GET /territory/war/current`.
+ */
+export interface TerritoryWarStateView {
+  /** Period hiện tại (ISO week) — tuần đang tranh đoạt. */
+  readonly periodKey: string;
+  /** Period kỳ trước — settlement gần nhất chốt key này. */
+  readonly previousPeriodKey: string;
+  /** Mốc bắt đầu period hiện tại (Thứ Hai 00:00 UTC). */
+  readonly startsAt: string;
+  /** Mốc kết thúc period hiện tại (Thứ Hai 00:00 UTC kỳ kế). */
+  readonly endsAt: string;
+  /** Mốc reset tuần kế tiếp (=`endsAt`). */
+  readonly nextResetAt: string;
+  /** Server time tại lúc gen response (FE drift correction). */
+  readonly serverNow: string;
+  /** Thời gian còn lại tới `endsAt`, tính bằng millisecond. ≥ 0. */
+  readonly timeRemainingMs: number;
+  /** Tóm tắt 9 region (order theo `sortOrder`). */
+  readonly regions: ReadonlyArray<TerritoryRegionWarSummaryView>;
+}
+
+/**
+ * Phase 14.0.D — Region detail cho `GET /territory/war/regions/:key`.
+ *
+ * Mở rộng `TerritoryRegionWarSummaryView`:
+ *   - `standings` top 10 thay vì top 3.
+ *   - `recentSettlements` 5 snapshot gần nhất từ
+ *     `SectTerritorySettlementSnapshot`.
+ */
+export interface TerritoryRegionWarStatusView {
+  readonly regionKey: RegionKey;
+  readonly nameVi: string;
+  readonly nameEn: string;
+  readonly sortOrder: number;
+  readonly periodKey: string;
+  readonly previousPeriodKey: string;
+  readonly startsAt: string;
+  readonly endsAt: string;
+  readonly serverNow: string;
+  readonly timeRemainingMs: number;
+  readonly totalPoints: number;
+  readonly contestedSectCount: number;
+  readonly leaderSectId: string | null;
+  readonly leaderSectName: string | null;
+  readonly leaderPoints: number;
+  readonly leadMargin: number;
+  readonly contested: boolean;
+  readonly currentOwnerSectId: string | null;
+  readonly currentOwnerSectName: string | null;
+  readonly currentOwnerPeriodKey: string | null;
+  readonly currentOwnerSettledAt: string | null;
+  readonly standings: ReadonlyArray<TerritoryRegionWarStandingView>;
+  readonly recentSettlements: ReadonlyArray<TerritorySettlementSnapshotView>;
+}
+
+/**
+ * Phase 14.0.D — 1 entry trong war history (1 period đã chốt).
+ *
+ * Cấu trúc gộp: 1 periodKey → list snapshot 9 region (region nào skip
+ * sẽ không có trong array). FE render mỗi entry là 1 dòng "Tuần X →
+ * winner mỗi region".
+ */
+export interface TerritoryWarHistoryEntry {
+  readonly periodKey: string;
+  /** Cửa sổ thời gian của period (null nếu period là `manual_*`). */
+  readonly startsAt: string | null;
+  readonly endsAt: string | null;
+  /** ISO timestamp settlement gần nhất trong period (max settledAt). */
+  readonly settledAt: string;
+  readonly snapshots: ReadonlyArray<TerritorySettlementSnapshotView>;
+}
+
+export interface TerritoryWarHistoryView {
+  readonly entries: ReadonlyArray<TerritoryWarHistoryEntry>;
+}
+
+/**
+ * Phase 14.0.D — Result của
+ * `POST /admin/territory/war/settle-current`.
+ *
+ * Mở rộng `TerritorySettlementRunResult`:
+ *   - `ownersAfter`: owner snapshot 9 region SAU settlement (FE refresh
+ *     trực tiếp không cần round-trip thêm).
+ */
+export interface TerritoryWarSettleCurrentResult {
+  readonly periodKey: string;
+  readonly settledAt: string;
+  readonly snapshots: ReadonlyArray<TerritorySettlementSnapshotView>;
+  readonly skippedRegions: ReadonlyArray<RegionKey>;
+  readonly ownersAfter: ReadonlyArray<TerritoryRegionOwnerSnapshotView>;
+}

@@ -22,6 +22,7 @@ import { RequireAdmin } from '../admin/require-admin.decorator';
 import { TerritoryDecayService } from './territory-decay.service';
 import { TerritoryError } from './territory.service';
 import { TerritorySettlementService } from './territory-settlement.service';
+import { TerritoryWarService } from './territory-war.service';
 
 function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
   throw new HttpException(
@@ -74,6 +75,7 @@ export class AdminTerritoryController {
   constructor(
     private readonly settlement: TerritorySettlementService,
     private readonly decayService: TerritoryDecayService,
+    private readonly warService: TerritoryWarService,
   ) {}
 
   @Post('settle')
@@ -194,6 +196,32 @@ export class AdminTerritoryController {
       Number.isInteger(n) && n > 0 ? n : 20,
     );
     return { ok: true, data };
+  }
+
+  /**
+   * Phase 14.0.D — Settle period HIỆN TẠI (cắt sớm — admin trigger /
+   * test). Idempotent qua UNIQUE `(regionKey, periodKey)`.
+   *
+   * Khác `POST /admin/territory/settle` (settle previous period mặc định):
+   *   - Endpoint này luôn chốt period hiện tại (`currentTerritoryPeriodKey`).
+   *   - Trả thêm `ownersAfter` để FE refresh không cần round-trip.
+   *
+   * Lỗi:
+   *   - `UNAUTHENTICATED` 401 — chưa login.
+   *   - `ADMIN_ONLY` 403 — login MOD (không phải ADMIN).
+   *   - `PERIOD_INVALID` 400 — defensive (không xảy ra với current).
+   */
+  @Post('war/settle-current')
+  @RequireAdmin()
+  async settleWarCurrent(@Req() req: Request & { userId?: string }) {
+    try {
+      const data = await this.warService.settleCurrentPeriod({
+        settledBy: req.userId ?? null,
+      });
+      return { ok: true, data };
+    } catch (e) {
+      this.handleErr(e);
+    }
   }
 
   private handleErr(e: unknown): never {

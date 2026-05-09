@@ -12,7 +12,41 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Added — Phase 14.0.C Sect Territory Region Buff and Influence Decay (this PR)
+### Added — Phase 14.0.D Territory Weekly War Loop (this PR)
+
+- **Lãnh Địa — vòng chơi cạnh tranh theo tuần** — Phase 14.0.A đã ship influence, 14.0.B đã ship settlement + ownership, 14.0.C đã ship region buff + decay. Phase 14.0.D đóng vòng chơi: thêm period tuần, countdown, region standings, settlement history, admin trigger chốt sớm.
+- **Period rule (deterministic UTC ISO week)**: tuần bắt đầu Thứ Hai 00:00 UTC, kết thúc Thứ Hai 00:00 UTC kế tiếp; `periodKey = YYYY-Www`. Helpers shared `currentTerritoryPeriodKey()`, `previousTerritoryPeriodKey()`, `nextTerritoryResetAt()`, `territoryPeriodWindow()`, `isTerritoryPeriodKey()` — tất cả pure, fake-date testable, KHÔNG phụ thuộc timezone máy.
+- **API runtime mới (`apps/api/src/modules/territory/territory-war.service.ts`)**:
+  - `getCurrentTerritoryWarState()` — period hiện tại + 9 region với top 3 standings + countdown `timeRemainingMs` (server-authoritative).
+  - `getRegionWarStatus(regionKey)` — top 10 standings + 5 settlement gần nhất + owner snapshot.
+  - `getWarHistory(limit?)` — entries DESC `settledAt`, group theo `periodKey`, cap 32 (default 8).
+  - `settleCurrentPeriod({settledBy?})` — chốt period hiện tại; idempotent qua UNIQUE `(regionKey, periodKey)` race-safe; **no-influence rule** = sticky owner (region không có sect có điểm > 0 → KHÔNG ghi snapshot, KHÔNG đổi `SectTerritoryRegionState`); tie-break deterministic `sectId.localeCompare()` ASC; trả `ownersAfter` cho FE refresh không round-trip.
+- **API endpoints mới**:
+  - `GET /territory/war/current` (public) → `TerritoryWarStateView`.
+  - `GET /territory/war/regions/:regionKey` (public) → `TerritoryRegionWarStatusView`.
+  - `GET /territory/war/history?limit=` (public) → `TerritoryWarHistoryView`.
+  - `POST /admin/territory/war/settle-current` (admin-only via `@RequireAdmin()` + `AdminGuard`) → `TerritoryWarSettleCurrentResult`. Audit `settledBy = req.userId`. Errors: 401 `UNAUTHENTICATED`, 403 `ADMIN_ONLY`, 400 `PERIOD_INVALID` (defensive).
+- **FE (`apps/web/src/views/TerritoryView.vue`)**:
+  - Tab mới `war` với countdown panel (1000ms ticker `nowMs`, `onBeforeUnmount(clearInterval)` tránh leak; server `endsAt` source of truth; format `Xd HH:MM:SS`).
+  - Period header: `periodKey` + `startsAt → endsAt` (UTC) + badge `previousPeriodKey`.
+  - 9 region cards: contested badge (≥ 2 sect tranh), owner (kỳ trước), top 3 standings (`#rank sectName — points`, leader tag, contributors hint), lead margin, empty state khi không có sect.
+  - History panel: entries DESC, mỗi period 1 row, expand để xem `entry.snapshots[]`.
+  - Admin settle button role-gated `auth.user.role === 'ADMIN'` với loading + result render (`adminLastResult`).
+  - Lazy fetch qua `watch(tab)` chỉ khi vào tab `war` (cache aware via pinia store).
+- **i18n**: `territory.tab.war` + `territory.war.*` 20 key parity vi/en (title/subtitle/countdownLabel/currentPeriod/previousPeriod/windowFmt/regionContestedBadge/regionOwner/regionLeadMargin/regionNoContenders/standingsTitle/standingsRow/leaderTag/contributorsHint/historyTitle/historyEmpty/historyRow/adminTitle/adminSubtitle/adminSettleButton/adminSettleRunning/adminLastResult).
+- **Tests +35**:
+  - shared `--run territory` 79 PASS (territory 23 + territory-buffs 32 + territory-war 24 — period key boundary + window + previous + isTerritoryPeriodKey + types invariant).
+  - api `--run territory` 83 PASS (+14 territory-war.service: empty/2-sect-tie ASC sectId/DESC-points/owner-snapshot/REGION_INVALID/recent-settlements/history-DESC/idempotent-snapshot-id/no-influence-skipped/settledBy-audit/limit-cap).
+  - api `--run admin` 359 PASS (+3 admin-territory war/settle-current: settledBy passthrough/PERIOD_INVALID 400/error rethrow).
+  - web `--run Territory` 30 PASS (+6 weekly war tab: tab clickable / content render / 9 cards + standings / history empty / role gate / admin click → API + history refresh).
+- **Verification**: shared typecheck + `--run territory` 79 PASS / api typecheck + `--run territory` 83 PASS + `--run admin` 359 PASS / web typecheck + `--run Territory` 30 PASS / pnpm build ✅.
+- **Out of scope (defer)**:
+  - **Cron auto-settle**: KHÔNG ship cron tự động cuối tuần — cần Redis lease / DB guard race-safe (defer Phase 14.0.E). Hiện tại admin trigger qua `POST /admin/territory/war/settle-current` cho test/fast-forward.
+  - **Reward / mail cho owner sect**: defer 14.0.E.
+  - **Decay tự động trước/sau settle**: tách Phase 14.0.C admin trigger riêng (`POST /admin/territory/decay`).
+  - KHÔNG siege / KHÔNG diplomacy / KHÔNG PvP realtime / KHÔNG auction / KHÔNG rewrite Territory foundation.
+
+### Added — Phase 14.0.C Sect Territory Region Buff and Influence Decay (PR #485)
 
 - **Lãnh Địa Tông Môn — buff vùng + decay** — Phase 14.0.B đã ship Settlement & Region Ownership (top sect chiếm vùng theo period). Phase 14.0.C biến quyền sở hữu thành lợi ích gameplay thật + chống một sect giữ vùng vĩnh viễn.
 - **Shared (`packages/shared/src/territory-buffs.ts` mới)**:

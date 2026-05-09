@@ -241,3 +241,131 @@ export async function adminTerritoryDecay(opts: {
   );
   return unwrap(data);
 }
+
+// ────────────────────────────────────────────────────────────────────────
+// Phase 14.0.D — Territory Weekly War Loop
+// ────────────────────────────────────────────────────────────────────────
+
+export interface TerritoryRegionWarStandingView {
+  rank: number;
+  sectId: string;
+  sectName: string;
+  points: number;
+  contributors: number;
+  isLeader: boolean;
+}
+
+export interface TerritoryRegionWarSummaryView {
+  regionKey: RegionKey;
+  nameVi: string;
+  nameEn: string;
+  sortOrder: number;
+  totalPoints: number;
+  contestedSectCount: number;
+  leaderSectId: string | null;
+  leaderSectName: string | null;
+  leaderPoints: number;
+  leadMargin: number;
+  contested: boolean;
+  currentOwnerSectId: string | null;
+  currentOwnerSectName: string | null;
+  currentOwnerPeriodKey: string | null;
+  topStandings: ReadonlyArray<TerritoryRegionWarStandingView>;
+}
+
+export interface TerritoryRegionWarStatusView {
+  regionKey: RegionKey;
+  nameVi: string;
+  nameEn: string;
+  sortOrder: number;
+  periodKey: string;
+  previousPeriodKey: string;
+  startsAt: string;
+  endsAt: string;
+  serverNow: string;
+  timeRemainingMs: number;
+  totalPoints: number;
+  contestedSectCount: number;
+  leaderSectId: string | null;
+  leaderSectName: string | null;
+  leaderPoints: number;
+  leadMargin: number;
+  contested: boolean;
+  currentOwnerSectId: string | null;
+  currentOwnerSectName: string | null;
+  currentOwnerPeriodKey: string | null;
+  currentOwnerSettledAt: string | null;
+  standings: ReadonlyArray<TerritoryRegionWarStandingView>;
+  recentSettlements: ReadonlyArray<TerritorySettlementSnapshotView>;
+}
+
+export interface TerritoryWarStateView {
+  periodKey: string;
+  previousPeriodKey: string;
+  startsAt: string;
+  endsAt: string;
+  nextResetAt: string;
+  serverNow: string;
+  timeRemainingMs: number;
+  regions: ReadonlyArray<TerritoryRegionWarSummaryView>;
+}
+
+export interface TerritoryWarHistoryEntry {
+  periodKey: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  settledAt: string;
+  snapshots: ReadonlyArray<TerritorySettlementSnapshotView>;
+}
+
+export interface TerritoryWarHistoryView {
+  entries: ReadonlyArray<TerritoryWarHistoryEntry>;
+}
+
+export interface TerritoryRegionOwnerSnapshotView {
+  regionKey: RegionKey;
+  ownerSectId: string | null;
+  ownerSectName: string | null;
+  periodKey: string | null;
+  settledAt: string | null;
+}
+
+export interface TerritoryWarSettleCurrentResult {
+  periodKey: string;
+  settledAt: string;
+  snapshots: ReadonlyArray<TerritorySettlementSnapshotView>;
+  skippedRegions: ReadonlyArray<RegionKey>;
+  ownersAfter: ReadonlyArray<TerritoryRegionOwnerSnapshotView>;
+}
+
+export async function getTerritoryWarCurrent(): Promise<TerritoryWarStateView> {
+  const { data } =
+    await apiClient.get<Envelope<TerritoryWarStateView>>('/territory/war/current');
+  return unwrap(data);
+}
+
+export async function getTerritoryWarRegion(
+  regionKey: string,
+): Promise<TerritoryRegionWarStatusView> {
+  const { data } = await apiClient.get<Envelope<TerritoryRegionWarStatusView>>(
+    `/territory/war/regions/${encodeURIComponent(regionKey)}`,
+  );
+  return unwrap(data);
+}
+
+export async function getTerritoryWarHistory(
+  limit: number = 8,
+): Promise<TerritoryWarHistoryView> {
+  const { data } = await apiClient.get<Envelope<TerritoryWarHistoryView>>(
+    '/territory/war/history',
+    { params: { limit } },
+  );
+  return unwrap(data);
+}
+
+export async function adminTerritoryWarSettleCurrent(): Promise<TerritoryWarSettleCurrentResult> {
+  const { data } = await apiClient.post<
+    Envelope<TerritoryWarSettleCurrentResult>
+  >('/admin/territory/war/settle-current');
+  return unwrap(data);
+}

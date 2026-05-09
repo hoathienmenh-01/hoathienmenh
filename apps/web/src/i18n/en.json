@@ -2916,7 +2916,8 @@
     "tab": {
       "overview": "Overview",
       "leaderboard": "Leaderboard",
-      "me": "My Sect"
+      "me": "My Sect",
+      "war": "Weekly War"
     },
     "overview": {
       "empty": "No territory data yet.",
@@ -3033,6 +3034,30 @@
       "decayRunning": "Running decay…",
       "decayLastResult": "Decay {period}: -{delta} pts · {rows} rows · {bpsPercent}%.",
       "decaySkipped": "Decay for {period} already ran — skipped."
+    },
+    "war": {
+      "title": "Weekly Territory War",
+      "subtitle": "Sects compete weekly. Owners are crowned every Monday 00:00 UTC.",
+      "countdownLabel": "Time left",
+      "currentPeriod": "Current period: {period}",
+      "previousPeriod": "Previous period: {period}",
+      "windowFmt": "{from} → {to}",
+      "regionContestedBadge": "Contested",
+      "regionOwner": "Owner: {name}",
+      "regionLeadMargin": "Lead: {pts}",
+      "regionNoContenders": "No sect has scored in this region this period.",
+      "standingsTitle": "Top 3 standings",
+      "standingsRow": "#{rank} {sect} — {pts} pts",
+      "leaderTag": "LEADER",
+      "contributorsHint": "{n} TV",
+      "historyTitle": "Period history",
+      "historyEmpty": "No history yet.",
+      "historyRow": "{period} · settled {settled} · {wins} regions decided",
+      "adminTitle": "Admin — Settle Current Period",
+      "adminSubtitle": "Crown owners now (idempotent per periodKey + region). For testing / fast-forward.",
+      "adminSettleButton": "Settle Current Period",
+      "adminSettleRunning": "Settling…",
+      "adminLastResult": "Settled {period}: {wins} regions won · {skip} skipped (no points)."
     },
     "errors": {
       "NO_CHARACTER": "No character yet — start your journey first.",
