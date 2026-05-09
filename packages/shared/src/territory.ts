@@ -151,10 +151,49 @@ export interface TerritoryRegionView {
    * chưa settle.
    */
   readonly ownerSettledAt: string | null;
+  /**
+   * Phase 14.0.C — buff preview cho region. List buff sẽ active khi sect
+   * sở hữu region. Empty nếu region chưa có buff trong catalog. Order
+   * stable theo `TERRITORY_REGION_BUFFS`.
+   */
+  readonly buffs: ReadonlyArray<TerritoryRegionBuffPreviewLite>;
+  /**
+   * Phase 14.0.C — true nếu region có owner sect (≡ `ownerSectId !== null`).
+   * Convenience flag — FE check để render `ownerActive` chip.
+   */
+  readonly ownerBuffActive: boolean;
+}
+
+/**
+ * Lite preview buff cho API response — strip i18n key dài, chỉ giữ
+ * những field FE cần render. Match `TerritoryRegionBuffPreview` từ
+ * `territory-buffs.ts` — re-declare ở đây tránh circular import (file
+ * `territory-buffs.ts` đã import từ `map-regions.ts`).
+ */
+export interface TerritoryRegionBuffPreviewLite {
+  readonly regionKey: RegionKey;
+  readonly buffKey: string;
+  readonly buffType: string;
+  readonly value: number;
+  readonly cap: number;
+  readonly labelI18nKey: string;
+  readonly descriptionI18nKey: string;
+  readonly appliesTo: ReadonlyArray<string>;
+  readonly element: string | null;
 }
 
 export interface TerritoryRegionsView {
   readonly regions: ReadonlyArray<TerritoryRegionView>;
+  /**
+   * Phase 14.0.C — current period key (ISO week). FE display "decay sẽ
+   * apply lên period nào nếu admin trigger".
+   */
+  readonly currentPeriodKey: string;
+  /**
+   * Phase 14.0.C — previous period key (ISO week). FE display "settlement
+   * gần nhất đã chốt period nào".
+   */
+  readonly previousPeriodKey: string;
 }
 
 export interface TerritoryLeaderboardView {
@@ -176,6 +215,16 @@ export interface TerritoryMyView {
   readonly sectId: string | null;
   readonly sectName: string | null;
   readonly regions: ReadonlyArray<TerritoryMyRegionRow>;
+  /**
+   * Phase 14.0.C — list buff đang active cho sect user (region mà sect
+   * đang sở hữu). Empty nếu user chưa có sect HOẶC sect không sở hữu
+   * region nào.
+   */
+  readonly activeBuffs: ReadonlyArray<TerritoryRegionBuffPreviewLite>;
+  /**
+   * Phase 14.0.C — current period key (FE display).
+   */
+  readonly currentPeriodKey: string;
 }
 
 // ────────────────────────────────────────────────────────────────────────

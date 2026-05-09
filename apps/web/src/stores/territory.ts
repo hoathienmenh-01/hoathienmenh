@@ -43,6 +43,14 @@ export const useTerritoryStore = defineStore('territory', () => {
   const settleError = ref<string | null>(null);
   const lastSettleResult = ref<api.TerritorySettlementRunResult | null>(null);
 
+  /**
+   * Phase 14.0.C — admin decay state. Tách khỏi settle để 2 admin action
+   * không đè nhau khi chạy song song (UI hiển thị spinner riêng).
+   */
+  const decayLoading = ref(false);
+  const decayError = ref<string | null>(null);
+  const lastDecayResult = ref<api.TerritoryDecayResult | null>(null);
+
   function extractCode(e: unknown): string {
     return (
       (e as { code?: string }).code ??
@@ -199,6 +207,36 @@ export const useTerritoryStore = defineStore('territory', () => {
     }
   }
 
+  /**
+   * Phase 14.0.C — admin trigger influence decay. Khác settlement ở chỗ
+   * decay không đổi owner, chỉ giảm điểm. Sau khi thành công ta refetch
+   * regions + me (sect rank/points có thể đổi sau decay) + invalidate
+   * leaderboard cache. History KHÔNG cần invalidate (settlement snapshot
+   * không bị decay sửa).
+   */
+  async function adminDecay(opts: {
+    periodKey?: string;
+    decayBps?: number;
+  }): Promise<string | null> {
+    if (decayLoading.value) return 'IN_FLIGHT';
+    decayLoading.value = true;
+    decayError.value = null;
+    try {
+      const res = await api.adminTerritoryDecay(opts);
+      lastDecayResult.value = res;
+      // Decay đổi điểm → invalidate aggregates.
+      leaderboards.value = {};
+      await Promise.all([fetchRegions(), me.value ? fetchMe() : Promise.resolve(null)]);
+      return null;
+    } catch (e) {
+      const code = extractCode(e);
+      decayError.value = code;
+      return code;
+    } finally {
+      decayLoading.value = false;
+    }
+  }
+
   function reset(): void {
     regions.value = null;
     regionsLoading.value = false;
@@ -215,6 +253,9 @@ export const useTerritoryStore = defineStore('territory', () => {
     settleLoading.value = false;
     settleError.value = null;
     lastSettleResult.value = null;
+    decayLoading.value = false;
+    decayError.value = null;
+    lastDecayResult.value = null;
   }
 
   return {
@@ -233,12 +274,16 @@ export const useTerritoryStore = defineStore('territory', () => {
     settleLoading,
     settleError,
     lastSettleResult,
+    decayLoading,
+    decayError,
+    lastDecayResult,
     fetchRegions,
     fetchMe,
     fetchLeaderboard,
     fetchHistory,
     adminSettleAll,
     adminSettleRegion,
+    adminDecay,
     reset,
   };
 });

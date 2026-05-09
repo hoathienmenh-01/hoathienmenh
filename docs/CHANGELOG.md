@@ -12,6 +12,41 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Added — Phase 14.0.C Sect Territory Region Buff and Influence Decay (this PR)
+
+- **Lãnh Địa Tông Môn — buff vùng + decay** — Phase 14.0.B đã ship Settlement & Region Ownership (top sect chiếm vùng theo period). Phase 14.0.C biến quyền sở hữu thành lợi ích gameplay thật + chống một sect giữ vùng vĩnh viễn.
+- **Shared (`packages/shared/src/territory-buffs.ts` mới)**:
+  - `TerritoryRegionBuffDef` interface + `TERRITORY_REGION_BUFFS` catalog 5 buff (`buffKey/buffType/value/cap/labelI18nKey/descriptionI18nKey/appliesTo/element?`).
+  - 5 buff catalog ship: `son_coc` `EXP_BONUS` 5% (DUNGEON_REWARD), `hac_lam` `LINH_THACH_BONUS` 5% (DUNGEON_REWARD), `moc_huyen_lam` `ELEMENTAL_DAMAGE` 5% (COMBAT, ELEMENTAL, element=`moc`), `kim_son_mach` `ELEMENTAL_DAMAGE` 5% (COMBAT, ELEMENTAL, element=`kim`), `hoang_tho_huyet` `DEFENSE_BONUS` 5% (COMBAT).
+  - Helpers pure: `territoryRegionBuffsForRegion(regionKey)`, `territoryRegionBuffForOwner(regionKey)`, `activeTerritoryBuffsForSect(sectId, ownerStateMap)`, `validateTerritoryBuffCatalog()`, `computeTerritoryDecay(currentPoints, decayBps)` (deterministic floor, không bao giờ âm).
+  - Envelope: `TERRITORY_BUFF_VALUE_MAX=0.10` (10% cap value invariant), `TERRITORY_DECAY_DEFAULT_BPS=2500` (25%), `TERRITORY_DECAY_MAX_BPS=5000` (50%, KHÔNG nới).
+  - 32 unit test PASS (catalog UNIQUE buffKey toàn cục + regionKey ∈ MAP_REGIONS + value ≤ cap ≤ MAX + decay deterministic floor + helper coverage).
+- **Prisma + Migration `20260610000000_phase_14_0_c_territory_decay_log`**: model `SectTerritoryDecayLog` (`id, periodKey UNIQUE, decayBps, rowsAffected, pointsBefore, pointsAfter, delta, triggeredAt, triggeredBy?`) — race-safe + idempotent qua UNIQUE `(periodKey)`. KHÔNG đụng `SectTerritoryInfluence` / `SectTerritoryRegionState` / `SectTerritorySettlementSnapshot`.
+- **API runtime mới (`apps/api/src/modules/territory/territory-decay.service.ts`)**:
+  - `runDecay({periodKey?, decayBps?, triggeredBy?})` — `periodKey` default `previousTerritoryPeriodKey()` nếu không truyền; `decayBps` default `TERRITORY_DECAY_DEFAULT_BPS=2500`, validate range `1..5000` reject `DECAY_BPS_INVALID`.
+  - Idempotency qua `SectTerritoryDecayLog.periodKey` UNIQUE: insert log, P2002 → fetch row tồn tại → trả `{skipped: true, ...existingLog}`. Concurrent admin trigger cùng `periodKey` → 1 winner ghi log, các caller khác đọc lại log đã tồn tại.
+  - Decay aggregate qua `computeTerritoryDecay` (floor không âm): per-row update `SectTerritoryInfluence.points`. Log row `pointsBefore/pointsAfter/delta/rowsAffected` để admin review.
+  - 17 test PASS (default decay 25% / custom bps / cap reject / idempotent same period skipped / race P2002 retry / no-points zero-state / aggregate correctness / cross-period independence / triggeredBy).
+- **API integration `DungeonRunService.claimRun()`**:
+  - Sau territory influence hook gọi `applyTerritoryDungeonRewardBuffs(rewards, regionKey, ownerSectId, characterSectId)` qua catalog `territoryRegionBuffsForRegion` filter `appliesTo` ⊇ `DUNGEON_REWARD`.
+  - Owner-only (sect của character === `ownerSectId`); non-owner / no-sect / world region → KHÔNG cộng buff.
+  - `EXP_BONUS` cộng % vào `expGained` (`Math.floor`); `LINH_THACH_BONUS` cộng % vào `linhThachGained` (`Math.floor`). Reward bonus tính trên reward gốc, KHÔNG double-apply khi retry claim (idempotent qua existing CAS guard).
+  - Fail-soft: bất kỳ exception nào trong helper → swallow + warn log; reward chính KHÔNG fail.
+  - 6 test mới `dungeon-run.service.test.ts` (no region key / no character sect / non-owner sect / owner EXP_BONUS apply / owner LINH_THACH_BONUS apply / double claim no double apply).
+- **API endpoints mới/extend**:
+  - **Mới** `POST /admin/territory/decay` (admin-only via `@RequireAdmin()` + `AdminGuard`). Body `{ periodKey?: string, decayBps?: number }`. Response `TerritoryDecayResult { periodKey, decayBps, skipped, rowsAffected, pointsBefore, pointsAfter, delta, triggeredAt }`. Errors: 403 `ADMIN_ONLY`, 400 `PERIOD_INVALID`, 400 `DECAY_BPS_INVALID`.
+  - **Extend** `GET /territory/regions` thêm `buffs: TerritoryRegionBuffPreviewLite[]` per region (luôn render catalog) + `ownerBuffActive: boolean` + top-level `currentPeriodKey/previousPeriodKey`.
+  - **Extend** `GET /territory/me` thêm `activeBuffs: TerritoryRegionBuffPreviewLite[]` (buff đang được áp dụng vì sect của user đang sở hữu region tương ứng) + `currentPeriodKey`.
+- **FE**:
+  - `apps/web/src/api/territory.ts` thêm `TerritoryRegionBuffPreviewLite` + `TerritoryDecayResult` interface + `adminTerritoryDecay` fetcher.
+  - `apps/web/src/stores/territory.ts` thêm state `decayLoading/decayError/lastDecayResult` + method `adminDecay({periodKey, decayBps})` invalidate leaderboard cache + refetch regions/me.
+  - `TerritoryView.vue` overview tab: render region buff list per region với active (sect đang sở hữu) / inactive badge + currentPeriodKey hint; me tab: render `activeBuffs` panel với empty placeholder; admin: decay panel role-gated với `decayBpsInput` (default 2500) + skipped/error/result render.
+  - i18n vi/en parity full `territory.overview.{currentPeriod,buffSectionTitle,buffNone,buffActiveBadge,buffInactiveBadge,buffOwnerHint}`, `territory.buff.{appliesTo,type,territory_*}`, `territory.myBuffs.{title,empty,noSect}`, `territory.admin.{decayTitle,decaySubtitle,decayBpsLabel,decayRun,decayRunning,decayLastResult,decaySkipped}`, `territory.errors.DECAY_BPS_INVALID`.
+  - 9 test mới `TerritoryView.test.ts` (15→24): overview render buff list owner/non-owner badge / no-buff empty / me tab activeBuffs render / me tab empty / PLAYER no decay panel / ADMIN run decay với input / ADMIN run decay không input → undefined opts / decay skipped state / decay error DECAY_BPS_INVALID.
+- **Verification**: shared typecheck + `--run territory` 55 PASS (32 buffs + 23 existing) / api typecheck + `--run territory` 66 PASS + `--run dungeon` 88 PASS + `--run combat` 126 PASS / web typecheck + `--run Territory` 24 PASS / pnpm build ✅.
+- **Out of scope**: cron auto-decay (defer 14.0.D Territory Weekly War Loop); `BOSS_REWARD` buff wire (catalog ship sẵn nhưng chỉ wire `DUNGEON_REWARD` trong PR này); `COMBAT/ELEMENTAL/DEFENSE` runtime wire (giữ Phase 14.2.x envelope `[0.5, 1.6]`, defer); region siege / PvP realtime / diplomacy (defer 14.0.D+).
+- **Risk / rollback**: migration thuần thêm 1 table mới (`SectTerritoryDecayLog`) — rollback = revert PR + drop table. Decay aggregate qua tính lại points (KHÔNG xóa influence cũ). Catalog buff value cap 10% nhỏ-có-kiểm-soát; idempotent qua UNIQUE đảm bảo retry an toàn. Fail-soft buff hook không phá dungeon claim flow.
+
 ### Added — Phase 14.3.B Tribulation Support Providers and Breakthrough Redirect UX (this PR)
 
 - **Hoàn thiện vòng chơi Thiên Kiếp** — Phase 14.3.A đã ship `previewTribulation()` + endpoint `GET /character/tribulation/preview` nhưng `supports[]` luôn empty và FE BreakthroughView chỉ toast lỗi `TRIBULATION_REQUIRED` khô khan khi player ấn "Đột phá" ở realm cao. Phase 14.3.B làm 2 việc song song: (1) ship 4 provider thực tế nạp `supports[]` từ catalog, (2) FE bắt 409 → toast info + redirect `/tribulation` để player thấy preview success chance + supports + nút "Vượt kiếp".

@@ -19,7 +19,7 @@ Mục tiêu: economy KHÔNG vỡ trong 12-24 tháng vận hành, kể cả khi:
 
 | Field | Type | Đơn vị / Vai trò | Source chính | Sink chính | Trade? |
 |---|---|---|---|---|---|
-| `linhThach` | `BigInt` | **Tiền chính** soft currency | tu luyện, dungeon drop, mission, mail | market buy, equip refine (future), donate sect | Yes (qua market) |
+| `linhThach` | `BigInt` | **Tiền chính** soft currency | tu luyện, dungeon drop (+5% bonus nếu sect sở hữu region của dungeon — Phase 14.0.C `territory_hac_lam_drop` `LINH_THACH_BONUS`), mission, mail | market buy, equip refine (future), donate sect | Yes (qua market) |
 | `tienNgoc` | `Int` | **Premium** hard currency | topup admin approve, gift code | premium shop, cosmetic, refine speed-up (future) | No (server-side) |
 | `tienNgocKhoa` | `Int` | **Locked premium** | event/login bonus | sub-set sink của tienNgoc; spend trước tienNgoc unlocked | No |
 | `tienTe` | `Int` | **Reserved** | (chưa dùng — nguyên thuỷ ý định cho NPC trade) | (chưa dùng) | TBD |

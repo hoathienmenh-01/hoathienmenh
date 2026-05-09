@@ -1597,3 +1597,27 @@ model SectTerritorySettlementSnapshot {
   @@index([periodKey])
   @@index([regionKey, settledAt])
 }
+
+/// Phase 14.0.C — Territory Influence Decay Log.
+/// Mỗi row = 1 decay event cho 1 periodKey. UNIQUE periodKey cho idempotency
+/// — admin gọi `POST /admin/territory/decay?periodKey=...` nhiều lần cùng
+/// period chỉ thực thi 1 lần (P2002 swallow → trả `skipped: true`).
+///
+/// `decayBps` = decay rate basis points (0..5000). `pointsBefore`/
+/// `pointsAfter` denormalized snapshot tổng điểm trước/sau decay
+/// (audit trail). `rowsAffected` = số influence row bị scale điểm.
+///
+/// Rollback: DROP bảng — independent, no FK. Gọi decay lần kế tiếp
+/// sẽ chạy lại từ đầu (không có log → không idempotency).
+model SectTerritoryDecayLog {
+  id            String   @id @default(cuid())
+  periodKey     String   @unique
+  decayBps      Int
+  rowsAffected  Int      @default(0)
+  pointsBefore  Int      @default(0)
+  pointsAfter   Int      @default(0)
+  triggeredBy   String?
+  triggeredAt   DateTime @default(now())
+
+  @@index([triggeredAt])
+}

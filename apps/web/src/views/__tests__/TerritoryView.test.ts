@@ -30,6 +30,7 @@ const getLeaderboardMock = vi.fn();
 const getHistoryMock = vi.fn();
 const adminSettleAllMock = vi.fn();
 const adminSettleRegionMock = vi.fn();
+const adminDecayMock = vi.fn();
 
 vi.mock('@/api/territory', async () => {
   const actual =
@@ -44,6 +45,7 @@ vi.mock('@/api/territory', async () => {
     adminTerritorySettleAll: (...a: unknown[]) => adminSettleAllMock(...a),
     adminTerritorySettleRegion: (...a: unknown[]) =>
       adminSettleRegionMock(...a),
+    adminTerritoryDecay: (...a: unknown[]) => adminDecayMock(...a),
   };
 });
 
@@ -109,6 +111,38 @@ const i18n = createI18n({
           noOwner: 'Chưa có chủ',
           ownerSettled: 'Kết toán: {period}',
           ownerBadge: 'Đang chiếm giữ',
+          currentPeriod: 'Kỳ: {period}',
+          buffSectionTitle: 'Buff vùng',
+          buffNone: 'Vùng này không có buff',
+          buffActiveBadge: 'ĐANG ÁP DỤNG',
+          buffInactiveBadge: 'CHỜ CHỦ',
+          buffOwnerHint: 'Buff chỉ áp dụng cho thành viên Tông Môn chủ vùng.',
+        },
+        buff: {
+          appliesTo: {
+            DUNGEON_REWARD: 'Bí Cảnh',
+            COMBAT: 'Chiến đấu',
+            ELEMENTAL: 'Ngũ hành',
+          },
+          type: {
+            EXP_BONUS: '+{value}% EXP',
+            LINH_THACH_BONUS: '+{value}% Linh Thạch',
+            ELEMENTAL_DAMAGE: '+{value}% sát thương ngũ hành',
+            DEFENSE_BONUS: '+{value}% phòng ngự',
+          },
+          territory_son_coc_exp: {
+            label: 'Linh Khí Sơn Cốc',
+            desc: '+5% EXP Bí Cảnh trong Sơn Cốc.',
+          },
+          territory_kim_son_mach_dmg: {
+            label: 'Kim Sơn Mạch Lực',
+            desc: '+5% sát thương Kim trong Kim Sơn Mạch.',
+          },
+        },
+        myBuffs: {
+          title: 'Buff đang nhận',
+          empty: 'Tông Môn chưa sở hữu vùng nào',
+          noSect: 'Chưa có Tông Môn',
         },
         leaderboard: {
           empty: 'Chưa có Tông nào',
@@ -134,6 +168,7 @@ const i18n = createI18n({
         errors: {
           NO_CHARACTER: 'Chưa có nhân vật',
           REGION_INVALID: 'Vùng không tồn tại',
+          DECAY_BPS_INVALID: 'Tỷ lệ suy giảm không hợp lệ',
           UNKNOWN: 'Lỗi không rõ',
         },
         history: {
@@ -153,6 +188,13 @@ const i18n = createI18n({
           settleRegion: 'Settle region',
           running: 'Running…',
           lastResult: 'Settled {period}: {wins} wins · {skip} skip',
+          decayTitle: 'Decay',
+          decaySubtitle: 'Reduce stale influence',
+          decayBpsLabel: 'Decay bps',
+          decayRun: 'Run decay',
+          decayRunning: 'Running decay…',
+          decayLastResult: 'Decay {period}: -{delta} pts · {rows} rows · {bpsPercent}%.',
+          decaySkipped: 'Decay {period} skipped.',
         },
       },
     },
@@ -165,6 +207,30 @@ function makeRegions(over: {
     'ownerSectId' | 'ownerSectName' | 'ownerPeriodKey' | 'ownerSettledAt'
   >;
 } = {}): TerritoryRegionsView {
+  const sonCocBuffs = [
+    {
+      buffKey: 'territory_son_coc_exp',
+      buffType: 'EXP_BONUS',
+      value: 0.05,
+      cap: 0.05,
+      labelI18nKey: 'territory.buff.territory_son_coc_exp.label',
+      descriptionI18nKey: 'territory.buff.territory_son_coc_exp.desc',
+      appliesTo: ['DUNGEON_REWARD'],
+      element: null,
+    },
+  ];
+  const kimSonMachBuffs = [
+    {
+      buffKey: 'territory_kim_son_mach_dmg',
+      buffType: 'ELEMENTAL_DAMAGE',
+      value: 0.05,
+      cap: 0.05,
+      labelI18nKey: 'territory.buff.territory_kim_son_mach_dmg.label',
+      descriptionI18nKey: 'territory.buff.territory_kim_son_mach_dmg.desc',
+      appliesTo: ['COMBAT', 'ELEMENTAL'],
+      element: 'kim',
+    },
+  ];
   return {
     regions: [
       {
@@ -185,6 +251,8 @@ function makeRegions(over: {
         ownerSectName: over.ownerSon?.ownerSectName ?? null,
         ownerPeriodKey: over.ownerSon?.ownerPeriodKey ?? null,
         ownerSettledAt: over.ownerSon?.ownerSettledAt ?? null,
+        buffs: sonCocBuffs,
+        ownerBuffActive: !!over.ownerSon?.ownerSectId,
       },
       {
         regionKey: 'kim_son_mach',
@@ -204,8 +272,12 @@ function makeRegions(over: {
         ownerSectName: null,
         ownerPeriodKey: null,
         ownerSettledAt: null,
+        buffs: kimSonMachBuffs,
+        ownerBuffActive: false,
       },
     ],
+    currentPeriodKey: '2026-W23',
+    previousPeriodKey: '2026-W22',
   };
 }
 
@@ -302,6 +374,8 @@ function makeMe(over: Partial<TerritoryMyView> = {}): TerritoryMyView {
         personalPoints: 0,
       },
     ],
+    activeBuffs: [],
+    currentPeriodKey: '2026-W23',
     ...over,
   };
 }
@@ -340,6 +414,7 @@ beforeEach(() => {
   getHistoryMock.mockReset();
   adminSettleAllMock.mockReset();
   adminSettleRegionMock.mockReset();
+  adminDecayMock.mockReset();
   routerReplaceMock.mockReset();
   routerReplaceMock.mockResolvedValue(undefined);
   authState.isAuthenticated = true;
@@ -674,5 +749,291 @@ describe('TerritoryView — Phase 14.0.B admin panel', () => {
     const err = w.find('[data-test="territory-admin-error"]');
     expect(err.exists()).toBe(true);
     expect(err.text()).toContain('Lỗi không rõ');
+  });
+});
+
+describe('TerritoryView — Phase 14.0.C buff display', () => {
+  it('overview render buff list theo region + active badge khi có owner', async () => {
+    getRegionsMock.mockResolvedValue(
+      makeRegions({
+        ownerSon: {
+          ownerSectId: 'sect-1',
+          ownerSectName: 'Thanh Vân',
+          ownerPeriodKey: '2026-W23',
+          ownerSettledAt: '2026-06-01T00:00:00.000Z',
+        },
+      }),
+    );
+    getMeMock.mockResolvedValue(makeMe());
+    const w = mountView();
+    await flushPromises();
+
+    // Render currentPeriodKey hint.
+    expect(w.find('[data-test="territory-overview-period"]').text()).toContain(
+      '2026-W23',
+    );
+
+    const buffBlocks = w.findAll('[data-test="territory-region-buffs"]');
+    expect(buffBlocks.length).toBe(2);
+
+    // Region son_coc: có owner → active badge.
+    const sonCocBuffs = buffBlocks.find(
+      (b) => b.attributes('data-region-key') === 'son_coc',
+    )!;
+    const sonCocRows = sonCocBuffs.findAll(
+      '[data-test="territory-region-buff-row"]',
+    );
+    expect(sonCocRows.length).toBe(1);
+    expect(sonCocRows[0].attributes('data-buff-key')).toBe(
+      'territory_son_coc_exp',
+    );
+    expect(sonCocRows[0].text()).toContain('Linh Khí Sơn Cốc');
+    expect(sonCocRows[0].text()).toContain('+5% EXP');
+    expect(sonCocRows[0].text()).toContain('Bí Cảnh');
+    expect(
+      sonCocRows[0].find('[data-test="territory-region-buff-active"]').exists(),
+    ).toBe(true);
+    expect(
+      sonCocRows[0]
+        .find('[data-test="territory-region-buff-inactive"]')
+        .exists(),
+    ).toBe(false);
+
+    // Region kim_son_mach: chưa có owner → inactive badge.
+    const kimBuffs = buffBlocks.find(
+      (b) => b.attributes('data-region-key') === 'kim_son_mach',
+    )!;
+    const kimRows = kimBuffs.findAll(
+      '[data-test="territory-region-buff-row"]',
+    );
+    expect(kimRows.length).toBe(1);
+    expect(kimRows[0].text()).toContain('Kim Sơn Mạch Lực');
+    expect(
+      kimRows[0].find('[data-test="territory-region-buff-active"]').exists(),
+    ).toBe(false);
+    expect(
+      kimRows[0]
+        .find('[data-test="territory-region-buff-inactive"]')
+        .exists(),
+    ).toBe(true);
+  });
+
+  it('region không có buff → render empty placeholder', async () => {
+    const regions = makeRegions();
+    // Override son_coc buffs = []
+    const mut = JSON.parse(JSON.stringify(regions));
+    mut.regions[0].buffs = [];
+    getRegionsMock.mockResolvedValue(mut);
+    getMeMock.mockResolvedValue(makeMe());
+    const w = mountView();
+    await flushPromises();
+
+    const sonCocBuffsBlock = w
+      .findAll('[data-test="territory-region-buffs"]')
+      .find((b) => b.attributes('data-region-key') === 'son_coc')!;
+    expect(
+      sonCocBuffsBlock
+        .find('[data-test="territory-region-buffs-empty"]')
+        .exists(),
+    ).toBe(true);
+  });
+
+  it('me tab + sect đang sở hữu region → render activeBuffs list', async () => {
+    routeQuery.tab = 'me';
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(
+      makeMe({
+        activeBuffs: [
+          {
+            buffKey: 'territory_son_coc_exp',
+            buffType: 'EXP_BONUS',
+            value: 0.05,
+            cap: 0.05,
+            labelI18nKey: 'territory.buff.territory_son_coc_exp.label',
+            descriptionI18nKey:
+              'territory.buff.territory_son_coc_exp.desc',
+            appliesTo: ['DUNGEON_REWARD'],
+            element: null,
+          },
+        ],
+      }),
+    );
+    const w = mountView();
+    await flushPromises();
+
+    expect(
+      w.find('[data-test="territory-me-active-buffs"]').exists(),
+    ).toBe(true);
+    const buffRows = w.findAll(
+      '[data-test="territory-me-active-buff-row"]',
+    );
+    expect(buffRows.length).toBe(1);
+    expect(buffRows[0].attributes('data-buff-key')).toBe(
+      'territory_son_coc_exp',
+    );
+    expect(buffRows[0].text()).toContain('Linh Khí Sơn Cốc');
+    expect(buffRows[0].text()).toContain('+5% EXP');
+  });
+
+  it('me tab + sect không sở hữu region nào → empty placeholder', async () => {
+    routeQuery.tab = 'me';
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe({ activeBuffs: [] }));
+    const w = mountView();
+    await flushPromises();
+
+    expect(
+      w.find('[data-test="territory-me-active-buffs-empty"]').exists(),
+    ).toBe(true);
+  });
+});
+
+describe('TerritoryView — Phase 14.0.C admin decay', () => {
+  it('user PLAYER → KHÔNG render decay panel', async () => {
+    authState.user = { role: 'PLAYER' };
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getLeaderboardMock.mockResolvedValue(makeLeaderboard('son_coc'));
+    getHistoryMock.mockResolvedValue(makeHistory());
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-leaderboard"]').trigger('click');
+    await flushPromises();
+
+    expect(
+      w.find('[data-test="territory-admin-decay-panel"]').exists(),
+    ).toBe(false);
+  });
+
+  it('ADMIN click decay → API gọi với periodKey + decayBps; render last result', async () => {
+    authState.user = { role: 'ADMIN' };
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getLeaderboardMock.mockResolvedValue(makeLeaderboard('son_coc'));
+    getHistoryMock.mockResolvedValue(makeHistory());
+    adminDecayMock.mockResolvedValue({
+      periodKey: '2026-W22',
+      decayBps: 2500,
+      skipped: false,
+      rowsAffected: 4,
+      pointsBefore: 200,
+      pointsAfter: 150,
+      delta: 50,
+      triggeredAt: '2026-06-01T00:00:00.000Z',
+    });
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-leaderboard"]').trigger('click');
+    await flushPromises();
+
+    await w
+      .find<HTMLInputElement>('[data-test="territory-admin-period-input"]')
+      .setValue('2026-W22');
+    await w
+      .find<HTMLInputElement>(
+        '[data-test="territory-admin-decay-bps-input"]',
+      )
+      .setValue('2500');
+    await w.find('[data-test="territory-admin-decay-run"]').trigger('click');
+    await flushPromises();
+
+    expect(adminDecayMock).toHaveBeenCalledWith({
+      periodKey: '2026-W22',
+      decayBps: 2500,
+    });
+    const result = w.find('[data-test="territory-admin-decay-result"]');
+    expect(result.exists()).toBe(true);
+    expect(result.text()).toContain('2026-W22');
+    expect(result.text()).toContain('-50');
+    expect(result.text()).toContain('25');
+  });
+
+  it('ADMIN click decay không nhập input → API gọi với undefined opts', async () => {
+    authState.user = { role: 'ADMIN' };
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getLeaderboardMock.mockResolvedValue(makeLeaderboard('son_coc'));
+    getHistoryMock.mockResolvedValue(makeHistory());
+    adminDecayMock.mockResolvedValue({
+      periodKey: '2026-W22',
+      decayBps: 2500,
+      skipped: false,
+      rowsAffected: 0,
+      pointsBefore: 0,
+      pointsAfter: 0,
+      delta: 0,
+      triggeredAt: '2026-06-01T00:00:00.000Z',
+    });
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-leaderboard"]').trigger('click');
+    await flushPromises();
+
+    await w.find('[data-test="territory-admin-decay-run"]').trigger('click');
+    await flushPromises();
+
+    expect(adminDecayMock).toHaveBeenCalledWith({
+      periodKey: undefined,
+      decayBps: undefined,
+    });
+  });
+
+  it('ADMIN decay skipped (cùng periodKey) → render skipped state', async () => {
+    authState.user = { role: 'ADMIN' };
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getLeaderboardMock.mockResolvedValue(makeLeaderboard('son_coc'));
+    getHistoryMock.mockResolvedValue(makeHistory());
+    adminDecayMock.mockResolvedValue({
+      periodKey: '2026-W22',
+      decayBps: 2500,
+      skipped: true,
+      rowsAffected: 0,
+      pointsBefore: 0,
+      pointsAfter: 0,
+      delta: 0,
+      triggeredAt: '2026-06-01T00:00:00.000Z',
+    });
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-leaderboard"]').trigger('click');
+    await flushPromises();
+
+    await w.find('[data-test="territory-admin-decay-run"]').trigger('click');
+    await flushPromises();
+
+    expect(
+      w.find('[data-test="territory-admin-decay-skipped"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-test="territory-admin-decay-result"]').exists(),
+    ).toBe(false);
+  });
+
+  it('ADMIN decay error DECAY_BPS_INVALID → render error', async () => {
+    authState.user = { role: 'ADMIN' };
+    getRegionsMock.mockResolvedValue(makeRegions());
+    getMeMock.mockResolvedValue(makeMe());
+    getLeaderboardMock.mockResolvedValue(makeLeaderboard('son_coc'));
+    getHistoryMock.mockResolvedValue(makeHistory());
+    adminDecayMock.mockRejectedValue(
+      Object.assign(new Error('bad bps'), { code: 'DECAY_BPS_INVALID' }),
+    );
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-test="territory-tab-leaderboard"]').trigger('click');
+    await flushPromises();
+
+    await w
+      .find<HTMLInputElement>(
+        '[data-test="territory-admin-decay-bps-input"]',
+      )
+      .setValue('999999');
+    await w.find('[data-test="territory-admin-decay-run"]').trigger('click');
+    await flushPromises();
+
+    const err = w.find('[data-test="territory-admin-decay-error"]');
+    expect(err.exists()).toBe(true);
+    expect(err.text()).toContain('Tỷ lệ suy giảm không hợp lệ');
   });
 });
