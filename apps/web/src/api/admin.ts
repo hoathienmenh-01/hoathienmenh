@@ -704,6 +704,84 @@ export async function adminLiveOpsDryRun(
   return unwrap(data);
 }
 
+// ───────── Phase 13.2.D + 14.0.F — Admin LiveOps Cron Force-Run ─────────
+
+export interface AdminLiveOpsCronTerritorySummary {
+  periodKey: string;
+  territorySettled: number;
+  territorySkipped: number;
+  territoryDecaySkipped: boolean;
+  territoryDecayDelta: number;
+  rewardMailsCreated: number;
+  rewardSkippedAlreadyGranted: number;
+  errors: Array<{ stage: string; message: string }>;
+}
+
+export interface AdminLiveOpsCronSectSeasonSummary {
+  seasonSnapshotsCreated: number;
+  seasonSnapshotsSkipped: number;
+  seasonsProcessed: string[];
+  errors: Array<{ stage: string; message: string }>;
+}
+
+export interface AdminLiveOpsCronWeeklyCycleSummary {
+  startedAt: string;
+  finishedAt: string;
+  skippedAlreadyDone: boolean;
+  triggeredBy: string | null;
+  territory: AdminLiveOpsCronTerritorySummary;
+  sectSeason: AdminLiveOpsCronSectSeasonSummary;
+}
+
+export interface AdminLiveOpsCronRunInput {
+  periodKey?: string;
+  bypassLease?: boolean;
+}
+
+/**
+ * Phase 13.2.D + 14.0.F — POST /admin/liveops/run-weekly-cycle.
+ *
+ * Force-run weekly cycle (territory settle + decay + reward mail + sect
+ * season snapshot). ADMIN-only. Idempotent: gọi 2 lần KHÔNG double mail
+ * (DB UNIQUE guard). `bypassLease=true` skip Redis lease — chỉ dùng cho
+ * admin force-run. Server tự xác định `triggeredBy` từ session cookie.
+ */
+export async function adminLiveOpsRunWeeklyCycle(
+  input: AdminLiveOpsCronRunInput = {},
+): Promise<AdminLiveOpsCronWeeklyCycleSummary> {
+  const { data } = await apiClient.post<Envelope<AdminLiveOpsCronWeeklyCycleSummary>>(
+    '/admin/liveops/run-weekly-cycle',
+    input,
+  );
+  return unwrap(data);
+}
+
+/**
+ * POST /admin/territory/cron/run-now — chỉ chạy phần territory.
+ */
+export async function adminTerritoryCronRunNow(
+  input: AdminLiveOpsCronRunInput = {},
+): Promise<AdminLiveOpsCronTerritorySummary> {
+  const { data } = await apiClient.post<Envelope<AdminLiveOpsCronTerritorySummary>>(
+    '/admin/territory/cron/run-now',
+    input,
+  );
+  return unwrap(data);
+}
+
+/**
+ * POST /admin/sect-season/cron/run-now — chỉ chạy phần sect season.
+ */
+export async function adminSectSeasonCronRunNow(
+  input: { bypassLease?: boolean } = {},
+): Promise<AdminLiveOpsCronSectSeasonSummary> {
+  const { data } = await apiClient.post<Envelope<AdminLiveOpsCronSectSeasonSummary>>(
+    '/admin/sect-season/cron/run-now',
+    input,
+  );
+  return unwrap(data);
+}
+
 /**
  * Compute display status từ row fields. Mirror BE logic — `revokedAt` thắng,
  * sau đó `expiresAt < now` → EXPIRED, sau đó `redeemCount >= maxRedeems` → EXHAUSTED,

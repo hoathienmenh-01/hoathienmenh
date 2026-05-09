@@ -33,6 +33,7 @@ import { LiveOpsModule } from './modules/liveops/liveops.module';
 import { SectWarModule } from './modules/sect-war/sect-war.module';
 import { SectSeasonModule } from './modules/sect-season/sect-season.module';
 import { TerritoryModule } from './modules/territory/territory.module';
+import { LiveOpsCronModule } from './modules/liveops-cron/liveops-cron.module';
 import { RedisModule } from './common/redis.module';
 
 @Module({
@@ -72,6 +73,10 @@ import { RedisModule } from './common/redis.module';
     SectWarModule,
     SectSeasonModule,
     TerritoryModule,
+    // Phase 13.2.D + 14.0.F — Live Ops cron orchestration. Phải đặt
+    // SAU TerritoryModule + SectSeasonModule vì cron module import 2
+    // module đó để inject services. AdminModule cũng đã import xong.
+    LiveOpsCronModule,
   ],
 })
 export class AppModule {}

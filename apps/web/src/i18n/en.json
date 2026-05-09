@@ -2828,7 +2828,23 @@
       "INVALID_BOSS_KEY": "Boss key does not match region.",
       "BOSS_ALREADY_ACTIVE": "Boss already active in this region; enable Force to replace.",
       "FORBIDDEN": "Insufficient permissions.",
+      "PERIOD_INVALID": "Period key invalid.",
       "UNKNOWN": "LiveOps action failed — please retry."
+    },
+    "weeklyCycle": {
+      "title": "Weekly Cycle (Cron)",
+      "help": "Force-run territory settle + decay + reward mail + sect season snapshot. Idempotent via DB UNIQUE — running twice does NOT double mail.",
+      "periodLabel": "Period key",
+      "periodPlaceholder": "auto (previous week)",
+      "bypassLeaseLabel": "Bypass lease",
+      "submitBtn": "Run weekly cycle",
+      "submitting": "Running…",
+      "confirm": "Confirm force-run weekly cycle? Idempotent — safe if cron has already run.",
+      "summary": "Settled {settled} · Skipped {skipped} · Mail {mails} (already {already}) · Snapshots {snapshots}",
+      "errorsLabel": "Fail-soft errors",
+      "toast": {
+        "ok": "Weekly cycle complete."
+      }
     }
   },
   "adminLiveOpsSchedule": {

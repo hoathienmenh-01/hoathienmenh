@@ -2828,7 +2828,23 @@
       "INVALID_BOSS_KEY": "Boss key không khớp với region.",
       "BOSS_ALREADY_ACTIVE": "Boss đang active trong region này, bật Force để thay thế.",
       "FORBIDDEN": "Không đủ quyền.",
+      "PERIOD_INVALID": "Period key không hợp lệ.",
       "UNKNOWN": "Thao tác LiveOps thất bại — thử lại."
+    },
+    "weeklyCycle": {
+      "title": "Chu kỳ tuần (Cron)",
+      "help": "Force-run territory settle + decay + reward mail + sect season snapshot. Idempotent qua DB UNIQUE — chạy 2 lần KHÔNG double mail.",
+      "periodLabel": "Period key",
+      "periodPlaceholder": "auto (tuần trước)",
+      "bypassLeaseLabel": "Bypass lease",
+      "submitBtn": "Chạy chu kỳ tuần",
+      "submitting": "Đang chạy…",
+      "confirm": "Xác nhận force-run weekly cycle? Idempotent — an toàn nếu cron đã chạy.",
+      "summary": "Settled {settled} · Skipped {skipped} · Mail {mails} (already {already}) · Snapshots {snapshots}",
+      "errorsLabel": "Lỗi fail-soft",
+      "toast": {
+        "ok": "Weekly cycle hoàn tất."
+      }
     }
   },
   "adminLiveOpsSchedule": {

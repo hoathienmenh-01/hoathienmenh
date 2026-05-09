@@ -569,6 +569,65 @@ Phase 17 integrate Grafana / Datadog hoặc admin dashboard 2.0:
 
 ---
 
+## 13.A. WEEKLY CYCLE AUTOMATION (Phase 13.2.D + 14.0.F)
+
+### 13.A.1 Why
+
+Trước Phase 13.2.D + 14.0.F, mọi vận hành tuần (territory settle, decay, reward mail, sect season snapshot) đều bấm tay qua admin endpoint. Risk:
+- Admin quên trigger → reward không tới tay player → trust issue.
+- Admin trigger sai `periodKey` → ledger lệch.
+- Không có audit-by-default → hard to debug "tuần này có ai trigger chưa?".
+
+Phase này tự động hóa weekly cycle qua BullMQ cron + giữ admin override (force-run) làm safety net.
+
+### 13.A.2 Cron schedule (default)
+
+| Queue | Job | Pattern (default) | Env var | Mô tả |
+|---|---|---|---|---|
+| `territory-cron` | `weekly-cycle` | `5 0 * * 1` (Mon 00:05 UTC) | `TERRITORY_WEEKLY_SETTLE_CRON` | Settle previous ISO week → decay influence → grant owner reward mail. |
+| `sect-season-cron` | `snapshot-due` | `15 0 * * *` (00:15 UTC daily) | `SECT_SEASON_SNAPSHOT_CRON` | Snapshot mọi `SECT_SEASONS` có `endsAtIso ≤ now`. Daily check rẻ vì hầu hết ngày skip nhanh. |
+
+Bật/tắt qua `TERRITORY_CRON_ENABLED` / `SECT_SEASON_CRON_ENABLED` (default `false` để local/test KHÔNG auto-register). Timezone qua `TERRITORY_CRON_TZ` (default `UTC`).
+
+### 13.A.3 Idempotency + race-safety design
+
+**3-layer guard** (defense in depth):
+
+1. **Optimistic Redis lease** (`LIVEOPS_CRON_LEASE_TTL_SEC`, default 300s):
+   - `SET NX EX` để claim leader; Lua compare-and-delete để release.
+   - 2 node race → chỉ 1 acquire lease → còn lại trả `skippedAlreadyDone=true` ngay.
+   - Fail-open: nếu Redis vắng (test/dev), lease no-op → DB guard quyết.
+2. **DB UNIQUE constraints** (final source of truth):
+   - `SectTerritorySettlementSnapshot` UNIQUE `(regionKey, periodKey)`.
+   - `SectTerritoryDecayLog` UNIQUE `(periodKey)`.
+   - `TerritoryOwnerRewardGrant` UNIQUE `(periodKey, regionKey, characterId)`.
+   - `SectSeasonSnapshot` UNIQUE `seasonKey`.
+   - Tất cả P2002 swallow → trả existing → idempotent.
+3. **Fail-soft errors**: stage failure (e.g., decay throw) push vào `errors[]` KHÔNG block stage còn lại. Caller (cron hoặc admin) thấy partial summary để retry phần fail.
+
+### 13.A.4 Admin force-run
+
+Vẫn giữ override để debug/recover:
+
+- `POST /admin/liveops/run-weekly-cycle` — combo (territory + sect season).
+- `POST /admin/territory/cron/run-now` — chỉ territory.
+- `POST /admin/sect-season/cron/run-now` — chỉ sect season.
+
+Body `{ periodKey?, bypassLease? }`. `bypassLease=true` chỉ admin được dùng (skip Redis lease — chấp nhận double-attempt vì DB UNIQUE bảo vệ). Audit log `ADMIN_LIVEOPS_RUN_WEEKLY_CYCLE` / `ADMIN_LIVEOPS_TERRITORY_CRON_RUN` / `ADMIN_LIVEOPS_SECT_SEASON_CRON_RUN` (no secret meta).
+
+FE: AdminLiveOpsPanel có section "Chu kỳ tuần (Cron)" — input `periodKey`, checkbox `bypassLease`, button "Chạy chu kỳ tuần", summary line + fail-soft errors.
+
+### 13.A.5 Observability
+
+Logger format: `runTerritoryCycle done period=<key> settled=N skipped=N decaySkipped=B decayDelta=N mails=N alreadyGranted=N errors=N` — easy grep cho production debug. KHÔNG log secret.
+
+### 13.A.6 Deferred — sect season reward distribution
+
+Snapshot history + Hall of Fame KHÔNG auto-grant reward (currency/title/buff) vì design chưa đủ rõ. TODO comment ở `liveops-cron.service.ts` block `runSectSeasonCycle()`. Phase tiếp theo (Phase 13.2.E?) sẽ wire reward distribution sau khi design pass riêng.
+
+---
+
 ## 14. CHANGELOG
 
 - **2026-04-30** — Initial creation. Author: Devin AI session 9q.
+- **2026-05-09** — Phase 13.2.D + 14.0.F: weekly cycle automation cron (§13.A). Author: Devin AI.
