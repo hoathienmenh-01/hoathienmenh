@@ -48,6 +48,12 @@ const STUB_BOSS: BossView = {
   cooldownUntil: null,
   topDropPool: [],
   midDropPool: [],
+  elementProfile: {
+    element: null,
+    weaknessElement: null,
+    resistElements: [],
+    rewardElementHint: null,
+  },
 };
 
 const STUB_ATTACK: AttackResult = {

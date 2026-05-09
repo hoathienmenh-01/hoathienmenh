@@ -1,3 +1,4 @@
+import type { ElementKey } from '@xuantoi/shared';
 import { apiClient } from './client';
 
 export interface BossLeaderboardRow {
@@ -33,6 +34,17 @@ export interface BossView {
   cooldownUntil: string | null;
   topDropPool: string[];
   midDropPool: string[];
+  /**
+   * Phase 14.2.D — Ngũ Hành identity profile cho boss. UI hint thuần
+   * (combat damage tính qua `elementalMultiplier` +
+   * `composeMonsterElementalResist` ở shared, không đọc field này).
+   */
+  elementProfile: {
+    element: ElementKey | null;
+    weaknessElement: ElementKey | null;
+    resistElements: readonly ElementKey[];
+    rewardElementHint: ElementKey | null;
+  };
 }
 
 export interface AttackResult {

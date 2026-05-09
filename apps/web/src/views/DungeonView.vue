@@ -3,11 +3,15 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import {
+  ELEMENTS,
   SKILL_BASIC_ATTACK,
   TALENTS,
+  getDungeonElementProfile,
   realmByKey,
   activeSkillsForSect,
   type DungeonDef,
+  type DungeonElementProfile,
+  type ElementKey,
   type SectKey,
   type SkillDef,
   type TalentDef,
@@ -16,6 +20,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
 import { useTalentsStore } from '@/stores/talents';
+import { useSpiritualRootStore } from '@/stores/spiritualRoot';
 import {
   abandonEncounter,
   getActiveEncounter,
@@ -27,6 +32,7 @@ import {
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
 import ElementBadge from '@/components/ElementBadge.vue';
+import ElementIdentityPanel from '@/components/ElementIdentityPanel.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 const auth = useAuthStore();
@@ -35,7 +41,34 @@ const toast = useToastStore();
 const router = useRouter();
 const route = useRoute();
 const talentsStore = useTalentsStore();
+const spiritualRoot = useSpiritualRootStore();
 const { t } = useI18n();
+
+/**
+ * Phase 14.2.D — primary element của player từ Spiritual Root state.
+ * Dùng trong ElementIdentityPanel để render warning khi player bị
+ * dungeon hệ khắc. `null` nếu chưa hydrate / chưa có linh căn.
+ */
+const playerPrimaryElement = computed<ElementKey | null>(() => {
+  const raw = spiritualRoot.state?.primaryElement;
+  if (!raw) return null;
+  return (ELEMENTS as readonly string[]).includes(raw)
+    ? (raw as ElementKey)
+    : null;
+});
+
+/**
+ * Phase 14.2.D — derive `DungeonElementProfile` từ DungeonDef khi API
+ * chưa nhúng (legacy `listDungeons()` trước Phase 14.2.D). Server
+ * Phase 14.2.D đã trả `elementProfile` kèm; helper fallback để FE
+ * render đồng nhất kể cả nếu deploy mismatch (BE older).
+ */
+function profileOf(d: DungeonDef): DungeonElementProfile {
+  return (
+    (d as DungeonDef & { elementProfile?: DungeonElementProfile })
+      .elementProfile ?? getDungeonElementProfile(d)
+  );
+}
 
 const dungeons = ref<DungeonDef[]>([]);
 const encounter = ref<EncounterView | null>(null);
@@ -105,6 +138,12 @@ onMounted(async () => {
     preselectedTalentKey.value = queryTalent;
     await talentsStore.fetchState().catch(() => null);
   }
+
+  // Phase 14.2.D — hydrate spiritualRoot store để compute element warning
+  // cho mỗi dungeon card. Fire-and-forget: nếu chưa có linh căn /
+  // endpoint chưa wire → warning bị ẩn (player primary = null), card
+  // vẫn render bình thường. KHÔNG await để không block listDungeons.
+  spiritualRoot.fetchState().catch(() => null);
 
   try {
     dungeons.value = (await listDungeons()) as DungeonDef[];
@@ -242,6 +281,12 @@ function handleErr(e: unknown): void {
             {{ t('dungeon.monsterCount', { n: d.monsters.length }) }} ·
             {{ t('dungeon.staminaEntry', { stam: d.staminaEntry }) }}
           </p>
+          <ElementIdentityPanel
+            :dominant-element="profileOf(d).dominantElement"
+            :recommended-counter-element="profileOf(d).recommendedCounterElement"
+            :player-primary-element="playerPrimaryElement"
+            :test-id-prefix="`dungeon-${d.key}`"
+          />
           <MButton
             :disabled="isFighting || (game.character?.stamina ?? 0) < d.staminaEntry"
             :loading="submitting"

@@ -444,6 +444,24 @@ Curve table (đã có sẵn trong `packages/shared/src/cultivation-methods.ts`):
 - `equip()` re-validate (e.g. character đổi linh căn vào forbidden → throw `FORBIDDEN_ELEMENT`).
 - KHÔNG cooldown 24h re-equip trong MVP — future enhancement.
 
+### 2.9.3.3 Phase 14.2.D — Elemental dungeon and boss identity (DONE this PR)
+
+Phase 14.2.D thêm **identity metadata** cho dungeon/boss để player biết "dungeon hệ X → khuyến nghị skill hệ Y", "boss hệ X bị khắc bởi Y". KHÔNG đụng damage formula, KHÔNG nới resist floor, KHÔNG thêm multiplier mới — chỉ là UI hint.
+
+**Field mới (UI hint thuần)**:
+- `DungeonDef.dominantElement?` / `recommendedCounterElement?` / `rewardElementHint?` — derive từ `element` (legacy Phase 10 PR-3) nếu không set.
+- `BossDef.weaknessElement?` / `resistElements?` / `rewardElementHint?` — derive từ `element` (Phase 14.2.B) + `elementalResist` keys (resist `< 1.0`) nếu không set.
+
+**Anti-double-multiplier guarantee**: combat damage **không đọc** field mới. Damage vẫn tính qua `elementalMultiplier(skillElement, monster.element)` (Phase 11.3.B) + `composeMonsterElementalResist(monster.elementalResist, skillElement)` (Phase 14.2.B). Test `combat.service.element-identity.test.ts` lock-in: response không expose multiplier numeric. Validator `validateBossElementProfile()` ép `weaknessElement === counter(element)` để hint match thực tế (FE recommendation = damage actual).
+
+**Catalog invariant** (test backstop):
+- Mỗi Ngũ Hành có ≥ 1 dungeon `dominantElement === <element>` (coverage: 9 dungeons spread 5 elements).
+- Mỗi Ngũ Hành có ≥ 1 boss `element === <element>` (coverage: 12 bosses spread 5 elements).
+- `weaknessElement` luôn === `elementCounter(element)` khi cả 2 set (boss).
+- `resistElements ⊆ Object.keys(elementalResist where v < 1.0)` (boss) — UI hint không mâu thuẫn với combat resist.
+
+**KHÔNG nới dial Phase 14.2.A/B** — pipeline foundation, floor `0.70`, ceil `0.50` giữ nguyên. Phase 14.2.D pure UI/data — designer thêm flavor/recommendation cho content existing, không thay đổi power-curve.
+
 ### 2.9.5 Phase 11.1.C wire điểm (Pending)
 
 - UI character profile display equipped method (icon + grade + multiplier tooltip).

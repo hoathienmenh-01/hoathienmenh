@@ -160,8 +160,35 @@ export interface DungeonDef {
    * **Forward-compat phase 10 PR-3** — Ngũ Hành theme của dungeon. Phase 11.5
    * sẽ dùng để (a) trigger element-bonus drop ngọc cùng hệ, (b) gợi ý player
    * tránh dungeon mà spiritualRoot bị khắc, (c) UI badge màu.
+   *
+   * **Phase 14.2.D legacy alias**: vẫn giữ field `element` để không vỡ
+   * dữ liệu cũ + downstream consumer (FE/API). Field mới
+   * `dominantElement` (Phase 14.2.D) override `element` nếu set; helper
+   * `getDungeonElementProfile()` consume cả 2.
    */
   element?: ElementKey | null;
+  /**
+   * **Phase 14.2.D** — Ngũ Hành chủ đạo của dungeon, dùng cho UI badge +
+   * filter + identity panel. Mặc định fallback sang `element` (legacy)
+   * khi không set; designer có thể override để rebrand dungeon mà không
+   * cần đụng `element` (forward-compat). `null` = dungeon vô hệ.
+   */
+  dominantElement?: ElementKey | null;
+  /**
+   * **Phase 14.2.D** — Ngũ Hành khuyến nghị player dùng để clear nhanh.
+   * Mặc định = `elementCounter(dominantElement)` (vd dominant=tho →
+   * recommended=moc). Designer có thể override (vd dungeon vô hệ vẫn
+   * có recommendation cụ thể, hoặc reverse-engineering boss design).
+   * `null` = no recommendation (UI ẩn hint).
+   */
+  recommendedCounterElement?: ElementKey | null;
+  /**
+   * **Phase 14.2.D** — Ngũ Hành flavor cho reward, dùng cho UI hint
+   * "loot dungeon thiên về hệ X". Mặc định = `dominantElement` (loot
+   * cùng hệ với dungeon). Designer có thể override để align với
+   * `runReward` actual content.
+   */
+  rewardElementHint?: ElementKey | null;
   /** Region key — phase 10 PR-3 grouping. */
   regionKey?: string | null;
   /**
