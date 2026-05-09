@@ -21,6 +21,7 @@ import {
   describeElementMatch,
   dungeonByKey,
   elementMultiplier,
+  getDungeonElementProfile,
   getSpiritualRootGradeDef,
   getTalentDef,
   itemByKey,
@@ -31,6 +32,7 @@ import {
   simulateActiveTalent,
   skillByKey,
   type DungeonDef,
+  type DungeonElementProfile,
   type ElementKey,
   type EffectiveSkill,
   type MonsterDef,
@@ -213,8 +215,18 @@ export class CombatService {
     @Optional() private readonly quests?: QuestService,
   ) {}
 
-  listDungeons() {
-    return DUNGEONS;
+  /**
+   * Phase 14.2.D — return DUNGEONS catalog kèm Ngũ Hành identity profile
+   * (dominantElement, recommendedCounterElement, rewardElementHint) cho
+   * mỗi entry. FE dùng để render badge + recommended counter + reward
+   * hint mà không cần re-derive client-side. Combat damage runtime
+   * KHÔNG đọc elementProfile — chỉ là metadata UI.
+   */
+  listDungeons(): Array<DungeonDef & { elementProfile: DungeonElementProfile }> {
+    return DUNGEONS.map((d) => ({
+      ...d,
+      elementProfile: getDungeonElementProfile(d),
+    }));
   }
 
   async getActive(characterId: string): Promise<EncounterView | null> {

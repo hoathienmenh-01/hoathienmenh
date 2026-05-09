@@ -3,15 +3,18 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { RouterLink, useRouter } from 'vue-router';
 import {
+  ELEMENTS,
   SKILL_BASIC_ATTACK,
   activeSkillsForSect,
   getMapRegionByKey,
+  type ElementKey,
   type SectKey,
   type SkillDef,
 } from '@xuantoi/shared';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
+import { useSpiritualRootStore } from '@/stores/spiritualRoot';
 import {
   attackBoss,
   getActiveBosses,
@@ -21,6 +24,7 @@ import {
 import { on } from '@/ws/client';
 import AppShell from '@/components/shell/AppShell.vue';
 import BossSchedulePanel from '@/components/BossSchedulePanel.vue';
+import BossElementTooltip from '@/components/BossElementTooltip.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { itemName } from '@/lib/itemName';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
@@ -28,8 +32,22 @@ import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 const auth = useAuthStore();
 const game = useGameStore();
 const toast = useToastStore();
+const spiritualRoot = useSpiritualRootStore();
 const router = useRouter();
 const { t, locale } = useI18n();
+
+/**
+ * Phase 14.2.D — primary element của player từ Spiritual Root state.
+ * Dùng cho BossElementTooltip warning. `null` nếu chưa hydrate /
+ * chưa có linh căn.
+ */
+const playerPrimaryElement = computed<ElementKey | null>(() => {
+  const raw = spiritualRoot.state?.primaryElement;
+  if (!raw) return null;
+  return (ELEMENTS as readonly string[]).includes(raw)
+    ? (raw as ElementKey)
+    : null;
+});
 
 // Phase 12.6 — multi-region boss state. Active list across regions sorted
 // theo regionKey ascending; selectedRegionKey track active tab; `boss`
@@ -87,6 +105,10 @@ onMounted(async () => {
     return;
   }
   await game.fetchState().catch(() => null);
+  // Phase 14.2.D — hydrate spiritualRoot store cho BossElementTooltip
+  // warning. Fire-and-forget: warning hidden cho đến khi store hydrate
+  // (UI re-render reactive). KHÔNG block boss list load.
+  spiritualRoot.fetchState().catch(() => null);
   game.bindSocket();
   await refresh();
 
@@ -372,6 +394,16 @@ function timeLeftText(iso: string): string {
             <div class="text-[10px] text-ink-300/70 mt-1 tracking-wider uppercase">
               {{ t('boss.regionBadge') }}: {{ regionLabel(boss.regionKey) }}
             </div>
+            <!-- Phase 14.2.D — element identity (weakness, resist, reward hint, warning). -->
+            <BossElementTooltip
+              class="mt-2"
+              :element="boss.elementProfile.element"
+              :weakness-element="boss.elementProfile.weaknessElement"
+              :resist-elements="boss.elementProfile.resistElements"
+              :reward-element-hint="boss.elementProfile.rewardElementHint"
+              :player-primary-element="playerPrimaryElement"
+              :test-id-prefix="`boss-${boss.bossKey}`"
+            />
           </div>
           <div class="text-right">
             <div class="text-xs text-ink-300">{{ t('boss.timeLeft') }}</div>

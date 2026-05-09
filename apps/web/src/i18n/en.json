@@ -77,6 +77,20 @@
       "tho": "Earth"
     }
   },
+  "elementIdentity": {
+    "dominantLabel": "Dominant",
+    "recommendedCounterLabel": "Recommended counter",
+    "rewardHintLabel": "Loot leans toward",
+    "weaknessLabel": "Weak to",
+    "resistsLabel": "Resists",
+    "neutralBadge": "Neutral",
+    "warning": {
+      "recommended": "Counter element — bonus damage",
+      "warning": "Caution — your element is countered here",
+      "caution": "Be aware — Ngũ Hành interaction not in your favor",
+      "none": ""
+    }
+  },
   "skillTagBadge": {
     "tag": {
       "HEAL": "Heal",

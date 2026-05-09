@@ -77,6 +77,20 @@
       "tho": "Thổ"
     }
   },
+  "elementIdentity": {
+    "dominantLabel": "Hệ chính",
+    "recommendedCounterLabel": "Khuyến nghị dùng hệ",
+    "rewardHintLabel": "Loot ngả về",
+    "weaknessLabel": "Khắc bởi",
+    "resistsLabel": "Kháng",
+    "neutralBadge": "Vô hệ",
+    "warning": {
+      "recommended": "Hợp khắc — sát thương được tăng",
+      "warning": "Cẩn thận — đạo hữu bị hệ này khắc",
+      "caution": "Đề phòng — tương tác Ngũ Hành không có lợi",
+      "none": ""
+    }
+  },
   "skillTagBadge": {
     "tag": {
       "HEAL": "Hồi",

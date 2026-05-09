@@ -12,7 +12,31 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Added — Phase 14.2.C Elemental Skill Tree Expansion (this PR)
+### Added — Phase 14.2.D Elemental Dungeon and Boss Identity (this PR)
+
+- **Dungeon/boss có bản sắc Ngũ Hành** — Phase 14.2.D thêm element identity metadata cho dungeon + boss. Player thấy "dungeon hệ Hoả → khuyến nghị dùng skill Thuỷ", "boss này khắc bởi Mộc và kháng Thuỷ", "loot hợp với hệ Kim". Combat damage **KHÔNG đổi** — vẫn dùng `elementalMultiplier` (Phase 11.3.B) + `composeMonsterElementalResist` (Phase 14.2.B). Field mới chỉ là UI hint.
+- **Shared (`packages/shared/src/elemental-identity.ts` mới + extend `combat.ts`/`boss.ts`)**:
+  - `DungeonDef`: thêm `dominantElement?` / `recommendedCounterElement?` / `rewardElementHint?` (tất cả optional, derive từ `element` legacy nếu không set).
+  - `BossDef`: thêm `weaknessElement?` / `resistElements?` / `rewardElementHint?` (UI hint thuần — combat damage **không đọc**, vẫn qua `elementalMultiplier` + `composeMonsterElementalResist`).
+  - Helper `getDungeonElementProfile()` / `getBossElementProfile()` derive đầy đủ profile từ catalog (override > legacy fallback > null).
+  - Helper `computePlayerElementWarning(playerElement, targetElement)` → `'recommended' | 'warning' | 'caution' | 'none'` cho FE warning UI.
+  - Validator `validateDungeonElementProfile()` + `validateBossElementProfile()` để catalog test invariant.
+- **API (`apps/api/src/modules/combat/combat.service.ts`, `apps/api/src/modules/boss/boss.service.ts`)**:
+  - `combat.listDungeons()` trả mỗi entry kèm `elementProfile` (dominant + recommendedCounter + rewardHint).
+  - `BossView` (boss response) thêm `elementProfile` (element + weakness + resistElements + rewardHint). Boss legacy không catalog → all-null sentinel.
+  - **No-double-multiplier invariant** test backstop: response không expose multiplier numeric. FE compute warning qua relation logic (counter/sinh), không nhận formula từ server.
+- **Web (`apps/web/src/components/ElementIdentityPanel.vue`, `BossElementTooltip.vue` mới)**:
+  - DungeonView card: hiển thị dominant element badge + recommended counter badge + warning text khi player primary element bị dungeon hệ khắc.
+  - BossView header: dòng tooltip render element + weakness + resist list + reward hint + warning badge.
+  - i18n keys mới `elementIdentity.*` cho 4 trạng thái warning (recommended/warning/caution/none) + 5 nhãn (dominant/recommendedCounter/weakness/resists/rewardHint).
+  - SpiritualRoot store fire-and-forget hydrate trong onMounted để compute warning reactive (không block list load).
+- **Tests** (Phase 14.2.D backstop):
+  - **Shared**: `elemental-identity.test.ts` (32 test) — element relation matrix, getDungeonElementProfile/getBossElementProfile derive + override, computePlayerElementWarning, catalog invariant (mọi element có ≥ 1 dungeon/boss, weakness === counter(element), resistElements ⊆ elementalResist keys), no-double-multiplier shape.
+  - **API**: `combat.service.element-identity.test.ts` (5 test) + `boss.service.element-identity.test.ts` (7 test) — response shape includes elementProfile, derive consistent, no multiplier numeric exposed.
+  - **Web**: `ElementIdentityPanel.test.ts` (9 test) + `BossElementTooltip.test.ts` (8 test) — dominant badge / counter badge / weakness / resists / reward hint render, warning state theo player primary element, data-testid stable.
+  - Existing dungeon/boss tests vẫn pass (no regression — chỉ thêm fixture `elementProfile` cho `BossView` stubs).
+
+### Added — Phase 14.2.C Elemental Skill Tree Expansion
 
 - **Skill có hệ rõ ràng và identity riêng** — Phase 14.2.A đã ship Elemental Combat Foundation, 14.2.B đã ship monster resist + equipment elementalAtkBonus. Phase 14.2.C biến Ngũ Hành từ damage/resist multiplier thành **hệ kỹ năng có hướng chơi riêng**: Mộc = hồi phục/độc, Hỏa = burst damage/burn, Thổ = shield/khống, Kim = xuyên giáp/chí mạng, Thủy = control/hồi linh.
 - **Shared (`packages/shared/src/combat.ts` + `elemental-skills.ts` mới)**:

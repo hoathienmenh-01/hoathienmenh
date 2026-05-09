@@ -145,6 +145,13 @@ function makeBoss(overrides: Partial<BossView> = {}): BossView {
     cooldownUntil: null,
     topDropPool: [],
     midDropPool: [],
+    // Phase 14.2.D — fixture default vô hệ. Test riêng override khi cần.
+    elementProfile: {
+      element: null,
+      weaknessElement: null,
+      resistElements: [],
+      rewardElementHint: null,
+    },
     ...overrides,
   };
 }

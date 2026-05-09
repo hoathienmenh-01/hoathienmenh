@@ -22,9 +22,11 @@ import {
   composeBuffMods,
   composePassiveTalentMods,
   composeTitleMods,
+  getBossElementProfile,
   rollDamage,
   skillByKey,
   type BossDef,
+  type BossElementProfile,
   type BuffMods,
   type ElementKey,
   type PassiveTalentMods,
@@ -102,6 +104,18 @@ export interface BossView {
   /** UI gợi ý — boss-specific drop pool. */
   topDropPool: readonly string[];
   midDropPool: readonly string[];
+  /**
+   * Phase 14.2.D — Ngũ Hành identity profile (element, weakness, resist
+   * elements, reward hint). Pure metadata — combat damage tính qua
+   * `elementalMultiplier` + `composeMonsterElementalResist` (Phase
+   * 11.3.B / 14.2.B), không đọc field này. FE dùng để render badge +
+   * recommended counter + warning.
+   *
+   * Sentinel `null` = boss legacy không có catalog def (vô hệ
+   * implicit). Field luôn present trong response (deterministic shape)
+   * — caller có thể destructure mà không guard.
+   */
+  elementProfile: BossElementProfile;
 }
 
 export interface AttackResult {
@@ -1357,6 +1371,14 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       cooldownUntil,
       topDropPool: def?.topDropPool ?? [],
       midDropPool: def?.midDropPool ?? [],
+      elementProfile: def
+        ? getBossElementProfile(def)
+        : {
+            element: null,
+            weaknessElement: null,
+            resistElements: [],
+            rewardElementHint: null,
+          },
     };
   }
 

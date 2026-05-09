@@ -95,6 +95,38 @@ export interface BossDef {
    * Không define = không kháng (legacy + foundation default — fallback neutral).
    */
   elementalResist?: Partial<Record<ElementKey, number>>;
+
+  /**
+   * **Phase 14.2.D** — Ngũ Hành khắc (weakness) của boss, dùng cho UI
+   * badge + recommended counter hint. Mặc định = `elementCounter(element)`
+   * (vd boss hệ Hoả → weakness=Thuỷ). Designer có thể override (vd
+   * boss đặc biệt được "miễn nhiễm" weakness logic). `null` =
+   * boss vô hệ (cross-element, không có weakness).
+   *
+   * **Hint UI thuần** — combat damage **KHÔNG đọc field này**. Damage
+   * tính qua `elementalMultiplier(skillElement, boss.element)` (Phase
+   * 11.3.B) + `composeMonsterElementalResist(boss.elementalResist,
+   * skillElement)` (Phase 14.2.B). Field này chỉ để FE/API hiện cho
+   * player biết "skill hệ X là counter". Test invariant ép
+   * weaknessElement === counter(element) để hint match reality.
+   */
+  weaknessElement?: ElementKey | null;
+  /**
+   * **Phase 14.2.D** — Danh sách Ngũ Hành boss kháng, dùng cho UI hint.
+   * Mặc định derive từ `elementalResist` keys (mọi hệ có resist `< 1.0`).
+   * Designer có thể override để thêm flavor hint (vd boss "miễn nhiễm
+   * tinh thần" pure flavor, không impact damage). Test invariant ép
+   * resistElements là **subset** của `elementalResist` keys (nếu cả 2
+   * set) để hint không misleading.
+   */
+  resistElements?: readonly ElementKey[];
+  /**
+   * **Phase 14.2.D** — Ngũ Hành flavor cho reward (boss drop). Mặc định
+   * = `element`. Designer có thể override để align với
+   * `topDropPool` / `midDropPool` actual content (vd boss vô hệ drop
+   * skill book hệ Kim → rewardElementHint='kim').
+   */
+  rewardElementHint?: ElementKey | null;
 }
 
 export const BOSSES: readonly BossDef[] = [
