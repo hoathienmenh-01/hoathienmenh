@@ -12,6 +12,97 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Phase Audit-1 — Post-5 Integration Regression Audit (this PR)
+
+**Scope**: KHÔNG thêm gameplay mới. Audit + sửa bug nhỏ + đồng bộ docs để đảm
+bảo 5 chức năng vừa merge (Phase 14.0.E territory reward mail / Phase 13.2.D +
+14.0.F territory + sect-season cron / Phase 16.5 daily reward cap / Phase 17.3
+Sentry+Pino / Phase 17.4 backup-restore + RUNBOOK) không tạo lỗi ngầm: không
+double reward, không double mail, không double cron, không lệch docs/API,
+không crash FE, không phá economy, không log secret, không có script
+backup/restore nguy hiểm.
+
+#### Fixed
+
+- `apps/api/src/test-helpers.ts` — `wipeAll()` thiếu
+  `prisma.sectTerritoryDecayLog.deleteMany({})`. Trước fix:
+  `liveops-cron.service.test.ts > settle previous period → decay → grant
+  reward mail trong 1 cycle` flake (decay log từ run trước làm
+  `decaySkipped=true`). Sau fix: chạy isolated 100% pass.
+- `docs/API.md` + `docs/CHANGELOG.md` (PR #496 entry) + `docs/LIVE_OPS_MODEL.md`
+  ghi sai audit action codes — cron territory/sect-season actually ghi
+  `ADMIN_TERRITORY_CRON_RUN` / `ADMIN_SECT_SEASON_CRON_RUN` (xem
+  `apps/api/src/modules/liveops-cron/admin-liveops-cron.controller.ts`),
+  KHÔNG phải `ADMIN_LIVEOPS_TERRITORY_CRON_RUN` /
+  `ADMIN_LIVEOPS_SECT_SEASON_CRON_RUN` như docs ghi. BI/SIEM filter theo
+  string sẽ miss audit row → fix docs cho đúng.
+
+#### Docs
+
+- `docs/DEPLOY.md`: bổ sung 3 env var đã có ở `apps/api/.env.example` nhưng
+  bảng DEPLOY chưa list — `MISSION_RESET_TZ` (default `Asia/Ho_Chi_Minh` cho
+  daily/weekly mission reset), `DAILY_REWARD_CAP_TZ` (default
+  `Asia/Ho_Chi_Minh` cho `dayBucket` reset của Phase 16.5), `MARKET_FEE_PCT`
+  (default 0.05, range `[0, 0.5]`).
+- `docs/AI_HANDOFF_REPORT.md`: prepend Recent Changes entry cho PR audit này
+  (drop 3 entry oldest #480/#481/#482 để giữ cap 10 entries).
+
+#### Tests
+
+- `apps/api/src/modules/liveops-cron/admin-liveops-cron.controller.test.ts`:
+  +3 audit-codes contract tests lock action string vào audit log
+  (`runWeeklyCycle` → `ADMIN_LIVEOPS_RUN_WEEKLY_CYCLE`, `runTerritoryNow` →
+  `ADMIN_TERRITORY_CRON_RUN`, `runSectSeasonNow` → `ADMIN_SECT_SEASON_CRON_RUN`).
+  Test catch docs lệch sớm thay vì để escape vào production audit log.
+
+#### Verified
+
+- typecheck shared / api / web — all green.
+- test shared 2006 / api 2648 / web 1609 — all green.
+- `bash -n scripts/backup-db.sh` / `bash -n scripts/restore-db.sh` /
+  `bash -n scripts/verify-restore.sh` — all green.
+- `pnpm build` — all packages built.
+
+#### Audit findings (no code change required)
+
+- **Phase 14.0.E Territory Reward Mail**: idempotent qua UNIQUE
+  `(periodKey, regionKey, characterId)` ở `TerritoryOwnerRewardGrant`,
+  `dryRun=true` no-op (KHÔNG insert grant row, KHÔNG tạo mail), admin-only
+  qua `@RequireAdmin()` ở `admin-territory.controller.ts`. Test
+  `territory-reward.service.test.ts` 13 case passed.
+- **Phase 13.2.D + 14.0.F Cron**: settle → decay → reward fail-soft (errors[]
+  KHÔNG block stage còn lại), Redis lease optimistic + DB UNIQUE final
+  barrier, bypassLease admin-only. `TERRITORY_CRON_ENABLED` /
+  `SECT_SEASON_CRON_ENABLED` default `false` ở local/test.
+- **Phase 16.5 Daily Reward Cap**: wire 3 nguồn (cultivation / dungeon /
+  mission), race-safe qua Postgres `INSERT ... ON CONFLICT DO UPDATE`
+  (atomic row-lock), ledger ghi grant THỰC. Day bucket reset
+  `DAILY_REWARD_CAP_TZ` (default `Asia/Ho_Chi_Minh`). FE optional chaining
+  bảo đảm pre-16.5 không crash.
+- **Phase 17.3 Sentry + Pino**: disabled-safe khi thiếu DSN
+  (`enabledFlag` guards mọi capture* call), redaction bao toàn bộ secret
+  fields theo task spec (authorization / cookie / password / token /
+  refreshToken / accessToken / apiKey / secret / set-cookie / x-api-key /
+  session / creditCard / cardNumber / cvv).
+- **Phase 17.4 Backup/Restore + RUNBOOK**: 3 script pass `bash -n`,
+  restore CHẶN production (`NODE_ENV=production` + thiếu
+  `ALLOW_PRODUCTION_RESTORE=YES` → exit 9), confirm gate (`CONFIRM_RESTORE=YES`
+  / `ASSUME_YES=1`), không leak password trong stderr (mask `***`).
+  RUNBOOK 8+ playbook (Postgres down, Redis down, WebSocket realtime, cron
+  double-run, reward mail double-send, player currency loss, backup/restore,
+  deploy rollback).
+
+#### Rollback
+
+PR audit-only (1 fix `wipeAll`, +3 contract tests, +3 docs entry/env var) —
+KHÔNG migration, KHÔNG runtime change. Revert PR là rollback hoàn toàn.
+
+#### Next task
+
+Phase 16.6.A Ledger Checker Cron — periodic job verify
+`CurrencyLedger`/`ItemLedger` invariant không có row mồ côi / amount mismatch
+(catch silent corruption từ logic bug hoặc concurrent retry chưa đúng).
+
 ### Added — Phase 16.5 Daily Reward Cap (this PR)
 
 - **`packages/shared/src/daily-reward-cap.ts`**: catalog
@@ -169,8 +260,8 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
     `rewardSkippedAlreadyGranted`, `seasonSnapshotsCreated`,
     `seasonSnapshotsSkipped`, `errors`. Audit ghi
     `ADMIN_LIVEOPS_RUN_WEEKLY_CYCLE` /
-    `ADMIN_LIVEOPS_TERRITORY_CRON_RUN` /
-    `ADMIN_LIVEOPS_SECT_SEASON_CRON_RUN` (no secret in meta).
+    `ADMIN_TERRITORY_CRON_RUN` /
+    `ADMIN_SECT_SEASON_CRON_RUN` (no secret in meta).
 - **FE admin panel**: AdminLiveOpsPanel thêm section "Chu kỳ tuần
   (Cron)" (role-gated ADMIN) — input `periodKey` optional, checkbox
   `bypassLease`, button "Chạy chu kỳ tuần" + summary line + fail-soft

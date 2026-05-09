@@ -37,7 +37,7 @@ interface ControllerStubs {
   runWeeklyCycle?: LiveOpsCronService['runWeeklyCycle'];
   runTerritoryCycle?: LiveOpsCronService['runTerritoryCycle'];
   runSectSeasonCycle?: LiveOpsCronService['runSectSeasonCycle'];
-  auditCreated?: { count: number };
+  auditCreated?: { count: number; actions: string[] };
 }
 
 function emptyTerritory(periodKey: string): TerritoryCycleSummary {
@@ -64,9 +64,9 @@ function emptySectSeason(): SectSeasonCycleSummary {
 
 function makeController(stubs: ControllerStubs = {}): {
   c: AdminLiveOpsCronController;
-  audit: { count: number };
+  audit: { count: number; actions: string[] };
 } {
-  const audit = stubs.auditCreated ?? { count: 0 };
+  const audit = stubs.auditCreated ?? { count: 0, actions: [] };
   const cronService = {
     runWeeklyCycle:
       stubs.runWeeklyCycle ??
@@ -88,8 +88,9 @@ function makeController(stubs: ControllerStubs = {}): {
   } as unknown as LiveOpsCronService;
   const prisma = {
     adminAuditLog: {
-      create: async () => {
+      create: async (input: { data: { action: string } }) => {
         audit.count++;
+        audit.actions.push(input.data.action);
         return {};
       },
     },
@@ -216,5 +217,33 @@ describe('AdminLiveOpsCronController.runSectSeasonNow', () => {
     const r = await c.runSectSeasonNow(makeReq(), {});
     expect(r.ok).toBe(true);
     expect(throws).toBe(1);
+  });
+});
+
+/**
+ * Phase Audit-1 — lock audit log action codes vào string đã document
+ * trong `docs/API.md` / `docs/CHANGELOG.md` / `docs/LIVE_OPS_MODEL.md`.
+ *
+ * Đổi tên action ở controller phải kéo theo update cả 3 doc — test này
+ * giúp catch docs lệch sớm thay vì để escape vào production audit log
+ * (downstream BI/SIEM filter theo action string).
+ */
+describe('AdminLiveOpsCronController — audit action codes contract', () => {
+  it('runWeeklyCycle ghi audit ADMIN_LIVEOPS_RUN_WEEKLY_CYCLE', async () => {
+    const { c, audit } = makeController();
+    await c.runWeeklyCycle(makeReq(), { periodKey: '2026-W19' });
+    expect(audit.actions).toEqual(['ADMIN_LIVEOPS_RUN_WEEKLY_CYCLE']);
+  });
+
+  it('runTerritoryNow ghi audit ADMIN_TERRITORY_CRON_RUN', async () => {
+    const { c, audit } = makeController();
+    await c.runTerritoryNow(makeReq(), { periodKey: '2026-W19' });
+    expect(audit.actions).toEqual(['ADMIN_TERRITORY_CRON_RUN']);
+  });
+
+  it('runSectSeasonNow ghi audit ADMIN_SECT_SEASON_CRON_RUN', async () => {
+    const { c, audit } = makeController();
+    await c.runSectSeasonNow(makeReq(), {});
+    expect(audit.actions).toEqual(['ADMIN_SECT_SEASON_CRON_RUN']);
   });
 });

@@ -613,7 +613,7 @@ Vẫn giữ override để debug/recover:
 - `POST /admin/territory/cron/run-now` — chỉ territory.
 - `POST /admin/sect-season/cron/run-now` — chỉ sect season.
 
-Body `{ periodKey?, bypassLease? }`. `bypassLease=true` chỉ admin được dùng (skip Redis lease — chấp nhận double-attempt vì DB UNIQUE bảo vệ). Audit log `ADMIN_LIVEOPS_RUN_WEEKLY_CYCLE` / `ADMIN_LIVEOPS_TERRITORY_CRON_RUN` / `ADMIN_LIVEOPS_SECT_SEASON_CRON_RUN` (no secret meta).
+Body `{ periodKey?, bypassLease? }`. `bypassLease=true` chỉ admin được dùng (skip Redis lease — chấp nhận double-attempt vì DB UNIQUE bảo vệ). Audit log `ADMIN_LIVEOPS_RUN_WEEKLY_CYCLE` / `ADMIN_TERRITORY_CRON_RUN` / `ADMIN_SECT_SEASON_CRON_RUN` (no secret meta).
 
 FE: AdminLiveOpsPanel có section "Chu kỳ tuần (Cron)" — input `periodKey`, checkbox `bypassLease`, button "Chạy chu kỳ tuần", summary line + fail-soft errors.
 

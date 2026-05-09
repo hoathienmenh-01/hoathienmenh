@@ -50,6 +50,9 @@ Sinh secret: `openssl rand -base64 48`.
 | `JWT_ACCESS_TTL` | `900` (15 phút) | Access token expiry (giây). |
 | `JWT_REFRESH_TTL` | `2592000` (30 ngày) | Refresh token expiry. |
 | `INITIAL_ADMIN_EMAIL` / `INITIAL_ADMIN_PASSWORD` | — | Cho `pnpm bootstrap` chạy 1 lần khi deploy mới. |
+| `MISSION_RESET_TZ` | `Asia/Ho_Chi_Minh` | Timezone tính DAILY/WEEKLY mission reset (DAILY 00:00, WEEKLY thứ Hai 00:00 theo zone này). Đặt `UTC` nếu muốn reset theo UTC. |
+| `DAILY_REWARD_CAP_TZ` | `Asia/Ho_Chi_Minh` | (Phase 16.5) Timezone tính `dayBucket` (YYYY-MM-DD) cho daily reward cap (CULTIVATION/DUNGEON/MISSION). Mặc định đồng bộ với `MISSION_RESET_TZ`. Override sang `UTC` để dev/test có boundary reproducible. |
+| `MARKET_FEE_PCT` | `0.05` | Phí giao dịch sàn `[0, 0.5]`. Đặt `0` để tắt phí trong closed beta. |
 
 ### LiveOps Cron (Phase 13.2.D + 14.0.F)
 
