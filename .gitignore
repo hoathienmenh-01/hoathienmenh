@@ -33,3 +33,7 @@ apps/api/prisma/migrations/**/migration.sql.bak
 
 # docker volumes
 infra/data
+
+# Phase 17.4 — Postgres backup output. KHÔNG commit dump file (chứa data thật + có thể chứa secret như BCrypt hash, JWT secret được set in DB nếu có v.v.).
+backups/
+*.sql.gz

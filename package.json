@@ -14,6 +14,7 @@
     "infra:down": "docker compose -f infra/docker-compose.dev.yml down",
     "backup:db": "bash scripts/backup-db.sh",
     "restore:db": "bash scripts/restore-db.sh",
+    "verify:restore": "bash scripts/verify-restore.sh",
     "smoke:achievement": "node scripts/smoke-achievement.mjs",
     "smoke:admin": "node scripts/smoke-admin.mjs",
     "smoke:auth": "node scripts/smoke-auth.mjs",
