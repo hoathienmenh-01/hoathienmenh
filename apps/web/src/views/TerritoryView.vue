@@ -20,6 +20,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useTerritoryStore } from '@/stores/territory';
 import AppShell from '@/components/shell/AppShell.vue';
+import type { TerritoryRegionBuffPreviewLite } from '@/api/territory';
 
 type TerritoryTab = 'overview' | 'leaderboard' | 'me';
 const ALL_TABS: ReadonlyArray<TerritoryTab> = [
@@ -32,10 +33,38 @@ const auth = useAuthStore();
 const territory = useTerritoryStore();
 const router = useRouter();
 const route = useRoute();
-const { t, locale } = useI18n();
+const { t, locale, te } = useI18n();
 
 const periodInput = ref('');
+const decayBpsInput = ref('');
 const isAdmin = computed(() => auth.user?.role === 'ADMIN');
+
+/**
+ * Phase 14.0.C — buff label / desc resolver.
+ *
+ * Catalog định nghĩa `labelI18nKey`/`descriptionI18nKey` ở format
+ * `territory.buff.<buffKey>.label|desc`. Nếu key không tồn tại trong locale
+ * (ví dụ catalog mở rộng FE chưa kịp ship i18n), fallback `buffKey` raw để
+ * không vỡ render.
+ */
+function buffLabel(b: TerritoryRegionBuffPreviewLite): string {
+  return te(b.labelI18nKey) ? t(b.labelI18nKey) : b.buffKey;
+}
+function buffDesc(b: TerritoryRegionBuffPreviewLite): string {
+  return te(b.descriptionI18nKey) ? t(b.descriptionI18nKey) : '';
+}
+function buffValuePct(b: TerritoryRegionBuffPreviewLite): string {
+  return Math.round(b.value * 1000) / 10 + '';
+}
+function buffTypeLabel(b: TerritoryRegionBuffPreviewLite): string {
+  const key = `territory.buff.type.${b.buffType}`;
+  if (!te(key)) return b.buffType;
+  return t(key, { value: buffValuePct(b) });
+}
+function buffAppliesToLabel(scope: string): string {
+  const key = `territory.buff.appliesTo.${scope}`;
+  return te(key) ? t(key) : scope;
+}
 
 const queryTab = (route.query.tab as string | undefined) ?? '';
 const initialTab: TerritoryTab = (ALL_TABS as ReadonlyArray<string>).includes(
@@ -140,6 +169,25 @@ async function onSettleRegion(): Promise<void> {
   // Refresh history for the just-settled region.
   await territory.fetchHistory(selectedRegionKey.value, { force: true });
 }
+
+async function onRunDecay(): Promise<void> {
+  const periodKey = periodInput.value.trim() || undefined;
+  const raw = decayBpsInput.value.trim();
+  let decayBps: number | undefined;
+  if (raw.length > 0) {
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      decayBps = Math.floor(parsed);
+    }
+  }
+  await territory.adminDecay({ periodKey, decayBps });
+}
+
+const decayBpsPercent = computed(() => {
+  const r = territory.lastDecayResult;
+  if (!r) return '';
+  return (Math.round((r.decayBps / 10000) * 1000) / 10).toString();
+});
 </script>
 
 <template>
@@ -197,6 +245,17 @@ async function onSettleRegion(): Promise<void> {
         v-if="tab === 'overview'"
         data-test="territory-tab-content-overview"
       >
+        <div
+          v-if="territory.regions?.currentPeriodKey"
+          class="text-[11px] text-ink-300/70 mb-2"
+          data-test="territory-overview-period"
+        >
+          {{
+            t('territory.overview.currentPeriod', {
+              period: territory.regions.currentPeriodKey,
+            })
+          }}
+        </div>
         <div
           v-if="sortedRegions.length === 0"
           class="text-ink-300 text-sm"
@@ -277,8 +336,69 @@ async function onSettleRegion(): Promise<void> {
                 {{ t('territory.overview.noTopSect') }}
               </div>
             </div>
+            <!-- Phase 14.0.C — Region buff preview list -->
+            <div
+              class="basis-full"
+              data-test="territory-region-buffs"
+              :data-region-key="r.regionKey"
+            >
+              <div
+                class="text-[11px] tracking-widest uppercase text-ink-300/70 mb-1"
+              >
+                {{ t('territory.overview.buffSectionTitle') }}
+              </div>
+              <div
+                v-if="r.buffs.length === 0"
+                class="text-xs italic text-ink-300/70"
+                data-test="territory-region-buffs-empty"
+              >
+                {{ t('territory.overview.buffNone') }}
+              </div>
+              <ul v-else class="space-y-1">
+                <li
+                  v-for="b in r.buffs"
+                  :key="b.buffKey"
+                  class="rounded border border-ink-300/30 bg-ink-800/40 px-2 py-1 flex flex-wrap items-center gap-2 text-xs"
+                  data-test="territory-region-buff-row"
+                  :data-buff-key="b.buffKey"
+                >
+                  <span class="text-amber-200">{{ buffLabel(b) }}</span>
+                  <span class="text-ink-300/80">{{ buffTypeLabel(b) }}</span>
+                  <span
+                    v-for="scope in b.appliesTo"
+                    :key="scope"
+                    class="px-1.5 py-0.5 rounded bg-ink-700/60 text-[10px] tracking-wider uppercase text-ink-300/90"
+                  >
+                    {{ buffAppliesToLabel(scope) }}
+                  </span>
+                  <span
+                    v-if="r.ownerBuffActive"
+                    class="ml-auto px-1.5 py-0.5 rounded-full border border-emerald-300/70 text-[10px] tracking-widest uppercase text-emerald-200 bg-emerald-300/10"
+                    data-test="territory-region-buff-active"
+                  >
+                    {{ t('territory.overview.buffActiveBadge') }}
+                  </span>
+                  <span
+                    v-else
+                    class="ml-auto px-1.5 py-0.5 rounded-full border border-ink-300/40 text-[10px] tracking-widest uppercase text-ink-300/70"
+                    data-test="territory-region-buff-inactive"
+                  >
+                    {{ t('territory.overview.buffInactiveBadge') }}
+                  </span>
+                  <div
+                    v-if="buffDesc(b)"
+                    class="basis-full text-[11px] text-ink-300/70"
+                  >
+                    {{ buffDesc(b) }}
+                  </div>
+                </li>
+              </ul>
+            </div>
           </li>
         </ul>
+        <p class="mt-3 text-[11px] text-ink-300/60">
+          {{ t('territory.overview.buffOwnerHint') }}
+        </p>
       </section>
 
       <section
@@ -568,6 +688,80 @@ async function onSettleRegion(): Promise<void> {
               })
             }}
           </div>
+
+          <!-- Phase 14.0.C — Admin influence decay trigger -->
+          <div
+            class="mt-4 border-t border-ink-300/20 pt-3 space-y-2"
+            data-test="territory-admin-decay-panel"
+          >
+            <h4 class="text-xs tracking-widest uppercase text-amber-200">
+              {{ t('territory.admin.decayTitle') }}
+            </h4>
+            <p class="text-xs text-ink-300/80">
+              {{ t('territory.admin.decaySubtitle') }}
+            </p>
+            <label class="block text-xs text-ink-300/80">
+              {{ t('territory.admin.decayBpsLabel') }}
+              <input
+                v-model="decayBpsInput"
+                type="text"
+                inputmode="numeric"
+                class="mt-1 block w-full rounded border border-ink-300/40 bg-ink-800/40 px-2 py-1 text-xs"
+                placeholder="2500"
+                data-test="territory-admin-decay-bps-input"
+              />
+            </label>
+            <button
+              type="button"
+              :disabled="territory.decayLoading"
+              class="px-3 py-1 rounded border border-amber-300/70 text-amber-200 text-xs tracking-widest uppercase hover:bg-amber-300/10 disabled:opacity-50"
+              data-test="territory-admin-decay-run"
+              @click="onRunDecay"
+            >
+              {{
+                territory.decayLoading
+                  ? t('territory.admin.decayRunning')
+                  : t('territory.admin.decayRun')
+              }}
+            </button>
+            <div
+              v-if="territory.decayError"
+              class="text-rose-300 text-xs"
+              data-test="territory-admin-decay-error"
+            >
+              {{
+                t(
+                  `territory.errors.${territory.decayError}`,
+                  t('territory.errors.UNKNOWN'),
+                )
+              }}
+            </div>
+            <div
+              v-if="territory.lastDecayResult && territory.lastDecayResult.skipped"
+              class="text-xs text-ink-300/90"
+              data-test="territory-admin-decay-skipped"
+            >
+              {{
+                t('territory.admin.decaySkipped', {
+                  period: territory.lastDecayResult.periodKey,
+                })
+              }}
+            </div>
+            <div
+              v-else-if="territory.lastDecayResult"
+              class="text-xs text-ink-300/90"
+              data-test="territory-admin-decay-result"
+            >
+              {{
+                t('territory.admin.decayLastResult', {
+                  period: territory.lastDecayResult.periodKey,
+                  delta: territory.lastDecayResult.delta,
+                  rows: territory.lastDecayResult.rowsAffected,
+                  bpsPercent: decayBpsPercent,
+                })
+              }}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -586,6 +780,47 @@ async function onSettleRegion(): Promise<void> {
                 sect: territory.me.sectName,
               })
             }}
+          </div>
+
+          <!-- Phase 14.0.C — Active buffs of player's sect -->
+          <div class="mb-4" data-test="territory-me-active-buffs">
+            <h3
+              class="text-sm tracking-widest uppercase text-amber-200 mb-1"
+            >
+              {{ t('territory.myBuffs.title') }}
+            </h3>
+            <div
+              v-if="(territory.me.activeBuffs ?? []).length === 0"
+              class="text-xs italic text-ink-300/70"
+              data-test="territory-me-active-buffs-empty"
+            >
+              {{ t('territory.myBuffs.empty') }}
+            </div>
+            <ul v-else class="space-y-1">
+              <li
+                v-for="b in territory.me.activeBuffs"
+                :key="b.buffKey"
+                class="rounded border border-emerald-300/40 bg-emerald-300/10 px-2 py-1 flex flex-wrap items-center gap-2 text-xs"
+                data-test="territory-me-active-buff-row"
+                :data-buff-key="b.buffKey"
+              >
+                <span class="text-emerald-200">{{ buffLabel(b) }}</span>
+                <span class="text-ink-300/80">{{ buffTypeLabel(b) }}</span>
+                <span
+                  v-for="scope in b.appliesTo"
+                  :key="scope"
+                  class="px-1.5 py-0.5 rounded bg-ink-700/60 text-[10px] tracking-wider uppercase text-ink-300/90"
+                >
+                  {{ buffAppliesToLabel(scope) }}
+                </span>
+                <div
+                  v-if="buffDesc(b)"
+                  class="basis-full text-[11px] text-ink-300/70"
+                >
+                  {{ buffDesc(b) }}
+                </div>
+              </li>
+            </ul>
           </div>
           <table class="w-full text-xs" data-test="territory-me-table">
             <thead class="text-ink-300/80">

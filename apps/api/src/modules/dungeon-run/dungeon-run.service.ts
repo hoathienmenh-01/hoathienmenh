@@ -13,10 +13,12 @@ import {
   realmByKey,
   rollDungeonLoot,
   rollMonsterLoot,
+  territoryRegionBuffsForRegion,
   type DungeonDef,
   type DungeonRunReward,
   type MonsterDef,
   type RolledLoot,
+  type TerritoryRegionBuffDef,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
@@ -137,6 +139,23 @@ export interface DungeonClaimResult {
     tienNgoc: number;
     exp: number;
     items: Array<{ itemKey: string; qty: number }>;
+  };
+  /**
+   * Phase 14.0.C — territory buff applied (nếu có). FE display "+X từ
+   * region buff". Empty array nếu không có buff (no-sect / non-owner /
+   * no-region / fail-soft).
+   */
+  territoryBuff?: {
+    regionKey: string;
+    buffs: Array<{
+      buffKey: string;
+      buffType: string;
+      value: number;
+    }>;
+    bonus: {
+      linhThach: number;
+      exp: number;
+    };
   };
 }
 
@@ -521,9 +540,29 @@ export class DungeonRunService {
         throw new DungeonRunError('RUN_ALREADY_CLAIMED');
       }
 
-      const linhThach = reward.linhThach ?? 0;
+      const linhThachBase = reward.linhThach ?? 0;
       const tienNgoc = reward.tienNgoc ?? 0;
-      const exp = reward.exp ?? 0;
+      const expBase = reward.exp ?? 0;
+
+      // Phase 14.0.C — Territory region buff (DUNGEON_REWARD context).
+      // Apply BEFORE granting reward để bonus đi cùng base trong 1 ledger
+      // entry (audit trail = `delta = base + bonus`, reason
+      // `DUNGEON_RUN_REWARD`). Idempotent: outer CAS guard ngăn claim
+      // retry → buff cũng exactly-once. Fail-soft: lỗi compute không
+      // phá flow chính.
+      const buffApplied = await this.computeDungeonTerritoryBuff(
+        tx,
+        characterId,
+        dungeon,
+      );
+      const expBonus = buffApplied
+        ? Math.floor(expBase * buffApplied.expMul) - expBase
+        : 0;
+      const linhThachBonus = buffApplied
+        ? Math.floor(linhThachBase * buffApplied.linhThachMul) - linhThachBase
+        : 0;
+      const linhThach = linhThachBase + linhThachBonus;
+      const exp = expBase + expBonus;
 
       if (linhThach > 0) {
         await this.currency.applyTx(tx, {
@@ -603,6 +642,21 @@ export class DungeonRunService {
         }
       }
 
+      const territoryBuff = buffApplied
+        ? {
+            regionKey: buffApplied.regionKey,
+            buffs: buffApplied.buffs.map((b) => ({
+              buffKey: b.buffKey,
+              buffType: b.buffType,
+              value: b.value,
+            })),
+            bonus: {
+              linhThach: linhThachBonus,
+              exp: expBonus,
+            },
+          }
+        : undefined;
+
       return {
         runId: run.id,
         templateKey: run.templateKey,
@@ -613,8 +667,82 @@ export class DungeonRunService {
           exp,
           items: grantedItems,
         },
+        territoryBuff,
       };
     });
+  }
+
+  /**
+   * Phase 14.0.C — compute dungeon territory buff multiplier cho 1 character
+   * tại reward time. Server-authoritative — KHÔNG phụ thuộc client input.
+   *
+   * Returns null nếu:
+   *   - dungeon.regionKey null (legacy / world dungeon).
+   *   - dungeon.regionKey === 'world'.
+   *   - character không có sect.
+   *   - region không có owner sect (chưa settle).
+   *   - sect của character không phải owner.
+   *   - region không có buff `DUNGEON_REWARD` trong catalog.
+   *
+   * Trả `{regionKey, expMul, linhThachMul, buffs}` — multiplier sẵn sàng
+   * cho `Math.floor(base * mul)`. `expMul` / `linhThachMul` ≥ 1.
+   *
+   * Fail-soft: bất kỳ exception (DB error / catalog mismatch) → return
+   * null (claim flow chính tiếp tục với base reward).
+   */
+  private async computeDungeonTerritoryBuff(
+    tx: Prisma.TransactionClient,
+    characterId: string,
+    dungeon: DungeonDef,
+  ): Promise<{
+    regionKey: string;
+    expMul: number;
+    linhThachMul: number;
+    buffs: TerritoryRegionBuffDef[];
+  } | null> {
+    if (!dungeon.regionKey || dungeon.regionKey === 'world') return null;
+    try {
+      const buffs = territoryRegionBuffsForRegion(dungeon.regionKey).filter(
+        (b) => b.appliesTo.includes('DUNGEON_REWARD'),
+      );
+      if (buffs.length === 0) return null;
+
+      const char = await tx.character.findUnique({
+        where: { id: characterId },
+        select: { sectId: true },
+      });
+      if (!char || !char.sectId) return null;
+
+      const owner = await tx.sectTerritoryRegionState.findUnique({
+        where: { regionKey: dungeon.regionKey },
+        select: { ownerSectId: true },
+      });
+      if (!owner || !owner.ownerSectId) return null;
+      if (owner.ownerSectId !== char.sectId) return null;
+
+      let expMul = 1;
+      let linhThachMul = 1;
+      const applied: TerritoryRegionBuffDef[] = [];
+      for (const buff of buffs) {
+        if (buff.buffType === 'EXP_BONUS') {
+          expMul += buff.value;
+          applied.push(buff);
+        } else if (buff.buffType === 'LINH_THACH_BONUS') {
+          linhThachMul += buff.value;
+          applied.push(buff);
+        }
+      }
+      if (applied.length === 0) return null;
+      return {
+        regionKey: dungeon.regionKey,
+        expMul,
+        linhThachMul,
+        buffs: applied,
+      };
+    } catch {
+      // Fail-soft — không phá claim flow chính.
+      return null;
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────────

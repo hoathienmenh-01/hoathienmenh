@@ -39,3 +39,4 @@ export * from './sect-shop';
 export * from './sect-season';
 export * from './elemental';
 export * from './territory';
+export * from './territory-buffs';

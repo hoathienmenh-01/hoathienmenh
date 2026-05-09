@@ -1,5 +1,6 @@
 import {
   Controller,
+  Get,
   HttpException,
   HttpStatus,
   Param,
@@ -11,11 +12,14 @@ import {
 import type { Request } from 'express';
 import { z } from 'zod';
 import {
+  TERRITORY_DECAY_DEFAULT_BPS,
+  TERRITORY_DECAY_MAX_BPS,
   isTerritoryPeriodKey,
   previousTerritoryPeriodKey,
 } from '@xuantoi/shared';
 import { AdminGuard } from '../admin/admin.guard';
 import { RequireAdmin } from '../admin/require-admin.decorator';
+import { TerritoryDecayService } from './territory-decay.service';
 import { TerritoryError } from './territory.service';
 import { TerritorySettlementService } from './territory-settlement.service';
 
@@ -29,6 +33,16 @@ function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
 const PeriodKeyQuery = z
   .object({
     periodKey: z.string().min(1).max(64).optional(),
+  })
+  .strict();
+
+const DecayQuery = z
+  .object({
+    periodKey: z.string().min(1).max(64).optional(),
+    decayBps: z
+      .string()
+      .regex(/^[0-9]+$/)
+      .optional(),
   })
   .strict();
 
@@ -59,6 +73,7 @@ const PeriodKeyQuery = z
 export class AdminTerritoryController {
   constructor(
     private readonly settlement: TerritorySettlementService,
+    private readonly decayService: TerritoryDecayService,
   ) {}
 
   @Post('settle')
@@ -118,6 +133,69 @@ export class AdminTerritoryController {
     }
   }
 
+  /**
+   * Phase 14.0.C — Decay influence trigger.
+   *
+   * `periodKey` optional → fallback `previousTerritoryPeriodKey()` (tuần
+   * trước). `decayBps` optional → fallback `TERRITORY_DECAY_DEFAULT_BPS`
+   * (2500 = 25%). Idempotent qua UNIQUE `periodKey` ở
+   * `SectTerritoryDecayLog` — gọi lại cùng `periodKey` trả `skipped: true`.
+   *
+   * Lỗi:
+   *   - `INVALID_INPUT` 400 — query schema fail.
+   *   - `PERIOD_INVALID` 400 — periodKey không match ISO week | manual_*.
+   *   - `DECAY_BPS_INVALID` 400 — decayBps out of range (1..5000).
+   */
+  @Post('decay')
+  @RequireAdmin()
+  async decay(
+    @Query() raw: Record<string, string>,
+    @Req() req: Request & { userId?: string },
+  ) {
+    const parsed = DecayQuery.safeParse(raw);
+    if (!parsed.success) {
+      fail('INVALID_INPUT', HttpStatus.BAD_REQUEST);
+    }
+    const periodKey = parsed.data.periodKey ?? previousTerritoryPeriodKey();
+    if (!isTerritoryPeriodKey(periodKey)) {
+      fail('PERIOD_INVALID', HttpStatus.BAD_REQUEST);
+    }
+    const decayBps = parsed.data.decayBps
+      ? Number.parseInt(parsed.data.decayBps, 10)
+      : TERRITORY_DECAY_DEFAULT_BPS;
+    if (
+      !Number.isInteger(decayBps) ||
+      decayBps <= 0 ||
+      decayBps > TERRITORY_DECAY_MAX_BPS
+    ) {
+      fail('DECAY_BPS_INVALID', HttpStatus.BAD_REQUEST);
+    }
+    try {
+      const data = await this.decayService.decay({
+        periodKey,
+        decayBps,
+        triggeredBy: req.userId ?? null,
+      });
+      return { ok: true, data };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Phase 14.0.C — Read decay history (recent log entries).
+   * Mặc định 20 row mới nhất, tối đa 100.
+   */
+  @Get('decay/history')
+  @RequireAdmin()
+  async decayHistory(@Query('limit') limit?: string) {
+    const n = limit ? Number.parseInt(limit, 10) : 20;
+    const data = await this.decayService.getDecayHistory(
+      Number.isInteger(n) && n > 0 ? n : 20,
+    );
+    return { ok: true, data };
+  }
+
   private handleErr(e: unknown): never {
     if (e instanceof TerritoryError) {
       switch (e.code) {
@@ -129,6 +207,9 @@ export class AdminTerritoryController {
         // eslint-disable-next-line no-fallthrough
         case 'NO_CHARACTER':
           fail(e.code, HttpStatus.NOT_FOUND);
+        // eslint-disable-next-line no-fallthrough
+        case 'DECAY_BPS_INVALID':
+          fail(e.code, HttpStatus.BAD_REQUEST);
       }
     }
     throw e;

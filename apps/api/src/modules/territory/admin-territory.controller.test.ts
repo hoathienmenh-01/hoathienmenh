@@ -24,6 +24,7 @@ import {
 } from '@xuantoi/shared';
 import { AdminTerritoryController } from './admin-territory.controller';
 import { TerritoryError } from './territory.service';
+import type { TerritoryDecayService } from './territory-decay.service';
 import type { TerritorySettlementService } from './territory-settlement.service';
 
 type AdminReq = Request & { userId?: string };
@@ -38,6 +39,8 @@ function makeReq(opts: { userId?: string } = {}): AdminReq {
 interface ServiceStubs {
   settleAllRegions?: TerritorySettlementService['settleAllRegions'];
   settleRegion?: TerritorySettlementService['settleRegion'];
+  decay?: TerritoryDecayService['decay'];
+  getDecayHistory?: TerritoryDecayService['getDecayHistory'];
 }
 
 function makeController(stubs: ServiceStubs = {}): AdminTerritoryController {
@@ -54,7 +57,22 @@ function makeController(stubs: ServiceStubs = {}): AdminTerritoryController {
       stubs.settleRegion ??
       (async () => ({ snapshot: null, skipped: true })),
   } as unknown as TerritorySettlementService;
-  return new AdminTerritoryController(settlement);
+  const decayService = {
+    decay:
+      stubs.decay ??
+      (async ({ periodKey, decayBps }) => ({
+        periodKey,
+        decayBps: decayBps ?? 2500,
+        skipped: false,
+        rowsAffected: 0,
+        pointsBefore: 0,
+        pointsAfter: 0,
+        delta: 0,
+        triggeredAt: new Date().toISOString(),
+      })),
+    getDecayHistory: stubs.getDecayHistory ?? (async () => []),
+  } as unknown as TerritoryDecayService;
+  return new AdminTerritoryController(settlement, decayService);
 }
 
 async function expectHttpError(

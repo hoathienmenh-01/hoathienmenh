@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AdminTerritoryController } from './admin-territory.controller';
 import { TerritoryController } from './territory.controller';
+import { TerritoryDecayService } from './territory-decay.service';
 import { TerritorySettlementService } from './territory-settlement.service';
 import { TerritoryService } from './territory.service';
 import { PrismaService } from '../../common/prisma.service';
@@ -27,7 +28,16 @@ import { AuthModule } from '../auth/auth.module';
 @Module({
   imports: [AuthModule, AdminModule],
   controllers: [TerritoryController, AdminTerritoryController],
-  providers: [TerritoryService, TerritorySettlementService, PrismaService],
-  exports: [TerritoryService, TerritorySettlementService],
+  providers: [
+    TerritoryService,
+    TerritorySettlementService,
+    TerritoryDecayService,
+    PrismaService,
+  ],
+  exports: [
+    TerritoryService,
+    TerritorySettlementService,
+    TerritoryDecayService,
+  ],
 })
 export class TerritoryModule {}

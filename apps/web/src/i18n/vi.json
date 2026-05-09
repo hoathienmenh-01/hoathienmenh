@@ -2926,7 +2926,53 @@
       "owner": "Chủ: {name}",
       "noOwner": "Chưa có chủ vùng — chờ kết toán.",
       "ownerSettled": "Kết toán: {period}",
-      "ownerBadge": "Đang chiếm giữ"
+      "ownerBadge": "Đang chiếm giữ",
+      "currentPeriod": "Kỳ hiện tại: {period}",
+      "buffSectionTitle": "Buff vùng",
+      "buffNone": "Vùng này không có buff đặc biệt.",
+      "buffActiveBadge": "ĐANG ÁP DỤNG",
+      "buffInactiveBadge": "CHỜ CHỦ",
+      "buffOwnerHint": "Buff chỉ áp dụng cho thành viên của Tông Môn đang sở hữu vùng."
+    },
+    "buff": {
+      "appliesTo": {
+        "DUNGEON_REWARD": "Phần thưởng Bí Cảnh",
+        "BOSS_REWARD": "Phần thưởng Boss",
+        "COMBAT": "Chiến đấu",
+        "ELEMENTAL": "Ngũ hành",
+        "CULTIVATION": "Tu luyện"
+      },
+      "type": {
+        "EXP_BONUS": "+{value}% EXP",
+        "LINH_THACH_BONUS": "+{value}% Linh Thạch",
+        "ELEMENTAL_DAMAGE": "+{value}% sát thương ngũ hành",
+        "DEFENSE_BONUS": "+{value}% phòng ngự"
+      },
+      "territory_son_coc_exp": {
+        "label": "Linh Khí Sơn Cốc",
+        "desc": "Tăng +5% EXP khi hoàn thành Bí Cảnh trong vùng Sơn Cốc."
+      },
+      "territory_hac_lam_drop": {
+        "label": "Hắc Lâm Tài Lộc",
+        "desc": "Tăng +5% Linh Thạch khi hoàn thành Bí Cảnh trong vùng Hắc Lâm."
+      },
+      "territory_moc_huyen_lam_dmg": {
+        "label": "Mộc Huyền Lâm Vũ",
+        "desc": "Tăng +5% sát thương Mộc khi chiến đấu trong vùng Mộc Huyền Lâm."
+      },
+      "territory_kim_son_mach_dmg": {
+        "label": "Kim Sơn Mạch Lực",
+        "desc": "Tăng +5% sát thương Kim khi chiến đấu trong vùng Kim Sơn Mạch."
+      },
+      "territory_hoang_tho_huyet_def": {
+        "label": "Hoàng Thổ Phòng Ngự",
+        "desc": "Tăng +5% phòng ngự khi chiến đấu trong vùng Hoàng Thổ Huyệt."
+      }
+    },
+    "myBuffs": {
+      "title": "Buff đang nhận",
+      "empty": "Tông Môn của đạo hữu chưa sở hữu vùng nào — chưa có buff vùng đất.",
+      "noSect": "Chưa có Tông Môn — không có buff."
     },
     "leaderboard": {
       "empty": "Chưa có Tông Môn nào ghi điểm trong vùng này.",
@@ -2979,12 +3025,20 @@
       "settleAll": "Kết toán toàn bộ",
       "settleRegion": "Kết toán vùng này",
       "running": "Đang kết toán…",
-      "lastResult": "Kết toán {period}: thắng {wins} vùng · bỏ qua {skip} vùng (không có điểm)."
+      "lastResult": "Kết toán {period}: thắng {wins} vùng · bỏ qua {skip} vùng (không có điểm).",
+      "decayTitle": "Quản trị: Suy giảm ảnh hưởng",
+      "decaySubtitle": "Giảm điểm ảnh hưởng cũ theo period để tránh một Tông Môn giữ vùng mãi. Idempotent theo periodKey.",
+      "decayBpsLabel": "Tỷ lệ giảm (bps, mặc định 2500 = 25%, tối đa 5000 = 50%)",
+      "decayRun": "Chạy suy giảm",
+      "decayRunning": "Đang chạy suy giảm…",
+      "decayLastResult": "Suy giảm {period}: -{delta} điểm · {rows} dòng · {bpsPercent}%.",
+      "decaySkipped": "Đã chạy suy giảm cho {period} trước đó — bỏ qua."
     },
     "errors": {
       "NO_CHARACTER": "Chưa có nhân vật, hãy khai đạo trước.",
       "REGION_INVALID": "Vùng đất không tồn tại.",
       "PERIOD_INVALID": "Period key không hợp lệ (yêu cầu ISO week YYYY-Www hoặc manual_*).",
+      "DECAY_BPS_INVALID": "Tỷ lệ suy giảm không hợp lệ (1 ≤ bps ≤ 5000).",
       "ADMIN_ONLY": "Chỉ ADMIN mới được kết toán Lãnh Địa.",
       "UNAUTHENTICATED": "Vui lòng đăng nhập lại.",
       "UNKNOWN": "Không tải được dữ liệu Lãnh Địa, thử lại."

@@ -86,20 +86,33 @@ Tick EXP thực hiện bởi BullMQ processor `cultivation.processor.ts`. WS eve
 | GET    | `/chat/world?limit=N` | Yes  | Lịch sử world chat. |
 | POST   | `/chat/send`          | Yes  | Gửi. Rate limit 8 msg / 30s / player (Redis). |
 
-## Territory — `TerritoryController` (Phase 14.0.A + 14.0.B)
+## Territory — `TerritoryController` (Phase 14.0.A + 14.0.B + 14.0.C)
 
-Lớp **Sect Territory Influence + Settlement** — read views cho Influence Leaderboard theo region + Settlement (chiếm vùng) thật.
+Lớp **Sect Territory Influence + Settlement + Region Buff + Decay** — read views cho Influence Leaderboard theo region + Settlement (chiếm vùng) thật + Region buff khi sở hữu vùng + Influence decay per period.
 Server-authoritative; FE KHÔNG mutate. Mọi điểm influence chỉ được cộng qua **gameplay hook** (dungeon clear / boss participation / boss top damage) — KHÔNG có endpoint mutate trực tiếp.
-Settlement (Phase 14.0.B) chỉ trigger qua admin endpoint hoặc cron weekly job (chưa wire trong PR này).
+Settlement (Phase 14.0.B) + Decay (Phase 14.0.C) chỉ trigger qua admin endpoint hoặc cron weekly job (chưa wire cron trong PR này).
 
 | Method | Path                                          | Auth   | Mô tả |
 |--------|-----------------------------------------------|--------|-------|
-| GET    | `/territory/regions`                          | Yes    | List 9 region (`MAP_REGIONS` parity) + `totalPoints` + `contributors` + `topSect` snapshot **+ owner**: `ownerSectId? / ownerSectName? / ownerPeriodKey? / ownerSettledAt?` (Phase 14.0.B). Region không có influence vẫn xuất hiện với `totalPoints=0`, `topSect=null`. Sort theo `MapRegionDef.sortOrder`. |
+| GET    | `/territory/regions`                          | Yes    | List 9 region (`MAP_REGIONS` parity) + `totalPoints` + `contributors` + `topSect` snapshot **+ owner** `ownerSectId? / ownerSectName? / ownerPeriodKey? / ownerSettledAt?` (Phase 14.0.B) **+ buff preview** `buffs: TerritoryRegionBuffPreviewLite[]` (Phase 14.0.C — luôn render catalog, FE phân biệt active qua `ownerBuffActive`) + `ownerBuffActive: boolean` (true khi region có owner). Response top-level cũng có `currentPeriodKey` + `previousPeriodKey` (Phase 14.0.C, ISO 8601 week). Region không có influence vẫn xuất hiện với `totalPoints=0`, `topSect=null`. Sort theo `MapRegionDef.sortOrder`. |
 | GET    | `/territory/regions/:regionKey/leaderboard`   | Yes    | Top 10 sect trong region, `points` desc, tie-break `sectId` asc. Throw 404 `REGION_INVALID` nếu key không hợp lệ. |
 | GET    | `/territory/regions/:regionKey/history`       | Yes    | (Phase 14.0.B) Settlement history per region — DESC theo `settledAt`, default limit 20 (clamp 1..100 qua `?limit=`). Response `{ regionKey, current: TerritoryRegionOwnerLite \| null, snapshots: TerritorySettlementSnapshotView[] }`. Throw 404 `REGION_INVALID`. |
-| GET    | `/territory/me`                               | Yes    | Personal view: per-region rank/points của sect user + `personalPoints` cá nhân. Character không có sect → `hasSect=false`, `regions[]` đầy đủ với `sectPoints=0`/`sectRank=null`. Throw 404 `NO_CHARACTER` nếu user chưa onboard. |
+| GET    | `/territory/me`                               | Yes    | Personal view: per-region rank/points của sect user + `personalPoints` cá nhân **+ active buffs** `activeBuffs: TerritoryRegionBuffPreviewLite[]` (Phase 14.0.C — buff đang được áp dụng vì sect của user đang sở hữu region tương ứng). Character không có sect → `hasSect=false`, `activeBuffs=[]`, `regions[]` đầy đủ với `sectPoints=0`/`sectRank=null`. Throw 404 `NO_CHARACTER` nếu user chưa onboard. |
 | POST   | `/admin/territory/settle`                     | ADMIN  | (Phase 14.0.B) Settle **all 9 regions** cho `?periodKey=…`. `periodKey` validate qua `isTerritoryPeriodKey` (ISO week `YYYY-Www` hoặc `manual_*`). Nếu không truyền → fallback `previousTerritoryPeriodKey()` (tuần trước). Response `TerritorySettlementRunResult { periodKey, settledAt, snapshots[], skippedRegions[] }`. Idempotent qua UNIQUE `(regionKey, periodKey)` — gọi lại cùng `periodKey` trả cùng snapshot id. Non-admin → 403 `ADMIN_ONLY`. Invalid `periodKey` → 400 `PERIOD_INVALID`. |
 | POST   | `/admin/territory/regions/:regionKey/settle`  | ADMIN  | (Phase 14.0.B) Manual settle 1 region (debug/override). Body/query `periodKey` cùng convention như endpoint trên. Response `{ snapshot: TerritorySettlementSnapshotView \| null, skipped: boolean, regionKey, periodKey }`. 404 `REGION_INVALID`, 400 `PERIOD_INVALID`, 403 `ADMIN_ONLY`. |
+| POST   | `/admin/territory/decay`                      | ADMIN  | (Phase 14.0.C) Trigger influence decay cho `periodKey` (default `previousTerritoryPeriodKey()` nếu không truyền). Body `{ periodKey?: string, decayBps?: number }`. `decayBps` mặc định `TERRITORY_DECAY_DEFAULT_BPS=2500` (25%), cap `TERRITORY_DECAY_MAX_BPS=5000` (50%), range `1..5000`. Idempotent qua `SectTerritoryDecayLog` UNIQUE `(periodKey)` — gọi cùng `periodKey` 2 lần → lần 2 trả `{ skipped: true }`. Race-safe (P2002 retry). Response `TerritoryDecayResult { periodKey, decayBps, skipped, rowsAffected, pointsBefore, pointsAfter, delta, triggeredAt }`. Errors: 403 `ADMIN_ONLY`, 400 `PERIOD_INVALID`, 400 `DECAY_BPS_INVALID`. |
+
+**Buff catalog (Phase 14.0.C)** — `packages/shared/src/territory-buffs.ts` `TERRITORY_REGION_BUFFS`:
+
+| Region | Buff key | Type | Value | AppliesTo | Element |
+|---|---|---|---|---|---|
+| `son_coc` | `territory_son_coc_exp` | `EXP_BONUS` | 0.05 | `DUNGEON_REWARD` | — |
+| `hac_lam` | `territory_hac_lam_drop` | `LINH_THACH_BONUS` | 0.05 | `DUNGEON_REWARD` | — |
+| `moc_huyen_lam` | `territory_moc_huyen_lam_dmg` | `ELEMENTAL_DAMAGE` | 0.05 | `COMBAT`,`ELEMENTAL` | `moc` |
+| `kim_son_mach` | `territory_kim_son_mach_dmg` | `ELEMENTAL_DAMAGE` | 0.05 | `COMBAT`,`ELEMENTAL` | `kim` |
+| `hoang_tho_huyet` | `territory_hoang_tho_huyet_def` | `DEFENSE_BONUS` | 0.05 | `COMBAT` | — |
+
+Buff CHỈ áp dụng nếu character thuộc Tông sở hữu region (`character.sectId === ownerSectId`). Phase 14.0.C wire `DUNGEON_REWARD` (EXP_BONUS / LINH_THACH_BONUS) trong `DungeonRunService.claimRun()` fail-soft owner-only — KHÔNG double-apply khi retry. `COMBAT/ELEMENTAL/DEFENSE` catalog ship sẵn, defer wire vào combat pipeline phase sau.
 
 **Influence sources (Phase 14.0.A)** — chỉ ghi điểm qua hook chạy trong tx của gameplay flow:
 

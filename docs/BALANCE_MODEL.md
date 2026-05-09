@@ -1594,6 +1594,63 @@ settleRegion(regionKey, periodKey, opts?):
 
 ---
 
+## 11.18 SECT TERRITORY REGION BUFF + INFLUENCE DECAY (Phase 14.0.C)
+
+Phase 14.0.C biến quyền sở hữu vùng (Phase 14.0.B) thành lợi ích gameplay thật + chống một sect giữ vùng vĩnh viễn.
+
+### 11.18.1 Region buff catalog
+
+Mỗi region có 0..N buff config trong `packages/shared/src/territory-buffs.ts` (`TERRITORY_REGION_BUFFS`). Buff CHỈ áp dụng cho character thuộc Tông đang sở hữu region đó (`SectTerritoryRegionState.ownerSectId === character.sectId`). KHÔNG owner = KHÔNG buff.
+
+| Region | Buff key | Type | Value | AppliesTo |
+|---|---|---|---|---|
+| `son_coc` | `territory_son_coc_exp` | `EXP_BONUS` | +5% | `DUNGEON_REWARD` |
+| `hac_lam` | `territory_hac_lam_drop` | `LINH_THACH_BONUS` | +5% | `DUNGEON_REWARD` |
+| `moc_huyen_lam` | `territory_moc_huyen_lam_dmg` | `ELEMENTAL_DAMAGE` | +5% (element=`moc`) | `COMBAT`, `ELEMENTAL` |
+| `kim_son_mach` | `territory_kim_son_mach_dmg` | `ELEMENTAL_DAMAGE` | +5% (element=`kim`) | `COMBAT`, `ELEMENTAL` |
+| `hoang_tho_huyet` | `territory_hoang_tho_huyet_def` | `DEFENSE_BONUS` | +5% | `COMBAT` |
+
+### 11.18.2 Envelope ép catalog
+
+- `TERRITORY_BUFF_VALUE_MAX = 0.10` (10%) — `validateTerritoryBuffCatalog()` ép mọi `value` ≤ cap (mặc định cap entry = `TERRITORY_BUFF_VALUE_MAX` nếu không khai). Buff nhỏ-có-kiểm-soát; KHÔNG cộng dồn cho thiết kế Phase 14.0.C (1 region → 1 sect-owner → 1 buff stack scope).
+- Catalog UNIQUE `buffKey` toàn cục + `regionKey` phải tồn tại trong `MAP_REGIONS`.
+- Test invariant `packages/shared/src/territory-buffs.test.ts` 32 test ép catalog tuân envelope + helper deterministic.
+
+### 11.18.3 Runtime integration (Phase 14.0.C)
+
+Phase 14.0.C wire buff vào **dungeon reward claim** — điểm an toàn nhất, idempotent, không double-apply khi retry:
+
+- `DungeonRunService.claimRun()` sau territory hook gọi `applyTerritoryDungeonRewardBuffs(rewards, regionKey, ownerSectId, characterSectId)` → nếu owner-of-region và buff `appliesTo` chứa `DUNGEON_REWARD` thì cộng phần trăm cho `expGained` (`EXP_BONUS`) hoặc `linhThachGained` (`LINH_THACH_BONUS`).
+- `Math.floor` round bonus về integer; KHÔNG cộng nếu `value=0`. Reward bonus tính trên reward gốc, KHÔNG tính trên reward đã cộng buff khác (anti-stack double).
+- Fail-soft: bất kỳ exception nào trong helper → swallow + warn log; reward chính KHÔNG fail.
+- Boss/dungeon other reward + combat elemental: defer (catalog đã ship; wire runtime kết hợp Phase 14.2.x điều chỉnh để không vỡ counter envelope `[0.5, 1.6]`).
+
+### 11.18.4 Influence decay
+
+Mỗi period (ISO week hoặc manual key) admin có thể trigger decay để giảm điểm influence cũ → ngăn 1 sect chiếm vùng vĩnh viễn.
+
+- **Mặc định** `TERRITORY_DECAY_DEFAULT_BPS = 2500` (25% / period).
+- **Cap** `TERRITORY_DECAY_MAX_BPS = 5000` (50% / period — không nới).
+- **Range** `1 ≤ bps ≤ 5000`. Invalid → reject `DECAY_BPS_INVALID`.
+- **Helper** `computeTerritoryDecay(currentPoints, decayBps)` deterministic floor — return `{ before, after, delta }`, không bao giờ âm.
+- **Idempotency** qua `SectTerritoryDecayLog` UNIQUE `(periodKey)` — gọi cùng `periodKey` 2 lần trả `{ skipped: true }` lần thứ 2.
+- **Race safety**: P2002 retry / lock — concurrent admin trigger cùng `periodKey` → 1 winner ghi log, các caller khác đọc lại log đã tồn tại.
+
+### 11.18.5 Out of scope (Phase 14.0.C)
+
+- **Auto cron decay** — chỉ admin trigger trong PR này; cron weekly schedule defer Phase 14.0.D Territory Weekly War Loop.
+- **Boss/dungeon reward bonus** — chỉ EXP/Linh Thạch trong dungeon claim; defer `BOSS_REWARD` / extended source.
+- **Combat elemental buff runtime** — catalog ship sẵn `ELEMENTAL_DAMAGE` cho moc/kim, defer wire vào combat pipeline để giữ Phase 14.2.x envelope.
+- **Region siege / PvP realtime / diplomacy** — defer 14.0.D+.
+
+### 11.18.6 Roadmap to Phase 14.0.D+
+
+- **14.0.D**: Territory Weekly War Loop — cron auto-settle + auto-decay theo ISO week, hall-of-fame archive, sect war reward integration.
+- **14.0.E**: Reward redistribute end-of-week — sect rank 1-3 / runner-up bonus shop currency.
+- **14.0.F**: Region siege node — defenders / attackers timeline, soft PvP.
+
+---
+
 ## 12. CHANGELOG
 
 - **2026-04-30** — Initial creation. Author: Devin AI session 9q.
@@ -1601,3 +1658,4 @@ settleRegion(regionKey, periodKey, opts?):
 - **2026-05-08** — Phase 13.2.A Sect Season Foundation section added (§11.15) — 13 mùa × 4 tuần, 5 milestone bronze→diamond, read-only aggregation từ `SectWarContribution`.
 - **2026-05-08** — Phase 14.0.A Sect Territory Influence Foundation section added (§11.16) — 9 region influence leaderboard, 3 source (dungeon_clear/boss_participation/boss_top_damage) với daily/weekly cap, idempotent composite UNIQUE.
 - **2026-05-08** — Phase 14.0.B Sect Territory Settlement & Region Ownership section added (§11.17) — period key (ISO week + manual_*), idempotent + race-safe settleRegion, deterministic tie-break, skip empty regions, snapshot history với UNIQUE (regionKey, periodKey), region state denormalized cho O(1) owner lookup.
+- **2026-05-09** — Phase 14.0.C Sect Territory Region Buff + Influence Decay section added (§11.18) — 5 buff catalog (EXP/LinhThạch/Element/Defense, value cap 10%, runtime wire dungeon reward owner-only fail-soft), influence decay default 25%/period cap 50%, idempotent UNIQUE `(periodKey)` admin trigger.

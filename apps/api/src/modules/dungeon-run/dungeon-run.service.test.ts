@@ -556,3 +556,204 @@ describe('Phase 12.4 — per-monster lootTable override', () => {
     }
   });
 });
+
+/**
+ * Phase 14.0.C — Dungeon territory buff hook.
+ *
+ * Catalog (xem `packages/shared/src/territory-buffs.ts`):
+ *   - son_coc: `EXP_BONUS` 5% (DUNGEON_REWARD, value=0.05).
+ *   - hac_lam: `LINH_THACH_BONUS` 5% (DUNGEON_REWARD, value=0.05).
+ *
+ * son_coc reward base `linhThach=50`, `exp=100`.
+ *
+ * Test invariants:
+ *   - owner sect of son_coc → exp bonus = `floor(100 * 1.05) - 100 = 5`.
+ *     LinhThach KHÔNG có buff cho region son_coc → vẫn = base.
+ *   - non-owner sect → no bonus, no `territoryBuff` field.
+ *   - no-sect character → no bonus.
+ *   - region không có owner state → no bonus.
+ *   - retry double-claim → bonus exactly-once (CAS guard ngăn).
+ */
+describe('Phase 14.0.C — claimRun territory buff hook', () => {
+  async function makeSect(leaderId: string | null = null) {
+    return prisma.sect.create({
+      data: {
+        name: `Sect-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        description: 'Test',
+        leaderId,
+      },
+    });
+  }
+
+  async function setOwner(regionKey: string, sectId: string, sectName: string) {
+    await prisma.sectTerritoryRegionState.upsert({
+      where: { regionKey },
+      create: {
+        regionKey,
+        ownerSectId: sectId,
+        ownerSectName: sectName,
+        periodKey: '2026-W23',
+        settledAt: new Date(),
+      },
+      update: {
+        ownerSectId: sectId,
+        ownerSectName: sectName,
+        periodKey: '2026-W23',
+        settledAt: new Date(),
+      },
+    });
+  }
+
+  async function clearAndClaim(userId: string, dungeonKey: string) {
+    const run = await runs.startRun(userId, dungeonKey);
+    const dungeon = dungeonByKey(dungeonKey)!;
+    for (let i = 0; i < dungeon.monsters.length; i++) {
+      await runs.nextEncounter(userId, run.id);
+    }
+    return runs.claimRun(userId, run.id);
+  }
+
+  it('owner sect of son_coc → exp +5% (linh thạch không có buff)', async () => {
+    const sect = await makeSect();
+    const { userId, characterId } = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      sectId: sect.id,
+      linhThach: 0n,
+      exp: 0n,
+    });
+    await setOwner('son_coc', sect.id, sect.name);
+    const dungeon = dungeonByKey(SON_COC_KEY)!;
+
+    const result = await clearAndClaim(userId, SON_COC_KEY);
+
+    const baseLT = dungeon.runReward!.linhThach!;
+    const baseExp = dungeon.runReward!.exp!;
+    // son_coc chỉ có EXP_BONUS — linh thạch không scale.
+    const expectedLT = baseLT;
+    const expectedExp = Math.floor(baseExp * 1.05);
+
+    expect(result.granted.linhThach).toBe(expectedLT);
+    expect(result.granted.exp).toBe(expectedExp);
+    expect(result.territoryBuff).toBeDefined();
+    expect(result.territoryBuff!.regionKey).toBe('son_coc');
+    expect(result.territoryBuff!.bonus.linhThach).toBe(0);
+    expect(result.territoryBuff!.bonus.exp).toBe(expectedExp - baseExp);
+    expect(result.territoryBuff!.buffs.map((b) => b.buffType)).toEqual([
+      'EXP_BONUS',
+    ]);
+
+    // Character.exp/linhThach phải tăng đúng total (base + bonus).
+    const char = await prisma.character.findUnique({
+      where: { id: characterId },
+    });
+    expect(char?.linhThach).toBe(BigInt(expectedLT));
+    expect(char?.exp).toBe(BigInt(expectedExp));
+
+    // CurrencyLedger row delta phải khớp tổng (base + bonus) trong 1 row.
+    const ledger = await prisma.currencyLedger.findFirst({
+      where: { characterId, refType: 'DungeonRun', refId: result.runId },
+    });
+    expect(ledger?.delta).toBe(BigInt(expectedLT));
+  });
+
+  it('non-owner sect → no bonus, không có territoryBuff', async () => {
+    const ownerSect = await makeSect();
+    const otherSect = await makeSect();
+    const { userId } = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      sectId: otherSect.id,
+      linhThach: 0n,
+    });
+    await setOwner('son_coc', ownerSect.id, ownerSect.name);
+    const dungeon = dungeonByKey(SON_COC_KEY)!;
+
+    const result = await clearAndClaim(userId, SON_COC_KEY);
+
+    expect(result.granted.linhThach).toBe(dungeon.runReward!.linhThach);
+    expect(result.granted.exp).toBe(dungeon.runReward!.exp);
+    expect(result.territoryBuff).toBeUndefined();
+  });
+
+  it('no-sect character → no bonus', async () => {
+    const { userId } = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      sectId: null,
+      linhThach: 0n,
+    });
+    const dungeon = dungeonByKey(SON_COC_KEY)!;
+
+    const result = await clearAndClaim(userId, SON_COC_KEY);
+
+    expect(result.granted.linhThach).toBe(dungeon.runReward!.linhThach);
+    expect(result.granted.exp).toBe(dungeon.runReward!.exp);
+    expect(result.territoryBuff).toBeUndefined();
+  });
+
+  it('region chưa có owner state → no bonus', async () => {
+    const sect = await makeSect();
+    const { userId } = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      sectId: sect.id,
+      linhThach: 0n,
+    });
+    // KHÔNG setOwner — region chưa settle.
+    const dungeon = dungeonByKey(SON_COC_KEY)!;
+
+    const result = await clearAndClaim(userId, SON_COC_KEY);
+
+    expect(result.granted.linhThach).toBe(dungeon.runReward!.linhThach);
+    expect(result.territoryBuff).toBeUndefined();
+  });
+
+  it('retry double-claim không double bonus (CAS guard)', async () => {
+    const sect = await makeSect();
+    const { userId, characterId } = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      sectId: sect.id,
+      linhThach: 0n,
+      exp: 0n,
+    });
+    await setOwner('son_coc', sect.id, sect.name);
+    const dungeon = dungeonByKey(SON_COC_KEY)!;
+
+    const result = await clearAndClaim(userId, SON_COC_KEY);
+    await expect(runs.claimRun(userId, result.runId)).rejects.toThrow(
+      new DungeonRunError('RUN_ALREADY_CLAIMED'),
+    );
+
+    // son_coc chỉ có EXP_BONUS 5%; linh thạch base.
+    const expectedLT = dungeon.runReward!.linhThach!;
+    const expectedExp = Math.floor(dungeon.runReward!.exp! * 1.05);
+    const char = await prisma.character.findUnique({
+      where: { id: characterId },
+    });
+    // Vẫn = 1× bonus, KHÔNG nhân đôi.
+    expect(char?.linhThach).toBe(BigInt(expectedLT));
+    expect(char?.exp).toBe(BigInt(expectedExp));
+
+    const ledgerCount = await prisma.currencyLedger.count({
+      where: { characterId, refType: 'DungeonRun', refId: result.runId },
+    });
+    expect(ledgerCount).toBe(1);
+  });
+
+  it('owner đúng sect nhưng dungeon khác region → no bonus cho region khác', async () => {
+    // Sect chiếm son_coc, nhưng player clear hac_lam (truc_co tier).
+    // Player lock realm chưa unlock hac_lam → test không reach. Thay
+    // bằng test owner state trên region khác (kim_son_mach) + run son_coc.
+    const sect = await makeSect();
+    const { userId } = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      sectId: sect.id,
+      linhThach: 0n,
+    });
+    // Owner kim_son_mach, NOT son_coc.
+    await setOwner('kim_son_mach', sect.id, sect.name);
+    const dungeon = dungeonByKey(SON_COC_KEY)!;
+
+    const result = await clearAndClaim(userId, SON_COC_KEY);
+
+    expect(result.granted.linhThach).toBe(dungeon.runReward!.linhThach);
+    expect(result.territoryBuff).toBeUndefined();
+  });
+});

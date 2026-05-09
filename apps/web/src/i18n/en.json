@@ -2926,7 +2926,53 @@
       "owner": "Owner: {name}",
       "noOwner": "No owner yet — awaiting settlement.",
       "ownerSettled": "Settled: {period}",
-      "ownerBadge": "Holding"
+      "ownerBadge": "Holding",
+      "currentPeriod": "Current period: {period}",
+      "buffSectionTitle": "Region buffs",
+      "buffNone": "This region has no special buffs.",
+      "buffActiveBadge": "ACTIVE",
+      "buffInactiveBadge": "AWAITING OWNER",
+      "buffOwnerHint": "Buffs apply only to members of the sect currently holding the region."
+    },
+    "buff": {
+      "appliesTo": {
+        "DUNGEON_REWARD": "Dungeon reward",
+        "BOSS_REWARD": "Boss reward",
+        "COMBAT": "Combat",
+        "ELEMENTAL": "Elemental",
+        "CULTIVATION": "Cultivation"
+      },
+      "type": {
+        "EXP_BONUS": "+{value}% EXP",
+        "LINH_THACH_BONUS": "+{value}% Spirit Stones",
+        "ELEMENTAL_DAMAGE": "+{value}% elemental damage",
+        "DEFENSE_BONUS": "+{value}% defense"
+      },
+      "territory_son_coc_exp": {
+        "label": "Son Coc Spirit Aura",
+        "desc": "+5% EXP when clearing dungeons in Son Coc."
+      },
+      "territory_hac_lam_drop": {
+        "label": "Hac Lam Treasure",
+        "desc": "+5% Spirit Stones when clearing dungeons in Hac Lam."
+      },
+      "territory_moc_huyen_lam_dmg": {
+        "label": "Moc Huyen Lam Surge",
+        "desc": "+5% Wood damage in Moc Huyen Lam combat."
+      },
+      "territory_kim_son_mach_dmg": {
+        "label": "Kim Son Mach Edge",
+        "desc": "+5% Metal damage in Kim Son Mach combat."
+      },
+      "territory_hoang_tho_huyet_def": {
+        "label": "Hoang Tho Bulwark",
+        "desc": "+5% defense in Hoang Tho Huyet combat."
+      }
+    },
+    "myBuffs": {
+      "title": "Active buffs",
+      "empty": "Your sect doesn't hold any region — no active region buffs.",
+      "noSect": "No sect — no buffs."
     },
     "leaderboard": {
       "empty": "No sect has scored in this region yet.",
@@ -2979,12 +3025,20 @@
       "settleAll": "Settle all regions",
       "settleRegion": "Settle this region",
       "running": "Settling…",
-      "lastResult": "Settled {period}: {wins} regions won · {skip} skipped (no points)."
+      "lastResult": "Settled {period}: {wins} regions won · {skip} skipped (no points).",
+      "decayTitle": "Admin: Influence decay",
+      "decaySubtitle": "Reduce stale influence per period so no sect holds a region forever. Idempotent per periodKey.",
+      "decayBpsLabel": "Decay rate (bps, default 2500 = 25%, max 5000 = 50%)",
+      "decayRun": "Run decay",
+      "decayRunning": "Running decay…",
+      "decayLastResult": "Decay {period}: -{delta} pts · {rows} rows · {bpsPercent}%.",
+      "decaySkipped": "Decay for {period} already ran — skipped."
     },
     "errors": {
       "NO_CHARACTER": "No character yet — start your journey first.",
       "REGION_INVALID": "Region not found.",
       "PERIOD_INVALID": "Period key invalid (must be ISO week YYYY-Www or manual_*).",
+      "DECAY_BPS_INVALID": "Decay rate invalid (must be 1 ≤ bps ≤ 5000).",
       "ADMIN_ONLY": "Only ADMIN can run territory settlement.",
       "UNAUTHENTICATED": "Please sign in again.",
       "UNKNOWN": "Could not load territory data, please retry."

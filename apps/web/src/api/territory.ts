@@ -17,6 +17,18 @@
 import type { RegionKey } from '@xuantoi/shared';
 import { apiClient } from './client';
 
+/** Phase 14.0.C — buff preview (lite, FE only). */
+export interface TerritoryRegionBuffPreviewLite {
+  buffKey: string;
+  buffType: string;
+  value: number;
+  cap: number;
+  labelI18nKey: string;
+  descriptionI18nKey: string;
+  appliesTo: ReadonlyArray<string>;
+  element: string | null;
+}
+
 export interface TerritoryRegionView {
   regionKey: RegionKey;
   nameVi: string;
@@ -36,10 +48,17 @@ export interface TerritoryRegionView {
   ownerSectName: string | null;
   ownerPeriodKey: string | null;
   ownerSettledAt: string | null;
+  /** Phase 14.0.C — buff catalog preview. */
+  buffs: ReadonlyArray<TerritoryRegionBuffPreviewLite>;
+  /** Phase 14.0.C — true nếu region đã có owner (buff đang active). */
+  ownerBuffActive: boolean;
 }
 
 export interface TerritoryRegionsView {
   regions: ReadonlyArray<TerritoryRegionView>;
+  /** Phase 14.0.C — period key context (FE display "Tuần này / Tuần trước"). */
+  currentPeriodKey: string;
+  previousPeriodKey: string;
 }
 
 export interface TerritoryLeaderboardRow {
@@ -69,6 +88,9 @@ export interface TerritoryMyView {
   sectId: string | null;
   sectName: string | null;
   regions: ReadonlyArray<TerritoryMyRegionRow>;
+  /** Phase 14.0.C — buff đang active của tông môn user (chiếm region). */
+  activeBuffs: ReadonlyArray<TerritoryRegionBuffPreviewLite>;
+  currentPeriodKey: string;
 }
 
 interface Envelope<T> {
@@ -184,6 +206,38 @@ export async function adminTerritorySettleRegion(
     `/admin/territory/regions/${encodeURIComponent(regionKey)}/settle`,
     null,
     { params: periodKey ? { periodKey } : undefined },
+  );
+  return unwrap(data);
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Phase 14.0.C — Influence Decay
+// ────────────────────────────────────────────────────────────────────────
+
+export interface TerritoryDecayResult {
+  periodKey: string;
+  decayBps: number;
+  skipped: boolean;
+  rowsAffected: number;
+  pointsBefore: number;
+  pointsAfter: number;
+  delta: number;
+  triggeredAt: string;
+}
+
+export async function adminTerritoryDecay(opts: {
+  periodKey?: string;
+  decayBps?: number;
+}): Promise<TerritoryDecayResult> {
+  const params: Record<string, string> = {};
+  if (opts.periodKey) params.periodKey = opts.periodKey;
+  if (opts.decayBps !== undefined) {
+    params.decayBps = String(opts.decayBps);
+  }
+  const { data } = await apiClient.post<Envelope<TerritoryDecayResult>>(
+    '/admin/territory/decay',
+    null,
+    { params: Object.keys(params).length > 0 ? params : undefined },
   );
   return unwrap(data);
 }

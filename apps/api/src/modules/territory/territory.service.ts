@@ -4,9 +4,14 @@ import {
   MAP_REGIONS,
   REGION_KEYS,
   TERRITORY_INFLUENCE_SOURCES,
+  activeTerritoryBuffsForSect,
   isMapRegionKey,
+  previousTerritoryPeriodKey,
+  territoryPeriodKeyForDate,
+  territoryRegionBuffsForRegion,
   territoryRegionByKey,
   territorySourceByKey,
+  toBuffPreview,
   type RegionKey,
   type TerritoryInfluenceSourceKey,
   type TerritoryInfluenceSourceType,
@@ -14,6 +19,7 @@ import {
   type TerritoryLeaderboardView,
   type TerritoryMyRegionRow,
   type TerritoryMyView,
+  type TerritoryRegionBuffPreviewLite,
   type TerritoryRegionView,
   type TerritoryRegionsView,
 } from '@xuantoi/shared';
@@ -244,6 +250,10 @@ export class TerritoryService {
       const totalPoints = rows.reduce((a, b) => a + b.points, 0);
       const top = rows[0];
       const owner = ownerStateMap.get(r.key) ?? null;
+      // Phase 14.0.C — buff preview (region's potential buff list).
+      // ownerBuffActive ≡ region đang có owner sect (FE chip render).
+      const buffs: TerritoryRegionBuffPreviewLite[] =
+        territoryRegionBuffsForRegion(r.key).map(toBuffPreview);
       return {
         regionKey: r.key,
         nameVi: r.nameVi,
@@ -264,11 +274,17 @@ export class TerritoryService {
         ownerSettledAt: owner?.settledAt
           ? owner.settledAt.toISOString()
           : null,
+        buffs,
+        ownerBuffActive: !!owner?.ownerSectId,
       };
     });
 
     regions.sort((a, b) => a.sortOrder - b.sortOrder);
-    return { regions };
+    return {
+      regions,
+      currentPeriodKey: territoryPeriodKeyForDate(new Date()),
+      previousPeriodKey: previousTerritoryPeriodKey(),
+    };
   }
 
   /**
@@ -412,11 +428,22 @@ export class TerritoryService {
       });
     }
 
+    // Phase 14.0.C — active buffs cho sect user. Empty nếu user không
+    // có sect HOẶC sect không sở hữu region nào đã settle.
+    let activeBuffs: TerritoryRegionBuffPreviewLite[] = [];
+    if (char.sectId) {
+      const ownerStateMap = await this.settlement.getOwnerStateMap();
+      const buffs = activeTerritoryBuffsForSect(char.sectId, ownerStateMap);
+      activeBuffs = buffs.map(toBuffPreview);
+    }
+
     return {
       hasSect: !!char.sectId,
       sectId: char.sectId,
       sectName,
       regions,
+      activeBuffs,
+      currentPeriodKey: territoryPeriodKeyForDate(new Date()),
     };
   }
 }
@@ -428,7 +455,8 @@ export class TerritoryService {
 export type TerritoryErrorCode =
   | 'NO_CHARACTER'
   | 'REGION_INVALID'
-  | 'PERIOD_INVALID';
+  | 'PERIOD_INVALID'
+  | 'DECAY_BPS_INVALID';
 
 export class TerritoryError extends Error {
   readonly code: TerritoryErrorCode;
