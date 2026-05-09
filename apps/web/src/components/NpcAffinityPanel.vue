@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { RouterLink } from 'vue-router';
 import { useNpcAffinityStore } from '@/stores/npcAffinity';
 import type { NpcAffinityView } from '@/api/npcAffinity';
 import {
@@ -159,6 +160,59 @@ void NPC_GIFT_PREFERENCES;
 // ====================================================================
 
 const expandedShop = ref<Record<string, boolean>>({});
+
+// ====================================================================
+// Phase 12.10.D — Relationship Quest Chains
+// ====================================================================
+
+const expandedChains = ref<Record<string, boolean>>({});
+
+function isChainsOpen(npcKey: string): boolean {
+  return expandedChains.value[npcKey] === true;
+}
+
+async function toggleChains(npcKey: string): Promise<void> {
+  const wasOpen = isChainsOpen(npcKey);
+  expandedChains.value = { ...expandedChains.value, [npcKey]: !wasOpen };
+  if (!wasOpen && !store.chains[npcKey]) {
+    await store.loadChains(npcKey);
+  }
+}
+
+function chainsFor(npcKey: string) {
+  return store.chains[npcKey] ?? [];
+}
+
+function chainTitle(c: { title: string; titleEn: string }): string {
+  return locale.value === 'en' && c.titleEn ? c.titleEn : c.title;
+}
+
+function chainDescription(c: { description: string; descriptionEn: string }): string {
+  return locale.value === 'en' && c.descriptionEn
+    ? c.descriptionEn
+    : c.description;
+}
+
+function chainTierLabel(c: {
+  requiredAffinityTierLabel: string;
+  requiredAffinityTierLabelEn: string;
+}): string {
+  return locale.value === 'en' && c.requiredAffinityTierLabelEn
+    ? c.requiredAffinityTierLabelEn
+    : c.requiredAffinityTierLabel;
+}
+
+async function onClaimChain(npcKey: string, chainKey: string): Promise<void> {
+  await store.claimChain(npcKey, chainKey);
+}
+
+function chainErrorLabel(): string {
+  if (!store.claimChainError) return '';
+  return t(
+    `npcAffinity.chainErrors.${store.claimChainError}`,
+    t('npcAffinity.chainErrors.UNKNOWN'),
+  );
+}
 
 function isShopOpen(npcKey: string): boolean {
   return expandedShop.value[npcKey] === true;
@@ -684,6 +738,249 @@ watch(
                 </li>
               </ul>
             </div>
+          </div>
+        </div>
+
+        <!-- Phase 12.10.D — Relationship Quest Chains toggle -->
+        <div
+          class="pt-2 border-t border-ink-300/10"
+          :data-testid="`npc-affinity-chains-section-${aff.npcKey}`"
+        >
+          <button
+            type="button"
+            class="text-xs text-ink-200 hover:text-amber-200 underline w-full text-left flex items-center justify-between"
+            :data-testid="`npc-affinity-chains-toggle-${aff.npcKey}`"
+            @click="toggleChains(aff.npcKey)"
+          >
+            <span>{{ t('npcAffinity.chains.title') }}</span>
+            <span class="text-[10px]">{{ isChainsOpen(aff.npcKey) ? '▼' : '▶' }}</span>
+          </button>
+
+          <div
+            v-if="isChainsOpen(aff.npcKey)"
+            class="mt-2 space-y-3"
+            :data-testid="`npc-affinity-chains-${aff.npcKey}`"
+          >
+            <div
+              v-if="store.chainsLoading === aff.npcKey"
+              class="text-xs text-ink-300 italic"
+              :data-testid="`npc-affinity-chains-loading-${aff.npcKey}`"
+            >
+              {{ t('common.loadingData') }}
+            </div>
+
+            <p
+              v-else-if="
+                chainsFor(aff.npcKey).filter((c) => c.visible).length === 0
+              "
+              class="text-xs text-ink-400 italic"
+              :data-testid="`npc-affinity-chains-empty-${aff.npcKey}`"
+            >
+              {{ t('npcAffinity.chains.empty') }}
+            </p>
+
+            <ul
+              v-else
+              class="space-y-2"
+              :data-testid="`npc-affinity-chains-list-${aff.npcKey}`"
+            >
+              <li
+                v-for="c in chainsFor(aff.npcKey).filter((x) => x.visible)"
+                :key="c.chainKey"
+                class="bg-ink-700/40 border border-ink-300/10 rounded p-2 text-xs space-y-1"
+                :class="{ 'opacity-60': !c.tierUnlocked }"
+                :data-testid="`npc-affinity-chain-${aff.npcKey}-${c.chainKey}`"
+              >
+                <div class="flex items-baseline justify-between gap-2">
+                  <span class="font-semibold text-ink-50">
+                    {{ chainTitle(c) }}
+                  </span>
+                  <span
+                    class="text-[10px] uppercase tracking-wider"
+                    :class="
+                      c.claimed
+                        ? 'text-emerald-200'
+                        : c.tierUnlocked
+                          ? 'text-amber-200'
+                          : 'text-ink-400'
+                    "
+                    :data-testid="`npc-affinity-chain-state-${aff.npcKey}-${c.chainKey}`"
+                  >
+                    <template v-if="c.claimed">
+                      {{ t('npcAffinity.chains.stateClaimed') }}
+                    </template>
+                    <template v-else-if="!c.tierUnlocked">
+                      {{ t('npcAffinity.chains.stateLocked') }}
+                    </template>
+                    <template v-else-if="c.completable">
+                      {{ t('npcAffinity.chains.stateClaimable') }}
+                    </template>
+                    <template v-else>
+                      {{ t('npcAffinity.chains.stateInProgress') }}
+                    </template>
+                  </span>
+                </div>
+
+                <p class="text-[11px] text-ink-300">
+                  {{ chainDescription(c) }}
+                </p>
+
+                <p
+                  v-if="!c.tierUnlocked"
+                  class="text-[11px] text-rose-300 italic"
+                  :data-testid="`npc-affinity-chain-locked-${aff.npcKey}-${c.chainKey}`"
+                >
+                  {{
+                    t('npcAffinity.chains.lockedHint', {
+                      tier: chainTierLabel(c),
+                    })
+                  }}
+                </p>
+
+                <!-- Progress bar -->
+                <div
+                  class="flex items-center gap-2"
+                  :data-testid="`npc-affinity-chain-progress-${aff.npcKey}-${c.chainKey}`"
+                >
+                  <div class="flex-1 h-1.5 bg-ink-900/40 rounded overflow-hidden">
+                    <div
+                      class="h-full bg-amber-500/70"
+                      :style="{
+                        width:
+                          (c.totalCount === 0
+                            ? 0
+                            : (c.claimedCount / c.totalCount) * 100) + '%',
+                      }"
+                    />
+                  </div>
+                  <span class="text-[10px] text-ink-300 tabular-nums">
+                    {{ c.claimedCount }}/{{ c.totalCount }}
+                  </span>
+                </div>
+
+                <!-- Quest list -->
+                <ul class="space-y-0.5">
+                  <li
+                    v-for="q in c.quests"
+                    :key="q.questKey"
+                    class="text-[11px] flex items-baseline gap-2"
+                    :class="
+                      q.status === 'CLAIMED'
+                        ? 'text-emerald-200'
+                        : q.status === 'COMPLETED'
+                          ? 'text-amber-200'
+                          : q.status === 'ACCEPTED'
+                            ? 'text-ink-100'
+                            : q.status === 'AVAILABLE'
+                              ? 'text-ink-200'
+                              : 'text-ink-400'
+                    "
+                    :data-testid="`npc-affinity-chain-quest-${aff.npcKey}-${c.chainKey}-${q.questKey}`"
+                  >
+                    <span class="text-[10px]">
+                      <template v-if="q.status === 'CLAIMED'">✓</template>
+                      <template v-else-if="q.status === 'LOCKED'">🔒</template>
+                      <template v-else>·</template>
+                    </span>
+                    <RouterLink
+                      v-if="q.unlocked"
+                      :to="`/quests?focus=${encodeURIComponent(q.questKey)}`"
+                      class="hover:underline flex-1 truncate"
+                      :data-testid="`npc-affinity-chain-quest-link-${aff.npcKey}-${c.chainKey}-${q.questKey}`"
+                    >
+                      {{ q.questName }}
+                    </RouterLink>
+                    <span v-else class="flex-1 truncate">
+                      {{ q.questName }}
+                    </span>
+                    <span class="text-[9px] uppercase tracking-wider opacity-60">
+                      {{
+                        t(`npcAffinity.chains.questStatus.${q.status}`, q.status)
+                      }}
+                    </span>
+                  </li>
+                </ul>
+
+                <!-- Reward preview + claim CTA -->
+                <div
+                  class="flex items-center justify-between gap-2 pt-1 border-t border-ink-300/10"
+                  :data-testid="`npc-affinity-chain-reward-${aff.npcKey}-${c.chainKey}`"
+                >
+                  <div class="text-[10px] text-ink-300 space-x-1.5 flex flex-wrap items-baseline">
+                    <span v-if="c.rewardPreview.affinity > 0">
+                      {{
+                        t('npcAffinity.chains.rewardAffinity', {
+                          n: c.rewardPreview.affinity,
+                        })
+                      }}
+                    </span>
+                    <span v-if="c.rewardPreview.linhThach > 0" class="text-amber-200">
+                      {{ c.rewardPreview.linhThach }}
+                      {{ t('npcAffinity.shop.linhThach') }}
+                    </span>
+                    <span v-if="c.rewardPreview.tienNgoc > 0" class="text-cyan-200">
+                      {{ c.rewardPreview.tienNgoc }}
+                      {{ t('npcAffinity.shop.tienNgoc') }}
+                    </span>
+                    <span v-if="c.rewardPreview.exp > 0" class="text-emerald-200">
+                      {{ c.rewardPreview.exp }} EXP
+                    </span>
+                    <span
+                      v-for="it in c.rewardPreview.items"
+                      :key="it.itemKey"
+                      class="text-ink-200"
+                    >
+                      {{ it.name ?? it.itemKey }} ×{{ it.qty }}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    class="text-[11px] px-2 py-0.5 rounded bg-amber-700/40 text-amber-100 hover:bg-amber-700/60 disabled:opacity-50 disabled:cursor-not-allowed"
+                    :disabled="
+                      !c.tierUnlocked ||
+                        !c.completable ||
+                        c.claimed ||
+                        store.claimChainLoading ===
+                        `${aff.npcKey}:${c.chainKey}`
+                    "
+                    :data-testid="`npc-affinity-chain-claim-${aff.npcKey}-${c.chainKey}`"
+                    @click="onClaimChain(aff.npcKey, c.chainKey)"
+                  >
+                    <span
+                      v-if="
+                        store.claimChainLoading ===
+                          `${aff.npcKey}:${c.chainKey}`
+                      "
+                    >
+                      {{ t('common.loading') }}
+                    </span>
+                    <span v-else-if="c.claimed">
+                      {{ t('npcAffinity.chains.claimedShort') }}
+                    </span>
+                    <span v-else-if="!c.tierUnlocked">
+                      {{ t('npcAffinity.chains.locked') }}
+                    </span>
+                    <span v-else-if="!c.completable">
+                      {{ t('npcAffinity.chains.notReady') }}
+                    </span>
+                    <span v-else>
+                      {{ t('npcAffinity.chains.claim') }}
+                    </span>
+                  </button>
+                </div>
+              </li>
+            </ul>
+
+            <p
+              v-if="
+                store.claimChainError &&
+                  store.claimChainLoading === null
+              "
+              class="text-xs text-rose-300"
+              :data-testid="`npc-affinity-chain-error-${aff.npcKey}`"
+            >
+              {{ chainErrorLabel() }}
+            </p>
           </div>
         </div>
       </li>

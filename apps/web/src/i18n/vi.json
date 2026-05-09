@@ -2359,6 +2359,39 @@
       "title": "Cơ duyên ẩn",
       "dialogueLabel": "Đối thoại",
       "questLabel": "Nhiệm vụ"
+    },
+    "chains": {
+      "title": "Tuyến nhiệm vụ duyên phận",
+      "empty": "Chưa có tuyến duyên nào mở với đạo hữu này.",
+      "stateClaimed": "Đã hoàn thành",
+      "stateLocked": "Khoá",
+      "stateClaimable": "Sẵn sàng nhận",
+      "stateInProgress": "Đang thực hiện",
+      "lockedHint": "Cần đạt {tier}",
+      "rewardAffinity": "+{n} thân tình",
+      "claim": "Nhận thưởng",
+      "claimedShort": "Đã lĩnh",
+      "locked": "Khoá",
+      "notReady": "Chưa đủ",
+      "tag": "Duyên phận",
+      "questStatus": {
+        "LOCKED": "Khoá",
+        "AVAILABLE": "Mở",
+        "ACCEPTED": "Đang làm",
+        "COMPLETED": "Xong",
+        "CLAIMED": "Đã nhận"
+      }
+    },
+    "chainErrors": {
+      "CHAIN_UNKNOWN": "Tuyến nhiệm vụ không tồn tại.",
+      "CHAIN_LOCKED_TIER": "Quan hệ chưa đủ để nhận thưởng.",
+      "CHAIN_NOT_COMPLETABLE": "Cần hoàn tất tất cả nhiệm vụ.",
+      "CHAIN_ALREADY_CLAIMED": "Đã nhận thưởng tuyến này rồi.",
+      "CHAIN_NPC_MISMATCH": "Tuyến không thuộc đạo hữu này.",
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
+      "UNKNOWN": "Không thể nhận thưởng, thử lại."
     }
   },
   "quest": {

@@ -6,6 +6,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { NpcAffinityController } from './npc-affinity.controller';
 import { NpcAffinityService } from './npc-affinity.service';
 import { NpcAffinityShopService } from './npc-affinity-shop.service';
+import { NpcRelationshipChainService } from './npc-relationship-chain.service';
 
 /**
  * Phase 12.10.A — NPC Affinity & Relationship Foundation.
@@ -30,7 +31,16 @@ import { NpcAffinityShopService } from './npc-affinity-shop.service';
     forwardRef(() => CharacterModule),
   ],
   controllers: [NpcAffinityController],
-  providers: [NpcAffinityService, NpcAffinityShopService, PrismaService],
-  exports: [NpcAffinityService, NpcAffinityShopService],
+  providers: [
+    NpcAffinityService,
+    NpcAffinityShopService,
+    NpcRelationshipChainService,
+    PrismaService,
+  ],
+  exports: [
+    NpcAffinityService,
+    NpcAffinityShopService,
+    NpcRelationshipChainService,
+  ],
 })
 export class NpcAffinityModule {}

@@ -129,7 +129,14 @@ export type ItemLedgerReason =
   // Atomic guarantee: nếu consume fail (qty đã=0 do race) → throw
   // SUPPORT_ITEM_MISSING → rollback toàn bộ tx (KHÔNG ghi log, KHÔNG mất exp,
   // KHÔNG cooldown). Player retry an toàn.
-  | 'TRIBULATION_SUPPORT_CONSUME';
+  | 'TRIBULATION_SUPPORT_CONSUME'
+  // Phase 12.10.D — NPC Relationship Quest Chain claim item grant. Wire qua
+  // `NpcRelationshipChainService.claimChain → InventoryService.grantTx
+  // (positive qtyDelta)` với `refType='NpcRelationshipChain'` + `refId=chainKey`.
+  // Idempotency CAS qua `Character.storyFlags['relchain_<chainKey>_claimed']`
+  // JSON-path guard — đảm bảo grant đúng 1 lần / chain / character. Mirror
+  // cùng `CurrencyLedger` reason `NPC_RELATIONSHIP_CHAIN_REWARD`.
+  | 'NPC_RELATIONSHIP_CHAIN_REWARD';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;

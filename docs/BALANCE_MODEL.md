@@ -488,6 +488,32 @@ Phase 12.10.C thêm **NPC affinity shop** mở khoá theo tier. Mỗi NPC chính
 
 **KHÔNG bán item phá economy**: catalog không có S+ tier weapon/armor/skillbook power-creep — chỉ có rare consumable (pill, food, focus item) + skillbook elemental basic (đã có trong base catalog) + cosmetic-flavor item. Designer thêm item mới phải qua review balance.
 
+### 2.9.7 Phase 12.10.D — NPC Relationship Quest Chain reward cap (DONE this PR)
+
+Phase 12.10.D thêm **NPC relationship quest chain** — chuỗi quest gắn theo `affinity tier`. Sau khi player hoàn thành toàn chain, claim 1 reward gói (one-shot, idempotent). Reward designed nhỏ — chain là **content gate** chứ không phải **power source**, để tránh meta "chăm NPC để gear-up nhanh".
+
+**Reward cap per chain** — `validateNpcRelationshipChainsCatalog()` enforce:
+
+| Field            | Cap per chain |
+|------------------|---------------|
+| `affinity`       | ≤ 40          |
+| `linhThach`      | ≤ 500         |
+| `tienNgoc`       | ≤ 10          |
+| `exp`            | ≤ 600         |
+| `items[].length` | ≤ 3 entry     |
+| `items[].qty`    | ≤ 5           |
+
+**Logic cap**:
+- `affinity ≤ 40`: ngang vài lần gift quà chuẩn (gift = 5–8/lần, daily limit 3 = 15–24/ngày). Player chăm gift vẫn nhanh hơn farm chain → chain reward mang tính kỷ niệm/celebration, không phải shortcut.
+- `linhThach ≤ 500`: ngang reward 1 quest realm-tier mid (so với daily quest grant ~100–200 LT mỗi quest). Chain có 1–3 quest → tổng reward bao gồm cả quest claim + chain bonus, nhưng chain bonus chỉ là extra layer.
+- `tienNgoc ≤ 10`: cực kỳ hiếm — chỉ chain hidden tier cao (`ban_huu`+) mới có TN reward, và max 10 TN ngang 1 daily login bonus đủ ngày. Chain TN không thay thế gacha/topup.
+- `exp ≤ 600`: ngang reward 1 quest realm-tier mid. Không bypass cultivation curve.
+- `items ≤ 3 entry × ≤ 5 qty`: chain có thể grant 1 rare consumable + 1–2 small consumable. KHÔNG grant skillbook/weapon/equipment — chain reward chỉ flavor item + buff potion. Designer thêm item mới phải qua review.
+
+**KHÔNG double-grant guarantee**: claim flow là `prisma.$transaction` với JSON-path CAS guard trên `Character.storyFlags` — `("storyFlags" ->> '${chainKey}_claimed') IS DISTINCT FROM '1'`. Race condition (Promise.all 2 claim concurrent) → đúng 1 winner; loser nhận `CHAIN_ALREADY_CLAIMED` 409. Test `npc-relationship-chain.service.test.ts` verify race + retry idempotent. Ledger row (`reason='NPC_RELATIONSHIP_CHAIN_REWARD'` + `refType='NpcRelationshipChain'` + `refId='${chainKey}'`) đảm bảo audit trail.
+
+**Tier gate**: chain `requiredAffinityTier` enforce thực tế trong claim — không có cách nào "claim trước rồi tier sau". Hidden chain (`hidden=true`) không xuất hiện trong panel UI cho tới khi tier đủ → preserve mystery cho bí cảnh / bloodline reveal arcs (e.g. `relchain_to_nguyet_ly_lineage` chỉ visible từ `ban_huu`).
+
 ### 2.9.5 Phase 11.1.C wire điểm (Pending)
 
 - UI character profile display equipped method (icon + grade + multiplier tooltip).

@@ -25,6 +25,12 @@ import {
   NpcAffinityShopService,
   NpcShopListResult,
 } from './npc-affinity-shop.service';
+import {
+  ClaimChainResult,
+  NpcRelationshipChainError,
+  NpcRelationshipChainService,
+  NpcRelationshipChainView,
+} from './npc-relationship-chain.service';
 import type { NpcHiddenUnlockView } from '@xuantoi/shared';
 
 /**
@@ -55,11 +61,18 @@ function fail(code: string, status = HttpStatus.BAD_REQUEST, detail?: string): n
   );
 }
 
+const ChainKeyParam = z
+  .string()
+  .min(1)
+  .max(120)
+  .regex(/^[a-z0-9_]+$/);
+
 @Controller('story/npc-affinity')
 export class NpcAffinityController {
   constructor(
     private readonly service: NpcAffinityService,
     private readonly shop: NpcAffinityShopService,
+    private readonly chain: NpcRelationshipChainService,
     private readonly auth: AuthService,
     private readonly prisma: PrismaService,
   ) {}
@@ -244,6 +257,98 @@ export class NpcAffinityController {
     } catch (e) {
       this.handleShopErr(e);
     }
+  }
+
+  /**
+   * Phase 12.10.D — GET /story/npc-affinity/:npcKey/quest-chain
+   *
+   * List relationship quest chain của NPC + state per chain (locked/unlocked
+   * /completable/claimed) tính từ affinity score + QuestProgress + storyFlags.
+   */
+  @Get(':npcKey/quest-chain')
+  async listQuestChain(
+    @Req() req: Request,
+    @Param('npcKey') npcKey: string,
+  ): Promise<{
+    ok: true;
+    data: { npcKey: string; chains: NpcRelationshipChainView[] };
+  }> {
+    const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
+    if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    const parsed = NpcKeyParam.safeParse(npcKey);
+    if (!parsed.success) fail('INVALID_INPUT', HttpStatus.BAD_REQUEST, 'npcKey');
+    const characterId = await this.resolveCharacterId(userId);
+    try {
+      const chains = await this.chain.listForCharacter(characterId, parsed.data);
+      return { ok: true, data: { npcKey: parsed.data, chains } };
+    } catch (e) {
+      this.handleChainErr(e);
+    }
+  }
+
+  /**
+   * Phase 12.10.D — POST /story/npc-affinity/:npcKey/quest-chain/:chainKey/claim
+   *
+   * Claim chain reward (atomic). Phải đáp ứng:
+   *   - Chain belong to `:npcKey` + tồn tại trong catalog.
+   *   - Tier hiện tại ≥ `requiredAffinityTier`.
+   *   - Tất cả quest trong chain đã CLAIMED.
+   *   - Chưa claim chain trước đó (storyFlags claim flag missing).
+   *
+   * Idempotency: JSON-path CAS guard `where: { storyFlags: { path:[flag],
+   * equals: '1' } }` chống double-claim race.
+   */
+  @Post(':npcKey/quest-chain/:chainKey/claim')
+  async claimQuestChain(
+    @Req() req: Request,
+    @Param('npcKey') npcKey: string,
+    @Param('chainKey') chainKey: string,
+  ): Promise<{
+    ok: true;
+    data: { receipt: ClaimChainResult; chain: NpcRelationshipChainView };
+  }> {
+    const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
+    if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    const npcParsed = NpcKeyParam.safeParse(npcKey);
+    if (!npcParsed.success) fail('INVALID_INPUT', HttpStatus.BAD_REQUEST, 'npcKey');
+    const chainParsed = ChainKeyParam.safeParse(chainKey);
+    if (!chainParsed.success) fail('INVALID_INPUT', HttpStatus.BAD_REQUEST, 'chainKey');
+    const characterId = await this.resolveCharacterId(userId);
+    try {
+      const receipt = await this.chain.claimChain({
+        characterId,
+        chainKey: chainParsed.data,
+      });
+      if (receipt.npcKey !== npcParsed.data) {
+        // Defense: chain catalog mismatch with URL — should not happen with
+        // catalog-validated keys but guard for stable client UX.
+        fail('CHAIN_NPC_MISMATCH', HttpStatus.NOT_FOUND, 'chain not on this NPC');
+      }
+      const chain = await this.chain.getOne(characterId, chainParsed.data);
+      return { ok: true, data: { receipt, chain } };
+    } catch (e) {
+      this.handleChainErr(e);
+    }
+  }
+
+  private handleChainErr(e: unknown): never {
+    if (e instanceof NpcRelationshipChainError) {
+      switch (e.code) {
+        case 'NO_CHARACTER':
+        case 'CHAIN_UNKNOWN':
+          fail(e.code, HttpStatus.NOT_FOUND, e.detail);
+        // eslint-disable-next-line no-fallthrough
+        case 'CHAIN_LOCKED_TIER':
+          fail(e.code, HttpStatus.FORBIDDEN, e.detail);
+        // eslint-disable-next-line no-fallthrough
+        case 'CHAIN_NOT_COMPLETABLE':
+          fail(e.code, HttpStatus.BAD_REQUEST, e.detail);
+        // eslint-disable-next-line no-fallthrough
+        case 'CHAIN_ALREADY_CLAIMED':
+          fail(e.code, HttpStatus.CONFLICT, e.detail);
+      }
+    }
+    throw e;
   }
 
   private handleShopErr(e: unknown): never {

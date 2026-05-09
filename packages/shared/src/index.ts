@@ -32,6 +32,7 @@ export * from './npc-affinity';
 export * from './npc-affinity-shop';
 export * from './npc-gift';
 export * from './npc-hidden-unlocks';
+export * from './npc-relationship-quest-chains';
 export * from './quests';
 export * from './dialogues';
 export * from './story-dialogues';

@@ -2,7 +2,10 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
-import { findDungeonsForQuestPlaceholder } from '@xuantoi/shared';
+import {
+  findDungeonsForQuestPlaceholder,
+  NPC_RELATIONSHIP_QUEST_CHAINS,
+} from '@xuantoi/shared';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useQuestStore } from '@/stores/quest';
@@ -66,6 +69,27 @@ function isClaimed(q: QuestProgressView): boolean {
 
 function isLocked(q: QuestProgressView): boolean {
   return q.status === 'LOCKED';
+}
+
+/**
+ * Phase 12.10.D — Returns the relationship chain a quest belongs to (catalog
+ * lookup), or null if not part of any chain. Used để render badge "Duyên
+ * phận" trong list.
+ */
+const QUEST_TO_CHAIN: Record<string, { chainKey: string; npcKey: string }> = (() => {
+  const map: Record<string, { chainKey: string; npcKey: string }> = {};
+  for (const c of NPC_RELATIONSHIP_QUEST_CHAINS) {
+    for (const qk of c.questKeys) {
+      map[qk] = { chainKey: c.chainKey, npcKey: c.npcKey };
+    }
+  }
+  return map;
+})();
+
+function relationshipChainFor(
+  q: QuestProgressView,
+): { chainKey: string; npcKey: string } | null {
+  return QUEST_TO_CHAIN[q.key] ?? null;
 }
 
 /**
@@ -274,6 +298,14 @@ onMounted(async () => {
                 class="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded border border-amber-400/40 text-amber-200"
               >
                 {{ t(`quest.kind.${q.kind}`) }}
+              </span>
+              <span
+                v-if="relationshipChainFor(q)"
+                class="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded border border-rose-400/40 text-rose-200"
+                :data-testid="`quest-chain-tag-${q.key}`"
+                :title="relationshipChainFor(q)!.chainKey"
+              >
+                {{ t('npcAffinity.chains.tag') }}
               </span>
               <h3 class="font-bold text-amber-100">{{ q.name }}</h3>
             </div>

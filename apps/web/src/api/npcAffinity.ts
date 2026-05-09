@@ -240,3 +240,114 @@ export async function fetchNpcUnlocks(npcKey: string): Promise<NpcUnlocksView> {
   if (!data.ok || !data.data) throw data.error ?? fallbackError('npcAffinity');
   return data.data;
 }
+
+// ====================================================================
+// Phase 12.10.D — NPC Relationship Quest Chain
+// ====================================================================
+
+export type ChainQuestStatus =
+  | 'LOCKED'
+  | 'AVAILABLE'
+  | 'ACCEPTED'
+  | 'COMPLETED'
+  | 'CLAIMED';
+
+export interface ChainQuestStatusView {
+  questKey: string;
+  questName: string;
+  status: ChainQuestStatus;
+  giverNpcKey: string;
+  unlocked: boolean;
+}
+
+export interface NpcRelationshipChainRewardItemView {
+  itemKey: string;
+  qty: number;
+  name: string | null;
+}
+
+export interface NpcRelationshipChainRewardPreview {
+  affinity: number;
+  linhThach: number;
+  tienNgoc: number;
+  exp: number;
+  items: NpcRelationshipChainRewardItemView[];
+  flagOnly?: boolean;
+}
+
+export interface NpcRelationshipChainView {
+  chainKey: string;
+  npcKey: string;
+  npcName: string;
+  title: string;
+  titleEn: string;
+  description: string;
+  descriptionEn: string;
+  requiredAffinityTier: string;
+  requiredAffinityTierLabel: string;
+  requiredAffinityTierLabelEn: string;
+  requiredAffinityMinScore: number;
+  tierUnlocked: boolean;
+  currentAffinityScore: number;
+  currentAffinityTier: string;
+  quests: ChainQuestStatusView[];
+  claimedCount: number;
+  totalCount: number;
+  completable: boolean;
+  claimed: boolean;
+  claimedAt: string | null;
+  hidden: boolean;
+  visible: boolean;
+  rewardPreview: NpcRelationshipChainRewardPreview;
+  endingFlags: Record<string, string | number | boolean>;
+  dialogueNodeKeys: string[];
+}
+
+export interface NpcRelationshipChainClaimReceipt {
+  chainKey: string;
+  npcKey: string;
+  granted: {
+    affinity: number;
+    linhThach: number;
+    tienNgoc: number;
+    exp: number;
+    items: { itemKey: string; qty: number }[];
+    flags: Record<string, string | number | boolean>;
+  };
+  newAffinityScore: number;
+  newAffinityTier: string;
+  claimedAt: string;
+}
+
+/** Phase 12.10.D — GET `/story/npc-affinity/:npcKey/quest-chain`. */
+export async function fetchNpcQuestChains(
+  npcKey: string,
+): Promise<{ npcKey: string; chains: NpcRelationshipChainView[] }> {
+  const { data } = await apiClient.get<
+    Envelope<{ npcKey: string; chains: NpcRelationshipChainView[] }>
+  >(`/story/npc-affinity/${encodeURIComponent(npcKey)}/quest-chain`);
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('npcAffinity');
+  return data.data;
+}
+
+/** Phase 12.10.D — POST `/story/npc-affinity/:npcKey/quest-chain/:chainKey/claim`. */
+export async function claimNpcQuestChain(
+  npcKey: string,
+  chainKey: string,
+): Promise<{
+  receipt: NpcRelationshipChainClaimReceipt;
+  chain: NpcRelationshipChainView;
+}> {
+  const { data } = await apiClient.post<
+    Envelope<{
+      receipt: NpcRelationshipChainClaimReceipt;
+      chain: NpcRelationshipChainView;
+    }>
+  >(
+    `/story/npc-affinity/${encodeURIComponent(
+      npcKey,
+    )}/quest-chain/${encodeURIComponent(chainKey)}/claim`,
+  );
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('npcAffinity');
+  return data.data;
+}

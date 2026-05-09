@@ -17,6 +17,9 @@ vi.mock('@/api/npcAffinity', () => ({
   fetchNpcShop: vi.fn(),
   buyNpcShopItem: vi.fn(),
   fetchNpcUnlocks: vi.fn(),
+  // Phase 12.10.D — chain API mocks.
+  fetchNpcQuestChains: vi.fn(),
+  claimNpcQuestChain: vi.fn(),
 }));
 
 const i18n = createI18n({
@@ -76,6 +79,34 @@ const i18n = createI18n({
           title: 'Cơ duyên ẩn',
           dialogueLabel: 'Đối thoại',
           questLabel: 'Nhiệm vụ',
+        },
+        chains: {
+          title: 'Tuyến nhiệm vụ duyên phận',
+          empty: 'Chưa có tuyến duyên nào.',
+          stateClaimed: 'Đã hoàn thành',
+          stateLocked: 'Khoá',
+          stateClaimable: 'Sẵn sàng nhận',
+          stateInProgress: 'Đang thực hiện',
+          lockedHint: 'Cần đạt {tier}',
+          rewardAffinity: '+{n} thân tình',
+          claim: 'Nhận thưởng',
+          claimedShort: 'Đã lĩnh',
+          locked: 'Khoá',
+          notReady: 'Chưa đủ',
+          tag: 'Duyên phận',
+          questStatus: {
+            LOCKED: 'Khoá',
+            AVAILABLE: 'Mở',
+            ACCEPTED: 'Đang làm',
+            COMPLETED: 'Xong',
+            CLAIMED: 'Đã nhận',
+          },
+        },
+        chainErrors: {
+          CHAIN_LOCKED_TIER: 'Quan hệ chưa đủ.',
+          CHAIN_NOT_COMPLETABLE: 'Cần hoàn tất nhiệm vụ.',
+          CHAIN_ALREADY_CLAIMED: 'Đã nhận rồi.',
+          UNKNOWN: 'Không thể nhận thưởng.',
         },
       },
     },
@@ -141,7 +172,17 @@ function makeAffinity(overrides: Partial<NpcAffinityView> = {}): NpcAffinityView
 function mountPanel(props: { autoLoad?: boolean } = { autoLoad: false }) {
   return mount(NpcAffinityPanel, {
     props,
-    global: { plugins: [i18n] },
+    global: {
+      plugins: [i18n],
+      // RouterLink stub — chain quest list trong panel render <RouterLink>;
+      // tests không cần real router runtime, stub đơn giản render slot.
+      stubs: {
+        RouterLink: {
+          props: ['to'],
+          template: '<a :href="String(to)" :data-to="String(to)"><slot /></a>',
+        },
+      },
+    },
   });
 }
 
@@ -807,5 +848,378 @@ describe('NpcAffinityPanel — Phase 12.10.C shop + unlocks', () => {
     );
     expect(weeklyStock.exists()).toBe(true);
     expect(weeklyStock.text()).toContain('Tuần này 0/1');
+  });
+});
+
+// ====================================================================
+// Phase 12.10.D — NpcAffinityPanel relationship chain tests
+// ====================================================================
+
+describe('NpcAffinityPanel — Phase 12.10.D relationship chains', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.mocked(api.fetchNpcAffinities).mockReset();
+    vi.mocked(api.fetchNpcQuestChains).mockReset();
+    vi.mocked(api.claimNpcQuestChain).mockReset();
+  });
+
+  function makeChain(
+    overrides: Partial<api.NpcRelationshipChainView> = {},
+  ): api.NpcRelationshipChainView {
+    return {
+      chainKey: 'relchain_test',
+      npcKey: 'npc_lang_van_sinh',
+      npcName: 'Lăng Vân Sinh',
+      title: 'Tuyến thử',
+      titleEn: 'Test Chain',
+      description: 'Mô tả tuyến.',
+      descriptionEn: 'Chain description.',
+      requiredAffinityTier: 'quen_biet',
+      requiredAffinityTierLabel: 'Quen Biết',
+      requiredAffinityTierLabelEn: 'Acquaintance',
+      requiredAffinityMinScore: 10,
+      tierUnlocked: true,
+      currentAffinityScore: 30,
+      currentAffinityTier: 'ban_huu',
+      quests: [
+        {
+          questKey: 'q1',
+          questName: 'Quest 1',
+          status: 'CLAIMED',
+          giverNpcKey: 'npc_lang_van_sinh',
+          unlocked: true,
+        },
+        {
+          questKey: 'q2',
+          questName: 'Quest 2',
+          status: 'COMPLETED',
+          giverNpcKey: 'npc_lang_van_sinh',
+          unlocked: true,
+        },
+      ],
+      claimedCount: 1,
+      totalCount: 2,
+      completable: false,
+      claimed: false,
+      claimedAt: null,
+      hidden: false,
+      visible: true,
+      rewardPreview: {
+        affinity: 20,
+        linhThach: 100,
+        tienNgoc: 0,
+        exp: 80,
+        items: [{ itemKey: 'rare_item', qty: 1, name: 'Rare Item' }],
+      },
+      endingFlags: { 'relchain_test_done': '1' },
+      dialogueNodeKeys: [],
+      ...overrides,
+    };
+  }
+
+  function seedAffinity(): void {
+    const store = useNpcAffinityStore();
+    store.affinities = [makeAffinity()];
+    store.loaded = true;
+  }
+
+  it('renders chains toggle button collapsed by default', async () => {
+    seedAffinity();
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    const toggle = w.find(
+      '[data-testid="npc-affinity-chains-toggle-npc_lang_van_sinh"]',
+    );
+    expect(toggle.exists()).toBe(true);
+    expect(toggle.text()).toContain('Tuyến nhiệm vụ duyên phận');
+    expect(
+      w.find('[data-testid="npc-affinity-chains-npc_lang_van_sinh"]').exists(),
+    ).toBe(false);
+  });
+
+  it('clicking toggle loads chains + renders list', async () => {
+    seedAffinity();
+    vi.mocked(api.fetchNpcQuestChains).mockResolvedValue({
+      npcKey: 'npc_lang_van_sinh',
+      chains: [makeChain()],
+    });
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    (w.find(
+      '[data-testid="npc-affinity-chains-toggle-npc_lang_van_sinh"]',
+    ).element as HTMLButtonElement).click();
+    await flushPromises();
+
+    expect(api.fetchNpcQuestChains).toHaveBeenCalledWith('npc_lang_van_sinh');
+    const chainEl = w.find(
+      '[data-testid="npc-affinity-chain-npc_lang_van_sinh-relchain_test"]',
+    );
+    expect(chainEl.exists()).toBe(true);
+    expect(chainEl.text()).toContain('Tuyến thử');
+  });
+
+  it('renders locked state when tierUnlocked=false', async () => {
+    seedAffinity();
+    vi.mocked(api.fetchNpcQuestChains).mockResolvedValue({
+      npcKey: 'npc_lang_van_sinh',
+      chains: [makeChain({ tierUnlocked: false })],
+    });
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    (w.find(
+      '[data-testid="npc-affinity-chains-toggle-npc_lang_van_sinh"]',
+    ).element as HTMLButtonElement).click();
+    await flushPromises();
+
+    const lockedHint = w.find(
+      '[data-testid="npc-affinity-chain-locked-npc_lang_van_sinh-relchain_test"]',
+    );
+    expect(lockedHint.exists()).toBe(true);
+    expect(lockedHint.text()).toContain('Cần đạt Quen Biết');
+
+    const claimBtn = w.find(
+      '[data-testid="npc-affinity-chain-claim-npc_lang_van_sinh-relchain_test"]',
+    ).element as HTMLButtonElement;
+    expect(claimBtn.disabled).toBe(true);
+  });
+
+  it('renders progress 1/2 + quest list with status colors', async () => {
+    seedAffinity();
+    vi.mocked(api.fetchNpcQuestChains).mockResolvedValue({
+      npcKey: 'npc_lang_van_sinh',
+      chains: [makeChain()],
+    });
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    (w.find(
+      '[data-testid="npc-affinity-chains-toggle-npc_lang_van_sinh"]',
+    ).element as HTMLButtonElement).click();
+    await flushPromises();
+
+    const progress = w.find(
+      '[data-testid="npc-affinity-chain-progress-npc_lang_van_sinh-relchain_test"]',
+    );
+    expect(progress.exists()).toBe(true);
+    expect(progress.text()).toContain('1/2');
+
+    expect(
+      w
+        .find(
+          '[data-testid="npc-affinity-chain-quest-npc_lang_van_sinh-relchain_test-q1"]',
+        )
+        .exists(),
+    ).toBe(true);
+    expect(
+      w
+        .find(
+          '[data-testid="npc-affinity-chain-quest-npc_lang_van_sinh-relchain_test-q2"]',
+        )
+        .exists(),
+    ).toBe(true);
+  });
+
+  it('renders reward preview affinity/linhThach/exp/items', async () => {
+    seedAffinity();
+    vi.mocked(api.fetchNpcQuestChains).mockResolvedValue({
+      npcKey: 'npc_lang_van_sinh',
+      chains: [makeChain()],
+    });
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    (w.find(
+      '[data-testid="npc-affinity-chains-toggle-npc_lang_van_sinh"]',
+    ).element as HTMLButtonElement).click();
+    await flushPromises();
+
+    const reward = w.find(
+      '[data-testid="npc-affinity-chain-reward-npc_lang_van_sinh-relchain_test"]',
+    );
+    expect(reward.exists()).toBe(true);
+    expect(reward.text()).toContain('+20 thân tình');
+    expect(reward.text()).toContain('100 linh thạch');
+    expect(reward.text()).toContain('80 EXP');
+    expect(reward.text()).toContain('Rare Item ×1');
+  });
+
+  it('quest with unlocked=true renders RouterLink to /quests?focus=...', async () => {
+    seedAffinity();
+    vi.mocked(api.fetchNpcQuestChains).mockResolvedValue({
+      npcKey: 'npc_lang_van_sinh',
+      chains: [makeChain()],
+    });
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    (w.find(
+      '[data-testid="npc-affinity-chains-toggle-npc_lang_van_sinh"]',
+    ).element as HTMLButtonElement).click();
+    await flushPromises();
+
+    const link = w.find(
+      '[data-testid="npc-affinity-chain-quest-link-npc_lang_van_sinh-relchain_test-q1"]',
+    );
+    expect(link.exists()).toBe(true);
+    expect(link.attributes('data-to')).toContain('/quests?focus=q1');
+  });
+
+  it('claim button enabled when completable + tierUnlocked + !claimed', async () => {
+    seedAffinity();
+    vi.mocked(api.fetchNpcQuestChains).mockResolvedValue({
+      npcKey: 'npc_lang_van_sinh',
+      chains: [makeChain({ completable: true })],
+    });
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    (w.find(
+      '[data-testid="npc-affinity-chains-toggle-npc_lang_van_sinh"]',
+    ).element as HTMLButtonElement).click();
+    await flushPromises();
+
+    const btn = w.find(
+      '[data-testid="npc-affinity-chain-claim-npc_lang_van_sinh-relchain_test"]',
+    ).element as HTMLButtonElement;
+    expect(btn.disabled).toBe(false);
+    expect(btn.textContent).toContain('Nhận thưởng');
+  });
+
+  it('clicking claim calls store.claimChain', async () => {
+    seedAffinity();
+    vi.mocked(api.fetchNpcQuestChains).mockResolvedValue({
+      npcKey: 'npc_lang_van_sinh',
+      chains: [makeChain({ completable: true })],
+    });
+    vi.mocked(api.claimNpcQuestChain).mockResolvedValue({
+      receipt: {
+        chainKey: 'relchain_test',
+        npcKey: 'npc_lang_van_sinh',
+        granted: {
+          affinity: 20,
+          linhThach: 100,
+          tienNgoc: 0,
+          exp: 80,
+          items: [],
+          flags: {},
+        },
+        newAffinityScore: 50,
+        newAffinityTier: 'ban_huu',
+        claimedAt: '2026-05-09T12:00:00Z',
+      },
+      chain: makeChain({ claimed: true, claimedCount: 2, completable: false }),
+    });
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    (w.find(
+      '[data-testid="npc-affinity-chains-toggle-npc_lang_van_sinh"]',
+    ).element as HTMLButtonElement).click();
+    await flushPromises();
+
+    (w.find(
+      '[data-testid="npc-affinity-chain-claim-npc_lang_van_sinh-relchain_test"]',
+    ).element as HTMLButtonElement).click();
+    await flushPromises();
+
+    expect(api.claimNpcQuestChain).toHaveBeenCalledWith(
+      'npc_lang_van_sinh',
+      'relchain_test',
+    );
+  });
+
+  it('claimed chain renders "Đã lĩnh" disabled state', async () => {
+    seedAffinity();
+    vi.mocked(api.fetchNpcQuestChains).mockResolvedValue({
+      npcKey: 'npc_lang_van_sinh',
+      chains: [
+        makeChain({
+          claimed: true,
+          claimedAt: '2026-05-09T12:00:00Z',
+          claimedCount: 2,
+          completable: false,
+        }),
+      ],
+    });
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    (w.find(
+      '[data-testid="npc-affinity-chains-toggle-npc_lang_van_sinh"]',
+    ).element as HTMLButtonElement).click();
+    await flushPromises();
+
+    const btn = w.find(
+      '[data-testid="npc-affinity-chain-claim-npc_lang_van_sinh-relchain_test"]',
+    ).element as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    expect(btn.textContent).toContain('Đã lĩnh');
+  });
+
+  it('renders chain claim error inline when claimChainError set', async () => {
+    seedAffinity();
+    vi.mocked(api.fetchNpcQuestChains).mockResolvedValue({
+      npcKey: 'npc_lang_van_sinh',
+      chains: [makeChain({ completable: true })],
+    });
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    (w.find(
+      '[data-testid="npc-affinity-chains-toggle-npc_lang_van_sinh"]',
+    ).element as HTMLButtonElement).click();
+    await flushPromises();
+
+    const store = useNpcAffinityStore();
+    store.claimChainError = 'CHAIN_ALREADY_CLAIMED';
+    store.claimChainLoading = null;
+    await w.vm.$nextTick();
+
+    const err = w.find(
+      '[data-testid="npc-affinity-chain-error-npc_lang_van_sinh"]',
+    );
+    expect(err.exists()).toBe(true);
+    expect(err.text()).toContain('Đã nhận rồi.');
+  });
+
+  it('hidden chain (visible=false) is not rendered in the list', async () => {
+    seedAffinity();
+    vi.mocked(api.fetchNpcQuestChains).mockResolvedValue({
+      npcKey: 'npc_lang_van_sinh',
+      chains: [
+        makeChain({ chainKey: 'visible_one' }),
+        makeChain({ chainKey: 'hidden_one', hidden: true, visible: false }),
+      ],
+    });
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    (w.find(
+      '[data-testid="npc-affinity-chains-toggle-npc_lang_van_sinh"]',
+    ).element as HTMLButtonElement).click();
+    await flushPromises();
+
+    expect(
+      w.find(
+        '[data-testid="npc-affinity-chain-npc_lang_van_sinh-visible_one"]',
+      ).exists(),
+    ).toBe(true);
+    expect(
+      w.find(
+        '[data-testid="npc-affinity-chain-npc_lang_van_sinh-hidden_one"]',
+      ).exists(),
+    ).toBe(false);
+  });
+
+  it('empty state when all chains hidden / list empty', async () => {
+    seedAffinity();
+    vi.mocked(api.fetchNpcQuestChains).mockResolvedValue({
+      npcKey: 'npc_lang_van_sinh',
+      chains: [],
+    });
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    (w.find(
+      '[data-testid="npc-affinity-chains-toggle-npc_lang_van_sinh"]',
+    ).element as HTMLButtonElement).click();
+    await flushPromises();
+
+    const empty = w.find(
+      '[data-testid="npc-affinity-chains-empty-npc_lang_van_sinh"]',
+    );
+    expect(empty.exists()).toBe(true);
+    expect(empty.text()).toContain('Chưa có tuyến duyên nào');
   });
 });

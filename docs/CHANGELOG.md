@@ -12,6 +12,82 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Added — Phase 12.10.D NPC Relationship Quest Chain (this PR)
+
+- **Tuyến nhiệm vụ duyên phận** — NPC quan trọng giờ có chuỗi quest gắn
+  với mức độ thân tình (`affinity tier`). Quest unlock dần theo tier; sau
+  khi hoàn thành toàn bộ chain, player nhận reward riêng (affinity bonus
+  + linh thạch / EXP / item nhỏ) + flag `relchain_*_claimed` ghi vào
+  `Character.storyFlags` để các nhánh dialogue / cutscene future có thể
+  reference. Một chain có thể `hidden` — chỉ xuất hiện trong panel khi
+  tier đã đủ (preserve mystery của bí cảnh / bloodline reveal).
+- **Shared (`packages/shared/src/npc-relationship-quest-chains.ts` mới)**:
+  - `NpcRelationshipQuestChainDef` — `chainKey`, `npcKey`,
+    `requiredAffinityTier`, `questKeys[]`, `dialogueNodeKeys[]`,
+    `rewardHint` (affinity/linhThach/tienNgoc/exp/items), `endingFlags`
+    (story flag dict), `hidden?`, `title(Vi/En)`, `description(Vi/En)`.
+  - 3 chain mẫu khác arc: `relchain_moc_thanh_y_sect_path` (NPC tông môn,
+    `quen_biet` tier, 3 quest realm-gated), `relchain_han_da_truce` (rival
+    NPC, `quen_biet`, 1 quest có dialogue choice), `relchain_to_nguyet_ly_lineage`
+    (`ban_huu`, `hidden=true`, 1 quest bloodline secret).
+  - Helper: `npcRelationshipChainByKey()`, `npcRelationshipChainsForNpc()`,
+    `chainClaimedFlagKey()` (`relchain_<key>_claimed`).
+  - `validateNpcRelationshipChainsCatalog()` invariants — `npcKey` ref
+    `NPC_AFFINITY`, `questKeys[]` ref `QUESTS[]`, `dialogueNodeKeys[]` ref
+    `STORY_DIALOGUE_NODES`, tier ref `AFFINITY_TIERS`, reward cap
+    (affinity ≤40, linhThach ≤500, tienNgoc ≤10, exp ≤600, items ≤3 entry,
+    qty ≤5), unique `chainKey`, không duplicate `questKey` cross chain.
+- **API (`apps/api/src/modules/npc-affinity/npc-relationship-chain.service.ts`
+  mới)**:
+  - `listForCharacter(characterId, npcKey)` — derive chain view fully từ
+    `CharacterNpcAffinity.score` (lazy fallback `initialScore`),
+    `QuestProgress` (filter `chain.questKeys`), `Character.storyFlags`
+    (claim flag + ending flags). Hidden chain `visible=false` khi tier
+    chưa đủ.
+  - `claimChain(input)` — atomic transaction: tier gate → quest CLAIMED
+    gate → JSON-path CAS guard via raw SQL `("storyFlags" ->> $key) IS
+    DISTINCT FROM '1'` (race-safe; 2 concurrent claim, đúng 1 winner) →
+    grant reward (affinity via `NpcAffinityService.addAffinityTx`,
+    currency via `CurrencyService.applyTx`, items via
+    `InventoryService.grantTx`, ledger reason
+    `NPC_RELATIONSHIP_CHAIN_REWARD`) → ghi merged flags (claim + ending)
+    vào `storyFlags`.
+  - Errors: `CHAIN_UNKNOWN`, `CHAIN_LOCKED_TIER`, `CHAIN_NOT_COMPLETABLE`,
+    `CHAIN_ALREADY_CLAIMED`, `CHAIN_NPC_MISMATCH`.
+- **API endpoints (`apps/api/src/modules/npc-affinity/npc-affinity.controller.ts`)**:
+  - `GET /story/npc-affinity/:npcKey/quest-chain` — list chain view + state.
+  - `POST /story/npc-affinity/:npcKey/quest-chain/:chainKey/claim` —
+    idempotent claim. Locked tier reject 403; quest chưa xong reject 409;
+    retry sau success reject 409 `CHAIN_ALREADY_CLAIMED` (no double-grant).
+- **Web (`apps/web/src/components/NpcAffinityPanel.vue` updated +
+  `apps/web/src/views/QuestView.vue` updated)**:
+  - NpcAffinityPanel thêm tab **"Tuyến nhiệm vụ duyên phận"** collapse-by-default
+    per NPC. List chain với progress bar (claimed/total), per-quest status
+    (LOCKED/AVAILABLE/ACCEPTED/COMPLETED/CLAIMED), `RouterLink` CTA tới
+    `/quests?focus=<questKey>`, reward preview (affinity/LT/TN/EXP/items),
+    locked-tier hint, claim button. Hidden chain ẩn cho tới khi visible.
+  - QuestView render badge **"Duyên phận"** (rose-200) cho quest thuộc
+    catalog chain — player thấy ngay quest nào gắn với một tuyến NPC.
+  - Pinia store `npcAffinity` thêm action `loadChains(npcKey)` +
+    `claimChain(npcKey, chainKey)` — cập nhật in-place chain entry +
+    affinity score sau success, không cần full reload.
+- **i18n (`apps/web/src/i18n/{vi,en}.json`)**:
+  - `npcAffinity.chains.*` — title, empty, state labels (Locked /
+    Claimable / In progress / Claimed), questStatus map, reward preview
+    label, claim button, error messages.
+- **Tests**:
+  - Shared: 12 catalog invariant + helper tests
+    (`npc-relationship-quest-chains.test.ts`).
+  - API: 11 integration tests
+    (`npc-relationship-chain.service.test.ts`) — list state, locked tier
+    reject, not-completable reject, success grant, idempotent retry,
+    parallel race-safe (Promise.all 2 claim, 1 winner + 1 ledger row),
+    hidden visibility logic.
+  - Web: 12 component tests cho NpcAffinityPanel chain section + 1
+    QuestView test cho chain tag — toggle, locked, progress, reward,
+    RouterLink CTA, claim disabled/enabled states, error rendering,
+    hidden chain visibility, empty state.
+
 ### Added — Phase 12.10.C NPC Shop and Hidden Unlocks (this PR)
 
 - **NPC Affinity tier mở khoá nội dung** — Phase 12.10.C biến quan hệ NPC

@@ -7,6 +7,7 @@ import { InventoryService } from './modules/inventory/inventory.service';
 import { MissionService } from './modules/mission/mission.service';
 import { MissionWsEmitter } from './modules/mission/mission-ws.emitter';
 import { NpcAffinityService } from './modules/npc-affinity/npc-affinity.service';
+import { NpcRelationshipChainService } from './modules/npc-affinity/npc-relationship-chain.service';
 import { QuestService } from './modules/quest/quest.service';
 import { DungeonRunService } from './modules/dungeon-run/dungeon-run.service';
 import { StoryDungeonService } from './modules/story-dungeon/story-dungeon.service';
@@ -234,6 +235,28 @@ export function makeStoryDungeonService(prisma: PrismaService): {
   const quests = new QuestService(prisma, currency, inventory, npcAffinity);
   const story = new StoryDungeonService(prisma, currency, inventory, quests);
   return { story, quests, inventory, currency };
+}
+
+/**
+ * Phase 12.10.D — Dựng `NpcRelationshipChainService` cho integration test
+ * (bypass DI). Wire `CurrencyService` + `InventoryService` + `NpcAffinityService`
+ * giống production wiring để claim path đi qua ledger thật.
+ */
+export function makeNpcRelationshipChainService(prisma: PrismaService): {
+  chains: NpcRelationshipChainService;
+  quests: QuestService;
+  affinity: NpcAffinityService;
+  inventory: InventoryService;
+  currency: CurrencyService;
+} {
+  const realtime = new RealtimeService();
+  const chars = new CharacterService(prisma, realtime);
+  const currency = new CurrencyService(prisma);
+  const inventory = new InventoryService(prisma, realtime, chars);
+  const affinity = new NpcAffinityService(prisma, inventory);
+  const quests = new QuestService(prisma, currency, inventory, affinity);
+  const chains = new NpcRelationshipChainService(prisma, currency, inventory, affinity);
+  return { chains, quests, affinity, inventory, currency };
 }
 
 export const TEST_DATABASE_URL =
