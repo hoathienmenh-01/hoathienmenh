@@ -13,6 +13,10 @@ vi.mock('@/api/npcAffinity', () => ({
   // Phase 12.10.B — gift API mocks.
   giftNpc: vi.fn(),
   fetchNpcGiftDaily: vi.fn(),
+  // Phase 12.10.C — shop + unlocks API mocks.
+  fetchNpcShop: vi.fn(),
+  buyNpcShopItem: vi.fn(),
+  fetchNpcUnlocks: vi.fn(),
 }));
 
 const i18n = createI18n({
@@ -48,6 +52,30 @@ const i18n = createI18n({
           ITEM_NOT_IN_INVENTORY: 'Túi đồ không có vật phẩm.',
           DAILY_LIMIT_REACHED: 'Đã hết lượt tặng hôm nay.',
           UNKNOWN: 'Không thể tặng quà.',
+        },
+        // Phase 12.10.C
+        shopToggle: 'Cửa hàng & ưu đãi đặc biệt',
+        shop: {
+          buy: 'Mua',
+          lockedShort: 'Khoá',
+          limitReached: 'Hết lượt',
+          linhThach: 'linh thạch',
+          tienNgoc: 'tiên ngọc',
+          locked: 'Cần đạt {tier}',
+          dailyStock: 'Hôm nay {used}/{limit}',
+          weeklyStock: 'Tuần này {used}/{limit}',
+          unlimitedStock: 'Không giới hạn',
+        },
+        shopErrors: {
+          INSUFFICIENT_AFFINITY_TIER: 'Quan hệ chưa đủ để mua.',
+          INSUFFICIENT_FUNDS: 'Không đủ linh thạch.',
+          DAILY_LIMIT_REACHED: 'Hết lượt mua hôm nay.',
+          UNKNOWN: 'Không thể mua, thử lại.',
+        },
+        unlocks: {
+          title: 'Cơ duyên ẩn',
+          dialogueLabel: 'Đối thoại',
+          questLabel: 'Nhiệm vụ',
         },
       },
     },
@@ -480,5 +508,304 @@ describe('useNpcAffinityStore', () => {
     expect(store.affinities).toEqual([]);
     expect(store.loaded).toBe(false);
     expect(store.error).toBeNull();
+  });
+});
+
+// ============================================================================
+// Phase 12.10.C — Shop + Hidden Unlocks UI flow.
+// ============================================================================
+
+function makeShop(
+  overrides: Partial<api.NpcShopListView> = {},
+): api.NpcShopListView {
+  return {
+    npcKey: 'npc_lang_van_sinh',
+    npcName: 'Lăng Vân Sinh',
+    currentScore: 30,
+    currentTier: {
+      key: 'ban_huu',
+      label: 'Bằng Hữu',
+      labelEn: 'Companion',
+      minScore: 30,
+      order: 2,
+    },
+    entries: [
+      {
+        npcKey: 'npc_lang_van_sinh',
+        itemKey: 'huyet_chi_dan',
+        requiredAffinityTier: 'quen_biet',
+        requiredTierLabel: 'Quen Biết',
+        requiredTierLabelEn: 'Acquaintance',
+        requiredTierMinScore: 10,
+        cost: 30,
+        currency: 'LINH_THACH',
+        stockType: 'daily',
+        dailyLimit: 5,
+        weeklyLimit: null,
+        unlockHint: 'Kiếm tiểu đan giữ tâm.',
+        unlockHintEn: 'Small mind-clearing pill.',
+        item: {
+          key: 'huyet_chi_dan',
+          name: 'Huyết Chi Đan',
+          description: 'Hồi máu nhẹ.',
+          quality: 'common',
+          kind: 'consumable',
+          stackable: true,
+        },
+        currentTier: 'ban_huu',
+        unlocked: true,
+        purchased: 1,
+        remaining: 4,
+        limitReached: false,
+      },
+      {
+        npcKey: 'npc_lang_van_sinh',
+        itemKey: 'skill_book_kim_quang_tram',
+        requiredAffinityTier: 'tri_giao',
+        requiredTierLabel: 'Tri Giao',
+        requiredTierLabelEn: 'Confidant',
+        requiredTierMinScore: 60,
+        cost: 800,
+        currency: 'LINH_THACH',
+        stockType: 'weekly',
+        dailyLimit: null,
+        weeklyLimit: 1,
+        unlockHint: 'Bí kíp đặc biệt.',
+        unlockHintEn: 'Rare technique.',
+        item: {
+          key: 'skill_book_kim_quang_tram',
+          name: 'Kim Quang Trảm Thức',
+          description: 'Kiếm pháp.',
+          quality: 'rare',
+          kind: 'skillbook',
+          stackable: false,
+        },
+        currentTier: 'ban_huu',
+        unlocked: false,
+        purchased: 0,
+        remaining: 1,
+        limitReached: false,
+      },
+    ],
+    ...overrides,
+  };
+}
+
+function makeUnlocks(
+  overrides: Partial<api.NpcUnlocksView> = {},
+): api.NpcUnlocksView {
+  return {
+    npcKey: 'npc_lang_van_sinh',
+    currentTier: 'ban_huu',
+    unlocks: [
+      {
+        kind: 'dialogue',
+        refKey: 'story_dlg_lang_van_sinh_inner_secret',
+        npcKey: 'npc_lang_van_sinh',
+        requiredAffinityTier: 'ban_huu',
+        requiredTierLabel: 'Bằng Hữu',
+        requiredTierLabelEn: 'Companion',
+        requiredTierMinScore: 30,
+        unlockReason: 'Bí mật nội tâm hé lộ.',
+        unlockReasonEn: 'Inner secret revealed.',
+        unlocked: true,
+      },
+      {
+        kind: 'quest',
+        refKey: 'quest_lang_van_sinh_kiem_dao',
+        npcKey: 'npc_lang_van_sinh',
+        requiredAffinityTier: 'tri_giao',
+        requiredTierLabel: 'Tri Giao',
+        requiredTierLabelEn: 'Confidant',
+        requiredTierMinScore: 60,
+        unlockReason: 'Bí mật kiếm đạo.',
+        unlockReasonEn: 'Sword path secret.',
+        unlocked: false,
+      },
+    ],
+    ...overrides,
+  };
+}
+
+describe('NpcAffinityPanel — Phase 12.10.C shop + unlocks', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.mocked(api.fetchNpcAffinities).mockReset();
+    vi.mocked(api.fetchNpcShop).mockReset();
+    vi.mocked(api.buyNpcShopItem).mockReset();
+    vi.mocked(api.fetchNpcUnlocks).mockReset();
+  });
+
+  function seedStore(): ReturnType<typeof useNpcAffinityStore> {
+    const store = useNpcAffinityStore();
+    store.affinities = [makeAffinity()];
+    store.loaded = true;
+    return store;
+  }
+
+  it('renders shop toggle button and is collapsed by default', async () => {
+    seedStore();
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    expect(
+      w.find('[data-testid="npc-affinity-shop-toggle-npc_lang_van_sinh"]').exists(),
+    ).toBe(true);
+    // Section not yet expanded.
+    expect(
+      w.find('[data-testid="npc-affinity-shop-npc_lang_van_sinh"]').exists(),
+    ).toBe(false);
+  });
+
+  it('clicking toggle loads shop + unlocks and renders entries', async () => {
+    seedStore();
+    vi.mocked(api.fetchNpcShop).mockResolvedValue(makeShop());
+    vi.mocked(api.fetchNpcUnlocks).mockResolvedValue(makeUnlocks());
+    const w = mountPanel();
+    await w.vm.$nextTick();
+
+    const toggle = w.find(
+      '[data-testid="npc-affinity-shop-toggle-npc_lang_van_sinh"]',
+    ).element as HTMLButtonElement;
+    toggle.click();
+    await flushPromises();
+
+    expect(api.fetchNpcShop).toHaveBeenCalledWith('npc_lang_van_sinh');
+    expect(api.fetchNpcUnlocks).toHaveBeenCalledWith('npc_lang_van_sinh');
+
+    const list = w.find('[data-testid="npc-affinity-shop-list-npc_lang_van_sinh"]');
+    expect(list.exists()).toBe(true);
+    expect(list.text()).toContain('Huyết Chi Đan');
+    expect(list.text()).toContain('Kim Quang Trảm Thức');
+    expect(list.text()).toContain('30');
+    expect(list.text()).toContain('linh thạch');
+  });
+
+  it('renders locked items dimmed with required tier hint + disabled buy', async () => {
+    seedStore();
+    vi.mocked(api.fetchNpcShop).mockResolvedValue(makeShop());
+    vi.mocked(api.fetchNpcUnlocks).mockResolvedValue(makeUnlocks());
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    (w.find(
+      '[data-testid="npc-affinity-shop-toggle-npc_lang_van_sinh"]',
+    ).element as HTMLButtonElement).click();
+    await flushPromises();
+
+    const lockedHint = w.find(
+      '[data-testid="npc-affinity-shop-locked-npc_lang_van_sinh-skill_book_kim_quang_tram"]',
+    );
+    expect(lockedHint.exists()).toBe(true);
+    expect(lockedHint.text()).toContain('Tri Giao');
+
+    const buyBtn = w.find(
+      '[data-testid="npc-affinity-shop-buy-npc_lang_van_sinh-skill_book_kim_quang_tram"]',
+    ).element as HTMLButtonElement;
+    expect(buyBtn.disabled).toBe(true);
+    expect(buyBtn.textContent).toContain('Khoá');
+  });
+
+  it('clicking buy on unlocked item calls buyNpcShopItem', async () => {
+    seedStore();
+    vi.mocked(api.fetchNpcShop).mockResolvedValue(makeShop());
+    vi.mocked(api.fetchNpcUnlocks).mockResolvedValue(makeUnlocks());
+    vi.mocked(api.buyNpcShopItem).mockResolvedValue({
+      shop: makeShop(),
+      receipt: {
+        characterId: 'c1',
+        npcKey: 'npc_lang_van_sinh',
+        itemKey: 'huyet_chi_dan',
+        qty: 1,
+        unitCost: 30,
+        totalCost: 30,
+        currency: 'LINH_THACH',
+        purchased: 2,
+        remaining: 3,
+        stockType: 'daily',
+      },
+    });
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    (w.find(
+      '[data-testid="npc-affinity-shop-toggle-npc_lang_van_sinh"]',
+    ).element as HTMLButtonElement).click();
+    await flushPromises();
+
+    const buyBtn = w.find(
+      '[data-testid="npc-affinity-shop-buy-npc_lang_van_sinh-huyet_chi_dan"]',
+    ).element as HTMLButtonElement;
+    expect(buyBtn.disabled).toBe(false);
+    buyBtn.click();
+    await flushPromises();
+
+    expect(api.buyNpcShopItem).toHaveBeenCalledWith(
+      'npc_lang_van_sinh',
+      'huyet_chi_dan',
+      1,
+    );
+  });
+
+  it('renders shop buy error state when buyError set', async () => {
+    seedStore();
+    vi.mocked(api.fetchNpcShop).mockResolvedValue(makeShop());
+    vi.mocked(api.fetchNpcUnlocks).mockResolvedValue(makeUnlocks());
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    (w.find(
+      '[data-testid="npc-affinity-shop-toggle-npc_lang_van_sinh"]',
+    ).element as HTMLButtonElement).click();
+    await flushPromises();
+
+    const store = useNpcAffinityStore();
+    store.buyError = 'INSUFFICIENT_FUNDS';
+    store.buyLoading = null;
+    await w.vm.$nextTick();
+    const errEl = w.find(
+      '[data-testid="npc-affinity-shop-buy-error-npc_lang_van_sinh"]',
+    );
+    expect(errEl.exists()).toBe(true);
+    expect(errEl.text()).toContain('Không đủ linh thạch.');
+  });
+
+  it('renders hidden unlock entries with locked/unlocked indicators', async () => {
+    seedStore();
+    vi.mocked(api.fetchNpcShop).mockResolvedValue(makeShop());
+    vi.mocked(api.fetchNpcUnlocks).mockResolvedValue(makeUnlocks());
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    (w.find(
+      '[data-testid="npc-affinity-shop-toggle-npc_lang_van_sinh"]',
+    ).element as HTMLButtonElement).click();
+    await flushPromises();
+
+    const unlocksList = w.find(
+      '[data-testid="npc-affinity-unlocks-list-npc_lang_van_sinh"]',
+    );
+    expect(unlocksList.exists()).toBe(true);
+    expect(unlocksList.text()).toContain('Bí mật nội tâm hé lộ.');
+    expect(unlocksList.text()).toContain('Bí mật kiếm đạo.');
+  });
+
+  it('renders dailyStock + weeklyStock state', async () => {
+    seedStore();
+    vi.mocked(api.fetchNpcShop).mockResolvedValue(makeShop());
+    vi.mocked(api.fetchNpcUnlocks).mockResolvedValue(makeUnlocks());
+    const w = mountPanel();
+    await w.vm.$nextTick();
+    (w.find(
+      '[data-testid="npc-affinity-shop-toggle-npc_lang_van_sinh"]',
+    ).element as HTMLButtonElement).click();
+    await flushPromises();
+
+    const dailyStock = w.find(
+      '[data-testid="npc-affinity-shop-stock-npc_lang_van_sinh-huyet_chi_dan"]',
+    );
+    expect(dailyStock.exists()).toBe(true);
+    expect(dailyStock.text()).toContain('Hôm nay 1/5');
+
+    const weeklyStock = w.find(
+      '[data-testid="npc-affinity-shop-stock-npc_lang_van_sinh-skill_book_kim_quang_tram"]',
+    );
+    expect(weeklyStock.exists()).toBe(true);
+    expect(weeklyStock.text()).toContain('Tuần này 0/1');
   });
 });

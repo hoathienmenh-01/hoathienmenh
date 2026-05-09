@@ -154,6 +154,72 @@ function giftErrorLabel(): string {
 // dùng làm reference khi map view; không nối với `affinities` ngược lại.
 void NPC_GIFT_PREFERENCES;
 
+// ====================================================================
+// Phase 12.10.C — Shop + Hidden Unlocks
+// ====================================================================
+
+const expandedShop = ref<Record<string, boolean>>({});
+
+function isShopOpen(npcKey: string): boolean {
+  return expandedShop.value[npcKey] === true;
+}
+
+async function toggleShop(npcKey: string): Promise<void> {
+  const wasOpen = isShopOpen(npcKey);
+  expandedShop.value = { ...expandedShop.value, [npcKey]: !wasOpen };
+  if (!wasOpen) {
+    if (!store.shops[npcKey]) await store.loadShop(npcKey);
+    if (!store.unlocks[npcKey]) await store.loadUnlocks(npcKey);
+  }
+}
+
+function shopFor(npcKey: string) {
+  return store.shops[npcKey];
+}
+
+function unlocksFor(npcKey: string) {
+  return store.unlocks[npcKey];
+}
+
+function shopHint(entry: { unlockHint: string; unlockHintEn: string }): string {
+  return locale.value === 'en' && entry.unlockHintEn
+    ? entry.unlockHintEn
+    : entry.unlockHint;
+}
+
+function unlockReasonText(entry: {
+  unlockReason: string;
+  unlockReasonEn: string;
+}): string {
+  return locale.value === 'en' && entry.unlockReasonEn
+    ? entry.unlockReasonEn
+    : entry.unlockReason;
+}
+
+function shopTierLabel(entry: {
+  requiredTierLabel: string;
+  requiredTierLabelEn: string;
+}): string {
+  return locale.value === 'en' && entry.requiredTierLabelEn
+    ? entry.requiredTierLabelEn
+    : entry.requiredTierLabel;
+}
+
+function shopErrorLabel(): string {
+  if (!store.buyError) return '';
+  return t(
+    `npcAffinity.shopErrors.${store.buyError}`,
+    t('npcAffinity.shopErrors.UNKNOWN'),
+  );
+}
+
+async function onBuyShopItem(
+  npcKey: string,
+  itemKey: string,
+): Promise<void> {
+  await store.buyShopItem(npcKey, itemKey, 1);
+}
+
 onMounted(() => {
   if (props.autoLoad && !store.loaded) {
     void store.load();
@@ -412,6 +478,213 @@ watch(
           >
             {{ giftErrorLabel() }}
           </p>
+        </div>
+
+        <!-- Phase 12.10.C — Shop + Hidden Unlocks toggle -->
+        <div
+          class="pt-2 border-t border-ink-300/10"
+          :data-testid="`npc-affinity-shop-section-${aff.npcKey}`"
+        >
+          <button
+            type="button"
+            class="text-xs text-ink-200 hover:text-amber-200 underline w-full text-left flex items-center justify-between"
+            :data-testid="`npc-affinity-shop-toggle-${aff.npcKey}`"
+            @click="toggleShop(aff.npcKey)"
+          >
+            <span>{{ t('npcAffinity.shopToggle') }}</span>
+            <span class="text-[10px]">{{ isShopOpen(aff.npcKey) ? '▼' : '▶' }}</span>
+          </button>
+
+          <div
+            v-if="isShopOpen(aff.npcKey)"
+            class="mt-2 space-y-3"
+            :data-testid="`npc-affinity-shop-${aff.npcKey}`"
+          >
+            <div
+              v-if="store.shopLoading === aff.npcKey"
+              class="text-xs text-ink-300 italic"
+              :data-testid="`npc-affinity-shop-loading-${aff.npcKey}`"
+            >
+              {{ t('common.loadingData') }}
+            </div>
+
+            <div
+              v-else-if="!shopFor(aff.npcKey)"
+              class="text-xs text-rose-300"
+              :data-testid="`npc-affinity-shop-error-${aff.npcKey}`"
+            >
+              {{
+                t(
+                  `npcAffinity.shopErrors.${store.shopError ?? 'UNKNOWN'}`,
+                  t('npcAffinity.shopErrors.UNKNOWN'),
+                )
+              }}
+            </div>
+
+            <ul
+              v-else-if="shopFor(aff.npcKey)!.entries.length > 0"
+              class="space-y-2"
+              :data-testid="`npc-affinity-shop-list-${aff.npcKey}`"
+            >
+              <li
+                v-for="entry in shopFor(aff.npcKey)!.entries"
+                :key="entry.itemKey"
+                class="bg-ink-700/40 border border-ink-300/10 rounded p-2 text-xs space-y-1"
+                :class="{ 'opacity-60': !entry.unlocked }"
+                :data-testid="`npc-affinity-shop-item-${aff.npcKey}-${entry.itemKey}`"
+              >
+                <div class="flex items-baseline justify-between gap-2">
+                  <span class="font-semibold text-ink-50">
+                    {{ entry.item.name }}
+                  </span>
+                  <span class="tabular-nums text-amber-200">
+                    {{ entry.cost }}
+                    {{
+                      entry.currency === 'TIEN_NGOC'
+                        ? t('npcAffinity.shop.tienNgoc')
+                        : t('npcAffinity.shop.linhThach')
+                    }}
+                  </span>
+                </div>
+                <p class="text-[11px] text-ink-300">
+                  {{ entry.item.description }}
+                </p>
+                <p
+                  v-if="!entry.unlocked"
+                  class="text-[11px] text-rose-300 italic"
+                  :data-testid="`npc-affinity-shop-locked-${aff.npcKey}-${entry.itemKey}`"
+                >
+                  {{
+                    t('npcAffinity.shop.locked', {
+                      tier: shopTierLabel(entry),
+                    })
+                  }}
+                  ·
+                  <span class="text-ink-400">{{ shopHint(entry) }}</span>
+                </p>
+                <p
+                  v-else
+                  class="text-[11px] text-emerald-200 italic"
+                >
+                  {{ shopHint(entry) }}
+                </p>
+                <div class="flex items-center justify-between gap-2 pt-1">
+                  <span
+                    v-if="entry.stockType === 'daily'"
+                    class="text-[10px] text-ink-300 tabular-nums"
+                    :data-testid="`npc-affinity-shop-stock-${aff.npcKey}-${entry.itemKey}`"
+                  >
+                    {{
+                      t('npcAffinity.shop.dailyStock', {
+                        used: entry.purchased,
+                        limit: entry.dailyLimit ?? 0,
+                      })
+                    }}
+                  </span>
+                  <span
+                    v-else-if="entry.stockType === 'weekly'"
+                    class="text-[10px] text-ink-300 tabular-nums"
+                    :data-testid="`npc-affinity-shop-stock-${aff.npcKey}-${entry.itemKey}`"
+                  >
+                    {{
+                      t('npcAffinity.shop.weeklyStock', {
+                        used: entry.purchased,
+                        limit: entry.weeklyLimit ?? 0,
+                      })
+                    }}
+                  </span>
+                  <span
+                    v-else
+                    class="text-[10px] text-ink-300"
+                    :data-testid="`npc-affinity-shop-stock-${aff.npcKey}-${entry.itemKey}`"
+                  >
+                    {{ t('npcAffinity.shop.unlimitedStock') }}
+                  </span>
+                  <button
+                    type="button"
+                    class="text-[11px] px-2 py-0.5 rounded bg-amber-700/40 text-amber-100 hover:bg-amber-700/60 disabled:opacity-50 disabled:cursor-not-allowed"
+                    :disabled="
+                      !entry.unlocked ||
+                        entry.limitReached ||
+                        store.buyLoading ===
+                          `${aff.npcKey}:${entry.itemKey}`
+                    "
+                    :data-testid="`npc-affinity-shop-buy-${aff.npcKey}-${entry.itemKey}`"
+                    @click="onBuyShopItem(aff.npcKey, entry.itemKey)"
+                  >
+                    <span
+                      v-if="
+                        store.buyLoading ===
+                          `${aff.npcKey}:${entry.itemKey}`
+                      "
+                    >
+                      {{ t('common.loading') }}
+                    </span>
+                    <span v-else-if="!entry.unlocked">
+                      {{ t('npcAffinity.shop.lockedShort') }}
+                    </span>
+                    <span v-else-if="entry.limitReached">
+                      {{ t('npcAffinity.shop.limitReached') }}
+                    </span>
+                    <span v-else>
+                      {{ t('npcAffinity.shop.buy') }}
+                    </span>
+                  </button>
+                </div>
+              </li>
+            </ul>
+
+            <p
+              v-if="
+                store.buyError &&
+                  store.buyLoading === null
+              "
+              class="text-xs text-rose-300"
+              :data-testid="`npc-affinity-shop-buy-error-${aff.npcKey}`"
+            >
+              {{ shopErrorLabel() }}
+            </p>
+
+            <!-- Hidden unlocks list -->
+            <div
+              v-if="
+                unlocksFor(aff.npcKey) &&
+                  unlocksFor(aff.npcKey)!.unlocks.length > 0
+              "
+              class="pt-1 border-t border-ink-300/10"
+              :data-testid="`npc-affinity-unlocks-list-${aff.npcKey}`"
+            >
+              <h5 class="text-[11px] text-ink-300 uppercase tracking-wider pb-1">
+                {{ t('npcAffinity.unlocks.title') }}
+              </h5>
+              <ul class="space-y-1">
+                <li
+                  v-for="u in unlocksFor(aff.npcKey)!.unlocks"
+                  :key="`${u.kind}:${u.refKey}`"
+                  class="text-[11px] flex items-baseline gap-2"
+                  :class="
+                    u.unlocked
+                      ? 'text-emerald-200'
+                      : 'text-ink-400'
+                  "
+                  :data-testid="`npc-affinity-unlock-${aff.npcKey}-${u.refKey}`"
+                >
+                  <span class="font-medium">
+                    {{
+                      u.kind === 'dialogue'
+                        ? t('npcAffinity.unlocks.dialogueLabel')
+                        : t('npcAffinity.unlocks.questLabel')
+                    }}
+                  </span>
+                  <span class="text-ink-300">·</span>
+                  <span>{{ shopTierLabel(u) }}</span>
+                  <span class="text-ink-300">·</span>
+                  <span class="flex-1">{{ unlockReasonText(u) }}</span>
+                  <span v-if="u.unlocked" class="text-[10px]">✓</span>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
       </li>
     </ul>

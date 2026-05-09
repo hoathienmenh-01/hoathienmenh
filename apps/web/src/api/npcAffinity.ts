@@ -136,3 +136,107 @@ export async function fetchNpcGiftDaily(): Promise<NpcGiftDailyCount[]> {
   if (!data.ok || !data.data) throw data.error ?? fallbackError('npcAffinity');
   return data.data.counts;
 }
+
+// ====================================================================
+// Phase 12.10.C — NPC Affinity Shop + Hidden Unlocks
+// ====================================================================
+
+export interface NpcShopItemView {
+  npcKey: string;
+  itemKey: string;
+  requiredAffinityTier: string;
+  requiredTierLabel: string;
+  requiredTierLabelEn: string;
+  requiredTierMinScore: number;
+  cost: number;
+  currency: 'LINH_THACH' | 'TIEN_NGOC';
+  stockType: 'unlimited' | 'daily' | 'weekly';
+  dailyLimit: number | null;
+  weeklyLimit: number | null;
+  unlockHint: string;
+  unlockHintEn: string;
+  item: {
+    key: string;
+    name: string;
+    description: string;
+    quality: string;
+    kind: string;
+    stackable: boolean;
+  };
+  currentTier: string;
+  unlocked: boolean;
+  purchased: number;
+  remaining: number | null;
+  limitReached: boolean;
+}
+
+export interface NpcShopListView {
+  npcKey: string;
+  npcName: string;
+  currentScore: number;
+  currentTier: NpcAffinityTierView;
+  entries: NpcShopItemView[];
+}
+
+export interface NpcShopBuyReceiptView {
+  characterId: string;
+  npcKey: string;
+  itemKey: string;
+  qty: number;
+  unitCost: number;
+  totalCost: number;
+  currency: 'LINH_THACH' | 'TIEN_NGOC';
+  purchased: number;
+  remaining: number | null;
+  stockType: 'unlimited' | 'daily' | 'weekly';
+}
+
+export interface NpcHiddenUnlockEntryView {
+  kind: 'dialogue' | 'quest';
+  refKey: string;
+  npcKey: string;
+  requiredAffinityTier: string;
+  requiredTierLabel: string;
+  requiredTierLabelEn: string;
+  requiredTierMinScore: number;
+  unlockReason: string;
+  unlockReasonEn: string;
+  unlocked: boolean;
+}
+
+export interface NpcUnlocksView {
+  npcKey: string;
+  currentTier: string;
+  unlocks: NpcHiddenUnlockEntryView[];
+}
+
+/** Phase 12.10.C — GET `/story/npc-affinity/:npcKey/shop`. */
+export async function fetchNpcShop(npcKey: string): Promise<NpcShopListView> {
+  const { data } = await apiClient.get<Envelope<{ shop: NpcShopListView }>>(
+    `/story/npc-affinity/${encodeURIComponent(npcKey)}/shop`,
+  );
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('npcAffinity');
+  return data.data.shop;
+}
+
+/** Phase 12.10.C — POST `/story/npc-affinity/:npcKey/shop/buy`. */
+export async function buyNpcShopItem(
+  npcKey: string,
+  itemKey: string,
+  qty: number = 1,
+): Promise<{ shop: NpcShopListView; receipt: NpcShopBuyReceiptView }> {
+  const { data } = await apiClient.post<
+    Envelope<{ shop: NpcShopListView; receipt: NpcShopBuyReceiptView }>
+  >(`/story/npc-affinity/${encodeURIComponent(npcKey)}/shop/buy`, { itemKey, qty });
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('npcAffinity');
+  return data.data;
+}
+
+/** Phase 12.10.C — GET `/story/npc-affinity/:npcKey/unlocks`. */
+export async function fetchNpcUnlocks(npcKey: string): Promise<NpcUnlocksView> {
+  const { data } = await apiClient.get<Envelope<NpcUnlocksView>>(
+    `/story/npc-affinity/${encodeURIComponent(npcKey)}/unlocks`,
+  );
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('npcAffinity');
+  return data.data;
+}

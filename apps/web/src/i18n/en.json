@@ -2330,6 +2330,35 @@
       "UNAUTHENTICATED": "Session expired.",
       "NO_CHARACTER": "No character.",
       "UNKNOWN": "Failed to offer gift, please retry."
+    },
+    "shopToggle": "Shop & exclusive offers",
+    "shop": {
+      "buy": "Buy",
+      "lockedShort": "Locked",
+      "limitReached": "Limit reached",
+      "linhThach": "Linh Thach",
+      "tienNgoc": "Tien Ngoc",
+      "locked": "Requires {tier}",
+      "dailyStock": "Today {used}/{limit}",
+      "weeklyStock": "This week {used}/{limit}",
+      "unlimitedStock": "Unlimited"
+    },
+    "shopErrors": {
+      "NPC_AFFINITY_UNKNOWN": "This NPC has no shop.",
+      "ITEM_NOT_IN_SHOP": "Item not available in this shop.",
+      "INSUFFICIENT_AFFINITY_TIER": "Relationship not high enough to buy.",
+      "INSUFFICIENT_FUNDS": "Insufficient Linh Thach / Tien Ngoc.",
+      "DAILY_LIMIT_REACHED": "Daily purchase limit reached.",
+      "WEEKLY_LIMIT_REACHED": "Weekly purchase limit reached.",
+      "INVALID_QTY": "Invalid quantity.",
+      "NON_STACKABLE_QTY_GT_1": "Cannot buy more than one of this item.",
+      "NO_CHARACTER": "No character.",
+      "UNKNOWN": "Purchase failed, please retry."
+    },
+    "unlocks": {
+      "title": "Hidden bonds",
+      "dialogueLabel": "Dialogue",
+      "questLabel": "Quest"
     }
   },
   "quest": {

@@ -29,6 +29,16 @@ export const useNpcAffinityStore = defineStore('npcAffinity', () => {
   const giftError = ref<string | null>(null);
   const lastGift = ref<api.NpcGiftResultView | null>(null);
 
+  // Phase 12.10.C — Shop + Hidden Unlocks state per NPC.
+  const shops = ref<Record<string, api.NpcShopListView>>({});
+  const shopLoading = ref<string | null>(null);
+  const shopError = ref<string | null>(null);
+  const buyLoading = ref<string | null>(null); // `${npcKey}:${itemKey}`
+  const buyError = ref<string | null>(null);
+  const lastBuy = ref<api.NpcShopBuyReceiptView | null>(null);
+  const unlocks = ref<Record<string, api.NpcUnlocksView>>({});
+  const unlocksLoading = ref<string | null>(null);
+
   const count = computed(() => affinities.value.length);
 
   function findByNpcKey(npcKey: string): api.NpcAffinityView | undefined {
@@ -135,6 +145,65 @@ export const useNpcAffinityStore = defineStore('npcAffinity', () => {
     lastGift.value = null;
   }
 
+  // ==================================================================
+  // Phase 12.10.C — Shop + Hidden Unlocks
+  // ==================================================================
+
+  async function loadShop(npcKey: string): Promise<void> {
+    shopLoading.value = npcKey;
+    shopError.value = null;
+    try {
+      const shop = await api.fetchNpcShop(npcKey);
+      shops.value = { ...shops.value, [npcKey]: shop };
+    } catch (e) {
+      shopError.value =
+        (e as { code?: string }).code ??
+        (e as { error?: { code?: string } }).error?.code ??
+        'UNKNOWN';
+    } finally {
+      shopLoading.value = null;
+    }
+  }
+
+  async function buyShopItem(
+    npcKey: string,
+    itemKey: string,
+    qty = 1,
+  ): Promise<api.NpcShopBuyReceiptView | null> {
+    buyLoading.value = `${npcKey}:${itemKey}`;
+    buyError.value = null;
+    try {
+      const result = await api.buyNpcShopItem(npcKey, itemKey, qty);
+      shops.value = { ...shops.value, [npcKey]: result.shop };
+      lastBuy.value = result.receipt;
+      return result.receipt;
+    } catch (e) {
+      buyError.value =
+        (e as { code?: string }).code ??
+        (e as { error?: { code?: string } }).error?.code ??
+        'UNKNOWN';
+      return null;
+    } finally {
+      buyLoading.value = null;
+    }
+  }
+
+  async function loadUnlocks(npcKey: string): Promise<void> {
+    unlocksLoading.value = npcKey;
+    try {
+      const data = await api.fetchNpcUnlocks(npcKey);
+      unlocks.value = { ...unlocks.value, [npcKey]: data };
+    } catch {
+      // fail-soft: panel renders empty unlocks list.
+    } finally {
+      unlocksLoading.value = null;
+    }
+  }
+
+  function clearLastBuy(): void {
+    lastBuy.value = null;
+  }
+
   function reset(): void {
     affinities.value = [];
     caps.value = null;
@@ -146,6 +215,14 @@ export const useNpcAffinityStore = defineStore('npcAffinity', () => {
     giftLoading.value = null;
     giftError.value = null;
     lastGift.value = null;
+    shops.value = {};
+    shopLoading.value = null;
+    shopError.value = null;
+    buyLoading.value = null;
+    buyError.value = null;
+    lastBuy.value = null;
+    unlocks.value = {};
+    unlocksLoading.value = null;
   }
 
   return {
@@ -169,5 +246,18 @@ export const useNpcAffinityStore = defineStore('npcAffinity', () => {
     loadDaily,
     giftNpc,
     clearLastGift,
+    // Phase 12.10.C
+    shops,
+    shopLoading,
+    shopError,
+    buyLoading,
+    buyError,
+    lastBuy,
+    unlocks,
+    unlocksLoading,
+    loadShop,
+    buyShopItem,
+    loadUnlocks,
+    clearLastBuy,
   };
 });

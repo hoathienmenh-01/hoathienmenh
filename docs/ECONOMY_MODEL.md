@@ -79,6 +79,7 @@ Mục tiêu: economy KHÔNG vỡ trong 12-24 tháng vận hành, kể cả khi:
 |---|---|---|
 | Market buy (cost) | `market.service.ts` `buy` | `MARKET_BUY` |
 | Shop NPC buy | `shop.service.ts` `buy` | `SHOP_BUY` |
+| NPC Affinity Shop buy (Phase 12.10.C) | `npc-affinity-shop.service.ts` `buy` | `NPC_SHOP_BUY` |
 | Sect donate (phase 13) | `sect.service.ts` `donateTreasury` | `SECT_DONATE` |
 | Refine cost (phase 11) | `refinery.service.ts` (future) | `REFINE_COST` |
 | Alchemy cost (phase 11) | `alchemy.service.ts` (future) | `ALCHEMY_COST` |
@@ -102,6 +103,7 @@ Mục tiêu: economy KHÔNG vỡ trong 12-24 tháng vận hành, kể cả khi:
 | Sink | Service | Reason |
 |---|---|---|
 | Premium shop | `shop.service.ts` (future tab) | `PREMIUM_SHOP_BUY` |
+| NPC Affinity Shop premium buy (Phase 12.10.C) | `npc-affinity-shop.service.ts` `buy` | `NPC_SHOP_BUY` |
 | Refine speed-up (phase 11) | `refinery.service.ts` (future) | `REFINE_SPEEDUP` |
 | Cosmetic / title (phase 11+) | static catalog | `COSMETIC_BUY` |
 | Battle pass tier (phase 15, gated) | `battle-pass.service.ts` (future) | `BATTLEPASS_TIER` |
