@@ -12,6 +12,31 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Added — Phase 14.2.C Elemental Skill Tree Expansion (this PR)
+
+- **Skill có hệ rõ ràng và identity riêng** — Phase 14.2.A đã ship Elemental Combat Foundation, 14.2.B đã ship monster resist + equipment elementalAtkBonus. Phase 14.2.C biến Ngũ Hành từ damage/resist multiplier thành **hệ kỹ năng có hướng chơi riêng**: Mộc = hồi phục/độc, Hỏa = burst damage/burn, Thổ = shield/khống, Kim = xuyên giáp/chí mạng, Thủy = control/hồi linh.
+- **Shared (`packages/shared/src/combat.ts` + `elemental-skills.ts` mới)**:
+  - `SkillDef.tags?: SkillTag[]` — optional metadata field, backward-compat (legacy skill thiếu tags vẫn pass mọi check).
+  - `SkillTag` enum 6 giá trị: `HEAL` / `DOT` / `BURST` / `SHIELD` / `CRIT` / `CONTROL`. Hằng `SKILL_TAGS` để FE dropdown / catalog test.
+  - **11 signature skill mới Phase 14.2.C** (2-3 skill mỗi hệ): Mộc (`moc_xuan_phong_phuc_sinh` HEAL, `moc_doc_van_truong` DOT, `moc_thien_sinh_chu` HEAL), Hỏa (`hoa_phen_diem_kiep` BURST, `hoa_thieu_diem_phap` DOT), Thổ (`tho_kim_son_ho_phap` SHIELD, `tho_huyen_thach_trong_giap` SHIELD), Kim (`kim_xuyen_giap_thien_thich` CRIT, `kim_phong_nhan_quyet` CRIT), Thủy (`thuy_lam_dieu_quyet` CONTROL, `thuy_lam_quy_thuy_tam` HEAL). Skill cũ `tho_huyen_son_phong_an` backfill tag `CONTROL`.
+  - `SKILL_ELEMENT_IDENTITY` catalog: 5 entry, mỗi hệ có `name`, `theme`, `playstyle`, `primaryTags`, `secondaryTags`. Helper `getSkillElementIdentity` / `describeSkillElementIdentity` / `validateSkillTag` / `findElementIdentityCoverageGaps`.
+  - Tag side-effect dial: `SKILL_TAG_DOT_DAMAGE_RATIO=0.15`, `SKILL_TAG_DOT_TURNS=3`, `SKILL_TAG_SHIELD_HP_RATIO=0.10` — tổng DOT 3 lượt ≈ 45% sát thương 1-shot, shield ≈ 10% HP max (anti-cheese, anti-runaway).
+  - `computeSkillAffinityDelta` / `computeSkillElementBonus` thin wrapper kiểm tra delta primary/secondary affinity (đã wire ở 14.2.A).
+- **API (`apps/api/src/modules/combat/combat.service.ts`)**:
+  - `EncounterMonsterDot` interface mới + `EncounterState.monsterDot?` optional field — DOT persist multi-turn trên monster, decrement mỗi player action, clear khi monster chết / encounter WON / LOST.
+  - Skill cast block thêm tag dispatch: `DOT` → set `monsterDot` state với `perTurnDamage = floor(dmg × 0.15)` × 3 lượt; `SHIELD` → compute `skillShieldAbsorb = floor(hpMax × 0.10)`, áp same-turn TRƯỚC buff shield (compose tuần tự skill → buff → remaining damage). SHIELD không persist sang turn sau (single-use). Log line mới: "DOT N sát thương / lượt × 3 lượt", "Khiên \<element\> hấp thu N sát thương phản kích".
+  - **KHÔNG đổi**: combat damage formula (vẫn dùng `playerElementMul × talentElementMul × buffElementMul × phase142Mul` từ 14.2.A/B), character affinity bonus, monster resist, equipment elementalAtkBonus.
+- **Web (`apps/web/src/components/SkillTagBadge.vue` mới + `views/SkillBookView.vue`)**:
+  - `SkillTagBadge` component: render tag badge với Wuxia palette (HEAL=emerald, DOT=lime, BURST=rose, SHIELD=amber, CRIT=fuchsia, CONTROL=sky), tooltip via `title` attr, i18n via `skillTagBadge.tag.<KEY>` + `.tooltip.<KEY>`.
+  - SkillBookView: thêm filter "Loại pháp" (tag dropdown), render tag badges trên skill card, render element identity tooltip trên ElementBadge wrapper, add italic identity description line bên dưới skill description.
+- **Tests**:
+  - shared `elemental-skills.test.ts` 48 PASS (catalog invariant, signature skills, validateSkillTag, computeSkillAffinityDelta, skillsForTag, side-effect dial range).
+  - api `combat.service.test.ts` +6 Phase 14.2.C tests (DOT cast + persist, DOT tick decrement, DOT clear on monster killed, SHIELD log, SHIELD non-persist, legacy skill identity no-op) — 102 PASS tổng.
+  - web `SkillTagBadge.test.ts` 17 PASS (label vi/en, tooltip, data-testid, color class, size).
+- **Out of scope**: passive `BURST` skill, multi-DOT stacking (single active monsterDot, overwrite policy), shield carry-over multi-turn, gacha, skill tree visual UI (defer Phase 14.3+).
+
+
+
 ### Added — Phase 14.3.D Tribulation Encounter System (this PR)
 
 - **Biến Thiên Kiếp thành mini-encounter có gameplay** — Phase 14.3.A đã ship preview snapshot, 14.3.B đã ship support providers + redirect, 14.3.C đã ship item consumption. Phase 14.3.D thêm encounter layer: mỗi tribulation transition giờ có 1 encounter spec (element + effectType) gắn flavor gameplay (Hỏa = burst / Thủy = sustain / Mộc = poison-recovery / Kim = armor-crit / Thổ = defense-endurance), 2-phase flow `start → resolve` thay cho 1-shot attempt.

@@ -77,6 +77,24 @@
       "tho": "Thổ"
     }
   },
+  "skillTagBadge": {
+    "tag": {
+      "HEAL": "Hồi",
+      "DOT": "Độc",
+      "BURST": "Bùng",
+      "SHIELD": "Khiên",
+      "CRIT": "Chí",
+      "CONTROL": "Khống"
+    },
+    "tooltip": {
+      "HEAL": "Hồi phục — phục hồi HP cho bản thân khi cast.",
+      "DOT": "Độc/Bỏng — gây sát thương lan dài 3 lượt sau khi cast.",
+      "BURST": "Bùng nổ — sát thương đơn lượt cực cao.",
+      "SHIELD": "Khiên hộ thân — hấp thu sát thương phản kích lượt này.",
+      "CRIT": "Chí mạng — xác suất xuyên giáp / sát thương chí tử cao.",
+      "CONTROL": "Khống chế — làm chậm hoặc phong toả đối thủ."
+    }
+  },
   "toast": {
     "title": {
       "info": "Tin tức",
@@ -1760,8 +1778,12 @@
       "tier": "Cấp",
       "element": "Hệ",
       "equipped": "Trạng thái",
+      "tag": "Loại pháp",
       "all": "Tất cả",
       "shown": "Hiển thị {shown}/{total} (kho {catalog})"
+    },
+    "elementIdentity": {
+      "neutral": "Vô hệ — không thuộc Ngũ Hành"
     },
     "tier": {
       "basic": "Sơ cấp",

@@ -3296,3 +3296,183 @@ describe('CombatService → QuestService auto-track integration (Phase 12 Story 
     expect(progress.step_03).toBe(3); // cap tại count=3, không vượt.
   });
 });
+
+// — Phase 14.2.C Elemental Skill Tree Expansion: DOT / SHIELD apply -----
+//
+// Cover apply DOT tag (monsterDot multi-turn state) và SHIELD tag (single-
+// turn absorb monster reply) qua skill ngũ hành identity:
+//   - moc_doc_van_truong (Mộc, DOT, atkScale 1.5, mp 26, cd 2)
+//   - tho_kim_son_ho_phap (Thổ, SHIELD+CONTROL, atkScale 0.6, mp 18, cd 3)
+// Test ép Math.random=0.5 (variance=1.0) → reproducible damage. Dùng
+// `son_coc` dungeon (Phase 4 baseline, monster vô resist) để loại noise
+// 14.2.B equipBonus / monsterResist.
+describe('Phase 14.2.C — Skill DOT / SHIELD apply', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('skill DOT cast → monsterDot persist trên EncounterState với turnsLeft=3', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const u = await makeUserChar(prisma, {
+      stamina: 100,
+      power: 5,
+      hp: 1000,
+      hpMax: 1000,
+      spiritualRootGrade: 'tien',
+      primaryElement: 'moc',
+      secondaryElements: ['thuy'],
+    });
+    // son_coc monster đầu `son_thu_lon` (level 1, hp 30, def 2, tho hệ).
+    // Power 5 + atkScale 1.5 → dmg base ~6 → ×1.40 (moc khắc tho + char
+    // primary) ~9. Dưới 30 HP → monster sống → DOT apply.
+    const enc = await combat.start(u.userId, 'son_coc');
+    const view = await combat.action(u.userId, enc.id, {
+      skillKey: 'moc_doc_van_truong',
+    });
+    // Monster vẫn ALIVE (status ACTIVE) — DOT đã apply.
+    expect(view.status).toBe(EncounterStatus.ACTIVE);
+    const log = view.log.map((l) => l.text).join('\n');
+    expect(log).toContain('DOT');
+    expect(log).toMatch(/sát thương \/ lượt × 3 lượt/);
+
+    // EncounterState persist DOT.
+    const row = await prisma.encounter.findUniqueOrThrow({ where: { id: enc.id } });
+    const state = row.state as { monsterIndex: number; monsterHp: number; monsterDot?: { skillKey: string; element: string; perTurnDamage: number; turnsLeft: number } };
+    expect(state.monsterDot).toBeDefined();
+    expect(state.monsterDot!.skillKey).toBe('moc_doc_van_truong');
+    expect(state.monsterDot!.element).toBe('moc');
+    expect(state.monsterDot!.turnsLeft).toBe(3);
+    expect(state.monsterDot!.perTurnDamage).toBeGreaterThan(0);
+  });
+
+  it('DOT tick → turnsLeft decrement mỗi lượt và damage áp lên monster', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const u = await makeUserChar(prisma, {
+      stamina: 100,
+      power: 5,
+      hp: 1000,
+      hpMax: 1000,
+      spiritualRootGrade: 'tien',
+      primaryElement: 'moc',
+      secondaryElements: ['thuy'],
+    });
+    const enc = await combat.start(u.userId, 'son_coc');
+    // Turn 1: cast DOT skill — set monsterDot turnsLeft=3.
+    await combat.action(u.userId, enc.id, { skillKey: 'moc_doc_van_truong' });
+    const state1 = (await prisma.encounter.findUniqueOrThrow({ where: { id: enc.id } })).state as { monsterDot?: { turnsLeft: number; perTurnDamage: number } };
+    expect(state1.monsterDot).toBeDefined();
+    expect(state1.monsterDot!.turnsLeft).toBe(3);
+    const dotPerTurn = state1.monsterDot!.perTurnDamage;
+
+    // Turn 2: cast basic_attack (no DOT). Tick DOT → turnsLeft=2.
+    const view2 = await combat.action(u.userId, enc.id, {});
+    const log2 = view2.log.map((l) => l.text).join('\n');
+    expect(log2).toContain(`chịu ${dotPerTurn} sát thương DOT`);
+    const state2 = (await prisma.encounter.findUniqueOrThrow({ where: { id: enc.id } })).state as { monsterDot?: { turnsLeft: number } };
+    // turnsLeft có thể decrement từ 3 → 2, hoặc nếu DOT vừa làm chết
+    // monster (perTurn × 3 ≥ HP còn) sẽ clear → undefined. Test chỉ assert
+    // không bị stale state (≤ 2 hoặc undefined).
+    if (state2.monsterDot) {
+      expect(state2.monsterDot.turnsLeft).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it('DOT clear khi monster killed (chuyển monster mới → state.monsterDot=undefined)', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const u = await makeUserChar(prisma, {
+      stamina: 100,
+      power: 5000,
+      hp: 5000,
+      hpMax: 5000,
+      spiritualRootGrade: 'tien',
+      primaryElement: 'moc',
+      secondaryElements: ['thuy'],
+    });
+    const enc = await combat.start(u.userId, 'son_coc');
+    // Power cao 1-shot kill monster đầu — DOT không persist sang monster mới.
+    const view = await combat.action(u.userId, enc.id, {
+      skillKey: 'moc_doc_van_truong',
+    });
+    // Monster đầu chết → chuyển monster 2 (hoặc WON nếu single-monster
+    // dungeon — son_coc có 3 monster).
+    const row = await prisma.encounter.findUniqueOrThrow({ where: { id: enc.id } });
+    const state = row.state as { monsterIndex: number; monsterDot?: unknown };
+    expect(state.monsterIndex).toBeGreaterThan(0);
+    expect(state.monsterDot).toBeUndefined();
+    // Status vẫn ACTIVE (còn monster).
+    expect(view.status).toBe(EncounterStatus.ACTIVE);
+  });
+
+  it('skill SHIELD cast → log "Khiên ... hấp thu N sát thương phản kích"', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const u = await makeUserChar(prisma, {
+      stamina: 100,
+      power: 50,
+      hp: 1000,
+      hpMax: 1000,
+      spiritualRootGrade: 'tien',
+      primaryElement: 'tho',
+      secondaryElements: ['kim'],
+    });
+    const enc = await combat.start(u.userId, 'son_coc');
+    // tho_kim_son_ho_phap: SHIELD identity, atkScale 0.6 → không kill
+    // monster đầu → có monster reply → shield absorb.
+    const view = await combat.action(u.userId, enc.id, {
+      skillKey: 'tho_kim_son_ho_phap',
+    });
+    expect(view.status).toBe(EncounterStatus.ACTIVE);
+    const log = view.log.map((l) => l.text).join('\n');
+    // Pre-cast log line.
+    expect(log).toContain('Khiên tho dựng');
+    // Absorb log line — số HP tuỳ reply, kiểm tra contain prefix.
+    expect(log).toMatch(/Khiên tho hấp thu \d+ sát thương phản kích/);
+  });
+
+  it('SHIELD không persist sang turn 2 (single-use, encounter state KHÔNG lưu shield)', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const u = await makeUserChar(prisma, {
+      stamina: 100,
+      power: 50,
+      hp: 1000,
+      hpMax: 1000,
+      spiritualRootGrade: 'tien',
+      primaryElement: 'tho',
+      secondaryElements: ['kim'],
+    });
+    const enc = await combat.start(u.userId, 'son_coc');
+    await combat.action(u.userId, enc.id, { skillKey: 'tho_kim_son_ho_phap' });
+    const state = (await prisma.encounter.findUniqueOrThrow({ where: { id: enc.id } }))
+      .state as Record<string, unknown>;
+    // Phase 14.2.C: không có `playerShield` field — shield single-use,
+    // chỉ áp same-turn với cast.
+    expect(state).not.toHaveProperty('playerShield');
+    // Turn 2 cast basic_attack: log không có "Khiên tho hấp thu".
+    const view2 = await combat.action(u.userId, enc.id, {});
+    const log2 = view2.log.map((l) => l.text).join('\n');
+    // Log accumulate, nhưng turn 2 không phát line shield mới (chỉ turn 1).
+    // Đếm matches.
+    const shieldHits = (log2.match(/Khiên tho hấp thu/g) ?? []).length;
+    expect(shieldHits).toBeLessThanOrEqual(1);
+  });
+
+  it('legacy skill (kim_quang_tram, no tags) → DOT/SHIELD wiring identity (state.monsterDot=undefined)', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const u = await makeUserChar(prisma, {
+      stamina: 100,
+      power: 200,
+      hp: 1000,
+      hpMax: 1000,
+      spiritualRootGrade: 'tien',
+      primaryElement: 'kim',
+      secondaryElements: ['thuy', 'hoa'],
+    });
+    const enc = await combat.start(u.userId, 'moc_huyen_lam');
+    const view = await combat.action(u.userId, enc.id, { skillKey: 'kim_quang_tram' });
+    const state = (await prisma.encounter.findUniqueOrThrow({ where: { id: enc.id } }))
+      .state as { monsterDot?: unknown };
+    expect(state.monsterDot).toBeUndefined();
+    const log = view.log.map((l) => l.text).join('\n');
+    expect(log).not.toContain('DOT');
+    expect(log).not.toContain('Khiên kim dựng');
+  });
+});

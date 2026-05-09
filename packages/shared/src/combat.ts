@@ -703,7 +703,42 @@ export interface SkillDef {
    * Default 0 — combat runtime hiện chưa enforce; phase 11 sẽ wire.
    */
   cooldownTurns?: number;
+  /**
+   * **Phase 14.2.C — Elemental Skill Tree Expansion.** Skill identity tag
+   * dùng cho UI tooltip + combat runtime side-effect dispatch.
+   *
+   * Các giá trị `SkillTag`:
+   *   - `HEAL`    → kết hợp với `selfHealRatio` hồi HP (đã có sẵn pipeline).
+   *   - `DOT`     → wire `monsterDot` lên encounter state (mỗi lượt thiêu/độc
+   *     thêm `floor(atkScale × effPower × DOT_RATIO)` HP cho 3 lượt tới).
+   *   - `BURST`   → identity-only (atkScale lớn, không side-effect).
+   *   - `SHIELD`  → wire `playerShield` lên encounter state (hấp thu monster
+   *     reply lượt kế tiếp = `floor(hpMax × SHIELD_RATIO)`).
+   *   - `CRIT`    → identity-only (atkScale tier ULT, gameplay flavor).
+   *   - `CONTROL` → identity-only (effect đã có pattern qua `debuff_root_thuy`
+   *     etc; runtime hiện chưa dispatch tự động từ skill).
+   *
+   * Optional, additive — legacy skill không khai báo → tags=`[]` → không có
+   * side-effect mới (backward-compat). Validator
+   * `validateSkillElementIdentity()` ở `elemental-skills.ts` enforce element
+   * non-null khi tag DOT/SHIELD/CONTROL.
+   */
+  tags?: readonly SkillTag[];
 }
+
+/**
+ * Phase 14.2.C — Skill identity tag.
+ * @see SkillDef.tags
+ */
+export const SKILL_TAGS = [
+  'HEAL',
+  'DOT',
+  'BURST',
+  'SHIELD',
+  'CRIT',
+  'CONTROL',
+] as const;
+export type SkillTag = (typeof SKILL_TAGS)[number];
 
 export const SKILL_BASIC_ATTACK: SkillDef = {
   key: 'basic_attack',
@@ -1461,6 +1496,217 @@ export const SKILLS: readonly SkillDef[] = [
     role: 'CONTROL',
     unlockRealm: 'truc_co',
     cooldownTurns: 3,
+    // Phase 14.2.C — backfill identity tag (role đã CONTROL từ trước, tag
+    // chỉ là metadata thêm để FE/coverage check pickup).
+    tags: ['CONTROL'],
+  },
+
+  // =====================================================================
+  // Phase 14.2.C — Elemental Skill Tree Expansion (11 signature skills)
+  // ---------------------------------------------------------------------
+  // Mỗi skill mang `tags` rõ ràng — combat runtime dispatch side-effect:
+  //   - DOT  → encounter state `monsterDot` (3 lượt thiêu/độc).
+  //   - SHIELD → encounter state `playerShield` (hấp thu monster reply).
+  //   - HEAL/BURST/CRIT/CONTROL → identity-only (gameplay flavor).
+  // Xem `elemental-skills.ts` (catalog identity + dial) và
+  // `BALANCE_MODEL §4.7` cho rationale.
+  // =====================================================================
+
+  // ----- Mộc — Hồi phục / Độc / Sinh trưởng -----
+  {
+    key: 'moc_xuan_phong_phuc_sinh',
+    name: 'Xuân Phong Phục Sinh',
+    description:
+      'Hơi xuân Mộc hệ thấm vào kinh mạch — sát thương 1.0× kèm hồi 25% HP, dưỡng thương dài lâu.',
+    mpCost: 22,
+    atkScale: 1.0,
+    selfHealRatio: 0.25,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'moc',
+    type: 'ACTIVE',
+    role: 'HEAL',
+    unlockRealm: 'luyenkhi',
+    cooldownTurns: 3,
+    tags: ['HEAL'],
+  },
+  {
+    key: 'moc_doc_van_truong',
+    name: 'Mộc Độc Vạn Trường',
+    description:
+      'Phù chú độc tố lan trên thân địch — đánh 1.5× và tiếp tục bào mòn linh hồn 3 lượt sau (DOT 15%/lượt).',
+    mpCost: 26,
+    atkScale: 1.5,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'moc',
+    type: 'ACTIVE',
+    role: 'DEBUFF',
+    unlockRealm: 'truc_co',
+    cooldownTurns: 2,
+    tags: ['DOT'],
+  },
+  {
+    key: 'moc_thien_sinh_chu',
+    name: 'Thiên Sinh Diệu Chú',
+    description:
+      'Khẩu quyết sinh trưởng — sát thương nhẹ 0.8× nhưng hồi 28% HP cho bản thân, gốc rễ vạn vật.',
+    mpCost: 28,
+    atkScale: 0.8,
+    selfHealRatio: 0.28,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'moc',
+    type: 'ACTIVE',
+    role: 'HEAL',
+    unlockRealm: 'truc_co',
+    cooldownTurns: 4,
+    tags: ['HEAL'],
+  },
+
+  // ----- Hoả — Bùng nổ / Thiêu đốt -----
+  {
+    key: 'hoa_phen_diem_kiep',
+    name: 'Phần Diệm Hoả Kiếp',
+    description:
+      'Tâm hoả tụ thành kiếp tai — bùng nổ 2.6× sát thương trong 1 đòn. Ngọn lửa hư không, một kích định.',
+    mpCost: 38,
+    atkScale: 2.6,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'hoa',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'truc_co',
+    cooldownTurns: 4,
+    tags: ['BURST'],
+  },
+  {
+    key: 'hoa_thieu_diem_phap',
+    name: 'Thiêu Diệm Phù Pháp',
+    description:
+      'Phù chú lửa khắc ấn lên đối thủ — đánh 1.5× kèm vết bỏng 3 lượt (DOT 15%/lượt) khó dập.',
+    mpCost: 24,
+    atkScale: 1.5,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'hoa',
+    type: 'ACTIVE',
+    role: 'DEBUFF',
+    unlockRealm: 'luyenkhi',
+    cooldownTurns: 2,
+    tags: ['DOT'],
+  },
+
+  // ----- Thổ — Khiên / Giảm sát thương -----
+  {
+    key: 'tho_kim_son_ho_phap',
+    name: 'Kim Sơn Hộ Pháp',
+    description:
+      'Hô triệu khối thạch sơn bao quanh — sát thương 0.5× nhưng tạo khiên đá hấp thu 10% HP của bản thân ở lượt kế.',
+    mpCost: 20,
+    atkScale: 0.5,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'tho',
+    type: 'ACTIVE',
+    role: 'BUFF',
+    unlockRealm: 'luyenkhi',
+    cooldownTurns: 3,
+    tags: ['SHIELD'],
+  },
+  {
+    key: 'tho_huyen_thach_trong_giap',
+    name: 'Huyền Thạch Trọng Giáp',
+    description:
+      'Trọng giáp huyền thạch áo lên thân — đánh nhẹ 0.4× nhưng dựng khiên cứng 10% HP, bộ pháp Thổ hệ vững như sơn nhạc.',
+    mpCost: 24,
+    atkScale: 0.4,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'tho',
+    type: 'ACTIVE',
+    role: 'BUFF',
+    unlockRealm: 'truc_co',
+    cooldownTurns: 4,
+    tags: ['SHIELD'],
+  },
+
+  // ----- Kim — Xuyên giáp / Chí mạng -----
+  {
+    key: 'kim_xuyen_giap_thien_thich',
+    name: 'Xuyên Giáp Thiên Thích',
+    description:
+      'Kim quang nhọn tựa thiên trâm — sát thương 1.8× xuyên giáp địch, đòn chí mạng khi đúng kẽ hở.',
+    mpCost: 24,
+    atkScale: 1.8,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'kim',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'luyenkhi',
+    cooldownTurns: 2,
+    tags: ['CRIT'],
+  },
+  {
+    key: 'kim_phong_nhan_quyet',
+    name: 'Phong Nhận Quyết',
+    description:
+      'Đao quyết Kim hệ — luồng kim phong xé không gian, sát thương 2.4× chuyên trị địch giáp dày.',
+    mpCost: 32,
+    atkScale: 2.4,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'kim',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'truc_co',
+    cooldownTurns: 3,
+    tags: ['CRIT', 'BURST'],
+  },
+
+  // ----- Thuỷ — Khống chế / Hồi linh lực -----
+  {
+    key: 'thuy_lam_dieu_quyet',
+    name: 'Lam Diệu Pháp Quyết',
+    description:
+      'Sương lam Thuỷ hệ làm chậm bước địch — đánh 1.4× kèm chấn động kinh mạch, đối thủ nặng nề ở lượt sau.',
+    mpCost: 22,
+    atkScale: 1.4,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'thuy',
+    type: 'ACTIVE',
+    role: 'CONTROL',
+    unlockRealm: 'luyenkhi',
+    cooldownTurns: 2,
+    tags: ['CONTROL'],
+  },
+  {
+    key: 'thuy_lam_quy_thuy_tam',
+    name: 'Lam Quy Thuỷ Tâm',
+    description:
+      'Tâm pháp Thuỷ hệ ôn dưỡng linh hồn — sát thương 0.8× và hồi 18% HP. Linh tuyền không cạn, người tu Thuỷ hệ trường tồn.',
+    mpCost: 18,
+    atkScale: 0.8,
+    selfHealRatio: 0.18,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'thuy',
+    type: 'ACTIVE',
+    role: 'HEAL',
+    unlockRealm: 'truc_co',
+    cooldownTurns: 3,
+    tags: ['HEAL'],
   },
 ];
 

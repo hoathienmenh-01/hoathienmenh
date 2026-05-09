@@ -58,8 +58,8 @@ Tick EXP thực hiện bởi BullMQ processor `cultivation.processor.ts`. WS eve
 | Method | Path              | Auth | Mô tả |
 |--------|-------------------|------|-------|
 | POST   | `/combat/engage`  | Yes  | `{ dungeonKey }`. Tạo encounter ACTIVE. |
-| POST   | `/combat/turn`    | Yes  | Tấn công 1 lượt; kết thúc → loot + linhThach via ledger. |
-| GET    | `/combat/current` | Yes  | Encounter đang chạy (nếu có). |
+| POST   | `/combat/turn`    | Yes  | Tấn công 1 lượt; kết thúc → loot + linhThach via ledger. **Phase 14.2.C** — body `{ skillKey? }` cast skill; nếu skill có tag `DOT` → set `EncounterState.monsterDot = { skillKey, element, perTurnDamage, turnsLeft: 3 }` (multi-turn persist, decrement mỗi lượt, clear khi monster chết / WON / LOST). Skill có tag `SHIELD` → áp same-turn `floor(playerHpMax × 0.10)` absorb monster reply (single-use, KHÔNG persist sang turn). Encounter `log[]` thêm system-side line: `"<monster> chịu N sát thương DOT (hệ <element>)."`, `"<monster> bị nhiễm <hệ> — DOT N sát thương / lượt × 3 lượt."`, `"Khiên <element> dựng — sẵn sàng hấp thu <hpAbsorb> sát thương phản kích."`, `"Khiên <element> hấp thu N sát thương phản kích."`. KHÔNG thay shape API response (`EncounterStateView` extend optional field, backward-compat). |
+| GET    | `/combat/current` | Yes  | Encounter đang chạy (nếu có). **Phase 14.2.C** — response `state.monsterDot?: { skillKey, element, perTurnDamage, turnsLeft }` optional khi DOT đang active trên monster. |
 
 ## Inventory — `InventoryController`
 
