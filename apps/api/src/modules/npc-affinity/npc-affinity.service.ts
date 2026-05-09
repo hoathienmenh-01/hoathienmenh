@@ -17,10 +17,8 @@ import {
   npcGiftPreferenceForKey,
   type AffinityTierDef,
   type AffinityUnlockHint,
-  type NpcAcceptedGiftItem,
   type NpcAffinityDef,
   type NpcDef,
-  type NpcGiftPreferenceDef,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { InventoryService } from '../inventory/inventory.service';
