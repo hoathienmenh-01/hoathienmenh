@@ -318,3 +318,115 @@ export async function fetchTribulationPreview(): Promise<TribulationPreviewView 
   if (!data.ok || !data.data) throw data.error ?? fallbackError('tribulation');
   return data.data.preview;
 }
+
+// ── Phase 14.3.D — Encounter system (start/current/resolve) ─────────────
+
+/**
+ * Mirror server `TribulationEncounterRowView`. Snapshot 1 row trong
+ * `TribulationEncounter` table (state machine: pending | resolved).
+ */
+export interface TribulationEncounterRowView {
+  id: string;
+  tribulationKey: string;
+  fromRealmKey: string;
+  toRealmKey: string;
+  encounterKey: string;
+  effectType: string;
+  element: string;
+  difficulty: string;
+  selectedSupportItemKeys: string[];
+  state: string;
+  startedAt: string;
+  resolvedAt: string | null;
+  resolvedAttemptLogId: string | null;
+}
+
+/**
+ * Mirror server `TribulationEncounterSpec`. Per-character snapshot:
+ * encounter flavor + player advantage.
+ */
+export interface TribulationEncounterSpecView {
+  key: string;
+  element: string;
+  effectType: string;
+  name: string;
+  description: string;
+  difficulty: string;
+  phaseCount: number;
+  successThreshold: number;
+  requiredPowerHint: number;
+  failPenaltyMultiplier: number;
+  rewardHintMultiplier: number;
+  playerHpMax: number;
+  playerPrimaryElement: string | null;
+  /** ∈ {-2, -1, 0, +1, +2} */
+  elementAdvantage: number;
+}
+
+/**
+ * Mirror server `TribulationEncounterCurrentView`. Read-only snapshot
+ * encounter sắp tới (hoặc đang pending).
+ */
+export interface TribulationEncounterCurrentView {
+  requirement: true;
+  atPeak: boolean;
+  fromRealmKey: string;
+  toRealmKey: string;
+  tribulationKey: string;
+  severity: string;
+  type: string;
+  encounter: TribulationEncounterSpecView;
+  successChance: TribulationSuccessChanceBreakdownView | null;
+  pending: TribulationEncounterRowView | null;
+  cooldownAt: string | null;
+  taoMaUntil: string | null;
+}
+
+/**
+ * Phase 14.3.D — GET /character/tribulation/encounter/current.
+ *
+ * Idempotent. Server trả `null` nếu transition không có catalog (low-tier).
+ */
+export async function fetchTribulationEncounterCurrent(): Promise<TribulationEncounterCurrentView | null> {
+  const { data } = await apiClient.get<
+    Envelope<{ encounter: TribulationEncounterCurrentView | null }>
+  >('/character/tribulation/encounter/current');
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('tribulation');
+  return data.data.encounter;
+}
+
+/**
+ * Phase 14.3.D — POST /character/tribulation/encounter/start.
+ *
+ * Snapshot `selectedSupportItemKeys` vào row pending (server-authoritative,
+ * KHÔNG consume item). Idempotent: re-call với cùng tribulation key trả
+ * row pending hiện có.
+ */
+export async function startTribulationEncounter(
+  selectedSupportItemKeys?: readonly string[],
+): Promise<TribulationEncounterRowView> {
+  const body =
+    selectedSupportItemKeys && selectedSupportItemKeys.length > 0
+      ? { selectedSupportItemKeys: [...selectedSupportItemKeys] }
+      : {};
+  const { data } = await apiClient.post<
+    Envelope<{ encounter: TribulationEncounterRowView }>
+  >('/character/tribulation/encounter/start', body);
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('tribulation');
+  return data.data.encounter;
+}
+
+/**
+ * Phase 14.3.D — POST /character/tribulation/encounter/resolve.
+ *
+ * Server simulate + consume + atomic update + transition pending → resolved.
+ * Idempotent: re-call sau khi state='resolved' trả cached outcome (same
+ * `logId`) — KHÔNG double breakthrough/consume/reward.
+ */
+export async function resolveTribulationEncounter(): Promise<TribulationOutcomeView> {
+  const { data } = await apiClient.post<
+    Envelope<{ tribulation: TribulationOutcomeView }>
+  >('/character/tribulation/encounter/resolve', {});
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('tribulation');
+  return data.data.tribulation;
+}

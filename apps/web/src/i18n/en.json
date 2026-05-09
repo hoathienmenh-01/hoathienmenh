@@ -2039,7 +2039,9 @@
       "INVENTORY_UNAVAILABLE": "Inventory system is temporarily unavailable.",
       "UNAUTHENTICATED": "Session expired.",
       "IN_FLIGHT": "Processing…",
-      "UNKNOWN": "Tribulation attempt failed, please retry."
+      "UNKNOWN": "Tribulation attempt failed, please retry.",
+      "NO_PENDING_ENCOUNTER": "No tribulation encounter is currently pending.",
+      "ENCOUNTER_ALREADY_PENDING": "Another tribulation encounter is already pending."
     },
     "history": {
       "title": "Tribulation History",
@@ -2075,6 +2077,52 @@
         "total": "Total {count}",
         "success": "Success {count}",
         "fail": "Fail {count}"
+      }
+    },
+    "encounter": {
+      "name": {
+        "hoa": "Fire Tribulation",
+        "thuy": "Water Tribulation",
+        "moc": "Wood Tribulation",
+        "kim": "Metal Tribulation",
+        "tho": "Earth Tribulation"
+      },
+      "element": {
+        "hoa": "Fire",
+        "thuy": "Water",
+        "moc": "Wood",
+        "kim": "Metal",
+        "tho": "Earth"
+      },
+      "effectType": {
+        "BURST": "Burst damage",
+        "SUSTAIN": "Sustain",
+        "POISON_RECOVERY": "Poison / recovery",
+        "ARMOR_CRIT": "Armor / crit",
+        "DEFENSE_ENDURANCE": "Defense / endurance"
+      },
+      "advantage": {
+        "sameElement": "Same element",
+        "advantage": "You counter",
+        "neutral": "Neutral",
+        "disadvantageMild": "You feed it",
+        "disadvantageSevere": "It counters you"
+      },
+      "statePending": "Pending",
+      "startedToast": "Tribulation prepared.",
+      "field": {
+        "phaseCount": "Phases",
+        "difficulty": "Difficulty",
+        "powerHint": "Recommended power"
+      },
+      "button": {
+        "start": "Begin tribulation",
+        "starting": "Starting…",
+        "resolve": "Resolve tribulation",
+        "resolving": "Resolving…"
+      },
+      "cta": {
+        "returnCultivation": "Return to cultivation"
       }
     }
   },

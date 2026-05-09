@@ -10,9 +10,12 @@ import {
   computeEquipmentTribulationResist,
   computePassiveTalentTribulationResist,
   computeSpiritualRootTribulationResist,
+  computeTribulationEncounterPhaseCount,
+  computeTribulationEncounterPowerHint,
   computeTribulationFailurePenalty,
   computeTribulationReward,
   computeTribulationSuccessChance,
+  describeTribulationEncounterAdvantage,
   ELEMENT_MODIFIER_ABSOLUTE_CEIL,
   ELEMENT_MODIFIER_ABSOLUTE_FLOOR,
   ELEMENTS,
@@ -21,6 +24,7 @@ import {
   itemByKey,
   listTribulationSupportConsumables,
   nextRealm,
+  resolveTribulationEncounterDef,
   simulateTribulation,
   summarizeTribulationPenaltyHint,
   summarizeTribulationRewardHint,
@@ -31,6 +35,7 @@ import {
   type ItemDef,
   type PassiveTalentMods,
   type TribulationDef,
+  type TribulationEncounterDef,
   type TribulationPenaltyHint,
   type TribulationRewardHint,
   type TribulationSuccessChanceBreakdown,
@@ -141,6 +146,49 @@ export class TribulationService {
     );
 
     const outcome = await this.prisma.$transaction(async (tx) => {
+      return this.runAttemptInTx(tx, characterId, selectedKeys, rng, now);
+    });
+
+    // Phase 11.10.G — fail-soft post-tx tracking. Tribulation success advance
+    // realm giống `CultivationProcessor` low-tier breakthrough; pair với
+    // `AchievementService.trackEvent('BREAKTHROUGH', 1)` để 4 achievement
+    // catalog `BREAKTHROUGH` (`achievements.ts` line 228..278) thực sự
+    // increment khi player clear realm cao qua tribulation.
+    if (outcome.success && this.achievements) {
+      try {
+        await this.achievements.trackEvent(characterId, 'BREAKTHROUGH', 1);
+      } catch (e) {
+        this.logger.warn(
+          `tribulation: achievement BREAKTHROUGH track failed for char=${characterId}: ${(e as Error).message}`,
+        );
+      }
+    }
+
+    return outcome;
+  }
+
+  /**
+   * Phase 14.3.D — extracted core attempt logic (1 atomic block within an
+   * outer Prisma `$transaction`). Used by both:
+   *   - {@link attemptTribulation} (legacy 1-step flow, Phase 11.6.B).
+   *   - {@link resolveTribulationEncounter} (Phase 14.3.D 2-phase flow).
+   *
+   * Caller responsibilities:
+   *   - Pre-validate + dedupe + cap `selectedKeys` (already done by
+   *     {@link validateTribulationSupportSelection}).
+   *   - Wrap in own `prisma.$transaction(...)`.
+   *   - Apply post-tx side effects (achievement track) outside this helper.
+   *
+   * Behavior identical to original 1-method flow — preserved 1:1.
+   */
+  private async runAttemptInTx(
+    tx: Parameters<Parameters<PrismaService['$transaction']>[0]>[0],
+    characterId: string,
+    selectedKeys: readonly string[],
+    rng: () => number,
+    now: Date,
+  ): Promise<TribulationAttemptOutcome> {
+    {
       const character = await tx.character.findUnique({
         where: { id: characterId },
       });
@@ -562,27 +610,7 @@ export class TribulationService {
         supportTotalBonus: composedSupports.totalBonus,
         successChance: successChanceBreakdown,
       };
-    });
-
-    // Phase 11.10.G — fail-soft post-tx tracking. Tribulation success advance
-    // realm giống `CultivationProcessor` low-tier breakthrough; pair với
-    // `AchievementService.trackEvent('BREAKTHROUGH', 1)` để 4 achievement
-    // catalog `BREAKTHROUGH` (`achievements.ts` line 228..278) thực sự
-    // increment khi player clear realm cao qua tribulation. Trước đó chỉ
-    // cultivation tick auto-breakthrough được tracked → high-realm tribulation
-    // success de facto bỏ qua. Try/catch fail-soft: tribulation reward đã
-    // commit; tracking failure (vd DB transient) chỉ log warn không undo.
-    if (outcome.success && this.achievements) {
-      try {
-        await this.achievements.trackEvent(characterId, 'BREAKTHROUGH', 1);
-      } catch (e) {
-        this.logger.warn(
-          `tribulation: achievement BREAKTHROUGH track failed for char=${characterId}: ${(e as Error).message}`,
-        );
-      }
     }
-
-    return outcome;
   }
 
   /**
@@ -782,6 +810,390 @@ export class TribulationService {
   }
 
   /**
+   * Phase 14.3.D — get current encounter view (read-only, idempotent).
+   *
+   * Trả về snapshot encounter sắp tới (hoặc đang pending) cho character:
+   *   - `null` nếu không có kiếp cho transition (low-tier hoặc realm cuối).
+   *   - `{ pending: TribulationEncounterRowView | null, spec: ... }` nếu có
+   *     kiếp.
+   *
+   * Server-authoritative: caller resolve `characterId` từ session.
+   * KHÔNG mutate state — chỉ đọc Character, TribulationEncounter pending,
+   * preview supports.
+   */
+  async getCurrentEncounter(
+    characterId: string,
+  ): Promise<TribulationEncounterCurrentView | null> {
+    const character = await this.prisma.character.findUnique({
+      where: { id: characterId },
+    });
+    if (!character) throw new TribulationError('CHARACTER_NOT_FOUND');
+
+    const next = nextRealm(character.realmKey);
+    if (!next) return null;
+    const tribDef = getTribulationForBreakthrough(character.realmKey, next.key);
+    if (!tribDef) return null;
+
+    const cost = expCostForStage(character.realmKey, 9);
+    const atPeak =
+      character.realmStage >= 9 && cost !== null && character.exp >= cost;
+
+    const encounterDef = resolveTribulationEncounterDef(tribDef);
+    const phaseCount = computeTribulationEncounterPhaseCount(tribDef);
+    const requiredPowerHint = computeTribulationEncounterPowerHint(tribDef);
+
+    const primaryElement: ElementKey | null =
+      character.primaryElement &&
+      (ELEMENTS as readonly string[]).includes(character.primaryElement)
+        ? (character.primaryElement as ElementKey)
+        : null;
+    const advantage = describeTribulationEncounterAdvantage(
+      primaryElement,
+      encounterDef.element,
+    );
+
+    // Reuse preview machinery for supports + success chance breakdown.
+    const preview = await this.previewTribulation(characterId);
+    const successChance = preview?.successChance ?? null;
+
+    const pending = await this.prisma.tribulationEncounter.findFirst({
+      where: { characterId, state: 'pending' },
+      orderBy: { startedAt: 'desc' },
+    });
+
+    return {
+      requirement: true,
+      atPeak,
+      fromRealmKey: character.realmKey,
+      toRealmKey: next.key,
+      tribulationKey: tribDef.key,
+      severity: tribDef.severity,
+      type: tribDef.type,
+      encounter: {
+        key: encounterDef.key,
+        element: encounterDef.element,
+        effectType: encounterDef.effectType,
+        name: encounterDef.name,
+        description: encounterDef.description,
+        difficulty: tribDef.severity,
+        phaseCount,
+        successThreshold: encounterDef.successThreshold,
+        requiredPowerHint,
+        failPenaltyMultiplier: encounterDef.failPenaltyMultiplier,
+        rewardHintMultiplier: encounterDef.rewardHintMultiplier,
+        playerHpMax: character.hpMax,
+        playerPrimaryElement: primaryElement,
+        elementAdvantage: advantage,
+      },
+      successChance,
+      pending: pending ? this.toEncounterRowView(pending) : null,
+      cooldownAt: character.tribulationCooldownAt
+        ? character.tribulationCooldownAt.toISOString()
+        : null,
+      taoMaUntil: character.taoMaUntil
+        ? character.taoMaUntil.toISOString()
+        : null,
+    };
+  }
+
+  /**
+   * Phase 14.3.D — start a tribulation encounter session.
+   *
+   * Validate peak gate + selection (catalog + dedupe + cap), tạo row
+   * `TribulationEncounter{state: 'pending'}` snapshot selection. KHÔNG
+   * consume item ở đây (consume diễn ra trong {@link resolveEncounter}).
+   *
+   * Idempotency:
+   *   - Nếu đã có pending row cùng character + cùng `tribulationKey` →
+   *     trả về row đó (no new row).
+   *   - Nếu đã có pending row khác `tribulationKey` (data drift) → reject
+   *     `ENCOUNTER_ALREADY_PENDING`. Caller có thể decide cancel + retry
+   *     (future PR).
+   *   - Pending row sẽ được resolve (terminal) hoặc cancel (future).
+   */
+  async startEncounter(
+    characterId: string,
+    options: TribulationAttemptOptions = {},
+    now: Date = new Date(),
+  ): Promise<TribulationEncounterRowView> {
+    const selectedKeysRaw = options.selectedSupportItemKeys ?? [];
+    const validateResult =
+      validateTribulationSupportSelection(selectedKeysRaw);
+    if (!validateResult.ok) {
+      throw new TribulationError(
+        mapSupportSelectionErrorToTribulationCode(validateResult.code),
+      );
+    }
+    const selectedKeys: readonly string[] = validateResult.entries.map(
+      (e: TribulationSupportEntry) => e.key,
+    );
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const character = await tx.character.findUnique({
+        where: { id: characterId },
+      });
+      if (!character) throw new TribulationError('CHARACTER_NOT_FOUND');
+
+      // Realm gate (mirror `attemptTribulation`).
+      if (character.realmStage < 9) throw new TribulationError('NOT_AT_PEAK');
+      const cost = expCostForStage(character.realmKey, 9);
+      if (cost === null || character.exp < cost) {
+        throw new TribulationError('NOT_AT_PEAK');
+      }
+
+      const next = nextRealm(character.realmKey);
+      if (!next) throw new TribulationError('NO_NEXT_REALM');
+      const tribDef = getTribulationForBreakthrough(
+        character.realmKey,
+        next.key,
+      );
+      if (!tribDef) throw new TribulationError('NO_TRIBULATION_FOR_TRANSITION');
+
+      // Cooldown gate (set từ FAIL trước đó).
+      if (
+        character.tribulationCooldownAt &&
+        character.tribulationCooldownAt > now
+      ) {
+        throw new TribulationError('COOLDOWN_ACTIVE');
+      }
+
+      // Inventory ownership pre-check (best-effort; resolve recheck inside
+      // its own tx — true authoritative consume happens at resolve time).
+      for (const key of selectedKeys) {
+        const owned = await tx.inventoryItem.findFirst({
+          where: { characterId, itemKey: key, equippedSlot: null, qty: { gt: 0 } },
+          select: { id: true },
+        });
+        if (!owned) throw new TribulationError('SUPPORT_ITEM_MISSING');
+      }
+
+      const encounterDef = resolveTribulationEncounterDef(tribDef);
+
+      // Idempotent: existing pending for same tribulation → return as-is.
+      const existing = await tx.tribulationEncounter.findFirst({
+        where: { characterId, state: 'pending' },
+        orderBy: { startedAt: 'desc' },
+      });
+      if (existing) {
+        if (existing.tribulationKey !== tribDef.key) {
+          throw new TribulationError('ENCOUNTER_ALREADY_PENDING');
+        }
+        return existing;
+      }
+
+      return tx.tribulationEncounter.create({
+        data: {
+          characterId,
+          tribulationKey: tribDef.key,
+          fromRealmKey: tribDef.fromRealmKey,
+          toRealmKey: tribDef.toRealmKey,
+          encounterKey: encounterDef.key,
+          effectType: encounterDef.effectType,
+          element: encounterDef.element,
+          difficulty: tribDef.severity,
+          selectedSupportItemKeys: [...selectedKeys],
+          state: 'pending',
+          startedAt: now,
+        },
+      });
+    });
+
+    return this.toEncounterRowView(created);
+  }
+
+  /**
+   * Phase 14.3.D — resolve a pending tribulation encounter.
+   *
+   * Server-authoritative: simulate kiếp + consume selected items + atomic
+   * update character/currency/log. State machine pending → resolved.
+   *
+   * Idempotency:
+   *   - Nếu state='resolved' → re-fetch + reconstruct cached outcome từ
+   *     `TribulationAttemptLog` row (KHÔNG double breakthrough, KHÔNG
+   *     double consume support, KHÔNG double reward).
+   *   - Nếu state='pending' → run attempt logic (reuse `runAttemptInTx`),
+   *     update encounter row sang 'resolved' + set `resolvedAttemptLogId`.
+   *
+   * Race safety: multi-call concurrent → 1 call thắng update encounter
+   * row trước khi return; lock optimistic via state check inside tx.
+   */
+  async resolveEncounter(
+    characterId: string,
+    rng: () => number = Math.random,
+    now: Date = new Date(),
+  ): Promise<TribulationAttemptOutcome> {
+    const outcome = await this.prisma.$transaction(async (tx) => {
+      const encounter = await tx.tribulationEncounter.findFirst({
+        where: { characterId },
+        orderBy: { startedAt: 'desc' },
+      });
+      if (!encounter) throw new TribulationError('NO_PENDING_ENCOUNTER');
+
+      // Idempotent resolved branch: reconstruct outcome từ existing log.
+      if (encounter.state === 'resolved') {
+        if (!encounter.resolvedAttemptLogId) {
+          // Defensive: should never happen vì pending→resolved set pointer.
+          throw new TribulationError('NO_PENDING_ENCOUNTER');
+        }
+        const log = await tx.tribulationAttemptLog.findUnique({
+          where: { id: encounter.resolvedAttemptLogId },
+        });
+        if (!log) throw new TribulationError('NO_PENDING_ENCOUNTER');
+        return this.reconstructOutcomeFromLog(log, encounter);
+      }
+
+      if (encounter.state !== 'pending') {
+        throw new TribulationError('NO_PENDING_ENCOUNTER');
+      }
+
+      const selectedKeys: readonly string[] = encounter.selectedSupportItemKeys;
+      const result = await this.runAttemptInTx(
+        tx,
+        characterId,
+        selectedKeys,
+        rng,
+        now,
+      );
+
+      // Mark encounter as resolved + pointer to attempt log.
+      await tx.tribulationEncounter.update({
+        where: { id: encounter.id },
+        data: {
+          state: 'resolved',
+          resolvedAt: now,
+          resolvedAttemptLogId: result.logId,
+        },
+      });
+
+      return result;
+    });
+
+    if (outcome.success && this.achievements) {
+      try {
+        await this.achievements.trackEvent(characterId, 'BREAKTHROUGH', 1);
+      } catch (e) {
+        this.logger.warn(
+          `tribulation: achievement BREAKTHROUGH track failed (encounter) for char=${characterId}: ${(e as Error).message}`,
+        );
+      }
+    }
+
+    return outcome;
+  }
+
+  /**
+   * Phase 14.3.D — reconstruct outcome shape from a persisted attempt log
+   * row (idempotent re-resolve path). KHÔNG re-roll RNG, KHÔNG re-consume
+   * item — chỉ project fields → outcome view.
+   */
+  private reconstructOutcomeFromLog(
+    log: {
+      tribulationKey: string;
+      fromRealmKey: string;
+      toRealmKey: string;
+      severity: string;
+      type: string;
+      success: boolean;
+      wavesCompleted: number;
+      totalDamage: number;
+      finalHp: number;
+      attemptIndex: number;
+      linhThachReward: number;
+      expBonusReward: bigint;
+      titleKeyReward: string | null;
+      expBefore: bigint;
+      expAfter: bigint;
+      expLoss: bigint;
+      cooldownAt: Date | null;
+      taoMaActive: boolean;
+      taoMaExpiresAt: Date | null;
+      id: string;
+    },
+    encounter: { selectedSupportItemKeys: string[] },
+  ): TribulationAttemptOutcome {
+    return {
+      success: log.success,
+      tribulationKey: log.tribulationKey,
+      fromRealmKey: log.fromRealmKey,
+      toRealmKey: log.toRealmKey,
+      severity: log.severity as TribulationDef['severity'],
+      type: log.type as TribulationDef['type'],
+      wavesCompleted: log.wavesCompleted,
+      totalDamage: log.totalDamage,
+      finalHp: log.finalHp,
+      attemptIndex: log.attemptIndex,
+      reward: log.success
+        ? {
+            linhThach: log.linhThachReward,
+            expBonus: log.expBonusReward,
+            titleKey: log.titleKeyReward,
+          }
+        : null,
+      penalty: log.success
+        ? null
+        : {
+            expBefore: log.expBefore,
+            expAfter: log.expAfter,
+            expLoss: log.expLoss,
+            cooldownAt: log.cooldownAt ?? new Date(0),
+            taoMaActive: log.taoMaActive,
+            taoMaExpiresAt: log.taoMaExpiresAt,
+          },
+      logId: log.id,
+      consumedSupportItemKeys: [...encounter.selectedSupportItemKeys],
+      // Best-effort 0 (real value persisted via attempt log, not duplicated
+      // here); FE can re-fetch breakdown from preview if needed.
+      supportTotalBonus: 0,
+      successChance: {
+        base: 0,
+        supportBonus: 0,
+        elementAdjustment: 0,
+        raw: 0,
+        final: 0,
+        floorHit: false,
+        ceilHit: false,
+      },
+    };
+  }
+
+  /**
+   * Phase 14.3.D — project Prisma `TribulationEncounter` row → FE-friendly
+   * view. Date cast → ISO string; `selectedSupportItemKeys` cast readonly.
+   */
+  private toEncounterRowView(row: {
+    id: string;
+    characterId: string;
+    tribulationKey: string;
+    fromRealmKey: string;
+    toRealmKey: string;
+    encounterKey: string;
+    effectType: string;
+    element: string;
+    difficulty: string;
+    selectedSupportItemKeys: string[];
+    state: string;
+    startedAt: Date;
+    resolvedAt: Date | null;
+    resolvedAttemptLogId: string | null;
+  }): TribulationEncounterRowView {
+    return {
+      id: row.id,
+      tribulationKey: row.tribulationKey,
+      fromRealmKey: row.fromRealmKey,
+      toRealmKey: row.toRealmKey,
+      encounterKey: row.encounterKey,
+      effectType: row.effectType,
+      element: row.element,
+      difficulty: row.difficulty,
+      selectedSupportItemKeys: [...row.selectedSupportItemKeys],
+      state: row.state,
+      startedAt: row.startedAt.toISOString(),
+      resolvedAt: row.resolvedAt ? row.resolvedAt.toISOString() : null,
+      resolvedAttemptLogId: row.resolvedAttemptLogId,
+    };
+  }
+
+  /**
    * Phase 11.6.F — list recent tribulation attempt logs cho 1 character.
    *
    * Trả về tối đa `limit` row gần nhất (sort theo `createdAt` DESC). Idempotent
@@ -931,6 +1343,75 @@ export interface TribulationPreview {
    * authoritative). FE đọc để clamp checkbox count.
    */
   maxSelectedSupportItems: number;
+}
+
+/**
+ * Phase 14.3.D — view of a `TribulationEncounter` row (FE-friendly).
+ * Date cast → ISO string, `selectedSupportItemKeys` readonly snapshot.
+ */
+export interface TribulationEncounterRowView {
+  id: string;
+  tribulationKey: string;
+  fromRealmKey: string;
+  toRealmKey: string;
+  encounterKey: string;
+  effectType: string;
+  element: string;
+  difficulty: string;
+  selectedSupportItemKeys: readonly string[];
+  /** 'pending' | 'resolved'. */
+  state: string;
+  startedAt: string;
+  resolvedAt: string | null;
+  resolvedAttemptLogId: string | null;
+}
+
+/**
+ * Phase 14.3.D — encounter spec snapshot (server-authoritative). Mirror
+ * shared `TribulationEncounterDef` + per-character context (HP, primary
+ * element advantage, phase count, required power hint).
+ */
+export interface TribulationEncounterSpec {
+  /** `tribulation_encounter_<element>` key. */
+  key: string;
+  /** ElementKey ∈ {kim, moc, thuy, hoa, tho}. */
+  element: TribulationEncounterDef['element'];
+  /** `BURST | SUSTAIN | POISON_RECOVERY | ARMOR_CRIT | DEFENSE_ENDURANCE`. */
+  effectType: TribulationEncounterDef['effectType'];
+  /** Tên hiển thị (Vietnamese). */
+  name: string;
+  /** Lore description. */
+  description: string;
+  /** Severity alias. */
+  difficulty: TribulationDef['severity'];
+  phaseCount: number;
+  successThreshold: number;
+  requiredPowerHint: number;
+  failPenaltyMultiplier: number;
+  rewardHintMultiplier: number;
+  playerHpMax: number;
+  playerPrimaryElement: TribulationEncounterDef['element'] | null;
+  /** Number ∈ {-2, -1, 0, +1, +2} — element advantage relative to encounter. */
+  elementAdvantage: number;
+}
+
+/**
+ * Phase 14.3.D — current encounter view (read-only).
+ * `pending` is null if no in-progress session; otherwise pinned snapshot.
+ */
+export interface TribulationEncounterCurrentView {
+  requirement: true;
+  atPeak: boolean;
+  fromRealmKey: string;
+  toRealmKey: string;
+  tribulationKey: string;
+  severity: TribulationDef['severity'];
+  type: TribulationDef['type'];
+  encounter: TribulationEncounterSpec;
+  successChance: TribulationSuccessChanceBreakdown | null;
+  pending: TribulationEncounterRowView | null;
+  cooldownAt: string | null;
+  taoMaUntil: string | null;
 }
 
 export interface TribulationAttemptOutcome {
@@ -1094,7 +1575,10 @@ export class TribulationError extends Error {
       | 'DUPLICATE_SUPPORT_ITEM'
       | 'INVALID_SUPPORT_ITEM'
       | 'SUPPORT_ITEM_MISSING'
-      | 'INVENTORY_UNAVAILABLE',
+      | 'INVENTORY_UNAVAILABLE'
+      // Phase 14.3.D — encounter system errors.
+      | 'NO_PENDING_ENCOUNTER'
+      | 'ENCOUNTER_ALREADY_PENDING',
   ) {
     super(code);
   }

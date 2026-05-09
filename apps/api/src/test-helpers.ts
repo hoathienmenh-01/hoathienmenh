@@ -124,6 +124,9 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.sectTerritoryRegionState.deleteMany({});
   await prisma.itemLedger.deleteMany({});
   await prisma.currencyLedger.deleteMany({});
+  // Phase 14.3.D — encounter session rows (nullable resolvedAttemptLogId
+  // pointer; xoá trước attempt log vì pointer không có FK constraint).
+  await prisma.tribulationEncounter.deleteMany({});
   await prisma.tribulationAttemptLog.deleteMany({});
   await prisma.characterBuff.deleteMany({});
   await prisma.characterTalent.deleteMany({});

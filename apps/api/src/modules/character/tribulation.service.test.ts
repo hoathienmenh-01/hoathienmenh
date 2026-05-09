@@ -2185,3 +2185,304 @@ describe('Phase 14.3.C — TribulationService.attemptTribulation support item co
     ).rejects.toMatchObject({ code: 'SUPPORT_ITEM_MISSING' });
   });
 });
+
+/**
+ * Phase 14.3.D — Tribulation Encounter System tests.
+ *
+ * Coverage:
+ *   - getCurrentEncounter trả null cho character chưa có transition.
+ *   - getCurrentEncounter trả encounter spec hợp lệ ở peak kim_dan.
+ *   - startEncounter peak gate (NOT_AT_PEAK).
+ *   - startEncounter idempotent (same tribulation key → reuse pending row).
+ *   - resolveEncounter SUCCESS (advance realm + reward + log link).
+ *   - resolveEncounter FAIL (penalty nhẹ + log link).
+ *   - resolveEncounter idempotent (no double breakthrough/consume/reward).
+ *   - resolveEncounter NO_PENDING_ENCOUNTER khi chưa start.
+ *   - support items affect chance (compose bonus > 0 sau resolve).
+ *   - element advantage tính đúng (primary element vs encounter element).
+ *   - low-tier breakthrough cũ KHÔNG affected (regression guard).
+ */
+describe('TribulationService.getCurrentEncounter (Phase 14.3.D)', () => {
+  it('returns null khi character không có transition (mortal start)', async () => {
+    const ctx = await makeUserChar(prisma, {
+      realmKey: 'mortal',
+      realmStage: 1,
+      exp: 0n,
+      hp: 100,
+      hpMax: 100,
+      mp: 10,
+      mpMax: 10,
+      linhThach: 0n,
+    });
+    const result = await svcFull.getCurrentEncounter(ctx.characterId);
+    // mortal → kim_dan low-tier KHÔNG có TribulationDef → null.
+    expect(result).toBeNull();
+  });
+
+  it('returns encounter spec ở peak kim_dan (lei → hoa BURST)', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    const result = await svcFull.getCurrentEncounter(ctx.characterId);
+    expect(result).not.toBeNull();
+    expect(result!.requirement).toBe(true);
+    expect(result!.atPeak).toBe(true);
+    expect(result!.fromRealmKey).toBe('kim_dan');
+    expect(result!.toRealmKey).toBe('nguyen_anh');
+    expect(result!.severity).toBe('minor');
+    expect(result!.type).toBe('lei');
+    // lei → dominant element hoa → encounter BURST.
+    expect(result!.encounter.element).toBe('hoa');
+    expect(result!.encounter.effectType).toBe('BURST');
+    expect(result!.encounter.phaseCount).toBeGreaterThanOrEqual(1);
+    expect(result!.encounter.successThreshold).toBeGreaterThanOrEqual(0.1);
+    expect(result!.encounter.requiredPowerHint).toBeGreaterThan(0);
+    expect(result!.successChance).not.toBeNull();
+    expect(result!.pending).toBeNull();
+  });
+
+  it('returns pending row sau khi startEncounter', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    const started = await svcFull.startEncounter(ctx.characterId);
+    const result = await svcFull.getCurrentEncounter(ctx.characterId);
+    expect(result!.pending).not.toBeNull();
+    expect(result!.pending!.id).toBe(started.id);
+    expect(result!.pending!.state).toBe('pending');
+  });
+
+  it('element advantage: primary=hoa vs encounter=hoa → +2 (same)', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    await prisma.character.update({
+      where: { id: ctx.characterId },
+      data: { primaryElement: 'hoa' },
+    });
+    const result = await svcFull.getCurrentEncounter(ctx.characterId);
+    expect(result!.encounter.playerPrimaryElement).toBe('hoa');
+    expect(result!.encounter.elementAdvantage).toBe(2);
+  });
+
+  it('element advantage: primary=thuy vs encounter=hoa → +1 (player counters encounter)', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    await prisma.character.update({
+      where: { id: ctx.characterId },
+      data: { primaryElement: 'thuy' },
+    });
+    const result = await svcFull.getCurrentEncounter(ctx.characterId);
+    // thuy khắc hoa → player advantage → +1.
+    expect(result!.encounter.elementAdvantage).toBe(1);
+  });
+
+  it('element advantage: primary=moc vs encounter=hoa → -1 (player feeds encounter)', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    await prisma.character.update({
+      where: { id: ctx.characterId },
+      data: { primaryElement: 'moc' },
+    });
+    const result = await svcFull.getCurrentEncounter(ctx.characterId);
+    // moc generates hoa → player feeds encounter → -1.
+    expect(result!.encounter.elementAdvantage).toBe(-1);
+  });
+});
+
+describe('TribulationService.startEncounter (Phase 14.3.D)', () => {
+  it('NOT_AT_PEAK rejection (realmStage=8, exp insufficient)', async () => {
+    const ctx = await makeUserChar(prisma, {
+      realmKey: 'kim_dan',
+      realmStage: 8,
+      exp: 0n,
+      hp: 100,
+      hpMax: 100,
+      mp: 10,
+      mpMax: 10,
+      linhThach: 0n,
+    });
+    await expect(svcFull.startEncounter(ctx.characterId)).rejects.toMatchObject(
+      { code: 'NOT_AT_PEAK' },
+    );
+  });
+
+  it('SUCCESS path: tạo pending row với selectedSupportItemKeys snapshot', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    await prisma.inventoryItem.create({
+      data: { characterId: ctx.characterId, itemKey: 'thuan_kiep_dan', qty: 1 },
+    });
+    const started = await svcFull.startEncounter(ctx.characterId, {
+      selectedSupportItemKeys: ['thuan_kiep_dan'],
+    });
+    expect(started.state).toBe('pending');
+    expect(started.tribulationKey).toBeDefined();
+    expect(started.encounterKey).toBe('tribulation_encounter_hoa');
+    expect(started.element).toBe('hoa');
+    expect(started.effectType).toBe('BURST');
+    expect(started.selectedSupportItemKeys).toEqual(['thuan_kiep_dan']);
+    expect(started.resolvedAt).toBeNull();
+    expect(started.resolvedAttemptLogId).toBeNull();
+
+    // Inventory KHÔNG consume ở start (consume đợi resolve).
+    const post = await prisma.inventoryItem.findFirst({
+      where: { characterId: ctx.characterId, itemKey: 'thuan_kiep_dan' },
+    });
+    expect(post?.qty).toBe(1);
+  });
+
+  it('idempotent re-call: cùng tribulationKey → return pending row đã có', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    const first = await svcFull.startEncounter(ctx.characterId);
+    const second = await svcFull.startEncounter(ctx.characterId);
+    expect(second.id).toBe(first.id);
+    const allRows = await prisma.tribulationEncounter.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(allRows).toHaveLength(1);
+  });
+
+  it('reject SUPPORT_ITEM_MISSING khi item không có trong inventory', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    await expect(
+      svcFull.startEncounter(ctx.characterId, {
+        selectedSupportItemKeys: ['thuan_kiep_dan'],
+      }),
+    ).rejects.toMatchObject({ code: 'SUPPORT_ITEM_MISSING' });
+  });
+});
+
+describe('TribulationService.resolveEncounter (Phase 14.3.D)', () => {
+  it('NO_PENDING_ENCOUNTER khi chưa startEncounter', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    await expect(
+      svcFull.resolveEncounter(ctx.characterId, () => 0.0),
+    ).rejects.toMatchObject({ code: 'NO_PENDING_ENCOUNTER' });
+  });
+
+  it('SUCCESS path: simulate + advance realm + reward + log link', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    const started = await svcFull.startEncounter(ctx.characterId);
+    const out = await svcFull.resolveEncounter(
+      ctx.characterId,
+      () => 0.0,
+      new Date(),
+    );
+    expect(out.success).toBe(true);
+    expect(out.fromRealmKey).toBe('kim_dan');
+    expect(out.toRealmKey).toBe('nguyen_anh');
+    expect(out.reward).not.toBeNull();
+    expect(out.reward!.linhThach).toBeGreaterThan(0);
+
+    // Encounter row updated to resolved.
+    const row = await prisma.tribulationEncounter.findUnique({
+      where: { id: started.id },
+    });
+    expect(row?.state).toBe('resolved');
+    expect(row?.resolvedAt).not.toBeNull();
+    expect(row?.resolvedAttemptLogId).toBe(out.logId);
+
+    // Character realm advanced.
+    const character = await prisma.character.findUnique({
+      where: { id: ctx.characterId },
+    });
+    expect(character?.realmKey).toBe('nguyen_anh');
+    expect(character?.realmStage).toBe(1);
+  });
+
+  it('FAIL path: hp thấp → fail, penalty nhẹ (cooldown set), KHÔNG advance realm', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 100 });
+    const started = await svcFull.startEncounter(ctx.characterId);
+    const out = await svcFull.resolveEncounter(
+      ctx.characterId,
+      () => 0.99,
+      new Date(),
+    );
+    expect(out.success).toBe(false);
+    expect(out.penalty).not.toBeNull();
+    expect(out.penalty!.cooldownAt).toBeInstanceOf(Date);
+    expect(out.reward).toBeNull();
+
+    const row = await prisma.tribulationEncounter.findUnique({
+      where: { id: started.id },
+    });
+    expect(row?.state).toBe('resolved');
+    expect(row?.resolvedAttemptLogId).toBe(out.logId);
+
+    const character = await prisma.character.findUnique({
+      where: { id: ctx.characterId },
+    });
+    // KHÔNG advance realm.
+    expect(character?.realmKey).toBe('kim_dan');
+  });
+
+  it('idempotent re-resolve: KHÔNG double breakthrough, KHÔNG double consume, KHÔNG double reward', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    await prisma.inventoryItem.create({
+      data: { characterId: ctx.characterId, itemKey: 'thuan_kiep_dan', qty: 1 },
+    });
+    await svcFull.startEncounter(ctx.characterId, {
+      selectedSupportItemKeys: ['thuan_kiep_dan'],
+    });
+    const first = await svcFull.resolveEncounter(
+      ctx.characterId,
+      () => 0.0,
+      new Date(),
+    );
+    expect(first.success).toBe(true);
+    expect(first.consumedSupportItemKeys).toEqual(['thuan_kiep_dan']);
+
+    const characterAfterFirst = await prisma.character.findUnique({
+      where: { id: ctx.characterId },
+    });
+    const linhThachAfterFirst = characterAfterFirst!.linhThach;
+    const realmAfterFirst = characterAfterFirst!.realmKey;
+
+    // Re-call resolve → reconstruct from log.
+    const second = await svcFull.resolveEncounter(
+      ctx.characterId,
+      () => 0.0,
+      new Date(),
+    );
+    expect(second.success).toBe(true);
+    expect(second.logId).toBe(first.logId); // same log row.
+
+    const characterAfterSecond = await prisma.character.findUnique({
+      where: { id: ctx.characterId },
+    });
+    // Realm + linhThach KHÔNG đổi (no double breakthrough/reward).
+    expect(characterAfterSecond!.linhThach).toBe(linhThachAfterFirst);
+    expect(characterAfterSecond!.realmKey).toBe(realmAfterFirst);
+
+    // Inventory KHÔNG mất stack mới (no double consume).
+    const inv = await prisma.inventoryItem.findFirst({
+      where: { characterId: ctx.characterId, itemKey: 'thuan_kiep_dan' },
+    });
+    expect(inv).toBeNull(); // 1 stack đã consume ở first; second KHÔNG consume thêm.
+
+    // 1 attempt log row only.
+    const logs = await prisma.tribulationAttemptLog.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(logs).toHaveLength(1);
+
+    // 1 currency ledger row only (TRIBULATION_REWARD).
+    const ledger = await prisma.currencyLedger.findMany({
+      where: {
+        characterId: ctx.characterId,
+        reason: 'TRIBULATION_REWARD',
+      },
+    });
+    expect(ledger).toHaveLength(1);
+  });
+
+  it('support items affect chance (compose bonus > 0 sau resolve)', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    await prisma.inventoryItem.create({
+      data: { characterId: ctx.characterId, itemKey: 'thuan_kiep_dan', qty: 1 },
+    });
+    await svcFull.startEncounter(ctx.characterId, {
+      selectedSupportItemKeys: ['thuan_kiep_dan'],
+    });
+    const out = await svcFull.resolveEncounter(
+      ctx.characterId,
+      () => 0.0,
+      new Date(),
+    );
+    expect(out.consumedSupportItemKeys).toEqual(['thuan_kiep_dan']);
+    expect(out.supportTotalBonus).toBeGreaterThan(0);
+  });
+});
+

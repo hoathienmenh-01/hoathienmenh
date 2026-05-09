@@ -2039,7 +2039,9 @@
       "INVENTORY_UNAVAILABLE": "Hệ thống túi đồ tạm khoá.",
       "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
       "IN_FLIGHT": "Đang xử lý…",
-      "UNKNOWN": "Vượt kiếp thất bại, thử lại."
+      "UNKNOWN": "Vượt kiếp thất bại, thử lại.",
+      "NO_PENDING_ENCOUNTER": "Chưa có Thiên Kiếp đang chờ vượt qua.",
+      "ENCOUNTER_ALREADY_PENDING": "Đã có Thiên Kiếp khác đang chờ giải quyết."
     },
     "history": {
       "title": "Lịch sử vượt kiếp",
@@ -2075,6 +2077,52 @@
         "total": "Tổng {count}",
         "success": "Thành công {count}",
         "fail": "Thất bại {count}"
+      }
+    },
+    "encounter": {
+      "name": {
+        "hoa": "Hỏa Kiếp",
+        "thuy": "Thủy Kiếp",
+        "moc": "Mộc Kiếp",
+        "kim": "Kim Kiếp",
+        "tho": "Thổ Kiếp"
+      },
+      "element": {
+        "hoa": "Hỏa",
+        "thuy": "Thủy",
+        "moc": "Mộc",
+        "kim": "Kim",
+        "tho": "Thổ"
+      },
+      "effectType": {
+        "BURST": "Sát thương dồn",
+        "SUSTAIN": "Trường cửu",
+        "POISON_RECOVERY": "Độc / hồi phục",
+        "ARMOR_CRIT": "Giáp / chí mạng",
+        "DEFENSE_ENDURANCE": "Phòng / kháng"
+      },
+      "advantage": {
+        "sameElement": "Đồng hệ",
+        "advantage": "Khắc kiếp",
+        "neutral": "Trung tính",
+        "disadvantageMild": "Bị sinh kiếp",
+        "disadvantageSevere": "Bị khắc kiếp"
+      },
+      "statePending": "Đang chờ vượt",
+      "startedToast": "Đã chuẩn bị Thiên Kiếp.",
+      "field": {
+        "phaseCount": "Số đợt",
+        "difficulty": "Cấp độ",
+        "powerHint": "Sức mạnh khuyến nghị"
+      },
+      "button": {
+        "start": "Bắt đầu kiếp",
+        "starting": "Đang khởi động…",
+        "resolve": "Vượt kiếp",
+        "resolving": "Đang vượt…"
+      },
+      "cta": {
+        "returnCultivation": "Quay lại tu luyện"
       }
     }
   },

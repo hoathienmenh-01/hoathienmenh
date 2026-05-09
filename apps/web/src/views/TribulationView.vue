@@ -355,6 +355,98 @@ function toggleSupportItem(itemKey: string): void {
   selectedSupportItemKeys.value.push(itemKey);
 }
 
+// ── Phase 14.3.D — Encounter mode handlers ─────────────────────────────────
+
+/**
+ * Encounter element advantage label key — UI gameplay-relevant text:
+ *   +2/+1 → 'advantage', 0 → 'neutral', -1/-2 → 'disadvantage'.
+ */
+function encounterAdvantageLabel(adv: number): string {
+  if (adv >= 2) return 'sameElement';
+  if (adv === 1) return 'advantage';
+  if (adv === 0) return 'neutral';
+  if (adv === -1) return 'disadvantageMild';
+  return 'disadvantageSevere';
+}
+
+function encounterAdvantageClass(adv: number): string {
+  if (adv > 0) return 'text-emerald-200 bg-emerald-700/40 border-emerald-500/40';
+  if (adv < 0) return 'text-rose-200 bg-rose-700/40 border-rose-500/40';
+  return 'text-ink-200 bg-ink-700/40 border-ink-300/30';
+}
+
+const encounterStartDisabled = computed<boolean>(() => {
+  if (!atPeak.value) return true;
+  if (cooldownActive.value) return true;
+  if (tribulation.encounterStarting) return true;
+  if (tribulation.encounterResolving) return true;
+  if (tribulation.encounterPending) return true;
+  return false;
+});
+
+const encounterResolveDisabled = computed<boolean>(() => {
+  if (!tribulation.encounterPending) return true;
+  if (tribulation.encounterStarting) return true;
+  if (tribulation.encounterResolving) return true;
+  return false;
+});
+
+async function onEncounterStart(): Promise<void> {
+  if (encounterStartDisabled.value) return;
+  const selected = [...selectedSupportItemKeys.value];
+  const errCode = await tribulation.startEncounter(selected);
+  if (errCode === null) {
+    toast.push({
+      type: 'success',
+      text: t('tribulation.encounter.startedToast'),
+    });
+  } else {
+    const key = `tribulation.errors.${errCode}`;
+    const text = t(key);
+    toast.push({
+      type: 'error',
+      text: text === key ? t('tribulation.errors.UNKNOWN') : text,
+    });
+  }
+}
+
+async function onEncounterResolve(): Promise<void> {
+  if (encounterResolveDisabled.value) return;
+  const errCode = await tribulation.resolveEncounter();
+  if (errCode === null) {
+    const outcome = tribulation.lastOutcome;
+    if (outcome?.success) {
+      toast.push({
+        type: 'success',
+        text: t('tribulation.attempt.successToast', {
+          to: realmName(outcome.toRealmKey),
+        }),
+      });
+    } else {
+      toast.push({
+        type: 'warning',
+        text: t('tribulation.attempt.failToast'),
+      });
+    }
+    selectedSupportItemKeys.value = [];
+    await game.fetchState().catch(() => null);
+    await tribulation.fetchHistory().catch(() => null);
+    await tribulation.fetchPreview().catch(() => null);
+  } else {
+    const key = `tribulation.errors.${errCode}`;
+    const text = t(key);
+    toast.push({
+      type: 'error',
+      text: text === key ? t('tribulation.errors.UNKNOWN') : text,
+    });
+  }
+}
+
+/** Phase 14.3.D — CTA after successful encounter resolve → cultivation. */
+function onReturnToCultivation(): void {
+  router.push('/cultivation');
+}
+
 onMounted(async () => {
   await auth.hydrate();
   if (!auth.isAuthenticated) {
@@ -368,6 +460,8 @@ onMounted(async () => {
   // Phase 14.3.A — fetch preview snapshot song song (read-only deterministic
   // estimate, không trigger RNG/log).
   tribulation.fetchPreview().catch(() => null);
+  // Phase 14.3.D — fetch encounter snapshot (current pending row + spec).
+  tribulation.fetchEncounter().catch(() => null);
   // Phase 11.6.E — live countdown ticker (1 Hz), đủ smooth + đủ rẻ.
   tickerHandle = setInterval(() => {
     nowMs.value = Date.now();
@@ -591,6 +685,156 @@ onUnmounted(() => {
             })
           }}
         </template>
+      </section>
+
+      <!-- Phase 14.3.D — Tribulation Encounter panel.
+           Server-authoritative encounter spec (element / effectType /
+           difficulty / phase count / advantage). Cho phép user start →
+           resolve theo flow 2 phase. Idempotent server-side: re-call start
+           với cùng tribulationKey trả pending row hiện có; re-call resolve
+           sau resolved trả cached outcome (no double breakthrough/consume). -->
+      <section
+        v-if="tribulation.encounter"
+        class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-3"
+        data-testid="tribulation-encounter-panel"
+      >
+        <header class="flex items-baseline justify-between gap-2 flex-wrap">
+          <h2 class="text-amber-200 text-lg font-semibold">
+            {{ t(`tribulation.encounter.name.${tribulation.encounter.encounter.element}`) }}
+          </h2>
+          <div class="flex items-center gap-1 flex-wrap">
+            <span
+              :class="[
+                'text-[10px] px-1.5 py-0.5 rounded border',
+                typeClass(tribulation.encounter.encounter.element as TribulationDef['type']),
+              ]"
+              data-testid="tribulation-encounter-element-badge"
+            >
+              {{ t(`tribulation.encounter.element.${tribulation.encounter.encounter.element}`) }}
+            </span>
+            <span
+              class="text-[10px] px-1.5 py-0.5 rounded border bg-ink-700/40 text-ink-200 border-ink-300/30"
+              data-testid="tribulation-encounter-effect-badge"
+            >
+              {{ t(`tribulation.encounter.effectType.${tribulation.encounter.encounter.effectType}`) }}
+            </span>
+            <span
+              :class="[
+                'text-[10px] px-1.5 py-0.5 rounded border',
+                encounterAdvantageClass(tribulation.encounter.encounter.elementAdvantage),
+              ]"
+              data-testid="tribulation-encounter-advantage-badge"
+            >
+              {{
+                t(
+                  `tribulation.encounter.advantage.${encounterAdvantageLabel(tribulation.encounter.encounter.elementAdvantage)}`,
+                )
+              }}
+            </span>
+            <span
+              v-if="tribulation.encounterPending"
+              class="text-[10px] px-1.5 py-0.5 rounded border bg-amber-700/40 text-amber-100 border-amber-500/40"
+              data-testid="tribulation-encounter-pending-badge"
+            >
+              {{ t('tribulation.encounter.statePending') }}
+            </span>
+          </div>
+        </header>
+
+        <p
+          class="text-sm text-ink-300"
+          data-testid="tribulation-encounter-description"
+        >
+          {{ tribulation.encounter.encounter.description }}
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <div data-testid="tribulation-encounter-phase-count">
+            <span class="text-ink-300">{{ t('tribulation.encounter.field.phaseCount') }}:</span>
+            <span class="text-ink-100 ml-1">{{ tribulation.encounter.encounter.phaseCount }}</span>
+          </div>
+          <div data-testid="tribulation-encounter-difficulty">
+            <span class="text-ink-300">{{ t('tribulation.encounter.field.difficulty') }}:</span>
+            <span class="text-ink-100 ml-1">
+              {{ t(`tribulation.severity.${tribulation.encounter.encounter.difficulty}`) }}
+            </span>
+          </div>
+          <div data-testid="tribulation-encounter-power-hint">
+            <span class="text-ink-300">{{ t('tribulation.encounter.field.powerHint') }}:</span>
+            <span class="text-ink-100 ml-1">{{ fmtNum(tribulation.encounter.encounter.requiredPowerHint) }}</span>
+          </div>
+          <div
+            v-if="tribulation.encounter.successChance"
+            data-testid="tribulation-encounter-success-chance"
+          >
+            <span class="text-ink-300">{{ t('tribulation.field.successChance') }}:</span>
+            <span class="text-amber-200 ml-1 font-semibold">
+              {{ Math.round(tribulation.encounter.successChance.final * 100) }}%
+            </span>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-2">
+          <button
+            v-if="!tribulation.encounterPending"
+            type="button"
+            :disabled="encounterStartDisabled"
+            data-testid="tribulation-encounter-start-button"
+            class="flex-1 px-3 py-2 text-sm rounded bg-amber-700 text-amber-50 hover:bg-amber-600 disabled:bg-ink-700/40 disabled:text-ink-300 disabled:cursor-not-allowed"
+            @click="onEncounterStart"
+          >
+            {{
+              tribulation.encounterStarting
+                ? t('tribulation.encounter.button.starting')
+                : t('tribulation.encounter.button.start')
+            }}
+          </button>
+          <button
+            v-else
+            type="button"
+            :disabled="encounterResolveDisabled"
+            data-testid="tribulation-encounter-resolve-button"
+            class="flex-1 px-3 py-2 text-sm rounded bg-rose-700 text-rose-50 hover:bg-rose-600 disabled:bg-ink-700/40 disabled:text-ink-300 disabled:cursor-not-allowed"
+            @click="onEncounterResolve"
+          >
+            {{
+              tribulation.encounterResolving
+                ? t('tribulation.encounter.button.resolving')
+                : t('tribulation.encounter.button.resolve')
+            }}
+          </button>
+        </div>
+
+        <!-- Phase 14.3.D — CTA về cultivation sau khi success encounter. -->
+        <div
+          v-if="tribulation.lastOutcome && tribulation.lastOutcome.success"
+          data-testid="tribulation-encounter-cta-cultivation"
+          class="border-t border-ink-300/20 pt-2"
+        >
+          <button
+            type="button"
+            class="w-full px-3 py-2 text-sm rounded bg-emerald-700 text-emerald-50 hover:bg-emerald-600"
+            data-testid="tribulation-encounter-return-cultivation"
+            @click="onReturnToCultivation"
+          >
+            {{ t('tribulation.encounter.cta.returnCultivation') }}
+          </button>
+        </div>
+
+        <div
+          v-if="tribulation.encounterError"
+          class="text-xs text-rose-300"
+          data-testid="tribulation-encounter-error"
+        >
+          {{
+            (() => {
+              const code = tribulation.encounterError;
+              const key = `tribulation.errors.${code}`;
+              const text = t(key);
+              return text === key ? t('tribulation.errors.UNKNOWN') : text;
+            })()
+          }}
+        </div>
       </section>
 
       <!-- Upcoming tribulation card -->

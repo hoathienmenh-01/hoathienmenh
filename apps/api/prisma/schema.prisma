@@ -291,6 +291,7 @@ model Character {
   cultivationMethods      CharacterCultivationMethod[]
   characterSkills         CharacterSkill[]
   tribulationAttemptLogs  TribulationAttemptLog[]
+  tribulationEncounters   TribulationEncounter[]
   breakthroughAttemptLogs BreakthroughAttemptLog[]
   buffs                   CharacterBuff[]
   talents                 CharacterTalent[]
@@ -441,6 +442,55 @@ model TribulationAttemptLog {
 
   @@index([characterId, createdAt])
   @@index([tribulationKey, createdAt])
+}
+
+/// Phase 14.3.D — Tribulation Encounter session (mini-encounter trước khi
+/// resolve thành 1 `TribulationAttemptLog`). 2-phase commit:
+///   - `start` → tạo row state='pending' với `selectedSupportItemKeys`
+///     snapshot (FE đã commit lựa chọn item hỗ trợ).
+///   - `resolve` → server-authoritative simulate + consume item + atomic
+///     update character / currency / log. Set state='resolved' +
+///     `resolvedAttemptLogId` pointer, idempotent gọi lại không double
+///     breakthrough.
+///
+/// Tại 1 thời điểm character chỉ có 1 row state='pending' (enforced bởi
+/// service layer). State machine:
+///   pending → resolved (terminal)
+///   pending → cancelled (player abort, future PR)
+///
+/// **Quan trọng**: row này KHÔNG thay thế `TribulationAttemptLog` — log
+/// vẫn được tạo trong resolve (1:1 mapping qua `resolvedAttemptLogId`).
+/// Encounter row chỉ là session state cho 2-phase UX.
+model TribulationEncounter {
+  id                       String    @id @default(cuid())
+  characterId              String
+  character                Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  tribulationKey           String
+  fromRealmKey             String
+  toRealmKey               String
+  /// Encounter catalog key (`tribulation_encounter_<element>`).
+  encounterKey             String
+  /// `TribulationEncounterEffectType` ∈ {BURST, SUSTAIN, POISON_RECOVERY,
+  /// ARMOR_CRIT, DEFENSE_ENDURANCE}.
+  effectType               String
+  /// `ElementKey` ∈ {kim, moc, thuy, hoa, tho}.
+  element                  String
+  /// `TribulationEncounterDifficulty` (alias `TribulationSeverity`).
+  difficulty               String
+  /// Snapshot list các item key player chọn lúc start. Empty nếu không
+  /// chọn item hỗ trợ. Resolve sẽ recalc support từ list này (server-side).
+  selectedSupportItemKeys  String[]
+  /// State machine: 'pending' (started, chưa resolve) | 'resolved' (đã
+  /// resolve thành 1 attempt log) | 'cancelled' (future, chưa dùng).
+  state                    String    @default("pending")
+  startedAt                DateTime  @default(now())
+  resolvedAt               DateTime?
+  /// Pointer 1:1 sang `TribulationAttemptLog` khi đã resolved. NULL khi
+  /// state='pending'.
+  resolvedAttemptLogId     String?
+
+  @@index([characterId, state])
+  @@index([characterId, startedAt])
 }
 
 /// Phase 11 nâng cao §5 PR2 prep — audit log mỗi lần đột phá (success + fail).

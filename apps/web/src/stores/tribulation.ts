@@ -270,6 +270,118 @@ export const useTribulationStore = defineStore('tribulation', () => {
     return fetchHistory(newLimit);
   }
 
+  // ── Phase 14.3.D — Encounter system state ─────────────────────────────
+
+  /**
+   * Phase 14.3.D — encounter snapshot từ
+   * `GET /character/tribulation/encounter/current`.
+   *   - `undefined`: chưa fetch.
+   *   - `null`: server trả null (transition không có catalog).
+   *   - `EncounterCurrentView`: snapshot, includes `pending` row nếu user
+   *     đã start nhưng chưa resolve.
+   */
+  const encounter = ref<api.TribulationEncounterCurrentView | null | undefined>(
+    undefined,
+  );
+  const encounterLoading = ref(false);
+  const encounterError = ref<string | null>(null);
+  const encounterStarting = ref(false);
+  const encounterResolving = ref(false);
+
+  /**
+   * Phase 14.3.D — true khi đã có pending encounter row (user đã startEncounter
+   * nhưng chưa resolveEncounter). UI dùng để toggle giữa "Bắt đầu" và
+   * "Vượt kiếp" button.
+   */
+  const encounterPending = computed<boolean>(() => {
+    const row = encounter.value?.pending;
+    return !!row && row.state === 'pending';
+  });
+
+  /**
+   * Phase 14.3.D — fetch current encounter snapshot. Idempotent. Race-safe.
+   */
+  async function fetchEncounter(): Promise<string | null> {
+    if (encounterLoading.value) return 'IN_FLIGHT';
+    encounterLoading.value = true;
+    encounterError.value = null;
+    try {
+      const res = await api.fetchTribulationEncounterCurrent();
+      encounter.value = res;
+      return null;
+    } catch (e) {
+      const code =
+        (e as { code?: string }).code ??
+        (e as { error?: { code?: string } }).error?.code ??
+        'UNKNOWN';
+      encounterError.value = code;
+      return code;
+    } finally {
+      encounterLoading.value = false;
+    }
+  }
+
+  /**
+   * Phase 14.3.D — start encounter (snapshot selected items).
+   * Idempotent server-side. Refetch encounter sau khi start để FE thấy
+   * pending row.
+   */
+  async function startEncounter(
+    selectedSupportItemKeys?: readonly string[],
+  ): Promise<string | null> {
+    if (encounterStarting.value) return 'IN_FLIGHT';
+    encounterStarting.value = true;
+    encounterError.value = null;
+    try {
+      await api.startTribulationEncounter(selectedSupportItemKeys);
+      // Refetch để pull pending row + cooldown/successChance fresh.
+      await api.fetchTribulationEncounterCurrent().then((res) => {
+        encounter.value = res;
+      });
+      return null;
+    } catch (e) {
+      const code =
+        (e as { code?: string }).code ??
+        (e as { error?: { code?: string } }).error?.code ??
+        'UNKNOWN';
+      encounterError.value = code;
+      return code;
+    } finally {
+      encounterStarting.value = false;
+    }
+  }
+
+  /**
+   * Phase 14.3.D — resolve current pending encounter. Server simulate +
+   * consume + atomic update. Outcome lưu vào `lastOutcome` (mirror
+   * `attempt()`). Idempotent server-side: re-call sau resolved trả cached
+   * outcome (no double breakthrough/consume/reward).
+   */
+  async function resolveEncounter(): Promise<string | null> {
+    if (encounterResolving.value) return 'IN_FLIGHT';
+    encounterResolving.value = true;
+    encounterError.value = null;
+    try {
+      const outcome = await api.resolveTribulationEncounter();
+      lastOutcome.value = outcome;
+      // Refetch encounter (state → resolved) + invalidate preview để FE thấy
+      // realm mới.
+      await api.fetchTribulationEncounterCurrent().then((res) => {
+        encounter.value = res;
+      });
+      return null;
+    } catch (e) {
+      const code =
+        (e as { code?: string }).code ??
+        (e as { error?: { code?: string } }).error?.code ??
+        'UNKNOWN';
+      encounterError.value = code;
+      return code;
+    } finally {
+      encounterResolving.value = false;
+    }
+  }
+
   function reset(): void {
     lastOutcome.value = null;
     inFlight.value = false;
@@ -282,6 +394,11 @@ export const useTribulationStore = defineStore('tribulation', () => {
     preview.value = undefined;
     previewLoading.value = false;
     previewError.value = null;
+    encounter.value = undefined;
+    encounterLoading.value = false;
+    encounterError.value = null;
+    encounterStarting.value = false;
+    encounterResolving.value = false;
   }
 
   return {
@@ -302,12 +419,21 @@ export const useTribulationStore = defineStore('tribulation', () => {
     preview,
     previewLoading,
     previewError,
+    encounter,
+    encounterLoading,
+    encounterError,
+    encounterStarting,
+    encounterResolving,
+    encounterPending,
     clearLastOutcome,
     fetchPreview,
     attempt,
     fetchHistory,
     loadMoreHistory,
     setHistoryFilter,
+    fetchEncounter,
+    startEncounter,
+    resolveEncounter,
     reset,
   };
 });
