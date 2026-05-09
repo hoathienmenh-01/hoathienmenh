@@ -369,3 +369,43 @@ export async function adminTerritoryWarSettleCurrent(): Promise<TerritoryWarSett
   >('/admin/territory/war/settle-current');
   return unwrap(data);
 }
+
+// ────────────────────────────────────────────────────────────────────────
+// Phase 14.0.E — Territory Owner Reward Mail Grant (admin)
+// ────────────────────────────────────────────────────────────────────────
+
+export interface TerritoryRewardGrantRegionSummary {
+  regionKey: RegionKey;
+  skippedNoWinner: boolean;
+  skippedNoMembers: boolean;
+  winnerSectId: string | null;
+  winnerSectName: string | null;
+  mailsCreated: number;
+  alreadyGranted: number;
+  memberCount: number;
+}
+
+export interface TerritoryRewardGrantSummary {
+  periodKey: string;
+  regionsProcessed: number;
+  mailsCreated: number;
+  skippedAlreadyGranted: number;
+  skippedNoWinner: number;
+  skippedNoMembers: number;
+  dryRun: boolean;
+  regions: ReadonlyArray<TerritoryRewardGrantRegionSummary>;
+}
+
+export async function adminTerritoryGrantWeeklyRewards(opts: {
+  periodKey?: string;
+  dryRun?: boolean;
+} = {}): Promise<TerritoryRewardGrantSummary> {
+  const body: Record<string, unknown> = {};
+  if (opts.periodKey) body.periodKey = opts.periodKey;
+  if (opts.dryRun !== undefined) body.dryRun = opts.dryRun;
+  const { data } = await apiClient.post<Envelope<TerritoryRewardGrantSummary>>(
+    '/admin/territory/rewards/grant-weekly',
+    body,
+  );
+  return unwrap(data);
+}

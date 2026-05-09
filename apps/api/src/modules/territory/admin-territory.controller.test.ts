@@ -25,6 +25,7 @@ import {
 import { AdminTerritoryController } from './admin-territory.controller';
 import { TerritoryError } from './territory.service';
 import type { TerritoryDecayService } from './territory-decay.service';
+import type { TerritoryRewardService } from './territory-reward.service';
 import type { TerritorySettlementService } from './territory-settlement.service';
 import type { TerritoryWarService } from './territory-war.service';
 
@@ -43,6 +44,7 @@ interface ServiceStubs {
   decay?: TerritoryDecayService['decay'];
   getDecayHistory?: TerritoryDecayService['getDecayHistory'];
   settleCurrentPeriod?: TerritoryWarService['settleCurrentPeriod'];
+  grantWeeklyOwnerRewardMail?: TerritoryRewardService['grantWeeklyOwnerRewardMail'];
 }
 
 function makeController(stubs: ServiceStubs = {}): AdminTerritoryController {
@@ -87,7 +89,26 @@ function makeController(stubs: ServiceStubs = {}): AdminTerritoryController {
         ...((opts?.settledBy ? {} : {}) as Record<string, never>),
       })),
   } as unknown as TerritoryWarService;
-  return new AdminTerritoryController(settlement, decayService, warService);
+  const rewardService = {
+    grantWeeklyOwnerRewardMail:
+      stubs.grantWeeklyOwnerRewardMail ??
+      (async (periodKey: string, opts?: { dryRun?: boolean }) => ({
+        periodKey,
+        regionsProcessed: 9,
+        mailsCreated: 0,
+        skippedAlreadyGranted: 0,
+        skippedNoWinner: 9,
+        skippedNoMembers: 0,
+        dryRun: opts?.dryRun === true,
+        regions: [],
+      })),
+  } as unknown as TerritoryRewardService;
+  return new AdminTerritoryController(
+    settlement,
+    decayService,
+    warService,
+    rewardService,
+  );
 }
 
 async function expectHttpError(
@@ -362,6 +383,187 @@ describe('AdminTerritoryController.settleWarCurrent', () => {
     let err: unknown = null;
     try {
       await c.settleWarCurrent(makeReq());
+    } catch (e) {
+      err = e;
+    }
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).toBe('boom');
+  });
+});
+
+describe('AdminTerritoryController.grantWeeklyOwnerReward (Phase 14.0.E)', () => {
+  it('ok với periodKey explicit + dryRun=false (default)', async () => {
+    const calls: Array<{ periodKey: string; dryRun: boolean | undefined }> = [];
+    const c = makeController({
+      grantWeeklyOwnerRewardMail: (async (periodKey, opts) => {
+        calls.push({ periodKey, dryRun: opts?.dryRun });
+        return {
+          periodKey,
+          regionsProcessed: 9,
+          mailsCreated: 5,
+          skippedAlreadyGranted: 0,
+          skippedNoWinner: 4,
+          skippedNoMembers: 0,
+          dryRun: false,
+          regions: [],
+        };
+      }) as TerritoryRewardService['grantWeeklyOwnerRewardMail'],
+    });
+    const r = await c.grantWeeklyOwnerReward(
+      { periodKey: '2026-W23' },
+      makeReq({ userId: 'admin99' }),
+    );
+    expect(r.ok).toBe(true);
+    expect(r.data.mailsCreated).toBe(5);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].periodKey).toBe('2026-W23');
+    expect(calls[0].dryRun).toBe(false);
+  });
+
+  it('periodKey thiếu → fallback previousTerritoryPeriodKey()', async () => {
+    const calls: Array<string> = [];
+    const c = makeController({
+      grantWeeklyOwnerRewardMail: (async (periodKey) => {
+        calls.push(periodKey);
+        return {
+          periodKey,
+          regionsProcessed: 9,
+          mailsCreated: 0,
+          skippedAlreadyGranted: 0,
+          skippedNoWinner: 9,
+          skippedNoMembers: 0,
+          dryRun: false,
+          regions: [],
+        };
+      }) as TerritoryRewardService['grantWeeklyOwnerRewardMail'],
+    });
+    const r = await c.grantWeeklyOwnerReward({}, makeReq());
+    expect(r.ok).toBe(true);
+    expect(calls).toHaveLength(1);
+    expect(isTerritoryPeriodKey(calls[0])).toBe(true);
+    // Fallback phải là tuần trước (deterministic helper từ shared).
+    expect(calls[0]).toBe(previousTerritoryPeriodKey());
+  });
+
+  it('dryRun string "true" → forwarded as boolean true', async () => {
+    const calls: Array<{ dryRun: boolean | undefined }> = [];
+    const c = makeController({
+      grantWeeklyOwnerRewardMail: (async (periodKey, opts) => {
+        calls.push({ dryRun: opts?.dryRun });
+        return {
+          periodKey,
+          regionsProcessed: 9,
+          mailsCreated: 0,
+          skippedAlreadyGranted: 0,
+          skippedNoWinner: 9,
+          skippedNoMembers: 0,
+          dryRun: true,
+          regions: [],
+        };
+      }) as TerritoryRewardService['grantWeeklyOwnerRewardMail'],
+    });
+    const r = await c.grantWeeklyOwnerReward(
+      { periodKey: '2026-W23', dryRun: 'true' },
+      makeReq(),
+    );
+    expect(r.ok).toBe(true);
+    expect(calls[0].dryRun).toBe(true);
+  });
+
+  it('dryRun=true (boolean) → forwarded as true', async () => {
+    const calls: Array<{ dryRun: boolean | undefined }> = [];
+    const c = makeController({
+      grantWeeklyOwnerRewardMail: (async (periodKey, opts) => {
+        calls.push({ dryRun: opts?.dryRun });
+        return {
+          periodKey,
+          regionsProcessed: 9,
+          mailsCreated: 0,
+          skippedAlreadyGranted: 0,
+          skippedNoWinner: 9,
+          skippedNoMembers: 0,
+          dryRun: true,
+          regions: [],
+        };
+      }) as TerritoryRewardService['grantWeeklyOwnerRewardMail'],
+    });
+    await c.grantWeeklyOwnerReward(
+      { periodKey: '2026-W23', dryRun: true },
+      makeReq(),
+    );
+    expect(calls[0].dryRun).toBe(true);
+  });
+
+  it('periodKey malformed → 400 PERIOD_INVALID', async () => {
+    const c = makeController();
+    await expectHttpError(
+      c.grantWeeklyOwnerReward(
+        { periodKey: 'NOT-A-WEEK' },
+        makeReq(),
+      ),
+      400,
+      'PERIOD_INVALID',
+    );
+  });
+
+  it('unknown body field → 400 INVALID_INPUT (zod strict)', async () => {
+    const c = makeController();
+    await expectHttpError(
+      c.grantWeeklyOwnerReward(
+        { periodKey: '2026-W23', evil: 'yes' } as unknown,
+        makeReq(),
+      ),
+      400,
+      'INVALID_INPUT',
+    );
+  });
+
+  it('forwards req.userId vào triggeredBy (audit trail)', async () => {
+    const calls: Array<{ triggeredBy: string | null | undefined }> = [];
+    const c = makeController({
+      grantWeeklyOwnerRewardMail: (async (periodKey, opts) => {
+        calls.push({ triggeredBy: opts?.triggeredBy });
+        return {
+          periodKey,
+          regionsProcessed: 9,
+          mailsCreated: 0,
+          skippedAlreadyGranted: 0,
+          skippedNoWinner: 9,
+          skippedNoMembers: 0,
+          dryRun: false,
+          regions: [],
+        };
+      }) as TerritoryRewardService['grantWeeklyOwnerRewardMail'],
+    });
+    await c.grantWeeklyOwnerReward(
+      { periodKey: '2026-W23' },
+      makeReq({ userId: 'admin42' }),
+    );
+    expect(calls[0].triggeredBy).toBe('admin42');
+  });
+
+  it('service throw PERIOD_INVALID → 400', async () => {
+    const c = makeController({
+      grantWeeklyOwnerRewardMail: (async () => {
+        throw new TerritoryError('PERIOD_INVALID');
+      }) as TerritoryRewardService['grantWeeklyOwnerRewardMail'],
+    });
+    await expectHttpError(
+      c.grantWeeklyOwnerReward({ periodKey: '2026-W23' }, makeReq()),
+      400,
+      'PERIOD_INVALID',
+    );
+  });
+
+  it('service throw error khác → rethrow nguyên', async () => {
+    const c = makeController({
+      grantWeeklyOwnerRewardMail: (async () => {
+        throw new Error('boom');
+      }) as TerritoryRewardService['grantWeeklyOwnerRewardMail'],
+    });
+    let err: unknown = null;
+    try {
+      await c.grantWeeklyOwnerReward({ periodKey: '2026-W23' }, makeReq());
     } catch (e) {
       err = e;
     }

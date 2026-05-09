@@ -3221,6 +3221,13 @@
       "adminSettleRunning": "Đang chốt…",
       "adminLastResult": "Đã chốt {period}: thắng {wins} vùng · bỏ qua {skip} vùng (không có điểm)."
     },
+    "reward": {
+      "adminTitle": "Admin — Thưởng Lãnh Địa Tuần",
+      "adminSubtitle": "Gửi mail thưởng cho thành viên tông môn chiếm Lãnh Địa (idempotent qua periodKey + region + character). Mặc định gửi cho tuần trước.",
+      "adminGrantButton": "Gửi Thưởng Lãnh Địa Tuần",
+      "adminGrantRunning": "Đang gửi…",
+      "adminLastResult": "Đã xử lý {period}: {regions} vùng · gửi {mails} thư · bỏ qua {skipAlready} đã gửi · {skipNoWinner} không có chủ · {skipNoMembers} tông môn rỗng."
+    },
     "errors": {
       "NO_CHARACTER": "Chưa có nhân vật, hãy khai đạo trước.",
       "REGION_INVALID": "Vùng đất không tồn tại.",
