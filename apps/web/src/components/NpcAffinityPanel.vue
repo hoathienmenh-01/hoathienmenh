@@ -607,7 +607,7 @@ watch(
                       !entry.unlocked ||
                         entry.limitReached ||
                         store.buyLoading ===
-                          `${aff.npcKey}:${entry.itemKey}`
+                        `${aff.npcKey}:${entry.itemKey}`
                     "
                     :data-testid="`npc-affinity-shop-buy-${aff.npcKey}-${entry.itemKey}`"
                     @click="onBuyShopItem(aff.npcKey, entry.itemKey)"
