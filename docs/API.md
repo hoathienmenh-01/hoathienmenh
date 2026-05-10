@@ -741,6 +741,60 @@ Compose policy max-only — nhiều event cùng type ACTIVE → chọn multiplie
 tốt nhất, KHÔNG stack. Fail-soft: nếu LiveOps service unavailable, runtime
 trả `1.0` (no boost) hoặc `0` (no discount) — KHÔNG block player flow.
 
+## Feature Flags — `FeatureFlagPublicController` + `AdminFeatureFlagController` (Phase 15.4)
+
+Hệ Feature Flag DB-backed cho phép admin bật/tắt nhanh các hệ thống lõi
+mà không cần deploy. Catalog 11 flag hardcoded ở
+`packages/shared/src/feature-flags.ts` (5 category: `GAMEPLAY`, `ECONOMY`,
+`LIVEOPS`, `ADMIN`, `SAFETY`). Cache 2-tier (L1 in-memory TTL 30s, L2
+Redis TTL 30s) — Redis fail-soft. Server-authoritative: gate chính qua
+runtime `assertFeatureEnabled(key)` trả `503 FEATURE_DISABLED`.
+
+### Public
+
+- `GET /feature-flags/public` — anonymous-safe, trả whitelist (chỉ flag
+  FE cần biết để ẩn UI). Payload `{ ok, data: { flags: [{ key, enabled }] } }`.
+  Whitelist hiện tại: `ARENA_ENABLED`, `TRIBULATION_MINI_BATTLE_ENABLED`,
+  `EQUIPMENT_REFORGE_ENABLED`, `EQUIPMENT_ENCHANT_ENABLED`,
+  `LIVEOPS_EVENTS_ENABLED`, `LIVEOPS_ANNOUNCEMENTS_ENABLED`,
+  `MARKET_ENABLED`. KHÔNG trả flag SAFETY/ADMIN.
+
+### Admin (`RequireAdmin()`)
+
+- `GET /admin/feature-flags` — full list catalog với DB row state. Payload
+  per flag: `{ key, enabled, category, descriptionVi, descriptionEn,
+  public, requiresRestart, module, defaultEnabled, updatedByAdminId,
+  updatedAt }`. Flag chưa có DB row → trả default catalog state.
+- `PATCH /admin/feature-flags/:key` — body `{ enabled: boolean }`. Reject
+  `FEATURE_FLAG_KEY_INVALID` nếu key không có trong catalog. Audit
+  `ADMIN_FEATURE_FLAG_UPDATE` (diff old→new). Clear cache L1+L2 ngay.
+- `POST /admin/feature-flags/refresh-defaults` — idempotent seed: tạo DB
+  row cho mọi flag chưa tồn tại, không touch flag đã có. Trả `{ created,
+  existing }`. Audit `ADMIN_FEATURE_FLAG_REFRESH_DEFAULTS`.
+- `POST /admin/feature-flags/clear-cache` — flush L1+L2 ngay. Trả `{
+  cleared: true }`. Audit `ADMIN_FEATURE_FLAG_CLEAR_CACHE`.
+
+### Runtime gates đã wire
+
+| Flag | Module | Behavior khi off |
+|---|---|---|
+| `ARENA_ENABLED` | `arena` | `POST /arena/matches` 503; FE banner + disable challenge |
+| `TRIBULATION_MINI_BATTLE_ENABLED` | `character/tribulation` | Mini-battle start 503 |
+| `EQUIPMENT_REFORGE_ENABLED` | `character/equipment` | `POST /character/equipment/reforge` 503 |
+| `EQUIPMENT_ENCHANT_ENABLED` | `character/equipment` | `POST /character/equipment/enchant` 503 |
+| `LIVEOPS_EVENTS_ENABLED` | `liveops-event-scheduler` | Runtime modifier (boost/discount) không apply |
+| `LIVEOPS_FESTIVAL_GIFT_ENABLED` | `liveops-event-scheduler` | `POST /liveops/events/:key/claim` 503 |
+| `LIVEOPS_ANNOUNCEMENTS_ENABLED` | `liveops-announcement` | Public list trả empty + WS broadcast disabled |
+| `TERRITORY_WAR_ENABLED` | `territory` | Weekly war engagement 503 |
+| `MARKET_ENABLED` | `market` | Create listing + buy 503; list read-only vẫn OK |
+| `SHOP_DISCOUNT_EVENTS_ENABLED` | `shop` | Shop discount LiveOps modifier không apply |
+| `SECT_SHOP_DISCOUNT_EVENTS_ENABLED` | `sect-shop` | Sect Shop discount LiveOps modifier không apply |
+
+### Error codes — Phase 15.4
+
+- `FEATURE_DISABLED` (503) — runtime gate; payload `{ flag: <key> }`.
+- `FEATURE_FLAG_KEY_INVALID` (400) — admin update key không trong catalog.
+
 ## Error codes (chuẩn hoá)
 
 - **Auth**: `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `RATE_LIMITED`, `PASSWORD_CHANGED`, `REUSED_REFRESH_TOKEN`, `BANNED`, `INVALID_INPUT`.
@@ -760,6 +814,7 @@ trả `1.0` (no boost) hoặc `0` (no discount) — KHÔNG block player flow.
 - **Shop**: `ITEM_NOT_FOUND`, `NOT_ENOUGH_FUNDS`, `INVALID_INPUT`.
 - **Logs (M6)**: `NO_CHARACTER`, `INVALID_CURSOR`, `INVALID_INPUT`.
 - **Story Dialogue (Phase 12 Story PR-7)**: `NPC_NOT_FOUND`, `STORY_DIALOGUE_NOT_AVAILABLE`, `NODE_NOT_FOUND`, `CHOICE_NOT_FOUND`, `CHOICE_LOCKED`, `CHOICE_ALREADY_APPLIED`, `QUEST_STEP_LOCKED`, `INVALID_INPUT`, `NO_CHARACTER`.
+- **Feature Flag (Phase 15.4)**: `FEATURE_DISABLED` (503 runtime gate, payload include `flag` key), `FEATURE_FLAG_KEY_INVALID` (admin update key không trong catalog).
 
 ## Environment
 

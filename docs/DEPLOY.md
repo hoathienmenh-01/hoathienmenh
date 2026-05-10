@@ -53,6 +53,7 @@ Sinh secret: `openssl rand -base64 48`.
 | `MISSION_RESET_TZ` | `Asia/Ho_Chi_Minh` | Timezone tính DAILY/WEEKLY mission reset (DAILY 00:00, WEEKLY thứ Hai 00:00 theo zone này). Đặt `UTC` nếu muốn reset theo UTC. |
 | `DAILY_REWARD_CAP_TZ` | `Asia/Ho_Chi_Minh` | (Phase 16.5) Timezone tính `dayBucket` (YYYY-MM-DD) cho daily reward cap (CULTIVATION/DUNGEON/MISSION). Mặc định đồng bộ với `MISSION_RESET_TZ`. Override sang `UTC` để dev/test có boundary reproducible. |
 | `MARKET_FEE_PCT` | `0.05` | Phí giao dịch sàn `[0, 0.5]`. Đặt `0` để tắt phí trong closed beta. |
+| `FEATURE_FLAG_CACHE_TTL_SEC` | `30` | (Phase 15.4) TTL cache 2-tier cho feature flag (L1 in-memory + L2 Redis). Set `0` = disable cache (force DB hit mỗi request — dev only). Admin toggle flag → server clear cache ngay; FE public flag store tự refresh khi quá TTL. |
 
 ### LiveOps Cron (Phase 13.2.D + 14.0.F)
 
