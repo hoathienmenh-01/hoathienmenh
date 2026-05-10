@@ -57,18 +57,19 @@ function makeController(opts: { max: number }) {
   const controller = new CharacterController(
     chars,
     auth,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
+    undefined, // spiritualRoot
+    undefined, // cultivationMethod
+    undefined, // characterSkill
+    undefined, // gem
+    undefined, // refine
+    undefined, // equipment (Phase 15.0.A)
+    undefined, // tribulation
+    undefined, // achievement
+    undefined, // talent
+    undefined, // alchemy
+    undefined, // title
+    undefined, // buff
+    undefined, // tribulationMiniBattle
     limiter,
   );
   return {

@@ -57,6 +57,7 @@ function makeController(opts: ControllerOpts = {}) {
     undefined, // characterSkill
     undefined, // gem
     undefined, // refine
+    undefined, // equipment (Phase 15.0.A)
     undefined, // tribulation
     undefined, // achievement
     undefined, // talent

@@ -33,6 +33,10 @@ import {
 import { GemError, GemService } from './gem.service';
 import { RefineError, RefineService } from './refine.service';
 import {
+  EquipmentError,
+  EquipmentService,
+} from './equipment.service';
+import {
   TRIBULATION_LOG_DEFAULT_LIMIT,
   TRIBULATION_LOG_MAX_LIMIT,
   TribulationError,
@@ -116,6 +120,19 @@ const RefineEquipmentInput = z.object({
   useProtection: z.boolean().optional().default(false),
 });
 
+const EquipmentReforgeInput = z.object({
+  equipmentInventoryItemId: z.string().min(1).max(64),
+});
+
+const EquipmentEnchantInput = z.object({
+  equipmentInventoryItemId: z.string().min(1).max(64),
+  element: z.enum(['kim', 'moc', 'thuy', 'hoa', 'tho']),
+});
+
+const EquipmentUpgradePreviewInput = z.object({
+  equipmentInventoryItemId: z.string().min(1).max(64),
+});
+
 const AchievementClaimInput = z.object({
   achievementKey: z.string().min(1).max(64),
 });
@@ -154,6 +171,7 @@ export class CharacterController {
     @Optional() private readonly characterSkill?: CharacterSkillService,
     @Optional() private readonly gem?: GemService,
     @Optional() private readonly refine?: RefineService,
+    @Optional() private readonly equipment?: EquipmentService,
     @Optional() private readonly tribulation?: TribulationService,
     @Optional() private readonly achievement?: AchievementService,
     @Optional() private readonly talent?: TalentService,
@@ -672,6 +690,98 @@ export class CharacterController {
     } catch (e) {
       if (e instanceof RefineError) {
         fail(e.code, mapRefineErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 15.0.A — Equipment Reforge Foundation. Re-roll substats trong
+   * `ALLOWED_SUBSTAT_KINDS` (atk/def/hpMax/mpMax/spirit). Cost theo quality
+   * (PHAM/LINH/HUYEN/TIEN/THAN). Atomic: consume linhThach + material →
+   * update substats → ghi `EquipmentReforgeHistory`. Server-authoritative.
+   */
+  @Post('equipment/reforge')
+  @HttpCode(200)
+  async equipmentReforge(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.equipment) {
+      fail('EQUIPMENT_UPGRADE_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = EquipmentReforgeInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const result = await this.equipment.reforge(
+        character.id,
+        parsed.data.equipmentInventoryItemId,
+      );
+      return { ok: true, data: { reforge: result } };
+    } catch (e) {
+      if (e instanceof EquipmentError) {
+        fail(e.code, mapEquipmentErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 15.0.A — Equipment Enchant Foundation. Apply 1 hệ Ngũ Hành lên
+   * trang bị. Lần đầu chọn element; các lần sau cùng element → level + 1.
+   * Cap `MAX_ENCHANT_LEVEL=5`. Atomic: consume linhThach + material → update
+   * `enchantElement`/`enchantLevel` → ghi `EquipmentEnchantHistory`.
+   */
+  @Post('equipment/enchant')
+  @HttpCode(200)
+  async equipmentEnchant(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.equipment) {
+      fail('EQUIPMENT_UPGRADE_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = EquipmentEnchantInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const result = await this.equipment.enchant(
+        character.id,
+        parsed.data.equipmentInventoryItemId,
+        parsed.data.element,
+      );
+      return { ok: true, data: { enchant: result } };
+    } catch (e) {
+      if (e instanceof EquipmentError) {
+        fail(e.code, mapEquipmentErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 15.0.A — read-only preview cho UI. Trả config + cost cho cả
+   * reforge + enchant. Không mutate. KHÔNG ghi ledger / history.
+   */
+  @Post('equipment/upgrade-preview')
+  @HttpCode(200)
+  async equipmentUpgradePreview(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.equipment) {
+      fail('EQUIPMENT_UPGRADE_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = EquipmentUpgradePreviewInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const preview = await this.equipment.upgradePreview(
+        character.id,
+        parsed.data.equipmentInventoryItemId,
+      );
+      return { ok: true, data: { preview } };
+    } catch (e) {
+      if (e instanceof EquipmentError) {
+        fail(e.code, mapEquipmentErrorStatus(e.code));
       }
       throw e;
     }
@@ -1572,6 +1682,24 @@ function mapRefineErrorStatus(code: RefineError['code']): HttpStatus {
     case 'INSUFFICIENT_MATERIAL':
     case 'INSUFFICIENT_PROTECTION':
     case 'INSUFFICIENT_FUNDS':
+      return HttpStatus.CONFLICT;
+    default:
+      return HttpStatus.BAD_REQUEST;
+  }
+}
+
+/** Map EquipmentError (Phase 15.0.A reforge/enchant) code → HTTP status. */
+function mapEquipmentErrorStatus(code: EquipmentError['code']): HttpStatus {
+  switch (code) {
+    case 'EQUIPMENT_NOT_FOUND':
+      return HttpStatus.NOT_FOUND;
+    case 'INVALID_EQUIPMENT':
+    case 'INVALID_ELEMENT':
+      return HttpStatus.BAD_REQUEST;
+    case 'INSUFFICIENT_FUNDS':
+    case 'INSUFFICIENT_MATERIAL':
+    case 'MAX_ENCHANT_REACHED':
+    case 'ELEMENT_LOCKED':
       return HttpStatus.CONFLICT;
     default:
       return HttpStatus.BAD_REQUEST;
