@@ -219,6 +219,53 @@ describe('SectMissionService.claim — happy path', () => {
     expect(cur.delta).toBe(800n);
   });
 
+  it('TZ Hotfix bug-demo: WEEKLY breakthrough log Mon 00:30 ICT, now Mon 09:00 ICT → log ĐƯỢC tính (cơ chế cũ UTC-based startOfWeek sẽ MISS)', async () => {
+    // Scenario thực tế: cron Monday sáng (ICT) tổng kết log đầu tuần. Log có
+    // createdAt = 00:30 ICT thứ Hai (= 17:30 UTC chủ nhật tuần trước theo UTC
+    // clock). Cơ chế cũ `startOfWeek(now, tz)` trong service.ts (đã removed
+    // ở PR #517) tính since = Mon 00:00 UTC → log Sun 17:30 UTC bị MISS,
+    // mission không ready, claim throw MISSION_NOT_READY (BUG).
+    //
+    // Cơ chế mới `startOfSectWarWeek(now, 'Asia/Ho_Chi_Minh')` tính since =
+    // Sun 17:00 UTC (= Mon 00:00 ICT) → log Sun 17:30 UTC > since → INCLUDED.
+    // Mission ready → claim succeed (FIX).
+    //
+    // Concrete dates:
+    //   - now = Mon 2026-05-11 09:00 ICT = Mon 2026-05-11 02:00 UTC.
+    //   - log.createdAt = Mon 2026-05-11 00:30 ICT = Sun 2026-05-10 17:30 UTC.
+    //   - startOfSectWarWeek(now, ICT) = Sun 2026-05-10 17:00 UTC ≤ log ✓.
+    //   - startOfWeek(now, _) [old] = Mon 2026-05-11 00:00 UTC > log ✗.
+    const now = new Date('2026-05-11T02:00:00.000Z'); // Mon 09:00 ICT.
+    const logCreatedAt = new Date('2026-05-10T17:30:00.000Z'); // Mon 00:30 ICT.
+    const m = await makeMember({ realmKey: 'truc_co' });
+    await prisma.breakthroughAttemptLog.create({
+      data: {
+        characterId: m.characterId,
+        success: true,
+        fromRealmKey: 'luyenkhi',
+        fromRealmStage: 9,
+        toRealmKey: 'truc_co',
+        toRealmStage: 1,
+        chance: 0.8,
+        baseChance: 0.7,
+        rootPurityBonus: 0.05,
+        methodAffinityBonus: 0.05,
+        itemBonus: 0,
+        rawChance: 0.8,
+        rngRoll: 0.5,
+        expBefore: 0n,
+        expAfter: 0n,
+        attemptIndex: 1,
+        createdAt: logCreatedAt,
+      },
+    });
+    // Trước fix: throw MISSION_NOT_READY (count=0 vì log < since UTC).
+    // Sau fix: succeed (count=1 vì log >= since ICT).
+    const r = await svc.claim(m.userId, 'sect_weekly_breakthrough_1', now);
+    expect(r.missionKey).toBe('sect_weekly_breakthrough_1');
+    expect(r.rewardContribution).toBe(200);
+  });
+
   it('idempotent: claim 2 lần → ALREADY_CLAIMED, balance KHÔNG cộng dồn', async () => {
     const m = await makeMember();
     for (let i = 0; i < 3; i++) {
