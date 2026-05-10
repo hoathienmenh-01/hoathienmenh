@@ -6,6 +6,7 @@ export * from './api-contracts';
 export * from './combat';
 export * from './combat-rng';
 export * from './combat-snapshot';
+export * from './arena';
 export * from './items';
 export * from './missions';
 export * from './achievements';

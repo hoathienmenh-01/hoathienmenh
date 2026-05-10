@@ -143,6 +143,11 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.economyAnomaly.deleteMany({});
   await prisma.itemLedger.deleteMany({});
   await prisma.currencyLedger.deleteMany({});
+  // Phase 14.1.B — Async Arena foundation (matches reference Character qua
+  // FK Cascade). Xoá ArenaMatch trước ArenaProfile để rõ order — cả 2 đều
+  // FK → Character.
+  await prisma.arenaMatch.deleteMany({});
+  await prisma.arenaProfile.deleteMany({});
   // Phase 14.3.E.1 — mini-battle session rows (encounterId pointer chỉ là
   // string, không FK; xoá trước encounter để giữ deterministic order).
   await prisma.tribulationMiniBattle.deleteMany({});

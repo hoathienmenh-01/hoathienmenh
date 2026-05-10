@@ -12,7 +12,108 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Phase 14.1.A — Combat Determinism Audit for Arena (this PR)
+### Phase 14.1.B — Async Arena Foundation (this PR)
+
+**Scope**: PvP bất đồng bộ — wire `CombatSimulationSnapshot` Phase 14.1.A
+vào REST endpoints + UI. Người chơi có Arena Profile (rating mặc định
+1000, W/L/D, attacks today), tìm đối thủ, đánh trận PvP async deterministic
+qua snapshot+seed, xem lịch sử trận. Không làm season/ELO/reward lớn,
+realtime PvP, cross-server, anti-wintrade phức tạp (defer Phase 14.1.C).
+
+#### Added — Phase 14.1.B
+
+- **Shared Arena types & config** (`packages/shared/src/arena.ts`):
+  - Enums: `ArenaMatchStatus` (PENDING/RESOLVED/CANCELLED),
+    `ArenaMatchOutcome` (ATTACKER_WIN/DEFENDER_WIN/DRAW),
+    `ArenaErrorCode` (NO_CHARACTER/DEFENDER_NOT_FOUND/CANNOT_ATTACK_SELF/
+    INVALID_INPUT/DAILY_LIMIT_REACHED).
+  - Config: `ARENA_RATING_DEFAULT=1000`, floor `0`, ceiling `5000`,
+    `ARENA_RATING_WIN_DELTA=10`, `ARENA_RATING_LOSE_DELTA=-5`,
+    daily limit default 10 (`Asia/Ho_Chi_Minh`).
+  - Types: `ArenaProfileSummary`, `ArenaOpponentSummary`,
+    `ArenaMatchResult`, `ArenaBattleLogLine`, `ArenaRatingDelta`.
+  - Helpers: `arenaRatingDeltaFor(outcome)`, `clampArenaRating`,
+    `arenaDayBucket(now, tz)`, `arenaRankTierFor(rating)` (placeholder
+    `'unranked'` Phase 14.1.B; 5 slot reserved cho 14.1.C).
+
+- **Prisma models** (`apps/api/prisma/schema.prisma`):
+  - `ArenaProfile { id, characterId @unique, rating @default(1000),
+    wins, losses, draws, attacksToday, lastAttackDayBucket,
+    defenseSnapshotJson?, createdAt, updatedAt }`.
+  - `ArenaMatch { id, attackerCharacterId, defenderCharacterId, status,
+    result?, winnerCharacterId?, attackerSnapshotJson, defenderSnapshotJson,
+    seed, battleLogJson, ratingDeltaJson?, createdAt, resolvedAt? }`.
+  - Indexes: rating + updatedAt + per-side-createdAt + status-createdAt.
+  - Migration `20260616000000_phase_14_1_b_arena_foundation`.
+
+- **Arena API endpoints** (`apps/api/src/modules/arena/`):
+  - `GET /arena/profile` — lazy-create / return profile.
+  - `GET /arena/opponents?limit=N` — rating ±200 + fallback random,
+    loại trừ self.
+  - `POST /arena/matches` — body `{ defenderCharacterId, seed? }`:
+    build snapshot → `resolveCombatWithSnapshot` (Phase 14.1.A) → tx
+    update profile + match. Sync trong cùng request.
+  - `GET /arena/matches/history?limit=N&side=all|attacker|defender`.
+  - Auth + character required. Errors: 401/404/400/429.
+  - Env `ARENA_DAILY_LIMIT_PER_DAY` (default 10, 0=unlimited).
+
+- **Arena Frontend** (`apps/web/src/views/ArenaView.vue` + route `/arena`):
+  - Profile card: rating + tier + W/L/D + attacks today.
+  - Last result banner: outcome (win/lose/draw) + damage summary +
+    battle log condensed + dismiss.
+  - Opponents list: name + rating + realm/stage + sect + Challenge
+    button (disabled khi in-flight).
+  - Match history list: outcome highlight + counterpart name + rounds.
+  - Loading / empty / error states cho mỗi panel.
+  - Pinia store + API client mirrors existing patterns.
+  - i18n VI/EN parity (`arena.*` + `common.dismiss` + `apiFallback.arena*`).
+
+- **Tests added: 76**:
+  - `packages/shared/src/arena.test.ts` (16): rating delta, clamp,
+    day bucket, enum guards, tier placeholder.
+  - `apps/api/src/modules/arena/arena.service.test.ts` (19): profile
+    lazy-create, opponents excludes self + fallback, match create,
+    snapshots/seed/log/delta persistence, **deterministic replay**,
+    counters, daily limit, history filter.
+  - `apps/web/src/views/__tests__/ArenaView.test.ts` (22): all panels.
+  - `apps/web/src/api/__tests__/arena.test.ts` (8): client.
+  - `apps/web/src/stores/__tests__/arena.test.ts` (8): store actions.
+  - i18n parity: PASS (vi/en arena.* keys).
+
+#### Determinism contract — Phase 14.1.B
+
+Mỗi `ArenaMatch` row chứa `attackerSnapshotJson` + `defenderSnapshotJson`
++ `seed` đầy đủ → load row + call `resolveCombatWithSnapshot` lại bất kỳ
+lúc nào → outcome + damage + battle log **bit-exact identical**. Verified
+qua test "same snapshots + seed → deterministic result". Defender stat
+lock-in tại match-create time → defender breakthrough/equipment change
+sau đó KHÔNG ảnh hưởng kết quả.
+
+#### Known limitations — Phase 14.1.B
+
+- **KHÔNG** season cycle, ELO progression, end-season mail reward,
+  Hall of Fame.
+- **KHÔNG** anti-wintrade phức tạp — chỉ no-self-attack + daily limit.
+  Cùng cặp attack lặp lại không có cooldown. IP/device fingerprint chưa
+  có. Min-level/realm gate chưa có.
+- **KHÔNG** defense AI snapshot khi player offline — Phase 14.1.B dùng
+  live stat row tại thời điểm match created.
+- **KHÔNG** realtime PvP, cross-server, party arena.
+- Defer toàn bộ sang **Phase 14.1.C — Arena Season + ELO + Reward**.
+
+#### Risk / Rollback — Phase 14.1.B
+
+- **Migration risk**: 2 table mới (`ArenaProfile`, `ArenaMatch`), không
+  phá schema cũ. Rollback bằng prisma migrate down (drop 2 table) — không
+  có dữ liệu live (bảng mới).
+- **API risk**: 4 endpoint mới prefix `/arena/*` — không touch endpoint
+  cũ. Rollback bằng remove `ArenaModule` khỏi `app.module.ts`.
+- **FE risk**: route `/arena` mới + view mới — không touch view cũ.
+  Rollback bằng remove route + view + i18n keys.
+
+---
+
+### Phase 14.1.A — Combat Determinism Audit for Arena
 
 **Scope**: chuẩn bị nền cho Arena PvP bất đồng bộ. Audit toàn bộ
 combat critical path — đảm bảo cùng `attacker snapshot` + `defender

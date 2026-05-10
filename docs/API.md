@@ -553,6 +553,35 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 - `PRICE_TOO_LOW` — `pricePerUnit < band.minPrice`. FE i18n key `market.errors.PRICE_TOO_LOW`.
 - `PRICE_TOO_HIGH` — `pricePerUnit > band.maxPrice`. FE i18n key `market.errors.PRICE_TOO_HIGH`.
 
+## Arena — `ArenaController` (prefix `/arena`, Phase 14.1.B)
+
+> Phase 14.1.B Async Arena Foundation — PvP bất đồng bộ. Match resolve **synchronous trong cùng request POST** (KHÔNG queue/job) bằng `resolveCombatWithSnapshot` (Phase 14.1.A). Mỗi match lưu `attackerSnapshotJson` + `defenderSnapshotJson` + `seed` + `battleLogJson` → cùng snapshot+seed → cùng kết quả. **Auth + character required** mọi endpoint.
+
+| Method | Path                                  | Auth | Mô tả |
+|--------|---------------------------------------|------|-------|
+| GET    | `/arena/profile`                      | Yes  | Lazy-create + return `ArenaProfileSummary { characterId, characterName, rating, tier, wins, losses, draws, attacksToday, attacksRemaining, todayBucket, createdAt, updatedAt }`. Rating mặc định 1000. `attacksRemaining = -1` khi `ARENA_DAILY_LIMIT_PER_DAY=0` (unlimited). `tier = arenaRankTierFor(rating)` — Phase 14.1.B chỉ trả `'unranked'` (5 slot reserved cho 14.1.C). |
+| GET    | `/arena/opponents?limit=N`            | Yes  | List `ArenaOpponentSummary[]` (mặc định 10, max 50). Filter rating ±200. Fallback random khi sparse. **Loại trừ self**. Field: `characterId, characterName, realmKey, realmStage, rating, tier, wins, losses, sectName?`. |
+| POST   | `/arena/matches`                      | Yes  | Body zod strict `{ defenderCharacterId: string, seed?: number }`. Build attacker/defender `CombatActorSnapshot` từ DB row hiện tại → derive seed `hashSeed("arena-match:<matchId>")` (hoặc `seed` từ body cho test) → `resolveCombatWithSnapshot` → tx update `ArenaMatch` (RESOLVED) + cả 2 `ArenaProfile` (rating + W/L/D + `attacksToday++` cho attacker). Response `{ match: ArenaMatchResult }` với `outcome` (`ATTACKER_WIN` / `DEFENDER_WIN` / `DRAW`), `ratingDelta { attacker, defender }`, `attackerRatingAfter`, `defenderRatingAfter`, `totalAttackerDamage`, `totalDefenderDamage`, `rounds`, `battleLog[]` (max ~12 line ngắn). |
+| GET    | `/arena/matches/history?limit=N&side=all\|attacker\|defender` | Yes  | List `ArenaMatchResult[]` DESC by `createdAt` cho character hiện tại. `side=all` (default) trả cả attacker + defender; `side=attacker` chỉ outgoing; `side=defender` chỉ incoming. Limit default 20, max 100. |
+
+**Arena error codes** (catalog `ArenaErrorCode` ở `packages/shared/src/arena.ts`):
+- `NO_CHARACTER` (HTTP 404) — caller chưa có nhân vật.
+- `DEFENDER_NOT_FOUND` (HTTP 404) — `defenderCharacterId` không tồn tại.
+- `CANNOT_ATTACK_SELF` (HTTP 400) — `defenderCharacterId === attacker.characterId`.
+- `INVALID_INPUT` (HTTP 400) — body sai schema (zod).
+- `DAILY_LIMIT_REACHED` (HTTP 429) — `attacksToday >= ARENA_DAILY_LIMIT_PER_DAY` (chỉ check khi limit > 0).
+
+**Determinism guarantee** (Phase 14.1.B + 14.1.A): `attackerSnapshotJson + defenderSnapshotJson + seed` đủ để replay trận. Verification trong `apps/api/src/modules/arena/arena.service.test.ts` "same snapshots + seed → deterministic result" — load row → call `resolveCombatWithSnapshot` lần 2 → outcome + damage **bit-exact identical**. Snapshot snapshot tại thời điểm match created (defender stat lock-in), không re-fetch khi resolve.
+
+**Daily limit** — env var `ARENA_DAILY_LIMIT_PER_DAY` (default `10`, `0`=unlimited). Day bucket theo `Asia/Ho_Chi_Minh` (server tz), reset 00:00 ICT. Server tự rollover `attacksToday=0` + update `lastAttackDayBucket` lazy ở `getOrCreateProfile`.
+
+**Rating delta** (Phase 14.1.B placeholder, sẽ thay bằng ELO ở 14.1.C):
+- `ATTACKER_WIN`: attacker `+10`, defender `-5` (clamp `[0, 5000]`).
+- `DEFENDER_WIN`: attacker `-5`, defender `+10`.
+- `DRAW`: cả 2 = 0.
+
+**KHÔNG có** Phase 14.1.B: season cycle, end-season mail reward, anti-wintrade phức tạp (chỉ no-self + daily limit), realtime PvP, cross-server, ELO progression.
+
 ## Error codes (chuẩn hoá)
 
 - **Auth**: `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `RATE_LIMITED`, `PASSWORD_CHANGED`, `REUSED_REFRESH_TOKEN`, `BANNED`, `INVALID_INPUT`.
@@ -561,6 +590,7 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 - **Market**: `ITEM_NOT_FOUND`, `NOT_OWNER`, `NOT_ENOUGH_FUNDS`, `LISTING_SOLD`.
 - **Sect**: `ALREADY_IN_SECT`, `NOT_IN_SECT`, `NOT_ENOUGH_FUNDS`.
 - **Sect War**: `SECT_REQUIRED`, `SECT_WAR_NOT_CLAIMABLE`, `SECT_WAR_ALREADY_CLAIMED`, `SECT_WAR_NO_REWARD`, `NO_CHARACTER`.
+- **Arena (Phase 14.1.B)**: `NO_CHARACTER`, `DEFENDER_NOT_FOUND`, `CANNOT_ATTACK_SELF`, `INVALID_INPUT`, `DAILY_LIMIT_REACHED`.
 - **Boss**: `NO_ACTIVE_BOSS`, `BOSS_DEAD`, `COOLDOWN`.
 - **Topup/Admin**: `TOO_MANY_PENDING`, `ALREADY_PROCESSED`, `FORBIDDEN`, `NOT_FOUND`.
 - **Giftcode**: `CODE_NOT_FOUND`, `CODE_EXPIRED`, `CODE_REVOKED`, `CODE_EXHAUSTED`, `ALREADY_REDEEMED`, `CODE_EXISTS` (admin create — PR #84), `NO_CHARACTER`, `INVALID_INPUT`.
@@ -575,5 +605,6 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 
 Xem `.env.example`. Production khởi chạy sẽ assert `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` ≥ 32 ký tự; nếu thiếu sẽ refuse start. Các biến quan trọng:
 - `MISSION_RESET_TZ` — timezone reset mission/daily login (default `Asia/Ho_Chi_Minh`).
+- `ARENA_DAILY_LIMIT_PER_DAY` (Phase 14.1.B) — số trận attack tối đa/ngày/character (default `10`, `0`=unlimited). Day bucket theo `Asia/Ho_Chi_Minh`.
 - `MARKET_FEE_PCT` — phí thị trường (number 0..100).
 - `ADMIN_BOOTSTRAP_*` — script `pnpm bootstrap:admin` để tạo admin đầu tiên.

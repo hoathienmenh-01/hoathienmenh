@@ -36,6 +36,7 @@ import { TerritoryModule } from './modules/territory/territory.module';
 import { AdminEconomySafetyModule } from './modules/admin-economy-safety/admin-economy-safety.module';
 import { LiveOpsCronModule } from './modules/liveops-cron/liveops-cron.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
+import { ArenaModule } from './modules/arena/arena.module';
 import { RedisModule } from './common/redis.module';
 import { EconomyModule } from './modules/economy/economy.module';
 
@@ -87,6 +88,10 @@ import { EconomyModule } from './modules/economy/economy.module';
     // Phase 17.5 — Metrics endpoint (admin-only) + collectors. SAU
     // AdminModule + RealtimeModule (đã imported indirectly).
     MetricsModule,
+    // Phase 14.1.B — Async Arena Foundation. Standalone module (chỉ
+    // depend AuthModule + PrismaService). Không cycle với
+    // CharacterModule.
+    ArenaModule,
   ],
 })
 export class AppModule {}

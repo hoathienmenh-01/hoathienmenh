@@ -1,0 +1,500 @@
+/**
+ * Phase 14.1.B — ArenaView tests.
+ *
+ * Bao phủ:
+ *   - Loading state khi store chưa có profile.
+ *   - Error state khi profileError set.
+ *   - Render profile data (rating, wins, losses, attacks today).
+ *   - Render opponents list + click challenge → store.challenge gọi đúng id.
+ *   - Render lastResult banner (win/lose/draw + log).
+ *   - Render history list + outcome highlight.
+ *   - Empty state cho opponents + history.
+ *   - Error state cho opponents + history.
+ *   - Toast push khi challenge success / fail.
+ */
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { mount, flushPromises } from '@vue/test-utils';
+import { createI18n } from 'vue-i18n';
+import { setActivePinia, createPinia } from 'pinia';
+
+interface ProfileStub {
+  characterId: string;
+  characterName: string;
+  rating: number;
+  tier: string;
+  wins: number;
+  losses: number;
+  draws: number;
+  attacksToday: number;
+  attacksRemaining: number;
+  todayBucket: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface OpponentStub {
+  characterId: string;
+  characterName: string;
+  realmKey: string;
+  realmStage: number;
+  rating: number;
+  tier: string;
+  wins: number;
+  losses: number;
+  sectName: string | null;
+}
+
+interface MatchStub {
+  matchId: string;
+  status: string;
+  outcome: 'ATTACKER_WIN' | 'DEFENDER_WIN' | 'DRAW';
+  attackerCharacterId: string;
+  attackerName: string;
+  defenderCharacterId: string;
+  defenderName: string;
+  seed: number;
+  ratingDelta: { attacker: number; defender: number };
+  attackerRatingAfter: number;
+  defenderRatingAfter: number;
+  totalAttackerDamage: number;
+  totalDefenderDamage: number;
+  rounds: number;
+  battleLog: Array<{
+    round: number;
+    attackerSide: 'attacker' | 'defender';
+    attackerName: string;
+    defenderName: string;
+    finalDamage: number;
+    attackerHp: number;
+    defenderHp: number;
+  }>;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+
+interface ArenaStoreStub {
+  profile: ProfileStub | null;
+  profileLoading: boolean;
+  profileError: string | null;
+  opponents: OpponentStub[] | null;
+  opponentsLoading: boolean;
+  opponentsError: string | null;
+  lastResult: MatchStub | null;
+  challengeInFlight: boolean;
+  challengeError: string | null;
+  history: MatchStub[] | null;
+  historyLoading: boolean;
+  historyError: string | null;
+  totalAttacks: number;
+  fetchProfile: ReturnType<typeof vi.fn>;
+  fetchOpponents: ReturnType<typeof vi.fn>;
+  challenge: ReturnType<typeof vi.fn>;
+  fetchHistory: ReturnType<typeof vi.fn>;
+  clearLastResult: () => void;
+}
+
+const arenaState: ArenaStoreStub = {
+  profile: null,
+  profileLoading: false,
+  profileError: null,
+  opponents: null,
+  opponentsLoading: false,
+  opponentsError: null,
+  lastResult: null,
+  challengeInFlight: false,
+  challengeError: null,
+  history: null,
+  historyLoading: false,
+  historyError: null,
+  totalAttacks: 0,
+  fetchProfile: vi.fn(),
+  fetchOpponents: vi.fn(),
+  challenge: vi.fn(),
+  fetchHistory: vi.fn(),
+  clearLastResult: vi.fn(() => {
+    arenaState.lastResult = null;
+  }),
+};
+
+const toastPushMock = vi.fn();
+
+vi.mock('@/stores/arena', () => ({
+  useArenaStore: () => arenaState,
+}));
+vi.mock('@/stores/toast', () => ({
+  useToastStore: () => ({ push: toastPushMock }),
+}));
+vi.mock('@/components/shell/AppShell.vue', () => ({
+  default: {
+    name: 'AppShellStub',
+    template: '<div data-testid="app-shell"><slot /></div>',
+  },
+}));
+vi.mock('@/components/ui/MButton.vue', () => ({
+  default: {
+    name: 'MButtonStub',
+    props: ['type', 'loading', 'disabled'],
+    template:
+      '<button :disabled="disabled || loading"><slot /></button>',
+  },
+}));
+
+import ArenaView from '@/views/ArenaView.vue';
+
+const i18n = createI18n({
+  legacy: false,
+  locale: 'vi',
+  fallbackLocale: 'vi',
+  missingWarn: false,
+  fallbackWarn: false,
+  messages: {
+    vi: {
+      common: {
+        loading: 'Loading…',
+        dismiss: 'Dismiss',
+      },
+      arena: {
+        title: 'Đấu Đài',
+        subtitle: 'sub',
+        profile: {
+          rating: 'Rating',
+          tier: 'Tier',
+          wins: 'Wins',
+          losses: 'Losses',
+          draws: 'Draws',
+          attacksToday: 'Today',
+          unlimited: '∞',
+        },
+        opponents: {
+          title: 'Opps',
+          refresh: 'Refresh',
+          empty: 'no opp',
+          rating: 'R{r}',
+          realm: '{realm} {stage}',
+        },
+        challenge: { button: 'Challenge', inFlight: 'Resolving' },
+        result: {
+          win: 'WIN',
+          lose: 'LOSE',
+          draw: 'DRAW',
+          vs: 'vs {name}',
+          damageAttacker: 'A:{d}',
+          damageDefender: 'D:{d}',
+          rounds: '{n}r',
+          logLine: 'r{r} {side} {d}',
+          side: { attacker: 'A', defender: 'D' },
+        },
+        history: { title: 'Hist', empty: 'no hist', rounds: '{n}r' },
+        toast: { challengeSuccess: 'success' },
+        errors: {
+          UNKNOWN: 'unknown err',
+          PROFILE_FETCH_FAILED: 'p err',
+          OPPONENTS_FETCH_FAILED: 'o err',
+          HISTORY_FETCH_FAILED: 'h err',
+          DAILY_LIMIT_REACHED: 'limit',
+          CANNOT_ATTACK_SELF: 'self',
+        },
+      },
+    },
+  },
+});
+
+function mountView() {
+  return mount(ArenaView, { global: { plugins: [i18n] } });
+}
+
+function resetState() {
+  arenaState.profile = null;
+  arenaState.profileLoading = false;
+  arenaState.profileError = null;
+  arenaState.opponents = null;
+  arenaState.opponentsLoading = false;
+  arenaState.opponentsError = null;
+  arenaState.lastResult = null;
+  arenaState.challengeInFlight = false;
+  arenaState.challengeError = null;
+  arenaState.history = null;
+  arenaState.historyLoading = false;
+  arenaState.historyError = null;
+  arenaState.totalAttacks = 0;
+  arenaState.fetchProfile.mockReset();
+  arenaState.fetchOpponents.mockReset();
+  arenaState.challenge.mockReset();
+  arenaState.fetchHistory.mockReset();
+  toastPushMock.mockClear();
+}
+
+const PROFILE_A: ProfileStub = {
+  characterId: 'me-id',
+  characterName: 'Me',
+  rating: 1023,
+  tier: 'unranked',
+  wins: 5,
+  losses: 2,
+  draws: 1,
+  attacksToday: 3,
+  attacksRemaining: 7,
+  todayBucket: '2026-05-10',
+  createdAt: '2026-05-10T00:00:00.000Z',
+  updatedAt: '2026-05-10T00:00:00.000Z',
+};
+
+const OPPONENT_B: OpponentStub = {
+  characterId: 'opp-id',
+  characterName: 'Foe',
+  realmKey: 'truc_co',
+  realmStage: 3,
+  rating: 1010,
+  tier: 'unranked',
+  wins: 1,
+  losses: 0,
+  sectName: 'Sect Y',
+};
+
+function makeMatch(overrides: Partial<MatchStub> = {}): MatchStub {
+  return {
+    matchId: 'm1',
+    status: 'RESOLVED',
+    outcome: 'ATTACKER_WIN',
+    attackerCharacterId: 'me-id',
+    attackerName: 'Me',
+    defenderCharacterId: 'opp-id',
+    defenderName: 'Foe',
+    seed: 1,
+    ratingDelta: { attacker: 10, defender: -5 },
+    attackerRatingAfter: 1010,
+    defenderRatingAfter: 995,
+    totalAttackerDamage: 100,
+    totalDefenderDamage: 30,
+    rounds: 3,
+    battleLog: [
+      {
+        round: 1,
+        attackerSide: 'attacker',
+        attackerName: 'Me',
+        defenderName: 'Foe',
+        finalDamage: 50,
+        attackerHp: 100,
+        defenderHp: 50,
+      },
+    ],
+    createdAt: '2026-05-10T00:00:00.000Z',
+    resolvedAt: '2026-05-10T00:00:01.000Z',
+    ...overrides,
+  };
+}
+
+describe('ArenaView — profile panel', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    resetState();
+  });
+
+  it('renders loading state when profile is null + loading', () => {
+    arenaState.profileLoading = true;
+    const w = mountView();
+    expect(w.find('[data-testid="arena-profile-loading"]').exists()).toBe(true);
+  });
+
+  it('renders error state when profileError set', () => {
+    arenaState.profileError = 'PROFILE_FETCH_FAILED';
+    const w = mountView();
+    expect(w.find('[data-testid="arena-profile-error"]').exists()).toBe(true);
+  });
+
+  it('renders rating/wins/losses/attacksToday', () => {
+    arenaState.profile = PROFILE_A;
+    const w = mountView();
+    expect(w.find('[data-testid="arena-profile-rating"]').text()).toBe('1023');
+    expect(w.find('[data-testid="arena-profile-wins"]').text()).toBe('5');
+    expect(w.find('[data-testid="arena-profile-losses"]').text()).toBe('2');
+    expect(w.find('[data-testid="arena-profile-attacks"]').text()).toContain('3');
+    expect(w.find('[data-testid="arena-profile-attacks"]').text()).toContain('7');
+  });
+
+  it('shows ∞ when attacksRemaining is -1 (unlimited)', () => {
+    arenaState.profile = { ...PROFILE_A, attacksRemaining: -1 };
+    const w = mountView();
+    expect(w.find('[data-testid="arena-profile-attacks"]').text()).toContain('∞');
+  });
+});
+
+describe('ArenaView — opponents panel', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    resetState();
+    arenaState.profile = PROFILE_A;
+  });
+
+  it('renders loading state when opponents null + loading', () => {
+    arenaState.opponentsLoading = true;
+    const w = mountView();
+    expect(w.find('[data-testid="arena-opponents-loading"]').exists()).toBe(true);
+  });
+
+  it('renders error state when opponentsError set', () => {
+    arenaState.opponentsError = 'OPPONENTS_FETCH_FAILED';
+    const w = mountView();
+    expect(w.find('[data-testid="arena-opponents-error"]').exists()).toBe(true);
+  });
+
+  it('renders empty state when opponents list is empty', () => {
+    arenaState.opponents = [];
+    const w = mountView();
+    expect(w.find('[data-testid="arena-opponents-empty"]').exists()).toBe(true);
+  });
+
+  it('renders opponent rows', () => {
+    arenaState.opponents = [OPPONENT_B];
+    const w = mountView();
+    expect(w.find('[data-testid="arena-opponent-opp-id"]').exists()).toBe(true);
+    expect(w.find('[data-testid="arena-opponent-opp-id"]').text()).toContain(
+      'Foe',
+    );
+  });
+
+  it('challenge button calls store.challenge with opponent id (success → toast)', async () => {
+    arenaState.opponents = [OPPONENT_B];
+    arenaState.challenge.mockResolvedValue(null);
+    const w = mountView();
+    await w.find('[data-testid="arena-challenge-opp-id"]').trigger('click');
+    await flushPromises();
+    expect(arenaState.challenge).toHaveBeenCalledWith('opp-id');
+    expect(toastPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'success' }),
+    );
+  });
+
+  it('challenge fail → toast error with localized code', async () => {
+    arenaState.opponents = [OPPONENT_B];
+    arenaState.challenge.mockResolvedValue('CANNOT_ATTACK_SELF');
+    const w = mountView();
+    await w.find('[data-testid="arena-challenge-opp-id"]').trigger('click');
+    await flushPromises();
+    expect(toastPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error', text: 'self' }),
+    );
+  });
+
+  it('challenge fail unknown code → unknown error toast', async () => {
+    arenaState.opponents = [OPPONENT_B];
+    arenaState.challenge.mockResolvedValue('SOME_NEW_CODE');
+    const w = mountView();
+    await w.find('[data-testid="arena-challenge-opp-id"]').trigger('click');
+    await flushPromises();
+    expect(toastPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error', text: 'unknown err' }),
+    );
+  });
+});
+
+describe('ArenaView — last result banner', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    resetState();
+    arenaState.profile = PROFILE_A;
+  });
+
+  it('renders win banner when outcome=ATTACKER_WIN and player is attacker', () => {
+    arenaState.lastResult = makeMatch();
+    const w = mountView();
+    expect(w.find('[data-testid="arena-last-result"]').exists()).toBe(true);
+    expect(w.find('[data-testid="arena-last-result-outcome"]').text()).toContain(
+      'WIN',
+    );
+  });
+
+  it('renders lose banner when outcome=DEFENDER_WIN and player is attacker', () => {
+    arenaState.lastResult = makeMatch({ outcome: 'DEFENDER_WIN' });
+    const w = mountView();
+    expect(w.find('[data-testid="arena-last-result-outcome"]').text()).toContain(
+      'LOSE',
+    );
+  });
+
+  it('renders draw banner', () => {
+    arenaState.lastResult = makeMatch({ outcome: 'DRAW' });
+    const w = mountView();
+    expect(w.find('[data-testid="arena-last-result-outcome"]').text()).toContain(
+      'DRAW',
+    );
+  });
+
+  it('renders damage summary + battle log entries', () => {
+    arenaState.lastResult = makeMatch();
+    const w = mountView();
+    const dmg = w.find('[data-testid="arena-last-result-damage"]').text();
+    expect(dmg).toContain('100');
+    expect(dmg).toContain('30');
+    expect(w.find('[data-testid="arena-last-result-log"]').exists()).toBe(true);
+  });
+
+  it('dismiss clears banner', async () => {
+    arenaState.lastResult = makeMatch();
+    const w = mountView();
+    await w.find('[data-testid="arena-last-result-dismiss"]').trigger('click');
+    expect(arenaState.clearLastResult).toBeDefined();
+    expect(arenaState.lastResult).toBeNull();
+  });
+});
+
+describe('ArenaView — history panel', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    resetState();
+    arenaState.profile = PROFILE_A;
+  });
+
+  it('renders loading state when history null + loading', () => {
+    arenaState.historyLoading = true;
+    const w = mountView();
+    expect(w.find('[data-testid="arena-history-loading"]').exists()).toBe(true);
+  });
+
+  it('renders error state when historyError set', () => {
+    arenaState.historyError = 'HISTORY_FETCH_FAILED';
+    const w = mountView();
+    expect(w.find('[data-testid="arena-history-error"]').exists()).toBe(true);
+  });
+
+  it('renders empty state when history is empty', () => {
+    arenaState.history = [];
+    const w = mountView();
+    expect(w.find('[data-testid="arena-history-empty"]').exists()).toBe(true);
+  });
+
+  it('renders history rows', () => {
+    arenaState.history = [makeMatch(), makeMatch({ matchId: 'm2', outcome: 'DEFENDER_WIN' })];
+    const w = mountView();
+    const list = w.find('[data-testid="arena-history-list"]');
+    expect(list.exists()).toBe(true);
+    expect(list.findAll('li').length).toBe(2);
+  });
+});
+
+describe('ArenaView — mount triggers fetches', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    resetState();
+  });
+
+  it('calls fetchProfile + fetchOpponents + fetchHistory on mount', () => {
+    mountView();
+    expect(arenaState.fetchProfile).toHaveBeenCalledTimes(1);
+    expect(arenaState.fetchOpponents).toHaveBeenCalledTimes(1);
+    expect(arenaState.fetchHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it('refresh button re-triggers fetches', async () => {
+    arenaState.profile = PROFILE_A;
+    arenaState.opponents = [];
+    const w = mountView();
+    arenaState.fetchProfile.mockClear();
+    arenaState.fetchOpponents.mockClear();
+    arenaState.fetchHistory.mockClear();
+    await w.find('[data-testid="arena-refresh"]').trigger('click');
+    expect(arenaState.fetchProfile).toHaveBeenCalled();
+    expect(arenaState.fetchOpponents).toHaveBeenCalled();
+    expect(arenaState.fetchHistory).toHaveBeenCalled();
+  });
+});
