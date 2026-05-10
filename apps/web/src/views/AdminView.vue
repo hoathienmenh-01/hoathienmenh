@@ -48,6 +48,7 @@ import AdminLiveOpsPanel from '@/components/AdminLiveOpsPanel.vue';
 import AdminLiveOpsSchedulePreviewPanel from '@/components/AdminLiveOpsSchedulePreviewPanel.vue';
 import AdminLiveOpsDryRunPanel from '@/components/AdminLiveOpsDryRunPanel.vue';
 import AdminLiveOpsEventsPanel from '@/components/AdminLiveOpsEventsPanel.vue';
+import AdminLiveOpsAnnouncementsPanel from '@/components/AdminLiveOpsAnnouncementsPanel.vue';
 import AdminEconomySafetyPanel from '@/components/AdminEconomySafetyPanel.vue';
 import AdminArenaAntiWintradePanel from '@/components/AdminArenaAntiWintradePanel.vue';
 import {
@@ -1665,6 +1666,7 @@ const isAdmin = () => game.character?.role === 'ADMIN';
       <section v-if="tab === 'liveops'" class="space-y-3" data-testid="admin-liveops-section">
         <AdminLiveOpsPanel />
         <AdminLiveOpsEventsPanel />
+        <AdminLiveOpsAnnouncementsPanel />
         <AdminLiveOpsSchedulePreviewPanel />
         <AdminLiveOpsDryRunPanel />
       </section>
