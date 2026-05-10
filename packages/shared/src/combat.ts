@@ -1773,10 +1773,27 @@ export interface CombatActor {
   speed: number;
 }
 
-/** RNG seeded — server tự cấp Math.random; client chỉ display. */
-export function rollDamage(atk: number, def: number, scale: number): number {
+/**
+ * Roll damage với variance ±15%. Server-authoritative; client chỉ display.
+ *
+ * **Phase 14.1.A** — `rng` optional. Default `Math.random` cho backward
+ * compat (toàn bộ call site cũ hoạt động nguyên vẹn). Caller deterministic
+ * (Arena prep, replay verify, test) inject seeded RNG qua
+ * `createSeededRng(seed).next` — xem `combat-rng.ts`.
+ *
+ * @param atk    Attacker effective ATK (đã compose talent/buff/element).
+ * @param def    Defender effective DEF.
+ * @param scale  Skill atkScale (basic attack = 1.0).
+ * @param rng    Optional seeded RNG. Default `Math.random` (legacy).
+ */
+export function rollDamage(
+  atk: number,
+  def: number,
+  scale: number,
+  rng: () => number = Math.random,
+): number {
   const base = atk * scale - def * 0.5;
-  const variance = 0.85 + Math.random() * 0.3; // 0.85..1.15
+  const variance = 0.85 + rng() * 0.3; // 0.85..1.15
   return Math.max(1, Math.round(base * variance));
 }
 
