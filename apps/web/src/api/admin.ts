@@ -726,7 +726,15 @@ export interface AdminLiveOpsCronSectSeasonSummary {
   seasonSnapshotsCreated: number;
   seasonSnapshotsSkipped: number;
   seasonsProcessed: string[];
-  errors: Array<{ stage: string; message: string }>;
+  /** Phase 15.7 — Champion (per-member của sect rank-1) mail mới tạo. */
+  championMailsCreated: number;
+  /** Phase 15.7 — Champion grant đã tồn tại (idempotent skip). */
+  championAlreadyGranted: number;
+  /** Phase 15.7 — MVP (top-1 cá nhân) mail mới tạo. */
+  mvpMailsCreated: number;
+  /** Phase 15.7 — MVP grant đã tồn tại (idempotent skip). */
+  mvpAlreadyGranted: number;
+  errors: Array<{ stage: string; seasonKey?: string; message: string }>;
 }
 
 export interface AdminLiveOpsCronWeeklyCycleSummary {

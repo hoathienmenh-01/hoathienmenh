@@ -3097,7 +3097,7 @@
     },
     "weeklyCycle": {
       "title": "Weekly Cycle (Cron)",
-      "help": "Force-run territory settle + decay + reward mail + sect season snapshot. Idempotent via DB UNIQUE — running twice does NOT double mail.",
+      "help": "Force-run territory settle + decay + reward mail + sect season snapshot + Champion/MVP reward. Idempotent via DB UNIQUE — running twice does NOT double mail.",
       "periodLabel": "Period key",
       "periodPlaceholder": "auto (previous week)",
       "bypassLeaseLabel": "Bypass lease",
@@ -3105,6 +3105,7 @@
       "submitting": "Running…",
       "confirm": "Confirm force-run weekly cycle? Idempotent — safe if cron has already run.",
       "summary": "Settled {settled} · Skipped {skipped} · Mail {mails} (already {already}) · Snapshots {snapshots}",
+      "rewards": "Champion mail {champ} (already {champExisted}) · MVP mail {mvp} (already {mvpExisted})",
       "errorsLabel": "Fail-soft errors",
       "toast": {
         "ok": "Weekly cycle complete."
