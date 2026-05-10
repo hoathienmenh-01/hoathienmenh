@@ -1939,6 +1939,31 @@
       "UNAUTHENTICATED": "Session expired.",
       "IN_FLIGHT": "Processing…",
       "UNKNOWN": "Action failed, please retry."
+    },
+    "highRealm": {
+      "title": "High-Realm Catalog",
+      "subtitle": "Skills from Human Immortal upward — preview your late-game power. Server gates learning; UI only renders locked / unlocked state.",
+      "empty": "No skills match the filters.",
+      "summary": "Showing {shown}/{total} • Unlocked {unlocked} • Learned {learned}",
+      "filter": {
+        "realm": "Realm"
+      },
+      "realm": {
+        "nhan_tien": "Human Immortal",
+        "huyen_tien": "Immortal Realm (Mystic+)",
+        "thanh_nhan": "Primordial Chaos (Saint+)",
+        "vo_chung": "Eternal (Endless+)",
+        "dao_quan": "Dao Sovereign"
+      },
+      "badge": {
+        "locked": "Locked",
+        "unlocked": "Unlocked",
+        "learned": "Learned"
+      },
+      "lockTooltip": "Reach {realm} to learn.",
+      "field": {
+        "realm": "Required"
+      }
     }
   },
   "achievements": {

@@ -1939,6 +1939,31 @@
       "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
       "IN_FLIGHT": "Đang xử lý…",
       "UNKNOWN": "Thao tác thất bại, thử lại."
+    },
+    "highRealm": {
+      "title": "Pháp Quyển Cảnh Giới Cao",
+      "subtitle": "Thuật pháp Nhân Tiên trở lên — xem trước sức mạnh hậu kỳ. Server quyết định khi nào học được; UI chỉ hiển thị trạng thái khoá / mở.",
+      "empty": "Không có thuật pháp nào khớp bộ lọc.",
+      "summary": "Hiển thị {shown}/{total} • Mở {unlocked} • Đã học {learned}",
+      "filter": {
+        "realm": "Cảnh giới"
+      },
+      "realm": {
+        "nhan_tien": "Nhân Tiên",
+        "huyen_tien": "Tiên Giới (Huyền Tiên+)",
+        "thanh_nhan": "Hỗn Nguyên (Thánh Nhân+)",
+        "vo_chung": "Vĩnh Hằng (Vô Chung+)",
+        "dao_quan": "Đạo Quân Cảnh"
+      },
+      "badge": {
+        "locked": "Khoá",
+        "unlocked": "Mở",
+        "learned": "Đã học"
+      },
+      "lockTooltip": "Cần đạt {realm} để học.",
+      "field": {
+        "realm": "Yêu cầu"
+      }
     }
   },
   "achievements": {

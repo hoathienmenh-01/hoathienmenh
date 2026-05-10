@@ -671,6 +671,175 @@ const TEMPLATE_SHORTHAND: readonly TemplateEntryShorthand[] = [
     unlocks: [{ kind: 'realm', ref: 'truc_co' }],
     notes: 'Phase 14.2.C Thuỷ HEAL — atkScale 0.8 + selfHeal 0.18, mpCost 18, cd 3.',
   },
+
+  // ===== Content Scale 2 — High-Realm Skills Pack (25 skills) =====
+  // Late-game progression layer (Nhân Tiên / Tiên Giới / Hỗn Nguyên /
+  // Vĩnh Hằng + neutral). Tier=`master` xuyên suốt (matching nguyen_anh
+  // ULT pattern) — `legendary` reserved cho hoa_than+ ULT với evolution
+  // branches (Phase 12 scope, `hasEvolution=true` invariant). Damage ULT
+  // có atkScale ≥ 3.5 → `inferExpectedTier=legendary` mismatch → cần
+  // override; helper/heal/shield → `inferExpectedTier=basic..advanced`
+  // → cũng cần override. Toàn bộ 25 entry vào `TIER_OVERRIDE_ALLOWED`.
+
+  // ----- Nhân Tiên (order 10) — 5 skills -----
+  {
+    key: 'kim_nhan_tien_pho_thien_kiep',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'nhan_tien' }],
+    notes: 'Content Scale 2 Kim ULT — Nhân Tiên xuyên giáp + chí mạng (atkScale 4.2, mpCost 78, cd 5).',
+  },
+  {
+    key: 'moc_nhan_tien_van_lam_sinh_co',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'nhan_tien' }],
+    notes: 'Content Scale 2 Mộc HEAL — Nhân Tiên hồi 40% HP + atkScale 2.0, mpCost 70, cd 5.',
+  },
+  {
+    key: 'thuy_nhan_tien_thuy_kiep_phong_an',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'nhan_tien' }],
+    notes: 'Content Scale 2 Thuỷ ULT — Nhân Tiên control + atkScale 3.6, mpCost 72, cd 6.',
+  },
+  {
+    key: 'hoa_nhan_tien_pho_diem_van_thien',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'nhan_tien' }],
+    notes: 'Content Scale 2 Hoả ULT — Nhân Tiên huyết tế 10% + atkScale 4.4 + DOT, mpCost 78, cd 6.',
+  },
+  {
+    key: 'tho_nhan_tien_kim_son_huyen_giap',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'nhan_tien' }],
+    notes: 'Content Scale 2 Thổ SHIELD — Nhân Tiên 10% HP shield + atkScale 0.8, mpCost 60, cd 5.',
+  },
+
+  // ----- Tiên Giới (anchor 'huyen_tien', order 13) — 5 skills -----
+  {
+    key: 'kim_tien_gioi_thien_quang_xuyen_van',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'huyen_tien' }],
+    notes: 'Content Scale 2 Kim ULT — Tiên Giới chí mạng atkScale 4.4, mpCost 80, cd 6.',
+  },
+  {
+    key: 'moc_tien_gioi_co_lam_thuong_truong',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'huyen_tien' }],
+    notes: 'Content Scale 2 Mộc DOT — Tiên Giới độc tố 3 lượt + atkScale 2.6, mpCost 70, cd 4.',
+  },
+  {
+    key: 'thuy_tien_gioi_thien_ha_dao_chuyen',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'huyen_tien' }],
+    notes: 'Content Scale 2 Thuỷ HEAL — Tiên Giới hồi 42% HP + atkScale 1.4, mpCost 68, cd 5.',
+  },
+  {
+    key: 'hoa_tien_gioi_chu_tuoc_phan_thien',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'huyen_tien' }],
+    notes: 'Content Scale 2 Hoả ULT — Tiên Giới Chu Tước atkScale 4.6, mpCost 80, cd 6.',
+  },
+  {
+    key: 'tho_tien_gioi_huyen_son_dia_phong',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'huyen_tien' }],
+    notes: 'Content Scale 2 Thổ CONTROL — Tiên Giới khống chế atkScale 3.0, mpCost 65, cd 5.',
+  },
+
+  // ----- Hỗn Nguyên (anchor 'thanh_nhan', order 18) — 5 skills -----
+  {
+    key: 'kim_hon_nguyen_kim_kiep_dao_thien',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'thanh_nhan' }],
+    notes: 'Content Scale 2 Kim ULT — Hỗn Nguyên kim kiếp đảo thiên atkScale 4.6, mpCost 80, cd 6.',
+  },
+  {
+    key: 'moc_hon_nguyen_thien_dia_long_lac',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'thanh_nhan' }],
+    notes: 'Content Scale 2 Mộc HEAL — Hỗn Nguyên hồi 45% HP + atkScale 2.4, mpCost 76, cd 5.',
+  },
+  {
+    key: 'thuy_hon_nguyen_van_thuy_quy_nguyen',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'thanh_nhan' }],
+    notes: 'Content Scale 2 Thuỷ ULT — Hỗn Nguyên control nặng atkScale 4.0, mpCost 78, cd 6.',
+  },
+  {
+    key: 'hoa_hon_nguyen_chu_tuoc_thien_phan',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'thanh_nhan' }],
+    notes: 'Content Scale 2 Hoả ULT — Hỗn Nguyên huyết tế 15% + atkScale 4.7 + DOT, mpCost 78, cd 6.',
+  },
+  {
+    key: 'tho_hon_nguyen_dia_thien_son_quan',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'thanh_nhan' }],
+    notes: 'Content Scale 2 Thổ SHIELD — Hỗn Nguyên khiên cứng + atkScale 1.0, mpCost 70, cd 5.',
+  },
+
+  // ----- Vĩnh Hằng (anchor 'vo_chung', order 25) — 5 skills -----
+  {
+    key: 'kim_vinh_hang_thien_kiem_quy_tong',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'vo_chung' }],
+    notes: 'Content Scale 2 Kim ULT — Vĩnh Hằng vạn kiếm quy tông atkScale 4.8, mpCost 80, cd 6.',
+  },
+  {
+    key: 'moc_vinh_hang_van_co_sinh_chu',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'vo_chung' }],
+    notes: 'Content Scale 2 Mộc ULT — Vĩnh Hằng hồi 50% HP + atkScale 3.0, mpCost 80, cd 6.',
+  },
+  {
+    key: 'thuy_vinh_hang_thien_ha_dao_lang',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'vo_chung' }],
+    notes: 'Content Scale 2 Thuỷ ULT — Vĩnh Hằng đảo lãng atkScale 4.4 + control, mpCost 80, cd 6.',
+  },
+  {
+    key: 'hoa_vinh_hang_kiep_diem_thieu_thien',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'vo_chung' }],
+    notes: 'Content Scale 2 Hoả ULT — Vĩnh Hằng huyết tế 20% + atkScale 4.8, mpCost 80, cd 6.',
+  },
+  {
+    key: 'tho_vinh_hang_huyen_dia_kim_can_giap',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'vo_chung' }],
+    notes: 'Content Scale 2 Thổ ULT — Vĩnh Hằng kim cang giáp + atkScale 1.4, mpCost 78, cd 6.',
+  },
+
+  // ----- Neutral / Special (element=null) — 5 skills -----
+  {
+    key: 'tien_anh_quyet_kiem',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'nhan_tien' }],
+    notes: 'Content Scale 2 Neutral — Nhân Tiên anti-boss damage atkScale 4.0 + CRIT, mpCost 70, cd 5.',
+  },
+  {
+    key: 'huyen_thien_van_phap_kinh',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'huyen_tien' }],
+    notes: 'Content Scale 2 Neutral — Tiên Giới hồi 30% HP + atkScale 1.8, mpCost 60, cd 5.',
+  },
+  {
+    key: 'chuan_thanh_dao_quan_kiem',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'thanh_nhan' }],
+    notes: 'Content Scale 2 Neutral ULT — Hỗn Nguyên anti-boss atkScale 4.5 + BURST/CRIT, mpCost 75, cd 6.',
+  },
+  {
+    key: 'dao_quan_van_phap_quy',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'dao_quan' }],
+    notes: 'Content Scale 2 Neutral ULT — Đạo Quân control atkScale 3.6, mpCost 70, cd 6.',
+  },
+  {
+    key: 'vinh_hang_dao_tam_an',
+    tier: 'master',
+    unlocks: [{ kind: 'realm', ref: 'vo_chung' }],
+    notes: 'Content Scale 2 Neutral — Vĩnh Hằng đạo tâm hồi 45% HP + atkScale 2.0, mpCost 70, cd 6.',
+  },
 ];
 
 /**
@@ -928,4 +1097,36 @@ const TIER_OVERRIDE_ALLOWED: ReadonlySet<string> = new Set([
   'thuy_thien_dong_chuong',
   'hoa_phuong_de_quan',
   'tho_van_co_trach_thien',
+
+  // ===== Content Scale 2 — High-Realm Skills Pack overrides =====
+  // 25 skill mới đều dùng tier='master' để khớp pattern nguyen_anh ULT
+  // (legendary reserved cho hoa_than+ với evolution branches Phase 12).
+  // `inferExpectedTier` cho damage ULT atkScale ≥ 3.5 → legendary và cho
+  // support skill atkScale < 2.0 → basic/intermediate → cả 2 đều mismatch
+  // master → toàn bộ 25 key cần whitelist.
+  'kim_nhan_tien_pho_thien_kiep',
+  'moc_nhan_tien_van_lam_sinh_co',
+  'thuy_nhan_tien_thuy_kiep_phong_an',
+  'hoa_nhan_tien_pho_diem_van_thien',
+  'tho_nhan_tien_kim_son_huyen_giap',
+  'kim_tien_gioi_thien_quang_xuyen_van',
+  'moc_tien_gioi_co_lam_thuong_truong',
+  'thuy_tien_gioi_thien_ha_dao_chuyen',
+  'hoa_tien_gioi_chu_tuoc_phan_thien',
+  'tho_tien_gioi_huyen_son_dia_phong',
+  'kim_hon_nguyen_kim_kiep_dao_thien',
+  'moc_hon_nguyen_thien_dia_long_lac',
+  'thuy_hon_nguyen_van_thuy_quy_nguyen',
+  'hoa_hon_nguyen_chu_tuoc_thien_phan',
+  'tho_hon_nguyen_dia_thien_son_quan',
+  'kim_vinh_hang_thien_kiem_quy_tong',
+  'moc_vinh_hang_van_co_sinh_chu',
+  'thuy_vinh_hang_thien_ha_dao_lang',
+  'hoa_vinh_hang_kiep_diem_thieu_thien',
+  'tho_vinh_hang_huyen_dia_kim_can_giap',
+  'tien_anh_quyet_kiem',
+  'huyen_thien_van_phap_kinh',
+  'chuan_thanh_dao_quan_kiem',
+  'dao_quan_van_phap_quy',
+  'vinh_hang_dao_tam_an',
 ]);
