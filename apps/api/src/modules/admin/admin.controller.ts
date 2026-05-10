@@ -32,6 +32,10 @@ import {
 } from './economy-alerts-config';
 import { GiftCodeError, GiftCodeService } from '../giftcode/giftcode.service';
 import { MailError, MailService } from '../mail/mail.service';
+import {
+  ArenaSeasonService,
+  ArenaSeasonServiceError,
+} from '../arena/arena-season.service';
 import { formatUsersCsv } from './user-csv';
 
 function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
@@ -169,6 +173,7 @@ export class AdminController {
     private readonly mailService: MailService,
     private readonly config: ConfigService,
     private readonly liveOps: AdminLiveOpsService,
+    private readonly arenaSeason: ArenaSeasonService,
   ) {
     this.economyAlertsBounds = resolveEconomyAlertsBounds(
       (key) => this.config.get<string>(key),
@@ -1041,7 +1046,60 @@ export class AdminController {
     }
   }
 
+  // ───────── Phase 14.1.C — Arena Season admin ─────────
+
+  /**
+   * POST /admin/arena/season/settle — chốt 1 season + grant reward mail.
+   * Body: { seasonKey?, reason? }. ADMIN-only. Idempotent: gọi lại không
+   * gửi mail trùng (chống qua `ArenaSeasonRewardGrant` UNIQUE).
+   */
+  @Post('arena/season/settle')
+  @HttpCode(200)
+  @RequireAdmin()
+  async arenaSeasonSettle(@Req() _req: AdminReq, @Body() body: unknown) {
+    const Z = z.object({
+      seasonKey: z.string().min(1).max(64).optional(),
+      reason: z.string().max(200).optional(),
+    });
+    const parsed = Z.safeParse(body ?? {});
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const summary = await this.arenaSeason.settleSeason(parsed.data.seasonKey);
+      return { ok: true, data: { summary } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * POST /admin/arena/season/create-next — force tạo season kế tiếp
+   * (manual rollover). ADMIN-only. Idempotent qua `seasonKey` UNIQUE.
+   */
+  @Post('arena/season/create-next')
+  @HttpCode(200)
+  @RequireAdmin()
+  async arenaSeasonCreateNext(@Req() _req: AdminReq, @Body() body: unknown) {
+    const Z = z.object({
+      reason: z.string().max(200).optional(),
+    });
+    const parsed = Z.safeParse(body ?? {});
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const season = await this.arenaSeason.createNextSeason();
+      return { ok: true, data: { season } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
   private handleErr(e: unknown): never {
+    if (e instanceof ArenaSeasonServiceError) {
+      const status =
+        e.code === 'SEASON_NOT_FOUND' || e.code === 'NO_CHARACTER'
+          ? HttpStatus.NOT_FOUND
+          : HttpStatus.BAD_REQUEST;
+      fail(e.code, status);
+    }
     if (e instanceof AdminLiveOpsError) {
       const status =
         e.code === 'EVENT_NOT_FOUND' || e.code === 'BOSS_NOT_FOUND'

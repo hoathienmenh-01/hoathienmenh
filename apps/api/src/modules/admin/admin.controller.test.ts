@@ -121,6 +121,31 @@ interface ServiceStubs {
       contributors: number;
     }>;
   }>;
+  /**
+   * Phase 14.1.C — stub `ArenaSeasonService.settleSeason(seasonKey?)` cho
+   * test endpoint POST /admin/arena/season/settle. Default stub trả
+   * summary rỗng.
+   */
+  arenaSeasonSettle?: (seasonKey?: string) => Promise<{
+    seasonKey: string;
+    settledAtIso: string;
+    participants: number;
+    grants: number;
+    newGrants: number;
+  }>;
+  /**
+   * Phase 14.1.C — stub `ArenaSeasonService.createNextSeason()` cho test
+   * endpoint POST /admin/arena/season/create-next.
+   */
+  arenaSeasonCreateNext?: () => Promise<{
+    seasonKey: string;
+    status: 'ACTIVE' | 'SETTLED' | 'ARCHIVED';
+    startsAtIso: string;
+    endsAtIso: string;
+    settledAtIso: string | null;
+    cadence: 'weekly';
+    timezone: string;
+  }>;
 }
 
 function makeController(stubs: ServiceStubs = {}): AdminController {
@@ -178,7 +203,29 @@ function makeController(stubs: ServiceStubs = {}): AdminController {
         topSects: [],
       })),
   } as unknown as import('./admin-liveops.service').AdminLiveOpsService;
-  return new AdminController(adminSvc, giftSvc, mailSvc, config, liveOpsSvc);
+  // Phase 14.1.C — minimal ArenaSeasonService stub. Tests cụ thể cho
+  // arena season settle dùng setup riêng (xem arena-season.controller.test).
+  const arenaSeasonSvc = {
+    settleSeason: stubs.arenaSeasonSettle ??
+      (async () => ({
+        seasonKey: 'arena_2026-W19',
+        settledAtIso: new Date().toISOString(),
+        participants: 0,
+        grants: 0,
+        newGrants: 0,
+      })),
+    createNextSeason: stubs.arenaSeasonCreateNext ??
+      (async () => ({
+        seasonKey: 'arena_2026-W20',
+        status: 'ACTIVE' as const,
+        startsAtIso: new Date().toISOString(),
+        endsAtIso: new Date().toISOString(),
+        settledAtIso: null,
+        cadence: 'weekly' as const,
+        timezone: 'Asia/Ho_Chi_Minh',
+      })),
+  } as unknown as import('../arena/arena-season.service').ArenaSeasonService;
+  return new AdminController(adminSvc, giftSvc, mailSvc, config, liveOpsSvc, arenaSeasonSvc);
 }
 
 async function expectHttpError(
