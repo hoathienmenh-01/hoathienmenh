@@ -1274,7 +1274,8 @@
       "economy": "Economy Safety",
       "arenaAntiWintrade": "Arena Anti-Wintrade",
       "featureFlags": "Feature Flags",
-      "maintenance": "Maintenance"
+      "maintenance": "Maintenance",
+      "configVersion": "Config Version"
     },
     "arenaAntiWintrade": {
       "alerts": "Arena wintrade alerts",
@@ -3929,6 +3930,63 @@
       "MAINTENANCE_MESSAGE_INVALID": "Invalid message.",
       "MAINTENANCE_SEVERITY_INVALID": "Invalid severity.",
       "MAINTENANCE_TARGET_INVALID": "Invalid target.",
+      "INVALID_INPUT": "Invalid input.",
+      "UNAUTHENTICATED": "Admin login required.",
+      "FORBIDDEN": "Account is not an admin.",
+      "UNKNOWN": "Operation failed — please retry."
+    }
+  },
+  "adminConfigVersion": {
+    "title": "Config Version & Rollback",
+    "hint": "View versioning history of operational config (LiveOps Event / Announcement / Feature Flag / Maintenance Window) and roll back to a previous version with 3 safety levels SAFE / NEED_CONFIRM / BLOCKED.",
+    "entityType": "Entity type",
+    "entityId": "Entity ID",
+    "entityIdPlaceholder": "e.g. event cuid / flag key / maintenance id",
+    "refresh": "Load history",
+    "loading": "Loading…",
+    "empty": "No versions yet for this entity.",
+    "diff": "Diff vs latest",
+    "dryRun": "Dry-run rollback",
+    "diffTitle": "Diff v{from} → v{to}",
+    "dryRunTitle": "Dry-run rollback v{from} → v{to}",
+    "warningsLabel": "Warnings",
+    "changedFields": "{count} fields changed",
+    "noChanges": "No changes (target deep-equals current).",
+    "applyRollback": "Apply rollback",
+    "blockedNotice": "Server rejected rollback (BLOCKED) — see warnings.",
+    "confirmTitle": "Confirm rollback",
+    "confirmDescriptionSafe": "Server safety: SAFE. A new version (action=ROLLBACK) will be audited.",
+    "confirmDescriptionNeedConfirm": "Server requires confirm phrase ‘{phrase}’ (medium-risk action).",
+    "reasonLabel": "Reason (audit, optional)",
+    "reasonPlaceholder": "e.g. ‘rollback due to reward exploit’",
+    "confirmPhraseLabel": "Type “{phrase}” to confirm",
+    "col": {
+      "action": "Action",
+      "changedAt": "Time",
+      "reason": "Reason",
+      "actions": "Actions"
+    },
+    "entityTypeLabel": {
+      "LIVEOPS_EVENT": "LiveOps Event",
+      "LIVEOPS_ANNOUNCEMENT": "Announcement",
+      "FEATURE_FLAG": "Feature Flag",
+      "MAINTENANCE_WINDOW": "Maintenance Window"
+    },
+    "toast": {
+      "applied": "Rollback applied (v{from}→v{to}, new version v{applied}).",
+      "blocked": "Server rejected rollback (BLOCKED)."
+    },
+    "errors": {
+      "CONFIG_VERSION_NOT_FOUND": "Version not found.",
+      "CONFIG_VERSION_INVALID_ENTITY_TYPE": "Invalid entity type.",
+      "CONFIG_VERSION_ENTITY_ID_REQUIRED": "Entity ID is required.",
+      "CONFIG_ROLLBACK_BLOCKED": "Rollback blocked by safety check.",
+      "CONFIG_ROLLBACK_CONFIRM_REQUIRED": "Action requires a confirm phrase.",
+      "CONFIG_ROLLBACK_CONFIRM_MISMATCH": "Confirm phrase mismatch.",
+      "CONFIG_ROLLBACK_NOT_FOUND": "Target version not found.",
+      "CONFIG_ROLLBACK_TARGET_INVALID": "Target version invalid.",
+      "CONFIG_ROLLBACK_TARGET_IS_LATEST": "That is already the latest version.",
+      "CONFIG_ROLLBACK_APPLY_FAILED": "Apply failed — changes were rolled back atomically.",
       "INVALID_INPUT": "Invalid input.",
       "UNAUTHENTICATED": "Admin login required.",
       "FORBIDDEN": "Account is not an admin.",

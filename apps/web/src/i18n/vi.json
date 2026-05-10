@@ -1274,7 +1274,8 @@
       "economy": "Kinh tế (An toàn)",
       "arenaAntiWintrade": "Arena Anti-Wintrade",
       "featureFlags": "Feature Flags",
-      "maintenance": "Bảo trì"
+      "maintenance": "Bảo trì",
+      "configVersion": "Config Version"
     },
     "arenaAntiWintrade": {
       "alerts": "Cảnh báo Arena Wintrade",
@@ -3929,6 +3930,63 @@
       "MAINTENANCE_MESSAGE_INVALID": "Nội dung không hợp lệ.",
       "MAINTENANCE_SEVERITY_INVALID": "Severity không hợp lệ.",
       "MAINTENANCE_TARGET_INVALID": "Target không hợp lệ.",
+      "INVALID_INPUT": "Dữ liệu gửi lên không hợp lệ.",
+      "UNAUTHENTICATED": "Cần đăng nhập admin.",
+      "FORBIDDEN": "Tài khoản không phải admin.",
+      "UNKNOWN": "Thao tác thất bại — thử lại."
+    }
+  },
+  "adminConfigVersion": {
+    "title": "Config Version & Rollback",
+    "hint": "Xem lịch sử sửa đổi config (LiveOps Event / Announcement / Feature Flag / Maintenance Window) và rollback về phiên bản cũ với 3 mức safety SAFE / NEED_CONFIRM / BLOCKED.",
+    "entityType": "Loại entity",
+    "entityId": "Entity ID",
+    "entityIdPlaceholder": "vd cuid của event / key của flag / id maintenance",
+    "refresh": "Tải lịch sử",
+    "loading": "Đang tải…",
+    "empty": "Chưa có phiên bản nào cho entity này.",
+    "diff": "Diff với bản mới nhất",
+    "dryRun": "Dry-run rollback",
+    "diffTitle": "Diff v{from} → v{to}",
+    "dryRunTitle": "Dry-run rollback v{from} → v{to}",
+    "warningsLabel": "Cảnh báo",
+    "changedFields": "{count} field thay đổi",
+    "noChanges": "Không có field thay đổi (target deep-equal current).",
+    "applyRollback": "Áp dụng rollback",
+    "blockedNotice": "Server từ chối rollback (BLOCKED) — xem warnings.",
+    "confirmTitle": "Xác nhận rollback",
+    "confirmDescriptionSafe": "Server đánh giá SAFE. Phiên bản mới (action=ROLLBACK) sẽ được ghi audit.",
+    "confirmDescriptionNeedConfirm": "Server yêu cầu confirm phrase ‘{phrase}’ vì thao tác rủi ro vừa phải.",
+    "reasonLabel": "Lý do (audit, optional)",
+    "reasonPlaceholder": "vd ‘rollback do exploit reward’",
+    "confirmPhraseLabel": "Nhập “{phrase}” để xác nhận",
+    "col": {
+      "action": "Hành động",
+      "changedAt": "Thời gian",
+      "reason": "Lý do",
+      "actions": "Thao tác"
+    },
+    "entityTypeLabel": {
+      "LIVEOPS_EVENT": "LiveOps Event",
+      "LIVEOPS_ANNOUNCEMENT": "Announcement",
+      "FEATURE_FLAG": "Feature Flag",
+      "MAINTENANCE_WINDOW": "Maintenance Window"
+    },
+    "toast": {
+      "applied": "Rollback áp dụng (v{from}→v{to}, version mới v{applied}).",
+      "blocked": "Server từ chối rollback (BLOCKED)."
+    },
+    "errors": {
+      "CONFIG_VERSION_NOT_FOUND": "Phiên bản không tồn tại.",
+      "CONFIG_VERSION_INVALID_ENTITY_TYPE": "Loại entity không hợp lệ.",
+      "CONFIG_VERSION_ENTITY_ID_REQUIRED": "Cần nhập Entity ID.",
+      "CONFIG_ROLLBACK_BLOCKED": "Rollback bị BLOCKED bởi safety check.",
+      "CONFIG_ROLLBACK_CONFIRM_REQUIRED": "Thao tác cần confirm phrase.",
+      "CONFIG_ROLLBACK_CONFIRM_MISMATCH": "Confirm phrase không khớp.",
+      "CONFIG_ROLLBACK_NOT_FOUND": "Phiên bản target không tồn tại.",
+      "CONFIG_ROLLBACK_TARGET_INVALID": "Phiên bản target không hợp lệ.",
+      "CONFIG_ROLLBACK_TARGET_IS_LATEST": "Đây đã là phiên bản mới nhất.",
+      "CONFIG_ROLLBACK_APPLY_FAILED": "Apply rollback thất bại — thay đổi đã được rollback (atomic).",
       "INVALID_INPUT": "Dữ liệu gửi lên không hợp lệ.",
       "UNAUTHENTICATED": "Cần đăng nhập admin.",
       "FORBIDDEN": "Tài khoản không phải admin.",
