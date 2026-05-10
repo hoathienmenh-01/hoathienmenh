@@ -3136,11 +3136,17 @@
       "startsAt": "Bắt đầu",
       "endsAt": "Kết thúc",
       "multiplier": "Multiplier (1.0 → 2.0 cho boost, 0 → 0.5 cho discount)",
+      "multiplierWithCap": "Multiplier ({min} → {max})",
       "rewardJson": "Reward JSON (chỉ cho FESTIVAL_GIFT)",
+      "rewardJsonHelp": "Cho phép linhThach (≤1000), tienNgoc (≤50), items[] (≤10 entry, qty ≤50). Server validate lại.",
       "initialStatus": "Status khởi tạo",
       "submitBtn": "Tạo event",
-      "submitting": "Đang tạo…"
+      "submitting": "Đang tạo…",
+      "runtimeNotWiredWarn": "Type này chưa wire runtime — multiplier sẽ không có hiệu lực thực tế."
     },
+    "runtimeLegend": "Phase 15.3.A đã wire runtime cho 7/7 event type (DROP/EXP/SHOP/SECT_SHOP/DAILY_LOGIN/BOSS/FESTIVAL_GIFT).",
+    "runtimeWired": "runtime ✓",
+    "runtimeNotWired": "chưa wire",
     "toast": {
       "created": "Đã tạo event.",
       "disabled": "Đã disable event.",
@@ -3153,8 +3159,49 @@
       "MULTIPLIER_OUT_OF_RANGE": "Multiplier vượt cap cho phép.",
       "WINDOW_INVALID": "startsAt phải nhỏ hơn endsAt.",
       "CONFIG_INVALID": "Config sự kiện không hợp lệ.",
+      "EVENT_REWARD_JSON_REQUIRED": "Reward JSON bắt buộc cho FESTIVAL_GIFT.",
+      "EVENT_REWARD_JSON_INVALID": "Reward JSON sai cấu trúc (chỉ cho phép linhThach/tienNgoc/items).",
+      "EVENT_REWARD_ITEM_INVALID": "Reward items có entry không hợp lệ.",
+      "EVENT_REWARD_QTY_INVALID": "Reward item qty không hợp lệ.",
+      "EVENT_REWARD_CURRENCY_INVALID": "Reward currency không hợp lệ.",
+      "EVENT_REWARD_EMPTY": "Reward rỗng — phải có ít nhất 1 currency hoặc item.",
+      "EVENT_REWARD_OVER_CAP": "Reward vượt cap (linhThach ≤1000, tienNgoc ≤50, qty ≤50, ≤10 items).",
       "FORBIDDEN": "Không đủ quyền.",
       "UNKNOWN": "Thao tác sự kiện thất bại — thử lại."
+    }
+  },
+  "liveopsActiveEvents": {
+    "title": "Sự kiện đang diễn ra",
+    "loading": "Đang tải sự kiện…",
+    "empty": "Chưa có sự kiện nào đang diễn ra.",
+    "refresh": "Làm mới",
+    "endsIn": "Còn {time}",
+    "discountLabel": "Giảm {pct}%",
+    "boostLabel": "x{mul}",
+    "rewardLinhThach": "{n} linh thạch",
+    "rewardTienNgoc": "{n} tiên ngọc",
+    "rewardItemsCount": "{n} vật phẩm",
+    "claimBtn": "Nhận quà",
+    "claiming": "Đang nhận…",
+    "alreadyClaimed": "Đã nhận quà.",
+    "notWired": "(chưa hoạt động)",
+    "confirmClaim": "Nhận quà sự kiện \"{title}\"? Mỗi nhân vật chỉ nhận được 1 lần.",
+    "toast": {
+      "claimed": "Đã nhận quà: {linhThach} linh thạch · {tienNgoc} tiên ngọc · {items} vật phẩm."
+    },
+    "errors": {
+      "EVENT_ALREADY_CLAIMED": "Bạn đã nhận quà sự kiện này rồi.",
+      "EVENT_NOT_ACTIVE": "Sự kiện không còn hoạt động.",
+      "EVENT_NOT_CLAIMABLE": "Sự kiện này không hỗ trợ nhận quà.",
+      "EVENT_NOT_FOUND": "Sự kiện không tồn tại.",
+      "EVENT_REWARD_EMPTY": "Cấu hình quà sự kiện trống.",
+      "EVENT_REWARD_OVER_CAP": "Cấu hình quà vượt cap.",
+      "EVENT_REWARD_ITEM_INVALID": "Cấu hình quà có vật phẩm sai.",
+      "EVENT_REWARD_QTY_INVALID": "Cấu hình quà có số lượng sai.",
+      "EVENT_REWARD_CURRENCY_INVALID": "Cấu hình tiền tệ sai.",
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "UNAUTHENTICATED": "Cần đăng nhập trước khi nhận quà.",
+      "UNKNOWN": "Không nhận được quà — thử lại."
     }
   },
   "adminLiveOpsSchedule": {
