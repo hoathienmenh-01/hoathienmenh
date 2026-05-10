@@ -1,8 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CurrencyKind } from '@prisma/client';
 import {
-  ECONOMY_ANOMALY_RULES,
-  type EconomyAnomalyRule,
   type EconomyAnomalySeverity,
   type EconomyAnomalySource,
   deriveSeverityForValue,
@@ -407,7 +405,7 @@ export class EconomyAnomalyScannerService {
         },
       });
       return true;
-    } catch (e) {
+    } catch {
       // P2002 unique violation → đã có anomaly cùng (source, character, window).
       // Skip — không cập nhật severity. Admin xem ở panel.
       return false;

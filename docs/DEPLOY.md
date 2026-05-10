@@ -71,6 +71,24 @@ Cron tự động hóa weekly cycle. **Default disabled** ở local/test — pro
 
 **Manual override**: vẫn giữ admin force-run endpoints sau khi enable cron — `POST /admin/liveops/run-weekly-cycle` (combo), `/admin/territory/cron/run-now`, `/admin/sect-season/cron/run-now`. Chạy lại an toàn (idempotent).
 
+### Economy Anti-cheat Cron (Phase 16.6)
+
+Cron daily auto kiểm ledger + scan anomaly. **Default disabled** ở local/test
+— production phải explicit opt-in. Cả 2 cron đều idempotent qua DB UNIQUE
+(ledger run `dayBucket`, anomaly `(source, characterId, windowKey)`).
+
+| Env var | Mặc định | Mô tả |
+|---|---|---|
+| `LEDGER_CHECKER_CRON_ENABLED` | `false` | Bật cron daily ledger invariant check (negative balance / suspicious 24h delta). Truthy: `true`/`1`/`yes`/`on`. |
+| `LEDGER_CHECKER_CRON_SCHEDULE` | `0 1 * * *` | BullMQ pattern — 01:00 UTC mỗi ngày (sau midnight reset 1h, đợi ledger flush). |
+| `ECONOMY_ANOMALY_CRON_ENABLED` | `false` | Bật cron daily anomaly scanner (currency delta / rare item gain / reward-cap bypass / market outlier). |
+| `ECONOMY_ANOMALY_CRON_SCHEDULE` | `0 2 * * *` | BullMQ pattern — 02:00 UTC mỗi ngày (sau ledger checker 1h, dữ liệu sạch). Đặt `0 */6 * * *` để scan mỗi 6h. |
+| `ECONOMY_ANTICHEAT_CRON_TZ` | `UTC` | Timezone cho cron pattern. Đổi `Asia/Ho_Chi_Minh` nếu muốn pattern theo giờ VN. |
+
+**Manual override**: admin force-run vẫn khả dụng — `POST /admin/economy/ledger-check/run` + `POST /admin/economy/anomalies/scan`. Idempotent — gọi lại trong cùng `dayBucket`/`windowKey` không tạo issue/anomaly trùng.
+
+**Policy**: detection + reporting only. KHÔNG auto-ban / KHÔNG rollback / KHÔNG gửi public notify. Admin xem `EconomyLedgerCheckIssue` + `EconomyAnomaly` ở admin panel + quyết định manual.
+
 > Không commit `.env` thật. Dùng secret manager (AWS SSM, GCP Secret Manager, Vault, Doppler, Fly secrets, …).
 
 ## 3. Build artifact

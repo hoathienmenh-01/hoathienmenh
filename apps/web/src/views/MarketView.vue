@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router';
 import {
   QUALITY_COLOR,
   type ItemKind,
+  getMarketPriceBandForItem,
 } from '@xuantoi/shared';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
@@ -57,6 +58,22 @@ const selectedInv = computed(() =>
 const sellableInventory = computed(() =>
   inventory.value.filter((i) => !i.equippedSlot && i.qty > 0),
 );
+
+// Phase 16.6 — Market price band hint cho item đang chọn bán.
+const priceBand = computed(() => {
+  const inv = selectedInv.value;
+  if (!inv) return null;
+  return getMarketPriceBandForItem(inv.item.key);
+});
+
+const priceBandHint = computed(() => {
+  const band = priceBand.value;
+  if (!band) return '';
+  return t('market.priceBandHint', {
+    min: band.minPrice.toString(),
+    max: band.maxPrice.toString(),
+  });
+});
 
 const totalSell = computed(() => {
   if (!selectedInv.value) return '0';
@@ -284,6 +301,13 @@ function handleErr(e: unknown): void {
               pattern="[0-9]*"
               class="bg-ink-700 border border-ink-300/40 rounded px-2 py-1 w-full"
             />
+            <span
+              v-if="priceBandHint"
+              class="block text-[10px] text-ink-300 mt-1"
+              data-testid="market-price-band-hint"
+            >
+              {{ priceBandHint }}
+            </span>
           </label>
         </div>
         <div class="text-xs text-ink-300">

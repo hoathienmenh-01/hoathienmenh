@@ -1053,7 +1053,7 @@ export class AdminService {
           delta,
           reason,
         });
-      } catch (e) {
+      } catch {
         // Nuốt lỗi — anomaly hook không phải critical path.
       }
     }
