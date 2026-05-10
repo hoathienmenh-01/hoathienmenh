@@ -292,6 +292,7 @@ model Character {
   characterSkills         CharacterSkill[]
   tribulationAttemptLogs  TribulationAttemptLog[]
   tribulationEncounters   TribulationEncounter[]
+  tribulationMiniBattles  TribulationMiniBattle[]
   breakthroughAttemptLogs BreakthroughAttemptLog[]
   buffs                   CharacterBuff[]
   talents                 CharacterTalent[]
@@ -493,6 +494,76 @@ model TribulationEncounter {
 
   @@index([characterId, state])
   @@index([characterId, startedAt])
+}
+
+/// Phase 14.3.E.1 — Tribulation Mini-Battle (turn-based runtime). Layer mới
+/// trên top encounter row (Phase 14.3.D). Khác `TribulationEncounter`:
+///   - Encounter = 2-phase commit pre-RNG (start → resolve = 1-shot snapshot).
+///   - MiniBattle = state machine ACTIVE per-turn, mỗi action 1 phase.
+///
+/// State machine:
+///   PENDING → ACTIVE (sau action đầu tiên)
+///   ACTIVE → RESOLVED (player win: trib HP = 0 hoặc qua đủ phase)
+///   ACTIVE → FAILED (player HP = 0)
+///   * → EXPIRED (server cleanup nếu inactive lâu — future PR)
+///
+/// Race-safety:
+///   - Service-level guard: chỉ 1 row state ∈ {PENDING, ACTIVE} per character
+///     (check trong transaction trước khi insert/update).
+///   - `clientNonce` (optional) idempotent dedupe — nếu repo có pattern
+///     persist nonce thì service so sánh `lastClientNonce` field.
+///
+/// Persistence:
+///   - `actionLogJson`: serialized array `TribulationBattleEvent[]`
+///     append-only sau mỗi action.
+///   - `resultJson`: snapshot `TribulationMiniBattleSummary` khi terminal
+///     (RESOLVED/FAILED). NULL khi đang ACTIVE.
+///   - `seed`: deterministic RNG seed (32-bit signed) — composer ở
+///     `composeBattlePhaseSeed(seed, phase)`.
+model TribulationMiniBattle {
+  id                String    @id @default(cuid())
+  characterId       String
+  character         Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Pointer optional sang `TribulationEncounter.id` nếu battle hatched
+  /// từ encounter session. NULL nếu standalone (rare).
+  encounterId       String?
+  /// Mirror `TribulationDef.key` (catalog).
+  tribulationKey    String
+  realmKey          String
+  /// `TribulationEncounterEffectType` ∈ {BURST, SUSTAIN, POISON_RECOVERY,
+  /// ARMOR_CRIT, DEFENSE_ENDURANCE}.
+  effectType        String
+  /// `ElementKey` ∈ {kim, moc, thuy, hoa, tho}.
+  element           String
+  /// `TribulationSeverity` ∈ {minor, major, heavenly, saint}.
+  difficulty        String
+  /// `TribulationMiniBattleState` ∈ {PENDING, ACTIVE, RESOLVED, FAILED, EXPIRED}.
+  state             String    @default("PENDING")
+  currentPhase      Int       @default(1)
+  phaseCount        Int
+  playerHp          Int
+  playerHpMax       Int
+  tribulationHp     Int
+  tribulationHpMax  Int
+  shield            Int       @default(0)
+  dotStacks         Int       @default(0)
+  focusCharge       Int       @default(0)
+  /// Deterministic seed cho replay/test.
+  seed              Int
+  /// Append-only log `TribulationBattleEvent[]` JSON.
+  actionLogJson     Json      @default("[]")
+  /// Set khi terminal — `TribulationMiniBattleSummary` JSON shape.
+  resultJson        Json?
+  /// Last client-supplied nonce (optional) cho idempotency replay.
+  lastClientNonce   String?
+  startedAt         DateTime  @default(now())
+  resolvedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([characterId, state])
+  @@index([characterId, startedAt])
+  @@index([encounterId])
 }
 
 /// Phase 11 nâng cao §5 PR2 prep — audit log mỗi lần đột phá (success + fail).
