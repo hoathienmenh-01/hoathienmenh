@@ -211,3 +211,45 @@ describe('LiveOpsEventsPublicController.claim', () => {
     await expect(c.claim(makeReq('valid'), 'fest-1')).rejects.toBe(boom);
   });
 });
+
+// -------------------------------------------------------------------
+// Phase 15.4 — runtime gate (LIVEOPS_*_ENABLED). Active list trả empty
+// khi LIVEOPS_EVENTS_ENABLED=false; claim bị 503 khi
+// LIVEOPS_FESTIVAL_GIFT_ENABLED=false.
+// -------------------------------------------------------------------
+describe('Phase 15.4 — LiveOpsEventsPublicController runtime gates', () => {
+  it('listActive: events flag off → returns empty data array', async () => {
+    const stubList: LiveOpsActiveEventPublicView[] = [
+      {
+        key: 'fest-1',
+        type: 'FESTIVAL_GIFT',
+        title: 'X',
+        description: '',
+        startsAt: '2026-04-29T00:00:00Z',
+        endsAt: '2026-05-01T00:00:00Z',
+        publicConfig: { multiplier: null, reward: null },
+        claimable: false,
+        runtimeSupported: true,
+      },
+    ];
+    const c = makeController({ active: stubList, flagDisabled: true });
+    const r = await c.listActive(makeReq(undefined));
+    expect(r).toEqual({ ok: true, data: [] });
+  });
+
+  it('claim: festival gift flag off → 503 FEATURE_DISABLED', async () => {
+    const c = makeController({ flagDisabled: true });
+    try {
+      await c.claim(makeReq('valid'), 'fest-1');
+      throw new Error('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(HttpException);
+      const err = e as HttpException;
+      expect(err.getStatus()).toBe(HttpStatus.SERVICE_UNAVAILABLE);
+      expect(err.getResponse()).toMatchObject({
+        ok: false,
+        error: { code: 'FEATURE_DISABLED' },
+      });
+    }
+  });
+});

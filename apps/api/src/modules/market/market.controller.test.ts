@@ -467,4 +467,47 @@ describe('MarketController', () => {
       await expect(c.buy(makeReq('valid'), 'L1')).rejects.toBe(boom);
     });
   });
+
+  // -------------------------------------------------------------------
+  // Phase 15.4 — runtime gate (MARKET_ENABLED). post + buy bị chặn 503
+  // FEATURE_DISABLED khi flag off; cancel + listings vẫn cho phép.
+  // -------------------------------------------------------------------
+  describe('Phase 15.4 — runtime gate MARKET_ENABLED=false', () => {
+    it('post 503 FEATURE_DISABLED', async () => {
+      const c = makeController({ flagDisabled: true });
+      await expectHttpError(
+        c.post(makeReq('valid'), {
+          inventoryItemId: 'i1',
+          qty: 1,
+          pricePerUnit: '100',
+        }),
+        HttpStatus.SERVICE_UNAVAILABLE,
+        'FEATURE_DISABLED',
+      );
+    });
+    it('buy 503 FEATURE_DISABLED', async () => {
+      const c = makeController({ flagDisabled: true });
+      await expectHttpError(
+        c.buy(makeReq('valid'), 'L1'),
+        HttpStatus.SERVICE_UNAVAILABLE,
+        'FEATURE_DISABLED',
+      );
+    });
+    it('cancel vẫn cho phép (read-only escape hatch)', async () => {
+      const c = makeController({
+        flagDisabled: true,
+        cancelImpl: async () => ({} as ListingView),
+      });
+      // không throw FEATURE_DISABLED — cancel không gate
+      await expect(c.cancel(makeReq('valid'), 'L1')).resolves.toMatchObject({
+        ok: true,
+      });
+    });
+    it('listings vẫn read-only (không gate)', async () => {
+      const c = makeController({ flagDisabled: true });
+      await expect(c.listings(makeReq('valid'))).resolves.toMatchObject({
+        ok: true,
+      });
+    });
+  });
 });
