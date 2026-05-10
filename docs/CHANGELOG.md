@@ -12,6 +12,49 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Phase 14.1.C — Arena Season + ELO + Reward (this PR)
+
+**Scope**: mở rộng Phase 14.1.B Async Arena Foundation thành PvP **season system** đầy đủ. Người chơi có Arena Season hiện tại (lazy-create, weekly cadence Asia/Ho_Chi_Minh, Monday 00:00), ELO rating cập nhật mỗi match, leaderboard theo season, reward preview 5 tier (Bronze..Immortal), end-season reward mail, admin endpoint settle (idempotent). Không làm anti-wintrade phức tạp (defer Phase 14.1.D), realtime PvP, cross-server, battle pass, season-end title.
+
+#### Added — Phase 14.1.C
+
+- **Shared Arena Season catalog** (`packages/shared/src/arena-season.ts`):
+  - `ARENA_SEASON_CONFIG` — cadence `'weekly'`, timezone `'Asia/Ho_Chi_Minh'`, season key format `arena_<ISO_year>-W<ISO_week>`.
+  - `ARENA_ELO_CONFIG` — `K_FACTOR=32`, `BASE_RATING=400`, `DEFENDER_SCALE=0.6`, floor `0`, ceiling `5000`.
+  - `ARENA_SEASON_REWARD_TABLE` — 5 tier (BRONZE/SILVER/GOLD/DIAMOND/IMMORTAL) với `linhThach`, `tienNgoc`, `exp`, `items[]`. Modest reward (200..5000 LT) — không phá economy.
+  - Tier dictionary `ARENA_RANK_TIERS` — breakpoints `BRONZE 0..999 / SILVER 1000..1199 / GOLD 1200..1499 / DIAMOND 1500..1799 / IMMORTAL 1800+`.
+  - Helpers: `arenaCurrentSeasonKey`, `arenaCurrentSeasonRange`, `arenaEloRatingDelta`, `arenaSeasonTierFor`.
+- **Prisma models** (`apps/api/prisma/schema.prisma`):
+  - `ArenaSeason { id, seasonKey @unique, status: ACTIVE/SETTLED/ARCHIVED, startsAt, endsAt, settledAt? }`.
+  - `ArenaStanding { seasonId, characterId, rating, wins, losses, rank?, tier, @@unique([seasonId, characterId]), @@index([seasonId, rating(desc), wins(desc)]) }`.
+  - `ArenaSeasonRewardGrant { seasonId, characterId, rank, tier, rewardJson, mailId?, grantedAt, @@unique([seasonId, characterId]) }` — UNIQUE = idempotent settle.
+  - Migration `20260617000000_phase_14_1_c_arena_season`.
+- **API endpoints**:
+  - Player: `GET /arena/season/current`, `GET /arena/leaderboard?seasonKey?&limit?&offset?`, `GET /arena/season/standing?seasonKey?`, `GET /arena/season/rewards?seasonKey?`.
+  - Admin (ADMIN guard): `POST /admin/arena/season/settle` body `{ seasonKey? }`, `POST /admin/arena/season/create-next`.
+- **ELO runtime hook** — `arena.service.ts` mở rộng match resolve TX để cập nhật `ArenaStanding` của cả attacker + defender. Lazy-create season + standing khi chưa có. Vẫn giữ legacy 14.1.B rating delta (backward compat) — `ArenaProfile.rating` được update bằng cùng ELO delta.
+- **Settlement service** (`arena-season.service.ts`):
+  - Chốt rank theo `rating DESC, wins DESC, losses ASC, characterId ASC`.
+  - Tính tier từ `arenaSeasonTierFor(rating)`.
+  - Upsert `ArenaSeasonRewardGrant` (UNIQUE `seasonId+characterId`) — chỉ tạo mail mới khi grant lần đầu.
+  - Gửi mail qua `MailService.sendToCharacter` với reward JSON (linhThach/tienNgoc/exp/items).
+  - Set `season.status = SETTLED`, `settledAt = now()`.
+  - **Idempotent**: gọi `settleSeason` lần 2 → upsert no-op → KHÔNG gửi mail trùng.
+- **Frontend**:
+  - `ArenaView.vue` thêm 3 panel mới: season banner + my-standing card, leaderboard table, reward preview grid; history rows hiện rating delta.
+  - Pinia store thêm 12 state ref + 4 action (`fetchSeason / fetchMyStanding / fetchLeaderboard / fetchRewardPreview`).
+  - i18n VI/EN: `arena.season.*`, `arena.leaderboard.*`, `arena.rewardPreview.*`, 4 error fallback codes mới.
+- **Tests added: 78** (shared 28 + api 20 + web 30):
+  - Shared: ELO at-equal rating, clamp, tier mapping, season range, reward table valid + itemKey exists.
+  - API: lazy-create season idempotent, standing lazy create, match auto-update standing, leaderboard order + tiebreak, my-standing rank live, reward preview 5 tier, settle creates mail, double-settle no duplicate, no-participant safe, createNextSeason, admin endpoint reject PLAYER + accept ADMIN.
+  - Web: API client query encoding, store action success + error fallback, view loading/error/empty + render seasonKey/status/standing/leaderboard rows/reward tiles/rating delta.
+
+#### Internal — Phase 14.1.C
+
+- `ArenaModule` import `MailModule`; `AdminModule` import `ArenaModule` (avoid reverse cycle).
+- `wipeAll(prisma)` extend cleanup cho 3 model mới.
+- Optional `ArenaSeasonService` injection vào `ArenaService` (`@Optional()`) — existing test/code paths không cần season.
+
 ### Phase 14.1.B — Async Arena Foundation (this PR)
 
 **Scope**: PvP bất đồng bộ — wire `CombatSimulationSnapshot` Phase 14.1.A

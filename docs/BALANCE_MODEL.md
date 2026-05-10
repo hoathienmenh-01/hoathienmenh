@@ -2116,6 +2116,107 @@ Tradeoff:
 - Defense AI snapshot khi player offline (Phase 14.1.B dùng live stat tại thời điểm match).
 - Realtime PvP / cross-server / party arena.
 
+## 11.22 ARENA SEASON + ELO + REWARD (Phase 14.1.C)
+
+### Mục tiêu balance
+- Cho người chơi mục tiêu trung hạn (weekly season + tier progression) thay cho lifetime rating cô đọng của 14.1.B.
+- ELO mean-reverting → giúp matchmaking công bằng hơn theo thời gian.
+- Reward modest theo tier — không cho người top farm vô hạn currency phá economy.
+- Idempotent settle → admin có thể safely re-run mà không gây double-grant.
+
+### Catalog source
+- `packages/shared/src/arena-season.ts` — `ARENA_SEASON_CONFIG`, `ARENA_ELO_CONFIG`, `ARENA_SEASON_REWARD_TABLE`, `ARENA_RANK_TIERS`, helpers (`arenaCurrentSeasonKey`, `arenaCurrentSeasonRange`, `arenaEloRatingDelta`, `arenaSeasonTierFor`).
+- Migration `apps/api/prisma/migrations/20260617000000_phase_14_1_c_arena_season`.
+
+### Season cadence
+- **Weekly** (`cadence: 'weekly'`), timezone `Asia/Ho_Chi_Minh`.
+- Season start = Monday 00:00 ICT, end = next Monday 00:00 ICT (exclusive).
+- Season key format: `arena_<ISO_year>-W<ISO_week>` (ISO week — ổn định cross-year boundary).
+- 1 ACTIVE season tại 1 thời điểm. Lazy-create khi:
+  - `GET /arena/season/current` lần đầu trong tuần, hoặc
+  - Match đầu tiên trong tuần resolve (qua `getOrCreateActiveSeason`).
+- Status FSM: `ACTIVE` → `SETTLED` (admin) → `ARCHIVED` (manual / future cron).
+
+### ELO formula
+```
+K = 32
+expectedA = 1 / (1 + 10 ^ ((ratingB - ratingA) / 400))
+deltaA    = round(K * (scoreA - expectedA))   // win=1, draw=0.5, lose=0
+defenderDelta = round(deltaA * -1 * 0.6)       // 60% scale
+```
+
+- **K-factor 32**: vừa phải — top tier cần ~10–15 trận để chuyển tier; bottom tier nhanh hơn.
+- **Defender 60% scale**: defender mất ít hơn vì offline, không control trận; cũng ngăn punishment quá nặng so với 14.1.B (50%).
+- **Floor 0, ceiling 5000**: chống integer overflow + tránh rating runaway.
+- Tại rating bằng nhau (1000 vs 1000): ATTACKER_WIN ⇒ attacker `+16`, defender `-10`.
+- Tại rating khác nhau: underdog win → delta lớn (vd. 800 vs 1200 ⇒ underdog win → +29 / -17), favorite win → delta nhỏ (+3 / -2). Tránh top farm bottom.
+
+### Tier breakpoints
+| Tier | Rating range | % player ước tính (default 1000) |
+|------|--------------|-----:|
+| BRONZE   | 0..999      | ~50% (start tier nếu thua first matches) |
+| SILVER   | 1000..1199  | ~30% |
+| GOLD     | 1200..1499  | ~12% |
+| DIAMOND  | 1500..1799  | ~6% |
+| IMMORTAL | 1800+       | ~2% |
+
+Breakpoint đặt rộng hơn ở mid-tier (200 width) và hẹp hơn ở high-tier (300 width) — theo distribution ELO chuẩn bell curve.
+
+### Reward table
+| Tier | Linh Thạch | Tiên Ngọc | Items | Notes |
+|------|-----------:|----------:|-------|-------|
+| BRONZE   | 200  | — | — | Participation reward |
+| SILVER   | 500  | — | huyet_chi_dan ×5 | Active player |
+| GOLD     | 1000 | — | huyet_chi_dan ×10 | Skilled |
+| DIAMOND  | 2000 | 20 | linh_lo_dan ×5 | Top performer |
+| IMMORTAL | 5000 | 50 | linh_lo_dan ×10 | Elite |
+
+- **Linh Thạch tổng/season**: cap ~5000 (nếu IMMORTAL) — tương đương ~2-3 ngày cap tier-3 cultivation reward (Phase 16.5). Không phá economy.
+- **Tiên Ngọc** (premium): chỉ DIAMOND+ — ≤50/season (so với topup base 100 TN/$1) → KHÔNG cạnh tranh trực tiếp với topup revenue.
+- **Items** (`huyet_chi_dan`, `linh_lo_dan`) — đã verify tồn tại ở inventory catalog Phase trước. Đều consumable mid-game item.
+
+### Match resolution flow (Phase 14.1.C extension)
+1. POST `/arena/matches` (Phase 14.1.B) flow giữ nguyên.
+2. Extra step trong cùng TX: `arenaSeasonService.applyMatchToStandings(seasonId, attackerId, defenderId, eloDelta)`.
+3. Lazy-create:
+   - Season nếu chưa có ACTIVE (qua `getOrCreateActiveSeason`).
+   - Standing cho mỗi participant nếu chưa có (qua `getOrCreateStanding`).
+4. Update rating + W/L + tier.
+5. **Backward compat**: legacy `ArenaProfile.rating` (Phase 14.1.B) cũng được sync với cùng ELO delta.
+
+### Settlement flow
+1. ADMIN gọi `POST /admin/arena/season/settle { seasonKey? }` (default current ACTIVE).
+2. Service load standings ORDER BY `rating DESC, wins DESC, losses ASC, characterId ASC`.
+3. Loop: rank = position, tier = `arenaSeasonTierFor(rating)`, lookup reward bracket.
+4. **Upsert** `ArenaSeasonRewardGrant { seasonId, characterId, rank, tier, rewardJson, mailId? }` qua `@@unique([seasonId, characterId])`.
+5. Khi grant **mới** (chưa có row) → `mail.sendToCharacter(...)` → ghi `mailId` vào grant.
+6. Set `season.status = SETTLED, settledAt = now()`.
+7. **Idempotent**: gọi lần 2 → upsert no-op (UNIQUE đã match) → KHÔNG gửi mail trùng.
+
+### Anti-cheat / Limitations Phase 14.1.C
+- Vẫn dùng `CANNOT_ATTACK_SELF` + `DAILY_LIMIT_REACHED` (Phase 14.1.B).
+- ELO 60% defender scale + ceiling 5000 → soft cap rating.
+- KHÔNG có: cooldown giữa cùng cặp (anti-wintrade), IP/device fingerprint, min-level/realm gate, anti-throw, gear-check.
+- Defer toàn bộ sang Phase 14.1.D Arena Anti-Wintrade Detection.
+- Đã chuẩn bị data: `ratingDeltaJson` per-match + `defenseSnapshotJson` lock-in → 14.1.D có thể audit pattern.
+
+### Tests
+- `packages/shared/src/arena-season.test.ts` (28): config valid, helpers deterministic, ELO at-equal-rating + clamp, tier mapping, season range Monday 00:00 ICT, reward table valid + itemKey exists.
+- `apps/api/src/modules/arena/arena-season.service.test.ts` (16): lazy-create season + idempotent, lazy-create standing, match auto-update standing, leaderboard order + tiebreak, my-standing rank live, reward preview 5 tier, settle creates mail, **double-settle no duplicate** (count check), no-participant safe, createNextSeason.
+- `apps/api/src/modules/admin/admin.controller.test.ts` (+4): arenaSeasonSettle với/không key, invalid key format, arenaSeasonCreateNext, ADMIN-guard reject PLAYER.
+- `apps/web/src/views/__tests__/ArenaView.test.ts` (+15): season banner loading/error/render, my standing card + dash khi rank null, leaderboard rows, reward preview 5 tile, history rating delta sign + color.
+- `apps/web/src/stores/__tests__/arena.test.ts` (+8): 4 fetch action × success + error fallback.
+- `apps/web/src/api/__tests__/arena.test.ts` (+7): query encoding cho 4 endpoint, null standing handling.
+
+### Defer / Out of scope Phase 14.1.C
+- Anti-wintrade detection (cooldown giữa cùng cặp, IP fingerprint, min-realm gate, throw detection, gear-check).
+- Cross-server leaderboard.
+- Realtime PvP / party arena.
+- Battle pass tier reward (mid-season milestone).
+- Title / cosmetic reward (đợi pattern title clean — Phase 11.9.C).
+- Season-end Hall of Fame public page.
+- Cron tự động create-next + settle (admin manual cho Phase 14.1.C).
+
 ## 12. CHANGELOG
 
 - **2026-04-30** — Initial creation. Author: Devin AI session 9q.

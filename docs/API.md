@@ -582,6 +582,58 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 
 **KHÔNG có** Phase 14.1.B: season cycle, end-season mail reward, anti-wintrade phức tạp (chỉ no-self + daily limit), realtime PvP, cross-server, ELO progression.
 
+### Phase 14.1.C — Arena Season + ELO + Reward (extension)
+
+> Mở rộng Phase 14.1.B thành PvP **season system** với ELO rating + per-season standing + leaderboard + reward mail. Lazy-create season tự động khi match đầu tiên trong tuần resolve, tránh chết UX. Idempotent settle qua `ArenaSeasonRewardGrant @@unique([seasonId, characterId])`.
+
+| Method | Path | Auth | Mô tả |
+|--------|------|------|-------|
+| GET | `/arena/season/current` | Yes | Lazy-create + return current ACTIVE `ArenaSeasonView { seasonKey, status, startsAtIso, endsAtIso, settledAtIso?, cadence: 'weekly', timezone: 'Asia/Ho_Chi_Minh' }`. Season key format `arena_<ISO_year>-W<ISO_week>`. |
+| GET | `/arena/leaderboard?seasonKey?&limit?&offset?` | Yes | Paginated leaderboard order `rating DESC, wins DESC, losses ASC, characterId ASC`. Response `ArenaLeaderboardView { seasonKey, total, entries: [{ rank, characterId, characterName, rating, tier, wins, losses, sectName? }] }`. Default limit 20, max 100. |
+| GET | `/arena/season/standing?seasonKey?` | Yes | Current character standing với rank live (count rows xếp trên + 1). Returns `ArenaMyStandingView { seasonKey, characterId, rating, tier, wins, losses, rank? }` hoặc `null` nếu chưa có standing. |
+| GET | `/arena/season/rewards?seasonKey?` | Yes | Reward preview 5 tier (BRONZE/SILVER/GOLD/DIAMOND/IMMORTAL): `ArenaSeasonRewardPreviewView { seasonKey, tiers: [{ tier, reward: { linhThach, tienNgoc, exp, items[] }, labelI18nKey, descriptionI18nKey }] }`. |
+| POST | `/admin/arena/season/settle` | ADMIN | Body `{ seasonKey?: string }` (default: current ACTIVE). Chốt rank, tính tier, tạo `ArenaSeasonRewardGrant` (UNIQUE), gửi mail reward. **Idempotent** — gọi lại không tạo grant trùng + không gửi mail trùng (UNIQUE constraint + check existing grant). Set `season.status = SETTLED`, `settledAt = now()`. |
+| POST | `/admin/arena/season/create-next` | ADMIN | Tạo `ArenaSeason` row tuần kế tiếp (key format `arena_<ISO_year>-W<ISO_week+1>`). Idempotent qua `seasonKey @unique`. |
+
+**Season FSM**: `ACTIVE` → `SETTLED` (admin settle) → `ARCHIVED` (manual / future cron). Tại 1 thời điểm chỉ có **1 ACTIVE** season.
+
+**ELO formula** (`packages/shared/src/arena-season.ts`):
+
+```
+K = 32
+expectedA = 1 / (1 + 10 ^ ((ratingB - ratingA) / 400))
+deltaA    = round(K * (scoreA - expectedA))   // win=1, draw=0.5, lose=0
+defenderDelta = round(deltaA * -1 * 0.6)       // 60% scale
+```
+
+Tại rating bằng nhau (1000 vs 1000), `ATTACKER_WIN` ⇒ attacker `+16`, defender `-10` (sau scale + round). Floor `0`, ceiling `5000` (`clampArenaRating`).
+
+**Tier breakpoints** (`arenaSeasonTierFor(rating)`):
+
+| Tier | Rating range |
+|------|--------------|
+| BRONZE   | 0..999 |
+| SILVER   | 1000..1199 |
+| GOLD     | 1200..1499 |
+| DIAMOND  | 1500..1799 |
+| IMMORTAL | 1800+ |
+
+**Reward table** (modest — không phá economy):
+
+| Tier | Linh Thạch | Tiên Ngọc | Items |
+|------|-----------:|----------:|-------|
+| BRONZE   | 200  | — | — |
+| SILVER   | 500  | — | huyet_chi_dan ×5 |
+| GOLD     | 1000 | — | huyet_chi_dan ×10 |
+| DIAMOND  | 2000 | 20 | linh_lo_dan ×5 |
+| IMMORTAL | 5000 | 50 | linh_lo_dan ×10 |
+
+**Existing `POST /arena/matches`** (Phase 14.1.B): mở rộng để cập nhật `ArenaStanding` của cả attacker + defender trong cùng TX với match resolve (lazy-create season + standing nếu chưa có). `ratingDelta` trong response giờ tính theo ELO formula (KHÔNG break shape — vẫn 2 field `attacker` / `defender`).
+
+**Error codes Phase 14.1.C**: `SEASON_FETCH_FAILED`, `STANDING_FETCH_FAILED`, `LEADERBOARD_FETCH_FAILED`, `REWARDS_FETCH_FAILED` (FE fallback codes); admin endpoints throw `INVALID_SEASON_KEY` (HTTP 400) / `SEASON_NOT_FOUND` (HTTP 404). Player endpoints inherit Phase 14.1.B error catalog.
+
+**KHÔNG có** Phase 14.1.C: cross-server leaderboard, anti-wintrade detection (defer 14.1.D), realtime PvP, battle pass, season-end title/cosmetic reward.
+
 ## Error codes (chuẩn hoá)
 
 - **Auth**: `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `RATE_LIMITED`, `PASSWORD_CHANGED`, `REUSED_REFRESH_TOKEN`, `BANNED`, `INVALID_INPUT`.
@@ -591,6 +643,7 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 - **Sect**: `ALREADY_IN_SECT`, `NOT_IN_SECT`, `NOT_ENOUGH_FUNDS`.
 - **Sect War**: `SECT_REQUIRED`, `SECT_WAR_NOT_CLAIMABLE`, `SECT_WAR_ALREADY_CLAIMED`, `SECT_WAR_NO_REWARD`, `NO_CHARACTER`.
 - **Arena (Phase 14.1.B)**: `NO_CHARACTER`, `DEFENDER_NOT_FOUND`, `CANNOT_ATTACK_SELF`, `INVALID_INPUT`, `DAILY_LIMIT_REACHED`.
+- **Arena Season (Phase 14.1.C)**: `INVALID_SEASON_KEY` (admin 400), `SEASON_NOT_FOUND` (admin 404). FE fallback codes: `SEASON_FETCH_FAILED`, `STANDING_FETCH_FAILED`, `LEADERBOARD_FETCH_FAILED`, `REWARDS_FETCH_FAILED`.
 - **Boss**: `NO_ACTIVE_BOSS`, `BOSS_DEAD`, `COOLDOWN`.
 - **Topup/Admin**: `TOO_MANY_PENDING`, `ALREADY_PROCESSED`, `FORBIDDEN`, `NOT_FOUND`.
 - **Giftcode**: `CODE_NOT_FOUND`, `CODE_EXPIRED`, `CODE_REVOKED`, `CODE_EXHAUSTED`, `ALREADY_REDEEMED`, `CODE_EXISTS` (admin create — PR #84), `NO_CHARACTER`, `INVALID_INPUT`.
