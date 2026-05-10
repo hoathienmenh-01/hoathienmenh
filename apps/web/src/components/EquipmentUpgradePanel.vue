@@ -33,9 +33,11 @@ import {
   type InventoryView,
 } from '@/api/inventory';
 import { useToastStore } from '@/stores/toast';
+import { useFeatureFlagsStore } from '@/stores/featureFlags';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import ConfirmModal from '@/components/ui/ConfirmModal.vue';
 import MButton from '@/components/ui/MButton.vue';
+import FeatureDisabledBanner from '@/components/FeatureDisabledBanner.vue';
 
 interface Props {
   equipment: InventoryView;
@@ -48,6 +50,16 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const toast = useToastStore();
+const featureFlags = useFeatureFlagsStore();
+
+// Phase 15.4 — Reforge / Enchant feature flag gate. Server vẫn gate cuối
+// cùng (`FEATURE_DISABLED` 503), FE chỉ disable button + show banner.
+const reforgeDisabled = computed(() =>
+  featureFlags.isDisabled('EQUIPMENT_REFORGE_ENABLED'),
+);
+const enchantDisabled = computed(() =>
+  featureFlags.isDisabled('EQUIPMENT_ENCHANT_ENABLED'),
+);
 
 const preview = ref<EquipmentUpgradePreview | null>(null);
 const loading = ref(false);
@@ -285,9 +297,14 @@ async function confirmEnchant(): Promise<void> {
             })
           }}
         </p>
+        <FeatureDisabledBanner
+          v-if="reforgeDisabled"
+          message-key="inventory.upgrade.reforge.disabledMessage"
+          test-id="equipment-reforge-disabled-banner"
+        />
         <MButton
          
-          :disabled="submitting"
+          :disabled="submitting || reforgeDisabled"
           data-testid="equipment-upgrade-reforge-button"
           @click="onClickReforge"
         >
@@ -339,9 +356,14 @@ async function confirmEnchant(): Promise<void> {
             </span>
           </button>
         </div>
+        <FeatureDisabledBanner
+          v-if="enchantDisabled"
+          message-key="inventory.upgrade.enchant.disabledMessage"
+          test-id="equipment-enchant-disabled-banner"
+        />
         <MButton
          
-          :disabled="submitting || enchantMaxed || !selectedElement"
+          :disabled="submitting || enchantMaxed || !selectedElement || enchantDisabled"
           data-testid="equipment-upgrade-enchant-button"
           @click="onClickEnchant"
         >

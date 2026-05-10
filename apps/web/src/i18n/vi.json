@@ -907,7 +907,8 @@
         "badgeLabel": "+{count} phụ",
         "confirmTitle": "Xác nhận tẩy luyện",
         "confirmMessage": "Tiêu hao {linhThach} linh thạch + {materialQty}× {materialName}. Chỉ số phụ sẽ được gieo lại.",
-        "successToast": "Tẩy luyện thành công — đã gieo {count} chỉ số phụ."
+        "successToast": "Tẩy luyện thành công — đã gieo {count} chỉ số phụ.",
+        "disabledMessage": "Tẩy luyện đang tạm tắt để bảo trì. Vui lòng thử lại sau."
       },
       "enchant": {
         "currentLabel": "Phụ ma Ngũ Hành",
@@ -919,7 +920,8 @@
         "button": "Phụ Ma",
         "confirmTitle": "Xác nhận phụ ma",
         "confirmMessage": "Phụ ma {element} cấp {level}? Tiêu hao {linhThach} linh thạch + {materialQty}× {materialName}.",
-        "successToast": "Phụ ma {element} thành công — cấp {level}."
+        "successToast": "Phụ ma {element} thành công — cấp {level}.",
+        "disabledMessage": "Phụ ma đang tạm tắt để bảo trì. Vui lòng thử lại sau."
       },
       "error": {
         "EQUIPMENT_NOT_FOUND": "Không tìm thấy trang bị (hoặc không phải của bạn).",
@@ -1270,7 +1272,8 @@
       "boss": "Boss",
       "liveops": "LiveOps",
       "economy": "Kinh tế (An toàn)",
-      "arenaAntiWintrade": "Arena Anti-Wintrade"
+      "arenaAntiWintrade": "Arena Anti-Wintrade",
+      "featureFlags": "Feature Flags"
     },
     "arenaAntiWintrade": {
       "alerts": "Cảnh báo Arena Wintrade",
@@ -3268,6 +3271,9 @@
       "NO_CHARACTER": "Chưa có nhân vật.",
       "UNAUTHENTICATED": "Cần đăng nhập trước khi nhận quà.",
       "UNKNOWN": "Không nhận được quà — thử lại."
+    },
+    "disabled": {
+      "festivalGiftMessage": "Nhận quà lễ hội đang tạm khoá để bảo trì. Quà sẽ mở lại sớm."
     }
   },
   "adminLiveOpsSchedule": {
@@ -3793,6 +3799,66 @@
       "tier": "Bậc",
       "reward": "Thưởng",
       "noReward": "Không có"
+    },
+    "disabled": {
+      "message": "Đấu Đài đang tạm tắt để bảo trì. Vui lòng quay lại sau."
+    }
+  },
+  "featureFlags": {
+    "disabled": {
+      "title": "Tạm tắt để bảo trì",
+      "message": "Tính năng đang tạm tắt để bảo trì. Vui lòng quay lại sau."
+    }
+  },
+  "adminFeatureFlags": {
+    "title": "Feature Flags",
+    "hint": "Bật / tắt nhanh các hệ thống lõi (Arena, Reforge, LiveOps, Market...) mà không cần deploy.",
+    "loading": "Đang tải danh sách flag…",
+    "empty": "Không tìm thấy flag nào khớp bộ lọc.",
+    "filter": {
+      "searchPlaceholder": "Tìm theo key / mô tả / module…",
+      "allCategories": "Tất cả nhóm"
+    },
+    "category": {
+      "GAMEPLAY": "Gameplay",
+      "ECONOMY": "Kinh tế",
+      "LIVEOPS": "LiveOps",
+      "ADMIN": "Admin",
+      "SAFETY": "An toàn"
+    },
+    "row": {
+      "module": "Module: {module}",
+      "default": "Mặc định: {value}",
+      "updatedAt": "Cập nhật: {at}",
+      "notUpdated": "chưa thay đổi",
+      "on": "BẬT",
+      "off": "TẮT",
+      "publicTag": "PUBLIC",
+      "publicHint": "Flag này được trả qua /feature-flags/public cho frontend ẩn UI."
+    },
+    "actions": {
+      "enable": "Bật",
+      "disable": "Tắt",
+      "refresh": "Làm mới",
+      "refreshDefaults": "Đồng bộ default",
+      "clearCache": "Xoá cache"
+    },
+    "confirm": {
+      "title": "Xác nhận tắt feature?",
+      "message": "Bạn sắp tắt {key} — {description}. Người chơi sẽ không thể dùng tính năng này cho đến khi bật lại."
+    },
+    "toast": {
+      "enabled": "Đã bật {key}.",
+      "disabled": "Đã tắt {key}.",
+      "refreshedDefaults": "Seed default xong: tạo {created} · giữ {existing}.",
+      "cacheCleared": "Đã xoá cache feature flag."
+    },
+    "errors": {
+      "FEATURE_FLAG_KEY_INVALID": "Key flag không có trong catalog.",
+      "INVALID_INPUT": "Dữ liệu gửi lên không hợp lệ.",
+      "UNAUTHENTICATED": "Cần đăng nhập admin.",
+      "FORBIDDEN": "Tài khoản không phải admin.",
+      "UNKNOWN": "Thao tác thất bại — thử lại."
     }
   }
 }
