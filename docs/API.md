@@ -634,6 +634,33 @@ Tại rating bằng nhau (1000 vs 1000), `ATTACKER_WIN` ⇒ attacker `+16`, defe
 
 **KHÔNG có** Phase 14.1.C: cross-server leaderboard, anti-wintrade detection (defer 14.1.D), realtime PvP, battle pass, season-end title/cosmetic reward.
 
+### Phase 14.1.D — Arena Anti-Wintrade Detection (admin)
+
+> Detection-only anti-cheat layer trên Arena. Phát hiện 5 pattern bất thường, tạo `ArenaWintradeAlert` cho admin review thủ công. **KHÔNG** auto-ban, **KHÔNG** auto-rollback reward, **KHÔNG** xóa match. `ArenaService.createMatch` chain `quickCheckPair()` post-commit (fire-and-forget, fail-soft) cho lightweight detection. Full multi-rule scan force qua admin endpoint.
+
+**Detection rules** (`packages/shared/src/arena-anti-wintrade.ts` → `ARENA_ANTI_WINTRADE_RULES`, override qua env `ARENA_ANTI_WINTRADE_*`):
+
+| Type | Window | WARN | CRITICAL |
+|---|---|---|---|
+| `REPEATED_OPPONENT_PAIR` | 24h rolling | ≥ 5 trận cùng directional pair attacker→defender | ≥ 12 |
+| `RECIPROCAL_WIN_LOSS` | 24h rolling | ≥ 4 swap A→B win + B→A win (sort lex pair key) | ≥ 8 |
+| `RATING_GAIN_SPIKE` | 6h rolling | Δrating ≥ 200 | ≥ 400 |
+| `REWARD_FARM_PATTERN` | 24h rolling | attacker ≥ 8 trận, distinct opponents < 3 | distinct opponents ≤ 1 |
+| `SEASON_SUSPICIOUS_ACTOR` | 24h rolling (TODO upgrade season scope) | ≥ 12 trận, win-rate ≥ 0.95, opponents < 5 | distinct opponents ≤ 1 |
+
+Severity ladder `INFO < WARN < CRITICAL`. Status flow `OPEN → ACKNOWLEDGED → RESOLVED` (admin tay). Idempotency qua composite UNIQUE `(type, windowKey, attackerCharacterId, defenderCharacterId)` — chạy lại trên cùng cửa sổ → P2002 → `alertsSkippedDuplicate`.
+
+| Method | Path                                                   | Role  | Body / Notes |
+|--------|--------------------------------------------------------|-------|--------------|
+| POST   | `/admin/arena/anti-wintrade/scan`                      | ADMIN | Body `{ periodKeyOverride?: string }`. Chạy `scanAll()` (5 rules), trả `AntiWintradeScanSummary { scannedMatches, alertsCreated, alertsSkippedDuplicate, criticalCount, warningCount, infoCount }`. Audit `ADMIN_ARENA_WINTRADE_SCAN_RUN`. |
+| GET    | `/admin/arena/anti-wintrade/alerts?severity&status&type&seasonId&limit` | ADMIN | List alerts DESC by `createdAt`. Filter validation lỏng (severity/status/type không hợp lệ → ignored). Default limit 50, max 200. Response `{ items: ArenaWintradeAlertRow[], total }`. |
+| POST   | `/admin/arena/anti-wintrade/alerts/:id/ack`            | ADMIN | `OPEN → ACKNOWLEDGED`. 404 nếu alert đã `RESOLVED` hoặc không tồn tại. Audit `ADMIN_ARENA_WINTRADE_ALERT_ACK`. |
+| POST   | `/admin/arena/anti-wintrade/alerts/:id/resolve`        | ADMIN | `OPEN \| ACKNOWLEDGED → RESOLVED`. 404 nếu đã `RESOLVED` hoặc không tồn tại. Audit `ADMIN_ARENA_WINTRADE_ALERT_RESOLVE`. |
+
+Tất cả route guard `@RequireAdmin()` — PLAYER + MOD reject 403. POST log `AdminAuditLog`.
+
+**KHÔNG có** Phase 14.1.D: auto-ban, auto-rollback reward, auto-delete match, block player on WARN, cron auto-scan (env reserved `ARENA_ANTI_WINTRADE_CRON_*`).
+
 ## Error codes (chuẩn hoá)
 
 - **Auth**: `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `RATE_LIMITED`, `PASSWORD_CHANGED`, `REUSED_REFRESH_TOKEN`, `BANNED`, `INVALID_INPUT`.

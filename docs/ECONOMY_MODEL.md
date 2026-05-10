@@ -552,3 +552,26 @@ luyen_hu/dai_thua/do_kiep (×8):
 - **Phase 16.7 — Market Price Band**: catalog min/max per item; auction reject listing ngoài band.
 - **Phase 16.8 — Admin Grant Alert**: webhook khi admin grant > threshold (vd 100k linhThach).
 - **Phase 16.9 — Territory + Daily Login + Season cap**: wire 3 nguồn còn lại nếu telemetry cho thấy abuse.
+
+## Arena anti-wintrade detection — Phase 14.1.D
+
+Lớp detection-only chống wintrade trong Arena. Phát hiện 5 pattern bất thường, tạo `ArenaWintradeAlert` cho admin review. **KHÔNG** auto-ban, **KHÔNG** auto-rollback reward — alert trước, xử lý thủ công sau.
+
+**Tích hợp với reward flow**:
+
+- Reward eligibility flag `NORMAL` / `REVIEW_REQUIRED` đã định nghĩa ở `arena-anti-wintrade.ts` nhưng chưa wire vào `ArenaSeasonService.settleSeason` (Phase 14.1.D scope giới hạn). Khi player có alert CRITICAL OPEN tại lúc settle, admin có thể manual gate reward thông qua panel trước khi gọi settle.
+- Reward đã settle (đã gửi mail) khi phát hiện abuse → revoke thủ công qua `POST /admin/users/:id/grant` với delta âm (mục 2.15 RUNBOOK + reference alert ID + match IDs).
+- KHÔNG có path tự động unmail / un-grant trong Phase 14.1.D — quá rủi ro nếu detect sai. Admin xác minh tay rồi mới revoke.
+
+**Policy tóm tắt**:
+
+| Severity | Auto-action | Admin action mong đợi |
+|---|---|---|
+| INFO | none | observe trên panel, không cần touch |
+| WARN | none | review match history; resolve nếu legit, ack nếu cần theo dõi |
+| CRITICAL | none | review chi tiết, link account check; quyết định ban + reward revoke thủ công |
+
+**TODO Phase 14.1.E hoặc sau**:
+- Wire `rewardEligibility = REVIEW_REQUIRED` vào settle pipeline (auto-skip mail nếu alert CRITICAL OPEN trên character).
+- Cron auto-scan (`ARENA_ANTI_WINTRADE_CRON_*` env reserved sẵn).
+- Full season-wide scope cho `SEASON_SUSPICIOUS_ACTOR` (hiện 24h rolling).

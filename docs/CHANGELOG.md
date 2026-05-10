@@ -12,6 +12,44 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Phase 14.1.D — Arena Anti-Wintrade Detection (this PR)
+
+**Scope**: detection-only anti-cheat layer cho Arena. Phát hiện 5 pattern bất thường (đánh qua lại cùng cặp, swap thắng-thua hai chiều, rating gain spike, farm cùng defender, season suspicious actor) → tạo `ArenaWintradeAlert` cho admin review. **KHÔNG** tự ban, **KHÔNG** tự rollback reward, **KHÔNG** xóa ArenaMatch, **KHÔNG** chặn người chơi đánh tiếp khi mới WARN.
+
+#### Added — Phase 14.1.D
+
+- **Shared (`packages/shared/src/arena-anti-wintrade.ts`)**: `ARENA_ANTI_WINTRADE_RULES` config (5 thresholds + critical escalations) + severity ladder `INFO < WARN < CRITICAL` + helpers (`severityForCount`, `arenaWintradeWindowKey`, `arenaWintradePairKey`, `arenaWintradePeriodKey`, `assertArenaAntiWintradeRulesValid`). Threshold conservative để tránh false-positive (ví dụ same-pair WARN ≥ 5 trận / 24h, CRITICAL ≥ 12).
+- **Prisma (`apps/api/prisma/schema.prisma`)**: model `ArenaWintradeAlert { id, seasonId?, attackerCharacterId?, defenderCharacterId?, relatedCharacterIdsJson, severity, type, status, windowKey, detailsJson, createdAt, updatedAt @@unique([type, windowKey, attackerCharacterId, defenderCharacterId]) }`. Migration `20260618000000_phase_14_1_d_arena_anti_wintrade`. Không reuse `EconomyAnomaly` để giữ Arena module decoupled khỏi economy framework.
+- **API runtime (`apps/api/src/modules/arena/arena-anti-wintrade.service.ts`)**: `ArenaAntiWintradeService` với 5 scan method (`scanRepeatedOpponentPairs`, `scanReciprocalWinLossPattern`, `scanRatingGainSpike`, `scanRewardFarmPattern`, `scanSeasonSuspiciousActors`) + `scanAll()` aggregate + `quickCheckPair()` lightweight cho hook post-match. Idempotent qua UNIQUE constraint + fail-soft try-catch (`P2002` skip → `alertsSkippedDuplicate`). Env override (`ARENA_ANTI_WINTRADE_REPEATED_WARN`, …) cho ops fine-tune.
+- **Runtime hook**: `ArenaService.createMatch` chain `quickCheckPair` sau khi commit transaction (fire-and-forget, fail-soft — không lật ngược kết quả nếu scanner throw).
+- **Admin API (`apps/api/src/modules/arena-anti-wintrade-admin/arena-anti-wintrade.admin.controller.ts`)** — module riêng để tránh cycle với `AdminModule`. 4 endpoints, tất cả `@RequireAdmin()` (PLAYER + MOD reject 403), POST log `AdminAuditLog`:
+  - `POST /admin/arena/anti-wintrade/scan` — chạy full scan, trả `AntiWintradeScanSummary`.
+  - `GET /admin/arena/anti-wintrade/alerts?severity&status&type&seasonId&limit` — list alerts.
+  - `POST /admin/arena/anti-wintrade/alerts/:id/ack` — `OPEN → ACKNOWLEDGED`.
+  - `POST /admin/arena/anti-wintrade/alerts/:id/resolve` — `OPEN | ACKNOWLEDGED → RESOLVED`.
+- **Admin FE (`apps/web/src/components/AdminArenaAntiWintradePanel.vue` + tab `arenaAntiWintrade` trong `AdminView.vue`)**: alerts table với filter (severity / status / type) + run-scan button + last-scan summary card + ack/resolve buttons + loading/empty/error states + i18n VI/EN parity.
+
+#### Tests added — Phase 14.1.D
+
+- Shared: `arena-anti-wintrade.test.ts` — 26 tests (rules valid, threshold positive, severity ordering, helper deterministic).
+- API: `arena-anti-wintrade.service.test.ts` — 12 tests (5 rule scans + idempotency + normal activity + quickCheckPair + env override).
+- API: `arena-anti-wintrade.admin.controller.test.ts` — 9 unit tests (scan + audit + filter + ack/resolve + 404).
+- Web: `AdminArenaAntiWintradePanel.test.ts` — 7 tests (empty / render rows / scan / ack / resolve / error / cancel confirm).
+
+#### Known limitations — Phase 14.1.D
+
+1. **Detection only** — không tự ban, không tự rollback. Admin xử lý thủ công qua panel.
+2. `SEASON_SUSPICIOUS_ACTOR` hiện scan theo cửa sổ 24h thay vì season-wide — đủ bắt pattern bất thường gần real-time. Full season scope là TODO.
+3. Lightweight check trong `createMatch` chỉ chạy 1 rule (`REPEATED_OPPONENT_PAIR`) — full multi-rule scan để admin / cron force.
+4. `rewardEligibility` flag (NORMAL / REVIEW_REQUIRED) đã định nghĩa ở shared nhưng chưa wire vào settle reward flow (giữ chính sách "alert trước, xử lý thủ công sau").
+5. Cron auto-scan chưa wire (`ARENA_ANTI_WINTRADE_CRON_*` env reserved). Admin force-run qua endpoint là đủ cho launch.
+
+#### Risk / Rollback — Phase 14.1.D
+
+🟡 **Medium**. Migration thêm 1 table mới (additive thuần, không drop / không alter cũ). `quickCheckPair` chạy sau commit (fail-soft, không ảnh hưởng kết quả match). Admin endpoints riêng module → không đụng admin.controller hiện tại. Rollback = revert PR + `DROP TABLE "ArenaWintradeAlert";` (1 statement).
+
+---
+
 ### Phase 14.1.C — Arena Season + ELO + Reward (this PR)
 
 **Scope**: mở rộng Phase 14.1.B Async Arena Foundation thành PvP **season system** đầy đủ. Người chơi có Arena Season hiện tại (lazy-create, weekly cadence Asia/Ho_Chi_Minh, Monday 00:00), ELO rating cập nhật mỗi match, leaderboard theo season, reward preview 5 tier (Bronze..Immortal), end-season reward mail, admin endpoint settle (idempotent). Không làm anti-wintrade phức tạp (defer Phase 14.1.D), realtime PvP, cross-server, battle pass, season-end title.
