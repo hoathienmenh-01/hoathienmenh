@@ -54,6 +54,7 @@ export * from './sect-war';
 export * from './sect-missions';
 export * from './sect-shop';
 export * from './sect-season';
+export * from './sect-season-rewards';
 export * from './elemental';
 export * from './elemental-skills';
 export * from './elemental-identity';
