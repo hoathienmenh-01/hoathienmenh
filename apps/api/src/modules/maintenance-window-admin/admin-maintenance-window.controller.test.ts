@@ -151,8 +151,9 @@ describe('AdminMaintenanceWindowController.create', () => {
   it('missing required field → INVALID_INPUT', async () => {
     const { service, prisma } = makeStubs();
     const c = new AdminMaintenanceWindowController(service, prisma);
-    const { titleVi: _omit, ...rest } = validCreateBody;
-    await expect(c.create(adminReq, rest)).rejects.toMatchObject({
+    const rest: Record<string, unknown> = { ...validCreateBody };
+    delete rest.titleVi;
+    await expect(c.create(adminReq, rest as typeof validCreateBody)).rejects.toMatchObject({
       response: { error: { code: 'INVALID_INPUT' } },
     });
   });
