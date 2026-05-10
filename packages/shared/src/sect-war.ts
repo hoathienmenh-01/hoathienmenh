@@ -396,6 +396,38 @@ export function currentSectWarSeason(
   };
 }
 
+/**
+ * Trả Monday 00:00 trong `timezone` của ISO week chứa `now` — single source of
+ * truth cho week-boundary timestamp, consistent với `sectWarWeekKey()`.
+ *
+ * Dùng cho consumer cần timestamp (`Date`) thay vì weekKey string (`YYYY-Www`):
+ *   - sect-mission daily/weekly window query (`createdAt >= startOfSectWarWeek`).
+ *   - arena/territory season boundary.
+ *
+ * Đảm bảo:
+ *   - `sectWarWeekKey(startOfSectWarWeek(now, tz), tz)` === `sectWarWeekKey(now, tz)`.
+ *   - Idempotent: `startOfSectWarWeek(startOfSectWarWeek(now, tz), tz)` === same.
+ */
+export function startOfSectWarWeek(
+  now: Date,
+  timezone: string = SECT_WAR_DEFAULT_TZ,
+): Date {
+  const parts = localPartsInTz(now, timezone);
+  const isoDow = parts.dayOfWeek === 0 ? 7 : parts.dayOfWeek;
+  // Monday cùng tuần (đã ở local timezone).
+  const utc = Date.UTC(parts.year, parts.month - 1, parts.day);
+  const dt = new Date(utc);
+  dt.setUTCDate(dt.getUTCDate() - (isoDow - 1));
+  return utcDateForLocal(
+    dt.getUTCFullYear(),
+    dt.getUTCMonth() + 1,
+    dt.getUTCDate(),
+    0,
+    0,
+    timezone,
+  );
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // Validation (catalog invariants — runtime check + test guard)
 // ────────────────────────────────────────────────────────────────────────

@@ -178,10 +178,12 @@ describe('SectMissionService.claim — happy path', () => {
   });
 
   it('claim WEEKLY breakthrough: progress derive từ BreakthroughAttemptLog success → reward LINH_THACH ledger MISSION_CLAIM', async () => {
-    // Mid-week deterministic timestamp (Wednesday 12:00 UTC) tránh boundary
-    // giữa `sectWarWeekKey` (TZ-aware Asia/Ho_Chi_Minh) và `startOfWeek`
-    // (UTC-based) — log createdAt phải nằm sau Monday-of-isoWeek UTC.
-    const now = new Date('2026-05-13T12:00:00.000Z');
+    // TZ Hotfix: `sectWarWeekKey` và `startOfSectWarWeek` đều dùng cùng
+    // helper `localPartsInTz`/`utcDateForLocal` ICT → boundary đồng bộ. Test
+    // có thể chọn bất kỳ timestamp nào trong tuần ICT mà progress query vẫn
+    // match. Dùng Sunday 22:00 ICT (= 15:00 UTC) để cover thêm case
+    // late-week + non-Wednesday.
+    const now = new Date('2026-05-17T15:00:00.000Z');
     const m = await makeMember({ realmKey: 'truc_co' });
     await prisma.breakthroughAttemptLog.create({
       data: {

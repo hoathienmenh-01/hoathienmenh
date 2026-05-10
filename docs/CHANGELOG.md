@@ -12,6 +12,17 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### TZ Hotfix — startOfWeek / sectWarWeekKey unify (this PR)
+
+**Scope**: Sửa lệch timezone giữa `sectWarWeekKey()` (TZ-aware ICT) và helper `startOfWeek()` cũ trong `sect-mission.service.ts` (UTC-based) — gây boundary mismatch cho weekly mission progress query khi `now` nằm gần ranh giới Sunday 23:00 ICT / Monday 00:00 ICT. Test cũ phải pin về Wednesday để tránh; sau hotfix có thể dùng bất kỳ timestamp nào trong tuần ICT.
+
+#### Fixed — TZ Hotfix
+
+- **Shared (`packages/shared/src/sect-war.ts`)**: thêm `startOfSectWarWeek(now, timezone)` — single source of truth cho Monday 00:00 local-tz, dùng cùng helper `localPartsInTz`/`utcDateForLocal` như `sectWarWeekKey()`/`currentSectWarSeason()`. Đảm bảo invariant `sectWarWeekKey(startOfSectWarWeek(now, tz), tz) === sectWarWeekKey(now, tz)` + idempotent.
+- **API (`apps/api/src/modules/sect/sect-mission.service.ts`)**: thay `startOfWeek()` helper local (UTC-based) bằng `startOfSectWarWeek()` từ shared. Weekly mission progress query (`createdAt >= startOfSectWarWeek(now, tz)`) bây giờ align đúng với weekKey ICT — không còn miss/double-count khi `now` rơi vào dải Sunday 17:00 UTC..Monday 00:00 UTC (= Monday ICT).
+- **API tests (`apps/api/src/modules/sect/sect-mission.service.test.ts`)**: WEEKLY breakthrough test bỏ ràng buộc "phải pin Wednesday 12:00 UTC", dùng Sunday 22:00 ICT (= 15:00 UTC) để cover late-week boundary.
+- **Shared tests (`packages/shared/src/sect-war.test.ts`)**: 6 vitest mới cho `startOfSectWarWeek` (Monday-of-week stability, week-rollover, consistency với `sectWarWeekKey`, idempotent, UTC tz, cross-year `2025-W52→2026-W01`).
+
 ### Phase 15.5 — Maintenance Window (this PR)
 
 **Scope**: Hệ Maintenance Window cho phép admin lập lịch hoặc bật khẩn cấp cửa sổ bảo trì để chặn traffic player trong khi vẫn cho admin / health / metrics / `/maintenance/status` đi qua. Catalog severity (`INFO`/`WARNING`/`CRITICAL`) + target (`ALL_PLAYERS`/`NON_ADMIN_USERS`/`API_WRITE_ONLY`/`FULL_LOCKDOWN`) + status state machine (`DRAFT`/`SCHEDULED`/`ACTIVE`/`ENDED`/`DISABLED`). Middleware `MaintenanceWindowGuardMiddleware` chạy trước Nest pipeline với 9 bypass rule (`/maintenance/status` luôn pass, `/health*`/`/metrics*` theo flag, `/_auth/*`, ADMIN/MOD bypass theo `allowAdminBypass` + `target`, `API_WRITE_ONLY` chỉ block non-GET, `NON_ADMIN_USERS`/`ALL_PLAYERS` block player + anonymous, fail-closed default). Cache L1 in-memory TTL 10s per pod. Recompute `SCHEDULED→ACTIVE`/`ACTIVE→ENDED` chạy idempotent piggy-back trên `LiveOpsEventSchedulerCronProcessor` mỗi 5 phút (reuse — không thêm queue/lease mới). FE poll `/maintenance/status` 30s + axios interceptor 503 `MAINTENANCE_ACTIVE` → set blocked state. Server-authoritative — FE chỉ render overlay/banner.
