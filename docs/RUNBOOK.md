@@ -722,7 +722,204 @@ tự động → no-op cho gameplay flow.
 **KHÔNG** trong Phase 15.3.A:
 - KHÔNG bypass Daily Reward Cap (Phase 16.5) — cap thắng cho mọi BOOST event.
 - KHÔNG auto-revoke festival gift đã claim nếu admin disable event sau.
-- KHÔNG broadcast realtime "event start/end" qua WS — defer Phase 15.3.B.
+- KHÔNG broadcast realtime "event start/end" qua WS trong scope 15.3.A — đã wire trong Phase 15.3.B (xem §2.21).
+
+### 2.21. LiveOps Announcement + WS broadcast / marquee (P1/P2/P3) — Phase 15.3.B
+
+**Use case**: sau merge Phase 15.3.B, server tự broadcast `liveops:announcement`
+(`ANNOUNCEMENT_ACTIVE`/`ANNOUNCEMENT_ENDED`) + `liveops:event`
+(`LIVEOPS_EVENT_ACTIVE`/`LIVEOPS_EVENT_ENDED`) khi cron transition status. Sự cố
+hay gặp: announcement lỗi cần kill switch / WS không tới client / marquee/toast
+spam / payload nghi ngờ leak admin field.
+
+**A. Disable announcement lỗi (P1/P2 — kill switch)**
+
+Dùng khi nội dung sai, severity sai (`MAINTENANCE` nhưng không có maintenance),
+hoặc admin vô tình tạo overlap. Endpoint:
+
+```
+POST /admin/liveops/announcements/:id/disable
+```
+
+Guard: `@RequireAdmin()` — PLAYER/MOD reject `403 ADMIN_ONLY`. Audit log
+`AdminAuditLog` action `ADMIN_LIVEOPS_ANNOUNCEMENT_DISABLE`.
+
+Hiệu ứng:
+- Set `status='DISABLED'`, `disabledAt=NOW()` (idempotent — gọi nhiều lần OK).
+- Nếu announcement đang `ACTIVE` → cron tick kế tiếp / `recompute-status` sẽ
+  emit `ANNOUNCEMENT_ENDED` qua `liveops:announcement`. Frontend store remove
+  khỏi marquee, toast `severity=info` báo "Announcement ended".
+- `GET /liveops/announcements/active` ngưng trả announcement ngay lập tức
+  (filter `status='ACTIVE'`).
+
+Force immediate broadcast (không đợi cron 5 phút):
+
+```
+POST /admin/liveops/announcements/recompute-status
+```
+
+Audit `ADMIN_LIVEOPS_ANNOUNCEMENT_RECOMPUTE`. Idempotent — chỉ broadcast khi
+status thật transition (CAS qua `updateMany`).
+
+Verify trong DB:
+
+```sql
+SELECT id, key, status, severity, disabledAt
+FROM "LiveOpsAnnouncement"
+WHERE id = '<announcement-id>';
+```
+
+`status='DISABLED'` + `disabledAt IS NOT NULL` → kill switch đã apply.
+
+**B. Kiểm tra WS broadcast không gửi (P1)**
+
+Triệu chứng: admin tạo announcement, tới `startsAt` mà player không thấy banner
+(F5 mới thấy / không bao giờ thấy realtime).
+
+B.1. Verify status đã transition trong DB:
+
+```sql
+SELECT id, key, status, startsAt, endsAt, updatedAt
+FROM "LiveOpsAnnouncement"
+WHERE key = '<key>';
+```
+
+Nếu `status` vẫn là `SCHEDULED` sau `startsAt` → cron không chạy. Check
+`LIVEOPS_EVENT_SCHEDULER_CRON_ENABLED=true` trong env (cron piggy-back trên
+LiveOps event scheduler — nếu env false thì announcement cũng không transition).
+Force manual: `POST /admin/liveops/announcements/recompute-status`.
+
+B.2. Verify `LiveOpsBroadcastService` log:
+
+```
+grep "announcement broadcast" <api-log>
+grep "realtime service not wired" <api-log>
+```
+
+Nếu thấy `realtime service not wired — drop announcement broadcast key=<key>` →
+`RealtimeService` không inject vào `LiveOpsBroadcastService`. Restart API
+process; verify `app.module.ts` import `RealtimeModule`.
+
+B.3. Verify gateway connect:
+
+- Browser DevTools → Network tab → WS connection lên `/socket.io/?EIO=4`.
+- Console: `socket.connected === true`.
+- Test broadcast bằng admin bấm `recompute-status` lần 2 — KHÔNG broadcast lần 2
+  (anti-spam guard) trừ khi có row mới transition. Đây là behavior đúng, không
+  phải bug.
+
+B.4. Verify channel name khớp:
+
+```
+LIVEOPS_WS_CHANNEL_ANNOUNCEMENT = 'liveops:announcement'
+LIVEOPS_WS_CHANNEL_EVENT        = 'liveops:event'
+```
+
+FE listener trong `apps/web/src/ws/client.ts` phải subscribe đúng 2 channel này.
+
+B.5. Fail-safe: nếu `broadcastAnnouncement`/`broadcastEvent` throw → log
+`warn` và return (KHÔNG bao giờ throw). Status transition trong DB vẫn commit.
+Grep log `announcement broadcast failed` / `event broadcast failed` để biết
+WS service crash nhưng DB OK → cần restart realtime / kiểm tra socket.io
+adapter (Redis pub/sub nếu multi-instance).
+
+**C. Xử lý marquee/toast spam (P2/P3)**
+
+Triệu chứng: player thấy banner/toast lặp liên tục — annoyed UX.
+
+C.1. Verify anti-spam guard server-side:
+
+```sql
+SELECT id, key, status, updatedAt
+FROM "LiveOpsAnnouncement"
+WHERE updatedAt > NOW() - INTERVAL '10 minutes'
+ORDER BY updatedAt DESC;
+```
+
+Nếu một announcement có `updatedAt` flash liên tục (cron 5 phút × N lần) →
+bug `recomputeStatusesWithTransitions` không CAS đúng. Verify chỉ row mới
+transition mới được trả về (`updateMany` với `where: { status: 'SCHEDULED', startsAt <= now }` set `status='ACTIVE'`).
+
+C.2. Verify FE store dedupe:
+
+- `apps/web/src/stores/liveopsAnnouncements.ts` upsert theo `key` —
+  KHÔNG push duplicate.
+- Toast severity-based: dùng `liveopsAnnouncements.toast` namespace, mỗi
+  severity tạo 1 toast; multiple announcement cùng severity vẫn 1 toast / event.
+
+C.3. Hot patch FE quá tải:
+
+- Player có thể bấm dismiss button trên banner → ẩn local sessionStorage theo
+  `key`. Reload session sẽ hiện lại (intentional — không persist xuyên session).
+- Nếu cần kill switch toàn cục (e.g. severity `MAINTENANCE` spam vì admin set
+  sai window quá ngắn) → disable announcement (xem A) → cron emit
+  `ANNOUNCEMENT_ENDED` → store remove + banner ẩn cho mọi player.
+
+C.4. Rate limit công khai:
+
+- WS broadcast chỉ trigger khi cron transition (5 phút) hoặc admin recompute
+  thủ công. KHÔNG có path emit theo request count.
+- Nếu thấy broadcast spam mỗi cron tick (5 phút × N) → bug — escalate (phải có
+  guard `nextLiveOpsAnnouncementStatus` skip nếu status đã match).
+
+**D. Xác minh public-safe payload (P2 — security)**
+
+Triệu chứng cần verify: lo ngại WS hoặc `GET /liveops/announcements/active` leak
+`adminId` / `disabledAt` / `configJson` / internal field.
+
+D.1. Verify HTTP public response:
+
+```
+curl -s https://<api-host>/liveops/announcements/active | jq '.data[0] | keys'
+```
+
+Whitelist phải đúng: `["endsAt","key","messageEn","messageVi","severity","startsAt","target","titleEn","titleVi"]`. KHÔNG có
+`id` / `createdByAdminId` / `disabledAt` / `createdAt` / `updatedAt`.
+
+D.2. Verify WS payload:
+
+- DevTools → Network → WS frame `liveops:announcement` event.
+- Payload field: `key` / `severity` / `target` / `titleVi` / `titleEn` /
+  `messageVi` / `messageEn` / `startsAt` / `endsAt` / `eventType`.
+- KHÔNG được có: `adminId` / `createdByAdminId` / `disabledAt` / `id`.
+
+D.3. Verify `target=ADMIN_ONLY` không broadcast ra public room:
+
+- Tạo announcement với `target='ADMIN_ONLY'` → admin recompute → `LiveOpsBroadcastService.broadcastAnnouncement` early-return (không gọi
+  `realtime.broadcast`).
+- Player connected KHÔNG nhận event này. Verify bằng admin DevTools:
+  player browser tab → Network WS frame → KHÔNG có frame `liveops:announcement`
+  với `key=<admin_only_key>`.
+
+D.4. Verify LiveOps event broadcast public-safe:
+
+- WS payload `liveops:event` chỉ có `eventKey` / `eventType` / `title` /
+  `description` / `startsAt` / `endsAt` / `runtimeSupported`.
+- KHÔNG có `configJson` raw / `adminId` / multiplier raw nếu private.
+- Verify trong code `LiveOpsEventSchedulerService.buildBroadcastPayload`
+  / `LiveOpsBroadcastService.broadcastEvent` strip đúng field.
+
+D.5. Validator HTML/script injection:
+
+```sql
+SELECT id, key, titleVi, messageVi
+FROM "LiveOpsAnnouncement"
+WHERE titleVi ~ '<' OR titleVi ~ 'script' OR messageVi ~ 'javascript:'
+   OR titleEn ~ '<' OR messageEn ~ 'javascript:';
+```
+
+Kết quả phải `0 rows` — `validateLiveOpsAnnouncementInput` reject `<`/`>`/`script`/`javascript:` trước khi insert (`ANNOUNCEMENT_TITLE_UNSAFE` /
+`ANNOUNCEMENT_MESSAGE_UNSAFE`). Nếu thấy row → bug, escalate; tạm thời disable
+row đó.
+
+**KHÔNG** trong Phase 15.3.B:
+- KHÔNG gửi raw `configJson` qua public WS.
+- KHÔNG cho HTML/script trong title/message — validator chặn.
+- KHÔNG spam broadcast mỗi cron tick — chỉ emit khi status thật transition.
+- KHÔNG auto-rollback announcement đã ACTIVE nếu admin sửa nội dung — phải
+  `disable` trước, tạo announcement mới với `key` khác.
+- KHÔNG broadcast `target=ADMIN_ONLY` ra public room — admin polling pattern
+  qua `GET /admin/liveops/announcements`.
 
 ## 3. Backup operations (closed beta cadence)
 
