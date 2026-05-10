@@ -14,6 +14,7 @@ import {
 } from './liveops-event-scheduler.service';
 import { LiveOpsAnnouncementService } from '../liveops-announcement/liveops-announcement.service';
 import { LiveOpsBroadcastService } from '../liveops-announcement/liveops-broadcast.service';
+import { MaintenanceWindowService } from '../maintenance-window/maintenance-window.service';
 
 /**
  * Phase 15.1–15.2 — BullMQ processor cho LiveOps Event Scheduler recompute.
@@ -45,6 +46,7 @@ export class LiveOpsEventSchedulerCronProcessor extends WorkerHost {
     private readonly lease: LiveOpsCronLease,
     private readonly announcementService: LiveOpsAnnouncementService,
     private readonly broadcast: LiveOpsBroadcastService,
+    private readonly maintenanceService: MaintenanceWindowService,
   ) {
     super();
   }
@@ -102,6 +104,21 @@ export class LiveOpsEventSchedulerCronProcessor extends WorkerHost {
       ) {
         this.logger.log(
           `cron announcement scannedAt=${announcementSummary.scannedAt} activated=${announcementSummary.activated.length} ended=${announcementSummary.ended.length}`,
+        );
+      }
+
+      // Phase 15.5 — piggyback maintenance window recompute trên cùng
+      // cron tick. Idempotent — gọi nhiều lần OK. KHÔNG broadcast WS
+      // (player FE poll `/maintenance/status` mỗi 30s + middleware
+      // gating qua cache 10s — đủ refresh sau transition).
+      const maintenanceSummary =
+        await this.maintenanceService.recomputeStatuses(now);
+      if (
+        maintenanceSummary.activatedKeys.length > 0 ||
+        maintenanceSummary.endedKeys.length > 0
+      ) {
+        this.logger.log(
+          `cron maintenance scannedAt=${maintenanceSummary.scannedAt} activated=${maintenanceSummary.activatedKeys.length} ended=${maintenanceSummary.endedKeys.length}`,
         );
       }
     } catch (e) {

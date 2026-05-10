@@ -6,6 +6,7 @@ import { CharacterModule } from '../character/character.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { LiveOpsAnnouncementModule } from '../liveops-announcement/liveops-announcement.module';
 import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
+import { MaintenanceWindowModule } from '../maintenance-window/maintenance-window.module';
 import { RedisModule } from '../../common/redis.module';
 import { PrismaService } from '../../common/prisma.service';
 import { LiveOpsCronLease } from '../liveops-cron/liveops-cron.lease';
@@ -55,6 +56,11 @@ import { LiveOpsEventSchedulerCronScheduler } from './liveops-event-scheduler.cr
     // → không cycle.
     LiveOpsAnnouncementModule,
     FeatureFlagModule,
+    // Phase 15.5 — maintenance window recompute piggyback trên cùng
+    // cron tick (xem `LiveOpsEventSchedulerCronProcessor.process`).
+    // KHÔNG thêm queue/lease riêng — service `recomputeStatuses`
+    // idempotent + cache TTL 10s đủ refresh sau transition.
+    MaintenanceWindowModule,
   ],
   controllers: [AdminLiveOpsEventsController, LiveOpsEventsPublicController],
   providers: [
