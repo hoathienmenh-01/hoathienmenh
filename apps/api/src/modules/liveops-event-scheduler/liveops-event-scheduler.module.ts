@@ -4,6 +4,7 @@ import { AdminModule } from '../admin/admin.module';
 import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { LiveOpsAnnouncementModule } from '../liveops-announcement/liveops-announcement.module';
 import { RedisModule } from '../../common/redis.module';
 import { PrismaService } from '../../common/prisma.service';
 import { LiveOpsCronLease } from '../liveops-cron/liveops-cron.lease';
@@ -48,6 +49,10 @@ import { LiveOpsEventSchedulerCronScheduler } from './liveops-event-scheduler.cr
     CharacterModule,
     InventoryModule,
     RedisModule,
+    // Phase 15.3.B — broadcast service + cron-piggyback announcement
+    // recompute. Announcement module độc lập (không import scheduler)
+    // → không cycle.
+    LiveOpsAnnouncementModule,
   ],
   controllers: [AdminLiveOpsEventsController, LiveOpsEventsPublicController],
   providers: [

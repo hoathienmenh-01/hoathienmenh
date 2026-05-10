@@ -85,6 +85,16 @@ export interface RecomputeSummary {
 }
 
 /**
+ * Phase 15.3.B — extended recompute summary kèm rows transitioned để
+ * caller (cron processor) broadcast WS event public-safe payload. KHÔNG
+ * breaking — `recomputeStatuses` legacy vẫn trả `RecomputeSummary` mỏng.
+ */
+export interface RecomputeWithTransitionsSummary extends RecomputeSummary {
+  readonly activated: ReadonlyArray<LiveOpsScheduledEventView>;
+  readonly ended: ReadonlyArray<LiveOpsScheduledEventView>;
+}
+
+/**
  * Phase 15.3.A — public-safe view of an active event for player UI
  * (`GET /liveops/events/active`). Strips admin-only fields
  * (`createdByAdminId`) and adds `claimable` flag for character-aware
@@ -638,6 +648,117 @@ export class LiveOpsEventSchedulerService {
     }
     return summary;
   }
+
+  /**
+   * Phase 15.3.B — recompute giống `recomputeStatuses` nhưng trả về danh
+   * sách rows thực sự transition để caller (cron processor / admin
+   * recompute trigger) broadcast WS event.
+   *
+   * Strategy:
+   *   1. `findMany` candidates trước khi `updateMany` — lấy ID + metadata.
+   *   2. `updateMany WHERE id IN (...) AND status = expected` — atomic
+   *      transition; race với worker khác sẽ chỉ count rows worker này
+   *      thắng. Idempotent: gọi lại trả `count=0`.
+   *   3. Map rows winner → `LiveOpsScheduledEventView` cho broadcast.
+   *
+   * KHÔNG thay đổi behavior `recomputeStatuses` legacy — guard bằng
+   * method mới riêng. Cron processor có thể tuỳ chọn dùng method này
+   * khi muốn broadcast.
+   */
+  async recomputeStatusesWithTransitions(
+    now: Date = new Date(),
+  ): Promise<RecomputeWithTransitionsSummary> {
+    // SCHEDULED → ACTIVE
+    const activatedCandidates =
+      await this.prisma.liveOpsScheduledEvent.findMany({
+        where: {
+          status: 'SCHEDULED',
+          startsAt: { lte: now },
+          endsAt: { gt: now },
+        },
+      });
+    let activatedCount = 0;
+    let activatedViews: LiveOpsScheduledEventView[] = [];
+    if (activatedCandidates.length > 0) {
+      const upd = await this.prisma.liveOpsScheduledEvent.updateMany({
+        where: {
+          id: { in: activatedCandidates.map((r) => r.id) },
+          status: 'SCHEDULED',
+          startsAt: { lte: now },
+          endsAt: { gt: now },
+        },
+        data: { status: 'ACTIVE' },
+      });
+      activatedCount = upd.count;
+      if (upd.count > 0) {
+        const winners = activatedCandidates.slice(0, upd.count);
+        activatedViews = winners.map((r) =>
+          toView({ ...r, status: 'ACTIVE' }),
+        );
+      }
+    }
+
+    // SCHEDULED past endsAt → ENDED (skip-to-ended) — KHÔNG broadcast
+    // ANNOUNCEMENT_ENDED-equivalent vì chưa từng ACTIVE.
+    let skippedCount = 0;
+    const skippedCandidates =
+      await this.prisma.liveOpsScheduledEvent.findMany({
+        where: {
+          status: 'SCHEDULED',
+          endsAt: { lte: now },
+        },
+      });
+    if (skippedCandidates.length > 0) {
+      const upd = await this.prisma.liveOpsScheduledEvent.updateMany({
+        where: {
+          id: { in: skippedCandidates.map((r) => r.id) },
+          status: 'SCHEDULED',
+          endsAt: { lte: now },
+        },
+        data: { status: 'ENDED' },
+      });
+      skippedCount = upd.count;
+    }
+
+    // ACTIVE → ENDED
+    const endedCandidates = await this.prisma.liveOpsScheduledEvent.findMany({
+      where: {
+        status: 'ACTIVE',
+        endsAt: { lte: now },
+      },
+    });
+    let endedCount = 0;
+    let endedViews: LiveOpsScheduledEventView[] = [];
+    if (endedCandidates.length > 0) {
+      const upd = await this.prisma.liveOpsScheduledEvent.updateMany({
+        where: {
+          id: { in: endedCandidates.map((r) => r.id) },
+          status: 'ACTIVE',
+          endsAt: { lte: now },
+        },
+        data: { status: 'ENDED' },
+      });
+      endedCount = upd.count;
+      if (upd.count > 0) {
+        const winners = endedCandidates.slice(0, upd.count);
+        endedViews = winners.map((r) => toView({ ...r, status: 'ENDED' }));
+      }
+    }
+
+    const summary: RecomputeWithTransitionsSummary = {
+      scannedAt: now.toISOString(),
+      toActivated: activatedCount,
+      toEnded: skippedCount + endedCount,
+      activated: activatedViews,
+      ended: endedViews,
+    };
+    if (summary.toActivated > 0 || summary.toEnded > 0) {
+      this.logger.log(
+        `recompute(+broadcast): activated=${summary.toActivated} ended=${summary.toEnded}`,
+      );
+    }
+    return summary;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -682,3 +803,29 @@ function toView(row: {
 }
 
 export { nextLiveOpsScheduledEventStatus };
+
+/**
+ * Phase 15.3.B — Map `LiveOpsScheduledEventView` → public-safe broadcast
+ * payload (`LiveOpsEventBroadcastPayload`). Strip `configJson` /
+ * `createdByAdminId` — chỉ expose key/type/title/description/window/
+ * runtimeSupported. FE refetch detail qua `GET /liveops/events/active`
+ * nếu cần multiplier / reward.
+ */
+export function toLiveOpsEventBroadcastPayload(
+  view: LiveOpsScheduledEventView,
+  type: 'LIVEOPS_EVENT_ACTIVE' | 'LIVEOPS_EVENT_ENDED' | 'LIVEOPS_EVENT_UPDATED',
+): import('@xuantoi/shared').LiveOpsEventBroadcastPayload {
+  const runtimeSupported = isValidLiveOpsScheduledEventType(view.type)
+    ? isLiveOpsRuntimeSupported(view.type)
+    : false;
+  return {
+    type,
+    eventKey: view.key,
+    eventType: view.type,
+    title: view.title,
+    description: view.description,
+    startsAt: view.startsAt,
+    endsAt: view.endsAt,
+    runtimeSupported,
+  };
+}
