@@ -117,6 +117,23 @@ interface TribulationStateStub {
   fetchEncounter: ReturnType<typeof vi.fn>;
   startEncounter: ReturnType<typeof vi.fn>;
   resolveEncounter: ReturnType<typeof vi.fn>;
+  // Phase 14.3.E.2 — mini-battle mock state.
+  miniBattle: unknown;
+  miniBattleLoading: boolean;
+  miniBattleStarting: boolean;
+  miniBattleActionLoading: boolean;
+  miniBattleResolving: boolean;
+  miniBattleError: string | null;
+  miniBattleAvailable: boolean | null;
+  miniBattleLastResult: unknown;
+  readonly miniBattleCanAct: boolean;
+  readonly miniBattleIsTerminal: boolean;
+  fetchCurrentBattle: ReturnType<typeof vi.fn>;
+  startBattle: ReturnType<typeof vi.fn>;
+  submitBattleAction: ReturnType<typeof vi.fn>;
+  resolveBattle: ReturnType<typeof vi.fn>;
+  resetMiniBattleError: ReturnType<typeof vi.fn>;
+  clearMiniBattle: ReturnType<typeof vi.fn>;
 }
 
 // Phase 14.3.D — encounter spec stub.
@@ -191,6 +208,13 @@ const fetchPreviewMock = vi.fn().mockResolvedValue(null);
 const fetchEncounterMock = vi.fn().mockResolvedValue(null);
 const startEncounterMock = vi.fn().mockResolvedValue(null);
 const resolveEncounterMock = vi.fn().mockResolvedValue(null);
+// Phase 14.3.E.2 — mini-battle store mocks.
+const fetchCurrentBattleMock = vi.fn().mockResolvedValue(null);
+const startBattleMock = vi.fn().mockResolvedValue(null);
+const submitBattleActionMock = vi.fn().mockResolvedValue(null);
+const resolveBattleMock = vi.fn().mockResolvedValue(null);
+const resetMiniBattleErrorMock = vi.fn();
+const clearMiniBattleMock = vi.fn();
 const pushMock = vi.fn();
 
 const tribulationState: TribulationStateStub = {
@@ -242,6 +266,33 @@ const tribulationState: TribulationStateStub = {
   fetchEncounter: fetchEncounterMock,
   startEncounter: startEncounterMock,
   resolveEncounter: resolveEncounterMock,
+  // Phase 14.3.E.2 — mini-battle defaults.
+  miniBattle: undefined,
+  miniBattleLoading: false,
+  miniBattleStarting: false,
+  miniBattleActionLoading: false,
+  miniBattleResolving: false,
+  miniBattleError: null,
+  miniBattleAvailable: null,
+  miniBattleLastResult: null,
+  get miniBattleCanAct(): boolean {
+    const b = this.miniBattle as { state?: string } | null | undefined;
+    if (!b) return false;
+    return b.state === 'PENDING' || b.state === 'ACTIVE';
+  },
+  get miniBattleIsTerminal(): boolean {
+    const b = this.miniBattle as { state?: string } | null | undefined;
+    if (!b) return false;
+    return (
+      b.state === 'RESOLVED' || b.state === 'FAILED' || b.state === 'EXPIRED'
+    );
+  },
+  fetchCurrentBattle: fetchCurrentBattleMock,
+  startBattle: startBattleMock,
+  submitBattleAction: submitBattleActionMock,
+  resolveBattle: resolveBattleMock,
+  resetMiniBattleError: resetMiniBattleErrorMock,
+  clearMiniBattle: clearMiniBattleMock,
 };
 
 const gameState: { character: CharacterStub | null; realmFullName: string } = {
@@ -525,6 +576,25 @@ function resetState() {
   startEncounterMock.mockResolvedValue(null);
   resolveEncounterMock.mockReset();
   resolveEncounterMock.mockResolvedValue(null);
+  // Phase 14.3.E.2 — mini-battle resets.
+  tribulationState.miniBattle = undefined;
+  tribulationState.miniBattleLoading = false;
+  tribulationState.miniBattleStarting = false;
+  tribulationState.miniBattleActionLoading = false;
+  tribulationState.miniBattleResolving = false;
+  tribulationState.miniBattleError = null;
+  tribulationState.miniBattleAvailable = null;
+  tribulationState.miniBattleLastResult = null;
+  fetchCurrentBattleMock.mockReset();
+  fetchCurrentBattleMock.mockResolvedValue(null);
+  startBattleMock.mockReset();
+  startBattleMock.mockResolvedValue(null);
+  submitBattleActionMock.mockReset();
+  submitBattleActionMock.mockResolvedValue(null);
+  resolveBattleMock.mockReset();
+  resolveBattleMock.mockResolvedValue(null);
+  resetMiniBattleErrorMock.mockReset();
+  clearMiniBattleMock.mockReset();
   pushMock.mockClear();
 }
 
@@ -2373,5 +2443,58 @@ describe('TribulationView — encounter actions (Phase 14.3.D)', () => {
         .find('[data-testid="tribulation-encounter-resolve-button"]')
         .attributes('disabled'),
     ).toBeUndefined();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Phase 14.3.E.2 — Mini-Battle integration tests
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('TribulationView — mini-battle integration (Phase 14.3.E.2)', () => {
+  beforeEach(() => {
+    resetState();
+  });
+
+  it('miniBattleAvailable=null (initial) → encounter UI vẫn render, panel ẩn', async () => {
+    tribulationState.encounter = makeEncounterStub({ pending: false });
+    tribulationState.miniBattleAvailable = null;
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find('[data-testid="tribulation-mini-battle-panel-mount"]').exists(),
+    ).toBe(false);
+    expect(
+      w.find('[data-testid="tribulation-encounter-start-button"]').exists(),
+    ).toBe(true);
+  });
+
+  it('miniBattleAvailable=false (501 disabled) → fallback encounter UI', async () => {
+    tribulationState.encounter = makeEncounterStub({ pending: true });
+    tribulationState.miniBattleAvailable = false;
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find('[data-testid="tribulation-mini-battle-panel-mount"]').exists(),
+    ).toBe(false);
+    expect(
+      w.find('[data-testid="tribulation-encounter-resolve-button"]').exists(),
+    ).toBe(true);
+  });
+
+  it('miniBattleAvailable=true + atPeak → render mini-battle panel', async () => {
+    tribulationState.encounter = makeEncounterStub({ pending: true });
+    tribulationState.miniBattleAvailable = true;
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find('[data-testid="tribulation-mini-battle-panel-mount"]').exists(),
+    ).toBe(true);
+  });
+
+  it('onMounted calls fetchCurrentBattle để hydrate snapshot', async () => {
+    tribulationState.encounter = makeEncounterStub({ pending: false });
+    mountView();
+    await flushPromises();
+    expect(fetchCurrentBattleMock).toHaveBeenCalled();
   });
 });

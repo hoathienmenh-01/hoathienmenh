@@ -400,3 +400,198 @@ describe('fetchTribulationEncounterCurrent / start / resolve (Phase 14.3.D)', ()
     });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────
+// Phase 14.3.E.2 — Mini-Battle client tests
+// ─────────────────────────────────────────────────────────────────────────
+
+import {
+  fetchCurrentTribulationBattle,
+  startTribulationBattle,
+  submitTribulationBattleAction,
+  resolveTribulationBattle,
+  type TribulationMiniBattleView,
+} from '@/api/tribulation';
+
+const STUB_MINI_BATTLE: TribulationMiniBattleView = {
+  id: 'battle-1',
+  characterId: 'char-1',
+  encounterId: 'enc-1',
+  tribulationKey: 'kim_dan_to_nguyen_anh',
+  realmKey: 'kim_dan',
+  effectType: 'BURST',
+  element: 'hoa',
+  difficulty: 'major',
+  state: 'ACTIVE',
+  currentPhase: 2,
+  phaseCount: 5,
+  playerHp: 800,
+  playerHpMax: 1000,
+  tribulationHp: 600,
+  tribulationHpMax: 1500,
+  shield: 50,
+  dotStacks: 1,
+  focusCharge: 0,
+  seed: 1234,
+  actionLog: [
+    {
+      phase: 1,
+      action: 'ATTACK',
+      damage: 200,
+      shield: 0,
+      heal: 0,
+      dot: 0,
+      crit: false,
+      result: 'ongoing',
+      messageKey: 'attack_hit',
+    },
+  ],
+  result: null,
+  startedAt: '2026-05-02T01:00:00.000Z',
+  resolvedAt: null,
+  createdAt: '2026-05-02T01:00:00.000Z',
+  updatedAt: '2026-05-02T01:01:00.000Z',
+};
+
+describe('api/tribulation — Phase 14.3.E.2 mini-battle client', () => {
+  beforeEach(() => {
+    postMock.mockReset();
+    getMock.mockReset();
+  });
+
+  it('fetchCurrentTribulationBattle: GET trả null khi chưa có battle', async () => {
+    getMock.mockResolvedValueOnce({
+      data: { ok: true, data: { battle: null } },
+    });
+    const res = await fetchCurrentTribulationBattle();
+    expect(getMock).toHaveBeenCalledWith('/character/tribulation/battle/current');
+    expect(res).toBeNull();
+  });
+
+  it('fetchCurrentTribulationBattle: GET trả snapshot khi có row', async () => {
+    getMock.mockResolvedValueOnce({
+      data: { ok: true, data: { battle: STUB_MINI_BATTLE } },
+    });
+    const res = await fetchCurrentTribulationBattle();
+    expect(res).toEqual(STUB_MINI_BATTLE);
+  });
+
+  it('fetchCurrentTribulationBattle: server reject (501) → throws preserving code', async () => {
+    getMock.mockResolvedValueOnce({
+      data: {
+        ok: false,
+        error: { code: 'TRIBULATION_MINI_BATTLE_UNAVAILABLE', message: 'off' },
+      },
+    });
+    await expect(fetchCurrentTribulationBattle()).rejects.toMatchObject({
+      code: 'TRIBULATION_MINI_BATTLE_UNAVAILABLE',
+    });
+  });
+
+  it('startTribulationBattle: POST với body rỗng khi không có support items', async () => {
+    postMock.mockResolvedValueOnce({
+      data: { ok: true, data: { battle: STUB_MINI_BATTLE } },
+    });
+    const res = await startTribulationBattle();
+    expect(postMock).toHaveBeenCalledWith(
+      '/character/tribulation/battle/start',
+      {},
+    );
+    expect(res).toEqual(STUB_MINI_BATTLE);
+  });
+
+  it('startTribulationBattle: POST kèm selectedSupportItemKeys khi caller pass', async () => {
+    postMock.mockResolvedValueOnce({
+      data: { ok: true, data: { battle: STUB_MINI_BATTLE } },
+    });
+    await startTribulationBattle(['phap_bao_a', 'phap_bao_b']);
+    expect(postMock).toHaveBeenCalledWith(
+      '/character/tribulation/battle/start',
+      { selectedSupportItemKeys: ['phap_bao_a', 'phap_bao_b'] },
+    );
+  });
+
+  it('startTribulationBattle: server reject (409 ALREADY_ACTIVE) → throws code', async () => {
+    postMock.mockResolvedValueOnce({
+      data: {
+        ok: false,
+        error: { code: 'MINI_BATTLE_ALREADY_ACTIVE', message: 'busy' },
+      },
+    });
+    await expect(startTribulationBattle()).rejects.toMatchObject({
+      code: 'MINI_BATTLE_ALREADY_ACTIVE',
+    });
+  });
+
+  it('submitTribulationBattleAction: POST kèm clientNonce khi caller pass', async () => {
+    postMock.mockResolvedValueOnce({
+      data: { ok: true, data: { battle: STUB_MINI_BATTLE } },
+    });
+    await submitTribulationBattleAction({
+      battleId: 'battle-1',
+      action: 'ATTACK',
+      clientNonce: 'nonce-1',
+    });
+    expect(postMock).toHaveBeenCalledWith(
+      '/character/tribulation/battle/action',
+      {
+        battleId: 'battle-1',
+        action: 'ATTACK',
+        clientNonce: 'nonce-1',
+      },
+    );
+  });
+
+  it('submitTribulationBattleAction: omit clientNonce field nếu không pass', async () => {
+    postMock.mockResolvedValueOnce({
+      data: { ok: true, data: { battle: STUB_MINI_BATTLE } },
+    });
+    await submitTribulationBattleAction({
+      battleId: 'battle-1',
+      action: 'DEFEND',
+    });
+    expect(postMock).toHaveBeenCalledWith(
+      '/character/tribulation/battle/action',
+      { battleId: 'battle-1', action: 'DEFEND' },
+    );
+  });
+
+  it('submitTribulationBattleAction: server reject (400 INVALID_ACTION) → throws', async () => {
+    postMock.mockResolvedValueOnce({
+      data: {
+        ok: false,
+        error: { code: 'MINI_BATTLE_INVALID_ACTION', message: 'invalid' },
+      },
+    });
+    await expect(
+      submitTribulationBattleAction({
+        battleId: 'battle-1',
+        action: 'ATTACK',
+      }),
+    ).rejects.toMatchObject({ code: 'MINI_BATTLE_INVALID_ACTION' });
+  });
+
+  it('resolveTribulationBattle: POST trả TribulationOutcomeView', async () => {
+    postMock.mockResolvedValueOnce({
+      data: { ok: true, data: { tribulation: STUB_SUCCESS_OUTCOME } },
+    });
+    const res = await resolveTribulationBattle('battle-1');
+    expect(postMock).toHaveBeenCalledWith(
+      '/character/tribulation/battle/resolve',
+      { battleId: 'battle-1' },
+    );
+    expect(res).toEqual(STUB_SUCCESS_OUTCOME);
+  });
+
+  it('resolveTribulationBattle: server reject (400 NOT_TERMINAL) → throws', async () => {
+    postMock.mockResolvedValueOnce({
+      data: {
+        ok: false,
+        error: { code: 'MINI_BATTLE_NOT_TERMINAL', message: 'still alive' },
+      },
+    });
+    await expect(resolveTribulationBattle('battle-1')).rejects.toMatchObject({
+      code: 'MINI_BATTLE_NOT_TERMINAL',
+    });
+  });
+});
