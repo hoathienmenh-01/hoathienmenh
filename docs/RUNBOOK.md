@@ -599,6 +599,30 @@ precache hash → user mới sẽ tự update sau lần load thứ 2.
 
 ---
 
+### 2.19. LiveOps Event Scheduler — kill switch / force recompute (P1) — Phase 15.1–15.2
+
+**Symptom**: 1 event LiveOps đang ACTIVE chạy sai (vd multiplier bị bypass cao bất thường, event-end-time qua nhưng ledger vẫn ghi event bonus, reward economy spike) → cần dừng ngay.
+
+**Triage** (≤ 5 phút):
+1. Check status event qua admin panel `/admin#liveops` (LiveOps Events panel) hoặc API `GET /admin/liveops/events`.
+2. Cross-check `meta.dungeon.liveOpsDropMultiplier` trong `CurrencyLedger` 1h gần nhất xem có lệch.
+3. Check `AdminAuditLog WHERE action LIKE 'ADMIN_LIVEOPS_EVENT_%' ORDER BY createdAt DESC LIMIT 50` xem ai đã touch.
+
+**Fix** (P1 — 1h SLA):
+1. **Kill switch**: `POST /admin/liveops/events/:id/disable` — set `status=DISABLED`, runtime ngừng compose multiplier ngay (không cần reload). Audit `ADMIN_LIVEOPS_EVENT_DISABLE` ghi vào `AdminAuditLog`.
+2. **Force recompute** (nếu cron chưa transition kịp ENDED): `POST /admin/liveops/events/recompute-status` — idempotent, gọi nhiều lần OK.
+3. **Audit replay**: query ledger 1h gần nhất, xác minh tổng over-grant. Nếu cần revoke → manual `POST /admin/users/:id/grant` với delta âm (xem §2.15).
+
+**Operational config**:
+- Cron `*/5 * * * *` UTC default. Override `LIVEOPS_EVENT_SCHEDULER_CRON_TZ` (vd `Asia/Ho_Chi_Minh`).
+- Disabled by default — bật qua env `LIVEOPS_EVENT_SCHEDULER_CRON_ENABLED=true` rồi restart api worker.
+- Race-safe: 2 worker chạy cùng tick → đúng 1 winner per row. Nếu thấy log `recompute: activated=N ended=M` lặp lại với count > 0 ở 2 worker khác nhau → check Redis lease.
+
+**KHÔNG** trong Phase 15.1–15.2:
+- KHÔNG auto-rollback ledger khi disable event giữa chừng — linh thạch đã cấp = giữ. Nếu cần revoke thủ công xem §2.15.
+- KHÔNG support shop discount / sect shop / daily login / boss / festival gift — runtime chưa wire (defer Phase 15.3+).
+- KHÔNG cho admin manually set `status=ACTIVE` qua PATCH (chỉ DRAFT/SCHEDULED/DISABLED) — phải qua cron để window chính xác.
+
 ## 3. Backup operations (closed beta cadence)
 
 ### 3.1. Cron daily backup

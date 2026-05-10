@@ -674,6 +674,45 @@ Tất cả route guard `@RequireAdmin()` — PLAYER + MOD reject 403. POST log `
 
 **KHÔNG có** Phase 14.1.D: auto-ban, auto-rollback reward, auto-delete match, block player on WARN, cron auto-scan (env reserved `ARENA_ANTI_WINTRADE_CRON_*`).
 
+## Admin LiveOps Event Scheduler — `AdminLiveOpsEventsController` (Phase 15.1–15.2)
+
+Server-authoritative CRUD + status machine + cron recompute cho event runtime
+(không cần deploy code khi vận hành sự kiện). Khác `AdminLiveOpsController`
+(override catalog `LIVE_OPS_EVENTS` tĩnh), endpoint này quản event row động
+fully-defined-in-DB với 7 type:
+
+```
+LIVEOPS_EVENT_TYPES = [
+  'DOUBLE_DUNGEON_DROP',     // cap 2.0  — wired ở DungeonRunService.claimRun
+  'CULTIVATION_EXP_BOOST',   // cap 2.0  — wired ở CultivationProcessor.process
+  'SHOP_DISCOUNT',           // cap 0.5  — TODO Phase 15.3+
+  'SECT_SHOP_DISCOUNT',      // cap 0.5  — TODO Phase 15.3+
+  'DAILY_LOGIN_BONUS',       // cap 2.0  — TODO Phase 15.3+
+  'BOSS_REWARD_BOOST',       // cap 2.0  — TODO Phase 15.3+
+  'FESTIVAL_GIFT'            // claim 1× — TODO Phase 15.3+ (LiveOpsEventRewardClaim)
+]
+```
+
+| Method | Path | Role | Mô tả |
+| --- | --- | --- | --- |
+| GET    | `/admin/liveops/events`                              | ADMIN | List all events ordered theo `(status asc, startsAt asc)`. |
+| POST   | `/admin/liveops/events`                              | ADMIN | Tạo event mới. Body `{ key, type, title, description?, startsAt, endsAt, configJson?: { multiplier?, rewardJson? }, initialStatus?: 'DRAFT' \| 'SCHEDULED' }` (zod `.strict()`). Validate cap multiplier + window + key pattern qua shared `validateLiveOpsScheduledEventInput`. 409 `EVENT_KEY_DUPLICATE` nếu key đã tồn tại. Audit `ADMIN_LIVEOPS_EVENT_CREATE`. |
+| PATCH  | `/admin/liveops/events/:id`                          | ADMIN | Update title/description/startsAt/endsAt/configJson/status. Status chỉ chấp nhận `DRAFT \| SCHEDULED \| DISABLED` — `ACTIVE`/`ENDED` reject (phải qua cron để tránh inconsistent). Audit `ADMIN_LIVEOPS_EVENT_UPDATE`. |
+| POST   | `/admin/liveops/events/:id/disable`                  | ADMIN | Kill switch — set `status=DISABLED`, không tự recover. Audit `ADMIN_LIVEOPS_EVENT_DISABLE`. |
+| POST   | `/admin/liveops/events/recompute-status`             | ADMIN | Force-run cron logic: SCHEDULED→ACTIVE / ACTIVE→ENDED dựa trên `now`. Idempotent — gọi nhiều lần cùng `now` count=0 sau lần đầu. Audit `ADMIN_LIVEOPS_EVENT_RECOMPUTE` với `{ scannedAt, toActivated, toEnded }`. |
+
+**Cron auto-recompute**: BullMQ repeatable job `recompute-status` chạy
+`*/5 * * * *` (UTC default, override `LIVEOPS_EVENT_SCHEDULER_CRON_TZ`).
+Disabled by default — bật qua env `LIVEOPS_EVENT_SCHEDULER_CRON_ENABLED=true`.
+Race-safe multi-instance: Redis lease `xt:liveops-event-scheduler:recompute`
+(60s TTL) + DB-level `updateMany` CAS guard.
+
+**Error codes**: `EVENT_NOT_FOUND` (404), `EVENT_KEY_DUPLICATE` (409),
+`EVENT_KEY_INVALID`, `EVENT_TITLE_INVALID`, `EVENT_TYPE_INVALID`,
+`EVENT_WINDOW_INVALID`, `EVENT_MULTIPLIER_INVALID`,
+`EVENT_MULTIPLIER_OVER_CAP`, `INVALID_INPUT` — tất cả 400 (trừ
+`EVENT_NOT_FOUND` 404 và `EVENT_KEY_DUPLICATE` 409).
+
 ## Error codes (chuẩn hoá)
 
 - **Auth**: `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `RATE_LIMITED`, `PASSWORD_CHANGED`, `REUSED_REFRESH_TOKEN`, `BANNED`, `INVALID_INPUT`.
