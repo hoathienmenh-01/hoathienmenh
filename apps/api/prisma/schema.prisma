@@ -306,9 +306,89 @@ model Character {
   npcGiftLogs             CharacterNpcGiftLog[]
   dailyRewardBuckets      CharacterDailyRewardBucket[]
   rewardCapEvents         RewardCapEvent[]
+  arenaProfile            ArenaProfile?
+  arenaMatchesAttacker    ArenaMatch[]                 @relation("ArenaMatchAttacker")
+  arenaMatchesDefender    ArenaMatch[]                 @relation("ArenaMatchDefender")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// Phase 14.1.B — Async Arena Foundation profile.
+///
+/// 1-1 với Character (lazy-create khi GET /arena/profile lần đầu hoặc khi
+/// player được chọn làm defender). Phase 14.1.B chưa có season/ELO phức tạp:
+///   - `rating` start ở 1000 (xem `ARENA_RATING_DEFAULT` trong shared).
+///   - `wins` / `losses` / `draws` đếm tổng trận attacker side.
+///   - `attacksToday` + `lastAttackDayBucket` áp daily limit; reset khi sang
+///     ngày mới (server tz Asia/Ho_Chi_Minh).
+///   - `defenseSnapshotJson` cache snapshot defender lúc gần nhất (offline
+///     defense replay). Phase 14.1.B vẫn rebuild snapshot mỗi lần attack
+///     được resolve để tránh stale; field này nullable để Phase 14.1.C
+///     wire snapshot caching nếu cần.
+///
+/// Defer Phase 14.1.C: ELO Glicko, season decay, placement match.
+model ArenaProfile {
+  id                  String    @id @default(cuid())
+  characterId         String    @unique
+  character           Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  rating              Int       @default(1000)
+  wins                Int       @default(0)
+  losses              Int       @default(0)
+  draws               Int       @default(0)
+  attacksToday        Int       @default(0)
+  /// YYYY-MM-DD (Asia/Ho_Chi_Minh). Null khi chưa từng attack.
+  lastAttackDayBucket String?
+  /// Cached defender snapshot (Phase 14.1.B chưa wire — placeholder cho 14.1.C).
+  defenseSnapshotJson Json?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([rating])
+  @@index([updatedAt])
+}
+
+/// Phase 14.1.B — Async Arena Match.
+///
+/// Mỗi row là 1 trận PvP async. Attacker initiate, defender không cần
+/// online. Combat resolution deterministic qua `resolveCombatWithSnapshot`
+/// (Phase 14.1.A) — cùng (`attackerSnapshotJson`, `defenderSnapshotJson`,
+/// `seed`) → cùng kết quả mỗi lần replay.
+///
+/// Idempotency: caller có thể pass `seed` field (test/admin) để force
+/// deterministic seed; mặc định server tự generate via `hashSeed(id)` sau
+/// khi tạo row.
+///
+/// `result` = ENUM string ('ATTACKER_WIN' | 'DEFENDER_WIN' | 'DRAW')
+/// kèm `winnerCharacterId` nullable cho draw.
+///
+/// `ratingDeltaJson` cache rating delta áp dụng lúc resolve — dùng cho
+/// history view + audit nếu rating logic đổi sau.
+model ArenaMatch {
+  id                   String    @id @default(cuid())
+  attackerCharacterId  String
+  attacker             Character @relation("ArenaMatchAttacker", fields: [attackerCharacterId], references: [id], onDelete: Cascade)
+  defenderCharacterId  String
+  defender             Character @relation("ArenaMatchDefender", fields: [defenderCharacterId], references: [id], onDelete: Cascade)
+  /// Lifecycle: PENDING (in-flight) | RESOLVED | CANCELLED. Phase 14.1.B
+  /// chỉ emit RESOLVED (resolve sync trong cùng request handler).
+  status               String    @default("PENDING")
+  /// Outcome enum: ATTACKER_WIN | DEFENDER_WIN | DRAW. Null khi PENDING.
+  result               String?
+  winnerCharacterId    String?
+  attackerSnapshotJson Json
+  defenderSnapshotJson Json
+  /// Numeric seed dùng resolve match (32-bit signed). Phục vụ replay verify.
+  seed                 Int
+  battleLogJson        Json
+  /// Rating delta áp dụng lúc resolve. Null khi PENDING / CANCELLED.
+  ratingDeltaJson      Json?
+  createdAt            DateTime  @default(now())
+  resolvedAt           DateTime?
+
+  @@index([attackerCharacterId, createdAt])
+  @@index([defenderCharacterId, createdAt])
+  @@index([status, createdAt])
 }
 
 /// Phase 11.3.A — Audit log cho mỗi lần roll Linh căn (onboard auto + future
@@ -521,45 +601,45 @@ model TribulationEncounter {
 ///   - `seed`: deterministic RNG seed (32-bit signed) — composer ở
 ///     `composeBattlePhaseSeed(seed, phase)`.
 model TribulationMiniBattle {
-  id                String    @id @default(cuid())
-  characterId       String
-  character         Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  id               String    @id @default(cuid())
+  characterId      String
+  character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
   /// Pointer optional sang `TribulationEncounter.id` nếu battle hatched
   /// từ encounter session. NULL nếu standalone (rare).
-  encounterId       String?
+  encounterId      String?
   /// Mirror `TribulationDef.key` (catalog).
-  tribulationKey    String
-  realmKey          String
+  tribulationKey   String
+  realmKey         String
   /// `TribulationEncounterEffectType` ∈ {BURST, SUSTAIN, POISON_RECOVERY,
   /// ARMOR_CRIT, DEFENSE_ENDURANCE}.
-  effectType        String
+  effectType       String
   /// `ElementKey` ∈ {kim, moc, thuy, hoa, tho}.
-  element           String
+  element          String
   /// `TribulationSeverity` ∈ {minor, major, heavenly, saint}.
-  difficulty        String
+  difficulty       String
   /// `TribulationMiniBattleState` ∈ {PENDING, ACTIVE, RESOLVED, FAILED, EXPIRED}.
-  state             String    @default("PENDING")
-  currentPhase      Int       @default(1)
-  phaseCount        Int
-  playerHp          Int
-  playerHpMax       Int
-  tribulationHp     Int
-  tribulationHpMax  Int
-  shield            Int       @default(0)
-  dotStacks         Int       @default(0)
-  focusCharge       Int       @default(0)
+  state            String    @default("PENDING")
+  currentPhase     Int       @default(1)
+  phaseCount       Int
+  playerHp         Int
+  playerHpMax      Int
+  tribulationHp    Int
+  tribulationHpMax Int
+  shield           Int       @default(0)
+  dotStacks        Int       @default(0)
+  focusCharge      Int       @default(0)
   /// Deterministic seed cho replay/test.
-  seed              Int
+  seed             Int
   /// Append-only log `TribulationBattleEvent[]` JSON.
-  actionLogJson     Json      @default("[]")
+  actionLogJson    Json      @default("[]")
   /// Set khi terminal — `TribulationMiniBattleSummary` JSON shape.
-  resultJson        Json?
+  resultJson       Json?
   /// Last client-supplied nonce (optional) cho idempotency replay.
-  lastClientNonce   String?
-  startedAt         DateTime  @default(now())
-  resolvedAt        DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  lastClientNonce  String?
+  startedAt        DateTime  @default(now())
+  resolvedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@index([characterId, state])
   @@index([characterId, startedAt])
@@ -1877,17 +1957,17 @@ model RewardCapEvent {
 /// và 0 issue, `ISSUES_FOUND` = ≥1 issue OPEN, `ERROR` = exception
 /// trong service path (admin coi log trace, không tự ban / không tự fix).
 model EconomyLedgerCheckRun {
-  id          String                       @id @default(cuid())
+  id          String                    @id @default(cuid())
   /// `YYYY-MM-DD` theo timezone reset (default Asia/Ho_Chi_Minh).
   /// UNIQUE — 1 ngày chỉ 1 run authoritative.
-  dayBucket   String                       @unique
+  dayBucket   String                    @unique
   status      String
-  startedAt   DateTime                     @default(now())
+  startedAt   DateTime                  @default(now())
   finishedAt  DateTime?
-  summaryJson Json                         @default("{}")
+  summaryJson Json                      @default("{}")
   triggeredBy String?
   issues      EconomyLedgerCheckIssue[]
-  createdAt   DateTime                     @default(now())
+  createdAt   DateTime                  @default(now())
 
   @@index([startedAt])
 }
