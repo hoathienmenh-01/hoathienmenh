@@ -313,7 +313,38 @@ restart. Không cần code change.
 
 Không thay thế Sentry — đây là **business audit**, không phải error tracking.
 
-### 12.4. Metrics
+### 12.4. Metrics (Phase 17.5)
 
-Hiện chưa có `/metrics` endpoint. Khuyến nghị bổ sung Prometheus
-exporter post-beta (Phase 17.4+).
+Endpoint admin-only: `GET /api/admin/metrics` — auth bằng cookie
+ADMIN (`@RequireAdmin()`). Trả JSON snapshot system/api/ws/queue/cron
++ errors[] fail-soft. Không Prometheus text format (closed beta dùng
+JSON poll trực tiếp để dashboard nội bộ).
+
+Mọi collector fail-soft — Redis/BullMQ chưa init thì `queue.available=false`,
+KHÔNG crash API. Chi tiết payload xem `docs/API.md` §"Phase 17.5 —
+MetricsSnapshot payload".
+
+Khuyến nghị Prometheus text exporter (`/metrics` public với label whitelist)
+follow-up Phase 17.6 nếu monitoring cần Prom scrape thay vì poll JSON.
+
+### 12.5. Load test biến môi trường (Phase 17.5)
+
+Script k6 `scripts/load/k6-{smoke,api-baseline,ws-baseline}.js` đọc các env:
+
+| Env | Default | Mô tả |
+|-----|---------|------|
+| `BASE_URL` | `http://localhost:3000` | API root, không trailing slash. Phải bao gồm scheme. |
+| `WS_URL` | derive từ `BASE_URL` (http→ws, https→wss) | WebSocket root. |
+| `TEST_EMAIL` | — | Email tài khoản test (cần khi không có `AUTH_TOKEN`). |
+| `TEST_PASSWORD` | — | Password tài khoản test. |
+| `AUTH_TOKEN` | — | JWT cookie `xt_access` value, skip login flow. |
+| `VUS` | smoke=1, api=3, ws=5 | Số VU đồng thời. |
+| `DURATION` | smoke=10s, api=30s, ws=20s | k6 duration string (`30s`, `2m`, `1h`). |
+
+**KHÔNG** chạy load test nặng vào production khi chưa có phép — rate limit
+có thể trigger account lock, BAN_RISK audit, hoặc làm gián đoạn người chơi
+thật. Default chỉ test local / staging. Tài khoản test phải tạo riêng (note
+`loadtest`), KHÔNG dùng admin / GM / staff account.
+
+Chi tiết script xem `scripts/load/README.md` + `docs/RUNBOOK.md` §"Load
+test (k6)".

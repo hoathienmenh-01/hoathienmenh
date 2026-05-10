@@ -12,6 +12,82 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Phase 17.5 — Metrics + Load Test Baseline (this PR)
+
+**Scope**: chuẩn bị closed beta. Endpoint metrics admin-only + 5 collector
+fail-soft (system / api / ws / queue / cron) + k6 load test scaffold (smoke /
+api baseline / ws baseline) + docs threshold gợi ý closed beta. **Không**
+chạy load test nặng trong CI, **không** expose metrics public.
+
+#### Added — Phase 17.5
+
+- **API endpoint**: `GET /api/admin/metrics` (`MetricsController` —
+  `@UseGuards(AdminGuard)` + `@RequireAdmin()`). Trả JSON snapshot
+  shape `MetricsSnapshot` (schema=1) gồm system / api / ws / queue /
+  cron + `errors[]` fail-soft. PLAYER + MOD đều bị reject 403.
+- **API service** (`apps/api/src/modules/metrics/metrics.service.ts`):
+  - `collectSystemMetrics()` — uptime, memory (rss/heap), cpu user+sys,
+    pid, appVersion, node version/platform.
+  - `collectApiMetrics()` — singleton in-memory snapshot từ
+    `request-metrics.middleware` (totalRequests, totalDurationMs,
+    avgDurationMs, byMethod, byStatusBucket, inFlight). Bounded set
+    method/status — **không** track per-path để tránh memory leak.
+  - `collectWsMetrics()` — `RealtimeService.countOnline()` + serverBound.
+  - `collectQueueMetrics()` — BullMQ key (`bull:<queue>:wait/active/
+    delayed/completed/failed`) qua Redis `llen` / `zcard` cho 7 queue:
+    cultivation, ops, mission-reset, territory-cron, sect-season-cron,
+    ledger-checker-cron, anomaly-scanner-cron. Fail-soft: Redis down →
+    `available=false`.
+  - `collectCronMetrics()` — last-run state qua Prisma `findFirst` cho
+    4 model: EconomyLedgerCheckRun, SectTerritorySettlementSnapshot,
+    SectTerritoryDecayLog, SectSeasonSnapshot. Mỗi job query
+    independent — 1 fail không block job khác.
+  - `collectAll()` aggregate: gom errors stage thành `errors[]`,
+    KHÔNG throw 500.
+- **Request middleware** (`request-metrics.middleware.ts`): singleton
+  counter cập nhật `res.on('finish'|'close')`; idempotent record;
+  skip default `/api/healthz`, `/api/readyz`, `/api/admin/metrics`.
+  Wire trong `main.ts` SAU request-logger.
+- **Load test scripts** (`scripts/load/`):
+  - `k6-smoke.js` — 1 VU × 10s health/readyz/version.
+  - `k6-api-baseline.js` — 3 VUs × 30s full flow login → state →
+    daily-login → mission → dungeon → territory.
+  - `k6-ws-baseline.js` — 5 VUs × 20s engine.io v4 raw WebSocket
+    connect/wait-frame/disconnect.
+  - `README.md` — hướng dẫn chạy + threshold closed beta gợi ý.
+- **Package scripts**: `load:smoke` / `load:api` / `load:ws`
+  (delegate `k6 run`).
+
+#### Security — Phase 17.5
+
+- Payload `/admin/metrics` chỉ chứa số / boolean / string ngắn —
+  KHÔNG có env / cookie / token / userId / characterId / email / PII.
+  Test scan substring `cookie/password/jwt/refreshToken/userId/
+  characterId/email`.
+- KHÔNG audit log endpoint metrics (poll cao tần — sẽ ngập DB).
+- k6 script không hardcode token — env-only (`AUTH_TOKEN`,
+  `TEST_EMAIL`, `TEST_PASSWORD`). README cảnh báo không chạy
+  production khi chưa có phép.
+
+#### Tests — Phase 17.5
+
+31 test mới (`apps/api/src/modules/metrics/`):
+- `metrics.service.test.ts` (11) — pure-unit mock collector.
+- `metrics.controller.test.ts` (3) — bypass guard, security scan.
+- `metrics.service.integration.test.ts` (6) — real Redis/Prisma
+  contract: BullMQ key prefix, cron last-run, end-to-end collectAll.
+- `request-metrics.middleware.test.ts` (11) — singleton counter,
+  bucket method/status, inFlight, skip prefix, reset.
+
+#### Docs — Phase 17.5
+
+- `docs/API.md` thêm section Metrics endpoint.
+- `docs/DEPLOY.md` thêm env vars load test.
+- `docs/RUNBOOK.md` thêm cách chạy k6 + đọc kết quả + threshold.
+- `docs/CHANGELOG.md` (file này) entry Phase 17.5.
+- `docs/AI_HANDOFF_REPORT.md` Recent Changes + Executive Summary.
+- `scripts/load/README.md` (mới) chi tiết script + env + threshold.
+
 ### Phase 16.6 — Economy Anti-cheat Suite (this PR)
 
 **Scope**: anti-cheat layer chuẩn bị closed beta — daily auto invariant

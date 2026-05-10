@@ -580,6 +580,92 @@ Escalation order (closed beta):
 
 ---
 
+## 4.5. Load test (k6) — Phase 17.5
+
+Closed beta capacity validation. **Không** chạy load test nặng trong CI / production. Default test local / staging.
+
+### Cài k6
+
+```bash
+# Linux:
+sudo gpg -k && sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+sudo apt-get update && sudo apt-get install -y k6
+
+# macOS:
+brew install k6
+
+# Verify:
+k6 version
+```
+
+### Chạy 3 kịch bản
+
+```bash
+# 1. Smoke (1 VU x 10s) — verify API alive, không cần auth.
+pnpm load:smoke
+# Hoặc: k6 run scripts/load/k6-smoke.js
+BASE_URL=https://staging.xuantoi.example pnpm load:smoke
+
+# 2. API baseline (3 VUs x 30s) — full user flow.
+BASE_URL=http://localhost:3000 \
+TEST_EMAIL=loadtest@example.com \
+TEST_PASSWORD=ChangeMe!123 \
+pnpm load:api
+
+# Custom VU/duration:
+VUS=10 DURATION=2m pnpm load:api
+
+# Hoặc dùng AUTH_TOKEN sẵn có (skip login flow):
+AUTH_TOKEN=eyJhbGciOi... pnpm load:api
+
+# 3. WebSocket baseline (5 VUs x 20s) — Socket.IO connect/auth/disconnect.
+BASE_URL=http://localhost:3000 \
+TEST_EMAIL=loadtest@example.com \
+TEST_PASSWORD=ChangeMe!123 \
+pnpm load:ws
+```
+
+### Đọc kết quả
+
+k6 in tổng kết cuối run; field quan trọng:
+
+| Field | Closed-beta target | Action khi fail |
+|-------|--------------------|-----------------|
+| `http_req_duration` p(95) | < 1500ms (api), < 800ms (smoke) | Check CPU/memory `/admin/metrics` qua poll cùng thời gian. Slow query → enable Postgres `log_min_duration_statement`. |
+| `http_req_failed` rate | < 5% | 401/403 dồn dập → audit cookie expiry; 5xx → check Sentry / `apps/api` log. |
+| `xt_login_failures` count | < 10 | Rate limit IP / account lock → kiểm tra `auth.service.ts` log. |
+| `xt_flow_success_rate` | > 90% | 1 endpoint trong flow consistently fail — xem tag k6 (`endpoint=mission_me`). |
+| `xt_ws_connect_success_rate` | > 95% | JWT expired / Redis down (`/api/admin/metrics` `ws.serverBound=false`). |
+| `xt_ws_connect_failures` count | < 20 | Network / TLS handshake error — check API ingress log. |
+
+### Threshold gợi ý closed beta (combine với `/admin/metrics`)
+
+| Metric | Threshold | Source |
+|--------|-----------|--------|
+| API p95 latency | < 1500ms | k6 `http_req_duration` |
+| API error rate | < 5% | k6 `http_req_failed` |
+| WS connect success | > 95% | k6 `xt_ws_connect_success_rate` |
+| Queue depth `waiting` | < 100 (nếu cron không kẹt) | `/admin/metrics` `queue.queues[].waiting` |
+| Queue depth `failed` | < 10 (rolling 24h) | `/admin/metrics` `queue.queues[].failed` |
+| RSS memory growth | < 1.5x baseline sau 1h soak | `/admin/metrics` `system.memory.rssBytes` |
+| WS online users | tracking baseline (closed beta n=20-100) | `/admin/metrics` `ws.onlineUsers` |
+| Cron last run age | < 25h cho daily, < 8 ngày cho weekly | `/admin/metrics` `cron.jobs[].lastRunAt` diff với `now()` |
+
+### Common pitfalls
+
+- **k6 raw WebSocket**: script `k6-ws-baseline.js` dùng raw WS vào engine.io endpoint (`/ws/?EIO=4&transport=websocket`). Đủ verify handshake + cookie auth, nhưng KHÔNG gửi event business. Full E2E protocol cần Artillery hoặc node-based runner.
+- **Rate limit**: `POST /api/_auth/login` rate limit per-IP 5 / 15min (PR #60). Baseline 3 VU x 30s với 1 setup login chỉ login 1 lần (k6 setup() chạy trước iteration). Nếu chạy multi-stage → pass `AUTH_TOKEN` để skip login.
+- **Cookie path**: cookie `xt_access` đặt `Path=/`, k6 phải gửi `Cookie: xt_access=<jwt>` cho mọi request authenticated. `setup()` parse từ `Set-Cookie` headers.
+- **HTTPS staging**: nếu BASE_URL https, k6 mặc định verify TLS. Self-signed cert → `K6_INSECURE_SKIP_TLS_VERIFY=true k6 run ...`.
+- **Test account**: tạo user riêng đã onboard character. KHÔNG dùng tài khoản admin / GM / staff. Note `loadtest` trong DB.
+
+### SECURITY
+
+- KHÔNG hardcode token vào script. Repo có gitleaks scan trong CI.
+- KHÔNG chạy production khi chưa có phép — có thể trigger BAN_RISK audit, account lock người chơi thật, ngập rate-limit Redis key.
+- Run staging trước, đối chiếu p95 / error rate / WS connect rate với baseline cũ (lưu kết quả trong `docs/closed-beta/load-test-runs/YYYY-MM-DD.md` nếu cần history).
+
 ## 5. Post-incident
 
 Sau khi mitigate P0/P1:
