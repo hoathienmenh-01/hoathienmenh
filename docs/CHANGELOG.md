@@ -12,6 +12,119 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Phase 14.1.A — Combat Determinism Audit for Arena (this PR)
+
+**Scope**: chuẩn bị nền cho Arena PvP bất đồng bộ. Audit toàn bộ
+combat critical path — đảm bảo cùng `attacker snapshot` + `defender
+snapshot` + `seed` → cùng kết quả combat. Không làm Arena match,
+leaderboard, ELO hay PvP reward (defer Phase 14.1.B Async Arena
+Foundation). Không đổi balance, không rewrite combat system.
+
+#### Added — Phase 14.1.A
+
+- **Shared seeded RNG helper** (`packages/shared/src/combat-rng.ts` mới):
+  - `createSeededRng(seed)` — mulberry32 (đồng thuật toán với
+    `tribulation-mini-battle.mulberry32` Phase 14.3.E.1).
+  - `.next()` / `.nextFloat()` — float `[0, 1)`.
+  - `.nextInt(min, max)` — integer inclusive.
+  - `.chance(probability)` — bernoulli sample.
+  - `.pick<T>(items)` — array pick.
+  - `hashSeed(input)` — FNV-1a 32-bit, string → numeric seed (cho
+    Arena match UUID hoặc bất kỳ string-based seed).
+  - `composeSeed(seed, salt)` — sub-seed cho per-actor / per-round.
+  - Stable cross-run + cross-module + không runtime/browser dep.
+- **Combat simulation snapshot** (`packages/shared/src/combat-snapshot.ts`
+  mới):
+  - `CombatActorSnapshot` — `characterId` nullable + `realmKey` +
+    `stage` + `baseStats` + `equipmentStats` (+`elementalAtkBonus` per
+    element key + `elementalResist` per element key) +
+    `skillKeys` + `buffKeys` + `elementalAffinity` +
+    `derivedStats`.
+  - `CombatSimulationSnapshot` — `attacker` + `defender` + `seed` +
+    `context` (`source` ∈ DUNGEON/BOSS/TRIBULATION/ARENA_PREP +
+    `regionKey` nullable + `elementContext` nullable).
+  - `buildCombatActorSnapshot()` — fill default cho mọi field nullable.
+  - `normalizeCombatSnapshot()` — sort `skillKeys`/`buffKeys` ASC để
+    serialize stable + freeze immutable.
+  - `resolveCombatWithSnapshot(snapshot)` — pure deterministic 1v1
+    reference resolver: turn-order theo `speed` + seeded tie-break,
+    `elementMultiplier` (ngũ hành), equipment elemental atk bonus,
+    elemental resist (đa phần ≤ 1), variance `[0.85, 1.15]`,
+    `maxRounds` cap → `winner | 'draw'`. Output `rounds[]`,
+    `damageSummary`, `appliedSkillSummary`, `elementMultiplierSummary`,
+    echo `seed` + `context` để replay.
+- **RNG injection** vào legacy helpers (backward-compat — optional
+  `rng` param mặc định `Math.random`):
+  - `combat.ts:rollDamage(atk, def, scale, rng?)`.
+  - `items.ts:rollLootTable(table, count, rng?)` /
+    `rollDungeonLoot(dungeonKey, count?, rng?)` /
+    `rollMonsterLoot(monsterKey, count?, rng?)`.
+  - `boss.service.ts:pickRandom(arr, rng?)`.
+  - Tất cả call site cũ KHÔNG đổi behavior.
+- **Determinism tests**:
+  - `packages/shared/src/combat-rng.test.ts` — 25 case (sequence
+    stability cross-run + cross-module với mulberry32, integer bounds,
+    bernoulli, pick, hashSeed deterministic, composeSeed sub-seed).
+  - `packages/shared/src/combat-snapshot.test.ts` — 24 case (same
+    snapshot+seed → same result, different seed → variance, element
+    multiplier, equipment elemental atk bonus, resist, RNG tie-break
+    cho equal speed, draw khi `maxRounds`, `buildCombatActorSnapshot`
+    default fill, `normalizeCombatSnapshot` sort + immutability).
+  - `packages/shared/src/combat-determinism.test.ts` — 15 case
+    (rollDamage seeded, rollDungeonLoot/rollMonsterLoot seeded,
+    elementMultiplier pure, variance bounds, fallback Math.random).
+  - `apps/api/src/modules/combat/combat-determinism.test.ts` — 7 case
+    (cùng test ở API runtime context — verify import path
+    `@xuantoi/shared` resolve đúng + reference resolver reproducible
+    từ API context).
+
+#### Changed — Phase 14.1.A
+
+- `combat.ts:rollDamage` signature thêm optional `rng` param cuối
+  (default `Math.random`). JSDoc giải thích Phase 14.1.A RNG injection.
+- `items.ts:rollLootTable` (internal) + `rollDungeonLoot` +
+  `rollMonsterLoot` signature thêm optional `rng` param cuối.
+- `boss.service.ts:pickRandom` signature thêm optional `rng` param.
+
+#### Internal — Phase 14.1.A
+
+- `packages/shared/src/index.ts` export `combat-rng` + `combat-snapshot`
+  để consumer ngoài shared (api, web) import được.
+
+#### Verification — Phase 14.1.A
+
+- `pnpm --filter @xuantoi/shared typecheck`: 0 errors.
+- `pnpm --filter @xuantoi/shared test -- --run combat`: 116 PASS
+  (combat 52 + combat-rng 25 + combat-snapshot 24 + combat-determinism 15).
+- `pnpm --filter @xuantoi/shared test -- --run elemental`: 152 PASS.
+- `pnpm --filter @xuantoi/api typecheck`: 0 errors.
+- `pnpm --filter @xuantoi/api test -- --run combat`: 144 PASS (cần PG
+  dev container up).
+- `pnpm --filter @xuantoi/api test -- --run boss`: 124 PASS.
+- `pnpm --filter @xuantoi/api test -- --run dungeon`: 88 PASS.
+- `pnpm --filter @xuantoi/api test -- --run tribulation`: 128 PASS.
+- `pnpm --filter @xuantoi/web typecheck`: 0 errors.
+- `pnpm build`: OK.
+
+#### Risk / Rollback — Phase 14.1.A
+
+- Risk: thấp 🟢. Tất cả thay đổi optional/additive — không call site
+  hiện hữu nào đổi behavior. RNG default vẫn `Math.random`, snapshot
+  resolver mới hoàn toàn (chưa wire vào dungeon/boss/tribulation
+  service nào — chỉ exported sẵn cho Phase 14.1.B).
+- Rollback: revert PR (no migration, no schema change, no env var).
+
+#### Next task — Phase 14.1.A
+
+- **Phase 14.1.B Async Arena Foundation** (Medium PR) — tận dụng
+  `CombatSimulationSnapshot` + `resolveCombatWithSnapshot` để wire
+  Arena queue + match build (lưu attacker/defender snapshot vào DB),
+  điểm/season chỉ làm sau khi resolver wire xong. Sau Phase 14.1.B
+  mới đến Phase 14.1.C Arena Match Resolve + Phase 14.1.D Arena
+  Leaderboard / ELO.
+
+---
+
 ### Phase 14.3.E.2 — Tribulation Mini-Battle Frontend (this PR)
 
 **Scope**: FE wire cho mini-battle Thiên Kiếp — sau khi backend Phase
