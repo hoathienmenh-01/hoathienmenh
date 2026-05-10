@@ -16,6 +16,7 @@ import DailyLoginCard from '@/components/DailyLoginCard.vue';
 import LiveOpsTodayPanel from '@/components/LiveOpsTodayPanel.vue';
 import LiveOpsNotice from '@/components/LiveOpsNotice.vue';
 import LiveOpsActiveEventsPanel from '@/components/LiveOpsActiveEventsPanel.vue';
+import LiveOpsAnnouncementMarquee from '@/components/LiveOpsAnnouncementMarquee.vue';
 import { extractApiErrorCode } from '@/lib/apiError';
 
 const auth = useAuthStore();
@@ -112,6 +113,10 @@ async function onBreakthrough(): Promise<void> {
 
 <template>
   <AppShell>
+    <!-- Phase 15.3.B — Global LiveOps announcement marquee. Render trên cùng
+         HomeView (kể cả khi chưa có character) để anonymous viewer cũng thấy
+         announcement target=ALL. -->
+    <LiveOpsAnnouncementMarquee class="mb-2" />
     <OnboardingChecklist v-if="game.character" class="mb-4" />
     <DailyLoginCard v-if="game.character" class="mb-4" />
     <LiveOpsTodayPanel v-if="game.character" class="mb-4" />

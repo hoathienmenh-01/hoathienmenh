@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { storeToRefs } from 'pinia';
 import { useToastStore } from '@/stores/toast';
+import { useLiveOpsAnnouncementStore } from '@/stores/liveopsAnnouncements';
 import {
   claimLiveOpsEventReward,
   getActiveLiveOpsEvents,
@@ -43,6 +45,13 @@ async function refresh(): Promise<void> {
   }
 }
 
+// Phase 15.3.B — watch WS broadcast signal từ liveops announcement store.
+// Khi `liveops:event` broadcast tới (LIVEOPS_EVENT_ACTIVE/ENDED), bump
+// `lastEventBroadcastAt` → trigger refetch list active events. Anti-spam
+// nằm ở server (chỉ broadcast khi status thật transition).
+const announcementStore = useLiveOpsAnnouncementStore();
+const { lastEventBroadcastAt } = storeToRefs(announcementStore);
+
 onMounted(() => {
   refresh();
   timer = setInterval(refresh, 60_000);
@@ -50,6 +59,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (timer) clearInterval(timer);
+});
+
+watch(lastEventBroadcastAt, (next, prev) => {
+  if (next > 0 && next !== prev) void refresh();
 });
 
 const hasEvents = computed(() => events.value.length > 0);

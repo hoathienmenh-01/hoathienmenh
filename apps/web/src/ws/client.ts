@@ -84,6 +84,9 @@ export function connect(): Socket {
     'boss:defeated',
     'mail:new',
     'mission:progress',
+    // Phase 15.3.B — LiveOps announcement / event broadcast channels.
+    'liveops:announcement',
+    'liveops:event',
     'pong',
   ];
   for (const ev of events) {

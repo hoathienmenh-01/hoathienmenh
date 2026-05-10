@@ -410,6 +410,30 @@ export type LiveOpsBroadcastPayload =
   | LiveOpsAnnouncementBroadcastPayload
   | LiveOpsEventBroadcastPayload;
 
+/**
+ * Phase 15.3.B — Public-safe view trả từ `GET /liveops/announcements/active`.
+ *
+ * KHÔNG bao gồm:
+ *   - `id` (admin internal).
+ *   - `createdByAdminId` (admin metadata).
+ *   - `status` (chỉ ACTIVE mới được trả; FE không cần biết status raw).
+ *   - `disabledAt` / `createdAt` / `updatedAt` (admin/audit metadata).
+ *
+ * BAO GỒM `target` để FE có thể hiển thị badge ngữ cảnh
+ * (vd "AUTHENTICATED-only").
+ */
+export interface LiveOpsAnnouncementPublicView {
+  readonly key: string;
+  readonly severity: LiveOpsAnnouncementSeverity;
+  readonly target: LiveOpsAnnouncementTarget;
+  readonly titleVi: string;
+  readonly titleEn: string | null;
+  readonly messageVi: string;
+  readonly messageEn: string | null;
+  readonly startsAt: string;
+  readonly endsAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Channel constants
 // ---------------------------------------------------------------------------

@@ -20,6 +20,7 @@ import {
   LIVEOPS_ANNOUNCEMENT_TARGETS,
   type LiveOpsAnnouncementBroadcastPayload,
   type LiveOpsAnnouncementInput,
+  type LiveOpsAnnouncementPublicView,
   type LiveOpsAnnouncementSeverity,
   type LiveOpsAnnouncementStatus,
   type LiveOpsAnnouncementTarget,
@@ -68,18 +69,8 @@ export interface LiveOpsAnnouncementView {
   disabledAt: string | null;
 }
 
-/** Public-safe view (no admin metadata, no internal). */
-export interface LiveOpsAnnouncementPublicView {
-  key: string;
-  severity: LiveOpsAnnouncementSeverity;
-  target: LiveOpsAnnouncementTarget;
-  titleVi: string;
-  titleEn: string | null;
-  messageVi: string;
-  messageEn: string | null;
-  startsAt: string;
-  endsAt: string;
-}
+/** Public-safe view (re-export shared type for service consumers). */
+export type { LiveOpsAnnouncementPublicView };
 
 export interface CreateAnnouncementInput extends LiveOpsAnnouncementInput {
   /** `DRAFT` mặc định nếu không truyền — admin POST schedule riêng. */

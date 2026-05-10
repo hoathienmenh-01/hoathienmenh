@@ -3170,6 +3170,72 @@
       "UNKNOWN": "Event operation failed — retry."
     }
   },
+  "liveopsAnnouncementMarquee": {
+    "aria": "Event announcements",
+    "dismiss": "Dismiss announcement",
+    "endsIn": "Ends in {time}",
+    "severity": {
+      "INFO": "Info",
+      "EVENT": "Event",
+      "WARNING": "Warning",
+      "MAINTENANCE": "Maintenance"
+    },
+    "toast": {
+      "eventActive": "Event started: {title}",
+      "eventEnded": "Event ended: {title}"
+    }
+  },
+  "adminLiveOpsAnnouncements": {
+    "title": "LiveOps Announcements",
+    "loading": "Loading announcements…",
+    "empty": "No announcements yet.",
+    "refreshBtn": "Refresh",
+    "newBtn": "New announcement",
+    "form": {
+      "title": "Create announcement",
+      "key": "Key (unique)",
+      "severity": "Severity",
+      "target": "Target",
+      "titleVi": "Title (VI)",
+      "titleEn": "Title (EN, optional)",
+      "messageVi": "Message (VI)",
+      "messageEn": "Message (EN, optional)",
+      "startsAt": "Starts at (ISO)",
+      "endsAt": "Ends at (ISO)",
+      "initialStatus": "Initial status",
+      "submit": "Create",
+      "cancel": "Cancel"
+    },
+    "row": {
+      "key": "Key",
+      "severity": "Severity",
+      "status": "Status",
+      "target": "Target",
+      "window": "Window",
+      "actions": "Actions"
+    },
+    "actions": {
+      "disable": "Disable",
+      "recompute": "Recompute"
+    },
+    "errors": {
+      "INVALID_INPUT": "Invalid input.",
+      "ANNOUNCEMENT_KEY_DUPLICATE": "Key already exists.",
+      "ANNOUNCEMENT_NOT_FOUND": "Announcement not found.",
+      "ANNOUNCEMENT_INVALID_STATUS_TRANSITION": "Cannot change status manually.",
+      "ANNOUNCEMENT_TITLE_TOO_LONG": "Title is too long.",
+      "ANNOUNCEMENT_MESSAGE_TOO_LONG": "Message is too long.",
+      "ANNOUNCEMENT_TITLE_UNSAFE": "Title contains unsafe HTML/script.",
+      "ANNOUNCEMENT_MESSAGE_UNSAFE": "Message contains unsafe HTML/script.",
+      "ANNOUNCEMENT_WINDOW_INVALID": "Start time must be before end time.",
+      "UNKNOWN": "Operation failed — retry."
+    },
+    "toast": {
+      "created": "Created announcement {key}.",
+      "disabled": "Disabled announcement {key}.",
+      "recomputed": "Recompute done: {activated} active / {ended} ended."
+    }
+  },
   "liveopsActiveEvents": {
     "title": "Active events",
     "loading": "Loading events…",
