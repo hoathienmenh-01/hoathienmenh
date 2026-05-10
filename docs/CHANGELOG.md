@@ -23,7 +23,30 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 - **API tests (`apps/api/src/modules/sect/sect-mission.service.test.ts`)**: WEEKLY breakthrough test bỏ ràng buộc "phải pin Wednesday 12:00 UTC", dùng Sunday 22:00 ICT (= 15:00 UTC) để cover late-week boundary.
 - **Shared tests (`packages/shared/src/sect-war.test.ts`)**: 6 vitest mới cho `startOfSectWarWeek` (Monday-of-week stability, week-rollover, consistency với `sectWarWeekKey`, idempotent, UTC tz, cross-year `2025-W52→2026-W01`).
 
-### Phase 15.5 — Maintenance Window (this PR)
+### Phase 15.6 — Config Version + Rollback
+
+**Scope**: Hệ versioning + rollback an toàn cho 4 entity vận hành: LiveOps Scheduled Event, LiveOps Announcement, Feature Flag, Maintenance Window. Mỗi mutation từ admin (CREATE/UPDATE/DISABLE/ENABLE/STATUS_RECOMPUTE) ghi `ConfigVersion` snapshot before/after. Admin xem list/diff/dry-run/rollback với 3 mức safety (`SAFE`/`NEED_CONFIRM`/`BLOCKED`) + audit log đầy đủ.
+
+#### Added — Phase 15.6
+
+- **Shared (`packages/shared/src/config-version.ts`)**: types + validators (`isConfigVersionEntityType` / `isConfigVersionAction` / `isConfigRollbackSafetyLevel` / `isConfigRollbackStatus`) + `sanitizeSnapshot` (strip secret-like keys defense-in-depth) + `computeRollbackSafety` (4 entity-specific rule branches) + `diffSnapshots` (JSON-level diff). 30 vitest.
+- **Prisma migration `20260624000000_phase_15_6_config_version_rollback`**: model `ConfigVersion` (entityType/entityId/version UNIQUE composite/action/beforeJson/afterJson/changedByAdminId/reason/createdAt + 3 index) + `ConfigRollbackRun` (entityType/entityId/fromVersion/targetVersion/status/safetyLevel/warnings/reason/adminUserId/targetVersionId/newVersionId/createdAt + 2 index). Additive — không sửa bảng cũ.
+- **API service (`apps/api/src/modules/config-version/`)**: `ConfigVersionService.recordVersion / listVersions / getVersion / getLatestVersion / diffVersions / recordRollbackRun`. Version auto-increment per `(entityType, entityId)` với P2002 retry. Sanitize via shared `sanitizeSnapshot`. Skip no-op (before deep-equal after). 11 vitest.
+- **API admin module (`apps/api/src/modules/config-version-admin/`)**: `ConfigRollbackService.dryRun / apply` (safety check → orchestrate mutate entity → record version + rollback run). `ConfigRollbackOrchestratorService` dispatch theo entityType (LiveOps Event `updateMany` + Announcement `updateMany` + Feature Flag `setFlag` + Maintenance Window `updateMany`). `AdminConfigVersionController` 5 endpoint: `GET /admin/config-versions` + `GET /admin/config-versions/:id` + `GET /admin/config-versions/diff` + `POST /admin/config-versions/:id/dry-run-rollback` + `POST /admin/config-versions/:id/rollback`. Audit: `ADMIN_CONFIG_VERSION_VIEW` / `ADMIN_CONFIG_ROLLBACK_DRY_RUN` / `ADMIN_CONFIG_ROLLBACK` / `ADMIN_CONFIG_ROLLBACK_BLOCKED`.
+- **Wiring vào 4 module**: Feature Flag / LiveOps Event Scheduler / LiveOps Announcement / Maintenance Window service đều gọi `ConfigVersionService.recordVersion` trên mọi mutation (CREATE/UPDATE/DISABLE/ENABLE/STATUS_RECOMPUTE). Fail-soft try/catch + log — không phá flow admin gốc.
+- **FE Admin Panel** (`AdminConfigVersionPanel.vue`): tab mới Config Version trong AdminView. Entity type picker + entity ID input → list versions newest-first → diff-vs-latest → dry-run rollback (safety badge SAFE/NEED_CONFIRM/BLOCKED + warnings) → apply rollback (confirm modal + confirm phrase input cho NEED_CONFIRM). 5 vitest.
+- **FE API client** (`api/configVersion.ts`): 5 endpoint wrapper (`adminListConfigVersions / adminGetConfigVersion / adminDiffConfigVersions / adminDryRunConfigRollback / adminApplyConfigRollback`).
+- **i18n**: namespace `adminConfigVersion.*` (title/hint/entityType labels/entity ID/col headers/diff/dry-run/apply/confirm/toast/errors). VI/EN parity.
+
+#### Tests — Phase 15.6
+
+- **Shared**: 30 vitest (validator 8 + sanitize 4 + diff 3 + computeRollbackSafety 15 = LIVEOPS_EVENT 6 + FEATURE_FLAG 3 + LIVEOPS_ANNOUNCEMENT 2 + MAINTENANCE_WINDOW 5 — covering SAFE/NEED_CONFIRM/BLOCKED edge cases).
+- **API**: 11 vitest (config-version.service: recordVersion 6 + list/get 2 + diff 1 + rollbackRun 2).
+- **Web**: 5 vitest (AdminConfigVersionPanel: render list + empty state + dry-run SAFE badge/apply + dry-run BLOCKED no-apply + NEED_CONFIRM confirm phrase flow).
+
+---
+
+### Phase 15.5 — Maintenance Window
 
 **Scope**: Hệ Maintenance Window cho phép admin lập lịch hoặc bật khẩn cấp cửa sổ bảo trì để chặn traffic player trong khi vẫn cho admin / health / metrics / `/maintenance/status` đi qua. Catalog severity (`INFO`/`WARNING`/`CRITICAL`) + target (`ALL_PLAYERS`/`NON_ADMIN_USERS`/`API_WRITE_ONLY`/`FULL_LOCKDOWN`) + status state machine (`DRAFT`/`SCHEDULED`/`ACTIVE`/`ENDED`/`DISABLED`). Middleware `MaintenanceWindowGuardMiddleware` chạy trước Nest pipeline với 9 bypass rule (`/maintenance/status` luôn pass, `/health*`/`/metrics*` theo flag, `/_auth/*`, ADMIN/MOD bypass theo `allowAdminBypass` + `target`, `API_WRITE_ONLY` chỉ block non-GET, `NON_ADMIN_USERS`/`ALL_PLAYERS` block player + anonymous, fail-closed default). Cache L1 in-memory TTL 10s per pod. Recompute `SCHEDULED→ACTIVE`/`ACTIVE→ENDED` chạy idempotent piggy-back trên `LiveOpsEventSchedulerCronProcessor` mỗi 5 phút (reuse — không thêm queue/lease mới). FE poll `/maintenance/status` 30s + axios interceptor 503 `MAINTENANCE_ACTIVE` → set blocked state. Server-authoritative — FE chỉ render overlay/banner.
 

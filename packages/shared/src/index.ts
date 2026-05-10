@@ -49,6 +49,7 @@ export * from './liveops-event-scheduler';
 export * from './liveops-announcement';
 export * from './feature-flags';
 export * from './maintenance-window';
+export * from './config-version';
 export * from './sect-war';
 export * from './sect-missions';
 export * from './sect-shop';

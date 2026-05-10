@@ -26,9 +26,11 @@ import { PrismaService } from '../../common/prisma.service';
 import { MaintenanceWindowGuardMiddleware } from './maintenance-window.middleware';
 import { MaintenanceWindowPublicController } from './maintenance-window-public.controller';
 import { MaintenanceWindowService } from './maintenance-window.service';
+import { ConfigVersionModule } from '../config-version/config-version.module';
 
 @Module({
-  imports: [AuthModule],
+  // Phase 15.6 — ConfigVersion persistence for create/update/disable/recompute.
+  imports: [AuthModule, ConfigVersionModule],
   controllers: [MaintenanceWindowPublicController],
   providers: [
     PrismaService,
