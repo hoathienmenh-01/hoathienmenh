@@ -390,8 +390,7 @@ export class ArenaService {
       include: {
         attacker: { select: { name: true } },
         defender: { select: { name: true } },
-        attackerProfile: false as never,
-      } as Prisma.ArenaMatchInclude,
+      },
     });
 
     return rows.map((row) => this.toHistoryResult(row));
