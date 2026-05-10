@@ -12,6 +12,30 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Phase 15.3.B — LiveOps Announcement + WS Broadcast / Marquee (this PR)
+
+**Scope**: Bổ sung hệ thống thông báo realtime cho người chơi. Admin tạo `LiveOpsAnnouncement` với severity (`INFO`/`EVENT`/`WARNING`/`MAINTENANCE`), target (`ALL`/`AUTHENTICATED`/`ADMIN_ONLY`) và time window. Cron 5-phút (piggy-back trên LiveOps event recompute) tự động chuyển status `DRAFT→SCHEDULED→ACTIVE→ENDED` idempotent + broadcast WS `liveops:announcement` (`ANNOUNCEMENT_ACTIVE`/`ANNOUNCEMENT_ENDED`) + `liveops:event` (`LIVEOPS_EVENT_ACTIVE`/`LIVEOPS_EVENT_ENDED`/`LIVEOPS_EVENT_UPDATED`). Player thấy banner/marquee trên `HomeView` (severity color/badge + countdown + dismiss local). Public payload đã strip admin metadata. **KHÔNG** spam broadcast mỗi tick (chỉ khi status thật transition), **KHÔNG** gửi raw configJson, **KHÔNG** cho HTML/script injection.
+
+#### Added — Phase 15.3.B
+
+- **Shared (`packages/shared/src/liveops-announcement.ts` + `ws-events.ts`)**: `LIVEOPS_ANNOUNCEMENT_SEVERITIES`/`STATUSES`/`TARGETS` enum + catalog, `LIVEOPS_BROADCAST_EVENT_TYPES`, `validateLiveOpsAnnouncementInput` (cap title 120 / message 500, vi/en parity, HTML/script reject, `startsAt < endsAt`), `nextLiveOpsAnnouncementStatus` state machine, `LiveOpsAnnouncementBroadcastPayload`/`LiveOpsEventBroadcastPayload` types, `LiveOpsAnnouncementPublicView` (strip `id`/`adminId`/`disabledAt`/timestamps).
+- **Prisma migration `20260621000000_phase_15_3_b_liveops_announcement`**: model `LiveOpsAnnouncement` (id/key UNIQUE/severity/status/target/titleVi/titleEn nullable/messageVi/messageEn nullable/startsAt/endsAt/createdByAdminId nullable/createdAt/updatedAt/disabledAt nullable + 3 index). Reuse `AdminAuditLog`.
+- **API admin endpoints (`apps/api/src/modules/liveops-announcement/`)**: `GET /admin/liveops/announcements`, `POST /admin/liveops/announcements`, `PATCH /admin/liveops/announcements/:id`, `POST /admin/liveops/announcements/:id/disable`, `POST /admin/liveops/announcements/recompute-status`. ADMIN-only, audit `ADMIN_LIVEOPS_ANNOUNCEMENT_*`.
+- **API public endpoint**: `GET /liveops/announcements/active` — chỉ trả `ACTIVE`, public-safe payload, exclude `ADMIN_ONLY` target.
+- **WS broadcast**: `LiveOpsBroadcastService` reuse `RealtimeService.io.emit` với 2 channel `liveops:announcement` + `liveops:event`. Fail-safe try/catch (status transition vẫn commit nếu WS lỗi). Cron + admin recompute đều broadcast khi và chỉ khi status thật transition (anti-spam).
+- **FE marquee**: `LiveOpsAnnouncementMarquee.vue` + Pinia store `stores/liveopsAnnouncements.ts` (visibility filter ACTIVE+window+!dismissed, WS handler, `lastEventBroadcastAt` bump, auto refresh 60s). Gắn vào `HomeView` cho cả anonymous viewer.
+- **FE admin**: `AdminLiveOpsAnnouncementsPanel.vue` (form create + list + disable + recompute, status/severity badge, time window).
+- **FE event panel refresh**: `LiveOpsActiveEventsPanel` watch `lastEventBroadcastAt` → refetch khi event transition.
+- **i18n**: `liveopsAnnouncementMarquee.*` (severity vi/en, dismiss aria, countdown, toast) + `adminLiveOpsAnnouncements.*` (form fields, errors `ANNOUNCEMENT_*`, actions). VI/EN parity.
+
+#### Tests — Phase 15.3.B
+
+- **Shared**: 16 cases (validator reject HTML/script + overlong + invalid window + locale parity, status transition idempotent).
+- **API**: 32 cases (service CRUD, idempotent recompute, race-safe `updateMany`, admin guard reject PLAYER, public list exclude DISABLED/ENDED/ADMIN_ONLY, broadcast called once on transition + payload strip admin field).
+- **Web**: 11 cases (marquee empty/render/dismiss/WS announcement upsert/WS event refresh + admin panel CRUD + i18n parity VI/EN).
+
+---
+
 ### Phase 15.3.A — LiveOps Runtime Expansion + Festival Gift Claim (this PR)
 
 **Scope**: Mở rộng runtime cho 5/7 event type chỉ có enum/storage trong Phase 15.1–15.2 — `SHOP_DISCOUNT`, `SECT_SHOP_DISCOUNT`, `DAILY_LOGIN_BONUS`, `BOSS_REWARD_BOOST`, `FESTIVAL_GIFT`. Sau merge: 7/7 event type đã wire runtime thật. Thêm public API `GET /liveops/events/active` + `POST /liveops/events/:eventKey/claim` (idempotent FESTIVAL_GIFT one-time claim qua UNIQUE `(eventId, characterId)` đã có sẵn từ Phase 15.1–15.2). Compose policy max-only giữ nguyên — nhiều event cùng type ACTIVE → chọn multiplier tốt nhất, không stack. Caps không đổi (drop/exp ≤ 2.0, discount ≤ 0.5, FESTIVAL_GIFT reward `linhThach` ≤ 1000 / `tienNgoc` ≤ 50 / ≤ 10 items × qty ≤ 50). **KHÔNG** battle pass, **KHÔNG** gacha/pet/wife, **KHÔNG** rewrite scheduler core, **KHÔNG** bypass Daily Reward Cap.
