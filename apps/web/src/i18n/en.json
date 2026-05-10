@@ -1273,7 +1273,8 @@
       "liveops": "LiveOps",
       "economy": "Economy Safety",
       "arenaAntiWintrade": "Arena Anti-Wintrade",
-      "featureFlags": "Feature Flags"
+      "featureFlags": "Feature Flags",
+      "maintenance": "Maintenance"
     },
     "arenaAntiWintrade": {
       "alerts": "Arena wintrade alerts",
@@ -3855,6 +3856,79 @@
     },
     "errors": {
       "FEATURE_FLAG_KEY_INVALID": "Flag key is not in the catalog.",
+      "INVALID_INPUT": "Invalid input.",
+      "UNAUTHENTICATED": "Admin login required.",
+      "FORBIDDEN": "Account is not an admin.",
+      "UNKNOWN": "Operation failed — please retry."
+    }
+  },
+  "maintenance": {
+    "overlay": {
+      "title": "System under maintenance",
+      "endsAt": "Expected to end: {at}",
+      "errorCode": "Error code",
+      "criticalHint": "High severity — please come back after maintenance ends."
+    },
+    "banner": {
+      "title": "Maintenance in progress",
+      "endsAt": "ends {at}"
+    }
+  },
+  "adminMaintenance": {
+    "title": "Maintenance",
+    "hint": "Schedule + emergency toggle. Players are blocked while ACTIVE.",
+    "actions": {
+      "create": "Create maintenance window",
+      "refresh": "Refresh",
+      "recompute": "Recompute status",
+      "disable": "Disable"
+    },
+    "form": {
+      "title": "Create maintenance window",
+      "key": "Key (3–80 chars a-z 0-9 _ -)",
+      "severity": "Severity",
+      "target": "Target",
+      "initialStatus": "Initial status",
+      "titleVi": "Title (VI)",
+      "titleEn": "Title (EN, optional)",
+      "messageVi": "Message (VI)",
+      "messageEn": "Message (EN, optional)",
+      "startsAt": "Starts at",
+      "endsAt": "Ends at",
+      "allowAdminBypass": "Allow admin bypass",
+      "allowHealthcheck": "Allow healthcheck",
+      "allowMetrics": "Allow metrics"
+    },
+    "list": {
+      "title": "Maintenance windows",
+      "empty": "No maintenance windows yet.",
+      "window": "From {from} → {to}"
+    },
+    "confirm": {
+      "create": {
+        "title": "Confirm maintenance window",
+        "message": "Window will block players when ACTIVE: {description}"
+      },
+      "disable": {
+        "title": "Confirm disable",
+        "message": "Disable window “{key}” immediately?"
+      }
+    },
+    "toast": {
+      "created": "Created maintenance window {key}.",
+      "disabled": "Disabled maintenance window {key}.",
+      "recomputed": "Recomputed: ACTIVE +{activated}, ENDED +{ended}."
+    },
+    "errors": {
+      "MAINTENANCE_KEY_DUPLICATE": "Key already exists.",
+      "MAINTENANCE_NOT_FOUND": "Window not found.",
+      "MAINTENANCE_INVALID_STATUS_TRANSITION": "Status transition not allowed.",
+      "MAINTENANCE_KEY_INVALID": "Invalid key (3–80 chars a-z 0-9 _ -).",
+      "MAINTENANCE_WINDOW_INVALID_TIME": "Invalid time range (startsAt < endsAt).",
+      "MAINTENANCE_TITLE_INVALID": "Invalid title.",
+      "MAINTENANCE_MESSAGE_INVALID": "Invalid message.",
+      "MAINTENANCE_SEVERITY_INVALID": "Invalid severity.",
+      "MAINTENANCE_TARGET_INVALID": "Invalid target.",
       "INVALID_INPUT": "Invalid input.",
       "UNAUTHENTICATED": "Admin login required.",
       "FORBIDDEN": "Account is not an admin.",
