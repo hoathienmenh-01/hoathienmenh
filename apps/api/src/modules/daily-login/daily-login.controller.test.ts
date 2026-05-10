@@ -37,6 +37,8 @@ const STUB_STATUS: DailyLoginStatus = {
 const STUB_CLAIM: DailyLoginClaimResult = {
   claimed: true,
   linhThachDelta: '100',
+  baseLinhThach: '100',
+  liveOpsBonus: null,
   newStreak: 4,
   claimDateLocal: '2026-04-30',
 };
@@ -151,6 +153,8 @@ describe('DailyLoginController', () => {
       const idempotentResult: DailyLoginClaimResult = {
         claimed: false,
         linhThachDelta: '0',
+        baseLinhThach: '100',
+        liveOpsBonus: null,
         newStreak: 4,
         claimDateLocal: '2026-04-30',
       };
