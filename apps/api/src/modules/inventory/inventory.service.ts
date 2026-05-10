@@ -150,7 +150,15 @@ export type ItemLedgerReason =
   // `CurrencyLedger` reason `EQUIPMENT_REFORGE` / `EQUIPMENT_ENCHANT` cho
   // linhThach cùng `refId`.
   | 'EQUIPMENT_REFORGE_COST'
-  | 'EQUIPMENT_ENCHANT_COST';
+  | 'EQUIPMENT_ENCHANT_COST'
+  // Phase 15.3.A — LiveOps `FESTIVAL_GIFT` one-time claim item grant.
+  // Wire qua `LiveOpsEventSchedulerService.claimEventReward` →
+  // `InventoryService.grantTx` (positive qtyDelta) với `refType='LiveOps
+  // ScheduledEvent'` + `refId=eventId`. Idempotency lấy từ `LiveOpsEvent
+  // RewardClaim` UNIQUE `(eventId, characterId)` — duplicate claim chỉ ghi
+  // 1 ledger row / character / event. Per-item qty bound bởi shared cap
+  // `FESTIVAL_GIFT_ITEM_QTY_CAP` + max items `FESTIVAL_GIFT_ITEMS_MAX`.
+  | 'LIVEOPS_FESTIVAL_GIFT_REWARD';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;

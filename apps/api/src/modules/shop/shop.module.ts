@@ -11,6 +11,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { LiveOpsEventSchedulerModule } from '../liveops-event-scheduler/liveops-event-scheduler.module';
 import {
   FailoverRateLimiter,
   InMemorySlidingWindowRateLimiter,
@@ -51,7 +52,12 @@ const shopBuyRateLimiterProvider = {
 };
 
 @Module({
-  imports: [AuthModule, CharacterModule, InventoryModule],
+  imports: [
+    AuthModule,
+    CharacterModule,
+    InventoryModule,
+    LiveOpsEventSchedulerModule,
+  ],
   controllers: [ShopController],
   providers: [ShopService, PrismaService, shopBuyRateLimiterProvider],
   exports: [ShopService],

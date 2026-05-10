@@ -11,11 +11,15 @@ import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
 import { MissionModule } from '../mission/mission.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { LiveOpsEventSchedulerModule } from '../liveops-event-scheduler/liveops-event-scheduler.module';
 
 // Phase 13.1.B — wire SectMission + SectShop services + controllers vào SectModule.
 // SectMissionService inject Optional `CurrencyService` + `InventoryService`
 // để optional reward grant. SectShopService bắt buộc `InventoryService` cho
 // item grant atomic-tx.
+//
+// Phase 15.3.A — `LiveOpsEventSchedulerModule` wire để SectShopService đọc
+// SECT_SHOP_DISCOUNT runtime modifier (Optional inject — test có thể bỏ).
 @Module({
   imports: [
     RealtimeModule,
@@ -23,6 +27,7 @@ import { InventoryModule } from '../inventory/inventory.module';
     CharacterModule,
     MissionModule,
     InventoryModule,
+    LiveOpsEventSchedulerModule,
   ],
   controllers: [SectController, SectMissionController, SectShopController],
   providers: [

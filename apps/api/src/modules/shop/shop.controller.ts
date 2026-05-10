@@ -58,6 +58,10 @@ export class ShopController {
           itemKey: r.itemKey,
           qty: r.qty,
           totalPrice: r.totalPrice,
+          // Phase 15.3.A — LiveOps SHOP_DISCOUNT discount info expose ra FE.
+          originalPrice: r.originalPrice,
+          finalPrice: r.finalPrice,
+          liveOpsDiscount: r.liveOpsDiscount,
           currency: r.currency,
         },
       };

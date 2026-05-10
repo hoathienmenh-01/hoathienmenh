@@ -1,6 +1,7 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { CurrencyKind, Prisma } from '@prisma/client';
 import {
+  clampLiveOpsMultiplier,
   itemByKey,
   npcShopByKey,
   npcShopEntries,
@@ -15,6 +16,7 @@ import {
   type RateLimiter,
 } from '../../common/rate-limiter';
 import { startOfLocalDay } from '../combat/combat.service';
+import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
 
 export class ShopError extends Error {
   constructor(
@@ -61,6 +63,8 @@ export class ShopService {
     private readonly currency: CurrencyService,
     private readonly inventory: InventoryService,
     @Optional() @Inject(SHOP_BUY_RATE_LIMITER) limiter?: RateLimiter,
+    @Optional()
+    private readonly liveOpsEvents?: LiveOpsEventSchedulerService,
   ) {
     this.limiter =
       limiter ??
@@ -100,7 +104,23 @@ export class ShopService {
     userId: string,
     itemKey: string,
     qty: number,
-  ): Promise<{ characterId: string; itemKey: string; qty: number; totalPrice: number; currency: CurrencyKind }> {
+  ): Promise<{
+    characterId: string;
+    itemKey: string;
+    qty: number;
+    /** Giá trước discount = unitPrice × qty. Phase 15.3.A. */
+    originalPrice: number;
+    /** Giá thực sự trừ vào character balance, sau discount. ≥ 0. */
+    finalPrice: number;
+    /**
+     * `null` nếu không có event SHOP_DISCOUNT active.
+     * `{ multiplier, eventKey }` nếu có — multiplier ∈ (0, 0.5].
+     */
+    liveOpsDiscount: { multiplier: number; eventKey: string } | null;
+    /** Backward-compat: alias `finalPrice` để FE cũ vẫn đọc được `totalPrice`. */
+    totalPrice: number;
+    currency: CurrencyKind;
+  }> {
     if (!Number.isInteger(qty) || qty < 1 || qty > 99) {
       throw new ShopError('INVALID_QTY');
     }
@@ -143,30 +163,83 @@ export class ShopService {
       }
     }
 
-    const totalPrice = shopEntry.price * qty;
+    const originalPrice = shopEntry.price * qty;
     const currencyKind: CurrencyKind =
       shopEntry.entry.currency === 'TIEN_NGOC'
         ? CurrencyKind.TIEN_NGOC
         : CurrencyKind.LINH_THACH;
 
+    // Phase 15.3.A — LiveOps `SHOP_DISCOUNT` runtime wire.
+    //
+    // Compose policy: max-only — nếu nhiều event SHOP_DISCOUNT active,
+    // dùng discount tốt nhất (=> player benefit), KHÔNG cộng dồn. Cap
+    // server-side ≤ 0.5 (50% off) qua `clampLiveOpsMultiplier` —
+    // defense-in-depth dù DB row legacy có multiplier > 0.5.
+    //
+    // Fail-soft: lỗi service → discount 0 (no-op), buy flow chính tiếp
+    // tục. Chống làm chết toàn bộ shop nếu LiveOps service crash.
+    let liveOpsDiscount: { multiplier: number; eventKey: string } | null = null;
+    let discountMultiplier = 0;
+    try {
+      if (this.liveOpsEvents) {
+        const modifiers = await this.liveOpsEvents.getRuntimeModifiers();
+        const matches = modifiers.filter((m) => m.type === 'SHOP_DISCOUNT');
+        for (const m of matches) {
+          const clamped = clampLiveOpsMultiplier('SHOP_DISCOUNT', m.multiplier);
+          if (clamped > discountMultiplier) {
+            discountMultiplier = clamped;
+            liveOpsDiscount = {
+              multiplier: clamped,
+              eventKey: m.eventKey,
+            };
+          }
+        }
+      }
+    } catch {
+      discountMultiplier = 0;
+      liveOpsDiscount = null;
+    }
+
+    // finalPrice ≥ 0 luôn — nếu discount = 1 (impossible vì cap 0.5
+    // nhưng defensive), `Math.max(0, ...)` chặn negative.
+    const discountAmount =
+      discountMultiplier > 0
+        ? Math.floor(originalPrice * discountMultiplier)
+        : 0;
+    const finalPrice = Math.max(0, originalPrice - discountAmount);
+
     try {
       await this.prisma.$transaction(async (tx) => {
-        await this.currency.applyTx(tx, {
-          characterId: character.id,
-          currency: currencyKind,
-          delta: -BigInt(totalPrice),
-          reason: 'SHOP_BUY',
-          refType: 'NPC_SHOP',
-          refId: itemKey,
-          meta: { itemKey, qty, unitPrice: shopEntry.price },
-          actorUserId: userId,
-        });
+        if (finalPrice > 0) {
+          await this.currency.applyTx(tx, {
+            characterId: character.id,
+            currency: currencyKind,
+            delta: -BigInt(finalPrice),
+            reason: 'SHOP_BUY',
+            refType: 'NPC_SHOP',
+            refId: itemKey,
+            meta: {
+              itemKey,
+              qty,
+              unitPrice: shopEntry.price,
+              originalPrice,
+              finalPrice,
+              liveOpsDiscount,
+            },
+            actorUserId: userId,
+          });
+        }
         await this.inventory.grantTx(tx, character.id, [{ itemKey, qty }], {
           reason: 'SHOP_BUY',
           refType: 'NPC_SHOP',
           refId: itemKey,
           actorUserId: userId,
-          extra: { unitPrice: shopEntry.price },
+          extra: {
+            unitPrice: shopEntry.price,
+            originalPrice,
+            finalPrice,
+            liveOpsDiscount,
+          },
         });
       });
     } catch (e) {
@@ -186,7 +259,10 @@ export class ShopService {
       characterId: character.id,
       itemKey,
       qty,
-      totalPrice,
+      originalPrice,
+      finalPrice,
+      liveOpsDiscount,
+      totalPrice: finalPrice,
       currency: currencyKind,
     };
   }

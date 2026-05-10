@@ -92,7 +92,15 @@ export type LedgerReason =
   // `ItemLedger` reason `EQUIPMENT_REFORGE_COST` / `EQUIPMENT_ENCHANT_COST`
   // cho material consume cùng `refId`.
   | 'EQUIPMENT_REFORGE'
-  | 'EQUIPMENT_ENCHANT';
+  | 'EQUIPMENT_ENCHANT'
+  // Phase 15.3.A — LiveOps `FESTIVAL_GIFT` one-time claim reward grant.
+  // Wire qua `LiveOpsEventSchedulerService.claimEventReward` → `applyTx`
+  // cho linhThach/tienNgoc với `refType='LiveOpsScheduledEvent'` +
+  // `refId=eventId`. Idempotency lấy từ `LiveOpsEventRewardClaim` UNIQUE
+  // (eventId, characterId) — duplicate claim P2002 → throw
+  // `EVENT_ALREADY_CLAIMED`, ledger row chỉ ghi đúng 1 lần / character /
+  // event. Reward bound bởi shared cap `FESTIVAL_GIFT_*_CAP`.
+  | 'LIVEOPS_FESTIVAL_GIFT_REWARD';
 
 export interface CurrencyApplyInput {
   characterId: string;
