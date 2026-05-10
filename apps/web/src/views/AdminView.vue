@@ -47,6 +47,7 @@ import ConfirmModal from '@/components/ui/ConfirmModal.vue';
 import AdminLiveOpsPanel from '@/components/AdminLiveOpsPanel.vue';
 import AdminLiveOpsSchedulePreviewPanel from '@/components/AdminLiveOpsSchedulePreviewPanel.vue';
 import AdminLiveOpsDryRunPanel from '@/components/AdminLiveOpsDryRunPanel.vue';
+import AdminLiveOpsEventsPanel from '@/components/AdminLiveOpsEventsPanel.vue';
 import AdminEconomySafetyPanel from '@/components/AdminEconomySafetyPanel.vue';
 import AdminArenaAntiWintradePanel from '@/components/AdminArenaAntiWintradePanel.vue';
 import {
@@ -1660,9 +1661,10 @@ const isAdmin = () => game.character?.role === 'ADMIN';
         />
       </section>
 
-      <!-- LIVEOPS TAB (Phase 13.1.B + 13.1.D) -->
+      <!-- LIVEOPS TAB (Phase 13.1.B + 13.1.D + 15.1–15.2) -->
       <section v-if="tab === 'liveops'" class="space-y-3" data-testid="admin-liveops-section">
         <AdminLiveOpsPanel />
+        <AdminLiveOpsEventsPanel />
         <AdminLiveOpsSchedulePreviewPanel />
         <AdminLiveOpsDryRunPanel />
       </section>

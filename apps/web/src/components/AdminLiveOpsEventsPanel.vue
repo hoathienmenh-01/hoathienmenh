@@ -1,0 +1,423 @@
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useToastStore } from '@/stores/toast';
+import {
+  adminLiveOpsEventsCreate,
+  adminLiveOpsEventsDisable,
+  adminLiveOpsEventsList,
+  adminLiveOpsEventsRecomputeStatus,
+  adminLiveOpsEventsUpdate,
+  type AdminLiveOpsEventCreateInput,
+  type LiveOpsScheduledEventStatus,
+  type LiveOpsScheduledEventType,
+  type LiveOpsScheduledEventView,
+} from '@/api/admin';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
+
+/**
+ * Phase 15.1–15.2 — Admin LiveOps Event Scheduler panel.
+ *
+ * Liệt kê event đã tạo (status badge + window + multiplier), cho phép admin:
+ *   - Tạo event mới (key/type/title/description/startsAt/endsAt/multiplier).
+ *   - Disable event đang chạy (status → DISABLED, kill switch).
+ *   - Recompute status thủ công (gọi cron job force-run).
+ *
+ * Mọi mutation luôn yêu cầu confirm prompt + audit log ở BE
+ * (`ADMIN_LIVEOPS_EVENT_*`). I18n VI/EN parity qua `adminLiveOpsEvents.*`.
+ *
+ * Note: shop discount type sẽ map FE multiplier 0.0–0.5 (= 0% off → 50% off).
+ * Boost type (DOUBLE_DUNGEON_DROP / CULTIVATION_EXP_BOOST / DAILY_LOGIN_BONUS
+ * / BOSS_REWARD_BOOST) map 1.0–2.0 (= no boost → ×2 boost). FESTIVAL_GIFT
+ * cần `rewardJson` (JSON object) thay vì multiplier.
+ */
+
+const { t } = useI18n();
+const toast = useToastStore();
+
+const events = ref<LiveOpsScheduledEventView[]>([]);
+const loading = ref(true);
+const error = ref<string | null>(null);
+const submittingCreate = ref(false);
+const recomputing = ref(false);
+const disablingId = ref<string | null>(null);
+
+const TYPES: ReadonlyArray<LiveOpsScheduledEventType> = [
+  'DOUBLE_DUNGEON_DROP',
+  'CULTIVATION_EXP_BOOST',
+  'SHOP_DISCOUNT',
+  'SECT_SHOP_DISCOUNT',
+  'DAILY_LOGIN_BONUS',
+  'BOSS_REWARD_BOOST',
+  'FESTIVAL_GIFT',
+];
+
+interface CreateForm {
+  key: string;
+  type: LiveOpsScheduledEventType;
+  title: string;
+  description: string;
+  startsAt: string;
+  endsAt: string;
+  multiplier: number | null;
+  rewardJson: string;
+  initialStatus: 'DRAFT' | 'SCHEDULED';
+}
+
+const form = ref<CreateForm>({
+  key: '',
+  type: 'DOUBLE_DUNGEON_DROP',
+  title: '',
+  description: '',
+  startsAt: '',
+  endsAt: '',
+  multiplier: 1.5,
+  rewardJson: '',
+  initialStatus: 'SCHEDULED',
+});
+
+const isFestival = computed(() => form.value.type === 'FESTIVAL_GIFT');
+
+onMounted(async () => {
+  await refresh();
+});
+
+async function refresh(): Promise<void> {
+  loading.value = true;
+  error.value = null;
+  try {
+    events.value = await adminLiveOpsEventsList();
+  } catch (e) {
+    error.value = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
+  } finally {
+    loading.value = false;
+  }
+}
+
+function badgeClass(status: LiveOpsScheduledEventStatus): string {
+  switch (status) {
+    case 'ACTIVE':
+      return 'bg-emerald-700/40 text-emerald-200';
+    case 'SCHEDULED':
+      return 'bg-amber-700/40 text-amber-200';
+    case 'ENDED':
+      return 'bg-slate-700/40 text-slate-300';
+    case 'DISABLED':
+      return 'bg-rose-700/40 text-rose-200';
+    case 'DRAFT':
+    default:
+      return 'bg-slate-700/40 text-slate-200';
+  }
+}
+
+function formatJson(v: unknown): string {
+  try {
+    return JSON.stringify(v, null, 2);
+  } catch {
+    return String(v);
+  }
+}
+
+async function onCreate(): Promise<void> {
+  if (submittingCreate.value) return;
+  if (!form.value.key.trim() || !form.value.title.trim()) {
+    toast.push({ type: 'error', text: t('adminLiveOpsEvents.errors.INVALID_INPUT') });
+    return;
+  }
+  if (!form.value.startsAt || !form.value.endsAt) {
+    toast.push({ type: 'error', text: t('adminLiveOpsEvents.errors.INVALID_INPUT') });
+    return;
+  }
+  if (!confirm(t('adminLiveOpsEvents.confirmCreate', { key: form.value.key }))) {
+    return;
+  }
+  submittingCreate.value = true;
+  try {
+    const startsAtIso = new Date(form.value.startsAt).toISOString();
+    const endsAtIso = new Date(form.value.endsAt).toISOString();
+
+    const config: AdminLiveOpsEventCreateInput['configJson'] = {};
+    if (isFestival.value) {
+      if (form.value.rewardJson.trim().length === 0) {
+        toast.push({
+          type: 'error',
+          text: t('adminLiveOpsEvents.errors.INVALID_INPUT'),
+        });
+        submittingCreate.value = false;
+        return;
+      }
+      try {
+        config.rewardJson = JSON.parse(form.value.rewardJson) as Record<
+          string,
+          unknown
+        >;
+      } catch {
+        toast.push({
+          type: 'error',
+          text: t('adminLiveOpsEvents.errors.INVALID_INPUT'),
+        });
+        submittingCreate.value = false;
+        return;
+      }
+    } else if (typeof form.value.multiplier === 'number') {
+      config.multiplier = form.value.multiplier;
+    }
+
+    await adminLiveOpsEventsCreate({
+      key: form.value.key.trim(),
+      type: form.value.type,
+      title: form.value.title.trim(),
+      description: form.value.description.trim() || undefined,
+      startsAt: startsAtIso,
+      endsAt: endsAtIso,
+      configJson: Object.keys(config).length > 0 ? config : undefined,
+      initialStatus: form.value.initialStatus,
+    });
+    toast.push({ type: 'success', text: t('adminLiveOpsEvents.toast.created') });
+    form.value.key = '';
+    form.value.title = '';
+    form.value.description = '';
+    await refresh();
+  } catch (e) {
+    const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
+    toast.push({ type: 'error', text: t(`adminLiveOpsEvents.errors.${code}`, code) });
+  } finally {
+    submittingCreate.value = false;
+  }
+}
+
+async function onDisable(ev: LiveOpsScheduledEventView): Promise<void> {
+  if (disablingId.value) return;
+  if (!confirm(t('adminLiveOpsEvents.confirmDisable', { key: ev.key }))) return;
+  disablingId.value = ev.id;
+  try {
+    await adminLiveOpsEventsDisable(ev.id);
+    toast.push({ type: 'success', text: t('adminLiveOpsEvents.toast.disabled') });
+    await refresh();
+  } catch (e) {
+    const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
+    toast.push({ type: 'error', text: t(`adminLiveOpsEvents.errors.${code}`, code) });
+  } finally {
+    disablingId.value = null;
+  }
+}
+
+async function onRecompute(): Promise<void> {
+  if (recomputing.value) return;
+  if (!confirm(t('adminLiveOpsEvents.confirmRecompute'))) return;
+  recomputing.value = true;
+  try {
+    const r = await adminLiveOpsEventsRecomputeStatus();
+    toast.push({
+      type: 'success',
+      text: t('adminLiveOpsEvents.toast.recomputed', {
+        activated: r.toActivated,
+        ended: r.toEnded,
+      }),
+    });
+    await refresh();
+  } catch (e) {
+    const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
+    toast.push({ type: 'error', text: t(`adminLiveOpsEvents.errors.${code}`, code) });
+  } finally {
+    recomputing.value = false;
+  }
+}
+</script>
+
+<template>
+  <section class="rounded border border-slate-700/40 p-4 space-y-3" data-testid="admin-liveops-events-panel">
+    <header class="flex items-center justify-between gap-2">
+      <h3 class="text-base text-amber-200">{{ t('adminLiveOpsEvents.title') }}</h3>
+      <button
+        type="button"
+        class="px-3 py-1 text-xs rounded bg-slate-700 text-ink-50 hover:bg-slate-600 disabled:opacity-50"
+        :disabled="recomputing"
+        data-testid="admin-liveops-events-recompute"
+        @click="onRecompute"
+      >
+        {{ recomputing ? t('adminLiveOpsEvents.recomputing') : t('adminLiveOpsEvents.recomputeBtn') }}
+      </button>
+    </header>
+
+    <p class="text-xs text-ink-300">{{ t('adminLiveOpsEvents.help') }}</p>
+
+    <div v-if="loading" class="text-xs text-ink-300">{{ t('adminLiveOpsEvents.loading') }}</div>
+    <div v-else-if="error" class="text-xs text-rose-300">
+      {{ t(`adminLiveOpsEvents.errors.${error}`, error) }}
+    </div>
+
+    <div v-else class="space-y-2">
+      <div v-if="events.length === 0" class="text-xs text-ink-300" data-testid="admin-liveops-events-empty">
+        {{ t('adminLiveOpsEvents.empty') }}
+      </div>
+      <table v-else class="w-full text-xs min-w-[700px]" data-testid="admin-liveops-events-table">
+        <thead>
+          <tr class="text-ink-300 text-left">
+            <th class="py-1 pr-2">{{ t('adminLiveOpsEvents.col.key') }}</th>
+            <th class="py-1 pr-2">{{ t('adminLiveOpsEvents.col.type') }}</th>
+            <th class="py-1 pr-2">{{ t('adminLiveOpsEvents.col.status') }}</th>
+            <th class="py-1 pr-2">{{ t('adminLiveOpsEvents.col.window') }}</th>
+            <th class="py-1 pr-2">{{ t('adminLiveOpsEvents.col.config') }}</th>
+            <th class="py-1 pr-2 text-right">{{ t('adminLiveOpsEvents.col.actions') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="ev in events"
+            :key="ev.id"
+            class="border-t border-slate-700/40"
+            :data-testid="`admin-liveops-event-row-${ev.key}`"
+          >
+            <td class="py-1 pr-2 text-ink-50">
+              <div>{{ ev.key }}</div>
+              <div class="text-ink-300 text-[10px]">{{ ev.title }}</div>
+            </td>
+            <td class="py-1 pr-2">{{ ev.type }}</td>
+            <td class="py-1 pr-2">
+              <span
+                class="px-2 py-0.5 rounded text-[10px]"
+                :class="badgeClass(ev.status)"
+                :data-testid="`admin-liveops-event-status-${ev.key}`"
+              >
+                {{ ev.status }}
+              </span>
+            </td>
+            <td class="py-1 pr-2 text-ink-300 text-[10px]">
+              <div>{{ new Date(ev.startsAt).toLocaleString() }}</div>
+              <div>→ {{ new Date(ev.endsAt).toLocaleString() }}</div>
+            </td>
+            <td class="py-1 pr-2 text-ink-300">
+              <pre class="text-[10px] whitespace-pre-wrap max-w-[180px]">{{ formatJson(ev.configJson) }}</pre>
+            </td>
+            <td class="py-1 pr-2 text-right">
+              <button
+                v-if="ev.status !== 'DISABLED' && ev.status !== 'ENDED'"
+                type="button"
+                class="px-2 py-1 text-[11px] rounded bg-rose-700 text-ink-50 hover:bg-rose-600 disabled:opacity-50"
+                :disabled="disablingId === ev.id"
+                :data-testid="`admin-liveops-event-disable-${ev.key}`"
+                @click="onDisable(ev)"
+              >
+                {{ disablingId === ev.id ? t('adminLiveOpsEvents.disabling') : t('adminLiveOpsEvents.disableBtn') }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <form
+        class="grid gap-2 mt-4 border-t border-slate-700/40 pt-3"
+        data-testid="admin-liveops-events-form"
+        @submit.prevent="onCreate"
+      >
+        <h4 class="text-sm text-amber-200">{{ t('adminLiveOpsEvents.form.title') }}</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <label class="text-xs text-ink-300 flex flex-col gap-1">
+            {{ t('adminLiveOpsEvents.form.key') }}
+            <input
+              v-model="form.key"
+              type="text"
+              class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50"
+              :placeholder="t('adminLiveOpsEvents.form.keyPlaceholder')"
+              data-testid="admin-liveops-events-form-key"
+              required
+            />
+          </label>
+          <label class="text-xs text-ink-300 flex flex-col gap-1">
+            {{ t('adminLiveOpsEvents.form.type') }}
+            <select
+              v-model="form.type"
+              class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50"
+              data-testid="admin-liveops-events-form-type"
+            >
+              <option v-for="ty in TYPES" :key="ty" :value="ty">{{ ty }}</option>
+            </select>
+          </label>
+          <label class="text-xs text-ink-300 flex flex-col gap-1 md:col-span-2">
+            {{ t('adminLiveOpsEvents.form.titleField') }}
+            <input
+              v-model="form.title"
+              type="text"
+              class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50"
+              data-testid="admin-liveops-events-form-title"
+              required
+            />
+          </label>
+          <label class="text-xs text-ink-300 flex flex-col gap-1 md:col-span-2">
+            {{ t('adminLiveOpsEvents.form.description') }}
+            <textarea
+              v-model="form.description"
+              rows="2"
+              class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50"
+              data-testid="admin-liveops-events-form-description"
+            />
+          </label>
+          <label class="text-xs text-ink-300 flex flex-col gap-1">
+            {{ t('adminLiveOpsEvents.form.startsAt') }}
+            <input
+              v-model="form.startsAt"
+              type="datetime-local"
+              class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50"
+              data-testid="admin-liveops-events-form-starts-at"
+              required
+            />
+          </label>
+          <label class="text-xs text-ink-300 flex flex-col gap-1">
+            {{ t('adminLiveOpsEvents.form.endsAt') }}
+            <input
+              v-model="form.endsAt"
+              type="datetime-local"
+              class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50"
+              data-testid="admin-liveops-events-form-ends-at"
+              required
+            />
+          </label>
+          <label v-if="!isFestival" class="text-xs text-ink-300 flex flex-col gap-1">
+            {{ t('adminLiveOpsEvents.form.multiplier') }}
+            <input
+              v-model.number="form.multiplier"
+              type="number"
+              step="0.05"
+              min="0"
+              max="2"
+              class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50"
+              data-testid="admin-liveops-events-form-multiplier"
+            />
+          </label>
+          <label v-else class="text-xs text-ink-300 flex flex-col gap-1 md:col-span-2">
+            {{ t('adminLiveOpsEvents.form.rewardJson') }}
+            <textarea
+              v-model="form.rewardJson"
+              rows="3"
+              class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50 font-mono text-[11px]"
+              :placeholder='`{"items": [{"itemKey": "...", "qty": 1}]}`'
+              data-testid="admin-liveops-events-form-reward-json"
+            />
+          </label>
+          <label class="text-xs text-ink-300 flex flex-col gap-1">
+            {{ t('adminLiveOpsEvents.form.initialStatus') }}
+            <select
+              v-model="form.initialStatus"
+              class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50"
+              data-testid="admin-liveops-events-form-initial-status"
+            >
+              <option value="DRAFT">DRAFT</option>
+              <option value="SCHEDULED">SCHEDULED</option>
+            </select>
+          </label>
+        </div>
+        <div class="flex justify-end">
+          <button
+            type="submit"
+            class="px-3 py-1 text-xs rounded bg-amber-700 text-ink-50 hover:bg-amber-600 disabled:opacity-50"
+            :disabled="submittingCreate"
+            data-testid="admin-liveops-events-form-submit"
+          >
+            {{ submittingCreate ? t('adminLiveOpsEvents.form.submitting') : t('adminLiveOpsEvents.form.submitBtn') }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+</template>

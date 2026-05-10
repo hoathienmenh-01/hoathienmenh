@@ -3106,6 +3106,57 @@
       }
     }
   },
+  "adminLiveOpsEvents": {
+    "title": "LiveOps Event Scheduler",
+    "help": "Manage runtime events: create, schedule, disable. Cron every 5 min auto-transitions SCHEDULED→ACTIVE→ENDED. Multipliers are capped at ≤ 2.0.",
+    "loading": "Loading events…",
+    "empty": "No events yet.",
+    "recomputeBtn": "Recompute status",
+    "recomputing": "Recomputing…",
+    "disableBtn": "Disable",
+    "disabling": "…",
+    "confirmCreate": "Create event {key}?",
+    "confirmDisable": "Disable event {key}? (status → DISABLED, cannot be restored)",
+    "confirmRecompute": "Force-run cron recompute event status?",
+    "col": {
+      "key": "Key",
+      "type": "Type",
+      "status": "Status",
+      "window": "Window",
+      "config": "Config",
+      "actions": "Actions"
+    },
+    "form": {
+      "title": "Create new event",
+      "key": "Key (unique)",
+      "keyPlaceholder": "e.g. tet_2026_drop_boost",
+      "type": "Event type",
+      "titleField": "Display title",
+      "description": "Description",
+      "startsAt": "Starts at",
+      "endsAt": "Ends at",
+      "multiplier": "Multiplier (1.0 → 2.0 for boosts, 0 → 0.5 for discounts)",
+      "rewardJson": "Reward JSON (FESTIVAL_GIFT only)",
+      "initialStatus": "Initial status",
+      "submitBtn": "Create event",
+      "submitting": "Creating…"
+    },
+    "toast": {
+      "created": "Event created.",
+      "disabled": "Event disabled.",
+      "recomputed": "Recomputed: activated={activated}, ended={ended}."
+    },
+    "errors": {
+      "EVENT_KEY_DUPLICATE": "Key already exists.",
+      "EVENT_NOT_FOUND": "Event not found.",
+      "INVALID_INPUT": "Invalid input.",
+      "MULTIPLIER_OUT_OF_RANGE": "Multiplier exceeds cap.",
+      "WINDOW_INVALID": "startsAt must be less than endsAt.",
+      "CONFIG_INVALID": "Event config invalid.",
+      "FORBIDDEN": "Forbidden.",
+      "UNKNOWN": "Event operation failed — retry."
+    }
+  },
   "adminLiveOpsSchedule": {
     "title": "Schedule Preview (read-only)",
     "tz": "TZ {tz}",
