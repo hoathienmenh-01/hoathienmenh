@@ -37,6 +37,7 @@ import { AdminEconomySafetyModule } from './modules/admin-economy-safety/admin-e
 import { LiveOpsCronModule } from './modules/liveops-cron/liveops-cron.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { ArenaModule } from './modules/arena/arena.module';
+import { ArenaAntiWintradeAdminModule } from './modules/arena-anti-wintrade-admin/arena-anti-wintrade-admin.module';
 import { RedisModule } from './common/redis.module';
 import { EconomyModule } from './modules/economy/economy.module';
 
@@ -92,6 +93,9 @@ import { EconomyModule } from './modules/economy/economy.module';
     // depend AuthModule + PrismaService). Không cycle với
     // CharacterModule.
     ArenaModule,
+    // Phase 14.1.D — Arena Anti-Wintrade admin endpoints. SAU
+    // AdminModule + ArenaModule (cần AdminGuard + ArenaAntiWintradeService).
+    ArenaAntiWintradeAdminModule,
   ],
 })
 export class AppModule {}

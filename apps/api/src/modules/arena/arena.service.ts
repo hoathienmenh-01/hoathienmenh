@@ -48,6 +48,7 @@ import {
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { ArenaSeasonService } from './arena-season.service';
+import { ArenaAntiWintradeService } from './arena-anti-wintrade.service';
 
 /* ---------------------------------------------------------------------------
  * Errors
@@ -153,6 +154,7 @@ export class ArenaService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly arenaSeason?: ArenaSeasonService,
+    @Optional() private readonly antiWintrade?: ArenaAntiWintradeService,
   ) {}
 
   /**
@@ -398,6 +400,23 @@ export class ArenaService {
         createdAt: updated.createdAt.toISOString(),
         resolvedAt: updated.resolvedAt?.toISOString() ?? resolvedAt.toISOString(),
       } satisfies ArenaMatchResult;
+    }).then(async (result) => {
+      // Phase 14.1.D — fire-and-forget lightweight anti-wintrade check
+      // cho cặp vừa resolve. Chỉ query 1 cặp window 24h, không đụng full
+      // scan. Fail-soft: lỗi scan KHÔNG lật ngược match đã commit.
+      if (this.antiWintrade) {
+        try {
+          await this.antiWintrade.quickCheckPair(
+            attackerCharacterId,
+            defenderCharacterId,
+          );
+        } catch (e) {
+          this.logger.warn(
+            `arena anti-wintrade quickCheck fail-soft: ${(e as Error).message}`,
+          );
+        }
+      }
+      return result;
     });
   }
 
