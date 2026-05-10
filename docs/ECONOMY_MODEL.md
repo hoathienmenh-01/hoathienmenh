@@ -85,7 +85,38 @@ Mục tiêu: economy KHÔNG vỡ trong 12-24 tháng vận hành, kể cả khi:
 | Refine cost (phase 11) | `refinery.service.ts` (future) | `REFINE_COST` |
 | Alchemy cost (phase 11) | `alchemy.service.ts` (future) | `ALCHEMY_COST` |
 | Repair durability (phase 12) | `inventory.service.ts` (future) | `REPAIR_COST` |
+| **Equipment Reforge (Phase 15.0.A)** | `equipment.service.ts` `reforge` | `EQUIPMENT_REFORGE` |
+| **Equipment Enchant (Phase 15.0.A)** | `equipment.service.ts` `enchant` | `EQUIPMENT_ENCHANT` |
 | Admin revoke | `admin.service.ts` `grantCurrency` (negative) | `ADMIN_REVOKE` |
+
+##### Phase 15.0.A — Equipment Reforge / Enchant cost table (linhThach sink)
+
+Cost ladder cho 2 sink mới — server compute deterministic qua `getReforgeCost(quality)` + `getEnchantCost(quality, currentLevel)`. Foundation phase TUNE để tổng linhThach ~ 2-3× shop NPC equivalent đã có (avoid soft-launch shock cho late-game player).
+
+| Quality | Reforge linhThach (per reroll) | Enchant base (level 0→1) | Enchant max-level cost (level 4→5) | Material per op |
+|---|---:|---:|---:|---|
+| PHAM  | 80    | 100   | 500    | 1× `tinh_thiet` |
+| LINH  | 240   | 320   | 1 600  | 2× `tinh_thiet` |
+| HUYEN | 720   | 960   | 4 800  | 1× `yeu_dan` |
+| TIEN  | 2 400 | 3 000 | 15 000 | 2-3× `yeu_dan` (reforge 2× / enchant 3×) |
+| THAN  | 7 200 | 9 000 | 45 000 | 1× `han_ngoc` |
+
+**Geometric step**: `enchantCost(level) = base × (level+1)` — level 0→1 = base, level 4→5 = 5× base. Late-level cảm thấy đắt nhưng KHÔNG vô lý (5× scale chấp nhận được vì cap level 5).
+
+**Material economy**:
+- `tinh_thiet` (`Tinh Thiết`) — drop từ low-tier dungeon ORE (Phase 11.4.B). PHAM/LINH-tier sink.
+- `yeu_dan` (`Yêu Đan`) — drop từ HUYEN-tier dungeon + boss yêu thú. HUYEN/TIEN-tier sink.
+- `han_ngoc` (`Hàn Ngọc`) — drop từ THAN-tier dungeon + world boss yêu thú. THAN-tier sink.
+
+**Ledger reason mapping**:
+- `CurrencyLedger.reason = 'EQUIPMENT_REFORGE' | 'EQUIPMENT_ENCHANT'` (kind=`linhThach`, delta < 0).
+- `ItemLedger.reason = 'EQUIPMENT_REFORGE_COST' | 'EQUIPMENT_ENCHANT_COST'` (qtyDelta < 0, refType=`InventoryItem`, refId=`<inventoryItemId>`).
+- 2 audit table song song: `EquipmentReforgeHistory` + `EquipmentEnchantHistory` lưu `beforeJson`/`afterJson`/`costJson` để admin replay nếu cần.
+
+**Race protection**:
+- Material: `prisma.inventoryItem.updateMany({ where: { id, qty: { gte: materialQty } }, data: { qty: { decrement: materialQty } } })` — count=0 → throw `INSUFFICIENT_MATERIAL`, tx rollback.
+- Currency: `CurrencyService.applyTx(tx, characterId, kind, delta, ...)` đã có internal `gte` guard — race fail → throw `INSUFFICIENT_FUNDS`, tx rollback.
+- 2 thread reforge cùng item song song → 1 thread thắng (1 history row), thread kia rollback hoàn toàn → KHÔNG double spend / KHÔNG double history audit.
 
 ### 2.2 tienNgoc (premium hard currency)
 
