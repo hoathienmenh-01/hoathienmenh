@@ -3136,11 +3136,17 @@
       "startsAt": "Starts at",
       "endsAt": "Ends at",
       "multiplier": "Multiplier (1.0 → 2.0 for boosts, 0 → 0.5 for discounts)",
+      "multiplierWithCap": "Multiplier ({min} → {max})",
       "rewardJson": "Reward JSON (FESTIVAL_GIFT only)",
+      "rewardJsonHelp": "Allowed: linhThach (≤1000), tienNgoc (≤50), items[] (≤10 entries, qty ≤50). Server re-validates.",
       "initialStatus": "Initial status",
       "submitBtn": "Create event",
-      "submitting": "Creating…"
+      "submitting": "Creating…",
+      "runtimeNotWiredWarn": "This type is not wired in runtime — multiplier will have no effect."
     },
+    "runtimeLegend": "Phase 15.3.A wired runtime for 7/7 event types (DROP/EXP/SHOP/SECT_SHOP/DAILY_LOGIN/BOSS/FESTIVAL_GIFT).",
+    "runtimeWired": "runtime ✓",
+    "runtimeNotWired": "not wired",
     "toast": {
       "created": "Event created.",
       "disabled": "Event disabled.",
@@ -3153,8 +3159,49 @@
       "MULTIPLIER_OUT_OF_RANGE": "Multiplier exceeds cap.",
       "WINDOW_INVALID": "startsAt must be less than endsAt.",
       "CONFIG_INVALID": "Event config invalid.",
+      "EVENT_REWARD_JSON_REQUIRED": "Reward JSON is required for FESTIVAL_GIFT.",
+      "EVENT_REWARD_JSON_INVALID": "Reward JSON has invalid shape (only linhThach/tienNgoc/items allowed).",
+      "EVENT_REWARD_ITEM_INVALID": "Reward items contain invalid entry.",
+      "EVENT_REWARD_QTY_INVALID": "Reward item qty invalid.",
+      "EVENT_REWARD_CURRENCY_INVALID": "Reward currency invalid.",
+      "EVENT_REWARD_EMPTY": "Reward empty — at least one currency or item required.",
+      "EVENT_REWARD_OVER_CAP": "Reward exceeds cap (linhThach ≤1000, tienNgoc ≤50, qty ≤50, ≤10 items).",
       "FORBIDDEN": "Forbidden.",
       "UNKNOWN": "Event operation failed — retry."
+    }
+  },
+  "liveopsActiveEvents": {
+    "title": "Active events",
+    "loading": "Loading events…",
+    "empty": "No active events right now.",
+    "refresh": "Refresh",
+    "endsIn": "Ends in {time}",
+    "discountLabel": "{pct}% off",
+    "boostLabel": "x{mul}",
+    "rewardLinhThach": "{n} linh thạch",
+    "rewardTienNgoc": "{n} tiên ngọc",
+    "rewardItemsCount": "{n} items",
+    "claimBtn": "Claim gift",
+    "claiming": "Claiming…",
+    "alreadyClaimed": "Already claimed.",
+    "notWired": "(not active)",
+    "confirmClaim": "Claim gift for event \"{title}\"? Each character can only claim once.",
+    "toast": {
+      "claimed": "Claimed: {linhThach} linh thạch · {tienNgoc} tiên ngọc · {items} items."
+    },
+    "errors": {
+      "EVENT_ALREADY_CLAIMED": "You have already claimed this event.",
+      "EVENT_NOT_ACTIVE": "Event is no longer active.",
+      "EVENT_NOT_CLAIMABLE": "This event does not support claims.",
+      "EVENT_NOT_FOUND": "Event not found.",
+      "EVENT_REWARD_EMPTY": "Event reward is empty.",
+      "EVENT_REWARD_OVER_CAP": "Event reward exceeds cap.",
+      "EVENT_REWARD_ITEM_INVALID": "Event reward has invalid item.",
+      "EVENT_REWARD_QTY_INVALID": "Event reward has invalid qty.",
+      "EVENT_REWARD_CURRENCY_INVALID": "Event reward currency invalid.",
+      "NO_CHARACTER": "No character.",
+      "UNAUTHENTICATED": "Login required to claim.",
+      "UNKNOWN": "Failed to claim — retry."
     }
   },
   "adminLiveOpsSchedule": {

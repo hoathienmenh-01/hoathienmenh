@@ -15,6 +15,7 @@ import OnboardingChecklist from '@/components/OnboardingChecklist.vue';
 import DailyLoginCard from '@/components/DailyLoginCard.vue';
 import LiveOpsTodayPanel from '@/components/LiveOpsTodayPanel.vue';
 import LiveOpsNotice from '@/components/LiveOpsNotice.vue';
+import LiveOpsActiveEventsPanel from '@/components/LiveOpsActiveEventsPanel.vue';
 import { extractApiErrorCode } from '@/lib/apiError';
 
 const auth = useAuthStore();
@@ -114,6 +115,7 @@ async function onBreakthrough(): Promise<void> {
     <OnboardingChecklist v-if="game.character" class="mb-4" />
     <DailyLoginCard v-if="game.character" class="mb-4" />
     <LiveOpsTodayPanel v-if="game.character" class="mb-4" />
+    <LiveOpsActiveEventsPanel v-if="game.character" class="mb-4" />
     <LiveOpsNotice v-if="game.character" />
     <!-- Phase 13.1.B — Sect mission CTA. -->
     <section

@@ -19,6 +19,7 @@ import {
   bossSpawnRegions,
   bossesByRegion,
   characterSkillElementBonus,
+  clampLiveOpsMultiplier,
   composeBuffMods,
   composePassiveTalentMods,
   composeTitleMods,
@@ -47,6 +48,7 @@ import { InventoryService } from '../inventory/inventory.service';
 import { MissionService } from '../mission/mission.service';
 import { SectWarService } from '../sect-war/sect-war.service';
 import { TerritoryService } from '../territory/territory.service';
+import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
 
 export class BossError extends Error {
   constructor(
@@ -170,6 +172,8 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     @Optional() private readonly titles?: TitleService,
     @Optional() private readonly sectWar?: SectWarService,
     @Optional() private readonly territory?: TerritoryService,
+    @Optional()
+    private readonly liveOpsEvents?: LiveOpsEventSchedulerService,
   ) {}
 
   onModuleInit(): void {
@@ -1067,6 +1071,12 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
   ): Promise<DefeatedRewardSlice[]> {
     const boss = await tx.worldBoss.findUnique({ where: { id: bossId } });
     if (!boss) return [];
+
+    // Phase 15.3.A — LiveOps BOSS_REWARD_BOOST max-only compose. Pull
+    // outside per-character loop — multiplier là server-state-wide,
+    // không theo char. Fail-soft: lỗi service → multiplier 1.0 (no-op),
+    // boss reward grant tiếp tục bình thường.
+    const bossLiveOpsBoost = await this.pickBossRewardBoost();
     const all = await tx.bossDamage.findMany({
       where: { bossId },
       orderBy: [{ totalDamage: 'desc' }, { lastHitAt: 'asc' }],
@@ -1108,6 +1118,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       // additive multiplicatively cho linhThach reward distribution. Service
       // không inject (legacy DI) → identity (no bonus). Apply BEFORE ghi
       // ledger để CurrencyLedger reflects the actual delta granted.
+      const linhThachBeforeTalent = linhThach;
       if (this.talents && linhThach > 0n) {
         const talentMods = await this.talents.getMods(row.characterId);
         if (talentMods.dropMul !== 1) {
@@ -1119,6 +1130,21 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
           );
         }
       }
+      // Phase 15.3.A — LiveOps `BOSS_REWARD_BOOST` runtime wire.
+      // Apply AFTER talent dropMul so multiplier compose multiplicatively
+      // — player benefits from BOTH talent + event simultaneously. Cap
+      // ≤ 2.0 server-side. Apply BEFORE ledger so audit reflects actual
+      // grant. Attribution / rank logic không đổi — boost chỉ scale linh
+      // thạch share, `top1 / top23 / top410 / restPool` ratios giữ yên.
+      const linhThachBeforeLiveOps = linhThach;
+      if (linhThach > 0n && bossLiveOpsBoost.multiplier > 1.0) {
+        linhThach = BigInt(
+          Math.floor(Number(linhThach) * bossLiveOpsBoost.multiplier),
+        );
+      }
+      const liveOpsBonusDelta = linhThach - linhThachBeforeLiveOps;
+      void linhThachBeforeTalent;
+
       // Trao thưởng character (atomic + ghi ledger).
       if (linhThach > 0n) {
         await this.currency.applyTx(tx, {
@@ -1132,6 +1158,14 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
             rank,
             damage: row.totalDamage.toString(),
             bossKey: def.key,
+            liveOpsBoost:
+              bossLiveOpsBoost.multiplier > 1.0
+                ? {
+                    multiplier: bossLiveOpsBoost.multiplier,
+                    bonusLinhThach: liveOpsBonusDelta.toString(),
+                    eventKey: bossLiveOpsBoost.eventKey,
+                  }
+                : null,
           },
         });
       }
@@ -1140,7 +1174,17 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
           reason: 'BOSS_REWARD',
           refType: 'WorldBoss',
           refId: bossId,
-          extra: { rank, bossKey: def.key },
+          extra: {
+            rank,
+            bossKey: def.key,
+            liveOpsBoost:
+              bossLiveOpsBoost.multiplier > 1.0
+                ? {
+                    multiplier: bossLiveOpsBoost.multiplier,
+                    eventKey: bossLiveOpsBoost.eventKey,
+                  }
+                : null,
+          },
         });
       }
       // Phase 13.0 §C — Reward hooks (title + buff). Inside cùng tx với
@@ -1276,6 +1320,33 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       });
     }
     return slices;
+  }
+
+  /**
+   * Phase 15.3.A — helper read max-only `BOSS_REWARD_BOOST` modifier.
+   * Cap clamp ≤ 2.0. No event → `{ multiplier: 1.0, eventKey: '' }`.
+   * Fail-soft trả identity nếu LiveOps service unavailable.
+   */
+  private async pickBossRewardBoost(
+    now: Date = new Date(),
+  ): Promise<{ multiplier: number; eventKey: string }> {
+    if (!this.liveOpsEvents) return { multiplier: 1.0, eventKey: '' };
+    try {
+      const modifiers = await this.liveOpsEvents.getRuntimeModifiers(now);
+      let bestMul = 1.0;
+      let bestKey = '';
+      for (const m of modifiers) {
+        if (m.type !== 'BOSS_REWARD_BOOST') continue;
+        const clamped = clampLiveOpsMultiplier('BOSS_REWARD_BOOST', m.multiplier);
+        if (clamped > bestMul) {
+          bestMul = clamped;
+          bestKey = m.eventKey;
+        }
+      }
+      return { multiplier: bestMul, eventKey: bestKey };
+    } catch {
+      return { multiplier: 1.0, eventKey: '' };
+    }
   }
 
   /** Phân thưởng giảm khi boss EXPIRED — dùng 60% reward pool. */

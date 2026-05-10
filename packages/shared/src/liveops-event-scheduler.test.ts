@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  FESTIVAL_GIFT_ITEMS_MAX,
+  FESTIVAL_GIFT_ITEM_QTY_CAP,
+  FESTIVAL_GIFT_LINH_THACH_CAP,
+  FESTIVAL_GIFT_TIEN_NGOC_CAP,
   LIVEOPS_EVENT_KEY_PATTERN,
   LIVEOPS_EVENT_MAX_WINDOW_MS,
   LIVEOPS_EVENT_MIN_WINDOW_MS,
@@ -7,11 +11,14 @@ import {
   LIVEOPS_EVENT_STATUSES,
   LIVEOPS_EVENT_TYPES,
   LIVEOPS_EVENT_TYPE_CAPS,
+  LIVEOPS_RUNTIME_SUPPORTED_TYPES,
   clampLiveOpsMultiplier,
   isLiveOpsEventActiveAt,
+  isLiveOpsRuntimeSupported,
   isValidLiveOpsScheduledEventStatus,
   isValidLiveOpsScheduledEventType,
   nextLiveOpsScheduledEventStatus,
+  parseLiveOpsEventReward,
   pickActiveLiveOpsMultiplier,
   validateLiveOpsScheduledEventInput,
   type LiveOpsRuntimeModifier,
@@ -443,5 +450,206 @@ describe('LiveOps Event Scheduler — key pattern', () => {
     expect(LIVEOPS_EVENT_KEY_PATTERN.test('a')).toBe(false);
     expect(LIVEOPS_EVENT_KEY_PATTERN.test('_underscore')).toBe(false);
     expect(LIVEOPS_EVENT_KEY_PATTERN.test('Has Caps')).toBe(false);
+  });
+});
+
+describe('LiveOps Event Scheduler — Phase 15.3.A reward validation', () => {
+  it('accepts linhThach + tienNgoc + items combined', () => {
+    expect(
+      validateLiveOpsScheduledEventInput(
+        baseInput({
+          type: TYPE.festival,
+          configJson: {
+            rewardJson: {
+              linhThach: 100,
+              tienNgoc: 5,
+              items: [{ itemKey: 'tinh_thiet', qty: 2 }],
+            },
+          },
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it('rejects unknown rewardJson keys', () => {
+    expect(
+      validateLiveOpsScheduledEventInput(
+        baseInput({
+          type: TYPE.festival,
+          configJson: { rewardJson: { weirdKey: 1 } as never },
+        }),
+      ),
+    ).toBe('EVENT_REWARD_JSON_INVALID');
+  });
+
+  it('rejects negative / non-integer linhThach', () => {
+    expect(
+      validateLiveOpsScheduledEventInput(
+        baseInput({
+          type: TYPE.festival,
+          configJson: { rewardJson: { linhThach: -10 } },
+        }),
+      ),
+    ).toBe('EVENT_REWARD_CURRENCY_INVALID');
+    expect(
+      validateLiveOpsScheduledEventInput(
+        baseInput({
+          type: TYPE.festival,
+          configJson: { rewardJson: { linhThach: 1.5 } },
+        }),
+      ),
+    ).toBe('EVENT_REWARD_CURRENCY_INVALID');
+  });
+
+  it('rejects linhThach over cap', () => {
+    expect(
+      validateLiveOpsScheduledEventInput(
+        baseInput({
+          type: TYPE.festival,
+          configJson: { rewardJson: { linhThach: 9999 } },
+        }),
+      ),
+    ).toBe('EVENT_REWARD_OVER_CAP');
+  });
+
+  it('rejects tienNgoc over cap', () => {
+    expect(
+      validateLiveOpsScheduledEventInput(
+        baseInput({
+          type: TYPE.festival,
+          configJson: { rewardJson: { tienNgoc: 200 } },
+        }),
+      ),
+    ).toBe('EVENT_REWARD_OVER_CAP');
+  });
+
+  it('rejects items with empty itemKey', () => {
+    expect(
+      validateLiveOpsScheduledEventInput(
+        baseInput({
+          type: TYPE.festival,
+          configJson: {
+            rewardJson: { items: [{ itemKey: '', qty: 1 }] as never },
+          },
+        }),
+      ),
+    ).toBe('EVENT_REWARD_ITEM_INVALID');
+  });
+
+  it('rejects items with qty < 1 or non-integer', () => {
+    expect(
+      validateLiveOpsScheduledEventInput(
+        baseInput({
+          type: TYPE.festival,
+          configJson: {
+            rewardJson: { items: [{ itemKey: 'tinh_thiet', qty: 0 }] as never },
+          },
+        }),
+      ),
+    ).toBe('EVENT_REWARD_QTY_INVALID');
+    expect(
+      validateLiveOpsScheduledEventInput(
+        baseInput({
+          type: TYPE.festival,
+          configJson: {
+            rewardJson: { items: [{ itemKey: 'tinh_thiet', qty: 1.5 }] as never },
+          },
+        }),
+      ),
+    ).toBe('EVENT_REWARD_QTY_INVALID');
+  });
+
+  it('rejects empty rewardJson (all-zero, no items)', () => {
+    expect(
+      validateLiveOpsScheduledEventInput(
+        baseInput({
+          type: TYPE.festival,
+          configJson: { rewardJson: { linhThach: 0, tienNgoc: 0, items: [] } },
+        }),
+      ),
+    ).toBe('EVENT_REWARD_EMPTY');
+  });
+
+  it('rejects items.length over FESTIVAL_GIFT_ITEMS_MAX', () => {
+    const items = Array.from({ length: FESTIVAL_GIFT_ITEMS_MAX + 1 }, () => ({
+      itemKey: 'tinh_thiet',
+      qty: 1,
+    }));
+    expect(
+      validateLiveOpsScheduledEventInput(
+        baseInput({
+          type: TYPE.festival,
+          configJson: { rewardJson: { items } },
+        }),
+      ),
+    ).toBe('EVENT_REWARD_OVER_CAP');
+  });
+});
+
+describe('LiveOps Event Scheduler — Phase 15.3.A parseLiveOpsEventReward', () => {
+  it('returns identity for empty / non-object', () => {
+    expect(parseLiveOpsEventReward(null)).toEqual({
+      linhThach: 0,
+      tienNgoc: 0,
+      items: [],
+    });
+    expect(parseLiveOpsEventReward(undefined)).toEqual({
+      linhThach: 0,
+      tienNgoc: 0,
+      items: [],
+    });
+    expect(parseLiveOpsEventReward([])).toEqual({
+      linhThach: 0,
+      tienNgoc: 0,
+      items: [],
+    });
+  });
+
+  it('parses well-formed rewardJson', () => {
+    const r = parseLiveOpsEventReward({
+      linhThach: 100,
+      tienNgoc: 5,
+      items: [{ itemKey: 'tinh_thiet', qty: 3 }],
+    });
+    expect(r.linhThach).toBe(100);
+    expect(r.tienNgoc).toBe(5);
+    expect(r.items).toHaveLength(1);
+    expect(r.items[0]).toEqual({ itemKey: 'tinh_thiet', qty: 3 });
+  });
+
+  it('clamps oversize values to cap (defense-in-depth)', () => {
+    const r = parseLiveOpsEventReward({
+      linhThach: FESTIVAL_GIFT_LINH_THACH_CAP * 10,
+      tienNgoc: FESTIVAL_GIFT_TIEN_NGOC_CAP * 10,
+      items: [{ itemKey: 'tinh_thiet', qty: FESTIVAL_GIFT_ITEM_QTY_CAP * 10 }],
+    });
+    expect(r.linhThach).toBe(FESTIVAL_GIFT_LINH_THACH_CAP);
+    expect(r.tienNgoc).toBe(FESTIVAL_GIFT_TIEN_NGOC_CAP);
+    expect(r.items[0]?.qty).toBe(FESTIVAL_GIFT_ITEM_QTY_CAP);
+  });
+
+  it('drops malformed items silently', () => {
+    const r = parseLiveOpsEventReward({
+      items: [
+        { itemKey: 'good', qty: 1 },
+        { itemKey: '', qty: 1 },
+        { itemKey: 'bad', qty: 0 },
+        { itemKey: 'bad', qty: 'x' },
+      ],
+    });
+    expect(r.items).toHaveLength(1);
+    expect(r.items[0]?.itemKey).toBe('good');
+  });
+});
+
+describe('LiveOps Event Scheduler — Phase 15.3.A runtime support catalog', () => {
+  it('all 7 catalog types are runtime-supported', () => {
+    for (const t of LIVEOPS_EVENT_TYPES) {
+      expect(isLiveOpsRuntimeSupported(t)).toBe(true);
+    }
+  });
+
+  it('LIVEOPS_RUNTIME_SUPPORTED_TYPES is frozen', () => {
+    expect(Object.isFrozen(LIVEOPS_RUNTIME_SUPPORTED_TYPES)).toBe(true);
   });
 });

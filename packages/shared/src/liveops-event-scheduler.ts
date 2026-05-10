@@ -218,7 +218,12 @@ export type LiveOpsScheduledEventValidationCode =
   | 'EVENT_MULTIPLIER_BELOW_MIN'
   | 'EVENT_MULTIPLIER_OVER_CAP'
   | 'EVENT_REWARD_JSON_REQUIRED'
-  | 'EVENT_REWARD_JSON_INVALID';
+  | 'EVENT_REWARD_JSON_INVALID'
+  | 'EVENT_REWARD_ITEM_INVALID'
+  | 'EVENT_REWARD_QTY_INVALID'
+  | 'EVENT_REWARD_CURRENCY_INVALID'
+  | 'EVENT_REWARD_EMPTY'
+  | 'EVENT_REWARD_OVER_CAP';
 
 export interface LiveOpsScheduledEventInput {
   readonly key: string;
@@ -277,7 +282,7 @@ export function validateLiveOpsScheduledEventInput(
     if (!isPlainJsonObject(cfg.rewardJson)) {
       return 'EVENT_REWARD_JSON_INVALID';
     }
-    return null;
+    return validateLiveOpsEventRewardJson(cfg.rewardJson);
   }
 
   // BOOST or DISCOUNT — multiplier required.
@@ -416,4 +421,197 @@ export function nextLiveOpsScheduledEventStatus(
   if (t >= endsAt.getTime()) return 'ENDED';
   if (current === 'SCHEDULED' && t >= startsAt.getTime()) return 'ACTIVE';
   return current;
+}
+
+// ============================================================================
+// Phase 15.3.A — FESTIVAL_GIFT reward config validation + parsing.
+//
+// `configJson.rewardJson` shape (canonical):
+//
+// ```
+// {
+//   linhThach?: number,            // ≥ 0, ≤ FESTIVAL_GIFT_LINH_THACH_CAP
+//   tienNgoc?: number,             // ≥ 0, ≤ FESTIVAL_GIFT_TIEN_NGOC_CAP
+//   items?: { itemKey: string, qty: number }[]   // qty ≥ 1, ≤ FESTIVAL_GIFT_ITEM_QTY_CAP
+// }
+// ```
+//
+// Anti-balance caps server-side để 1 admin event không thể ban phát "vô
+// hạn" (kể cả MOD/admin lỡ tay). Caps cố tình thấp hơn dungeon/boss
+// reward — Festival Gift là goodie bag PR, KHÔNG phải end-game farm.
+// ============================================================================
+
+/** Cap cứng số linhThach mỗi `FESTIVAL_GIFT` claim — defense-in-depth. */
+export const FESTIVAL_GIFT_LINH_THACH_CAP = 1000;
+/** Cap cứng số tienNgoc mỗi `FESTIVAL_GIFT` claim — premium currency tighter. */
+export const FESTIVAL_GIFT_TIEN_NGOC_CAP = 50;
+/** Cap cứng qty mỗi item trong rewardJson.items[]. */
+export const FESTIVAL_GIFT_ITEM_QTY_CAP = 50;
+/** Cap cứng số entries trong rewardJson.items[]. */
+export const FESTIVAL_GIFT_ITEMS_MAX = 10;
+
+export interface LiveOpsEventRewardItem {
+  readonly itemKey: string;
+  readonly qty: number;
+}
+
+export interface LiveOpsEventReward {
+  readonly linhThach: number;
+  readonly tienNgoc: number;
+  readonly items: readonly LiveOpsEventRewardItem[];
+}
+
+function isPlainFiniteNumber(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v);
+}
+
+/**
+ * Validate `rewardJson` payload cho `FESTIVAL_GIFT`. Trả về `null` nếu
+ * pass, hoặc 1 error code. Pure-fn — không phụ thuộc DB / item catalog
+ * (catalog lookup ở runtime claim flow để không khoá admin tạo event
+ * trước item migration).
+ *
+ * Rules:
+ *   - Ít nhất 1 trong (linhThach > 0, tienNgoc > 0, items.length > 0)
+ *     phải có (no empty-bag).
+ *   - linhThach: integer, 0 ≤ x ≤ `FESTIVAL_GIFT_LINH_THACH_CAP`.
+ *   - tienNgoc: integer, 0 ≤ x ≤ `FESTIVAL_GIFT_TIEN_NGOC_CAP`.
+ *   - items: array, length ≤ `FESTIVAL_GIFT_ITEMS_MAX`. Mỗi entry:
+ *     - itemKey: string non-empty.
+ *     - qty: integer, 1 ≤ qty ≤ `FESTIVAL_GIFT_ITEM_QTY_CAP`.
+ *   - Không có field nào khác lạ → `EVENT_REWARD_JSON_INVALID`.
+ */
+export function validateLiveOpsEventRewardJson(
+  rewardJson: Readonly<Record<string, unknown>>,
+): LiveOpsScheduledEventValidationCode | null {
+  const allowedKeys = new Set(['linhThach', 'tienNgoc', 'items']);
+  for (const k of Object.keys(rewardJson)) {
+    if (!allowedKeys.has(k)) return 'EVENT_REWARD_JSON_INVALID';
+  }
+
+  let linhThach = 0;
+  if (rewardJson.linhThach !== undefined) {
+    const v = rewardJson.linhThach;
+    if (!isPlainFiniteNumber(v) || !Number.isInteger(v) || v < 0) {
+      return 'EVENT_REWARD_CURRENCY_INVALID';
+    }
+    if (v > FESTIVAL_GIFT_LINH_THACH_CAP) return 'EVENT_REWARD_OVER_CAP';
+    linhThach = v;
+  }
+
+  let tienNgoc = 0;
+  if (rewardJson.tienNgoc !== undefined) {
+    const v = rewardJson.tienNgoc;
+    if (!isPlainFiniteNumber(v) || !Number.isInteger(v) || v < 0) {
+      return 'EVENT_REWARD_CURRENCY_INVALID';
+    }
+    if (v > FESTIVAL_GIFT_TIEN_NGOC_CAP) return 'EVENT_REWARD_OVER_CAP';
+    tienNgoc = v;
+  }
+
+  let itemCount = 0;
+  if (rewardJson.items !== undefined) {
+    if (!Array.isArray(rewardJson.items)) return 'EVENT_REWARD_JSON_INVALID';
+    if (rewardJson.items.length > FESTIVAL_GIFT_ITEMS_MAX) {
+      return 'EVENT_REWARD_OVER_CAP';
+    }
+    for (const raw of rewardJson.items) {
+      if (!raw || typeof raw !== 'object') return 'EVENT_REWARD_ITEM_INVALID';
+      const obj = raw as Record<string, unknown>;
+      const allowedItemKeys = new Set(['itemKey', 'qty']);
+      for (const k of Object.keys(obj)) {
+        if (!allowedItemKeys.has(k)) return 'EVENT_REWARD_JSON_INVALID';
+      }
+      const itemKey = obj.itemKey;
+      const qty = obj.qty;
+      if (typeof itemKey !== 'string' || itemKey.trim().length === 0) {
+        return 'EVENT_REWARD_ITEM_INVALID';
+      }
+      if (!isPlainFiniteNumber(qty) || !Number.isInteger(qty) || qty < 1) {
+        return 'EVENT_REWARD_QTY_INVALID';
+      }
+      if (qty > FESTIVAL_GIFT_ITEM_QTY_CAP) return 'EVENT_REWARD_OVER_CAP';
+      itemCount += 1;
+    }
+  }
+
+  if (linhThach <= 0 && tienNgoc <= 0 && itemCount <= 0) {
+    return 'EVENT_REWARD_EMPTY';
+  }
+
+  return null;
+}
+
+/**
+ * Parse rewardJson đã validate (hoặc lỏng) thành tuple typed cho runtime
+ * grant. Mọi field bị thiếu → identity (0 / []). Dùng INSIDE festival
+ * gift claim flow sau khi pass validate.
+ *
+ * NOTE: caller PHẢI gọi `validateLiveOpsEventRewardJson` trước khi tin
+ * tưởng output. `parseLiveOpsEventReward` chỉ coerce — trả best-effort
+ * cho legacy / loose rows.
+ */
+export function parseLiveOpsEventReward(
+  rewardJson: unknown,
+): LiveOpsEventReward {
+  if (!rewardJson || typeof rewardJson !== 'object' || Array.isArray(rewardJson)) {
+    return { linhThach: 0, tienNgoc: 0, items: [] };
+  }
+  const obj = rewardJson as Record<string, unknown>;
+  let linhThach = 0;
+  let tienNgoc = 0;
+  if (
+    isPlainFiniteNumber(obj.linhThach) &&
+    Number.isInteger(obj.linhThach) &&
+    obj.linhThach >= 0
+  ) {
+    linhThach = Math.min(obj.linhThach, FESTIVAL_GIFT_LINH_THACH_CAP);
+  }
+  if (
+    isPlainFiniteNumber(obj.tienNgoc) &&
+    Number.isInteger(obj.tienNgoc) &&
+    obj.tienNgoc >= 0
+  ) {
+    tienNgoc = Math.min(obj.tienNgoc, FESTIVAL_GIFT_TIEN_NGOC_CAP);
+  }
+  const items: LiveOpsEventRewardItem[] = [];
+  if (Array.isArray(obj.items)) {
+    for (const raw of obj.items.slice(0, FESTIVAL_GIFT_ITEMS_MAX)) {
+      if (!raw || typeof raw !== 'object') continue;
+      const r = raw as Record<string, unknown>;
+      const itemKey = r.itemKey;
+      const qty = r.qty;
+      if (typeof itemKey !== 'string' || itemKey.trim().length === 0) continue;
+      if (!isPlainFiniteNumber(qty) || !Number.isInteger(qty) || qty < 1) continue;
+      items.push({
+        itemKey,
+        qty: Math.min(qty, FESTIVAL_GIFT_ITEM_QTY_CAP),
+      });
+    }
+  }
+  return { linhThach, tienNgoc, items };
+}
+
+/**
+ * Phase 15.3.A — Runtime support catalog. Map từ event type → boolean
+ * indicating runtime đã wire integration thật. Admin panel hiển thị
+ * "runtime supported" badge dựa vào field này (không gây ảnh hưởng đến
+ * cron / scheduler core).
+ */
+export const LIVEOPS_RUNTIME_SUPPORTED_TYPES: Readonly<
+  Record<LiveOpsScheduledEventType, boolean>
+> = Object.freeze({
+  DOUBLE_DUNGEON_DROP: true,
+  CULTIVATION_EXP_BOOST: true,
+  SHOP_DISCOUNT: true,
+  SECT_SHOP_DISCOUNT: true,
+  DAILY_LOGIN_BONUS: true,
+  BOSS_REWARD_BOOST: true,
+  FESTIVAL_GIFT: true,
+});
+
+export function isLiveOpsRuntimeSupported(
+  type: LiveOpsScheduledEventType,
+): boolean {
+  return LIVEOPS_RUNTIME_SUPPORTED_TYPES[type] === true;
 }

@@ -10,7 +10,10 @@ import { MissionModule } from '../mission/mission.module';
 import { AdminModule } from '../admin/admin.module';
 import { SectWarModule } from '../sect-war/sect-war.module';
 import { TerritoryModule } from '../territory/territory.module';
+import { LiveOpsEventSchedulerModule } from '../liveops-event-scheduler/liveops-event-scheduler.module';
 
+// Phase 15.3.A — `LiveOpsEventSchedulerModule` wire để BossService đọc
+// BOSS_REWARD_BOOST runtime modifier (Optional inject — test có thể bỏ).
 @Module({
   imports: [
     RealtimeModule,
@@ -21,6 +24,7 @@ import { TerritoryModule } from '../territory/territory.module';
     AdminModule,
     SectWarModule,
     TerritoryModule,
+    LiveOpsEventSchedulerModule,
   ],
   controllers: [BossController],
   providers: [BossService, PrismaService],

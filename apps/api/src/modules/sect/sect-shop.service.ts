@@ -2,6 +2,7 @@ import { Inject, Injectable, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   SECT_SHOP_ENTRIES,
+  clampLiveOpsMultiplier,
   itemByKey,
   sectMissionPeriodKey,
   sectShopEntryByKey,
@@ -13,6 +14,7 @@ import {
   InMemorySlidingWindowRateLimiter,
   type RateLimiter,
 } from '../../common/rate-limiter';
+import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
 
 /**
  * Phase 13.1.B — Sect Shop service.
@@ -84,7 +86,21 @@ export interface SectShopBuyResult {
   entryKey: string;
   itemKey: string;
   qty: number;
+  /**
+   * Đóng vai trò alias cho `finalCost` để backward-compat. Kể từ
+   * Phase 15.3.A, giá trị này = `finalCost` (sau discount). FE mới
+   * nên dọc `finalCost` / `originalCost` để rõ ràng.
+   */
   totalCost: number;
+  /** Phase 15.3.A — cost trước khi apply discount = unitCost × qty. */
+  originalCost: number;
+  /** Phase 15.3.A — cost thực bị trừ khi sect_contrib_balance, sau discount. ≥ 0. */
+  finalCost: number;
+  /**
+   * Phase 15.3.A — `null` nếu không có SECT_SHOP_DISCOUNT active,
+   * `{ multiplier, eventKey }` nếu có.
+   */
+  liveOpsDiscount: { multiplier: number; eventKey: string } | null;
   contributionBalance: number;
   contributionLifetime: number;
 }
@@ -97,6 +113,8 @@ export class SectShopService {
     private readonly prisma: PrismaService,
     private readonly inventory: InventoryService,
     @Optional() @Inject(SECT_SHOP_BUY_RATE_LIMITER) limiter?: RateLimiter,
+    @Optional()
+    private readonly liveOpsEvents?: LiveOpsEventSchedulerService,
   ) {
     this.limiter =
       limiter ??
@@ -205,8 +223,43 @@ export class SectShopService {
     if (!char) throw new SectShopError('NO_CHARACTER');
     if (!char.sectId) throw new SectShopError('SECT_REQUIRED');
 
-    const totalCost = entry.contributionCost * qty;
-    if (char.sectContribBalance < totalCost) {
+    const originalCost = entry.contributionCost * qty;
+
+    // Phase 15.3.A — LiveOps `SECT_SHOP_DISCOUNT` runtime wire.
+    // Compose policy: max-only — discount tốt nhất winner. Cap server-side
+    // ≤ 0.5. Fail-soft: lỗi service → discount 0 (no-op), buy tiếp tục.
+    let liveOpsDiscount: { multiplier: number; eventKey: string } | null = null;
+    let discountMultiplier = 0;
+    try {
+      if (this.liveOpsEvents) {
+        const modifiers = await this.liveOpsEvents.getRuntimeModifiers(now);
+        const matches = modifiers.filter((m) => m.type === 'SECT_SHOP_DISCOUNT');
+        for (const m of matches) {
+          const clamped = clampLiveOpsMultiplier(
+            'SECT_SHOP_DISCOUNT',
+            m.multiplier,
+          );
+          if (clamped > discountMultiplier) {
+            discountMultiplier = clamped;
+            liveOpsDiscount = {
+              multiplier: clamped,
+              eventKey: m.eventKey,
+            };
+          }
+        }
+      }
+    } catch {
+      discountMultiplier = 0;
+      liveOpsDiscount = null;
+    }
+
+    const discountAmount =
+      discountMultiplier > 0
+        ? Math.floor(originalCost * discountMultiplier)
+        : 0;
+    const finalCost = Math.max(0, originalCost - discountAmount);
+
+    if (char.sectContribBalance < finalCost) {
       throw new SectShopError('INSUFFICIENT_CONTRIBUTION');
     }
 
@@ -214,7 +267,8 @@ export class SectShopService {
     const weeklyPeriodKey = sectMissionPeriodKey('WEEKLY', now);
 
     // Pre-check daily/weekly limit. Race window có thể slip 1-2 req nhưng
-    // rate limit chặn 30/min nên overshoot bounded.
+    // rate limit chặn 30/min nên overshoot bounded. Discount KHÔNG bypass
+    // limit — limit theo qty, không theo cost.
     if (typeof entry.dailyLimit === 'number' && entry.dailyLimit > 0) {
       const agg = await this.prisma.sectShopPurchase.aggregate({
         where: {
@@ -249,19 +303,23 @@ export class SectShopService {
     let purchaseId = '';
 
     await this.prisma.$transaction(async (tx) => {
-      // 1. CAS spend balance — guard `sectContribBalance >= totalCost`.
-      const upd = await tx.character.updateMany({
-        where: {
-          id: char.id,
-          sectContribBalance: { gte: totalCost },
-        },
-        data: {
-          sectContribBalance: { decrement: totalCost },
-        },
-      });
-      if (upd.count !== 1) {
-        // Race lose hoặc balance < cost (concurrent buy đã trừ trước).
-        throw new SectShopError('INSUFFICIENT_CONTRIBUTION');
+      // 1. CAS spend balance — guard `sectContribBalance >= finalCost`.
+      // finalCost = 0 case (100% discount theoretical, cap 0.5 chặn)
+      // skip update; vẫn ghi audit + grant item.
+      if (finalCost > 0) {
+        const upd = await tx.character.updateMany({
+          where: {
+            id: char.id,
+            sectContribBalance: { gte: finalCost },
+          },
+          data: {
+            sectContribBalance: { decrement: finalCost },
+          },
+        });
+        if (upd.count !== 1) {
+          // Race lose hoặc balance < cost (concurrent buy đã trừ trước).
+          throw new SectShopError('INSUFFICIENT_CONTRIBUTION');
+        }
       }
 
       const after = await tx.character.findUniqueOrThrow({
@@ -278,7 +336,7 @@ export class SectShopService {
           entryKey,
           itemKey: entry.itemKey,
           qty,
-          contributionSpent: totalCost,
+          contributionSpent: finalCost,
           dailyPeriodKey,
           weeklyPeriodKey,
         },
@@ -287,23 +345,29 @@ export class SectShopService {
       purchaseId = purchase.id;
 
       // 3. Ledger row reason=SECT_SHOP_BUY (negative delta).
-      await tx.sectContributionLedger.create({
-        data: {
-          characterId: char.id,
-          delta: -totalCost,
-          reason: 'SECT_SHOP_BUY',
-          refType: 'SectShopPurchase',
-          refId: purchase.id,
-          meta: {
-            entryKey,
-            itemKey: entry.itemKey,
-            qty,
-            unitCost: entry.contributionCost,
-            dailyPeriodKey,
-            weeklyPeriodKey,
+      // Skip ledger row nếu finalCost = 0 (no actual contribution spent).
+      if (finalCost > 0) {
+        await tx.sectContributionLedger.create({
+          data: {
+            characterId: char.id,
+            delta: -finalCost,
+            reason: 'SECT_SHOP_BUY',
+            refType: 'SectShopPurchase',
+            refId: purchase.id,
+            meta: {
+              entryKey,
+              itemKey: entry.itemKey,
+              qty,
+              unitCost: entry.contributionCost,
+              originalCost,
+              finalCost,
+              liveOpsDiscount,
+              dailyPeriodKey,
+              weeklyPeriodKey,
+            },
           },
-        },
-      });
+        });
+      }
 
       // 4. Grant item via inventory service (cùng tx → rollback nếu fail).
       await this.inventory.grantTx(
@@ -319,6 +383,9 @@ export class SectShopService {
             source: 'sect_shop',
             entryKey,
             unitCost: entry.contributionCost,
+            originalCost,
+            finalCost,
+            liveOpsDiscount,
           },
         },
       );
@@ -330,7 +397,10 @@ export class SectShopService {
       entryKey,
       itemKey: entry.itemKey,
       qty,
-      totalCost,
+      totalCost: finalCost,
+      originalCost,
+      finalCost,
+      liveOpsDiscount,
       contributionBalance: balance,
       contributionLifetime: lifetime,
     };

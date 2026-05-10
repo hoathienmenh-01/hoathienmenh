@@ -2382,6 +2382,44 @@ LIVEOPS_EVENT_TYPE_CAPS = {
 - 5/7 type chưa wire runtime (`SHOP_DISCOUNT`, `SECT_SHOP_DISCOUNT`, `DAILY_LOGIN_BONUS`, `BOSS_REWARD_BOOST`, `FESTIVAL_GIFT`) — defer Phase 15.3+.
 - FESTIVAL_GIFT reward claim API chưa làm (`LiveOpsEventRewardClaim` schema sẵn).
 
+## 11.25 LIVEOPS RUNTIME EXPANSION + FESTIVAL GIFT REWARD CAPS (Phase 15.3.A)
+
+### Goal
+Hoàn thiện 5 event type còn lại để 7/7 wire runtime thật, thêm `FESTIVAL_GIFT` one-time reward
+với cap nhỏ tránh admin nhầm lì xì 9999 linh thạch / 9999 tiên ngọc.
+
+### FESTIVAL_GIFT reward caps (`LIVEOPS_FESTIVAL_GIFT_REWARD_CAPS`)
+
+```ts
+{
+  linhThach: { max: 1000 },     // ≤ 1 ngày farm bí cảnh top tier
+  tienNgoc:  { max: 50 },       // ≤ ½ daily mission tien_ngoc payout
+  items:     { maxEntries: 10, qtyMax: 50 },  // ≤ 10 item type × ≤ 50 qty/each
+}
+```
+
+### Why these caps
+- **`linhThach ≤ 1000`**: 1k linh thạch ≈ 1 phiên dungeon top tier (PHAM/LINH realm) — đủ để festival cảm thấy đáng nhận, KHÔNG phá tier-up curve mà player phải farm 30+ ngày để leo.
+- **`tienNgoc ≤ 50`**: tien_ngoc là premium currency — 50 tien_ngoc ≈ 1 daily mission tier hoàn chỉnh. Cap nhỏ tránh festival biến thành "free topup loophole".
+- **`items ≤ 10 entries × qtyMax 50`**: tránh attacker (qua compromise admin) đẩy 9999 phế khoáng / 9999 đan dược cho 1k user × 1 event = 1B item phá market price.
+
+### Validation layers (defense-in-depth — Phase 15.3.A)
+1. **Shared validator** (`validateLiveOpsEventRewardJson`): per-field check linhThach/tienNgoc/items, reject extra field, validate `itemKey` non-empty + `qty > 0` integer + per-cap. Codes mới: `EVENT_REWARD_JSON_REQUIRED/INVALID/EMPTY/OVER_CAP/ITEM_INVALID/QTY_INVALID/CURRENCY_INVALID`.
+2. **Admin create-time** (`AdminLiveOpsEventsController.create`): gọi shared validator → reject 400 nếu rewardJson invalid (ngay khi create event, KHÔNG đợi đến lúc claim).
+3. **Claim-time** (`LiveOpsEventSchedulerService.claimEventReward`): re-validate rewardJson **lần nữa** trước khi grant — phòng trường hợp DB row bị corrupted / admin update sau (race) → vẫn safe.
+4. **FE clamp** (`AdminLiveOpsEventsPanel.vue` + `LiveOpsActiveEventsPanel.vue`): UI hint multiplier range theo `LIVEOPS_EVENT_TYPE_CAPS`, gọi `validateLiveOpsEventRewardJson` trước submit. UX-only — BE vẫn re-validate.
+
+### Runtime wiring (Phase 15.3.A — full 5/5)
+- **`SHOP_DISCOUNT` (≤ 0.5)**: `ShopService.buyFromShop` áp `finalPrice = ceil(originalPrice × (1 − mul))`. Currency ledger ghi `finalPrice` thực chi (KHÔNG ghi originalPrice ở reason). Nếu nhiều SHOP_DISCOUNT ACTIVE → max-only compose.
+- **`SECT_SHOP_DISCOUNT` (≤ 0.5)**: `SectShopService.buyFromSectShop` áp tương tự. **KHÔNG bypass** daily/weekly limit + contribution requirement.
+- **`DAILY_LOGIN_BONUS` (≤ 2.0)**: `DailyLoginService.claimToday` áp multiplier vào reward. Bonus **đi qua** Daily Reward Cap (cap thắng — nếu cap = 100 và event x2.0 trên reward 80, total cấp = `min(160, cap_remaining)`). One-claim-per-day giữ nguyên qua UNIQUE `(characterId, dateLocal)`.
+- **`BOSS_REWARD_BOOST` (≤ 2.0)**: `BossRewardService.distributeRewards` áp multiplier vào reward attribution rank. Mail metadata ghi `liveOpsBoostMultiplier` + `liveOpsEventKey`. KHÔNG phá rank cap reward (rank cap thắng).
+- **`FESTIVAL_GIFT` (one-time claim)**: idempotent qua UNIQUE `(eventId, characterId)` — retry sau success → 409 `EVENT_ALREADY_CLAIMED`, KHÔNG double reward. Granted reward ghi atomically `LiveOpsEventRewardClaim` + CurrencyLedger/ItemLedger trong 1 `$transaction`.
+
+### Compose policy reminder
+- **Max-only no-stack** giữ nguyên từ Phase 15.1–15.2.
+- **Fail-soft**: nếu LiveOps service unavailable → runtime trả `1.0` (BOOST) hoặc `0` (DISCOUNT) → no-op cho gameplay flow, KHÔNG block player.
+
 ## 12. CHANGELOG
 
 - **2026-04-30** — Initial creation. Author: Devin AI session 9q.

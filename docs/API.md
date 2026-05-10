@@ -711,7 +711,30 @@ Race-safe multi-instance: Redis lease `xt:liveops-event-scheduler:recompute`
 `EVENT_KEY_INVALID`, `EVENT_TITLE_INVALID`, `EVENT_TYPE_INVALID`,
 `EVENT_WINDOW_INVALID`, `EVENT_MULTIPLIER_INVALID`,
 `EVENT_MULTIPLIER_OVER_CAP`, `INVALID_INPUT` — tất cả 400 (trừ
-`EVENT_NOT_FOUND` 404 và `EVENT_KEY_DUPLICATE` 409).
+`EVENT_NOT_FOUND` 404 và `EVENT_KEY_DUPLICATE` 409). **Phase 15.3.A**
+thêm `EVENT_REWARD_JSON_REQUIRED`, `EVENT_REWARD_JSON_INVALID`,
+`EVENT_REWARD_ITEM_INVALID`, `EVENT_REWARD_QTY_INVALID`,
+`EVENT_REWARD_CURRENCY_INVALID`, `EVENT_REWARD_EMPTY`,
+`EVENT_REWARD_OVER_CAP` (400) cho FESTIVAL_GIFT reward config validate.
+
+### Public LiveOps Events (Phase 15.3.A)
+
+| Method | Path | Role | Mô tả |
+| --- | --- | --- | --- |
+| GET    | `/liveops/events/active` | Auth (player) | List active LiveOps events public-safe (KHÔNG leak `createdByAdminId` / DB id). Mỗi entry: `{ key, type, title, description, startsAt, endsAt, publicConfig: { multiplier: number \| null, reward: LiveOpsEventReward \| null }, claimable, runtimeSupported }`. `claimable=true` chỉ khi `type='FESTIVAL_GIFT'` + character chưa từng claim. `runtimeSupported` chỉ là FE hint (BE vẫn validate). Fail-soft KHÔNG bắt buộc — FE client `getActiveLiveOpsEvents()` tự return `[]` khi network error. |
+| POST   | `/liveops/events/:eventKey/claim` | Auth (player) | Claim FESTIVAL_GIFT one-time. Server (atomic `$transaction`): (1) load event by `key` → 404 `EVENT_NOT_FOUND` nếu không tồn tại; (2) reject `EVENT_NOT_CLAIMABLE` nếu `type!='FESTIVAL_GIFT'`; (3) reject `EVENT_NOT_ACTIVE` nếu `status!='ACTIVE'`; (4) reject `EVENT_REWARD_EMPTY/OVER_CAP/...` nếu reward config invalid (defense-in-depth qua `validateLiveOpsEventRewardJson`); (5) insert `LiveOpsEventRewardClaim { eventId, characterId, rewardJson, claimedAt }` — UNIQUE `(eventId, characterId)` → P2002 → 409 `EVENT_ALREADY_CLAIMED`; (6) grant CurrencyLedger (linhThach/tienNgoc với reason `LIVEOPS_EVENT_FESTIVAL_GIFT`) + ItemLedger (per-item nếu có). Outcome `{ ok: true, data: { eventKey, claimedAt: string, granted: LiveOpsEventReward } }`. **Idempotent**: retry sau success → 409 `EVENT_ALREADY_CLAIMED`, KHÔNG double reward. **Caps**: linhThach ≤ 1000, tienNgoc ≤ 50, items ≤ 10 entries × qty ≤ 50 (validated server-side). |
+
+**Runtime modifier integration (Phase 15.3.A)** — KHÔNG có endpoint riêng;
+modifier áp tự động trong các flow gameplay:
+
+- **`SHOP_DISCOUNT`** (≤ 0.5): `POST /shop/buy` áp `finalPrice = ceil(originalPrice × (1 − mul))`, ledger ghi `finalPrice` thực chi.
+- **`SECT_SHOP_DISCOUNT`** (≤ 0.5): tương tự cho cost contribution + linh thạch sect shop.
+- **`DAILY_LOGIN_BONUS`** (≤ 2.0): `POST /daily-login/claim` áp multiplier sau Daily Reward Cap.
+- **`BOSS_REWARD_BOOST`** (≤ 2.0): boss reward distribution áp multiplier per attribution rank, mail metadata ghi `liveOpsBoostMultiplier` + `liveOpsEventKey`.
+
+Compose policy max-only — nhiều event cùng type ACTIVE → chọn multiplier
+tốt nhất, KHÔNG stack. Fail-soft: nếu LiveOps service unavailable, runtime
+trả `1.0` (no boost) hoặc `0` (no discount) — KHÔNG block player flow.
 
 ## Error codes (chuẩn hoá)
 

@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import {
+  LIVEOPS_EVENT_TYPE_CAPS,
+  LIVEOPS_RUNTIME_SUPPORTED_TYPES,
+  validateLiveOpsEventRewardJson,
+} from '@xuantoi/shared';
 import { useToastStore } from '@/stores/toast';
 import {
   adminLiveOpsEventsCreate,
@@ -77,6 +82,19 @@ const form = ref<CreateForm>({
 
 const isFestival = computed(() => form.value.type === 'FESTIVAL_GIFT');
 
+const typeCap = computed(() => LIVEOPS_EVENT_TYPE_CAPS[form.value.type]);
+
+const multiplierMin = computed(() => typeCap.value.multiplierMin);
+const multiplierMax = computed(() => typeCap.value.multiplierMax);
+
+const formTypeRuntimeSupported = computed(
+  () => LIVEOPS_RUNTIME_SUPPORTED_TYPES[form.value.type] === true,
+);
+
+function isRuntimeSupportedType(eventType: LiveOpsScheduledEventType): boolean {
+  return LIVEOPS_RUNTIME_SUPPORTED_TYPES[eventType] === true;
+}
+
 onMounted(async () => {
   await refresh();
 });
@@ -145,11 +163,9 @@ async function onCreate(): Promise<void> {
         submittingCreate.value = false;
         return;
       }
+      let parsed: Record<string, unknown>;
       try {
-        config.rewardJson = JSON.parse(form.value.rewardJson) as Record<
-          string,
-          unknown
-        >;
+        parsed = JSON.parse(form.value.rewardJson) as Record<string, unknown>;
       } catch {
         toast.push({
           type: 'error',
@@ -158,7 +174,32 @@ async function onCreate(): Promise<void> {
         submittingCreate.value = false;
         return;
       }
+      // Phase 15.3.A — mirror shared validation FE-side để báo lỗi sớm
+      // (BE vẫn validate lại — defense-in-depth).
+      const code = validateLiveOpsEventRewardJson(parsed);
+      if (code) {
+        toast.push({
+          type: 'error',
+          text: t(`adminLiveOpsEvents.errors.${code}`, code),
+        });
+        submittingCreate.value = false;
+        return;
+      }
+      config.rewardJson = parsed;
     } else if (typeof form.value.multiplier === 'number') {
+      // Phase 15.3.A — clamp range mirror shared cap để BE không 400 oan.
+      const cap = typeCap.value;
+      if (
+        form.value.multiplier < cap.multiplierMin ||
+        form.value.multiplier > cap.multiplierMax
+      ) {
+        toast.push({
+          type: 'error',
+          text: t('adminLiveOpsEvents.errors.MULTIPLIER_OUT_OF_RANGE'),
+        });
+        submittingCreate.value = false;
+        return;
+      }
       config.multiplier = form.value.multiplier;
     }
 
@@ -241,6 +282,13 @@ async function onRecompute(): Promise<void> {
 
     <p class="text-xs text-ink-300">{{ t('adminLiveOpsEvents.help') }}</p>
 
+    <p
+      class="text-[10px] text-ink-300"
+      data-testid="admin-liveops-events-runtime-legend"
+    >
+      {{ t('adminLiveOpsEvents.runtimeLegend') }}
+    </p>
+
     <div v-if="loading" class="text-xs text-ink-300">{{ t('adminLiveOpsEvents.loading') }}</div>
     <div v-else-if="error" class="text-xs text-rose-300">
       {{ t(`adminLiveOpsEvents.errors.${error}`, error) }}
@@ -272,7 +320,25 @@ async function onRecompute(): Promise<void> {
               <div>{{ ev.key }}</div>
               <div class="text-ink-300 text-[10px]">{{ ev.title }}</div>
             </td>
-            <td class="py-1 pr-2">{{ ev.type }}</td>
+            <td class="py-1 pr-2">
+              <div class="flex flex-col gap-0.5">
+                <span>{{ ev.type }}</span>
+                <span
+                  v-if="isRuntimeSupportedType(ev.type)"
+                  class="text-[9px] uppercase tracking-widest text-emerald-300"
+                  :data-testid="`admin-liveops-event-runtime-${ev.key}`"
+                >
+                  {{ t('adminLiveOpsEvents.runtimeWired') }}
+                </span>
+                <span
+                  v-else
+                  class="text-[9px] uppercase tracking-widest text-rose-300"
+                  :data-testid="`admin-liveops-event-runtime-${ev.key}`"
+                >
+                  {{ t('adminLiveOpsEvents.runtimeNotWired') }}
+                </span>
+              </div>
+            </td>
             <td class="py-1 pr-2">
               <span
                 class="px-2 py-0.5 rounded text-[10px]"
@@ -330,7 +396,9 @@ async function onRecompute(): Promise<void> {
               class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50"
               data-testid="admin-liveops-events-form-type"
             >
-              <option v-for="ty in TYPES" :key="ty" :value="ty">{{ ty }}</option>
+              <option v-for="ty in TYPES" :key="ty" :value="ty">
+                {{ ty }}{{ isRuntimeSupportedType(ty) ? '' : ' (not wired)' }}
+              </option>
             </select>
           </label>
           <label class="text-xs text-ink-300 flex flex-col gap-1 md:col-span-2">
@@ -373,26 +441,41 @@ async function onRecompute(): Promise<void> {
             />
           </label>
           <label v-if="!isFestival" class="text-xs text-ink-300 flex flex-col gap-1">
-            {{ t('adminLiveOpsEvents.form.multiplier') }}
+            {{
+              t('adminLiveOpsEvents.form.multiplierWithCap', {
+                min: multiplierMin,
+                max: multiplierMax,
+              })
+            }}
             <input
               v-model.number="form.multiplier"
               type="number"
               step="0.05"
-              min="0"
-              max="2"
+              :min="multiplierMin"
+              :max="multiplierMax"
               class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50"
               data-testid="admin-liveops-events-form-multiplier"
             />
+            <span
+              v-if="!formTypeRuntimeSupported"
+              class="text-[10px] text-rose-300"
+              data-testid="admin-liveops-events-form-runtime-warn"
+            >
+              {{ t('adminLiveOpsEvents.form.runtimeNotWiredWarn') }}
+            </span>
           </label>
           <label v-else class="text-xs text-ink-300 flex flex-col gap-1 md:col-span-2">
             {{ t('adminLiveOpsEvents.form.rewardJson') }}
             <textarea
               v-model="form.rewardJson"
-              rows="3"
+              rows="4"
               class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50 font-mono text-[11px]"
-              :placeholder="`{&quot;items&quot;: [{&quot;itemKey&quot;: &quot;...&quot;, &quot;qty&quot;: 1}]}`"
+              :placeholder="`{&quot;linhThach&quot;: 100, &quot;tienNgoc&quot;: 5, &quot;items&quot;: [{&quot;itemKey&quot;: &quot;...&quot;, &quot;qty&quot;: 1}]}`"
               data-testid="admin-liveops-events-form-reward-json"
             />
+            <span class="text-[10px] text-ink-300">
+              {{ t('adminLiveOpsEvents.form.rewardJsonHelp') }}
+            </span>
           </label>
           <label class="text-xs text-ink-300 flex flex-col gap-1">
             {{ t('adminLiveOpsEvents.form.initialStatus') }}

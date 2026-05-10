@@ -1,7 +1,9 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { CurrencyKind, Prisma } from '@prisma/client';
+import { clampLiveOpsMultiplier } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
+import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
 import { getMissionResetTz } from '../mission/mission.service';
 import { SectWarService } from '../sect-war/sect-war.service';
 
@@ -29,8 +31,16 @@ export interface DailyLoginStatus {
 export interface DailyLoginClaimResult {
   /** True = vừa cộng tiền lần đầu hôm nay. False = đã claim trước đó (idempotent). */
   claimed: boolean;
-  /** Số linh thạch trao trong lần claim này (0 nếu idempotent). */
+  /** Số linh thạch trao trong lần claim này (0 nếu idempotent). Đã tính cả bonus. */
   linhThachDelta: string;
+  /** Phase 15.3.A — base linh thạch trước khi apply LiveOps bonus. */
+  baseLinhThach: string;
+  /** Phase 15.3.A — LiveOps bonus info, `null` nếu không có event. */
+  liveOpsBonus: {
+    multiplier: number;
+    bonusLinhThach: string;
+    eventKey: string;
+  } | null;
   /** Streak sau khi claim (đã bao gồm hôm nay nếu claimed=true). */
   newStreak: number;
   /** YYYY-MM-DD đã claim. */
@@ -66,6 +76,8 @@ export class DailyLoginService {
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
     @Optional() private readonly sectWar?: SectWarService,
+    @Optional()
+    private readonly liveOpsEvents?: LiveOpsEventSchedulerService,
   ) {}
 
   private async getCharacterIdByUser(userId: string): Promise<string> {
@@ -111,7 +123,19 @@ export class DailyLoginService {
   }
 
   /** Claim phần thưởng hôm nay. Idempotent: gọi nhiều lần cùng 1 ngày → trả về
-   *  `{ claimed: false }` lần thứ 2 trở đi (không cộng tiền thêm). */
+   *  `{ claimed: false }` lần thứ 2 trở đi (không cộng tiền thêm).
+   *
+   *  Phase 15.3.A — LiveOps `DAILY_LOGIN_BONUS`:
+   *  - Read `getActiveMultiplier('DAILY_LOGIN_BONUS', now)`, max-only compose.
+   *  - Cap clamp ≤ 2.0 (= x2). Nếu m=1 (no event), `bonus = 0n`.
+   *  - Bonus delta = `floor(BASE * (m - 1))`. Total grant = `BASE + bonus`.
+   *  - One-claim-per-day guard đã có (UNIQUE (characterId,claimDateLocal))
+   *    — retry không double bonus.
+   *  - Daily Reward Cap KHÔNG áp dụng cho `DAILY_LOGIN` (xem `daily-reward
+   *    -cap.ts` REWARD_SOURCES = ['CULTIVATION', 'DUNGEON', 'MISSION']).
+   *  - Fail-soft LiveOps service → bonus 0, claim tiếp tục (player không
+   *    thấy event nhưng không bị mất base reward).
+   */
   async claim(userId: string, now: Date = new Date()): Promise<DailyLoginClaimResult> {
     const characterId = await this.getCharacterIdByUser(userId);
     const tz = getMissionResetTz();
@@ -127,6 +151,44 @@ export class DailyLoginService {
     });
     const newStreak = yesterday ? yesterday.streakAtClaim + 1 : 1;
 
+    // Phase 15.3.A — read LiveOps `DAILY_LOGIN_BONUS` modifier (max-only).
+    let liveOpsBonus: {
+      multiplier: number;
+      bonusLinhThach: string;
+      eventKey: string;
+    } | null = null;
+    let bonusDelta = 0n;
+    try {
+      if (this.liveOpsEvents) {
+        const modifiers = await this.liveOpsEvents.getRuntimeModifiers(now);
+        let bestMul = 1.0;
+        let bestKey: string | null = null;
+        for (const m of modifiers) {
+          if (m.type !== 'DAILY_LOGIN_BONUS') continue;
+          const clamped = clampLiveOpsMultiplier('DAILY_LOGIN_BONUS', m.multiplier);
+          if (clamped > bestMul) {
+            bestMul = clamped;
+            bestKey = m.eventKey;
+          }
+        }
+        if (bestMul > 1.0 && bestKey) {
+          // bonus = floor(BASE * (mul - 1)); ví dụ mul=1.5, base=100 → 50.
+          const baseN = Number(DAILY_LOGIN_LINH_THACH);
+          const bonusN = Math.floor(baseN * (bestMul - 1));
+          bonusDelta = BigInt(bonusN);
+          liveOpsBonus = {
+            multiplier: bestMul,
+            bonusLinhThach: bonusDelta.toString(),
+            eventKey: bestKey,
+          };
+        }
+      }
+    } catch {
+      bonusDelta = 0n;
+      liveOpsBonus = null;
+    }
+    const totalDelta = DAILY_LOGIN_LINH_THACH + bonusDelta;
+
     try {
       await this.prisma.$transaction(async (tx) => {
         // INSERT trước — nếu trùng (characterId, today) sẽ throw P2002 và rollback.
@@ -134,18 +196,22 @@ export class DailyLoginService {
           data: {
             characterId,
             claimDateLocal: todayDateLocal,
-            linhThachDelta: DAILY_LOGIN_LINH_THACH,
+            linhThachDelta: totalDelta,
             streakAtClaim: newStreak,
           },
         });
         await this.currency.applyTx(tx, {
           characterId,
           currency: CurrencyKind.LINH_THACH,
-          delta: DAILY_LOGIN_LINH_THACH,
+          delta: totalDelta,
           reason: 'DAILY_LOGIN',
           refType: 'DailyLoginClaim',
           refId: todayDateLocal,
-          meta: { streakAtClaim: newStreak },
+          meta: {
+            streakAtClaim: newStreak,
+            baseLinhThach: DAILY_LOGIN_LINH_THACH.toString(),
+            liveOpsBonus,
+          },
         });
         // Phase 13.1.A — Sect War contribution hook. Idempotent qua
         // (weekKey, characterId, activityKey, sourceType, sourceId)
@@ -166,7 +232,9 @@ export class DailyLoginService {
       });
       return {
         claimed: true,
-        linhThachDelta: DAILY_LOGIN_LINH_THACH.toString(),
+        linhThachDelta: totalDelta.toString(),
+        baseLinhThach: DAILY_LOGIN_LINH_THACH.toString(),
+        liveOpsBonus,
         newStreak,
         claimDateLocal: todayDateLocal,
       };
@@ -184,6 +252,8 @@ export class DailyLoginService {
         return {
           claimed: false,
           linhThachDelta: '0',
+          baseLinhThach: DAILY_LOGIN_LINH_THACH.toString(),
+          liveOpsBonus: null,
           newStreak: existing?.streakAtClaim ?? newStreak,
           claimDateLocal: todayDateLocal,
         };
