@@ -1423,4 +1423,79 @@ describe('AdminController', () => {
       );
     });
   });
+
+  // Phase 14.1.C — POST /admin/arena/season/settle + create-next.
+  describe('arenaSeasonSettle', () => {
+    it('admin → forwards seasonKey to service + returns summary', async () => {
+      const calls: string[] = [];
+      const c = makeController({
+        arenaSeasonSettle: async (key) => {
+          calls.push(key ?? '<current>');
+          return {
+            seasonKey: key ?? 'arena_2026-W19',
+            settledAtIso: '2026-05-12T00:00:00.000Z',
+            participants: 3,
+            grants: 3,
+            newGrants: 3,
+          };
+        },
+      });
+      const r = await c.arenaSeasonSettle(makeReq({ userId: 'admin-1' }), {
+        seasonKey: 'arena_2026-W18',
+        reason: 'force settle',
+      });
+      expect(r.ok).toBe(true);
+      expect(r.data.summary.seasonKey).toBe('arena_2026-W18');
+      expect(r.data.summary.newGrants).toBe(3);
+      expect(calls).toEqual(['arena_2026-W18']);
+    });
+
+    it('seasonKey thiếu → forward undefined (service tự lấy current)', async () => {
+      const calls: Array<string | undefined> = [];
+      const c = makeController({
+        arenaSeasonSettle: async (key) => {
+          calls.push(key);
+          return {
+            seasonKey: 'arena_2026-W19',
+            settledAtIso: '2026-05-12T00:00:00.000Z',
+            participants: 0,
+            grants: 0,
+            newGrants: 0,
+          };
+        },
+      });
+      const r = await c.arenaSeasonSettle(makeReq(), {});
+      expect(r.ok).toBe(true);
+      expect(calls).toEqual([undefined]);
+    });
+
+    it('seasonKey quá dài → 400 INVALID_INPUT', async () => {
+      const c = makeController();
+      await expectHttpError(
+        c.arenaSeasonSettle(makeReq(), { seasonKey: 'x'.repeat(65) }),
+        HttpStatus.BAD_REQUEST,
+        'INVALID_INPUT',
+      );
+    });
+  });
+
+  describe('arenaSeasonCreateNext', () => {
+    it('admin → returns next-season view', async () => {
+      const c = makeController({
+        arenaSeasonCreateNext: async () => ({
+          seasonKey: 'arena_2026-W20',
+          status: 'ACTIVE',
+          startsAtIso: '2026-05-18T17:00:00.000Z',
+          endsAtIso: '2026-05-25T17:00:00.000Z',
+          settledAtIso: null,
+          cadence: 'weekly',
+          timezone: 'Asia/Ho_Chi_Minh',
+        }),
+      });
+      const r = await c.arenaSeasonCreateNext(makeReq(), {});
+      expect(r.ok).toBe(true);
+      expect(r.data.season.seasonKey).toBe('arena_2026-W20');
+      expect(r.data.season.status).toBe('ACTIVE');
+    });
+  });
 });
