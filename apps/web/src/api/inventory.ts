@@ -1,5 +1,13 @@
 import { apiClient } from './client';
-import type { EquipSlot, ItemDef } from '@xuantoi/shared';
+import type {
+  ElementKey,
+  EquipSlot,
+  EquipmentSubstat,
+  EquipmentSubstatKind,
+  ElementalEnchantEffect,
+  ItemDef,
+  Quality,
+} from '@xuantoi/shared';
 
 export interface InventoryView {
   id: string;
@@ -11,6 +19,12 @@ export interface InventoryView {
   sockets: string[];
   /** Phase 11.5.B Refine MVP — cấp luyện khí 0..15. */
   refineLevel: number;
+  /** Phase 15.0.A Equipment Reforge — substats phụ đã re-roll (atk/def/...) */
+  substats: EquipmentSubstat[];
+  /** Phase 15.0.A Equipment Enchant — element Ngũ Hành đã gắn (null nếu chưa). */
+  enchantElement: ElementKey | null;
+  /** Phase 15.0.A Equipment Enchant — level 0..MAX_ENCHANT_LEVEL. */
+  enchantLevel: number;
 }
 
 /**
@@ -173,4 +187,103 @@ export async function combineGemsApi(srcGemKey: string): Promise<GemCombineApiRe
     { srcGemKey },
   );
   return unwrap(data).combine;
+}
+
+// ====================================================================
+// Phase 15.0.A — Equipment Reforge / Enchant Foundation API
+// ====================================================================
+
+/** Phase 15.0.A — common cost shape cho cả reforge + enchant. */
+export interface EquipmentUpgradeCost {
+  linhThachCost: number;
+  materialKey: string;
+  materialQty: number;
+}
+
+/** Phase 15.0.A — `/character/equipment/reforge` response envelope. */
+export interface EquipmentReforgeResult {
+  inventoryItemId: string;
+  before: EquipmentSubstat[];
+  after: EquipmentSubstat[];
+  cost: EquipmentUpgradeCost;
+}
+
+/** Phase 15.0.A — `/character/equipment/enchant` response envelope. */
+export interface EquipmentEnchantResult {
+  inventoryItemId: string;
+  beforeElement: ElementKey | null;
+  beforeLevel: number;
+  afterElement: ElementKey;
+  afterLevel: number;
+  cost: EquipmentUpgradeCost;
+}
+
+/** Phase 15.0.A — `/character/equipment/upgrade-preview` response envelope. */
+export interface EquipmentUpgradePreview {
+  inventoryItemId: string;
+  itemKey: string;
+  quality: Quality;
+  reforge: {
+    slots: number;
+    currentSubstats: EquipmentSubstat[];
+    currentBonus: Record<EquipmentSubstatKind, number>;
+    nextCost: EquipmentUpgradeCost;
+  };
+  enchant: {
+    currentElement: ElementKey | null;
+    currentLevel: number;
+    maxLevel: number;
+    currentBonus: Record<EquipmentSubstatKind, number>;
+    nextCost: EquipmentUpgradeCost | null;
+    baseLinhThachCost: number;
+    materialKey: string;
+    materialQty: number;
+    elements: Array<{ element: ElementKey; effect: ElementalEnchantEffect }>;
+  };
+}
+
+/**
+ * Phase 15.0.A — POST `/character/equipment/reforge`. Server-authoritative
+ * re-roll substats (atk/def/hpMax/mpMax/spirit). Atomic consume linhThach +
+ * material + write history. Caller phải re-fetch `listInventory()` sau khi
+ * success để cập nhật substats.
+ */
+export async function reforgeEquipment(
+  equipmentInventoryItemId: string,
+): Promise<EquipmentReforgeResult> {
+  const { data } = await apiClient.post<Envelope<{ reforge: EquipmentReforgeResult }>>(
+    '/character/equipment/reforge',
+    { equipmentInventoryItemId },
+  );
+  return unwrap(data).reforge;
+}
+
+/**
+ * Phase 15.0.A — POST `/character/equipment/enchant`. Server-authoritative
+ * level-up enchant Ngũ Hành. Lần đầu chọn `element`; các lần sau buộc cùng
+ * element. Caller phải re-fetch `listInventory()` sau khi success.
+ */
+export async function enchantEquipment(
+  equipmentInventoryItemId: string,
+  element: ElementKey,
+): Promise<EquipmentEnchantResult> {
+  const { data } = await apiClient.post<Envelope<{ enchant: EquipmentEnchantResult }>>(
+    '/character/equipment/enchant',
+    { equipmentInventoryItemId, element },
+  );
+  return unwrap(data).enchant;
+}
+
+/**
+ * Phase 15.0.A — POST `/character/equipment/upgrade-preview`. Read-only,
+ * trả config + cost cho reforge + enchant. Không mutate.
+ */
+export async function getEquipmentUpgradePreview(
+  equipmentInventoryItemId: string,
+): Promise<EquipmentUpgradePreview> {
+  const { data } = await apiClient.post<Envelope<{ preview: EquipmentUpgradePreview }>>(
+    '/character/equipment/upgrade-preview',
+    { equipmentInventoryItemId },
+  );
+  return unwrap(data).preview;
 }

@@ -35,6 +35,7 @@ import {
 import { learnSkillFromBook } from '@/api/skill';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import EquipmentUpgradePanel from '@/components/EquipmentUpgradePanel.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 const auth = useAuthStore();
@@ -207,6 +208,14 @@ onMounted(async () => {
     toast.push({ type: 'error', text: t('inventory.loadFailToast') });
   }
 });
+
+async function refreshInventory(): Promise<void> {
+  try {
+    items.value = await listInventory();
+  } catch {
+    toast.push({ type: 'error', text: t('inventory.loadFailToast') });
+  }
+}
 
 async function onEquip(it: InventoryView): Promise<void> {
   if (submitting.value) return;
@@ -435,6 +444,25 @@ function handleErr(e: unknown): void {
               class="text-[10px] text-amber-300 font-bold ml-1"
               data-testid="refine-badge"
             >{{ t('inventory.refine.levelLabel', { lvl: equipped.get(slot)!.refineLevel }) }}</span>
+            <span
+              v-if="equipped.get(slot)!.enchantElement && equipped.get(slot)!.enchantLevel > 0"
+              class="text-[10px] text-cyan-300 font-bold ml-1"
+              data-testid="enchant-badge"
+            >{{
+              t('inventory.upgrade.enchant.badgeLabel', {
+                element: t('elementBadge.element.' + equipped.get(slot)!.enchantElement),
+                level: equipped.get(slot)!.enchantLevel,
+              })
+            }}</span>
+            <span
+              v-if="equipped.get(slot)!.substats.length > 0"
+              class="text-[10px] text-emerald-300 font-bold ml-1"
+              data-testid="substats-badge"
+            >{{
+              t('inventory.upgrade.reforge.badgeLabel', {
+                count: equipped.get(slot)!.substats.length,
+              })
+            }}</span>
           </span>
           <span v-else class="italic text-ink-300/60">{{ t('inventory.empty') }}</span>
           <MButton
@@ -455,8 +483,9 @@ function handleErr(e: unknown): void {
         <div
           v-for="it in unequipped"
           :key="it.id"
-          class="rounded border border-ink-300/40 bg-ink-700/30 p-3 flex items-center gap-3"
+          class="rounded border border-ink-300/40 bg-ink-700/30 p-3 flex flex-col gap-3"
         >
+        <div class="flex items-center gap-3">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
               <span class="font-bold" :class="QUALITY_COLOR[it.item.quality]">
@@ -621,6 +650,13 @@ function handleErr(e: unknown): void {
               {{ t('inventory.gem.combineButton') }}
             </MButton>
           </div>
+        </div>
+        <!-- Phase 15.0.A — Equipment Reforge / Enchant Foundation panel. -->
+        <EquipmentUpgradePanel
+          v-if="it.item.slot"
+          :equipment="it"
+          @changed="refreshInventory"
+        />
         </div>
       </section>
     </div>
