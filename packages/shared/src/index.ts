@@ -20,6 +20,7 @@ export * from './titles';
 export * from './tribulation';
 export * from './tribulation-encounter';
 export * from './tribulation-foundation';
+export * from './tribulation-mini-battle';
 export * from './tribulation-support-providers';
 export * from './tribulation-support-validate';
 export * from './topup';
