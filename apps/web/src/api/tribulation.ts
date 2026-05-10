@@ -430,3 +430,173 @@ export async function resolveTribulationEncounter(): Promise<TribulationOutcomeV
   if (!data.ok || !data.data) throw data.error ?? fallbackError('tribulation');
   return data.data.tribulation;
 }
+
+// ── Phase 14.3.E.2 — Mini-Battle (Thiên Kiếp turn-based) FE client ────────
+
+/**
+ * Phase 14.3.E.2 — mirror server `TribulationMiniBattleState` (shared).
+ * Re-export local alias để FE store/components dễ import từ 1 chỗ.
+ */
+export type TribulationMiniBattleStateView =
+  | 'PENDING'
+  | 'ACTIVE'
+  | 'RESOLVED'
+  | 'FAILED'
+  | 'EXPIRED';
+
+/** Mirror server `TribulationBattleAction`. */
+export type TribulationBattleActionKey =
+  | 'ATTACK'
+  | 'DEFEND'
+  | 'FOCUS'
+  | 'CLEANSE'
+  | 'CHANNEL';
+
+/** Mirror server `TribulationMiniBattleEffectType`. */
+export type TribulationMiniBattleEffectTypeView =
+  | 'BURST'
+  | 'SUSTAIN'
+  | 'POISON_RECOVERY'
+  | 'ARMOR_CRIT'
+  | 'DEFENSE_ENDURANCE';
+
+/** Mirror server `TribulationBattleEvent` (1 entry trong `actionLog`). */
+export interface TribulationBattleEventView {
+  phase: number;
+  action: TribulationBattleActionKey;
+  damage: number;
+  shield: number;
+  heal: number;
+  dot: number;
+  crit: boolean;
+  result: 'ongoing' | 'win' | 'lose';
+  messageKey: string;
+}
+
+/** Mirror server `TribulationMiniBattleSummary` (terminal state digest). */
+export interface TribulationMiniBattleSummaryView {
+  state: TribulationMiniBattleStateView;
+  result: 'win' | 'lose' | null;
+  phasesPlayed: number;
+  totalDamageTaken: number;
+  totalDamageDealt: number;
+  totalHeal: number;
+  totalShieldGained: number;
+  finalPlayerHp: number;
+  finalTribulationHp: number;
+  effectType: TribulationMiniBattleEffectTypeView;
+}
+
+/**
+ * Phase 14.3.E.2 — view shape của 1 row mini-battle, mirror server
+ * `TribulationMiniBattleView` (BigInt-free, Date → ISO).
+ */
+export interface TribulationMiniBattleView {
+  id: string;
+  characterId: string;
+  encounterId: string | null;
+  tribulationKey: string;
+  realmKey: string;
+  effectType: TribulationMiniBattleEffectTypeView;
+  element: string;
+  difficulty: 'minor' | 'major' | 'heavenly' | 'saint';
+  state: TribulationMiniBattleStateView;
+  currentPhase: number;
+  phaseCount: number;
+  playerHp: number;
+  playerHpMax: number;
+  tribulationHp: number;
+  tribulationHpMax: number;
+  shield: number;
+  dotStacks: number;
+  focusCharge: number;
+  seed: number;
+  actionLog: TribulationBattleEventView[];
+  result: TribulationMiniBattleSummaryView | null;
+  startedAt: string;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Phase 14.3.E.2 — GET /character/tribulation/battle/current.
+ *
+ * Idempotent. Server trả `null` nếu user chưa start hoặc battle đã RESOLVED.
+ * Khi backend disable feature flag, controller trả 501 → axios reject với
+ * `code='TRIBULATION_MINI_BATTLE_UNAVAILABLE'`. Caller (store) catch +
+ * map sang state "feature unavailable" → FE fallback flow Phase 14.3.D.
+ */
+export async function fetchCurrentTribulationBattle(): Promise<TribulationMiniBattleView | null> {
+  const { data } = await apiClient.get<
+    Envelope<{ battle: TribulationMiniBattleView | null }>
+  >('/character/tribulation/battle/current');
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('tribulation');
+  return data.data.battle;
+}
+
+/**
+ * Phase 14.3.E.2 — POST /character/tribulation/battle/start.
+ *
+ * Body forward `selectedSupportItemKeys` mirror flow encounter (server
+ * snapshot vào row encounter). Server reject `MINI_BATTLE_ALREADY_ACTIVE`
+ * (409) nếu đã có row PENDING/ACTIVE — caller map sang resume UX.
+ */
+export async function startTribulationBattle(
+  selectedSupportItemKeys?: readonly string[],
+): Promise<TribulationMiniBattleView> {
+  const body =
+    selectedSupportItemKeys && selectedSupportItemKeys.length > 0
+      ? { selectedSupportItemKeys: [...selectedSupportItemKeys] }
+      : {};
+  const { data } = await apiClient.post<
+    Envelope<{ battle: TribulationMiniBattleView }>
+  >('/character/tribulation/battle/start', body);
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('tribulation');
+  return data.data.battle;
+}
+
+/**
+ * Phase 14.3.E.2 — POST /character/tribulation/battle/action.
+ *
+ * Body shape: `{ battleId, action, clientNonce? }`. Server idempotent qua
+ * `clientNonce` dedupe (cùng nonce → return current state, không apply
+ * lần 2). Caller pass nonce để chống double-submit (mạng trùng / user click
+ * 2 lần). Trả về snapshot mới (terminal nếu phase done).
+ */
+export async function submitTribulationBattleAction(args: {
+  battleId: string;
+  action: TribulationBattleActionKey;
+  clientNonce?: string;
+}): Promise<TribulationMiniBattleView> {
+  const body: Record<string, unknown> = {
+    battleId: args.battleId,
+    action: args.action,
+  };
+  if (args.clientNonce !== undefined) {
+    body.clientNonce = args.clientNonce;
+  }
+  const { data } = await apiClient.post<
+    Envelope<{ battle: TribulationMiniBattleView }>
+  >('/character/tribulation/battle/action', body);
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('tribulation');
+  return data.data.battle;
+}
+
+/**
+ * Phase 14.3.E.2 — POST /character/tribulation/battle/resolve.
+ *
+ * Trigger sau khi battle ở state RESOLVED/FAILED — apply WIN/LOSE outcome
+ * (realm advance / cooldown / consume support items) idempotently. Trả về
+ * `TribulationOutcomeView` mirror flow encounter resolve. 2nd call return
+ * cached outcome (same `logId`).
+ */
+export async function resolveTribulationBattle(
+  battleId: string,
+): Promise<TribulationOutcomeView> {
+  const { data } = await apiClient.post<
+    Envelope<{ tribulation: TribulationOutcomeView }>
+  >('/character/tribulation/battle/resolve', { battleId });
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('tribulation');
+  return data.data.tribulation;
+}

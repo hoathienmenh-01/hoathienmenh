@@ -382,6 +382,212 @@ export const useTribulationStore = defineStore('tribulation', () => {
     }
   }
 
+  // ── Phase 14.3.E.2 — Mini-Battle (turn-based) state ───────────────────
+
+  /**
+   * Phase 14.3.E.2 — current mini-battle snapshot từ
+   * `GET /character/tribulation/battle/current`.
+   *   - `undefined`: chưa fetch (initial).
+   *   - `null`: server trả null (không có active battle, hoặc backend từ chối
+   *     vì feature unavailable — caller xem `miniBattleAvailable` để biết).
+   *   - `TribulationMiniBattleView`: snapshot live (PENDING/ACTIVE) hoặc
+   *     terminal (RESOLVED/FAILED/EXPIRED) chờ FE resolve.
+   */
+  const miniBattle = ref<api.TribulationMiniBattleView | null | undefined>(
+    undefined,
+  );
+  const miniBattleLoading = ref(false);
+  const miniBattleStarting = ref(false);
+  const miniBattleActionLoading = ref(false);
+  const miniBattleResolving = ref(false);
+  const miniBattleError = ref<string | null>(null);
+  /**
+   * `null` initially. `false` khi backend trả 501 / `MINI_BATTLE_DISABLED`
+   * → FE fallback flow Phase 14.3.D. `true` khi fetch thành công (kể cả khi
+   * `battle === null`). UI dùng để toggle giữa mini-battle panel và legacy
+   * encounter resolve UI.
+   */
+  const miniBattleAvailable = ref<boolean | null>(null);
+  /**
+   * Last terminal outcome sau `resolveBattle()` thành công. Mirror
+   * `lastOutcome` (encounter flow đã share). Giữ riêng để UI biết
+   * outcome này từ mini-battle (vs legacy encounter flow).
+   */
+  const miniBattleLastResult = ref<api.TribulationOutcomeView | null>(null);
+
+  /** True nếu battle hiện tại đang ở state có thể submit action. */
+  const miniBattleCanAct = computed<boolean>(() => {
+    const b = miniBattle.value;
+    if (!b) return false;
+    return b.state === 'PENDING' || b.state === 'ACTIVE';
+  });
+
+  /** True nếu battle đã reach terminal state (FE nên resolve). */
+  const miniBattleIsTerminal = computed<boolean>(() => {
+    const b = miniBattle.value;
+    if (!b) return false;
+    return (
+      b.state === 'RESOLVED' || b.state === 'FAILED' || b.state === 'EXPIRED'
+    );
+  });
+
+  function extractErrorCode(e: unknown): string {
+    if (typeof e === 'object' && e !== null) {
+      const codeAttr = (e as { code?: unknown }).code;
+      if (typeof codeAttr === 'string') return codeAttr;
+      const errAttr = (e as { error?: { code?: unknown } }).error;
+      if (errAttr && typeof errAttr.code === 'string') return errAttr.code;
+    }
+    return 'UNKNOWN';
+  }
+
+  /**
+   * Phase 14.3.E.2 — fetch current mini-battle snapshot. Idempotent.
+   * Race-protected via `miniBattleLoading`. Trả về:
+   *   - `null`: success, snapshot trong `miniBattle`.
+   *   - `'IN_FLIGHT'`: đang fetch, caller phải đợi.
+   *   - `<error_code>`: fetch fail. Caller xử lý (e.g. show toast).
+   *
+   * Nếu code === `'TRIBULATION_MINI_BATTLE_UNAVAILABLE'` (501 backend tắt
+   * feature flag): set `miniBattleAvailable=false`, KHÔNG raise lỗi UI.
+   */
+  async function fetchCurrentBattle(): Promise<string | null> {
+    if (miniBattleLoading.value) return 'IN_FLIGHT';
+    miniBattleLoading.value = true;
+    miniBattleError.value = null;
+    try {
+      const res = await api.fetchCurrentTribulationBattle();
+      miniBattle.value = res;
+      miniBattleAvailable.value = true;
+      return null;
+    } catch (e) {
+      const code = extractErrorCode(e);
+      if (code === 'TRIBULATION_MINI_BATTLE_UNAVAILABLE') {
+        miniBattleAvailable.value = false;
+        miniBattle.value = null;
+        return null;
+      }
+      miniBattleError.value = code;
+      return code;
+    } finally {
+      miniBattleLoading.value = false;
+    }
+  }
+
+  /**
+   * Phase 14.3.E.2 — start mini-battle. Server idempotent: nếu đã có row
+   * PENDING/ACTIVE, server trả 409 `MINI_BATTLE_ALREADY_ACTIVE` — caller
+   * map sang refetch flow. Trả về error code (string) hoặc `null`.
+   */
+  async function startBattle(
+    selectedSupportItemKeys?: readonly string[],
+  ): Promise<string | null> {
+    if (miniBattleStarting.value) return 'IN_FLIGHT';
+    miniBattleStarting.value = true;
+    miniBattleError.value = null;
+    try {
+      const battle = await api.startTribulationBattle(selectedSupportItemKeys);
+      miniBattle.value = battle;
+      miniBattleAvailable.value = true;
+      return null;
+    } catch (e) {
+      const code = extractErrorCode(e);
+      if (code === 'TRIBULATION_MINI_BATTLE_UNAVAILABLE') {
+        miniBattleAvailable.value = false;
+      }
+      miniBattleError.value = code;
+      return code;
+    } finally {
+      miniBattleStarting.value = false;
+    }
+  }
+
+  /**
+   * Phase 14.3.E.2 — submit one battle action. Race-safe via
+   * `miniBattleActionLoading` + double-click guard. Server idempotent qua
+   * `clientNonce` dedupe — caller pass nonce để nếu retry sau timeout
+   * server không apply action lần 2.
+   */
+  async function submitBattleAction(args: {
+    action: api.TribulationBattleActionKey;
+    clientNonce?: string;
+  }): Promise<string | null> {
+    if (miniBattleActionLoading.value) return 'IN_FLIGHT';
+    const battle = miniBattle.value;
+    if (!battle) return 'MINI_BATTLE_NOT_FOUND';
+    if (battle.state !== 'PENDING' && battle.state !== 'ACTIVE') {
+      return 'MINI_BATTLE_TERMINAL';
+    }
+    miniBattleActionLoading.value = true;
+    miniBattleError.value = null;
+    try {
+      const next = await api.submitTribulationBattleAction({
+        battleId: battle.id,
+        action: args.action,
+        clientNonce: args.clientNonce,
+      });
+      miniBattle.value = next;
+      return null;
+    } catch (e) {
+      const code = extractErrorCode(e);
+      miniBattleError.value = code;
+      return code;
+    } finally {
+      miniBattleActionLoading.value = false;
+    }
+  }
+
+  /**
+   * Phase 14.3.E.2 — resolve a terminal mini-battle. Apply WIN/LOSE outcome
+   * idempotently. Caller dùng sau khi `miniBattleIsTerminal` === true. Trả
+   * về error code hoặc `null`. Outcome lưu vào `miniBattleLastResult` +
+   * `lastOutcome` (mirror encounter flow để legacy banner re-use).
+   */
+  async function resolveBattle(): Promise<string | null> {
+    if (miniBattleResolving.value) return 'IN_FLIGHT';
+    const battle = miniBattle.value;
+    if (!battle) return 'MINI_BATTLE_NOT_FOUND';
+    miniBattleResolving.value = true;
+    miniBattleError.value = null;
+    try {
+      const outcome = await api.resolveTribulationBattle(battle.id);
+      miniBattleLastResult.value = outcome;
+      lastOutcome.value = outcome;
+      // Refetch snapshot để FE thấy battle đã RESOLVED chính thức + reset UI.
+      await api
+        .fetchCurrentTribulationBattle()
+        .then((res) => {
+          miniBattle.value = res;
+        })
+        .catch(() => null);
+      return null;
+    } catch (e) {
+      const code = extractErrorCode(e);
+      miniBattleError.value = code;
+      return code;
+    } finally {
+      miniBattleResolving.value = false;
+    }
+  }
+
+  /**
+   * Phase 14.3.E.2 — clear last UI error code (e.g. user dismissed toast).
+   * KHÔNG reset snapshot — tách bạch error vs state.
+   */
+  function resetMiniBattleError(): void {
+    miniBattleError.value = null;
+  }
+
+  /**
+   * Phase 14.3.E.2 — clear mini-battle state sau khi user dismiss result
+   * modal. Giữ `miniBattleAvailable` flag (feature gate cố định cho session).
+   */
+  function clearMiniBattle(): void {
+    miniBattle.value = null;
+    miniBattleLastResult.value = null;
+    miniBattleError.value = null;
+  }
+
   function reset(): void {
     lastOutcome.value = null;
     inFlight.value = false;
@@ -399,6 +605,14 @@ export const useTribulationStore = defineStore('tribulation', () => {
     encounterError.value = null;
     encounterStarting.value = false;
     encounterResolving.value = false;
+    miniBattle.value = undefined;
+    miniBattleLoading.value = false;
+    miniBattleStarting.value = false;
+    miniBattleActionLoading.value = false;
+    miniBattleResolving.value = false;
+    miniBattleError.value = null;
+    miniBattleAvailable.value = null;
+    miniBattleLastResult.value = null;
   }
 
   return {
@@ -434,6 +648,23 @@ export const useTribulationStore = defineStore('tribulation', () => {
     fetchEncounter,
     startEncounter,
     resolveEncounter,
+    // Phase 14.3.E.2 — mini-battle exports.
+    miniBattle,
+    miniBattleLoading,
+    miniBattleStarting,
+    miniBattleActionLoading,
+    miniBattleResolving,
+    miniBattleError,
+    miniBattleAvailable,
+    miniBattleLastResult,
+    miniBattleCanAct,
+    miniBattleIsTerminal,
+    fetchCurrentBattle,
+    startBattle,
+    submitBattleAction,
+    resolveBattle,
+    resetMiniBattleError,
+    clearMiniBattle,
     reset,
   };
 });
