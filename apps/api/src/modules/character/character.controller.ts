@@ -40,6 +40,10 @@ import {
   toAttemptOutcomeView,
 } from './tribulation.service';
 import {
+  TribulationMiniBattleError,
+  TribulationMiniBattleService,
+} from './tribulation-mini-battle.service';
+import {
   AchievementError,
   AchievementService,
 } from './achievement.service';
@@ -156,6 +160,8 @@ export class CharacterController {
     @Optional() private readonly alchemy?: AlchemyService,
     @Optional() private readonly title?: TitleService,
     @Optional() private readonly buff?: BuffService,
+    @Optional()
+    private readonly tribulationMiniBattle?: TribulationMiniBattleService,
     @Optional() @Inject(PROFILE_RATE_LIMITER) profileLimiter?: RateLimiter,
   ) {
     this.profileLimiter =
@@ -890,6 +896,136 @@ export class CharacterController {
     }
   }
 
+  /* ---------------------------------------------------------------------------
+   * Phase 14.3.E.1 — Mini-battle backend endpoints. Feature flag
+   * `TRIBULATION_MINI_BATTLE_ENABLED=true` để bật. Khi tắt, 4 endpoint trả
+   * 501 NOT_IMPLEMENTED để FE fallback flow Phase 14.3.D.
+   * ------------------------------------------------------------------------- */
+
+  /**
+   * Phase 14.3.E.1 — return active mini-battle if exists.
+   *   - 200 + `{ battle: TribulationMiniBattleView | null }`.
+   *   - 404 NO_CHARACTER nếu chưa onboard.
+   */
+  @Get('tribulation/battle/current')
+  async tribulationBattleCurrent(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.tribulationMiniBattle) {
+      fail('TRIBULATION_MINI_BATTLE_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const battle = await this.tribulationMiniBattle.getCurrent(character.id);
+      return { ok: true, data: { battle } };
+    } catch (e) {
+      if (e instanceof TribulationMiniBattleError) {
+        fail(e.code, mapTribulationMiniBattleErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 14.3.E.1 — start a new mini-battle. Body có optional
+   * `selectedSupportItemKeys` mirror `tribulation/encounter/start`.
+   *   - 200 + `{ battle }` khi tạo mới.
+   *   - 409 MINI_BATTLE_ALREADY_ACTIVE nếu đã có battle PENDING/ACTIVE.
+   *   - 501 MINI_BATTLE_DISABLED nếu feature flag tắt.
+   */
+  @Post('tribulation/battle/start')
+  @HttpCode(200)
+  async tribulationBattleStart(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.tribulationMiniBattle) {
+      fail('TRIBULATION_MINI_BATTLE_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    const selectedSupportItemKeys = parseSelectedSupportItemKeys(body);
+    try {
+      const battle = await this.tribulationMiniBattle.start(character.id, {
+        selectedSupportItemKeys,
+      });
+      return { ok: true, data: { battle } };
+    } catch (e) {
+      if (e instanceof TribulationMiniBattleError) {
+        fail(e.code, mapTribulationMiniBattleErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 14.3.E.1 — submit one player action. Body shape:
+   *   `{ battleId: string, action: TribulationBattleAction, clientNonce?: string }`.
+   *   - 200 + `{ battle }` snapshot sau khi apply (terminal nếu phase done).
+   *   - 400 MINI_BATTLE_INVALID_ACTION cho action không hợp lệ / phase quá
+   *     hạn / race condition lost.
+   *   - 404 MINI_BATTLE_NOT_FOUND khi `battleId` sai owner.
+   *   - 409 MINI_BATTLE_TERMINAL khi battle đã RESOLVED/FAILED.
+   */
+  @Post('tribulation/battle/action')
+  @HttpCode(200)
+  async tribulationBattleAction(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.tribulationMiniBattle) {
+      fail('TRIBULATION_MINI_BATTLE_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    const parsed = parseTribulationBattleActionBody(body);
+    try {
+      const battle = await this.tribulationMiniBattle.action(
+        character.id,
+        parsed.battleId,
+        parsed.action,
+        parsed.clientNonce ?? null,
+      );
+      return { ok: true, data: { battle } };
+    } catch (e) {
+      if (e instanceof TribulationMiniBattleError) {
+        fail(e.code, mapTribulationMiniBattleErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 14.3.E.1 — resolve a terminal mini-battle: apply WIN/LOSE outcome
+   * (realm advance / cooldown / consume support items) idempotently.
+   * Body shape: `{ battleId: string }`.
+   *   - 200 + `{ tribulation: TribulationAttemptOutcomeView }`.
+   *   - 400 MINI_BATTLE_NOT_TERMINAL nếu battle vẫn PENDING/ACTIVE.
+   *   - 404 MINI_BATTLE_NOT_FOUND khi battleId sai owner.
+   */
+  @Post('tribulation/battle/resolve')
+  @HttpCode(200)
+  async tribulationBattleResolve(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.tribulationMiniBattle) {
+      fail('TRIBULATION_MINI_BATTLE_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    const parsed = parseTribulationBattleResolveBody(body);
+    try {
+      const result = await this.tribulationMiniBattle.resolve(
+        character.id,
+        parsed.battleId,
+      );
+      return {
+        ok: true,
+        data: { tribulation: toAttemptOutcomeView(result) },
+      };
+    } catch (e) {
+      if (e instanceof TribulationMiniBattleError) {
+        fail(e.code, mapTribulationMiniBattleErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
   /**
    * Phase 11.10.E Achievement state — return server-authoritative state cho
    * UI achievement screen: tất cả visible achievement merge với progress
@@ -1502,6 +1638,83 @@ function parseSelectedSupportItemKeys(body: unknown): readonly string[] {
     }
   }
   return raw as readonly string[];
+}
+
+/**
+ * Phase 14.3.E.1 — parse body cho `POST /character/tribulation/battle/action`.
+ *   - `battleId`: required string (cuid).
+ *   - `action`: required string ∈ TRIBULATION_BATTLE_ACTIONS (validate
+ *     server-side bằng helper, controller chỉ shape narrow).
+ *   - `clientNonce`: optional string ≤ 64 chars (idempotency dedupe).
+ */
+function parseTribulationBattleActionBody(body: unknown): {
+  battleId: string;
+  action: string;
+  clientNonce: string | null;
+} {
+  if (!body || typeof body !== 'object') {
+    fail('INVALID_BODY', HttpStatus.BAD_REQUEST);
+  }
+  const obj = body as Record<string, unknown>;
+  const battleId = obj.battleId;
+  const action = obj.action;
+  if (typeof battleId !== 'string' || battleId.length === 0 || battleId.length > 128) {
+    fail('INVALID_BODY', HttpStatus.BAD_REQUEST);
+  }
+  if (typeof action !== 'string' || action.length === 0 || action.length > 32) {
+    fail('INVALID_BODY', HttpStatus.BAD_REQUEST);
+  }
+  const nonceRaw = obj.clientNonce;
+  let clientNonce: string | null = null;
+  if (nonceRaw !== undefined && nonceRaw !== null) {
+    if (typeof nonceRaw !== 'string' || nonceRaw.length > 64) {
+      fail('INVALID_BODY', HttpStatus.BAD_REQUEST);
+    }
+    clientNonce = nonceRaw;
+  }
+  return { battleId: battleId as string, action: action as string, clientNonce };
+}
+
+/**
+ * Phase 14.3.E.1 — parse body cho `POST /character/tribulation/battle/resolve`.
+ *   - `battleId`: required string.
+ */
+function parseTribulationBattleResolveBody(body: unknown): { battleId: string } {
+  if (!body || typeof body !== 'object') {
+    fail('INVALID_BODY', HttpStatus.BAD_REQUEST);
+  }
+  const obj = body as Record<string, unknown>;
+  const battleId = obj.battleId;
+  if (typeof battleId !== 'string' || battleId.length === 0 || battleId.length > 128) {
+    fail('INVALID_BODY', HttpStatus.BAD_REQUEST);
+  }
+  return { battleId: battleId as string };
+}
+
+/**
+ * Phase 14.3.E.1 — map TribulationMiniBattleError code → HTTP status. Re-uses
+ * tribulation status map cho codes shared (CHARACTER_NOT_FOUND etc.) +
+ * adds 6 mini-battle codes.
+ */
+function mapTribulationMiniBattleErrorStatus(
+  code: TribulationMiniBattleError['code'],
+): HttpStatus {
+  switch (code) {
+    case 'MINI_BATTLE_DISABLED':
+      return HttpStatus.NOT_IMPLEMENTED;
+    case 'MINI_BATTLE_NOT_FOUND':
+      return HttpStatus.NOT_FOUND;
+    case 'MINI_BATTLE_ALREADY_ACTIVE':
+    case 'MINI_BATTLE_TERMINAL':
+      return HttpStatus.CONFLICT;
+    case 'MINI_BATTLE_NOT_TERMINAL':
+    case 'MINI_BATTLE_INVALID_ACTION':
+      return HttpStatus.BAD_REQUEST;
+    default:
+      return mapTribulationErrorStatus(
+        code as TribulationError['code'],
+      );
+  }
 }
 
 /**

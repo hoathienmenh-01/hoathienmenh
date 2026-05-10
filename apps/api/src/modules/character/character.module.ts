@@ -14,6 +14,7 @@ import { CultivationMethodService } from './cultivation-method.service';
 import { GemService } from './gem.service';
 import { RefineService } from './refine.service';
 import { TribulationService } from './tribulation.service';
+import { TribulationMiniBattleService } from './tribulation-mini-battle.service';
 import { BuffService } from './buff.service';
 import { TalentService } from './talent.service';
 import { TitleService } from './title.service';
@@ -65,6 +66,7 @@ const profileLimiterProvider = {
     GemService,
     RefineService,
     TribulationService,
+    TribulationMiniBattleService,
     BuffService,
     TalentService,
     TitleService,
@@ -82,6 +84,7 @@ const profileLimiterProvider = {
     GemService,
     RefineService,
     TribulationService,
+    TribulationMiniBattleService,
     BuffService,
     TalentService,
     TitleService,

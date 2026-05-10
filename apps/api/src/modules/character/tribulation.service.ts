@@ -181,12 +181,35 @@ export class TribulationService {
    *
    * Behavior identical to original 1-method flow — preserved 1:1.
    */
+  /**
+   * Phase 14.3.E.1 — public wrapper cho mini-battle service inject forced
+   * outcome (win/lose) thay vì simulate RNG. Mọi side effect khác (consume
+   * support items, currency reward, realm advance, attempt log, title /
+   * achievement) đều giữ 1:1 với simulate path. Caller phải đã wrap trong
+   * `$transaction`.
+   */
+  async runAttemptInTxWithForcedOutcome(
+    tx: Parameters<Parameters<PrismaService['$transaction']>[0]>[0],
+    characterId: string,
+    selectedKeys: readonly string[],
+    forcedOutcome: { success: boolean; finalHp: number },
+    rng: () => number,
+    now: Date,
+  ): Promise<TribulationAttemptOutcome> {
+    return this.runAttemptInTx(tx, characterId, selectedKeys, rng, now, {
+      forcedOutcome,
+    });
+  }
+
   private async runAttemptInTx(
     tx: Parameters<Parameters<PrismaService['$transaction']>[0]>[0],
     characterId: string,
     selectedKeys: readonly string[],
     rng: () => number,
     now: Date,
+    options: {
+      forcedOutcome?: { success: boolean; finalHp: number };
+    } = {},
   ): Promise<TribulationAttemptOutcome> {
     {
       const character = await tx.character.findUnique({
@@ -373,7 +396,37 @@ export class TribulationService {
         return clamped * supportMultiplier;
       };
 
-      const sim = simulateTribulation(def, character.hpMax, elementResistFn);
+      // Phase 14.3.E.1 — mini-battle service drives outcome. Skip simulate
+      // và build sim shape giả lập từ `forcedOutcome.{success, finalHp}` để
+      // các side-effect bên dưới (audit log, reward, penalty) đi qua cùng
+      // code path. `wavesCompleted/totalDamage` ước tính theo def để log
+      // không null.
+      let sim: ReturnType<typeof simulateTribulation>;
+      if (options.forcedOutcome) {
+        const totalCatalogDamage = def.waves.reduce(
+          (sum, w) => sum + (w.baseDamage ?? 0),
+          0,
+        );
+        const playerHpInitial = character.hpMax;
+        const finalHp = Math.max(
+          0,
+          Math.min(playerHpInitial, options.forcedOutcome.finalHp),
+        );
+        const totalDamage = options.forcedOutcome.success
+          ? Math.max(0, playerHpInitial - finalHp)
+          : Math.max(playerHpInitial, totalCatalogDamage);
+        sim = {
+          success: options.forcedOutcome.success,
+          wavesCompleted: options.forcedOutcome.success
+            ? def.waves.length
+            : Math.max(1, Math.floor(def.waves.length / 2)),
+          totalDamage,
+          finalHp,
+          waveResults: [],
+        };
+      } else {
+        sim = simulateTribulation(def, character.hpMax, elementResistFn);
+      }
 
       const taoMaRoll = rng();
       if (!Number.isFinite(taoMaRoll) || taoMaRoll < 0 || taoMaRoll > 1) {
