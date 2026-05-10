@@ -214,8 +214,11 @@ describe('FeatureFlagService.setFlag', () => {
     const prisma = makePrismaStub([]);
     const service = new FeatureFlagService(prisma, null);
     await expect(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      service.setFlag('admin-1', 'BOGUS_KEY' as any, true),
+      service.setFlag(
+        'admin-1',
+        'BOGUS_KEY' as unknown as Parameters<typeof service.setFlag>[1],
+        true,
+      ),
     ).rejects.toBeInstanceOf(FeatureFlagInvalidKeyError);
   });
 });

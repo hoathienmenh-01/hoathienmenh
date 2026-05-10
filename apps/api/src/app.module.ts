@@ -38,6 +38,7 @@ import { LiveOpsCronModule } from './modules/liveops-cron/liveops-cron.module';
 import { LiveOpsEventSchedulerModule } from './modules/liveops-event-scheduler/liveops-event-scheduler.module';
 import { LiveOpsAnnouncementModule } from './modules/liveops-announcement/liveops-announcement.module';
 import { FeatureFlagModule } from './modules/feature-flag/feature-flag.module';
+import { FeatureFlagAdminModule } from './modules/feature-flag-admin/feature-flag-admin.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { ArenaModule } from './modules/arena/arena.module';
 import { ArenaAntiWintradeAdminModule } from './modules/arena-anti-wintrade-admin/arena-anti-wintrade-admin.module';
@@ -97,6 +98,10 @@ import { EconomyModule } from './modules/economy/economy.module';
     // + event transitions trong cùng 5-phút scan.
     LiveOpsAnnouncementModule,
     FeatureFlagModule,
+    // Phase 15.4 — Admin endpoints cho Feature Flag (tách riêng để tránh
+    // cycle: AppModule → CharacterModule → FeatureFlagModule → AdminModule
+    // → CharacterModule). Pattern mirror `ArenaAntiWintradeAdminModule`.
+    FeatureFlagAdminModule,
     // Phase 16.6 — Economy Anti-cheat (ledger checker + anomaly
     // scanner cron + admin endpoints). SAU AdminModule + EconomyModule.
     AdminEconomySafetyModule,

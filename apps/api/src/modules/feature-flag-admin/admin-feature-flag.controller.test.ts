@@ -20,13 +20,8 @@ import { AdminFeatureFlagController } from './admin-feature-flag.controller';
 import {
   FeatureFlagInvalidKeyError,
   type FeatureFlagService,
-} from './feature-flag.service';
+} from '../feature-flag/feature-flag.service';
 import type { PrismaService } from '../../common/prisma.service';
-
-interface AdminReq {
-  userId: string;
-  role: 'ADMIN' | 'MOD' | 'PLAYER';
-}
 
 function makeStubs(
   opts: {

@@ -4,30 +4,28 @@
  * Provides:
  *   - `FeatureFlagService` — runtime gate (`isEnabled` / `requireEnabled`),
  *     admin CRUD, cache 2-tier (in-memory + Redis).
- *   - `AdminFeatureFlagController` — `/admin/feature-flags*`.
- *   - `FeatureFlagPublicController` — `GET /feature-flags/public`.
+ *   - `FeatureFlagPublicController` — `GET /feature-flags/public`
+ *     (public-safe whitelist, không yêu cầu auth).
  *
- * Imports:
- *   - `AdminModule` cho `AdminGuard` + `RequireAdmin` decorator.
- *   - `AuthModule`  cho controller auth resolver (admin endpoints).
+ * Note: Admin endpoints (`/admin/feature-flags*`) thuộc
+ * `FeatureFlagAdminModule` (file riêng) để tránh cycle:
+ *   AppModule → CharacterModule → FeatureFlagModule → AdminModule →
+ *   CharacterModule (back). Pattern mirror `ArenaAntiWintradeAdminModule`.
  *
  * Exports `FeatureFlagService` để các module gameplay (arena, character,
- * inventory, liveops-event-scheduler, ...) inject runtime gate.
+ * inventory, liveops-event-scheduler, market, ...) inject runtime gate
+ * mà KHÔNG kéo theo AdminModule cycle.
  *
  * Cache: Redis qua `REDIS_CONNECTION` (global module). Nếu Redis lỗi,
  * service fallback in-memory + log warn.
  */
 import { Module } from '@nestjs/common';
-import { AdminModule } from '../admin/admin.module';
-import { AuthModule } from '../auth/auth.module';
 import { PrismaService } from '../../common/prisma.service';
-import { AdminFeatureFlagController } from './admin-feature-flag.controller';
 import { FeatureFlagPublicController } from './feature-flag-public.controller';
 import { FeatureFlagService } from './feature-flag.service';
 
 @Module({
-  imports: [AuthModule, AdminModule],
-  controllers: [AdminFeatureFlagController, FeatureFlagPublicController],
+  controllers: [FeatureFlagPublicController],
   providers: [PrismaService, FeatureFlagService],
   exports: [FeatureFlagService],
 })

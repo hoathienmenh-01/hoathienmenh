@@ -40,7 +40,7 @@ import { PrismaService } from '../../common/prisma.service';
 import {
   FeatureFlagInvalidKeyError,
   FeatureFlagService,
-} from './feature-flag.service';
+} from '../feature-flag/feature-flag.service';
 
 interface AdminReq extends Request {
   userId: string;
