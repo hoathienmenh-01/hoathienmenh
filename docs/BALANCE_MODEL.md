@@ -1029,6 +1029,36 @@ Semantics: `+2` = đồng hệ (player primary == encounter element). `+1` = pla
 
 **Out of scope (defer)**: realtime combat per phase (button-based skill rotation, mp consume per skill), animation/cutscene, multi-encounter chain (mỗi transition 1 encounter), penalty nặng làm mất nhân vật (giữ Phase 14.3.A penalty: expLoss + cooldown + taoMa).
 
+### 5.6.5 Tribulation mini-battle backend (phase 14.3.E.1)
+
+**Phase 14.3.E.1** biến `start → resolve` từ RNG snapshot thành state machine có phase/turn + 5 effectType khác biệt thật sự (KHÔNG thay simulation deterministic Phase 11.6.A/B — chỉ thêm 1 lớp tương tác trên outcome). Dial chính ở `packages/shared/src/tribulation-mini-battle.ts`:
+
+**State machine**: `PENDING → ACTIVE → RESOLVED|FAILED|EXPIRED`. PENDING khi vừa tạo (chưa có action). ACTIVE sau action đầu tiên (transition diễn ra trong cùng `action` call). RESOLVED khi thắng (tribulation HP=0 hoặc completed all phases với HP > 0). FAILED khi player HP=0. EXPIRED reserved cho cleanup cron tương lai (chưa wire).
+
+**EffectType mechanics** (tất cả deterministic seeded — KHÔNG `Math.random` trong core calc):
+
+| EffectType | Tribulation behavior | Player counter | Action design |
+|---|---|---|---|
+| **BURST** | Damage spike phase X (định lượng `1.5×` base damage), crit rate `0.20` | DEFEND giảm crit `0.50×`, FOCUS tăng next ATTACK damage `+30%` | Burst phase telegraph qua DOT counter — player FOCUS phase trước, DEFEND phase burst |
+| **SUSTAIN** | Constant DPS thấp + tribulation regen `+5%/phase` | Cần kéo dài đủ phaseCount, FOCUS tích `focusCharge` heal player `+10%` | Endurance check — không có burst, chỉ là check sống đủ |
+| **POISON_RECOVERY** | DOT stacks tăng `+1/phase`, mỗi stack `+5%` damage taken | CLEANSE giảm `dotStacks -2`, DEFEND giảm DOT damage `0.50×` | DOT control loop — phải CLEANSE đúng nhịp, không thì stack overload |
+| **ARMOR_CRIT** | Tribulation có shield `+30% HP`, ATTACK thường bị reduce `0.50×` nếu chưa pierce | FOCUS tích pierce `+25%/charge`, charged ATTACK ignore shield | Armor break loop — FOCUS×3 → CHANNEL pierce → ATTACK lúc shield mỏng |
+| **DEFENSE_ENDURANCE** | Tribulation giảm damage taken `0.50×`, regen `+3%/phase` | DEFEND tích shield `+15%/phase`, CHANNEL convert shield → heal | Tank-up loop — bồi shield đủ rồi convert → ATTACK pre-cap |
+
+**Caps (anti-cheat)**: `HP_MAX=100_000`, `DAMAGE_MAX=50_000`, `HEAL_MAX=50_000`, `SHIELD_MAX=50_000`, `DOT_STACKS_MAX=20`. Cap apply trong `applyTribulationEffectType` — không có công thức nào output > cap (ngay cả khi player full bộ + element advantage +2).
+
+**Deterministic RNG**: `mulberry32(seed)` + `composeBattlePhaseSeed(baseSeed, phase)` → mỗi phase có 1 seed riêng tổng hợp từ battle seed + phase index. Replay cùng seed + cùng action sequence → cùng output (test invariant).
+
+**Idempotency / race-safety**: 
+- **action**: optimistic `updateMany({where: {id, state, currentPhase}})` — nếu concurrent caller advance phase trước → `count=0` → throw `MINI_BATTLE_INVALID_ACTION`. `lastClientNonce` field dedupe identical re-call (return current snapshot, KHÔNG advance).
+- **resolve**: `resultJson.attemptLogId` đóng vai trò "applied marker". 2nd resolve reconstruct outcome từ `TribulationAttemptLog` row sẵn có → KHÔNG double reward / KHÔNG double consume support / KHÔNG double realm-advance.
+
+**Tuning rationale**: Phase 14.3.E.1 KHÔNG ship balance dial khác Phase 14.3.D (success threshold / penalty / reward multiplier giữ `1.0`). Outcome `success` field tính từ snapshot final (`tribulationHp=0` → win, `playerHp=0` → lose) → routed qua `TribulationService.runAttemptInTxWithForcedOutcome` để reuse pipeline realm advance + reward + consume support + penalty 1:1 với `attemptTribulation` legacy. Không có path nào bypass cap envelope `successChance ≤ 0.95` (vì success từ HP outcome chứ không phải RNG roll). Penalty Phase 14.3.A giữ nguyên: `expLoss + cooldown + taoMa` — KHÔNG mất nhân vật.
+
+**Feature flag**: `TRIBULATION_MINI_BATTLE_ENABLED` (default OFF). Disabled → 4 endpoint `/character/tribulation/battle/*` trả 501 `MINI_BATTLE_DISABLED` cho FE fallback flow Phase 14.3.D `/character/tribulation/encounter/*`. Enabled → mini-battle endpoints active, encounter endpoints vẫn coexist (FE Phase 14.3.E.2 chọn route).
+
+**Out of scope (defer 14.3.E.2)**: FE TribulationBattleView (Vue UI turn-based + 5 action button), event log component, effectType badge color theme, state-machine HUD (HP/shield/DOT bar), animation framework, cinematic cutscene, mini-battle reward drop table riêng (route qua `runAttemptInTxWithForcedOutcome` vẫn giữ nguyên reward Phase 11.6.B).
+
 ### 5.7 Alchemy curve (phase 11.X.A)
 
 **Phase 11.X.A catalog đã có (session 9r-10 PR — `packages/shared/src/alchemy.ts`)**:
