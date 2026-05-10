@@ -506,7 +506,92 @@ hoặc `ITEM_LEDGER_MISMATCH` (cron daily 01:00 UTC, hoặc manual `POST
    Reason luôn `"reverse-grant <ticket-id>"`.
 4. Ack + resolve anomaly.
 
-### 2.16. PWA service worker phục vụ asset cũ (P3)
+### 2.16. Arena anti-wintrade alert WARN (P2) — Phase 14.1.D
+
+**Trigger**: Alert mới với severity `WARN` xuất hiện trong tab Admin
+"Arena Anti-Wintrade", thường do `quickCheckPair` post-match hoặc
+admin-triggered scan.
+
+**Phương châm**: alert trước, ban sau. **Không** auto-ban, **không**
+auto-rollback reward, **không** chặn người chơi đánh tiếp khi mới WARN.
+Dùng panel để review và xử lý thủ công.
+
+**Quy trình**:
+
+1. Mở tab "Arena Anti-Wintrade" → filter `severity=WARN`, `status=OPEN`.
+   Đọc cột `type` (REPEATED_OPPONENT_PAIR / RECIPROCAL_WIN_LOSS /
+   RATING_GAIN_SPIKE / REWARD_FARM_PATTERN / SEASON_SUSPICIOUS_ACTOR) +
+   `attacker` + `defender` + `windowKey`.
+2. Lấy `windowKey` (ví dụ `pair24h:2026-05-09T00`) làm period bucket.
+   Query match history trong cửa sổ đó:
+   ```sql
+   SELECT id, "createdAt", result, "ratingDeltaJson"
+   FROM "ArenaMatch"
+   WHERE (("attackerCharacterId" = $1 AND "defenderCharacterId" = $2)
+       OR ("attackerCharacterId" = $2 AND "defenderCharacterId" = $1))
+     AND "createdAt" >= NOW() - INTERVAL '24 hours'
+   ORDER BY "createdAt" DESC;
+   ```
+3. Đối chiếu với pattern: cùng IP / device fingerprint không có ở phase
+   14.1.D nhưng có thể xem `User.lastLoginIp` (nếu schema có) +
+   `RefreshToken.userAgent`.
+4. Quyết định:
+   - **False positive** (player legit cày Arena chăm) → bấm "Đóng"
+     (Resolve) trong panel, ghi note nội bộ. Không cần action gì thêm.
+   - **Cần theo dõi tiếp** → "Xác nhận" (Ack) → status `ACKNOWLEDGED`.
+     Không hành động gameplay. Đợi alert CRITICAL hoặc bằng chứng khác.
+   - **Có dấu hiệu rõ** → escalate sang playbook 2.17 (CRITICAL).
+
+### 2.17. Arena anti-wintrade alert CRITICAL (P1) — Phase 14.1.D
+
+**Trigger**: Alert severity `CRITICAL` (đối tượng đã đạt threshold cao
+hơn nhiều — ví dụ ≥ 12 trận cùng cặp / 24h, hoặc farm 1 defender duy
+nhất ≥ 8 trận). KHÔNG có auto-action — admin BẮT BUỘC review.
+
+**Quy trình**:
+
+1. Mở panel → filter `severity=CRITICAL`, `status=OPEN`. Lấy
+   `attacker` + `defender` + `details` (chứa `matchCount`, `ratingDelta`
+   tổng, `winRate`, `distinctOpponents`).
+2. Verify match history bằng SQL ở mục 2.16 hoặc API
+   `GET /arena/matches/history?side=all&limit=50` (proxy qua admin DB
+   query nếu không có endpoint admin trực tiếp).
+3. Kiểm tra link account:
+   ```sql
+   SELECT u.id, u.email, c.id, c.name, c."lastLoginAt"
+   FROM "Character" c JOIN "User" u ON u.id = c."userId"
+   WHERE c.id IN ($1, $2);
+   ```
+   Cùng email domain / cùng register IP / cùng cookie session →
+   khả năng cao là alt account collusion.
+4. **Reward review**: trước khi settle season, query
+   `ArenaSeasonRewardGrant` cho character đó. Nếu chưa settle → flag
+   manual review (TODO Phase 14.1.E: wire `rewardEligibility =
+   REVIEW_REQUIRED`). Nếu đã settle và xác định abuse → revoke
+   reward thủ công qua `POST /admin/users/:id/grant` với delta âm
+   (mục 2.15).
+5. **KHÔNG** xóa `ArenaMatch` (vi phạm immutable audit). **KHÔNG**
+   xóa `ArenaWintradeAlert`. **KHÔNG** auto-ban.
+6. Quyết định ban → manual qua `POST /admin/users/:id/ban` (audit
+   `ADMIN_USER_BAN`) với reason cụ thể. Reference alert ID + match
+   IDs.
+7. Sau xử lý → "Đóng" (Resolve) alert. Audit
+   `ADMIN_ARENA_WINTRADE_ALERT_RESOLVE` được tự ghi.
+
+**Force scan thủ công** (khi nghi ngờ pattern mới):
+- POST `/admin/arena/anti-wintrade/scan` (body `{}`).
+- Idempotent — gọi nhiều lần trong cùng cửa sổ không tạo duplicate.
+- Trả `AntiWintradeScanSummary` để xác nhận `alertsCreated > 0`.
+
+**Tuning thresholds** (chỉ khi false-positive nhiều):
+- Override env: `ARENA_ANTI_WINTRADE_REPEATED_WARN`,
+  `ARENA_ANTI_WINTRADE_REPEATED_CRIT`, `ARENA_ANTI_WINTRADE_SPIKE_WARN`,
+  `ARENA_ANTI_WINTRADE_SPIKE_CRIT`, etc. (xem
+  `arena-anti-wintrade.service.ts → readAntiWintradeRulesFromEnv`).
+- Restart API sau khi đổi env. Doc lại trong `docs/DEPLOY.md` nếu
+  thay đổi permanent.
+
+### 2.18. PWA service worker phục vụ asset cũ (P3)
 
 Xem `docs/TROUBLESHOOTING.md` §14. Hard refresh hoặc DevTools →
 Application → Service Workers → Unregister. Build production tự bump
