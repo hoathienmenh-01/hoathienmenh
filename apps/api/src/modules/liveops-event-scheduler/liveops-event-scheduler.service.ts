@@ -2,7 +2,6 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { CurrencyKind, Prisma } from '@prisma/client';
 import {
   LIVEOPS_EVENT_TYPE_CAPS,
-  LIVEOPS_RUNTIME_SUPPORTED_TYPES,
   clampLiveOpsMultiplier,
   isLiveOpsEventActiveAt,
   isLiveOpsRuntimeSupported,

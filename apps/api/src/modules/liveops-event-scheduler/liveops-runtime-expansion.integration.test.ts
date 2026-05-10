@@ -18,7 +18,6 @@
  * Tests share single Prisma + LiveOpsEventScheduler instance for speed.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { CurrencyKind } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
 import { CharacterService } from '../character/character.service';
 import { CurrencyService } from '../character/currency.service';
@@ -32,10 +31,7 @@ import {
   nextSuffix,
   wipeAll,
 } from '../../test-helpers';
-import {
-  LiveOpsEventSchedulerError,
-  LiveOpsEventSchedulerService,
-} from './liveops-event-scheduler.service';
+import { LiveOpsEventSchedulerService } from './liveops-event-scheduler.service';
 
 let prisma: PrismaService;
 let liveOps: LiveOpsEventSchedulerService;
@@ -44,7 +40,6 @@ let dailyLogin: DailyLoginService;
 let currency: CurrencyService;
 let inventory: InventoryService;
 let adminUserId: string;
-let adminCharId: string;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
@@ -69,7 +64,6 @@ beforeEach(async () => {
   await wipeAll(prisma);
   const admin = await makeUserChar(prisma, { role: 'ADMIN' });
   adminUserId = admin.userId;
-  adminCharId = admin.characterId;
 });
 
 afterAll(async () => {
