@@ -1735,6 +1735,471 @@ export const SKILLS: readonly SkillDef[] = [
     cooldownTurns: 3,
     tags: ['HEAL'],
   },
+
+  // =====================================================================
+  // Content Scale 2 — High-Realm Skills Pack (25 skills, Phase 14.4 layer)
+  // ---------------------------------------------------------------------
+  // Bộ skill cảnh giới cao late-game cho 4 tier:
+  //   - Nhân Tiên (order 10)   → unlockRealm: 'nhan_tien'   — 5 skills.
+  //   - Tiên Giới (order 13+)  → unlockRealm: 'huyen_tien'  — 5 skills.
+  //   - Hỗn Nguyên (order 18+) → unlockRealm: 'thanh_nhan'  — 5 skills.
+  //   - Vĩnh Hằng (order 25+)  → unlockRealm: 'vo_chung'    — 5 skills.
+  //   - Neutral / Special      → element=null               — 5 skills.
+  //
+  // Mỗi tier cover đủ 5 hệ Ngũ Hành theo identity:
+  //   - Kim   → CRIT/BURST     (xuyên giáp, chí mạng)
+  //   - Mộc   → HEAL/DOT       (hồi máu, độc tố)
+  //   - Thuỷ  → CONTROL/HEAL   (khống chế, hồi linh khí)
+  //   - Hoả   → BURST/DOT      (bộc phát, thiêu đốt)
+  //   - Thổ   → SHIELD         (khiên hộ thân)
+  //
+  // Stat budget tuân `BALANCE_MODEL §4` hard caps:
+  //   - atkScale ≤ 5 (ULT damage 4.0–4.8)
+  //   - mpCost ≤ 80 (ULT 70–80)
+  //   - selfHealRatio ≤ 0.5 (ULT heal 0.40–0.50)
+  //   - selfBloodCost ≤ 0.3 (huyết tế 0.10–0.20)
+  //   - cooldownTurns ≤ 6 (ULT 5–6)
+  //
+  // Arena/PvE balance: KHÔNG one-shot, KHÔNG bypass shield-cap, dùng
+  // tag pattern hiện có (DOT/SHIELD dispatch combat runtime side-effect
+  // identical với Phase 14.2.C). Skill chỉ mở khi đủ realm — Arena hiện
+  // tại không cấm cụ thể skill nào, chỉ snapshot static, deterministic
+  // qua seeded RNG.
+  // =====================================================================
+
+  // ----- Nhân Tiên (order 10) — 5 skills, 1 ACTIVE per element -----
+  {
+    key: 'kim_nhan_tien_pho_thien_kiep',
+    name: 'Phổ Thiên Kim Kiếp',
+    description:
+      'ULT Nhân Tiên Kim hệ — kim quang phổ thiên giáng kiếp, sát thương 4.2× xuyên giáp chí mạng, tốn 78 MP.',
+    mpCost: 78,
+    atkScale: 4.2,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'kim',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'nhan_tien',
+    cooldownTurns: 5,
+    tags: ['CRIT', 'BURST'],
+  },
+  {
+    key: 'moc_nhan_tien_van_lam_sinh_co',
+    name: 'Vạn Lâm Sinh Cơ',
+    description:
+      'Bí thuật Nhân Tiên Mộc hệ — vạn lâm hồi xuân thấm vào kinh mạch, sát thương 2.0× và hồi 40% HP, tốn 70 MP.',
+    mpCost: 70,
+    atkScale: 2.0,
+    selfHealRatio: 0.4,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'moc',
+    type: 'ACTIVE',
+    role: 'HEAL',
+    unlockRealm: 'nhan_tien',
+    cooldownTurns: 5,
+    tags: ['HEAL'],
+  },
+  {
+    key: 'thuy_nhan_tien_thuy_kiep_phong_an',
+    name: 'Thuỷ Kiếp Phong Ấn',
+    description:
+      'ULT Nhân Tiên Thuỷ hệ — phong ấn vạn vật bằng thuỷ kiếp, sát thương 3.6× kèm khống chế lượt sau, tốn 72 MP.',
+    mpCost: 72,
+    atkScale: 3.6,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'thuy',
+    type: 'ACTIVE',
+    role: 'CONTROL',
+    unlockRealm: 'nhan_tien',
+    cooldownTurns: 6,
+    tags: ['CONTROL'],
+  },
+  {
+    key: 'hoa_nhan_tien_pho_diem_van_thien',
+    name: 'Phổ Diễm Vạn Thiên',
+    description:
+      'ULT Nhân Tiên Hoả hệ — đốt 10% HP đổi sát thương 4.4× phổ diễm vạn thiên kèm vết bỏng, tốn 78 MP.',
+    mpCost: 78,
+    atkScale: 4.4,
+    selfHealRatio: 0,
+    selfBloodCost: 0.1,
+    sect: null,
+    element: 'hoa',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'nhan_tien',
+    cooldownTurns: 6,
+    tags: ['BURST', 'DOT'],
+  },
+  {
+    key: 'tho_nhan_tien_kim_son_huyen_giap',
+    name: 'Kim Sơn Huyền Giáp',
+    description:
+      'Bí thuật Nhân Tiên Thổ hệ — huyền giáp kim sơn ôm trọn thân, sát thương 0.8× và dựng khiên đá hấp thu lượt sau, tốn 60 MP.',
+    mpCost: 60,
+    atkScale: 0.8,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'tho',
+    type: 'ACTIVE',
+    role: 'BUFF',
+    unlockRealm: 'nhan_tien',
+    cooldownTurns: 5,
+    tags: ['SHIELD'],
+  },
+
+  // ----- Tiên Giới (order 13+, anchor 'huyen_tien') — 5 skills -----
+  {
+    key: 'kim_tien_gioi_thien_quang_xuyen_van',
+    name: 'Thiên Quang Xuyên Vạn',
+    description:
+      'ULT Tiên Giới Kim hệ — vạn đạo kim quang xuyên không phá vạn pháp, sát thương 4.4× chí mạng, tốn 80 MP.',
+    mpCost: 80,
+    atkScale: 4.4,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'kim',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'huyen_tien',
+    cooldownTurns: 6,
+    tags: ['CRIT'],
+  },
+  {
+    key: 'moc_tien_gioi_co_lam_thuong_truong',
+    name: 'Cổ Lâm Thương Trường',
+    description:
+      'Pháp quyết Tiên Giới Mộc hệ — gieo vạn cổ độc lâm trên thân địch, sát thương 2.6× kèm độc tố hao mòn 3 lượt, tốn 70 MP.',
+    mpCost: 70,
+    atkScale: 2.6,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'moc',
+    type: 'ACTIVE',
+    role: 'DEBUFF',
+    unlockRealm: 'huyen_tien',
+    cooldownTurns: 4,
+    tags: ['DOT'],
+  },
+  {
+    key: 'thuy_tien_gioi_thien_ha_dao_chuyen',
+    name: 'Thiên Hà Đảo Chuyển',
+    description:
+      'ULT Tiên Giới Thuỷ hệ — thiên hà đảo chuyển hồi linh khí, sát thương 1.4× và hồi 42% HP, tốn 68 MP.',
+    mpCost: 68,
+    atkScale: 1.4,
+    selfHealRatio: 0.42,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'thuy',
+    type: 'ACTIVE',
+    role: 'HEAL',
+    unlockRealm: 'huyen_tien',
+    cooldownTurns: 5,
+    tags: ['HEAL'],
+  },
+  {
+    key: 'hoa_tien_gioi_chu_tuoc_phan_thien',
+    name: 'Chu Tước Phần Thiên',
+    description:
+      'ULT Tiên Giới Hoả hệ — Chu Tước thiêu đốt cả thiên giới bằng hoả vũ, sát thương 4.6×, tốn 80 MP.',
+    mpCost: 80,
+    atkScale: 4.6,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'hoa',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'huyen_tien',
+    cooldownTurns: 6,
+    tags: ['BURST'],
+  },
+  {
+    key: 'tho_tien_gioi_huyen_son_dia_phong',
+    name: 'Huyền Sơn Địa Phong',
+    description:
+      'Pháp quyết Tiên Giới Thổ hệ — sơn mạch huyền địa phong toả đối thủ, sát thương 3.0× kèm khống chế bước, tốn 65 MP.',
+    mpCost: 65,
+    atkScale: 3.0,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'tho',
+    type: 'ACTIVE',
+    role: 'CONTROL',
+    unlockRealm: 'huyen_tien',
+    cooldownTurns: 5,
+    tags: ['CONTROL'],
+  },
+
+  // ----- Hỗn Nguyên (order 18+, anchor 'thanh_nhan') — 5 skills -----
+  {
+    key: 'kim_hon_nguyen_kim_kiep_dao_thien',
+    name: 'Kim Kiếp Đảo Thiên',
+    description:
+      'ULT Hỗn Nguyên Kim hệ — kim kiếp đảo lộn càn khôn, vạn vật bị tan trong kim quang, sát thương 4.6× chí mạng, tốn 80 MP.',
+    mpCost: 80,
+    atkScale: 4.6,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'kim',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'thanh_nhan',
+    cooldownTurns: 6,
+    tags: ['CRIT', 'BURST'],
+  },
+  {
+    key: 'moc_hon_nguyen_thien_dia_long_lac',
+    name: 'Thiên Địa Long Lạc',
+    description:
+      'Bí thuật Hỗn Nguyên Mộc hệ — vạn vật sinh trưởng từ hồng hoang, sát thương 2.4× và hồi 45% HP, tốn 76 MP.',
+    mpCost: 76,
+    atkScale: 2.4,
+    selfHealRatio: 0.45,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'moc',
+    type: 'ACTIVE',
+    role: 'HEAL',
+    unlockRealm: 'thanh_nhan',
+    cooldownTurns: 5,
+    tags: ['HEAL'],
+  },
+  {
+    key: 'thuy_hon_nguyen_van_thuy_quy_nguyen',
+    name: 'Vạn Thuỷ Quy Nguyên',
+    description:
+      'ULT Hỗn Nguyên Thuỷ hệ — vạn thuỷ quy về cội nguyên đại đạo, sát thương 4.0× kèm khống chế nặng, tốn 78 MP.',
+    mpCost: 78,
+    atkScale: 4.0,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'thuy',
+    type: 'ACTIVE',
+    role: 'CONTROL',
+    unlockRealm: 'thanh_nhan',
+    cooldownTurns: 6,
+    tags: ['CONTROL'],
+  },
+  {
+    key: 'hoa_hon_nguyen_chu_tuoc_thien_phan',
+    name: 'Chu Tước Thiên Phần',
+    description:
+      'ULT Hỗn Nguyên Hoả hệ — đốt 15% HP đổi sát thương 4.7× thiêu trọn càn khôn, tốn 78 MP.',
+    mpCost: 78,
+    atkScale: 4.7,
+    selfHealRatio: 0,
+    selfBloodCost: 0.15,
+    sect: null,
+    element: 'hoa',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'thanh_nhan',
+    cooldownTurns: 6,
+    tags: ['BURST', 'DOT'],
+  },
+  {
+    key: 'tho_hon_nguyen_dia_thien_son_quan',
+    name: 'Địa Thiên Sơn Quân',
+    description:
+      'Bí thuật Hỗn Nguyên Thổ hệ — sơn quân địa thiên hộ thân vững như đại đạo, sát thương 1.0× và dựng khiên cứng lượt sau, tốn 70 MP.',
+    mpCost: 70,
+    atkScale: 1.0,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'tho',
+    type: 'ACTIVE',
+    role: 'BUFF',
+    unlockRealm: 'thanh_nhan',
+    cooldownTurns: 5,
+    tags: ['SHIELD'],
+  },
+
+  // ----- Vĩnh Hằng (order 25+, anchor 'vo_chung') — 5 skills -----
+  {
+    key: 'kim_vinh_hang_thien_kiem_quy_tong',
+    name: 'Thiên Kiếm Quy Tông',
+    description:
+      'ULT Vĩnh Hằng Kim hệ — vạn kiếm quy tông từ vô chung đến vô thuỷ, sát thương 4.8× xuyên giáp tuyệt đối, tốn 80 MP.',
+    mpCost: 80,
+    atkScale: 4.8,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'kim',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'vo_chung',
+    cooldownTurns: 6,
+    tags: ['CRIT', 'BURST'],
+  },
+  {
+    key: 'moc_vinh_hang_van_co_sinh_chu',
+    name: 'Vạn Cổ Sinh Chú',
+    description:
+      'ULT Vĩnh Hằng Mộc hệ — vạn cổ sinh chú trường tồn ngũ hành, sát thương 3.0× và hồi 50% HP, tốn 80 MP.',
+    mpCost: 80,
+    atkScale: 3.0,
+    selfHealRatio: 0.5,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'moc',
+    type: 'ACTIVE',
+    role: 'HEAL',
+    unlockRealm: 'vo_chung',
+    cooldownTurns: 6,
+    tags: ['HEAL'],
+  },
+  {
+    key: 'thuy_vinh_hang_thien_ha_dao_lang',
+    name: 'Thiên Hà Đảo Lãng',
+    description:
+      'ULT Vĩnh Hằng Thuỷ hệ — thiên hà đảo lãng cuốn vạn linh, sát thương 4.4× kèm khống chế tuyệt đối, tốn 80 MP.',
+    mpCost: 80,
+    atkScale: 4.4,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'thuy',
+    type: 'ACTIVE',
+    role: 'CONTROL',
+    unlockRealm: 'vo_chung',
+    cooldownTurns: 6,
+    tags: ['CONTROL'],
+  },
+  {
+    key: 'hoa_vinh_hang_kiep_diem_thieu_thien',
+    name: 'Kiếp Diễm Thiêu Thiên',
+    description:
+      'ULT Vĩnh Hằng Hoả hệ — đốt 20% HP đổi sát thương 4.8× kiếp diễm thiêu thiên trọn cõi, tốn 80 MP.',
+    mpCost: 80,
+    atkScale: 4.8,
+    selfHealRatio: 0,
+    selfBloodCost: 0.2,
+    sect: null,
+    element: 'hoa',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'vo_chung',
+    cooldownTurns: 6,
+    tags: ['BURST'],
+  },
+  {
+    key: 'tho_vinh_hang_huyen_dia_kim_can_giap',
+    name: 'Huyền Địa Kim Cang Giáp',
+    description:
+      'ULT Vĩnh Hằng Thổ hệ — kim cang huyền địa giáp bất hoại che chở vạn pháp, sát thương 1.4× và dựng khiên ngàn năm, tốn 78 MP.',
+    mpCost: 78,
+    atkScale: 1.4,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'tho',
+    type: 'ACTIVE',
+    role: 'BUFF',
+    unlockRealm: 'vo_chung',
+    cooldownTurns: 6,
+    tags: ['SHIELD'],
+  },
+
+  // ----- Neutral / Special (element=null) — 5 skills mixed realms -----
+  {
+    key: 'tien_anh_quyet_kiem',
+    name: 'Tiên Anh Quyết Kiếm',
+    description:
+      'Bí thuật vô hệ Nhân Tiên — kiếm quyết tiên anh phá vạn ma, sát thương 4.0× chí mạng, tốn 70 MP.',
+    mpCost: 70,
+    atkScale: 4.0,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: null,
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'nhan_tien',
+    cooldownTurns: 5,
+    tags: ['CRIT'],
+  },
+  {
+    key: 'huyen_thien_van_phap_kinh',
+    name: 'Huyền Thiên Vạn Pháp Kinh',
+    description:
+      'Bí thuật vô hệ Tiên Giới — vạn pháp huyền thiên hộ thân, sát thương 1.8× và hồi 30% HP, tốn 60 MP.',
+    mpCost: 60,
+    atkScale: 1.8,
+    selfHealRatio: 0.3,
+    selfBloodCost: 0,
+    sect: null,
+    element: null,
+    type: 'ACTIVE',
+    role: 'HEAL',
+    unlockRealm: 'huyen_tien',
+    cooldownTurns: 5,
+    tags: ['HEAL'],
+  },
+  {
+    key: 'chuan_thanh_dao_quan_kiem',
+    name: 'Chuẩn Thánh Đạo Quân Kiếm',
+    description:
+      'ULT vô hệ Hỗn Nguyên — đạo quân kiếm chuẩn thánh phá vạn pháp, sát thương 4.5× xuyên đại đạo, tốn 75 MP.',
+    mpCost: 75,
+    atkScale: 4.5,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: null,
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'thanh_nhan',
+    cooldownTurns: 6,
+    tags: ['BURST', 'CRIT'],
+  },
+  {
+    key: 'dao_quan_van_phap_quy',
+    name: 'Đạo Quân Vạn Pháp Quy',
+    description:
+      'ULT vô hệ Hỗn Nguyên cao — vạn pháp quy nguyên đạo quân, sát thương 3.6× kèm khống chế trận pháp, tốn 70 MP.',
+    mpCost: 70,
+    atkScale: 3.6,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: null,
+    type: 'ACTIVE',
+    role: 'CONTROL',
+    unlockRealm: 'dao_quan',
+    cooldownTurns: 6,
+  },
+  {
+    key: 'vinh_hang_dao_tam_an',
+    name: 'Vĩnh Hằng Đạo Tâm Ấn',
+    description:
+      'Bí thuật vô hệ Vĩnh Hằng — đạo tâm ấn vĩnh hằng tự tu, sát thương 2.0× và hồi 45% HP, tốn 70 MP.',
+    mpCost: 70,
+    atkScale: 2.0,
+    selfHealRatio: 0.45,
+    selfBloodCost: 0,
+    sect: null,
+    element: null,
+    type: 'ACTIVE',
+    role: 'HEAL',
+    unlockRealm: 'vo_chung',
+    cooldownTurns: 6,
+    tags: ['HEAL'],
+  },
 ];
 
 export function skillByKey(key: string): SkillDef | undefined {
