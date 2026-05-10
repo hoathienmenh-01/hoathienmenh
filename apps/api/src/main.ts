@@ -12,6 +12,7 @@ import {
 import { getLogger } from './observability/logger';
 import { PinoNestLogger } from './observability/nest-logger.adapter';
 import { createRequestLoggerMiddleware } from './observability/request-logger.middleware';
+import { createRequestMetricsMiddleware } from './modules/metrics/request-metrics.middleware';
 import { initSentry } from './observability/sentry';
 
 async function bootstrap(): Promise<void> {
@@ -30,6 +31,11 @@ async function bootstrap(): Promise<void> {
   // Request logger phải sau cookieParser (cookie redact qua Pino) +
   // trước global prefix để gắn requestId cho mọi request.
   app.use(createRequestLoggerMiddleware());
+  // Phase 17.5 — Request metrics middleware (singleton in-memory
+  // counter cho `/admin/metrics`). Gắn SAU request-logger để reuse
+  // requestId nếu cần debug; skip healthz/readyz/admin/metrics để
+  // không count poll noise.
+  app.use(createRequestMetricsMiddleware());
   app.setGlobalPrefix('api');
   app.useGlobalFilters(new AllExceptionsFilter());
 
