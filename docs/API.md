@@ -18,6 +18,25 @@ Tóm tắt mọi endpoint REST + WebSocket event đang có ở `@xuantoi/api`. M
 | GET    | `/healthz` | —    | Liveness. 200 luôn nếu process chạy; trả `{ ok, uptimeMs, ts }`. |
 | GET    | `/readyz`  | —    | Readiness. Check DB + Redis. 200 ok, 503 khi fail. |
 | GET    | `/version` | —    | `{ name, version, commit, node, ts }`. |
+| GET    | `/admin/metrics` | ADMIN | **Phase 17.5** — Runtime metrics snapshot (admin-only, `@RequireAdmin()` — PLAYER + MOD reject 403). JSON shape `{ ok: true, data: MetricsSnapshot }` (xem dưới). Không audit log (polled high-frequency). Không trả PII / secret / cookie / token. |
+
+### Phase 17.5 — `MetricsSnapshot` payload
+
+Shape `{ schema: 1, generatedAt, system, api, ws, queue, cron, errors[] }`.
+Mỗi block fail-soft: nếu collector lỗi → block null + entry trong `errors[]`,
+KHÔNG bao giờ throw 500.
+
+- **`system`**: `{ uptimeMs, node: { version, platform }, memory: { rssBytes, heapUsedBytes, heapTotalBytes, externalBytes }, cpu: { userMicros, systemMicros }, pid, appVersion, collectedAt }`. Snapshot cumulative — caller tự diff giữa 2 lần poll.
+- **`api.request`**: `{ totalRequests, totalDurationMs, avgDurationMs, byMethod: { GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD, OTHER }, byStatusBucket: { 1xx, 2xx, 3xx, 4xx, 5xx, other }, inFlight, lastResetAt }`. **Bounded** — không track per-path để tránh memory leak (cardinality unbounded). Skip `/api/healthz`, `/api/readyz`, `/api/admin/metrics`. Per-path histogram để follow-up Phase 17.6.
+- **`ws`**: `{ onlineUsers, serverBound }` hoặc null nếu collector lỗi. `onlineUsers` = số user (1 user có thể có nhiều socket, count theo user).
+- **`queue`**: `{ available, queues: [{ name, waiting, active, delayed, completed, failed }] }`. 7 queue: `cultivation`, `ops`, `mission-reset`, `territory-cron`, `sect-season-cron`, `ledger-checker-cron`, `anomaly-scanner-cron`. Đọc qua Redis `llen`/`zcard` trên prefix `bull:<name>:<state>`. Redis down → `available=false`, `queues=[]`.
+- **`cron`**: `{ available, jobs: [{ job, lastRunAt, lastStatus, contextKey }] }`. 4 job: `economy-ledger-check` (status từ `EconomyLedgerCheckRun.status`: RUNNING/OK/ISSUES_FOUND/ERROR), `territory-settle` (`SectTerritorySettlementSnapshot.settledAt`), `territory-decay` (`SectTerritoryDecayLog.triggeredAt`), `sect-season-snapshot` (`SectSeasonSnapshot.finalizedAt`). `lastRunAt=null` nếu chưa run lần nào. 1 query lỗi không block job khác.
+- **`errors[]`**: `[{ stage: 'system'|'api'|'ws'|'queue'|'cron', message }]`. Empty trong happy path. KHÔNG chứa stack trace, KHÔNG chứa `req.body`.
+
+**Auth/Security**:
+- `@UseGuards(AdminGuard)` — UNAUTH 401, banned 403. Cookie `xt_access` + `xt_refresh` (xem [Auth cookie](#auth-cookie)).
+- `@RequireAdmin()` — chỉ ADMIN, MOD bị reject 403. PLAYER cũng reject 403.
+- Payload đã pass test scan substring: KHÔNG có `cookie/password/jwt/refreshToken/userId/characterId/email`.
 
 ## Auth — `AuthController` (prefix `_auth`)
 
