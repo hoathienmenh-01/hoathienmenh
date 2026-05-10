@@ -460,13 +460,14 @@ function onReturnToCultivation(): void {
  * Phase 14.3.D encounter resolve flow (server quyết định).
  */
 const miniBattlePanelVisible = computed<boolean>(() => {
-  if (tribulation.miniBattleAvailable === false) return false;
+  // Backward compat: chỉ render mini-battle panel khi backend xác nhận
+  // feature flag bật (`miniBattleAvailable === true`). State `null` (initial,
+  // chưa fetch) hoặc `false` (501 disabled) → giữ encounter resolve flow
+  // Phase 14.3.D không đổi.
+  if (tribulation.miniBattleAvailable !== true) return false;
   if (!atPeak.value) return false;
-  // Hiển thị nếu (a) đã có battle row, hoặc (b) có encounter pending sẵn
-  // (user vừa start encounter từ Phase 14.3.D — mini-battle nối tiếp).
   if (tribulation.miniBattle) return true;
   if (tribulation.encounter && tribulation.encounterPending) return true;
-  // Hoặc (c) có upcoming encounter để user start mini-battle mới.
   if (tribulation.encounter) return true;
   return false;
 });

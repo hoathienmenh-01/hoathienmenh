@@ -2111,7 +2111,14 @@
       "IN_FLIGHT": "Đang xử lý…",
       "UNKNOWN": "Vượt kiếp thất bại, thử lại.",
       "NO_PENDING_ENCOUNTER": "Chưa có Thiên Kiếp đang chờ vượt qua.",
-      "ENCOUNTER_ALREADY_PENDING": "Đã có Thiên Kiếp khác đang chờ giải quyết."
+      "ENCOUNTER_ALREADY_PENDING": "Đã có Thiên Kiếp khác đang chờ giải quyết.",
+      "MINI_BATTLE_DISABLED": "Hệ thống mini-battle đang tạm khoá.",
+      "MINI_BATTLE_NOT_FOUND": "Không tìm thấy mini-battle hiện tại.",
+      "MINI_BATTLE_ALREADY_ACTIVE": "Đã có mini-battle khác đang diễn ra, hãy hoàn tất trước.",
+      "MINI_BATTLE_TERMINAL": "Mini-battle đã kết thúc, không thể thao tác thêm.",
+      "MINI_BATTLE_NOT_TERMINAL": "Mini-battle chưa kết thúc, chưa thể vượt qua.",
+      "MINI_BATTLE_INVALID_ACTION": "Hành động không hợp lệ trong phase này.",
+      "TRIBULATION_MINI_BATTLE_UNAVAILABLE": "Tính năng mini-battle hiện không khả dụng."
     },
     "history": {
       "title": "Lịch sử vượt kiếp",
@@ -2193,6 +2200,112 @@
       },
       "cta": {
         "returnCultivation": "Quay lại tu luyện"
+      }
+    },
+    "miniBattle": {
+      "title": "Vượt Kiếp Theo Lượt",
+      "subtitle": "Mỗi lượt một hành động — server quyết định kết quả deterministic.",
+      "empty": "Chưa khởi động kiếp. Hãy bấm bên dưới để bắt đầu.",
+      "terminalHint": "Trận đã kết thúc. Bấm vượt kiếp để nhận kết quả.",
+      "phaseProgress": "Phase {current} / {total}",
+      "playerHp": "Sinh lực của ngươi",
+      "tribulationHp": "Sức mạnh kiếp",
+      "shield": "Khiên +{n}",
+      "dotStacks": "Trúng độc x{n}",
+      "focusCharge": "Tích tụ x{n}",
+      "state": {
+        "PENDING": "Chuẩn bị",
+        "ACTIVE": "Đang đối kháng",
+        "RESOLVED": "Hoàn tất",
+        "FAILED": "Thất bại",
+        "EXPIRED": "Hết hạn"
+      },
+      "button": {
+        "start": "Bắt đầu mini-battle",
+        "starting": "Đang khởi động…",
+        "resolve": "Vượt kiếp",
+        "resolving": "Đang vượt…"
+      },
+      "actions": {
+        "title": "Chọn hành động cho phase hiện tại",
+        "loading": "Đang xử lý hành động…",
+        "ATTACK": {
+          "label": "Công Kích",
+          "short": "Đánh trực tiếp",
+          "hint": "Gây sát thương lên kiếp. Hữu hiệu khi kiếp ít HP."
+        },
+        "DEFEND": {
+          "label": "Phòng Thủ",
+          "short": "Tạo khiên",
+          "hint": "Tăng khiên để giảm sát thương phase tới."
+        },
+        "FOCUS": {
+          "label": "Tụ Khí",
+          "short": "Tăng đòn sau",
+          "hint": "Tích tụ chân khí, đòn kế tiếp mạnh hơn."
+        },
+        "CLEANSE": {
+          "label": "Thanh Tẩy",
+          "short": "Xoá độc",
+          "hint": "Xoá DOT/độc đang chồng. Quan trọng khi gặp Poison Recovery."
+        },
+        "CHANNEL": {
+          "label": "Vận Khí",
+          "short": "Bỏ qua phase",
+          "hint": "Vận khí qua phase, giảm tổn thương + sạc đòn sau."
+        }
+      },
+      "log": {
+        "title": "Nhật ký lượt đấu",
+        "empty": "Chưa có lượt nào.",
+        "phase": "P{n}",
+        "damage": "DMG {n}",
+        "shield": "SHL {n}",
+        "heal": "HEAL {n}",
+        "dot": "DOT x{n}",
+        "crit": "CRIT",
+        "result": {
+          "ongoing": "Tiếp diễn",
+          "win": "Thắng",
+          "lose": "Bại"
+        },
+        "message": {
+          "attack_hit": "Đánh trúng kiếp.",
+          "attack_crit": "Chí mạng!",
+          "attack_blocked": "Kiếp chống đỡ phần lớn sát thương.",
+          "defend_shield": "Khiên gia cố thành công.",
+          "focus_charge": "Tích tụ khí lực.",
+          "cleanse_purify": "Tịnh hoá thành công.",
+          "channel_skip": "Vận khí qua phase, sạc đòn kế.",
+          "tribulation_burn": "Kiếp gây tổn thương dồn.",
+          "tribulation_dot": "Độc tố tiếp tục bào mòn.",
+          "tribulation_armor": "Áp xuyên giáp.",
+          "tribulation_endurance": "Kiếp kéo dài, phải bền bỉ."
+        }
+      },
+      "result": {
+        "winTitle": "Vượt kiếp thành công!",
+        "loseTitle": "Thất bại trong kiếp số",
+        "transition": "{from} → {to}",
+        "attemptIndex": "Lần thử số {n}",
+        "wavesCompleted": "Đã hoàn thành {n} đợt",
+        "reward": "+{linhThach} linh thạch · +{expBonus} EXP",
+        "titleAwarded": "Danh hiệu mới: {key}",
+        "penalty": "Mất {expLoss} EXP",
+        "cooldownAt": "Cooldown đến {ts}",
+        "taoMaUntil": "Tâm Ma đến {ts}",
+        "cta": {
+          "returnCultivation": "Quay lại tu luyện",
+          "retry": "Thử lại",
+          "close": "Đóng"
+        }
+      },
+      "effectHint": {
+        "BURST": "Kiếp gây sát thương dồn — phòng thủ đúng lúc và phản công khi nó hạ thanh.",
+        "SUSTAIN": "Kiếp trường cửu — sống sót qua nhiều phase, dùng khiên + tụ khí để bền.",
+        "POISON_RECOVERY": "Kiếp dùng độc/hồi phục — Cleanse khi DOT chồng cao.",
+        "ARMOR_CRIT": "Kiếp giáp/chí mạng — tụ khí cho đòn xuyên giáp, hạn chế Attack đơn lẻ.",
+        "DEFENSE_ENDURANCE": "Kiếp phòng thủ — kiên trì gậm dần, tránh dồn sát thương quá sớm."
       }
     }
   },

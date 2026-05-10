@@ -9,6 +9,11 @@ vi.mock('@/api/tribulation', () => ({
   fetchTribulationEncounterCurrent: vi.fn(),
   startTribulationEncounter: vi.fn(),
   resolveTribulationEncounter: vi.fn(),
+  // Phase 14.3.E.2 — mini-battle API mocks.
+  fetchCurrentTribulationBattle: vi.fn(),
+  startTribulationBattle: vi.fn(),
+  submitTribulationBattleAction: vi.fn(),
+  resolveTribulationBattle: vi.fn(),
   TRIBULATION_LOG_DEFAULT_LIMIT: 20,
   TRIBULATION_LOG_MAX_LIMIT: 100,
 }));
@@ -976,5 +981,258 @@ describe('useTribulationStore — Phase 14.3.D encounter actions', () => {
     expect(s.encounter).toBeUndefined();
     expect(s.encounterError).toBeNull();
     expect(s.encounterLoading).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Phase 14.3.E.2 — Mini-Battle store tests
+// ─────────────────────────────────────────────────────────────────────────
+
+const STUB_BATTLE_ACTIVE: api.TribulationMiniBattleView = {
+  id: 'battle-1',
+  characterId: 'char-1',
+  encounterId: 'enc-1',
+  tribulationKey: 'kim_dan_to_nguyen_anh',
+  realmKey: 'kim_dan',
+  effectType: 'BURST',
+  element: 'hoa',
+  difficulty: 'major',
+  state: 'ACTIVE',
+  currentPhase: 2,
+  phaseCount: 5,
+  playerHp: 800,
+  playerHpMax: 1000,
+  tribulationHp: 600,
+  tribulationHpMax: 1500,
+  shield: 0,
+  dotStacks: 0,
+  focusCharge: 0,
+  seed: 12345,
+  actionLog: [],
+  result: null,
+  startedAt: '2026-05-02T01:00:00.000Z',
+  resolvedAt: null,
+  createdAt: '2026-05-02T01:00:00.000Z',
+  updatedAt: '2026-05-02T01:01:00.000Z',
+};
+
+const STUB_BATTLE_RESOLVED: api.TribulationMiniBattleView = {
+  ...STUB_BATTLE_ACTIVE,
+  state: 'RESOLVED',
+  tribulationHp: 0,
+  resolvedAt: '2026-05-02T01:05:00.000Z',
+  result: {
+    state: 'RESOLVED',
+    result: 'win',
+    phasesPlayed: 5,
+    totalDamageTaken: 200,
+    totalDamageDealt: 1500,
+    totalHeal: 0,
+    totalShieldGained: 50,
+    finalPlayerHp: 800,
+    finalTribulationHp: 0,
+    effectType: 'BURST',
+  },
+};
+
+describe('useTribulationStore — Phase 14.3.E.2 mini-battle', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.mocked(api.fetchCurrentTribulationBattle).mockReset();
+    vi.mocked(api.startTribulationBattle).mockReset();
+    vi.mocked(api.submitTribulationBattleAction).mockReset();
+    vi.mocked(api.resolveTribulationBattle).mockReset();
+  });
+
+  it('fetchCurrentBattle: success → set miniBattle + miniBattleAvailable=true', async () => {
+    vi.mocked(api.fetchCurrentTribulationBattle).mockResolvedValueOnce(
+      STUB_BATTLE_ACTIVE,
+    );
+    const s = useTribulationStore();
+    const err = await s.fetchCurrentBattle();
+    expect(err).toBeNull();
+    expect(s.miniBattle).toEqual(STUB_BATTLE_ACTIVE);
+    expect(s.miniBattleAvailable).toBe(true);
+    expect(s.miniBattleError).toBeNull();
+  });
+
+  it('fetchCurrentBattle: server null → snapshot null nhưng available=true', async () => {
+    vi.mocked(api.fetchCurrentTribulationBattle).mockResolvedValueOnce(null);
+    const s = useTribulationStore();
+    await s.fetchCurrentBattle();
+    expect(s.miniBattle).toBeNull();
+    expect(s.miniBattleAvailable).toBe(true);
+  });
+
+  it('fetchCurrentBattle: 501 UNAVAILABLE → set available=false, không raise error UI', async () => {
+    vi.mocked(api.fetchCurrentTribulationBattle).mockRejectedValueOnce({
+      code: 'TRIBULATION_MINI_BATTLE_UNAVAILABLE',
+    });
+    const s = useTribulationStore();
+    const err = await s.fetchCurrentBattle();
+    expect(err).toBeNull();
+    expect(s.miniBattleAvailable).toBe(false);
+    expect(s.miniBattleError).toBeNull();
+  });
+
+  it('fetchCurrentBattle: lỗi khác → set miniBattleError code', async () => {
+    vi.mocked(api.fetchCurrentTribulationBattle).mockRejectedValueOnce({
+      code: 'INTERNAL_ERROR',
+    });
+    const s = useTribulationStore();
+    const err = await s.fetchCurrentBattle();
+    expect(err).toBe('INTERNAL_ERROR');
+    expect(s.miniBattleError).toBe('INTERNAL_ERROR');
+  });
+
+  it('startBattle: success → snapshot + available=true', async () => {
+    vi.mocked(api.startTribulationBattle).mockResolvedValueOnce(
+      STUB_BATTLE_ACTIVE,
+    );
+    const s = useTribulationStore();
+    const err = await s.startBattle();
+    expect(err).toBeNull();
+    expect(s.miniBattle).toEqual(STUB_BATTLE_ACTIVE);
+    expect(s.miniBattleAvailable).toBe(true);
+  });
+
+  it('startBattle: server reject (ALREADY_ACTIVE) → set error code', async () => {
+    vi.mocked(api.startTribulationBattle).mockRejectedValueOnce({
+      code: 'MINI_BATTLE_ALREADY_ACTIVE',
+    });
+    const s = useTribulationStore();
+    const err = await s.startBattle();
+    expect(err).toBe('MINI_BATTLE_ALREADY_ACTIVE');
+    expect(s.miniBattleError).toBe('MINI_BATTLE_ALREADY_ACTIVE');
+  });
+
+  it('submitBattleAction: chặn double-click khi actionLoading', async () => {
+    vi.mocked(api.fetchCurrentTribulationBattle).mockResolvedValueOnce(
+      STUB_BATTLE_ACTIVE,
+    );
+    let resolveAction: (value: api.TribulationMiniBattleView) => void = () => {};
+    vi.mocked(api.submitTribulationBattleAction).mockReturnValueOnce(
+      new Promise((res) => {
+        resolveAction = res;
+      }),
+    );
+    const s = useTribulationStore();
+    await s.fetchCurrentBattle();
+    const p1 = s.submitBattleAction({ action: 'ATTACK' });
+    const second = await s.submitBattleAction({ action: 'DEFEND' });
+    expect(second).toBe('IN_FLIGHT');
+    resolveAction(STUB_BATTLE_ACTIVE);
+    await p1;
+    expect(api.submitTribulationBattleAction).toHaveBeenCalledTimes(1);
+  });
+
+  it('submitBattleAction: trả MINI_BATTLE_TERMINAL nếu battle đã terminal', async () => {
+    vi.mocked(api.fetchCurrentTribulationBattle).mockResolvedValueOnce(
+      STUB_BATTLE_RESOLVED,
+    );
+    const s = useTribulationStore();
+    await s.fetchCurrentBattle();
+    const err = await s.submitBattleAction({ action: 'ATTACK' });
+    expect(err).toBe('MINI_BATTLE_TERMINAL');
+    expect(api.submitTribulationBattleAction).not.toHaveBeenCalled();
+  });
+
+  it('submitBattleAction: success → cập nhật snapshot từ server', async () => {
+    vi.mocked(api.fetchCurrentTribulationBattle).mockResolvedValueOnce(
+      STUB_BATTLE_ACTIVE,
+    );
+    vi.mocked(api.submitTribulationBattleAction).mockResolvedValueOnce(
+      STUB_BATTLE_RESOLVED,
+    );
+    const s = useTribulationStore();
+    await s.fetchCurrentBattle();
+    const err = await s.submitBattleAction({ action: 'ATTACK' });
+    expect(err).toBeNull();
+    expect(s.miniBattle).toEqual(STUB_BATTLE_RESOLVED);
+    expect(s.miniBattleIsTerminal).toBe(true);
+    expect(s.miniBattleCanAct).toBe(false);
+  });
+
+  it('submitBattleAction: server error → set miniBattleError code', async () => {
+    vi.mocked(api.fetchCurrentTribulationBattle).mockResolvedValueOnce(
+      STUB_BATTLE_ACTIVE,
+    );
+    vi.mocked(api.submitTribulationBattleAction).mockRejectedValueOnce({
+      code: 'MINI_BATTLE_INVALID_ACTION',
+    });
+    const s = useTribulationStore();
+    await s.fetchCurrentBattle();
+    const err = await s.submitBattleAction({ action: 'ATTACK' });
+    expect(err).toBe('MINI_BATTLE_INVALID_ACTION');
+    expect(s.miniBattleError).toBe('MINI_BATTLE_INVALID_ACTION');
+  });
+
+  it('resolveBattle: success → set lastResult + lastOutcome + clear error', async () => {
+    vi.mocked(api.fetchCurrentTribulationBattle)
+      .mockResolvedValueOnce(STUB_BATTLE_RESOLVED)
+      .mockResolvedValueOnce(null);
+    vi.mocked(api.resolveTribulationBattle).mockResolvedValueOnce(STUB_SUCCESS);
+    const s = useTribulationStore();
+    await s.fetchCurrentBattle();
+    const err = await s.resolveBattle();
+    expect(err).toBeNull();
+    expect(s.miniBattleLastResult).toEqual(STUB_SUCCESS);
+    expect(s.lastOutcome).toEqual(STUB_SUCCESS);
+  });
+
+  it('resolveBattle: server error → set miniBattleError code', async () => {
+    vi.mocked(api.fetchCurrentTribulationBattle).mockResolvedValueOnce(
+      STUB_BATTLE_RESOLVED,
+    );
+    vi.mocked(api.resolveTribulationBattle).mockRejectedValueOnce({
+      code: 'MINI_BATTLE_NOT_TERMINAL',
+    });
+    const s = useTribulationStore();
+    await s.fetchCurrentBattle();
+    const err = await s.resolveBattle();
+    expect(err).toBe('MINI_BATTLE_NOT_TERMINAL');
+    expect(s.miniBattleError).toBe('MINI_BATTLE_NOT_TERMINAL');
+  });
+
+  it('resetMiniBattleError: clear error nhưng giữ snapshot', async () => {
+    vi.mocked(api.fetchCurrentTribulationBattle).mockResolvedValueOnce(
+      STUB_BATTLE_ACTIVE,
+    );
+    vi.mocked(api.submitTribulationBattleAction).mockRejectedValueOnce({
+      code: 'INTERNAL_ERROR',
+    });
+    const s = useTribulationStore();
+    await s.fetchCurrentBattle();
+    await s.submitBattleAction({ action: 'ATTACK' });
+    expect(s.miniBattleError).toBe('INTERNAL_ERROR');
+    s.resetMiniBattleError();
+    expect(s.miniBattleError).toBeNull();
+    expect(s.miniBattle).toEqual(STUB_BATTLE_ACTIVE);
+  });
+
+  it('clearMiniBattle: reset snapshot + lastResult sau dismiss modal', async () => {
+    vi.mocked(api.fetchCurrentTribulationBattle).mockResolvedValueOnce(
+      STUB_BATTLE_ACTIVE,
+    );
+    const s = useTribulationStore();
+    await s.fetchCurrentBattle();
+    s.miniBattleLastResult = STUB_SUCCESS;
+    s.clearMiniBattle();
+    expect(s.miniBattle).toBeNull();
+    expect(s.miniBattleLastResult).toBeNull();
+  });
+
+  it('reset() clear toàn bộ mini-battle state', async () => {
+    vi.mocked(api.fetchCurrentTribulationBattle).mockResolvedValueOnce(
+      STUB_BATTLE_ACTIVE,
+    );
+    const s = useTribulationStore();
+    await s.fetchCurrentBattle();
+    expect(s.miniBattle).toEqual(STUB_BATTLE_ACTIVE);
+    s.reset();
+    expect(s.miniBattle).toBeUndefined();
+    expect(s.miniBattleAvailable).toBeNull();
+    expect(s.miniBattleError).toBeNull();
+    expect(s.miniBattleLastResult).toBeNull();
   });
 });

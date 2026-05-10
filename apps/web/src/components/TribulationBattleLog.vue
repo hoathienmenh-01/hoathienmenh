@@ -68,7 +68,7 @@ function actionClass(action: string): string {
  */
 function fmtMessage(messageKey: string): string {
   if (!messageKey) return '';
-  const full = `tribulation.miniBattle.message.${messageKey}`;
+  const full = `tribulation.miniBattle.log.message.${messageKey}`;
   if (te(full)) return t(full);
   return messageKey;
 }

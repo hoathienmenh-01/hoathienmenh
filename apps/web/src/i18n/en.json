@@ -2111,7 +2111,14 @@
       "IN_FLIGHT": "Processing…",
       "UNKNOWN": "Tribulation attempt failed, please retry.",
       "NO_PENDING_ENCOUNTER": "No tribulation encounter is currently pending.",
-      "ENCOUNTER_ALREADY_PENDING": "Another tribulation encounter is already pending."
+      "ENCOUNTER_ALREADY_PENDING": "Another tribulation encounter is already pending.",
+      "MINI_BATTLE_DISABLED": "Tribulation mini-battle is currently disabled.",
+      "MINI_BATTLE_NOT_FOUND": "No active mini-battle found.",
+      "MINI_BATTLE_ALREADY_ACTIVE": "Another mini-battle is already in progress, finish it first.",
+      "MINI_BATTLE_TERMINAL": "This mini-battle has ended; no more actions allowed.",
+      "MINI_BATTLE_NOT_TERMINAL": "Mini-battle has not ended yet.",
+      "MINI_BATTLE_INVALID_ACTION": "That action is not valid in this phase.",
+      "TRIBULATION_MINI_BATTLE_UNAVAILABLE": "Tribulation mini-battle is currently unavailable."
     },
     "history": {
       "title": "Tribulation History",
@@ -2193,6 +2200,112 @@
       },
       "cta": {
         "returnCultivation": "Return to cultivation"
+      }
+    },
+    "miniBattle": {
+      "title": "Turn-Based Tribulation",
+      "subtitle": "One action per phase — the server resolves outcomes deterministically.",
+      "empty": "No mini-battle yet. Tap below to begin.",
+      "terminalHint": "Battle ended. Press resolve to claim outcome.",
+      "phaseProgress": "Phase {current} / {total}",
+      "playerHp": "Your HP",
+      "tribulationHp": "Tribulation HP",
+      "shield": "Shield +{n}",
+      "dotStacks": "Poison x{n}",
+      "focusCharge": "Focus x{n}",
+      "state": {
+        "PENDING": "Preparing",
+        "ACTIVE": "In combat",
+        "RESOLVED": "Resolved",
+        "FAILED": "Failed",
+        "EXPIRED": "Expired"
+      },
+      "button": {
+        "start": "Start mini-battle",
+        "starting": "Starting…",
+        "resolve": "Resolve tribulation",
+        "resolving": "Resolving…"
+      },
+      "actions": {
+        "title": "Choose an action for this phase",
+        "loading": "Submitting action…",
+        "ATTACK": {
+          "label": "Attack",
+          "short": "Direct hit",
+          "hint": "Damage the tribulation. Effective when its HP is low."
+        },
+        "DEFEND": {
+          "label": "Defend",
+          "short": "Build shield",
+          "hint": "Raise a shield to soak the next phase."
+        },
+        "FOCUS": {
+          "label": "Focus",
+          "short": "Charge next",
+          "hint": "Concentrate qi — the next action hits harder."
+        },
+        "CLEANSE": {
+          "label": "Cleanse",
+          "short": "Clear DOT",
+          "hint": "Purge poison stacks. Crucial vs Poison-Recovery effects."
+        },
+        "CHANNEL": {
+          "label": "Channel",
+          "short": "Skip phase",
+          "hint": "Channel through the phase, mitigating damage and charging the next strike."
+        }
+      },
+      "log": {
+        "title": "Battle log",
+        "empty": "No actions yet.",
+        "phase": "P{n}",
+        "damage": "DMG {n}",
+        "shield": "SHL {n}",
+        "heal": "HEAL {n}",
+        "dot": "DOT x{n}",
+        "crit": "CRIT",
+        "result": {
+          "ongoing": "Ongoing",
+          "win": "Win",
+          "lose": "Lose"
+        },
+        "message": {
+          "attack_hit": "Direct hit on tribulation.",
+          "attack_crit": "Critical strike!",
+          "attack_blocked": "Tribulation absorbs most of the damage.",
+          "defend_shield": "Shield reinforced.",
+          "focus_charge": "Qi concentrated.",
+          "cleanse_purify": "Cleansed successfully.",
+          "channel_skip": "Channelled past the phase, charging next strike.",
+          "tribulation_burn": "Tribulation deals burst damage.",
+          "tribulation_dot": "Poison continues to gnaw.",
+          "tribulation_armor": "Armor-piercing pressure.",
+          "tribulation_endurance": "Tribulation drags on — endure."
+        }
+      },
+      "result": {
+        "winTitle": "Tribulation cleared!",
+        "loseTitle": "Lost to the tribulation",
+        "transition": "{from} → {to}",
+        "attemptIndex": "Attempt #{n}",
+        "wavesCompleted": "Cleared {n} waves",
+        "reward": "+{linhThach} linh thach · +{expBonus} EXP",
+        "titleAwarded": "New title: {key}",
+        "penalty": "Lost {expLoss} EXP",
+        "cooldownAt": "Cooldown until {ts}",
+        "taoMaUntil": "Tao Ma until {ts}",
+        "cta": {
+          "returnCultivation": "Return to cultivation",
+          "retry": "Try again",
+          "close": "Close"
+        }
+      },
+      "effectHint": {
+        "BURST": "Burst damage — defend on the spike, counter when its HP dips.",
+        "SUSTAIN": "Endurance fight — survive across phases, layer shields and focus.",
+        "POISON_RECOVERY": "Poison/recovery — cleanse before stacks pile up.",
+        "ARMOR_CRIT": "Armor/crit — charge focus for armor-piercing critical hits, avoid weak Attack spam.",
+        "DEFENSE_ENDURANCE": "Heavy defense — grind it down, do not over-commit damage early."
       }
     }
   },
