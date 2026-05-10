@@ -31,6 +31,23 @@ export const useArenaStore = defineStore('arena', () => {
   const historyLoading = ref(false);
   const historyError = ref<string | null>(null);
 
+  // Phase 14.1.C — Arena Season state.
+  const season = ref<api.ArenaSeasonView | null>(null);
+  const seasonLoading = ref(false);
+  const seasonError = ref<string | null>(null);
+
+  const myStanding = ref<api.ArenaMyStandingView | null>(null);
+  const myStandingLoading = ref(false);
+  const myStandingError = ref<string | null>(null);
+
+  const leaderboard = ref<api.ArenaLeaderboardView | null>(null);
+  const leaderboardLoading = ref(false);
+  const leaderboardError = ref<string | null>(null);
+
+  const rewardPreview = ref<api.ArenaSeasonRewardPreviewView | null>(null);
+  const rewardPreviewLoading = ref(false);
+  const rewardPreviewError = ref<string | null>(null);
+
   const totalAttacks = computed<number>(() => {
     const p = profile.value;
     if (!p) return 0;
@@ -107,6 +124,60 @@ export const useArenaStore = defineStore('arena', () => {
     lastResult.value = null;
   }
 
+  /* ---------- Phase 14.1.C — season actions ---------- */
+
+  async function fetchSeason(): Promise<void> {
+    seasonLoading.value = true;
+    seasonError.value = null;
+    try {
+      season.value = await api.fetchArenaCurrentSeason();
+    } catch (e) {
+      seasonError.value = extractCode(e, 'SEASON_FETCH_FAILED');
+    } finally {
+      seasonLoading.value = false;
+    }
+  }
+
+  async function fetchMyStanding(): Promise<void> {
+    myStandingLoading.value = true;
+    myStandingError.value = null;
+    try {
+      myStanding.value = await api.fetchArenaMyStanding();
+    } catch (e) {
+      myStandingError.value = extractCode(e, 'STANDING_FETCH_FAILED');
+    } finally {
+      myStandingLoading.value = false;
+    }
+  }
+
+  async function fetchLeaderboard(opts: {
+    seasonKey?: string;
+    limit?: number;
+    offset?: number;
+  } = {}): Promise<void> {
+    leaderboardLoading.value = true;
+    leaderboardError.value = null;
+    try {
+      leaderboard.value = await api.fetchArenaLeaderboard(opts);
+    } catch (e) {
+      leaderboardError.value = extractCode(e, 'LEADERBOARD_FETCH_FAILED');
+    } finally {
+      leaderboardLoading.value = false;
+    }
+  }
+
+  async function fetchRewardPreview(seasonKey?: string): Promise<void> {
+    rewardPreviewLoading.value = true;
+    rewardPreviewError.value = null;
+    try {
+      rewardPreview.value = await api.fetchArenaRewardPreview(seasonKey);
+    } catch (e) {
+      rewardPreviewError.value = extractCode(e, 'REWARDS_FETCH_FAILED');
+    } finally {
+      rewardPreviewLoading.value = false;
+    }
+  }
+
   return {
     profile,
     profileLoading,
@@ -126,5 +197,22 @@ export const useArenaStore = defineStore('arena', () => {
     challenge,
     fetchHistory,
     clearLastResult,
+    // Phase 14.1.C — season state + actions.
+    season,
+    seasonLoading,
+    seasonError,
+    myStanding,
+    myStandingLoading,
+    myStandingError,
+    leaderboard,
+    leaderboardLoading,
+    leaderboardError,
+    rewardPreview,
+    rewardPreviewLoading,
+    rewardPreviewError,
+    fetchSeason,
+    fetchMyStanding,
+    fetchLeaderboard,
+    fetchRewardPreview,
   };
 });

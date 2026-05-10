@@ -26,12 +26,57 @@ onMounted(() => {
   void arena.fetchProfile();
   void arena.fetchOpponents();
   void arena.fetchHistory();
+  // Phase 14.1.C — load season + standing + leaderboard + reward preview.
+  void arena.fetchSeason();
+  void arena.fetchMyStanding();
+  void arena.fetchLeaderboard({ limit: 20 });
+  void arena.fetchRewardPreview();
 });
 
 const profile = computed(() => arena.profile);
 const opponents = computed(() => arena.opponents ?? []);
 const history = computed(() => arena.history ?? []);
 const lastResult = computed(() => arena.lastResult);
+
+// Phase 14.1.C — season getters.
+const season = computed(() => arena.season);
+const myStanding = computed(() => arena.myStanding);
+const leaderboardEntries = computed(
+  () => arena.leaderboard?.entries ?? [],
+);
+const leaderboardTotal = computed(() => arena.leaderboard?.total ?? 0);
+const rewardTiers = computed(() => arena.rewardPreview?.tiers ?? []);
+
+const showLeaderboardLoading = computed(
+  () => arena.leaderboardLoading && !arena.leaderboard,
+);
+const leaderboardEmpty = computed(
+  () => !arena.leaderboardLoading && leaderboardEntries.value.length === 0,
+);
+const showRewardLoading = computed(
+  () => arena.rewardPreviewLoading && !arena.rewardPreview,
+);
+
+function formatDate(iso?: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString();
+}
+
+function historyDeltaForMe(
+  m: { ratingDelta?: { attacker: number; defender: number }; attackerCharacterId: string },
+): number | null {
+  if (!m.ratingDelta) return null;
+  const myId = profile.value?.characterId ?? '';
+  if (m.attackerCharacterId === myId) return m.ratingDelta.attacker;
+  return m.ratingDelta.defender;
+}
+
+function tierLabel(tier: string): string {
+  const k = `arena.season.tier.${tier}`;
+  return t(k);
+}
 
 const showProfileLoading = computed(
   () => arena.profileLoading && !arena.profile,
@@ -78,6 +123,10 @@ function refresh(): void {
   void arena.fetchOpponents();
   void arena.fetchHistory();
   void arena.fetchProfile();
+  void arena.fetchSeason();
+  void arena.fetchMyStanding();
+  void arena.fetchLeaderboard({ limit: 20 });
+  void arena.fetchRewardPreview();
 }
 
 function clearBanner(): void {
@@ -101,6 +150,63 @@ function outcomeKind(outcome: string, attackerId: string): 'win' | 'lose' | 'dra
         <h1 class="text-2xl font-bold text-amber-200">{{ t('arena.title') }}</h1>
         <p class="text-sm text-slate-400 mt-1">{{ t('arena.subtitle') }}</p>
       </header>
+
+      <!-- Phase 14.1.C — Season banner + my standing -->
+      <div
+        class="rounded-xl border border-indigo-500/30 bg-slate-900/60 p-4 mb-6"
+        data-testid="arena-season"
+      >
+        <div v-if="arena.seasonLoading && !season" class="text-slate-400" data-testid="arena-season-loading">
+          {{ t('common.loading') }}
+        </div>
+        <div v-else-if="arena.seasonError" class="text-red-400" data-testid="arena-season-error">
+          {{ t('arena.errors.SEASON_FETCH_FAILED') }}
+        </div>
+        <div v-else-if="season" class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-xs text-slate-400">{{ t('arena.season.title') }}</div>
+            <div class="text-lg font-semibold text-indigo-200" data-testid="arena-season-key">
+              {{ season.seasonKey }}
+            </div>
+            <div class="text-xs text-slate-500 mt-1">
+              {{ t(`arena.season.status.${season.status}`) }}
+              · {{ t('arena.season.cadence.weekly') }}
+              · {{ season.timezone }}
+            </div>
+            <div class="text-xs text-slate-500">
+              {{ t('arena.season.starts') }}: {{ formatDate(season.startsAtIso) }}
+              · {{ t('arena.season.ends') }}: {{ formatDate(season.endsAtIso) }}
+              <span v-if="season.settledAtIso">
+                · {{ t('arena.season.settledAt') }}: {{ formatDate(season.settledAtIso) }}
+              </span>
+            </div>
+          </div>
+          <div
+            v-if="myStanding"
+            class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center min-w-[16rem]"
+            data-testid="arena-season-standing"
+          >
+            <div>
+              <div class="text-xs text-slate-400">{{ t('arena.season.myStanding.rating') }}</div>
+              <div class="text-lg font-bold text-amber-300">{{ myStanding.rating }}</div>
+            </div>
+            <div>
+              <div class="text-xs text-slate-400">{{ t('arena.season.myStanding.tier') }}</div>
+              <div class="text-lg font-bold text-indigo-300">{{ tierLabel(myStanding.tier) }}</div>
+            </div>
+            <div>
+              <div class="text-xs text-slate-400">{{ t('arena.season.myStanding.rank') }}</div>
+              <div class="text-lg font-bold text-slate-100">
+                {{ myStanding.rank ?? t('arena.season.myStanding.noRank') }}
+              </div>
+            </div>
+            <div>
+              <div class="text-xs text-slate-400">{{ t('arena.season.myStanding.wins') }}/{{ t('arena.season.myStanding.losses') }}</div>
+              <div class="text-lg font-bold text-slate-100">{{ myStanding.wins }}/{{ myStanding.losses }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Profile -->
       <div
@@ -244,6 +350,122 @@ function outcomeKind(outcome: string, attackerId: string): 'win' | 'lose' | 'dra
         </ul>
       </div>
 
+      <!-- Phase 14.1.C — Leaderboard -->
+      <div class="mb-6">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-lg font-semibold text-slate-200">{{ t('arena.leaderboard.title') }}</h2>
+          <span class="text-xs text-slate-500">{{ t('arena.leaderboard.totalCount', { n: leaderboardTotal }) }}</span>
+        </div>
+        <div
+          v-if="showLeaderboardLoading"
+          class="text-slate-400"
+          data-testid="arena-leaderboard-loading"
+        >
+          {{ t('common.loading') }}
+        </div>
+        <div
+          v-else-if="arena.leaderboardError"
+          class="text-red-400"
+          data-testid="arena-leaderboard-error"
+        >
+          {{ t('arena.errors.LEADERBOARD_FETCH_FAILED') }}
+        </div>
+        <div
+          v-else-if="leaderboardEmpty"
+          class="text-slate-500 italic"
+          data-testid="arena-leaderboard-empty"
+        >
+          {{ t('arena.leaderboard.empty') }}
+        </div>
+        <table
+          v-else
+          class="w-full text-sm border-collapse"
+          data-testid="arena-leaderboard-table"
+        >
+          <thead class="text-slate-400 text-xs">
+            <tr>
+              <th class="text-left py-1 pr-2">{{ t('arena.leaderboard.rank') }}</th>
+              <th class="text-left py-1 pr-2">{{ t('arena.leaderboard.name') }}</th>
+              <th class="text-left py-1 pr-2">{{ t('arena.leaderboard.tier') }}</th>
+              <th class="text-right py-1 pr-2">{{ t('arena.leaderboard.rating') }}</th>
+              <th class="text-right py-1 pr-2">{{ t('arena.leaderboard.wins') }}</th>
+              <th class="text-right py-1">{{ t('arena.leaderboard.losses') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="e in leaderboardEntries"
+              :key="e.characterId"
+              class="border-t border-slate-800"
+              :data-testid="`arena-leaderboard-row-${e.characterId}`"
+            >
+              <td class="py-1 pr-2 text-amber-300 font-semibold">{{ e.rank }}</td>
+              <td class="py-1 pr-2 text-slate-100">
+                {{ e.characterName }}
+                <span v-if="e.sectName" class="text-xs text-slate-500"> · {{ e.sectName }}</span>
+              </td>
+              <td class="py-1 pr-2 text-indigo-300">{{ tierLabel(e.tier) }}</td>
+              <td class="py-1 pr-2 text-right text-amber-200">{{ e.rating }}</td>
+              <td class="py-1 pr-2 text-right text-emerald-400">{{ e.wins }}</td>
+              <td class="py-1 text-right text-red-400">{{ e.losses }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Phase 14.1.C — Reward preview -->
+      <div class="mb-6">
+        <h2 class="text-lg font-semibold text-slate-200 mb-2">{{ t('arena.rewardPreview.title') }}</h2>
+        <div
+          v-if="showRewardLoading"
+          class="text-slate-400"
+          data-testid="arena-rewards-loading"
+        >
+          {{ t('common.loading') }}
+        </div>
+        <div
+          v-else-if="arena.rewardPreviewError"
+          class="text-red-400"
+          data-testid="arena-rewards-error"
+        >
+          {{ t('arena.errors.REWARDS_FETCH_FAILED') }}
+        </div>
+        <ul
+          v-else
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2"
+          data-testid="arena-rewards-list"
+        >
+          <li
+            v-for="row in rewardTiers"
+            :key="row.tier"
+            class="rounded-lg border border-slate-700 bg-slate-900/40 p-3"
+            :data-testid="`arena-reward-${row.tier}`"
+          >
+            <div class="text-sm font-semibold text-indigo-300">{{ tierLabel(row.tier) }}</div>
+            <div class="text-xs text-slate-400 mt-1">
+              <span v-if="row.reward.linhThach > 0">
+                {{ t('arena.rewardPreview.linhThach') }}: {{ row.reward.linhThach }}
+              </span>
+              <span v-if="row.reward.tienNgoc > 0" class="block">
+                {{ t('arena.rewardPreview.tienNgoc') }}: {{ row.reward.tienNgoc }}
+              </span>
+              <span v-if="row.reward.exp > 0" class="block">
+                {{ t('arena.rewardPreview.exp') }}: {{ row.reward.exp }}
+              </span>
+              <span v-if="row.reward.items.length > 0" class="block">
+                {{ t('arena.rewardPreview.items') }}:
+                <span v-for="it in row.reward.items" :key="it.itemKey" class="text-slate-300">
+                  {{ it.itemKey }}×{{ it.qty }}<span class="text-slate-500">,</span>
+                </span>
+              </span>
+              <span v-if="row.reward.linhThach === 0 && row.reward.tienNgoc === 0 && row.reward.exp === 0 && row.reward.items.length === 0">
+                {{ t('arena.rewardPreview.noReward') }}
+              </span>
+            </div>
+          </li>
+        </ul>
+      </div>
+
       <!-- History -->
       <div>
         <h2 class="text-lg font-semibold text-slate-200 mb-2">{{ t('arena.history.title') }}</h2>
@@ -281,8 +503,20 @@ function outcomeKind(outcome: string, attackerId: string): 'win' | 'lose' | 'dra
                 }}
               </span>
             </div>
-            <div class="text-xs text-slate-500">
-              {{ t('arena.history.rounds', { n: m.rounds }) }}
+            <div class="text-xs text-slate-500 flex items-center gap-2">
+              <span
+                v-if="historyDeltaForMe(m) !== null"
+                :class="{
+                  'text-emerald-400': (historyDeltaForMe(m) ?? 0) > 0,
+                  'text-red-400': (historyDeltaForMe(m) ?? 0) < 0,
+                  'text-slate-400': (historyDeltaForMe(m) ?? 0) === 0,
+                }"
+                :data-testid="`arena-history-delta-${m.matchId}`"
+              >
+                {{ t('arena.season.ratingDelta') }}
+                {{ (historyDeltaForMe(m) ?? 0) > 0 ? '+' : '' }}{{ historyDeltaForMe(m) }}
+              </span>
+              <span>{{ t('arena.history.rounds', { n: m.rounds }) }}</span>
             </div>
           </li>
         </ul>

@@ -31,6 +31,10 @@ import {
 import type { Request } from 'express';
 import { z } from 'zod';
 import { ArenaError, ArenaService } from './arena.service';
+import {
+  ArenaSeasonService,
+  ArenaSeasonServiceError,
+} from './arena-season.service';
 import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../../common/prisma.service';
 
@@ -58,6 +62,24 @@ const HistoryQuery = z.object({
   side: z.enum(['all', 'attacker', 'defender']).optional(),
 });
 
+const LeaderboardQuery = z.object({
+  seasonKey: z.string().min(1).max(64).optional(),
+  limit: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : Number(v)))
+    .pipe(z.number().int().min(1).max(100).optional()),
+  offset: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : Number(v)))
+    .pipe(z.number().int().min(0).max(10_000).optional()),
+});
+
+const SeasonKeyOnlyQuery = z.object({
+  seasonKey: z.string().min(1).max(64).optional(),
+});
+
 function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
   throw new HttpException({ ok: false, error: { code, message: code } }, status);
 }
@@ -66,6 +88,7 @@ function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
 export class ArenaController {
   constructor(
     private readonly arena: ArenaService,
+    private readonly arenaSeason: ArenaSeasonService,
     private readonly auth: AuthService,
     private readonly prisma: PrismaService,
   ) {}
@@ -128,6 +151,63 @@ export class ArenaController {
     }
   }
 
+  @Get('season/current')
+  async seasonCurrent() {
+    try {
+      const season = await this.arenaSeason.getCurrentSeasonView();
+      return { ok: true, data: { season } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  @Get('leaderboard')
+  async leaderboard(@Query() query: unknown) {
+    const parsed = LeaderboardQuery.safeParse(query ?? {});
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const leaderboard = await this.arenaSeason.getLeaderboard({
+        seasonKey: parsed.data.seasonKey,
+        limit: parsed.data.limit,
+        offset: parsed.data.offset,
+      });
+      return { ok: true, data: { leaderboard } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  @Get('season/rewards')
+  async seasonRewards(@Query() query: unknown) {
+    const parsed = SeasonKeyOnlyQuery.safeParse(query ?? {});
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const preview = await this.arenaSeason.getRewardPreview(
+        parsed.data.seasonKey,
+      );
+      return { ok: true, data: { preview } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  @Get('season/standing')
+  async seasonStanding(@Req() req: Request, @Query() query: unknown) {
+    const userId = await this.requireUserId(req);
+    const characterId = await this.requireCharacterId(userId);
+    const parsed = SeasonKeyOnlyQuery.safeParse(query ?? {});
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const standing = await this.arenaSeason.getMyStanding(
+        characterId,
+        parsed.data.seasonKey,
+      );
+      return { ok: true, data: { standing } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
   @Get('matches/history')
   async history(@Req() req: Request, @Query() query: unknown) {
     const userId = await this.requireUserId(req);
@@ -156,6 +236,20 @@ export class ArenaController {
       }
       if (code === 'DAILY_LIMIT_REACHED') {
         fail(code, HttpStatus.TOO_MANY_REQUESTS);
+      }
+      fail(code, HttpStatus.BAD_REQUEST);
+    }
+    if (e instanceof ArenaSeasonServiceError) {
+      const code = e.code;
+      if (code === 'NO_CHARACTER' || code === 'SEASON_NOT_FOUND') {
+        fail(code, HttpStatus.NOT_FOUND);
+      }
+      if (
+        code === 'INVALID_INPUT' ||
+        code === 'SEASON_NOT_ACTIVE' ||
+        code === 'SEASON_ALREADY_SETTLED'
+      ) {
+        fail(code, HttpStatus.BAD_REQUEST);
       }
       fail(code, HttpStatus.BAD_REQUEST);
     }

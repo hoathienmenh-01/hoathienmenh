@@ -12,9 +12,13 @@
 import { i18n } from '@/i18n';
 import { apiClient } from './client';
 import type {
+  ArenaLeaderboardView,
   ArenaMatchResult,
+  ArenaMyStandingView,
   ArenaOpponentSummary,
   ArenaProfileSummary,
+  ArenaSeasonRewardPreviewView,
+  ArenaSeasonView,
 } from '@xuantoi/shared';
 
 interface Envelope<T> {
@@ -30,9 +34,15 @@ function fallbackError(op: string): Error {
 }
 
 export type {
+  ArenaLeaderboardEntry,
+  ArenaLeaderboardView,
   ArenaMatchResult,
+  ArenaMyStandingView,
   ArenaOpponentSummary,
   ArenaProfileSummary,
+  ArenaSeasonRewardPreviewEntry,
+  ArenaSeasonRewardPreviewView,
+  ArenaSeasonView,
 } from '@xuantoi/shared';
 
 /** GET /arena/profile — lazy create. */
@@ -91,4 +101,67 @@ export async function fetchArenaHistory(
   );
   if (!data.ok || !data.data) throw data.error ?? fallbackError('arenaHistory');
   return data.data.matches;
+}
+
+/* ---------------------------------------------------------------------------
+ * Phase 14.1.C — Arena Season + leaderboard + reward preview.
+ * ------------------------------------------------------------------------- */
+
+/** GET /arena/season/current. */
+export async function fetchArenaCurrentSeason(): Promise<ArenaSeasonView> {
+  const { data } = await apiClient.get<Envelope<{ season: ArenaSeasonView }>>(
+    '/arena/season/current',
+  );
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('arenaSeason');
+  return data.data.season;
+}
+
+/** GET /arena/leaderboard?seasonKey=&limit=&offset=. */
+export async function fetchArenaLeaderboard(opts: {
+  seasonKey?: string;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<ArenaLeaderboardView> {
+  const params = new URLSearchParams();
+  if (opts.seasonKey) params.set('seasonKey', opts.seasonKey);
+  if (opts.limit !== undefined) params.set('limit', String(opts.limit));
+  if (opts.offset !== undefined) params.set('offset', String(opts.offset));
+  const qs = params.toString();
+  const url = qs ? `/arena/leaderboard?${qs}` : '/arena/leaderboard';
+  const { data } =
+    await apiClient.get<Envelope<{ leaderboard: ArenaLeaderboardView }>>(url);
+  if (!data.ok || !data.data) {
+    throw data.error ?? fallbackError('arenaLeaderboard');
+  }
+  return data.data.leaderboard;
+}
+
+/** GET /arena/season/rewards. */
+export async function fetchArenaRewardPreview(
+  seasonKey?: string,
+): Promise<ArenaSeasonRewardPreviewView> {
+  const url = seasonKey
+    ? `/arena/season/rewards?seasonKey=${encodeURIComponent(seasonKey)}`
+    : '/arena/season/rewards';
+  const { data } =
+    await apiClient.get<Envelope<{ preview: ArenaSeasonRewardPreviewView }>>(url);
+  if (!data.ok || !data.data) {
+    throw data.error ?? fallbackError('arenaRewards');
+  }
+  return data.data.preview;
+}
+
+/** GET /arena/season/standing. */
+export async function fetchArenaMyStanding(
+  seasonKey?: string,
+): Promise<ArenaMyStandingView | null> {
+  const url = seasonKey
+    ? `/arena/season/standing?seasonKey=${encodeURIComponent(seasonKey)}`
+    : '/arena/season/standing';
+  const { data } =
+    await apiClient.get<Envelope<{ standing: ArenaMyStandingView | null }>>(url);
+  if (!data.ok || !data.data) {
+    throw data.error ?? fallbackError('arenaStanding');
+  }
+  return data.data.standing;
 }

@@ -19,12 +19,14 @@
  * KHÔNG đụng tới Mail / Currency / Inventory — Phase 14.1.B không grant
  * reward. Defer 14.1.C.
  */
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   ARENA_DAILY_LIMIT_DEFAULT,
   ARENA_RATING_DEFAULT,
   arenaDayBucket,
+  arenaEloApply,
+  arenaEloRatingDelta,
   arenaRankTierFor,
   arenaRatingDeltaFor,
   buildCombatActorSnapshot,
@@ -45,6 +47,7 @@ import {
   type ElementKey,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { ArenaSeasonService } from './arena-season.service';
 
 /* ---------------------------------------------------------------------------
  * Errors
@@ -147,7 +150,10 @@ interface ArenaProfileRow {
 export class ArenaService {
   private readonly logger = new Logger(ArenaService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly arenaSeason?: ArenaSeasonService,
+  ) {}
 
   /**
    * Daily limit config — re-read mỗi request để env override hot-reload
@@ -286,7 +292,15 @@ export class ArenaService {
             ? 'DEFENDER_WIN'
             : 'DRAW';
 
+      // Phase 14.1.B simple delta dùng cho lifetime ArenaProfile (legacy +
+      // backward compat tests). Phase 14.1.C bổ sung Elo delta dùng cho
+      // per-season ArenaStanding.
       const ratingDelta = arenaRatingDeltaFor(outcome);
+      const seasonRatingDelta = arenaEloRatingDelta(
+        rolled.rating,
+        defenderProfile.rating,
+        outcome,
+      );
       const winnerCharacterId =
         outcome === 'ATTACKER_WIN'
           ? attackerCharacterId
@@ -336,6 +350,34 @@ export class ArenaService {
           rating: defenderRatingAfter,
         },
       });
+
+      // Phase 14.1.C — apply Elo delta lên ArenaStanding cho season hiện
+      // tại. Lazy-create season + cả 2 standing nếu chưa có. Skip nếu
+      // module season chưa wire (vd test legacy chỉ inject ArenaService).
+      if (this.arenaSeason) {
+        const season = await this.arenaSeason.getOrCreateActiveSeason(
+          new Date(),
+          tx,
+        );
+        const seasonAttackerAfter = arenaEloApply(
+          rolled.rating,
+          seasonRatingDelta.attacker,
+        );
+        const seasonDefenderAfter = arenaEloApply(
+          defenderProfile.rating,
+          seasonRatingDelta.defender,
+        );
+        await this.arenaSeason.applyMatchToStandings(
+          tx,
+          season.id,
+          attackerCharacterId,
+          defenderCharacterId,
+          outcome,
+          seasonRatingDelta,
+          seasonAttackerAfter,
+          seasonDefenderAfter,
+        );
+      }
 
       return {
         matchId: updated.id,

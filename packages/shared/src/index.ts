@@ -7,6 +7,7 @@ export * from './combat';
 export * from './combat-rng';
 export * from './combat-snapshot';
 export * from './arena';
+export * from './arena-season';
 export * from './items';
 export * from './missions';
 export * from './achievements';

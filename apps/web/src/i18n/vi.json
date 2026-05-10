@@ -3468,7 +3468,66 @@
       "OPPONENTS_FETCH_FAILED": "Không tải được danh sách đối thủ.",
       "HISTORY_FETCH_FAILED": "Không tải được lịch sử trận.",
       "CHALLENGE_FAILED": "Khiêu chiến thất bại.",
-      "IN_FLIGHT": "Trận đấu đang xử lý, vui lòng đợi."
+      "IN_FLIGHT": "Trận đấu đang xử lý, vui lòng đợi.",
+      "SEASON_FETCH_FAILED": "Không tải được mùa giải hiện tại.",
+      "STANDING_FETCH_FAILED": "Không tải được vị trí của bạn trong mùa.",
+      "LEADERBOARD_FETCH_FAILED": "Không tải được bảng xếp hạng.",
+      "REWARDS_FETCH_FAILED": "Không tải được phần thưởng mùa."
+    },
+    "season": {
+      "title": "Mùa giải hiện tại",
+      "key": "Mã mùa",
+      "status": {
+        "ACTIVE": "Đang diễn ra",
+        "SETTLED": "Đã chốt",
+        "ARCHIVED": "Đã lưu trữ"
+      },
+      "starts": "Bắt đầu",
+      "ends": "Kết thúc",
+      "settledAt": "Chốt mùa",
+      "cadence": {
+        "weekly": "Tuần"
+      },
+      "ratingDelta": "Thay đổi",
+      "myStanding": {
+        "title": "Vị trí của bạn",
+        "rating": "Điểm",
+        "tier": "Bậc",
+        "rank": "Hạng",
+        "wins": "Thắng",
+        "losses": "Thua",
+        "noRank": "—"
+      },
+      "tier": {
+        "BRONZE": "Đồng",
+        "SILVER": "Bạc",
+        "GOLD": "Vàng",
+        "DIAMOND": "Kim Cương",
+        "IMMORTAL": "Tiên Bảng"
+      }
+    },
+    "leaderboard": {
+      "title": "Bảng xếp hạng",
+      "rank": "#",
+      "name": "Đạo hữu",
+      "rating": "Điểm",
+      "tier": "Bậc",
+      "wins": "Thắng",
+      "losses": "Thua",
+      "sect": "Tông môn",
+      "empty": "Chưa có đạo hữu nào tham gia mùa này.",
+      "totalCount": "Tổng: {n}",
+      "loadMore": "Xem thêm"
+    },
+    "rewardPreview": {
+      "title": "Thưởng kết mùa",
+      "linhThach": "Linh Thạch",
+      "tienNgoc": "Tiên Ngọc",
+      "exp": "EXP",
+      "items": "Vật phẩm",
+      "tier": "Bậc",
+      "reward": "Thưởng",
+      "noReward": "Không có"
     }
   }
 }

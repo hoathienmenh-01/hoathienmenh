@@ -11,10 +11,13 @@ import { GiftCodeModule } from '../giftcode/giftcode.module';
 import { MailModule } from '../mail/mail.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { QuestModule } from '../quest/quest.module';
+import { ArenaModule } from '../arena/arena.module';
 import { PrismaService } from '../../common/prisma.service';
 
 // Phase 13.1.B — register `AdminLiveOpsService` for liveops controls +
 // sect-war read-only status / recalculate placeholder.
+// Phase 14.1.C — wire `ArenaSeasonService` qua `ArenaModule` cho admin
+// endpoints `POST /admin/arena/season/settle` + `POST /admin/arena/season/create-next`.
 @Module({
   imports: [
     AuthModule,
@@ -25,6 +28,7 @@ import { PrismaService } from '../../common/prisma.service';
     MailModule,
     InventoryModule,
     QuestModule,
+    ArenaModule,
   ],
   controllers: [AdminController],
   providers: [AdminService, AdminGuard, AdminLiveOpsService, PrismaService],
