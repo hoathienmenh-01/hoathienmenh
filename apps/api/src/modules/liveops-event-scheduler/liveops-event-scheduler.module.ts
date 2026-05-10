@@ -7,6 +7,7 @@ import { InventoryModule } from '../inventory/inventory.module';
 import { LiveOpsAnnouncementModule } from '../liveops-announcement/liveops-announcement.module';
 import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 import { MaintenanceWindowModule } from '../maintenance-window/maintenance-window.module';
+import { ConfigVersionModule } from '../config-version/config-version.module';
 import { RedisModule } from '../../common/redis.module';
 import { PrismaService } from '../../common/prisma.service';
 import { LiveOpsCronLease } from '../liveops-cron/liveops-cron.lease';
@@ -61,6 +62,10 @@ import { LiveOpsEventSchedulerCronScheduler } from './liveops-event-scheduler.cr
     // KHÔNG thêm queue/lease riêng — service `recomputeStatuses`
     // idempotent + cache TTL 10s đủ refresh sau transition.
     MaintenanceWindowModule,
+    // Phase 15.6 — Config Version persistence (record snapshot before/after
+    // create/update/disable/recompute). `@Optional()` injection — test
+    // suite constructor không cần truyền configVersion.
+    ConfigVersionModule,
   ],
   controllers: [AdminLiveOpsEventsController, LiveOpsEventsPublicController],
   providers: [

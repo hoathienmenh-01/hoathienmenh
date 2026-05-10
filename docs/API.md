@@ -863,6 +863,28 @@ Khi không có window ACTIVE → middleware không block. Khi có ACTIVE:
   `MAINTENANCE_TARGET_INVALID` (400) — validator shared reject input
   không hợp lệ.
 
+## Config Version & Rollback — `AdminConfigVersionController` (Phase 15.6)
+
+Hệ versioning + rollback an toàn cho 4 entity vận hành: `LIVEOPS_EVENT` / `LIVEOPS_ANNOUNCEMENT` / `FEATURE_FLAG` / `MAINTENANCE_WINDOW`. Mỗi mutation admin (CREATE / UPDATE / DISABLE / ENABLE / STATUS_RECOMPUTE) ghi `ConfigVersion` snapshot. Rollback có 3 mức safety: `SAFE` (apply 1 confirm), `NEED_CONFIRM` (yêu cầu phrase do server trả), `BLOCKED` (server reject).
+
+| Method | Path | Auth | Mô tả |
+|--------|------|------|-------|
+| GET    | `/admin/config-versions?entityType=&entityId=&limit=` | ADMIN | List version newest-first. Audit `ADMIN_CONFIG_VERSION_VIEW`. |
+| GET    | `/admin/config-versions/:id` | ADMIN | Get 1 version row. |
+| GET    | `/admin/config-versions/diff?fromVersionId=&toVersionId=` | ADMIN | Diff JSON 2 version (`changedFields`, `diff` per-field before/after). |
+| POST   | `/admin/config-versions/:id/dry-run-rollback` | ADMIN | Tính safety + warnings, không apply. Body `{ reason? }`. Audit `ADMIN_CONFIG_ROLLBACK_DRY_RUN`. |
+| POST   | `/admin/config-versions/:id/rollback` | ADMIN | Apply rollback. Body `{ reason?, confirmPhrase? }`. SAFE: 200; NEED_CONFIRM: 409 nếu thiếu phrase; BLOCKED: 409 + audit `ADMIN_CONFIG_ROLLBACK_BLOCKED`. Khi success: tạo `ConfigVersion` mới (`action=ROLLBACK`) + audit `ADMIN_CONFIG_ROLLBACK`. |
+
+### Lỗi (Phase 15.6)
+
+- `CONFIG_VERSION_NOT_FOUND` (404), `CONFIG_VERSION_INVALID_ENTITY_TYPE` / `INVALID_INPUT` (400).
+- `CONFIG_ROLLBACK_TARGET_IS_LATEST` (400) — target đã là phiên bản mới nhất, không cần rollback.
+- `CONFIG_ROLLBACK_TARGET_INVALID` (400) — version target không thuộc entity.
+- `CONFIG_ROLLBACK_BLOCKED` (409) — safety level BLOCKED (vd LIVEOPS_EVENT đổi reward sau khi đã có claim).
+- `CONFIG_ROLLBACK_CONFIRM_REQUIRED` (409) — NEED_CONFIRM nhưng body thiếu `confirmPhrase`.
+- `CONFIG_ROLLBACK_CONFIRM_MISMATCH` (409) — `confirmPhrase` không khớp server-issued phrase.
+- `CONFIG_ROLLBACK_APPLY_FAILED` (409) — apply failed mid-transaction; thay đổi đã rollback nguyên tử.
+
 ## Error codes (chuẩn hoá)
 
 - **Auth**: `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `RATE_LIMITED`, `PASSWORD_CHANGED`, `REUSED_REFRESH_TOKEN`, `BANNED`, `INVALID_INPUT`.
@@ -884,6 +906,7 @@ Khi không có window ACTIVE → middleware không block. Khi có ACTIVE:
 - **Story Dialogue (Phase 12 Story PR-7)**: `NPC_NOT_FOUND`, `STORY_DIALOGUE_NOT_AVAILABLE`, `NODE_NOT_FOUND`, `CHOICE_NOT_FOUND`, `CHOICE_LOCKED`, `CHOICE_ALREADY_APPLIED`, `QUEST_STEP_LOCKED`, `INVALID_INPUT`, `NO_CHARACTER`.
 - **Feature Flag (Phase 15.4)**: `FEATURE_DISABLED` (503 runtime gate, payload include `flag` key), `FEATURE_FLAG_KEY_INVALID` (admin update key không trong catalog).
 - **Maintenance Window (Phase 15.5)**: `MAINTENANCE_ACTIVE` (503 middleware gate, payload include `severity/target/titleVi/En/messageVi/En/endsAt/serverTime`), `MAINTENANCE_KEY_DUPLICATE` (409), `MAINTENANCE_NOT_FOUND` (404), `MAINTENANCE_INVALID_STATUS_TRANSITION` (400), `MAINTENANCE_KEY_INVALID` / `MAINTENANCE_WINDOW_INVALID` / `MAINTENANCE_WINDOW_TOO_SHORT` / `MAINTENANCE_WINDOW_TOO_LONG` / `MAINTENANCE_TITLE_REQUIRED` / `MAINTENANCE_TITLE_TOO_LONG` / `MAINTENANCE_TITLE_UNSAFE` / `MAINTENANCE_MESSAGE_REQUIRED` / `MAINTENANCE_MESSAGE_TOO_LONG` / `MAINTENANCE_MESSAGE_UNSAFE` / `MAINTENANCE_LOCALE_PARITY` / `MAINTENANCE_SEVERITY_INVALID` / `MAINTENANCE_TARGET_INVALID` (400).
+- **Config Version (Phase 15.6)**: `CONFIG_VERSION_NOT_FOUND` (404), `CONFIG_VERSION_INVALID_ENTITY_TYPE` (400). `CONFIG_ROLLBACK_TARGET_IS_LATEST` / `CONFIG_ROLLBACK_TARGET_INVALID` (400). `CONFIG_ROLLBACK_BLOCKED` / `CONFIG_ROLLBACK_CONFIRM_REQUIRED` / `CONFIG_ROLLBACK_CONFIRM_MISMATCH` / `CONFIG_ROLLBACK_APPLY_FAILED` (409).
 
 ## Environment
 

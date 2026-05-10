@@ -23,8 +23,11 @@ import { Module } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma.service';
 import { FeatureFlagPublicController } from './feature-flag-public.controller';
 import { FeatureFlagService } from './feature-flag.service';
+import { ConfigVersionModule } from '../config-version/config-version.module';
 
 @Module({
+  // Phase 15.6 — ConfigVersion persistence cho setFlag/ensureDefaultFlags.
+  imports: [ConfigVersionModule],
   controllers: [FeatureFlagPublicController],
   providers: [PrismaService, FeatureFlagService],
   exports: [FeatureFlagService],

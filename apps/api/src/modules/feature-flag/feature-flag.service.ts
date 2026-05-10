@@ -52,6 +52,25 @@ import {
 import type { Redis } from 'ioredis';
 import { PrismaService } from '../../common/prisma.service';
 import { REDIS_CONNECTION } from '../../common/redis.module';
+import { ConfigVersionService } from '../config-version/config-version.service';
+
+/**
+ * Phase 15.6 — Snapshot for ConfigVersion persistence (Feature Flag).
+ * KHÔNG include id/createdAt/updatedAt; chỉ ghi semantically-meaningful fields.
+ */
+export function snapshotFeatureFlag(input: {
+  key: string;
+  enabled: boolean;
+  category: string;
+  description?: string | null;
+}): Record<string, unknown> {
+  return {
+    key: input.key,
+    enabled: input.enabled,
+    category: input.category,
+    description: input.description ?? null,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Errors
@@ -126,6 +145,7 @@ export class FeatureFlagService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() @Inject(REDIS_CONNECTION) private readonly redis: Redis | null,
+    @Optional() private readonly configVersion?: ConfigVersionService,
   ) {
     this.cacheTtlSec = readCacheTtlSec();
   }
@@ -326,6 +346,11 @@ export class FeatureFlagService {
       throw new FeatureFlagInvalidKeyError(key);
     }
     const def = getFeatureFlagDef(key);
+    // Phase 15.6 — có row trước khi upsert để phân biệt CREATE vs UPDATE.
+    const existing = await this.prisma.featureFlag.findUnique({
+      where: { key },
+      select: { enabled: true, category: true, description: true },
+    });
     const row = await this.prisma.featureFlag.upsert({
       where: { key },
       update: {
@@ -348,6 +373,20 @@ export class FeatureFlagService {
       },
     });
     await this.invalidateCache(key);
+    await this.recordConfigVersionSafe({
+      entityId: key,
+      action: existing ? 'UPDATE' : 'CREATE',
+      beforeJson: existing
+        ? snapshotFeatureFlag({ key, ...existing })
+        : null,
+      afterJson: snapshotFeatureFlag({
+        key,
+        enabled: row.enabled,
+        category: def.category,
+        description: def.descriptionVi,
+      }),
+      adminId: adminUserId,
+    });
     return mergeAdminView(def, row);
   }
 
@@ -377,12 +416,54 @@ export class FeatureFlagService {
         },
       });
       created += 1;
+      // Phase 15.6 — record CREATE version cho seed row mới.
+      await this.recordConfigVersionSafe({
+        entityId: def.key,
+        action: 'CREATE',
+        beforeJson: null,
+        afterJson: snapshotFeatureFlag({
+          key: def.key,
+          enabled: def.defaultEnabled,
+          category: def.category,
+          description: def.descriptionVi,
+        }),
+        adminId: null,
+      });
     }
     if (created > 0) {
       // Invalidate all (server-side defaults vừa thay đổi semantics — rare).
       await this.clearCache();
     }
     return { created, existing: existing.length };
+  }
+
+  /**
+   * Phase 15.6 — best-effort ghi ConfigVersion sau khi flag mutation. Khi
+   * ConfigVersion ghi fail (DB tạm, configVersion undefined trong unit
+   * test), KHÔNG throw — setFlag đã commit row.
+   */
+  private async recordConfigVersionSafe(args: {
+    entityId: string;
+    action: 'CREATE' | 'UPDATE' | 'DISABLE' | 'ENABLE';
+    beforeJson: Record<string, unknown> | null;
+    afterJson: Record<string, unknown>;
+    adminId: string | null;
+  }): Promise<void> {
+    if (!this.configVersion) return;
+    try {
+      await this.configVersion.recordVersion({
+        entityType: 'FEATURE_FLAG',
+        entityId: args.entityId,
+        action: args.action,
+        beforeJson: args.beforeJson,
+        afterJson: args.afterJson,
+        changedByAdminId: args.adminId,
+      });
+    } catch (e) {
+      this.logger.warn(
+        `recordConfigVersion failed for FEATURE_FLAG/${args.entityId}: ${(e as Error).message}`,
+      );
+    }
   }
 
   // -------------------------------------------------------------------------

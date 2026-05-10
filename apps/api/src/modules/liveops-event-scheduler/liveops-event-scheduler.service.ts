@@ -22,6 +22,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { ConfigVersionService } from '../config-version/config-version.service';
 
 /**
  * Phase 15.1–15.2 — LiveOps Event Scheduler runtime service.
@@ -157,6 +158,7 @@ export class LiveOpsEventSchedulerService {
     private readonly prisma: PrismaService,
     @Optional() private readonly currency?: CurrencyService,
     @Optional() private readonly inventory?: InventoryService,
+    @Optional() private readonly configVersion?: ConfigVersionService,
   ) {}
 
   // -------------------------------------------------------------------------
@@ -497,7 +499,15 @@ export class LiveOpsEventSchedulerService {
           createdByAdminId: adminUserId,
         },
       });
-      return toView(created);
+      const view = toView(created);
+      await this.recordConfigVersionSafe({
+        entityId: created.id,
+        action: 'CREATE',
+        beforeJson: null,
+        afterJson: snapshotEvent(view),
+        adminId: adminUserId,
+      });
+      return view;
     } catch (e) {
       if (
         e instanceof Prisma.PrismaClientKnownRequestError &&
@@ -576,7 +586,16 @@ export class LiveOpsEventSchedulerService {
       where: { id: eventId },
       data,
     });
-    return toView(updated);
+    const beforeView = toView(existing);
+    const view = toView(updated);
+    await this.recordConfigVersionSafe({
+      entityId: updated.id,
+      action: 'UPDATE',
+      beforeJson: snapshotEvent(beforeView),
+      afterJson: snapshotEvent(view),
+      adminId: updated.createdByAdminId ?? null,
+    });
+    return view;
   }
 
   async disableEvent(eventId: string): Promise<LiveOpsScheduledEventView> {
@@ -588,7 +607,44 @@ export class LiveOpsEventSchedulerService {
       where: { id: eventId },
       data: { status: 'DISABLED' },
     });
-    return toView(updated);
+    const view = toView(updated);
+    await this.recordConfigVersionSafe({
+      entityId: updated.id,
+      action: 'DISABLE',
+      beforeJson: snapshotEvent(toView(existing)),
+      afterJson: snapshotEvent(view),
+      adminId: updated.createdByAdminId ?? null,
+    });
+    return view;
+  }
+
+  /**
+   * Phase 15.6 — best-effort record version. Service KHÔNG throw nếu
+   * ConfigVersion ghi fail (config-version chỉ là audit; mutation entity
+   * vẫn coi như thành công). Log warn để observability bắt được.
+   */
+  private async recordConfigVersionSafe(args: {
+    entityId: string;
+    action: 'CREATE' | 'UPDATE' | 'DISABLE' | 'ENABLE' | 'STATUS_RECOMPUTE';
+    beforeJson: Record<string, unknown> | null;
+    afterJson: Record<string, unknown>;
+    adminId: string | null;
+  }): Promise<void> {
+    if (!this.configVersion) return;
+    try {
+      await this.configVersion.recordVersion({
+        entityType: 'LIVEOPS_EVENT',
+        entityId: args.entityId,
+        action: args.action,
+        beforeJson: args.beforeJson,
+        afterJson: args.afterJson,
+        changedByAdminId: args.adminId,
+      });
+    } catch (e) {
+      this.logger.warn(
+        `recordConfigVersion failed for LIVEOPS_EVENT/${args.entityId}: ${(e as Error).message}`,
+      );
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -757,6 +813,29 @@ export class LiveOpsEventSchedulerService {
         `recompute(+broadcast): activated=${summary.toActivated} ended=${summary.toEnded}`,
       );
     }
+
+    // Phase 15.6 — record STATUS_RECOMPUTE version row cho mỗi transition
+    // thật (best-effort; skipNoOp đảm bảo không spam).
+    for (const v of activatedViews) {
+      const before = { ...snapshotEvent(v), status: 'SCHEDULED' };
+      await this.recordConfigVersionSafe({
+        entityId: v.id,
+        action: 'STATUS_RECOMPUTE',
+        beforeJson: before,
+        afterJson: snapshotEvent(v),
+        adminId: null,
+      });
+    }
+    for (const v of endedViews) {
+      const before = { ...snapshotEvent(v), status: 'ACTIVE' };
+      await this.recordConfigVersionSafe({
+        entityId: v.id,
+        action: 'STATUS_RECOMPUTE',
+        beforeJson: before,
+        afterJson: snapshotEvent(v),
+        adminId: null,
+      });
+    }
     return summary;
   }
 }
@@ -799,6 +878,26 @@ function toView(row: {
     createdByAdminId: row.createdByAdminId,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+/**
+ * Phase 15.6 — Snapshot for ConfigVersion persistence. Pure-fn (deterministic
+ * ordering of keys, ISO strings). KHÔNG include `id` / `createdAt` /
+ * `updatedAt` (versioning row tự ghi `createdAt`; `id` đã có entityId).
+ */
+export function snapshotEvent(
+  view: LiveOpsScheduledEventView,
+): Record<string, unknown> {
+  return {
+    key: view.key,
+    type: view.type,
+    title: view.title,
+    description: view.description,
+    status: view.status,
+    startsAt: view.startsAt,
+    endsAt: view.endsAt,
+    configJson: view.configJson,
   };
 }
 

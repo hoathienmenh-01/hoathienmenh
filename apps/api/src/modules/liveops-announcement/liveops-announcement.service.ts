@@ -12,7 +12,7 @@
  *         giữa "đọc rows" và "update status" gây double broadcast.
  *   - Public-safe view (strip admin metadata).
  */
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   LIVEOPS_ANNOUNCEMENT_SEVERITIES,
@@ -28,6 +28,7 @@ import {
   validateLiveOpsAnnouncementInput,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { ConfigVersionService } from '../config-version/config-version.service';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -108,7 +109,10 @@ export interface AnnouncementRecomputeSummary {
 export class LiveOpsAnnouncementService {
   private readonly logger = new Logger(LiveOpsAnnouncementService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly configVersion?: ConfigVersionService,
+  ) {}
 
   // -------------------------------------------------------------------------
   // Read
@@ -197,7 +201,15 @@ export class LiveOpsAnnouncementService {
           createdByAdminId: adminUserId,
         },
       });
-      return toView(created);
+      const view = toView(created);
+      await this.recordConfigVersionSafe({
+        entityId: created.id,
+        action: 'CREATE',
+        beforeJson: null,
+        afterJson: snapshotAnnouncement(view),
+        adminId: adminUserId,
+      });
+      return view;
     } catch (e) {
       if (
         e instanceof Prisma.PrismaClientKnownRequestError &&
@@ -270,7 +282,16 @@ export class LiveOpsAnnouncementService {
       where: { id },
       data,
     });
-    return toView(updated);
+    const beforeView = toView(existing);
+    const view = toView(updated);
+    await this.recordConfigVersionSafe({
+      entityId: updated.id,
+      action: 'UPDATE',
+      beforeJson: snapshotAnnouncement(beforeView),
+      afterJson: snapshotAnnouncement(view),
+      adminId: updated.createdByAdminId ?? null,
+    });
+    return view;
   }
 
   async disableAnnouncement(id: string): Promise<LiveOpsAnnouncementView> {
@@ -287,7 +308,44 @@ export class LiveOpsAnnouncementService {
         disabledAt: existing.disabledAt ?? new Date(),
       },
     });
-    return toView(updated);
+    const view = toView(updated);
+    await this.recordConfigVersionSafe({
+      entityId: updated.id,
+      action: 'DISABLE',
+      beforeJson: snapshotAnnouncement(toView(existing)),
+      afterJson: snapshotAnnouncement(view),
+      adminId: updated.createdByAdminId ?? null,
+    });
+    return view;
+  }
+
+  /**
+   * Phase 15.6 — best-effort record ConfigVersion. ConfigVersion ghì fail
+   * KHÔNG được throw vì mutation entity đã commit đến DB; ví audit lỗi
+   * KHÔNG được block.
+   */
+  private async recordConfigVersionSafe(args: {
+    entityId: string;
+    action: 'CREATE' | 'UPDATE' | 'DISABLE' | 'ENABLE' | 'STATUS_RECOMPUTE';
+    beforeJson: Record<string, unknown> | null;
+    afterJson: Record<string, unknown>;
+    adminId: string | null;
+  }): Promise<void> {
+    if (!this.configVersion) return;
+    try {
+      await this.configVersion.recordVersion({
+        entityType: 'LIVEOPS_ANNOUNCEMENT',
+        entityId: args.entityId,
+        action: args.action,
+        beforeJson: args.beforeJson,
+        afterJson: args.afterJson,
+        changedByAdminId: args.adminId,
+      });
+    } catch (e) {
+      this.logger.warn(
+        `recordConfigVersion failed for LIVEOPS_ANNOUNCEMENT/${args.entityId}: ${(e as Error).message}`,
+      );
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -408,12 +466,59 @@ export class LiveOpsAnnouncementService {
       );
     }
 
+    // Phase 15.6 — record STATUS_RECOMPUTE per transition (best-effort).
+    const activatedWinners = activatedCandidates.slice(0, activated.length);
+    for (const r of activatedWinners) {
+      const beforeView = toView(r);
+      const afterView = toView({ ...r, status: 'ACTIVE' });
+      await this.recordConfigVersionSafe({
+        entityId: r.id,
+        action: 'STATUS_RECOMPUTE',
+        beforeJson: snapshotAnnouncement(beforeView),
+        afterJson: snapshotAnnouncement(afterView),
+        adminId: null,
+      });
+    }
+    const endedWinners = endedCandidates.slice(0, ended.length);
+    for (const r of endedWinners) {
+      const beforeView = toView(r);
+      const afterView = toView({ ...r, status: 'ENDED' });
+      await this.recordConfigVersionSafe({
+        entityId: r.id,
+        action: 'STATUS_RECOMPUTE',
+        beforeJson: snapshotAnnouncement(beforeView),
+        afterJson: snapshotAnnouncement(afterView),
+        adminId: null,
+      });
+    }
+
     return {
       scannedAt: now.toISOString(),
       activated,
       ended,
     };
   }
+}
+
+/**
+ * Phase 15.6 — Snapshot for ConfigVersion persistence. KHÔNG include
+ * `id` / `createdAt` / `updatedAt` (versioning row tự ghi).
+ */
+export function snapshotAnnouncement(
+  view: LiveOpsAnnouncementView,
+): Record<string, unknown> {
+  return {
+    key: view.key,
+    severity: view.severity,
+    status: view.status,
+    target: view.target,
+    titleVi: view.titleVi,
+    titleEn: view.titleEn,
+    messageVi: view.messageVi,
+    messageEn: view.messageEn,
+    startsAt: view.startsAt,
+    endsAt: view.endsAt,
+  };
 }
 
 // ---------------------------------------------------------------------------
