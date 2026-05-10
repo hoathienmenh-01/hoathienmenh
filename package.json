@@ -44,7 +44,10 @@
     "smoke:story-dungeon": "node scripts/smoke-story-dungeon.mjs",
     "smoke:topup": "node scripts/smoke-topup.mjs",
     "smoke:tribulation": "node scripts/smoke-tribulation.mjs",
-    "smoke:ws": "node scripts/smoke-ws.mjs"
+    "smoke:ws": "node scripts/smoke-ws.mjs",
+    "load:smoke": "k6 run scripts/load/k6-smoke.js",
+    "load:api": "k6 run scripts/load/k6-api-baseline.js",
+    "load:ws": "k6 run scripts/load/k6-ws-baseline.js"
   },
   "engines": {
     "node": ">=20",
