@@ -28,6 +28,7 @@ import { QuestService } from '../quest/quest.service';
 import { startOfLocalDay } from '../combat/combat.service';
 import { SectWarService } from '../sect-war/sect-war.service';
 import { TerritoryService } from '../territory/territory.service';
+import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
 
 /**
  * Phase 12.2.B — DungeonRun runtime service.
@@ -159,6 +160,12 @@ export interface DungeonClaimResult {
     };
   };
   /**
+   * Phase 15.2 — LiveOps Event Scheduler `DOUBLE_DUNGEON_DROP` multiplier
+   * applied (nếu có). Undefined khi không có event active hoặc multiplier
+   * = 1.0 (không apply boost). FE render "Sự kiện ×1.5 drop" badge.
+   */
+  liveOpsDropMultiplier?: number;
+  /**
    * Phase 16.5 — Daily reward cap result. `capped=true` khi total
    * EXP/linhThach grant từ DUNGEON đã chạm ngưỡng ngày. `granted` ở
    * trên đã là số THỰC SAU CAP (không lừa player).
@@ -232,6 +239,8 @@ export class DungeonRunService {
     @Optional() private readonly quests?: QuestService,
     @Optional() private readonly sectWar?: SectWarService,
     @Optional() private readonly territory?: TerritoryService,
+    @Optional()
+    private readonly liveOpsEvents?: LiveOpsEventSchedulerService,
   ) {}
 
   /**
@@ -554,6 +563,28 @@ export class DungeonRunService {
       const tienNgoc = reward.tienNgoc ?? 0;
       const expBase = reward.exp ?? 0;
 
+      // Phase 15.2 — LiveOps Event Scheduler `DOUBLE_DUNGEON_DROP` boost.
+      // Wire trước cap apply để bonus đi cùng base trong audit
+      // `DUNGEON_RUN_REWARD`. Multiplier kẹp ≤ 2.0 (shared
+      // `clampLiveOpsMultiplier`) — server-authoritative anti-balance.
+      // Apply lên linhThach + item qty (drop semantics). KHÔNG apply lên
+      // exp (đã có `CULTIVATION_EXP_BOOST` riêng) và tienNgoc (premium
+      // currency không boost). Fail-soft: lỗi service → multiplier 1.0,
+      // claim flow chính tiếp tục.
+      let liveOpsDropMultiplier = 1.0;
+      try {
+        if (this.liveOpsEvents) {
+          liveOpsDropMultiplier = await this.liveOpsEvents.getActiveMultiplier(
+            'DOUBLE_DUNGEON_DROP',
+          );
+        }
+      } catch {
+        liveOpsDropMultiplier = 1.0;
+      }
+      const liveOpsLinhThachBonus = liveOpsDropMultiplier > 1
+        ? Math.floor(linhThachBase * liveOpsDropMultiplier) - linhThachBase
+        : 0;
+
       // Phase 14.0.C — Territory region buff (DUNGEON_REWARD context).
       // Apply BEFORE granting reward để bonus đi cùng base trong 1 ledger
       // entry (audit trail = `delta = base + bonus`, reason
@@ -571,7 +602,8 @@ export class DungeonRunService {
       const linhThachBonus = buffApplied
         ? Math.floor(linhThachBase * buffApplied.linhThachMul) - linhThachBase
         : 0;
-      const linhThachRequested = linhThachBase + linhThachBonus;
+      const linhThachRequested =
+        linhThachBase + linhThachBonus + liveOpsLinhThachBonus;
       const expRequested = expBase + expBonus;
 
       // Phase 16.5 — Daily Reward Cap. Cap apply trên total = base +
@@ -593,6 +625,8 @@ export class DungeonRunService {
           baseLinhThach: linhThachBase,
           territoryBonusExp: expBonus,
           territoryBonusLinhThach: linhThachBonus,
+          liveOpsDropMultiplier,
+          liveOpsLinhThachBonus,
         },
       });
 
@@ -628,9 +662,14 @@ export class DungeonRunService {
 
       const grantedItems: Array<{ itemKey: string; qty: number }> = [];
       if (reward.items && reward.items.length > 0) {
+        // Phase 15.2 — apply DOUBLE_DUNGEON_DROP multiplier on item qty
+        // (`Math.floor(qty * mul)`, ≥ 1). Multiplier đã clamp ≤ 2.0.
         const grantList = reward.items.map((it) => ({
           itemKey: it.itemKey,
-          qty: it.qty,
+          qty:
+            liveOpsDropMultiplier > 1
+              ? Math.max(1, Math.floor(it.qty * liveOpsDropMultiplier))
+              : it.qty,
         }));
         await this.inventory.grantTx(tx, characterId, grantList, {
           reason: 'DUNGEON_RUN_REWARD',
@@ -702,6 +741,8 @@ export class DungeonRunService {
           exp,
           items: grantedItems,
         },
+        liveOpsDropMultiplier:
+          liveOpsDropMultiplier > 1 ? liveOpsDropMultiplier : undefined,
         territoryBuff,
         capped: cap.wasCapped,
         cappedAmount: cap.wasCapped

@@ -2339,6 +2339,49 @@ Mỗi element giữ identity nhất quán:
 - **Arena equipped skill rotation**: defer Phase 14.1.C extension.
 - **Drop source automatic**: KHÔNG có monster/boss drop / quest reward — admin grant route only.
 
+## 11.24 LIVEOPS EVENT SCHEDULER MULTIPLIER CAPS (Phase 15.1–15.2)
+
+### Goal
+Admin có thể tạo / schedule event runtime KHÔNG cần deploy code, NHƯNG cap multiplier server-side để
+KHÔNG ai (admin nhầm hay attacker compromise admin) có thể đẩy economy lệch quá xa.
+
+### Catalog (`packages/shared/src/liveops-event-scheduler.ts`)
+
+```ts
+LIVEOPS_EVENT_TYPE_CAPS = {
+  DOUBLE_DUNGEON_DROP:    { kind: 'BOOST',    cap: 2.0 },
+  CULTIVATION_EXP_BOOST:  { kind: 'BOOST',    cap: 2.0 },
+  BOSS_REWARD_BOOST:      { kind: 'BOOST',    cap: 2.0 },
+  DAILY_LOGIN_BONUS:      { kind: 'BOOST',    cap: 2.0 },
+  SHOP_DISCOUNT:          { kind: 'DISCOUNT', cap: 0.5 },  // ≤ 50% off
+  SECT_SHOP_DISCOUNT:     { kind: 'DISCOUNT', cap: 0.5 },  // ≤ 50% off
+  FESTIVAL_GIFT:          { kind: 'REWARD' },               // rewardJson, no multiplier
+}
+```
+
+### Validation layers (defense-in-depth)
+1. **Shared validator** (`validateLiveOpsScheduledEventInput`): admin POST/PATCH → reject `EVENT_MULTIPLIER_OVER_CAP` nếu `multiplier > cap`.
+2. **Runtime clamp** (`clampLiveOpsMultiplier(type, raw)`): khi runtime đọc DB → vẫn clamp để dù DB lưu sai (vd seed bypass / migration cũ) thì hiệu ứng cuối ≤ cap.
+3. **Compose policy** (`pickActiveLiveOpsMultiplier`): 2 event cùng type ACTIVE → lấy **MAX**, KHÔNG stack. Vd 2 event cùng `DOUBLE_DUNGEON_DROP` 1.5× và 1.8× → áp 1.8×, KHÔNG phải 1.5 × 1.8 = 2.7×.
+
+### Why these caps
+- **2.0× boost cap**: theo BALANCE 11.18 territory buff cap ~1.10× và Phase 14.0.B sect identity bonus ~1.05×, chuỗi compose tối đa với event = `1.10 × 1.05 × 2.0 ≈ 2.31×`. An toàn cho realm-low (mỗi tier daily reward cap ở `DAILY_REWARD_CAP_BY_REALM_AND_SOURCE` đã hấp thụ).
+- **0.5 discount cap**: shop discount ≤ 50% off — đảm bảo player chưa bao giờ mua dưới 50% giá list. Dưới mức này gameplay lose-rate trở thành cash sink, không còn currency sink. Defer Phase 15.3 (chưa wire).
+- **NO multiplicative stacking**: max-only compose tránh combo `event A 2.0 × event B 2.0 = 4.0×` mà admin không nhận ra.
+
+### Runtime wiring (this PR)
+- `DungeonRunService.claimRun`: query `getActiveMultiplier('DOUBLE_DUNGEON_DROP')` → `floor(linhThach × mul)` + `max(1, floor(itemQty × mul))`. Audit `meta.dungeon.liveOpsDropMultiplier` + `liveOpsLinhThachBonus` cho replay.
+- `CultivationProcessor.process`: query `getActiveMultiplier('CULTIVATION_EXP_BOOST')` 1× per tick → compose **cuối cùng** sau realm rate / method mul / talent mul / buff cultivation rate mul.
+
+### Cron
+- BullMQ repeatable `*/5 * * * *` UTC → SCHEDULED→ACTIVE / ACTIVE→ENDED idempotent qua `updateMany` CAS.
+- Disabled by default (env `LIVEOPS_EVENT_SCHEDULER_CRON_ENABLED=true` để bật).
+- Race-safe multi-instance: Redis lease 60s TTL + DB CAS guard.
+
+### Known limitations — Phase 15.1–15.2
+- 5/7 type chưa wire runtime (`SHOP_DISCOUNT`, `SECT_SHOP_DISCOUNT`, `DAILY_LOGIN_BONUS`, `BOSS_REWARD_BOOST`, `FESTIVAL_GIFT`) — defer Phase 15.3+.
+- FESTIVAL_GIFT reward claim API chưa làm (`LiveOpsEventRewardClaim` schema sẵn).
+
 ## 12. CHANGELOG
 
 - **2026-04-30** — Initial creation. Author: Devin AI session 9q.

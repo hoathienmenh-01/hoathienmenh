@@ -1018,3 +1018,108 @@ export async function adminArenaWintradeAck(id: string): Promise<void> {
 export async function adminArenaWintradeResolve(id: string): Promise<void> {
   await apiClient.post(`/admin/arena/anti-wintrade/alerts/${id}/resolve`, {});
 }
+
+// ---------- Phase 15.1–15.2 — Admin LiveOps Event Scheduler Core ----------
+
+export type LiveOpsScheduledEventType =
+  | 'DOUBLE_DUNGEON_DROP'
+  | 'CULTIVATION_EXP_BOOST'
+  | 'SHOP_DISCOUNT'
+  | 'SECT_SHOP_DISCOUNT'
+  | 'DAILY_LOGIN_BONUS'
+  | 'BOSS_REWARD_BOOST'
+  | 'FESTIVAL_GIFT';
+
+export type LiveOpsScheduledEventStatus =
+  | 'DRAFT'
+  | 'SCHEDULED'
+  | 'ACTIVE'
+  | 'ENDED'
+  | 'DISABLED';
+
+export interface LiveOpsScheduledEventView {
+  id: string;
+  key: string;
+  type: LiveOpsScheduledEventType;
+  title: string;
+  description: string;
+  status: LiveOpsScheduledEventStatus;
+  startsAt: string;
+  endsAt: string;
+  configJson: Record<string, unknown>;
+  createdByAdminId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LiveOpsRecomputeSummaryView {
+  scannedAt: string;
+  toActivated: number;
+  toEnded: number;
+}
+
+export interface AdminLiveOpsEventCreateInput {
+  key: string;
+  type: LiveOpsScheduledEventType;
+  title: string;
+  description?: string;
+  startsAt: string;
+  endsAt: string;
+  configJson?: { multiplier?: number; rewardJson?: Record<string, unknown> };
+  initialStatus?: 'DRAFT' | 'SCHEDULED';
+}
+
+export interface AdminLiveOpsEventUpdateInput {
+  title?: string;
+  description?: string;
+  startsAt?: string;
+  endsAt?: string;
+  configJson?: { multiplier?: number; rewardJson?: Record<string, unknown> };
+  status?: LiveOpsScheduledEventStatus;
+}
+
+export async function adminLiveOpsEventsList(): Promise<LiveOpsScheduledEventView[]> {
+  const { data } = await apiClient.get<
+    Envelope<{ events: LiveOpsScheduledEventView[] }>
+  >('/admin/liveops/events');
+  return unwrap(data).events;
+}
+
+export async function adminLiveOpsEventsCreate(
+  input: AdminLiveOpsEventCreateInput,
+): Promise<LiveOpsScheduledEventView> {
+  const { data } = await apiClient.post<Envelope<LiveOpsScheduledEventView>>(
+    '/admin/liveops/events',
+    input,
+  );
+  return unwrap(data);
+}
+
+export async function adminLiveOpsEventsUpdate(
+  id: string,
+  input: AdminLiveOpsEventUpdateInput,
+): Promise<LiveOpsScheduledEventView> {
+  const { data } = await apiClient.patch<Envelope<LiveOpsScheduledEventView>>(
+    `/admin/liveops/events/${id}`,
+    input,
+  );
+  return unwrap(data);
+}
+
+export async function adminLiveOpsEventsDisable(
+  id: string,
+): Promise<LiveOpsScheduledEventView> {
+  const { data } = await apiClient.post<Envelope<LiveOpsScheduledEventView>>(
+    `/admin/liveops/events/${id}/disable`,
+    {},
+  );
+  return unwrap(data);
+}
+
+export async function adminLiveOpsEventsRecomputeStatus(): Promise<LiveOpsRecomputeSummaryView> {
+  const { data } = await apiClient.post<Envelope<LiveOpsRecomputeSummaryView>>(
+    '/admin/liveops/events/recompute-status',
+    {},
+  );
+  return unwrap(data);
+}

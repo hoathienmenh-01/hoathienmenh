@@ -7,6 +7,7 @@ import { RealtimeModule } from '../realtime/realtime.module';
 import { MissionModule } from '../mission/mission.module';
 import { CharacterModule } from '../character/character.module';
 import { EconomyModule } from '../economy/economy.module';
+import { LiveOpsEventSchedulerModule } from '../liveops-event-scheduler/liveops-event-scheduler.module';
 import { CULTIVATION_QUEUE } from './cultivation.queue';
 
 @Module({
@@ -23,6 +24,7 @@ import { CULTIVATION_QUEUE } from './cultivation.queue';
     MissionModule,
     CharacterModule,
     EconomyModule,
+    LiveOpsEventSchedulerModule,
   ],
   providers: [CultivationProcessor, CultivationService, PrismaService],
   exports: [CultivationService],

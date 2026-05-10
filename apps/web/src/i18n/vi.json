@@ -3106,6 +3106,57 @@
       }
     }
   },
+  "adminLiveOpsEvents": {
+    "title": "LiveOps Event Scheduler",
+    "help": "Quản lý event runtime: tạo, schedule, disable. Cron mỗi 5 phút tự transition SCHEDULED→ACTIVE→ENDED. Multiplier capped ≤ 2.0.",
+    "loading": "Đang tải sự kiện…",
+    "empty": "Chưa có sự kiện nào.",
+    "recomputeBtn": "Recompute trạng thái",
+    "recomputing": "Đang recompute…",
+    "disableBtn": "Disable",
+    "disabling": "…",
+    "confirmCreate": "Tạo event {key}?",
+    "confirmDisable": "Disable event {key}? (status → DISABLED, không thể khôi phục)",
+    "confirmRecompute": "Force-run cron recompute event status?",
+    "col": {
+      "key": "Key",
+      "type": "Loại",
+      "status": "Trạng thái",
+      "window": "Cửa sổ",
+      "config": "Config",
+      "actions": "Thao tác"
+    },
+    "form": {
+      "title": "Tạo event mới",
+      "key": "Key (unique)",
+      "keyPlaceholder": "vd: tet_2026_drop_boost",
+      "type": "Loại sự kiện",
+      "titleField": "Tiêu đề hiển thị",
+      "description": "Mô tả",
+      "startsAt": "Bắt đầu",
+      "endsAt": "Kết thúc",
+      "multiplier": "Multiplier (1.0 → 2.0 cho boost, 0 → 0.5 cho discount)",
+      "rewardJson": "Reward JSON (chỉ cho FESTIVAL_GIFT)",
+      "initialStatus": "Status khởi tạo",
+      "submitBtn": "Tạo event",
+      "submitting": "Đang tạo…"
+    },
+    "toast": {
+      "created": "Đã tạo event.",
+      "disabled": "Đã disable event.",
+      "recomputed": "Đã recompute: activated={activated}, ended={ended}."
+    },
+    "errors": {
+      "EVENT_KEY_DUPLICATE": "Key đã tồn tại.",
+      "EVENT_NOT_FOUND": "Event không tồn tại.",
+      "INVALID_INPUT": "Tham số không hợp lệ.",
+      "MULTIPLIER_OUT_OF_RANGE": "Multiplier vượt cap cho phép.",
+      "WINDOW_INVALID": "startsAt phải nhỏ hơn endsAt.",
+      "CONFIG_INVALID": "Config sự kiện không hợp lệ.",
+      "FORBIDDEN": "Không đủ quyền.",
+      "UNKNOWN": "Thao tác sự kiện thất bại — thử lại."
+    }
+  },
   "adminLiveOpsSchedule": {
     "title": "Schedule Preview (read-only)",
     "tz": "TZ {tz}",

@@ -606,3 +606,18 @@ Lớp detection-only chống wintrade trong Arena. Phát hiện 5 pattern bất 
 - Wire `rewardEligibility = REVIEW_REQUIRED` vào settle pipeline (auto-skip mail nếu alert CRITICAL OPEN trên character).
 - Cron auto-scan (`ARENA_ANTI_WINTRADE_CRON_*` env reserved sẵn).
 - Full season-wide scope cho `SEASON_SUSPICIOUS_ACTOR` (hiện 24h rolling).
+
+## LiveOps Event Scheduler — Phase 15.1–15.2
+
+Admin tạo / schedule event runtime KHÔNG cần deploy code. Lớp này phải tôn trọng economy invariants:
+
+- **Multiplier cap server-side**: drop/exp ≤ 2.0, discount ≤ 0.5 — vượt cap reject (`EVENT_MULTIPLIER_OVER_CAP`) ở shared validator. Defense-in-depth: runtime cũng clamp khi reload (vd seed bypass / migration cũ).
+- **Compose policy**: 2 event cùng type ACTIVE → max-only, KHÔNG stack multiplicative. Vd 2 event `DOUBLE_DUNGEON_DROP` 1.5× và 1.8× → áp 1.8× (không 2.7×).
+- **Daily reward cap (Phase 16.5) vẫn ràng buộc**: event boost chỉ áp pre-cap. Sau khi compose `liveOpsDropMultiplier`, ledger insert đi qua `RewardCapService.consumeQuota` → vẫn bị cắt theo per-source cap. Vd dungeon claim base 200 LT × 1.5 (event) = 300 LT, nhưng nếu tier-1 player còn 100/2400 daily quota → grant 100 LT, cap còn lại 0.
+- **Audit ledger**: `meta.dungeon.liveOpsDropMultiplier` + `liveOpsLinhThachBonus` ghi vào `CurrencyLedger.meta.dungeon` để replay/forensics. Cultivation tick chưa ghi (gain trộn vào `CULTIVATION_TICK` reason — defer Phase 15.3 nếu cần).
+- **Admin audit**: mọi mutation event qua `AdminAuditLog` (`ADMIN_LIVEOPS_EVENT_CREATE/UPDATE/DISABLE/RECOMPUTE`) — không có path bypass.
+
+**KHÔNG có** Phase 15.1–15.2:
+- KHÔNG auto-ban / auto-rollback nếu admin disable event giữa chừng (linh thạch đã cấp = giữ).
+- KHÔNG wire runtime cho `SHOP_DISCOUNT`/`SECT_SHOP_DISCOUNT`/`DAILY_LOGIN_BONUS`/`BOSS_REWARD_BOOST`/`FESTIVAL_GIFT` — defer Phase 15.3+.
+- KHÔNG event reward over-power: cap 2.0× boost đảm bảo không phá curve, cap 0.5 discount đảm bảo currency sink vẫn dương.
