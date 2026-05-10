@@ -39,6 +39,8 @@ import { LiveOpsEventSchedulerModule } from './modules/liveops-event-scheduler/l
 import { LiveOpsAnnouncementModule } from './modules/liveops-announcement/liveops-announcement.module';
 import { FeatureFlagModule } from './modules/feature-flag/feature-flag.module';
 import { FeatureFlagAdminModule } from './modules/feature-flag-admin/feature-flag-admin.module';
+import { MaintenanceWindowModule } from './modules/maintenance-window/maintenance-window.module';
+import { MaintenanceWindowAdminModule } from './modules/maintenance-window-admin/maintenance-window-admin.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { ArenaModule } from './modules/arena/arena.module';
 import { ArenaAntiWintradeAdminModule } from './modules/arena-anti-wintrade-admin/arena-anti-wintrade-admin.module';
@@ -102,6 +104,15 @@ import { EconomyModule } from './modules/economy/economy.module';
     // cycle: AppModule → CharacterModule → FeatureFlagModule → AdminModule
     // → CharacterModule). Pattern mirror `ArenaAntiWintradeAdminModule`.
     FeatureFlagAdminModule,
+    // Phase 15.5 — Maintenance Window runtime + public endpoint
+    // (`GET /maintenance/status`). Service exported cho middleware
+    // (`MaintenanceWindowGuardMiddleware`) inject mà không kéo theo
+    // AdminModule cycle.
+    MaintenanceWindowModule,
+    // Phase 15.5 — Admin endpoints cho Maintenance Window (`POST/PATCH
+    // /admin/maintenance-windows*`, recompute, disable). Tách module
+    // riêng để tránh cycle với AdminModule.
+    MaintenanceWindowAdminModule,
     // Phase 16.6 — Economy Anti-cheat (ledger checker + anomaly
     // scanner cron + admin endpoints). SAU AdminModule + EconomyModule.
     AdminEconomySafetyModule,

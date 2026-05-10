@@ -75,6 +75,38 @@ apiClient.interceptors.response.use(
       }
     }
 
+    // Phase 15.5 — detect maintenance block. Server trả 503 +
+    // `error.code = MAINTENANCE_ACTIVE` kèm meta cho FE render overlay.
+    // Lên hệ store async để tránh import circular giữa client ↔ stores.
+    if (
+      status === 503 &&
+      appCode === 'MAINTENANCE_ACTIVE' &&
+      body?.error &&
+      typeof window !== 'undefined'
+    ) {
+      const meta = (body.error as { meta?: Record<string, unknown> }).meta;
+      if (meta && typeof meta === 'object') {
+        // Dynamic import để lib axios standalone vẫn build cho test.
+        void import('@/stores/maintenance').then((mod) => {
+          try {
+            const store = mod.useMaintenanceStore();
+            store.markBlockedByApi({
+              severity: String(meta.severity ?? 'INFO'),
+              target: String(meta.target ?? 'ALL_PLAYERS'),
+              titleVi: String(meta.titleVi ?? ''),
+              titleEn: meta.titleEn == null ? null : String(meta.titleEn),
+              messageVi: String(meta.messageVi ?? ''),
+              messageEn: meta.messageEn == null ? null : String(meta.messageEn),
+              endsAt: String(meta.endsAt ?? ''),
+              serverTime: String(meta.serverTime ?? new Date().toISOString()),
+            });
+          } catch {
+            /* ignore — pinia chưa mốunt */
+          }
+        });
+      }
+    }
+
     return Promise.reject(err);
   },
 );

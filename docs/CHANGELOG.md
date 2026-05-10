@@ -12,7 +12,33 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Phase 15.4 — Feature Flag DB-backed (this PR)
+### Phase 15.5 — Maintenance Window (this PR)
+
+**Scope**: Hệ Maintenance Window cho phép admin lập lịch hoặc bật khẩn cấp cửa sổ bảo trì để chặn traffic player trong khi vẫn cho admin / health / metrics / `/maintenance/status` đi qua. Catalog severity (`INFO`/`WARNING`/`CRITICAL`) + target (`ALL_PLAYERS`/`NON_ADMIN_USERS`/`API_WRITE_ONLY`/`FULL_LOCKDOWN`) + status state machine (`DRAFT`/`SCHEDULED`/`ACTIVE`/`ENDED`/`DISABLED`). Middleware `MaintenanceWindowGuardMiddleware` chạy trước Nest pipeline với 9 bypass rule (`/maintenance/status` luôn pass, `/health*`/`/metrics*` theo flag, `/_auth/*`, ADMIN/MOD bypass theo `allowAdminBypass` + `target`, `API_WRITE_ONLY` chỉ block non-GET, `NON_ADMIN_USERS`/`ALL_PLAYERS` block player + anonymous, fail-closed default). Cache L1 in-memory TTL 10s per pod. Recompute `SCHEDULED→ACTIVE`/`ACTIVE→ENDED` chạy idempotent piggy-back trên `LiveOpsEventSchedulerCronProcessor` mỗi 5 phút (reuse — không thêm queue/lease mới). FE poll `/maintenance/status` 30s + axios interceptor 503 `MAINTENANCE_ACTIVE` → set blocked state. Server-authoritative — FE chỉ render overlay/banner.
+
+#### Added — Phase 15.5
+
+- **Shared (`packages/shared/src/maintenance-window.ts`)**: `MaintenanceWindowStatus` (5 status) + `MaintenanceSeverity` (3) + `MaintenanceTarget` (4) + `MaintenanceWindowInput`/`MaintenanceWindowAdminView`/`MaintenanceWindowPublicView` types + `validateMaintenanceWindowInput` (key pattern, severity/target enum, title/message bound + safe text, locale parity vi/en, window `startsAt < endsAt`, min 60s, max 30 ngày) + `nextMaintenanceWindowStatus` state machine + `MAINTENANCE_ACTIVE_ERROR_CODE`.
+- **Prisma migration `20260623000000_phase_15_5_maintenance_window`**: model `MaintenanceWindow` (id/key UNIQUE/severity/target/status/titleVi/titleEn nullable/messageVi/messageEn nullable/startsAt/endsAt/allowAdminBypass/allowHealthcheck/allowMetrics/createdByAdminId nullable/createdAt/updatedAt/disabledAt nullable + 3 index). Reuse `AdminAuditLog` cho `ADMIN_MAINTENANCE_*`.
+- **API service (`apps/api/src/modules/maintenance-window/`)**: `MaintenanceWindowService.listWindows / getWindow / getActiveWindow / createWindow / updateWindow / disableWindow / recomputeStatuses / isMaintenanceActiveForRequest` với cache L1 in-memory TTL 10s; idempotent recompute qua `updateMany` CAS guard status + window.
+- **API middleware (`maintenance-window.middleware.ts`)**: `MaintenanceWindowGuardMiddleware` resolve role từ cookie `xt_access` (banned/missing → ANONYMOUS, fail-open nếu service throw), 9 bypass rule, render envelope `{ ok: false, error: { code: 'MAINTENANCE_ACTIVE', meta: { severity, target, titleVi/En, messageVi/En, endsAt, serverTime } } }` + `Retry-After` header.
+- **API admin endpoints (`maintenance-window-admin/admin-maintenance-window.controller.ts`)**: `GET /admin/maintenance-windows` + `POST /admin/maintenance-windows` (audit `ADMIN_MAINTENANCE_CREATE`, reject `MAINTENANCE_KEY_DUPLICATE` 409 / validator codes 400) + `PATCH /admin/maintenance-windows/:id` (audit `ADMIN_MAINTENANCE_UPDATE`, block khi status đã ACTIVE/ENDED/DISABLED) + `POST /admin/maintenance-windows/:id/disable` (audit `ADMIN_MAINTENANCE_DISABLE`, idempotent) + `POST /admin/maintenance-windows/recompute-status` (audit `ADMIN_MAINTENANCE_RECOMPUTE`, idempotent). ADMIN-only.
+- **API public endpoint (`maintenance-window-public.controller.ts`)**: `GET /maintenance/status` — anonymous-safe, trả `MaintenanceWindowPublicView` (không leak `id`/`createdByAdminId`/`disabledAt`/internal flags). Endpoint luôn được phép truy cập kể cả khi maintenance ACTIVE.
+- **Cron transition**: `LiveOpsEventSchedulerCronProcessor` piggy-back recompute maintenance status mỗi tick 5 phút sau khi đã recompute LiveOps event + announcement; idempotent — không thêm queue/lease riêng.
+- **FE Player UI** (`MaintenanceOverlay.vue` + `MaintenanceBanner.vue`): overlay full-screen render khi store `isBlocked` → severity badge + title/message theo locale + countdown tới `endsAt` + nút "Thử lại"; banner admin-only trong `AppShell` cho biết admin đang bypass maintenance window đang ACTIVE.
+- **FE Admin Panel** (`AdminMaintenancePanel.vue`): tab mới trong `AdminView`, list windows + create form (severity/target/title/message/start/end/allowAdminBypass/allowHealthcheck/allowMetrics/initialStatus) + recompute button + disable button với confirm modal cho action major (FULL_LOCKDOWN / disable đang ACTIVE).
+- **FE Store** (`stores/maintenance.ts`): Pinia store poll `/maintenance/status` 30s, expose `active`/`severity`/`target`/`titleVi/En`/`messageVi/En`/`endsAt`/`serverTime`. Axios interceptor 503 `MAINTENANCE_ACTIVE` → `markBlockedByApi(error.payload)` để overlay render ngay không cần đợi poll.
+- **i18n**: namespace mới `maintenance.*` (overlay/banner/admin panel — title/severity/target/status/form/actions/confirm/toast/errors). VI/EN parity.
+
+#### Tests — Phase 15.5
+
+- **Shared**: 12 validator test (key pattern, severity/target enum, title/message bound + unsafe HTML, locale parity, window time, min 60s, max 30 ngày) + state machine tests.
+- **API**: 53 test pass — 33 service (CRUD + active resolution + recompute idempotent + cache TTL + duplicate key + status transition guard) + 12 admin controller (audit + http status mapping cho duplicate/not-found/validator/transition reject) + 2 public controller (active/inactive shape) + 6 middleware (bypass status/health/metrics/auth path + admin bypass + FULL_LOCKDOWN/API_WRITE_ONLY/NON_ADMIN/ALL_PLAYERS gating + fail-open). Không regress 447 admin / 79 auth / 13 health.
+- **Web**: 17 test pass — 5 overlay (render khi blocked + countdown + locale fallback + retry button) + 2 banner (admin only render) + 6 admin panel (form submit + recompute + disable confirm + list refresh + error toast) + 4 store (poll TTL 30s + axios interceptor markBlockedByApi + reset + locale fallback). I18n parity 10 test pass.
+
+---
+
+### Phase 15.4 — Feature Flag DB-backed
 
 **Scope**: Hệ Feature Flag DB-backed cho phép admin bật/tắt nhanh các hệ thống lõi (Arena, Tribulation Mini-Battle, Equipment Reforge/Enchant, LiveOps Events, Festival Gift, LiveOps Announcements, Territory War, Market, Shop/Sect Shop discount runtime) **mà không cần deploy code**. Catalog 11 flag hardcoded trong `packages/shared/src/feature-flags.ts` chia 5 category (`GAMEPLAY`/`ECONOMY`/`LIVEOPS`/`ADMIN`/`SAFETY`). Cache 2-tier (L1 in-memory TTL 30s + L2 Redis TTL 30s) với Redis fail-soft. Server-authoritative qua `FEATURE_DISABLED` 503 — FE chỉ hint UX.
 

@@ -1273,7 +1273,8 @@
       "liveops": "LiveOps",
       "economy": "Kinh tế (An toàn)",
       "arenaAntiWintrade": "Arena Anti-Wintrade",
-      "featureFlags": "Feature Flags"
+      "featureFlags": "Feature Flags",
+      "maintenance": "Bảo trì"
     },
     "arenaAntiWintrade": {
       "alerts": "Cảnh báo Arena Wintrade",
@@ -3855,6 +3856,79 @@
     },
     "errors": {
       "FEATURE_FLAG_KEY_INVALID": "Key flag không có trong catalog.",
+      "INVALID_INPUT": "Dữ liệu gửi lên không hợp lệ.",
+      "UNAUTHENTICATED": "Cần đăng nhập admin.",
+      "FORBIDDEN": "Tài khoản không phải admin.",
+      "UNKNOWN": "Thao tác thất bại — thử lại."
+    }
+  },
+  "maintenance": {
+    "overlay": {
+      "title": "Hệ thống đang bảo trì",
+      "endsAt": "Dự kiến kết thúc: {at}",
+      "errorCode": "Mã lỗi",
+      "criticalHint": "Mức quan trọng cao — vui lòng quay lại sau khi kết thúc."
+    },
+    "banner": {
+      "title": "Đang bảo trì",
+      "endsAt": "dự kiến kết thúc {at}"
+    }
+  },
+  "adminMaintenance": {
+    "title": "Bảo trì",
+    "hint": "Lịch + bật/tắt bảo trì. Player bị chặn trong khi ACTIVE.",
+    "actions": {
+      "create": "Tạo lich bảo trì",
+      "refresh": "Tải lại",
+      "recompute": "Tính lại trạng thái",
+      "disable": "Tắt"
+    },
+    "form": {
+      "title": "Tạo lịch bảo trì",
+      "key": "Key (3–80 ký tự a-z 0-9 _ -)",
+      "severity": "Mức độ",
+      "target": "Phạm vi",
+      "initialStatus": "Trạng thái khởi tạo",
+      "titleVi": "Tiêu đề (VI)",
+      "titleEn": "Tiêu đề (EN, tự chọn)",
+      "messageVi": "Nội dung (VI)",
+      "messageEn": "Nội dung (EN, tự chọn)",
+      "startsAt": "Bắt đầu",
+      "endsAt": "Kết thúc",
+      "allowAdminBypass": "Cho admin vượt qua (allowAdminBypass)",
+      "allowHealthcheck": "Cho healthcheck (allowHealthcheck)",
+      "allowMetrics": "Cho metrics (allowMetrics)"
+    },
+    "list": {
+      "title": "Maintenance windows",
+      "empty": "Chưa có maintenance window nào.",
+      "window": "Từ {from} → {to}"
+    },
+    "confirm": {
+      "create": {
+        "title": "Xác nhận tạo lịch bảo trì",
+        "message": "Lịch sẽ chặn player ngay khi vào ACTIVE: {description}"
+      },
+      "disable": {
+        "title": "Xác nhận tắt bảo trì",
+        "message": "Tắt window “{key}” ngay lập tức?"
+      }
+    },
+    "toast": {
+      "created": "Đã tạo lịch bảo trì {key}.",
+      "disabled": "Đã tắt bảo trì {key}.",
+      "recomputed": "Đã recompute: ACTIVE +{activated}, ENDED +{ended}."
+    },
+    "errors": {
+      "MAINTENANCE_KEY_DUPLICATE": "Key đã tồn tại.",
+      "MAINTENANCE_NOT_FOUND": "Window không tồn tại.",
+      "MAINTENANCE_INVALID_STATUS_TRANSITION": "Không được chuyển trạng thái.",
+      "MAINTENANCE_KEY_INVALID": "Key không hợp lệ (3–80 ký tự a-z 0-9 _ -).",
+      "MAINTENANCE_WINDOW_INVALID_TIME": "Thời gian không hợp lệ (startsAt < endsAt).",
+      "MAINTENANCE_TITLE_INVALID": "Tiêu đề không hợp lệ.",
+      "MAINTENANCE_MESSAGE_INVALID": "Nội dung không hợp lệ.",
+      "MAINTENANCE_SEVERITY_INVALID": "Severity không hợp lệ.",
+      "MAINTENANCE_TARGET_INVALID": "Target không hợp lệ.",
       "INVALID_INPUT": "Dữ liệu gửi lên không hợp lệ.",
       "UNAUTHENTICATED": "Cần đăng nhập admin.",
       "FORBIDDEN": "Tài khoản không phải admin.",

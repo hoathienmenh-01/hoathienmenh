@@ -1018,6 +1018,155 @@ admin panel có nút "Xoá cache" + người chơi reload trang.
 - KHÔNG dựa vào FE flag store để security gate — server-authoritative
   qua `FEATURE_DISABLED` 503 là source of truth.
 
+### 2.23. Maintenance Window — bật / tắt / lập lịch (P1) — Phase 15.5
+
+Phase 15.5 thêm hệ Maintenance Window cho phép admin **lập lịch hoặc bật
+khẩn cấp cửa sổ bảo trì** để chặn traffic player trong khi vẫn cho admin /
+health / metrics / `/maintenance/status` đi qua. State machine:
+`DRAFT → SCHEDULED → ACTIVE → ENDED` (theo cron 5 phút) hoặc `→ DISABLED`
+(admin tắt khẩn cấp). Severity (`INFO` / `WARNING` / `CRITICAL`) + target
+(`ALL_PLAYERS` / `NON_ADMIN_USERS` / `API_WRITE_ONLY` / `FULL_LOCKDOWN`)
+quyết định bypass. Middleware `MaintenanceWindowGuardMiddleware` chạy
+trước Nest pipeline với 9 bypass rule (xem `docs/API.md` §Maintenance
+Window). Cache L1 in-memory TTL 10s per pod; recompute idempotent piggy-
+back trên `LiveOpsEventSchedulerCronProcessor` 5'-tick (reuse — không có
+queue/lease riêng).
+
+**Khi nào dùng**:
+- **Khẩn cấp** (P1): bug nghiêm trọng, exploit production cần ngắt write
+  ngay (target `API_WRITE_ONLY`) hoặc khoá toàn bộ player (target
+  `ALL_PLAYERS`/`NON_ADMIN_USERS`) trong khi xử lý sự cố.
+- **Lập lịch** (P3): bảo trì DB, migration lớn, deploy backend major. Tạo
+  `SCHEDULED` window với `startsAt` tương lai → cron tự ACTIVE đúng giờ →
+  tự ENDED sau `endsAt`.
+- **Khoá hoàn toàn** (P1): exploit nghi ngờ admin token leak → target
+  `FULL_LOCKDOWN` chặn cả admin route (chỉ giữ `/maintenance/status`,
+  health, metrics; KHÔNG giữ `/_auth/*` — chỉ rất hạn hữu).
+
+**Truy cập panel**: AdminView → tab "Maintenance". Permission:
+`RequireAdmin()`. Audit log: `ADMIN_MAINTENANCE_*`
+(`CREATE`/`UPDATE`/`DISABLE`/`RECOMPUTE`).
+
+**API endpoint**:
+
+```bash
+# List
+curl -H "Cookie: xt_access=$ADMIN_TOKEN" https://<host>/api/admin/maintenance-windows
+
+# Bật khẩn cấp (status=SCHEDULED, startsAt = now → cron tick 5' sẽ chuyển ACTIVE;
+# nếu cần ACTIVE ngay, đặt startsAt = now − 1s rồi gọi recompute-status)
+curl -X POST -H "Cookie: xt_access=$ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "key": "emergency-2026-05-10",
+    "severity": "CRITICAL",
+    "target": "API_WRITE_ONLY",
+    "titleVi": "Bảo trì khẩn cấp",
+    "titleEn": "Emergency Maintenance",
+    "messageVi": "Hệ thống đang bảo trì. Quay lại sau 30 phút.",
+    "messageEn": "System under maintenance. Please retry in 30 minutes.",
+    "startsAt": "2026-05-10T17:00:00.000Z",
+    "endsAt": "2026-05-10T17:30:00.000Z",
+    "allowAdminBypass": true,
+    "allowHealthcheck": true,
+    "allowMetrics": true,
+    "initialStatus": "SCHEDULED"
+  }' \
+  https://<host>/api/admin/maintenance-windows
+
+# Force chuyển trạng thái ngay (idempotent) — không cần đợi cron 5 phút
+curl -X POST -H "Cookie: xt_access=$ADMIN_TOKEN" \
+  https://<host>/api/admin/maintenance-windows/recompute-status
+
+# Tắt khẩn cấp một window đang ACTIVE (status → DISABLED, idempotent)
+curl -X POST -H "Cookie: xt_access=$ADMIN_TOKEN" \
+  https://<host>/api/admin/maintenance-windows/{id}/disable
+
+# Sửa cấu hình (chỉ khi status còn DRAFT/SCHEDULED — ACTIVE/ENDED/DISABLED bị
+# reject `MAINTENANCE_INVALID_STATUS_TRANSITION` 400)
+curl -X PATCH -H "Cookie: xt_access=$ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"endsAt": "2026-05-10T18:00:00.000Z"}' \
+  https://<host>/api/admin/maintenance-windows/{id}
+```
+
+**Cách verify maintenance đang có hiệu lực**:
+
+```bash
+# 1. Public status — anonymous-safe, không leak admin field
+curl https://<host>/api/maintenance/status
+# → {"ok":true,"data":{"active":true,"severity":"CRITICAL","target":"API_WRITE_ONLY",
+#    "titleVi":"...","messageVi":"...","endsAt":"...","serverTime":"..."}}
+
+# 2. Trigger 1 request thật từ player → server phải trả 503 MAINTENANCE_ACTIVE
+curl -X POST -H "Cookie: xt_access=$PLAYER_TOKEN" -H "Content-Type: application/json" \
+  -d '{"qty":1}' \
+  https://<host>/api/shop/items/some-id/buy
+# → 503 + Retry-After header
+# → {"ok":false,"error":{"code":"MAINTENANCE_ACTIVE","meta":{"severity":"CRITICAL",
+#    "target":"API_WRITE_ONLY","titleVi":"...","messageVi":"...","endsAt":"..."}}}
+
+# 3. Healthcheck phải vẫn pass (allowHealthcheck=true)
+curl https://<host>/api/healthz
+# → 200
+
+# 4. Metrics phải vẫn pass (allowMetrics=true)
+curl https://<host>/api/metrics
+# → 200 prometheus text
+
+# 5. Admin login phải vẫn được (trừ FULL_LOCKDOWN — `/_auth/*` luôn bypass khác mode)
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"email":"admin@host","password":"..."}' https://<host>/api/_auth/login
+# → 200
+```
+
+**Cách tắt nếu cấu hình sai** (vd `target=FULL_LOCKDOWN` mà admin token
+hết hạn → chính admin cũng bị khoá):
+
+1. **Nếu admin còn login được** (target ≠ FULL_LOCKDOWN, hoặc admin đang
+   có session valid): mở admin panel → row maintenance → button "Disable"
+   → confirm. Cache L1 max-stale 10s; FE poll `/maintenance/status` 30s
+   sẽ tự refresh; player axios interceptor 503 sẽ tự bỏ blocked sau request
+   tiếp theo.
+2. **Nếu admin BỊ KHOÁ** (FULL_LOCKDOWN sai cấu hình hoặc admin token
+   hết hạn không thể renew): SSH vào DB và update trực tiếp:
+   ```sql
+   UPDATE "MaintenanceWindow"
+   SET status = 'DISABLED', "disabledAt" = NOW(), "updatedAt" = NOW()
+   WHERE status = 'ACTIVE';
+   ```
+   Sau đó force restart pod để clear L1 cache (10s TTL nhưng đã ACTIVE
+   trong cache → cache vẫn block tới khi expire).
+   ```bash
+   kubectl rollout restart deployment/api  # hoặc tương đương
+   ```
+3. **Sau khi xử lý**: `POST /admin/maintenance-windows/recompute-status`
+   để force ENDED transition trên các window đang quá `endsAt` (nếu có).
+
+**Rollback PR Phase 15.5** (nếu cần unrevert toàn bộ feature):
+- Revert PR #515 trên GitHub: prisma migration là **additive** (chỉ thêm
+  bảng `MaintenanceWindow` + 3 index), không destructive — revert code
+  KHÔNG mất data, chỉ cần `DROP TABLE "MaintenanceWindow"` thủ công sau
+  khi deploy revert nếu muốn schema sạch (không bắt buộc — bảng dư không
+  ảnh hưởng).
+- Middleware `MaintenanceWindowGuardMiddleware` được mount trong
+  `AppModule.configure()` qua `MaintenanceWindowModule`; revert sẽ tự xoá
+  middleware → request không bị guard.
+- Cron piggy-back trong `LiveOpsEventSchedulerCronProcessor` cũng bị xoá
+  khi revert — KHÔNG cần thay đổi env var (cron interval không đổi).
+
+**KHÔNG**:
+- KHÔNG tạo window có `target=FULL_LOCKDOWN` mà KHÔNG có `allowAdminBypass=true`
+  trừ khi đã chuẩn bị fallback DB access (xem step 2 ở trên). Confirm modal
+  trong admin panel sẽ cảnh báo nhưng KHÔNG bắt buộc.
+- KHÔNG trông cậy admin panel để "tự tắt" nếu cấu hình sai khoá chính
+  admin — hãy chuẩn bị DB fallback ngay từ đầu.
+- KHÔNG sửa window đã ACTIVE/ENDED/DISABLED qua `PATCH` — service throw
+  `MAINTENANCE_INVALID_STATUS_TRANSITION` 400. Tạo window mới hoặc disable
+  cái cũ + tạo lại.
+- KHÔNG dựa vào FE store/`isBlocked` để security gate — server-authoritative
+  qua `MAINTENANCE_ACTIVE` 503 envelope là source of truth.
+- KHÔNG quên `allowHealthcheck=true` + `allowMetrics=true` cho window
+  CRITICAL — nếu sai sẽ khiến k8s liveness probe fail → pod loop restart.
+
 ## 3. Backup operations (closed beta cadence)
 
 ### 3.1. Cron daily backup

@@ -55,6 +55,8 @@ Sinh secret: `openssl rand -base64 48`.
 | `MARKET_FEE_PCT` | `0.05` | Phí giao dịch sàn `[0, 0.5]`. Đặt `0` để tắt phí trong closed beta. |
 | `FEATURE_FLAG_CACHE_TTL_SEC` | `30` | (Phase 15.4) TTL cache 2-tier cho feature flag (L1 in-memory + L2 Redis). Set `0` = disable cache (force DB hit mỗi request — dev only). Admin toggle flag → server clear cache ngay; FE public flag store tự refresh khi quá TTL. |
 
+> **Phase 15.5 — Maintenance Window**: KHÔNG có env var mới. Cache L1 in-memory TTL 10s hardcoded trong `MaintenanceWindowService` (tránh thrash khi nhiều request hit middleware). Cron transition (`SCHEDULED→ACTIVE` / `ACTIVE→ENDED`) **piggy-back** trên `LiveOpsEventSchedulerCronProcessor` 5'-tick — KHÔNG cần thêm queue/lease/env var mới. Tất cả config chuyển sang DB row qua admin API/panel (xem `docs/RUNBOOK.md` §2.23 + `docs/API.md` §Maintenance Window).
+
 ### LiveOps Cron (Phase 13.2.D + 14.0.F)
 
 Cron tự động hóa weekly cycle. **Default disabled** ở local/test — production phải explicit opt-in để tránh cron chạy nhầm khi deploy mới chưa kịp seed.
@@ -114,6 +116,8 @@ pnpm --filter @xuantoi/api exec prisma migrate deploy
 ```
 
 `migrate deploy` chỉ apply migration đã commit, không tự sinh SQL. Idempotent. **Không** dùng `migrate dev` ở production.
+
+> **Phase 15.5 — Maintenance Window**: migration `20260623000000_phase_15_5_maintenance_window` thêm bảng `MaintenanceWindow` (id/key UNIQUE/severity/target/status/titleVi/En/messageVi/En/startsAt/endsAt/allowAdminBypass/allowHealthcheck/allowMetrics/createdByAdminId/disabledAt + 3 index). **Additive** — KHÔNG đổi schema bảng cũ, KHÔNG cần backfill, KHÔNG ảnh hưởng data hiện tại. Reuse `AdminAuditLog` cho `ADMIN_MAINTENANCE_*`. Rollback bằng cách revert PR #515 — `DROP TABLE "MaintenanceWindow"` thủ công không bắt buộc (bảng dư không ảnh hưởng).
 
 Nếu là deploy đầu tiên / DB còn rỗng:
 

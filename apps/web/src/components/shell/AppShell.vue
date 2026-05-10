@@ -9,6 +9,10 @@ import { useRoute, useRouter } from 'vue-router';
 import BuffBar from './BuffBar.vue';
 import ChatPanel from './ChatPanel.vue';
 import LocaleSwitcher from './LocaleSwitcher.vue';
+import MaintenanceBanner from '@/components/MaintenanceBanner.vue';
+import { useMaintenanceStore } from '@/stores/maintenance';
+
+const maintenance = useMaintenanceStore();
 
 const { t } = useI18n();
 const auth = useAuthStore();
@@ -68,6 +72,14 @@ async function logout(): Promise<void> {
 
 <template>
   <div class="min-h-screen flex flex-col bg-ink-900 text-ink-100">
+    <!-- Phase 15.5 — banner bảo trì cho ADMIN/MOD (player thấy overlay
+         full-screen mount tại App.vue). Hiển thị khi:
+         - maintenance.active === true (admin vẫn dùng được, cần biết
+           game đang bảo trì). -->
+    <MaintenanceBanner
+      v-if="maintenance.active && maintenance.status && (game.character?.role === 'ADMIN' || game.character?.role === 'MOD')"
+      :status="maintenance.status"
+    />
     <!-- Topbar -->
     <header
       class="h-14 flex items-center gap-4 px-4 border-b border-ink-300/40 bg-ink-700/60 backdrop-blur"

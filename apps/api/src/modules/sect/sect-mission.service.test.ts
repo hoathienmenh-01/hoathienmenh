@@ -178,6 +178,10 @@ describe('SectMissionService.claim — happy path', () => {
   });
 
   it('claim WEEKLY breakthrough: progress derive từ BreakthroughAttemptLog success → reward LINH_THACH ledger MISSION_CLAIM', async () => {
+    // Mid-week deterministic timestamp (Wednesday 12:00 UTC) tránh boundary
+    // giữa `sectWarWeekKey` (TZ-aware Asia/Ho_Chi_Minh) và `startOfWeek`
+    // (UTC-based) — log createdAt phải nằm sau Monday-of-isoWeek UTC.
+    const now = new Date('2026-05-13T12:00:00.000Z');
     const m = await makeMember({ realmKey: 'truc_co' });
     await prisma.breakthroughAttemptLog.create({
       data: {
@@ -197,9 +201,10 @@ describe('SectMissionService.claim — happy path', () => {
         expBefore: 0n,
         expAfter: 0n,
         attemptIndex: 1,
+        createdAt: now,
       },
     });
-    const r = await svc.claim(m.userId, 'sect_weekly_breakthrough_1');
+    const r = await svc.claim(m.userId, 'sect_weekly_breakthrough_1', now);
     expect(r.rewardContribution).toBe(200);
     // CurrencyService.applyTx ghi CurrencyLedger LINH_THACH +800.
     const cur = await prisma.currencyLedger.findFirstOrThrow({
