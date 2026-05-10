@@ -29,8 +29,10 @@ import { useRouter } from 'vue-router';
 import {
   SKILLS,
   SKILL_TAGS,
+  SKILL_TEMPLATES,
   describeSkillElementIdentity,
   getSkillElementIdentity,
+  realmByKey,
   skillByKey,
   type ElementKey,
   type SkillDef,
@@ -50,6 +52,23 @@ type ElementFilter = 'all' | ElementKey | 'none';
 type EquippedFilter = 'all' | 'equipped' | 'unequipped';
 type TagFilter = 'all' | SkillTag;
 
+/**
+ * Content Scale 2 — Realm filter cho high-realm catalog panel.
+ * Realm key tương ứng anchor unlock cho từng tier:
+ *   - nhan_tien (order 10) — Nhân Tiên
+ *   - huyen_tien (order 13) — Tiên Giới
+ *   - thanh_nhan (order 18) — Hỗn Nguyên
+ *   - vo_chung (order 25) — Vĩnh Hằng
+ *   - dao_quan (order 23) — Special / Đạo Quân
+ */
+type RealmFilter =
+  | 'all'
+  | 'nhan_tien'
+  | 'huyen_tien'
+  | 'thanh_nhan'
+  | 'vo_chung'
+  | 'dao_quan';
+
 interface SkillRow {
   view: SkillView;
   def: SkillDef;
@@ -66,6 +85,11 @@ const tierFilter = ref<TierFilter>('all');
 const elementFilter = ref<ElementFilter>('all');
 const equippedFilter = ref<EquippedFilter>('all');
 const tagFilter = ref<TagFilter>('all');
+
+/** Realm filter cho high-realm catalog panel (Content Scale 2). */
+const catalogRealmFilter = ref<RealmFilter>('all');
+/** Element filter cho high-realm catalog panel. */
+const catalogElementFilter = ref<ElementFilter>('all');
 
 /**
  * Phase 14.2.C — Convenience: list all skill tags for filter dropdown.
@@ -122,6 +146,89 @@ const counts = computed(() => ({
   catalog: SKILLS.length,
   equipped: skills.equippedCount,
   maxEquipped: skills.maxEquipped,
+}));
+
+/**
+ * Content Scale 2 — High-realm catalog rows.
+ *
+ * Liệt kê toàn bộ skill có realm unlock requirement order >= 10
+ * (Nhân Tiên trở lên). Server-authoritative learn — UI chỉ hiển thị
+ * locked/unlocked state dựa vào character realm hiện tại để player
+ * xem trước power fantasy late-game.
+ *
+ * Ổn định khi character chưa load (realmKey null) — coi tất cả
+ * locked. Không crash.
+ */
+interface HighRealmCatalogRow {
+  skillKey: string;
+  def: SkillDef;
+  reqRealmKey: string;
+  reqRealmName: string;
+  reqRealmOrder: number;
+  isUnlocked: boolean;
+  isLearned: boolean;
+}
+
+const HIGH_REALM_MIN_ORDER = 10;
+
+const highRealmCatalog = computed<HighRealmCatalogRow[]>(() => {
+  const charRealmKey = game.character?.realmKey ?? null;
+  const charRealm = charRealmKey ? realmByKey(charRealmKey) : null;
+  const charOrder = charRealm?.order ?? -1;
+  const learnedSet = new Set(skills.learned.map((s) => s.skillKey));
+
+  const list: HighRealmCatalogRow[] = [];
+  for (const tpl of SKILL_TEMPLATES) {
+    const realmReq = tpl.unlocks.find((u) => u.kind === 'realm');
+    if (!realmReq) continue;
+    const reqRealm = realmByKey(realmReq.ref);
+    if (!reqRealm) continue;
+    if (reqRealm.order < HIGH_REALM_MIN_ORDER) continue;
+    const def = skillByKey(tpl.key);
+    if (!def) continue;
+    list.push({
+      skillKey: tpl.key,
+      def,
+      reqRealmKey: reqRealm.key,
+      reqRealmName: reqRealm.name,
+      reqRealmOrder: reqRealm.order,
+      isUnlocked: charOrder >= reqRealm.order,
+      isLearned: learnedSet.has(tpl.key),
+    });
+  }
+  list.sort((a, b) => {
+    if (a.reqRealmOrder !== b.reqRealmOrder) {
+      return a.reqRealmOrder - b.reqRealmOrder;
+    }
+    return a.def.name.localeCompare(b.def.name, 'vi');
+  });
+  return list;
+});
+
+const filteredCatalog = computed<HighRealmCatalogRow[]>(() => {
+  return highRealmCatalog.value.filter((r) => {
+    if (
+      catalogRealmFilter.value !== 'all' &&
+      r.reqRealmKey !== catalogRealmFilter.value
+    ) {
+      return false;
+    }
+    if (catalogElementFilter.value !== 'all') {
+      if (catalogElementFilter.value === 'none') {
+        if (r.def.element != null) return false;
+      } else if (r.def.element !== catalogElementFilter.value) {
+        return false;
+      }
+    }
+    return true;
+  });
+});
+
+const catalogCounts = computed(() => ({
+  total: highRealmCatalog.value.length,
+  filtered: filteredCatalog.value.length,
+  unlocked: highRealmCatalog.value.filter((r) => r.isUnlocked).length,
+  learned: highRealmCatalog.value.filter((r) => r.isLearned).length,
 }));
 
 function tierClass(tier: SkillTier): string {
@@ -468,6 +575,158 @@ onMounted(async () => {
             </button>
           </div>
         </article>
+      </section>
+
+      <!-- Content Scale 2 — High-Realm Catalog panel -->
+      <section class="mt-8 space-y-3" data-testid="skill-book-high-realm-section">
+        <header class="flex items-baseline justify-between gap-3 flex-wrap">
+          <div>
+            <h2 class="text-xl tracking-widest font-bold text-amber-200">
+              {{ t('skillBook.highRealm.title') }}
+            </h2>
+            <p class="text-xs text-ink-300 mt-1">
+              {{ t('skillBook.highRealm.subtitle') }}
+            </p>
+          </div>
+          <div class="text-xs text-ink-300" data-testid="skill-book-high-realm-count">
+            {{
+              t('skillBook.highRealm.summary', {
+                shown: catalogCounts.filtered,
+                total: catalogCounts.total,
+                unlocked: catalogCounts.unlocked,
+                learned: catalogCounts.learned,
+              })
+            }}
+          </div>
+        </header>
+
+        <div class="flex flex-wrap gap-3 items-center text-xs">
+          <div class="flex items-center gap-2">
+            <label class="text-ink-300">{{ t('skillBook.highRealm.filter.realm') }}</label>
+            <select
+              v-model="catalogRealmFilter"
+              data-testid="skill-book-high-realm-filter-realm"
+              class="bg-ink-900 border border-ink-300/30 rounded px-2 py-1 text-ink-100"
+            >
+              <option value="all">{{ t('skillBook.filter.all') }}</option>
+              <option value="nhan_tien">{{ t('skillBook.highRealm.realm.nhan_tien') }}</option>
+              <option value="huyen_tien">{{ t('skillBook.highRealm.realm.huyen_tien') }}</option>
+              <option value="thanh_nhan">{{ t('skillBook.highRealm.realm.thanh_nhan') }}</option>
+              <option value="vo_chung">{{ t('skillBook.highRealm.realm.vo_chung') }}</option>
+              <option value="dao_quan">{{ t('skillBook.highRealm.realm.dao_quan') }}</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-ink-300">{{ t('skillBook.filter.element') }}</label>
+            <select
+              v-model="catalogElementFilter"
+              data-testid="skill-book-high-realm-filter-element"
+              class="bg-ink-900 border border-ink-300/30 rounded px-2 py-1 text-ink-100"
+            >
+              <option value="all">{{ t('skillBook.filter.all') }}</option>
+              <option value="kim">{{ t('skillBook.element.kim') }}</option>
+              <option value="moc">{{ t('skillBook.element.moc') }}</option>
+              <option value="thuy">{{ t('skillBook.element.thuy') }}</option>
+              <option value="hoa">{{ t('skillBook.element.hoa') }}</option>
+              <option value="tho">{{ t('skillBook.element.tho') }}</option>
+              <option value="none">{{ t('skillBook.element.none') }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div
+          v-if="filteredCatalog.length === 0"
+          class="bg-ink-700/30 border border-ink-300/20 rounded p-6 text-center text-ink-300"
+          data-testid="skill-book-high-realm-empty"
+        >
+          {{ t('skillBook.highRealm.empty') }}
+        </div>
+
+        <div
+          v-else
+          class="grid grid-cols-1 md:grid-cols-2 gap-3"
+          data-testid="skill-book-high-realm-list"
+        >
+          <article
+            v-for="row in filteredCatalog"
+            :key="row.skillKey"
+            :class="[
+              'border rounded p-3 space-y-2',
+              row.isLearned
+                ? 'bg-emerald-700/10 border-emerald-500/40'
+                : row.isUnlocked
+                  ? 'bg-amber-700/10 border-amber-500/40'
+                  : 'bg-ink-700/30 border-ink-300/20 opacity-80',
+            ]"
+            :data-testid="`skill-book-high-realm-card-${row.skillKey}`"
+          >
+            <header class="flex items-baseline justify-between gap-2 flex-wrap">
+              <h3 class="text-amber-200 text-base font-semibold">{{ row.def.name }}</h3>
+              <div class="flex items-center gap-1">
+                <span
+                  :title="elementIdentityTooltip(row.def.element ?? null)"
+                >
+                  <ElementBadge
+                    :element="row.def.element ?? null"
+                    :show-neutral="true"
+                    size="sm"
+                    :data-testid="`skill-book-high-realm-element-${row.skillKey}`"
+                  />
+                </span>
+                <SkillTagBadge
+                  v-for="tg in row.def.tags ?? []"
+                  :key="tg"
+                  :tag="tg"
+                  size="sm"
+                  :data-testid="`skill-book-high-realm-tag-${row.skillKey}-${tg.toLowerCase()}`"
+                />
+                <span
+                  v-if="row.isLearned"
+                  class="text-[10px] px-1.5 py-0.5 rounded border bg-emerald-700/40 text-emerald-200 border-emerald-500/40"
+                  :data-testid="`skill-book-high-realm-learned-${row.skillKey}`"
+                >
+                  {{ t('skillBook.highRealm.badge.learned') }}
+                </span>
+                <span
+                  v-else-if="row.isUnlocked"
+                  class="text-[10px] px-1.5 py-0.5 rounded border bg-amber-700/40 text-amber-200 border-amber-500/40"
+                  :data-testid="`skill-book-high-realm-unlocked-${row.skillKey}`"
+                >
+                  {{ t('skillBook.highRealm.badge.unlocked') }}
+                </span>
+                <span
+                  v-else
+                  class="text-[10px] px-1.5 py-0.5 rounded border bg-ink-800/60 text-ink-300 border-ink-300/40"
+                  :title="t('skillBook.highRealm.lockTooltip', { realm: row.reqRealmName })"
+                  :data-testid="`skill-book-high-realm-locked-${row.skillKey}`"
+                >
+                  {{ t('skillBook.highRealm.badge.locked') }}
+                </span>
+              </div>
+            </header>
+
+            <p class="text-xs text-ink-300">{{ row.def.description }}</p>
+
+            <div class="text-xs flex flex-wrap gap-x-3 gap-y-1">
+              <span :data-testid="`skill-book-high-realm-realm-${row.skillKey}`">
+                <span class="text-ink-300">{{ t('skillBook.highRealm.field.realm') }}:</span>
+                <span class="text-amber-200 ml-1">{{ row.reqRealmName }}</span>
+              </span>
+              <span>
+                <span class="text-ink-300">{{ t('skillBook.field.atkScale') }}</span>
+                <span class="text-amber-200 ml-1">×{{ row.def.atkScale.toFixed(2) }}</span>
+              </span>
+              <span>
+                <span class="text-ink-300">{{ t('skillBook.field.mpCost') }}</span>
+                <span class="text-sky-200 ml-1">{{ row.def.mpCost }}</span>
+              </span>
+              <span v-if="row.def.cooldownTurns && row.def.cooldownTurns > 0">
+                <span class="text-ink-300">{{ t('skillBook.field.cooldown') }}</span>
+                <span class="text-rose-200 ml-1">{{ row.def.cooldownTurns }}</span>
+              </span>
+            </div>
+          </article>
+        </div>
       </section>
     </div>
   </AppShell>
