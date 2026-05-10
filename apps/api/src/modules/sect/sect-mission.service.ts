@@ -5,7 +5,7 @@ import {
   itemByKey,
   sectMissionByKey,
   sectMissionPeriodKey,
-  sectWarWeekKey,
+  startOfSectWarWeek,
   type SectMissionCadence,
   type SectMissionDef,
   type SectMissionGoalKind,
@@ -118,7 +118,7 @@ export class SectMissionService {
     const since =
       def.cadence === 'DAILY'
         ? startOfLocalDay(now, tz)
-        : startOfWeek(now, tz);
+        : startOfSectWarWeek(now, tz);
 
     switch (def.goalKind) {
       case 'dungeon_clear':
@@ -385,36 +385,6 @@ export class SectMissionService {
   }
 }
 
-/**
- * Compute Monday 00:00 local-tz cho ISO week của `now`. Reuse cùng helper
- * format với `sectWarWeekKey` để đảm bảo daily/week reset đồng nhất.
- *
- * Approach: lấy `weekKey` (`YYYY-Www`) → tính Monday từ ISO week
- * theo Date arithmetic. Đơn giản hơn, đỡ phụ thuộc Intl.
- */
-function startOfWeek(now: Date, tz: string): Date {
-  void tz; // Reserved cho future override.
-  const wk = sectWarWeekKey(now);
-  const m = wk.match(/^(\d{4})-W(\d{2})$/);
-  if (!m) {
-    // Fallback: 7 ngày trước (defensive — không xảy ra với input hợp lệ).
-    const fb = new Date(now);
-    fb.setUTCDate(fb.getUTCDate() - 7);
-    return fb;
-  }
-  const isoYear = Number.parseInt(m[1], 10);
-  const isoWeek = Number.parseInt(m[2], 10);
-  // ISO week 1 = week có Thursday đầu tiên của isoYear.
-  // Monday tuần 1 = Jan 4 - (Jan 4 weekday Mon=0..Sun=6).
-  const jan4 = new Date(Date.UTC(isoYear, 0, 4));
-  const jan4Day = (jan4.getUTCDay() + 6) % 7; // Mon=0..Sun=6
-  const week1Mon = new Date(jan4);
-  week1Mon.setUTCDate(jan4.getUTCDate() - jan4Day);
-  const monday = new Date(week1Mon);
-  monday.setUTCDate(week1Mon.getUTCDate() + (isoWeek - 1) * 7);
-  monday.setUTCHours(0, 0, 0, 0);
-  return monday;
-}
 
 async function countSectWarRows(
   db: Prisma.TransactionClient | PrismaService,

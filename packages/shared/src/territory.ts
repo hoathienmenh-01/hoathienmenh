@@ -30,12 +30,18 @@
  *   - `docs/CHANGELOG.md` Phase 14.0.A entry.
  */
 
+import { localPartsInTz, utcDateForLocal } from './liveops';
 import {
   MAP_REGIONS,
   isMapRegionKey,
   type MapRegionDef,
   type RegionKey,
 } from './map-regions';
+import {
+  SECT_WAR_DEFAULT_TZ,
+  sectWarWeekKey,
+  startOfSectWarWeek,
+} from './sect-war';
 
 // ────────────────────────────────────────────────────────────────────────
 // Types
@@ -501,40 +507,47 @@ export function isTerritoryPeriodKey(key: string): boolean {
 }
 
 /**
- * Compute ISO week period key cho 1 Date instance theo UTC.
+ * Compute ISO week period key cho 1 Date instance trong `timezone` (default
+ * `Asia/Ho_Chi_Minh`).
  *
- * Format: `YYYY-Www` (vd `2026-W23`), nhất quán với sect war week key
- * format. Tuần ISO bắt đầu thứ Hai, tuần 1 là tuần chứa thứ Năm đầu tiên
- * của năm (ISO 8601).
+ * Format: `YYYY-Www` (vd `2026-W23`). Tuần ISO bắt đầu thứ Hai theo local
+ * timezone, tuần 1 là tuần chứa thứ Năm đầu tiên của năm (ISO 8601).
+ *
+ * Delegate to `sectWarWeekKey()` để đảm bảo TZ-aware boundary **đồng nhất**
+ * với sect war / sect mission / sect season — single source of truth cho
+ * weekly period key trong toàn hệ.
  *
  * Dùng cho cron-based weekly settlement (chốt sau khi tuần kết thúc) và
  * fallback khi admin trigger không truyền key tường minh.
  */
-export function territoryPeriodKeyForDate(date: Date): string {
-  // Thuật toán ISO week (Date.UTC để tránh timezone shift):
-  const d = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
-  );
-  // Set to Thursday of current week (ISO week is the week containing Thu).
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const weekNum = Math.ceil(
-    ((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
-  );
-  return `${d.getUTCFullYear()}-W${weekNum.toString().padStart(2, '0')}`;
+export function territoryPeriodKeyForDate(
+  date: Date,
+  timezone: string = SECT_WAR_DEFAULT_TZ,
+): string {
+  return sectWarWeekKey(date, timezone);
 }
 
 /**
- * Compute period key cho tuần TRƯỚC (settlement chốt sau khi tuần kết thúc).
- * Reduce 7 ngày từ `now` → return ISO week key.
+ * Compute period key cho tuần TRƯỚC (settlement chốt sau khi tuần kết thúc)
+ * theo TZ-aware boundary `timezone` (default `Asia/Ho_Chi_Minh`).
  *
- * Dùng cho weekly cron job: chạy thứ Hai 00:05 ICT chốt territory tuần
- * trước.
+ * Implementation: lấy `startOfSectWarWeek(now, tz)` (Monday 00:00 local-tz
+ * của tuần hiện tại) rồi lùi 1ms → rơi vào tuần trước → key qua
+ * `sectWarWeekKey`. Cách này luôn cho period key chính xác kể cả khi `now`
+ * sát biên Monday 00:00 ICT (ví dụ cron chạy thứ Hai 00:05 ICT chốt tuần
+ * vừa kết thúc).
+ *
+ * Trước Phase 15.6+/TZ Hotfix dùng `now - 7 days` UTC arithmetic → off-by-one
+ * khi cron chạy đầu tuần ICT (= late-Sun UTC) vì pivot date rơi vào tuần
+ * UTC-cũ-hơn-1.
  */
-export function previousTerritoryPeriodKey(now: Date = new Date()): string {
-  const d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  return territoryPeriodKeyForDate(d);
+export function previousTerritoryPeriodKey(
+  now: Date = new Date(),
+  timezone: string = SECT_WAR_DEFAULT_TZ,
+): string {
+  const thisMonday = startOfSectWarWeek(now, timezone);
+  const endOfPrevWeek = new Date(thisMonday.getTime() - 1);
+  return sectWarWeekKey(endOfPrevWeek, timezone);
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -542,49 +555,66 @@ export function previousTerritoryPeriodKey(now: Date = new Date()): string {
 // ────────────────────────────────────────────────────────────────────────
 
 /**
- * Phase 14.0.D — current ISO week period key (UTC).
+ * Phase 14.0.D — current ISO week period key (TZ-aware, default ICT).
  *
- * Alias cho `territoryPeriodKeyForDate(now)` để code đọc tự nhiên ở
- * runtime hook ("chốt period hiện tại" ↔ "kỳ tuần này").
+ * Alias cho `territoryPeriodKeyForDate(now, timezone)` để code đọc tự nhiên
+ * ở runtime hook ("chốt period hiện tại" ↔ "kỳ tuần này").
  */
-export function currentTerritoryPeriodKey(now: Date = new Date()): string {
-  return territoryPeriodKeyForDate(now);
+export function currentTerritoryPeriodKey(
+  now: Date = new Date(),
+  timezone: string = SECT_WAR_DEFAULT_TZ,
+): string {
+  return territoryPeriodKeyForDate(now, timezone);
 }
 
 /**
- * Phase 14.0.D — Mốc reset tuần kế tiếp theo UTC.
+ * Phase 14.0.D — Mốc reset tuần kế tiếp theo TZ-aware (default ICT).
  *
- * Trả về `Date` đại diện mốc Thứ Hai 00:00:00 UTC kế tiếp `now`. Convention:
- *   - Nếu `now` đúng 00:00:00.000 UTC ngày Thứ Hai → vẫn đẩy về 7 ngày sau
- *     (mốc reset tiếp theo, không phải mốc reset hiện tại).
+ * Trả về `Date` đại diện mốc Thứ Hai 00:00:00 theo `timezone` kế tiếp `now`.
+ * Convention:
+ *   - Nếu `now` đúng 00:00:00.000 ngày Thứ Hai local-tz → vẫn đẩy về 7 ngày
+ *     sau (mốc reset tiếp theo, không phải mốc reset hiện tại).
  *   - Nếu `now` ở giữa tuần → đẩy về Thứ Hai gần nhất phía trước rồi cộng
- *     7 ngày, lúc nào cũng > now.
+ *     7 ngày local-tz wall time, luôn > now.
  *
  * Dùng cho FE countdown ("còn bao nhiêu giây tới reset") và
  * `territoryPeriodWindow()` lấy `endsAt`.
+ *
+ * Implementation: `startOfSectWarWeek(now, tz)` cho Monday 00:00 local-tz
+ * của tuần hiện tại, cộng 7 ngày wall-time (qua `utcDateForLocal`) để xử
+ * lý DST safely nếu tz có DST.
  */
-export function nextTerritoryResetAt(now: Date = new Date()): Date {
-  // ISO week boundary là 00:00 UTC Thứ Hai. Convert getUTCDay() (0=Sun..6=Sat)
-  // sang ISO day (1=Mon..7=Sun) để tính khoảng cách.
-  const isoDay = now.getUTCDay() === 0 ? 7 : now.getUTCDay();
-  const startOfToday = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
+export function nextTerritoryResetAt(
+  now: Date = new Date(),
+  timezone: string = SECT_WAR_DEFAULT_TZ,
+): Date {
+  const thisMonday = startOfSectWarWeek(now, timezone);
+  // Đọc parts của thisMonday trong local-tz (00:00 local), cộng 7 ngày local
+  // wall-time, rồi convert ngược ra UTC instant.
+  const parts = localPartsInTz(thisMonday, timezone);
+  const utc = Date.UTC(parts.year, parts.month - 1, parts.day);
+  const nextUtc = new Date(utc);
+  nextUtc.setUTCDate(nextUtc.getUTCDate() + 7);
+  return utcDateForLocal(
+    nextUtc.getUTCFullYear(),
+    nextUtc.getUTCMonth() + 1,
+    nextUtc.getUTCDate(),
+    0,
+    0,
+    timezone,
   );
-  // Mốc Thứ Hai 00:00 UTC tuần hiện tại (lùi `isoDay - 1` ngày từ today).
-  const currentMonday = startOfToday - (isoDay - 1) * 86400000;
-  // Mốc Thứ Hai 00:00 UTC tuần kế tiếp.
-  const nextMonday = currentMonday + 7 * 86400000;
-  return new Date(nextMonday);
 }
 
 /**
- * Phase 14.0.D — Cửa sổ thời gian của 1 ISO week period.
+ * Phase 14.0.D — Cửa sổ thời gian của 1 ISO week period (TZ-aware, default
+ * ICT).
  *
- * Trả về `{ startsAt, endsAt }` UTC cho period key dạng `YYYY-Www`.
- *   - `startsAt` = Thứ Hai 00:00 UTC của tuần (ISO week start).
- *   - `endsAt` = Thứ Hai 00:00 UTC của tuần kế tiếp (exclusive).
+ * Trả về `{ startsAt, endsAt }` UTC instant cho period key dạng `YYYY-Www`.
+ *   - `startsAt` = Thứ Hai 00:00 trong `timezone` của tuần (ISO week start).
+ *   - `endsAt` = Thứ Hai 00:00 trong `timezone` của tuần kế tiếp (exclusive).
+ *
+ * Tuần ISO bắt đầu Thứ Hai trong local-tz. Với `timezone = Asia/Ho_Chi_Minh`,
+ * mốc Thứ Hai 00:00 ICT = Chủ Nhật 17:00 UTC tuần liền trước.
  *
  * Hành vi:
  *   - Period key không hợp lệ (không khớp regex ISO week, không phải
@@ -594,6 +624,7 @@ export function nextTerritoryResetAt(now: Date = new Date()): Date {
  */
 export function territoryPeriodWindow(
   periodKey: string,
+  timezone: string = SECT_WAR_DEFAULT_TZ,
 ): { startsAt: Date; endsAt: Date } | null {
   if (!TERRITORY_PERIOD_ISO_WEEK_RE.test(periodKey)) return null;
   const m = /^(\d{4})-W(\d{2})$/.exec(periodKey);
@@ -603,11 +634,29 @@ export function territoryPeriodWindow(
   if (!Number.isFinite(year) || !Number.isFinite(week)) return null;
   // ISO 8601: tuần 1 là tuần chứa Thứ Năm đầu năm. Thứ Hai tuần 1:
   //   - bắt đầu từ ngày 4/1 (luôn nằm trong tuần 1) → lùi về Thứ Hai.
+  // Compute Monday-of-week trong **UTC arithmetic** (TZ-agnostic ngày tháng),
+  // sau đó convert thành mốc 00:00 local-tz qua `utcDateForLocal`.
   const jan4 = new Date(Date.UTC(year, 0, 4));
   const isoDayJan4 = jan4.getUTCDay() === 0 ? 7 : jan4.getUTCDay();
   const week1Monday = new Date(jan4.getTime() - (isoDayJan4 - 1) * 86400000);
-  const startsAt = new Date(week1Monday.getTime() + (week - 1) * 7 * 86400000);
-  const endsAt = new Date(startsAt.getTime() + 7 * 86400000);
+  const monday = new Date(week1Monday.getTime() + (week - 1) * 7 * 86400000);
+  const nextMonday = new Date(monday.getTime() + 7 * 86400000);
+  const startsAt = utcDateForLocal(
+    monday.getUTCFullYear(),
+    monday.getUTCMonth() + 1,
+    monday.getUTCDate(),
+    0,
+    0,
+    timezone,
+  );
+  const endsAt = utcDateForLocal(
+    nextMonday.getUTCFullYear(),
+    nextMonday.getUTCMonth() + 1,
+    nextMonday.getUTCDate(),
+    0,
+    0,
+    timezone,
+  );
   return { startsAt, endsAt };
 }
 

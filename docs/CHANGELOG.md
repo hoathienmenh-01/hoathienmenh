@@ -12,7 +12,33 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Phase 15.6 — Config Version + Rollback (this PR)
+### TZ Hotfix — unify sectWarWeekKey + Territory periodKey to one TZ-aware helper (this PR)
+
+**Scope**: Pre-Phase-15.7 hotfix. Hợp nhất toàn bộ weekly-period helpers (Sect War, Sect Mission, Territory) về **một single source of truth TZ-aware** dùng `Asia/Ho_Chi_Minh` (ICT) làm timezone mặc định. Trước hotfix có 3 implementation khác nhau:
+
+1. `sectWarWeekKey()` shared — TZ-aware ICT (đúng).
+2. `startOfWeek()` cục bộ trong `sect-mission.service.ts` — **UTC-based với `void tz`** (ignore timezone). Gây boundary mismatch cho weekly mission progress query khi `now` nằm gần Mon 00:00 ICT (= Sun 17:00 UTC).
+3. `territoryPeriodKeyForDate()` / `previousTerritoryPeriodKey()` / `nextTerritoryResetAt()` / `territoryPeriodWindow()` — **pure UTC arithmetic** (`Date.UTC()`, `getUTCDay()`, `setUTCDate()`). Comment cũ nói "nhất quán với sect war week key format" nhưng CHỈ giống format `YYYY-Www`; **semantics khác hoàn toàn** (UTC Monday vs ICT Monday, lệch 7 giờ).
+
+Bug-class thực tế: cron Monday 00:05 ICT (= Sun 17:05 UTC). Cơ chế cũ `now - 7d` UTC tính ra Sun 17:05 UTC tuần trước → `territoryPeriodKeyForDate(.)` chấm năm vào tuần cũ hơn 1 tuần ICT. Settle/reward ghi nhầm period key, nguy cơ double-reward hoặc skip tuần sau retry.
+
+#### Fixed — TZ Hotfix
+
+- **Shared (`packages/shared/src/sect-war.ts`)**: thêm `startOfSectWarWeek(now, timezone)` — single source of truth cho Monday 00:00 local-tz, dùng cùng helper `localPartsInTz`/`utcDateForLocal` như `sectWarWeekKey()`/`currentSectWarSeason()`. Đảm bảo invariant `sectWarWeekKey(startOfSectWarWeek(now, tz), tz) === sectWarWeekKey(now, tz)` + idempotent.
+- **Shared (`packages/shared/src/sect-war.ts`)** — `sectWarWeekKey`: fix off-by-one cho year boundary khi Jan 1 = Fri/Sat/Sun. Trước fix, `firstThursday = jan1 + (4 - dow)` trỏ Thursday tuần W53 năm trước → weekNum +1. Sau fix, clamp offset ≥ 0 bằng cộng +7 ngày khi `(4 - dow) < 0`, đảm bảo `firstThursday` luôn nằm trong `weekYear`. Bug nay từng ẩn vì test cũ chỉ cover năm Jan 1 = Mon..Thu.
+- **Shared (`packages/shared/src/territory.ts`)** — `territoryPeriodKeyForDate` / `currentTerritoryPeriodKey` / `previousTerritoryPeriodKey` / `nextTerritoryResetAt` / `territoryPeriodWindow` **chuyển sang TZ-aware ICT mặc định**. Delegate hoàn toàn về `sectWarWeekKey` / `startOfSectWarWeek` cho week key; `nextTerritoryResetAt` dùng `startOfSectWarWeek + 7 day local-tz` qua `utcDateForLocal`; `territoryPeriodWindow` trả `startsAt`/`endsAt` = Mon 00:00 ICT của tuần (= Sun 17:00 UTC). Mỗi helper accept tham số `timezone` (default `SECT_WAR_DEFAULT_TZ` = `Asia/Ho_Chi_Minh`); caller cũ không truyền tz vẫn auto-correct.
+- **API (`apps/api/src/modules/sect/sect-mission.service.ts`)**: thay `startOfWeek()` helper local (UTC-based) bằng `startOfSectWarWeek()` từ shared. Weekly mission progress query (`createdAt >= startOfSectWarWeek(now, tz)`) bây giờ align đúng với weekKey ICT — không còn miss/double-count khi `now` rơi vào dải Sunday 17:00 UTC..Monday 00:00 UTC (= Monday ICT).
+- **API tests (`apps/api/src/modules/sect/sect-mission.service.test.ts`)**: thêm regression test `Mon 00:30 ICT log + now Mon 09:00 ICT`. Trước fix: log bị MISS (since UTC = Mon 00:00 UTC > log 17:30 UTC) → `MISSION_NOT_READY`. Sau fix: log INCLUDED (since ICT = Sun 17:00 UTC < log 17:30 UTC) → claim succeed. Giữ test Sunday 22:00 ICT (works under both implementations).
+- **Shared tests (`packages/shared/src/sect-war.test.ts`)**: 6 vitest mới cho `startOfSectWarWeek` (Monday-of-week stability, week-rollover, consistency với `sectWarWeekKey`, idempotent, UTC tz, cross-year `2025-W52→2026-W01`) + 3 vitest mới cho Jan 1 = Fri/Sat/Sun year boundary regression (2027-W01, 2022-W01, 2023-W01).
+- **Shared tests (`packages/shared/src/territory.test.ts` + `territory-war.test.ts`)**: refactor toàn bộ assertions sang ICT semantics (`Mon 00:00 ICT = Sun 17:00 UTC`). Thêm 5 bug-demo cases: cron Mon 00:05 ICT (off-by-one), cron Mon 00:00 đúng giây reset, Sun 23:59 ICT trước reset, Mon 00:00 ICT boundary chuyển tuần (W01→W02), tz='UTC' override cho legacy compat. Roundtrip `territoryPeriodKeyForDate(territoryPeriodWindow(pk).startsAt) === pk` được khẳng định cho W01..W53 + cross-year.
+
+#### Migration note — Territory periodKey TZ semantics
+
+- Trong DB hiện tại, các `TerritoryPeriodSettlement.periodKey` / `TerritoryRewardRun.periodKey` đã ghi đều có format `YYYY-Www` và ISO week year giống nhau cho hầu hết các điểm thời gian — **CHỈ KHÁC** ở dải biên Mon 00:00 ICT..07:00 ICT (= Sun 17:00 UTC..Mon 00:00 UTC). Đa số region settle ngoài dải này, nên audit log lịch sử trước hotfix vẫn correct.
+- Sau hotfix: cron settle Monday 00:05 ICT (sẽ deploy ở Phase 15.7) sẽ chấm đúng tuần ICT vừa kết thúc. UNIQUE composite key `(periodKey, regionKey)` của bảng settlement đảm bảo không double-settle ngay cả nếu cron retry across boundary.
+- Không cần migration data. Idempotency UNIQUE keys + helper TZ-aware đã đủ.
+
+### Phase 15.6 — Config Version + Rollback
 
 **Scope**: Hệ versioning + rollback an toàn cho 4 entity vận hành: LiveOps Scheduled Event, LiveOps Announcement, Feature Flag, Maintenance Window. Mỗi mutation từ admin (CREATE/UPDATE/DISABLE/ENABLE/STATUS_RECOMPUTE) ghi `ConfigVersion` snapshot before/after. Admin xem list/diff/dry-run/rollback với 3 mức safety (`SAFE`/`NEED_CONFIRM`/`BLOCKED`) + audit log đầy đủ.
 

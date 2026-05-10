@@ -22,6 +22,7 @@ import {
   sectWarRewardTierForRank,
   sectWarTheoreticalMaxPointsPerWeek,
   sectWarWeekKey,
+  startOfSectWarWeek,
   validateSectWarActivity,
   validateSectWarRewardTier,
 } from './sect-war';
@@ -299,6 +300,27 @@ describe('SectWar — sectWarWeekKey timezone stability', () => {
     expect(key).toBe('2026-W01');
   });
 
+  it('Jan 1 = Friday year (2027): Thu Jan 7 2027 → 2027-W01 (KHÔNG phải W02)', () => {
+    // Bug class: khi Jan 1 là Fri/Sat/Sun, firstThursday formula `(4 - dow)` cho
+    // ra số âm → trỏ Thursday tuần W53 năm cũ → off-by-one weekNum. Fix +7
+    // khi offset < 0. Trace:
+    //   - Jan 1 2027 = Fri (dow=5). offset = 4-5 = -1 → -1+7 = 6 → firstThursday
+    //     = Jan 7 2027 ✓.
+    //   - Thu Jan 7 2027 → diff=0 → weekNum=1.
+    expect(sectWarWeekKey(new Date('2027-01-07T00:00:00Z'))).toBe('2027-W01');
+  });
+
+  it('Jan 1 = Saturday year (2022): Thu Jan 6 2022 → 2022-W01', () => {
+    // Jan 1 2022 = Sat (dow=6). offset = -2+7 = 5 → firstThursday = Jan 6.
+    // Thu Jan 6 → W01.
+    expect(sectWarWeekKey(new Date('2022-01-06T00:00:00Z'))).toBe('2022-W01');
+  });
+
+  it('Jan 1 = Sunday year (2023): Thu Jan 5 2023 → 2023-W01', () => {
+    // Jan 1 2023 = Sun (dow=7). offset = -3+7 = 4 → firstThursday = Jan 5.
+    expect(sectWarWeekKey(new Date('2023-01-05T00:00:00Z'))).toBe('2023-W01');
+  });
+
   it('UTC tz cũng work (no offset)', () => {
     const key = sectWarWeekKey(new Date('2026-05-07T12:00:00Z'), 'UTC');
     expect(key).toBe('2026-W19');
@@ -319,6 +341,62 @@ describe('SectWar — currentSectWarSeason boundaries', () => {
     const s = currentSectWarSeason(new Date('2026-05-03T17:00:00Z')); // 2026-05-04 00:00 ICT
     expect(s.startsAtIso).toBe('2026-05-03T17:00:00.000Z');
     expect(s.endsAtIso).toBe('2026-05-10T17:00:00.000Z');
+  });
+});
+
+describe('SectWar — startOfSectWarWeek TZ Hotfix', () => {
+  it('Monday 00:00 ICT cho any timestamp trong tuần', () => {
+    // 2026-05-04 = Monday ICT. Expected: 2026-05-03T17:00:00Z (= Mon 00:00 ICT).
+    const expectedMondayUtc = '2026-05-03T17:00:00.000Z';
+    expect(startOfSectWarWeek(new Date('2026-05-04T00:00:00+07:00')).toISOString()).toBe(
+      expectedMondayUtc,
+    );
+    expect(startOfSectWarWeek(new Date('2026-05-06T12:00:00+07:00')).toISOString()).toBe(
+      expectedMondayUtc,
+    );
+    expect(startOfSectWarWeek(new Date('2026-05-10T23:59:00+07:00')).toISOString()).toBe(
+      expectedMondayUtc,
+    );
+  });
+
+  it('chuyển tuần khi sang Monday tuần kế', () => {
+    const w1 = startOfSectWarWeek(new Date('2026-05-10T23:59:00+07:00')).toISOString();
+    const w2 = startOfSectWarWeek(new Date('2026-05-11T00:00:00+07:00')).toISOString();
+    expect(w1).not.toBe(w2);
+    expect(w2).toBe('2026-05-10T17:00:00.000Z'); // Mon 2026-05-11 00:00 ICT
+  });
+
+  it('consistency: sectWarWeekKey(startOfSectWarWeek(now)) === sectWarWeekKey(now)', () => {
+    const samples = [
+      new Date('2026-05-04T00:00:00+07:00'),
+      new Date('2026-05-06T12:00:00+07:00'),
+      new Date('2026-05-10T23:30:00+07:00'),
+      new Date('2026-05-13T12:00:00Z'),
+      new Date('2026-05-17T15:00:00Z'),
+    ];
+    for (const s of samples) {
+      const key = sectWarWeekKey(s);
+      const mondayKey = sectWarWeekKey(startOfSectWarWeek(s));
+      expect(mondayKey).toBe(key);
+    }
+  });
+
+  it('idempotent: startOfSectWarWeek(startOfSectWarWeek(now)) === startOfSectWarWeek(now)', () => {
+    const now = new Date('2026-05-06T12:00:00Z');
+    const m1 = startOfSectWarWeek(now);
+    const m2 = startOfSectWarWeek(m1);
+    expect(m2.toISOString()).toBe(m1.toISOString());
+  });
+
+  it('UTC tz cũng work', () => {
+    const m = startOfSectWarWeek(new Date('2026-05-07T12:00:00Z'), 'UTC').toISOString();
+    expect(m).toBe('2026-05-04T00:00:00.000Z'); // Mon 00:00 UTC
+  });
+
+  it('cross-year boundary: 2025-12-29 (Monday ICT) là start cho 2026-W01', () => {
+    const m = startOfSectWarWeek(new Date('2025-12-29T03:00:00Z')).toISOString();
+    expect(m).toBe('2025-12-28T17:00:00.000Z'); // Mon 2025-12-29 00:00 ICT
+    expect(sectWarWeekKey(new Date(m))).toBe('2026-W01');
   });
 });
 

@@ -341,9 +341,15 @@ export function sectWarWeekKey(
   // Đầu năm: 1/1 weekYear. Tuần 1 chứa 4/1 (ISO định nghĩa).
   const yearStart = new Date(Date.UTC(weekYear, 0, 1));
   const yearStartDow = yearStart.getUTCDay() === 0 ? 7 : yearStart.getUTCDay();
-  // Thursday đầu năm = 1/1 + (4 - yearStartDow) days.
+  // Thursday ĐẦU TIÊN của weekYear = 1/1 + offset days. Khi 1/1 là Mon..Thu
+  // (dow 1..4), offset ∈ [3, 0] (Thursday rơi cùng tuần Jan 1). Khi 1/1 là
+  // Fri/Sat/Sun (dow 5..7), `(4 - dow) < 0` trỏ Thursday tuần trước (W53 năm
+  // cũ) → cộng thêm 7 để nhảy sang Thursday đầu tiên thực sự của weekYear,
+  // tránh off-by-one weekNum (ví dụ Jan 7 2027 phải = W01 chứ KHÔNG phải W02).
+  let firstThursdayOffset = 4 - yearStartDow;
+  if (firstThursdayOffset < 0) firstThursdayOffset += 7;
   const firstThursday = new Date(yearStart);
-  firstThursday.setUTCDate(yearStart.getUTCDate() + (4 - yearStartDow));
+  firstThursday.setUTCDate(yearStart.getUTCDate() + firstThursdayOffset);
   // Diff days giữa dt (Thursday) và firstThursday → tuần index.
   const diffMs = dt.getTime() - firstThursday.getTime();
   const diffDays = Math.round(diffMs / 86_400_000);
@@ -394,6 +400,38 @@ export function currentSectWarSeason(
     endsAtIso: endsAt.toISOString(),
     timezone,
   };
+}
+
+/**
+ * Trả Monday 00:00 trong `timezone` của ISO week chứa `now` — single source of
+ * truth cho week-boundary timestamp, consistent với `sectWarWeekKey()`.
+ *
+ * Dùng cho consumer cần timestamp (`Date`) thay vì weekKey string (`YYYY-Www`):
+ *   - sect-mission daily/weekly window query (`createdAt >= startOfSectWarWeek`).
+ *   - arena/territory season boundary.
+ *
+ * Đảm bảo:
+ *   - `sectWarWeekKey(startOfSectWarWeek(now, tz), tz)` === `sectWarWeekKey(now, tz)`.
+ *   - Idempotent: `startOfSectWarWeek(startOfSectWarWeek(now, tz), tz)` === same.
+ */
+export function startOfSectWarWeek(
+  now: Date,
+  timezone: string = SECT_WAR_DEFAULT_TZ,
+): Date {
+  const parts = localPartsInTz(now, timezone);
+  const isoDow = parts.dayOfWeek === 0 ? 7 : parts.dayOfWeek;
+  // Monday cùng tuần (đã ở local timezone).
+  const utc = Date.UTC(parts.year, parts.month - 1, parts.day);
+  const dt = new Date(utc);
+  dt.setUTCDate(dt.getUTCDate() - (isoDow - 1));
+  return utcDateForLocal(
+    dt.getUTCFullYear(),
+    dt.getUTCMonth() + 1,
+    dt.getUTCDate(),
+    0,
+    0,
+    timezone,
+  );
 }
 
 // ────────────────────────────────────────────────────────────────────────
