@@ -4,19 +4,35 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 
-const { fetchProfileMock, fetchOpponentsMock, challengeMock, fetchHistoryMock } =
-  vi.hoisted(() => ({
-    fetchProfileMock: vi.fn(),
-    fetchOpponentsMock: vi.fn(),
-    challengeMock: vi.fn(),
-    fetchHistoryMock: vi.fn(),
-  }));
+const {
+  fetchProfileMock,
+  fetchOpponentsMock,
+  challengeMock,
+  fetchHistoryMock,
+  fetchSeasonMock,
+  fetchMyStandingMock,
+  fetchLeaderboardMock,
+  fetchRewardPreviewMock,
+} = vi.hoisted(() => ({
+  fetchProfileMock: vi.fn(),
+  fetchOpponentsMock: vi.fn(),
+  challengeMock: vi.fn(),
+  fetchHistoryMock: vi.fn(),
+  fetchSeasonMock: vi.fn(),
+  fetchMyStandingMock: vi.fn(),
+  fetchLeaderboardMock: vi.fn(),
+  fetchRewardPreviewMock: vi.fn(),
+}));
 
 vi.mock('@/api/arena', () => ({
   fetchArenaProfile: fetchProfileMock,
   fetchArenaOpponents: fetchOpponentsMock,
   challengeArenaOpponent: challengeMock,
   fetchArenaHistory: fetchHistoryMock,
+  fetchArenaCurrentSeason: fetchSeasonMock,
+  fetchArenaMyStanding: fetchMyStandingMock,
+  fetchArenaLeaderboard: fetchLeaderboardMock,
+  fetchArenaRewardPreview: fetchRewardPreviewMock,
 }));
 
 import { useArenaStore } from '@/stores/arena';
@@ -27,6 +43,10 @@ beforeEach(() => {
   fetchOpponentsMock.mockReset();
   challengeMock.mockReset();
   fetchHistoryMock.mockReset();
+  fetchSeasonMock.mockReset();
+  fetchMyStandingMock.mockReset();
+  fetchLeaderboardMock.mockReset();
+  fetchRewardPreviewMock.mockReset();
 });
 
 describe('useArenaStore.fetchProfile', () => {
@@ -107,5 +127,75 @@ describe('useArenaStore.clearLastResult', () => {
     store.lastResult = { matchId: 'm1' } as never;
     store.clearLastResult();
     expect(store.lastResult).toBeNull();
+  });
+});
+
+// Phase 14.1.C — season actions.
+describe('useArenaStore.fetchSeason', () => {
+  it('sets season on success', async () => {
+    const store = useArenaStore();
+    fetchSeasonMock.mockResolvedValueOnce({
+      seasonKey: 'arena_2026-W19',
+      status: 'ACTIVE',
+    });
+    await store.fetchSeason();
+    expect(store.season?.seasonKey).toBe('arena_2026-W19');
+    expect(store.seasonError).toBeNull();
+  });
+
+  it('sets error code on failure', async () => {
+    const store = useArenaStore();
+    fetchSeasonMock.mockRejectedValueOnce({ code: 'OFFLINE' });
+    await store.fetchSeason();
+    expect(store.seasonError).toBe('OFFLINE');
+  });
+});
+
+describe('useArenaStore.fetchMyStanding', () => {
+  it('sets myStanding on success', async () => {
+    const store = useArenaStore();
+    fetchMyStandingMock.mockResolvedValueOnce({ rating: 1234, rank: 5 });
+    await store.fetchMyStanding();
+    expect(store.myStanding?.rating).toBe(1234);
+    expect(store.myStanding?.rank).toBe(5);
+  });
+
+  it('sets fallback STANDING_FETCH_FAILED on failure', async () => {
+    const store = useArenaStore();
+    fetchMyStandingMock.mockRejectedValueOnce(new Error('boom'));
+    await store.fetchMyStanding();
+    expect(store.myStandingError).toBe('STANDING_FETCH_FAILED');
+  });
+});
+
+describe('useArenaStore.fetchLeaderboard', () => {
+  it('sets leaderboard on success', async () => {
+    const store = useArenaStore();
+    fetchLeaderboardMock.mockResolvedValueOnce({ total: 2, entries: [] });
+    await store.fetchLeaderboard({ limit: 10 });
+    expect(store.leaderboard?.total).toBe(2);
+  });
+
+  it('sets fallback LEADERBOARD_FETCH_FAILED on failure', async () => {
+    const store = useArenaStore();
+    fetchLeaderboardMock.mockRejectedValueOnce(new Error('boom'));
+    await store.fetchLeaderboard();
+    expect(store.leaderboardError).toBe('LEADERBOARD_FETCH_FAILED');
+  });
+});
+
+describe('useArenaStore.fetchRewardPreview', () => {
+  it('sets rewardPreview on success', async () => {
+    const store = useArenaStore();
+    fetchRewardPreviewMock.mockResolvedValueOnce({ tiers: [] });
+    await store.fetchRewardPreview();
+    expect(store.rewardPreview?.tiers).toEqual([]);
+  });
+
+  it('sets fallback REWARDS_FETCH_FAILED on failure', async () => {
+    const store = useArenaStore();
+    fetchRewardPreviewMock.mockRejectedValueOnce(new Error('boom'));
+    await store.fetchRewardPreview();
+    expect(store.rewardPreviewError).toBe('REWARDS_FETCH_FAILED');
   });
 });

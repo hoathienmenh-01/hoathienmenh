@@ -638,6 +638,14 @@ describe('ArenaView — mount triggers fetches', () => {
     expect(arenaState.fetchHistory).toHaveBeenCalledTimes(1);
   });
 
+  it('also calls Phase 14.1.C season fetches on mount', () => {
+    mountView();
+    expect(arenaState.fetchSeason).toHaveBeenCalledTimes(1);
+    expect(arenaState.fetchMyStanding).toHaveBeenCalledTimes(1);
+    expect(arenaState.fetchLeaderboard).toHaveBeenCalledTimes(1);
+    expect(arenaState.fetchRewardPreview).toHaveBeenCalledTimes(1);
+  });
+
   it('refresh button re-triggers fetches', async () => {
     arenaState.profile = PROFILE_A;
     arenaState.opponents = [];
@@ -645,9 +653,304 @@ describe('ArenaView — mount triggers fetches', () => {
     arenaState.fetchProfile.mockClear();
     arenaState.fetchOpponents.mockClear();
     arenaState.fetchHistory.mockClear();
+    arenaState.fetchSeason.mockClear();
+    arenaState.fetchMyStanding.mockClear();
+    arenaState.fetchLeaderboard.mockClear();
+    arenaState.fetchRewardPreview.mockClear();
     await w.find('[data-testid="arena-refresh"]').trigger('click');
     expect(arenaState.fetchProfile).toHaveBeenCalled();
     expect(arenaState.fetchOpponents).toHaveBeenCalled();
     expect(arenaState.fetchHistory).toHaveBeenCalled();
+    expect(arenaState.fetchSeason).toHaveBeenCalled();
+    expect(arenaState.fetchMyStanding).toHaveBeenCalled();
+    expect(arenaState.fetchLeaderboard).toHaveBeenCalled();
+    expect(arenaState.fetchRewardPreview).toHaveBeenCalled();
+  });
+});
+
+// Phase 14.1.C — season banner / leaderboard / reward preview / rating delta.
+describe('ArenaView — season banner', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    resetState();
+  });
+
+  it('renders loading state when season null + loading', () => {
+    arenaState.seasonLoading = true;
+    const w = mountView();
+    expect(w.find('[data-testid="arena-season-loading"]').exists()).toBe(true);
+  });
+
+  it('renders error state when seasonError set', () => {
+    arenaState.seasonError = 'SEASON_FETCH_FAILED';
+    const w = mountView();
+    expect(w.find('[data-testid="arena-season-error"]').exists()).toBe(true);
+  });
+
+  it('renders seasonKey + status from season view', () => {
+    arenaState.season = {
+      seasonKey: 'arena_2026-W19',
+      status: 'ACTIVE',
+      startsAtIso: '2026-05-04T17:00:00.000Z',
+      endsAtIso: '2026-05-11T17:00:00.000Z',
+      settledAtIso: null,
+      cadence: 'weekly',
+      timezone: 'Asia/Ho_Chi_Minh',
+    };
+    const w = mountView();
+    expect(w.find('[data-testid="arena-season-key"]').text()).toBe(
+      'arena_2026-W19',
+    );
+    expect(w.find('[data-testid="arena-season"]').text()).toContain('Active');
+  });
+
+  it('renders my standing card with rating + tier + rank', () => {
+    arenaState.season = {
+      seasonKey: 'arena_2026-W19',
+      status: 'ACTIVE',
+      startsAtIso: '2026-05-04T17:00:00.000Z',
+      endsAtIso: '2026-05-11T17:00:00.000Z',
+      settledAtIso: null,
+      cadence: 'weekly',
+      timezone: 'Asia/Ho_Chi_Minh',
+    };
+    arenaState.myStanding = {
+      seasonKey: 'arena_2026-W19',
+      characterId: 'me-id',
+      rating: 1234,
+      tier: 'GOLD',
+      wins: 7,
+      losses: 3,
+      rank: 4,
+    };
+    const w = mountView();
+    const card = w.find('[data-testid="arena-season-standing"]');
+    expect(card.exists()).toBe(true);
+    expect(card.text()).toContain('1234');
+    expect(card.text()).toContain('Gold');
+    expect(card.text()).toContain('4');
+    expect(card.text()).toContain('7');
+    expect(card.text()).toContain('3');
+  });
+
+  it('renders dash when rank is null', () => {
+    arenaState.season = {
+      seasonKey: 'arena_2026-W19',
+      status: 'ACTIVE',
+      startsAtIso: '2026-05-04T17:00:00.000Z',
+      endsAtIso: '2026-05-11T17:00:00.000Z',
+      settledAtIso: null,
+      cadence: 'weekly',
+      timezone: 'Asia/Ho_Chi_Minh',
+    };
+    arenaState.myStanding = {
+      seasonKey: 'arena_2026-W19',
+      characterId: 'me-id',
+      rating: 1000,
+      tier: 'SILVER',
+      wins: 0,
+      losses: 0,
+      rank: null,
+    };
+    const w = mountView();
+    const card = w.find('[data-testid="arena-season-standing"]');
+    expect(card.text()).toContain('—');
+  });
+});
+
+describe('ArenaView — leaderboard', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    resetState();
+  });
+
+  it('renders loading state', () => {
+    arenaState.leaderboardLoading = true;
+    const w = mountView();
+    expect(w.find('[data-testid="arena-leaderboard-loading"]').exists()).toBe(
+      true,
+    );
+  });
+
+  it('renders error state', () => {
+    arenaState.leaderboardError = 'LEADERBOARD_FETCH_FAILED';
+    const w = mountView();
+    expect(w.find('[data-testid="arena-leaderboard-error"]').exists()).toBe(
+      true,
+    );
+  });
+
+  it('renders empty state when no entries', () => {
+    arenaState.leaderboard = {
+      seasonKey: 'arena_2026-W19',
+      total: 0,
+      entries: [],
+    };
+    const w = mountView();
+    expect(w.find('[data-testid="arena-leaderboard-empty"]').exists()).toBe(
+      true,
+    );
+  });
+
+  it('renders rows in given order with rank/name/tier/rating', () => {
+    arenaState.leaderboard = {
+      seasonKey: 'arena_2026-W19',
+      total: 2,
+      entries: [
+        {
+          rank: 1,
+          characterId: 'a',
+          characterName: 'Alpha',
+          rating: 1500,
+          tier: 'DIAMOND',
+          wins: 5,
+          losses: 1,
+          sectName: 'Sect A',
+        },
+        {
+          rank: 2,
+          characterId: 'b',
+          characterName: 'Beta',
+          rating: 1100,
+          tier: 'SILVER',
+          wins: 2,
+          losses: 3,
+          sectName: null,
+        },
+      ],
+    };
+    const w = mountView();
+    const table = w.find('[data-testid="arena-leaderboard-table"]');
+    expect(table.exists()).toBe(true);
+    const rowA = w.find('[data-testid="arena-leaderboard-row-a"]');
+    expect(rowA.text()).toContain('Alpha');
+    expect(rowA.text()).toContain('Diamond');
+    expect(rowA.text()).toContain('1500');
+    expect(rowA.text()).toContain('Sect A');
+    const rowB = w.find('[data-testid="arena-leaderboard-row-b"]');
+    expect(rowB.text()).toContain('Beta');
+    expect(rowB.text()).toContain('Silver');
+  });
+});
+
+describe('ArenaView — reward preview', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    resetState();
+  });
+
+  it('renders loading state', () => {
+    arenaState.rewardPreviewLoading = true;
+    const w = mountView();
+    expect(w.find('[data-testid="arena-rewards-loading"]').exists()).toBe(
+      true,
+    );
+  });
+
+  it('renders error state', () => {
+    arenaState.rewardPreviewError = 'REWARDS_FETCH_FAILED';
+    const w = mountView();
+    expect(w.find('[data-testid="arena-rewards-error"]').exists()).toBe(true);
+  });
+
+  it('renders 5 reward tiles for 5 tiers', () => {
+    arenaState.rewardPreview = {
+      seasonKey: 'arena_2026-W19',
+      tiers: [
+        {
+          tier: 'BRONZE',
+          reward: { linhThach: 200, tienNgoc: 0, exp: 0, items: [] },
+          labelI18nKey: 'arenaSeason.tier.BRONZE',
+          descriptionI18nKey: 'arenaSeason.reward.BRONZE.desc',
+        },
+        {
+          tier: 'SILVER',
+          reward: {
+            linhThach: 500,
+            tienNgoc: 0,
+            exp: 0,
+            items: [{ itemKey: 'huyet_chi_dan', qty: 5 }],
+          },
+          labelI18nKey: 'arenaSeason.tier.SILVER',
+          descriptionI18nKey: 'arenaSeason.reward.SILVER.desc',
+        },
+        {
+          tier: 'GOLD',
+          reward: {
+            linhThach: 1000,
+            tienNgoc: 0,
+            exp: 0,
+            items: [{ itemKey: 'huyet_chi_dan', qty: 10 }],
+          },
+          labelI18nKey: 'arenaSeason.tier.GOLD',
+          descriptionI18nKey: 'arenaSeason.reward.GOLD.desc',
+        },
+        {
+          tier: 'DIAMOND',
+          reward: {
+            linhThach: 2000,
+            tienNgoc: 20,
+            exp: 0,
+            items: [{ itemKey: 'linh_lo_dan', qty: 5 }],
+          },
+          labelI18nKey: 'arenaSeason.tier.DIAMOND',
+          descriptionI18nKey: 'arenaSeason.reward.DIAMOND.desc',
+        },
+        {
+          tier: 'IMMORTAL',
+          reward: {
+            linhThach: 5000,
+            tienNgoc: 50,
+            exp: 0,
+            items: [{ itemKey: 'linh_lo_dan', qty: 10 }],
+          },
+          labelI18nKey: 'arenaSeason.tier.IMMORTAL',
+          descriptionI18nKey: 'arenaSeason.reward.IMMORTAL.desc',
+        },
+      ],
+    };
+    const w = mountView();
+    expect(w.find('[data-testid="arena-rewards-list"]').exists()).toBe(true);
+    expect(w.find('[data-testid="arena-reward-BRONZE"]').text()).toContain(
+      '200',
+    );
+    expect(w.find('[data-testid="arena-reward-DIAMOND"]').text()).toContain(
+      '2000',
+    );
+    expect(w.find('[data-testid="arena-reward-IMMORTAL"]').text()).toContain(
+      '5000',
+    );
+  });
+});
+
+describe('ArenaView — history rating delta', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    resetState();
+    arenaState.profile = PROFILE_A;
+  });
+
+  it('renders +delta when player wins as attacker', () => {
+    arenaState.history = [makeMatch({ matchId: 'mwin' })];
+    const w = mountView();
+    const delta = w.find('[data-testid="arena-history-delta-mwin"]');
+    expect(delta.exists()).toBe(true);
+    expect(delta.text()).toContain('+10');
+  });
+
+  it('renders negative delta when player loses as defender', () => {
+    arenaState.history = [
+      makeMatch({
+        matchId: 'mlose',
+        attackerCharacterId: 'opp-id',
+        defenderCharacterId: 'me-id',
+        outcome: 'ATTACKER_WIN',
+        ratingDelta: { attacker: 12, defender: -8 },
+      }),
+    ];
+    const w = mountView();
+    const delta = w.find('[data-testid="arena-history-delta-mlose"]');
+    expect(delta.exists()).toBe(true);
+    expect(delta.text()).toContain('-8');
   });
 });

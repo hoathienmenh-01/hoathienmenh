@@ -29,9 +29,13 @@ vi.mock('@/api/client', () => ({
 
 import {
   challengeArenaOpponent,
+  fetchArenaCurrentSeason,
   fetchArenaHistory,
+  fetchArenaLeaderboard,
+  fetchArenaMyStanding,
   fetchArenaOpponents,
   fetchArenaProfile,
+  fetchArenaRewardPreview,
 } from '@/api/arena';
 
 describe('api/arena', () => {
@@ -112,5 +116,73 @@ describe('api/arena', () => {
     });
     await fetchArenaHistory();
     expect(getMock).toHaveBeenCalledWith('/arena/matches/history');
+  });
+
+  // Phase 14.1.C — season/leaderboard/rewards/standing.
+  it('fetchArenaCurrentSeason: GET /arena/season/current', async () => {
+    getMock.mockResolvedValueOnce({
+      data: { ok: true, data: { season: { seasonKey: 'arena_2026-W19' } } },
+    });
+    const s = await fetchArenaCurrentSeason();
+    expect(getMock).toHaveBeenCalledWith('/arena/season/current');
+    expect(s.seasonKey).toBe('arena_2026-W19');
+  });
+
+  it('fetchArenaLeaderboard: encodes seasonKey + limit + offset', async () => {
+    getMock.mockResolvedValueOnce({
+      data: { ok: true, data: { leaderboard: { total: 0, entries: [] } } },
+    });
+    await fetchArenaLeaderboard({
+      seasonKey: 'arena_2026-W19',
+      limit: 10,
+      offset: 5,
+    });
+    expect(getMock).toHaveBeenCalledWith(
+      '/arena/leaderboard?seasonKey=arena_2026-W19&limit=10&offset=5',
+    );
+  });
+
+  it('fetchArenaLeaderboard: no qs when no opts', async () => {
+    getMock.mockResolvedValueOnce({
+      data: { ok: true, data: { leaderboard: { total: 0, entries: [] } } },
+    });
+    await fetchArenaLeaderboard();
+    expect(getMock).toHaveBeenCalledWith('/arena/leaderboard');
+  });
+
+  it('fetchArenaRewardPreview: encodes seasonKey when provided', async () => {
+    getMock.mockResolvedValueOnce({
+      data: { ok: true, data: { preview: { tiers: [] } } },
+    });
+    await fetchArenaRewardPreview('arena_2026-W19');
+    expect(getMock).toHaveBeenCalledWith(
+      '/arena/season/rewards?seasonKey=arena_2026-W19',
+    );
+  });
+
+  it('fetchArenaRewardPreview: omits qs when undefined', async () => {
+    getMock.mockResolvedValueOnce({
+      data: { ok: true, data: { preview: { tiers: [] } } },
+    });
+    await fetchArenaRewardPreview();
+    expect(getMock).toHaveBeenCalledWith('/arena/season/rewards');
+  });
+
+  it('fetchArenaMyStanding: returns null when standing is null', async () => {
+    getMock.mockResolvedValueOnce({
+      data: { ok: true, data: { standing: null } },
+    });
+    const r = await fetchArenaMyStanding();
+    expect(r).toBeNull();
+  });
+
+  it('fetchArenaMyStanding: forwards seasonKey query', async () => {
+    getMock.mockResolvedValueOnce({
+      data: { ok: true, data: { standing: { rating: 1000 } } },
+    });
+    await fetchArenaMyStanding('arena_2026-W19');
+    expect(getMock).toHaveBeenCalledWith(
+      '/arena/season/standing?seasonKey=arena_2026-W19',
+    );
   });
 });
