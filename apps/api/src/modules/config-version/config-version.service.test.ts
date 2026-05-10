@@ -20,6 +20,12 @@ import {
 } from './config-version.service';
 import type { PrismaService } from '../../common/prisma.service';
 
+// Cast helper — stub object có shape `prisma.configVersion.{...}` đủ cho
+// service test, không cần full PrismaService surface.
+function asPrisma(stub: PrismaStub): PrismaService {
+  return stub as unknown as PrismaService;
+}
+
 // ---------------------------------------------------------------------------
 // Prisma stub
 // ---------------------------------------------------------------------------
@@ -37,7 +43,34 @@ interface VersionRow {
   createdAt: Date;
 }
 
-function makePrismaStub(initial: VersionRow[] = []) {
+interface PrismaStub {
+  configVersion: {
+    findFirst: ReturnType<typeof vi.fn>;
+    findUnique: ReturnType<typeof vi.fn>;
+    findMany: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+  };
+  configRollbackRun: {
+    create: ReturnType<typeof vi.fn>;
+  };
+  __versions: () => VersionRow[];
+  __rollbackRuns: () => Array<{
+    id: string;
+    entityType: string;
+    entityId: string;
+    fromVersion: number;
+    toVersion: number;
+    targetVersionId: string | null;
+    status: string;
+    safetyLevel: string;
+    performedByAdminId: string | null;
+    reason: string | null;
+    resultJson: Prisma.JsonValue | null;
+    createdAt: Date;
+  }>;
+}
+
+function makePrismaStub(initial: VersionRow[] = []): PrismaStub {
   let next = 0;
   const versions: VersionRow[] = [...initial];
   const rollbackRuns: Array<{
@@ -55,19 +88,7 @@ function makePrismaStub(initial: VersionRow[] = []) {
     createdAt: Date;
   }> = [];
 
-  const stub: Partial<PrismaService> & {
-    configVersion: {
-      findFirst: ReturnType<typeof vi.fn>;
-      findUnique: ReturnType<typeof vi.fn>;
-      findMany: ReturnType<typeof vi.fn>;
-      create: ReturnType<typeof vi.fn>;
-    };
-    configRollbackRun: {
-      create: ReturnType<typeof vi.fn>;
-    };
-    __versions: () => VersionRow[];
-    __rollbackRuns: () => typeof rollbackRuns;
-  } = {
+  const stub: PrismaStub = {
     configVersion: {
       findFirst: vi.fn(async ({ where, orderBy }: any) => {
         const filtered = versions.filter(
@@ -164,7 +185,7 @@ function makePrismaStub(initial: VersionRow[] = []) {
 describe('ConfigVersionService.recordVersion', () => {
   it('tạo row version 1 cho CREATE (beforeJson null)', async () => {
     const stub = makePrismaStub();
-    const svc = new ConfigVersionService(stub as unknown as PrismaService);
+    const svc = new ConfigVersionService(asPrisma(stub));
     const input: RecordVersionInput = {
       entityType: 'FEATURE_FLAG',
       entityId: 'ARENA_ENABLED',
@@ -183,7 +204,7 @@ describe('ConfigVersionService.recordVersion', () => {
 
   it('tăng version tuần tự cho cùng entity', async () => {
     const stub = makePrismaStub();
-    const svc = new ConfigVersionService(stub as unknown as PrismaService);
+    const svc = new ConfigVersionService(asPrisma(stub));
     await svc.recordVersion({
       entityType: 'FEATURE_FLAG',
       entityId: 'KEY',
@@ -205,7 +226,7 @@ describe('ConfigVersionService.recordVersion', () => {
 
   it('skip no-op (before deep-equal after) — không gọi create', async () => {
     const stub = makePrismaStub();
-    const svc = new ConfigVersionService(stub as unknown as PrismaService);
+    const svc = new ConfigVersionService(asPrisma(stub));
     const out = await svc.recordVersion({
       entityType: 'FEATURE_FLAG',
       entityId: 'KEY',
@@ -220,7 +241,7 @@ describe('ConfigVersionService.recordVersion', () => {
 
   it('strip secret-like key trong afterJson trước khi persist', async () => {
     const stub = makePrismaStub();
-    const svc = new ConfigVersionService(stub as unknown as PrismaService);
+    const svc = new ConfigVersionService(asPrisma(stub));
     await svc.recordVersion({
       entityType: 'FEATURE_FLAG',
       entityId: 'KEY',
@@ -238,7 +259,7 @@ describe('ConfigVersionService.recordVersion', () => {
 
   it('reject entityType ngoài catalog', async () => {
     const stub = makePrismaStub();
-    const svc = new ConfigVersionService(stub as unknown as PrismaService);
+    const svc = new ConfigVersionService(asPrisma(stub));
     await expect(
       svc.recordVersion({
         entityType: 'NOT_REAL' as any,
@@ -253,7 +274,7 @@ describe('ConfigVersionService.recordVersion', () => {
 
   it('reject action ngoài catalog', async () => {
     const stub = makePrismaStub();
-    const svc = new ConfigVersionService(stub as unknown as PrismaService);
+    const svc = new ConfigVersionService(asPrisma(stub));
     await expect(
       svc.recordVersion({
         entityType: 'FEATURE_FLAG',
@@ -270,7 +291,7 @@ describe('ConfigVersionService.recordVersion', () => {
 describe('ConfigVersionService.listVersions/getVersion/getLatestVersion', () => {
   it('list newest-first và getLatestVersion trả top', async () => {
     const stub = makePrismaStub();
-    const svc = new ConfigVersionService(stub as unknown as PrismaService);
+    const svc = new ConfigVersionService(asPrisma(stub));
     await svc.recordVersion({
       entityType: 'MAINTENANCE_WINDOW',
       entityId: 'm1',
@@ -295,7 +316,7 @@ describe('ConfigVersionService.listVersions/getVersion/getLatestVersion', () => 
 
   it('getVersion throw NOT_FOUND nếu id sai', async () => {
     const stub = makePrismaStub();
-    const svc = new ConfigVersionService(stub as unknown as PrismaService);
+    const svc = new ConfigVersionService(asPrisma(stub));
     await expect(svc.getVersion('missing')).rejects.toThrowError(
       ConfigVersionError,
     );
@@ -305,7 +326,7 @@ describe('ConfigVersionService.listVersions/getVersion/getLatestVersion', () => 
 describe('ConfigVersionService.diffVersions', () => {
   it('changedFields phản ánh field khác nhau', async () => {
     const stub = makePrismaStub();
-    const svc = new ConfigVersionService(stub as unknown as PrismaService);
+    const svc = new ConfigVersionService(asPrisma(stub));
     const v1 = await svc.recordVersion({
       entityType: 'LIVEOPS_EVENT',
       entityId: 'e1',
@@ -332,7 +353,7 @@ describe('ConfigVersionService.diffVersions', () => {
 describe('ConfigVersionService.recordRollbackRun', () => {
   it('ghi row với status/safety chính xác', async () => {
     const stub = makePrismaStub();
-    const svc = new ConfigVersionService(stub as unknown as PrismaService);
+    const svc = new ConfigVersionService(asPrisma(stub));
     const input: RecordRollbackRunInput = {
       entityType: 'FEATURE_FLAG',
       entityId: 'MARKET_ENABLED',
@@ -353,7 +374,7 @@ describe('ConfigVersionService.recordRollbackRun', () => {
 
   it('reject status / safety level ngoài catalog', async () => {
     const stub = makePrismaStub();
-    const svc = new ConfigVersionService(stub as unknown as PrismaService);
+    const svc = new ConfigVersionService(asPrisma(stub));
     await expect(
       svc.recordRollbackRun({
         entityType: 'FEATURE_FLAG',
