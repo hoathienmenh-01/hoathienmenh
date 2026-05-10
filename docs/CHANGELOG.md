@@ -12,7 +12,91 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Phase 17.5 — Metrics + Load Test Baseline (this PR)
+### Phase 14.3.E.1 — Tribulation Mini-Battle Backend (this PR)
+
+**Scope**: backend mini-battle cho Thiên Kiếp — biến `attempt → resolve` từ
+RNG snapshot thành state machine có phase/turn, 5 effectType khác biệt rõ
+ràng, event log, idempotency, race-safety. **Không** đụng FE (deferred Phase
+14.3.E.2). Bật/tắt bằng feature flag `TRIBULATION_MINI_BATTLE_ENABLED` —
+default OFF, flow legacy Phase 14.3.D vẫn nguyên.
+
+#### Added — Phase 14.3.E.1
+
+- **Shared catalog** (`packages/shared/src/tribulation-mini-battle.ts` 980
+  LOC):
+  - Enums: `TribulationMiniBattleState` (PENDING/ACTIVE/RESOLVED/FAILED/
+    EXPIRED), `TribulationBattleAction` (ATTACK/DEFEND/FOCUS/CLEANSE/
+    CHANNEL), `TribulationMiniBattleEffectType` (BURST/SUSTAIN/
+    POISON_RECOVERY/ARMOR_CRIT/DEFENSE_ENDURANCE).
+  - Pure helpers: `computeTribulationPhaseResult`, `applyTribulationEffectType`,
+    `validateTribulationBattleAction`, `summarizeTribulationBattleResult`,
+    `makeInitialMiniBattleSnapshot`, `computeTribulationBattlePower`.
+  - Deterministic seeded RNG `mulberry32` + `composeBattlePhaseSeed`
+    (KHÔNG dùng `Math.random` trong core calc).
+  - Anti-cheat caps: `HP_MAX=100k`, `DAMAGE_MAX=50k`, `HEAL_MAX=50k`,
+    `SHIELD_MAX=50k`, `DOT_STACKS_MAX=20`.
+- **API endpoints** dưới `/character/tribulation/battle`:
+  - `GET /current` — return active battle (or null).
+  - `POST /start` — body `{selectedSupportItemKeys?: string[]}`.
+  - `POST /action` — body `{battleId, action, clientNonce?}` (action ∈
+    ATTACK/DEFEND/FOCUS/CLEANSE/CHANNEL). Idempotent re-call cùng
+    `clientNonce`.
+  - `POST /resolve` — body `{battleId}`. Idempotent re-call.
+- **API service** `tribulation-mini-battle.service.ts` — wire vào
+  `CharacterController` qua `CharacterModule`.
+- **TribulationService extend**: `runAttemptInTxWithForcedOutcome(tx, ..., outcome)`
+  — wrapper public của `runAttemptInTx` với `simOverride={success, finalHp}`,
+  reuse pipeline realm advance + reward + consume support + penalty 1:1
+  với `attemptTribulation`.
+- **Prisma model** `TribulationMiniBattle` (`id/characterId/encounterId/
+  tribulationKey/realmKey/effectType/element/difficulty/state/currentPhase/
+  phaseCount/playerHp[Max]/tribulationHp[Max]/shield/dotStacks/focusCharge/
+  seed/actionLogJson/resultJson/lastClientNonce/startedAt/resolvedAt/
+  createdAt/updatedAt`) + 3 index `@@index([characterId, state])` /
+  `(characterId, startedAt)` / `(encounterId)` + Character relation Cascade.
+- **Migration** `20260615000000_phase_14_3_e_1_tribulation_mini_battle`.
+- **Feature flag** `TRIBULATION_MINI_BATTLE_ENABLED` (default OFF).
+  Disabled → 4 endpoint trả 501 `MINI_BATTLE_DISABLED` cho FE fallback
+  flow Phase 14.3.D.
+- **Metrics** singleton `MINI_BATTLE_METRICS{started,resolved,failed}`
+  (mirror Phase 17.5 request-metrics middleware pattern), read-only export
+  `readTribulationMiniBattleMetrics()`. Logger structured:
+  `tribulation_battle_started/resolved/failed` battleId+characterId+
+  realmKey+result.
+
+#### Idempotency / race-safety — Phase 14.3.E.1
+
+- **start**: tx-level `findFirst({state in [PENDING, ACTIVE]})` guard →
+  tránh tạo 2 battle cùng lúc. Reuse encounter row Phase 14.3.D nếu pending
+  cùng `tribulationKey`.
+- **action**: optimistic `updateMany({where: {id, state, currentPhase}})`
+  — concurrent caller advance phase → `count=0` → throw
+  `MINI_BATTLE_INVALID_ACTION`. `clientNonce` dedupe identical re-call.
+- **resolve**: `resultJson.attemptLogId` đóng vai trò "applied marker" —
+  2nd resolve reconstruct outcome từ `TribulationAttemptLog` row sẵn có.
+  KHÔNG double reward / KHÔNG double consume support / KHÔNG double
+  realm-advance.
+
+#### Tests — Phase 14.3.E.1
+
+- **Shared** (`packages/shared/src/tribulation-mini-battle.test.ts`):
+  41 tests — RNG determinism cùng seed, 5 effectType mechanics
+  (BURST crit scale, SUSTAIN heal, POISON DOT cap, ARMOR pierce,
+  DEFENSE_ENDURANCE shield+heal), caps enforcement, state machine terminal
+  block, phase overflow, power ratio.
+- **API integration**
+  (`apps/api/src/modules/character/tribulation-mini-battle.service.test.ts`):
+  23 tests — feature flag enabled/disabled fallback, start guards
+  (NOT_AT_PEAK/ALREADY_ACTIVE/CHARACTER_NOT_FOUND), getCurrent null/active,
+  action validation (NOT_FOUND/INVALID_ACTION) + clientNonce idempotent +
+  terminal block, resolve (NOT_TERMINAL/NOT_FOUND/win path realm advance/
+  lose path cooldown/idempotent re-resolve), effectType wiring.
+- **Total**: 64 tests mới, 0 regression (existing 105 tribulation API tests
+  + 161 shared tribulation tests vẫn pass).
+- `wipeAll()` thêm `prisma.tribulationMiniBattle.deleteMany({})` cho test
+  cleanup.
+
+### Phase 17.5 — Metrics + Load Test Baseline (PR #502)
 
 **Scope**: chuẩn bị closed beta. Endpoint metrics admin-only + 5 collector
 fail-soft (system / api / ws / queue / cron) + k6 load test scaffold (smoke /
