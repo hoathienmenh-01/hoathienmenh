@@ -203,7 +203,7 @@ function statusClass(s: string): string {
         <h3 class="text-base font-semibold mr-auto">
           {{ t('admin.arenaAntiWintrade.alerts') }}
           <span class="text-xs text-ink-300 ml-2"
-            >({{ totalAlerts }} {{ t('admin.arenaAntiWintrade.total') }})</span
+          >({{ totalAlerts }} {{ t('admin.arenaAntiWintrade.total') }})</span
           >
         </h3>
         <select
