@@ -164,24 +164,33 @@ describe('Phase 14.0.B — territory period key validators', () => {
     expect(isTerritoryPeriodKey('weekly_x')).toBe(false);
   });
 
-  it('territoryPeriodKeyForDate trả ISO week format', () => {
-    // 2026-06-01 (Monday) → ISO week 23 of 2026.
+  it('territoryPeriodKeyForDate trả ISO week format (TZ-aware ICT default)', () => {
+    // 2026-06-01 12:00 UTC = 2026-06-01 19:00 ICT (Monday) → ISO week 23.
     const k = territoryPeriodKeyForDate(new Date('2026-06-01T12:00:00Z'));
     expect(k).toBe('2026-W23');
     expect(isTerritoryPeriodKey(k)).toBe(true);
   });
 
   it('territoryPeriodKeyForDate handle ISO year boundary correctly', () => {
-    // 2025-12-29 (Monday) → ISO week 1 of 2026 (theo ISO 8601 rule).
+    // 2025-12-29 12:00 UTC = 2025-12-29 19:00 ICT (Monday) → ISO week 1 của 2026.
     const k = territoryPeriodKeyForDate(new Date('2025-12-29T12:00:00Z'));
     expect(k).toBe('2026-W01');
   });
 
-  it('previousTerritoryPeriodKey trả ISO week của tuần trước', () => {
+  it('territoryPeriodKeyForDate accept tz override (UTC) cho legacy compat', () => {
+    // Khi caller truyền tz='UTC', helper compute key theo UTC week boundary.
+    const k = territoryPeriodKeyForDate(
+      new Date('2026-06-01T12:00:00Z'),
+      'UTC',
+    );
+    expect(k).toBe('2026-W23');
+  });
+
+  it('previousTerritoryPeriodKey trả ISO week của tuần liền trước (TZ-aware)', () => {
     const prev = previousTerritoryPeriodKey(
       new Date('2026-06-08T12:00:00Z'),
     );
-    // 2026-06-08 = W24, vậy prev = W23.
+    // 2026-06-08 19:00 ICT (Monday W24) → prev = 2026-W23.
     expect(prev).toBe('2026-W23');
   });
 

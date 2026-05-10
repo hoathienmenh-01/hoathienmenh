@@ -1,13 +1,19 @@
 /**
  * Phase 14.0.D — Tests cho period helpers thuộc Territory Weekly War Loop.
  *
+ * **TZ Hotfix expansion**: các helper period đã chuyển sang TZ-aware ICT
+ * (`Asia/Ho_Chi_Minh`) đồng nhất với `sectWarWeekKey`/`startOfSectWarWeek`.
+ * Mốc tuần là Thứ Hai 00:00 ICT (= Chủ Nhật 17:00 UTC tuần liền trước), KHÔNG
+ * còn là Mon 00:00 UTC như bản cũ Phase 14.0.B.
+ *
  * Cover:
- *   - currentTerritoryPeriodKey() = territoryPeriodKeyForDate(now)
- *   - nextTerritoryResetAt() rơi đúng Thứ Hai 00:00 UTC kế tiếp.
- *   - nextTerritoryResetAt() chuyển ngày DST-free (UTC) qua tuần năm mới.
- *   - territoryPeriodWindow() trả startsAt = Thứ Hai, endsAt = Thứ Hai kế.
- *   - territoryPeriodWindow() consistent với territoryPeriodKeyForDate().
- *   - territoryPeriodWindow() cho `manual_*` → null.
+ *   - currentTerritoryPeriodKey() = territoryPeriodKeyForDate(now) trong tz.
+ *   - nextTerritoryResetAt() rơi đúng Thứ Hai 00:00 ICT kế tiếp
+ *     (= Chủ Nhật 17:00 UTC).
+ *   - territoryPeriodWindow() trả startsAt = Mon 00:00 ICT, endsAt =
+ *     Mon 00:00 ICT kế.
+ *   - previousTerritoryPeriodKey(Mon 00:05 ICT) trả đúng week trước
+ *     (cron-style scenario, cơ chế cũ `now-7d` UTC đã bị off-by-one).
  *   - validateTerritoryPeriodKey() OK / fail mã chuẩn.
  */
 import { describe, it, expect } from 'vitest';
@@ -29,57 +35,70 @@ describe('currentTerritoryPeriodKey', () => {
   });
 
   it('Thursday đầu năm 2027 → 2027-W01 (ISO week)', () => {
-    // 2027-01-07 Thursday → tuần 1 (chứa Thursday 2027-01-07).
+    // 2027-01-07 07:00 ICT (Thursday) → tuần 1.
     const now = new Date('2027-01-07T00:00:00.000Z');
     expect(currentTerritoryPeriodKey(now)).toBe('2027-W01');
   });
 
-  it('biên giao mùa: 2025-12-29 (Mon W01/2026) → 2026-W01', () => {
-    // ISO 8601: tuần đầu 2026 chứa Thursday 2026-01-01 → Mon = 2025-12-29.
+  it('biên giao mùa: 2025-12-29 07:00 ICT (Mon W01/2026) → 2026-W01', () => {
+    // 2025-12-29 00:00 UTC = 2025-12-29 07:00 ICT (Monday). Mon ICT W01/2026.
     const mon = new Date('2025-12-29T00:00:00.000Z');
     expect(currentTerritoryPeriodKey(mon)).toBe('2026-W01');
   });
 
-  it('Sunday 2026-01-04 (vẫn thuộc W01/2026) → 2026-W01', () => {
-    const sun = new Date('2026-01-04T23:59:59.999Z');
+  it('Sunday 2026-01-04 16:59 UTC (= 23:59 ICT, vẫn thuộc W01/2026) → 2026-W01', () => {
+    // ICT-aware: mốc chuyển tuần là Mon 00:00 ICT = Sun 17:00 UTC. Tại Sun 16:59 UTC
+    // (= Sun 23:59 ICT) vẫn thuộc W01/2026.
+    const sun = new Date('2026-01-04T16:59:59.999Z');
     expect(currentTerritoryPeriodKey(sun)).toBe('2026-W01');
+  });
+
+  it('Sunday 2026-01-04 17:00 UTC (= Mon 00:00 ICT) → 2026-W02 (chuyển tuần)', () => {
+    // Đúng mốc chuyển tuần ICT → W02.
+    const boundary = new Date('2026-01-04T17:00:00.000Z');
+    expect(currentTerritoryPeriodKey(boundary)).toBe('2026-W02');
   });
 });
 
-describe('nextTerritoryResetAt', () => {
-  it('Thursday giữa tuần → Monday 00:00 UTC kỳ kế', () => {
-    // 2026-06-04 Thursday → next Monday = 2026-06-08 00:00 UTC.
+describe('nextTerritoryResetAt (TZ-aware ICT)', () => {
+  it('Thursday giữa tuần → Monday 00:00 ICT kỳ kế (= Sun 17:00 UTC)', () => {
+    // 2026-06-04 Thursday ICT → next Mon ICT = 2026-06-08 00:00 ICT
+    //   = 2026-06-07T17:00:00.000Z.
     const now = new Date('2026-06-04T12:34:56.789Z');
     const reset = nextTerritoryResetAt(now);
-    expect(reset.toISOString()).toBe('2026-06-08T00:00:00.000Z');
+    expect(reset.toISOString()).toBe('2026-06-07T17:00:00.000Z');
   });
 
-  it('Monday 00:00 UTC chính xác → 7 ngày sau (next reset, KHÔNG phải reset hiện tại)', () => {
-    const mon = new Date('2026-06-01T00:00:00.000Z'); // Mon W23.
+  it('Monday 00:00 ICT chính xác → 7 ngày sau (next reset, KHÔNG phải reset hiện tại)', () => {
+    // Mon 2026-06-01 00:00 ICT = Sun 2026-05-31 17:00 UTC.
+    const mon = new Date('2026-05-31T17:00:00.000Z');
     const reset = nextTerritoryResetAt(mon);
-    expect(reset.toISOString()).toBe('2026-06-08T00:00:00.000Z');
+    // Mon 2026-06-08 00:00 ICT = Sun 2026-06-07 17:00 UTC.
+    expect(reset.toISOString()).toBe('2026-06-07T17:00:00.000Z');
   });
 
-  it('Monday giữa ngày → Monday tuần kế', () => {
+  it('Monday giữa ngày ICT → Monday tuần kế ICT', () => {
+    // Mon 2026-06-01 22:00 ICT = Mon 2026-06-01 15:00 UTC.
     const mon = new Date('2026-06-01T15:00:00.000Z');
     const reset = nextTerritoryResetAt(mon);
-    expect(reset.toISOString()).toBe('2026-06-08T00:00:00.000Z');
+    expect(reset.toISOString()).toBe('2026-06-07T17:00:00.000Z');
   });
 
-  it('Sunday 23:59 → Monday 00:00 (chỉ vài phút sau)', () => {
-    const sun = new Date('2026-06-07T23:59:59.999Z');
+  it('Sunday 16:59 UTC (= Sun 23:59 ICT) → Monday 00:00 ICT (1 phút sau)', () => {
+    const sun = new Date('2026-06-07T16:59:59.999Z');
     const reset = nextTerritoryResetAt(sun);
-    expect(reset.toISOString()).toBe('2026-06-08T00:00:00.000Z');
+    expect(reset.toISOString()).toBe('2026-06-07T17:00:00.000Z');
   });
 
-  it('biên giao năm: 2025-12-31 → Mon 2026-01-05 (W02 boundary)', () => {
+  it('biên giao năm: 2025-12-31 12:00 UTC (= 19:00 ICT) → Mon 2026-01-05 00:00 ICT (W02)', () => {
     const wed = new Date('2025-12-31T12:00:00.000Z');
     const reset = nextTerritoryResetAt(wed);
-    // Wed 2025-12-31 thuộc tuần Mon 2025-12-29..Sun 2026-01-04 → next Mon = 2026-01-05.
-    expect(reset.toISOString()).toBe('2026-01-05T00:00:00.000Z');
+    // Wed Dec 31 ICT thuộc tuần Mon 2025-12-29..Sun 2026-01-04 ICT → next Mon =
+    //   Mon 2026-01-05 00:00 ICT = Sun 2026-01-04 17:00 UTC.
+    expect(reset.toISOString()).toBe('2026-01-04T17:00:00.000Z');
   });
 
-  it('reset luôn rơi đúng Thứ Hai 00:00 UTC (qua nhiều mẫu)', () => {
+  it('reset luôn rơi đúng Thứ Hai 00:00 ICT (= Sun 17:00 UTC, qua nhiều mẫu)', () => {
     const samples = [
       '2026-01-01T00:00:00.000Z',
       '2026-03-15T18:00:00.000Z',
@@ -88,8 +107,10 @@ describe('nextTerritoryResetAt', () => {
     ];
     for (const s of samples) {
       const reset = nextTerritoryResetAt(new Date(s));
-      expect(reset.getUTCDay()).toBe(1); // 1 = Monday.
-      expect(reset.getUTCHours()).toBe(0);
+      // Mon 00:00 ICT = Sun 17:00 UTC → getUTCDay() === 0 (Sun), getUTCHours()
+      //   === 17.
+      expect(reset.getUTCDay()).toBe(0);
+      expect(reset.getUTCHours()).toBe(17);
       expect(reset.getUTCMinutes()).toBe(0);
       expect(reset.getUTCSeconds()).toBe(0);
       expect(reset.getUTCMilliseconds()).toBe(0);
@@ -98,19 +119,21 @@ describe('nextTerritoryResetAt', () => {
   });
 });
 
-describe('territoryPeriodWindow', () => {
-  it('2026-W23 → Mon 2026-06-01 .. Mon 2026-06-08', () => {
+describe('territoryPeriodWindow (TZ-aware ICT)', () => {
+  it('2026-W23 → Mon 2026-06-01 00:00 ICT .. Mon 2026-06-08 00:00 ICT', () => {
     const w = territoryPeriodWindow('2026-W23');
     expect(w).not.toBeNull();
-    expect(w!.startsAt.toISOString()).toBe('2026-06-01T00:00:00.000Z');
-    expect(w!.endsAt.toISOString()).toBe('2026-06-08T00:00:00.000Z');
+    // Mon 00:00 ICT = Sun 17:00 UTC tuần liền trước.
+    expect(w!.startsAt.toISOString()).toBe('2026-05-31T17:00:00.000Z');
+    expect(w!.endsAt.toISOString()).toBe('2026-06-07T17:00:00.000Z');
   });
 
-  it('2026-W01 → Mon 2025-12-29 .. Mon 2026-01-05 (ISO 8601 boundary)', () => {
+  it('2026-W01 → Mon 2025-12-29 00:00 ICT .. Mon 2026-01-05 00:00 ICT', () => {
     const w = territoryPeriodWindow('2026-W01');
     expect(w).not.toBeNull();
-    expect(w!.startsAt.toISOString()).toBe('2025-12-29T00:00:00.000Z');
-    expect(w!.endsAt.toISOString()).toBe('2026-01-05T00:00:00.000Z');
+    // 2025-12-29 00:00 ICT = 2025-12-28 17:00 UTC.
+    expect(w!.startsAt.toISOString()).toBe('2025-12-28T17:00:00.000Z');
+    expect(w!.endsAt.toISOString()).toBe('2026-01-04T17:00:00.000Z');
   });
 
   it('roundtrip: territoryPeriodKeyForDate(window.startsAt) === periodKey', () => {
@@ -129,7 +152,7 @@ describe('territoryPeriodWindow', () => {
     }
   });
 
-  it('endsAt - startsAt = 7 ngày', () => {
+  it('endsAt - startsAt = 7 ngày wall-time', () => {
     const w = territoryPeriodWindow('2026-W23')!;
     const diff = w.endsAt.getTime() - w.startsAt.getTime();
     expect(diff).toBe(7 * 24 * 60 * 60 * 1000);
@@ -147,14 +170,23 @@ describe('territoryPeriodWindow', () => {
     expect(territoryPeriodWindow('')).toBeNull();
   });
 
-  it('startsAt luôn là Thứ Hai 00:00 UTC', () => {
+  it('startsAt luôn là Mon 00:00 ICT (= Sun 17:00 UTC) qua nhiều mẫu', () => {
     const samples = ['2026-W01', '2026-W12', '2026-W30', '2026-W52'];
     for (const pk of samples) {
       const w = territoryPeriodWindow(pk)!;
-      expect(w.startsAt.getUTCDay()).toBe(1);
-      expect(w.startsAt.getUTCHours()).toBe(0);
+      // Mon 00:00 ICT ≡ Sun 17:00 UTC.
+      expect(w.startsAt.getUTCDay()).toBe(0);
+      expect(w.startsAt.getUTCHours()).toBe(17);
       expect(w.startsAt.getUTCMinutes()).toBe(0);
     }
+  });
+
+  it('TZ độc lập: territoryPeriodWindow("2026-W23", "UTC") → Mon 00:00 UTC', () => {
+    // Khi caller truyền tz=UTC, startsAt = Mon 00:00 UTC (legacy behavior).
+    const w = territoryPeriodWindow('2026-W23', 'UTC');
+    expect(w).not.toBeNull();
+    expect(w!.startsAt.toISOString()).toBe('2026-06-01T00:00:00.000Z');
+    expect(w!.endsAt.toISOString()).toBe('2026-06-08T00:00:00.000Z');
   });
 });
 
@@ -204,18 +236,54 @@ describe('validateTerritoryPeriodKey', () => {
   });
 });
 
-describe('previousTerritoryPeriodKey vs current', () => {
-  it('previousTerritoryPeriodKey(now) = period 7 ngày trước now', () => {
-    // 2026-06-04 Thu W23 → previous = 2026-W22.
+describe('previousTerritoryPeriodKey vs current (TZ-aware)', () => {
+  it('previousTerritoryPeriodKey(now) = period của tuần liền trước now', () => {
+    // 2026-06-04 07:00 ICT (Thu W23) → previous = 2026-W22.
     const now = new Date('2026-06-04T00:00:00.000Z');
     expect(previousTerritoryPeriodKey(now)).toBe('2026-W22');
     expect(currentTerritoryPeriodKey(now)).toBe('2026-W23');
   });
 
-  it('biên giao năm: previous của 2026-W01 = 2025-W52 hoặc 2025-W53', () => {
-    // 2026-W01 Mon = 2025-12-29. 7 ngày trước = 2025-12-22 (Mon W52/2025).
+  it('biên giao năm: previous của 2026-W01 = 2025-W52', () => {
+    // 2025-12-29 07:00 ICT (Mon W01/2026) → previous = 2025-W52.
     const mon = new Date('2025-12-29T00:00:00.000Z');
     expect(currentTerritoryPeriodKey(mon)).toBe('2026-W01');
     expect(previousTerritoryPeriodKey(mon)).toBe('2025-W52');
+  });
+
+  it('cron Mon 00:05 ICT (= Sun 17:05 UTC) → previousPeriodKey = tuần vừa kết thúc (KHÔNG off-by-one)', () => {
+    // **TZ Hotfix bug-demo case**: cron chạy thứ Hai 00:05 ICT (= Sun 17:05
+    // UTC) để chốt tuần vừa kết thúc. Cơ chế cũ (`now-7d` UTC) trả
+    // 2026-W17 (off-by-one), cơ chế mới (`startOfSectWarWeek - 1ms`) trả
+    //   đúng 2026-W18.
+    const cronAt = new Date('2026-05-03T17:05:00.000Z');
+    expect(currentTerritoryPeriodKey(cronAt)).toBe('2026-W19');
+    expect(previousTerritoryPeriodKey(cronAt)).toBe('2026-W18');
+  });
+
+  it('cron Mon 00:00:00 ICT đúng giây reset → previous = tuần vừa kết thúc', () => {
+    // Mon 2026-05-04 00:00:00 ICT = Sun 2026-05-03 17:00:00 UTC.
+    const cronAt = new Date('2026-05-03T17:00:00.000Z');
+    expect(currentTerritoryPeriodKey(cronAt)).toBe('2026-W19');
+    expect(previousTerritoryPeriodKey(cronAt)).toBe('2026-W18');
+  });
+
+  it('cron Sun 23:59:59 ICT (= Sun 16:59:59 UTC) trước reset → previous = tuần trước', () => {
+    // Sun 2026-05-03 23:59:59 ICT = Sun 2026-05-03 16:59:59 UTC — vẫn
+    //   thuộc W18.
+    const beforeBoundary = new Date('2026-05-03T16:59:59.999Z');
+    expect(currentTerritoryPeriodKey(beforeBoundary)).toBe('2026-W18');
+    expect(previousTerritoryPeriodKey(beforeBoundary)).toBe('2026-W17');
+  });
+
+  it('consistency: previousTerritoryPeriodKey(window(currentKey).startsAt - 1ms)', () => {
+    // Roundtrip: end-of-prev-week → prev key.
+    const now = new Date('2026-06-04T07:00:00.000Z');
+    const curKey = currentTerritoryPeriodKey(now);
+    const w = territoryPeriodWindow(curKey)!;
+    const prevEnd = new Date(w.startsAt.getTime() - 1);
+    expect(territoryPeriodKeyForDate(prevEnd)).toBe(
+      previousTerritoryPeriodKey(now),
+    );
   });
 });
