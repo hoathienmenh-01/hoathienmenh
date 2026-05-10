@@ -19,7 +19,6 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
-  ELEMENTAL_ENCHANT_EFFECTS,
   MAX_ENCHANT_LEVEL,
   itemByKey,
   type ElementKey,
@@ -328,8 +327,8 @@ async function confirmEnchant(): Promise<void> {
             "
             :disabled="
               enchantMaxed ||
-              submitting ||
-              (lockedElement !== null && lockedElement !== el.element)
+                submitting ||
+                (lockedElement !== null && lockedElement !== el.element)
             "
             :data-testid="`equipment-upgrade-element-${el.element}`"
             @click="onSelectElement(el.element)"
@@ -357,10 +356,10 @@ async function confirmEnchant(): Promise<void> {
       :message="
         preview
           ? t('inventory.upgrade.reforge.confirmMessage', {
-              linhThach: preview.reforge.nextCost.linhThachCost,
-              materialQty: preview.reforge.nextCost.materialQty,
-              materialName: materialName(preview.reforge.nextCost.materialKey),
-            })
+            linhThach: preview.reforge.nextCost.linhThachCost,
+            materialQty: preview.reforge.nextCost.materialQty,
+            materialName: materialName(preview.reforge.nextCost.materialKey),
+          })
           : ''
       "
       :loading="submitting"
@@ -375,12 +374,12 @@ async function confirmEnchant(): Promise<void> {
       :message="
         preview && selectedElement && preview.enchant.nextCost
           ? t('inventory.upgrade.enchant.confirmMessage', {
-              element: t(`elementBadge.element.${selectedElement}`),
-              level: preview.enchant.currentLevel + 1,
-              linhThach: preview.enchant.nextCost.linhThachCost,
-              materialQty: preview.enchant.nextCost.materialQty,
-              materialName: materialName(preview.enchant.nextCost.materialKey),
-            })
+            element: t(`elementBadge.element.${selectedElement}`),
+            level: preview.enchant.currentLevel + 1,
+            linhThach: preview.enchant.nextCost.linhThachCost,
+            materialQty: preview.enchant.nextCost.materialQty,
+            materialName: materialName(preview.enchant.nextCost.materialKey),
+          })
           : ''
       "
       :loading="submitting"

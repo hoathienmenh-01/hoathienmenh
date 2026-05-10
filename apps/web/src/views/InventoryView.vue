@@ -485,178 +485,178 @@ function handleErr(e: unknown): void {
           :key="it.id"
           class="rounded border border-ink-300/40 bg-ink-700/30 p-3 flex flex-col gap-3"
         >
-        <div class="flex items-center gap-3">
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2">
-              <span class="font-bold" :class="QUALITY_COLOR[it.item.quality]">
-                {{ it.item.name }}
-              </span>
-              <span
-                v-if="it.refineLevel > 0"
-                class="text-[10px] text-amber-300 font-bold"
-                data-testid="refine-badge"
-              >{{ t('inventory.refine.levelLabel', { lvl: it.refineLevel }) }}</span>
-              <span class="text-[10px] text-ink-300">
-                {{ t('quality.' + it.item.quality) }} ·
-                {{ it.item.kind }} ·
-                ×{{ it.qty }}
-              </span>
-            </div>
-            <p class="text-xs text-ink-300 mt-0.5">{{ it.item.description }}</p>
-            <p v-if="it.item.bonuses" class="text-xs text-emerald-300">
-              {{ bonusText(it.item) }}
-            </p>
-            <p v-else-if="it.item.effect" class="text-xs text-amber-200">
-              {{ effectText(it.item) }}
-            </p>
-            <!-- Phase 11.4.C — Gem row metadata (element, compatible slots, bonus). -->
-            <div v-if="isGemRow(it)" class="space-y-0.5">
-              <p
-                class="text-[10px] text-cyan-200"
-                data-testid="gem-meta"
+          <div class="flex items-center gap-3">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="font-bold" :class="QUALITY_COLOR[it.item.quality]">
+                  {{ it.item.name }}
+                </span>
+                <span
+                  v-if="it.refineLevel > 0"
+                  class="text-[10px] text-amber-300 font-bold"
+                  data-testid="refine-badge"
+                >{{ t('inventory.refine.levelLabel', { lvl: it.refineLevel }) }}</span>
+                <span class="text-[10px] text-ink-300">
+                  {{ t('quality.' + it.item.quality) }} ·
+                  {{ it.item.kind }} ·
+                  ×{{ it.qty }}
+                </span>
+              </div>
+              <p class="text-xs text-ink-300 mt-0.5">{{ it.item.description }}</p>
+              <p v-if="it.item.bonuses" class="text-xs text-emerald-300">
+                {{ bonusText(it.item) }}
+              </p>
+              <p v-else-if="it.item.effect" class="text-xs text-amber-200">
+                {{ effectText(it.item) }}
+              </p>
+              <!-- Phase 11.4.C — Gem row metadata (element, compatible slots, bonus). -->
+              <div v-if="isGemRow(it)" class="space-y-0.5">
+                <p
+                  class="text-[10px] text-cyan-200"
+                  data-testid="gem-meta"
+                >
+                  {{ gemElementLabel(getGemDef(it.itemKey)!) }} ·
+                  {{
+                    t('inventory.gem.compatibleSlotsLabel', {
+                      slots: getGemDef(it.itemKey)!.compatibleSlots.join(', '),
+                    })
+                  }}
+                </p>
+                <p
+                  class="text-[10px] text-emerald-300"
+                  data-testid="gem-bonus"
+                >{{ gemBonusText(getGemDef(it.itemKey)!) }}</p>
+              </div>
+              <!-- Phase 11.4.C — Equipment socket inventory (read-only badges). -->
+              <div
+                v-if="it.item.slot && capacityFor(it) > 0"
+                class="text-[10px] text-cyan-200 mt-0.5"
+                data-testid="equip-sockets"
               >
-                {{ gemElementLabel(getGemDef(it.itemKey)!) }} ·
                 {{
-                  t('inventory.gem.compatibleSlotsLabel', {
-                    slots: getGemDef(it.itemKey)!.compatibleSlots.join(', '),
+                  t('inventory.gem.socketsLabel', {
+                    filled: it.sockets.length,
+                    max: capacityFor(it),
                   })
                 }}
-              </p>
-              <p
-                class="text-[10px] text-emerald-300"
-                data-testid="gem-bonus"
-              >{{ gemBonusText(getGemDef(it.itemKey)!) }}</p>
-            </div>
-            <!-- Phase 11.4.C — Equipment socket inventory (read-only badges). -->
-            <div
-              v-if="it.item.slot && capacityFor(it) > 0"
-              class="text-[10px] text-cyan-200 mt-0.5"
-              data-testid="equip-sockets"
-            >
-              {{
-                t('inventory.gem.socketsLabel', {
-                  filled: it.sockets.length,
-                  max: capacityFor(it),
-                })
-              }}
-              <span
-                v-for="(socketGemKey, idx) in it.sockets"
-                :key="`${it.id}-socket-${idx}`"
-                class="ml-1 inline-flex items-center gap-1 rounded bg-cyan-900/40 px-1 py-[1px]"
-              >
-                {{ getGemDef(socketGemKey)?.name ?? socketGemKey }}
-                <button
-                  type="button"
-                  class="text-[10px] text-rose-300 hover:text-rose-200"
-                  data-testid="gem-unsocket-button"
-                  :disabled="submitting"
-                  @click="onUnsocketGem(it, idx)"
-                >{{ t('inventory.gem.unsocketButton') }}</button>
-              </span>
-            </div>
-          </div>
-          <div class="flex flex-col gap-1 items-stretch">
-            <MButton v-if="it.item.slot" :loading="submitting" @click="onEquip(it)">
-              {{ t('inventory.equip') }}
-            </MButton>
-            <MButton v-if="it.item.effect" :loading="submitting" @click="onUse(it)">
-              {{ t('inventory.use') }}
-            </MButton>
-            <!-- Phase 11.2.D — Skill book consume button. Gate bởi kind==='SKILL_BOOK' + catalog tồn tại. -->
-            <template v-if="it.item.kind === 'SKILL_BOOK' && skillBookSkillName(it)">
-              <p
-                class="text-[10px] text-violet-200 text-right"
-                data-testid="skill-book-target"
-              >{{ t('inventory.learnTarget', { skill: skillBookSkillName(it) }) }}</p>
-              <MButton
-                :loading="submitting"
-                data-testid="skill-book-learn-button"
-                @click="onLearnFromBook(it)"
-              >
-                {{ t('inventory.learn') }}
-              </MButton>
-            </template>
-            <!-- Phase 11.5.C — Refine block (chỉ hiển cho equipment slot, không cho consumable). -->
-            <template v-if="it.item.slot">
-              <p
-                v-if="it.refineLevel < REFINE_MAX_LEVEL"
-                class="text-[10px] text-ink-300/80 text-right"
-                data-testid="refine-cost"
-              >{{ refineCostText(it) }}</p>
-              <label
-                v-if="it.refineLevel < REFINE_MAX_LEVEL"
-                class="text-[10px] flex items-center gap-1 justify-end text-ink-300"
-              >
-                <input
-                  v-model="protectionFlags[it.id]"
-                  type="checkbox"
-                  data-testid="refine-protection"
-                />
-                {{ t('inventory.refine.protection') }}
-              </label>
-              <MButton
-                :loading="submitting"
-                :disabled="it.refineLevel >= REFINE_MAX_LEVEL"
-                data-testid="refine-button"
-                @click="onRefine(it)"
-              >
-                {{
-                  it.refineLevel >= REFINE_MAX_LEVEL
-                    ? t('inventory.refine.buttonMaxed')
-                    : t('inventory.refine.button')
-                }}
-              </MButton>
-            </template>
-            <!-- Phase 11.4.C — Gem socket UI cho equipment có capacity > 0 + slot trống. -->
-            <div
-              v-if="it.item.slot && capacityFor(it) > 0 && it.sockets.length < capacityFor(it)"
-              class="flex flex-col gap-1"
-            >
-              <select
-                v-model="gemSelections[it.id]"
-                class="text-[10px] bg-ink-900 border border-ink-300/40 px-1 py-0.5 text-ink-100"
-                data-testid="gem-select"
-              >
-                <option value="">{{ t('inventory.gem.selectPlaceholder') }}</option>
-                <option
-                  v-for="g in compatibleGems(it)"
-                  :key="`${it.id}-opt-${g.key}`"
-                  :value="g.key"
+                <span
+                  v-for="(socketGemKey, idx) in it.sockets"
+                  :key="`${it.id}-socket-${idx}`"
+                  class="ml-1 inline-flex items-center gap-1 rounded bg-cyan-900/40 px-1 py-[1px]"
                 >
-                  {{ g.name }} (×{{ ownedGemQty[g.key] ?? 0 }})
-                </option>
-              </select>
-              <p
-                v-if="compatibleGems(it).length === 0"
-                class="text-[10px] text-ink-300/80 italic text-right"
-                data-testid="gem-no-compat"
-              >{{ t('inventory.gem.noOwnedGems') }}</p>
-              <MButton
-                :loading="submitting"
-                :disabled="!gemSelections[it.id]"
-                data-testid="gem-socket-button"
-                @click="onSocketGem(it)"
+                  {{ getGemDef(socketGemKey)?.name ?? socketGemKey }}
+                  <button
+                    type="button"
+                    class="text-[10px] text-rose-300 hover:text-rose-200"
+                    data-testid="gem-unsocket-button"
+                    :disabled="submitting"
+                    @click="onUnsocketGem(it, idx)"
+                  >{{ t('inventory.gem.unsocketButton') }}</button>
+                </span>
+              </div>
+            </div>
+            <div class="flex flex-col gap-1 items-stretch">
+              <MButton v-if="it.item.slot" :loading="submitting" @click="onEquip(it)">
+                {{ t('inventory.equip') }}
+              </MButton>
+              <MButton v-if="it.item.effect" :loading="submitting" @click="onUse(it)">
+                {{ t('inventory.use') }}
+              </MButton>
+              <!-- Phase 11.2.D — Skill book consume button. Gate bởi kind==='SKILL_BOOK' + catalog tồn tại. -->
+              <template v-if="it.item.kind === 'SKILL_BOOK' && skillBookSkillName(it)">
+                <p
+                  class="text-[10px] text-violet-200 text-right"
+                  data-testid="skill-book-target"
+                >{{ t('inventory.learnTarget', { skill: skillBookSkillName(it) }) }}</p>
+                <MButton
+                  :loading="submitting"
+                  data-testid="skill-book-learn-button"
+                  @click="onLearnFromBook(it)"
+                >
+                  {{ t('inventory.learn') }}
+                </MButton>
+              </template>
+              <!-- Phase 11.5.C — Refine block (chỉ hiển cho equipment slot, không cho consumable). -->
+              <template v-if="it.item.slot">
+                <p
+                  v-if="it.refineLevel < REFINE_MAX_LEVEL"
+                  class="text-[10px] text-ink-300/80 text-right"
+                  data-testid="refine-cost"
+                >{{ refineCostText(it) }}</p>
+                <label
+                  v-if="it.refineLevel < REFINE_MAX_LEVEL"
+                  class="text-[10px] flex items-center gap-1 justify-end text-ink-300"
+                >
+                  <input
+                    v-model="protectionFlags[it.id]"
+                    type="checkbox"
+                    data-testid="refine-protection"
+                  />
+                  {{ t('inventory.refine.protection') }}
+                </label>
+                <MButton
+                  :loading="submitting"
+                  :disabled="it.refineLevel >= REFINE_MAX_LEVEL"
+                  data-testid="refine-button"
+                  @click="onRefine(it)"
+                >
+                  {{
+                    it.refineLevel >= REFINE_MAX_LEVEL
+                      ? t('inventory.refine.buttonMaxed')
+                      : t('inventory.refine.button')
+                  }}
+                </MButton>
+              </template>
+              <!-- Phase 11.4.C — Gem socket UI cho equipment có capacity > 0 + slot trống. -->
+              <div
+                v-if="it.item.slot && capacityFor(it) > 0 && it.sockets.length < capacityFor(it)"
+                class="flex flex-col gap-1"
               >
-                {{ t('inventory.gem.socketButton') }}
+                <select
+                  v-model="gemSelections[it.id]"
+                  class="text-[10px] bg-ink-900 border border-ink-300/40 px-1 py-0.5 text-ink-100"
+                  data-testid="gem-select"
+                >
+                  <option value="">{{ t('inventory.gem.selectPlaceholder') }}</option>
+                  <option
+                    v-for="g in compatibleGems(it)"
+                    :key="`${it.id}-opt-${g.key}`"
+                    :value="g.key"
+                  >
+                    {{ g.name }} (×{{ ownedGemQty[g.key] ?? 0 }})
+                  </option>
+                </select>
+                <p
+                  v-if="compatibleGems(it).length === 0"
+                  class="text-[10px] text-ink-300/80 italic text-right"
+                  data-testid="gem-no-compat"
+                >{{ t('inventory.gem.noOwnedGems') }}</p>
+                <MButton
+                  :loading="submitting"
+                  :disabled="!gemSelections[it.id]"
+                  data-testid="gem-socket-button"
+                  @click="onSocketGem(it)"
+                >
+                  {{ t('inventory.gem.socketButton') }}
+                </MButton>
+              </div>
+              <!-- Phase 11.4.C — Gem row Hợp 3→1 button. -->
+              <MButton
+                v-if="canCombine(it)"
+                :loading="submitting"
+                data-testid="gem-combine-button"
+                @click="onCombineGem(it)"
+              >
+                {{ t('inventory.gem.combineButton') }}
               </MButton>
             </div>
-            <!-- Phase 11.4.C — Gem row Hợp 3→1 button. -->
-            <MButton
-              v-if="canCombine(it)"
-              :loading="submitting"
-              data-testid="gem-combine-button"
-              @click="onCombineGem(it)"
-            >
-              {{ t('inventory.gem.combineButton') }}
-            </MButton>
           </div>
-        </div>
-        <!-- Phase 15.0.A — Equipment Reforge / Enchant Foundation panel. -->
-        <EquipmentUpgradePanel
-          v-if="it.item.slot"
-          :equipment="it"
-          @changed="refreshInventory"
-        />
+          <!-- Phase 15.0.A — Equipment Reforge / Enchant Foundation panel. -->
+          <EquipmentUpgradePanel
+            v-if="it.item.slot"
+            :equipment="it"
+            @changed="refreshInventory"
+          />
         </div>
       </section>
     </div>
