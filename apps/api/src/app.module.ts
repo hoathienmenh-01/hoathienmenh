@@ -42,6 +42,7 @@ import { FeatureFlagAdminModule } from './modules/feature-flag-admin/feature-fla
 import { MaintenanceWindowModule } from './modules/maintenance-window/maintenance-window.module';
 import { MaintenanceWindowAdminModule } from './modules/maintenance-window-admin/maintenance-window-admin.module';
 import { ConfigVersionModule } from './modules/config-version/config-version.module';
+import { ConfigVersionAdminModule } from './modules/config-version-admin/config-version-admin.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { ArenaModule } from './modules/arena/arena.module';
 import { ArenaAntiWintradeAdminModule } from './modules/arena-anti-wintrade-admin/arena-anti-wintrade-admin.module';
@@ -121,6 +122,8 @@ import { EconomyModule } from './modules/economy/economy.module';
     // sẽ vào file riêng `ConfigVersionAdminModule` (tránh cycle với
     // AdminModule, mirror Phase 15.4/15.5).
     ConfigVersionModule,
+    // Phase 15.6 — Admin endpoints cho version listing + dry-run/rollback.
+    ConfigVersionAdminModule,
     // Phase 16.6 — Economy Anti-cheat (ledger checker + anomaly
     // scanner cron + admin endpoints). SAU AdminModule + EconomyModule.
     AdminEconomySafetyModule,
