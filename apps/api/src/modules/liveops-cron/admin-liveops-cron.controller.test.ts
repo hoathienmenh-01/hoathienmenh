@@ -58,6 +58,10 @@ function emptySectSeason(): SectSeasonCycleSummary {
     seasonSnapshotsCreated: 0,
     seasonSnapshotsSkipped: 0,
     seasonsProcessed: [],
+    championMailsCreated: 0,
+    championAlreadyGranted: 0,
+    mvpMailsCreated: 0,
+    mvpAlreadyGranted: 0,
     errors: [],
   };
 }
@@ -186,6 +190,10 @@ describe('AdminLiveOpsCronController.runSectSeasonNow', () => {
         seasonSnapshotsCreated: 2,
         seasonSnapshotsSkipped: 1,
         seasonsProcessed: ['season_2026_s1', 'season_2026_s2', 'season_2026_s3'],
+        championMailsCreated: 0,
+        championAlreadyGranted: 0,
+        mvpMailsCreated: 0,
+        mvpAlreadyGranted: 0,
         errors: [],
       }),
     });

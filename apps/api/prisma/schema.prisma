@@ -2223,6 +2223,53 @@ model TerritoryOwnerRewardGrant {
   @@index([characterId])
 }
 
+/// Phase 15.7 — Sect Season Champion / MVP reward grant audit row.
+///
+/// 1 row = 1 (seasonKey, rewardType, characterId) tuple. UNIQUE composite
+/// `(seasonKey, rewardType, characterId)` enforce idempotency:
+///   - Cron `runSectSeasonCycle` chạy 2 lần cùng season → row thứ 2 P2002,
+///     skip → KHÔNG gửi mail trùng.
+///   - Admin manual `POST /admin/sect-season/cron/run-now` cùng season →
+///     cũng dedupe.
+///
+/// `rewardType`:
+///   - `CHAMPION` — member của sect rank-1 (snapshot từ `SectSeasonSnapshot.
+///     championSectId`). Có nhiều row cho 1 season (1 row / member của
+///     champion sect, capped at SECT_SEASON_CHAMPION_MEMBER_CAP).
+///   - `MVP` — top-1 cá nhân (snapshot `SectSeasonSnapshot.mvpCharacterId`).
+///     Tối đa 1 row CHAMPION-MVP / season.
+///
+/// `mailId` nullable cho phép race recover (grant row tạo trước, mail
+/// create theo sau trong cùng tx). `rewardJson` denormalized snapshot reward
+/// def tại thời điểm grant — catalog có thay đổi sau cũng không đổi audit.
+///
+/// `sectId` snapshot tại grant time (member rời sect sau grant vẫn giữ row
+/// history). Cho MVP, `sectId` là sect hiện tại của character tại finalize.
+///
+/// Rollback: DROP table — independent. Caller cleanup mail + ledger nếu
+/// rollback grant batch.
+model SectSeasonRewardGrant {
+  id          String   @id @default(cuid())
+  /// Match `SECT_SEASONS[*].key` shared catalog.
+  seasonKey   String
+  /// `CHAMPION` (per-member của champion sect) hoặc `MVP` (top-1 individual).
+  rewardType  String
+  characterId String
+  /// Sect ID tại thời điểm grant (snapshot). Null cho MVP nếu character không có sect.
+  sectId      String?
+  /// Mail row id (nullable cho dryRun / race recover).
+  mailId      String?
+  /// JSON snapshot reward def: { linhThach, exp, itemRewards: [{itemKey, qty}] }.
+  rewardJson  Json
+  grantedAt   DateTime @default(now())
+
+  @@unique([seasonKey, rewardType, characterId])
+  @@index([seasonKey])
+  @@index([rewardType])
+  @@index([characterId])
+  @@index([sectId])
+}
+
 /// Phase 16.5 — Daily Reward Cap accum bucket per `(characterId, dayBucket, source)`.
 ///
 /// Mục tiêu: theo dõi tổng EXP / linhThach mà 1 character đã được grant

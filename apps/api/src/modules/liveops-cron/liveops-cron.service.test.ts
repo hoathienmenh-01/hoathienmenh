@@ -29,6 +29,7 @@ import { TerritorySettlementService } from '../territory/territory-settlement.se
 import { TerritoryDecayService } from '../territory/territory-decay.service';
 import { TerritoryRewardService } from '../territory/territory-reward.service';
 import { SectSeasonHistoryService } from '../sect-season/sect-season-history.service';
+import { SectSeasonRewardService } from '../sect-season/sect-season-reward.service';
 import { LiveOpsCronLease } from './liveops-cron.lease';
 import { LiveOpsCronService } from './liveops-cron.service';
 import {
@@ -53,6 +54,7 @@ beforeAll(() => {
   const decay = new TerritoryDecayService(prisma);
   const reward = new TerritoryRewardService(prisma);
   const seasonHistory = new SectSeasonHistoryService(prisma);
+  const seasonReward = new SectSeasonRewardService(prisma);
   // Lease no-op (Redis null) — DB UNIQUE guard mới là final barrier.
   const lease = new LiveOpsCronLease(null);
   cron = new LiveOpsCronService(
@@ -61,6 +63,7 @@ beforeAll(() => {
     decay,
     reward,
     seasonHistory,
+    seasonReward,
     lease,
   );
 });
