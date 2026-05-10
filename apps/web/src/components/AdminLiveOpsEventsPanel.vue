@@ -7,7 +7,6 @@ import {
   adminLiveOpsEventsDisable,
   adminLiveOpsEventsList,
   adminLiveOpsEventsRecomputeStatus,
-  adminLiveOpsEventsUpdate,
   type AdminLiveOpsEventCreateInput,
   type LiveOpsScheduledEventStatus,
   type LiveOpsScheduledEventType,
@@ -391,7 +390,7 @@ async function onRecompute(): Promise<void> {
               v-model="form.rewardJson"
               rows="3"
               class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50 font-mono text-[11px]"
-              :placeholder='`{"items": [{"itemKey": "...", "qty": 1}]}`'
+              :placeholder="`{&quot;items&quot;: [{&quot;itemKey&quot;: &quot;...&quot;, &quot;qty&quot;: 1}]}`"
               data-testid="admin-liveops-events-form-reward-json"
             />
           </label>
