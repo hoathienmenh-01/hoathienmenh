@@ -25,6 +25,7 @@ import { ArenaService } from './arena.service';
 import { ArenaSeasonService, ArenaSeasonServiceError } from './arena-season.service';
 import { MailService } from '../mail/mail.service';
 import { CharacterService } from '../character/character.service';
+import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { makeUserChar, wipeAll } from '../../test-helpers';
@@ -44,16 +45,17 @@ beforeAll(async () => {
   prisma = new PrismaService();
 
   // Build a real MailService — settleSeason calls sendToCharacter; mock
-  // network bits ([RealtimeService.emit*) to no-op.
-  const charSvc = new CharacterService(prisma);
-  const invSvc = new InventoryService(prisma);
+  // network bits (RealtimeService.emit*) to no-op.
   const rtSvc = {
     emitToUser: () => undefined,
     emitMailNew: () => undefined,
     emitMailDelta: () => undefined,
     emitInventoryDelta: () => undefined,
   } as unknown as RealtimeService;
-  mail = new MailService(prisma, charSvc, invSvc, rtSvc);
+  const charSvc = new CharacterService(prisma, rtSvc);
+  const currencySvc = new CurrencyService(prisma);
+  const invSvc = new InventoryService(prisma, rtSvc, charSvc);
+  mail = new MailService(prisma, currencySvc, invSvc, rtSvc);
 
   season = new ArenaSeasonService(prisma, mail);
   arena = new ArenaService(prisma, season);
