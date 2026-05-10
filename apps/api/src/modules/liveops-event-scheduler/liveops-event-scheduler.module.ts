@@ -2,10 +2,13 @@ import { Module, OnModuleInit } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { AdminModule } from '../admin/admin.module';
 import { AuthModule } from '../auth/auth.module';
+import { CharacterModule } from '../character/character.module';
+import { InventoryModule } from '../inventory/inventory.module';
 import { RedisModule } from '../../common/redis.module';
 import { PrismaService } from '../../common/prisma.service';
 import { LiveOpsCronLease } from '../liveops-cron/liveops-cron.lease';
 import { AdminLiveOpsEventsController } from './admin-liveops-events.controller';
+import { LiveOpsEventsPublicController } from './liveops-events-public.controller';
 import { LiveOpsEventSchedulerService } from './liveops-event-scheduler.service';
 import { LIVEOPS_EVENT_SCHEDULER_QUEUE } from './liveops-event-scheduler.queue';
 import { LiveOpsEventSchedulerCronProcessor } from './liveops-event-scheduler.cron.processor';
@@ -42,9 +45,11 @@ import { LiveOpsEventSchedulerCronScheduler } from './liveops-event-scheduler.cr
     BullModule.registerQueue({ name: LIVEOPS_EVENT_SCHEDULER_QUEUE }),
     AuthModule,
     AdminModule,
+    CharacterModule,
+    InventoryModule,
     RedisModule,
   ],
-  controllers: [AdminLiveOpsEventsController],
+  controllers: [AdminLiveOpsEventsController, LiveOpsEventsPublicController],
   providers: [
     PrismaService,
     LiveOpsEventSchedulerService,

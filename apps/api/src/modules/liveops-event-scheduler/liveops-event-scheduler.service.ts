@@ -1,14 +1,19 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { CurrencyKind, Prisma } from '@prisma/client';
 import {
   LIVEOPS_EVENT_TYPE_CAPS,
+  LIVEOPS_RUNTIME_SUPPORTED_TYPES,
   clampLiveOpsMultiplier,
   isLiveOpsEventActiveAt,
+  isLiveOpsRuntimeSupported,
   isValidLiveOpsScheduledEventStatus,
   isValidLiveOpsScheduledEventType,
   nextLiveOpsScheduledEventStatus,
+  parseLiveOpsEventReward,
   pickActiveLiveOpsMultiplier,
+  validateLiveOpsEventRewardJson,
   validateLiveOpsScheduledEventInput,
+  type LiveOpsEventReward,
   type LiveOpsRuntimeModifier,
   type LiveOpsScheduledEventInput,
   type LiveOpsScheduledEventStatus,
@@ -16,6 +21,8 @@ import {
   type LiveOpsScheduledEventValidationCode,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { CurrencyService } from '../character/currency.service';
+import { InventoryService } from '../inventory/inventory.service';
 
 /**
  * Phase 15.1–15.2 — LiveOps Event Scheduler runtime service.
@@ -42,6 +49,10 @@ import { PrismaService } from '../../common/prisma.service';
 export type LiveOpsEventSchedulerErrorCode =
   | 'EVENT_NOT_FOUND'
   | 'EVENT_KEY_DUPLICATE'
+  | 'EVENT_NOT_ACTIVE'
+  | 'EVENT_NOT_CLAIMABLE'
+  | 'EVENT_ALREADY_CLAIMED'
+  | 'NO_CHARACTER'
   | LiveOpsScheduledEventValidationCode;
 
 export class LiveOpsEventSchedulerError extends Error {
@@ -74,6 +85,47 @@ export interface RecomputeSummary {
   readonly toEnded: number;
 }
 
+/**
+ * Phase 15.3.A — public-safe view of an active event for player UI
+ * (`GET /liveops/events/active`). Strips admin-only fields
+ * (`createdByAdminId`) and adds `claimable` flag for character-aware
+ * FESTIVAL_GIFT pre-flight check.
+ */
+export interface LiveOpsActiveEventPublicView {
+  readonly key: string;
+  readonly type: LiveOpsScheduledEventType;
+  readonly title: string;
+  readonly description: string;
+  readonly startsAt: string;
+  readonly endsAt: string;
+  /**
+   * Public subset of `configJson`:
+   *   - `multiplier`: effective server-clamped multiplier (after
+   *     `clampLiveOpsMultiplier`) — used by FE to display "x2 boss
+   *     reward" / "30% off shop" labels.
+   *   - `reward`: typed `LiveOpsEventReward` nếu type=FESTIVAL_GIFT,
+   *     null cho các type khác.
+   */
+  readonly publicConfig: {
+    readonly multiplier: number | null;
+    readonly reward: LiveOpsEventReward | null;
+  };
+  /** True nếu type=FESTIVAL_GIFT và character này chưa claim. */
+  readonly claimable: boolean;
+  /** True nếu runtime đã wire (FE có thể hiển thị badge). */
+  readonly runtimeSupported: boolean;
+}
+
+/**
+ * Phase 15.3.A — result of a successful FESTIVAL_GIFT claim.
+ * `granted` echoes server-clamped reward (after defense-in-depth caps).
+ */
+export interface LiveOpsClaimResult {
+  readonly eventKey: string;
+  readonly claimedAt: string;
+  readonly granted: LiveOpsEventReward;
+}
+
 interface CreateEventInput extends LiveOpsScheduledEventInput {
   /** Initial status — default `SCHEDULED`. Chỉ admin có thể set `DRAFT`. */
   readonly initialStatus?: 'DRAFT' | 'SCHEDULED';
@@ -92,7 +144,11 @@ interface UpdateEventInput {
 export class LiveOpsEventSchedulerService {
   private readonly logger = new Logger(LiveOpsEventSchedulerService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly currency?: CurrencyService,
+    @Optional() private readonly inventory?: InventoryService,
+  ) {}
 
   // -------------------------------------------------------------------------
   // Read
@@ -168,6 +224,228 @@ export class LiveOpsEventSchedulerService {
       });
     }
     return out;
+  }
+
+  /**
+   * Phase 15.3.A — public-safe list of ACTIVE events for player UI.
+   *
+   * Strips admin metadata. For type=FESTIVAL_GIFT, includes `claimable`
+   * flag (true if `characterId` chưa có row trong `LiveOpsEventRewardClaim`).
+   * For non-FESTIVAL_GIFT types, `claimable=false` (no claim semantics).
+   *
+   * @param characterId - nếu null/undefined, all events `claimable=false`
+   *   (anonymous viewer / pre-character-creation).
+   */
+  async getActiveEventsPublic(
+    characterId: string | null,
+    now: Date = new Date(),
+  ): Promise<LiveOpsActiveEventPublicView[]> {
+    const events = await this.getActiveEvents(now);
+    if (events.length === 0) return [];
+
+    // Batch-fetch claim rows for FESTIVAL_GIFT events to avoid N+1.
+    const festivalEventIds = events
+      .filter((e) => e.type === 'FESTIVAL_GIFT')
+      .map((e) => e.id);
+    const claimedEventIds = new Set<string>();
+    if (characterId && festivalEventIds.length > 0) {
+      const claims = await this.prisma.liveOpsEventRewardClaim.findMany({
+        where: { characterId, eventId: { in: festivalEventIds } },
+        select: { eventId: true },
+      });
+      for (const c of claims) claimedEventIds.add(c.eventId);
+    }
+
+    return events.map((e) => {
+      const cfg = e.configJson as {
+        multiplier?: number;
+        rewardJson?: Record<string, unknown>;
+      };
+      let multiplier: number | null = null;
+      if (typeof cfg.multiplier === 'number' && isValidLiveOpsScheduledEventType(e.type)) {
+        multiplier = clampLiveOpsMultiplier(e.type, cfg.multiplier);
+      }
+      let reward: LiveOpsEventReward | null = null;
+      if (e.type === 'FESTIVAL_GIFT' && cfg.rewardJson) {
+        try {
+          reward = parseLiveOpsEventReward(cfg.rewardJson);
+        } catch {
+          reward = null;
+        }
+      }
+      const claimable =
+        e.type === 'FESTIVAL_GIFT' &&
+        characterId !== null &&
+        characterId !== undefined &&
+        !claimedEventIds.has(e.id);
+      const runtimeSupported = isValidLiveOpsScheduledEventType(e.type)
+        ? isLiveOpsRuntimeSupported(e.type)
+        : false;
+      return {
+        key: e.key,
+        type: e.type,
+        title: e.title,
+        description: e.description,
+        startsAt: e.startsAt,
+        endsAt: e.endsAt,
+        publicConfig: { multiplier, reward },
+        claimable,
+        runtimeSupported,
+      };
+    });
+  }
+
+  /**
+   * Phase 15.3.A — claim FESTIVAL_GIFT one-time reward for a character.
+   *
+   * Validation:
+   *   - Event must exist (key = `eventKey`).
+   *   - Event status must be `ACTIVE` AND now ∈ [startsAt, endsAt).
+   *   - Event type must be `FESTIVAL_GIFT`.
+   *   - Event configJson.rewardJson must validate (defense-in-depth even
+   *     though admin already validated on create/update).
+   *
+   * Idempotency:
+   *   - `LiveOpsEventRewardClaim` UNIQUE (eventId, characterId) → P2002
+   *     on duplicate → throw `EVENT_ALREADY_CLAIMED`. Currency/item grant
+   *     transactional with claim row insert — either all happen or none.
+   *
+   * Caps (defense-in-depth):
+   *   - `parseLiveOpsEventReward` clamps oversized values to shared caps
+   *     (`FESTIVAL_GIFT_LINH_THACH_CAP=1000`, `FESTIVAL_GIFT_TIEN_NGOC_CAP=50`,
+   *     per-item qty ≤ 50, max 10 items).
+   *
+   * Note: `currency` / `inventory` services injected as `@Optional()` so
+   * unit tests can construct service without full DI graph; runtime claim
+   * requires them — throws if not wired.
+   */
+  async claimEventReward(
+    characterId: string,
+    eventKey: string,
+    now: Date = new Date(),
+  ): Promise<LiveOpsClaimResult> {
+    const event = await this.prisma.liveOpsScheduledEvent.findUnique({
+      where: { key: eventKey },
+    });
+    if (!event) throw new LiveOpsEventSchedulerError('EVENT_NOT_FOUND');
+
+    // Must be ACTIVE + within window (defense-in-depth even if cron lag).
+    if (event.status !== 'ACTIVE') {
+      throw new LiveOpsEventSchedulerError('EVENT_NOT_ACTIVE');
+    }
+    if (!isLiveOpsEventActiveAt(event.startsAt, event.endsAt, now)) {
+      throw new LiveOpsEventSchedulerError('EVENT_NOT_ACTIVE');
+    }
+    if (event.type !== 'FESTIVAL_GIFT') {
+      throw new LiveOpsEventSchedulerError('EVENT_NOT_CLAIMABLE');
+    }
+
+    // Validate + parse reward (clamp to caps).
+    const cfg = event.configJson as {
+      multiplier?: number;
+      rewardJson?: Record<string, unknown>;
+    };
+    if (!cfg.rewardJson || typeof cfg.rewardJson !== 'object') {
+      throw new LiveOpsEventSchedulerError('EVENT_REWARD_EMPTY');
+    }
+    const rewardCode = validateLiveOpsEventRewardJson(cfg.rewardJson);
+    if (rewardCode) {
+      throw new LiveOpsEventSchedulerError(rewardCode);
+    }
+    const reward = parseLiveOpsEventReward(cfg.rewardJson);
+
+    // Verify character exists (FK constraint will catch but pre-check
+    // gives clean error code instead of P2003).
+    const char = await this.prisma.character.findUnique({
+      where: { id: characterId },
+      select: { id: true },
+    });
+    if (!char) throw new LiveOpsEventSchedulerError('NO_CHARACTER');
+
+    if (!this.currency || !this.inventory) {
+      // Programmer error — module not wired. Surface clearly so the FE
+      // controller catches it via 500 rather than silent partial grant.
+      throw new Error(
+        'LiveOpsEventSchedulerService: claimEventReward requires CurrencyService + InventoryService',
+      );
+    }
+
+    const eventId = event.id;
+    let claimedAt: Date;
+    try {
+      claimedAt = await this.prisma.$transaction(async (tx) => {
+        // Insert claim row first — P2002 on (eventId, characterId)
+        // duplicate rolls back currency/item grants.
+        const claim = await tx.liveOpsEventRewardClaim.create({
+          data: {
+            eventId,
+            characterId,
+            rewardJson: reward as unknown as Prisma.InputJsonValue,
+          },
+          select: { claimedAt: true },
+        });
+
+        // Grant linhThach (if any).
+        if (reward.linhThach > 0) {
+          await this.currency!.applyTx(tx, {
+            characterId,
+            currency: CurrencyKind.LINH_THACH,
+            delta: BigInt(reward.linhThach),
+            reason: 'LIVEOPS_FESTIVAL_GIFT_REWARD',
+            refType: 'LiveOpsScheduledEvent',
+            refId: eventId,
+            meta: {
+              eventKey: event.key,
+              eventType: 'FESTIVAL_GIFT',
+            },
+          });
+        }
+        // Grant tienNgoc (if any).
+        if (reward.tienNgoc > 0) {
+          await this.currency!.applyTx(tx, {
+            characterId,
+            currency: CurrencyKind.TIEN_NGOC,
+            delta: BigInt(reward.tienNgoc),
+            reason: 'LIVEOPS_FESTIVAL_GIFT_REWARD',
+            refType: 'LiveOpsScheduledEvent',
+            refId: eventId,
+            meta: {
+              eventKey: event.key,
+              eventType: 'FESTIVAL_GIFT',
+            },
+          });
+        }
+        // Grant items (if any).
+        if (reward.items.length > 0) {
+          await this.inventory!.grantTx(
+            tx,
+            characterId,
+            reward.items.map((it) => ({ itemKey: it.itemKey, qty: it.qty })),
+            {
+              reason: 'LIVEOPS_FESTIVAL_GIFT_REWARD',
+              refType: 'LiveOpsScheduledEvent',
+              refId: eventId,
+              extra: { eventKey: event.key },
+            },
+          );
+        }
+        return claim.claimedAt;
+      });
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        throw new LiveOpsEventSchedulerError('EVENT_ALREADY_CLAIMED');
+      }
+      throw e;
+    }
+
+    return {
+      eventKey: event.key,
+      claimedAt: claimedAt.toISOString(),
+      granted: reward,
+    };
   }
 
   /**
