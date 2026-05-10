@@ -793,3 +793,154 @@ export function giftCodeStatusOf(row: AdminGiftCodeRow, now = new Date()): GiftC
   if (row.maxRedeems !== null && row.redeemCount >= row.maxRedeems) return 'EXHAUSTED';
   return 'ACTIVE';
 }
+
+// ---------- Phase 16.6 — Admin Economy Safety ----------
+
+export type EconomyAnomalySeverity = 'INFO' | 'WARN' | 'CRITICAL';
+export type EconomyIssueStatus = 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED';
+export type EconomyAnomalySource =
+  | 'CURRENCY_DELTA_24H'
+  | 'RARE_ITEM_GAIN_24H'
+  | 'REWARD_CAP_BYPASS'
+  | 'ADMIN_GRANT_OVER_LIMIT'
+  | 'MARKET_OUTLIER';
+
+export interface EconomyLedgerCheckRunRow {
+  id: string;
+  dayBucket: string;
+  status: string;
+  startedAt: string;
+  finishedAt: string | null;
+  summaryJson: unknown;
+  triggeredBy: string | null;
+}
+
+export interface EconomyLedgerCheckIssueRow {
+  id: string;
+  runId: string;
+  severity: EconomyAnomalySeverity;
+  type: string;
+  characterId: string | null;
+  detailsJson: unknown;
+  status: EconomyIssueStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EconomyAnomalyRow {
+  id: string;
+  severity: EconomyAnomalySeverity;
+  source: EconomyAnomalySource;
+  characterId: string | null;
+  userId: string | null;
+  detailsJson: unknown;
+  status: EconomyIssueStatus;
+  windowKey: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LedgerCheckRunSummary {
+  runId: string;
+  dayBucket: string;
+  status: string;
+  charactersScanned: number;
+  itemKeysScanned: number;
+  currencyDiscrepancies: number;
+  inventoryDiscrepancies: number;
+  rewardCapInconsistencies: number;
+  negativeBalances: number;
+  suspiciousDeltas: number;
+  issuesCreated: number;
+  alreadyDone: boolean;
+}
+
+export interface AnomalyScanSummary {
+  windowKey: string;
+  topCurrencyDelta: number;
+  rareItemGain: number;
+  rewardCapBypass: number;
+  marketOutlier: number;
+  totalAnomaliesCreated: number;
+  totalAnomaliesSkipped: number;
+}
+
+export async function adminLedgerCheckRun(
+  forceRerun = false,
+): Promise<LedgerCheckRunSummary> {
+  const { data } = await apiClient.post<Envelope<LedgerCheckRunSummary>>(
+    '/admin/economy/ledger-check/run',
+    { forceRerun },
+  );
+  return unwrap(data);
+}
+
+export async function adminLedgerCheckLatest(): Promise<{
+  run: EconomyLedgerCheckRunRow | null;
+  openIssues: number;
+}> {
+  const { data } = await apiClient.get<
+    Envelope<{ run: EconomyLedgerCheckRunRow | null; openIssues: number }>
+  >('/admin/economy/ledger-check/latest');
+  return unwrap(data);
+}
+
+export async function adminLedgerCheckIssues(filters: {
+  severity?: EconomyAnomalySeverity;
+  status?: EconomyIssueStatus;
+  type?: string;
+  runId?: string;
+  limit?: number;
+} = {}): Promise<{ items: EconomyLedgerCheckIssueRow[]; total: number }> {
+  const params: Record<string, string | number> = {};
+  if (filters.severity) params.severity = filters.severity;
+  if (filters.status) params.status = filters.status;
+  if (filters.type) params.type = filters.type;
+  if (filters.runId) params.runId = filters.runId;
+  if (filters.limit) params.limit = filters.limit;
+  const { data } = await apiClient.get<
+    Envelope<{ items: EconomyLedgerCheckIssueRow[]; total: number }>
+  >('/admin/economy/ledger-check/issues', { params });
+  return unwrap(data);
+}
+
+export async function adminLedgerCheckIssueAck(id: string): Promise<void> {
+  await apiClient.post(`/admin/economy/ledger-check/issues/${id}/ack`, {});
+}
+
+export async function adminLedgerCheckIssueResolve(id: string): Promise<void> {
+  await apiClient.post(`/admin/economy/ledger-check/issues/${id}/resolve`, {});
+}
+
+export async function adminAnomalyScanRun(): Promise<AnomalyScanSummary> {
+  const { data } = await apiClient.post<Envelope<AnomalyScanSummary>>(
+    '/admin/economy/anomalies/scan',
+    {},
+  );
+  return unwrap(data);
+}
+
+export async function adminListAnomalies(filters: {
+  severity?: EconomyAnomalySeverity;
+  status?: EconomyIssueStatus;
+  source?: EconomyAnomalySource;
+  limit?: number;
+} = {}): Promise<{ items: EconomyAnomalyRow[]; total: number }> {
+  const params: Record<string, string | number> = {};
+  if (filters.severity) params.severity = filters.severity;
+  if (filters.status) params.status = filters.status;
+  if (filters.source) params.source = filters.source;
+  if (filters.limit) params.limit = filters.limit;
+  const { data } = await apiClient.get<
+    Envelope<{ items: EconomyAnomalyRow[]; total: number }>
+  >('/admin/economy/anomalies', { params });
+  return unwrap(data);
+}
+
+export async function adminAnomalyAck(id: string): Promise<void> {
+  await apiClient.post(`/admin/economy/anomalies/${id}/ack`, {});
+}
+
+export async function adminAnomalyResolve(id: string): Promise<void> {
+  await apiClient.post(`/admin/economy/anomalies/${id}/resolve`, {});
+}

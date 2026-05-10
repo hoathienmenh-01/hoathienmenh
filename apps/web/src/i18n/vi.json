@@ -1215,7 +1215,38 @@
       "audit": "Nhật ký",
       "giftcodes": "Giftcode",
       "boss": "Boss",
-      "liveops": "LiveOps"
+      "liveops": "LiveOps",
+      "economy": "Kinh tế (An toàn)"
+    },
+    "economySafety": {
+      "latestRun": { "title": "Lần kiểm tra ledger gần nhất" },
+      "issues": { "title": "Vấn đề ledger" },
+      "anomalies": { "title": "Bất thường economy" },
+      "filter": {
+        "severityAll": "Tất cả mức độ",
+        "statusAll": "Tất cả trạng thái",
+        "sourceAll": "Tất cả nguồn"
+      },
+      "dayBucket": "Ngày",
+      "status": "Trạng thái",
+      "startedAt": "Bắt đầu",
+      "openIssues": "Vấn đề mở",
+      "severity": "Mức",
+      "type": "Loại",
+      "source": "Nguồn",
+      "characterId": "Character ID",
+      "actions": "Thao tác",
+      "ack": "Xác nhận",
+      "resolve": "Đóng",
+      "runBtn": "Chạy kiểm tra ledger",
+      "scanBtn": "Quét bất thường",
+      "confirmRun": "Chạy kiểm tra ledger ngay? Có thể tốn thời gian.",
+      "confirmScan": "Chạy quét anomaly ngay?",
+      "runDone": "Hoàn tất: {issues} vấn đề ({status}).",
+      "scanDone": "Hoàn tất: {created} mới, {skipped} bỏ qua.",
+      "ackDone": "Đã xác nhận.",
+      "resolveDone": "Đã đóng.",
+      "empty": "Chưa có dữ liệu."
     },
     "stats": {
       "users": "Người dùng",

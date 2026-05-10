@@ -1215,7 +1215,38 @@
       "audit": "Audit",
       "giftcodes": "Giftcodes",
       "boss": "Boss",
-      "liveops": "LiveOps"
+      "liveops": "LiveOps",
+      "economy": "Economy Safety"
+    },
+    "economySafety": {
+      "latestRun": { "title": "Latest ledger check run" },
+      "issues": { "title": "Ledger issues" },
+      "anomalies": { "title": "Economy anomalies" },
+      "filter": {
+        "severityAll": "All severities",
+        "statusAll": "All statuses",
+        "sourceAll": "All sources"
+      },
+      "dayBucket": "Day",
+      "status": "Status",
+      "startedAt": "Started",
+      "openIssues": "Open issues",
+      "severity": "Severity",
+      "type": "Type",
+      "source": "Source",
+      "characterId": "Character ID",
+      "actions": "Actions",
+      "ack": "Ack",
+      "resolve": "Resolve",
+      "runBtn": "Run ledger check",
+      "scanBtn": "Run anomaly scan",
+      "confirmRun": "Run ledger check now? Can take time.",
+      "confirmScan": "Run anomaly scan now?",
+      "runDone": "Done: {issues} issues ({status}).",
+      "scanDone": "Done: {created} created, {skipped} skipped.",
+      "ackDone": "Acknowledged.",
+      "resolveDone": "Resolved.",
+      "empty": "No data."
     },
     "stats": {
       "users": "Users",

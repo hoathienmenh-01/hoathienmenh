@@ -47,6 +47,7 @@ import ConfirmModal from '@/components/ui/ConfirmModal.vue';
 import AdminLiveOpsPanel from '@/components/AdminLiveOpsPanel.vue';
 import AdminLiveOpsSchedulePreviewPanel from '@/components/AdminLiveOpsSchedulePreviewPanel.vue';
 import AdminLiveOpsDryRunPanel from '@/components/AdminLiveOpsDryRunPanel.vue';
+import AdminEconomySafetyPanel from '@/components/AdminEconomySafetyPanel.vue';
 import {
   computeGiftcodeRevokeImpact,
   mapGiftcodeRevokeErrorKey,
@@ -60,7 +61,7 @@ const toast = useToastStore();
 const router = useRouter();
 const { t } = useI18n();
 
-type Tab = 'stats' | 'users' | 'topups' | 'audit' | 'giftcodes' | 'boss' | 'liveops';
+type Tab = 'stats' | 'users' | 'topups' | 'audit' | 'giftcodes' | 'boss' | 'liveops' | 'economy';
 const tab = ref<Tab>('stats');
 const stats = ref<AdminStats | null>(null);
 const alerts = ref<AdminEconomyAlerts | null>(null);
@@ -733,7 +734,7 @@ const isAdmin = () => game.character?.role === 'ADMIN';
 
       <nav class="flex gap-1 border-b border-ink-300/30 text-sm">
         <button
-          v-for="tk in (['stats','users','topups','audit','giftcodes','boss','liveops'] as const)"
+          v-for="tk in (['stats','users','topups','audit','giftcodes','boss','liveops','economy'] as const)"
           :key="tk"
           class="px-3 py-2 relative"
           :class="tab === tk ? 'border-b-2 border-amber-300 text-ink-50' : 'text-ink-300'"
@@ -1663,6 +1664,15 @@ const isAdmin = () => game.character?.role === 'ADMIN';
         <AdminLiveOpsPanel />
         <AdminLiveOpsSchedulePreviewPanel />
         <AdminLiveOpsDryRunPanel />
+      </section>
+
+      <!-- ECONOMY SAFETY TAB (Phase 16.6) -->
+      <section
+        v-else-if="tab === 'economy'"
+        class="space-y-3"
+        data-testid="admin-economy-safety-section"
+      >
+        <AdminEconomySafetyPanel />
       </section>
 
       <!-- BOSS TAB -->
