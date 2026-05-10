@@ -35,6 +35,7 @@ import { SectSeasonModule } from './modules/sect-season/sect-season.module';
 import { TerritoryModule } from './modules/territory/territory.module';
 import { AdminEconomySafetyModule } from './modules/admin-economy-safety/admin-economy-safety.module';
 import { LiveOpsCronModule } from './modules/liveops-cron/liveops-cron.module';
+import { LiveOpsEventSchedulerModule } from './modules/liveops-event-scheduler/liveops-event-scheduler.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { ArenaModule } from './modules/arena/arena.module';
 import { ArenaAntiWintradeAdminModule } from './modules/arena-anti-wintrade-admin/arena-anti-wintrade-admin.module';
@@ -83,6 +84,10 @@ import { EconomyModule } from './modules/economy/economy.module';
     // SAU TerritoryModule + SectSeasonModule vì cron module import 2
     // module đó để inject services. AdminModule cũng đã import xong.
     LiveOpsCronModule,
+    // Phase 15.1–15.2 — LiveOps Event Scheduler. SAU AdminModule (cần
+    // AdminGuard); cron tick recompute wire trong LiveOpsCronModule
+    // (file cron.processor đọc service này).
+    LiveOpsEventSchedulerModule,
     // Phase 16.6 — Economy Anti-cheat (ledger checker + anomaly
     // scanner cron + admin endpoints). SAU AdminModule + EconomyModule.
     AdminEconomySafetyModule,
