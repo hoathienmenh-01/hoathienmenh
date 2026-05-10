@@ -84,12 +84,14 @@ function makeController(opts: ControllerOpts = {}) {
     undefined, // characterSkill
     undefined, // gem
     undefined, // refine
+    undefined, // equipment (Phase 15.0.A)
     tribulation,
     undefined, // achievement
     undefined, // talent
     undefined, // alchemy
     undefined, // title
     undefined, // buff
+    undefined, // tribulationMiniBattle
     undefined, // profileLimiter
   );
   return { controller };

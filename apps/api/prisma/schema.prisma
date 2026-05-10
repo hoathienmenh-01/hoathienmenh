@@ -311,6 +311,10 @@ model Character {
   arenaMatchesDefender    ArenaMatch[]                 @relation("ArenaMatchDefender")
   arenaStandings          ArenaStanding[]
   arenaSeasonRewardGrants ArenaSeasonRewardGrant[]
+  /// Phase 15.0.A — Equipment Reforge / Enchant Foundation.
+  /// Audit history per attempt; FK Cascade khi xoá character.
+  equipmentReforgeHistory EquipmentReforgeHistory[]
+  equipmentEnchantHistory EquipmentEnchantHistory[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1213,10 +1217,70 @@ model InventoryItem {
   /// Item non-equipment / chưa luyện giữ `0`. Server-authoritative qua
   /// `RefineService.refineEquipment` (no client mutation).
   refineLevel  Int        @default(0)
+  /// Phase 15.0.A — Equipment Reforge Foundation.
+  /// Array of `{ kind, value }` rolled khi reforge (`rollReforgedSubstats`).
+  /// kind ∈ {atk,def,hpMax,mpMax,spirit}. Server-authoritative qua
+  /// `EquipmentService.reforge` — overwrite toàn bộ slot mỗi reroll.
+  /// Empty `[]` cho legacy row + non-equipment.
+  substatsJson Json       @default("[]")
+  /// Phase 15.0.A — Equipment Enchant Foundation.
+  /// Element key Ngũ Hành (`kim`/`moc`/`thuy`/`hoa`/`tho`). NULL = chưa
+  /// enchant. Element được khoá khi `enchantLevel >= 1` — đổi hệ cần PR
+  /// future với reset cost. Bonus apply qua `composeEnchantBonus`.
+  enchantElement String?
+  /// Phase 15.0.A — Equipment Enchant Level (0..MAX_ENCHANT_LEVEL=5).
+  /// 0 = chưa enchant. Server-authoritative qua `EquipmentService.enchant`.
+  enchantLevel Int        @default(0)
   createdAt    DateTime   @default(now())
 
   @@unique([characterId, equippedSlot])
   @@index([characterId, itemKey])
+}
+
+/// Phase 15.0.A — Equipment Reforge audit history.
+/// Mỗi reroll thành công ghi 1 row trong cùng `$transaction` với mutation
+/// `InventoryItem.substatsJson` + currency/material consume. KHÔNG idempotent
+/// (mỗi reroll = 1 row mới). Caller chịu trách nhiệm debounce / rate-limit.
+model EquipmentReforgeHistory {
+  id              String   @id @default(cuid())
+  characterId     String
+  character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Soft pointer tới `InventoryItem.id`. KHÔNG có FK vì item có thể bị bán/
+  /// transfer ⇒ history audit vẫn giữ row.
+  inventoryItemId String
+  itemKey         String
+  /// Substats trước reroll (snapshot `EquipmentSubstat[]`).
+  beforeJson      Json     @default("[]")
+  /// Substats sau reroll (snapshot `EquipmentSubstat[]`).
+  afterJson       Json     @default("[]")
+  /// Cost detail: `{ linhThachCost, materialKey, materialQty }`.
+  costJson        Json     @default("{}")
+  createdAt       DateTime @default(now())
+
+  @@index([characterId, createdAt])
+  @@index([inventoryItemId, createdAt])
+}
+
+/// Phase 15.0.A — Equipment Enchant audit history.
+/// Mỗi level-up thành công ghi 1 row. Mỗi row = 1 (element, level) tăng từ
+/// `before` sang `after`. Lưu cả `beforeElement`/`afterElement` để track
+/// trường hợp chuyển hệ (foundation phase chưa hỗ trợ — reserved cho future).
+model EquipmentEnchantHistory {
+  id              String   @id @default(cuid())
+  characterId     String
+  character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  inventoryItemId String
+  itemKey         String
+  beforeElement   String?
+  beforeLevel     Int      @default(0)
+  afterElement    String?
+  afterLevel      Int      @default(0)
+  /// Cost detail: `{ linhThachCost, materialKey, materialQty }`.
+  costJson        Json     @default("{}")
+  createdAt       DateTime @default(now())
+
+  @@index([characterId, createdAt])
+  @@index([inventoryItemId, createdAt])
 }
 
 enum ListingStatus {

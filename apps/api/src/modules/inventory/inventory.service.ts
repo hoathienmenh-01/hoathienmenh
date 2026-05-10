@@ -2,13 +2,18 @@ import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import type { EquipSlot, Prisma } from '@prisma/client';
 import {
   buffForItem,
+  composeEnchantBonus,
   composeEquipmentElementalAtkBonus,
   composeEquippedItemElementResist,
   composeSocketBonus,
+  composeSubstatBonus,
   getRefineStatMultiplier,
+  isEquipmentSubstatKind,
   itemByKey,
   itemOrGemByKey,
+  parseEnchantElement,
   type ElementKey,
+  type EquipmentSubstat,
   type ItemDef,
   type RolledLoot,
 } from '@xuantoi/shared';
@@ -136,7 +141,16 @@ export type ItemLedgerReason =
   // Idempotency CAS qua `Character.storyFlags['relchain_<chainKey>_claimed']`
   // JSON-path guard — đảm bảo grant đúng 1 lần / chain / character. Mirror
   // cùng `CurrencyLedger` reason `NPC_RELATIONSHIP_CHAIN_REWARD`.
-  | 'NPC_RELATIONSHIP_CHAIN_REWARD';
+  | 'NPC_RELATIONSHIP_CHAIN_REWARD'
+  // Phase 15.0.A — Equipment Reforge / Enchant Foundation. Wire qua
+  // `EquipmentService.reforge` (consume material `tinh_thiet` / `yeu_dan` /
+  // `han_ngoc` per quality) hoặc `EquipmentService.enchant` (consume material
+  // cùng list, scale theo level). qtyDelta âm, refType='InventoryItem',
+  // refId=inventoryItemId của trang bị đang reforge/enchant. Mirror
+  // `CurrencyLedger` reason `EQUIPMENT_REFORGE` / `EQUIPMENT_ENCHANT` cho
+  // linhThach cùng `refId`.
+  | 'EQUIPMENT_REFORGE_COST'
+  | 'EQUIPMENT_ENCHANT_COST';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;
@@ -172,6 +186,41 @@ export interface InventoryView {
   sockets: string[];
   /** Phase 11.5.B Refine MVP — cấp luyện khí 0..15. */
   refineLevel: number;
+  /**
+   * Phase 15.0.A — Equipment Reforge Foundation.
+   * Substats đã roll (`EquipmentSubstat[]`). Empty `[]` cho legacy / non-
+   * equipment / chưa reforge.
+   */
+  substats: EquipmentSubstat[];
+  /**
+   * Phase 15.0.A — Equipment Enchant Foundation.
+   * Element key `kim`/`moc`/`thuy`/`hoa`/`tho` đã enchant. `null` = chưa.
+   */
+  enchantElement: ElementKey | null;
+  /**
+   * Phase 15.0.A — Equipment Enchant Level (0..MAX_ENCHANT_LEVEL=5).
+   * `0` = chưa enchant.
+   */
+  enchantLevel: number;
+}
+
+/**
+ * Parse `InventoryItem.substatsJson` (Prisma `Json`) thành mảng `EquipmentSubstat`.
+ * Defensive: skip entry không match shape (kind invalid / value non-positive).
+ */
+export function parseSubstatsJson(input: unknown): EquipmentSubstat[] {
+  if (!Array.isArray(input)) return [];
+  const out: EquipmentSubstat[] = [];
+  for (const raw of input) {
+    if (!raw || typeof raw !== 'object') continue;
+    const o = raw as Record<string, unknown>;
+    const kind = o.kind;
+    const value = o.value;
+    if (typeof kind !== 'string' || !isEquipmentSubstatKind(kind)) continue;
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) continue;
+    out.push({ kind, value: Math.floor(value) });
+  }
+  return out;
 }
 
 export interface EquipBonusSummary {
@@ -216,6 +265,9 @@ export class InventoryService {
         item,
         sockets: r.sockets,
         refineLevel: r.refineLevel,
+        substats: parseSubstatsJson(r.substatsJson),
+        enchantElement: parseEnchantElement(r.enchantElement),
+        enchantLevel: r.enchantLevel ?? 0,
       });
     }
     return out;
@@ -267,13 +319,40 @@ export class InventoryService {
         itemMpMax += sb.mpMax ?? 0;
         itemSpirit += sb.spirit ?? 0;
       }
-      // Phase 11.5.B refine multiplier (1.0 nếu refineLevel=0).
+      // Phase 11.5.B refine multiplier (1.0 nếu refineLevel=0). Refine
+      // multiply lên base + socket nhưng KHÔNG amplify Phase 15.0.A reforge
+      // substat / enchant bonus — Phase 15.0.A bonus là flat additive sau
+      // refine multiplier để giữ tổng power < +20% so với refine alone.
       const mult = getRefineStatMultiplier(r.refineLevel);
       atk += Math.round(itemAtk * mult);
       def += Math.round(itemDef * mult);
       hpMaxBonus += Math.round(itemHpMax * mult);
       mpMaxBonus += Math.round(itemMpMax * mult);
       spiritBonus += Math.round(itemSpirit * mult);
+
+      // Phase 15.0.A — Equipment Reforge substats (flat additive, không
+      // refine-multiplied).
+      const substats = parseSubstatsJson(r.substatsJson);
+      if (substats.length > 0) {
+        const sub = composeSubstatBonus(substats);
+        atk += sub.atk;
+        def += sub.def;
+        hpMaxBonus += sub.hpMax;
+        mpMaxBonus += sub.mpMax;
+        spiritBonus += sub.spirit;
+      }
+
+      // Phase 15.0.A — Equipment Enchant Ngũ Hành bonus (flat additive,
+      // cap level=MAX_ENCHANT_LEVEL=5 enforce trong composeEnchantBonus).
+      const enchantElement = parseEnchantElement(r.enchantElement);
+      if (enchantElement !== null && r.enchantLevel > 0) {
+        const enc = composeEnchantBonus(enchantElement, r.enchantLevel);
+        atk += enc.atk;
+        def += enc.def;
+        hpMaxBonus += enc.hpMax;
+        mpMaxBonus += enc.mpMax;
+        spiritBonus += enc.spirit;
+      }
     }
     return { atk, def, hpMaxBonus, mpMaxBonus, spiritBonus };
   }

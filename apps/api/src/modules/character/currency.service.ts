@@ -84,7 +84,15 @@ export type LedgerReason =
   // guard — race-safe: 2 concurrent claim cùng chainKey, đúng 1 winner ghi
   // ledger row. Reward cap thấp hơn quest (linhThach ≤ 500, tienNgoc ≤ 10)
   // theo `NPC_RELATIONSHIP_CHAIN_*_CAP` (shared catalog).
-  | 'NPC_RELATIONSHIP_CHAIN_REWARD';
+  | 'NPC_RELATIONSHIP_CHAIN_REWARD'
+  // Phase 15.0.A — Equipment Reforge / Enchant Foundation. Wire qua
+  // `EquipmentService.reforge` / `enchant` qua `applyTx` cho linhThach với
+  // `refType='InventoryItem'` + `refId=inventoryItemId`. KHÔNG idempotent —
+  // mỗi reroll/level-up = 1 ledger row. Pure sink (delta < 0). Mirror
+  // `ItemLedger` reason `EQUIPMENT_REFORGE_COST` / `EQUIPMENT_ENCHANT_COST`
+  // cho material consume cùng `refId`.
+  | 'EQUIPMENT_REFORGE'
+  | 'EQUIPMENT_ENCHANT';
 
 export interface CurrencyApplyInput {
   characterId: string;

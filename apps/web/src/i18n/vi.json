@@ -887,6 +887,51 @@
       "SKILL_NOT_FOUND": "Bí kíp này không còn lưu hành — sách lệnh ngộ.",
       "CHARACTER_SKILL_UNAVAILABLE": "Pháp Quyển Đường tạm đóng cửa.",
       "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
+    },
+    "upgrade": {
+      "title": "Tẩy Luyện · Phụ Ma",
+      "none": "Không",
+      "substatKind": {
+        "atk": "công",
+        "def": "thủ",
+        "hpMax": "sinh lực",
+        "mpMax": "linh lực",
+        "spirit": "thần thức"
+      },
+      "substatRow": "+{value} {kind}",
+      "reforge": {
+        "currentSubstats": "Chỉ số phụ hiện tại",
+        "empty": "Chưa có chỉ số phụ.",
+        "costLabel": "Phí tẩy luyện: {linhThach} linh thạch + {materialQty}× {materialName}",
+        "button": "Tẩy Luyện",
+        "badgeLabel": "+{count} phụ",
+        "confirmTitle": "Xác nhận tẩy luyện",
+        "confirmMessage": "Tiêu hao {linhThach} linh thạch + {materialQty}× {materialName}. Chỉ số phụ sẽ được gieo lại.",
+        "successToast": "Tẩy luyện thành công — đã gieo {count} chỉ số phụ."
+      },
+      "enchant": {
+        "currentLabel": "Phụ ma Ngũ Hành",
+        "currentText": "{element} cấp {level}/{max}",
+        "empty": "Chưa phụ ma.",
+        "badgeLabel": "{element}+{level}",
+        "maxLabel": "Phụ ma đỉnh ({max}).",
+        "costLabel": "Lên cấp {level}: {linhThach} linh thạch + {materialQty}× {materialName}",
+        "button": "Phụ Ma",
+        "confirmTitle": "Xác nhận phụ ma",
+        "confirmMessage": "Phụ ma {element} cấp {level}? Tiêu hao {linhThach} linh thạch + {materialQty}× {materialName}.",
+        "successToast": "Phụ ma {element} thành công — cấp {level}."
+      },
+      "error": {
+        "EQUIPMENT_NOT_FOUND": "Không tìm thấy trang bị (hoặc không phải của bạn).",
+        "INVALID_EQUIPMENT": "Item này không thể tẩy luyện / phụ ma.",
+        "INSUFFICIENT_FUNDS": "Không đủ linh thạch.",
+        "INSUFFICIENT_MATERIAL": "Không đủ nguyên liệu.",
+        "MAX_ENCHANT_REACHED": "Phụ ma đã đạt cấp tối đa.",
+        "INVALID_ELEMENT": "Hệ Ngũ Hành không hợp lệ.",
+        "ELEMENT_LOCKED": "Trang bị đã khoá hệ — không đổi được hệ khác.",
+        "NO_ELEMENT_SELECTED": "Hãy chọn 1 hệ Ngũ Hành trước.",
+        "UNKNOWN": "Lỗi không xác định, vui lòng thử lại."
+      }
     }
   },
   "equipSlot": {

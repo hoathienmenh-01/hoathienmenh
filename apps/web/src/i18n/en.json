@@ -887,6 +887,51 @@
       "SKILL_NOT_FOUND": "This technique no longer exists in the catalog.",
       "CHARACTER_SKILL_UNAVAILABLE": "Skill book hall is closed.",
       "UNKNOWN": "Something went wrong, please retry."
+    },
+    "upgrade": {
+      "title": "Reforge · Enchant",
+      "none": "None",
+      "substatKind": {
+        "atk": "ATK",
+        "def": "DEF",
+        "hpMax": "HP",
+        "mpMax": "MP",
+        "spirit": "Spirit"
+      },
+      "substatRow": "+{value} {kind}",
+      "reforge": {
+        "currentSubstats": "Current substats",
+        "empty": "No substats yet.",
+        "costLabel": "Reforge cost: {linhThach} linh thach + {materialQty}× {materialName}",
+        "button": "Reforge",
+        "badgeLabel": "+{count} sub",
+        "confirmTitle": "Confirm reforge",
+        "confirmMessage": "Spend {linhThach} linh thach + {materialQty}× {materialName}? Substats will be re-rolled.",
+        "successToast": "Reforge complete — rolled {count} substats."
+      },
+      "enchant": {
+        "currentLabel": "Wuxing enchant",
+        "currentText": "{element} lvl {level}/{max}",
+        "empty": "Not enchanted yet.",
+        "badgeLabel": "{element}+{level}",
+        "maxLabel": "Enchant maxed ({max}).",
+        "costLabel": "Lvl {level}: {linhThach} linh thach + {materialQty}× {materialName}",
+        "button": "Enchant",
+        "confirmTitle": "Confirm enchant",
+        "confirmMessage": "Enchant {element} lvl {level}? Spend {linhThach} linh thach + {materialQty}× {materialName}.",
+        "successToast": "{element} enchant success — lvl {level}."
+      },
+      "error": {
+        "EQUIPMENT_NOT_FOUND": "Equipment not found (or not yours).",
+        "INVALID_EQUIPMENT": "This item cannot be reforged / enchanted.",
+        "INSUFFICIENT_FUNDS": "Not enough linh thach.",
+        "INSUFFICIENT_MATERIAL": "Not enough material.",
+        "MAX_ENCHANT_REACHED": "Enchant already at max level.",
+        "INVALID_ELEMENT": "Invalid Wuxing element.",
+        "ELEMENT_LOCKED": "Equipment is locked to one element — cannot switch.",
+        "NO_ELEMENT_SELECTED": "Please select a Wuxing element first.",
+        "UNKNOWN": "Unknown error, please retry."
+      }
     }
   },
   "equipSlot": {

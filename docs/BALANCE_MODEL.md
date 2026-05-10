@@ -584,6 +584,64 @@ Ví dụ: TIEN weapon `bonus.atk = 200` → OK. TIEN amulet `bonus.atk = 100, de
 6-piece set: ≤ 60%.
 Không chồng nhiều set cùng lúc (1 character chỉ active 1 set).
 
+### 3.5 Phase 15.0.A — Reforge / Enchant power budget
+
+**Nguyên tắc**: 2 sink mới (reforge substat phụ + enchant Ngũ Hành) đóng góp **additive** vào `equipBonus` qua `InventoryService.equipBonus`, KHÔNG nhân với refine multiplier (Phase 11.5) → tổng power foundation phase < +20% so với baseline `ItemDef.bonuses`. Mục tiêu: cho late-game player có sink tiêu thụ linhThach + material mà KHÔNG lật meta Arena/PvE tier.
+
+#### 3.5.1 Reforge substat slots + value range (`EQUIPMENT_REFORGE_CONFIG`)
+
+| Quality | Slots | atk range | def range | hpMax range | mpMax range | spirit range |
+|---|:---:|---:|---:|---:|---:|---:|
+| PHAM  | 1 | 1..2  | 1..2  | 5..12  | 3..8   | 1..1 |
+| LINH  | 2 | 1..3  | 1..3  | 8..20  | 5..12  | 1..2 |
+| HUYEN | 3 | 2..5  | 2..5  | 15..35 | 8..20  | 1..3 |
+| TIEN  | 3 | 3..7  | 3..7  | 25..55 | 15..30 | 2..4 |
+| THAN  | 4 | 4..10 | 4..10 | 40..80 | 20..45 | 3..6 |
+
+**Worst-case totals** (tất cả slot roll max cùng kind):
+- PHAM: 1 × atk_max=2 → +2 atk (≈ 20% base atk PHAM weapon = 10) → trong budget +20%.
+- LINH: 2 × atk_max=3 → +6 atk (24% base 25) → trong budget +25% (allow extra cho late-game progression).
+- HUYEN: 3 × atk_max=5 → +15 atk (25% base 60).
+- TIEN: 3 × atk_max=7 → +21 atk (10.5% base 200) — buffer rộng cho future tuning.
+- THAN: 4 × atk_max=10 → +40 atk (5% base 800) — endgame budget tighten để giữ tier gap.
+
+#### 3.5.2 Enchant per-level bonus + cap (`ELEMENTAL_ENCHANT_EFFECTS` × `MAX_ENCHANT_LEVEL=5`)
+
+| Element | Identity | Stat kind | Bonus per level | Max bonus (level 5) |
+|---|---|---|---:|---:|
+| Mộc (`moc`)  | Sustain / heal       | hpMax | +12 | +60  |
+| Hỏa (`hoa`)  | Burst                | atk   | +2  | +10  |
+| Thổ (`tho`)  | Defense / shield     | def   | +2  | +10  |
+| Kim (`kim`)  | Crit / armor pierce  | atk   | +1  | +5   |
+| Thủy (`thuy`)| Control / recovery   | mpMax | +6  | +30  |
+
+**Element identity**: Mộc cao nhất hpMax (sustain), Hỏa cao nhất atk per level (burst), Kim atk thấp hơn Hỏa nhưng reserve cho future crit/pierce effect (chưa wire ở foundation), Thuỷ mpMax cho mana economy. Bonus deliberately nhỏ — tổng max enchant level 5 < 1 tier item bonus base (vd. Hỏa max +10 atk ≈ tier LINH bonus.atk).
+
+**Element lock**: enchant level ≥ 1 thì element bị khoá (`ELEMENT_LOCKED` reject request element khác). Player cần level lên cùng hệ — tránh swap hệ liên tục để săn meta. Foundation phase chưa có "phế hệ" item.
+
+#### 3.5.3 Combat / Arena impact
+
+`InventoryService.equipBonus` cộng substats + enchant qua:
+
+```typescript
+equipBonus = {
+  atk: ItemDef.bonuses.atk + composeSubstatBonus(substats).atk + composeEnchantBonus(element, level).atk,
+  def: ...,
+  hpMax: ...,
+  mpMax: ...,
+  spirit: ...,
+}
+```
+
+→ `CombatService.derivedStats` tự include qua pipeline cũ. Arena snapshot Phase 14.1.B capture `equipBonus` đã tính reforge + enchant tại match time → matchmaking ELO không skew. Combat determinism không bị phá (substat values là JSON snapshot, không có RNG runtime).
+
+#### 3.5.4 Anti-power-creep guard
+
+- **Foundation budget**: max total reforge + enchant ≤ +20% baseline tier per item. Nếu sau telemetry thấy player late-game cảm thấy "underpower", future PR có thể nâng `bonusPerLevel` (×1.2..×1.5) HOẶC nâng `MAX_ENCHANT_LEVEL` (5 → 7) — KHÔNG nâng cả hai cùng lúc.
+- **No multiplicative scaling**: substat + enchant cộng additive với `ItemDef.bonuses`, KHÔNG nhân với refine multiplier (Phase 11.5) → max stack power growth = baseline + refine_multi + reforge + enchant additive, không có loop nhân vô hạn.
+- **No cross-element synergy**: enchant 1 hệ chỉ apply 1 statKind. Future PR có thể thêm "ngũ hành chu thiên" (5 trang bị 5 hệ → set bonus) — defer balance review.
+- **Validation gate**: tests `equipment-upgrade.test.ts` (shared) + `equipment.service.test.ts` (API) verify range/cap/cost positive. Unit test fail → CI block merge.
+
 ---
 
 ## 4. COMBAT FORMULA

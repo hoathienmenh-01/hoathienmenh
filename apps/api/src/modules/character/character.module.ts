@@ -13,6 +13,7 @@ import { SpiritualRootService } from './spiritual-root.service';
 import { CultivationMethodService } from './cultivation-method.service';
 import { GemService } from './gem.service';
 import { RefineService } from './refine.service';
+import { EquipmentService } from './equipment.service';
 import { TribulationService } from './tribulation.service';
 import { TribulationMiniBattleService } from './tribulation-mini-battle.service';
 import { BuffService } from './buff.service';
@@ -65,6 +66,7 @@ const profileLimiterProvider = {
     CharacterSkillService,
     GemService,
     RefineService,
+    EquipmentService,
     TribulationService,
     TribulationMiniBattleService,
     BuffService,
@@ -83,6 +85,7 @@ const profileLimiterProvider = {
     CharacterSkillService,
     GemService,
     RefineService,
+    EquipmentService,
     TribulationService,
     TribulationMiniBattleService,
     BuffService,

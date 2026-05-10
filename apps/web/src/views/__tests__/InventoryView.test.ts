@@ -224,6 +224,9 @@ function makeInv(over: Partial<InventoryView> = {}): InventoryView {
     item: makeItemDef(),
     sockets: [],
     refineLevel: 0,
+    substats: [],
+    enchantElement: null,
+    enchantLevel: 0,
     ...over,
   };
 }
@@ -1140,6 +1143,9 @@ function makeGemInv(over: Partial<InventoryView> = {}): InventoryView {
     item,
     sockets: [],
     refineLevel: 0,
+    substats: [],
+    enchantElement: null,
+    enchantLevel: 0,
     ...over,
   };
 }
