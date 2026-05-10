@@ -12,7 +12,93 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Phase 14.3.E.1 — Tribulation Mini-Battle Backend (this PR)
+### Phase 14.3.E.2 — Tribulation Mini-Battle Frontend (this PR)
+
+**Scope**: FE wire cho mini-battle Thiên Kiếp — sau khi backend Phase
+14.3.E.1 đã ship 4 endpoint state-machine, người chơi có thể tương tác
+thực sự với từng phase: chọn 1 trong 5 action mỗi lượt, theo dõi HP /
+shield / DOT / focus / phase progress, xem battle log + result modal.
+**Không** đụng backend logic; FE thuần orchestrator + render. Khi backend
+trả 501 `TRIBULATION_MINI_BATTLE_UNAVAILABLE`, panel ẩn → fallback hoàn
+toàn về flow encounter resolve Phase 14.3.D.
+
+#### Added — Phase 14.3.E.2
+
+- **API client (`apps/web/src/api/tribulation.ts`)**: thêm 4 function
+  (`fetchCurrentTribulationBattle`, `startTribulationBattle`,
+  `submitTribulationBattleAction`, `resolveTribulationBattle`) + view
+  types (`TribulationMiniBattleView`, `TribulationMiniBattleStateView`,
+  `TribulationBattleActionKey`, `TribulationMiniBattleEffectTypeView`,
+  `TribulationBattleEventView`, `TribulationMiniBattleSummaryView`).
+- **Pinia store extend (`apps/web/src/stores/tribulation.ts`)**:
+  - State: `miniBattle`, `miniBattleLoading`, `miniBattleStarting`,
+    `miniBattleActionLoading`, `miniBattleResolving`, `miniBattleError`,
+    `miniBattleAvailable`, `miniBattleLastResult`.
+  - Computed: `miniBattleCanAct`, `miniBattleIsTerminal`.
+  - Actions: `fetchCurrentBattle`, `startBattle`, `submitBattleAction`,
+    `resolveBattle`, `resetMiniBattleError`, `clearMiniBattle`.
+  - Race-safety: in-flight guard mỗi action; `clientNonce` per submit
+    để server idempotent dedupe.
+  - Feature flag fallback: 501 `TRIBULATION_MINI_BATTLE_UNAVAILABLE` →
+    `miniBattleAvailable=false` (không raise UI error).
+- **5 Vue components** (`apps/web/src/components/`):
+  - `TribulationMiniBattlePanel.vue` — orchestrator (start / action /
+    auto-resolve khi terminal / dismiss modal).
+  - `TribulationBattleStatus.vue` — realm/element/effect badge + state
+    + phase progress bar + HP/shield/DOT/focus chip.
+  - `TribulationBattleActions.vue` — 5 action button + double-click
+    guard + per-action tooltip hint.
+  - `TribulationBattleLog.vue` — event log render (damage/shield/heal/
+    DOT/crit chip + i18n message lookup).
+  - `TribulationBattleResultModal.vue` — win/lose modal + CTA
+    "Quay lại tu luyện" / "Thử lại" / Esc-to-close.
+- **TribulationView integration** (`apps/web/src/views/TribulationView.vue`):
+  - Conditional render: `miniBattlePanelVisible` chỉ true khi
+    `miniBattleAvailable === true` + `atPeak` + có encounter.
+  - Backward compat: `miniBattleAvailable === null` (initial) hoặc
+    `false` (501) → giữ nguyên encounter resolve UI Phase 14.3.D.
+  - `onMounted` gọi `fetchCurrentBattle` để hydrate snapshot.
+  - Handlers: `onMiniBattleErrored` (toast i18n), `onMiniBattleReturnCultivation`
+    (refetch state/history/preview/encounter rồi `router.push('/cultivation')`).
+- **i18n VI/EN parity**: thêm namespace `tribulation.miniBattle.*` với
+  ~70 key (title/subtitle, action labels + short + hints, state labels,
+  log labels + 11 message keys, result modal labels + 3 CTAs, 5
+  effect-type hint) + 7 error code mới (`MINI_BATTLE_DISABLED`,
+  `MINI_BATTLE_NOT_FOUND`, `MINI_BATTLE_ALREADY_ACTIVE`,
+  `MINI_BATTLE_TERMINAL`, `MINI_BATTLE_NOT_TERMINAL`,
+  `MINI_BATTLE_INVALID_ACTION`, `TRIBULATION_MINI_BATTLE_UNAVAILABLE`).
+
+#### Tests added — Phase 14.3.E.2
+
+- `apps/web/src/api/__tests__/tribulation.test.ts` — 11 mini-battle
+  endpoint test (current null/snapshot/501, start with/without support
+  + 409 ALREADY_ACTIVE, action with/without nonce + 400 INVALID,
+  resolve success + 400 NOT_TERMINAL).
+- `apps/web/src/stores/__tests__/tribulation.test.ts` — 15 store
+  action test (in-flight guard, terminal short-circuit,
+  fetchCurrentBattle 501 fallback, error/reset/clear).
+- `apps/web/src/components/__tests__/TribulationMiniBattlePanel.test.ts`
+  — 11 component test (no battle / start / active / action / loading
+  disable / log / win modal / lose modal / API error / fallback / i18n
+  parity).
+- `apps/web/src/views/__tests__/TribulationView.test.ts` — 4 view
+  integration test cho gate (`miniBattleAvailable=null/true/false` +
+  onMounted hydrate).
+- i18n parity test (existing) — pass cho 70+ key mới.
+
+#### Internal — Phase 14.3.E.2
+
+- Total: ~1900 LOC FE code thêm + ~1260 LOC test.
+- 1656/1656 web test pass; web typecheck + api typecheck + monorepo
+  build green.
+- Server-authoritative: FE không simulate logic; mỗi action POST →
+  server trả snapshot; FE chỉ render + relay clientNonce.
+- Type-safe: shared `view` types (qua `apps/web/src/api/tribulation.ts`)
+  thay vì re-import shared package types để giữ FE bundle gọn.
+
+---
+
+### Phase 14.3.E.1 — Tribulation Mini-Battle Backend
 
 **Scope**: backend mini-battle cho Thiên Kiếp — biến `attempt → resolve` từ
 RNG snapshot thành state machine có phase/turn, 5 effectType khác biệt rõ
