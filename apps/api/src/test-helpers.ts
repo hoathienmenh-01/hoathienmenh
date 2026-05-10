@@ -150,6 +150,9 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // `createdByAdmin` SET NULL không cần wait FK cleanup).
   await prisma.liveOpsEventRewardClaim.deleteMany({});
   await prisma.liveOpsScheduledEvent.deleteMany({});
+  // Phase 15.3.B — LiveOps Announcement (FK SET NULL → User; xoá trước User
+  // để FK cleanup đơn giản, mirror order liveOpsScheduledEvent).
+  await prisma.liveOpsAnnouncement.deleteMany({});
   await prisma.itemLedger.deleteMany({});
   await prisma.currencyLedger.deleteMany({});
   // Phase 14.1.B — Async Arena foundation (matches reference Character qua
