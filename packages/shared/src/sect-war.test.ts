@@ -300,6 +300,27 @@ describe('SectWar — sectWarWeekKey timezone stability', () => {
     expect(key).toBe('2026-W01');
   });
 
+  it('Jan 1 = Friday year (2027): Thu Jan 7 2027 → 2027-W01 (KHÔNG phải W02)', () => {
+    // Bug class: khi Jan 1 là Fri/Sat/Sun, firstThursday formula `(4 - dow)` cho
+    // ra số âm → trỏ Thursday tuần W53 năm cũ → off-by-one weekNum. Fix +7
+    // khi offset < 0. Trace:
+    //   - Jan 1 2027 = Fri (dow=5). offset = 4-5 = -1 → -1+7 = 6 → firstThursday
+    //     = Jan 7 2027 ✓.
+    //   - Thu Jan 7 2027 → diff=0 → weekNum=1.
+    expect(sectWarWeekKey(new Date('2027-01-07T00:00:00Z'))).toBe('2027-W01');
+  });
+
+  it('Jan 1 = Saturday year (2022): Thu Jan 6 2022 → 2022-W01', () => {
+    // Jan 1 2022 = Sat (dow=6). offset = -2+7 = 5 → firstThursday = Jan 6.
+    // Thu Jan 6 → W01.
+    expect(sectWarWeekKey(new Date('2022-01-06T00:00:00Z'))).toBe('2022-W01');
+  });
+
+  it('Jan 1 = Sunday year (2023): Thu Jan 5 2023 → 2023-W01', () => {
+    // Jan 1 2023 = Sun (dow=7). offset = -3+7 = 4 → firstThursday = Jan 5.
+    expect(sectWarWeekKey(new Date('2023-01-05T00:00:00Z'))).toBe('2023-W01');
+  });
+
   it('UTC tz cũng work (no offset)', () => {
     const key = sectWarWeekKey(new Date('2026-05-07T12:00:00Z'), 'UTC');
     expect(key).toBe('2026-W19');
