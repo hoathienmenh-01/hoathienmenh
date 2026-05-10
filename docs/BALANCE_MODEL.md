@@ -2420,6 +2420,69 @@ với cap nhỏ tránh admin nhầm lì xì 9999 linh thạch / 9999 tiên ngọ
 - **Max-only no-stack** giữ nguyên từ Phase 15.1–15.2.
 - **Fail-soft**: nếu LiveOps service unavailable → runtime trả `1.0` (BOOST) hoặc `0` (DISCOUNT) → no-op cho gameplay flow, KHÔNG block player.
 
+## 11.26 SECT SEASON CHAMPION + MVP REWARD CAPS (Phase 15.7)
+
+### Goal
+
+Phase 15.7 wire reward distribution cuối Sect Season (top sect + top cá nhân) qua mail (KHÔNG direct currency grant — preserve audit trail). Catalog reward đặt ở `packages/shared/src/sect-season-rewards.ts`.
+
+### Catalog values
+
+```ts
+// SECT_SEASON_CHAMPION_REWARD — gửi cho mọi member sect rank-1 (cap 100/season).
+export const SECT_SEASON_CHAMPION_REWARD: SectSeasonRewardDef = {
+  linhThach: 5_000,
+  exp: 2_000,
+  itemRewards: [{ itemKey: 'linh_lo_dan', qty: 2 }],
+  subjectVi: 'Vinh Quang Tông Môn — Phần Thưởng Mùa',
+  bodyVi: 'Tông môn của bạn đứng đầu mùa giải vừa qua! Mỗi đệ tử nhận được phần thưởng vinh danh.',
+};
+
+// SECT_SEASON_MVP_REWARD — gửi cho top-1 contributor cá nhân (1 mail/season).
+export const SECT_SEASON_MVP_REWARD: SectSeasonRewardDef = {
+  linhThach: 15_000,
+  exp: 6_000,
+  itemRewards: [{ itemKey: 'co_thien_dan', qty: 1 }],
+  subjectVi: 'Cá Nhân Xuất Sắc Nhất Mùa — Phần Thưởng MVP',
+  bodyVi: 'Bạn là người đóng góp xuất sắc nhất mùa giải vừa qua! Phần thưởng vinh danh dành riêng cho bạn.',
+};
+
+// Caps (validate qua `validateSectSeasonRewardDef()`):
+export const SECT_SEASON_CHAMPION_LINH_THACH_CAP = 5000;
+export const SECT_SEASON_CHAMPION_EXP_CAP = 2500;
+export const SECT_SEASON_MVP_LINH_THACH_CAP = 15000;
+export const SECT_SEASON_MVP_EXP_CAP = 7500;
+
+// Cap số member nhận champion reward / sect / season — deterministic theo
+// characterId ASC (sect lớn hơn 100 → 100 đầu nhận, còn lại bị skip).
+export const SECT_SEASON_CHAMPION_MEMBER_CAP = 100;
+```
+
+### Why these caps
+
+- **Champion 5,000 LT × 100 cap = max 500,000 LT/season/sect**. Mùa Sect Season = 4 tuần → trung bình 1,250 LT/tuần/member — dưới Sect War tier-1 weekly reward (~5k LT/tuần). Không phá income chính.
+- **MVP 15,000 LT × 1 character = 15,000 LT/season**. Per-season cap 15,000 LT ≈ 3,750 LT/tuần — vẫn dưới full weekly SectWar grand prize. Không issue tienNgoc.
+- **Daily reward cap KHÔNG áp dụng** cho mail-based reward (`MAIL_REWARD_CLAIM` reason không trong `DAILY_REWARD_CAP_BY_REALM_AND_SOURCE`). Tradeoff: season reward tích lũy 1 lần/season — không lặp daily, không cần cap daily.
+- **EXP**: Champion 2,000 = ~early-game tier increment; MVP 6,000 ≈ mid-game tier increment. Thấp để không skew progression.
+- **Items**: Champion `linh_lo_dan` x2 (mid-tier consumable, neutral economy); MVP `co_thien_dan` x1 (high-tier consumable, marker of MVP status). KHÔNG drop equip cao cấp, KHÔNG title runtime.
+
+### Idempotency invariant
+
+- Bảng `SectSeasonRewardGrant` UNIQUE `(seasonKey, rewardType, characterId)` — 1 character + 1 type + 1 season = 1 row tối đa.
+- Cron retry hoặc multi-instance đua → chỉ 1 mail/character/season (P2002 swallow).
+- Test: `apps/api/src/modules/sect-season/sect-season-reward.service.test.ts` — 11 case (idempotent 2x, race Promise.all 3, dryRun, error path, membership rule, cap).
+
+### Membership snapshot rule
+
+- Champion: theo **current membership tại thời điểm grant** (KHÔNG snapshot tại thời điểm season end). Member rời sect SAU snapshot, TRƯỚC grant → **không** nhận champion reward.
+- MVP: theo `mvpCharacterId` ghi vào `SectSeasonSnapshot` (snapshot tại thời điểm finalize). Không phụ thuộc current sect membership.
+
+### Known limitations — Phase 15.7
+
+- **Champion membership audit-perfect**: spec hiện theo current membership. Nếu cần audit-perfect (member-rời-sect SAU snapshot vẫn nhận reward), schema phải thêm `SectSeasonMembershipSnapshot` table — defer Phase 15.8.
+- **MVP top-1 only**: không cấp MVP cho top-2/top-3. Tradeoff: tránh inflation (top-3 sect lớn cộng lại có thể vượt 50,000 LT/season → reward cap ngầm hiện ~30,000 LT).
+- **Champion cap 100**: theo characterId ASC. Sect đông member > 100 → 100 đầu (theo characterId thấp nhất → tendency older account) nhận; còn lại không có UI feedback. Chấp nhận tradeoff để tránh runaway reward cost.
+
 ## 12. CHANGELOG
 
 - **2026-04-30** — Initial creation. Author: Devin AI session 9q.
