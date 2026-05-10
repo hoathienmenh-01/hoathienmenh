@@ -488,6 +488,64 @@ model ArenaSeasonRewardGrant {
   @@index([characterId])
 }
 
+/// Phase 14.1.D — Arena Wintrade Alert.
+///
+/// Detection-only audit row được tạo bởi `ArenaAntiWintradeService` khi
+/// scan phát hiện pattern bất thường. KHÔNG ban / KHÔNG rollback /
+/// KHÔNG public notify — admin tự xem panel + quyết định.
+///
+/// Idempotency: scanner gọi lại trên cùng `windowKey` + cùng cặp character
+/// SẼ KHÔNG tạo alert trùng. Unique key `(type, windowKey,
+/// attackerCharacterId, defenderCharacterId)` — `null` cho phép coexist
+/// nhưng các rule chính đều set ≥1 trong 2 fields. Postgres index xử lý
+/// `null` như distinct nên chấp nhận được.
+///
+/// `severity`: `INFO|WARN|CRITICAL`. `status`: `OPEN|ACKNOWLEDGED|RESOLVED`.
+/// `type`: tag rule trigger (`REPEATED_OPPONENT_PAIR`,
+/// `RECIPROCAL_WIN_LOSS`, `RATING_GAIN_SPIKE`, `REWARD_FARM_PATTERN`,
+/// `SEASON_SUSPICIOUS_ACTOR`).
+///
+/// `attackerCharacterId` / `defenderCharacterId` nullable — rule
+/// `RECIPROCAL_WIN_LOSS` set cả 2 (cặp đối xứng — sort lex để windowKey
+/// stable). `SEASON_SUSPICIOUS_ACTOR` chỉ set `attackerCharacterId`
+/// (suspect actor).
+///
+/// `relatedCharacterIdsJson` chứa danh sách character liên quan thêm
+/// ngoài attacker/defender (vd opponent pool nhỏ trong farm pattern).
+///
+/// `seasonId` nullable — set khi rule scope theo season (vd
+/// `SEASON_SUSPICIOUS_ACTOR`). Không cascade khi season xóa (giữ audit).
+///
+/// `detailsJson` snapshot raw để admin reproduce mà không cần re-run query.
+model ArenaWintradeAlert {
+  id                  String    @id @default(cuid())
+  /// Optional season scope. Nullable.
+  seasonId            String?
+  /// Attacker (suspect) — nullable cho rule không hướng (vd reciprocal
+  /// đặt cặp sort lex; xem `arenaWintradePairKey`).
+  attackerCharacterId String?
+  /// Defender (suspect) — nullable.
+  defenderCharacterId String?
+  /// JSON array of additional related character ids (opponent pool, ...).
+  relatedCharacterIdsJson Json   @default("[]")
+  severity            String
+  type                String
+  status              String    @default("OPEN")
+  /// Identifier cửa sổ thời gian + scope cụ thể, kết hợp `(type, windowKey,
+  /// attackerCharacterId, defenderCharacterId)` UNIQUE để idempotent.
+  windowKey           String
+  detailsJson         Json      @default("{}")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@unique([type, windowKey, attackerCharacterId, defenderCharacterId])
+  @@index([status, severity, createdAt])
+  @@index([type, createdAt])
+  @@index([seasonId, severity])
+  @@index([attackerCharacterId, createdAt])
+  @@index([defenderCharacterId, createdAt])
+}
+
 /// Phase 11.3.A — Audit log cho mỗi lần roll Linh căn (onboard auto + future
 /// manual reroll bằng `linh_can_dan` Phase 11.3.B). Idempotency: server-side
 /// chống double-roll bằng query `findFirst({ characterId, source })` trước khi
