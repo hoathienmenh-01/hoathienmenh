@@ -115,6 +115,9 @@ model User {
   /// Phase 15.1–15.2 — LiveOps Event Scheduler audit (admin tạo event).
   /// SET NULL khi User bị xoá — event row vẫn giữ history.
   liveOpsScheduledEventsCreated LiveOpsScheduledEvent[] @relation("LiveOpsScheduledEventCreatedBy")
+  /// Phase 15.3.B — LiveOps Announcement audit (admin tạo announcement).
+  /// SET NULL khi User bị xoá — announcement row vẫn giữ history.
+  liveOpsAnnouncementsCreated LiveOpsAnnouncement[] @relation("LiveOpsAnnouncementCreatedBy")
 }
 
 /// Token đặt lại mật khẩu (forgot/reset-password flow).
@@ -1980,6 +1983,59 @@ model LiveOpsScheduledEvent {
   @@index([status, startsAt])
   @@index([status, endsAt])
   @@index([type, status])
+}
+
+/// Phase 15.3.B — LiveOps Announcement (banner / marquee).
+///
+/// Khác `LiveOpsScheduledEvent` (event runtime modifier — boost / discount /
+/// festival gift), model này là tin nhắn / banner hiển thị cho người chơi:
+/// thông báo bảo trì, quảng bá event, cảnh báo, news. KHÔNG ảnh hưởng
+/// gameplay runtime — chỉ UX / communication layer.
+///
+/// Status lifecycle (cron 5-phút recompute idempotent — Phase 13.2.D pattern):
+///   - `DRAFT`     — admin tạo, chưa schedule.
+///   - `SCHEDULED` — admin enable, đợi `startsAt`.
+///   - `ACTIVE`    — `now ≥ startsAt < endsAt` (auto-transition + WS
+///     broadcast `ANNOUNCEMENT_ACTIVE`).
+///   - `ENDED`     — `now ≥ endsAt` (auto-transition + WS broadcast
+///     `ANNOUNCEMENT_ENDED`, terminal).
+///   - `DISABLED`  — admin disable (kill switch, không tự recover).
+///
+/// Severity / target string-typed (forward-compat, validator ở shared
+/// `validateLiveOpsAnnouncementInput`):
+///   - severity: INFO / EVENT / WARNING / MAINTENANCE.
+///   - target: ALL / AUTHENTICATED / ADMIN_ONLY.
+///
+/// Title / message multi-locale (`titleVi`/`titleEn`/`messageVi`/`messageEn`).
+/// `*En` nullable — fallback `*Vi` ở FE khi chưa dịch.
+///
+/// Public endpoint `GET /liveops/announcements/active` strip
+/// `createdByAdminId` + `disabledAt` — chỉ trả public-safe fields.
+model LiveOpsAnnouncement {
+  id               String    @id @default(cuid())
+  /// Stable cross-FE/BE announcement key. Pattern: `^[a-z0-9][a-z0-9_-]{1,78}[a-z0-9]$`.
+  key              String    @unique
+  severity         String    @default("INFO")
+  status           String    @default("DRAFT")
+  target           String    @default("ALL")
+  titleVi          String
+  titleEn          String?
+  messageVi        String
+  messageEn        String?
+  startsAt         DateTime
+  endsAt           DateTime
+  /// Admin user.id tạo announcement. SET NULL nếu admin bị xoá (audit history giữ).
+  createdByAdminId String?
+  createdByAdmin   User?     @relation("LiveOpsAnnouncementCreatedBy", fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  /// Set khi admin gọi `/disable`. Idempotent — chỉ set lần đầu, không
+  /// override nếu admin tắt lại announcement DISABLED.
+  disabledAt       DateTime?
+
+  @@index([status, startsAt])
+  @@index([status, endsAt])
+  @@index([severity, status])
 }
 
 /// Phase 15.1–15.2 — One-time reward claim cho event type `FESTIVAL_GIFT`.

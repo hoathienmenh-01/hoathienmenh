@@ -3170,6 +3170,72 @@
       "UNKNOWN": "Thao tác sự kiện thất bại — thử lại."
     }
   },
+  "liveopsAnnouncementMarquee": {
+    "aria": "Thông báo sự kiện",
+    "dismiss": "Đóng thông báo",
+    "endsIn": "Còn {time}",
+    "severity": {
+      "INFO": "Thông tin",
+      "EVENT": "Sự kiện",
+      "WARNING": "Cảnh báo",
+      "MAINTENANCE": "Bảo trì"
+    },
+    "toast": {
+      "eventActive": "Sự kiện đã bắt đầu: {title}",
+      "eventEnded": "Sự kiện đã kết thúc: {title}"
+    }
+  },
+  "adminLiveOpsAnnouncements": {
+    "title": "LiveOps Announcement",
+    "loading": "Đang tải announcement…",
+    "empty": "Chưa có announcement nào.",
+    "refreshBtn": "Làm mới",
+    "newBtn": "Tạo announcement",
+    "form": {
+      "title": "Tạo announcement",
+      "key": "Khoá (unique)",
+      "severity": "Mức độ",
+      "target": "Đối tượng",
+      "titleVi": "Tiêu đề (VI)",
+      "titleEn": "Tiêu đề (EN, optional)",
+      "messageVi": "Nội dung (VI)",
+      "messageEn": "Nội dung (EN, optional)",
+      "startsAt": "Bắt đầu (ISO)",
+      "endsAt": "Kết thúc (ISO)",
+      "initialStatus": "Trạng thái khởi tạo",
+      "submit": "Tạo",
+      "cancel": "Huỷ"
+    },
+    "row": {
+      "key": "Khoá",
+      "severity": "Mức",
+      "status": "Trạng thái",
+      "target": "Đối tượng",
+      "window": "Khung thời gian",
+      "actions": "Thao tác"
+    },
+    "actions": {
+      "disable": "Tắt",
+      "recompute": "Recompute"
+    },
+    "errors": {
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "ANNOUNCEMENT_KEY_DUPLICATE": "Khoá đã tồn tại.",
+      "ANNOUNCEMENT_NOT_FOUND": "Không tìm thấy announcement.",
+      "ANNOUNCEMENT_INVALID_STATUS_TRANSITION": "Không thể chuyển trạng thái thủ công.",
+      "ANNOUNCEMENT_TITLE_TOO_LONG": "Tiêu đề quá dài.",
+      "ANNOUNCEMENT_MESSAGE_TOO_LONG": "Nội dung quá dài.",
+      "ANNOUNCEMENT_TITLE_UNSAFE": "Tiêu đề chứa HTML/script không an toàn.",
+      "ANNOUNCEMENT_MESSAGE_UNSAFE": "Nội dung chứa HTML/script không an toàn.",
+      "ANNOUNCEMENT_WINDOW_INVALID": "Thời gian bắt đầu phải trước thời gian kết thúc.",
+      "UNKNOWN": "Thao tác thất bại — thử lại."
+    },
+    "toast": {
+      "created": "Đã tạo announcement {key}.",
+      "disabled": "Đã tắt announcement {key}.",
+      "recomputed": "Recompute xong: {activated} active / {ended} ended."
+    }
+  },
   "liveopsActiveEvents": {
     "title": "Sự kiện đang diễn ra",
     "loading": "Đang tải sự kiện…",

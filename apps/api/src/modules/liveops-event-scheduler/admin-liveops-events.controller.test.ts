@@ -78,6 +78,16 @@ function makeController(stubs: Stubs = {}): {
         toActivated: 1,
         toEnded: 0,
       })),
+    // Phase 15.3.B — admin recompute endpoint chuyển sang dùng method mới
+    // (trả thêm rows transition để broadcast). Default stub trả empty
+    // arrays — test riêng cover broadcast wiring.
+    recomputeStatusesWithTransitions: async () => ({
+      scannedAt: '2026-08-01T00:01:00.000Z',
+      toActivated: 1,
+      toEnded: 0,
+      activated: [],
+      ended: [],
+    }),
     getEventById: async () => null,
     getEventByKey: async () => null,
     getActiveEvents: async () => [],
@@ -94,8 +104,14 @@ function makeController(stubs: Stubs = {}): {
       },
     },
   } as unknown as ConstructorParameters<typeof AdminLiveOpsEventsController>[1];
+  // Phase 15.3.B — broadcast stub: capture event broadcasts để test recompute
+  // emit đúng public-safe payload. Không-op nếu test không assert.
+  const broadcast = {
+    broadcastEvent: () => {},
+    broadcastAnnouncement: () => {},
+  } as unknown as ConstructorParameters<typeof AdminLiveOpsEventsController>[2];
   return {
-    c: new AdminLiveOpsEventsController(service, prisma),
+    c: new AdminLiveOpsEventsController(service, prisma, broadcast),
     audit,
   };
 }

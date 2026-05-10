@@ -36,6 +36,7 @@ import { TerritoryModule } from './modules/territory/territory.module';
 import { AdminEconomySafetyModule } from './modules/admin-economy-safety/admin-economy-safety.module';
 import { LiveOpsCronModule } from './modules/liveops-cron/liveops-cron.module';
 import { LiveOpsEventSchedulerModule } from './modules/liveops-event-scheduler/liveops-event-scheduler.module';
+import { LiveOpsAnnouncementModule } from './modules/liveops-announcement/liveops-announcement.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { ArenaModule } from './modules/arena/arena.module';
 import { ArenaAntiWintradeAdminModule } from './modules/arena-anti-wintrade-admin/arena-anti-wintrade-admin.module';
@@ -88,6 +89,12 @@ import { EconomyModule } from './modules/economy/economy.module';
     // AdminGuard); cron tick recompute wire trong LiveOpsCronModule
     // (file cron.processor đọc service này).
     LiveOpsEventSchedulerModule,
+    // Phase 15.3.B — LiveOps Announcement (banner / marquee + WS broadcast).
+    // SAU AdminModule + AuthModule + RealtimeModule. Cron recompute của
+    // announcement được invoke từ LiveOpsEventSchedulerCronProcessor
+    // (cuối tick) để tận dụng cron tick sẵn có — đồng bộ announcement
+    // + event transitions trong cùng 5-phút scan.
+    LiveOpsAnnouncementModule,
     // Phase 16.6 — Economy Anti-cheat (ledger checker + anomaly
     // scanner cron + admin endpoints). SAU AdminModule + EconomyModule.
     AdminEconomySafetyModule,

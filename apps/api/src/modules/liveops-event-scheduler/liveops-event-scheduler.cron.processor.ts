@@ -8,7 +8,12 @@ import {
   LIVEOPS_EVENT_SCHEDULER_QUEUE,
 } from './liveops-event-scheduler.queue';
 import { readLiveOpsEventSchedulerCronConfig } from './liveops-event-scheduler.cron.config';
-import { LiveOpsEventSchedulerService } from './liveops-event-scheduler.service';
+import {
+  LiveOpsEventSchedulerService,
+  toLiveOpsEventBroadcastPayload,
+} from './liveops-event-scheduler.service';
+import { LiveOpsAnnouncementService } from '../liveops-announcement/liveops-announcement.service';
+import { LiveOpsBroadcastService } from '../liveops-announcement/liveops-broadcast.service';
 
 /**
  * Phase 15.1–15.2 — BullMQ processor cho LiveOps Event Scheduler recompute.
@@ -38,6 +43,8 @@ export class LiveOpsEventSchedulerCronProcessor extends WorkerHost {
   constructor(
     private readonly service: LiveOpsEventSchedulerService,
     private readonly lease: LiveOpsCronLease,
+    private readonly announcementService: LiveOpsAnnouncementService,
+    private readonly broadcast: LiveOpsBroadcastService,
   ) {
     super();
   }
@@ -59,10 +66,42 @@ export class LiveOpsEventSchedulerCronProcessor extends WorkerHost {
     }
 
     try {
-      const summary = await this.service.recomputeStatuses(new Date());
+      const now = new Date();
+      // Phase 15.3.B — recompute LiveOps event SCHEDULED↔ACTIVE↔ENDED
+      // và broadcast WS event public-safe payload cho rows transition.
+      const summary = await this.service.recomputeStatusesWithTransitions(now);
       if (summary.toActivated > 0 || summary.toEnded > 0) {
         this.logger.log(
           `cron recompute scannedAt=${summary.scannedAt} activated=${summary.toActivated} ended=${summary.toEnded}`,
+        );
+      }
+      for (const view of summary.activated) {
+        this.broadcast.broadcastEvent(
+          toLiveOpsEventBroadcastPayload(view, 'LIVEOPS_EVENT_ACTIVE'),
+        );
+      }
+      for (const view of summary.ended) {
+        this.broadcast.broadcastEvent(
+          toLiveOpsEventBroadcastPayload(view, 'LIVEOPS_EVENT_ENDED'),
+        );
+      }
+
+      // Phase 15.3.B — piggyback announcement recompute trên cùng cron tick
+      // để tránh thêm queue/lease riêng. Idempotent — gọi nhiều lần OK.
+      const announcementSummary =
+        await this.announcementService.recomputeStatuses(now);
+      for (const payload of announcementSummary.activated) {
+        this.broadcast.broadcastAnnouncement(payload);
+      }
+      for (const payload of announcementSummary.ended) {
+        this.broadcast.broadcastAnnouncement(payload);
+      }
+      if (
+        announcementSummary.activated.length > 0 ||
+        announcementSummary.ended.length > 0
+      ) {
+        this.logger.log(
+          `cron announcement scannedAt=${announcementSummary.scannedAt} activated=${announcementSummary.activated.length} ended=${announcementSummary.ended.length}`,
         );
       }
     } catch (e) {

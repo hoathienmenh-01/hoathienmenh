@@ -1,5 +1,10 @@
 import { apiClient } from './client';
 import type { TopupOrderView } from './topup';
+import type {
+  LiveOpsAnnouncementSeverity,
+  LiveOpsAnnouncementStatus,
+  LiveOpsAnnouncementTarget,
+} from '@xuantoi/shared';
 
 export type Role = 'PLAYER' | 'MOD' | 'ADMIN';
 
@@ -1121,5 +1126,105 @@ export async function adminLiveOpsEventsRecomputeStatus(): Promise<LiveOpsRecomp
     '/admin/liveops/events/recompute-status',
     {},
   );
+  return unwrap(data);
+}
+
+// ---------------------------------------------------------------------------
+// Phase 15.3.B — LiveOps Announcement admin endpoints
+// ---------------------------------------------------------------------------
+
+export interface AdminLiveOpsAnnouncementView {
+  id: string;
+  key: string;
+  severity: LiveOpsAnnouncementSeverity;
+  status: LiveOpsAnnouncementStatus;
+  target: LiveOpsAnnouncementTarget;
+  titleVi: string;
+  titleEn: string | null;
+  messageVi: string;
+  messageEn: string | null;
+  startsAt: string;
+  endsAt: string;
+  createdByAdminId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  disabledAt: string | null;
+}
+
+export interface AdminLiveOpsAnnouncementCreateInput {
+  key: string;
+  severity: LiveOpsAnnouncementSeverity;
+  target: LiveOpsAnnouncementTarget;
+  titleVi: string;
+  titleEn?: string | null;
+  messageVi: string;
+  messageEn?: string | null;
+  startsAt: string;
+  endsAt: string;
+  initialStatus?: 'DRAFT' | 'SCHEDULED';
+}
+
+export interface AdminLiveOpsAnnouncementUpdateInput {
+  severity?: LiveOpsAnnouncementSeverity;
+  target?: LiveOpsAnnouncementTarget;
+  titleVi?: string;
+  titleEn?: string | null;
+  messageVi?: string;
+  messageEn?: string | null;
+  startsAt?: string;
+  endsAt?: string;
+  status?: 'DRAFT' | 'SCHEDULED';
+}
+
+export interface AdminLiveOpsAnnouncementRecomputeView {
+  scannedAt: string;
+  activated: ReadonlyArray<{ key: string }>;
+  ended: ReadonlyArray<{ key: string }>;
+}
+
+export async function adminLiveOpsAnnouncementsList(): Promise<
+  AdminLiveOpsAnnouncementView[]
+> {
+  const { data } = await apiClient.get<
+    Envelope<{ announcements: AdminLiveOpsAnnouncementView[] }>
+  >('/admin/liveops/announcements');
+  return unwrap(data).announcements;
+}
+
+export async function adminLiveOpsAnnouncementsCreate(
+  input: AdminLiveOpsAnnouncementCreateInput,
+): Promise<AdminLiveOpsAnnouncementView> {
+  const { data } = await apiClient.post<Envelope<AdminLiveOpsAnnouncementView>>(
+    '/admin/liveops/announcements',
+    input,
+  );
+  return unwrap(data);
+}
+
+export async function adminLiveOpsAnnouncementsUpdate(
+  id: string,
+  input: AdminLiveOpsAnnouncementUpdateInput,
+): Promise<AdminLiveOpsAnnouncementView> {
+  const { data } = await apiClient.patch<Envelope<AdminLiveOpsAnnouncementView>>(
+    `/admin/liveops/announcements/${id}`,
+    input,
+  );
+  return unwrap(data);
+}
+
+export async function adminLiveOpsAnnouncementsDisable(
+  id: string,
+): Promise<AdminLiveOpsAnnouncementView> {
+  const { data } = await apiClient.post<Envelope<AdminLiveOpsAnnouncementView>>(
+    `/admin/liveops/announcements/${id}/disable`,
+    {},
+  );
+  return unwrap(data);
+}
+
+export async function adminLiveOpsAnnouncementsRecompute(): Promise<AdminLiveOpsAnnouncementRecomputeView> {
+  const { data } = await apiClient.post<
+    Envelope<AdminLiveOpsAnnouncementRecomputeView>
+  >('/admin/liveops/announcements/recompute-status', {});
   return unwrap(data);
 }

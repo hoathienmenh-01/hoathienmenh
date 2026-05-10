@@ -24,9 +24,11 @@ import { PrismaService } from '../../common/prisma.service';
 import {
   LiveOpsEventSchedulerError,
   LiveOpsEventSchedulerService,
+  toLiveOpsEventBroadcastPayload,
   type LiveOpsScheduledEventView,
   type RecomputeSummary,
 } from './liveops-event-scheduler.service';
+import { LiveOpsBroadcastService } from '../liveops-announcement/liveops-broadcast.service';
 
 /**
  * Phase 15.1–15.2 — Admin endpoints cho LiveOps Event Scheduler.
@@ -103,6 +105,7 @@ export class AdminLiveOpsEventsController {
   constructor(
     private readonly service: LiveOpsEventSchedulerService,
     private readonly prisma: PrismaService,
+    private readonly broadcast: LiveOpsBroadcastService,
   ) {}
 
   @Get('admin/liveops/events')
@@ -211,13 +214,34 @@ export class AdminLiveOpsEventsController {
   async recomputeStatus(
     @Req() req: AdminReq,
   ): Promise<{ ok: true; data: RecomputeSummary }> {
-    const summary = await this.service.recomputeStatuses();
+    // Phase 15.3.B — dùng method mới `recomputeStatusesWithTransitions`
+    // để broadcast WS event public-safe payload cho rows transition. Trả ra
+    // controller vẫn dùng `RecomputeSummary` shape (toActivated / toEnded)
+    // — bảo toàn contract cho admin FE cũ.
+    const summary = await this.service.recomputeStatusesWithTransitions();
+    for (const view of summary.activated) {
+      this.broadcast.broadcastEvent(
+        toLiveOpsEventBroadcastPayload(view, 'LIVEOPS_EVENT_ACTIVE'),
+      );
+    }
+    for (const view of summary.ended) {
+      this.broadcast.broadcastEvent(
+        toLiveOpsEventBroadcastPayload(view, 'LIVEOPS_EVENT_ENDED'),
+      );
+    }
     await this.audit(req.userId, 'ADMIN_LIVEOPS_EVENT_RECOMPUTE', {
       scannedAt: summary.scannedAt,
       toActivated: summary.toActivated,
       toEnded: summary.toEnded,
     });
-    return { ok: true, data: summary };
+    return {
+      ok: true,
+      data: {
+        scannedAt: summary.scannedAt,
+        toActivated: summary.toActivated,
+        toEnded: summary.toEnded,
+      },
+    };
   }
 
   private async audit(
