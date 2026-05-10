@@ -121,6 +121,9 @@ model User {
   /// Phase 15.4 — FeatureFlag audit (admin gần nhất bật/tắt flag).
   /// SET NULL khi admin bị xoá — flag row giữ updatedAt + value.
   featureFlagsUpdated FeatureFlag[] @relation("FeatureFlagUpdatedBy")
+  /// Phase 15.5 — MaintenanceWindow audit (admin tạo bảo trì).
+  /// SET NULL khi admin bị xoá — window row vẫn giữ history.
+  maintenanceWindowsCreated MaintenanceWindow[] @relation("MaintenanceWindowCreatedBy")
 }
 
 /// Token đặt lại mật khẩu (forgot/reset-password flow).
@@ -2431,4 +2434,69 @@ model FeatureFlag {
 
   @@index([category])
   @@index([enabled])
+}
+
+/// Phase 15.5 — Maintenance Window.
+///
+/// Admin tạo window bảo trì (DRAFT → SCHEDULED → ACTIVE → ENDED) hoặc
+/// disable (DISABLED). Middleware `MaintenanceWindowGuard` đọc cache
+/// `MaintenanceWindowService.getActiveWindow(now)` và chặn player khi
+/// có window ACTIVE.
+///
+/// Lifecycle (mirror LiveOpsAnnouncement):
+///   - `DRAFT`     — admin chuẩn bị nội dung.
+///   - `SCHEDULED` — admin enable, đợi tới `startsAt`.
+///   - `ACTIVE`    — cron transition khi `now ≥ startsAt < endsAt`.
+///   - `ENDED`     — cron transition khi `now ≥ endsAt`.
+///   - `DISABLED`  — admin kill switch (không tự transition).
+///
+/// Admin bypass:
+///   - `allowAdminBypass=true` (default) — ADMIN/MOD vẫn truy cập được
+///     mọi route bình thường (trừ khi `target=FULL_LOCKDOWN`).
+///   - `allowHealthcheck=true` — cho `/healthz`, `/readyz`, `/version`.
+///   - `allowMetrics=true`     — cho `/admin/metrics` (admin-only kiểu cũ;
+///     pass middleware nhưng vẫn đi qua AdminGuard).
+///
+/// Audit:
+///   - reuse `AdminAuditLog` action `ADMIN_MAINTENANCE_*` — KHÔNG tạo
+///     bảng audit riêng (giảm rủi ro migration).
+///
+/// Indexes:
+///   - `key` UNIQUE — admin lookup + idempotent upsert.
+///   - `[status, startsAt]` — cron + getActive query.
+///   - `[status, endsAt]`   — cron transition ACTIVE→ENDED.
+///   - `[severity, status]` — admin filter UI.
+model MaintenanceWindow {
+  id               String    @id @default(cuid())
+  /// Stable cross-FE/BE maintenance key. Pattern: `^[a-z0-9][a-z0-9_-]{1,78}[a-z0-9]$`.
+  key              String    @unique
+  /// `MaintenanceWindowStatus` ∈ `DRAFT|SCHEDULED|ACTIVE|ENDED|DISABLED`.
+  status           String    @default("DRAFT")
+  /// `MaintenanceSeverity` ∈ `INFO|WARNING|CRITICAL`.
+  severity         String    @default("INFO")
+  /// `MaintenanceTarget` ∈ `ALL_PLAYERS|NON_ADMIN_USERS|API_WRITE_ONLY|FULL_LOCKDOWN`.
+  target           String    @default("ALL_PLAYERS")
+  titleVi          String
+  titleEn          String?
+  messageVi        String
+  messageEn        String?
+  startsAt         DateTime
+  endsAt           DateTime
+  /// Default true — admin/MOD vẫn truy cập được trừ khi `target=FULL_LOCKDOWN`.
+  allowAdminBypass Boolean   @default(true)
+  /// Default true — `/healthz`, `/readyz`, `/version` không bị chặn.
+  allowHealthcheck Boolean   @default(true)
+  /// Default true — `/admin/metrics*` không bị chặn (vẫn qua AdminGuard).
+  allowMetrics     Boolean   @default(true)
+  /// Admin user.id tạo window. SET NULL nếu admin bị xoá (audit history giữ).
+  createdByAdminId String?
+  createdByAdmin   User?     @relation("MaintenanceWindowCreatedBy", fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  /// Set khi admin gọi `/disable`. Idempotent — chỉ set lần đầu.
+  disabledAt       DateTime?
+
+  @@index([status, startsAt])
+  @@index([status, endsAt])
+  @@index([severity, status])
 }
