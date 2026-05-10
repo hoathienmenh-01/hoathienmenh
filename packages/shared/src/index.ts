@@ -8,6 +8,7 @@ export * from './combat-rng';
 export * from './combat-snapshot';
 export * from './arena';
 export * from './arena-season';
+export * from './arena-anti-wintrade';
 export * from './items';
 export * from './missions';
 export * from './achievements';
