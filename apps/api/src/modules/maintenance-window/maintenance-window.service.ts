@@ -38,7 +38,7 @@
  *   - `target === ALL_PLAYERS` → chặn mọi user trừ ADMIN/MOD nếu
  *     `allowAdminBypass=true`.
  */
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   MAINTENANCE_BLOCK_ERROR_CODE,
@@ -56,6 +56,7 @@ import {
   validateMaintenanceWindowInput,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { ConfigVersionService } from '../config-version/config-version.service';
 
 // ---------------------------------------------------------------------------
 // Errors
@@ -229,7 +230,10 @@ export class MaintenanceWindowService {
   private readonly logger = new Logger(MaintenanceWindowService.name);
   private cache: CachedActive | null = null;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly configVersion?: ConfigVersionService,
+  ) {}
 
   // -------------------------------------------------------------------------
   // Read
@@ -290,7 +294,15 @@ export class MaintenanceWindowService {
         },
       });
       this.invalidateCache();
-      return toAdminView(created);
+      const view = toAdminView(created);
+      await this.recordConfigVersionSafe({
+        entityId: created.id,
+        action: 'CREATE',
+        beforeJson: null,
+        afterJson: snapshotMaintenanceWindow(view),
+        adminId: adminUserId,
+      });
+      return view;
     } catch (e) {
       if (
         e instanceof Prisma.PrismaClientKnownRequestError &&
@@ -372,7 +384,16 @@ export class MaintenanceWindowService {
       data,
     });
     this.invalidateCache();
-    return toAdminView(updated);
+    const beforeView = toAdminView(existing);
+    const view = toAdminView(updated);
+    await this.recordConfigVersionSafe({
+      entityId: updated.id,
+      action: 'UPDATE',
+      beforeJson: snapshotMaintenanceWindow(beforeView),
+      afterJson: snapshotMaintenanceWindow(view),
+      adminId: updated.createdByAdminId ?? null,
+    });
+    return view;
   }
 
   async disableWindow(id: string): Promise<MaintenanceWindowAdminView> {
@@ -390,7 +411,42 @@ export class MaintenanceWindowService {
       },
     });
     this.invalidateCache();
-    return toAdminView(updated);
+    const view = toAdminView(updated);
+    await this.recordConfigVersionSafe({
+      entityId: updated.id,
+      action: 'DISABLE',
+      beforeJson: snapshotMaintenanceWindow(toAdminView(existing)),
+      afterJson: snapshotMaintenanceWindow(view),
+      adminId: updated.createdByAdminId ?? null,
+    });
+    return view;
+  }
+
+  /**
+   * Phase 15.6 — best-effort ghi ConfigVersion. KHÔNG throw nếu fail.
+   */
+  private async recordConfigVersionSafe(args: {
+    entityId: string;
+    action: 'CREATE' | 'UPDATE' | 'DISABLE' | 'ENABLE' | 'STATUS_RECOMPUTE';
+    beforeJson: Record<string, unknown> | null;
+    afterJson: Record<string, unknown>;
+    adminId: string | null;
+  }): Promise<void> {
+    if (!this.configVersion) return;
+    try {
+      await this.configVersion.recordVersion({
+        entityType: 'MAINTENANCE_WINDOW',
+        entityId: args.entityId,
+        action: args.action,
+        beforeJson: args.beforeJson,
+        afterJson: args.afterJson,
+        changedByAdminId: args.adminId,
+      });
+    } catch (e) {
+      this.logger.warn(
+        `recordConfigVersion failed for MAINTENANCE_WINDOW/${args.entityId}: ${(e as Error).message}`,
+      );
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -421,9 +477,9 @@ export class MaintenanceWindowService {
         startsAt: { lte: now },
         endsAt: { gt: now },
       },
-      select: { id: true, key: true },
     });
     const activatedKeys: string[] = [];
+    const activatedWinnerIds: string[] = [];
     if (activatedCandidates.length > 0) {
       const upd = await this.prisma.maintenanceWindow.updateMany({
         where: {
@@ -436,9 +492,25 @@ export class MaintenanceWindowService {
       });
       if (upd.count > 0) {
         const winners = activatedCandidates.slice(0, upd.count);
-        for (const r of winners) activatedKeys.push(r.key);
+        for (const r of winners) {
+          activatedKeys.push(r.key);
+          activatedWinnerIds.push(r.id);
+        }
+        // Phase 15.6 — record STATUS_RECOMPUTE per transitioned row.
+        for (const r of winners) {
+          await this.recordConfigVersionSafe({
+            entityId: r.id,
+            action: 'STATUS_RECOMPUTE',
+            beforeJson: snapshotMaintenanceWindow(toAdminView(r)),
+            afterJson: snapshotMaintenanceWindow(
+              toAdminView({ ...r, status: 'ACTIVE' }),
+            ),
+            adminId: null,
+          });
+        }
       }
     }
+    void activatedWinnerIds;
 
     // SCHEDULED past endsAt → ENDED (skip-to-ended).
     const skippedCandidates = await this.prisma.maintenanceWindow.findMany({
@@ -460,7 +532,6 @@ export class MaintenanceWindowService {
     // ACTIVE → ENDED.
     const endedCandidates = await this.prisma.maintenanceWindow.findMany({
       where: { status: 'ACTIVE', endsAt: { lte: now } },
-      select: { id: true, key: true },
     });
     const endedKeys: string[] = [];
     if (endedCandidates.length > 0) {
@@ -474,7 +545,18 @@ export class MaintenanceWindowService {
       });
       if (upd.count > 0) {
         const winners = endedCandidates.slice(0, upd.count);
-        for (const r of winners) endedKeys.push(r.key);
+        for (const r of winners) {
+          endedKeys.push(r.key);
+          await this.recordConfigVersionSafe({
+            entityId: r.id,
+            action: 'STATUS_RECOMPUTE',
+            beforeJson: snapshotMaintenanceWindow(toAdminView(r)),
+            afterJson: snapshotMaintenanceWindow(
+              toAdminView({ ...r, status: 'ENDED' }),
+            ),
+            adminId: null,
+          });
+        }
       }
     }
 
@@ -695,6 +777,31 @@ interface DbRow {
   createdAt: Date;
   updatedAt: Date;
   disabledAt: Date | null;
+}
+
+/**
+ * Phase 15.6 — Snapshot for ConfigVersion persistence (Maintenance Window).
+ * KHÔNG include id/createdAt/updatedAt/disabledAt; chỉ ghi semantically-
+ * meaningful fields. allow* flags là quan trọng cho rollback safety.
+ */
+export function snapshotMaintenanceWindow(
+  view: MaintenanceWindowAdminView,
+): Record<string, unknown> {
+  return {
+    key: view.key,
+    status: view.status,
+    severity: view.severity,
+    target: view.target,
+    titleVi: view.titleVi,
+    titleEn: view.titleEn,
+    messageVi: view.messageVi,
+    messageEn: view.messageEn,
+    startsAt: view.startsAt,
+    endsAt: view.endsAt,
+    allowAdminBypass: view.allowAdminBypass,
+    allowHealthcheck: view.allowHealthcheck,
+    allowMetrics: view.allowMetrics,
+  };
 }
 
 function toAdminView(r: DbRow): MaintenanceWindowAdminView {

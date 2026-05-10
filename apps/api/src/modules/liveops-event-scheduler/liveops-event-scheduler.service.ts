@@ -813,6 +813,29 @@ export class LiveOpsEventSchedulerService {
         `recompute(+broadcast): activated=${summary.toActivated} ended=${summary.toEnded}`,
       );
     }
+
+    // Phase 15.6 — record STATUS_RECOMPUTE version row cho mỗi transition
+    // thật (best-effort; skipNoOp đảm bảo không spam).
+    for (const v of activatedViews) {
+      const before = { ...snapshotEvent(v), status: 'SCHEDULED' };
+      await this.recordConfigVersionSafe({
+        entityId: v.id,
+        action: 'STATUS_RECOMPUTE',
+        beforeJson: before,
+        afterJson: snapshotEvent(v),
+        adminId: null,
+      });
+    }
+    for (const v of endedViews) {
+      const before = { ...snapshotEvent(v), status: 'ACTIVE' };
+      await this.recordConfigVersionSafe({
+        entityId: v.id,
+        action: 'STATUS_RECOMPUTE',
+        beforeJson: before,
+        afterJson: snapshotEvent(v),
+        adminId: null,
+      });
+    }
     return summary;
   }
 }

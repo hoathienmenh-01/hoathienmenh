@@ -8,6 +8,7 @@ import { LiveOpsAnnouncementsPublicController } from './liveops-announcements-pu
 import { LiveOpsAnnouncementService } from './liveops-announcement.service';
 import { LiveOpsBroadcastService } from './liveops-broadcast.service';
 import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
+import { ConfigVersionModule } from '../config-version/config-version.module';
 
 /**
  * Phase 15.3.B — LiveOps Announcement module.
@@ -30,7 +31,14 @@ import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
  * `LiveOpsAnnouncementService.recomputeStatuses()` rồi `broadcast`.
  */
 @Module({
-  imports: [AuthModule, AdminModule, RealtimeModule, FeatureFlagModule],
+  imports: [
+    AuthModule,
+    AdminModule,
+    RealtimeModule,
+    FeatureFlagModule,
+    // Phase 15.6 — Config Version persistence for announcement mutations.
+    ConfigVersionModule,
+  ],
   controllers: [
     AdminLiveOpsAnnouncementsController,
     LiveOpsAnnouncementsPublicController,
