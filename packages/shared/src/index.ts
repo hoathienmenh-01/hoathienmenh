@@ -46,6 +46,7 @@ export * from './story-dialogues';
 export * from './story-dungeons';
 export * from './liveops';
 export * from './liveops-event-scheduler';
+export * from './liveops-announcement';
 export * from './sect-war';
 export * from './sect-missions';
 export * from './sect-shop';
