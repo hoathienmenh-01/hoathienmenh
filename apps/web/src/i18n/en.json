@@ -1224,7 +1224,38 @@
       "giftcodes": "Giftcodes",
       "boss": "Boss",
       "liveops": "LiveOps",
-      "economy": "Economy Safety"
+      "economy": "Economy Safety",
+      "arenaAntiWintrade": "Arena Anti-Wintrade"
+    },
+    "arenaAntiWintrade": {
+      "alerts": "Arena wintrade alerts",
+      "total": "total",
+      "lastScan": "Last scan",
+      "scannedMatches": "Matches scanned",
+      "alertsCreated": "Alerts created",
+      "alertsSkipped": "Alerts skipped (duplicate)",
+      "severity": "Severity",
+      "type": "Type",
+      "attackerCharacterId": "Attacker",
+      "defenderCharacterId": "Defender",
+      "status": "Status",
+      "createdAt": "Created at",
+      "actions": "Actions",
+      "ack": "Ack",
+      "resolve": "Resolve",
+      "scanBtn": "Run anti-wintrade scan",
+      "confirmScan": "Run anti-wintrade scan now? May take a few seconds.",
+      "confirmAck": "Acknowledge this alert as read?",
+      "confirmResolve": "Resolve this alert (already handled manually)?",
+      "scanSuccess": "Done: {created} new, {skipped} skipped.",
+      "ackSuccess": "Acknowledged.",
+      "resolveSuccess": "Resolved.",
+      "empty": "No alerts yet.",
+      "filter": {
+        "severityAll": "All severities",
+        "statusAll": "All statuses",
+        "typeAll": "All types"
+      }
     },
     "economySafety": {
       "latestRun": {

@@ -1224,7 +1224,38 @@
       "giftcodes": "Giftcode",
       "boss": "Boss",
       "liveops": "LiveOps",
-      "economy": "Kinh tế (An toàn)"
+      "economy": "Kinh tế (An toàn)",
+      "arenaAntiWintrade": "Arena Anti-Wintrade"
+    },
+    "arenaAntiWintrade": {
+      "alerts": "Cảnh báo Arena Wintrade",
+      "total": "tổng",
+      "lastScan": "Lần quét gần nhất",
+      "scannedMatches": "Match đã quét",
+      "alertsCreated": "Alert tạo mới",
+      "alertsSkipped": "Alert bỏ qua (duplicate)",
+      "severity": "Mức",
+      "type": "Loại",
+      "attackerCharacterId": "Attacker",
+      "defenderCharacterId": "Defender",
+      "status": "Trạng thái",
+      "createdAt": "Tạo lúc",
+      "actions": "Thao tác",
+      "ack": "Xác nhận",
+      "resolve": "Đóng",
+      "scanBtn": "Quét anti-wintrade",
+      "confirmScan": "Chạy scan anti-wintrade ngay? Có thể mất vài giây.",
+      "confirmAck": "Xác nhận đã đọc alert này?",
+      "confirmResolve": "Đóng alert này (đã xử lý thủ công)?",
+      "scanSuccess": "Hoàn tất: {created} mới, {skipped} bỏ qua.",
+      "ackSuccess": "Đã xác nhận.",
+      "resolveSuccess": "Đã đóng.",
+      "empty": "Chưa có alert nào.",
+      "filter": {
+        "severityAll": "Tất cả mức độ",
+        "statusAll": "Tất cả trạng thái",
+        "typeAll": "Tất cả loại"
+      }
     },
     "economySafety": {
       "latestRun": {

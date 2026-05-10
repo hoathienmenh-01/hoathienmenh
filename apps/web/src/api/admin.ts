@@ -944,3 +944,77 @@ export async function adminAnomalyAck(id: string): Promise<void> {
 export async function adminAnomalyResolve(id: string): Promise<void> {
   await apiClient.post(`/admin/economy/anomalies/${id}/resolve`, {});
 }
+
+/* ---------------------------------------------------------------------------
+ * Phase 14.1.D — Arena Anti-Wintrade Detection (admin endpoints)
+ * ------------------------------------------------------------------------- */
+
+export type ArenaWintradeSeverity = 'INFO' | 'WARN' | 'CRITICAL';
+export type ArenaWintradeStatus = 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED';
+export type ArenaWintradeType =
+  | 'REPEATED_OPPONENT_PAIR'
+  | 'RECIPROCAL_WIN_LOSS'
+  | 'RATING_GAIN_SPIKE'
+  | 'REWARD_FARM_PATTERN'
+  | 'SEASON_SUSPICIOUS_ACTOR';
+
+export interface ArenaWintradeAlertRow {
+  id: string;
+  seasonId: string | null;
+  attackerCharacterId: string | null;
+  defenderCharacterId: string | null;
+  relatedCharacterIds: string[];
+  severity: ArenaWintradeSeverity;
+  type: ArenaWintradeType;
+  status: ArenaWintradeStatus;
+  windowKey: string;
+  details: unknown;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ArenaWintradeScanSummary {
+  scannedMatches: number;
+  alertsCreated: number;
+  alertsSkippedDuplicate: number;
+  criticalCount: number;
+  warningCount: number;
+  infoCount: number;
+}
+
+export async function adminArenaWintradeScan(): Promise<ArenaWintradeScanSummary> {
+  const { data } = await apiClient.post<Envelope<ArenaWintradeScanSummary>>(
+    '/admin/arena/anti-wintrade/scan',
+    {},
+  );
+  return unwrap(data);
+}
+
+export async function adminArenaWintradeListAlerts(
+  filters: {
+    severity?: ArenaWintradeSeverity;
+    status?: ArenaWintradeStatus;
+    type?: ArenaWintradeType;
+    seasonId?: string;
+    limit?: number;
+  } = {},
+): Promise<{ items: ArenaWintradeAlertRow[]; total: number }> {
+  const params: Record<string, string | number> = {};
+  if (filters.severity) params.severity = filters.severity;
+  if (filters.status) params.status = filters.status;
+  if (filters.type) params.type = filters.type;
+  if (filters.seasonId) params.seasonId = filters.seasonId;
+  if (filters.limit) params.limit = filters.limit;
+  const { data } = await apiClient.get<
+    Envelope<{ items: ArenaWintradeAlertRow[]; total: number }>
+  >('/admin/arena/anti-wintrade/alerts', { params });
+  return unwrap(data);
+}
+
+export async function adminArenaWintradeAck(id: string): Promise<void> {
+  await apiClient.post(`/admin/arena/anti-wintrade/alerts/${id}/ack`, {});
+}
+
+export async function adminArenaWintradeResolve(id: string): Promise<void> {
+  await apiClient.post(`/admin/arena/anti-wintrade/alerts/${id}/resolve`, {});
+}
