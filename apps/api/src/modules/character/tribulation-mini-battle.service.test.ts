@@ -16,7 +16,6 @@ import {
 } from 'vitest';
 import { expCostForStage } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
-import { CharacterService } from './character.service';
 import { CurrencyService } from './currency.service';
 import { TribulationService } from './tribulation.service';
 import {
@@ -26,7 +25,6 @@ import {
   readTribulationMiniBattleMetrics,
   resetTribulationMiniBattleMetrics,
 } from './tribulation-mini-battle.service';
-import { RealtimeService } from '../realtime/realtime.service';
 import { makeUserChar, wipeAll } from '../../test-helpers';
 
 const TEST_DATABASE_URL =
@@ -37,7 +35,6 @@ const TEST_DATABASE_URL =
 let prisma: PrismaService;
 let currency: CurrencyService;
 let tribulation: TribulationService;
-let chars: CharacterService;
 let svc: TribulationMiniBattleService;
 
 const KIM_DAN_COST_9 = expCostForStage('kim_dan', 9) ?? 0n;
@@ -46,8 +43,6 @@ beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
   currency = new CurrencyService(prisma);
-  const realtime = new RealtimeService();
-  chars = new CharacterService(prisma, realtime);
   tribulation = new TribulationService(prisma, currency);
   svc = new TribulationMiniBattleService(prisma, tribulation);
 });
