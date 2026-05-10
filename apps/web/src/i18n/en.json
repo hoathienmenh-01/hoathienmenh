@@ -3468,7 +3468,66 @@
       "OPPONENTS_FETCH_FAILED": "Failed to load opponents.",
       "HISTORY_FETCH_FAILED": "Failed to load match history.",
       "CHALLENGE_FAILED": "Challenge failed.",
-      "IN_FLIGHT": "Match in progress, please wait."
+      "IN_FLIGHT": "Match in progress, please wait.",
+      "SEASON_FETCH_FAILED": "Failed to load current season.",
+      "STANDING_FETCH_FAILED": "Failed to load your season standing.",
+      "LEADERBOARD_FETCH_FAILED": "Failed to load leaderboard.",
+      "REWARDS_FETCH_FAILED": "Failed to load season rewards."
+    },
+    "season": {
+      "title": "Current season",
+      "key": "Season",
+      "status": {
+        "ACTIVE": "Active",
+        "SETTLED": "Settled",
+        "ARCHIVED": "Archived"
+      },
+      "starts": "Starts",
+      "ends": "Ends",
+      "settledAt": "Settled at",
+      "cadence": {
+        "weekly": "Weekly"
+      },
+      "ratingDelta": "Δ",
+      "myStanding": {
+        "title": "My standing",
+        "rating": "Rating",
+        "tier": "Tier",
+        "rank": "Rank",
+        "wins": "Wins",
+        "losses": "Losses",
+        "noRank": "—"
+      },
+      "tier": {
+        "BRONZE": "Bronze",
+        "SILVER": "Silver",
+        "GOLD": "Gold",
+        "DIAMOND": "Diamond",
+        "IMMORTAL": "Immortal"
+      }
+    },
+    "leaderboard": {
+      "title": "Leaderboard",
+      "rank": "#",
+      "name": "Cultivator",
+      "rating": "Rating",
+      "tier": "Tier",
+      "wins": "Wins",
+      "losses": "Losses",
+      "sect": "Sect",
+      "empty": "No participants in this season yet.",
+      "totalCount": "Total: {n}",
+      "loadMore": "Load more"
+    },
+    "rewardPreview": {
+      "title": "End-of-season rewards",
+      "linhThach": "Linh Thach",
+      "tienNgoc": "Tien Ngoc",
+      "exp": "EXP",
+      "items": "Items",
+      "tier": "Tier",
+      "reward": "Reward",
+      "noReward": "None"
     }
   }
 }

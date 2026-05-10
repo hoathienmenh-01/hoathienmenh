@@ -72,6 +72,56 @@ interface MatchStub {
   resolvedAt: string | null;
 }
 
+interface SeasonStub {
+  seasonKey: string;
+  status: 'ACTIVE' | 'SETTLED' | 'ARCHIVED';
+  startsAtIso: string;
+  endsAtIso: string;
+  settledAtIso: string | null;
+  cadence: 'weekly';
+  timezone: string;
+}
+
+interface MyStandingStub {
+  seasonKey: string;
+  characterId: string;
+  rating: number;
+  tier: string;
+  wins: number;
+  losses: number;
+  rank: number | null;
+}
+
+interface LeaderboardStub {
+  seasonKey: string;
+  total: number;
+  entries: Array<{
+    rank: number;
+    characterId: string;
+    characterName: string;
+    rating: number;
+    tier: string;
+    wins: number;
+    losses: number;
+    sectName: string | null;
+  }>;
+}
+
+interface RewardPreviewStub {
+  seasonKey: string;
+  tiers: Array<{
+    tier: string;
+    reward: {
+      linhThach: number;
+      tienNgoc: number;
+      exp: number;
+      items: Array<{ itemKey: string; qty: number }>;
+    };
+    labelI18nKey: string;
+    descriptionI18nKey: string;
+  }>;
+}
+
 interface ArenaStoreStub {
   profile: ProfileStub | null;
   profileLoading: boolean;
@@ -91,6 +141,23 @@ interface ArenaStoreStub {
   challenge: ReturnType<typeof vi.fn>;
   fetchHistory: ReturnType<typeof vi.fn>;
   clearLastResult: () => void;
+  // Phase 14.1.C
+  season: SeasonStub | null;
+  seasonLoading: boolean;
+  seasonError: string | null;
+  myStanding: MyStandingStub | null;
+  myStandingLoading: boolean;
+  myStandingError: string | null;
+  leaderboard: LeaderboardStub | null;
+  leaderboardLoading: boolean;
+  leaderboardError: string | null;
+  rewardPreview: RewardPreviewStub | null;
+  rewardPreviewLoading: boolean;
+  rewardPreviewError: string | null;
+  fetchSeason: ReturnType<typeof vi.fn>;
+  fetchMyStanding: ReturnType<typeof vi.fn>;
+  fetchLeaderboard: ReturnType<typeof vi.fn>;
+  fetchRewardPreview: ReturnType<typeof vi.fn>;
 }
 
 const arenaState: ArenaStoreStub = {
@@ -114,6 +181,23 @@ const arenaState: ArenaStoreStub = {
   clearLastResult: vi.fn(() => {
     arenaState.lastResult = null;
   }),
+  // Phase 14.1.C — season slice.
+  season: null,
+  seasonLoading: false,
+  seasonError: null,
+  myStanding: null,
+  myStandingLoading: false,
+  myStandingError: null,
+  leaderboard: null,
+  leaderboardLoading: false,
+  leaderboardError: null,
+  rewardPreview: null,
+  rewardPreviewLoading: false,
+  rewardPreviewError: null,
+  fetchSeason: vi.fn(),
+  fetchMyStanding: vi.fn(),
+  fetchLeaderboard: vi.fn(),
+  fetchRewardPreview: vi.fn(),
 };
 
 const toastPushMock = vi.fn();
@@ -193,6 +277,58 @@ const i18n = createI18n({
           HISTORY_FETCH_FAILED: 'h err',
           DAILY_LIMIT_REACHED: 'limit',
           CANNOT_ATTACK_SELF: 'self',
+          SEASON_FETCH_FAILED: 's err',
+          STANDING_FETCH_FAILED: 'st err',
+          LEADERBOARD_FETCH_FAILED: 'l err',
+          REWARDS_FETCH_FAILED: 'r err',
+        },
+        season: {
+          title: 'Season',
+          status: { ACTIVE: 'Active', SETTLED: 'Settled', ARCHIVED: 'Archived' },
+          starts: 'Start',
+          ends: 'End',
+          settledAt: 'SettledAt',
+          cadence: { weekly: 'Weekly' },
+          ratingDelta: 'Δ',
+          myStanding: {
+            title: 'My',
+            rating: 'R',
+            tier: 'T',
+            rank: 'Rk',
+            wins: 'W',
+            losses: 'L',
+            noRank: '—',
+          },
+          tier: {
+            BRONZE: 'Bronze',
+            SILVER: 'Silver',
+            GOLD: 'Gold',
+            DIAMOND: 'Diamond',
+            IMMORTAL: 'Immortal',
+          },
+        },
+        leaderboard: {
+          title: 'LB',
+          rank: '#',
+          name: 'Name',
+          rating: 'Rating',
+          tier: 'Tier',
+          wins: 'W',
+          losses: 'L',
+          sect: 'Sect',
+          empty: 'no lb',
+          totalCount: 'Total: {n}',
+          loadMore: 'More',
+        },
+        rewardPreview: {
+          title: 'Rewards',
+          linhThach: 'LT',
+          tienNgoc: 'TN',
+          exp: 'EXP',
+          items: 'Items',
+          tier: 'Tier',
+          reward: 'Reward',
+          noReward: 'None',
         },
       },
     },
@@ -221,6 +357,23 @@ function resetState() {
   arenaState.fetchOpponents.mockReset();
   arenaState.challenge.mockReset();
   arenaState.fetchHistory.mockReset();
+  // Phase 14.1.C
+  arenaState.season = null;
+  arenaState.seasonLoading = false;
+  arenaState.seasonError = null;
+  arenaState.myStanding = null;
+  arenaState.myStandingLoading = false;
+  arenaState.myStandingError = null;
+  arenaState.leaderboard = null;
+  arenaState.leaderboardLoading = false;
+  arenaState.leaderboardError = null;
+  arenaState.rewardPreview = null;
+  arenaState.rewardPreviewLoading = false;
+  arenaState.rewardPreviewError = null;
+  arenaState.fetchSeason.mockReset();
+  arenaState.fetchMyStanding.mockReset();
+  arenaState.fetchLeaderboard.mockReset();
+  arenaState.fetchRewardPreview.mockReset();
   toastPushMock.mockClear();
 }
 
