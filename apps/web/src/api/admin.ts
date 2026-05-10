@@ -796,6 +796,45 @@ export async function adminSectSeasonCronRunNow(
 }
 
 /**
+ * Phase 15.7 — GET /admin/territory/cron/status. Read-only view.
+ */
+export interface AdminTerritoryCronStatusView {
+  enabled: boolean;
+  cron: string;
+  timezone: string;
+  previousPeriodKey: string;
+  lastSettlement: { periodKey: string; settledAt: string } | null;
+  lastDecay: { periodKey: string; appliedAt: string } | null;
+  lastReward: { periodKey: string; grantedAt: string } | null;
+}
+
+export async function adminTerritoryCronStatus(): Promise<AdminTerritoryCronStatusView> {
+  const { data } = await apiClient.get<Envelope<AdminTerritoryCronStatusView>>(
+    '/admin/territory/cron/status',
+  );
+  return unwrap(data);
+}
+
+/**
+ * Phase 15.7 — GET /admin/sect-season/cron/status. Read-only view.
+ */
+export interface AdminSectSeasonCronStatusView {
+  enabled: boolean;
+  cron: string;
+  timezone: string;
+  lastSnapshot: { seasonKey: string; finalizedAt: string } | null;
+  lastChampionGrant: { seasonKey: string; grantedAt: string } | null;
+  lastMvpGrant: { seasonKey: string; grantedAt: string } | null;
+}
+
+export async function adminSectSeasonCronStatus(): Promise<AdminSectSeasonCronStatusView> {
+  const { data } = await apiClient.get<Envelope<AdminSectSeasonCronStatusView>>(
+    '/admin/sect-season/cron/status',
+  );
+  return unwrap(data);
+}
+
+/**
  * Compute display status từ row fields. Mirror BE logic — `revokedAt` thắng,
  * sau đó `expiresAt < now` → EXPIRED, sau đó `redeemCount >= maxRedeems` → EXHAUSTED,
  * còn lại ACTIVE.

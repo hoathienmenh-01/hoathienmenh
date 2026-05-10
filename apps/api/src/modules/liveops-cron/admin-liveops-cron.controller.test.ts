@@ -255,3 +255,143 @@ describe('AdminLiveOpsCronController — audit action codes contract', () => {
     expect(audit.actions).toEqual(['ADMIN_SECT_SEASON_CRON_RUN']);
   });
 });
+
+/**
+ * Phase 15.7 — Status endpoint contract.
+ *
+ * `territoryCronStatus` / `sectSeasonCronStatus` đọc cron config + last
+ * snapshot/decay/reward/grant rows từ DB. Read-only, KHÔNG audit. Test
+ * verify shape return + tolerance khi DB rỗng (lastSnapshot=null...).
+ */
+function makeStatusController(stubs: {
+  settlementRow?: { periodKey: string; settledAt: Date } | null;
+  decayRow?: { periodKey: string; triggeredAt: Date } | null;
+  rewardRow?: { periodKey: string; grantedAt: Date } | null;
+  snapshotRow?: { seasonKey: string; finalizedAt: Date } | null;
+  champRow?: { seasonKey: string; grantedAt: Date } | null;
+  mvpRow?: { seasonKey: string; grantedAt: Date } | null;
+}) {
+  const cronService = {
+    runWeeklyCycle: async () => {
+      throw new Error('not used');
+    },
+    runTerritoryCycle: async () => {
+      throw new Error('not used');
+    },
+    runSectSeasonCycle: async () => {
+      throw new Error('not used');
+    },
+  } as unknown as LiveOpsCronService;
+  const prisma = {
+    sectTerritorySettlementSnapshot: {
+      findFirst: async () => stubs.settlementRow ?? null,
+    },
+    sectTerritoryDecayLog: {
+      findFirst: async () => stubs.decayRow ?? null,
+    },
+    territoryOwnerRewardGrant: {
+      findFirst: async () => stubs.rewardRow ?? null,
+    },
+    sectSeasonSnapshot: {
+      findFirst: async () => stubs.snapshotRow ?? null,
+    },
+    sectSeasonRewardGrant: {
+      findFirst: async (args?: { where?: { rewardType?: string } }) => {
+        const t = args?.where?.rewardType;
+        if (t === 'CHAMPION') return stubs.champRow ?? null;
+        if (t === 'MVP') return stubs.mvpRow ?? null;
+        return null;
+      },
+    },
+    adminAuditLog: { create: async () => ({}) },
+  } as unknown as ConstructorParameters<typeof AdminLiveOpsCronController>[1];
+  return new AdminLiveOpsCronController(cronService, prisma);
+}
+
+describe('AdminLiveOpsCronController.territoryCronStatus', () => {
+  it('DB rỗng → trả last* = null nhưng vẫn có config + previousPeriodKey', async () => {
+    const c = makeStatusController({});
+    const r = await c.territoryCronStatus();
+    expect(r.ok).toBe(true);
+    expect(typeof r.data.enabled).toBe('boolean');
+    expect(typeof r.data.cron).toBe('string');
+    expect(typeof r.data.timezone).toBe('string');
+    expect(typeof r.data.previousPeriodKey).toBe('string');
+    expect(r.data.lastSettlement).toBeNull();
+    expect(r.data.lastDecay).toBeNull();
+    expect(r.data.lastReward).toBeNull();
+  });
+
+  it('DB có data → trả last* serialize ISO string', async () => {
+    const c = makeStatusController({
+      settlementRow: {
+        periodKey: '2026-W19',
+        settledAt: new Date('2026-05-11T00:05:00Z'),
+      },
+      decayRow: {
+        periodKey: '2026-W19',
+        triggeredAt: new Date('2026-05-11T00:06:00Z'),
+      },
+      rewardRow: {
+        periodKey: '2026-W19',
+        grantedAt: new Date('2026-05-11T00:07:00Z'),
+      },
+    });
+    const r = await c.territoryCronStatus();
+    expect(r.data.lastSettlement).toEqual({
+      periodKey: '2026-W19',
+      settledAt: '2026-05-11T00:05:00.000Z',
+    });
+    expect(r.data.lastDecay).toEqual({
+      periodKey: '2026-W19',
+      appliedAt: '2026-05-11T00:06:00.000Z',
+    });
+    expect(r.data.lastReward).toEqual({
+      periodKey: '2026-W19',
+      grantedAt: '2026-05-11T00:07:00.000Z',
+    });
+  });
+});
+
+describe('AdminLiveOpsCronController.sectSeasonCronStatus', () => {
+  it('DB rỗng → last* null, vẫn có config', async () => {
+    const c = makeStatusController({});
+    const r = await c.sectSeasonCronStatus();
+    expect(r.ok).toBe(true);
+    expect(r.data.lastSnapshot).toBeNull();
+    expect(r.data.lastChampionGrant).toBeNull();
+    expect(r.data.lastMvpGrant).toBeNull();
+    expect(typeof r.data.enabled).toBe('boolean');
+    expect(typeof r.data.timezone).toBe('string');
+  });
+
+  it('DB có data → snapshot + champion + MVP serialize đúng', async () => {
+    const c = makeStatusController({
+      snapshotRow: {
+        seasonKey: 'season_2026_s1',
+        finalizedAt: new Date('2026-04-27T00:15:00Z'),
+      },
+      champRow: {
+        seasonKey: 'season_2026_s1',
+        grantedAt: new Date('2026-04-27T00:16:00Z'),
+      },
+      mvpRow: {
+        seasonKey: 'season_2026_s1',
+        grantedAt: new Date('2026-04-27T00:17:00Z'),
+      },
+    });
+    const r = await c.sectSeasonCronStatus();
+    expect(r.data.lastSnapshot).toEqual({
+      seasonKey: 'season_2026_s1',
+      finalizedAt: '2026-04-27T00:15:00.000Z',
+    });
+    expect(r.data.lastChampionGrant).toEqual({
+      seasonKey: 'season_2026_s1',
+      grantedAt: '2026-04-27T00:16:00.000Z',
+    });
+    expect(r.data.lastMvpGrant).toEqual({
+      seasonKey: 'season_2026_s1',
+      grantedAt: '2026-04-27T00:17:00.000Z',
+    });
+  });
+});
