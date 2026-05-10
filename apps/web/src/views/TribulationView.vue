@@ -45,6 +45,7 @@ import { useGameStore } from '@/stores/game';
 import { useTribulationStore } from '@/stores/tribulation';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
+import TribulationMiniBattlePanel from '@/components/TribulationMiniBattlePanel.vue';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -447,6 +448,54 @@ function onReturnToCultivation(): void {
   router.push('/cultivation');
 }
 
+/**
+ * Phase 14.3.E.2 — mini-battle panel toggle gate.
+ *
+ * Show panel khi:
+ *   - Feature flag bật (server response chưa từng trả 501) — `miniBattleAvailable`
+ *     null/true.
+ *   - User at peak + có upcoming encounter (or pending row).
+ *
+ * Khi `miniBattleAvailable === false` → hide panel, fallback hoàn toàn về
+ * Phase 14.3.D encounter resolve flow (server quyết định).
+ */
+const miniBattlePanelVisible = computed<boolean>(() => {
+  if (tribulation.miniBattleAvailable === false) return false;
+  if (!atPeak.value) return false;
+  // Hiển thị nếu (a) đã có battle row, hoặc (b) có encounter pending sẵn
+  // (user vừa start encounter từ Phase 14.3.D — mini-battle nối tiếp).
+  if (tribulation.miniBattle) return true;
+  if (tribulation.encounter && tribulation.encounterPending) return true;
+  // Hoặc (c) có upcoming encounter để user start mini-battle mới.
+  if (tribulation.encounter) return true;
+  return false;
+});
+
+/** Phase 14.3.E.2 — Disable Start nút khi cooldown active. */
+const miniBattleStartDisabled = computed<boolean>(() => {
+  if (cooldownActive.value) return true;
+  if (tribulation.miniBattleStarting) return true;
+  return false;
+});
+
+function onMiniBattleErrored(code: string): void {
+  const key = `tribulation.errors.${code}`;
+  const text = t(key);
+  toast.push({
+    type: 'error',
+    text: text === key ? t('tribulation.errors.UNKNOWN') : text,
+  });
+}
+
+async function onMiniBattleReturnCultivation(): Promise<void> {
+  // Refresh game/preview/history sau khi mini-battle resolved (state đã đổi).
+  await game.fetchState().catch(() => null);
+  await tribulation.fetchHistory().catch(() => null);
+  await tribulation.fetchPreview().catch(() => null);
+  await tribulation.fetchEncounter().catch(() => null);
+  router.push('/cultivation');
+}
+
 onMounted(async () => {
   await auth.hydrate();
   if (!auth.isAuthenticated) {
@@ -462,6 +511,10 @@ onMounted(async () => {
   tribulation.fetchPreview().catch(() => null);
   // Phase 14.3.D — fetch encounter snapshot (current pending row + spec).
   tribulation.fetchEncounter().catch(() => null);
+  // Phase 14.3.E.2 — fetch current mini-battle. Idempotent. Server trả null
+  // nếu chưa start; trả 501 nếu feature flag tắt → store set
+  // miniBattleAvailable=false → fallback flow.
+  tribulation.fetchCurrentBattle().catch(() => null);
   // Phase 11.6.E — live countdown ticker (1 Hz), đủ smooth + đủ rẻ.
   tickerHandle = setInterval(() => {
     nowMs.value = Date.now();
@@ -774,7 +827,22 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <div class="flex flex-col sm:flex-row gap-2">
+        <!-- Phase 14.3.E.2 — Mini-battle panel (turn-based UI). Render khi
+             feature flag bật + có encounter; fallback sang encounter
+             start/resolve buttons khi flag tắt (miniBattleAvailable=false). -->
+        <TribulationMiniBattlePanel
+          v-if="miniBattlePanelVisible"
+          data-testid="tribulation-mini-battle-panel-mount"
+          :selected-support-item-keys="selectedSupportItemKeys"
+          :start-disabled="miniBattleStartDisabled"
+          @errored="onMiniBattleErrored"
+          @return-cultivation="onMiniBattleReturnCultivation"
+        />
+
+        <div
+          v-else
+          class="flex flex-col sm:flex-row gap-2"
+        >
           <button
             v-if="!tribulation.encounterPending"
             type="button"
