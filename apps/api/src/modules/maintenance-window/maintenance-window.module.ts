@@ -6,23 +6,42 @@
  *     active window cache.
  *   - `MaintenanceWindowPublicController` — `GET /maintenance/status`
  *     (public-safe; không yêu cầu auth).
+ *   - `MaintenanceWindowGuardMiddleware` — global middleware chặn
+ *     player khi window ACTIVE (admin bypass, health/metrics/status
+ *     vẫn pass).
  *
- * Exports `MaintenanceWindowService` để middleware
- * (`MaintenanceWindowGuardMiddleware`) và admin controller
+ * Exports `MaintenanceWindowService` để admin module
  * (`MaintenanceWindowAdminModule`) reuse.
  *
  * Admin endpoints (`/admin/maintenance-windows*`) thuộc module riêng
  * `MaintenanceWindowAdminModule` để tránh circular import với
  * AdminModule (mirror Phase 15.4 split FeatureFlag/FeatureFlagAdmin).
+ *
+ * Middleware import `AuthModule` để inject `AuthService` (parse access
+ * cookie). AuthModule KHÔNG import MaintenanceWindowModule → an toàn cycle.
  */
-import { Module } from '@nestjs/common';
+import { Module, type MiddlewareConsumer, type NestModule } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
 import { PrismaService } from '../../common/prisma.service';
+import { MaintenanceWindowGuardMiddleware } from './maintenance-window.middleware';
 import { MaintenanceWindowPublicController } from './maintenance-window-public.controller';
 import { MaintenanceWindowService } from './maintenance-window.service';
 
 @Module({
+  imports: [AuthModule],
   controllers: [MaintenanceWindowPublicController],
-  providers: [PrismaService, MaintenanceWindowService],
+  providers: [
+    PrismaService,
+    MaintenanceWindowService,
+    MaintenanceWindowGuardMiddleware,
+  ],
   exports: [MaintenanceWindowService],
 })
-export class MaintenanceWindowModule {}
+export class MaintenanceWindowModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    // `forRoutes('*')` — middleware chạy cho mọi route đi qua Nest router.
+    // Bypass logic (healthcheck, metrics, status, auth) đã được gói gọn
+    // trong `MaintenanceWindowService.isMaintenanceActiveForRequest`.
+    consumer.apply(MaintenanceWindowGuardMiddleware).forRoutes('*');
+  }
+}
