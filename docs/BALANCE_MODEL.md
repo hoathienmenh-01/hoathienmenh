@@ -700,6 +700,83 @@ Catalog `packages/shared/src/combat.ts`. Hiện 46 skill (Phase 10 PR-2 v1=29, P
 - 5 nguyen_anh ULT → `tier: 'master'` (whitelisted ở `TIER_OVERRIDE_ALLOWED` — atkScale 3.5+ thường infer legendary nhưng legendary reserved cho hoa_than+ ULT có evolution branches).
 - 5 truc_co role-fill → `tier: 'intermediate'` (theo inference).
 
+### 4.7 Phase 14.1.A — Combat determinism audit (DONE this PR)
+
+**Mục tiêu**: chuẩn bị nền cho Arena PvP bất đồng bộ — đảm bảo
+combat critical path có thể replay với cùng seed → cùng kết quả.
+**KHÔNG đổi balance**, **KHÔNG rewrite combat system**.
+
+**Determinism contract**:
+
+```
+result = resolveCombatWithSnapshot({
+  attacker: CombatActorSnapshot,
+  defender: CombatActorSnapshot,
+  seed: number,
+  context: { source, regionKey?, elementContext? },
+})
+```
+
+→ Cùng input → cùng output, mọi lần, mọi máy. Pure function:
+không IO, không DB, không `Date.now`, không `Math.random` trực tiếp
+trong critical path.
+
+**Ngũ hành runtime ở reference resolver** (`combat-snapshot.ts`):
+
+```
+incomingDamageMul = elementMultiplier(attackerEl, defenderEl)
+                  * (1 + sum(equipmentElementalAtkBonus[attackerEl]))
+                  * resistMul
+variance = 0.85 + rng() * 0.30   // [0.85, 1.15]
+finalDamage = max(1, base * incomingDamageMul * variance)
+```
+
+`resistMul = clamp(equipmentElementalResist[attackerEl] ?? 1, 0, 1)`.
+Resist chỉ giảm damage (giá trị ≤ 1) — không khuếch đại.
+
+**Tie-break thứ tự lượt** (turn order) khi attacker.speed ===
+defender.speed: dùng `seededRng.next() < 0.5` để chọn — KHÔNG dùng
+`Math.random` để giữ deterministic.
+
+**RNG injection** vào legacy helper (`combat.ts:rollDamage`,
+`items.ts:rollDungeonLoot/rollMonsterLoot`,
+`boss.service.ts:pickRandom`): optional `rng` param cuối, default
+`Math.random` — call site cũ KHÔNG đổi balance / behavior. Khi cần
+deterministic (Arena replay, regression test), inject
+`createSeededRng(seed).next`.
+
+**Helper / RNG**: `createSeededRng(seed)` (mulberry32, đồng thuật toán
+với `tribulation-mini-battle.mulberry32` Phase 14.3.E.1 — verified
+cross-module agreement qua test). `hashSeed(string)` dùng FNV-1a 32-bit
+để derive numeric seed từ Arena match UUID. `composeSeed(seed, salt)`
+cho per-actor / per-round sub-seed.
+
+**Variance band giữ nguyên** `[0.85, 1.15]` cho phù hợp §4.1 / §4.2.
+Tổng `incomingDamageMul` post-element + post-equipment đa phần nằm
+trong `[0.49, 1.69]` (worst: `0.7 * 0.7 = 0.49` defender khắc + resist
+0.7; best: `1.30 * 1.30 = 1.69` tương khắc + +30% atk bonus). Variance
+chỉ dao động ±15% cuối — không lệch balance.
+
+**Anti-cheat / non-deterministic source**: KHÔNG đọc DB mutable trong
+resolver (snapshot phải đủ). KHÔNG dùng `Date.now` trong critical
+calc. Sort skillKeys/buffKeys ASC trước khi serialize để cross-run
+JSON identical.
+
+**Test coverage**:
+
+- shared `combat-rng.test.ts` 25 (sequence stability + cross-module +
+  integer bounds + bernoulli + pick + hash + compose).
+- shared `combat-snapshot.test.ts` 24 (same seed → same result, diff
+  seed → variance, element/equipment/resist deterministic, tie-break,
+  draw, default fill, normalize sort + immutability).
+- shared `combat-determinism.test.ts` 15 (rollDamage / rollDungeonLoot
+  / rollMonsterLoot seeded + variance bounds + fallback Math.random).
+- api `combat-determinism.test.ts` 7 (cùng helper ở API runtime
+  context).
+
+**Phase 14.1.B Async Arena Foundation** sẽ wire snapshot → DB persist
++ Arena queue + match build (Defer: leaderboard, ELO, reward).
+
 ---
 
 

@@ -1529,18 +1529,26 @@ export const DUNGEON_LOOT: Record<string, readonly LootEntry[]> = {
  * Generic weighted loot roll. Internal helper shared by `rollDungeonLoot` and
  * `rollMonsterLoot`. `count` times picks 1 entry proportional to `weight`,
  * random qty in `[qtyMin, qtyMax]`.
+ *
+ * **Phase 14.1.A** — `rng` optional. Default `Math.random` cho backward
+ * compat. Inject seeded RNG cho Arena prep / replay verify (xem
+ * `combat-rng.ts`).
  */
-function rollLootTable(table: readonly LootEntry[], count: number): RolledLoot[] {
+function rollLootTable(
+  table: readonly LootEntry[],
+  count: number,
+  rng: () => number = Math.random,
+): RolledLoot[] {
   if (table.length === 0) return [];
   const total = table.reduce((s, e) => s + e.weight, 0);
   const out: RolledLoot[] = [];
   for (let i = 0; i < count; i++) {
-    let r = Math.random() * total;
+    let r = rng() * total;
     for (const entry of table) {
       r -= entry.weight;
       if (r <= 0) {
         const qty =
-          entry.qtyMin + Math.floor(Math.random() * (entry.qtyMax - entry.qtyMin + 1));
+          entry.qtyMin + Math.floor(rng() * (entry.qtyMax - entry.qtyMin + 1));
         out.push({ itemKey: entry.itemKey, qty });
         break;
       }
@@ -1549,11 +1557,20 @@ function rollLootTable(table: readonly LootEntry[], count: number): RolledLoot[]
   return out;
 }
 
-/** Roll 1-2 entry từ drop table dungeon, áp dụng weight. */
-export function rollDungeonLoot(dungeonKey: string, count = 2): RolledLoot[] {
+/**
+ * Roll 1-2 entry từ drop table dungeon, áp dụng weight.
+ *
+ * **Phase 14.1.A** — `rng` optional. Default `Math.random` (legacy
+ * runtime). Caller deterministic inject seeded RNG.
+ */
+export function rollDungeonLoot(
+  dungeonKey: string,
+  count = 2,
+  rng: () => number = Math.random,
+): RolledLoot[] {
   const table = DUNGEON_LOOT[dungeonKey];
   if (!table || table.length === 0) return [];
-  return rollLootTable(table, count);
+  return rollLootTable(table, count, rng);
 }
 
 /**
@@ -1562,11 +1579,18 @@ export function rollDungeonLoot(dungeonKey: string, count = 2): RolledLoot[] {
  *
  * Caller (DungeonRunService.nextEncounter, CombatService WON path) sẽ check
  * `rollMonsterLoot(monsterKey, n)` — nếu empty → fallback `rollDungeonLoot`.
+ *
+ * **Phase 14.1.A** — `rng` optional. Default `Math.random` (legacy
+ * runtime). Caller deterministic inject seeded RNG.
  */
-export function rollMonsterLoot(monsterKey: string, count = 2): RolledLoot[] {
+export function rollMonsterLoot(
+  monsterKey: string,
+  count = 2,
+  rng: () => number = Math.random,
+): RolledLoot[] {
   const monster = monsterByKey(monsterKey);
   if (!monster?.lootTable || monster.lootTable.length === 0) return [];
-  return rollLootTable(monster.lootTable, count);
+  return rollLootTable(monster.lootTable, count, rng);
 }
 
 export const QUALITY_COLOR: Record<Quality, string> = {

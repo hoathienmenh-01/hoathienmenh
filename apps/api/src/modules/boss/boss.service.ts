@@ -1398,9 +1398,18 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
   }
 }
 
-function pickRandom<T>(arr: readonly T[]): T | null {
+/**
+ * **Phase 14.1.A** — `rng` optional. Default `Math.random` cho backward
+ * compat (toàn bộ call site cũ vẫn dùng Math.random). Caller deterministic
+ * inject seeded RNG (qua `createSeededRng(seed).next` ở `@xuantoi/shared`)
+ * cho Arena prep / replay verify.
+ */
+function pickRandom<T>(
+  arr: readonly T[],
+  rng: () => number = Math.random,
+): T | null {
   if (arr.length === 0) return null;
-  return arr[Math.floor(Math.random() * arr.length)];
+  return arr[Math.floor(rng() * arr.length)];
 }
 
 function viewerOnlyHp(hp: bigint): bigint {
