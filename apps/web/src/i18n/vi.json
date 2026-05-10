@@ -12,6 +12,7 @@
     "next": "Tiếp tục",
     "prev": "Lùi lại",
     "close": "Đóng",
+    "dismiss": "Đóng",
     "confirm": "Đồng ý",
     "skip": "Bỏ qua",
     "yes": "Có",
@@ -59,7 +60,11 @@
       "titlesState": "Không lấy được danh hiệu",
       "titleEquip": "Trang bị danh hiệu thất bại",
       "titleUnequip": "Gỡ danh hiệu thất bại",
-      "buffsState": "Không lấy được trạng thái buff"
+      "buffsState": "Không lấy được trạng thái buff",
+      "arenaProfile": "Không tải được hồ sơ Đấu Đài",
+      "arenaOpponents": "Không tải được đối thủ",
+      "arenaChallenge": "Khiêu chiến thất bại",
+      "arenaHistory": "Không tải được lịch sử trận"
     }
   },
   "locale": {
@@ -1222,9 +1227,15 @@
       "economy": "Kinh tế (An toàn)"
     },
     "economySafety": {
-      "latestRun": { "title": "Lần kiểm tra ledger gần nhất" },
-      "issues": { "title": "Vấn đề ledger" },
-      "anomalies": { "title": "Bất thường economy" },
+      "latestRun": {
+        "title": "Lần kiểm tra ledger gần nhất"
+      },
+      "issues": {
+        "title": "Vấn đề ledger"
+      },
+      "anomalies": {
+        "title": "Bất thường economy"
+      },
       "filter": {
         "severityAll": "Tất cả mức độ",
         "statusAll": "Tất cả trạng thái",
@@ -3399,6 +3410,65 @@
       "ADMIN_ONLY": "Chỉ ADMIN mới được kết toán Lãnh Địa.",
       "UNAUTHENTICATED": "Vui lòng đăng nhập lại.",
       "UNKNOWN": "Không tải được dữ liệu Lãnh Địa, thử lại."
+    }
+  },
+  "arena": {
+    "title": "Đấu Đài",
+    "subtitle": "PvP bất đồng bộ. Server giữ snapshot và tự xử trận theo seed — kết quả deterministic.",
+    "profile": {
+      "rating": "Điểm xếp hạng",
+      "tier": "Bậc",
+      "wins": "Thắng",
+      "losses": "Thua",
+      "draws": "Hoà",
+      "attacksToday": "Lượt đánh hôm nay",
+      "unlimited": "∞"
+    },
+    "opponents": {
+      "title": "Đối thủ đề cử",
+      "refresh": "Làm mới",
+      "empty": "Chưa có đối thủ phù hợp. Hãy thử lại sau.",
+      "rating": "Rank {r}",
+      "realm": "{realm} · Trọng {stage}"
+    },
+    "challenge": {
+      "button": "Khiêu chiến",
+      "inFlight": "Đang giao đấu…"
+    },
+    "result": {
+      "win": "Thắng",
+      "lose": "Thua",
+      "draw": "Hoà",
+      "vs": "Đối thủ: {name}",
+      "damageAttacker": "Tấn công: {d}",
+      "damageDefender": "Phản kích: {d}",
+      "rounds": "{n} hiệp",
+      "logLine": "Hiệp {r} · {side} gây {d} sát thương · HP atk {ahp} / def {dhp}",
+      "side": {
+        "attacker": "Atk",
+        "defender": "Def"
+      }
+    },
+    "history": {
+      "title": "Lịch sử trận",
+      "empty": "Chưa có trận đấu nào.",
+      "rounds": "{n} hiệp"
+    },
+    "toast": {
+      "challengeSuccess": "Đã xử trận. Xem kết quả phía trên."
+    },
+    "errors": {
+      "UNKNOWN": "Lỗi không xác định.",
+      "NO_CHARACTER": "Cần có nhân vật trước khi vào Đấu Đài.",
+      "DEFENDER_NOT_FOUND": "Đối thủ không tồn tại.",
+      "CANNOT_ATTACK_SELF": "Không thể tự đánh chính mình.",
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "DAILY_LIMIT_REACHED": "Đã hết lượt đánh trong ngày.",
+      "PROFILE_FETCH_FAILED": "Không tải được hồ sơ Đấu Đài.",
+      "OPPONENTS_FETCH_FAILED": "Không tải được danh sách đối thủ.",
+      "HISTORY_FETCH_FAILED": "Không tải được lịch sử trận.",
+      "CHALLENGE_FAILED": "Khiêu chiến thất bại.",
+      "IN_FLIGHT": "Trận đấu đang xử lý, vui lòng đợi."
     }
   }
 }

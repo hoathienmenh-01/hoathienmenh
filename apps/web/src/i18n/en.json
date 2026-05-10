@@ -12,6 +12,7 @@
     "next": "Next",
     "prev": "Previous",
     "close": "Close",
+    "dismiss": "Dismiss",
     "confirm": "OK",
     "skip": "Skip",
     "yes": "Yes",
@@ -59,7 +60,11 @@
       "titlesState": "Failed to load titles",
       "titleEquip": "Failed to equip title",
       "titleUnequip": "Failed to unequip title",
-      "buffsState": "Failed to load buff state"
+      "buffsState": "Failed to load buff state",
+      "arenaProfile": "Failed to load arena profile",
+      "arenaOpponents": "Failed to load opponents",
+      "arenaChallenge": "Challenge failed",
+      "arenaHistory": "Failed to load match history"
     }
   },
   "locale": {
@@ -1222,9 +1227,15 @@
       "economy": "Economy Safety"
     },
     "economySafety": {
-      "latestRun": { "title": "Latest ledger check run" },
-      "issues": { "title": "Ledger issues" },
-      "anomalies": { "title": "Economy anomalies" },
+      "latestRun": {
+        "title": "Latest ledger check run"
+      },
+      "issues": {
+        "title": "Ledger issues"
+      },
+      "anomalies": {
+        "title": "Economy anomalies"
+      },
       "filter": {
         "severityAll": "All severities",
         "statusAll": "All statuses",
@@ -3399,6 +3410,65 @@
       "ADMIN_ONLY": "Only ADMIN can run territory settlement.",
       "UNAUTHENTICATED": "Please sign in again.",
       "UNKNOWN": "Could not load territory data, please retry."
+    }
+  },
+  "arena": {
+    "title": "Arena",
+    "subtitle": "Async PvP. Server keeps snapshots and resolves by seed — deterministic outcome.",
+    "profile": {
+      "rating": "Rating",
+      "tier": "Tier",
+      "wins": "Wins",
+      "losses": "Losses",
+      "draws": "Draws",
+      "attacksToday": "Attacks today",
+      "unlimited": "∞"
+    },
+    "opponents": {
+      "title": "Suggested opponents",
+      "refresh": "Refresh",
+      "empty": "No opponents available right now. Try again later.",
+      "rating": "Rank {r}",
+      "realm": "{realm} · Stage {stage}"
+    },
+    "challenge": {
+      "button": "Challenge",
+      "inFlight": "Resolving…"
+    },
+    "result": {
+      "win": "Win",
+      "lose": "Loss",
+      "draw": "Draw",
+      "vs": "vs {name}",
+      "damageAttacker": "Atk dmg: {d}",
+      "damageDefender": "Def dmg: {d}",
+      "rounds": "{n} rounds",
+      "logLine": "R{r} · {side} deals {d} dmg · HP atk {ahp} / def {dhp}",
+      "side": {
+        "attacker": "Atk",
+        "defender": "Def"
+      }
+    },
+    "history": {
+      "title": "Match history",
+      "empty": "No matches yet.",
+      "rounds": "{n} rounds"
+    },
+    "toast": {
+      "challengeSuccess": "Match resolved. See result above."
+    },
+    "errors": {
+      "UNKNOWN": "Unknown error.",
+      "NO_CHARACTER": "You need a character to enter Arena.",
+      "DEFENDER_NOT_FOUND": "Opponent not found.",
+      "CANNOT_ATTACK_SELF": "Cannot attack yourself.",
+      "INVALID_INPUT": "Invalid input.",
+      "DAILY_LIMIT_REACHED": "Daily attack limit reached.",
+      "PROFILE_FETCH_FAILED": "Failed to load Arena profile.",
+      "OPPONENTS_FETCH_FAILED": "Failed to load opponents.",
+      "HISTORY_FETCH_FAILED": "Failed to load match history.",
+      "CHALLENGE_FAILED": "Challenge failed.",
+      "IN_FLIGHT": "Match in progress, please wait."
     }
   }
 }

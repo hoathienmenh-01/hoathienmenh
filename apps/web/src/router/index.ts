@@ -121,6 +121,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/LeaderboardView.vue'),
   },
   {
+    path: '/arena',
+    name: 'arena',
+    component: () => import('@/views/ArenaView.vue'),
+  },
+  {
     path: '/settings',
     name: 'settings',
     component: () => import('@/views/SettingsView.vue'),
