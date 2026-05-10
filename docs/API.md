@@ -795,6 +795,70 @@ runtime `assertFeatureEnabled(key)` trả `503 FEATURE_DISABLED`.
 - `FEATURE_DISABLED` (503) — runtime gate; payload `{ flag: <key> }`.
 - `FEATURE_FLAG_KEY_INVALID` (400) — admin update key không trong catalog.
 
+## Maintenance Windows — `MaintenanceWindowPublicController` + `AdminMaintenanceWindowController` (Phase 15.5)
+
+Hệ Maintenance Window cho phép admin lập lịch + bật/tắt khẩn cấp bảo trì.
+Middleware `MaintenanceWindowGuardMiddleware` chạy trước Nest pipeline:
+khi maintenance ACTIVE và user không phải admin (hoặc target =
+`FULL_LOCKDOWN`), trả `503` `MAINTENANCE_ACTIVE` kèm payload
+`{ severity, target, titleVi/En, messageVi/En, endsAt, serverTime }` để FE
+render overlay. Cache L1 in-memory TTL 10s; recompute SCHEDULED→ACTIVE /
+ACTIVE→ENDED chạy idempotent từ `LiveOpsEventSchedulerCronProcessor` mỗi
+5 phút (reuse).
+
+### Public — không yêu cầu auth
+
+- `GET /maintenance/status` — trả `MaintenanceWindowPublicView` shape
+  `{ active, severity, target, titleVi, titleEn, messageVi, messageEn,
+  startsAt, endsAt, serverTime, allowAdminBypass }`. Không leak
+  `id`/`createdByAdminId`/`disabledAt`/`allowHealthcheck`/`allowMetrics`.
+  Endpoint luôn được phép truy cập kể cả khi maintenance ACTIVE.
+
+### Admin — `ADMIN` only
+
+- `GET /admin/maintenance-windows` — trả `{ windows: MaintenanceWindowAdminView[] }` (full metadata).
+- `POST /admin/maintenance-windows` — body strict whitelist:
+  `{ key, severity, target, titleVi, titleEn?, messageVi, messageEn?,
+  startsAt, endsAt, allowAdminBypass?, allowHealthcheck?, allowMetrics?,
+  initialStatus? }`. Audit `ADMIN_MAINTENANCE_CREATE`.
+- `PATCH /admin/maintenance-windows/:id` — partial update; chỉ cho
+  status `DRAFT`/`SCHEDULED` (block update khi đã ACTIVE/ENDED/DISABLED).
+  Audit `ADMIN_MAINTENANCE_UPDATE`.
+- `POST /admin/maintenance-windows/:id/disable` — set `status=DISABLED` +
+  `disabledAt=now`; idempotent. Audit `ADMIN_MAINTENANCE_DISABLE`.
+- `POST /admin/maintenance-windows/recompute-status` — chạy recompute on
+  demand, trả `{ scannedAt, activatedKeys, endedKeys }`. Idempotent.
+  Audit `ADMIN_MAINTENANCE_RECOMPUTE`.
+
+### Bypass rules (middleware)
+
+Khi không có window ACTIVE → middleware không block. Khi có ACTIVE:
+
+1. Path `/maintenance/status` luôn cho qua.
+2. Path `/health*` cho qua nếu `allowHealthcheck=true`.
+3. Path `/metrics*` cho qua nếu `allowMetrics=true`.
+4. Path `/_auth/*` cho qua (admin vẫn login được; player block sau khi
+   resolve role bằng cookie).
+5. Role `ADMIN`/`MOD` cho qua nếu `allowAdminBypass=true` và
+   `target ≠ FULL_LOCKDOWN`.
+6. Target `API_WRITE_ONLY` chỉ block method ≠ `GET`/`HEAD`.
+7. Target `NON_ADMIN_USERS` block player + anonymous nhưng cho admin.
+8. Target `ALL_PLAYERS` block player; admin vẫn pass nếu allowAdminBypass.
+9. Mặc định block (fail-closed) khi role không xác định và không match
+   bypass nào.
+
+### Error codes — Phase 15.5
+
+- `MAINTENANCE_ACTIVE` (503) — middleware block; payload meta như trên.
+- `MAINTENANCE_KEY_DUPLICATE` (409) — admin create trùng key.
+- `MAINTENANCE_NOT_FOUND` (404) — admin update/disable id không tồn tại.
+- `MAINTENANCE_INVALID_STATUS_TRANSITION` (400) — admin update khi
+  status đã ACTIVE/ENDED/DISABLED.
+- `MAINTENANCE_KEY_INVALID` / `MAINTENANCE_WINDOW_INVALID_TIME` /
+  `MAINTENANCE_TITLE_INVALID` / `MAINTENANCE_MESSAGE_INVALID` /
+  `MAINTENANCE_SEVERITY_INVALID` / `MAINTENANCE_TARGET_INVALID` (400) —
+  validator shared reject input không hợp lệ.
+
 ## Error codes (chuẩn hoá)
 
 - **Auth**: `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `RATE_LIMITED`, `PASSWORD_CHANGED`, `REUSED_REFRESH_TOKEN`, `BANNED`, `INVALID_INPUT`.
@@ -815,6 +879,7 @@ runtime `assertFeatureEnabled(key)` trả `503 FEATURE_DISABLED`.
 - **Logs (M6)**: `NO_CHARACTER`, `INVALID_CURSOR`, `INVALID_INPUT`.
 - **Story Dialogue (Phase 12 Story PR-7)**: `NPC_NOT_FOUND`, `STORY_DIALOGUE_NOT_AVAILABLE`, `NODE_NOT_FOUND`, `CHOICE_NOT_FOUND`, `CHOICE_LOCKED`, `CHOICE_ALREADY_APPLIED`, `QUEST_STEP_LOCKED`, `INVALID_INPUT`, `NO_CHARACTER`.
 - **Feature Flag (Phase 15.4)**: `FEATURE_DISABLED` (503 runtime gate, payload include `flag` key), `FEATURE_FLAG_KEY_INVALID` (admin update key không trong catalog).
+- **Maintenance Window (Phase 15.5)**: `MAINTENANCE_ACTIVE` (503 middleware gate, payload include `severity/target/titleVi/En/messageVi/En/endsAt/serverTime`), `MAINTENANCE_KEY_DUPLICATE` (409), `MAINTENANCE_NOT_FOUND` (404), `MAINTENANCE_INVALID_STATUS_TRANSITION` (400), `MAINTENANCE_KEY_INVALID` / `MAINTENANCE_WINDOW_INVALID_TIME` / `MAINTENANCE_TITLE_INVALID` / `MAINTENANCE_MESSAGE_INVALID` / `MAINTENANCE_SEVERITY_INVALID` / `MAINTENANCE_TARGET_INVALID` (400).
 
 ## Environment
 
