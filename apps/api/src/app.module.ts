@@ -41,6 +41,7 @@ import { FeatureFlagModule } from './modules/feature-flag/feature-flag.module';
 import { FeatureFlagAdminModule } from './modules/feature-flag-admin/feature-flag-admin.module';
 import { MaintenanceWindowModule } from './modules/maintenance-window/maintenance-window.module';
 import { MaintenanceWindowAdminModule } from './modules/maintenance-window-admin/maintenance-window-admin.module';
+import { ConfigVersionModule } from './modules/config-version/config-version.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { ArenaModule } from './modules/arena/arena.module';
 import { ArenaAntiWintradeAdminModule } from './modules/arena-anti-wintrade-admin/arena-anti-wintrade-admin.module';
@@ -113,6 +114,13 @@ import { EconomyModule } from './modules/economy/economy.module';
     // /admin/maintenance-windows*`, recompute, disable). Tách module
     // riêng để tránh cycle với AdminModule.
     MaintenanceWindowAdminModule,
+    // Phase 15.6 — Config Version persistence (snapshot before/after).
+    // Exported `ConfigVersionService` cho 4 entity admin-managed module
+    // (LiveOpsEvent, LiveOpsAnnouncement, FeatureFlag, MaintenanceWindow)
+    // ghi version row sau mutation. Admin endpoints + rollback orchestrator
+    // sẽ vào file riêng `ConfigVersionAdminModule` (tránh cycle với
+    // AdminModule, mirror Phase 15.4/15.5).
+    ConfigVersionModule,
     // Phase 16.6 — Economy Anti-cheat (ledger checker + anomaly
     // scanner cron + admin endpoints). SAU AdminModule + EconomyModule.
     AdminEconomySafetyModule,

@@ -106,24 +106,28 @@ model User {
   createdAt       DateTime  @default(now())
   lastLoginAt     DateTime?
 
-  character           Character?
-  topupOrders         TopupOrder[]         @relation("TopupOrderUser")
-  topupApprovals      TopupOrder[]         @relation("TopupOrderApprover")
-  auditLogs           AdminAuditLog[]      @relation("AdminAuditActor")
-  refreshTokens       RefreshToken[]
-  passwordResetTokens PasswordResetToken[]
+  character                     Character?
+  topupOrders                   TopupOrder[]            @relation("TopupOrderUser")
+  topupApprovals                TopupOrder[]            @relation("TopupOrderApprover")
+  auditLogs                     AdminAuditLog[]         @relation("AdminAuditActor")
+  refreshTokens                 RefreshToken[]
+  passwordResetTokens           PasswordResetToken[]
   /// Phase 15.1–15.2 — LiveOps Event Scheduler audit (admin tạo event).
   /// SET NULL khi User bị xoá — event row vẫn giữ history.
   liveOpsScheduledEventsCreated LiveOpsScheduledEvent[] @relation("LiveOpsScheduledEventCreatedBy")
   /// Phase 15.3.B — LiveOps Announcement audit (admin tạo announcement).
   /// SET NULL khi User bị xoá — announcement row vẫn giữ history.
-  liveOpsAnnouncementsCreated LiveOpsAnnouncement[] @relation("LiveOpsAnnouncementCreatedBy")
+  liveOpsAnnouncementsCreated   LiveOpsAnnouncement[]   @relation("LiveOpsAnnouncementCreatedBy")
   /// Phase 15.4 — FeatureFlag audit (admin gần nhất bật/tắt flag).
   /// SET NULL khi admin bị xoá — flag row giữ updatedAt + value.
-  featureFlagsUpdated FeatureFlag[] @relation("FeatureFlagUpdatedBy")
+  featureFlagsUpdated           FeatureFlag[]           @relation("FeatureFlagUpdatedBy")
   /// Phase 15.5 — MaintenanceWindow audit (admin tạo bảo trì).
   /// SET NULL khi admin bị xoá — window row vẫn giữ history.
-  maintenanceWindowsCreated MaintenanceWindow[] @relation("MaintenanceWindowCreatedBy")
+  maintenanceWindowsCreated     MaintenanceWindow[]     @relation("MaintenanceWindowCreatedBy")
+  /// Phase 15.6 — ConfigVersion / ConfigRollbackRun audit. SET NULL khi
+  /// admin bị xoá — version + rollback rows giữ history.
+  configVersionsChanged         ConfigVersion[]         @relation("ConfigVersionChangedBy")
+  configRollbacksRun            ConfigRollbackRun[]     @relation("ConfigRollbackPerformedBy")
 }
 
 /// Token đặt lại mật khẩu (forgot/reset-password flow).
@@ -292,41 +296,41 @@ model Character {
   sectId String?
   sect   Sect?   @relation(fields: [sectId], references: [id])
 
-  inventory               InventoryItem[]
-  ledger                  CurrencyLedger[]
-  itemLedger              ItemLedger[]
-  missionProgress         MissionProgress[]
-  questProgress           QuestProgress[]
-  mails                   Mail[]
-  dailyLoginClaims        DailyLoginClaim[]
-  spiritualRootRollLogs   SpiritualRootRollLog[]
-  cultivationMethods      CharacterCultivationMethod[]
-  characterSkills         CharacterSkill[]
-  tribulationAttemptLogs  TribulationAttemptLog[]
-  tribulationEncounters   TribulationEncounter[]
-  tribulationMiniBattles  TribulationMiniBattle[]
-  breakthroughAttemptLogs BreakthroughAttemptLog[]
-  buffs                   CharacterBuff[]
-  talents                 CharacterTalent[]
-  titleUnlocks            CharacterTitleUnlock[]
-  achievements            CharacterAchievement[]
-  sectMissionClaims       SectMissionClaim[]
-  sectShopPurchases       SectShopPurchase[]
-  sectContributionLedger  SectContributionLedger[]
-  sectSeasonClaims        SectSeasonClaim[]
-  npcAffinities           CharacterNpcAffinity[]
-  npcGiftLogs             CharacterNpcGiftLog[]
-  dailyRewardBuckets      CharacterDailyRewardBucket[]
-  rewardCapEvents         RewardCapEvent[]
-  arenaProfile            ArenaProfile?
-  arenaMatchesAttacker    ArenaMatch[]                 @relation("ArenaMatchAttacker")
-  arenaMatchesDefender    ArenaMatch[]                 @relation("ArenaMatchDefender")
-  arenaStandings          ArenaStanding[]
-  arenaSeasonRewardGrants ArenaSeasonRewardGrant[]
+  inventory                InventoryItem[]
+  ledger                   CurrencyLedger[]
+  itemLedger               ItemLedger[]
+  missionProgress          MissionProgress[]
+  questProgress            QuestProgress[]
+  mails                    Mail[]
+  dailyLoginClaims         DailyLoginClaim[]
+  spiritualRootRollLogs    SpiritualRootRollLog[]
+  cultivationMethods       CharacterCultivationMethod[]
+  characterSkills          CharacterSkill[]
+  tribulationAttemptLogs   TribulationAttemptLog[]
+  tribulationEncounters    TribulationEncounter[]
+  tribulationMiniBattles   TribulationMiniBattle[]
+  breakthroughAttemptLogs  BreakthroughAttemptLog[]
+  buffs                    CharacterBuff[]
+  talents                  CharacterTalent[]
+  titleUnlocks             CharacterTitleUnlock[]
+  achievements             CharacterAchievement[]
+  sectMissionClaims        SectMissionClaim[]
+  sectShopPurchases        SectShopPurchase[]
+  sectContributionLedger   SectContributionLedger[]
+  sectSeasonClaims         SectSeasonClaim[]
+  npcAffinities            CharacterNpcAffinity[]
+  npcGiftLogs              CharacterNpcGiftLog[]
+  dailyRewardBuckets       CharacterDailyRewardBucket[]
+  rewardCapEvents          RewardCapEvent[]
+  arenaProfile             ArenaProfile?
+  arenaMatchesAttacker     ArenaMatch[]                 @relation("ArenaMatchAttacker")
+  arenaMatchesDefender     ArenaMatch[]                 @relation("ArenaMatchDefender")
+  arenaStandings           ArenaStanding[]
+  arenaSeasonRewardGrants  ArenaSeasonRewardGrant[]
   /// Phase 15.0.A — Equipment Reforge / Enchant Foundation.
   /// Audit history per attempt; FK Cascade khi xoá character.
-  equipmentReforgeHistory EquipmentReforgeHistory[]
-  equipmentEnchantHistory EquipmentEnchantHistory[]
+  equipmentReforgeHistory  EquipmentReforgeHistory[]
+  equipmentEnchantHistory  EquipmentEnchantHistory[]
   /// Phase 15.1–15.2 — LiveOps Event Scheduler reward claim (one-time per event).
   liveOpsEventRewardClaims LiveOpsEventRewardClaim[]
 
@@ -423,20 +427,20 @@ model ArenaMatch {
 /// `seasonKey` UNIQUE đảm bảo không có 2 row cùng key (idempotent
 /// settle / lazy create race-safe).
 model ArenaSeason {
-  id          String                   @id @default(cuid())
+  id           String                   @id @default(cuid())
   /// Stable key — `arena_<isoWeekKey>`. Đừng reuse cross-year.
-  seasonKey   String                   @unique
+  seasonKey    String                   @unique
   /// Lifecycle status — `ACTIVE` | `SETTLED` | `ARCHIVED`.
-  status      String                   @default("ACTIVE")
+  status       String                   @default("ACTIVE")
   /// UTC ISO của Monday 00:00 ICT — start (inclusive).
-  startsAt    DateTime
+  startsAt     DateTime
   /// UTC ISO của Monday 00:00 ICT tuần kế — end (exclusive).
-  endsAt      DateTime
+  endsAt       DateTime
   /// ISO của lúc settle chạy — null khi ACTIVE.
-  settledAt   DateTime?
-  createdAt   DateTime                 @default(now())
-  updatedAt   DateTime                 @updatedAt
-  standings   ArenaStanding[]
+  settledAt    DateTime?
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  standings    ArenaStanding[]
   rewardGrants ArenaSeasonRewardGrant[]
 
   @@index([status, endsAt])
@@ -536,25 +540,25 @@ model ArenaSeasonRewardGrant {
 ///
 /// `detailsJson` snapshot raw để admin reproduce mà không cần re-run query.
 model ArenaWintradeAlert {
-  id                  String    @id @default(cuid())
+  id                      String   @id @default(cuid())
   /// Optional season scope. Nullable.
-  seasonId            String?
+  seasonId                String?
   /// Attacker (suspect) — nullable cho rule không hướng (vd reciprocal
   /// đặt cặp sort lex; xem `arenaWintradePairKey`).
-  attackerCharacterId String?
+  attackerCharacterId     String?
   /// Defender (suspect) — nullable.
-  defenderCharacterId String?
+  defenderCharacterId     String?
   /// JSON array of additional related character ids (opponent pool, ...).
-  relatedCharacterIdsJson Json   @default("[]")
-  severity            String
-  type                String
-  status              String    @default("OPEN")
+  relatedCharacterIdsJson Json     @default("[]")
+  severity                String
+  type                    String
+  status                  String   @default("OPEN")
   /// Identifier cửa sổ thời gian + scope cụ thể, kết hợp `(type, windowKey,
   /// attackerCharacterId, defenderCharacterId)` UNIQUE để idempotent.
-  windowKey           String
-  detailsJson         Json      @default("{}")
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  windowKey               String
+  detailsJson             Json     @default("{}")
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   @@unique([type, windowKey, attackerCharacterId, defenderCharacterId])
   @@index([status, severity, createdAt])
@@ -1214,29 +1218,29 @@ model Mail {
 }
 
 model InventoryItem {
-  id           String     @id @default(cuid())
-  characterId  String
-  character    Character  @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  itemKey      String
-  qty          Int        @default(1)
-  equippedSlot EquipSlot?
+  id             String     @id @default(cuid())
+  characterId    String
+  character      Character  @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  itemKey        String
+  qty            Int        @default(1)
+  equippedSlot   EquipSlot?
   /// Phase 11.4.B Gem MVP — danh sách gemKey đã khảm theo thứ tự slot.
   /// Capacity tối đa = `socketCapacityForQuality(item.quality)` (PHAM=0,
   /// LINH=1, HUYEN=2, TIEN=3, THAN=4) enforce ở `GemService.socketGem`
   /// server-authoritative. Item non-equipment / chưa khảm giữ `[]`.
-  sockets      String[]   @default([])
+  sockets        String[]   @default([])
   /// Phase 11.5.B Refine MVP — cấp luyện khí 0..15 (`REFINE_MAX_LEVEL`).
   /// Stat multiplier = `getRefineStatMultiplier(refineLevel)` áp dụng lên
   /// `bonuses` + socket bonus của trang bị khi tính `equipBonus()`.
   /// Item non-equipment / chưa luyện giữ `0`. Server-authoritative qua
   /// `RefineService.refineEquipment` (no client mutation).
-  refineLevel  Int        @default(0)
+  refineLevel    Int        @default(0)
   /// Phase 15.0.A — Equipment Reforge Foundation.
   /// Array of `{ kind, value }` rolled khi reforge (`rollReforgedSubstats`).
   /// kind ∈ {atk,def,hpMax,mpMax,spirit}. Server-authoritative qua
   /// `EquipmentService.reforge` — overwrite toàn bộ slot mỗi reroll.
   /// Empty `[]` cho legacy row + non-equipment.
-  substatsJson Json       @default("[]")
+  substatsJson   Json       @default("[]")
   /// Phase 15.0.A — Equipment Enchant Foundation.
   /// Element key Ngũ Hành (`kim`/`moc`/`thuy`/`hoa`/`tho`). NULL = chưa
   /// enchant. Element được khoá khi `enchantLevel >= 1` — đổi hệ cần PR
@@ -1244,8 +1248,8 @@ model InventoryItem {
   enchantElement String?
   /// Phase 15.0.A — Equipment Enchant Level (0..MAX_ENCHANT_LEVEL=5).
   /// 0 = chưa enchant. Server-authoritative qua `EquipmentService.enchant`.
-  enchantLevel Int        @default(0)
-  createdAt    DateTime   @default(now())
+  enchantLevel   Int        @default(0)
+  createdAt      DateTime   @default(now())
 
   @@unique([characterId, equippedSlot])
   @@index([characterId, itemKey])
@@ -1256,7 +1260,7 @@ model InventoryItem {
 /// `InventoryItem.substatsJson` + currency/material consume. KHÔNG idempotent
 /// (mỗi reroll = 1 row mới). Caller chịu trách nhiệm debounce / rate-limit.
 model EquipmentReforgeHistory {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   characterId     String
   character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
   /// Soft pointer tới `InventoryItem.id`. KHÔNG có FK vì item có thể bị bán/
@@ -1264,12 +1268,12 @@ model EquipmentReforgeHistory {
   inventoryItemId String
   itemKey         String
   /// Substats trước reroll (snapshot `EquipmentSubstat[]`).
-  beforeJson      Json     @default("[]")
+  beforeJson      Json      @default("[]")
   /// Substats sau reroll (snapshot `EquipmentSubstat[]`).
-  afterJson       Json     @default("[]")
+  afterJson       Json      @default("[]")
   /// Cost detail: `{ linhThachCost, materialKey, materialQty }`.
-  costJson        Json     @default("{}")
-  createdAt       DateTime @default(now())
+  costJson        Json      @default("{}")
+  createdAt       DateTime  @default(now())
 
   @@index([characterId, createdAt])
   @@index([inventoryItemId, createdAt])
@@ -1280,18 +1284,18 @@ model EquipmentReforgeHistory {
 /// `before` sang `after`. Lưu cả `beforeElement`/`afterElement` để track
 /// trường hợp chuyển hệ (foundation phase chưa hỗ trợ — reserved cho future).
 model EquipmentEnchantHistory {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   characterId     String
   character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
   inventoryItemId String
   itemKey         String
   beforeElement   String?
-  beforeLevel     Int      @default(0)
+  beforeLevel     Int       @default(0)
   afterElement    String?
-  afterLevel      Int      @default(0)
+  afterLevel      Int       @default(0)
   /// Cost detail: `{ linhThachCost, materialKey, materialQty }`.
-  costJson        Json     @default("{}")
-  createdAt       DateTime @default(now())
+  costJson        Json      @default("{}")
+  createdAt       DateTime  @default(now())
 
   @@index([characterId, createdAt])
   @@index([inventoryItemId, createdAt])
@@ -1984,7 +1988,7 @@ model LiveOpsScheduledEvent {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  rewardClaims     LiveOpsEventRewardClaim[]
+  rewardClaims LiveOpsEventRewardClaim[]
 
   @@index([status, startsAt])
   @@index([status, endsAt])
@@ -2416,21 +2420,21 @@ model EconomyAnomaly {
 /// defaults" để upsert tất cả keys với defaultEnabled — chuẩn bị seed
 /// trước khi cần bật/tắt.
 model FeatureFlag {
-  id          String   @id @default(cuid())
+  id               String   @id @default(cuid())
   /// Stable key — bắt buộc match `FeatureFlagKey` (catalog shared).
   /// Admin update reject nếu key ngoài catalog.
-  key         String   @unique
-  enabled     Boolean  @default(true)
+  key              String   @unique
+  enabled          Boolean  @default(true)
   /// `FeatureFlagCategory` ∈ `GAMEPLAY|ECONOMY|LIVEOPS|ADMIN|SAFETY`.
   /// Cache vào DB để admin filter UI khỏi cần lookup catalog mỗi lần.
   /// Service ensure-default sync với shared catalog khi seed.
-  category    String   @default("GAMEPLAY")
+  category         String   @default("GAMEPLAY")
   /// Mô tả admin UI (vi). Cache cho list endpoint.
-  description String   @default("")
+  description      String   @default("")
   updatedByAdminId String?
-  updatedByAdmin   User? @relation("FeatureFlagUpdatedBy", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  updatedByAdmin   User?    @relation("FeatureFlagUpdatedBy", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@index([category])
   @@index([enabled])
@@ -2499,4 +2503,96 @@ model MaintenanceWindow {
   @@index([status, startsAt])
   @@index([status, endsAt])
   @@index([severity, status])
+}
+
+/// Phase 15.6 — Config Version snapshot.
+///
+/// Mỗi mutation từ admin trên 4 entity admin-managed
+/// (`LIVEOPS_EVENT`, `LIVEOPS_ANNOUNCEMENT`, `FEATURE_FLAG`,
+/// `MAINTENANCE_WINDOW`) ghi 1 row vào model này. Cho phép admin xem
+/// lịch sử thay đổi, diff before/after, dry-run rollback và rollback
+/// (tạo 1 row `UPDATE` mới với `afterJson` = snapshot version cũ).
+///
+/// `entityType` string-typed (forward-compat: thêm `SECT_SEASON_CONFIG`
+/// không cần migration). Validate ở shared `isConfigVersionEntityType`.
+///
+/// `entityId` là id của entity:
+///   - LIVEOPS_EVENT          → `LiveOpsScheduledEvent.id` (cuid).
+///   - LIVEOPS_ANNOUNCEMENT   → `LiveOpsAnnouncement.id` (cuid).
+///   - FEATURE_FLAG           → `FeatureFlag.key` (admin luôn ref bằng key).
+///   - MAINTENANCE_WINDOW     → `MaintenanceWindow.id` (cuid).
+///
+/// `version` tăng tuần tự per (entityType, entityId), bắt đầu từ 1. Service
+/// tính `max(version)+1` trong transaction để tránh race.
+///
+/// `beforeJson` nullable — null cho `CREATE` (chưa có row trước đó).
+/// `afterJson` luôn có — snapshot sau khi mutation áp dụng.
+///
+/// `changedByAdminId` SET NULL khi admin bị xoá (lịch sử giữ).
+///
+/// Snapshot KHÔNG chứa secret-like field (sanitize ở shared
+/// `sanitizeSnapshot` trước khi persist).
+///
+/// Indexes:
+///   - `[entityType, entityId, version]` UNIQUE — tránh duplicate version.
+///   - `[entityType, entityId, createdAt]` — list versions newest first.
+///   - `[action, createdAt]` — admin filter theo action.
+model ConfigVersion {
+  id               String   @id @default(cuid())
+  entityType       String
+  entityId         String
+  version          Int
+  action           String
+  beforeJson       Json?
+  afterJson        Json
+  changedByAdminId String?
+  changedByAdmin   User?    @relation("ConfigVersionChangedBy", fields: [changedByAdminId], references: [id], onDelete: SetNull)
+  reason           String?
+  createdAt        DateTime @default(now())
+
+  rollbackRuns ConfigRollbackRun[]
+
+  @@unique([entityType, entityId, version])
+  @@index([entityType, entityId, createdAt])
+  @@index([action, createdAt])
+}
+
+/// Phase 15.6 — Config Rollback Run audit.
+///
+/// Mỗi lần admin gọi dry-run rollback hoặc rollback ghi 1 row vào model
+/// này. Hữu ích cho:
+///   - Audit history rollback admin đã thực hiện.
+///   - Ghi rõ safety level + warnings + status (DRY_RUN / APPLIED /
+///     BLOCKED / FAILED) để post-mortem nếu rollback gây sự cố.
+///
+/// `targetVersionId` ref tới `ConfigVersion.id` của version mà admin
+/// muốn rollback về (snapshot source). SET NULL nếu version cũ bị xoá
+/// (rare — không xoá tự động Phase 15.6).
+///
+/// `fromVersion` / `toVersion` là số version (snapshot at compile time,
+/// dù DB row có thể bị mutate sau đó).
+///
+/// `resultJson` lưu summary response trả admin (changedFields,
+/// warnings) — phục vụ trace lại.
+///
+/// `performedByAdminId` SET NULL khi admin bị xoá.
+model ConfigRollbackRun {
+  id                 String         @id @default(cuid())
+  entityType         String
+  entityId           String
+  fromVersion        Int
+  toVersion          Int
+  targetVersionId    String?
+  targetVersion      ConfigVersion? @relation(fields: [targetVersionId], references: [id], onDelete: SetNull)
+  status             String
+  safetyLevel        String
+  performedByAdminId String?
+  performedByAdmin   User?          @relation("ConfigRollbackPerformedBy", fields: [performedByAdminId], references: [id], onDelete: SetNull)
+  reason             String?
+  resultJson         Json?
+  createdAt          DateTime       @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([performedByAdminId, createdAt])
+  @@index([status, createdAt])
 }

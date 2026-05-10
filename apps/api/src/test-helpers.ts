@@ -197,6 +197,10 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.giftCode.deleteMany({});
   await prisma.mail.deleteMany({});
   await prisma.topupOrder.deleteMany({});
+  // Phase 15.6 — Config Version + Rollback Run (xoá trước User; cả 2
+  // FK SET NULL khi User bị xoá, nhưng explicit cho rõ thứ tự).
+  await prisma.configRollbackRun.deleteMany({});
+  await prisma.configVersion.deleteMany({});
   await prisma.adminAuditLog.deleteMany({});
   await prisma.refreshToken.deleteMany({});
   await prisma.loginAttempt.deleteMany({});
