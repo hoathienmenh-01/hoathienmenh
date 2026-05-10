@@ -2217,6 +2217,70 @@ Breakpoint đặt rộng hơn ở mid-tier (200 width) và hẹp hơn ở high-t
 - Season-end Hall of Fame public page.
 - Cron tự động create-next + settle (admin manual cho Phase 14.1.C).
 
+## 11.23 CONTENT SCALE 2 — HIGH-REALM SKILLS PACK (this PR)
+
+### Goal
+
+Sau khi PvP Arena chain (14.1.A → 14.1.D) hoàn thành, late-game player (Nhân Tiên+) cần **power fantasy rõ ràng** — skill catalog hiện tại trải dài luyenkhi → nguyen_anh nhưng từ Hoá Thần / Nhân Tiên trở lên gần như trống. Content Scale 2 bổ sung 25 skill cảnh giới cao mỗi tier × mỗi hệ Ngũ Hành.
+
+### Distribution
+
+| Realm tier | Realm key (anchor) | Order | Số skill | Element coverage |
+|---|---|---|---|---|
+| Nhân Tiên | `nhan_tien` | 10 | 5 ACTIVE | Kim/Mộc/Thuỷ/Hoả/Thổ |
+| Tiên Giới (Huyền Tiên+) | `huyen_tien` | 13 | 5 ACTIVE | Kim/Mộc/Thuỷ/Hoả/Thổ |
+| Hỗn Nguyên (Thánh Nhân+) | `thanh_nhan` | 18 | 5 ACTIVE | Kim/Mộc/Thuỷ/Hoả/Thổ |
+| Vĩnh Hằng (Vô Chung+) | `vo_chung` | 25 | 5 ACTIVE | Kim/Mộc/Thuỷ/Hoả/Thổ |
+| Special / Đạo Quân | `dao_quan` | 23 | 5 ACTIVE/PASSIVE | Kim/Mộc/Thuỷ/Hoả/Thổ |
+| **Tổng** | | | **25** | **5 element × 5 tier** |
+
+### Stat budget per tier
+
+Tuân thủ hard cap (`SKILL_ATK_SCALE_HARD_CAP=5`, `MP_COST_HARD_CAP=80`, `COOLDOWN_HARD_CAP=6`, `SELF_HEAL_HARD_CAP=0.5`, `SELF_BLOOD_HARD_CAP=0.3`).
+
+| Tier | atkScale damage ULT | mpCost | cooldown | self-heal / shield ratio | bloodCost |
+|---|---|---|---|---|---|
+| nhan_tien | 3.5–4.2 | 70–78 | 4–5 | ≤ 0.30 | ≤ 0.10 |
+| huyen_tien | 3.8–4.4 | 72–80 | 4–5 | ≤ 0.35 | ≤ 0.15 |
+| thanh_nhan | 4.0–4.5 | 75–80 | 5–6 | ≤ 0.40 | ≤ 0.20 |
+| vo_chung | 4.2–4.5 | 76–80 | 5–6 | ≤ 0.45 | ≤ 0.30 |
+| dao_quan | 0.6–4.5 (variable) | 24–78 | 0–6 | ≤ 0.50 | ≤ 0.30 |
+
+**No one-shot rule**: damage ULT atkScale ≤ 4.5 đảm bảo Arena không chết trong 1 turn từ HP đầy (`HP_ENDURANCE_FLOOR_CHECK` audit). Test `content-scale-2-skills.test.ts > no one-shot` enforce.
+
+### Tier mapping (SkillTemplate)
+
+Tất cả 25 entry dùng `tier: 'master'` matching Phase 11 ULT pattern (`kim_quang_dao_thien` v.v.). `legendary` reserved cho `hoa_than`+ ULT có evolution branches (Phase 12 scope, `hasEvolution=true` invariant). Damage ULT có `atkScale ≥ 3.5` → `inferExpectedTier='legendary'` mismatch là intentional → 25 key thêm vào `TIER_OVERRIDE_ALLOWED` trong `skill-templates.ts`.
+
+### Element identity per tier
+
+Mỗi element giữ identity nhất quán:
+- **Mộc**: sustain / heal / poison-cleanse (tag `HEAL`).
+- **Hoả**: burst / DOT (tag `BURST` + `DOT`).
+- **Thổ**: shield / endurance (tag `SHIELD`).
+- **Kim**: armor pierce / crit (tag `CRIT`).
+- **Thuỷ**: control / recovery / slow (tag `CONTROL`).
+
+### Combat compatibility
+
+- KHÔNG đụng combat resolver — skill mới chạy native qua `resolveCombatWithSnapshot()` (Phase 14.1.A determinism contract).
+- Snapshot normalize sort skill keys lexicographic — verified bit-exact với 25 key mới (`content-scale-2-combat.test.ts > snapshot lex sort`).
+- Arena `buildArenaActorSnapshot` không crash với high-realm character (Phase 14.1.B placeholder `['atk_thuong']` vẫn dùng — equipped skill rotation defer Phase 14.1.C extension).
+
+### Test invariants
+
+`content-scale-2-skills.test.ts` (16 tests):
+- Catalog presence + balance hard cap conformance.
+- Realm coverage (5 tier × 5 element = 25 slots filled).
+- Element identity tags match Ngũ Hành identity.
+- No one-shot ULT.
+- Self-blood-cost ≤ 0.3.
+
+### Known limitations
+- **Skill book item drop/consume**: defer Phase 11.2.D.
+- **Arena equipped skill rotation**: defer Phase 14.1.C extension.
+- **Drop source automatic**: KHÔNG có monster/boss drop / quest reward — admin grant route only.
+
 ## 12. CHANGELOG
 
 - **2026-04-30** — Initial creation. Author: Devin AI session 9q.

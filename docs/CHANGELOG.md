@@ -12,7 +12,34 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Phase 14.1.D — Arena Anti-Wintrade Detection (this PR)
+### Content Scale 2 — High-Realm Skills Pack (this PR)
+
+**Scope**: bổ sung 25 skill cảnh giới cao cho late-game player có power fantasy rõ ràng. Phủ Nhân Tiên / Tiên Giới / Hỗn Nguyên / Vĩnh Hằng + neutral, mỗi tier có đầy đủ 5 hệ Ngũ Hành (Kim/Mộc/Thuỷ/Hoả/Thổ) với role identity riêng. **KHÔNG** rewrite skill system, **KHÔNG** thêm gacha, **KHÔNG** schema/migration mới, **KHÔNG** thay endpoint — reuse pattern Phase 11.
+
+#### Added — Content Scale 2
+
+- **Shared (`packages/shared/src/combat.ts`)**: 25 `SkillDef` mới chia 5 tier × 5 element. Mỗi skill có `key` unique, name/description tiếng Việt, `mpCost` 70-80 (bậc cao), `atkScale` 0.6-4.5 (trong hard cap 5), `cooldownTurns` 0-6, `selfHealRatio` ≤ 0.5, `selfBloodCost` ≤ 0.3, `element` rõ ràng, `unlockRealm` khớp với realm key, `tags` (HEAL/DOT/BURST/SHIELD/CRIT/CONTROL) phù hợp role.
+- **Shared (`packages/shared/src/skill-templates.ts`)**: 25 `SkillTemplate` với `tier='master'` (matching pattern Phase 11 ULT — `legendary` reserved cho Hoá Thần+ với evolution branches), `unlocks: [{kind:'realm', ref:<realm_key>}]` enforce realm gating. 25 key thêm vào `TIER_OVERRIDE_ALLOWED` (damage ULT có `atkScale ≥ 3.5` → `inferExpectedTier='legendary'` mismatch là intentional design).
+- **Realm coverage**: `nhan_tien` (order 10) × 5, `huyen_tien` (Tiên Giới, order 13) × 5, `thanh_nhan` (Hỗn Nguyên, order 18) × 5, `vo_chung` (Vĩnh Hằng, order 25) × 5, `dao_quan` (special, order 23) × 5.
+- **Element coverage**: mỗi tier có đủ 5 hệ Ngũ Hành — Mộc (sustain/heal/poison-cleanse), Hoả (burst/DOT), Thổ (shield/endurance), Kim (crit/armor pierce), Thuỷ (control/recovery/slow).
+- **API runtime**: KHÔNG đổi endpoint. Reuse `CharacterSkillService.learn` flow + `validateUnlocks` AND-condition + `realmByKey().order` so sánh — high-realm skill được gate đúng (character chưa đủ realm → `REALM_TOO_LOW`). Idempotent learn (2× call = 1 row, source unchanged).
+- **Combat/Arena**: skill mới chạy native qua `resolveCombatWithSnapshot()` deterministic resolver (mulberry32 seeded RNG). Snapshot lexicographic-sort skill keys vẫn ổn định. Arena `buildArenaActorSnapshot` không crash với high-realm character (skillKeys vẫn `['atk_thuong']` placeholder Phase 14.1.B — equipped rotation defer Phase 14.1.C extension).
+- **FE (`apps/web/src/views/SkillBookView.vue`)**: thêm panel "Pháp Quyển Cảnh Giới Cao" — render full 25 skill catalog với badge **Khoá / Mở / Đã học** dựa trên `character.realmKey` so với `unlockRealm`. Filter realm (5 tier) + element (Ngũ Hành + neutral). Tooltip "Cần đạt {realm}" khi locked. Không crash khi character thấp realm hoặc null.
+- **i18n**: VI/EN parity cho `skillBook.highRealm.*` (title, subtitle, summary, filter, realm name, badge label, lockTooltip).
+
+#### Tests added — Content Scale 2
+
+- Shared: `content-scale-2-skills.test.ts` (16 tests — catalog presence, balance caps, realm/element coverage, role distribution, element identity tags, no one-shot) + `content-scale-2-combat.test.ts` (6 tests — same-seed determinism, hashSeed, snapshot lexicographic sort, both-side high-realm, 100× resolve RNG isolation).
+- API: `character-skill.high-realm.service.test.ts` (10 tests — REALM_TOO_LOW reject ở mỗi boundary, happy path mỗi tier, idempotent learn, 20 element-realm coverage probe, getEffectiveSkillFor mastery 0) + `arena-content-scale-2.service.test.ts` (3 tests — createMatch deterministic, mismatch element không crash, snapshot build với high-realm character).
+- Web: `SkillBookView.high-realm.test.ts` (9 tests — section render, mỗi tier có card, locked khi realm thấp, unlocked khi realm đủ, learned badge, filter realm, filter element, character null không crash, i18n parity).
+
+#### Known limitations — Content Scale 2
+
+- **Skill book item drop/consume**: defer Phase 11.2.D (item ledger flow). Hiện tại high-realm skill chỉ có thể `learn` qua admin grant hoặc future skill book item.
+- **Arena equipped skill rotation**: defer Phase 14.1.C extension. `buildArenaActorSnapshot` vẫn dùng `['atk_thuong']` placeholder (Phase 14.1.B reference resolver). High-realm character đánh Arena vẫn chỉ dùng basic attack — UI catalog chỉ là power-fantasy preview.
+- **Drop source automatic**: KHÔNG có monster/boss drop source; KHÔNG có quest reward source. Tất cả learning routes phải đi qua admin grant hoặc skill book item (Phase 11.2.D).
+
+### Phase 14.1.D — Arena Anti-Wintrade Detection
 
 **Scope**: detection-only anti-cheat layer cho Arena. Phát hiện 5 pattern bất thường (đánh qua lại cùng cặp, swap thắng-thua hai chiều, rating gain spike, farm cùng defender, season suspicious actor) → tạo `ArenaWintradeAlert` cho admin review. **KHÔNG** tự ban, **KHÔNG** tự rollback reward, **KHÔNG** xóa ArenaMatch, **KHÔNG** chặn người chơi đánh tiếp khi mới WARN.
 
