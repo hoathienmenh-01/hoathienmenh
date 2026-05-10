@@ -2034,6 +2034,88 @@ Tradeoff:
 
 ---
 
+## 11.21 ASYNC ARENA FOUNDATION (Phase 14.1.B)
+
+### Mục tiêu balance
+- Cung cấp PvP loop **bất đồng bộ** (không cần đối thủ online) — đáp ứng casual + competitive lite.
+- **Determinism guarantee**: cùng snapshot + seed → cùng kết quả → có thể replay/audit/cheat-detect.
+- Rating đơn giản đầu (Phase 14.1.B), thay bằng ELO progression curve ở Phase 14.1.C khi có telemetry.
+- Daily limit chống farm rating abuse + chống auto-grind 24/7.
+
+### Catalog source
+- `packages/shared/src/arena.ts` — enums + config + helpers (`arenaRatingDeltaFor`, `clampArenaRating`, `arenaDayBucket`, `arenaRankTierFor`).
+- Migration `apps/api/prisma/migrations/20260616000000_phase_14_1_b_arena_foundation`.
+
+### Rating model (placeholder Phase 14.1.B)
+- **Default rating**: `1000` (`ARENA_RATING_DEFAULT`). Floor `0`, ceiling `5000`.
+- **Delta cố định** (KHÔNG ELO):
+  - `ATTACKER_WIN`: attacker `+10`, defender `-5`.
+  - `DEFENDER_WIN`: attacker `-5`, defender `+10`.
+  - `DRAW`: cả 2 = 0.
+- Defender magnitude = ½ attacker (chống punishment quá mức người bị tấn công offline).
+- Clamp về `[0, 5000]` mỗi lần update — KHÔNG cho rating âm/quá cao.
+- **Lý do delta nhỏ**: với 10 trận/ngày (limit), tối đa rating change ±100/ngày — tránh swing đột ngột vì chưa có anti-wintrade. Phase 14.1.C sẽ thay bằng ELO Elo K-factor scale theo rating diff.
+
+### Daily limit (anti-grind)
+- Default `ARENA_DAILY_LIMIT_PER_DAY=10` attacks/character/day.
+- `0` = unlimited (dùng cho test / smoke / dev).
+- Day bucket: `Asia/Ho_Chi_Minh` (`ARENA_TIMEZONE`), reset 00:00 ICT.
+- Server tự rollover `attacksToday=0` lazy ở `getOrCreateProfile` (so sánh với `lastAttackDayBucket`).
+- KHÔNG limit số lần BỊ tấn công (defender). Nếu Phase 14.1.C cần: thêm `defendsToday` counter.
+
+### Opponent matching
+- Default rating window ±200 (sortBy abs diff ASC).
+- Limit default 10, max 50.
+- **Fallback random** khi sparse (< limit người trong window): mở rộng dần ra entire pool, **loại trừ self**.
+- KHÔNG match cùng sect (defer Phase 14.1.C anti-collusion).
+- KHÔNG match repeat trong N giờ (defer Phase 14.1.C anti-wintrade).
+
+### Match resolution flow
+1. POST `/arena/matches { defenderCharacterId, seed? }`.
+2. Validate (auth + character + no-self + daily limit).
+3. **Tx**:
+   - Build `attackerSnapshot` + `defenderSnapshot` từ Character row hiện tại (qua `buildArenaActorSnapshot` → `buildCombatActorSnapshot` Phase 14.1.A).
+   - INSERT `ArenaMatch { status: PENDING, seed: 0, ... }` để get matchId.
+   - Derive seed: `seed ?? hashSeed("arena-match:<matchId>")`.
+   - `resolveCombatWithSnapshot({ attacker, defender, seed, context: { source: 'ARENA_PREP' } })`.
+   - Determine outcome từ `sim.winner`.
+   - UPDATE match → `RESOLVED` (kèm result, winnerCharacterId?, seed, battleLogJson, ratingDeltaJson).
+   - UPDATE attacker `ArenaProfile`: rating + delta (clamp), wins/losses/draws++, `attacksToday++`.
+   - UPDATE defender `ArenaProfile`: rating + delta (clamp).
+4. Return `ArenaMatchResult` với `outcome`, `ratingDelta`, `attackerRatingAfter`, `defenderRatingAfter`, `totalAttackerDamage`, `totalDefenderDamage`, `rounds`, `battleLog[]`.
+
+**KHÔNG queue/job runtime** — sync trong cùng request. Latency ~10–50ms (resolver pure deterministic, không I/O).
+
+### Snapshot lock-in
+- `attackerSnapshotJson` + `defenderSnapshotJson` immutable sau khi RESOLVED.
+- `seed` lưu cùng row → replay bit-exact qua `resolveCombatWithSnapshot`.
+- Defender stat lock-in tại thời điểm match created → defender breakthrough/changed equipment sau đó KHÔNG ảnh hưởng kết quả trận.
+
+### Tier (placeholder Phase 14.1.B)
+- `arenaRankTierFor(rating)` chỉ trả `'unranked'` Phase 14.1.B.
+- 5 slot reserved cho Phase 14.1.C (bronze/silver/gold/platinum/diamond) — tránh re-migration.
+
+### Anti-cheat / Limitations Phase 14.1.B
+- `CANNOT_ATTACK_SELF` enforced.
+- `DAILY_LIMIT_REACHED` enforced (env-config).
+- KHÔNG: cooldown giữa cùng cặp (anti-wintrade), IP/device fingerprint, min-level/realm gate (defender quá yếu vẫn cho), anti-throw (defender intentional lose), gear-check anti-naked (defender cố tình unequip).
+- Defer toàn bộ sang Phase 14.1.C Arena Season + ELO + Reward.
+
+### Tests
+- `packages/shared/src/arena.test.ts` (16 tests): rating delta branch, clamp floor/ceiling, day bucket ICT/UTC, enum guards, tier placeholder.
+- `apps/api/src/modules/arena/arena.service.test.ts` (19 tests): profile lazy-create + idempotent + NO_CHARACTER, opponents excludes self + fallback when sparse, match create rejects self/unknown/invalid, persists snapshots/seed/log/delta, **deterministic replay** (load row → resolve again → bit-exact), counters, daily limit + 0=unlimited, history DESC + side filter + limit.
+- `apps/web/src/views/__tests__/ArenaView.test.ts` (22): profile/opponents/result/history loading/error/render, challenge button calls API + toast, dismiss banner, refresh, mount triggers.
+- `apps/web/src/api/__tests__/arena.test.ts` (8): envelope parsing, query string, error throw.
+- `apps/web/src/stores/__tests__/arena.test.ts` (8): fetchProfile/Opponents success+error, challenge IN_FLIGHT guard, clearLastResult.
+
+### Defer / Out of scope Phase 14.1.B
+- Season cycle (weekly/monthly snapshot).
+- ELO progression curves.
+- End-season mail reward + Hall of Fame.
+- Anti-wintrade phức tạp (cooldown + fingerprint + min-level gate).
+- Defense AI snapshot khi player offline (Phase 14.1.B dùng live stat tại thời điểm match).
+- Realtime PvP / cross-server / party arena.
+
 ## 12. CHANGELOG
 
 - **2026-04-30** — Initial creation. Author: Devin AI session 9q.
@@ -2045,3 +2127,4 @@ Tradeoff:
 - **2026-05-09** — Phase 14.0.D Territory Weekly War Loop section added (§11.19) — period key UTC ISO week + helpers, settle-current admin endpoint với no-influence sticky owner rule + deterministic tie-break, war state/region/history read API, FE countdown + 9 region card + history + admin button. KHÔNG cron tự động (defer 14.0.E).
 - **2026-05-09** — Phase 16.5 Daily Reward Cap dial — anti-abuse layer. Per-source cap (CULTIVATION / DUNGEON / MISSION) scale theo realm tier ×1/×3/×8 (tier-1 phamnhan đến tier-3 luyen_hu+). Cap exp tier-1: CULTIVATION 6000 / DUNGEON 2400 / MISSION 1500 — đủ ~4–6h casual play/ngày. Cap linhThach tier-1: DUNGEON 600 + MISSION 500 = 1100/ngày (vd. mua 1 đan low-tier 200–500 linh, 2–3 đan/ngày). Cao realm cap cao tỉ lệ. Catalog ở `packages/shared/src/daily-reward-cap.ts` (`DAILY_REWARD_CAP_BY_REALM_AND_SOURCE`). KHÔNG wire territory/daily login/season/topup (defer Phase 16.9 nếu telemetry cần). KHÔNG cap admin grant (admin path không gọi service).
 - **2026-05-10** — Phase 16.6 Economy Anti-cheat Suite dial — detection layer chuẩn bị closed beta. **Anomaly threshold catalog** (`packages/shared/src/economy-anomaly.ts` `ECONOMY_ANOMALY_RULES`): 5 source × WARN/CRITICAL: `CURRENCY_DELTA_24H` 100k/1M LT, `RARE_ITEM_GAIN_24H` (HUYEN+ count) 5/20 / 24h, `REWARD_CAP_BYPASS` 1/3 cap event / day, `ADMIN_GRANT_OVER_LIMIT` 50k/500k LT / single grant, `MARKET_OUTLIER` (deviation từ 7-day median) 5×/10×. Conservative initial — re-tune sau closed beta data. **Market Price Band catalog** (`packages/shared/src/market-price-band.ts` `MARKET_PRICE_BAND_BY_ITEM` + `DEFAULT_PRICE_BAND_BY_QUALITY`): rarity band PHAM 10–1000, LINH 50–5000, HUYEN 200–50_000, TIEN 1000–500_000, THAN 5000–5_000_000 LT/unit. Per-item override empty (Phase 16.6 chưa fill — sẽ thêm sau khi observe data). Listing ngoài band reject `PRICE_TOO_LOW`/`PRICE_TOO_HIGH` (HTTP 409). Existing ACTIVE listing KHÔNG bị mutate (chỉ áp dụng listing mới). **Detection-only policy**: KHÔNG auto-ban / KHÔNG auto-rollback / KHÔNG public notify; admin xem qua `AdminEconomySafetyPanel` panel + quyết định manual.
+- **2026-05-10** — Phase 14.1.B Async Arena Foundation section added (§11.21) — async PvP loop với deterministic match resolution. Rating default 1000, win +10/lose -5 attacker, defender ½ magnitude, clamp [0, 5000]. Daily limit 10/day Asia/Ho_Chi_Minh (env `ARENA_DAILY_LIMIT_PER_DAY`, 0=unlimited). Match resolve sync trong POST request (NOT queue): build snapshot → `resolveCombatWithSnapshot` (Phase 14.1.A) → tx update profile + match. Snapshot lock-in: `attackerSnapshotJson` + `defenderSnapshotJson` + `seed` immutable sau RESOLVED → replay bit-exact. Anti-cheat Phase 14.1.B: chỉ no-self + daily limit. KHÔNG: ELO, season cycle, end-season reward, anti-wintrade phức tạp, defense AI snapshot. 5 tier slot reserved cho Phase 14.1.C.
