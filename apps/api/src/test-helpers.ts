@@ -145,6 +145,11 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // ItemLedger/Character — FK cascade tới Character nhưng explicit cho rõ).
   await prisma.equipmentReforgeHistory.deleteMany({});
   await prisma.equipmentEnchantHistory.deleteMany({});
+  // Phase 15.1–15.2 — LiveOps Event Scheduler reward claim + scheduled event
+  // (xoá claim trước event vì FK cascade; xoá event trước User để
+  // `createdByAdmin` SET NULL không cần wait FK cleanup).
+  await prisma.liveOpsEventRewardClaim.deleteMany({});
+  await prisma.liveOpsScheduledEvent.deleteMany({});
   await prisma.itemLedger.deleteMany({});
   await prisma.currencyLedger.deleteMany({});
   // Phase 14.1.B — Async Arena foundation (matches reference Character qua
