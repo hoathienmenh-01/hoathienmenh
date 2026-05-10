@@ -23,6 +23,7 @@ import {
   methodExpMultiplierFor,
 } from '../character/cultivation-method.service';
 import { TalentService } from '../character/talent.service';
+import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
 import { CULTIVATION_QUEUE } from './cultivation.queue';
 
 /**
@@ -48,6 +49,8 @@ export class CultivationProcessor extends WorkerHost {
     @Optional() private readonly achievements?: AchievementService,
     @Optional() private readonly talents?: TalentService,
     @Optional() private readonly buffs?: BuffService,
+    @Optional()
+    private readonly liveOpsEvents?: LiveOpsEventSchedulerService,
   ) {
     super();
   }
@@ -79,6 +82,21 @@ export class CultivationProcessor extends WorkerHost {
       },
     });
     if (cultivating.length === 0) return;
+
+    // Phase 15.2 — LiveOps Event Scheduler `CULTIVATION_EXP_BOOST` fetch
+    // ONCE per tick (snapshot multiplier shared cho mọi character cultivating
+    // để tránh per-character query). Fail-soft: lỗi → multiplier 1.0,
+    // tick vẫn chạy. Multiplier đã clamp ≤ 2.0 (shared `clampLiveOpsMultiplier`).
+    let liveOpsExpMul = 1.0;
+    try {
+      if (this.liveOpsEvents) {
+        liveOpsExpMul = await this.liveOpsEvents.getActiveMultiplier(
+          'CULTIVATION_EXP_BOOST',
+        );
+      }
+    } catch {
+      liveOpsExpMul = 1.0;
+    }
 
     for (const c of cultivating) {
       try {
@@ -149,6 +167,9 @@ export class CultivationProcessor extends WorkerHost {
         // default 1 identity nếu không có buff). Pure debuff path (không stack
         // buff khác hiện tại — single source `breakthrough` `tam_ma_light`).
         const buffCultivationRateMul = buffMods?.cultivationRateMul ?? 1;
+        // Phase 15.2 — compose LiveOps `CULTIVATION_EXP_BOOST` vào cuối
+        // chuỗi multiplier (sau cultivation/method/element/talent/buff).
+        // Server-authoritative cap ≤ 2.0 — multiplier đã clamp ở service.
         const requestedGain = BigInt(
           Math.max(
             1,
@@ -158,7 +179,8 @@ export class CultivationProcessor extends WorkerHost {
                 methodMul *
                 methodElementAffinityMul *
                 talentExpMul *
-                buffCultivationRateMul,
+                buffCultivationRateMul *
+                liveOpsExpMul,
             ),
           ),
         );
