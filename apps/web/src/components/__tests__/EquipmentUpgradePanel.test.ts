@@ -218,7 +218,7 @@ describe('EquipmentUpgradePanel — Phase 15.0.A render & flow', () => {
 
   it('item không phải equipment slot → KHÔNG render panel', async () => {
     const inv = makeInv({
-      item: makeItemDef({ slot: undefined, kind: 'CONSUMABLE' }),
+      item: makeItemDef({ slot: undefined, kind: 'PILL_HP' }),
     });
     const w = mountPanel(inv);
     await flushPromises();
