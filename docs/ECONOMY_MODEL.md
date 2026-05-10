@@ -621,3 +621,34 @@ Admin tạo / schedule event runtime KHÔNG cần deploy code. Lớp này phải
 - KHÔNG auto-ban / auto-rollback nếu admin disable event giữa chừng (linh thạch đã cấp = giữ).
 - KHÔNG wire runtime cho `SHOP_DISCOUNT`/`SECT_SHOP_DISCOUNT`/`DAILY_LOGIN_BONUS`/`BOSS_REWARD_BOOST`/`FESTIVAL_GIFT` — defer Phase 15.3+.
 - KHÔNG event reward over-power: cap 2.0× boost đảm bảo không phá curve, cap 0.5 discount đảm bảo currency sink vẫn dương.
+
+## LiveOps Runtime Expansion + Festival Gift — Phase 15.3.A
+
+Phase 15.3.A hoàn thiện 5/7 event type còn lại để 7/7 wire runtime thật. Reward
+caps + invariants:
+
+- **`SHOP_DISCOUNT`** (≤ 0.5): `ShopService.buyFromShop` áp `finalPrice = ceil(originalPrice × (1 − mul))`. CurrencyLedger ghi `finalPrice` thực chi (KHÔNG ghi `originalPrice` ở reason). Audit `meta.shop.liveOpsDiscount` + `liveOpsEventKey` cho replay. Discount KHÔNG cho phép giá xuống 0 nếu balance design không cho phép — `Math.max(1, finalPrice)` floor 1 LT để vẫn còn currency sink.
+- **`SECT_SHOP_DISCOUNT`** (≤ 0.5): `SectShopService.buyFromSectShop` áp tương tự cho cost contribution + linh thạch sect shop. **KHÔNG bypass** daily/weekly limit + contribution requirement (kiểm tra trước discount, sau discount có thể vẫn `INSUFFICIENT_CONTRIBUTION` nếu player < cost final).
+- **`DAILY_LOGIN_BONUS`** (≤ 2.0): `DailyLoginService.claimToday` áp multiplier vào reward. **Daily Reward Cap (Phase 16.5) thắng** — bonus đi qua `RewardCapService.consumeQuota`. Vd cap còn 100, event x2.0 trên reward 80 → grant `min(160, 100) = 100`. Idempotent qua UNIQUE `(characterId, dateLocal)` — retry trong cùng ngày → 200 với `claimed=false` (KHÔNG double).
+- **`BOSS_REWARD_BOOST`** (≤ 2.0): `BossRewardService.distributeRewards` áp multiplier vào reward attribution rank. Mail metadata `liveOpsBoostMultiplier` + `liveOpsEventKey`. Boss attribution (Top damage / participation rank) cap KHÔNG đổi — event chỉ scale grant cuối cùng.
+- **`FESTIVAL_GIFT`** (one-time claim): UNIQUE `(eventId, characterId)` cho idempotency. Reward atomically `LiveOpsEventRewardClaim` + CurrencyLedger (`reason='LIVEOPS_EVENT_FESTIVAL_GIFT'`) + ItemLedger trong 1 `$transaction`. Reward caps server-side:
+  - `linhThach ≤ 1000`
+  - `tienNgoc ≤ 50`
+  - `items ≤ 10 entries × qty ≤ 50`
+
+  Validate cả admin create-time + claim-time (defense-in-depth — nếu DB row corrupted hay admin update sau create → vẫn safe). Codes: `EVENT_REWARD_JSON_REQUIRED/INVALID/EMPTY/OVER_CAP/ITEM_INVALID/QTY_INVALID/CURRENCY_INVALID`.
+
+**Compose policy**: max-only (giữ nguyên Phase 15.1–15.2). Multi-event cùng
+type ACTIVE → multiplier tốt nhất, KHÔNG stack multiplicative.
+
+**Fail-soft**: nếu LiveOps service unavailable → runtime fallback `1.0` (BOOST)
+hoặc `0` (DISCOUNT) → no-op cho gameplay flow, KHÔNG block player.
+
+**Audit replay**: festival claim ghi `LiveOpsEventRewardClaim.rewardJson`
+snapshot → có thể replay grant nếu cần forensics. Currency/Item ledger entries
+liên kết qua `meta.liveOps.eventKey` + `meta.liveOps.claimId`.
+
+**KHÔNG có** Phase 15.3.A:
+- KHÔNG bypass Daily Reward Cap (cap thắng cho mọi BOOST event).
+- KHÔNG cho festival gift cấp item market-disrupting (cap 50 qty/entry × 10 entries giới hạn tổng giá trị).
+- KHÔNG auto-rollback grant đã cấp nếu admin disable event sau (audit-only).

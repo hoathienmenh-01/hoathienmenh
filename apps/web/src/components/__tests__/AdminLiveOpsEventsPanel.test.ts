@@ -53,6 +53,9 @@ const i18n = createI18n({
         confirmCreate: 'Tạo {key}?',
         confirmDisable: 'Disable {key}?',
         confirmRecompute: 'Force-run cron?',
+        runtimeLegend: '7/7 wired',
+        runtimeWired: 'runtime ✓',
+        runtimeNotWired: 'chưa wire',
         col: {
           key: 'Key',
           type: 'Loại',
@@ -71,10 +74,13 @@ const i18n = createI18n({
           startsAt: 'Starts',
           endsAt: 'Ends',
           multiplier: 'Multiplier',
+          multiplierWithCap: 'Multiplier ({min}-{max})',
           rewardJson: 'Reward JSON',
+          rewardJsonHelp: 'help json',
           initialStatus: 'Initial status',
           submitBtn: 'Tạo event',
           submitting: 'Đang tạo…',
+          runtimeNotWiredWarn: 'not wired warn',
         },
         toast: {
           created: 'Đã tạo.',
@@ -86,6 +92,22 @@ const i18n = createI18n({
           INVALID_INPUT: 'Invalid input',
           EVENT_KEY_DUPLICATE: 'Key duplicate',
           MULTIPLIER_OUT_OF_RANGE: 'Multiplier over cap',
+          EVENT_REWARD_JSON_REQUIRED: 'reward json required',
+          EVENT_REWARD_JSON_INVALID: 'reward json invalid',
+          EVENT_REWARD_ITEM_INVALID: 'reward item invalid',
+          EVENT_REWARD_QTY_INVALID: 'reward qty invalid',
+          EVENT_REWARD_CURRENCY_INVALID: 'reward currency invalid',
+          EVENT_REWARD_EMPTY: 'reward empty',
+          EVENT_REWARD_OVER_CAP: 'reward over cap',
+        },
+      },
+      toast: {
+        title: {
+          info: 'Info',
+          warning: 'Warn',
+          error: 'Error',
+          success: 'OK',
+          system: 'System',
         },
       },
     },
@@ -236,5 +258,80 @@ describe('AdminLiveOpsEventsPanel', () => {
     expect(call.title).toBe('New Event');
     expect(call.type).toBe('DOUBLE_DUNGEON_DROP');
     expect(call.configJson).toEqual({ multiplier: 1.5 });
+  });
+
+  // Phase 15.3.A — runtime support badge per row.
+  it('renders runtime ✓ badge cho mọi event row (Phase 15.3.A wired 7/7)', async () => {
+    adminLiveOpsEventsListMock.mockResolvedValueOnce([SAMPLE_EVENT]);
+    const w = mountPanel();
+    await flushPromises();
+    expect(
+      w
+        .find('[data-testid="admin-liveops-event-runtime-event_test_001"]')
+        .text(),
+    ).toBe('runtime ✓');
+    expect(
+      w.find('[data-testid="admin-liveops-events-runtime-legend"]').exists(),
+    ).toBe(true);
+  });
+
+  // Phase 15.3.A — FE rewardJson validation mirror server (defense-in-depth).
+  it('FESTIVAL_GIFT submit với rewardJson rỗng items + 0 currency → reject FE-side, không gọi API', async () => {
+    adminLiveOpsEventsListMock.mockResolvedValueOnce([]);
+    const w = mountPanel();
+    await flushPromises();
+
+    await w
+      .find('[data-testid="admin-liveops-events-form-key"]')
+      .setValue('event_gift_invalid');
+    await w
+      .find('[data-testid="admin-liveops-events-form-title"]')
+      .setValue('Empty Gift');
+    await w
+      .find('[data-testid="admin-liveops-events-form-type"]')
+      .setValue('FESTIVAL_GIFT');
+    await w
+      .find('[data-testid="admin-liveops-events-form-starts-at"]')
+      .setValue('2026-08-01T00:00');
+    await w
+      .find('[data-testid="admin-liveops-events-form-ends-at"]')
+      .setValue('2026-08-02T00:00');
+    // Empty reward = 0 linhThach, 0 tienNgoc, no items → EVENT_REWARD_EMPTY.
+    await w
+      .find('[data-testid="admin-liveops-events-form-reward-json"]')
+      .setValue(JSON.stringify({ linhThach: 0, tienNgoc: 0, items: [] }));
+    await w.find('[data-testid="admin-liveops-events-form"]').trigger('submit');
+    await flushPromises();
+
+    expect(adminLiveOpsEventsCreateMock).not.toHaveBeenCalled();
+  });
+
+  // Phase 15.3.A — FE clamps multiplier range from shared cap.
+  it('SHOP_DISCOUNT multiplier > 0.5 → reject FE-side, không gọi API', async () => {
+    adminLiveOpsEventsListMock.mockResolvedValueOnce([]);
+    const w = mountPanel();
+    await flushPromises();
+    await w
+      .find('[data-testid="admin-liveops-events-form-key"]')
+      .setValue('event_shop_overcap');
+    await w
+      .find('[data-testid="admin-liveops-events-form-title"]')
+      .setValue('Shop overcap');
+    await w
+      .find('[data-testid="admin-liveops-events-form-type"]')
+      .setValue('SHOP_DISCOUNT');
+    await w
+      .find('[data-testid="admin-liveops-events-form-starts-at"]')
+      .setValue('2026-08-01T00:00');
+    await w
+      .find('[data-testid="admin-liveops-events-form-ends-at"]')
+      .setValue('2026-08-02T00:00');
+    await w
+      .find('[data-testid="admin-liveops-events-form-multiplier"]')
+      .setValue(0.7); // > shared cap 0.5
+    await w.find('[data-testid="admin-liveops-events-form"]').trigger('submit');
+    await flushPromises();
+
+    expect(adminLiveOpsEventsCreateMock).not.toHaveBeenCalled();
   });
 });

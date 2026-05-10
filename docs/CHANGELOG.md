@@ -12,6 +12,42 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Phase 15.3.A — LiveOps Runtime Expansion + Festival Gift Claim (this PR)
+
+**Scope**: Mở rộng runtime cho 5/7 event type chỉ có enum/storage trong Phase 15.1–15.2 — `SHOP_DISCOUNT`, `SECT_SHOP_DISCOUNT`, `DAILY_LOGIN_BONUS`, `BOSS_REWARD_BOOST`, `FESTIVAL_GIFT`. Sau merge: 7/7 event type đã wire runtime thật. Thêm public API `GET /liveops/events/active` + `POST /liveops/events/:eventKey/claim` (idempotent FESTIVAL_GIFT one-time claim qua UNIQUE `(eventId, characterId)` đã có sẵn từ Phase 15.1–15.2). Compose policy max-only giữ nguyên — nhiều event cùng type ACTIVE → chọn multiplier tốt nhất, không stack. Caps không đổi (drop/exp ≤ 2.0, discount ≤ 0.5, FESTIVAL_GIFT reward `linhThach` ≤ 1000 / `tienNgoc` ≤ 50 / ≤ 10 items × qty ≤ 50). **KHÔNG** battle pass, **KHÔNG** gacha/pet/wife, **KHÔNG** rewrite scheduler core, **KHÔNG** bypass Daily Reward Cap.
+
+#### Added — Phase 15.3.A
+
+- **Shared (`packages/shared/src/liveops-event-scheduler.ts`)**: thêm `LIVEOPS_RUNTIME_SUPPORTED_TYPES` (Record per-type → boolean), `LIVEOPS_FESTIVAL_GIFT_REWARD_CAPS` (linhThach ≤ 1000, tienNgoc ≤ 50, maxItems = 10, qty ≤ 50), `validateLiveOpsEventRewardJson(rewardJson)` (per-field/per-cap validate cho FESTIVAL_GIFT), `parseLiveOpsEventReward(rewardJson)` (defensive parser cho legacy/loose rows), `LiveOpsEventReward` type. Validator cũ `validateLiveOpsScheduledEventInput` extend gọi `validateLiveOpsEventRewardJson` khi `type='FESTIVAL_GIFT'`.
+- **API runtime wiring**:
+  - **`SHOP_DISCOUNT`**: `ShopService.buyFromShop` query `getActiveMultiplier('SHOP_DISCOUNT')` → áp `finalPrice = ceil(originalPrice × (1 − mul))`, ghi `meta.shop.liveOpsDiscount` + `liveOpsEventKey`. CurrencyLedger ghi đúng `finalPrice` thực chi.
+  - **`SECT_SHOP_DISCOUNT`**: `SectShopService.buyFromSectShop` áp tương tự cho cost contribution + linh thạch. KHÔNG bypass daily/weekly limit + contribution requirement.
+  - **`DAILY_LOGIN_BONUS`**: `DailyLoginService.claimToday` áp multiplier vào reward sau khi qua Daily Reward Cap. Idempotent (UNIQUE `(characterId, dateLocal)` từ Phase trước).
+  - **`BOSS_REWARD_BOOST`**: `BossRewardService.distributeRewards` áp multiplier vào reward attribution rank. Mail metadata ghi `liveOpsBoostMultiplier` + `liveOpsEventKey`. Cap reward không đổi.
+  - **`FESTIVAL_GIFT`**: `LiveOpsEventSchedulerService.claimEventReward(characterId, eventKey)` idempotent qua UNIQUE `(eventId, characterId)`. Reject nếu event không ACTIVE / type ≠ FESTIVAL_GIFT / reward config invalid. Ghi `LiveOpsEventRewardClaim` + grant CurrencyLedger/ItemLedger atomically trong 1 transaction.
+- **API public endpoints (`liveops-events.controller.ts`)**:
+  - `GET /liveops/events/active` — list ACTIVE event public-safe (không leak `createdByAdminId`/internal id). Mỗi entry chứa `claimable` (đúng nếu type=FESTIVAL_GIFT + character chưa claim) + `runtimeSupported` (chỉ FE hint, BE vẫn validate).
+  - `POST /liveops/events/:eventKey/claim` — claim FESTIVAL_GIFT một lần. Trả `{ eventKey, claimedAt, granted }`.
+- **FE (`apps/web/src/components/LiveOpsActiveEventsPanel.vue` mới + `AdminLiveOpsEventsPanel.vue` enhanced)**:
+  - Player panel render ACTIVE event + countdown đến `endsAt` + multiplier label (`x1.5` cho BOOST, `30% off` cho DISCOUNT) + reward summary cho FESTIVAL_GIFT + nút "Nhận quà" (confirm prompt → POST API → toast). Auto-refresh 60s. Loading/empty/error states + i18n.
+  - Admin panel: thêm runtime support badge per row + dropdown ("runtime ✓" / "chưa wire") + cap-aware multiplier input (FE clamp theo `LIVEOPS_EVENT_TYPE_CAPS`) + helper text reward JSON + FE-side `validateLiveOpsEventRewardJson` defense-in-depth (BE re-validate).
+  - Mount `LiveOpsActiveEventsPanel` vào `HomeView` (chỉ render khi đã có character).
+- **i18n VI/EN**: namespace mới `liveopsActiveEvents.*` (label/toast/error code mapping). Bổ sung keys `adminLiveOpsEvents.runtime{Legend,Wired,NotWired}`, `adminLiveOpsEvents.form.{multiplierWithCap,rewardJsonHelp,runtimeNotWiredWarn}` + 7 error code mới (`EVENT_REWARD_*`). Parity test pass.
+- **Tests added — Phase 15.3.A**:
+  - **Shared**: `validateLiveOpsEventRewardJson` (empty / over-cap / invalid item / wrong currency / extra field reject), `LIVEOPS_RUNTIME_SUPPORTED_TYPES` true/false invariant.
+  - **API**: shop discount apply + ledger reflects `finalPrice`; sect shop discount + daily/weekly limit guard; daily login bonus với reward cap interaction; boss reward boost mail metadata; festival claim happy path + double-claim idempotent reject + non-active reject + wrong type reject + invalid reward config reject (admin create-time).
+  - **Web**: `LiveOpsActiveEventsPanel` 6 cases (loading / empty / error / boost+discount label / claim button visibility / claim API success+error). `AdminLiveOpsEventsPanel` 3 case mới (runtime badge per row / FE rewardJson empty reject / FE multiplier > cap reject). API client `getActiveLiveOpsEvents` (fail-soft `[]` on reject/`{ ok: false }`) + `claimLiveOpsEventReward` (URL encoding + envelope error throw).
+
+#### Known limitations — Phase 15.3.A
+
+- **Mỗi reward grant qua engine sẵn có** (CurrencyLedger / ItemLedger / Mail). Festival gift KHÔNG bypass Daily Reward Cap nếu cap có wired ở `CurrencyLedgerService.grantWithCap` cho reason tương ứng — `granted` trong response phản ánh số thực sau cap.
+- **Realtime broadcast**: chưa có websocket "event vừa start/end" hoặc marquee — defer Phase 15.3.B (next task).
+- **Admin-side reward editor** vẫn là raw JSON textarea + FE validate. Form picker (item picker / amount slider) defer phase sau.
+
+#### Next task recommendation — sau 15.3.A
+
+- **Phase 15.3.B Announcement + WS Broadcast / Marquee** — push realtime "event đang mở / sắp end" vào WS channel, FE marquee + toast banner.
+
 ### Phase 15.1–15.2 — LiveOps Event Scheduler Core (this PR)
 
 **Scope**: Admin-driven event scheduler để vận hành sự kiện theo thời gian KHÔNG cần deploy code. 7 event type (`DOUBLE_DUNGEON_DROP`, `CULTIVATION_EXP_BOOST`, `SHOP_DISCOUNT`, `SECT_SHOP_DISCOUNT`, `DAILY_LOGIN_BONUS`, `BOSS_REWARD_BOOST`, `FESTIVAL_GIFT`). Status machine `DRAFT → SCHEDULED → ACTIVE → ENDED` (+ `DISABLED` kill switch). Cron 5-phút auto-transition theo `startsAt` / `endsAt`. Multiplier capped server-side: drop/exp ≤ 2.0, discount ≤ 0.5 — vượt cap reject ngay từ shared validator. Wire runtime tối thiểu: dungeon `DOUBLE_DUNGEON_DROP` + cultivation `CULTIVATION_EXP_BOOST` (compose max-only, không stack). **KHÔNG** battle pass, **KHÔNG** gacha/pet/wife, **KHÔNG** rewrite LiveOps cũ.

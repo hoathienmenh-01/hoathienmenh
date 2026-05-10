@@ -623,6 +623,107 @@ precache hash → user mới sẽ tự update sau lần load thứ 2.
 - KHÔNG support shop discount / sect shop / daily login / boss / festival gift — runtime chưa wire (defer Phase 15.3+).
 - KHÔNG cho admin manually set `status=ACTIVE` qua PATCH (chỉ DRAFT/SCHEDULED/DISABLED) — phải qua cron để window chính xác.
 
+### 2.20. LiveOps Runtime Expansion — verify discount / boost / festival gift (P2/P3) — Phase 15.3.A
+
+**Use case**: sau merge Phase 15.3.A, runtime đã wire 5/5 event type còn lại. Sự cố hay gặp:
+event boost không áp / áp sai / festival gift claim error / double claim.
+
+**A. Verify event đang active có wire đúng runtime**
+
+```
+GET /liveops/events/active   # Player API — list active events public-safe
+```
+
+Mỗi entry có `runtimeSupported: true` (nếu type ∈ {DOUBLE_DUNGEON_DROP,
+CULTIVATION_EXP_BOOST, SHOP_DISCOUNT, SECT_SHOP_DISCOUNT, DAILY_LOGIN_BONUS,
+BOSS_REWARD_BOOST, FESTIVAL_GIFT}). Nếu thấy `false` → bug, escalate.
+
+Cross-check trong DB:
+
+```sql
+SELECT key, type, status, multiplier_from_config(configJson) as mul
+FROM "LiveOpsScheduledEvent"
+WHERE status = 'ACTIVE' AND startsAt <= NOW() AND endsAt > NOW();
+```
+
+**B. Verify SHOP_DISCOUNT / SECT_SHOP_DISCOUNT áp đúng**
+
+Sau khi player buy → kiểm tra ledger:
+
+```sql
+SELECT id, characterId, delta, reason, meta
+FROM "CurrencyLedger"
+WHERE reason IN ('NPC_SHOP_BUY', 'SECT_SHOP_BUY')
+  AND createdAt > NOW() - INTERVAL '1 hour'
+ORDER BY createdAt DESC LIMIT 20;
+```
+
+Mỗi row phải có `meta.shop.liveOpsDiscount` (= `mul`) + `meta.shop.liveOpsEventKey`.
+Số `delta` ledger phải bằng `-finalPrice` (KHÔNG `-originalPrice`).
+
+**C. Verify DAILY_LOGIN_BONUS áp đúng**
+
+```sql
+SELECT id, characterId, delta, reason, meta
+FROM "CurrencyLedger"
+WHERE reason = 'DAILY_LOGIN_CLAIM'
+  AND createdAt > NOW() - INTERVAL '1 day'
+ORDER BY createdAt DESC LIMIT 20;
+```
+
+Bonus phải reflect ở `delta` (so sánh với base reward expected). Cap thắng — nếu
+`delta < base × multiplier` → có thể đã chạm Daily Reward Cap (Phase 16.5,
+§2.18). Verify `RewardCapAccrual` row cùng character/day để confirm.
+
+**D. Verify BOSS_REWARD_BOOST áp đúng**
+
+Boss reward gửi qua `MailService.sendToCharacter`. Check mail metadata:
+
+```sql
+SELECT id, characterId, mailType, metadataJson
+FROM "Mail"
+WHERE mailType = 'BOSS_REWARD'
+  AND createdAt > NOW() - INTERVAL '1 hour'
+ORDER BY createdAt DESC LIMIT 20;
+```
+
+Mỗi mail phải có `metadataJson.liveOpsBoostMultiplier` + `liveOpsEventKey`.
+Khi player claim mail → CurrencyLedger ghi `reason='MAIL_CLAIM'` với delta đã
+boost.
+
+**E. Festival Gift claim — debug double claim**
+
+```sql
+SELECT eventId, characterId, COUNT(*) as cnt
+FROM "LiveOpsEventRewardClaim"
+GROUP BY eventId, characterId
+HAVING COUNT(*) > 1;
+```
+
+Nếu thấy row với `cnt > 1` → bug (UNIQUE constraint thất bại). Escalate ngay.
+Bình thường UNIQUE `(eventId, characterId)` → P2002 → 409 `EVENT_ALREADY_CLAIMED`.
+
+**F. Festival Gift claim error troubleshooting**
+
+| Error code | Khả năng nhân quả | Fix |
+| --- | --- | --- |
+| `EVENT_NOT_FOUND` | Event đã bị xóa hoặc key sai | Verify event tồn tại qua admin panel |
+| `EVENT_NOT_ACTIVE` | Event chưa start / đã end / DISABLED | Force `recompute-status` nếu cron lệch; verify `startsAt`/`endsAt` |
+| `EVENT_NOT_CLAIMABLE` | Type ≠ FESTIVAL_GIFT | Chỉ FESTIVAL_GIFT cho phép claim — kiểm tra event type |
+| `EVENT_ALREADY_CLAIMED` | Player đã claim 1 lần | Idempotent OK — KHÔNG là bug |
+| `EVENT_REWARD_EMPTY` / `OVER_CAP` / ... | Reward config invalid | Admin sửa rewardJson qua `PATCH /admin/liveops/events/:id` |
+
+**G. Force-disable event với runtime wired**
+
+Bỏ qua wired runtime — `POST /admin/liveops/events/:id/disable` set
+`status=DISABLED`, runtime fail-soft trả `1.0` (BOOST) hoặc `0` (DISCOUNT)
+tự động → no-op cho gameplay flow.
+
+**KHÔNG** trong Phase 15.3.A:
+- KHÔNG bypass Daily Reward Cap (Phase 16.5) — cap thắng cho mọi BOOST event.
+- KHÔNG auto-revoke festival gift đã claim nếu admin disable event sau.
+- KHÔNG broadcast realtime "event start/end" qua WS — defer Phase 15.3.B.
+
 ## 3. Backup operations (closed beta cadence)
 
 ### 3.1. Cron daily backup
