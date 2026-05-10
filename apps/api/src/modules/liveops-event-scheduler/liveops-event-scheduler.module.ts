@@ -5,6 +5,7 @@ import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { LiveOpsAnnouncementModule } from '../liveops-announcement/liveops-announcement.module';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 import { RedisModule } from '../../common/redis.module';
 import { PrismaService } from '../../common/prisma.service';
 import { LiveOpsCronLease } from '../liveops-cron/liveops-cron.lease';
@@ -53,6 +54,7 @@ import { LiveOpsEventSchedulerCronScheduler } from './liveops-event-scheduler.cr
     // recompute. Announcement module độc lập (không import scheduler)
     // → không cycle.
     LiveOpsAnnouncementModule,
+    FeatureFlagModule,
   ],
   controllers: [AdminLiveOpsEventsController, LiveOpsEventsPublicController],
   providers: [

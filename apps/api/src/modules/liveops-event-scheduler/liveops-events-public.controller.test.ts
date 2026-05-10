@@ -29,6 +29,8 @@ interface Stubs {
     characterId: string,
     eventKey: string,
   ) => Promise<LiveOpsClaimResult>;
+  /** Phase 15.4 — gi\u1ea3 l\u1eadp LIVEOPS_*_ENABLED=false. */
+  flagDisabled?: boolean;
 }
 
 function makeController(opts: Stubs = {}): LiveOpsEventsPublicController {
@@ -63,7 +65,20 @@ function makeController(opts: Stubs = {}): LiveOpsEventsPublicController {
       })),
   } as unknown as LiveOpsEventSchedulerService;
 
-  return new LiveOpsEventsPublicController(events, auth, prisma);
+  // Phase 15.4 — stub feature flags: mặc định on cho tests cũ.
+  const featureFlags = {
+    isEnabled: async () => !opts.flagDisabled,
+    requireEnabled: async () => {
+      if (opts.flagDisabled) {
+        const { HttpException, HttpStatus } = await import('@nestjs/common');
+        throw new HttpException(
+          { ok: false, error: { code: 'FEATURE_DISABLED', message: 'disabled' } },
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
+      }
+    },
+  } as unknown as import('../feature-flag/feature-flag.service').FeatureFlagService;
+  return new LiveOpsEventsPublicController(events, auth, prisma, featureFlags);
 }
 
 describe('LiveOpsEventsPublicController.listActive', () => {

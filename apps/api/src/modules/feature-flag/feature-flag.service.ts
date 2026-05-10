@@ -29,7 +29,14 @@
  *     sang fail-closed cho `SAFETY` flag bằng `defaultEnabled=false` ở
  *     catalog (chưa có flag SAFETY Phase 15.4).
  */
-import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  Logger,
+  Optional,
+} from '@nestjs/common';
 import {
   FEATURE_FLAG_CATALOG,
   FEATURE_FLAG_KEYS,
@@ -55,6 +62,28 @@ export class FeatureFlagDisabledError extends Error {
     super(`Feature disabled: ${flag}`);
     this.name = 'FeatureFlagDisabledError';
   }
+}
+
+/**
+ * Throw `HttpException` 503 với envelope `FEATURE_DISABLED`. Filter
+ * `AllExceptionsFilter` pass-through body envelope, FE nhận:
+ *   ```json
+ *   { "ok": false, "error": { "code": "FEATURE_DISABLED", "message": "..." } }
+ *   ```
+ * Sử dụng: `if (!await featureFlags.isEnabled(key)) throwFeatureDisabled(key);`
+ * Hoặc gọi `featureFlags.requireEnabled(key)` (alias).
+ */
+export function throwFeatureDisabled(flag: FeatureFlagKey): never {
+  throw new HttpException(
+    {
+      ok: false,
+      error: {
+        code: 'FEATURE_DISABLED',
+        message: `Feature disabled: ${flag}`,
+      },
+    },
+    HttpStatus.SERVICE_UNAVAILABLE,
+  );
 }
 
 export class FeatureFlagInvalidKeyError extends Error {
@@ -210,7 +239,7 @@ export class FeatureFlagService {
   async requireEnabled(key: FeatureFlagKey): Promise<void> {
     const enabled = await this.isEnabled(key);
     if (!enabled) {
-      throw new FeatureFlagDisabledError(key);
+      throwFeatureDisabled(key);
     }
   }
 

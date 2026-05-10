@@ -16,6 +16,7 @@ import { MarketService, MARKET_FEE_PCT } from './market.service';
 import type { ListingView } from './market.service';
 import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../../common/prisma.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -47,6 +48,7 @@ export class MarketController {
     private readonly market: MarketService,
     private readonly auth: AuthService,
     private readonly prisma: PrismaService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   private async requireCharacter(req: Request) {
@@ -86,6 +88,10 @@ export class MarketController {
   @Post('post')
   @HttpCode(200)
   async post(@Req() req: Request, @Body() body: unknown) {
+    // Phase 15.4 — runtime gate. Tắt post-listing khi cần freeze
+    // economy (vd. exploit / dup). Cancel + listings vẫn hoạt động
+    // (read-only) để user thu hồi listing của mình.
+    await this.featureFlags.requireEnabled('MARKET_ENABLED');
     const { userId } = await this.requireCharacter(req);
     const parsed = PostInput.safeParse(body);
     if (!parsed.success) fail('INVALID_INPUT');
@@ -100,6 +106,9 @@ export class MarketController {
   @Post(':id/buy')
   @HttpCode(200)
   async buy(@Req() req: Request, @Param('id') id: string) {
+    // Phase 15.4 — runtime gate. Tắt buy khi cần freeze trải
+    // nghiệm mua qua sandbox dup. Cancel lối ra vẫn cho phép.
+    await this.featureFlags.requireEnabled('MARKET_ENABLED');
     const { userId } = await this.requireCharacter(req);
     try {
       const listing = await this.market.buy(userId, id);

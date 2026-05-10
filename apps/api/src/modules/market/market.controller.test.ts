@@ -63,6 +63,8 @@ function makeController(
     ) => Promise<ListingView>;
     buyImpl?: (uid: string, id: string) => Promise<ListingView>;
     cancelImpl?: (uid: string, id: string) => Promise<ListingView>;
+    /** Phase 15.4 — gi\u1ea3 l\u1eadp MARKET_ENABLED=false \u0111\u1ec3 test runtime gate. */
+    flagDisabled?: boolean;
   } = {},
 ) {
   const auth = {
@@ -84,7 +86,24 @@ function makeController(
     buy: opts.buyImpl ?? (async () => ({} as ListingView)),
     cancel: opts.cancelImpl ?? (async () => ({} as ListingView)),
   } as unknown as MarketService;
-  return new MarketController(market, auth, prisma);
+  // Phase 15.4 — stub feature flags: default-on for tests; opts.flagDisabled
+  // giả lập trường hợp MARKET_ENABLED=false.
+  const featureFlags = {
+    isEnabled: async () => !opts.flagDisabled,
+    requireEnabled: async () => {
+      if (opts.flagDisabled) {
+        const { HttpException, HttpStatus } = await import('@nestjs/common');
+        throw new HttpException(
+          {
+            ok: false,
+            error: { code: 'FEATURE_DISABLED', message: 'disabled' },
+          },
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
+      }
+    },
+  } as unknown as import('../feature-flag/feature-flag.service').FeatureFlagService;
+  return new MarketController(market, auth, prisma, featureFlags);
 }
 
 async function expectHttpError(

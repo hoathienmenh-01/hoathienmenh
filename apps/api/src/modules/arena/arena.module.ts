@@ -17,9 +17,10 @@ import { ArenaAntiWintradeService } from './arena-anti-wintrade.service';
 import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
 import { MailModule } from '../mail/mail.module';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 
 @Module({
-  imports: [AuthModule, MailModule],
+  imports: [AuthModule, MailModule, FeatureFlagModule],
   controllers: [ArenaController],
   providers: [
     ArenaService,
