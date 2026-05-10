@@ -6,9 +6,16 @@ import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { CharacterModule } from '../character/character.module';
 import { MissionModule } from '../mission/mission.module';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 
 @Module({
-  imports: [AuthModule, RealtimeModule, CharacterModule, MissionModule],
+  imports: [
+    AuthModule,
+    RealtimeModule,
+    CharacterModule,
+    MissionModule,
+    FeatureFlagModule,
+  ],
   controllers: [MarketController],
   providers: [MarketService, PrismaService],
 })

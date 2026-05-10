@@ -12,6 +12,31 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Phase 15.4 — Feature Flag DB-backed (this PR)
+
+**Scope**: Hệ Feature Flag DB-backed cho phép admin bật/tắt nhanh các hệ thống lõi (Arena, Tribulation Mini-Battle, Equipment Reforge/Enchant, LiveOps Events, Festival Gift, LiveOps Announcements, Territory War, Market, Shop/Sect Shop discount runtime) **mà không cần deploy code**. Catalog 11 flag hardcoded trong `packages/shared/src/feature-flags.ts` chia 5 category (`GAMEPLAY`/`ECONOMY`/`LIVEOPS`/`ADMIN`/`SAFETY`). Cache 2-tier (L1 in-memory TTL 30s + L2 Redis TTL 30s) với Redis fail-soft. Server-authoritative qua `FEATURE_DISABLED` 503 — FE chỉ hint UX.
+
+#### Added — Phase 15.4
+
+- **Shared (`packages/shared/src/feature-flags.ts`)**: 11 flag catalog (`ARENA_ENABLED`, `TRIBULATION_MINI_BATTLE_ENABLED`, `EQUIPMENT_REFORGE_ENABLED`, `EQUIPMENT_ENCHANT_ENABLED`, `LIVEOPS_EVENTS_ENABLED`, `LIVEOPS_FESTIVAL_GIFT_ENABLED`, `LIVEOPS_ANNOUNCEMENTS_ENABLED`, `TERRITORY_WAR_ENABLED`, `MARKET_ENABLED`, `SHOP_DISCOUNT_EVENTS_ENABLED`, `SECT_SHOP_DISCOUNT_EVENTS_ENABLED`) + helper `getFeatureFlagDef()` / `getDefaultFeatureFlagEnabled()` / `isPublicFeatureFlag()` + types `FeatureFlagAdminView` / `FeatureFlagPublicView` + `FEATURE_DISABLED_ERROR_CODE`.
+- **Prisma migration `20260622000000_phase_15_4_feature_flag`**: model `FeatureFlag` (id/key UNIQUE/enabled/category/descriptionVi/descriptionEn nullable/updatedByAdminId nullable/createdAt/updatedAt + index). Reuse `AdminAuditLog` cho `ADMIN_FEATURE_FLAG_*`.
+- **API service (`apps/api/src/modules/feature-flag/`)**: `FeatureFlagService.isEnabled / getFlag / listFlags / setFlag / ensureDefaultFlags / clearCache` với cache 2-tier (L1 Map + L2 Redis), Redis fail-soft, `assertFeatureEnabled(key)` throw `FeatureFlagDisabledError` → controller layer map 503 `FEATURE_DISABLED` payload `{ flag, message }`.
+- **API admin endpoints (`feature-flag-admin/admin-feature-flag.controller.ts` — extracted module để tránh circular dep)**: `GET /admin/feature-flags` (full catalog + DB row state) + `PATCH /admin/feature-flags/:key` (audit `ADMIN_FEATURE_FLAG_UPDATE`, reject `FEATURE_FLAG_KEY_INVALID`) + `POST /admin/feature-flags/refresh-defaults` (idempotent seed) + `POST /admin/feature-flags/clear-cache`. ADMIN-only.
+- **API public endpoint**: `GET /feature-flags/public` — anonymous-safe, whitelist subset (chỉ flag FE cần biết để ẩn UI), KHÔNG trả flag SAFETY/ADMIN.
+- **Runtime gates**: `ARENA_ENABLED` (`POST /arena/matches`), `TRIBULATION_MINI_BATTLE_ENABLED` (mini-battle start), `EQUIPMENT_REFORGE_ENABLED`/`EQUIPMENT_ENCHANT_ENABLED` (`POST /character/equipment/{reforge,enchant}`), `LIVEOPS_EVENTS_ENABLED` (runtime modifier không apply), `LIVEOPS_FESTIVAL_GIFT_ENABLED` (`POST /liveops/events/:key/claim`), `LIVEOPS_ANNOUNCEMENTS_ENABLED` (public list empty), `TERRITORY_WAR_ENABLED`, `MARKET_ENABLED`, `SHOP_DISCOUNT_EVENTS_ENABLED`, `SECT_SHOP_DISCOUNT_EVENTS_ENABLED`. Tất cả trả `FEATURE_DISABLED` 503 khi flag off.
+- **FE Admin panel** (`AdminFeatureFlagsPanel.vue`): tab mới trong `AdminView`, list catalog + filter category + search + toggle, confirm modal cho flag "lớn" (`ARENA_ENABLED`/`MARKET_ENABLED`/`LIVEOPS_EVENTS_ENABLED`/`TERRITORY_WAR_ENABLED`/`LIVEOPS_FESTIVAL_GIFT_ENABLED`) khi tắt, refresh defaults + clear cache action.
+- **FE Public store** (`stores/featureFlags.ts`): Pinia store fetch `/feature-flags/public` cache 30s TTL, fail-open (undefined / chưa load → `isEnabled` trả true → tránh ẩn UI khi BE tạm gián đoạn). Server vẫn gate cuối cùng.
+- **FE disable banner** (`FeatureDisabledBanner.vue`): reusable banner i18n "Tính năng đang tạm tắt để bảo trì". Wire vào `ArenaView` (banner + disable challenge button), `EquipmentUpgradePanel` (Reforge/Enchant button + banner), `LiveOpsActiveEventsPanel` (FESTIVAL_GIFT claim button).
+- **i18n**: namespace mới `adminFeatureFlags.*` (title/hint/loading/empty/filter/category/row/actions/confirm/toast/errors), `featureFlags.disabled.*` (title/message generic), `arena.disabled.message`, `inventory.upgrade.{reforge,enchant}.disabledMessage`, `liveopsActiveEvents.disabled.festivalGiftMessage`, `admin.tab.featureFlags`. VI/EN parity.
+
+#### Tests — Phase 15.4
+
+- **Shared**: catalog tests (key unique, default valid, category valid, public whitelist valid).
+- **API**: feature flag service (cache fallback Redis-down, ensureDefaultFlags idempotent, setFlag clear cache + audit), admin controller (list/update/refresh/clear-cache + admin guard reject PLAYER + invalid key reject), runtime gates (arena/tribulation/reforge/enchant/festival-gift/market/liveops-events flag off → 503), public endpoint whitelist.
+- **Web**: `AdminFeatureFlagsPanel` (render list + filter + toggle non-major + confirm modal cho major flag + refresh-defaults + clear-cache), `FeatureDisabledBanner` (default + messageKey override + fallback + testId), `useFeatureFlagsStore` (ensureLoaded fetch+map, TTL 30s không refetch, refresh force, fail-open semantics, reset). I18n parity VI/EN.
+
+---
+
 ### Phase 15.3.B — LiveOps Announcement + WS Broadcast / Marquee (this PR)
 
 **Scope**: Bổ sung hệ thống thông báo realtime cho người chơi. Admin tạo `LiveOpsAnnouncement` với severity (`INFO`/`EVENT`/`WARNING`/`MAINTENANCE`), target (`ALL`/`AUTHENTICATED`/`ADMIN_ONLY`) và time window. Cron 5-phút (piggy-back trên LiveOps event recompute) tự động chuyển status `DRAFT→SCHEDULED→ACTIVE→ENDED` idempotent + broadcast WS `liveops:announcement` (`ANNOUNCEMENT_ACTIVE`/`ANNOUNCEMENT_ENDED`) + `liveops:event` (`LIVEOPS_EVENT_ACTIVE`/`LIVEOPS_EVENT_ENDED`/`LIVEOPS_EVENT_UPDATED`). Player thấy banner/marquee trên `HomeView` (severity color/badge + countdown + dismiss local). Public payload đã strip admin metadata. **KHÔNG** spam broadcast mỗi tick (chỉ khi status thật transition), **KHÔNG** gửi raw configJson, **KHÔNG** cho HTML/script injection.

@@ -37,6 +37,7 @@ import {
 } from './arena-season.service';
 import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../../common/prisma.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -91,6 +92,7 @@ export class ArenaController {
     private readonly arenaSeason: ArenaSeasonService,
     private readonly auth: AuthService,
     private readonly prisma: PrismaService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   private async requireUserId(req: Request): Promise<string> {
@@ -139,6 +141,9 @@ export class ArenaController {
   @Post('matches')
   @HttpCode(200)
   async createMatch(@Req() req: Request, @Body() body: unknown) {
+    // Phase 15.4 — runtime gate. Tắt qua admin tool khi cần freeze Arena
+    // (vd. exploit / wintrade burst). 503 + FEATURE_DISABLED.
+    await this.featureFlags.requireEnabled('ARENA_ENABLED');
     const userId = await this.requireUserId(req);
     const characterId = await this.requireCharacterId(userId);
     const parsed = CreateMatchInput.safeParse(body);

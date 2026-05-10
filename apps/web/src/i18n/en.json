@@ -907,7 +907,8 @@
         "badgeLabel": "+{count} sub",
         "confirmTitle": "Confirm reforge",
         "confirmMessage": "Spend {linhThach} linh thach + {materialQty}× {materialName}? Substats will be re-rolled.",
-        "successToast": "Reforge complete — rolled {count} substats."
+        "successToast": "Reforge complete — rolled {count} substats.",
+        "disabledMessage": "Reforge is temporarily disabled for maintenance. Please retry later."
       },
       "enchant": {
         "currentLabel": "Wuxing enchant",
@@ -919,7 +920,8 @@
         "button": "Enchant",
         "confirmTitle": "Confirm enchant",
         "confirmMessage": "Enchant {element} lvl {level}? Spend {linhThach} linh thach + {materialQty}× {materialName}.",
-        "successToast": "{element} enchant success — lvl {level}."
+        "successToast": "{element} enchant success — lvl {level}.",
+        "disabledMessage": "Enchant is temporarily disabled for maintenance. Please retry later."
       },
       "error": {
         "EQUIPMENT_NOT_FOUND": "Equipment not found (or not yours).",
@@ -1270,7 +1272,8 @@
       "boss": "Boss",
       "liveops": "LiveOps",
       "economy": "Economy Safety",
-      "arenaAntiWintrade": "Arena Anti-Wintrade"
+      "arenaAntiWintrade": "Arena Anti-Wintrade",
+      "featureFlags": "Feature Flags"
     },
     "arenaAntiWintrade": {
       "alerts": "Arena wintrade alerts",
@@ -3268,6 +3271,9 @@
       "NO_CHARACTER": "No character.",
       "UNAUTHENTICATED": "Login required to claim.",
       "UNKNOWN": "Failed to claim — retry."
+    },
+    "disabled": {
+      "festivalGiftMessage": "Festival gift claim is temporarily paused for maintenance. It will reopen soon."
     }
   },
   "adminLiveOpsSchedule": {
@@ -3793,6 +3799,66 @@
       "tier": "Tier",
       "reward": "Reward",
       "noReward": "None"
+    },
+    "disabled": {
+      "message": "Arena is temporarily offline for maintenance. Please check back later."
+    }
+  },
+  "featureFlags": {
+    "disabled": {
+      "title": "Temporarily disabled",
+      "message": "This feature is temporarily disabled for maintenance. Please come back later."
+    }
+  },
+  "adminFeatureFlags": {
+    "title": "Feature Flags",
+    "hint": "Toggle core systems (Arena, Reforge, LiveOps, Market…) without redeploying.",
+    "loading": "Loading feature flags…",
+    "empty": "No feature flag matches the filter.",
+    "filter": {
+      "searchPlaceholder": "Search by key / description / module…",
+      "allCategories": "All categories"
+    },
+    "category": {
+      "GAMEPLAY": "Gameplay",
+      "ECONOMY": "Economy",
+      "LIVEOPS": "LiveOps",
+      "ADMIN": "Admin",
+      "SAFETY": "Safety"
+    },
+    "row": {
+      "module": "Module: {module}",
+      "default": "Default: {value}",
+      "updatedAt": "Updated: {at}",
+      "notUpdated": "never changed",
+      "on": "ON",
+      "off": "OFF",
+      "publicTag": "PUBLIC",
+      "publicHint": "This flag is exposed via /feature-flags/public so the frontend can hide UI."
+    },
+    "actions": {
+      "enable": "Enable",
+      "disable": "Disable",
+      "refresh": "Refresh",
+      "refreshDefaults": "Sync defaults",
+      "clearCache": "Clear cache"
+    },
+    "confirm": {
+      "title": "Disable this feature?",
+      "message": "You are about to disable {key} — {description}. Players will not be able to use this feature until it is re-enabled."
+    },
+    "toast": {
+      "enabled": "{key} enabled.",
+      "disabled": "{key} disabled.",
+      "refreshedDefaults": "Defaults synced: created {created} · kept {existing}.",
+      "cacheCleared": "Feature flag cache cleared."
+    },
+    "errors": {
+      "FEATURE_FLAG_KEY_INVALID": "Flag key is not in the catalog.",
+      "INVALID_INPUT": "Invalid input.",
+      "UNAUTHENTICATED": "Admin login required.",
+      "FORBIDDEN": "Account is not an admin.",
+      "UNKNOWN": "Operation failed — please retry."
     }
   }
 }

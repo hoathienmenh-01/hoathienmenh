@@ -6,6 +6,7 @@ import {
   LiveOpsAnnouncementService,
   type LiveOpsAnnouncementPublicView,
 } from './liveops-announcement.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -30,6 +31,7 @@ export class LiveOpsAnnouncementsPublicController {
     private readonly service: LiveOpsAnnouncementService,
     private readonly auth: AuthService,
     private readonly prisma: PrismaService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   private async resolveViewer(
@@ -52,6 +54,15 @@ export class LiveOpsAnnouncementsPublicController {
   async listActive(
     @Req() req: Request,
   ): Promise<{ ok: true; data: LiveOpsAnnouncementPublicView[] }> {
+    // Phase 15.4 — runtime gate. Khi LIVEOPS_ANNOUNCEMENTS_ENABLED=false,
+    // FE nhận `data: []` → marquee empty, không spam toast nếu cần
+    // xử lý announcement spam hoặc bảo trì WS.
+    const enabled = await this.featureFlags.isEnabled(
+      'LIVEOPS_ANNOUNCEMENTS_ENABLED',
+    );
+    if (!enabled) {
+      return { ok: true, data: [] };
+    }
     const viewer = await this.resolveViewer(req);
     const data = await this.service.getActiveAnnouncementsPublic(viewer);
     return { ok: true, data };

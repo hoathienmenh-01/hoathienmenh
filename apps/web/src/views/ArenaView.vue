@@ -15,14 +15,22 @@ import { computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useArenaStore } from '@/stores/arena';
 import { useToastStore } from '@/stores/toast';
+import { useFeatureFlagsStore } from '@/stores/featureFlags';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import FeatureDisabledBanner from '@/components/FeatureDisabledBanner.vue';
 
 const arena = useArenaStore();
 const toast = useToastStore();
+const featureFlags = useFeatureFlagsStore();
 const { t } = useI18n();
 
+// Phase 15.4 — Arena feature flag gate. Server vẫn gate cuối cùng
+// (`ARENA_DISABLED` 503), FE chỉ ẩn challenge button + show banner để UX.
+const arenaDisabled = computed(() => featureFlags.isDisabled('ARENA_ENABLED'));
+
 onMounted(() => {
+  void featureFlags.ensureLoaded();
   void arena.fetchProfile();
   void arena.fetchOpponents();
   void arena.fetchHistory();
@@ -150,6 +158,14 @@ function outcomeKind(outcome: string, attackerId: string): 'win' | 'lose' | 'dra
         <h1 class="text-2xl font-bold text-amber-200">{{ t('arena.title') }}</h1>
         <p class="text-sm text-slate-400 mt-1">{{ t('arena.subtitle') }}</p>
       </header>
+
+      <!-- Phase 15.4 — Arena disabled banner. -->
+      <FeatureDisabledBanner
+        v-if="arenaDisabled"
+        message-key="arena.disabled.message"
+        test-id="arena-disabled-banner"
+        class="mb-4"
+      />
 
       <!-- Phase 14.1.C — Season banner + my standing -->
       <div
@@ -340,7 +356,7 @@ function outcomeKind(outcome: string, attackerId: string): 'win' | 'lose' | 'dra
               </div>
             </div>
             <MButton
-              :disabled="arena.challengeInFlight"
+              :disabled="arena.challengeInFlight || arenaDisabled"
               :data-testid="`arena-challenge-${opp.characterId}`"
               @click="challenge(opp.characterId)"
             >

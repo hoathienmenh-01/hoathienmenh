@@ -7,6 +7,7 @@ import { AdminLiveOpsAnnouncementsController } from './admin-liveops-announcemen
 import { LiveOpsAnnouncementsPublicController } from './liveops-announcements-public.controller';
 import { LiveOpsAnnouncementService } from './liveops-announcement.service';
 import { LiveOpsBroadcastService } from './liveops-broadcast.service';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 
 /**
  * Phase 15.3.B — LiveOps Announcement module.
@@ -29,7 +30,7 @@ import { LiveOpsBroadcastService } from './liveops-broadcast.service';
  * `LiveOpsAnnouncementService.recomputeStatuses()` rồi `broadcast`.
  */
 @Module({
-  imports: [AuthModule, AdminModule, RealtimeModule],
+  imports: [AuthModule, AdminModule, RealtimeModule, FeatureFlagModule],
   controllers: [
     AdminLiveOpsAnnouncementsController,
     LiveOpsAnnouncementsPublicController,

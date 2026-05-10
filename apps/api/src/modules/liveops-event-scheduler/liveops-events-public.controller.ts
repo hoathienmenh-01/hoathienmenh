@@ -17,6 +17,7 @@ import {
   type LiveOpsActiveEventPublicView,
   type LiveOpsClaimResult,
 } from './liveops-event-scheduler.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -49,6 +50,7 @@ export class LiveOpsEventsPublicController {
     private readonly events: LiveOpsEventSchedulerService,
     private readonly auth: AuthService,
     private readonly prisma: PrismaService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   private async resolveCharacterId(req: Request): Promise<string | null> {
@@ -80,6 +82,13 @@ export class LiveOpsEventsPublicController {
   async listActive(
     @Req() req: Request,
   ): Promise<{ ok: true; data: LiveOpsActiveEventPublicView[] }> {
+    // Phase 15.4 — runtime gate. Khi LIVEOPS_EVENTS_ENABLED=false,
+    // FE nhận `data: []` (empty list) thay vì 503 — player không
+    // thấy event UI nhưng app vẫn hoạt động bình thường.
+    const enabled = await this.featureFlags.isEnabled('LIVEOPS_EVENTS_ENABLED');
+    if (!enabled) {
+      return { ok: true, data: [] };
+    }
     const characterId = await this.resolveCharacterId(req);
     try {
       const data = await this.events.getActiveEventsPublic(characterId);
@@ -95,6 +104,10 @@ export class LiveOpsEventsPublicController {
     @Req() req: Request,
     @Param('eventKey') eventKey: string,
   ): Promise<{ ok: true; data: LiveOpsClaimResult }> {
+    // Phase 15.4 — runtime gate. Tắt khi double-reward exploit;
+    // 503 + FEATURE_DISABLED. Player UI sẽ kiểm tra public flag
+    // và ẩn nút claim, nhưng server vẫn enforce.
+    await this.featureFlags.requireEnabled('LIVEOPS_FESTIVAL_GIFT_ENABLED');
     if (!eventKey || typeof eventKey !== 'string' || eventKey.length > 80) {
       fail('INVALID_INPUT');
     }

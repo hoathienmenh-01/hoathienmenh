@@ -25,6 +25,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 import {
   InMemorySlidingWindowRateLimiter,
   RedisSlidingWindowRateLimiter,
@@ -56,7 +57,12 @@ const profileLimiterProvider = {
 // `def.reward.items` non-empty. Cycle: CharacterModule ↔ InventoryModule
 // (InventoryModule imports CharacterModule cho CharacterService/CurrencyService).
 @Module({
-  imports: [AuthModule, RealtimeModule, forwardRef(() => InventoryModule)],
+  imports: [
+    AuthModule,
+    RealtimeModule,
+    forwardRef(() => InventoryModule),
+    FeatureFlagModule,
+  ],
   controllers: [CharacterController],
   providers: [
     CharacterService,

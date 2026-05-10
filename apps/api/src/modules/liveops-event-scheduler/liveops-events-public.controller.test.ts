@@ -29,6 +29,8 @@ interface Stubs {
     characterId: string,
     eventKey: string,
   ) => Promise<LiveOpsClaimResult>;
+  /** Phase 15.4 — gi\u1ea3 l\u1eadp LIVEOPS_*_ENABLED=false. */
+  flagDisabled?: boolean;
 }
 
 function makeController(opts: Stubs = {}): LiveOpsEventsPublicController {
@@ -63,7 +65,20 @@ function makeController(opts: Stubs = {}): LiveOpsEventsPublicController {
       })),
   } as unknown as LiveOpsEventSchedulerService;
 
-  return new LiveOpsEventsPublicController(events, auth, prisma);
+  // Phase 15.4 — stub feature flags: mặc định on cho tests cũ.
+  const featureFlags = {
+    isEnabled: async () => !opts.flagDisabled,
+    requireEnabled: async () => {
+      if (opts.flagDisabled) {
+        const { HttpException, HttpStatus } = await import('@nestjs/common');
+        throw new HttpException(
+          { ok: false, error: { code: 'FEATURE_DISABLED', message: 'disabled' } },
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
+      }
+    },
+  } as unknown as import('../feature-flag/feature-flag.service').FeatureFlagService;
+  return new LiveOpsEventsPublicController(events, auth, prisma, featureFlags);
 }
 
 describe('LiveOpsEventsPublicController.listActive', () => {
@@ -194,5 +209,47 @@ describe('LiveOpsEventsPublicController.claim', () => {
       },
     });
     await expect(c.claim(makeReq('valid'), 'fest-1')).rejects.toBe(boom);
+  });
+});
+
+// -------------------------------------------------------------------
+// Phase 15.4 — runtime gate (LIVEOPS_*_ENABLED). Active list trả empty
+// khi LIVEOPS_EVENTS_ENABLED=false; claim bị 503 khi
+// LIVEOPS_FESTIVAL_GIFT_ENABLED=false.
+// -------------------------------------------------------------------
+describe('Phase 15.4 — LiveOpsEventsPublicController runtime gates', () => {
+  it('listActive: events flag off → returns empty data array', async () => {
+    const stubList: LiveOpsActiveEventPublicView[] = [
+      {
+        key: 'fest-1',
+        type: 'FESTIVAL_GIFT',
+        title: 'X',
+        description: '',
+        startsAt: '2026-04-29T00:00:00Z',
+        endsAt: '2026-05-01T00:00:00Z',
+        publicConfig: { multiplier: null, reward: null },
+        claimable: false,
+        runtimeSupported: true,
+      },
+    ];
+    const c = makeController({ active: stubList, flagDisabled: true });
+    const r = await c.listActive(makeReq(undefined));
+    expect(r).toEqual({ ok: true, data: [] });
+  });
+
+  it('claim: festival gift flag off → 503 FEATURE_DISABLED', async () => {
+    const c = makeController({ flagDisabled: true });
+    try {
+      await c.claim(makeReq('valid'), 'fest-1');
+      throw new Error('expected throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(HttpException);
+      const err = e as HttpException;
+      expect(err.getStatus()).toBe(HttpStatus.SERVICE_UNAVAILABLE);
+      expect(err.getResponse()).toMatchObject({
+        ok: false,
+        error: { code: 'FEATURE_DISABLED' },
+      });
+    }
   });
 });

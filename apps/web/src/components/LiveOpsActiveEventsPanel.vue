@@ -4,12 +4,14 @@ import { useI18n } from 'vue-i18n';
 import { storeToRefs } from 'pinia';
 import { useToastStore } from '@/stores/toast';
 import { useLiveOpsAnnouncementStore } from '@/stores/liveopsAnnouncements';
+import { useFeatureFlagsStore } from '@/stores/featureFlags';
 import {
   claimLiveOpsEventReward,
   getActiveLiveOpsEvents,
   type LiveOpsActiveEventPublicView,
 } from '@/api/liveops';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
+import FeatureDisabledBanner from '@/components/FeatureDisabledBanner.vue';
 
 /**
  * Phase 15.3.A — Player-facing panel hiển thị LiveOps event đang ACTIVE.
@@ -27,6 +29,13 @@ import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
  */
 const { t } = useI18n();
 const toast = useToastStore();
+const featureFlags = useFeatureFlagsStore();
+
+// Phase 15.4 — Festival gift claim feature flag gate. Server vẫn gate
+// cuối cùng (`FEATURE_DISABLED` 503), FE chỉ disable button + show banner.
+const festivalGiftDisabled = computed(() =>
+  featureFlags.isDisabled('LIVEOPS_FESTIVAL_GIFT_ENABLED'),
+);
 
 const events = ref<LiveOpsActiveEventPublicView[]>([]);
 const loading = ref(true);
@@ -231,6 +240,12 @@ async function onClaim(ev: LiveOpsActiveEventPublicView): Promise<void> {
           </span>
         </div>
 
+        <FeatureDisabledBanner
+          v-if="ev.type === 'FESTIVAL_GIFT' && festivalGiftDisabled"
+          message-key="liveopsActiveEvents.disabled.festivalGiftMessage"
+          test-id="liveops-festival-gift-disabled-banner"
+          class="mt-2"
+        />
         <div
           v-if="ev.type === 'FESTIVAL_GIFT'"
           class="mt-2 flex justify-end"
@@ -239,7 +254,7 @@ async function onClaim(ev: LiveOpsActiveEventPublicView): Promise<void> {
             v-if="ev.claimable"
             type="button"
             class="px-3 py-1 text-xs rounded bg-amber-700 text-ink-50 hover:bg-amber-600 disabled:opacity-50"
-            :disabled="claimingKey === ev.key"
+            :disabled="claimingKey === ev.key || festivalGiftDisabled"
             :data-testid="`liveops-active-event-claim-${ev.key}`"
             @click="onClaim(ev)"
           >

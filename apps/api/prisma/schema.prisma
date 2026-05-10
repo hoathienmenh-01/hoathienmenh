@@ -118,6 +118,9 @@ model User {
   /// Phase 15.3.B — LiveOps Announcement audit (admin tạo announcement).
   /// SET NULL khi User bị xoá — announcement row vẫn giữ history.
   liveOpsAnnouncementsCreated LiveOpsAnnouncement[] @relation("LiveOpsAnnouncementCreatedBy")
+  /// Phase 15.4 — FeatureFlag audit (admin gần nhất bật/tắt flag).
+  /// SET NULL khi admin bị xoá — flag row giữ updatedAt + value.
+  featureFlagsUpdated FeatureFlag[] @relation("FeatureFlagUpdatedBy")
 }
 
 /// Token đặt lại mật khẩu (forgot/reset-password flow).
@@ -2386,4 +2389,46 @@ model EconomyAnomaly {
   @@index([source, createdAt])
   @@index([characterId, createdAt])
   @@index([userId, createdAt])
+}
+
+/// Phase 15.4 — Feature Flag DB-backed.
+///
+/// DB-backed switch cho admin bật/tắt các chức năng quan trọng (Arena,
+/// Tribulation Mini-Battle, Reforge/Enchant, LiveOps event/festival/
+/// announcement, Territory War, Market, Shop/Sect Shop discount runtime)
+/// mà không cần redeploy code. Catalog hardcode shared
+/// (`packages/shared/src/feature-flags.ts`) — admin chỉ toggle các key
+/// đã khai báo, không tạo flag tùy ý.
+///
+/// Cache: `FeatureFlagService` đọc qua Redis TTL 30s (fallback in-memory
+/// khi Redis lỗi). Admin update → clear cache → flag effect runtime
+/// trong ≤ 30s (nếu cache miss / TTL hết).
+///
+/// Audit: reuse `AdminAuditLog` action `ADMIN_FEATURE_FLAG_UPDATE` —
+/// KHÔNG tạo bảng audit riêng. `updatedByAdminId` chỉ ghi admin gần
+/// nhất (rotate) cho UX panel hiển thị; full history nằm ở audit log.
+///
+/// Lazy ensure-default: nếu DB chưa có row cho key, service trả về
+/// `defaultEnabled` từ catalog (fail-open). Admin có thể "Refresh
+/// defaults" để upsert tất cả keys với defaultEnabled — chuẩn bị seed
+/// trước khi cần bật/tắt.
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  /// Stable key — bắt buộc match `FeatureFlagKey` (catalog shared).
+  /// Admin update reject nếu key ngoài catalog.
+  key         String   @unique
+  enabled     Boolean  @default(true)
+  /// `FeatureFlagCategory` ∈ `GAMEPLAY|ECONOMY|LIVEOPS|ADMIN|SAFETY`.
+  /// Cache vào DB để admin filter UI khỏi cần lookup catalog mỗi lần.
+  /// Service ensure-default sync với shared catalog khi seed.
+  category    String   @default("GAMEPLAY")
+  /// Mô tả admin UI (vi). Cache cho list endpoint.
+  description String   @default("")
+  updatedByAdminId String?
+  updatedByAdmin   User? @relation("FeatureFlagUpdatedBy", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([enabled])
 }

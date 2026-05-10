@@ -57,6 +57,7 @@ import { TitleError, TitleService } from './title.service';
 import { BuffService } from './buff.service';
 import { getBuffDef, getTitleDef, TITLES } from '@xuantoi/shared';
 import { AuthService } from '../auth/auth.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 import {
   InMemorySlidingWindowRateLimiter,
   type RateLimiter,
@@ -181,6 +182,10 @@ export class CharacterController {
     @Optional()
     private readonly tribulationMiniBattle?: TribulationMiniBattleService,
     @Optional() @Inject(PROFILE_RATE_LIMITER) profileLimiter?: RateLimiter,
+    // Phase 15.4 — runtime gate cho equipment reforge/enchant +
+    // tribulation mini-battle. Optional vì module test bỏ qua FeatureFlagModule;
+    // nếu inject null → controller skip gate (hành vi cũ = always allow).
+    @Optional() private readonly featureFlags?: FeatureFlagService,
   ) {
     this.profileLimiter =
       profileLimiter ??
@@ -704,6 +709,11 @@ export class CharacterController {
   @Post('equipment/reforge')
   @HttpCode(200)
   async equipmentReforge(@Req() req: Request, @Body() body: unknown) {
+    // Phase 15.4 — runtime gate. Tắt khi exploit hoặc cần freeze
+    // economy stat-roll burst. 503 + FEATURE_DISABLED.
+    if (this.featureFlags) {
+      await this.featureFlags.requireEnabled('EQUIPMENT_REFORGE_ENABLED');
+    }
     const userId = await this.requireUserId(req);
     if (!this.equipment) {
       fail('EQUIPMENT_UPGRADE_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
@@ -735,6 +745,11 @@ export class CharacterController {
   @Post('equipment/enchant')
   @HttpCode(200)
   async equipmentEnchant(@Req() req: Request, @Body() body: unknown) {
+    // Phase 15.4 — runtime gate. Tắt khi exploit ngũ hành hoặc
+    // cần freeze power-up bức xạ. 503 + FEATURE_DISABLED.
+    if (this.featureFlags) {
+      await this.featureFlags.requireEnabled('EQUIPMENT_ENCHANT_ENABLED');
+    }
     const userId = await this.requireUserId(req);
     if (!this.equipment) {
       fail('EQUIPMENT_UPGRADE_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
@@ -1046,6 +1061,11 @@ export class CharacterController {
   @Post('tribulation/battle/start')
   @HttpCode(200)
   async tribulationBattleStart(@Req() req: Request, @Body() body: unknown) {
+    // Phase 15.4 — runtime gate (DB-backed override bên trên env-based
+    // lằn trong service). 503 + FEATURE_DISABLED.
+    if (this.featureFlags) {
+      await this.featureFlags.requireEnabled('TRIBULATION_MINI_BATTLE_ENABLED');
+    }
     const userId = await this.requireUserId(req);
     if (!this.tribulationMiniBattle) {
       fail('TRIBULATION_MINI_BATTLE_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);

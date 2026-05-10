@@ -921,6 +921,103 @@ row đó.
 - KHÔNG broadcast `target=ADMIN_ONLY` ra public room — admin polling pattern
   qua `GET /admin/liveops/announcements`.
 
+### 2.22. Feature Flag — emergency kill switch (P1) — Phase 15.4
+
+Phase 15.4 thêm hệ Feature Flag DB-backed cho phép admin **bật/tắt nhanh
+các hệ thống lõi** (Arena, Reforge/Enchant, LiveOps Events, Festival
+Gift, Market, Tribulation Mini-Battle, Territory War, Shop/Sect Shop
+Discount runtime) **mà không cần deploy code**. Catalog 11 flag
+hardcoded trong `packages/shared/src/feature-flags.ts`. DB row tự lazy
+ensure khi service `isEnabled()` lần đầu — flag không có DB row → fallback
+default từ catalog. Cache 2-tier (L1 in-memory TTL 30s + L2 Redis TTL 30s)
+với Redis fail-soft (Redis lỗi → vẫn dùng L1 → vẫn dùng DB → vẫn dùng
+default catalog).
+
+**Khi nào dùng**: bug nghiêm trọng / exploit production cần ngắt một
+feature ngay lập tức, KHÔNG có thời gian deploy hotfix; cần re-enable
+khi đã có fix.
+
+**Truy cập panel**: AdminView → tab "Feature Flags". Permission:
+`RequireAdmin()`. Audit log: `ADMIN_FEATURE_FLAG_*`
+(`UPDATE`/`REFRESH_DEFAULTS`/`CLEAR_CACHE`). API endpoint:
+
+```bash
+# List + xem trạng thái live (admin token)
+curl -H "Cookie: xt_access=$ADMIN_TOKEN" https://<host>/api/admin/feature-flags
+
+# Tắt flag (ví dụ Arena)
+curl -X PATCH -H "Cookie: xt_access=$ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"enabled": false}' \
+  https://<host>/api/admin/feature-flags/ARENA_ENABLED
+
+# Bật lại
+curl -X PATCH -H "Cookie: xt_access=$ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"enabled": true}' \
+  https://<host>/api/admin/feature-flags/ARENA_ENABLED
+
+# Force clear cache nếu nghi cache stale
+curl -X POST -H "Cookie: xt_access=$ADMIN_TOKEN" \
+  https://<host>/api/admin/feature-flags/clear-cache
+
+# Seed default flags (idempotent — chỉ tạo row chưa tồn tại)
+curl -X POST -H "Cookie: xt_access=$ADMIN_TOKEN" \
+  https://<host>/api/admin/feature-flags/refresh-defaults
+```
+
+**Cách verify flag đang có hiệu lực**:
+```bash
+# 1. Check public endpoint (whitelist subset)
+curl https://<host>/api/feature-flags/public
+# → {"ok":true,"data":{"flags":[{"key":"ARENA_ENABLED","enabled":false}, ...]}}
+
+# 2. Trigger 1 request thật → server phải trả 503 FEATURE_DISABLED
+curl -X POST -H "Cookie: xt_access=$PLAYER_TOKEN" -H "Content-Type: application/json" \
+  -d '{"defenderCharacterId":"abc"}' \
+  https://<host>/api/arena/matches
+# → 503 {"ok":false,"error":{"code":"FEATURE_DISABLED","flag":"ARENA_ENABLED",...}}
+```
+
+**Tắt Arena khẩn cấp** (vd phát hiện exploit MMR):
+1. Admin panel → search "ARENA_ENABLED" → click "Tắt" → confirm modal.
+2. Verify `POST /arena/matches` trả 503 `FEATURE_DISABLED`.
+3. Verify FE: `ArenaView` hiện banner "Đấu Đài đang tạm tắt" + nút
+   challenge disabled (server vẫn gate cuối cùng — FE chỉ hint UX).
+4. Tag postmortem: nguyên nhân, blast radius, ETA fix.
+
+**Tắt LiveOps Event Scheduler nếu lỗi config**: tắt `LIVEOPS_EVENTS_ENABLED`
+→ runtime modifier (boost/discount) **không apply**, admin vẫn thấy event
+trong panel để debug. Cron scheduler vẫn chạy recompute (chỉ disable
+modifier áp dụng cho player, không disable status machine).
+
+**Tắt Festival Gift claim nếu phát hiện double reward**: tắt
+`LIVEOPS_FESTIVAL_GIFT_ENABLED` → `POST /liveops/events/:eventKey/claim`
+trả 503; FE ẩn nút claim. Trong khi đó dùng playbook §2.5 reward mail
+duplicate để xác minh `LiveOpsEventClaim` UNIQUE và rollback nếu cần.
+
+**Tắt Reforge/Enchant nếu exploit substat / element**: tắt
+`EQUIPMENT_REFORGE_ENABLED` hoặc `EQUIPMENT_ENCHANT_ENABLED` → `POST
+/character/equipment/reforge|enchant` trả 503. Player vẫn xem được
+substat/enchant hiện có (read-only). Audit `EquipmentReforgeHistory` /
+`EquipmentEnchantHistory` để forensic.
+
+**Tắt Market khẩn cấp** (price abuse, ledger mismatch nghi ngờ):
+`MARKET_ENABLED=false` → cả create listing + buy listing đều bị 503; list
+read-only vẫn hoạt động. Khi đã fix → bật lại + chạy §2.14 anomaly check
+trên ledger.
+
+**Cache TTL = 30s** → admin toggle flag → server clear L1+L2 ngay; FE
+public flag store auto-refresh sau 30s. Nếu cần ép FE refetch ngay →
+admin panel có nút "Xoá cache" + người chơi reload trang.
+
+**KHÔNG**:
+- KHÔNG tự thêm flag key ngoài catalog — service reject
+  `FEATURE_FLAG_KEY_INVALID`. Catalog phải PR vào shared trước.
+- KHÔNG dùng flag để che bug thay vì test/fix — xem `docs/AI_WORKFLOW_RULES.md`.
+- KHÔNG tắt flag SAFETY (vd `ARENA_ANTI_WINTRADE_ENABLED` trong tương lai)
+  mà không có incident report.
+- KHÔNG dựa vào FE flag store để security gate — server-authoritative
+  qua `FEATURE_DISABLED` 503 là source of truth.
+
 ## 3. Backup operations (closed beta cadence)
 
 ### 3.1. Cron daily backup
