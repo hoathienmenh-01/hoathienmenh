@@ -24,6 +24,18 @@ export type WsEventType =
   | 'boss:defeated'
   | 'mail:new'
   | 'mission:progress'
+  /**
+   * Phase 15.3.B — LiveOps announcement broadcast channel. Payload là
+   * `LiveOpsAnnouncementBroadcastPayload` (xem `liveops-announcement.ts`).
+   * Server emit khi announcement transition SCHEDULED→ACTIVE / ACTIVE→ENDED.
+   */
+  | 'liveops:announcement'
+  /**
+   * Phase 15.3.B — LiveOps scheduled event broadcast channel. Payload là
+   * `LiveOpsEventBroadcastPayload` (public-safe, KHÔNG bao gồm `configJson`
+   * raw / `createdByAdminId`). Server emit khi event transition.
+   */
+  | 'liveops:event'
   | 'pong'
   // client → server
   | 'ping'
