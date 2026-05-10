@@ -148,6 +148,11 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // FK → Character.
   await prisma.arenaMatch.deleteMany({});
   await prisma.arenaProfile.deleteMany({});
+  // Phase 14.1.C — Arena Season + ELO + Reward (xoá grant + standing trước
+  // season; cả 3 cascade tới Character/Season qua FK).
+  await prisma.arenaSeasonRewardGrant.deleteMany({});
+  await prisma.arenaStanding.deleteMany({});
+  await prisma.arenaSeason.deleteMany({});
   // Phase 14.3.E.1 — mini-battle session rows (encounterId pointer chỉ là
   // string, không FK; xoá trước encounter để giữ deterministic order).
   await prisma.tribulationMiniBattle.deleteMany({});

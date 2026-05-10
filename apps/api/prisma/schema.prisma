@@ -309,6 +309,8 @@ model Character {
   arenaProfile            ArenaProfile?
   arenaMatchesAttacker    ArenaMatch[]                 @relation("ArenaMatchAttacker")
   arenaMatchesDefender    ArenaMatch[]                 @relation("ArenaMatchDefender")
+  arenaStandings          ArenaStanding[]
+  arenaSeasonRewardGrants ArenaSeasonRewardGrant[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -389,6 +391,101 @@ model ArenaMatch {
   @@index([attackerCharacterId, createdAt])
   @@index([defenderCharacterId, createdAt])
   @@index([status, createdAt])
+}
+
+/// Phase 14.1.C — Arena Season.
+///
+/// 1 row mỗi season key (vd `arena_2026-W19`). Server tạo lazy-create khi
+/// match đầu tiên trong season được resolve (xem
+/// `ArenaSeasonService.getOrCreateActiveSeason`). Status:
+///   - ACTIVE   : đang diễn ra; settle chưa chạy.
+///   - SETTLED  : settle đã chạy → reward đã được mail (idempotent).
+///   - ARCHIVED : reserved cho UI history Phase 14.1.D+.
+///
+/// `seasonKey` UNIQUE đảm bảo không có 2 row cùng key (idempotent
+/// settle / lazy create race-safe).
+model ArenaSeason {
+  id          String                   @id @default(cuid())
+  /// Stable key — `arena_<isoWeekKey>`. Đừng reuse cross-year.
+  seasonKey   String                   @unique
+  /// Lifecycle status — `ACTIVE` | `SETTLED` | `ARCHIVED`.
+  status      String                   @default("ACTIVE")
+  /// UTC ISO của Monday 00:00 ICT — start (inclusive).
+  startsAt    DateTime
+  /// UTC ISO của Monday 00:00 ICT tuần kế — end (exclusive).
+  endsAt      DateTime
+  /// ISO của lúc settle chạy — null khi ACTIVE.
+  settledAt   DateTime?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  standings   ArenaStanding[]
+  rewardGrants ArenaSeasonRewardGrant[]
+
+  @@index([status, endsAt])
+}
+
+/// Phase 14.1.C — Arena Standing per character per season.
+///
+/// Tách khỏi `ArenaProfile` (Phase 14.1.B) để giữ rating đời + counter
+/// daily limit ở 1 chỗ và rating per-season scoped ở chỗ khác. Server
+/// lazy-create row khi match đầu tiên trong season được resolve.
+///
+/// `rating` là rating tích luỹ trong season (Elo apply mỗi match). `wins`/
+/// `losses` cũng count theo season. `rank` snapshot chỉ được set khi
+/// settlement chạy (Phase 14.1.C — server compute rank desc theo rating).
+/// `tier` cache theo `rating` (compute từ shared catalog) — denorm cho
+/// leaderboard query nhanh.
+model ArenaStanding {
+  id          String      @id @default(cuid())
+  seasonId    String
+  season      ArenaSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  characterId String
+  character   Character   @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  rating      Int         @default(1000)
+  wins        Int         @default(0)
+  losses      Int         @default(0)
+  /// Rank snapshot tại settle — null khi season chưa settle.
+  rank        Int?
+  /// Tier (BRONZE/SILVER/GOLD/DIAMOND/IMMORTAL) compute theo rating.
+  tier        String      @default("SILVER")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([seasonId, characterId])
+  @@index([seasonId, rating])
+  @@index([characterId])
+}
+
+/// Phase 14.1.C — Arena Season reward grant audit.
+///
+/// 1 row per (seasonId, characterId) mỗi khi settlement grant reward —
+/// idempotency guard chống double-mail. Settlement gọi lại thấy row tồn
+/// tại sẽ skip mail (`grantedAt` đã set).
+///
+/// `mailId` nullable: server set sau khi `MailService.sendToCharacter`
+/// trả về mail row id để audit truy ngược; nếu mail step fail rollback
+/// giao dịch (transaction) thì row grant cũng rollback theo.
+model ArenaSeasonRewardGrant {
+  id          String      @id @default(cuid())
+  seasonId    String
+  season      ArenaSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  characterId String
+  character   Character   @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Rank snapshot tại lúc grant — duplicate `ArenaStanding.rank` nhưng
+  /// audit-correct nếu standing rank đổi sau (vd recompute lại).
+  rank        Int
+  /// Tier snapshot — duplicate `ArenaStanding.tier`.
+  tier        String
+  /// Reward payload JSON (linhThach/tienNgoc/exp/items snapshot từ catalog).
+  rewardJson  Json
+  /// Mail row id (`Mail.id`) — null nếu không có gì để mail (vd reward
+  /// rỗng theo design).
+  mailId      String?
+  grantedAt   DateTime    @default(now())
+
+  @@unique([seasonId, characterId])
+  @@index([seasonId])
+  @@index([characterId])
 }
 
 /// Phase 11.3.A — Audit log cho mỗi lần roll Linh căn (onboard auto + future
