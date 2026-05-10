@@ -173,12 +173,12 @@ describe('AdminMaintenanceWindowController.create', () => {
   it('service throws validator code → 400', async () => {
     const { service, prisma } = makeStubs({
       create: async () => {
-        throw new MaintenanceWindowError('MAINTENANCE_WINDOW_INVALID_TIME');
+        throw new MaintenanceWindowError('MAINTENANCE_WINDOW_INVALID');
       },
     });
     const c = new AdminMaintenanceWindowController(service, prisma);
     await expect(c.create(adminReq, validCreateBody)).rejects.toMatchObject({
-      response: { error: { code: 'MAINTENANCE_WINDOW_INVALID_TIME' } },
+      response: { error: { code: 'MAINTENANCE_WINDOW_INVALID' } },
       status: 400,
     });
   });
