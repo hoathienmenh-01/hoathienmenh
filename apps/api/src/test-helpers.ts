@@ -135,6 +135,12 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // nhưng explicit cho rõ thứ tự reset state giữa test runs).
   await prisma.rewardCapEvent.deleteMany({});
   await prisma.characterDailyRewardBucket.deleteMany({});
+  // Phase 16.6 — Economy Anti-cheat tables. Xoá `Issue` trước `Run` (FK
+  // cascade rồi nhưng explicit cho rõ). `EconomyAnomaly` không có FK
+  // tới Character (`characterId String?`) nên xoá đầu cũng OK.
+  await prisma.economyLedgerCheckIssue.deleteMany({});
+  await prisma.economyLedgerCheckRun.deleteMany({});
+  await prisma.economyAnomaly.deleteMany({});
   await prisma.itemLedger.deleteMany({});
   await prisma.currencyLedger.deleteMany({});
   // Phase 14.3.D — encounter session rows (nullable resolvedAttemptLogId

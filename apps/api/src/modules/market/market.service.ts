@@ -1,6 +1,11 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { CurrencyKind, ListingStatus } from '@prisma/client';
-import { itemByKey, type ItemDef, type ItemKind } from '@xuantoi/shared';
+import {
+  checkListingPriceBand,
+  itemByKey,
+  type ItemDef,
+  type ItemKind,
+} from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
@@ -17,6 +22,8 @@ class MarketError extends Error {
       | 'ITEM_EQUIPPED'
       | 'INVALID_QTY'
       | 'INVALID_PRICE'
+      | 'PRICE_TOO_LOW'
+      | 'PRICE_TOO_HIGH'
       | 'LISTING_NOT_FOUND'
       | 'LISTING_INACTIVE'
       | 'CANNOT_BUY_OWN'
@@ -153,6 +160,17 @@ export class MarketService {
       const itemDef = itemByKey(inv.itemKey);
       if (!itemDef) throw new MarketError('ITEM_NOT_FOUND');
       if (input.qty > inv.qty) throw new MarketError('INVALID_QTY');
+
+      // Phase 16.6 — Market Price Band check. Reject listing có
+      // pricePerUnit ngoài band của itemKey (override > rarity > global
+      // fallback). KHÔNG mutate listing đã ACTIVE từ trước (chỉ apply
+      // khi POST mới).
+      const bandCheck = checkListingPriceBand(inv.itemKey, input.pricePerUnit);
+      if (!bandCheck.ok) {
+        throw new MarketError(
+          bandCheck.reason === 'TOO_LOW' ? 'PRICE_TOO_LOW' : 'PRICE_TOO_HIGH',
+        );
+      }
 
       if (inv.qty - input.qty <= 0) {
         // Xoá row, ràng buộc qty cũ phải khớp để invalidate concurrent updater.

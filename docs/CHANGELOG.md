@@ -12,7 +12,111 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Phase Audit-1 — Post-5 Integration Regression Audit (this PR)
+### Phase 16.6 — Economy Anti-cheat Suite (this PR)
+
+**Scope**: anti-cheat layer chuẩn bị closed beta — daily auto invariant
+ledger check + windowed economy anomaly scan + market price band enforcement
++ admin grant alert hook + admin FE Economy Safety panel. **Detection +
+reporting only** — KHÔNG auto-ban, KHÔNG rollback, KHÔNG public notify.
+
+#### Added — Phase 16.6 Economy Anti-cheat Suite
+
+- **Shared (`packages/shared/src/economy-anomaly.ts` + `market-price-band.ts`)**:
+  catalog `ECONOMY_ANOMALY_RULES` (5 source × WARN/CRITICAL threshold),
+  enums `EconomyAnomalySeverity` / `EconomyAnomalySource` /
+  `EconomyIssueStatus`, helpers `getEconomyAnomalyRule`,
+  `isEconomyAnomalySource`, `isEconomyAnomalySeverity`, `compareSeverity`,
+  `deriveSeverityForValue`, plus market band catalog
+  `DEFAULT_PRICE_BAND_BY_QUALITY` + `MARKET_PRICE_BAND_BY_ITEM` overrides
+  + helper `getMarketPriceBandForItem(itemKey)` + `checkListingPriceBand`.
+- **Prisma models** (migration
+  `20260614000000_phase_16_6_economy_anti_cheat`):
+  `EconomyLedgerCheckRun` (UNIQUE `dayBucket`), `EconomyLedgerCheckIssue`
+  (FK runId, severity/type/status), `EconomyAnomaly`
+  (`@@unique([source, characterId, windowKey])` race-safe).
+- **API** — `LedgerCheckerService` (5 invariant checks: currency
+  consistency, item consistency, reward-cap consistency, negative
+  balances, suspicious 24h delta) + `EconomyAnomalyScannerService`
+  (scanTopCurrencyDelta24h / scanRareItemGain / scanRewardCapBypass /
+  scanMarketOutlier + real-time hook `scanAdminGrantOverLimit`).
+- **API endpoints** (`/admin/economy/...`) — 8 admin route gắn
+  `@RequireAdmin()` cho run/list/ack/resolve issue + anomaly. Audit
+  `ADMIN_ECONOMY_*` action codes. Idempotent qua DB UNIQUE.
+- **API cron** (`apps/api/src/modules/admin-economy-safety/`) —
+  `EconomyAnticheatCronScheduler` BullMQ register Ledger Checker (default
+  01:00 UTC) + Anomaly Scanner (default 02:00 UTC). **Default disabled**;
+  bật qua env `LEDGER_CHECKER_CRON_ENABLED=true` /
+  `ECONOMY_ANOMALY_CRON_ENABLED=true`.
+- **API hook** — `AdminService.grantCurrency` gọi
+  `scanAdminGrantOverLimit` khi delta vượt warn/critical threshold;
+  fail-soft (không block grant).
+- **API market** — `MarketService.postListing` enforce
+  `getMarketPriceBandForItem(itemKey)` band, reject với code
+  `PRICE_TOO_LOW` / `PRICE_TOO_HIGH` (HTTP 409). Existing ACTIVE
+  listings KHÔNG mutate.
+- **Web** — `AdminEconomySafetyPanel.vue` tab mới trong AdminView (chỉ
+  ADMIN, role-gated): xem latest run, list issues + anomalies với filter
+  severity/status/source, button Run / Scan / Ack / Resolve, gọi qua
+  `apps/web/src/api/admin.ts`. `MarketView.vue` thêm
+  `[data-testid="market-price-band-hint"]` hiển thị suggested
+  min/max khi user chọn item bán; toast lỗi `PRICE_TOO_LOW` /
+  `PRICE_TOO_HIGH` từ i18n.
+- **Tests added** — shared 27 (economy-anomaly 15 + market-price-band 12);
+  api 75+ (ledger checker 4 + economy anomaly scanner 6 + market price
+  band integration + admin economy safety controller 14); web 6
+  (AdminEconomySafetyPanel 4 + MarketView price band 2).
+- **Env vars** — `LEDGER_CHECKER_CRON_ENABLED`,
+  `LEDGER_CHECKER_CRON_SCHEDULE` (`0 1 * * *`),
+  `ECONOMY_ANOMALY_CRON_ENABLED`, `ECONOMY_ANOMALY_CRON_SCHEDULE`
+  (`0 2 * * *`), `ECONOMY_ANTICHEAT_CRON_TZ` (`UTC`). Xem `DEPLOY.md`.
+
+#### Policy
+
+- **KHÔNG auto-ban user** — anomaly chỉ tạo entry trong DB. Admin xem
+  panel + quyết định.
+- **KHÔNG auto-rollback / sửa data** — issue/anomaly không có endpoint
+  fix. Admin dùng endpoint khác (revoke inventory / refund / ban) đã có.
+- **KHÔNG public notification** — anomaly không gửi mail / chat / WS
+  cho người chơi. Chỉ ghi DB + admin panel.
+- **Idempotent cron** — gọi lại cùng `dayBucket` / `windowKey` không
+  tạo issue/anomaly trùng (qua DB UNIQUE constraint, P2002 swallow).
+- **Default cron disabled** — production opt-in, local/test KHÔNG auto
+  register cron job.
+
+#### Known limitations
+
+- Anomaly threshold tunings (`adminGrantWarnThreshold`,
+  `adminGrantCriticalThreshold`, etc.) là conservative initial values —
+  cần observe data closed beta để re-tune.
+- Per-item market price band overrides (`MARKET_PRICE_BAND_BY_ITEM`)
+  chưa fill — fallback rarity band cho mọi item. Sẽ thêm specific items
+  sau khi observe market trade pattern.
+- Không có cron lease lock — nếu deploy multi-node + cùng bật cron,
+  sẽ rely on DB UNIQUE để dedupe (không đẹp như liveops-cron lease
+  pattern). Acceptable: cron daily, không hot-loop.
+
+#### Risk / rollback
+
+- Migration là additive (3 model mới + 1 column). Rollback an toàn
+  qua `prisma migrate resolve --rolled-back`. Không drop existing data.
+- Market price band reject là behavior mới; nếu band quá strict, listing
+  user post bị fail. Mitigation: rarity band đã set rộng (PHAM 10–1000,
+  THAN 5000–5_000_000 LT/unit). Có thể disable bằng cách comment out
+  `checkListingPriceBand` ở `market.service.ts` (1 line revert).
+- Cron disabled by default — bật cũng chỉ tạo entry DB, không mutate
+  ledger/inventory.
+
+#### Next task recommendation
+
+- **Phase 17.5 Metrics + Load Test Baseline** — closed beta cần
+  Prometheus/StatsD metric export + load test baseline để biết server
+  endure bao nhiêu concurrent player. Anti-cheat data từ Phase 16.6
+  có thể feed thẳng vào dashboard.
+- **Phase 14.3.E Tribulation Mini-Battle Backend** — Phase 14.3.D đã
+  có encounter foundation, cần backend mini-battle thực thi tribulation
+  combat (HP / skill / phase).
+
+### Phase Audit-1 — Post-5 Integration Regression Audit (PR #500)
 
 **Scope**: KHÔNG thêm gameplay mới. Audit + sửa bug nhỏ + đồng bộ docs để đảm
 bảo 5 chức năng vừa merge (Phase 14.0.E territory reward mail / Phase 13.2.D +

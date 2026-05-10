@@ -499,6 +499,37 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 - `ADMIN_SECT_WAR_STATUS` — read-after-audit snapshot qua `POST /admin/sect-war/snapshot`.
 - `ADMIN_LIVEOPS_DRY_RUN` — Phase 13.1.D dry-run (event hoặc boss). `meta` luôn có `kind`/`targetType`/`targetId`/`reason`; nếu `kind='boss'` kèm `regionKey`/`level`. Schedule preview (`GET /admin/liveops/schedule-preview`) **KHÔNG ghi audit** (read-only).
 
+## Admin Economy Safety — `AdminEconomySafetyController` (Phase 16.6)
+
+> Phase 16.6 Economy Anti-cheat Suite. Detection + reporting only — KHÔNG auto-ban / KHÔNG rollback / KHÔNG public notify. Tất cả endpoint gắn `@RequireAdmin()`; PLAYER + MOD đều bị reject 403 `ADMIN_ONLY`. Mọi POST ghi audit `AdminAuditLog` với `actorUserId` + `action` (`ADMIN_ECONOMY_LEDGER_CHECK_RUN` / `ADMIN_ECONOMY_LEDGER_ISSUE_ACK` / `ADMIN_ECONOMY_LEDGER_ISSUE_RESOLVE` / `ADMIN_ECONOMY_ANOMALY_SCAN_RUN` / `ADMIN_ECONOMY_ANOMALY_ACK` / `ADMIN_ECONOMY_ANOMALY_RESOLVE`) + meta cho BI/SIEM.
+
+| Method | Path | Auth | Mô tả |
+|--------|------|------|-------|
+| POST   | `/admin/economy/ledger-check/run` | ADMIN | Trigger thủ công LedgerChecker. Body `{ forceRerun?: boolean, dayBucket?: string }` (zod strict). Nếu `dayBucket` khuyết → derive từ `now` UTC. Idempotent qua `EconomyLedgerCheckRun.dayBucket` UNIQUE — gọi lại cùng ngày trả `{ alreadyDone: true, run }` trừ khi `forceRerun=true`. Response `LedgerCheckRunSummary { runId, dayBucket, status (OK\|ISSUES_FOUND\|FAILED), issuesCreated, alreadyDone, summary }`. Errors: 401 `UNAUTHENTICATED`, 403 `ADMIN_ONLY`, 400 `INVALID_INPUT`. |
+| GET    | `/admin/economy/ledger-check/latest` | ADMIN | Latest run + danh sách issues của run đó. Response `{ run: EconomyLedgerCheckRun \| null, issues: EconomyLedgerCheckIssue[] }`. |
+| GET    | `/admin/economy/ledger-check/issues?severity=&status=&type=&runId=&limit=` | ADMIN | List issues filter (defaults: severity all, status all, limit=50, max 200). Response `{ issues: EconomyLedgerCheckIssue[] }` order DESC theo `createdAt`. Filters validate qua `isEconomyAnomalySeverity` / `isEconomyIssueStatus`. |
+| POST   | `/admin/economy/ledger-check/issues/:id/ack` | ADMIN | Set issue status → `ACKNOWLEDGED` (idempotent — gọi lại trả 200 không change). Audit `ADMIN_ECONOMY_LEDGER_ISSUE_ACK`. 404 `ISSUE_NOT_FOUND`. |
+| POST   | `/admin/economy/ledger-check/issues/:id/resolve` | ADMIN | Set issue status → `RESOLVED`. Audit `ADMIN_ECONOMY_LEDGER_ISSUE_RESOLVE`. 404 `ISSUE_NOT_FOUND`. |
+| POST   | `/admin/economy/anomalies/scan` | ADMIN | Trigger thủ công EconomyAnomalyScanner. Body `{ windowKey?: string, windowMs?: number }` (zod strict, `windowMs` cap 7 ngày). Idempotent qua `EconomyAnomaly @@unique([source, characterId, windowKey])`. Response `AnomalyScanSummary { windowKey, topCurrencyDelta, rareItemGain, rewardCapBypass, marketOutlier, totalAnomaliesCreated, totalAnomaliesSkipped }`. |
+| GET    | `/admin/economy/anomalies?severity=&status=&source=&limit=` | ADMIN | List anomalies filter (limit default=50, max=200). Filters validate qua `isEconomyAnomalySeverity` / `isEconomyIssueStatus` / `isEconomyAnomalySource`. Response `{ anomalies: EconomyAnomaly[] }` DESC theo `createdAt`. |
+| POST   | `/admin/economy/anomalies/:id/ack` | ADMIN | Set anomaly status → `ACKNOWLEDGED` (idempotent). Audit `ADMIN_ECONOMY_ANOMALY_ACK`. 404 `ANOMALY_NOT_FOUND`. |
+| POST   | `/admin/economy/anomalies/:id/resolve` | ADMIN | Set anomaly status → `RESOLVED`. Audit `ADMIN_ECONOMY_ANOMALY_RESOLVE`. 404 `ANOMALY_NOT_FOUND`. |
+
+**Anomaly sources** (catalog `ECONOMY_ANOMALY_RULES`): `CURRENCY_DELTA_24H`, `RARE_ITEM_GAIN_24H`, `REWARD_CAP_BYPASS`, `ADMIN_GRANT_OVER_LIMIT`, `MARKET_OUTLIER`. Mỗi source có `warnThreshold` + `criticalThreshold` riêng (xem `BALANCE_MODEL.md` §18).
+
+**Severity** (`EconomyAnomalySeverity`): `INFO` < `WARN` < `CRITICAL`. Status (`EconomyIssueStatus`): `OPEN` → `ACKNOWLEDGED` → `RESOLVED`.
+
+**Real-time hook** — `AdminService.grantCurrency` tự gọi `EconomyAnomalyScannerService.scanAdminGrantOverLimit` khi delta vượt threshold (KHÔNG block grant — chỉ tạo anomaly). Anomaly hook fail-soft: lỗi scan KHÔNG lật ngược grant. Audit `adminId, targetCharacterId, delta, reason` (KHÔNG log secret).
+
+**Admin Economy Safety error codes**: `ADMIN_ONLY`, `INVALID_INPUT`, `ISSUE_NOT_FOUND`, `ANOMALY_NOT_FOUND`.
+
+## Market — Phase 16.6 Price Band reject codes
+
+> Khi listing post (`POST /market/listings`) có `pricePerUnit` ngoài `getMarketPriceBandForItem(itemKey)` band → reject với 1 trong 2 code (HTTP 409 CONFLICT). Existing ACTIVE listings KHÔNG bị mutate (chỉ áp dụng listing mới).
+
+- `PRICE_TOO_LOW` — `pricePerUnit < band.minPrice`. FE i18n key `market.errors.PRICE_TOO_LOW`.
+- `PRICE_TOO_HIGH` — `pricePerUnit > band.maxPrice`. FE i18n key `market.errors.PRICE_TOO_HIGH`.
+
 ## Error codes (chuẩn hoá)
 
 - **Auth**: `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `RATE_LIMITED`, `PASSWORD_CHANGED`, `REUSED_REFRESH_TOKEN`, `BANNED`, `INVALID_INPUT`.

@@ -6,13 +6,15 @@ import { setActivePinia, createPinia } from 'pinia';
 const listMarketMock = vi.fn();
 const listMineMock = vi.fn();
 const listInventoryMock = vi.fn();
+const postListingMock = vi.fn();
+const toastPushMock = vi.fn();
 
 vi.mock('@/api/market', () => ({
   listMarket: (...a: unknown[]) => listMarketMock(...a),
   listMine: (...a: unknown[]) => listMineMock(...a),
   buyListing: vi.fn(),
   cancelListing: vi.fn(),
-  postListing: vi.fn(),
+  postListing: (...a: unknown[]) => postListingMock(...a),
 }));
 
 vi.mock('@/api/inventory', () => ({
@@ -41,7 +43,7 @@ vi.mock('@/stores/game', () => ({
 }));
 
 vi.mock('@/stores/toast', () => ({
-  useToastStore: () => ({ push: vi.fn() }),
+  useToastStore: () => ({ push: toastPushMock }),
 }));
 
 vi.mock('vue-router', () => ({
@@ -81,7 +83,9 @@ const i18n = createI18n({
         chooseItem: 'Chọn vật phẩm',
         qty: 'Số lượng',
         price: 'Giá',
+        priceBandHint: 'Đề nghị: {min} – {max} LT/đơn vị.',
         post: 'Đăng',
+        postToast: 'Đăng OK',
         sellerPosted: '{name}',
         perUnit: '{price}/đơn vị',
         buy: 'Mua',
@@ -89,6 +93,11 @@ const i18n = createI18n({
         takeDown: 'Hạ tin',
         totalLine: 'Tổng {total} {fee}',
         fee: 'phí {fee} → còn {net}',
+        errors: {
+          PRICE_TOO_LOW: 'Giá thấp hơn mức tối thiểu.',
+          PRICE_TOO_HIGH: 'Giá cao hơn mức tối đa.',
+          UNKNOWN: 'Lỗi không xác định.',
+        },
       },
       quality: {},
       listingStatus: { ACTIVE: 'Đang bán', SOLD: 'Đã bán', CANCELLED: 'Huỷ' },
@@ -108,6 +117,8 @@ describe('MarketView — skeleton loaders (L5 cont)', () => {
     listMarketMock.mockReset();
     listMineMock.mockReset();
     listInventoryMock.mockReset();
+    postListingMock.mockReset();
+    toastPushMock.mockReset();
   });
 
   it('render market-buy-skeleton khi đang fetch tab Mua', async () => {
@@ -162,5 +173,118 @@ describe('MarketView — skeleton loaders (L5 cont)', () => {
 
     expect(w.find('[data-testid="market-buy-skeleton"]').exists()).toBe(false);
     expect(w.text()).toContain('Chưa có tin đăng');
+  });
+});
+
+describe('MarketView — Phase 16.6 price band (L1)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    listMarketMock.mockReset();
+    listMineMock.mockReset();
+    listInventoryMock.mockReset();
+    postListingMock.mockReset();
+    toastPushMock.mockReset();
+  });
+
+  it('render price band hint khi chọn item trong sell form', async () => {
+    listMarketMock.mockResolvedValue({ listings: [], feePct: 0.05 });
+    listMineMock.mockResolvedValue([]);
+    listInventoryMock.mockResolvedValue([
+      {
+        id: 'inv1',
+        itemKey: 'so_kiem',
+        qty: 1,
+        equippedSlot: null,
+        item: {
+          key: 'so_kiem',
+          name: 'Sơ Kiếm',
+          description: '',
+          kind: 'WEAPON',
+          quality: 'PHAM',
+          stackable: false,
+          slot: 'WEAPON',
+          bonuses: { atk: 5 },
+          price: 30,
+        },
+        sockets: [],
+        refineLevel: 0,
+      },
+    ]);
+
+    const w = mountView();
+    await flushPromises();
+
+    // Switch to sell tab
+    await w.findAll('button').filter((b) => b.text().includes('Bán'))[0].trigger('click');
+    await w.vm.$nextTick();
+
+    // No item selected yet → no hint
+    expect(w.find('[data-testid="market-price-band-hint"]').exists()).toBe(false);
+
+    // Select item — vue-test-utils setValue for select
+    const select = w.find('select');
+    await select.setValue('inv1');
+    await w.vm.$nextTick();
+
+    const hint = w.find('[data-testid="market-price-band-hint"]');
+    expect(hint.exists()).toBe(true);
+    // PHAM rarity band defaults: minPrice=10, maxPrice=1000.
+    expect(hint.text()).toContain('10');
+    expect(hint.text()).toContain('1000');
+  });
+
+  it('show error toast khi post listing trả PRICE_TOO_LOW', async () => {
+    listMarketMock.mockResolvedValue({ listings: [], feePct: 0.05 });
+    listMineMock.mockResolvedValue([]);
+    listInventoryMock.mockResolvedValue([
+      {
+        id: 'inv1',
+        itemKey: 'so_kiem',
+        qty: 1,
+        equippedSlot: null,
+        item: {
+          key: 'so_kiem',
+          name: 'Sơ Kiếm',
+          description: '',
+          kind: 'WEAPON',
+          quality: 'PHAM',
+          stackable: false,
+          slot: 'WEAPON',
+          bonuses: { atk: 5 },
+          price: 30,
+        },
+        sockets: [],
+        refineLevel: 0,
+      },
+    ]);
+    postListingMock.mockRejectedValue(
+      Object.assign(new Error('PRICE_TOO_LOW'), { code: 'PRICE_TOO_LOW' }),
+    );
+
+    const w = mountView();
+    await flushPromises();
+
+    await w.findAll('button').filter((b) => b.text().includes('Bán'))[0].trigger('click');
+    await w.vm.$nextTick();
+
+    await w.find('select').setValue('inv1');
+    await w.vm.$nextTick();
+
+    // Click post button (the one with "Đăng" text — note "Đăng bán" is the section
+    // title, "Đăng" alone is the post button label per fixture).
+    const postBtn = w
+      .findAll('button')
+      .filter((b) => b.text().trim() === 'Đăng')[0];
+    expect(postBtn).toBeTruthy();
+    await postBtn.trigger('click');
+    await flushPromises();
+
+    expect(postListingMock).toHaveBeenCalled();
+    // Error toast pushed with PRICE_TOO_LOW i18n.
+    const errorCall = toastPushMock.mock.calls.find(
+      (c) => c[0]?.type === 'error',
+    );
+    expect(errorCall).toBeTruthy();
+    expect(errorCall![0].text).toContain('thấp hơn');
   });
 });

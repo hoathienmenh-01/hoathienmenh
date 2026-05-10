@@ -376,7 +376,137 @@ ALLOW_PRODUCTION_RESTORE=YES \
   pnpm restore:db /var/backups/xuantoi-<TS>.sql.gz
 ```
 
-### 2.11. PWA service worker phục vụ asset cũ (P3)
+### 2.11. Economy anomaly CRITICAL (P1) — Phase 16.6
+
+**Trigger**: `EconomyAnomaly.severity = CRITICAL` mới xuất hiện trong
+`AdminEconomySafetyPanel` (admin → Economy Safety tab) hoặc cron daily
+ledger check tạo issue `severity=CRITICAL`.
+
+**KHÔNG được**:
+- Tự ban user khi nhìn thấy anomaly. Anomaly chỉ là **signal**, không
+  phải bằng chứng.
+- Tự rollback inventory / currency. Cần manual review trước.
+- Public notify (mail / chat) — admin team xử lý nội bộ.
+
+**Quy trình**:
+
+1. **Đọc anomaly detail** trong panel: `source` / `characterId` /
+   `windowKey` / `detailsJson`. Note `actionableUserId` (qua
+   `Character.userId` lookup).
+2. **Ack** ngay (`POST /admin/economy/anomalies/:id/ack`) để team khác
+   biết bạn đang xử lý — KHÔNG resolve trừ khi đã hoàn tất.
+3. **Cross-check ledger**:
+   - Currency: `SELECT delta, source, createdAt FROM "LedgerEntry" WHERE
+     "characterId" = $1 AND "createdAt" >= $2 ORDER BY "createdAt"`.
+     Tổng `delta` phải khớp `Character.linhThach` snapshot.
+   - Item: `SELECT itemKey, qtyDelta FROM "ItemLedgerEntry" WHERE
+     "characterId" = $1`. Tổng phải khớp với `InventoryItem.qty`.
+4. **Xác minh nguồn delta**:
+   - Nếu source = `ADMIN_GRANT_OVER_LIMIT` → check `AuditLog` user
+     admin nào grant; verify reason hợp lệ (event, refund, support
+     case).
+   - Nếu source = `RARE_ITEM_GAIN_24H` → check `LedgerEntry` /
+     `ItemLedgerEntry` source field (`MISSION_REWARD`,
+     `DUNGEON_RUN_REWARD`, `MAIL_CLAIM`, …). Nếu source không hợp lệ
+     (ví dụ `MAIL_CLAIM` từ mail không tồn tại) → escalate.
+   - Nếu source = `MARKET_OUTLIER` → check `Listing.pricePerUnit` và
+     buyer/seller phải khác user (không phải alt account self-trade).
+5. **Quyết định**:
+   - **Hợp lệ** (event grant, support refund) → resolve anomaly với
+     reason note.
+   - **Không hợp lệ** (cheat, exploit, RMT) → escalate theo §4 rồi:
+     - Manual revoke inventory / refund qua endpoint admin có sẵn
+       (`POST /admin/users/:id/inventory/revoke`).
+     - Ban user nếu đã có evidence rõ — qua endpoint admin ban hiện có.
+6. **Resolve** anomaly (`POST /admin/economy/anomalies/:id/resolve`)
+   sau khi xử lý xong, đính kèm reason vào audit `meta.reason`.
+
+### 2.12. Ledger mismatch (P1) — Phase 16.6
+
+**Trigger**: `EconomyLedgerCheckIssue.type` = `CURRENCY_LEDGER_MISMATCH`
+hoặc `ITEM_LEDGER_MISMATCH` (cron daily 01:00 UTC, hoặc manual `POST
+/admin/economy/ledger-check/run`).
+
+**Quy trình**:
+
+1. Đọc `detailsJson` issue: `{ characterId, expected, actual, diff,
+   ledgerSource? }`.
+2. **Reproduce manual**:
+   ```sql
+   -- Currency
+   SELECT "characterId", SUM("delta") AS expected
+   FROM "LedgerEntry"
+   WHERE "characterId" = $1
+   GROUP BY "characterId";
+   -- So sánh với Character.linhThach
+   SELECT "linhThach" FROM "Character" WHERE id = $1;
+   ```
+3. Nếu mismatch xác nhận → escalate. Cần manual:
+   - Xác định nguồn: race condition? bug feature mới? exploit?
+   - **KHÔNG tự sửa `Character.linhThach`** — viết SQL/migration sau khi
+     có root cause + senior reviewer ký.
+4. Ack issue rồi resolve sau khi đã ghi root cause vào incident note.
+
+### 2.13. Player mất item / currency (P2) — Phase 16.6 hỗ trợ
+
+(Mở rộng §2.6) Nếu player report mất item/currency:
+
+1. Hỏi player: itemKey, lần cuối nhìn thấy, action gì (claim mail, equip,
+   refine, sell, buy)?
+2. Check `EconomyLedgerCheckIssue` gần nhất theo `characterId`:
+   ```sql
+   SELECT id, severity, type, "detailsJson", "createdAt"
+   FROM "EconomyLedgerCheckIssue"
+   WHERE ("detailsJson"->>'characterId') = $1
+   ORDER BY "createdAt" DESC LIMIT 20;
+   ```
+3. Check `LedgerEntry` (currency) + `ItemLedgerEntry` (item) trong window
+   plausible. Nếu thấy delta âm bất thường (ví dụ refine consume nhưng
+   chưa thấy `RefineAttempt` row) → escalate dev.
+4. Manual refund qua admin endpoint hiện có (`POST /admin/users/:id/grant`)
+   — luôn ghi `reason="support refund <ticket-id>"` để audit. Phase 16.6
+   admin grant alert sẽ tạo anomaly `ADMIN_GRANT_OVER_LIMIT` nếu vượt
+   threshold; ack với reason note.
+
+### 2.14. Market price abuse (P2) — Phase 16.6
+
+**Trigger**: User report listing giá troll, hoặc anomaly source =
+`MARKET_OUTLIER` xuất hiện trong panel.
+
+**Quy trình**:
+
+1. Listing **mới** (post sau Phase 16.6 deploy) ngoài band sẽ bị reject
+   tại API với code `PRICE_TOO_LOW` / `PRICE_TOO_HIGH`. Nếu vẫn vào DB →
+   bug, escalate dev.
+2. Listing **cũ** (post trước Phase 16.6) có giá ngoài band → KHÔNG bị
+   mutate. Manual cancel:
+   ```sql
+   UPDATE "Listing" SET status = 'CANCELLED' WHERE id = $1;
+   ```
+   Item trả về inventory người post. Note ticket reason.
+3. Nếu phát hiện self-trade pattern (alt account mua với giá cao) →
+   escalate ban evaluation.
+
+### 2.15. Admin grant nhầm (P2) — Phase 16.6
+
+**Trigger**: Admin team note grant nhầm số lớn / nhầm character.
+
+**Quy trình**:
+
+1. Phase 16.6 hook đã tạo `EconomyAnomaly` source =
+   `ADMIN_GRANT_OVER_LIMIT` nếu delta vượt threshold. Tìm anomaly đó:
+   ```sql
+   SELECT * FROM "EconomyAnomaly"
+   WHERE source = 'ADMIN_GRANT_OVER_LIMIT'
+   ORDER BY "createdAt" DESC LIMIT 50;
+   ```
+2. Note `detailsJson.adminId` + `targetCharacterId` + `delta` + `reason`.
+3. Manual revoke ngược qua `POST /admin/users/:id/grant` với `delta` âm
+   (nếu endpoint hỗ trợ) hoặc revoke inventory item nếu là item grant.
+   Reason luôn `"reverse-grant <ticket-id>"`.
+4. Ack + resolve anomaly.
+
+### 2.16. PWA service worker phục vụ asset cũ (P3)
 
 Xem `docs/TROUBLESHOOTING.md` §14. Hard refresh hoặc DevTools →
 Application → Service Workers → Unregister. Build production tự bump

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { CurrencyKind, Prisma, Role, TopupStatus } from '@prisma/client';
 import {
   ELEMENTS,
@@ -14,6 +14,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { CharacterService } from '../character/character.service';
 import { CurrencyError, CurrencyService } from '../character/currency.service';
+import { EconomyAnomalyScannerService } from '../economy/economy-anomaly-scanner.service';
 import { QuestService } from '../quest/quest.service';
 import {
   addDaysLocal,
@@ -79,6 +80,13 @@ export class AdminService {
     private readonly currency: CurrencyService,
     private readonly inventory: InventoryService,
     private readonly quests: QuestService,
+    /**
+     * Phase 16.6 — admin grant alert hook. `@Optional` để các unit test
+     * fixture cũ (Phase 11/12/13) constructor 7-arg KHÔNG phải pass
+     * scanner. Test cần kiểm hook (Phase 16.6) sẽ pass scanner instance.
+     */
+    @Optional()
+    private readonly anomalyScanner: EconomyAnomalyScannerService | null = null,
   ) {}
 
   // ---------- users ----------
@@ -1031,6 +1039,24 @@ export class AdminService {
       delta: delta.toString(),
       reason,
     });
+
+    // Phase 16.6 — Admin grant alert hook. CHỈ flag LINH_THACH (rule
+    // ADMIN_GRANT_OVER_LIMIT scope linh thạch). TIEN_NGOC trade thấp
+    // hơn nhiều — không scan ở Phase 16.6. Hook fail-soft (try/catch
+    // bao toàn — anomaly scanner KHÔNG được lật ngược grant đã commit).
+    if (this.anomalyScanner && currency === CurrencyKind.LINH_THACH) {
+      try {
+        await this.anomalyScanner.scanAdminGrantOverLimit({
+          actorUserId: actorId,
+          targetCharacterId: target.id,
+          targetUserId,
+          delta,
+          reason,
+        });
+      } catch {
+        // Nuốt lỗi — anomaly hook không phải critical path.
+      }
+    }
 
     const state = await this.chars.findByUser(targetUserId);
     if (state) this.realtime.emitToUser(targetUserId, 'state:update', state);

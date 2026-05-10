@@ -1790,3 +1790,96 @@ model RewardCapEvent {
   @@index([dayBucket, source])
   @@index([createdAt])
 }
+
+/// Phase 16.6 — Economy Ledger Checker Cron run audit.
+///
+/// Mỗi lần ledger checker cron (`LEDGER_CHECKER_CRON`) hoặc admin
+/// force-run (`POST /admin/economy/ledger-check/run`) chạy thì tạo 1 row.
+/// Idempotent qua UNIQUE `dayBucket` — gọi lại trong cùng ngày sẽ
+/// `findUnique` thay vì tạo run trùng (return existing row + summary).
+///
+/// `summaryJson` ghi tổng kết: `{ charactersScanned, currencyDiscrepancies,
+/// inventoryDiscrepancies, negativeBalances, suspiciousDeltas, issuesCreated }`.
+/// Dùng để render dashboard "lần cuối check khi nào / phát hiện bao nhiêu".
+///
+/// `status` ∈ `'RUNNING'|'OK'|'ISSUES_FOUND'|'ERROR'`. `OK` = quét xong
+/// và 0 issue, `ISSUES_FOUND` = ≥1 issue OPEN, `ERROR` = exception
+/// trong service path (admin coi log trace, không tự ban / không tự fix).
+model EconomyLedgerCheckRun {
+  id          String                       @id @default(cuid())
+  /// `YYYY-MM-DD` theo timezone reset (default Asia/Ho_Chi_Minh).
+  /// UNIQUE — 1 ngày chỉ 1 run authoritative.
+  dayBucket   String                       @unique
+  status      String
+  startedAt   DateTime                     @default(now())
+  finishedAt  DateTime?
+  summaryJson Json                         @default("{}")
+  triggeredBy String?
+  issues      EconomyLedgerCheckIssue[]
+  createdAt   DateTime                     @default(now())
+
+  @@index([startedAt])
+}
+
+/// Phase 16.6 — Issue cụ thể được phát hiện trong 1 ledger check run.
+///
+/// Severity: `INFO` < `WARN` < `CRITICAL`. Default tạo `OPEN` — admin tự
+/// `ack` (acknowledge — đã xem, đang xử lý) hoặc `resolve` (đã xử lý xong).
+/// PR Phase 16.6 KHÔNG tự auto-fix, chỉ phát hiện và báo cáo.
+///
+/// `type` tag ngắn: `CURRENCY_LEDGER_MISMATCH`, `ITEM_LEDGER_MISMATCH`,
+/// `NEGATIVE_BALANCE`, `REWARD_CAP_INCONSISTENT`, `SUSPICIOUS_DELTA_24H`.
+/// `detailsJson` chứa snapshot raw (ledgerSum, characterValue, diff, ...)
+/// — để admin reproduce mà không cần re-run query.
+model EconomyLedgerCheckIssue {
+  id          String                @id @default(cuid())
+  runId       String
+  run         EconomyLedgerCheckRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  severity    String
+  type        String
+  characterId String?
+  detailsJson Json                  @default("{}")
+  status      String                @default("OPEN")
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([runId, severity])
+  @@index([status, severity, createdAt])
+  @@index([type, status])
+}
+
+/// Phase 16.6 — Economy Anomaly từ scanner cron (`ECONOMY_ANOMALY_CRON`)
+/// hoặc admin endpoint trigger.
+///
+/// `source` tag rule đã trigger: `CURRENCY_DELTA_24H`, `RARE_ITEM_GAIN_24H`,
+/// `REWARD_CAP_BYPASS`, `ADMIN_GRANT_OVER_LIMIT`, `MARKET_OUTLIER`.
+/// `windowKey` = identifier cửa sổ thời gian + scope cụ thể, kết hợp
+/// `(source, characterId, windowKey)` UNIQUE để idempotent: scanner gọi
+/// lại trên cùng cửa sổ KHÔNG tạo anomaly trùng (giảm noise admin).
+///
+/// `severity` ∈ `INFO|WARN|CRITICAL`. `status` ∈ `OPEN|ACKNOWLEDGED|RESOLVED`.
+/// `userId` nullable — set khi `source = ADMIN_GRANT_OVER_LIMIT` cần
+/// trace admin nào grant. `characterId` nullable — set khi rule scope
+/// theo character (vd `CURRENCY_DELTA_24H` per character).
+///
+/// Phase 16.6 chính sách: **detection + reporting only**. KHÔNG auto-ban,
+/// KHÔNG auto-rollback, KHÔNG public notify. Admin coi panel + tự
+/// quyết định (refund/ban/whitelist) qua endpoint khác.
+model EconomyAnomaly {
+  id          String   @id @default(cuid())
+  severity    String
+  source      String
+  characterId String?
+  userId      String?
+  detailsJson Json     @default("{}")
+  status      String   @default("OPEN")
+  windowKey   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([source, characterId, windowKey])
+  @@index([status, severity, createdAt])
+  @@index([source, createdAt])
+  @@index([characterId, createdAt])
+  @@index([userId, createdAt])
+}
