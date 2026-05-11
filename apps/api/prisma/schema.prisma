@@ -1519,28 +1519,56 @@ model PrivateChatThread {
 /// `senderUserId` (no DB FK). Server cap `body` ≤500 char (test-
 /// enforced).
 model PrivateChatMessage {
-  id           String   @id @default(cuid())
-  threadId     String
+  id              String    @id @default(cuid())
+  threadId        String
   /// userId của người gửi (phải là 1 trong 2 thành viên thread).
-  senderUserId String
-  body         String
-  createdAt    DateTime @default(now())
+  senderUserId    String
+  body            String
+  createdAt       DateTime  @default(now())
+  /// Phase 19.2 — soft-hide moderation. Khi `hiddenAt != null`, list
+  /// messages render placeholder "Tin nhắn đã bị ẩn" thay vì body raw.
+  /// Hard-delete KHÔNG dùng — giữ row cho audit (admin có thể truy
+  /// vết nội dung qua AdminAuditLog meta).
+  hiddenAt        DateTime?
+  hiddenByAdminId String?
+  /// Lý do hide (admin nhập, ≤200 ký tự, sanitized). Hiển thị trong
+  /// admin moderation panel — KHÔNG render cho user.
+  hideReason      String?
 
   @@index([threadId, createdAt])
   @@index([senderUserId, createdAt])
+  @@index([hiddenAt])
 }
 
 /// Phase 19.1 — Group chat. Owner tạo group, add/remove member. Owner
 /// luôn là member (test-enforced). Tên group ≤60 ký tự.
+///
+/// Phase 19.2 — moderation: admin có thể `lock` group (cấm send + add
+/// member) hoặc `dissolve` group (set `dissolvedAt`, soft-delete để giữ
+/// audit message history). Cả 2 đều ghi AdminAuditLog.
 model GroupChat {
-  id          String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   /// Tên hiển thị (do owner đặt). Trim + non-empty + ≤60 char.
-  name        String
+  name               String
   /// userId của owner. Soft-ref (no FK).
-  ownerUserId String
-  createdAt   DateTime @default(now())
+  ownerUserId        String
+  createdAt          DateTime  @default(now())
+  /// Phase 19.2 — lock state. Khi `lockedAt != null`, group reject
+  /// send + add member với code `GROUP_LOCKED`. Admin có thể unlock
+  /// bằng cách set lại null qua admin endpoint.
+  lockedAt           DateTime?
+  lockedByAdminId    String?
+  lockReason         String?
+  /// Phase 19.2 — dissolve state. Khi `dissolvedAt != null`, group bị
+  /// coi như xoá soft: không list trong `listGroupsForUser`, reject
+  /// mọi mutation. Member rows giữ nguyên cho audit.
+  dissolvedAt        DateTime?
+  dissolvedByAdminId String?
+  dissolveReason     String?
 
   @@index([ownerUserId])
+  @@index([lockedAt])
+  @@index([dissolvedAt])
 }
 
 /// Phase 19.1 — Group chat member. Unique (groupId, userId) ngăn
@@ -1559,15 +1587,146 @@ model GroupChatMember {
 /// Phase 19.1 — Group chat message. Service-level kiểm tra
 /// `senderUserId` là member của group trước khi insert. Non-member
 /// đọc/gửi → 404 mask (không leak existence).
+///
+/// Phase 19.2 — soft-hide moderation (cùng pattern PrivateChatMessage).
 model GroupChatMessage {
-  id           String   @id @default(cuid())
-  groupId      String
-  senderUserId String
-  body         String
-  createdAt    DateTime @default(now())
+  id              String    @id @default(cuid())
+  groupId         String
+  senderUserId    String
+  body            String
+  createdAt       DateTime  @default(now())
+  /// Phase 19.2 — soft-hide. Render placeholder thay vì body khi
+  /// `hiddenAt != null`.
+  hiddenAt        DateTime?
+  hiddenByAdminId String?
+  hideReason      String?
 
   @@index([groupId, createdAt])
   @@index([senderUserId, createdAt])
+  @@index([hiddenAt])
+}
+
+/// Phase 19.2 — Chat Moderation & Report System.
+///
+/// Loại tin nhắn bị report — quyết định FK pointer nào được set ở
+/// `ChatMessageReport`. Soft-ref pattern (KHÔNG FK constraint).
+enum ChatMessageReportType {
+  PRIVATE
+  GROUP
+}
+
+/// Lifecycle của report:
+///   OPEN -> ACKNOWLEDGED (admin xác nhận đang xử lý)
+///   OPEN | ACKNOWLEDGED -> RESOLVED (action đã thực hiện)
+///   OPEN | ACKNOWLEDGED -> REJECTED (không vi phạm, đóng case)
+/// Sau RESOLVED/REJECTED report là terminal, KHÔNG transition lại.
+enum ChatMessageReportStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  REJECTED
+}
+
+/// Lý do report mà user chọn từ FE — enum cố định để chống free-text
+/// abuse + analytics (so sánh tỷ lệ spam vs harassment vs scam).
+enum ChatMessageReportReason {
+  SPAM
+  HARASSMENT
+  SCAM
+  OFFENSIVE
+  OTHER
+}
+
+/// Scope mute — quyết định channel nào user bị câm.
+///   - `PRIVATE_CHAT`: cấm gửi `PrivateChatMessage`.
+///   - `GROUP_CHAT`: cấm gửi `GroupChatMessage`.
+///   - `WORLD_SECT_CHAT`: cấm gửi `ChatMessage` (WORLD/SECT cũ).
+///   - `ALL_CHAT`: gộp 3 scope trên.
+enum ChatMuteScope {
+  PRIVATE_CHAT
+  GROUP_CHAT
+  WORLD_SECT_CHAT
+  ALL_CHAT
+}
+
+/// Phase 19.2 — ChatMessageReport: user-submitted report về tin
+/// nhắn vi phạm (private hoặc group). Soft-ref pointer (`privateMessageId`
+/// hoặc `groupMessageId`) — chỉ 1 trong 2 có giá trị, validate ở
+/// service level. Cấm duplicate `(reporterUserId, privateMessageId)`
+/// hoặc `(reporterUserId, groupMessageId)` qua unique partial index để
+/// chống report-storm. User chỉ report message mình có quyền nhìn
+/// thấy (thread member / group member) — server enforce.
+///
+/// Privacy:
+///   - `detailsText` ≤500 ký tự, sanitized (strip control char) ở
+///     shared validator trước khi persist.
+///   - KHÔNG lưu raw IP / cookie / token.
+model ChatMessageReport {
+  id                String                  @id @default(cuid())
+  /// userId người báo cáo.
+  reporterUserId    String
+  /// userId người gửi message bị báo cáo. Service tự lookup khi tạo
+  /// (snapshot tại thời điểm report — không bị tác động bởi việc xoá
+  /// account sau này). Nullable cho edge-case message orphan.
+  targetUserId      String?
+  messageType       ChatMessageReportType
+  /// FK soft-ref tới `PrivateChatMessage.id`. Set khi `messageType=PRIVATE`,
+  /// null cho `GROUP`.
+  privateMessageId  String?
+  /// FK soft-ref tới `GroupChatMessage.id`. Set khi `messageType=GROUP`,
+  /// null cho `PRIVATE`.
+  groupMessageId    String?
+  /// FK soft-ref tới `GroupChat.id` (denormalized cho query filter).
+  /// Set cùng `groupMessageId`.
+  groupId           String?
+  reason            ChatMessageReportReason
+  /// Lý do chi tiết do user nhập (optional, sanitized ≤500).
+  detailsText       String?
+  status            ChatMessageReportStatus @default(OPEN)
+  createdAt         DateTime                @default(now())
+  resolvedAt        DateTime?
+  /// userId admin xử lý (ack / resolve / reject). Set khi status rời
+  /// `OPEN`. KHÔNG xoá cascade — admin xoá account vẫn giữ row.
+  resolvedByAdminId String?
+  /// Ghi chú admin khi resolve / reject (≤500 ký tự, sanitized).
+  resolutionNote    String?
+
+  @@unique([reporterUserId, privateMessageId])
+  @@unique([reporterUserId, groupMessageId])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([reporterUserId, createdAt(sort: Desc)])
+  @@index([targetUserId, createdAt(sort: Desc)])
+  @@index([reason, status])
+  @@index([messageType, status])
+}
+
+/// Phase 19.2 — ChatMute: admin câm user trong 1 hoặc nhiều kênh chat.
+/// Mute active khi `startsAt ≤ now < expiresAt` (hoặc `expiresAt`
+/// null → indefinite cho tới `revokedAt`) và `revokedAt == null`.
+/// Service check `findActiveMuteForUser` trước mọi `send*` call và
+/// reject với code `MUTED`.
+///
+/// KHÔNG auto-ban vĩnh viễn — mute mặc định có `expiresAt` set
+/// (admin chọn 1h / 24h / 7 ngày). Indefinite mute yêu cầu admin
+/// explicit set `expiresAt = null`.
+model ChatMute {
+  id               String        @id @default(cuid())
+  userId           String
+  mutedByAdminId   String
+  /// Lý do mute (≤200 ký tự, sanitized).
+  reason           String
+  scope            ChatMuteScope
+  startsAt         DateTime      @default(now())
+  /// Thời điểm mute hết hạn. Null = indefinite (chỉ revoke thủ công).
+  expiresAt        DateTime?
+  /// Thời điểm admin lift mute sớm. Khi != null, mute không còn active.
+  revokedAt        DateTime?
+  revokedByAdminId String?
+  createdAt        DateTime      @default(now())
+
+  @@index([userId, revokedAt, expiresAt])
+  @@index([scope, revokedAt, expiresAt])
+  @@index([createdAt(sort: Desc)])
 }
 
 enum BossStatus {
