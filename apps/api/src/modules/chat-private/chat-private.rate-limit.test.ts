@@ -10,7 +10,10 @@ import { ChatPrivateController } from './chat-private.controller';
 const reflector = new Reflector();
 
 function metadata(method: keyof ChatPrivateController): unknown {
-  const proto = ChatPrivateController.prototype as Record<string, unknown>;
+  const proto = ChatPrivateController.prototype as unknown as Record<
+    string,
+    unknown
+  >;
   return reflector.get(RATE_LIMIT_POLICY_KEY, proto[method] as () => unknown);
 }
 

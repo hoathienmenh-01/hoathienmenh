@@ -10,7 +10,10 @@ import { ChatGroupController } from './chat-group.controller';
 const reflector = new Reflector();
 
 function metadata(method: keyof ChatGroupController): unknown {
-  const proto = ChatGroupController.prototype as Record<string, unknown>;
+  const proto = ChatGroupController.prototype as unknown as Record<
+    string,
+    unknown
+  >;
   return reflector.get(RATE_LIMIT_POLICY_KEY, proto[method] as () => unknown);
 }
 

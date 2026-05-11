@@ -11,7 +11,10 @@ import { SocialController } from './social.controller';
 const reflector = new Reflector();
 
 function metadata(method: keyof SocialController): unknown {
-  const proto = SocialController.prototype as Record<string, unknown>;
+  const proto = SocialController.prototype as unknown as Record<
+    string,
+    unknown
+  >;
   return reflector.get(RATE_LIMIT_POLICY_KEY, proto[method] as () => unknown);
 }
 
