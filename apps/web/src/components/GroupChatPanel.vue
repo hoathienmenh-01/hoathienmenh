@@ -31,6 +31,7 @@ import type {
 } from '@xuantoi/shared';
 import { SOCIAL_LIMITS } from '@xuantoi/shared';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
+import ChatReportModal from './ChatReportModal.vue';
 
 const { t } = useI18n();
 const toast = useToastStore();
@@ -54,6 +55,21 @@ const draft = ref('');
 const sending = ref(false);
 
 const busyMemberUserId = ref<string | null>(null);
+
+// Phase 19.2 — report modal state cho group message.
+const reportTargetId = ref<string | null>(null);
+const reportPreview = ref<string | null>(null);
+const reportOpen = computed(() => reportTargetId.value !== null);
+
+function openReport(msg: GroupChatMessageRow): void {
+  reportTargetId.value = msg.id;
+  reportPreview.value = msg.isHidden ? null : msg.body;
+}
+
+function closeReport(): void {
+  reportTargetId.value = null;
+  reportPreview.value = null;
+}
 
 const activeGroup = computed<GroupChatRow | null>(() =>
   activeGroupId.value
@@ -330,14 +346,35 @@ function fmtTime(iso: string): string {
                 v-for="msg in activeMessages"
                 v-else
                 :key="msg.id"
-                class="flex flex-col"
+                class="flex flex-col group"
                 data-testid="group-chat-message-row"
               >
-                <div class="text-[10px] text-ink-300/60">
-                  {{ msg.senderDisplayName ?? msg.senderUserId }} ·
-                  {{ fmtTime(msg.createdAt) }}
+                <div class="text-[10px] text-ink-300/60 flex items-center gap-2">
+                  <span>
+                    {{ msg.senderDisplayName ?? msg.senderUserId }} ·
+                    {{ fmtTime(msg.createdAt) }}
+                  </span>
+                  <button
+                    type="button"
+                    class="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] uppercase tracking-widest text-rose-300 hover:text-rose-200"
+                    data-testid="group-chat-report-btn"
+                    :title="t('chatReport.action.report')"
+                    @click="openReport(msg)"
+                  >
+                    {{ t('chatReport.action.report') }}
+                  </button>
                 </div>
-                <div class="break-words whitespace-pre-wrap">{{ msg.body }}</div>
+                <div
+                  v-if="msg.isHidden"
+                  class="break-words whitespace-pre-wrap italic text-ink-300/70"
+                  data-testid="group-chat-message-hidden"
+                >
+                  {{ t('chatModeration.hiddenMessage') }}
+                </div>
+                <div
+                  v-else
+                  class="break-words whitespace-pre-wrap"
+                >{{ msg.body }}</div>
               </div>
             </div>
             <form
@@ -426,5 +463,14 @@ function fmtTime(iso: string): string {
         </div>
       </template>
     </div>
+
+    <ChatReportModal
+      :open="reportOpen"
+      message-type="GROUP"
+      :group-message-id="reportTargetId"
+      :message-preview="reportPreview"
+      @submitted="closeReport"
+      @cancel="closeReport"
+    />
   </section>
 </template>

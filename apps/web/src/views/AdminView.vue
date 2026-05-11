@@ -52,6 +52,7 @@ import AdminLiveOpsAnnouncementsPanel from '@/components/AdminLiveOpsAnnouncemen
 import AdminEconomySafetyPanel from '@/components/AdminEconomySafetyPanel.vue';
 import AdminGameplayAntiCheatPanel from '@/components/AdminGameplayAntiCheatPanel.vue';
 import AdminMarketAbusePanel from '@/components/AdminMarketAbusePanel.vue';
+import AdminChatModerationPanel from '@/components/AdminChatModerationPanel.vue';
 import AdminEconomyRangeReportPanel from '@/components/AdminEconomyRangeReportPanel.vue';
 import AdminArenaAntiWintradePanel from '@/components/AdminArenaAntiWintradePanel.vue';
 import AdminFeatureFlagsPanel from '@/components/AdminFeatureFlagsPanel.vue';
@@ -85,6 +86,7 @@ type Tab =
   | 'arenaAntiWintrade'
   | 'gameplayAntiCheat'
   | 'marketAbuse'
+  | 'chatModeration'
   | 'featureFlags'
   | 'maintenance'
   | 'configVersion'
@@ -763,7 +765,7 @@ const isAdmin = () => game.character?.role === 'ADMIN';
 
       <nav class="flex gap-1 border-b border-ink-300/30 text-sm">
         <button
-          v-for="tk in (['stats','users','topups','audit','giftcodes','boss','liveops','economy','arenaAntiWintrade','gameplayAntiCheat','marketAbuse','featureFlags','maintenance','configVersion','security','securityAlerts','backup'] as const)"
+          v-for="tk in (['stats','users','topups','audit','giftcodes','boss','liveops','economy','arenaAntiWintrade','gameplayAntiCheat','marketAbuse','chatModeration','featureFlags','maintenance','configVersion','security','securityAlerts','backup'] as const)"
           :key="tk"
           class="px-3 py-2 relative"
           :class="tab === tk ? 'border-b-2 border-amber-300 text-ink-50' : 'text-ink-300'"
@@ -1731,6 +1733,15 @@ const isAdmin = () => game.character?.role === 'ADMIN';
         data-testid="admin-market-abuse-section"
       >
         <AdminMarketAbusePanel />
+      </section>
+
+      <!-- CHAT MODERATION TAB (Phase 19.2) -->
+      <section
+        v-else-if="tab === 'chatModeration'"
+        class="space-y-3"
+        data-testid="admin-chat-moderation-section"
+      >
+        <AdminChatModerationPanel />
       </section>
 
       <!-- FEATURE FLAGS TAB (Phase 15.4) -->
