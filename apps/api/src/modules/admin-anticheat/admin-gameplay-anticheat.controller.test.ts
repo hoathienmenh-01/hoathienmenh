@@ -82,7 +82,7 @@ function makeController(stubs: ControllerStubs = {}): {
         const where = args?.where ?? {};
         return anomalies.filter((a) => {
           for (const [k, v] of Object.entries(where)) {
-            if ((a as Record<string, unknown>)[k] !== v) return false;
+            if ((a as unknown as Record<string, unknown>)[k] !== v) return false;
           }
           return true;
         }).length;
@@ -95,7 +95,7 @@ function makeController(stubs: ControllerStubs = {}): {
         const where = args?.where ?? {};
         const items = anomalies.filter((a) => {
           for (const [k, v] of Object.entries(where)) {
-            if ((a as Record<string, unknown>)[k] !== v) return false;
+            if ((a as unknown as Record<string, unknown>)[k] !== v) return false;
           }
           return true;
         });
@@ -111,7 +111,7 @@ function makeController(stubs: ControllerStubs = {}): {
           .filter((a) => {
             for (const [k, v] of Object.entries(where)) {
               if (k === 'createdAt') continue; // skip range
-              if ((a as Record<string, unknown>)[k] !== v) return false;
+              if ((a as unknown as Record<string, unknown>)[k] !== v) return false;
             }
             return true;
           })
