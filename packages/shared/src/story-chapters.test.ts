@@ -63,12 +63,12 @@ describe('STORY_CHAPTERS catalog integrity (Phase 21)', () => {
     }
   });
 
-  it('reserves five main quest keys per chapter for Checkpoint 3', () => {
+  it('binds five main quest keys per chapter to QUESTS', () => {
     for (const chapter of STORY_CHAPTERS) {
       expect(chapter.mainQuestKeys, chapter.chapterKey).toHaveLength(5);
       expect(new Set(chapter.mainQuestKeys).size, chapter.chapterKey).toBe(5);
       for (const questKey of chapter.mainQuestKeys) {
-        expect(questKey.startsWith('phase21_ch'), `${chapter.chapterKey} quest=${questKey}`).toBe(true);
+        expect(QUEST_KEYS.has(questKey), `${chapter.chapterKey} quest=${questKey}`).toBe(true);
       }
     }
   });

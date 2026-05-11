@@ -17,6 +17,7 @@ const REALM_KEYS = new Set(REALMS.map((r) => r.key));
 const NPC_KEYS = new Set(NPCS.map((n) => n.key));
 const ITEM_KEYS = new Set(ITEMS.map((it) => it.key));
 const VALID_KIND_REGEX = /^(phamnhan|luyenkhi|truc_co|kim_dan|nguyen_anh)_(main|realm|sect|npc|grind)_\d{2}$/;
+const PHASE21_MAIN_REGEX = /^phase21_ch\d{2}_main_\d{2}$/;
 const CATALOGED_REALMS = ['phamnhan', 'luyenkhi', 'truc_co', 'kim_dan', 'nguyen_anh'];
 
 describe('QUESTS catalog integrity (Phase 12 PR-1 + Story Foundation Extension)', () => {
@@ -25,16 +26,20 @@ describe('QUESTS catalog integrity (Phase 12 PR-1 + Story Foundation Extension)'
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it('catalog covers exactly 25 quest (5 per 5 realms đầu)', () => {
-    expect(QUESTS).toHaveLength(25);
+  it('catalog covers baseline 25 quests plus 30 Phase 21 main quests', () => {
+    expect(QUESTS).toHaveLength(55);
     for (const realm of CATALOGED_REALMS) {
-      expect(questsByRealm(realm), `realm=${realm}`).toHaveLength(5);
+      expect(
+        questsByRealm(realm).filter((q) => !q.key.startsWith('phase21_')),
+        `realm=${realm}`,
+      ).toHaveLength(5);
     }
+    expect(QUESTS.filter((q) => q.key.startsWith('phase21_'))).toHaveLength(30);
   });
 
   it('every quest has 1 main + 1 realm + 1 sect + 1 grind + 1 npc per realm', () => {
     for (const realm of CATALOGED_REALMS) {
-      const inRealm = questsByRealm(realm);
+      const inRealm = questsByRealm(realm).filter((q) => !q.key.startsWith('phase21_'));
       const kinds: QuestKind[] = ['main', 'realm', 'sect', 'npc', 'grind'];
       for (const kind of kinds) {
         expect(
@@ -47,7 +52,7 @@ describe('QUESTS catalog integrity (Phase 12 PR-1 + Story Foundation Extension)'
 
   it('quest key matches naming convention <realm>_<type>_<seq>', () => {
     for (const q of QUESTS) {
-      expect(q.key, q.key).toMatch(VALID_KIND_REGEX);
+      expect(VALID_KIND_REGEX.test(q.key) || PHASE21_MAIN_REGEX.test(q.key), q.key).toBe(true);
     }
   });
 
@@ -165,6 +170,29 @@ describe('QUESTS catalog integrity (Phase 12 PR-1 + Story Foundation Extension)'
     expect(nguyenAnhMain!.prerequisiteQuestKey).toBe('kim_dan_main_01');
   });
 
+  it('Phase 21 main quest chains are linked by previous/next metadata', () => {
+    const phase21 = QUESTS.filter((q) => q.key.startsWith('phase21_'));
+    expect(phase21).toHaveLength(30);
+    const allKeys = new Set(QUESTS.map((q) => q.key));
+    const chapterKeys = new Set(phase21.map((q) => q.chapterKey));
+    expect(chapterKeys.size).toBe(6);
+
+    for (const q of phase21) {
+      expect(q.kind, q.key).toBe('main');
+      expect(q.chapterKey, q.key).toMatch(/^chapter_/);
+      expect(q.chainKey, q.key).toMatch(/^phase21_chapter_\d{2}_main$/);
+      expect(q.objective?.trim(), q.key).not.toHaveLength(0);
+      expect(q.requirement?.trim(), q.key).not.toHaveLength(0);
+      expect(q.startNpcKey, q.key).toBeTruthy();
+      expect(q.endNpcKey, q.key).toBeTruthy();
+      if (q.previousQuestKey) expect(allKeys.has(q.previousQuestKey), `${q.key}.previous`).toBe(true);
+      if (q.nextQuestKey) expect(allKeys.has(q.nextQuestKey), `${q.key}.next`).toBe(true);
+    }
+
+    expect(questByKey('phase21_ch01_main_01')?.previousQuestKey).toBeNull();
+    expect(questByKey('phase21_ch06_main_05')?.nextQuestKey).toBeNull();
+  });
+
   it('moc_thanh_y_arc is sequential across truc_co → kim_dan → nguyen_anh', () => {
     const chain = questsByChain('moc_thanh_y_arc');
     expect(chain.length).toBe(3);
@@ -191,7 +219,7 @@ describe('QUESTS catalog integrity (Phase 12 PR-1 + Story Foundation Extension)'
 
   it('main quest reward exp > grind quest reward exp (in same realm)', () => {
     for (const realm of CATALOGED_REALMS) {
-      const inRealm = questsByRealm(realm);
+      const inRealm = questsByRealm(realm).filter((q) => !q.key.startsWith('phase21_'));
       const main = inRealm.find((q) => q.kind === 'main')!;
       const grind = inRealm.find((q) => q.kind === 'grind')!;
       expect(main.rewards.exp ?? 0, `realm=${realm}`).toBeGreaterThan(grind.rewards.exp ?? 0);
@@ -216,20 +244,15 @@ describe('QUESTS catalog integrity (Phase 12 PR-1 + Story Foundation Extension)'
   });
 
   it('questsByGiver returns correct count', () => {
-    // Lăng Vân Sinh: 10 quest (6 from PR-1 + 4 from extension: kim_dan main/realm + nguyen_anh main/realm)
-    expect(questsByGiver('npc_lang_van_sinh').length).toBe(10);
-    // Mộc Thanh Y: 11 quest (7 from PR-1 + 4 from extension: kim_dan sect/grind + nguyen_anh sect/grind)
-    expect(questsByGiver('npc_moc_thanh_y').length).toBe(11);
-    // Hàn Dạ: 1 quest
-    expect(questsByGiver('npc_han_da').length).toBe(1);
-    // Tô Nguyệt Ly: 1 quest
-    expect(questsByGiver('npc_to_nguyet_ly').length).toBe(1);
-    // Huyết La Sát: 2 quest (kim_dan_npc_01 + nguyen_anh_npc_01)
-    expect(questsByGiver('npc_huyet_la_sat').length).toBe(2);
+    expect(questsByGiver('npc_lang_van_sinh').filter((q) => !q.key.startsWith('phase21_')).length).toBe(10);
+    expect(questsByGiver('npc_moc_thanh_y').filter((q) => !q.key.startsWith('phase21_')).length).toBe(11);
+    expect(questsByGiver('npc_han_da').filter((q) => !q.key.startsWith('phase21_')).length).toBe(1);
+    expect(questsByGiver('npc_to_nguyet_ly').filter((q) => !q.key.startsWith('phase21_')).length).toBe(1);
+    expect(questsByGiver('npc_huyet_la_sat').filter((q) => !q.key.startsWith('phase21_')).length).toBe(2);
   });
 
-  it('questsByKind returns correct count (5 of each)', () => {
-    expect(questsByKind('main')).toHaveLength(5);
+  it('questsByKind returns expected baseline plus Phase 21 counts', () => {
+    expect(questsByKind('main')).toHaveLength(35);
     expect(questsByKind('realm')).toHaveLength(5);
     expect(questsByKind('sect')).toHaveLength(5);
     expect(questsByKind('npc')).toHaveLength(5);
@@ -237,11 +260,15 @@ describe('QUESTS catalog integrity (Phase 12 PR-1 + Story Foundation Extension)'
   });
 
   it('questsAvailableAtRealm gates correctly', () => {
-    expect(questsAvailableAtRealm(0).length).toBe(5); // chỉ phamnhan
-    expect(questsAvailableAtRealm(1).length).toBe(10); // phamnhan + luyenkhi
-    expect(questsAvailableAtRealm(2).length).toBe(15); // + truc_co
-    expect(questsAvailableAtRealm(3).length).toBe(20); // + kim_dan
-    expect(questsAvailableAtRealm(4).length).toBe(25); // all 5 realms
+    const baselineAvailableAtRealm = (realmOrder: number) =>
+      questsAvailableAtRealm(realmOrder).filter((q) => !q.key.startsWith('phase21_'));
+
+    expect(baselineAvailableAtRealm(0).length).toBe(5); // chỉ phamnhan
+    expect(baselineAvailableAtRealm(1).length).toBe(10); // phamnhan + luyenkhi
+    expect(baselineAvailableAtRealm(2).length).toBe(15); // + truc_co
+    expect(baselineAvailableAtRealm(3).length).toBe(20); // + kim_dan
+    expect(baselineAvailableAtRealm(4).length).toBe(25); // all 5 realms
+    expect(questsAvailableAtRealm(4).filter((q) => q.key.startsWith('phase21_')).length).toBe(30);
   });
 
   it('chain key consistency: quest in same chain must be in adjacent realms', () => {
