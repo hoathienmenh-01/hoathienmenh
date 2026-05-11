@@ -97,6 +97,9 @@ export class ChatController {
         // eslint-disable-next-line no-fallthrough
         case 'RATE_LIMITED':
           fail(e.code, HttpStatus.TOO_MANY_REQUESTS);
+        // eslint-disable-next-line no-fallthrough
+        case 'MUTED':
+          fail(e.code, HttpStatus.FORBIDDEN);
       }
     }
     throw e;

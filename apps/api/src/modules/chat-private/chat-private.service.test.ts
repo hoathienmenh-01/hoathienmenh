@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PrismaService } from '../../common/prisma.service';
 import { makeUserChar, wipeAll } from '../../test-helpers';
+import { ChatModerationService } from '../chat-moderation/chat-moderation.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { SocialService } from '../social/social.service';
 import { ChatPrivateError, ChatPrivateService } from './chat-private.service';
@@ -20,7 +21,11 @@ beforeAll(() => {
   prisma = new PrismaService();
   realtime = new RealtimeService();
   social = new SocialService(prisma);
-  chat = new ChatPrivateService(prisma, social, realtime);
+  // Phase 19.2 — ChatPrivateService now requires ChatModerationService.
+  // Tests này không kiểm tra mute path → khởi tạo service thật với
+  // cùng prisma; mute check sẽ no-op (không có row ChatMute trong test).
+  const moderation = new ChatModerationService(prisma);
+  chat = new ChatPrivateService(prisma, social, realtime, moderation);
 });
 
 afterAll(async () => {

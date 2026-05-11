@@ -388,7 +388,8 @@ export function muteScopeApplies(
   target: ChatMuteScope,
 ): boolean {
   if (active === 'ALL_CHAT') return true;
-  if (target === 'ALL_CHAT') return active === 'ALL_CHAT';
+  // active != ALL_CHAT here — non-ALL active không cover ALL target.
+  if (target === 'ALL_CHAT') return false;
   return active === target;
 }
 

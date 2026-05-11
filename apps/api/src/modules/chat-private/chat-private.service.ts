@@ -1,12 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
+  CHAT_HIDDEN_MESSAGE_PLACEHOLDER,
   type PrivateChatMessageRow,
   type PrivateChatThreadRow,
   sortUserPair,
   validateChatMessageBody,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import {
+  ChatModerationError,
+  ChatModerationService,
+} from '../chat-moderation/chat-moderation.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { SocialError, SocialService } from '../social/social.service';
 
@@ -33,7 +38,8 @@ export type ChatPrivateErrorCode =
   | 'BLOCKED'
   | 'NOT_FOUND'
   | 'NOT_AUTHORIZED'
-  | 'INVALID_INPUT';
+  | 'INVALID_INPUT'
+  | 'MUTED';
 
 export class ChatPrivateError extends Error {
   constructor(public readonly code: ChatPrivateErrorCode) {
@@ -47,6 +53,7 @@ export class ChatPrivateService {
     private readonly prisma: PrismaService,
     private readonly social: SocialService,
     private readonly realtime: RealtimeService,
+    private readonly moderation: ChatModerationService,
   ) {}
 
   /**
@@ -102,6 +109,17 @@ export class ChatPrivateService {
       throw new ChatPrivateError('BLOCKED');
     }
 
+    // Phase 19.2 — mute enforcement (PRIVATE_CHAT scope). Re-throw
+    // sản phẩm dưới domain error dùng đúng controller status mapper.
+    try {
+      await this.moderation.assertNotMuted(callerUserId, 'PRIVATE_CHAT');
+    } catch (e) {
+      if (e instanceof ChatModerationError && e.code === 'MUTED') {
+        throw new ChatPrivateError('MUTED');
+      }
+      throw e;
+    }
+
     const v = validateChatMessageBody(rawBody, 'PRIVATE');
     if (!v.ok) throw new ChatPrivateError('INVALID_INPUT');
 
@@ -124,6 +142,7 @@ export class ChatPrivateService {
       senderUserId: row.senderUserId,
       senderDisplayName: senderChar?.name ?? null,
       body: row.body,
+      isHidden: false,
       createdAt: row.createdAt.toISOString(),
     };
 
@@ -168,12 +187,15 @@ export class ChatPrivateService {
       : [];
     const nameMap = new Map(chars.map((c) => [c.userId, c.name]));
 
+    // Phase 19.2 — soft-hide: thay body bằng placeholder khi
+    // `row.hiddenAt != null`. FE phân biệt qua `isHidden` boolean.
     return rows.map((r) => ({
       id: r.id,
       threadId: r.threadId,
       senderUserId: r.senderUserId,
       senderDisplayName: nameMap.get(r.senderUserId) ?? null,
-      body: r.body,
+      body: r.hiddenAt ? CHAT_HIDDEN_MESSAGE_PLACEHOLDER : r.body,
+      isHidden: r.hiddenAt !== null,
       createdAt: r.createdAt.toISOString(),
     }));
   }

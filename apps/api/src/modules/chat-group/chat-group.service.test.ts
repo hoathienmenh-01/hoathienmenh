@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PrismaService } from '../../common/prisma.service';
 import { makeUserChar, wipeAll } from '../../test-helpers';
+import { ChatModerationService } from '../chat-moderation/chat-moderation.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { SocialService } from '../social/social.service';
 import { ChatGroupError, ChatGroupService } from './chat-group.service';
@@ -20,7 +21,9 @@ beforeAll(() => {
   prisma = new PrismaService();
   realtime = new RealtimeService();
   social = new SocialService(prisma);
-  group = new ChatGroupService(prisma, social, realtime);
+  // Phase 19.2 — ChatGroupService now requires ChatModerationService.
+  const moderation = new ChatModerationService(prisma);
+  group = new ChatGroupService(prisma, social, realtime, moderation);
 });
 
 afterAll(async () => {

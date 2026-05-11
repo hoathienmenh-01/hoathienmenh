@@ -95,6 +95,13 @@ export interface PrivateChatMessageRow {
   /** Optional: tên hiển thị người gửi (server populate). */
   senderDisplayName: string | null;
   body: string;
+  /**
+   * Phase 19.2 — server set true khi admin soft-hide message. Khi
+   * `true`, `body` đã được thay bằng placeholder server-side; FE
+   * có thể render i18n key "chatModeration.hiddenMessage" thay vì
+   * thủ công phân biệt. Optional để backward compat với build cũ.
+   */
+  isHidden?: boolean;
   createdAt: string;
 }
 
@@ -120,6 +127,12 @@ export interface GroupChatMessageRow {
   senderUserId: string;
   senderDisplayName: string | null;
   body: string;
+  /**
+   * Phase 19.2 — server set true khi admin soft-hide message. Khi
+   * `true`, `body` đã được thay bằng placeholder server-side.
+   * Optional để backward compat.
+   */
+  isHidden?: boolean;
   createdAt: string;
 }
 

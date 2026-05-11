@@ -1,6 +1,10 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { ChatChannel } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
+import {
+  ChatModerationError,
+  ChatModerationService,
+} from '../chat-moderation/chat-moderation.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { MissionService } from '../mission/mission.service';
 import { AchievementService } from '../character/achievement.service';
@@ -16,7 +20,8 @@ class ChatError extends Error {
       | 'NO_SECT'
       | 'EMPTY_TEXT'
       | 'TEXT_TOO_LONG'
-      | 'RATE_LIMITED',
+      | 'RATE_LIMITED'
+      | 'MUTED',
   ) {
     super(code);
   }
@@ -58,6 +63,7 @@ export class ChatService {
     private readonly missions: MissionService,
     @Optional() @Inject(CHAT_RATE_LIMITER) limiter?: RateLimiter,
     @Optional() private readonly achievements?: AchievementService,
+    @Optional() private readonly moderation?: ChatModerationService,
   ) {
     this.limiter =
       limiter ??
@@ -136,6 +142,21 @@ export class ChatService {
       select: { id: true, name: true },
     });
     if (!char) throw new ChatError('NO_CHARACTER');
+
+    // Phase 19.2 — mute enforcement (WORLD_SECT_CHAT scope). Optional
+    // service inject để giữ backward compat với test setup cũ (không
+    // có ChatModerationModule wired). Khi service hiện diện và user
+    // active mute → throw `MUTED`.
+    if (this.moderation) {
+      try {
+        await this.moderation.assertNotMuted(userId, 'WORLD_SECT_CHAT');
+      } catch (e) {
+        if (e instanceof ChatModerationError && e.code === 'MUTED') {
+          throw new ChatError('MUTED');
+        }
+        throw e;
+      }
+    }
 
     const rl = await this.limiter.check(char.id);
     if (!rl.allowed) throw new ChatError('RATE_LIMITED');
