@@ -2728,3 +2728,90 @@ model LiveOpsCronRunLog {
   @@index([cronKey, success, finishedAt(sort: Desc)])
   @@index([cronKey, startedAt(sort: Desc)])
 }
+
+// =====================================================================
+// Phase 18.1 — Security Rate Limit + Abuse Protection
+// =====================================================================
+//
+// `SecurityEvent` + `SecurityBlock` thuộc Phase 18.1 (Security
+// hardening). Phục vụ:
+//   - Audit / forensic khi điều tra abuse incident.
+//   - Cơ chế fail2ban-style temporary block (`SecurityBlock` row →
+//     RateLimitGuard reject request có cùng subjectHash).
+//   - Admin Security panel (FE) xem recent events + active blocks +
+//     lift block.
+//
+// **Privacy**:
+//   - `ipHash` lưu sha256(salt || ip) — KHÔNG lưu raw IP. Salt từ env
+//     `SECURITY_IP_HASH_SALT`. Admin có thể lookup hash→hash khi
+//     correlate, nhưng không reverse-lookup IP từ DB.
+//   - `userId` lưu raw cuid vì đã thuộc nội bộ schema (không phải PII
+//     bên ngoài).
+//   - `detailJson` KHÔNG được lưu raw password / token / cookie. Code
+//     enforce: service chỉ truyền các field đã sanitize (`policy`,
+//     `email` ở dạng cleartext is OK, `path` admin route name).
+//
+// **Retention**: hiện chưa cron-purge. Có thể bổ sung sau (Phase 18.2
+// hoặc Phase 17.x backup) — bảng có index `createdAt` để query nhanh.
+
+/// Phase 18.1 — SecurityEvent: audit trail mọi tín hiệu abuse.
+///
+/// Types (enum-as-string, không cần Prisma enum vì có thể mở rộng):
+///   - `RATE_LIMIT_VIOLATION`: subject vượt rate-limit policy.
+///   - `LOGIN_FAILED`: argon2 verify fail.
+///   - `REGISTER_SPAM`: nhiều account mới từ IP.
+///   - `INVALID_TOKEN`: cookie xt_access / xt_refresh không decode được.
+///   - `ADMIN_FORBIDDEN`: PLAYER cố gọi admin route.
+///   - `IP_BLOCKED` / `USER_BLOCKED`: SecurityAbuseService tạo block.
+///   - `BLOCK_LIFTED`: admin lift block qua endpoint.
+///
+/// Severity: `INFO` | `WARN` | `CRITICAL`.
+///
+/// `policy` (nullable) ghi `RateLimitPolicyKey` khi liên quan rate-limit.
+model SecurityEvent {
+  id          String   @id @default(cuid())
+  type        String
+  severity    String   @default("INFO")
+  /// sha256(salt || ip). Null nếu event không gắn IP cụ thể.
+  ipHash      String?
+  userId      String?
+  characterId String?
+  /// `RateLimitPolicyKey` (vd `AUTH_LOGIN`). Null cho event không liên
+  /// quan rate-limit.
+  policy      String?
+  /// JSON sanitized detail (không lưu raw password/token/cookie).
+  detailJson  Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([severity, createdAt])
+  @@index([ipHash, type, createdAt])
+  @@index([userId, type, createdAt])
+  @@index([policy, createdAt])
+}
+
+/// Phase 18.1 — SecurityBlock: active block subject.
+///
+/// `type`:
+///   - `IP`: `subjectHash` = sha256(salt || ip).
+///   - `USER`: `subjectHash` = raw userId (cuid).
+///
+/// Active condition: `liftedAt IS NULL AND expiresAt > now()`.
+///
+/// `expiresAt` luôn được set (không có vĩnh viễn) — Phase 18.1 chính
+/// sách KHÔNG auto-ban. Admin có thể `liftBlock` sớm.
+model SecurityBlock {
+  id           String    @id @default(cuid())
+  type         String
+  subjectHash  String
+  reason       String
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+  liftedAt     DateTime?
+  /// Admin userId thực hiện lift. Null nếu block hết hạn tự nhiên.
+  liftedById   String?
+
+  @@index([type, subjectHash, liftedAt, expiresAt])
+  @@index([type, expiresAt])
+  @@index([createdAt])
+}

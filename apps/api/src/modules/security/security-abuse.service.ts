@@ -1,23 +1,32 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { RateLimitPolicyKey, RateLimitSeverity } from '@xuantoi/shared';
+import { PrismaService } from '../../common/prisma.service';
 import { IpHashService } from './ip-hash.service';
 
 /**
- * Phase 18.1 — SecurityAbuseService (Milestone 3: in-memory stub).
+ * Phase 18.1 — SecurityAbuseService (Prisma-backed).
  *
- * Phase 18.1 sẽ swap sang Prisma-backed (`SecurityEvent` + `SecurityBlock`)
- * ở milestone 4 — milestone này chỉ cung cấp interface cho RateLimitGuard
- * và logic block in-memory để guard không lỗi NPE.
+ * Fail2ban-style temporary block layer trên rate-limit. Khi 1 subject
+ * (IP hoặc user) vượt rate-limit / login fail / admin route forbidden
+ * nhiều lần → block tạm thời theo severity.
  *
- * In-memory layer:
- *   - Counter `Map<key, timestamps[]>` cho từng (type, subjectHash,
- *     severity) — sliding window.
- *   - Block `Map<key, { expiresAt, reason }>` cho từng (type, subjectHash).
- *   - Tự cleanup khi check (lazy).
+ * Persistence:
+ *   - `SecurityEvent` row mỗi violation/critical signal (audit/forensic).
+ *   - `SecurityBlock` row khi quyết định block subject. Active condition
+ *     = `liftedAt IS NULL AND expiresAt > now()`.
  *
- * Fail-safe: in-memory không persist qua restart — milestone 4 upgrade
- * sang Prisma để giữ qua restart và share giữa instance.
+ * Counter abuse signal: count `SecurityEvent` cùng `subjectHash` trong
+ * window severity. Không phụ thuộc Redis cho persistence — restart vẫn
+ * giữ counter. Index `ipHash + type + createdAt` đảm bảo query nhanh.
+ *
+ * Fail-safe: nếu DB throw → log warn + skip persistence + KHÔNG crash
+ * caller. Rate-limit guard vẫn deny request hiện tại.
+ *
+ * **Privacy**:
+ *   - IP hashed qua `IpHashService` trước khi persist.
+ *   - `detailJson` KHÔNG chứa raw password/token/cookie — service chỉ
+ *     truyền field đã sanitize.
  */
 
 export type SecurityEventType =
@@ -35,6 +44,7 @@ export interface IsBlockedResult {
   expiresAt?: Date;
   retryAfterSec?: number;
   reason?: string;
+  blockId?: string;
 }
 
 export interface RecordRateLimitViolationInput {
@@ -44,39 +54,43 @@ export interface RecordRateLimitViolationInput {
   severity: RateLimitSeverity;
 }
 
+export interface RecordLoginFailedInput {
+  ip: string;
+  email: string;
+}
+
+export interface RecordAdminForbiddenInput {
+  ip: string;
+  userId: string | null;
+  path: string;
+}
+
+/** Threshold abuse → block, dựa trên severity policy. */
 const ABUSE_THRESHOLD: Record<RateLimitSeverity, number> = {
   LOW: 0,
   MEDIUM: 10,
   HIGH: 5,
 };
 
+/** Cửa sổ đếm abuse signal, giây. */
 const ABUSE_WINDOW_SEC: Record<RateLimitSeverity, number> = {
   LOW: 5 * 60,
   MEDIUM: 15 * 60,
   HIGH: 15 * 60,
 };
 
-interface BlockEntry {
-  id: string;
-  type: 'IP' | 'USER';
-  subjectHash: string;
-  reason: string;
-  expiresAt: Date;
-  createdAt: Date;
-  liftedAt: Date | null;
-}
+/** Login failed dedicated threshold (chặt hơn rate-limit). */
+const LOGIN_FAILED_THRESHOLD = 10;
+const LOGIN_FAILED_WINDOW_SEC = 15 * 60;
+const LOGIN_FAILED_BLOCK_SEC = 30 * 60;
 
 @Injectable()
 export class SecurityAbuseService {
-  protected readonly enabled: boolean;
-  /** key = `${type}:${subjectHash}:${severity}` → timestamps (ms). */
-  private readonly counter = new Map<string, number[]>();
-  /** key = `${type}:${subjectHash}` → block entry. */
-  private readonly blocks = new Map<string, BlockEntry>();
-  private blockIdCounter = 0;
+  private readonly enabled: boolean;
 
   constructor(
-    protected readonly ipHash: IpHashService,
+    private readonly prisma: PrismaService,
+    private readonly ipHash: IpHashService,
     cfg: ConfigService,
   ) {
     this.enabled = cfg.get<string>('ABUSE_BLOCK_ENABLED') !== 'false';
@@ -86,6 +100,12 @@ export class SecurityAbuseService {
     return this.enabled;
   }
 
+  /**
+   * Check whether a subject (IP or USER) is currently blocked.
+   *
+   * For IP scope, pass `ip` as the raw IP (we hash internally).
+   * For USER scope, pass raw `userId` (we DON'T hash — stored as-is).
+   */
   async isBlocked(
     type: 'IP' | 'USER',
     rawSubject: string,
@@ -93,85 +113,177 @@ export class SecurityAbuseService {
     if (!this.enabled) return { blocked: false };
     const subjectHash =
       type === 'IP' ? this.ipHash.hashIp(rawSubject) : rawSubject;
-    const key = `${type}:${subjectHash}`;
-    const block = this.blocks.get(key);
-    if (!block) return { blocked: false };
-    const now = Date.now();
-    if (block.liftedAt || block.expiresAt.getTime() <= now) {
-      this.blocks.delete(key);
+    try {
+      const now = new Date();
+      const block = await this.prisma.securityBlock.findFirst({
+        where: {
+          type,
+          subjectHash,
+          liftedAt: null,
+          expiresAt: { gt: now },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (!block) return { blocked: false };
+      return {
+        blocked: true,
+        blockId: block.id,
+        expiresAt: block.expiresAt,
+        retryAfterSec: Math.max(
+          1,
+          Math.ceil((block.expiresAt.getTime() - now.getTime()) / 1000),
+        ),
+        reason: block.reason,
+      };
+    } catch (err) {
+      console.warn(
+        `[SecurityAbuseService] isBlocked failed (fail-open): ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
       return { blocked: false };
     }
-    return {
-      blocked: true,
-      expiresAt: block.expiresAt,
-      retryAfterSec: Math.max(
-        1,
-        Math.ceil((block.expiresAt.getTime() - now) / 1000),
-      ),
-      reason: block.reason,
-    };
   }
 
+  /**
+   * Record rate-limit violation. Khi đủ threshold → escalate to block.
+   * Return true nếu tạo block mới ở call này.
+   */
   async recordRateLimitViolation(
     input: RecordRateLimitViolationInput,
   ): Promise<boolean> {
     if (!this.enabled) return false;
     const ipHash = this.ipHash.hashIp(input.ip);
-    const threshold = ABUSE_THRESHOLD[input.severity];
-    if (threshold === 0) return false;
-    const windowMs = ABUSE_WINDOW_SEC[input.severity] * 1000;
+    const severityLabel = this.toEventSeverity(input.severity);
+    try {
+      await this.prisma.securityEvent.create({
+        data: {
+          type: 'RATE_LIMIT_VIOLATION',
+          severity: severityLabel,
+          ipHash,
+          userId: input.userId,
+          policy: input.policy,
+          detailJson: { policy: input.policy, severity: input.severity },
+        },
+      });
 
-    const ipCount = this.bumpCounter(
-      `IP:${ipHash}:${input.severity}`,
-      windowMs,
-    );
-    let created = false;
-    if (ipCount >= threshold) {
-      created =
-        (await this.createBlockInternal({
-          type: 'IP',
-          subjectHash: ipHash,
-          reason: `RATE_LIMIT_VIOLATION:${input.policy}:${input.severity}`,
-          blockSec: this.severityBlockSec(input.severity),
-        })) || created;
-    }
-    if (input.userId) {
-      const userCount = this.bumpCounter(
-        `USER:${input.userId}:${input.severity}`,
-        windowMs,
-      );
-      if (userCount >= threshold) {
+      const threshold = ABUSE_THRESHOLD[input.severity];
+      if (threshold === 0) return false;
+      const windowSec = ABUSE_WINDOW_SEC[input.severity];
+      const since = new Date(Date.now() - windowSec * 1000);
+
+      const ipCount = await this.prisma.securityEvent.count({
+        where: {
+          type: 'RATE_LIMIT_VIOLATION',
+          ipHash,
+          createdAt: { gte: since },
+        },
+      });
+      let created = false;
+      if (ipCount >= threshold) {
         created =
-          (await this.createBlockInternal({
-            type: 'USER',
-            subjectHash: input.userId,
+          (await this.createBlock({
+            type: 'IP',
+            subjectHash: ipHash,
             reason: `RATE_LIMIT_VIOLATION:${input.policy}:${input.severity}`,
             blockSec: this.severityBlockSec(input.severity),
           })) || created;
       }
+      if (input.userId) {
+        const userCount = await this.prisma.securityEvent.count({
+          where: {
+            type: 'RATE_LIMIT_VIOLATION',
+            userId: input.userId,
+            createdAt: { gte: since },
+          },
+        });
+        if (userCount >= threshold) {
+          created =
+            (await this.createBlock({
+              type: 'USER',
+              subjectHash: input.userId,
+              reason: `RATE_LIMIT_VIOLATION:${input.policy}:${input.severity}`,
+              blockSec: this.severityBlockSec(input.severity),
+            })) || created;
+        }
+      }
+      return created;
+    } catch (err) {
+      console.warn(
+        `[SecurityAbuseService] recordRateLimitViolation failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      return false;
     }
-    return created;
   }
 
-  async recordLoginFailed(_input: {
-    ip: string;
-    email: string;
-  }): Promise<boolean> {
-    // Will be persisted in milestone 4 alongside Prisma SecurityEvent.
-    return false;
+  async recordLoginFailed(input: RecordLoginFailedInput): Promise<boolean> {
+    if (!this.enabled) return false;
+    const ipHash = this.ipHash.hashIp(input.ip);
+    try {
+      // detailJson chỉ chứa email (đã là identifier, không phải secret) —
+      // KHÔNG lưu password.
+      await this.prisma.securityEvent.create({
+        data: {
+          type: 'LOGIN_FAILED',
+          severity: 'WARN',
+          ipHash,
+          detailJson: { email: input.email },
+        },
+      });
+      const since = new Date(Date.now() - LOGIN_FAILED_WINDOW_SEC * 1000);
+      const ipCount = await this.prisma.securityEvent.count({
+        where: { type: 'LOGIN_FAILED', ipHash, createdAt: { gte: since } },
+      });
+      if (ipCount >= LOGIN_FAILED_THRESHOLD) {
+        return await this.createBlock({
+          type: 'IP',
+          subjectHash: ipHash,
+          reason: 'LOGIN_FAILED_SPAM',
+          blockSec: LOGIN_FAILED_BLOCK_SEC,
+        });
+      }
+      return false;
+    } catch (err) {
+      console.warn(
+        `[SecurityAbuseService] recordLoginFailed failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      return false;
+    }
   }
 
-  async recordAdminForbidden(_input: {
-    ip: string;
-    userId: string | null;
-    path: string;
-  }): Promise<boolean> {
-    // Will be persisted in milestone 4.
-    return false;
+  async recordAdminForbidden(
+    input: RecordAdminForbiddenInput,
+  ): Promise<boolean> {
+    if (!this.enabled) return false;
+    const ipHash = this.ipHash.hashIp(input.ip);
+    try {
+      await this.prisma.securityEvent.create({
+        data: {
+          type: 'ADMIN_FORBIDDEN',
+          severity: 'WARN',
+          ipHash,
+          userId: input.userId,
+          detailJson: { path: input.path },
+        },
+      });
+      return false;
+    } catch (err) {
+      console.warn(
+        `[SecurityAbuseService] recordAdminForbidden failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      return false;
+    }
   }
 
   /**
-   * Tạo block subject. Idempotent: nếu đã active → no-op.
+   * Tạo block subject. Idempotent: nếu đã có block active (chưa lift,
+   * chưa hết hạn) → không tạo thêm.
    * Return true nếu block mới được tạo.
    */
   async createBlock(input: {
@@ -180,84 +292,189 @@ export class SecurityAbuseService {
     reason: string;
     blockSec: number;
   }): Promise<boolean> {
-    return this.createBlockInternal(input);
-  }
-
-  protected async createBlockInternal(input: {
-    type: 'IP' | 'USER';
-    subjectHash: string;
-    reason: string;
-    blockSec: number;
-  }): Promise<boolean> {
-    const key = `${input.type}:${input.subjectHash}`;
-    const now = new Date();
-    const existing = this.blocks.get(key);
-    if (
-      existing &&
-      !existing.liftedAt &&
-      existing.expiresAt.getTime() > now.getTime()
-    ) {
+    try {
+      const now = new Date();
+      const existing = await this.prisma.securityBlock.findFirst({
+        where: {
+          type: input.type,
+          subjectHash: input.subjectHash,
+          liftedAt: null,
+          expiresAt: { gt: now },
+        },
+      });
+      if (existing) return false;
+      const expiresAt = new Date(now.getTime() + input.blockSec * 1000);
+      await this.prisma.securityBlock.create({
+        data: {
+          type: input.type,
+          subjectHash: input.subjectHash,
+          reason: input.reason,
+          expiresAt,
+        },
+      });
+      await this.prisma.securityEvent.create({
+        data: {
+          type: input.type === 'IP' ? 'IP_BLOCKED' : 'USER_BLOCKED',
+          severity: 'CRITICAL',
+          ipHash: input.type === 'IP' ? input.subjectHash : null,
+          userId: input.type === 'USER' ? input.subjectHash : null,
+          detailJson: { reason: input.reason, blockSec: input.blockSec },
+        },
+      });
+      return true;
+    } catch (err) {
+      console.warn(
+        `[SecurityAbuseService] createBlock failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
       return false;
     }
-    const id = `block_${++this.blockIdCounter}_${now.getTime()}`;
-    this.blocks.set(key, {
-      id,
-      type: input.type,
-      subjectHash: input.subjectHash,
-      reason: input.reason,
-      expiresAt: new Date(now.getTime() + input.blockSec * 1000),
-      createdAt: now,
-      liftedAt: null,
-    });
-    return true;
   }
 
-  async liftBlock(blockId: string): Promise<{
+  /**
+   * Lift block (admin action). Records BLOCK_LIFTED event for audit.
+   * Returns lifted block info, or null if not found / already lifted.
+   */
+  async liftBlock(
+    blockId: string,
+    adminUserId: string,
+  ): Promise<{
     id: string;
     type: 'IP' | 'USER';
     subjectHash: string;
+    reason: string;
   } | null> {
-    for (const [key, block] of this.blocks.entries()) {
-      if (block.id === blockId) {
-        if (block.liftedAt) return null;
-        block.liftedAt = new Date();
-        this.blocks.delete(key);
-        return {
-          id: block.id,
-          type: block.type,
-          subjectHash: block.subjectHash,
-        };
-      }
+    try {
+      const block = await this.prisma.securityBlock.findUnique({
+        where: { id: blockId },
+      });
+      if (!block || block.liftedAt) return null;
+      await this.prisma.securityBlock.update({
+        where: { id: blockId },
+        data: { liftedAt: new Date(), liftedById: adminUserId },
+      });
+      await this.prisma.securityEvent.create({
+        data: {
+          type: 'BLOCK_LIFTED',
+          severity: 'INFO',
+          ipHash: block.type === 'IP' ? block.subjectHash : null,
+          userId: block.type === 'USER' ? block.subjectHash : null,
+          detailJson: {
+            reason: block.reason,
+            blockId,
+            liftedBy: adminUserId,
+          },
+        },
+      });
+      return {
+        id: block.id,
+        type: block.type as 'IP' | 'USER',
+        subjectHash: block.subjectHash,
+        reason: block.reason,
+      };
+    } catch (err) {
+      console.warn(
+        `[SecurityAbuseService] liftBlock failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      return null;
     }
-    return null;
   }
 
-  /** TEST-ONLY: snapshot active blocks. */
-  __listActiveBlocks(): BlockEntry[] {
-    const out: BlockEntry[] = [];
-    const now = Date.now();
-    for (const b of this.blocks.values()) {
-      if (!b.liftedAt && b.expiresAt.getTime() > now) out.push(b);
+  /**
+   * Admin query — list active blocks (paginated).
+   */
+  async listActiveBlocks(opts: {
+    limit?: number;
+    cursor?: string;
+    type?: 'IP' | 'USER';
+  }): Promise<
+    Array<{
+      id: string;
+      type: 'IP' | 'USER';
+      subjectHash: string;
+      reason: string;
+      expiresAt: Date;
+      createdAt: Date;
+    }>
+  > {
+    const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
+    const now = new Date();
+    const blocks = await this.prisma.securityBlock.findMany({
+      where: {
+        liftedAt: null,
+        expiresAt: { gt: now },
+        ...(opts.type ? { type: opts.type } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      ...(opts.cursor ? { skip: 1, cursor: { id: opts.cursor } } : {}),
+    });
+    return blocks.map((b) => ({
+      id: b.id,
+      type: b.type as 'IP' | 'USER',
+      subjectHash: b.subjectHash,
+      reason: b.reason,
+      expiresAt: b.expiresAt,
+      createdAt: b.createdAt,
+    }));
+  }
+
+  /**
+   * Admin query — list recent security events (paginated, filtered).
+   */
+  async listRecentEvents(opts: {
+    limit?: number;
+    from?: Date;
+    to?: Date;
+    severity?: 'INFO' | 'WARN' | 'CRITICAL';
+    type?: SecurityEventType;
+    cursor?: string;
+  }): Promise<
+    Array<{
+      id: string;
+      type: string;
+      severity: string;
+      ipHash: string | null;
+      userId: string | null;
+      characterId: string | null;
+      policy: string | null;
+      detailJson: unknown;
+      createdAt: Date;
+    }>
+  > {
+    const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
+    const where: Record<string, unknown> = {};
+    if (opts.type) where.type = opts.type;
+    if (opts.severity) where.severity = opts.severity;
+    const createdAtFilter: Record<string, Date> = {};
+    if (opts.from) createdAtFilter.gte = opts.from;
+    if (opts.to) createdAtFilter.lte = opts.to;
+    if (Object.keys(createdAtFilter).length > 0) {
+      where.createdAt = createdAtFilter;
     }
-    return out;
+    const events = await this.prisma.securityEvent.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      ...(opts.cursor ? { skip: 1, cursor: { id: opts.cursor } } : {}),
+    });
+    return events.map((e) => ({
+      id: e.id,
+      type: e.type,
+      severity: e.severity,
+      ipHash: e.ipHash,
+      userId: e.userId,
+      characterId: e.characterId,
+      policy: e.policy,
+      detailJson: e.detailJson,
+      createdAt: e.createdAt,
+    }));
   }
 
-  /** TEST-ONLY: clear in-memory state. */
-  __resetForTests(): void {
-    this.counter.clear();
-    this.blocks.clear();
-    this.blockIdCounter = 0;
-  }
-
-  protected bumpCounter(key: string, windowMs: number): number {
-    const now = Date.now();
-    const arr = (this.counter.get(key) ?? []).filter((t) => t > now - windowMs);
-    arr.push(now);
-    this.counter.set(key, arr);
-    return arr.length;
-  }
-
-  protected severityBlockSec(severity: RateLimitSeverity): number {
+  private severityBlockSec(severity: RateLimitSeverity): number {
     switch (severity) {
       case 'HIGH':
         return 30 * 60;
@@ -268,7 +485,7 @@ export class SecurityAbuseService {
     }
   }
 
-  protected toEventSeverity(s: RateLimitSeverity): 'INFO' | 'WARN' | 'CRITICAL' {
+  private toEventSeverity(s: RateLimitSeverity): 'INFO' | 'WARN' | 'CRITICAL' {
     switch (s) {
       case 'HIGH':
         return 'CRITICAL';

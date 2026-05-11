@@ -127,7 +127,6 @@ export class RateLimitService {
       } catch (err) {
         if (!this.redisWarned) {
           this.redisWarned = true;
-          // eslint-disable-next-line no-console
           console.warn(
             `[RateLimitService] Redis pipeline failed, falling back to in-memory: ${
               err instanceof Error ? err.message : String(err)
