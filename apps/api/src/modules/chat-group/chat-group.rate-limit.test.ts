@@ -10,9 +10,8 @@ import { ChatGroupController } from './chat-group.controller';
 const reflector = new Reflector();
 
 function metadata(method: keyof ChatGroupController): unknown {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fn = (ChatGroupController.prototype as any)[method];
-  return reflector.get(RATE_LIMIT_POLICY_KEY, fn);
+  const proto = ChatGroupController.prototype as Record<string, unknown>;
+  return reflector.get(RATE_LIMIT_POLICY_KEY, proto[method] as () => unknown);
 }
 
 describe('Phase 19.1.B — ChatGroupController @RateLimitPolicy metadata', () => {

@@ -11,9 +11,8 @@ import { SocialController } from './social.controller';
 const reflector = new Reflector();
 
 function metadata(method: keyof SocialController): unknown {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fn = (SocialController.prototype as any)[method];
-  return reflector.get(RATE_LIMIT_POLICY_KEY, fn);
+  const proto = SocialController.prototype as Record<string, unknown>;
+  return reflector.get(RATE_LIMIT_POLICY_KEY, proto[method] as () => unknown);
 }
 
 describe('Phase 19.1.B — SocialController @RateLimitPolicy metadata', () => {

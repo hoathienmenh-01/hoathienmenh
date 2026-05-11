@@ -10,9 +10,8 @@ import { ChatPrivateController } from './chat-private.controller';
 const reflector = new Reflector();
 
 function metadata(method: keyof ChatPrivateController): unknown {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fn = (ChatPrivateController.prototype as any)[method];
-  return reflector.get(RATE_LIMIT_POLICY_KEY, fn);
+  const proto = ChatPrivateController.prototype as Record<string, unknown>;
+  return reflector.get(RATE_LIMIT_POLICY_KEY, proto[method] as () => unknown);
 }
 
 describe('Phase 19.1.B — ChatPrivateController @RateLimitPolicy metadata', () => {
