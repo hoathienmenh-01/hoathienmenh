@@ -636,6 +636,66 @@ Bell + dropdown notification persistent cho 8 event type (friend request receive
 - `apps/api/src/modules/presence/presence.service.test.ts` (11 tests): markConnected/Disconnected state transitions + multi-tab + listPresenceForUsers privacy mask (blocker-of-viewer) + dedupe/cap + fanoutPresenceUpdate transition-only-emit + skip-blocked-friend + OFFLINE payload on disconnect-last.
 - FE `apps/web/src/stores/__tests__/notifications.test.ts` (10 tests) + `apps/web/src/components/__tests__/NotificationBell.test.ts` (6 tests): store contract + bell badge boundary + WS handler subscribe/unsubscribe lifecycle.
 
+## 19.4. Group / Party System Upgrade (Phase 19.4)
+
+### Mục tiêu
+
+Cooperative tổ đội gameplay-ready cho dungeon/boss co-op (Phase 20+). User-created group ngoài chat, có leader + role + invite flow + capacity. **KHÔNG** matchmaking, **KHÔNG** dungeon co-op thật, **KHÔNG** loot sharing, **KHÔNG** voice/media — out of scope PR này.
+
+### Authorization & invariants
+
+- **1 active party / user** — service-level kiểm tra `findActivePartyMembership(userId)` trước mọi mutation tạo/join. Reject `ALREADY_IN_PARTY` nếu user đang ở party khác.
+- **Leader-only mutations**: `inviteToParty`, `kickMember`, `transferLeader`, `disbandParty`, cancel invite của party. Non-leader → `NOT_AUTHORIZED` (403).
+- **Self-immunity** — `inviteToParty`/`kickMember`/`transferLeader` reject khi `targetUserId === callerUserId` → `SELF_NOT_ALLOWED` (400). Self-leave dùng `leaveParty`.
+- **Block guard** — `inviteToParty` check `social.isBlockedBetween(inviter, invitee)` 2-chiều → `BLOCKED` (403). KHÔNG leak block direction.
+- **Capacity** — `PARTY_LIMITS.maxMembers=5` enforce ở `inviteToParty` (rejected `PARTY_FULL`) + `acceptInvite` (re-check trong transaction).
+- **Pending invite cap per user** — `PARTY_LIMITS.maxPendingInvitesPerUser=20` enforce ở `inviteToParty` chống flood.
+- **Duplicate invite prevention** — unique constraint Prisma `(partyId, inviteeUserId, status='PENDING')` + check explicit ở service. Duplicate → `DUPLICATE_INVITE` (409).
+- **Invite expire** — `expiresAt = createdAt + PARTY_LIMITS.inviteExpireMinutes` (10). `acceptInvite` reject nếu `now > expiresAt` (lazy transition → `EXPIRED` status). List endpoint cũng lazy expire khi đọc.
+- **Race-safe accept** — `acceptInvite` chạy trong `prisma.$transaction`: re-check invite status PENDING → upsert `PartyMember` unique `(partyId,userId,leftAt=NULL)` (duplicate concurrent accept → DB throw P2002 → catch và idempotent return current state).
+- **Leader auto-transfer** — leader `leaveParty` → service chọn member tenured nhất (`orderBy joinedAt asc, id asc`) làm leader mới + emit `party:leader-changed`. Nếu chỉ còn 1 member → auto-disband (mark `Party.status=DISBANDED`).
+- **Soft-ref pattern** — `Party.leaderUserId`/`PartyMember.userId`/`PartyInvite.inviter/inviteeUserId` không có FK đến `User`. Consistency cưỡng chế ở service: validate user tồn tại + non-banned trước khi tạo party / invite. Match style Phase 19.1 social model.
+
+### Rate-limit (Phase 18.1 infra)
+
+| Group | Policy | Scope | Limit | Block |
+|---|---|---|---|---|
+| Party | `PARTY_CREATE` | USER | 10 / 60 min | 30 min (MEDIUM, sensitive) |
+| Party | `PARTY_INVITE_SEND` | USER | 20 / 60 s | 5 min (MEDIUM, sensitive) |
+| Party | `PARTY_MUTATION` | USER | 60 / 60 s | 5 min (MEDIUM, sensitive) |
+
+Wire-up tại `apps/api/src/modules/party/party.controller.ts` qua `@RateLimitPolicy(...)`. GET endpoint không rate-limit (read-light, đã có auth).
+
+### Threat model
+
+| Risk | Mitigation |
+|---|---|
+| Spam invite (flood inbox) | Rate-limit `PARTY_INVITE_SEND` + cap `maxPendingInvitesPerUser=20` per inviter. Duplicate PENDING blocked qua unique constraint. |
+| Block bypass (invite-then-block) | `inviteToParty` check `isBlockedBetween` server-side trước tạo invite. Pending invite cũ không bị auto-cancel khi block đến sau — nhưng `acceptInvite` không re-check block (cố ý: invitee chấp nhận tức là không còn ngăn). Operator có thể audit qua `audit.PARTY_INVITE_SENT` log. |
+| Race condition double-join | Prisma unique `(partyId,userId,leftAt=NULL)` + transaction wrapping `acceptInvite`. Duplicate concurrent accept catch P2002 → idempotent return. |
+| Party detail leak ngoài member | `getMyParty`/`listMembers` filter `WHERE caller in party.members`. Non-member call → `party=null` (KHÔNG mask 404 vì 404 cũng leak existence; trả empty rỗng). |
+| Token / secret in `name` | `validatePartyName` strip non-printable + trim + cap 3..40ch. Service không log full name vào audit. |
+| Disband by non-leader | `canDisbandParty(role)` chỉ true với `LEADER`. Service double-check role trước mutation → `NOT_AUTHORIZED`. |
+| WS event leak ngoài member | `emitPartyUpdated`/`emitMemberJoined`/`emitMemberLeft`/`emitLeaderChanged` fanout chỉ tới `members.map(m => m.userId)`. `emitPartyInvite` chỉ emit cho invitee. |
+| Soft-ref drift (user bị xoá ngoài party scope) | Service load user qua `prisma.user.findUnique` mỗi mutation. User không tồn tại → `NOT_FOUND`. Audit `party.service.test` cover. |
+| Audit log message content | Phase 19.4 KHÔNG có party chat dedicated (reuse group chat nếu cần ở phase sau). Audit chỉ ghi event meta (partyId, userId, role). |
+
+### KHÔNG làm
+
+- KHÔNG matchmaking tự động.
+- KHÔNG dungeon co-op thật / boss co-op thật (Phase 20+).
+- KHÔNG loot sharing / trade-in-party.
+- KHÔNG voice / video chat.
+- KHÔNG party chat dedicated channel (reuse group chat nếu cần ở phase sau).
+- KHÔNG cross-server party.
+- KHÔNG persistent party history sau disband (chỉ giữ `disbandedAt` timestamp; member rows giữ `leftAt`).
+
+### Test coverage
+
+- `packages/shared/src/party.test.ts` (24 tests): enum + DTO contract + `PARTY_LIMITS` invariants + helpers (`canInviteToParty`/`canKickPartyMember`/`canTransferLeader`/`canDisbandParty` role matrix) + `validatePartyName` edge (null/whitespace/<min/>max/control chars) + `computePartyInviteExpiresAt` UTC + `isPartyInviteExpired` boundary.
+- `apps/api/src/modules/party/party.service.test.ts` (26 tests): createParty (success/INVALID/ALREADY_IN_PARTY) + inviteToParty (leader-only/self/blocked/dup/full/in-other-party) + acceptInvite (success/EXPIRED/idempotent race) + declineInvite + cancelInvite + leaveParty (non-leader/leader-auto-transfer/leader-auto-disband) + kickMember (leader-only/self/target-not-member) + transferLeader + disbandParty (leader-only) + listInvites lazy expire transition + cancel-sibling-invites-on-accept.
+- FE `apps/web/src/components/__tests__/PartyPanel.test.ts` (6 tests): empty + create form, current party render với online dot, accept invite, kick confirm true/false, transfer leader confirm, disband confirm.
+
 ## 15. Khi phát hiện sự cố
 
 1. Ngắt traffic (reverse proxy 503 hoặc scale 0 instance).

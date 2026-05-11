@@ -156,6 +156,11 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // tables để tránh stale pointer khi message bị xoá tiếp theo).
   await prisma.chatMessageReport.deleteMany({});
   await prisma.chatMute.deleteMany({});
+  // Phase 19.4 — Party system (no FK to User; wipe explicit). Thứ tự:
+  // invite/member trước party. Soft-ref ⇒ delete an toàn.
+  await prisma.partyInvite.deleteMany({});
+  await prisma.partyMember.deleteMany({});
+  await prisma.party.deleteMany({});
   // Phase 19.1 — Social system foundation (no FK to User; wipe explicit
   // để reset state giữa test runs). Thứ tự: message trước thread/group,
   // member trước group, request/friendship/block trước User.

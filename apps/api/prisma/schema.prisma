@@ -3614,3 +3614,125 @@ model UserPresence {
 
   @@index([lastSeenAt(sort: Desc)])
 }
+
+/// Phase 19.4 — Group / Party System Upgrade.
+///
+/// Party (tổ đội) khác với `GroupChat` (chat nhóm) ở chỗ:
+///   - Có **trưởng nhóm** (`leaderUserId`) + `role` per-member.
+///   - Một user CHỈ ở 1 active party — service enforce ở
+///     `createParty` / `acceptInvite` bằng cách check active
+///     membership (status = 'ACTIVE' + `leftAt IS NULL`).
+///   - Có invite flow riêng (`PartyInvite`) với expiry.
+///   - Lifecycle `ACTIVE → DISBANDED` (không reactivate).
+///
+/// Phase 19.4 KHÔNG implement:
+///   - Matchmaking tự động.
+///   - Dungeon co-op thực (chỉ chuẩn bị dữ liệu).
+///   - Loot share / voice / media share / trade-in-party.
+///
+/// Soft-ref pattern (KHÔNG FK) đồng nhất với Phase 19.1 social /
+/// 19.2 moderation / 19.3 presence.
+enum PartyStatus {
+  ACTIVE
+  DISBANDED
+}
+
+enum PartyRole {
+  LEADER
+  MEMBER
+}
+
+enum PartyInviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELED
+  EXPIRED
+}
+
+/// Phase 19.4 — Party (tổ đội gameplay-ready).
+///
+/// Server enforce (test-enforced):
+///   - `leaderUserId` luôn là 1 trong các `PartyMember` active.
+///   - `memberCount` derived ở service (`PartyMember.count` where
+///     `partyId=? AND leftAt IS NULL`). DB không store để tránh
+///     drift; service tính lúc trả response.
+///   - `disbandedAt` chỉ set khi `status === 'DISBANDED'`.
+model Party {
+  id           String      @id @default(cuid())
+  /// userId của leader hiện tại. Soft-ref (no FK). Service đảm bảo
+  /// luôn là 1 active `PartyMember.userId` cùng party.
+  leaderUserId String
+  /// Tên party (nullable, 3..40 char sau trim — xem
+  /// `validatePartyName` ở `packages/shared/src/party.ts`).
+  name         String?
+  status       PartyStatus @default(ACTIVE)
+  /// Cap thành viên — mirror `PARTY_LIMITS.maxMembers` ở shared
+  /// catalog. Lưu ở DB để future tùy biến (vd subscription-level
+  /// nâng cap) mà không cần migration.
+  maxMembers   Int         @default(5)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  disbandedAt  DateTime?
+
+  @@index([leaderUserId, status])
+  @@index([status, createdAt])
+}
+
+/// Phase 19.4 — PartyMember row.
+///
+/// Server enforce:
+///   - UNIQUE `(partyId, userId)` để 1 user không xuất hiện 2 lần
+///     trong cùng party.
+///   - 1 active membership tối đa (`leftAt IS NULL`) per user toàn
+///     hệ thống — service `assertNotInActiveParty` check.
+///   - Khi member rời (`leave` / `kick`), service set `leftAt`
+///     thay vì delete để giữ audit trail.
+model PartyMember {
+  id       String    @id @default(cuid())
+  partyId  String
+  userId   String
+  role     PartyRole @default(MEMBER)
+  joinedAt DateTime  @default(now())
+  /// Set khi member rời party (leave / kick / disband cascade).
+  /// Null = active.
+  leftAt   DateTime?
+
+  @@unique([partyId, userId])
+  @@index([userId, leftAt])
+  @@index([partyId, leftAt])
+}
+
+/// Phase 19.4 — PartyInvite (lời mời tham gia party).
+///
+/// Lifecycle:
+///   - PENDING → ACCEPTED (invitee accept; service ghi
+///     `respondedAt`).
+///   - PENDING → DECLINED (invitee từ chối).
+///   - PENDING → CANCELED (inviter hoặc leader huỷ trước khi
+///     invitee phản hồi).
+///   - PENDING → EXPIRED (server lazy-check ở `acceptInvite` /
+///     `listInvites`: `now >= expiresAt && status === PENDING` thì
+///     transition).
+///
+/// Server enforce:
+///   - Không cho `acceptInvite` nếu invite không còn PENDING
+///     hoặc đã quá hạn.
+///   - Không cho gửi duplicate PENDING cho cùng `(partyId,
+///     inviteeUserId)`.
+///   - Không cho gửi invite nếu invitee đã ở party khác active.
+///   - Cap số PENDING tới 1 invitee + cap số PENDING của 1 party.
+model PartyInvite {
+  id              String            @id @default(cuid())
+  partyId         String
+  inviterUserId   String
+  inviteeUserId   String
+  status          PartyInviteStatus @default(PENDING)
+  createdAt       DateTime          @default(now())
+  expiresAt       DateTime
+  respondedAt     DateTime?
+
+  @@index([inviteeUserId, status, createdAt(sort: Desc)])
+  @@index([partyId, status, createdAt(sort: Desc)])
+  @@index([inviterUserId, status, createdAt(sort: Desc)])
+}

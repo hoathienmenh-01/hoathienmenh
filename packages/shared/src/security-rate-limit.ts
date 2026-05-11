@@ -56,6 +56,10 @@ export const RATE_LIMIT_POLICY_KEYS = [
   'CHAT_GROUP_MEMBER_ADD',
   // ---- Chat Moderation (Phase 19.2) ----
   'CHAT_REPORT_SUBMIT',
+  // ---- Party (Phase 19.4) ----
+  'PARTY_CREATE',
+  'PARTY_INVITE_SEND',
+  'PARTY_MUTATION',
   // ---- Public Player Profile (Phase 19.1.C) ----
   'SOCIAL_PROFILE_VIEW',
   // ---- Fallback ----
@@ -377,6 +381,48 @@ export const RATE_LIMIT_POLICIES: Readonly<
     sensitive: true,
     descriptionVi: 'Giới hạn gửi report tin nhắn theo tài khoản, chống report-storm abuse.',
     descriptionEn: 'Chat report submission limit per account, anti report-storm abuse.',
+  },
+  // ---- Party (Phase 19.4) ----
+  // Chống mass-create party: 10 party / giờ / tài khoản. Legit user
+  // hiếm khi tạo > vài party/giờ — auto-disband khi leader rời.
+  PARTY_CREATE: {
+    key: 'PARTY_CREATE',
+    windowSec: 60 * 60,
+    maxRequests: 10,
+    blockSec: 30 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn tạo tổ đội theo tài khoản, chống mass-create party.',
+    descriptionEn: 'Party creation limit per account, anti mass-create.',
+  },
+  // Chống spam invite: 20 invite / phút / tài khoản leader. Cap
+  // `maxPendingInvitesPerInvitee` đảm bảo 1 invitee không bị floods,
+  // còn cap này chống broadcast invite tới nhiều người.
+  PARTY_INVITE_SEND: {
+    key: 'PARTY_INVITE_SEND',
+    windowSec: 60,
+    maxRequests: 20,
+    blockSec: 5 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn gửi lời mời tổ đội theo tài khoản, chống spam invite.',
+    descriptionEn: 'Party invite send limit per account, anti invite spam.',
+  },
+  // Chống spam mutation (kick / transfer / leave / disband / accept /
+  // decline / cancel): 60 mutation / phút / tài khoản. Đủ cho leader
+  // legit thao tác nhiều thành viên, vượt → block 5 phút.
+  PARTY_MUTATION: {
+    key: 'PARTY_MUTATION',
+    windowSec: 60,
+    maxRequests: 60,
+    blockSec: 5 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn thao tác tổ đội (kick/leave/transfer/disband/accept/decline) theo tài khoản.',
+    descriptionEn: 'Party mutation limit (kick/leave/transfer/disband/accept/decline) per account.',
   },
   // ---- Public Player Profile (Phase 19.1.C) ----
   // Chống enumeration profile: 60 view / phút / tài khoản. Legit user

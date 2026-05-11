@@ -12,6 +12,61 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Phase 19.4 — Group / Party System Upgrade (this PR — #533)
+
+**Scope**: Nâng group chat (Phase 19.1) thành **party / tổ đội gameplay-ready** cho dungeon/boss co-op (Phase 20+). Cho phép tạo party, mời người chơi, accept/decline, leave, kick, transfer leader, disband. **KHÔNG** matchmaking tự động, **KHÔNG** dungeon co-op thật, **KHÔNG** loot sharing, **KHÔNG** voice / media / file. Reuse group chat (Phase 19.1) nếu cần — Phase 19.4 KHÔNG có party chat channel dedicated.
+
+#### Added — Phase 19.4
+
+- **Prisma migration `20261001000000_phase_19_4_group_party_system`** additive: enum `PartyStatus` (`ACTIVE`/`DISBANDED`), `PartyRole` (`LEADER`/`MEMBER`), `PartyInviteStatus` (`PENDING`/`ACCEPTED`/`DECLINED`/`CANCELED`/`EXPIRED`) + model `Party`(`id`, `leaderUserId`, `name?`, `status=ACTIVE`, `maxMembers=5`, `createdAt`, `updatedAt`, `disbandedAt?`) + `PartyMember`(`id`, `partyId`, `userId`, `role`, `joinedAt`, `leftAt?` + unique `(partyId,userId,leftAt)` chống double join + index `(userId,leftAt)`) + `PartyInvite`(`id`, `partyId`, `inviterUserId`, `inviteeUserId`, `status=PENDING`, `createdAt`, `expiresAt`, `respondedAt?` + unique `(partyId,inviteeUserId,status)` chống duplicate PENDING). Soft-ref pattern (no FK).
+- **Shared `packages/shared/src/party.ts`** (24 test pass): enum + DTO `PartyDto`/`PartyMemberDto`/`PartyInviteDto` + responses + `PARTY_LIMITS` (`maxMembers=5`, `inviteExpireMinutes=10`, `maxPendingInvitesPerUser=20`, `partyNameMin=3`, `partyNameMax=40`). Helper `canInviteToParty`/`canKickPartyMember`/`canTransferLeader`/`canDisbandParty`/`validatePartyName`/`buildPartyMemberKey`/`computePartyInviteExpiresAt`/`isPartyInviteExpired`. WS payload types `PartyUpdatedBroadcastPayload`/`PartyInviteBroadcastPayload`/`PartyMemberJoinedBroadcastPayload`/`PartyMemberLeftBroadcastPayload`/`PartyLeaderChangedBroadcastPayload`.
+- **Shared `security-rate-limit`**: group `PARTY` 3 policy mới — `PARTY_CREATE` (10/60min/user block 30p), `PARTY_INVITE_SEND` (20/60s/user block 5p), `PARTY_MUTATION` (60/60s/user block 5p). `scope='USER'` `sensitive=true` `severity=MEDIUM`.
+- **Shared `ws-events`**: 5 type — `party:updated`, `party:invite`, `party:member-joined`, `party:member-left`, `party:leader-changed`.
+- **Backend `apps/api/src/modules/party/`** (15 service method, 26 test pass): `createParty`/`getMyParty`/`listMembers`/`listInvites`/`inviteToParty`/`acceptInvite`/`declineInvite`/`cancelInvite`/`leaveParty`/`kickMember`/`transferLeader`/`disbandParty`. Race-safe `acceptInvite` qua `prisma.$transaction` + unique constraint catch P2002 → idempotent. Leader auto-transfer cho longest-tenured member khi leader leave; auto-disband khi còn 1 member.
+- **REST API** `PartyController` 13 endpoint cookie-auth: `GET /party/me` + `/party/members` + `/party/invites/incoming|outgoing` + `POST /party` (`@RateLimitPolicy('PARTY_CREATE')`) + `POST /party/invites` (`@RateLimitPolicy('PARTY_INVITE_SEND')`) + `POST /party/invites/:id/accept|decline` + `DELETE /party/invites/:id` + `POST /party/leave|disband|leader/transfer|members/:userId/kick` (all `@RateLimitPolicy('PARTY_MUTATION')`).
+- **FE `apps/web/src/api/party.ts`**: 13 fn Envelope wrap.
+- **FE `apps/web/src/components/PartyPanel.vue`** (6 test pass): empty state + create form, current party card với member list + online dot từ realtime presence (Phase 19.3), invite tabs incoming/outgoing, leader-only invite form + kick/transfer/disband buttons với `ConfirmModal` teleport-to-body. Tích hợp `SocialView.vue` tab thứ 4 'party'.
+- **i18n vi/en parity 100%**: ~70 leaf key dưới `party.*` (viewTitle, tab, empty, create, current, members, invites, actions, confirm, toast, errors).
+
+#### Security — Phase 19.4
+
+- Block guard 2-chiều ở `inviteToParty` (`social.isBlockedBetween`).
+- Capacity enforce `maxMembers=5` ở cả invite + accept (in-transaction recheck).
+- Pending invite cap per user `maxPendingInvitesPerUser=20`.
+- Leader-only mutations (`inviteToParty`/`kickMember`/`transferLeader`/`disbandParty`/`cancelInvite` của party).
+- WS event leak guard — fanout chỉ tới members.
+- Audit log meta (partyId, userId, role), KHÔNG log party name body.
+
+#### Test coverage — Phase 19.4
+
+- Shared 24 test (party.test.ts).
+- API 26 integration test (party.service.test.ts) bao gồm create/invite/accept/decline/cancel/leave/kick/transfer/disband + RBAC + idempotent race accept + auto-transfer + auto-disband + capacity + cancel-sibling-invite-on-accept.
+- FE 6 test (PartyPanel.test.ts) bao gồm empty + create form, current party render với online dot, accept invite, kick confirm true/false, transfer leader, disband.
+
+#### Docs — Phase 19.4
+
+- `docs/API.md` § Party — `PartyController` (Phase 19.4) + WS event table.
+- `docs/SECURITY.md` § 19.4 Group / Party System Upgrade (Phase 19.4) — invariants, rate-limit, threat model.
+- `docs/RUNBOOK.md` § Phase 19.4 operator playbook.
+- `docs/AI_HANDOFF_REPORT.md` § 2. Recent Changes — Phase 19.4 entry.
+- `docs/CHANGELOG.md` (this section).
+
+#### Internal — Phase 19.4
+
+- Soft-ref pattern (no FK to User) — service-layer consistency, match Phase 19.1 social model.
+- Realtime fanout best-effort qua `RealtimeService.emitToUser`; offline silent drop.
+- Test bootstrap mở rộng `apps/api/src/test-helpers.ts wipeAll()` để xoá party tables trước social tables.
+
+#### Out of scope — Phase 19.4
+
+- KHÔNG matchmaking tự động.
+- KHÔNG dungeon co-op thật / boss co-op thật.
+- KHÔNG loot sharing.
+- KHÔNG voice / media / file sharing.
+- KHÔNG trading / gifting between party members.
+- KHÔNG economy change.
+- KHÔNG party chat channel dedicated (reuse group chat).
+
 ### Phase 19.3 — Social Presence & Notification Center (this PR — #532)
 
 **Scope**: Bell + dropdown notification cho friend/chat/group/security event + real-time online/offline presence cho friend list (single-instance, in-memory). **KHÔNG** mobile push, **KHÔNG** email, **KHÔNG** Redis cross-shard presence (deferred Phase 19.3+), **KHÔNG** activity feed, **KHÔNG** notification preferences per-type. Tiền đề: PR #530 Phase 19.2 + #531 Phase 19.1.C merged.

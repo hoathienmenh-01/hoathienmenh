@@ -13,8 +13,9 @@ import { useI18n } from 'vue-i18n';
 import SocialPanel from '@/components/SocialPanel.vue';
 import PrivateChatPanel from '@/components/PrivateChatPanel.vue';
 import GroupChatPanel from '@/components/GroupChatPanel.vue';
+import PartyPanel from '@/components/PartyPanel.vue';
 
-type Tab = 'friends' | 'private' | 'group';
+type Tab = 'friends' | 'private' | 'group' | 'party';
 
 const { t } = useI18n();
 const tab = ref<Tab>('friends');
@@ -73,12 +74,28 @@ const tab = ref<Tab>('friends');
       >
         {{ t('social.tabs.group') }}
       </button>
+      <button
+        type="button"
+        role="tab"
+        :aria-selected="tab === 'party'"
+        class="px-3 py-1 text-xs uppercase tracking-widest rounded border"
+        :class="
+          tab === 'party'
+            ? 'border-amber-400/60 text-amber-200'
+            : 'border-ink-300/30 text-ink-300'
+        "
+        data-testid="social-tab-party"
+        @click="tab = 'party'"
+      >
+        {{ t('party.tab') }}
+      </button>
     </nav>
 
     <div role="tabpanel">
       <SocialPanel v-if="tab === 'friends'" />
       <PrivateChatPanel v-else-if="tab === 'private'" />
-      <GroupChatPanel v-else />
+      <GroupChatPanel v-else-if="tab === 'group'" />
+      <PartyPanel v-else />
     </div>
   </section>
 </template>

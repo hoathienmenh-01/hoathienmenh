@@ -4702,6 +4702,98 @@
       "UNKNOWN": "Something went wrong — please retry."
     }
   },
+  "party": {
+    "viewTitle": "Party",
+    "viewSubtitle": "Create and manage parties for dungeons and boss co-op (coming soon).",
+    "tab": "Party",
+    "empty": {
+      "title": "Not in any party",
+      "subtitle": "Create a new party or accept an invite to get started."
+    },
+    "create": {
+      "title": "Create party",
+      "namePlaceholder": "Party name (3-40 chars, optional)…",
+      "submit": "Create party"
+    },
+    "current": {
+      "title": "Your party",
+      "leader": "Leader",
+      "memberCountLabel": "{count}/{max} members",
+      "createdAt": "Created"
+    },
+    "members": {
+      "title": "Members",
+      "roleLeader": "Leader",
+      "roleMember": "Member",
+      "online": "Online",
+      "offline": "Offline",
+      "kick": "Kick",
+      "transfer": "Transfer lead"
+    },
+    "invites": {
+      "tabIncoming": "Incoming",
+      "tabOutgoing": "Outgoing",
+      "emptyIncoming": "No incoming invites.",
+      "emptyOutgoing": "You haven't sent any invites.",
+      "from": "From",
+      "to": "To",
+      "party": "Party",
+      "expiresIn": "Expires in {mins} min",
+      "accept": "Accept",
+      "decline": "Decline",
+      "cancel": "Cancel",
+      "sendTitle": "Invite player",
+      "sendPlaceholder": "Player user ID…",
+      "sendSubmit": "Send invite"
+    },
+    "actions": {
+      "leave": "Leave party",
+      "disband": "Disband party"
+    },
+    "confirm": {
+      "leaveTitle": "Leave party?",
+      "leaveBody": "Are you sure you want to leave this party?",
+      "disbandTitle": "Disband party?",
+      "disbandBody": "This will kick all members. Cannot be undone.",
+      "kickTitle": "Kick member?",
+      "kickBody": "Kick {name} from the party?",
+      "transferTitle": "Transfer leader?",
+      "transferBody": "You will become a member; {name} will be the new leader.",
+      "confirm": "Confirm",
+      "cancel": "Cancel"
+    },
+    "toast": {
+      "created": "Party created.",
+      "inviteSent": "Invite sent.",
+      "accepted": "Joined the party.",
+      "declined": "Invite declined.",
+      "canceled": "Invite canceled.",
+      "left": "Left the party.",
+      "kicked": "Kicked member.",
+      "transferred": "Transferred leader.",
+      "disbanded": "Party disbanded."
+    },
+    "errors": {
+      "NOT_FOUND": "Party or invite not found.",
+      "NOT_AUTHORIZED": "You don't have permission for this action.",
+      "BLOCKED": "Mutual block — cannot invite.",
+      "SELF_NOT_ALLOWED": "Cannot target yourself.",
+      "ALREADY_IN_PARTY": "You are already in another party.",
+      "INVITEE_IN_OTHER_PARTY": "Player is already in another party.",
+      "DUPLICATE_INVITE": "A pending invite already exists.",
+      "PARTY_FULL": "Party is full.",
+      "INVITE_EXPIRED": "Invite has expired.",
+      "INVITE_NOT_PENDING": "Invite is no longer pending.",
+      "PARTY_DISBANDED": "Party has been disbanded.",
+      "TOO_MANY_PENDING_INVITES": "Too many pending invites.",
+      "NOT_MEMBER": "You are not a member of any party.",
+      "TARGET_NOT_MEMBER": "Player is not a party member.",
+      "INVALID_INPUT": "Invalid input.",
+      "RATE_LIMITED": "Party action too fast — slow down a few seconds.",
+      "ABUSE_BLOCKED": "Party action temporarily blocked due to abuse. Retry in a few minutes.",
+      "UNKNOWN": "Something went wrong — try again."
+    }
+  },
   "notification": {
     "title": "Notifications",
     "bell": "Open notification center",
