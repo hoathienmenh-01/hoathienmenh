@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Inject, Logger, forwardRef } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -12,6 +12,7 @@ import { JwtService } from '@nestjs/jwt';
 import type { Server, Socket } from 'socket.io';
 import type { WsFrame } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { PresenceService } from '../presence/presence.service';
 
 function parseCookie(header: string): Record<string, string> {
   const out: Record<string, string> = {};
@@ -43,6 +44,8 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     private readonly jwt: JwtService,
     private readonly realtime: RealtimeService,
     private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => PresenceService))
+    private readonly presence: PresenceService,
   ) {}
 
   async handleConnection(client: Socket): Promise<void> {
@@ -84,15 +87,44 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       });
       if (char?.sectId) void client.join(`sect:${char.sectId}`);
       this.logger.log(`ws conn user=${payload.sub} sid=${client.id}`);
+
+      // Phase 19.3 — presence tracking. markConnected returns previous /
+      // current connection counts so we know if this socket transitioned
+      // user from offline → online (and only fanout in that case).
+      try {
+        const update = await this.presence.markConnected(payload.sub);
+        if (update.previousConnections === 0 && update.currentConnections > 0) {
+          await this.presence.fanoutPresenceUpdate(update);
+        }
+      } catch (e) {
+        this.logger.warn(
+          `presence markConnected failed user=${payload.sub}: ${(e as Error).message}`,
+        );
+      }
     } catch {
       client.emit('error', { code: 'UNAUTHENTICATED' });
       client.disconnect(true);
     }
   }
 
-  handleDisconnect(client: Socket): void {
+  async handleDisconnect(client: Socket): Promise<void> {
     const userId = client.data.userId as string | undefined;
-    if (userId) this.realtime.detach(userId, client.id);
+    if (!userId) return;
+    this.realtime.detach(userId, client.id);
+
+    // Phase 19.3 — presence tracking. markDisconnected returns counts
+    // AFTER detach; if user now has 0 active connections → emit
+    // presence:update OFFLINE to friends.
+    try {
+      const update = await this.presence.markDisconnected(userId);
+      if (update.previousConnections > 0 && update.currentConnections === 0) {
+        await this.presence.fanoutPresenceUpdate(update);
+      }
+    } catch (e) {
+      this.logger.warn(
+        `presence markDisconnected failed user=${userId}: ${(e as Error).message}`,
+      );
+    }
   }
 
   @SubscribeMessage('ping')

@@ -73,6 +73,15 @@ export class RealtimeService {
   }
 
   /**
+   * Phase 19.3 — Số connection (socket) hiện tại của 1 user. Hỗ trợ
+   * `PresenceService` tính state transition (0↔1) cho fanout
+   * `presence:update`. Multi-tab safe: count = số tab WS đang mở.
+   */
+  countConnectionsForUser(userId: string): number {
+    return this.userSockets.get(userId)?.size ?? 0;
+  }
+
+  /**
    * Force-disconnect tất cả socket của user (vd khi admin ban giữa
    * session). Emit `error` frame với code/reason để client log + render
    * banner trước khi `disconnect(true)`. Idempotent — gọi với userId
