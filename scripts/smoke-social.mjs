@@ -393,7 +393,7 @@ async function main() {
     assertStatus(r, 200, 'friends Alice after accept');
     const friends = r.body?.data?.friends;
     assert(friends.length >= 1, `Alice expect >= 1 friend, got ${friends.length}`);
-    const found = friends.find((x) => x.userId === state.bob.userId);
+    const found = friends.find((x) => x.friendUserId === state.bob.userId);
     assert(found, `Alice friends KHÔNG chứa Bob.userId=${state.bob.userId}`);
   });
 
@@ -402,7 +402,7 @@ async function main() {
     assertStatus(r, 200, 'friends Bob after accept');
     const friends = r.body?.data?.friends;
     assert(friends.length >= 1, `Bob expect >= 1 friend, got ${friends.length}`);
-    const found = friends.find((x) => x.userId === state.alice.userId);
+    const found = friends.find((x) => x.friendUserId === state.alice.userId);
     assert(found, `Bob friends KHÔNG chứa Alice.userId=${state.alice.userId}`);
   });
 
@@ -464,7 +464,7 @@ async function main() {
     assertStatus(r, 200, 'blocks list');
     const blocks = r.body?.data?.blocks;
     assert(Array.isArray(blocks), 'blocks phải array');
-    const found = blocks.find((x) => x.userId === state.bob.userId);
+    const found = blocks.find((x) => x.blockedUserId === state.bob.userId);
     assert(found, `Alice blocks KHÔNG chứa Bob sau block`);
   });
 
@@ -482,7 +482,7 @@ async function main() {
     const r = await http(state.alice.jar, '/api/social/blocks');
     assertStatus(r, 200, 'blocks list after unblock');
     const blocks = r.body?.data?.blocks;
-    const found = blocks.find((x) => x.userId === state.bob.userId);
+    const found = blocks.find((x) => x.blockedUserId === state.bob.userId);
     assert(!found, `Alice blocks VẪN chứa Bob sau unblock`);
   });
 
