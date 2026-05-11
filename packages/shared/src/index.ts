@@ -43,6 +43,7 @@ export * from './npc-relationship-quest-chains';
 export * from './quests';
 export * from './dialogues';
 export * from './story-dialogues';
+export * from './story-chapters';
 export * from './story-dungeons';
 export * from './liveops';
 export * from './liveops-event-scheduler';
