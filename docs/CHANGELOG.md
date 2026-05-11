@@ -12,7 +12,61 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Phase 15.7 — Sect Season + Territory Auto-Cron + Champion/MVP Reward Distribution (this PR — #518)
+### Phase 15.8 — LiveOps / Maintenance Polish Bundle (this PR — #519)
+
+**Scope**: Polish hệ LiveOps / Maintenance / Cron để sẵn sàng vận hành closed beta. KHÔNG rewrite hệ thống — incremental polish bundle gồm: Maintenance WebSocket broadcast, Admin Maintenance edit workflow, LiveOps reward form picker, cron health/stale status, champion membership snapshot. Tất cả idempotent + race-safe, không break Phase 15.7 cron auto-run.
+
+#### Added — Phase 15.8
+
+- **Maintenance realtime broadcast** (M2-M3): `MaintenanceWindowService.recomputeStatus` thay đổi `effectiveStatus` (`SCHEDULED → ACTIVE`, `ACTIVE → ENDED`, any → `DISABLED`) sẽ broadcast event `MAINTENANCE_STATUS` qua `RealtimeService` (channel `maintenance:status`). Payload public-safe (status / severity / target / titleVi/En / messageVi/En / startsAt / endsAt / serverTime) — KHÔNG leak `adminId` / `createdByAdminId` / audit metadata. FE store `useMaintenanceStore` nhận event → update overlay ngay không cần đợi poll 30s. No-op transition (recompute không đổi status) → KHÔNG broadcast.
+- **Admin Maintenance PATCH** (M4): `PATCH /admin/maintenance/:id` cho phép update title/message/severity/target/window/allowAdminBypass/allowHealthcheck cho window **chưa kết thúc**. Không cho edit DISABLED/ENDED. Dangerous update (admin tự khóa: `allowAdminBypass=false` + target nguy hiểm) yêu cầu `confirm: true` flag. Mỗi update tạo `ConfigVersion` row (artifactKey `maintenance-window:<id>`) + `AdminAuditLog` action `ADMIN_MAINTENANCE_UPDATE`. FE `AdminMaintenancePanel.vue` thêm edit form (load current values, dirty-track, confirm modal).
+- **LiveOps reward form editor** (M5): `RewardFormEditor.vue` form picker cho linhThach / tienNgoc / item rewards (itemKey + qty rows) với client-side validate theo shared caps (`REWARD_CAPS.linhThachMax`, `tienNgocMax`, `itemCountMax`, `itemQtyMax`). Toggle Advanced Raw JSON cho power user. Helper `buildRewardJson(form)` + `parseRewardJson(json)` trong `packages/shared/src/reward-form.ts` (preview JSON khi switch mode). i18n parity vi/en. Server validator `RewardValidator` vẫn là source of truth.
+- **Cron health/stale status** (M6): Bảng mới `LiveOpsCronRunLog` audit mỗi cycle (territory / sect-season / weekly) với `cronKey` / `startedAt` / `finishedAt` / `success` / `triggeredBy` / `summaryJson` / `errorMessage`. `LiveOpsCronService.openRunLog`/`closeRunLog` fail-safe (DB error không block cycle). Admin endpoints `GET /admin/territory/cron/status` + `GET /admin/sect-season/cron/status` extend `health` field: `{ status: 'OK' | 'STALE' | 'DEGRADED' | 'DISABLED', lastRunAt, lastSuccessAt, lastErrorAt, staleReason, nextExpectedRunAt }`. Threshold: territory >8d → STALE, sect-season >2d → STALE, last run failed → DEGRADED, env disabled → DISABLED (KHÔNG báo đỏ). FE `AdminLiveOpsPanel.vue` thêm Cron Health section với badges color-coded (green OK / amber STALE / red DEGRADED / gray DISABLED).
+- **Sect Season Champion membership snapshot** (M7): Bảng mới `SectSeasonChampionSnapshot` (`seasonKey`, `sectId`, `rank`, `memberCharacterIdsJson`, `memberCount`). `SectSeasonHistoryService.snapshotSeason` write champion membership tại thời điểm finalize (deterministic order `characterId ASC`, cap `SECT_SEASON_CHAMPION_MEMBER_CAP=100`). `SectSeasonRewardService.grantSeasonRewards` prefer snapshot thay vì current membership → reward audit-perfect: member rời sect SAU snapshot, TRƯỚC grant **VẪN** nhận champion reward. Fallback current membership nếu snapshot không tồn tại (legacy season pre-15.8) + log warning. `SectSeasonRewardGrantSummary.championUsedSnapshot` flag cho admin / cron summary phân biệt 2 path.
+- **Admin UX polish** (M6): Cron Health badges + last success/error/stale reason hiển thị trên `AdminLiveOpsPanel`. Manual run buttons + confirm prompts đã có từ Phase 13.2.D / 15.7 — không đổi.
+
+#### Configuration — Phase 15.8
+
+- Không có env mới. Tận dụng `TERRITORY_CRON_ENABLED` + `SECT_SEASON_CRON_ENABLED` đã có từ Phase 15.7 cho cron health (env disabled → status `DISABLED` không báo đỏ).
+- Threshold cron stale là compile-time constants trong `packages/shared/src/liveops-cron-health.ts`:
+  - `TERRITORY_CRON_MAX_SILENCE_MS = 8 * 24h` (1 ngày buffer trên weekly cycle).
+  - `SECT_SEASON_CRON_MAX_SILENCE_MS = 2 * 24h` (1 ngày buffer trên daily cycle).
+
+#### Idempotency / race-safety — Phase 15.8
+
+- `MaintenanceWindowService.recomputeStatus` broadcast chỉ khi `effectiveStatus` thật sự đổi (so sánh prev vs next snapshot trong tx). Race 2 concurrent recompute → cả 2 đọc same prev/next → broadcast 0 hoặc 1 lần (idempotent UI render).
+- `LiveOpsCronRunLog`: `openRunLog` tạo row với `success=false`, `closeRunLog` update `finishedAt` + `success` + `summaryJson`. Cron retry tạo row mới — không UNIQUE constraint trên cycle vì retry hợp lệ. Health reader query `findFirst` order theo `finishedAt DESC` → luôn lấy snapshot mới nhất.
+- `SectSeasonChampionSnapshot`: UNIQUE `(seasonKey, sectId, rank)` — `snapshotSeason()` retry không duplicate row. P2002 swallow trong tx (race lose → existing snapshot vẫn dùng được).
+
+#### Known limitations — Phase 15.8
+
+- **WebSocket reach**: Maintenance broadcast chỉ tới clients connected. Player join sau khi broadcast vẫn dùng poll 30s + axios 503 interceptor để detect. Đây là tradeoff thiết kế — không cache event server-side.
+- **Reward form picker**: Phase 15.8 cover linhThach / tienNgoc / item rewards với cap validate. Các reward type phức tạp hơn (vd buff / title / character cosmetic) **vẫn** dùng Raw JSON path. Future expand: bổ sung picker khi catalog thêm reward type.
+- **Cron health stale threshold**: Hard-coded compile-time constants. Future polish có thể move sang config / feature flag để admin tweak per env.
+- **Champion snapshot top-N**: Phase 15.8 chỉ snapshot top-1 (champion) `rank=1`. Schema `rank` cột reserve cho top-3 / top-N future expand (vd top-3 sect rewards).
+
+#### Tests added — Phase 15.8
+
+- **Shared**: `reward-form.test.ts` (buildRewardJson + parseRewardJson cap validate); `liveops-cron-health.test.ts` (OK/STALE/DEGRADED/DISABLED pure helper); `maintenance-broadcast-payload.test.ts` (sanitizer không leak admin metadata).
+- **API**: `maintenance-window.service.test.ts` (broadcast called once on real transition; not called on no-op; payload public-safe); `admin-maintenance.controller.test.ts` (PATCH success, ended/disabled blocked, dangerous needs confirm, ConfigVersion + AdminAuditLog created); `admin-liveops-cron.controller.test.ts` Phase 15.8 health tests (OK/STALE/DEGRADED/DISABLED via env toggle); `liveops-cron.service.test.ts` (run log open/close fail-safe); `sect-season-reward.service.test.ts` Phase 15.8 (member-leaves → still rewarded via snapshot, snapshot idempotent, retry no duplicate, legacy fallback, deterministic order + cap).
+- **Web**: `AdminMaintenancePanel.test.ts` edit form flow; `AdminLiveOpsPanel.test.ts` cron health badges; `RewardFormEditor.test.ts` form picker + raw JSON toggle; `MaintenanceOverlay.test.ts` (WS ACTIVE → show, ENDED/DISABLED → hide).
+
+#### Docs — Phase 15.8
+
+- `docs/CHANGELOG.md` (this entry).
+- `docs/RUNBOOK.md`: Cách kiểm tra Maintenance WS broadcast, debug overlay không biến mất, kiểm tra cron stale, force-run cron an toàn, kiểm tra Champion snapshot + reward grant rule.
+- `docs/API.md`: Maintenance WS event `MAINTENANCE_STATUS` payload schema; PATCH `/admin/maintenance/:id`; cron status `health` field; champion snapshot endpoint mention.
+- `docs/AI_HANDOFF_REPORT.md`: Phase 15.7 closed + Phase 15.8 completed status + known limitations + next task recommendation (Phase 16.1.B Ledger Checker Daily Cron + Economy Report Admin Endpoint).
+- `docs/BALANCE_MODEL.md`: Reward form caps cross-reference + champion membership snapshot rule (audit-perfect).
+- `docs/ECONOMY_MODEL.md`: Champion reward grant semantic update (snapshot-based, legacy fallback).
+
+#### Risk / rollback — Phase 15.8
+
+- Migration `20260626000000_phase_15_8_liveops_cron_run_log` + `20260626100000_phase_15_8_sect_season_champion_snapshot` đều **additive** (CREATE TABLE + indexes). Rollback = DROP TABLE — không ảnh hưởng table khác.
+- `SectSeasonRewardService.grantSeasonRewards`: snapshot path là PREFERRED nhưng fallback graceful → rollback an toàn (legacy season vẫn grant qua current membership). Reward catalog không đổi → mail/ledger không bị drift.
+- Maintenance broadcast: fail-safe → broadcast lỗi (Redis down, WS handler throw) **KHÔNG** rollback DB transition. Worst case = client fallback poll 30s.
+
+### Phase 15.7 — Sect Season + Territory Auto-Cron + Champion/MVP Reward Distribution (PR #518)
 
 **Scope**: Tự động vận hành weekly cho Sect Season (snapshot + Champion/MVP reward) và Territory (settle + decay + owner reward mail). Tất cả idempotent qua DB UNIQUE; race-safe qua Redis lease + P2002 swallow; có admin manual trigger giữ làm fallback. Sau khi PR #516 (Config Version + Rollback) và PR #517 (TZ Hotfix sectWarWeekKey/startOfWeek unify) đã merge, hotfix TZ-aware đã đảm bảo periodKey/seasonKey không lệch boundary Sun 17:00 UTC ↔ Mon 00:00 ICT — Phase 15.7 build cron auto-run trên foundation đó.
 

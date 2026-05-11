@@ -1380,6 +1380,186 @@ console.log(previousTerritoryPeriodKey(now)); // expect 2026-W19
 - KHÔNG bypass DB UNIQUE bằng cách `INSERT ... ON CONFLICT DO NOTHING` ngoài service — service đã handle P2002.
 - KHÔNG settle bằng `dryRun=false` trên DB production khi chưa test trên staging.
 
+### 2.28. Phase 15.8 — LiveOps / Maintenance polish (P1/P2)
+
+**Scope** (Phase 15.8): Maintenance WS broadcast, Maintenance edit workflow, LiveOps reward form picker, Cron health/stale status, Champion membership snapshot. KHÔNG đổi cron auto-run của Phase 15.7.
+
+#### 2.28.1. Kiểm tra Maintenance WebSocket broadcast (P2)
+
+**Triệu chứng**: Admin bật/tắt maintenance qua panel nhưng client không thấy overlay đổi trạng thái cho đến tick poll 30s.
+
+**Probe**:
+
+```bash
+# 1. Mở Chrome DevTools → Network → WS → filter /ws.
+# 2. Tạo / kích hoạt 1 maintenance window từ admin panel.
+# 3. Quan sát frame có:
+#    { "type": "MAINTENANCE_STATUS", "channel": "maintenance:status",
+#      "payload": { "status": "ACTIVE" | "ENDED" | "DISABLED", ... } }
+# 4. KHÔNG được có field "createdByAdminId", "adminId", "auditTrailId" trong payload.
+```
+
+**Server-side debug**:
+
+```bash
+# Bật log debug cho realtime + maintenance.
+LOG_LEVEL=debug pnpm --filter @xuantoi/api start
+
+# Trigger recompute từ admin endpoint:
+curl -X POST -b "$ADMIN_COOKIE" https://api/admin/maintenance/recompute
+# Expect log:
+#   [MaintenanceWindowService] effectiveStatus transition SCHEDULED → ACTIVE
+#   [RealtimeService] broadcast channel=maintenance:status type=MAINTENANCE_STATUS recipients=N
+```
+
+**Nếu broadcast KHÔNG fire**:
+
+- Verify `MaintenanceWindowService.recomputeStatus()` thấy transition thật (prev != next). Recompute no-op KHÔNG broadcast (design).
+- Check `RealtimeService` connection lên Redis (pub/sub). Redis down → fallback poll 30s vẫn hoạt động → KHÔNG rollback DB.
+
+#### 2.28.2. Maintenance overlay không biến mất ở client (P1)
+
+**Triệu chứng**: Admin đã `DISABLE` maintenance nhưng client vẫn thấy overlay sau 1 phút.
+
+**Probe**:
+
+```bash
+# 1. Hỏi player F12 → Application → Local Storage → xuantoi-maintenance-store
+#    Expect: { effectiveStatus: 'DISABLED' | 'NONE', ... } sau khi server broadcast.
+# 2. Verify WS connect: Network → WS → /ws → connected = true.
+# 3. SQL probe server-side:
+psql -c "SELECT id, \"effectiveStatus\", \"startsAt\", \"endsAt\" FROM \"MaintenanceWindow\" ORDER BY \"updatedAt\" DESC LIMIT 5;"
+```
+
+**Recovery**:
+
+- Player F5 reload trang. FE init store đọc `GET /maintenance/status` (REST) làm warm cache.
+- Nếu vẫn lì, kiểm tra `MaintenanceOverlay.vue` có store binding đúng + `axios` interceptor không lock overlay state.
+
+#### 2.28.3. Cron stale warning — territory >8d / sect-season >2d (P1)
+
+**Triệu chứng**: Admin LiveOps panel hiện badge `STALE` đỏ cho 1 cron.
+
+**Probe**:
+
+```bash
+# Read cron health từ admin endpoint (cookie admin):
+curl -b "$ADMIN_COOKIE" https://api/admin/territory/cron/status | jq '.health'
+# Expected fields:
+# {
+#   "status": "STALE" | "OK" | "DEGRADED" | "DISABLED",
+#   "lastRunAt": "2026-05-01T...",
+#   "lastSuccessAt": "2026-05-01T...",
+#   "lastErrorAt": null,
+#   "staleReason": "TERRITORY_CRON_LAST_SUCCESS_MS_TOO_OLD",
+#   "nextExpectedRunAt": "2026-05-04T17:00:00Z"
+# }
+
+# SQL probe trực tiếp:
+psql -c "SELECT \"cronKey\", \"finishedAt\", \"success\", \"errorMessage\" \
+         FROM \"LiveOpsCronRunLog\" \
+         WHERE \"cronKey\" IN ('territory_weekly', 'sect_season_daily') \
+         ORDER BY \"finishedAt\" DESC LIMIT 10;"
+```
+
+**Decision tree**:
+
+- `status=DISABLED` + `staleReason=null` → env cron tắt; KHÔNG báo đỏ. Đây là intentional dev/test default. Bật `TERRITORY_CRON_ENABLED=true` / `SECT_SEASON_CRON_ENABLED=true` ở env production.
+- `status=STALE` + cron `enabled=true` → cron không chạy đủ chu kỳ. Check:
+  - Server process còn alive? (Node restart làm mất NestJS scheduler tick.)
+  - Redis lease bị stuck (key `lock:liveops-cron:*` còn TTL > expected)? Manual `DEL` nếu cần.
+- `status=DEGRADED` → last run lỗi. Đọc `errorMessage` từ `LiveOpsCronRunLog` row mới nhất.
+
+#### 2.28.4. Force run cron an toàn (P1)
+
+Phase 15.7 đã có endpoint `POST /admin/liveops/run-weekly-cycle`. Phase 15.8 KHÔNG đổi semantic — chỉ thêm audit log row.
+
+```bash
+# Force settle territory + decay + reward mail cho period vừa qua:
+curl -X POST -b "$ADMIN_COOKIE" \
+  -H "Content-Type: application/json" \
+  -d '{"periodKey":"2026-W19","dryRun":true}' \
+  https://api/admin/liveops/run-weekly-cycle
+
+# Inspect dryRun output trước khi run thật.
+# Force grant champion + MVP cho 1 season:
+curl -X POST -b "$ADMIN_COOKIE" \
+  -d '{"seasonKey":"season_2026_s1"}' \
+  https://api/admin/sect-season/grant-rewards
+```
+
+**KHÔNG**: Bypass `dryRun` trên production khi chưa staging-verify. Idempotent ≠ "an toàn nhân đôi".
+
+#### 2.28.5. Kiểm tra Champion membership snapshot (P2)
+
+**Triệu chứng / câu hỏi**: "Champion reward đi tới ai? Snapshot dùng membership lúc nào?"
+
+```bash
+# Snapshot row per season + sect:
+psql -c "SELECT \"seasonKey\", \"sectId\", \"rank\", \"memberCount\", \
+         jsonb_array_length(\"memberCharacterIdsJson\") AS json_len, \"createdAt\" \
+         FROM \"SectSeasonChampionSnapshot\" \
+         ORDER BY \"createdAt\" DESC LIMIT 10;"
+
+# Đọc danh sách characterId trong snapshot 1 season:
+psql -c "SELECT \"seasonKey\", \"memberCharacterIdsJson\" \
+         FROM \"SectSeasonChampionSnapshot\" \
+         WHERE \"seasonKey\" = 'season_2026_s1';"
+
+# Verify reward grant dùng snapshot path (championUsedSnapshot=true trong summary log):
+journalctl -u xuantoi-api --since '1 day ago' | grep 'grantSeasonRewards'
+```
+
+**Invariant** (Phase 15.8):
+
+- Snapshot tồn tại → reward dùng snapshot membership. Member rời sect sau snapshot vẫn nhận champion mail.
+- Snapshot không tồn tại (legacy pre-15.8) → reward fallback current membership. Log warning rõ: `championMembershipSnapshot missing → fallback current membership`.
+- Cap 100 member/season. Deterministic order `characterId ASC`.
+
+#### 2.28.6. Reward grant sai membership snapshot — recovery (P1)
+
+**Triệu chứng**: Player kêu "Sect của em vô địch season X nhưng em không nhận thưởng champion mặc dù còn member trong snapshot".
+
+**Probe**:
+
+```bash
+# 1. Verify player có trong snapshot member list:
+psql -c "SELECT \"memberCharacterIdsJson\" ? 'character-id-here' AS in_snapshot
+         FROM \"SectSeasonChampionSnapshot\"
+         WHERE \"seasonKey\" = 'season_2026_s1';"
+
+# 2. Verify grant row đã tồn tại:
+psql -c "SELECT * FROM \"SectSeasonRewardGrant\"
+         WHERE \"seasonKey\" = 'season_2026_s1'
+           AND \"rewardType\" = 'CHAMPION'
+           AND \"characterId\" = 'character-id-here';"
+
+# 3. Verify mail đã tạo:
+psql -c "SELECT * FROM \"Mail\" WHERE id = (
+           SELECT \"mailId\" FROM \"SectSeasonRewardGrant\"
+           WHERE \"seasonKey\" = 'season_2026_s1'
+             AND \"characterId\" = 'character-id-here'
+             AND \"rewardType\" = 'CHAMPION'
+         );"
+```
+
+**Recovery** (admin trigger lại):
+
+```bash
+# Re-trigger reward grant (idempotent — KHÔNG double mail):
+curl -X POST -b "$ADMIN_COOKIE" \
+  -d '{"seasonKey":"season_2026_s1"}' \
+  https://api/admin/sect-season/grant-rewards
+# Summary trả về: championMailsCreated cho người chưa grant, championAlreadyGranted cho người đã có.
+```
+
+#### 2.28.7. KHÔNG làm
+
+- KHÔNG xoá row `SectSeasonChampionSnapshot` (mất audit + Phase 15.8 fallback path sẽ dùng current membership → lệch).
+- KHÔNG manual edit `LiveOpsCronRunLog` (mất chuỗi audit + health reader sẽ misleading).
+- KHÔNG rollback table `SectSeasonChampionSnapshot` mà chưa kiểm tra reward grant đã chạy chưa.
+- KHÔNG broadcast maintenance event tay (server-authoritative — chỉ `recomputeStatus` mới broadcast).
+
 ## 3. Backup operations (closed beta cadence)
 
 ### 3.1. Cron daily backup
