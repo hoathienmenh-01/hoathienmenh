@@ -106,6 +106,11 @@ export class PartyDungeonController {
       case 'NOT_ALL_READY':
       case 'RUN_NOT_COMPLETED':
       case 'REWARD_ALREADY_CLAIMED':
+      case 'DAILY_CAP_REACHED':
+      case 'WEEKLY_CAP_REACHED':
+        // Phase 20.3 — cap gate reject mirrors REWARD_ALREADY_CLAIMED
+        // (caller có row hợp lệ nhưng bị reject vì cap ngoài tham
+        // số) → 409 Conflict.
         return HttpStatus.CONFLICT;
       default:
         return HttpStatus.BAD_REQUEST;

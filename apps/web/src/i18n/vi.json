@@ -4870,6 +4870,8 @@
       "REWARD_ALREADY_CLAIMED": "Phần thưởng đã nhận trước đó.",
       "RATE_LIMITED": "Thao tác phụ bản tổ đội quá nhanh — chậm lại vài giây.",
       "ABUSE_BLOCKED": "Tạm khoá thao tác phụ bản tổ đội do hành vi bất thường. Thử lại sau.",
+      "DAILY_CAP_REACHED": "Đã đạt cap nhận thưởng phụ bản trong ngày — qua mốc UTC+7 00:00 mới reset.",
+      "WEEKLY_CAP_REACHED": "Đã đạt cap nhận thưởng phụ bản trong tuần — chờ thứ Hai tuần sau.",
       "UNKNOWN": "Có lỗi xảy ra — thử lại."
     }
   },
@@ -5027,6 +5029,78 @@
       "INVALID_INPUT": "Dữ liệu không hợp lệ.",
       "RATE_LIMITED": "Thao tác boss tổ đội quá nhanh — chậm lại vài giây.",
       "ABUSE_BLOCKED": "Tạm khoá thao tác boss tổ đội do hành vi bất thường. Thử lại sau.",
+      "DAILY_CAP_REACHED": "Đã đạt cap nhận thưởng boss trong ngày — qua mốc UTC+7 00:00 mới reset.",
+      "WEEKLY_CAP_REACHED": "Đã đạt cap nhận thưởng boss trong tuần — chờ thứ Hai tuần sau.",
+      "UNKNOWN": "Có lỗi xảy ra — thử lại."
+    }
+  },
+  "coopRewardCap": {
+    "title": "Phần thưởng tuần Tổ Đội",
+    "subtitle": "Cap hằng ngày/tuần để chống farm vô hạn + bảng xếp hạng đóng góp theo tuần (BRONZE/SILVER/GOLD/LEGEND).",
+    "status": {
+      "title": "Tình trạng phần thưởng của bạn",
+      "dayKey": "Ngày {dayKey}",
+      "weekKey": "Tuần {weekKey}",
+      "bossUsage": "Boss: {used}/{limit} lượt/ngày · {wUsed}/{wLimit} lượt/tuần",
+      "dungeonUsage": "Phụ bản: {used}/{limit} lượt/ngày · {wUsed}/{wLimit} lượt/tuần",
+      "weeklyPoints": "Điểm tuần: {points}",
+      "weeklyRank": "Hạng tuần: {rank}",
+      "weeklyRankNone": "Chưa có hạng",
+      "weeklyTier": "Tier dự kiến: {tier}",
+      "claimable": "Có phần thưởng tuần sẵn sàng nhận.",
+      "claimed": "Bạn đã nhận phần thưởng tuần này.",
+      "noSeason": "Chưa có giải tuần nào đang chạy."
+    },
+    "tier": {
+      "NONE": "Chưa đủ điều kiện",
+      "BRONZE": "Đồng",
+      "SILVER": "Bạc",
+      "GOLD": "Vàng",
+      "LEGEND": "Huyền Thoại"
+    },
+    "claimStatus": {
+      "PENDING": "Chờ nhận",
+      "CLAIMED": "Đã nhận",
+      "SKIPPED": "Bỏ qua",
+      "FAILED": "Thất bại"
+    },
+    "actions": {
+      "claim": "Nhận thưởng tuần",
+      "refresh": "Làm mới"
+    },
+    "leaderboard": {
+      "title": "Bảng xếp hạng tuần",
+      "empty": "Chưa có người chơi nào đạt ngưỡng điểm tuần này.",
+      "rank": "Hạng",
+      "player": "Người chơi",
+      "bossPoints": "Điểm boss",
+      "dungeonPoints": "Điểm phụ bản",
+      "totalPoints": "Tổng điểm",
+      "tier": "Tier",
+      "totalEntries": "Tổng {count} mục"
+    },
+    "toast": {
+      "claimed": "Đã nhận thưởng tuần.",
+      "refreshed": "Đã làm mới."
+    },
+    "errors": {
+      "DAILY_CAP_REACHED": "Đã hết cap nhận thưởng trong ngày. Chờ qua mốc UTC+7 00:00 sẽ reset.",
+      "WEEKLY_CAP_REACHED": "Đã hết cap nhận thưởng trong tuần. Chờ qua thứ Hai tuần sau.",
+      "INVALID_SOURCE": "Loại phần thưởng không hợp lệ.",
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "SEASON_NOT_FOUND": "Không tìm thấy giải tuần.",
+      "SEASON_NOT_SETTLED": "Giải tuần chưa được quyết toán.",
+      "SEASON_NOT_CLOSED": "Giải tuần chưa kết thúc.",
+      "SEASON_ALREADY_SETTLED": "Giải tuần đã được quyết toán trước đó.",
+      "REWARD_NOT_FOUND": "Bạn chưa có phần thưởng tuần này.",
+      "REWARD_ALREADY_CLAIMED": "Phần thưởng đã nhận trước đó.",
+      "REWARD_TIER_NONE": "Bạn chưa đạt tier nhận thưởng tuần.",
+      "REWARD_SKIPPED": "Phần thưởng đã bị bỏ qua.",
+      "CHARACTER_NOT_FOUND": "Tài khoản chưa có nhân vật.",
+      "NO_CHARACTER": "Tài khoản chưa có nhân vật.",
+      "UNAUTHENTICATED": "Bạn cần đăng nhập để xem phần thưởng tuần.",
+      "RATE_LIMITED": "Thao tác quá nhanh — chậm lại vài giây.",
+      "ABUSE_BLOCKED": "Tạm khoá thao tác do hành vi bất thường. Thử lại sau.",
       "UNKNOWN": "Có lỗi xảy ra — thử lại."
     }
   }

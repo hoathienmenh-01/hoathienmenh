@@ -4870,6 +4870,8 @@
       "REWARD_ALREADY_CLAIMED": "Reward already claimed.",
       "RATE_LIMITED": "Too many party-dungeon actions — slow down.",
       "ABUSE_BLOCKED": "Party-dungeon actions temporarily blocked due to abnormal behavior.",
+      "DAILY_CAP_REACHED": "Daily party-dungeon reward cap reached — resets at UTC+7 00:00.",
+      "WEEKLY_CAP_REACHED": "Weekly party-dungeon reward cap reached — wait until next Monday.",
       "UNKNOWN": "Something went wrong — try again."
     }
   },
@@ -5026,6 +5028,78 @@
       "NO_CHARACTER": "Account has no character.",
       "INVALID_INPUT": "Invalid input.",
       "RATE_LIMITED": "Coop boss action too fast — slow down a few seconds.",
+      "ABUSE_BLOCKED": "Temporarily blocked for abnormal activity. Try again later.",
+      "DAILY_CAP_REACHED": "Daily coop boss reward cap reached — resets at UTC+7 00:00.",
+      "WEEKLY_CAP_REACHED": "Weekly coop boss reward cap reached — wait until next Monday.",
+      "UNKNOWN": "Something went wrong — try again."
+    }
+  },
+  "coopRewardCap": {
+    "title": "Co-op Weekly Rewards",
+    "subtitle": "Daily/weekly reward cap to prevent infinite farming + weekly contribution leaderboard (BRONZE/SILVER/GOLD/LEGEND).",
+    "status": {
+      "title": "Your reward status",
+      "dayKey": "Day {dayKey}",
+      "weekKey": "Week {weekKey}",
+      "bossUsage": "Boss: {used}/{limit} per day · {wUsed}/{wLimit} per week",
+      "dungeonUsage": "Dungeon: {used}/{limit} per day · {wUsed}/{wLimit} per week",
+      "weeklyPoints": "Weekly points: {points}",
+      "weeklyRank": "Weekly rank: {rank}",
+      "weeklyRankNone": "Not ranked yet",
+      "weeklyTier": "Expected tier: {tier}",
+      "claimable": "Weekly reward ready to claim.",
+      "claimed": "You already claimed this week's reward.",
+      "noSeason": "No active weekly season."
+    },
+    "tier": {
+      "NONE": "Below threshold",
+      "BRONZE": "Bronze",
+      "SILVER": "Silver",
+      "GOLD": "Gold",
+      "LEGEND": "Legend"
+    },
+    "claimStatus": {
+      "PENDING": "Pending",
+      "CLAIMED": "Claimed",
+      "SKIPPED": "Skipped",
+      "FAILED": "Failed"
+    },
+    "actions": {
+      "claim": "Claim weekly reward",
+      "refresh": "Refresh"
+    },
+    "leaderboard": {
+      "title": "Weekly leaderboard",
+      "empty": "No players have reached the weekly points threshold yet.",
+      "rank": "Rank",
+      "player": "Player",
+      "bossPoints": "Boss points",
+      "dungeonPoints": "Dungeon points",
+      "totalPoints": "Total points",
+      "tier": "Tier",
+      "totalEntries": "Total {count} entries"
+    },
+    "toast": {
+      "claimed": "Weekly reward claimed.",
+      "refreshed": "Refreshed."
+    },
+    "errors": {
+      "DAILY_CAP_REACHED": "Daily reward cap reached. Resets at UTC+7 00:00.",
+      "WEEKLY_CAP_REACHED": "Weekly reward cap reached. Wait until next Monday.",
+      "INVALID_SOURCE": "Invalid reward source.",
+      "INVALID_INPUT": "Invalid input.",
+      "SEASON_NOT_FOUND": "Weekly season not found.",
+      "SEASON_NOT_SETTLED": "Weekly season is not settled yet.",
+      "SEASON_NOT_CLOSED": "Weekly season is not closed yet.",
+      "SEASON_ALREADY_SETTLED": "Weekly season was already settled.",
+      "REWARD_NOT_FOUND": "You have no weekly reward this season.",
+      "REWARD_ALREADY_CLAIMED": "Reward already claimed.",
+      "REWARD_TIER_NONE": "You haven't reached a weekly reward tier yet.",
+      "REWARD_SKIPPED": "Reward was skipped.",
+      "CHARACTER_NOT_FOUND": "Account has no character.",
+      "NO_CHARACTER": "Account has no character.",
+      "UNAUTHENTICATED": "Please sign in to view weekly rewards.",
+      "RATE_LIMITED": "Action too fast — slow down a few seconds.",
       "ABUSE_BLOCKED": "Temporarily blocked for abnormal activity. Try again later.",
       "UNKNOWN": "Something went wrong — try again."
     }

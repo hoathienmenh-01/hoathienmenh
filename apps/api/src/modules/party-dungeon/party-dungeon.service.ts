@@ -26,6 +26,7 @@ import {
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
+import { CoopRewardCapService } from '../coop-reward-cap/coop-reward-cap.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { RealtimeService } from '../realtime/realtime.service';
 
@@ -90,7 +91,11 @@ export type PartyDungeonErrorCode =
   | 'RUN_NOT_COMPLETED'
   | 'REWARD_NOT_FOUND'
   | 'REWARD_ALREADY_CLAIMED'
-  | 'NO_CHARACTER';
+  | 'NO_CHARACTER'
+  // Phase 20.3 — Co-op reward cap gate. Member chạm daily/weekly cap
+  // → `claimReward` reject. Controller map về 409 Conflict.
+  | 'DAILY_CAP_REACHED'
+  | 'WEEKLY_CAP_REACHED';
 
 export class PartyDungeonError extends Error {
   constructor(public readonly code: PartyDungeonErrorCode) {
@@ -107,6 +112,12 @@ export class PartyDungeonService {
     @Optional()
     @Inject(RealtimeService)
     private readonly realtime: RealtimeService | null = null,
+    // Phase 20.3 — optional dependency. DI wire qua
+    // `PartyDungeonModule` import `CoopRewardCapModule`. Test có
+    // thể pass `null` để giữ behaviour cũ.
+    @Optional()
+    @Inject(CoopRewardCapService)
+    private readonly coopRewardCap: CoopRewardCapService | null = null,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -784,6 +795,30 @@ export class PartyDungeonService {
 
     const reward = (claim.rewardJson as unknown as PartyDungeonRewardPreview) ?? {};
 
+    // Phase 20.3 — daily/weekly cap gate cho PARTY_DUNGEON source.
+    // Service optional (test instantiate thẳng) → skip.
+    if (this.coopRewardCap) {
+      const cap = await this.coopRewardCap.checkDailyWeeklyCap({
+        userId: input.userId,
+        source: 'PARTY_DUNGEON',
+      });
+      if (!cap.ok) {
+        void this.coopRewardCap.auditCapBypassAttempt({
+          userId: input.userId,
+          characterId: claim.characterId,
+          source: 'PARTY_DUNGEON',
+          code: cap.code ?? 'DAILY_CAP_REACHED',
+          dailyClaims: cap.dailyClaims,
+          weeklyClaims: cap.weeklyClaims,
+        });
+        throw new PartyDungeonError(
+          cap.code === 'WEEKLY_CAP_REACHED'
+            ? 'WEEKLY_CAP_REACHED'
+            : 'DAILY_CAP_REACHED',
+        );
+      }
+    }
+
     await this.prisma.$transaction(async (tx) => {
       // CAS guard: chỉ winner mới flip PENDING → CLAIMED.
       const upd = await tx.partyDungeonRewardClaim.updateMany({
@@ -846,7 +881,38 @@ export class PartyDungeonService {
           data: { exp: { increment: reward.exp } },
         });
       }
+
+      // Phase 20.3 — increment cap counter trong cùng tx để rollback
+      // nếu grant fail. Service optional; skip nếu DI null.
+      if (this.coopRewardCap) {
+        await this.coopRewardCap.incrementRewardCapCounterTx(tx, {
+          userId: claim.userId,
+          characterId: claim.characterId,
+          source: 'PARTY_DUNGEON',
+          rewardValueApprox: BigInt(reward.linhThach ?? 0),
+        });
+      }
     });
+
+    // Phase 20.3 — record weekly contribution outside tx (best-effort).
+    // Foundation Phase 20.1 chưa track per-member contribution score
+    // → truyền `dungeonContributionScore=0`; multiplier tiên shared
+    // helper sẽ cho ra 0 point nếu cả boss + dungeon score = 0. Wire
+    // trước để Phase 20.3+ không break API nếu sau này track
+    // contribution per dungeon-run.
+    if (this.coopRewardCap) {
+      try {
+        await this.coopRewardCap.recordWeeklyContribution({
+          userId: claim.userId,
+          characterId: claim.characterId,
+          bossContributionScore: 0,
+          dungeonContributionScore: 0,
+          isMvp: false,
+        });
+      } catch {
+        /* best-effort */
+      }
+    }
 
     const updated = await this.prisma.partyDungeonRewardClaim.findUnique({
       where: { id: claim.id },

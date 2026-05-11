@@ -126,6 +126,11 @@ export class CoopBossController {
       case 'CONTRIBUTION_WINDOW_CLOSED':
       case 'PARTICIPANT_LEFT':
       case 'REWARD_ALREADY_CLAIMED':
+      case 'DAILY_CAP_REACHED':
+      case 'WEEKLY_CAP_REACHED':
+        // Phase 20.3 — cap gate reject mirrors REWARD_ALREADY_CLAIMED
+        // (caller có row claim hợp lệ nhưng bị reject vì rate ngoài
+        // tham số) → 409 Conflict.
         return HttpStatus.CONFLICT;
       default:
         return HttpStatus.BAD_REQUEST;

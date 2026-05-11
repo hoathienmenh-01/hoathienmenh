@@ -9,10 +9,12 @@ import {
 } from '@prisma/client';
 import {
   COOP_BOSS_LIMITS,
+  applyLeechRiskDowngrade,
   bossByKey,
   buildCoopBossRunRefId,
   canClaimCoopBossReward,
   classifyContributionTier,
+  classifyCoopLeechRisk,
   clampContributionInput,
   computeContributionScore,
   computeCoopBossRewardTier,
@@ -35,6 +37,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { CoopRewardCapService } from '../coop-reward-cap/coop-reward-cap.service';
 
 /**
  * Phase 20.2 — Co-op Boss / World Boss Party Contribution.
@@ -105,7 +108,11 @@ export type CoopBossErrorCode =
   | 'REWARD_NOT_ELIGIBLE'
   | 'REWARD_ALREADY_CLAIMED'
   | 'RUN_NOT_FINISHED'
-  | 'NO_CHARACTER';
+  | 'NO_CHARACTER'
+  // Phase 20.3 — Co-op reward cap gate. Member chạm daily/weekly cap
+  // → `claimReward` reject. Controller map về 409 Conflict.
+  | 'DAILY_CAP_REACHED'
+  | 'WEEKLY_CAP_REACHED';
 
 export class CoopBossError extends Error {
   constructor(public readonly code: CoopBossErrorCode) {
@@ -124,6 +131,12 @@ export class CoopBossService {
     @Optional()
     @Inject(RealtimeService)
     private readonly realtime: RealtimeService | null = null,
+    // Phase 20.3 — optional dependency. DI wire qua
+    // `CoopBossModule` import `CoopRewardCapModule`. Test có thể
+    // pass `null` để giữ behaviour cũ (cap=off / weekly record=off).
+    @Optional()
+    @Inject(CoopRewardCapService)
+    private readonly coopRewardCap: CoopRewardCapService | null = null,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -912,11 +925,28 @@ export class CoopBossService {
       }
 
       // Update each participant + create reward claim if CLEARED + eligible.
+      // Phase 20.3 — apply leech-risk downgrade per participant trước khi
+      // create reward claim. Leech HIGH → tier bị hạ; tính anomaly write
+      // best-effort outside tx (xem `leechAudits` push dưới).
       const claimRows: Array<{
         userId: string;
         characterId: string;
         id: string;
         tier: CoopBossContributionTier;
+      }> = [];
+      const leechAudits: Array<{
+        userId: string;
+        characterId: string;
+        contributionScore: number;
+        survivalSeconds: number;
+        actionCount: number;
+        originalTier: CoopBossContributionTier;
+      }> = [];
+      const weeklyRecords: Array<{
+        userId: string;
+        characterId: string;
+        bossContributionScore: number;
+        isMvp: boolean;
       }> = [];
       for (const p of participants) {
         const c = contribByPart.get(p.id);
@@ -936,12 +966,40 @@ export class CoopBossService {
         });
 
         if (!eligible) continue;
-        const tier = classifyContributionTier({
+        const originalTier = classifyContributionTier({
           contributionScore: score,
           eligibleForReward: eligible,
           isMvpCandidate: mvpUserId === p.userId,
         });
+        if (originalTier === 'NONE') continue;
+
+        // Phase 20.3 — leech downgrade trước khi snapshot reward tier.
+        // Pure helper inline trong tx; anomaly write đẩy ra ngoài tx
+        // (best-effort, không ảnh hưởng claim creation).
+        const leechRisk = classifyCoopLeechRisk({
+          contributionScore: score,
+          survivalSeconds: c?.survivalSeconds ?? 0,
+          actionCount: c?.actionCount ?? 0,
+        });
+        const tier = applyLeechRiskDowngrade<CoopBossContributionTier>({
+          tier: originalTier,
+          leechRisk,
+        });
+        leechAudits.push({
+          userId: p.userId,
+          characterId: p.characterId,
+          contributionScore: score,
+          survivalSeconds: c?.survivalSeconds ?? 0,
+          actionCount: c?.actionCount ?? 0,
+          originalTier,
+        });
         if (tier === 'NONE') continue;
+        weeklyRecords.push({
+          userId: p.userId,
+          characterId: p.characterId,
+          bossContributionScore: score,
+          isMvp: mvpUserId === p.userId,
+        });
         const reward = computeCoopBossRewardTier({ tier });
         const claim = await tx.coopBossRewardClaim.create({
           data: {
@@ -983,8 +1041,45 @@ export class CoopBossService {
         },
       });
 
-      return { claimRows, mvpUserId };
+      return { claimRows, mvpUserId, leechAudits, weeklyRecords };
     });
+
+    // Phase 20.3 — best-effort write leech anomaly + weekly contribution
+    // outside tx. Không ảnh hưởng claim creation; service optional.
+    if (this.coopRewardCap) {
+      for (const a of result.leechAudits) {
+        try {
+          await this.coopRewardCap.classifyAndAuditLeechRisk({
+            userId: a.userId,
+            characterId: a.characterId,
+            contributionScore: a.contributionScore,
+            survivalSeconds: a.survivalSeconds,
+            actionCount: a.actionCount,
+            originalTier: a.originalTier,
+            source: 'COOP_BOSS',
+          });
+        } catch (e) {
+          this.logger.debug(
+            `coop-boss leech audit skip: ${(e as Error).message}`,
+          );
+        }
+      }
+      for (const w of result.weeklyRecords) {
+        try {
+          await this.coopRewardCap.recordWeeklyContribution({
+            userId: w.userId,
+            characterId: w.characterId,
+            bossContributionScore: w.bossContributionScore,
+            dungeonContributionScore: 0,
+            isMvp: w.isMvp,
+          });
+        } catch (e) {
+          this.logger.debug(
+            `coop-boss weekly record skip: ${(e as Error).message}`,
+          );
+        }
+      }
+    }
 
     void this.emitFinished({
       runId: run.id,
@@ -1137,6 +1232,31 @@ export class CoopBossService {
       characterId: claim.characterId,
     });
 
+    // Phase 20.3 — daily/weekly cap gate. Read snapshot trước tx;
+    // nếu đã chạm cap thì reject claim + audit anomaly. Service
+    // optional (test instantiate thẳng → `coopRewardCap=null`) → skip.
+    if (this.coopRewardCap) {
+      const cap = await this.coopRewardCap.checkDailyWeeklyCap({
+        userId: input.userId,
+        source: 'COOP_BOSS',
+      });
+      if (!cap.ok) {
+        void this.coopRewardCap.auditCapBypassAttempt({
+          userId: input.userId,
+          characterId: claim.characterId,
+          source: 'COOP_BOSS',
+          code: cap.code ?? 'DAILY_CAP_REACHED',
+          dailyClaims: cap.dailyClaims,
+          weeklyClaims: cap.weeklyClaims,
+        });
+        throw new CoopBossError(
+          cap.code === 'WEEKLY_CAP_REACHED'
+            ? 'WEEKLY_CAP_REACHED'
+            : 'DAILY_CAP_REACHED',
+        );
+      }
+    }
+
     await this.prisma.$transaction(async (tx) => {
       // CAS guard: chỉ winner mới flip PENDING → CLAIMED.
       const upd = await tx.coopBossRewardClaim.updateMany({
@@ -1194,6 +1314,17 @@ export class CoopBossService {
         await tx.character.update({
           where: { id: claim.characterId },
           data: { exp: { increment: reward.exp } },
+        });
+      }
+
+      // Phase 20.3 — increment cap counter trong cùng tx để rollback
+      // nếu grant fail. Service optional; skip nếu DI null.
+      if (this.coopRewardCap) {
+        await this.coopRewardCap.incrementRewardCapCounterTx(tx, {
+          userId: claim.userId,
+          characterId: claim.characterId,
+          source: 'COOP_BOSS',
+          rewardValueApprox: BigInt(reward.linhThach ?? 0),
         });
       }
     });
