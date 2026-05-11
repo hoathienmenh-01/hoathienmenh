@@ -177,7 +177,73 @@ Endpoint `/admin/security/*` (xem [`API.md`](./API.md) §AdminSecurityController
 - KHÔNG dùng `RATE_LIMIT_ENABLED=false` cho production trừ incident P0 (mất Redis + DB cùng lúc); set kèm post-mortem.
 - KHÔNG dùng `RATE_LIMIT_FAIL_OPEN=false` ở closed beta (Redis blip → block oan user thật).
 
-## 13. Khi phát hiện sự cố
+## 13. Session Management (Phase 18.2)
+
+Server-authoritative tracking phiên đăng nhập của user, bổ sung cho cookie + refresh token rotation đã có ở Phase R1.
+
+### Mục tiêu
+
+- Mỗi lần login/register thành công tạo **1 `UserSession` row** đại diện cho 1 device/browser family.
+- Mọi `RefreshToken` rotate trong family đó link về **cùng `sessionId`** (tham chiếu lỏng `SET NULL` để rotation log không bị xoá khi session bị `DELETE`).
+- Trên refresh: rotate token cũ + cấp token mới + `touchSession(lastSeenAt)` cùng `sessionId` (không tạo session mới).
+- Trên reuse: nếu một `RefreshToken.revokedAt != null` được present lại với mật khẩu khớp `argon2.verify` → **revoke cả session family** + emit `SecurityEvent` `REFRESH_TOKEN_REUSED` (CRITICAL) + trả `SESSION_EXPIRED` cho attacker và victim cùng lúc.
+
+### Models
+
+- `UserSession` (`apps/api/prisma/schema.prisma`): `id`, `userId`, `ipHash`, `userAgent` (sanitized + capped 256ch), `createdAt`, `lastSeenAt`, `expiresAt`, `revokedAt`, `revokedReason`, `revokedById`, `suspicious`.
+- `RefreshToken.sessionId`: nullable FK → `UserSession.id`. Onboard cũ: `sessionId=null` cho refresh token tạo trước phase 18.2 — vẫn refresh được, KHÔNG bị treat as orphan; chỉ session-aware check (revoke/expired) khi `sessionId != null`.
+
+### Revoke reasons
+
+- `USER_LOGOUT` — user logout / revoke session của mình.
+- `ADMIN_REVOKE` — admin revoke từ panel.
+- `REFRESH_REUSED` — defensive revoke khi detect reuse.
+- `PASSWORD_CHANGED` — change-password hoặc reset-password.
+- `EXPIRED` — reserved cho cleanup cron (chưa wire ở 18.2).
+- `SUSPICIOUS` — reserved cho heuristic future phase.
+
+### Events
+
+| Type | Severity | Khi nào |
+|------|----------|---------|
+| `SESSION_CREATED` | INFO | login / register tạo session. |
+| `SESSION_REVOKED` | INFO | revoke session (user/admin/password). |
+| `REFRESH_TOKEN_REUSED` | **CRITICAL** | refresh token đã rotate được present lại. |
+| `SESSION_SUSPICIOUS` | WARN | reserved (chưa enforce, để future heuristic). |
+
+`SecurityEvent.detailJson` chỉ chứa `sessionId`, `userId`, `revokedReason` — KHÔNG bao giờ chứa `hashedToken`, `jti`, `refreshToken` raw.
+
+### API surface
+
+- User-facing (require access cookie):
+  - `GET /_auth/sessions?includeRevoked=true|false` → list session của chính user; flag `current=true` cho session khớp refresh cookie hiện tại.
+  - `DELETE /_auth/sessions/:id` → revoke self session. Self-ownership guard mask `SESSION_NOT_FOUND 404` nếu session không thuộc user (chống enumeration). Nếu revoke chính session hiện tại → clear cookies, FE phải redirect login.
+- Admin (`@RequireAdmin`):
+  - `GET /admin/security/sessions?userId=&status=ACTIVE|REVOKED|EXPIRED|ALL` → list paginate, audit `ADMIN_SECURITY_SESSIONS_VIEW`.
+  - `POST /admin/security/sessions/:id/revoke` → reason `ADMIN_REVOKE`, audit `ADMIN_SECURITY_SESSION_REVOKE` / `_FAILED`.
+
+### Invariants
+
+- KHÔNG bao giờ trả `hashedToken` / `jti` raw / `refreshToken` body trong API response — chỉ session summary (`UserSessionSummary`).
+- KHÔNG log raw IP — chỉ `ipHash` qua `IpHashService` (sha256 + `SECURITY_IP_HASH_SALT`).
+- `userAgent` sanitize (strip control char + trim + cap 256ch) qua `sanitizeUserAgent` trong `@xuantoi/shared`.
+- `changePassword` / `resetPassword` revoke **toàn bộ** `UserSession` của user (reason `PASSWORD_CHANGED`) + bump `passwordVersion` (refresh JWT cũ bị reject).
+- `logoutAll` revoke toàn bộ session (`USER_LOGOUT`) nhưng **KHÔNG** bump `passwordVersion` (giữ behavior Phase R1).
+- Admin revoke ghi `revokedById = adminUserId`; user revoke ghi `revokedById = userId`.
+
+### Migrations / rollback
+
+- Additive only: `prisma/migrations/20260629000000_phase_18_2_user_session/` tạo `UserSession` + thêm `RefreshToken.sessionId` nullable. Không backfill IP/UA raw từ row cũ.
+- Rollback: drop `UserSession` + nullable column an toàn vì không có column nào require `sessionId`. Refresh token cũ vẫn rotate đúng.
+
+### Test coverage
+
+- `apps/api/src/modules/auth/session.service.test.ts` (14 tests): createSession, touch, revoke (cascade RefreshToken con), idempotent revoke, reuse detection, listForUser current flag, listForAdmin filter status/userId, pagination, privacy.
+- `apps/api/src/modules/auth/auth.service.test.ts` (Phase 18.2 block — 9 tests): register → session, rotate continue family, reuse → CRITICAL + revoke, revoked/expired session → SESSION_EXPIRED, logout 1 device, logoutAll all-sessions, changePassword revoke all, response không leak hashedToken/jti.
+- `apps/api/src/modules/auth/auth.controller.test.ts` (Phase 18.2 block — 8 tests): list (UNAUTHENTICATED / current flag / includeRevoked forward); delete (UNAUTHENTICATED / 404 missing / 404 mask cross-user / non-current keeps cookies / current clears cookies).
+- `apps/api/src/modules/security/admin-security.controller.test.ts` (Phase 18.2 block — 6 tests): admin list + audit, invalid status, userId forward; admin revoke success + audit meta, 404 + audit `_FAILED`, INVALID_INPUT.
+
+## 14. Khi phát hiện sự cố
 
 1. Ngắt traffic (reverse proxy 503 hoặc scale 0 instance).
 2. Thu log + dump `/admin/audit` + `CurrencyLedger` quanh thời điểm xảy ra.

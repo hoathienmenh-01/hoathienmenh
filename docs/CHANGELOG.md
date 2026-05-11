@@ -12,7 +12,58 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Phase 17.2 — Backup/Restore Weekly Verification (this PR — #523)
+### Phase 18.2 — Session Management Hardening (this PR — #524)
+
+**Scope**: Server-authoritative session tracking trên cookie + refresh token rotation đã có ở Phase R1. Mỗi login/register tạo 1 `UserSession` family → mọi rotation link cùng `sessionId`. Detect reuse → defensive revoke + CRITICAL event. Bổ sung user-facing và admin API để xem/revoke session. **Backend-only** ở PR này — FE Settings + Admin tab defer sang PR follow-up.
+
+#### Added — Phase 18.2
+
+- **Prisma migration `20260629000000_phase_18_2_user_session`** additive:
+  - `UserSession` table: `id`, `userId`, `ipHash`, `userAgent` (sanitized + cap 256ch), `createdAt`, `lastSeenAt`, `expiresAt`, `revokedAt`, `revokedReason`, `revokedById`, `suspicious` + 4 index (userId+revokedAt, userId+lastSeenAt DESC, expiresAt+revokedAt, revokedAt+createdAt DESC).
+  - `RefreshToken.sessionId` nullable FK `SET NULL` + `@@index([sessionId, revokedAt])`. Onboard cũ: refresh token Phase R1 chưa có `sessionId` vẫn rotate được; chỉ enforce session-aware check khi `sessionId != null`.
+- **`SessionService`** (`apps/api/src/modules/auth/session.service.ts`):
+  - `createSession` — login/register tạo session + emit `SESSION_CREATED` (INFO).
+  - `touchSession` — update `lastSeenAt` khi rotate (no-op nếu revoked).
+  - `revokeSession` — idempotent + cascade revoke `RefreshToken` con + emit `SESSION_REVOKED`.
+  - `handleReuseDetected` — emit `REFRESH_TOKEN_REUSED` **CRITICAL** + revoke session family (fallback revoke-all-refresh nếu không có sessionId).
+  - `revokeAllForUser` — cho logoutAll/changePassword/resetPassword.
+  - `listForUser` / `listForAdmin` — pagination + filter + `current` flag.
+- **`AuthService` integration**:
+  - `register`/`login` tạo session + link refresh token đầu tiên về sessionId.
+  - `refresh` rotate cùng sessionId + `touchSession`; reuse detection trigger `handleReuseDetected` khi argon2 hash khớp với token đã revoke.
+  - `logout` revoke session đơn tương ứng refresh token.
+  - `logoutAll` / `changePassword` / `resetPassword` revoke tất cả session của user.
+- **User-facing API**:
+  - `GET /_auth/sessions` — list session của chính user với `current` flag, `includeRevoked` query.
+  - `DELETE /_auth/sessions/:id` — self-ownership guard (mask 404 chống enum), idempotent, clear cookies nếu là session hiện tại.
+- **Admin API** (`AdminSecurityController`):
+  - `GET /admin/security/sessions?userId=&status=ACTIVE|REVOKED|EXPIRED|ALL` — paginate + audit `ADMIN_SECURITY_SESSIONS_VIEW`.
+  - `POST /admin/security/sessions/:id/revoke` — `@RequireAdmin` + audit `ADMIN_SECURITY_SESSION_REVOKE` / `_FAILED`.
+- **`SecurityEventType` extended**: `SESSION_CREATED`/`SESSION_REVOKED`/`REFRESH_TOKEN_REUSED`/`SESSION_SUSPICIOUS` (reserved cho heuristic phase sau).
+- **`@xuantoi/shared`**: thêm `auth-session.ts` (`UserSessionSummary`, `SESSION_REVOKE_REASONS`, `SESSION_STATUS_FILTERS`, `SessionErrorCode`, `sanitizeUserAgent`, `computeSessionStatus`).
+
+#### Security — Phase 18.2
+
+- **Reuse detection**: refresh token đã rotate được present lại → CRITICAL event + revoke cả family (attacker và victim cùng mất truy cập, không phân biệt được ai là kẻ tấn công → buộc tất cả phải đăng nhập lại).
+- **Privacy**: KHÔNG bao giờ trả `hashedToken`/`jti`/`refreshToken` raw trong API. Chỉ `ipHash` (không lưu raw IP). `userAgent` sanitize (strip control char) + cap 256ch.
+- **Self-ownership 404 mask**: user thử revoke session người khác → 404 `SESSION_NOT_FOUND` (không phải 403) để chống enumerating session IDs.
+- **Admin audit**: mọi list/revoke admin ghi 1 row `AdminAuditLog`. List ghi 1 row / call (không per-item) tránh ngập audit khi paginate.
+
+#### Tests — Phase 18.2
+
+- 14 SessionService unit tests (DB-backed): createSession + event emit, touch active/revoked, revoke cascade + idempotent, reuse + fallback, list filters + current flag + pagination, privacy.
+- 9 AuthService integration tests: register tạo session + sessionId link, refresh continue family + touch, reuse → CRITICAL + revoke family, revoked/expired session → SESSION_EXPIRED, logout 1 device chỉ revoke 1 session, logoutAll/changePassword revoke all-sessions, response privacy.
+- 8 AuthController unit tests: GET/DELETE sessions endpoints, UNAUTHENTICATED, 404 mask cross-user, current vs non-current cookie clear.
+- 6 AdminSecurityController unit tests: list filter + audit, revoke success/failed + audit meta.
+
+#### Deferred — Phase 18.2
+
+- FE user Account Security panel (list + revoke trong settings) — defer PR follow-up.
+- FE Admin Security tab "Sessions" — defer PR follow-up.
+- Heuristic suspicious detection (geo-anomaly, user-agent flip) — reserved `SESSION_SUSPICIOUS` event type, không enforce ở 18.2.
+- Cleanup cron cho session đã expired — chưa wire (DB grow O(N user × N device), monitor + add ở phase sau nếu cần).
+
+### Phase 17.2 — Backup/Restore Weekly Verification (PR #523)
 
 **Scope**: Thêm tracking layer trên 3 script shell hiện có (`backup-db.sh`/`restore-db.sh`/`verify-restore.sh`). Admin xem được trạng thái backup gần nhất + nhận cảnh báo khi stale/fail + manual trigger backup/verify với audit trail. **KHÔNG** thay đổi script shell. **KHÔNG** expose endpoint restore — destructive ops vẫn manual theo RUNBOOK §2.10.
 
