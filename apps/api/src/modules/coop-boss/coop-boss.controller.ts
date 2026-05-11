@@ -31,10 +31,6 @@ const CreateRunInput = z.object({
   worldBossEventId: z.string().min(1).max(80).optional(),
 });
 
-const RunIdInput = z.object({
-  runId: z.string().min(1).max(80),
-});
-
 const ContributionInput = z.object({
   runId: z.string().min(1).max(80),
   damageDone: z

@@ -4919,5 +4919,115 @@
     "offline": "Offline",
     "lastSeenJustNow": "Just now",
     "lastSeenUnknown": "Last seen unknown"
+  },
+  "coopBoss": {
+    "title": "Co-op Boss",
+    "subtitle": "Party fights a boss together, contributions tracked server-side, rewards by tier (foundation: client-report + server clamp).",
+    "empty": {
+      "subtitle": "No active co-op boss run. Leader pick a boss to start.",
+      "leaderHint": "Up to {max} members per run. Contribution below threshold yields no reward."
+    },
+    "run": {
+      "summary": "Participants {count} · Boss {boss}",
+      "status": "Status: {status}",
+      "mvp": "MVP: {name}"
+    },
+    "status": {
+      "LOBBY": "Lobby",
+      "IN_PROGRESS": "In progress",
+      "CLEARED": "Cleared",
+      "FAILED": "Failed",
+      "CANCELED": "Canceled"
+    },
+    "tier": {
+      "NONE": "Not enough contribution",
+      "LOW": "Low tier",
+      "NORMAL": "Standard tier",
+      "HIGH": "High tier",
+      "MVP": "MVP"
+    },
+    "participants": {
+      "score": "Contribution: {score}",
+      "tierLabel": "Expected tier: {tier}",
+      "leftEarly": "Left early",
+      "eligible": "Eligible for reward",
+      "ineligible": "Not eligible for reward"
+    },
+    "contribution": {
+      "title": "Your contribution",
+      "damage": "Damage: {value}",
+      "support": "Support: {value}",
+      "survival": "Survival: {value}s",
+      "submitTitle": "Submit contribution",
+      "damagePlaceholder": "This batch of damage",
+      "supportPlaceholder": "Support points",
+      "survivalPlaceholder": "Survival seconds",
+      "submit": "Update contribution"
+    },
+    "actions": {
+      "create": "Create boss run",
+      "join": "Join run",
+      "leave": "Leave run",
+      "finishClear": "Finish (Cleared)",
+      "finishFail": "Mark failed",
+      "cancel": "Cancel run (LOBBY)",
+      "claim": "Claim reward",
+      "refresh": "Refresh"
+    },
+    "confirm": {
+      "finishClearTitle": "Finish as cleared?",
+      "finishClearBody": "End run with result CLEARED. Contributions will be snapshotted.",
+      "finishFailTitle": "Mark failed?",
+      "finishFailBody": "End run FAILED. No reward claims will be issued.",
+      "cancelTitle": "Cancel boss run?",
+      "cancelBody": "Cancel only allowed while LOBBY."
+    },
+    "reward": {
+      "title": "Reward",
+      "linhThach": "Linh Thach",
+      "tienNgoc": "Tien Ngoc",
+      "exp": "EXP",
+      "statusLabel": {
+        "PENDING": "Pending",
+        "CLAIMED": "Claimed",
+        "SKIPPED": "Skipped",
+        "FAILED": "Failed"
+      },
+      "previewLabel": "Expected tier: {tier}",
+      "noneForCaller": "You have no reward in this run."
+    },
+    "toast": {
+      "created": "Co-op boss run created.",
+      "joined": "Joined run.",
+      "left": "Left run.",
+      "contributed": "Contribution updated.",
+      "finished": "Run finished.",
+      "canceled": "Run canceled.",
+      "claimed": "Co-op boss reward claimed."
+    },
+    "errors": {
+      "NOT_IN_PARTY": "You are not in any party.",
+      "NOT_PARTY_LEADER": "Only the party leader can do this.",
+      "NOT_PARTY_MEMBER": "You are not a member of this party.",
+      "INVALID_BOSS_KEY": "Invalid boss key.",
+      "RUN_ALREADY_EXISTS": "Your party already has an active boss run.",
+      "RUN_NOT_FOUND": "Boss run not found.",
+      "RUN_NOT_LOBBY": "Run is not in lobby anymore.",
+      "RUN_NOT_ACTIVE": "Run is no longer active.",
+      "RUN_ALREADY_FINISHED": "Run has already finished.",
+      "RUN_NOT_FINISHED": "Run not finished — cannot claim yet.",
+      "PARTICIPANT_NOT_FOUND": "You have not joined this run.",
+      "PARTICIPANT_LEFT": "You have left this run.",
+      "CONTRIBUTION_WINDOW_CLOSED": "Contribution window is closed.",
+      "NOT_ENOUGH_MEMBERS": "Not enough members to finish.",
+      "REWARD_NOT_FOUND": "You have no reward in this run.",
+      "REWARD_NOT_ELIGIBLE": "You are not eligible for the reward.",
+      "REWARD_ALREADY_CLAIMED": "Reward already claimed.",
+      "NO_CHARACTER": "Account has no character.",
+      "INVALID_INPUT": "Invalid input.",
+      "RATE_LIMITED": "Coop boss action too fast — slow down a few seconds.",
+      "ABUSE_BLOCKED": "Temporarily blocked for abnormal activity. Try again later.",
+      "UNKNOWN": "Something went wrong — try again."
+    }
   }
 }

@@ -4919,5 +4919,115 @@
     "offline": "Ngoại tuyến",
     "lastSeenJustNow": "Vừa mới truy cập",
     "lastSeenUnknown": "Không rõ lần truy cập gần nhất"
+  },
+  "coopBoss": {
+    "title": "Boss Tổ Đội",
+    "subtitle": "Tổ đội cùng đánh boss, ghi đóng góp, nhận thưởng theo tier (foundation client-report + clamp server).",
+    "empty": {
+      "subtitle": "Chưa có run boss tổ đội. Trưởng nhóm chọn boss để bắt đầu.",
+      "leaderHint": "Tối đa {max} thành viên/run. Đóng góp dưới ngưỡng sẽ không nhận thưởng."
+    },
+    "run": {
+      "summary": "Người tham gia {count} · Boss {boss}",
+      "status": "Trạng thái: {status}",
+      "mvp": "MVP: {name}"
+    },
+    "status": {
+      "LOBBY": "Đợi đội",
+      "IN_PROGRESS": "Đang đánh",
+      "CLEARED": "Đã hạ",
+      "FAILED": "Thất bại",
+      "CANCELED": "Đã huỷ"
+    },
+    "tier": {
+      "NONE": "Không đủ đóng góp",
+      "LOW": "Tier thấp",
+      "NORMAL": "Tier chuẩn",
+      "HIGH": "Tier cao",
+      "MVP": "MVP"
+    },
+    "participants": {
+      "score": "Điểm đóng góp: {score}",
+      "tierLabel": "Tier dự kiến: {tier}",
+      "leftEarly": "Đã rời sớm",
+      "eligible": "Đủ điều kiện thưởng",
+      "ineligible": "Không đủ điều kiện thưởng"
+    },
+    "contribution": {
+      "title": "Đóng góp của bạn",
+      "damage": "Sát thương: {value}",
+      "support": "Hỗ trợ: {value}",
+      "survival": "Trụ trận: {value}s",
+      "submitTitle": "Gửi đóng góp",
+      "damagePlaceholder": "Sát thương lần này",
+      "supportPlaceholder": "Điểm hỗ trợ",
+      "survivalPlaceholder": "Giây sống sót",
+      "submit": "Cập nhật đóng góp"
+    },
+    "actions": {
+      "create": "Tạo run boss",
+      "join": "Tham gia run",
+      "leave": "Rời run",
+      "finishClear": "Hạ boss (Cleared)",
+      "finishFail": "Báo thất bại",
+      "cancel": "Huỷ run (LOBBY)",
+      "claim": "Nhận thưởng",
+      "refresh": "Làm mới"
+    },
+    "confirm": {
+      "finishClearTitle": "Hạ boss?",
+      "finishClearBody": "Kết thúc run với kết quả CLEARED. Đóng góp sẽ được snapshot.",
+      "finishFailTitle": "Báo thất bại?",
+      "finishFailBody": "Kết thúc run FAILED. Sẽ không có reward claim.",
+      "cancelTitle": "Huỷ run boss?",
+      "cancelBody": "Chỉ huỷ được khi đang LOBBY."
+    },
+    "reward": {
+      "title": "Phần thưởng",
+      "linhThach": "Linh Thạch",
+      "tienNgoc": "Tiên Ngọc",
+      "exp": "EXP",
+      "statusLabel": {
+        "PENDING": "Chờ nhận",
+        "CLAIMED": "Đã nhận",
+        "SKIPPED": "Đã bỏ qua",
+        "FAILED": "Thất bại"
+      },
+      "previewLabel": "Tier dự kiến: {tier}",
+      "noneForCaller": "Bạn không có phần thưởng trong run này."
+    },
+    "toast": {
+      "created": "Đã tạo run boss tổ đội.",
+      "joined": "Đã tham gia run.",
+      "left": "Đã rời run.",
+      "contributed": "Đã cập nhật đóng góp.",
+      "finished": "Đã kết thúc run.",
+      "canceled": "Đã huỷ run.",
+      "claimed": "Đã nhận thưởng boss tổ đội."
+    },
+    "errors": {
+      "NOT_IN_PARTY": "Bạn chưa ở trong tổ đội nào.",
+      "NOT_PARTY_LEADER": "Chỉ trưởng nhóm mới được thao tác này.",
+      "NOT_PARTY_MEMBER": "Bạn không phải thành viên tổ đội này.",
+      "INVALID_BOSS_KEY": "Boss không hợp lệ.",
+      "RUN_ALREADY_EXISTS": "Tổ đội đã có run boss đang hoạt động.",
+      "RUN_NOT_FOUND": "Không tìm thấy run boss.",
+      "RUN_NOT_LOBBY": "Run không còn ở giai đoạn chuẩn bị.",
+      "RUN_NOT_ACTIVE": "Run không còn hoạt động.",
+      "RUN_ALREADY_FINISHED": "Run đã kết thúc trước đó.",
+      "RUN_NOT_FINISHED": "Run chưa kết thúc — chưa nhận thưởng được.",
+      "PARTICIPANT_NOT_FOUND": "Bạn chưa tham gia run này.",
+      "PARTICIPANT_LEFT": "Bạn đã rời run này.",
+      "CONTRIBUTION_WINDOW_CLOSED": "Cửa sổ ghi đóng góp đã đóng.",
+      "NOT_ENOUGH_MEMBERS": "Chưa đủ thành viên để kết thúc.",
+      "REWARD_NOT_FOUND": "Không có phần thưởng nào của bạn trong run này.",
+      "REWARD_NOT_ELIGIBLE": "Bạn chưa đủ điều kiện nhận thưởng.",
+      "REWARD_ALREADY_CLAIMED": "Phần thưởng đã nhận trước đó.",
+      "NO_CHARACTER": "Tài khoản chưa có nhân vật.",
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "RATE_LIMITED": "Thao tác boss tổ đội quá nhanh — chậm lại vài giây.",
+      "ABUSE_BLOCKED": "Tạm khoá thao tác boss tổ đội do hành vi bất thường. Thử lại sau.",
+      "UNKNOWN": "Có lỗi xảy ra — thử lại."
+    }
   }
 }
