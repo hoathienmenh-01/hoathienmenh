@@ -296,6 +296,10 @@ describe('AdminLiveOpsEventsPanel', () => {
     await w
       .find('[data-testid="admin-liveops-events-form-ends-at"]')
       .setValue('2026-08-02T00:00');
+    // Phase 15.8 — chuyển sang Raw JSON mode để paste payload thủ công.
+    await w
+      .find('[data-testid="admin-liveops-events-form-reward-mode-raw"]')
+      .setValue();
     // Empty reward = 0 linhThach, 0 tienNgoc, no items → EVENT_REWARD_EMPTY.
     await w
       .find('[data-testid="admin-liveops-events-form-reward-json"]')
@@ -304,6 +308,149 @@ describe('AdminLiveOpsEventsPanel', () => {
     await flushPromises();
 
     expect(adminLiveOpsEventsCreateMock).not.toHaveBeenCalled();
+  });
+
+  // -------------------------------------------------------------------------
+  // Phase 15.8 — FESTIVAL_GIFT reward form picker.
+  // -------------------------------------------------------------------------
+
+  it('Phase 15.8: FESTIVAL_GIFT form picker mode build rewardJson hợp lệ (linhThach + items)', async () => {
+    adminLiveOpsEventsListMock
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([SAMPLE_EVENT]);
+    adminLiveOpsEventsCreateMock.mockResolvedValueOnce(SAMPLE_EVENT);
+    const w = mountPanel();
+    await flushPromises();
+    await w
+      .find('[data-testid="admin-liveops-events-form-key"]')
+      .setValue('event_gift_form_ok');
+    await w
+      .find('[data-testid="admin-liveops-events-form-title"]')
+      .setValue('Festival Gift Form');
+    await w
+      .find('[data-testid="admin-liveops-events-form-type"]')
+      .setValue('FESTIVAL_GIFT');
+    await w
+      .find('[data-testid="admin-liveops-events-form-starts-at"]')
+      .setValue('2026-08-01T00:00');
+    await w
+      .find('[data-testid="admin-liveops-events-form-ends-at"]')
+      .setValue('2026-08-02T00:00');
+    // Form picker is default — set linhThach + 1 item row.
+    await w
+      .find('[data-testid="admin-liveops-events-form-reward-linhthach"]')
+      .setValue(500);
+    await w
+      .find('[data-testid="admin-liveops-events-form-reward-add-item"]')
+      .trigger('click');
+    await w
+      .find('[data-testid="admin-liveops-events-form-reward-item-key-0"]')
+      .setValue('linh-thach-uong-tang');
+    await w
+      .find('[data-testid="admin-liveops-events-form-reward-item-qty-0"]')
+      .setValue(3);
+    await w.find('[data-testid="admin-liveops-events-form"]').trigger('submit');
+    await flushPromises();
+    expect(adminLiveOpsEventsCreateMock).toHaveBeenCalledTimes(1);
+    const call = adminLiveOpsEventsCreateMock.mock.calls[0][0];
+    expect(call.configJson).toEqual({
+      rewardJson: {
+        linhThach: 500,
+        items: [{ itemKey: 'linh-thach-uong-tang', qty: 3 }],
+      },
+    });
+  });
+
+  it('Phase 15.8: FESTIVAL_GIFT form picker mode rỗng (0/0/[]) → reject FE-side', async () => {
+    adminLiveOpsEventsListMock.mockResolvedValueOnce([]);
+    const w = mountPanel();
+    await flushPromises();
+    await w
+      .find('[data-testid="admin-liveops-events-form-key"]')
+      .setValue('event_gift_form_empty');
+    await w
+      .find('[data-testid="admin-liveops-events-form-title"]')
+      .setValue('Empty');
+    await w
+      .find('[data-testid="admin-liveops-events-form-type"]')
+      .setValue('FESTIVAL_GIFT');
+    await w
+      .find('[data-testid="admin-liveops-events-form-starts-at"]')
+      .setValue('2026-08-01T00:00');
+    await w
+      .find('[data-testid="admin-liveops-events-form-ends-at"]')
+      .setValue('2026-08-02T00:00');
+    // Picker mặc định đang chọn — không nhập gì cả.
+    await w.find('[data-testid="admin-liveops-events-form"]').trigger('submit');
+    await flushPromises();
+    expect(adminLiveOpsEventsCreateMock).not.toHaveBeenCalled();
+  });
+
+  it('Phase 15.8: thêm/xóa item row trong form picker', async () => {
+    adminLiveOpsEventsListMock.mockResolvedValueOnce([]);
+    const w = mountPanel();
+    await flushPromises();
+    await w
+      .find('[data-testid="admin-liveops-events-form-type"]')
+      .setValue('FESTIVAL_GIFT');
+    // Thêm 2 item rows.
+    await w
+      .find('[data-testid="admin-liveops-events-form-reward-add-item"]')
+      .trigger('click');
+    await w
+      .find('[data-testid="admin-liveops-events-form-reward-add-item"]')
+      .trigger('click');
+    expect(
+      w.find('[data-testid="admin-liveops-events-form-reward-item-0"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="admin-liveops-events-form-reward-item-1"]').exists(),
+    ).toBe(true);
+    // Xóa item 0 → còn 1 row.
+    await w
+      .find('[data-testid="admin-liveops-events-form-reward-item-remove-0"]')
+      .trigger('click');
+    expect(
+      w.find('[data-testid="admin-liveops-events-form-reward-item-1"]').exists(),
+    ).toBe(false);
+    expect(
+      w.find('[data-testid="admin-liveops-events-form-reward-item-0"]').exists(),
+    ).toBe(true);
+  });
+
+  it('Phase 15.8: chuyển Form ↔ Raw JSON mode vẫn build rewardJson đúng', async () => {
+    adminLiveOpsEventsListMock
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([SAMPLE_EVENT]);
+    adminLiveOpsEventsCreateMock.mockResolvedValueOnce(SAMPLE_EVENT);
+    const w = mountPanel();
+    await flushPromises();
+    await w
+      .find('[data-testid="admin-liveops-events-form-key"]')
+      .setValue('event_gift_raw_ok');
+    await w
+      .find('[data-testid="admin-liveops-events-form-title"]')
+      .setValue('Raw OK');
+    await w
+      .find('[data-testid="admin-liveops-events-form-type"]')
+      .setValue('FESTIVAL_GIFT');
+    await w
+      .find('[data-testid="admin-liveops-events-form-starts-at"]')
+      .setValue('2026-08-01T00:00');
+    await w
+      .find('[data-testid="admin-liveops-events-form-ends-at"]')
+      .setValue('2026-08-02T00:00');
+    await w
+      .find('[data-testid="admin-liveops-events-form-reward-mode-raw"]')
+      .setValue();
+    await w
+      .find('[data-testid="admin-liveops-events-form-reward-json"]')
+      .setValue(JSON.stringify({ tienNgoc: 10 }));
+    await w.find('[data-testid="admin-liveops-events-form"]').trigger('submit');
+    await flushPromises();
+    expect(adminLiveOpsEventsCreateMock).toHaveBeenCalledTimes(1);
+    const call = adminLiveOpsEventsCreateMock.mock.calls[0][0];
+    expect(call.configJson).toEqual({ rewardJson: { tienNgoc: 10 } });
   });
 
   // Phase 15.3.A — FE clamps multiplier range from shared cap.

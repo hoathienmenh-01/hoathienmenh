@@ -796,7 +796,30 @@ export async function adminSectSeasonCronRunNow(
 }
 
 /**
+ * Phase 15.8 — Cron health status enum (mirror shared
+ * `computeLiveOpsCronHealth` return). FE uses this for badge color.
+ */
+export type AdminLiveOpsCronHealthStatus =
+  | 'OK'
+  | 'STALE'
+  | 'DEGRADED'
+  | 'DISABLED';
+
+/**
+ * Phase 15.8 — Cron health snapshot returned alongside config + last row.
+ */
+export interface AdminLiveOpsCronHealthView {
+  status: AdminLiveOpsCronHealthStatus;
+  lastRunAt: string | null;
+  lastSuccessAt: string | null;
+  lastErrorAt: string | null;
+  staleReason: string | null;
+  nextExpectedRunAt: string | null;
+}
+
+/**
  * Phase 15.7 — GET /admin/territory/cron/status. Read-only view.
+ * Phase 15.8 — adds `health` snapshot.
  */
 export interface AdminTerritoryCronStatusView {
   enabled: boolean;
@@ -806,6 +829,7 @@ export interface AdminTerritoryCronStatusView {
   lastSettlement: { periodKey: string; settledAt: string } | null;
   lastDecay: { periodKey: string; appliedAt: string } | null;
   lastReward: { periodKey: string; grantedAt: string } | null;
+  health: AdminLiveOpsCronHealthView;
 }
 
 export async function adminTerritoryCronStatus(): Promise<AdminTerritoryCronStatusView> {
@@ -817,6 +841,7 @@ export async function adminTerritoryCronStatus(): Promise<AdminTerritoryCronStat
 
 /**
  * Phase 15.7 — GET /admin/sect-season/cron/status. Read-only view.
+ * Phase 15.8 — adds `health` snapshot.
  */
 export interface AdminSectSeasonCronStatusView {
   enabled: boolean;
@@ -825,6 +850,7 @@ export interface AdminSectSeasonCronStatusView {
   lastSnapshot: { seasonKey: string; finalizedAt: string } | null;
   lastChampionGrant: { seasonKey: string; grantedAt: string } | null;
   lastMvpGrant: { seasonKey: string; grantedAt: string } | null;
+  health: AdminLiveOpsCronHealthView;
 }
 
 export async function adminSectSeasonCronStatus(): Promise<AdminSectSeasonCronStatusView> {

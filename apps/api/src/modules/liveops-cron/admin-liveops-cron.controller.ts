@@ -13,17 +13,101 @@ import { z } from 'zod';
 import {
   isTerritoryPeriodKey,
   previousTerritoryPeriodKey,
+  SECT_SEASON_CRON_MAX_SILENCE_MS,
+  TERRITORY_CRON_MAX_SILENCE_MS,
+  computeLiveOpsCronHealth,
+  type LiveOpsCronHealthStatus,
 } from '@xuantoi/shared';
 import { AdminGuard } from '../admin/admin.guard';
 import { RequireAdmin } from '../admin/require-admin.decorator';
 import { PrismaService } from '../../common/prisma.service';
 import { readLiveOpsCronConfig } from './liveops-cron.config';
 import {
+  LIVEOPS_CRON_KEY_SECT_SEASON,
+  LIVEOPS_CRON_KEY_TERRITORY,
   LiveOpsCronService,
+  type LiveOpsCronKey,
   type SectSeasonCycleSummary,
   type TerritoryCycleSummary,
   type WeeklyCycleSummary,
 } from './liveops-cron.service';
+
+/**
+ * Phase 15.8 — Read run-log rows của 1 cron key + compute health snapshot.
+ *
+ * Returns:
+ *   - `lastRunAt` — một row bất kỳ mới nhất theo `finishedAt` (success hoặc
+ *     fail). Nếu chưa `finishedAt` nào thì dùng `startedAt` loại 1 row bất
+ *     kỳ (in-flight cycle).
+ *   - `lastSuccessAt` — row mới nhất `success=true`.
+ *   - `lastErrorAt` — row mới nhất `success=false` + `finishedAt!=null`.
+ *   - `staleReason` — từ shared helper.
+ *
+ * Fail-soft: nếu DB query throw (table missing pre-migration) trả về
+ * `lastRunAt=null` + treat "never recorded".
+ */
+async function readCronHealth(
+  prisma: PrismaService,
+  cronKey: LiveOpsCronKey,
+  enabled: boolean,
+  maxSilenceMs: number,
+  now: Date = new Date(),
+): Promise<{
+  enabled: boolean;
+  lastRunAt: string | null;
+  lastSuccessAt: string | null;
+  lastErrorAt: string | null;
+  status: LiveOpsCronHealthStatus;
+  staleReason: string | null;
+  nextExpectedRunAt: string | null;
+}> {
+  let lastRun: Date | null = null;
+  let lastSuccess: Date | null = null;
+  let lastError: Date | null = null;
+  try {
+    const [runRow, successRow, errorRow] = await Promise.all([
+      prisma.liveOpsCronRunLog.findFirst({
+        where: { cronKey },
+        orderBy: [{ finishedAt: 'desc' }, { startedAt: 'desc' }],
+        select: { finishedAt: true, startedAt: true },
+      }),
+      prisma.liveOpsCronRunLog.findFirst({
+        where: { cronKey, success: true, finishedAt: { not: null } },
+        orderBy: { finishedAt: 'desc' },
+        select: { finishedAt: true },
+      }),
+      prisma.liveOpsCronRunLog.findFirst({
+        where: { cronKey, success: false, finishedAt: { not: null } },
+        orderBy: { finishedAt: 'desc' },
+        select: { finishedAt: true },
+      }),
+    ]);
+    lastRun = runRow ? (runRow.finishedAt ?? runRow.startedAt) : null;
+    lastSuccess = successRow?.finishedAt ?? null;
+    lastError = errorRow?.finishedAt ?? null;
+  } catch {
+    // Fail-soft: treat as no data.
+  }
+  const health = computeLiveOpsCronHealth({
+    enabled,
+    lastRunAt: lastRun,
+    lastSuccessAt: lastSuccess,
+    lastErrorAt: lastError,
+    maxSilenceMs,
+    now,
+  });
+  return {
+    enabled,
+    lastRunAt: lastRun ? lastRun.toISOString() : null,
+    lastSuccessAt: lastSuccess ? lastSuccess.toISOString() : null,
+    lastErrorAt: lastError ? lastError.toISOString() : null,
+    status: health.status,
+    staleReason: health.staleReason,
+    // Phase 15.8 — nextExpectedRunAt KHÔNG tính ở Phase này (cần cron
+    // parser library). Trả null — FE document với i18n hint.
+    nextExpectedRunAt: null,
+  };
+}
 
 /**
  * Phase 13.2.D + 14.0.F — Admin endpoints để force-run cron tay.
@@ -178,24 +262,40 @@ export class AdminLiveOpsCronController {
       lastSettlement: { periodKey: string; settledAt: string } | null;
       lastDecay: { periodKey: string; appliedAt: string } | null;
       lastReward: { periodKey: string; grantedAt: string } | null;
+      /** Phase 15.8 — cron run audit health. */
+      health: {
+        status: LiveOpsCronHealthStatus;
+        lastRunAt: string | null;
+        lastSuccessAt: string | null;
+        lastErrorAt: string | null;
+        staleReason: string | null;
+        nextExpectedRunAt: string | null;
+      };
     };
   }> {
     const cfg = readLiveOpsCronConfig();
     const previousPeriodKey = previousTerritoryPeriodKey();
-    const [lastSettlementRow, lastDecayRow, lastRewardRow] = await Promise.all([
-      this.prisma.sectTerritorySettlementSnapshot.findFirst({
-        orderBy: { periodKey: 'desc' },
-        select: { periodKey: true, settledAt: true },
-      }),
-      this.prisma.sectTerritoryDecayLog.findFirst({
-        orderBy: { periodKey: 'desc' },
-        select: { periodKey: true, triggeredAt: true },
-      }),
-      this.prisma.territoryOwnerRewardGrant.findFirst({
-        orderBy: { grantedAt: 'desc' },
-        select: { periodKey: true, grantedAt: true },
-      }),
-    ]);
+    const [lastSettlementRow, lastDecayRow, lastRewardRow, health] =
+      await Promise.all([
+        this.prisma.sectTerritorySettlementSnapshot.findFirst({
+          orderBy: { periodKey: 'desc' },
+          select: { periodKey: true, settledAt: true },
+        }),
+        this.prisma.sectTerritoryDecayLog.findFirst({
+          orderBy: { periodKey: 'desc' },
+          select: { periodKey: true, triggeredAt: true },
+        }),
+        this.prisma.territoryOwnerRewardGrant.findFirst({
+          orderBy: { grantedAt: 'desc' },
+          select: { periodKey: true, grantedAt: true },
+        }),
+        readCronHealth(
+          this.prisma,
+          LIVEOPS_CRON_KEY_TERRITORY,
+          cfg.territoryEnabled,
+          TERRITORY_CRON_MAX_SILENCE_MS,
+        ),
+      ]);
     return {
       ok: true,
       data: {
@@ -221,6 +321,14 @@ export class AdminLiveOpsCronController {
               grantedAt: lastRewardRow.grantedAt.toISOString(),
             }
           : null,
+        health: {
+          status: health.status,
+          lastRunAt: health.lastRunAt,
+          lastSuccessAt: health.lastSuccessAt,
+          lastErrorAt: health.lastErrorAt,
+          staleReason: health.staleReason,
+          nextExpectedRunAt: health.nextExpectedRunAt,
+        },
       },
     };
   }
@@ -242,25 +350,41 @@ export class AdminLiveOpsCronController {
         grantedAt: string;
       } | null;
       lastMvpGrant: { seasonKey: string; grantedAt: string } | null;
+      /** Phase 15.8 — cron run audit health. */
+      health: {
+        status: LiveOpsCronHealthStatus;
+        lastRunAt: string | null;
+        lastSuccessAt: string | null;
+        lastErrorAt: string | null;
+        staleReason: string | null;
+        nextExpectedRunAt: string | null;
+      };
     };
   }> {
     const cfg = readLiveOpsCronConfig();
-    const [lastSnapshotRow, lastChampRow, lastMvpRow] = await Promise.all([
-      this.prisma.sectSeasonSnapshot.findFirst({
-        orderBy: { finalizedAt: 'desc' },
-        select: { seasonKey: true, finalizedAt: true },
-      }),
-      this.prisma.sectSeasonRewardGrant.findFirst({
-        where: { rewardType: 'CHAMPION' },
-        orderBy: { grantedAt: 'desc' },
-        select: { seasonKey: true, grantedAt: true },
-      }),
-      this.prisma.sectSeasonRewardGrant.findFirst({
-        where: { rewardType: 'MVP' },
-        orderBy: { grantedAt: 'desc' },
-        select: { seasonKey: true, grantedAt: true },
-      }),
-    ]);
+    const [lastSnapshotRow, lastChampRow, lastMvpRow, health] =
+      await Promise.all([
+        this.prisma.sectSeasonSnapshot.findFirst({
+          orderBy: { finalizedAt: 'desc' },
+          select: { seasonKey: true, finalizedAt: true },
+        }),
+        this.prisma.sectSeasonRewardGrant.findFirst({
+          where: { rewardType: 'CHAMPION' },
+          orderBy: { grantedAt: 'desc' },
+          select: { seasonKey: true, grantedAt: true },
+        }),
+        this.prisma.sectSeasonRewardGrant.findFirst({
+          where: { rewardType: 'MVP' },
+          orderBy: { grantedAt: 'desc' },
+          select: { seasonKey: true, grantedAt: true },
+        }),
+        readCronHealth(
+          this.prisma,
+          LIVEOPS_CRON_KEY_SECT_SEASON,
+          cfg.sectSeasonEnabled,
+          SECT_SEASON_CRON_MAX_SILENCE_MS,
+        ),
+      ]);
     return {
       ok: true,
       data: {
@@ -285,6 +409,14 @@ export class AdminLiveOpsCronController {
               grantedAt: lastMvpRow.grantedAt.toISOString(),
             }
           : null,
+        health: {
+          status: health.status,
+          lastRunAt: health.lastRunAt,
+          lastSuccessAt: health.lastSuccessAt,
+          lastErrorAt: health.lastErrorAt,
+          staleReason: health.staleReason,
+          nextExpectedRunAt: health.nextExpectedRunAt,
+        },
       },
     };
   }

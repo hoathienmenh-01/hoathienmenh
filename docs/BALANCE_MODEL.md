@@ -2472,16 +2472,28 @@ export const SECT_SEASON_CHAMPION_MEMBER_CAP = 100;
 - Cron retry hoặc multi-instance đua → chỉ 1 mail/character/season (P2002 swallow).
 - Test: `apps/api/src/modules/sect-season/sect-season-reward.service.test.ts` — 11 case (idempotent 2x, race Promise.all 3, dryRun, error path, membership rule, cap).
 
-### Membership snapshot rule
+### Membership snapshot rule (updated Phase 15.8)
 
-- Champion: theo **current membership tại thời điểm grant** (KHÔNG snapshot tại thời điểm season end). Member rời sect SAU snapshot, TRƯỚC grant → **không** nhận champion reward.
-- MVP: theo `mvpCharacterId` ghi vào `SectSeasonSnapshot` (snapshot tại thời điểm finalize). Không phụ thuộc current sect membership.
+- **Champion (Phase 15.8 audit-perfect)**: theo **membership snapshot tại thời điểm `snapshotSeason()` finalize** lưu trong bảng `SectSeasonChampionSnapshot` (UNIQUE `(seasonKey, sectId, rank)`, cap 100 theo `characterId` ASC). Member rời sect SAU snapshot, TRƯỚC grant → **VẪN** nhận champion reward (audit-perfect). Member join sect SAU snapshot → KHÔNG nhận champion.
+- **Champion (legacy pre-15.8 fallback)**: nếu snapshot row không tồn tại (season trước 15.8 hoặc test fixture skip snapshot), service fallback **current membership tại grant time** + log warning. `SectSeasonRewardGrantSummary.championUsedSnapshot` flag phân biệt 2 path.
+- **MVP**: theo `mvpCharacterId` ghi vào `SectSeasonSnapshot` (snapshot tại thời điểm finalize). Không phụ thuộc current sect membership. Không đổi ở Phase 15.8.
 
-### Known limitations — Phase 15.7
+### Reward editor caps (Phase 15.8)
 
-- **Champion membership audit-perfect**: spec hiện theo current membership. Nếu cần audit-perfect (member-rời-sect SAU snapshot vẫn nhận reward), schema phải thêm `SectSeasonMembershipSnapshot` table — defer Phase 15.8.
+Phase 15.8 thêm FE form picker cho LiveOps reward editor. Cap validate client-side (server validator vẫn là source of truth):
+
+- `REWARD_CAPS.linhThachMax` — cap số `linhThach` 1 reward.
+- `REWARD_CAPS.tienNgocMax` — cap số `tienNgoc` 1 reward.
+- `REWARD_CAPS.itemCountMax` — cap số dòng item rewards (tránh reward bloat UI).
+- `REWARD_CAPS.itemQtyMax` — cap qty per item row.
+
+Caps đặt trong `packages/shared/src/reward-form.ts`. Toggle Advanced Raw JSON cho power user bypass form picker (server vẫn validate).
+
+### Known limitations — Phase 15.7 + 15.8
+
 - **MVP top-1 only**: không cấp MVP cho top-2/top-3. Tradeoff: tránh inflation (top-3 sect lớn cộng lại có thể vượt 50,000 LT/season → reward cap ngầm hiện ~30,000 LT).
-- **Champion cap 100**: theo characterId ASC. Sect đông member > 100 → 100 đầu (theo characterId thấp nhất → tendency older account) nhận; còn lại không có UI feedback. Chấp nhận tradeoff để tránh runaway reward cost.
+- **Champion cap 100**: theo characterId ASC. Sect đông member > 100 → 100 đầu (theo characterId thấp nhất → tendency older account) nhận; còn lại không có UI feedback. Chấp nhận tradeoff để tránh runaway reward cost. Phase 15.8 cap chỉ apply ở SNAPSHOT TIME (`snapshotSeason()`), không tái-evaluate ở grant time.
+- **Reward picker form coverage**: Phase 15.8 cover linhThach / tienNgoc / item rewards. Buff/title/cosmetic reward type vẫn dùng Raw JSON path.
 
 ## 12. CHANGELOG
 

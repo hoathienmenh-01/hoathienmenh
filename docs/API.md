@@ -151,8 +151,8 @@ Settlement (Phase 14.0.B) + Decay (Phase 14.0.C) chỉ trigger qua admin endpoin
 | POST   | `/admin/liveops/run-weekly-cycle`             | ADMIN  | (Phase 13.2.D + 14.0.F + 15.7) Force-run combo weekly cycle: territory settle previous period → decay influence → grant owner reward mail → sect season snapshot → **Champion + MVP reward grant** (Phase 15.7). Body JSON `{ periodKey?: string, bypassLease?: boolean }` — strict zod, key extra → 400 `INVALID_INPUT`. `periodKey` default `previousTerritoryPeriodKey()`. `bypassLease=true` skip Redis lease (chỉ admin force-run; cron tự động luôn dùng lease). Idempotent qua DB UNIQUE — gọi 2 lần KHÔNG double mail (P2002 swallow trả `skippedAlreadyGranted`/`alreadyGranted`). Race-safe (Redis lease optimistic + DB UNIQUE final). Response `WeeklyCycleSummary { startedAt, finishedAt, skippedAlreadyDone, triggeredBy, territory: TerritoryCycleSummary, sectSeason: SectSeasonCycleSummary }` — `TerritoryCycleSummary { periodKey, territorySettled, territorySkipped, territoryDecaySkipped, territoryDecayDelta, rewardMailsCreated, rewardSkippedAlreadyGranted, errors[] }`, `SectSeasonCycleSummary { seasonSnapshotsCreated, seasonSnapshotsSkipped, seasonsProcessed: string[], championMailsCreated, championAlreadyGranted, mvpMailsCreated, mvpAlreadyGranted, errors[] }` (4 field cuối Phase 15.7). Fail-soft: lỗi 1 stage push vào `errors[]` KHÔNG block stage còn lại. Audit `ADMIN_LIVEOPS_RUN_WEEKLY_CYCLE` (no secret meta). Errors: 401 `UNAUTHENTICATED`, 403 `ADMIN_ONLY`, 400 `INVALID_INPUT`, 400 `PERIOD_INVALID`. |
 | POST   | `/admin/territory/cron/run-now`               | ADMIN  | (Phase 13.2.D + 14.0.F) Chỉ chạy phần territory cycle (settle + decay + reward mail) — không snapshot sect season. Body cùng schema `/admin/liveops/run-weekly-cycle`. Response = `TerritoryCycleSummary` (xem trên). Idempotent + race-safe cùng cách. Audit `ADMIN_TERRITORY_CRON_RUN`. |
 | POST   | `/admin/sect-season/cron/run-now`             | ADMIN  | (Phase 13.2.D + 14.0.F + 15.7) Chỉ chạy phần sect season snapshot + **Champion + MVP reward grant** — không chạy territory. Body JSON `{ bypassLease?: boolean }` strict. Snapshot mọi `SECT_SEASONS` có `endsAtIso ≤ now`, idempotent qua UNIQUE `seasonKey` (`sectSeasonSnapshot` + `sectSeasonSectRank` + `sectSeasonTopMember`). Sau snapshot, grant Champion mail cho mọi member của sect rank-1 (cap 100 theo characterId ASC) + MVP mail cho top-1 cá nhân — idempotent qua UNIQUE `(seasonKey, rewardType, characterId)` ở `SectSeasonRewardGrant`. Gọi 2 lần → lần 2 trả `championAlreadyGranted`/`mvpAlreadyGranted` cao. Response = `SectSeasonCycleSummary` (xem trên). Audit `ADMIN_SECT_SEASON_CRON_RUN`. |
-| GET    | `/admin/territory/cron/status`                | ADMIN  | (Phase 15.7) Read-only snapshot tình trạng cron territory. Response `{ enabled, cron, timezone, previousPeriodKey, lastSettlement: { periodKey, settledAt } \| null, lastDecay: { periodKey, appliedAt } \| null, lastReward: { periodKey, grantedAt } \| null }`. KHÔNG audit. |
-| GET    | `/admin/sect-season/cron/status`              | ADMIN  | (Phase 15.7) Read-only snapshot tình trạng cron sect season. Response `{ enabled, cron, timezone, lastSnapshot: { seasonKey, finalizedAt } \| null, lastChampionGrant: { seasonKey, grantedAt } \| null, lastMvpGrant: { seasonKey, grantedAt } \| null }`. KHÔNG audit. |
+| GET    | `/admin/territory/cron/status`                | ADMIN  | (Phase 15.7 + 15.8) Read-only snapshot tình trạng cron territory. Response `{ enabled, cron, timezone, previousPeriodKey, lastSettlement: { periodKey, settledAt } \| null, lastDecay: { periodKey, appliedAt } \| null, lastReward: { periodKey, grantedAt } \| null, health: { status: 'OK' \| 'STALE' \| 'DEGRADED' \| 'DISABLED', lastRunAt: string \| null, lastSuccessAt: string \| null, lastErrorAt: string \| null, staleReason: string \| null, nextExpectedRunAt: string \| null } }`. **Phase 15.8** — `health` field thêm. `staleReason` semantic codes: `CRON_DISABLED`, `TERRITORY_CRON_NEVER_RAN`, `TERRITORY_CRON_LAST_SUCCESS_MS_TOO_OLD`, `TERRITORY_CRON_LAST_RUN_FAILED`. Threshold stale = 8 ngày silence (1 ngày buffer trên weekly cycle). KHÔNG audit. |
+| GET    | `/admin/sect-season/cron/status`              | ADMIN  | (Phase 15.7 + 15.8) Read-only snapshot tình trạng cron sect season. Response `{ enabled, cron, timezone, lastSnapshot: { seasonKey, finalizedAt } \| null, lastChampionGrant: { seasonKey, grantedAt } \| null, lastMvpGrant: { seasonKey, grantedAt } \| null, health: <same shape as territory> }`. **Phase 15.8** — `health` field thêm. Threshold stale = 2 ngày silence (1 ngày buffer trên daily cycle). KHÔNG audit. |
 
 **Buff catalog (Phase 14.0.C)** — `packages/shared/src/territory-buffs.ts` `TERRITORY_REGION_BUFFS`:
 
@@ -848,6 +848,37 @@ Khi không có window ACTIVE → middleware không block. Khi có ACTIVE:
 8. Target `ALL_PLAYERS` block player; admin vẫn pass nếu allowAdminBypass.
 9. Mặc định block (fail-closed) khi role không xác định và không match
    bypass nào.
+
+### Phase 15.8 — WebSocket broadcast `MAINTENANCE_STATUS`
+
+Phase 15.8 thêm realtime broadcast khi `MaintenanceWindowService.recomputeStatus` thấy `effectiveStatus` THẬT SỰ đổi (`SCHEDULED → ACTIVE`, `ACTIVE → ENDED`, hoặc any → `DISABLED`).
+
+- Channel: `maintenance:status`
+- Event type: `MAINTENANCE_STATUS`
+- Payload (public-safe, không leak admin metadata):
+
+```ts
+{
+  type: 'MAINTENANCE_STATUS',
+  channel: 'maintenance:status',
+  payload: {
+    status: 'ACTIVE' | 'ENDED' | 'DISABLED' | 'SCHEDULED' | 'NONE',
+    severity: 'INFO' | 'WARNING' | 'CRITICAL' | null,
+    target: 'ALL_PLAYERS' | 'NON_ADMIN_USERS' | 'API_WRITE_ONLY' | 'FULL_LOCKDOWN' | null,
+    titleVi: string | null,
+    titleEn: string | null,
+    messageVi: string | null,
+    messageEn: string | null,
+    startsAt: string | null,    // ISO
+    endsAt: string | null,      // ISO
+    serverTime: string,         // ISO
+  }
+}
+```
+
+KHÔNG bao gồm: `id`, `createdByAdminId`, `disabledAt`, `allowAdminBypass`, `allowHealthcheck`, `allowMetrics`, audit trail metadata. Broadcast no-op khi recompute KHÔNG đổi status. Broadcast fail (Redis down, WS handler throw) KHÔNG rollback DB transition — fallback poll 30s + axios 503 interceptor vẫn hoạt động.
+
+Phase 15.8 cũng grow `PATCH /admin/maintenance-windows/:id`: thêm body field `confirm?: boolean` — yêu cầu `true` khi update tạo combo nguy hiểm (admin tự khóa: `allowAdminBypass=false` + target `FULL_LOCKDOWN`/`ALL_PLAYERS`). Không có `confirm` → 400 `MAINTENANCE_UPDATE_DANGEROUS_REQUIRES_CONFIRM`. Mỗi update tạo `ConfigVersion` row (artifactKey `maintenance-window:<id>`).
 
 ### Error codes — Phase 15.5
 

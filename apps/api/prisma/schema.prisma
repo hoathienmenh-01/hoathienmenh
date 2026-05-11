@@ -2270,6 +2270,41 @@ model SectSeasonRewardGrant {
   @@index([sectId])
 }
 
+/// Phase 15.8 — Sect Season Champion membership snapshot (audit-perfect).
+///
+/// Mục tiêu: Champion reward grant phải dựa trên membership **tại thời
+/// điểm season finalize** thay vì current membership. Snapshot chốt
+/// danh sách characterId của champion sect lúc `snapshotSeason()` chạy,
+/// để reward service grant đúng người dù member rời sect sau finalize.
+///
+/// Idempotent qua UNIQUE `(seasonKey, sectId, rank)`. Cron retry không
+/// duplicate row.
+///
+/// Cap 100 member/season (deterministic order `characterId ASC`) — match
+/// `SECT_SEASON_CHAMPION_MEMBER_CAP`. Sect quá đông thì lấy 100 ID đầu.
+///
+/// `memberCharacterIdsJson`: JSON array string IDs, deterministic order.
+/// `rank` = 1 cho champion; reserve cho future top-N champion expand
+/// (vd top-3 sect rewards) — Phase 15.8 chỉ dùng rank=1.
+///
+/// Rollback: DROP table. Reward service fallback current membership +
+/// log warning nếu snapshot không tồn tại (legacy season pre-15.8).
+model SectSeasonChampionSnapshot {
+  id                     String   @id @default(cuid())
+  seasonKey              String
+  sectId                 String
+  rank                   Int      @default(1)
+  /// JSON array `string[]` characterIds, `characterId ASC` deterministic.
+  memberCharacterIdsJson Json
+  /// Số member trong snapshot (sau cap). Denormalized cho admin/audit query.
+  memberCount            Int
+  createdAt              DateTime @default(now())
+
+  @@unique([seasonKey, sectId, rank])
+  @@index([seasonKey])
+  @@index([sectId])
+}
+
 /// Phase 16.5 — Daily Reward Cap accum bucket per `(characterId, dayBucket, source)`.
 ///
 /// Mục tiêu: theo dõi tổng EXP / linhThach mà 1 character đã được grant
@@ -2642,4 +2677,54 @@ model ConfigRollbackRun {
   @@index([entityType, entityId, createdAt])
   @@index([performedByAdminId, createdAt])
   @@index([status, createdAt])
+}
+
+/// Phase 15.8 — LiveOps cron run audit / health tracking.
+///
+/// Mỗi lần cron job (territory / sect-season / weekly composite) chạy 1
+/// chu kỳ sẽ insert 1 row vào bảng này. Dùng cho:
+///   - Health monitoring: status endpoint `GET /admin/territory/cron/status`
+///     + `GET /admin/sect-season/cron/status` đọc row mới nhất theo
+///     `cronKey` để compute `lastRunAt` / `lastSuccessAt` / `lastErrorAt`
+///     + status (OK / STALE / DEGRADED) qua shared helper
+///     `computeLiveOpsCronHealth`.
+///   - Audit: ghi `triggeredBy` (cron = null, admin force-run = userId)
+///     + snapshot summary JSON (counts) + error message nếu fail.
+///
+/// `cronKey` ENUM-like string:
+///   - `territory` — `LiveOpsCronService.runTerritoryCycle`.
+///   - `sect-season` — `LiveOpsCronService.runSectSeasonCycle`.
+///   - `weekly` — `LiveOpsCronService.runWeeklyCycle` (composite wrap).
+///
+/// `success` rules:
+///   - `true` khi cycle return summary với `errors.length === 0` (mọi
+///     stage idempotent OK).
+///   - `false` khi cycle throw exception NGOÀI lease/DB guard (vd
+///     prisma transaction abort, network).
+///   - Phase 15.8 lưu cả 2 vào cùng 1 row — finalize bằng update khi
+///     cycle xong. Nếu service crash giữa chừng → row remain
+///     `finishedAt=null`, status reader treat = "lastRunAt only".
+///
+/// Rollback: DROP TABLE — bảng độc lập (no FK runtime), không ảnh hưởng
+/// cycle logic. Status endpoint chỉ trả `null` health khi bảng rỗng.
+model LiveOpsCronRunLog {
+  id           String    @id @default(cuid())
+  /// `territory` | `sect-season` | `weekly`.
+  cronKey      String
+  startedAt    DateTime  @default(now())
+  finishedAt   DateTime?
+  /// True khi cycle return clean (errors=[]); false khi throw hoặc có
+  /// `errors[]` non-empty.
+  success      Boolean   @default(false)
+  /// `null` cho cron-driven run; userId cho admin force-run.
+  triggeredBy  String?
+  /// JSON snapshot summary (counts) — không log PII / secret.
+  summaryJson  Json?
+  /// Error message khi `success=false`. Truncated client-side để tránh
+  /// log nổ.
+  errorMessage String?
+
+  @@index([cronKey, finishedAt(sort: Desc)])
+  @@index([cronKey, success, finishedAt(sort: Desc)])
+  @@index([cronKey, startedAt(sort: Desc)])
 }

@@ -2,6 +2,10 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
+  FESTIVAL_GIFT_ITEM_QTY_CAP,
+  FESTIVAL_GIFT_ITEMS_MAX,
+  FESTIVAL_GIFT_LINH_THACH_CAP,
+  FESTIVAL_GIFT_TIEN_NGOC_CAP,
   LIVEOPS_EVENT_TYPE_CAPS,
   LIVEOPS_RUNTIME_SUPPORTED_TYPES,
   validateLiveOpsEventRewardJson,
@@ -56,6 +60,17 @@ const TYPES: ReadonlyArray<LiveOpsScheduledEventType> = [
   'FESTIVAL_GIFT',
 ];
 
+interface RewardFormItemRow {
+  itemKey: string;
+  qty: number;
+}
+
+interface RewardForm {
+  linhThach: number;
+  tienNgoc: number;
+  items: RewardFormItemRow[];
+}
+
 interface CreateForm {
   key: string;
   type: LiveOpsScheduledEventType;
@@ -65,7 +80,17 @@ interface CreateForm {
   endsAt: string;
   multiplier: number | null;
   rewardJson: string;
+  /**
+   * Phase 15.8 — 'form' = form picker (an toàn, validate field-by-field);
+   * 'raw' = textarea JSON (power-user / paste from doc). Default form.
+   */
+  rewardMode: 'form' | 'raw';
+  rewardForm: RewardForm;
   initialStatus: 'DRAFT' | 'SCHEDULED';
+}
+
+function makeEmptyRewardForm(): RewardForm {
+  return { linhThach: 0, tienNgoc: 0, items: [] };
 }
 
 const form = ref<CreateForm>({
@@ -77,8 +102,60 @@ const form = ref<CreateForm>({
   endsAt: '',
   multiplier: 1.5,
   rewardJson: '',
+  rewardMode: 'form',
+  rewardForm: makeEmptyRewardForm(),
   initialStatus: 'SCHEDULED',
 });
+
+/**
+ * Phase 15.8 — build rewardJson object từ form picker. Empty fields bỏ
+ * qua (không emit linhThach=0 / tienNgoc=0). Items với itemKey rỗng
+ * bỏ qua. Trả về object được
+ * `validateLiveOpsEventRewardJson` chia sẻ xác nhận.
+ */
+function buildRewardJsonFromForm(
+  r: RewardForm,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (r.linhThach > 0) out.linhThach = Math.trunc(r.linhThach);
+  if (r.tienNgoc > 0) out.tienNgoc = Math.trunc(r.tienNgoc);
+  const items = r.items
+    .filter((it) => it.itemKey.trim().length > 0)
+    .map((it) => ({
+      itemKey: it.itemKey.trim(),
+      qty: Math.trunc(it.qty),
+    }));
+  if (items.length > 0) out.items = items;
+  return out;
+}
+
+function addRewardItem(): void {
+  if (form.value.rewardForm.items.length >= FESTIVAL_GIFT_ITEMS_MAX) return;
+  form.value.rewardForm.items.push({ itemKey: '', qty: 1 });
+}
+
+function removeRewardItem(index: number): void {
+  form.value.rewardForm.items.splice(index, 1);
+}
+
+const rewardFormPreview = computed(() => {
+  try {
+    return JSON.stringify(
+      buildRewardJsonFromForm(form.value.rewardForm),
+      null,
+      2,
+    );
+  } catch {
+    return '{}';
+  }
+});
+
+const REWARD_CAPS = {
+  linhThach: FESTIVAL_GIFT_LINH_THACH_CAP,
+  tienNgoc: FESTIVAL_GIFT_TIEN_NGOC_CAP,
+  itemsMax: FESTIVAL_GIFT_ITEMS_MAX,
+  itemQty: FESTIVAL_GIFT_ITEM_QTY_CAP,
+} as const;
 
 const isFestival = computed(() => form.value.type === 'FESTIVAL_GIFT');
 
@@ -155,24 +232,28 @@ async function onCreate(): Promise<void> {
 
     const config: AdminLiveOpsEventCreateInput['configJson'] = {};
     if (isFestival.value) {
-      if (form.value.rewardJson.trim().length === 0) {
-        toast.push({
-          type: 'error',
-          text: t('adminLiveOpsEvents.errors.INVALID_INPUT'),
-        });
-        submittingCreate.value = false;
-        return;
-      }
       let parsed: Record<string, unknown>;
-      try {
-        parsed = JSON.parse(form.value.rewardJson) as Record<string, unknown>;
-      } catch {
-        toast.push({
-          type: 'error',
-          text: t('adminLiveOpsEvents.errors.INVALID_INPUT'),
-        });
-        submittingCreate.value = false;
-        return;
+      if (form.value.rewardMode === 'form') {
+        parsed = buildRewardJsonFromForm(form.value.rewardForm);
+      } else {
+        if (form.value.rewardJson.trim().length === 0) {
+          toast.push({
+            type: 'error',
+            text: t('adminLiveOpsEvents.errors.INVALID_INPUT'),
+          });
+          submittingCreate.value = false;
+          return;
+        }
+        try {
+          parsed = JSON.parse(form.value.rewardJson) as Record<string, unknown>;
+        } catch {
+          toast.push({
+            type: 'error',
+            text: t('adminLiveOpsEvents.errors.INVALID_INPUT'),
+          });
+          submittingCreate.value = false;
+          return;
+        }
       }
       // Phase 15.3.A — mirror shared validation FE-side để báo lỗi sớm
       // (BE vẫn validate lại — defense-in-depth).
@@ -217,6 +298,8 @@ async function onCreate(): Promise<void> {
     form.value.key = '';
     form.value.title = '';
     form.value.description = '';
+    form.value.rewardJson = '';
+    form.value.rewardForm = makeEmptyRewardForm();
     await refresh();
   } catch (e) {
     const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
@@ -464,19 +547,133 @@ async function onRecompute(): Promise<void> {
               {{ t('adminLiveOpsEvents.form.runtimeNotWiredWarn') }}
             </span>
           </label>
-          <label v-else class="text-xs text-ink-300 flex flex-col gap-1 md:col-span-2">
-            {{ t('adminLiveOpsEvents.form.rewardJson') }}
-            <textarea
-              v-model="form.rewardJson"
-              rows="4"
-              class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50 font-mono text-[11px]"
-              :placeholder="`{&quot;linhThach&quot;: 100, &quot;tienNgoc&quot;: 5, &quot;items&quot;: [{&quot;itemKey&quot;: &quot;...&quot;, &quot;qty&quot;: 1}]}`"
-              data-testid="admin-liveops-events-form-reward-json"
-            />
-            <span class="text-[10px] text-ink-300">
-              {{ t('adminLiveOpsEvents.form.rewardJsonHelp') }}
-            </span>
-          </label>
+          <div v-else class="md:col-span-2 flex flex-col gap-2">
+            <div class="flex items-center gap-3 text-xs text-ink-300">
+              <span>{{ t('adminLiveOpsEvents.form.rewardMode') }}</span>
+              <label class="inline-flex items-center gap-1">
+                <input
+                  v-model="form.rewardMode"
+                  type="radio"
+                  value="form"
+                  data-testid="admin-liveops-events-form-reward-mode-form"
+                />
+                {{ t('adminLiveOpsEvents.form.rewardModeForm') }}
+              </label>
+              <label class="inline-flex items-center gap-1">
+                <input
+                  v-model="form.rewardMode"
+                  type="radio"
+                  value="raw"
+                  data-testid="admin-liveops-events-form-reward-mode-raw"
+                />
+                {{ t('adminLiveOpsEvents.form.rewardModeRaw') }}
+              </label>
+            </div>
+
+            <div
+              v-if="form.rewardMode === 'form'"
+              class="rounded border border-slate-700/40 p-2 flex flex-col gap-2"
+              data-testid="admin-liveops-events-form-reward-picker"
+            >
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <label class="text-xs text-ink-300 flex flex-col gap-1">
+                  {{ t('adminLiveOpsEvents.form.linhThachWithCap', { cap: REWARD_CAPS.linhThach }) }}
+                  <input
+                    v-model.number="form.rewardForm.linhThach"
+                    type="number"
+                    min="0"
+                    :max="REWARD_CAPS.linhThach"
+                    step="1"
+                    class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50"
+                    data-testid="admin-liveops-events-form-reward-linhthach"
+                  />
+                </label>
+                <label class="text-xs text-ink-300 flex flex-col gap-1">
+                  {{ t('adminLiveOpsEvents.form.tienNgocWithCap', { cap: REWARD_CAPS.tienNgoc }) }}
+                  <input
+                    v-model.number="form.rewardForm.tienNgoc"
+                    type="number"
+                    min="0"
+                    :max="REWARD_CAPS.tienNgoc"
+                    step="1"
+                    class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50"
+                    data-testid="admin-liveops-events-form-reward-tienngoc"
+                  />
+                </label>
+              </div>
+              <div class="flex flex-col gap-2">
+                <div class="flex items-center justify-between text-xs text-ink-300">
+                  <span>
+                    {{ t('adminLiveOpsEvents.form.rewardItemsWithCap', { cap: REWARD_CAPS.itemsMax }) }}
+                  </span>
+                  <button
+                    type="button"
+                    class="px-2 py-1 text-[11px] rounded bg-slate-700 text-ink-50 hover:bg-slate-600 disabled:opacity-50"
+                    :disabled="form.rewardForm.items.length >= REWARD_CAPS.itemsMax"
+                    data-testid="admin-liveops-events-form-reward-add-item"
+                    @click="addRewardItem"
+                  >
+                    {{ t('adminLiveOpsEvents.form.rewardAddItem') }}
+                  </button>
+                </div>
+                <div
+                  v-for="(it, i) in form.rewardForm.items"
+                  :key="`reward-item-${i}`"
+                  class="grid grid-cols-[1fr_auto_auto] gap-2"
+                  :data-testid="`admin-liveops-events-form-reward-item-${i}`"
+                >
+                  <input
+                    v-model="it.itemKey"
+                    type="text"
+                    class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50 text-xs"
+                    :placeholder="t('adminLiveOpsEvents.form.rewardItemKey')"
+                    :data-testid="`admin-liveops-events-form-reward-item-key-${i}`"
+                  />
+                  <input
+                    v-model.number="it.qty"
+                    type="number"
+                    min="1"
+                    :max="REWARD_CAPS.itemQty"
+                    step="1"
+                    class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50 text-xs w-24"
+                    :data-testid="`admin-liveops-events-form-reward-item-qty-${i}`"
+                  />
+                  <button
+                    type="button"
+                    class="px-2 py-1 text-[11px] rounded bg-rose-700 text-ink-50 hover:bg-rose-600"
+                    :data-testid="`admin-liveops-events-form-reward-item-remove-${i}`"
+                    @click="removeRewardItem(i)"
+                  >
+                    {{ t('adminLiveOpsEvents.form.rewardRemoveItem') }}
+                  </button>
+                </div>
+              </div>
+              <div class="text-[10px] text-ink-300 flex flex-col gap-1">
+                <span>{{ t('adminLiveOpsEvents.form.rewardPreview') }}</span>
+                <pre
+                  class="font-mono whitespace-pre-wrap bg-slate-900/40 border border-slate-700/40 rounded p-2"
+                  data-testid="admin-liveops-events-form-reward-preview"
+                >{{ rewardFormPreview }}</pre>
+              </div>
+            </div>
+
+            <label
+              v-else
+              class="text-xs text-ink-300 flex flex-col gap-1"
+            >
+              {{ t('adminLiveOpsEvents.form.rewardJson') }}
+              <textarea
+                v-model="form.rewardJson"
+                rows="4"
+                class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-ink-50 font-mono text-[11px]"
+                :placeholder="`{&quot;linhThach&quot;: 100, &quot;tienNgoc&quot;: 5, &quot;items&quot;: [{&quot;itemKey&quot;: &quot;...&quot;, &quot;qty&quot;: 1}]}`"
+                data-testid="admin-liveops-events-form-reward-json"
+              />
+              <span class="text-[10px] text-ink-300">
+                {{ t('adminLiveOpsEvents.form.rewardJsonHelp') }}
+              </span>
+            </label>
+          </div>
           <label class="text-xs text-ink-300 flex flex-col gap-1">
             {{ t('adminLiveOpsEvents.form.initialStatus') }}
             <select

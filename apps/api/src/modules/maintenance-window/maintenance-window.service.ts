@@ -42,7 +42,9 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   MAINTENANCE_BLOCK_ERROR_CODE,
+  buildMaintenanceBroadcastPayload,
   type MaintenanceBlockErrorPayload,
+  type MaintenanceBroadcastPayload,
   type MaintenanceSeverity,
   type MaintenanceTarget,
   type MaintenanceValidationCode,
@@ -57,6 +59,7 @@ import {
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { ConfigVersionService } from '../config-version/config-version.service';
+import { MaintenanceBroadcastService } from './maintenance-broadcast.service';
 
 // ---------------------------------------------------------------------------
 // Errors
@@ -233,7 +236,46 @@ export class MaintenanceWindowService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly configVersion?: ConfigVersionService,
+    @Optional() private readonly broadcastService?: MaintenanceBroadcastService,
   ) {}
+
+  /**
+   * Phase 15.8 — Build payload public-safe + broadcast qua WS. Fail-safe
+   * (broadcast service tự catch error log warn). KHÔNG throw — DB
+   * transition không bị rollback nếu broadcast fail.
+   *
+   * `now` truyền vào để giữ serverTime nhất quán với caller (vd cron tick
+   * truyền `now` cố định cho cả batch transitions).
+   */
+  private emitBroadcast(
+    row: {
+      key: string;
+      status: MaintenanceWindowStatus;
+      severity: MaintenanceSeverity;
+      target: MaintenanceTarget;
+      titleVi: string;
+      titleEn: string | null;
+      messageVi: string;
+      messageEn: string | null;
+      startsAt: Date;
+      endsAt: Date;
+      allowAdminBypass: boolean;
+    },
+    now: Date,
+  ): MaintenanceBroadcastPayload | null {
+    if (!this.broadcastService) return null;
+    let payload: MaintenanceBroadcastPayload;
+    try {
+      payload = buildMaintenanceBroadcastPayload(row, now);
+    } catch (e) {
+      this.logger.warn(
+        `buildMaintenanceBroadcastPayload threw key=${row.key} status=${row.status}: ${(e as Error).message}`,
+      );
+      return null;
+    }
+    this.broadcastService.broadcast(payload);
+    return payload;
+  }
 
   // -------------------------------------------------------------------------
   // Read
@@ -419,6 +461,32 @@ export class MaintenanceWindowService {
       afterJson: snapshotMaintenanceWindow(view),
       adminId: updated.createdByAdminId ?? null,
     });
+    // Phase 15.8 — broadcast disable transition. Chỉ broadcast khi window
+    // trước đó đã từng broadcast (SCHEDULED không leak thông tin
+    // DRAFT/SCHEDULED-only ra public; nhưng player có thể đã nhận ACTIVE
+    // overlay và cần biết DISABLED để gỡ overlay).
+    if (
+      existing.status === 'ACTIVE' ||
+      existing.status === 'SCHEDULED' ||
+      existing.status === 'DRAFT'
+    ) {
+      this.emitBroadcast(
+        {
+          key: updated.key,
+          status: 'DISABLED',
+          severity: updated.severity as MaintenanceSeverity,
+          target: updated.target as MaintenanceTarget,
+          titleVi: updated.titleVi,
+          titleEn: updated.titleEn,
+          messageVi: updated.messageVi,
+          messageEn: updated.messageEn,
+          startsAt: updated.startsAt,
+          endsAt: updated.endsAt,
+          allowAdminBypass: updated.allowAdminBypass,
+        },
+        new Date(),
+      );
+    }
     return view;
   }
 
@@ -508,6 +576,26 @@ export class MaintenanceWindowService {
             adminId: null,
           });
         }
+        // Phase 15.8 — broadcast SCHEDULED→ACTIVE transition. KHÔNG block
+        // DB transition; broadcast service catch internal error.
+        for (const r of winners) {
+          this.emitBroadcast(
+            {
+              key: r.key,
+              status: 'ACTIVE',
+              severity: r.severity as MaintenanceSeverity,
+              target: r.target as MaintenanceTarget,
+              titleVi: r.titleVi,
+              titleEn: r.titleEn,
+              messageVi: r.messageVi,
+              messageEn: r.messageEn,
+              startsAt: r.startsAt,
+              endsAt: r.endsAt,
+              allowAdminBypass: r.allowAdminBypass,
+            },
+            now,
+          );
+        }
       }
     }
     void activatedWinnerIds;
@@ -556,6 +644,25 @@ export class MaintenanceWindowService {
             ),
             adminId: null,
           });
+        }
+        // Phase 15.8 — broadcast ACTIVE→ENDED transition.
+        for (const r of winners) {
+          this.emitBroadcast(
+            {
+              key: r.key,
+              status: 'ENDED',
+              severity: r.severity as MaintenanceSeverity,
+              target: r.target as MaintenanceTarget,
+              titleVi: r.titleVi,
+              titleEn: r.titleEn,
+              messageVi: r.messageVi,
+              messageEn: r.messageEn,
+              startsAt: r.startsAt,
+              endsAt: r.endsAt,
+              allowAdminBypass: r.allowAdminBypass,
+            },
+            now,
+          );
         }
       }
     }

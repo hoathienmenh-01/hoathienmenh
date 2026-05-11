@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import {
   SECT_SEASONS,
   previousTerritoryPeriodKey,
@@ -10,6 +11,24 @@ import { TerritorySettlementService } from '../territory/territory-settlement.se
 import { SectSeasonHistoryService } from '../sect-season/sect-season-history.service';
 import { SectSeasonRewardService } from '../sect-season/sect-season-reward.service';
 import { LiveOpsCronLease } from './liveops-cron.lease';
+
+/**
+ * Phase 15.8 — Cron run log keys (`LiveOpsCronRunLog.cronKey`).
+ *
+ * String literals — KHÔNG enum prisma để không cần migration khi thêm
+ * cron mới. Status reader filter theo các giá trị này.
+ */
+export const LIVEOPS_CRON_KEY_TERRITORY = 'territory' as const;
+export const LIVEOPS_CRON_KEY_SECT_SEASON = 'sect-season' as const;
+export const LIVEOPS_CRON_KEY_WEEKLY = 'weekly' as const;
+
+export type LiveOpsCronKey =
+  | typeof LIVEOPS_CRON_KEY_TERRITORY
+  | typeof LIVEOPS_CRON_KEY_SECT_SEASON
+  | typeof LIVEOPS_CRON_KEY_WEEKLY;
+
+/** Cap error message length để tránh log nổ (vd stack trace dài). */
+const MAX_ERROR_MESSAGE_LEN = 1024;
 
 /**
  * Phase 13.2.D + 14.0.F — Live Ops cron orchestration service.
@@ -116,6 +135,71 @@ export class LiveOpsCronService {
   ) {}
 
   /**
+   * Phase 15.8 — Insert 1 `LiveOpsCronRunLog` row đánh dấu cycle bắt
+   * đầu. Trả `id` để caller update khi cycle xong. Fail-soft: nếu DB
+   * insert fail (vd table chưa tồn tại pre-migration), trả `null` và
+   * skip update — KHÔNG block cycle thực sự.
+   */
+  private async openRunLog(
+    cronKey: LiveOpsCronKey,
+    triggeredBy: string | null,
+  ): Promise<string | null> {
+    try {
+      const row = await this.prisma.liveOpsCronRunLog.create({
+        data: {
+          cronKey,
+          triggeredBy,
+          success: false,
+        },
+        select: { id: true },
+      });
+      return row.id;
+    } catch (e) {
+      this.logger.warn(
+        `liveops cron run log open failed cron=${cronKey} err=${(e as Error).message}`,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Phase 15.8 — Finalize run log row với `finishedAt` + `success` +
+   * snapshot summary JSON + optional `errorMessage`. Fail-soft.
+   */
+  private async closeRunLog(
+    id: string | null,
+    payload: {
+      success: boolean;
+      summary?: unknown;
+      errorMessage?: string | null;
+    },
+  ): Promise<void> {
+    if (!id) return;
+    try {
+      const summaryJson =
+        payload.summary === undefined
+          ? Prisma.JsonNull
+          : (payload.summary as Prisma.InputJsonValue);
+      const errMsg = payload.errorMessage
+        ? payload.errorMessage.slice(0, MAX_ERROR_MESSAGE_LEN)
+        : null;
+      await this.prisma.liveOpsCronRunLog.update({
+        where: { id },
+        data: {
+          finishedAt: new Date(),
+          success: payload.success,
+          summaryJson,
+          errorMessage: errMsg,
+        },
+      });
+    } catch (e) {
+      this.logger.warn(
+        `liveops cron run log close failed id=${id} err=${(e as Error).message}`,
+      );
+    }
+  }
+
+  /**
    * Chạy 1 chu kỳ tuần đầy đủ: territory cycle + sect season snapshot.
    *
    * Lease pattern:
@@ -156,6 +240,15 @@ export class LiveOpsCronService {
       outerOwner = r.owner;
     }
 
+    // Phase 15.8 — composite cron run log (separate from inner
+    // territory/sect-season logs). Reflects "weekly orchestration" health
+    // của admin/cron force-run. KHÔNG ghi 2 row khi inner cycle log vì
+    // cần separate cron key cho status reader.
+    const runId = await this.openRunLog(
+      LIVEOPS_CRON_KEY_WEEKLY,
+      triggeredBy,
+    );
+
     try {
       const territory = await this.runTerritoryCycle(opts, leaseTtlSec);
       const sectSeason = await this.runSectSeasonCycle(opts, leaseTtlSec);
@@ -165,7 +258,7 @@ export class LiveOpsCronService {
           `decaySkipped=${territory.territoryDecaySkipped} mails=${territory.rewardMailsCreated} ` +
           `seasonSnap=${sectSeason.seasonSnapshotsCreated} (triggeredBy=${triggeredBy ?? 'cron'})`,
       );
-      return {
+      const summary: WeeklyCycleSummary = {
         startedAt: startedAt.toISOString(),
         finishedAt: finishedAt.toISOString(),
         skippedAlreadyDone: false,
@@ -173,6 +266,31 @@ export class LiveOpsCronService {
         sectSeason,
         triggeredBy,
       };
+      const allErrors =
+        territory.errors.length + sectSeason.errors.length;
+      await this.closeRunLog(runId, {
+        success: allErrors === 0,
+        summary: {
+          periodKey: territory.periodKey,
+          territorySettled: territory.territorySettled,
+          rewardMailsCreated: territory.rewardMailsCreated,
+          seasonSnapshotsCreated: sectSeason.seasonSnapshotsCreated,
+          championMailsCreated: sectSeason.championMailsCreated,
+          mvpMailsCreated: sectSeason.mvpMailsCreated,
+          errors: allErrors,
+        },
+        errorMessage:
+          allErrors > 0
+            ? `partial: territoryErrors=${territory.errors.length} sectSeasonErrors=${sectSeason.errors.length}`
+            : null,
+      });
+      return summary;
+    } catch (e) {
+      await this.closeRunLog(runId, {
+        success: false,
+        errorMessage: (e as Error).message,
+      });
+      throw e;
     } finally {
       if (outerOwner) {
         await this.lease.release(WEEKLY_LEASE_KEY, outerOwner);
@@ -216,6 +334,13 @@ export class LiveOpsCronService {
       `runTerritoryCycle start period=${periodKey} (triggeredBy=${triggeredBy ?? 'cron'})`,
     );
 
+    // Phase 15.8 — open cron run log. Fail-soft (id=null khi DB unavailable).
+    const runId = await this.openRunLog(
+      LIVEOPS_CRON_KEY_TERRITORY,
+      triggeredBy,
+    );
+    let cycleFatalError: Error | null = null;
+
     try {
       try {
         const settleRes = await this.settlement.settleAllRegions(periodKey, {
@@ -254,6 +379,10 @@ export class LiveOpsCronService {
         this.logger.error(`territory reward grant failed: ${message}`);
         errors.push({ stage: 'reward', message });
       }
+    } catch (e) {
+      // Fatal (non-stage) error — rơi ngoài 3 stage try/catch fail-soft.
+      // Vẫn finalize log row trước khi rethrow.
+      cycleFatalError = e as Error;
     } finally {
       if (leaseOwner) {
         await this.lease.release(TERRITORY_LEASE_KEY, leaseOwner);
@@ -266,7 +395,7 @@ export class LiveOpsCronService {
         `alreadyGranted=${mailsAlreadyGranted} errors=${errors.length}`,
     );
 
-    return {
+    const summary: TerritoryCycleSummary = {
       periodKey,
       territorySettled: settled,
       territorySkipped: skippedRegions,
@@ -276,6 +405,30 @@ export class LiveOpsCronService {
       rewardSkippedAlreadyGranted: mailsAlreadyGranted,
       errors,
     };
+
+    await this.closeRunLog(runId, {
+      success: cycleFatalError === null && errors.length === 0,
+      summary: {
+        periodKey,
+        territorySettled: settled,
+        territorySkipped: skippedRegions,
+        territoryDecaySkipped: decaySkipped,
+        territoryDecayDelta: decayDelta,
+        rewardMailsCreated: mailsCreated,
+        rewardSkippedAlreadyGranted: mailsAlreadyGranted,
+        errors: errors.length,
+      },
+      errorMessage: cycleFatalError
+        ? cycleFatalError.message
+        : errors.length > 0
+          ? errors
+              .map((e) => `${e.stage}: ${e.message}`)
+              .join(' | ')
+          : null,
+    });
+
+    if (cycleFatalError) throw cycleFatalError;
+    return summary;
   }
 
   /**
@@ -314,6 +467,13 @@ export class LiveOpsCronService {
     this.logger.log(
       `runSectSeasonCycle start now=${now.toISOString()} (triggeredBy=${triggeredBy ?? 'cron'})`,
     );
+
+    // Phase 15.8 — open cron run log. Fail-soft.
+    const runId = await this.openRunLog(
+      LIVEOPS_CRON_KEY_SECT_SEASON,
+      triggeredBy,
+    );
+    let cycleFatalError: Error | null = null;
 
     try {
       // Catalog ổn định ~10 season → linear scan OK.
@@ -367,6 +527,8 @@ export class LiveOpsCronService {
           errors.push({ stage: 'reward', seasonKey: s.key, message });
         }
       }
+    } catch (e) {
+      cycleFatalError = e as Error;
     } finally {
       if (leaseOwner) {
         await this.lease.release(SECT_SEASON_LEASE_KEY, leaseOwner);
@@ -381,7 +543,7 @@ export class LiveOpsCronService {
         `errors=${errors.length}`,
     );
 
-    return {
+    const summary: SectSeasonCycleSummary = {
       seasonSnapshotsCreated: created,
       seasonSnapshotsSkipped: alreadyExisted,
       seasonsProcessed: processed,
@@ -391,6 +553,30 @@ export class LiveOpsCronService {
       mvpAlreadyGranted,
       errors,
     };
+
+    await this.closeRunLog(runId, {
+      success: cycleFatalError === null && errors.length === 0,
+      summary: {
+        seasonSnapshotsCreated: created,
+        seasonSnapshotsSkipped: alreadyExisted,
+        seasonsProcessed: processed.length,
+        championMailsCreated,
+        championAlreadyGranted,
+        mvpMailsCreated,
+        mvpAlreadyGranted,
+        errors: errors.length,
+      },
+      errorMessage: cycleFatalError
+        ? cycleFatalError.message
+        : errors.length > 0
+          ? errors
+              .map((e) => `${e.stage}:${e.seasonKey}: ${e.message}`)
+              .join(' | ')
+          : null,
+    });
+
+    if (cycleFatalError) throw cycleFatalError;
+    return summary;
   }
 
   private emptyTerritorySummary(periodKey: string): TerritoryCycleSummary {

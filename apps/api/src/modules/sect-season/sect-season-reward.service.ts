@@ -65,6 +65,12 @@ export interface SectSeasonRewardGrantSummary {
   championAlreadyGranted: number;
   /** Số member của champion sect tại thời điểm grant (sau cap). */
   championMemberCount: number;
+  /**
+   * Phase 15.8 — True nếu champion grant dùng membership snapshot
+   * (`SectSeasonChampionSnapshot`). False nếu fallback current membership
+   * (legacy season pre-15.8 không có snapshot).
+   */
+  championUsedSnapshot: boolean;
   /** Số mail MVP mới tạo (0 hoặc 1). */
   mvpMailsCreated: number;
   /** Số grant MVP đã tồn tại (0 hoặc 1). */
@@ -127,21 +133,51 @@ export class SectSeasonRewardService {
     let championMemberCount = 0;
     let mvpMailsCreated = 0;
     let mvpAlreadyGranted = 0;
+    let championUsedSnapshot = false;
 
     // ── Champion: per-member của sect rank-1 ──
     if (snapshot.championSectId) {
-      const members = await this.prisma.character.findMany({
-        where: { sectId: snapshot.championSectId },
-        select: { id: true },
-        orderBy: { id: 'asc' },
-        take: SECT_SEASON_CHAMPION_MEMBER_CAP,
-      });
-      championMemberCount = members.length;
-      for (const m of members) {
+      // Phase 15.8 — prefer membership snapshot (audit-perfect: grant
+      // dựa trên member tại finalize, không phải current). Fallback
+      // current membership nếu snapshot không tồn tại (legacy season).
+      const champSnapshot =
+        await this.prisma.sectSeasonChampionSnapshot.findUnique({
+          where: {
+            seasonKey_sectId_rank: {
+              seasonKey,
+              sectId: snapshot.championSectId,
+              rank: 1,
+            },
+          },
+          select: { memberCharacterIdsJson: true },
+        });
+
+      let memberIds: string[];
+      if (champSnapshot) {
+        championUsedSnapshot = true;
+        const raw = champSnapshot.memberCharacterIdsJson;
+        memberIds = Array.isArray(raw)
+          ? raw.filter((v): v is string => typeof v === 'string')
+          : [];
+      } else {
+        this.logger.warn(
+          `grantSeasonRewards season=${seasonKey} championMembershipSnapshot missing → fallback current membership (legacy season pre-15.8)`,
+        );
+        const members = await this.prisma.character.findMany({
+          where: { sectId: snapshot.championSectId },
+          select: { id: true },
+          orderBy: { id: 'asc' },
+          take: SECT_SEASON_CHAMPION_MEMBER_CAP,
+        });
+        memberIds = members.map((m) => m.id);
+      }
+
+      championMemberCount = memberIds.length;
+      for (const characterId of memberIds) {
         const r = await this.grantOne({
           seasonKey,
           rewardType: 'CHAMPION',
-          characterId: m.id,
+          characterId,
           sectId: snapshot.championSectId,
           rewardDef: SECT_SEASON_CHAMPION_REWARD,
           triggeredBy,
@@ -178,6 +214,7 @@ export class SectSeasonRewardService {
       championMailsCreated,
       championAlreadyGranted,
       championMemberCount,
+      championUsedSnapshot,
       mvpMailsCreated,
       mvpAlreadyGranted,
       dryRun,

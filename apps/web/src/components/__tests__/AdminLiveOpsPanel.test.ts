@@ -22,6 +22,9 @@ const adminSpawnBossMock = vi.fn();
 const adminSectWarSnapshotMock = vi.fn();
 // Phase 13.2.D + 14.0.F — Weekly cycle force-run mock.
 const adminLiveOpsRunWeeklyCycleMock = vi.fn();
+// Phase 15.8 — Cron health status mocks.
+const adminTerritoryCronStatusMock = vi.fn();
+const adminSectSeasonCronStatusMock = vi.fn();
 
 vi.mock('@/api/admin', () => ({
   adminLiveOpsStatus: (...a: unknown[]) => adminLiveOpsStatusMock(...a),
@@ -33,6 +36,10 @@ vi.mock('@/api/admin', () => ({
   adminSectWarSnapshot: (...a: unknown[]) => adminSectWarSnapshotMock(...a),
   adminLiveOpsRunWeeklyCycle: (...a: unknown[]) =>
     adminLiveOpsRunWeeklyCycleMock(...a),
+  adminTerritoryCronStatus: (...a: unknown[]) =>
+    adminTerritoryCronStatusMock(...a),
+  adminSectSeasonCronStatus: (...a: unknown[]) =>
+    adminSectSeasonCronStatusMock(...a),
 }));
 
 import AdminLiveOpsPanel from '@/components/AdminLiveOpsPanel.vue';
@@ -128,6 +135,16 @@ const i18n = createI18n({
           errorsLabel: 'Errors',
           toast: { ok: 'Weekly cycle done.' },
         },
+        cronHealth: {
+          title: 'Cron Health',
+          refresh: 'Refresh',
+          territoryLabel: 'Territory cron',
+          sectSeasonLabel: 'Sect Season cron',
+          lastSuccess: 'Last success: {at}',
+          lastError: 'Last error: {at}',
+          never: 'never',
+          error: 'Load failed ({code}).',
+        },
         events: {
           ev1: { title: 'Daily Login Reset' },
         },
@@ -198,6 +215,45 @@ describe('AdminLiveOpsPanel', () => {
     adminLiveOpsToggleMock.mockReset();
     adminSectWarStatusMock.mockReset();
     adminSectWarRecalculateMock.mockReset();
+    adminSpawnBossMock.mockReset();
+    adminSectWarSnapshotMock.mockReset();
+    adminLiveOpsRunWeeklyCycleMock.mockReset();
+    // Phase 15.8 — default cron health stubs (DISABLED to avoid noise).
+    adminTerritoryCronStatusMock.mockReset();
+    adminSectSeasonCronStatusMock.mockReset();
+    adminTerritoryCronStatusMock.mockResolvedValue({
+      enabled: false,
+      cron: '5 0 * * 1',
+      timezone: 'Asia/Ho_Chi_Minh',
+      previousPeriodKey: '2030-W01',
+      lastSettlement: null,
+      lastDecay: null,
+      lastReward: null,
+      health: {
+        status: 'DISABLED',
+        lastRunAt: null,
+        lastSuccessAt: null,
+        lastErrorAt: null,
+        staleReason: null,
+        nextExpectedRunAt: null,
+      },
+    });
+    adminSectSeasonCronStatusMock.mockResolvedValue({
+      enabled: false,
+      cron: '15 0 * * *',
+      timezone: 'Asia/Ho_Chi_Minh',
+      lastSnapshot: null,
+      lastChampionGrant: null,
+      lastMvpGrant: null,
+      health: {
+        status: 'DISABLED',
+        lastRunAt: null,
+        lastSuccessAt: null,
+        lastErrorAt: null,
+        staleReason: null,
+        nextExpectedRunAt: null,
+      },
+    });
     // Default confirm() = true để toggle/recalc đi qua confirm prompt.
     vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
@@ -501,5 +557,93 @@ describe('AdminLiveOpsPanel', () => {
     expect(w.find('[data-test="admin-liveops-panel"]').exists()).toBe(true);
     // Summary KHÔNG render khi error.
     expect(w.find('[data-test="admin-liveops-weekly-summary"]').exists()).toBe(false);
+  });
+
+  // Phase 15.8 — Cron health badges.
+  it('cron health: render OK/STALE/DEGRADED badges + stale reason', async () => {
+    adminLiveOpsStatusMock.mockResolvedValueOnce(SAMPLE_STATUS);
+    adminSectWarStatusMock.mockResolvedValueOnce(SAMPLE_SECTWAR);
+    adminTerritoryCronStatusMock.mockReset();
+    adminTerritoryCronStatusMock.mockResolvedValueOnce({
+      enabled: true,
+      cron: '5 0 * * 1',
+      timezone: 'Asia/Ho_Chi_Minh',
+      previousPeriodKey: '2030-W01',
+      lastSettlement: null,
+      lastDecay: null,
+      lastReward: null,
+      health: {
+        status: 'OK',
+        lastRunAt: '2030-01-01T00:00:00.000Z',
+        lastSuccessAt: '2030-01-01T00:00:00.000Z',
+        lastErrorAt: null,
+        staleReason: null,
+        nextExpectedRunAt: null,
+      },
+    });
+    adminSectSeasonCronStatusMock.mockReset();
+    adminSectSeasonCronStatusMock.mockResolvedValueOnce({
+      enabled: true,
+      cron: '15 0 * * *',
+      timezone: 'Asia/Ho_Chi_Minh',
+      lastSnapshot: null,
+      lastChampionGrant: null,
+      lastMvpGrant: null,
+      health: {
+        status: 'STALE',
+        lastRunAt: '2025-01-01T00:00:00.000Z',
+        lastSuccessAt: '2025-01-01T00:00:00.000Z',
+        lastErrorAt: null,
+        staleReason: 'sect-season cron last success >2 days ago',
+        nextExpectedRunAt: null,
+      },
+    });
+    const w = mountPanel();
+    await flushPromises();
+
+    const tBadge = w.find('[data-test="admin-liveops-cron-territory-badge"]');
+    expect(tBadge.exists()).toBe(true);
+    expect(tBadge.text()).toBe('OK');
+
+    const sBadge = w.find('[data-test="admin-liveops-cron-sect-season-badge"]');
+    expect(sBadge.exists()).toBe(true);
+    expect(sBadge.text()).toBe('STALE');
+    expect(
+      w.find('[data-test="admin-liveops-cron-sect-season-reason"]').text(),
+    ).toContain('>2 days ago');
+  });
+
+  it('cron health: status load fail → error placeholder, panel KHÔNG crash', async () => {
+    adminLiveOpsStatusMock.mockResolvedValueOnce(SAMPLE_STATUS);
+    adminSectWarStatusMock.mockResolvedValueOnce(SAMPLE_SECTWAR);
+    adminTerritoryCronStatusMock.mockReset();
+    adminTerritoryCronStatusMock.mockRejectedValueOnce(
+      Object.assign(new Error('UNAUTHORIZED'), { code: 'UNAUTHORIZED' }),
+    );
+    adminSectSeasonCronStatusMock.mockReset();
+    adminSectSeasonCronStatusMock.mockResolvedValueOnce({
+      enabled: false,
+      cron: '15 0 * * *',
+      timezone: 'Asia/Ho_Chi_Minh',
+      lastSnapshot: null,
+      lastChampionGrant: null,
+      lastMvpGrant: null,
+      health: {
+        status: 'DISABLED',
+        lastRunAt: null,
+        lastSuccessAt: null,
+        lastErrorAt: null,
+        staleReason: null,
+        nextExpectedRunAt: null,
+      },
+    });
+    const w = mountPanel();
+    await flushPromises();
+
+    expect(w.find('[data-test="admin-liveops-cron-health-error"]').exists()).toBe(
+      true,
+    );
+    // Panel still rendered (no crash).
+    expect(w.find('[data-test="admin-liveops-panel"]').exists()).toBe(true);
   });
 });
