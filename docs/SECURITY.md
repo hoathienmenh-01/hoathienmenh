@@ -379,6 +379,75 @@ Admin operations playbook (run scan / ack / resolve / handle CRITICAL): [`RUNBOO
 - `apps/api/src/modules/admin-anticheat/admin-gameplay-anticheat.controller.test.ts` (17 tests): RBAC ADMIN/MOD/PLAYER, audit log, filter validation, limit clamp ≤200, note cap 1000ch, idempotent ack/resolve.
 - `apps/web/src/components/__tests__/AdminGameplayAntiCheatPanel.test.ts` (9 tests): summary cards, filter, run scan confirm, ack/resolve confirm + note, loading/empty/error, i18n vi/en parity.
 
+## 16.B Market Trade Abuse Hardening (Phase 16.4)
+
+Detection-first, guard-light lớp anti-abuse cho market trade flow. Bổ sung cho Phase 16.6 Market Price Band (input gate reject listing post ngoài rarity band) bằng cách quan sát **pattern** sau khi listing/trade commit thành công: price extreme within-band, repeated buyer/seller pair, listing spam, market volume spike, unknown reference price.
+
+### Mục tiêu
+
+- Sớm flag hành vi nghi vấn market (RMT dump farm cheap-list, alt-account funnel, bot listing spam, slow-drip whale funnel) để admin review.
+- KHÔNG thay thế Phase 16.6 Price Band (vẫn áp ở input gate). KHÔNG thay thế Phase 16.3 Gameplay Anti-cheat (per-module gameplay) hay Phase 16.6 Economy Anti-cheat (dòng tiền tổng thể).
+- KHÔNG block giao dịch bình thường ngay cả khi WARN/CRITICAL — đặc thù market, false-positive cao hơn cheating; người dùng vẫn được mua/bán, admin xem panel xử lý sau.
+
+### Models
+
+- `MarketTradeAnomaly` (`apps/api/prisma/schema.prisma`): `id`, `type` (6-enum), `severity` (`INFO`/`WARN`/`CRITICAL`), `status` (`OPEN`/`ACKNOWLEDGED`/`RESOLVED`), `source` (4-enum `LISTING_CREATE`/`LISTING_BUY`/`SCAN_BATCH`/`OTHER`), `listingId` (`''` cho per-character per-window rule), `sellerCharacterId?`, `buyerCharacterId?`, `itemKey?`, `quantity?`, `unitPrice?` (Decimal), `referencePrice?` (Decimal), `deviationRatio?` (Float), `windowKey`, `detailsJson` (sanitized — KHÔNG raw IP / token / cookie), ack/resolve metadata.
+- Migration `20260801000000_phase_16_4_market_trade_anomaly` (additive only, KHÔNG backfill row cũ, KHÔNG FK — fail-soft trên listing đã xoá).
+- Index: `@@unique([type, listingId, windowKey])` đảm bảo idempotency multi-instance race-safe; 5 secondary index cho admin filter (`severity`, `status`, `type`, `source`, `createdAt`).
+
+### Detection types
+
+Catalog ở `packages/shared/src/market-trade-abuse.ts`. Threshold rationale + bảng cụ thể: xem [`BALANCE_MODEL.md`](./BALANCE_MODEL.md) §11.28.
+
+6 type: `PRICE_EXTREME_LOW`, `PRICE_EXTREME_HIGH`, `REPEATED_BUYER_SELLER_PAIR`, `LISTING_SPAM`, `MARKET_VOLUME_SPIKE`, `UNKNOWN_REFERENCE_PRICE` (INFO).
+
+### Service contract
+
+`MarketTradeAbuseService` (`apps/api/src/modules/admin-market-abuse/market-trade-abuse.service.ts`):
+
+- `scanAll({ now?, windowKey?, windowMs? })` dispatch 6 rule (PRICE_EXTREME_* duyệt listing ACTIVE/SOLD trong window, REPEATED_PAIR + VOLUME duyệt MarketTrade, LISTING_SPAM duyệt Listing per-seller, UNKNOWN_REFERENCE duyệt listing thiếu ItemDef). Mỗi rule wrap try/catch — 1 rule fail KHÔNG phá rule khác (fail-soft per-rule).
+- `recordListingCreate({ listingId })` — hook **post-tx** từ `MarketService.post()`. Classify price band + emit `PRICE_EXTREME_*` / `UNKNOWN_REFERENCE_PRICE` real-time.
+- `recordListingBuy({ tradeId, listingId })` — hook **post-tx** từ `MarketService.buy()`. Classify price band + check REPEATED_PAIR + VOLUME single-trade level.
+- Tất cả hook + scan wrap try/catch ở `MarketService` — detection throw KHÔNG rollback listing/trade.
+- `upsertAnomaly` bắt P2002 (`@@unique([type, listingId, windowKey])`) → `skipped` count (multi-instance race-safe).
+- Summary: `{ totalCreated, totalSkipped, totalErrored, rules[], windowKeysByType, scannedAt }`.
+
+### Admin API surface
+
+Tất cả gắn `@RequireAdmin()` (PLAYER + MOD 403 `ADMIN_ONLY`) + `@RateLimitPolicy('ADMIN_MUTATION')`:
+
+- `GET /admin/market/abuse/summary`
+- `POST /admin/market/abuse/scan` + audit `ADMIN_MARKET_ABUSE_SCAN`
+- `GET /admin/market/abuse/anomalies?severity=&status=&type=&source=&sellerCharacterId=&buyerCharacterId=&itemKey=&from=&to=&limit=`
+- `POST /admin/market/abuse/anomalies/:id/ack` + audit `ADMIN_MARKET_ABUSE_ACK`
+- `POST /admin/market/abuse/anomalies/:id/resolve` (note ≤1000ch) + audit `ADMIN_MARKET_ABUSE_RESOLVE`
+
+Chi tiết request/response: [`API.md`](./API.md) §Admin Market Trade Abuse.
+
+Admin operations playbook (run scan / ack / resolve / handle CRITICAL): [`RUNBOOK.md`](./RUNBOOK.md) §2.34.
+
+### Invariants (test-enforced — `market-trade-abuse.service.test.ts`)
+
+- Scan + hook KHÔNG mutate `Listing` / `MarketTrade` / `CurrencyLedger` / `ItemLedger` / `Character` / `User`. Test assert post-scan rows untouched.
+- Hook `recordListingCreate` / `recordListingBuy` chạy **post-mutation** — `MarketService.post()` + `MarketService.buy()` đã commit transaction trước khi gọi hook. Hook throw KHÔNG ảnh hưởng trade.
+- KHÔNG auto-rollback trade đã commit. KHÔNG auto-refund currency / re-deliver item. KHÔNG block trade tiếp theo.
+- `detailsJson` đã sanitize ở caller — KHÔNG raw IP / token / cookie / refresh hash.
+- `AdminAuditLog` ghi mọi mutation (scan / ack / resolve) — KHÔNG silent fail.
+
+### Cấm
+
+- **KHÔNG auto-ban** dựa trên anomaly. Anomaly là **signal**, không phải bằng chứng. Ban vĩnh viễn vẫn qua admin action explicit.
+- **KHÔNG tự cancel listing / rollback trade / refund** dựa trên anomaly.
+- **KHÔNG tự khoá tài khoản** seller/buyer dựa trên anomaly.
+- **KHÔNG public notify** (mail / chat / WS) — admin team xử lý nội bộ.
+- **KHÔNG gộp** với `EconomyAnomaly` (Phase 16.6 — money flow) hay `GameplayAnomaly` (Phase 16.3 — per-module gameplay) — ba domain phân biệt rõ.
+
+### Test coverage
+
+- `packages/shared/src/market-trade-abuse.test.ts` (26 tests): enum guard (severity/status/type/source/window-span), classify price band 4 ladder, classify count/volume, build windowKey 3 span (1h/24h/7d ISO), estimateItemReferencePrice fallback null + geomean correctness, fail-soft unknown source.
+- `apps/api/src/modules/admin-market-abuse/market-trade-abuse.service.test.ts` (16 tests): empty scan, price band normal/WARN/CRITICAL low+high, repeated pair 24h+7d, listing spam, volume spike, unknown reference, idempotency P2002, detection-only invariants (Listing/CurrencyLedger/ItemLedger untouched), hook real-time vs scanAll consistency.
+- `apps/api/src/modules/admin-market-abuse/admin-market-abuse.controller.test.ts` (18 tests): RBAC ADMIN-only, audit log fan-out, filter validation + limit clamp ≤200, note cap 1000ch, idempotent ack/resolve 404 `ANOMALY_NOT_FOUND_OR_NOT_OPEN` / `ANOMALY_NOT_FOUND_OR_RESOLVED`.
+
 ## 15. Khi phát hiện sự cố
 
 1. Ngắt traffic (reverse proxy 503 hoặc scale 0 instance).

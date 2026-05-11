@@ -588,6 +588,30 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 
 **Admin Anti-cheat Gameplay error codes**: `ADMIN_ONLY`, `INVALID_INPUT`, `ANOMALY_NOT_FOUND_OR_NOT_OPEN`, `ANOMALY_NOT_FOUND_OR_RESOLVED`.
 
+## Admin Market Trade Abuse — `AdminMarketAbuseController` (Phase 16.4)
+
+> Phase 16.4 Market Trade Abuse Hardening. **Detection-first, guard-light** — KHÔNG block giao dịch / KHÔNG auto-cancel listing / KHÔNG auto-rollback trade / KHÔNG auto-refund / KHÔNG khoá tài khoản. Tách bảng `MarketTradeAnomaly` khỏi `EconomyAnomaly` (Phase 16.6) và `GameplayAnomaly` (Phase 16.3) để admin filter sạch theo domain. Tất cả endpoint gắn `@RequireAdmin()`; PLAYER + MOD đều bị reject 403 `ADMIN_ONLY` + `@RateLimitPolicy('ADMIN_MUTATION')`. Mọi POST mutation ghi `AdminAuditLog` (`ADMIN_MARKET_ABUSE_SCAN` / `ADMIN_MARKET_ABUSE_ACK` / `ADMIN_MARKET_ABUSE_RESOLVE`).
+
+| Method | Path | Auth | Mô tả |
+|--------|------|------|-------|
+| GET    | `/admin/market/abuse/summary` | ADMIN | Dashboard cards. Response `{ openCount, openCriticalCount, openWarnCount, openInfoCount, totalCount, latestCreatedAt, latestResolvedAt }`. |
+| POST   | `/admin/market/abuse/scan` | ADMIN | Trigger thủ công `MarketTradeAbuseService.scanAll`. Body `{ windowKey?: string (≤64ch), windowMs?: number (≤ 30 ngày) }` (zod strict). Default windowMs từ rule catalog (1h / 24h / 7d tuỳ type). Idempotent qua `MarketTradeAnomaly @@unique([type, listingId, windowKey])` — re-scan cùng window → count vào `totalSkipped`. Response `MarketScanSummary { totalCreated, totalSkipped, totalErrored, rules: MarketRuleScanResult[], windowKeysByType: Record<MarketAbuseType, string>, scannedAt: string }`. `MarketRuleScanResult = { type, created, skipped, errored, errorMessage }`. Fail-soft per-rule. Audit `ADMIN_MARKET_ABUSE_SCAN`. Errors: 401 `UNAUTHENTICATED`, 403 `ADMIN_ONLY`, 400 `INVALID_INPUT`. |
+| GET    | `/admin/market/abuse/anomalies?severity=&status=&type=&source=&sellerCharacterId=&buyerCharacterId=&itemKey=&from=&to=&limit=` | ADMIN | List anomalies filter (limit default=50, max 200, invalid filter bỏ qua). Validate qua `isMarketAbuseSeverity` / `isMarketAbuseStatus` / `isMarketAbuseType` / `isMarketAbuseSource`. Sort `severity DESC, createdAt DESC`. Response `{ items: AnomalyRowDto[], total, filters: { severities, statuses, types, sources } }`. `AnomalyRowDto = { id, type, severity, status, source, listingId?, sellerCharacterId?, buyerCharacterId?, itemKey?, quantity?, unitPrice?: string \| null (BigInt-as-string), referencePrice?: string \| null, deviationRatio?: number \| null, windowKey, detailsJson, createdAt, updatedAt, acknowledgedAt?, acknowledgedByAdminId?, resolvedAt?, resolvedByAdminId?, resolutionNote? }`. |
+| POST   | `/admin/market/abuse/anomalies/:id/ack` | ADMIN | Chuyển `OPEN → ACKNOWLEDGED` + set `acknowledgedAt` + `acknowledgedByAdminId`. Idempotent: row đã `ACKNOWLEDGED`/`RESOLVED` → 404 `ANOMALY_NOT_FOUND_OR_NOT_OPEN`. Audit `ADMIN_MARKET_ABUSE_ACK`. |
+| POST   | `/admin/market/abuse/anomalies/:id/resolve` | ADMIN | Chuyển `OPEN \| ACKNOWLEDGED → RESOLVED` + set `resolvedAt` + `resolvedByAdminId` + `resolutionNote` (optional, ≤1000ch). Idempotent: row đã `RESOLVED` → 404 `ANOMALY_NOT_FOUND_OR_RESOLVED`. Audit `ADMIN_MARKET_ABUSE_RESOLVE`. Body `{ note?: string (≤1000ch) }` zod strict. |
+
+**Anomaly types** (catalog ở `packages/shared/src/market-trade-abuse.ts`): `PRICE_EXTREME_LOW`, `PRICE_EXTREME_HIGH`, `REPEATED_BUYER_SELLER_PAIR`, `LISTING_SPAM`, `MARKET_VOLUME_SPIKE`, `UNKNOWN_REFERENCE_PRICE` (INFO). Threshold rationale: xem `BALANCE_MODEL.md` §11.28.
+
+**Anomaly sources**: `LISTING_CREATE` (hook real-time `MarketService.post()`), `LISTING_BUY` (hook real-time `MarketService.buy()`), `SCAN_BATCH` (admin scan), `OTHER` (fallback fail-soft cho unknown).
+
+**Window key format** (`buildMarketAbuseWindowKey`): `1h:YYYY-MM-DDTHH` / `24h:YYYY-MM-DD` / `7d:YYYY-Www` (ISO-8601, UTC). Cho rule per-character per-window, `listingId=''` + windowKey scope hash.
+
+**Detection-only invariants**: scan + hook KHÔNG mutate `Listing` / `MarketTrade` / `CurrencyLedger` / `ItemLedger` / `Character` / `User`. Test enforced ở `market-trade-abuse.service.test.ts`. Mọi remediation (cancel listing / refund / ban) phải qua endpoint admin có sẵn — KHÔNG có ở controller này. Listing post bị reject ngoài rarity band vẫn qua Phase 16.6 Price Band ở `MarketService.post()` (HTTP 409 `PRICE_TOO_LOW`/`PRICE_TOO_HIGH` — xem dưới).
+
+**Privacy**: `detailsJson` đã sanitize ở caller — KHÔNG raw IP / token / cookie / refresh hash. Audit `AdminAuditLog` KHÔNG log secret.
+
+**Admin Market Trade Abuse error codes**: `ADMIN_ONLY`, `INVALID_INPUT`, `ANOMALY_NOT_FOUND_OR_NOT_OPEN`, `ANOMALY_NOT_FOUND_OR_RESOLVED`.
+
 ## Market — Phase 16.6 Price Band reject codes
 
 > Khi listing post (`POST /market/listings`) có `pricePerUnit` ngoài `getMarketPriceBandForItem(itemKey)` band → reject với 1 trong 2 code (HTTP 409 CONFLICT). Existing ACTIVE listings KHÔNG bị mutate (chỉ áp dụng listing mới).

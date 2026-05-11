@@ -2093,6 +2093,181 @@ curl -X POST https://api/api/admin/anticheat/gameplay/scan \
 - **KHÔNG copy/log `detailsJson` raw ra ngoài Postgres** — vẫn coi như nhạy cảm dù đã sanitize.
 - **KHÔNG mở rộng scope sang ban/lock** trong controller Phase 16.3 — Phase 16.3 chỉ detection. Mọi cử dùng `AdminController` / `AdminSecurityController` / `AdminUsersController` hiện có.
 
+### 2.34. Phase 16.4 — Market Trade Abuse Hardening (P1/P2)
+
+**Mục tiêu**: Cách admin chạy scan / xử lý anomaly trong tab `AdminView` "Chợ - Phát hiện trục lợi" (`marketAbuse`). **Detection-first, guard-light** — KHÔNG block giao dịch ngay cả khi WARN/CRITICAL, KHÔNG auto-ban, KHÔNG auto-rollback trade, KHÔNG tự refund. Anomaly là **signal**, không phải bằng chứng.
+
+#### 2.34.1. Symptom → severity
+
+| Symptom | Severity | Action |
+| --- | --- | --- |
+| `openCriticalCount > 0` (summary card) | **P1** | Mở tab `marketAbuse`, filter `severity=CRITICAL status=OPEN`, xử lý theo §2.34.3. |
+| `type=MARKET_VOLUME_SPIKE` CRITICAL (≥5M LT/24h) | **P1** | Whale legit cấp này rất hiếm — đối chiếu `CurrencyLedger` + topup. Cross-check Phase 16.6 `CURRENCY_DELTA_24H` cùng character. |
+| `type=PRICE_EXTREME_HIGH` CRITICAL (≥20× ref) | **P1** | Funnel pattern rõ — đối chiếu cùng `buyerCharacterId` với `REPEATED_BUYER_SELLER_PAIR` window cùng cặp. |
+| `type=PRICE_EXTREME_LOW` CRITICAL (≤5% ref) | **P1** | RMT dump cheap-list — đối chiếu `sellerCharacterId` với gameplay anomaly (`CURRENCY_GAIN_SPIKE` / `ITEM_GAIN_SPIKE` Phase 16.3). |
+| `type=REPEATED_BUYER_SELLER_PAIR` CRITICAL (≥10/24h hoặc ≥30/7d) | **P1** | Alt-account funnel rõ — đối chiếu IP cùng `ipHash` (Phase 18.1 SecurityEvent), device fingerprint nếu có. |
+| `type=LISTING_SPAM` CRITICAL (≥80 listing/h) | **P1** | Bot automation — escalate ban seller account sau khi confirm via audit log. |
+| Bất kỳ type WARN | **P2** | Cày dày / friendly trade frequent có thể chạm — đối chiếu trước khi action. Thường `Ack` rồi quan sát 24-48h. |
+| `type=UNKNOWN_REFERENCE_PRICE` INFO | **P3** | Catalog drift — item không có `ItemDef` hợp lệ. Forward dev team check `packages/shared/src/items.ts`. |
+
+#### 2.34.2. Chạy scan thủ công
+
+**Khi nào**: (a) Player report market abuse; (b) Trước khi deploy patch market/economy; (c) Sau incident để rà soát lại window cũ; (d) Định kỳ daily admin sweep (cron chưa enable Phase 16.4).
+
+```bash
+# Default — scan với windowMs từ rule catalog (1h/24h/7d tuỳ type)
+curl -X POST https://api/api/admin/market/abuse/scan \
+  -H 'Content-Type: application/json' \
+  -b 'access_token=...' \
+  -d '{}'
+
+# Force re-scan 1 windowKey cụ thể (idempotent — đã có row sẽ skip qua P2002)
+curl -X POST https://api/api/admin/market/abuse/scan \
+  -H 'Content-Type: application/json' \
+  -b 'access_token=...' \
+  -d '{"windowKey":"24h:2026-05-11"}'
+
+# Sweep batch dài hơn (≤ 30 ngày)
+curl -X POST https://api/api/admin/market/abuse/scan \
+  -H 'Content-Type: application/json' \
+  -b 'access_token=...' \
+  -d '{"windowMs": 2592000000}'
+```
+
+Response `MarketScanSummary`:
+
+```json
+{
+  "ok": true,
+  "data": {
+    "totalCreated": 4,
+    "totalSkipped": 8,
+    "totalErrored": 0,
+    "rules": [
+      { "type": "PRICE_EXTREME_LOW", "created": 1, "skipped": 0, "errored": false, "errorMessage": null },
+      { "type": "REPEATED_BUYER_SELLER_PAIR", "created": 2, "skipped": 0, "errored": false, "errorMessage": null }
+    ],
+    "windowKeysByType": { "PRICE_EXTREME_LOW": "1h:2026-05-11T10", "REPEATED_BUYER_SELLER_PAIR": "24h:2026-05-11" },
+    "scannedAt": "2026-05-11T10:30:00.000Z"
+  }
+}
+```
+
+`totalSkipped` cao là **bình thường** — idempotent re-run gặp row cũ. `totalErrored > 0` → check log để xem rule nào fail (`rules[].errorMessage`). 1 rule fail KHÔNG phá rule khác.
+
+Audit: `ADMIN_MARKET_ABUSE_SCAN` (`actorUserId` + `{ totalCreated, totalSkipped, totalErrored, windowKeysByType }` trong `meta`).
+
+#### 2.34.3. Xử lý 1 anomaly WARN/CRITICAL
+
+1. Mở tab `marketAbuse` → summary cards (open total / critical / warn / info breakdown + latestCreatedAt / latestResolvedAt).
+2. Filter `status=OPEN` + `severity=CRITICAL` trước → xử lý theo độ ưu tiên.
+3. Đọc `detailsJson` của anomaly: thường chứa `listingId`, `tradeId?`, `sellerCharacterId?`, `buyerCharacterId?`, `itemKey?`, `quantity?`, `unitPrice?`, `referencePrice?`, `deviationRatio?`, `windowKey`, `count?`, `volumeSum?` (BigInt-as-string). KHÔNG có raw IP / token / cookie.
+4. **Cross-check ledger / runtime row** tuỳ type:
+
+   ```sql
+   -- PRICE_EXTREME_LOW / HIGH (đối chiếu listing + buyer/seller)
+   SELECT id, "sellerCharacterId", "itemKey", "pricePerUnit", "quantity", "status", "createdAt"
+   FROM "Listing"
+   WHERE id = $1;
+
+   SELECT id, "sellerCharacterId", "buyerCharacterId", "itemKey", "pricePerUnit", "quantity", "createdAt"
+   FROM "MarketTrade"
+   WHERE "listingId" = $1
+   ORDER BY "createdAt" DESC;
+
+   -- REPEATED_BUYER_SELLER_PAIR (list trade cùng cặp)
+   SELECT id, "itemKey", "pricePerUnit", "quantity", "createdAt"
+   FROM "MarketTrade"
+   WHERE "sellerCharacterId" = $1 AND "buyerCharacterId" = $2
+     AND "createdAt" >= NOW() - INTERVAL '7 days'
+   ORDER BY "createdAt" DESC;
+
+   -- LISTING_SPAM (đếm listing per-seller window)
+   SELECT id, "itemKey", "pricePerUnit", "quantity", status, "createdAt"
+   FROM "Listing"
+   WHERE "sellerCharacterId" = $1
+     AND "createdAt" >= NOW() - INTERVAL '1 hour'
+   ORDER BY "createdAt" DESC;
+
+   -- MARKET_VOLUME_SPIKE (Σ value 24h)
+   SELECT
+     SUM("pricePerUnit" * "quantity") AS volume,
+     COUNT(*) AS trades
+   FROM "MarketTrade"
+   WHERE ("sellerCharacterId" = $1 OR "buyerCharacterId" = $1)
+     AND "createdAt" >= NOW() - INTERVAL '24 hours';
+   ```
+
+5. Đối chiếu cross-layer:
+   - Phase 16.6 `EconomyAnomaly` (cùng `characterId`) — nếu có `CURRENCY_DELTA_24H` / `MARKET_OUTLIER` cùng window → multi-signal cao hơn.
+   - Phase 16.3 `GameplayAnomaly` (cùng `characterId`) — nếu có `CURRENCY_GAIN_SPIKE` / `ITEM_GAIN_SPIKE` cùng giờ → chứng tỏ source farm + market dump cùng tay.
+   - Phase 18.1 `SecurityEvent` (cùng `ipHash` nếu mapping được qua audit) — xem có `RATE_LIMIT_TRIGGERED` / `ABUSE_BLOCKED` không.
+
+6. **Quyết định**:
+   - **False positive** (whale legit, event mới mở meta, friends trade burst) → `Resolve` với note nêu lý do.
+   - **Cần theo dõi tiếp** → `Ack` (chuyển `OPEN → ACKNOWLEDGED`). Không action market.
+   - **Có dấu hiệu rõ** → escalate:
+     - Manual cancel listing đang ACTIVE: dùng endpoint admin/seller có sẵn (`POST /market/listings/:id/cancel` với admin override hoặc kêu seller cancel — Phase 16.4 KHÔNG có admin cancel endpoint).
+     - Manual revoke inventory/currency: dùng endpoint admin (`POST /admin/users/:id/inventory/revoke`, `POST /admin/users/:id/grant` với delta âm). Reason ghi `"phase 16.4 anomaly <id>"`.
+     - Ban: dùng endpoint admin ban hiện có sau khi đã có evidence multi-signal.
+     - Sau khi xử lý xong → `Resolve` với note `"action: ban/revoke/cancel; root: <description>"`.
+
+#### 2.34.4. Idempotent semantics
+
+- Ack 1 anomaly đã `ACKNOWLEDGED`/`RESOLVED` → 404 `ANOMALY_NOT_FOUND_OR_NOT_OPEN` (không ack ngược).
+- Resolve 1 anomaly đã `RESOLVED` → 404 `ANOMALY_NOT_FOUND_OR_RESOLVED`.
+- Resolve 1 anomaly `OPEN` → skip-ack path (chỉ set `resolvedAt` + `resolvedByAdminId`; `acknowledgedAt` vẫn null nếu chưa ack qua bước riêng).
+- Scan trùng `windowKey` + `type` + `listingId` → `upsertAnomaly` bắt P2002 → đếm vào `totalSkipped` (multi-instance race-safe).
+- Hook real-time (`recordListingCreate` / `recordListingBuy`) + scanAll cùng anomaly key → P2002 dedupe. Hook chạy POST-mutation, scan có thể chạy sau.
+
+#### 2.34.5. Audit trail
+
+Mọi mutation ghi `AdminAuditLog`:
+
+- `ADMIN_MARKET_ABUSE_SCAN` (meta = `{ totalCreated, totalSkipped, totalErrored, windowKeysByType }`).
+- `ADMIN_MARKET_ABUSE_ACK` (meta = `{ anomalyId }`).
+- `ADMIN_MARKET_ABUSE_RESOLVE` (meta = `{ anomalyId, noteLength }`).
+
+Query audit để re-construct workflow:
+
+```sql
+SELECT "createdAt", "actorUserId", "action", "meta"
+FROM "AdminAuditLog"
+WHERE "action" LIKE 'ADMIN_MARKET_ABUSE_%'
+ORDER BY "createdAt" DESC
+LIMIT 100;
+```
+
+#### 2.34.6. Verify migration & hook
+
+```bash
+# Verify migration đã apply
+psql "$DATABASE_URL" -c "\d \"MarketTradeAnomaly\""
+# Phải thấy table + unique index (type, listingId, windowKey).
+
+# Smoke scan với DB rỗng — phải trả totalCreated=0, totalErrored=0
+curl -X POST https://api/api/admin/market/abuse/scan \
+  -H 'Content-Type: application/json' -b 'access_token=...' -d '{}'
+
+# Test hook real-time: tạo listing extreme low → check anomaly xuất hiện
+# 1. Post listing với unitPrice = 1 (rất thấp vs band)
+# 2. Đợi 1-2s
+# 3. GET /admin/market/abuse/anomalies?type=PRICE_EXTREME_LOW&status=OPEN
+#    → phải thấy row với source='LISTING_CREATE'
+```
+
+**Cron**: Phase 16.4 KHÔNG enable cron tự động — admin chạy thủ công qua FE/curl. Hook real-time trên create/buy đảm bảo flag không cần cron. Định kỳ scan batch để bắt pattern multi-trade (REPEATED_PAIR / VOLUME_SPIKE) admin chạy thủ công.
+
+#### 2.34.7. KHÔNG được làm
+
+- **KHÔNG auto-ban / KHÔNG auto-rollback / KHÔNG auto-cancel listing / KHÔNG auto-refund** dựa trên anomaly OPEN. Mọi mutation phải qua endpoint admin có sẵn + manual review.
+- **KHÔNG block giao dịch tiếp theo** của cùng seller / buyer / pair / item dựa trên anomaly. Phase 16.4 là **observation-only layer**, gate vào trade flow vẫn ở Phase 16.6 Price Band.
+- **KHÔNG public notify** (mail / chat / WS) cho player có anomaly OPEN.
+- **KHÔNG xoá row `MarketTradeAnomaly`** — workflow chỉ mutate `status`. Xoá leak audit trail.
+- **KHÔNG resolve hàng loạt không note** — phải ghi rõ lý do để audit theo người xử lý sau này.
+- **KHÔNG copy/log `detailsJson` raw ra ngoài Postgres** — vẫn coi như nhạy cảm dù đã sanitize.
+- **KHÔNG mở rộng scope sang ban/cancel** trong controller Phase 16.4 — chỉ detection. Mọi cử dùng `AdminController` / `AdminUsersController` / `MarketService.cancel()` hiện có.
+
 ## 2.99. Pre-cutover Deploy Verify Gate (Phase 17.1)
 
 **Khi nào**: Mọi lần cutover production sang instance mới / image mới /

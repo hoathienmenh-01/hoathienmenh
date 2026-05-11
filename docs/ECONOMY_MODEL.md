@@ -382,6 +382,37 @@ Anti-abuse layer bổ sung cho Phase 16.6 Economy Anti-cheat (`EconomyAnomaly`) 
 
 **Detection-only invariants** (test enforced): scan KHÔNG mutate `Character.linhThach` / `Character.expCurrent` / `InventoryItem.qty` / `User.bannedAt`. KHÔNG auto-rollback, KHÔNG auto-refund, KHÔNG auto-deduct. Mọi remediation currency/item (revoke / refund / grant) vẫn phải qua endpoint admin có sẵn theo §3 Currency Service invariants + §4.6 Admin economy report.
 
+### 4.7.B Phase 16.4 — Market Trade Abuse Hardening (detection-only)
+
+Lớp anti-abuse bổ sung cho Phase 16.6 Market Price Band (`market-price-band.ts`). Phase 16.6 reject **listing post** ngoài band rarity (HTTP 409 `PRICE_TOO_LOW`/`PRICE_TOO_HIGH`); Phase 16.4 quan sát **pattern** xuyên flow market sau khi listing/trade đã commit thành công.
+
+- Catalog: `packages/shared/src/market-trade-abuse.ts` — 6 type + classifier helpers + threshold catalog.
+- Threshold + rationale: `docs/BALANCE_MODEL.md` §11.28.
+- Service: `apps/api/src/modules/admin-market-abuse/market-trade-abuse.service.ts` — `scanAll({ now?, windowKey?, windowMs? })` + hook `recordListingCreate({ listingId })` / `recordListingBuy({ tradeId, listingId })`.
+- Bảng riêng `MarketTradeAnomaly` (migration `20260801000000_phase_16_4_market_trade_anomaly`, additive only, KHÔNG backfill row cũ, KHÔNG FK). Idempotency: `@@unique([type, listingId, windowKey])`. Cho rule per-character per-window, `listingId=''` + `windowKey` scope hash.
+- Admin workflow: `docs/RUNBOOK.md` §2.34. API: `docs/API.md` §Admin Market Trade Abuse.
+
+**6 anomaly type**:
+
+| Type | Severity ladder | Window | Nguồn data |
+|---|---|---|---|
+| `PRICE_EXTREME_LOW` | WARN ≤ 0.2 × ref, CRITICAL ≤ 0.05 × ref | per-listing | `Listing.pricePerUnit` vs `estimateItemReferencePrice(itemKey)` band-geomean (override khi DB có 7-day median). |
+| `PRICE_EXTREME_HIGH` | WARN ≥ 5 × ref, CRITICAL ≥ 20 × ref | per-listing | như trên. |
+| `REPEATED_BUYER_SELLER_PAIR` | WARN 3 / CRITICAL 10 (24h); WARN 10 / CRITICAL 30 (7d) | 24h + 7d | `MarketTrade` (cùng cặp `sellerCharacterId` × `buyerCharacterId`). |
+| `LISTING_SPAM` | WARN 30 / CRITICAL 80 | 1h | `Listing.sellerCharacterId` count (ACTIVE/SOLD/CANCELLED). |
+| `MARKET_VOLUME_SPIKE` | WARN ≥ 500_000 LT / CRITICAL ≥ 5_000_000 LT | 24h | Σ `MarketTrade.pricePerUnit × qty` của 1 character (cả seller hoặc buyer). |
+| `UNKNOWN_REFERENCE_PRICE` | INFO | per-listing | item không có `ItemDef` hoặc reference price không tính được — admin manual review. |
+
+**Hook policy**:
+- `MarketService.post()` gọi `recordListingCreate` **post-tx** (sau khi listing đã insert thành công). Try/catch ở `MarketService` — detection throw KHÔNG rollback listing.
+- `MarketService.buy()` gọi `recordListingBuy` **post-tx** (sau khi trade commit + currency/item ledger ghi xong). Try/catch fail-soft tương tự.
+- Listing đã ACTIVE và buy `unitPrice` extreme: KHÔNG block, chỉ tạo anomaly để admin review.
+
+**Detection-only invariants** (test enforced ở `market-trade-abuse.service.test.ts`):
+- Scan / hook KHÔNG mutate `Listing` / `MarketTrade` / `CurrencyLedger` / `ItemLedger` / `Character` / `User`. Idempotency qua `@@unique` (P2002 → `totalSkipped++`).
+- KHÔNG auto-rollback trade đã commit. KHÔNG tự refund currency / re-deliver item. KHÔNG block giao dịch tiếp theo.
+- Mọi remediation (cancel listing, refund currency, ban) qua endpoint admin có sẵn (`/admin/users/:id/grant`, `/admin/users/:id/inventory/revoke`, ban endpoint).
+
 ### 4.8 Rate limit endpoint nhạy cảm
 
 | Endpoint | Hiện trạng | Long-term |

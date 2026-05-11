@@ -12,6 +12,44 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Phase 16.4 — Market Trade Abuse Hardening (this PR — #527)
+
+**Scope**: **Detection-first, guard-light** lớp phát hiện trục lợi market. Theo dõi 6 loại bất thường market trade: price extreme low/high vs reference, repeated buyer/seller pair (alt funnel), listing spam (bot), market volume spike (whale RMT), unknown reference price (catalog drift). KHÔNG auto-cancel listing, KHÔNG auto-rollback trade, KHÔNG tự refund currency/item, KHÔNG khoá tài khoản. Chỉ tạo `MarketTradeAnomaly` row OPEN cho admin review qua tab "Chợ - Phát hiện trục lợi". Bổ sung cho Phase 16.6 Market Price Band (input gate reject) bằng cách quan sát pattern sau khi listing/trade commit thành công.
+
+#### Added — Phase 16.4
+
+- **Prisma migration `20260801000000_phase_16_4_market_trade_anomaly`** additive: `MarketTradeAnomaly` table (`id`, `type` 6-enum, `severity INFO/WARN/CRITICAL`, `status OPEN/ACKNOWLEDGED/RESOLVED`, `source` 4-enum `LISTING_CREATE/LISTING_BUY/SCAN_BATCH/OTHER`, `listingId` (`''` cho per-character rule), `sellerCharacterId?`, `buyerCharacterId?`, `itemKey?`, `quantity?`, `unitPrice?` Decimal, `referencePrice?` Decimal, `deviationRatio?` Float, `windowKey`, `detailsJson`, ack/resolve metadata, `@@unique([type, listingId, windowKey])` idempotency, 5 index admin filter, KHÔNG FK fail-soft).
+- **Shared `@xuantoi/shared/src/market-trade-abuse.ts`**: 6 type + threshold catalog (PRICE_EXTREME_HIGH ratio ≥5 WARN / ≥20 CRITICAL, PRICE_EXTREME_LOW ratio ≤0.2 / ≤0.05, REPEATED_PAIR 24h 3/10 + 7d 10/30 trade, LISTING_SPAM 1h 30/80, MARKET_VOLUME_SPIKE 24h Σ ≥500k / ≥5M LT, UNKNOWN_REFERENCE_PRICE INFO), pure helpers `classifyListingPriceBand` / `classifyMarketTradeAbuseCount` / `classifyMarketTradeAbuseVolume` / `coerceMarketAbuseSource` / `estimateItemReferencePrice` (geomean band-quality, fallback null) / `buildMarketAbuseWindowKey` (1h/24h/7d ISO UTC). 26 unit tests.
+- **`MarketTradeAbuseService`** (`apps/api/src/modules/admin-market-abuse/`): `scanAll({ now?, windowKey?, windowMs? })` dispatch 6 rule + summary; mỗi rule wrap try/catch (1 rule fail KHÔNG phá rule khác); `upsertAnomaly` catch P2002 → skipped (idempotent multi-instance race-safe). PRICE_EXTREME_* duyệt Listing ACTIVE/SOLD trong window vs `estimateItemReferencePrice`, REPEATED_PAIR + VOLUME duyệt MarketTrade per pair / per character, LISTING_SPAM count Listing per-seller, UNKNOWN_REFERENCE duyệt listing thiếu ItemDef. **Hook real-time**: `recordListingCreate({ listingId })` từ `MarketService.post()` post-tx, `recordListingBuy({ tradeId, listingId })` từ `MarketService.buy()` post-tx — wrap try/catch ở caller (detection throw KHÔNG rollback trade). 16 integration tests + detection-only assertion (scan + hook KHÔNG mutate Listing/MarketTrade/CurrencyLedger/ItemLedger).
+- **Admin API**:
+  - `GET /admin/market/abuse/summary` — open/critical/warn/info/total + latestCreated/Resolved.
+  - `POST /admin/market/abuse/scan` `@RequireAdmin` — manual scan + audit `ADMIN_MARKET_ABUSE_SCAN`.
+  - `GET /admin/market/abuse/anomalies?severity=&status=&type=&source=&sellerCharacterId=&buyerCharacterId=&itemKey=&from=&to=&limit=` — list filter (limit ≤200, invalid filter bỏ qua).
+  - `POST /admin/market/abuse/anomalies/:id/ack` `@RequireAdmin` — OPEN → ACKNOWLEDGED + audit `ADMIN_MARKET_ABUSE_ACK`.
+  - `POST /admin/market/abuse/anomalies/:id/resolve` `@RequireAdmin` — OPEN/ACKNOWLEDGED → RESOLVED (note ≤1000ch) + audit `ADMIN_MARKET_ABUSE_RESOLVE`.
+  - 18 unit tests controller (RBAC, audit, idempotency, note cap, filter validation).
+- **FE** `AdminMarketAbusePanel.vue`: summary cards, Run scan button confirm prompt, filter severity/status/type/source + sellerCharacterId/buyerCharacterId/itemKey, anomaly table với Ack/Resolve buttons + confirm + optional note prompt. Loading/empty/error state. i18n vi/en parity (`admin.marketAbuse.*`). Tab `marketAbuse` thêm vào `AdminView.vue` cạnh `gameplayAntiCheat`.
+
+#### Security — Phase 16.4
+
+- **Detection-first, guard-light invariants** (test enforced):
+  - Scan + hook KHÔNG mutate `Listing` / `MarketTrade` / `CurrencyLedger` / `ItemLedger` / `Character` / `User`.
+  - Hook chạy POST-mutation — `MarketService.post()` + `MarketService.buy()` đã commit transaction trước khi gọi hook; hook throw KHÔNG ảnh hưởng trade.
+  - KHÔNG auto-cancel listing, KHÔNG auto-rollback trade đã commit, KHÔNG auto-refund currency / re-deliver item, KHÔNG block trade tiếp theo.
+- Tất cả mutation admin (scan, ack, resolve) ghi `AdminAuditLog`.
+- KHÔNG lưu raw IP / token / cookie / secret trong `detailsJson`.
+
+#### Docs — Phase 16.4
+
+- `docs/AI_HANDOFF_REPORT.md` Recent Changes Phase 16.4.
+- `docs/ECONOMY_MODEL.md` §4.7.B — Phase 16.4 market trade abuse detection (mirror §4.7.A gameplay anti-cheat structure).
+- `docs/BALANCE_MODEL.md` §11.28 — Phase 16.4 threshold catalog (mirror §11.27 structure).
+- `docs/SECURITY.md` §16.B — market abuse hardening layer (detection-first posture).
+- `docs/RUNBOOK.md` §2.34 — Phase 16.4 admin workflow (run scan / ack / resolve / monitor critical / cross-layer correlate).
+- `docs/API.md` — admin market abuse endpoints (`AdminMarketAbuseController`).
+
+---
+
 ### Phase 16.3 — Gameplay Anti-cheat Deep Detection (this PR — #526)
 
 **Scope**: **Detection-only** lớp phát hiện gian lận gameplay sâu. Theo dõi 10 loại bất thường gameplay (EXP/Linh thạch/Item gain spike, Dungeon/Boss/Mission/Arena reward farming, Territory reward spike, Combat result mismatch, Reward cap bypass). KHÔNG auto-ban, KHÔNG tự rollback, KHÔNG tự trừ EXP/item/đá linh, KHÔNG khoá tài khoản. Chỉ tạo `GameplayAnomaly` row OPEN cho admin review qua tab "Gameplay Anti-cheat".
