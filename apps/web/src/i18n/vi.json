@@ -1276,7 +1276,8 @@
       "featureFlags": "Feature Flags",
       "maintenance": "Bảo trì",
       "configVersion": "Config Version",
-      "security": "Bảo mật"
+      "security": "Bảo mật",
+      "backup": "Backup"
     },
     "arenaAntiWintrade": {
       "alerts": "Cảnh báo Arena Wintrade",
@@ -4140,6 +4141,62 @@
       "UNAUTHENTICATED": "Cần đăng nhập admin.",
       "FORBIDDEN": "Tài khoản không phải admin.",
       "ADMIN_ONLY": "Chỉ admin mới được gỡ block.",
+      "UNKNOWN": "Thao tác thất bại — thử lại."
+    }
+  },
+  "adminBackup": {
+    "title": "Backup & Verify Restore",
+    "subtitle": "Theo dõi backup định kỳ + verify restore. Restore production thực sự phải làm tay theo RUNBOOK — UI không expose.",
+    "loading": "Đang tải trạng thái backup…",
+    "retry": "Thử lại",
+    "generatedAt": "Cập nhật lúc {at}",
+    "restoreNotice": "Lưu ý: nút Run backup/verify chỉ chạy backup hoặc verify-restore. Restore production vẫn phải làm tay theo docs/RUNBOOK.md §2.10 với maintenance window.",
+    "sections": {
+      "backup": "Backup định kỳ",
+      "verify": "Verify Restore định kỳ"
+    },
+    "badge": {
+      "OK": "OK",
+      "STALE": "STALE",
+      "FAILED": "FAILED",
+      "DISABLED": "DISABLED"
+    },
+    "fields": {
+      "cron": "Lịch cron",
+      "lastRunAt": "Lần chạy gần nhất",
+      "lastSuccessAt": "Lần thành công gần nhất",
+      "lastErrorAt": "Lần lỗi gần nhất",
+      "fileName": "Tên file",
+      "fileSize": "Kích thước",
+      "storage": "Storage",
+      "triggeredBy": "Trigger",
+      "checkedTables": "Bảng đã kiểm tra",
+      "latestMigration": "Migration mới nhất"
+    },
+    "empty": {
+      "backup": "Chưa có lần backup nào được ghi.",
+      "verify": "Chưa có lần verify nào được ghi."
+    },
+    "actions": {
+      "runBackup": "Chạy backup ngay",
+      "runVerify": "Chạy verify ngay",
+      "running": "Đang chạy…",
+      "runBackupSuccess": "Backup hoàn tất: {file}.",
+      "runVerifySuccess": "Verify hoàn tất: {tables} bảng đã kiểm tra."
+    },
+    "confirm": {
+      "runBackupTitle": "Chạy backup ngay?",
+      "runBackupMessage": "Spawn scripts/backup-db.sh ở server. Có thể mất vài chục giây tới vài phút tuỳ kích thước DB. Audit log được ghi.",
+      "runVerifyTitle": "Chạy verify-restore ngay?",
+      "runVerifyMessage": "Spawn scripts/verify-restore.sh — chỉ đọc, không restore DB thật. Audit log được ghi."
+    },
+    "errors": {
+      "BACKUP_RUN_FAILED": "Backup thất bại — xem chi tiết lỗi bên dưới.",
+      "BACKUP_VERIFY_FAILED": "Verify thất bại — xem chi tiết lỗi bên dưới.",
+      "INVALID_INPUT": "Dữ liệu gửi lên không hợp lệ.",
+      "UNAUTHENTICATED": "Cần đăng nhập admin.",
+      "FORBIDDEN": "Tài khoản không phải admin.",
+      "ADMIN_ONLY": "Chỉ admin mới được chạy backup/verify.",
       "UNKNOWN": "Thao tác thất bại — thử lại."
     }
   }
