@@ -3528,3 +3528,89 @@ model BackupVerifyRun {
   @@index([finishedAt(sort: Desc)])
   @@index([backupRunId])
 }
+
+/// Phase 19.3 — Social Presence & Notification Center.
+///
+/// Type của notification — quyết định i18n key tương ứng + entry-point
+/// điều hướng khi click (FE map type → route). Enum cố định để chống
+/// drift FE/BE; thêm type mới phải migrate + cập nhật shared catalog.
+///
+/// `SECURITY_ALERT_USER` là placeholder cho future surface (vd
+/// admin gửi cảnh báo bảo mật cho user). Không build trong Phase 19.3.
+enum NotificationType {
+  FRIEND_REQUEST_RECEIVED
+  FRIEND_REQUEST_ACCEPTED
+  PRIVATE_MESSAGE_RECEIVED
+  GROUP_MESSAGE_RECEIVED
+  GROUP_INVITE_RECEIVED
+  GROUP_MEMBER_ADDED
+  CHAT_REPORT_RESOLVED
+  SECURITY_ALERT_USER
+}
+
+/// Phase 19.3 — Notification row, persistent inbox per user.
+///
+/// Server-authoritative invariants (test-enforced):
+///   - User chỉ list / markRead / markAllRead notification của
+///     chính mình (`userId === callerUserId`). Truy cập notification
+///     của user khác → `NOT_FOUND` mask (không leak existence).
+///   - `titleKey` + `bodyKey` là i18n KEY deterministic. Bất kỳ
+///     dynamic param render từ `dataJson` (vd `{ peerName }`). KHÔNG
+///     lưu free-text user-controlled (chống injection).
+///   - `dataJson` chứa entity reference + bodyParams. Server không
+///     leak field nhạy cảm (IP, token, sessionId, raw socket id).
+///   - Realtime fanout best-effort: nếu emit fail, row vẫn lưu trong
+///     DB → user thấy notification ở REST poll/reload.
+model Notification {
+  id         String           @id @default(cuid())
+  /// userId của người nhận (recipient). Soft-ref (no FK).
+  userId     String
+  type       NotificationType
+  /// i18n title key (e.g. `notification.friendRequestReceived.title`).
+  titleKey   String
+  /// i18n body key (e.g. `notification.friendRequestReceived.body`).
+  bodyKey    String
+  /// Loại entity liên quan (FE map sang route): vd `FRIEND_REQUEST`,
+  /// `PRIVATE_THREAD`, `GROUP_CHAT`, `CHAT_REPORT`. Nullable nếu
+  /// notification không gắn entity cụ thể.
+  entityType String?
+  /// Soft-ref ID của entity. Server KHÔNG enforce existence (nếu
+  /// entity bị xoá, FE render notification nhưng click no-op an toàn).
+  entityId   String?
+  /// JSON params cho i18n render + route resolver (vd `senderUserId`,
+  /// `senderName`, `groupId`, `count`). Sanitize trước khi lưu — không
+  /// lưu raw HTML.
+  dataJson   Json             @default("{}")
+  readAt     DateTime?
+  createdAt  DateTime         @default(now())
+  /// Optional TTL — null = không hết hạn (cleanup theo retention
+  /// policy admin). Phase 19.3 mặc định KHÔNG set; future scheduler
+  /// có thể chèn TTL cho `PRIVATE_MESSAGE_RECEIVED` (vd 30 days).
+  expiresAt  DateTime?
+
+  @@index([userId, readAt, createdAt(sort: Desc)])
+  @@index([userId, type, createdAt(sort: Desc)])
+  @@index([createdAt])
+  @@index([expiresAt])
+}
+
+/// Phase 19.3 — User presence persistence.
+///
+/// `lastSeenAt` ghi vào DB khi user disconnect (hoặc periodic heartbeat
+/// trong tương lai). `online` boolean KHÔNG ở DB — runtime tính từ
+/// `RealtimeService.userSockets` (in-memory). Lý do:
+///   - Single-instance API thì in-memory đủ — không cần round-trip DB.
+///   - Multi-instance / Redis pub-sub cross-shard presence là
+///     follow-up phase (xem RUNBOOK).
+///
+/// Row 1-1 với User qua `userId` PK. Upsert trên mỗi connect /
+/// disconnect (best-effort, fail-soft — nếu DB down, in-memory vẫn
+/// tracking).
+model UserPresence {
+  /// userId — PK (soft-ref).
+  userId     String   @id
+  lastSeenAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([lastSeenAt(sort: Desc)])
+}

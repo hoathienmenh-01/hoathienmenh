@@ -75,6 +75,11 @@
       "types": "./dist/elemental.d.ts",
       "import": "./dist/elemental.js",
       "require": "./dist/elemental.cjs"
+    },
+    "./notification": {
+      "types": "./dist/notification.d.ts",
+      "import": "./dist/notification.js",
+      "require": "./dist/notification.cjs"
     }
   },
   "files": [
