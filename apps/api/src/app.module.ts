@@ -36,6 +36,9 @@ import { TerritoryModule } from './modules/territory/territory.module';
 import { AdminEconomySafetyModule } from './modules/admin-economy-safety/admin-economy-safety.module';
 import { AdminAnticheatModule } from './modules/admin-anticheat/admin-anticheat.module';
 import { AdminMarketAbuseModule } from './modules/admin-market-abuse/admin-market-abuse.module';
+import { SocialModule } from './modules/social/social.module';
+import { ChatPrivateModule } from './modules/chat-private/chat-private.module';
+import { ChatGroupModule } from './modules/chat-group/chat-group.module';
 import { LiveOpsCronModule } from './modules/liveops-cron/liveops-cron.module';
 import { LiveOpsEventSchedulerModule } from './modules/liveops-event-scheduler/liveops-event-scheduler.module';
 import { LiveOpsAnnouncementModule } from './modules/liveops-announcement/liveops-announcement.module';
@@ -138,6 +141,13 @@ import { SecurityModule } from './modules/security/security.module';
     AdminEconomySafetyModule,
     AdminAnticheatModule,
     AdminMarketAbuseModule,
+    // Phase 19.1 — Social System Foundation (friend / block / private
+    // chat / group chat). SocialModule export SocialService cho 2 chat
+    // module re-use isBlockedBetween + areFriends. RealtimeModule đã
+    // imported gián tiếp qua ChatModule — explicit re-import an toàn.
+    SocialModule,
+    ChatPrivateModule,
+    ChatGroupModule,
     // Phase 17.5 — Metrics endpoint (admin-only) + collectors. SAU
     // AdminModule + RealtimeModule (đã imported indirectly).
     MetricsModule,

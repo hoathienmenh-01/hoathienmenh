@@ -44,6 +44,20 @@ export type WsEventType =
    * event này thì update overlay tức thì — không cần đợi poll 30s.
    */
   | 'maintenance:status'
+  /**
+   * Phase 19.1 — Social System Foundation. Server emit khi private chat
+   * message mới được gửi. Payload là `PrivateChatMessageRow` (shared
+   * `social.ts`). Server fanout chỉ tới 2 thành viên thread qua
+   * `RealtimeService.emitToUser`. KHÔNG broadcast.
+   */
+  | 'private-chat:msg'
+  /**
+   * Phase 19.1 — Group chat foundation. Server emit khi group chat
+   * message mới được gửi. Payload là `GroupChatMessageRow`. Server
+   * fanout tới mọi member của group qua `emitToUser` (loop server-side).
+   * KHÔNG broadcast — non-member tuyệt đối không nhận event.
+   */
+  | 'group-chat:msg'
   | 'pong'
   // client → server
   | 'ping'
