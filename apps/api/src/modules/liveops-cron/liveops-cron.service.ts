@@ -8,6 +8,7 @@ import { TerritoryDecayService } from '../territory/territory-decay.service';
 import { TerritoryRewardService } from '../territory/territory-reward.service';
 import { TerritorySettlementService } from '../territory/territory-settlement.service';
 import { SectSeasonHistoryService } from '../sect-season/sect-season-history.service';
+import { SectSeasonRewardService } from '../sect-season/sect-season-reward.service';
 import { LiveOpsCronLease } from './liveops-cron.lease';
 
 /**
@@ -63,6 +64,14 @@ export interface SectSeasonCycleSummary {
   seasonSnapshotsSkipped: number;
   /** Danh sách seasonKey đã xử lý theo thứ tự. */
   seasonsProcessed: ReadonlyArray<string>;
+  /** Phase 15.7 — số mail Champion grant mới (per-member của sect rank-1). */
+  championMailsCreated: number;
+  /** Phase 15.7 — số grant Champion đã tồn tại (idempotent skip). */
+  championAlreadyGranted: number;
+  /** Phase 15.7 — số mail MVP grant mới (top-1 individual). */
+  mvpMailsCreated: number;
+  /** Phase 15.7 — số grant MVP đã tồn tại (idempotent skip). */
+  mvpAlreadyGranted: number;
   errors: ReadonlyArray<{ stage: string; seasonKey: string; message: string }>;
 }
 
@@ -102,6 +111,7 @@ export class LiveOpsCronService {
     private readonly decay: TerritoryDecayService,
     private readonly reward: TerritoryRewardService,
     private readonly seasonHistory: SectSeasonHistoryService,
+    private readonly seasonReward: SectSeasonRewardService,
     private readonly lease: LiveOpsCronLease,
   ) {}
 
@@ -296,6 +306,10 @@ export class LiveOpsCronService {
     let created = 0;
     let alreadyExisted = 0;
     const processed: string[] = [];
+    let championMailsCreated = 0;
+    let championAlreadyGranted = 0;
+    let mvpMailsCreated = 0;
+    let mvpAlreadyGranted = 0;
 
     this.logger.log(
       `runSectSeasonCycle start now=${now.toISOString()} (triggeredBy=${triggeredBy ?? 'cron'})`,
@@ -330,12 +344,29 @@ export class LiveOpsCronService {
             `sect-season snapshot failed key=${s.key}: ${message}`,
           );
           errors.push({ stage: 'snapshot', seasonKey: s.key, message });
+          // Snapshot fail → KHÔNG grant reward (snapshot là tiền đề).
+          continue;
+        }
+
+        // Phase 15.7 — Champion / MVP reward distribution. Idempotent
+        // qua DB UNIQUE `(seasonKey, rewardType, characterId)`. Chạy lại
+        // cùng season key KHÔNG gửi mail trùng.
+        try {
+          const r = await this.seasonReward.grantSeasonRewards(s.key, {
+            triggeredBy,
+          });
+          championMailsCreated += r.championMailsCreated;
+          championAlreadyGranted += r.championAlreadyGranted;
+          mvpMailsCreated += r.mvpMailsCreated;
+          mvpAlreadyGranted += r.mvpAlreadyGranted;
+        } catch (e) {
+          const message = (e as Error).message;
+          this.logger.warn(
+            `sect-season reward grant failed key=${s.key}: ${message}`,
+          );
+          errors.push({ stage: 'reward', seasonKey: s.key, message });
         }
       }
-
-      // TODO(Phase 13.2.E?): reward distribution cho champion/MVP từ
-      // snapshot. Hiện tại chỉ snapshot leaderboard/HoF — KHÔNG grant
-      // reward tự động vì design chưa rõ (title/buff/mail mix?).
     } finally {
       if (leaseOwner) {
         await this.lease.release(SECT_SEASON_LEASE_KEY, leaseOwner);
@@ -344,13 +375,20 @@ export class LiveOpsCronService {
 
     this.logger.log(
       `runSectSeasonCycle done created=${created} skipped=${alreadyExisted} ` +
-        `processed=${processed.length} errors=${errors.length}`,
+        `processed=${processed.length} ` +
+        `champMail=${championMailsCreated}/+${championAlreadyGranted} ` +
+        `mvpMail=${mvpMailsCreated}/+${mvpAlreadyGranted} ` +
+        `errors=${errors.length}`,
     );
 
     return {
       seasonSnapshotsCreated: created,
       seasonSnapshotsSkipped: alreadyExisted,
       seasonsProcessed: processed,
+      championMailsCreated,
+      championAlreadyGranted,
+      mvpMailsCreated,
+      mvpAlreadyGranted,
       errors,
     };
   }
@@ -373,6 +411,10 @@ export class LiveOpsCronService {
       seasonSnapshotsCreated: 0,
       seasonSnapshotsSkipped: 0,
       seasonsProcessed: [],
+      championMailsCreated: 0,
+      championAlreadyGranted: 0,
+      mvpMailsCreated: 0,
+      mvpAlreadyGranted: 0,
       errors: [],
     };
   }

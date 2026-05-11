@@ -29,18 +29,43 @@ export interface LiveOpsCronConfig {
 }
 
 /**
- * Mặc định territory chạy 00:05 UTC mỗi thứ Hai → chốt period TUẦN TRƯỚC.
+ * Mặc định territory chạy 00:05 mỗi thứ Hai THEO TIMEZONE
+ * {@link LIVEOPS_CRON_DEFAULT_TZ} → chốt period TUẦN TRƯỚC.
+ *
  * Tại sao 00:05 thay vì 00:00? Buffer 5 phút để avoid race với job khác
  * boundary (vd Sect War weekly recalc cũng chốt theo Mon 00:00).
+ *
+ * Phase 15.7 — default tz đổi sang `Asia/Ho_Chi_Minh` để khớp helper
+ * `previousTerritoryPeriodKey()` (TZ-aware ICT, post-#517 hotfix). Cron
+ * sẽ fire Mon 00:05 ICT = Sun 17:05 UTC — chính xác 5 phút sau khi tuần
+ * mới start theo ICT.
  */
 export const TERRITORY_WEEKLY_SETTLE_CRON_DEFAULT = '5 0 * * 1';
 
 /**
- * Mặc định sect season snapshot 00:15 UTC mỗi ngày → catch những season
- * vừa kết thúc (`endsAt <= now`). Snapshot idempotent qua UNIQUE
- * `seasonKey` nên chạy lại nhiều lần cùng season cũng OK.
+ * Mặc định sect season snapshot 00:15 mỗi ngày THEO TIMEZONE
+ * {@link LIVEOPS_CRON_DEFAULT_TZ} → catch những season vừa kết thúc
+ * (`endsAt <= now`). Snapshot idempotent qua UNIQUE `seasonKey` nên
+ * chạy lại nhiều lần cùng season cũng OK.
+ *
+ * Phase 15.7 — fire 00:15 ICT (= 17:15 UTC previous day) khi tz default
+ * là `Asia/Ho_Chi_Minh`. Khớp với SECT_SEASONS catalog (mọi season
+ * `endsAtIso` rơi vào Mon 00:00 ICT).
  */
 export const SECT_SEASON_SNAPSHOT_CRON_DEFAULT = '15 0 * * *';
+
+/**
+ * Phase 15.7 — Default timezone cho cả 2 cron job (territory + sect
+ * season). Đổi từ `UTC` sang `Asia/Ho_Chi_Minh` để khớp:
+ *   - `territoryPeriodKeyForDate()` / `previousTerritoryPeriodKey()`
+ *     (TZ-aware ICT, post-#517).
+ *   - `SECT_SEASONS[*].endsAtIso` rơi vào Mon 00:00 ICT.
+ *   - `MISSION_RESET_TZ` / `SECT_WAR_DEFAULT_TZ` đã là ICT.
+ *
+ * Override qua env `SECT_TERRITORY_CRON_TZ` (priority cao nhất) hoặc
+ * `TERRITORY_CRON_TZ` (legacy alias).
+ */
+export const LIVEOPS_CRON_DEFAULT_TZ = 'Asia/Ho_Chi_Minh';
 
 const TRUE_VALUES = new Set(['true', '1', 'yes', 'on']);
 
@@ -78,14 +103,30 @@ function readInt(
  * Convention naming env (mirror `MISSION_RESET_TZ`):
  *   - `TERRITORY_CRON_ENABLED` — `'true'|'1'|'yes'|'on'` ⇒ enabled.
  *   - `TERRITORY_WEEKLY_SETTLE_CRON` — cron expression.
- *   - `TERRITORY_CRON_TZ` — IANA timezone (vd `UTC`, `Asia/Ho_Chi_Minh`).
+ *   - `SECT_TERRITORY_CRON_TZ` — IANA timezone (vd `UTC`,
+ *     `Asia/Ho_Chi_Minh`). Phase 15.7 unified env cho cả 2 cron.
+ *   - `TERRITORY_CRON_TZ` — legacy alias (Phase 13.2.D / 14.0.F),
+ *     vẫn supported nhưng `SECT_TERRITORY_CRON_TZ` priority cao hơn
+ *     khi cả 2 set.
  *   - `SECT_SEASON_CRON_ENABLED` — `'true'|'1'|'yes'|'on'` ⇒ enabled.
  *   - `SECT_SEASON_SNAPSHOT_CRON` — cron expression.
  *   - `LIVEOPS_CRON_LEASE_TTL_SEC` — TTL Redis lease (giây).
+ *
+ * Default timezone đổi từ `UTC` (Phase 14.0.F) → `Asia/Ho_Chi_Minh`
+ * (Phase 15.7) để khớp helper TZ-aware sau hotfix #517.
  */
 export function readLiveOpsCronConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): LiveOpsCronConfig {
+  // Phase 15.7 — `SECT_TERRITORY_CRON_TZ` là env mới ưu tiên cao nhất.
+  // Fall back về `TERRITORY_CRON_TZ` legacy nếu chưa set, cuối cùng là
+  // `LIVEOPS_CRON_DEFAULT_TZ` (`Asia/Ho_Chi_Minh`).
+  const tz =
+    env.SECT_TERRITORY_CRON_TZ &&
+    env.SECT_TERRITORY_CRON_TZ.trim() !== ''
+      ? env.SECT_TERRITORY_CRON_TZ
+      : readString(env, 'TERRITORY_CRON_TZ', LIVEOPS_CRON_DEFAULT_TZ);
+
   return {
     territoryEnabled: readBool(env, 'TERRITORY_CRON_ENABLED', false),
     territoryCron: readString(
@@ -99,7 +140,7 @@ export function readLiveOpsCronConfig(
       'SECT_SEASON_SNAPSHOT_CRON',
       SECT_SEASON_SNAPSHOT_CRON_DEFAULT,
     ),
-    timezone: readString(env, 'TERRITORY_CRON_TZ', 'UTC'),
+    timezone: tz,
     leaseTtlSec: readInt(env, 'LIVEOPS_CRON_LEASE_TTL_SEC', 300),
   };
 }

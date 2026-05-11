@@ -29,6 +29,7 @@ import { TerritorySettlementService } from '../territory/territory-settlement.se
 import { TerritoryDecayService } from '../territory/territory-decay.service';
 import { TerritoryRewardService } from '../territory/territory-reward.service';
 import { SectSeasonHistoryService } from '../sect-season/sect-season-history.service';
+import { SectSeasonRewardService } from '../sect-season/sect-season-reward.service';
 import { LiveOpsCronLease } from './liveops-cron.lease';
 import { LiveOpsCronService } from './liveops-cron.service';
 import {
@@ -53,6 +54,7 @@ beforeAll(() => {
   const decay = new TerritoryDecayService(prisma);
   const reward = new TerritoryRewardService(prisma);
   const seasonHistory = new SectSeasonHistoryService(prisma);
+  const seasonReward = new SectSeasonRewardService(prisma);
   // Lease no-op (Redis null) — DB UNIQUE guard mới là final barrier.
   const lease = new LiveOpsCronLease(null);
   cron = new LiveOpsCronService(
@@ -61,6 +63,7 @@ beforeAll(() => {
     decay,
     reward,
     seasonHistory,
+    seasonReward,
     lease,
   );
 });
@@ -216,15 +219,82 @@ describe('LiveOpsCronService.runSectSeasonCycle', () => {
     expect(r1.seasonSnapshotsCreated).toBe(1);
     expect(r1.seasonSnapshotsSkipped).toBe(0);
     expect(r1.seasonsProcessed).toContain('season_2026_s1');
+    // Phase 15.7 — empty season (no contribution) → champion/mvp
+    // counts = 0, không throw.
+    expect(r1.championMailsCreated).toBe(0);
+    expect(r1.mvpMailsCreated).toBe(0);
 
     // Lần 2: snapshot đã tồn tại → skipped.
     const r2 = await cron.runSectSeasonCycle({ now: AFTER_S1_ONLY });
     expect(r2.seasonSnapshotsCreated).toBe(0);
     expect(r2.seasonSnapshotsSkipped).toBe(1);
+    // Phase 15.7 — đã grant từ run 1 (cả 0 lẫn 0) → run 2 vẫn 0/0
+    // (không có member nào để skip).
+    expect(r2.championMailsCreated).toBe(0);
+    expect(r2.mvpMailsCreated).toBe(0);
 
     const persisted = await prisma.sectSeasonSnapshot.findMany();
     expect(persisted).toHaveLength(1);
     expect(persisted[0].seasonKey).toBe('season_2026_s1');
+  });
+
+  it('Phase 15.7 — champion + MVP reward grant đúng + idempotent qua 2 cycle', async () => {
+    // Setup: sect với 2 member, contribute trong S1 weekKeys.
+    const sect = await makeSect();
+    const m1 = await makeUserChar(prisma, { sectId: sect.id });
+    const m2 = await makeUserChar(prisma, { sectId: sect.id });
+    // Contribute S1 weekKey đầu tiên.
+    await prisma.sectWarContribution.create({
+      data: {
+        weekKey: '2026-W14',
+        sectId: sect.id,
+        characterId: m1.characterId,
+        activityKey: 'dungeon_clear',
+        sourceType: 'DungeonRun',
+        sourceId: `src-${nextSuffix()}`,
+        points: 500,
+      },
+    });
+    await prisma.sectWarContribution.create({
+      data: {
+        weekKey: '2026-W14',
+        sectId: sect.id,
+        characterId: m2.characterId,
+        activityKey: 'dungeon_clear',
+        sourceType: 'DungeonRun',
+        sourceId: `src-${nextSuffix()}`,
+        points: 200,
+      },
+    });
+
+    const r1 = await cron.runSectSeasonCycle({ now: AFTER_S1_ONLY });
+    expect(r1.seasonSnapshotsCreated).toBe(1);
+    // 2 champion mail (1/member sect rank-1) + 1 MVP mail (m1 top points).
+    expect(r1.championMailsCreated).toBe(2);
+    expect(r1.mvpMailsCreated).toBe(1);
+    expect(r1.championAlreadyGranted).toBe(0);
+    expect(r1.mvpAlreadyGranted).toBe(0);
+
+    // m1 = champion + MVP → 2 mail tổng cộng.
+    const m1Mails = await prisma.mail.findMany({
+      where: { recipientId: m1.characterId },
+    });
+    expect(m1Mails).toHaveLength(2);
+
+    // Lần 2: snapshot đã tồn tại + reward đã grant → tất cả skip.
+    const r2 = await cron.runSectSeasonCycle({ now: AFTER_S1_ONLY });
+    expect(r2.seasonSnapshotsCreated).toBe(0);
+    expect(r2.seasonSnapshotsSkipped).toBe(1);
+    expect(r2.championMailsCreated).toBe(0);
+    expect(r2.championAlreadyGranted).toBe(2);
+    expect(r2.mvpMailsCreated).toBe(0);
+    expect(r2.mvpAlreadyGranted).toBe(1);
+
+    // Vẫn chỉ 2 mail cho m1 (idempotent).
+    const m1MailsAfter = await prisma.mail.findMany({
+      where: { recipientId: m1.characterId },
+    });
+    expect(m1MailsAfter).toHaveLength(2);
   });
 
   it('chưa season nào ended → snapshot 0', async () => {

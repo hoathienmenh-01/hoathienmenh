@@ -57,22 +57,23 @@ Sinh secret: `openssl rand -base64 48`.
 
 > **Phase 15.5 — Maintenance Window**: KHÔNG có env var mới. Cache L1 in-memory TTL 10s hardcoded trong `MaintenanceWindowService` (tránh thrash khi nhiều request hit middleware). Cron transition (`SCHEDULED→ACTIVE` / `ACTIVE→ENDED`) **piggy-back** trên `LiveOpsEventSchedulerCronProcessor` 5'-tick — KHÔNG cần thêm queue/lease/env var mới. Tất cả config chuyển sang DB row qua admin API/panel (xem `docs/RUNBOOK.md` §2.23 + `docs/API.md` §Maintenance Window).
 
-### LiveOps Cron (Phase 13.2.D + 14.0.F)
+### LiveOps Cron (Phase 13.2.D + 14.0.F + 15.7)
 
-Cron tự động hóa weekly cycle. **Default disabled** ở local/test — production phải explicit opt-in để tránh cron chạy nhầm khi deploy mới chưa kịp seed.
+Cron tự động hóa weekly cycle. **Default disabled** ở local/test — production phải explicit opt-in để tránh cron chạy nhầm khi deploy mới chưa kịp seed. Phase 15.7 default timezone đổi sang `Asia/Ho_Chi_Minh` (cùng helper TZ-aware ICT từ TZ Hotfix PR #517).
 
 | Env var | Mặc định | Mô tả |
 |---|---|---|
 | `TERRITORY_CRON_ENABLED` | `false` | Bật cron territory weekly cycle (settle previous period → decay → grant owner reward mail). Truthy: `true`/`1`/`yes`/`on`. |
-| `TERRITORY_CRON_TZ` | `UTC` | Timezone cho cron pattern. Đổi thành `Asia/Ho_Chi_Minh` nếu muốn pattern theo giờ VN. |
-| `TERRITORY_WEEKLY_SETTLE_CRON` | `5 0 * * 1` | Pattern BullMQ repeat — Mon 00:05 UTC. Settle previous ISO week, decay, grant reward mail. |
-| `SECT_SEASON_CRON_ENABLED` | `false` | Bật cron sect season snapshot (snapshot mọi season `endsAtIso ≤ now`, idempotent qua UNIQUE `seasonKey`). |
-| `SECT_SEASON_SNAPSHOT_CRON` | `15 0 * * *` | Pattern — daily 00:15 UTC. Daily check rẻ vì hầu hết ngày KHÔNG có season ended (skip nhanh). |
+| `SECT_TERRITORY_CRON_TZ` | `Asia/Ho_Chi_Minh` | (Phase 15.7) Timezone unified cho cả 2 cron job. Khớp `previousTerritoryPeriodKey()` TZ-aware ICT. Override qua `SECT_TERRITORY_CRON_TZ` (priority cao nhất) hoặc legacy `TERRITORY_CRON_TZ`. |
+| `TERRITORY_CRON_TZ` | `Asia/Ho_Chi_Minh` | (Legacy alias) Cùng tác dụng `SECT_TERRITORY_CRON_TZ` nhưng deprecated từ Phase 15.7. |
+| `TERRITORY_WEEKLY_SETTLE_CRON` | `5 0 * * 1` | Pattern BullMQ repeat — Mon 00:05 theo timezone (= Sun 17:05 UTC khi tz=ICT). Settle previous ISO week, decay, grant reward mail. |
+| `SECT_SEASON_CRON_ENABLED` | `false` | Bật cron sect season snapshot + Champion/MVP reward grant (Phase 15.7). Snapshot mọi season `endsAtIso ≤ now`, idempotent qua UNIQUE `seasonKey`. |
+| `SECT_SEASON_SNAPSHOT_CRON` | `15 0 * * *` | Pattern — daily 00:15 theo timezone. Daily check rẻ vì hầu hết ngày KHÔNG có season ended (skip nhanh). |
 | `LIVEOPS_CRON_LEASE_TTL_SEC` | `300` | TTL Redis lease (giây) để 2 node KHÔNG cùng leader chạy. Lease fail-open nếu Redis vắng — DB UNIQUE guard mới là final barrier. Set `0` để disable lease (dev/test). |
 
-**Ghi chú race-safety**: cron đã idempotent ở DB layer — settlement, decay log, reward grant, season snapshot đều có UNIQUE constraint → P2002 swallow trả existing. Lease chỉ là optimistic optimization để giảm DB load khi 2 node race. An toàn để run cron song song nhiều node.
+**Ghi chú race-safety**: cron đã idempotent ở DB layer — settlement, decay log, reward grant, season snapshot, sect season reward grant (Phase 15.7 `SectSeasonRewardGrant` UNIQUE `(seasonKey, rewardType, characterId)`) đều có UNIQUE constraint → P2002 swallow trả existing. Lease chỉ là optimistic optimization để giảm DB load khi 2 node race. An toàn để run cron song song nhiều node.
 
-**Manual override**: vẫn giữ admin force-run endpoints sau khi enable cron — `POST /admin/liveops/run-weekly-cycle` (combo), `/admin/territory/cron/run-now`, `/admin/sect-season/cron/run-now`. Chạy lại an toàn (idempotent).
+**Manual override**: vẫn giữ admin force-run endpoints sau khi enable cron — `POST /admin/liveops/run-weekly-cycle` (combo), `/admin/territory/cron/run-now`, `/admin/sect-season/cron/run-now`. Chạy lại an toàn (idempotent). Phase 15.7 thêm 2 endpoint read-only: `GET /admin/territory/cron/status` + `GET /admin/sect-season/cron/status` để monitor không cần audit log.
 
 ### Economy Anti-cheat Cron (Phase 16.6)
 

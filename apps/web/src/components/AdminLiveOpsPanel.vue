@@ -460,6 +460,17 @@ defineExpose({ refreshStatus, refreshSectWar });
             snapshots: weeklyCycleResult.sectSeason.seasonSnapshotsCreated,
           }) }}
           <div
+            class="text-[11px] text-ink-300/80 mt-0.5"
+            data-test="admin-liveops-weekly-rewards"
+          >
+            {{ t('adminLiveOps.weeklyCycle.rewards', {
+              champ: weeklyCycleResult.sectSeason.championMailsCreated,
+              champExisted: weeklyCycleResult.sectSeason.championAlreadyGranted,
+              mvp: weeklyCycleResult.sectSeason.mvpMailsCreated,
+              mvpExisted: weeklyCycleResult.sectSeason.mvpAlreadyGranted,
+            }) }}
+          </div>
+          <div
             v-if="weeklyCycleResult.territory.errors.length || weeklyCycleResult.sectSeason.errors.length"
             class="mt-1 text-rose-300"
             data-test="admin-liveops-weekly-errors"

@@ -123,6 +123,8 @@ const i18n = createI18n({
           confirm: 'Run weekly cycle?',
           summary:
             'Settled {settled} · Skipped {skipped} · Mail {mails} (already {already}) · Snapshots {snapshots}',
+          rewards:
+            'Champion {champ} (already {champExisted}) · MVP {mvp} (already {mvpExisted})',
           errorsLabel: 'Errors',
           toast: { ok: 'Weekly cycle done.' },
         },
@@ -444,6 +446,10 @@ describe('AdminLiveOpsPanel', () => {
         seasonSnapshotsCreated: 1,
         seasonSnapshotsSkipped: 0,
         seasonsProcessed: ['season_2026_s1'],
+        championMailsCreated: 12,
+        championAlreadyGranted: 0,
+        mvpMailsCreated: 1,
+        mvpAlreadyGranted: 0,
         errors: [],
       },
     });
@@ -470,6 +476,12 @@ describe('AdminLiveOpsPanel', () => {
     expect(summary.text()).toContain('Settled 3');
     expect(summary.text()).toContain('Mail 7');
     expect(summary.text()).toContain('Snapshots 1');
+
+    // Phase 15.7 — champion/mvp reward summary line.
+    const rewards = w.find('[data-test="admin-liveops-weekly-rewards"]');
+    expect(rewards.exists()).toBe(true);
+    expect(rewards.text()).toContain('Champion 12');
+    expect(rewards.text()).toContain('MVP 1');
   });
 
   it('weekly cycle: PERIOD_INVALID error → toast error, panel không crash', async () => {

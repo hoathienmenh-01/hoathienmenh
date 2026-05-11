@@ -3097,7 +3097,7 @@
     },
     "weeklyCycle": {
       "title": "Chu kỳ tuần (Cron)",
-      "help": "Force-run territory settle + decay + reward mail + sect season snapshot. Idempotent qua DB UNIQUE — chạy 2 lần KHÔNG double mail.",
+      "help": "Force-run territory settle + decay + reward mail + sect season snapshot + Champion/MVP reward. Idempotent qua DB UNIQUE — chạy 2 lần KHÔNG double mail.",
       "periodLabel": "Period key",
       "periodPlaceholder": "auto (tuần trước)",
       "bypassLeaseLabel": "Bypass lease",
@@ -3105,6 +3105,7 @@
       "submitting": "Đang chạy…",
       "confirm": "Xác nhận force-run weekly cycle? Idempotent — an toàn nếu cron đã chạy.",
       "summary": "Settled {settled} · Skipped {skipped} · Mail {mails} (already {already}) · Snapshots {snapshots}",
+      "rewards": "Champion mail {champ} (already {champExisted}) · MVP mail {mvp} (already {mvpExisted})",
       "errorsLabel": "Lỗi fail-soft",
       "toast": {
         "ok": "Weekly cycle hoàn tất."

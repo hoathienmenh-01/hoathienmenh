@@ -1167,6 +1167,219 @@ hết hạn → chính admin cũng bị khoá):
 - KHÔNG quên `allowHealthcheck=true` + `allowMetrics=true` cho window
   CRITICAL — nếu sai sẽ khiến k8s liveness probe fail → pod loop restart.
 
+### 2.27. Phase 15.7 — Sect Season + Territory Auto-Cron (P1/P2)
+
+**Use case**: cron auto-run weekly cycle nhưng có sự cố — không settle, settle 2 lần, double mail, hoặc Redis lease bị stuck.
+
+**Architecture invariant** (Phase 15.7):
+
+- 2 cron job: `territory-weekly-settle` (Mon 00:05 ICT) + `sect-season-snapshot` (daily 00:15 ICT). Default OFF nếu env `*_CRON_ENABLED` không set true. TZ unified: `SECT_TERRITORY_CRON_TZ=Asia/Ho_Chi_Minh`.
+- 2 lớp idempotency: Redis lease (best-effort, TTL 5min) + DB UNIQUE (authoritative). Multi-instance safe.
+- Manual trigger: `POST /admin/liveops/run-weekly-cycle` / `POST /admin/territory/cron/run-now` / `POST /admin/sect-season/cron/run-now` — same code path as cron.
+- Status read-only: `GET /admin/territory/cron/status` + `GET /admin/sect-season/cron/status`.
+
+#### 2.27.1. Bật/tắt cron
+
+**Production cần BẬT** (env mặc định OFF cho safety dev):
+
+```bash
+# .env (production)
+SECT_SEASON_CRON_ENABLED=true
+TERRITORY_CRON_ENABLED=true
+SECT_TERRITORY_CRON_TZ=Asia/Ho_Chi_Minh
+LIVEOPS_CRON_LEASE_TTL_SEC=300
+# Optional override cron expression (mặc định OK):
+# TERRITORY_WEEKLY_SETTLE_CRON='5 0 * * 1'
+# SECT_SEASON_SNAPSHOT_CRON='15 0 * * *'
+```
+
+**Tắt khẩn cấp** (vd reward catalog sai, balance bug):
+
+```bash
+# Set env và restart pod (graceful):
+SECT_SEASON_CRON_ENABLED=false
+TERRITORY_CRON_ENABLED=false
+```
+
+Verify cron tắt qua status endpoint:
+
+```bash
+curl -s -X GET https://api.xuantoi.com/admin/sect-season/cron/status \
+  -H 'Cookie: <admin-session>' | jq '.data.enabled'
+# → false
+```
+
+#### 2.27.2. Force settle Sect Season tay (admin manual fallback)
+
+Use case: cron bị tắt / lỡ cron / cần settle ngay sau khi season vừa end.
+
+```bash
+# Snapshot mọi season đã end (idempotent — chạy lại không tạo duplicate):
+curl -X POST https://api.xuantoi.com/admin/sect-season/cron/run-now \
+  -H 'Cookie: <admin-session>' \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+# Response data:
+#   { seasonSnapshotsCreated, seasonSnapshotsSkipped, seasonsProcessed,
+#     championMailsCreated, championAlreadyGranted,
+#     mvpMailsCreated, mvpAlreadyGranted, errors }
+
+# Bypass Redis lease nếu cần (chỉ dùng khi cron đang lease bởi worker đang chạy):
+curl -X POST https://api.xuantoi.com/admin/sect-season/cron/run-now \
+  -H 'Cookie: <admin-session>' -H 'Content-Type: application/json' \
+  -d '{"bypassLease": true}'
+```
+
+#### 2.27.3. Force settle Territory tay
+
+```bash
+# Settle previous week (auto-detect):
+curl -X POST https://api.xuantoi.com/admin/territory/cron/run-now \
+  -H 'Cookie: <admin-session>' -H 'Content-Type: application/json' \
+  -d '{}'
+
+# Override periodKey (vd settle tuần ABCD-Wxx):
+curl -X POST https://api.xuantoi.com/admin/territory/cron/run-now \
+  -H 'Cookie: <admin-session>' -H 'Content-Type: application/json' \
+  -d '{"periodKey": "2026-W19"}'
+
+# Combo (settle + decay + reward + sect-season snapshot trong 1 call):
+curl -X POST https://api.xuantoi.com/admin/liveops/run-weekly-cycle \
+  -H 'Cookie: <admin-session>' -H 'Content-Type: application/json' \
+  -d '{}'
+```
+
+#### 2.27.4. Kiểm tra reward đã grant chưa (SQL probe)
+
+```sql
+-- Phase 15.7: số mail Champion + MVP đã grant theo seasonKey.
+SELECT "rewardType",
+       COUNT(*) AS mails,
+       MIN("grantedAt") AS first_granted,
+       MAX("grantedAt") AS last_granted
+FROM "SectSeasonRewardGrant"
+WHERE "seasonKey" = 'season_2026_s1'
+GROUP BY "rewardType";
+
+-- Territory owner reward count theo periodKey + region:
+SELECT "regionKey",
+       COUNT(*) AS mails,
+       MIN("grantedAt") AS first_granted,
+       MAX("grantedAt") AS last_granted
+FROM "TerritoryOwnerRewardGrant"
+WHERE "periodKey" = '2026-W19'
+GROUP BY "regionKey"
+ORDER BY "regionKey";
+
+-- Decay log (1 row/period — UNIQUE):
+SELECT "periodKey", "decayBps", "rowsAffected", "pointsBefore", "pointsAfter", "triggeredAt"
+FROM "SectTerritoryDecayLog"
+ORDER BY "triggeredAt" DESC
+LIMIT 5;
+
+-- Settlement snapshot (1 row/(region,period) — UNIQUE):
+SELECT "regionKey", "periodKey", "winnerSectName", "winnerPoints", "settledAt"
+FROM "SectTerritorySettlementSnapshot"
+WHERE "periodKey" = '2026-W19'
+ORDER BY "regionKey";
+```
+
+#### 2.27.5. Cron chạy trùng — multi-instance hoặc retry
+
+DB UNIQUE đã đảm bảo 0 double mail / 0 double settle. Cron retry hoặc 2 pod đua:
+
+- 1 thắng → tạo grant row + mail.
+- 1 thua → P2002 unique violation → service swallow → trả `existed`/`skipped`.
+
+Verify không có double mail (phải = 0):
+
+```sql
+-- Phase 15.7 — không bao giờ có 2 grant cho cùng tuple.
+SELECT "seasonKey", "rewardType", "characterId", COUNT(*) AS dup
+FROM "SectSeasonRewardGrant"
+GROUP BY "seasonKey", "rewardType", "characterId"
+HAVING COUNT(*) > 1;
+-- Empty kết quả = healthy.
+
+SELECT "periodKey", "regionKey", "characterId", COUNT(*) AS dup
+FROM "TerritoryOwnerRewardGrant"
+GROUP BY "periodKey", "regionKey", "characterId"
+HAVING COUNT(*) > 1;
+-- Empty kết quả = healthy.
+```
+
+#### 2.27.6. Redis down — fail-soft behavior
+
+`LiveOpsCronLease` dùng Redis SET NX EX 300s. Redis down (connect refused / timeout):
+
+- Lease acquire/release → log warn, throw NOT.
+- Service vẫn tiếp tục chạy → DB UNIQUE chống double.
+- API KHÔNG crash. Cron vẫn idempotent.
+
+Recover Redis: cron next tick tự pickup lease lại.
+
+#### 2.27.7. Rollback nếu reward mail grant nhầm
+
+**Lỗi gặp thường**: catalog reward set sai (vd 50000 LT thay vì 5000). Phát hiện sau khi grant batch.
+
+Plan rollback (chỉ ADMIN truy cập DB):
+
+```sql
+-- Bước 1: Soft-delete mail (KHÔNG xoá grant row — giữ audit).
+UPDATE "Mail"
+SET "deletedAt" = NOW(),
+    "subject" = "subject" || ' [REVOKED — wrong reward]'
+WHERE "id" IN (
+  SELECT "mailId"
+  FROM "SectSeasonRewardGrant"
+  WHERE "seasonKey" = 'season_2026_s1'
+    AND "rewardType" = 'CHAMPION'
+    AND "mailId" IS NOT NULL
+);
+
+-- Bước 2: Reverse currency nếu mail đã claim (claim → ledger row).
+-- Đếm trước:
+SELECT COUNT(*), SUM("delta") AS total_lt_to_reverse
+FROM "CurrencyLedger"
+WHERE "reason" = 'MAIL_REWARD_CLAIM'
+  AND "refType" = 'Mail'
+  AND "refId" IN (...mail ids từ bước 1...);
+
+-- Bước 3: Liên hệ user qua announcement; KHÔNG silent revert ledger.
+```
+
+**KHÔNG**:
+
+- KHÔNG xoá row `SectSeasonRewardGrant` (mất idempotency — cron next tick re-grant).
+- KHÔNG `DROP TABLE` table grant.
+
+#### 2.27.8. Test boundary — ICT timezone Sunday 23:00 ↔ Monday 00:00
+
+Sau PR #517 hotfix, period key được tính theo Asia/Ho_Chi_Minh. Verify:
+
+```bash
+# Mock thời gian Sunday 23:00 ICT — periodKey = tuần hiện tại (chưa rollover).
+TZ=Asia/Ho_Chi_Minh node -e "
+const { previousTerritoryPeriodKey } = require('@xuantoi/shared');
+const now = new Date('2026-05-10T16:00:00Z'); // = Sun 23:00 ICT
+console.log(previousTerritoryPeriodKey(now)); // expect 2026-W18
+"
+
+# Mock thời gian Monday 00:30 ICT — periodKey = tuần vừa kết thúc.
+TZ=Asia/Ho_Chi_Minh node -e "
+const { previousTerritoryPeriodKey } = require('@xuantoi/shared');
+const now = new Date('2026-05-10T17:30:00Z'); // = Mon 00:30 ICT
+console.log(previousTerritoryPeriodKey(now)); // expect 2026-W19
+"
+```
+
+#### 2.27.9. KHÔNG làm
+
+- KHÔNG bật cron production mà chưa verify Redis healthcheck (Redis down → lease fallback nhưng cảnh báo PRODs mất quan sát).
+- KHÔNG hot-edit `SectSeasonRewardGrant` row (mất idempotency).
+- KHÔNG bypass DB UNIQUE bằng cách `INSERT ... ON CONFLICT DO NOTHING` ngoài service — service đã handle P2002.
+- KHÔNG settle bằng `dryRun=false` trên DB production khi chưa test trên staging.
+
 ## 3. Backup operations (closed beta cadence)
 
 ### 3.1. Cron daily backup

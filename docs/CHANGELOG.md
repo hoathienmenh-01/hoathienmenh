@@ -12,7 +12,60 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### TZ Hotfix — unify sectWarWeekKey + Territory periodKey to one TZ-aware helper (this PR)
+### Phase 15.7 — Sect Season + Territory Auto-Cron + Champion/MVP Reward Distribution (this PR — #518)
+
+**Scope**: Tự động vận hành weekly cho Sect Season (snapshot + Champion/MVP reward) và Territory (settle + decay + owner reward mail). Tất cả idempotent qua DB UNIQUE; race-safe qua Redis lease + P2002 swallow; có admin manual trigger giữ làm fallback. Sau khi PR #516 (Config Version + Rollback) và PR #517 (TZ Hotfix sectWarWeekKey/startOfWeek unify) đã merge, hotfix TZ-aware đã đảm bảo periodKey/seasonKey không lệch boundary Sun 17:00 UTC ↔ Mon 00:00 ICT — Phase 15.7 build cron auto-run trên foundation đó.
+
+#### Added — Phase 15.7
+
+- **Backend cron orchestration** (`apps/api/src/modules/liveops-cron/`):
+  - `LiveOpsCronService.runWeeklyCycle()` — combo settle territory + decay + reward + sect-season snapshot + Champion/MVP reward; aggregate summary trả về `{ territory, sectSeason, skippedAlreadyDone, triggeredBy }`.
+  - `LiveOpsCronScheduler` — register BullMQ repeat jobs (territory `5 0 * * 1`, sect-season `15 0 * * *`) theo `SECT_TERRITORY_CRON_TZ` (default `Asia/Ho_Chi_Minh`). Default OFF nếu env `*_CRON_ENABLED` không set.
+  - `LiveOpsCronLease` — Redis SET NX EX lease với TTL 300s. Lease unavailable (Redis down) fail-soft → log warn + delegate idempotency cho DB UNIQUE.
+  - Processors `TerritoryCycleProcessor` + `SectSeasonCycleProcessor` shared chung service path với admin manual trigger (manual trigger = cron path = same code).
+- **Sect Season Champion/MVP Reward distribution** (`apps/api/src/modules/sect-season/sect-season-reward.service.ts`):
+  - Auto grant Champion mail cho mọi member của sect rank-1 sau snapshot (cap `SECT_SEASON_CHAMPION_MEMBER_CAP = 100` theo characterId ASC để deterministic).
+  - Auto grant MVP mail cho top-1 cá nhân (1 character only).
+  - Idempotent qua bảng `SectSeasonRewardGrant` UNIQUE composite `(seasonKey, rewardType, characterId)`. Atomic transaction insert grant row + Mail row trong cùng tx; race-lose → P2002 swallow → trả `existed`.
+  - dryRun mode: count "would-create" mà KHÔNG tạo mail/grant row.
+  - Reward catalog (`packages/shared/src/sect-season-rewards.ts`): Champion `5000 LT` + items, MVP `15000 LT` + items, đã tune cap để không phá economy.
+- **Territory Owner Weekly Reward** (đã có từ Phase 14.0.E nhưng cron-driven):
+  - `TerritoryOwnerRewardGrant` UNIQUE `(periodKey, regionKey, characterId)` — đảm bảo cron retry không double mail.
+  - `TerritoryDecayService` chạy sau settle, log row `SectTerritoryDecayLog` UNIQUE periodKey.
+- **Admin endpoints** (`POST /admin/liveops/run-weekly-cycle`, `POST /admin/territory/cron/run-now`, `POST /admin/sect-season/cron/run-now`) — giữ làm manual fallback. Body `{ periodKey?, bypassLease? }`. ADMIN-only (`@RequireAdmin()`). Audit log: `ADMIN_LIVEOPS_RUN_WEEKLY_CYCLE` / `ADMIN_TERRITORY_CRON_RUN` / `ADMIN_SECT_SEASON_CRON_RUN`.
+- **Admin status read endpoints** (Phase 15.7 polish): `GET /admin/territory/cron/status` + `GET /admin/sect-season/cron/status` — trả config + last settlement/decay/reward/snapshot/champ/mvp grant rows. Read-only, KHÔNG audit.
+- **FE Admin LiveOps Panel** (`apps/web/src/components/AdminLiveOpsPanel.vue`): Hiển thị Champion/MVP mail count trong weekly cycle summary. i18n VI/EN parity (`adminLiveOps.weeklyCycle.rewards`).
+- **Tests** (mới ở phase này):
+  - `apps/api/src/modules/sect-season/sect-season-reward.service.test.ts` — 11 test: happy path, idempotent (2x), race-safe (Promise.all 3), dryRun, error paths, membership snapshot rule, champion member cap.
+  - `apps/api/src/modules/liveops-cron/liveops-cron.service.test.ts` — assert champion/mvp count trong return summary qua 2 cycle (idempotent).
+  - `apps/api/src/modules/liveops-cron/admin-liveops-cron.controller.test.ts` — 4 test mới cho status endpoints (DB rỗng vs có data).
+  - `apps/web/src/components/__tests__/AdminLiveOpsPanel.test.ts` — assert Champion/MVP rewards line render.
+
+#### Configuration — Phase 15.7
+
+- `SECT_SEASON_CRON_ENABLED` (default `false`) — bật cron snapshot daily. Production set `true`.
+- `TERRITORY_CRON_ENABLED` (default `false`) — bật cron settle weekly. Production set `true`.
+- `SECT_TERRITORY_CRON_TZ` (default `Asia/Ho_Chi_Minh`) — timezone cron, đổi cùng helper `previousTerritoryPeriodKey()`.
+- `TERRITORY_WEEKLY_SETTLE_CRON` (default `5 0 * * 1`) — Mon 00:05 local-tz.
+- `SECT_SEASON_SNAPSHOT_CRON` (default `15 0 * * *`) — daily 00:15 local-tz.
+- `LIVEOPS_CRON_LEASE_TTL_SEC` (default `300`) — Redis lease TTL.
+
+#### Idempotency / race-safety — Phase 15.7
+
+- **Layer 1 — Redis lease** (best-effort): SET NX EX, TTL 5min. 2 cron worker đua → 1 thắng, 1 fail-soft skip.
+- **Layer 2 — DB UNIQUE** (authoritative):
+  - Territory: `SectTerritorySettlementSnapshot` UNIQUE `(regionKey, periodKey)`, `SectTerritoryDecayLog` UNIQUE `periodKey`, `TerritoryOwnerRewardGrant` UNIQUE `(periodKey, regionKey, characterId)`.
+  - Sect Season: `SectSeasonSnapshot` UNIQUE `seasonKey`, `SectSeasonRewardGrant` UNIQUE `(seasonKey, rewardType, characterId)`.
+- **P2002 swallow**: race-lose insert → trả `existed`/`skipped` thay vì throw.
+- **Multi-instance**: 2+ API pod đua → DB UNIQUE đảm bảo 0 double mail. Không cần Redis (Redis chỉ giảm tải).
+
+#### Known limitations — Phase 15.7
+
+- **Champion membership rule**: theo current membership tại thời điểm grant (KHÔNG snapshot membership tại thời điểm season end). Member rời sect SAU snapshot, TRƯỚC grant → không nhận champion reward (test verify). Tradeoff: tránh schema thêm 1 bảng membership-snapshot lớn cho audit-perfect; nếu cần audit-perfect, mở Phase 15.8.
+- **MVP**: 1 character only (top-1 contribution desc, characterId asc). Không cấp MVP cho top-2/3.
+- **Champion member cap = 100**: deterministic theo characterId ASC. Sect lớn hơn 100 member → 100 đầu nhận; spec docs note để admin biết.
+
+
 
 **Scope**: Pre-Phase-15.7 hotfix. Hợp nhất toàn bộ weekly-period helpers (Sect War, Sect Mission, Territory) về **một single source of truth TZ-aware** dùng `Asia/Ho_Chi_Minh` (ICT) làm timezone mặc định. Trước hotfix có 3 implementation khác nhau:
 

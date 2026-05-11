@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpException,
   HttpStatus,
   Post,
@@ -9,10 +10,14 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { z } from 'zod';
-import { isTerritoryPeriodKey } from '@xuantoi/shared';
+import {
+  isTerritoryPeriodKey,
+  previousTerritoryPeriodKey,
+} from '@xuantoi/shared';
 import { AdminGuard } from '../admin/admin.guard';
 import { RequireAdmin } from '../admin/require-admin.decorator';
 import { PrismaService } from '../../common/prisma.service';
+import { readLiveOpsCronConfig } from './liveops-cron.config';
 import {
   LiveOpsCronService,
   type SectSeasonCycleSummary,
@@ -155,6 +160,133 @@ export class AdminLiveOpsCronController {
       errors: data.errors.length,
     });
     return { ok: true, data };
+  }
+
+  /**
+   * Phase 15.7 — GET /admin/territory/cron/status. Read-only snapshot
+   * để admin observe automation health.
+   */
+  @Get('admin/territory/cron/status')
+  @RequireAdmin()
+  async territoryCronStatus(): Promise<{
+    ok: true;
+    data: {
+      enabled: boolean;
+      cron: string;
+      timezone: string;
+      previousPeriodKey: string;
+      lastSettlement: { periodKey: string; settledAt: string } | null;
+      lastDecay: { periodKey: string; appliedAt: string } | null;
+      lastReward: { periodKey: string; grantedAt: string } | null;
+    };
+  }> {
+    const cfg = readLiveOpsCronConfig();
+    const previousPeriodKey = previousTerritoryPeriodKey();
+    const [lastSettlementRow, lastDecayRow, lastRewardRow] = await Promise.all([
+      this.prisma.sectTerritorySettlementSnapshot.findFirst({
+        orderBy: { periodKey: 'desc' },
+        select: { periodKey: true, settledAt: true },
+      }),
+      this.prisma.sectTerritoryDecayLog.findFirst({
+        orderBy: { periodKey: 'desc' },
+        select: { periodKey: true, triggeredAt: true },
+      }),
+      this.prisma.territoryOwnerRewardGrant.findFirst({
+        orderBy: { grantedAt: 'desc' },
+        select: { periodKey: true, grantedAt: true },
+      }),
+    ]);
+    return {
+      ok: true,
+      data: {
+        enabled: cfg.territoryEnabled,
+        cron: cfg.territoryCron,
+        timezone: cfg.timezone,
+        previousPeriodKey,
+        lastSettlement: lastSettlementRow
+          ? {
+              periodKey: lastSettlementRow.periodKey,
+              settledAt: lastSettlementRow.settledAt.toISOString(),
+            }
+          : null,
+        lastDecay: lastDecayRow
+          ? {
+              periodKey: lastDecayRow.periodKey,
+              appliedAt: lastDecayRow.triggeredAt.toISOString(),
+            }
+          : null,
+        lastReward: lastRewardRow
+          ? {
+              periodKey: lastRewardRow.periodKey,
+              grantedAt: lastRewardRow.grantedAt.toISOString(),
+            }
+          : null,
+      },
+    };
+  }
+
+  /**
+   * Phase 15.7 — GET /admin/sect-season/cron/status. Read-only snapshot.
+   */
+  @Get('admin/sect-season/cron/status')
+  @RequireAdmin()
+  async sectSeasonCronStatus(): Promise<{
+    ok: true;
+    data: {
+      enabled: boolean;
+      cron: string;
+      timezone: string;
+      lastSnapshot: { seasonKey: string; finalizedAt: string } | null;
+      lastChampionGrant: {
+        seasonKey: string;
+        grantedAt: string;
+      } | null;
+      lastMvpGrant: { seasonKey: string; grantedAt: string } | null;
+    };
+  }> {
+    const cfg = readLiveOpsCronConfig();
+    const [lastSnapshotRow, lastChampRow, lastMvpRow] = await Promise.all([
+      this.prisma.sectSeasonSnapshot.findFirst({
+        orderBy: { finalizedAt: 'desc' },
+        select: { seasonKey: true, finalizedAt: true },
+      }),
+      this.prisma.sectSeasonRewardGrant.findFirst({
+        where: { rewardType: 'CHAMPION' },
+        orderBy: { grantedAt: 'desc' },
+        select: { seasonKey: true, grantedAt: true },
+      }),
+      this.prisma.sectSeasonRewardGrant.findFirst({
+        where: { rewardType: 'MVP' },
+        orderBy: { grantedAt: 'desc' },
+        select: { seasonKey: true, grantedAt: true },
+      }),
+    ]);
+    return {
+      ok: true,
+      data: {
+        enabled: cfg.sectSeasonEnabled,
+        cron: cfg.sectSeasonCron,
+        timezone: cfg.timezone,
+        lastSnapshot: lastSnapshotRow
+          ? {
+              seasonKey: lastSnapshotRow.seasonKey,
+              finalizedAt: lastSnapshotRow.finalizedAt.toISOString(),
+            }
+          : null,
+        lastChampionGrant: lastChampRow
+          ? {
+              seasonKey: lastChampRow.seasonKey,
+              grantedAt: lastChampRow.grantedAt.toISOString(),
+            }
+          : null,
+        lastMvpGrant: lastMvpRow
+          ? {
+              seasonKey: lastMvpRow.seasonKey,
+              grantedAt: lastMvpRow.grantedAt.toISOString(),
+            }
+          : null,
+      },
+    };
   }
 
   private async audit(
