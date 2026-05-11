@@ -68,6 +68,7 @@ export * from './gameplay-anticheat';
 export * from './economy-report';
 export * from './market-price-band';
 export * from './market-trade-abuse';
+export * from './social';
 export * from './security-rate-limit';
 export * from './security-alerts';
 export * from './backup';
