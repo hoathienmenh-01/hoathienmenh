@@ -15,8 +15,15 @@ import PrivateChatPanel from '@/components/PrivateChatPanel.vue';
 import GroupChatPanel from '@/components/GroupChatPanel.vue';
 import PartyPanel from '@/components/PartyPanel.vue';
 import PartyDungeonPanel from '@/components/PartyDungeonPanel.vue';
+import CoopBossPanel from '@/components/CoopBossPanel.vue';
 
-type Tab = 'friends' | 'private' | 'group' | 'party' | 'partyDungeon';
+type Tab =
+  | 'friends'
+  | 'private'
+  | 'group'
+  | 'party'
+  | 'partyDungeon'
+  | 'coopBoss';
 
 const { t } = useI18n();
 const tab = ref<Tab>('friends');
@@ -105,6 +112,21 @@ const tab = ref<Tab>('friends');
       >
         {{ t('partyDungeon.title') }}
       </button>
+      <button
+        type="button"
+        role="tab"
+        :aria-selected="tab === 'coopBoss'"
+        class="px-3 py-1 text-xs uppercase tracking-widest rounded border"
+        :class="
+          tab === 'coopBoss'
+            ? 'border-amber-400/60 text-amber-200'
+            : 'border-ink-300/30 text-ink-300'
+        "
+        data-testid="social-tab-coop-boss"
+        @click="tab = 'coopBoss'"
+      >
+        {{ t('coopBoss.title') }}
+      </button>
     </nav>
 
     <div role="tabpanel">
@@ -112,7 +134,8 @@ const tab = ref<Tab>('friends');
       <PrivateChatPanel v-else-if="tab === 'private'" />
       <GroupChatPanel v-else-if="tab === 'group'" />
       <PartyPanel v-else-if="tab === 'party'" />
-      <PartyDungeonPanel v-else />
+      <PartyDungeonPanel v-else-if="tab === 'partyDungeon'" />
+      <CoopBossPanel v-else />
     </div>
   </section>
 </template>
