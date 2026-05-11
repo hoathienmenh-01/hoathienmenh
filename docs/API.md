@@ -160,6 +160,36 @@ Tick EXP thực hiện bởi BullMQ processor `cultivation.processor.ts`. WS eve
 | POST   | `/notifications/:id/read`         | Yes  | —    | Mark 1 notification đã đọc. Idempotent (đã read → no-op). Cross-user → `FORBIDDEN`. |
 | POST   | `/notifications/read-all`         | Yes  | —    | Mark all unread của caller. Trả `{markedCount, unreadCount:0}`. |
 
+## Party — `PartyController` (Phase 19.4)
+
+> Cooperative tổ đội gameplay-ready cho dungeon/boss co-op (Phase 20+). Mỗi user 1 active party tại một thời điểm; leader có thể invite/kick/transfer/disband. Soft-ref (không FK đến User) — service-layer consistency. Invite expire sau `PARTY_LIMITS.inviteExpireMinutes=10`. Block 2-chiều giữa inviter–invitee reject `BLOCKED`. Race accept invite idempotent qua unique `(partyId,userId,leftAt=NULL)`. Cột **Rate** = `@RateLimitPolicy()` key gắn ở controller.
+
+| Method | Path                                | Auth | Rate                  | Mô tả |
+|--------|-------------------------------------|------|-----------------------|-------|
+| GET    | `/party/me`                         | Yes  | —                     | Trả `MyPartyResponse{party,members}`. Không thuộc party → `party=null, members=[]`. |
+| GET    | `/party/members`                    | Yes  | —                     | Trả `PartyMemberListResponse{members}` của party hiện tại. Không thuộc party → `members=[]`. |
+| GET    | `/party/invites/incoming`           | Yes  | —                     | Trả `PartyInviteListResponse{invites}` (PENDING tới caller; lazy transition `EXPIRED`). |
+| GET    | `/party/invites/outgoing`           | Yes  | —                     | Trả `PartyInviteListResponse{invites}` (PENDING do caller gửi). |
+| POST   | `/party`                            | Yes  | `PARTY_CREATE`        | Body `{name?}` (3..40ch trimmed hoặc null). Tạo party + caller làm LEADER. Reject `ALREADY_IN_PARTY`/`INVALID_INPUT`. |
+| POST   | `/party/invites`                    | Yes  | `PARTY_INVITE_SEND`   | Body `{inviteeUserId}`. Leader-only. Reject `NOT_AUTHORIZED`/`SELF_NOT_ALLOWED`/`BLOCKED`/`DUPLICATE_INVITE`/`INVITEE_IN_OTHER_PARTY`/`PARTY_FULL`/`TOO_MANY_PENDING_INVITES`. |
+| POST   | `/party/invites/:id/accept`         | Yes  | `PARTY_MUTATION`      | Caller phải là invitee. Reject `INVITE_NOT_PENDING`/`INVITE_EXPIRED`/`ALREADY_IN_PARTY`/`PARTY_FULL`/`PARTY_DISBANDED`. Idempotent qua unique constraint. |
+| POST   | `/party/invites/:id/decline`        | Yes  | `PARTY_MUTATION`      | Caller phải là invitee. Reject `INVITE_NOT_PENDING`. |
+| DELETE | `/party/invites/:id`                | Yes  | `PARTY_MUTATION`      | Cancel invite. Caller = inviter hoặc leader của party. |
+| POST   | `/party/leave`                      | Yes  | `PARTY_MUTATION`      | Rời party. Leader rời → auto-transfer cho longest-tenured member (joinedAt asc); chỉ còn 1 → auto-disband. |
+| POST   | `/party/members/:userId/kick`       | Yes  | `PARTY_MUTATION`      | Leader-only. Reject `NOT_AUTHORIZED`/`SELF_NOT_ALLOWED`/`TARGET_NOT_MEMBER`. |
+| POST   | `/party/leader/transfer`            | Yes  | `PARTY_MUTATION`      | Body `{targetUserId}`. Leader-only. Target phải là member. |
+| POST   | `/party/disband`                    | Yes  | `PARTY_MUTATION`      | Leader-only. Mark all `leftAt=NOW`, status=DISBANDED, cancel pending invites. |
+
+WS events (best-effort fanout — không có recipient online thì im lặng drop):
+
+| Event                    | Recipients                          | Payload                                                                       |
+|--------------------------|-------------------------------------|-------------------------------------------------------------------------------|
+| `party:updated`          | All current members                 | `PartyUpdatedBroadcastPayload{party,members}`                                 |
+| `party:invite`           | Invitee only                        | `PartyInviteBroadcastPayload{invite}`                                         |
+| `party:member-joined`    | All members (sau khi join)          | `PartyMemberJoinedBroadcastPayload{partyId,userId,role,displayName}`          |
+| `party:member-left`      | Members + caller; `reason` enum     | `PartyMemberLeftBroadcastPayload{partyId,userId,reason}` (`LEFT|KICKED|DISBANDED`) |
+| `party:leader-changed`   | All members                         | `PartyLeaderChangedBroadcastPayload{partyId,previousLeaderUserId,newLeaderUserId}` |
+
 ## Chat Private — `ChatPrivateController` (Phase 19.1 + Phase 19.1.B)
 
 > Chat riêng 1-1. Thread invariant: `userAId < userBId` (lexicographic). Server-side: non-member → 404 mask (KHÔNG 403 leak existence). Block 2 chiều reject `sendPrivateMessage` với `BLOCKED`. Message body 1..500ch trimmed. Cột **Rate** = `@RateLimitPolicy()` key gắn ở controller (Phase 19.1.B).
