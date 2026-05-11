@@ -7,6 +7,7 @@ import { RealtimeModule } from '../realtime/realtime.module';
 import { CharacterModule } from '../character/character.module';
 import { MissionModule } from '../mission/mission.module';
 import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
+import { AdminMarketAbuseModule } from '../admin-market-abuse/admin-market-abuse.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
     CharacterModule,
     MissionModule,
     FeatureFlagModule,
+    AdminMarketAbuseModule,
   ],
   controllers: [MarketController],
   providers: [MarketService, PrismaService],

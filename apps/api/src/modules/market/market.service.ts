@@ -1,4 +1,4 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { CurrencyKind, ListingStatus } from '@prisma/client';
 import {
   checkListingPriceBand,
@@ -12,6 +12,7 @@ import { CharacterService } from '../character/character.service';
 import { CurrencyError, CurrencyService } from '../character/currency.service';
 import { MissionService } from '../mission/mission.service';
 import { AchievementService } from '../character/achievement.service';
+import { MarketTradeAbuseService } from '../admin-market-abuse/market-trade-abuse.service';
 
 class MarketError extends Error {
   constructor(
@@ -87,6 +88,8 @@ interface PostInput {
 
 @Injectable()
 export class MarketService {
+  private readonly logger = new Logger(MarketService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
@@ -94,6 +97,7 @@ export class MarketService {
     private readonly currency: CurrencyService,
     private readonly missions: MissionService,
     @Optional() private readonly achievements?: AchievementService,
+    @Optional() private readonly abuseDetector?: MarketTradeAbuseService,
   ) {}
 
   async listActive(viewerCharacterId: string, kind?: ItemKind): Promise<ListingView[]> {
@@ -209,6 +213,22 @@ export class MarketService {
       });
       return { listing: created, item: itemDef };
     });
+
+    // Phase 16.4 — Detection-only hook. Post-mutation, fail-soft.
+    if (this.abuseDetector) {
+      try {
+        await this.abuseDetector.recordListingCreate({
+          listingId: listing.id,
+          sellerId: char.id,
+          itemKey: listing.itemKey,
+          qty: listing.qty,
+          pricePerUnit: listing.pricePerUnit,
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        this.logger.warn(`recordListingCreate failed: ${msg}`);
+      }
+    }
 
     return this.toView(listing, item, char.name, char.id);
   }
@@ -412,6 +432,23 @@ export class MarketService {
       }
     } catch {
       // bỏ qua
+    }
+
+    // Phase 16.4 — Detection-only hook. Post-mutation, fail-soft.
+    if (this.abuseDetector) {
+      try {
+        await this.abuseDetector.recordListingBuy({
+          listingId: l.id,
+          sellerId: l.sellerId,
+          buyerId: buyer.id,
+          itemKey: l.itemKey,
+          qty: l.qty,
+          pricePerUnit: l.pricePerUnit,
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        this.logger.warn(`recordListingBuy failed: ${msg}`);
+      }
     }
 
     return this.toView(updated, item, seller?.name ?? '???', buyer.id);
