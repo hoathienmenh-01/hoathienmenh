@@ -500,19 +500,23 @@ export function clampContributionInput(input: {
 } {
   let anomaly = false;
 
-  const rawDamage =
-    typeof input.damageDone === 'bigint'
-      ? input.damageDone
-      : Number.isFinite(input.damageDone)
-      ? BigInt(Math.floor(Math.max(0, input.damageDone)))
-      : 0n;
+  let rawDamage: bigint;
+  if (typeof input.damageDone === 'bigint') {
+    rawDamage = input.damageDone;
+  } else if (Number.isFinite(input.damageDone)) {
+    // Detect negative BEFORE Math.max clamp so anomaly flips.
+    if (input.damageDone < 0) anomaly = true;
+    rawDamage = BigInt(Math.floor(Math.max(0, input.damageDone)));
+  } else {
+    rawDamage = 0n;
+  }
   let damage = rawDamage < 0n ? 0n : rawDamage;
+  if (rawDamage < 0n) anomaly = true;
   const maxDamage = BigInt(COOP_BOSS_LIMITS.maxDamagePerContribution);
   if (damage > maxDamage) {
     damage = maxDamage;
     anomaly = true;
   }
-  if (rawDamage < 0n) anomaly = true;
 
   let support = Number.isFinite(input.supportScore)
     ? Math.floor(input.supportScore)
