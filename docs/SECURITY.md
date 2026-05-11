@@ -696,6 +696,74 @@ Wire-up tại `apps/api/src/modules/party/party.controller.ts` qua `@RateLimitPo
 - `apps/api/src/modules/party/party.service.test.ts` (26 tests): createParty (success/INVALID/ALREADY_IN_PARTY) + inviteToParty (leader-only/self/blocked/dup/full/in-other-party) + acceptInvite (success/EXPIRED/idempotent race) + declineInvite + cancelInvite + leaveParty (non-leader/leader-auto-transfer/leader-auto-disband) + kickMember (leader-only/self/target-not-member) + transferLeader + disbandParty (leader-only) + listInvites lazy expire transition + cancel-sibling-invites-on-accept.
 - FE `apps/web/src/components/__tests__/PartyPanel.test.ts` (6 tests): empty + create form, current party render với online dot, accept invite, kick confirm true/false, transfer leader confirm, disband confirm.
 
+## 20.1. Party Dungeon — Co-op PvE Foundation (Phase 20.1)
+
+### Mục tiêu
+
+Foundation tổ đội PvE: leader của 1 party (Phase 19.4) tạo `PartyDungeonRoom` với `dungeonKey` cho trước → member ready → leader start → server auto-resolve inline → reward claim PENDING cho mỗi participant → member tự claim qua endpoint riêng (atomic CAS + ledger). **KHÔNG** matchmaking public, **KHÔNG** persistent IN_PROGRESS state (auto-resolve trong cùng request startRun — Phase 20.2 sẽ tách realtime combat), **KHÔNG** loot bidding / share-pool — out of scope.
+
+### Authorization & invariants
+
+- **1 active room / party** (`COOP_DUNGEON_LIMITS.maxActiveRoomPerParty=1`) — service guard `findActiveRoomByParty(partyId)` trước `createRoom`. Existed → `ROOM_ALREADY_EXISTS` (409).
+- **Leader-only mutations**: `createRoom`, `startRun`, `cancelRoom`. Non-leader → `NOT_PARTY_LEADER` (403). Gate qua shared helper `canStartPartyDungeon` để tránh skew giữa client preview và server.
+- **Caller-scoped participant mutations**: `join`/`ready`/`unready` chỉ tác động vào `participant.userId === callerUserId`. Service không cho operator inject participant id khác.
+- **Dungeon catalog whitelist** — `createRoom` validate `DUNGEONS.find(d => d.key === input.dungeonKey)`; thiếu → `INVALID_DUNGEON` (400). Forward-compat: dungeon mới chỉ cần thêm vào shared catalog, không sửa controller.
+- **Start gate** — `canStartPartyDungeon({dungeonKey, participants, leaderUserId, callerUserId})` reject với:
+  - `INVALID_DUNGEON` (catalog miss),
+  - `NOT_LEADER` (caller ≠ leader),
+  - `NOT_ENOUGH_MEMBERS` (< `minMembers=2` active participant),
+  - `NOT_ALL_READY` (có participant `readyAt=null`).
+  Server tin tưởng input đã filter `leftAt=null` trước khi gọi helper.
+- **Reward claim race-safe** — `claimReward` chạy trong `prisma.$transaction`:
+  1. CAS `updateMany({ id, status:'PENDING' }, { status:'CLAIMED', claimedAt:NOW })`. `count===0` → đã claim → `REWARD_ALREADY_CLAIMED` (409).
+  2. Grant currency qua `CurrencyService.applyTx(reason='PARTY_DUNGEON_REWARD', meta={runId, characterId})`.
+  3. Grant items qua `InventoryService.grantTx(reason='PARTY_DUNGEON_REWARD')`.
+  4. `tx.character.update({ exp: { increment } })`.
+  KHÔNG bypass ledger — match Phase 12.2.B `DungeonRun.claim` style.
+- **Run detail authorization** — `getRunDetail` lookup run → load `participants` qua `roomId` → reject `NOT_PARTY_MEMBER` nếu caller không có participant row (kể cả khi caller cùng party với leader). Mặc nhiên mask: ngoài party → `NOT_PARTY_MEMBER` (KHÔNG `RUN_NOT_FOUND` leak existence cho phép guess id range).
+- **Reward visibility** — `MyPartyDungeonRoomResponse.myReward` chỉ trả claim của caller; `PartyDungeonRunDetailResponse.rewards` trả full list (đã gate ở step trên).
+- **Soft-ref pattern** — `PartyDungeonRoom.partyId`/`leaderUserId`, `PartyDungeonParticipant.userId/characterId`, `PartyDungeonRewardClaim.userId/characterId` không có FK (match Phase 19.4 party style). Consistency cưỡng chế ở service (load character active trước join, check party membership trước create).
+
+### Rate-limit (Phase 18.1 infra)
+
+| Group | Policy | Scope | Limit | Block |
+|---|---|---|---|---|
+| Party | `PARTY_DUNGEON_CREATE` | USER | 20 / 60 min | 30 min (MEDIUM, sensitive) |
+| Party | `PARTY_DUNGEON_READY` | USER | 120 / 60 s | 5 min (MEDIUM, sensitive) |
+| Party | `PARTY_DUNGEON_START` | USER | 30 / 60 s | 5 min (MEDIUM, sensitive) |
+| Party | `PARTY_DUNGEON_CLAIM` | USER | 60 / 60 s | 5 min (MEDIUM, sensitive) |
+
+Wire-up tại `apps/api/src/modules/party-dungeon/party-dungeon.controller.ts` qua `@RateLimitPolicy(...)`. GET endpoint không rate-limit (read-light + đã có auth + service tự gate ownership).
+
+### Threat model
+
+| Risk | Mitigation |
+|---|---|
+| Double-claim reward | CAS `WHERE status='PENDING'` + ledger entry idempotent qua `meta.runId+characterId`. Concurrent claim → 1 thắng, 1 rơi `REWARD_ALREADY_CLAIMED`. |
+| Member của party khác claim reward | Reward `userId` snapshot lúc `startRun`. `claimReward` filter `WHERE userId=callerUserId`. Non-owner → `REWARD_NOT_FOUND` (mask). |
+| Leader force-start chưa đủ ready | Server gọi `canStartPartyDungeon` với participant snapshot tại `tx`. Race ready/unready concurrent với start: helper là pure function trên dữ liệu lúc đọc, nhưng update room status `STARTED` qua transaction → consistency thắng. |
+| Spam room create (gas DB) | `PARTY_DUNGEON_CREATE` 10/60min/user + invariant `1 active room / party` chặn duplicate. |
+| Spam ready toggle | `PARTY_DUNGEON_READY` 60/60s/user; WS event chỉ emit khi state thay đổi (idempotent set). |
+| Start non-existent room | Service load `findUniqueOrThrow` → mask 404 thành `ROOM_NOT_FOUND`. |
+| Cross-party room id guess | `cancelRoom`/`startRun` load room → check `leaderUserId === callerUserId` + room `LOBBY/READY_CHECK`. Random id → `NOT_PARTY_LEADER` hoặc `ROOM_NOT_LOBBY`. |
+| Reward currency / exp mismatch | Reward payload server-tính từ `DungeonDef.runReward` deterministic + clone cho mỗi participant lúc `startRun`. Client preview qua `PartyDungeonRewardPreview` purely informational. |
+| WS event leak | `emitRoomUpdated`/`emitReadyUpdated`/`emitStarted`/`emitCompleted` fanout chỉ tới `participants.map(p => p.userId)`. `emitRewardAvailable` per-user (1 recipient). KHÔNG broadcast cho party-wide để tránh leak khi member rời nhưng vẫn ở party. |
+| Audit | Mọi mutation (`createRoom`/`startRun`/`cancelRoom`/`claimReward`) ghi `audit.PARTY_DUNGEON_*` với meta `{roomId, partyId, runId?, callerUserId}`. KHÔNG log reward amount detail (đã có ledger). |
+
+### KHÔNG làm
+
+- KHÔNG matchmaking public / cross-party (Phase 20.2+).
+- KHÔNG persistent `IN_PROGRESS` state — start auto-resolve inline → `COMPLETED` cùng request.
+- KHÔNG loot bidding / share-pool — mỗi participant nhận `DungeonDef.runReward` clone độc lập.
+- KHÔNG retry combat khi failed (Phase 20.1 luôn `CLEAR`; Phase 20.2 sẽ thêm failure handling).
+- KHÔNG cross-server party dungeon.
+
+### Test coverage
+
+- `packages/shared/src/coop-dungeon.test.ts`: enum + DTO contract + `COOP_DUNGEON_LIMITS` invariants + `canStartPartyDungeon` matrix (catalog miss / not-leader / not-enough / not-all-ready / pass).
+- `apps/api/src/modules/party-dungeon/party-dungeon.service.test.ts` (25 tests, Postgres real DB): createRoom (leader / not-leader / not-in-party / invalid-dungeon / duplicate-active-room) + join (party-member / non-member / no-character) + ready/unready (room not lobby) + startRun (gate matrix) + auto-resolve creates run + reward claim CAS (success / double / not-found / not-completed) + cancelRoom (leader-only / not-lobby).
+- FE `apps/web/src/components/__tests__/PartyDungeonPanel.test.ts` (5 tests): empty + create flow, member join, leader start disable khi NOT_ENOUGH_MEMBERS, cancel confirm via ConfirmModal teleport, COMPLETED + PENDING reward claim.
+
 ## 15. Khi phát hiện sự cố
 
 1. Ngắt traffic (reverse proxy 503 hoặc scale 0 instance).

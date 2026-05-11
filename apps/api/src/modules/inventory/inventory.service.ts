@@ -158,7 +158,16 @@ export type ItemLedgerReason =
   // RewardClaim` UNIQUE `(eventId, characterId)` — duplicate claim chỉ ghi
   // 1 ledger row / character / event. Per-item qty bound bởi shared cap
   // `FESTIVAL_GIFT_ITEM_QTY_CAP` + max items `FESTIVAL_GIFT_ITEMS_MAX`.
-  | 'LIVEOPS_FESTIVAL_GIFT_REWARD';
+  | 'LIVEOPS_FESTIVAL_GIFT_REWARD'
+  // Phase 20.1 — Party Dungeon Co-op item reward grant. Wire qua
+  // `PartyDungeonService.claimReward` → `InventoryService.grantTx` với
+  // `refType='PartyDungeonRewardClaim'` + `refId=claimId`. Idempotency
+  // lấy từ `PartyDungeonRewardClaim` UNIQUE `(runId, characterId)` +
+  // CAS guard `status='PENDING'` — duplicate claim chỉ ghi 1 ledger
+  // row / character / run. Reward source = `DUNGEONS[].runReward.items`
+  // từ shared catalog (foundation: clone runReward solo cho mỗi
+  // participant).
+  | 'PARTY_DUNGEON_REWARD';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;

@@ -2615,6 +2615,134 @@ Same constraint như Phase 19.3 — `RealtimeService.userSockets` in-memory per 
 - KHÔNG bật multi-instance Phase 19.4 trước khi có Redis adapter (same caveat §2.38 §C).
 - KHÔNG xoá `Party.disbandedAt` để "revive" party — tạo party mới.
 
+## 2.40. Phase 20.1 — Party Dungeon Co-op PvE (debug & incident) (P2/P3)
+
+**Khi nào**: Player report (a) không tạo được room dù là leader, (b) start trả `NOT_ENOUGH_MEMBERS`/`NOT_ALL_READY` mặc dù FE thấy đủ ready, (c) "claim 2 lần" hoặc "không thấy nút claim sau khi clear", (d) room "stuck" status `LOBBY`/`STARTED` không tiến hành, (e) reward grant thiếu (linh thạch / item / exp không cộng).
+
+**Trước hết — phân loại**:
+
+- **Cannot create room** → §A.
+- **Start gate false-negative** (FE thinks ready, server says not) → §B.
+- **Reward claim issue** (double-claim, missing, mismatch) → §C.
+- **Stuck room** (LOBBY > 1h hoặc STARTED không lên COMPLETED — bug auto-resolve) → §D.
+
+### §A. Cannot create room
+
+Phase 20.1 enforce:
+- 1 active room / party (`COOP_DUNGEON_LIMITS.maxActiveRoomPerParty=1`).
+- Leader-only (`NOT_PARTY_LEADER`).
+- Dungeon catalog whitelist (`INVALID_DUNGEON`).
+- Rate-limit `PARTY_DUNGEON_CREATE` (20/60min/user, block 30p).
+
+Triage:
+
+1. **Verify party state** — `SELECT id, "leaderUserId" FROM "Party" WHERE status='ACTIVE' AND id IN (SELECT "partyId" FROM "PartyMember" WHERE "userId"='<user>' AND "leftAt" IS NULL)`. Trả 0 → user không thuộc party active (`NOT_IN_PARTY`); trả row có `leaderUserId !== user` → không phải leader (`NOT_PARTY_LEADER`).
+2. **Verify không có active room cũ** — `SELECT id, status, "createdAt" FROM "PartyDungeonRoom" WHERE "partyId"='<party_id>' AND status IN ('LOBBY','READY_CHECK','STARTED')`. Trả >0 row → `ROOM_ALREADY_EXISTS`. Force-cancel nếu stale (xem §D).
+3. **Verify dungeon catalog** — confirm `dungeonKey` có trong `packages/shared/src/combat.ts` `DUNGEONS`. Catalog miss thường do FE cache build cũ.
+4. **Check rate-limit block** — `SELECT * FROM "SecurityEvent" WHERE "policyKey"='PARTY_DUNGEON_CREATE' AND "userId"='<user>' AND "createdAt" > NOW() - INTERVAL '1 hour'`. Type `SUBJECT_BLOCKED` → user bị block 30p, chờ hoặc lift manual qua Phase 18.1 admin.
+
+### §B. Start gate false-negative (NOT_ENOUGH_MEMBERS / NOT_ALL_READY)
+
+Server gate qua shared helper `canStartPartyDungeon`:
+- `NOT_ENOUGH_MEMBERS`: count(`PartyDungeonParticipant` WHERE `roomId=<x>` AND `leftAt IS NULL`) < `minMembers=2`.
+- `NOT_ALL_READY`: tồn tại participant với `readyAt IS NULL`.
+
+Triage:
+
+1. **List participant snapshot**:
+   ```sql
+   SELECT id, "userId", "readyAt", "joinedAt", "leftAt"
+   FROM "PartyDungeonParticipant"
+   WHERE "roomId"='<room_id>'
+   ORDER BY "joinedAt" ASC;
+   ```
+2. Đếm `leftAt IS NULL` rows + verify mọi row có `readyAt != null`. Nếu count = FE display → false negative server-side bug (escalate); nếu count != FE display → FE cache stale (yêu cầu player F5).
+3. **Check WS event delivery** — `RealtimeService` debug log: `emitReadyUpdated` có target userId không? Multi-instance + non-sticky LB có thể miss event → user thấy stale ready badge. Sticky-session là MUST (same caveat §2.38–2.39).
+4. **Force unstuck (operator)** — nếu participant lưu trữ `readyAt=null` do bug FE không gọi `/ready`, hướng dẫn player click "Ready" lại. **KHÔNG** SQL set `readyAt=NOW()` tay (sẽ skip rate-limit + WS event audit).
+
+### §C. Reward claim issue
+
+Phase 20.1 enforce:
+- CAS atomic `WHERE status='PENDING'` → 1 caller thắng, các caller khác `REWARD_ALREADY_CLAIMED`.
+- Ledger entry với `reason='PARTY_DUNGEON_REWARD'` + meta `{runId, characterId}` cho audit.
+- Unique constraint Prisma `(runId, userId)` chống duplicate row.
+
+Triage:
+
+1. **Verify claim row tồn tại** — `SELECT * FROM "PartyDungeonRewardClaim" WHERE "runId"='<run>' AND "userId"='<user>'`. 0 row → user không phải participant của run (`REWARD_NOT_FOUND`); 1 row `status='CLAIMED'` → đã claim; 1 row `status='PENDING'` → chưa claim.
+2. **Verify ledger entry** — `SELECT * FROM "CurrencyLedger" WHERE "characterId"='<char>' AND reason='PARTY_DUNGEON_REWARD' AND meta::jsonb->>'runId'='<run>'` + tương tự `ItemLedger`. Đúng 1 row (currency, item) cho mỗi reward delta — duplicate → bug CAS, escalate P1.
+3. **Player report "thiếu reward"** dù `status='CLAIMED'`:
+   - Cross-check `rewardJson` ở claim row với `DungeonDef.runReward` của `dungeonKey`. Mismatch → bug clone, postmortem.
+   - Verify ledger applied đúng (currency: `CurrencyLedger.delta`; item: `ItemLedger.delta`; exp: `Character.exp` increment). Nếu ledger có delta đúng nhưng `Character.linhThach` không thay đổi → bug `CurrencyService.applyTx`, escalate P1.
+4. **Hoàn trả manual** (chỉ khi confirm bug):
+   ```sql
+   -- 1 transaction:
+   BEGIN;
+   INSERT INTO "CurrencyLedger" ("id","characterId","currency","delta","reason","meta","createdAt")
+     VALUES (gen_random_uuid(), '<char>', 'LINH_THACH', <amount>, 'ADMIN_GRANT',
+             '{"compensateFor":"PARTY_DUNGEON_REWARD","runId":"<run>"}'::jsonb, NOW());
+   UPDATE "Character" SET "linhThach"="linhThach"+<amount> WHERE id='<char>';
+   COMMIT;
+   ```
+   Ghi `AdminAudit` reason `PARTY_DUNGEON_REWARD_COMPENSATE` + run id + operator id.
+
+### §D. Stuck room (LOBBY > 1h hoặc STARTED không lên COMPLETED)
+
+Phase 20.1 `startRun` auto-resolve inline trong cùng transaction → COMPLETED ngay. Room STARTED kéo dài là **bất thường** (transaction crashed giữa chừng nhưng commit?).
+
+Triage:
+
+1. **List stale room**:
+   ```sql
+   SELECT id, "partyId", status, "createdAt", "startedAt"
+   FROM "PartyDungeonRoom"
+   WHERE status IN ('LOBBY','READY_CHECK','STARTED')
+     AND "createdAt" < NOW() - INTERVAL '2 hours'
+   ORDER BY "createdAt" ASC;
+   ```
+2. **LOBBY stuck (player quit không cancel)** — force cancel để giải phóng party invariant:
+   ```sql
+   BEGIN;
+   UPDATE "PartyDungeonRoom"
+      SET status='CANCELED', "canceledAt"=NOW(), "finishedAt"=NOW()
+    WHERE id='<room>' AND status IN ('LOBBY','READY_CHECK');
+   UPDATE "PartyDungeonParticipant"
+      SET "leftAt"=NOW()
+    WHERE "roomId"='<room>' AND "leftAt" IS NULL;
+   COMMIT;
+   ```
+3. **STARTED stuck (auto-resolve crashed)** — verify `PartyDungeonRun` exist không:
+   ```sql
+   SELECT id, result, "startedAt", "finishedAt"
+   FROM "PartyDungeonRun" WHERE "roomId"='<room>';
+   ```
+   Nếu có `result='CLEAR'` + `finishedAt IS NOT NULL` → run đã resolve nhưng room không update status (drift). Fix:
+   ```sql
+   UPDATE "PartyDungeonRoom"
+      SET status='COMPLETED', "finishedAt"=run."finishedAt", "currentRunId"=run.id
+   FROM "PartyDungeonRun" run
+   WHERE "PartyDungeonRoom".id='<room>' AND run."roomId"='<room>';
+   ```
+   Postmortem ngay (P1) — transaction split là risk lớn.
+
+### Escalation matrix
+
+| Severity | Trigger | Action |
+|----------|---------|--------|
+| P3 | 1 player report cannot create / start | Operator follow §A/§B. Reproducible 100% → escalate P2. |
+| P2 | Migration `20261020000000_phase_20_1_party_dungeon_coop` chưa apply ở env (REST `/party/dungeon/*` trả 500 hoặc Prisma `P2021` table not found) | Backend on-call chạy `pnpm prisma migrate deploy`. |
+| P2 | >3 player cùng report reward "thiếu" dù `status='CLAIMED'` | Backend on-call check ledger consistency. Ledger có delta đúng nhưng character không update → escalate P1. |
+| P1 | Duplicate `PartyDungeonRewardClaim` cùng `(runId, userId)` hoặc duplicate ledger entry cùng `reason='PARTY_DUNGEON_REWARD'` + meta runId | Backend on-call ngay. CAS bypass nghiêm trọng — disable `claimReward` endpoint qua feature flag, postmortem. |
+| P1 | Room STARTED không lên COMPLETED + Run có `result='CLEAR'` + `finishedAt` set (transaction split) | Backend on-call. Fix room status SQL (§D) + postmortem. |
+
+**KHÔNG làm**:
+
+- KHÔNG `DELETE FROM "PartyDungeonRoom"`/`"PartyDungeonParticipant"`/`"PartyDungeonRun"`/`"PartyDungeonRewardClaim"` — mất audit. Force terminate qua `UPDATE status='CANCELED'`/`leftAt=NOW()` (§D).
+- KHÔNG SQL set `readyAt=NOW()` tay (§B) để force start — sẽ skip rate-limit + WS audit + có thể violate invariant.
+- KHÔNG SQL set `PartyDungeonRewardClaim.status='CLAIMED'` tay mà không insert ledger row — phá audit ledger.
+- KHÔNG override `currentRunId` của room sang run khác — invariant 1-1.
+- KHÔNG bật multi-instance Phase 20.1 trước khi có Redis adapter (same caveat §2.38–2.39).
+
 ## 2.99. Pre-cutover Deploy Verify Gate (Phase 17.1)
 
 **Khi nào**: Mọi lần cutover production sang instance mới / image mới /

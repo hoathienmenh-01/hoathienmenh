@@ -3723,16 +3723,183 @@ model PartyMember {
 ///   - Không cho gửi invite nếu invitee đã ở party khác active.
 ///   - Cap số PENDING tới 1 invitee + cap số PENDING của 1 party.
 model PartyInvite {
-  id              String            @id @default(cuid())
-  partyId         String
-  inviterUserId   String
-  inviteeUserId   String
-  status          PartyInviteStatus @default(PENDING)
-  createdAt       DateTime          @default(now())
-  expiresAt       DateTime
-  respondedAt     DateTime?
+  id            String            @id @default(cuid())
+  partyId       String
+  inviterUserId String
+  inviteeUserId String
+  status        PartyInviteStatus @default(PENDING)
+  createdAt     DateTime          @default(now())
+  expiresAt     DateTime
+  respondedAt   DateTime?
 
   @@index([inviteeUserId, status, createdAt(sort: Desc)])
   @@index([partyId, status, createdAt(sort: Desc)])
   @@index([inviterUserId, status, createdAt(sort: Desc)])
+}
+
+/// Phase 20.1 — Party Dungeon / Co-op PvE Foundation enums + models.
+///
+/// Soft-ref pattern (mirror Phase 19.4 Party): KHÔNG FK constraint
+/// để tránh cross-shard issues + cho phép prune Party/User rows mà
+/// không cascade. Service `PartyDungeonService` enforce invariants:
+///   - `leaderUserId` luôn = `Party.leaderUserId` snapshot tại
+///     `createRoom` (không re-validate trên mỗi mutation; mutation
+///     chỉ check role qua membership).
+///   - Một party chỉ có 1 active room (status ∉ COMPLETED/FAILED/
+///     CANCELED). Service `assertNoActiveRoom` check.
+///   - `PartyDungeonParticipant` UNIQUE `(roomId, userId)`. Snapshot
+///     character ownership tại lúc join.
+///   - `PartyDungeonRewardClaim` UNIQUE `(runId, characterId)` để
+///     idempotent claim. CAS guard `status='PENDING'` → `'CLAIMED'`.
+enum PartyDungeonRoomStatus {
+  LOBBY
+  READY_CHECK
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELED
+}
+
+enum PartyDungeonRunResult {
+  CLEAR
+  FAIL
+  CANCELED
+}
+
+enum PartyDungeonRewardClaimStatus {
+  PENDING
+  CLAIMED
+  SKIPPED
+  FAILED
+}
+
+/// Phase 20.1 — PartyDungeonRoom (lobby co-op trước khi start run).
+///
+/// Lifecycle: LOBBY → (READY_CHECK) → IN_PROGRESS → COMPLETED/FAILED.
+/// Hoặc LOBBY → CANCELED (leader hủy hoặc party disband).
+///
+/// `currentRunId` pointer set khi `startRun` thành công, null trước
+/// đó. Cho phép FE query `/party/dungeon/room` lấy luôn run state.
+///
+/// Phase 20.1 foundation: IN_PROGRESS thường chỉ tồn tại trong cùng
+/// request `startRun` (auto-resolve inline). Phase 20.2+ sẽ tách
+/// persistent state cho realtime combat.
+model PartyDungeonRoom {
+  id           String                 @id @default(cuid())
+  partyId      String
+  /// userId của leader tại thời điểm tạo room. Service check role
+  /// qua membership hiện tại — không trust field này cho authz.
+  leaderUserId String
+  /// Match `DungeonDef.key` từ shared catalog `DUNGEONS`.
+  dungeonKey   String
+  status       PartyDungeonRoomStatus @default(LOBBY)
+  /// Số member tối thiểu để start. Service validate ≥
+  /// `COOP_DUNGEON_LIMITS.minMembers`.
+  minMembers   Int                    @default(2)
+  /// Số member tối đa. Service validate ≤
+  /// `COOP_DUNGEON_LIMITS.maxMembers`.
+  maxMembers   Int                    @default(5)
+  /// Pointer tới PartyDungeonRun.id nếu đã start (null trước đó).
+  currentRunId String?
+  createdAt    DateTime               @default(now())
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  canceledAt   DateTime?
+  updatedAt    DateTime               @updatedAt
+
+  @@index([partyId, status])
+  @@index([leaderUserId, status, createdAt])
+  @@index([status, createdAt])
+}
+
+/// Phase 20.1 — PartyDungeonParticipant row.
+///
+/// Server enforce:
+///   - UNIQUE `(roomId, userId)`: 1 user 1 slot trong cùng room.
+///   - `characterId` snapshot character đang dùng tại lúc join —
+///     dùng cho reward grant về đúng character (user có thể đổi
+///     character giữa rooms).
+///   - `readyAt` null = chưa ready; set timestamp khi `setReady`.
+///   - `leftAt` null = active; set khi user rời room hoặc bị kick.
+///   - `resultStatus` set sau khi run resolve (CLEAR/FAIL/CANCELED).
+model PartyDungeonParticipant {
+  id           String                 @id @default(cuid())
+  roomId       String
+  userId       String
+  /// Soft-ref Character.id snapshot tại lúc join. Null nếu user
+  /// không có active character (edge case — service reject join).
+  characterId  String?
+  readyAt      DateTime?
+  joinedAt     DateTime               @default(now())
+  leftAt       DateTime?
+  resultStatus PartyDungeonRunResult?
+
+  @@unique([roomId, userId])
+  @@index([userId, leftAt])
+  @@index([roomId, leftAt])
+}
+
+/// Phase 20.1 — PartyDungeonRun (server-authoritative run record).
+///
+/// Tạo bởi `PartyDungeonService.startRun` sau khi validate đủ điều
+/// kiện. Phase 20.1 foundation auto-resolve inline trong cùng tx
+/// (foundation chưa có combat thật) → `finishedAt` thường set ngay
+/// sau `startedAt`. Field `combatSummaryJson` + `rewardSummaryJson`
+/// lưu summary để debug + Phase 20.2+ wire combat real.
+///
+/// Reward grant flow:
+///   1. `startRun` resolve CLEAR/FAIL.
+///   2. Nếu CLEAR → tạo `PartyDungeonRewardClaim` PENDING cho mỗi
+///      active participant với `rewardJson` từ
+///      `computePartyDungeonRewardSplit`.
+///   3. Member call `POST /party/dungeon/runs/:id/claim-reward` →
+///      `claimReward` CAS guard PENDING → CLAIMED + grant qua
+///      CurrencyService.applyTx + InventoryService.grantTx.
+model PartyDungeonRun {
+  id                String                @id @default(cuid())
+  roomId            String
+  partyId           String
+  dungeonKey        String
+  result            PartyDungeonRunResult
+  startedAt         DateTime              @default(now())
+  finishedAt        DateTime?
+  combatSummaryJson Json?
+  rewardSummaryJson Json?
+
+  @@index([roomId])
+  @@index([partyId, startedAt(sort: Desc)])
+  @@index([dungeonKey, startedAt(sort: Desc)])
+}
+
+/// Phase 20.1 — PartyDungeonRewardClaim (per-participant reward
+/// claim row).
+///
+/// Server enforce:
+///   - UNIQUE `(runId, characterId)`: 1 character 1 claim row /
+///     run. Idempotent guard chống duplicate claim.
+///   - CAS update `status='PENDING'` → `'CLAIMED'` trong cùng tx
+///     với CurrencyService.applyTx + InventoryService.grantTx +
+///     exp increment. Race-safe: 2 concurrent claim cùng row, đúng
+///     1 winner ghi ledger.
+///   - `rewardJson` lưu payload tính sẵn lúc tạo (`PartyDungeonRewardPreview`)
+///     để FE preview trước claim + để claim grant đúng số.
+model PartyDungeonRewardClaim {
+  id          String                        @id @default(cuid())
+  runId       String
+  userId      String
+  /// Soft-ref Character.id — server snapshot lúc tạo claim. Grant
+  /// reward về đúng characterId này (không grant cho character
+  /// khác của cùng user).
+  characterId String
+  status      PartyDungeonRewardClaimStatus @default(PENDING)
+  /// JSON payload `{ linhThach?, tienNgoc?, exp?, items? }`. Server
+  /// tính tại lúc tạo (snapshot dungeon catalog `runReward`).
+  rewardJson  Json
+  claimedAt   DateTime?
+  createdAt   DateTime                      @default(now())
+
+  @@unique([runId, characterId])
+  @@unique([runId, userId])
+  @@index([userId, status])
+  @@index([runId, status])
 }

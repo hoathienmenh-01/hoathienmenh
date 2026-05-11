@@ -100,7 +100,17 @@ export type LedgerReason =
   // (eventId, characterId) — duplicate claim P2002 → throw
   // `EVENT_ALREADY_CLAIMED`, ledger row chỉ ghi đúng 1 lần / character /
   // event. Reward bound bởi shared cap `FESTIVAL_GIFT_*_CAP`.
-  | 'LIVEOPS_FESTIVAL_GIFT_REWARD';
+  | 'LIVEOPS_FESTIVAL_GIFT_REWARD'
+  // Phase 20.1 — Party Dungeon Co-op reward claim. Wire qua
+  // `PartyDungeonService.claimReward` → `applyTx` cho linhThach/tienNgoc
+  // với `refType='PartyDungeonRewardClaim'` + `refId=claimId`.
+  // Idempotency lấy từ `PartyDungeonRewardClaim` UNIQUE
+  // `(runId, characterId)` + CAS guard `status='PENDING'` → `'CLAIMED'`
+  // — race-safe: 2 concurrent claim cùng row, đúng 1 winner ghi ledger.
+  // Reward source = `DUNGEONS[].runReward` từ shared catalog (Phase
+  // 20.1 foundation: mỗi participant nhận đủ runReward solo, KHÔNG
+  // share pool — xem `computePartyDungeonRewardSplit`).
+  | 'PARTY_DUNGEON_REWARD';
 
 export interface CurrencyApplyInput {
   characterId: string;
