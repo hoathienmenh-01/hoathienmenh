@@ -12,7 +12,7 @@
  * Auth (cookie + ADMIN_ONLY) test ở `admin.guard.test.ts` — controller
  * này giả định guard đã pass (đã có `req.userId` + `req.role`).
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { HttpException } from '@nestjs/common';
 import type { Request } from 'express';
 import { AdminLiveOpsCronController } from './admin-liveops-cron.controller';
@@ -270,6 +270,11 @@ function makeStatusController(stubs: {
   snapshotRow?: { seasonKey: string; finalizedAt: Date } | null;
   champRow?: { seasonKey: string; grantedAt: Date } | null;
   mvpRow?: { seasonKey: string; grantedAt: Date } | null;
+  /** Phase 15.8 — LiveOpsCronRunLog rows keyed by cronKey + filter. */
+  cronRunLogs?: Record<
+    string,
+    Array<{ finishedAt: Date | null; startedAt: Date; success: boolean }>
+  >;
 }) {
   const cronService = {
     runWeeklyCycle: async () => {
@@ -282,6 +287,36 @@ function makeStatusController(stubs: {
       throw new Error('not used');
     },
   } as unknown as LiveOpsCronService;
+  const runLogs = stubs.cronRunLogs ?? {};
+  type RunRow = {
+    finishedAt: Date | null;
+    startedAt: Date;
+    success: boolean;
+  };
+  const filterRows = (
+    cronKey: string,
+    where: {
+      cronKey?: string;
+      success?: boolean;
+      finishedAt?: { not: null } | Date | null;
+    } = {},
+  ): RunRow[] => {
+    const rows = runLogs[cronKey] ?? [];
+    return rows.filter((r) => {
+      if (where.success !== undefined && r.success !== where.success) {
+        return false;
+      }
+      if (
+        where.finishedAt &&
+        typeof where.finishedAt === 'object' &&
+        'not' in where.finishedAt &&
+        where.finishedAt.not === null
+      ) {
+        return r.finishedAt !== null;
+      }
+      return true;
+    });
+  };
   const prisma = {
     sectTerritorySettlementSnapshot: {
       findFirst: async () => stubs.settlementRow ?? null,
@@ -303,6 +338,27 @@ function makeStatusController(stubs: {
         return null;
       },
     },
+    liveOpsCronRunLog: {
+      findFirst: async (args?: {
+        where?: {
+          cronKey?: string;
+          success?: boolean;
+          finishedAt?: { not: null } | null;
+        };
+        orderBy?: unknown;
+      }) => {
+        const cronKey = args?.where?.cronKey ?? '';
+        const rows = filterRows(cronKey, args?.where);
+        if (rows.length === 0) return null;
+        // Return most recent by finishedAt (fallback startedAt) desc.
+        const sorted = [...rows].sort((a, b) => {
+          const av = (a.finishedAt ?? a.startedAt).getTime();
+          const bv = (b.finishedAt ?? b.startedAt).getTime();
+          return bv - av;
+        });
+        return sorted[0];
+      },
+    },
     adminAuditLog: { create: async () => ({}) },
   } as unknown as ConstructorParameters<typeof AdminLiveOpsCronController>[1];
   return new AdminLiveOpsCronController(cronService, prisma);
@@ -320,6 +376,14 @@ describe('AdminLiveOpsCronController.territoryCronStatus', () => {
     expect(r.data.lastSettlement).toBeNull();
     expect(r.data.lastDecay).toBeNull();
     expect(r.data.lastReward).toBeNull();
+    // Phase 15.8 — health field present, defaults to STALE when never run.
+    expect(['OK', 'STALE', 'DEGRADED', 'DISABLED']).toContain(
+      r.data.health.status,
+    );
+    expect(r.data.health.lastRunAt).toBeNull();
+    expect(r.data.health.lastSuccessAt).toBeNull();
+    expect(r.data.health.lastErrorAt).toBeNull();
+    expect(r.data.health.nextExpectedRunAt).toBeNull();
   });
 
   it('DB có data → trả last* serialize ISO string', async () => {
@@ -393,5 +457,114 @@ describe('AdminLiveOpsCronController.sectSeasonCronStatus', () => {
       seasonKey: 'season_2026_s1',
       grantedAt: '2026-04-27T00:17:00.000Z',
     });
+  });
+});
+
+/**
+ * Phase 15.8 — cron health computation. Uses `LiveOpsCronRunLog` rows
+ * (mocked via cronRunLogs) + shared `computeLiveOpsCronHealth` helper.
+ * Status thresholds: territory ≥ 8 days = STALE, sect-season ≥ 2 days.
+ */
+describe('Phase 15.8 — territoryCronStatus.health', () => {
+  const ORIGINAL_ENV = { ...process.env };
+  beforeEach(() => {
+    process.env.TERRITORY_CRON_ENABLED = 'true';
+  });
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV };
+  });
+  it('OK khi recent success', async () => {
+    const recent = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000);
+    const c = makeStatusController({
+      cronRunLogs: {
+        territory: [
+          { startedAt: recent, finishedAt: recent, success: true },
+        ],
+      },
+    });
+    const r = await c.territoryCronStatus();
+    expect(r.data.health.status).toBe('OK');
+    expect(r.data.health.staleReason).toBeNull();
+    expect(r.data.health.lastSuccessAt).toBe(recent.toISOString());
+    expect(r.data.health.lastErrorAt).toBeNull();
+  });
+
+  it('STALE khi success quá 8 ngày', async () => {
+    const old = new Date(Date.now() - 9 * 24 * 60 * 60 * 1000);
+    const c = makeStatusController({
+      cronRunLogs: {
+        territory: [{ startedAt: old, finishedAt: old, success: true }],
+      },
+    });
+    const r = await c.territoryCronStatus();
+    expect(r.data.health.status).toBe('STALE');
+    expect(r.data.health.staleReason).toMatch(/no successful run/i);
+  });
+
+  it('DEGRADED khi error mới hơn success', async () => {
+    const oldOk = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    const recentErr = new Date(Date.now() - 1 * 60 * 60 * 1000);
+    const c = makeStatusController({
+      cronRunLogs: {
+        territory: [
+          { startedAt: oldOk, finishedAt: oldOk, success: true },
+          { startedAt: recentErr, finishedAt: recentErr, success: false },
+        ],
+      },
+    });
+    const r = await c.territoryCronStatus();
+    expect(r.data.health.status).toBe('DEGRADED');
+    expect(r.data.health.lastErrorAt).toBe(recentErr.toISOString());
+  });
+
+  it('STALE khi chưa từng run + cron enabled', async () => {
+    const c = makeStatusController({});
+    const r = await c.territoryCronStatus();
+    expect(r.data.enabled).toBe(true);
+    expect(r.data.health.status).toBe('STALE');
+    expect(r.data.health.staleReason).toMatch(/never recorded/i);
+  });
+
+  it('DISABLED khi cron disabled (không báo STALE)', async () => {
+    process.env.TERRITORY_CRON_ENABLED = 'false';
+    const c = makeStatusController({});
+    const r = await c.territoryCronStatus();
+    expect(r.data.enabled).toBe(false);
+    expect(r.data.health.status).toBe('DISABLED');
+  });
+});
+
+describe('Phase 15.8 — sectSeasonCronStatus.health', () => {
+  const ORIGINAL_ENV = { ...process.env };
+  beforeEach(() => {
+    process.env.SECT_SEASON_CRON_ENABLED = 'true';
+  });
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV };
+  });
+  it('OK khi recent success daily cron (<2 ngày)', async () => {
+    const recent = new Date(Date.now() - 12 * 60 * 60 * 1000); // 12h ago
+    const c = makeStatusController({
+      cronRunLogs: {
+        'sect-season': [
+          { startedAt: recent, finishedAt: recent, success: true },
+        ],
+      },
+    });
+    const r = await c.sectSeasonCronStatus();
+    expect(r.data.health.status).toBe('OK');
+  });
+
+  it('STALE khi sect-season success quá 2 ngày', async () => {
+    const old = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    const c = makeStatusController({
+      cronRunLogs: {
+        'sect-season': [
+          { startedAt: old, finishedAt: old, success: true },
+        ],
+      },
+    });
+    const r = await c.sectSeasonCronStatus();
+    expect(r.data.health.status).toBe('STALE');
   });
 });

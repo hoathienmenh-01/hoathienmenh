@@ -3110,6 +3110,16 @@
       "toast": {
         "ok": "Weekly cycle hoàn tất."
       }
+    },
+    "cronHealth": {
+      "title": "Trạng thái Cron",
+      "refresh": "Làm mới",
+      "territoryLabel": "Territory weekly cron",
+      "sectSeasonLabel": "Sect Season cron",
+      "lastSuccess": "Lần chạy thành công gần nhất: {at}",
+      "lastError": "Lỗi gần nhất: {at}",
+      "never": "chưa ghi nhận",
+      "error": "Không tải được trạng thái cron ({code})."
     }
   },
   "adminLiveOpsEvents": {

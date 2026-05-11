@@ -3110,6 +3110,16 @@
       "toast": {
         "ok": "Weekly cycle complete."
       }
+    },
+    "cronHealth": {
+      "title": "Cron Health",
+      "refresh": "Refresh",
+      "territoryLabel": "Territory weekly cron",
+      "sectSeasonLabel": "Sect Season cron",
+      "lastSuccess": "Last success: {at}",
+      "lastError": "Last error: {at}",
+      "never": "never recorded",
+      "error": "Failed to load cron status ({code})."
     }
   },
   "adminLiveOpsEvents": {

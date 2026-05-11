@@ -6,14 +6,19 @@ import {
   adminLiveOpsRunWeeklyCycle,
   adminLiveOpsStatus,
   adminLiveOpsToggle,
+  adminSectSeasonCronStatus,
   adminSectWarRecalculate,
   adminSectWarSnapshot,
   adminSectWarStatus,
   adminSpawnBoss,
+  adminTerritoryCronStatus,
+  type AdminLiveOpsCronHealthView,
   type AdminLiveOpsCronWeeklyCycleSummary,
   type AdminLiveOpsEventStatusView,
   type AdminLiveOpsStatusView,
+  type AdminSectSeasonCronStatusView,
   type AdminSectWarStatusView,
+  type AdminTerritoryCronStatusView,
 } from '@/api/admin';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
@@ -57,8 +62,45 @@ const weeklyCycleForm = ref({
 const weeklyCycleSubmitting = ref(false);
 const weeklyCycleResult = ref<AdminLiveOpsCronWeeklyCycleSummary | null>(null);
 
+// Phase 15.8 — Cron health status (territory + sect-season).
+const territoryCronStatus = ref<AdminTerritoryCronStatusView | null>(null);
+const sectSeasonCronStatus = ref<AdminSectSeasonCronStatusView | null>(null);
+const cronStatusError = ref<string | null>(null);
+
+function healthBadgeClass(status: AdminLiveOpsCronHealthView['status']): string {
+  switch (status) {
+    case 'OK':
+      return 'bg-emerald-500/15 text-emerald-300 border-emerald-300/30';
+    case 'STALE':
+      return 'bg-amber-500/15 text-amber-300 border-amber-300/30';
+    case 'DEGRADED':
+      return 'bg-rose-500/15 text-rose-300 border-rose-300/30';
+    case 'DISABLED':
+    default:
+      return 'bg-ink-300/10 text-ink-300/80 border-ink-300/30';
+  }
+}
+
+async function refreshCronStatus(): Promise<void> {
+  cronStatusError.value = null;
+  try {
+    const [territory, sect] = await Promise.all([
+      adminTerritoryCronStatus(),
+      adminSectSeasonCronStatus(),
+    ]);
+    territoryCronStatus.value = territory;
+    sectSeasonCronStatus.value = sect;
+  } catch (e) {
+    cronStatusError.value = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
+  }
+}
+
 onMounted(async () => {
-  await Promise.all([refreshStatus(), refreshSectWar()]);
+  await Promise.all([
+    refreshStatus(),
+    refreshSectWar(),
+    refreshCronStatus(),
+  ]);
 });
 
 async function refreshStatus(): Promise<void> {
@@ -397,6 +439,112 @@ defineExpose({ refreshStatus, refreshSectWar });
                 ? t('adminLiveOps.boss.submitting')
                 : t('adminLiveOps.boss.submitBtn') }}
             </button>
+          </div>
+        </div>
+      </section>
+
+      <hr class="border-ink-300/20" />
+
+      <!-- Phase 15.8 — Cron health badges (territory + sect-season). -->
+      <section class="text-xs space-y-2" data-test="admin-liveops-cron-health">
+        <div class="flex items-center justify-between">
+          <div class="uppercase tracking-widest text-ink-300">
+            {{ t('adminLiveOps.cronHealth.title') }}
+          </div>
+          <button
+            type="button"
+            class="px-2 py-0.5 rounded border border-ink-300/30 text-ink-200 text-[10px]"
+            data-test="admin-liveops-cron-health-refresh"
+            @click="refreshCronStatus()"
+          >
+            {{ t('adminLiveOps.cronHealth.refresh') }}
+          </button>
+        </div>
+        <div
+          v-if="cronStatusError"
+          class="text-rose-300"
+          data-test="admin-liveops-cron-health-error"
+        >
+          {{ t('adminLiveOps.cronHealth.error', { code: cronStatusError }) }}
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div
+            v-if="territoryCronStatus"
+            class="rounded border border-ink-300/20 p-2 space-y-1"
+            data-test="admin-liveops-cron-territory"
+          >
+            <div class="flex items-center justify-between">
+              <div class="text-ink-300/80">
+                {{ t('adminLiveOps.cronHealth.territoryLabel') }}
+              </div>
+              <span
+                class="px-1.5 py-0.5 rounded border text-[10px] uppercase tracking-widest"
+                :class="healthBadgeClass(territoryCronStatus.health.status)"
+                data-test="admin-liveops-cron-territory-badge"
+              >
+                {{ territoryCronStatus.health.status }}
+              </span>
+            </div>
+            <div class="text-[11px] text-ink-300/70">
+              {{ t('adminLiveOps.cronHealth.lastSuccess', {
+                at: territoryCronStatus.health.lastSuccessAt ?? t('adminLiveOps.cronHealth.never')
+              }) }}
+            </div>
+            <div
+              v-if="territoryCronStatus.health.lastErrorAt"
+              class="text-[11px] text-rose-300/80"
+              data-test="admin-liveops-cron-territory-last-error"
+            >
+              {{ t('adminLiveOps.cronHealth.lastError', {
+                at: territoryCronStatus.health.lastErrorAt
+              }) }}
+            </div>
+            <div
+              v-if="territoryCronStatus.health.staleReason"
+              class="text-[11px] text-amber-300/80"
+              data-test="admin-liveops-cron-territory-reason"
+            >
+              {{ territoryCronStatus.health.staleReason }}
+            </div>
+          </div>
+          <div
+            v-if="sectSeasonCronStatus"
+            class="rounded border border-ink-300/20 p-2 space-y-1"
+            data-test="admin-liveops-cron-sect-season"
+          >
+            <div class="flex items-center justify-between">
+              <div class="text-ink-300/80">
+                {{ t('adminLiveOps.cronHealth.sectSeasonLabel') }}
+              </div>
+              <span
+                class="px-1.5 py-0.5 rounded border text-[10px] uppercase tracking-widest"
+                :class="healthBadgeClass(sectSeasonCronStatus.health.status)"
+                data-test="admin-liveops-cron-sect-season-badge"
+              >
+                {{ sectSeasonCronStatus.health.status }}
+              </span>
+            </div>
+            <div class="text-[11px] text-ink-300/70">
+              {{ t('adminLiveOps.cronHealth.lastSuccess', {
+                at: sectSeasonCronStatus.health.lastSuccessAt ?? t('adminLiveOps.cronHealth.never')
+              }) }}
+            </div>
+            <div
+              v-if="sectSeasonCronStatus.health.lastErrorAt"
+              class="text-[11px] text-rose-300/80"
+              data-test="admin-liveops-cron-sect-season-last-error"
+            >
+              {{ t('adminLiveOps.cronHealth.lastError', {
+                at: sectSeasonCronStatus.health.lastErrorAt
+              }) }}
+            </div>
+            <div
+              v-if="sectSeasonCronStatus.health.staleReason"
+              class="text-[11px] text-amber-300/80"
+              data-test="admin-liveops-cron-sect-season-reason"
+            >
+              {{ sectSeasonCronStatus.health.staleReason }}
+            </div>
           </div>
         </div>
       </section>
