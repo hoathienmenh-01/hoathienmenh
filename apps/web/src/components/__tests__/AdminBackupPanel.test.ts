@@ -281,7 +281,7 @@ describe('AdminBackupPanel', () => {
     confirmBtn!.click();
     await flushPromises();
     expect(runVerifyMock).toHaveBeenCalledTimes(1);
-    expect(runVerifyMock).toHaveBeenCalledWith({});
+    expect(runVerifyMock.mock.calls[0]).toEqual([]);
     expect(statusMock).toHaveBeenCalledTimes(2);
   });
 
