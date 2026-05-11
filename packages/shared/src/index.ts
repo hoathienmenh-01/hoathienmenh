@@ -67,5 +67,6 @@ export * from './economy-anomaly';
 export * from './economy-report';
 export * from './market-price-band';
 export * from './security-rate-limit';
+export * from './security-alerts';
 export * from './backup';
 export * from './auth-session';
