@@ -48,6 +48,7 @@ import { ArenaModule } from './modules/arena/arena.module';
 import { ArenaAntiWintradeAdminModule } from './modules/arena-anti-wintrade-admin/arena-anti-wintrade-admin.module';
 import { RedisModule } from './common/redis.module';
 import { EconomyModule } from './modules/economy/economy.module';
+import { SecurityModule } from './modules/security/security.module';
 
 @Module({
   imports: [
@@ -55,6 +56,11 @@ import { EconomyModule } from './modules/economy/economy.module';
     RedisModule,
     EconomyModule,
     AuthModule,
+    // Phase 18.1 — Security rate-limit + abuse block. SAU AuthModule
+    // (cần AuthService cho decode cookie trong RateLimitGuard) +
+    // RedisModule. Đăng ký APP_GUARD opt-in: chỉ enforce trên route
+    // có `@RateLimitPolicy(...)`. Route có `@SkipRateLimit()` bypass.
+    SecurityModule,
     RealtimeModule,
     CharacterModule,
     CultivationModule,
