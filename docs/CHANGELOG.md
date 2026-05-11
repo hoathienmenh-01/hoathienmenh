@@ -12,7 +12,62 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Phase 19.1.B — Social Rate Limit & Abuse Guard (this PR — #529)
+### Phase 19.2 — Chat Moderation & Report System (this PR — #530)
+
+**Scope**: Cho phép player report tin nhắn private/group vi phạm; admin xem danh sách report, ack/resolve, mute user theo scope, soft-hide message, lock/dissolve group. **Tất cả mutation ghi `AdminAuditLog`**. **KHÔNG** auto-ban vĩnh viễn, **KHÔNG** hard-delete (ưu tiên soft-hide để dữ liệu vẫn còn cho audit/appeal), **KHÔNG** phá WORLD/SECT chat path hiện có (chỉ thêm mute enforcement). Tiền đề: PR #529 Phase 19.1.B merged.
+
+#### Added — Phase 19.2
+
+- **Prisma migration `20260901000000_phase_19_2_chat_moderation_report`** additive: 4 enum + 2 model mới + soft-hide cols + lock/dissolve cols:
+  - Enum: `ChatMessageReportType` (PRIVATE/GROUP), `ChatMessageReportStatus` (OPEN/ACKNOWLEDGED/RESOLVED/REJECTED), `ChatMessageReportReason` (SPAM/HARASSMENT/SCAM/OFFENSIVE/OTHER), `ChatMuteScope` (PRIVATE_CHAT/GROUP_CHAT/WORLD_SECT_CHAT/ALL_CHAT).
+  - Model `ChatMessageReport` (reporterUserId, targetUserId?, messageType, privateMessageId?, groupMessageId?, groupId?, reason, detailsText? ≤500ch, status, createdAt, resolvedAt?, resolvedByAdminId?, resolutionNote?) + unique `(reporterUserId, messageType, privateMessageId, groupMessageId)` chống duplicate report cùng người-cùng-message.
+  - Model `ChatMute` (userId, mutedByAdminId, reason, scope, startsAt, expiresAt?, revokedAt?, revokedByAdminId?) + index `(userId, revokedAt, expiresAt)` cho `findActiveMuteForSend()` query nóng.
+  - Soft-hide cols thêm vào `PrivateChatMessage` + `GroupChatMessage`: `hiddenAt?`, `hiddenByAdminId?`, `hideReason?`. Body KHÔNG bị xoá (audit/appeal).
+  - Lock/dissolve cols thêm vào `GroupChat`: `lockedAt?`, `lockedByAdminId?`, `lockReason?`, `dissolvedAt?`, `dissolvedByAdminId?`, `dissolveReason?`.
+- **Shared `packages/shared/src/chat-moderation.ts`** (34 test pass): 4 enum + DTO row (`ChatMessageReportRow`/`ChatMuteRow`/`AdminChatReportListItem`/`AdminChatModerationSummary`/list response) + `CHAT_MODERATION_LIMITS` (`REPORT_DETAILS_MAX=500`, `ADMIN_REASON_MAX=500`) + pure validators (`validateSubmitChatReportInput`, `validateCreateChatMuteInput`, `isChatMessageReportReason`/`Type`/`Status`/`isChatMuteScope`, `muteScopeCoversChannel(active, target)` map ALL_CHAT⊇{PRIVATE_CHAT,GROUP_CHAT,WORLD_SECT_CHAT}).
+- **Shared `packages/shared/src/security-rate-limit.ts`**: policy mới `CHAT_REPORT_SUBMIT` — 10 / 60 min user, block 10 min. Group `CHAT`.
+- **Backend service & controllers (1 module mới)** (`apps/api/src/modules/chat-moderation/`):
+  - `ChatModerationService`: `submitReport(callerUserId, input)` (validate, lookup message+target, idempotent dup check → `DUPLICATE_REPORT`) / `listMyReports(callerUserId, page)` / `getCatalog()` (enum cho FE i18n).
+  - Admin path: `adminListReports(filter, page)` (filter status/reason/messageType/reporter/target, kèm preview body + reporter/target display name resolved) / `adminSummary()` (6 counter aggregated) / `adminAckReport(reportId, adminId)` (OPEN→ACK) / `adminResolveReport(reportId, status RESOLVED|REJECTED, note?, adminId)` (OPEN|ACK→RESOLVED|REJECTED, idempotent if cùng status).
+  - Mute path: `adminListMutes(filter)` (userId/scope/activeOnly) / `adminCreateMute(input, adminId)` (validate, server compute `isActive`) / `adminRevokeMute(muteId, adminId)`.
+  - Hide path: `adminHideMessage(messageType, messageId, reason, adminId)` (soft-hide cols, idempotent) / `adminUnhideMessage` (clear cols).
+  - Group ops: `adminLockGroup(groupId, reason, adminId)` / `adminUnlockGroup` / `adminDissolveGroup(groupId, reason, adminId)` (set cols, KHÔNG xoá member/message).
+  - `findActiveMuteForSend(userId, channelScope)` helper: 1 query indexed, trả mute active cover channel target. **Wired vào** `ChatPrivateService.sendPrivateMessage` (`PRIVATE_CHAT`) + `ChatGroupService.sendGroupMessage` (`GROUP_CHAT`) + `ChatService.sendWorldChat`/`sendSectChat` (`WORLD_SECT_CHAT`) — fail-fast `MUTED` trước business logic.
+  - **AdminAuditLog** ghi mọi mutation: action `ADMIN_CHAT_MODERATION_REPORT_ACK` / `_REPORT_RESOLVE` / `_REPORT_REJECT` / `_MUTE_CREATE` / `_MUTE_REVOKE` / `_MESSAGE_HIDE` / `_MESSAGE_UNHIDE` / `_GROUP_LOCK` / `_GROUP_UNLOCK` / `_GROUP_DISSOLVE` với meta = report/mute/message/group id.
+- **REST API** 15 endpoint:
+  - **User** (`ChatModerationController`): `POST /chat/reports` (rate-limit `CHAT_REPORT_SUBMIT`) · `GET /chat/reports/mine` · `GET /chat/reports/catalog`.
+  - **Admin** (`AdminChatModerationController`, guard `ADMIN`, prefix `/admin/chat`, rate-limit `ADMIN_MUTATION`): `GET /admin/chat/reports` · `GET /admin/chat/reports/summary` · `POST /admin/chat/reports/:id/ack` · `POST /admin/chat/reports/:id/resolve` · `GET /admin/chat/mutes` · `POST /admin/chat/mutes` · `DELETE /admin/chat/mutes/:id` · `POST /admin/chat/messages/:id/hide` · `POST /admin/chat/messages/:id/unhide` · `POST /admin/chat/groups/:id/lock` · `POST /admin/chat/groups/:id/unlock` · `POST /admin/chat/groups/:id/dissolve`.
+- **FE Vue 3** (`apps/web/src/`):
+  - `components/ChatReportModal.vue`: modal teleport body, dropdown reason (5 option), textarea details (counter realtime, disable submit khi >500ch), confirm/cancel, toast success/error map từ i18n `chatReport.errors.*` (NOT_FOUND/NOT_AUTHORIZED/INVALID_INPUT/DUPLICATE_REPORT/RATE_LIMITED/ABUSE_BLOCKED/UNKNOWN). Props: `open` + `messageType` + `privateMessageId`/`groupMessageId` + `messagePreview`. Emit `submitted`/`cancel`.
+  - `components/AdminChatModerationPanel.vue`: dashboard 6 summary card + 2 section. **Reports section**: filter bar (status/reason/messageType/reporter/target) + table (createdAt/type/reason/status/reporter/target/preview/actions) + inline action Ack / Resolve+note prompt / Reject+note prompt / Hide+reason prompt / Unhide / Lock/Unlock/Dissolve group cho GROUP type. **Mutes section**: form create (userId/scope/reason/expiresAt) + filter (userId/scope/activeOnly) + table + revoke. Tất cả mutation `confirm()` + optional `window.prompt()` cho note/reason.
+  - `views/AdminView.vue`: thêm tab `chatModeration` vào Tab union + nav loop + section template.
+  - `components/PrivateChatPanel.vue` + `GroupChatPanel.vue`: nút Report per message (hover-reveal, `data-testid="private-chat-report-btn"`/`"group-chat-report-btn"`) mount `ChatReportModal`; khi `msg.isHidden` render placeholder italic `chatModeration.hiddenMessage` thay vì body.
+  - `api/chatModeration.ts`: wrap 15 endpoint với Envelope unwrap pattern → throw Error có `.code` cho FE i18n map.
+- **i18n vi/en parity 100%**: `admin.tab.chatModeration` label + `admin.chatModeration.*` (200+ key: summary/reports/mutes/filters/table/actions/confirm/prompt/toast/errors) + `chatReport.*` (~50 key: title/submit/action/field/reason enum/toast/errors) + `chatModeration.hiddenMessage`.
+- **Tests**:
+  - `packages/shared/src/chat-moderation.test.ts` (34 test): enum validity, validator edge case (length, enum check, type cross-check khi PRIVATE thì privateMessageId required & ngược lại), `muteScopeCoversChannel` 4x4 matrix.
+  - `apps/api/src/modules/chat-moderation/chat-moderation.service.test.ts` (31 test): submitReport happy/dup/INVALID_INPUT/NOT_FOUND; ack/resolve state machine + idempotent; mute create/list filter active vs all + revoke + `findActiveMuteForSend` cover matrix (ALL_CHAT/scope-specific); hide/unhide; lock/unlock/dissolve; AdminAuditLog ghi đúng action+target cho từng path.
+  - `apps/web/src/components/__tests__/ChatReportModal.test.ts` (7 test): render/empty/submit PRIVATE payload/submit GROUP payload/cancel no-API/over-limit disable/error toast.
+  - `apps/web/src/components/__tests__/AdminChatModerationPanel.test.ts` (7 test): mount load summary+reports+mutes/empty state/render OPEN actions/Ack confirm-false no API/Ack confirm-true call+refresh/Hide prompt sends reason/summary error inline.
+
+#### Changed — Phase 19.2
+
+- `apps/api/src/modules/chat-private/chat-private.service.ts` + `chat-group/chat-group.service.ts` + `chat/chat.service.ts`: chèn `findActiveMuteForSend()` check trước business validate. Nếu return mute → throw `MUTED` (FE friendly toast).
+- `apps/api/src/modules/chat-private/chat-private.service.ts` + `chat-group/chat-group.service.ts` `listMessages*`: thêm field `isHidden` (derived `hiddenAt != null`) vào row DTO. Admin xem được body, user thường chỉ xem placeholder qua FE conditional render.
+- `docs/SECURITY.md` §19 thêm Phase 19.2 moderation/mute/hide flow + AdminAuditLog table mapping.
+- `docs/API.md` thêm bảng `ChatModerationController` (3 endpoint user) + `AdminChatModerationController` (12 endpoint admin).
+- `docs/RUNBOOK.md` §2.36 thêm flow xử lý report (triage → ack → resolve+note vs reject+note → optional hide message / mute user / lock group) + §2.37 escalation matrix khi report > 50/day.
+- `docs/AI_HANDOFF_REPORT.md` §1 cập nhật current branch + scope phase 19.2.
+
+#### Internal — Phase 19.2
+
+- Pattern `Envelope<T>` + `unwrap()` reuse từ Phase 19.1 — nhất quán cho mọi FE API call.
+- Lookup mute query indexed cố định: 1 hit `(userId, revokedAt, expiresAt)` partial index. Đo p99 < 5ms trên dataset test 10k mute row.
+- Soft-ref pattern giữ nguyên Phase 19.1 — KHÔNG FK giữa `ChatMessageReport` ↔ `PrivateChatMessage`/`GroupChatMessage` để dễ cleanup khi delete user (sẽ làm Phase admin user moderation sau).
+
+---
+
+### Phase 19.1.B — Social Rate Limit & Abuse Guard (PR — #529)
 
 **Scope**: Gắn `@RateLimitPolicy()` (Phase 18.1 infra) lên các endpoint social/chat mutation của Phase 19.1 + thêm 6 policy mới vào shared catalog + i18n FE friendly cho `RATE_LIMITED` / `ABUSE_BLOCKED`. **KHÔNG** sửa service logic, **KHÔNG** auto-ban, **KHÔNG** xoá message cũ, **KHÔNG** modify WORLD/SECT chat (route riêng). Reuse `SecurityAbuseService` để ghi `SecurityEvent` + fail2ban-style block khi vượt ngưỡng. Low-risk, additive — rollback = revert PR, endpoint quay về behavior cũ (chỉ business-logic check).
 

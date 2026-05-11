@@ -171,6 +171,47 @@ Tick EXP thực hiện bởi BullMQ processor `cultivation.processor.ts`. WS eve
 | GET    | `/chat/groups/:groupId/messages?limit=`                          | Yes  | —                   | Member only. Non-member → 404. DESC. Default 50, max 200. |
 | POST   | `/chat/groups/:groupId/messages`                                 | Yes  | `CHAT_GROUP_SEND` (30/60s user) | Member only. Body `{ body }`. Emit WS `group-chat:msg` loop member. |
 
+## Chat Moderation — `ChatModerationController` (Phase 19.2)
+
+> User-facing endpoint cho player report tin nhắn vi phạm. Error code (Envelope): `INVALID_INPUT`, `NOT_FOUND`, `NOT_AUTHORIZED`, `DUPLICATE_REPORT`, `RATE_LIMITED`, `ABUSE_BLOCKED`. Duplicate report cùng `(reporterUserId, messageType, privateMessageId|groupMessageId)` → `DUPLICATE_REPORT`. `messageType=PRIVATE` thì `privateMessageId` bắt buộc & `groupMessageId` phải null (và ngược lại).
+
+| Method | Path                       | Auth | Rate              | Mô tả |
+|--------|----------------------------|------|-------------------|-------|
+| POST   | `/chat/reports`            | Yes  | `CHAT_REPORT_SUBMIT` (10/60min user, block 10p) | Body `{ messageType, privateMessageId?, groupMessageId?, reason, detailsText? ≤500ch }`. Tạo `ChatMessageReport` status `OPEN`. |
+| GET    | `/chat/reports/mine`       | Yes  | —                 | List report của caller. Query `page`, `pageSize`. |
+| GET    | `/chat/reports/catalog`    | Yes  | —                 | Trả enum (reason / type / status / muteScope) cho FE i18n dropdown. |
+
+## Admin Chat Moderation — `AdminChatModerationController` (Phase 19.2, role `ADMIN`)
+
+> Admin moderation dashboard: list/ack/resolve report, mute user theo scope, soft-hide message, lock/dissolve group. **Tất cả mutation ghi `AdminAuditLog`** với target = report/mute/message/group id. Soft-hide KHÔNG xoá body (audit/appeal). Lock/dissolve cập nhật cột trên `GroupChat`, KHÔNG xoá member/message.
+
+Mọi mutation đều rate-limit policy `ADMIN_MUTATION` + ghi `AdminAuditLog` action `ADMIN_CHAT_MODERATION_*`.
+
+| Method | Path                                              | Auth   | Mô tả |
+|--------|---------------------------------------------------|--------|-------|
+| GET    | `/admin/chat/reports`                             | Admin  | Filter `status` / `reason` / `messageType` / `reporterUserId` / `targetUserId` + pagination. Trả `AdminChatReportListItem[]` kèm `messagePreview`, `messageHiddenAt`, `reporterDisplayName`, `targetDisplayName`. |
+| GET    | `/admin/chat/reports/summary`                     | Admin  | 6 counter: `openReports`, `acknowledgedReports`, `resolvedToday`, `mutedUsers`, `hiddenMessages`, `lockedGroups`. |
+| POST   | `/admin/chat/reports/:id/ack`                     | Admin  | State `OPEN → ACKNOWLEDGED`. Idempotent. Audit `ADMIN_CHAT_MODERATION_REPORT_ACK`. |
+| POST   | `/admin/chat/reports/:id/resolve`                 | Admin  | Body `{ status: 'RESOLVED' \| 'REJECTED', note? }`. State `OPEN \| ACKNOWLEDGED → RESOLVED \| REJECTED`. Audit `ADMIN_CHAT_MODERATION_REPORT_RESOLVE` / `_REPORT_REJECT`. |
+| GET    | `/admin/chat/mutes`                               | Admin  | Filter `userId` / `scope` / `activeOnly` + pagination. Server trả field `isActive` derived (revokedAt null + (expiresAt null hoặc > now)). |
+| POST   | `/admin/chat/mutes`                               | Admin  | Body `{ userId, scope, reason, expiresAt? }`. Tạo `ChatMute`. Audit `ADMIN_CHAT_MODERATION_MUTE_CREATE`. |
+| DELETE | `/admin/chat/mutes/:id`                           | Admin  | Set `revokedAt` + `revokedByAdminId`. Audit `ADMIN_CHAT_MODERATION_MUTE_REVOKE`. |
+| POST   | `/admin/chat/messages/:id/hide`                   | Admin  | Body `{ messageType, reason? }`. Soft-hide (set `hiddenAt` / `hiddenByAdminId` / `hideReason`). Body giữ nguyên. Audit `ADMIN_CHAT_MODERATION_MESSAGE_HIDE`. |
+| POST   | `/admin/chat/messages/:id/unhide`                 | Admin  | Body `{ messageType }`. Clear soft-hide cols. Audit `ADMIN_CHAT_MODERATION_MESSAGE_UNHIDE`. |
+| POST   | `/admin/chat/groups/:id/lock`                     | Admin  | Body `{ reason? }`. Set `lockedAt`. Member KHÔNG gửi message được. Audit `ADMIN_CHAT_MODERATION_GROUP_LOCK`. |
+| POST   | `/admin/chat/groups/:id/unlock`                   | Admin  | Clear `lockedAt`. Audit `ADMIN_CHAT_MODERATION_GROUP_UNLOCK`. |
+| POST   | `/admin/chat/groups/:id/dissolve`                 | Admin  | Body `{ reason? }`. Set `dissolvedAt`. Group bị đánh dấu giải tán; member/message giữ nguyên. Audit `ADMIN_CHAT_MODERATION_GROUP_DISSOLVE`. |
+
+### Mute enforcement wiring (Phase 19.2)
+
+`ChatModerationService.findActiveMuteForSend(userId, channelScope)` được gọi trước business logic trong:
+
+- `ChatPrivateService.sendPrivateMessage` → check scope `PRIVATE_CHAT`.
+- `ChatGroupService.sendGroupMessage` → check scope `GROUP_CHAT`.
+- `ChatService.sendWorldChat` / `sendSectChat` → check scope `WORLD_SECT_CHAT`.
+
+Server enforce ma trận `muteScopeCoversChannel`: scope `ALL_CHAT` cover mọi channel; scope cụ thể chỉ cover channel target. Nếu tìm thấy mute active → throw `MUTED`. Mute revoked hoặc expired KHÔNG enforce. Lookup query indexed `(userId, revokedAt, expiresAt)`.
+
 ## Territory — `TerritoryController` (Phase 14.0.A + 14.0.B + 14.0.C)
 
 Lớp **Sect Territory Influence + Settlement + Region Buff + Decay** — read views cho Influence Leaderboard theo region + Settlement (chiếm vùng) thật + Region buff khi sở hữu vùng + Influence decay per period.

@@ -2359,6 +2359,79 @@ curl -X POST https://api/api/admin/market/abuse/scan \
 - **KHÔNG bypass block** bằng cách manual `INSERT FriendRequest` — nếu player bị block và muốn liên hệ lại, owner phải `unblock` qua API.
 - **KHÔNG mở `DELETE /social/block/:userId`** thay player — chỉ player tự bỏ chặn của mình.
 
+## 2.36. Phase 19.2 — Chat Moderation & Report (triage flow) (P2)
+
+**Khi nào**:
+- Player vào `Báo cáo tin nhắn` trên FE (Phase 19.2) → server tạo `ChatMessageReport` status `OPEN`.
+- Admin nhận summary card `Open reports > 0` ở tab **Kiểm duyệt chat** (`AdminView → chatModeration`).
+- Hoặc cron alert (Phase 21+): `openReports > 50 / day` → ping Slack ops.
+
+**Người chịu trách nhiệm**: on-call moderator. Severity P2 (24h SLA), P1 nếu report là CRITICAL (lừa đảo nạp / phishing token).
+
+**Flow xử lý qua FE admin panel** (`/admin` → tab `Kiểm duyệt chat`):
+
+1. **Triage**:
+   - Filter `status=OPEN` + `reason=SCAM|HARASSMENT` (priority cao). SPAM thường xử bulk cuối ca.
+   - Xem `messagePreview` + `reporterDisplayName` / `targetDisplayName`. Reporter ẩn danh KHÔNG bị share với target.
+2. **Ack** (acknowledge — báo "đang xử lý"): click `Ack` → state `OPEN → ACKNOWLEDGED`. Idempotent. Audit `ADMIN_CHAT_MODERATION_REPORT_ACK`.
+3. **Action** trên message (nếu vi phạm):
+   - **Hide message**: click `Hide` per report → `confirm()` + `prompt('Reason?')`. Soft-hide cols set, body giữ nguyên (audit/appeal). FE người dùng thấy placeholder `[đã bị ẩn bởi kiểm duyệt]` thay vì body. Audit `ADMIN_CHAT_MODERATION_MESSAGE_HIDE`.
+   - **Mute user** (nếu offender lặp lại): vào **Mutes section** → form `Create mute` → nhập `userId` (target), chọn `scope` (`PRIVATE_CHAT` / `GROUP_CHAT` / `WORLD_SECT_CHAT` / `ALL_CHAT`), `reason`, optional `expiresAt` (để trống = mute vô thời hạn). Audit `ADMIN_CHAT_MODERATION_MUTE_CREATE`.
+   - **Lock / Dissolve group** (nếu report ở GROUP type và toàn group spam): click `Lock` (tạm khoá, có thể `Unlock` lại) hoặc `Dissolve` (đánh dấu giải tán vĩnh viễn, KHÔNG xoá member/message). Audit `ADMIN_CHAT_MODERATION_GROUP_LOCK` / `_DISSOLVE`.
+4. **Resolve / Reject**:
+   - **Resolve** (kết luận vi phạm + đã action): click `Resolve` → `confirm()` + `prompt('Note?')` (note ghi vào `resolutionNote` cho audit). State → `RESOLVED`. Audit `ADMIN_CHAT_MODERATION_REPORT_RESOLVE`.
+   - **Reject** (kết luận KHÔNG vi phạm): click `Reject` → `confirm()` + `prompt('Note?')`. State → `REJECTED`. Audit `ADMIN_CHAT_MODERATION_REPORT_REJECT`.
+   - Resolve/reject là **terminal state** — KHÔNG quay lại OPEN. Nếu sai, phải tạo report mới (hoặc liên hệ super-admin restore via SQL).
+
+**Mute scope ma trận** (`ChatModerationService.findActiveMuteForSend` server-enforced):
+
+| Active mute scope | PRIVATE_CHAT | GROUP_CHAT | WORLD_SECT_CHAT |
+|---|---|---|---|
+| `PRIVATE_CHAT` | ✓ block | — | — |
+| `GROUP_CHAT` | — | ✓ block | — |
+| `WORLD_SECT_CHAT` | — | — | ✓ block |
+| `ALL_CHAT` | ✓ block | ✓ block | ✓ block |
+
+User bị block nhận lỗi `MUTED` ở client — FE toast i18n thân thiện.
+
+**SQL fallback** (chỉ khi FE admin panel down):
+
+```sql
+-- List open report
+SELECT id, "reporterUserId", "targetUserId", "messageType", reason, "createdAt"
+FROM "ChatMessageReport"
+WHERE status = 'OPEN'
+ORDER BY "createdAt" DESC
+LIMIT 50;
+
+-- Mute user (PRIVATE_CHAT, 1 tuần)
+INSERT INTO "ChatMute" ("id", "userId", "mutedByAdminId", reason, scope, "startsAt", "expiresAt", "createdAt")
+VALUES (gen_random_uuid()::text, '<userId>', '<adminId>', 'flood spam', 'PRIVATE_CHAT', NOW(), NOW() + INTERVAL '7 days', NOW());
+
+-- Soft-hide private message
+UPDATE "PrivateChatMessage"
+SET "hiddenAt" = NOW(), "hiddenByAdminId" = '<adminId>', "hideReason" = 'spam-link'
+WHERE id = '<messageId>';
+```
+
+**KHÔNG bao giờ**:
+- **KHÔNG hard-delete** `ChatMessageReport` / `ChatMute` / `PrivateChatMessage` / `GroupChatMessage` — luôn soft-hide / revoke.
+- **KHÔNG bypass AdminAuditLog** — mọi mutation phải đi qua API endpoint admin (auto-audit). SQL chỉ dùng khi panel down + ghi audit tay vào `AdminAuditLog`.
+- **KHÔNG mute scope `ALL_CHAT` mặc định** — chỉ dùng khi offender vi phạm cross-channel hoặc severe. Default scope = channel cụ thể vi phạm.
+
+## 2.37. Phase 19.2 — Escalation matrix khi report spike (P1)
+
+**Trigger**: `summary.openReports > 50` chưa xử trong 24h, hoặc cluster report cùng `targetUserId` > 10/giờ.
+
+1. **Mức 1 (operator on-call)**: ack tất cả + soft-hide tin nhắn rõ ràng vi phạm + mute target scope `ALL_CHAT` 24h. Resolve với note.
+2. **Mức 2 (admin chính)** nếu burst > 100/day: thêm rate-limit policy `CHAT_PRIVATE_SEND` / `CHAT_GROUP_SEND` tạm thời nghiêm hơn (chỉnh `packages/shared/src/security-rate-limit.ts` + redeploy). Lock group bị abuse mass.
+3. **Mức 3 (security lead)** nếu liên quan phishing/scam token: bump JWT secret + audit toàn bộ `topup` quanh thời điểm report + viết postmortem. Phối hợp § 15 (Khi phát hiện sự cố) ở `SECURITY.md`.
+
+**KPI sau xử lý**:
+- TTAck (time-to-ack) median < 4h.
+- TTResolve median < 24h.
+- False-positive (REJECTED / total resolved) < 30% — nếu cao, review chính sách `chatReport.reason` để player hiểu rõ tiêu chí.
+
 ## 2.99. Pre-cutover Deploy Verify Gate (Phase 17.1)
 
 **Khi nào**: Mọi lần cutover production sang instance mới / image mới /
