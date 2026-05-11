@@ -1817,6 +1817,61 @@ Validator `validateRateLimitPolicy` đã chặn `maxRequests > 10000` / `windowS
 - KHÔNG log raw IP / password / token vào `SecurityEvent.detailJson` khi thêm event type mới — `IpHashService.hashIp` luôn được gọi trước khi persist.
 - KHÔNG dùng `RATE_LIMIT_FAIL_OPEN=false` trừ khi đã có WAF/CDN layer trên (closed beta hiện tại chưa có).
 
+### 2.31. Phase 18.2 — Session Management Hardening (P1/P2)
+
+Tham chiếu: [`docs/SECURITY.md`](./SECURITY.md) §13, [`docs/API.md`](./API.md) §AuthController + §AdminSecurityController. Source: <ref_file file="apps/api/src/modules/auth/session.service.ts" />.
+
+#### 2.31.1. Symptom: report player nói "bị đăng xuất bất ngờ trên tất cả thiết bị"
+
+1. Lookup user trong `UserSession`:
+   ```sql
+   SELECT id, "ipHash", "userAgent", "createdAt", "lastSeenAt", "revokedAt", "revokedReason", "revokedById"
+     FROM "UserSession" WHERE "userId" = '<user>' ORDER BY "createdAt" DESC LIMIT 10;
+   ```
+2. Nếu **tất cả session** có `revokedReason = REFRESH_REUSED` cùng lúc → **reuse detection** đã trigger:
+   - Check `SecurityEvent` `REFRESH_TOKEN_REUSED` cho user → `severity = CRITICAL`.
+   - **Có khả năng cao token bị steal** (cookie leak / XSS / MITM). Liên hệ user xác nhận.
+   - Bump `passwordVersion` qua force change-password nếu user xác nhận compromise.
+3. Nếu `revokedReason = PASSWORD_CHANGED` → user vừa đổi pass (intended).
+4. Nếu `revokedReason = ADMIN_REVOKE` + `revokedById != null` → admin đã revoke. Lookup `AdminAuditLog action = ADMIN_SECURITY_SESSION_REVOKE`.
+5. Nếu `revokedReason = USER_LOGOUT` → user tự revoke từ `/_auth/sessions/:id`.
+
+#### 2.31.2. Admin revoke session 1 user (incident response)
+
+Khi nhận report user bị steal token / compromised:
+```bash
+# List active session của user
+curl -X GET "https://api/admin/security/sessions?userId=<uid>&status=ACTIVE" \
+  -H "Cookie: xt_access=<admin-token>"
+
+# Revoke 1 session
+curl -X POST "https://api/admin/security/sessions/<sessionId>/revoke" \
+  -H "Cookie: xt_access=<admin-token>"
+```
+Audit ghi tự động `ADMIN_SECURITY_SESSION_REVOKE`. Nếu muốn kill mọi phiên: gọi admin reset-password (bump `passwordVersion` + revoke all session + email user reset).
+
+#### 2.31.3. Mass reuse spike (P0)
+
+Symptom: `REFRESH_TOKEN_REUSED` event nhiều user khác nhau cùng 1 IP range / cùng 1 phút.
+
+1. **Có thể** đang bị attack botnet replay token leak (DB dump / log leak). Cấp độ P0.
+2. Kiểm tra `SecurityEvent`:
+   ```sql
+   SELECT date_trunc('minute', "createdAt") AS m, count(*) AS n
+   FROM "SecurityEvent" WHERE type = 'REFRESH_TOKEN_REUSED'
+     AND "createdAt" > now() - interval '1 hour'
+   GROUP BY m ORDER BY m DESC;
+   ```
+3. Nếu spike rõ → bump `JWT_REFRESH_SECRET` env → redeploy → toàn bộ JWT cũ invalid. Bao gồm cả attacker.
+4. Post-mortem: tìm source leak (log? backup? DB dump?). Phối hợp 2.8 (JWT secret leak).
+
+#### 2.31.4. KHÔNG được làm
+
+- KHÔNG truncate `UserSession` table — sẽ leak audit trail và phá rotation lookup. Nếu cần dọn để giảm size: query expired rows + soft archive.
+- KHÔNG xoá `RefreshToken` row đã revoked — `argon2.verify` check vẫn cần để detect reuse.
+- KHÔNG copy/log `userAgent` raw vào audit nếu chưa qua `sanitizeUserAgent`.
+- KHÔNG log raw IP — chỉ `ipHash` từ `IpHashService.hashIp`.
+
 ## 2.99. Pre-cutover Deploy Verify Gate (Phase 17.1)
 
 **Khi nào**: Mọi lần cutover production sang instance mới / image mới /

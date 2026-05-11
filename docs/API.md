@@ -49,6 +49,8 @@ KHÔNG bao giờ throw 500.
 | POST   | `/_auth/refresh`          | Yes (xt_refresh) | Rotation + reuse-detection. Sai → revoke cả chain. |
 | GET    | `/_auth/session`          | Yes  | Trả `{ user: PublicUser }`. |
 | POST   | `/_auth/change-password`  | Yes  | `{ oldPassword, newPassword }`. `passwordVersion`++ → kill mọi phiên. |
+| GET    | `/_auth/sessions`         | Yes  | **Phase 18.2** — list `UserSession` của chính user. Query `includeRevoked=true` để xem REVOKED/EXPIRED (mặc định chỉ ACTIVE). Mỗi item có `current: boolean` (true nếu match refresh cookie hiện tại). Response: `{ ok: true, data: { sessions: UserSessionSummary[], generatedAt } }`. KHÔNG bao giờ trả `hashedToken` / `jti`. |
+| DELETE | `/_auth/sessions/:id`     | Yes  | **Phase 18.2** — revoke session của chính user. Self-ownership guard: mask `SESSION_NOT_FOUND 404` nếu session không thuộc user (chống enumeration). Idempotent — revoke 2 lần OK. Nếu là current session → clear cookies (FE redirect login). Audit `SESSION_REVOKED` reason `USER_LOGOUT`. |
 
 ## Character — `CharacterController`
 
@@ -930,6 +932,8 @@ Hệ versioning + rollback an toàn cho 4 entity vận hành: `LIVEOPS_EVENT` / 
 | GET    | `/admin/security/blocks?type=&limit=&cursor=` | ADMIN/MOD | List **active** `SecurityBlock` (chưa lift + chưa hết hạn). `type` ∈ `IP`/`USER`. `limit` default 50 / max 200. Response `{ ok: true, data: { blocks: [{ id, type, subjectHash, reason, expiresAt, createdAt }] } }`. Audit `ADMIN_SECURITY_BLOCKS_VIEW`. Rate-limit: `ADMIN_REPORT_VIEW`. |
 | POST   | `/admin/security/blocks/:id/lift` | **ADMIN-only** | Lift 1 block (admin override). Idempotent: nếu block không tồn tại / đã lift → 404 `BLOCK_NOT_FOUND` + audit `ADMIN_SECURITY_BLOCK_LIFT_FAILED`. Khi success: `liftedAt = now()` + `liftedById = req.userId` + audit `ADMIN_SECURITY_BLOCK_LIFT` với `{ blockId, type, subjectHash, reason }`. Response `{ ok: true, data: { block: { id, type, subjectHash, reason } } }`. `@RequireAdmin()` → MOD reject 403 `ADMIN_ONLY`. Rate-limit: `ADMIN_MUTATION`. |
 | GET    | `/admin/security/policies` | ADMIN/MOD | Static catalog dump (no DB hit). Response `{ ok: true, data: { keys: [...RATE_LIMIT_POLICY_KEYS] } }`. Dùng để FE Admin Security Panel autocomplete policy filter. Rate-limit: `ADMIN_REPORT_VIEW`. |
+| GET    | `/admin/security/sessions?userId=&status=&limit=&cursor=` | ADMIN/MOD | **Phase 18.2** — list `UserSession` row, paginate. `userId` exact match (≤128 ký tự). `status` ∈ `ACTIVE`/`REVOKED`/`EXPIRED`/`ALL` (default `ALL`, invalid → 400 `INVALID_STATUS`). `limit` default 50 / max 200. `cursor` = id row cuối lần trước. Response `{ ok: true, data: { sessions: UserSessionSummary[], nextCursor, generatedAt } }`. Audit `ADMIN_SECURITY_SESSIONS_VIEW` 1 row / call. KHÔNG bao giờ trả `hashedToken`/`jti`. Rate-limit: `ADMIN_REPORT_VIEW`. |
+| POST   | `/admin/security/sessions/:id/revoke` | **ADMIN-only** | **Phase 18.2** — revoke 1 `UserSession`. Idempotent. Reason `ADMIN_REVOKE`, `revokedById = req.userId`. Audit `ADMIN_SECURITY_SESSION_REVOKE` (success) hoặc `ADMIN_SECURITY_SESSION_REVOKE_FAILED` (404 `SESSION_NOT_FOUND`). `@RequireAdmin()` — MOD reject 403 `ADMIN_ONLY`. Cascade revoke tất cả `RefreshToken` con + emit `SecurityEvent` `SESSION_REVOKED`. Rate-limit: `ADMIN_MUTATION`. |
 
 ### Rate limit response headers (Phase 18.1)
 

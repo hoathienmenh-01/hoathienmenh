@@ -37,7 +37,21 @@ export type SecurityEventType =
   | 'ADMIN_FORBIDDEN'
   | 'IP_BLOCKED'
   | 'USER_BLOCKED'
-  | 'BLOCK_LIFTED';
+  | 'BLOCK_LIFTED'
+  /** Phase 18.2 — UserSession created on login/register. */
+  | 'SESSION_CREATED'
+  /** Phase 18.2 — UserSession revoked (user/admin/reuse/password-change). */
+  | 'SESSION_REVOKED'
+  /**
+   * Phase 18.2 — refresh token đã rotate được present lại → defensive
+   * revoke cả session family. CRITICAL severity.
+   */
+  | 'REFRESH_TOKEN_REUSED'
+  /**
+   * Phase 18.2 — heuristic suspicious (reserve cho phase sau wire
+   * heuristic; KHÔNG enforce ở 18.2).
+   */
+  | 'SESSION_SUSPICIOUS';
 
 export interface IsBlockedResult {
   blocked: boolean;

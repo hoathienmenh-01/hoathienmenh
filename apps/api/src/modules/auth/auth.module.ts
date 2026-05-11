@@ -12,6 +12,8 @@ import {
   REGISTER_RATE_LIMIT_MAX,
   REGISTER_RATE_LIMIT_WINDOW_MS,
 } from './auth.service';
+import { SessionService } from './session.service';
+import { IpHashService } from '../security/ip-hash.service';
 import { PrismaService } from '../../common/prisma.service';
 import {
   InMemorySlidingWindowRateLimiter,
@@ -70,7 +72,17 @@ const forgotPasswordLimiterProvider = {
     }),
   ],
   controllers: [AuthController],
-  providers: [PrismaService, registerLimiterProvider, forgotPasswordLimiterProvider, AuthService],
-  exports: [AuthService],
+  providers: [
+    PrismaService,
+    registerLimiterProvider,
+    forgotPasswordLimiterProvider,
+    AuthService,
+    SessionService,
+    // Phase 18.2 — privacy-preserving IP hasher cho session row.
+    // Stateless (just sha256 với env salt) → ok provide ở cả AuthModule
+    // và SecurityModule (tránh circular import).
+    IpHashService,
+  ],
+  exports: [AuthService, SessionService],
 })
 export class AuthModule {}

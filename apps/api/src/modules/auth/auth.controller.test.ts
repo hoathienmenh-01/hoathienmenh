@@ -90,7 +90,15 @@ function makeRes() {
   return { res, cookies, cleared };
 }
 
-function makeController(opts: Partial<AuthService> = {}) {
+function makeController(
+  opts: Partial<AuthService> = {},
+  sessionStubs: Partial<{
+    listForUser: (...args: unknown[]) => Promise<{ sessions: unknown[] }>;
+    findById: (...args: unknown[]) => Promise<unknown>;
+    revokeSession: (...args: unknown[]) => Promise<unknown>;
+    toSummary: (...args: unknown[]) => unknown;
+  }> = {},
+) {
   const auth = {
     register: opts.register ?? (async () => STUB_AUTH_OUT),
     login: opts.login ?? (async () => STUB_AUTH_OUT),
@@ -99,11 +107,25 @@ function makeController(opts: Partial<AuthService> = {}) {
     changePassword: opts.changePassword ?? (async () => undefined),
     session: opts.session ?? (async () => STUB_USER),
     refresh: opts.refresh ?? (async () => STUB_AUTH_OUT),
-    logout: opts.logout ?? (async () => undefined),
+    logout: opts.logout ?? (async () => ({ sessionId: null })),
     logoutAll: opts.logoutAll ?? (async () => ({ revoked: 3 })),
     userIdFromAccess: opts.userIdFromAccess ?? (async () => 'u1'),
+    sessionIdFromRefreshCookie:
+      (opts as { sessionIdFromRefreshCookie?: unknown })
+        .sessionIdFromRefreshCookie ?? (async () => null),
   } as unknown as AuthService;
-  return new AuthController(auth);
+  const sessions = {
+    listForUser: sessionStubs.listForUser ?? (async () => ({ sessions: [] })),
+    findById: sessionStubs.findById ?? (async () => null),
+    revokeSession: sessionStubs.revokeSession ?? (async () => null),
+    toSummary:
+      sessionStubs.toSummary ??
+      ((row: unknown) => row as Record<string, unknown>),
+  } as unknown as import('./session.service').SessionService;
+  const ipHash = {
+    hashIp: (ip: string | null) => (ip ? `hash:${ip}` : null),
+  } as unknown as import('../security/ip-hash.service').IpHashService;
+  return new AuthController(auth, sessions, ipHash);
 }
 
 async function expectHttpError(
@@ -178,7 +200,7 @@ describe('AuthController', () => {
       const calls: Array<{ ip: string }> = [];
       const c = makeController({
         register: (async (input: unknown, ctx: { ip: string }) => {
-          calls.push(ctx);
+          calls.push({ ip: ctx.ip });
           return STUB_AUTH_OUT;
         }) as unknown as AuthService['register'],
       });
@@ -248,7 +270,7 @@ describe('AuthController', () => {
       const calls: Array<{ ip: string }> = [];
       const c = makeController({
         login: (async (_i: unknown, ctx: { ip: string }) => {
-          calls.push(ctx);
+          calls.push({ ip: ctx.ip });
           return STUB_AUTH_OUT;
         }) as unknown as AuthService['login'],
       });
@@ -546,7 +568,7 @@ describe('AuthController', () => {
       const calls: Array<{ ip: string }> = [];
       const c = makeController({
         register: (async (_i: unknown, ctx: { ip: string }) => {
-          calls.push(ctx);
+          calls.push({ ip: ctx.ip });
           return STUB_AUTH_OUT;
         }) as unknown as AuthService['register'],
       });
@@ -562,7 +584,7 @@ describe('AuthController', () => {
       const calls: Array<{ ip: string }> = [];
       const c = makeController({
         register: (async (_i: unknown, ctx: { ip: string }) => {
-          calls.push(ctx);
+          calls.push({ ip: ctx.ip });
           return STUB_AUTH_OUT;
         }) as unknown as AuthService['register'],
       });
@@ -578,7 +600,7 @@ describe('AuthController', () => {
       const calls: Array<{ ip: string }> = [];
       const c = makeController({
         register: (async (_i: unknown, ctx: { ip: string }) => {
-          calls.push(ctx);
+          calls.push({ ip: ctx.ip });
           return STUB_AUTH_OUT;
         }) as unknown as AuthService['register'],
       });
@@ -590,7 +612,7 @@ describe('AuthController', () => {
       const calls: Array<{ ip: string }> = [];
       const c = makeController({
         register: (async (_i: unknown, ctx: { ip: string }) => {
-          calls.push(ctx);
+          calls.push({ ip: ctx.ip });
           return STUB_AUTH_OUT;
         }) as unknown as AuthService['register'],
       });
@@ -602,7 +624,7 @@ describe('AuthController', () => {
       const calls: Array<{ ip: string }> = [];
       const c = makeController({
         register: (async (_i: unknown, ctx: { ip: string }) => {
-          calls.push(ctx);
+          calls.push({ ip: ctx.ip });
           return STUB_AUTH_OUT;
         }) as unknown as AuthService['register'],
       });
@@ -639,6 +661,168 @@ describe('AuthController', () => {
         if (prevA !== undefined) process.env.JWT_ACCESS_TTL = prevA;
         if (prevR !== undefined) process.env.JWT_REFRESH_TTL = prevR;
       }
+    });
+  });
+
+  // -------------------- Phase 18.2 sessions endpoints --------------------
+
+  describe('GET /_auth/sessions', () => {
+    it('UNAUTHENTICATED khi không có access cookie / userIdFromAccess null', async () => {
+      const c = makeController({
+        userIdFromAccess: async () => null,
+      } as Partial<AuthService>);
+      await expectHttpError(
+        c.listMySessions(makeReq({}), undefined),
+        401,
+        'UNAUTHENTICATED',
+      );
+    });
+
+    it('trả sessions list + flag current cho session khớp refresh cookie', async () => {
+      const stubSessions = [
+        { id: 'sess-a', userId: 'u1', current: true },
+        { id: 'sess-b', userId: 'u1', current: false },
+      ];
+      const c = makeController(
+        {
+          userIdFromAccess: async () => 'u1',
+          sessionIdFromRefreshCookie: async () => 'sess-a',
+        } as Partial<AuthService>,
+        {
+          listForUser: async () =>
+            ({ sessions: stubSessions } as unknown as { sessions: unknown[] }),
+        },
+      );
+      const r = await c.listMySessions(
+        makeReq({ access: 'a', refresh: 'r' }),
+        undefined,
+      );
+      expect(r.ok).toBe(true);
+      expect((r.data.sessions as Array<{ id: string }>).length).toBe(2);
+      expect(typeof r.data.generatedAt).toBe('string');
+    });
+
+    it('includeRevoked=true forward xuống service', async () => {
+      let forwarded: { includeRevoked?: boolean } | undefined;
+      const c = makeController(
+        {
+          userIdFromAccess: async () => 'u1',
+          sessionIdFromRefreshCookie: async () => null,
+        } as Partial<AuthService>,
+        {
+          listForUser: async (...args: unknown[]) => {
+            forwarded = args[0] as { includeRevoked?: boolean };
+            return { sessions: [] };
+          },
+        },
+      );
+      await c.listMySessions(makeReq({ access: 'a' }), 'true');
+      expect(forwarded?.includeRevoked).toBe(true);
+    });
+  });
+
+  describe('DELETE /_auth/sessions/:id', () => {
+    it('UNAUTHENTICATED khi không có access cookie', async () => {
+      const c = makeController({
+        userIdFromAccess: async () => null,
+      } as Partial<AuthService>);
+      const { res } = makeRes();
+      await expectHttpError(
+        c.revokeMySession(makeReq({}), res, 'sess-a'),
+        401,
+        'UNAUTHENTICATED',
+      );
+    });
+
+    it('SESSION_NOT_FOUND 404 khi session không tồn tại', async () => {
+      const c = makeController(
+        { userIdFromAccess: async () => 'u1' } as Partial<AuthService>,
+        { findById: async () => null },
+      );
+      const { res } = makeRes();
+      await expectHttpError(
+        c.revokeMySession(makeReq({ access: 'a' }), res, 'missing'),
+        404,
+        'SESSION_NOT_FOUND',
+      );
+    });
+
+    it('mask SESSION_NOT_FOUND 404 khi user thử revoke session người khác (chống enum)', async () => {
+      const c = makeController(
+        { userIdFromAccess: async () => 'u1' } as Partial<AuthService>,
+        {
+          findById: async () => ({ id: 'sess-x', userId: 'OTHER' }),
+        },
+      );
+      const { res } = makeRes();
+      await expectHttpError(
+        c.revokeMySession(makeReq({ access: 'a' }), res, 'sess-x'),
+        404,
+        'SESSION_NOT_FOUND',
+      );
+    });
+
+    it('revoke session của chính user + KHÔNG clear cookies nếu không phải current', async () => {
+      const revoked: unknown[] = [];
+      const c = makeController(
+        {
+          userIdFromAccess: async () => 'u1',
+          sessionIdFromRefreshCookie: async () => 'sess-current',
+        } as Partial<AuthService>,
+        {
+          findById: async () => ({
+            id: 'sess-other',
+            userId: 'u1',
+            revokedAt: null,
+          }),
+          revokeSession: async (input: unknown) => {
+            revoked.push(input);
+            return { id: 'sess-other', userId: 'u1', revokedAt: new Date() };
+          },
+        },
+      );
+      const { res, cleared } = makeRes();
+      const r = await c.revokeMySession(
+        makeReq({ access: 'a', refresh: 'r' }),
+        res,
+        'sess-other',
+      );
+      expect(r.ok).toBe(true);
+      expect(cleared.length).toBe(0);
+      expect((revoked[0] as { reason: string }).reason).toBe('USER_LOGOUT');
+      expect((revoked[0] as { revokedById: string }).revokedById).toBe('u1');
+    });
+
+    it('revoke session current → clear cookies', async () => {
+      const c = makeController(
+        {
+          userIdFromAccess: async () => 'u1',
+          sessionIdFromRefreshCookie: async () => 'sess-current',
+        } as Partial<AuthService>,
+        {
+          findById: async () => ({
+            id: 'sess-current',
+            userId: 'u1',
+            revokedAt: null,
+          }),
+          revokeSession: async () => ({
+            id: 'sess-current',
+            userId: 'u1',
+            revokedAt: new Date(),
+          }),
+        },
+      );
+      const { res, cleared } = makeRes();
+      await c.revokeMySession(
+        makeReq({ access: 'a', refresh: 'r' }),
+        res,
+        'sess-current',
+      );
+      expect(cleared.length).toBe(2);
+      expect(cleared.map((c) => c.name).sort()).toEqual([
+        'xt_access',
+        'xt_refresh',
+      ]);
     });
   });
 });

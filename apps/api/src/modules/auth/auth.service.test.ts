@@ -11,6 +11,7 @@ import {
   REGISTER_RATE_LIMIT_WINDOW_MS,
 } from './auth.service';
 import { InMemorySlidingWindowRateLimiter } from '../../common/rate-limiter';
+import { SessionService } from './session.service';
 
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ??
@@ -46,6 +47,7 @@ beforeEach(async () => {
   // Wipe auth-related tables only (don't touch unrelated phase tables to keep tests fast).
   await prisma.passwordResetToken.deleteMany({});
   await prisma.refreshToken.deleteMany({});
+  await prisma.userSession.deleteMany({});
   await prisma.loginAttempt.deleteMany({});
   await prisma.user.deleteMany({});
   // Fresh limiter per test — register limiter có state in-memory persist giữa test.
@@ -58,7 +60,8 @@ beforeEach(async () => {
     FORGOT_PASSWORD_RATE_LIMIT_MAX,
   );
   const cfg = new FakeConfig();
-  auth = new AuthService(prisma, jwt, cfg, registerLimiter, forgotLimiter);
+  const sessions = new SessionService(prisma);
+  auth = new AuthService(prisma, jwt, cfg, sessions, registerLimiter, forgotLimiter);
 });
 
 afterAll(async () => {
@@ -217,8 +220,10 @@ describe('AuthService', () => {
   });
 
   it('logout idempotent: không throw khi token undefined / không hợp lệ', async () => {
-    await expect(auth.logout(undefined)).resolves.toBeUndefined();
-    await expect(auth.logout('garbage.jwt.token')).resolves.toBeUndefined();
+    await expect(auth.logout(undefined)).resolves.toEqual({ sessionId: null });
+    await expect(auth.logout('garbage.jwt.token')).resolves.toEqual({
+      sessionId: null,
+    });
   });
 
   it('logoutAll: revoke toàn bộ refresh token đang active của user, trả count', async () => {
@@ -454,5 +459,229 @@ describe('AuthService', () => {
     // (vài ms vs ~100ms+).
     const ratio = dMissing / Math.max(dExists, 1);
     expect(ratio).toBeGreaterThan(0.5);
+  });
+
+  // ---------------- Phase 18.2 session management ----------------
+
+  it('register tạo 1 UserSession row + RefreshToken có sessionId liên kết', async () => {
+    const reg = await auth.register(
+      { email: 'sess-reg@xt.local', password: PASSWORD },
+      { ip: '10.0.1.1', ipHash: 'a'.repeat(64), userAgent: 'vitest UA' },
+    );
+    const sessions = await prisma.userSession.findMany({
+      where: { userId: reg.user.id },
+    });
+    expect(sessions.length).toBe(1);
+    expect(sessions[0].ipHash).toBe('a'.repeat(64));
+    expect(sessions[0].userAgent).toBe('vitest UA');
+    expect(sessions[0].revokedAt).toBeNull();
+
+    const tokens = await prisma.refreshToken.findMany({
+      where: { userId: reg.user.id },
+    });
+    expect(tokens.length).toBe(1);
+    expect(tokens[0].sessionId).toBe(sessions[0].id);
+  });
+
+  it('refresh tiếp tục cùng sessionId (continue family) + touch lastSeenAt', async () => {
+    const reg = await auth.register(
+      { email: 'sess-rot@xt.local', password: PASSWORD },
+      { ip: '10.0.1.2', ipHash: 'b'.repeat(64), userAgent: 'vitest UA' },
+    );
+    const before = await prisma.userSession.findFirst({
+      where: { userId: reg.user.id },
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    await auth.refresh(reg.refreshToken, {
+      ip: '10.0.1.2',
+      ipHash: 'b'.repeat(64),
+      userAgent: 'vitest UA',
+    });
+
+    const sessions = await prisma.userSession.findMany({
+      where: { userId: reg.user.id },
+    });
+    // Vẫn 1 session (rotation cùng family).
+    expect(sessions.length).toBe(1);
+    expect(sessions[0].id).toBe(before!.id);
+    expect(sessions[0].lastSeenAt.getTime()).toBeGreaterThanOrEqual(
+      before!.lastSeenAt.getTime(),
+    );
+
+    const tokens = await prisma.refreshToken.findMany({
+      where: { userId: reg.user.id },
+      orderBy: { createdAt: 'asc' },
+    });
+    expect(tokens.length).toBe(2);
+    expect(tokens.every((t) => t.sessionId === before!.id)).toBe(true);
+  });
+
+  it('refresh reuse detection: present lại token đã rotate → revoke session family + emit REFRESH_TOKEN_REUSED', async () => {
+    const reg = await auth.register(
+      { email: 'sess-reuse@xt.local', password: PASSWORD },
+      { ip: '10.0.1.3', ipHash: 'c'.repeat(64), userAgent: 'vitest UA' },
+    );
+    const oldToken = reg.refreshToken;
+    // Lần 1 refresh thành công — rotate token cũ.
+    await auth.refresh(oldToken, {
+      ip: '10.0.1.3',
+      ipHash: 'c'.repeat(64),
+      userAgent: 'vitest UA',
+    });
+    // Lần 2 present lại token cũ → reuse detected.
+    await expect(
+      auth.refresh(oldToken, {
+        ip: '10.0.1.3',
+        ipHash: 'c'.repeat(64),
+        userAgent: 'vitest UA',
+      }),
+    ).rejects.toMatchObject({ code: 'SESSION_EXPIRED' });
+
+    const sessions = await prisma.userSession.findMany({
+      where: { userId: reg.user.id },
+    });
+    expect(sessions.length).toBe(1);
+    expect(sessions[0].revokedAt).not.toBeNull();
+    expect(sessions[0].revokedReason).toBe('REFRESH_REUSED');
+
+    const reuseEv = await prisma.securityEvent.findMany({
+      where: {
+        type: 'REFRESH_TOKEN_REUSED',
+        userId: reg.user.id,
+      },
+    });
+    expect(reuseEv.length).toBe(1);
+    expect(reuseEv[0].severity).toBe('CRITICAL');
+  });
+
+  it('refresh trên session đã revoke → SESSION_EXPIRED', async () => {
+    const reg = await auth.register(
+      { email: 'sess-revoked@xt.local', password: PASSWORD },
+      { ip: '10.0.1.4', ipHash: 'd'.repeat(64), userAgent: 'vitest UA' },
+    );
+    const session = await prisma.userSession.findFirst({
+      where: { userId: reg.user.id },
+    });
+    // Admin/user revoke session.
+    await prisma.userSession.update({
+      where: { id: session!.id },
+      data: { revokedAt: new Date(), revokedReason: 'ADMIN_REVOKE' },
+    });
+    await expect(
+      auth.refresh(reg.refreshToken, {
+        ip: '10.0.1.4',
+        ipHash: 'd'.repeat(64),
+        userAgent: 'vitest UA',
+      }),
+    ).rejects.toMatchObject({ code: 'SESSION_EXPIRED' });
+  });
+
+  it('refresh trên session đã hết hạn → SESSION_EXPIRED', async () => {
+    const reg = await auth.register(
+      { email: 'sess-expired@xt.local', password: PASSWORD },
+      { ip: '10.0.1.5', ipHash: 'e'.repeat(64), userAgent: 'vitest UA' },
+    );
+    const session = await prisma.userSession.findFirst({
+      where: { userId: reg.user.id },
+    });
+    await prisma.userSession.update({
+      where: { id: session!.id },
+      data: { expiresAt: new Date(Date.now() - 10_000) },
+    });
+    await expect(
+      auth.refresh(reg.refreshToken, {
+        ip: '10.0.1.5',
+        ipHash: 'e'.repeat(64),
+        userAgent: 'vitest UA',
+      }),
+    ).rejects.toMatchObject({ code: 'SESSION_EXPIRED' });
+  });
+
+  it('logout 1 device → revoke session tương ứng, session khác vẫn active', async () => {
+    const reg1 = await auth.register(
+      { email: 'sess-logout-1@xt.local', password: PASSWORD },
+      { ip: '10.0.1.6', ipHash: 'f'.repeat(64), userAgent: 'device-1' },
+    );
+    const login2 = await auth.login(
+      { email: 'sess-logout-1@xt.local', password: PASSWORD },
+      { ip: '10.0.1.7', ipHash: '1'.repeat(64), userAgent: 'device-2' },
+    );
+
+    const before = await prisma.userSession.findMany({
+      where: { userId: reg1.user.id },
+    });
+    expect(before.length).toBe(2);
+
+    const r = await auth.logout(reg1.refreshToken);
+    expect(r.sessionId).not.toBeNull();
+
+    const after = await prisma.userSession.findMany({
+      where: { userId: reg1.user.id },
+    });
+    const revoked = after.find((s) => s.id === r.sessionId);
+    const other = after.find((s) => s.id !== r.sessionId);
+    expect(revoked?.revokedAt).not.toBeNull();
+    expect(revoked?.revokedReason).toBe('USER_LOGOUT');
+    expect(other?.revokedAt).toBeNull();
+
+    // Refresh token của device 2 vẫn dùng được.
+    const refreshed = await auth.refresh(login2.refreshToken, {
+      ip: '10.0.1.7',
+      ipHash: '1'.repeat(64),
+      userAgent: 'device-2',
+    });
+    expect(refreshed.user.id).toBe(reg1.user.id);
+  });
+
+  it('logoutAll revoke tất cả UserSession của user', async () => {
+    const reg = await auth.register(
+      { email: 'sess-logout-all@xt.local', password: PASSWORD },
+      { ip: '10.0.1.8', ipHash: '2'.repeat(64), userAgent: 'd1' },
+    );
+    await auth.login(
+      { email: 'sess-logout-all@xt.local', password: PASSWORD },
+      { ip: '10.0.1.9', ipHash: '3'.repeat(64), userAgent: 'd2' },
+    );
+    await auth.logoutAll(reg.user.id);
+    const sessions = await prisma.userSession.findMany({
+      where: { userId: reg.user.id },
+    });
+    expect(sessions.length).toBe(2);
+    expect(sessions.every((s) => s.revokedAt !== null)).toBe(true);
+    expect(sessions.every((s) => s.revokedReason === 'USER_LOGOUT')).toBe(true);
+  });
+
+  it('change-password revoke tất cả UserSession + reason PASSWORD_CHANGED', async () => {
+    const reg = await auth.register(
+      { email: 'sess-chpwd@xt.local', password: PASSWORD },
+      { ip: '10.0.1.10', ipHash: '4'.repeat(64), userAgent: 'd1' },
+    );
+    await auth.changePassword(reg.user.id, {
+      oldPassword: PASSWORD,
+      newPassword: 'NewPass123',
+    });
+    const sessions = await prisma.userSession.findMany({
+      where: { userId: reg.user.id },
+    });
+    expect(sessions.length).toBe(1);
+    expect(sessions[0].revokedAt).not.toBeNull();
+    expect(sessions[0].revokedReason).toBe('PASSWORD_CHANGED');
+  });
+
+  it('Privacy: response refresh KHÔNG chứa hashedToken hoặc jti raw', async () => {
+    const reg = await auth.register(
+      { email: 'sess-priv@xt.local', password: PASSWORD },
+      { ip: '10.0.1.11', ipHash: '5'.repeat(64), userAgent: 'priv-ua' },
+    );
+    const out = await auth.refresh(reg.refreshToken, {
+      ip: '10.0.1.11',
+      ipHash: '5'.repeat(64),
+      userAgent: 'priv-ua',
+    });
+    const json = JSON.stringify(out);
+    expect(json).not.toContain('hashedToken');
+    // refreshToken là JWT chính (3 phần dấu chấm); jti embedded bên trong JWT
+    // payload — không leak ngoài raw refreshToken.
+    expect(out.refreshToken.split('.').length).toBe(3);
   });
 });
