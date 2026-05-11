@@ -90,7 +90,7 @@ onBeforeUnmount(() => {
         v-if="hasUnread"
         class="absolute -top-1 -right-1 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-amber-500 text-ink-900 text-[10px] leading-[1.1rem] font-bold text-center"
         data-testid="notification-bell-badge"
-        >{{ badgeLabel }}</span
+      >{{ badgeLabel }}</span
       >
     </button>
     <NotificationDropdown :open="open" @close="closeDropdown" />

@@ -1,6 +1,7 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { FriendRequestStatus, Prisma } from '@prisma/client';
 import { NotificationHelpers } from '../notification/notification-helpers';
+import { RealtimeService } from '../realtime/realtime.service';
 import {
   type FriendRequestRow,
   type FriendRow,
@@ -68,7 +69,24 @@ export class SocialService {
     @Optional()
     @Inject(NotificationHelpers)
     private readonly notifications: NotificationHelpers | null = null,
+    @Optional()
+    @Inject(RealtimeService)
+    private readonly realtime: RealtimeService | null = null,
   ) {}
+
+  /**
+   * Phase 19.3 — best-effort live online check via RealtimeService.
+   * Falls back to `false` when realtime is unavailable (e.g. unit
+   * tests without realtime wiring). Safe because the server also
+   * exposes `/social/presence` for FE to query in batch.
+   */
+  private isOnlineSafe(userId: string): boolean {
+    try {
+      return this.realtime?.isOnline(userId) ?? false;
+    } catch {
+      return false;
+    }
+  }
 
   /**
    * Phase 19.3 — Best-effort lookup of a user's display name for
@@ -331,7 +349,7 @@ export class SocialService {
           id: r.id,
           friendUserId,
           friendDisplayName: nameByUserId.get(friendUserId) ?? null,
-          online: false,
+          online: this.isOnlineSafe(friendUserId),
           createdAt: r.createdAt.toISOString(),
         } satisfies FriendRow;
       });
@@ -655,6 +673,9 @@ export class SocialService {
         relationshipStatus: status,
         actions: computeProfileActions(status),
         character: null,
+        // BLOCKED_BY_ME view — viewer is the blocker; we may surface
+        // presence of the blockee for the viewer. Phase 19.3 keeps
+        // this conservative and reports OFFLINE to avoid leaking.
         online: false,
         joinedYearMonth: null,
         mutualFriendCount: null,
@@ -718,7 +739,7 @@ export class SocialService {
       relationshipStatus: status,
       actions: computeProfileActions(status),
       character: characterSummary,
-      online: false,
+      online: this.isOnlineSafe(targetUserId),
       joinedYearMonth: formatJoinedYearMonth(targetUser.createdAt),
       mutualFriendCount,
       sameSect,
@@ -755,7 +776,9 @@ export class SocialService {
       relationshipStatus: status,
       actions: computeProfileActions(status),
       character: char ? this.toPublicCharacterSummary(char) : null,
-      online: false,
+      // SELF profile — viewer is the user; reuse realtime check to
+      // reflect the same in-memory presence used for friends/strangers.
+      online: this.isOnlineSafe(userId),
       joinedYearMonth: formatJoinedYearMonth(user.createdAt),
       mutualFriendCount: null,
       sameSect: null,

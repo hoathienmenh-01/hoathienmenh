@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationModule } from '../notification/notification.module';
+import { RealtimeModule } from '../realtime/realtime.module';
 import { SocialController } from './social.controller';
 import { SocialService } from './social.service';
 
@@ -18,7 +19,9 @@ import { SocialService } from './social.service';
  * AuthModule + RealtimeModule.
  */
 @Module({
-  imports: [AuthModule, NotificationModule],
+  // Phase 19.3 — RealtimeModule for live `online` flag on FriendRow
+  // and public profile (in-memory presence via RealtimeService).
+  imports: [AuthModule, NotificationModule, RealtimeModule],
   controllers: [SocialController],
   providers: [SocialService, PrismaService],
   exports: [SocialService],
