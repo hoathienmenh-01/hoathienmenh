@@ -26,18 +26,22 @@ import { PrismaService } from '../../common/prisma.service';
 import { MaintenanceWindowGuardMiddleware } from './maintenance-window.middleware';
 import { MaintenanceWindowPublicController } from './maintenance-window-public.controller';
 import { MaintenanceWindowService } from './maintenance-window.service';
+import { MaintenanceBroadcastService } from './maintenance-broadcast.service';
 import { ConfigVersionModule } from '../config-version/config-version.module';
+import { RealtimeModule } from '../realtime/realtime.module';
 
 @Module({
   // Phase 15.6 — ConfigVersion persistence for create/update/disable/recompute.
-  imports: [AuthModule, ConfigVersionModule],
+  // Phase 15.8 — RealtimeModule cho broadcast service.
+  imports: [AuthModule, ConfigVersionModule, RealtimeModule],
   controllers: [MaintenanceWindowPublicController],
   providers: [
     PrismaService,
     MaintenanceWindowService,
+    MaintenanceBroadcastService,
     MaintenanceWindowGuardMiddleware,
   ],
-  exports: [MaintenanceWindowService],
+  exports: [MaintenanceWindowService, MaintenanceBroadcastService],
 })
 export class MaintenanceWindowModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

@@ -542,3 +542,147 @@ export interface MaintenanceBlockErrorPayload {
     readonly serverTime: string;
   };
 }
+
+// ---------------------------------------------------------------------------
+// Phase 15.8 — WS broadcast cho maintenance status transitions
+// ---------------------------------------------------------------------------
+
+/**
+ * WS channel constant cho maintenance status broadcast. FE listen channel
+ * này để update store/overlay tức thì, không cần đợi poll 30s.
+ *
+ * Pattern mirror `LIVEOPS_WS_CHANNEL_ANNOUNCEMENT` / `LIVEOPS_WS_CHANNEL_EVENT`
+ * (Phase 15.3.B) — single channel với union `type` field.
+ */
+export const MAINTENANCE_WS_CHANNEL = 'maintenance:status' as const;
+
+/**
+ * Loại transition status được broadcast. KHÔNG broadcast `DRAFT→SCHEDULED`
+ * (không ảnh hưởng client) hoặc `SCHEDULED` (ENDED → end state).
+ */
+export type MaintenanceBroadcastType =
+  | 'MAINTENANCE_ACTIVE'
+  | 'MAINTENANCE_ENDED'
+  | 'MAINTENANCE_DISABLED';
+
+export const MAINTENANCE_BROADCAST_TYPES: readonly MaintenanceBroadcastType[] = [
+  'MAINTENANCE_ACTIVE',
+  'MAINTENANCE_ENDED',
+  'MAINTENANCE_DISABLED',
+] as const;
+
+/**
+ * Payload broadcast qua WS khi maintenance window transition status.
+ *
+ * Public-safe — KHÔNG include:
+ *   - `id` (admin internal).
+ *   - `createdByAdminId` (admin metadata).
+ *   - `allowMetrics` / internal audit data.
+ *
+ * BAO GỒM:
+ *   - `key` để FE de-dupe cùng key (tránh re-render khi cùng window
+ *     broadcast lại do recompute idempotent).
+ *   - `status` raw để FE tra cứu lifecycle nếu muốn.
+ *   - `severity` / `target` / `title{Vi,En}` / `message{Vi,En}` —
+ *     để FE render overlay/banner.
+ *   - `startsAt` / `endsAt` — đếm ngược / hiển thị window time.
+ *   - `serverTime` — cho FE đối chiếu drift đồng hồ.
+ *   - `allowAdminBypass` — để FE quyết overlay full-screen hay banner.
+ */
+export interface MaintenanceBroadcastPayload {
+  readonly type: MaintenanceBroadcastType;
+  readonly key: string;
+  readonly status: MaintenanceWindowStatus;
+  readonly severity: MaintenanceSeverity;
+  readonly target: MaintenanceTarget;
+  readonly titleVi: string;
+  readonly titleEn: string | null;
+  readonly messageVi: string;
+  readonly messageEn: string | null;
+  readonly startsAt: string;
+  readonly endsAt: string;
+  readonly serverTime: string;
+  readonly allowAdminBypass: boolean;
+}
+
+/**
+ * Internal admin view (mirror DB row) — full với adminId/audit metadata.
+ * Caller phải dùng sanitizer này để strip admin fields TRƯỚC khi gọi
+ * `RealtimeService.broadcast` để chắc chắn payload không leak.
+ */
+export interface MaintenanceBroadcastInternalInput {
+  readonly key: string;
+  readonly status: MaintenanceWindowStatus;
+  readonly severity: MaintenanceSeverity;
+  readonly target: MaintenanceTarget;
+  readonly titleVi: string;
+  readonly titleEn: string | null;
+  readonly messageVi: string;
+  readonly messageEn: string | null;
+  readonly startsAt: Date | string;
+  readonly endsAt: Date | string;
+  readonly allowAdminBypass: boolean;
+  /** Admin id — KHÔNG được include trong output payload. */
+  readonly createdByAdminId?: string | null;
+  /** Audit timestamp — KHÔNG được include. */
+  readonly createdAt?: Date | string | null;
+  readonly updatedAt?: Date | string | null;
+  readonly disabledAt?: Date | string | null;
+  readonly allowMetrics?: boolean;
+  readonly allowHealthcheck?: boolean;
+}
+
+function toIsoOrSelf(v: Date | string): string {
+  if (v instanceof Date) return v.toISOString();
+  return v;
+}
+
+/**
+ * Build payload public-safe cho maintenance status broadcast. Strip mọi
+ * admin metadata (`createdByAdminId`, `createdAt`, `updatedAt`, `disabledAt`)
+ * và internal flags (`allowMetrics`, `allowHealthcheck`). Server time gắn
+ * bởi caller (`now`) — không trust client clock.
+ *
+ * Mapping status → broadcast type:
+ *   - `ACTIVE`   → `MAINTENANCE_ACTIVE`
+ *   - `ENDED`    → `MAINTENANCE_ENDED`
+ *   - `DISABLED` → `MAINTENANCE_DISABLED`
+ *
+ * Throws nếu status không thuộc 3 case trên (DRAFT/SCHEDULED không broadcast).
+ */
+export function buildMaintenanceBroadcastPayload(
+  input: MaintenanceBroadcastInternalInput,
+  now: Date,
+): MaintenanceBroadcastPayload {
+  let type: MaintenanceBroadcastType;
+  switch (input.status) {
+    case 'ACTIVE':
+      type = 'MAINTENANCE_ACTIVE';
+      break;
+    case 'ENDED':
+      type = 'MAINTENANCE_ENDED';
+      break;
+    case 'DISABLED':
+      type = 'MAINTENANCE_DISABLED';
+      break;
+    default:
+      throw new Error(
+        `buildMaintenanceBroadcastPayload: unsupported status ${input.status}`,
+      );
+  }
+  return {
+    type,
+    key: input.key,
+    status: input.status,
+    severity: input.severity,
+    target: input.target,
+    titleVi: input.titleVi,
+    titleEn: input.titleEn,
+    messageVi: input.messageVi,
+    messageEn: input.messageEn,
+    startsAt: toIsoOrSelf(input.startsAt),
+    endsAt: toIsoOrSelf(input.endsAt),
+    serverTime: now.toISOString(),
+    allowAdminBypass: input.allowAdminBypass,
+  };
+}

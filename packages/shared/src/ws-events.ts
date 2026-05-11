@@ -36,6 +36,14 @@ export type WsEventType =
    * raw / `createdByAdminId`). Server emit khi event transition.
    */
   | 'liveops:event'
+  /**
+   * Phase 15.8 — Maintenance window status broadcast channel. Payload là
+   * `MaintenanceBroadcastPayload` (public-safe, KHÔNG bao gồm `createdByAdminId`
+   * hoặc audit metadata). Server emit khi window transition
+   * `SCHEDULED→ACTIVE`, `ACTIVE→ENDED`, hoặc `*→DISABLED`. FE store nhận
+   * event này thì update overlay tức thì — không cần đợi poll 30s.
+   */
+  | 'maintenance:status'
   | 'pong'
   // client → server
   | 'ping'

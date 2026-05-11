@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   MAINTENANCE_BLOCK_ERROR_CODE,
+  MAINTENANCE_BROADCAST_TYPES,
   MAINTENANCE_MAX_WINDOW_MS,
   MAINTENANCE_MESSAGE_MAX,
   MAINTENANCE_MIN_WINDOW_MS,
@@ -8,6 +9,8 @@ import {
   MAINTENANCE_TARGETS,
   MAINTENANCE_TITLE_MAX,
   MAINTENANCE_WINDOW_STATUSES,
+  MAINTENANCE_WS_CHANNEL,
+  buildMaintenanceBroadcastPayload,
   isMaintenanceTextSafe,
   isMaintenanceWindowActiveAt,
   isValidMaintenanceSeverity,
@@ -19,6 +22,7 @@ import {
   pickActiveMaintenanceWindow,
   pickMaintenanceText,
   validateMaintenanceWindowInput,
+  type MaintenanceBroadcastInternalInput,
   type MaintenanceWindowInput,
   type MaintenanceWindowSelectorRow,
 } from './maintenance-window';
@@ -485,5 +489,151 @@ describe('pickMaintenanceText', () => {
   });
   it('returns vi when locale=vi regardless of en', () => {
     expect(pickMaintenanceText('vi text', 'en text', 'vi')).toBe('vi text');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 15.8 — Maintenance WS broadcast payload sanitizer
+// ---------------------------------------------------------------------------
+
+function baseBroadcastInput(
+  overrides: Partial<MaintenanceBroadcastInternalInput> = {},
+): MaintenanceBroadcastInternalInput {
+  return {
+    key: 'mw-2026-08-01',
+    status: 'ACTIVE',
+    severity: 'WARNING',
+    target: 'ALL_PLAYERS',
+    titleVi: 'Bảo trì',
+    titleEn: 'Maintenance',
+    messageVi: 'Server đang bảo trì.',
+    messageEn: 'Server is under maintenance.',
+    startsAt: new Date('2026-08-01T00:00:00.000Z'),
+    endsAt: new Date('2026-08-01T02:00:00.000Z'),
+    allowAdminBypass: true,
+    createdByAdminId: 'admin-secret-123',
+    createdAt: new Date('2026-07-31T10:00:00.000Z'),
+    updatedAt: new Date('2026-08-01T00:00:01.000Z'),
+    disabledAt: null,
+    allowMetrics: true,
+    allowHealthcheck: true,
+    ...overrides,
+  };
+}
+
+describe('MAINTENANCE_WS_CHANNEL', () => {
+  it('is stable channel constant', () => {
+    expect(MAINTENANCE_WS_CHANNEL).toBe('maintenance:status');
+  });
+});
+
+describe('MAINTENANCE_BROADCAST_TYPES', () => {
+  it('contains exactly 3 transition types', () => {
+    expect(MAINTENANCE_BROADCAST_TYPES).toEqual([
+      'MAINTENANCE_ACTIVE',
+      'MAINTENANCE_ENDED',
+      'MAINTENANCE_DISABLED',
+    ]);
+  });
+});
+
+describe('buildMaintenanceBroadcastPayload', () => {
+  const NOW = new Date('2026-08-01T00:30:00.000Z');
+
+  it('maps ACTIVE status to MAINTENANCE_ACTIVE type', () => {
+    const out = buildMaintenanceBroadcastPayload(
+      baseBroadcastInput({ status: 'ACTIVE' }),
+      NOW,
+    );
+    expect(out.type).toBe('MAINTENANCE_ACTIVE');
+    expect(out.status).toBe('ACTIVE');
+  });
+
+  it('maps ENDED status to MAINTENANCE_ENDED type', () => {
+    const out = buildMaintenanceBroadcastPayload(
+      baseBroadcastInput({ status: 'ENDED' }),
+      NOW,
+    );
+    expect(out.type).toBe('MAINTENANCE_ENDED');
+  });
+
+  it('maps DISABLED status to MAINTENANCE_DISABLED type', () => {
+    const out = buildMaintenanceBroadcastPayload(
+      baseBroadcastInput({ status: 'DISABLED' }),
+      NOW,
+    );
+    expect(out.type).toBe('MAINTENANCE_DISABLED');
+  });
+
+  it('throws on DRAFT/SCHEDULED status (not broadcast-able)', () => {
+    expect(() =>
+      buildMaintenanceBroadcastPayload(
+        baseBroadcastInput({ status: 'DRAFT' }),
+        NOW,
+      ),
+    ).toThrow();
+    expect(() =>
+      buildMaintenanceBroadcastPayload(
+        baseBroadcastInput({ status: 'SCHEDULED' }),
+        NOW,
+      ),
+    ).toThrow();
+  });
+
+  it('serializes Date startsAt/endsAt to ISO string', () => {
+    const out = buildMaintenanceBroadcastPayload(baseBroadcastInput(), NOW);
+    expect(out.startsAt).toBe('2026-08-01T00:00:00.000Z');
+    expect(out.endsAt).toBe('2026-08-01T02:00:00.000Z');
+    expect(out.serverTime).toBe('2026-08-01T00:30:00.000Z');
+  });
+
+  it('passes through string ISO startsAt/endsAt unchanged', () => {
+    const out = buildMaintenanceBroadcastPayload(
+      baseBroadcastInput({
+        startsAt: '2026-08-01T00:00:00.000Z',
+        endsAt: '2026-08-01T02:00:00.000Z',
+      }),
+      NOW,
+    );
+    expect(out.startsAt).toBe('2026-08-01T00:00:00.000Z');
+    expect(out.endsAt).toBe('2026-08-01T02:00:00.000Z');
+  });
+
+  it('does NOT leak admin metadata into payload', () => {
+    const out = buildMaintenanceBroadcastPayload(
+      baseBroadcastInput({
+        createdByAdminId: 'admin-leaked-123',
+      }),
+      NOW,
+    );
+    const keys = Object.keys(out);
+    expect(keys).not.toContain('createdByAdminId');
+    expect(keys).not.toContain('createdAt');
+    expect(keys).not.toContain('updatedAt');
+    expect(keys).not.toContain('disabledAt');
+    expect(keys).not.toContain('allowMetrics');
+    expect(keys).not.toContain('allowHealthcheck');
+    expect(keys).not.toContain('id');
+    const json = JSON.stringify(out);
+    expect(json).not.toContain('admin-leaked-123');
+  });
+
+  it('includes all required public-safe fields', () => {
+    const out = buildMaintenanceBroadcastPayload(baseBroadcastInput(), NOW);
+    expect(out).toEqual({
+      type: 'MAINTENANCE_ACTIVE',
+      key: 'mw-2026-08-01',
+      status: 'ACTIVE',
+      severity: 'WARNING',
+      target: 'ALL_PLAYERS',
+      titleVi: 'Bảo trì',
+      titleEn: 'Maintenance',
+      messageVi: 'Server đang bảo trì.',
+      messageEn: 'Server is under maintenance.',
+      startsAt: '2026-08-01T00:00:00.000Z',
+      endsAt: '2026-08-01T02:00:00.000Z',
+      serverTime: '2026-08-01T00:30:00.000Z',
+      allowAdminBypass: true,
+    });
   });
 });

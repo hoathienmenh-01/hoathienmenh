@@ -37,7 +37,9 @@ import {
   MaintenanceWindowError,
   MaintenanceWindowService,
 } from './maintenance-window.service';
+import { MaintenanceBroadcastService } from './maintenance-broadcast.service';
 import type { PrismaService } from '../../common/prisma.service';
+import type { RealtimeService } from '../realtime/realtime.service';
 
 // ---------------------------------------------------------------------------
 // In-memory Prisma stub
@@ -704,5 +706,198 @@ describe('MaintenanceWindowService.isMaintenanceActiveForRequest', () => {
     expect(r?.payload.meta.severity).toBe('CRITICAL');
     expect(r?.payload.meta.endsAt).toBe('2026-08-01T02:00:00.000Z');
     expect(r?.payload.meta.serverTime).toBe(now.toISOString());
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 15.8 — Maintenance WS broadcast wiring
+// ---------------------------------------------------------------------------
+
+describe('MaintenanceWindowService broadcast wiring (Phase 15.8)', () => {
+  function makeBroadcaster() {
+    return {
+      broadcast: vi.fn(),
+    };
+  }
+
+  it('recomputeStatuses SCHEDULED→ACTIVE → broadcast MAINTENANCE_ACTIVE đúng 1 lần', async () => {
+    const { prisma } = makePrisma({
+      initial: [
+        makeDbRow({
+          key: 'mw-ws-active',
+          status: 'SCHEDULED',
+          startsAt: new Date('2026-08-01T00:30:00Z'),
+          endsAt: new Date('2026-08-01T02:00:00Z'),
+        }),
+      ],
+    });
+    const broadcaster = makeBroadcaster();
+    const svc = new MaintenanceWindowService(
+      prisma,
+      undefined,
+      broadcaster as never,
+    );
+    await svc.recomputeStatuses(new Date('2026-08-01T01:00:00Z'));
+    expect(broadcaster.broadcast).toHaveBeenCalledTimes(1);
+    const call = broadcaster.broadcast.mock.calls[0]?.[0] as Record<
+      string,
+      unknown
+    >;
+    expect(call?.type).toBe('MAINTENANCE_ACTIVE');
+    expect(call?.key).toBe('mw-ws-active');
+    expect(call?.status).toBe('ACTIVE');
+    // Public-safe — không leak admin metadata.
+    expect(call?.createdByAdminId).toBeUndefined();
+  });
+
+  it('recomputeStatuses ACTIVE→ENDED → broadcast MAINTENANCE_ENDED', async () => {
+    const { prisma } = makePrisma({
+      initial: [
+        makeDbRow({
+          key: 'mw-ws-ended',
+          status: 'ACTIVE',
+          startsAt: new Date('2026-08-01T00:00:00Z'),
+          endsAt: new Date('2026-08-01T01:00:00Z'),
+        }),
+      ],
+    });
+    const broadcaster = makeBroadcaster();
+    const svc = new MaintenanceWindowService(
+      prisma,
+      undefined,
+      broadcaster as never,
+    );
+    await svc.recomputeStatuses(new Date('2026-08-01T02:00:00Z'));
+    expect(broadcaster.broadcast).toHaveBeenCalledTimes(1);
+    const call = broadcaster.broadcast.mock.calls[0]?.[0] as Record<
+      string,
+      unknown
+    >;
+    expect(call?.type).toBe('MAINTENANCE_ENDED');
+    expect(call?.status).toBe('ENDED');
+  });
+
+  it('recompute no-op (DRAFT only) → KHÔNG broadcast', async () => {
+    const { prisma } = makePrisma({
+      initial: [
+        makeDbRow({
+          key: 'mw-draft',
+          status: 'DRAFT',
+        }),
+      ],
+    });
+    const broadcaster = makeBroadcaster();
+    const svc = new MaintenanceWindowService(
+      prisma,
+      undefined,
+      broadcaster as never,
+    );
+    await svc.recomputeStatuses(new Date('2026-08-01T01:00:00Z'));
+    expect(broadcaster.broadcast).not.toHaveBeenCalled();
+  });
+
+  it('recompute lần 2 (no transition) → KHÔNG broadcast lại', async () => {
+    const { prisma } = makePrisma({
+      initial: [
+        makeDbRow({
+          key: 'mw-once',
+          status: 'SCHEDULED',
+          startsAt: new Date('2026-08-01T00:30:00Z'),
+          endsAt: new Date('2026-08-01T02:00:00Z'),
+        }),
+      ],
+    });
+    const broadcaster = makeBroadcaster();
+    const svc = new MaintenanceWindowService(
+      prisma,
+      undefined,
+      broadcaster as never,
+    );
+    await svc.recomputeStatuses(new Date('2026-08-01T01:00:00Z'));
+    expect(broadcaster.broadcast).toHaveBeenCalledTimes(1);
+    broadcaster.broadcast.mockClear();
+    await svc.recomputeStatuses(new Date('2026-08-01T01:00:05Z'));
+    expect(broadcaster.broadcast).not.toHaveBeenCalled();
+  });
+
+  it('disableWindow on ACTIVE → broadcast MAINTENANCE_DISABLED', async () => {
+    const { prisma, rows } = makePrisma({
+      initial: [makeDbRow({ key: 'mw-disable', status: 'ACTIVE' })],
+    });
+    const broadcaster = makeBroadcaster();
+    const svc = new MaintenanceWindowService(
+      prisma,
+      undefined,
+      broadcaster as never,
+    );
+    await svc.disableWindow(rows[0].id);
+    expect(broadcaster.broadcast).toHaveBeenCalledTimes(1);
+    const call = broadcaster.broadcast.mock.calls[0]?.[0] as Record<
+      string,
+      unknown
+    >;
+    expect(call?.type).toBe('MAINTENANCE_DISABLED');
+    expect(call?.status).toBe('DISABLED');
+    expect(call?.key).toBe('mw-disable');
+    // Public-safe — KHÔNG leak admin / audit metadata.
+    expect(call?.createdByAdminId).toBeUndefined();
+    expect(call?.disabledAt).toBeUndefined();
+    expect(call?.allowMetrics).toBeUndefined();
+  });
+
+  it('broadcast payload không leak admin metadata', async () => {
+    const { prisma } = makePrisma({
+      initial: [
+        makeDbRow({
+          key: 'mw-clean',
+          status: 'SCHEDULED',
+          startsAt: new Date('2026-08-01T00:30:00Z'),
+          endsAt: new Date('2026-08-01T02:00:00Z'),
+          createdByAdminId: 'admin-secret-xyz',
+        }),
+      ],
+    });
+    const broadcaster = makeBroadcaster();
+    const svc = new MaintenanceWindowService(
+      prisma,
+      undefined,
+      broadcaster as never,
+    );
+    await svc.recomputeStatuses(new Date('2026-08-01T01:00:00Z'));
+    const call = broadcaster.broadcast.mock.calls[0]?.[0] as Record<
+      string,
+      unknown
+    >;
+    expect(JSON.stringify(call)).not.toContain('admin-secret-xyz');
+    expect(call?.createdByAdminId).toBeUndefined();
+  });
+
+  it('realtime throws → MaintenanceBroadcastService swallows + DB transition stays committed', async () => {
+    const { prisma } = makePrisma({
+      initial: [
+        makeDbRow({
+          key: 'mw-fail-safe',
+          status: 'SCHEDULED',
+          startsAt: new Date('2026-08-01T00:30:00Z'),
+          endsAt: new Date('2026-08-01T02:00:00Z'),
+        }),
+      ],
+    });
+    const realtime = {
+      broadcast: vi.fn(() => {
+        throw new Error('ws-down');
+      }),
+    } as unknown as RealtimeService;
+    const broadcastService = new MaintenanceBroadcastService(realtime);
+    const svc = new MaintenanceWindowService(
+      prisma,
+      undefined,
+      broadcastService,
+    );
+    const summary = await svc.recomputeStatuses(
+      new Date('2026-08-01T01:00:00Z'),
+    );
+    expect(summary.activatedKeys).toEqual(['mw-fail-safe']);
+    expect(realtime.broadcast).toHaveBeenCalledTimes(1);
   });
 });
