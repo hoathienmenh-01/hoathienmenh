@@ -4702,6 +4702,98 @@
       "UNKNOWN": "Có lỗi xảy ra — thử lại."
     }
   },
+  "party": {
+    "viewTitle": "Tổ Đội",
+    "viewSubtitle": "Tạo và quản lý tổ đội cho phụ bản, boss co-op (sắp ra mắt).",
+    "tab": "Tổ Đội",
+    "empty": {
+      "title": "Chưa ở tổ đội nào",
+      "subtitle": "Tạo tổ đội mới hoặc chấp nhận lời mời để bắt đầu."
+    },
+    "create": {
+      "title": "Tạo tổ đội",
+      "namePlaceholder": "Tên tổ đội (3-40 ký tự, có thể trống)…",
+      "submit": "Tạo tổ đội"
+    },
+    "current": {
+      "title": "Tổ đội của bạn",
+      "leader": "Trưởng nhóm",
+      "memberCountLabel": "{count}/{max} thành viên",
+      "createdAt": "Tạo lúc"
+    },
+    "members": {
+      "title": "Thành viên",
+      "roleLeader": "Trưởng nhóm",
+      "roleMember": "Thành viên",
+      "online": "Đang trực",
+      "offline": "Ngoại tuyến",
+      "kick": "Kick",
+      "transfer": "Chuyển trưởng"
+    },
+    "invites": {
+      "tabIncoming": "Lời mời đến",
+      "tabOutgoing": "Lời mời gửi",
+      "emptyIncoming": "Không có lời mời đến.",
+      "emptyOutgoing": "Bạn chưa gửi lời mời nào.",
+      "from": "Từ",
+      "to": "Đến",
+      "party": "Tổ đội",
+      "expiresIn": "Hết hạn sau {mins} phút",
+      "accept": "Chấp nhận",
+      "decline": "Từ chối",
+      "cancel": "Huỷ",
+      "sendTitle": "Mời người chơi",
+      "sendPlaceholder": "User ID người chơi…",
+      "sendSubmit": "Gửi lời mời"
+    },
+    "actions": {
+      "leave": "Rời tổ đội",
+      "disband": "Giải tán tổ đội"
+    },
+    "confirm": {
+      "leaveTitle": "Rời tổ đội?",
+      "leaveBody": "Bạn chắc chắn muốn rời tổ đội này?",
+      "disbandTitle": "Giải tán tổ đội?",
+      "disbandBody": "Hành động này sẽ kick toàn bộ thành viên. Không thể hoàn tác.",
+      "kickTitle": "Kick thành viên?",
+      "kickBody": "Bạn muốn kick {name} khỏi tổ đội?",
+      "transferTitle": "Chuyển trưởng nhóm?",
+      "transferBody": "Bạn sẽ trở thành thành viên thường, {name} sẽ là trưởng mới.",
+      "confirm": "Xác nhận",
+      "cancel": "Huỷ"
+    },
+    "toast": {
+      "created": "Đã tạo tổ đội.",
+      "inviteSent": "Đã gửi lời mời.",
+      "accepted": "Đã tham gia tổ đội.",
+      "declined": "Đã từ chối lời mời.",
+      "canceled": "Đã huỷ lời mời.",
+      "left": "Đã rời tổ đội.",
+      "kicked": "Đã kick thành viên.",
+      "transferred": "Đã chuyển trưởng nhóm.",
+      "disbanded": "Đã giải tán tổ đội."
+    },
+    "errors": {
+      "NOT_FOUND": "Không tìm thấy tổ đội / lời mời.",
+      "NOT_AUTHORIZED": "Bạn không có quyền thao tác này.",
+      "BLOCKED": "Hai bên đang chặn — không thể mời.",
+      "SELF_NOT_ALLOWED": "Không thể thao tác với chính mình.",
+      "ALREADY_IN_PARTY": "Bạn đã ở trong một tổ đội khác.",
+      "INVITEE_IN_OTHER_PARTY": "Người chơi đang ở tổ đội khác.",
+      "DUPLICATE_INVITE": "Đã có lời mời đang chờ với người này.",
+      "PARTY_FULL": "Tổ đội đã đầy thành viên.",
+      "INVITE_EXPIRED": "Lời mời đã hết hạn.",
+      "INVITE_NOT_PENDING": "Lời mời không còn chờ.",
+      "PARTY_DISBANDED": "Tổ đội đã giải tán.",
+      "TOO_MANY_PENDING_INVITES": "Đã đạt giới hạn lời mời đang chờ.",
+      "NOT_MEMBER": "Bạn không phải thành viên tổ đội.",
+      "TARGET_NOT_MEMBER": "Người chơi không phải thành viên tổ đội.",
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "RATE_LIMITED": "Thao tác tổ đội quá nhanh — chậm lại vài giây.",
+      "ABUSE_BLOCKED": "Tạm khoá thao tác tổ đội do hành vi bất thường. Thử lại sau vài phút.",
+      "UNKNOWN": "Có lỗi xảy ra — thử lại."
+    }
+  },
   "notification": {
     "title": "Thông báo",
     "bell": "Mở trung tâm thông báo",
