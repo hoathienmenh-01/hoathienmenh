@@ -46,6 +46,7 @@ import { ConfigVersionAdminModule } from './modules/config-version-admin/config-
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { ArenaModule } from './modules/arena/arena.module';
 import { ArenaAntiWintradeAdminModule } from './modules/arena-anti-wintrade-admin/arena-anti-wintrade-admin.module';
+import { BackupModule } from './modules/backup/backup.module';
 import { RedisModule } from './common/redis.module';
 import { EconomyModule } from './modules/economy/economy.module';
 import { SecurityModule } from './modules/security/security.module';
@@ -143,6 +144,12 @@ import { SecurityModule } from './modules/security/security.module';
     // Phase 14.1.D — Arena Anti-Wintrade admin endpoints. SAU
     // AdminModule + ArenaModule (cần AdminGuard + ArenaAntiWintradeService).
     ArenaAntiWintradeAdminModule,
+    // Phase 17.2 — Backup / Restore Weekly Verification (admin endpoints
+    // + BullMQ weekly cron + spawn shell scripts/backup-db.sh /
+    // scripts/verify-restore.sh + tracking BackupRun / BackupVerifyRun).
+    // Cron default disabled qua env BACKUP_CRON_ENABLED=false /
+    // BACKUP_VERIFY_CRON_ENABLED=false. KHÔNG expose restore-db.sh.
+    BackupModule,
   ],
 })
 export class AppModule {}
