@@ -325,10 +325,9 @@ export class PartyController {
   private async requireUserId(req: Request): Promise<string> {
     const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
     const token = cookies[ACCESS_COOKIE];
-    if (typeof token !== 'string' || token.length === 0) {
-      fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
-    }
-    return this.auth.requireUserId(token);
+    const id = await this.auth.userIdFromAccess(token);
+    if (!id) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    return id;
   }
 
   private rethrowAsHttp(e: unknown): never {

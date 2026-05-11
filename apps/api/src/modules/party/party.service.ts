@@ -745,11 +745,14 @@ export class PartyService {
     });
     if (!party) throw new PartyError('NOT_FOUND');
 
-    let disbanded = false;
-    let leaderChanged: {
+    type LeaderChange = {
       previousLeaderUserId: string;
       newLeaderUserId: string;
-    } | null = null;
+    };
+    const txState: {
+      disbanded: boolean;
+      leaderChanged: LeaderChange | null;
+    } = { disbanded: false, leaderChanged: null };
 
     await this.prisma.$transaction(async (tx) => {
       const now = new Date();
@@ -800,7 +803,7 @@ export class PartyService {
             respondedAt: now,
           },
         });
-        disbanded = true;
+        txState.disbanded = true;
       } else if (party.leaderUserId === callerUserId) {
         // Caller là leader → auto-transfer cho member còn lại lâu
         // năm nhất (joinedAt asc).
@@ -813,14 +816,14 @@ export class PartyService {
           where: { id: partyId },
           data: { leaderUserId: newLeader.userId },
         });
-        leaderChanged = {
+        txState.leaderChanged = {
           previousLeaderUserId: callerUserId,
           newLeaderUserId: newLeader.userId,
         };
       }
     });
 
-    if (disbanded) {
+    if (txState.disbanded) {
       const view = await this.loadPartyView(partyId);
       const notifyIds = [
         ...new Set([
@@ -845,11 +848,11 @@ export class PartyService {
       userId: callerUserId,
       reason: 'LEFT',
     });
-    if (leaderChanged) {
+    if (txState.leaderChanged) {
       this.emitLeaderChanged(view.members, {
         partyId,
-        previousLeaderUserId: leaderChanged.previousLeaderUserId,
-        newLeaderUserId: leaderChanged.newLeaderUserId,
+        previousLeaderUserId: txState.leaderChanged.previousLeaderUserId,
+        newLeaderUserId: txState.leaderChanged.newLeaderUserId,
       });
     }
     this.emitPartyUpdated(view.party, view.members);
