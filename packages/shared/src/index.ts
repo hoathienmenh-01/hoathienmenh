@@ -75,6 +75,7 @@ export * from './notification';
 export * from './party';
 export * from './coop-dungeon';
 export * from './coop-boss';
+export * from './coop-reward-cap';
 export * from './security-rate-limit';
 export * from './security-alerts';
 export * from './backup';
