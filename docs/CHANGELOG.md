@@ -12,6 +12,48 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Phase 20.2 — Co-op Boss Party Contribution Foundation (this PR — #535)
+
+**Scope**: Foundation cho tổ đội (Phase 19.4) tham gia boss event co-op. Leader tạo `CoopBossRun` cho `bossKey` (catalog `BOSSES`) → member join → mỗi member self-report `damageDone`/`supportScore`/`survivalSeconds` qua `recordContribution` (server **clamp + anomaly log** theo `COOP_BOSS_LIMITS`, không cho client tự khai damage không bound) → leader `finishRun` → server snapshot `contributionScore` + classify tier `NONE/LOW/NORMAL/HIGH/MVP` → tạo `CoopBossRewardClaim` PENDING cho member `eligibleForReward=true` + tier ≠ `NONE` → member claim qua endpoint riêng (atomic CAS `PENDING→CLAIMED` + grant currency qua ledger). **KHÔNG** realtime combat engine, **KHÔNG** matchmaking public, **KHÔNG** loot bidding / trading / share-pool, **KHÔNG** đụng boss solo / sect / world boss flow hiện có — out of scope.
+
+#### Added — Phase 20.2
+
+- **Prisma migration `20261101000000_phase_20_2_coop_boss_contribution`** additive: enum `CoopBossStatus` (`LOBBY`/`IN_PROGRESS`/`CLEARED`/`FAILED`/`CANCELED`), `CoopBossRewardClaimStatus` (`PENDING`/`CLAIMED`), `CoopBossContributionTier` (`NONE`/`LOW`/`NORMAL`/`HIGH`/`MVP`) + 4 model: `CoopBossRun`(`id`, `partyId`, `bossKey`, `worldBossEventId?`, `status=LOBBY`, `startedAt`, `finishedAt?`, `resultSummaryJson?`, `createdAt`, `updatedAt` + index `(partyId,status)` cho active-run lookup), `CoopBossParticipant`(`id`, `runId`, `userId`, `characterId`, `partyId?`, `joinedAt`, `leftAt?`, `eligibleForReward`, `finalContributionScore?` + unique `(runId,userId)` chống double-join), `CoopBossContribution`(`id`, `runId`, `participantId` unique `(runId,participantId)`, `damageDone BigInt`, `supportScore`, `survivalSeconds`, `actionCount`, `contributionScore`, `createdAt`, `updatedAt`), `CoopBossRewardClaim`(`id`, `runId`, `userId`, `characterId`, `status=PENDING`, `rewardTier`, `rewardJson`, `claimedAt?`, `createdAt` + unique `(runId,userId)` + `(runId,characterId)` chống duplicate). Soft-ref pattern (no FK).
+- **Shared `packages/shared/src/coop-boss.ts`** (29 test pass): enum + DTO (`CoopBossRunDto`/`CoopBossParticipantDto`/`CoopBossContributionDto`/`CoopBossRewardClaimDto`/`CoopBossRewardPreview`) + response shapes (`MyCoopBossRunResponse`/`CoopBossRunDetailResponse`/`CoopBossRunListResponse`) + `COOP_BOSS_LIMITS` (`maxMembers=8`, `maxActiveRunPerParty=1`, `contributionWindowSeconds=1800`, `minSurvivalSeconds=30`, `maxDamagePerContribution`/`maxSupportPerContribution`/`maxSurvivalSecondsPerContribution` clamp ceilings). Helper `computeContributionScore`/`clampContributionInput` (server-authoritative anti-cheat clamp + anomaly flag) `classifyContributionTier`/`computeCoopBossRewardTier`/`canClaimCoopBossReward`/`buildCoopBossRunRefId`. WS payload types `CoopBossRunUpdatedBroadcastPayload`/`CoopBossContributionUpdatedBroadcastPayload`/`CoopBossFinishedBroadcastPayload`/`CoopBossRewardAvailableBroadcastPayload`.
+- **Shared `security-rate-limit`**: 4 policy mới group `COOP_BOSS` — `COOP_BOSS_JOIN` (60/60s), `COOP_BOSS_CONTRIBUTION` (240/60s), `COOP_BOSS_FINISH` (30/60s), `COOP_BOSS_CLAIM` (60/60s) tất cả block 5min. `scope='USER'` `sensitive=true` `severity=MEDIUM` — bảo vệ spam fake-damage / spam claim.
+- **Shared `ws-events`**: 4 type — `coop-boss:run-updated`, `coop-boss:contribution-updated`, `coop-boss:finished`, `coop-boss:reward-available`.
+- **Backend `apps/api/src/modules/coop-boss/`** (21 integration test pass real Postgres): `CoopBossService` 10 method — `createRun` (leader gate, NOT_IN_PARTY / INVALID_BOSS_KEY / RUN_ALREADY_EXISTS), `joinRun` (same-party member, idempotent, NOT_PARTY_MEMBER reject), `leaveRun` (mark `leftAt`; finish sau đó `eligibleForReward=false` nếu survival < min), `recordContribution` (participant-only, clamp `damageDone`/`supportScore`/`survivalSeconds` theo `COOP_BOSS_LIMITS` + ghi warning log nếu anomaly, auto-promote LOBBY → IN_PROGRESS, cộng dồn vào row UNIQUE `(runId,participantId)`, `CONTRIBUTION_WINDOW_CLOSED` khi vượt window), `finishRun` (leader-only, snapshot eligibility + MVP, CLEARED tạo reward claim cho eligible / tier ≠ NONE, FAILED không tạo claim), `cancelRun` (leader-only, chỉ LOBBY), `claimReward` (atomic CAS `PENDING→CLAIMED` + grant currency qua `CurrencyService.applyTx`/`InventoryService.grantTx` reason `COOP_BOSS_REWARD`, refType `'CoopBossRewardClaim'`), `getMyRun`/`getRunSummary`/`listMyBossRuns`/`adminListRuns`/`adminRecomputeContribution`.
+- **REST API** `CoopBossController` cookie-auth dưới prefix `/coop/boss`: `GET /runs/current` + `/runs/mine?limit=` + `/runs/:id` + `/runs/:id/reward-preview` + `POST /runs` + `/runs/:id/join` (`COOP_BOSS_JOIN`) + `/runs/:id/leave` + `/runs/:id/contribution` (`COOP_BOSS_CONTRIBUTION`) + `/runs/:id/finish` + `/runs/:id/cancel` + `/runs/:id/claim-reward` (`COOP_BOSS_CLAIM`). `AdminCoopBossController` dưới `/admin/coop/boss/*` cho ops list / recompute contribution.
+- **Ledger reason** mở rộng: `LedgerReason` (`CurrencyService`) + `ItemLedgerReason` (`InventoryService`) add `'COOP_BOSS_REWARD'`.
+- **FE `apps/web/src/api/coopBoss.ts`**: 11 fn Envelope wrap (`getMyCoopBossRun`/`listMyCoopBossRuns`/`getCoopBossRunDetail`/`getCoopBossRewardPreview`/`createCoopBossRun`/`joinCoopBossRun`/`leaveCoopBossRun`/`recordCoopBossContribution`/`finishCoopBossRun`/`cancelCoopBossRun`/`claimCoopBossReward`).
+- **FE `apps/web/src/components/CoopBossPanel.vue`** (5 test pass): empty state + create form (boss dropdown), LOBBY/IN_PROGRESS với participant list + contribution form (damage/support/survival inputs) + live tier preview, leader actions `finishClear`/`finishFail`/`cancel` với `ConfirmModal` teleport-to-body, CLEARED + reward claim block (PENDING button → CLAIMED state), FAILED/CANCELED read-only. Realtime subscribe 4 event `coop-boss:*` refresh inline. Tích hợp `SocialView.vue` tab `coopBoss`.
+- **i18n vi/en parity 100%**: ~80 leaf key dưới `coopBoss.*` (title, status, tier, participants, contribution, actions, confirm, reward, toast, errors).
+
+#### Security — Phase 20.2
+
+- Server-authoritative clamp tất cả contribution input (`damageDone`/`supportScore`/`survivalSeconds`) theo `COOP_BOSS_LIMITS` — vượt cap → clamp + ghi warning anomaly log (best-effort), không reject để tránh DoS qua intentional over-cap submit.
+- Leader-only gate `createRun`/`finishRun`/`cancelRun` qua party membership check.
+- Same-party gate `joinRun`/`recordContribution` (caller `partyId === run.partyId`); non-member → `NOT_PARTY_MEMBER` (403/404 mask).
+- Reward claim idempotent qua UNIQUE `(runId,userId)` + `(runId,characterId)` + CAS guard `status='PENDING' → 'CLAIMED'`; 2 concurrent claim → đúng 1 winner ghi ledger, lần 2 nhận `REWARD_ALREADY_CLAIMED`.
+- Non-participant không claim được — `REWARD_NOT_FOUND` (404 mask).
+- Run chưa `CLEARED/FAILED` → `RUN_NOT_FINISHED` guard.
+- Rate-limit 3 policy `COOP_BOSS_JOIN`/`COOP_BOSS_CONTRIBUTION`/`COOP_BOSS_CLAIM` chặn spam.
+- WS event leak guard — fanout chỉ tới participants của run.
+
+#### Test coverage — Phase 20.2
+
+- Shared (`coop-boss.test.ts`) 29 test: enum + DTO + `COOP_BOSS_LIMITS` + `computeContributionScore`/`clampContributionInput`/`classifyContributionTier`/`computeCoopBossRewardTier`/`canClaimCoopBossReward` matrix.
+- API 21 integration test (`coop-boss.service.test.ts`, real Postgres) — createRun matrix (leader / not-leader / not-in-party / invalid-boss / duplicate-active-run), join (party-member / non-member / idempotent), leave (leftAt marker), recordContribution (participant-only / clamp anomaly / auto-promote / window-closed), finishRun (CLEARED tạo claim eligible / FAILED không claim), claimReward CAS (success / double / not-found / not-finished), cancelRun (leader-only / not-lobby), getMyRun authz.
+- FE 5 test (`CoopBossPanel.test.ts`): empty + create flow, member join, IN_PROGRESS contribution submit, cancel confirm via ConfirmModal teleport-to-body, CLEARED + PENDING reward claim.
+
+#### Docs — Phase 20.2
+
+- `docs/AI_HANDOFF_REPORT.md` § Recent Changes (Phase 20.2 entry).
+- `docs/API.md` § Co-op Boss — `CoopBossController` (Phase 20.2) + WS event table.
+- `docs/SECURITY.md` § 20.2 Co-op Boss — clamp anti-cheat, rate-limit, threat model.
+- `docs/RUNBOOK.md` § 2.41 Co-op Boss operator playbook (Phase 20.2).
+- `docs/CHANGELOG.md` § Phase 20.2 (this entry).
+
 ### Phase 20.1 — Party Dungeon Co-op PvE Foundation (this PR — #534)
 
 **Scope**: Foundation co-op PvE gắn party (Phase 19.4). Leader tạo `PartyDungeonRoom` cho `dungeonKey` → member ready → leader `startRun` → server **auto-resolve inline** → `PartyDungeonRun.result='CLEAR'` + `PartyDungeonRewardClaim` PENDING cho mỗi participant → member claim qua endpoint riêng (atomic CAS + ledger). **KHÔNG** matchmaking public, **KHÔNG** persistent `IN_PROGRESS` state (Phase 20.2 sẽ tách realtime combat), **KHÔNG** loot bidding / share-pool — out of scope.

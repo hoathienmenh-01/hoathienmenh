@@ -201,8 +201,15 @@ describe('Phase 20.2 — joinRun / leaveRun', () => {
       userId: m1.userId,
       runId: r.run!.id,
     });
-    const m1Part = after.participants.find((p) => p.userId === m1.userId)!;
-    expect(m1Part.leftAt).not.toBeNull();
+    // listParticipantsForRun (REST surface) chỉ trả về participants đang active
+    // (`leftAt: null`) — m1 sau leaveRun không còn xuất hiện trong DTO list.
+    expect(after.participants.find((p) => p.userId === m1.userId)).toBeUndefined();
+    // Tuy nhiên DB row vẫn lưu `leftAt` để finishRun resolve eligibility.
+    const m1Part = await prisma.coopBossParticipant.findUnique({
+      where: { runId_userId: { runId: r.run!.id, userId: m1.userId } },
+    });
+    expect(m1Part).not.toBeNull();
+    expect(m1Part!.leftAt).not.toBeNull();
   });
 });
 

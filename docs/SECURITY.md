@@ -764,6 +764,73 @@ Wire-up tại `apps/api/src/modules/party-dungeon/party-dungeon.controller.ts` q
 - `apps/api/src/modules/party-dungeon/party-dungeon.service.test.ts` (25 tests, Postgres real DB): createRoom (leader / not-leader / not-in-party / invalid-dungeon / duplicate-active-room) + join (party-member / non-member / no-character) + ready/unready (room not lobby) + startRun (gate matrix) + auto-resolve creates run + reward claim CAS (success / double / not-found / not-completed) + cancelRoom (leader-only / not-lobby).
 - FE `apps/web/src/components/__tests__/PartyDungeonPanel.test.ts` (5 tests): empty + create flow, member join, leader start disable khi NOT_ENOUGH_MEMBERS, cancel confirm via ConfirmModal teleport, COMPLETED + PENDING reward claim.
 
+## 20.2. Co-op Boss — Party Contribution Foundation (Phase 20.2)
+
+### Mục tiêu
+
+Foundation tổ đội (Phase 19.4) tham gia boss event co-op với contribution tracking: leader tạo `CoopBossRun` cho `bossKey` (catalog `BOSSES`) → member join → mỗi member self-report `damageDone`/`supportScore`/`survivalSeconds` qua `recordContribution` → server clamp + classify tier (`NONE/LOW/NORMAL/HIGH/MVP`) → leader `finishRun` → reward claim PENDING cho member eligible + tier ≠ `NONE` → member claim atomic CAS + ledger. **KHÔNG** realtime combat engine, **KHÔNG** matchmaking public, **KHÔNG** loot bidding / share-pool, **KHÔNG** đụng boss solo / sect / world boss flow hiện có — out of scope.
+
+### Authorization & invariants
+
+- **1 active run / party** (`COOP_BOSS_LIMITS.maxActiveRunPerParty=1`) — service guard trước `createRun`. Existed → `RUN_ALREADY_EXISTS` (409).
+- **Leader-only mutations**: `createRun`, `finishRun`, `cancelRun`. Non-leader → `NOT_PARTY_LEADER` (403).
+- **Same-party gate**: `joinRun`/`recordContribution`/`leaveRun` chỉ cho phép caller có `partyId === run.partyId`; ngoài party → `NOT_PARTY_MEMBER` (mask 404).
+- **Caller-scoped participant mutations**: `recordContribution`/`leaveRun` chỉ tác động vào participant row của caller (`runId`+`userId`).
+- **Boss catalog whitelist** — `createRun` validate `BOSSES.find(b => b.key === input.bossKey)`; thiếu → `INVALID_BOSS_KEY` (400). Forward-compat: boss mới chỉ cần thêm vào shared catalog.
+- **Server-authoritative clamp anti-cheat** — `recordContribution` clamp tất cả input theo `COOP_BOSS_LIMITS.maxDamagePerContribution`/`maxSupportPerContribution`/`maxSurvivalSecondsPerContribution` qua `clampContributionInput`. Vượt cap → clamp + ghi warning log anomaly (best-effort, non-blocking), KHÔNG reject để tránh DoS qua intentional over-cap submit. Negative input → clamp về 0 + flag anomaly.
+- **Contribution window** — `contributionWindowSeconds=1800` từ `run.startedAt`; vượt window → `CONTRIBUTION_WINDOW_CLOSED`.
+- **Eligibility snapshot at finish** — `finishRun` lock `eligibleForReward` per participant: `leftAt=null` AND `survivalSeconds >= minSurvivalSeconds=30` AND tier ≠ `NONE`. Leave sớm → ineligible (kể cả nếu có damage cao).
+- **Reward claim race-safe** — `claimReward` chạy trong `prisma.$transaction`:
+  1. CAS `updateMany({ id, status:'PENDING' }, { status:'CLAIMED', claimedAt:NOW })`. `count===0` → đã claim → `REWARD_ALREADY_CLAIMED` (409).
+  2. Grant currency qua `CurrencyService.applyTx(reason='COOP_BOSS_REWARD', refType='CoopBossRewardClaim', meta={runId, characterId, tier})`.
+  3. Grant items qua `InventoryService.grantTx(reason='COOP_BOSS_REWARD')`.
+  4. `tx.character.update({ exp: { increment } })`.
+  KHÔNG bypass ledger — match Phase 20.1 `PartyDungeon.claim` style.
+- **Run detail authorization** — `getRunDetail`/`getRunSummary` chỉ trả khi caller là participant (row `(runId, userId)`); ngoài run → `RUN_NOT_FOUND` (mask).
+- **Reward visibility** — `MyCoopBossRunResponse.myReward` chỉ trả claim của caller; non-participant không claim được → `REWARD_NOT_FOUND` (mask).
+- **Soft-ref pattern** — `CoopBossRun.partyId`/`worldBossEventId`, `CoopBossParticipant.userId/characterId/partyId`, `CoopBossRewardClaim.userId/characterId` không có FK (match Phase 19.4/20.1).
+
+### Rate-limit (Phase 18.1 infra)
+
+| Group | Policy | Scope | Limit | Block |
+|---|---|---|---|---|
+| Coop Boss | `COOP_BOSS_JOIN` | USER | 60 / 60 s | 5 min (MEDIUM, sensitive) |
+| Coop Boss | `COOP_BOSS_CONTRIBUTION` | USER | 240 / 60 s | 5 min (MEDIUM, sensitive) |
+| Coop Boss | `COOP_BOSS_FINISH` | USER | 30 / 60 s | 5 min (MEDIUM, sensitive) |
+| Coop Boss | `COOP_BOSS_CLAIM` | USER | 60 / 60 s | 5 min (MEDIUM, sensitive) |
+
+Wire-up tại `apps/api/src/modules/coop-boss/coop-boss.controller.ts` qua `@RateLimitPolicy(...)`. GET endpoint không rate-limit (read-light + auth + service tự gate ownership).
+
+### Threat model
+
+| Risk | Mitigation |
+|---|---|
+| Damage inflation (client lie damageDone) | Server clamp theo `COOP_BOSS_LIMITS.maxDamagePerContribution` + ghi anomaly log. Reward tier classify trên `contributionScore` đã clamp, không trên raw input. |
+| Negative / NaN / non-number input | `clampContributionInput` reject non-finite + clamp negative về 0 + flag anomaly. |
+| Spam contribution để cộng dồn vượt cap aggregate | Server cộng dồn vào row UNIQUE `(runId,participantId)` — aggregate cap trong `COOP_BOSS_LIMITS` áp cho TỪNG submit, không cho TOTAL (intentional — score càng cao tier càng cao, nhưng `RATE_LIMITED` chặn spam). |
+| Double-claim reward | CAS `WHERE status='PENDING'` + ledger idempotent qua `refType='CoopBossRewardClaim'` + `refId=claim.id`. Concurrent claim → 1 thắng, 1 rơi `REWARD_ALREADY_CLAIMED`. |
+| Member của party khác claim reward | Reward `userId` snapshot lúc `finishRun`. `claimReward` filter `WHERE userId=callerUserId`. Non-owner → `REWARD_NOT_FOUND` (mask). |
+| Leader force-finish khi chưa đủ contribution | Server check `participants.filter(eligibleForReward=true).length` trong `finishRun`; rỗng → `NOT_ENOUGH_MEMBERS`. |
+| Leave run rồi quay lại để bypass min survival | Server snapshot `eligibleForReward` tại `finishRun` dựa trên `leftAt` + survival aggregate; leave/rejoin nhiều lần không reset clock. |
+| Cross-party run id guess | `joinRun`/`leaveRun`/`recordContribution` load run rồi check `caller.partyId === run.partyId` trước khi mutate; ngoài → `NOT_PARTY_MEMBER` (mask). |
+| Spam run create (gas DB) | Invariant `1 active run / party` chặn duplicate; leader-only gate. |
+| WS event leak | `emitRunUpdated`/`emitContributionUpdated`/`emitFinished` fanout chỉ tới `participants.map(p => p.userId)`. `emitRewardAvailable` per-user. KHÔNG broadcast party-wide. |
+| Audit | Mọi mutation ghi `audit.COOP_BOSS_*` với meta `{runId, partyId, callerUserId}`. KHÔNG log reward amount detail (đã có ledger). |
+
+### KHÔNG làm
+
+- KHÔNG realtime combat engine — client tự simulate damage rồi self-report (clamp guard).
+- KHÔNG matchmaking public / cross-party.
+- KHÔNG loot bidding / share-pool — reward tier-based per participant, độc lập.
+- KHÔNG đụng `Boss` (solo) / `SectBoss` / `WorldBoss` flow hiện có.
+- KHÔNG cross-server co-op boss.
+
+### Test coverage
+
+- `packages/shared/src/coop-boss.test.ts` (29 tests): enum + DTO + `COOP_BOSS_LIMITS` + `computeContributionScore` + `clampContributionInput` (cap / negative / NaN matrix) + `classifyContributionTier` + `computeCoopBossRewardTier` + `canClaimCoopBossReward`.
+- `apps/api/src/modules/coop-boss/coop-boss.service.test.ts` (21 tests, Postgres real DB): createRun matrix (leader / not-leader / not-in-party / invalid-boss / duplicate) + join (party-member / non-member / idempotent) + leave (leftAt marker) + recordContribution (participant-only / clamp anomaly / auto-promote / window-closed) + finishRun (CLEARED tạo claim eligible / FAILED không claim) + claim CAS (success / double / not-found / not-finished / non-participant) + cancelRun (leader-only / not-lobby) + getMyRun authz.
+- FE `apps/web/src/components/__tests__/CoopBossPanel.test.ts` (5 tests): empty + create flow, member join, IN_PROGRESS contribution submit, cancel confirm via ConfirmModal teleport-to-body, CLEARED + PENDING reward claim.
+
 ## 15. Khi phát hiện sự cố
 
 1. Ngắt traffic (reverse proxy 503 hoặc scale 0 instance).
