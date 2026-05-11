@@ -150,17 +150,17 @@ model PasswordResetToken {
 }
 
 model RefreshToken {
-  id              String    @id @default(cuid())
-  jti             String    @unique
+  id              String       @id @default(cuid())
+  jti             String       @unique
   userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// argon2id hash của refresh JWT (không lưu plaintext).
   hashedToken     String
   passwordVersion Int
   expiresAt       DateTime
   revokedAt       DateTime?
   rotatedFromId   String?
-  createdAt       DateTime  @default(now())
+  createdAt       DateTime     @default(now())
   /// Phase 18.2 — link với `UserSession`. NULL cho row issued trước
   /// migration; row mới luôn có sessionId. KHÔNG cascade khi session
   /// bị xoá (set null) để giữ history token.
@@ -2608,6 +2608,98 @@ model GameplayAnomaly {
   @@index([type, createdAt])
   @@index([characterId, createdAt])
   @@index([userId, createdAt])
+}
+
+/// Phase 16.4 — Market Trade Anomaly (detection-only).
+///
+/// Bổ sung Phase 16.6 (`market-price-band.ts`) — Phase 16.6 reject
+/// listing post ngoài rarity band tuyệt đối. Phase 16.4 quan sát
+/// PATTERN trong toàn bộ flow market:
+///   - `PRICE_EXTREME_LOW` / `PRICE_EXTREME_HIGH` — listing/trade
+///     lệch xa reference price (rarity median) ngay cả khi vẫn
+///     nằm trong band.
+///   - `REPEATED_BUYER_SELLER_PAIR` — cùng cặp (seller, buyer)
+///     trade nhiều lần trong 24h/7d (funnel alt account).
+///   - `LISTING_SPAM` — 1 seller post quá nhiều listing trong 1h.
+///   - `MARKET_VOLUME_SPIKE` — Σ value (price×qty) market của 1
+///     character vượt 500k/5M LT trong 24h.
+///   - `UNKNOWN_REFERENCE_PRICE` — item không có ItemDef hợp lệ
+///     → INFO manual review.
+///
+/// Tách khỏi `EconomyAnomaly` (Phase 16.6 — economy aggregate /
+/// admin grant) và `GameplayAnomaly` (Phase 16.3 — farm pattern)
+/// để admin filter sạch theo domain market trade + audit history
+/// không trộn semantic.
+///
+/// Idempotency: `@@unique([type, listingId, windowKey])`. Cho rule
+/// per-listing (`PRICE_EXTREME_*`) — `listingId` là listing thật.
+/// Cho rule per-character per-window (REPEATED_PAIR / SPAM /
+/// VOLUME / UNKNOWN_REFERENCE) — `listingId = ''` (empty string)
+/// + dedupe ở `windowKey` (build qua `buildMarketAbuseWindowKey`
+/// + scope hash). Multi-instance race → P2002 + skip.
+///
+/// Detection-only — KHÔNG auto-ban / KHÔNG auto-rollback / KHÔNG
+/// trừ currency / item / KHÔNG khóa tài khoản. Admin xem panel
+/// + ack/resolve.
+model MarketTradeAnomaly {
+  id                    String    @id @default(cuid())
+  /// `MarketAbuseType` literal (xem
+  /// `packages/shared/src/market-trade-abuse.ts`).
+  type                  String
+  /// `INFO` | `WARN` | `CRITICAL`.
+  severity              String
+  /// `OPEN` | `ACKNOWLEDGED` | `RESOLVED`. Default OPEN khi tạo.
+  status                String    @default("OPEN")
+  /// `MarketAbuseSource` ∈ `LISTING_CREATE` | `LISTING_BUY` |
+  /// `SCAN_BATCH` | `OTHER`. Fail-soft `OTHER` qua
+  /// `coerceMarketAbuseSource`.
+  source                String
+  /// `Listing.id` cho rule per-listing. Empty string `''` cho rule
+  /// per-character per-window (UNIQUE dedupe vẫn hoạt động).
+  /// KHÔNG FK để giảm rủi ro cascade khi xoá listing cũ.
+  listingId             String    @default("")
+  /// `Character.id` của seller. Nullable cho rule không scope
+  /// seller (vd UNKNOWN_REFERENCE_PRICE per scan).
+  sellerCharacterId     String?
+  /// `Character.id` của buyer. Nullable cho rule pre-trade
+  /// (listing chưa có buyer).
+  buyerCharacterId      String?
+  /// Item key trade. Nullable cho rule không scope itemKey
+  /// (vd MARKET_VOLUME_SPIKE per character).
+  itemKey               String?
+  /// Quantity trade snapshot.
+  quantity              Int?
+  /// Unit price snapshot (BigInt, linh thach).
+  unitPrice             BigInt?
+  /// Reference price baseline (rarity median hoặc 7-day rolling).
+  referencePrice        BigInt?
+  /// `unitPrice / referencePrice` ratio (float). Null cho rule
+  /// non-price (REPEATED_PAIR / SPAM / VOLUME).
+  deviationRatio        Float?
+  /// Identifier cửa sổ thời gian (vd `'1h:2026-08-01T07'`,
+  /// `'24h:2026-08-01'`, `'7d:2026-W31'`) + scope hash cho rule
+  /// per-character per-window.
+  windowKey             String
+  /// Sanitized JSON detail (counters, snapshot). KHÔNG raw IP /
+  /// token / cookie.
+  detailsJson           Json      @default("{}")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  acknowledgedAt        DateTime?
+  /// userId admin/MOD ack. KHÔNG FK.
+  acknowledgedByAdminId String?
+  resolvedAt            DateTime?
+  /// userId admin resolve.
+  resolvedByAdminId     String?
+  /// Note tự do admin khi resolve (≤1000 char).
+  resolutionNote        String?
+
+  @@unique([type, listingId, windowKey])
+  @@index([status, severity, createdAt])
+  @@index([type, createdAt])
+  @@index([sellerCharacterId, createdAt])
+  @@index([buyerCharacterId, createdAt])
+  @@index([itemKey, createdAt])
 }
 
 /// Phase 15.4 — Feature Flag DB-backed.
