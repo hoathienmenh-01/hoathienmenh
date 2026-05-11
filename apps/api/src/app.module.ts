@@ -40,6 +40,7 @@ import { SocialModule } from './modules/social/social.module';
 import { ChatPrivateModule } from './modules/chat-private/chat-private.module';
 import { ChatGroupModule } from './modules/chat-group/chat-group.module';
 import { PresenceModule } from './modules/presence/presence.module';
+import { NotificationModule } from './modules/notification/notification.module';
 import { ChatModerationModule } from './modules/chat-moderation/chat-moderation.module';
 import { LiveOpsCronModule } from './modules/liveops-cron/liveops-cron.module';
 import { LiveOpsEventSchedulerModule } from './modules/liveops-event-scheduler/liveops-event-scheduler.module';
@@ -159,8 +160,10 @@ import { SecurityModule } from './modules/security/security.module';
     // Phase 19.3 — Social Presence & Notification Center. PresenceModule
     // wire vào RealtimeGateway lifecycle (forwardRef cả 2 chiều để tránh
     // circular). Cung cấp `GET /social/presence` cho FE query batch
-    // online + lastSeenAt.
+    // online + lastSeenAt. NotificationModule cung cấp
+    // `/notifications` REST + service cho integration hook.
     PresenceModule,
+    NotificationModule,
     // Phase 17.5 — Metrics endpoint (admin-only) + collectors. SAU
     // AdminModule + RealtimeModule (đã imported indirectly).
     MetricsModule,
