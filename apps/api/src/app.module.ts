@@ -41,6 +41,7 @@ import { ChatPrivateModule } from './modules/chat-private/chat-private.module';
 import { ChatGroupModule } from './modules/chat-group/chat-group.module';
 import { PresenceModule } from './modules/presence/presence.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { PartyModule } from './modules/party/party.module';
 import { ChatModerationModule } from './modules/chat-moderation/chat-moderation.module';
 import { LiveOpsCronModule } from './modules/liveops-cron/liveops-cron.module';
 import { LiveOpsEventSchedulerModule } from './modules/liveops-event-scheduler/liveops-event-scheduler.module';
@@ -164,6 +165,11 @@ import { SecurityModule } from './modules/security/security.module';
     // `/notifications` REST + service cho integration hook.
     PresenceModule,
     NotificationModule,
+    // Phase 19.4 — Group / Party System Upgrade. PartyModule depend
+    // SocialModule (block check), RealtimeModule (party:* WS),
+    // SecurityModule (rate-limit), AuthModule. Soft-ref pattern; KHÔNG
+    // đụng GroupChat hiện có (party / group chat tách biệt semantics).
+    PartyModule,
     // Phase 17.5 — Metrics endpoint (admin-only) + collectors. SAU
     // AdminModule + RealtimeModule (đã imported indirectly).
     MetricsModule,

@@ -81,6 +81,38 @@ export type WsEventType =
    * KHÔNG broadcast public.
    */
   | 'presence:update'
+  /**
+   * Phase 19.4 — Group/Party System Upgrade. Server emit khi party
+   * metadata thay đổi (member join/leave, leader change, name update).
+   * Payload là `PartyUpdatedBroadcastPayload`. Server fanout chỉ tới
+   * member online của party — KHÔNG broadcast public, KHÔNG emit cho
+   * user ngoài party.
+   */
+  | 'party:updated'
+  /**
+   * Phase 19.4 — Party invite mới được tạo. Payload là
+   * `PartyInviteBroadcastPayload`. Server emit chỉ tới invitee user
+   * (không leak tới party member khác).
+   */
+  | 'party:invite'
+  /**
+   * Phase 19.4 — Member mới join party. Payload là
+   * `PartyMemberJoinedBroadcastPayload`. Server fanout tới mọi member
+   * online (kể cả user vừa join).
+   */
+  | 'party:member-joined'
+  /**
+   * Phase 19.4 — Member rời party (leave, kick, hoặc disband cascade).
+   * Payload là `PartyMemberLeftBroadcastPayload`. Server emit tới
+   * member còn lại + user vừa rời (để FE biết clear local state).
+   */
+  | 'party:member-left'
+  /**
+   * Phase 19.4 — Leadership chuyển sang member khác. Payload là
+   * `PartyLeaderChangedBroadcastPayload`. Server fanout tới mọi member
+   * online của party.
+   */
+  | 'party:leader-changed'
   | 'pong'
   // client → server
   | 'ping'
