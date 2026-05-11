@@ -43,6 +43,7 @@ import { PresenceModule } from './modules/presence/presence.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { PartyModule } from './modules/party/party.module';
 import { PartyDungeonModule } from './modules/party-dungeon/party-dungeon.module';
+import { CoopBossModule } from './modules/coop-boss/coop-boss.module';
 import { ChatModerationModule } from './modules/chat-moderation/chat-moderation.module';
 import { LiveOpsCronModule } from './modules/liveops-cron/liveops-cron.module';
 import { LiveOpsEventSchedulerModule } from './modules/liveops-event-scheduler/liveops-event-scheduler.module';
@@ -178,6 +179,15 @@ import { SecurityModule } from './modules/security/security.module';
     // (solo farm) hay GroupChat. Service enforce party-membership +
     // leader-only invariants trên từng mutation.
     PartyDungeonModule,
+    // Phase 20.2 — Co-op Boss / World Boss Party Contribution.
+    // Standalone module depend Character (CurrencyService),
+    // Inventory (InventoryService), Realtime (coop-boss:* WS),
+    // Security (rate-limit), Auth, Admin (AdminGuard cho admin
+    // controller). Soft-ref pattern; KHÔNG đụng WorldBoss /
+    // BossDamage (Phase 7/12.6 solo+global) hay PartyDungeon. Service
+    // enforce party-membership + leader-only + contribution clamp
+    // invariants trên từng mutation.
+    CoopBossModule,
     // Phase 17.5 — Metrics endpoint (admin-only) + collectors. SAU
     // AdminModule + RealtimeModule (đã imported indirectly).
     MetricsModule,

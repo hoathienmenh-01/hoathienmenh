@@ -167,7 +167,13 @@ export type ItemLedgerReason =
   // row / character / run. Reward source = `DUNGEONS[].runReward.items`
   // từ shared catalog (foundation: clone runReward solo cho mỗi
   // participant).
-  | 'PARTY_DUNGEON_REWARD';
+  | 'PARTY_DUNGEON_REWARD'
+  // Phase 20.2 — Co-op Boss reward grant items qua
+  // `CoopBossService.claimReward`. Idempotent semantics giống
+  // PartyDungeonRewardClaim: `CoopBossRewardClaim` UNIQUE
+  // `(runId, characterId)` + CAS guard PENDING → CLAIMED; reward
+  // items lấy từ tier-based `computeCoopBossRewardTier` snapshot.
+  | 'COOP_BOSS_REWARD';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;

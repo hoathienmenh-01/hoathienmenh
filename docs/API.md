@@ -190,6 +190,33 @@ WS events (best-effort fanout — không có recipient online thì im lặng dro
 | `party:member-left`      | Members + caller; `reason` enum     | `PartyMemberLeftBroadcastPayload{partyId,userId,reason}` (`LEFT|KICKED|DISBANDED`) |
 | `party:leader-changed`   | All members                         | `PartyLeaderChangedBroadcastPayload{partyId,previousLeaderUserId,newLeaderUserId}` |
 
+## Co-op Boss — `CoopBossController` (Phase 20.2)
+
+> Foundation cho tổ đội (Phase 19.4) tham gia boss event co-op với contribution tracking. Mỗi party tại 1 thời điểm có tối đa **1 active run** (`maxActiveRunPerParty=1`). Leader tạo `CoopBossRun` với `bossKey` từ catalog `BOSSES` (shared) → member của cùng party join → mỗi member self-report `damageDone`/`supportScore`/`survivalSeconds` qua `recordContribution` (server clamp + anomaly log theo `COOP_BOSS_LIMITS`, không cho client tự khai damage không bound) → leader `finishRun` → server snapshot tier `NONE/LOW/NORMAL/HIGH/MVP` → reward claim PENDING cho member `eligibleForReward=true` + tier ≠ `NONE`. Member claim qua endpoint riêng (atomic CAS `PENDING→CLAIMED` + ledger). KHÔNG realtime combat, KHÔNG matchmaking public, KHÔNG loot bidding / share-pool. `maxMembers=8`, `minSurvivalSeconds=30`, `contributionWindowSeconds=1800` (xem `COOP_BOSS_LIMITS`).
+
+| Method | Path                                                | Auth | Rate                       | Mô tả |
+|--------|-----------------------------------------------------|------|----------------------------|-------|
+| GET    | `/coop/boss/runs/current`                           | Yes  | —                          | Trả `MyCoopBossRunResponse{run,participants,myContribution,myReward,myRewardPreview}`. Không thuộc party hoặc chưa có run → `run=null, participants=[]`. |
+| GET    | `/coop/boss/runs/mine?limit=`                       | Yes  | —                          | Trả `CoopBossRunListResponse{runs}` lịch sử run caller tham gia. `limit` cap theo `COOP_BOSS_LIMITS.listPageMax`. |
+| GET    | `/coop/boss/runs/:id`                               | Yes  | —                          | Trả `CoopBossRunDetailResponse{run,participants,myReward,...}`. Caller phải là participant của run; ngoài run → `RUN_NOT_FOUND` (mask). |
+| GET    | `/coop/boss/runs/:id/reward-preview`                | Yes  | —                          | Trả `{preview: CoopBossRewardPreview|null}` — tier dự kiến live cho caller. Run chưa CLEARED → preview tính từ snapshot live. |
+| POST   | `/coop/boss/runs`                                   | Yes  | —                          | Body `{bossKey, worldBossEventId?}`. Leader-only. Reject `NOT_IN_PARTY`/`NOT_PARTY_LEADER`/`INVALID_BOSS_KEY`/`RUN_ALREADY_EXISTS`. Auto-join caller làm participant đầu tiên. |
+| POST   | `/coop/boss/runs/:id/join`                          | Yes  | `COOP_BOSS_JOIN`           | Body `{}`. Member cùng party join. Reject `NOT_PARTY_MEMBER`/`RUN_NOT_FOUND`/`RUN_NOT_LOBBY`/`NO_CHARACTER`. Idempotent — re-join chỉ refresh `leftAt=null`. |
+| POST   | `/coop/boss/runs/:id/leave`                         | Yes  | —                          | Body `{}`. Participant rời run. Nếu run đã `IN_PROGRESS` và `survivalSeconds < minSurvivalSeconds` → finish sau đó `eligibleForReward=false`. |
+| POST   | `/coop/boss/runs/:id/contribution`                  | Yes  | `COOP_BOSS_CONTRIBUTION`   | Body `{damageDone, supportScore, survivalSeconds}`. Participant-only. Server clamp tất cả input theo `COOP_BOSS_LIMITS.maxDamagePerContribution`/`maxSupportPerContribution`/`maxSurvivalSecondsPerContribution` + warning log anomaly. Auto-promote LOBBY → IN_PROGRESS. Cộng dồn UNIQUE `(runId,participantId)`. Reject `PARTICIPANT_NOT_FOUND`/`PARTICIPANT_LEFT`/`CONTRIBUTION_WINDOW_CLOSED`/`RUN_NOT_ACTIVE`. |
+| POST   | `/coop/boss/runs/:id/finish`                        | Yes  | —                          | Body `{result: 'CLEARED'\|'FAILED'}`. Leader-only. Snapshot eligibility + MVP (tier-based). CLEARED → reward claim PENDING cho mỗi participant eligible + tier ≠ NONE. FAILED → không tạo claim. Reject `NOT_PARTY_LEADER`/`RUN_NOT_ACTIVE`/`RUN_ALREADY_FINISHED`/`NOT_ENOUGH_MEMBERS`. |
+| POST   | `/coop/boss/runs/:id/cancel`                        | Yes  | —                          | Body `{}`. Leader-only, run phải LOBBY. Reject `NOT_PARTY_LEADER`/`RUN_NOT_LOBBY`. |
+| POST   | `/coop/boss/runs/:id/claim-reward`                  | Yes  | `COOP_BOSS_CLAIM`          | Atomic CAS `PENDING→CLAIMED`. Grant reward qua `CurrencyService.applyTx` (`reason='COOP_BOSS_REWARD'`, refType `'CoopBossRewardClaim'`) + `InventoryService.grantTx` + `tx.character.update{exp:{increment}}`. Reject `RUN_NOT_FOUND`/`RUN_NOT_FINISHED`/`REWARD_NOT_FOUND` (non-participant fall vào đây — mask)/`REWARD_NOT_ELIGIBLE`/`REWARD_ALREADY_CLAIMED`. |
+
+WS events (best-effort fanout chỉ tới participant của run — KHÔNG broadcast party / public):
+
+| Event                                | Recipients                          | Payload                                                                       |
+|--------------------------------------|-------------------------------------|-------------------------------------------------------------------------------|
+| `coop-boss:run-updated`              | Run participants (active)           | `CoopBossRunUpdatedBroadcastPayload{runId,partyId,bossKey,status,participantsCount}` |
+| `coop-boss:contribution-updated`     | Run participants                    | `CoopBossContributionUpdatedBroadcastPayload{runId,participantId,userId,contributionScore}` |
+| `coop-boss:finished`                 | Run participants                    | `CoopBossFinishedBroadcastPayload{runId,partyId,status,mvpUserId?}`           |
+| `coop-boss:reward-available`         | Reward owner only (per-user)        | `CoopBossRewardAvailableBroadcastPayload{runId,userId,rewardClaimId,tier}`    |
+
 ## Party Dungeon — `PartyDungeonController` (Phase 20.1)
 
 > Co-op PvE foundation gắn party (Phase 19.4). Mỗi party tại 1 thời điểm có tối đa **1 active room** (`maxActiveRoomPerParty=1`). Leader tạo room với `dungeonKey` từ catalog `DUNGEONS` (shared) → member của cùng party `joinFromParty` → set ready → leader `startRun`. Foundation phase: server auto-resolve inline khi `startRun` → `PartyDungeonRun.result=CLEAR` + tạo `PartyDungeonRewardClaim` PENDING cho mỗi participant. Member claim qua endpoint riêng (atomic CAS `PENDING→CLAIMED` + ledger). KHÔNG matchmaking public, KHÔNG loot bidding, KHÔNG share-pool. `minMembers=2`, `maxMembers=5` (xem `COOP_DUNGEON_LIMITS`).

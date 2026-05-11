@@ -2777,6 +2777,75 @@ troubleshooting xem `docs/DEPLOY.md` §10.A.
 chính script này trên Postgres+Redis service container — fail PR nếu
 gate đóng. Đảm bảo gate xanh trên CI **trước khi merge** branch deploy.
 
+## 2.41. Phase 20.2 — Co-op Boss Party Contribution (debug & incident) (P2/P3)
+
+**Khi nào**: Player report (a) không tạo được run dù là leader, (b) contribution không cộng dồn (FE thấy submit thành công nhưng score = 0), (c) "không nhận được reward dù tham gia clear", (d) "claim 2 lần" hoặc reward grant thiếu (linh thạch / item / exp), (e) run "stuck" `LOBBY`/`IN_PROGRESS` không lên CLEARED/FAILED, (f) anomaly damage log spam.
+
+**Trước hết — phân loại**:
+
+- **Cannot create run** → §A.
+- **Contribution missing / clamp anomaly** → §B.
+- **Reward claim issue** (eligibility, double-claim, missing) → §C.
+- **Stuck run** (LOBBY/IN_PROGRESS > 1h) → §D.
+
+### §A. Cannot create run
+
+Phase 20.2 enforce:
+- 1 active run / party (`COOP_BOSS_LIMITS.maxActiveRunPerParty=1`).
+- Leader-only (`NOT_PARTY_LEADER`).
+- Boss catalog whitelist (`INVALID_BOSS_KEY`).
+
+Triage:
+
+1. **Verify party state** — `SELECT id, "leaderUserId" FROM "Party" WHERE status='ACTIVE' AND id IN (SELECT "partyId" FROM "PartyMember" WHERE "userId"='<user>' AND "leftAt" IS NULL)`. Trả 0 → `NOT_IN_PARTY`; `leaderUserId !== user` → `NOT_PARTY_LEADER`.
+2. **Verify không có active run cũ** — `SELECT id, status, "startedAt" FROM "CoopBossRun" WHERE "partyId"='<party_id>' AND status IN ('LOBBY','IN_PROGRESS')`. Trả >0 row → `RUN_ALREADY_EXISTS`. Force-cancel nếu stale (xem §D).
+3. **Verify bossKey catalog** — Boss key phải tồn tại trong `BOSSES` (shared catalog `packages/shared/src/boss.ts`); typo → `INVALID_BOSS_KEY`.
+
+### §B. Contribution missing / clamp anomaly
+
+Phase 20.2 server clamp tất cả contribution input theo `COOP_BOSS_LIMITS`. Anomaly (vượt cap / negative / NaN) → ghi warning log, clamp về safe value, KHÔNG reject.
+
+Triage:
+
+1. **Verify participant row** — `SELECT id, "joinedAt", "leftAt" FROM "CoopBossParticipant" WHERE "runId"='<run_id>' AND "userId"='<user>'`. Trả 0 → `PARTICIPANT_NOT_FOUND` (user chưa join); `leftAt IS NOT NULL` → `PARTICIPANT_LEFT`.
+2. **Verify contribution row** — `SELECT "damageDone"::text, "supportScore", "survivalSeconds", "actionCount", "contributionScore", "createdAt", "updatedAt" FROM "CoopBossContribution" WHERE "runId"='<run_id>' AND "participantId"='<part_id>'`. Trả 0 row → chưa từng submit; có row → so sánh `damageDone`/`supportScore`/`survivalSeconds` vs giá trị FE submit; nếu bằng cap (`maxDamagePerContribution=...`) → bị clamp anomaly.
+3. **Verify contribution window** — `SELECT "startedAt" FROM "CoopBossRun" WHERE id='<run_id>'`. Nếu `NOW() - startedAt > COOP_BOSS_LIMITS.contributionWindowSeconds (1800s = 30 phút)` → `CONTRIBUTION_WINDOW_CLOSED`. Phải finish run trước khi window đóng.
+4. **Anomaly log spam**: tail `journalctl -u xuantoi-api` (hoặc Loki query `app="api" msg=~"coop-boss.*anomaly"`). Nhiều anomaly từ 1 user → có thể bot/cheat → check `BanRisk` ledger, escalate `audit.COOP_BOSS_ABUSE_BLOCKED`.
+
+### §C. Reward claim issue
+
+Phase 20.2 enforce:
+- Eligibility snapshot at `finishRun`: `leftAt=null` AND `survivalSeconds >= COOP_BOSS_LIMITS.minSurvivalSeconds (30s)` AND tier ≠ `NONE`.
+- Atomic CAS `PENDING → CLAIMED` + ledger entry idempotent qua `refType='CoopBossRewardClaim'` + `refId=claim.id`.
+
+Triage:
+
+1. **Verify eligibility** — `SELECT "eligibleForReward", "finalContributionScore", "leftAt" FROM "CoopBossParticipant" WHERE "runId"='<run_id>' AND "userId"='<user>'`. `eligibleForReward=false` → đã ineligible tại finish (leave sớm / không đủ survival / tier NONE).
+2. **Verify reward claim row** — `SELECT id, status, "rewardTier", "rewardJson", "claimedAt" FROM "CoopBossRewardClaim" WHERE "runId"='<run_id>' AND "userId"='<user>'`. Trả 0 row → `REWARD_NOT_FOUND` (run FAILED hoặc tier NONE); `status=CLAIMED` → đã claim trước đó.
+3. **Verify ledger** — `SELECT "createdAt", currency, delta FROM "CurrencyLedger" WHERE reason='COOP_BOSS_REWARD' AND meta->>'runId'='<run_id>' AND "userId"='<user>'`. Phải có entry khi `status='CLAIMED'`; thiếu → race CAS bug, escalate P1.
+4. **Double-claim**: CAS guard ngăn race. Nếu user khiếu nại nhận 2 lần → check ledger count `=2` → bug, P0. Nếu count `=1` nhưng FE thấy 2 toast → FE UI duplicate, P3.
+
+### §D. Stuck run
+
+Phase 20.2 run lifecycle: LOBBY → IN_PROGRESS (auto-promote khi contribution đầu tiên) → CLEARED/FAILED (leader `finishRun`) → reward claim window. Stuck:
+
+1. **LOBBY > 24h, no contribution** — leader có thể đã rời game; force-cancel:
+   ```sql
+   UPDATE "CoopBossRun" SET status='CANCELED', "finishedAt"=NOW() WHERE id='<run_id>' AND status='LOBBY';
+   ```
+2. **IN_PROGRESS > 1h, no recent contribution** — group abandon; cho phép leader `cancelRun` qua admin, hoặc:
+   ```sql
+   UPDATE "CoopBossRun" SET status='FAILED', "finishedAt"=NOW() WHERE id='<run_id>' AND status='IN_PROGRESS';
+   ```
+   KHÔNG tự cộng reward; FAILED = no claim.
+3. **Audit force-action**: ghi vào `audit.COOP_BOSS_ADMIN_FORCE_CANCEL` với meta `{runId, adminId, reason}`.
+
+### Operator playbook (admin)
+
+- List active runs: `GET /admin/coop/boss/runs?status=LOBBY,IN_PROGRESS` (cần `ADMIN`/`GM` role).
+- Recompute contribution (drift detection): `POST /admin/coop/boss/runs/:id/recompute-contribution` — re-run `computeContributionScore` trên latest contribution rows.
+- Audit channel: `audit.COOP_BOSS_*` (filter qua `/admin/audit?category=COOP_BOSS`).
+
 ---
 
 ## 3. Backup operations (closed beta cadence)

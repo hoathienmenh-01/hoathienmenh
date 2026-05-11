@@ -145,6 +145,30 @@ export type WsEventType =
    * CHỈ tới user owner của claim (không leak tới member khác).
    */
   | 'party-dungeon:reward-available'
+  /**
+   * Phase 20.2 — Co-op Boss Party Contribution. Server emit khi run
+   * state thay đổi (member join/leave, status transition). Payload là
+   * `CoopBossRunUpdatedBroadcastPayload`. Server fanout CHỈ tới
+   * participant của run (snapshot lúc emit) — không broadcast public.
+   */
+  | 'coop-boss:run-updated'
+  /**
+   * Phase 20.2 — Một participant cập nhật contribution (damage /
+   * support / survival). Payload là `CoopBossContributionUpdatedBroadcastPayload`.
+   * Server fanout tới participant của run.
+   */
+  | 'coop-boss:contribution-updated'
+  /**
+   * Phase 20.2 — Run resolve (CLEARED/FAILED). Payload là
+   * `CoopBossFinishedBroadcastPayload`. Server fanout tới participant.
+   */
+  | 'coop-boss:finished'
+  /**
+   * Phase 20.2 — Reward claim row sẵn sàng cho 1 participant. Payload
+   * là `CoopBossRewardAvailableBroadcastPayload`. Server emit CHỈ tới
+   * user owner của claim (không leak cross-party).
+   */
+  | 'coop-boss:reward-available'
   | 'pong'
   // client → server
   | 'ping'
