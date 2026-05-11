@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { AdminModule } from '../admin/admin.module';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaService } from '../../common/prisma.service';
+import { AdminSecurityController } from './admin-security.controller';
 import { IpHashService } from './ip-hash.service';
 import { RateLimitService } from './rate-limit.service';
 import { RateLimitGuard } from './rate-limit.guard';
@@ -23,7 +25,10 @@ import { SecurityAbuseService } from './security-abuse.service';
  * controller khác có thể dùng `@RateLimitPolicy(...)` decorator.
  */
 @Module({
-  imports: [AuthModule],
+  // AdminModule exports AdminGuard — cần cho @UseGuards(AdminGuard)
+  // trong AdminSecurityController.
+  imports: [AuthModule, AdminModule],
+  controllers: [AdminSecurityController],
   providers: [
     PrismaService,
     IpHashService,
