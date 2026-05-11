@@ -9,12 +9,20 @@
  * `MaintenanceBanner` (admin-only thông báo) được render trong
  * `AppShell` để chỉ hiển thị bên trong layout đăng nhập, không che màn
  * login.
+ *
+ * Phase 15.8 — subscribe WS `maintenance:status` để overlay
+ * update tức thì khi status transition (không cần đợi 30s poll).
  */
 import { computed, onMounted, onUnmounted } from 'vue';
+import type {
+  MaintenanceBroadcastPayload,
+  WsFrame,
+} from '@xuantoi/shared';
 import MToast from '@/components/ui/MToast.vue';
 import MaintenanceOverlay from '@/components/MaintenanceOverlay.vue';
 import { useMaintenanceStore } from '@/stores/maintenance';
 import { useGameStore } from '@/stores/game';
+import { on as wsOn } from '@/ws/client';
 
 const maintenance = useMaintenanceStore();
 const game = useGameStore();
@@ -31,12 +39,24 @@ const showOverlay = computed<boolean>(() => {
   return !isStaff.value;
 });
 
+const wsUnsubFns: Array<() => void> = [];
+
 onMounted(() => {
   maintenance.start();
+  // Phase 15.8 — listen WS broadcast. Store auto-handle ACTIVE/ENDED/DISABLED.
+  wsUnsubFns.push(
+    wsOn<MaintenanceBroadcastPayload>(
+      'maintenance:status',
+      (frame: WsFrame<MaintenanceBroadcastPayload>) => {
+        maintenance.applyMaintenanceBroadcast(frame.payload);
+      },
+    ),
+  );
 });
 
 onUnmounted(() => {
   maintenance.stop();
+  for (const fn of wsUnsubFns) fn();
 });
 </script>
 

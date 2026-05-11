@@ -9,11 +9,15 @@
  *   render overlay ngay (không cần đợi tick polling tiếp theo).
  * - `dismissBlockedToast()` — admin được phép tiếp tục dùng app (admin
  *   bypass), chỉ hiển thị banner thay vì overlay full-screen.
+ * - `applyMaintenanceBroadcast(payload)` — Phase 15.8: nhận WS event
+ *   `maintenance:status` và update store tức thì. Không cần đợi tick
+ *   polling kế tiếp.
  *
  * Read-only ở phía FE — chỉnh sửa qua `/admin/maintenance-windows/*`.
  */
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
+import type { MaintenanceBroadcastPayload } from '@xuantoi/shared';
 import {
   getMaintenanceStatus,
   type MaintenanceWindowPublicView,
@@ -101,6 +105,58 @@ export const useMaintenanceStore = defineStore('maintenance', () => {
     blockedMeta.value = null;
   }
 
+  /**
+   * Phase 15.8 — apply WS `maintenance:status` broadcast payload tức thì.
+   *
+   * Rules:
+   *   - `MAINTENANCE_ACTIVE` → set `status.active = true` cùng các field
+   *     payload public-safe; reset `blockedByApi` để overlay hiển thị
+   *     ngay (axios interceptor sẽ tự re-mark khi request kế tiếp 503).
+   *   - `MAINTENANCE_ENDED` / `MAINTENANCE_DISABLED` → set
+   *     `status.active = false`, clear `blockedByApi`/`blockedMeta` —
+   *     overlay biến mất ngay.
+   *
+   * Idempotent: nhiều broadcast cùng key sẽ overwrite cùng trạng thái.
+   * Không lấy dữ liệu cũ làm fallback — payload public-safe đã có đủ.
+   */
+  function applyMaintenanceBroadcast(
+    payload: MaintenanceBroadcastPayload,
+  ): void {
+    lastFetchAt.value = Date.now();
+    if (payload.type === 'MAINTENANCE_ACTIVE') {
+      status.value = {
+        active: true,
+        severity: payload.severity,
+        target: payload.target,
+        titleVi: payload.titleVi,
+        titleEn: payload.titleEn,
+        messageVi: payload.messageVi,
+        messageEn: payload.messageEn,
+        startsAt: payload.startsAt,
+        endsAt: payload.endsAt,
+        serverTime: payload.serverTime,
+        allowAdminBypass: payload.allowAdminBypass,
+      };
+      return;
+    }
+    // ENDED / DISABLED → clear active flag + clear blockedByApi.
+    status.value = {
+      active: false,
+      severity: payload.severity,
+      target: payload.target,
+      titleVi: payload.titleVi,
+      titleEn: payload.titleEn,
+      messageVi: payload.messageVi,
+      messageEn: payload.messageEn,
+      startsAt: payload.startsAt,
+      endsAt: payload.endsAt,
+      serverTime: payload.serverTime,
+      allowAdminBypass: payload.allowAdminBypass,
+    };
+    blockedByApi.value = false;
+    blockedMeta.value = null;
+  }
+
   return {
     status,
     blockedByApi,
@@ -113,5 +169,6 @@ export const useMaintenanceStore = defineStore('maintenance', () => {
     stop,
     markBlockedByApi,
     reset,
+    applyMaintenanceBroadcast,
   };
 });
