@@ -12,7 +12,71 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Phase 19.1.C — Public Player Profile / Inspect Player (this PR — #531)
+### Phase 19.3 — Social Presence & Notification Center (this PR — #532)
+
+**Scope**: Bell + dropdown notification cho friend/chat/group/security event + real-time online/offline presence cho friend list (single-instance, in-memory). **KHÔNG** mobile push, **KHÔNG** email, **KHÔNG** Redis cross-shard presence (deferred Phase 19.3+), **KHÔNG** activity feed, **KHÔNG** notification preferences per-type. Tiền đề: PR #530 Phase 19.2 + #531 Phase 19.1.C merged.
+
+#### Added — Phase 19.3
+
+- **Prisma migration `20260920000000_phase_19_3_notification_presence`** additive: enum `NotificationType` 8-value (`FRIEND_REQUEST_RECEIVED`/`FRIEND_REQUEST_ACCEPTED`/`PRIVATE_MESSAGE_RECEIVED`/`GROUP_MESSAGE_RECEIVED`/`GROUP_INVITE_RECEIVED`/`GROUP_MEMBER_ADDED`/`CHAT_REPORT_RESOLVED`/`SECURITY_ALERT_USER`) + model `Notification`(userId, type, titleKey i18n-only, bodyKey i18n-only, entityType?, entityId?, dataJson sanitized, readAt?, createdAt index desc, expiresAt?) + model `UserPresence`(userId UNIQUE, lastSeenAt).
+- **Shared `packages/shared/src/notification.ts`** (23 test pass): enum + DTO row/list/unread-count/mark-read/markAllRead response + `NotificationCreatedBroadcastPayload`/`NotificationUnreadCountBroadcastPayload`/`PresenceUpdateBroadcastPayload`/`PresenceRow`/`PresenceQueryResponse` + `NOTIFICATION_LIMITS` (LIST_PAGE_DEFAULT=20/MAX=50, TITLE_KEY_MAX=120, BODY_KEY_MAX=200, DATA_MAX_DEPTH=3, DATA_MAX_LEN=500). Helpers `isNotificationType` / `isNotificationEntityType` / `sanitizeNotificationData(raw)` (deterministic — strip non-primitive deep, cap length+depth, drop non-serializable) / `formatBellBadgeCount(n)` ('' / 'N' / '99+').
+- **WS catalog `packages/shared/src/ws-events.ts`** thêm 3 type mới: `notification:new`, `notification:unread-count`, `presence:update`.
+- **Backend** 2 module mới `apps/api/src/modules/notification/` (`NotificationService` + `NotificationHelpers` + `NotificationController` + `notification.module.ts`) + `apps/api/src/modules/presence/` (`PresenceService` + `PresenceController` + `PresenceCoreModule` + `PresenceModule`). `RealtimeModule` reference `PresenceCoreModule` (service-only, KHÔNG kéo AuthModule) → giữ test bootstrap nhẹ.
+- **Service contract**:
+  - `NotificationService.createNotification({userId, type, titleKey, bodyKey, entityType?, entityId?, data?, expiresAt?})` — sanitize `data` → DB insert → best-effort fanout `notification:new` + `notification:unread-count` (chỉ khi online). `listNotifications({userId, types?, unreadOnly?, cursor?, limit?})` own-user-only + cursor-by-createdAt desc. `countUnread(userId)` / `markRead(userId, id)` (idempotent, cross-user → `FORBIDDEN`) / `markAllRead(userId)` (return `markedCount`).
+  - `NotificationHelpers` thin wrapper inject vào `SocialService.acceptFriendRequest` (FRIEND_REQUEST_ACCEPTED to sender), `SocialService.sendFriendRequest` (FRIEND_REQUEST_RECEIVED to receiver), `ChatPrivateService.sendPrivateMessage` (PRIVATE_MESSAGE_RECEIVED to peer), `ChatGroupService.sendGroupMessage` (GROUP_MESSAGE_RECEIVED to members), `ChatGroupService.addMember`/`createGroup` (GROUP_MEMBER_ADDED), `ChatModerationService.adminResolveReport` (CHAT_REPORT_RESOLVED to reporter). **Fail-soft**: throw từ helper KHÔNG roll back main flow.
+  - `PresenceService.markConnected/markDisconnected(userId)` upsert `UserPresence.lastSeenAt` + count current connections (via `RealtimeService.countConnectionsForUser`). `listPresenceForUsers(viewerUserId, userIds)` REST batch (cap 50 + dedupe) — privacy filter target-đã-block-viewer → hidden OFFLINE + null lastSeenAt. `fanoutPresenceUpdate({userId, previousConnections, currentConnections})` chỉ emit `presence:update` khi state transition (`0↔≥1`) tới friend list (bidirectional `Friendship`, exclude `PlayerBlock` 2-chiều).
+  - `RealtimeGateway` connect/disconnect lifecycle hook gọi `markConnected`/`markDisconnected` + fanout — multi-tab safe (user offline chỉ khi last tab close).
+- **REST API** 5 endpoint mới (`NotificationController` cookie auth + `PresenceController` cookie auth):
+  - `GET /notifications?cursor=&limit=&types=&unread=` (own-user) — cursor-by-createdAt.
+  - `GET /notifications/unread-count`.
+  - `POST /notifications/:id/read` — idempotent, cross-user → `FORBIDDEN`.
+  - `POST /notifications/read-all` — return `markedCount`.
+  - `GET /social/presence?userIds=csv` (cap 50, dedupe, privacy mask).
+- **WS realtime fanout** 3 channel mới: `notification:new` + `notification:unread-count` (emit-to-owner-only qua `emitToUser`); `presence:update` (emit-to-friend-list, privacy-filtered, không broadcast public).
+- **FE notification bell + dropdown**:
+  - `apps/web/src/components/notification/NotificationBell.vue` — bell icon trong `AppShell` (player-role only) + badge `formatBellBadgeCount` + aria.
+  - `NotificationDropdown.vue` — recent 20 list + mark-all + retry + loading + empty + per-row click → `entityType`→route map (`FRIEND_REQUEST`→`/social?tab=requests`, `PRIVATE_THREAD`→`/social?tab=private&threadId=...`, `GROUP_CHAT`→`/social?tab=groups&groupId=...`, `CHAT_REPORT`→`/social?tab=reports`, `SECURITY_ALERT`→no-nav).
+  - `useNotificationsStore` Pinia — REST poll 60s + WS `pushIncoming` (idempotent dedupe theo id, KHÔNG double-count unread) + `setUnreadCount` (clamp negative/non-finite) + `markOneRead`/`markAll`/`refresh`/`reset`.
+  - `apps/web/src/api/notification.ts` + `apps/web/src/api/presence.ts` REST client.
+  - `SocialPanel.vue` subscribe `presence:update` → cập nhật `f.online` live (no extra poll).
+  - `ws/client.ts` dispatcher list thêm 3 type mới — handlers đăng ký qua `wsOn` mới được pump.
+- **i18n vi/en parity 100%**: namespace `notification.*` (~25 leaf key — bell/title/empty/loading/errorGeneric/retry/markAllRead + 8 type x {title,body} i18n template với `{sender}`/`{group}` placeholder. Parity test `i18n parity vi vs en` auto-verify.
+
+#### Security — Phase 19.3
+
+- **Notification privacy invariants** server enforce:
+  - **Own-user-only access**: mọi REST endpoint filter `WHERE userId === requesterUserId` — không thể list / mark read / count của user khác. `markRead` cross-user → `FORBIDDEN` (KHÔNG mask 404 vì id format leak nothing).
+  - **i18n-key only body** — service KHÔNG nhận free-text title/body → chống XSS / injection. Sender name / group name nhúng vào `dataJson` đã sanitize (strip non-primitive deep, cap depth=3 + length=500).
+  - **Notification.dataJson** sanitize qua `sanitizeNotificationData(raw)` deterministic — drop Symbol/Function/non-serializable; cap depth+length; preserve only primitives + nested string→string maps.
+  - **Realtime emit** chỉ tới `userId` chủ notification qua `RealtimeService.emitToUser` — KHÔNG broadcast / KHÔNG fan-out qua room.
+- **Presence privacy invariants**:
+  - **Blocker-of-viewer hide**: target đã block viewer → REST `/social/presence` trả `OFFLINE + null lastSeenAt` (KHÔNG leak online time). Mirror policy `SocialService.getPublicProfile` Phase 19.1.C.
+  - **Fanout exclude PlayerBlock**: `fanoutPresenceUpdate` filter friend list theo `PlayerBlock` 2-chiều (cả user-blocks-friend lẫn friend-blocks-user) trước khi emit.
+  - **No public broadcast**: presence chỉ emit tới friend list, KHÔNG broadcast global. `joinUserToRoom` không tạo `presence:*` room.
+  - **No cross-user lookup leak via timing**: `listPresenceForUsers` single batch query → uniform response time.
+
+#### Test coverage — Phase 19.3
+
+- **Shared** (23 pass): `notification.test.ts` — enum/DTO/`sanitizeNotificationData` happy + edge (cyclic ref/Symbol/Function) + `formatBellBadgeCount` (0/1/12/99/100/150 boundary) + `isNotificationType`/`isNotificationEntityType`.
+- **API** (22 pass new): `apps/api/src/modules/notification/notification.service.test.ts` (11) cover create + emit-only-when-online + offline DB persist + entityType sanitize + listNotifications cross-user leak + orderBy desc + pagination + unreadOnly filter + markRead idempotent + FORBIDDEN cross-user + markAllRead count + NOTIFICATION_NOT_FOUND + fanoutRealtimeIfOnline offline-skip. `apps/api/src/modules/presence/presence.service.test.ts` (11) cover markConnected/Disconnected state transitions + multi-tab + listPresenceForUsers privacy hide (blocker-of-viewer) + dedupe/cap + fanoutPresenceUpdate transition-only + skip-blocked-friend + OFFLINE payload. `apps/api/src/modules/realtime/realtime.gateway.test.ts` (12) anti-regression — presence hook KHÔNG break WS auth.
+- **FE** (16 pass new): `apps/web/src/stores/__tests__/notifications.test.ts` (10) cover refresh/error/pushIncoming dedup/setUnreadCount clamp/markOneRead/markAll/badgeLabel/reset/start-stop timer. `apps/web/src/components/__tests__/NotificationBell.test.ts` (6) cover badge render boundary + WS handler subscribe / unsubscribe lifecycle + WS push update badge.
+
+#### Docs — Phase 19.3
+
+- AI_HANDOFF_REPORT §1 — Phase 19.3 entry (đẩy 19.2 xuống Previous PR).
+- API.md — `NotificationController` (4 endpoint) + `PresenceController` (1 endpoint) + WS catalog 3 event mới.
+- SECURITY.md §19.3 — Notification privacy + Presence privacy threat model.
+- RUNBOOK.md §2.38 — Notification incident playbook + presence multi-tab debug.
+- CHANGELOG.md — entry này.
+
+#### Internal — Phase 19.3
+
+- `PresenceModule` split thành `PresenceCoreModule` (service-only, không AuthModule) + `PresenceModule` (controller + AuthModule). `RealtimeModule` `forwardRef` chỉ tới `PresenceCoreModule` → test bootstrap chỉ kéo `RealtimeModule` không cần `ConfigModule` cho `JwtModule.registerAsync`. Anti-regression: `realtime.gateway.test.ts` compile lại 12 ca tests.
+- `wipeAll(prisma)` thêm `notification.deleteMany` + `userPresence.deleteMany` trước Chat / Social wipe để test isolation deterministic.
+- `useNotificationsStore.pushIncoming(row)` idempotent fix — chuyển sang `return early` khi dedup hit, KHÔNG double-increment unread (FE chỉ trông vào `notification:unread-count` cho counter authoritative).
+
+### Phase 19.1.C — Public Player Profile / Inspect Player (PR — #531)
 
 **Scope**: Cho phép player xem hồ sơ công khai của player khác khi click vào username trong friend list / request list / private chat / group chat. Read-only endpoint, server enforce privacy mask cứng + rate-limit anti-enumeration. **KHÔNG** sửa Prisma schema (read-only existing fields), **KHÔNG** new migration, **KHÔNG** auto-friend / auto-online presence (`online=false` placeholder), **KHÔNG** mutual friend count cache. Tiền đề: PR #528 Phase 19.1 + #529 Phase 19.1.B merged.
 

@@ -13,7 +13,7 @@
  * FE chỉ catch error code → render i18n message + toast. Confirm modal
  * cho remove/block/unblock (destructive actions).
  */
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToastStore } from '@/stores/toast';
 import ConfirmModal from '@/components/ui/ConfirmModal.vue';
@@ -35,7 +35,10 @@ import type {
   FriendRequestRow,
   FriendRow,
   PlayerBlockRow,
+  PresenceUpdateBroadcastPayload,
+  WsFrame,
 } from '@xuantoi/shared';
+import { on as wsOn } from '@/ws/client';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 type RequestTab = 'incoming' | 'outgoing';
@@ -122,7 +125,42 @@ async function onProfileChanged(): Promise<void> {
 
 defineExpose({ refresh: refreshAll });
 
-onMounted(refreshAll);
+const unsubFns: Array<() => void> = [];
+
+onMounted(() => {
+  void refreshAll();
+  // Phase 19.3 — live presence:update push. Khi friend online/offline,
+  // server fanout chuỗi `0↛≥1` connections tới friend list bằng
+  // `RealtimeService.emitToUser`. Cập nhật `f.online` tại chỗ để
+  // tránh poll REST `/social/friends`.
+  unsubFns.push(
+    wsOn<PresenceUpdateBroadcastPayload>(
+      'presence:update',
+      (frame: WsFrame<PresenceUpdateBroadcastPayload>) => {
+        const { userId, status } = frame.payload;
+        const nextOnline = status === 'ONLINE';
+        const idx = friends.value.findIndex(
+          (f) => f.friendUserId === userId,
+        );
+        if (idx < 0) return;
+        if (friends.value[idx].online !== nextOnline) {
+          friends.value[idx] = { ...friends.value[idx], online: nextOnline };
+        }
+      },
+    ),
+  );
+});
+
+onBeforeUnmount(() => {
+  for (const fn of unsubFns) {
+    try {
+      fn();
+    } catch {
+      // ignore unsub failures
+    }
+  }
+  unsubFns.length = 0;
+});
 
 async function refreshAll(): Promise<void> {
   await Promise.all([

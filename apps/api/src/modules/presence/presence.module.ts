@@ -1,27 +1,20 @@
-import { Module, forwardRef } from '@nestjs/common';
-import { PrismaService } from '../../common/prisma.service';
+import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
-import { RealtimeModule } from '../realtime/realtime.module';
 import { PresenceController } from './presence.controller';
-import { PresenceService } from './presence.service';
+import { PresenceCoreModule } from './presence-core.module';
 
 /**
- * Phase 19.3 — Presence module.
+ * Phase 19.3 — Presence module (REST surface).
  *
- * Cung cấp:
- *   - `PresenceService` (export) cho `RealtimeGateway` gọi
- *     `markConnected` / `markDisconnected` trong connect/disconnect
- *     lifecycle, và cho future module (vd notification controller)
- *     check `isOnline`.
- *   - `PresenceController` (`GET /social/presence`) cho FE query batch.
- *
- * Re-use `RealtimeService` qua `RealtimeModule` cho in-memory
- * connection tracking (single-instance).
+ * `PresenceService` provider/export sống ở `PresenceCoreModule`
+ * (không kéo `AuthModule`) để `RealtimeModule` reference được mà
+ * không phải gánh ConfigService cho test. `PresenceModule` chỉ
+ * thêm tầng REST controller cho FE (`GET /social/presence`) và
+ * re-export `PresenceCoreModule`.
  */
 @Module({
-  imports: [AuthModule, forwardRef(() => RealtimeModule)],
+  imports: [AuthModule, PresenceCoreModule],
   controllers: [PresenceController],
-  providers: [PresenceService, PrismaService],
-  exports: [PresenceService],
+  exports: [PresenceCoreModule],
 })
 export class PresenceModule {}

@@ -582,6 +582,60 @@ Admin operations playbook (run scan / ack / resolve / handle CRITICAL): [`RUNBOO
 - `apps/api/src/modules/chat-moderation/chat-moderation.service.test.ts` (31 tests): submit happy/dup/invalid; ack/resolve state machine + idempotent; mute create/list active filter + revoke + `findActiveMuteForSend` scope matrix; hide/unhide idempotent; lock/unlock/dissolve; AdminAuditLog action+meta per path.
 - FE `apps/web/src/components/__tests__/ChatReportModal.test.ts` (7) + `AdminChatModerationPanel.test.ts` (7): UI/UX layer.
 
+## 19.3. Social Presence & Notification Center (Phase 19.3)
+
+### Mục tiêu
+
+Bell + dropdown notification persistent cho 8 event type (friend request received/accepted, private/group message received, group invite/member added, chat report resolved, security alert) + real-time online/offline presence cho friend list. **KHÔNG** mobile push, email, Redis cross-shard presence — single-instance scope.
+
+### Notification privacy invariants
+
+- **Own-user-only access**: `NotificationService.listNotifications`/`countUnread`/`markRead`/`markAllRead` filter `WHERE userId === requesterUserId`. Cross-user `markRead` → `FORBIDDEN` (KHÔNG mask 404 vì id format leak nothing).
+- **i18n-key only body** — service signature `createNotification({userId, type, titleKey, bodyKey, ...})` chỉ nhận **key** (vd `notification.friendRequestReceived.body`), KHÔNG free-text. FE render qua `t(row.titleKey, { sender, group })` với placeholder data đã sanitize → chống XSS / injection.
+- **`dataJson` sanitization**: caller pass `data: Record<string, unknown>` → `sanitizeNotificationData(raw)` deterministic xử lý:
+  - Strip Symbol / Function / non-serializable.
+  - Cap depth=3 (DATA_MAX_DEPTH), length=500 (DATA_MAX_LEN).
+  - Drop cyclic ref.
+  - Output chỉ chứa primitive + nested object/array depth-bounded.
+- **Realtime emit isolation** — chỉ `emitToUser` tới chủ notification, KHÔNG broadcast, KHÔNG room fanout. Best-effort: emit fail KHÔNG roll back DB insert.
+- **No mass-trigger amplification** — `NotificationHelpers` chỉ tạo 1 notification per business event (vd `acceptFriendRequest` chỉ thông báo sender, KHÔNG broadcast bạn-của-bạn).
+
+### Presence privacy invariants
+
+- **Blocker-of-viewer hide** — REST `/social/presence` query: nếu target đã block viewer → trả `OFFLINE + lastSeenAt=null`. KHÔNG leak khi nào người đó online. Mirror policy `SocialService.getPublicProfile` Phase 19.1.C.
+- **Fanout exclude PlayerBlock** — `PresenceService.fanoutPresenceUpdate` filter friend list theo `PlayerBlock` 2-chiều (cả user-blocks-friend lẫn friend-blocks-user) trước khi emit. Friend đã block user → KHÔNG nhận `presence:update` từ user đó.
+- **No public broadcast** — presence chỉ emit tới friend list filtered, KHÔNG broadcast global. `joinUserToRoom` không tạo `presence:*` room. WS catalog `presence:update` chỉ dùng `emitToUser` per recipient.
+- **State-transition-only emit** — `fanoutPresenceUpdate` chỉ emit khi `previousConnections===0 XOR currentConnections===0` → không leak count tab (multi-tab fanout suppress để giảm spam + tránh inference).
+- **`SocialService.isOnlineSafe`** — friend list trả `online` boolean **sau** privacy filter (blocked-by-viewer/blocker-of-viewer); fallback `false` khi RealtimeService unavailable.
+
+### Threat model (Phase 19.3 additions)
+
+| Risk | Mitigation |
+|------|------------|
+| Attacker mark read notification của user khác | `markRead` check `existing.userId !== requester` → `FORBIDDEN`. Test `notification.service.test.ts` cover cross-user reject. |
+| FE injection qua sender name in notification | Server-side `sanitizeNotificationData` strip non-primitive; FE i18n `t(bodyKey, { sender })` qua Vue 3 i18n auto-escape; KHÔNG bao giờ `v-html` user content. |
+| Notification spam DOS (vd auto-friend-request) | Phase 19.1.B đã rate-limit `SOCIAL_FRIEND_REQUEST` 10/60s user; Phase 19.2 đã rate-limit `CHAT_REPORT_SUBMIT` 10/60min user. Phase 19.3 KHÔNG cần add rate-limit riêng vì trigger nguồn đã rate-limit. |
+| Notification body leak sensitive context (vd security alert leak admin id) | `titleKey`/`bodyKey` cố định trong codebase + audit; `dataJson` cap depth/length; admin id KHÔNG ghi vào notification body. |
+| Presence leak vị trí / hành vi user | KHÔNG có vị trí trong payload — chỉ `status + lastSeenAt`. `lastSeenAt` chỉ revealed cho friend (filtered by block). |
+| Presence inference qua timing — viewer brute-force `GET /social/presence` để biết user online liên tục | Single batch query, response time uniform. `PlayerBlock` filter mask; user có thể block để hide presence. Future Phase 21: granular `presenceVisibility` setting (per-friend opt-out). |
+| Friend list scraping qua `presence:update` fanout | KHÔNG có — server fanout outbound only (server → client). Client KHÔNG thấy ai khác cũng receive cùng event. |
+| Cross-shard presence stale (Redis offline → 2 shards mỗi shard giữ in-memory set khác nhau) | Phase 19.3 scope = single-instance. Multi-shard production deploy phải bật Phase 19.3+ Redis presence (deferred). RUNBOOK.md §2.38 ghi rõ. |
+
+### KHÔNG làm
+
+- KHÔNG mobile push (FCM/APNs) — deferred. Operator cần config nếu cần.
+- KHÔNG email notification — deferred.
+- KHÔNG activity feed / news feed — Phase 21+ social discovery.
+- KHÔNG per-type opt-out setting — Phase 21+ player settings UI.
+- KHÔNG cache mutualFriend / presence client-side ngoài Pinia store memory.
+
+### Test coverage
+
+- `packages/shared/src/notification.test.ts` (23 tests): enum + DTO + `sanitizeNotificationData` happy + edge (cyclic ref/Symbol/Function/non-finite/deep over-cap) + `formatBellBadgeCount` boundary (0/1/12/99/100/150).
+- `apps/api/src/modules/notification/notification.service.test.ts` (11 tests): create + emit-only-when-online + offline DB persist + entityType sanitize-to-null + cross-user list filter + orderBy desc + pagination cursor + unreadOnly filter + markRead idempotent + FORBIDDEN cross-user + markAllRead count + NOTIFICATION_NOT_FOUND + fanoutRealtimeIfOnline offline-skip.
+- `apps/api/src/modules/presence/presence.service.test.ts` (11 tests): markConnected/Disconnected state transitions + multi-tab + listPresenceForUsers privacy mask (blocker-of-viewer) + dedupe/cap + fanoutPresenceUpdate transition-only-emit + skip-blocked-friend + OFFLINE payload on disconnect-last.
+- FE `apps/web/src/stores/__tests__/notifications.test.ts` (10 tests) + `apps/web/src/components/__tests__/NotificationBell.test.ts` (6 tests): store contract + bell badge boundary + WS handler subscribe/unsubscribe lifecycle.
+
 ## 15. Khi phát hiện sự cố
 
 1. Ngắt traffic (reverse proxy 503 hoặc scale 0 instance).

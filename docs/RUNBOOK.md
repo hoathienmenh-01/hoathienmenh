@@ -2432,6 +2432,55 @@ WHERE id = '<messageId>';
 - TTResolve median < 24h.
 - False-positive (REJECTED / total resolved) < 30% — nếu cao, review chính sách `chatReport.reason` để player hiểu rõ tiêu chí.
 
+## 2.38. Phase 19.3 — Social Presence & Notification Center (debug & incident) (P2)
+
+**Khi nào**: Player report (a) không thấy bell badge update khi có notification mới, (b) thấy friend "online" nhưng thực tế đã offline / ngược lại, (c) notification dropdown trống dù có event.
+
+**Trước hết — phân loại**:
+
+- **Notification miss** (DB row tồn tại nhưng FE không thấy) → §A.
+- **Presence stale** (status không khớp WS connection thực tế) → §B.
+- **Cross-shard inconsistency** (deploy multi-instance) → §C — KHÔNG fixable mà không bật Phase 19.3+ Redis presence.
+
+### §A. Notification miss
+
+1. **Check DB row** — vào `psql` chạy `SELECT id, type, "createdAt", "readAt" FROM "Notification" WHERE "userId"=$1 ORDER BY "createdAt" DESC LIMIT 10`. Nếu row tồn tại → bug FE.
+2. **Check WS connection** — `RealtimeGateway` log `attach`/`detach` per `userId`. Nếu user **offline** lúc notification tạo → KHÔNG có WS event (đúng spec) → FE nhận khi REST poll 60s hoặc reload.
+3. **Check FE store state** — DevTools console `useNotificationsStore().items` + `unreadCount`. Force `store.refresh()` để re-fetch REST.
+4. **Check `notification:new` dispatch** — Network → WS tab → tìm frame `notification:new`. Nếu KHÔNG có khi user online → kiểm tra `RealtimeService.userSockets.get(userId)` size > 0 không.
+5. **Recover** — `POST /notifications/read-all` rồi reload (nếu user chấp nhận mất unread state cũ).
+
+### §B. Presence stale
+
+1. **Multi-tab safe check** — `RealtimeService.countConnectionsForUser(userId)` per user. Nếu = 0 nhưng FE thấy ONLINE → DB `UserPresence.lastSeenAt` stale (chưa fanout disconnect).
+2. **Check `presence:update` fanout** — log `PresenceService.fanoutPresenceUpdate` warn line. State transition only emit khi `previousConnections===0 XOR currentConnections===0`. Nếu user multi-tab thì transition chỉ xảy ra ở first tab + last tab.
+3. **Check PlayerBlock filter** — `SELECT * FROM "PlayerBlock" WHERE "blockerUserId"=$1 OR "blockedUserId"=$1`. Nếu friend có block 2-chiều → đúng spec, fanout skip.
+4. **Force refresh** — `GET /social/presence?userIds=<csv>` REST batch lấy snapshot truth từ server.
+5. **Recover từ ghost connection** — Nếu socket leaked (vd Node crash hờ giữa lifecycle): `RealtimeGateway.kickUser(userId)` (admin command qua admin tool) để cleanup `userSockets` + fanout offline.
+
+### §C. Cross-shard inconsistency (multi-instance deploy)
+
+Phase 19.3 scope = **single-instance**. Mỗi shard giữ in-memory `userSockets` Map riêng → presence inconsistent giữa shards. **KHÔNG fixable** mà không bật Phase 19.3+ Redis adapter:
+
+- Nếu deploy >1 instance: **MUST** bật sticky-session ở load balancer (cookie `xt_access` hoặc IP affinity) để cùng user luôn về cùng shard.
+- Hoặc bật `socket.io-redis-adapter` + `RealtimeService` migration sang Redis pub/sub (Phase 19.3+ deferred — chưa có code).
+- Notification DB-side OK (Postgres single source of truth) — chỉ realtime emit bị split.
+
+### Escalation matrix
+
+| Severity | Trigger | Action |
+|----------|---------|--------|
+| P3 | 1 player report notification miss | Operator follow §A. Nếu reproducible 100% → escalate P2. |
+| P2 | >5 player cùng report trong 1h | Backend on-call check log `NotificationService.fanoutRealtimeIfOnline` warn + `RealtimeService.bind` state. Có thể server WS bind chưa xong khi event fire. |
+| P1 | Bell hoàn toàn không refresh badge sau reload + REST poll fail | Backend on-call + frontend on-call. Check `/notifications` 500 status. Có thể migration `20260920000000_phase_19_3_notification_presence` chưa apply ở env hiện tại — chạy `pnpm prisma migrate deploy`. |
+| P1 | Presence broadcast leak (vd ai cũng thấy ai đó online dù đã block) | Security lead. **NGẮT immediate** Phase 19.3 WS fanout (revert `RealtimeGateway` hook PR). Postmortem + replay log. |
+
+**KHÔNG làm**:
+
+- KHÔNG xoá row `Notification` trực tiếp DB (mất audit). Thay vào dùng `markRead` REST.
+- KHÔNG sửa `UserPresence.lastSeenAt` manual — server tự upsert qua lifecycle hook. Sửa tay → drift với `RealtimeService.userSockets` in-memory state.
+- KHÔNG bật multi-instance trước khi có Redis presence (deferred Phase 19.3+).
+
 ## 2.99. Pre-cutover Deploy Verify Gate (Phase 17.1)
 
 **Khi nào**: Mọi lần cutover production sang instance mới / image mới /

@@ -147,6 +147,11 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // Phase 16.4 — Market trade anomaly tracking (no FK to Character /
   // Listing; wipe explicit để reset state giữa test runs).
   await prisma.marketTradeAnomaly.deleteMany({});
+  // Phase 19.3 — Notification + Presence (Notification FK Cascade tới User;
+  // UserPresence FK Cascade tới User. Xoá trước User để rõ order, mirror
+  // các bảng audit khác).
+  await prisma.notification.deleteMany({});
+  await prisma.userPresence.deleteMany({});
   // Phase 19.2 — Chat moderation tables (no FK; wipe trước message
   // tables để tránh stale pointer khi message bị xoá tiếp theo).
   await prisma.chatMessageReport.deleteMany({});

@@ -101,19 +101,20 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
   /**
    * Apply WS `notification:new` payload. Prepend ở đầu list (giữ
-   * orderBy createdAt desc). Idempotent — dedupe theo id.
+   * orderBy createdAt desc). Idempotent — dedupe theo id; nếu id
+   * đã tồn tại thì KHÔNG increment unread (FE tự tin counter sẽ
+   * được sync qua `notification:unread-count` ngay sau đó).
    */
   function pushIncoming(row: NotificationRow): void {
     const exists = items.value.findIndex((x) => x.id === row.id);
     if (exists >= 0) {
       items.value[exists] = row;
-    } else {
-      items.value = [row, ...items.value].slice(
-        0,
-        NOTIFICATION_LIMITS.LIST_PAGE_MAX,
-      );
+      return;
     }
-    // Increment unread if new entry is unread.
+    items.value = [row, ...items.value].slice(
+      0,
+      NOTIFICATION_LIMITS.LIST_PAGE_MAX,
+    );
     if (!row.readAt) unreadCount.value += 1;
   }
 
