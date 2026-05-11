@@ -312,6 +312,73 @@ Index: `(status, severity, createdAt desc)`, `(source, createdAt desc)`, `(type,
 - `apps/api/src/modules/security/admin-security.controller.test.ts` (Phase 18.3 block — 9 tests): list + audit + filter forward + INVALID_STATUS; summary; ack success + 404 + 409; resolve success + INVALID_NOTE + 409.
 - `apps/web/src/components/__tests__/SecurityAlertPanel.test.ts` (9 tests): render summary + table; empty / loading / error state; filter apply forward; ack cancel/confirm; resolve note rỗng/non-empty; i18n vi/en parity.
 
+## 16. Gameplay Anti-cheat Deep Detection (Phase 16.3)
+
+Detection-only lớp phát hiện hành vi gameplay đáng ngờ — bổ sung cho Phase 16.6 Economy Anti-cheat (dòng tiền tổng thể) bằng cách quan sát **từng module gameplay** (dungeon / boss / mission / arena / territory) + EXP/item/currency gain spike + reward-cap bypass count.
+
+### Mục tiêu
+
+- Sớm flag hành vi nghi vấn (farm bot, exploit dungeon reset, wintrade arena, multi-account territory reward) để admin review.
+- KHÔNG thay thế WAF / rate-limit (Phase 18.1) / session hardening (Phase 18.2) / security audit alert (Phase 18.3).
+- KHÔNG thay thế Phase 16.6 Economy Anti-cheat — hai layer chạy song song, mỗi layer view domain riêng.
+
+### Models
+
+- `GameplayAnomaly` (`apps/api/prisma/schema.prisma`): `id`, `type` (10-enum), `severity` (`INFO`/`WARN`/`CRITICAL`), `status` (`OPEN`/`ACKNOWLEDGED`/`RESOLVED`), `source` (11-enum module), `characterId?`, `userId?`, `windowKey`, `detailsJson` (sanitized — KHÔNG raw IP / token / cookie), ack/resolve metadata.
+- Migration `20260701000000_phase_16_3_gameplay_anomaly` (additive, không backfill row cũ).
+- Index: `@@unique([type, characterId, windowKey])` đảm bảo idempotency multi-instance race-safe; 5 secondary index cho admin filter.
+
+### Detection types
+
+Catalog ở `packages/shared/src/gameplay-anticheat.ts` (`GAMEPLAY_ANOMALY_RULES`). Threshold rationale + bảng cụ thể: xem [`BALANCE_MODEL.md`](./BALANCE_MODEL.md) §11.27.
+
+10 type: `EXP_GAIN_SPIKE`, `CURRENCY_GAIN_SPIKE`, `ITEM_GAIN_SPIKE`, `DUNGEON_REWARD_FARM`, `BOSS_REWARD_FARM`, `MISSION_REWARD_FARM`, `ARENA_REWARD_FARM`, `TERRITORY_REWARD_SPIKE`, `COMBAT_RESULT_MISMATCH` (reserved hook), `REWARD_CAP_BYPASS_ATTEMPT`.
+
+### Service contract
+
+`GameplayAntiCheatService` (`apps/api/src/modules/admin-anticheat/gameplay-anticheat.service.ts`):
+
+- `scanAll({ now?, windowKey?, windowMs? })` dispatch 10 rule. Mỗi rule wrap try/catch — 1 rule fail KHÔNG phá rule khác (fail-soft per-rule).
+- `upsertAnomaly` bắt P2002 (`@@unique([type, characterId, windowKey])`) → `skipped` count (multi-instance race-safe).
+- Summary: `{ totalCreated, totalSkipped, totalErrored, byType, windowKeysByType }`.
+
+### Admin API surface
+
+Tất cả gắn `@RequireAdmin()` (PLAYER + MOD 403 `ADMIN_ONLY`) + `@RateLimitPolicy('ADMIN_MUTATION')`:
+
+- `GET /admin/anticheat/gameplay/summary`
+- `POST /admin/anticheat/gameplay/scan` + audit `ADMIN_ANTICHEAT_GAMEPLAY_SCAN`
+- `GET /admin/anticheat/gameplay/anomalies?severity=&status=&type=&source=&characterId=&from=&to=&limit=`
+- `POST /admin/anticheat/gameplay/anomalies/:id/ack` + audit `ADMIN_ANTICHEAT_GAMEPLAY_ACK`
+- `POST /admin/anticheat/gameplay/anomalies/:id/resolve` (note ≤1000ch) + audit `ADMIN_ANTICHEAT_GAMEPLAY_RESOLVE`
+
+Chi tiết request/response: [`API.md`](./API.md) §Admin Anti-cheat Gameplay.
+
+Admin operations playbook (run scan / ack / resolve / handle CRITICAL): [`RUNBOOK.md`](./RUNBOOK.md) §2.33.
+
+### Invariants (test-enforced — `gameplay-anticheat.service.test.ts`)
+
+- Scan KHÔNG mutate `Character.linhThach` / `Character.expCurrent` / `InventoryItem.qty`.
+- Scan KHÔNG mutate `User.bannedAt` / KHÔNG revoke session / KHÔNG khoá tài khoản.
+- KHÔNG auto-rollback transaction, KHÔNG auto-refund currency, KHÔNG auto-deduct.
+- `detailsJson` đã sanitize ở caller — KHÔNG raw IP / token / cookie / refresh hash.
+- `AdminAuditLog` ghi mọi mutation (scan / ack / resolve) — KHÔNG silent fail.
+
+### Cấm
+
+- **KHÔNG auto-ban** dựa trên anomaly. Anomaly là **signal**, không phải bằng chứng. Ban vĩnh viễn vẫn qua admin action explicit (endpoint admin có sẵn).
+- **KHÔNG tự rollback** EXP / item / currency dựa trên anomaly.
+- **KHÔNG tự khoá tài khoản** / KHÔNG revoke session.
+- **KHÔNG public notify** (mail / chat / WS) — admin team xử lý nội bộ.
+- **KHÔNG gộp Phase 16.6 EconomyAnomaly** vào cùng bảng — hai domain phân biệt rõ (economy money flow vs per-module gameplay behavior).
+
+### Test coverage
+
+- `packages/shared/src/gameplay-anticheat.test.ts` (23 tests): catalog completeness, severity classifier, windowKey builder, type/source/severity/status guards, fail-soft unknown.
+- `apps/api/src/modules/admin-anticheat/gameplay-anticheat.service.test.ts` (18 tests): 10-rule dispatch, fail-soft per-rule, P2002 idempotency, detection-only Character invariant.
+- `apps/api/src/modules/admin-anticheat/admin-gameplay-anticheat.controller.test.ts` (17 tests): RBAC ADMIN/MOD/PLAYER, audit log, filter validation, limit clamp ≤200, note cap 1000ch, idempotent ack/resolve.
+- `apps/web/src/components/__tests__/AdminGameplayAntiCheatPanel.test.ts` (9 tests): summary cards, filter, run scan confirm, ack/resolve confirm + note, loading/empty/error, i18n vi/en parity.
+
 ## 15. Khi phát hiện sự cố
 
 1. Ngắt traffic (reverse proxy 503 hoặc scale 0 instance).
