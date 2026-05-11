@@ -12,6 +12,86 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Phase 18.1 — Security Rate Limit + Abuse Protection (this PR — #521)
+
+**Scope**: Bổ sung lớp bảo vệ chống abuse (rate-limit + fail2ban-style temporary block) cho các API nhạy cảm (auth, shop, market, sect-shop, daily-login, dungeon claim, liveops gift claim, topup, admin mutation). Defense-in-depth detection + throttle — **KHÔNG** auto-ban vĩnh viễn, **KHÔNG** thay thế WAF/CDN/anti-cheat, **KHÔNG** chặn healthcheck/readyz/metrics.
+
+#### Added — Phase 18.1
+
+- **Shared catalog `security-rate-limit.ts`**: 16 `RateLimitPolicyKey` (`AUTH_LOGIN`, `AUTH_REGISTER`, `AUTH_REFRESH`, `AUTH_PASSWORD_RESET`, `SHOP_BUY`, `SECT_SHOP_BUY`, `MARKET_CREATE_LISTING`, `MARKET_BUY`, `DAILY_LOGIN_CLAIM`, `DUNGEON_CLAIM`, `LIVEOPS_GIFT_CLAIM`, `TOPUP_CREATE_ORDER`, `ADMIN_MUTATION`, `ADMIN_REPORT_VIEW`, `PUBLIC_READ`, `DEFAULT_API`). Mỗi policy có `windowSec` / `maxRequests` / `blockSec` / `scope` (`IP`/`USER`/`CHARACTER`/`IP_USER`) / `severity` (`LOW`/`MEDIUM`/`HIGH`) / `sensitive` flag + descriptionVi/En. Helpers: `getRateLimitPolicy`, `isSensitivePolicy`, `validateRateLimitPolicy`, `normalizeRateLimitSubject`, `buildRateLimitKey`, `buildAbuseBlockKey`, `getRateLimitPolicyGroup`. 217 dòng test pure (catalog parity, validator, key format, sensitive set, scope/severity guards).
+- **API `SecurityModule`** (`apps/api/src/modules/security/`):
+  - `RateLimitService` — Redis-backed sliding window qua `ZSET` (`zremrangebyscore` + `zadd` + `zcard` + `pexpire`). Fail-soft: Redis throw → in-memory fallback + `console.warn` (1x). Toggle `RATE_LIMIT_ENABLED` (default `true`), `RATE_LIMIT_FAIL_OPEN` (default `true`). Trả `{ allowed, remaining, resetAt, retryAfterSec, count, skipped, degraded }`. In-memory store cap 50k key tránh leak.
+  - `RateLimitGuard` — `APP_GUARD` toàn cục, opt-in qua `@RateLimitPolicy('KEY')` decorator + `@SkipRateLimit()` để bypass (healthcheck/readyz/metrics). Derive subject theo scope, check abuse-block trước → consume rate-limit → set headers `X-RateLimit-Limit` / `X-RateLimit-Remaining` / `X-RateLimit-Reset` / `Retry-After`. Sensitive policy mới persist SecurityEvent + escalate block khi đủ threshold.
+  - `SecurityAbuseService` — Prisma-backed. `recordRateLimitViolation` đếm event cùng `ipHash` + `userId` trong window severity (HIGH 5/15p, MEDIUM 10/15p, LOW chỉ throttle), vượt → `createBlock` IP/USER `blockSec` theo severity (HIGH 15p, MEDIUM 10p, LOW 5p). `recordLoginFailed` threshold riêng 10/15p → block 30p. `recordAdminForbidden` chỉ persist event (không auto-block). `isBlocked` / `liftBlock` / `listActiveBlocks` / `listRecentEvents`. Fail-safe: DB throw → log warn + skip persistence, KHÔNG crash caller. Toggle `ABUSE_BLOCK_ENABLED` (default `true`).
+  - `IpHashService` — `sha256(SECURITY_IP_HASH_SALT || ':' || ip)` deterministic hex, dùng cho cả `SecurityEvent.ipHash` + Redis key + abuse subject lookup. Default salt `'xuantoi-default-ip-salt'` (warn nếu env trống).
+  - `AdminSecurityController` (prefix `/admin/security`): `GET rate-limit/status?policy=&scope=&subject=` (peek không tăng counter), `GET events?from=&to=&severity=&type=&limit=&cursor=`, `GET blocks?type=&limit=&cursor=`, `POST blocks/:id/lift`, `GET policies` (catalog dump). Tất cả `@UseGuards(AdminGuard)` + audit `ADMIN_SECURITY_EVENTS_VIEW` / `ADMIN_SECURITY_BLOCKS_VIEW` / `ADMIN_SECURITY_BLOCK_LIFT` / `ADMIN_SECURITY_BLOCK_LIFT_FAILED`. Raw IP KHÔNG trả về — chỉ `ipHash`.
+- **Prisma migration `20260627000000_phase_18_1_security_rate_limit_abuse_protection`** (additive): `SecurityEvent` (id, type, severity, ipHash, userId, characterId, policy, detailJson, createdAt + 5 index) + `SecurityBlock` (id, type, subjectHash, reason, expiresAt, createdAt, liftedAt, liftedById + 3 index).
+- **Sensitive route wire**: `auth.controller.ts` (login `AUTH_LOGIN`, register `AUTH_REGISTER`, refresh `AUTH_REFRESH`), `shop.controller.ts` (buy `SHOP_BUY`), `sect-shop.controller.ts` (buy `SECT_SHOP_BUY`), `market.controller.ts` (create-listing `MARKET_CREATE_LISTING`, buy `MARKET_BUY`), `daily-login.controller.ts` (claim `DAILY_LOGIN_CLAIM`), `dungeon-run.controller.ts` (claim `DUNGEON_CLAIM`), `liveops-events-public.controller.ts` (gift claim `LIVEOPS_GIFT_CLAIM`), `topup.controller.ts` (create-order `TOPUP_CREATE_ORDER`), admin controllers (mutation/report view). `health.controller.ts` + `metrics.controller.ts` + liveops-events public read áp `@SkipRateLimit()` để monitoring không bị 429.
+- **FE Admin Security Panel** (`apps/web/src/components/AdminSecurityPanel.vue`): tab "Bảo mật / Lạm dụng" trong `AdminView`. Hiển thị 2 list: active blocks (filter IP/USER, lift button + confirm) + recent events (filter severity/type/from/to, paginate). Loading/empty/error state, i18n `admin.security.*` VI/EN parity (68 keys mỗi locale). API client `apps/web/src/api/adminSecurity.ts` (5 helper: `listEvents`, `listBlocks`, `liftBlock`, `rateLimitStatus`, `listPolicies`).
+
+#### Configuration — Phase 18.1
+
+| Env var | Default | Mô tả |
+|---|---|---|
+| `RATE_LIMIT_ENABLED` | `true` | Master toggle. `false` → `RateLimitService.consume` trả `allowed=true, skipped=true` ngay (KHÔNG đụng Redis/in-memory). KHÔNG dùng để "skip CI" — chỉ debug emergency. |
+| `RATE_LIMIT_FAIL_OPEN` | `true` | Khi Redis throw → fallback in-memory (degraded). `false` = fail-closed (Redis lỗi → treat request as rate-limited). Production khuyến nghị `true` để tránh Redis blip làm chết user. |
+| `SECURITY_IP_HASH_SALT` | `'xuantoi-default-ip-salt'` | Salt cho `sha256(salt:ip)`. Production **bắt buộc** set (≥ 32 ký tự ngẫu nhiên). Rotate = invalidate toàn bộ lookup IP → block cũ hoá `ipHash` mới → effectively reset abuse counter (intentional kill switch). |
+| `ABUSE_BLOCK_ENABLED` | `true` | Toggle persist SecurityEvent + createBlock. `false` = rate-limit still enforced (Redis counter), nhưng KHÔNG escalate to block + KHÔNG ghi DB. Dùng khi DB tải nặng. |
+
+#### Idempotency / race-safety — Phase 18.1
+
+- `createBlock` check active block trước khi insert → không tạo 2 block cùng subject trong cùng window.
+- `liftBlock` `updateMany where liftedAt IS NULL` guard → admin click "Lift" 2 lần chỉ thành công 1 lần.
+- Audit `ADMIN_SECURITY_BLOCK_LIFT` ghi sau `updateMany` thành công.
+- Rate-limit counter Redis sliding window deterministic — không phụ thuộc clock skew giữa instance.
+
+#### Privacy / sanitization — Phase 18.1
+
+- **KHÔNG** lưu raw IP — chỉ `sha256(salt:ip)`. Admin endpoint trả `ipHash` (hex), không reverse được.
+- **KHÔNG** lưu password / token / cookie / refresh JWT trong `SecurityEvent.detailJson` — `LOGIN_FAILED` chỉ lưu `email` (đã là public identifier).
+- `AdminAuditLog` ghi `ADMIN_SECURITY_BLOCK_LIFT` với `blockId` + `type` + `subjectHash` + `reason` (KHÔNG raw IP).
+- Rotate `SECURITY_IP_HASH_SALT` = invalidate toàn bộ lookup → admin mất khả năng cross-ref IP cũ (intentional — privacy kill switch).
+
+#### Known limitations — Phase 18.1
+
+- **In-memory fallback per-instance**: khi Redis down, mỗi API instance đếm riêng → user spam có thể bypass bằng cách hit multiple instance qua load balancer. Acceptable trade-off (defense-in-depth, không phải primary barrier).
+- **No CAPTCHA / no permanent ban / no IP geolocation block**: out-of-scope Phase 18.1. Khi cần escalate (DDoS, credential stuffing nặng) → WAF/CDN layer trên (Cloudflare, AWS WAF).
+- **`ABUSE_THRESHOLD` không config qua env** ở Phase 18.1 (hard-code: HIGH 5/15p, MEDIUM 10/15p, LOW vô hiệu). Cần tweak → đổi source `security-abuse.service.ts` + thêm test.
+- **Admin lift KHÔNG broadcast** WS để FE panel auto-refresh — admin phải bấm "Tải lại" (acceptable, low-frequency action).
+- **Không retroactive cleanup** SecurityEvent / SecurityBlock cũ — table tăng dần. Phase sau cần job dọn `liftedAt < now - 90 days`.
+
+#### Tests added — Phase 18.1
+
+- **Shared** (`packages/shared/src/security-rate-limit.test.ts`, 217 dòng): catalog parity (16 key unique), validator (windowSec/maxRequests/blockSec bound), `isSensitivePolicy` set, scope/severity guard, key format stable.
+- **API**:
+  - `apps/api/src/modules/security/ip-hash.service.test.ts` (84 dòng) — hash deterministic + salt rotate.
+  - `apps/api/src/modules/security/rate-limit.service.test.ts` (128 dòng) — Redis sliding window, in-memory fallback, fail-open/fail-closed, RATE_LIMIT_ENABLED skip, headers value.
+  - `apps/api/src/modules/security/rate-limit.guard.test.ts` (217 dòng) — `@SkipRateLimit` bypass, `@RateLimitPolicy` enforce 429, abuse-block precedence, X-RateLimit headers + Retry-After, IP_USER vs IP scope.
+  - `apps/api/src/modules/security/security-abuse.service.test.ts` (336 dòng) — `recordRateLimitViolation` threshold IP+USER, `recordLoginFailed` block 30p, `recordAdminForbidden` event only, `createBlock` idempotent, `liftBlock` audit, `listRecentEvents` filter + pagination, DB throw fail-safe.
+  - `apps/api/src/modules/security/admin-security.controller.test.ts` (174 dòng) — admin-only (PLAYER 403), GET events/blocks pagination, POST lift audit + 404 idempotent, GET rate-limit/status peek không tăng counter.
+- **Web** (`apps/web/src/components/__tests__/AdminSecurityPanel.test.ts`, 195 dòng): mount + load blocks/events, filter, lift confirm, empty + error state, i18n VI/EN parity.
+
+#### Files changed — Phase 18.1
+
+- `packages/shared/src/security-rate-limit.ts` (new, 469 lines).
+- `packages/shared/src/security-rate-limit.test.ts` (new, 217 lines).
+- `packages/shared/src/index.ts` (+1 export).
+- `apps/api/prisma/schema.prisma` (+87 lines: SecurityEvent + SecurityBlock).
+- `apps/api/prisma/migrations/20260627000000_phase_18_1_security_rate_limit_abuse_protection/migration.sql` (new, 50 lines).
+- `apps/api/src/app.module.ts` (+6 lines: register SecurityModule).
+- `apps/api/src/modules/security/` (new module, 8 files, ~2300 lines): `security.module.ts`, `ip-hash.service.ts`, `rate-limit.service.ts`, `rate-limit.guard.ts`, `rate-limit-policy.decorator.ts`, `security-abuse.service.ts`, `admin-security.controller.ts`, + 5 test file.
+- Sensitive route wire: `auth.controller.ts` (+6), `shop.controller.ts` (+2), `sect-shop.controller.ts` (+2), `market.controller.ts` (+3), `daily-login.controller.ts` (+2), `dungeon-run.controller.ts` (+2), `liveops-events-public.controller.ts` (+2), `topup.controller.ts` (+2), `admin/admin.controller.ts` (+18), `admin-economy-safety.controller.ts` (+2), `admin-config-version.controller.ts` (+2), `admin-feature-flag.controller.ts` (+2), `admin-liveops-announcements.controller.ts` (+2), `admin-liveops-cron.controller.ts` (+2), `admin-liveops-events.controller.ts` (+2), `admin-maintenance-window.controller.ts` (+2), `admin-territory.controller.ts` (+2).
+- Bypass: `health.controller.ts` (+8: `@SkipRateLimit()`), `metrics.controller.ts` (+4).
+- `apps/web/src/api/adminSecurity.ts` (new, 105 lines).
+- `apps/web/src/components/AdminSecurityPanel.vue` (new, 406 lines).
+- `apps/web/src/components/__tests__/AdminSecurityPanel.test.ts` (new, 195 lines).
+- `apps/web/src/views/AdminView.vue` (+15: mount tab).
+- `apps/web/src/i18n/{vi,en}.json` (+68 key mỗi locale).
+- `.github/workflows/e2e-full.yml` (+10: pass env mới vào job).
+- Docs: `docs/CHANGELOG.md`, `docs/API.md`, `docs/SECURITY.md`, `docs/DEPLOY.md`, `docs/RUNBOOK.md`, `docs/AI_HANDOFF_REPORT.md` (this PR).
+
+---
+
 ### Phase 16.1.B — Ledger Checker Daily Cron + Economy Report Admin Endpoint (this PR — #520)
 
 **Scope**: Bổ sung báo cáo economy theo khoảng ngày + Admin FE panel trên hạ tầng ledger checker cron + EconomyAnomaly đã có sẵn từ Phase 16.6. Detection + reporting only — **KHÔNG auto-ban, KHÔNG tự rollback ledger, KHÔNG block transaction**.

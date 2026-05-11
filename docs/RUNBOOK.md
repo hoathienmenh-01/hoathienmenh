@@ -1687,6 +1687,136 @@ Khi report cho thấy `MARKET_OUTLIER` / `ADMIN_GRANT_OVER_LIMIT` / character de
 - KHÔNG để cron tắt > 7 ngày liên tiếp (mất audit cumulative — nếu cần tắt lâu, bù lại bằng manual run hằng ngày).
 - KHÔNG cache response ở CDN/edge — endpoint chứa data nhạy cảm + audit log.
 
+### 2.30. Phase 18.1 — Security Rate Limit + Abuse Block (P1/P2/P3)
+
+Tham chiếu: [`docs/SECURITY.md`](./SECURITY.md) §12, [`docs/API.md`](./API.md) §AdminSecurityController, source <ref_file file="apps/api/src/modules/security/rate-limit.service.ts" /> + <ref_file file="apps/api/src/modules/security/security-abuse.service.ts" /> + <ref_file file="packages/shared/src/security-rate-limit.ts" />.
+
+#### 2.30.1. Symptom → severity
+
+| Symptom | Severity | Note |
+|---|---|---|
+| Toàn bộ user legit bị 429 / `ABUSE_BLOCKED` đồng loạt | **P0** | Có thể do salt collision hoặc misconfig — xem 2.30.5. |
+| Vài chục user legit bị 429 hoặc admin báo "không vào được" | **P1** | Kiểm Redis status + recent SecurityEvent. |
+| 1 user legit bị block sai (false-positive) | **P2** | Lift block + ghi audit. |
+| Healthcheck `/healthz` / `/readyz` trả 429 | **P0** | Bug: monitoring bị block. Phải có `@SkipRateLimit()`. |
+| Admin nghi đang bị brute force / scrape | **P1** | Xem `SecurityEvent` filter `LOGIN_FAILED` / `RATE_LIMIT_VIOLATION`. |
+
+#### 2.30.2. Kiểm tra 1 user có bị rate-limit / block không
+
+```bash
+# Subject = userId (cuid). Scope IP_USER cho login, USER cho economy.
+curl -s -b cookies.txt \
+  'https://<host>/api/admin/security/rate-limit/status?policy=AUTH_LOGIN&scope=IP_USER&subject=<userId>'
+# Response: { count, remaining, resetAt }
+```
+
+Hoặc qua FE: AdminView → tab **Bảo mật / Lạm dụng** → block list (filter type `USER`) + event list (filter `userId` qua URL param tạm thời, hoặc xem `SecurityEvent` SQL direct):
+
+```sql
+SELECT id, type, severity, "ipHash", "userId", policy, "detailJson", "createdAt"
+FROM "SecurityEvent"
+WHERE "userId" = '<userId>'
+   OR "ipHash" = encode(digest(concat(current_setting('app.salt'), ':', '<ip>'), 'sha256'), 'hex')
+ORDER BY "createdAt" DESC LIMIT 50;
+```
+
+> SQL chỉ dùng khi panel/endpoint không đủ — bình thường dùng panel.
+
+#### 2.30.3. Lift 1 block (admin override) — P2
+
+1. Mở AdminView → tab **Bảo mật / Lạm dụng** → bảng **Active Blocks**.
+2. Filter `type=USER` hoặc `type=IP`, copy `id` block.
+3. Bấm nút **"Lift"** → xác nhận → server gọi `POST /admin/security/blocks/:id/lift` → audit `ADMIN_SECURITY_BLOCK_LIFT`.
+
+Hoặc qua API:
+
+```bash
+curl -X POST -b cookies.txt \
+  'https://<host>/api/admin/security/blocks/<blockId>/lift'
+# Success 200: { ok: true, data: { block: {...} } }
+# Idempotent: nếu đã lift / không tồn tại → 404 BLOCK_NOT_FOUND + audit FAIL.
+```
+
+**Sau khi lift**: user/IP có thể request lại ngay (counter rate-limit Redis vẫn còn, nhưng abuse-block đã bỏ). Nếu cần reset luôn counter rate-limit: chờ window reset (xem `expiresAt` từ `GET /admin/security/rate-limit/status`) hoặc flush Redis key `ratelimit:<policy>:<scope>:<subject>` (chỉ làm khi user khẳng định bị block nhầm vì test).
+
+#### 2.30.4. Xử lý IP / user bị block nhầm (false-positive) — P2
+
+1. **Confirm user thật**: hỏi email/userId + lý do bị block (login fail nhiều, click claim spam, đa account chung wifi…).
+2. **Identify block**: GET `/admin/security/blocks?type=USER` (paginate). Match `subjectHash` = userId raw (USER scope không hash userId).
+3. **Lift** (xem 2.30.3).
+4. **Root cause**: xem `SecurityEvent` cùng `ipHash` / `userId` → policy nào vi phạm. Nếu là `AUTH_LOGIN` → kiểm có brute force thật không (event `LOGIN_FAILED` 10+ row cùng email từ nhiều IP = thật, từ 1 IP = nhiều khả năng user gõ sai password).
+5. **Document**: ghi short note vào ticket support — `blockId` + `reason` + lý do lift. Audit log đã ghi tự động.
+
+> KHÔNG lift hàng loạt mà không kiểm root cause — có thể đang bị tấn công thật.
+
+#### 2.30.5. Toàn bộ user bị block / 429 đồng loạt — P0
+
+Thường do 1 trong 3 nguyên nhân:
+
+1. **Misconfig `RATE_LIMIT_ENABLED=false`** trên 1 instance → admin lift block đang reset → khi flip lại true, mọi window đếm từ 0 → spam UI legit bị 429. **Mitigate**: rollback env, restart từng instance để Redis sync.
+2. **Hash salt bị thay đổi giữa deploy** → block cũ vẫn match ipHash mới do collision rất hiếm; nhưng nếu salt rotate cố ý → block tồn tại từ trước cũng vẫn match request mới (vì cả ipHash request mới + ipHash trong row đều sai theo cùng cách, chỉ orphan). Trường hợp false-positive đồng loạt thường do salt empty → `'xuantoi-default-ip-salt'` (mọi IP hash giống nhau ở deploy mới — KHÔNG, vì IP khác → hash khác). Nếu nghi salt issue: kiểm `SECURITY_IP_HASH_SALT` env trên các instance đồng bộ.
+3. **Redis nhồi key abuse:block tự cũ** → check `redis-cli KEYS 'abuse:block:*' | wc -l`. Nếu > 10k → có thể do bot tấn công thật. Trong incident P0 hợp pháp (DDoS), KHÔNG flush vội — xem 2.30.7 trước.
+
+**Emergency switch**:
+
+```bash
+# Tạm tắt enforcement 5-10 phút để recover:
+RATE_LIMIT_ENABLED=false  # restart API instance, ghi post-mortem
+# Sau khi traffic ổn lại, flip true ngay, KHÔNG để false > 1h.
+```
+
+#### 2.30.6. Verify fail-open behavior khi Redis down — P1
+
+1. SSH vào API instance staging.
+2. Block Redis port: `iptables -A OUTPUT -p tcp --dport 6379 -j REJECT` (KHÔNG làm production!).
+3. Spam `POST /api/_auth/login` với password sai 15 lần.
+4. Expected: request vẫn 200/401 (KHÔNG 500), `console.warn` 1 lần `[RateLimitService] redis failed (fail-open)`, in-memory counter active.
+5. Reset: `iptables -D OUTPUT -p tcp --dport 6379 -j REJECT`.
+
+Production smoke: `pnpm --filter @xuantoi/api test -- --run rate-limit.service` đã cover fail-open path trong vitest mock.
+
+#### 2.30.7. Đọc SecurityEvent / điều tra brute force — P1/P2
+
+```bash
+# Filter login failed trong 1 giờ qua, theo ipHash:
+curl -s -b cookies.txt \
+  'https://<host>/api/admin/security/events?type=LOGIN_FAILED&from=2026-05-11T05:00:00Z&limit=200'
+```
+
+Hoặc SQL:
+
+```sql
+SELECT "ipHash", COUNT(*) AS attempts,
+       MAX("createdAt") AS last_seen,
+       array_agg(DISTINCT "detailJson"->>'email') AS emails_tried
+FROM "SecurityEvent"
+WHERE type = 'LOGIN_FAILED'
+  AND "createdAt" >= NOW() - INTERVAL '1 hour'
+GROUP BY "ipHash"
+ORDER BY attempts DESC LIMIT 20;
+```
+
+Nếu 1 ipHash có > 50 attempts với > 5 email khác nhau → credential stuffing. Block đã được tạo tự động (threshold 10/15p). Nếu cần block lâu hơn → tạo block thủ công qua admin (chưa có endpoint trực tiếp Phase 18.1 — fallback: dùng SQL `INSERT INTO "SecurityBlock"` với `type='IP'`, `subjectHash=<hash>`, `expiresAt=NOW() + INTERVAL '24 hours'`, `reason='MANUAL_INVESTIGATION'`). Audit thủ công qua note.
+
+#### 2.30.8. Tăng / giảm policy threshold — code change
+
+Phase 18.1 KHÔNG cho phép tweak policy qua env / DB row. Lý do: tránh "lén bypass rate-limit ở production" mà không peer-review. Để đổi:
+
+1. Mở <ref_file file="packages/shared/src/security-rate-limit.ts" /> → sửa `RATE_LIMIT_POLICIES[KEY]`.
+2. Update `security-rate-limit.test.ts` (catalog lock-in test) → run `pnpm --filter @xuantoi/shared test -- --run security`.
+3. PR riêng (KHÔNG hot-fix).
+
+Validator `validateRateLimitPolicy` đã chặn `maxRequests > 10000` / `windowSec > 24h` / `blockSec > 24h` — không thể vô ý "tắt rate-limit" qua catalog.
+
+#### 2.30.9. KHÔNG làm
+
+- KHÔNG bao giờ tắt `RATE_LIMIT_ENABLED` mà không có ticket P0 + post-mortem.
+- KHÔNG set `SECURITY_IP_HASH_SALT=''` ở production (`IpHashService` sẽ dùng default → mất tính bí mật salt). Phải set ≥ 32 ký tự ngẫu nhiên.
+- KHÔNG flush toàn bộ `abuse:block:*` Redis (Phase 18.1 dùng Prisma cho block, không Redis — flush KHÔNG có tác dụng. Block ở DB; muốn lift hàng loạt → SQL update + audit thủ công, **chỉ làm khi P0**).
+- KHÔNG gắn `@SkipRateLimit()` cho route gameplay / economy chỉ vì user phàn nàn — phải tweak policy đúng cách (xem 2.30.8).
+- KHÔNG log raw IP / password / token vào `SecurityEvent.detailJson` khi thêm event type mới — `IpHashService.hashIp` luôn được gọi trước khi persist.
+- KHÔNG dùng `RATE_LIMIT_FAIL_OPEN=false` trừ khi đã có WAF/CDN layer trên (closed beta hiện tại chưa có).
+
 ## 3. Backup operations (closed beta cadence)
 
 ### 3.1. Cron daily backup

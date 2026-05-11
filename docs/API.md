@@ -919,9 +919,66 @@ Hệ versioning + rollback an toàn cho 4 entity vận hành: `LIVEOPS_EVENT` / 
 - `CONFIG_ROLLBACK_CONFIRM_MISMATCH` (409) — `confirmPhrase` không khớp server-issued phrase.
 - `CONFIG_ROLLBACK_APPLY_FAILED` (409) — apply failed mid-transaction; thay đổi đã rollback nguyên tử.
 
+## Admin Security — `AdminSecurityController` (Phase 18.1)
+
+> Phase 18.1 Security Rate Limit + Abuse Protection. Defense-in-depth detection + temporary block (5-30 phút theo severity). **KHÔNG** auto-ban vĩnh viễn / **KHÔNG** CAPTCHA / **KHÔNG** thay WAF/CDN. Tất cả endpoint gắn `@UseGuards(AdminGuard)` (ADMIN + MOD đều pass theo convention hiện hành, nhưng `liftBlock` thêm `@RequireAdmin()` → MOD reject 403 `ADMIN_ONLY`). Audit `AdminAuditLog` với action `ADMIN_SECURITY_EVENTS_VIEW` / `ADMIN_SECURITY_BLOCKS_VIEW` / `ADMIN_SECURITY_BLOCK_LIFT` / `ADMIN_SECURITY_BLOCK_LIFT_FAILED` + meta đã sanitize.
+
+| Method | Path | Auth | Mô tả |
+|--------|------|------|-------|
+| GET    | `/admin/security/rate-limit/status?policy=&scope=&subject=` | ADMIN/MOD | Peek current rate-limit counter cho 1 subject — **KHÔNG** tăng counter. `policy` ∈ `RATE_LIMIT_POLICY_KEYS` (vượt → 400 `INVALID_POLICY`). `scope` ∈ `IP`/`USER`/`CHARACTER`/`IP_USER` (default `IP_USER`). `subject` ≤ 256 ký tự (raw IP / userId / characterId; với scope `IP` server tự hash bằng `IpHashService` trước khi peek). Response `{ ok: true, data: { policy, scope, count, remaining, resetAt } }`. Rate-limit: `ADMIN_REPORT_VIEW`. |
+| GET    | `/admin/security/events?from=&to=&severity=&type=&limit=&cursor=` | ADMIN/MOD | List `SecurityEvent` row mới nhất, paginated. `severity` ∈ `INFO`/`WARN`/`CRITICAL`. `type` ∈ `RATE_LIMIT_VIOLATION`/`LOGIN_FAILED`/`REGISTER_SPAM`/`INVALID_TOKEN`/`ADMIN_FORBIDDEN`/`IP_BLOCKED`/`USER_BLOCKED`/`BLOCK_LIFTED`. `from`/`to` ISO date (invalid → bị bỏ qua). `limit` default 50 / max 200. `cursor` = id của row cuối lần trước (Prisma cursor pagination). Response `{ ok: true, data: { events: [{ id, type, severity, ipHash, userId, characterId, policy, detailJson, createdAt }] } }`. **Raw IP KHÔNG bao giờ trả về** — chỉ `ipHash` (sha256 với salt). Audit `ADMIN_SECURITY_EVENTS_VIEW`. Rate-limit: `ADMIN_REPORT_VIEW`. |
+| GET    | `/admin/security/blocks?type=&limit=&cursor=` | ADMIN/MOD | List **active** `SecurityBlock` (chưa lift + chưa hết hạn). `type` ∈ `IP`/`USER`. `limit` default 50 / max 200. Response `{ ok: true, data: { blocks: [{ id, type, subjectHash, reason, expiresAt, createdAt }] } }`. Audit `ADMIN_SECURITY_BLOCKS_VIEW`. Rate-limit: `ADMIN_REPORT_VIEW`. |
+| POST   | `/admin/security/blocks/:id/lift` | **ADMIN-only** | Lift 1 block (admin override). Idempotent: nếu block không tồn tại / đã lift → 404 `BLOCK_NOT_FOUND` + audit `ADMIN_SECURITY_BLOCK_LIFT_FAILED`. Khi success: `liftedAt = now()` + `liftedById = req.userId` + audit `ADMIN_SECURITY_BLOCK_LIFT` với `{ blockId, type, subjectHash, reason }`. Response `{ ok: true, data: { block: { id, type, subjectHash, reason } } }`. `@RequireAdmin()` → MOD reject 403 `ADMIN_ONLY`. Rate-limit: `ADMIN_MUTATION`. |
+| GET    | `/admin/security/policies` | ADMIN/MOD | Static catalog dump (no DB hit). Response `{ ok: true, data: { keys: [...RATE_LIMIT_POLICY_KEYS] } }`. Dùng để FE Admin Security Panel autocomplete policy filter. Rate-limit: `ADMIN_REPORT_VIEW`. |
+
+### Rate limit response headers (Phase 18.1)
+
+Mọi response của route có `@RateLimitPolicy(...)` đều set:
+
+- `X-RateLimit-Limit`: `policy.maxRequests`.
+- `X-RateLimit-Remaining`: `max(0, maxRequests - count)`.
+- `X-RateLimit-Reset`: epoch seconds khi window hiện tại reset.
+- `Retry-After` (chỉ khi 429): số giây client nên đợi (= `windowSec` nếu rate-limited, = `expiresAt - now` nếu bị abuse-block).
+
+### 429 payload (Phase 18.1)
+
+Response body chuẩn `{ ok: false, error: { code, message, ...meta } }`:
+
+- `RATE_LIMITED` — vượt rate-limit policy. Meta: `{ policy, retryAfterSec, resetAt }`.
+- `ABUSE_BLOCKED` — subject đang bị `SecurityBlock` active. Meta: `{ retryAfterSec, expiresAt }`. KHÔNG leak `reason` hoặc `subjectHash` ra public (chỉ admin xem qua `GET /admin/security/blocks`).
+
+### Bypass route (Phase 18.1)
+
+Các route gắn `@SkipRateLimit()` không bao giờ bị 429 dù spam — dành cho monitoring + system health:
+
+- `GET /healthz`, `GET /readyz`, `GET /version`, `GET /admin/metrics` (Phase 17.5).
+- `GET /liveops/events/public` (public read polled high-frequency).
+
+### Sensitive endpoint wire (Phase 18.1)
+
+Các route đã wire `@RateLimitPolicy(...)`:
+
+| Endpoint | Policy key | Scope | Window / max |
+|---|---|---|---|
+| `POST /_auth/login` | `AUTH_LOGIN` | `IP_USER` | 10 / 15p, block 15p khi vượt threshold + login-failed 10/15p → block 30p |
+| `POST /_auth/register` | `AUTH_REGISTER` | `IP` | 5 / 15p, block 30p |
+| `POST /_auth/refresh` | `AUTH_REFRESH` | `IP_USER` | 30 / 60s, block 5p |
+| `POST /shop/buy` | `SHOP_BUY` | `USER` | 30 / 60s, block 10p |
+| `POST /sect/shop/buy` | `SECT_SHOP_BUY` | `USER` | 20 / 60s, block 10p |
+| `POST /market/listings` | `MARKET_CREATE_LISTING` | `CHARACTER` | 10 / 60s, block 10p |
+| `POST /market/listings/:id/buy` | `MARKET_BUY` | `CHARACTER` | 30 / 60s, block 10p |
+| `POST /daily-login/claim` | `DAILY_LOGIN_CLAIM` | `USER` | 5 / 60s, block 10p |
+| `POST /dungeon-run/:id/claim` | `DUNGEON_CLAIM` | `CHARACTER` | 20 / 60s, block 10p |
+| `POST /liveops/events/:key/claim-gift` | `LIVEOPS_GIFT_CLAIM` | `USER` | 15 / 60s, block 10p |
+| `POST /topup/orders` | `TOPUP_CREATE_ORDER` | `USER` | 10 / 60min, block 60min |
+| `POST /admin/...` (mutation) | `ADMIN_MUTATION` | `USER` | 60 / 60s, block 5p |
+| `GET /admin/...` (report view) | `ADMIN_REPORT_VIEW` | `USER` | 120 / 60s, **no block** |
+
+Source-of-truth: <ref_file file="packages/shared/src/security-rate-limit.ts" />.
+
 ## Error codes (chuẩn hoá)
 
-- **Auth**: `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `RATE_LIMITED`, `PASSWORD_CHANGED`, `REUSED_REFRESH_TOKEN`, `BANNED`, `INVALID_INPUT`.
+- **Auth**: `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `RATE_LIMITED`, `ABUSE_BLOCKED`, `PASSWORD_CHANGED`, `REUSED_REFRESH_TOKEN`, `BANNED`, `INVALID_INPUT`.
 - **Character**: `NO_CHARACTER`, `NAME_TAKEN`, `ALREADY_ONBOARDED`, `NOT_ENOUGH_EXP`, `NOT_AT_PEAK`, `NOT_IN_CULTIVATION`, `NOT_FOUND`.
 - **Combat**: `IN_COMBAT`, `NO_ENCOUNTER`, `ENCOUNTER_NOT_ACTIVE`.
 - **Market**: `ITEM_NOT_FOUND`, `NOT_OWNER`, `NOT_ENOUGH_FUNDS`, `LISTING_SOLD`.

@@ -115,7 +115,62 @@ Set qua `apps/api/src/common/auth-cookies.ts`. Domain qua `SESSION_COOKIE_DOMAIN
 | Bot farming chat/cultivation | Chat rate limit, cultivation tick = server cron (không trust client) | Captcha onboarding nếu spam tăng. |
 | Self-demote admin cuối | Audit log | UI/BE chưa block — Rule 9. |
 
-## 12. Khi phát hiện sự cố
+## 12. Rate Limit + Abuse Block (Phase 18.1)
+
+Bổ sung lớp **defense-in-depth** chống abuse (brute force / bot / scrape / spam claim) trên top của argon2 / refresh rotation / admin guard. KHÔNG thay thế WAF/CDN/anti-cheat.
+
+### 12.1. Policy catalog
+
+Source-of-truth ở <ref_file file="packages/shared/src/security-rate-limit.ts" /> (16 policy key, pure constant). Mỗi policy = `{ windowSec, maxRequests, blockSec, scope, severity, sensitive }`. Catalog test (`security-rate-limit.test.ts`) lock-in tham số để regression không quên — vd `AUTH_LOGIN` không thể bị bump lên 1000 req/phút mà không sửa test.
+
+| Group | Policy | Scope | Limit | Block sau threshold |
+|---|---|---|---|---|
+| Auth | `AUTH_LOGIN` | IP_USER | 10 / 15p | 15p (HIGH 5/15p escalate) |
+| Auth | `AUTH_REGISTER` | IP | 5 / 15p | 30p (HIGH) |
+| Auth | `AUTH_REFRESH` | IP_USER | 30 / 60s | 5p (MEDIUM) |
+| Auth | `AUTH_PASSWORD_RESET` | IP | 3 / 15p | 30p (HIGH) |
+| Economy | `SHOP_BUY` / `SECT_SHOP_BUY` | USER | 30 / 60s | 10p (MEDIUM) |
+| Economy | `MARKET_CREATE_LISTING` | CHARACTER | 10 / 60s | 10p |
+| Economy | `MARKET_BUY` / `DUNGEON_CLAIM` | CHARACTER | 30 / 60s | 10p |
+| Economy | `DAILY_LOGIN_CLAIM` | USER | 5 / 60s | 10p |
+| Economy | `LIVEOPS_GIFT_CLAIM` | USER | 15 / 60s | 10p |
+| Economy | `TOPUP_CREATE_ORDER` | USER | 10 / 60min | 60min (HIGH) |
+| Admin | `ADMIN_MUTATION` | USER | 60 / 60s | 5p |
+| Admin | `ADMIN_REPORT_VIEW` | USER | 120 / 60s | — (throttle only, no block) |
+| Public | `PUBLIC_READ` / `DEFAULT_API` | IP / IP_USER | 300 / 60s, 120 / 60s | — |
+
+### 12.2. Backend behavior
+
+- **`RateLimitService`** (`apps/api/src/modules/security/rate-limit.service.ts`): Redis sliding window qua `ZSET`. Fail-soft → in-memory fallback khi Redis throw (env `RATE_LIMIT_FAIL_OPEN=true` default). Master toggle `RATE_LIMIT_ENABLED` (default `true`).
+- **`RateLimitGuard`** (`APP_GUARD`): opt-in qua `@RateLimitPolicy(...)`. Bypass qua `@SkipRateLimit()` cho healthcheck/readyz/version/admin metrics/liveops public read.
+- **`SecurityAbuseService`**: persist `SecurityEvent` + `SecurityBlock` (Prisma). Đếm abuse signal theo severity window (HIGH 5/15p, MEDIUM 10/15p, LOW vô hiệu) → `createBlock` IP/USER. `LOGIN_FAILED` threshold riêng 10/15p → block 30p. Fail-safe: DB throw → log warn + skip persistence (không crash caller).
+- **`IpHashService`**: `sha256(SECURITY_IP_HASH_SALT || ':' || ip)`. Raw IP KHÔNG bao giờ persist. Salt rotate = kill switch lookup table cũ.
+
+### 12.3. Response contract
+
+- Headers `X-RateLimit-Limit` / `X-RateLimit-Remaining` / `X-RateLimit-Reset` set trên mọi response của route có policy.
+- 429 body: `{ ok: false, error: { code: 'RATE_LIMITED' | 'ABUSE_BLOCKED', retryAfterSec, resetAt | expiresAt, policy? } }`. Header `Retry-After` set khi 429.
+
+### 12.4. Admin tooling
+
+Endpoint `/admin/security/*` (xem [`API.md`](./API.md) §AdminSecurityController). FE panel `AdminSecurityPanel.vue` (tab "Bảo mật / Lạm dụng" trong AdminView). Audit `ADMIN_SECURITY_BLOCK_LIFT` mỗi lần admin lift. PLAYER/MOD bị reject 403 `ADMIN_ONLY` cho lift (chỉ ADMIN có).
+
+### 12.5. Privacy invariants
+
+- KHÔNG lưu raw IP — chỉ `ipHash`.
+- KHÔNG lưu password / token / cookie / refresh JWT trong `SecurityEvent.detailJson`. `LOGIN_FAILED` chỉ lưu `email` (đã là public identifier ở user-facing).
+- `AdminSecurityController` chỉ trả `ipHash` cho admin — không reverse được.
+- Rotate `SECURITY_IP_HASH_SALT` invalidate toàn bộ lookup IP cũ → block hiện tại sẽ vẫn match request mới (vì server hash request IP với salt mới) nhưng lịch sử event cũ trở thành orphan hash.
+
+### 12.6. KHÔNG làm
+
+- KHÔNG auto-ban vĩnh viễn — chỉ block 5-30 phút theo severity.
+- KHÔNG block healthcheck / readyz / version / admin metrics — set `@SkipRateLimit()` cho mọi route monitoring mới.
+- KHÔNG log raw password / token / cookie vào `SecurityEvent.detailJson`.
+- KHÔNG dùng `RATE_LIMIT_ENABLED=false` cho production trừ incident P0 (mất Redis + DB cùng lúc); set kèm post-mortem.
+- KHÔNG dùng `RATE_LIMIT_FAIL_OPEN=false` ở closed beta (Redis blip → block oan user thật).
+
+## 13. Khi phát hiện sự cố
 
 1. Ngắt traffic (reverse proxy 503 hoặc scale 0 instance).
 2. Thu log + dump `/admin/audit` + `CurrencyLedger` quanh thời điểm xảy ra.
