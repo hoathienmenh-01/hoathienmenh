@@ -32,7 +32,7 @@ export type QuestStatus =
   | 'COMPLETED'
   | 'CLAIMED';
 
-export type QuestKind = 'main' | 'realm' | 'sect' | 'npc' | 'grind';
+export type QuestKind = 'main' | 'realm' | 'sect' | 'npc' | 'grind' | 'side';
 
 export type QuestStepKind = 'kill' | 'collect' | 'talk' | 'explore' | 'choice';
 

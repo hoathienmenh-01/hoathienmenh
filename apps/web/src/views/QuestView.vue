@@ -42,7 +42,7 @@ const kindFilter = computed(() => questStore.kindFilter);
 const filteredQuests = computed(() => questStore.filteredQuests);
 const totalCount = computed(() => questStore.totalCount);
 
-const KINDS: QuestKind[] = ['main', 'realm', 'sect', 'npc', 'grind'];
+const KINDS: QuestKind[] = ['main', 'side', 'realm', 'sect', 'npc', 'grind'];
 
 function setFilter(kind: QuestKind | null): void {
   questStore.setKindFilter(kind);

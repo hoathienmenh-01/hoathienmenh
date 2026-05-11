@@ -2942,6 +2942,7 @@
     },
     "kind": {
       "main": "Main",
+      "side": "Side",
       "realm": "Realm",
       "sect": "Sect",
       "npc": "NPC",

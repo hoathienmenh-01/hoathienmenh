@@ -34,6 +34,7 @@
  */
 
 import { PHASE21_MAIN_QUESTS } from './phase21-main-quests';
+import { PHASE21_SIDE_QUESTS } from './phase21-side-quests';
 
 /**
  * Quest type — match story bible naming (`main` / `realm` / `sect` / `npc` / `grind`).
@@ -44,7 +45,7 @@ import { PHASE21_MAIN_QUESTS } from './phase21-main-quests';
  * - `npc`: nhiệm vụ giao bởi NPC cụ thể (intro NPC + side story).
  * - `grind`: nhiệm vụ cày (kill / collect quantity) — repeatable trong PR-2 nếu cần.
  */
-export type QuestKind = 'main' | 'realm' | 'sect' | 'npc' | 'grind';
+export type QuestKind = 'main' | 'realm' | 'sect' | 'npc' | 'grind' | 'side';
 
 /**
  * Quest step objective. Phase 12 PR-2 `QuestService.progress` sẽ track theo `(kind, targetType, targetId)`.
@@ -220,6 +221,7 @@ export const QUESTS: readonly QuestDef[] = [
       'Onboarding chính tuyến. Hạt Giống Vô Danh trong hậu sơn lộ ra khi player giết Sơn Thử cuối cùng. Story bible §9.1 row 0.',
   },
   ...PHASE21_MAIN_QUESTS,
+  ...PHASE21_SIDE_QUESTS,
   {
     key: 'phamnhan_realm_01',
     name: 'Hạt Giống Vô Danh',
