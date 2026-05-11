@@ -103,3 +103,116 @@ export async function adminLiftSecurityBlock(
     createdAt: new Date().toISOString(),
   };
 }
+
+// ==================== Phase 18.3 — security alerts ====================
+
+export type SecurityAlertSeverity = 'INFO' | 'WARN' | 'CRITICAL';
+export type SecurityAlertStatus = 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED';
+export type SecurityAlertSource =
+  | 'RATE_LIMIT'
+  | 'AUTH'
+  | 'SESSION'
+  | 'ADMIN'
+  | 'BLOCK'
+  | 'OTHER';
+export type SecurityAlertType =
+  | 'RATE_LIMIT_ABUSE'
+  | 'LOGIN_ABUSE'
+  | 'INVALID_TOKEN'
+  | 'ADMIN_FORBIDDEN'
+  | 'SUBJECT_BLOCKED'
+  | 'BLOCK_LIFTED'
+  | 'SESSION_CREATED'
+  | 'SESSION_REVOKED'
+  | 'REFRESH_TOKEN_REUSED'
+  | 'SESSION_SUSPICIOUS'
+  | 'OTHER';
+
+export interface AdminSecurityAlertRow {
+  id: string;
+  type: SecurityAlertType;
+  severity: SecurityAlertSeverity;
+  status: SecurityAlertStatus;
+  source: SecurityAlertSource;
+  eventId: string | null;
+  relatedUserId: string | null;
+  relatedCharacterId: string | null;
+  relatedSessionId: string | null;
+  detailsJson: unknown;
+  createdAt: string;
+  acknowledgedAt: string | null;
+  acknowledgedByAdminId: string | null;
+  resolvedAt: string | null;
+  resolvedByAdminId: string | null;
+  resolutionNote: string | null;
+}
+
+export interface AdminSecurityAlertSummary {
+  openCritical: number;
+  openWarn: number;
+  blockedSubjects: number;
+  tokenReuseLast24h: number;
+  suspiciousSessionsLast24h: number;
+  rateLimitHitsLast24h: number;
+  latestCriticalEvents: Array<{
+    id: string;
+    type: string;
+    severity: SecurityAlertSeverity;
+    createdAt: string;
+  }>;
+  generatedAt: string;
+}
+
+export interface ListAlertsParams {
+  status?: SecurityAlertStatus;
+  severity?: SecurityAlertSeverity;
+  type?: SecurityAlertType;
+  source?: SecurityAlertSource;
+  from?: string;
+  to?: string;
+  userId?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+export interface ListAlertsResult {
+  alerts: AdminSecurityAlertRow[];
+  nextCursor: string | null;
+  generatedAt: string;
+}
+
+export async function adminListSecurityAlerts(
+  params: ListAlertsParams = {},
+): Promise<ListAlertsResult> {
+  const { data } = await apiClient.get<Envelope<ListAlertsResult>>(
+    '/admin/security/alerts',
+    { params },
+  );
+  return unwrap(data);
+}
+
+export async function adminGetSecuritySummary(): Promise<AdminSecurityAlertSummary> {
+  const { data } = await apiClient.get<Envelope<AdminSecurityAlertSummary>>(
+    '/admin/security/summary',
+  );
+  return unwrap(data);
+}
+
+export async function adminAcknowledgeSecurityAlert(
+  alertId: string,
+): Promise<AdminSecurityAlertRow> {
+  const { data } = await apiClient.post<
+    Envelope<{ alert: AdminSecurityAlertRow }>
+  >(`/admin/security/alerts/${encodeURIComponent(alertId)}/ack`);
+  return unwrap(data).alert;
+}
+
+export async function adminResolveSecurityAlert(
+  alertId: string,
+  note: string,
+): Promise<AdminSecurityAlertRow> {
+  const { data } = await apiClient.post<
+    Envelope<{ alert: AdminSecurityAlertRow }>
+  >(`/admin/security/alerts/${encodeURIComponent(alertId)}/resolve`, { note });
+  return unwrap(data).alert;
+}

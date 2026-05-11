@@ -1277,6 +1277,7 @@
       "maintenance": "Maintenance",
       "configVersion": "Config Version",
       "security": "Security",
+      "securityAlerts": "Security alerts",
       "backup": "Backup"
     },
     "arenaAntiWintrade": {
@@ -4142,6 +4143,75 @@
       "FORBIDDEN": "Account is not an admin.",
       "ADMIN_ONLY": "Only admin can lift blocks.",
       "UNKNOWN": "Operation failed — please retry."
+    }
+  },
+  "adminSecurityAlerts": {
+    "title": "Security Alerts",
+    "subtitle": "Monitor, classify, acknowledge/resolve alerts from rate-limit abuse, login abuse, refresh-token reuse, suspicious session, IP/USER block, admin forbidden.",
+    "summary": {
+      "openCritical": "OPEN — CRITICAL",
+      "openWarn": "OPEN — WARN",
+      "blockedSubjects": "Active blocks",
+      "tokenReuse24h": "Token reuse 24h",
+      "suspicious24h": "Suspicious 24h",
+      "rateLimitHits24h": "Rate-limit 24h",
+      "loading": "Loading summary…"
+    },
+    "filters": {
+      "status": "Status",
+      "severity": "Severity",
+      "type": "Type",
+      "source": "Source",
+      "from": "From",
+      "to": "To",
+      "userId": "User ID",
+      "limit": "Limit",
+      "all": "All",
+      "apply": "Apply filters"
+    },
+    "list": {
+      "title": "Alerts",
+      "id": "ID",
+      "type": "Type",
+      "severity": "Severity",
+      "status": "Status",
+      "source": "Source",
+      "createdAt": "Created at",
+      "actions": "Actions",
+      "loading": "Loading alerts…",
+      "empty": "No alerts match the current filter."
+    },
+    "actions": {
+      "ack": "Acknowledge",
+      "resolve": "Resolve"
+    },
+    "ack": {
+      "title": "Confirm acknowledge",
+      "message": "Acknowledge alert {id}? Action is recorded in audit log.",
+      "success": "Alert {id} acknowledged."
+    },
+    "resolve": {
+      "title": "Confirm resolve",
+      "message": "Resolve alert {id}? Action is recorded in audit log.",
+      "noteLabel": "Resolution note (required)",
+      "notePlaceholder": "Short description of the resolution (≤ 1000 chars).",
+      "success": "Alert {id} resolved."
+    },
+    "errors": {
+      "INVALID_STATUS": "Invalid status.",
+      "INVALID_SEVERITY": "Invalid severity.",
+      "INVALID_TYPE": "Invalid type.",
+      "INVALID_SOURCE": "Invalid source.",
+      "INVALID_USER_ID": "Invalid user ID.",
+      "INVALID_INPUT": "Invalid input.",
+      "INVALID_NOTE": "Resolution note must not be empty.",
+      "ALERT_NOT_FOUND": "Alert not found.",
+      "ALERT_ALREADY_RESOLVED": "Alert is already resolved.",
+      "NOT_AVAILABLE": "Alert feature is temporarily unavailable.",
+      "ADMIN_ONLY": "Only admins can ack/resolve alerts.",
+      "FORBIDDEN": "Account is not authorized.",
+      "UNAUTHENTICATED": "Admin login required.",
+      "UNKNOWN": "Action failed — try again."
     }
   },
   "adminBackup": {
