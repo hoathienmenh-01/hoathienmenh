@@ -12,7 +12,52 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Phase 20.2 — Co-op Boss Party Contribution Foundation (this PR — #535)
+### Phase 20.3 — Co-op Reward Cap / Anti-leech / Weekly Contribution Season (this PR — #536)
+
+**Scope**: Lớp chống abuse + mùa đóng góp xếp hạng cho `CoopBoss` (20.2) + `PartyDungeon` (20.1). Reward cap theo ngày/tuần per source, anti-leech downgrade reward tier theo `contributionScore`/`survivalSeconds`/`actionCount`, weekly leaderboard rank → tier reward (`BRONZE`/`SILVER`/`GOLD`/`LEGEND`) → claim qua endpoint riêng. Additive — KHÔNG đụng boss solo / sect / world boss / claim flow Phase 20.1/20.2 ngoại trừ thêm gate cap + record weekly best-effort sau grant.
+
+#### Added — Phase 20.3
+
+- **Prisma migration `20261115000000_phase_20_3_coop_reward_cap_season`** additive: 4 model (`CoopRewardCapCounter` UNIQUE `(userId,source,dayKey)`, `CoopWeeklyContributionSeason` UNIQUE `weekKey`, `CoopWeeklyContributionEntry` UNIQUE `(seasonId,userId)`, `CoopWeeklyRewardClaim` UNIQUE `(seasonId,userId)`) + 2 enum mới `CoopRewardSource` (`COOP_BOSS`/`PARTY_DUNGEON`), `CoopWeeklyRewardTier` (`NONE`/`BRONZE`/`SILVER`/`GOLD`/`LEGEND`) + 2 enum mở rộng `CoopLeechRiskLevel`, `CoopWeeklySeasonStatus`, `CoopWeeklyRewardClaimStatus` + 2 anomaly type mới `COOP_REWARD_CAP_HIT`, `COOP_LEECH_HIGH` trong `AntiCheatAnomalyType`. Soft-ref (KHÔNG FK User/Character).
+- **Shared `packages/shared/src/coop-reward-cap.ts`** (43 test): enum + DTO `CoopRewardStatusDto`/`CoopWeeklySeasonDto`/`CoopWeeklyLeaderboardEntryDto`/`CoopWeeklyRewardClaimDto`/`CoopWeeklyLeaderboardResponse` + `COOP_REWARD_CAP_LIMITS` (boss `8/d 30/w`, dungeon `12/d 50/w`, `minContributionForReward=100`, `minSurvivalSecondsForReward=60`, `minActionCountForReward=3`) + `COOP_WEEKLY_BASE_REWARD` (BRONZE 100/200 → LEGEND 1000/3000 `linhThach`/`exp`) + helper `buildCoopRewardDayKey(date)` / `buildCoopRewardWeekKey(date)` ISO UTC+7 / `canClaimCoopRewardWithinCap` / `classifyCoopLeechRisk` / `applyLeechRiskDowngrade` (HIGH downgrade NONE, MEDIUM downgrade −1 step) / `computeWeeklyContributionPoints` (boss `1×` + dungeon `0.5×` + MVP `+25%`) / `classifyWeeklyRewardTier` (top 1 LEGEND, top 3 GOLD, top 10 SILVER, ≥200pt BRONZE) / `canClaimCoopWeeklyReward`.
+- **Backend `CoopRewardCapService`** (`apps/api/src/modules/coop-reward-cap`): `checkDailyWeeklyCap` (read counter, return reject `DAILY_CAP_REACHED`/`WEEKLY_CAP_REACHED` + best-effort audit `COOP_REWARD_CAP_HIT` ngoài tx); `incrementRewardCapCounterTx` (CAS UPSERT trong tx grant); `classifyAndAuditLeechRisk` (matrix → audit `COOP_LEECH_HIGH` best-effort); `recordWeeklyContribution` (UPSERT entry season hiện hành + tổng `bossContributionPoints`/`dungeonContributionPoints`); `getWeeklyLeaderboard(weekKey?, limit?)` (rank server-side `ORDER BY totalPoints DESC` + `displayName` lookup); `settleWeeklySeason(seasonId)` admin-only (snapshot rank + assign tier, idempotent CAS `OPEN`/`CLOSED` → `SETTLED`); `claimWeeklyReward(seasonId)` (CAS `PENDING` → `CLAIMED` + grant `linhThach`+`exp` qua ledger); `getMyCoopRewardStatus`. REST `GET /coop/rewards/status` + `GET /coop/rewards/weekly-leaderboard?weekKey&limit` + `POST /coop/rewards/weekly-claim {seasonId}` + Admin `GET /admin/coop/rewards/summary` + `POST /admin/coop/rewards/seasons/:id/settle` + `GET /admin/coop/rewards/seasons` (mọi mutation ghi `AdminAuditLog`).
+- **Integration vào claim flow** Phase 20.1 + 20.2:
+  - `CoopBossService.finishRun`: áp `classifyCoopLeechRisk` + `applyLeechRiskDowngrade` cho `rewardTier` inline trong tx (HIGH leech → `NONE` tier, MEDIUM → −1 step); sau tx best-effort gọi `recordWeeklyContribution` (boss multiplier + MVP bonus) + `classifyAndAuditLeechRisk` per eligible participant.
+  - `CoopBossService.claimReward` + `PartyDungeonService.claimReward`: trước tx gọi `checkDailyWeeklyCap` → throw `DAILY_CAP_REACHED`/`WEEKLY_CAP_REACHED` nếu reject; trong tx sau grant gọi `incrementRewardCapCounterTx`; sau tx best-effort `recordWeeklyContribution` (party-dungeon hiện truyền `dungeonContributionScore=0` — Phase 20.1 chưa track contribution per dungeon-run).
+  - Module: `CoopBossModule` + `PartyDungeonModule` import `CoopRewardCapModule` (DI **optional** qua `@Optional() @Inject(CoopRewardCapService)` để legacy test instantiate trực tiếp → null → graceful skip cap/leech/weekly).
+  - Controller: map `DAILY_CAP_REACHED` + `WEEKLY_CAP_REACHED` → `409 Conflict` (mirror `REWARD_ALREADY_CLAIMED`).
+- **FE** `apps/web/src/api/coopRewardCap.ts` (3 endpoint Envelope wrap) + `apps/web/src/components/CoopWeeklyLeaderboardPanel.vue` (status card cap usage / weekly points / rank / tier / claim button disabled khi không claimable + leaderboard list ranked + refresh) + tab `coopWeekly` trong `SocialView.vue`.
+- **i18n** vi/en parity 100%: section `coopRewardCap.*` (title/subtitle/status.{weekKey,dayKey,bossUsage,dungeonUsage,weeklyPoints,weeklyRank,weeklyRankNone,weeklyTier,claimed,claimable,noSeason}/tier.{NONE,BRONZE,SILVER,GOLD,LEGEND}/claimStatus/actions/leaderboard/toast/errors) + cap error keys `coopBoss.errors.{DAILY_CAP_REACHED,WEEKLY_CAP_REACHED}` + `partyDungeon.errors.{DAILY_CAP_REACHED,WEEKLY_CAP_REACHED}` (~70 leaf key).
+
+#### Security — Phase 20.3
+
+- **Cap counter atomic**: increment counter trong cùng tx với reward grant (CAS UPSERT) — fail-stop nếu race, không double-grant.
+- **Anomaly audit best-effort ngoài tx**: `COOP_REWARD_CAP_HIT` ghi khi caller bị reject (potential abuse pattern), `COOP_LEECH_HIGH` khi participant bị downgrade NONE — try/catch → `logger.debug` để KHÔNG ảnh hưởng grant nếu audit fail.
+- **Soft-ref pattern** giữ nguyên: 4 model không FK User/Character → ban/delete account không cascade orphan, service enforce invariants qua `RewardCapCounter` UNIQUE + `WeeklyContributionEntry` UNIQUE.
+- **Admin-only mutation**: `settleWeeklySeason` chỉ admin, idempotent CAS chống double-settle race; mọi admin mutation ghi `AdminAuditLog` action `ADMIN_COOP_REWARD_*`.
+
+#### Test coverage — Phase 20.3
+
+- Shared: `packages/shared/src/coop-reward-cap.test.ts` 43 case (enum/caps deterministic/dayKey/weekKey UTC+7 round-trip/leech matrix/tier matrix/downgrade matrix).
+- API: integrate `coop-boss.service.test.ts` 21 PASS + `party-dungeon.service.test.ts` 25 PASS + `admin-anticheat/gameplay-anticheat.service.test.ts` 18 PASS (rules.length `10 → 12` lock-in 2 anomaly type mới).
+- Web: i18n parity 10 PASS.
+- Lint + typecheck + build CI PASS.
+
+#### Docs — Phase 20.3
+
+- `docs/AI_HANDOFF_REPORT.md` Executive Summary + Recent Changes table → Phase 20.3 (this PR), Phase 20.2 moved to prev-row.
+- `docs/CHANGELOG.md` (file này) — Phase 20.3 section.
+
+#### KHÔNG trong PR này
+
+- Realtime broadcast `coop-reward-cap:status-updated` / `weekly-leaderboard-updated` (planned 20.4).
+- Shop / exchange / cosmetic cho weekly reward beyond `linhThach`+`exp` (defer).
+- Per-dungeon contribution score (party-dungeon hiện claim truyền `dungeonContributionScore=0`).
+- Cron auto-settle weekly season (admin manual trigger only; cron handoff Phase 20.4+).
+
+---
+
+### Phase 20.2 — Co-op Boss Party Contribution Foundation (PR #535 — merged)
 
 **Scope**: Foundation cho tổ đội (Phase 19.4) tham gia boss event co-op. Leader tạo `CoopBossRun` cho `bossKey` (catalog `BOSSES`) → member join → mỗi member self-report `damageDone`/`supportScore`/`survivalSeconds` qua `recordContribution` (server **clamp + anomaly log** theo `COOP_BOSS_LIMITS`, không cho client tự khai damage không bound) → leader `finishRun` → server snapshot `contributionScore` + classify tier `NONE/LOW/NORMAL/HIGH/MVP` → tạo `CoopBossRewardClaim` PENDING cho member `eligibleForReward=true` + tier ≠ `NONE` → member claim qua endpoint riêng (atomic CAS `PENDING→CLAIMED` + grant currency qua ledger). **KHÔNG** realtime combat engine, **KHÔNG** matchmaking public, **KHÔNG** loot bidding / trading / share-pool, **KHÔNG** đụng boss solo / sect / world boss flow hiện có — out of scope.
 
