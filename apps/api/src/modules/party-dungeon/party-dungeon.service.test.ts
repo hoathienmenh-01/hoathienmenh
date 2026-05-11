@@ -8,8 +8,10 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
 import { makeUserChar, wipeAll } from '../../test-helpers';
+import { CharacterService } from '../character/character.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { RealtimeService } from '../realtime/realtime.service';
 import {
   PartyDungeonError,
   PartyDungeonService,
@@ -50,8 +52,10 @@ let service: PartyDungeonService;
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
+  const realtime = new RealtimeService();
+  const chars = new CharacterService(prisma, realtime);
   currency = new CurrencyService(prisma);
-  inventory = new InventoryService(prisma);
+  inventory = new InventoryService(prisma, realtime, chars);
   service = new PartyDungeonService(prisma, currency, inventory, null);
 });
 
