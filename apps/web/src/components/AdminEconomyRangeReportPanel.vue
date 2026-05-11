@@ -281,7 +281,7 @@ function formatBigInt(s: string): string {
           >
             {{ report.latestLedgerCheckRun.status }}
             <span class="text-ink-300 ml-1"
-              >({{ report.latestLedgerCheckRun.dayBucket }})</span
+            >({{ report.latestLedgerCheckRun.dayBucket }})</span
             >
           </div>
           <div v-else class="text-ink-300 italic text-[10px]">
