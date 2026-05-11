@@ -2538,6 +2538,78 @@ model EconomyAnomaly {
   @@index([userId, createdAt])
 }
 
+/// Phase 16.3 — Gameplay Anomaly tracking row.
+///
+/// Khác `EconomyAnomaly` (Phase 16.6):
+///   - `EconomyAnomaly` rà soát dòng tiền tổng thể (Σ |delta|
+///     linhThạch 24h, RewardCap bypass, market band, admin grant).
+///   - `GameplayAnomaly` rà soát hành vi farm bất thường ở từng module
+///     gameplay (dungeon / boss / mission / arena / territory) + EXP
+///     gain bất thường + item gain bất thường + combat result mismatch.
+///
+/// Tách bảng riêng để (1) admin filter sạch theo domain; (2) audit
+/// history không trộn semantic; (3) future analytics có thể chỉ join
+/// đúng bảng cần thiết.
+///
+/// Lifecycle status: `OPEN → ACKNOWLEDGED → RESOLVED` (mirror
+/// `EconomyAnomaly`). Khác `EconomyAnomaly`, model này lưu thêm:
+///   - `acknowledgedAt` + `acknowledgedByAdminId` (audit ack).
+///   - `resolvedAt` + `resolvedByAdminId` + `resolutionNote` (audit
+///     resolve free-form note, sanitized ở caller).
+///
+/// Idempotency: `@@unique([type, characterId, windowKey])` đảm bảo
+/// scanner gọi lại trong cùng cửa sổ KHÔNG tạo duplicate row cho
+/// cùng character. Multi-instance race: `prisma.create` raise P2002
+/// unique violation → caller catch + skip.
+///
+/// **KHÔNG** auto-ban / KHÔNG auto-rollback / KHÔNG tự trừ currency
+/// / item / EXP / KHÔNG khóa tài khoản — detection-only.
+model GameplayAnomaly {
+  id                    String    @id @default(cuid())
+  /// `GameplayAnomalyType` literal — phân loại chi tiết (vd
+  /// `DUNGEON_REWARD_FARM`). Type guard ở
+  /// `packages/shared/src/gameplay-anticheat.ts` (`isGameplayAnomalyType`).
+  type                  String
+  /// `INFO` | `WARN` | `CRITICAL`.
+  severity              String
+  /// `OPEN` | `ACKNOWLEDGED` | `RESOLVED`. Default OPEN khi tạo.
+  status                String    @default("OPEN")
+  /// `GameplayAnomalySource` (vd `DUNGEON_RUN`). Fail-soft `OTHER`
+  /// cho source lạ qua `coerceGameplayAnomalySource`.
+  source                String
+  /// `Character.id` liên quan. Nullable cho rule scope không hướng
+  /// (vd combat mismatch chưa rõ chủ thể — admin diagnose tay).
+  characterId           String?
+  /// `User.id` (nếu rule liên quan account-level vd ADMIN_*).
+  userId                String?
+  /// Identifier cửa sổ thời gian (vd `'1h:2026-05-11T07'`,
+  /// `'24h:2026-05-11'`, `'7d:2026-W19'`) — build qua
+  /// `buildGameplayAnomalyWindowKey` (shared).
+  windowKey             String
+  /// Sanitized JSON detail (thresholds, counters, character snapshot).
+  /// Phase 16.3 KHÔNG lưu raw IP / token / cookie / refresh hash.
+  detailsJson           Json      @default("{}")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  acknowledgedAt        DateTime?
+  /// userId admin/MOD ack. KHÔNG FK để giảm rủi ro cascade khi xoá
+  /// admin.
+  acknowledgedByAdminId String?
+  resolvedAt            DateTime?
+  /// userId admin resolve.
+  resolvedByAdminId     String?
+  /// Note tự do admin nhập khi resolve (≤1000 char, sanitized ở
+  /// caller controller).
+  resolutionNote        String?
+
+  @@unique([type, characterId, windowKey])
+  @@index([status, severity, createdAt])
+  @@index([source, createdAt])
+  @@index([type, createdAt])
+  @@index([characterId, createdAt])
+  @@index([userId, createdAt])
+}
+
 /// Phase 15.4 — Feature Flag DB-backed.
 ///
 /// DB-backed switch cho admin bật/tắt các chức năng quan trọng (Arena,
