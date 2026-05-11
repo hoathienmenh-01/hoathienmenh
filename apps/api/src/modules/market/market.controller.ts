@@ -17,6 +17,7 @@ import type { ListingView } from './market.service';
 import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../../common/prisma.service';
 import { FeatureFlagService } from '../feature-flag/feature-flag.service';
+import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -87,6 +88,7 @@ export class MarketController {
 
   @Post('post')
   @HttpCode(200)
+  @RateLimitPolicy('MARKET_CREATE_LISTING')
   async post(@Req() req: Request, @Body() body: unknown) {
     // Phase 15.4 — runtime gate. Tắt post-listing khi cần freeze
     // economy (vd. exploit / dup). Cancel + listings vẫn hoạt động
@@ -105,6 +107,7 @@ export class MarketController {
 
   @Post(':id/buy')
   @HttpCode(200)
+  @RateLimitPolicy('MARKET_BUY')
   async buy(@Req() req: Request, @Param('id') id: string) {
     // Phase 15.4 — runtime gate. Tắt buy khi cần freeze trải
     // nghiệm mua qua sandbox dup. Cancel lối ra vẫn cho phép.

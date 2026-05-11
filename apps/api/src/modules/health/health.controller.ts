@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import type { Redis } from 'ioredis';
 import { PrismaService } from '../../common/prisma.service';
 import { REDIS_CONNECTION } from '../../common/redis.module';
+import { SkipRateLimit } from '../security/rate-limit-policy.decorator';
 
 const START_TIME = Date.now();
 
@@ -14,7 +15,14 @@ interface ReadyResult {
   };
 }
 
+/**
+ * Phase 18.1 — Healthcheck/readiness/version BẮT BUỘC bypass RateLimitGuard.
+ * Nếu LB/monitoring spam ping → không được trả 429, không tạo
+ * SecurityEvent. `@SkipRateLimit()` ở class-level apply cho tất cả
+ * handler.
+ */
 @Controller()
+@SkipRateLimit()
 export class HealthController {
   constructor(
     private readonly prisma: PrismaService,

@@ -11,6 +11,7 @@ import {
 import type { Request } from 'express';
 import { z } from 'zod';
 import { AuthService } from '../auth/auth.service';
+import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 import { SectShopError, SectShopService } from './sect-shop.service';
 
 const ACCESS_COOKIE = 'xt_access';
@@ -62,6 +63,7 @@ export class SectShopController {
 
   @Post('buy')
   @HttpCode(200)
+  @RateLimitPolicy('SECT_SHOP_BUY')
   async buy(@Req() req: Request, @Body() body: unknown) {
     const userId = await this.requireUserId(req);
     const parsed = BuyInput.safeParse(body);

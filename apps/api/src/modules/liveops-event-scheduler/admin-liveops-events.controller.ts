@@ -19,6 +19,7 @@ import {
   LIVEOPS_EVENT_TYPES,
 } from '@xuantoi/shared';
 import { AdminGuard } from '../admin/admin.guard';
+import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 import { RequireAdmin } from '../admin/require-admin.decorator';
 import { PrismaService } from '../../common/prisma.service';
 import {
@@ -101,6 +102,7 @@ const UpdateBodyZ = z
 
 @UseGuards(AdminGuard)
 @Controller()
+@RateLimitPolicy('ADMIN_MUTATION')
 export class AdminLiveOpsEventsController {
   constructor(
     private readonly service: LiveOpsEventSchedulerService,

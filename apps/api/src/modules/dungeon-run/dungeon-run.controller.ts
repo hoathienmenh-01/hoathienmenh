@@ -12,6 +12,7 @@ import {
 import type { Request } from 'express';
 import { z } from 'zod';
 import { AuthService } from '../auth/auth.service';
+import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 import {
   DungeonClaimResult,
   DungeonListView,
@@ -109,6 +110,7 @@ export class DungeonRunController {
 
   @Post('dungeon-runs/:runId/claim')
   @HttpCode(200)
+  @RateLimitPolicy('DUNGEON_CLAIM')
   async claim(
     @Req() req: Request,
     @Param('runId') runId: string,

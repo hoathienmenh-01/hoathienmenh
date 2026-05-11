@@ -21,6 +21,7 @@ import {
   LIVEOPS_ANNOUNCEMENT_TITLE_MAX,
 } from '@xuantoi/shared';
 import { AdminGuard } from '../admin/admin.guard';
+import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 import { RequireAdmin } from '../admin/require-admin.decorator';
 import { PrismaService } from '../../common/prisma.service';
 import { LiveOpsBroadcastService } from './liveops-broadcast.service';
@@ -119,6 +120,7 @@ const UpdateBodyZ = z
 
 @UseGuards(AdminGuard)
 @Controller()
+@RateLimitPolicy('ADMIN_MUTATION')
 export class AdminLiveOpsAnnouncementsController {
   constructor(
     private readonly service: LiveOpsAnnouncementService,

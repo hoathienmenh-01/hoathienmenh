@@ -11,6 +11,7 @@ import {
 import type { Request } from 'express';
 import { z } from 'zod';
 import { AuthService } from '../auth/auth.service';
+import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 import { ShopError, ShopService } from './shop.service';
 
 const ACCESS_COOKIE = 'xt_access';
@@ -46,6 +47,7 @@ export class ShopController {
 
   @Post('buy')
   @HttpCode(200)
+  @RateLimitPolicy('SHOP_BUY')
   async buy(@Req() req: Request, @Body() body: unknown) {
     const userId = await this.requireUserId(req);
     const parsed = BuyInput.safeParse(body);

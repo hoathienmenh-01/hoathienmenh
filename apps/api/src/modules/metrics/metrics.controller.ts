@@ -19,11 +19,15 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { AdminGuard } from '../admin/admin.guard';
 import { RequireAdmin } from '../admin/require-admin.decorator';
+import { SkipRateLimit } from '../security/rate-limit-policy.decorator';
 import { MetricsService } from './metrics.service';
 import type { MetricsSnapshot } from './metrics.types';
 
 @UseGuards(AdminGuard)
 @Controller()
+// Phase 18.1 — Metrics polled cao tần (~30s) bởi monitoring. Bypass
+// rate-limit để monitoring không bao giờ bị 429 dù scrape interval thấp.
+@SkipRateLimit()
 export class MetricsController {
   constructor(private readonly metrics: MetricsService) {}
 

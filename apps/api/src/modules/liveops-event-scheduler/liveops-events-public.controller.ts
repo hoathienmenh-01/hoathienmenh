@@ -18,6 +18,7 @@ import {
   type LiveOpsClaimResult,
 } from './liveops-event-scheduler.service';
 import { FeatureFlagService } from '../feature-flag/feature-flag.service';
+import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -100,6 +101,7 @@ export class LiveOpsEventsPublicController {
 
   @Post(':eventKey/claim')
   @HttpCode(200)
+  @RateLimitPolicy('LIVEOPS_GIFT_CLAIM')
   async claim(
     @Req() req: Request,
     @Param('eventKey') eventKey: string,

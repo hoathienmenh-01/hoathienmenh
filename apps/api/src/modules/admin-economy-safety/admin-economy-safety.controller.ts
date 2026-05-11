@@ -20,6 +20,7 @@ import {
   type EconomyReportResponse,
 } from '@xuantoi/shared';
 import { AdminGuard } from '../admin/admin.guard';
+import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 import { RequireAdmin } from '../admin/require-admin.decorator';
 import { PrismaService } from '../../common/prisma.service';
 import {
@@ -108,6 +109,7 @@ interface AdminReq extends Request {
 
 @UseGuards(AdminGuard)
 @Controller()
+@RateLimitPolicy('ADMIN_MUTATION')
 export class AdminEconomySafetyController {
   constructor(
     private readonly prisma: PrismaService,
