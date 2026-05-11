@@ -1273,6 +1273,7 @@
       "liveops": "LiveOps",
       "economy": "Economy Safety",
       "arenaAntiWintrade": "Arena Anti-Wintrade",
+      "gameplayAntiCheat": "Gameplay Anti-cheat",
       "featureFlags": "Feature Flags",
       "maintenance": "Maintenance",
       "configVersion": "Config Version",
@@ -1309,6 +1310,48 @@
         "statusAll": "All statuses",
         "typeAll": "All types"
       }
+    },
+    "gameplayAntiCheat": {
+      "title": "Gameplay anti-cheat",
+      "subtitle": "Detection-only. Anomalies are flagged for admin review — no automatic bans, rollbacks, or item/currency deductions.",
+      "summary": {
+        "open": "Open",
+        "critical": "Critical (open)",
+        "warn": "Warn (open)",
+        "info": "Info (open)",
+        "total": "Total",
+        "latestCreatedAt": "Latest detected",
+        "latestResolvedAt": "Latest resolved",
+        "none": "—"
+      },
+      "scanBtn": "Run scan",
+      "confirmScan": "Run gameplay anti-cheat scan now? This is detection-only.",
+      "scanDone": "Done: {created} created, {skipped} skipped, {errored} errored.",
+      "filter": {
+        "severityAll": "All severities",
+        "statusAll": "All statuses",
+        "typeAll": "All types",
+        "sourceAll": "All sources"
+      },
+      "table": {
+        "type": "Type",
+        "severity": "Severity",
+        "status": "Status",
+        "source": "Source",
+        "character": "Character ID",
+        "windowKey": "Window",
+        "createdAt": "Detected",
+        "actions": "Actions"
+      },
+      "ack": "Ack",
+      "resolve": "Resolve",
+      "confirmAck": "Acknowledge this anomaly?",
+      "confirmResolve": "Resolve this anomaly? Add an optional note.",
+      "ackDone": "Acknowledged.",
+      "resolveDone": "Resolved.",
+      "loading": "Loading…",
+      "empty": "No anomalies found.",
+      "errorPrefix": "Failed to load: "
     },
     "economySafety": {
       "latestRun": {

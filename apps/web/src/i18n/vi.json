@@ -1273,6 +1273,7 @@
       "liveops": "LiveOps",
       "economy": "Kinh tế (An toàn)",
       "arenaAntiWintrade": "Arena Anti-Wintrade",
+      "gameplayAntiCheat": "Chống gian lận gameplay",
       "featureFlags": "Feature Flags",
       "maintenance": "Bảo trì",
       "configVersion": "Config Version",
@@ -1309,6 +1310,48 @@
         "statusAll": "Tất cả trạng thái",
         "typeAll": "Tất cả loại"
       }
+    },
+    "gameplayAntiCheat": {
+      "title": "Chống gian lận gameplay",
+      "subtitle": "Chỉ phát hiện. Hệ thống đánh dấu bất thường để admin xem xét — KHÔNG tự ban, KHÔNG tự rollback, KHÔNG tự trừ item/đá linh.",
+      "summary": {
+        "open": "Đang mở",
+        "critical": "Nghiêm trọng (mở)",
+        "warn": "Cảnh báo (mở)",
+        "info": "Thông tin (mở)",
+        "total": "Tổng",
+        "latestCreatedAt": "Phát hiện gần nhất",
+        "latestResolvedAt": "Xử lý gần nhất",
+        "none": "—"
+      },
+      "scanBtn": "Chạy quét",
+      "confirmScan": "Chạy quét chống gian lận gameplay ngay? Chỉ phát hiện, không tự xử lý.",
+      "scanDone": "Hoàn tất: tạo {created}, bỏ qua {skipped}, lỗi {errored}.",
+      "filter": {
+        "severityAll": "Tất cả mức độ",
+        "statusAll": "Tất cả trạng thái",
+        "typeAll": "Tất cả loại",
+        "sourceAll": "Tất cả nguồn"
+      },
+      "table": {
+        "type": "Loại",
+        "severity": "Mức độ",
+        "status": "Trạng thái",
+        "source": "Nguồn",
+        "character": "Character ID",
+        "windowKey": "Cửa sổ",
+        "createdAt": "Phát hiện",
+        "actions": "Thao tác"
+      },
+      "ack": "Xác nhận",
+      "resolve": "Đóng",
+      "confirmAck": "Xác nhận bất thường này?",
+      "confirmResolve": "Đóng bất thường này? Có thể nhập ghi chú.",
+      "ackDone": "Đã xác nhận.",
+      "resolveDone": "Đã đóng.",
+      "loading": "Đang tải…",
+      "empty": "Không có bất thường nào.",
+      "errorPrefix": "Lỗi tải: "
     },
     "economySafety": {
       "latestRun": {
