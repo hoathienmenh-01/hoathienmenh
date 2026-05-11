@@ -12,7 +12,38 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Phase 20.3 — Co-op Reward Cap / Anti-leech / Weekly Contribution Season (this PR — #536)
+### Phase 24.1 — Closed Beta QA / Handoff Sync / Regression Smoke (this PR — #537)
+
+**Scope**: Phase ổn định hệ thống trước closed beta — KHÔNG thêm feature gameplay. Tập trung audit docs, smoke runtime, regression checklist closed-beta, mobile/responsive sanity, admin runbook, production readiness notes, fix nhỏ.
+
+#### Docs — Phase 24.1
+
+- **`docs/AI_HANDOFF_REPORT.md`**: sync trạng thái sau Phase 20.3 (Executive Summary, Recent Changes giữ PR gần nhất, Current Status / Known Risks / Next Roadmap đúng); cap ≤250 lines theo `AI_WORKFLOW_RULES`.
+- **`docs/QA_CHECKLIST.md`**: thêm Phase 24.1 closed-beta regression matrix (§14) — account/auth/session, create character, cultivation, inventory/equipment, mission/story, dungeon solo, boss solo/world/sect, market/economy/topup, social/friend/block/profile, private/group chat moderation, party, party dungeon, co-op boss, co-op reward cap/season, admin dashboards, backup/restore, deploy verify, security/rate-limit/revoke, mobile/responsive.
+- **`docs/RUNBOOK.md` §1.5 — Closed beta operator playbook**: user abuse / kỷ luật (1.5.1), security alert / audit (1.5.2), chat report / moderation (1.5.3), reward cap / co-op abuse Phase 20.3 (1.5.4), backup / restore verify (1.5.5), deploy readiness checklist (1.5.6), rollback migration additive (1.5.7), CI / smoke before beta (1.5.8).
+- **`docs/DEPLOY.md` §13 — Production readiness notes**: required env must-set (13.1), secret placeholder guard (13.2), backup env (13.3), rate-limit env (13.4), monitoring gap matrix (13.5), known production blockers (13.6), smoke gate sequence (13.7).
+
+#### Internal — Phase 24.1
+
+- **`scripts/smoke-social.mjs`** (mới ~532 dòng): smoke Phase 19.1 social — friend request send/accept/decline/remove + block/unblock + self-protect contract (self-friend/self-block → 400 `SELF_NOT_ALLOWED`) + auth check. Cookie jar per-user + step runner + graceful SKIP khi `/api/healthz` unreachable (exit 0).
+- **`scripts/smoke-coop.mjs`** (mới ~482 dòng): smoke Phase 19.4 + 20.x co-op — party create/invites accept/leader handoff/leave/disband + read-only `GET /coop/rewards/status` + `GET /coop/rewards/weekly-leaderboard` (tolerant 200/404 khi season chưa mở). Cùng pattern cookie jar + graceful SKIP.
+- **`package.json`** thêm `smoke:social` + `smoke:coop` script entries (alphabetical sort sau `smoke:skill`).
+
+#### Fixed — Phase 24.1
+
+- **Mobile responsive sanity fix** (no UI redesign — chỉ critical overflow):
+  - `apps/web/src/views/SocialView.vue` nav (7 tab) → `flex flex-wrap gap-2` (trước: `flex gap-2` không wrap → 7 tab tràn ngang trên 375px).
+  - `apps/web/src/components/PartyPanel.vue` invites tablist (3 tab + counter) → `flex flex-wrap gap-2`.
+- Pass mobile audit cho các màn còn lại: `AppShell.vue` (hamburger + sidebar slide-in `md:hidden`, right rail `hidden md:flex`), `InventoryView.vue` (`lg:grid-cols-[20rem_minmax(0,1fr)]` mobile-first single column), `MarketView.vue` (chỉ 2 tab buttons + fee note `ml-auto`), `PrivateChatPanel`/`GroupChatPanel.vue` (`md:grid-cols-[200px_1fr]` 1-col mobile), `CoopWeeklyLeaderboardPanel.vue` (`grid-cols-1 sm:grid-cols-2` + `flex-wrap` button groups), `BreakthroughView.vue` (filter `flex gap-1` chỉ vài button text-xs px-2 — chấp nhận được). KHÔNG redesign.
+
+#### Test gate — Phase 24.1
+
+- `pnpm typecheck` → PASS (shared 3.7s, api 20.2s, web 20.9s).
+- `pnpm lint` → PASS (web + api `--max-warnings 0`).
+- `pnpm test` → PASS (web 157/157 files, 1966/1966 tests; shared 1500+ tests; api 207/207 files, 3537/3537 tests với Postgres+Redis infra up).
+- `pnpm smoke:health` / `smoke:admin` / `smoke:economy` / `smoke:ws` / `smoke:social` / `smoke:coop` → graceful SKIP (exit 0) khi `/api/healthz` unreachable; full smoke chạy được khi infra up.
+
+### Phase 20.3 — Co-op Reward Cap / Anti-leech / Weekly Contribution Season (PR #536 — merged)
 
 **Scope**: Lớp chống abuse + mùa đóng góp xếp hạng cho `CoopBoss` (20.2) + `PartyDungeon` (20.1). Reward cap theo ngày/tuần per source, anti-leech downgrade reward tier theo `contributionScore`/`survivalSeconds`/`actionCount`, weekly leaderboard rank → tier reward (`BRONZE`/`SILVER`/`GOLD`/`LEGEND`) → claim qua endpoint riêng. Additive — KHÔNG đụng boss solo / sect / world boss / claim flow Phase 20.1/20.2 ngoại trừ thêm gate cap + record weekly best-effort sau grant.
 
