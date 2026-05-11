@@ -501,6 +501,46 @@ Admin operations playbook (run scan / ack / resolve / handle CRITICAL): [`RUNBOO
 - `apps/api/src/modules/chat-group/chat-group.service.spec.ts` (14 tests): owner create, member CRUD, GROUP_MEMBER_MAX cap, owner-only ops, 404 mask, length cap.
 - FE `apps/web/src/components/__tests__/SocialPanel.test.ts` (5 tests): loading/empty, accept-request flow, send-request reset, block confirm modal cancel=false KHÔNG call API, error toast.
 
+## 19.2. Chat Moderation & Report System (Phase 19.2)
+
+**Mục đích**: User-driven moderation. Cho player report tin nhắn vi phạm, admin xử lý qua dashboard. Server-authoritative — KHÔNG để FE skip mute/hide/lock. Ưu tiên **soft-hide** (giữ body cho audit/appeal) thay vì hard-delete.
+
+### Invariants
+
+- **Mute scope ma trận**: `ChatModerationService.findActiveMuteForSend(userId, channelScope)` check `muteScopeCoversChannel(activeMuteScope, targetScope)` — scope `ALL_CHAT` cover mọi channel; scope cụ thể chỉ cover channel target. Mute đã `revokedAt` hoặc `expiresAt < now` KHÔNG enforce. Wired fail-fast trước business logic ở `ChatPrivateService.sendPrivateMessage` (`PRIVATE_CHAT`) + `ChatGroupService.sendGroupMessage` (`GROUP_CHAT`) + `ChatService.sendWorldChat`/`sendSectChat` (`WORLD_SECT_CHAT`).
+- **Report duplicate** chống idempotently: unique `(reporterUserId, messageType, privateMessageId|groupMessageId)`. Cùng người report cùng message 2 lần → `DUPLICATE_REPORT 409` (KHÔNG tạo row mới, KHÔNG ghi audit thêm). Validator KHÔNG cho phép `messageType=PRIVATE` đi kèm `groupMessageId` (và ngược lại) → `INVALID_INPUT`.
+- **State machine report**: chỉ `OPEN → ACKNOWLEDGED → RESOLVED|REJECTED` (hoặc `OPEN → RESOLVED|REJECTED` skip ack). Transition khác → `INVALID_TRANSITION`. Idempotent — cùng status đích KHÔNG đổi row.
+- **Soft-hide**: `adminHideMessage` set `hiddenAt` / `hiddenByAdminId` / `hideReason`. Body KHÔNG bị xoá. `listMessages*` cho user thường vẫn trả row với `isHidden=true` + body cleared ở FE (placeholder `chatModeration.hiddenMessage`). Admin endpoint trả full body. Unhide clear cols, KHÔNG audit duplicate nếu đã clear sẵn.
+- **Group lock/dissolve**: set cols trên `GroupChat`. Send trong group lock → `GROUP_LOCKED`. Send trong group dissolve → `GROUP_DISSOLVED`. KHÔNG xoá member/message — giữ cho audit/restore.
+- **AdminAuditLog mandatory**: tất cả admin mutation (ack/resolve/reject/mute-create/mute-revoke/hide/unhide/lock/unlock/dissolve) ghi row `AdminAuditLog` action `ADMIN_CHAT_MODERATION_*` + meta JSON kèm target id. Read-only endpoint (list/summary) KHÔNG ghi audit.
+
+### Rate-limit
+
+- `CHAT_REPORT_SUBMIT` — 10 report / 60min / user, block 10p. Scope `USER`, sensitive=true. Catalog ở `packages/shared/src/security-rate-limit.ts` (Phase 19.2).
+- Admin mutation: rate-limit `ADMIN_MUTATION` (catalog Phase 18.1) — fall-through chung với mọi admin endpoint khác.
+
+### Privacy
+
+- Body tin nhắn KHÔNG log vào audit (chỉ id) — tránh leak nội dung user nếu audit DB bị compromise. Admin muốn xem body phải gọi endpoint admin-list (lookup theo id).
+- `targetDisplayName` / `reporterDisplayName` resolved server-side từ `Character.name` — KHÔNG trả userId raw nếu admin filter theo display name (filter chỉ chấp nhận userId exact).
+
+### Threat model
+
+| Threat | Mitigation |
+|---|---|
+| Spam report (false-flag) | `CHAT_REPORT_SUBMIT` 10/h cap + duplicate-report idempotent. Admin reject + audit. Phase 21+ sẽ có "false-flag count" leaderboard. |
+| Mute bypass qua reconnect WS | Mute check ở SEND service path, KHÔNG ở connect path. Reconnect KHÔNG bypass — mọi message vẫn check. |
+| Mute bypass qua scope khác | `muteScopeCoversChannel` ma trận server-enforced. FE KHÔNG biết scope nào active — cứ try send, server reject `MUTED`. |
+| Admin tự ý hide message của user không vi phạm | Mọi hide ghi `AdminAuditLog` với reason + actor. Operator review weekly (RUNBOOK §2.36). Hide reversible qua `unhide`. |
+| Hard-delete data loss | KHÔNG hard-delete — chỉ soft-hide. Restore = `unhide`. |
+| Group owner abuse | Admin lock/dissolve qua endpoint admin. Owner KHÔNG block được admin op. |
+
+### Test coverage
+
+- `packages/shared/src/chat-moderation.test.ts` (34 tests): enum validity, validator edge case, `muteScopeCoversChannel` 4x4 matrix.
+- `apps/api/src/modules/chat-moderation/chat-moderation.service.test.ts` (31 tests): submit happy/dup/invalid; ack/resolve state machine + idempotent; mute create/list active filter + revoke + `findActiveMuteForSend` scope matrix; hide/unhide idempotent; lock/unlock/dissolve; AdminAuditLog action+meta per path.
+- FE `apps/web/src/components/__tests__/ChatReportModal.test.ts` (7) + `AdminChatModerationPanel.test.ts` (7): UI/UX layer.
+
 ## 15. Khi phát hiện sự cố
 
 1. Ngắt traffic (reverse proxy 503 hoặc scale 0 instance).

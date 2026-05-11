@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  CHAT_HIDDEN_MESSAGE_PLACEHOLDER,
   type GroupChatMemberRow,
   type GroupChatMessageRow,
   type GroupChatRow,
@@ -8,6 +9,10 @@ import {
   validateGroupName,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import {
+  ChatModerationError,
+  ChatModerationService,
+} from '../chat-moderation/chat-moderation.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { SocialService } from '../social/social.service';
 
@@ -36,7 +41,10 @@ export type ChatGroupErrorCode =
   | 'INVALID_INPUT'
   | 'BLOCKED'
   | 'GROUP_FULL'
-  | 'DUPLICATE_MEMBER';
+  | 'DUPLICATE_MEMBER'
+  | 'MUTED'
+  | 'GROUP_LOCKED'
+  | 'GROUP_DISSOLVED';
 
 export class ChatGroupError extends Error {
   constructor(public readonly code: ChatGroupErrorCode) {
@@ -50,6 +58,7 @@ export class ChatGroupService {
     private readonly prisma: PrismaService,
     private readonly social: SocialService,
     private readonly realtime: RealtimeService,
+    private readonly moderation: ChatModerationService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -176,6 +185,28 @@ export class ChatGroupService {
   ): Promise<GroupChatMessageRow> {
     await this.requireMember(callerUserId, groupId);
 
+    // Phase 19.2 — group lock / dissolve guard. Mask dissolved groups
+    // as NOT_FOUND for users (membership preserved is irrelevant once
+    // dissolved).
+    const group = await this.prisma.groupChat.findUnique({
+      where: { id: groupId },
+      select: { id: true, lockedAt: true, dissolvedAt: true },
+    });
+    if (!group || group.dissolvedAt) {
+      throw new ChatGroupError('NOT_FOUND');
+    }
+    if (group.lockedAt) throw new ChatGroupError('GROUP_LOCKED');
+
+    // Phase 19.2 — mute enforcement (GROUP_CHAT scope).
+    try {
+      await this.moderation.assertNotMuted(callerUserId, 'GROUP_CHAT');
+    } catch (e) {
+      if (e instanceof ChatModerationError && e.code === 'MUTED') {
+        throw new ChatGroupError('MUTED');
+      }
+      throw e;
+    }
+
     const v = validateChatMessageBody(rawBody, 'GROUP');
     if (!v.ok) throw new ChatGroupError('INVALID_INPUT');
 
@@ -193,6 +224,7 @@ export class ChatGroupService {
       senderUserId: row.senderUserId,
       senderDisplayName: senderChar?.name ?? null,
       body: row.body,
+      isHidden: false,
       createdAt: row.createdAt.toISOString(),
     };
 
@@ -235,12 +267,15 @@ export class ChatGroupService {
       : [];
     const nameMap = new Map(chars.map((c) => [c.userId, c.name]));
 
+    // Phase 19.2 — soft-hide: thay body bằng placeholder khi
+    // `row.hiddenAt != null`. FE phân biệt qua `isHidden`.
     return rows.map((r) => ({
       id: r.id,
       groupId: r.groupId,
       senderUserId: r.senderUserId,
       senderDisplayName: nameMap.get(r.senderUserId) ?? null,
-      body: r.body,
+      body: r.hiddenAt ? CHAT_HIDDEN_MESSAGE_PLACEHOLDER : r.body,
+      isHidden: r.hiddenAt !== null,
       createdAt: r.createdAt.toISOString(),
     }));
   }

@@ -54,6 +54,8 @@ export const RATE_LIMIT_POLICY_KEYS = [
   'CHAT_GROUP_SEND',
   'CHAT_GROUP_CREATE',
   'CHAT_GROUP_MEMBER_ADD',
+  // ---- Chat Moderation (Phase 19.2) ----
+  'CHAT_REPORT_SUBMIT',
   // ---- Fallback ----
   'PUBLIC_READ',
   'DEFAULT_API',
@@ -358,6 +360,21 @@ export const RATE_LIMIT_POLICIES: Readonly<
     sensitive: true,
     descriptionVi: 'Giới hạn add thành viên nhóm theo tài khoản, chống mass-add.',
     descriptionEn: 'Group member add limit per account, anti mass-add abuse.',
+  },
+  // ---- Chat Moderation (Phase 19.2) ----
+  // Chống spam report: 10 report / giờ / tài khoản. Vượt → block 10
+  // phút. Legit user hiếm khi report >10 message/giờ; troll abuse
+  // report-storm có thể vượt.
+  CHAT_REPORT_SUBMIT: {
+    key: 'CHAT_REPORT_SUBMIT',
+    windowSec: 60 * 60,
+    maxRequests: 10,
+    blockSec: 10 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn gửi report tin nhắn theo tài khoản, chống report-storm abuse.',
+    descriptionEn: 'Chat report submission limit per account, anti report-storm abuse.',
   },
   // ---- Fallback ----
   PUBLIC_READ: {

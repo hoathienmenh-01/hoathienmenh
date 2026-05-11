@@ -1276,6 +1276,7 @@
       "arenaAntiWintrade": "Arena Anti-Wintrade",
       "gameplayAntiCheat": "Chống gian lận gameplay",
       "marketAbuse": "Chợ - Phát hiện trục lợi",
+      "chatModeration": "Kiểm duyệt chat",
       "featureFlags": "Feature Flags",
       "maintenance": "Bảo trì",
       "configVersion": "Config Version",
@@ -1404,6 +1405,115 @@
       "loading": "Đang tải…",
       "empty": "Không có bất thường nào.",
       "errorPrefix": "Lỗi tải: "
+    },
+    "chatModeration": {
+      "title": "Kiểm duyệt chat",
+      "subtitle": "Xem danh sách report, mute người vi phạm, ẩn mềm tin nhắn, khoá/giải thể nhóm lạm dụng. Mọi thao tác ghi AdminAuditLog.",
+      "summary": {
+        "openReports": "Report đang mở",
+        "acknowledgedReports": "Đã tiếp nhận",
+        "resolvedToday": "Đã xử lý hôm nay",
+        "mutedUsers": "Người bị mute",
+        "hiddenMessages": "Tin nhắn bị ẩn",
+        "lockedGroups": "Nhóm bị khoá"
+      },
+      "reports": {
+        "title": "Danh sách report",
+        "subtitle": "Báo cáo do người chơi gửi cho tin nhắn riêng và nhóm.",
+        "empty": "Không có report nào khớp bộ lọc hiện tại."
+      },
+      "mutes": {
+        "title": "Mute đang áp dụng",
+        "subtitle": "Mute đang hiệu lực và lịch sử. Scope ALL_CHAT bao gồm cả riêng/nhóm/thế giới+tông.",
+        "empty": "Không có mute nào khớp bộ lọc hiện tại.",
+        "userId": "User ID",
+        "scope": "Phạm vi",
+        "reason": "Lý do",
+        "expiresAt": "Hết hạn (tuỳ chọn)",
+        "submit": "Tạo mute",
+        "active": "Đang hiệu lực",
+        "inactive": "Đã hết"
+      },
+      "filters": {
+        "status": "Trạng thái",
+        "reason": "Lý do",
+        "messageType": "Loại",
+        "reporterUserId": "Người báo",
+        "targetUserId": "Đối tượng",
+        "userId": "User ID",
+        "scope": "Phạm vi",
+        "activeOnly": "Chỉ đang hiệu lực",
+        "any": "Tất cả"
+      },
+      "table": {
+        "createdAt": "Tạo lúc",
+        "type": "Loại",
+        "reason": "Lý do",
+        "status": "Trạng thái",
+        "reporter": "Người báo",
+        "target": "Đối tượng",
+        "preview": "Xem trước",
+        "hiddenAt": "ẩn từ {at}",
+        "userId": "User",
+        "scope": "Phạm vi",
+        "expiresAt": "Hết hạn",
+        "actions": "Thao tác"
+      },
+      "actions": {
+        "refresh": "Tải lại",
+        "ack": "Tiếp nhận",
+        "resolve": "Xử lý",
+        "reject": "Từ chối",
+        "hide": "Ẩn tin",
+        "unhide": "Hiện tin",
+        "lockGroup": "Khoá nhóm",
+        "unlockGroup": "Mở khoá nhóm",
+        "dissolveGroup": "Giải thể nhóm",
+        "revokeMute": "Bãi mute"
+      },
+      "confirm": {
+        "ack": "Đánh dấu report này là đã tiếp nhận?",
+        "resolve": "Xử lý report này? Có thể thêm ghi chú.",
+        "reject": "Từ chối report này? Có thể thêm ghi chú.",
+        "hide": "Ẩn mềm tin nhắn này khỏi mọi người? Nội dung gốc vẫn lưu trong DB để audit.",
+        "unhide": "Khôi phục tin nhắn này cho mọi người?",
+        "lock": "Khoá nhóm này (cấm gửi tin)?",
+        "unlock": "Mở khoá nhóm này (cho gửi lại)?",
+        "dissolve": "Giải thể nhóm này (soft-delete)? Không thể hoàn tác.",
+        "mute": "Tạo mute cho người dùng này?",
+        "revokeMute": "Bãi mute này?"
+      },
+      "prompt": {
+        "note": "Ghi chú xử lý (tuỳ chọn, tối đa 500 ký tự). Bấm Cancel để huỷ.",
+        "hideReason": "Lý do ẩn (tuỳ chọn). Bấm Cancel để huỷ.",
+        "lockReason": "Lý do khoá nhóm (tuỳ chọn). Bấm Cancel để huỷ.",
+        "dissolveReason": "Lý do giải thể nhóm (tuỳ chọn). Bấm Cancel để huỷ."
+      },
+      "toast": {
+        "ack": "Đã tiếp nhận report.",
+        "resolve": "Đã xử lý report.",
+        "reject": "Đã từ chối report.",
+        "hide": "Đã ẩn tin nhắn.",
+        "unhide": "Đã khôi phục tin nhắn.",
+        "lock": "Đã khoá nhóm.",
+        "unlock": "Đã mở khoá nhóm.",
+        "dissolve": "Đã giải thể nhóm.",
+        "mute": "Đã tạo mute.",
+        "revokeMute": "Đã bãi mute."
+      },
+      "errors": {
+        "NOT_FOUND": "Không tìm thấy (hoặc không có quyền).",
+        "NOT_AUTHORIZED": "Bạn không có quyền thao tác.",
+        "INVALID_TRANSITION": "Không thể chuyển trạng thái như vậy.",
+        "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+        "DUPLICATE_REPORT": "Tin nhắn này đã được report trước đó.",
+        "GROUP_LOCKED": "Nhóm đang bị khoá.",
+        "GROUP_DISSOLVED": "Nhóm đã bị giải thể.",
+        "MUTED": "Người dùng đang bị mute.",
+        "RATE_LIMITED": "Thao tác quá nhanh — chậm lại rồi thử lại.",
+        "ABUSE_BLOCKED": "Tạm khoá thao tác do hành vi bất thường. Thử lại sau vài phút.",
+        "UNKNOWN": "Có lỗi xảy ra — thử lại."
+      }
     },
     "economySafety": {
       "latestRun": {
@@ -4463,6 +4573,41 @@
       "ABUSE_BLOCKED": "Tạm khoá gửi tin riêng do gửi quá nhiều. Thử lại sau vài phút.",
       "UNKNOWN": "Có lỗi xảy ra — thử lại."
     }
+  },
+  "chatReport": {
+    "title": "Báo cáo tin nhắn",
+    "subtitle": "Report sẽ được moderator xem xét. Lạm dụng hệ thống report cũng là vi phạm.",
+    "submit": "Gửi report",
+    "action": {
+      "report": "Report"
+    },
+    "field": {
+      "reason": "Lý do",
+      "details": "Mô tả (tuỳ chọn)",
+      "detailsPlaceholder": "Thêm ngữ cảnh (tối đa 500 ký tự). Không gõ thông tin cá nhân."
+    },
+    "reason": {
+      "SPAM": "Spam / quảng cáo",
+      "HARASSMENT": "Quấy rối / lăng mạ",
+      "SCAM": "Lừa đảo / phishing",
+      "OFFENSIVE": "Nội dung phản cảm",
+      "OTHER": "Khác"
+    },
+    "toast": {
+      "submitted": "Đã gửi report. Cảm ơn đạo hữu."
+    },
+    "errors": {
+      "NOT_FOUND": "Không tìm thấy tin nhắn (hoặc đã mất quyền xem).",
+      "NOT_AUTHORIZED": "Bạn không có quyền report tin nhắn này.",
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "DUPLICATE_REPORT": "Bạn đã report tin nhắn này rồi.",
+      "RATE_LIMITED": "Report quá nhanh — vui lòng chậm lại.",
+      "ABUSE_BLOCKED": "Tạm khoá tính năng report do lạm dụng. Thử lại sau vài phút.",
+      "UNKNOWN": "Có lỗi xảy ra — thử lại."
+    }
+  },
+  "chatModeration": {
+    "hiddenMessage": "[đã bị ẩn bởi kiểm duyệt]"
   },
   "chatGroup": {
     "groups": {

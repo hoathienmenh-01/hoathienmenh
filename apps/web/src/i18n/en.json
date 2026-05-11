@@ -1276,6 +1276,7 @@
       "arenaAntiWintrade": "Arena Anti-Wintrade",
       "gameplayAntiCheat": "Gameplay Anti-cheat",
       "marketAbuse": "Market Abuse Detection",
+      "chatModeration": "Chat Moderation",
       "featureFlags": "Feature Flags",
       "maintenance": "Maintenance",
       "configVersion": "Config Version",
@@ -1404,6 +1405,115 @@
       "loading": "Loading…",
       "empty": "No anomalies found.",
       "errorPrefix": "Failed to load: "
+    },
+    "chatModeration": {
+      "title": "Chat moderation",
+      "subtitle": "Review chat reports, mute violators, soft-hide messages, lock/dissolve abusive groups. All actions are logged to AdminAuditLog.",
+      "summary": {
+        "openReports": "Open reports",
+        "acknowledgedReports": "Acknowledged",
+        "resolvedToday": "Resolved today",
+        "mutedUsers": "Muted users",
+        "hiddenMessages": "Hidden messages",
+        "lockedGroups": "Locked groups"
+      },
+      "reports": {
+        "title": "Reports",
+        "subtitle": "Player-submitted reports for private and group chat messages.",
+        "empty": "No reports match the current filters."
+      },
+      "mutes": {
+        "title": "Mutes",
+        "subtitle": "Active and historical mutes. ALL_CHAT scope covers private/group/world+sect channels.",
+        "empty": "No mutes match the current filters.",
+        "userId": "User ID",
+        "scope": "Scope",
+        "reason": "Reason",
+        "expiresAt": "Expires at (optional)",
+        "submit": "Create mute",
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "filters": {
+        "status": "Status",
+        "reason": "Reason",
+        "messageType": "Type",
+        "reporterUserId": "Reporter",
+        "targetUserId": "Target",
+        "userId": "User ID",
+        "scope": "Scope",
+        "activeOnly": "Active only",
+        "any": "Any"
+      },
+      "table": {
+        "createdAt": "Created",
+        "type": "Type",
+        "reason": "Reason",
+        "status": "Status",
+        "reporter": "Reporter",
+        "target": "Target",
+        "preview": "Preview",
+        "hiddenAt": "hidden at {at}",
+        "userId": "User",
+        "scope": "Scope",
+        "expiresAt": "Expires",
+        "actions": "Actions"
+      },
+      "actions": {
+        "refresh": "Refresh",
+        "ack": "Ack",
+        "resolve": "Resolve",
+        "reject": "Reject",
+        "hide": "Hide msg",
+        "unhide": "Unhide msg",
+        "lockGroup": "Lock group",
+        "unlockGroup": "Unlock group",
+        "dissolveGroup": "Dissolve group",
+        "revokeMute": "Revoke"
+      },
+      "confirm": {
+        "ack": "Mark this report as acknowledged?",
+        "resolve": "Resolve this report? You may add a note.",
+        "reject": "Reject this report? You may add a note.",
+        "hide": "Soft-hide this message for everyone? The original body stays in the database for audit.",
+        "unhide": "Restore this message to everyone?",
+        "lock": "Lock this group (block all sends)?",
+        "unlock": "Unlock this group (allow sends again)?",
+        "dissolve": "Dissolve this group (soft-delete)? This cannot be undone.",
+        "mute": "Create mute for this user?",
+        "revokeMute": "Revoke this mute?"
+      },
+      "prompt": {
+        "note": "Resolution note (optional, max 500 chars). Cancel to abort.",
+        "hideReason": "Hide reason (optional). Cancel to abort.",
+        "lockReason": "Lock reason (optional). Cancel to abort.",
+        "dissolveReason": "Dissolve reason (optional). Cancel to abort."
+      },
+      "toast": {
+        "ack": "Report acknowledged.",
+        "resolve": "Report resolved.",
+        "reject": "Report rejected.",
+        "hide": "Message hidden.",
+        "unhide": "Message restored.",
+        "lock": "Group locked.",
+        "unlock": "Group unlocked.",
+        "dissolve": "Group dissolved.",
+        "mute": "Mute created.",
+        "revokeMute": "Mute revoked."
+      },
+      "errors": {
+        "NOT_FOUND": "Not found (or insufficient access).",
+        "NOT_AUTHORIZED": "You don't have permission.",
+        "INVALID_TRANSITION": "Status transition not allowed.",
+        "INVALID_INPUT": "Invalid input.",
+        "DUPLICATE_REPORT": "This message has already been reported.",
+        "GROUP_LOCKED": "Group is locked.",
+        "GROUP_DISSOLVED": "Group has been dissolved.",
+        "MUTED": "User is muted.",
+        "RATE_LIMITED": "Too fast — slow down and try again.",
+        "ABUSE_BLOCKED": "Action temporarily blocked due to abuse. Try again in a few minutes.",
+        "UNKNOWN": "Something went wrong — please retry."
+      }
     },
     "economySafety": {
       "latestRun": {
@@ -4463,6 +4573,41 @@
       "ABUSE_BLOCKED": "Private chat send temporarily blocked due to flooding. Try again in a few minutes.",
       "UNKNOWN": "Something went wrong — please retry."
     }
+  },
+  "chatReport": {
+    "title": "Report message",
+    "subtitle": "Reports are reviewed by moderators. Abuse of the report system is also a violation.",
+    "submit": "Submit report",
+    "action": {
+      "report": "Report"
+    },
+    "field": {
+      "reason": "Reason",
+      "details": "Details (optional)",
+      "detailsPlaceholder": "Add context (max 500 chars). Do not include personal data."
+    },
+    "reason": {
+      "SPAM": "Spam / advertising",
+      "HARASSMENT": "Harassment / abuse",
+      "SCAM": "Scam / phishing",
+      "OFFENSIVE": "Offensive content",
+      "OTHER": "Other"
+    },
+    "toast": {
+      "submitted": "Report submitted. Thank you."
+    },
+    "errors": {
+      "NOT_FOUND": "Message not found (or you no longer have access).",
+      "NOT_AUTHORIZED": "You don't have permission to report this message.",
+      "INVALID_INPUT": "Invalid input.",
+      "DUPLICATE_REPORT": "You already reported this message.",
+      "RATE_LIMITED": "You are reporting too fast — please slow down.",
+      "ABUSE_BLOCKED": "Reporting temporarily blocked due to abuse. Try again in a few minutes.",
+      "UNKNOWN": "Something went wrong — please retry."
+    }
+  },
+  "chatModeration": {
+    "hiddenMessage": "[hidden by moderator]"
   },
   "chatGroup": {
     "groups": {

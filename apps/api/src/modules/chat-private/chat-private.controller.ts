@@ -50,6 +50,8 @@ function statusFor(code: ChatPrivateError['code']): number {
       return HttpStatus.FORBIDDEN;
     case 'BLOCKED':
       return HttpStatus.FORBIDDEN;
+    case 'MUTED':
+      return HttpStatus.FORBIDDEN;
     case 'SELF_NOT_ALLOWED':
     case 'INVALID_INPUT':
       return HttpStatus.BAD_REQUEST;

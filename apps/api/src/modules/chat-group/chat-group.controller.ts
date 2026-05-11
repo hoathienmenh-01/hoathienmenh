@@ -56,6 +56,12 @@ function statusFor(code: ChatGroupError['code']): number {
       return HttpStatus.FORBIDDEN;
     case 'BLOCKED':
       return HttpStatus.FORBIDDEN;
+    case 'MUTED':
+      return HttpStatus.FORBIDDEN;
+    case 'GROUP_LOCKED':
+      return HttpStatus.FORBIDDEN;
+    case 'GROUP_DISSOLVED':
+      return HttpStatus.FORBIDDEN;
     case 'DUPLICATE_MEMBER':
       return HttpStatus.CONFLICT;
     case 'GROUP_FULL':
