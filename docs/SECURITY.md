@@ -243,7 +243,76 @@ Server-authoritative tracking phiên đăng nhập của user, bổ sung cho coo
 - `apps/api/src/modules/auth/auth.controller.test.ts` (Phase 18.2 block — 8 tests): list (UNAUTHENTICATED / current flag / includeRevoked forward); delete (UNAUTHENTICATED / 404 missing / 404 mask cross-user / non-current keeps cookies / current clears cookies).
 - `apps/api/src/modules/security/admin-security.controller.test.ts` (Phase 18.2 block — 6 tests): admin list + audit, invalid status, userId forward; admin revoke success + audit meta, 404 + audit `_FAILED`, INVALID_INPUT.
 
-## 14. Khi phát hiện sự cố
+## 14. Security Audit / Alert Polish (Phase 18.3)
+
+### Mục tiêu
+
+Tách lớp **operational alert workflow** ra khỏi `SecurityEvent` audit log (immutable). `SecurityEvent` vẫn là source-of-truth raw event; `SecurityAlert` là lớp **mutable** cho admin ack/resolve, lưu workflow status (`OPEN` / `ACKNOWLEDGED` / `RESOLVED`) + ghi chú xử lý.
+
+### Bảng `SecurityAlert`
+
+Cột chính:
+
+| Cột | Mục đích |
+| --- | --- |
+| `id` (cuid) | PK |
+| `type` | Phân loại nghiệp vụ (xem map bên dưới) |
+| `severity` | `INFO` / `WARN` / `CRITICAL` |
+| `status` | `OPEN` → `ACKNOWLEDGED` → `RESOLVED` |
+| `source` | `RATE_LIMIT` / `AUTH` / `SESSION` / `ADMIN` / `BLOCK` / `OTHER` |
+| `eventId` | FK-ish đến `SecurityEvent.id` (nullable cho alert direct) |
+| `relatedUserId`, `relatedCharacterId`, `relatedSessionId` | optional |
+| `detailsJson` | Snapshot detail sanitized (KHÔNG có raw IP/token/cookie/secret) |
+| `createdAt`, `acknowledgedAt[ByAdminId]`, `resolvedAt[ByAdminId]`, `resolutionNote` | Audit cột |
+
+Index: `(status, severity, createdAt desc)`, `(source, createdAt desc)`, `(type, createdAt desc)`, `(relatedUserId, createdAt desc)`, `eventId`, `createdAt desc` — đủ cho admin filter / dashboard.
+
+### Mapping event → alert
+
+`classifySecurityEventForAlert(eventType, eventSeverity)` (file `packages/shared/src/security-alerts.ts`) map sang `{ alertType, severity, source }`. Bảng:
+
+| SecurityEvent type | alertType | source |
+| --- | --- | --- |
+| `RATE_LIMIT_VIOLATION` | `RATE_LIMIT_ABUSE` | `RATE_LIMIT` |
+| `LOGIN_FAILED` | `LOGIN_ABUSE` | `AUTH` |
+| `INVALID_TOKEN` | `INVALID_TOKEN` | `AUTH` |
+| `ADMIN_FORBIDDEN` | `ADMIN_FORBIDDEN` | `ADMIN` |
+| `SUBJECT_BLOCKED` | `SUBJECT_BLOCKED` | `BLOCK` |
+| `BLOCK_LIFTED` | `BLOCK_LIFTED` | `ADMIN` |
+| `SESSION_CREATED` | `SESSION_CREATED` | `SESSION` |
+| `SESSION_REVOKED` | `SESSION_REVOKED` | `SESSION` |
+| `REFRESH_TOKEN_REUSED` | `REFRESH_TOKEN_REUSED` | `SESSION` |
+| `SESSION_SUSPICIOUS_ACTIVITY` | `SESSION_SUSPICIOUS` | `SESSION` |
+| _unknown_ | `OTHER` (severity = `INFO`) | `OTHER` |
+
+`shouldCreateAlertForClassification()` filter ra `INFO` → KHÔNG tạo alert (tránh spam). Chỉ `WARN` / `CRITICAL` raise alert.
+
+### Fan-out (fail-soft)
+
+`SecurityAbuseService.maybeCreateAlert()` + `SessionService.emitEvent()` gọi `SecurityAlertService.createFromEvent()` ngay sau khi `SecurityEvent` đã `create()`. **Mọi exception trong fan-out chỉ log warn — KHÔNG propagate** (alert là lớp phụ trợ, không được kéo theo crash login / rate-limit / session flow). Idempotent theo `eventId`.
+
+### Admin workflow
+
+- `GET /admin/security/alerts?status=&severity=&type=&source=&from=&to=&userId=&limit=&cursor=` — list cursor pagination, audit `ADMIN_SECURITY_ALERTS_VIEW`.
+- `GET /admin/security/summary` — `{ openCritical, openWarn, blockedSubjects, tokenReuseLast24h, suspiciousSessionsLast24h, rateLimitHitsLast24h, latestCriticalEvents[] }`. Mỗi count fail-soft riêng — 1 lỗi không kéo cả summary fail. Audit `ADMIN_SECURITY_SUMMARY_VIEW`.
+- `POST /admin/security/alerts/:id/ack` — ADMIN-only. Idempotent: ack 1 alert đã ACK → no-op. Reject `ALERT_ALREADY_RESOLVED` (409). Audit `ADMIN_SECURITY_ALERT_ACK` / `_FAILED`.
+- `POST /admin/security/alerts/:id/resolve` body `{ note }` — ADMIN-only. Sanitize note (strip control char, max 1000 char). Reject `INVALID_NOTE` (400), `ALERT_ALREADY_RESOLVED` (409). Skip-ack path: `OPEN` → `RESOLVED` trực tiếp cũng set `acknowledgedAt` đồng thời. Audit `ADMIN_SECURITY_ALERT_RESOLVE` / `_FAILED`.
+
+### Cấm
+
+- **KHÔNG auto-ban vĩnh viễn**: alert chỉ là dashboard. Ban vĩnh viễn vẫn phải qua admin action explicit (Phase 18.2 revoke / Phase 18.1 lift).
+- **KHÔNG tự rollback economy / player data** dựa trên alert.
+- **KHÔNG tự revoke session** dựa trên alert (admin phải bấm Phase 18.2 revoke).
+- KHÔNG store raw IP — chỉ `ipHash` từ `SecurityEvent`.
+
+### Test
+
+- `packages/shared/src/security-alerts.test.ts` (34 tests): enum guard, classify map đủ 16 event type, fail-soft unknown → OTHER/INFO, sanitize note.
+- `apps/api/src/modules/security/security-alert.service.test.ts` (28 tests): createFromEvent idempotent + skip INFO + DB fail-soft, createDirect, listAlerts filter cursor, ack idempotent + reject RESOLVED, resolve skip-ack + sanitize note + reject empty, getSummary count + fail-soft per-query.
+- `apps/api/src/modules/security/admin-security.controller.test.ts` (Phase 18.3 block — 9 tests): list + audit + filter forward + INVALID_STATUS; summary; ack success + 404 + 409; resolve success + INVALID_NOTE + 409.
+- `apps/web/src/components/__tests__/SecurityAlertPanel.test.ts` (9 tests): render summary + table; empty / loading / error state; filter apply forward; ack cancel/confirm; resolve note rỗng/non-empty; i18n vi/en parity.
+
+## 15. Khi phát hiện sự cố
 
 1. Ngắt traffic (reverse proxy 503 hoặc scale 0 instance).
 2. Thu log + dump `/admin/audit` + `CurrencyLedger` quanh thời điểm xảy ra.
