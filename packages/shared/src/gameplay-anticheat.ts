@@ -69,6 +69,19 @@ export const GAMEPLAY_ANOMALY_TYPES = [
    * 16.6 daily detection). Bổ sung cảnh báo real-time hơn.
    */
   'REWARD_CAP_BYPASS_ATTEMPT',
+  /**
+   * Phase 20.3 — Co-op reward cap (daily/weekly) bị member cố vượt.
+   * Wire ở `CoopRewardCapService.checkDailyWeeklyCap` khi reject claim
+   * vì cap hit. KHÔNG auto-ban — chỉ ghi event để admin audit.
+   */
+  'COOP_REWARD_CAP_HIT',
+  /**
+   * Phase 20.3 — Member bị classify leech risk HIGH sau khi run
+   * resolved (contribution + survival + action đều fail ngưỡng). Wire
+   * ở `CoopRewardCapService.classifyLeechRisk` khi tier downgrade.
+   * KHÔNG auto-ban — chỉ ghi event để admin xem pattern.
+   */
+  'COOP_LEECH_HIGH',
 ] as const;
 export type GameplayAnomalyType = (typeof GAMEPLAY_ANOMALY_TYPES)[number];
 
@@ -107,6 +120,8 @@ export const GAMEPLAY_ANOMALY_SOURCES = [
   'TERRITORY',
   'COMBAT',
   'REWARD_CAP',
+  /** Phase 20.3 — Co-op reward cap / weekly season anomaly. */
+  'COOP_REWARD',
   'OTHER',
 ] as const;
 export type GameplayAnomalySource = (typeof GAMEPLAY_ANOMALY_SOURCES)[number];
@@ -266,6 +281,24 @@ export const GAMEPLAY_ANOMALY_RULES: readonly GameplayAnomalyRule[] = [
     criticalThreshold: 20n,
     windowMs: ONE_HOUR_MS,
     description: 'Character chạm RewardCap ≥ 5 / 20 lần trong 1h.',
+  },
+  {
+    type: 'COOP_REWARD_CAP_HIT',
+    source: 'COOP_REWARD',
+    warnThreshold: 3n,
+    criticalThreshold: 10n,
+    windowMs: ONE_HOUR_MS,
+    description:
+      'User chạm Co-op reward cap (daily/weekly) ≥ 3 / 10 lần trong 1h.',
+  },
+  {
+    type: 'COOP_LEECH_HIGH',
+    source: 'COOP_REWARD',
+    warnThreshold: 2n,
+    criticalThreshold: 6n,
+    windowMs: ONE_DAY_MS,
+    description:
+      'User bị classify leech risk HIGH ≥ 2 / 6 lần trong 24h (co-op boss/dungeon).',
   },
 ];
 

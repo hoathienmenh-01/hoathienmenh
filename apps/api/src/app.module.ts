@@ -44,6 +44,7 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { PartyModule } from './modules/party/party.module';
 import { PartyDungeonModule } from './modules/party-dungeon/party-dungeon.module';
 import { CoopBossModule } from './modules/coop-boss/coop-boss.module';
+import { CoopRewardCapModule } from './modules/coop-reward-cap/coop-reward-cap.module';
 import { ChatModerationModule } from './modules/chat-moderation/chat-moderation.module';
 import { LiveOpsCronModule } from './modules/liveops-cron/liveops-cron.module';
 import { LiveOpsEventSchedulerModule } from './modules/liveops-event-scheduler/liveops-event-scheduler.module';
@@ -188,6 +189,7 @@ import { SecurityModule } from './modules/security/security.module';
     // enforce party-membership + leader-only + contribution clamp
     // invariants trên từng mutation.
     CoopBossModule,
+    CoopRewardCapModule,
     // Phase 17.5 — Metrics endpoint (admin-only) + collectors. SAU
     // AdminModule + RealtimeModule (đã imported indirectly).
     MetricsModule,
