@@ -51,11 +51,14 @@ import {
   SecurityAbuseService,
   type SecurityEventType,
 } from './security-abuse.service';
+import { SessionService } from '../auth/session.service';
 import {
   isRateLimitPolicyKey,
+  isSessionStatusFilter,
   RATE_LIMIT_POLICY_KEYS,
   type RateLimitPolicyKey,
   type RateLimitScope,
+  type SessionStatusFilter,
 } from '@xuantoi/shared';
 
 type AdminReq = Request & { userId: string; role: 'ADMIN' | 'MOD' };
@@ -105,6 +108,7 @@ export class AdminSecurityController {
     private readonly abuse: SecurityAbuseService,
     private readonly rateLimit: RateLimitService,
     private readonly ipHash: IpHashService,
+    private readonly sessions: SessionService,
   ) {}
 
   /**
@@ -313,6 +317,110 @@ export class AdminSecurityController {
     return {
       ok: true,
       data: { keys: [...RATE_LIMIT_POLICY_KEYS] },
+    };
+  }
+
+  /**
+   * Phase 18.2 — `GET /admin/security/sessions`
+   *
+   * List UserSession rows (paginated). Filter:
+   *   - `userId` exact match.
+   *   - `status` ∈ ACTIVE/REVOKED/EXPIRED/ALL (default ALL).
+   *
+   * Audit: `ADMIN_SECURITY_SESSIONS_VIEW` (1 row per call, không per
+   * session row — tránh ngập audit khi pagination).
+   */
+  @Get('sessions')
+  @RateLimitPolicy('ADMIN_REPORT_VIEW')
+  async listSessions(
+    @Req() req: Request,
+    @Query('userId') userId?: string,
+    @Query('status') statusRaw?: string,
+    @Query('limit') limitRaw?: string,
+    @Query('cursor') cursor?: string,
+  ) {
+    const adminReq = req as AdminReq;
+    if (userId !== undefined && (userId.length === 0 || userId.length > 128)) {
+      fail('INVALID_USER_ID');
+    }
+    let status: SessionStatusFilter | undefined;
+    if (statusRaw) {
+      if (!isSessionStatusFilter(statusRaw)) fail('INVALID_STATUS');
+      status = statusRaw;
+    }
+    const limit = parseLimit(limitRaw);
+    const out = await this.sessions.listForAdmin({
+      userId: userId || undefined,
+      status,
+      limit,
+      cursor,
+    });
+    await this.audit(adminReq.userId, 'ADMIN_SECURITY_SESSIONS_VIEW', {
+      userId: userId ?? null,
+      status: status ?? 'ALL',
+      count: out.sessions.length,
+    });
+    return {
+      ok: true,
+      data: {
+        sessions: out.sessions,
+        nextCursor: out.nextCursor,
+        generatedAt: new Date().toISOString(),
+      },
+    };
+  }
+
+  /**
+   * Phase 18.2 — `POST /admin/security/sessions/:id/revoke`
+   *
+   * Admin-only. MOD bị reject `ADMIN_ONLY` 403 qua `@RequireAdmin`.
+   * Idempotent: nếu session không tồn tại → 404
+   * `SESSION_NOT_FOUND` + audit `..._FAILED`. Đã revoke → vẫn return
+   * 200 với current state.
+   *
+   * Audit:
+   *   - `ADMIN_SECURITY_SESSION_REVOKE` cho success.
+   *   - `ADMIN_SECURITY_SESSION_REVOKE_FAILED` cho not-found.
+   */
+  @Post('sessions/:id/revoke')
+  @HttpCode(200)
+  @RequireAdmin()
+  async revokeSession(
+    @Req() req: Request,
+    @Param('id') sessionId: string,
+  ) {
+    const adminReq = req as AdminReq;
+    if (!sessionId || typeof sessionId !== 'string' || sessionId.length > 128) {
+      fail('INVALID_INPUT');
+    }
+    const existing = await this.sessions.findById(sessionId);
+    if (!existing) {
+      await this.audit(
+        adminReq.userId,
+        'ADMIN_SECURITY_SESSION_REVOKE_FAILED',
+        { sessionId },
+      );
+      fail('SESSION_NOT_FOUND', HttpStatus.NOT_FOUND);
+    }
+    const updated = await this.sessions.revokeSession({
+      sessionId,
+      reason: 'ADMIN_REVOKE',
+      revokedById: adminReq.userId,
+    });
+    await this.audit(adminReq.userId, 'ADMIN_SECURITY_SESSION_REVOKE', {
+      sessionId,
+      userId: existing.userId,
+      reason: 'ADMIN_REVOKE',
+    });
+    return {
+      ok: true,
+      data: {
+        session: this.sessions.toSummary(
+          updated ?? existing,
+          null,
+          new Date(),
+        ),
+      },
     };
   }
 

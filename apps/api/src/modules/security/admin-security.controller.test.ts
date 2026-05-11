@@ -36,6 +36,7 @@ function makeMocks(): {
   audit: AuditLog[];
   abuse: SecurityAbuseService;
   rateLimit: RateLimitService;
+  sessions: import('../auth/session.service').SessionService;
 } {
   const audit: AuditLog[] = [];
   // hex-like stub (64 char) so privacy assertions match real shape.
@@ -84,8 +85,20 @@ function makeMocks(): {
   const ipHash = {
     hashIp: () => fakeHash,
   } as unknown as IpHashService;
-  const ctrl = new AdminSecurityController(prisma, abuse, rateLimit, ipHash);
-  return { ctrl, audit, abuse, rateLimit };
+  const sessions = {
+    listForAdmin: vi.fn(async () => ({ sessions: [], nextCursor: null })),
+    findById: vi.fn(async () => null),
+    revokeSession: vi.fn(async () => null),
+    toSummary: vi.fn((row) => row),
+  } as unknown as import('../auth/session.service').SessionService;
+  const ctrl = new AdminSecurityController(
+    prisma,
+    abuse,
+    rateLimit,
+    ipHash,
+    sessions,
+  );
+  return { ctrl, audit, abuse, rateLimit, sessions };
 }
 
 describe('AdminSecurityController', () => {
