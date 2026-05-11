@@ -184,4 +184,84 @@ describe('AdminSecurityController', () => {
       { status: HttpStatus.BAD_REQUEST },
     );
   });
+
+  // -------------------- Phase 18.2 admin sessions --------------------
+
+  it('GET /admin/security/sessions → list + audit ADMIN_SECURITY_SESSIONS_VIEW', async () => {
+    const { ctrl, audit, sessions } = makeMocks();
+    (sessions.listForAdmin as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      sessions: [{ id: 's1', userId: 'u1' }],
+      nextCursor: null,
+    });
+    const r = await ctrl.listSessions(makeReq() as Request, undefined, 'ALL');
+    expect(r.ok).toBe(true);
+    expect(r.data.sessions.length).toBe(1);
+    expect(typeof r.data.generatedAt).toBe('string');
+    expect(
+      audit.some((a) => a.action === 'ADMIN_SECURITY_SESSIONS_VIEW'),
+    ).toBe(true);
+  });
+
+  it('GET /admin/security/sessions INVALID_STATUS khi status sai', async () => {
+    const { ctrl } = makeMocks();
+    await expect(
+      ctrl.listSessions(makeReq() as Request, undefined, 'NOPE'),
+    ).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
+  });
+
+  it('GET /admin/security/sessions forward userId filter', async () => {
+    const { ctrl, sessions } = makeMocks();
+    await ctrl.listSessions(makeReq() as Request, 'u-abc');
+    const call = (sessions.listForAdmin as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(call.userId).toBe('u-abc');
+  });
+
+  it('POST /admin/security/sessions/:id/revoke → success + audit', async () => {
+    const { ctrl, audit, sessions } = makeMocks();
+    (sessions.findById as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      id: 'sess-1',
+      userId: 'u-victim',
+      revokedAt: null,
+    });
+    (sessions.revokeSession as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      {
+        id: 'sess-1',
+        userId: 'u-victim',
+        revokedAt: new Date(),
+        revokedReason: 'ADMIN_REVOKE',
+      },
+    );
+    const r = await ctrl.revokeSession(makeReq() as Request, 'sess-1');
+    expect(r.ok).toBe(true);
+    const log = audit.find((a) => a.action === 'ADMIN_SECURITY_SESSION_REVOKE');
+    expect(log).toBeDefined();
+    expect((log!.meta as { sessionId: string }).sessionId).toBe('sess-1');
+    expect((log!.meta as { userId: string }).userId).toBe('u-victim');
+    expect((log!.meta as { reason: string }).reason).toBe('ADMIN_REVOKE');
+  });
+
+  it('POST /admin/security/sessions/:id/revoke → 404 + audit FAILED khi session không tồn tại', async () => {
+    const { ctrl, audit, sessions } = makeMocks();
+    (sessions.findById as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      null,
+    );
+    let captured: HttpException | undefined;
+    try {
+      await ctrl.revokeSession(makeReq() as Request, 'ghost');
+    } catch (err) {
+      captured = err as HttpException;
+    }
+    expect(captured?.getStatus()).toBe(HttpStatus.NOT_FOUND);
+    expect(
+      audit.some((a) => a.action === 'ADMIN_SECURITY_SESSION_REVOKE_FAILED'),
+    ).toBe(true);
+  });
+
+  it('POST revoke INVALID_INPUT khi sessionId rỗng', async () => {
+    const { ctrl } = makeMocks();
+    await expect(
+      ctrl.revokeSession(makeReq() as Request, ''),
+    ).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
+  });
 });
