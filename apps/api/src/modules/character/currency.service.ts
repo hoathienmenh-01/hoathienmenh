@@ -110,7 +110,14 @@ export type LedgerReason =
   // Reward source = `DUNGEONS[].runReward` từ shared catalog (Phase
   // 20.1 foundation: mỗi participant nhận đủ runReward solo, KHÔNG
   // share pool — xem `computePartyDungeonRewardSplit`).
-  | 'PARTY_DUNGEON_REWARD';
+  | 'PARTY_DUNGEON_REWARD'
+  // Phase 20.2 — Co-op Boss reward grant qua `CoopBossService.claimReward`.
+  // Idempotent semantics: `CoopBossRewardClaim` UNIQUE `(runId, userId)` +
+  // `(runId, characterId)` + CAS guard `status='PENDING' → 'CLAIMED'` —
+  // 2 concurrent claim trên cùng row → đúng 1 winner ghi ledger.
+  // Reward source = `computeCoopBossRewardTier(tier)` deterministic
+  // theo tier (NONE/LOW/NORMAL/HIGH/MVP) snapshot tại `finishRun`.
+  | 'COOP_BOSS_REWARD';
 
 export interface CurrencyApplyInput {
   characterId: string;
