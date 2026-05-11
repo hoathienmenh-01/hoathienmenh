@@ -12,7 +12,44 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Phase 18.3 — Security Audit / Alert Polish (this PR — #525)
+### Phase 16.3 — Gameplay Anti-cheat Deep Detection (this PR — #526)
+
+**Scope**: **Detection-only** lớp phát hiện gian lận gameplay sâu. Theo dõi 10 loại bất thường gameplay (EXP/Linh thạch/Item gain spike, Dungeon/Boss/Mission/Arena reward farming, Territory reward spike, Combat result mismatch, Reward cap bypass). KHÔNG auto-ban, KHÔNG tự rollback, KHÔNG tự trừ EXP/item/đá linh, KHÔNG khoá tài khoản. Chỉ tạo `GameplayAnomaly` row OPEN cho admin review qua tab "Gameplay Anti-cheat".
+
+#### Added — Phase 16.3
+
+- **Prisma migration `20260701000000_phase_16_3_gameplay_anomaly`** additive: `GameplayAnomaly` table (`id`, `type` 10-enum, `severity INFO/WARN/CRITICAL`, `status OPEN/ACKNOWLEDGED/RESOLVED`, `source` 11-enum, `characterId`, `userId?`, `windowKey`, `detailsJson`, ack/resolve metadata, `@@unique([type, characterId, windowKey])` cho idempotency, 5 index admin filter).
+- **Shared `@xuantoi/shared/src/gameplay-anticheat.ts`**: rule catalog (10 type) với threshold rõ ràng + balance comment, pure helpers `classifyExpGainSpike` / `classifyCurrencyGainSpike` / `classifyItemGainSpike` / `classifyRewardFarmCount` / `buildGameplayAnomalyWindowKey`, fail-soft unknown source. 23 unit tests.
+- **`GameplayAntiCheatService`** (`apps/api/src/modules/admin-anticheat/`): `scanAll({now, windowKey?})` dispatch 10 rule + summary; mỗi rule wrap try/catch (1 rule fail không phá rule khác); `upsertAnomaly` catch P2002 → skipped (idempotent multi-instance race-safe). EXP spike dùng heuristic `RewardCapEvent.grantedExp` proxy, Currency dùng `CurrencyLedger`, Dungeon `DungeonRun.status='CLAIMED'`, Boss `CurrencyLedger.reason='BOSS_REWARD'`, Mission `MissionProgress.claimed=true`, Arena `ArenaMatch.winnerCharacterId`, Territory `TerritoryOwnerRewardGrant`, RewardCapBypass `RewardCapEvent`. COMBAT_RESULT_MISMATCH no-op (reserved). 18 integration tests + detection-only assertion (scan KHÔNG mutate Character).
+- **Admin API**:
+  - `GET /admin/anticheat/gameplay/summary` — open/critical/warn/info/total + latestCreated/Resolved.
+  - `POST /admin/anticheat/gameplay/scan` `@RequireAdmin` — manual scan + audit `ADMIN_ANTICHEAT_GAMEPLAY_SCAN`.
+  - `GET /admin/anticheat/gameplay/anomalies?severity=&status=&type=&source=&characterId=&from=&to=&limit=` — list filter (limit ≤200, invalid filter bỏ qua).
+  - `POST /admin/anticheat/gameplay/anomalies/:id/ack` `@RequireAdmin` — OPEN → ACKNOWLEDGED + audit `ADMIN_ANTICHEAT_GAMEPLAY_ACK`.
+  - `POST /admin/anticheat/gameplay/anomalies/:id/resolve` `@RequireAdmin` — OPEN/ACKNOWLEDGED → RESOLVED (note ≤1000ch) + audit `ADMIN_ANTICHEAT_GAMEPLAY_RESOLVE`.
+  - 17 unit tests controller (RBAC, audit, idempotency, note cap).
+- **FE** `AdminGameplayAntiCheatPanel.vue`: summary cards, Run scan button confirm prompt, filter severity/status/type/source, anomaly table với Ack/Resolve buttons + confirm + optional note prompt. Loading/empty/error state. i18n vi/en parity (`admin.gameplayAntiCheat.*`). Tab `gameplayAntiCheat` thêm vào `AdminView.vue` cạnh `arenaAntiWintrade`. 9 component tests.
+
+#### Security — Phase 16.3
+
+- **Detection-only invariants** (test enforced):
+  - Scan KHÔNG mutate `Character.linhThach` / `Character.expCurrent` / `InventoryItem.qty`.
+  - Scan KHÔNG mutate `User.bannedAt` / KHÔNG revoke session / KHÔNG khoá tài khoản.
+  - KHÔNG auto-rollback transaction, KHÔNG auto-refund currency, KHÔNG auto-deduct.
+- Tất cả mutation admin (scan, ack, resolve) ghi `AdminAuditLog`.
+- KHÔNG lưu raw IP / token / cookie / secret trong `detailsJson`.
+
+#### Docs — Phase 16.3
+
+- `docs/AI_HANDOFF_REPORT.md` Recent Changes Phase 16.3 + Phase Status update.
+- `docs/BALANCE_MODEL.md` — Phase 16.3 detection threshold section.
+- `docs/SECURITY.md` — gameplay anti-cheat detection layer (detection-only posture).
+- `docs/RUNBOOK.md` — Phase 16.3 admin workflow (run scan / ack / resolve / monitor critical).
+- `docs/API.md` — admin anticheat gameplay endpoints.
+
+---
+
+### Phase 18.3 — Security Audit / Alert Polish (PR #525)
 
 **Scope**: Operational alert workflow cho admin. Tách mutable workflow ra khỏi `SecurityEvent` (immutable audit log). Mỗi event severity WARN/CRITICAL từ rate-limit abuse, login abuse, refresh-token reuse, suspicious session, IP/USER block, admin forbidden → tự tạo `SecurityAlert` row OPEN. Admin có dashboard summary + ack/resolve workflow + audit per mutation.
 
