@@ -9,6 +9,7 @@ import {
   corsConfig,
   helmetConfig,
 } from './bootstrap-config';
+import { assertProductionEnv } from './config/env.schema';
 import { getLogger } from './observability/logger';
 import { PinoNestLogger } from './observability/nest-logger.adapter';
 import { createRequestLoggerMiddleware } from './observability/request-logger.middleware';
@@ -21,6 +22,10 @@ async function bootstrap(): Promise<void> {
   initSentry();
 
   assertProductionSecrets();
+  // Phase 17.1 — Deploy Verify Gate: kiểm strict mọi env critical (DATABASE_URL,
+  // REDIS_URL, CORS_ORIGINS, SESSION_COOKIE_DOMAIN, SECURITY_IP_HASH_SALT…)
+  // ngoài JWT_*. No-op ở dev/test. Throw fail-fast nếu thiếu / placeholder.
+  assertProductionEnv();
   const app = await NestFactory.create(AppModule, {
     cors: corsConfig(),
     bufferLogs: true,

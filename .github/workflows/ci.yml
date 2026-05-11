@@ -129,3 +129,70 @@ jobs:
             apps/web/playwright-report/
           if-no-files-found: ignore
           retention-days: 7
+
+  verify-deploy:
+    # Phase 17.1 — Deploy Verify Gate. Smoke production-readiness:
+    # migrate → boot API (NODE_ENV=production, env schema strict) →
+    # healthz/readyz/version → bootstrap admin idempotent (run twice).
+    # Tách job riêng (KHÔNG piggy-back vào `build`) vì cần boot API
+    # listening port + dummy strong env production.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mtt
+          POSTGRES_PASSWORD: mtt
+          POSTGRES_DB: mtt
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mtt -d mtt"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://mtt:mtt@localhost:5432/mtt?schema=public
+      REDIS_URL: redis://localhost:6379
+      # Dummy strong env — script verify-deploy override mọi env critical
+      # bằng giá trị verify-deploy-* (≥ 32 ký tự, không placeholder) khi
+      # spawn API. Không expose secret thật ở CI.
+      PORT: "3100"
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Generate Prisma client
+        working-directory: apps/api
+        run: pnpm prisma:generate
+
+      - name: Build shared (verify:deploy spawn API qua dist)
+        run: pnpm --filter @xuantoi/shared build
+
+      - name: Build API
+        run: pnpm --filter @xuantoi/api build
+
+      - name: verify:deploy (migrate → boot → healthz/readyz/version → bootstrap idempotent)
+        run: pnpm verify:deploy

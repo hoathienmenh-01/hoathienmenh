@@ -1817,6 +1817,42 @@ Validator `validateRateLimitPolicy` đã chặn `maxRequests > 10000` / `windowS
 - KHÔNG log raw IP / password / token vào `SecurityEvent.detailJson` khi thêm event type mới — `IpHashService.hashIp` luôn được gọi trước khi persist.
 - KHÔNG dùng `RATE_LIMIT_FAIL_OPEN=false` trừ khi đã có WAF/CDN layer trên (closed beta hiện tại chưa có).
 
+## 2.99. Pre-cutover Deploy Verify Gate (Phase 17.1)
+
+**Khi nào**: Mọi lần cutover production sang instance mới / image mới /
+host mới. **TRƯỚC** khi mở traffic real user.
+
+**Tại sao**: Phát hiện sớm env critical thiếu, secret placeholder, DB
+migration conflict, healthz/readyz/version sai, admin bootstrap không
+idempotent — trước khi ảnh hưởng player.
+
+**Cách chạy** (single command):
+
+```bash
+cd /opt/xuantoi
+DATABASE_URL=postgresql://user:pass@host:5432/db?sslmode=require \
+REDIS_URL=rediss://host:6380 \
+PORT=3100 \
+pnpm verify:deploy
+```
+
+7 step orchestrator — migrate → spawn API NODE_ENV=production → poll
+healthz/readyz/version → bootstrap idempotent (run twice). Chi tiết +
+troubleshooting xem `docs/DEPLOY.md` §10.A.
+
+**Exit code**:
+
+- `0` → `Deploy Verify Gate OPEN.` → an toàn cutover.
+- `!= 0` → script in step nào fail; **KHÔNG cutover** cho đến khi gate
+  xanh. Mở incident theo §2.X tương ứng (migration fail = §2.X DB,
+  health probe fail = §2.X API boot, etc.).
+
+**Trên CI**: Job `verify-deploy` trong `.github/workflows/ci.yml` chạy
+chính script này trên Postgres+Redis service container — fail PR nếu
+gate đóng. Đảm bảo gate xanh trên CI **trước khi merge** branch deploy.
+
+---
+
 ## 3. Backup operations (closed beta cadence)
 
 ### 3.1. Cron daily backup

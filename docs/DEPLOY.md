@@ -30,6 +30,8 @@ Hướng dẫn deploy `apps/api` (NestJS) + `apps/web` (Vite SPA + PWA) lên mô
 
 ### Secrets bắt buộc
 
+> **Source of truth**: [`apps/api/src/config/env.schema.ts`](../apps/api/src/config/env.schema.ts) (Phase 17.1) — zod schema strict cho production. Server refuse boot nếu thiếu/placeholder. `pnpm verify:deploy` smoke gate này TRƯỚC khi cutover (xem §10.A).
+
 | Env var | Yêu cầu |
 |---|---|
 | `NODE_ENV` | `production` |
@@ -39,7 +41,8 @@ Hướng dẫn deploy `apps/api` (NestJS) + `apps/web` (Vite SPA + PWA) lên mô
 | `JWT_REFRESH_SECRET` | ≥ 32 ký tự, khác `JWT_ACCESS_SECRET`. |
 | `CORS_ORIGINS` | csv list (ví dụ `https://xt.example.com,https://www.xt.example.com`). Production bắt buộc, không có sẽ refuse start. |
 | `SESSION_COOKIE_DOMAIN` | Domain cookie httpOnly (ví dụ `.xt.example.com`). |
-| `PORT` | (optional) mặc định `3000`. |
+| `SECURITY_IP_HASH_SALT` | ≥ 32 ký tự ngẫu nhiên (Phase 17.1 + Phase 18.1). **KHÔNG** dùng default `xuantoi-default-ip-salt` (refuse start). |
+| `PORT` | (optional) mặc định `3000`. Phải nằm trong 1..65535. |
 
 Sinh secret: `openssl rand -base64 48`.
 
@@ -236,6 +239,62 @@ DATABASE_URL=... pnpm verify:restore
 Chi tiết workflow + checklist disaster recovery xem `docs/BACKUP_RESTORE.md` + `docs/RUNBOOK.md` §2.10.
 
 ## 10. Smoke checklist sau deploy
+
+### 10.A. `pnpm verify:deploy` — Deploy Verify Gate (Phase 17.1)
+
+Chạy gate này **TRƯỚC** khi cutover traffic sang instance mới. Script là
+1-file pure Node 20 (`scripts/verify-deploy.mjs`) — không cần cài thêm
+dependency runtime. CI cũng chạy chính script này (job `verify-deploy`).
+
+**Pre-req**:
+
+- `DATABASE_URL` + `REDIS_URL` set trong shell (script reuse cho cả
+  migrate + healthz/readyz). Script tự override mọi env critical còn lại
+  (JWT/SALT/CORS/SESSION_COOKIE_DOMAIN) thành dummy strong value để đi
+  qua zod schema mà không cần expose secret thật.
+- `apps/api` đã build (`pnpm --filter @xuantoi/api build`).
+- Port `PORT` (default 3100) free.
+
+**Chạy**:
+
+```bash
+DATABASE_URL=postgresql://user:pass@host:5432/db?sslmode=require \
+REDIS_URL=rediss://host:6380 \
+PORT=3100 \
+pnpm verify:deploy
+```
+
+**7 step orchestrator** (stop ngay khi 1 step fail, exit code != 0):
+
+1. `prisma migrate deploy` → apply mọi migration pending.
+2. Spawn `node apps/api/dist/src/main.js` với `NODE_ENV=production` +
+   dummy strong env. Schema strict (`apps/api/src/config/env.schema.ts`)
+   refuse start nếu thiếu critical env → fail-fast.
+3. Poll `GET /api/healthz` (liveness) 60s → 200 + `ok: true`.
+4. Poll `GET /api/readyz` (DB + Redis) 60s → 200 + `ok: true`.
+5. `GET /api/version` assert `name=@xuantoi/api` + `node` version + có
+   `commit` (build info).
+6. `pnpm --filter @xuantoi/api bootstrap` lần 1 — expected stdout chứa
+   `created admin` hoặc `đã có`.
+7. Bootstrap lần 2 — phải idempotent: expected `đã có / kept / giữ`,
+   reject nếu stdout chứa `created admin` / `(mới)`.
+
+**Output**: `✓ All 7 steps passed. Deploy Verify Gate OPEN.` → an toàn
+cutover.
+
+**Khi fail**: script in step nào fail + stack/stdout. Kiểm:
+
+- Step 1 fail → migration conflict / DB connection / SSL cert. Verify
+  `psql $DATABASE_URL` từ chính host chạy verify.
+- Step 2 fail (`[xuantoi/api] Env validation FAILED`) → đọc message
+  liệt kê đủ env thiếu → set trong `.env` production rồi rerun.
+- Step 3/4 fail (`Health probe không pass trong 60s`) → API có log gì
+  trong stdout? Có throw boot? Check `assertProductionSecrets()` /
+  `assertProductionEnv()` log dòng đầu.
+- Step 7 fail (`không idempotent`) → có ai sửa bootstrap script tạo
+  duplicate? Check `apps/api/scripts/bootstrap.test.ts`.
+
+### 10.B. Smoke manual sau cutover
 
 - [ ] `GET /api/healthz` → 200, `uptimeMs` < 10s.
 - [ ] `GET /api/readyz` → 200, `db: ok`, `redis: ok`.
