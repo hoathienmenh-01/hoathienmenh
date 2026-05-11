@@ -17,18 +17,21 @@ import { createI18n } from 'vue-i18n';
 import { createPinia, setActivePinia } from 'pinia';
 import type { MaintenanceWindowAdminView } from '@xuantoi/shared';
 
-const { listMock, createMock, disableMock, recomputeMock } = vi.hoisted(() => ({
-  listMock: vi.fn(),
-  createMock: vi.fn(),
-  disableMock: vi.fn(),
-  recomputeMock: vi.fn(),
-}));
+const { listMock, createMock, disableMock, recomputeMock, updateMock } =
+  vi.hoisted(() => ({
+    listMock: vi.fn(),
+    createMock: vi.fn(),
+    disableMock: vi.fn(),
+    recomputeMock: vi.fn(),
+    updateMock: vi.fn(),
+  }));
 
 vi.mock('@/api/maintenance', () => ({
   adminListMaintenanceWindows: listMock,
   adminCreateMaintenanceWindow: createMock,
   adminDisableMaintenanceWindow: disableMock,
   adminRecomputeMaintenanceStatus: recomputeMock,
+  adminUpdateMaintenanceWindow: updateMock,
 }));
 
 import AdminMaintenancePanel from '@/components/AdminMaintenancePanel.vue';
@@ -48,6 +51,9 @@ const i18n = createI18n({
           refresh: 'Tải lại',
           recompute: 'Recompute',
           disable: 'Tắt',
+          edit: 'Sửa',
+          save: 'Lưu',
+          cancel: 'Huỷ',
         },
         form: {
           title: 'Tạo lịch',
@@ -73,9 +79,12 @@ const i18n = createI18n({
         confirm: {
           create: { title: 'Confirm', message: 'Confirm: {description}' },
           disable: { title: 'Disable', message: 'Disable {key}?' },
+          edit: { title: 'EditConfirm', message: 'Edit: {description}' },
         },
+        edit: { title: 'Sửa window' },
         toast: {
           created: 'Đã tạo {key}.',
+          updated: 'Đã cập nhật {key}.',
           disabled: 'Đã tắt {key}.',
           recomputed: 'Recompute +{activated} -{ended}.',
         },
@@ -118,6 +127,7 @@ beforeEach(() => {
   createMock.mockReset();
   disableMock.mockReset();
   recomputeMock.mockReset();
+  updateMock.mockReset();
 });
 
 afterEach(() => {
@@ -235,6 +245,132 @@ describe('AdminMaintenancePanel', () => {
     await w.find('[data-testid="admin-maintenance-recompute"]').trigger('click');
     await flushPromises();
     expect(recomputeMock).toHaveBeenCalledTimes(1);
+    w.unmount();
+  });
+
+  // -------------------------------------------------------------------------
+  // Phase 15.8 — edit / PATCH workflow
+  // -------------------------------------------------------------------------
+
+  it('Phase 15.8: edit form render current values của row khi click Edit', async () => {
+    listMock.mockResolvedValue([
+      makeWindow({
+        id: 'w-edit-1',
+        key: 'mw-edit',
+        titleVi: 'Bảo trì lần 1',
+        messageVi: 'Vui lòng quay lại sau.',
+        severity: 'WARNING',
+      }),
+    ]);
+    const w = mount(AdminMaintenancePanel, {
+      attachTo: document.body,
+      global: { plugins: [i18n] },
+    });
+    await flushPromises();
+    expect(
+      w.find('[data-testid="admin-maintenance-edit-form-w-edit-1"]').exists(),
+    ).toBe(false);
+    await w
+      .find('[data-testid="admin-maintenance-edit-w-edit-1"]')
+      .trigger('click');
+    expect(
+      w.find('[data-testid="admin-maintenance-edit-form-w-edit-1"]').exists(),
+    ).toBe(true);
+    const titleViInput = w.find<HTMLInputElement>(
+      '[data-testid="admin-maintenance-edit-titleVi-w-edit-1"]',
+    );
+    expect(titleViInput.element.value).toBe('Bảo trì lần 1');
+    const messageViInput = w.find<HTMLTextAreaElement>(
+      '[data-testid="admin-maintenance-edit-messageVi-w-edit-1"]',
+    );
+    expect(messageViInput.element.value).toBe('Vui lòng quay lại sau.');
+    w.unmount();
+  });
+
+  it('Phase 15.8: edit form safe save → gọi adminUpdateMaintenanceWindow ngay (không confirm)', async () => {
+    listMock.mockResolvedValue([
+      makeWindow({ id: 'w-edit-2', key: 'mw-edit-2', severity: 'WARNING' }),
+    ]);
+    updateMock.mockResolvedValue(
+      makeWindow({ id: 'w-edit-2', titleVi: 'Bảo trì cập nhật' }),
+    );
+    const w = mount(AdminMaintenancePanel, {
+      attachTo: document.body,
+      global: { plugins: [i18n] },
+    });
+    await flushPromises();
+    await w
+      .find('[data-testid="admin-maintenance-edit-w-edit-2"]')
+      .trigger('click');
+    await w
+      .find('[data-testid="admin-maintenance-edit-titleVi-w-edit-2"]')
+      .setValue('Bảo trì cập nhật');
+    await w
+      .find('[data-testid="admin-maintenance-edit-save-w-edit-2"]')
+      .trigger('click');
+    await flushPromises();
+    // Non-dangerous → API gọi ngay, không có pendingEdit modal.
+    expect(updateMock).toHaveBeenCalledTimes(1);
+    expect(updateMock.mock.calls[0]?.[0]).toBe('w-edit-2');
+    expect(updateMock.mock.calls[0]?.[1].titleVi).toBe('Bảo trì cập nhật');
+    // refresh được gọi lại sau update.
+    expect(listMock.mock.calls.length).toBeGreaterThanOrEqual(2);
+    w.unmount();
+  });
+
+  it('Phase 15.8: edit form dangerous save (CRITICAL) → confirm modal trước khi gọi API', async () => {
+    listMock.mockResolvedValue([
+      makeWindow({ id: 'w-edit-3', key: 'mw-edit-3', severity: 'WARNING' }),
+    ]);
+    updateMock.mockResolvedValue(
+      makeWindow({ id: 'w-edit-3', severity: 'CRITICAL' }),
+    );
+    const w = mount(AdminMaintenancePanel, {
+      attachTo: document.body,
+      global: { plugins: [i18n] },
+    });
+    await flushPromises();
+    await w
+      .find('[data-testid="admin-maintenance-edit-w-edit-3"]')
+      .trigger('click');
+    // Chuyển severity sang CRITICAL → isDangerousEdit = true.
+    await w
+      .find<HTMLSelectElement>(
+        '[data-testid="admin-maintenance-edit-severity-w-edit-3"]',
+      )
+      .setValue('CRITICAL');
+    await w
+      .find('[data-testid="admin-maintenance-edit-save-w-edit-3"]')
+      .trigger('click');
+    await flushPromises();
+    expect(updateMock).not.toHaveBeenCalled();
+    const confirmBtn = document.querySelector<HTMLButtonElement>(
+      '[data-testid="admin-maintenance-confirm-edit-confirm"]',
+    );
+    expect(confirmBtn).not.toBeNull();
+    confirmBtn!.click();
+    await flushPromises();
+    expect(updateMock).toHaveBeenCalledTimes(1);
+    expect(updateMock.mock.calls[0]?.[1].severity).toBe('CRITICAL');
+    w.unmount();
+  });
+
+  it('Phase 15.8: Edit button KHÔNG hiển thị với DISABLED/ENDED row', async () => {
+    listMock.mockResolvedValue([
+      makeWindow({ id: 'w-edit-4', key: 'mw-ended', status: 'ENDED' }),
+      makeWindow({ id: 'w-edit-5', key: 'mw-disabled', status: 'DISABLED' }),
+    ]);
+    const w = mount(AdminMaintenancePanel, {
+      attachTo: document.body,
+      global: { plugins: [i18n] },
+    });
+    await flushPromises();
+    expect(
+      w.find('[data-testid="admin-maintenance-edit-w-edit-4"]').exists(),
+    ).toBe(false);
+    expect(
+      w.find('[data-testid="admin-maintenance-edit-w-edit-5"]').exists(),
+    ).toBe(false);
     w.unmount();
   });
 });

@@ -24,6 +24,8 @@ import {
   adminDisableMaintenanceWindow,
   adminListMaintenanceWindows,
   adminRecomputeMaintenanceStatus,
+  adminUpdateMaintenanceWindow,
+  type MaintenanceUpdateInput,
 } from '@/api/maintenance';
 import { useToastStore } from '@/stores/toast';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
@@ -83,6 +85,168 @@ interface PendingDisable {
   key: string;
 }
 const pendingDisable = ref<PendingDisable | null>(null);
+
+// ---------------------------------------------------------------------------
+// Phase 15.8 — Edit / PATCH workflow
+// ---------------------------------------------------------------------------
+
+interface EditState {
+  id: string;
+  key: string;
+  severity: MaintenanceSeverity;
+  target: MaintenanceTarget;
+  titleVi: string;
+  titleEn: string;
+  messageVi: string;
+  messageEn: string;
+  startsAt: string;
+  endsAt: string;
+  allowAdminBypass: boolean;
+  allowHealthcheck: boolean;
+  allowMetrics: boolean;
+}
+
+const editing = ref<EditState | null>(null);
+const updatingId = ref<string | null>(null);
+
+interface PendingEdit {
+  id: string;
+  key: string;
+  payload: MaintenanceUpdateInput;
+  description: string;
+}
+const pendingEdit = ref<PendingEdit | null>(null);
+
+/**
+ * Phase 15.8 — chỉ cho edit DRAFT/SCHEDULED. ACTIVE cũng OK để admin
+ * sửa message; ENDED/DISABLED bị disable button. Server cũng enforce.
+ */
+function canEdit(item: MaintenanceWindowAdminView): boolean {
+  return (
+    item.status === 'DRAFT' ||
+    item.status === 'SCHEDULED' ||
+    item.status === 'ACTIVE'
+  );
+}
+
+function isoToLocalInput(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  );
+}
+
+function startEdit(item: MaintenanceWindowAdminView): void {
+  editing.value = {
+    id: item.id,
+    key: item.key,
+    severity: item.severity,
+    target: item.target,
+    titleVi: item.titleVi,
+    titleEn: item.titleEn ?? '',
+    messageVi: item.messageVi,
+    messageEn: item.messageEn ?? '',
+    startsAt: isoToLocalInput(item.startsAt),
+    endsAt: isoToLocalInput(item.endsAt),
+    allowAdminBypass: item.allowAdminBypass,
+    allowHealthcheck: item.allowHealthcheck,
+    allowMetrics: item.allowMetrics,
+  };
+}
+
+function cancelEdit(): void {
+  editing.value = null;
+}
+
+function buildEditPayload(): MaintenanceUpdateInput | null {
+  if (!editing.value) return null;
+  const e = editing.value;
+  return {
+    severity: e.severity,
+    target: e.target,
+    titleVi: e.titleVi.trim(),
+    titleEn: e.titleEn.trim() === '' ? null : e.titleEn.trim(),
+    messageVi: e.messageVi.trim(),
+    messageEn: e.messageEn.trim() === '' ? null : e.messageEn.trim(),
+    startsAt: new Date(e.startsAt).toISOString(),
+    endsAt: new Date(e.endsAt).toISOString(),
+    allowAdminBypass: e.allowAdminBypass,
+    allowHealthcheck: e.allowHealthcheck,
+    allowMetrics: e.allowMetrics,
+  };
+}
+
+/**
+ * Phase 15.8 — chuyển sang nguy hiểm = config có thể tự khóa cả admin
+ * khỏi hệ thống. Hai case chính:
+ *   - allowAdminBypass=false + target ∈ {NON_ADMIN_USERS, ALL_PLAYERS,
+ *     API_WRITE_ONLY, FULL_LOCKDOWN} → admin có thể bị khóa tuỳ rule.
+ *   - target=FULL_LOCKDOWN bất kể allowAdminBypass → FE/server block tất cả.
+ *   - severity=CRITICAL.
+ */
+function isDangerousEdit(p: MaintenanceUpdateInput): boolean {
+  if (p.severity === 'CRITICAL') return true;
+  if (p.target === 'FULL_LOCKDOWN') return true;
+  if (p.allowAdminBypass === false) return true;
+  return false;
+}
+
+async function submitEdit(): Promise<void> {
+  if (!editing.value) return;
+  const payload = buildEditPayload();
+  if (!payload) return;
+  const id = editing.value.id;
+  const key = editing.value.key;
+  if (isDangerousEdit(payload)) {
+    pendingEdit.value = {
+      id,
+      key,
+      payload,
+      description: `${payload.severity ?? editing.value.severity} · ${payload.target ?? editing.value.target} · adminBypass=${payload.allowAdminBypass ?? editing.value.allowAdminBypass}`,
+    };
+    return;
+  }
+  await doUpdate(id, key, payload);
+}
+
+async function confirmEdit(): Promise<void> {
+  if (!pendingEdit.value) return;
+  const { id, key, payload } = pendingEdit.value;
+  pendingEdit.value = null;
+  await doUpdate(id, key, payload);
+}
+
+async function doUpdate(
+  id: string,
+  key: string,
+  payload: MaintenanceUpdateInput,
+): Promise<void> {
+  updatingId.value = id;
+  try {
+    await adminUpdateMaintenanceWindow(id, payload);
+    toast.push({
+      type: 'success',
+      text: t('adminMaintenance.toast.updated', { key }),
+    });
+    editing.value = null;
+    await refresh();
+  } catch (e) {
+    const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
+    toast.push({
+      type: 'error',
+      text: t(
+        `adminMaintenance.errors.${code}`,
+        t('adminMaintenance.errors.UNKNOWN'),
+      ),
+    });
+  } finally {
+    updatingId.value = null;
+  }
+}
 
 function fmtDate(iso: string | null): string {
   if (!iso) return '—';
@@ -399,8 +563,17 @@ onMounted(() => {
           <span class="px-2 py-0.5 text-[10px] rounded bg-ink-700/60">{{ item.severity }}</span>
           <span class="px-2 py-0.5 text-[10px] rounded bg-ink-700/60">{{ item.target }}</span>
           <MButton
-            v-if="item.status !== 'DISABLED' && item.status !== 'ENDED'"
+            v-if="canEdit(item) && editing?.id !== item.id"
             class="ml-auto"
+            :disabled="updatingId === item.id"
+            :data-testid="`admin-maintenance-edit-${item.id}`"
+            @click="startEdit(item)"
+          >
+            {{ t('adminMaintenance.actions.edit') }}
+          </MButton>
+          <MButton
+            v-if="item.status !== 'DISABLED' && item.status !== 'ENDED'"
+            :class="{ 'ml-auto': !canEdit(item) || editing?.id === item.id }"
             :disabled="disablingId === item.id"
             :data-testid="`admin-maintenance-disable-${item.id}`"
             @click="askDisable(item)"
@@ -415,6 +588,112 @@ onMounted(() => {
         </div>
         <div class="text-[11px] text-ink-300">
           adminBypass: {{ item.allowAdminBypass }} · healthcheck: {{ item.allowHealthcheck }} · metrics: {{ item.allowMetrics }}
+        </div>
+
+        <!-- Phase 15.8 — Inline edit form. Hiển thị khi editing.id == item.id -->
+        <div
+          v-if="editing?.id === item.id"
+          class="mt-3 bg-ink-700/40 border border-amber-700/30 rounded p-3 space-y-2"
+          :data-testid="`admin-maintenance-edit-form-${item.id}`"
+        >
+          <h4 class="text-xs text-amber-200">{{ t('adminMaintenance.edit.title') }}</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+            <label class="block">
+              <span class="text-ink-300">{{ t('adminMaintenance.form.severity') }}</span>
+              <select
+                v-model="editing.severity"
+                class="w-full bg-ink-700/40 border border-ink-300/30 rounded px-2 py-1 mt-1"
+                :data-testid="`admin-maintenance-edit-severity-${item.id}`"
+              >
+                <option v-for="s in MAINTENANCE_SEVERITIES" :key="s" :value="s">{{ s }}</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="text-ink-300">{{ t('adminMaintenance.form.target') }}</span>
+              <select
+                v-model="editing.target"
+                class="w-full bg-ink-700/40 border border-ink-300/30 rounded px-2 py-1 mt-1"
+                :data-testid="`admin-maintenance-edit-target-${item.id}`"
+              >
+                <option v-for="tg in MAINTENANCE_TARGETS" :key="tg" :value="tg">{{ tg }}</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="text-ink-300">{{ t('adminMaintenance.form.titleVi') }}</span>
+              <input
+                v-model="editing.titleVi"
+                class="w-full bg-ink-700/40 border border-ink-300/30 rounded px-2 py-1 mt-1"
+                :data-testid="`admin-maintenance-edit-titleVi-${item.id}`"
+              />
+            </label>
+            <label class="block">
+              <span class="text-ink-300">{{ t('adminMaintenance.form.titleEn') }}</span>
+              <input
+                v-model="editing.titleEn"
+                class="w-full bg-ink-700/40 border border-ink-300/30 rounded px-2 py-1 mt-1"
+              />
+            </label>
+            <label class="block md:col-span-2">
+              <span class="text-ink-300">{{ t('adminMaintenance.form.messageVi') }}</span>
+              <textarea
+                v-model="editing.messageVi"
+                rows="2"
+                class="w-full bg-ink-700/40 border border-ink-300/30 rounded px-2 py-1 mt-1"
+                :data-testid="`admin-maintenance-edit-messageVi-${item.id}`"
+              />
+            </label>
+            <label class="block md:col-span-2">
+              <span class="text-ink-300">{{ t('adminMaintenance.form.messageEn') }}</span>
+              <textarea
+                v-model="editing.messageEn"
+                rows="2"
+                class="w-full bg-ink-700/40 border border-ink-300/30 rounded px-2 py-1 mt-1"
+              />
+            </label>
+            <label class="block">
+              <span class="text-ink-300">{{ t('adminMaintenance.form.startsAt') }}</span>
+              <input
+                v-model="editing.startsAt"
+                type="datetime-local"
+                class="w-full bg-ink-700/40 border border-ink-300/30 rounded px-2 py-1 mt-1"
+              />
+            </label>
+            <label class="block">
+              <span class="text-ink-300">{{ t('adminMaintenance.form.endsAt') }}</span>
+              <input
+                v-model="editing.endsAt"
+                type="datetime-local"
+                class="w-full bg-ink-700/40 border border-ink-300/30 rounded px-2 py-1 mt-1"
+              />
+            </label>
+            <label class="flex items-center gap-2 text-ink-200">
+              <input v-model="editing.allowAdminBypass" type="checkbox" />
+              <span>{{ t('adminMaintenance.form.allowAdminBypass') }}</span>
+            </label>
+            <label class="flex items-center gap-2 text-ink-200">
+              <input v-model="editing.allowHealthcheck" type="checkbox" />
+              <span>{{ t('adminMaintenance.form.allowHealthcheck') }}</span>
+            </label>
+            <label class="flex items-center gap-2 text-ink-200">
+              <input v-model="editing.allowMetrics" type="checkbox" />
+              <span>{{ t('adminMaintenance.form.allowMetrics') }}</span>
+            </label>
+          </div>
+          <div class="flex gap-2">
+            <MButton
+              :disabled="updatingId === item.id"
+              :data-testid="`admin-maintenance-edit-save-${item.id}`"
+              @click="submitEdit"
+            >
+              {{ t('adminMaintenance.actions.save') }}
+            </MButton>
+            <MButton
+              :data-testid="`admin-maintenance-edit-cancel-${item.id}`"
+              @click="cancelEdit"
+            >
+              {{ t('adminMaintenance.actions.cancel') }}
+            </MButton>
+          </div>
         </div>
       </div>
     </section>
@@ -437,6 +716,16 @@ onMounted(() => {
       test-id="admin-maintenance-confirm-disable"
       @confirm="confirmDisable"
       @cancel="pendingDisable = null"
+    />
+
+    <ConfirmModal
+      :open="!!pendingEdit"
+      :title="t('adminMaintenance.confirm.edit.title')"
+      :message="pendingEdit ? t('adminMaintenance.confirm.edit.message', { description: pendingEdit.description }) : ''"
+      danger
+      test-id="admin-maintenance-confirm-edit"
+      @confirm="confirmEdit"
+      @cancel="pendingEdit = null"
     />
   </div>
 </template>

@@ -3883,7 +3883,10 @@
       "create": "Create maintenance window",
       "refresh": "Refresh",
       "recompute": "Recompute status",
-      "disable": "Disable"
+      "disable": "Disable",
+      "edit": "Edit",
+      "save": "Save",
+      "cancel": "Cancel"
     },
     "form": {
       "title": "Create maintenance window",
@@ -3914,10 +3917,18 @@
       "disable": {
         "title": "Confirm disable",
         "message": "Disable window “{key}” immediately?"
+      },
+      "edit": {
+        "title": "Confirm maintenance update",
+        "message": "These changes can lock admins out of the system: {description}. Continue?"
       }
+    },
+    "edit": {
+      "title": "Edit maintenance window"
     },
     "toast": {
       "created": "Created maintenance window {key}.",
+      "updated": "Updated maintenance window {key}.",
       "disabled": "Disabled maintenance window {key}.",
       "recomputed": "Recomputed: ACTIVE +{activated}, ENDED +{ended}."
     },

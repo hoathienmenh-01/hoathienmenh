@@ -3883,7 +3883,10 @@
       "create": "Tạo lich bảo trì",
       "refresh": "Tải lại",
       "recompute": "Tính lại trạng thái",
-      "disable": "Tắt"
+      "disable": "Tắt",
+      "edit": "Sửa",
+      "save": "Lưu",
+      "cancel": "Huỷ"
     },
     "form": {
       "title": "Tạo lịch bảo trì",
@@ -3914,10 +3917,18 @@
       "disable": {
         "title": "Xác nhận tắt bảo trì",
         "message": "Tắt window “{key}” ngay lập tức?"
+      },
+      "edit": {
+        "title": "Xác nhận cập nhật bảo trì",
+        "message": "Thay đổi có thể tự khóa cả admin khỏi hệ thống: {description}. Tiếp tục?"
       }
+    },
+    "edit": {
+      "title": "Sửa lịch bảo trì"
     },
     "toast": {
       "created": "Đã tạo lịch bảo trì {key}.",
+      "updated": "Đã cập nhật bảo trì {key}.",
       "disabled": "Đã tắt bảo trì {key}.",
       "recomputed": "Đã recompute: ACTIVE +{activated}, ENDED +{ended}."
     },
