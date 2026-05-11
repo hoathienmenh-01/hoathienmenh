@@ -14,6 +14,8 @@ import type {
   OutgoingFriendRequestsResponse,
   PlayerBlockListResponse,
   PlayerBlockRow,
+  PublicPlayerProfileDto,
+  PublicPlayerProfileResponse,
 } from '@xuantoi/shared';
 
 interface Envelope<T> {
@@ -119,4 +121,22 @@ export async function unblockUser(
     `/social/block/${encodeURIComponent(userId)}`,
   );
   return unwrap(data);
+}
+
+/**
+ * Phase 19.1.C — Public Player Profile (Inspect Player).
+ *
+ * GET `/social/profile/:userId` — auth-only. Server enforces privacy
+ * mask (no email/role/currency/inventory/payment/IP/session) +
+ * rate-limit `SOCIAL_PROFILE_VIEW` anti-enumeration (60 req/min, block
+ * 5 min). Throws `NOT_FOUND` for both "user không tồn tại" and "target
+ * đã block viewer" (404 mask).
+ */
+export async function fetchPublicProfile(
+  userId: string,
+): Promise<PublicPlayerProfileDto> {
+  const { data } = await apiClient.get<Envelope<PublicPlayerProfileResponse>>(
+    `/social/profile/${encodeURIComponent(userId)}`,
+  );
+  return unwrap(data).profile;
 }

@@ -129,11 +129,11 @@ Tick EXP thực hiện bởi BullMQ processor `cultivation.processor.ts`. WS eve
 | GET    | `/chat/world?limit=N` | Yes  | Lịch sử world chat. |
 | POST   | `/chat/send`          | Yes  | Gửi. Rate limit 8 msg / 30s / player (Redis). |
 
-## Social — `SocialController` (Phase 19.1 + Phase 19.1.B)
+## Social — `SocialController` (Phase 19.1 + Phase 19.1.B + Phase 19.1.C)
 
-> Friend / block lifecycle. Server-authoritative invariants: cấm self-friend / self-block, block 2 chiều cancel mọi pending request + xoá Friendship. Detection-first: reject ở send time. Error code (Envelope): `SELF_NOT_ALLOWED`, `ALREADY_PENDING`, `ALREADY_FRIENDS`, `BLOCKED`, `NOT_FOUND`, `NOT_AUTHORIZED`, `INVALID_TRANSITION`, `INVALID_INPUT`. Khi rate-limit hit, `RateLimitGuard` (Phase 18.1) thêm 429 với `RATE_LIMITED` / `ABUSE_BLOCKED`. Cột **Rate** = `@RateLimitPolicy()` key gắn ở controller (Phase 19.1.B).
+> Friend / block lifecycle + public profile inspect. Server-authoritative invariants: cấm self-friend / self-block, block 2 chiều cancel mọi pending request + xoá Friendship. Detection-first: reject ở send time. Error code (Envelope): `SELF_NOT_ALLOWED`, `ALREADY_PENDING`, `ALREADY_FRIENDS`, `BLOCKED`, `NOT_FOUND`, `NOT_AUTHORIZED`, `INVALID_TRANSITION`, `INVALID_INPUT`. Khi rate-limit hit, `RateLimitGuard` (Phase 18.1) thêm 429 với `RATE_LIMITED` / `ABUSE_BLOCKED`. Cột **Rate** = `@RateLimitPolicy()` key gắn ở controller.
 
-| Method | Path                                   | Auth | Rate (Phase 19.1.B) | Mô tả |
+| Method | Path                                   | Auth | Rate                | Mô tả |
 |--------|----------------------------------------|------|---------------------|-------|
 | GET    | `/social/friends`                       | Yes  | —                   | Danh sách bạn bè kèm flag `online` (RealtimeService.isOnline). |
 | GET    | `/social/friend-requests/incoming`      | Yes  | —                   | Lời mời đến PENDING. |
@@ -146,6 +146,7 @@ Tick EXP thực hiện bởi BullMQ processor `cultivation.processor.ts`. WS eve
 | GET    | `/social/blocks`                        | Yes  | —                   | Danh sách player đã chặn. |
 | POST   | `/social/block`                         | Yes  | `SOCIAL_BLOCK_TOGGLE` (30/10p user) | Body `{ userId }`. Cancel pending FriendRequest 2 chiều + xoá Friendship. |
 | DELETE | `/social/block/:userId`                 | Yes  | `SOCIAL_BLOCK_TOGGLE` (30/10p user) | Bỏ chặn. KHÔNG tự khôi phục FriendRequest cũ. |
+| GET    | `/social/profile/:userId`               | Yes  | `SOCIAL_PROFILE_VIEW` (60/60s user, block 5m) | **Phase 19.1.C** — Public player profile / inspect. Trả `PublicPlayerProfileDto` `{userId, displayName, character?, relationshipStatus (SELF/FRIEND/PENDING_INCOMING/PENDING_OUTGOING/BLOCKED_BY_ME/STRANGER), actions, online, joinedYearMonth, mutualFriendCount, sameSect}`. **Privacy mask**: target đã block viewer → 404 (KHÔNG leak existence). User/character không tồn tại → 404. **Whitelisted fields only** — KHÔNG bao giờ trả email/role/banned/currency (linhThach/tienNgoc)/inventory/payment/ipHash/sessionId. `character` snapshot = `{characterName, level, powerScore, realmKey, realmStage, realmFullName, title?, sectId?, sectName?}` (KHÔNG raw stats power/spirit/speed/hp/mp/settings). `mutualFriendCount` chỉ trả khi `STRANGER` (FRIEND → `null` privacy social-graph). `BLOCKED_BY_ME` trả minimal profile `character=null`. |
 
 ## Chat Private — `ChatPrivateController` (Phase 19.1 + Phase 19.1.B)
 

@@ -17,6 +17,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToastStore } from '@/stores/toast';
 import ConfirmModal from '@/components/ui/ConfirmModal.vue';
+import PublicPlayerProfileModal from '@/components/PublicPlayerProfileModal.vue';
 import {
   acceptFriendRequest,
   blockUser,
@@ -101,6 +102,23 @@ const confirmMessage = computed<string>(() => {
   }
   return t('social.confirm.unblock.message', { id: target.userId });
 });
+
+// Phase 19.1.C — public profile modal state.
+const profileTargetId = ref<string | null>(null);
+const profileOpen = computed(() => profileTargetId.value !== null);
+
+function openProfile(userId: string): void {
+  profileTargetId.value = userId;
+}
+
+function closeProfile(): void {
+  profileTargetId.value = null;
+}
+
+async function onProfileChanged(): Promise<void> {
+  // Block/unblock from modal can mutate friend / block lists → refresh.
+  await refreshAll();
+}
 
 defineExpose({ refresh: refreshAll });
 
@@ -293,6 +311,14 @@ function displayName(row: { friendDisplayName?: string | null; blockedDisplayNam
   );
 }
 
+const emit = defineEmits<{
+  (e: 'open-private-chat', peerUserId: string): void;
+}>();
+
+function onProfileOpenChat(peerUserId: string): void {
+  emit('open-private-chat', peerUserId);
+}
+
 function senderLabel(req: FriendRequestRow): string {
   return req.senderUserId;
 }
@@ -386,10 +412,24 @@ function receiverLabel(req: FriendRequestRow): string {
                 :class="f.online ? 'bg-emerald-400' : 'bg-ink-300/40'"
                 :title="f.online ? t('social.online') : t('social.offline')"
               />
-              <span class="truncate">{{ displayName(f, f.friendUserId) }}</span>
+              <button
+                type="button"
+                class="truncate text-left hover:underline focus:underline outline-none"
+                :title="t('publicProfile.viewProfile')"
+                data-testid="social-friend-name"
+                @click="openProfile(f.friendUserId)"
+              >{{ displayName(f, f.friendUserId) }}</button>
               <span class="text-[10px] text-ink-300/60">{{ f.friendUserId }}</span>
             </div>
             <div class="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                class="rounded border border-ink-300/40 px-2 py-1 text-xs hover:bg-ink-300/10"
+                data-testid="social-friend-view"
+                @click="openProfile(f.friendUserId)"
+              >
+                {{ t('publicProfile.viewProfile') }}
+              </button>
               <button
                 type="button"
                 class="rounded border border-ink-300/40 px-2 py-1 text-xs hover:bg-ink-300/10"
@@ -471,7 +511,13 @@ function receiverLabel(req: FriendRequestRow): string {
               data-testid="social-incoming-row"
             >
               <div class="min-w-0 flex-1">
-                <div class="truncate font-medium">{{ senderLabel(req) }}</div>
+                <button
+                  type="button"
+                  class="truncate font-medium text-left hover:underline focus:underline outline-none"
+                  :title="t('publicProfile.viewProfile')"
+                  data-testid="social-incoming-name"
+                  @click="openProfile(req.senderUserId)"
+                >{{ senderLabel(req) }}</button>
                 <div v-if="req.message" class="text-xs text-ink-300/80">
                   {{ req.message }}
                 </div>
@@ -523,7 +569,13 @@ function receiverLabel(req: FriendRequestRow): string {
               data-testid="social-outgoing-row"
             >
               <div class="min-w-0 flex-1">
-                <div class="truncate font-medium">{{ receiverLabel(req) }}</div>
+                <button
+                  type="button"
+                  class="truncate font-medium text-left hover:underline focus:underline outline-none"
+                  :title="t('publicProfile.viewProfile')"
+                  data-testid="social-outgoing-name"
+                  @click="openProfile(req.receiverUserId)"
+                >{{ receiverLabel(req) }}</button>
                 <div v-if="req.message" class="text-xs text-ink-300/80">
                   {{ req.message }}
                 </div>
@@ -578,7 +630,13 @@ function receiverLabel(req: FriendRequestRow): string {
             data-testid="social-block-row"
           >
             <div class="flex items-center gap-2 min-w-0">
-              <span class="truncate">{{ displayName(b, b.blockedUserId) }}</span>
+              <button
+                type="button"
+                class="truncate text-left hover:underline focus:underline outline-none"
+                :title="t('publicProfile.viewProfile')"
+                data-testid="social-block-name"
+                @click="openProfile(b.blockedUserId)"
+              >{{ displayName(b, b.blockedUserId) }}</button>
               <span class="text-[10px] text-ink-300/60">{{ b.blockedUserId }}</span>
             </div>
             <button
@@ -603,6 +661,14 @@ function receiverLabel(req: FriendRequestRow): string {
       test-id="social-confirm"
       @confirm="onConfirm"
       @cancel="onConfirmCancel"
+    />
+
+    <PublicPlayerProfileModal
+      :open="profileOpen"
+      :user-id="profileTargetId"
+      @close="closeProfile"
+      @open-private-chat="onProfileOpenChat"
+      @changed="onProfileChanged"
     />
   </section>
 </template>

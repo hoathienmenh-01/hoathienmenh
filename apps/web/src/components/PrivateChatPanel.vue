@@ -28,6 +28,7 @@ import type {
 import { SOCIAL_LIMITS } from '@xuantoi/shared';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import ChatReportModal from './ChatReportModal.vue';
+import PublicPlayerProfileModal from './PublicPlayerProfileModal.vue';
 
 const { t } = useI18n();
 const toast = useToastStore();
@@ -49,6 +50,32 @@ const sending = ref(false);
 const reportTargetId = ref<string | null>(null);
 const reportPreview = ref<string | null>(null);
 const reportOpen = computed(() => reportTargetId.value !== null);
+
+// Phase 19.1.C — public profile modal state. `profileTargetId` =
+// userId target khi viewer click vào tên người gửi / peer thread.
+const profileTargetId = ref<string | null>(null);
+const profileOpen = computed(() => profileTargetId.value !== null);
+
+function openProfile(userId: string): void {
+  profileTargetId.value = userId;
+}
+
+function closeProfile(): void {
+  profileTargetId.value = null;
+}
+
+async function onProfileOpenChat(peerUserId: string): Promise<void> {
+  // Profile modal nói FE: "mở thread với peer này". Reuse existing
+  // openPrivateThread() flow để thread auto-select.
+  openPeerId.value = peerUserId;
+  await onOpenThread();
+}
+
+async function onProfileChanged(): Promise<void> {
+  // Block/unblock from modal có thể ảnh hưởng tới thread list visibility
+  // ở backend (BLOCKED reject sendMessage). Refresh thread list.
+  await refreshThreads();
+}
 
 function openReport(msg: PrivateChatMessageRow): void {
   reportTargetId.value = msg.id;
@@ -246,9 +273,15 @@ function fmtTime(iso: string): string {
               :class="th.peerOnline ? 'bg-emerald-400' : 'bg-ink-300/40'"
               :title="th.peerOnline ? t('social.online') : t('social.offline')"
             />
-            <span class="truncate flex-1">
+            <button
+              type="button"
+              class="truncate flex-1 text-left hover:underline focus:underline outline-none"
+              :title="t('publicProfile.viewProfile')"
+              data-testid="private-chat-thread-peer-name"
+              @click.stop="openProfile(th.peerUserId)"
+            >
               {{ th.peerDisplayName ?? th.peerUserId }}
-            </span>
+            </button>
           </div>
           <div class="text-[10px] text-ink-300/60 truncate">
             {{ th.peerUserId }}
@@ -274,9 +307,15 @@ function fmtTime(iso: string): string {
             class="inline-block w-2 h-2 rounded-full"
             :class="activeThread.peerOnline ? 'bg-emerald-400' : 'bg-ink-300/40'"
           />
-          <span class="font-medium">
+          <button
+            type="button"
+            class="font-medium hover:underline focus:underline outline-none"
+            :title="t('publicProfile.viewProfile')"
+            data-testid="private-chat-peer-name"
+            @click="openProfile(activeThread.peerUserId)"
+          >
             {{ activeThread.peerDisplayName ?? activeThread.peerUserId }}
-          </span>
+          </button>
           <span class="text-[10px] text-ink-300/60">{{ activeThread.peerUserId }}</span>
         </div>
         <div
@@ -305,10 +344,14 @@ function fmtTime(iso: string): string {
             data-testid="private-chat-message-row"
           >
             <div class="text-[10px] text-ink-300/60 flex items-center gap-2">
-              <span>
-                {{ msg.senderDisplayName ?? msg.senderUserId }} ·
-                {{ fmtTime(msg.createdAt) }}
-              </span>
+              <button
+                type="button"
+                class="hover:underline focus:underline outline-none"
+                :title="t('publicProfile.viewProfile')"
+                data-testid="private-chat-message-author"
+                @click="openProfile(msg.senderUserId)"
+              >{{ msg.senderDisplayName ?? msg.senderUserId }}</button>
+              <span>· {{ fmtTime(msg.createdAt) }}</span>
               <button
                 type="button"
                 class="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] uppercase tracking-widest text-rose-300 hover:text-rose-200"
@@ -371,6 +414,14 @@ function fmtTime(iso: string): string {
       :message-preview="reportPreview"
       @submitted="closeReport"
       @cancel="closeReport"
+    />
+
+    <PublicPlayerProfileModal
+      :open="profileOpen"
+      :user-id="profileTargetId"
+      @close="closeProfile"
+      @open-private-chat="onProfileOpenChat"
+      @changed="onProfileChanged"
     />
   </section>
 </template>

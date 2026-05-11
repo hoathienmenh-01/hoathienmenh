@@ -56,6 +56,8 @@ export const RATE_LIMIT_POLICY_KEYS = [
   'CHAT_GROUP_MEMBER_ADD',
   // ---- Chat Moderation (Phase 19.2) ----
   'CHAT_REPORT_SUBMIT',
+  // ---- Public Player Profile (Phase 19.1.C) ----
+  'SOCIAL_PROFILE_VIEW',
   // ---- Fallback ----
   'PUBLIC_READ',
   'DEFAULT_API',
@@ -375,6 +377,21 @@ export const RATE_LIMIT_POLICIES: Readonly<
     sensitive: true,
     descriptionVi: 'Giới hạn gửi report tin nhắn theo tài khoản, chống report-storm abuse.',
     descriptionEn: 'Chat report submission limit per account, anti report-storm abuse.',
+  },
+  // ---- Public Player Profile (Phase 19.1.C) ----
+  // Chống enumeration profile: 60 view / phút / tài khoản. Legit user
+  // xem ~1-2 profile/giây tối đa (click qua chat / friend list); script
+  // scrape userId range sẽ vượt nhanh. Vượt → block 5 phút.
+  SOCIAL_PROFILE_VIEW: {
+    key: 'SOCIAL_PROFILE_VIEW',
+    windowSec: 60,
+    maxRequests: 60,
+    blockSec: 5 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn xem hồ sơ công khai người chơi theo tài khoản, chống enumeration scrape.',
+    descriptionEn: 'Public player profile view limit per account, anti enumeration scrape.',
   },
   // ---- Fallback ----
   PUBLIC_READ: {

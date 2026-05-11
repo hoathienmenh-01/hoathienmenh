@@ -12,7 +12,45 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Phase 19.2 — Chat Moderation & Report System (this PR — #530)
+### Phase 19.1.C — Public Player Profile / Inspect Player (this PR — #531)
+
+**Scope**: Cho phép player xem hồ sơ công khai của player khác khi click vào username trong friend list / request list / private chat / group chat. Read-only endpoint, server enforce privacy mask cứng + rate-limit anti-enumeration. **KHÔNG** sửa Prisma schema (read-only existing fields), **KHÔNG** new migration, **KHÔNG** auto-friend / auto-online presence (`online=false` placeholder), **KHÔNG** mutual friend count cache. Tiền đề: PR #528 Phase 19.1 + #529 Phase 19.1.B merged.
+
+#### Added — Phase 19.1.C
+
+- **Shared `packages/shared/src/public-profile.ts`** (32 test pass): enum `RelationshipStatus` 7-state (`SELF`/`FRIEND`/`PENDING_INCOMING`/`PENDING_OUTGOING`/`BLOCKED_BY_ME`/`BLOCKED_ME`/`STRANGER`) + DTO `PublicCharacterSummaryDto` + `PublicPlayerProfileDto` + `PublicProfileActionMap` + response wrapper. Helper pure determinstic `computeProfileActions(status)` (matrix invariant: chỉ `STRANGER` có `canSendFriendRequest`; `SELF`/`BLOCKED_*` never `canMessage`) + `formatJoinedYearMonth(date)` (UTC `YYYY-MM` zero-pad, TZ-edge consistent) + `computePowerScore(power, spirit, speed)` (KHÔNG bao gồm `luck`/`level`/`hp` raw stat).
+- **Shared `security-rate-limit`**: policy mới `SOCIAL_PROFILE_VIEW` — 60 req / 60s / user, block 5p. Group `SOCIAL` `scope='USER'` `sensitive=true` severity `MEDIUM`. Chống scrape player enumeration.
+- **Backend `SocialService.getPublicProfile(viewerUserId, targetUserId)`** + `SocialController.GET /social/profile/:userId` (`@RateLimitPolicy('SOCIAL_PROFILE_VIEW')`): 8-bước atomic — SELF early return → block check 2 chiều single-query → `BLOCKED_ME` mask 404 (KHÔNG leak existence) → `BLOCKED_BY_ME` minimal profile `character=null` → load target user+character (`NOT_FOUND` nếu user/char không tồn tại) → resolve sect lookup → relationship status (FRIEND/PENDING_IN/OUT/STRANGER) → `mutualFriendCount` intersect 2 friend list (STRANGER only — FRIEND trả `null` privacy social-graph) + `sameSect` bool → output whitelisted `{userId, displayName, character?, relationshipStatus, actions, online, joinedYearMonth, mutualFriendCount, sameSect}`.
+- **FE `apps/web/src/api/social.ts`**: thêm `fetchPublicProfile(userId)` wrapper Envelope + unwrap.
+- **FE `apps/web/src/components/PublicPlayerProfileModal.vue`**: modal Teleport-to-body render snapshot character (realm/level/power/title/sect/joined/mutualFriends/sameSect) + 3-4 conditional action button (Add Friend STRANGER, Message non-block, Block STRANGER/PENDING/FRIEND, Unblock BLOCKED_BY_ME) + SELF self-notice + error UI `NOT_FOUND` / `RATE_LIMITED` / `ABUSE_BLOCKED`.
+- **FE wire-up**: `SocialPanel.vue` friend/incoming/outgoing/block row username click + dedicated "View profile" button; `PrivateChatPanel.vue` thread peer name + active thread header + message author click → modal; `GroupChatPanel.vue` member sidebar name + message author click → modal. Modal `open-private-chat` emit từ Message button reuse parent panel `openPrivateThread` flow để auto mở thread thay vì navigate ngầm.
+- **i18n vi/en parity 100%**: namespace `publicProfile.*` ~30 leaf key (title/viewProfile/noCharacter/blockedByMeNotice/confirm.block/relationship 7-status/fields {realm,level,powerScore,title,titleNone,sect,sectNone,joined,mutualFriends,sameSect,sameSectYes}/actions {sendFriendRequest,message,block,unblock,selfNotice}/toast {requestSent,blocked,unblocked}/errors {NOT_FOUND, NOT_AUTHORIZED, SELF_NOT_ALLOWED, ALREADY_PENDING, ALREADY_FRIENDS, BLOCKED, INVALID_INPUT, RATE_LIMITED, ABUSE_BLOCKED, UNKNOWN}). Parity test `i18n parity vi vs en` auto-verify.
+
+#### Security — Phase 19.1.C
+
+- **Privacy invariants** server enforce (test-enforced whitelist+blacklist):
+  - Top-level whitelist: `{userId, displayName, character?, relationshipStatus, actions, online, joinedYearMonth, mutualFriendCount, sameSect}`.
+  - `character` whitelist: `{characterName, level, powerScore, realmKey, realmStage, realmFullName, title?, sectId?, sectName?}`.
+  - **KHÔNG bao giờ trả**: `email`, `role`, `banned` / anti-cheat flag, `linhThach` / `tienNgoc` / `tienTe` / `nguyenThach`, inventory chi tiết, topup / payment / ledger, `sessionId` / `ipHash`, refresh token, private message history, raw stat `power`/`spirit`/`speed`/`hp`/`mp`, `settings`.
+- **`BLOCKED_ME` mask 404**: target đã block viewer → endpoint trả `NOT_FOUND` (KHÔNG leak existence). Viewer thấy giống user-không-tồn-tại.
+- **Rate-limit anti-enumeration**: `SOCIAL_PROFILE_VIEW` 60/min/user block 5p chống scrape `/social/profile/userid_001..N`. Vượt → 429 `RATE_LIMITED` / `ABUSE_BLOCKED` (Phase 18.1 abuse guard).
+
+#### Test coverage — Phase 19.1.C
+
+- Shared 32 test (`packages/shared/src/__tests__/public-profile.test.ts`): enum, matrix invariants, UTC TZ-edge, determinism, black-list assertion.
+- API 11 test thêm vào `social.service.test.ts`: SELF/FRIEND/PENDING in+out/BLOCKED_BY_ME/BLOCKED_ME 404 mask/NOT_FOUND/whitelist top+char keys/mutualFriendCount STRANGER vs FRIEND null/sameSect/joinedYearMonth regex.
+- FE 10 test `PublicPlayerProfileModal.test.ts`: render STRANGER full + 3-action / SELF self-notice / BLOCKED_BY_ME unblock-only / NOT_FOUND error UI / click Add Friend → API+reload+emit changed / Message emit open-private-chat+close / Block confirm=true → blockUser / confirm=false KHÔNG call API / Unblock → unblockUser+changed / userId=null no-op.
+
+#### Internal — Phase 19.1.C
+
+- `apps/web/src/api/social.ts` reuse pattern `apiClient.get` + `unwrap(data).profile` — nhất quán với mọi FE API call khác.
+- Modal Teleport-to-body pattern reuse từ `ChatReportModal.vue` (Phase 19.2). Test query bằng `document.querySelector` thay vì wrapper.find.
+- `mutualFriendCount` Phase 19.1.C tính lazy intersect 2 friend list mỗi request — chấp nhận O(F_viewer × F_target) cho beta. Phase 21 sẽ cache TTL 60s hoặc denormalize.
+- `online` field placeholder `false` cho mọi profile — Phase tiếp theo sẽ wire `RealtimeService.isOnline(userId)` (đã dùng ở `getFriends`).
+
+---
+
+### Phase 19.2 — Chat Moderation & Report System (PR — #530)
 
 **Scope**: Cho phép player report tin nhắn private/group vi phạm; admin xem danh sách report, ack/resolve, mute user theo scope, soft-hide message, lock/dissolve group. **Tất cả mutation ghi `AdminAuditLog`**. **KHÔNG** auto-ban vĩnh viễn, **KHÔNG** hard-delete (ưu tiên soft-hide để dữ liệu vẫn còn cho audit/appeal), **KHÔNG** phá WORLD/SECT chat path hiện có (chỉ thêm mute enforcement). Tiền đề: PR #529 Phase 19.1.B merged.
 
