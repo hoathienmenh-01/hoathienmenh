@@ -450,3 +450,109 @@ thật. Default chỉ test local / staging. Tài khoản test phải tạo riên
 
 Chi tiết script xem `scripts/load/README.md` + `docs/RUNBOOK.md` §"Load
 test (k6)".
+
+---
+
+## 13. Closed Beta Production Readiness Notes (Phase 24.1)
+
+Tổng hợp checklist + cảnh báo trước khi cutover closed beta. Đây là tham
+chiếu nhanh — chi tiết từng section đều có ở trên (link inline).
+
+### 13.1. Required env (must-set, refuse-boot nếu thiếu)
+
+Server boot fail nếu **bất kỳ** env dưới đây thiếu, rỗng, hoặc giữ giá
+trị placeholder `change-me-*` / `dev-*-secret` / `localhost` cho production
+(xem `apps/api/src/config/env.schema.ts` + §2.1 Secrets bắt buộc):
+
+- `NODE_ENV=production`
+- `DATABASE_URL` (postgresql + `sslmode=require` cho managed RDS).
+- `REDIS_URL` (redis hoặc rediss TLS).
+- `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` — mỗi cái ≥ 32 ký tự ngẫu nhiên.
+- `ADMIN_BOOTSTRAP_EMAIL` + `ADMIN_BOOTSTRAP_PASSWORD` — admin đầu tiên sau bootstrap (sau lần đầu nên rotate / disable).
+- `WEB_ORIGIN` — origin chính xác của FE (chống CORS open).
+
+### 13.2. Secret placeholder guard
+
+`pnpm verify:deploy` (Phase 17.1) gate kiểm tra:
+
+- Không secret nào còn pattern `change-me-*`, `dev-*-secret`, `xtdev*`, `test-secret*`, `replace-me*`.
+- Không `DATABASE_URL` trỏ tới `localhost` / `127.0.0.1` / `host.docker.internal`.
+- Không `WEB_ORIGIN=http://localhost:*` trong `NODE_ENV=production`.
+
+Chạy `pnpm verify:deploy` TRƯỚC cutover. Phải PASS toàn bộ. Xem §10.A.
+
+### 13.3. Backup env
+
+Backup cron disabled mặc định (`BACKUP_CRON_ENABLED=false`). Closed-beta
+khuyến nghị enable cả 2:
+
+```env
+BACKUP_CRON_ENABLED=true
+BACKUP_VERIFY_CRON_ENABLED=true
+BACKUP_DIR=/var/backups/xuantoi
+BACKUP_RETENTION_DAYS=14
+BACKUP_CRON_SCHEDULE=0 3 * * *      # daily 03:00 ICT
+BACKUP_VERIFY_CRON_SCHEDULE=0 4 * * 0  # Chủ Nhật 04:00 ICT
+BACKUP_CRON_TIMEZONE=Asia/Ho_Chi_Minh
+```
+
+Cutover plan §9.2: deploy với cron disabled → manual trigger 1 lần qua
+admin → kiểm `BackupRun`/`BackupVerifyRun` → enable cron → theo dõi
+`lastSuccessAt` trong 7 ngày.
+
+### 13.4. Rate-limit env (Phase 18.1)
+
+| Env | Default | Khuyến nghị closed beta |
+|---|---|---|
+| `RATE_LIMIT_REDIS_URL` | fallback `REDIS_URL` | Cùng `REDIS_URL` chính, hoặc tách instance riêng nếu QPS > 1000. |
+| `RATE_LIMIT_FAIL_OPEN_REDIS_DOWN` | `false` | **GIỮ `false`** cho closed beta. Bật fail-open chỉ khi staging verify Redis HA. |
+| `ABUSE_BLOCK_TTL_SEC` | `300` | OK cho closed beta. Tăng `600` nếu thấy false-positive < 1%. |
+
+Rate-limit policy code-driven (không hot-config). Thay đổi threshold cần
+PR + deploy. KHÔNG monkey-patch runtime.
+
+### 13.5. Monitoring gap (closed beta)
+
+| Component | Coverage hiện tại | Gap đã biết |
+|---|---|---|
+| Pino structured logs | ✅ Phase 17.3 | Chưa ship sang log aggregator (Loki/CloudWatch) — ops dùng `journalctl` / `pm2 logs`. |
+| Sentry error tracking | ✅ Phase 17.3 (`SENTRY_DSN` optional) | Chỉ capture exception thrown; KHÔNG capture warning structured. |
+| Admin metrics | ✅ Phase 17.5 `/admin/metrics` JSON poll | Chưa expose Prometheus `/metrics` text endpoint; defer Phase 17.6 follow-up. |
+| BullMQ queue stats | ✅ qua `/admin/metrics` `queue.queues[]` | Không alert tự động khi `failed` > 10 / `waiting` > 100 — phải human poll. |
+| WS connect rate | ✅ qua `/admin/metrics` `ws.connectAttempts` | Chưa alert khi rate < 95%. |
+| Backup verify | ✅ Phase 17.2 `BackupVerification` table + admin panel STALE/FAILED badge | Chưa email/slack alert; ops phải tự check tab Backup. |
+| EconomyAnomaly | ✅ Phase 16.6 alert qua admin FE | Chưa push notification — ops phải tự check `/admin/economy/anomalies`. |
+
+**Closed beta khuyến nghị**: thiết lập cron nhân lực (1 ops on-call / ca) check `/admin/metrics`, `/admin/backup-verifications`, `/admin/economy/anomalies` ít nhất 2 lần / ngày trong tuần đầu cutover.
+
+### 13.6. Known production blockers (defer Phase 24.2+)
+
+Các issue đã biết, **KHÔNG** block closed beta nhưng cần fix trước open beta:
+
+1. **Cookie cross-origin**: nếu web/api khác origin, `SameSite=Lax` hiện hard-code (xem §7). Closed beta chạy same-origin reverse proxy → OK. Open beta cross-origin → cần env-driven `SameSite=None; Secure`.
+2. **CSP env-driven**: CSP `connect-src` hard-code (`apps/api/src/main.ts`). Closed beta single-domain → OK. Multi-domain → cần env override.
+3. **BullMQ leader-only flag**: hiện mọi API instance đều consume cron job (BullMQ lock tránh double-run, nhưng waste CPU). Defer tách worker process.
+4. **Prometheus exporter**: `/admin/metrics` chỉ JSON poll. Production dài hạn cần Prom text exporter — defer Phase 17.6.
+5. **Email transport**: chưa ship production SMTP (xem `apps/api/src/modules/mail`). Closed beta in-game mail OK (DB), email forgot-password phải config `SMTP_*` tay.
+6. **Cron stale detection**: phụ thuộc human check. Defer cron alert system.
+
+Mỗi blocker có issue link trong `docs/AI_HANDOFF_REPORT.md` Known Issues
+nếu open. Nếu chưa có → mở issue `closed-beta-followup-<slug>`.
+
+### 13.7. Smoke gate trước cutover
+
+Theo `docs/RUNBOOK.md` §1.5.6, chạy tất cả check sau theo thứ tự:
+
+```bash
+pnpm verify:deploy           # Phase 17.1 gate — must PASS all
+pnpm smoke:health || true    # nếu có
+pnpm smoke:admin             # 30 step admin contract
+pnpm smoke:economy           # 20 step ledger invariant
+pnpm smoke:ws                # 19 step WS contract
+pnpm smoke:social            # Phase 24.1 — golden path social
+pnpm smoke:coop              # Phase 24.1 — golden path coop
+pnpm smoke:beta              # full beta smoke (compose ở §10)
+```
+
+Smoke `social` / `coop` tolerant: graceful SKIP với exit 0 nếu API
+unreachable. Trên staging full-stack, expect PASS không có FAIL.
