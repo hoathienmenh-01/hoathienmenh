@@ -113,6 +113,38 @@ export type WsEventType =
    * online của party.
    */
   | 'party:leader-changed'
+  /**
+   * Phase 20.1 — Party Dungeon Co-op PvE Foundation. Server emit khi
+   * trạng thái room thay đổi (member join/leave, ready change, status
+   * transition). Payload là `PartyDungeonRoomUpdatedBroadcastPayload`.
+   * Server fanout CHỈ tới participant của room (snapshot lúc emit).
+   * KHÔNG emit cho party member chưa join room, KHÔNG broadcast public.
+   */
+  | 'party-dungeon:room-updated'
+  /**
+   * Phase 20.1 — Một participant toggle ready. Payload là
+   * `PartyDungeonReadyUpdatedBroadcastPayload`. Server fanout tới
+   * participant của room.
+   */
+  | 'party-dungeon:ready-updated'
+  /**
+   * Phase 20.1 — Leader trigger start → server tạo `PartyDungeonRun`.
+   * Payload là `PartyDungeonStartedBroadcastPayload`. Server fanout
+   * tới participant.
+   */
+  | 'party-dungeon:started'
+  /**
+   * Phase 20.1 — Run resolve (CLEAR/FAIL/CANCELED). Payload là
+   * `PartyDungeonCompletedBroadcastPayload`. Server fanout tới
+   * participant.
+   */
+  | 'party-dungeon:completed'
+  /**
+   * Phase 20.1 — Reward claim row sẵn sàng cho 1 participant. Payload
+   * là `PartyDungeonRewardAvailableBroadcastPayload`. Server emit
+   * CHỈ tới user owner của claim (không leak tới member khác).
+   */
+  | 'party-dungeon:reward-available'
   | 'pong'
   // client → server
   | 'ping'

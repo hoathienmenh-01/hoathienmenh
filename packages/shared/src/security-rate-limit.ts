@@ -60,6 +60,11 @@ export const RATE_LIMIT_POLICY_KEYS = [
   'PARTY_CREATE',
   'PARTY_INVITE_SEND',
   'PARTY_MUTATION',
+  // ---- Party Dungeon Co-op (Phase 20.1) ----
+  'PARTY_DUNGEON_CREATE',
+  'PARTY_DUNGEON_READY',
+  'PARTY_DUNGEON_START',
+  'PARTY_DUNGEON_CLAIM',
   // ---- Public Player Profile (Phase 19.1.C) ----
   'SOCIAL_PROFILE_VIEW',
   // ---- Fallback ----
@@ -423,6 +428,63 @@ export const RATE_LIMIT_POLICIES: Readonly<
     sensitive: true,
     descriptionVi: 'Giới hạn thao tác tổ đội (kick/leave/transfer/disband/accept/decline) theo tài khoản.',
     descriptionEn: 'Party mutation limit (kick/leave/transfer/disband/accept/decline) per account.',
+  },
+  // ---- Party Dungeon Co-op (Phase 20.1) ----
+  // Chống mass-create co-op room: 20 room / giờ / user. Legit
+  // leader hiếm khi tạo > vài room/giờ (room auto-cancel khi run
+  // complete/fail). Vượt → block 30 phút.
+  PARTY_DUNGEON_CREATE: {
+    key: 'PARTY_DUNGEON_CREATE',
+    windowSec: 60 * 60,
+    maxRequests: 20,
+    blockSec: 30 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn tạo phòng dungeon tổ đội theo tài khoản, chống mass-create.',
+    descriptionEn: 'Party dungeon room creation limit per account, anti mass-create.',
+  },
+  // Chống spam ready/unready toggle: 120 thao tác / phút / user.
+  // Legit user click vài lần trước khi start; bot toggle nhiều
+  // lần để slot start spam → block 5 phút.
+  PARTY_DUNGEON_READY: {
+    key: 'PARTY_DUNGEON_READY',
+    windowSec: 60,
+    maxRequests: 120,
+    blockSec: 5 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn thao tác ready/unready dungeon tổ đội theo tài khoản, chống spam toggle.',
+    descriptionEn: 'Party dungeon ready/unready toggle limit per account, anti toggle spam.',
+  },
+  // Chống spam start request: 30 start / phút / leader. Legit
+  // leader hiếm khi start nhiều lần trong cùng phút (mỗi run
+  // chiếm room đến khi complete). Vượt → block 5 phút.
+  PARTY_DUNGEON_START: {
+    key: 'PARTY_DUNGEON_START',
+    windowSec: 60,
+    maxRequests: 30,
+    blockSec: 5 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn lệnh start dungeon tổ đội theo tài khoản, chống spam start.',
+    descriptionEn: 'Party dungeon start command limit per account, anti start spam.',
+  },
+  // Chống spam claim reward / replay attack: 60 claim / phút / user.
+  // Idempotency đã guard ở CAS layer; rate-limit thêm để giảm tải
+  // DB khi attacker spam claim duplicate. Vượt → block 5 phút.
+  PARTY_DUNGEON_CLAIM: {
+    key: 'PARTY_DUNGEON_CLAIM',
+    windowSec: 60,
+    maxRequests: 60,
+    blockSec: 5 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn nhận thưởng dungeon tổ đội theo tài khoản, chống replay/spam claim.',
+    descriptionEn: 'Party dungeon reward claim limit per account, anti replay/spam claim.',
   },
   // ---- Public Player Profile (Phase 19.1.C) ----
   // Chống enumeration profile: 60 view / phút / tài khoản. Legit user

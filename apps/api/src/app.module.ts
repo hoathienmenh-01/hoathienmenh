@@ -42,6 +42,7 @@ import { ChatGroupModule } from './modules/chat-group/chat-group.module';
 import { PresenceModule } from './modules/presence/presence.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { PartyModule } from './modules/party/party.module';
+import { PartyDungeonModule } from './modules/party-dungeon/party-dungeon.module';
 import { ChatModerationModule } from './modules/chat-moderation/chat-moderation.module';
 import { LiveOpsCronModule } from './modules/liveops-cron/liveops-cron.module';
 import { LiveOpsEventSchedulerModule } from './modules/liveops-event-scheduler/liveops-event-scheduler.module';
@@ -170,6 +171,13 @@ import { SecurityModule } from './modules/security/security.module';
     // SecurityModule (rate-limit), AuthModule. Soft-ref pattern; KHÔNG
     // đụng GroupChat hiện có (party / group chat tách biệt semantics).
     PartyModule,
+    // Phase 20.1 — Party Dungeon Co-op PvE Foundation. Standalone
+    // module depend Character (CurrencyService), Inventory
+    // (InventoryService), Realtime (party-dungeon:* WS), Security
+    // (rate-limit), Auth. Soft-ref pattern; KHÔNG đụng DungeonRun
+    // (solo farm) hay GroupChat. Service enforce party-membership +
+    // leader-only invariants trên từng mutation.
+    PartyDungeonModule,
     // Phase 17.5 — Metrics endpoint (admin-only) + collectors. SAU
     // AdminModule + RealtimeModule (đã imported indirectly).
     MetricsModule,
