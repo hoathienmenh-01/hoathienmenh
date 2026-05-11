@@ -21,13 +21,20 @@ Tóm tắt các kiểm soát an ninh đang có và các điểm còn cần cải
 
 ## 2. Secret management
 
+> **Source of truth**: [`apps/api/src/config/env.schema.ts`](../apps/api/src/config/env.schema.ts) (Phase 17.1) — strict zod schema cho production. `parseEnv(process.env)` + `assertProductionEnv()` được gọi trong `main.ts` ngay sau legacy `assertProductionSecrets()` (defense-in-depth). Schema aggregate mọi env issue thành 1 message → ops không phải redeploy nhiều lần để fix từng env một. `pnpm verify:deploy` smoke gate này TRƯỚC khi cutover (xem `docs/DEPLOY.md` §10.A).
+
 | Secret | Production yêu cầu | Hành vi nếu thiếu/yếu |
 |---|---|---|
-| `JWT_ACCESS_SECRET` | ≥ 32 ký tự, không phải `change-me-*` / `dev-*` | Server `assertProductionSecrets()` throw → refuse start. |
-| `JWT_REFRESH_SECRET` | Tương tự, khác `JWT_ACCESS_SECRET` | Tương tự. |
-| `CORS_ORIGINS` | csv list domain HTTPS | Production refuse start nếu không set. |
-| `DATABASE_URL` | TLS (`sslmode=require`) | Postgres connect fail. |
-| `REDIS_URL` | `rediss://` cho TLS | Tự động fallback in-memory cho rate limit chat (PR #24) — vẫn hoạt động nhưng mất tính multi-instance. |
+| `JWT_ACCESS_SECRET` | ≥ 32 ký tự, không phải `change-me-*` / `dev-*-secret` | Schema throw → refuse start. |
+| `JWT_REFRESH_SECRET` | ≥ 32 ký tự, khác `JWT_ACCESS_SECRET` | Tương tự. Reject access==refresh để rotate độc lập. |
+| `CORS_ORIGINS` | csv list domain HTTPS ≥ 1 origin | Production refuse start nếu trống. |
+| `DATABASE_URL` | scheme `postgres://` / `postgresql://` (TLS `sslmode=require`) | Schema reject scheme khác; Postgres connect fail nếu host sai. |
+| `REDIS_URL` | scheme `redis://` / `rediss://` (TLS) | Schema reject scheme khác; tự fallback in-memory cho rate limit chat nếu Redis down runtime (PR #24) — vẫn hoạt động nhưng mất tính multi-instance. |
+| `SESSION_COOKIE_DOMAIN` | non-empty (vd `.xt.example.com`) | Schema refuse start nếu trống. |
+| `SECURITY_IP_HASH_SALT` | ≥ 32 ký tự, không phải `xuantoi-default-ip-salt` (Phase 17.1 + 18.1) | Schema refuse start. Rotate salt = mất khả năng cross-ref hash IP cũ. |
+| `PORT` (optional) | 1..65535, default 3000 | Schema reject non-numeric / out-of-range. |
+
+Lock-in invariants: [`apps/api/src/config/env.schema.test.ts`](../apps/api/src/config/env.schema.test.ts) — 32 test (dev permissive 4, prod missing-critical 8, placeholder reject 7, length/format 7, happy path 3, assertProductionEnv 3).
 
 Không commit `.env` thật. Repo chỉ có `.env.example` với placeholder.
 
