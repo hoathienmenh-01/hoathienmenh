@@ -998,6 +998,85 @@ Source-of-truth: <ref_file file="packages/shared/src/security-rate-limit.ts" />.
 - **Feature Flag (Phase 15.4)**: `FEATURE_DISABLED` (503 runtime gate, payload include `flag` key), `FEATURE_FLAG_KEY_INVALID` (admin update key không trong catalog).
 - **Maintenance Window (Phase 15.5)**: `MAINTENANCE_ACTIVE` (503 middleware gate, payload include `severity/target/titleVi/En/messageVi/En/endsAt/serverTime`), `MAINTENANCE_KEY_DUPLICATE` (409), `MAINTENANCE_NOT_FOUND` (404), `MAINTENANCE_INVALID_STATUS_TRANSITION` (400), `MAINTENANCE_KEY_INVALID` / `MAINTENANCE_WINDOW_INVALID` / `MAINTENANCE_WINDOW_TOO_SHORT` / `MAINTENANCE_WINDOW_TOO_LONG` / `MAINTENANCE_TITLE_REQUIRED` / `MAINTENANCE_TITLE_TOO_LONG` / `MAINTENANCE_TITLE_UNSAFE` / `MAINTENANCE_MESSAGE_REQUIRED` / `MAINTENANCE_MESSAGE_TOO_LONG` / `MAINTENANCE_MESSAGE_UNSAFE` / `MAINTENANCE_LOCALE_PARITY` / `MAINTENANCE_SEVERITY_INVALID` / `MAINTENANCE_TARGET_INVALID` (400).
 - **Config Version (Phase 15.6)**: `CONFIG_VERSION_NOT_FOUND` (404), `CONFIG_VERSION_INVALID_ENTITY_TYPE` (400). `CONFIG_ROLLBACK_TARGET_IS_LATEST` / `CONFIG_ROLLBACK_TARGET_INVALID` (400). `CONFIG_ROLLBACK_BLOCKED` / `CONFIG_ROLLBACK_CONFIRM_REQUIRED` / `CONFIG_ROLLBACK_CONFIRM_MISMATCH` / `CONFIG_ROLLBACK_APPLY_FAILED` (409).
+- **Admin Backup (Phase 17.2)**: `ADMIN_ONLY` (403), `BACKUP_RUN_FAILED` (500, payload include `errorMessage` truncated 2048ch), `BACKUP_VERIFY_FAILED` (500, payload include `errorMessage`).
+
+## Admin Backup — `AdminBackupController` (prefix `/admin/backup`, Phase 17.2)
+
+Tracking + manual trigger layer trên 3 script shell `backup-db.sh`/`restore-db.sh`/`verify-restore.sh`. **KHÔNG có endpoint restore** — destructive ops vẫn manual theo `docs/RUNBOOK.md` §2.10.
+
+Tất cả endpoint:
+- Yêu cầu `@UseGuards(AdminGuard)` + `@RequireAdmin()` — PLAYER/MOD bị reject 403 `ADMIN_ONLY`.
+- Rate-limit policy `ADMIN_MUTATION` (Phase 18.1).
+- Mutation ghi `AdminAuditLog` (action `ADMIN_BACKUP_RUN` hoặc `ADMIN_BACKUP_VERIFY`).
+
+| Method | Path | Mô tả |
+|---|---|---|
+| GET | `/admin/backup/status` | Snapshot 2 cron health + latest `BackupRun` + latest `BackupVerifyRun`. Read-only (KHÔNG audit). |
+| POST | `/admin/backup/run` | Manual trigger backup. Spawn `scripts/backup-db.sh` qua `child_process.spawn` args-array. Trả `BackupRunSummary`. |
+| POST | `/admin/backup/verify` | Manual trigger verify-restore. Spawn `scripts/verify-restore.sh`. Body optional `{ backupRunId? }` để link verify với BackupRun cụ thể. Trả `BackupVerifyRunSummary`. |
+
+**Response shape** `GET /admin/backup/status`:
+```jsonc
+{
+  "ok": true,
+  "data": {
+    "backup": {
+      "enabled": true,
+      "status": "OK",                // OK | STALE | DEGRADED | DISABLED
+      "staleReason": null,            // string | null khi STALE/DEGRADED
+      "lastRunAt": "2026-05-04T03:00:00Z",
+      "lastSuccessAt": "2026-05-04T03:00:00Z",
+      "lastErrorAt": null,
+      "cronExpression": "0 3 * * 0",
+      "timezone": "Asia/Ho_Chi_Minh",
+      "maxSilenceMs": 691200000        // 8 ngày
+    },
+    "verify": { /* same shape */ },
+    "latestBackup": {
+      "id": "br-...",
+      "status": "SUCCESS",
+      "startedAt": "...",
+      "finishedAt": "...",
+      "fileName": "xuantoi-20260504-030000.sql.gz",
+      "fileSizeBytes": 12345678,
+      "checksumSha256": null,           // reserved cho phase sau
+      "storage": "LOCAL",                // LOCAL | S3 | MINIO | GCS (S3/MINIO/GCS reserved Phase 17.3)
+      "errorMessage": null,
+      "triggeredBy": "CRON"              // CRON | ADMIN | MANUAL | CI
+    },
+    "latestVerify": {
+      "id": "vr-...",
+      "backupRunId": "br-...",          // optional FK link
+      "status": "SUCCESS",
+      "startedAt": "...",
+      "finishedAt": "...",
+      "checkedTables": 12,
+      "latestMigration": "20260628000000_phase_17_2_backup_run",
+      "errorMessage": null,
+      "triggeredBy": "CRON"
+    },
+    "generatedAt": "2026-05-04T05:00:00Z"
+  }
+}
+```
+
+**Health mapping** (BE → FE badge):
+
+| BE `status` | Khi nào | FE badge |
+|---|---|---|
+| `OK` | enabled + last success < 8 ngày + KHÔNG error fresher hơn success | `OK` (green) |
+| `STALE` | enabled + last success > 8 ngày | `STALE` (amber) |
+| `DEGRADED` | enabled + last error fresher hơn last success | `FAILED` (rose) |
+| `DISABLED` | `BACKUP_CRON_ENABLED=false` hoặc `BACKUP_VERIFY_CRON_ENABLED=false` | `DISABLED` (grey) |
+
+**Env toggle** (xem chi tiết ở `docs/DEPLOY.md` §9.2 + `docs/BACKUP_RESTORE.md` §Phase 17.2):
+- `BACKUP_CRON_ENABLED` (default `false`)
+- `BACKUP_VERIFY_CRON_ENABLED` (default `false`)
+- `BACKUP_CRON_SCHEDULE` (default `0 3 * * 0`)
+- `BACKUP_VERIFY_CRON_SCHEDULE` (default `0 4 * * 0`)
+- `BACKUP_CRON_TIMEZONE` (default `Asia/Ho_Chi_Minh`)
+- `BACKUP_DIR` (default `./backups`)
+- `BACKUP_RETENTION_DAYS` (default `0`)
 
 ## Environment
 

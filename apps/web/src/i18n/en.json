@@ -1276,7 +1276,8 @@
       "featureFlags": "Feature Flags",
       "maintenance": "Maintenance",
       "configVersion": "Config Version",
-      "security": "Security"
+      "security": "Security",
+      "backup": "Backup"
     },
     "arenaAntiWintrade": {
       "alerts": "Arena wintrade alerts",
@@ -4140,6 +4141,62 @@
       "UNAUTHENTICATED": "Admin login required.",
       "FORBIDDEN": "Account is not an admin.",
       "ADMIN_ONLY": "Only admin can lift blocks.",
+      "UNKNOWN": "Operation failed — please retry."
+    }
+  },
+  "adminBackup": {
+    "title": "Backup & Verify Restore",
+    "subtitle": "Tracks scheduled backups and verify-restore runs. Real production restore must still be performed manually per RUNBOOK — the UI does not expose it.",
+    "loading": "Loading backup status…",
+    "retry": "Retry",
+    "generatedAt": "Updated at {at}",
+    "restoreNotice": "Note: the Run backup/verify buttons only perform a backup or verify-restore. A real production restore must still follow docs/RUNBOOK.md §2.10 with a maintenance window.",
+    "sections": {
+      "backup": "Scheduled backup",
+      "verify": "Scheduled verify-restore"
+    },
+    "badge": {
+      "OK": "OK",
+      "STALE": "STALE",
+      "FAILED": "FAILED",
+      "DISABLED": "DISABLED"
+    },
+    "fields": {
+      "cron": "Cron schedule",
+      "lastRunAt": "Last run",
+      "lastSuccessAt": "Last success",
+      "lastErrorAt": "Last error",
+      "fileName": "File name",
+      "fileSize": "Size",
+      "storage": "Storage",
+      "triggeredBy": "Trigger",
+      "checkedTables": "Tables checked",
+      "latestMigration": "Latest migration"
+    },
+    "empty": {
+      "backup": "No backup run recorded yet.",
+      "verify": "No verify run recorded yet."
+    },
+    "actions": {
+      "runBackup": "Run backup now",
+      "runVerify": "Run verify now",
+      "running": "Running…",
+      "runBackupSuccess": "Backup completed: {file}.",
+      "runVerifySuccess": "Verify completed: {tables} tables checked."
+    },
+    "confirm": {
+      "runBackupTitle": "Run backup now?",
+      "runBackupMessage": "Spawns scripts/backup-db.sh on the server. May take seconds to minutes depending on database size. An audit log entry is recorded.",
+      "runVerifyTitle": "Run verify-restore now?",
+      "runVerifyMessage": "Spawns scripts/verify-restore.sh — read-only, does NOT restore the real database. An audit log entry is recorded."
+    },
+    "errors": {
+      "BACKUP_RUN_FAILED": "Backup failed — see error detail below.",
+      "BACKUP_VERIFY_FAILED": "Verify failed — see error detail below.",
+      "INVALID_INPUT": "Invalid input.",
+      "UNAUTHENTICATED": "Admin login required.",
+      "FORBIDDEN": "Account is not an admin.",
+      "ADMIN_ONLY": "Only admin can run backup/verify.",
       "UNKNOWN": "Operation failed — please retry."
     }
   }

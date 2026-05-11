@@ -2801,17 +2801,111 @@ model SecurityEvent {
 /// `expiresAt` luôn được set (không có vĩnh viễn) — Phase 18.1 chính
 /// sách KHÔNG auto-ban. Admin có thể `liftBlock` sớm.
 model SecurityBlock {
-  id           String    @id @default(cuid())
-  type         String
-  subjectHash  String
-  reason       String
-  expiresAt    DateTime
-  createdAt    DateTime  @default(now())
-  liftedAt     DateTime?
+  id          String    @id @default(cuid())
+  type        String
+  subjectHash String
+  reason      String
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  liftedAt    DateTime?
   /// Admin userId thực hiện lift. Null nếu block hết hạn tự nhiên.
-  liftedById   String?
+  liftedById  String?
 
   @@index([type, subjectHash, liftedAt, expiresAt])
   @@index([type, expiresAt])
   @@index([createdAt])
+}
+
+// =====================================================================
+// Phase 17.2 — Backup / Restore Weekly Verification
+// =====================================================================
+//
+// `BackupRun` + `BackupVerifyRun` tracking row cho mỗi lần backup
+// (pg_dump) hoặc verify-restore chạy. Service ghi row trước khi spawn
+// shell, update khi kết thúc.
+//
+// String literal (không enum Prisma) cho `status`/`storage`
+// /`triggeredBy` để dễ mở rộng (vd thêm `S3` storage) không cần
+// migration enum. Validator ở `packages/shared/src/backup.ts`
+// (Phase 17.2) là source-of-truth cho FE/BE.
+//
+// **KHÔNG** có FK từ `BackupVerifyRun.backupRunId` → `BackupRun.id`
+// vì verify có thể chạy ad-hoc không gắn 1 backup cụ thể (vd verify
+// DB hiện tại sau migration). `backupRunId` nullable + index.
+//
+// **Retention**: hiện chưa cron-purge (closed-beta scale nhỏ). Có
+// thể bổ sung khi rows > 10k.
+
+/// Phase 17.2 — BackupRun: tracking 1 lần backup pg_dump.
+///
+/// Lifecycle:
+///   - Service tạo row `status=RUNNING` + `startedAt=now()` trước khi
+///     spawn `scripts/backup-db.sh`.
+///   - Khi shell exit 0 → update `status=SUCCESS`, `finishedAt`,
+///     `fileName`, `fileSizeBytes`, `checksumSha256`.
+///   - Khi shell exit != 0 hoặc service catch error → update
+///     `status=FAILED`, `finishedAt`, `errorMessage` (truncate
+///     2048 char).
+///
+/// Race-safety: nếu API crash mid-spawn, row `RUNNING` orphan sẽ stale
+/// > BACKUP_CRON_MAX_SILENCE_MS → admin nhìn thấy DEGRADED. Không cần
+/// FK lock — row orphan tự healing nhờ TTL silence.
+model BackupRun {
+  id             String    @id @default(cuid())
+  /// `RUNNING` | `SUCCESS` | `FAILED` (see shared `BACKUP_RUN_STATUSES`).
+  status         String    @default("RUNNING")
+  startedAt      DateTime  @default(now())
+  finishedAt     DateTime?
+  /// Backup file path tương đối hoặc absolute, không lưu credentials.
+  fileName       String?
+  /// File size (bytes). BigInt vì backup size có thể vượt 2GB.
+  fileSizeBytes  BigInt?
+  /// SHA-256 hex của file backup (optional — script chưa compute).
+  checksumSha256 String?
+  /// `LOCAL` | `S3` | `MINIO` | `GCS` (see shared `BACKUP_STORAGES`).
+  /// Phase 17.2 chỉ support `LOCAL`.
+  storage        String    @default("LOCAL")
+  /// Error message (truncated 2048 char) nếu `status=FAILED`.
+  errorMessage   String?
+  /// `CRON` | `ADMIN` | `MANUAL` | `CI` (see shared `BACKUP_TRIGGERED_BY`).
+  triggeredBy    String
+  /// Admin userId nếu `triggeredBy=ADMIN`. Null cho cron / manual.
+  actorUserId    String?
+
+  @@index([status, startedAt(sort: Desc)])
+  @@index([startedAt(sort: Desc)])
+  @@index([finishedAt(sort: Desc)])
+}
+
+/// Phase 17.2 — BackupVerifyRun: tracking 1 lần verify-restore.
+///
+/// Verify thường KHÔNG restore vào prod DB — chạy `verify-restore.sh`
+/// đọc schema/count critical tables trên DB tạm. Row tracking record
+/// kết quả để admin biết "backup gần nhất verify được không".
+///
+/// `backupRunId` nullable vì verify có thể không gắn 1 backup cụ thể
+/// (vd verify DB hiện tại post-migration). Khi gắn được thì lookup
+/// theo index `backupRunId`.
+model BackupVerifyRun {
+  id              String    @id @default(cuid())
+  /// Nullable FK theo soft-reference (no DB FK constraint). Index để
+  /// query nhanh "verify nào cho backup X".
+  backupRunId     String?
+  status          String    @default("RUNNING")
+  startedAt       DateTime  @default(now())
+  finishedAt      DateTime?
+  /// Số table phát hiện trong `public` schema (verify-restore.sh
+  /// step 2). Null khi verify chưa hoàn tất hoặc fail trước step 2.
+  checkedTables   Int?
+  /// Tên migration mới nhất đã `finished_at IS NOT NULL` trong
+  /// `_prisma_migrations` (verify-restore.sh step 4).
+  latestMigration String?
+  errorMessage    String?
+  triggeredBy     String
+  actorUserId     String?
+
+  @@index([status, startedAt(sort: Desc)])
+  @@index([startedAt(sort: Desc)])
+  @@index([finishedAt(sort: Desc)])
+  @@index([backupRunId])
 }

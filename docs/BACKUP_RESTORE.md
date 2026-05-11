@@ -247,6 +247,83 @@ Khi DB primary chết hoàn toàn — pair với `docs/RUNBOOK.md` §2.10:
 - **Không encrypt**: file gzip plain text. Khi đẩy lên S3/GCS, dùng SSE hoặc encrypt thủ công (`gpg --symmetric file.sql.gz`).
 - **Không offsite copy**: script chỉ ghi vào local `BACKUP_DIR`. Pair với rclone/aws-cli/scp riêng để upload offsite.
 
+## Phase 17.2 — Weekly Verification (admin tracking layer)
+
+Phase 17.2 thêm tracking layer trên 3 script shell ở trên: mỗi lần backup hoặc verify được record vào DB, admin xem được trạng thái + cảnh báo khi stale/fail. **KHÔNG** thay đổi script shell hiện có. **KHÔNG** expose restore qua API.
+
+### Mô hình dữ liệu
+
+- `BackupRun` — 1 row mỗi lần `backup-db.sh` chạy (cron hoặc admin trigger). Lifecycle `RUNNING` → `SUCCESS` | `FAILED`. Lưu: `startedAt`, `finishedAt`, `fileName`, `fileSizeBytes`, `checksumSha256`, `storage` (`LOCAL` ở Phase 17.2; S3/MINIO/GCS reserve cho phase sau), `errorMessage`, `triggeredBy` (`CRON` | `ADMIN` | `MANUAL` | `CI`).
+- `BackupVerifyRun` — 1 row mỗi lần `verify-restore.sh` chạy. Lưu: `backupRunId` (optional, link với BackupRun cụ thể), `checkedTables`, `latestMigration`, `errorMessage`, `triggeredBy`.
+
+Migration: `apps/api/prisma/migrations/20260628000000_phase_17_2_backup_run/migration.sql` — additive only (CREATE TABLE + 7 index). Rollback an toàn (`DROP TABLE`).
+
+### Cron weekly (BullMQ)
+
+`apps/api/src/modules/backup/backup.scheduler.ts` register 2 cron job theo env:
+
+| Env | Default | Schedule | Mô tả |
+|---|---|---|---|
+| `BACKUP_CRON_ENABLED` | `false` | `BACKUP_CRON_SCHEDULE` (default `0 3 * * 0` ICT) | Weekly backup → spawn `scripts/backup-db.sh` qua `child_process` (args array, no shell concat). |
+| `BACKUP_VERIFY_CRON_ENABLED` | `false` | `BACKUP_VERIFY_CRON_SCHEDULE` (default `0 4 * * 0` ICT) | Weekly verify → spawn `scripts/verify-restore.sh`, parse stdout extract `checkedTables`/`latestMigration`. |
+| `BACKUP_CRON_TIMEZONE` | `Asia/Ho_Chi_Minh` | — | Timezone cho cả 2 cron. |
+| `BACKUP_DIR` | `./backups` | — | Truyền sang script qua env. |
+| `BACKUP_RETENTION_DAYS` | `7` | — | Truyền sang `backup-db.sh` để auto-prune. |
+
+**Mặc định disabled** ở production: ops phải set env tường minh mới fire — nguyên tắc fail-safe. Khi disabled, admin UI hiện badge `DISABLED`.
+
+### Admin endpoints
+
+```
+GET  /admin/backup/status        # snapshot health + latest backup/verify
+POST /admin/backup/run           # manual trigger backup (ADMIN only, audit ADMIN_BACKUP_RUN)
+POST /admin/backup/verify        # manual trigger verify (ADMIN only, audit ADMIN_BACKUP_VERIFY)
+```
+
+- RBAC: tất cả `@RequireAdmin` — PLAYER/MOD bị reject 403 `ADMIN_ONLY`. Rate-limit policy `ADMIN_MUTATION` (Phase 18.1).
+- Audit log: mỗi mutation ghi `AdminAuditLog` với action `ADMIN_BACKUP_RUN` / `ADMIN_BACKUP_VERIFY` + meta (run id, status, fileName/checkedTables, errorMessage).
+- **KHÔNG có endpoint restore**: destructive ops vẫn phải làm tay theo §Disaster recovery checklist ở trên.
+
+Health enum reuse `computeLiveOpsCronHealth` (Phase 15.8):
+
+| Health | Khi nào | UI badge |
+|---|---|---|
+| `OK` | last success < 8 ngày, không error fresher hơn success | `OK` (green) |
+| `STALE` | last success > 8 ngày (cron không fire hoặc bị skip) | `STALE` (amber) |
+| `DEGRADED` | last error fresher hơn last success | `FAILED` (rose) |
+| `DISABLED` | env toggle `false` | `DISABLED` (grey) |
+
+### Admin FE panel
+
+`apps/web/src/components/AdminBackupPanel.vue` — tab "Backup" trong `AdminView`:
+
+- 2 card (Backup + Verify) với badge health.
+- Metadata: cron expression + timezone, last run/success/error, latest fileName/fileSize/storage/triggeredBy, latest checkedTables/latestMigration.
+- 2 nút "Chạy backup ngay" / "Chạy verify ngay" gated bởi `ConfirmModal`. Confirm false KHÔNG gọi API.
+- Loading / empty / error state riêng + retry button.
+- i18n vi/en (namespace `adminBackup.*`).
+
+### Manual ops
+
+```bash
+# Local: chạy backup ngay không qua admin UI
+pnpm backup:db
+# → KHÔNG ghi BackupRun row (tracking layer chỉ wire vào cron + admin API).
+#   Phase sau có thể wire script ghi row qua POST /internal/backup/record.
+
+# Verify backup hiện có
+pnpm verify:restore
+
+# Enable cron weekly (production):
+BACKUP_CRON_ENABLED=true BACKUP_VERIFY_CRON_ENABLED=true pnpm --filter @xuantoi/api start
+```
+
+### Failure / recovery
+
+- Backup row `RUNNING` orphan (API crash giữa chừng) sẽ stale > 8 ngày → badge `FAILED` ở UI, admin biết investigate.
+- Idempotency: cron weekly fire trùng tạo 2 file `xuantoi-<TIMESTAMP>.sql.gz` riêng → không corrupt nhau. Acceptable cho closed beta (không cần Redis lease).
+- Restore production thật: vẫn theo §Disaster recovery checklist, **KHÔNG** dùng admin UI.
+
 ## Liên kết
 
 - `docs/RUNBOOK.md` — incident severity P0–P3 + playbook (Phase 17.4).
