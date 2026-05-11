@@ -144,6 +144,12 @@ Source-of-truth ở <ref_file file="packages/shared/src/security-rate-limit.ts" 
 | Economy | `TOPUP_CREATE_ORDER` | USER | 10 / 60min | 60min (HIGH) |
 | Admin | `ADMIN_MUTATION` | USER | 60 / 60s | 5p |
 | Admin | `ADMIN_REPORT_VIEW` | USER | 120 / 60s | — (throttle only, no block) |
+| Social | `SOCIAL_FRIEND_REQUEST` | USER | 10 / 60s | 5p (MEDIUM) |
+| Social | `SOCIAL_BLOCK_TOGGLE` | USER | 30 / 10p | 10p (MEDIUM) |
+| Social | `CHAT_PRIVATE_SEND` | USER | 30 / 60s | 5p (MEDIUM) |
+| Social | `CHAT_GROUP_SEND` | USER | 30 / 60s | 5p (MEDIUM) |
+| Social | `CHAT_GROUP_CREATE` | USER | 10 / 60min | 30p (MEDIUM) |
+| Social | `CHAT_GROUP_MEMBER_ADD` | USER | 30 / 10p | 10p (MEDIUM) |
 | Public | `PUBLIC_READ` / `DEFAULT_API` | IP / IP_USER | 300 / 60s, 120 / 60s | — |
 
 ### 12.2. Backend behavior
@@ -474,13 +480,19 @@ Admin operations playbook (run scan / ack / resolve / handle CRITICAL): [`RUNBOO
 - Unblock KHÔNG tự khôi phục FriendRequest cũ (status đã chuyển CANCELLED).
 - Realtime fanout fail-soft: WS down → DB insert vẫn commit. Player offline khi nhận lại sẽ poll qua REST.
 
-### Rate-limit (follow-up Phase 19.1.B)
+### Rate-limit (Phase 19.1.B — closed)
 
-- Hiện chưa gắn `@RateLimitPolicy()` (Phase 18.1) vào friend request + chat send. Bắt buộc phải gắn trước khi mở public traffic — baseline đề xuất:
-  - `SOCIAL_FRIEND_REQUEST`: 10 req/1min/user.
-  - `CHAT_PRIVATE_SEND`: 30 msg/1min/user.
-  - `CHAT_GROUP_SEND`: 30 msg/1min/user.
-  - `SOCIAL_BLOCK_TOGGLE`: 30 toggle/10min/user (chống abuse block storm).
+- Phase 19.1.B đã gắn `@RateLimitPolicy()` (Phase 18.1 infra) vào toàn bộ mutation endpoint social/chat của Phase 19.1. Catalog ở <ref_file file="packages/shared/src/security-rate-limit.ts" /> (group `SOCIAL`, tất cả `scope='USER'`, `sensitive=true`, severity `MEDIUM`):
+  - `SOCIAL_FRIEND_REQUEST` — 10 req / 60s / user, block 5p.
+  - `SOCIAL_BLOCK_TOGGLE` — 30 toggle / 10p / user, block 10p (chống abuse block storm trên cả `POST /social/block` lẫn `DELETE /social/block/:userId`).
+  - `CHAT_PRIVATE_SEND` — 30 msg / 60s / user, block 5p.
+  - `CHAT_GROUP_SEND` — 30 msg / 60s / user, block 5p.
+  - `CHAT_GROUP_CREATE` — 10 group / 60min / user, block 30p (chống flood group spam).
+  - `CHAT_GROUP_MEMBER_ADD` — 30 invite / 10p / user, block 10p.
+- Read-only GET endpoint (list friends / requests / blocks / threads / messages / groups / members) KHÔNG gắn policy — fall through `DEFAULT_API` (120/60s IP_USER).
+- State-machine endpoint `POST /social/friend-requests/:id/{accept,decline}` + `DELETE /social/friend-requests/:id` + `DELETE /social/friends/:friendUserId` KHÔNG gắn policy — spam-risk thấp (idempotent + giới hạn bởi pending-request hiện có) và đã có business-logic guard.
+- Vượt policy → `RateLimitGuard` (Phase 18.1) throw 429 với `code='RATE_LIMITED'` hoặc `code='ABUSE_BLOCKED'` (fail2ban-style temporary block). FE bắt code → toast i18n thân thiện (`{social,chatPrivate,chatGroup}.errors.{RATE_LIMITED,ABUSE_BLOCKED}` ở `apps/web/src/i18n/{vi,en}.json`), KHÔNG auto-retry.
+- Bảo toàn invariants Phase 19.1: KHÔNG auto-ban, KHÔNG xoá message cũ, KHÔNG modify WORLD/SECT chat. Rollback = revert PR → endpoint quay về business-logic-only check.
 
 ### Test coverage
 
