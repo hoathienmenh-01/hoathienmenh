@@ -129,6 +129,48 @@ Tick EXP thực hiện bởi BullMQ processor `cultivation.processor.ts`. WS eve
 | GET    | `/chat/world?limit=N` | Yes  | Lịch sử world chat. |
 | POST   | `/chat/send`          | Yes  | Gửi. Rate limit 8 msg / 30s / player (Redis). |
 
+## Social — `SocialController` (Phase 19.1)
+
+> Friend / block lifecycle. Server-authoritative invariants: cấm self-friend / self-block, block 2 chiều cancel mọi pending request + xoá Friendship. Detection-first: reject ở send time. Error code (Envelope): `SELF_NOT_ALLOWED`, `ALREADY_PENDING`, `ALREADY_FRIENDS`, `BLOCKED`, `NOT_FOUND`, `NOT_AUTHORIZED`, `INVALID_TRANSITION`, `INVALID_INPUT`.
+
+| Method | Path                                   | Auth | Mô tả |
+|--------|----------------------------------------|------|-------|
+| GET    | `/social/friends`                       | Yes  | Danh sách bạn bè kèm flag `online` (RealtimeService.isOnline). |
+| GET    | `/social/friend-requests/incoming`      | Yes  | Lời mời đến PENDING. |
+| GET    | `/social/friend-requests/outgoing`      | Yes  | Lời mời đi PENDING. |
+| POST   | `/social/friend-requests`               | Yes  | Body `{ receiverUserId, message? }`. Message ≤140ch. |
+| POST   | `/social/friend-requests/:id/accept`    | Yes  | Receiver only. Tạo Friendship cặp low<high. |
+| POST   | `/social/friend-requests/:id/decline`   | Yes  | Receiver only. |
+| DELETE | `/social/friend-requests/:id`           | Yes  | Sender only (cancel PENDING). |
+| DELETE | `/social/friends/:friendUserId`         | Yes  | Xoá Friendship 2 chiều (caller xoá quan hệ với target). |
+| GET    | `/social/blocks`                        | Yes  | Danh sách player đã chặn. |
+| POST   | `/social/block`                         | Yes  | Body `{ userId }`. Cancel pending FriendRequest 2 chiều + xoá Friendship. |
+| DELETE | `/social/block/:userId`                 | Yes  | Bỏ chặn. KHÔNG tự khôi phục FriendRequest cũ. |
+
+## Chat Private — `ChatPrivateController` (Phase 19.1)
+
+> Chat riêng 1-1. Thread invariant: `userAId < userBId` (lexicographic). Server-side: non-member → 404 mask (KHÔNG 403 leak existence). Block 2 chiều reject `sendPrivateMessage` với `BLOCKED`. Message body 1..500ch trimmed.
+
+| Method | Path                                                  | Auth | Mô tả |
+|--------|-------------------------------------------------------|------|-------|
+| GET    | `/chat/private/threads`                                | Yes  | Danh sách thread caller, kèm last message snapshot. |
+| POST   | `/chat/private/threads`                                | Yes  | Body `{ peerUserId }`. Find-or-create. Cấm self / block. |
+| GET    | `/chat/private/threads/:threadId/messages?limit=`      | Yes  | DESC. Default 50, max 200. Non-member → 404. |
+| POST   | `/chat/private/threads/:threadId/messages`             | Yes  | Body `{ body }`. Emit WS `private-chat:msg`. |
+
+## Chat Group — `ChatGroupController` (Phase 19.1)
+
+> Group chat cơ bản. Member cap 30. Owner-only ops cho add/remove member. Non-member → 404 mask cho GET/POST messages. Owner KHÔNG self-remove (cần `deleteGroup` follow-up). Group name 3..60ch trimmed.
+
+| Method | Path                                                            | Auth | Mô tả |
+|--------|-----------------------------------------------------------------|------|-------|
+| GET    | `/chat/groups`                                                   | Yes  | Danh sách group caller là member. |
+| POST   | `/chat/groups`                                                   | Yes  | Body `{ name }`. Caller = owner, auto-add. |
+| POST   | `/chat/groups/:groupId/members`                                  | Yes  | Owner only. Body `{ userId }`. Cấm block 2 chiều, cap 30. |
+| DELETE | `/chat/groups/:groupId/members/:targetUserId`                    | Yes  | Owner only. Cấm self-remove. |
+| GET    | `/chat/groups/:groupId/messages?limit=`                          | Yes  | Member only. Non-member → 404. DESC. Default 50, max 200. |
+| POST   | `/chat/groups/:groupId/messages`                                 | Yes  | Member only. Body `{ body }`. Emit WS `group-chat:msg` loop member. |
+
 ## Territory — `TerritoryController` (Phase 14.0.A + 14.0.B + 14.0.C)
 
 Lớp **Sect Territory Influence + Settlement + Region Buff + Decay** — read views cho Influence Leaderboard theo region + Settlement (chiếm vùng) thật + Region buff khi sở hữu vùng + Influence decay per period.

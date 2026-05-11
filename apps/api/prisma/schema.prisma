@@ -1411,6 +1411,165 @@ model ChatMessage {
   @@index([channel, scopeKey, createdAt])
 }
 
+/// Phase 19.1 — Social System Foundation
+///
+/// Friend request status lifecycle:
+///   PENDING -> ACCEPTED (tạo `Friendship`)
+///   PENDING -> DECLINED (giữ history, không tạo friendship)
+///   PENDING -> CANCELLED (sender huỷ trước khi receiver phản hồi)
+///
+/// Khi block xảy ra, mọi pending request giữa 2 user transition sang
+/// CANCELLED (service-level) và không cho gửi mới.
+enum FriendRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+}
+
+/// Phase 19.1 — Friend request giữa 2 user. Soft-ref `senderUserId` /
+/// `receiverUserId` (no DB FK) — giảm rủi ro cascade. Cấm self-request
+/// + cấm duplicate PENDING ở service-level (đã unique partial index
+/// theo `status` thấp ở DB).
+///
+/// Idempotency: chỉ cho duy nhất 1 PENDING giữa (sender, receiver) tại
+/// 1 thời điểm. Sau DECLINED/CANCELLED có thể gửi lại — service check.
+model FriendRequest {
+  id             String              @id @default(cuid())
+  /// userId người gửi lời mời.
+  senderUserId   String
+  /// userId người nhận lời mời.
+  receiverUserId String
+  status         FriendRequestStatus @default(PENDING)
+  /// Tin nhắn kèm lời mời (optional, ≤140 ký tự).
+  message        String?
+  createdAt      DateTime            @default(now())
+  /// Thời điểm transition khỏi PENDING. Null khi PENDING.
+  respondedAt    DateTime?
+
+  @@index([receiverUserId, status, createdAt])
+  @@index([senderUserId, status, createdAt])
+}
+
+/// Phase 19.1 — Friendship 2 chiều giữa 2 user. Invariant:
+/// `userAId < userBId` (so sánh lexicographic) — chặn duplicate
+/// (A,B) vs (B,A) qua `@@unique([userAId, userBId])`. Service phải
+/// `assertSortedPair` trước khi insert.
+model Friendship {
+  id        String   @id @default(cuid())
+  /// userId nhỏ (lexicographic).
+  userAId   String
+  /// userId lớn (lexicographic).
+  userBId   String
+  createdAt DateTime @default(now())
+
+  @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
+}
+
+/// Phase 19.1 — PlayerBlock 1 chiều (`blockerUserId` chặn
+/// `blockedUserId`). Block thì:
+///   - Chặn `FriendRequest` từ cả 2 hướng.
+///   - Chặn `PrivateChatMessage` từ cả 2 hướng.
+///   - KHÔNG xoá `Friendship` cũ (service quyết — Phase 19.1 mặc định
+///     auto-removeFriend khi block — invariant test-enforced).
+///   - KHÔNG hiển thị `blocker` trong friend list của `blocked` và
+///     ngược lại (filter service-level).
+model PlayerBlock {
+  id            String   @id @default(cuid())
+  /// userId người chặn.
+  blockerUserId String
+  /// userId người bị chặn.
+  blockedUserId String
+  createdAt     DateTime @default(now())
+
+  @@unique([blockerUserId, blockedUserId])
+  @@index([blockedUserId])
+}
+
+/// Phase 19.1 — Loại chat thread:
+///   - `PRIVATE`: 1-1 message giữa 2 user (`PrivateChatThread` +
+///     `PrivateChatMessage`).
+///   - `GROUP`: nhóm chat có owner + danh sách member (`GroupChat` +
+///     `GroupChatMember` + `GroupChatMessage`).
+enum ChatThreadType {
+  PRIVATE
+  GROUP
+}
+
+/// Phase 19.1 — Private chat thread giữa 2 user. Invariant:
+/// `userAId < userBId` (lexicographic) → chặn duplicate thread
+/// (A,B) vs (B,A) qua `@@unique`. Service `getOrCreatePrivateThread`
+/// chuẩn hoá thứ tự trước khi upsert.
+model PrivateChatThread {
+  id        String   @id @default(cuid())
+  /// userId nhỏ (lexicographic).
+  userAId   String
+  /// userId lớn (lexicographic).
+  userBId   String
+  createdAt DateTime @default(now())
+
+  @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
+}
+
+/// Phase 19.1 — Private chat message. Soft-ref `threadId` /
+/// `senderUserId` (no DB FK). Server cap `body` ≤500 char (test-
+/// enforced).
+model PrivateChatMessage {
+  id           String   @id @default(cuid())
+  threadId     String
+  /// userId của người gửi (phải là 1 trong 2 thành viên thread).
+  senderUserId String
+  body         String
+  createdAt    DateTime @default(now())
+
+  @@index([threadId, createdAt])
+  @@index([senderUserId, createdAt])
+}
+
+/// Phase 19.1 — Group chat. Owner tạo group, add/remove member. Owner
+/// luôn là member (test-enforced). Tên group ≤60 ký tự.
+model GroupChat {
+  id          String   @id @default(cuid())
+  /// Tên hiển thị (do owner đặt). Trim + non-empty + ≤60 char.
+  name        String
+  /// userId của owner. Soft-ref (no FK).
+  ownerUserId String
+  createdAt   DateTime @default(now())
+
+  @@index([ownerUserId])
+}
+
+/// Phase 19.1 — Group chat member. Unique (groupId, userId) ngăn
+/// member duplicate. Service kiểm tra block trước khi add (không add
+/// 2 user đang block lẫn nhau vào cùng group — test-enforced).
+model GroupChatMember {
+  id       String   @id @default(cuid())
+  groupId  String
+  userId   String
+  joinedAt DateTime @default(now())
+
+  @@unique([groupId, userId])
+  @@index([userId])
+}
+
+/// Phase 19.1 — Group chat message. Service-level kiểm tra
+/// `senderUserId` là member của group trước khi insert. Non-member
+/// đọc/gửi → 404 mask (không leak existence).
+model GroupChatMessage {
+  id           String   @id @default(cuid())
+  groupId      String
+  senderUserId String
+  body         String
+  createdAt    DateTime @default(now())
+
+  @@index([groupId, createdAt])
+  @@index([senderUserId, createdAt])
+}
+
 enum BossStatus {
   ACTIVE
   DEFEATED

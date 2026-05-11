@@ -348,7 +348,8 @@
       "npcs": "Đạo Hữu",
       "quests": "Nhiệm Vụ",
       "dungeonRun": "Bí Cảnh Hành",
-      "storyDungeons": "Bí Cảnh Cốt Truyện"
+      "storyDungeons": "Bí Cảnh Cốt Truyện",
+      "social": "Xã Giao"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -4362,6 +4363,137 @@
       "FORBIDDEN": "Tài khoản không phải admin.",
       "ADMIN_ONLY": "Chỉ admin mới được chạy backup/verify.",
       "UNKNOWN": "Thao tác thất bại — thử lại."
+    }
+  },
+  "social": {
+    "viewTitle": "Xã Giao",
+    "viewSubtitle": "Quản lý bạn bè, chặn người chơi, và trò chuyện riêng/nhóm.",
+    "title": "Bằng Hữu",
+    "online": "Đang trực tuyến",
+    "offline": "Ngoại tuyến",
+    "tabs": {
+      "friends": "Bằng Hữu",
+      "private": "Mật Đàm",
+      "group": "Đạo Bạn"
+    },
+    "friends": {
+      "header": "Danh sách bạn bè",
+      "empty": "Chưa kết bạn với đạo hữu nào."
+    },
+    "requests": {
+      "incoming": "Lời mời đến",
+      "outgoing": "Lời mời đi",
+      "emptyIncoming": "Chưa có lời mời kết bạn nào đến.",
+      "emptyOutgoing": "Chưa gửi lời mời nào."
+    },
+    "blocks": {
+      "header": "Danh sách chặn",
+      "empty": "Chưa chặn đạo hữu nào."
+    },
+    "send": {
+      "userPlaceholder": "User ID đạo hữu…",
+      "messagePlaceholder": "Lời nhắn (tối đa 140 ký tự)…",
+      "submit": "Gửi lời mời"
+    },
+    "actions": {
+      "accept": "Chấp nhận",
+      "decline": "Từ chối",
+      "cancel": "Huỷ",
+      "removeFriend": "Xoá bạn",
+      "block": "Chặn",
+      "unblock": "Bỏ chặn"
+    },
+    "confirm": {
+      "removeFriend": {
+        "title": "Xoá bạn",
+        "message": "Bạn chắc chắn muốn xoá {id} khỏi danh sách bạn?"
+      },
+      "block": {
+        "title": "Chặn người chơi",
+        "message": "Sau khi chặn, {id} sẽ không thể gửi tin nhắn riêng hay lời mời kết bạn cho bạn."
+      },
+      "unblock": {
+        "title": "Bỏ chặn",
+        "message": "Bạn chắc chắn muốn bỏ chặn {id}?"
+      }
+    },
+    "toast": {
+      "requestSent": "Đã gửi lời mời kết bạn.",
+      "accepted": "Đã trở thành bạn bè.",
+      "declined": "Đã từ chối lời mời.",
+      "cancelled": "Đã huỷ lời mời.",
+      "friendRemoved": "Đã xoá bạn.",
+      "blocked": "Đã chặn người chơi.",
+      "unblocked": "Đã bỏ chặn người chơi."
+    },
+    "errors": {
+      "SELF_NOT_ALLOWED": "Không thể thao tác với chính mình.",
+      "ALREADY_PENDING": "Đã tồn tại lời mời đang chờ giữa hai người.",
+      "ALREADY_FRIENDS": "Đã là bạn bè.",
+      "BLOCKED": "Hai bên đang chặn — không thể thao tác.",
+      "NOT_FOUND": "Không tìm thấy đối tượng (hoặc không có quyền).",
+      "NOT_AUTHORIZED": "Bạn không có quyền thao tác mục này.",
+      "INVALID_TRANSITION": "Lời mời đã được xử lý trước đó.",
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "UNKNOWN": "Có lỗi xảy ra — thử lại."
+    }
+  },
+  "chatPrivate": {
+    "threads": {
+      "header": "Cuộc trò chuyện",
+      "empty": "Chưa có cuộc trò chuyện riêng nào.",
+      "openPlaceholder": "User ID…",
+      "openSubmit": "Mở chat"
+    },
+    "thread": {
+      "none": "Chọn một cuộc trò chuyện để xem tin nhắn.",
+      "empty": "Chưa có tin nhắn nào.",
+      "placeholder": "Nhập tin nhắn (tối đa 500 ký tự)…",
+      "send": "Gửi"
+    },
+    "errors": {
+      "BLOCKED": "Hai bên đang chặn nhau — không thể nhắn tin.",
+      "NOT_FOUND": "Không tìm thấy cuộc trò chuyện.",
+      "SELF_NOT_ALLOWED": "Không thể tự nhắn cho chính mình.",
+      "INVALID_INPUT": "Tin nhắn không hợp lệ (trống hoặc quá dài).",
+      "NOT_AUTHORIZED": "Bạn không thuộc cuộc trò chuyện này.",
+      "UNKNOWN": "Có lỗi xảy ra — thử lại."
+    }
+  },
+  "chatGroup": {
+    "groups": {
+      "header": "Nhóm chat",
+      "empty": "Chưa tham gia nhóm chat nào.",
+      "createPlaceholder": "Tên nhóm (3-60 ký tự)…",
+      "createSubmit": "Tạo nhóm",
+      "memberCount": "{n} thành viên"
+    },
+    "group": {
+      "none": "Chọn một nhóm để xem tin nhắn.",
+      "empty": "Chưa có tin nhắn trong nhóm.",
+      "owner": "Trưởng nhóm: {id}",
+      "placeholder": "Nhập tin nhắn nhóm (tối đa 500 ký tự)…",
+      "send": "Gửi"
+    },
+    "members": {
+      "header": "Thành viên",
+      "owner": "Trưởng nhóm",
+      "remove": "Đuổi",
+      "addPlaceholder": "User ID thành viên mới…",
+      "addSubmit": "Thêm"
+    },
+    "toast": {
+      "memberAdded": "Đã thêm thành viên.",
+      "memberRemoved": "Đã đuổi thành viên."
+    },
+    "errors": {
+      "NOT_FOUND": "Không tìm thấy nhóm.",
+      "NOT_AUTHORIZED": "Bạn không có quyền thao tác trong nhóm này.",
+      "BLOCKED": "Hai bên đang chặn — không thể mời.",
+      "DUPLICATE_MEMBER": "Đã là thành viên nhóm.",
+      "GROUP_FULL": "Nhóm đã đủ thành viên tối đa.",
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "UNKNOWN": "Có lỗi xảy ra — thử lại."
     }
   }
 }

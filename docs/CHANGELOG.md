@@ -12,7 +12,83 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Phase 16.4 — Market Trade Abuse Hardening (this PR — #527)
+### Phase 19.1 — Social System Foundation (this PR — #528)
+
+**Scope**: Foundation cho hệ thống xã hội của game: kết bạn (gửi/chấp nhận/từ chối/huỷ lời mời, xoá bạn), chặn người chơi, chat riêng 1-1, chat nhóm cơ bản. **KHÔNG** thay đổi behavior của WORLD/SECT chat hiện có. **KHÔNG** voice / media upload / matchmaking / trading. **KHÔNG** full admin moderation UI ở PR này (xem follow-up).
+
+#### Added — Phase 19.1
+
+- **Prisma migration `20260815000000_phase_19_1_social_system_foundation`** additive: 7 model mới + 2 enum:
+  - `FriendRequest`(id, senderUserId, receiverUserId, status `PENDING`/`ACCEPTED`/`DECLINED`/`CANCELLED`, message? ≤140ch, createdAt, respondedAt?). Unique `(senderUserId, receiverUserId, status)` chống duplicate PENDING.
+  - `Friendship`(id, userAId, userBId — invariant `userAId < userBId` để dedupe). Unique `(userAId, userBId)`.
+  - `PlayerBlock`(id, blockerUserId, blockedUserId, createdAt). Unique `(blockerUserId, blockedUserId)`.
+  - `PrivateChatThread`(id, userAId, userBId — invariant `userAId < userBId`). Unique `(userAId, userBId)`.
+  - `PrivateChatMessage`(id, threadId, senderUserId, body, createdAt) + index `(threadId, createdAt)`.
+  - `GroupChat`(id, ownerUserId, name 3-60ch, createdAt) + `GroupChatMember`(id, groupId, userId, joinedAt). Unique `(groupId, userId)` + index `(userId)`.
+  - `GroupChatMessage`(id, groupId, senderUserId, body, createdAt) + index `(groupId, createdAt)`.
+  - **Soft-ref pattern**: KHÔNG FK constraint giữa các bảng (cleanup admin sẽ xử lý qua scan, KHÔNG cascade delete). Mọi invariant enforce ở service layer.
+- **Shared `packages/shared/src/social.ts`**: enum `FriendRequestStatus` 4-state + `ChatThreadType` (PRIVATE/GROUP); row DTO `FriendRequestRow`/`FriendRow`/`PlayerBlockRow`/`PrivateChatThreadRow`/`PrivateChatMessageRow`/`GroupChatRow`/`GroupChatMemberRow`/`GroupChatMessageRow`; response DTO `FriendListResponse`/`*RequestsResponse`/...; `SOCIAL_LIMITS` (FRIEND_REQUEST_MESSAGE_MAX=140, PRIVATE_MESSAGE_MAX=500, GROUP_MESSAGE_MAX=500, GROUP_NAME_MIN=3/MAX=60, GROUP_MEMBER_MAX=30); pure validators `validateFriendRequestMessage`/`validateChatMessageBody`/`validateGroupName` (trả `{ ok, code? }`) + `sortUserPair(a,b)` (lexicographic low/high — đảm bảo invariant cặp user thấp<cao trong Friendship/Thread).
+- **Backend services & controllers (3 module mới)**:
+  - `SocialService` (`apps/api/src/modules/social/`): `sendFriendRequest` (cấm self, cấm block, cấm duplicate PENDING) / `acceptFriendRequest` (state machine PENDING→ACCEPTED + tạo Friendship cặp low<high) / `declineFriendRequest` / `cancelFriendRequest` (sender only) / `removeFriend` (xoá Friendship 1 chiều caller) / `blockUser` (tạo PlayerBlock + cancel tất cả pending FriendRequest 2 chiều + xoá Friendship) / `unblockUser` / `listFriends` (kèm online flag từ `RealtimeService.isOnline`) / `listIncomingRequests` / `listOutgoingRequests` / `listBlocks` + helper `isBlockedBetween(a,b)` / `areFriends(a,b)`.
+  - `ChatPrivateService` (`apps/api/src/modules/chat-private/`): `getOrCreatePrivateThread(callerUserId, peerUserId)` (cấm self, cấm block, sort low<high, find-or-create) / `sendPrivateMessage` (validate length, check block, emit `private-chat:msg`) / `listPrivateMessages(threadId, limit?)` (DESC, mặc định 50, max 200) / `listPrivateThreads(callerUserId)` (kèm last message snapshot + peerUserId).
+  - `ChatGroupService` (`apps/api/src/modules/chat-group/`): `createGroupChat(ownerUserId, name)` (validate name, owner auto-add) / `addGroupMember(callerUserId, groupId, userId)` (owner-only, cấm block 2 chiều, GROUP_MEMBER_MAX cap, dedupe) / `removeGroupMember(callerUserId, groupId, targetUserId)` (owner-only, cấm self-remove) / `sendGroupMessage` (member-only, validate length, emit `group-chat:msg` loop member) / `listGroupMessages(callerUserId, groupId, limit?)` (member-only) / `listGroups(callerUserId)` / `listGroupMembers(callerUserId, groupId)`.
+- **REST API** 16 endpoint (xem `apps/api/src/modules/{social,chat-private,chat-group}/*.controller.ts`):
+  - **Social**: `GET /social/friends` · `GET /social/friend-requests/incoming` · `GET /social/friend-requests/outgoing` · `POST /social/friend-requests` · `POST /social/friend-requests/:id/accept` · `POST /social/friend-requests/:id/decline` · `DELETE /social/friend-requests/:id` · `DELETE /social/friends/:friendUserId` · `GET /social/blocks` · `POST /social/block` · `DELETE /social/block/:userId`.
+  - **Chat private**: `GET /chat/private/threads` · `POST /chat/private/threads` · `GET /chat/private/threads/:threadId/messages` · `POST /chat/private/threads/:threadId/messages`.
+  - **Chat group**: `GET /chat/groups` · `POST /chat/groups` · `POST /chat/groups/:groupId/members` · `DELETE /chat/groups/:groupId/members/:targetUserId` · `GET /chat/groups/:groupId/messages` · `POST /chat/groups/:groupId/messages`.
+- **Realtime fanout** (`apps/api/src/modules/realtime/realtime.service.ts`): event `private-chat:msg` emit cho 2 user của thread; event `group-chat:msg` emit cho tất cả member của group (loop best-effort, member offline KHÔNG fail send). Realtime down KHÔNG rollback DB insert.
+- **FE Vue 3** (`apps/web/src/`):
+  - `views/SocialView.vue` (route `/social`, link 友 Xã Giao trong `AppShell.vue` nav sidebar): 3 tab Friends / PrivateChat / GroupChat.
+  - `components/SocialPanel.vue`: friends list (online dot từ row.online), incoming/outgoing requests tabs (count badge), blocks list; form gửi request (userId + message ≤140), accept/decline/cancel/remove/block/unblock action; ConfirmModal danger cho remove friend / block / unblock; per-row busy state.
+  - `components/PrivateChatPanel.vue`: threads sidebar + form mở thread by userId; message view (reverse server DESC → asc cho hiển thị); send form max 500 char + counter.
+  - `components/GroupChatPanel.vue`: groups sidebar + create group (validate 3-60ch); members sidebar (owner badge); add/remove member form (owner only); messages + send max 500.
+  - FE API client `apps/web/src/api/{social,chatPrivate,chatGroup}.ts` (Envelope + unwrap pattern khớp axios `/api` proxy + 15s timeout).
+  - i18n vi/en parity `social.*` / `chatPrivate.*` / `chatGroup.*` / `shell.nav.social` + error codes (`SELF_NOT_ALLOWED`, `ALREADY_PENDING`, `ALREADY_FRIENDS`, `BLOCKED`, `NOT_FOUND`, `NOT_AUTHORIZED`, `INVALID_INPUT`, `INVALID_TRANSITION`, `DUPLICATE_MEMBER`, `GROUP_FULL`, `UNKNOWN`).
+
+#### Security — Phase 19.1
+
+- **Block enforcement detection-first**: block KHÔNG xoá thread/message lịch sử (preserve audit trail), KHÔNG xoá block target khỏi friend list (đã xoá Friendship trong `blockUser`). Block reject ở send time: `sendFriendRequest` + `sendPrivateMessage` check `isBlockedBetween` trước insert. Block 2 chiều: A block B → cả A→B và B→A FriendRequest đều bị reject.
+- **404 mask** cho thread membership / group membership: caller không thuộc thread/group → throw `NOT_FOUND` thay vì `403` để KHÔNG leak existence (xem `requireMemberThread` / `requireMemberGroup` trong service).
+- **Message length cap server-side**: `validateChatMessageBody` reject empty / whitespace-only / >500ch → 400 `INVALID_INPUT`. FE counter chỉ visual aid — backend luôn là source of truth.
+- **GROUP_MEMBER_MAX=30 cap**: enforce ở `addGroupMember` để chống flooding group.
+- **Owner-only ops cho group**: `addGroupMember` / `removeGroupMember` check `group.ownerUserId === caller`; owner KHÔNG thể tự kick self (cần `deleteGroup` follow-up).
+- **Self-anything chặn**: cấm self-friend / self-block / self-thread / self-message-target.
+- **Soft-ref**: KHÔNG FK delete cascade — nếu user/character bị xoá, social rows trở thành "orphan" nhưng KHÔNG kéo theo lỗi runtime (service tolerate NULL display name).
+- **KHÔNG modify Phase 18.1 rate-limit decorator** ở PR này — friend request / chat send hiện chưa gắn `@RateLimitPolicy()`. **Follow-up bắt buộc**: gắn rate-limit `SOCIAL_MUTATION` (default 30 req / 1min/user) khi đo được baseline.
+
+#### Tests — Phase 19.1
+
+- **API integration**: 61 test pass:
+  - `social.service.spec.ts` 31 test (friend lifecycle full state machine, block invariants 2 chiều, list helpers, online flag, duplicate-rejection idempotency, self-ops cấm).
+  - `chat-private.service.spec.ts` 16 test (thread create idempotent low<high, send-after-block reject, length cap, 404 mask non-member, list DESC + limit cap).
+  - `chat-group.service.spec.ts` 14 test (owner create, member CRUD, GROUP_MEMBER_MAX cap, owner-only ops, 404 mask, length cap, message member-only).
+- **FE unit (Vitest + vue-test-utils)**: 5 test pass cho `SocialPanel.vue`: render empty state, accept-request flow + refresh, send-request reset form + refresh outgoing, block confirm modal cancel=false KHÔNG call API + confirm=true call API, error toast khi server reject `BLOCKED`.
+- **CI gates**: lint (--max-warnings 0) / typecheck (web + api) / api 61 + FE 5 / `pnpm -w build` / `prisma migrate deploy` xanh.
+
+#### Docs — Phase 19.1
+
+- `AI_HANDOFF_REPORT.md` cập nhật Executive Summary + recent-PR table.
+- `API.md` thêm `SocialController` / `ChatPrivateController` / `ChatGroupController` mục.
+- `SECURITY.md` thêm § về block enforcement + 404 mask thread/group + message length cap.
+- `RUNBOOK.md` thêm tình huống "user kêu bị spam friend request" / "moderation chat" / "xoá group orphan".
+- `CHANGELOG.md` (file này).
+
+#### Follow-up — Phase 19.1.x
+
+- **Admin moderation UI**: delete private message / dissolve group / ban from chat (Phase 19.2).
+- **Rate-limit decorator** `SOCIAL_MUTATION` gắn vào friend request + chat send (Phase 19.1.B).
+- **Display name**: hiện tại FE chỉ hiển thị userId raw — wire `character.displayName` snapshot vào row DTO (cần đầu join Character).
+- **Online presence cross-shard**: hiện chỉ check single-process `RealtimeService.isOnline` — multi-instance cần Redis pub/sub.
+- **Voice / media upload / gifting / matchmaking** — KHÔNG nằm trong roadmap social foundation.
+
+#### Risk & rollback — Phase 19.1
+
+- **Risk thấp**: tất cả model mới, soft-ref pattern, KHÔNG FK constraint nên migration KHÔNG khoá table cũ. KHÔNG sửa WORLD/SECT chat behavior.
+- **Rollback**: `prisma migrate resolve --rolled-back 20260815000000_phase_19_1_social_system_foundation` + `DROP TABLE FriendRequest, Friendship, PlayerBlock, PrivateChatThread, PrivateChatMessage, GroupChat, GroupChatMember, GroupChatMessage` (đã viết sẵn `down.sql` trong migration folder). FE: revert nav link + route — panel components KHÔNG sửa shared store nên rollback an toàn.
+
+---
+
+### Phase 16.4 — Market Trade Abuse Hardening (PR #527)
 
 **Scope**: **Detection-first, guard-light** lớp phát hiện trục lợi market. Theo dõi 6 loại bất thường market trade: price extreme low/high vs reference, repeated buyer/seller pair (alt funnel), listing spam (bot), market volume spike (whale RMT), unknown reference price (catalog drift). KHÔNG auto-cancel listing, KHÔNG auto-rollback trade, KHÔNG tự refund currency/item, KHÔNG khoá tài khoản. Chỉ tạo `MarketTradeAnomaly` row OPEN cho admin review qua tab "Chợ - Phát hiện trục lợi". Bổ sung cho Phase 16.6 Market Price Band (input gate reject) bằng cách quan sát pattern sau khi listing/trade commit thành công.
 

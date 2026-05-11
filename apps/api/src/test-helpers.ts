@@ -147,6 +147,17 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // Phase 16.4 — Market trade anomaly tracking (no FK to Character /
   // Listing; wipe explicit để reset state giữa test runs).
   await prisma.marketTradeAnomaly.deleteMany({});
+  // Phase 19.1 — Social system foundation (no FK to User; wipe explicit
+  // để reset state giữa test runs). Thứ tự: message trước thread/group,
+  // member trước group, request/friendship/block trước User.
+  await prisma.privateChatMessage.deleteMany({});
+  await prisma.privateChatThread.deleteMany({});
+  await prisma.groupChatMessage.deleteMany({});
+  await prisma.groupChatMember.deleteMany({});
+  await prisma.groupChat.deleteMany({});
+  await prisma.friendRequest.deleteMany({});
+  await prisma.friendship.deleteMany({});
+  await prisma.playerBlock.deleteMany({});
   // Phase 15.0.A — Equipment Reforge / Enchant audit history (xoá trước
   // ItemLedger/Character — FK cascade tới Character nhưng explicit cho rõ).
   await prisma.equipmentReforgeHistory.deleteMany({});

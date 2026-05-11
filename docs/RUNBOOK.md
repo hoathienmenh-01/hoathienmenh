@@ -2268,6 +2268,90 @@ curl -X POST https://api/api/admin/market/abuse/scan \
 - **KHÔNG copy/log `detailsJson` raw ra ngoài Postgres** — vẫn coi như nhạy cảm dù đã sanitize.
 - **KHÔNG mở rộng scope sang ban/cancel** trong controller Phase 16.4 — chỉ detection. Mọi cử dùng `AdminController` / `AdminUsersController` / `MarketService.cancel()` hiện có.
 
+### 2.35. Phase 19.1 — Social System (friend / private chat / group chat) (P2/P3)
+
+**Khi nào**: Player kêu bị spam friend request, bị nhận message offensive, có người chơi đang lợi dụng group để flood, hoặc cần xoá group "orphan" sau khi owner bỏ chơi.
+
+**Triệu chứng**:
+- "Tôi nhận hàng chục lời mời kết bạn từ user X trong 5 phút."
+- "Có người gửi spam link 'top up' trong private chat / group chat."
+- "Group này tôi không tham gia mà vẫn nhận tin nhắn." (KHÔNG xảy ra — non-member 404 mask; nếu báo cáo, là bug critical, escalate).
+- "Owner group offline lâu rồi, không ai add/kick được — group bị đóng băng."
+
+**Tại sao Phase 19.1 KHÔNG có admin UI**:
+- Phase 19.1 là **foundation** — admin moderation UI sẽ ở Phase 19.2.
+- Operator phải dùng query trực tiếp qua psql / Prisma Studio để xử lý.
+
+**Cách xử lý spam friend request**:
+1. Identify spammer userId qua report của player (hoặc query):
+   ```sql
+   SELECT "senderUserId", COUNT(*) AS n
+   FROM "FriendRequest"
+   WHERE status = 'PENDING' AND "createdAt" > NOW() - INTERVAL '1 hour'
+   GROUP BY "senderUserId"
+   HAVING COUNT(*) > 20
+   ORDER BY n DESC;
+   ```
+2. Cancel toàn bộ pending request của spammer:
+   ```sql
+   UPDATE "FriendRequest"
+      SET status = 'CANCELLED', "respondedAt" = NOW()
+    WHERE "senderUserId" = '<spammer_user_id>' AND status = 'PENDING';
+   ```
+3. Add audit row qua `AdminAudit` (entry tay) với reason.
+4. **Follow-up**: Khi Phase 19.1.B merge, baseline rate-limit `SOCIAL_FRIEND_REQUEST` (10 req/1min/user) sẽ chặn trước.
+
+**Cách xử lý private message offensive**:
+1. Query message:
+   ```sql
+   SELECT m.* FROM "PrivateChatMessage" m
+   WHERE m."senderUserId" = '<offender_user_id>'
+     AND m."createdAt" > NOW() - INTERVAL '24 hours'
+   ORDER BY m."createdAt" DESC LIMIT 50;
+   ```
+2. **KHÔNG xoá row** — phải preserve audit. Nếu CRITICAL, dùng `UPDATE` để mask body và đánh dấu (Phase 19.2 sẽ có `moderationStatus` column):
+   ```sql
+   -- Tạm thời (Phase 19.1):
+   UPDATE "PrivateChatMessage" SET body = '[REMOVED BY MODERATION]' WHERE id = '<msg_id>';
+   ```
+3. Tách phiên: gọi `AdminUsersController` revoke session của offender (Phase 18.2).
+4. Player victim có thể `POST /social/block` để chặn sender 2 chiều.
+
+**Cách xử lý group spam / flood**:
+1. Identify group + owner:
+   ```sql
+   SELECT g.id, g.name, g."ownerUserId", COUNT(m.id) AS msg_count
+   FROM "GroupChat" g
+   LEFT JOIN "GroupChatMessage" m
+     ON m."groupId" = g.id AND m."createdAt" > NOW() - INTERVAL '1 hour'
+   GROUP BY g.id
+   HAVING COUNT(m.id) > 200
+   ORDER BY msg_count DESC;
+   ```
+2. Nếu offender là member non-owner: liên hệ owner để kick, hoặc operator force kick:
+   ```sql
+   DELETE FROM "GroupChatMember"
+   WHERE "groupId" = '<group_id>' AND "userId" = '<offender_user_id>';
+   ```
+3. Nếu offender là owner: tạm thời rotate owner qua promote 1 member khác (Phase 19.2 sẽ có endpoint `transferOwnership`):
+   ```sql
+   UPDATE "GroupChat" SET "ownerUserId" = '<new_owner_user_id>' WHERE id = '<group_id>';
+   ```
+
+**Cách xoá group "orphan" (owner bỏ chơi)**:
+1. Hiện Phase 19.1 KHÔNG có endpoint `deleteGroup`. Operator force:
+   ```sql
+   DELETE FROM "GroupChatMessage" WHERE "groupId" = '<group_id>';
+   DELETE FROM "GroupChatMember"  WHERE "groupId" = '<group_id>';
+   DELETE FROM "GroupChat"        WHERE id = '<group_id>';
+   ```
+2. Log audit qua `AdminAudit` (entry tay).
+
+**Không bao giờ**:
+- **KHÔNG xoá row `FriendRequest` / `PrivateChatMessage` / `GroupChatMessage`** trừ trường hợp purge group orphan — chỉ `UPDATE` `body` / `status`.
+- **KHÔNG bypass block** bằng cách manual `INSERT FriendRequest` — nếu player bị block và muốn liên hệ lại, owner phải `unblock` qua API.
+- **KHÔNG mở `DELETE /social/block/:userId`** thay player — chỉ player tự bỏ chặn của mình.
+
 ## 2.99. Pre-cutover Deploy Verify Gate (Phase 17.1)
 
 **Khi nào**: Mọi lần cutover production sang instance mới / image mới /

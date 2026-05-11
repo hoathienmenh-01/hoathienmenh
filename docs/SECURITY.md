@@ -448,6 +448,47 @@ Admin operations playbook (run scan / ack / resolve / handle CRITICAL): [`RUNBOO
 - `apps/api/src/modules/admin-market-abuse/market-trade-abuse.service.test.ts` (16 tests): empty scan, price band normal/WARN/CRITICAL low+high, repeated pair 24h+7d, listing spam, volume spike, unknown reference, idempotency P2002, detection-only invariants (Listing/CurrencyLedger/ItemLedger untouched), hook real-time vs scanAll consistency.
 - `apps/api/src/modules/admin-market-abuse/admin-market-abuse.controller.test.ts` (18 tests): RBAC ADMIN-only, audit log fan-out, filter validation + limit clamp ≤200, note cap 1000ch, idempotent ack/resolve 404 `ANOMALY_NOT_FOUND_OR_NOT_OPEN` / `ANOMALY_NOT_FOUND_OR_RESOLVED`.
 
+## 19. Social System (Phase 19.1)
+
+> Foundation cho friend / private chat / group chat. **Server-authoritative** — mọi invariant enforce ở service layer (SocialService / ChatPrivateService / ChatGroupService), **KHÔNG** dựa vào DB constraint (soft-ref pattern, không FK).
+
+### Đe doạ & mitigation
+
+| Threat | Mitigation |
+|---|---|
+| Self-targeting (gửi friend cho mình, block mình, mở thread mình) | Service throw `SELF_NOT_ALLOWED` trước khi insert. |
+| Block bypass (sender bị block vẫn nhắn tin được) | `sendPrivateMessage` + `sendFriendRequest` check `isBlockedBetween(a,b)` (2 chiều) ở entry; reject `BLOCKED`. |
+| Thread existence leak qua 403 | Non-member → `NOT_FOUND` (404 mask), KHÔNG 403 — attacker không thể distinguish "thread tồn tại nhưng tôi không có quyền" vs "không có thread". |
+| Group existence leak | Tương tự: `requireMemberGroup` throw `NOT_FOUND` cho non-member khi GET/POST messages. |
+| Duplicate FriendRequest spam | DB unique `(senderUserId, receiverUserId, status=PENDING)` + service reject `ALREADY_PENDING` trước insert. |
+| Message flood / oversize | Server-side `validateChatMessageBody`: empty/whitespace → `INVALID_INPUT`; length >500ch → `INVALID_INPUT`. FE counter chỉ là visual aid. |
+| Group membership flooding | `GROUP_MEMBER_MAX=30` cap enforce ở `addGroupMember`. Owner-only ops chống random user add người ngoài. |
+| Owner takes hostage (không thể rời) | Owner KHÔNG self-remove qua API hiện tại — phải gọi follow-up `deleteGroup` (Phase 19.2). |
+| Block bypass qua group | Khi `addGroupMember`, check `isBlockedBetween(owner, target)` 2 chiều. Tuy nhiên trong cùng group đang có sẵn, không tự kick — moderation responsibility của owner. |
+| Audit log message content | Phase 19.1 KHÔNG log full message body vào audit (chỉ tạo Message row). Admin moderation cần dùng query trực tiếp `PrivateChatMessage` / `GroupChatMessage`. |
+| Token / secret in message body | KHÔNG có filter ở Phase 19.1 — Phase 19.2 sẽ thêm regex hook `MARKETPLACE_TOKEN`/`PASSWORD` warn. Hiện tại operator phải nhắc player trong TOS. |
+
+### Detection-first principles
+
+- Block KHÔNG xoá historical message (preserve audit trail). Chỉ chặn send tương lai.
+- Unblock KHÔNG tự khôi phục FriendRequest cũ (status đã chuyển CANCELLED).
+- Realtime fanout fail-soft: WS down → DB insert vẫn commit. Player offline khi nhận lại sẽ poll qua REST.
+
+### Rate-limit (follow-up Phase 19.1.B)
+
+- Hiện chưa gắn `@RateLimitPolicy()` (Phase 18.1) vào friend request + chat send. Bắt buộc phải gắn trước khi mở public traffic — baseline đề xuất:
+  - `SOCIAL_FRIEND_REQUEST`: 10 req/1min/user.
+  - `CHAT_PRIVATE_SEND`: 30 msg/1min/user.
+  - `CHAT_GROUP_SEND`: 30 msg/1min/user.
+  - `SOCIAL_BLOCK_TOGGLE`: 30 toggle/10min/user (chống abuse block storm).
+
+### Test coverage
+
+- `apps/api/src/modules/social/social.service.spec.ts` (31 tests): friend lifecycle full state machine, block invariants 2 chiều, list helpers, duplicate-rejection idempotency, self-ops cấm.
+- `apps/api/src/modules/chat-private/chat-private.service.spec.ts` (16 tests): thread create idempotent low<high, send-after-block reject, length cap, 404 mask non-member, list DESC + limit cap.
+- `apps/api/src/modules/chat-group/chat-group.service.spec.ts` (14 tests): owner create, member CRUD, GROUP_MEMBER_MAX cap, owner-only ops, 404 mask, length cap.
+- FE `apps/web/src/components/__tests__/SocialPanel.test.ts` (5 tests): loading/empty, accept-request flow, send-request reset, block confirm modal cancel=false KHÔNG call API, error toast.
+
 ## 15. Khi phát hiện sự cố
 
 1. Ngắt traffic (reverse proxy 503 hoặc scale 0 instance).
