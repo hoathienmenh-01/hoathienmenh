@@ -294,7 +294,7 @@ const showEmpty = computed(
           <div class="text-xs">
             {{
               summary.latestCreatedAt ||
-              t('admin.gameplayAntiCheat.summary.none')
+                t('admin.gameplayAntiCheat.summary.none')
             }}
           </div>
         </div>
@@ -305,7 +305,7 @@ const showEmpty = computed(
           <div class="text-xs">
             {{
               summary.latestResolvedAt ||
-              t('admin.gameplayAntiCheat.summary.none')
+                t('admin.gameplayAntiCheat.summary.none')
             }}
           </div>
         </div>
