@@ -65,6 +65,12 @@ export const RATE_LIMIT_POLICY_KEYS = [
   'PARTY_DUNGEON_READY',
   'PARTY_DUNGEON_START',
   'PARTY_DUNGEON_CLAIM',
+  // ---- Co-op Boss (Phase 20.2) ----
+  'COOP_BOSS_CREATE',
+  'COOP_BOSS_JOIN',
+  'COOP_BOSS_CONTRIBUTION',
+  'COOP_BOSS_FINISH',
+  'COOP_BOSS_CLAIM',
   // ---- Public Player Profile (Phase 19.1.C) ----
   'SOCIAL_PROFILE_VIEW',
   // ---- Fallback ----
@@ -485,6 +491,72 @@ export const RATE_LIMIT_POLICIES: Readonly<
     sensitive: true,
     descriptionVi: 'Giới hạn nhận thưởng dungeon tổ đội theo tài khoản, chống replay/spam claim.',
     descriptionEn: 'Party dungeon reward claim limit per account, anti replay/spam claim.',
+  },
+  // ---- Co-op Boss (Phase 20.2) ----
+  // Chống mass-create co-op boss run: 20 run / giờ / user. Leader
+  // hiếm khi tạo > vài run / giờ (mỗi run chiếm boss event đến khi
+  // finish). Vượt → block 30 phút.
+  COOP_BOSS_CREATE: {
+    key: 'COOP_BOSS_CREATE',
+    windowSec: 60 * 60,
+    maxRequests: 20,
+    blockSec: 30 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn tạo phòng boss tổ đội theo tài khoản, chống mass-create.',
+    descriptionEn: 'Coop boss run creation limit per account, anti mass-create.',
+  },
+  // Chống spam join: 60 join / phút / user.
+  COOP_BOSS_JOIN: {
+    key: 'COOP_BOSS_JOIN',
+    windowSec: 60,
+    maxRequests: 60,
+    blockSec: 5 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn join boss tổ đội theo tài khoản, chống spam join.',
+    descriptionEn: 'Coop boss join limit per account, anti join spam.',
+  },
+  // Chống spam contribution payload: 240 / phút / user (cho phép 4
+  // packet/giây — gần realtime nhưng đủ chặt). Server vẫn clamp
+  // values + ghi anomaly nếu vượt cap.
+  COOP_BOSS_CONTRIBUTION: {
+    key: 'COOP_BOSS_CONTRIBUTION',
+    windowSec: 60,
+    maxRequests: 240,
+    blockSec: 5 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn ghi contribution boss tổ đội theo tài khoản, chống spam fake damage.',
+    descriptionEn: 'Coop boss contribution record limit per account, anti fake-damage spam.',
+  },
+  // Chống spam finish call: 30 / phút / leader. Legit leader gọi
+  // finish 1 lần / run.
+  COOP_BOSS_FINISH: {
+    key: 'COOP_BOSS_FINISH',
+    windowSec: 60,
+    maxRequests: 30,
+    blockSec: 5 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn lệnh finish boss tổ đội theo tài khoản, chống spam finish.',
+    descriptionEn: 'Coop boss finish command limit per account, anti finish spam.',
+  },
+  // Chống spam claim / replay: 60 claim / phút / user.
+  COOP_BOSS_CLAIM: {
+    key: 'COOP_BOSS_CLAIM',
+    windowSec: 60,
+    maxRequests: 60,
+    blockSec: 5 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn nhận thưởng boss tổ đội theo tài khoản, chống replay/spam claim.',
+    descriptionEn: 'Coop boss reward claim limit per account, anti replay/spam claim.',
   },
   // ---- Public Player Profile (Phase 19.1.C) ----
   // Chống enumeration profile: 60 view / phút / tài khoản. Legit user
