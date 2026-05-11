@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
+import { NotificationHelpers } from '../notification/notification-helpers';
 import {
   CHAT_HIDDEN_MESSAGE_PLACEHOLDER,
   type GroupChatMemberRow,
@@ -59,6 +60,9 @@ export class ChatGroupService {
     private readonly social: SocialService,
     private readonly realtime: RealtimeService,
     private readonly moderation: ChatModerationService,
+    @Optional()
+    @Inject(NotificationHelpers)
+    private readonly notifications: NotificationHelpers | null = null,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -138,6 +142,22 @@ export class ChatGroupService {
       where: { userId: targetUserId },
       select: { name: true },
     });
+
+    // Phase 19.3 — best-effort GROUP_MEMBER_ADDED notification for
+    // the newly added user. Caller (owner) is not notified.
+    if (this.notifications) {
+      const ownerChar = await this.prisma.character.findUnique({
+        where: { userId: callerUserId },
+        select: { name: true },
+      });
+      await this.notifications.notifyGroupMemberAdded({
+        addedUserId: targetUserId,
+        addedByUserId: callerUserId,
+        addedByName: ownerChar?.name ?? callerUserId.slice(-6),
+        groupId,
+        groupName: group.name,
+      });
+    }
 
     return {
       id: m.id,
@@ -229,16 +249,35 @@ export class ChatGroupService {
     };
 
     // Fanout WS to all members (best-effort, fail-soft).
+    let memberUserIds: string[] = [];
     try {
       const members = await this.prisma.groupChatMember.findMany({
         where: { groupId },
         select: { userId: true },
       });
-      for (const m of members) {
-        this.realtime.emitToUser(m.userId, 'group-chat:msg', view);
+      memberUserIds = members.map((m) => m.userId);
+      for (const uid of memberUserIds) {
+        this.realtime.emitToUser(uid, 'group-chat:msg', view);
       }
     } catch {
       // realtime fanout best-effort
+    }
+
+    // Phase 19.3 — best-effort notification to every member except
+    // sender. Helper iterates and swallows errors per row.
+    if (this.notifications && memberUserIds.length > 0) {
+      const groupRow = await this.prisma.groupChat.findUnique({
+        where: { id: groupId },
+        select: { name: true },
+      });
+      await this.notifications.notifyGroupMessageReceivedBulk({
+        memberUserIds,
+        senderUserId: callerUserId,
+        senderName: senderChar?.name ?? callerUserId.slice(-6),
+        groupId,
+        groupName: groupRow?.name ?? '',
+        messageId: row.id,
+      });
     }
 
     return view;

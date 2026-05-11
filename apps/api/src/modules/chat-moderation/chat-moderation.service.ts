@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { NotificationHelpers } from '../notification/notification-helpers';
 import {
   CHAT_MODERATION_LIMITS,
   isChatMessageReportReason,
@@ -98,7 +99,12 @@ export interface AdminMutePayload {
 
 @Injectable()
 export class ChatModerationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    @Inject(NotificationHelpers)
+    private readonly notifications: NotificationHelpers | null = null,
+  ) {}
 
   // ---------------------------------------------------------------------------
   // User-facing API
@@ -403,6 +409,17 @@ export class ChatModerationService {
         note,
       },
     );
+
+    // Phase 19.3 — best-effort notification to the original reporter
+    // that their report has been resolved/rejected. Never throws.
+    if (this.notifications) {
+      await this.notifications.notifyChatReportResolved({
+        reporterUserId: row.reporterUserId,
+        reportId,
+        resolutionStatus: nextStatus,
+      });
+    }
+
     return this.toReportRow(updated);
   }
 

@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { FriendRequestStatus, Prisma } from '@prisma/client';
+import { NotificationHelpers } from '../notification/notification-helpers';
 import {
   type FriendRequestRow,
   type FriendRow,
@@ -62,7 +63,31 @@ export class SocialError extends Error {
 
 @Injectable()
 export class SocialService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    @Inject(NotificationHelpers)
+    private readonly notifications: NotificationHelpers | null = null,
+  ) {}
+
+  /**
+   * Phase 19.3 — Best-effort lookup of a user's display name for
+   * embedding in notification `dataJson`. Uses `Character.name` first
+   * (canonical display name); falls back to a short suffix of the
+   * userId so the FE always has *some* label to render. Never throws.
+   */
+  private async lookupDisplayName(userId: string): Promise<string> {
+    try {
+      const char = await this.prisma.character.findUnique({
+        where: { userId },
+        select: { name: true },
+      });
+      if (char?.name) return char.name;
+    } catch {
+      // intentionally swallow — fall through to suffix.
+    }
+    return userId.slice(-6);
+  }
 
   // ---------------------------------------------------------------------------
   // Friend requests
@@ -126,6 +151,18 @@ export class SocialService {
         message: msgResult.value,
       },
     });
+
+    // Phase 19.3 — best-effort notify receiver. Never throws.
+    if (this.notifications) {
+      const senderName = await this.lookupDisplayName(senderUserId);
+      await this.notifications.notifyFriendRequestReceived({
+        receiverUserId,
+        senderUserId,
+        senderName,
+        requestId: row.id,
+      });
+    }
+
     return this.toFriendRequestRow(row);
   }
 
@@ -172,6 +209,18 @@ export class SocialService {
       });
       return u;
     });
+
+    // Phase 19.3 — best-effort notify the original sender that the
+    // receiver accepted. Never throws.
+    if (this.notifications) {
+      const accepterName = await this.lookupDisplayName(receiverUserId);
+      await this.notifications.notifyFriendRequestAccepted({
+        senderUserId: req.senderUserId,
+        accepterUserId: receiverUserId,
+        accepterName,
+        requestId: req.id,
+      });
+    }
 
     return {
       request: this.toFriendRequestRow(updated),
