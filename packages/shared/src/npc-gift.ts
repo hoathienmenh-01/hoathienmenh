@@ -67,7 +67,7 @@ export interface NpcGiftPreferenceDef {
 }
 
 /**
- * Catalog gift preferences cho 5 NPC trụ cột Hoa Thiên / rival / ma tu.
+ * Catalog gift preferences cho NPC trụ cột Hoa Thiên / rival / ma tu.
  *
  * Design rationale per-NPC:
  *   - **Lăng Vân Sinh** (chưởng môn, formal): nhận đan dược nhập môn + ngọc cấp thấp.
@@ -217,6 +217,160 @@ export const NPC_GIFT_PREFERENCES: readonly NpcGiftPreferenceDef[] = [
         affinityMax: 7,
         flavor: 'Huyết Chi Đan — đan luyện từ máu yêu thú, hợp khẩu vị Huyết La Sát.',
         flavorEn: 'Huyết Chi Đan — refined from beast blood, fitting to his taste.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_a_linh',
+    dailyLimit: 3,
+    loreNote: 'A Linh phụ trách tân đệ tử — thích đan dược sơ cấp và vật tiếp tế dễ chia lại.',
+    loreNoteEn: 'A Linh guides newcomers — she likes starter pills and supplies she can share.',
+    acceptedItems: [
+      {
+        itemKey: 'linh_lo_dan',
+        affinityMin: 3,
+        affinityMax: 5,
+        flavor: 'Linh Lộ Đan — A Linh cất vào túi, nói sẽ dùng khi tân đệ tử lạc nhịp thở.',
+        flavorEn: 'Linh Lộ Đan — A Linh pockets it for new disciples who lose their breathing rhythm.',
+      },
+      {
+        itemKey: 'huyet_chi_dan',
+        affinityMin: 3,
+        affinityMax: 5,
+        flavor: 'Huyết Chỉ Đan — nàng cảm ơn vì có thêm thuốc phòng thân cho ngoại môn.',
+        flavorEn: 'Huyết Chỉ Đan — she thanks you for extra emergency medicine in the outer court.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_van_kim_nuong',
+    dailyLimit: 2,
+    loreNote: 'Vạn Kim Nương trọng chữ tín — nhận vật liệu có thể ghi sổ rõ ràng.',
+    loreNoteEn: 'Vạn Kim Nương values trust — she accepts materials that can be ledgered cleanly.',
+    acceptedItems: [
+      {
+        itemKey: 'tinh_thiet',
+        affinityMin: 4,
+        affinityMax: 6,
+        flavor: 'Tinh Thiết — nàng cân bằng tay rồi ghi một dòng “khách giữ giá”.',
+        flavorEn: 'Tinh Thiết — she weighs it by hand and notes you as a fair customer.',
+      },
+      {
+        itemKey: 'phu_van_ngoc',
+        affinityMin: 4,
+        affinityMax: 6,
+        flavor: 'Phù Vân Ngọc — thương hội luôn cần ngọc sạch để làm tín vật khế ước.',
+        flavorEn: 'Phù Vân Ngọc — the guild needs clean jade for contract tokens.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_bach_de_tu',
+    dailyLimit: 1,
+    loreNote: 'Bạch Đế Tử chỉ nhận lễ vật trang nghiêm; tăng thiện cảm rất chậm.',
+    loreNoteEn: 'Bạch Đế Tử accepts only solemn tributes; his affinity rises slowly.',
+    acceptedItems: [
+      {
+        itemKey: 'thien_linh_ngoc',
+        affinityMin: 2,
+        affinityMax: 4,
+        flavor: 'Thiên Linh Ngọc — hắn nhận như đang kiểm tra độ sạch của tiên luật.',
+        flavorEn: 'Thiên Linh Ngọc — he accepts it as if testing the purity of immortal law.',
+      },
+      {
+        itemKey: 'tien_kim_sa',
+        affinityMin: 2,
+        affinityMax: 4,
+        flavor: 'Tiên Kim Sa — kim khí hợp Bạch Đế, nhưng ánh mắt hắn vẫn lạnh.',
+        flavorEn: 'Tiên Kim Sa — its metal qi suits the White Emperor, though his gaze stays cold.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_tich_linh_su_gia',
+    dailyLimit: 1,
+    loreNote: 'Tịch Linh Sứ Giả nhận vật lạnh và đan khí sạch như mồi đối thoại nguy hiểm.',
+    loreNoteEn: 'The Nether Spirit emissary accepts cold relics and clean qi pills as dangerous conversation bait.',
+    acceptedItems: [
+      {
+        itemKey: 'han_ngoc',
+        affinityMin: 2,
+        affinityMax: 4,
+        flavor: 'Hàn Ngọc — sứ giả để nó tan sương giữa lòng bàn tay, không nói cảm ơn.',
+        flavorEn: 'Hàn Ngọc — the emissary lets it mist in their palm without thanks.',
+      },
+      {
+        itemKey: 'linh_lo_dan',
+        affinityMin: 1,
+        affinityMax: 3,
+        flavor: 'Linh Lộ Đan — linh khí trong sạch làm Tịch Linh khí tạm lùi một nhịp.',
+        flavorEn: 'Linh Lộ Đan — clean qi pushes the Nether Spirit aura back for a breath.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_huyet_ha_su_gia',
+    dailyLimit: 1,
+    loreNote: 'Môi giới Huyết Hà chỉ nhận huyết vật, và mọi món quà đều để lại nợ.',
+    loreNoteEn: 'The Blood River broker accepts only blood relics, and every gift leaves a debt.',
+    acceptedItems: [
+      {
+        itemKey: 'huyet_tinh',
+        affinityMin: 3,
+        affinityMax: 5,
+        flavor: 'Huyết Tinh — hắn cười như vừa thấy một khoản nợ dễ thu.',
+        flavorEn: 'Huyết Tinh — he smiles as if spotting an easy debt to collect.',
+      },
+      {
+        itemKey: 'huyet_chi_dan',
+        affinityMin: 2,
+        affinityMax: 4,
+        flavor: 'Huyết Chỉ Đan — mùi máu luyện đan khiến khế ước Huyết Hà bớt lạnh.',
+        flavorEn: 'Huyết Chỉ Đan — its blood-refined scent softens the Blood River contract.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_hoa_thien_dao_to',
+    dailyLimit: 1,
+    loreNote: 'Tàn niệm Hoa Thiên Đạo Tổ chỉ nhận lễ vật mang ký ức truyền thừa.',
+    loreNoteEn: 'The Hoa Thiên founder remnant accepts only offerings that carry inheritance memory.',
+    acceptedItems: [
+      {
+        itemKey: 'thien_linh_ngoc',
+        affinityMin: 4,
+        affinityMax: 6,
+        flavor: 'Thiên Linh Ngọc — tàn âm tổ sư sáng lên như nhận lại một mảnh đạo thống.',
+        flavorEn: 'Thiên Linh Ngọc — the founder echo brightens as if recovering a shard of lineage.',
+      },
+      {
+        itemKey: 'co_thien_dan',
+        affinityMin: 3,
+        affinityMax: 5,
+        flavor: 'Cổ Thiên Đan — đan hương cũ khiến lời tổ sư rõ hơn một nhịp.',
+        flavorEn: 'Cổ Thiên Đan — old pill fragrance makes the founder’s voice clearer for a breath.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_tich_thien_dao_chu',
+    dailyLimit: 1,
+    loreNote: 'Tịch Thiên Đạo Chủ không nhận quà như bằng hữu; đây chỉ là vật chứng mở lời.',
+    loreNoteEn: 'Tịch Thiên Đạo Chủ does not accept gifts as a friend; these are only proofs to begin speech.',
+    acceptedItems: [
+      {
+        itemKey: 'han_ngoc',
+        affinityMin: 1,
+        affinityMax: 3,
+        flavor: 'Hàn Ngọc — đạo âm im lặng lâu hơn, như đang cân nhắc sai lầm của chúng sinh.',
+        flavorEn: 'Hàn Ngọc — the Dao echo pauses longer, weighing the errors of living beings.',
+      },
+      {
+        itemKey: 'phu_van_ngoc',
+        affinityMin: 1,
+        affinityMax: 3,
+        flavor: 'Phù Vân Ngọc — phù văn run nhẹ trước câu hỏi “tự do có đáng giá không”.',
+        flavorEn: 'Phù Vân Ngọc — the rune trembles before the question of whether freedom is worth its price.',
       },
     ],
   },
