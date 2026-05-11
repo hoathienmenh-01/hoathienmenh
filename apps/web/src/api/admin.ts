@@ -1470,3 +1470,153 @@ export async function adminGameplayAntiCheatResolve(
     note,
   });
 }
+
+// -----------------------------------------------------------------------------
+// Phase 16.4 — Admin Market Trade Abuse panel API.
+// -----------------------------------------------------------------------------
+
+export type MarketAbuseSeverity = 'INFO' | 'WARN' | 'CRITICAL';
+export type MarketAbuseStatus = 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED';
+export type MarketAbuseType =
+  | 'PRICE_EXTREME_LOW'
+  | 'PRICE_EXTREME_HIGH'
+  | 'REPEATED_BUYER_SELLER_PAIR'
+  | 'LISTING_SPAM'
+  | 'MARKET_VOLUME_SPIKE'
+  | 'UNKNOWN_REFERENCE_PRICE';
+export type MarketAbuseSource =
+  | 'LISTING_CREATE'
+  | 'LISTING_BUY'
+  | 'SCAN_BATCH'
+  | 'OTHER';
+
+export interface MarketAbuseRow {
+  id: string;
+  type: MarketAbuseType;
+  severity: MarketAbuseSeverity;
+  status: MarketAbuseStatus;
+  source: MarketAbuseSource;
+  listingId: string;
+  sellerCharacterId: string | null;
+  buyerCharacterId: string | null;
+  itemKey: string | null;
+  quantity: number | null;
+  unitPrice: string | null;
+  referencePrice: string | null;
+  deviationRatio: number | null;
+  windowKey: string;
+  detailsJson: unknown;
+  createdAt: string;
+  updatedAt: string;
+  acknowledgedAt: string | null;
+  acknowledgedByAdminId: string | null;
+  resolvedAt: string | null;
+  resolvedByAdminId: string | null;
+  resolutionNote: string | null;
+}
+
+export interface MarketAbuseSummary {
+  openCount: number;
+  openCriticalCount: number;
+  openWarnCount: number;
+  openInfoCount: number;
+  totalCount: number;
+  latestCreatedAt: string | null;
+  latestResolvedAt: string | null;
+}
+
+export interface MarketAbuseScanRuleResult {
+  type: MarketAbuseType;
+  created: number;
+  skipped: number;
+  errored: boolean;
+  errorMessage: string | null;
+}
+
+export interface MarketAbuseScanSummaryView {
+  windowKeysByType: Record<MarketAbuseType, string>;
+  totalCreated: number;
+  totalSkipped: number;
+  totalErrored: number;
+  rules: MarketAbuseScanRuleResult[];
+  scannedAt: string;
+}
+
+export async function adminMarketAbuseSummary(): Promise<MarketAbuseSummary> {
+  const { data } = await apiClient.get<Envelope<MarketAbuseSummary>>(
+    '/admin/market/abuse/summary',
+  );
+  return unwrap(data);
+}
+
+export async function adminMarketAbuseScan(): Promise<MarketAbuseScanSummaryView> {
+  const { data } = await apiClient.post<Envelope<MarketAbuseScanSummaryView>>(
+    '/admin/market/abuse/scan',
+    {},
+  );
+  return unwrap(data);
+}
+
+export async function adminMarketAbuseList(filters: {
+  severity?: MarketAbuseSeverity;
+  status?: MarketAbuseStatus;
+  type?: MarketAbuseType;
+  source?: MarketAbuseSource;
+  sellerCharacterId?: string;
+  buyerCharacterId?: string;
+  itemKey?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+} = {}): Promise<{
+  items: MarketAbuseRow[];
+  total: number;
+  filters: {
+    severities: readonly string[];
+    statuses: readonly string[];
+    types: readonly string[];
+    sources: readonly string[];
+  };
+}> {
+  const params: Record<string, string | number> = {};
+  if (filters.severity) params.severity = filters.severity;
+  if (filters.status) params.status = filters.status;
+  if (filters.type) params.type = filters.type;
+  if (filters.source) params.source = filters.source;
+  if (filters.sellerCharacterId) {
+    params.sellerCharacterId = filters.sellerCharacterId;
+  }
+  if (filters.buyerCharacterId) {
+    params.buyerCharacterId = filters.buyerCharacterId;
+  }
+  if (filters.itemKey) params.itemKey = filters.itemKey;
+  if (filters.from) params.from = filters.from;
+  if (filters.to) params.to = filters.to;
+  if (filters.limit) params.limit = filters.limit;
+  const { data } = await apiClient.get<
+    Envelope<{
+      items: MarketAbuseRow[];
+      total: number;
+      filters: {
+        severities: readonly string[];
+        statuses: readonly string[];
+        types: readonly string[];
+        sources: readonly string[];
+      };
+    }>
+  >('/admin/market/abuse/anomalies', { params });
+  return unwrap(data);
+}
+
+export async function adminMarketAbuseAck(id: string): Promise<void> {
+  await apiClient.post(`/admin/market/abuse/anomalies/${id}/ack`, {});
+}
+
+export async function adminMarketAbuseResolve(
+  id: string,
+  note?: string,
+): Promise<void> {
+  await apiClient.post(`/admin/market/abuse/anomalies/${id}/resolve`, {
+    note,
+  });
+}

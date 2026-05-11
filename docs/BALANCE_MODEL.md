@@ -2533,6 +2533,44 @@ Detection-only thresholds for `GameplayAntiCheatService` (`apps/api/src/modules/
 - Worst-case false-positive → admin xem `AdminGameplayAntiCheatPanel` + `Resolve` với note. KHÔNG public notify.
 - Test enforce policy: `gameplay-anticheat.service.test.ts` assert post-scan Character state untouched.
 
+## 11.28 MARKET TRADE ABUSE DETECTION THRESHOLDS (Phase 16.4)
+
+Detection-only thresholds for `MarketTradeAbuseService` (`apps/api/src/modules/admin-market-abuse/market-trade-abuse.service.ts`). Source-of-truth catalog: `packages/shared/src/market-trade-abuse.ts`.
+
+**Tách bạch với các layer khác**:
+- Phase 16.6 Market Price Band (`packages/shared/src/market-price-band.ts`) = **listing post reject** (HTTP 409 `PRICE_TOO_LOW`/`PRICE_TOO_HIGH`), trade flow refuse hẳn. Áp ở **input gate**.
+- Phase 16.6 Economy Anti-cheat (`economy-anomaly.ts`) = dòng tiền 24h + market median outlier per-listing single-shot. Bảng `EconomyAnomaly`.
+- Phase 16.3 Gameplay Anti-cheat (`gameplay-anticheat.ts`) = per-module gameplay behavior (dungeon/boss/mission/arena/territory). Bảng `GameplayAnomaly`.
+- Phase 16.4 = **market trade pattern** (price extreme within band, pair funnel, listing spam, volume spike, unknown reference). Bảng `MarketTradeAnomaly`. **Detection-first, guard-light** — KHÔNG block giao dịch ngay cả khi WARN/CRITICAL.
+
+### Threshold catalog (Phase 16.4)
+
+| Type | Source | Window | WARN | CRITICAL | Rationale |
+|---|---|---|---|---|---|
+| `PRICE_EXTREME_LOW` | LISTING_CREATE / LISTING_BUY / SCAN_BATCH | per-listing | `unitPrice ≤ 0.2 × ref` | `unitPrice ≤ 0.05 × ref` | Listing trong band rarity (Phase 16.6 không reject) nhưng lệch xa median geomean → có thể là dump farm hoặc RMT dump cheap-list. Conservative threshold; floor `<=20%` reference đã rất bất thường vs market organic noise. |
+| `PRICE_EXTREME_HIGH` | LISTING_CREATE / LISTING_BUY / SCAN_BATCH | per-listing | `unitPrice ≥ 5 × ref` | `unitPrice ≥ 20 × ref` | Cao bất thường → alt-account funnel (1 alt mua giá cao của main → dồn vốn về main). Phase 16.6 reject `pricePerUnit > maxPrice` rarity nên ratio `≥5×` chỉ xảy ra với item rarity low + reference geomean thấp; vẫn flag. |
+| `REPEATED_BUYER_SELLER_PAIR` (24h) | LISTING_BUY / SCAN_BATCH | 24h | 3 trade | 10 trade | Bạn bè giúp ledge trade 1-2 lần/ngày là legit. ≥3/24h cùng cặp = friendly trade frequent hoặc alt funnel; ≥10 = pattern bất thường rõ. |
+| `REPEATED_BUYER_SELLER_PAIR` (7d) | SCAN_BATCH | 7d | 10 trade | 30 trade | Window dài để bắt slow-drip funnel mà 24h window không thấy. |
+| `LISTING_SPAM` | LISTING_CREATE / SCAN_BATCH | 1h | 30 listing | 80 listing | Bot farm tạo loạt listing để market-mảnh hoặc shadow-price. Player legit khó vượt 30 listing/h. CRITICAL 80 = chắc chắn automation. |
+| `MARKET_VOLUME_SPIKE` | LISTING_BUY / SCAN_BATCH | 24h | Σ ≥ 500_000 LT | Σ ≥ 5_000_000 LT | Whale legit có thể 100-300k LT/ngày. ≥500k/ngày = nghi vấn cao; CRITICAL 5M là volume RMT cấp service. Σ tính cả seller-side hoặc buyer-side (max của 2 vai). |
+| `UNKNOWN_REFERENCE_PRICE` | LISTING_CREATE / LISTING_BUY | per-listing | — | — (INFO) | Item không có `ItemDef` hợp lệ (catalog drift) hoặc reference geomean band không tính được. INFO flag để admin biết catalog đang lệch — KHÔNG block listing. |
+
+### Tuning principles
+
+- **Conservative initial** — closed beta data chưa đủ tune chính xác. Re-tune sau khi có 30-day market trade history. False-positive admin chỉ cần `Resolve` với note.
+- **Per-rarity override** — KHÔNG có ở Phase 16.4 (ref price đã tính theo rarity geomean → ratio cùng phổ).
+- **Reference price source** — Phase 16.4 KHÔNG đọc DB live median. `estimateItemReferencePrice(itemKey)` lấy **geometric mean** của `DEFAULT_PRICE_BAND_BY_QUALITY[quality]` (deterministic). Service runtime có thể override bằng 7-day rolling median nếu có data đủ; fallback band-geomean khi DB rỗng.
+- **Severity ladder** — `CRITICAL` strictly bao hàm `WARN` (test enforce ở `market-trade-abuse.test.ts`). INFO reserved cho `UNKNOWN_REFERENCE_PRICE`.
+- **Window key** — `buildMarketAbuseWindowKey(span, now)` → bucket `1h:YYYY-MM-DDTHH` / `24h:YYYY-MM-DD` / `7d:YYYY-Www` (ISO-8601 week, UTC). Idempotent multi-instance qua `@@unique([type, listingId, windowKey])`.
+
+### Detection-only policy (Phase 16.4)
+
+- Scan + hook KHÔNG mutate `Listing` / `MarketTrade` / `CurrencyLedger` / `ItemLedger` / `Character` / `User`.
+- Hook `recordListingCreate` / `recordListingBuy` chạy **post-mutation** (sau khi listing/trade đã commit thành công ở `MarketService`). Wrap try/catch ở caller — detection throw KHÔNG rollback trade.
+- KHÔNG auto-ban, KHÔNG auto-rollback, KHÔNG auto-refund, KHÔNG auto-deduct. KHÔNG block giao dịch tiếp theo của cùng character / cùng pair / cùng item.
+- Worst-case false-positive → admin xem `AdminMarketAbusePanel` + `Resolve` với note. KHÔNG public notify (player không thấy).
+- Test enforce policy: `market-trade-abuse.service.test.ts` assert post-scan `Listing` / `MarketTrade` / `CurrencyLedger` / `ItemLedger` rows untouched.
+
 ## 12. CHANGELOG
 
 - **2026-04-30** — Initial creation. Author: Devin AI session 9q.
@@ -2543,6 +2581,7 @@ Detection-only thresholds for `GameplayAntiCheatService` (`apps/api/src/modules/
 - **2026-05-09** — Phase 14.0.C Sect Territory Region Buff + Influence Decay section added (§11.18) — 5 buff catalog (EXP/LinhThạch/Element/Defense, value cap 10%, runtime wire dungeon reward owner-only fail-soft), influence decay default 25%/period cap 50%, idempotent UNIQUE `(periodKey)` admin trigger.
 - **2026-05-09** — Phase 14.0.D Territory Weekly War Loop section added (§11.19) — period key UTC ISO week + helpers, settle-current admin endpoint với no-influence sticky owner rule + deterministic tie-break, war state/region/history read API, FE countdown + 9 region card + history + admin button. KHÔNG cron tự động (defer 14.0.E).
 - **2026-05-09** — Phase 16.5 Daily Reward Cap dial — anti-abuse layer. Per-source cap (CULTIVATION / DUNGEON / MISSION) scale theo realm tier ×1/×3/×8 (tier-1 phamnhan đến tier-3 luyen_hu+). Cap exp tier-1: CULTIVATION 6000 / DUNGEON 2400 / MISSION 1500 — đủ ~4–6h casual play/ngày. Cap linhThach tier-1: DUNGEON 600 + MISSION 500 = 1100/ngày (vd. mua 1 đan low-tier 200–500 linh, 2–3 đan/ngày). Cao realm cap cao tỉ lệ. Catalog ở `packages/shared/src/daily-reward-cap.ts` (`DAILY_REWARD_CAP_BY_REALM_AND_SOURCE`). KHÔNG wire territory/daily login/season/topup (defer Phase 16.9 nếu telemetry cần). KHÔNG cap admin grant (admin path không gọi service).
+- **2026-05-11** — Phase 16.4 Market Trade Abuse Hardening thresholds section added (§11.28) — 6 anomaly type với WARN/CRITICAL threshold rõ ràng: `PRICE_EXTREME_LOW` ratio ≤0.2 / ≤0.05 vs band-geomean reference, `PRICE_EXTREME_HIGH` ratio ≥5 / ≥20, `REPEATED_BUYER_SELLER_PAIR` 24h 3/10 + 7d 10/30 trade, `LISTING_SPAM` 1h 30/80 listing, `MARKET_VOLUME_SPIKE` 24h Σ ≥500k / 5M LT, `UNKNOWN_REFERENCE_PRICE` INFO (catalog drift signal). Catalog `packages/shared/src/market-trade-abuse.ts` + `MarketTradeAbuseService` scan/hook dispatcher + bảng `MarketTradeAnomaly` riêng (tách khỏi `EconomyAnomaly` Phase 16.6 + `GameplayAnomaly` Phase 16.3). **Detection-first, guard-light** (test enforced): scan + hook post-mutation KHÔNG block trade ngay cả khi CRITICAL; KHÔNG mutate Listing/MarketTrade/CurrencyLedger/ItemLedger; KHÔNG auto-ban / KHÔNG auto-rollback / KHÔNG auto-refund. Admin xem qua `AdminMarketAbusePanel` + ack/resolve thủ công. Conservative initial — re-tune sau closed beta market trade data.
 - **2026-05-11** — Phase 16.3 Gameplay Anti-cheat Deep Detection thresholds section added (§11.27) — 10 anomaly type với WARN/CRITICAL threshold rõ ràng: `EXP_GAIN_SPIKE` 50k/500k EXP 1h, `CURRENCY_GAIN_SPIKE` 200k/1M LT 1h, `ITEM_GAIN_SPIKE` 100/500 qty 1h, `DUNGEON_REWARD_FARM` 20/50 claim 24h, `BOSS_REWARD_FARM` 15/40 24h, `MISSION_REWARD_FARM` 30/80 24h, `ARENA_REWARD_FARM` 30/80 WIN 24h, `TERRITORY_REWARD_SPIKE` 10/30 7d, `COMBAT_RESULT_MISMATCH` 1/5 (reserved hook), `REWARD_CAP_BYPASS_ATTEMPT` 5/20 1h. Catalog `packages/shared/src/gameplay-anticheat.ts` `GAMEPLAY_ANOMALY_RULES` + `GameplayAntiCheatService` scan dispatcher + bảng `GameplayAnomaly` riêng (tách khỏi `EconomyAnomaly` Phase 16.6 để admin filter theo domain). **Detection-only policy** (test enforced): scan KHÔNG mutate Character/Inventory/User; KHÔNG auto-ban / KHÔNG rollback / KHÔNG khoá tài khoản. Admin xem qua `AdminGameplayAntiCheatPanel` + ack/resolve thủ công. Conservative initial — re-tune sau closed beta data.
 - **2026-05-10** — Phase 16.6 Economy Anti-cheat Suite dial — detection layer chuẩn bị closed beta. **Anomaly threshold catalog** (`packages/shared/src/economy-anomaly.ts` `ECONOMY_ANOMALY_RULES`): 5 source × WARN/CRITICAL: `CURRENCY_DELTA_24H` 100k/1M LT, `RARE_ITEM_GAIN_24H` (HUYEN+ count) 5/20 / 24h, `REWARD_CAP_BYPASS` 1/3 cap event / day, `ADMIN_GRANT_OVER_LIMIT` 50k/500k LT / single grant, `MARKET_OUTLIER` (deviation từ 7-day median) 5×/10×. Conservative initial — re-tune sau closed beta data. **Market Price Band catalog** (`packages/shared/src/market-price-band.ts` `MARKET_PRICE_BAND_BY_ITEM` + `DEFAULT_PRICE_BAND_BY_QUALITY`): rarity band PHAM 10–1000, LINH 50–5000, HUYEN 200–50_000, TIEN 1000–500_000, THAN 5000–5_000_000 LT/unit. Per-item override empty (Phase 16.6 chưa fill — sẽ thêm sau khi observe data). Listing ngoài band reject `PRICE_TOO_LOW`/`PRICE_TOO_HIGH` (HTTP 409). Existing ACTIVE listing KHÔNG bị mutate (chỉ áp dụng listing mới). **Detection-only policy**: KHÔNG auto-ban / KHÔNG auto-rollback / KHÔNG public notify; admin xem qua `AdminEconomySafetyPanel` panel + quyết định manual.
 - **2026-05-10** — Phase 14.1.B Async Arena Foundation section added (§11.21) — async PvP loop với deterministic match resolution. Rating default 1000, win +10/lose -5 attacker, defender ½ magnitude, clamp [0, 5000]. Daily limit 10/day Asia/Ho_Chi_Minh (env `ARENA_DAILY_LIMIT_PER_DAY`, 0=unlimited). Match resolve sync trong POST request (NOT queue): build snapshot → `resolveCombatWithSnapshot` (Phase 14.1.A) → tx update profile + match. Snapshot lock-in: `attackerSnapshotJson` + `defenderSnapshotJson` + `seed` immutable sau RESOLVED → replay bit-exact. Anti-cheat Phase 14.1.B: chỉ no-self + daily limit. KHÔNG: ELO, season cycle, end-season reward, anti-wintrade phức tạp, defense AI snapshot. 5 tier slot reserved cho Phase 14.1.C.
