@@ -141,6 +141,9 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.economyLedgerCheckIssue.deleteMany({});
   await prisma.economyLedgerCheckRun.deleteMany({});
   await prisma.economyAnomaly.deleteMany({});
+  // Phase 16.3 — Gameplay anomaly tracking (no FK to Character; wipe
+  // explicit để reset state giữa test runs).
+  await prisma.gameplayAnomaly.deleteMany({});
   // Phase 15.0.A — Equipment Reforge / Enchant audit history (xoá trước
   // ItemLedger/Character — FK cascade tới Character nhưng explicit cho rõ).
   await prisma.equipmentReforgeHistory.deleteMany({});
