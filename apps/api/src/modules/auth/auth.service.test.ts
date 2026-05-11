@@ -11,6 +11,7 @@ import {
   REGISTER_RATE_LIMIT_WINDOW_MS,
 } from './auth.service';
 import { InMemorySlidingWindowRateLimiter } from '../../common/rate-limiter';
+import { SessionService } from './session.service';
 
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ??
@@ -46,6 +47,7 @@ beforeEach(async () => {
   // Wipe auth-related tables only (don't touch unrelated phase tables to keep tests fast).
   await prisma.passwordResetToken.deleteMany({});
   await prisma.refreshToken.deleteMany({});
+  await prisma.userSession.deleteMany({});
   await prisma.loginAttempt.deleteMany({});
   await prisma.user.deleteMany({});
   // Fresh limiter per test — register limiter có state in-memory persist giữa test.
@@ -58,7 +60,8 @@ beforeEach(async () => {
     FORGOT_PASSWORD_RATE_LIMIT_MAX,
   );
   const cfg = new FakeConfig();
-  auth = new AuthService(prisma, jwt, cfg, registerLimiter, forgotLimiter);
+  const sessions = new SessionService(prisma);
+  auth = new AuthService(prisma, jwt, cfg, sessions, registerLimiter, forgotLimiter);
 });
 
 afterAll(async () => {

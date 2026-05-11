@@ -3,13 +3,14 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
 import { randomBytes, randomUUID } from 'node:crypto';
-import type {
-  ChangePasswordInput,
-  ForgotPasswordInput,
-  LoginInput,
-  PublicUser,
-  RegisterInput,
-  ResetPasswordInput,
+import {
+  sanitizeUserAgent,
+  type ChangePasswordInput,
+  type ForgotPasswordInput,
+  type LoginInput,
+  type PublicUser,
+  type RegisterInput,
+  type ResetPasswordInput,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -17,6 +18,7 @@ import {
   InMemorySlidingWindowRateLimiter,
   type RateLimiter,
 } from '../../common/rate-limiter';
+import { SessionService } from './session.service';
 
 export type AuthErrorCode =
   | 'INVALID_CREDENTIALS'
@@ -41,8 +43,22 @@ interface AuthOutput {
   refreshToken: string;
 }
 
+/**
+ * Auth request context. Phase 18.2 thêm:
+ *   - `ipHash` (sha256(salt||ip)) — caller hash trước; service KHÔNG
+ *     nhận raw IP cho session row (privacy).
+ *   - `userAgent` raw — service tự sanitize qua `sanitizeUserAgent`
+ *     trước khi persist.
+ *
+ * `ip` raw vẫn cần cho rate-limit (LoginAttempt count theo ip column
+ * legacy + forgot-password limiter key); session row chỉ dùng `ipHash`.
+ */
 interface AuthCtx {
   ip: string;
+  /** sha256(salt || ip) hash đã tính ở controller. Null nếu không có. */
+  ipHash?: string | null;
+  /** Raw UA header; service sẽ sanitize. Null nếu request không gửi. */
+  userAgent?: string | null;
 }
 
 interface UserForToken {
@@ -96,6 +112,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly cfg: ConfigService,
+    private readonly sessions: SessionService,
     @Optional() @Inject(REGISTER_RATE_LIMITER) registerLimiter?: RateLimiter,
     @Optional() @Inject(FORGOT_PASSWORD_RATE_LIMITER) forgotPasswordLimiter?: RateLimiter,
     @Optional() private readonly email?: EmailService,
@@ -282,6 +299,12 @@ export class AuthService {
         data: { revokedAt: now },
       }),
     ]);
+    // Phase 18.2 — revoke tất cả UserSession của user khi reset password.
+    await this.sessions.revokeAllForUser({
+      userId: matched.userId,
+      reason: 'PASSWORD_CHANGED',
+      revokedById: matched.userId,
+    });
   }
 
   async changePassword(userId: string, input: ChangePasswordInput): Promise<void> {
@@ -302,6 +325,12 @@ export class AuthService {
         data: { revokedAt: new Date() },
       }),
     ]);
+    // Phase 18.2 — revoke tất cả UserSession của user khi password đổi.
+    await this.sessions.revokeAllForUser({
+      userId,
+      reason: 'PASSWORD_CHANGED',
+      revokedById: userId,
+    });
   }
 
   async session(accessToken: string | undefined): Promise<PublicUser> {
@@ -316,9 +345,14 @@ export class AuthService {
   /**
    * Refresh token rotation:
    *  - verify JWT
-   *  - look up active RefreshToken row by jti
+   *  - look up RefreshToken row by jti
+   *  - **Reuse detection**: nếu row đã revoke (rotate trước đó) NHƯNG
+   *    argon2 hash khớp → genuine reuse → defensive revoke cả session
+   *    family + emit `REFRESH_TOKEN_REUSED` SecurityEvent + throw
+   *    `SESSION_EXPIRED`.
    *  - check argon2 hashedToken vs presented JWT
-   *  - revoke old, mint new (linked via rotatedFromId)
+   *  - revoke old, mint new (linked qua `rotatedFromId` + cùng
+   *    `sessionId`); touch `lastSeenAt` của session.
    */
   async refresh(presented: string | undefined, ctx: AuthCtx): Promise<AuthOutput> {
     if (!presented) throw new AuthError('SESSION_EXPIRED');
@@ -334,14 +368,38 @@ export class AuthService {
 
     const row = await this.prisma.refreshToken.findUnique({ where: { jti: payload.jti } });
     if (!row) throw new AuthError('SESSION_EXPIRED');
-    if (row.revokedAt) throw new AuthError('SESSION_EXPIRED');
+
+    // Phase 18.2 — Reuse detection.
+    // Token row đã revoke nhưng argon2 hash khớp → present lại token
+    // cũ đã rotate. Defensive revoke session family + emit
+    // SecurityEvent REFRESH_TOKEN_REUSED.
+    if (row.revokedAt) {
+      let matchesRevoked = false;
+      try {
+        matchesRevoked = await argon2.verify(row.hashedToken, presented);
+      } catch {
+        matchesRevoked = false;
+      }
+      if (matchesRevoked) {
+        await this.sessions.handleReuseDetected({
+          refreshTokenId: row.id,
+          sessionId: row.sessionId,
+          userId: row.userId,
+          ipHash: ctx.ipHash ?? null,
+        });
+      }
+      throw new AuthError('SESSION_EXPIRED');
+    }
+
     if (row.expiresAt.getTime() <= Date.now()) throw new AuthError('SESSION_EXPIRED');
 
     const matches = await argon2.verify(row.hashedToken, presented);
     if (!matches) {
-      // Possible token reuse — defensive revoke ALL user tokens.
-      await this.prisma.refreshToken.updateMany({
-        where: { userId: row.userId, revokedAt: null },
+      // Hash mismatch trên row chưa revoke — tampered token (vd attacker
+      // brute-force jti). KHÔNG escalate session reuse (chưa có bằng
+      // chứng rotation): revoke chỉ row này.
+      await this.prisma.refreshToken.update({
+        where: { id: row.id },
         data: { revokedAt: new Date() },
       });
       throw new AuthError('SESSION_EXPIRED');
@@ -352,12 +410,25 @@ export class AuthService {
     if (user.banned) throw new AuthError('ACCOUNT_BANNED');
     if (user.passwordVersion !== row.passwordVersion) throw new AuthError('SESSION_EXPIRED');
 
-    // Mint new tokens and revoke the old in same transaction (rotation).
-    const minted = await this.mint(user, ctx, row.id);
+    // Phase 18.2 — kiểm tra session vẫn ACTIVE.
+    if (row.sessionId) {
+      const session = await this.sessions.findById(row.sessionId);
+      if (!session || session.revokedAt) throw new AuthError('SESSION_EXPIRED');
+      if (session.expiresAt.getTime() <= Date.now()) {
+        throw new AuthError('SESSION_EXPIRED');
+      }
+    }
+
+    // Mint new tokens — link với cùng sessionId của old row (continue
+    // session family).
+    const minted = await this.mintForRotation(user, ctx, row.id, row.sessionId);
     await this.prisma.refreshToken.update({
       where: { id: row.id },
       data: { revokedAt: new Date() },
     });
+    if (row.sessionId) {
+      await this.sessions.touchSession(row.sessionId);
+    }
     return minted;
   }
 
@@ -365,18 +436,32 @@ export class AuthService {
    * Revoke ALL refresh tokens của user → các thiết bị khác sẽ logout
    * trong vòng 1 access TTL (mặc định 15 phút).
    * Không bump passwordVersion vì password chưa đổi.
+   *
+   * Phase 18.2 — revoke kèm tất cả UserSession active của user.
    */
   async logoutAll(userId: string): Promise<{ revoked: number }> {
     const r = await this.prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    await this.sessions.revokeAllForUser({
+      userId,
+      reason: 'USER_LOGOUT',
+      revokedById: userId,
+    });
     return { revoked: r.count };
   }
 
-  /** Revoke the presented refresh token (logout). Idempotent. */
-  async logout(presented: string | undefined): Promise<void> {
-    if (!presented) return;
+  /**
+   * Revoke the presented refresh token (logout). Idempotent.
+   *
+   * Phase 18.2 — revoke kèm UserSession của refresh token đó (1 device
+   * logout) để session list user thấy được trạng thái mới ngay.
+   *
+   * Return: id session đã revoke (hoặc null nếu token đã expire/tampered).
+   */
+  async logout(presented: string | undefined): Promise<{ sessionId: string | null }> {
+    if (!presented) return { sessionId: null };
     let jti: string | undefined;
     try {
       const payload = await this.jwt.verifyAsync<{ jti?: string }>(presented, {
@@ -384,13 +469,50 @@ export class AuthService {
       });
       jti = payload.jti;
     } catch {
-      return; // expired / tampered — nothing to do.
+      return { sessionId: null };
     }
-    if (!jti) return;
-    await this.prisma.refreshToken.updateMany({
-      where: { jti, revokedAt: null },
-      data: { revokedAt: new Date() },
+    if (!jti) return { sessionId: null };
+    const row = await this.prisma.refreshToken.findUnique({ where: { jti } });
+    if (!row) return { sessionId: null };
+    await this.prisma.refreshToken.update({
+      where: { id: row.id },
+      data: { revokedAt: row.revokedAt ?? new Date() },
     });
+    if (row.sessionId) {
+      await this.sessions.revokeSession({
+        sessionId: row.sessionId,
+        reason: 'USER_LOGOUT',
+        revokedById: row.userId,
+      });
+    }
+    return { sessionId: row.sessionId ?? null };
+  }
+
+  /**
+   * Phase 18.2 — Resolve sessionId của request hiện tại từ refresh
+   * cookie. Dùng để flag `current=true` trong list session response.
+   *
+   * Trả null nếu cookie thiếu/expired/tampered/row không tồn tại.
+   */
+  async sessionIdFromRefreshCookie(
+    presented: string | undefined,
+  ): Promise<string | null> {
+    if (!presented) return null;
+    let jti: string | undefined;
+    try {
+      const payload = await this.jwt.verifyAsync<{ jti?: string }>(presented, {
+        secret: this.refreshSecret(),
+      });
+      jti = payload.jti;
+    } catch {
+      return null;
+    }
+    if (!jti) return null;
+    const row = await this.prisma.refreshToken.findUnique({
+      where: { jti },
+      select: { sessionId: true },
+    });
+    return row?.sessionId ?? null;
   }
 
   async userIdFromAccess(token: string | undefined): Promise<string | null> {
@@ -429,13 +551,33 @@ export class AuthService {
   // ---------------- internals ----------------
 
   private async issueTokens(user: UserForToken, ctx: AuthCtx): Promise<AuthOutput> {
-    return this.mint(user, ctx, null);
+    // Phase 18.2 — login/register: tạo UserSession mới, sau đó mint
+    // refresh token + link sessionId.
+    const refreshTtl = Number(this.cfg.get<string>('JWT_REFRESH_TTL') ?? REFRESH_TTL_SEC_DEFAULT);
+    const session = await this.sessions.createSession({
+      userId: user.id,
+      ipHash: ctx.ipHash ?? null,
+      userAgent: sanitizeUserAgent(ctx.userAgent ?? null),
+      expiresAt: new Date(Date.now() + refreshTtl * 1000),
+    });
+    return this.mintForRotation(user, ctx, null, session.id);
   }
 
-  private async mint(
+  /**
+   * Mint access + refresh token; persist RefreshToken row linked với
+   * `sessionId` (Phase 18.2).
+   *
+   * Caller:
+   *   - `issueTokens` (login/register) → `rotatedFromId=null`, sessionId
+   *     của UserSession vừa tạo.
+   *   - `refresh` rotation → `rotatedFromId=oldRow.id`, sessionId của
+   *     session đang được rotate (continue family).
+   */
+  private async mintForRotation(
     user: UserForToken,
     _ctx: AuthCtx,
     rotatedFromId: string | null,
+    sessionId: string | null,
   ): Promise<AuthOutput> {
     const accessTtl = Number(this.cfg.get<string>('JWT_ACCESS_TTL') ?? ACCESS_TTL_SEC_DEFAULT);
     const refreshTtl = Number(this.cfg.get<string>('JWT_REFRESH_TTL') ?? REFRESH_TTL_SEC_DEFAULT);
@@ -459,6 +601,7 @@ export class AuthService {
         passwordVersion: user.passwordVersion,
         expiresAt: new Date(Date.now() + refreshTtl * 1000),
         rotatedFromId,
+        sessionId,
       },
     });
 

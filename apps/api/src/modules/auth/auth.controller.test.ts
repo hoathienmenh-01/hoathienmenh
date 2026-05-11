@@ -90,7 +90,15 @@ function makeRes() {
   return { res, cookies, cleared };
 }
 
-function makeController(opts: Partial<AuthService> = {}) {
+function makeController(
+  opts: Partial<AuthService> = {},
+  sessionStubs: Partial<{
+    listForUser: (...args: unknown[]) => Promise<{ sessions: unknown[] }>;
+    findById: (...args: unknown[]) => Promise<unknown>;
+    revokeSession: (...args: unknown[]) => Promise<unknown>;
+    toSummary: (...args: unknown[]) => unknown;
+  }> = {},
+) {
   const auth = {
     register: opts.register ?? (async () => STUB_AUTH_OUT),
     login: opts.login ?? (async () => STUB_AUTH_OUT),
@@ -99,11 +107,25 @@ function makeController(opts: Partial<AuthService> = {}) {
     changePassword: opts.changePassword ?? (async () => undefined),
     session: opts.session ?? (async () => STUB_USER),
     refresh: opts.refresh ?? (async () => STUB_AUTH_OUT),
-    logout: opts.logout ?? (async () => undefined),
+    logout: opts.logout ?? (async () => ({ sessionId: null })),
     logoutAll: opts.logoutAll ?? (async () => ({ revoked: 3 })),
     userIdFromAccess: opts.userIdFromAccess ?? (async () => 'u1'),
+    sessionIdFromRefreshCookie:
+      (opts as { sessionIdFromRefreshCookie?: unknown })
+        .sessionIdFromRefreshCookie ?? (async () => null),
   } as unknown as AuthService;
-  return new AuthController(auth);
+  const sessions = {
+    listForUser: sessionStubs.listForUser ?? (async () => ({ sessions: [] })),
+    findById: sessionStubs.findById ?? (async () => null),
+    revokeSession: sessionStubs.revokeSession ?? (async () => null),
+    toSummary:
+      sessionStubs.toSummary ??
+      ((row: unknown) => row as Record<string, unknown>),
+  } as unknown as import('./session.service').SessionService;
+  const ipHash = {
+    hashIp: (ip: string | null) => (ip ? `hash:${ip}` : null),
+  } as unknown as import('../security/ip-hash.service').IpHashService;
+  return new AuthController(auth, sessions, ipHash);
 }
 
 async function expectHttpError(

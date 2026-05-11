@@ -69,6 +69,11 @@ const EVENT_TYPES: SecurityEventType[] = [
   'IP_BLOCKED',
   'USER_BLOCKED',
   'BLOCK_LIFTED',
+  // Phase 18.2 — Session lifecycle + reuse detection.
+  'SESSION_CREATED',
+  'SESSION_REVOKED',
+  'REFRESH_TOKEN_REUSED',
+  'SESSION_SUSPICIOUS',
 ];
 
 function fail(code: string, status = HttpStatus.BAD_REQUEST): never {

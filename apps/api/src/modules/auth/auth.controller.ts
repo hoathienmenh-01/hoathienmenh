@@ -1,11 +1,14 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpException,
   HttpStatus,
+  Param,
   Post,
+  Query,
   Req,
   Res,
 } from '@nestjs/common';
@@ -16,8 +19,11 @@ import {
   LoginInput,
   RegisterInput,
   ResetPasswordInput,
+  type SessionErrorCode,
 } from '@xuantoi/shared';
 import { AuthService, AuthError, type AuthErrorCode } from './auth.service';
+import { SessionService } from './session.service';
+import { IpHashService } from '../security/ip-hash.service';
 import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 
 const ACCESS_COOKIE = 'xt_access';
@@ -53,9 +59,39 @@ function clientIp(req: Request): string {
   return req.ip ?? 'unknown';
 }
 
+function userAgentHeader(req: Request): string | null {
+  const ua = req.headers['user-agent'];
+  if (typeof ua === 'string' && ua.length > 0) return ua;
+  if (Array.isArray(ua) && typeof ua[0] === 'string') return ua[0];
+  return null;
+}
+
+function sessionFail(
+  code: SessionErrorCode,
+  status: HttpStatus = HttpStatus.BAD_REQUEST,
+): never {
+  throw new HttpException(
+    { ok: false, error: { code, message: code } },
+    status,
+  );
+}
+
 @Controller('_auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly sessions: SessionService,
+    private readonly ipHash: IpHashService,
+  ) {}
+
+  private buildCtx(req: Request) {
+    const ip = clientIp(req);
+    return {
+      ip,
+      ipHash: this.ipHash.hashIp(ip),
+      userAgent: userAgentHeader(req),
+    };
+  }
 
   @Post('register')
   @RateLimitPolicy('AUTH_REGISTER')
@@ -68,7 +104,7 @@ export class AuthController {
     if (!parsed.success) fail('WEAK_PASSWORD');
 
     try {
-      const out = await this.auth.register(parsed.data, { ip: clientIp(req) });
+      const out = await this.auth.register(parsed.data, this.buildCtx(req));
       this.setAuthCookies(res, out.accessToken, out.refreshToken);
       return { ok: true, data: { user: out.user } };
     } catch (e) {
@@ -89,7 +125,7 @@ export class AuthController {
     if (!parsed.success) fail('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
 
     try {
-      const out = await this.auth.login(parsed.data, { ip: clientIp(req) });
+      const out = await this.auth.login(parsed.data, this.buildCtx(req));
       this.setAuthCookies(res, out.accessToken, out.refreshToken);
       return { ok: true, data: { user: out.user } };
     } catch (e) {
@@ -113,7 +149,7 @@ export class AuthController {
       return { ok: true, data: { ok: true } };
     }
     try {
-      const out = await this.auth.forgotPassword(parsed.data, { ip: clientIp(req) });
+      const out = await this.auth.forgotPassword(parsed.data, this.buildCtx(req));
       return { ok: true, data: { ok: true, devToken: out.devToken } };
     } catch (e) {
       if (e instanceof AuthError && e.code === 'RATE_LIMITED') {
@@ -177,9 +213,10 @@ export class AuthController {
   @HttpCode(200)
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     try {
-      const out = await this.auth.refresh(req.cookies?.[REFRESH_COOKIE], {
-        ip: clientIp(req),
-      });
+      const out = await this.auth.refresh(
+        req.cookies?.[REFRESH_COOKIE],
+        this.buildCtx(req),
+      );
       this.setAuthCookies(res, out.accessToken, out.refreshToken);
       return { ok: true, data: { user: out.user } };
     } catch (e) {
@@ -213,6 +250,93 @@ export class AuthController {
     const r = await this.auth.logoutAll(userId);
     this.clearAuthCookies(res);
     return { ok: true, data: r };
+  }
+
+  /**
+   * Phase 18.2 — `GET /_auth/sessions`
+   *
+   * List session của chính user. Trả flag `current=true` cho session
+   * gắn với refresh cookie hiện tại (FE highlight).
+   *
+   * Query `includeRevoked=true` để xem REVOKED/EXPIRED (mặc định chỉ
+   * ACTIVE).
+   */
+  @Get('sessions')
+  @RateLimitPolicy('AUTH_REFRESH')
+  async listMySessions(
+    @Req() req: Request,
+    @Query('includeRevoked') includeRevokedRaw?: string,
+  ) {
+    const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
+    if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    const currentSessionId = await this.auth.sessionIdFromRefreshCookie(
+      req.cookies?.[REFRESH_COOKIE],
+    );
+    const includeRevoked = includeRevokedRaw === 'true';
+    const out = await this.sessions.listForUser({
+      userId,
+      currentSessionId,
+      includeRevoked,
+    });
+    return {
+      ok: true,
+      data: {
+        sessions: out.sessions,
+        generatedAt: new Date().toISOString(),
+      },
+    };
+  }
+
+  /**
+   * Phase 18.2 — `DELETE /_auth/sessions/:id`
+   *
+   * Revoke 1 session của chính user. Self-ownership guard:
+   *   - Nếu session không thuộc user → mask 404 `SESSION_NOT_FOUND`
+   *     (chống enumeration). KHÔNG trả 403.
+   *   - Nếu session đã revoke → idempotent return 200 với summary.
+   *
+   * Nếu user revoke session hiện tại (current=true) → clear cookies
+   * để FE redirect login.
+   */
+  @Delete('sessions/:id')
+  @HttpCode(200)
+  @RateLimitPolicy('AUTH_REFRESH')
+  async revokeMySession(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param('id') sessionId: string,
+  ) {
+    const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
+    if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    if (!sessionId || typeof sessionId !== 'string' || sessionId.length > 128) {
+      sessionFail('SESSION_NOT_FOUND', HttpStatus.NOT_FOUND);
+    }
+    const existing = await this.sessions.findById(sessionId);
+    if (!existing || existing.userId !== userId) {
+      sessionFail('SESSION_NOT_FOUND', HttpStatus.NOT_FOUND);
+    }
+    const updated = await this.sessions.revokeSession({
+      sessionId,
+      reason: 'USER_LOGOUT',
+      revokedById: userId,
+    });
+    const currentSessionId = await this.auth.sessionIdFromRefreshCookie(
+      req.cookies?.[REFRESH_COOKIE],
+    );
+    if (currentSessionId === sessionId) {
+      this.clearAuthCookies(res);
+    }
+    const now = new Date();
+    return {
+      ok: true,
+      data: {
+        session: this.sessions.toSummary(
+          updated ?? existing,
+          currentSessionId,
+          now,
+        ),
+      },
+    };
   }
 
   private setAuthCookies(res: Response, access: string, refresh: string): void {
