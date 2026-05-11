@@ -69,6 +69,7 @@ export * from './economy-report';
 export * from './market-price-band';
 export * from './market-trade-abuse';
 export * from './social';
+export * from './public-profile';
 export * from './chat-moderation';
 export * from './security-rate-limit';
 export * from './security-alerts';
