@@ -4550,6 +4550,61 @@
       "UNKNOWN": "Something went wrong — please retry."
     }
   },
+  "publicProfile": {
+    "title": "Player profile",
+    "viewProfile": "View profile",
+    "noCharacter": "This player has not created a character yet.",
+    "blockedByMeNotice": "You have blocked this player — profile details hidden until you unblock.",
+    "confirm": {
+      "block": "Are you sure you want to block {name}?"
+    },
+    "relationship": {
+      "SELF": "Self",
+      "FRIEND": "Friend",
+      "PENDING_INCOMING": "Incoming request",
+      "PENDING_OUTGOING": "Outgoing request",
+      "BLOCKED_BY_ME": "Blocked",
+      "BLOCKED_ME": "Unknown",
+      "STRANGER": "Stranger"
+    },
+    "fields": {
+      "realm": "Realm",
+      "level": "Level",
+      "powerScore": "Power score",
+      "title": "Title",
+      "titleNone": "—",
+      "sect": "Sect",
+      "sectNone": "No sect",
+      "joined": "Joined",
+      "mutualFriends": "Mutual friends",
+      "sameSect": "Same sect",
+      "sameSectYes": "Same sect as you"
+    },
+    "actions": {
+      "sendFriendRequest": "Add friend",
+      "message": "Send message",
+      "block": "Block",
+      "unblock": "Unblock",
+      "selfNotice": "Cannot target yourself."
+    },
+    "toast": {
+      "requestSent": "Friend request sent.",
+      "blocked": "Player blocked.",
+      "unblocked": "Player unblocked."
+    },
+    "errors": {
+      "NOT_FOUND": "Player not found (or you lack access).",
+      "NOT_AUTHORIZED": "You don't have permission to view this profile.",
+      "SELF_NOT_ALLOWED": "Cannot target yourself.",
+      "ALREADY_PENDING": "A pending request already exists.",
+      "ALREADY_FRIENDS": "Already friends.",
+      "BLOCKED": "Block in effect — action denied.",
+      "INVALID_INPUT": "Invalid input.",
+      "RATE_LIMITED": "Too many profile views — please slow down and retry.",
+      "ABUSE_BLOCKED": "Profile lookup temporarily blocked due to abuse. Try again in a few minutes.",
+      "UNKNOWN": "Something went wrong — please retry."
+    }
+  },
   "chatPrivate": {
     "threads": {
       "header": "Threads",

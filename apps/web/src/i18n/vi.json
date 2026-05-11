@@ -4550,6 +4550,61 @@
       "UNKNOWN": "Có lỗi xảy ra — thử lại."
     }
   },
+  "publicProfile": {
+    "title": "Hồ sơ đạo hữu",
+    "viewProfile": "Xem hồ sơ",
+    "noCharacter": "Đạo hữu này chưa nhập đạo trường — chưa có dữ liệu nhân vật.",
+    "blockedByMeNotice": "Bạn đã chặn đạo hữu này — không hiển thị thông tin tu vi cho tới khi bỏ chặn.",
+    "confirm": {
+      "block": "Bạn chắc chắn muốn chặn {name}?"
+    },
+    "relationship": {
+      "SELF": "Bản thân",
+      "FRIEND": "Bằng hữu",
+      "PENDING_INCOMING": "Lời mời đến",
+      "PENDING_OUTGOING": "Lời mời đi",
+      "BLOCKED_BY_ME": "Đã chặn",
+      "BLOCKED_ME": "Không rõ",
+      "STRANGER": "Người lạ"
+    },
+    "fields": {
+      "realm": "Cảnh giới",
+      "level": "Cấp số",
+      "powerScore": "Lực chiến",
+      "title": "Danh hiệu",
+      "titleNone": "Chưa có",
+      "sect": "Tông môn",
+      "sectNone": "Vô môn vô phái",
+      "joined": "Nhập đạo",
+      "mutualFriends": "Bạn chung",
+      "sameSect": "Cùng tông",
+      "sameSectYes": "Cùng tông môn"
+    },
+    "actions": {
+      "sendFriendRequest": "Kết bạn",
+      "message": "Nhắn riêng",
+      "block": "Chặn",
+      "unblock": "Bỏ chặn",
+      "selfNotice": "Không thể thao tác với chính mình."
+    },
+    "toast": {
+      "requestSent": "Đã gửi lời mời kết bạn.",
+      "blocked": "Đã chặn đạo hữu.",
+      "unblocked": "Đã bỏ chặn đạo hữu."
+    },
+    "errors": {
+      "NOT_FOUND": "Không tìm thấy đạo hữu (hoặc không có quyền xem).",
+      "NOT_AUTHORIZED": "Bạn không có quyền xem hồ sơ này.",
+      "SELF_NOT_ALLOWED": "Không thể thao tác với chính mình.",
+      "ALREADY_PENDING": "Đã tồn tại lời mời đang chờ.",
+      "ALREADY_FRIENDS": "Đã là bằng hữu.",
+      "BLOCKED": "Hai bên đang chặn — không thể thao tác.",
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "RATE_LIMITED": "Đạo hữu xem hồ sơ quá nhanh — vui lòng nghỉ tay rồi thử lại.",
+      "ABUSE_BLOCKED": "Tạm khoá xem hồ sơ do hành vi bất thường. Thử lại sau vài phút.",
+      "UNKNOWN": "Có lỗi xảy ra — thử lại."
+    }
+  },
   "chatPrivate": {
     "threads": {
       "header": "Cuộc trò chuyện",

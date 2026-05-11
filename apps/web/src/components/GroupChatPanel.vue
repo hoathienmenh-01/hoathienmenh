@@ -32,6 +32,7 @@ import type {
 import { SOCIAL_LIMITS } from '@xuantoi/shared';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import ChatReportModal from './ChatReportModal.vue';
+import PublicPlayerProfileModal from './PublicPlayerProfileModal.vue';
 
 const { t } = useI18n();
 const toast = useToastStore();
@@ -69,6 +70,26 @@ function openReport(msg: GroupChatMessageRow): void {
 function closeReport(): void {
   reportTargetId.value = null;
   reportPreview.value = null;
+}
+
+// Phase 19.1.C — public profile modal state. `profileTargetId` =
+// userId target khi viewer click vào tên member hoặc author message.
+const profileTargetId = ref<string | null>(null);
+const profileOpen = computed(() => profileTargetId.value !== null);
+
+function openProfile(userId: string): void {
+  profileTargetId.value = userId;
+}
+
+function closeProfile(): void {
+  profileTargetId.value = null;
+}
+
+async function onProfileChanged(): Promise<void> {
+  // Block/unblock từ modal có thể ảnh hưởng member visibility (BLOCKED
+  // reject sendGroupMessage). Refresh active group state.
+  const id = activeGroupId.value;
+  if (id) await loadGroup(id);
 }
 
 const activeGroup = computed<GroupChatRow | null>(() =>
@@ -350,10 +371,14 @@ function fmtTime(iso: string): string {
                 data-testid="group-chat-message-row"
               >
                 <div class="text-[10px] text-ink-300/60 flex items-center gap-2">
-                  <span>
-                    {{ msg.senderDisplayName ?? msg.senderUserId }} ·
-                    {{ fmtTime(msg.createdAt) }}
-                  </span>
+                  <button
+                    type="button"
+                    class="hover:underline focus:underline outline-none"
+                    :title="t('publicProfile.viewProfile')"
+                    data-testid="group-chat-message-author"
+                    @click="openProfile(msg.senderUserId)"
+                  >{{ msg.senderDisplayName ?? msg.senderUserId }}</button>
+                  <span>· {{ fmtTime(msg.createdAt) }}</span>
                   <button
                     type="button"
                     class="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] uppercase tracking-widest text-rose-300 hover:text-rose-200"
@@ -415,7 +440,13 @@ function fmtTime(iso: string): string {
                 data-testid="group-chat-member-row"
               >
                 <div class="min-w-0">
-                  <div class="truncate">{{ m.displayName ?? m.userId }}</div>
+                  <button
+                    type="button"
+                    class="truncate text-left hover:underline focus:underline outline-none"
+                    :title="t('publicProfile.viewProfile')"
+                    data-testid="group-chat-member-name"
+                    @click="openProfile(m.userId)"
+                  >{{ m.displayName ?? m.userId }}</button>
                   <div
                     v-if="m.userId === activeGroup.ownerUserId"
                     class="text-[10px] text-amber-300"
@@ -471,6 +502,13 @@ function fmtTime(iso: string): string {
       :message-preview="reportPreview"
       @submitted="closeReport"
       @cancel="closeReport"
+    />
+
+    <PublicPlayerProfileModal
+      :open="profileOpen"
+      :user-id="profileTargetId"
+      @close="closeProfile"
+      @changed="onProfileChanged"
     />
   </section>
 </template>
