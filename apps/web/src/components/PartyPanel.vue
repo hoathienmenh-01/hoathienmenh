@@ -19,6 +19,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToastStore } from '@/stores/toast';
+import { useAuthStore } from '@/stores/auth';
 import ConfirmModal from '@/components/ui/ConfirmModal.vue';
 import {
   acceptPartyInvite,
@@ -48,6 +49,7 @@ type InviteTab = 'incoming' | 'outgoing';
 
 const { t } = useI18n();
 const toast = useToastStore();
+const auth = useAuthStore();
 
 const loading = reactive({
   party: true,
@@ -79,7 +81,7 @@ const busyInviteId = ref<string | null>(null);
 const busyMemberId = ref<string | null>(null);
 const partyBusy = ref(false);
 
-const myUserId = ref<string | null>(null);
+const myUserId = computed<string | null>(() => auth.user?.id ?? null);
 
 const isLeader = computed(
   () =>
@@ -127,12 +129,6 @@ async function refreshParty(): Promise<void> {
     const res = await getMyParty();
     party.value = res.party;
     members.value = res.members;
-    if (!myUserId.value && res.party && res.members.length > 0) {
-      // Best-effort derive own userId from leader if we own the party.
-      // Otherwise rely on /auth/me wire (out of scope here; defaults to
-      // first member's userId mapping via leader equality check at use
-      // sites).
-    }
   } catch (e) {
     errorMsg.party = errMsg(e);
   } finally {
@@ -175,7 +171,6 @@ async function onCreateParty(): Promise<void> {
     const res = await apiCreateParty(name.length === 0 ? null : name);
     party.value = res.party;
     members.value = res.members;
-    myUserId.value = res.party.leaderUserId;
     createName.value = '';
     toast.push({ type: 'success', text: t('party.toast.created') });
   } catch (e) {
