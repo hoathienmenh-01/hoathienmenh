@@ -9,6 +9,7 @@ import { useRoute, useRouter } from 'vue-router';
 import BuffBar from './BuffBar.vue';
 import ChatPanel from './ChatPanel.vue';
 import LocaleSwitcher from './LocaleSwitcher.vue';
+import NotificationBell from '@/components/notification/NotificationBell.vue';
 import MaintenanceBanner from '@/components/MaintenanceBanner.vue';
 import { useMaintenanceStore } from '@/stores/maintenance';
 
@@ -151,6 +152,11 @@ async function logout(): Promise<void> {
         >
           {{ game.wsConnected ? t('shell.wsOn') : t('shell.wsOff') }}
         </span>
+        <!-- Phase 19.3 — Notification bell + dropdown. Renders unread
+             badge + recent notifications, with click routing to the
+             related Social tab (friend requests / private / group /
+             reports). -->
+        <NotificationBell v-if="game.character" />
         <LocaleSwitcher />
         <button class="text-ink-300 hover:text-ink-50" @click="logout">
           {{ t('home.logout') }}
