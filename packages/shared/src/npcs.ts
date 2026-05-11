@@ -85,6 +85,16 @@ export const NPCS: readonly NpcDef[] = [
       'kim_dan_realm_01',
       'nguyen_anh_main_01',
       'nguyen_anh_realm_01',
+      'phase21_ch01_main_01',
+      'phase21_ch01_main_04',
+      'phase21_ch01_main_05',
+      'phase21_ch02_main_05',
+      'phase21_ch03_main_01',
+      'phase21_ch04_main_05',
+      'phase21_ch05_main_01',
+      'phase21_ch06_main_01',
+      'phase21_ch06_main_04',
+      'phase21_ch06_main_05',
     ],
     description: 'Chưởng môn Hoa Thiên Môn. Hiền hậu, nghèo, thâm sâu.',
     loreSummary:
@@ -108,6 +118,14 @@ export const NPCS: readonly NpcDef[] = [
       'kim_dan_grind_01',
       'nguyen_anh_sect_01',
       'nguyen_anh_grind_01',
+      'phase21_ch01_main_02',
+      'phase21_ch01_main_03',
+      'phase21_ch02_main_01',
+      'phase21_ch02_main_02',
+      'phase21_ch02_main_03',
+      'phase21_ch02_main_04',
+      'phase21_ch03_main_02',
+      'phase21_ch06_main_02',
     ],
     description: 'Đại sư tỷ Hoa Thiên Môn. Nghiêm khắc, ấm áp. Mộc hệ + alchemy.',
     loreSummary:
@@ -119,7 +137,14 @@ export const NPCS: readonly NpcDef[] = [
     faction: 'huyen_kiem_tong',
     realmGateOrder: 1, // Luyện Khí
     defaultDialogueId: 'dlg_han_da_default',
-    questKeys: ['luyenkhi_npc_01'],
+    questKeys: [
+      'luyenkhi_npc_01',
+      'phase21_ch03_main_03',
+      'phase21_ch03_main_04',
+      'phase21_ch03_main_05',
+      'phase21_ch05_main_02',
+      'phase21_ch06_main_03',
+    ],
     description: 'Đệ tử Huyền Kiếm Tông. Lạnh, kiêu ngạo, trọng danh dự.',
     loreSummary:
       'Rival kiếm tu — có thể là bạn / đối thủ / kẻ thù tuỳ lựa chọn moral của player. Arena, duel, sword quests. Story bible §6.',
@@ -130,7 +155,13 @@ export const NPCS: readonly NpcDef[] = [
     faction: null, // Hậu nhân Hoa Thiên lưu đày — phe ẩn
     realmGateOrder: 2, // Trúc Cơ
     defaultDialogueId: 'dlg_to_nguyet_ly_default',
-    questKeys: ['truc_co_npc_01'],
+    questKeys: [
+      'truc_co_npc_01',
+      'phase21_ch04_main_01',
+      'phase21_ch04_main_02',
+      'phase21_ch04_main_03',
+      'phase21_ch04_main_04',
+    ],
     description: 'Hậu nhân nhánh Hoa Thiên lưu đày. Bí ẩn, thông minh.',
     loreSummary:
       'Biết vị trí truyền thừa Hoa Thiên đã bị xoá khỏi lịch sử. Hidden quest, ancient relics. Story bible §6.',
@@ -141,7 +172,13 @@ export const NPCS: readonly NpcDef[] = [
     faction: 'huyet_ha_ma_tong',
     realmGateOrder: 3, // Kim Đan
     defaultDialogueId: 'dlg_huyet_la_sat_default',
-    questKeys: ['kim_dan_npc_01', 'nguyen_anh_npc_01'],
+    questKeys: [
+      'kim_dan_npc_01',
+      'nguyen_anh_npc_01',
+      'phase21_ch05_main_03',
+      'phase21_ch05_main_04',
+      'phase21_ch05_main_05',
+    ],
     description: 'Ma tu bị ruồng bỏ. Tàn nhẫn nhưng có nỗi đau. Từng là đệ tử Hoa Thiên.',
     loreSummary:
       'Mở moral choice ma path: tha / giết / hợp tác. Reveal mặt tối Hoa Thiên Môn. Story bible §6 + §11 (Máu Trên Thềm Đá).',
