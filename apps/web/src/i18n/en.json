@@ -1396,6 +1396,58 @@
       "empty": "No data yet.",
       "generatedAt": "Generated at"
     },
+    "economyRangeReport": {
+      "title": "Economy range report",
+      "subtitle": "LinhThach in/out by source, top 10 character delta, market volume, shop spend, reward totals within a date window (max 31 days).",
+      "from": "From date",
+      "to": "To date",
+      "load": "Load report",
+      "loading": "Loading…",
+      "totalIn": "Total in",
+      "totalOut": "Total out",
+      "totalNet": "Net",
+      "openAnomalies": "Open anomalies",
+      "latestRun": "Latest ledger check",
+      "noLatestRun": "No check has been run yet.",
+      "marketVolume": "Market volume",
+      "shopSpend": "Shop spend",
+      "sectShopSpend": "Sect shop spend",
+      "reforgeEnchantSpend": "Reforge / enchant",
+      "adminGrantTotal": "Admin grant",
+      "liveOpsRewardTotal": "LiveOps reward",
+      "dailyLoginRewardTotal": "Daily login",
+      "dungeonRewardTotal": "Dungeon reward",
+      "bossRewardTotal": "Boss reward",
+      "sectSeasonRewardTotal": "Sect season",
+      "bySourceTitle": "Breakdown by source",
+      "bySourceEmpty": "No currency flow in this window.",
+      "topDeltaTitle": "Top 10 character delta (linhThach)",
+      "topDeltaEmpty": "No character has a non-zero net delta.",
+      "emptyInitial": "Pick a date range and click \"Load report\" to view data.",
+      "emptyData": "No currency flow in window {from} → {to}.",
+      "generatedAt": "Generated at {generatedAt} · Window {from} → {to} ({days} days)",
+      "runCheck": {
+        "label": "Run ledger check now",
+        "running": "Running…",
+        "confirm": "Run ledger check now? Job is idempotent per dayBucket — re-running within the same day does not create duplicate issues.",
+        "done": "Ledger check done: {status}, {issues} issues.",
+        "alreadyDone": "This day has already been checked (alreadyDone, no new issues created).",
+        "failed": "Ledger check failed: {code}."
+      },
+      "col": {
+        "source": "Source",
+        "in": "In",
+        "out": "Out",
+        "net": "Net",
+        "entries": "Entries",
+        "rank": "#",
+        "character": "Character",
+        "email": "Email"
+      },
+      "error": {
+        "load": "Failed to load report: {code}"
+      }
+    },
     "recentActivity": {
       "title": "Recent admin activity",
       "subtitle": "Last 5 admin/MOD actions from the audit log — handy for live tracking when multiple admins are working.",

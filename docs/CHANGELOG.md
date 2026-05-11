@@ -12,7 +12,59 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
-### Phase 15.8 — LiveOps / Maintenance Polish Bundle (this PR — #519)
+### Phase 16.1.B — Ledger Checker Daily Cron + Economy Report Admin Endpoint (this PR — #520)
+
+**Scope**: Bổ sung báo cáo economy theo khoảng ngày + Admin FE panel trên hạ tầng ledger checker cron + EconomyAnomaly đã có sẵn từ Phase 16.6. Detection + reporting only — **KHÔNG auto-ban, KHÔNG tự rollback ledger, KHÔNG block transaction**.
+
+#### Added — Phase 16.1.B
+
+- **Shared catalog `economy-report.ts`**: 29 source bucket (`EconomyReportSource`) + mapping `LEDGER_REASON_TO_SOURCE` (50+ reason → bucket) + `parseEconomyReportRange()` validator (UTC, default last 7d inclusive today, max 31d). Unknown reason fail-soft → bucket `OTHER`. 18 test pure (range overflow, FROM_AFTER_TO, ICU date), invariant: mọi value trong mapping đều là `EconomyReportSource` hợp lệ.
+- **API endpoint** `GET /admin/economy/range-report?from=&to=` (ADMIN-only, `@RequireAdmin()`). Reuse `parseEconomyReportRange` validator, gọi `EconomyRangeReportService.generate()`. Trả: range (from/to/days), bySource (in/out/net per currency + entry count, sorted DESC |net|), totals, top 10 character delta (sorted DESC |net|), 11 high-level totals (market volume, shop spend, sect shop spend, reforge-enchant, admin grant, topup, liveops reward, daily login, dungeon reward, boss reward, territory reward, sect season reward), anomaly summary (open/ack/resolved counts + latest severity + latest createdAt), latest `EconomyLedgerCheckRun`, generatedAt. Audit `ADMIN_ECONOMY_REPORT_VIEW`.
+- **FE Admin Economy Range Report panel** (`AdminEconomyRangeReportPanel.vue`): date range picker (default last 7d), Load Report + Run Ledger Check Now buttons, 5 summary cards (total in/out/net + open anomalies + latest run status), 10 category totals cards, source breakdown table, top 10 character delta table, loading/error/empty states, i18n VI/EN parity. Mount dưới Economy tab sau `AdminEconomySafetyPanel`. KHÔNG auto-load on mount (admin chủ động click — endpoint có thể nặng nếu 31d).
+
+#### Configuration — Phase 16.1.B
+
+- **KHÔNG có env mới**. Ledger checker cron đã có sẵn từ Phase 16.6 với `LEDGER_CHECKER_CRON_ENABLED=false` (default OFF), `LEDGER_CHECKER_CRON_SCHEDULE=0 1 * * *` (01:00 UTC), `ECONOMY_ANTICHEAT_CRON_TZ=UTC`.
+- **KHÔNG có Prisma migration mới**. Reuse `EconomyLedgerCheckRun` / `EconomyLedgerCheckIssue` / `EconomyAnomaly` schema từ Phase 16.6.
+
+#### Idempotency / race-safety — Phase 16.1.B
+
+- Endpoint read-only — KHÔNG mutate DB. Audit log idempotent per request.
+- Date range UTC để tránh tz-skew giữa cron (UTC) + admin (Asia/Ho_Chi_Minh).
+- Ledger checker cron giữ idempotency theo `EconomyLedgerCheckRun.dayBucket` UNIQUE (Phase 16.6).
+
+#### Known limitations — Phase 16.1.B
+
+- **No caching**: Endpoint không cache. Closed-beta scale OK. Production nên thêm 60s cache nếu admin team load report > 1x/phút.
+- **`MARKET_OUTLIER` recompute on-demand**: Phase 16.1.B chỉ aggregate ledger; không re-scan listing price band. Admin xem panel anomaly Phase 16.6 cho price outlier.
+- **Top character delta không include tienNgoc separately**: Sort theo |net linhThach| only. Top 10 list cũng trả tienNgoc per row qua bySource sectional view.
+
+#### Tests added — Phase 16.1.B
+
+- **Shared**: `economy-report.test.ts` (18 test) — reasonToReportSource mapping, isEconomyReportSource, parseEconomyReportRange (default 7d, only-to, from > to, RANGE_TOO_LARGE 32d, exactly 31d, ICU format check Feb-30 reject).
+- **API**: `economy-range-report.service.test.ts` (8 integration test, real Prisma) — empty DB, aggregate in/out theo source, top 10 sorted, top excludes 0-net, range exclude ledger ngoài cửa sổ, unknown reason → OTHER, anomaly + latestRun inject, tienNgoc separated. `admin-economy-safety.controller.test.ts` (5 test mới) — default no params, explicit range, INVALID_FROM, RANGE_TOO_LARGE, FROM_AFTER_TO.
+- **Web**: `AdminEconomyRangeReportPanel.test.ts` (8 test) — empty initial, render summary+source+delta, query params, error state, empty data, latest run card, confirm-false skip API, confirm-true call API + reload.
+
+#### Files changed — Phase 16.1.B
+
+- `packages/shared/src/economy-report.ts` (new, 305 lines).
+- `packages/shared/src/economy-report.test.ts` (new, 165 lines).
+- `packages/shared/src/index.ts` (export economy-report).
+- `apps/api/src/modules/admin-economy-safety/economy-range-report.service.ts` (new, 322 lines).
+- `apps/api/src/modules/admin-economy-safety/admin-economy-safety.module.ts` (provider wiring).
+- `apps/api/src/modules/admin-economy-safety/admin-economy-safety.controller.ts` (new endpoint + audit).
+- `apps/api/src/modules/admin-economy-safety/economy-range-report.service.test.ts` (new, 230 lines).
+- `apps/api/src/modules/admin-economy-safety/admin-economy-safety.controller.test.ts` (5 new tests).
+- `apps/web/src/components/AdminEconomyRangeReportPanel.vue` (new, 470 lines).
+- `apps/web/src/components/__tests__/AdminEconomyRangeReportPanel.test.ts` (new, 270 lines).
+- `apps/web/src/views/AdminView.vue` (mount new panel).
+- `apps/web/src/api/admin.ts` (new `adminEconomyRangeReport()` helper).
+- `apps/web/src/i18n/vi.json` + `en.json` (50+ key cho panel).
+- `docs/{API,RUNBOOK,ECONOMY_MODEL,CHANGELOG,AI_HANDOFF_REPORT}.md` (this PR).
+
+---
+
+### Phase 15.8 — LiveOps / Maintenance Polish Bundle (PR #519)
 
 **Scope**: Polish hệ LiveOps / Maintenance / Cron để sẵn sàng vận hành closed beta. KHÔNG rewrite hệ thống — incremental polish bundle gồm: Maintenance WebSocket broadcast, Admin Maintenance edit workflow, LiveOps reward form picker, cron health/stale status, champion membership snapshot. Tất cả idempotent + race-safe, không break Phase 15.7 cron auto-run.
 

@@ -71,6 +71,9 @@ interface PrismaStubs {
 interface ControllerStubs {
   runCheck?: LedgerCheckerService['runCheck'];
   scanAll?: EconomyAnomalyScannerService['scanAll'];
+  rangeReportGenerate?: (
+    range: import('@xuantoi/shared').EconomyReportRange,
+  ) => Promise<import('@xuantoi/shared').EconomyReportResponse>;
   prisma?: PrismaStubs;
   auditCreated?: { count: number; actions: string[] };
 }
@@ -244,7 +247,58 @@ function makeController(stubs: ControllerStubs = {}): {
     typeof AdminEconomySafetyController
   >[0];
   return {
-    c: new AdminEconomySafetyController(prisma, ledger, scanner),
+    c: new AdminEconomySafetyController(
+      prisma,
+      ledger,
+      scanner,
+      stubs.rangeReportGenerate
+        ? ({ generate: stubs.rangeReportGenerate } as unknown as ConstructorParameters<
+            typeof AdminEconomySafetyController
+          >[3])
+        : ({
+            generate: async () =>
+              ({
+                range: { from: '2026-05-05', to: '2026-05-11', days: 7 },
+                bySource: [],
+                totalInLinhThach: '0',
+                totalOutLinhThach: '0',
+                totalNetLinhThach: '0',
+                totalInTienNgoc: 0,
+                totalOutTienNgoc: 0,
+                totalNetTienNgoc: 0,
+                topCharacterDelta: [],
+                marketVolume: '0',
+                shopSpend: '0',
+                sectShopSpend: '0',
+                reforgeEnchantSpend: '0',
+                adminGrantTotal: '0',
+                topupTotal: '0',
+                liveOpsRewardTotal: '0',
+                dailyLoginRewardTotal: '0',
+                dungeonRewardTotal: '0',
+                bossRewardTotal: '0',
+                territoryRewardTotal: '0',
+                sectSeasonRewardTotal: '0',
+                anomalySummary: {
+                  openCount: 0,
+                  acknowledgedCount: 0,
+                  resolvedCount: 0,
+                  latestSeverity: null,
+                  latestCreatedAt: null,
+                },
+                latestLedgerCheckRun: null,
+                generatedAt: '2026-05-11T00:00:00.000Z',
+              }) as unknown as Awaited<
+                ReturnType<
+                  ConstructorParameters<
+                    typeof AdminEconomySafetyController
+                  >[3]['generate']
+                >
+              >,
+          } as unknown as ConstructorParameters<
+            typeof AdminEconomySafetyController
+          >[3]),
+    ),
     audit,
     state,
   };
@@ -498,5 +552,142 @@ describe('AdminEconomySafetyController.runAnomalyScan + listAnomalies', () => {
     expect(state.anomalies?.[0].status).toBe('RESOLVED');
     expect(audit.actions).toContain('ADMIN_ECONOMY_ANOMALY_ACK');
     expect(audit.actions).toContain('ADMIN_ECONOMY_ANOMALY_RESOLVE');
+  });
+});
+
+describe('AdminEconomySafetyController.rangeReportEndpoint (Phase 16.1.B)', () => {
+  it('default range (no params) → call service, audit row', async () => {
+    const captured: {
+      range: import('@xuantoi/shared').EconomyReportRange | null;
+    } = { range: null };
+    const { c, audit } = makeController({
+      rangeReportGenerate: async (range) => {
+        captured.range = range;
+        return {
+          range: { from: range.from, to: range.to, days: range.days },
+          bySource: [],
+          totalInLinhThach: '1234',
+          totalOutLinhThach: '500',
+          totalNetLinhThach: '734',
+          totalInTienNgoc: 0,
+          totalOutTienNgoc: 0,
+          totalNetTienNgoc: 0,
+          topCharacterDelta: [],
+          marketVolume: '0',
+          shopSpend: '0',
+          sectShopSpend: '0',
+          reforgeEnchantSpend: '0',
+          adminGrantTotal: '0',
+          topupTotal: '0',
+          liveOpsRewardTotal: '0',
+          dailyLoginRewardTotal: '0',
+          dungeonRewardTotal: '0',
+          bossRewardTotal: '0',
+          territoryRewardTotal: '0',
+          sectSeasonRewardTotal: '0',
+          anomalySummary: {
+            openCount: 3,
+            acknowledgedCount: 0,
+            resolvedCount: 0,
+            latestSeverity: 'WARN' as const,
+            latestCreatedAt: '2026-05-10T00:00:00.000Z',
+          },
+          latestLedgerCheckRun: null,
+          generatedAt: '2026-05-11T00:00:00.000Z',
+        };
+      },
+    });
+    const r = await c.rangeReportEndpoint(makeReq(), undefined, undefined);
+    expect(r.ok).toBe(true);
+    expect(r.data.totalInLinhThach).toBe('1234');
+    expect(captured.range).not.toBeNull();
+    expect(captured.range?.days).toBeGreaterThanOrEqual(1);
+    expect(audit.actions).toContain('ADMIN_ECONOMY_REPORT_VIEW');
+  });
+
+  it('explicit range pass-through', async () => {
+    const captured: {
+      range: import('@xuantoi/shared').EconomyReportRange | null;
+    } = { range: null };
+    const { c } = makeController({
+      rangeReportGenerate: async (range) => {
+        captured.range = range;
+        return {
+          range: { from: range.from, to: range.to, days: range.days },
+          bySource: [],
+          totalInLinhThach: '0',
+          totalOutLinhThach: '0',
+          totalNetLinhThach: '0',
+          totalInTienNgoc: 0,
+          totalOutTienNgoc: 0,
+          totalNetTienNgoc: 0,
+          topCharacterDelta: [],
+          marketVolume: '0',
+          shopSpend: '0',
+          sectShopSpend: '0',
+          reforgeEnchantSpend: '0',
+          adminGrantTotal: '0',
+          topupTotal: '0',
+          liveOpsRewardTotal: '0',
+          dailyLoginRewardTotal: '0',
+          dungeonRewardTotal: '0',
+          bossRewardTotal: '0',
+          territoryRewardTotal: '0',
+          sectSeasonRewardTotal: '0',
+          anomalySummary: {
+            openCount: 0,
+            acknowledgedCount: 0,
+            resolvedCount: 0,
+            latestSeverity: null,
+            latestCreatedAt: null,
+          },
+          latestLedgerCheckRun: null,
+          generatedAt: '2026-05-11T00:00:00.000Z',
+        };
+      },
+    });
+    await c.rangeReportEndpoint(makeReq(), '2026-05-01', '2026-05-07');
+    expect(captured.range?.from).toBe('2026-05-01');
+    expect(captured.range?.to).toBe('2026-05-07');
+    expect(captured.range?.days).toBe(7);
+  });
+
+  it('invalid from format → throw INVALID_FROM', async () => {
+    const { c } = makeController();
+    let thrown: HttpException | null = null;
+    try {
+      await c.rangeReportEndpoint(makeReq(), 'not-a-date', '2026-05-11');
+    } catch (e) {
+      thrown = e as HttpException;
+    }
+    expect(thrown).toBeInstanceOf(HttpException);
+    expect(thrown?.getStatus()).toBe(400);
+    const body = thrown?.getResponse() as { error?: { code?: string } };
+    expect(body?.error?.code).toBe('INVALID_FROM');
+  });
+
+  it('range too large (32d) → throw RANGE_TOO_LARGE', async () => {
+    const { c } = makeController();
+    let thrown: HttpException | null = null;
+    try {
+      await c.rangeReportEndpoint(makeReq(), '2026-04-10', '2026-05-11');
+    } catch (e) {
+      thrown = e as HttpException;
+    }
+    expect(thrown?.getStatus()).toBe(400);
+    const body = thrown?.getResponse() as { error?: { code?: string } };
+    expect(body?.error?.code).toBe('RANGE_TOO_LARGE');
+  });
+
+  it('from > to → throw FROM_AFTER_TO', async () => {
+    const { c } = makeController();
+    let thrown: HttpException | null = null;
+    try {
+      await c.rangeReportEndpoint(makeReq(), '2026-05-11', '2026-05-01');
+    } catch (e) {
+      thrown = e as HttpException;
+    }
+    const body = thrown?.getResponse() as { error?: { code?: string } };
+    expect(body?.error?.code).toBe('FROM_AFTER_TO');
   });
 });

@@ -1560,6 +1560,133 @@ curl -X POST -b "$ADMIN_COOKIE" \
 - KHÔNG rollback table `SectSeasonChampionSnapshot` mà chưa kiểm tra reward grant đã chạy chưa.
 - KHÔNG broadcast maintenance event tay (server-authoritative — chỉ `recomputeStatus` mới broadcast).
 
+### 2.29. Phase 16.1.B — Economy Range Report (P2)
+
+**Scope** (Phase 16.1.B): Admin xem báo cáo economy theo khoảng ngày qua endpoint `GET /admin/economy/range-report` + FE panel dưới tab Economy. Detection + reporting only — KHÔNG auto-ban, KHÔNG tự rollback ledger.
+
+#### 2.29.1. Bật / tắt cron ledger checker (P2)
+
+**Cron đã có từ Phase 16.6**. Phase 16.1.B KHÔNG đổi cron config — chỉ thêm endpoint báo cáo + FE panel.
+
+Env (đặt trong production secret manager hoặc `.env.production`):
+
+```bash
+# Bật cron daily 01:00 UTC. Mặc định OFF.
+LEDGER_CHECKER_CRON_ENABLED=true
+LEDGER_CHECKER_CRON_SCHEDULE="0 1 * * *"
+ECONOMY_ANTICHEAT_CRON_TZ=UTC
+```
+
+**Bật/tắt runtime**: Thay env + restart API. KHÔNG có endpoint admin để toggle (an toàn — tránh ai-đó-tự-tắt khi cron đang detect anomaly).
+
+#### 2.29.2. Chạy ledger check thủ công (P2)
+
+Cách 1 — qua FE:
+
+1. Vào tab **Economy** trong Admin panel.
+2. Cuộn xuống section **"Báo cáo kinh tế theo khoảng ngày"**.
+3. Bấm **"Chạy ledger check ngay"**. Confirm prompt → API call.
+4. Job idempotent theo dayBucket — chạy lại trong ngày trả `alreadyDone: true`, KHÔNG tạo duplicate issue.
+
+Cách 2 — qua API:
+
+```bash
+curl -X POST -H "Authorization: Bearer <admin-jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"forceRerun": false}' \
+  https://<host>/admin/economy/ledger-check/run
+```
+
+`forceRerun: true` chỉ dùng khi muốn re-run sau khi fix data — sẽ duplicate run nhưng issue được tạo lại từ đầu (KHÔNG dup vì có check theo `dayBucket + type + characterId`).
+
+#### 2.29.3. Xem economy report (P2)
+
+Cách 1 — qua FE:
+
+1. Vào tab **Economy** → section **"Báo cáo kinh tế theo khoảng ngày"**.
+2. Chọn `Từ ngày` / `Đến ngày` (default = 7 ngày gần nhất, max 31 ngày).
+3. Bấm **"Tải báo cáo"**. Server trả breakdown theo source + top 10 character delta + category totals + anomaly summary + latest ledger check run.
+4. Audit log `ADMIN_ECONOMY_REPORT_VIEW` tự ghi vào `AdminAuditLog`.
+
+Cách 2 — qua API (dùng cho script offline / scheduled report):
+
+```bash
+curl -H "Authorization: Bearer <admin-jwt>" \
+  "https://<host>/admin/economy/range-report?from=2026-05-01&to=2026-05-07"
+```
+
+Response shape: xem `docs/API.md` mục `/admin/economy/range-report`.
+
+#### 2.29.4. Đọc EconomyLedgerCheckRun (P2)
+
+Truy vấn DB hoặc xem latest qua endpoint `GET /admin/economy/ledger-check/latest`:
+
+```sql
+SELECT id, "dayBucket", status, "startedAt", "finishedAt",
+       "issuesCreated", "summaryJson"
+FROM "EconomyLedgerCheckRun"
+ORDER BY "dayBucket" DESC LIMIT 10;
+```
+
+Status:
+- **`OK`**: Không có discrepancy, cron chạy thành công.
+- **`ISSUES_FOUND`**: Có ≥1 `EconomyLedgerCheckIssue` được tạo. Mở tab Economy Safety (Phase 16.6 panel) để xem chi tiết.
+- **`FAILED`**: Run bị exception (DB lỗi, OOM). Xem `errorJson` field. Re-run thủ công sau khi fix.
+
+`dayBucket` UNIQUE — re-run cùng ngày KHÔNG tạo run mới (idempotent). `forceRerun=true` overrides.
+
+#### 2.29.5. Đọc EconomyAnomaly (P2)
+
+```sql
+SELECT id, "dayBucket", "characterId", source, severity, status,
+       amount, "detailJson", "createdAt"
+FROM "EconomyAnomaly"
+WHERE status = 'OPEN'
+ORDER BY severity DESC, "createdAt" DESC LIMIT 20;
+```
+
+Source bucket (Phase 16.6): `CURRENCY_DELTA_24H`, `RARE_ITEM_GAIN_24H`, `REWARD_CAP_BYPASS`, `ADMIN_GRANT_OVER_LIMIT`, `MARKET_OUTLIER`. Mỗi source có threshold riêng — xem `docs/BALANCE_MODEL.md` §18.
+
+Ack qua `POST /admin/economy/anomalies/:id/ack` (chỉ đánh dấu đã review, chưa fix). Resolve qua `POST /admin/economy/anomalies/:id/resolve` (xong xử lý).
+
+#### 2.29.6. Xử lý mismatch / suspicious delta (P2)
+
+Khi report cho thấy `MARKET_OUTLIER` / `ADMIN_GRANT_OVER_LIMIT` / character delta lớn bất thường:
+
+1. **Mở tab Economy → bấm "Tải báo cáo"** với khoảng ngày gần nhất (3-7 ngày).
+2. Xem **top 10 character delta** — character nào có net delta tăng vọt.
+3. Cross-check với `CurrencyLedger`:
+   ```sql
+   SELECT "createdAt", reason, delta, "balanceAfter"
+   FROM "CurrencyLedger"
+   WHERE "characterId" = '<id>' AND currency = 'LINH_THACH'
+     AND "createdAt" >= NOW() - INTERVAL '7 days'
+   ORDER BY "createdAt" DESC LIMIT 50;
+   ```
+4. Xác minh source legit (admin grant ticket, dungeon farm, market sell). Nếu bất thường:
+   - **KHÔNG auto-rollback**.
+   - **KHÔNG tự ban**.
+   - Mở support ticket, review log, decide thủ công.
+   - Nếu cần grant ngược (revert nhầm): dùng `POST /admin/users/:userId/grant-currency` với `reason="reverse-grant <ticket-id>"`.
+5. Sau khi resolve, ack/resolve anomaly trong `AdminEconomySafetyPanel`.
+
+#### 2.29.7. Xử lý admin grant bất thường (P2)
+
+`ADMIN_GRANT_OVER_LIMIT` anomaly = 1 admin grant linhThach/tienNgoc vượt `ADMIN_GRANT_LIMIT_LINH_THACH` hoặc `ADMIN_GRANT_LIMIT_TIEN_NGOC` (xem `docs/BALANCE_MODEL.md`).
+
+1. Lookup admin (`actorUserId` trong `AdminAuditLog` `ADMIN_GRANT_CURRENCY` action).
+2. Verify có ticket support / reason hợp lý (audit `reason` field).
+3. Nếu admin nhầm hoặc trộm acc — escalate to security admin, xem `RUNBOOK §2.8 JWT secret leak`.
+4. Hook anomaly KHÔNG block grant — nếu cần reverse, tạo grant ngược (negative delta) với reason rõ ràng.
+
+#### 2.29.8. KHÔNG làm
+
+- KHÔNG auto-ban dựa trên report. Anomaly chỉ là signal cảnh báo.
+- KHÔNG tự sửa `CurrencyLedger` để "fix" mismatch. Ledger immutable.
+- KHÔNG load report khoảng > 31 ngày (server reject với `RANGE_TOO_LARGE`).
+- KHÔNG để cron tắt > 7 ngày liên tiếp (mất audit cumulative — nếu cần tắt lâu, bù lại bằng manual run hằng ngày).
+- KHÔNG cache response ở CDN/edge — endpoint chứa data nhạy cảm + audit log.
+
 ## 3. Backup operations (closed beta cadence)
 
 ### 3.1. Cron daily backup

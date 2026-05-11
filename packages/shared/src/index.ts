@@ -64,4 +64,5 @@ export * from './territory-buffs';
 export * from './territory-owner-reward';
 export * from './daily-reward-cap';
 export * from './economy-anomaly';
+export * from './economy-report';
 export * from './market-price-band';

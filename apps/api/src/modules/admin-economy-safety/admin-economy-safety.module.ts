@@ -12,6 +12,7 @@ import {
 import { EconomyAnticheatCronScheduler } from './economy-anticheat-cron.scheduler';
 import { LedgerCheckerCronProcessor } from './ledger-checker-cron.processor';
 import { AnomalyScannerCronProcessor } from './anomaly-scanner-cron.processor';
+import { EconomyRangeReportService } from './economy-range-report.service';
 
 /**
  * Phase 16.6 — Admin Economy Safety module.
@@ -50,6 +51,7 @@ import { AnomalyScannerCronProcessor } from './anomaly-scanner-cron.processor';
     EconomyAnticheatCronScheduler,
     LedgerCheckerCronProcessor,
     AnomalyScannerCronProcessor,
+    EconomyRangeReportService,
   ],
 })
 export class AdminEconomySafetyModule implements OnModuleInit {

@@ -1,6 +1,7 @@
 import { apiClient } from './client';
 import type { TopupOrderView } from './topup';
 import type {
+  EconomyReportResponse,
   LiveOpsAnnouncementSeverity,
   LiveOpsAnnouncementStatus,
   LiveOpsAnnouncementTarget,
@@ -988,6 +989,27 @@ export async function adminLedgerCheckIssueAck(id: string): Promise<void> {
 
 export async function adminLedgerCheckIssueResolve(id: string): Promise<void> {
   await apiClient.post(`/admin/economy/ledger-check/issues/${id}/resolve`, {});
+}
+
+/**
+ * Phase 16.1.B — `GET /admin/economy/range-report?from=YYYY-MM-DD&to=YYYY-MM-DD`.
+ *
+ * Date-range economy report. Max 31 ngày, default last 7d (server enforced).
+ * Trả về breakdown theo source, top 10 character delta, market volume,
+ * shop spend, reward totals, anomaly summary, latest ledger check run.
+ */
+export async function adminEconomyRangeReport(
+  from?: string,
+  to?: string,
+): Promise<EconomyReportResponse> {
+  const params: Record<string, string> = {};
+  if (from) params.from = from;
+  if (to) params.to = to;
+  const { data } = await apiClient.get<Envelope<EconomyReportResponse>>(
+    '/admin/economy/range-report',
+    Object.keys(params).length > 0 ? { params } : undefined,
+  );
+  return unwrap(data);
 }
 
 export async function adminAnomalyScanRun(): Promise<AnomalyScanSummary> {
