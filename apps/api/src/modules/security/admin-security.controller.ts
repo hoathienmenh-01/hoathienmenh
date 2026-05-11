@@ -29,11 +29,13 @@
  *     `AdminGuard`).
  */
 import {
+  Body,
   Controller,
   Get,
   HttpCode,
   HttpException,
   HttpStatus,
+  Optional,
   Param,
   Post,
   Query,
@@ -54,12 +56,21 @@ import {
 import { SessionService } from '../auth/session.service';
 import {
   isRateLimitPolicyKey,
+  isSecurityAlertSeverity,
+  isSecurityAlertSource,
+  isSecurityAlertStatus,
+  isSecurityAlertType,
   isSessionStatusFilter,
   RATE_LIMIT_POLICY_KEYS,
   type RateLimitPolicyKey,
   type RateLimitScope,
+  type SecurityAlertSeverity,
+  type SecurityAlertSource,
+  type SecurityAlertStatus,
+  type SecurityAlertType,
   type SessionStatusFilter,
 } from '@xuantoi/shared';
+import { SecurityAlertService } from './security-alert.service';
 
 type AdminReq = Request & { userId: string; role: 'ADMIN' | 'MOD' };
 
@@ -109,6 +120,12 @@ export class AdminSecurityController {
     private readonly rateLimit: RateLimitService,
     private readonly ipHash: IpHashService,
     private readonly sessions: SessionService,
+    /**
+     * Phase 18.3 — alert workflow service. Mệ dùng cho 4 endpoint
+     * `/alerts*` + `/summary`. Inject opt-out cho unit test cũ chưa
+     * mock.
+     */
+    @Optional() private readonly alerts: SecurityAlertService | null = null,
   ) {}
 
   /**
@@ -422,6 +439,216 @@ export class AdminSecurityController {
         ),
       },
     };
+  }
+
+  // ==================== Phase 18.3 — alert workflow ====================
+
+  /**
+   * `GET /admin/security/alerts`
+   *
+   * List SecurityAlert rows (paginated, multi-filter). Available to
+   * ADMIN + MOD (read-only). PLAYER bị gate 403 ở `AdminGuard`.
+   *
+   * Filters: status, severity, type, source, from/to (createdAt),
+   * userId. Pagination: cursor + limit (≤ 200).
+   *
+   * Audit `ADMIN_SECURITY_ALERTS_VIEW` — 1 row per call (no per-alert
+   * audit để tránh ngập khi paginate).
+   */
+  @Get('alerts')
+  @RateLimitPolicy('ADMIN_REPORT_VIEW')
+  async listAlerts(
+    @Req() req: Request,
+    @Query('status') statusRaw?: string,
+    @Query('severity') severityRaw?: string,
+    @Query('type') typeRaw?: string,
+    @Query('source') sourceRaw?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('userId') userId?: string,
+    @Query('limit') limitRaw?: string,
+    @Query('cursor') cursor?: string,
+  ) {
+    const adminReq = req as AdminReq;
+    if (!this.alerts) fail('NOT_AVAILABLE', HttpStatus.SERVICE_UNAVAILABLE);
+    let status: SecurityAlertStatus | undefined;
+    if (statusRaw) {
+      if (!isSecurityAlertStatus(statusRaw)) fail('INVALID_STATUS');
+      status = statusRaw;
+    }
+    let severity: SecurityAlertSeverity | undefined;
+    if (severityRaw) {
+      if (!isSecurityAlertSeverity(severityRaw)) fail('INVALID_SEVERITY');
+      severity = severityRaw;
+    }
+    let type: SecurityAlertType | undefined;
+    if (typeRaw) {
+      if (!isSecurityAlertType(typeRaw)) fail('INVALID_TYPE');
+      type = typeRaw;
+    }
+    let source: SecurityAlertSource | undefined;
+    if (sourceRaw) {
+      if (!isSecurityAlertSource(sourceRaw)) fail('INVALID_SOURCE');
+      source = sourceRaw;
+    }
+    if (userId !== undefined && (userId.length === 0 || userId.length > 128)) {
+      fail('INVALID_USER_ID');
+    }
+    const out = await this.alerts.listAlerts({
+      status,
+      severity,
+      type,
+      source,
+      from: parseDate(from),
+      to: parseDate(to),
+      userId: userId || undefined,
+      limit: parseLimit(limitRaw),
+      cursor,
+    });
+    await this.audit(adminReq.userId, 'ADMIN_SECURITY_ALERTS_VIEW', {
+      status: status ?? null,
+      severity: severity ?? null,
+      type: type ?? null,
+      source: source ?? null,
+      userId: userId ?? null,
+      from: from ?? null,
+      to: to ?? null,
+      count: out.alerts.length,
+    });
+    return {
+      ok: true,
+      data: {
+        alerts: out.alerts,
+        nextCursor: out.nextCursor,
+        generatedAt: new Date().toISOString(),
+      },
+    };
+  }
+
+  /**
+   * `GET /admin/security/summary`
+   *
+   * Dashboard counters: openCritical, openWarn, blockedSubjects,
+   * tokenReuseLast24h, suspiciousSessionsLast24h, rateLimitHitsLast24h,
+   * latestCriticalEvents (top 5).
+   *
+   * Available to ADMIN + MOD (read-only). Fail-soft: nếu DB throw thì
+   * service trả zeros (không 500).
+   */
+  @Get('summary')
+  @RateLimitPolicy('ADMIN_REPORT_VIEW')
+  async summary(@Req() req: Request) {
+    const adminReq = req as AdminReq;
+    if (!this.alerts) fail('NOT_AVAILABLE', HttpStatus.SERVICE_UNAVAILABLE);
+    const data = await this.alerts.getSummary();
+    await this.audit(adminReq.userId, 'ADMIN_SECURITY_SUMMARY_VIEW', {
+      openCritical: data.openCritical,
+      openWarn: data.openWarn,
+    });
+    return { ok: true, data };
+  }
+
+  /**
+   * `POST /admin/security/alerts/:id/ack`
+   *
+   * ADMIN-only mutation: chuyển alert OPEN → ACKNOWLEDGED. Idempotent
+   * khi đã ACK: trả về row hiện tại + audit `..._NOOP`. Khi đã RESOLVED:
+   * trả 409 `ALERT_RESOLVED`.
+   */
+  @Post('alerts/:id/ack')
+  @HttpCode(200)
+  @RequireAdmin()
+  async ackAlert(@Req() req: Request, @Param('id') alertId: string) {
+    const adminReq = req as AdminReq;
+    if (!this.alerts) fail('NOT_AVAILABLE', HttpStatus.SERVICE_UNAVAILABLE);
+    if (!alertId || typeof alertId !== 'string' || alertId.length > 128) {
+      fail('INVALID_INPUT');
+    }
+    const out = await this.alerts.acknowledgeAlert(alertId, adminReq.userId);
+    if (out.ok === false) {
+      if (out.code === 'ALERT_NOT_FOUND') {
+        await this.audit(
+          adminReq.userId,
+          'ADMIN_SECURITY_ALERT_ACK_FAILED',
+          { alertId, reason: out.code },
+        );
+        fail('ALERT_NOT_FOUND', HttpStatus.NOT_FOUND);
+      }
+      if (out.code === 'ALERT_ALREADY_RESOLVED') {
+        await this.audit(
+          adminReq.userId,
+          'ADMIN_SECURITY_ALERT_ACK_FAILED',
+          { alertId, reason: out.code },
+        );
+        fail('ALERT_ALREADY_RESOLVED', HttpStatus.CONFLICT);
+      }
+      fail(out.code, HttpStatus.BAD_REQUEST);
+    }
+    await this.audit(adminReq.userId, 'ADMIN_SECURITY_ALERT_ACK', {
+      alertId,
+      type: out.alert.type,
+      severity: out.alert.severity,
+      // Trạng thái sau hành động — service idempotent khi alert đã ACK.
+      finalStatus: out.alert.status,
+    });
+    return { ok: true, data: { alert: out.alert } };
+  }
+
+  /**
+   * `POST /admin/security/alerts/:id/resolve`
+   *
+   * ADMIN-only: chuyển alert (OPEN/ACK) → RESOLVED + lưu
+   * `resolutionNote`. Skip-ack OK (OPEN → RESOLVED). Idempotent khi đã
+   * RESOLVED → trả 409 `ALERT_ALREADY_RESOLVED`.
+   *
+   * Body: `{ note?: string }` — sanitize control chars + truncate
+   * ≤ 1000.
+   */
+  @Post('alerts/:id/resolve')
+  @HttpCode(200)
+  @RequireAdmin()
+  async resolveAlert(
+    @Req() req: Request,
+    @Param('id') alertId: string,
+    @Body() body: { note?: unknown } | undefined,
+  ) {
+    const adminReq = req as AdminReq;
+    if (!this.alerts) fail('NOT_AVAILABLE', HttpStatus.SERVICE_UNAVAILABLE);
+    if (!alertId || typeof alertId !== 'string' || alertId.length > 128) {
+      fail('INVALID_INPUT');
+    }
+    const rawNote = body && typeof body.note === 'string' ? body.note : null;
+    const out = await this.alerts.resolveAlert(
+      alertId,
+      adminReq.userId,
+      rawNote,
+    );
+    if (out.ok === false) {
+      if (out.code === 'ALERT_NOT_FOUND') {
+        await this.audit(
+          adminReq.userId,
+          'ADMIN_SECURITY_ALERT_RESOLVE_FAILED',
+          { alertId, reason: out.code },
+        );
+        fail('ALERT_NOT_FOUND', HttpStatus.NOT_FOUND);
+      }
+      if (out.code === 'ALERT_ALREADY_RESOLVED') {
+        await this.audit(
+          adminReq.userId,
+          'ADMIN_SECURITY_ALERT_RESOLVE_FAILED',
+          { alertId, reason: out.code },
+        );
+        fail('ALERT_ALREADY_RESOLVED', HttpStatus.CONFLICT);
+      }
+      fail(out.code, HttpStatus.BAD_REQUEST);
+    }
+    await this.audit(adminReq.userId, 'ADMIN_SECURITY_ALERT_RESOLVE', {
+      alertId,
+      type: out.alert.type,
+      severity: out.alert.severity,
+      hasNote: out.alert.resolutionNote !== null,
+    });
+    return { ok: true, data: { alert: out.alert } };
   }
 
   private async audit(
