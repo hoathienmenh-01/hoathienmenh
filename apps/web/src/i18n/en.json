@@ -4794,6 +4794,85 @@
       "UNKNOWN": "Something went wrong — try again."
     }
   },
+  "partyDungeon": {
+    "title": "Party Dungeon",
+    "subtitle": "Create a room, ready up with your party, and clear a co-op dungeon (auto-resolve foundation).",
+    "empty": {
+      "subtitle": "No active room. Leader picks a dungeon to start a new room.",
+      "leaderHint": "Requires {min}-{max} members (including the leader) to start."
+    },
+    "room": {
+      "summary": "Ready {ready}/{count} · min {min}, max {max}"
+    },
+    "status": {
+      "LOBBY": "Lobby",
+      "READY_CHECK": "Ready Check",
+      "STARTED": "Running",
+      "COMPLETED": "Completed",
+      "FAILED": "Failed",
+      "CANCELED": "Canceled",
+      "EXPIRED": "Expired"
+    },
+    "participants": {
+      "ready": "Ready",
+      "notReady": "Not ready",
+      "leader": "Leader"
+    },
+    "actions": {
+      "create": "Create room",
+      "join": "Join room",
+      "ready": "Ready",
+      "cancelReady": "Unready",
+      "start": "Start",
+      "cancel": "Cancel room",
+      "claim": "Claim reward"
+    },
+    "confirm": {
+      "startTitle": "Start the dungeon?",
+      "startBody": "All members are ready. Start the run now?",
+      "cancelTitle": "Cancel the room?",
+      "cancelBody": "This will end the room. Cannot be undone."
+    },
+    "reward": {
+      "title": "Reward",
+      "linhThach": "Linh Thach",
+      "tienNgoc": "Tien Ngoc",
+      "exp": "EXP",
+      "statusLabel": {
+        "PENDING": "Pending",
+        "CLAIMED": "Claimed",
+        "EXPIRED": "Expired"
+      },
+      "noneForCaller": "You don't have a reward in this run."
+    },
+    "toast": {
+      "roomCreated": "Party dungeon room created.",
+      "joined": "Joined the room.",
+      "started": "Run started.",
+      "canceled": "Room canceled.",
+      "claimed": "Reward claimed."
+    },
+    "errors": {
+      "NOT_IN_PARTY": "You are not in a party.",
+      "NOT_PARTY_LEADER": "Only the party leader can do this.",
+      "NOT_PARTY_MEMBER": "You are not a member of this party.",
+      "INVALID_DUNGEON": "Invalid dungeon.",
+      "ROOM_ALREADY_EXISTS": "Your party already has an active dungeon room.",
+      "ROOM_NOT_FOUND": "Room not found.",
+      "ROOM_NOT_LOBBY": "Room is no longer in the lobby phase.",
+      "PARTICIPANT_NOT_FOUND": "You haven't joined this room yet.",
+      "NOT_ENOUGH_MEMBERS": "Not enough members to start.",
+      "NOT_ALL_READY": "Some members are not ready.",
+      "NO_CHARACTER": "Your account has no character.",
+      "RUN_NOT_FOUND": "Run not found.",
+      "RUN_NOT_COMPLETED": "Run is not completed — cannot claim.",
+      "REWARD_NOT_FOUND": "You have no reward in this run.",
+      "REWARD_ALREADY_CLAIMED": "Reward already claimed.",
+      "RATE_LIMITED": "Too many party-dungeon actions — slow down.",
+      "ABUSE_BLOCKED": "Party-dungeon actions temporarily blocked due to abnormal behavior.",
+      "UNKNOWN": "Something went wrong — try again."
+    }
+  },
   "notification": {
     "title": "Notifications",
     "bell": "Open notification center",

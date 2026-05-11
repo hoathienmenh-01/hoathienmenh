@@ -4794,6 +4794,85 @@
       "UNKNOWN": "Có lỗi xảy ra — thử lại."
     }
   },
+  "partyDungeon": {
+    "title": "Phụ Bản Tổ Đội",
+    "subtitle": "Tạo phòng, ready cùng đội, đánh phụ bản co-op và nhận thưởng (auto-resolve foundation).",
+    "empty": {
+      "subtitle": "Chưa có phòng nào. Trưởng nhóm chọn phụ bản để tạo phòng.",
+      "leaderHint": "Cần {min}-{max} thành viên (kể cả trưởng) để bắt đầu."
+    },
+    "room": {
+      "summary": "Ready {ready}/{count} · cần tối thiểu {min}, tối đa {max}"
+    },
+    "status": {
+      "LOBBY": "Đợi đội",
+      "READY_CHECK": "Đếm ready",
+      "STARTED": "Đang chạy",
+      "COMPLETED": "Hoàn thành",
+      "FAILED": "Thất bại",
+      "CANCELED": "Đã huỷ",
+      "EXPIRED": "Hết hạn"
+    },
+    "participants": {
+      "ready": "Sẵn sàng",
+      "notReady": "Chưa sẵn sàng",
+      "leader": "Trưởng nhóm"
+    },
+    "actions": {
+      "create": "Tạo phòng",
+      "join": "Tham gia phòng",
+      "ready": "Sẵn sàng",
+      "cancelReady": "Bỏ sẵn sàng",
+      "start": "Bắt đầu",
+      "cancel": "Huỷ phòng",
+      "claim": "Nhận thưởng"
+    },
+    "confirm": {
+      "startTitle": "Bắt đầu phụ bản?",
+      "startBody": "Toàn bộ thành viên đã ready. Bắt đầu run ngay bây giờ?",
+      "cancelTitle": "Huỷ phòng phụ bản?",
+      "cancelBody": "Hành động này sẽ kết thúc phòng. Không thể hoàn tác."
+    },
+    "reward": {
+      "title": "Phần thưởng",
+      "linhThach": "Linh Thạch",
+      "tienNgoc": "Tiên Ngọc",
+      "exp": "EXP",
+      "statusLabel": {
+        "PENDING": "Chờ nhận",
+        "CLAIMED": "Đã nhận",
+        "EXPIRED": "Hết hạn"
+      },
+      "noneForCaller": "Bạn không có phần thưởng trong run này."
+    },
+    "toast": {
+      "roomCreated": "Đã tạo phòng phụ bản.",
+      "joined": "Đã tham gia phòng.",
+      "started": "Đã bắt đầu run.",
+      "canceled": "Đã huỷ phòng.",
+      "claimed": "Đã nhận thưởng."
+    },
+    "errors": {
+      "NOT_IN_PARTY": "Bạn chưa ở trong tổ đội nào.",
+      "NOT_PARTY_LEADER": "Chỉ trưởng nhóm mới được thao tác này.",
+      "NOT_PARTY_MEMBER": "Bạn không phải thành viên tổ đội này.",
+      "INVALID_DUNGEON": "Phụ bản không hợp lệ.",
+      "ROOM_ALREADY_EXISTS": "Tổ đội đã có phòng phụ bản đang hoạt động.",
+      "ROOM_NOT_FOUND": "Không tìm thấy phòng phụ bản.",
+      "ROOM_NOT_LOBBY": "Phòng không còn ở giai đoạn chuẩn bị.",
+      "PARTICIPANT_NOT_FOUND": "Bạn chưa tham gia phòng.",
+      "NOT_ENOUGH_MEMBERS": "Chưa đủ thành viên để bắt đầu.",
+      "NOT_ALL_READY": "Còn thành viên chưa sẵn sàng.",
+      "NO_CHARACTER": "Tài khoản chưa có nhân vật.",
+      "RUN_NOT_FOUND": "Không tìm thấy run.",
+      "RUN_NOT_COMPLETED": "Run chưa hoàn thành — không thể nhận thưởng.",
+      "REWARD_NOT_FOUND": "Không có phần thưởng nào của bạn trong run này.",
+      "REWARD_ALREADY_CLAIMED": "Phần thưởng đã nhận trước đó.",
+      "RATE_LIMITED": "Thao tác phụ bản tổ đội quá nhanh — chậm lại vài giây.",
+      "ABUSE_BLOCKED": "Tạm khoá thao tác phụ bản tổ đội do hành vi bất thường. Thử lại sau.",
+      "UNKNOWN": "Có lỗi xảy ra — thử lại."
+    }
+  },
   "notification": {
     "title": "Thông báo",
     "bell": "Mở trung tâm thông báo",
