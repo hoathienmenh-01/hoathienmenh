@@ -235,7 +235,7 @@ export class ChatPrivateService {
   private async requireMemberThread(
     callerUserId: string,
     threadId: string,
-  ): Promise<Prisma.PrivateChatThreadGetPayload<{}>> {
+  ): Promise<Prisma.PrivateChatThreadGetPayload<object>> {
     const thread = await this.prisma.privateChatThread.findUnique({
       where: { id: threadId },
     });
@@ -269,7 +269,7 @@ export class ChatPrivateService {
 
   private async toThreadRow(
     callerUserId: string,
-    thread: Prisma.PrivateChatThreadGetPayload<{}>,
+    thread: Prisma.PrivateChatThreadGetPayload<object>,
   ): Promise<PrivateChatThreadRow> {
     const peer =
       thread.userAId === callerUserId ? thread.userBId : thread.userAId;

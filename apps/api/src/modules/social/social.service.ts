@@ -480,7 +480,7 @@ export class SocialService {
   }
 
   private toFriendRequestRow(
-    row: Prisma.FriendRequestGetPayload<{}>,
+    row: Prisma.FriendRequestGetPayload<object>,
   ): FriendRequestRow {
     return {
       id: row.id,
