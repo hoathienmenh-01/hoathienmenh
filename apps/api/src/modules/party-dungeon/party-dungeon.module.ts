@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
+import { CoopRewardCapModule } from '../coop-reward-cap/coop-reward-cap.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { SecurityModule } from '../security/security.module';
@@ -33,6 +34,9 @@ import { PartyDungeonService } from './party-dungeon.service';
     InventoryModule,
     RealtimeModule,
     SecurityModule,
+    // Phase 20.3 — import để DI `CoopRewardCapService` vào
+    // `PartyDungeonService` (cap gate + weekly record).
+    CoopRewardCapModule,
   ],
   controllers: [PartyDungeonController],
   providers: [PrismaService, PartyDungeonService],

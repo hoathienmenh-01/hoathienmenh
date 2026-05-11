@@ -117,7 +117,15 @@ export type LedgerReason =
   // 2 concurrent claim trên cùng row → đúng 1 winner ghi ledger.
   // Reward source = `computeCoopBossRewardTier(tier)` deterministic
   // theo tier (NONE/LOW/NORMAL/HIGH/MVP) snapshot tại `finishRun`.
-  | 'COOP_BOSS_REWARD';
+  | 'COOP_BOSS_REWARD'
+  // Phase 20.3 — Co-op Weekly Reward grant qua
+  // `CoopRewardCapService.claimWeeklyReward`. Idempotent semantics:
+  // `CoopWeeklyRewardClaim` UNIQUE `(seasonId, userId)` + CAS guard
+  // `status='PENDING' → 'CLAIMED'` — 2 concurrent claim trên cùng
+  // row → đúng 1 winner ghi ledger. Reward source =
+  // `computeWeeklyReward(tier)` deterministic theo tier
+  // (NONE/BRONZE/SILVER/GOLD/LEGEND) snapshot tại settle.
+  | 'COOP_WEEKLY_REWARD';
 
 export interface CurrencyApplyInput {
   characterId: string;

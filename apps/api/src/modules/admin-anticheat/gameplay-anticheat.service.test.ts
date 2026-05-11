@@ -48,7 +48,7 @@ describe('GameplayAntiCheatService.scanAll — empty state', () => {
     expect(r.totalCreated).toBe(0);
     expect(r.totalSkipped).toBe(0);
     expect(r.totalErrored).toBe(0);
-    expect(r.rules.length).toBe(10);
+    expect(r.rules.length).toBe(12);
     for (const rule of r.rules) {
       expect(rule.created).toBe(0);
       expect(rule.errored).toBe(false);

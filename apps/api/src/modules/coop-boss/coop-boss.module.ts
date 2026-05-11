@@ -3,6 +3,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { AdminModule } from '../admin/admin.module';
 import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
+import { CoopRewardCapModule } from '../coop-reward-cap/coop-reward-cap.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { SecurityModule } from '../security/security.module';
@@ -38,6 +39,9 @@ import { CoopBossService } from './coop-boss.service';
     RealtimeModule,
     SecurityModule,
     AdminModule,
+    // Phase 20.3 — import để DI `CoopRewardCapService` vào
+    // `CoopBossService` (cap gate + leech audit + weekly record).
+    CoopRewardCapModule,
   ],
   controllers: [CoopBossController, AdminCoopBossController],
   providers: [PrismaService, CoopBossService],

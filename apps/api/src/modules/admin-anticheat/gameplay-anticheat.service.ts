@@ -179,6 +179,13 @@ export class GameplayAntiCheatService {
         return { created: 0, skipped: 0 };
       case 'REWARD_CAP_BYPASS_ATTEMPT':
         return this.scanRewardCapBypassAttempt(args);
+      case 'COOP_REWARD_CAP_HIT':
+      case 'COOP_LEECH_HIGH':
+        // Phase 20.3 — runtime hook (`CoopRewardCapService.auditCapBypassAttempt`
+        // / `classifyAndAuditLeechRisk`) tự ghi anomaly khi sự kiện
+        // xảy ra. Scanner pure trả 0 (no aggregate scan cần thiết
+        // — event-driven flow đã đủ).
+        return { created: 0, skipped: 0 };
       default: {
         const _exhaustive: never = args.type;
         return _exhaustive;

@@ -4037,18 +4037,18 @@ model CoopBossParticipant {
 ///   - `actionCount` Int counter tổng số recordContribution call
 ///     (per participant per run) — dùng cho admin audit.
 model CoopBossContribution {
-  id                 String   @id @default(cuid())
-  runId              String
-  participantId      String
-  damageDone         BigInt   @default(0)
-  supportScore       Int      @default(0)
-  survivalSeconds    Int      @default(0)
-  actionCount        Int      @default(0)
+  id                String   @id @default(cuid())
+  runId             String
+  participantId     String
+  damageDone        BigInt   @default(0)
+  supportScore      Int      @default(0)
+  survivalSeconds   Int      @default(0)
+  actionCount       Int      @default(0)
   /// Derived score qua `computeContributionScore` shared helper —
   /// server tính lại mỗi lần cộng dồn (deterministic).
-  contributionScore  Int      @default(0)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  contributionScore Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@unique([runId, participantId])
   @@index([runId, contributionScore])
@@ -4067,18 +4067,173 @@ model CoopBossContribution {
 ///
 /// Idempotent qua UNIQUE `(runId, userId)` + CAS update guard.
 model CoopBossRewardClaim {
-  id          String                      @id @default(cuid())
+  id          String                    @id @default(cuid())
   runId       String
   userId      String
   characterId String
-  status      CoopBossRewardClaimStatus   @default(PENDING)
-  rewardTier  CoopBossContributionTier    @default(NONE)
+  status      CoopBossRewardClaimStatus @default(PENDING)
+  rewardTier  CoopBossContributionTier  @default(NONE)
   rewardJson  Json
   claimedAt   DateTime?
-  createdAt   DateTime                    @default(now())
+  createdAt   DateTime                  @default(now())
 
   @@unique([runId, userId])
   @@unique([runId, characterId])
   @@index([userId, status])
   @@index([runId, status])
+}
+
+/// Phase 20.3 — Co-op Weekly Season status enum.
+///
+/// `ACTIVE` (đang mở) → `CLOSED` (qua endsAt, không nhận
+/// contribution mới) → `SETTLED` (admin/cron đã settle rank/tier
+/// + tạo PENDING claim row).
+enum CoopWeeklySeasonStatus {
+  ACTIVE
+  CLOSED
+  SETTLED
+}
+
+/// Phase 20.3 — Co-op Weekly Reward Claim status enum.
+///
+/// `PENDING` (tạo bởi settle) → `CLAIMED` (member claim, ledger
+/// ghi) | `SKIPPED` (tier NONE / member rời) | `FAILED` (reserved).
+enum CoopWeeklyRewardClaimStatus {
+  PENDING
+  CLAIMED
+  SKIPPED
+  FAILED
+}
+
+/// Phase 20.3 — Co-op Reward Cap Counter per `(userId, source,
+/// dayKey | weekKey)`.
+///
+/// Track số lần member nhận reward từ co-op boss (Phase 20.2) +
+/// party dungeon (Phase 20.1) trong 1 ngày/tuần local
+/// (`Asia/Ho_Chi_Minh`). `CoopRewardCapService.checkDailyWeeklyCap`
+/// gate trước khi grant; `incrementRewardCapCounter` upsert sau
+/// grant.
+///
+/// Sử dụng 1 row per `(userId, source, dayKey)` — `weekKey` lưu
+/// kèm cho easier weekly query (composite filter). Counter tuần
+/// được aggregate runtime hoặc qua index `(userId, source, weekKey)`.
+///
+/// Soft-ref `userId` / `characterId` (không FK) — cho phép xóa user
+/// mà counter row không cascade. KHÔNG khoá business logic.
+model CoopRewardCapCounter {
+  id                String   @id @default(cuid())
+  userId            String
+  characterId       String
+  /// `CoopRewardSource` literal (shared) — `COOP_BOSS` | `PARTY_DUNGEON`.
+  source            String
+  /// `YYYY-MM-DD` (Asia/Ho_Chi_Minh) — build qua
+  /// `buildCoopRewardDayKey` shared.
+  dayKey            String
+  /// `YYYY-Www` ISO week — build qua `buildCoopRewardWeekKey`.
+  weekKey           String
+  claimCount        Int      @default(0)
+  /// Tổng linhThach approx (best-effort BigInt → Int aggregate).
+  /// Dùng cho admin audit khi điều tra abuse.
+  rewardValueApprox BigInt   @default(0)
+  updatedAt         DateTime @updatedAt
+  createdAt         DateTime @default(now())
+
+  @@unique([userId, source, dayKey])
+  @@index([userId, source, weekKey])
+  @@index([source, dayKey])
+}
+
+/// Phase 20.3 — Weekly contribution season aggregate window.
+///
+/// Tạo bởi admin (hoặc cron Phase 20.3+) khi tuần mới mở. Ghi
+/// `weekKey` deterministic qua `buildCoopRewardWeekKey`. Member
+/// contribution từ Phase 20.2 finishRun (`COOP_BOSS`) + Phase 20.1
+/// dungeon CLEAR (`PARTY_DUNGEON`) → upsert
+/// `CoopWeeklyContributionEntry` (cộng dồn `bossContributionPoints`
+/// + `dungeonContributionPoints` + `totalPoints`).
+///
+/// Settle: `status='ACTIVE'→'CLOSED'→'SETTLED'`. Khi SETTLED,
+/// service rank theo `totalPoints` DESC + map tier qua
+/// `classifyWeeklyRewardTier` + tạo `CoopWeeklyRewardClaim` PENDING
+/// cho mỗi entry tier ≠ NONE.
+model CoopWeeklyContributionSeason {
+  id               String                 @id @default(cuid())
+  /// `YYYY-Www` ISO week (Asia/Ho_Chi_Minh).
+  weekKey          String                 @unique
+  startsAt         DateTime
+  endsAt           DateTime
+  status           CoopWeeklySeasonStatus @default(ACTIVE)
+  createdAt        DateTime               @default(now())
+  settledAt        DateTime?
+  /// Admin actor settle (nullable cho cron-based future). KHÔNG FK
+  /// để giảm cascade rủi ro khi xóa admin.
+  settledByAdminId String?
+
+  entries      CoopWeeklyContributionEntry[]
+  rewardClaims CoopWeeklyRewardClaim[]
+
+  @@index([status, endsAt])
+}
+
+/// Phase 20.3 — Per-user weekly contribution entry.
+///
+/// 1 row per `(seasonId, userId)`. Upsert mỗi lần finishRun /
+/// dungeon CLEAR — cộng dồn points. `rank` + `rewardTier` snapshot
+/// chỉ set khi settle.
+///
+/// Soft-ref `userId` / `characterId`.
+model CoopWeeklyContributionEntry {
+  id                        String                       @id @default(cuid())
+  seasonId                  String
+  season                    CoopWeeklyContributionSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  userId                    String
+  characterId               String
+  /// Cộng dồn `contributionScore` từ `CoopBossContribution`
+  /// (Phase 20.2) — đã clamp + classifyTier server-side.
+  bossContributionPoints    Int                          @default(0)
+  /// Cộng dồn từ `PartyDungeonRun` clear (Phase 20.1). 0 ở
+  /// foundation nếu chưa wire integration vào dungeon flow.
+  dungeonContributionPoints Int                          @default(0)
+  /// = bossPoints * mult + dungeonPoints * mult + mvpBonus.
+  /// Server tính qua `computeWeeklyContributionPoints` shared.
+  totalPoints               Int                          @default(0)
+  /// Snapshot rank tại settle (1-indexed). NULL khi chưa settle.
+  rank                      Int?
+  /// `CoopWeeklyRewardTier` literal (shared) — snapshot tại settle.
+  rewardTier                String?
+  updatedAt                 DateTime                     @updatedAt
+  createdAt                 DateTime                     @default(now())
+
+  @@unique([seasonId, userId])
+  @@index([seasonId, totalPoints])
+  @@index([userId])
+}
+
+/// Phase 20.3 — Per-user weekly reward claim row.
+///
+/// Tạo bởi `settleWeeklySeason` cho mỗi entry tier ≠ NONE. Member
+/// claim qua `POST /coop/rewards/weekly-claim` (atomic CAS
+/// `PENDING→CLAIMED` + ledger / inventory grant reason
+/// `COOP_WEEKLY_REWARD`).
+///
+/// Idempotent UNIQUE `(seasonId, userId)` + CAS guard.
+model CoopWeeklyRewardClaim {
+  id          String                       @id @default(cuid())
+  seasonId    String
+  season      CoopWeeklyContributionSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  userId      String
+  characterId String
+  /// `CoopWeeklyRewardTier` literal (shared) — NONE/BRONZE/SILVER/GOLD/LEGEND.
+  rewardTier  String
+  /// Snapshot reward payload `{linhThach?, exp?}` server tính qua
+  /// `computeWeeklyReward` tại settle. CAS guard giữ snapshot bất
+  /// biến giữa các retry claim.
+  rewardJson  Json
+  status      CoopWeeklyRewardClaimStatus  @default(PENDING)
+  claimedAt   DateTime?
+  createdAt   DateTime                     @default(now())
+
+  @@unique([seasonId, userId])
+  @@index([userId, status])
+  @@index([seasonId, status])
 }
