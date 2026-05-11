@@ -21,6 +21,7 @@ import type {
   GroupChatRow,
 } from '@xuantoi/shared';
 import { AuthService } from '../auth/auth.service';
+import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 import {
   ChatGroupError,
   ChatGroupService,
@@ -84,6 +85,7 @@ export class ChatGroupController {
 
   @Post()
   @HttpCode(200)
+  @RateLimitPolicy('CHAT_GROUP_CREATE')
   async createGroup(
     @Req() req: Request,
     @Body() body: unknown,
@@ -101,6 +103,7 @@ export class ChatGroupController {
 
   @Post(':groupId/members')
   @HttpCode(200)
+  @RateLimitPolicy('CHAT_GROUP_MEMBER_ADD')
   async addMember(
     @Req() req: Request,
     @Param('groupId') groupId: string,
@@ -162,6 +165,7 @@ export class ChatGroupController {
 
   @Post(':groupId/messages')
   @HttpCode(200)
+  @RateLimitPolicy('CHAT_GROUP_SEND')
   async sendMessage(
     @Req() req: Request,
     @Param('groupId') groupId: string,

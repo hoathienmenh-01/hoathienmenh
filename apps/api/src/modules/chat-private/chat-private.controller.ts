@@ -19,6 +19,7 @@ import type {
   PrivateChatThreadRow,
 } from '@xuantoi/shared';
 import { AuthService } from '../auth/auth.service';
+import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 import {
   ChatPrivateError,
   ChatPrivateService,
@@ -115,6 +116,7 @@ export class ChatPrivateController {
 
   @Post('threads/:threadId/messages')
   @HttpCode(200)
+  @RateLimitPolicy('CHAT_PRIVATE_SEND')
   async sendMessage(
     @Req() req: Request,
     @Param('threadId') threadId: string,
