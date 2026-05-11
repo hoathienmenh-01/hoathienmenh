@@ -204,6 +204,9 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // Phase 15.8 — LiveOps cron run audit log (no FK). Wipe để health
   // status không bị nhiễm dữ liệu giữa file test.
   await prisma.liveOpsCronRunLog.deleteMany({});
+  // Phase 15.8 — Sect Season Champion membership snapshot (no FK).
+  // Wipe trước Character/Sect để reward grant test khởi đầu sạch.
+  await prisma.sectSeasonChampionSnapshot.deleteMany({});
   await prisma.adminAuditLog.deleteMany({});
   await prisma.refreshToken.deleteMany({});
   await prisma.loginAttempt.deleteMany({});

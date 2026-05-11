@@ -18,8 +18,13 @@
  *     character).
  *   - Champion sect không tồn tại / MVP character không tồn tại → reward
  *     skip an toàn (counts = 0, không throw).
- *   - Member rời sect SAU snapshot nhưng TRƯỚC grant → KHÔNG nhận thưởng
- *     champion (snapshot rule = current membership tại grant time).
+ *   - Phase 15.8: Member rời sect SAU snapshot nhưng TRƯỚC grant → VẪN
+ *     nhận thưởng champion (membership snapshot rule = audit-perfect
+ *     freeze tại finalize time, KHÔNG dùng current membership).
+ *   - Phase 15.8: champion membership snapshot tạo idempotent — gọi
+ *     snapshotSeason 2 lần cùng seasonKey KHÔNG duplicate row.
+ *   - Phase 15.8: legacy season pre-15.8 (snapshot row không tồn tại) →
+ *     fallback current membership + log warning.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -365,8 +370,8 @@ describe('SectSeasonRewardService.grantSeasonRewards — error paths', () => {
   });
 });
 
-describe('SectSeasonRewardService.grantSeasonRewards — membership snapshot rule', () => {
-  it('member rời sect SAU snapshot, TRƯỚC grant → KHÔNG nhận champion reward', async () => {
+describe('SectSeasonRewardService.grantSeasonRewards — Phase 15.8 membership snapshot rule', () => {
+  it('member rời sect SAU snapshot, TRƯỚC grant → VẪN nhận champion reward (audit-perfect)', async () => {
     const sect = await makeSect();
     const stayer = await makeUserChar(prisma, { sectId: sect.id });
     const leaver = await makeUserChar(prisma, { sectId: sect.id });
@@ -385,35 +390,153 @@ describe('SectSeasonRewardService.grantSeasonRewards — membership snapshot rul
     });
 
     const r = await reward.grantSeasonRewards('season_2026_s1', {});
-    expect(r.championMailsCreated).toBe(1); // chỉ stayer
-    expect(r.championMemberCount).toBe(1);
+    // Phase 15.8 — cả 2 nhận champion theo snapshot.
+    expect(r.championMailsCreated).toBe(2);
+    expect(r.championMemberCount).toBe(2);
+    expect(r.championUsedSnapshot).toBe(true);
 
-    const stayerMails = await prisma.mail.findMany({
-      where: { recipientId: stayer.characterId },
+    // Stayer = champion (+ có thể MVP).
+    const stayerGrant = await prisma.sectSeasonRewardGrant.findFirst({
+      where: {
+        seasonKey: 'season_2026_s1',
+        rewardType: 'CHAMPION',
+        characterId: stayer.characterId,
+      },
     });
-    const leaverMails = await prisma.mail.findMany({
-      where: { recipientId: leaver.characterId },
-    });
-    // Stayer = champion (1) + có thể MVP nếu là top.
-    expect(stayerMails.length).toBeGreaterThanOrEqual(1);
-    // Leaver: chỉ MVP nếu là MVP, KHÔNG champion.
-    const leaverChampGrant = await prisma.sectSeasonRewardGrant.findFirst({
+    expect(stayerGrant).not.toBeNull();
+    // Leaver = vẫn nhận champion vì snapshot capture lúc finalize.
+    const leaverGrant = await prisma.sectSeasonRewardGrant.findFirst({
       where: {
         seasonKey: 'season_2026_s1',
         rewardType: 'CHAMPION',
         characterId: leaver.characterId,
       },
     });
-    expect(leaverChampGrant).toBeNull();
-    // Leaver vẫn có thể nhận MVP nếu snapshot ghi mvpCharacterId = leaver.
-    // (snapshot tạo trước khi leave → MVP đi tới leaver theo snapshot).
-    if (leaverMails.length > 0) {
-      const grant = await prisma.sectSeasonRewardGrant.findFirst({
-        where: { characterId: leaver.characterId, rewardType: 'MVP' },
-      });
-      expect(grant).not.toBeNull();
-    }
+    expect(leaverGrant).not.toBeNull();
   });
+
+  it('champion membership snapshot tạo idempotent — gọi snapshotSeason 2 lần KHÔNG duplicate row', async () => {
+    const sect = await makeSect();
+    const m1 = await makeUserChar(prisma, { sectId: sect.id });
+    await snapshotS1({
+      championSect: sect,
+      championMembers: [{ characterId: m1.characterId, points: 500 }],
+    });
+    // Call snapshot again — should be no-op for champion membership.
+    await history.snapshotSeason('season_2026_s1', { now: AFTER_S1 });
+
+    const rows = await prisma.sectSeasonChampionSnapshot.findMany({
+      where: { seasonKey: 'season_2026_s1' },
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].sectId).toBe(sect.id);
+    expect(rows[0].rank).toBe(1);
+    expect(rows[0].memberCount).toBe(1);
+  });
+
+  it('reward retry KHÔNG duplicate mail dù dùng snapshot', async () => {
+    const sect = await makeSect();
+    const m1 = await makeUserChar(prisma, { sectId: sect.id });
+    await snapshotS1({
+      championSect: sect,
+      championMembers: [{ characterId: m1.characterId, points: 500 }],
+    });
+    await reward.grantSeasonRewards('season_2026_s1', {});
+    const r2 = await reward.grantSeasonRewards('season_2026_s1', {});
+    expect(r2.championMailsCreated).toBe(0);
+    expect(r2.championAlreadyGranted).toBe(1);
+    expect(r2.championUsedSnapshot).toBe(true);
+
+    const champMails = await prisma.mail.findMany({
+      where: {
+        recipientId: m1.characterId,
+        subject: SECT_SEASON_CHAMPION_REWARD.subjectVi,
+      },
+    });
+    expect(champMails).toHaveLength(1);
+  });
+
+  it('legacy season pre-15.8: snapshot row missing → fallback current membership + championUsedSnapshot=false', async () => {
+    const sect = await makeSect();
+    const m1 = await makeUserChar(prisma, { sectId: sect.id });
+    await snapshotS1({
+      championSect: sect,
+      championMembers: [{ characterId: m1.characterId, points: 500 }],
+    });
+    // Simulate legacy state: drop champion membership snapshot row.
+    await prisma.sectSeasonChampionSnapshot.deleteMany({
+      where: { seasonKey: 'season_2026_s1' },
+    });
+
+    const r = await reward.grantSeasonRewards('season_2026_s1', {});
+    expect(r.championUsedSnapshot).toBe(false);
+    expect(r.championMailsCreated).toBe(1);
+    expect(r.championMemberCount).toBe(1);
+  });
+
+  it('legacy fallback: member rời sect SAU snapshot → KHÔNG nhận champion (current membership behavior)', async () => {
+    const sect = await makeSect();
+    const stayer = await makeUserChar(prisma, { sectId: sect.id });
+    const leaver = await makeUserChar(prisma, { sectId: sect.id });
+    await snapshotS1({
+      championSect: sect,
+      championMembers: [
+        { characterId: stayer.characterId, points: 500 },
+        { characterId: leaver.characterId, points: 200 },
+      ],
+    });
+    // Legacy: drop snapshot row + leaver rời sect.
+    await prisma.sectSeasonChampionSnapshot.deleteMany({
+      where: { seasonKey: 'season_2026_s1' },
+    });
+    await prisma.character.update({
+      where: { id: leaver.characterId },
+      data: { sectId: null },
+    });
+
+    const r = await reward.grantSeasonRewards('season_2026_s1', {});
+    expect(r.championUsedSnapshot).toBe(false);
+    // Fallback dùng current membership → chỉ stayer.
+    expect(r.championMailsCreated).toBe(1);
+    expect(r.championMemberCount).toBe(1);
+    const leaverGrant = await prisma.sectSeasonRewardGrant.findFirst({
+      where: {
+        seasonKey: 'season_2026_s1',
+        rewardType: 'CHAMPION',
+        characterId: leaver.characterId,
+      },
+    });
+    expect(leaverGrant).toBeNull();
+  });
+
+  it('snapshot deterministic order characterId ASC + cap respected', async () => {
+    const sect = await makeSect();
+    const cap = SECT_SEASON_CHAMPION_MEMBER_CAP;
+    const total = cap + 2;
+    const ids: string[] = [];
+    for (let i = 0; i < total; i++) {
+      const m = await makeUserChar(prisma, { sectId: sect.id });
+      ids.push(m.characterId);
+    }
+    await snapshotS1({
+      championSect: sect,
+      championMembers: [{ characterId: ids[0], points: 1 }],
+    });
+
+    const snap = await prisma.sectSeasonChampionSnapshot.findFirst({
+      where: { seasonKey: 'season_2026_s1' },
+    });
+    expect(snap).not.toBeNull();
+    expect(snap!.memberCount).toBe(cap);
+    const stored = snap!.memberCharacterIdsJson as string[];
+    expect(stored).toHaveLength(cap);
+    // Deterministic order ASC.
+    const sorted = [...stored].sort();
+    expect(stored).toEqual(sorted);
+    // Cap respected — chỉ giữ cap đầu tiên (sorted ASC).
+    const expected = [...ids].sort().slice(0, cap);
+    expect(stored).toEqual(expected);
+  }, 30000);
 });
 
 describe('SectSeasonRewardService.grantSeasonRewards — champion member cap', () => {

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
+  SECT_SEASON_CHAMPION_MEMBER_CAP,
   SECT_SEASON_TOP_MEMBERS,
   sectSeasonByKey,
   sectSeasonWeekKeys,
@@ -127,9 +128,24 @@ export class SectSeasonHistoryService {
 
     // Insert tx — UNIQUE seasonKey enforce no double snapshot. Nếu race
     // mất (P2002) → lose, return snapshot do leader đã tạo.
+    // Phase 15.8 — Champion membership snapshot (read OUTSIDE tx để
+    // tránh long-running query trong write tx). Snapshot lấy member
+    // ID của champion sect tại finalize time, deterministic order
+    // `characterId ASC`, cap {@link SECT_SEASON_CHAMPION_MEMBER_CAP}.
+    const champion = aggregated.sects[0] ?? null;
+    const championMemberIds: string[] = champion
+      ? (
+          await this.prisma.character.findMany({
+            where: { sectId: champion.sectId },
+            select: { id: true },
+            orderBy: { id: 'asc' },
+            take: SECT_SEASON_CHAMPION_MEMBER_CAP,
+          })
+        ).map((c) => c.id)
+      : [];
+
     try {
       await this.prisma.$transaction(async (tx) => {
-        const champion = aggregated.sects[0] ?? null;
         const mvp = aggregated.topMembers[0] ?? null;
         await tx.sectSeasonSnapshot.create({
           data: {
@@ -172,6 +188,21 @@ export class SectSeasonHistoryService {
               rank: m.rank,
               points: m.points,
             })),
+          });
+        }
+        if (champion) {
+          // Phase 15.8 — ghi champion membership snapshot. Idempotent
+          // qua UNIQUE `(seasonKey, sectId, rank)` + try/catch P2002
+          // ngoài tx (cron retry không duplicate row).
+          await tx.sectSeasonChampionSnapshot.create({
+            data: {
+              seasonKey,
+              sectId: champion.sectId,
+              rank: 1,
+              memberCharacterIdsJson:
+                championMemberIds as unknown as Prisma.InputJsonValue,
+              memberCount: championMemberIds.length,
+            },
           });
         }
       });
