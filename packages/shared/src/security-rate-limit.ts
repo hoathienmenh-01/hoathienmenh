@@ -47,6 +47,13 @@ export const RATE_LIMIT_POLICY_KEYS = [
   // ---- Admin ----
   'ADMIN_MUTATION',
   'ADMIN_REPORT_VIEW',
+  // ---- Social (Phase 19.1.B) ----
+  'SOCIAL_FRIEND_REQUEST',
+  'SOCIAL_BLOCK_TOGGLE',
+  'CHAT_PRIVATE_SEND',
+  'CHAT_GROUP_SEND',
+  'CHAT_GROUP_CREATE',
+  'CHAT_GROUP_MEMBER_ADD',
   // ---- Fallback ----
   'PUBLIC_READ',
   'DEFAULT_API',
@@ -271,6 +278,87 @@ export const RATE_LIMIT_POLICIES: Readonly<
     descriptionVi: 'Giới hạn xem báo cáo admin — chỉ throttle, không block.',
     descriptionEn: 'Admin report view limit — throttle only, no block.',
   },
+  // ---- Social (Phase 19.1.B) ----
+  // Chống spam friend request: 10 lời mời / phút / tài khoản. Vượt →
+  // block 5 phút. Đủ cho legit user (1-2 request/giây) nhưng chặn
+  // script gửi hàng loạt.
+  SOCIAL_FRIEND_REQUEST: {
+    key: 'SOCIAL_FRIEND_REQUEST',
+    windowSec: 60,
+    maxRequests: 10,
+    blockSec: 5 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn gửi lời mời kết bạn theo tài khoản, chống spam friend request.',
+    descriptionEn: 'Friend request send limit per account, anti friend request spam.',
+  },
+  // Chống block/unblock toggle storm: 30 toggle / 10 phút / tài khoản.
+  // Vượt → block 10 phút (UX-friendly: legit user hiếm khi cần >30
+  // toggle trong 10 phút).
+  SOCIAL_BLOCK_TOGGLE: {
+    key: 'SOCIAL_BLOCK_TOGGLE',
+    windowSec: 10 * 60,
+    maxRequests: 30,
+    blockSec: 10 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn block/unblock toggle theo tài khoản, chống abuse block storm.',
+    descriptionEn: 'Block/unblock toggle limit per account, anti block storm abuse.',
+  },
+  // Chống flood private chat: 30 msg / phút / tài khoản. Vượt → block
+  // 5 phút. Phù hợp với UX gõ ~2 msg/giây tối đa.
+  CHAT_PRIVATE_SEND: {
+    key: 'CHAT_PRIVATE_SEND',
+    windowSec: 60,
+    maxRequests: 30,
+    blockSec: 5 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn gửi tin nhắn riêng theo tài khoản, chống flood chat.',
+    descriptionEn: 'Private chat send limit per account, anti chat flood.',
+  },
+  // Chống flood group chat: 30 msg / phút / tài khoản. Cùng baseline
+  // với private (fanout cost cao hơn nhưng client cap cùng số).
+  CHAT_GROUP_SEND: {
+    key: 'CHAT_GROUP_SEND',
+    windowSec: 60,
+    maxRequests: 30,
+    blockSec: 5 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn gửi tin nhắn nhóm theo tài khoản, chống flood group chat.',
+    descriptionEn: 'Group chat send limit per account, anti group chat flood.',
+  },
+  // Chống mass create group: 10 group / giờ / tài khoản. Legit user
+  // hiếm khi tạo >10 group/giờ.
+  CHAT_GROUP_CREATE: {
+    key: 'CHAT_GROUP_CREATE',
+    windowSec: 60 * 60,
+    maxRequests: 10,
+    blockSec: 30 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn tạo nhóm chat theo tài khoản, chống mass-create group.',
+    descriptionEn: 'Group chat creation limit per account, anti mass-create group.',
+  },
+  // Chống auto-add hàng loạt: 30 thêm thành viên / 10 phút / tài khoản
+  // (owner only). GROUP_MEMBER_MAX=30 nên user thường chỉ cần ~30 lần.
+  CHAT_GROUP_MEMBER_ADD: {
+    key: 'CHAT_GROUP_MEMBER_ADD',
+    windowSec: 10 * 60,
+    maxRequests: 30,
+    blockSec: 10 * 60,
+    scope: 'USER',
+    severity: 'MEDIUM',
+    sensitive: true,
+    descriptionVi: 'Giới hạn add thành viên nhóm theo tài khoản, chống mass-add.',
+    descriptionEn: 'Group member add limit per account, anti mass-add abuse.',
+  },
   // ---- Fallback ----
   PUBLIC_READ: {
     key: 'PUBLIC_READ',
@@ -457,7 +545,12 @@ export function buildAbuseBlockKey(
  * Bucket label cho UI hiển thị. Không phải severity — đây là phân loại
  * theo nhóm chức năng.
  */
-export type RateLimitPolicyGroup = 'AUTH' | 'ECONOMY' | 'ADMIN' | 'PUBLIC';
+export type RateLimitPolicyGroup =
+  | 'AUTH'
+  | 'ECONOMY'
+  | 'ADMIN'
+  | 'PUBLIC'
+  | 'SOCIAL';
 
 export function getRateLimitPolicyGroup(
   key: RateLimitPolicyKey,
@@ -465,5 +558,6 @@ export function getRateLimitPolicyGroup(
   if (key.startsWith('AUTH_')) return 'AUTH';
   if (key.startsWith('ADMIN_')) return 'ADMIN';
   if (key === 'PUBLIC_READ' || key === 'DEFAULT_API') return 'PUBLIC';
+  if (key.startsWith('SOCIAL_') || key.startsWith('CHAT_')) return 'SOCIAL';
   return 'ECONOMY';
 }
