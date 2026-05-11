@@ -50,6 +50,7 @@ import AdminLiveOpsDryRunPanel from '@/components/AdminLiveOpsDryRunPanel.vue';
 import AdminLiveOpsEventsPanel from '@/components/AdminLiveOpsEventsPanel.vue';
 import AdminLiveOpsAnnouncementsPanel from '@/components/AdminLiveOpsAnnouncementsPanel.vue';
 import AdminEconomySafetyPanel from '@/components/AdminEconomySafetyPanel.vue';
+import AdminEconomyRangeReportPanel from '@/components/AdminEconomyRangeReportPanel.vue';
 import AdminArenaAntiWintradePanel from '@/components/AdminArenaAntiWintradePanel.vue';
 import AdminFeatureFlagsPanel from '@/components/AdminFeatureFlagsPanel.vue';
 import AdminMaintenancePanel from '@/components/AdminMaintenancePanel.vue';
@@ -1693,6 +1694,7 @@ const isAdmin = () => game.character?.role === 'ADMIN';
         data-testid="admin-economy-safety-section"
       >
         <AdminEconomySafetyPanel />
+        <AdminEconomyRangeReportPanel />
       </section>
 
       <section

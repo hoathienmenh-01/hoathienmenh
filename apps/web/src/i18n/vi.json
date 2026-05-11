@@ -1396,6 +1396,58 @@
       "empty": "Chưa có dữ liệu.",
       "generatedAt": "Tạo lúc"
     },
+    "economyRangeReport": {
+      "title": "Báo cáo kinh tế theo khoảng ngày",
+      "subtitle": "In/out linh thạch theo source, top 10 character delta, market volume, shop spend, reward totals trong cửa sổ thời gian (tối đa 31 ngày).",
+      "from": "Từ ngày",
+      "to": "Đến ngày",
+      "load": "Tải báo cáo",
+      "loading": "Đang tải…",
+      "totalIn": "Tổng in",
+      "totalOut": "Tổng out",
+      "totalNet": "Net",
+      "openAnomalies": "Anomaly mở",
+      "latestRun": "Ledger check gần nhất",
+      "noLatestRun": "Chưa có lần check nào.",
+      "marketVolume": "Market volume",
+      "shopSpend": "Shop spend",
+      "sectShopSpend": "Sect shop spend",
+      "reforgeEnchantSpend": "Reforge / enchant",
+      "adminGrantTotal": "Admin grant",
+      "liveOpsRewardTotal": "LiveOps reward",
+      "dailyLoginRewardTotal": "Daily login",
+      "dungeonRewardTotal": "Dungeon reward",
+      "bossRewardTotal": "Boss reward",
+      "sectSeasonRewardTotal": "Sect season",
+      "bySourceTitle": "Phân loại theo source",
+      "bySourceEmpty": "Không có currency flow trong cửa sổ này.",
+      "topDeltaTitle": "Top 10 character delta (linh thạch)",
+      "topDeltaEmpty": "Không có character nào có net delta khác 0.",
+      "emptyInitial": "Chọn ngày và bấm \"Tải báo cáo\" để xem dữ liệu.",
+      "emptyData": "Không có currency flow trong cửa sổ {from} → {to}.",
+      "generatedAt": "Tạo lúc {generatedAt} · Cửa sổ {from} → {to} ({days} ngày)",
+      "runCheck": {
+        "label": "Chạy ledger check ngay",
+        "running": "Đang chạy…",
+        "confirm": "Chạy ledger check ngay? Job idempotent theo dayBucket — chạy lại trong ngày không tạo duplicate issue.",
+        "done": "Ledger check xong: {status}, {issues} issues.",
+        "alreadyDone": "Ngày này đã được check rồi (alreadyDone, không tạo issue mới).",
+        "failed": "Ledger check thất bại: {code}."
+      },
+      "col": {
+        "source": "Source",
+        "in": "In",
+        "out": "Out",
+        "net": "Net",
+        "entries": "Entries",
+        "rank": "#",
+        "character": "Nhân vật",
+        "email": "Email"
+      },
+      "error": {
+        "load": "Không tải được báo cáo: {code}"
+      }
+    },
     "recentActivity": {
       "title": "Hoạt động admin gần nhất",
       "subtitle": "5 thao tác admin/MOD gần nhất từ audit log — tiện theo dõi live khi nhiều admin cùng làm.",
