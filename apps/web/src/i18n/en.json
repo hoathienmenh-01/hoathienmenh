@@ -4435,6 +4435,8 @@
       "NOT_AUTHORIZED": "You don't have permission.",
       "INVALID_TRANSITION": "Request already handled.",
       "INVALID_INPUT": "Invalid input.",
+      "RATE_LIMITED": "Too fast — please slow down and try again.",
+      "ABUSE_BLOCKED": "Social action temporarily blocked due to abuse. Try again in a few minutes.",
       "UNKNOWN": "Something went wrong — please retry."
     }
   },
@@ -4457,6 +4459,8 @@
       "SELF_NOT_ALLOWED": "Cannot message yourself.",
       "INVALID_INPUT": "Invalid message (empty or too long).",
       "NOT_AUTHORIZED": "You are not in this thread.",
+      "RATE_LIMITED": "Messaging too fast — slow down a few seconds.",
+      "ABUSE_BLOCKED": "Private chat send temporarily blocked due to flooding. Try again in a few minutes.",
       "UNKNOWN": "Something went wrong — please retry."
     }
   },
@@ -4493,6 +4497,8 @@
       "DUPLICATE_MEMBER": "Already a member.",
       "GROUP_FULL": "Group is at member cap.",
       "INVALID_INPUT": "Invalid input.",
+      "RATE_LIMITED": "Group action too fast — slow down a few seconds.",
+      "ABUSE_BLOCKED": "Group action temporarily blocked due to abuse. Try again in a few minutes.",
       "UNKNOWN": "Something went wrong — please retry."
     }
   }

@@ -12,6 +12,45 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Phase 19.1.B — Social Rate Limit & Abuse Guard (this PR — #529)
+
+**Scope**: Gắn `@RateLimitPolicy()` (Phase 18.1 infra) lên các endpoint social/chat mutation của Phase 19.1 + thêm 6 policy mới vào shared catalog + i18n FE friendly cho `RATE_LIMITED` / `ABUSE_BLOCKED`. **KHÔNG** sửa service logic, **KHÔNG** auto-ban, **KHÔNG** xoá message cũ, **KHÔNG** modify WORLD/SECT chat (route riêng). Reuse `SecurityAbuseService` để ghi `SecurityEvent` + fail2ban-style block khi vượt ngưỡng. Low-risk, additive — rollback = revert PR, endpoint quay về behavior cũ (chỉ business-logic check).
+
+#### Added — Phase 19.1.B
+
+- **Shared catalog `packages/shared/src/security-rate-limit.ts`**: 6 policy key mới (group `SOCIAL`, tất cả `scope='USER'`, `sensitive=true`, severity `MEDIUM`, auto-derived vào `SENSITIVE_RATE_LIMIT_POLICIES`):
+  - `SOCIAL_FRIEND_REQUEST` — 10 / 60s, block 5 min.
+  - `SOCIAL_BLOCK_TOGGLE` — 30 / 10 min, block 10 min.
+  - `CHAT_PRIVATE_SEND` — 30 / 60s, block 5 min.
+  - `CHAT_GROUP_SEND` — 30 / 60s, block 5 min.
+  - `CHAT_GROUP_CREATE` — 10 / 60 min, block 30 min.
+  - `CHAT_GROUP_MEMBER_ADD` — 30 / 10 min, block 10 min.
+  - `getRateLimitPolicyGroup()` thêm group `SOCIAL` cho keys `SOCIAL_*` / `CHAT_*`.
+- **Backend decorator**: gắn `@RateLimitPolicy(...)` lên 7 endpoint mutation:
+  - `SocialController`: `POST /social/friend-requests` → `SOCIAL_FRIEND_REQUEST`; `POST /social/block` + `DELETE /social/block/:userId` → `SOCIAL_BLOCK_TOGGLE`.
+  - `ChatPrivateController`: `POST /chat/private/threads/:threadId/messages` → `CHAT_PRIVATE_SEND`.
+  - `ChatGroupController`: `POST /chat/groups` → `CHAT_GROUP_CREATE`; `POST /chat/groups/:groupId/members` → `CHAT_GROUP_MEMBER_ADD`; `POST /chat/groups/:groupId/messages` → `CHAT_GROUP_SEND`.
+  - Read-only GET + state-machine endpoint (`accept` / `decline` / `cancel` friend request + `removeFriend` + `removeMember` + `openThread` + `listThreads/Messages/Groups/Members`) **KHÔNG** gắn policy — fall through `DEFAULT_API` (120/60s IP_USER). Lý do: low spam-risk + đã có business-logic guard (pending-state machine).
+- **FE i18n**: thêm key `RATE_LIMITED` + `ABUSE_BLOCKED` vào `social.errors`, `chatPrivate.errors`, `chatGroup.errors` cho cả `vi.json` và `en.json` (`apps/web/src/i18n/{vi,en}.json`). Các panel `SocialPanel.vue` / `PrivateChatPanel.vue` / `GroupChatPanel.vue` đã có sẵn pattern `tShortError(code)` → fallback `UNKNOWN` nếu key thiếu — Phase 19.1.B chỉ thêm key, không cần sửa component logic. Toast FE thân thiện không auto-retry.
+- **Tests**:
+  - `packages/shared/src/security-rate-limit.test.ts` +5 test mới (catalog/group parity 26/26 pass tổng cộng).
+  - `apps/api/src/modules/social/social.rate-limit.test.ts` (5 test) + `apps/api/src/modules/chat-private/chat-private.rate-limit.test.ts` (2 test) + `apps/api/src/modules/chat-group/chat-group.rate-limit.test.ts` (4 test): pure-unit đọc `@RateLimitPolicy()` metadata qua `Reflector` (KHÔNG cần spin Nest test module). Tổng 11/11 pass.
+  - `apps/web/src/i18n/__tests__/social-rate-limit.test.ts` (24 test): assert mỗi `(social|chatPrivate|chatGroup).errors.{RATE_LIMITED,ABUSE_BLOCKED}` ở vi.json + en.json là chuỗi non-empty **khác** `UNKNOWN` (verify toast cụ thể, không fall through).
+
+#### Changed — Phase 19.1.B
+
+- `docs/SECURITY.md` §12.1 mở rộng catalog table thêm 6 policy social/chat; §19 Rate-limit section flip từ "follow-up" sang "Phase 19.1.B closed" + invariants.
+- `docs/API.md` thêm cột **Rate** vào 3 controller table `SocialController` / `ChatPrivateController` / `ChatGroupController` (link policy key + window).
+- `docs/RUNBOOK.md` §2.35 thêm flow xử lý chat flood + cập nhật bullet Phase 19.1.B baseline cho spam friend request.
+
+#### Not in scope (Phase 19.1.B)
+
+- KHÔNG đổi service logic SocialService / ChatPrivateService / ChatGroupService.
+- KHÔNG đổi `RateLimitService` / `RateLimitGuard` / `SecurityAbuseService` (Phase 18.1 infra giữ nguyên).
+- KHÔNG modify WORLD/SECT chat (`/chat/send`, `/chat/world` — đã có Redis rate-limit riêng từ trước).
+- KHÔNG admin moderation UI (Phase 19.2 sẽ làm: delete message, dissolve group, transfer ownership).
+- KHÔNG voice/media upload.
+
 ### Phase 19.1 — Social System Foundation (this PR — #528)
 
 **Scope**: Foundation cho hệ thống xã hội của game: kết bạn (gửi/chấp nhận/từ chối/huỷ lời mời, xoá bạn), chặn người chơi, chat riêng 1-1, chat nhóm cơ bản. **KHÔNG** thay đổi behavior của WORLD/SECT chat hiện có. **KHÔNG** voice / media upload / matchmaking / trading. **KHÔNG** full admin moderation UI ở PR này (xem follow-up).

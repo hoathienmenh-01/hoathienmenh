@@ -4435,6 +4435,8 @@
       "NOT_AUTHORIZED": "Bạn không có quyền thao tác mục này.",
       "INVALID_TRANSITION": "Lời mời đã được xử lý trước đó.",
       "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "RATE_LIMITED": "Đạo hữu thao tác quá nhanh — vui lòng nghỉ tay rồi thử lại.",
+      "ABUSE_BLOCKED": "Tạm khoá thao tác xã giao do hành vi bất thường. Thử lại sau vài phút.",
       "UNKNOWN": "Có lỗi xảy ra — thử lại."
     }
   },
@@ -4457,6 +4459,8 @@
       "SELF_NOT_ALLOWED": "Không thể tự nhắn cho chính mình.",
       "INVALID_INPUT": "Tin nhắn không hợp lệ (trống hoặc quá dài).",
       "NOT_AUTHORIZED": "Bạn không thuộc cuộc trò chuyện này.",
+      "RATE_LIMITED": "Nhắn quá nhanh đạo hữu — chậm lại vài giây.",
+      "ABUSE_BLOCKED": "Tạm khoá gửi tin riêng do gửi quá nhiều. Thử lại sau vài phút.",
       "UNKNOWN": "Có lỗi xảy ra — thử lại."
     }
   },
@@ -4493,6 +4497,8 @@
       "DUPLICATE_MEMBER": "Đã là thành viên nhóm.",
       "GROUP_FULL": "Nhóm đã đủ thành viên tối đa.",
       "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "RATE_LIMITED": "Thao tác nhóm quá nhanh — chậm lại vài giây.",
+      "ABUSE_BLOCKED": "Tạm khoá thao tác nhóm do hành vi bất thường. Thử lại sau vài phút.",
       "UNKNOWN": "Có lỗi xảy ra — thử lại."
     }
   }

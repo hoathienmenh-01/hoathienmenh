@@ -21,6 +21,7 @@ import type {
   PlayerBlockRow,
 } from '@xuantoi/shared';
 import { AuthService } from '../auth/auth.service';
+import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 import { SocialError, SocialService } from './social.service';
 
 const ACCESS_COOKIE = 'xt_access';
@@ -65,12 +66,18 @@ function statusFor(code: SocialError['code']): number {
  * Phase 19.1 — Social System Foundation public REST surface.
  *
  * All endpoints require PLAYER session (cookie `xt_access`). RBAC by
- * auth-only — không gắn RateLimitPolicy decorator phase 18.1 cho phase
- * này (rate-limit chat foundation sẽ làm follow-up nếu cần). Block 2
- * chiều + invariants xử lý ở service layer.
+ * auth-only.
+ *
+ * Phase 19.1.B — mutation endpoint gắn `@RateLimitPolicy()`:
+ *   - `POST /social/friend-requests` → `SOCIAL_FRIEND_REQUEST` (10/min user).
+ *   - `POST /social/block` + `DELETE /social/block/:userId` → `SOCIAL_BLOCK_TOGGLE`
+ *     (30 / 10 min user).
+ * GET list endpoint KHÔNG gắn (fall through default API).
  *
  * Response shape: `{ ok: true, data }` cho success, `{ ok: false,
  * error: { code, message } }` cho lỗi (matches existing controllers).
+ * Khi rate-limit hit, `RateLimitGuard` ném 429 với
+ * `code='RATE_LIMITED'` hoặc `code='ABUSE_BLOCKED'` (FE xử lý riêng).
  */
 @Controller('social')
 export class SocialController {
@@ -116,6 +123,7 @@ export class SocialController {
 
   @Post('friend-requests')
   @HttpCode(200)
+  @RateLimitPolicy('SOCIAL_FRIEND_REQUEST')
   async sendFriendRequest(
     @Req() req: Request,
     @Body() body: unknown,
@@ -213,6 +221,7 @@ export class SocialController {
 
   @Post('block')
   @HttpCode(200)
+  @RateLimitPolicy('SOCIAL_BLOCK_TOGGLE')
   async block(
     @Req() req: Request,
     @Body() body: unknown,
@@ -233,6 +242,7 @@ export class SocialController {
 
   @Delete('block/:userId')
   @HttpCode(200)
+  @RateLimitPolicy('SOCIAL_BLOCK_TOGGLE')
   async unblock(
     @Req() req: Request,
     @Param('userId') targetId: string,

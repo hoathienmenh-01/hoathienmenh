@@ -2299,7 +2299,14 @@ curl -X POST https://api/api/admin/market/abuse/scan \
     WHERE "senderUserId" = '<spammer_user_id>' AND status = 'PENDING';
    ```
 3. Add audit row qua `AdminAudit` (entry tay) với reason.
-4. **Follow-up**: Khi Phase 19.1.B merge, baseline rate-limit `SOCIAL_FRIEND_REQUEST` (10 req/1min/user) sẽ chặn trước.
+4. **Phase 19.1.B baseline**: `SOCIAL_FRIEND_REQUEST` (10 req / 60s / user, block 5p khi vượt threshold) đã gắn ở `POST /social/friend-requests`. Spam burst > 10/60s sẽ tự động nhận 429 `RATE_LIMITED`; vượt tiếp → abuse threshold (Phase 18.1 MEDIUM 10/15p) → `ABUSE_BLOCKED` 5p. Operator kiểm tra `SecurityEvent` (`type='RATE_LIMIT_TRIGGERED'` hoặc `'SUBJECT_BLOCKED'` filter theo `userId`) hoặc vào tab Bảo Mật (Phase 18.1) để lift block sớm nếu legit.
+5. Đối với vụ spam **từ nhiều account** (alt-account funnel): kết hợp query SQL ở bước 1 với `SecurityEvent.ipHash` Phase 18.1 để tìm cụm IP. Rate-limit `SOCIAL_FRIEND_REQUEST` scope `USER` nên alt-account vẫn có thể bật lại — cluster thủ công + kiến nghị Phase 19.2 siết theo IP_USER khi traffic public real.
+
+**Cách xử lý chat flood / message flood**:
+
+- Phase 19.1.B đã gắn `CHAT_PRIVATE_SEND` (30 msg/60s/user) + `CHAT_GROUP_SEND` (30 msg/60s/user) + `CHAT_GROUP_CREATE` (10 group/60min/user) + `CHAT_GROUP_MEMBER_ADD` (30 invite/10p/user). Sender vượt → nhận 429 `RATE_LIMITED` tự động; vượt lâu → `ABUSE_BLOCKED` 5p (CHAT_*_SEND) / 10p (MEMBER_ADD) / 30p (CHAT_GROUP_CREATE).
+- Player nhận flood KHÔNG bị mất message cũ (block chỉ chặn send tương lai). Nếu cần moderation, follow flow "private message offensive" bên dưới (mask body, KHÔNG xoá row).
+- Nếu cần lift block sớm cho user oan (FE toast hiển thị `social.errors.ABUSE_BLOCKED`/`chatPrivate.errors.ABUSE_BLOCKED`/`chatGroup.errors.ABUSE_BLOCKED`): vào tab Bảo Mật (Phase 18.1) → Blocks → filter `subjectHash=hash(userId)` → lift. Audit sẽ ghi `ADMIN_SECURITY_BLOCK_LIFT`.
 
 **Cách xử lý private message offensive**:
 1. Query message:

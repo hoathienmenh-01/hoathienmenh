@@ -104,6 +104,15 @@ describe('Phase 18.1 — security rate-limit policy catalog', () => {
     expect(SENSITIVE_RATE_LIMIT_POLICIES).toContain('ADMIN_MUTATION');
   });
 
+  it('Phase 19.1.B — SENSITIVE bao gồm mọi social/chat mutation', () => {
+    expect(SENSITIVE_RATE_LIMIT_POLICIES).toContain('SOCIAL_FRIEND_REQUEST');
+    expect(SENSITIVE_RATE_LIMIT_POLICIES).toContain('SOCIAL_BLOCK_TOGGLE');
+    expect(SENSITIVE_RATE_LIMIT_POLICIES).toContain('CHAT_PRIVATE_SEND');
+    expect(SENSITIVE_RATE_LIMIT_POLICIES).toContain('CHAT_GROUP_SEND');
+    expect(SENSITIVE_RATE_LIMIT_POLICIES).toContain('CHAT_GROUP_CREATE');
+    expect(SENSITIVE_RATE_LIMIT_POLICIES).toContain('CHAT_GROUP_MEMBER_ADD');
+  });
+
   it('SENSITIVE_RATE_LIMIT_POLICIES không bao gồm public read/default/admin report view', () => {
     expect(SENSITIVE_RATE_LIMIT_POLICIES).not.toContain('PUBLIC_READ');
     expect(SENSITIVE_RATE_LIMIT_POLICIES).not.toContain('DEFAULT_API');
@@ -193,6 +202,12 @@ describe('Phase 18.1 — security rate-limit policy catalog', () => {
     expect(getRateLimitPolicyGroup('ADMIN_REPORT_VIEW')).toBe('ADMIN');
     expect(getRateLimitPolicyGroup('PUBLIC_READ')).toBe('PUBLIC');
     expect(getRateLimitPolicyGroup('DEFAULT_API')).toBe('PUBLIC');
+    expect(getRateLimitPolicyGroup('SOCIAL_FRIEND_REQUEST')).toBe('SOCIAL');
+    expect(getRateLimitPolicyGroup('SOCIAL_BLOCK_TOGGLE')).toBe('SOCIAL');
+    expect(getRateLimitPolicyGroup('CHAT_PRIVATE_SEND')).toBe('SOCIAL');
+    expect(getRateLimitPolicyGroup('CHAT_GROUP_SEND')).toBe('SOCIAL');
+    expect(getRateLimitPolicyGroup('CHAT_GROUP_CREATE')).toBe('SOCIAL');
+    expect(getRateLimitPolicyGroup('CHAT_GROUP_MEMBER_ADD')).toBe('SOCIAL');
   });
 
   it('tham số lock-in: blockSec không vượt 24h, windowSec hợp lý', () => {
@@ -213,5 +228,45 @@ describe('Phase 18.1 — security rate-limit policy catalog', () => {
       expect(p.descriptionVi.length).toBeGreaterThan(10);
       expect(p.descriptionEn.length).toBeGreaterThan(10);
     }
+  });
+
+  it('Phase 19.1.B — SOCIAL_FRIEND_REQUEST tham số lock-in (10/min user, block 5 min)', () => {
+    const p = RATE_LIMIT_POLICIES.SOCIAL_FRIEND_REQUEST;
+    expect(p.windowSec).toBe(60);
+    expect(p.maxRequests).toBe(10);
+    expect(p.blockSec).toBe(5 * 60);
+    expect(p.scope).toBe('USER');
+    expect(p.severity).toBe('MEDIUM');
+    expect(p.sensitive).toBe(true);
+  });
+
+  it('Phase 19.1.B — CHAT_PRIVATE_SEND + CHAT_GROUP_SEND cùng baseline (30/min user, block 5 min)', () => {
+    for (const key of ['CHAT_PRIVATE_SEND', 'CHAT_GROUP_SEND'] as const) {
+      const p = RATE_LIMIT_POLICIES[key];
+      expect(p.windowSec).toBe(60);
+      expect(p.maxRequests).toBe(30);
+      expect(p.blockSec).toBe(5 * 60);
+      expect(p.scope).toBe('USER');
+      expect(p.severity).toBe('MEDIUM');
+      expect(p.sensitive).toBe(true);
+    }
+  });
+
+  it('Phase 19.1.B — SOCIAL_BLOCK_TOGGLE + CHAT_GROUP_MEMBER_ADD: 30 / 10 min user', () => {
+    for (const key of ['SOCIAL_BLOCK_TOGGLE', 'CHAT_GROUP_MEMBER_ADD'] as const) {
+      const p = RATE_LIMIT_POLICIES[key];
+      expect(p.windowSec).toBe(10 * 60);
+      expect(p.maxRequests).toBe(30);
+      expect(p.blockSec).toBe(10 * 60);
+      expect(p.scope).toBe('USER');
+    }
+  });
+
+  it('Phase 19.1.B — CHAT_GROUP_CREATE: 10/h user, block 30 min', () => {
+    const p = RATE_LIMIT_POLICIES.CHAT_GROUP_CREATE;
+    expect(p.windowSec).toBe(60 * 60);
+    expect(p.maxRequests).toBe(10);
+    expect(p.blockSec).toBe(30 * 60);
+    expect(p.scope).toBe('USER');
   });
 });
