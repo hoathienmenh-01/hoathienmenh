@@ -2481,6 +2481,140 @@ Phase 19.3 scope = **single-instance**. Mỗi shard giữ in-memory `userSockets
 - KHÔNG sửa `UserPresence.lastSeenAt` manual — server tự upsert qua lifecycle hook. Sửa tay → drift với `RealtimeService.userSockets` in-memory state.
 - KHÔNG bật multi-instance trước khi có Redis presence (deferred Phase 19.3+).
 
+## 2.39. Phase 19.4 — Group / Party System (debug & incident) (P2/P3)
+
+**Khi nào**: Player report (a) không tạo được party / không invite được, (b) party "stuck" sau khi leader bỏ chơi mà không auto-disband, (c) duplicate member sau accept race, (d) inbox đầy invite từ 1 user (spam), (e) invite "biến mất" không accept được (đã expire nhưng FE chưa refresh).
+
+**Trước hết — phân loại**:
+
+- **Membership stuck** (party còn 1 member nhưng `status='ACTIVE'`, hoặc leader vắng mặt dài hạn) → §A.
+- **Spam invite flood** (1 user gửi >20 invite trong vài phút) → §B.
+- **Race accept duplicate** (player report "tôi join 2 lần", hoặc 2 row PartyMember cùng `(partyId, userId)`) → §C.
+- **Invite expired silent fail** (FE thấy invite PENDING nhưng accept trả `INVITE_EXPIRED`) → §D.
+- **Cross-shard inconsistency** (multi-instance deploy) → §E — same caveat như Phase 19.3.
+
+### §A. Membership stuck / orphan leader
+
+Phase 19.4 KHÔNG có admin endpoint disband (out of scope, deferred). Operator phải force qua SQL — **giữ row, KHÔNG DELETE**, chỉ flip status để giữ audit.
+
+1. **Identify orphan party** — leader chưa hoạt động > N ngày, party còn member:
+   ```sql
+   SELECT p.id, p.name, p."leaderUserId", p."createdAt",
+          (SELECT COUNT(*) FROM "PartyMember" m
+             WHERE m."partyId"=p.id AND m."leftAt" IS NULL) AS active_members
+   FROM "Party" p
+   WHERE p.status='ACTIVE'
+     AND p."createdAt" < NOW() - INTERVAL '7 days'
+   ORDER BY p."createdAt" ASC;
+   ```
+2. **Cross-check leader presence** — `SELECT "lastSeenAt" FROM "UserPresence" WHERE "userId"=p."leaderUserId"` (Phase 19.3). Nếu null hoặc rất cũ → leader bỏ chơi.
+3. **Edge case party còn 1 member nhưng `status='ACTIVE'`** — bug `leaveParty` auto-disband đã miss (rất hiếm, log warn ở `PartyService` nếu xảy ra). Fix manual:
+   ```sql
+   -- 1 transaction:
+   BEGIN;
+   UPDATE "Party"
+      SET status='DISBANDED', "disbandedAt"=NOW(), "updatedAt"=NOW()
+    WHERE id='<party_id>' AND status='ACTIVE';
+   UPDATE "PartyMember"
+      SET "leftAt"=NOW()
+    WHERE "partyId"='<party_id>' AND "leftAt" IS NULL;
+   UPDATE "PartyInvite"
+      SET status='CANCELED', "respondedAt"=NOW()
+    WHERE "partyId"='<party_id>' AND status='PENDING';
+   COMMIT;
+   ```
+4. **Add `AdminAudit` row tay** với reason `PARTY_FORCE_DISBAND_ORPHAN` + party id + operator id.
+5. **KHÔNG** broadcast `party:updated` từ SQL — member sẽ nhận state mới qua `GET /party/me` polling khi reload. Nếu cần thông báo gấp, gửi mail in-game qua admin tool.
+
+### §B. Spam invite flood
+
+Phase 19.4 đã enforce:
+- `PARTY_INVITE_SEND` rate-limit 20 / 60s / user (sensitive, MEDIUM, block 5p khi vượt threshold).
+- `PARTY_LIMITS.maxPendingInvitesPerUser = 20` — invite thứ 21 bị reject `TOO_MANY_PENDING_INVITES`.
+- Duplicate PENDING invite cùng `(partyId, inviteeUserId)` bị reject `DUPLICATE_INVITE` ở app layer (`inviteToParty` check `findFirst({ partyId, inviteeUserId, status: PENDING })`). DB KHÔNG có unique constraint trên `PartyInvite` — chỉ có index — vì invite có vòng đời và có thể tạo lại sau khi DECLINED/CANCELED/EXPIRED.
+
+Triage:
+
+1. **Identify spammer** — gom theo `inviterUserId`:
+   ```sql
+   SELECT "inviterUserId", COUNT(*) AS n
+   FROM "PartyInvite"
+   WHERE status='PENDING' AND "createdAt" > NOW() - INTERVAL '1 hour'
+   GROUP BY "inviterUserId"
+   HAVING COUNT(*) > 20
+   ORDER BY n DESC;
+   ```
+2. **Check `SecurityEvent`** — type `RATE_LIMIT_TRIGGERED` filter `policyKey='PARTY_INVITE_SEND'`, hoặc `SUBJECT_BLOCKED` cho user đã bị abuse block.
+3. **Cluster theo IP** (alt-account funnel) — join `SecurityEvent.ipHash` Phase 18.1 với cùng `userId` set.
+4. **Cancel toàn bộ pending invite của spammer** (giữ row, flip status):
+   ```sql
+   UPDATE "PartyInvite"
+      SET status='CANCELED', "respondedAt"=NOW()
+    WHERE "inviterUserId"='<spammer_user_id>' AND status='PENDING';
+   ```
+5. **Block hành chính** (nếu tái phạm) — Phase 18.2 revoke session, hoặc Phase 18.1 manual block dài hạn.
+
+### §C. Race accept duplicate
+
+Phase 19.4 enforce qua:
+- `acceptInvite` trong `prisma.$transaction` re-check `inviteeUserId` chưa có active membership.
+- `PartyMember` UNIQUE `(partyId, userId)` (DB constraint) — duplicate insert raise P2002 → service trả `ALREADY_IN_PARTY`.
+- Test `accept invite is idempotent under concurrent calls` cover `Promise.all([acceptInvite, acceptInvite])`.
+
+Nếu vẫn thấy **2 row active cùng `(partyId, userId)`** trong production (KHÔNG được xảy ra; unique constraint cấm):
+
+1. **CRITICAL** — escalate P1 backend on-call. Có thể migration chưa apply (thiếu unique index).
+2. **Verify constraint tồn tại**:
+   ```sql
+   SELECT indexname, indexdef FROM pg_indexes
+   WHERE tablename='PartyMember' AND indexname LIKE '%partyId_userId%';
+   ```
+3. Nếu thiếu → re-run `pnpm prisma migrate deploy`. Nếu vẫn duplicate sau khi có constraint, kiểm tra một row có `leftAt IS NOT NULL` (đã rời) — đó là expected (member rời rồi join lại tạo row thứ 2 với `leftAt=NULL`, row cũ vẫn còn).
+4. **Fix manual nếu thật sự duplicate active**:
+   ```sql
+   -- giữ row cũ nhất, mark row sau là LEFT:
+   UPDATE "PartyMember" SET "leftAt"=NOW()
+    WHERE id IN (
+      SELECT id FROM "PartyMember"
+       WHERE "partyId"='<pid>' AND "userId"='<uid>' AND "leftAt" IS NULL
+       ORDER BY "joinedAt" DESC OFFSET 1
+    );
+   ```
+
+### §D. Invite expired silent fail
+
+Phase 19.4 lazy transition: `acceptInvite` check `now > expiresAt` → reject `INVITE_EXPIRED` + flip row status sang `EXPIRED`. List endpoint cũng lazy expire khi đọc. Nếu player kêu invite "biến mất":
+
+1. **Check row trong DB** — `SELECT id, status, "createdAt", "expiresAt", "respondedAt" FROM "PartyInvite" WHERE id='<invite_id>'`.
+2. Nếu `status='EXPIRED'` → đúng spec, FE cần refresh `/party/invites/incoming`. Hướng dẫn player reload tab Party.
+3. Nếu `status='PENDING'` nhưng `expiresAt < NOW()` → FE chưa lazy transition (REST chưa được gọi). Player accept sẽ tự fail + flip row. Không cần fix manual.
+4. **Adjust `PARTY_LIMITS.inviteExpireMinutes`** (default 10) chỉ qua code change + redeploy — KHÔNG override DB row.
+
+### §E. Cross-shard inconsistency (multi-instance deploy)
+
+Same constraint như Phase 19.3 — `RealtimeService.userSockets` in-memory per shard, party WS broadcast (`party:updated`, `party:invite`, `party:member-joined`, `party:member-left`, `party:leader-changed`) chỉ tới socket nằm cùng shard. Postgres rows là single source of truth, nên membership / invite state luôn nhất quán; chỉ realtime emit có thể bị split.
+
+- Multi-instance deploy: **MUST** sticky-session ở LB (cookie `xt_access` hoặc IP affinity) — same recommendation như §2.38 §C.
+- Nếu cần cross-shard fanout, đợi Phase 19.3+ Redis adapter (deferred).
+
+### Escalation matrix
+
+| Severity | Trigger | Action |
+|----------|---------|--------|
+| P3 | 1 player report orphan party / invite expired | Operator follow §A / §D. Reproducible 100% → escalate P2. |
+| P2 | >5 player cùng report spam invite trong 1h | Backend on-call check `SecurityEvent` cluster theo `policyKey='PARTY_INVITE_SEND'`. Cancel pending invite của spammer (§B). |
+| P2 | Migration `20261001000000_phase_19_4_group_party_system` chưa apply ở env (REST `/party/*` trả 500 hoặc Prisma `P2021` table not found) | Backend on-call chạy `pnpm prisma migrate deploy` ở env đó. |
+| P1 | Duplicate active `PartyMember` cùng `(partyId, userId)` | Backend on-call ngay. Verify unique constraint (§C), fix manual, postmortem. |
+| P1 | WS broadcast party:* leak ra non-member (vd member khác party nhận `party:member-joined`) | Security lead. **NGẮT immediate** `RealtimeService.emitToUser` cho party namespace (revert party WS fanout PR). Postmortem + replay log. |
+
+**KHÔNG làm**:
+
+- KHÔNG `DELETE FROM "Party"` / `"PartyMember"` / `"PartyInvite"` trực tiếp — mất audit. Force disband qua `UPDATE status='DISBANDED'` + `leftAt=NOW()` (§A).
+- KHÔNG sửa `Party.leaderUserId` tay nếu không kèm flip `PartyMember.role` (sẽ drift — leader-on-party không match leader-on-member). Nếu cần transfer manual, làm cả 2 row trong cùng transaction.
+- KHÔNG override `PartyInvite.expiresAt` qua SQL để "cứu" invite quá hạn (sẽ phá invariant + lazy transition logic). Bảo player tạo invite mới.
+- KHÔNG bật multi-instance Phase 19.4 trước khi có Redis adapter (same caveat §2.38 §C).
+- KHÔNG xoá `Party.disbandedAt` để "revive" party — tạo party mới.
+
 ## 2.99. Pre-cutover Deploy Verify Gate (Phase 17.1)
 
 **Khi nào**: Mọi lần cutover production sang instance mới / image mới /
