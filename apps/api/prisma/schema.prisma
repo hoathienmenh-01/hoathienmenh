@@ -3903,3 +3903,182 @@ model PartyDungeonRewardClaim {
   @@index([userId, status])
   @@index([runId, status])
 }
+
+/// Phase 20.2 — Co-op Boss / World Boss Party Contribution.
+///
+/// Foundation tổ đội đánh boss + ghi contribution + reward claim
+/// theo tier (NONE/LOW/NORMAL/HIGH/MVP). Soft-ref pattern (mirror
+/// Phase 19.4 Party / Phase 20.1 Party Dungeon): KHÔNG FK constraint
+/// tới `Party` / `WorldBoss` / `User` để tránh cross-shard issues +
+/// cho phép prune row mà không cascade. Service `CoopBossService`
+/// enforce invariants:
+///
+///   - Một party tại 1 thời điểm chỉ có 1 active run (status ∉
+///     CLEARED/FAILED/CANCELED). Service `assertNoActiveRun` check.
+///   - `CoopBossParticipant` UNIQUE `(runId, userId)`. Snapshot
+///     character ownership tại lúc join.
+///   - `CoopBossContribution` UNIQUE `(runId, participantId)` —
+///     1 row aggregate per participant (server cộng dồn vào row
+///     duy nhất, không spawn N row per contribution call).
+///   - `CoopBossRewardClaim` UNIQUE `(runId, userId)` để idempotent
+///     claim. CAS guard `status='PENDING'` → `'CLAIMED'`.
+enum CoopBossStatus {
+  LOBBY
+  IN_PROGRESS
+  CLEARED
+  FAILED
+  CANCELED
+}
+
+enum CoopBossRewardClaimStatus {
+  PENDING
+  CLAIMED
+  SKIPPED
+  FAILED
+}
+
+enum CoopBossContributionTier {
+  NONE
+  LOW
+  NORMAL
+  HIGH
+  MVP
+}
+
+/// Phase 20.2 — CoopBossRun (đơn vị 1 lần chiến đấu boss tổ đội).
+///
+/// Lifecycle: LOBBY → IN_PROGRESS → CLEARED/FAILED. Hoặc LOBBY →
+/// CANCELED (leader hủy trước start). Foundation phase: server
+/// auto-mở IN_PROGRESS khi đủ điều kiện start, member ghi
+/// contribution liên tục, leader (hoặc system) gọi finish để
+/// resolve.
+///
+/// `worldBossEventId` (nullable) gắn run với 1 `WorldBoss.id` cụ
+/// thể nếu boss event hiện đang active. Foundation không bắt buộc
+/// (boss có thể là instance virtual riêng cho run).
+///
+/// `resultSummaryJson` lưu snapshot tổng kết server-tính tại
+/// `finishRun` (totalDamage, mvpUserId, contributionTopRows) —
+/// opaque cho FE, dùng cho admin recompute + audit.
+model CoopBossRun {
+  id                String         @id @default(cuid())
+  /// Match `BossDef.key` / `WorldBoss.bossKey` từ shared catalog.
+  bossKey           String
+  /// Party owner — null cho free-form / event ngoài party (foundation
+  /// luôn party-based, nhưng giữ nullable để phase sau mở public).
+  partyId           String?
+  /// Pointer tới `WorldBoss.id` nếu run gắn với event hiện active.
+  /// Null cho instance virtual / single-party boss raid.
+  worldBossEventId  String?
+  status            CoopBossStatus @default(LOBBY)
+  startedAt         DateTime       @default(now())
+  finishedAt        DateTime?
+  /// Server-authoritative summary snapshot tại finishRun (mvp,
+  /// totalDamage, perParticipant rows). Opaque cho FE.
+  resultSummaryJson Json?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([partyId, status])
+  @@index([bossKey, status])
+  @@index([status, startedAt])
+  @@index([worldBossEventId, status])
+}
+
+/// Phase 20.2 — CoopBossParticipant row.
+///
+/// Server enforce:
+///   - UNIQUE `(runId, userId)`: 1 user 1 slot trong cùng run.
+///   - `characterId` snapshot character đang dùng tại lúc join —
+///     dùng cho reward grant về đúng character.
+///   - `leftAt` null = active; set khi user rời run sớm.
+///   - `eligibleForReward` set bởi server tại finishRun dựa trên
+///     contribution threshold + survival threshold. Default true
+///     khi tạo (cho FE optimistic UI), server overwrite.
+///   - `finalContributionScore` cache giá trị
+///     `CoopBossContribution.contributionScore` tại finishRun để
+///     query reward list nhanh không cần join.
+model CoopBossParticipant {
+  id                     String    @id @default(cuid())
+  runId                  String
+  userId                 String
+  /// Soft-ref Character.id snapshot tại lúc join.
+  characterId            String
+  /// Soft-ref Party.id snapshot tại lúc join (nullable cho phase
+  /// sau public boss, foundation luôn = run.partyId).
+  partyId                String?
+  joinedAt               DateTime  @default(now())
+  leftAt                 DateTime?
+  eligibleForReward      Boolean   @default(true)
+  /// Set tại finishRun snapshot cuối — null trước đó.
+  finalContributionScore Int?
+
+  @@unique([runId, userId])
+  @@index([runId, leftAt])
+  @@index([userId, joinedAt])
+}
+
+/// Phase 20.2 — CoopBossContribution aggregate row per (run,
+/// participant).
+///
+/// Server cộng dồn vào row duy nhất qua `recordContribution`
+/// (idempotent merge — không spawn N rows). `contributionScore`
+/// derive trong service từ `computeContributionScore({damageDone,
+/// supportScore, survivalSeconds})` ở shared.
+///
+/// Caps + clamp (anti-cheat):
+///   - `damageDone` BigInt, server clamp `≥0` + cap theo
+///     `COOP_BOSS_LIMITS.maxDamagePerContribution` nếu vượt →
+///     anomaly log + ghi clamp value.
+///   - `supportScore` Int, server clamp `≥0` + cap
+///     `COOP_BOSS_LIMITS.maxSupportPerContribution`.
+///   - `survivalSeconds` Int, clamp `0..COOP_BOSS_LIMITS
+///     .contributionWindowSeconds`.
+///   - `actionCount` Int counter tổng số recordContribution call
+///     (per participant per run) — dùng cho admin audit.
+model CoopBossContribution {
+  id                 String   @id @default(cuid())
+  runId              String
+  participantId      String
+  damageDone         BigInt   @default(0)
+  supportScore       Int      @default(0)
+  survivalSeconds    Int      @default(0)
+  actionCount        Int      @default(0)
+  /// Derived score qua `computeContributionScore` shared helper —
+  /// server tính lại mỗi lần cộng dồn (deterministic).
+  contributionScore  Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([runId, participantId])
+  @@index([runId, contributionScore])
+}
+
+/// Phase 20.2 — CoopBossRewardClaim per-participant reward row.
+///
+/// Tạo bởi `CoopBossService.finishRun` cho mỗi participant đạt
+/// `eligibleForReward=true`. Member claim qua endpoint riêng
+/// (atomic CAS `PENDING→CLAIMED` + ledger / inventory grant).
+///
+/// `rewardTier` snapshot tại finishRun (deterministic theo
+/// `classifyContributionTier(contributionScore, mvpUserId)`).
+/// `rewardJson` snapshot payload `{linhThach?, tienNgoc?, exp?,
+/// items?}` server tính.
+///
+/// Idempotent qua UNIQUE `(runId, userId)` + CAS update guard.
+model CoopBossRewardClaim {
+  id          String                      @id @default(cuid())
+  runId       String
+  userId      String
+  characterId String
+  status      CoopBossRewardClaimStatus   @default(PENDING)
+  rewardTier  CoopBossContributionTier    @default(NONE)
+  rewardJson  Json
+  claimedAt   DateTime?
+  createdAt   DateTime                    @default(now())
+
+  @@unique([runId, userId])
+  @@unique([runId, characterId])
+  @@index([userId, status])
+  @@index([runId, status])
+}
