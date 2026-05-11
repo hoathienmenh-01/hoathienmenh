@@ -47,6 +47,7 @@ export * from './story-dungeons';
 export * from './liveops';
 export * from './liveops-event-scheduler';
 export * from './liveops-announcement';
+export * from './liveops-cron-health';
 export * from './feature-flags';
 export * from './maintenance-window';
 export * from './config-version';

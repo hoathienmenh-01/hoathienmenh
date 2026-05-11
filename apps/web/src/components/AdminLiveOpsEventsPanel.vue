@@ -552,18 +552,18 @@ async function onRecompute(): Promise<void> {
               <span>{{ t('adminLiveOpsEvents.form.rewardMode') }}</span>
               <label class="inline-flex items-center gap-1">
                 <input
+                  v-model="form.rewardMode"
                   type="radio"
                   value="form"
-                  v-model="form.rewardMode"
                   data-testid="admin-liveops-events-form-reward-mode-form"
                 />
                 {{ t('adminLiveOpsEvents.form.rewardModeForm') }}
               </label>
               <label class="inline-flex items-center gap-1">
                 <input
+                  v-model="form.rewardMode"
                   type="radio"
                   value="raw"
-                  v-model="form.rewardMode"
                   data-testid="admin-liveops-events-form-reward-mode-raw"
                 />
                 {{ t('adminLiveOpsEvents.form.rewardModeRaw') }}
