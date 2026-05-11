@@ -4701,5 +4701,52 @@
       "ABUSE_BLOCKED": "Tạm khoá thao tác nhóm do hành vi bất thường. Thử lại sau vài phút.",
       "UNKNOWN": "Có lỗi xảy ra — thử lại."
     }
+  },
+  "notification": {
+    "title": "Thông báo",
+    "bell": "Mở trung tâm thông báo",
+    "markAllRead": "Đánh dấu tất cả đã đọc",
+    "loading": "Đang tải thông báo…",
+    "empty": "Không có thông báo nào.",
+    "errorGeneric": "Không tải được thông báo.",
+    "retry": "Thử lại",
+    "FRIEND_REQUEST_RECEIVED": {
+      "title": "Lời mời kết bạn mới",
+      "body": "{sender} đã gửi lời mời kết bạn."
+    },
+    "FRIEND_REQUEST_ACCEPTED": {
+      "title": "Đã chấp nhận lời mời",
+      "body": "{sender} đã chấp nhận lời mời kết bạn của bạn."
+    },
+    "PRIVATE_MESSAGE_RECEIVED": {
+      "title": "Tin nhắn riêng",
+      "body": "{sender} đã gửi tin nhắn mới."
+    },
+    "GROUP_MESSAGE_RECEIVED": {
+      "title": "Tin nhắn nhóm",
+      "body": "{sender} gửi tin nhắn ở nhóm {group}."
+    },
+    "GROUP_INVITE_RECEIVED": {
+      "title": "Lời mời vào nhóm",
+      "body": "{sender} đã mời bạn vào nhóm {group}."
+    },
+    "GROUP_MEMBER_ADDED": {
+      "title": "Đã được thêm vào nhóm",
+      "body": "{sender} đã thêm bạn vào nhóm {group}."
+    },
+    "CHAT_REPORT_RESOLVED": {
+      "title": "Báo cáo chat đã xử lý",
+      "body": "Báo cáo chat của bạn đã được xử lý."
+    },
+    "SECURITY_ALERT_USER": {
+      "title": "Cảnh báo bảo mật",
+      "body": "Có hoạt động bất thường trên tài khoản của bạn."
+    }
+  },
+  "presence": {
+    "online": "Đang online",
+    "offline": "Ngoại tuyến",
+    "lastSeenJustNow": "Vừa mới truy cập",
+    "lastSeenUnknown": "Không rõ lần truy cập gần nhất"
   }
 }

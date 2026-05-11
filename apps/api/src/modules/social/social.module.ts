@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
+import { NotificationModule } from '../notification/notification.module';
+import { RealtimeModule } from '../realtime/realtime.module';
 import { SocialController } from './social.controller';
 import { SocialService } from './social.service';
 
@@ -9,9 +11,17 @@ import { SocialService } from './social.service';
  *
  * `SocialService` được `exports` để `ChatPrivateModule` /
  * `ChatGroupModule` re-use `isBlockedBetween` + `areFriends`.
+ *
+ * Phase 19.3 — import `NotificationModule` để inject
+ * `NotificationHelpers` (optional, fail-soft). Khi user gửi /
+ * accept friend request, service emit notification cho counterpart
+ * qua helper. Không tạo circular vì NotificationModule chỉ depend
+ * AuthModule + RealtimeModule.
  */
 @Module({
-  imports: [AuthModule],
+  // Phase 19.3 — RealtimeModule for live `online` flag on FriendRow
+  // and public profile (in-memory presence via RealtimeService).
+  imports: [AuthModule, NotificationModule, RealtimeModule],
   controllers: [SocialController],
   providers: [SocialService, PrismaService],
   exports: [SocialService],

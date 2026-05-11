@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma.service';
 import { AdminModule } from '../admin/admin.module';
 import { AuthModule } from '../auth/auth.module';
+import { NotificationModule } from '../notification/notification.module';
 import { AdminChatModerationController } from './admin-chat-moderation.controller';
 import { ChatModerationController } from './chat-moderation.controller';
 import { ChatModerationService } from './chat-moderation.service';
@@ -25,7 +26,10 @@ import { ChatModerationService } from './chat-moderation.service';
  * `ChatModerationService.assertNotMuted()` trước send path.
  */
 @Module({
-  imports: [AuthModule, AdminModule],
+  // Phase 19.3 — NotificationModule import optional: cung cấp
+  // NotificationHelpers cho ChatModerationService gọi
+  // notifyChatReportResolved khi admin resolve/reject report.
+  imports: [AuthModule, AdminModule, NotificationModule],
   controllers: [ChatModerationController, AdminChatModerationController],
   providers: [PrismaService, ChatModerationService],
   exports: [ChatModerationService],

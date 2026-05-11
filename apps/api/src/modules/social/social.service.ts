@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { FriendRequestStatus, Prisma } from '@prisma/client';
+import { NotificationHelpers } from '../notification/notification-helpers';
+import { RealtimeService } from '../realtime/realtime.service';
 import {
   type FriendRequestRow,
   type FriendRow,
@@ -62,7 +64,48 @@ export class SocialError extends Error {
 
 @Injectable()
 export class SocialService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    @Inject(NotificationHelpers)
+    private readonly notifications: NotificationHelpers | null = null,
+    @Optional()
+    @Inject(RealtimeService)
+    private readonly realtime: RealtimeService | null = null,
+  ) {}
+
+  /**
+   * Phase 19.3 — best-effort live online check via RealtimeService.
+   * Falls back to `false` when realtime is unavailable (e.g. unit
+   * tests without realtime wiring). Safe because the server also
+   * exposes `/social/presence` for FE to query in batch.
+   */
+  private isOnlineSafe(userId: string): boolean {
+    try {
+      return this.realtime?.isOnline(userId) ?? false;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Phase 19.3 — Best-effort lookup of a user's display name for
+   * embedding in notification `dataJson`. Uses `Character.name` first
+   * (canonical display name); falls back to a short suffix of the
+   * userId so the FE always has *some* label to render. Never throws.
+   */
+  private async lookupDisplayName(userId: string): Promise<string> {
+    try {
+      const char = await this.prisma.character.findUnique({
+        where: { userId },
+        select: { name: true },
+      });
+      if (char?.name) return char.name;
+    } catch {
+      // intentionally swallow — fall through to suffix.
+    }
+    return userId.slice(-6);
+  }
 
   // ---------------------------------------------------------------------------
   // Friend requests
@@ -126,6 +169,18 @@ export class SocialService {
         message: msgResult.value,
       },
     });
+
+    // Phase 19.3 — best-effort notify receiver. Never throws.
+    if (this.notifications) {
+      const senderName = await this.lookupDisplayName(senderUserId);
+      await this.notifications.notifyFriendRequestReceived({
+        receiverUserId,
+        senderUserId,
+        senderName,
+        requestId: row.id,
+      });
+    }
+
     return this.toFriendRequestRow(row);
   }
 
@@ -172,6 +227,18 @@ export class SocialService {
       });
       return u;
     });
+
+    // Phase 19.3 — best-effort notify the original sender that the
+    // receiver accepted. Never throws.
+    if (this.notifications) {
+      const accepterName = await this.lookupDisplayName(receiverUserId);
+      await this.notifications.notifyFriendRequestAccepted({
+        senderUserId: req.senderUserId,
+        accepterUserId: receiverUserId,
+        accepterName,
+        requestId: req.id,
+      });
+    }
 
     return {
       request: this.toFriendRequestRow(updated),
@@ -282,7 +349,7 @@ export class SocialService {
           id: r.id,
           friendUserId,
           friendDisplayName: nameByUserId.get(friendUserId) ?? null,
-          online: false,
+          online: this.isOnlineSafe(friendUserId),
           createdAt: r.createdAt.toISOString(),
         } satisfies FriendRow;
       });
@@ -606,6 +673,9 @@ export class SocialService {
         relationshipStatus: status,
         actions: computeProfileActions(status),
         character: null,
+        // BLOCKED_BY_ME view — viewer is the blocker; we may surface
+        // presence of the blockee for the viewer. Phase 19.3 keeps
+        // this conservative and reports OFFLINE to avoid leaking.
         online: false,
         joinedYearMonth: null,
         mutualFriendCount: null,
@@ -669,7 +739,7 @@ export class SocialService {
       relationshipStatus: status,
       actions: computeProfileActions(status),
       character: characterSummary,
-      online: false,
+      online: this.isOnlineSafe(targetUserId),
       joinedYearMonth: formatJoinedYearMonth(targetUser.createdAt),
       mutualFriendCount,
       sameSect,
@@ -706,7 +776,9 @@ export class SocialService {
       relationshipStatus: status,
       actions: computeProfileActions(status),
       character: char ? this.toPublicCharacterSummary(char) : null,
-      online: false,
+      // SELF profile — viewer is the user; reuse realtime check to
+      // reflect the same in-memory presence used for friends/strangers.
+      online: this.isOnlineSafe(userId),
       joinedYearMonth: formatJoinedYearMonth(user.createdAt),
       mutualFriendCount: null,
       sameSect: null,

@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { NotificationHelpers } from '../notification/notification-helpers';
 import {
   CHAT_HIDDEN_MESSAGE_PLACEHOLDER,
   type PrivateChatMessageRow,
@@ -54,6 +55,9 @@ export class ChatPrivateService {
     private readonly social: SocialService,
     private readonly realtime: RealtimeService,
     private readonly moderation: ChatModerationService,
+    @Optional()
+    @Inject(NotificationHelpers)
+    private readonly notifications: NotificationHelpers | null = null,
   ) {}
 
   /**
@@ -154,6 +158,18 @@ export class ChatPrivateService {
       this.realtime.emitToUser(peerUserId, 'private-chat:msg', view);
     } catch {
       // realtime fanout best-effort
+    }
+
+    // Phase 19.3 — best-effort notification cho receiver. Sender
+    // KHÔNG nhận notification (helper tự filter senderUserId).
+    if (this.notifications) {
+      await this.notifications.notifyPrivateMessageReceived({
+        receiverUserId: peerUserId,
+        senderUserId: callerUserId,
+        senderName: senderChar?.name ?? callerUserId.slice(-6),
+        threadId: thread.id,
+        messageId: row.id,
+      });
     }
 
     return view;

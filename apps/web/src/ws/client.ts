@@ -89,6 +89,10 @@ export function connect(): Socket {
     'liveops:event',
     // Phase 15.8 — Maintenance window status broadcast channel.
     'maintenance:status',
+    // Phase 19.3 — Social Presence & Notification Center.
+    'notification:new',
+    'notification:unread-count',
+    'presence:update',
     'pong',
   ];
   for (const ev of events) {

@@ -4701,5 +4701,52 @@
       "ABUSE_BLOCKED": "Group action temporarily blocked due to abuse. Try again in a few minutes.",
       "UNKNOWN": "Something went wrong — please retry."
     }
+  },
+  "notification": {
+    "title": "Notifications",
+    "bell": "Open notification center",
+    "markAllRead": "Mark all as read",
+    "loading": "Loading notifications…",
+    "empty": "No notifications yet.",
+    "errorGeneric": "Failed to load notifications.",
+    "retry": "Retry",
+    "FRIEND_REQUEST_RECEIVED": {
+      "title": "New friend request",
+      "body": "{sender} sent you a friend request."
+    },
+    "FRIEND_REQUEST_ACCEPTED": {
+      "title": "Friend request accepted",
+      "body": "{sender} accepted your friend request."
+    },
+    "PRIVATE_MESSAGE_RECEIVED": {
+      "title": "Private message",
+      "body": "{sender} sent you a new message."
+    },
+    "GROUP_MESSAGE_RECEIVED": {
+      "title": "Group message",
+      "body": "{sender} posted in {group}."
+    },
+    "GROUP_INVITE_RECEIVED": {
+      "title": "Group invitation",
+      "body": "{sender} invited you to join {group}."
+    },
+    "GROUP_MEMBER_ADDED": {
+      "title": "Added to group",
+      "body": "{sender} added you to {group}."
+    },
+    "CHAT_REPORT_RESOLVED": {
+      "title": "Chat report resolved",
+      "body": "Your chat report has been resolved."
+    },
+    "SECURITY_ALERT_USER": {
+      "title": "Security alert",
+      "body": "Unusual activity detected on your account."
+    }
+  },
+  "presence": {
+    "online": "Online",
+    "offline": "Offline",
+    "lastSeenJustNow": "Just now",
+    "lastSeenUnknown": "Last seen unknown"
   }
 }

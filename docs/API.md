@@ -147,6 +147,18 @@ Tick EXP thực hiện bởi BullMQ processor `cultivation.processor.ts`. WS eve
 | POST   | `/social/block`                         | Yes  | `SOCIAL_BLOCK_TOGGLE` (30/10p user) | Body `{ userId }`. Cancel pending FriendRequest 2 chiều + xoá Friendship. |
 | DELETE | `/social/block/:userId`                 | Yes  | `SOCIAL_BLOCK_TOGGLE` (30/10p user) | Bỏ chặn. KHÔNG tự khôi phục FriendRequest cũ. |
 | GET    | `/social/profile/:userId`               | Yes  | `SOCIAL_PROFILE_VIEW` (60/60s user, block 5m) | **Phase 19.1.C** — Public player profile / inspect. Trả `PublicPlayerProfileDto` `{userId, displayName, character?, relationshipStatus (SELF/FRIEND/PENDING_INCOMING/PENDING_OUTGOING/BLOCKED_BY_ME/STRANGER), actions, online, joinedYearMonth, mutualFriendCount, sameSect}`. **Privacy mask**: target đã block viewer → 404 (KHÔNG leak existence). User/character không tồn tại → 404. **Whitelisted fields only** — KHÔNG bao giờ trả email/role/banned/currency (linhThach/tienNgoc)/inventory/payment/ipHash/sessionId. `character` snapshot = `{characterName, level, powerScore, realmKey, realmStage, realmFullName, title?, sectId?, sectName?}` (KHÔNG raw stats power/spirit/speed/hp/mp/settings). `mutualFriendCount` chỉ trả khi `STRANGER` (FRIEND → `null` privacy social-graph). `BLOCKED_BY_ME` trả minimal profile `character=null`. |
+| GET    | `/social/presence?userIds=csv`          | Yes  | —                   | **Phase 19.3** — Batch presence query. Query param `userIds` CSV (cap 50, dedupe). Trả `PresenceQueryResponse` `{presences: PresenceRow[]}` với `{userId, status (ONLINE/OFFLINE), lastSeenAt?}`. **Privacy mask**: target đã block viewer → `OFFLINE + lastSeenAt=null` (KHÔNG leak online time). |
+
+## Notification — `NotificationController` (Phase 19.3)
+
+> Bell + dropdown notification inbox. Server-authoritative own-user-only — mọi REST filter `WHERE userId === requesterUserId`. **i18n-key only** `titleKey`/`bodyKey` — KHÔNG nhận free-text (chống XSS / injection). Sender/group name nhúng vào `dataJson` đã sanitize qua `sanitizeNotificationData` (cap depth=3 + length=500). Trigger nguồn: friend request (received/accepted), private message received, group message received, group invite/member added, chat report resolved, security alert. Error code (Envelope): `NOTIFICATION_NOT_FOUND`, `FORBIDDEN`. Realtime mirror: server emit `notification:new` + `notification:unread-count` WS event (emit-to-user-only) khi user online.
+
+| Method | Path                              | Auth | Rate | Mô tả |
+|--------|-----------------------------------|------|------|-------|
+| GET    | `/notifications`                  | Yes  | —    | Query `?cursor=&limit=&types=CSV&unread=true|false`. Cursor by `createdAt` (ISO). Trả `NotificationListResponse{notifications,total,unreadCount}`. Cap `limit≤50`. |
+| GET    | `/notifications/unread-count`     | Yes  | —    | Trả `{unreadCount}`. |
+| POST   | `/notifications/:id/read`         | Yes  | —    | Mark 1 notification đã đọc. Idempotent (đã read → no-op). Cross-user → `FORBIDDEN`. |
+| POST   | `/notifications/read-all`         | Yes  | —    | Mark all unread của caller. Trả `{markedCount, unreadCount:0}`. |
 
 ## Chat Private — `ChatPrivateController` (Phase 19.1 + Phase 19.1.B)
 

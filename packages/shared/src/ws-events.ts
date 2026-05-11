@@ -58,6 +58,29 @@ export type WsEventType =
    * KHÔNG broadcast — non-member tuyệt đối không nhận event.
    */
   | 'group-chat:msg'
+  /**
+   * Phase 19.3 — Social Presence & Notification Center. Server emit
+   * khi có notification mới (friend request, message, group invite,
+   * report resolved, security alert). Payload là
+   * `NotificationCreatedBroadcastPayload` (xem `notification.ts`).
+   * Chỉ emit tới `userId` chủ notification qua
+   * `RealtimeService.emitToUser`. KHÔNG broadcast public.
+   */
+  | 'notification:new'
+  /**
+   * Phase 19.3 — Sync bell badge unread count sau mark read /
+   * mark all read. Payload là `NotificationUnreadCountBroadcastPayload`.
+   * Server emit chỉ tới user thực hiện action.
+   */
+  | 'notification:unread-count'
+  /**
+   * Phase 19.3 — Presence update event. Server emit khi 1 user
+   * connect (lần đầu — `activeConnections` 0→1) hoặc disconnect
+   * (về 0). Payload là `PresenceUpdateBroadcastPayload`. Server
+   * fanout chỉ tới friend của user changed (Phase 19.3 scope),
+   * KHÔNG broadcast public.
+   */
+  | 'presence:update'
   | 'pong'
   // client → server
   | 'ping'
