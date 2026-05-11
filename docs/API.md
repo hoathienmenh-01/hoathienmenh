@@ -190,6 +190,32 @@ WS events (best-effort fanout — không có recipient online thì im lặng dro
 | `party:member-left`      | Members + caller; `reason` enum     | `PartyMemberLeftBroadcastPayload{partyId,userId,reason}` (`LEFT|KICKED|DISBANDED`) |
 | `party:leader-changed`   | All members                         | `PartyLeaderChangedBroadcastPayload{partyId,previousLeaderUserId,newLeaderUserId}` |
 
+## Party Dungeon — `PartyDungeonController` (Phase 20.1)
+
+> Co-op PvE foundation gắn party (Phase 19.4). Mỗi party tại 1 thời điểm có tối đa **1 active room** (`maxActiveRoomPerParty=1`). Leader tạo room với `dungeonKey` từ catalog `DUNGEONS` (shared) → member của cùng party `joinFromParty` → set ready → leader `startRun`. Foundation phase: server auto-resolve inline khi `startRun` → `PartyDungeonRun.result=CLEAR` + tạo `PartyDungeonRewardClaim` PENDING cho mỗi participant. Member claim qua endpoint riêng (atomic CAS `PENDING→CLAIMED` + ledger). KHÔNG matchmaking public, KHÔNG loot bidding, KHÔNG share-pool. `minMembers=2`, `maxMembers=5` (xem `COOP_DUNGEON_LIMITS`).
+
+| Method | Path                                              | Auth | Rate                       | Mô tả |
+|--------|---------------------------------------------------|------|----------------------------|-------|
+| GET    | `/party/dungeon/room`                             | Yes  | —                          | Trả `MyPartyDungeonRoomResponse{room,participants,currentRun,myReward}`. Không thuộc party hoặc chưa có room → `room=null, participants=[]`. |
+| GET    | `/party/dungeon/runs/:id`                         | Yes  | —                          | Trả `PartyDungeonRunDetailResponse{run,rewards}`. Caller phải là participant của run (lookup qua `roomId`); ngoài party → `NOT_PARTY_MEMBER`. |
+| POST   | `/party/dungeon/rooms`                            | Yes  | `PARTY_DUNGEON_CREATE`     | Body `{dungeonKey}`. Leader-only. Reject `NOT_IN_PARTY`/`NOT_PARTY_LEADER`/`INVALID_DUNGEON`/`ROOM_ALREADY_EXISTS`. Auto-join caller làm participant đầu tiên. |
+| POST   | `/party/dungeon/join`                             | Yes  | `PARTY_DUNGEON_READY`      | Body `{roomId}`. Member của party có room join. Reject `NOT_PARTY_MEMBER`/`ROOM_NOT_FOUND`/`ROOM_NOT_LOBBY`/`NO_CHARACTER`. Idempotent — re-join chỉ re-activate row hiện hữu. |
+| POST   | `/party/dungeon/ready`                            | Yes  | `PARTY_DUNGEON_READY`      | Body `{roomId}`. Participant set `readyAt`. Reject `PARTICIPANT_NOT_FOUND`/`ROOM_NOT_LOBBY`. |
+| POST   | `/party/dungeon/unready`                          | Yes  | `PARTY_DUNGEON_READY`      | Body `{roomId}`. Participant clear `readyAt`. |
+| POST   | `/party/dungeon/start`                            | Yes  | `PARTY_DUNGEON_START`      | Body `{roomId}`. Leader-only. Gate qua `canStartPartyDungeon` (shared helper): đủ `minMembers` + tất cả ready + room LOBBY/READY_CHECK + dungeonKey hợp lệ. Reject `NOT_PARTY_LEADER`/`NOT_ENOUGH_MEMBERS`/`NOT_ALL_READY`/`INVALID_DUNGEON`/`ROOM_NOT_LOBBY`. Server tạo `PartyDungeonRun.result=CLEAR` + reward claim PENDING. |
+| POST   | `/party/dungeon/cancel`                           | Yes  | `PARTY_DUNGEON_START`      | Body `{roomId}`. Leader-only, room phải LOBBY/READY_CHECK. Reject `ROOM_NOT_LOBBY` (đã COMPLETED). |
+| POST   | `/party/dungeon/runs/:id/claim-reward`            | Yes  | `PARTY_DUNGEON_CLAIM`      | Atomic CAS `PENDING→CLAIMED`. Grant reward qua `CurrencyService.applyTx` (`reason='PARTY_DUNGEON_REWARD'`) + `InventoryService.grantTx` + `tx.character.update{exp:{increment}}`. Reject `RUN_NOT_FOUND`/`RUN_NOT_COMPLETED`/`REWARD_NOT_FOUND` (non-participant fall vào đây — mask)/`REWARD_ALREADY_CLAIMED`. |
+
+WS events (best-effort fanout chỉ tới participant của room — KHÔNG broadcast party / public):
+
+| Event                              | Recipients                          | Payload                                                                       |
+|------------------------------------|-------------------------------------|-------------------------------------------------------------------------------|
+| `party-dungeon:room-updated`       | Room participants (active)          | `PartyDungeonRoomUpdatedBroadcastPayload{roomId,partyId,status,participantsCount,readyCount}` |
+| `party-dungeon:ready-updated`      | Room participants                   | `PartyDungeonReadyUpdatedBroadcastPayload{roomId,partyId,userId,ready}`       |
+| `party-dungeon:started`            | Room participants                   | `PartyDungeonStartedBroadcastPayload{roomId,partyId,runId,dungeonKey}`        |
+| `party-dungeon:completed`          | Room participants                   | `PartyDungeonCompletedBroadcastPayload{roomId,partyId,runId,result}`          |
+| `party-dungeon:reward-available`   | Reward owner only (per-user)        | `PartyDungeonRewardAvailableBroadcastPayload{roomId,partyId,runId,userId,rewardClaimId}` |
+
 ## Chat Private — `ChatPrivateController` (Phase 19.1 + Phase 19.1.B)
 
 > Chat riêng 1-1. Thread invariant: `userAId < userBId` (lexicographic). Server-side: non-member → 404 mask (KHÔNG 403 leak existence). Block 2 chiều reject `sendPrivateMessage` với `BLOCKED`. Message body 1..500ch trimmed. Cột **Rate** = `@RateLimitPolicy()` key gắn ở controller (Phase 19.1.B).
