@@ -2495,6 +2495,44 @@ Caps đặt trong `packages/shared/src/reward-form.ts`. Toggle Advanced Raw JSON
 - **Champion cap 100**: theo characterId ASC. Sect đông member > 100 → 100 đầu (theo characterId thấp nhất → tendency older account) nhận; còn lại không có UI feedback. Chấp nhận tradeoff để tránh runaway reward cost. Phase 15.8 cap chỉ apply ở SNAPSHOT TIME (`snapshotSeason()`), không tái-evaluate ở grant time.
 - **Reward picker form coverage**: Phase 15.8 cover linhThach / tienNgoc / item rewards. Buff/title/cosmetic reward type vẫn dùng Raw JSON path.
 
+## 11.27 GAMEPLAY ANTI-CHEAT DETECTION THRESHOLDS (Phase 16.3)
+
+Detection-only thresholds for `GameplayAntiCheatService` (`apps/api/src/modules/admin-anticheat/gameplay-anticheat.service.ts`). Source-of-truth catalog: `packages/shared/src/gameplay-anticheat.ts` (`GAMEPLAY_ANOMALY_RULES`).
+
+**Tách bạch với Phase 16.6 Economy Anti-cheat** (`packages/shared/src/economy-anomaly.ts`):
+- Phase 16.6 = **dòng tiền tổng thể** (Σ |delta| LinhThạch 24h, RewardCap bypass count, market price band, admin grant). Bảng `EconomyAnomaly`.
+- Phase 16.3 = **hành vi farm bất thường per-module** (dungeon / boss / mission / arena / territory) + EXP/item/currency gain spike + combat result mismatch + reward-cap bypass count. Bảng `GameplayAnomaly` riêng.
+
+### Threshold catalog (Phase 16.3)
+
+| Type | Source | Window | WARN | CRITICAL | Rationale |
+|---|---|---|---|---|---|
+| `EXP_GAIN_SPIKE` | CHARACTER (heuristic `RewardCapEvent.grantedExp`) | 1h | 50_000 | 500_000 | Cultivation auto-tu chỉ vài chục → vài trăm EXP/phút theo realm + method. Spike 50k+/h = farm dungeon liên tục bất thường. CRITICAL 500k/h gần như không thể legit. |
+| `CURRENCY_GAIN_SPIKE` | CURRENCY_LEDGER (Σ delta dương `linhThach`) | 1h | 200_000 | 1_000_000 | Player F2P farm dày vẫn rơi 30-80k/h. 200k/h = nghi vấn cao. CRITICAL 1M/h. |
+| `ITEM_GAIN_SPIKE` | ITEM_LEDGER (Σ qtyDelta dương) | 1h | 100 | 500 | Boss/dungeon thường drop 1-3 item/encounter. 100+ trong 1h = farm bất thường. CRITICAL 500. |
+| `DUNGEON_REWARD_FARM` | DUNGEON_RUN (`status='CLAIMED'`) | 24h | 20 | 50 | Player cày dày cũng chỉ 5-10/ngày (stamina + dailyLimit gate). 20+ = nghi vấn. CRITICAL 50. |
+| `BOSS_REWARD_FARM` | CURRENCY_LEDGER (`reason='BOSS_REWARD'`) | 24h | 15 | 40 | Boss spawn rate hạn chế (multi-region 1 boss/region/window). 15+ = abuse spawn / multi-account. CRITICAL 40. |
+| `MISSION_REWARD_FARM` | MISSION (`MissionProgress.claimed=true`) | 24h | 30 | 80 | Daily 8-10 + weekly 4-5 + ONCE chain ~ 20/ngày max. 30+ = exploit reset. CRITICAL 80. |
+| `ARENA_REWARD_FARM` | ARENA (`ArenaMatch.winnerCharacterId`) | 24h | 30 | 80 | Daily challenge limit + season rank gate thường 5-10 win/ngày. 30+ = wintrade. CRITICAL 80. Phase 14.1.D có anti-wintrade pair-level riêng; Phase 16.3 bổ sung count-level. |
+| `TERRITORY_REWARD_SPIKE` | TERRITORY (`TerritoryOwnerRewardGrant`) | 7d | 10 | 30 | Region weekly cycle thường 1-2/region. 10+ trong 7d = multi-region abuse. CRITICAL 30. |
+| `COMBAT_RESULT_MISMATCH` | COMBAT | 1h | 1 | 5 | Không có baseline legitimate cho mismatch — >0 đã flag. Reserved hook Phase 16.3, scanner để admin tạo tay nếu cần. CRITICAL 5. |
+| `REWARD_CAP_BYPASS_ATTEMPT` | REWARD_CAP (`RewardCapEvent`) | 1h | 5 | 20 | Player cày dày chạm cap 1-2 lần/ngày — 5+/h là farm bot. Bổ sung cảnh báo real-time cho Phase 16.6 daily detection. CRITICAL 20. |
+
+### Tuning principles
+
+- **Conservative initial** — false-positive chấp nhận được (admin xem lại tay); false-negative tệ hơn (player abuse lọt). Re-tune sau closed beta data.
+- **Per-realm override** — KHÔNG có ở Phase 16.3 (tinh chỉnh sau closed beta nếu cần).
+- **Severity ladder** — `criticalThreshold >= warnThreshold` luôn (test enforce). Severity `INFO` reserved (chưa rule nào emit ở Phase 16.3 — để mở khi cần signal yếu).
+- **Window cap** — Body `POST /admin/anticheat/gameplay/scan` cho phép `windowMs` ≤ 30 ngày để admin sweep batch cũ, mặc định lấy `windowMs` từ rule (1h / 24h / 7d).
+
+### Detection-only policy (Phase 16.3)
+
+- Scan KHÔNG mutate `Character.linhThach` / `Character.expCurrent` / `InventoryItem.qty`.
+- Scan KHÔNG mutate `User.bannedAt` / KHÔNG revoke session / KHÔNG khoá tài khoản.
+- KHÔNG auto-rollback transaction, KHÔNG auto-refund currency, KHÔNG auto-deduct.
+- Worst-case false-positive → admin xem `AdminGameplayAntiCheatPanel` + `Resolve` với note. KHÔNG public notify.
+- Test enforce policy: `gameplay-anticheat.service.test.ts` assert post-scan Character state untouched.
+
 ## 12. CHANGELOG
 
 - **2026-04-30** — Initial creation. Author: Devin AI session 9q.
@@ -2505,6 +2543,7 @@ Caps đặt trong `packages/shared/src/reward-form.ts`. Toggle Advanced Raw JSON
 - **2026-05-09** — Phase 14.0.C Sect Territory Region Buff + Influence Decay section added (§11.18) — 5 buff catalog (EXP/LinhThạch/Element/Defense, value cap 10%, runtime wire dungeon reward owner-only fail-soft), influence decay default 25%/period cap 50%, idempotent UNIQUE `(periodKey)` admin trigger.
 - **2026-05-09** — Phase 14.0.D Territory Weekly War Loop section added (§11.19) — period key UTC ISO week + helpers, settle-current admin endpoint với no-influence sticky owner rule + deterministic tie-break, war state/region/history read API, FE countdown + 9 region card + history + admin button. KHÔNG cron tự động (defer 14.0.E).
 - **2026-05-09** — Phase 16.5 Daily Reward Cap dial — anti-abuse layer. Per-source cap (CULTIVATION / DUNGEON / MISSION) scale theo realm tier ×1/×3/×8 (tier-1 phamnhan đến tier-3 luyen_hu+). Cap exp tier-1: CULTIVATION 6000 / DUNGEON 2400 / MISSION 1500 — đủ ~4–6h casual play/ngày. Cap linhThach tier-1: DUNGEON 600 + MISSION 500 = 1100/ngày (vd. mua 1 đan low-tier 200–500 linh, 2–3 đan/ngày). Cao realm cap cao tỉ lệ. Catalog ở `packages/shared/src/daily-reward-cap.ts` (`DAILY_REWARD_CAP_BY_REALM_AND_SOURCE`). KHÔNG wire territory/daily login/season/topup (defer Phase 16.9 nếu telemetry cần). KHÔNG cap admin grant (admin path không gọi service).
+- **2026-05-11** — Phase 16.3 Gameplay Anti-cheat Deep Detection thresholds section added (§11.27) — 10 anomaly type với WARN/CRITICAL threshold rõ ràng: `EXP_GAIN_SPIKE` 50k/500k EXP 1h, `CURRENCY_GAIN_SPIKE` 200k/1M LT 1h, `ITEM_GAIN_SPIKE` 100/500 qty 1h, `DUNGEON_REWARD_FARM` 20/50 claim 24h, `BOSS_REWARD_FARM` 15/40 24h, `MISSION_REWARD_FARM` 30/80 24h, `ARENA_REWARD_FARM` 30/80 WIN 24h, `TERRITORY_REWARD_SPIKE` 10/30 7d, `COMBAT_RESULT_MISMATCH` 1/5 (reserved hook), `REWARD_CAP_BYPASS_ATTEMPT` 5/20 1h. Catalog `packages/shared/src/gameplay-anticheat.ts` `GAMEPLAY_ANOMALY_RULES` + `GameplayAntiCheatService` scan dispatcher + bảng `GameplayAnomaly` riêng (tách khỏi `EconomyAnomaly` Phase 16.6 để admin filter theo domain). **Detection-only policy** (test enforced): scan KHÔNG mutate Character/Inventory/User; KHÔNG auto-ban / KHÔNG rollback / KHÔNG khoá tài khoản. Admin xem qua `AdminGameplayAntiCheatPanel` + ack/resolve thủ công. Conservative initial — re-tune sau closed beta data.
 - **2026-05-10** — Phase 16.6 Economy Anti-cheat Suite dial — detection layer chuẩn bị closed beta. **Anomaly threshold catalog** (`packages/shared/src/economy-anomaly.ts` `ECONOMY_ANOMALY_RULES`): 5 source × WARN/CRITICAL: `CURRENCY_DELTA_24H` 100k/1M LT, `RARE_ITEM_GAIN_24H` (HUYEN+ count) 5/20 / 24h, `REWARD_CAP_BYPASS` 1/3 cap event / day, `ADMIN_GRANT_OVER_LIMIT` 50k/500k LT / single grant, `MARKET_OUTLIER` (deviation từ 7-day median) 5×/10×. Conservative initial — re-tune sau closed beta data. **Market Price Band catalog** (`packages/shared/src/market-price-band.ts` `MARKET_PRICE_BAND_BY_ITEM` + `DEFAULT_PRICE_BAND_BY_QUALITY`): rarity band PHAM 10–1000, LINH 50–5000, HUYEN 200–50_000, TIEN 1000–500_000, THAN 5000–5_000_000 LT/unit. Per-item override empty (Phase 16.6 chưa fill — sẽ thêm sau khi observe data). Listing ngoài band reject `PRICE_TOO_LOW`/`PRICE_TOO_HIGH` (HTTP 409). Existing ACTIVE listing KHÔNG bị mutate (chỉ áp dụng listing mới). **Detection-only policy**: KHÔNG auto-ban / KHÔNG auto-rollback / KHÔNG public notify; admin xem qua `AdminEconomySafetyPanel` panel + quyết định manual.
 - **2026-05-10** — Phase 14.1.B Async Arena Foundation section added (§11.21) — async PvP loop với deterministic match resolution. Rating default 1000, win +10/lose -5 attacker, defender ½ magnitude, clamp [0, 5000]. Daily limit 10/day Asia/Ho_Chi_Minh (env `ARENA_DAILY_LIMIT_PER_DAY`, 0=unlimited). Match resolve sync trong POST request (NOT queue): build snapshot → `resolveCombatWithSnapshot` (Phase 14.1.A) → tx update profile + match. Snapshot lock-in: `attackerSnapshotJson` + `defenderSnapshotJson` + `seed` immutable sau RESOLVED → replay bit-exact. Anti-cheat Phase 14.1.B: chỉ no-self + daily limit. KHÔNG: ELO, season cycle, end-season reward, anti-wintrade phức tạp, defense AI snapshot. 5 tier slot reserved cho Phase 14.1.C.
 - **2026-05-10** — Phase 14.1.D Arena Anti-Wintrade Detection dial — detection-only anti-cheat layer cho Arena. **Anti-wintrade rules catalog** (`packages/shared/src/arena-anti-wintrade.ts` `ARENA_ANTI_WINTRADE_RULES`): 5 detection type × WARN/CRITICAL threshold conservative để tránh false-positive với player legit cày Arena chăm. `REPEATED_OPPONENT_PAIR` cùng directional pair attacker→defender ≥ 5 / 12 trận / 24h. `RECIPROCAL_WIN_LOSS` 2 chars trade win-loss ≥ 4 / 8 / 24h (sort lex pair key). `RATING_GAIN_SPIKE` Δrating ≥ 200 / 400 / 6h. `REWARD_FARM_PATTERN` attacker ≥ 8 trận với distinct opponents < 3 (CRITICAL khi opponents ≤ 1) / 24h. `SEASON_SUSPICIOUS_ACTOR` ≥ 12 trận, win-rate ≥ 0.95, opponents < 5 / 24h (TODO upgrade season-wide scope). Severity ladder INFO < WARN < CRITICAL. **Detection-only policy**: KHÔNG auto-ban / KHÔNG auto-rollback reward / KHÔNG xóa match / KHÔNG block player on WARN; admin review thủ công qua `AdminArenaAntiWintradePanel`. Idempotent qua composite UNIQUE `(type, windowKey, attackerCharacterId, defenderCharacterId)` — chạy lại scan trên cùng cửa sổ không tạo duplicate. Env override `ARENA_ANTI_WINTRADE_*` cho ops fine-tune sau closed beta data.

@@ -1929,6 +1929,170 @@ LIMIT 100;
 - KHÔNG copy/log `detailsJson` raw ra ngoài Postgres (đã sanitize ở BE; tuy nhiên trên FE không export CSV mục này).
 - KHÔNG resolve hàng loạt không note — note bắt buộc để audit theo người xử lý sau này.
 
+### 2.33. Phase 16.3 — Gameplay Anti-cheat Deep Detection (P1/P2)
+
+**Mục tiêu**: Cách admin chạy scan / xử lý anomaly trong tab `AdminView` "Gameplay Anti-cheat" (`gameplayAntiCheat`). **Detection-only** — KHÔNG auto-ban, KHÔNG rollback, KHÔNG tự trừ EXP/item/đá, KHÔNG khoá tài khoản. Anomaly là **signal**, không phải bằng chứng.
+
+#### 2.33.1. Symptom → severity
+
+| Symptom | Severity | Action |
+| --- | --- | --- |
+| `openCriticalCount > 0` (summary card) | **P1** | Mở tab `gameplayAntiCheat`, filter `severity=CRITICAL status=OPEN`, xử lý theo §2.33.3. |
+| `type=COMBAT_RESULT_MISMATCH` ≥1 trong 1h | **P1** | Không có baseline legitimate → suy ra exploit/bug. Đối chiếu battle log + escalate dev. |
+| `type=CURRENCY_GAIN_SPIKE` CRITICAL (≥1M LT/1h) | **P1** | Có thể là RMT / exploit grant. Cross-check ledger + admin grant audit. |
+| `type=EXP_GAIN_SPIKE` CRITICAL (≥500k EXP/1h) | **P1** | Cultivation bot / exploit reward. |
+| `type=DUNGEON_REWARD_FARM` / `BOSS_REWARD_FARM` / `MISSION_REWARD_FARM` / `ARENA_REWARD_FARM` WARN | **P2** | Cày dày legit có thể chạm — đối chiếu trước khi action. |
+| `type=ARENA_REWARD_FARM` CRITICAL (≥80 WIN/24h) | **P1** | Đối chiếu Phase 14.1.D Arena Anti-Wintrade (§2.16/§2.17) — có thể là wintrade pattern. |
+| `type=TERRITORY_REWARD_SPIKE` WARN+ | **P2** | Multi-region pattern — đối chiếu `TerritoryOwnerRewardGrant` history. |
+| `type=REWARD_CAP_BYPASS_ATTEMPT` CRITICAL (≥20 lần/1h) | **P1** | Bot farm chạm cap liên tục — cần manual investigate. |
+
+#### 2.33.2. Chạy scan thủ công
+
+**Khi nào**: (a) Player report nghi cheat; (b) Trước khi deploy patch reward/dungeon; (c) Sau incident để rà soát lại window cũ.
+
+```bash
+# Default — scan với windowMs từ rule catalog (1h / 24h / 7d tuỳ type)
+curl -X POST https://api/api/admin/anticheat/gameplay/scan \
+  -H 'Content-Type: application/json' \
+  -b 'access_token=...' \
+  -d '{}'
+
+# Force re-scan 1 windowKey cụ thể (idempotent — đã có row sẽ skip qua P2002)
+curl -X POST https://api/api/admin/anticheat/gameplay/scan \
+  -H 'Content-Type: application/json' \
+  -b 'access_token=...' \
+  -d '{"windowKey":"hour:2026-05-11T10:00"}'
+
+# Sweep batch dài hơn (≤ 30 ngày)
+curl -X POST https://api/api/admin/anticheat/gameplay/scan \
+  -H 'Content-Type: application/json' \
+  -b 'access_token=...' \
+  -d '{"windowMs": 2592000000}'
+```
+
+Response `GameplayScanSummary`:
+
+```json
+{
+  "ok": true,
+  "data": {
+    "totalCreated": 3,
+    "totalSkipped": 12,
+    "totalErrored": 0,
+    "byType": { "DUNGEON_REWARD_FARM": 2, "EXP_GAIN_SPIKE": 1 },
+    "windowKeysByType": { ... }
+  }
+}
+```
+
+`totalSkipped` cao là **bình thường** — idempotent re-run gặp row cũ. `totalErrored > 0` → check log để xem rule nào fail (1 rule fail KHÔNG phá rule khác).
+
+Audit: `ADMIN_ANTICHEAT_GAMEPLAY_SCAN` (`actorUserId` + summary trong `meta`).
+
+#### 2.33.3. Xử lý 1 anomaly WARN/CRITICAL
+
+1. Mở tab `gameplayAntiCheat` → summary cards cho biết khối lượng OPEN tổng thể + critical/warn/info breakdown.
+2. Filter `status=OPEN` + `severity=CRITICAL` trước → xử lý theo độ ưu tiên.
+3. Đọc `detailsJson` của anomaly: thường chứa `characterId`, `windowKey`, `count`/`delta`, source-specific fields (vd `dungeonRunIds`, `bossKeys`, `arenaMatchIds`). KHÔNG có raw IP / token / cookie.
+4. **Cross-check ledger / runtime row** tuỳ type:
+
+   ```sql
+   -- CURRENCY_GAIN_SPIKE / BOSS_REWARD_FARM (Σ delta dương + reason BOSS_REWARD)
+   SELECT "createdAt", "delta", "reason", "currency"
+   FROM "CurrencyLedger"
+   WHERE "characterId" = $1
+     AND "createdAt" >= NOW() - INTERVAL '1 hour'
+   ORDER BY "createdAt" DESC;
+
+   -- ITEM_GAIN_SPIKE (Σ qtyDelta dương)
+   SELECT "createdAt", "itemKey", "qtyDelta", "source"
+   FROM "ItemLedger"
+   WHERE "characterId" = $1
+     AND "qtyDelta" > 0
+     AND "createdAt" >= NOW() - INTERVAL '1 hour'
+   ORDER BY "createdAt" DESC;
+
+   -- DUNGEON_REWARD_FARM
+   SELECT id, "templateId", status, "claimedAt"
+   FROM "DungeonRun"
+   WHERE "characterId" = $1
+     AND status = 'CLAIMED'
+     AND "claimedAt" >= NOW() - INTERVAL '24 hours'
+   ORDER BY "claimedAt" DESC;
+
+   -- ARENA_REWARD_FARM (đối chiếu §2.16/§2.17 Phase 14.1.D nếu có pair pattern)
+   SELECT id, "attackerCharacterId", "defenderCharacterId", "winnerCharacterId", "createdAt"
+   FROM "ArenaMatch"
+   WHERE "winnerCharacterId" = $1
+     AND "createdAt" >= NOW() - INTERVAL '24 hours'
+   ORDER BY "createdAt" DESC;
+
+   -- TERRITORY_REWARD_SPIKE
+   SELECT id, "regionKey", "rewardJson", "grantedAt"
+   FROM "TerritoryOwnerRewardGrant"
+   WHERE "characterId" = $1
+     AND "grantedAt" >= NOW() - INTERVAL '7 days'
+   ORDER BY "grantedAt" DESC;
+   ```
+
+5. Đối chiếu với Phase 16.6 `EconomyAnomaly` (cùng `characterId`) — nếu có `CURRENCY_DELTA_24H` / `ADMIN_GRANT_OVER_LIMIT` cùng window → escalate cao hơn (multi-signal).
+
+6. **Quyết định**:
+   - **False positive** (player cày legit, event mới, support refund hợp lệ) → `Resolve` với note nêu lý do.
+   - **Cần theo dõi tiếp** → `Ack` (chuyển `OPEN → ACKNOWLEDGED`). Không action gameplay.
+   - **Có dấu hiệu rõ** → escalate:
+     - Manual revoke inventory/currency: dùng endpoint admin hiện có (`POST /admin/users/:id/inventory/revoke`, `POST /admin/users/:id/grant` với delta âm). Reason ghi `"phase 16.3 anomaly <id>"`.
+     - Ban: dùng endpoint admin ban hiện có sau khi đã có evidence.
+     - Sau khi xử lý xong → `Resolve` với note `"action: ban/revoke; root: <description>"`.
+
+#### 2.33.4. Idempotent semantics
+
+- Ack 1 anomaly đã `ACKNOWLEDGED` → 404 `ANOMALY_NOT_FOUND_OR_NOT_OPEN` (không ack ngược).
+- Resolve 1 anomaly đã `RESOLVED` → 404 `ANOMALY_NOT_FOUND_OR_RESOLVED`.
+- Resolve 1 anomaly `OPEN` → skip-ack path (chỉ set `resolvedAt` + `resolvedByAdminId`; `acknowledgedAt` vẫn null nếu chưa ack qua bước riêng).
+- Scan trùng `windowKey` + `type` + `characterId` → `upsertAnomaly` bắt P2002 → đếm vào `totalSkipped` (multi-instance race-safe).
+
+#### 2.33.5. Audit trail
+
+Mọi mutation ghi `AdminAuditLog`:
+
+- `ADMIN_ANTICHEAT_GAMEPLAY_SCAN` (meta = `{ totalCreated, totalSkipped, totalErrored, windowKeysByType }`).
+- `ADMIN_ANTICHEAT_GAMEPLAY_ACK` (meta = `{ anomalyId }`).
+- `ADMIN_ANTICHEAT_GAMEPLAY_RESOLVE` (meta = `{ anomalyId, noteLength }`).
+
+Query audit để re-construct workflow:
+
+```sql
+SELECT "createdAt", "actorUserId", "action", "meta"
+FROM "AdminAuditLog"
+WHERE "action" LIKE 'ADMIN_ANTICHEAT_GAMEPLAY_%'
+ORDER BY "createdAt" DESC
+LIMIT 100;
+```
+
+#### 2.33.6. Verify migration & cron
+
+```bash
+# Verify migration đã apply
+psql "$DATABASE_URL" -c "\d \"GameplayAnomaly\""
+# Phải thấy table + unique index (type, characterId, windowKey).
+
+# Smoke scan với DB rỗng — phải trả totalCreated=0, totalErrored=0
+curl -X POST https://api/api/admin/anticheat/gameplay/scan \
+  -H 'Content-Type: application/json' -b 'access_token=...' -d '{}'
+```
+
+**Cron**: Phase 16.3 KHÔNG enable cron tự động — admin chạy thủ công qua FE/curl. Hook env reserved cho Phase follow-up.
+
+#### 2.33.7. KHÔNG được làm
+
+- **KHÔNG auto-ban / KHÔNG auto-rollback / KHÔNG auto-deduct** dựa trên anomaly OPEN. Mọi mutation player data phải qua endpoint admin có sẵn (ban / refund / grant) + manual review.
+- **KHÔNG public notify** (mail / chat / WS) cho player có anomaly OPEN.
+- **KHÔNG xoá row `GameplayAnomaly`** — workflow chỉ mutate `status`. Xoá leak audit trail.
+- **KHÔNG resolve hàng loạt không note** — phải ghi rõ lý do để audit theo người xử lý sau này.
+- **KHÔNG copy/log `detailsJson` raw ra ngoài Postgres** — vẫn coi như nhạy cảm dù đã sanitize.
+- **KHÔNG mở rộng scope sang ban/lock** trong controller Phase 16.3 — Phase 16.3 chỉ detection. Mọi cử dùng `AdminController` / `AdminSecurityController` / `AdminUsersController` hiện có.
+
 ## 2.99. Pre-cutover Deploy Verify Gate (Phase 17.1)
 
 **Khi nào**: Mọi lần cutover production sang instance mới / image mới /

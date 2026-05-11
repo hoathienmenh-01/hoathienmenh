@@ -1323,3 +1323,150 @@ export async function adminLiveOpsAnnouncementsRecompute(): Promise<AdminLiveOps
   >('/admin/liveops/announcements/recompute-status', {});
   return unwrap(data);
 }
+
+/* ---------------------------------------------------------------------------
+ * Phase 16.3 — Gameplay Anti-cheat Deep Detection (admin endpoints)
+ * ------------------------------------------------------------------------- */
+
+export type GameplayAnomalyType =
+  | 'EXP_GAIN_SPIKE'
+  | 'CURRENCY_GAIN_SPIKE'
+  | 'ITEM_GAIN_SPIKE'
+  | 'DUNGEON_REWARD_FARM'
+  | 'BOSS_REWARD_FARM'
+  | 'MISSION_REWARD_FARM'
+  | 'ARENA_REWARD_FARM'
+  | 'TERRITORY_REWARD_SPIKE'
+  | 'COMBAT_RESULT_MISMATCH'
+  | 'REWARD_CAP_BYPASS_ATTEMPT';
+export type GameplayAnomalySeverity = 'INFO' | 'WARN' | 'CRITICAL';
+export type GameplayAnomalyStatus = 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED';
+export type GameplayAnomalySource =
+  | 'DUNGEON_RUN'
+  | 'BOSS'
+  | 'MISSION'
+  | 'ARENA'
+  | 'TERRITORY'
+  | 'CURRENCY_LEDGER'
+  | 'ITEM_LEDGER'
+  | 'COMBAT_SNAPSHOT'
+  | 'REWARD_CAP'
+  | 'CULTIVATION'
+  | 'OTHER';
+
+export interface GameplayAnomalyRow {
+  id: string;
+  type: GameplayAnomalyType;
+  severity: GameplayAnomalySeverity;
+  status: GameplayAnomalyStatus;
+  source: GameplayAnomalySource;
+  characterId: string | null;
+  userId: string | null;
+  windowKey: string;
+  detailsJson: unknown;
+  createdAt: string;
+  updatedAt: string;
+  acknowledgedAt: string | null;
+  acknowledgedByAdminId: string | null;
+  resolvedAt: string | null;
+  resolvedByAdminId: string | null;
+  resolutionNote: string | null;
+}
+
+export interface GameplayAnomalySummary {
+  openCount: number;
+  openCriticalCount: number;
+  openWarnCount: number;
+  openInfoCount: number;
+  totalCount: number;
+  latestCreatedAt: string | null;
+  latestResolvedAt: string | null;
+}
+
+export interface GameplayScanRuleResult {
+  type: GameplayAnomalyType;
+  created: number;
+  skipped: number;
+  errored: boolean;
+  errorMessage: string | null;
+}
+
+export interface GameplayScanSummaryView {
+  windowKeysByType: Record<GameplayAnomalyType, string>;
+  totalCreated: number;
+  totalSkipped: number;
+  totalErrored: number;
+  rules: GameplayScanRuleResult[];
+  scannedAt: string;
+}
+
+export async function adminGameplayAntiCheatSummary(): Promise<GameplayAnomalySummary> {
+  const { data } = await apiClient.get<Envelope<GameplayAnomalySummary>>(
+    '/admin/anticheat/gameplay/summary',
+  );
+  return unwrap(data);
+}
+
+export async function adminGameplayAntiCheatScan(): Promise<GameplayScanSummaryView> {
+  const { data } = await apiClient.post<Envelope<GameplayScanSummaryView>>(
+    '/admin/anticheat/gameplay/scan',
+    {},
+  );
+  return unwrap(data);
+}
+
+export async function adminGameplayAntiCheatList(filters: {
+  severity?: GameplayAnomalySeverity;
+  status?: GameplayAnomalyStatus;
+  type?: GameplayAnomalyType;
+  source?: GameplayAnomalySource;
+  characterId?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+} = {}): Promise<{
+  items: GameplayAnomalyRow[];
+  total: number;
+  filters: {
+    severities: readonly string[];
+    statuses: readonly string[];
+    types: readonly string[];
+    sources: readonly string[];
+  };
+}> {
+  const params: Record<string, string | number> = {};
+  if (filters.severity) params.severity = filters.severity;
+  if (filters.status) params.status = filters.status;
+  if (filters.type) params.type = filters.type;
+  if (filters.source) params.source = filters.source;
+  if (filters.characterId) params.characterId = filters.characterId;
+  if (filters.from) params.from = filters.from;
+  if (filters.to) params.to = filters.to;
+  if (filters.limit) params.limit = filters.limit;
+  const { data } = await apiClient.get<
+    Envelope<{
+      items: GameplayAnomalyRow[];
+      total: number;
+      filters: {
+        severities: readonly string[];
+        statuses: readonly string[];
+        types: readonly string[];
+        sources: readonly string[];
+      };
+    }>
+  >('/admin/anticheat/gameplay/anomalies', { params });
+  return unwrap(data);
+}
+
+export async function adminGameplayAntiCheatAck(id: string): Promise<void> {
+  await apiClient.post(`/admin/anticheat/gameplay/anomalies/${id}/ack`, {});
+}
+
+export async function adminGameplayAntiCheatResolve(
+  id: string,
+  note?: string,
+): Promise<void> {
+  await apiClient.post(`/admin/anticheat/gameplay/anomalies/${id}/resolve`, {
+    note,
+  });
+}

@@ -564,6 +564,30 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 
 **Admin Economy Safety error codes**: `ADMIN_ONLY`, `INVALID_INPUT`, `ISSUE_NOT_FOUND`, `ANOMALY_NOT_FOUND`.
 
+## Admin Anti-cheat Gameplay — `AdminGameplayAntiCheatController` (Phase 16.3)
+
+> Phase 16.3 Gameplay Anti-cheat Deep Detection. **Detection-only** — KHÔNG auto-ban / KHÔNG rollback / KHÔNG tự trừ EXP/item/đá / KHÔNG khoá tài khoản. Tách bảng `GameplayAnomaly` khỏi `EconomyAnomaly` (Phase 16.6) để admin filter sạch theo domain. Tất cả endpoint gắn `@RequireAdmin()`; PLAYER + MOD đều bị reject 403 `ADMIN_ONLY` + `@RateLimitPolicy('ADMIN_MUTATION')`. Mọi POST mutation ghi `AdminAuditLog` (`ADMIN_ANTICHEAT_GAMEPLAY_SCAN` / `ADMIN_ANTICHEAT_GAMEPLAY_ACK` / `ADMIN_ANTICHEAT_GAMEPLAY_RESOLVE`).
+
+| Method | Path | Auth | Mô tả |
+|--------|------|------|-------|
+| GET    | `/admin/anticheat/gameplay/summary` | ADMIN | Dashboard cards. Response `{ openCount, openCriticalCount, openWarnCount, openInfoCount, totalCount, latestCreatedAt, latestResolvedAt }`. |
+| POST   | `/admin/anticheat/gameplay/scan` | ADMIN | Trigger thủ công `GameplayAntiCheatService.scanAll`. Body `{ windowKey?: string (≤64ch), windowMs?: number (≤ 30 ngày) }` (zod strict). Default windowMs từ rule catalog (1h / 24h / 7d tuỳ type). Idempotent qua `GameplayAnomaly @@unique([type, characterId, windowKey])` — re-scan cùng window → count vào `totalSkipped`. Response `GameplayScanSummary { totalCreated, totalSkipped, totalErrored, byType: Record<GameplayAnomalyType, number>, windowKeysByType: Record<GameplayAnomalyType, string> }`. Fail-soft per-rule (1 rule fail KHÔNG phá rule khác). Audit `ADMIN_ANTICHEAT_GAMEPLAY_SCAN`. Errors: 401 `UNAUTHENTICATED`, 403 `ADMIN_ONLY`, 400 `INVALID_INPUT`. |
+| GET    | `/admin/anticheat/gameplay/anomalies?severity=&status=&type=&source=&characterId=&from=&to=&limit=` | ADMIN | List anomalies filter (limit default=50, max 200, invalid filter bỏ qua). Validate qua `isGameplayAnomalySeverity` / `isGameplayAnomalyStatus` / `isGameplayAnomalyType` / `isGameplayAnomalySource`. Sort `severity DESC, createdAt DESC`. Response `{ items: AnomalyRowDto[], total, filters: { severities, statuses, types, sources } }`. `AnomalyRowDto = { id, type, severity, status, source, characterId?, userId?, windowKey, detailsJson, createdAt, updatedAt, acknowledgedAt?, acknowledgedByAdminId?, resolvedAt?, resolvedByAdminId?, resolutionNote? }`. |
+| POST   | `/admin/anticheat/gameplay/anomalies/:id/ack` | ADMIN | Chuyển `OPEN → ACKNOWLEDGED` + set `acknowledgedAt` + `acknowledgedByAdminId`. Idempotent: row đã `ACKNOWLEDGED`/`RESOLVED` → 404 `ANOMALY_NOT_FOUND_OR_NOT_OPEN`. Audit `ADMIN_ANTICHEAT_GAMEPLAY_ACK`. |
+| POST   | `/admin/anticheat/gameplay/anomalies/:id/resolve` | ADMIN | Chuyển `OPEN \| ACKNOWLEDGED → RESOLVED` + set `resolvedAt` + `resolvedByAdminId` + `resolutionNote` (optional, ≤1000ch). Idempotent: row đã `RESOLVED` → 404 `ANOMALY_NOT_FOUND_OR_RESOLVED`. Audit `ADMIN_ANTICHEAT_GAMEPLAY_RESOLVE`. Body `{ note?: string (≤1000ch) }` zod strict. |
+
+**Anomaly types** (catalog `GAMEPLAY_ANOMALY_RULES` ở `packages/shared/src/gameplay-anticheat.ts`): `EXP_GAIN_SPIKE`, `CURRENCY_GAIN_SPIKE`, `ITEM_GAIN_SPIKE`, `DUNGEON_REWARD_FARM`, `BOSS_REWARD_FARM`, `MISSION_REWARD_FARM`, `ARENA_REWARD_FARM`, `TERRITORY_REWARD_SPIKE`, `COMBAT_RESULT_MISMATCH` (reserved hook), `REWARD_CAP_BYPASS_ATTEMPT`. Threshold rationale: xem `BALANCE_MODEL.md` §11.27.
+
+**Sources** (11): `CHARACTER`, `CURRENCY_LEDGER`, `ITEM_LEDGER`, `DUNGEON_RUN`, `BOSS`, `MISSION`, `ARENA`, `TERRITORY`, `COMBAT`, `REWARD_CAP`, `OTHER`.
+
+**Severity** (`GameplayAnomalySeverity`): `INFO` < `WARN` < `CRITICAL`. Status (`GameplayAnomalyStatus`): `OPEN` → `ACKNOWLEDGED` → `RESOLVED`. Status transition idempotent (404 nếu sai trạng thái — admin không có nguy cơ ack ngược / resolve ngược).
+
+**Detection-only invariants**: scan KHÔNG mutate `Character.linhThach` / `Character.expCurrent` / `InventoryItem.qty` / `User.bannedAt`. Test enforced ở `gameplay-anticheat.service.test.ts`. Mọi remediation player data (ban / refund / grant) phải qua endpoint admin có sẵn — KHÔNG có ở controller này.
+
+**Privacy**: `detailsJson` đã sanitize ở caller — KHÔNG raw IP / token / cookie / refresh hash. Audit `AdminAuditLog` KHÔNG log secret.
+
+**Admin Anti-cheat Gameplay error codes**: `ADMIN_ONLY`, `INVALID_INPUT`, `ANOMALY_NOT_FOUND_OR_NOT_OPEN`, `ANOMALY_NOT_FOUND_OR_RESOLVED`.
+
 ## Market — Phase 16.6 Price Band reject codes
 
 > Khi listing post (`POST /market/listings`) có `pricePerUnit` ngoài `getMarketPriceBandForItem(itemKey)` band → reject với 1 trong 2 code (HTTP 409 CONFLICT). Existing ACTIVE listings KHÔNG bị mutate (chỉ áp dụng listing mới).
