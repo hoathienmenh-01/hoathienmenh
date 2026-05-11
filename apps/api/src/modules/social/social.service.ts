@@ -4,6 +4,14 @@ import {
   type FriendRequestRow,
   type FriendRow,
   type PlayerBlockRow,
+  type PublicCharacterSummaryDto,
+  type PublicPlayerProfileDto,
+  type RelationshipStatus,
+  computePowerScore,
+  computeProfileActions,
+  formatJoinedYearMonth,
+  fullRealmName,
+  realmByKey,
   sortUserPair,
   validateFriendRequestMessage,
 } from '@xuantoi/shared';
@@ -493,5 +501,295 @@ export class SocialService {
         ? row.respondedAt.toISOString()
         : null,
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phase 19.1.C — Public player profile
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Trả về public profile của `targetUserId` từ góc nhìn `viewerUserId`.
+   *
+   * Privacy invariants (server enforce):
+   *   - KHÔNG bao giờ chọn `email`, `passwordHash`, `role`, `banned`,
+   *     `linhThach`, `tienNgoc`, `tienTe`, `nguyenThach`, currency
+   *     balance khác, inventory, ledger, IP, sessionId, token. Select
+   *     whitelist ở `prisma.character.findUnique` chỉ lấy field cần.
+   *   - `BLOCKED_ME` (target đã block viewer) → ném `SocialError('NOT_FOUND')`
+   *     để controller mask 404 (chống enumeration "ai đã block tôi").
+   *   - `BLOCKED_BY_ME` → trả minimal profile (id + displayName +
+   *     relationship), KHÔNG kèm character snapshot.
+   *
+   * Relationship matrix (tính atomic — 1 query playerBlock + 1 query
+   * friendship + 1 query friendRequest PENDING):
+   *   - viewerId === targetId → SELF.
+   *   - target block viewer → throw NOT_FOUND (404 mask).
+   *   - viewer block target → BLOCKED_BY_ME.
+   *   - friendship row tồn tại → FRIEND.
+   *   - friendRequest PENDING sender=target receiver=viewer → PENDING_INCOMING.
+   *   - friendRequest PENDING sender=viewer receiver=target → PENDING_OUTGOING.
+   *   - mặc định → STRANGER.
+   *
+   * `mutualFriendCount` chỉ tính khi target là STRANGER hoặc PENDING
+   * (chống leak social graph cho FRIEND/SELF/BLOCKED). Phase 19.1.C
+   * dùng INTERSECT đơn giản 2 friend list (cap ở phase này coi như
+   * acceptable < 1000 friend/user; Phase 21 sẽ tối ưu nếu cần).
+   *
+   * Throw `NOT_FOUND` khi target user không tồn tại HOẶC target đã
+   * block viewer (mask).
+   */
+  async getPublicProfile(
+    viewerUserId: string,
+    targetUserId: string,
+  ): Promise<PublicPlayerProfileDto> {
+    // SELF early return — chỉ query 1 lần vào character của viewer.
+    if (viewerUserId === targetUserId) {
+      return this.buildSelfProfile(viewerUserId);
+    }
+
+    // 1. Block check 2 chiều — single query trả về cả hướng.
+    const blocks = await this.prisma.playerBlock.findMany({
+      where: {
+        OR: [
+          { blockerUserId: viewerUserId, blockedUserId: targetUserId },
+          { blockerUserId: targetUserId, blockedUserId: viewerUserId },
+        ],
+      },
+      select: { blockerUserId: true },
+    });
+    const targetBlockedViewer = blocks.some(
+      (b) => b.blockerUserId === targetUserId,
+    );
+    const viewerBlockedTarget = blocks.some(
+      (b) => b.blockerUserId === viewerUserId,
+    );
+
+    // Privacy mask: target đã block viewer → 404 (không leak existence).
+    if (targetBlockedViewer) {
+      throw new SocialError('NOT_FOUND');
+    }
+
+    // 2. Verify target user tồn tại (whitelist select — KHÔNG lấy
+    // email/role/banned/passwordHash).
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { id: true, createdAt: true },
+    });
+    if (!targetUser) {
+      throw new SocialError('NOT_FOUND');
+    }
+
+    // 3. Lấy character + sect snapshot (whitelist select — KHÔNG lấy
+    // currency / inventory / cultivation settings).
+    const targetChar = await this.prisma.character.findUnique({
+      where: { userId: targetUserId },
+      select: {
+        name: true,
+        realmKey: true,
+        realmStage: true,
+        title: true,
+        level: true,
+        power: true,
+        spirit: true,
+        speed: true,
+        sectId: true,
+        sect: { select: { id: true, name: true } },
+      },
+    });
+
+    // 4. BLOCKED_BY_ME → minimal profile (chỉ relationship + displayName).
+    if (viewerBlockedTarget) {
+      const status: RelationshipStatus = 'BLOCKED_BY_ME';
+      return {
+        userId: targetUserId,
+        displayName: targetChar?.name ?? null,
+        relationshipStatus: status,
+        actions: computeProfileActions(status),
+        character: null,
+        online: false,
+        joinedYearMonth: null,
+        mutualFriendCount: null,
+        sameSect: null,
+      };
+    }
+
+    // 5. Tính FRIEND / PENDING_* — query friendship + friendRequest.
+    const pair = sortUserPair(viewerUserId, targetUserId);
+    let status: RelationshipStatus = 'STRANGER';
+
+    if (pair) {
+      const friendship = await this.prisma.friendship.findUnique({
+        where: { userAId_userBId: { userAId: pair.low, userBId: pair.high } },
+        select: { id: true },
+      });
+      if (friendship) {
+        status = 'FRIEND';
+      } else {
+        // Tìm PENDING request 1 trong 2 hướng (single query).
+        const pending = await this.prisma.friendRequest.findFirst({
+          where: {
+            status: FriendRequestStatus.PENDING,
+            OR: [
+              { senderUserId: viewerUserId, receiverUserId: targetUserId },
+              { senderUserId: targetUserId, receiverUserId: viewerUserId },
+            ],
+          },
+          select: { senderUserId: true },
+        });
+        if (pending) {
+          status =
+            pending.senderUserId === viewerUserId
+              ? 'PENDING_OUTGOING'
+              : 'PENDING_INCOMING';
+        }
+      }
+    }
+
+    // 6. Compute character summary nếu character tồn tại.
+    const characterSummary = targetChar
+      ? this.toPublicCharacterSummary(targetChar)
+      : null;
+
+    // 7. sameSect — null nếu viewer/target chưa có char hoặc target
+    //    block-by-me (case này đã return ở bước 4).
+    const sameSect = await this.computeSameSect(viewerUserId, targetChar);
+
+    // 8. mutualFriendCount — chỉ tính cho STRANGER + PENDING_* (chống
+    //    leak social graph cho FRIEND/SELF).
+    const mutualFriendCount =
+      status === 'STRANGER' ||
+      status === 'PENDING_INCOMING' ||
+      status === 'PENDING_OUTGOING'
+        ? await this.countMutualFriends(viewerUserId, targetUserId)
+        : null;
+
+    return {
+      userId: targetUserId,
+      displayName: targetChar?.name ?? null,
+      relationshipStatus: status,
+      actions: computeProfileActions(status),
+      character: characterSummary,
+      online: false,
+      joinedYearMonth: formatJoinedYearMonth(targetUser.createdAt),
+      mutualFriendCount,
+      sameSect,
+    };
+  }
+
+  private async buildSelfProfile(
+    userId: string,
+  ): Promise<PublicPlayerProfileDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, createdAt: true },
+    });
+    if (!user) throw new SocialError('NOT_FOUND');
+    const char = await this.prisma.character.findUnique({
+      where: { userId },
+      select: {
+        name: true,
+        realmKey: true,
+        realmStage: true,
+        title: true,
+        level: true,
+        power: true,
+        spirit: true,
+        speed: true,
+        sectId: true,
+        sect: { select: { id: true, name: true } },
+      },
+    });
+    const status: RelationshipStatus = 'SELF';
+    return {
+      userId,
+      displayName: char?.name ?? null,
+      relationshipStatus: status,
+      actions: computeProfileActions(status),
+      character: char ? this.toPublicCharacterSummary(char) : null,
+      online: false,
+      joinedYearMonth: formatJoinedYearMonth(user.createdAt),
+      mutualFriendCount: null,
+      sameSect: null,
+    };
+  }
+
+  private toPublicCharacterSummary(char: {
+    name: string;
+    realmKey: string;
+    realmStage: number;
+    title: string | null;
+    level: number;
+    power: number;
+    spirit: number;
+    speed: number;
+    sectId: string | null;
+    sect: { id: string; name: string } | null;
+  }): PublicCharacterSummaryDto {
+    const realmDef = realmByKey(char.realmKey);
+    const realmFullName = realmDef
+      ? fullRealmName(realmDef, char.realmStage)
+      : `${char.realmKey} — ${char.realmStage}`;
+    return {
+      characterName: char.name,
+      realmKey: char.realmKey,
+      realmStage: char.realmStage,
+      realmFullName,
+      level: char.level,
+      title: char.title,
+      powerScore: computePowerScore({
+        power: char.power,
+        spirit: char.spirit,
+        speed: char.speed,
+      }),
+      sectId: char.sect?.id ?? char.sectId ?? null,
+      sectName: char.sect?.name ?? null,
+    };
+  }
+
+  private async computeSameSect(
+    viewerUserId: string,
+    targetChar: { sectId: string | null } | null,
+  ): Promise<boolean | null> {
+    if (!targetChar || targetChar.sectId === null) return false;
+    const viewerChar = await this.prisma.character.findUnique({
+      where: { userId: viewerUserId },
+      select: { sectId: true },
+    });
+    if (!viewerChar || viewerChar.sectId === null) return false;
+    return viewerChar.sectId === targetChar.sectId;
+  }
+
+  /**
+   * Count mutual friends giữa viewer + target. Phase 19.1.C dùng
+   * INTERSECT 2 friend-id list trong JS. Acceptable < 1000 friend/user
+   * (cap thực tế hiện nay). Phase 21 sẽ optimize bằng aggregate
+   * query nếu cần.
+   */
+  private async countMutualFriends(
+    viewerUserId: string,
+    targetUserId: string,
+  ): Promise<number> {
+    const [viewerFriends, targetFriends] = await Promise.all([
+      this.prisma.friendship.findMany({
+        where: { OR: [{ userAId: viewerUserId }, { userBId: viewerUserId }] },
+        select: { userAId: true, userBId: true },
+      }),
+      this.prisma.friendship.findMany({
+        where: { OR: [{ userAId: targetUserId }, { userBId: targetUserId }] },
+        select: { userAId: true, userBId: true },
+      }),
+    ]);
+    const viewerSet = new Set<string>(
+      viewerFriends.map((r) =>
+        r.userAId === viewerUserId ? r.userBId : r.userAId,
+      ),
+    );
+    let count = 0;
+    for (const r of targetFriends) {
+      const other = r.userAId === targetUserId ? r.userBId : r.userAId;
+      if (other === viewerUserId) continue;
+      if (viewerSet.has(other)) count += 1;
+    }
+    return count;
   }
 }

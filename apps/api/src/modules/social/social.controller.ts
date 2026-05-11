@@ -19,6 +19,7 @@ import type {
   OutgoingFriendRequestsResponse,
   PlayerBlockListResponse,
   PlayerBlockRow,
+  PublicPlayerProfileResponse,
 } from '@xuantoi/shared';
 import { AuthService } from '../auth/auth.service';
 import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
@@ -115,6 +116,43 @@ export class SocialController {
     const userId = await this.requireUserId(req);
     const requests = await this.social.listOutgoingRequests(userId);
     return { ok: true, data: { requests } };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phase 19.1.C — Public player profile (Inspect Player)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * `GET /social/profile/:userId` — trả về public profile cho viewer
+   * authenticated. Rate-limit `SOCIAL_PROFILE_VIEW` chống enumeration
+   * scrape (60 req / phút / tài khoản, vượt → block 5 phút).
+   *
+   * Privacy: response chỉ chứa field whitelist trong
+   * `PublicPlayerProfileDto`. Service throw `NOT_FOUND` cho cả case
+   * "user không tồn tại" và "target đã block viewer" (404 mask).
+   */
+  @Get('profile/:userId')
+  @RateLimitPolicy('SOCIAL_PROFILE_VIEW')
+  async getPublicProfile(
+    @Req() req: Request,
+    @Param('userId') targetUserId: string,
+  ): Promise<{ ok: true; data: PublicPlayerProfileResponse }> {
+    const viewerUserId = await this.requireUserId(req);
+    if (typeof targetUserId !== 'string' || targetUserId.length === 0) {
+      fail('INVALID_INPUT');
+    }
+    if (targetUserId.length > 64) {
+      fail('INVALID_INPUT');
+    }
+    try {
+      const profile = await this.social.getPublicProfile(
+        viewerUserId,
+        targetUserId,
+      );
+      return { ok: true, data: { profile } };
+    } catch (e) {
+      this.handleErr(e);
+    }
   }
 
   // ---------------------------------------------------------------------------

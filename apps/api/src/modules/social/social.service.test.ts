@@ -338,3 +338,231 @@ describe('Phase 19.1 — SocialError class', () => {
     expect(e.message).toBe('BLOCKED');
   });
 });
+
+describe('Phase 19.1.C — SocialService.getPublicProfile', () => {
+  it('SELF: viewer xem chính mình → status SELF + actions all false', async () => {
+    const a = await makePlayer();
+    const profile = await social.getPublicProfile(a.userId, a.userId);
+    expect(profile.userId).toBe(a.userId);
+    expect(profile.relationshipStatus).toBe('SELF');
+    expect(profile.actions).toEqual({
+      canSendFriendRequest: false,
+      canMessage: false,
+      canBlock: false,
+      canReport: false,
+    });
+    expect(profile.character).not.toBeNull();
+    expect(profile.character?.characterName).toBe(a.name);
+    expect(profile.mutualFriendCount).toBeNull();
+    expect(profile.sameSect).toBeNull();
+  });
+
+  it('STRANGER: 2 user không quan hệ → status STRANGER + canSendFriendRequest=true', async () => {
+    const a = await makePlayer();
+    const b = await makePlayer();
+    const profile = await social.getPublicProfile(a.userId, b.userId);
+    expect(profile.relationshipStatus).toBe('STRANGER');
+    expect(profile.actions.canSendFriendRequest).toBe(true);
+    expect(profile.actions.canMessage).toBe(true);
+    expect(profile.actions.canBlock).toBe(true);
+    expect(profile.actions.canReport).toBe(true);
+    expect(profile.character).not.toBeNull();
+    expect(profile.character?.characterName).toBe(b.name);
+    expect(profile.character?.realmKey).toBe('luyenkhi');
+    expect(profile.character?.realmStage).toBe(1);
+    expect(profile.character?.powerScore).toBeGreaterThanOrEqual(0);
+    expect(profile.joinedYearMonth).toMatch(/^\d{4}-\d{2}$/);
+    expect(profile.mutualFriendCount).toBe(0);
+    expect(profile.sameSect).toBe(false);
+  });
+
+  it('FRIEND: 2 user đã friend → status FRIEND + canMessage=true, canSendFriendRequest=false', async () => {
+    const a = await makePlayer();
+    const b = await makePlayer();
+    const req = await social.sendFriendRequest(a.userId, b.userId, null);
+    await social.acceptFriendRequest(b.userId, req.id);
+    const profileFromA = await social.getPublicProfile(a.userId, b.userId);
+    expect(profileFromA.relationshipStatus).toBe('FRIEND');
+    expect(profileFromA.actions.canSendFriendRequest).toBe(false);
+    expect(profileFromA.actions.canMessage).toBe(true);
+    expect(profileFromA.actions.canBlock).toBe(true);
+    expect(profileFromA.mutualFriendCount).toBeNull();
+    const profileFromB = await social.getPublicProfile(b.userId, a.userId);
+    expect(profileFromB.relationshipStatus).toBe('FRIEND');
+  });
+
+  it('PENDING_OUTGOING khi viewer đã gửi request, target chưa accept', async () => {
+    const a = await makePlayer();
+    const b = await makePlayer();
+    await social.sendFriendRequest(a.userId, b.userId, null);
+    const profile = await social.getPublicProfile(a.userId, b.userId);
+    expect(profile.relationshipStatus).toBe('PENDING_OUTGOING');
+    expect(profile.actions.canSendFriendRequest).toBe(false);
+    expect(profile.actions.canMessage).toBe(false);
+    expect(profile.actions.canBlock).toBe(true);
+    expect(profile.actions.canReport).toBe(true);
+  });
+
+  it('PENDING_INCOMING khi target đã gửi request đến viewer', async () => {
+    const a = await makePlayer();
+    const b = await makePlayer();
+    await social.sendFriendRequest(b.userId, a.userId, null);
+    const profile = await social.getPublicProfile(a.userId, b.userId);
+    expect(profile.relationshipStatus).toBe('PENDING_INCOMING');
+    expect(profile.actions.canMessage).toBe(false);
+    expect(profile.actions.canSendFriendRequest).toBe(false);
+  });
+
+  it('BLOCKED_BY_ME: viewer block target → minimal profile, character=null, actions all false', async () => {
+    const a = await makePlayer();
+    const b = await makePlayer();
+    await social.blockUser(a.userId, b.userId);
+    const profile = await social.getPublicProfile(a.userId, b.userId);
+    expect(profile.relationshipStatus).toBe('BLOCKED_BY_ME');
+    expect(profile.character).toBeNull();
+    expect(profile.joinedYearMonth).toBeNull();
+    expect(profile.mutualFriendCount).toBeNull();
+    expect(profile.sameSect).toBeNull();
+    expect(profile.actions).toEqual({
+      canSendFriendRequest: false,
+      canMessage: false,
+      canBlock: false,
+      canReport: false,
+    });
+    // displayName vẫn giữ để FE render unblock CTA.
+    expect(profile.displayName).toBe(b.name);
+  });
+
+  it('BLOCKED_ME (target block viewer) → 404 mask: throw NOT_FOUND, KHÔNG leak profile', async () => {
+    const a = await makePlayer();
+    const b = await makePlayer();
+    await social.blockUser(b.userId, a.userId);
+    await expect(
+      social.getPublicProfile(a.userId, b.userId),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('Target không tồn tại → NOT_FOUND', async () => {
+    const a = await makePlayer();
+    await expect(
+      social.getPublicProfile(a.userId, 'cuid_not_exist_zzz'),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('Response KHÔNG leak email/role/banned/currency/payment/inventory/ipHash/session', async () => {
+    const a = await makePlayer();
+    const b = await makePlayer();
+    const profile = await social.getPublicProfile(a.userId, b.userId);
+    // Whitelist top-level keys
+    const topKeys = Object.keys(profile).sort();
+    expect(topKeys).toEqual(
+      [
+        'actions',
+        'character',
+        'displayName',
+        'joinedYearMonth',
+        'mutualFriendCount',
+        'online',
+        'relationshipStatus',
+        'sameSect',
+        'userId',
+      ].sort(),
+    );
+    expect(topKeys).not.toContain('email');
+    expect(topKeys).not.toContain('role');
+    expect(topKeys).not.toContain('banned');
+    expect(topKeys).not.toContain('linhThach');
+    expect(topKeys).not.toContain('tienNgoc');
+    expect(topKeys).not.toContain('ipHash');
+    expect(topKeys).not.toContain('sessionId');
+    // Character snapshot whitelist
+    const charKeys = Object.keys(profile.character ?? {}).sort();
+    expect(charKeys).toEqual(
+      [
+        'characterName',
+        'level',
+        'powerScore',
+        'realmFullName',
+        'realmKey',
+        'realmStage',
+        'sectId',
+        'sectName',
+        'title',
+      ].sort(),
+    );
+    // KHÔNG leak power/spirit/speed raw, hp/mp, currency balance.
+    expect(charKeys).not.toContain('power');
+    expect(charKeys).not.toContain('spirit');
+    expect(charKeys).not.toContain('hp');
+    expect(charKeys).not.toContain('linhThach');
+    expect(charKeys).not.toContain('settings');
+    expect(charKeys).not.toContain('inventory');
+  });
+
+  it('mutualFriendCount đúng cho STRANGER (intersect 2 friend list)', async () => {
+    const viewer = await makePlayer();
+    const target = await makePlayer();
+    const m1 = await makePlayer();
+    const m2 = await makePlayer();
+    const m3 = await makePlayer();
+    // viewer ↔ m1, m2
+    for (const m of [m1, m2]) {
+      const r = await social.sendFriendRequest(viewer.userId, m.userId, null);
+      await social.acceptFriendRequest(m.userId, r.id);
+    }
+    // target ↔ m1, m2, m3 → mutual = {m1, m2} = 2
+    for (const m of [m1, m2, m3]) {
+      const r = await social.sendFriendRequest(target.userId, m.userId, null);
+      await social.acceptFriendRequest(m.userId, r.id);
+    }
+    const profile = await social.getPublicProfile(viewer.userId, target.userId);
+    expect(profile.relationshipStatus).toBe('STRANGER');
+    expect(profile.mutualFriendCount).toBe(2);
+  });
+
+  it('mutualFriendCount = null khi FRIEND (privacy: không leak social graph)', async () => {
+    const a = await makePlayer();
+    const b = await makePlayer();
+    const r = await social.sendFriendRequest(a.userId, b.userId, null);
+    await social.acceptFriendRequest(b.userId, r.id);
+    const profile = await social.getPublicProfile(a.userId, b.userId);
+    expect(profile.mutualFriendCount).toBeNull();
+  });
+
+  it('sameSect = true khi viewer + target cùng sect', async () => {
+    const sect = await prisma.sect.create({ data: { name: `S_${Date.now()}` } });
+    const a = await makePlayer();
+    const b = await makePlayer();
+    await prisma.character.update({
+      where: { userId: a.userId },
+      data: { sectId: sect.id },
+    });
+    await prisma.character.update({
+      where: { userId: b.userId },
+      data: { sectId: sect.id },
+    });
+    const profile = await social.getPublicProfile(a.userId, b.userId);
+    expect(profile.sameSect).toBe(true);
+    expect(profile.character?.sectId).toBe(sect.id);
+    expect(profile.character?.sectName).toBe(sect.name);
+  });
+
+  it('sameSect = false khi viewer có sect khác / target vô môn', async () => {
+    const sect = await prisma.sect.create({ data: { name: `S2_${Date.now()}` } });
+    const a = await makePlayer();
+    const b = await makePlayer();
+    await prisma.character.update({
+      where: { userId: a.userId },
+      data: { sectId: sect.id },
+    });
+    const profile = await social.getPublicProfile(a.userId, b.userId);
+    expect(profile.sameSect).toBe(false);
+  });
+
+  it('joinedYearMonth format YYYY-MM (zero-pad)', async () => {
+    const a = await makePlayer();
+    const b = await makePlayer();
+    const profile = await social.getPublicProfile(a.userId, b.userId);
+    expect(profile.joinedYearMonth).toMatch(/^\d{4}-(0[1-9]|1[0-2])$/);
+  });
+});
