@@ -55,6 +55,7 @@ import AdminArenaAntiWintradePanel from '@/components/AdminArenaAntiWintradePane
 import AdminFeatureFlagsPanel from '@/components/AdminFeatureFlagsPanel.vue';
 import AdminMaintenancePanel from '@/components/AdminMaintenancePanel.vue';
 import AdminConfigVersionPanel from '@/components/AdminConfigVersionPanel.vue';
+import AdminSecurityPanel from '@/components/AdminSecurityPanel.vue';
 import {
   computeGiftcodeRevokeImpact,
   mapGiftcodeRevokeErrorKey,
@@ -80,7 +81,8 @@ type Tab =
   | 'arenaAntiWintrade'
   | 'featureFlags'
   | 'maintenance'
-  | 'configVersion';
+  | 'configVersion'
+  | 'security';
 const tab = ref<Tab>('stats');
 const stats = ref<AdminStats | null>(null);
 const alerts = ref<AdminEconomyAlerts | null>(null);
@@ -753,7 +755,7 @@ const isAdmin = () => game.character?.role === 'ADMIN';
 
       <nav class="flex gap-1 border-b border-ink-300/30 text-sm">
         <button
-          v-for="tk in (['stats','users','topups','audit','giftcodes','boss','liveops','economy','arenaAntiWintrade','featureFlags','maintenance','configVersion'] as const)"
+          v-for="tk in (['stats','users','topups','audit','giftcodes','boss','liveops','economy','arenaAntiWintrade','featureFlags','maintenance','configVersion','security'] as const)"
           :key="tk"
           class="px-3 py-2 relative"
           :class="tab === tk ? 'border-b-2 border-amber-300 text-ink-50' : 'text-ink-300'"
@@ -1730,6 +1732,15 @@ const isAdmin = () => game.character?.role === 'ADMIN';
         data-testid="admin-config-version-section"
       >
         <AdminConfigVersionPanel />
+      </section>
+
+      <!-- SECURITY TAB (Phase 18.1) -->
+      <section
+        v-else-if="tab === 'security'"
+        class="space-y-3"
+        data-testid="admin-security-section"
+      >
+        <AdminSecurityPanel />
       </section>
 
       <!-- BOSS TAB -->

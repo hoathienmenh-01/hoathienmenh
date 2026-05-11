@@ -18,6 +18,7 @@ import {
   ResetPasswordInput,
 } from '@xuantoi/shared';
 import { AuthService, AuthError, type AuthErrorCode } from './auth.service';
+import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 
 const ACCESS_COOKIE = 'xt_access';
 const REFRESH_COOKIE = 'xt_refresh';
@@ -57,6 +58,7 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('register')
+  @RateLimitPolicy('AUTH_REGISTER')
   async register(
     @Body() body: unknown,
     @Req() req: Request,
@@ -77,6 +79,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(200)
+  @RateLimitPolicy('AUTH_LOGIN')
   async login(
     @Body() body: unknown,
     @Req() req: Request,
@@ -102,6 +105,7 @@ export class AuthController {
    */
   @Post('forgot-password')
   @HttpCode(200)
+  @RateLimitPolicy('AUTH_PASSWORD_RESET')
   async forgotPassword(@Body() body: unknown, @Req() req: Request) {
     const parsed = ForgotPasswordInput.safeParse(body);
     if (!parsed.success) {
@@ -126,6 +130,7 @@ export class AuthController {
    */
   @Post('reset-password')
   @HttpCode(200)
+  @RateLimitPolicy('AUTH_PASSWORD_RESET')
   async resetPassword(@Body() body: unknown) {
     const parsed = ResetPasswordInput.safeParse(body);
     if (!parsed.success) fail('INVALID_RESET_TOKEN');
@@ -168,6 +173,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @RateLimitPolicy('AUTH_REFRESH')
   @HttpCode(200)
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     try {

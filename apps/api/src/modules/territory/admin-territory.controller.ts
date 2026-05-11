@@ -19,6 +19,7 @@ import {
   previousTerritoryPeriodKey,
 } from '@xuantoi/shared';
 import { AdminGuard } from '../admin/admin.guard';
+import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 import { RequireAdmin } from '../admin/require-admin.decorator';
 import { TerritoryDecayService } from './territory-decay.service';
 import { TerritoryError } from './territory.service';
@@ -86,6 +87,7 @@ const GrantWeeklyBody = z
  */
 @UseGuards(AdminGuard)
 @Controller('admin/territory')
+@RateLimitPolicy('ADMIN_MUTATION')
 export class AdminTerritoryController {
   constructor(
     private readonly settlement: TerritorySettlementService,

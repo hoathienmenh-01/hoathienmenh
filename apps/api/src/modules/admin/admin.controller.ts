@@ -20,6 +20,7 @@ import { z } from 'zod';
 import { sectWarWeekKey } from '@xuantoi/shared';
 import { AdminGuard } from './admin.guard';
 import { RequireAdmin } from './require-admin.decorator';
+import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 import { AdminError, AdminService } from './admin.service';
 import {
   AdminLiveOpsError,
@@ -163,6 +164,11 @@ type AdminReq = Request & { userId: string; role: Role };
 
 @Controller('admin')
 @UseGuards(AdminGuard)
+// Phase 18.1 — Default rate-limit policy cho mọi route admin =
+// ADMIN_MUTATION. Các GET (list/report/view) override với
+// ADMIN_REPORT_VIEW (cao hơn) tại handler-level. Class-level metadata
+// chỉ apply khi handler không khai báo `@RateLimitPolicy(...)`.
+@RateLimitPolicy('ADMIN_MUTATION')
 export class AdminController {
   private readonly logger = new Logger(AdminController.name);
   private readonly economyAlertsBounds: EconomyAlertsBounds;
@@ -182,6 +188,7 @@ export class AdminController {
   }
 
   @Get('users')
+  @RateLimitPolicy('ADMIN_REPORT_VIEW')
   async users(
     @Query('q') q: string | undefined,
     @Query('page') page: string | undefined,
@@ -240,6 +247,7 @@ export class AdminController {
    * trong query string admin).
    */
   @Get('users.csv')
+  @RateLimitPolicy('ADMIN_REPORT_VIEW')
   @RequireAdmin()
   async usersCsv(
     @Req() req: AdminReq,
@@ -650,6 +658,7 @@ export class AdminController {
   }
 
   @Get('topups')
+  @RateLimitPolicy('ADMIN_REPORT_VIEW')
   async topups(
     @Query('status') status: string | undefined,
     @Query('page') page: string | undefined,
@@ -703,6 +712,7 @@ export class AdminController {
   }
 
   @Get('audit')
+  @RateLimitPolicy('ADMIN_REPORT_VIEW')
   async audit(
     @Query('page') page: string | undefined,
     @Query('action') action: string | undefined,
@@ -717,6 +727,7 @@ export class AdminController {
   }
 
   @Get('stats')
+  @RateLimitPolicy('ADMIN_REPORT_VIEW')
   async stats() {
     const r = await this.admin.stats();
     return { ok: true, data: r };
@@ -732,6 +743,7 @@ export class AdminController {
    * Read-only. Xem `docs/ADMIN_GUIDE.md §11` cho cron monitoring.
    */
   @Get('economy/alerts')
+  @RateLimitPolicy('ADMIN_REPORT_VIEW')
   async economyAlerts(@Query('staleHours') staleHours: string | undefined) {
     const hrs = clampStaleHours(staleHours, this.economyAlertsBounds);
     const r = await this.admin.getEconomyAlerts(hrs);
@@ -753,6 +765,7 @@ export class AdminController {
    * production sau này nên rate-limit hoặc cache.
    */
   @Get('economy/audit-ledger')
+  @RateLimitPolicy('ADMIN_REPORT_VIEW')
   async economyAuditLedger() {
     const r = await this.admin.runLedgerAudit();
     return { ok: true, data: r };
@@ -766,12 +779,14 @@ export class AdminController {
    * traffic admin tăng.
    */
   @Get('economy/report')
+  @RateLimitPolicy('ADMIN_REPORT_VIEW')
   async economyReport() {
     const r = await this.admin.getEconomyReport();
     return { ok: true, data: r };
   }
 
   @Get('giftcodes')
+  @RateLimitPolicy('ADMIN_REPORT_VIEW')
   async giftList(
     @Query('limit') limit: string | undefined,
     @Query('q') q: string | undefined,
@@ -881,6 +896,7 @@ export class AdminController {
    * Read-only; KHÔNG audit.
    */
   @Get('liveops')
+  @RateLimitPolicy('ADMIN_REPORT_VIEW')
   async liveOpsStatus() {
     const data = await this.liveOps.getStatus();
     return { ok: true, data };
@@ -930,6 +946,7 @@ export class AdminController {
    * KHÔNG audit (read-only refresh; tránh log spam khi FE poll).
    */
   @Get('liveops/schedule-preview')
+  @RateLimitPolicy('ADMIN_REPORT_VIEW')
   async liveOpsSchedulePreview() {
     const data = await this.liveOps.schedulePreview();
     return { ok: true, data };
@@ -976,6 +993,7 @@ export class AdminController {
    * `weekKey` optional; default = current ISO week.
    */
   @Get('sect-war/status')
+  @RateLimitPolicy('ADMIN_REPORT_VIEW')
   async sectWarStatus(@Query('weekKey') weekKey?: string) {
     const key = weekKey && /^\d{4}-W\d{2}$/.test(weekKey)
       ? weekKey

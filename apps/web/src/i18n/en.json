@@ -1275,7 +1275,8 @@
       "arenaAntiWintrade": "Arena Anti-Wintrade",
       "featureFlags": "Feature Flags",
       "maintenance": "Maintenance",
-      "configVersion": "Config Version"
+      "configVersion": "Config Version",
+      "security": "Security"
     },
     "arenaAntiWintrade": {
       "alerts": "Arena wintrade alerts",
@@ -4074,6 +4075,71 @@
       "INVALID_INPUT": "Invalid input.",
       "UNAUTHENTICATED": "Admin login required.",
       "FORBIDDEN": "Account is not an admin.",
+      "UNKNOWN": "Operation failed — please retry."
+    }
+  },
+  "adminSecurity": {
+    "title": "Security & Abuse Protection",
+    "subtitle": "Manage temporary IP/USER blocks and review recent security events.",
+    "sections": {
+      "blocks": "Active temporary blocks",
+      "events": "Recent security events"
+    },
+    "filters": {
+      "type": "Type",
+      "typeAll": "All",
+      "typeIp": "IP",
+      "typeUser": "User",
+      "severity": "Severity",
+      "severityAll": "All",
+      "severityInfo": "INFO",
+      "severityWarn": "WARN",
+      "severityCritical": "CRITICAL",
+      "eventType": "Event type",
+      "eventTypeAll": "All",
+      "limit": "Limit",
+      "apply": "Apply filters"
+    },
+    "blocks": {
+      "id": "ID",
+      "type": "Type",
+      "subjectHash": "Subject (hash)",
+      "reason": "Reason",
+      "createdAt": "Created",
+      "expiresAt": "Expires",
+      "actions": "Actions",
+      "lift": "Lift block",
+      "lifting": "Lifting…",
+      "empty": "No active blocks.",
+      "loading": "Loading blocks…",
+      "liftSuccess": "Block {id} lifted.",
+      "liftFailed": "Lift failed — please retry.",
+      "confirmLiftTitle": "Confirm lift block",
+      "confirmLiftBody": "Are you sure you want to lift the {type} block? This action is audited."
+    },
+    "events": {
+      "id": "ID",
+      "type": "Type",
+      "severity": "Severity",
+      "ipHash": "IP (hash)",
+      "userId": "User",
+      "policy": "Policy",
+      "createdAt": "When",
+      "detail": "Detail",
+      "empty": "No events in this range.",
+      "loading": "Loading events…"
+    },
+    "errors": {
+      "INVALID_POLICY": "Invalid policy.",
+      "INVALID_SUBJECT": "Invalid subject.",
+      "INVALID_SCOPE": "Invalid scope.",
+      "INVALID_SEVERITY": "Invalid severity.",
+      "INVALID_TYPE": "Invalid type.",
+      "INVALID_INPUT": "Invalid input.",
+      "BLOCK_NOT_FOUND": "Block not found or already lifted.",
+      "UNAUTHENTICATED": "Admin login required.",
+      "FORBIDDEN": "Account is not an admin.",
+      "ADMIN_ONLY": "Only admin can lift blocks.",
       "UNKNOWN": "Operation failed — please retry."
     }
   }

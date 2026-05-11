@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { TOPUP_PACKAGES } from '@xuantoi/shared';
 import { TopupError, TopupService } from './topup.service';
 import { AuthService } from '../auth/auth.service';
+import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -53,6 +54,7 @@ export class TopupController {
 
   @Post('create')
   @HttpCode(200)
+  @RateLimitPolicy('TOPUP_CREATE_ORDER')
   async create(@Req() req: Request, @Body() body: unknown) {
     const userId = await this.userId(req);
     if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);

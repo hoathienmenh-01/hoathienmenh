@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthService } from '../auth/auth.service';
+import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 import {
   DailyLoginClaimResult,
   DailyLoginError,
@@ -45,6 +46,7 @@ export class DailyLoginController {
 
   @Post('claim')
   @HttpCode(200)
+  @RateLimitPolicy('DAILY_LOGIN_CLAIM')
   async claim(
     @Req() req: Request,
   ): Promise<{ ok: true; data: DailyLoginClaimResult }> {

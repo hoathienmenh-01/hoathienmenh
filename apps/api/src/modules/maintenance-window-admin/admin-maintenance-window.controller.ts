@@ -39,6 +39,7 @@ import {
   type MaintenanceWindowAdminView,
 } from '@xuantoi/shared';
 import { AdminGuard } from '../admin/admin.guard';
+import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 import { RequireAdmin } from '../admin/require-admin.decorator';
 import { PrismaService } from '../../common/prisma.service';
 import {
@@ -112,6 +113,7 @@ const PatchBodyZ = z
 
 @UseGuards(AdminGuard)
 @Controller()
+@RateLimitPolicy('ADMIN_MUTATION')
 export class AdminMaintenanceWindowController {
   constructor(
     private readonly service: MaintenanceWindowService,

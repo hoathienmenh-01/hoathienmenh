@@ -120,6 +120,16 @@ jobs:
       # bootstrap nếu NODE_ENV=production sẽ throw vì secret là placeholder.
       NODE_ENV: development
 
+      # Phase 18.1 — RATE_LIMIT_ENABLED=false cho E2E full-stack workflow.
+      # Golden path đăng ký nhiều test user trong vòng vài phút (>5
+      # AUTH_REGISTER/15p threshold) → bật rate-limit sẽ false-positive
+      # block test runs. Disable rate-limit chỉ ở CI workflow này; prod
+      # vẫn deploy với RATE_LIMIT_ENABLED=true. Test API rate-limit có
+      # vitest spec riêng (`@xuantoi/api test -- --run rate`) — không
+      # cần lặp lại trong Playwright.
+      RATE_LIMIT_ENABLED: 'false'
+      ABUSE_BLOCK_ENABLED: 'false'
+
     steps:
       - uses: actions/checkout@v5
 
