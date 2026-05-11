@@ -1275,7 +1275,8 @@
       "arenaAntiWintrade": "Arena Anti-Wintrade",
       "featureFlags": "Feature Flags",
       "maintenance": "Bảo trì",
-      "configVersion": "Config Version"
+      "configVersion": "Config Version",
+      "security": "Bảo mật"
     },
     "arenaAntiWintrade": {
       "alerts": "Cảnh báo Arena Wintrade",
@@ -4074,6 +4075,71 @@
       "INVALID_INPUT": "Dữ liệu gửi lên không hợp lệ.",
       "UNAUTHENTICATED": "Cần đăng nhập admin.",
       "FORBIDDEN": "Tài khoản không phải admin.",
+      "UNKNOWN": "Thao tác thất bại — thử lại."
+    }
+  },
+  "adminSecurity": {
+    "title": "Bảo Mật & Chống Lạm Dụng",
+    "subtitle": "Quản lý IP/USER bị block tạm thời và xem sự kiện bảo mật gần đây.",
+    "sections": {
+      "blocks": "Khối tạm thời đang hoạt động",
+      "events": "Sự kiện bảo mật gần đây"
+    },
+    "filters": {
+      "type": "Loại",
+      "typeAll": "Tất cả",
+      "typeIp": "IP",
+      "typeUser": "Tài khoản",
+      "severity": "Mức độ",
+      "severityAll": "Tất cả",
+      "severityInfo": "INFO",
+      "severityWarn": "WARN",
+      "severityCritical": "CRITICAL",
+      "eventType": "Loại sự kiện",
+      "eventTypeAll": "Tất cả",
+      "limit": "Giới hạn",
+      "apply": "Áp dụng bộ lọc"
+    },
+    "blocks": {
+      "id": "ID",
+      "type": "Loại",
+      "subjectHash": "Subject (đã hash)",
+      "reason": "Lý do",
+      "createdAt": "Tạo lúc",
+      "expiresAt": "Hết hạn",
+      "actions": "Thao tác",
+      "lift": "Gỡ block",
+      "lifting": "Đang gỡ…",
+      "empty": "Không có block nào đang hoạt động.",
+      "loading": "Đang tải danh sách block…",
+      "liftSuccess": "Đã gỡ block {id}.",
+      "liftFailed": "Gỡ block thất bại — thử lại.",
+      "confirmLiftTitle": "Xác nhận gỡ block",
+      "confirmLiftBody": "Bạn chắc chắn muốn gỡ block {type}? Hành động được ghi audit."
+    },
+    "events": {
+      "id": "ID",
+      "type": "Loại",
+      "severity": "Mức độ",
+      "ipHash": "IP (hash)",
+      "userId": "User",
+      "policy": "Policy",
+      "createdAt": "Thời điểm",
+      "detail": "Chi tiết",
+      "empty": "Chưa có sự kiện nào trong khoảng thời gian này.",
+      "loading": "Đang tải sự kiện…"
+    },
+    "errors": {
+      "INVALID_POLICY": "Policy không hợp lệ.",
+      "INVALID_SUBJECT": "Subject không hợp lệ.",
+      "INVALID_SCOPE": "Scope không hợp lệ.",
+      "INVALID_SEVERITY": "Mức độ không hợp lệ.",
+      "INVALID_TYPE": "Loại không hợp lệ.",
+      "INVALID_INPUT": "Dữ liệu gửi lên không hợp lệ.",
+      "BLOCK_NOT_FOUND": "Block không tồn tại hoặc đã được gỡ.",
+      "UNAUTHENTICATED": "Cần đăng nhập admin.",
+      "FORBIDDEN": "Tài khoản không phải admin.",
+      "ADMIN_ONLY": "Chỉ admin mới được gỡ block.",
       "UNKNOWN": "Thao tác thất bại — thử lại."
     }
   }
