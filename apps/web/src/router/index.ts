@@ -186,6 +186,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/QuestView.vue'),
   },
   {
+    path: '/social',
+    name: 'social',
+    component: () => import('@/views/SocialView.vue'),
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/views/NotFoundView.vue'),

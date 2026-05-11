@@ -1,0 +1,84 @@
+<script setup lang="ts">
+/**
+ * Phase 19.1 — Social System Foundation root view.
+ *
+ * Tabs: Friends / PrivateChat / GroupChat. Mount panel hiện đang chọn để
+ * tiết kiệm request đầu tiên (panel khác lazy mount khi user click tab).
+ *
+ * Route: `/social` (xem `apps/web/src/router/index.ts`). Nav link xuất
+ * hiện trong `AppShell.vue` sidebar khi role là PLAYER (mọi player auth).
+ */
+import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import SocialPanel from '@/components/SocialPanel.vue';
+import PrivateChatPanel from '@/components/PrivateChatPanel.vue';
+import GroupChatPanel from '@/components/GroupChatPanel.vue';
+
+type Tab = 'friends' | 'private' | 'group';
+
+const { t } = useI18n();
+const tab = ref<Tab>('friends');
+</script>
+
+<template>
+  <section class="space-y-4" data-testid="social-view">
+    <header class="space-y-1">
+      <h1 class="text-2xl tracking-widest">{{ t('social.viewTitle') }}</h1>
+      <p class="text-xs text-ink-300/80">{{ t('social.viewSubtitle') }}</p>
+    </header>
+
+    <nav class="flex gap-2" role="tablist">
+      <button
+        type="button"
+        role="tab"
+        :aria-selected="tab === 'friends'"
+        class="px-3 py-1 text-xs uppercase tracking-widest rounded border"
+        :class="
+          tab === 'friends'
+            ? 'border-amber-400/60 text-amber-200'
+            : 'border-ink-300/30 text-ink-300'
+        "
+        data-testid="social-tab-friends"
+        @click="tab = 'friends'"
+      >
+        {{ t('social.tabs.friends') }}
+      </button>
+      <button
+        type="button"
+        role="tab"
+        :aria-selected="tab === 'private'"
+        class="px-3 py-1 text-xs uppercase tracking-widest rounded border"
+        :class="
+          tab === 'private'
+            ? 'border-amber-400/60 text-amber-200'
+            : 'border-ink-300/30 text-ink-300'
+        "
+        data-testid="social-tab-private"
+        @click="tab = 'private'"
+      >
+        {{ t('social.tabs.private') }}
+      </button>
+      <button
+        type="button"
+        role="tab"
+        :aria-selected="tab === 'group'"
+        class="px-3 py-1 text-xs uppercase tracking-widest rounded border"
+        :class="
+          tab === 'group'
+            ? 'border-amber-400/60 text-amber-200'
+            : 'border-ink-300/30 text-ink-300'
+        "
+        data-testid="social-tab-group"
+        @click="tab = 'group'"
+      >
+        {{ t('social.tabs.group') }}
+      </button>
+    </nav>
+
+    <div role="tabpanel">
+      <SocialPanel v-if="tab === 'friends'" />
+      <PrivateChatPanel v-else-if="tab === 'private'" />
+      <GroupChatPanel v-else />
+    </div>
+  </section>
+</template>

@@ -348,7 +348,8 @@
       "npcs": "NPCs",
       "quests": "Quests",
       "dungeonRun": "Dungeon Run",
-      "storyDungeons": "Story Dungeons"
+      "storyDungeons": "Story Dungeons",
+      "social": "Social"
     },
     "badge": {
       "bossActive": "World boss is live",
@@ -4362,6 +4363,137 @@
       "FORBIDDEN": "Account is not an admin.",
       "ADMIN_ONLY": "Only admin can run backup/verify.",
       "UNKNOWN": "Operation failed — please retry."
+    }
+  },
+  "social": {
+    "viewTitle": "Social",
+    "viewSubtitle": "Manage friends, blocks, and private/group chats.",
+    "title": "Friends",
+    "online": "Online",
+    "offline": "Offline",
+    "tabs": {
+      "friends": "Friends",
+      "private": "Private chat",
+      "group": "Group chat"
+    },
+    "friends": {
+      "header": "Friend list",
+      "empty": "No friends yet."
+    },
+    "requests": {
+      "incoming": "Incoming",
+      "outgoing": "Outgoing",
+      "emptyIncoming": "No incoming friend requests.",
+      "emptyOutgoing": "No outgoing friend requests."
+    },
+    "blocks": {
+      "header": "Blocked players",
+      "empty": "No blocked players."
+    },
+    "send": {
+      "userPlaceholder": "User ID…",
+      "messagePlaceholder": "Optional message (max 140 chars)…",
+      "submit": "Send request"
+    },
+    "actions": {
+      "accept": "Accept",
+      "decline": "Decline",
+      "cancel": "Cancel",
+      "removeFriend": "Remove friend",
+      "block": "Block",
+      "unblock": "Unblock"
+    },
+    "confirm": {
+      "removeFriend": {
+        "title": "Remove friend",
+        "message": "Are you sure you want to remove {id} from your friend list?"
+      },
+      "block": {
+        "title": "Block player",
+        "message": "After blocking, {id} cannot send you private messages or friend requests."
+      },
+      "unblock": {
+        "title": "Unblock",
+        "message": "Are you sure you want to unblock {id}?"
+      }
+    },
+    "toast": {
+      "requestSent": "Friend request sent.",
+      "accepted": "Now friends.",
+      "declined": "Request declined.",
+      "cancelled": "Request cancelled.",
+      "friendRemoved": "Friend removed.",
+      "blocked": "Player blocked.",
+      "unblocked": "Player unblocked."
+    },
+    "errors": {
+      "SELF_NOT_ALLOWED": "Cannot target yourself.",
+      "ALREADY_PENDING": "A pending request already exists.",
+      "ALREADY_FRIENDS": "Already friends.",
+      "BLOCKED": "Block in effect — action denied.",
+      "NOT_FOUND": "Not found (or you lack access).",
+      "NOT_AUTHORIZED": "You don't have permission.",
+      "INVALID_TRANSITION": "Request already handled.",
+      "INVALID_INPUT": "Invalid input.",
+      "UNKNOWN": "Something went wrong — please retry."
+    }
+  },
+  "chatPrivate": {
+    "threads": {
+      "header": "Threads",
+      "empty": "No private chats yet.",
+      "openPlaceholder": "User ID…",
+      "openSubmit": "Open chat"
+    },
+    "thread": {
+      "none": "Pick a thread to view messages.",
+      "empty": "No messages in this thread.",
+      "placeholder": "Type a message (max 500 chars)…",
+      "send": "Send"
+    },
+    "errors": {
+      "BLOCKED": "Block in effect — cannot message.",
+      "NOT_FOUND": "Thread not found.",
+      "SELF_NOT_ALLOWED": "Cannot message yourself.",
+      "INVALID_INPUT": "Invalid message (empty or too long).",
+      "NOT_AUTHORIZED": "You are not in this thread.",
+      "UNKNOWN": "Something went wrong — please retry."
+    }
+  },
+  "chatGroup": {
+    "groups": {
+      "header": "Groups",
+      "empty": "Not a member of any group yet.",
+      "createPlaceholder": "Group name (3-60 chars)…",
+      "createSubmit": "Create",
+      "memberCount": "{n} members"
+    },
+    "group": {
+      "none": "Pick a group to view messages.",
+      "empty": "No messages yet.",
+      "owner": "Owner: {id}",
+      "placeholder": "Type a group message (max 500 chars)…",
+      "send": "Send"
+    },
+    "members": {
+      "header": "Members",
+      "owner": "Owner",
+      "remove": "Remove",
+      "addPlaceholder": "User ID…",
+      "addSubmit": "Add"
+    },
+    "toast": {
+      "memberAdded": "Member added.",
+      "memberRemoved": "Member removed."
+    },
+    "errors": {
+      "NOT_FOUND": "Group not found.",
+      "NOT_AUTHORIZED": "Insufficient permissions.",
+      "BLOCKED": "Block in effect — cannot invite.",
+      "DUPLICATE_MEMBER": "Already a member.",
+      "GROUP_FULL": "Group is at member cap.",
+      "INVALID_INPUT": "Invalid input.",
+      "UNKNOWN": "Something went wrong — please retry."
     }
   }
 }
