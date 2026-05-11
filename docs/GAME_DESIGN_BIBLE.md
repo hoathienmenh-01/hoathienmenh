@@ -86,6 +86,23 @@ Người chơi **không** kỳ vọng combat skill cao (đây không phải MMOR
 
 Mọi mũi tên trong loop trên **bắt buộc đi qua server**. FE chỉ render. Vi phạm = bug critical.
 
+### B.1.1 Phase 21 chapter gate loop
+
+Phase 21 story chapters follow a stricter gate loop than early placeholder catalogs:
+
+```text
+quest/story beat → tu luyện → nâng trang bị → story dungeon/boss →
+đạt realm/cultivation/battle-power gate → mở chapter kế tiếp
+```
+
+Chapter unlock is not “claim previous quest only”. Each chapter catalog entry must combine:
+
+- story prerequisite (`requiredMainQuestKey`, `previousChapterKey`, story flag),
+- strength prerequisite (`requiredRealmKey`, optional cultivation stage, optional battle power),
+- system prerequisite when relevant (dungeon clear, boss defeated, sect rank, elemental affinity).
+
+Current Phase 21 implementation is allowed to seed gates statically first. Any gate not enforceable by existing runtime must be marked as a runtime follow-up, but it still belongs in catalog tests so future UI/API work cannot silently remove it.
+
 ### B.2 Loop theo thời gian thực của người chơi
 
 #### B.2.1 5 phút đầu (first-time user experience)

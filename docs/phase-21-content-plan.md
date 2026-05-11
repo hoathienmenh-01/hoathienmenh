@@ -94,3 +94,97 @@ Current `main` already has static shared catalogs and runtime for quests, NPCs, 
 - The owner asked to read the DOCX source directly. Repo docs normally say the markdown story bible is sufficient and the DOCX is archive-only. For this PR, the DOCX was read as requested; the markdown bible remains the working source because it mirrors the DOCX and links to implementation progress.
 - The PR template recommends large PRs stay ≤35 files / ≤1800 lines, while the owner explicitly requested a Phase 21 mega PR. This PR will remain one Draft PR, but each checkpoint is a separate commit/push to keep reviewable.
 - Existing runtime `QuestDef` does not yet have explicit `chapterKey`, `previousQuestKey`, or `nextQuestKey` fields. Phase 21 should add additive metadata/catalog helpers rather than destructive schema changes.
+
+## Phase 21 Expanded Gate + Reward Balance Addendum
+
+### Canon source labels
+
+- `CANON_FROM_STORY_BIBLE`: Hoa Thiên Môn as home sect; Lăng Vân Sinh, Mộc Thanh Y, Hàn Dạ, Tô Nguyệt Ly, Huyết La Sát, Tịch Thiên Điện, Huyết Hà Ma Tông, Tiên Đình Bạch Đế, Hoa Thiên Đạo Tổ, Tịch Thiên Đạo Chủ, Tịch Linh Chủng, Hạt Giống Vô Danh, Ngũ Hành, Bí Cảnh Huyết Nguyệt, and the moral tension around locking or freeing đại đạo.
+- `AI_EXPANDED_LORE`: extra branch quests, hidden triggers, minor relics, extra dungeon beats, extra achievement/title names, and filler NPC-facing incidents used to reach Phase 21 content targets. These expansions must not change the role of canon NPCs or reorder the six canon early chapters.
+- If AI-expanded content introduces a new relic/secret/dungeon, it must cite the canon anchor it extends, for example: Hoa Thiên poverty, Tịch Linh corruption, Ngũ Hành rite, Huyết Hà moral ambiguity, or erased Hoa Thiên inheritance.
+
+### Chapter gate model
+
+Chapters must not unlock only because the previous quest is complete. Each chapter should have a static `unlockGate` catalog entry that combines story and power conditions:
+
+| Gate field | Current Phase 21 handling |
+|---|---|
+| `requiredRealmKey` / `requiredRealmOrder` | Use existing realm catalog. Required for every chapter. |
+| `requiredCultivationStage` | Additive catalog metadata. Runtime enforcement can follow after cultivation stage is exposed to story APIs. |
+| `requiredBattlePower` | Additive catalog metadata. Runtime enforcement follow-up if current APIs do not expose battle power in chapter list. |
+| `requiredMainQuestKey` | Use `QuestDef` keys. Required from chapter 2 onward. |
+| `previousChapterKey` | Additive catalog metadata for journal rendering and integrity tests. |
+| `requiredStoryFlag` | Additive catalog metadata; generated from quest/dungeon/boss story beats. |
+| `requiredDungeonClearKey` | Additive catalog metadata; points to `STORY_DUNGEONS[].key` when chapter depends on bí cảnh clear. |
+| `requiredBossDefeatedKey` | Additive catalog metadata; points to `BOSSES[].key` when chapter depends on boss defeat. |
+| `requiredSectRank` | Additive metadata for sect-heavy chapters; runtime follow-up if sect rank is not yet queryable. |
+| `requiredElementalAffinity` | Additive metadata for Ngũ Hành chapters; runtime follow-up if elemental affinity is not yet tracked. |
+
+Runtime rule target:
+
+```text
+chapter available =
+  story prerequisite satisfied
+  AND realm/cultivation gate satisfied
+  AND battle-power gate satisfied when available
+  AND linked dungeon/boss/sect/elemental gates satisfied when defined
+```
+
+If a gate cannot be runtime-enforced in this PR, the catalog and integrity tests must still define it, and docs/handoff must mark it as `catalog_seeded_runtime_follow_up`.
+
+### Expanded content targets
+
+The owner raised Phase 21 from a small early-content expansion to a mega content catalog. Targets for the final PR:
+
+| Content type | Minimum | Target |
+|---|---:|---:|
+| Chapters | 8 | 8–10 |
+| Main quests | 120 | 140–180 |
+| Side quests | 160 | 200–320 |
+| Branch quests | 64 | 80–120 |
+| Hidden quests | 40 | 60–80 |
+| Daily quest templates | 30 | 30+ |
+| Weekly quest templates | 20 | 20+ |
+| Achievements/titles | 100 | 100+ |
+| NPC dialogue entries/nodes | 600 | 600+ |
+
+Per-chapter content shape:
+
+- 15–20 main quests.
+- 20–40 side quests.
+- 8–15 branch quests.
+- 5–10 hidden quests.
+- 3–5 achievements/titles.
+- 1–3 dungeon/boss/story gates.
+
+### Reward balance ratios
+
+Phase 21 rewards use main quest reward as each chapter’s baseline:
+
+| Quest/content type | Resource reward ratio | Reward identity |
+|---|---:|---|
+| Main quest | 100% baseline | cultivation EXP, moderate Linh Thạch, story item, skill fragment, chapter/dungeon/boss unlock. |
+| Side quest | 25–45% | light EXP/Linh Thạch, common item, small sect contribution, NPC affinity, lore fragment. |
+| Branch quest | 35–60% | choice flag, title hint, NPC affinity, dialogue/quest unlock, small utility item. |
+| Hidden quest | 20–50% | achievement/title/lore/cosmetic-style reward first; low currency only. |
+| Daily template | small capped | repeatable habit reward, never a primary farm source. |
+| Weekly template | moderate capped | weekly checklist reward, below main-story pacing. |
+
+Caps to enforce in tests for new Phase 21 content:
+
+- Side/branch/hidden quest currency must stay below same-chapter main quest currency unless explicitly documented as a one-time rare exception.
+- Hidden quest currency should be low; its value is discovery/title/lore.
+- Daily/weekly templates must include reset cadence and cap metadata if the current mission system supports it; otherwise docs must flag follow-up.
+- No quest should grant reward directly through ad-hoc runtime mutation; all runtime reward grants must continue using existing quest/mission reward services.
+
+### Quality bar for generated expansion
+
+Every new quest entry should encode:
+
+1. why it appears,
+2. the NPC/event/source,
+3. the objective,
+4. the completion consequence,
+5. balanced reward intent,
+6. chapter/NPC/lore/gameplay binding,
+7. `CANON_FROM_STORY_BIBLE` or `AI_EXPANDED_LORE` source label in docs/tests where the catalog has no field for it.
