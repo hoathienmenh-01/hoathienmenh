@@ -16,6 +16,8 @@ import {
   isEconomyAnomalySeverity,
   isEconomyAnomalySource,
   isEconomyIssueStatus,
+  parseEconomyReportRange,
+  type EconomyReportResponse,
 } from '@xuantoi/shared';
 import { AdminGuard } from '../admin/admin.guard';
 import { RequireAdmin } from '../admin/require-admin.decorator';
@@ -28,6 +30,7 @@ import {
   AnomalyScanSummary,
   EconomyAnomalyScannerService,
 } from '../economy/economy-anomaly-scanner.service';
+import { EconomyRangeReportService } from './economy-range-report.service';
 
 /**
  * Phase 16.6 — Admin Economy Safety endpoints.
@@ -110,6 +113,7 @@ export class AdminEconomySafetyController {
     private readonly prisma: PrismaService,
     private readonly ledger: LedgerCheckerService,
     private readonly scanner: EconomyAnomalyScannerService,
+    private readonly rangeReport: EconomyRangeReportService,
   ) {}
 
   // ---------- Ledger Check ----------
@@ -278,6 +282,48 @@ export class AdminEconomySafetyController {
       issueId: id,
     });
     return { ok: true, data: { status: 'RESOLVED' } };
+  }
+
+  // ---------- Range Report (Phase 16.1.B) ----------
+
+  /**
+   * `GET /admin/economy/range-report?from=YYYY-MM-DD&to=YYYY-MM-DD`
+   *
+   * Date-range Economy Report (Phase 16.1.B). ADMIN-only.
+   *
+   * - Validate range via shared `parseEconomyReportRange` (max 31d, UTC).
+   * - Default = last 7 days inclusive `today` UTC.
+   * - Returns currency in/out by source bucket, totals, top 10 character
+   *   net delta (linhThach), pre-defined category totals (market volume,
+   *   shop spend, sect shop spend, reforge-enchant, admin grant, topup,
+   *   liveops, daily login, dungeon, boss, territory, sect season),
+   *   anomaly summary, latest ledger check run, `generatedAt`.
+   * - Emits audit `ADMIN_ECONOMY_REPORT_VIEW`.
+   */
+  @Get('admin/economy/range-report')
+  @RequireAdmin()
+  async rangeReportEndpoint(
+    @Req() req: AdminReq,
+    @Query('from') from: string | undefined,
+    @Query('to') to: string | undefined,
+  ): Promise<{ ok: true; data: EconomyReportResponse }> {
+    const parsed = parseEconomyReportRange(from, to);
+    if (!parsed.ok || !parsed.range) {
+      fail(
+        parsed.error ?? 'INVALID_RANGE',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const data = await this.rangeReport.generate(parsed.range);
+    await this.audit(req.userId, 'ADMIN_ECONOMY_REPORT_VIEW', {
+      from: data.range.from,
+      to: data.range.to,
+      days: data.range.days,
+      totalInLinhThach: data.totalInLinhThach,
+      totalOutLinhThach: data.totalOutLinhThach,
+      openAnomalies: data.anomalySummary.openCount,
+    });
+    return { ok: true, data };
   }
 
   // ---------- Anomalies ----------

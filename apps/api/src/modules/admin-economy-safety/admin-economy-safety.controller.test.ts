@@ -71,6 +71,9 @@ interface PrismaStubs {
 interface ControllerStubs {
   runCheck?: LedgerCheckerService['runCheck'];
   scanAll?: EconomyAnomalyScannerService['scanAll'];
+  rangeReportGenerate?: (
+    range: import('@xuantoi/shared').EconomyReportRange,
+  ) => Promise<import('@xuantoi/shared').EconomyReportResponse>;
   prisma?: PrismaStubs;
   auditCreated?: { count: number; actions: string[] };
 }
@@ -244,7 +247,58 @@ function makeController(stubs: ControllerStubs = {}): {
     typeof AdminEconomySafetyController
   >[0];
   return {
-    c: new AdminEconomySafetyController(prisma, ledger, scanner),
+    c: new AdminEconomySafetyController(
+      prisma,
+      ledger,
+      scanner,
+      stubs.rangeReportGenerate
+        ? ({ generate: stubs.rangeReportGenerate } as unknown as ConstructorParameters<
+            typeof AdminEconomySafetyController
+          >[3])
+        : ({
+            generate: async () =>
+              ({
+                range: { from: '2026-05-05', to: '2026-05-11', days: 7 },
+                bySource: [],
+                totalInLinhThach: '0',
+                totalOutLinhThach: '0',
+                totalNetLinhThach: '0',
+                totalInTienNgoc: 0,
+                totalOutTienNgoc: 0,
+                totalNetTienNgoc: 0,
+                topCharacterDelta: [],
+                marketVolume: '0',
+                shopSpend: '0',
+                sectShopSpend: '0',
+                reforgeEnchantSpend: '0',
+                adminGrantTotal: '0',
+                topupTotal: '0',
+                liveOpsRewardTotal: '0',
+                dailyLoginRewardTotal: '0',
+                dungeonRewardTotal: '0',
+                bossRewardTotal: '0',
+                territoryRewardTotal: '0',
+                sectSeasonRewardTotal: '0',
+                anomalySummary: {
+                  openCount: 0,
+                  acknowledgedCount: 0,
+                  resolvedCount: 0,
+                  latestSeverity: null,
+                  latestCreatedAt: null,
+                },
+                latestLedgerCheckRun: null,
+                generatedAt: '2026-05-11T00:00:00.000Z',
+              }) as unknown as Awaited<
+                ReturnType<
+                  ConstructorParameters<
+                    typeof AdminEconomySafetyController
+                  >[3]['generate']
+                >
+              >,
+          } as unknown as ConstructorParameters<
+            typeof AdminEconomySafetyController
+          >[3]),
+    ),
     audit,
     state,
   };
