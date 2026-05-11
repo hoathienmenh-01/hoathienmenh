@@ -26,13 +26,20 @@ describe('NPCS catalog integrity (Phase 12 PR-1 + Story Foundation Extension)', 
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it('catalogs exactly 5 NPC trụ cột (5 cảnh giới đầu)', () => {
-    expect(NPCS).toHaveLength(5);
+  it('catalogs Phase 21 NPC trụ cột including 5 early-game quest givers', () => {
+    expect(NPCS).toHaveLength(12);
     expect(npcByKey('npc_lang_van_sinh')).toBeDefined();
     expect(npcByKey('npc_moc_thanh_y')).toBeDefined();
     expect(npcByKey('npc_han_da')).toBeDefined();
     expect(npcByKey('npc_to_nguyet_ly')).toBeDefined();
     expect(npcByKey('npc_huyet_la_sat')).toBeDefined();
+    expect(npcByKey('npc_a_linh')).toBeDefined();
+    expect(npcByKey('npc_van_kim_nuong')).toBeDefined();
+    expect(npcByKey('npc_bach_de_tu')).toBeDefined();
+    expect(npcByKey('npc_tich_linh_su_gia')).toBeDefined();
+    expect(npcByKey('npc_huyet_ha_su_gia')).toBeDefined();
+    expect(npcByKey('npc_hoa_thien_dao_to')).toBeDefined();
+    expect(npcByKey('npc_tich_thien_dao_chu')).toBeDefined();
   });
 
   it('every NPC key starts with `npc_`', () => {
@@ -84,18 +91,20 @@ describe('NPCS catalog integrity (Phase 12 PR-1 + Story Foundation Extension)', 
   });
 
   it('npcsByFaction returns correct count', () => {
-    expect(npcsByFaction('hoa_thien_mon').length).toBe(2); // Lăng Vân Sinh + Mộc Thanh Y
+    expect(npcsByFaction('hoa_thien_mon').length).toBe(4); // core sect + A Linh + Đạo Tổ remnant
     expect(npcsByFaction('huyen_kiem_tong').length).toBe(1); // Hàn Dạ
-    expect(npcsByFaction('huyet_ha_ma_tong').length).toBe(1); // Huyết La Sát
-    expect(npcsByFaction('tich_thien_dien').length).toBe(0); // chưa có phản diện NPC
+    expect(npcsByFaction('van_bao_thuong_hoi').length).toBe(1); // Vạn Kim Nương
+    expect(npcsByFaction('huyet_ha_ma_tong').length).toBe(2); // Huyết La Sát + sứ giả
+    expect(npcsByFaction('tich_thien_dien').length).toBe(2); // sứ giả + Đạo Chủ echo
+    expect(npcsByFaction('tien_dinh_bach_de').length).toBe(1); // Bạch Đế Tử
   });
 
   it('npcsAvailableAtRealm gates correctly', () => {
-    expect(npcsAvailableAtRealm(0).length).toBe(2); // Lăng Vân Sinh + Mộc Thanh Y
-    expect(npcsAvailableAtRealm(1).length).toBe(3); // + Hàn Dạ
-    expect(npcsAvailableAtRealm(2).length).toBe(4); // + Tô Nguyệt Ly
-    expect(npcsAvailableAtRealm(3).length).toBe(5); // + Huyết La Sát (Kim Đan)
-    expect(npcsAvailableAtRealm(4).length).toBe(5); // Nguyên Anh không unlock NPC mới
+    expect(npcsAvailableAtRealm(0).length).toBe(3); // Lăng Vân Sinh + Mộc Thanh Y + A Linh
+    expect(npcsAvailableAtRealm(1).length).toBe(5); // + Hàn Dạ + Vạn Kim Nương
+    expect(npcsAvailableAtRealm(2).length).toBe(7); // + Tô Nguyệt Ly + Tịch Linh Sứ Giả
+    expect(npcsAvailableAtRealm(3).length).toBe(9); // + Huyết La Sát + Huyết Hà Sứ Giả
+    expect(npcsAvailableAtRealm(4).length).toBe(12); // + Bạch Đế Tử + Đạo Tổ + Tịch Thiên echo
   });
 
   it('Tô Nguyệt Ly faction is null (hậu nhân Hoa Thiên lưu đày)', () => {

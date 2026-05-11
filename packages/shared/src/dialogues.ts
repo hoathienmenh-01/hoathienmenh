@@ -346,6 +346,81 @@ export const DIALOGUES: readonly DialogueLineDef[] = [
       },
     ],
   },
+
+  // ============================================================================
+  // Phase 21 — extended important NPC quick dialogues
+  // ============================================================================
+  {
+    id: 'dlg_a_linh_default',
+    speakerNpcKey: 'npc_a_linh',
+    condition: { kind: 'always' },
+    text: 'Sư huynh mới tới phải không? Ta là A Linh. Đi chậm thôi: nhận túi, thử hô hấp, rồi mới chạy ra Sơn Cốc — không ai thành tiên trong một bữa cơm.',
+    choices: [
+      { key: 'guided_path', label: 'Nhờ A Linh chỉ đường nhập môn.', closeDialogue: true },
+      { key: 'leave', label: 'Ta tự xem trước.', closeDialogue: true },
+    ],
+  },
+  {
+    id: 'dlg_van_kim_nuong_default',
+    speakerNpcKey: 'npc_van_kim_nuong',
+    condition: { kind: 'realm_min', realmOrder: 1 },
+    text: 'Hoa Thiên Môn lại có người xuống núi mua đồ? Ta bán theo giá thị trường, nhưng tin tức thì phải trả bằng độ tin cậy.',
+    choices: [
+      { key: 'market_rules', label: 'Hỏi về quy củ Vạn Bảo Thương Hội.', closeDialogue: true },
+      { key: 'leave', label: 'Lần sau giao dịch.', closeDialogue: true },
+    ],
+  },
+  {
+    id: 'dlg_bach_de_tu_default',
+    speakerNpcKey: 'npc_bach_de_tu',
+    condition: { kind: 'realm_min', realmOrder: 4 },
+    text: 'Phàm tu Hoa Thiên cũng dám hỏi tiên luật? Đừng vội giận. Trật tự có giá của nó, tự do cũng có giá của nó.',
+    choices: [
+      { key: 'ask_immortal_law', label: 'Hỏi vì sao tiên luật cần khoá đường tu.', closeDialogue: true },
+      { key: 'leave', label: 'Không nghe lời cao ngạo.', closeDialogue: true },
+    ],
+  },
+  {
+    id: 'dlg_tich_linh_su_gia_default',
+    speakerNpcKey: 'npc_tich_linh_su_gia',
+    condition: { kind: 'realm_min', realmOrder: 2 },
+    text: 'Ngươi gọi đó là Tịch Linh khí vì sợ nó. Ta gọi đó là yên tĩnh: không tranh đoạt, không thiên kiếp, không kẻ yếu chết vì mộng thành tiên.',
+    choices: [
+      { key: 'reject_silence', label: 'Đạo của ta không cần sự yên tĩnh cưỡng ép.', closeDialogue: true },
+      { key: 'leave', label: 'Rời khỏi đạo âm lạnh.', closeDialogue: true },
+    ],
+  },
+  {
+    id: 'dlg_huyet_ha_su_gia_default',
+    speakerNpcKey: 'npc_huyet_ha_su_gia',
+    condition: { kind: 'realm_min', realmOrder: 3 },
+    text: 'Chính đạo gọi bọn ta là ma. Nhưng khi họ đuổi một người vào đường cùng, họ vẫn gọi mình là sạch sẽ. Ngươi muốn mua gì: thuốc, tin, hay sự thật?',
+    choices: [
+      { key: 'ask_demonic_market', label: 'Hỏi về chợ đen và Huyết La Sát.', closeDialogue: true },
+      { key: 'leave', label: 'Không giao dịch với huyết khí.', closeDialogue: true },
+    ],
+  },
+  {
+    id: 'dlg_hoa_thien_dao_to_default',
+    speakerNpcKey: 'npc_hoa_thien_dao_to',
+    condition: { kind: 'realm_min', realmOrder: 4 },
+    text: 'Tàn niệm này chỉ giữ được một câu: vá trời không phải thắng trời, mà là để chúng sinh còn quyền tự bước tiếp.',
+    choices: [
+      { key: 'receive_ancestral_echo', label: 'Ghi nhớ lời tổ sư.', closeDialogue: true },
+      { key: 'leave', label: 'Cúi đầu rời phong ấn.', closeDialogue: true },
+    ],
+  },
+  {
+    id: 'dlg_tich_thien_dao_chu_default',
+    speakerNpcKey: 'npc_tich_thien_dao_chu',
+    condition: { kind: 'realm_min', realmOrder: 4 },
+    text: 'Tự do tu tiên? Các ngươi gọi lòng tham bằng mỹ từ đại đạo. Một ngày nào đó, chính các ngươi sẽ cầu xin ta khoá con đường này.',
+    choices: [
+      { key: 'deny_locked_dao', label: 'Không ai được thay chúng sinh chọn đạo.', closeDialogue: true },
+      { key: 'leave', label: 'Cắt đứt đạo âm.', closeDialogue: true },
+    ],
+  },
+
 ] as const;
 
 export function dialogueById(id: string): DialogueLineDef | undefined {

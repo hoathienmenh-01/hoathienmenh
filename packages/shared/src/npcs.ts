@@ -11,9 +11,9 @@
  * Naming convention: `npc_<snake_case_name>`. Match story bible names; KHÔNG đổi sau khi merge
  * (sẽ break runtime quest progress nếu Phase 12 PR-2 đã go-live).
  *
- * 9 NPC trụ cột tổng cộng trong story bible — file này catalog 5 NPC unlock ở 5 cảnh giới đầu
- * (Phàm Nhân + Luyện Khí + Trúc Cơ + Kim Đan + Nguyên Anh). 4 NPC còn lại (Vạn Kim Nương,
- * Bạch Đế Tử, Hoa Thiên Đạo Tổ, Tịch Thiên Đạo Chủ) sẽ thêm khi cảnh giới tương ứng được code.
+ * 12 NPC trụ cột được catalog cho Phase 21: 5 NPC gameplay early-game đã có quest
+ * trực tiếp và 7 NPC lore/market/antagonist dùng cho dialogue/affinity/hidden hooks.
+ * Các NPC endgame vẫn realm-gated cao để không phá tiến trình Nhân Gian.
  *
  * Phase 12 PR-1 (#425) catalog 4 NPC đầu (Lăng Vân Sinh / Mộc Thanh Y / Hàn Dạ / Tô Nguyệt Ly).
  * Phase 12 Story Foundation Extension (this PR) thêm Huyết La Sát unlock ở Kim Đan.
@@ -59,7 +59,7 @@ export interface NpcDef {
 }
 
 /**
- * 5 NPC trụ cột unlock ở 5 cảnh giới đầu.
+ * NPC trụ cột unlock theo cảnh giới/lore gate.
  *
  * - **Lăng Vân Sinh** (chưởng môn Hoa Thiên Môn): main quest giver từ Phàm Nhân → Nguyên Anh.
  * - **Mộc Thanh Y** (đại sư tỷ): tutorial / sect / grind quest. Bị Tịch Linh Chủng ăn mòn — arc cứu kéo dài Trúc Cơ → Nguyên Anh.
@@ -222,6 +222,84 @@ export const NPCS: readonly NpcDef[] = [
     description: 'Ma tu bị ruồng bỏ. Tàn nhẫn nhưng có nỗi đau. Từng là đệ tử Hoa Thiên.',
     loreSummary:
       'Mở moral choice ma path: tha / giết / hợp tác. Reveal mặt tối Hoa Thiên Môn. Story bible §6 + §11 (Máu Trên Thềm Đá).',
+  },
+
+  {
+    key: 'npc_a_linh',
+    name: 'A Linh',
+    faction: 'hoa_thien_mon',
+    realmGateOrder: 0,
+    defaultDialogueId: 'dlg_a_linh_default',
+    questKeys: [],
+    description: 'Linh đồng ngoại môn phụ trách dẫn tân đệ tử qua nửa canh giờ đầu.',
+    loreSummary:
+      'Guided-path helper anchored to Hoa Thiên onboarding: tu luyện lần đầu, nhận túi đồ, học quy củ và tìm nhịp daily. Phase 21 §New Player Guided Path.',
+  },
+  {
+    key: 'npc_van_kim_nuong',
+    name: 'Vạn Kim Nương',
+    faction: 'van_bao_thuong_hoi',
+    realmGateOrder: 1,
+    defaultDialogueId: 'dlg_van_kim_nuong_default',
+    questKeys: [],
+    description: 'Chủ sự Vạn Bảo Thương Hội dưới núi. Thực tế, sắc bén, theo lợi ích.',
+    loreSummary:
+      'Biết nhiều bí mật qua giao dịch; dùng cho market, auction, escort, price-control hooks. Story bible §5-6.',
+  },
+  {
+    key: 'npc_bach_de_tu',
+    name: 'Bạch Đế Tử',
+    faction: 'tien_dinh_bach_de',
+    realmGateOrder: 4,
+    defaultDialogueId: 'dlg_bach_de_tu_default',
+    questKeys: [],
+    description: 'Tiên nhân tiếp dẫn cao quý giả tạo, xuất hiện sớm như điềm báo tiên luật.',
+    loreSummary:
+      'Người của Tiên Đình Bạch Đế, về sau lộ quan hệ với Tịch Thiên Điện trong Tiên Giới. Story bible §6.',
+  },
+  {
+    key: 'npc_tich_linh_su_gia',
+    name: 'Tịch Linh Sứ Giả',
+    faction: 'tich_thien_dien',
+    realmGateOrder: 2,
+    defaultDialogueId: 'dlg_tich_linh_su_gia_default',
+    questKeys: [],
+    description: 'Sứ giả che mặt của Tịch Thiên Điện, gieo Tịch Linh Chủng và thử lòng tu sĩ trẻ.',
+    loreSummary:
+      'Early antagonist face for Tịch Thiên Điện: nội gián, Tịch Linh Chủng, Tịch Thiên Ấn. Story bible §5.',
+  },
+  {
+    key: 'npc_huyet_ha_su_gia',
+    name: 'Huyết Hà Sứ Giả',
+    faction: 'huyet_ha_ma_tong',
+    realmGateOrder: 3,
+    defaultDialogueId: 'dlg_huyet_ha_su_gia_default',
+    questKeys: [],
+    description: 'Kẻ môi giới chợ đen Huyết Hà Ma Tông, phân biệt ác ý và người bị ruồng bỏ.',
+    loreSummary:
+      'Supports demonic-path tension, black-market hints, and Huyết La Sát moral contrast. Story bible §5.',
+  },
+  {
+    key: 'npc_hoa_thien_dao_to',
+    name: 'Hoa Thiên Đạo Tổ',
+    faction: 'hoa_thien_mon',
+    realmGateOrder: 4,
+    defaultDialogueId: 'dlg_hoa_thien_dao_to_default',
+    questKeys: [],
+    description: 'Tổ sư cổ xưa từ bi nhưng quyết liệt, chỉ hiện qua tàn niệm và phong ấn.',
+    loreSummary:
+      'Không chết hoàn toàn, hoá thành phong ấn ngăn Vô Đạo Chủng; Phase 21 dùng tàn niệm làm foreshadow. Story bible §6.',
+  },
+  {
+    key: 'npc_tich_thien_dao_chu',
+    name: 'Tịch Thiên Đạo Chủ',
+    faction: 'tich_thien_dien',
+    realmGateOrder: 4,
+    defaultDialogueId: 'dlg_tich_thien_dao_chu_default',
+    questKeys: [],
+    description: 'Phản diện tối cao lý trí cực đoan, chỉ vang lên qua đạo âm bị phong.',
+    loreSummary:
+      'Muốn khoá đại đạo vì tin chúng sinh sẽ tự huỷ; Phase 21 chỉ foreshadow triết học, không cho gặp trực diện. Story bible §6.',
   },
 ] as const;
 

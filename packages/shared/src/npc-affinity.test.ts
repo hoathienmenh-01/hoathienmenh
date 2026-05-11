@@ -28,6 +28,14 @@ describe('npc-affinity catalog', () => {
     }
   });
 
+  it('Phase 21 affinity catalog covers at least 12 important NPCs', () => {
+    const affinityNpcKeys = new Set(NPC_AFFINITY.map((def) => def.npcKey));
+    expect(affinityNpcKeys.size).toBeGreaterThanOrEqual(12);
+    for (const npc of NPCS) {
+      expect(affinityNpcKeys.has(npc.key), npc.key).toBe(true);
+    }
+  });
+
   it('cap constants are positive integers', () => {
     expect(AFFINITY_DELTA_CAP_PER_CHOICE).toBeGreaterThan(0);
     expect(AFFINITY_DELTA_CAP_PER_QUEST_REWARD).toBeGreaterThan(0);
