@@ -68,3 +68,4 @@ export * from './economy-report';
 export * from './market-price-band';
 export * from './security-rate-limit';
 export * from './backup';
+export * from './auth-session';

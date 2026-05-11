@@ -111,6 +111,8 @@ model User {
   topupApprovals                TopupOrder[]            @relation("TopupOrderApprover")
   auditLogs                     AdminAuditLog[]         @relation("AdminAuditActor")
   refreshTokens                 RefreshToken[]
+  /// Phase 18.2 — UserSession family (login device/browser group).
+  userSessions                  UserSession[]
   passwordResetTokens           PasswordResetToken[]
   /// Phase 15.1–15.2 — LiveOps Event Scheduler audit (admin tạo event).
   /// SET NULL khi User bị xoá — event row vẫn giữ history.
@@ -159,9 +161,65 @@ model RefreshToken {
   revokedAt       DateTime?
   rotatedFromId   String?
   createdAt       DateTime  @default(now())
+  /// Phase 18.2 — link với `UserSession`. NULL cho row issued trước
+  /// migration; row mới luôn có sessionId. KHÔNG cascade khi session
+  /// bị xoá (set null) để giữ history token.
+  sessionId       String?
+  session         UserSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
 
   @@index([userId, revokedAt])
   @@index([expiresAt])
+  @@index([sessionId, revokedAt])
+}
+
+/// Phase 18.2 — UserSession: 1 row đại diện 1 phiên đăng nhập (1
+/// thiết bị / browser tab gọi login). 1 `UserSession` group nhiều
+/// `RefreshToken` theo chain rotation: refresh token cũ → token mới
+/// vẫn cùng `sessionId`. Khi detect refresh-token-reuse, revoke cả
+/// session → mọi child RefreshToken cũng bị revoke (defensive).
+///
+/// Privacy:
+///   - `ipHash` = sha256(salt || raw IP). KHÔNG bao giờ persist raw IP.
+///   - `userAgent` được sanitize (strip control char + trim + truncate
+///     256 chars) trước khi persist. Source: shared `sanitizeUserAgent`.
+///
+/// Lifecycle:
+///   - Tạo khi login/register thành công.
+///   - Update `lastSeenAt` mỗi lần refresh thành công (rotate).
+///   - Mark `revokedAt` khi: user logout / user revoke session /
+///     admin revoke / change-password / detect refresh-token-reuse /
+///     `expiresAt` qua (mark lazily khi list).
+///   - `revokedReason` lưu literal `SessionRevokeReason` (xem
+///     `packages/shared/src/auth-session.ts`).
+model UserSession {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// sha256(salt || ip). Null khi request không có IP (vd test).
+  ipHash        String?
+  /// Sanitized UA, truncate 256 chars. Null khi không gửi header.
+  userAgent     String?
+  createdAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  /// Literal `SessionRevokeReason`:
+  ///   USER_LOGOUT / ADMIN_REVOKE / REFRESH_REUSED /
+  ///   PASSWORD_CHANGED / EXPIRED / SUSPICIOUS
+  revokedReason String?
+  /// userId của admin/user thực hiện revoke. Null nếu hết hạn tự
+  /// nhiên. KHÔNG FK để giảm rủi ro CASCADE ngược khi xoá admin.
+  revokedById   String?
+  /// Phase 18.2 — reserve flag cho heuristic phase sau (vd login
+  /// đột ngột đổi UA/IP). KHÔNG enforce ở Phase 18.2; chỉ ghi.
+  suspicious    Boolean   @default(false)
+
+  refreshTokens RefreshToken[]
+
+  @@index([userId, revokedAt])
+  @@index([userId, lastSeenAt(sort: Desc)])
+  @@index([expiresAt, revokedAt])
+  @@index([revokedAt, createdAt(sort: Desc)])
 }
 
 model LoginAttempt {
