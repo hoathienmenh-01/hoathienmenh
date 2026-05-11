@@ -12,8 +12,9 @@ import {
   REGISTER_RATE_LIMIT_MAX,
   REGISTER_RATE_LIMIT_WINDOW_MS,
 } from './auth.service';
-import { SessionService } from './session.service';
+import { SESSION_SECURITY_ALERT_SERVICE, SessionService } from './session.service';
 import { IpHashService } from '../security/ip-hash.service';
+import { SecurityAlertService } from '../security/security-alert.service';
 import { PrismaService } from '../../common/prisma.service';
 import {
   InMemorySlidingWindowRateLimiter,
@@ -82,6 +83,14 @@ const forgotPasswordLimiterProvider = {
     // Stateless (just sha256 với env salt) → ok provide ở cả AuthModule
     // và SecurityModule (tránh circular import).
     IpHashService,
+    // Phase 18.3 — Wire alert fan-out cho SessionService. Stateless
+    // ngoại PrismaService nên local instance an toàn (tránh circular
+    // dep với SecurityModule).
+    SecurityAlertService,
+    {
+      provide: SESSION_SECURITY_ALERT_SERVICE,
+      useExisting: SecurityAlertService,
+    },
   ],
   exports: [AuthService, SessionService],
 })

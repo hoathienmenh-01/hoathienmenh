@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { RateLimitPolicyKey, RateLimitSeverity } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { IpHashService } from './ip-hash.service';
+import { SecurityAlertService } from './security-alert.service';
 
 /**
  * Phase 18.1 — SecurityAbuseService (Prisma-backed).
@@ -106,8 +107,42 @@ export class SecurityAbuseService {
     private readonly prisma: PrismaService,
     private readonly ipHash: IpHashService,
     cfg: ConfigService,
+    /**
+     * Phase 18.3 — optional injection so legacy unit tests that
+     * instantiate `SecurityAbuseService` without an alert collaborator
+     * keep passing. Production wiring (`SecurityModule`) always
+     * supplies the real service.
+     */
+    @Optional()
+    @Inject(forwardRef(() => SecurityAlertService))
+    private readonly alerts: SecurityAlertService | null = null,
   ) {
     this.enabled = cfg.get<string>('ABUSE_BLOCK_ENABLED') !== 'false';
+  }
+
+  /**
+   * Fail-soft helper — gọi `SecurityAlertService.createFromEvent` nếu
+   * alert collaborator có inject. Mọi error đều swallow để KHÔNG ảnh
+   * hưởng flow security event chính (đã được persist trước đó).
+   */
+  private async maybeCreateAlert(input: {
+    eventId: string;
+    eventType: string;
+    eventSeverity: string;
+    relatedUserId?: string | null;
+    relatedSessionId?: string | null;
+    detailsJson?: unknown;
+  }): Promise<void> {
+    if (!this.alerts) return;
+    try {
+      await this.alerts.createFromEvent(input);
+    } catch (err) {
+      console.warn(
+        `[SecurityAbuseService] maybeCreateAlert failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
   }
 
   isAbuseBlockEnabled(): boolean {
@@ -170,7 +205,7 @@ export class SecurityAbuseService {
     const ipHash = this.ipHash.hashIp(input.ip);
     const severityLabel = this.toEventSeverity(input.severity);
     try {
-      await this.prisma.securityEvent.create({
+      const eventRow = await this.prisma.securityEvent.create({
         data: {
           type: 'RATE_LIMIT_VIOLATION',
           severity: severityLabel,
@@ -179,6 +214,15 @@ export class SecurityAbuseService {
           policy: input.policy,
           detailJson: { policy: input.policy, severity: input.severity },
         },
+      });
+      // Phase 18.3 — fan-out vào SecurityAlert (WARN/CRITICAL mới tạo
+      // alert; INFO thì service tự skip).
+      await this.maybeCreateAlert({
+        eventId: eventRow.id,
+        eventType: 'RATE_LIMIT_VIOLATION',
+        eventSeverity: severityLabel,
+        relatedUserId: input.userId,
+        detailsJson: { policy: input.policy, severity: input.severity },
       });
 
       const threshold = ABUSE_THRESHOLD[input.severity];
@@ -238,13 +282,19 @@ export class SecurityAbuseService {
     try {
       // detailJson chỉ chứa email (đã là identifier, không phải secret) —
       // KHÔNG lưu password.
-      await this.prisma.securityEvent.create({
+      const eventRow = await this.prisma.securityEvent.create({
         data: {
           type: 'LOGIN_FAILED',
           severity: 'WARN',
           ipHash,
           detailJson: { email: input.email },
         },
+      });
+      await this.maybeCreateAlert({
+        eventId: eventRow.id,
+        eventType: 'LOGIN_FAILED',
+        eventSeverity: 'WARN',
+        detailsJson: { email: input.email },
       });
       const since = new Date(Date.now() - LOGIN_FAILED_WINDOW_SEC * 1000);
       const ipCount = await this.prisma.securityEvent.count({
@@ -275,7 +325,7 @@ export class SecurityAbuseService {
     if (!this.enabled) return false;
     const ipHash = this.ipHash.hashIp(input.ip);
     try {
-      await this.prisma.securityEvent.create({
+      const eventRow = await this.prisma.securityEvent.create({
         data: {
           type: 'ADMIN_FORBIDDEN',
           severity: 'WARN',
@@ -283,6 +333,13 @@ export class SecurityAbuseService {
           userId: input.userId,
           detailJson: { path: input.path },
         },
+      });
+      await this.maybeCreateAlert({
+        eventId: eventRow.id,
+        eventType: 'ADMIN_FORBIDDEN',
+        eventSeverity: 'WARN',
+        relatedUserId: input.userId,
+        detailsJson: { path: input.path },
       });
       return false;
     } catch (err) {
@@ -326,7 +383,7 @@ export class SecurityAbuseService {
           expiresAt,
         },
       });
-      await this.prisma.securityEvent.create({
+      const eventRow = await this.prisma.securityEvent.create({
         data: {
           type: input.type === 'IP' ? 'IP_BLOCKED' : 'USER_BLOCKED',
           severity: 'CRITICAL',
@@ -334,6 +391,13 @@ export class SecurityAbuseService {
           userId: input.type === 'USER' ? input.subjectHash : null,
           detailJson: { reason: input.reason, blockSec: input.blockSec },
         },
+      });
+      await this.maybeCreateAlert({
+        eventId: eventRow.id,
+        eventType: input.type === 'IP' ? 'IP_BLOCKED' : 'USER_BLOCKED',
+        eventSeverity: 'CRITICAL',
+        relatedUserId: input.type === 'USER' ? input.subjectHash : null,
+        detailsJson: { reason: input.reason, blockSec: input.blockSec },
       });
       return true;
     } catch (err) {

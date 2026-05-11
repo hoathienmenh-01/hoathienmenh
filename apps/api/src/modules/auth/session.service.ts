@@ -26,7 +26,7 @@
  * Không phụ thuộc `SecurityModule` để tránh circular dep với
  * `AuthModule` (SecurityModule import AuthModule cho AdminGuard).
  */
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { Prisma, UserSession } from '@prisma/client';
 import {
   computeSessionStatus,
@@ -89,11 +89,49 @@ export interface ListAdminSessionsResult {
   nextCursor: string | null;
 }
 
+/**
+ * Injection token cho `SecurityAlertService` (Phase 18.3) khi wire vào
+ * `SessionService`. Tách token để tránh circular import: SecurityModule
+ * imports AuthModule (để dùng SessionService trong admin endpoint); nếu
+ * AuthModule import trực tiếp SecurityAlertService thì tạo cò cò.
+ *
+ * Production wiring (ở `SecurityModule`) provide instance thật. Test
+ * cũ instantiate `SessionService` qua `new SessionService(prisma)`
+ * vẫn pass vì collaborator là `@Optional`.
+ */
+export const SESSION_SECURITY_ALERT_SERVICE = 'SESSION_SECURITY_ALERT_SERVICE';
+
+/**
+ * Shape rid khoát khỏi hàm `createFromEvent` của SecurityAlertService
+ * — SessionService chỉ cần method này. Tách interface để tránh
+ * type-coupled hai chiều với security module.
+ */
+export interface SessionAlertEmitter {
+  createFromEvent(input: {
+    eventId: string;
+    eventType: string;
+    eventSeverity: string;
+    relatedUserId?: string | null;
+    relatedSessionId?: string | null;
+    detailsJson?: unknown;
+  }): Promise<unknown>;
+}
+
 @Injectable()
 export class SessionService {
   private readonly log = new Logger(SessionService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    /**
+     * Phase 18.3 — optional alert fan-out (nếu wire). Khi missing,
+     * `emitEvent` chỉ ghi `SecurityEvent` như cũ (backward compat
+     * cho unit test lấy `new SessionService(prisma)`).
+     */
+    @Optional()
+    @Inject(SESSION_SECURITY_ALERT_SERVICE)
+    private readonly alerts: SessionAlertEmitter | null = null,
+  ) {}
 
   // -------------------- write --------------------
 
@@ -396,8 +434,9 @@ export class SessionService {
     ipHash: string | null;
     detail: SessionEventDetail;
   }): Promise<void> {
+    let eventRow: { id: string } | null = null;
     try {
-      await this.prisma.securityEvent.create({
+      eventRow = await this.prisma.securityEvent.create({
         data: {
           type: input.type,
           severity: input.severity,
@@ -406,6 +445,7 @@ export class SessionService {
           detailJson:
             input.detail as unknown as Prisma.InputJsonValue,
         },
+        select: { id: true },
       });
     } catch (err) {
       this.log.warn(
@@ -413,6 +453,32 @@ export class SessionService {
           err instanceof Error ? err.message : String(err)
         }`,
       );
+    }
+    // Phase 18.3 — fan-out vào SecurityAlert. INFO event bị skip; chỉ
+    // WARN/CRITICAL (REFRESH_TOKEN_REUSED, SESSION_SUSPICIOUS) mới tạo
+    // alert. Fail-soft: mọi error đều swallow.
+    if (eventRow && this.alerts) {
+      try {
+        const sessionId =
+          typeof (input.detail as { sessionId?: unknown }).sessionId ===
+          'string'
+            ? ((input.detail as { sessionId: string }).sessionId)
+            : null;
+        await this.alerts.createFromEvent({
+          eventId: eventRow.id,
+          eventType: input.type,
+          eventSeverity: input.severity,
+          relatedUserId: input.userId,
+          relatedSessionId: sessionId,
+          detailsJson: input.detail,
+        });
+      } catch (err) {
+        this.log.warn(
+          `[SessionService] emit ${input.type} alert fan-out failed: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
     }
   }
 }

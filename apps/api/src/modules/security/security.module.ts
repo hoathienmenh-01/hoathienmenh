@@ -8,6 +8,7 @@ import { IpHashService } from './ip-hash.service';
 import { RateLimitService } from './rate-limit.service';
 import { RateLimitGuard } from './rate-limit.guard';
 import { SecurityAbuseService } from './security-abuse.service';
+import { SecurityAlertService } from './security-alert.service';
 
 /**
  * Phase 18.1 — SecurityModule.
@@ -34,6 +35,7 @@ import { SecurityAbuseService } from './security-abuse.service';
     IpHashService,
     RateLimitService,
     SecurityAbuseService,
+    SecurityAlertService,
     {
       provide: APP_GUARD,
       useClass: RateLimitGuard,
@@ -42,6 +44,7 @@ import { SecurityAbuseService } from './security-abuse.service';
   exports: [
     RateLimitService,
     SecurityAbuseService,
+    SecurityAlertService,
     IpHashService,
   ],
 })
