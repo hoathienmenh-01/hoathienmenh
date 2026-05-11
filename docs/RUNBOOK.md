@@ -1872,6 +1872,63 @@ Symptom: `REFRESH_TOKEN_REUSED` event nhiều user khác nhau cùng 1 IP range /
 - KHÔNG copy/log `userAgent` raw vào audit nếu chưa qua `sanitizeUserAgent`.
 - KHÔNG log raw IP — chỉ `ipHash` từ `IpHashService.hashIp`.
 
+### 2.32. Phase 18.3 — Security Alert Workflow (P1/P2)
+
+**Mục tiêu**: Cách admin xử lý `SecurityAlert` từ FE `AdminView` tab "Cảnh báo bảo mật" (`securityAlerts`). Alert layer là **monitoring + workflow only** — KHÔNG auto-ban, KHÔNG auto-rollback, KHÔNG auto-revoke session.
+
+#### 2.32.1. Symptom → severity
+
+| Symptom | Severity | Action |
+| --- | --- | --- |
+| Summary card "OPEN — CRITICAL" > 0 | **P1** | Mở tab securityAlerts, filter `severity=CRITICAL status=OPEN`, xem chi tiết. |
+| Summary card "Reuse token 24h" > 0 | **P1** (mass) hoặc **P2** (1 user) | Xem alert `REFRESH_TOKEN_REUSED` — đối chiếu §2.31.3. |
+| Summary card "Suspicious 24h" tăng đột biến | **P2** | Filter `type=SESSION_SUSPICIOUS`, đối chiếu ipHash / userAgent. |
+| Summary card "Rate-limit 24h" rất lớn | **P2/P3** | Đối chiếu §2.30 — có thể là 1 bot batch không nguy hiểm. |
+| Alert `ADMIN_FORBIDDEN` xuất hiện thường xuyên 1 userId | **P1** | Có thể admin bị compromise — đối chiếu §2.8 (cookie leak). |
+| Alert `SUBJECT_BLOCKED` (USER) trên 1 admin | **P1** | Block đó là sai — vào tab Bảo Mật (Phase 18.1) lift block + resolve alert. |
+
+#### 2.32.2. Xử lý 1 alert WARN/CRITICAL
+
+1. Mở tab `securityAlerts` → summary cards cho biết khối lượng tổng thể.
+2. Filter `status=OPEN` (default) → tìm alert cần xử lý.
+3. Đối chiếu `eventId` với `SecurityEvent` (Phase 18.1 tab Bảo Mật) để xem detail gốc (`detailJson`, `ipHash`, `userId`).
+4. Nếu cần action mạnh hơn (lift block / revoke session) → dùng đúng tab tương ứng (Phase 18.1 Bảo Mật / Phase 18.2 Sessions); **KHÔNG** dùng tab securityAlerts để mutate gameplay/economy.
+5. Sau khi xử lý: bấm **Acknowledge** (alert chuyển `ACKNOWLEDGED`, gắn `acknowledgedByAdminId` + timestamp). Nếu chưa xác định nguyên nhân, dừng ở ACK để mark "đang theo dõi".
+6. Khi đã xác minh xong + có ghi chú: bấm **Resolve** + nhập note (≤ 1000 ký tự) → alert chuyển `RESOLVED`. Note được sanitize (strip control char). Resolve KHÔNG xóa row — vẫn lưu lịch sử ack/resolve trong audit.
+
+#### 2.32.3. Idempotent semantics
+
+- Ack 1 alert đã `ACKNOWLEDGED` → no-op (server trả row hiện tại).
+- Ack 1 alert đã `RESOLVED` → reject 409 `ALERT_ALREADY_RESOLVED` (admin không ack ngược 1 alert đã đóng — xem lại).
+- Resolve 1 alert `OPEN` → skip-ack path, set cả `acknowledgedAt` + `resolvedAt` cùng lúc.
+- Resolve 1 alert đã `RESOLVED` → reject 409 (cần `note` mới qua row mới hoặc edit gốc).
+
+#### 2.32.4. Audit trail
+
+Mọi mutation ghi `AdminAuditLog`:
+
+- `ADMIN_SECURITY_ALERTS_VIEW` — list query.
+- `ADMIN_SECURITY_SUMMARY_VIEW` — dashboard refresh.
+- `ADMIN_SECURITY_ALERT_ACK` (success) / `ADMIN_SECURITY_ALERT_ACK_FAILED` (404/409).
+- `ADMIN_SECURITY_ALERT_RESOLVE` (success) / `ADMIN_SECURITY_ALERT_RESOLVE_FAILED` (400/404/409).
+
+Query audit để re-construct workflow:
+
+```sql
+SELECT "createdAt", "actorUserId", "action", "meta"
+FROM "AdminAuditLog"
+WHERE "action" LIKE 'ADMIN_SECURITY_ALERT_%'
+ORDER BY "createdAt" DESC
+LIMIT 100;
+```
+
+#### 2.32.5. KHÔNG được làm
+
+- KHÔNG xóa row `SecurityAlert` — workflow chỉ dùng `status`. Xóa sẽ leak audit trail.
+- KHÔNG auto-ban dựa trên số lượng alert OPEN — admin phải bấm action ở tab Bảo Mật / Sessions.
+- KHÔNG copy/log `detailsJson` raw ra ngoài Postgres (đã sanitize ở BE; tuy nhiên trên FE không export CSV mục này).
+- KHÔNG resolve hàng loạt không note — note bắt buộc để audit theo người xử lý sau này.
+
 ## 2.99. Pre-cutover Deploy Verify Gate (Phase 17.1)
 
 **Khi nào**: Mọi lần cutover production sang instance mới / image mới /

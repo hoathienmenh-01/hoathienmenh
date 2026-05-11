@@ -2875,6 +2875,85 @@ model SecurityBlock {
 }
 
 // =====================================================================
+// Phase 18.3 — Security Audit / Alert Polish
+// =====================================================================
+//
+// `SecurityAlert` row đại diện 1 sự kiện bảo mật **cần admin theo dõi**
+// — workflow OPEN → ACKNOWLEDGED → RESOLVED. Khác với `SecurityEvent`
+// (audit log immutable), `SecurityAlert` mutable status để admin
+// ack/resolve + lưu `resolutionNote`.
+//
+// Quan hệ:
+//   - `eventId` (optional) link tới `SecurityEvent` gốc (1-1 đơn giản
+//     ở Phase 18.3 — chưa fan-in nhiều event vào 1 alert; sẽ thêm
+//     nếu thấy cần ở phase sau). Không FK Prisma → vì
+//     `SecurityEvent.id` đã unique và alert lifecycle khác event
+//     lifecycle; chỉ index để query nhanh khi cần.
+//
+// Privacy:
+//   - KHÔNG lưu raw IP — chỉ `ipHash` đã được hash qua `IpHashService`
+//     ở caller (SecurityAbuseService / SessionService).
+//   - `detailsJson` đã sanitize ở caller — không chứa password / token
+//     / cookie / refresh hash.
+//
+// **KHÔNG** auto-ban + KHÔNG auto-rollback + KHÔNG tự xoá session ở
+// Phase 18.3 — chỉ workflow monitoring + admin ack/resolve.
+
+/// Phase 18.3 — SecurityAlert: workflow row cho admin theo dõi.
+///
+/// `severity`: `INFO` | `WARN` | `CRITICAL` (string literal).
+/// `status`:   `OPEN` | `ACKNOWLEDGED` | `RESOLVED`.
+/// `type`:     `SecurityAlertType` ở `packages/shared/src/security-alerts.ts`.
+/// `source`:   `SecurityAlertSource` (RATE_LIMIT/AUTH/SESSION/ADMIN/BLOCK/OTHER).
+///
+/// Phân loại tự động qua `classifySecurityEventForAlert(...)`. Alert
+/// chỉ được tạo cho event WARN/CRITICAL (xem
+/// `shouldCreateAlertForClassification`).
+model SecurityAlert {
+  id                    String    @id @default(cuid())
+  /// `SecurityAlertType` literal — phân loại chi tiết (vd RATE_LIMIT_ABUSE).
+  type                  String
+  /// `INFO` | `WARN` | `CRITICAL`.
+  severity              String
+  /// `OPEN` | `ACKNOWLEDGED` | `RESOLVED`. Default OPEN khi tạo.
+  status                String    @default("OPEN")
+  /// `SecurityAlertSource` (vd `SESSION`).
+  source                String
+  /// `SecurityEvent.id` gốc nếu alert phát sinh từ event. Null nếu
+  /// alert tạo thủ công hoặc fan-in. KHÔNG FK Prisma — event lifecycle
+  /// khác alert lifecycle; chỉ index để query nhanh.
+  eventId               String?
+  /// userId của user liên quan (nạn nhân hoặc actor). Null cho alert
+  /// thuần IP-based.
+  relatedUserId         String?
+  /// characterId liên quan. Hiếm khi set ở Phase 18.3 vì 18.1/18.2
+  /// chủ yếu user-scope.
+  relatedCharacterId    String?
+  /// `UserSession.id` liên quan (vd REFRESH_TOKEN_REUSED, SESSION_REVOKED).
+  /// KHÔNG FK để giữ history sau khi session bị xoá.
+  relatedSessionId      String?
+  /// Sanitized JSON từ event gốc / caller. KHÔNG chứa raw secret/token.
+  detailsJson           Json      @default("{}")
+  createdAt             DateTime  @default(now())
+  acknowledgedAt        DateTime?
+  /// userId admin/mod thực hiện ack. KHÔNG FK để giảm rủi ro cascade
+  /// khi xoá admin.
+  acknowledgedByAdminId String?
+  resolvedAt            DateTime?
+  /// userId admin thực hiện resolve.
+  resolvedByAdminId     String?
+  /// Note tự do admin nhập khi resolve (≤1000 char, sanitized).
+  resolutionNote        String?
+
+  @@index([status, severity, createdAt(sort: Desc)])
+  @@index([source, createdAt(sort: Desc)])
+  @@index([type, createdAt(sort: Desc)])
+  @@index([relatedUserId, createdAt(sort: Desc)])
+  @@index([eventId])
+  @@index([createdAt(sort: Desc)])
+}
+
+// =====================================================================
 // Phase 17.2 — Backup / Restore Weekly Verification
 // =====================================================================
 //

@@ -1277,6 +1277,7 @@
       "maintenance": "Bảo trì",
       "configVersion": "Config Version",
       "security": "Bảo mật",
+      "securityAlerts": "Cảnh báo bảo mật",
       "backup": "Backup"
     },
     "arenaAntiWintrade": {
@@ -4141,6 +4142,75 @@
       "UNAUTHENTICATED": "Cần đăng nhập admin.",
       "FORBIDDEN": "Tài khoản không phải admin.",
       "ADMIN_ONLY": "Chỉ admin mới được gỡ block.",
+      "UNKNOWN": "Thao tác thất bại — thử lại."
+    }
+  },
+  "adminSecurityAlerts": {
+    "title": "Cảnh Báo Bảo Mật",
+    "subtitle": "Theo dõi, phân loại, acknowledge/resolve cảnh báo từ rate-limit abuse, login abuse, reuse refresh token, suspicious session, block IP/USER, admin forbidden.",
+    "summary": {
+      "openCritical": "OPEN — CRITICAL",
+      "openWarn": "OPEN — WARN",
+      "blockedSubjects": "Đang block",
+      "tokenReuse24h": "Reuse token 24h",
+      "suspicious24h": "Suspicious 24h",
+      "rateLimitHits24h": "Rate-limit hit 24h",
+      "loading": "Đang tải tóm tắt…"
+    },
+    "filters": {
+      "status": "Trạng thái",
+      "severity": "Mức độ",
+      "type": "Loại",
+      "source": "Nguồn",
+      "from": "Từ",
+      "to": "Đến",
+      "userId": "User ID",
+      "limit": "Giới hạn",
+      "all": "Tất cả",
+      "apply": "Áp dụng bộ lọc"
+    },
+    "list": {
+      "title": "Danh sách cảnh báo",
+      "id": "ID",
+      "type": "Loại",
+      "severity": "Mức độ",
+      "status": "Trạng thái",
+      "source": "Nguồn",
+      "createdAt": "Tạo lúc",
+      "actions": "Thao tác",
+      "loading": "Đang tải cảnh báo…",
+      "empty": "Không có cảnh báo nào phù hợp bộ lọc."
+    },
+    "actions": {
+      "ack": "Acknowledge",
+      "resolve": "Resolve"
+    },
+    "ack": {
+      "title": "Xác nhận acknowledge",
+      "message": "Bạn xác nhận đã xem cảnh báo {id}? Hành động được ghi audit.",
+      "success": "Đã acknowledge cảnh báo {id}."
+    },
+    "resolve": {
+      "title": "Xác nhận resolve",
+      "message": "Bạn xác nhận đã xử lý xong cảnh báo {id}? Hành động được ghi audit.",
+      "noteLabel": "Ghi chú xử lý (bắt buộc)",
+      "notePlaceholder": "Mô tả ngắn cách xử lý (≤ 1000 ký tự).",
+      "success": "Đã resolve cảnh báo {id}."
+    },
+    "errors": {
+      "INVALID_STATUS": "Trạng thái không hợp lệ.",
+      "INVALID_SEVERITY": "Mức độ không hợp lệ.",
+      "INVALID_TYPE": "Loại không hợp lệ.",
+      "INVALID_SOURCE": "Nguồn không hợp lệ.",
+      "INVALID_USER_ID": "User ID không hợp lệ.",
+      "INVALID_INPUT": "Dữ liệu gửi lên không hợp lệ.",
+      "INVALID_NOTE": "Ghi chú xử lý không được để trống.",
+      "ALERT_NOT_FOUND": "Cảnh báo không tồn tại.",
+      "ALERT_ALREADY_RESOLVED": "Cảnh báo đã được resolve trước đó.",
+      "NOT_AVAILABLE": "Tính năng cảnh báo tạm thời chưa khả dụng.",
+      "ADMIN_ONLY": "Chỉ admin được ack/resolve cảnh báo.",
+      "FORBIDDEN": "Tài khoản không có quyền.",
+      "UNAUTHENTICATED": "Cần đăng nhập admin.",
       "UNKNOWN": "Thao tác thất bại — thử lại."
     }
   },

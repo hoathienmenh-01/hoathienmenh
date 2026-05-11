@@ -12,6 +12,59 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Phase 18.3 — Security Audit / Alert Polish (this PR — #525)
+
+**Scope**: Operational alert workflow cho admin. Tách mutable workflow ra khỏi `SecurityEvent` (immutable audit log). Mỗi event severity WARN/CRITICAL từ rate-limit abuse, login abuse, refresh-token reuse, suspicious session, IP/USER block, admin forbidden → tự tạo `SecurityAlert` row OPEN. Admin có dashboard summary + ack/resolve workflow + audit per mutation.
+
+#### Added — Phase 18.3
+
+- **Prisma migration `20260630000000_phase_18_3_security_alert`** additive: `SecurityAlert` table (`id`, `type`, `severity`, `status`, `source`, `eventId`, `relatedUserId/CharacterId/SessionId`, `detailsJson`, `createdAt`, `acknowledgedAt[ByAdminId]`, `resolvedAt[ByAdminId]`, `resolutionNote`) + 6 index cho admin filter / dashboard.
+- **Shared `@xuantoi/shared`** (`packages/shared/src/security-alerts.ts`):
+  - Enum: `SECURITY_ALERT_SEVERITIES`, `SECURITY_ALERT_STATUSES`, `SECURITY_ALERT_SOURCES`, `SECURITY_ALERT_TYPES`.
+  - `classifySecurityEventForAlert(eventType, eventSeverity)` map 16 SecurityEvent type → `{ alertType, severity, source }`, fail-soft `OTHER/INFO` cho unknown.
+  - `shouldCreateAlertForClassification()` filter `INFO` (chỉ raise alert cho WARN/CRITICAL).
+  - `sanitizeSecurityAlertNote()` strip control char + truncate 1000 char.
+  - 34 unit tests.
+- **`SecurityAlertService`** (`apps/api/src/modules/security/security-alert.service.ts`):
+  - `createFromEvent` idempotent theo `eventId`, skip INFO, fail-soft trên DB exception.
+  - `createDirect` cho alert không gắn event (batch/cron).
+  - `listAlerts` cursor pagination + multi-filter.
+  - `acknowledgeAlert` idempotent (đã ACK → no-op), reject RESOLVED.
+  - `resolveAlert` skip-ack path + sanitize note + reject empty/RESOLVED.
+  - `getSummary` fail-soft per-count.
+  - 28 unit tests.
+- **Fan-out**: `SecurityAbuseService.maybeCreateAlert()` + `SessionService.emitEvent()` gọi `SecurityAlertService.createFromEvent()` sau khi `SecurityEvent.create()`. Inject `@Optional()` để backward-compat với unit test cũ; circular dep tránh bằng injection token `SESSION_SECURITY_ALERT_SERVICE` trong `AuthModule`.
+- **Admin API** (`apps/api/src/modules/security/admin-security.controller.ts`):
+  - `GET /admin/security/alerts` (ADMIN/MOD) — list + filter + pagination + audit.
+  - `GET /admin/security/summary` (ADMIN/MOD) — dashboard summary.
+  - `POST /admin/security/alerts/:id/ack` (ADMIN) — audit + 404/409 mapping.
+  - `POST /admin/security/alerts/:id/resolve` (ADMIN) — body note bắt buộc + audit + 400/404/409 mapping.
+  - 9 controller tests bổ sung (tổng 24 tests trong `admin-security.controller.test.ts`).
+- **FE** `apps/web/src/components/SecurityAlertPanel.vue`:
+  - Summary cards (openCritical / openWarn / blockedSubjects / tokenReuse24h / suspicious24h / rateLimitHits24h).
+  - Filter bar (status / severity / type / source / from / to / userId / limit).
+  - Alert table với ack + resolve action + severity color.
+  - Ack & Resolve `ConfirmModal` (resolve có note input bắt buộc).
+  - Loading / empty / error state riêng cho summary và table.
+  - i18n vi/en parity (`adminSecurityAlerts.*`) + tab label `admin.tab.securityAlerts`.
+  - 9 component tests (render / empty / error / filter forward / ack cancel+confirm / resolve note empty+confirm / i18n parity).
+- **`AdminView.vue`** thêm tab `securityAlerts` mount `SecurityAlertPanel`.
+
+#### Security — Phase 18.3
+
+- Alert layer là **monitoring + workflow** — KHÔNG auto-ban, KHÔNG auto-rollback economy, KHÔNG auto-revoke session.
+- Fan-out **fail-soft**: alert creation lỗi chỉ log warn, không kéo theo crash auth / rate-limit / session flow.
+- Privacy: alert `detailsJson` chỉ snapshot từ `SecurityEvent.detail` đã sanitize ở source. Không lưu raw IP / token / cookie / secret. FE chỉ render `relatedUserId` / `relatedSessionId` text.
+- ADMIN/MOD: list + summary đọc được. ACK/RESOLVE chỉ ADMIN (MOD reject 403 `ADMIN_ONLY`). PLAYER tất nhiên 403 toàn bộ.
+- Mọi mutation ghi `AdminAuditLog` (`ADMIN_SECURITY_ALERT_ACK` / `_FAILED`, `ADMIN_SECURITY_ALERT_RESOLVE` / `_FAILED`, `ADMIN_SECURITY_ALERTS_VIEW`, `ADMIN_SECURITY_SUMMARY_VIEW`).
+
+#### Docs — Phase 18.3
+
+- `docs/SECURITY.md` §14 — full Phase 18.3 spec + mapping table + test list.
+- `docs/API.md` — 4 endpoint mới ở section AdminSecurityController.
+- `docs/RUNBOOK.md` — flow xử lý alert (xem § Security Alert Workflow).
+- `docs/AI_HANDOFF_REPORT.md` — Recent Changes block.
+
 ### Phase 18.2 — Session Management Hardening (this PR — #524)
 
 **Scope**: Server-authoritative session tracking trên cookie + refresh token rotation đã có ở Phase R1. Mỗi login/register tạo 1 `UserSession` family → mọi rotation link cùng `sessionId`. Detect reuse → defensive revoke + CRITICAL event. Bổ sung user-facing và admin API để xem/revoke session. **Backend-only** ở PR này — FE Settings + Admin tab defer sang PR follow-up.
