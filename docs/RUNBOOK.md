@@ -1894,6 +1894,40 @@ DATABASE_URL=postgresql://mtt:mtt@localhost:5432/mtt_restore_test \
 Nếu verify fail → restore không tốt → **mở P0** (backup pipeline
 broken nguy hiểm hơn cả service down).
 
+### 3.4. Weekly Verification + Admin tracking (Phase 17.2)
+
+Phase 17.2 thêm tracking layer trên 3 script `backup-db.sh`/`restore-db.sh`/`verify-restore.sh`: mỗi run được record vào `BackupRun` / `BackupVerifyRun` và admin xem trạng thái + cảnh báo stale/fail qua admin panel. **KHÔNG** thay đổi script shell. **KHÔNG** expose restore qua API — destructive ops vẫn theo §2.10.
+
+**Cách check trạng thái nhanh:**
+- Admin panel → tab "Backup" → 2 card với badge `OK` / `STALE` / `FAILED` / `DISABLED`.
+- Hoặc API: `curl https://api/api/admin/backup/status` (auth admin cookie).
+
+**Khi badge `STALE` (last success > 8 ngày):**
+1. Kiểm tra `BACKUP_CRON_ENABLED` env trên API instance — nếu `false` → cron không fire, set `true` + restart.
+2. Nếu enabled mà vẫn STALE → BullMQ worker có thể down. Check `ready` queue cho `backup-cron` repeat job.
+3. Manual trigger qua admin UI "Chạy backup ngay" để khôi phục `lastSuccessAt` → badge sẽ chuyển `OK` sau khi success row được ghi.
+
+**Khi badge `FAILED` (lastErrorAt fresher hơn lastSuccessAt):**
+1. Mở admin panel → đọc `errorMessage` ở row latest.
+2. Phổ biến nhất: disk full ở `BACKUP_DIR` → free disk + retry.
+3. Hoặc `pg_dump` permission lỗi → kiểm tra DATABASE_URL có quyền `pg_read_all_data` không.
+4. Sau khi fix root cause, manual trigger lại để verify.
+
+**Khi cần manual verify (không qua admin UI):**
+```bash
+# Local: chạy verify rồi check record qua psql
+pnpm verify:restore
+# Tracking row chỉ được ghi khi chạy qua cron/admin API, KHÔNG khi chạy pnpm CLI raw.
+# Phase sau có thể wire CLI -> POST /internal/backup/record.
+```
+
+**Admin endpoint** (tất cả ADMIN-only + audit log):
+- `GET  /admin/backup/status` — đọc snapshot health.
+- `POST /admin/backup/run` — manual trigger backup. Audit `ADMIN_BACKUP_RUN`.
+- `POST /admin/backup/verify` — manual trigger verify. Audit `ADMIN_BACKUP_VERIFY`.
+
+**KHÔNG có endpoint restore.** Khi cần restore production thật → theo §2.10 với maintenance window + sign-off.
+
 ---
 
 ## 4. Contact & escalation

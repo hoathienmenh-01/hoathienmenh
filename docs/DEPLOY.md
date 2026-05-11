@@ -238,6 +238,39 @@ DATABASE_URL=... pnpm verify:restore
 
 Chi tiết workflow + checklist disaster recovery xem `docs/BACKUP_RESTORE.md` + `docs/RUNBOOK.md` §2.10.
 
+### 9.2. Weekly Verification + Admin tracking (Phase 17.2)
+
+Phase 17.2 thêm tracking layer trên 3 script trên — record mỗi run vào DB + admin xem trạng thái + cảnh báo stale/fail. **KHÔNG** thay đổi script shell. **KHÔNG** expose restore qua API.
+
+**Env mới:**
+
+| Env | Default | Mô tả |
+|---|---|---|
+| `BACKUP_CRON_ENABLED` | `false` | Bật BullMQ weekly backup. Mặc định disabled — ops set tường minh `true` để fire. |
+| `BACKUP_VERIFY_CRON_ENABLED` | `false` | Bật BullMQ weekly verify-restore. Mặc định disabled. |
+| `BACKUP_CRON_SCHEDULE` | `0 3 * * 0` | Cron expression (5-field) cho backup. Default = Chủ Nhật 03:00 ICT. |
+| `BACKUP_VERIFY_CRON_SCHEDULE` | `0 4 * * 0` | Cron expression cho verify. Default = Chủ Nhật 04:00 ICT. |
+| `BACKUP_CRON_TIMEZONE` | `Asia/Ho_Chi_Minh` | Timezone cho cả 2 cron. |
+
+**Admin endpoint mới** (ADMIN-only + audit log, KHÔNG có endpoint restore):
+
+- `GET  /admin/backup/status` — snapshot 2 cron health + latest BackupRun/BackupVerifyRun.
+- `POST /admin/backup/run` — manual trigger backup. Audit `ADMIN_BACKUP_RUN`.
+- `POST /admin/backup/verify` — manual trigger verify-restore. Audit `ADMIN_BACKUP_VERIFY`.
+
+**Admin FE panel**: tab "Backup" trong `AdminView` với badge OK/STALE/FAILED/DISABLED + 2 nút Run (gated `ConfirmModal`).
+
+**Migration**: `apps/api/prisma/migrations/20260628000000_phase_17_2_backup_run` (additive — `BackupRun` + `BackupVerifyRun` table, drop an toàn).
+
+**Production cutover plan**:
+1. Deploy code với cron disabled (mặc định) → verify admin panel render `DISABLED` badge.
+2. Manual trigger `POST /admin/backup/run` 1 lần → kỳ vọng badge → `OK` + có row trong `BackupRun`.
+3. Manual trigger `POST /admin/backup/verify` 1 lần → kỳ vọng `latestMigration` match `prisma migrate status`.
+4. Sau khi ops xác nhận OK, set `BACKUP_CRON_ENABLED=true` + `BACKUP_VERIFY_CRON_ENABLED=true` → restart API → admin panel `cronExpression` field hiện schedule mới.
+5. Theo dõi `lastSuccessAt` mỗi tuần — nếu > 8 ngày → badge tự chuyển STALE.
+
+Restore production thật **vẫn manual** theo §Disaster recovery checklist + `docs/RUNBOOK.md` §2.10 — KHÔNG dùng admin UI.
+
 ## 10. Smoke checklist sau deploy
 
 ### 10.A. `pnpm verify:deploy` — Deploy Verify Gate (Phase 17.1)

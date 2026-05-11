@@ -12,6 +12,57 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
+### Phase 17.2 — Backup/Restore Weekly Verification (this PR — #523)
+
+**Scope**: Thêm tracking layer trên 3 script shell hiện có (`backup-db.sh`/`restore-db.sh`/`verify-restore.sh`). Admin xem được trạng thái backup gần nhất + nhận cảnh báo khi stale/fail + manual trigger backup/verify với audit trail. **KHÔNG** thay đổi script shell. **KHÔNG** expose endpoint restore — destructive ops vẫn manual theo RUNBOOK §2.10.
+
+#### Added — Phase 17.2
+
+- **Prisma migration `20260628000000_phase_17_2_backup_run`** additive (drop an toàn):
+  - `BackupRun` table — 1 row mỗi lần backup script chạy: `status` (`RUNNING`/`SUCCESS`/`FAILED`), `startedAt`/`finishedAt`, `fileName`, `fileSizeBytes`, `checksumSha256`, `storage` (`LOCAL` ở Phase 17.2; S3/MINIO/GCS reserved cho 17.3), `errorMessage` (truncate 2048ch), `triggeredBy` (`CRON`/`ADMIN`/`MANUAL`/`CI`), `actorUserId` — + 7 index.
+  - `BackupVerifyRun` table — 1 row mỗi lần verify chạy: `backupRunId?` (optional FK link), `checkedTables`, `latestMigration`, `errorMessage`, `triggeredBy`, `actorUserId` — + 3 index.
+- **`BackupModule`** (`apps/api/src/modules/backup/`):
+  - `BackupService.spawnScript` dùng `child_process.spawn` args-array (KHÔNG shell concat) + capture stdio cap 16KB/stream để tránh OOM khi backup lớn.
+  - `runBackup`/`runVerify` lifecycle `RUNNING`→`SUCCESS|FAILED` + parse stdout extract `fileName`/`fileSizeBytes` (từ marker `BACKUP_DONE fileName=… size=…`) + `checkedTables`/`latestMigration` (từ verify output).
+  - `getStatus()` reuse `computeLiveOpsCronHealth` (Phase 15.8) → `OK`/`STALE`/`DEGRADED`/`DISABLED` với threshold `BACKUP_CRON_MAX_SILENCE_MS = 8 ngày`.
+- **`BackupScheduler`** (BullMQ repeat job, mirror LiveOps Cron pattern Phase 15.8):
+  - Backup weekly: `BACKUP_CRON_ENABLED=true` + `BACKUP_CRON_SCHEDULE` (default `0 3 * * 0` ICT).
+  - Verify weekly: `BACKUP_VERIFY_CRON_ENABLED=true` + `BACKUP_VERIFY_CRON_SCHEDULE` (default `0 4 * * 0` ICT).
+  - Timezone: `BACKUP_CRON_TIMEZONE` (default `Asia/Ho_Chi_Minh`).
+  - **Mặc định disabled** ở production — ops set env tường minh mới fire (fail-safe).
+- **Admin API** (`AdminBackupController`) — tất cả `@RequireAdmin` + rate-limit `ADMIN_MUTATION` (Phase 18.1) + `AdminAuditLog`:
+  - `GET /admin/backup/status` — snapshot health + latest backup/verify (KHÔNG audit, read-only).
+  - `POST /admin/backup/run` — manual trigger backup. Audit `ADMIN_BACKUP_RUN`.
+  - `POST /admin/backup/verify` — manual trigger verify-restore. Audit `ADMIN_BACKUP_VERIFY`.
+  - **KHÔNG có endpoint restore** — destructive ops vẫn manual theo `docs/RUNBOOK.md` §2.10.
+- **Admin FE panel** (`AdminBackupPanel.vue`) — tab "Backup" trong `AdminView`:
+  - 2 card (Backup + Verify) với badge `OK`/`STALE`/`FAILED`/`DISABLED` (BE `DEGRADED` map → FE `FAILED`).
+  - Metadata: cron expression + timezone, last run/success/error, latest fileName/fileSize/storage/triggeredBy, latest checkedTables/latestMigration.
+  - 2 nút "Chạy backup ngay" / "Chạy verify ngay" gated bởi `ConfirmModal`. Confirm false KHÔNG gọi API.
+  - Loading / empty / error per section + retry button.
+  - i18n vi/en parity (namespace `adminBackup.*`).
+- **Shared types** (`packages/shared/src/backup.ts`): `BackupStatusResponse`, `BackupStatusEntry`, `BackupRunSummary`, `BackupVerifyRunSummary` + status/storage/triggeredBy literal unions.
+
+#### Tests — Phase 17.2
+
+- **API: 31 test** — `backup.config.test.ts` (env parse + default), `backup.service.test.ts` (health 4 permutation: empty/OK/STALE/DEGRADED + spawn + audit), `admin-backup.controller.test.ts` (PLAYER 403 / ADMIN happy path / audit log ghi), `backup.scheduler.test.ts` (disabled→no enqueue, enabled→register pattern).
+- **Web: 11 test** — `AdminBackupPanel.test.ts` (loading / empty / error+retry / OK badge / STALE badge / FAILED badge / DISABLED badge / DEGRADED→FAILED mapping / confirm-false KHÔNG gọi API / confirm-true gọi + reload / i18n EN).
+
+#### Docs — Phase 17.2
+
+- `docs/BACKUP_RESTORE.md` — section "Phase 17.2 — Weekly Verification (admin tracking layer)" mô tả model, cron env, admin endpoint, FE panel, manual ops, failure/recovery.
+- `docs/DEPLOY.md` §9.2 — env mới + cutover plan.
+- `docs/RUNBOOK.md` §3.4 — STALE/FAILED troubleshooting + admin endpoint reference.
+- `docs/API.md` — section "Admin Backup — `AdminBackupController`" với response shape + health mapping + env reference.
+- `docs/AI_HANDOFF_REPORT.md` — executive summary + Recent Changes entry + Phase Status row 17.2 OPEN.
+
+#### Risk / Rollback — Phase 17.2
+
+- **Risk** 🟢 low — cron default disabled; admin manual có audit; script hiện có vẫn nguyên; KHÔNG đụng gameplay/economy/ledger.
+- **Rollback**: revert PR; migration chỉ thêm 2 table, drop an toàn (`DROP TABLE BackupRun` + `DROP TABLE BackupVerifyRun`).
+
+---
+
 ### Phase 18.1 — Security Rate Limit + Abuse Protection (this PR — #521)
 
 **Scope**: Bổ sung lớp bảo vệ chống abuse (rate-limit + fail2ban-style temporary block) cho các API nhạy cảm (auth, shop, market, sect-shop, daily-login, dungeon claim, liveops gift claim, topup, admin mutation). Defense-in-depth detection + throttle — **KHÔNG** auto-ban vĩnh viễn, **KHÔNG** thay thế WAF/CDN/anti-cheat, **KHÔNG** chặn healthcheck/readyz/metrics.
