@@ -150,6 +150,235 @@ Docs-only PR sẽ KHÔNG trigger `e2e-full.yml` (path filter); chỉ trigger `ci
 
 ---
 
+## 14. Closed Beta Regression Matrix (Phase 24.1)
+
+Tham chiếu nhanh **tất cả flow lớn cần verify trước mỗi closed-beta promote**. Mỗi flow gắn 1 hoặc nhiều smoke CLI (automatic) + section manual trong file này.
+
+> **Cách dùng**: trước mỗi closed-beta release tag (hoặc Major PR merge), QA/operator chạy toàn bộ smoke CLI bên dưới (~10 phút) + manual spot-check các flow có `manual=YES` (~15 phút). Tổng ~25 phút full regression. Nếu một flow `manual=YES` thiếu thời gian, xem `auto smoke` của flow đó đã PASS → có thể defer manual sang sanity sau release.
+
+### A. Account & Identity
+| Flow | Auto smoke | Manual section | Status |
+|---|---|---|---|
+| Register / Login / Logout | `smoke:auth` | §1 Auth + Onboarding | YES |
+| Session refresh + revoke + change-password | `smoke:auth` | §12 Session integrity | YES |
+| 2FA / OAuth | N/A (closed beta) | — | DEFER (PR closed beta đang dùng email+password only) |
+| Password reset (forgot) | `smoke:auth` (login flow) | §1 | YES |
+| Public profile / inspect player | `smoke:beta` (profile spec) | §7b Leaderboard click name | YES |
+
+### B. Character & Cultivation
+| Flow | Auto smoke | Manual section | Status |
+|---|---|---|---|
+| Create character (sect choice + đạo hiệu) | `smoke:beta` | §1 | YES |
+| Cultivation tick + Nhập/Xuất Định | `smoke:cultivation` + `smoke:ws` | §2 | YES |
+| Cultivation method swap | `smoke:cultivation-method` | §2 | YES |
+| Breakthrough realm | `smoke:breakthrough` | §2 | YES |
+| Tribulation flow | `smoke:tribulation` | §2 (advanced) | YES |
+| Spiritual root assign | `smoke:spiritual-root` | §2 (initial) | YES |
+| Skill / Talent learn + cast | `smoke:skill` | §6 Combat (cast in dungeon) | YES |
+
+### C. Inventory & Equipment
+| Flow | Auto smoke | Manual section | Status |
+|---|---|---|---|
+| Inventory list + use item | `smoke:inventory` | §6 Combat + Inventory | YES |
+| Equip / Unequip | `smoke:inventory` | §6 | YES |
+| Reforge + Enchant (Phase 15.0.A) | N/A | §6 (manual reforge spot) | DEFER auto |
+
+### D. Mission, Story & Quest
+| Flow | Auto smoke | Manual section | Status |
+|---|---|---|---|
+| Daily / Weekly mission | `smoke:mission` | §4 | YES |
+| Mission progress WS push | `smoke:ws` | §4 | YES |
+| Quest catalog + dialog | `smoke:quest` | §4 + §6 (dungeon kill goal) | YES |
+| Daily login reward | `smoke:daily-login` | §4b | YES |
+| Mail (inbox + claim attachment) | `smoke:mail` | §5 | YES |
+
+### E. Combat (Dungeon Solo / Boss / World)
+| Flow | Auto smoke | Manual section | Status |
+|---|---|---|---|
+| Dungeon run (encounter + loot) | `smoke:dungeon-run` + `smoke:combat` | §6 | YES |
+| Story dungeon | `smoke:story-dungeon` | §6 (chuỗi story) | YES |
+| Solo boss attack | `smoke:boss` | §8 | YES |
+| World boss / sect boss (admin spawn) | `smoke:boss` (admin spawn) | §8 + §10 admin | YES |
+
+### F. Market, Economy & Topup
+| Flow | Auto smoke | Manual section | Status |
+|---|---|---|---|
+| Market post + buy listing | `smoke:market` | §7 | YES |
+| Shop NPC buy | `smoke:shop` | §7 | YES |
+| Currency ledger consistency | `smoke:economy` | Post-smoke check `/healthz` + admin Audit tab | YES |
+| Topup package + QR + giftcode redeem | `smoke:topup` + `smoke:giftcode` | §9 | YES |
+| Market trade abuse anomaly | N/A (auto detection only) | §10 Admin → tab Market Abuse | YES |
+
+### G. Social & Chat
+| Flow | Auto smoke | Manual section | Status |
+|---|---|---|---|
+| Friend request send / accept / cancel | `smoke:social` (Phase 24.1) | §15 Social/Chat (Phase 24.1) | YES |
+| Block / Unblock | `smoke:social` | §15 | YES |
+| Private chat send / receive (WS) | `smoke:chat` + `smoke:social` | §15 | YES |
+| Group chat create / invite / kick | `smoke:chat` (group spec) + `smoke:social` | §15 | YES |
+| Chat report submit (user) | `smoke:social` | §15 | YES |
+| Chat moderation: admin resolve + mute + soft-hide | N/A auto | §15 + §10 admin | YES |
+| Notification bell + unread count + WS | `smoke:ws` (notification spec) | §15 | YES |
+| Public profile inspect (read-only) | `smoke:social` | §7b click name | YES |
+
+### H. Party & Co-op (Phase 19.4 / 20.x)
+| Flow | Auto smoke | Manual section | Status |
+|---|---|---|---|
+| Party create / invite / leave / dissolve | `smoke:coop` (Phase 24.1) | §15 Party/Co-op | YES |
+| Party dungeon (Phase 20.1) flow: lobby → ready → start → claim | `smoke:coop` | §15 | YES |
+| Co-op boss (Phase 20.2) flow: create → join → contribute → finish → claim | `smoke:coop` | §15 | YES |
+| Reward cap daily/weekly gate (Phase 20.3) | `smoke:coop` | §15 (8th claim/day reject) | YES |
+| Leech downgrade (Phase 20.3) | N/A auto (cần damage > 0 + survival < 60s mixed signal) | §15 (manual seed 1 leecher tài khoản phụ) | DEFER auto |
+| Weekly contribution leaderboard + tier claim | `smoke:coop` | §15 (admin settle season + claim) | YES |
+
+### I. Sect, Territory & Season
+| Flow | Auto smoke | Manual section | Status |
+|---|---|---|---|
+| Sect war contribution / leaderboard / weekly reward | `smoke:sect` | §8 | YES |
+| Sect mission + sect shop | `smoke:sect` (mission spec) | §8 | YES |
+| Sect season milestone + Hall of Fame | `smoke:sect` (season spec) | §8 advanced | YES |
+| Sect territory influence / settlement / region buff | `smoke:sect` (territory spec) | §8 advanced | YES |
+
+### J. Anti-cheat & Security
+| Flow | Auto smoke | Manual section | Status |
+|---|---|---|---|
+| Rate limit (auth, chat, mission claim) | `smoke:auth` (spam 6 register) + `smoke:chat` (60/min) | §10 admin → tab Audit | YES |
+| Session hardening (multi-device + revoke) | `smoke:auth` | §12 | YES |
+| Security audit / alert acknowledge | N/A auto (admin manual) | §10 → tab Security | YES |
+| Gameplay anomaly detection (cultivation tick / boss damage) | N/A auto (detection-only) | §10 → tab Anti-cheat | YES |
+| Market trade abuse detection | N/A auto | §10 → tab Market Abuse | YES |
+| Daily reward cap | N/A auto | §4b spam claim | YES |
+| Economy anti-cheat suite (ledger checker daily cron) | `smoke:economy` (post-cron section) | §10 → tab Economy Report | YES |
+
+### K. Admin Dashboards
+| Flow | Auto smoke | Manual section | Status |
+|---|---|---|---|
+| Admin overview + users + topups + giftcodes | `smoke:admin` | §10 | YES |
+| Admin mail + boss + audit | `smoke:admin` | §10 | YES |
+| Admin live-ops event toggle | `smoke:admin` (event spec) | §10 → tab LiveOps | YES |
+| Admin chat moderation panel | `smoke:admin` (moderation spec) | §15 + §10 | YES |
+| Admin reward cap summary + season settle | `smoke:admin` (coop reward spec) | §15 + §10 | YES |
+| Admin backup status + run + verify | `smoke:admin` (backup spec) | §16 Backup/Restore | YES |
+| Admin security alert ack / resolve | `smoke:admin` (security spec) | §10 → tab Security | YES |
+
+### L. Backup / Restore / Deploy
+| Flow | Auto smoke | Manual section | Status |
+|---|---|---|---|
+| Backup run (cron disabled default — manual trigger) | `smoke:admin` (backup spec) | §16 + admin panel | YES |
+| Restore verify (sandbox) | N/A auto (manual shell script `pnpm verify:restore`) | §16 | YES |
+| Deploy verify gate (env schema + verify:deploy) | `pnpm verify:deploy` (CI job) | Post-smoke check + CI tab | YES |
+| Migration additive rollback | N/A auto (manual prisma migrate resolve) | RUNBOOK §16 | YES |
+
+### M. Mobile & Responsive
+| Flow | Manual section | Status |
+|---|---|---|
+| Login / Onboarding mobile 375×667 | §11 + §17 Mobile | YES |
+| Home / AppShell + sidebar collapse | §11 + §17 | YES |
+| Character / Inventory / Equipment | §11 + §17 | YES |
+| Market / Shop / Topup / Giftcode | §11 + §17 | YES |
+| Social / PrivateChat / GroupChat / Notification bell | §15 + §17 | YES |
+| Party / Party-dungeon / Co-op boss / Co-op weekly leaderboard | §15 + §17 | YES |
+| Admin panel (optional mobile view) | §17 (defer full-mobile admin) | DEFER full mobile admin |
+| Modal: ChatReport / GroupCreate / RewardClaim không vỡ | §17 | YES |
+
+### N. i18n Parity
+| Flow | Auto check | Status |
+|---|---|---|
+| Vi/En parity test (no missing key) | `pnpm --filter @xuantoi/web test -- src/i18n/__tests__/parity.test.ts` | YES |
+| LocaleSwitcher toggle | §11 | YES |
+| Cap error keys (Phase 20.3) | parity test cover `coopBoss.errors.*` + `partyDungeon.errors.*` + `coopRewardCap.*` | YES |
+
+### Pass criteria toàn matrix
+
+- Tất cả flow `Status=YES` PASS (auto smoke + manual sample).
+- Flow `Status=DEFER auto` ghi rõ rationale (đã có guard catalog/code, manual chỉ xác minh khi có thay đổi).
+- Tổng smoke CLI < 12 phút (sequential) hoặc < 5 phút (parallel với GNU `parallel`).
+- Tổng manual spot-check < 25 phút (1 QA + 1 admin).
+
+## 15. Social / Chat / Party / Co-op (Phase 24.1 manual)
+
+> Bổ sung Phase 24.1 — manual smoke cho flow Social (Phase 19.1.x) + Chat moderation (Phase 19.2) + Notification (Phase 19.3) + Party (Phase 19.4) + Party-dungeon (Phase 20.1) + Co-op boss (Phase 20.2) + Reward cap (Phase 20.3).
+
+### 15.1. Social / Friend (5 phút)
+- [ ] User A `/social` → tab "Bạn bè" → click "Thêm bạn" → search user B → click "Gửi" → user A thấy outgoing request, user B nhận `notification:new` + bell badge +1.
+- [ ] User B accept → user A nhận notification → cả hai thấy nhau trong "Bạn bè" + presence chip (`online`/`offline`).
+- [ ] User A click "Chặn" user B → user B biến mất khỏi friend list của A; user B gửi private message tới A → rate-limit/abuse-guard từ chối (toast `BLOCKED_BY_RECIPIENT`).
+- [ ] User A unblock B → presence + friend khôi phục.
+
+### 15.2. Private Chat (3 phút)
+- [ ] User A mở private chat với B → typing indicator + WS message:new sự kiện. Send "ping" → B nhận trong < 2s.
+- [ ] Click 1 message của B → hover hiện "Báo cáo" → ChatReportModal mở → reason dropdown (HARASSMENT/SPAM/...) + details ≤ 500ch counter → submit → toast success.
+- [ ] User B (kẻ bị mute scope `PRIVATE_CHAT`) gửi → toast `MUTED`, message KHÔNG vào feed của A.
+
+### 15.3. Group Chat (3 phút)
+- [ ] User A `/social` → tab "Nhóm chat" → "Tạo nhóm" → nhập tên + add 2 member → group create + system message "A đã tạo nhóm".
+- [ ] Send message trong group → tất cả member nhận WS broadcast trong < 2s.
+- [ ] Admin kick member → member rời nhóm + system message; member rời tự nguyện cũng OK.
+- [ ] Group locked (admin lock qua admin panel) → send → toast `GROUP_LOCKED`.
+- [ ] Group dissolved → group ẩn khỏi list, message history giữ (audit/appeal).
+
+### 15.4. Notification (1 phút)
+- [ ] Bell icon top-bar hiển thị badge `''` / số (1-99) / `99+` đúng theo `formatBellBadgeCount`.
+- [ ] Click bell → drawer/panel hiển thị notification list (newest first, pagination ≤ 20/page).
+- [ ] Click notification → mark-read + badge giảm + click navigate tới entity (friend/chat/group/security).
+- [ ] "Mark all read" → badge về 0 + WS event `notification:unread-count` push.
+
+### 15.5. Party (2 phút)
+- [ ] User A `/social` → tab "Tổ đội" → "Tạo party" → A là leader + 1 thành viên.
+- [ ] A invite B → B nhận `notification:new` (PARTY_INVITE) → accept → join party.
+- [ ] B leave party → A vẫn còn 1 mình.
+- [ ] A dissolve party → tất cả khỏi party.
+
+### 15.6. Party Dungeon (Phase 20.1, 3 phút)
+- [ ] Party leader create room cho dungeon catalog → status `LOBBY`.
+- [ ] Member ready → status `READY_CHECK` (đủ 2+ member ≥ minMembers=2).
+- [ ] Leader click "Start" → status `STARTED` → run created.
+- [ ] Sau khi clear (mock kết quả CLEAR) → reward claim status `PENDING` cho mỗi member.
+- [ ] Mỗi member click "Nhận thưởng" → reward grant + counter cap dungeon `dailyUsed++` + claim status `CLAIMED`.
+- [ ] Member spam claim lần 2 → reject `REWARD_ALREADY_CLAIMED` (409).
+
+### 15.7. Co-op Boss (Phase 20.2, 3 phút)
+- [ ] Party leader create coop boss run cho bossKey hợp lệ → status `LOBBY`.
+- [ ] Member join (ít nhất 1 + leader = 2) → `recordContribution` ≥ minSurvival 30s + damage clamp.
+- [ ] Leader finish → server snapshot contribution + classify tier (NONE/LOW/NORMAL/HIGH/MVP).
+- [ ] Member tier ≥ LOW → reward claim PENDING; member với contribution score < 100 hoặc survival < 60s → tier downgrade NONE (Phase 20.3 leech).
+- [ ] Mỗi member claim reward → grant + counter cap boss `dailyUsed++` + claim CLAIMED.
+
+### 15.8. Co-op Reward Cap (Phase 20.3, 2 phút)
+- [ ] User A `/social` → tab "Phần thưởng tuần" (CoopWeeklyLeaderboardPanel) → status card hiển thị:
+  - Tuần hiện tại (weekKey ISO UTC+7).
+  - Boss usage daily `<used>/<limit>` + weekly `<used>/<limit>`.
+  - Dungeon usage daily `<used>/<limit>` + weekly `<used>/<limit>`.
+  - Weekly points + rank + tier dự kiến.
+- [ ] Sau 8 boss claim trong ngày → claim thứ 9 → reject `DAILY_CAP_REACHED` (409) + audit anomaly `COOP_REWARD_CAP_HIT`.
+- [ ] Admin (qua `/admin/coop/rewards/seasons/:id/settle`) settle season → leaderboard finalize + tier reward computed cho top 10.
+- [ ] User trong top 10 click "Nhận thưởng tuần" → grant `linhThach + exp` qua ledger + claim status CLAIMED.
+
+## 16. Backup / Restore Verify (1 phút quick check)
+
+- [ ] Admin `/admin/backup` → tab "Backup status" → list run gần nhất với status `OK`/`FAIL`/`RUNNING`.
+- [ ] Click "Run backup now" → trigger `BackupService.run({manual:true})` → status `RUNNING` → `OK` (nếu Postgres reachable).
+- [ ] Click "Verify last backup" → trigger `BackupVerifyRun` → status `OK` + checksum match.
+- [ ] Verify cron disabled default (BullMQ inactive) — chỉ admin manual trigger.
+
+> Restore end-to-end (sandbox) chỉ chạy offline qua `pnpm verify:restore` shell script (RUNBOOK §5).
+
+## 17. Mobile / Responsive Critical Screens (Phase 24.1, 2 phút)
+
+Test ở viewport 375×667 (iPhone SE):
+
+- [ ] `/auth` form + onboarding 4-step không overflow horizontal scroll.
+- [ ] `/home` AppShell: top-bar không che character name; sidebar collapse OK; HP/MP/EXP bar tap-target ≥ 32px.
+- [ ] `/inventory` + `/equipment`: grid 4-col → reflow 2-col mobile; item card tap-target ≥ 44px.
+- [ ] `/market` + `/shop`: list card stack vertical; filter dropdown không vỡ.
+- [ ] `/social` 5 tab (Bạn bè / Private / Nhóm / Tổ đội / Phần thưởng tuần): tab bar không overflow, swipe-scroll OK.
+- [ ] `PrivateChatPanel` + `GroupChatPanel`: input bottom-fixed, keyboard không che message feed; message list scroll OK.
+- [ ] `CoopBossPanel` + `CoopWeeklyLeaderboardPanel`: status card stack, leaderboard table dùng horizontal-scroll wrapper (không bể UI).
+- [ ] `ChatReportModal` + `GroupCreateModal` + `RewardClaimDialog`: modal full-screen mobile, close button visible.
+- [ ] Admin panel: defer full mobile (admin chỉ cần desktop closed beta).
+
+---
+
 ## Post-smoke checks
 
 - [ ] Check `GET /api/healthz` → `{ ok: true, uptimeMs, ts }`.

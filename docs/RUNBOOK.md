@@ -38,6 +38,107 @@
 
 ---
 
+## 1.5. Closed Beta Operator Quick Reference (Phase 24.1)
+
+> Trang nhanh cho **on-call closed beta** — gom các flow ops thường gặp
+> thành 1 chỗ với link sang section chi tiết. Đọc xong section này có
+> thể xử lý 80% sự cố tier P2/P3 mà không cần đào sâu codebase.
+
+### 1.5.1. User abuse / kỷ luật
+
+| Tình huống | Action | Tham chiếu chi tiết |
+|---|---|---|
+| Player toxic / cheat / chat spam | Admin `POST /admin/chat-moderation/mute` (mute user N phút) + `POST /admin/users/:id/ban` (P2) | §2.30 Phase 18.1 (rate-limit / abuse block), §2.31 Phase 18.2 (session revoke) |
+| User bị nghi exploit economy | Kiểm `EconomyAnomaly` → admin grant unlock nếu false-positive | §2.29 Phase 16.1.B (Economy Range Report) |
+| User bị nghi farm coop (anti-leech) | Kiểm `CoopRewardCapCounter` + `EconomyAnomaly` type=`COOP_LEECH_HIGH` | §2.41 Phase 20.2 + Phase 20.3 anti-leech (xem §1.5.4 dưới) |
+| User bị block nhầm / false-positive rate-limit | Admin lift block | §2.30.3 + §2.30.4 |
+| Logout 1 user khỏi mọi thiết bị (incident response) | Admin revoke all sessions | §2.31.2 |
+
+### 1.5.2. Security alert / audit
+
+| Tình huống | Action | Tham chiếu |
+|---|---|---|
+| Xem SecurityEvent gần đây | `GET /admin/security/events` hoặc kiểm `SecurityEvent` table SQL | §2.30.7 |
+| Brute-force / IP attack | Kiểm rate-limit metrics + tăng policy threshold tạm thời (chú ý cần code change, không hot-config) | §2.30.7 + §2.30.8 |
+| Admin grant nhầm | Kiểm `AuditLog` + ledger reverse manual | §2.29.7 + §2.6 |
+| JWT secret nghi leak | Rotate `JWT_SECRET` + revoke all sessions | §2.8 |
+| Maintenance window bật | Admin `POST /admin/maintenance-window/enable` | §2.23 Phase 15.5 |
+
+### 1.5.3. Chat report / moderation
+
+| Tình huống | Action | Tham chiếu |
+|---|---|---|
+| Player report tin nhắn xấu | Admin `GET /admin/chat-moderation/reports` → review → mute / delete msg | Phase 19.1 chat-moderation module |
+| Spam flood public chat | Admin mute user 30 phút + tăng `CHAT_WORLD_SEND` rate-limit policy nếu lặp lại | §2.30 + Phase 19.x rate-limit policy |
+| Private chat lạm dụng | Block user (per-user feature) + admin xem chat-private thread | Phase 19.2 chat-private |
+| Group chat lạm dụng | Owner kick + admin mute room | Phase 19.3 chat-group |
+
+### 1.5.4. Reward cap / co-op abuse (Phase 20.3)
+
+| Tình huống | Action | SQL probe |
+|---|---|---|
+| User báo "claim coop reward bị reject DAILY_CAP_REACHED" | Kiểm `CoopRewardCapCounter` cho user + dayKey hôm nay (ISO UTC+7) | `SELECT * FROM "CoopRewardCapCounter" WHERE "userId"=$1 AND "dayKey"=to_char(now() AT TIME ZONE 'Asia/Ho_Chi_Minh','YYYY-MM-DD') ORDER BY "source";` |
+| User báo "weekly reward claim bị reject" | Kiểm `CoopWeeklyContributionEntry` + `CoopWeeklyRewardClaim` cho user + weekKey hiện tại | `SELECT * FROM "CoopWeeklyContributionEntry" WHERE "userId"=$1 AND "seasonId"=$2;` |
+| Anomaly `COOP_LEECH_HIGH` xuất hiện nhiều | Review `EconomyAnomaly` `WHERE type='COOP_LEECH_HIGH'` 24h gần nhất → quyết định revert reward tier hoặc tăng threshold | §2.29 EconomyAnomaly investigation |
+| Admin force-settle 1 weekly season | `POST /admin/coop/rewards/seasons/:id/settle` (audit log) | Phase 20.3 admin runbook |
+
+**KHÔNG**: tự ý reset `CoopRewardCapCounter` row — cap reset tự động qua dayKey/weekKey rollover ICT. Reset tay sẽ làm grant double reward.
+
+### 1.5.5. Backup / restore verify (closed beta cadence)
+
+| Tình huống | Command | Tham chiếu |
+|---|---|---|
+| Verify cron daily backup chạy đúng | `ls -la /backups/postgres/` + check size + `pg_restore --list` test | §3.1 + §3.3 |
+| Manual backup trước migration nhạy cảm | `pnpm backup:db` (script `scripts/backup-db.sh`) | §3.2 |
+| Weekly restore verify | `pnpm verify:restore` (script `scripts/verify-restore.sh`) + check `BackupVerification` table | §3.4 Phase 17.2 |
+| Restore khẩn 1 backup vào DB tạm | `pnpm restore:db -- --backup-file <path> --target-db <name>` | §2.10 |
+| Đọc lịch sử verify | `SELECT * FROM "BackupVerification" ORDER BY "verifiedAt" DESC LIMIT 14;` (admin FE: `/admin/backup-verifications`) | §3.4 |
+
+### 1.5.6. Deploy readiness check (trước cutover beta)
+
+Trước cutover, chạy **tất cả** các check sau theo thứ tự:
+
+1. `git status` + `git log -1 --oneline` — verify commit deploy.
+2. `pnpm verify:deploy` — Deploy Verify Gate Phase 17.1 (xem §2.99). Phải PASS toàn bộ 12 invariant (env / migration / seed / health / ws / admin auth / rate-limit / cron / backup script / Redis / Postgres / observability).
+3. `pnpm smoke:health` (nếu có) hoặc `curl <api>/api/healthz` + `/api/readyz` → expect 200.
+4. `pnpm smoke:admin` — 30 step admin contract smoke.
+5. `pnpm smoke:economy` — 20 step ledger invariant smoke.
+6. `pnpm smoke:ws` — 19 step WS smoke.
+7. `pnpm smoke:social` + `pnpm smoke:coop` (Phase 24.1) — social/coop golden path. Tolerant: graceful SKIP nếu infra unavailable.
+8. CI build status: branch `main` phải xanh (5/5 GREEN — xem `docs/QA_CHECKLIST.md` §A).
+9. Backup mới nhất < 24h cũ (`/admin/backup-verifications`).
+10. `/admin/metrics` queue depth `failed` < 10 trong 24h gần nhất.
+
+Nếu bất kỳ check fail → **KHÔNG cutover**, escalate dev on-call.
+
+### 1.5.7. Rollback migration additive (an toàn)
+
+Mọi migration trong codebase phải **additive** (không drop column, không drop table, không rename non-nullable). Nếu cần rollback:
+
+1. Verify migration **chỉ thêm** column/table/index (đọc `apps/api/prisma/migrations/*/migration.sql`).
+2. Soft rollback (giữ schema, revert code): `git revert <commit>` → deploy lại. Schema thừa column nhưng app không đọc → safe (additive contract). Document `KNOWN ORPHAN COLUMN` trong handoff.
+3. Hard rollback (drop column thừa): chỉ làm sau ≥ 7 ngày soak + backup verify. Migration `ALTER TABLE ... DROP COLUMN` mới, deploy.
+4. KHÔNG `prisma migrate reset` production. KHÔNG `prisma db push` production. KHÔNG drop table tay khi còn data thật.
+
+Xem §2.9 (Deploy rollback) + Phase 17.1 Deploy Verify Gate §2.99 cho cutover playbook.
+
+### 1.5.8. CI / smoke before beta
+
+Trước khi mark "ready for beta":
+
+- [ ] `main` branch CI 5/5 GREEN (build + e2e-smoke + e2e-full nếu trigger).
+- [ ] `pnpm smoke:beta` PASS (`docs/QA_CHECKLIST.md` §9).
+- [ ] `pnpm smoke:economy` + `smoke:ws` + `smoke:admin` + `smoke:combat` PASS.
+- [ ] `pnpm smoke:social` + `smoke:coop` PASS hoặc graceful SKIP với note rõ trong handoff.
+- [ ] E2E Playwright `pnpm --filter @xuantoi/web e2e` PASS (`docs/QA_CHECKLIST.md` §12).
+- [ ] Mobile sanity check (375x667 viewport): 9 critical screen pass (`docs/QA_CHECKLIST.md` §17).
+- [ ] Backup script smoke (`pnpm backup:db` + `pnpm verify:restore` trên staging).
+- [ ] Manual regression matrix (`docs/QA_CHECKLIST.md` §14) — ≥ 80% category PASS, không có category MAJOR fail.
+
+Nếu blocker xuất hiện → tạo issue `closed-beta-blocker-<slug>` + escalate ngay, KHÔNG cutover.
+
+---
+
 ## 2. Common incident playbooks
 
 Mỗi playbook theo cấu trúc: **Triệu chứng → Verify → Mitigate → Investigate → Postmortem**.

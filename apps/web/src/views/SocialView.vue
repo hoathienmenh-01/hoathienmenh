@@ -38,7 +38,7 @@ const tab = ref<Tab>('friends');
       <p class="text-xs text-ink-300/80">{{ t('social.viewSubtitle') }}</p>
     </header>
 
-    <nav class="flex gap-2" role="tablist">
+    <nav class="flex flex-wrap gap-2" role="tablist">
       <button
         type="button"
         role="tab"

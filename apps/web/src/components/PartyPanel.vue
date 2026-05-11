@@ -567,7 +567,7 @@ defineExpose({ refreshAll });
 
     <!-- Invites section -->
     <div class="space-y-2 rounded border border-ink-300/30 bg-ink-900/60 p-4">
-      <nav class="flex gap-2" role="tablist">
+      <nav class="flex flex-wrap gap-2" role="tablist">
         <button
           type="button"
           role="tab"
