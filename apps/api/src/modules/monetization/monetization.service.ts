@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CurrencyKind, Prisma } from '@prisma/client';
 import {
-  BATTLE_PASS_SEASONS,
   MONTHLY_CARD_CONFIG,
   getActiveBattlePassSeason,
   getBattlePassLevelForXp,
