@@ -8,6 +8,7 @@ import { CharacterModule } from '../character/character.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { MissionModule } from '../mission/mission.module';
 import { QuestModule } from '../quest/quest.module';
+import { EconomyModule } from '../economy/economy.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { QuestModule } from '../quest/quest.module';
     InventoryModule,
     MissionModule,
     QuestModule,
+    EconomyModule,
   ],
   controllers: [CombatController],
   providers: [CombatService, PrismaService],

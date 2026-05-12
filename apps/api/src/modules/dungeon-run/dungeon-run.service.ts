@@ -9,13 +9,16 @@ import {
   DUNGEONS,
   REALMS,
   dungeonByKey,
+  inferDropMonsterType,
   monsterByKey,
   realmByKey,
+  realmOrderToMaterialTier,
   rollDungeonLoot,
   rollMonsterLoot,
   territoryRegionBuffsForRegion,
   type DungeonDef,
   type DungeonRunReward,
+  type DropSource,
   type MonsterDef,
   type RolledLoot,
   type TerritoryRegionBuffDef,
@@ -23,6 +26,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { DropEconomyService } from '../economy/drop-economy.service';
 import { RewardCapService } from '../economy/reward-cap.service';
 import { QuestService } from '../quest/quest.service';
 import { startOfLocalDay } from '../combat/combat.service';
@@ -241,6 +245,7 @@ export class DungeonRunService {
     @Optional() private readonly territory?: TerritoryService,
     @Optional()
     private readonly liveOpsEvents?: LiveOpsEventSchedulerService,
+    @Optional() private readonly dropEconomy?: DropEconomyService,
   ) {}
 
   /**
@@ -420,7 +425,7 @@ export class DungeonRunService {
   async nextEncounter(userId: string, runId: string): Promise<DungeonRunView> {
     const char = await this.prisma.character.findUnique({
       where: { userId },
-      select: { id: true },
+      select: { id: true, realmKey: true },
     });
     if (!char) throw new DungeonRunError('NO_CHARACTER');
 
@@ -489,6 +494,49 @@ export class DungeonRunService {
         // fail-soft: loot grant lỗi không fail next() — encounter advance bền
         // vững. Killed entry vẫn ghi loot đã roll cho FE display purposes;
         // ItemLedger row mất là cost chấp nhận được (mirror combat.service).
+      }
+    }
+
+    // Phase 26.2 — Drop Economy V2 material grant per encounter. Source =
+    // BODY_DUNGEON / ALCHEMY_DUNGEON / DUNGEON theo dungeon category (suy
+    // ra từ dungeon key prefix `body_*` / `alchemy_*`). Boss cuối dùng
+    // monsterType DUNGEON_BOSS, encounter thường dùng NORMAL/ELITE từ
+    // `monster.monsterType` legacy mapping.
+    if (this.dropEconomy) {
+      try {
+        const playerOrder = realmByKey(char.realmKey)?.order ?? 0;
+        const sourceOrder =
+          realmByKey(dungeon.recommendedRealm)?.order ?? playerOrder;
+        const sourceTier = realmOrderToMaterialTier(sourceOrder);
+        const baseType = inferDropMonsterType(monster.monsterType);
+        const monsterType = isLast && baseType !== 'BOSS' ? 'DUNGEON_BOSS' : baseType;
+        const source: DropSource = pickDungeonDropSource(dungeon.key);
+        const dropMaterials = await this.dropEconomy.rollAndGrant(char.id, {
+          playerRealmOrder: playerOrder,
+          sourceTier,
+          monsterType,
+          source,
+          dungeonTier: sourceTier,
+          refType: 'DungeonRun',
+          refId: run.id,
+        });
+        if (dropMaterials.length > 0) {
+          // Snapshot drop materials vào killed entry (mirror legacy loot
+          // snapshot — FE chỉ render, KHÔNG tự cộng inventory).
+          const last = killed[killed.length - 1];
+          if (last) {
+            last.loot = [
+              ...(last.loot ?? []),
+              ...dropMaterials.map((d) => ({ itemKey: d.itemKey, qty: d.qty })),
+            ];
+            await this.prisma.dungeonRun.update({
+              where: { id: run.id },
+              data: { killedMonsters: killed as unknown as Prisma.InputJsonValue },
+            });
+          }
+        }
+      } catch {
+        // fail-soft
       }
     }
 
@@ -863,3 +911,29 @@ export class DungeonRunService {
 
 // Re-export catalog reference for tests.
 export { DUNGEONS, REALMS };
+
+/**
+ * Phase 26.2 — Suy ra `DropSource` từ dungeon key.
+ *
+ * Convention catalog: dungeon key prefix
+ *   - `body_*` / chứa `luyen_the` → `BODY_DUNGEON`
+ *     (ưu tiên drop ALCHEMY_BODY / BODY_BREAKTHROUGH)
+ *   - `alchemy_*` / chứa `luyen_dan` → `ALCHEMY_DUNGEON`
+ *     (ưu tiên drop ALCHEMY_QI / FURNACE_UPGRADE)
+ *   - default → `DUNGEON`
+ *
+ * Tách export ra ngoài để unit-testable (vitest service test) mà không
+ * cần spin up Nest DI.
+ */
+export function pickDungeonDropSource(dungeonKey: string): DropSource {
+  const k = dungeonKey.toLowerCase();
+  if (k.startsWith('body_') || k.includes('luyen_the')) return 'BODY_DUNGEON';
+  if (
+    k.startsWith('alchemy_') ||
+    k.includes('luyen_dan') ||
+    k.includes('luyen_khi')
+  ) {
+    return 'ALCHEMY_DUNGEON';
+  }
+  return 'DUNGEON';
+}

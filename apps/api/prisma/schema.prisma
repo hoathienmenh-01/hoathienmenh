@@ -321,7 +321,7 @@ model Character {
   /// Phase 11.11.B Alchemy MVP — cấp lò luyện đan của character.
   /// Default = 1 (mở recipe PHAM tier). Phase 11.11.C sẽ thêm upgrade
   /// cost (linhThach + nguyên liệu cao cấp) cho L2..L9.
-  alchemyFurnaceLevel Int @default(1)
+  alchemyFurnaceLevel Int    @default(1)
   alchemyLevel        Int    @default(1)
   alchemyExp          BigInt @default(0)
   alchemyMastery      Int    @default(0)
@@ -396,6 +396,8 @@ model Character {
   npcGiftLogs              CharacterNpcGiftLog[]
   dailyRewardBuckets       CharacterDailyRewardBucket[]
   rewardCapEvents          RewardCapEvent[]
+  dailyMaterialCaps        DailyMaterialCap[]
+  weeklyMaterialCaps       WeeklyMaterialCap[]
   arenaProfile             ArenaProfile?
   arenaMatchesAttacker     ArenaMatch[]                 @relation("ArenaMatchAttacker")
   arenaMatchesDefender     ArenaMatch[]                 @relation("ArenaMatchDefender")
@@ -410,7 +412,7 @@ model Character {
   battlePassProgress       BattlePassProgress[]
   monthlyCardSubscription  MonthlyCardSubscription?
   vipProfile               VipProfile?
-  shopPackPurchases         ShopPackPurchase[]
+  shopPackPurchases        ShopPackPurchase[]
   /// Phase 25.3 — Code-only Cosmetic Effects. Cosmetics never carry power /
   /// stat bonuses; they only drive CSS rendering on aura / title / frame /
   /// chat badge / profile decoration / element aura surfaces.
@@ -456,16 +458,16 @@ model ArenaProfile {
 }
 
 model BattlePassSeason {
-  id        String   @id @default(cuid())
-  seasonId  String   @unique
+  id        String               @id @default(cuid())
+  seasonId  String               @unique
   name      String
   startAt   DateTime
   endAt     DateTime
-  active    Boolean  @default(false)
-  config    Json     @default("{}")
+  active    Boolean              @default(false)
+  config    Json                 @default("{}")
   progress  BattlePassProgress[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
 
   @@index([active, startAt, endAt])
 }
@@ -550,17 +552,17 @@ model ShopPackPurchase {
 /// SHOP | VIP | EVENT | ADMIN`). Stored as String to stay schema-light
 /// (no enum migration needed when a new source channel ships).
 model CosmeticOwnership {
-  id           String    @id @default(cuid())
-  characterId  String
-  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  cosmeticId   String
-  source       String
-  ownedAt      DateTime  @default(now())
-  expiresAt    DateTime?
-  grantReason  String?
-  grantRefId   String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  cosmeticId  String
+  source      String
+  ownedAt     DateTime  @default(now())
+  expiresAt   DateTime?
+  grantReason String?
+  grantRefId  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@unique([characterId, cosmeticId])
   @@index([characterId, expiresAt])
@@ -943,21 +945,21 @@ model BodyBreakthroughAttemptLog {
 }
 
 model AlchemyAttemptLog {
-  id                 String   @id @default(cuid())
-  characterId        String
-  recipeKey          String
-  recipeTier         Int
-  recipeCategory     String
-  success            Boolean
-  successRate        Float
-  rollValue          Float
-  pillGrade          String?
-  outputItem         String?
-  outputQty          Int
-  inputsJson         Json
-  linhThachConsumed  Int
-  alchemyExpGained   BigInt   @default(0)
-  createdAt          DateTime @default(now())
+  id                String   @id @default(cuid())
+  characterId       String
+  recipeKey         String
+  recipeTier        Int
+  recipeCategory    String
+  success           Boolean
+  successRate       Float
+  rollValue         Float
+  pillGrade         String?
+  outputItem        String?
+  outputQty         Int
+  inputsJson        Json
+  linhThachConsumed Int
+  alchemyExpGained  BigInt   @default(0)
+  createdAt         DateTime @default(now())
 
   character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
@@ -1479,48 +1481,48 @@ model Mail {
 }
 
 model InventoryItem {
-  id             String     @id @default(cuid())
-  characterId    String
-  character      Character  @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  itemKey        String
-  qty            Int        @default(1)
-  equippedSlot   EquipSlot?
+  id                 String     @id @default(cuid())
+  characterId        String
+  character          Character  @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  itemKey            String
+  qty                Int        @default(1)
+  equippedSlot       EquipSlot?
   /// Phase 11.4.B Gem MVP — danh sách gemKey đã khảm theo thứ tự slot.
   /// Capacity tối đa = `socketCapacityForQuality(item.quality)` (PHAM=0,
   /// LINH=1, HUYEN=2, TIEN=3, THAN=4) enforce ở `GemService.socketGem`
   /// server-authoritative. Item non-equipment / chưa khảm giữ `[]`.
-  sockets        String[]   @default([])
+  sockets            String[]   @default([])
   /// Phase 11.5.B Refine MVP — cấp luyện khí 0..15 (`REFINE_MAX_LEVEL`).
   /// Stat multiplier = `getRefineStatMultiplier(refineLevel)` áp dụng lên
   /// `bonuses` + socket bonus của trang bị khi tính `equipBonus()`.
   /// Item non-equipment / chưa luyện giữ `0`. Server-authoritative qua
   /// `RefineService.refineEquipment` (no client mutation).
-  refineLevel    Int        @default(0)
+  refineLevel        Int        @default(0)
   /// Phase 23.7 — Pháp Bảo persisted star level. Meaningful only when
   /// `itemKey ∈ PHAP_BAO_CATALOG`; normal inventory rows keep the harmless
   /// default. Server-authoritative via `PhapBaoService.starUp`.
-  phapBaoStarLevel   Int     @default(1)
+  phapBaoStarLevel   Int        @default(1)
   /// Phase 23.7 — Pháp Bảo persisted awaken stage. Meaningful only for
   /// Pháp Bảo rows. Server-authoritative via `PhapBaoService.awaken`.
-  phapBaoAwakenStage Int     @default(0)
+  phapBaoAwakenStage Int        @default(0)
   /// Phase 23.7 — instance lock. Locked rows cannot be consumed/upgraded.
-  locked             Boolean @default(false)
+  locked             Boolean    @default(false)
   /// Phase 15.0.A — Equipment Reforge Foundation.
   /// Array of `{ kind, value }` rolled khi reforge (`rollReforgedSubstats`).
   /// kind ∈ {atk,def,hpMax,mpMax,spirit}. Server-authoritative qua
   /// `EquipmentService.reforge` — overwrite toàn bộ slot mỗi reroll.
   /// Empty `[]` cho legacy row + non-equipment.
-  substatsJson   Json       @default("[]")
+  substatsJson       Json       @default("[]")
   /// Phase 15.0.A — Equipment Enchant Foundation.
   /// Element key Ngũ Hành (`kim`/`moc`/`thuy`/`hoa`/`tho`). NULL = chưa
   /// enchant. Element được khoá khi `enchantLevel >= 1` — đổi hệ cần PR
   /// future với reset cost. Bonus apply qua `composeEnchantBonus`.
-  enchantElement String?
+  enchantElement     String?
   /// Phase 15.0.A — Equipment Enchant Level (0..MAX_ENCHANT_LEVEL=5).
   /// 0 = chưa enchant. Server-authoritative qua `EquipmentService.enchant`.
-  enchantLevel   Int        @default(0)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  enchantLevel       Int        @default(0)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
 
   @@unique([characterId, equippedSlot])
   @@index([characterId, itemKey])
@@ -2975,6 +2977,62 @@ model RewardCapEvent {
   @@index([characterId, dayBucket])
   @@index([dayBucket, source])
   @@index([createdAt])
+}
+
+/// Phase 26.2 — Drop Economy V2 daily cap counter.
+///
+/// Track quantity granted per (character, rule, dayBucket) để enforce
+/// `MaterialDropRule.maxDailyQty`. `ruleKey` = MaterialDropRule.key
+/// (vd `huyet_tinh_t1__BOSS`). Reset hằng ngày theo timezone server
+/// (Asia/Ho_Chi_Minh).
+///
+/// Server-authoritative — KHÔNG trust client. Service `DropEconomyService`
+/// atomic upsert + increment trong cùng transaction với `inventory.grant`
+/// để chống race (kill 2 mob đồng thời không bypass cap).
+model DailyMaterialCap {
+  id               String    @id @default(cuid())
+  characterId      String
+  character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// `YYYY-MM-DD` theo timezone reset.
+  dayBucket        String
+  /// `MaterialDropRule.key` (vd `huyet_tinh_t1__BOSS`).
+  ruleKey          String
+  /// Snapshot category/tier để query analytics (admin dashboard cap usage).
+  materialCategory String
+  materialTier     Int
+  source           String
+  /// Tổng qty đã grant trong dayBucket cho rule này.
+  qtyAccum         Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([characterId, dayBucket, ruleKey])
+  @@index([dayBucket])
+  @@index([characterId, dayBucket])
+}
+
+/// Phase 26.2 — Drop Economy V2 weekly cap counter (rare/world-boss only).
+///
+/// Track quantity granted per (character, rule, weekBucket) cho rule có
+/// `maxWeeklyQty` (ARTIFACT_CRAFT từ WORLD_BOSS, TRIBULATION endgame, …).
+/// `weekBucket` = ISO week string `YYYY-Www` theo timezone server.
+model WeeklyMaterialCap {
+  id               String    @id @default(cuid())
+  characterId      String
+  character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// ISO week `YYYY-Www` theo timezone reset.
+  weekBucket       String
+  ruleKey          String
+  materialCategory String
+  materialTier     Int
+  source           String
+  qtyAccum         Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([characterId, weekBucket, ruleKey])
+  @@index([weekBucket])
+  @@index([characterId, weekBucket])
 }
 
 /// Phase 16.6 — Economy Ledger Checker Cron run audit.

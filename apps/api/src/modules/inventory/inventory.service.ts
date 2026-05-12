@@ -98,6 +98,15 @@ export type ItemLedgerReason =
   // theo `refType` để telemetry / admin tách combat module vs dungeon-run module
   // mặc dù nguồn drop table chung (`DUNGEON_LOOT`).
   | 'DUNGEON_LOOT'
+  // Phase 26.2 — Drop Economy V2 material grant (server-authoritative).
+  // Refs: `apps/api/src/modules/economy/drop-economy.service.ts`. Wire qua
+  // combat.service / dungeon-run.service / boss.service path. `refType` thường
+  // là `'Encounter' | 'DungeonRun' | 'WorldBoss'`; `extra` chứa
+  // `{ ruleKey, materialTier, materialCategory, source, cappedByDaily?,
+  // cappedByWeekly? }` để audit + admin dashboard cap usage. KHÔNG idempotent
+  // (mỗi kill drop 1 lần — mirror `COMBAT_LOOT`). Daily/Weekly cap được
+  // enforce ở `DailyMaterialCap` / `WeeklyMaterialCap` cùng transaction.
+  | 'DROP_ECONOMY_MATERIAL'
   // Phase 12.8.B — Story Dungeon claim reward bonus item grant. Wire qua
   // `StoryDungeonService.claim → InventoryService.grantTx(positive qtyDelta)`
   // với `refType='StoryDungeonRun'` + `refId=runId`. CAS claim guard
