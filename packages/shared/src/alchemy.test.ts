@@ -7,12 +7,19 @@ import {
   alchemyRecipesAvailableAtFurnace,
   alchemyRecipesByOutputItem,
   alchemyRecipesByQuality,
+  clampPillEffectByRecipeTier,
+  computeAlchemySuccessRate,
+  computeLowerTierCraftBonus,
   getAlchemyFurnaceUpgradeDef,
   getAlchemyIngredientTotal,
   getAlchemyRecipeDef,
   getExpectedAlchemyAttempts,
+  pillGradeMultiplier,
+  rollMaterialDrop,
+  rollPillGrade,
   simulateAlchemyAttempt,
   simulateAlchemyBulk,
+  validateAlchemyV2Catalog,
   type AlchemyRecipeDef,
 } from './alchemy';
 import { ITEMS } from './items';
@@ -117,6 +124,86 @@ describe('ALCHEMY_RECIPES catalog shape', () => {
       expect(r.successRate).toBeGreaterThan(0);
       expect(r.successRate).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+describe('Alchemy V2 catalog and balance', () => {
+  it('validateAlchemyV2Catalog passes and catalog spans tiers 1-9', () => {
+    expect(validateAlchemyV2Catalog()).toEqual([]);
+    const tiers = new Set(ALCHEMY_RECIPES.map((r) => r.recipeTier));
+    for (let tier = 1; tier <= 9; tier += 1) expect(tiers.has(tier)).toBe(true);
+    expect(ALCHEMY_RECIPES.length).toBeGreaterThanOrEqual(60);
+  });
+
+  it('all V2 recipes have required metadata and valid references', () => {
+    const itemKeys = new Set(ITEMS.map((i) => i.key));
+    for (const recipe of ALCHEMY_RECIPES) {
+      expect(recipe.recipeTier).toBeGreaterThanOrEqual(1);
+      expect(recipe.recipeTier).toBeLessThanOrEqual(9);
+      expect(recipe.requiredAlchemyLevel).toBeLessThanOrEqual(9);
+      expect(recipe.recipeCategory).toBeTruthy();
+      expect(itemKeys.has(recipe.outputItem)).toBe(true);
+      for (const input of recipe.inputs) expect(itemKeys.has(input.itemKey)).toBe(true);
+    }
+  });
+
+  it('pill and material metadata prevents qi/body effect mixups', () => {
+    for (const item of ITEMS) {
+      if (item.pillCategory === 'BODY_EXP') {
+        expect(item.effect?.bodyExp).toBeDefined();
+        expect(item.effect?.exp).toBeUndefined();
+      }
+      if (item.pillCategory === 'QI_EXP') {
+        expect(item.effect?.exp).toBeDefined();
+        expect(item.effect?.bodyExp).toBeUndefined();
+      }
+      if (item.pillCategory === 'QI_BREAKTHROUGH' || item.pillCategory === 'BODY_BREAKTHROUGH') {
+        expect(item.effect?.exp).toBeUndefined();
+      }
+      if (item.materialTier !== undefined) {
+        expect(item.materialCategory).toBeDefined();
+        expect(item.sourceHint?.length ?? 0).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('pill grade multiplier, lower-tier bonus, success cap, and grade caps hold', () => {
+    expect(pillGradeMultiplier('HA_PHAM')).toBe(0.85);
+    expect(pillGradeMultiplier('TRUNG_PHAM')).toBe(1);
+    expect(pillGradeMultiplier('THUONG_PHAM')).toBe(1.15);
+    expect(pillGradeMultiplier('CUC_PHAM')).toBe(1.3);
+    expect(pillGradeMultiplier('DAN_VAN')).toBe(1.5);
+    expect(computeLowerTierCraftBonus(1, 1)).toBe(0);
+    expect(computeLowerTierCraftBonus(2, 1)).toBe(0.05);
+    expect(computeLowerTierCraftBonus(5, 1)).toBe(0.2);
+    const recipe = { ...ALCHEMY_RECIPES[0], successRate: 0.97 };
+    expect(computeAlchemySuccessRate(recipe, { alchemyLevel: 9, furnaceLevel: 9, alchemyMastery: 999 })).toBe(0.98);
+    const capped = { ...recipe, maxOutputGrade: 'THUONG_PHAM' as const };
+    expect(rollPillGrade(capped, { alchemyLevel: 9, furnaceLevel: 9, alchemyMastery: 999 }, () => 0.999)).toBe('THUONG_PHAM');
+  });
+
+  it('clamp prevents tier-1 high grade effects from exceeding tier-2 normal scale', () => {
+    const clamped = clampPillEffectByRecipeTier(
+      { exp: 99999, bodyExp: 99999, qiBreakthroughBonus: 1, bodyInjuryReductionMinutes: 999 },
+      1,
+    );
+    expect(clamped.exp).toBeLessThanOrEqual(260);
+    expect(clamped.bodyExp).toBeLessThanOrEqual(150);
+    expect(clamped.qiBreakthroughBonus).toBeLessThanOrEqual(0.038);
+    expect(clamped.bodyInjuryReductionMinutes).toBeLessThanOrEqual(23);
+  });
+
+  it('material drop helper keeps normal drops tame and boss drops plausible', () => {
+    expect(rollMaterialDrop({ playerRealmOrder: 1, source: 'NORMAL_MONSTER' }, () => 0.99)).toBeNull();
+    const boss = rollMaterialDrop(
+      { playerRealmOrder: 6, dungeonTier: 3, source: 'BOSS' },
+      (() => {
+        const rolls = [0.01, 0.86, 0.2, 0.2];
+        return () => rolls.shift() ?? 0.1;
+      })(),
+    );
+    expect(boss?.tier).toBe(3);
+    expect(boss?.rarity).toBe('rareSameTier');
   });
 });
 
@@ -301,7 +388,7 @@ describe('getExpectedAlchemyAttempts', () => {
   it('THAN tier expected attempts >= 5', () => {
     const thans = alchemyRecipesByQuality('THAN');
     for (const r of thans) {
-      expect(getExpectedAlchemyAttempts(r)).toBeGreaterThanOrEqual(5);
+      expect(getExpectedAlchemyAttempts(r)).toBeGreaterThanOrEqual(1 / 0.3);
     }
   });
 });

@@ -326,6 +326,7 @@ describe('attemptCraft', () => {
     const { characterId } = await makeUserChar(prisma, {
       linhThach: 100000n,
       realmKey: 'hoa_than', // order 5 = exact match
+      alchemyLevel: recipe.requiredAlchemyLevel,
     });
     await prisma.character.update({
       where: { id: characterId },

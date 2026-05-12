@@ -27,6 +27,12 @@ export interface AlchemyRecipeIngredient {
   qty: number;
 }
 
+export interface AlchemyMissingInput {
+  itemKey: string;
+  requiredQty: number;
+  ownedQty: number;
+}
+
 export interface AlchemyRecipeView {
   key: string;
   name: string;
@@ -34,11 +40,24 @@ export interface AlchemyRecipeView {
   outputItem: string;
   outputQty: number;
   outputQuality: 'PHAM' | 'LINH' | 'HUYEN' | 'TIEN' | 'THAN';
+  recipeTier: number;
+  recipeCategory: string;
+  requiredAlchemyLevel: number;
   inputs: AlchemyRecipeIngredient[];
   furnaceLevel: number;
   realmRequirement: string | null;
+  targetRealmOrder?: number;
+  maxOutputGrade?: string;
   linhThachCost: number;
   successRate: number;
+  successRateBase: number;
+  successRateFinal: number;
+  possibleGrades: string[];
+  sourceHint?: string[];
+  unlockSource?: string;
+  missingInputs: AlchemyMissingInput[];
+  canCraft: boolean;
+  failureReason: string | null;
 }
 
 export interface AlchemyFurnaceUpgradeView {
@@ -49,6 +68,11 @@ export interface AlchemyFurnaceUpgradeView {
 
 export interface AlchemyState {
   furnaceLevel: number;
+  alchemyLevel: number;
+  alchemyLevelName: string;
+  alchemyExp: string;
+  alchemyExpNext: string;
+  alchemyMastery: number;
   recipes: AlchemyRecipeView[];
   /** Phase 11.11.D-2 — next upgrade preview, null khi furnaceLevel = MAX. */
   nextUpgrade: AlchemyFurnaceUpgradeView | null;
@@ -72,6 +96,11 @@ export interface AlchemyOutcomeView {
   rollValue: number;
   outputItem: string | null;
   outputQty: number;
+  pillGrade: string | null;
+  successRate: number;
+  alchemyExpGained: string;
+  alchemyLevelBefore: number;
+  alchemyLevelAfter: number;
   linhThachConsumed: number;
   inputsConsumed: AlchemyRecipeIngredient[];
 }

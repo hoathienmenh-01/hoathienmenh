@@ -23,6 +23,11 @@ import * as api from '@/api/alchemy';
  */
 export const useAlchemyStore = defineStore('alchemy', () => {
   const furnaceLevel = ref(1);
+  const alchemyLevel = ref(1);
+  const alchemyLevelName = ref('');
+  const alchemyExp = ref('0');
+  const alchemyExpNext = ref('0');
+  const alchemyMastery = ref(0);
   const recipes = ref<api.AlchemyRecipeView[]>([]);
   const loaded = ref(false);
   const inFlight = ref<Set<string>>(new Set());
@@ -36,6 +41,11 @@ export const useAlchemyStore = defineStore('alchemy', () => {
 
   function applyState(state: api.AlchemyState): void {
     furnaceLevel.value = state.furnaceLevel;
+    alchemyLevel.value = state.alchemyLevel;
+    alchemyLevelName.value = state.alchemyLevelName;
+    alchemyExp.value = state.alchemyExp;
+    alchemyExpNext.value = state.alchemyExpNext;
+    alchemyMastery.value = state.alchemyMastery;
     recipes.value = state.recipes;
     nextUpgrade.value = state.nextUpgrade;
     loaded.value = true;
@@ -65,6 +75,7 @@ export const useAlchemyStore = defineStore('alchemy', () => {
       const result = await api.craftAlchemyRecipe(recipeKey);
       furnaceLevel.value = result.furnaceLevel;
       lastOutcome.value = result.outcome;
+      alchemyLevel.value = result.outcome.alchemyLevelAfter;
       return null;
     } catch (e) {
       const code =
@@ -114,6 +125,11 @@ export const useAlchemyStore = defineStore('alchemy', () => {
 
   function reset(): void {
     furnaceLevel.value = 1;
+    alchemyLevel.value = 1;
+    alchemyLevelName.value = '';
+    alchemyExp.value = '0';
+    alchemyExpNext.value = '0';
+    alchemyMastery.value = 0;
     recipes.value = [];
     loaded.value = false;
     inFlight.value = new Set();
@@ -125,6 +141,11 @@ export const useAlchemyStore = defineStore('alchemy', () => {
 
   return {
     furnaceLevel,
+    alchemyLevel,
+    alchemyLevelName,
+    alchemyExp,
+    alchemyExpNext,
+    alchemyMastery,
     recipes,
     loaded,
     inFlight,

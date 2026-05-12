@@ -2179,9 +2179,14 @@
     "loading": "Đang tải đan phương…",
     "empty": "Không có đan phương nào khớp bộ lọc.",
     "furnaceLevel": "Lò luyện cấp {level}",
+    "alchemyLevel": "Đan Sư cấp {level}: {name}",
+    "alchemyExp": "EXP Đan Sư {exp}/{next}",
+    "recipeTier": "Cấp {tier}",
     "furnaceReq": "Cần lò {level}",
     "filter": {
       "quality": "Phẩm bậc",
+      "category": "Loại đan",
+      "tier": "Cấp đan",
       "all": "Tất cả",
       "shown": "Hiển thị {shown}/{total}"
     },
@@ -2192,9 +2197,36 @@
       "TIEN": "Tiên phẩm",
       "THAN": "Thần phẩm"
     },
+    "grade": {
+      "HA_PHAM": "Hạ phẩm",
+      "TRUNG_PHAM": "Trung phẩm",
+      "THUONG_PHAM": "Thượng phẩm",
+      "CUC_PHAM": "Cực phẩm",
+      "DAN_VAN": "Đan Vân"
+    },
+    "category": {
+      "HEAL_HP": "Hồi HP",
+      "HEAL_MP": "Hồi MP",
+      "HEAL_STAMINA": "Hồi thể lực",
+      "QI_EXP": "EXP Luyện Khí",
+      "BODY_EXP": "EXP Luyện Thể",
+      "QI_BREAKTHROUGH": "Đột phá Luyện Khí",
+      "BODY_BREAKTHROUGH": "Đột phá Luyện Thể",
+      "COMBAT_BUFF": "Buff chiến đấu",
+      "TRIBULATION_SUPPORT": "Hỗ trợ độ kiếp",
+      "INJURY_CURE": "Trị thương",
+      "MIXED_RECOVERY": "Hồi phục hỗn hợp",
+      "SPECIAL": "Đặc biệt"
+    },
     "field": {
+      "category": "Loại",
+      "requiredAlchemy": "Cần Đan Sư",
       "output": "Đan thành phẩm",
       "inputs": "Nguyên liệu",
+      "sourceHint": "Nguồn",
+      "missingInputs": "Thiếu",
+      "possibleGrades": "Phẩm có thể ra",
+      "maxGrade": "Phẩm tối đa",
       "cost": "Chi phí",
       "linhThach": "Linh Thạch",
       "successRate": "Tỉ lệ thành công"
@@ -2204,11 +2236,13 @@
       "crafting": "Đang luyện…"
     },
     "craft": {
-      "success": "Luyện thành công {name} × {qty}!",
-      "fail": "Luyện thất bại {name}, đan tan, nguyên liệu mất.",
+      "success": "Luyện thành công {name} × {qty} ({grade}), +{exp} EXP Đan Sư!",
+      "fail": "Luyện thất bại {name}, nguyên liệu mất, +{exp} EXP Đan Sư.",
       "errors": {
         "RECIPE_NOT_FOUND": "Đan phương không tồn tại.",
         "FURNACE_LEVEL_TOO_LOW": "Lò luyện chưa đủ cấp.",
+        "ALCHEMY_LEVEL_TOO_LOW": "Cấp Đan Sư chưa đủ.",
+        "RECIPE_TIER_TOO_HIGH": "Đan phương vượt cấp Đan Sư.",
         "REALM_REQUIREMENT_NOT_MET": "Cảnh giới chưa đủ để luyện đan này.",
         "INSUFFICIENT_INGREDIENTS": "Thiếu nguyên liệu trong túi.",
         "INSUFFICIENT_FUNDS": "Không đủ Linh Thạch.",
