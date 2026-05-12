@@ -63,6 +63,7 @@ import { RedisModule } from './common/redis.module';
 import { EconomyModule } from './modules/economy/economy.module';
 import { SecurityModule } from './modules/security/security.module';
 import { MonetizationModule } from './modules/monetization/monetization.module';
+import { ShopPacksModule } from './modules/shop-packs/shop-packs.module';
 
 @Module({
   imports: [
@@ -208,6 +209,7 @@ import { MonetizationModule } from './modules/monetization/monetization.module';
     // BACKUP_VERIFY_CRON_ENABLED=false. KHÔNG expose restore-db.sh.
     BackupModule,
     MonetizationModule,
+    ShopPacksModule,
   ],
 })
 export class AppModule {}

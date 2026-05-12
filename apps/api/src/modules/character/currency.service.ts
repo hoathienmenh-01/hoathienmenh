@@ -137,7 +137,9 @@ export type LedgerReason =
   | 'PHAP_BAO_AWAKEN'
   | 'PHAP_BAO_REFINE'
   | 'BATTLE_PASS_REWARD'
-  | 'MONTHLY_CARD_REWARD';
+  | 'MONTHLY_CARD_REWARD'
+  | 'SHOP_PACK_PURCHASE'
+  | 'SHOP_PACK_REWARD';
 
 export interface CurrencyApplyInput {
   characterId: string;

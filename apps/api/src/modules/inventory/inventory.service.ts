@@ -198,7 +198,8 @@ export type ItemLedgerReason =
   | 'EQUIPMENT_DISMANTLE_YIELD'
   | 'EQUIPMENT_DISMANTLE_RETURN_GEM'
   | 'BATTLE_PASS_REWARD'
-  | 'MONTHLY_CARD_REWARD';
+  | 'MONTHLY_CARD_REWARD'
+  | 'SHOP_PACK_REWARD';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;
