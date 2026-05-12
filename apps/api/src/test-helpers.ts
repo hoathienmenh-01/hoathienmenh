@@ -152,6 +152,10 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // Phase 16.5 — Daily Reward Cap (xoá trước Character — FK cascade
   // nhưng explicit cho rõ thứ tự reset state giữa test runs).
   await prisma.rewardCapEvent.deleteMany({});
+  // Phase 26.2 — Drop Economy material caps (xoá trước Character — FK
+  // cascade nhưng explicit cho rõ thứ tự reset state giữa test runs).
+  await prisma.dailyMaterialCap.deleteMany({});
+  await prisma.weeklyMaterialCap.deleteMany({});
   await prisma.characterDailyRewardBucket.deleteMany({});
   await prisma.alchemyAttemptLog.deleteMany({});
   await prisma.bodyBreakthroughAttemptLog.deleteMany({});
