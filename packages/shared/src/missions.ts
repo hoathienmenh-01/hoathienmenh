@@ -139,7 +139,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: null,
     regionKey: 'hac_lam',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_18',
@@ -148,13 +148,13 @@ export const MISSIONS: readonly MissionDef[] = [
     period: 'DAILY',
     goalKind: 'KILL_MONSTER',
     goalAmount: 8,
-    requiredRealmOrder: 0,
+    requiredRealmOrder: 1,
     quality: 'PHAM',
     rewards: { linhThach: 180, exp: 504, congHien: 14 },
     element: 'kim',
     regionKey: 'yeu_thu_dong',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_19',
@@ -169,7 +169,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'moc',
     regionKey: 'kim_son_mach',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_20',
@@ -184,7 +184,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'thuy',
     regionKey: 'moc_huyen_lam',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_21',
@@ -199,7 +199,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'hoa',
     regionKey: 'thuy_long_uyen',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_22',
@@ -214,7 +214,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'tho',
     regionKey: 'hoa_diem_son',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_23',
@@ -229,7 +229,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: null,
     regionKey: 'hoang_tho_huyet',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_24',
@@ -238,13 +238,13 @@ export const MISSIONS: readonly MissionDef[] = [
     period: 'DAILY',
     goalKind: 'ALCHEMY_CRAFT',
     goalAmount: 1,
-    requiredRealmOrder: 0,
+    requiredRealmOrder: 1,
     quality: 'PHAM',
     rewards: { linhThach: 210, exp: 612, congHien: 8 },
     element: 'kim',
     regionKey: 'son_coc',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_25',
@@ -259,7 +259,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'moc',
     regionKey: 'hac_lam',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_26',
@@ -274,7 +274,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'thuy',
     regionKey: 'yeu_thu_dong',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_27',
@@ -289,7 +289,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'hoa',
     regionKey: 'kim_son_mach',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_28',
@@ -304,7 +304,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'tho',
     regionKey: 'moc_huyen_lam',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_29',
@@ -319,7 +319,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: null,
     regionKey: 'thuy_long_uyen',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_30',
@@ -328,13 +328,13 @@ export const MISSIONS: readonly MissionDef[] = [
     period: 'DAILY',
     goalKind: 'CLEAR_DUNGEON',
     goalAmount: 1,
-    requiredRealmOrder: 0,
+    requiredRealmOrder: 1,
     quality: 'PHAM',
     rewards: { linhThach: 240, exp: 720, congHien: 14 },
     element: 'kim',
     regionKey: 'hoa_diem_son',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_31',
@@ -349,7 +349,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'moc',
     regionKey: 'hoang_tho_huyet',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_32',
@@ -364,7 +364,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'thuy',
     regionKey: 'son_coc',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_33',
@@ -379,7 +379,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'hoa',
     regionKey: 'hac_lam',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_34',
@@ -394,7 +394,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'tho',
     regionKey: 'yeu_thu_dong',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_35',
@@ -409,7 +409,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: null,
     regionKey: 'kim_son_mach',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_36',
@@ -418,13 +418,13 @@ export const MISSIONS: readonly MissionDef[] = [
     period: 'DAILY',
     goalKind: 'SELL_LISTING',
     goalAmount: 1,
-    requiredRealmOrder: 0,
+    requiredRealmOrder: 1,
     quality: 'PHAM',
     rewards: { linhThach: 270, exp: 828, congHien: 8 },
     element: 'kim',
     regionKey: 'moc_huyen_lam',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_37',
@@ -439,7 +439,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'moc',
     regionKey: 'thuy_long_uyen',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_38',
@@ -454,7 +454,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'thuy',
     regionKey: 'hoa_diem_son',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_39',
@@ -469,7 +469,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'hoa',
     regionKey: 'hoang_tho_huyet',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'daily_phase21_story_40',
@@ -484,7 +484,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'tho',
     regionKey: 'son_coc',
     storyChainKey: 'phase21_daily_guided_path',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
 
   // ----- WEEKLY -----
@@ -541,7 +541,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: null,
     regionKey: 'yeu_thu_dong',
     storyChainKey: 'phase21_weekly_story_loop',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'weekly_phase21_story_17',
@@ -556,7 +556,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'kim',
     regionKey: 'kim_son_mach',
     storyChainKey: 'phase21_weekly_story_loop',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'weekly_phase21_story_18',
@@ -565,13 +565,13 @@ export const MISSIONS: readonly MissionDef[] = [
     period: 'WEEKLY',
     goalKind: 'SECT_CONTRIBUTE',
     goalAmount: 800,
-    requiredRealmOrder: 0,
+    requiredRealmOrder: 1,
     quality: 'LINH',
     rewards: { linhThach: 946, exp: 2840, congHien: 63 },
     element: 'moc',
     regionKey: 'moc_huyen_lam',
     storyChainKey: 'phase21_weekly_story_loop',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'weekly_phase21_story_19',
@@ -586,7 +586,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'thuy',
     regionKey: 'thuy_long_uyen',
     storyChainKey: 'phase21_weekly_story_loop',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'weekly_phase21_story_20',
@@ -601,7 +601,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'hoa',
     regionKey: 'hoa_diem_son',
     storyChainKey: 'phase21_weekly_story_loop',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'weekly_phase21_story_21',
@@ -616,7 +616,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'tho',
     regionKey: 'hoang_tho_huyet',
     storyChainKey: 'phase21_weekly_story_loop',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'weekly_phase21_story_22',
@@ -631,7 +631,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: null,
     regionKey: 'son_coc',
     storyChainKey: 'phase21_weekly_story_loop',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'weekly_phase21_story_23',
@@ -646,7 +646,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'kim',
     regionKey: 'hac_lam',
     storyChainKey: 'phase21_weekly_story_loop',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'weekly_phase21_story_24',
@@ -655,13 +655,13 @@ export const MISSIONS: readonly MissionDef[] = [
     period: 'WEEKLY',
     goalKind: 'BUY_LISTING',
     goalAmount: 5,
-    requiredRealmOrder: 0,
+    requiredRealmOrder: 1,
     quality: 'LINH',
     rewards: { linhThach: 1078, exp: 3320, congHien: 69 },
     element: 'moc',
     regionKey: 'yeu_thu_dong',
     storyChainKey: 'phase21_weekly_story_loop',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'weekly_phase21_story_25',
@@ -676,7 +676,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'thuy',
     regionKey: 'kim_son_mach',
     storyChainKey: 'phase21_weekly_story_loop',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'weekly_phase21_story_26',
@@ -691,7 +691,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'hoa',
     regionKey: 'moc_huyen_lam',
     storyChainKey: 'phase21_weekly_story_loop',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'weekly_phase21_story_27',
@@ -706,7 +706,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'tho',
     regionKey: 'thuy_long_uyen',
     storyChainKey: 'phase21_weekly_story_loop',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'weekly_phase21_story_28',
@@ -721,7 +721,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: null,
     regionKey: 'hoa_diem_son',
     storyChainKey: 'phase21_weekly_story_loop',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'weekly_phase21_story_29',
@@ -736,7 +736,7 @@ export const MISSIONS: readonly MissionDef[] = [
     element: 'kim',
     regionKey: 'hoang_tho_huyet',
     storyChainKey: 'phase21_weekly_story_loop',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
   {
     key: 'weekly_phase21_story_30',
@@ -745,13 +745,13 @@ export const MISSIONS: readonly MissionDef[] = [
     period: 'WEEKLY',
     goalKind: 'CULTIVATE_SECONDS',
     goalAmount: 7200,
-    requiredRealmOrder: 0,
+    requiredRealmOrder: 1,
     quality: 'LINH',
     rewards: { linhThach: 1210, exp: 3800, congHien: 45 },
     element: 'moc',
     regionKey: 'son_coc',
     storyChainKey: 'phase21_weekly_story_loop',
-    realmTier: 'phase21',
+    realmTier: 'truc_co',
   },
 
   // ----- ONCE -----

@@ -6,7 +6,7 @@ import { REALMS } from './realms';
 
 describe('PHASE21_SIDE_QUESTS catalog integrity', () => {
   it('contains at least 40 side quests with unique keys', () => {
-    expect(PHASE21_SIDE_QUESTS).toHaveLength(40);
+    expect(PHASE21_SIDE_QUESTS).toHaveLength(160);
     const keys = PHASE21_SIDE_QUESTS.map((q) => q.key);
     expect(new Set(keys).size).toBe(keys.length);
     expect(keys.every((key) => key.startsWith('phase21_side_'))).toBe(true);
@@ -38,9 +38,9 @@ describe('PHASE21_SIDE_QUESTS catalog integrity', () => {
   });
 
   it('is distributed across core NPCs, realms, and chapters', () => {
-    expect(new Set(PHASE21_SIDE_QUESTS.map((q) => q.giverNpcKey)).size).toBe(5);
+    expect(new Set(PHASE21_SIDE_QUESTS.map((q) => q.giverNpcKey)).size).toBeGreaterThanOrEqual(10);
     expect(new Set(PHASE21_SIDE_QUESTS.map((q) => q.realmKey)).size).toBeGreaterThanOrEqual(4);
-    expect(new Set(PHASE21_SIDE_QUESTS.map((q) => q.chapterKey)).size).toBe(6);
+    expect(new Set(PHASE21_SIDE_QUESTS.map((q) => q.chapterKey)).size).toBe(8);
     expect(
       PHASE21_SIDE_QUESTS.filter((q) => q.rewards.affinity && q.rewards.affinity.length > 0).length,
     ).toBeGreaterThanOrEqual(20);
