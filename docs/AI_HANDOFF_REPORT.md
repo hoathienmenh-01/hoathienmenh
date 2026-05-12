@@ -10,7 +10,9 @@
 
 ## 1. Current Executive Summary
 
-- **This PR (Phase 22.1 — Ngũ Hành Build Depth Expansion, branch `feat/phase-22-1-elemental-build-depth`, PR #539 draft)**: deepens elemental gameplay without expanding Books II–V story. Adds named shared relationship helpers (`getGeneratingElement`, `getCounterElement`, `computeElementDamageModifier`, `classifyElementMatchup`), build recommendation helpers, skill synergy rules, boss/dungeon resistance profile helpers, equipment affinity hooks, Spiritual Root build guidance UI with vi/en i18n, and focused shared tests. Non-destructive; no new migration, no Battle Pass/VIP, no major story quest expansion.
+- **This PR (Phase 23.2 — Realm-scaled Equipment Progression System, branch `feat/phase-23-2-realm-scaled-equipment`, PR #540 draft)**: makes equipment progression match the 28-realm ladder by mapping realms to 10 equipment tiers with grade I/II/III, deriving progression metadata on equipment items, enforcing `requiredRealmOrder` in server equip flow (`EQUIPMENT_REALM_LOCKED`), showing tier/grade/required realm/power/cap info in Inventory UI, and adding shared + API-focused tests. Non-destructive; no Prisma migration, no Book II–V expansion, no Battle Pass/VIP.
+
+- **Previous PR (Phase 22.1 — Ngũ Hành Build Depth Expansion, PR #539 — merged)**: deepens elemental gameplay without expanding Books II–V story. Adds named shared relationship helpers (`getGeneratingElement`, `getCounterElement`, `computeElementDamageModifier`, `classifyElementMatchup`), build recommendation helpers, skill synergy rules, boss/dungeon resistance profile helpers, equipment affinity hooks, Spiritual Root build guidance UI with vi/en i18n, and focused shared tests. Non-destructive; no new migration, no Battle Pass/VIP, no major story quest expansion.
 
 - **Previous PR (Phase 21 — Story Quest Content Expansion Mega PR, PR #538 — merged)**: Book I retention content foundation: 8 gated chapters, 120 main quests, 160 side quests, 64 branch quests, 40 hidden quests, daily/weekly templates above minimum via existing+Phase21 catalog, 100+ achievements/titles, 600+ dialogue entries, Quest Journal tabs/metadata/i18n, and `phase21-content-integrity.test.ts`. Reward guardrails: main > side/branch/hidden baseline, daily/weekly capped, all runtime claiming remains through existing quest/mission/ledger services.
 
@@ -152,6 +154,7 @@
 
 ### Resolved (recent — full list ở ARCHIVE)
 
+- Phase 23.2 equipment realm gate → Resolved PR #540 draft: `packages/shared/src/equipment-progression.ts` defines 10 tiers, grade mapping, power budgets, socket/enhance/gem/set caps; inventory equip rejects realm-locked equipment; unequip/consumable unaffected.
 - M10 Shop daily limit + per-user rate limit → Resolved PR #450 (`ShopEntryDef.dailyLimit` opt-in + `rl:shop-buy` 30 req/60s qua FailoverRateLimiter; pre-check trước tx, KHÔNG trừ tiền khi reject; +20 vitest).
 - Inventory `use()` JS-capture race → Resolved PR #422 (atomic `updateMany` + post-decrement delete + INVENTORY_ITEM_NOT_FOUND translation + 5 regression test).
 - Phase 12.2.A daily limit enforcement → Resolved PR #421.
@@ -170,8 +173,8 @@
 
 | Workspace | Test count | Notes |
 |---|---|---|
-| `apps/api` | **2440+** | Phase 14.1.D anti-wintrade +21 (service 12 + admin controller 9). Phase 14.1.B Arena +19 (`arena.service.test.ts`). Phase 14 / 12.10 (territory 16 + territory-decay 12 + territory-war 22 + tribulation 105 + npc-affinity 53 + quest 73 + combat 102 + dungeon-run 50 + boss 117 + sect 146 …). Pre-existing `chat.service.test.ts` rate-limit window test occasionally flakes khi chạy parallel; pass cô lập. 6 redis-dependent tests require Redis up. |
-| `packages/shared` | **2014** | Phase 14.1.D anti-wintrade +26 (`arena-anti-wintrade.test.ts`). Phase 14.1.B Arena +16 (`arena.test.ts`). Phase 14.1.A combat-rng 25 + combat-snapshot 24 + combat-determinism 15. Phase 14 / 12.10 (territory 79 + tribulation 109 + elemental 131 + npc 35). |
+| `apps/api` | **2440+** | Phase 23.2 adds inventory equip realm-gate tests (high-tier low-realm fails, eligible realm passes, unequip unaffected). Phase 14.1.D anti-wintrade +21 (service 12 + admin controller 9). Phase 14.1.B Arena +19 (`arena.service.test.ts`). Phase 14 / 12.10 (territory 16 + territory-decay 12 + territory-war 22 + tribulation 105 + npc-affinity 53 + quest 73 + combat 102 + dungeon-run 50 + boss 117 + sect 146 …). Pre-existing `chat.service.test.ts` rate-limit window test occasionally flakes khi chạy parallel; pass cô lập. 6 redis-dependent tests require Redis up. |
+| `packages/shared` | **2027+** | Phase 23.2 adds `equipment-progression.test.ts` (13 cases) for tier coverage, grade mapping, multipliers, caps, deterministic power score, validation, existing item metadata derivation. Phase 14.1.D anti-wintrade +26 (`arena-anti-wintrade.test.ts`). Phase 14.1.B Arena +16 (`arena.test.ts`). Phase 14.1.A combat-rng 25 + combat-snapshot 24 + combat-determinism 15. Phase 14 / 12.10 (territory 79 + tribulation 109 + elemental 131 + npc 35). |
 | `apps/web` | **1507** | Phase 14.1.D anti-wintrade +7 (`AdminArenaAntiWintradePanel.test.ts`). Phase 14.1.B Arena +38 (ArenaView 22 + api/arena 8 + stores/arena 8). Phase 14 / 12.10 (Territory 7 + Tribulation 180 + SkillBookView 18 + Dungeon/Boss + NpcAffinity 37 + Quest 37 + i18n parity 10). |
 | **Total** | **~5924 vitest** | All green local (PG+Redis up). Phase 17.2 `(this)` adds **42 test** (api 31 backup module + web 11 `AdminBackupPanel.test.ts`). |
 
