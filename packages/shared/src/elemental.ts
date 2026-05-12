@@ -51,6 +51,7 @@ import {
   ELEMENT_NEUTRAL_MULTIPLIER,
   type ElementRelation,
 } from './balance-dials';
+import { elementGenerates, elementOvercomes } from './spiritual-root';
 
 /**
  * English-named alias cho `ElementKey`. Dùng cho codebase mới (FE component
@@ -118,6 +119,35 @@ export function parseElementType(input: string | null | undefined): ElementType 
   return null;
 }
 
+/** Phase 22.1 explicit relationship alias for build/deck helper APIs. */
+export type ElementRelationship = ElementRelation;
+
+/** Element this element generates in the Ngũ Hành tương sinh cycle. */
+export function getGeneratingElement(element: ElementKey): ElementKey {
+  return elementGenerates(element);
+}
+
+/** Element that generates this element in the Ngũ Hành tương sinh cycle. */
+export function getGeneratedByElement(element: ElementKey): ElementKey {
+  for (const candidate of ELEMENTS) {
+    if (elementGenerates(candidate) === element) return candidate;
+  }
+  return element;
+}
+
+/** Element this element counters in the Ngũ Hành tương khắc cycle. */
+export function getCounterElement(element: ElementKey): ElementKey {
+  return elementOvercomes(element);
+}
+
+/** Element that counters this element in the Ngũ Hành tương khắc cycle. */
+export function getCounteredByElement(element: ElementKey): ElementKey {
+  for (const candidate of ELEMENTS) {
+    if (elementOvercomes(candidate) === element) return candidate;
+  }
+  return element;
+}
+
 /**
  * Trả về `ElementRelation` giữa attacker element và defender element. Single
  * source-of-truth là `describeElementMatch()` ở `balance-dials.ts` — function
@@ -143,6 +173,17 @@ export function elementalAdvantage(
 }
 
 /**
+ * Phase 22.1 named helper — relation between source and target element.
+ * Returns neutral when either side is null.
+ */
+export function computeElementAdvantage(
+  source: ElementKey | null,
+  target: ElementKey | null,
+): ElementRelationship {
+  return describeElementMatch(source, target).relation;
+}
+
+/**
  * Alias cho `elementMultiplier()` ở `spiritual-root.ts` — giữ tên rõ ràng
  * theo gameplay (`elementalMultiplier` thay vì `elementMultiplier`) cho code
  * mới đọc dễ hơn. Behavior identical — single source-of-truth là
@@ -153,6 +194,58 @@ export function elementalMultiplier(
   defender: ElementKey | null,
 ): number {
   return describeElementMatch(attacker, defender).multiplier;
+}
+
+/** Phase 22.1 named helper for offensive element damage multiplier. */
+export function computeElementDamageModifier(
+  attacker: ElementKey | null,
+  defender: ElementKey | null,
+): number {
+  return describeElementMatch(attacker, defender).multiplier;
+}
+
+/**
+ * Phase 22.1 named helper for defensive resistance planning.
+ *
+ * The value represents incoming damage taken by a defender from an attacker.
+ * It is the same bounded elemental matrix as damage modifier so callers can use
+ * `1 - value` as a resistance delta without introducing another tuning table.
+ */
+export function computeElementResistanceModifier(
+  defender: ElementKey | null,
+  attacker: ElementKey | null,
+): number {
+  return describeElementMatch(attacker, defender).multiplier;
+}
+
+export interface ElementMatchupClassification {
+  source: ElementKey | null;
+  target: ElementKey | null;
+  relationship: ElementRelationship;
+  damageModifier: number;
+  resistanceModifier: number;
+  isAdvantage: boolean;
+  isDisadvantage: boolean;
+  labelVi: string | null;
+}
+
+/** Phase 22.1 structured matchup classification for UI/recommendation code. */
+export function classifyElementMatchup(
+  source: ElementKey | null,
+  target: ElementKey | null,
+): ElementMatchupClassification {
+  const match = describeElementMatch(source, target);
+  return {
+    source,
+    target,
+    relationship: match.relation,
+    damageModifier: match.multiplier,
+    resistanceModifier: match.multiplier,
+    isAdvantage: match.relation === 'counter' || match.relation === 'generate',
+    isDisadvantage:
+      match.relation === 'countered' || match.relation === 'generated',
+    labelVi: match.vi,
+  };
 }
 
 // ---------------------------------------------------------------------------
