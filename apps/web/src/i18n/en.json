@@ -2949,6 +2949,8 @@
     "kind": {
       "main": "Main",
       "side": "Side",
+      "branch": "Branch",
+      "hidden": "Hidden/Discovered",
       "realm": "Realm",
       "sect": "Sect",
       "npc": "NPC",
