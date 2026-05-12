@@ -1,6 +1,7 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import type { EquipSlot, Prisma } from '@prisma/client';
 import {
+  applyBuildBonusRatio,
   buffForItem,
   composeEnchantBonus,
   composeEquipmentElementalAtkBonus,
@@ -15,8 +16,10 @@ import {
   parseEnchantElement,
   realmByKey,
   canEquipItemAtRealm,
+  summarizeEquipmentBuild,
   type ElementKey,
   type EquipmentSubstat,
+  type EquipmentBuildSummary,
   type ItemDef,
   type RolledLoot,
 } from '@xuantoi/shared';
@@ -312,6 +315,17 @@ export class InventoryService {
    * (base bonus + socket bonus) per item — luyện khí amplify tổng power
    * của trang bị. Refine 0 = no-op (multiplier 1.0). Cộng dồn additive
    * sang summary sau khi đã scale per-item.
+   *
+   * Phase 23.3 — Set Bonus + Gear Resonance. Sau khi tổng hợp baseline +
+   * socket + refine + substat + enchant, compute `summarizeEquipmentBuild`
+   * để apply tổng `totalBonusRatio` (set + resonance) lên **raw baseline
+   * item.bonuses** (atk/def/hpMax/mpMax/spirit). Cộng vào summary qua envelope
+   * `EQUIPMENT_BUILD_TOTAL_BONUS_CAP=30%`.
+   *
+   * KHÔNG amplify socket/refine/substat/enchant — ratio áp lên raw baseline
+   * only để tránh double-count với gem/enhance/elemental compose pipeline đã
+   * có. Trang bị không có `equipmentTier` (legacy / pre Phase 23.2) sẽ contribute
+   * baseline atk/def nhưng KHÔNG kích set/resonance (classifier bỏ qua).
    */
   async equipBonus(characterId: string): Promise<EquipBonusSummary> {
     const equipped = await this.prisma.inventoryItem.findMany({
@@ -322,9 +336,33 @@ export class InventoryService {
     let hpMaxBonus = 0;
     let mpMaxBonus = 0;
     let spiritBonus = 0;
+    // Phase 23.3 — raw baseline per item for build bonus ratio (set + resonance).
+    let baselineAtk = 0;
+    let baselineDef = 0;
+    let baselineHpMax = 0;
+    let baselineMpMax = 0;
+    let baselineSpirit = 0;
+    const buildInputs: Parameters<typeof summarizeEquipmentBuild>[0][number][] = [];
     for (const r of equipped) {
       const def_ = itemByKey(r.itemKey);
       if (!def_) continue;
+      const defWithProgression = itemByKeyWithProgression(r.itemKey) ?? def_;
+      const enhanceLevel = (r.refineLevel ?? 0) + (r.enchantLevel ?? 0);
+      if (r.equippedSlot) {
+        buildInputs.push({
+          piece: {
+            inventoryItemId: r.id,
+            itemKey: r.itemKey,
+            equippedSlot: r.equippedSlot,
+            quality: defWithProgression.quality,
+            equipmentTier: defWithProgression.equipmentTier,
+            requiredRealmOrder: defWithProgression.requiredRealmOrder,
+            equipmentElement: defWithProgression.equipmentElement ?? null,
+            enhanceLevel,
+          },
+          item: defWithProgression,
+        });
+      }
       let itemAtk = 0;
       let itemDef = 0;
       let itemHpMax = 0;
@@ -336,6 +374,11 @@ export class InventoryService {
         itemHpMax += def_.bonuses.hpMax ?? 0;
         itemMpMax += def_.bonuses.mpMax ?? 0;
         itemSpirit += def_.bonuses.spirit ?? 0;
+        baselineAtk += def_.bonuses.atk ?? 0;
+        baselineDef += def_.bonuses.def ?? 0;
+        baselineHpMax += def_.bonuses.hpMax ?? 0;
+        baselineMpMax += def_.bonuses.mpMax ?? 0;
+        baselineSpirit += def_.bonuses.spirit ?? 0;
       }
       // Phase 11.4.B socket bonus.
       if (r.sockets.length > 0) {
@@ -381,7 +424,58 @@ export class InventoryService {
         spiritBonus += enc.spirit;
       }
     }
+    // Phase 23.3 — Set Bonus + Gear Resonance apply.
+    if (buildInputs.length > 0) {
+      const summary = summarizeEquipmentBuild(buildInputs);
+      const bonus = applyBuildBonusRatio(
+        {
+          atk: baselineAtk,
+          def: baselineDef,
+          hpMax: baselineHpMax,
+          mpMax: baselineMpMax,
+          spirit: baselineSpirit,
+        },
+        summary.totalBonusRatio,
+      );
+      atk += bonus.atk;
+      def += bonus.def;
+      hpMaxBonus += bonus.hpMax;
+      mpMaxBonus += bonus.mpMax;
+      spiritBonus += bonus.spirit;
+    }
     return { atk, def, hpMaxBonus, mpMaxBonus, spiritBonus };
+  }
+
+  /**
+   * Phase 23.3 — Snapshot equipment build (set bonus + resonance) cho UI và stat
+   * recompute. Read-only; pure function over current `InventoryItem` rows.
+   * Trả `null` nếu character không có piece nào equip có metadata Phase 23.2.
+   */
+  async equipmentBuildSummary(characterId: string): Promise<EquipmentBuildSummary | null> {
+    const equipped = await this.prisma.inventoryItem.findMany({
+      where: { characterId, equippedSlot: { not: null } },
+    });
+    const buildInputs: Parameters<typeof summarizeEquipmentBuild>[0][number][] = [];
+    for (const r of equipped) {
+      const item = itemByKeyWithProgression(r.itemKey);
+      if (!item) continue;
+      if (!r.equippedSlot) continue;
+      buildInputs.push({
+        piece: {
+          inventoryItemId: r.id,
+          itemKey: r.itemKey,
+          equippedSlot: r.equippedSlot,
+          quality: item.quality,
+          equipmentTier: item.equipmentTier,
+          requiredRealmOrder: item.requiredRealmOrder,
+          equipmentElement: item.equipmentElement ?? null,
+          enhanceLevel: (r.refineLevel ?? 0) + (r.enchantLevel ?? 0),
+        },
+        item,
+      });
+    }
+    if (buildInputs.length === 0) return null;
+    return summarizeEquipmentBuild(buildInputs);
   }
 
   /**

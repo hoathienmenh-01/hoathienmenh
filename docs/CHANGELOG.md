@@ -10,6 +10,21 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
+### Phase 23.3 — Set Bonus + Gear Resonance (PR #541 draft)
+
+#### Added
+- Shared equipment set bonus catalog (10 sets covering Ngũ Hành — Kim/Mộc/Thuỷ/Hoả/Thổ — mid tier 4 + endgame tier 8) with 2/4/6-piece bonuses, per-set bonus cap, and balance-tuned ATK/DEF/HP/MP/spirit ratios that compose deterministically from raw item baselines.
+- Gear Resonance helpers covering 5 kinds: Same-Tier (6/6 ≥ minTier), Enhance (+5/+8/+12/+15), Quality (HUYEN/TIEN/THAN), Elemental (4/6 + 6/6), and Hybrid (tương sinh pairs). Each effect is ratio-only and capped; the enhance kind has a dedicated total cap of 10%.
+- Equipment Build orchestrator `summarizeEquipmentBuild` composes active sets + gear resonance into a single `totalBonusRatio` capped at `EQUIPMENT_BUILD_TOTAL_BONUS_CAP = 30%`, with a resonance tier (NONE / BASIC / TUNED / HARMONIZED / ASCENDANT) for UI badges.
+- API `GET /inventory/build` returns the build summary (active sets + resonance + main element + tier) for any logged-in character; `InventoryService.equipBonus` applies the build bonus ratio **on the raw `item.bonuses` baseline only** (never on socket/refine/substat/enchant amplified values) so total stat does not double-count.
+- Inventory view ships an `EquipmentBuildPanel` showing main element, piece count, active set count, resonance tier, set tier descriptions, missing-slot hints, and gear resonance list — fully i18n (vi/en) with loading/empty/error states.
+
+#### Changed
+- `InventoryService.equipBonus` now also returns set + resonance amplified totals; legacy slot/gem/refine/substat/enchant bonuses remain untouched. No persisted schema change; build summary is computed on demand per request.
+
+#### Docs
+- Phase 23.3 plan in `docs/phase-23-3-set-bonus-gear-resonance-plan.md`. Balance, economy, and handoff updates document caps, design rationale, and follow-up phases.
+
 ### Phase 23.2 — Realm-scaled Equipment Progression System (PR #540 draft)
 
 #### Added

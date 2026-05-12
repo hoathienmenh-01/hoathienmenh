@@ -395,6 +395,52 @@ Equipment power now has an explicit realm/tier axis instead of relying on qualit
 
 Primary code: `packages/shared/src/equipment-progression.ts`. Tests enforce tier coverage, grade mapping, caps, deterministic power score, progression validation, existing item metadata derivation, and API realm gate behavior.
 
+### 2.9.3.1C Phase 23.3 — Set Bonus + Gear Resonance
+
+Phase 23.3 layers a **set bonus** (2/4/6 pieces) and a **gear resonance** system on top of the Phase 23.2 realm-scaled equipment progression without replacing tier/quality balance. All bonuses are **ratio-only** on the **raw `item.bonuses` baseline** — they never re-amplify socket / refine / substat / enchant amplified totals, so progression layers do not double-count.
+
+**Set Bonus catalog** (`packages/shared/src/equipment-set-bonus.ts`): 10 sets across the 5 Ngũ Hành elements, with a mid-tier (tier 4) + endgame (tier 8) entry per element. Each set has `setKey`, vi/en name, `elementAffinity`, `allowedTiers`, `requiredRealmOrder`, `requiredSlots`, 2/4/6 bonus envelopes, and a `bonusCap`. Pieces are deduped by `inventoryItemId` and by `slot`, so a duplicate item or slot never doubles a bonus tier.
+
+| Set tier | Bonus envelope ratios |
+| --- | --- |
+| 2 pieces | total ≤ 5% (target 3–5%) |
+| 4 pieces | total ≤ 10% (target 6–10%) |
+| 6 pieces | total ≤ 15% (target 10–15%) |
+| Per-set bonus cap | hard ceiling per `set.bonusCap`, currently 0.15 |
+
+**Gear Resonance** (`packages/shared/src/equipment-resonance.ts`): 5 kinds, all ratio-only, balanced across ATK/DEF/HP/MP/spirit.
+
+| Kind | Activation | Ratio total |
+| --- | --- | --- |
+| Same-Tier | 6/6 pieces ≥ shared min tier | ~3% balanced |
+| Enhance | 6/6 pieces ≥ +5, +8, +12, +15 (per mốc) | each 2–3%, total ≤ 10% (`RESONANCE_ENHANCE_TOTAL_CAP`) |
+| Quality | 6/6 pieces ≥ HUYEN / TIEN / THAN | 2–4% balanced |
+| Elemental | 4/6 same element → 4%; 6/6 → 6% role-tuned (Kim=ATK, Mộc=HP/MP, Thuỷ=DEF/spirit, Hoả=ATK, Thổ=DEF/HP) |
+| Hybrid | tương sinh pair (Mộc→Hoả, Hoả→Thổ, Thổ→Kim, Kim→Thuỷ, Thuỷ→Mộc), ≥ 2 each + ≥ 4 total | 3% balanced (mixed) |
+
+**Orchestrator + global cap** (`packages/shared/src/equipment-build.ts`):
+
+- `summarizeEquipmentBuild()` is pure and deterministic: groups pieces by `setKey`, computes active set tiers + envelope cap, computes resonance effects, then sums into a single `totalBonusRatio` clamped by `EQUIPMENT_BUILD_TOTAL_BONUS_CAP = 0.30` (proportional scale-down preserves cross-stat ratios).
+- `applyBuildBonusRatio(baseline, ratio)` multiplies the **raw** `item.bonuses` baseline only. Sockets / refine / substats / enchants pass through their own caps and are NOT re-amplified.
+- `EquipmentBuildSummary.resonanceTier`: NONE / BASIC / TUNED / HARMONIZED / ASCENDANT — used by UI badges, no gameplay effect on its own.
+
+**Anti-abuse invariants** (tests under `packages/shared/src/equipment-{set-bonus,resonance,build}.test.ts`, 60+ cases):
+
+- `setKey` unique across catalog.
+- `validateSetBonusDefinition` rejects sets with required slots ⊄ allowed slots, 2/4/6 ratio above tier cap, 6-piece ratio over `bonusCap`, requiredRealmOrder out of tier-realm window.
+- Dedup by `inventoryItemId` AND by `slot` — duplicate item or two items in the same slot cannot trigger an extra bonus tier.
+- Set bonus only counts pieces that actually match `allowedTiers` + (optionally) `elementAffinity`, so a low-tier piece cannot keep a high-tier set active.
+- Resonance `validateResonanceDefinition` enforces enhance total cap and refuses negative ratios.
+- Build orchestrator caps the **sum of all ratios** (set + resonance) at 30%, so even fully outfitted endgame players cannot stack to a power spike.
+
+**API + UI surface**:
+
+- `GET /inventory/build` returns the build summary serialized for the current logged-in character (or `summary: null` if no Phase 23.2 piece is equipped).
+- `InventoryService.equipBonus()` applies the build ratio inside the same loop that aggregates socket / refine / substat / enchant bonuses, but only on baseline ATK/DEF/HP/MP/spirit captured before amplification.
+- Inventory view ships an `EquipmentBuildPanel` (vi/en parity) showing main element, piece count, active set count + missing slots, active set tier descriptions, resonance tier, gear resonance effects, and total bonus percent.
+
+**Follow-ups**: Phase 23.4 (upgrade economy / resource sink for set completion), Phase 25.1 (Battle Pass / VIP Light), Phase 24.2 (final QA tuning of caps if needed).
+
 ### 2.9.3.2 Phase 14.2.C — Elemental skill tree expansion (DONE this PR)
 
 Phase 14.2.C biến Ngũ Hành từ damage/resist multiplier thành **hệ kỹ năng có hướng chơi riêng**: Mộc = hồi/độc, Hỏa = burst/thiêu, Thổ = khiên/khống, Kim = xuyên/chí, Thủy = control/hồi linh. KHÔNG đụng damage formula, KHÔNG đụng dial 14.2.A, chỉ thêm tag side-effect dial.

@@ -945,6 +945,47 @@
         "NO_ELEMENT_SELECTED": "Please select a Wuxing element first.",
         "UNKNOWN": "Unknown error, please retry."
       }
+    },
+    "build": {
+      "title": "Build Summary (Sets & Resonance)",
+      "phaseBadge": "Phase 23.3",
+      "subtitle": "Summary of 2/4/6-piece set bonuses and gear resonance for your current equipment.",
+      "empty": "No Phase 23.2 gear equipped.",
+      "mainElement": "Main element",
+      "noMainElement": "None",
+      "pieceCount": "Pieces",
+      "activeSetCount": "Active sets",
+      "resonanceTier": "Resonance tier",
+      "totalPowerScore": "Total power score",
+      "totalBonus": "Total bonus",
+      "totalBonusFormat": "{percent}% (capped at 30%)",
+      "noSet": "No active sets",
+      "noResonance": "No active resonance",
+      "missingSlots": "{count} slots missing",
+      "sectionSets": "Set Bonuses",
+      "sectionResonance": "Gear Resonance",
+      "tierPieces": "{pieces} pieces",
+      "tier": {
+        "NONE": "None",
+        "BASIC": "Basic",
+        "TUNED": "Tuned",
+        "HARMONIZED": "Harmonized",
+        "ASCENDANT": "Ascendant"
+      },
+      "resonanceKind": {
+        "SAME_TIER": "Same tier",
+        "ENHANCE": "Enhance",
+        "QUALITY": "Quality",
+        "ELEMENTAL": "Element",
+        "HYBRID": "Hybrid"
+      },
+      "element": {
+        "kim": "Metal",
+        "moc": "Wood",
+        "thuy": "Water",
+        "hoa": "Fire",
+        "tho": "Earth"
+      }
     }
   },
   "equipSlot": {
