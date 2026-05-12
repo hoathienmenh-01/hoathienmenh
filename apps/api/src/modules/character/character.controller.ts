@@ -32,6 +32,7 @@ import {
 } from './character-skill.service';
 import { GemError, GemService } from './gem.service';
 import { RefineError, RefineService } from './refine.service';
+import { PhapBaoError, PhapBaoService } from './phap-bao.service';
 import {
   EquipmentError,
   EquipmentService,
@@ -125,6 +126,9 @@ const RefineEquipmentInput = z.object({
   useProtection: z.boolean().optional().default(false),
 });
 
+// Phase 23.5 — Pháp Bảo Advanced Artifact System (foundation).
+const PhapBaoPreviewParam = z.string().min(1).max(64);
+
 const EquipmentReforgeInput = z.object({
   equipmentInventoryItemId: z.string().min(1).max(64),
 });
@@ -207,6 +211,10 @@ export class CharacterController {
     // last để không phá vị trí positional args trong các test cũ
     // (`new CharacterController(...)`).
     @Optional() private readonly equipmentEconomy?: EquipmentEconomyService,
+    // Phase 23.5 — Pháp Bảo Advanced Artifact System. Optional vì
+    // controller tests cũ inject thiếu — controller skip endpoint với
+    // `PHAP_BAO_UNAVAILABLE` 501 nếu null.
+    @Optional() private readonly phapBao?: PhapBaoService,
   ) {
     this.profileLimiter =
       profileLimiter ??
@@ -716,6 +724,61 @@ export class CharacterController {
     } catch (e) {
       if (e instanceof RefineError) {
         fail(e.code, mapRefineErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 23.5 — list pháp bảo (advanced artifact) của character. Read-only,
+   * trả entries có `itemKey ∈ PHAP_BAO_CATALOG` kèm `canEquip` (realm gate
+   * check) + `powerScore` deterministic. Equip / unequip vẫn dùng nguyên
+   * `/inventory/equip` (đã realm-gate).
+   */
+  @Get('phap-bao/list')
+  async phapBaoList(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.phapBao) fail('PHAP_BAO_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const items = await this.phapBao.listForCharacter(character.id);
+      return {
+        ok: true,
+        data: {
+          items,
+          catalog: this.phapBao.listCatalog(),
+        },
+      };
+    } catch (e) {
+      if (e instanceof PhapBaoError) {
+        fail(e.code, mapPhapBaoErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 23.5 — preview 1 pháp bảo (passive bonus / active skill /
+   * refine-star-awaken cost kế tiếp). Read-only, KHÔNG mutate state.
+   */
+  @Get('phap-bao/:inventoryItemId/preview')
+  async phapBaoPreview(
+    @Req() req: Request,
+    @Param('inventoryItemId') inventoryItemId: string,
+  ) {
+    const userId = await this.requireUserId(req);
+    if (!this.phapBao) fail('PHAP_BAO_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const parsed = PhapBaoPreviewParam.safeParse(inventoryItemId);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const preview = await this.phapBao.preview(character.id, parsed.data);
+      return { ok: true, data: { preview } };
+    } catch (e) {
+      if (e instanceof PhapBaoError) {
+        fail(e.code, mapPhapBaoErrorStatus(e.code));
       }
       throw e;
     }
@@ -1801,6 +1864,24 @@ function mapGemErrorStatus(code: GemError['code']): HttpStatus {
       return HttpStatus.CONFLICT;
     case 'INVALID_SLOT_INDEX':
       return HttpStatus.BAD_REQUEST;
+    default:
+      return HttpStatus.BAD_REQUEST;
+  }
+}
+
+/**
+ * Phase 23.5 — map `PhapBaoError.code` → HTTP status. NOT_FOUND cho id
+ * sai/ownership, CONFLICT cho feature-flag tắt, BAD_REQUEST cho input lỗi.
+ */
+function mapPhapBaoErrorStatus(code: PhapBaoError['code']): HttpStatus {
+  switch (code) {
+    case 'NO_CHARACTER':
+    case 'INVENTORY_ITEM_NOT_FOUND':
+    case 'PHAP_BAO_NOT_FOUND':
+      return HttpStatus.NOT_FOUND;
+    case 'PHAP_BAO_STAR_UP_DISABLED':
+    case 'PHAP_BAO_AWAKEN_DISABLED':
+      return HttpStatus.CONFLICT;
     default:
       return HttpStatus.BAD_REQUEST;
   }
