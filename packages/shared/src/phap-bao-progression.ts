@@ -1,4 +1,4 @@
-import type { ItemBonus, Quality } from './items';
+import type { ItemBonus } from './items';
 import {
   PHAP_BAO_ACTIVE_COOLDOWN_FLOOR_SEC,
   PHAP_BAO_AWAKEN_MAX,
@@ -19,7 +19,6 @@ import {
   type PhapBaoInstance,
   type PhapBaoUpgradeCost,
 } from './phap-bao';
-import type { EquipmentTierNumber } from './equipment-progression';
 
 export type PhapBaoProgressionCost = PhapBaoUpgradeCost & {
   protectionKey?: string;
@@ -69,7 +68,7 @@ export function getMaxAwakenStage(artifact: PhapBaoDef): number {
   return Math.min(artifact.awakenCap, PHAP_BAO_AWAKEN_MAX);
 }
 
-export function getPhapBaoStarUpCost(input: {
+export function getPhapBaoProgressionStarUpCost(input: {
   artifact: PhapBaoDef;
   currentStarLevel: number;
 }): PhapBaoProgressionCost {
@@ -81,7 +80,7 @@ export function getPhapBaoStarUpCost(input: {
   });
 }
 
-export function getPhapBaoAwakenCost(input: {
+export function getPhapBaoProgressionAwakenCost(input: {
   artifact: PhapBaoDef;
   currentAwakenStage: number;
 }): PhapBaoProgressionCost {
@@ -93,7 +92,7 @@ export function getPhapBaoAwakenCost(input: {
   });
 }
 
-export function getPhapBaoRefineCost(input: {
+export function getPhapBaoProgressionRefineCost(input: {
   artifact: PhapBaoDef;
   currentRefineLevel: number;
 }): PhapBaoProgressionCost {
@@ -123,7 +122,7 @@ export function canStarUpPhapBao(
   if (input.starLevel >= getMaxPhapBaoStar(artifact)) errors.push('MAX_STAR_REACHED');
   if (input.locked === true) errors.push('LOCKED');
   try {
-    const cost = getPhapBaoStarUpCost({
+    const cost = getPhapBaoProgressionStarUpCost({
       artifact,
       currentStarLevel: input.starLevel,
     });
@@ -160,7 +159,7 @@ export function canAwakenPhapBao(
     errors.push('REFINE_TOO_LOW');
   }
   try {
-    const cost = getPhapBaoAwakenCost({
+    const cost = getPhapBaoProgressionAwakenCost({
       artifact,
       currentAwakenStage: input.awakenStage,
     });
@@ -180,7 +179,9 @@ export function canAwakenPhapBao(
   return { ok: errors.length === 0, errors };
 }
 
-export function computePhapBaoPowerScore(input: PhapBaoInstance): number {
+export function computePhapBaoProgressionPowerScore(
+  input: PhapBaoInstance,
+): number {
   const artifact = getPhapBaoByKey(input.artifactKey);
   if (!artifact) throw new RangeError(`pháp bảo not found: ${input.artifactKey}`);
   const starLevel = clampInt(input.starLevel, 1, getMaxPhapBaoStar(artifact));
@@ -331,5 +332,3 @@ function scaleBonus(base: ItemBonus, multiplier: number): ItemBonus {
   if (base.elementResist !== undefined) bonus.elementResist = base.elementResist;
   return bonus;
 }
-
-export type { EquipmentTierNumber, Quality };
