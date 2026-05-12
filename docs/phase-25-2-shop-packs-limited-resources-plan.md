@@ -103,3 +103,12 @@ model ShopPackPurchase {
 
 🟡 medium — additive schema, economy-facing. Rollback = revert PR.
 All purchase paths are server-authoritative with transaction + idempotency.
+
+## Implementation Status
+
+- Shared catalog/helper source: `packages/shared/src/shop-packs.ts`.
+- API runtime: `apps/api/src/modules/shop-packs/*` plus additive `ShopPackPurchase` Prisma migration.
+- Player endpoints: `GET /shop-packs`, `GET /shop-packs/purchases`, `POST /shop-packs/purchase`.
+- Admin endpoints: `POST /admin/shop-packs/users/:id/grant` and compatibility `POST /admin/shop/grant-pack`.
+- Web UI: `/shop-packs` route and AppShell nav entry.
+- Tests: shared catalog/window/validator tests, API purchase/idempotency/ledger/admin tests, web UI state/confirm/i18n tests.

@@ -359,6 +359,8 @@ Battle Pass, Monthly Card, and VIP Light are light monetization sources. They mu
 |---|---|---|---|
 | Battle Pass free/premium claim | `MonetizationService.claimBattlePassReward` / `claimAllBattlePassRewards` | `BATTLE_PASS_REWARD` | `BattlePassProgress`, refId `<seasonId>:<track>:<level>` |
 | Monthly Card upfront/daily | admin grant + `claimMonthlyCard` | `MONTHLY_CARD_REWARD` | `MonthlyCardSubscription`, refId `<subscriptionId>:upfront:<ts>` or `<subscriptionId>:<day>` |
+| Shop Pack purchase (tienNgoc sink) | `ShopPacksService.purchase` | `SHOP_PACK_PURCHASE` | `ShopPackPurchase`, UNIQUE `(characterId, packId, purchaseWindowKey)` + optional `idempotencyKey` |
+| Shop Pack reward grant (linhThach/item source) | `ShopPacksService.purchase` / `adminGrantPack` | `SHOP_PACK_REWARD` | `ShopPackPurchase`, refId `<packId>:<windowKey>` |
 | VIP Light grant | admin/test profile grant only; perks are derived read-only | `AdminAuditLog action=admin.vip.grant` | `VipProfile` |
 
 Economy constraints:

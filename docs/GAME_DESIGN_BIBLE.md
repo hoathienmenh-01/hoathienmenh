@@ -566,6 +566,16 @@ Phase 25.1 introduces **Battle Pass / Tiên Lộ Lệnh**, **Monthly Card / Nguy
 - Monetization rewards must never sell top-tier equipment directly, max-star/max-awaken pháp bảo, uncapped dungeon tickets/materials, or any bypass of `requiredRealmOrder`.
 - Free players retain the full farm/drop/craft/event path; premium should only reduce grind within the same realm/tier by roughly 20–40%.
 
+
+### E.5 Phase 25.2 — Limited Resource Shop Packs
+
+Phase 25.2 extends monetization with **limited-availability resource packs** purchased with premium currency (tienNgoc):
+
+- Shop pack catalog (`packages/shared/src/shop-packs.ts`) defines 8 sample packs across daily/weekly/monthly/event/starter categories.
+- Each pack has `purchaseLimit` + `purchaseLimitWindow` (DAY/WEEK/MONTH/LIFETIME) enforced server-side via `ShopPackPurchase` table.
+- Rewards include cultivation materials, forge materials, gem materials, pháp bảo shards (capped), and protection charms. **Same forbidden-reward rules as Phase 25.1**: no top-tier equipment, no max-star/max-awaken pháp bảo, no realm bypass, no unlimited materials.
+- Purchase flow is server-authoritative with transaction safety, full ledger (`SHOP_PACK_PURCHASE` / `SHOP_PACK_REWARD`), and idempotency (optional `idempotencyKey` + unique window constraint).
+- Spender advantage estimated at 20–40% speed boost from shop packs; F2P farm paths remain available.
 ---
 
 ## F. CONTENT PIPELINE (tóm tắt)
