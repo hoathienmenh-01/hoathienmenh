@@ -9,6 +9,7 @@ import {
   combineGems as catalogCombineGems,
   getGemDef,
   getRefineAttemptCost,
+  itemWithProgression,
   itemByKey,
   skillByKey,
   socketCapacityForQuality,
@@ -89,7 +90,7 @@ function compatibleGems(equipment: InventoryView): GemDef[] {
 
 /** Phase 11.4.C — socket capacity cho equipment dựa vào quality. */
 function capacityFor(equipment: InventoryView): number {
-  return socketCapacityForQuality(equipment.item.quality);
+  return equipment.item.maxSocketCount ?? socketCapacityForQuality(equipment.item.quality);
 }
 
 function gemBonusText(gem: GemDef): string {
@@ -167,6 +168,39 @@ function bonusText(item: ItemDef): string {
     }
   }
   return parts.join(' · ');
+}
+
+function progressionItem(it: InventoryView): ItemDef {
+  return itemWithProgression(it.item);
+}
+
+function equipmentProgressionText(it: InventoryView): string {
+  const item = progressionItem(it);
+  if (!item.slot || !item.equipmentTier || !item.requiredRealmOrder) return '';
+  const grade = item.equipmentGradeWithinTier
+    ? t('inventory.progression.gradeLabel', { grade: item.equipmentGradeWithinTier })
+    : t('inventory.progression.finalGrade');
+  const power = item.computedPowerScore ?? item.powerBudget ?? 0;
+  const parts = [
+    t('inventory.progression.tierLabel', {
+      tier: item.equipmentTier,
+      name: item.equipmentTierName ?? '',
+      grade,
+    }),
+    t('inventory.progression.requiredRealm', { order: item.requiredRealmOrder }),
+    t('inventory.progression.power', { power }),
+    t('inventory.progression.caps', {
+      enhance: item.maxEnhanceLevel ?? 0,
+      sockets: item.maxSocketCount ?? 0,
+    }),
+  ];
+  return parts.join(' · ');
+}
+
+function equipmentLockText(it: InventoryView): string {
+  const item = progressionItem(it);
+  if (!item.slot || !item.requiredRealmOrder) return '';
+  return t('inventory.progression.lockHint', { order: item.requiredRealmOrder });
 }
 
 function effectText(item: ItemDef): string {
@@ -439,6 +473,9 @@ function handleErr(e: unknown): void {
           <span class="text-ink-300 w-24">{{ slotLabel(slot) }}</span>
           <span v-if="equipped.get(slot)" :class="QUALITY_COLOR[equipped.get(slot)!.item.quality]">
             {{ equipped.get(slot)!.item.name }}
+            <span class="text-[10px] text-cyan-200 font-normal ml-1">
+              {{ equipmentProgressionText(equipped.get(slot)!) }}
+            </span>
             <span
               v-if="equipped.get(slot)!.refineLevel > 0"
               class="text-[10px] text-amber-300 font-bold ml-1"
@@ -505,6 +542,20 @@ function handleErr(e: unknown): void {
               <p class="text-xs text-ink-300 mt-0.5">{{ it.item.description }}</p>
               <p v-if="it.item.bonuses" class="text-xs text-emerald-300">
                 {{ bonusText(it.item) }}
+              </p>
+              <p
+                v-if="it.item.slot"
+                class="text-[10px] text-cyan-200"
+                data-testid="equipment-progression-meta"
+              >
+                {{ equipmentProgressionText(it) }}
+              </p>
+              <p
+                v-if="it.item.slot"
+                class="text-[10px] text-amber-200"
+                data-testid="equipment-realm-lock-hint"
+              >
+                {{ equipmentLockText(it) }}
               </p>
               <p v-else-if="it.item.effect" class="text-xs text-amber-200">
                 {{ effectText(it.item) }}

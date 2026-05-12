@@ -825,6 +825,15 @@
     "equipToast": "Đã mang {name}.",
     "unequipToast": "Đã tháo {slot}.",
     "useToast": "Đã dùng {name}.",
+    "progression": {
+      "tierLabel": "Tầng {tier} {name} {grade}",
+      "gradeLabel": "cấp {grade}",
+      "finalGrade": "tối thượng",
+      "requiredRealm": "Cần cảnh giới thứ {order}",
+      "power": "Lực trang bị {power}",
+      "caps": "Cường hóa +{enhance}, khảm {sockets}",
+      "lockHint": "Server sẽ chặn nếu đạo hữu chưa đạt cảnh giới thứ {order}."
+    },
     "refine": {
       "button": "Luyện Khí",
       "buttonMaxed": "Luyện Khí đỉnh",
@@ -865,6 +874,7 @@
       "INVENTORY_ITEM_NOT_FOUND": "Vật phẩm không còn nữa.",
       "NOT_EQUIPPABLE": "Vật phẩm này không trang bị được.",
       "NOT_USABLE": "Vật phẩm này không có hiệu ứng.",
+      "EQUIPMENT_REALM_LOCKED": "Cảnh giới chưa đủ để mặc trang bị này.",
       "EQUIPMENT_NOT_FOUND": "Trang bị không còn nữa.",
       "NOT_REFINABLE": "Vật phẩm này không luyện khí được.",
       "MAX_LEVEL_REACHED": "Đã đạt cấp luyện khí tối đa (15).",
