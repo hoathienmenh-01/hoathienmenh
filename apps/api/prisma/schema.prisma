@@ -1293,6 +1293,15 @@ model InventoryItem {
   /// Item non-equipment / chưa luyện giữ `0`. Server-authoritative qua
   /// `RefineService.refineEquipment` (no client mutation).
   refineLevel    Int        @default(0)
+  /// Phase 23.7 — Pháp Bảo persisted star level. Meaningful only when
+  /// `itemKey ∈ PHAP_BAO_CATALOG`; normal inventory rows keep the harmless
+  /// default. Server-authoritative via `PhapBaoService.starUp`.
+  phapBaoStarLevel   Int     @default(1)
+  /// Phase 23.7 — Pháp Bảo persisted awaken stage. Meaningful only for
+  /// Pháp Bảo rows. Server-authoritative via `PhapBaoService.awaken`.
+  phapBaoAwakenStage Int     @default(0)
+  /// Phase 23.7 — instance lock. Locked rows cannot be consumed/upgraded.
+  locked             Boolean @default(false)
   /// Phase 15.0.A — Equipment Reforge Foundation.
   /// Array of `{ kind, value }` rolled khi reforge (`rollReforgedSubstats`).
   /// kind ∈ {atk,def,hpMax,mpMax,spirit}. Server-authoritative qua
@@ -1308,9 +1317,11 @@ model InventoryItem {
   /// 0 = chưa enchant. Server-authoritative qua `EquipmentService.enchant`.
   enchantLevel   Int        @default(0)
   createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
   @@unique([characterId, equippedSlot])
   @@index([characterId, itemKey])
+  @@index([characterId, itemKey, phapBaoStarLevel])
 }
 
 /// Phase 15.0.A — Equipment Reforge audit history.
