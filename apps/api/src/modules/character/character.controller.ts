@@ -27,6 +27,11 @@ import {
   CultivationMethodService,
 } from './cultivation-method.service';
 import {
+  CultivationMethodV2Error,
+  CultivationMethodV2Service,
+  type CultivationMethodV2ErrorCode,
+} from './cultivation-method-v2.service';
+import {
   CharacterSkillError,
   CharacterSkillService,
 } from './character-skill.service';
@@ -95,6 +100,23 @@ const CultivateInput = z.object({
 });
 
 const CultivationMethodEquipInput = z.object({
+  methodKey: z.string().min(1).max(64),
+});
+
+const CultivationMethodV2UnlockInput = z.object({
+  methodKey: z.string().min(1).max(64),
+});
+const CultivationMethodV2EquipInput = z.object({
+  methodKey: z.string().min(1).max(64),
+  slot: z.enum(['QI_MAIN', 'BODY_MAIN', 'SUPPORT', 'SECT', 'SPECIAL']),
+});
+const CultivationMethodV2UnequipInput = z.object({
+  slot: z.enum(['QI_MAIN', 'BODY_MAIN', 'SUPPORT', 'SECT', 'SPECIAL']),
+});
+const CultivationMethodV2UpgradeInput = z.object({
+  methodKey: z.string().min(1).max(64),
+});
+const CultivationMethodV2StarUpInput = z.object({
   methodKey: z.string().min(1).max(64),
 });
 
@@ -215,6 +237,11 @@ export class CharacterController {
     // controller tests cũ inject thiếu — controller skip endpoint với
     // `PHAP_BAO_UNAVAILABLE` 501 nếu null.
     @Optional() private readonly phapBao?: PhapBaoService,
+    // Phase 26.3 — Cultivation Method V2 (multi-slot progression / fragment
+    // unlock). Injected last để không phá vị trí positional args trong các
+    // controller test cũ. Endpoint trả 501 `CULTIVATION_METHOD_V2_UNAVAILABLE`
+    // nếu null.
+    @Optional() private readonly cultivationMethodV2?: CultivationMethodV2Service,
   ) {
     this.profileLimiter =
       profileLimiter ??
@@ -477,6 +504,170 @@ export class CharacterController {
       }
       throw e;
     }
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  // Phase 26.3 — Cultivation Method V2 endpoints.
+  //
+  // Tất cả endpoint dưới đây hoạt động trên hệ V2 (multi-slot, level/
+  // star/exp progression, fragment unlock). Vẫn giữ endpoint legacy
+  // `cultivation-method` / `cultivation-method/equip` cho backward
+  // compat Phase 11.1.B.
+  // ──────────────────────────────────────────────────────────────────
+
+  @Get('cultivation-methods-v2')
+  async cultivationMethodsV2State(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.cultivationMethodV2) {
+      fail('CULTIVATION_METHOD_V2_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    const state = await this.cultivationMethodV2.getV2State(character.id);
+    return { ok: true, data: { cultivationMethodV2: state } };
+  }
+
+  @Post('cultivation-methods-v2/unlock')
+  @HttpCode(200)
+  async cultivationMethodsV2Unlock(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.cultivationMethodV2) {
+      fail('CULTIVATION_METHOD_V2_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = CultivationMethodV2UnlockInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const state = await this.cultivationMethodV2.unlock(
+        character.id,
+        parsed.data.methodKey,
+      );
+      return { ok: true, data: { cultivationMethodV2: state } };
+    } catch (e) {
+      this.handleMethodV2Error(e);
+    }
+  }
+
+  @Post('cultivation-methods-v2/equip')
+  @HttpCode(200)
+  async cultivationMethodsV2Equip(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.cultivationMethodV2) {
+      fail('CULTIVATION_METHOD_V2_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = CultivationMethodV2EquipInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const state = await this.cultivationMethodV2.equipV2(
+        character.id,
+        parsed.data.methodKey,
+        parsed.data.slot,
+      );
+      return { ok: true, data: { cultivationMethodV2: state } };
+    } catch (e) {
+      this.handleMethodV2Error(e);
+    }
+  }
+
+  @Post('cultivation-methods-v2/unequip')
+  @HttpCode(200)
+  async cultivationMethodsV2Unequip(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.cultivationMethodV2) {
+      fail('CULTIVATION_METHOD_V2_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = CultivationMethodV2UnequipInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const state = await this.cultivationMethodV2.unequipV2(
+        character.id,
+        parsed.data.slot,
+      );
+      return { ok: true, data: { cultivationMethodV2: state } };
+    } catch (e) {
+      this.handleMethodV2Error(e);
+    }
+  }
+
+  @Post('cultivation-methods-v2/upgrade')
+  @HttpCode(200)
+  async cultivationMethodsV2Upgrade(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.cultivationMethodV2) {
+      fail('CULTIVATION_METHOD_V2_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = CultivationMethodV2UpgradeInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const state = await this.cultivationMethodV2.upgrade(
+        character.id,
+        parsed.data.methodKey,
+      );
+      return { ok: true, data: { cultivationMethodV2: state } };
+    } catch (e) {
+      this.handleMethodV2Error(e);
+    }
+  }
+
+  @Post('cultivation-methods-v2/star-up')
+  @HttpCode(200)
+  async cultivationMethodsV2StarUp(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.cultivationMethodV2) {
+      fail('CULTIVATION_METHOD_V2_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = CultivationMethodV2StarUpInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const state = await this.cultivationMethodV2.starUp(
+        character.id,
+        parsed.data.methodKey,
+      );
+      return { ok: true, data: { cultivationMethodV2: state } };
+    } catch (e) {
+      this.handleMethodV2Error(e);
+    }
+  }
+
+  private handleMethodV2Error(e: unknown): never {
+    if (e instanceof CultivationMethodV2Error) {
+      const code: CultivationMethodV2ErrorCode = e.code;
+      const httpStatus =
+        code === 'METHOD_NOT_FOUND' || code === 'CHARACTER_NOT_FOUND'
+          ? HttpStatus.NOT_FOUND
+          : code === 'METHOD_ALREADY_UNLOCKED' ||
+              code === 'METHOD_NOT_UNLOCKED' ||
+              code === 'SLOT_CONFLICT' ||
+              code === 'ELEMENT_CONFLICT' ||
+              code === 'MAX_LEVEL' ||
+              code === 'MAX_STAR'
+            ? HttpStatus.CONFLICT
+            : code === 'INSUFFICIENT_FRAGMENTS' ||
+                code === 'INSUFFICIENT_MATERIALS' ||
+                code === 'INSUFFICIENT_LINH_THACH'
+              ? HttpStatus.UNPROCESSABLE_ENTITY
+              : HttpStatus.BAD_REQUEST;
+      fail(code, httpStatus);
+    }
+    // Inventory consume error → propagate as 422 missing fragments/materials.
+    if (
+      typeof e === 'object' &&
+      e !== null &&
+      'code' in e &&
+      (e as { code?: string }).code === 'INSUFFICIENT_QTY'
+    ) {
+      fail('INSUFFICIENT_MATERIALS', HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+    throw e;
   }
 
   /**

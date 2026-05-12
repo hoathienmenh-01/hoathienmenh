@@ -209,7 +209,15 @@ export type ItemLedgerReason =
   | 'EQUIPMENT_DISMANTLE_RETURN_GEM'
   | 'BATTLE_PASS_REWARD'
   | 'MONTHLY_CARD_REWARD'
-  | 'SHOP_PACK_REWARD';
+  | 'SHOP_PACK_REWARD'
+  // Phase 26.3 — Cultivation Method V2 fragments/materials consume.
+  //   * METHOD_FRAGMENT_CONSUME: trừ mảnh khi unlock / star-up.
+  //   * METHOD_UPGRADE_MATERIAL: trừ vật phẩm upgrade level / breakthrough.
+  //   * METHOD_FRAGMENT_GRANT: cấp mảnh từ drop/event/quest (qtyDelta>0).
+  // refType='CharacterCultivationMethod' + refId=methodKey để audit.
+  | 'METHOD_FRAGMENT_CONSUME'
+  | 'METHOD_UPGRADE_MATERIAL'
+  | 'METHOD_FRAGMENT_GRANT';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;
@@ -675,6 +683,67 @@ export class InventoryService {
    *   - `INVENTORY_ITEM_NOT_FOUND` — character không có row qty>=1 (gift KHÔNG
    *     consume row đang `equippedSlot != null` để tránh tháo trang bị bất ngờ).
    */
+  /**
+   * Phase 26.3 — consume N stack của `itemKey` trong cùng `$transaction`
+   * caller cung cấp. Mirror logic `revoke()` (atomic per-row guard) nhưng
+   * KHÔNG mở tx mới và caller chỉ định `reason` (vd `METHOD_FRAGMENT_CONSUME`,
+   * `METHOD_UPGRADE_MATERIAL`). Bao toàn bộ qty trong 1 ledger row
+   * `qtyDelta = -qty` (mirror revoke).
+   *
+   * Throws:
+   *   - `ITEM_NOT_FOUND` — itemKey không thuộc catalog.
+   *   - `INSUFFICIENT_QTY` — tổng qty (non-equipped) < qty cần.
+   *
+   * KHÔNG đụng row `equippedSlot != null` (bảo toàn item đang đeo).
+   * Caller cần đảm bảo qty > 0.
+   */
+  async consumeManyByItemKeyTx(
+    tx: Prisma.TransactionClient,
+    characterId: string,
+    itemKey: string,
+    qty: number,
+    meta: ItemLedgerMeta,
+  ): Promise<void> {
+    if (qty <= 0) throw new InventoryError('INSUFFICIENT_QTY');
+    const def = itemByKey(itemKey);
+    if (!def) throw new InventoryError('ITEM_NOT_FOUND');
+
+    const rows = await tx.inventoryItem.findMany({
+      where: { characterId, itemKey, equippedSlot: null },
+      orderBy: { createdAt: 'asc' },
+    });
+    const total = rows.reduce((s, r) => s + r.qty, 0);
+    if (total < qty) throw new InventoryError('INSUFFICIENT_QTY');
+
+    let remaining = qty;
+    for (const r of rows) {
+      if (remaining <= 0) break;
+      const take = Math.min(r.qty, remaining);
+      remaining -= take;
+      if (r.qty === take) {
+        const delResult = await tx.inventoryItem.deleteMany({
+          where: { id: r.id, qty: take },
+        });
+        if (delResult.count === 0) {
+          throw new InventoryError('INSUFFICIENT_QTY');
+        }
+      } else {
+        const decResult = await tx.inventoryItem.updateMany({
+          where: { id: r.id, qty: { gte: take } },
+          data: { qty: { decrement: take } },
+        });
+        if (decResult.count === 0) {
+          throw new InventoryError('INSUFFICIENT_QTY');
+        }
+        const post = await tx.inventoryItem.findUnique({ where: { id: r.id } });
+        if (post && post.qty === 0) {
+          await tx.inventoryItem.delete({ where: { id: r.id } });
+        }
+      }
+    }
+    await this.writeLedgerTx(tx, characterId, itemKey, -qty, meta);
+  }
+
   async consumeOneByItemKeyTx(
     tx: Prisma.TransactionClient,
     characterId: string,

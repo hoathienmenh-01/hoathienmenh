@@ -139,7 +139,14 @@ export type LedgerReason =
   | 'BATTLE_PASS_REWARD'
   | 'MONTHLY_CARD_REWARD'
   | 'SHOP_PACK_PURCHASE'
-  | 'SHOP_PACK_REWARD';
+  | 'SHOP_PACK_REWARD'
+  // Phase 26.3 — Cultivation Method V2 unlock/upgrade/star-up consume
+  // linhThach (chỉ với method có `unlockLinhThachCost` hoặc upgrade cost
+  // tier-scaling theo `methodUpgradeLinhThachCost()`). refType='CharacterCultivationMethod'
+  // + refId=methodKey. Pure sink — không grant lại tiền cho fragment.
+  | 'METHOD_UNLOCK'
+  | 'METHOD_UPGRADE'
+  | 'METHOD_STAR_UP';
 
 export interface CurrencyApplyInput {
   characterId: string;
