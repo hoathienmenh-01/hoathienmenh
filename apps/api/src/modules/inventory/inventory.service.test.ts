@@ -148,6 +148,34 @@ describe('InventoryService', () => {
       });
     });
 
+    it('equip item cao cấp ở cảnh giới thấp → EQUIPMENT_REALM_LOCKED', async () => {
+      const u = await makeUserChar(prisma, { realmKey: 'luyenkhi' });
+      await inv.grant(u.characterId, [{ itemKey: 'tien_huyen_kiem', qty: 1 }], { reason: 'ADMIN_GRANT' });
+      const sword = await prisma.inventoryItem.findFirstOrThrow({
+        where: { characterId: u.characterId, itemKey: 'tien_huyen_kiem' },
+      });
+
+      await expect(inv.equip(u.userId, sword.id)).rejects.toMatchObject({
+        code: 'EQUIPMENT_REALM_LOCKED',
+      });
+      const fresh = await prisma.inventoryItem.findUniqueOrThrow({ where: { id: sword.id } });
+      expect(fresh.equippedSlot).toBeNull();
+    });
+
+    it('equip item đủ cảnh giới pass và unequip không bị realm gate chặn', async () => {
+      const u = await makeUserChar(prisma, { realmKey: 'nguyen_anh' });
+      await inv.grant(u.characterId, [{ itemKey: 'tien_huyen_kiem', qty: 1 }], { reason: 'ADMIN_GRANT' });
+      const sword = await prisma.inventoryItem.findFirstOrThrow({
+        where: { characterId: u.characterId, itemKey: 'tien_huyen_kiem' },
+      });
+
+      await inv.equip(u.userId, sword.id);
+      await inv.unequip(u.userId, 'WEAPON');
+
+      const fresh = await prisma.inventoryItem.findUniqueOrThrow({ where: { id: sword.id } });
+      expect(fresh.equippedSlot).toBeNull();
+    });
+
     it('equip item của character khác → INVENTORY_ITEM_NOT_FOUND', async () => {
       const a = await makeUserChar(prisma);
       const b = await makeUserChar(prisma);
