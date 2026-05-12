@@ -164,9 +164,9 @@ export const SET_BONUSES: readonly SetBonusDef[] = [
       },
       {
         pieces: 4,
-        bonusRatio: { atkRatio: 0.09, spiritRatio: 0.02 },
-        description: '+9% attack, +2% spirit.',
-        descriptionVi: '+9% sát thương, +2% linh.',
+        bonusRatio: { atkRatio: 0.08, spiritRatio: 0.02 },
+        description: '+8% attack, +2% spirit.',
+        descriptionVi: '+8% sát thương, +2% linh.',
       },
       {
         pieces: 6,
@@ -453,9 +453,9 @@ export const SET_BONUSES: readonly SetBonusDef[] = [
       },
       {
         pieces: 4,
-        bonusRatio: { defRatio: 0.08, hpMaxRatio: 0.03 },
-        description: '+8% defense and +3% HP max.',
-        descriptionVi: '+8% thủ và +3% HP tối đa.',
+        bonusRatio: { defRatio: 0.07, hpMaxRatio: 0.03 },
+        description: '+7% defense and +3% HP max.',
+        descriptionVi: '+7% thủ và +3% HP tối đa.',
       },
       {
         pieces: 6,
