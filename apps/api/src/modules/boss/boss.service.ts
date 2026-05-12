@@ -21,9 +21,11 @@ import {
   characterSkillElementBonus,
   clampLiveOpsMultiplier,
   composeBuffMods,
+  computeBodyStatBonus,
   composePassiveTalentMods,
   composeTitleMods,
   getBossElementProfile,
+  getBodyRealmByKey,
   rollDamage,
   skillByKey,
   type BossDef,
@@ -319,10 +321,6 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     if (char.mp < skill.mpCost) throw new BossError('MP_LOW');
     if (char.stamina < BOSS_STAMINA_PER_HIT) throw new BossError('STAMINA_LOW');
 
-    // Huyết tế: trừ % HP — không cho dùng nếu < ngưỡng.
-    const bloodCost = Math.floor(char.hpMax * skill.selfBloodCost);
-    if (bloodCost > 0 && char.hp <= bloodCost) throw new BossError('HP_LOW');
-
     // Phase 11.4.E — Equipment atk/spirit bonus wire vào BossService.attack().
     // Trước đây boss attack chỉ dùng `char.power` raw + `char.spirit` raw, bỏ
     // qua hoàn toàn equip bonus (atk/spiritBonus từ trang bị + sockets +
@@ -331,6 +329,14 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     // wire talent/buff/title atkMul (defer scope balance review). Element
     // bonus / Linh căn statMul cũng defer Phase 11.X.S/T.
     const equip = await this.inventory.equipBonus(char.id);
+    const bodyBonus = computeBodyStatBonus(
+      getBodyRealmByKey(char.bodyRealmKey)?.order ?? 0,
+      char.bodyStage,
+    );
+    const effectiveHpMax = char.hpMax + bodyBonus.hpMax;
+    // Huyết tế: trừ % HP — không cho dùng nếu < ngưỡng.
+    const bloodCost = Math.floor(effectiveHpMax * skill.selfBloodCost);
+    if (bloodCost > 0 && char.hp <= bloodCost) throw new BossError('HP_LOW');
     // Phase 11.4.F — Talent atkMul wire vào BossService.attack().
     // Phase 11.4.G — Talent spiritMul wire vào BossService.attack() spirit branch.
     // Phase 11.X.W — Buff atkMul/spiritMul wire vào BossService.attack().
@@ -368,7 +374,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     const methodStat = methodStatBonusFor(char.equippedCultivationMethodKey);
     const charAtk =
       Math.floor(
-        (char.power + equip.atk) *
+        (char.power + bodyBonus.power + equip.atk) *
           talentMods.atkMul *
           buffMods.atkMul *
           titleMods.atkMul *
@@ -484,8 +490,8 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
           select: { hp: true, hpMax: true },
         });
         if (cur) {
-          const healAmt = Math.floor(cur.hpMax * healRatio);
-          const target = Math.min(cur.hpMax, cur.hp + healAmt);
+          const healAmt = Math.floor((cur.hpMax + bodyBonus.hpMax) * healRatio);
+          const target = Math.min(cur.hpMax + bodyBonus.hpMax, cur.hp + healAmt);
           await tx.character.update({
             where: { id: char.id },
             data: { hp: target },
@@ -1486,5 +1492,3 @@ function pickRandom<T>(
 function viewerOnlyHp(hp: bigint): bigint {
   return hp;
 }
-
-

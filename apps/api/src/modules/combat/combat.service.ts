@@ -18,11 +18,13 @@ import {
   SKILL_TAG_SHIELD_HP_RATIO,
   characterSkillElementBonus,
   composeMonsterElementalResist,
+  computeBodyStatBonus,
   describeElementMatch,
   dungeonByKey,
   elementMultiplier,
   getDungeonElementProfile,
   getSpiritualRootGradeDef,
+  getBodyRealmByKey,
   getTalentDef,
   itemByKey,
   monsterByKey,
@@ -363,6 +365,10 @@ export class CombatService {
     if (charMp < effective.mpCost) throw new CombatError('MP_LOW');
 
     const equip = await this.inventory.equipBonus(char.id);
+    const bodyBonus = computeBodyStatBonus(
+      getBodyRealmByKey(char.bodyRealmKey)?.order ?? 0,
+      char.bodyStage,
+    );
     // Phase 11.3.C — Linh căn statBonusPercent wire vào atk/def.
     // Legacy character (spiritualRootGrade=null) → statMul = 1.0.
     const statMul = isValidSpiritualRootGrade(char.spiritualRootGrade)
@@ -405,14 +411,14 @@ export class CombatService {
     // stat cap (defer `CharacterStatService.computeStats`), KHÔNG wire ở đây.
     const methodStat = methodStatBonusFor(char.equippedCultivationMethodKey);
     const effPower =
-      (char.power + equip.atk) *
+      (char.power + bodyBonus.power + equip.atk) *
       statMul *
       talentMods.atkMul *
       buffMods.atkMul *
       titleMods.atkMul *
       methodStat.atkMul;
     const effDef =
-      equip.def *
+      (equip.def + bodyBonus.def) *
       statMul *
       talentMods.defMul *
       buffMods.defMul *
@@ -482,8 +488,9 @@ export class CombatService {
     );
     let monsterHp = state.monsterHp - dmg;
     charMp -= effective.mpCost;
+    const effectiveHpMax = char.hpMax + bodyBonus.hpMax;
     if (skill.selfBloodCost > 0) {
-      const lose = Math.max(1, Math.floor(char.hpMax * skill.selfBloodCost));
+      const lose = Math.max(1, Math.floor(effectiveHpMax * skill.selfBloodCost));
       charHp = Math.max(1, charHp - lose);
       log.push({ side: 'player', text: `Hi sinh ${lose} HP để dụng ${skill.name}.`, ts: Date.now() });
     }
@@ -533,7 +540,7 @@ export class CombatService {
     // branch, KHÔNG persist sang turn sau (single-use).
     const skillShieldAbsorb =
       skillTags.includes('SHIELD') && skill.element != null
-        ? Math.max(1, Math.floor(char.hpMax * SKILL_TAG_SHIELD_HP_RATIO))
+        ? Math.max(1, Math.floor(effectiveHpMax * SKILL_TAG_SHIELD_HP_RATIO))
         : 0;
     if (skillShieldAbsorb > 0) {
       log.push({
@@ -587,9 +594,9 @@ export class CombatService {
 
     let healLine: EncounterLogLine | null = null;
     if (skill.selfHealRatio > 0) {
-      const heal = Math.floor(char.hpMax * skill.selfHealRatio);
+      const heal = Math.floor(effectiveHpMax * skill.selfHealRatio);
       const before = charHp;
-      charHp = Math.min(char.hpMax, charHp + heal);
+      charHp = Math.min(effectiveHpMax, charHp + heal);
       healLine = {
         side: 'player',
         text: `Linh khí xoay vần, hồi ${charHp - before} HP.`,
@@ -681,7 +688,15 @@ export class CombatService {
         monsterElemKey !== null
           ? buffMods.damageReductionByElement.get(monsterElemKey) ?? 1
           : 1;
-      const reply = Math.max(1, Math.round(replyBase * monsterElementMul * buffDmgReduction));
+      const reply = Math.max(
+        1,
+        Math.round(
+          replyBase *
+            monsterElementMul *
+            buffDmgReduction *
+            (1 - bodyBonus.bossDamageReduction),
+        ),
+      );
       log.push({
         side: 'monster',
         text: `${monster.name} phản kích, gây ${reply} sát thương.`,
@@ -722,7 +737,7 @@ export class CombatService {
         // shieldHpMaxRatio = 0 → no absorb. Identity (0, no-op) khi service
         // không injected hoặc no shield buff. KHÔNG mutate buff DB row —
         // duration-based, không depletion-based.
-        const shieldAbsorb = Math.floor(char.hpMax * buffMods.shieldHpMaxRatio);
+        const shieldAbsorb = Math.floor(effectiveHpMax * buffMods.shieldHpMaxRatio);
         const absorbed = Math.min(shieldAbsorb, remainingReply);
         const netReply = remainingReply - absorbed;
         if (absorbed > 0) {
