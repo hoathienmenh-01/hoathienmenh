@@ -24,6 +24,7 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import {
   ELEMENTS,
+  recommendBuildForCharacter,
   getSpiritualRootGradeDef,
   type ElementKey,
   type SpiritualRootGrade,
@@ -69,6 +70,18 @@ const secondarySet = computed<Set<ElementKey>>(() => {
   return new Set(root.state.secondaryElements as ElementKey[]);
 });
 
+const buildRecommendation = computed(() =>
+  recommendBuildForCharacter(
+    root.state
+      ? {
+          primaryElement: root.state.primaryElement as ElementKey,
+          secondaryElements: root.state.secondaryElements as ElementKey[],
+          spiritualRootGrade: root.state.grade as SpiritualRootGrade,
+        }
+      : null,
+  ),
+);
+
 function gradeBadgeClass(g: SpiritualRootGrade): string {
   switch (g) {
     case 'pham':
@@ -98,6 +111,10 @@ function elementCellRole(elKey: ElementKey): 'primary' | 'secondary' | 'inactive
   if (primaryElement.value === elKey) return 'primary';
   if (secondarySet.value.has(elKey)) return 'secondary';
   return 'inactive';
+}
+
+function elementLabel(element: ElementKey | null): string {
+  return element ? t(`spiritualRoot.element.${element}`) : t('elementBadge.neutral');
 }
 
 function openRerollConfirm(): void {
@@ -221,6 +238,99 @@ onMounted(async () => {
               <span class="text-ink-300">{{ t('spiritualRoot.field.secondaryCount') }}</span>
               <span class="text-ink-100 ml-1">{{ gradeDef.secondaryElementCount }}</span>
             </span>
+          </div>
+        </article>
+
+        <article
+          class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-4"
+          data-testid="elemental-build-panel"
+        >
+          <header class="flex items-baseline justify-between gap-2 flex-wrap">
+            <div>
+              <h2 class="text-base font-semibold text-ink-100">
+                {{ t('spiritualRoot.build.title') }}
+              </h2>
+              <p class="text-xs text-ink-300 mt-0.5">{{ t('spiritualRoot.build.subtitle') }}</p>
+            </div>
+            <span class="text-[10px] px-2 py-0.5 rounded border border-amber-400/40 text-amber-100 bg-amber-700/20">
+              {{ t('spiritualRoot.build.phaseBadge') }}
+            </span>
+          </header>
+
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div class="rounded border border-ink-300/20 bg-ink-900/20 p-3">
+              <div class="text-[10px] uppercase tracking-wider text-ink-400">
+                {{ t('spiritualRoot.build.mainElement') }}
+              </div>
+              <div class="mt-1 text-lg font-semibold text-amber-100" data-testid="elemental-build-main">
+                {{ elementLabel(buildRecommendation.mainElement) }}
+              </div>
+              <div class="text-xs text-ink-300">
+                {{ t('spiritualRoot.build.secondaryElement') }}:
+                <span class="text-sky-200">{{ elementLabel(buildRecommendation.secondaryElement) }}</span>
+              </div>
+            </div>
+
+            <div class="rounded border border-ink-300/20 bg-ink-900/20 p-3">
+              <div class="text-[10px] uppercase tracking-wider text-ink-400">
+                {{ t('spiritualRoot.build.equipmentElement') }}
+              </div>
+              <div class="mt-1 text-lg font-semibold text-emerald-100" data-testid="elemental-build-equipment">
+                {{ elementLabel(buildRecommendation.equipmentElement) }}
+              </div>
+              <div class="text-xs text-ink-300">{{ t('spiritualRoot.build.equipmentHint') }}</div>
+            </div>
+          </div>
+
+          <div class="grid gap-3 md:grid-cols-3">
+            <section class="space-y-2">
+              <h3 class="text-xs font-semibold text-ink-100">
+                {{ t('spiritualRoot.build.statsTitle') }}
+              </h3>
+              <div class="flex flex-wrap gap-1" data-testid="elemental-build-stats">
+                <span
+                  v-for="stat in buildRecommendation.recommendedStats"
+                  :key="stat"
+                  class="text-[10px] rounded border border-ink-300/20 bg-ink-900/30 px-1.5 py-0.5 text-ink-200"
+                >
+                  {{ stat }}
+                </span>
+              </div>
+            </section>
+
+            <section class="space-y-2">
+              <h3 class="text-xs font-semibold text-ink-100">
+                {{ t('spiritualRoot.build.skillsTitle') }}
+              </h3>
+              <ul class="space-y-1 text-xs text-ink-300" data-testid="elemental-build-skills">
+                <li
+                  v-for="skill in buildRecommendation.recommendedSkills.slice(0, 5)"
+                  :key="skill"
+                  class="truncate"
+                >
+                  {{ skill }}
+                </li>
+              </ul>
+            </section>
+
+            <section class="space-y-2">
+              <h3 class="text-xs font-semibold text-ink-100">
+                {{ t('spiritualRoot.build.counterTitle') }}
+              </h3>
+              <ul class="space-y-1 text-xs text-ink-300" data-testid="elemental-build-tips">
+                <li v-for="tip in buildRecommendation.counterTips" :key="tip">
+                  {{ tip }}
+                </li>
+              </ul>
+            </section>
+          </div>
+
+          <div
+            v-if="buildRecommendation.warnings.length > 0"
+            class="rounded border border-amber-400/30 bg-amber-900/20 p-2 text-xs text-amber-100"
+            data-testid="elemental-build-warning"
+          >
+            {{ buildRecommendation.warnings.join(' · ') }}
           </div>
         </article>
 
