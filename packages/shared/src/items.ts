@@ -1512,24 +1512,6 @@ export const ITEMS: readonly ItemDef[] = [
     stackable: true,
     price: 500,
   },
-  {
-    key: 'phap_bao_shard',
-    name: 'Mảnh Pháp Bảo',
-    description: 'Mảnh pháp bảo cùng loại, dùng làm lõi thăng sao trong Phase 23.7.',
-    kind: 'MISC',
-    quality: 'HUYEN',
-    stackable: true,
-    price: 1200,
-  },
-  {
-    key: 'awaken_stone',
-    name: 'Tỉnh Thức Thạch',
-    description: 'Tinh thạch thức tỉnh pháp bảo, dùng cho các mốc thức tỉnh có giới hạn.',
-    kind: 'MISC',
-    quality: 'TIEN',
-    stackable: true,
-    price: 5000,
-  },
 
   // ─────────────────────────────────────────────────────────────────────
   // Phase 11.2.D — Skill Book Pack 1 (Ngũ Hành sơ cấp, +5 entries)

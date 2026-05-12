@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PrismaService } from '../../common/prisma.service';
 import { PhapBaoError, PhapBaoService } from './phap-bao.service';
+import { CurrencyService } from './currency.service';
 import { makeUserChar, wipeAll } from '../../test-helpers';
 
 const TEST_DATABASE_URL =
@@ -14,7 +15,8 @@ let svc: PhapBaoService;
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
-  svc = new PhapBaoService(prisma);
+  const currency = new CurrencyService(prisma);
+  svc = new PhapBaoService(prisma, currency);
 });
 
 beforeEach(async () => {
@@ -61,8 +63,8 @@ describe('PhapBaoService.listForCharacter', () => {
     expect(result[0].def.artifactKey).toBe('ngu_hanh_linh_chau');
     expect(result[0].def.artifactTier).toBe(2);
     expect(result[0].refineLevel).toBe(0);
-    expect(result[0].starLevel).toBe(0); // foundation: chưa persist
-    expect(result[0].awakenStage).toBe(0); // foundation: chưa persist
+    expect(result[0].starLevel).toBe(0);
+    expect(result[0].awakenStage).toBe(0);
   });
 
   it('canEquip=false khi cảnh giới character < requiredRealmOrder của pháp bảo', async () => {
@@ -143,21 +145,20 @@ describe('PhapBaoService.preview', () => {
     expect(preview.awakenCost).toBeNull();
   });
 
-  it('preview pháp bảo trả awakenEnabled=false (foundation chưa persist star/awaken)', async () => {
+  it('preview pháp bảo trả starUpEnabled=true, awakenEnabled=true (Phase 23.7 persistence live)', async () => {
     const ctx = await makeUserChar(prisma);
     const item = await prisma.inventoryItem.create({
       data: {
         characterId: ctx.characterId,
-        itemKey: 'huyet_nguyet_ho_lo', // quality TIEN, tier 6 — sẽ awaken-able sau Phase 23.6
+        itemKey: 'huyet_nguyet_ho_lo', // quality TIEN, tier 6 — sẽ awaken-able
         qty: 1,
       },
     });
     const preview = await svc.preview(ctx.characterId, item.id);
-    // Phase 23.5 foundation: starLevel hardcode 0 → validatePhapBaoUpgradeRequest
-    // fail awaken vì cần starLevel ≥ 1. awakenCost null đúng spec.
-    expect(preview.awakenCost).toBeNull();
-    expect(preview.awakenEnabled).toBe(false);
-    expect(preview.starUpEnabled).toBe(false);
+    // Phase 23.7: star/awaken enabled.
+    expect(preview.awakenCost).toBeNull(); // starLevel 0 < required → null
+    expect(preview.awakenEnabled).toBe(true);
+    expect(preview.starUpEnabled).toBe(true);
   });
 
   it('throw INVENTORY_ITEM_NOT_FOUND nếu inventoryItem thuộc character khác', async () => {

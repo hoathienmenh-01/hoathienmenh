@@ -132,7 +132,10 @@ export type LedgerReason =
   | 'EQUIPMENT_MERGE'
   | 'EQUIPMENT_DISMANTLE'
   | 'GEM_SOCKET_COST'
-  | 'GEM_UNSOCKET_COST';
+  | 'GEM_UNSOCKET_COST'
+  | 'PHAP_BAO_STAR_UP'
+  | 'PHAP_BAO_AWAKEN'
+  | 'PHAP_BAO_REFINE';
 
 export interface CurrencyApplyInput {
   characterId: string;

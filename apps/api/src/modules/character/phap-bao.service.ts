@@ -1,23 +1,25 @@
 import { Injectable } from '@nestjs/common';
+import { CurrencyKind, type Prisma } from '@prisma/client';
 import {
   PHAP_BAO_CATALOG,
   canEquipPhapBao,
-  computePhapBaoActiveSkillPreview,
-  computePhapBaoPassiveBonus,
-  computePhapBaoPowerScore,
   getPhapBaoByKey,
-  getPhapBaoAwakenCost,
-  getPhapBaoStarUpCost,
-  getPhapBaoUpgradeCost,
+  computePhapBaoEffect,
+  computePhapBaoProgressionPowerScore,
+  getPhapBaoProgressionAwakenCost,
+  getPhapBaoProgressionRefineCost,
+  getPhapBaoProgressionStarUpCost,
+  requiredRefineForAwaken,
+  requiredStarForAwaken,
   itemByKey,
   realmByKey,
-  validatePhapBaoUpgradeRequest,
   type ItemBonus,
   type PhapBaoActiveSkillPreview,
   type PhapBaoDef,
   type PhapBaoSource,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { CurrencyError, CurrencyService } from './currency.service';
 
 /**
  * Phase 23.5 — Pháp Bảo Advanced Artifact System runtime (foundation).
@@ -50,7 +52,10 @@ import { PrismaService } from '../../common/prisma.service';
  */
 @Injectable()
 export class PhapBaoService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly currency: CurrencyService,
+  ) {}
 
   /**
    * List pháp bảo của character (kèm canEquip + powerScore).
@@ -81,7 +86,17 @@ export class PhapBaoService {
       if (!catalogKeys.has(row.itemKey)) continue;
       const def = getPhapBaoByKey(row.itemKey);
       if (!def) continue;
-      result.push(this.toView(def, row.id, row.refineLevel, row.equippedSlot, realmOrder));
+      result.push(
+        this.toView(
+          def,
+          row.id,
+          row.refineLevel,
+          row.phapBaoStarLevel,
+          row.phapBaoAwakenStage,
+          row.equippedSlot,
+          realmOrder,
+        ),
+      );
     }
     return result;
   }
@@ -115,9 +130,8 @@ export class PhapBaoService {
     if (!character) throw new PhapBaoError('NO_CHARACTER');
     const realmOrder = (realmByKey(character.realmKey)?.order ?? -1) + 1;
 
-    // Foundation: star + awaken chưa persist — đọc default 0.
-    const starLevel = 0;
-    const awakenStage = 0;
+    const starLevel = inv.phapBaoStarLevel;
+    const awakenStage = inv.phapBaoAwakenStage;
     const instance = {
       artifactKey: def.artifactKey,
       starLevel,
@@ -125,13 +139,19 @@ export class PhapBaoService {
       awakenStage,
     };
 
-    const passiveBonus = computePhapBaoPassiveBonus(instance);
-    const activeSkill = computePhapBaoActiveSkillPreview(instance);
-    const powerScore = computePhapBaoPowerScore(instance);
+    const effect = computePhapBaoEffect(instance);
+    const passiveBonus = effect.bonus;
+    const activeSkill = effect.activeSkill;
+    const powerScore = computePhapBaoProgressionPowerScore(instance);
 
     const refineCost = safeRefineCost(def, inv.refineLevel);
     const starCost = safeStarCost(def, starLevel);
-    const awakenCost = safeAwakenCost(def, starLevel, awakenStage);
+    const awakenCost = safeAwakenCost(
+      def,
+      starLevel,
+      inv.refineLevel,
+      awakenStage,
+    );
 
     return {
       inventoryItemId: inv.id,
@@ -154,6 +174,172 @@ export class PhapBaoService {
     };
   }
 
+  async starUp(
+    characterId: string,
+    inventoryItemId: string,
+  ): Promise<PhapBaoUpgradeResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const ctx = await this.loadUpgradeContextTx(tx, characterId, inventoryItemId);
+      const { def, inv, characterRealmOrder } = ctx;
+      if (inv.locked) throw new PhapBaoError('PHAP_BAO_LOCKED');
+      if (characterRealmOrder < def.requiredRealmOrder) {
+        throw new PhapBaoError('REALM_TOO_LOW');
+      }
+      if (inv.phapBaoStarLevel >= Math.min(def.starCap, 5)) {
+        throw new PhapBaoError('MAX_STAR_REACHED');
+      }
+      const cost = getPhapBaoProgressionStarUpCost({
+        artifact: def,
+        currentStarLevel: inv.phapBaoStarLevel,
+      });
+      const costView = costToView(cost);
+      await this.consumeCostTx(
+        tx,
+        characterId,
+        inv.id,
+        costView,
+        'PHAP_BAO_STAR_UP',
+      );
+      const upd = await tx.inventoryItem.updateMany({
+        where: {
+          id: inv.id,
+          characterId,
+          phapBaoStarLevel: inv.phapBaoStarLevel,
+          phapBaoAwakenStage: inv.phapBaoAwakenStage,
+          refineLevel: inv.refineLevel,
+          locked: false,
+        },
+        data: { phapBaoStarLevel: { increment: 1 } },
+      });
+      if (upd.count !== 1) throw new PhapBaoError('CONCURRENT_UPGRADE');
+      const next = await tx.inventoryItem.findUniqueOrThrow({
+        where: { id: inv.id },
+      });
+      return this.toUpgradeResult(
+        def,
+        next.id,
+        next.refineLevel,
+        next.phapBaoStarLevel,
+        next.phapBaoAwakenStage,
+        next.equippedSlot,
+        characterRealmOrder,
+        costView,
+      );
+    });
+  }
+
+  async awaken(
+    characterId: string,
+    inventoryItemId: string,
+  ): Promise<PhapBaoUpgradeResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const ctx = await this.loadUpgradeContextTx(tx, characterId, inventoryItemId);
+      const { def, inv, characterRealmOrder } = ctx;
+      if (inv.locked) throw new PhapBaoError('PHAP_BAO_LOCKED');
+      if (characterRealmOrder < def.requiredRealmOrder) {
+        throw new PhapBaoError('REALM_TOO_LOW');
+      }
+      if (def.quality !== 'TIEN' && def.quality !== 'THAN') {
+        throw new PhapBaoError('QUALITY_TOO_LOW');
+      }
+      if (inv.phapBaoAwakenStage >= Math.min(def.awakenCap, 3)) {
+        throw new PhapBaoError('MAX_AWAKEN_REACHED');
+      }
+      if (inv.phapBaoStarLevel < requiredStarForAwaken(inv.phapBaoAwakenStage)) {
+        throw new PhapBaoError('STAR_TOO_LOW');
+      }
+      if (inv.refineLevel < requiredRefineForAwaken(def, inv.phapBaoAwakenStage)) {
+        throw new PhapBaoError('REFINE_TOO_LOW');
+      }
+      const cost = getPhapBaoProgressionAwakenCost({
+        artifact: def,
+        currentAwakenStage: inv.phapBaoAwakenStage,
+      });
+      const costView = costToView(cost);
+      await this.consumeCostTx(
+        tx,
+        characterId,
+        inv.id,
+        costView,
+        'PHAP_BAO_AWAKEN',
+      );
+      const upd = await tx.inventoryItem.updateMany({
+        where: {
+          id: inv.id,
+          characterId,
+          phapBaoStarLevel: inv.phapBaoStarLevel,
+          phapBaoAwakenStage: inv.phapBaoAwakenStage,
+          refineLevel: inv.refineLevel,
+          locked: false,
+        },
+        data: { phapBaoAwakenStage: { increment: 1 } },
+      });
+      if (upd.count !== 1) throw new PhapBaoError('CONCURRENT_UPGRADE');
+      const next = await tx.inventoryItem.findUniqueOrThrow({
+        where: { id: inv.id },
+      });
+      return this.toUpgradeResult(
+        def,
+        next.id,
+        next.refineLevel,
+        next.phapBaoStarLevel,
+        next.phapBaoAwakenStage,
+        next.equippedSlot,
+        characterRealmOrder,
+        costView,
+      );
+    });
+  }
+
+  async refine(
+    characterId: string,
+    inventoryItemId: string,
+  ): Promise<PhapBaoUpgradeResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const ctx = await this.loadUpgradeContextTx(tx, characterId, inventoryItemId);
+      const { def, inv, characterRealmOrder } = ctx;
+      if (inv.locked) throw new PhapBaoError('PHAP_BAO_LOCKED');
+      if (inv.refineLevel >= def.refineCap) throw new PhapBaoError('MAX_REFINE_REACHED');
+      const cost = getPhapBaoProgressionRefineCost({
+        artifact: def,
+        currentRefineLevel: inv.refineLevel,
+      });
+      const costView = costToView(cost);
+      await this.consumeCostTx(
+        tx,
+        characterId,
+        inv.id,
+        costView,
+        'PHAP_BAO_REFINE',
+      );
+      const upd = await tx.inventoryItem.updateMany({
+        where: {
+          id: inv.id,
+          characterId,
+          refineLevel: inv.refineLevel,
+          phapBaoStarLevel: inv.phapBaoStarLevel,
+          phapBaoAwakenStage: inv.phapBaoAwakenStage,
+          locked: false,
+        },
+        data: { refineLevel: { increment: 1 } },
+      });
+      if (upd.count !== 1) throw new PhapBaoError('CONCURRENT_UPGRADE');
+      const next = await tx.inventoryItem.findUniqueOrThrow({
+        where: { id: inv.id },
+      });
+      return this.toUpgradeResult(
+        def,
+        next.id,
+        next.refineLevel,
+        next.phapBaoStarLevel,
+        next.phapBaoAwakenStage,
+        next.equippedSlot,
+        characterRealmOrder,
+        costView,
+      );
+    });
+  }
+
   /**
    * Trả catalog metadata cho FE init (lookup lookup, không gọi list mỗi
    * lần). Read-only, cache-safe.
@@ -166,11 +352,11 @@ export class PhapBaoService {
     def: PhapBaoDef,
     inventoryItemId: string,
     refineLevel: number,
+    starLevel: number,
+    awakenStage: number,
     equippedSlot: string | null,
     characterRealmOrder: number,
   ): PhapBaoView {
-    const starLevel = 0;
-    const awakenStage = 0;
     const instance = {
       artifactKey: def.artifactKey,
       starLevel,
@@ -186,18 +372,154 @@ export class PhapBaoService {
       awakenStage,
       canEquip: canEquipPhapBao(characterRealmOrder, def),
       requiredRealmOrder: def.requiredRealmOrder,
-      powerScore: computePhapBaoPowerScore(instance),
+      powerScore: computePhapBaoProgressionPowerScore(instance),
+    };
+  }
+
+  private async loadUpgradeContextTx(
+    tx: Prisma.TransactionClient,
+    characterId: string,
+    inventoryItemId: string,
+  ) {
+    const inv = await tx.inventoryItem.findUnique({
+      where: { id: inventoryItemId },
+    });
+    if (!inv || inv.characterId !== characterId) {
+      throw new PhapBaoError('INVENTORY_ITEM_NOT_FOUND');
+    }
+    const def = getPhapBaoByKey(inv.itemKey);
+    if (!def) throw new PhapBaoError('PHAP_BAO_NOT_FOUND');
+    const character = await tx.character.findUnique({
+      where: { id: characterId },
+      select: { realmKey: true },
+    });
+    if (!character) throw new PhapBaoError('NO_CHARACTER');
+    return {
+      inv,
+      def,
+      characterRealmOrder: (realmByKey(character.realmKey)?.order ?? -1) + 1,
+    };
+  }
+
+  private async consumeCostTx(
+    tx: Prisma.TransactionClient,
+    characterId: string,
+    inventoryItemId: string,
+    cost: PhapBaoCostView,
+    reason: 'PHAP_BAO_STAR_UP' | 'PHAP_BAO_AWAKEN' | 'PHAP_BAO_REFINE',
+  ): Promise<void> {
+    await this.consumeMaterialTx(
+      tx,
+      characterId,
+      inventoryItemId,
+      cost.materialKey,
+      cost.materialQty,
+      reason,
+    );
+    if (cost.shardKey && cost.shardQty) {
+      await this.consumeMaterialTx(
+        tx,
+        characterId,
+        inventoryItemId,
+        cost.shardKey,
+        cost.shardQty,
+        reason,
+      );
+    }
+    if (cost.awakenStoneKey && cost.awakenStoneQty) {
+      await this.consumeMaterialTx(
+        tx,
+        characterId,
+        inventoryItemId,
+        cost.awakenStoneKey,
+        cost.awakenStoneQty,
+        reason,
+      );
+    }
+    try {
+      await this.currency.applyTx(tx, {
+        characterId,
+        currency: CurrencyKind.LINH_THACH,
+        delta: BigInt(-cost.linhThachCost),
+        reason,
+        refType: 'InventoryItem',
+        refId: inventoryItemId,
+      });
+    } catch (e) {
+      if (e instanceof CurrencyError && e.code === 'INSUFFICIENT_FUNDS') {
+        throw new PhapBaoError('INSUFFICIENT_FUNDS');
+      }
+      throw e;
+    }
+  }
+
+  private async consumeMaterialTx(
+    tx: Prisma.TransactionClient,
+    characterId: string,
+    inventoryItemId: string,
+    itemKey: string,
+    qty: number,
+    reason: string,
+  ): Promise<void> {
+    const row = await tx.inventoryItem.findFirst({
+      where: { characterId, itemKey, equippedSlot: null },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!row || row.qty < qty) throw new PhapBaoError('INSUFFICIENT_MATERIAL');
+    const upd = await tx.inventoryItem.updateMany({
+      where: { id: row.id, qty: { gte: qty } },
+      data: { qty: { decrement: qty } },
+    });
+    if (upd.count !== 1) throw new PhapBaoError('CONCURRENT_UPGRADE');
+    await tx.inventoryItem.deleteMany({ where: { id: row.id, qty: { lte: 0 } } });
+    await tx.itemLedger.create({
+      data: {
+        characterId,
+        itemKey,
+        qtyDelta: -qty,
+        reason,
+        refType: 'InventoryItem',
+        refId: inventoryItemId,
+      },
+    });
+  }
+
+  private toUpgradeResult(
+    def: PhapBaoDef,
+    inventoryItemId: string,
+    refineLevel: number,
+    starLevel: number,
+    awakenStage: number,
+    equippedSlot: string | null,
+    characterRealmOrder: number,
+    cost: PhapBaoCostView,
+  ): PhapBaoUpgradeResult {
+    const view = this.toView(
+      def,
+      inventoryItemId,
+      refineLevel,
+      starLevel,
+      awakenStage,
+      equippedSlot,
+      characterRealmOrder,
+    );
+    return {
+      item: view,
+      cost,
+      nextPreview: {
+        refineCost: safeRefineCost(def, refineLevel),
+        starCost: safeStarCost(def, starLevel),
+        awakenCost: safeAwakenCost(def, starLevel, refineLevel, awakenStage),
+      },
     };
   }
 }
 
 /**
- * Phase 23.5 foundation: star-up persistence DEFER → flag tắt cứng.
- * Phase 23.6 / 25.1 sẽ wire migration `artifactProgressJson` + endpoint
- * mutate. UI surface cost preview nhưng disable nút bấm.
+ * Phase 23.7 runtime enabled: persistence fields + transaction-safe endpoints.
  */
-export const PHAP_BAO_STAR_UP_ENABLED = false;
-export const PHAP_BAO_AWAKEN_ENABLED = false;
+export const PHAP_BAO_STAR_UP_ENABLED = true;
+export const PHAP_BAO_AWAKEN_ENABLED = true;
 
 function defView(def: PhapBaoDef): PhapBaoDefView {
   return {
@@ -225,49 +547,62 @@ function safeRefineCost(
   def: PhapBaoDef,
   currentRefineLevel: number,
 ): PhapBaoCostView | null {
-  const validation = validatePhapBaoUpgradeRequest({
-    artifactKey: def.artifactKey,
-    kind: 'refine',
-    currentRefineLevel,
-    currentStarLevel: 0,
-    currentAwakenStage: 0,
-  });
-  if (!validation.ok) return null;
-  const cost = getPhapBaoUpgradeCost({
-    tier: def.artifactTier,
-    currentRefineLevel,
-    refineCap: def.refineCap,
-    quality: def.quality,
-  });
-  return {
-    linhThachCost: cost.linhThachCost,
-    materialKey: cost.materialKey,
-    materialQty: cost.materialQty,
-    shardKey: cost.shardKey ?? null,
-    shardQty: cost.shardQty ?? null,
-    awakenStoneKey: cost.awakenStoneKey ?? null,
-    awakenStoneQty: cost.awakenStoneQty ?? null,
-  };
+  try {
+    const cost = getPhapBaoProgressionRefineCost({
+      artifact: def,
+      currentRefineLevel,
+    });
+    return costToView(cost);
+  } catch {
+    return null;
+  }
 }
 
 function safeStarCost(
   def: PhapBaoDef,
   currentStarLevel: number,
 ): PhapBaoCostView | null {
-  const validation = validatePhapBaoUpgradeRequest({
-    artifactKey: def.artifactKey,
-    kind: 'star',
-    currentRefineLevel: 0,
-    currentStarLevel,
-    currentAwakenStage: 0,
-  });
-  if (!validation.ok) return null;
-  const cost = getPhapBaoStarUpCost({
-    tier: def.artifactTier,
-    currentStarLevel,
-    starCap: def.starCap,
-    quality: def.quality,
-  });
+  try {
+    const cost = getPhapBaoProgressionStarUpCost({
+      artifact: def,
+      currentStarLevel,
+    });
+    return costToView(cost);
+  } catch {
+    return null;
+  }
+}
+
+function safeAwakenCost(
+  def: PhapBaoDef,
+  currentStarLevel: number,
+  currentRefineLevel: number,
+  currentAwakenStage: number,
+): PhapBaoCostView | null {
+  if (currentStarLevel < requiredStarForAwaken(currentAwakenStage)) return null;
+  if (currentRefineLevel < requiredRefineForAwaken(def, currentAwakenStage)) {
+    return null;
+  }
+  try {
+    const cost = getPhapBaoProgressionAwakenCost({
+      artifact: def,
+      currentAwakenStage,
+    });
+    return costToView(cost);
+  } catch {
+    return null;
+  }
+}
+
+function costToView(cost: {
+  linhThachCost: number;
+  materialKey: string;
+  materialQty: number;
+  shardKey?: string;
+  shardQty?: number;
+  awakenStoneKey?: string;
+  awakenStoneQty?: number;
+}): PhapBaoCostView {
   return {
     linhThachCost: cost.linhThachCost,
     materialKey: cost.materialKey,
@@ -277,40 +612,6 @@ function safeStarCost(
     awakenStoneKey: cost.awakenStoneKey ?? null,
     awakenStoneQty: cost.awakenStoneQty ?? null,
   };
-}
-
-function safeAwakenCost(
-  def: PhapBaoDef,
-  currentStarLevel: number,
-  currentAwakenStage: number,
-): PhapBaoCostView | null {
-  const validation = validatePhapBaoUpgradeRequest({
-    artifactKey: def.artifactKey,
-    kind: 'awaken',
-    currentRefineLevel: 0,
-    currentStarLevel,
-    currentAwakenStage,
-  });
-  if (!validation.ok) return null;
-  try {
-    const cost = getPhapBaoAwakenCost({
-      tier: def.artifactTier,
-      currentAwakenStage,
-      awakenCap: def.awakenCap,
-      quality: def.quality,
-    });
-    return {
-      linhThachCost: cost.linhThachCost,
-      materialKey: cost.materialKey,
-      materialQty: cost.materialQty,
-      shardKey: cost.shardKey ?? null,
-      shardQty: cost.shardQty ?? null,
-      awakenStoneKey: cost.awakenStoneKey ?? null,
-      awakenStoneQty: cost.awakenStoneQty ?? null,
-    };
-  } catch {
-    return null;
-  }
 }
 
 export interface PhapBaoView {
@@ -375,6 +676,16 @@ export interface PhapBaoCostView {
   awakenStoneQty: number | null;
 }
 
+export interface PhapBaoUpgradeResult {
+  item: PhapBaoView;
+  cost: PhapBaoCostView;
+  nextPreview: {
+    refineCost: PhapBaoCostView | null;
+    starCost: PhapBaoCostView | null;
+    awakenCost: PhapBaoCostView | null;
+  };
+}
+
 export class PhapBaoError extends Error {
   constructor(
     public code:
@@ -382,7 +693,18 @@ export class PhapBaoError extends Error {
       | 'INVENTORY_ITEM_NOT_FOUND'
       | 'PHAP_BAO_NOT_FOUND'
       | 'PHAP_BAO_STAR_UP_DISABLED'
-      | 'PHAP_BAO_AWAKEN_DISABLED',
+      | 'PHAP_BAO_AWAKEN_DISABLED'
+      | 'PHAP_BAO_LOCKED'
+      | 'REALM_TOO_LOW'
+      | 'MAX_STAR_REACHED'
+      | 'MAX_AWAKEN_REACHED'
+      | 'MAX_REFINE_REACHED'
+      | 'QUALITY_TOO_LOW'
+      | 'STAR_TOO_LOW'
+      | 'REFINE_TOO_LOW'
+      | 'INSUFFICIENT_MATERIAL'
+      | 'INSUFFICIENT_FUNDS'
+      | 'CONCURRENT_UPGRADE',
   ) {
     super(code);
   }
