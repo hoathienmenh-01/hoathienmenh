@@ -829,10 +829,12 @@
       "tierLabel": "Tier {tier} {name} {grade}",
       "gradeLabel": "grade {grade}",
       "finalGrade": "final",
+      "quality": "Quality {quality}",
       "requiredRealm": "Requires realm #{order}",
       "power": "Gear power {power}",
       "caps": "Enhance +{enhance}, sockets {sockets}",
-      "lockHint": "Server blocks equip until realm #{order}."
+      "qualityMeaning": "Quality increases power within the same equipment tier.",
+      "lockHint": "Reach the required realm to use this item."
     },
     "refine": {
       "button": "Refine",
@@ -1056,7 +1058,10 @@
       "sectionOwned": "Owned Artifacts",
       "sectionCatalog": "Artifact Catalog",
       "tierLabel": "Tier {tier}",
+      "qualityLabel": "Quality {quality}",
+      "qualityMeaning": "Quality increases power within the same equipment tier.",
       "requiredRealm": "Requires realm rank {order}",
+      "lockHint": "Reach the required realm to use this item.",
       "realmLocked": "Realm too low",
       "realmReady": "Realm ready",
       "powerScore": "Power {power}",

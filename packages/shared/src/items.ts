@@ -1798,10 +1798,10 @@ export function rollMonsterLoot(
 
 export const QUALITY_COLOR: Record<Quality, string> = {
   PHAM: 'text-ink-200',
-  LINH: 'text-emerald-300',
-  HUYEN: 'text-sky-300',
-  TIEN: 'text-violet-300',
-  THAN: 'text-amber-300',
+  LINH: 'text-blue-300',
+  HUYEN: 'text-purple-300',
+  TIEN: 'text-amber-300',
+  THAN: 'text-red-300',
 };
 
 export const QUALITY_LABEL_VI: Record<Quality, string> = {

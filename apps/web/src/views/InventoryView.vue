@@ -5,8 +5,11 @@ import { useRouter } from 'vue-router';
 import {
   EQUIP_SLOTS,
   QUALITY_COLOR,
+  REALMS,
   REFINE_MAX_LEVEL,
+  canEquipItemAtRealm,
   combineGems as catalogCombineGems,
+  getEquipmentQualityVisual,
   getGemDef,
   getRefineAttemptCost,
   itemWithProgression,
@@ -126,6 +129,16 @@ function slotLabel(slot: EquipSlot): string {
   return t(`equipSlot.${slot}`);
 }
 
+function equipmentQualityClass(item: ItemDef): string {
+  return item.slot ? getEquipmentQualityVisual(item.quality).textClass : QUALITY_COLOR[item.quality];
+}
+
+function characterRealmOrder(): number {
+  const key = game.character?.realmKey;
+  const realm = key ? REALMS.find((r) => r.key === key) : undefined;
+  return realm?.order ?? 0;
+}
+
 const equipped = computed(() => {
   const map = new Map<EquipSlot, InventoryView>();
   for (const it of items.value) {
@@ -194,12 +207,14 @@ function equipmentProgressionText(it: InventoryView): string {
       name: item.equipmentTierName ?? '',
       grade,
     }),
+    t('inventory.progression.quality', { quality: t('quality.' + item.quality) }),
     t('inventory.progression.requiredRealm', { order: item.requiredRealmOrder }),
     t('inventory.progression.power', { power }),
     t('inventory.progression.caps', {
       enhance: item.maxEnhanceLevel ?? 0,
       sockets: item.maxSocketCount ?? 0,
     }),
+    t('inventory.progression.qualityMeaning'),
   ];
   return parts.join(' · ');
 }
@@ -207,7 +222,9 @@ function equipmentProgressionText(it: InventoryView): string {
 function equipmentLockText(it: InventoryView): string {
   const item = progressionItem(it);
   if (!item.slot || !item.requiredRealmOrder) return '';
-  return t('inventory.progression.lockHint', { order: item.requiredRealmOrder });
+  return canEquipItemAtRealm(item, characterRealmOrder())
+    ? ''
+    : t('inventory.progression.lockHint', { order: item.requiredRealmOrder });
 }
 
 function effectText(item: ItemDef): string {
@@ -512,7 +529,7 @@ function handleErr(e: unknown): void {
           class="flex items-center justify-between text-sm border-b border-ink-300/20 last:border-0 py-2"
         >
           <span class="text-ink-300 w-24">{{ slotLabel(slot) }}</span>
-          <span v-if="equipped.get(slot)" :class="QUALITY_COLOR[equipped.get(slot)!.item.quality]">
+          <span v-if="equipped.get(slot)" :class="equipmentQualityClass(equipped.get(slot)!.item)">
             {{ equipped.get(slot)!.item.name }}
             <span class="text-[10px] text-cyan-200 font-normal ml-1">
               {{ equipmentProgressionText(equipped.get(slot)!) }}
@@ -574,7 +591,7 @@ function handleErr(e: unknown): void {
           <div class="flex items-center gap-3">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
-                <span class="font-bold" :class="QUALITY_COLOR[it.item.quality]">
+                <span class="font-bold" :class="equipmentQualityClass(it.item)">
                   {{ it.item.name }}
                 </span>
                 <span

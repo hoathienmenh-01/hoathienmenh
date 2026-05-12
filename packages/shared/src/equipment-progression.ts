@@ -104,10 +104,10 @@ export const EQUIPMENT_TIERS: readonly EquipmentTierDef[] = [
 
 const QUALITY_MULTIPLIERS: Readonly<Record<Quality, number>> = {
   PHAM: 1,
-  LINH: 1.15,
-  HUYEN: 1.35,
-  TIEN: 1.6,
-  THAN: 1.9,
+  LINH: 1.2,
+  HUYEN: 1.5,
+  TIEN: 1.9,
+  THAN: 2.4,
 };
 
 const ENHANCE_CAP_BY_TIER: Readonly<Record<EquipmentTierNumber, number>> = {

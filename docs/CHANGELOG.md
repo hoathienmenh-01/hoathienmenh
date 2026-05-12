@@ -10,6 +10,14 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
+### Fixed — Phase 23.6 follow-up
+
+- Equipment quality/phẩm cấp now represents real strength plus rarity inside the same `equipmentTier`, not merely visual rarity/màu.
+- Updated shared quality multipliers used by equipment power budget/score: PHAM 1.00, LINH 1.20, HUYEN 1.50, TIEN 1.90, THAN 2.40.
+- Added shared equipment quality visual mapping so UI color/border/glow/aura reads the real `quality` value only.
+- Inventory and Pháp Bảo UI now show tier, phẩm cấp, required realm, powerScore, the quality meaning hint, and the realm-lock hint “Cần đạt cảnh giới yêu cầu để sử dụng.”
+- Added tests for same-tier quality ordering, quality multiplier impact, tier-overlap balance, enhancement/gem/set caps, visual mapping, tooltip content, and hard realm gating.
+
 ### Phase 23.5 — Pháp Bảo Advanced Artifact System (PR #543 draft)
 
 #### Added

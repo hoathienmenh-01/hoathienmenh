@@ -76,10 +76,10 @@ describe('equipment progression tiers', () => {
 describe('equipment progression balance dials', () => {
   it('quality multiplier đúng', () => {
     expect(getQualityMultiplier('PHAM')).toBe(1);
-    expect(getQualityMultiplier('LINH')).toBe(1.15);
-    expect(getQualityMultiplier('HUYEN')).toBe(1.35);
-    expect(getQualityMultiplier('TIEN')).toBe(1.6);
-    expect(getQualityMultiplier('THAN')).toBe(1.9);
+    expect(getQualityMultiplier('LINH')).toBe(1.2);
+    expect(getQualityMultiplier('HUYEN')).toBe(1.5);
+    expect(getQualityMultiplier('TIEN')).toBe(1.9);
+    expect(getQualityMultiplier('THAN')).toBe(2.4);
   });
 
   it('slot weight đúng cho slot hiện tại và alias design', () => {
@@ -136,6 +136,103 @@ describe('equipment progression balance dials', () => {
         setBonusRatio: 0.16,
       }),
     ).toThrow();
+  });
+
+  it('PHAM < LINH < HUYEN < TIEN < THAN trong cùng tier và slot', () => {
+    const scores = (['PHAM', 'LINH', 'HUYEN', 'TIEN', 'THAN'] as const).map((quality) =>
+      computeEquipmentPowerScore({
+        equipmentTier: 3,
+        equipmentGradeWithinTier: 'I',
+        requiredRealmOrder: 7,
+        quality,
+        slot: 'WEAPON',
+      }),
+    );
+    expect(scores[0]).toBeLessThan(scores[1]);
+    expect(scores[1]).toBeLessThan(scores[2]);
+    expect(scores[2]).toBeLessThan(scores[3]);
+    expect(scores[3]).toBeLessThan(scores[4]);
+  });
+
+  it('quality multiplier ảnh hưởng powerScore cùng tier', () => {
+    const pham = computeEquipmentPowerScore({
+      equipmentTier: 4,
+      equipmentGradeWithinTier: 'I',
+      requiredRealmOrder: 10,
+      quality: 'PHAM',
+      slot: 'WEAPON',
+    });
+    const than = computeEquipmentPowerScore({
+      equipmentTier: 4,
+      equipmentGradeWithinTier: 'I',
+      requiredRealmOrder: 10,
+      quality: 'THAN',
+      slot: 'WEAPON',
+    });
+    expect(than).toBe(Math.round(pham * getQualityMultiplier('THAN')));
+  });
+
+  it('tier cũ THAN gần tier mới PHAM/LINH nhưng không vượt HUYEN/TIEN', () => {
+    const tier1Than = computeEquipmentPowerScore({
+      equipmentTier: 1,
+      equipmentGradeWithinTier: 'I',
+      requiredRealmOrder: 1,
+      quality: 'THAN',
+      slot: 'WEAPON',
+    });
+    const tier2Pham = computeEquipmentPowerScore({
+      equipmentTier: 2,
+      equipmentGradeWithinTier: 'I',
+      requiredRealmOrder: 4,
+      quality: 'PHAM',
+      slot: 'WEAPON',
+    });
+    const tier2Linh = computeEquipmentPowerScore({
+      equipmentTier: 2,
+      equipmentGradeWithinTier: 'I',
+      requiredRealmOrder: 4,
+      quality: 'LINH',
+      slot: 'WEAPON',
+    });
+    const tier2Huyen = computeEquipmentPowerScore({
+      equipmentTier: 2,
+      equipmentGradeWithinTier: 'I',
+      requiredRealmOrder: 4,
+      quality: 'HUYEN',
+      slot: 'WEAPON',
+    });
+    const tier2Tien = computeEquipmentPowerScore({
+      equipmentTier: 2,
+      equipmentGradeWithinTier: 'I',
+      requiredRealmOrder: 4,
+      quality: 'TIEN',
+      slot: 'WEAPON',
+    });
+    expect(tier1Than).toBeGreaterThanOrEqual(tier2Pham * 0.9);
+    expect(tier1Than).toBeLessThan(tier2Linh);
+    expect(tier1Than).toBeLessThan(tier2Huyen);
+    expect(tier1Than).toBeLessThan(tier2Tien);
+  });
+
+  it('enhance/gem/set cap không cho tier thấp vượt quá cap HUYEN tier kế', () => {
+    const cappedTier1Than = computeEquipmentPowerScore({
+      equipmentTier: 1,
+      equipmentGradeWithinTier: 'I',
+      requiredRealmOrder: 1,
+      quality: 'THAN',
+      slot: 'WEAPON',
+      enhanceLevel: getEnhanceCapForTier(1),
+      gemBonusRatio: EQUIPMENT_GEM_BONUS_RATIO_CAP,
+      setBonusRatio: EQUIPMENT_SET_BONUS_CAPS.sixPiece.max,
+    });
+    const tier2HuyenBase = computeEquipmentPowerScore({
+      equipmentTier: 2,
+      equipmentGradeWithinTier: 'I',
+      requiredRealmOrder: 4,
+      quality: 'HUYEN',
+      slot: 'WEAPON',
+    });
+    expect(cappedTier1Than).toBeLessThan(tier2HuyenBase);
   });
 });
 

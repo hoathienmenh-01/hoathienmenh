@@ -8,6 +8,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { getEquipmentQualityVisual, type Quality } from '@xuantoi/shared';
 import MButton from '@/components/ui/MButton.vue';
 import {
   listPhapBao,
@@ -102,25 +103,16 @@ function sourceLabel(s: string): string {
   return t(`inventory.phapBao.source_value.${s}`, s);
 }
 
-function qualityClass(q: string): string {
-  switch (q) {
-    case 'PHAM':
-      return 'text-ink-300';
-    case 'LINH':
-      return 'text-blue-300';
-    case 'HUYEN':
-      return 'text-purple-300';
-    case 'TIEN':
-      return 'text-amber-300';
-    case 'THAN':
-      return 'text-rose-300';
-    default:
-      return '';
-  }
+function qualityClass(q: Quality): string {
+  return getEquipmentQualityVisual(q).textClass;
 }
 
 function localizedName(def: PhapBaoDefView): string {
   return t('inventory.phapBao.detailTitle', { name: def.nameVi });
+}
+
+function qualityLabel(q: Quality): string {
+  return t('quality.' + q);
 }
 </script>
 
@@ -192,6 +184,7 @@ function localizedName(def: PhapBaoDefView): string {
             </span>
           </div>
           <p class="text-[11px] text-ink-300">
+            {{ t('inventory.phapBao.qualityLabel', { quality: qualityLabel(it.def.quality) }) }} ·
             {{ elementLabel(it.def.elementAffinity) }} ·
             {{ roleLabel(it.def.role) }}
           </p>
@@ -203,10 +196,11 @@ function localizedName(def: PhapBaoDefView): string {
             {{
               it.canEquip
                 ? t('inventory.phapBao.realmReady')
-                : t('inventory.phapBao.requiredRealm', {
-                  order: it.requiredRealmOrder,
-                })
+                : t('inventory.phapBao.lockHint')
             }}
+          </p>
+          <p class="text-[11px] text-ink-300" data-testid="phap-bao-quality-meaning">
+            {{ t('inventory.phapBao.qualityMeaning') }}
           </p>
           <p class="text-[11px] text-cyan-300">
             {{ t('inventory.phapBao.refineLevel', { lvl: it.refineLevel }) }} ·
@@ -264,7 +258,9 @@ function localizedName(def: PhapBaoDefView): string {
             <p class="text-[10px] text-ink-300">
               {{
                 t('inventory.phapBao.tierLabel', { tier: d.artifactTier })
-              }} · {{ elementLabel(d.elementAffinity) }}
+              }} ·
+              {{ t('inventory.phapBao.qualityLabel', { quality: qualityLabel(d.quality) }) }} ·
+              {{ elementLabel(d.elementAffinity) }}
             </p>
             <p class="text-[10px] text-ink-300">
               {{ t('inventory.phapBao.source', { source: sourceLabel(d.source) }) }}
@@ -299,8 +295,19 @@ function localizedName(def: PhapBaoDefView): string {
           <p class="text-xs text-ink-300">{{ selected.def.descriptionVi }}</p>
           <p class="text-[11px] text-cyan-200">
             {{ t('inventory.phapBao.tierLabel', { tier: selected.def.artifactTier }) }} ·
+            {{ t('inventory.phapBao.qualityLabel', { quality: qualityLabel(selected.def.quality) }) }} ·
             {{ elementLabel(selected.def.elementAffinity) }} ·
             {{ roleLabel(selected.def.role) }}
+          </p>
+          <p class="text-[11px] text-ink-300" data-testid="phap-bao-detail-quality-meaning">
+            {{ t('inventory.phapBao.qualityMeaning') }}
+          </p>
+          <p
+            v-if="!selected.canEquip"
+            class="text-[11px] text-red-300"
+            data-testid="phap-bao-detail-lock-hint"
+          >
+            {{ t('inventory.phapBao.lockHint') }}
           </p>
           <p class="text-[11px] text-amber-200">
             {{ t('inventory.phapBao.source', { source: sourceLabel(selected.def.source) }) }}
