@@ -1110,11 +1110,11 @@
         "farming": "Tu Luyện"
       },
       "element_value": {
-        "KIM": "Kim",
-        "MOC": "Mộc",
-        "THUY": "Thuỷ",
-        "HOA": "Hoả",
-        "THO": "Thổ",
+        "kim": "Kim",
+        "moc": "Mộc",
+        "thuy": "Thuỷ",
+        "hoa": "Hoả",
+        "tho": "Thổ",
         "NEUTRAL": "Trung Tính"
       },
       "source_value": {

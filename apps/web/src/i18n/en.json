@@ -1110,11 +1110,11 @@
         "farming": "Farming"
       },
       "element_value": {
-        "KIM": "Metal",
-        "MOC": "Wood",
-        "THUY": "Water",
-        "HOA": "Fire",
-        "THO": "Earth",
+        "kim": "Metal",
+        "moc": "Wood",
+        "thuy": "Water",
+        "hoa": "Fire",
+        "tho": "Earth",
         "NEUTRAL": "Neutral"
       },
       "source_value": {

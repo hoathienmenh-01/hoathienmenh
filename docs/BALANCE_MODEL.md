@@ -492,7 +492,68 @@ Merge always operates on **3 items of the same `equipmentTier`, slot, quality, a
 - Idempotency: `mergeEquipment(characterId, ids, idempotencyKey)` retried with the same key replays the original ledger row instead of double-spending. Same pattern for `dismantleEquipment`.
 - Server authority: all mutations run inside `prisma.$transaction` with `updateMany` race guards; partial failure rolls back every ledger row and currency adjustment.
 
-**Follow-ups**: Phase 25.1 wires `refine_protection_charm` into Battle Pass / Monthly Card / VIP Light shops; Phase 23.5 may split out Pháp Bảo (advanced artifact) economy; Phase 24.2 final QA pass on protection thresholds.
+**Follow-ups**: Phase 25.1 wires `refine_protection_charm` into Battle Pass / Monthly Card / VIP Light shops; Phase 23.5 split out Pháp Bảo (advanced artifact) economy (DONE — xem §2.9.3.1E); Phase 24.2 final QA pass on protection thresholds.
+
+### 2.9.3.1E Phase 23.5 — Pháp Bảo Advanced Artifact Foundation (DONE this PR)
+
+Phase 23.5 thêm hệ **Pháp Bảo** là slot riêng (`ARTIFACT_1/2/3` đã có trong `EquipSlot`, hiện active `ARTIFACT_1`), ngoài 8 trang bị chính. Catalog + helpers nằm trong `packages/shared/src/phap-bao.ts`; runtime service `apps/api/src/modules/character/phap-bao.service.ts` read-only (luyện khí reuse `/character/refine`, equip reuse `/inventory/equip`).
+
+**Tier ladder** — `getPhapBaoTierForRealmOrder` map 28 cảnh giới → 10 tier giống equipment (1–3 → tier 1, 4–6 → 2, …, 28 → 10). Pháp bảo `requiredRealmOrder` server-authoritative (Phase 23.2 path đã enforce ở `InventoryService.equip`).
+
+**Catalog foundation** (10 pháp bảo) — `artifactTier × quality × element × role`:
+
+| Artifact | Tier | Realm gate | Quality | Element | Role |
+| --- | --- | --- | --- | --- | --- |
+| Ngũ Hành Linh Châu | 2 | 4 | LINH | NEUTRAL | support |
+| Thanh Liên Kiếm Ấn | 3 | 7 | HUYEN | kim | burst |
+| Huyền Thiên Kính | 4 | 10 | HUYEN | thuy | control |
+| Huyết Nguyệt Hồ Lô | 5 | 13 | TIEN | hoa | sustain |
+| Thổ Linh Sơn Ấn | 5 | 13 | TIEN | tho | defense |
+| Cửu Diễm Phiến | 6 | 16 | TIEN | hoa | burst |
+| Mộc Linh Bình | 6 | 16 | TIEN | moc | sustain |
+| Băng Tâm Ngọc Kính | 7 | 19 | TIEN | thuy | control |
+| Kim Quang Bảo Luân | 8 | 22 | THAN | kim | burst |
+| Hậu Thổ Trấn Hồn Ấn | 9 | 25 | THAN | tho | defense |
+
+**Passive bonus** — `computePhapBaoPassiveBonus` = `baseEffect × refineLevel + starLevel × starBonus`, clamp tổng ≤ 50% `powerBudget`. Pháp bảo contribution vào power score ≈ 10–18% baseline (`computePhapBaoPowerScore` × tier curve).
+
+**Active skill** — `computePhapBaoActiveSkillPreview`:
+- Unlock khi `starLevel >= def.activeSkill.unlockStar` (foundation `starLevel=0` → active LOCKED đến Phase 23.6).
+- Cooldown floor 30s; mỗi sao giảm 5s cooldown (clamp `baseCooldownSec → cooldownFloorSec`).
+- Active skill không quyết định 100% trận đấu (effect baseline ≤ atk 12 / heal 10% HP).
+
+**Refine cost** — `getPhapBaoUpgradeCost`:
+- `linhThachCost = round(750 × refineLevel × tier × qualityMultiplier × 1.4 ^ refineLevel)`.
+- Material `<artifactKey>_essence` ×(2 × refineLevel × tier).
+- Refine cap `def.refineCap` (typically 8–10 theo tier). Pháp bảo refine cost **cao hơn ~50%** so với equipment thường (build identity sink).
+
+**Star-up cost** (preview only Phase 23.5):
+- `linhThachCost = round(1200 × (starLevel + 1) × tier × qualityMultiplier × 1.5 ^ starLevel)`.
+- Material `<artifactKey>_shard` ×(5 × (starLevel + 1) × tier).
+- Star cap `def.starCap` (3–5 tuỳ pháp bảo).
+- `starUpEnabled = false` → button disabled, preview cost chỉ để FE render tooltip.
+
+**Awaken cost** (preview only Phase 23.5):
+- Chỉ available khi quality ≥ `TIEN` && `def.artifactTier >= 5` && `starLevel >= 1` && `def.awakenCap > 0`.
+- `linhThachCost = round(5000 × (awakenStage + 1) × tier × qualityMultiplier × 1.8 ^ awakenStage)` + `awaken_stone` ×(1 + awakenStage) + material chính ×(10 × tier).
+- `awakenEnabled = false` → tương tự star.
+
+**Anti-abuse invariants** (`packages/shared/src/phap-bao.test.ts` 45 cases):
+- Catalog `artifactKey` unique; tier ∈ [1, 10]; `requiredRealmOrder` ∈ [1, 28].
+- `canEquipPhapBao(characterRealmOrder, def)` true iff `characterRealmOrder >= def.requiredRealmOrder` — không thể equip vượt cảnh giới.
+- Power score deterministic theo `(refineLevel, starLevel, awakenStage, tier, quality)`.
+- Passive bonus tổng `≤ powerBudget × 0.5` cho mọi `(refineLevel, starLevel, awakenStage)` trong cap.
+- Active skill cooldown floor `>= 30s` cho mọi pháp bảo có damage tier ≥ medium.
+- Upgrade cost monotonic — `refineLevel n → n+1` có `linhThachCost(n+1) > linhThachCost(n)`. Same cho star + awaken.
+- `validatePhapBaoDefinition` fail khi: thiếu `requiredRealmOrder` / `artifactTier`; tier mismatch realm map; effect vượt cap; active skill thiếu cooldown.
+
+**Free vs premium-safe**: foundation chỉ surface refine path; thăng sao + thức tỉnh persist defer Phase 23.6/25.1. Phase 25.1 sẽ thêm:
+- Premium-safe drop pháp bảo trong cùng tier (không vượt cảnh giới).
+- Premium-safe mảnh pháp bảo + nguyên liệu luyện khí.
+- Bảo hộ luyện pháp bảo (giảm risk fail khi refine high stage).
+- Lựa chọn pháp bảo từ Battle Pass / event.
+
+**Follow-ups**: Phase 23.6 enable star-up + awaken persistence + visual rarity FX; Phase 25.1 monetization-safe hook (premium drop trong tier, không bán pháp bảo top tier hoặc max sao trực tiếp); Phase 24.2/24.3 final QA polish.
 
 ### 2.9.3.2 Phase 14.2.C — Elemental skill tree expansion (DONE this PR)
 

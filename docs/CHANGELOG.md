@@ -10,6 +10,29 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
+### Phase 23.5 — Pháp Bảo Advanced Artifact System (PR #543 draft)
+
+#### Added
+- Shared catalog `packages/shared/src/phap-bao.ts` với 10 pháp bảo foundation (Ngũ Hành Linh Châu / Thanh Liên Kiếm Ấn / Huyền Thiên Kính / Huyết Nguyệt Hồ Lô / Thổ Linh Sơn Ấn / Cửu Diễm Phiến / Mộc Linh Bình / Băng Tâm Ngọc Kính / Kim Quang Bảo Luân / Hậu Thổ Trấn Hồn Ấn). Mỗi pháp bảo có `artifactTier` (1–10) map 28 cảnh giới, `requiredRealmOrder`, `quality`, `elementAffinity`, `role`, passive bonus, active skill (cooldown + unlockStar), `starCap` / `refineCap` / `awakenCap`, `powerBudget`, `source`. Helpers: `getPhapBaoByKey`, `canEquipPhapBao`, `computePhapBaoPowerScore` (deterministic), `computePhapBaoPassiveBonus` (clamp 50% power-budget cap), `computePhapBaoActiveSkillPreview`, cost helpers `getPhapBaoUpgradeCost` / `getPhapBaoStarUpCost` / `getPhapBaoAwakenCost`, validators `validatePhapBaoDefinition` / `validatePhapBaoUpgradeRequest`.
+- API runtime `apps/api/src/modules/character/phap-bao.service.ts`:
+  - `GET /character/phap-bao/list`: trả pháp bảo đang sở hữu (`PhapBaoView[]`) + catalog metadata (`PhapBaoDefView[]`) cho FE hiển thị locked items. Filter `InventoryItem` theo `PHAP_BAO_CATALOG`. `canEquip` flag từ `canEquipPhapBao(character.realmOrder, def)`.
+  - `GET /character/phap-bao/:inventoryItemId/preview`: passive bonus + active skill preview + refine / star / awaken cost kế tiếp. `starUpEnabled` / `awakenEnabled` = false (foundation; mutate phase 23.6 / 25.1).
+  - Equip / unequip pháp bảo reuse `/inventory/equip` (đã có realm gate Phase 23.2 — `requiredRealmOrder` check). Refine pháp bảo reuse `/character/refine` (cùng path equipment thường — `InventoryItem.refineLevel`).
+- Frontend `apps/web/src/components/PhapBaoPanel.vue` + tích hợp dưới `EquipmentBuildPanel` trong `InventoryView`: grid sở hữu + locked catalog (mờ), detail modal passive / active / cost preview, equip / unequip / refine action (star-up + awaken disabled với tooltip "Sắp ra mắt"). Mobile responsive `grid-cols-1 sm:grid-cols-2 xl:grid-cols-3`. i18n vi/en parity (`inventory.phapBao.*` keys: title, subtitle, empty, locked, role_value, element_value, source_value, errors.\*).
+
+#### Balance / Economy
+- Pháp bảo là **slot riêng**, không tính vào 8 trang bị chính (`ARTIFACT_1` / `ARTIFACT_2` / `ARTIFACT_3` đã có trong `EquipSlot`). Currently `ARTIFACT_1` active; `ARTIFACT_2/3` reserved.
+- Power budget cap: passive bonus tổng ≤ 50% baseline; active skill cooldown floor 30s. Pháp bảo contribution ≈ 10–18% tổng power (định lượng qua `computePhapBaoPowerScore` × tier curve).
+- Foundation chỉ bật **refine**; **star-up + awaken DEFER** sang Phase 23.6 / 25.1 (foundation chỉ surface cost preview, button disabled). Không bán pháp bảo top tier trực tiếp; không bán pháp bảo max sao / max awaken; không cho nạp vượt cảnh giới.
+
+#### Tests
+- Shared: `packages/shared/src/phap-bao.test.ts` — 45 cases (catalog uniqueness, tier ↔ realmOrder mapping, `canEquipPhapBao`, power score deterministic, passive cap, active skill cooldown floor, upgrade cost monotonic, validate definition / upgrade request fail paths).
+- API: `apps/api/src/modules/character/phap-bao.service.test.ts` — 11 integration cases với Postgres (ownership, catalog filter, realm gate, refine cost monotonic, awaken disabled khi quality thấp, foundation star/awaken flags = false).
+- UI: `apps/web/src/components/__tests__/PhapBaoPanel.test.ts` — 9 cases (loading / error / empty state, render owned + locked, realm-lock hint, detail modal, preview content, star/awaken disabled, refine event emit, i18n vi/en parity smoke).
+
+#### Docs
+- Phase 23.5 plan in `docs/phase-23-5-phap-bao-artifact-system-plan.md`. Updates to `GAME_DESIGN_BIBLE.md`, `BALANCE_MODEL.md`, `ECONOMY_MODEL.md`, `API.md` (2 new endpoints), `AI_HANDOFF_REPORT.md`.
+
 ### Phase 23.4 — Equipment Upgrade Economy / Resource Sink (PR #542 draft)
 
 #### Added

@@ -106,7 +106,7 @@ const lockedCatalog: PhapBaoDefView = {
   artifactTier: 3,
   requiredRealmOrder: 7,
   quality: 'HUYEN',
-  elementAffinity: 'KIM',
+  elementAffinity: 'kim',
   role: 'burst',
   source: 'boss',
   activeSkill: null,
