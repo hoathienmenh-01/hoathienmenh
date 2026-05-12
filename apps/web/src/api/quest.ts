@@ -32,7 +32,7 @@ export type QuestStatus =
   | 'COMPLETED'
   | 'CLAIMED';
 
-export type QuestKind = 'main' | 'realm' | 'sect' | 'npc' | 'grind' | 'side';
+export type QuestKind = 'main' | 'realm' | 'sect' | 'npc' | 'grind' | 'side' | 'branch' | 'hidden';
 
 export type QuestStepKind = 'kill' | 'collect' | 'talk' | 'explore' | 'choice';
 
@@ -85,6 +85,11 @@ export interface QuestProgressView {
   completedAt: string | null;
   claimedAt: string | null;
   rewards: QuestRewards;
+  chapterKey?: string;
+  objective?: string;
+  requirement?: string;
+  startNpcKey?: string;
+  endNpcKey?: string;
 }
 
 export interface QuestClaimGranted {
