@@ -194,7 +194,7 @@ export interface CharacterStatePayload {
   luck: number;
   linhThach: string;
   tienNgoc: number;
-  tienNgocKhoa: number;
+  tienNgocKhoa?: number;
   cultivating: boolean;
   sectId: string | null;
   sectKey: 'thanh_van' | 'huyen_thuy' | 'tu_la' | null;

@@ -290,7 +290,7 @@ export class ShopPacksService {
     characterId: string,
     rewards: readonly MonetizationReward[],
     meta: {
-      reason: string;
+      reason: 'SHOP_PACK_REWARD';
       refType: string;
       refId: string;
       meta: Record<string, unknown>;
