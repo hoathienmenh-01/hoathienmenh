@@ -10,8 +10,11 @@ import {
   getRefineStatMultiplier,
   isEquipmentSubstatKind,
   itemByKey,
+  itemByKeyWithProgression,
   itemOrGemByKey,
   parseEnchantElement,
+  realmByKey,
+  canEquipItemAtRealm,
   type ElementKey,
   type EquipmentSubstat,
   type ItemDef,
@@ -193,6 +196,7 @@ export class InventoryError extends Error {
       | 'NOT_USABLE'
       | 'WRONG_SLOT'
       | 'ALREADY_USED'
+      | 'EQUIPMENT_REALM_LOCKED'
       | 'INSUFFICIENT_QTY',
   ) {
     super(code);
@@ -278,7 +282,7 @@ export class InventoryService {
       // Phase 11.4.C — fallback `itemOrGemByKey` để gem inventory rows
       // (itemKey = 'gem_*') không bị skip; trước đó `itemByKey` chỉ
       // search ITEMS catalog → gem rows undefined → vô hình trên UI.
-      const item = itemOrGemByKey(r.itemKey);
+      const item = itemByKeyWithProgression(r.itemKey) ?? itemOrGemByKey(r.itemKey);
       if (!item) continue;
       out.push({
         id: r.id,
@@ -684,9 +688,13 @@ export class InventoryService {
     if (!inv || inv.characterId !== char.id) {
       throw new InventoryError('INVENTORY_ITEM_NOT_FOUND');
     }
-    const def = itemByKey(inv.itemKey);
+    const def = itemByKeyWithProgression(inv.itemKey);
     if (!def) throw new InventoryError('ITEM_NOT_FOUND');
     if (!def.slot) throw new InventoryError('NOT_EQUIPPABLE');
+    const realmOrder = (realmByKey(char.realmKey)?.order ?? -1) + 1;
+    if (!canEquipItemAtRealm(def, realmOrder)) {
+      throw new InventoryError('EQUIPMENT_REALM_LOCKED');
+    }
 
     await this.prisma.$transaction(async (tx) => {
       // Tháo món hiện tại ở slot này (nếu có)
