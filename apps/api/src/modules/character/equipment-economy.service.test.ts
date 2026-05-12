@@ -164,11 +164,11 @@ describe('EquipmentEconomyService — Phase 23.4 merge / dismantle', () => {
   });
 
   it('rejects merge when item belongs to another character', async () => {
-    const { fixture, items } = await seedMergeable();
+    const { items } = await seedMergeable();
     const other = await makeUserChar(prisma);
     await expect(
       economy.mergeEquipment(other.characterId, items.map((i) => i.id)),
-    ).rejects.toMatchObject({ code: 'MERGE_ITEM_NOT_FOUND' });
+    ).rejects.toMatchObject({ code: 'MERGE_ITEM_NOT_OWNED' });
   });
 
   it('rejects merge when an item is equipped', async () => {
