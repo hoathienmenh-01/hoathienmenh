@@ -37,6 +37,7 @@ import { learnSkillFromBook } from '@/api/skill';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
 import EquipmentUpgradePanel from '@/components/EquipmentUpgradePanel.vue';
+import EquipmentBuildPanel from '@/components/EquipmentBuildPanel.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 const auth = useAuthStore();
@@ -47,6 +48,8 @@ const { t } = useI18n();
 
 const items = ref<InventoryView[]>([]);
 const submitting = ref(false);
+/** Phase 23.3 — bump khi equip/unequip/refine/socket/reforge xong để build panel refetch. */
+const buildRefreshKey = ref(0);
 /** Phase 11.5.C — per-row protection toggle (key = inventoryItemId). */
 const protectionFlags = ref<Record<string, boolean>>({});
 /** Phase 11.4.C — per-equipment-row gem-key selection (key = equipment inventoryItemId). */
@@ -249,6 +252,7 @@ async function refreshInventory(): Promise<void> {
   } catch {
     toast.push({ type: 'error', text: t('inventory.loadFailToast') });
   }
+  buildRefreshKey.value += 1;
 }
 
 async function onEquip(it: InventoryView): Promise<void> {
@@ -462,7 +466,8 @@ function handleErr(e: unknown): void {
     <h2 class="text-xl tracking-widest mb-4">{{ t('inventory.title') }}</h2>
 
     <div class="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
-      <!-- Bộ trang bị -->
+      <!-- Bộ trang bị + Phase 23.3 Build summary -->
+      <div class="space-y-4">
       <section class="rounded border border-ink-300/40 bg-ink-700/30 p-4 space-y-2">
         <h3 class="text-base font-bold mb-2">{{ t('inventory.gearTitle') }}</h3>
         <div
@@ -511,6 +516,8 @@ function handleErr(e: unknown): void {
           </MButton>
         </div>
       </section>
+      <EquipmentBuildPanel :refresh-key="buildRefreshKey" />
+      </div>
 
       <!-- Danh sách item chưa đeo -->
       <section class="space-y-3">

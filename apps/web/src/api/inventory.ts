@@ -1,12 +1,17 @@
 import { apiClient } from './client';
 import type {
+  ActiveSetBonus,
   ElementKey,
   EquipSlot,
   EquipmentSubstat,
   EquipmentSubstatKind,
   ElementalEnchantEffect,
+  GearResonanceEffect,
+  GearResonanceSummary,
   ItemDef,
   Quality,
+  ResonanceTier,
+  SetBonusBonusEnvelope,
 } from '@xuantoi/shared';
 
 export interface InventoryView {
@@ -65,6 +70,30 @@ function unwrap<T>(env: Envelope<T>): T {
 export async function listInventory(): Promise<InventoryView[]> {
   const { data } = await apiClient.get<Envelope<{ items: InventoryView[] }>>('/inventory');
   return unwrap(data).items;
+}
+
+/**
+ * Phase 23.3 — Equipment Build snapshot (Set Bonus + Gear Resonance).
+ *
+ * Trả `null` nếu character chưa equip món Phase 23.2 compatible.
+ */
+export interface EquipmentBuildSummaryDto {
+  pieceCount: number;
+  mainElement: ElementKey | null;
+  elementDistribution: Partial<Record<ElementKey, number>>;
+  activeSets: ActiveSetBonus[];
+  activeSetCount: number;
+  resonance: GearResonanceSummary;
+  totalBonusRatio: SetBonusBonusEnvelope;
+  totalPowerScore: number;
+  resonanceTier: ResonanceTier;
+}
+
+export async function getEquipmentBuild(): Promise<EquipmentBuildSummaryDto | null> {
+  const { data } = await apiClient.get<Envelope<{ summary: EquipmentBuildSummaryDto | null }>>(
+    '/inventory/build',
+  );
+  return unwrap(data).summary;
 }
 
 export async function equipItem(inventoryItemId: string): Promise<InventoryView[]> {

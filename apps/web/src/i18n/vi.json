@@ -945,6 +945,47 @@
         "NO_ELEMENT_SELECTED": "Hãy chọn 1 hệ Ngũ Hành trước.",
         "UNKNOWN": "Lỗi không xác định, vui lòng thử lại."
       }
+    },
+    "build": {
+      "title": "Tổng kết Build (Set & Cộng hưởng)",
+      "phaseBadge": "Phase 23.3",
+      "subtitle": "Tóm tắt set bonus 2/4/6 và gear resonance của bộ trang bị hiện tại.",
+      "empty": "Chưa equip món Phase 23.2 nào.",
+      "mainElement": "Hệ chính",
+      "noMainElement": "Không có",
+      "pieceCount": "Số món",
+      "activeSetCount": "Set kích hoạt",
+      "resonanceTier": "Cấp cộng hưởng",
+      "totalPowerScore": "Tổng power score",
+      "totalBonus": "Tổng bonus phụ",
+      "totalBonusFormat": "{percent}% (đã cap 30%)",
+      "noSet": "Chưa kích hoạt set nào",
+      "noResonance": "Chưa có cộng hưởng",
+      "missingSlots": "Thiếu {count} slot",
+      "sectionSets": "Set Bonus",
+      "sectionResonance": "Gear Resonance",
+      "tierPieces": "{pieces} món",
+      "tier": {
+        "NONE": "Không",
+        "BASIC": "Sơ",
+        "TUNED": "Hài Âm",
+        "HARMONIZED": "Hợp Nhất",
+        "ASCENDANT": "Thăng Hoa"
+      },
+      "resonanceKind": {
+        "SAME_TIER": "Cùng tầng",
+        "ENHANCE": "Cường hóa",
+        "QUALITY": "Phẩm chất",
+        "ELEMENTAL": "Ngũ Hành",
+        "HYBRID": "Tương Sinh"
+      },
+      "element": {
+        "kim": "Kim",
+        "moc": "Mộc",
+        "thuy": "Thuỷ",
+        "hoa": "Hoả",
+        "tho": "Thổ"
+      }
     }
   },
   "equipSlot": {
