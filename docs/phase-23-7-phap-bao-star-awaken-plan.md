@@ -136,7 +136,7 @@ Extend `PhapBaoService` and controller routes:
 - `GET /character/phap-bao/:inventoryItemId/preview`
 - `POST /character/phap-bao/:inventoryItemId/star-up`
 - `POST /character/phap-bao/:inventoryItemId/awaken`
-- `POST /character/phap-bao/:inventoryItemId/refine` only if existing refine endpoint cannot support artifact-specific cost/cap safely.
+- `POST /character/phap-bao/:inventoryItemId/refine` for artifact-specific persisted refine cost/cap.
 
 Authority rules:
 
@@ -241,3 +241,13 @@ If API tests require local services:
 - `pnpm infra:up`
 - `DATABASE_URL="postgresql://mtt:mtt@localhost:5432/mtt" REDIS_URL="redis://localhost:6379" pnpm --filter @xuantoi/api exec prisma migrate deploy`
 - `DATABASE_URL="postgresql://mtt:mtt@localhost:5432/mtt" REDIS_URL="redis://localhost:6379" pnpm test`
+
+
+## 13. Implementation snapshot
+
+- Schema migration `20260512123700_phase_23_7_phap_bao_progression` added the additive `InventoryItem` fields in §2.
+- Shared helper implementation landed in `packages/shared/src/phap-bao-progression.ts` and is exported from `packages/shared/src/index.ts`.
+- Runtime implementation landed in `PhapBaoService` + `CharacterController` with dedicated star-up/awaken/refine endpoints.
+- UI implementation landed in `PhapBaoPanel.vue`, `InventoryView.vue`, `apps/web/src/api/phapBao.ts`, and vi/en i18n.
+- Tests added/updated in shared `phap-bao.test.ts`, API `phap-bao.service.test.ts`, and web `PhapBaoPanel.test.ts`.
+- Docs updated in `GAME_DESIGN_BIBLE`, `BALANCE_MODEL`, `ECONOMY_MODEL`, `API`, `AI_HANDOFF_REPORT`, and `CHANGELOG`.
