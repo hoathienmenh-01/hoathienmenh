@@ -11,9 +11,12 @@ import { AdminModule } from '../admin/admin.module';
 import { SectWarModule } from '../sect-war/sect-war.module';
 import { TerritoryModule } from '../territory/territory.module';
 import { LiveOpsEventSchedulerModule } from '../liveops-event-scheduler/liveops-event-scheduler.module';
+import { EconomyModule } from '../economy/economy.module';
 
 // Phase 15.3.A — `LiveOpsEventSchedulerModule` wire để BossService đọc
 // BOSS_REWARD_BOOST runtime modifier (Optional inject — test có thể bỏ).
+// Phase 26.2 — `EconomyModule` wire để BossService đọc DropEconomyService
+// cấp WORLD_BOSS material drop (weekly cap), fail-soft Optional inject.
 @Module({
   imports: [
     RealtimeModule,
@@ -25,6 +28,7 @@ import { LiveOpsEventSchedulerModule } from '../liveops-event-scheduler/liveops-
     SectWarModule,
     TerritoryModule,
     LiveOpsEventSchedulerModule,
+    EconomyModule,
   ],
   controllers: [BossController],
   providers: [BossService, PrismaService],

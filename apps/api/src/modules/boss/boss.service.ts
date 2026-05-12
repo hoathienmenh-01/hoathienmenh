@@ -26,6 +26,9 @@ import {
   composeTitleMods,
   getBossElementProfile,
   getBodyRealmByKey,
+  inferDropMonsterType,
+  realmByKey,
+  realmOrderToMaterialTier,
   rollDamage,
   skillByKey,
   type BossDef,
@@ -51,6 +54,7 @@ import { MissionService } from '../mission/mission.service';
 import { SectWarService } from '../sect-war/sect-war.service';
 import { TerritoryService } from '../territory/territory.service';
 import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
+import { DropEconomyService } from '../economy/drop-economy.service';
 
 export class BossError extends Error {
   constructor(
@@ -176,6 +180,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     @Optional() private readonly territory?: TerritoryService,
     @Optional()
     private readonly liveOpsEvents?: LiveOpsEventSchedulerService,
+    @Optional() private readonly dropEconomy?: DropEconomyService,
   ) {}
 
   onModuleInit(): void {
@@ -588,7 +593,15 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     void this.broadcastBossUpdate(boss.id, viewerOnlyHp(bossHpAfter));
 
     if (defeated) {
-      void this.broadcastBossDefeated(boss.id, rewardSlices ?? []);
+      const slicesSnapshot: DefeatedRewardSlice[] = rewardSlices ?? [];
+      void this.broadcastBossDefeated(boss.id, slicesSnapshot);
+      // Phase 26.2 — Drop Economy V2 WORLD_BOSS material grant. Chạy
+      // SAU tx attack vì `DropEconomyService.rollAndGrant` mở `$transaction`
+      // riêng (cap upsert + grant atomic). Mỗi slice nhận 1 lần roll.
+      // Fail-soft — không break boss reward path.
+      if (slicesSnapshot.length > 0) {
+        void this.applyWorldBossDropEconomy(slicesSnapshot, boss.id, def);
+      }
     }
 
     return {
@@ -670,6 +683,10 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
             status: 'EXPIRED',
             rewards: slices,
           });
+          // Phase 26.2 — Drop Economy V2 WORLD_BOSS expired path.
+          if (slices.length > 0) {
+            void this.applyWorldBossDropEconomy(slices, active.id, def);
+          }
         }
       }
 
@@ -954,6 +971,10 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
             status: 'EXPIRED',
             rewards: slices,
           });
+          // Phase 26.2 — Drop Economy V2 WORLD_BOSS expired path (adminSpawn force).
+          if (slices.length > 0) {
+            void this.applyWorldBossDropEconomy(slices, active.id, activeDef);
+          }
         } else {
           this.realtime.broadcast('boss:end', {
             id: active.id,
@@ -1326,6 +1347,65 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       });
     }
     return slices;
+  }
+
+  /**
+   * Phase 26.2 — Drop Economy V2 WORLD_BOSS material grant. Chạy SAU
+   * `distributeRewards` (linh thạch + items legacy) đã commit. Mỗi
+   * reward slice nhận 1-2 lần roll material drop (`rank === 1` được
+   * +1 roll). WeeklyMaterialCap enforce qua DropEconomyService —
+   * top-tier ARTIFACT_CRAFT chỉ rơi đúng `maxWeeklyQty` mỗi tuần.
+   *
+   * Fail-soft: lỗi trong roll/grant chỉ log, không throw — boss
+   * reward path KHÔNG được rollback vì drop economy chỉ là bonus.
+   */
+  private async applyWorldBossDropEconomy(
+    slices: DefeatedRewardSlice[],
+    bossId: string,
+    def: BossDef,
+  ): Promise<void> {
+    if (!this.dropEconomy) return;
+    try {
+      const sourceOrder = realmByKey(def.recommendedRealm)?.order ?? 0;
+      const sourceTier = realmOrderToMaterialTier(sourceOrder);
+      // World boss = WORLD_BOSS dropSource. `inferDropMonsterType` defensive
+      // — nếu boss def thiếu `monsterType` (legacy) fallback NORMAL, nhưng
+      // chúng ta override hard sang `'WORLD_BOSS'` cho roll context.
+      const legacyType = inferDropMonsterType(def.monsterType ?? 'BOSS');
+      void legacyType;
+      const charIds = slices.map((s) => s.characterId);
+      if (charIds.length === 0) return;
+      const chars = await this.prisma.character.findMany({
+        where: { id: { in: charIds } },
+        select: { id: true, realmKey: true },
+      });
+      const realmKeyById = new Map(chars.map((c) => [c.id, c.realmKey]));
+      for (const slice of slices) {
+        const playerRealmKey = realmKeyById.get(slice.characterId);
+        if (!playerRealmKey) continue;
+        const playerOrder = realmByKey(playerRealmKey)?.order ?? 0;
+        // Top-rank được roll thêm 1 lần để chênh lệch thưởng vs rest;
+        // weekly cap vẫn enforce qua catalog rule.
+        const rollCount = slice.rank === 1 ? 2 : 1;
+        try {
+          await this.dropEconomy.rollAndGrant(slice.characterId, {
+            playerRealmOrder: playerOrder,
+            sourceTier,
+            monsterType: 'WORLD_BOSS',
+            source: 'WORLD_BOSS',
+            rollCount,
+            refType: 'WorldBoss',
+            refId: bossId,
+          });
+        } catch (e) {
+          this.logger.warn(
+            `boss drop economy WORLD_BOSS bossId=${bossId} char=${slice.characterId} failed: ${(e as Error).message}`,
+          );
+        }
+      }
+    } catch (e) {
+      this.logger.warn(`applyWorldBossDropEconomy bossId=${bossId} failed: ${(e as Error).message}`);
+    }
   }
 
   /**
