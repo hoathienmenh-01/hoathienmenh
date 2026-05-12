@@ -24,6 +24,7 @@ export * from './equipment-upgrade-economy';
 export * from './equipment-set-bonus';
 export * from './equipment-resonance';
 export * from './equipment-build';
+export * from './phap-bao';
 export * from './skill-templates';
 export * from './spiritual-root';
 export * from './talents';
