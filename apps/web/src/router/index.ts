@@ -161,6 +161,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/CultivationMethodView.vue'),
   },
   {
+    path: '/body-cultivation',
+    name: 'body-cultivation',
+    component: () => import('@/views/BodyCultivationView.vue'),
+  },
+  {
     path: '/spiritual-root',
     name: 'spiritual-root',
     component: () => import('@/views/SpiritualRootView.vue'),
