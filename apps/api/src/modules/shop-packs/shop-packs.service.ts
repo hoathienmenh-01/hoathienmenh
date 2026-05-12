@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CurrencyKind, Prisma } from '@prisma/client';
 import {
-  SHOP_PACKS,
   canPurchaseShopPack,
   getActiveShopPacks,
   getPurchaseWindowKey,

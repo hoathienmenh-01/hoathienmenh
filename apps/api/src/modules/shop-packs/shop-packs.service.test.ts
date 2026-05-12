@@ -5,7 +5,7 @@ import { CharacterService } from '../character/character.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { TEST_DATABASE_URL, makeUserChar, wipeAll } from '../../test-helpers';
-import { ShopPackError, ShopPacksService } from './shop-packs.service';
+import { ShopPacksService } from './shop-packs.service';
 
 let prisma: PrismaService;
 let shopPacks: ShopPacksService;
