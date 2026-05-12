@@ -282,6 +282,7 @@ const LEGACY_ALCHEMY_RECIPE_SEEDS: readonly AlchemyRecipeSeed[] = [
     realmRequirement: 'kim_dan',
     linhThachCost: 360,
     successRate: 0.62,
+    recipeCategory: 'BODY_EXP',
   },
 
   // ----- TIEN tier (3 recipe) -----
@@ -350,6 +351,7 @@ const LEGACY_ALCHEMY_RECIPE_SEEDS: readonly AlchemyRecipeSeed[] = [
     realmRequirement: 'hoa_than',
     linhThachCost: 900,
     successRate: 0.5,
+    recipeCategory: 'BODY_EXP',
   },
 
   // ----- THAN tier (1 recipe) -----
@@ -429,9 +431,9 @@ const ALCHEMY_DEFAULT_SUCCESS_BY_TIER: Record<number, number> = {
   2: 0.82,
   3: 0.7,
   4: 0.58,
-  5: 0.46,
-  6: 0.38,
-  7: 0.32,
+  5: 0.3,
+  6: 0.3,
+  7: 0.28,
   8: 0.26,
   9: 0.2,
 };
@@ -577,8 +579,12 @@ function normalizeAlchemyRecipe(seed: AlchemyRecipeSeed): AlchemyRecipeDef {
 
 const ALCHEMY_V2_RECIPES = ALCHEMY_PILL_RECIPE_SPECS.map(makeAlchemyV2Recipe);
 
+const ALCHEMY_V2_RECIPE_KEYS = new Set(ALCHEMY_V2_RECIPES.map((recipe) => recipe.key));
+
 export const ALCHEMY_RECIPES: readonly AlchemyRecipeDef[] = [
-  ...LEGACY_ALCHEMY_RECIPE_SEEDS.map(normalizeAlchemyRecipe),
+  ...LEGACY_ALCHEMY_RECIPE_SEEDS.map(normalizeAlchemyRecipe).filter(
+    (recipe) => !ALCHEMY_V2_RECIPE_KEYS.has(recipe.key),
+  ),
   ...ALCHEMY_V2_RECIPES,
 ];
 

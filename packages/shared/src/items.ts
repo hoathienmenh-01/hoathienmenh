@@ -2017,7 +2017,10 @@ export const ALCHEMY_V2_ITEMS: readonly ItemDef[] = [
 
 const ALCHEMY_V2_ITEM_BY_KEY = new Map(ALCHEMY_V2_ITEMS.map((i) => [i.key, i]));
 
-export const ITEMS: readonly ItemDef[] = [...BASE_ITEMS, ...ALCHEMY_V2_ITEMS];
+export const ITEMS: readonly ItemDef[] = [
+  ...BASE_ITEMS.filter((item) => !ALCHEMY_V2_ITEM_BY_KEY.has(item.key)),
+  ...ALCHEMY_V2_ITEMS,
+];
 
 export function itemByKey(key: string): ItemDef | undefined {
   return ALCHEMY_V2_ITEM_BY_KEY.get(key) ?? BASE_ITEMS.find((i) => i.key === key);

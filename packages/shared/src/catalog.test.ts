@@ -37,18 +37,31 @@ describe('catalog integrity', () => {
       }
     });
 
-    it('pills have effect with at least one of hp/mp/exp/buffKey', () => {
+    it('pills have effect with at least one supported pill effect', () => {
       // Phase 11.10.E — pill effect có thể là buffKey (apply BuffDef qua
       // InventoryService.use → BuffService.applyBuffTx) thay vì hp/mp/exp tức thì.
       const pills = ITEMS.filter((i) => i.kind.startsWith('PILL'));
       for (const p of pills) {
         expect(p.effect).toBeDefined();
         const hasInstant =
-          (p.effect?.hp ?? 0) + (p.effect?.mp ?? 0) + (p.effect?.exp ?? 0);
+          (p.effect?.hp ?? 0) +
+          (p.effect?.mp ?? 0) +
+          (p.effect?.stamina ?? 0) +
+          (p.effect?.exp ?? 0) +
+          (p.effect?.bodyExp ?? 0) +
+          (p.effect?.qiBreakthroughBonus ?? 0) +
+          (p.effect?.bodyBreakthroughBonus ?? 0) +
+          (p.effect?.tribulationSupport ?? 0) +
+          (p.effect?.bodyInjuryReductionMinutes ?? 0) +
+          (p.effect?.taoMaReductionMinutes ?? 0) +
+          (p.effect?.cultivationRateBonusPct ?? 0) +
+          (p.effect?.bodyCultivationRateBonusPct ?? 0) +
+          (p.effect?.bossDamageReductionPct ?? 0);
         const hasBuff = p.effect?.buffKey !== undefined;
+        const hasResist = Object.keys(p.effect?.elementalResistBonus ?? {}).length > 0;
         expect(
-          hasInstant > 0 || hasBuff,
-          `pill ${p.key} phải có ít nhất 1 effect (hp/mp/exp/buffKey)`
+          hasInstant > 0 || hasBuff || hasResist,
+          `pill ${p.key} phải có ít nhất 1 effect hỗ trợ`
         ).toBe(true);
       }
     });
