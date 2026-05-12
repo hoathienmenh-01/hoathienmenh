@@ -91,6 +91,70 @@ export class InventoryController {
     }
   }
 
+  @Get('build')
+  async build(@Req() req: Request) {
+    const { characterId } = await this.requireCharacter(req);
+    const summary = await this.inv.equipmentBuildSummary(characterId);
+    if (!summary) {
+      return { ok: true, data: { summary: null } };
+    }
+    // Serialize: convert Map to object so JSON works.
+    return {
+      ok: true,
+      data: {
+        summary: {
+          pieceCount: summary.pieceCount,
+          mainElement: summary.mainElement,
+          elementDistribution: summary.elementDistribution,
+          activeSets: summary.activeSets.map((s) => ({
+            setKey: s.setKey,
+            pieceCount: s.pieceCount,
+            missingSlots: s.missingSlots,
+            totalRatio: s.totalRatio,
+            activeTiers: s.activeTiers.map((t) => ({
+              pieces: t.pieces,
+              bonusRatio: t.bonusRatio,
+              description: t.description,
+              descriptionVi: t.descriptionVi,
+              cooldownSec: t.cooldownSec,
+            })),
+            set: {
+              setKey: s.set.setKey,
+              name: s.set.name,
+              nameVi: s.set.nameVi,
+              description: s.set.description,
+              descriptionVi: s.set.descriptionVi,
+              elementAffinity: s.set.elementAffinity,
+              allowedTiers: s.set.allowedTiers,
+              requiredRealmOrder: s.set.requiredRealmOrder,
+              requiredSlots: s.set.requiredSlots,
+              tags: s.set.tags,
+              bonusCap: s.set.bonusCap,
+            },
+          })),
+          activeSetCount: summary.activeSetCount,
+          resonance: {
+            pieceCount: summary.resonance.pieceCount,
+            dominantElement: summary.resonance.dominantElement,
+            elementDistribution: summary.resonance.elementDistribution,
+            totalRatio: summary.resonance.totalRatio,
+            active: summary.resonance.active.map((e) => ({
+              kind: e.kind,
+              key: e.key,
+              ratio: e.ratio,
+              description: e.description,
+              descriptionVi: e.descriptionVi,
+              meta: e.meta ?? null,
+            })),
+          },
+          totalBonusRatio: summary.totalBonusRatio,
+          totalPowerScore: summary.totalPowerScore,
+          resonanceTier: summary.resonanceTier,
+        },
+      },
+    };
+  }
+
   @Post('use')
   @HttpCode(200)
   async use(@Req() req: Request, @Body() body: unknown) {
