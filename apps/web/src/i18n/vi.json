@@ -2229,7 +2229,38 @@
       "maxGrade": "Phẩm tối đa",
       "cost": "Chi phí",
       "linhThach": "Linh Thạch",
-      "successRate": "Tỉ lệ thành công"
+      "successRate": "Tỉ lệ thành công",
+      "dropFrom": "Rơi từ"
+    },
+    "materialCategory": {
+      "ALCHEMY_QI": "Luyện Khí",
+      "ALCHEMY_BODY": "Luyện Thể",
+      "QI_BREAKTHROUGH": "Đột phá Khí",
+      "BODY_BREAKTHROUGH": "Đột phá Thể",
+      "TRIBULATION": "Độ kiếp",
+      "COMBAT_BUFF": "Chiến đấu",
+      "EQUIPMENT_CRAFT": "Trang bị",
+      "ARTIFACT_CRAFT": "Pháp bảo",
+      "FURNACE_UPGRADE": "Nâng lò",
+      "GENERAL": "Phổ thông"
+    },
+    "sourceHint": {
+      "NORMAL_MONSTER": "Quái thường",
+      "ELITE": "Tinh anh",
+      "BOSS": "Boss",
+      "WORLD_BOSS": "World Boss",
+      "DUNGEON": "Bí cảnh",
+      "BODY_DUNGEON": "Bí cảnh Luyện Thể",
+      "ALCHEMY_DUNGEON": "Bí cảnh Luyện Khí",
+      "QUEST": "Nhiệm vụ",
+      "EVENT": "Sự kiện",
+      "MAIN_QUEST": "Nhiệm vụ chính",
+      "DAILY_QUEST": "Nhiệm vụ ngày",
+      "SECT_SHOP": "Tông môn shop",
+      "NPC_SHOP": "NPC shop",
+      "MARKET": "Chợ",
+      "AUCTION": "Đấu giá",
+      "ADMIN_ONLY": "Quản trị"
     },
     "button": {
       "craft": "Luyện đan",

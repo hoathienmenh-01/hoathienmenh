@@ -31,6 +31,11 @@ export interface AlchemyMissingInput {
   itemKey: string;
   requiredQty: number;
   ownedQty: number;
+  /** Phase 26.2 — surfaced metadata. Optional khi item legacy chưa migrate. */
+  itemName?: string;
+  materialTier?: number;
+  materialCategory?: string;
+  sourceHint?: string[];
 }
 
 export interface AlchemyRecipeView {

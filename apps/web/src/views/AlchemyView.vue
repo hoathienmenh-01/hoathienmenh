@@ -396,13 +396,43 @@ onMounted(async () => {
               <span class="text-ink-100 ml-1">{{ recipe.sourceHint.join(', ') }}</span>
             </div>
             <div v-if="(recipe.missingInputs ?? []).length > 0">
-              <span class="text-rose-300">{{ t('alchemy.field.missingInputs') }}:</span>
-              <span class="text-rose-200 ml-1">
-                <template v-for="(input, idx) in recipe.missingInputs ?? []" :key="input.itemKey">
-                  <span v-if="idx > 0">, </span>
-                  <span>{{ input.itemKey }} {{ input.ownedQty }}/{{ input.requiredQty }}</span>
-                </template>
-              </span>
+              <div class="text-rose-300">{{ t('alchemy.field.missingInputs') }}:</div>
+              <ul class="text-rose-200 ml-2 mt-1 space-y-1" :data-testid="`alchemy-missing-${recipe.key}`">
+                <li
+                  v-for="input in recipe.missingInputs ?? []"
+                  :key="input.itemKey"
+                  class="leading-tight"
+                  :data-testid="`alchemy-missing-${recipe.key}-${input.itemKey}`"
+                >
+                  <div>
+                    <span class="font-medium">{{ input.itemName ?? input.itemKey }}</span>
+                    <span class="text-rose-100 ml-1">{{ input.ownedQty }}/{{ input.requiredQty }}</span>
+                    <span
+                      v-if="input.materialTier"
+                      class="ml-2 px-1.5 py-0.5 rounded bg-rose-950/40 text-rose-300 text-2xs"
+                      :data-testid="`alchemy-missing-tier-${recipe.key}-${input.itemKey}`"
+                    >
+                      T{{ input.materialTier }}
+                    </span>
+                    <span
+                      v-if="input.materialCategory"
+                      class="ml-1 px-1.5 py-0.5 rounded bg-slate-800/60 text-slate-300 text-2xs"
+                    >
+                      {{ t(`alchemy.materialCategory.${input.materialCategory}`) }}
+                    </span>
+                  </div>
+                  <div
+                    v-if="(input.sourceHint ?? []).length > 0"
+                    class="text-ink-300 text-xs"
+                    :data-testid="`alchemy-missing-source-${recipe.key}-${input.itemKey}`"
+                  >
+                    <span class="text-ink-400">{{ t('alchemy.field.dropFrom') }}:</span>
+                    <span class="ml-1">
+                      {{ (input.sourceHint ?? []).map((h) => t(`alchemy.sourceHint.${h}`)).join(', ') }}
+                    </span>
+                  </div>
+                </li>
+              </ul>
             </div>
             <div class="flex flex-wrap gap-x-3">
               <span>

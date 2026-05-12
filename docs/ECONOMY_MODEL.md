@@ -797,3 +797,79 @@ liên kết qua `meta.liveOps.eventKey` + `meta.liveOps.claimId`.
 - KHÔNG bypass Daily Reward Cap (cap thắng cho mọi BOOST event).
 - KHÔNG cho festival gift cấp item market-disrupting (cap 50 qty/entry × 10 entries giới hạn tổng giá trị).
 - KHÔNG auto-rollback grant đã cấp nếu admin disable event sau (audit-only).
+
+## Drop Economy V2 — Material Drop & Anti-inflation — Phase 26.2
+
+Phase 26.2 introduces server-authoritative material drops on top of the existing
+`lootTable` (legacy). Drops are computed by `DropEconomyService.rollAndGrant`
+using shared `packages/shared/src/drop-economy.ts` helpers and enforced via
+two new Prisma cap models.
+
+### Material sources & drop rate envelope
+
+| Source | MonsterType | Base material drop rate | Notes |
+|--------|-------------|-------------------------|-------|
+| Field encounter normal | `NORMAL` | 1%–5% | rare/breakthrough material gated daily |
+| Field encounter elite | `ELITE` | 8%–18% | better tier distribution, daily cap thấp-vừa |
+| Field/raid boss | `BOSS` | 25%–50% | per-day cap, allow above2 0.5% (special boss) |
+| Dungeon encounter normal | DUNGEON | 35%–65% | `DungeonRun.dailyLimit` enforces source-level cap |
+| Body dungeon | `BODY_DUNGEON` | 35%–65% | ưu tiên `ALCHEMY_BODY`/`BODY_BREAKTHROUGH` |
+| Alchemy dungeon | `ALCHEMY_DUNGEON` | 35%–65% | ưu tiên `ALCHEMY_QI`/`FURNACE_UPGRADE` |
+| Dungeon final boss | `DUNGEON_BOSS` | 30%–55% | hệ số tốt hơn `BOSS` ở `sameTier` slot |
+| World boss | `WORLD_BOSS` | 60%–90% | rank 1 nhận 2 rolls, weekly cap nghiêm |
+| Event boss | `EVENT_BOSS` | 50%–80% | season cap; KHÔNG VIP-only |
+
+Material category multipliers (`MATERIAL_CATEGORY_MULTIPLIER`):
+`ALCHEMY_QI=1.0`, `GENERAL=1.0`, `ALCHEMY_BODY=0.7`, `EQUIPMENT_CRAFT=0.65`,
+`COMBAT_BUFF=0.5`, `QI_BREAKTHROUGH=0.32`, `FURNACE_UPGRADE=0.3`,
+`BODY_BREAKTHROUGH=0.27`, `TRIBULATION=0.15`, `ARTIFACT_CRAFT=0.05`.
+
+### Anti-inflation rules
+
+1. **Effective drop tier invariant**: `effectiveDropTier = min(playerRealmTier, sourceTier)`. Player cảnh giới cao quay lại map thấp KHÔNG biến map thành mỏ endgame; player thấp đánh quái cao (nếu vượt gate) KHÔNG nhảy bậc material.
+2. **NORMAL never drops endgame**: 2-step roll weight cho `NORMAL` có `above2 = 0%`. Quái thường KHÔNG rơi material tier > player/source +1.
+3. **Pill thành phẩm rất hiếm**: Finished pill (đan thành phẩm) chỉ rơi từ `BOSS`/`DUNGEON_BOSS`/`WORLD_BOSS` với baseChance < 1% — ưu tiên player tự luyện đan (Phase 26.1).
+4. **Artifact crafting** (`ARTIFACT_CRAFT`): multiplier 0.05; KHÔNG rơi từ NORMAL tier ≥ 4. Mảnh pháp bảo endgame chỉ từ WORLD_BOSS / EVENT.
+5. **Breakthrough materials** (`QI_BREAKTHROUGH`, `BODY_BREAKTHROUGH`): multiplier ≤ 0.32; daily/weekly cap luôn-luôn; quái thường KHÔNG rơi cùng tier player.
+6. **Tribulation materials** (`TRIBULATION`): multiplier 0.15; chỉ từ boss độ kiếp / dungeon độ kiếp / event.
+7. **No P2W path**: KHÔNG bán cap bypass, KHÔNG VIP boost drop endgame, KHÔNG topup → rare material trực tiếp.
+
+### Daily / Weekly cap (Prisma)
+
+- `DailyMaterialCap` UNIQUE `(characterId, dayBucket, ruleKey)` — `dayBucket = YYYY-MM-DD` ICT (UTC+7), aligned với existing daily reward cap (Phase 16.5).
+- `WeeklyMaterialCap` UNIQUE `(characterId, weekBucket, ruleKey)` — `weekBucket` ISO-8601 `YYYY-Www` qua `weekBucketFor(now, tz='Asia/Ho_Chi_Minh')`.
+
+Cap row ghi cumulative `qtyAccum`. Mỗi roll:
+1. Server roll `qty ∈ [minQty, maxQty]` của rule.
+2. Inside `$transaction`: upsert cap row (insert if missing), so sánh `qtyAccum + qty` vs rule `maxDailyQty` / `maxWeeklyQty`.
+3. Clamp `effectiveQty = min(qty, capRemaining)`. Nếu `effectiveQty = 0` → skip grant.
+4. `InventoryService.grantTx` cấp item, audit ledger `reason='DROP_ECONOMY_MATERIAL'` + `meta.dropEconomy.{ruleKey, dayBucket, weekBucket, cappedByDaily, cappedByWeekly}`.
+
+Race-safe qua UNIQUE constraint + `$transaction` — không double-grant khi retry/parallel encounter.
+
+### Rare material policy
+
+| Tier | NORMAL daily cap | ELITE daily cap | BOSS daily cap | WORLD_BOSS weekly cap |
+|------|------------------|-----------------|----------------|-----------------------|
+| 1–2 | 5–20/day | 10–30/day | 20–50/day | 10–30/week |
+| 3–4 | 1–3/day | 3–8/day | 5–15/day | 3–10/week |
+| 5+ | 0 (rule absent) | 0–1/day | 1–3/day | 1–3/week |
+
+ARTIFACT_CRAFT/recipe fragment cao cấp: weekly cap **luôn-luôn**, ngay cả với BOSS/DUNGEON_BOSS.
+
+### Forbidden grants
+
+- Drop economy CHỈ grant `InventoryItem` qua `InventoryService.grantTx`. KHÔNG được grant `linhThach`/`tienNgoc`/`nguyenThach` qua drop economy path (test enforced).
+- Cap KHÔNG được giảm/disable chỉ để fake green CI — re-tune phải đi qua review balance.
+
+### Audit & forensics
+
+Mọi grant ghi `ItemLedger`:
+- `reason = 'DROP_ECONOMY_MATERIAL'`
+- `meta.dropEconomy.ruleKey` — tra ngược drop rule
+- `meta.dropEconomy.source` — `NORMAL_MONSTER`/`ELITE`/`BOSS`/`DUNGEON`/`WORLD_BOSS`/...
+- `meta.dropEconomy.materialTier` / `materialCategory`
+- `meta.dropEconomy.cappedByDaily` / `cappedByWeekly` (boolean)
+- `meta.dropEconomy.refType` / `refId` — `Combat`/`DungeonRun`/`WorldBoss`/...
+
+Cho phép replay: từ ledger có thể reconstruct exact roll context để debug.

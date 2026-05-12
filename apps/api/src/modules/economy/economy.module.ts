@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma.service';
+import { InventoryModule } from '../inventory/inventory.module';
+import { DropEconomyService } from './drop-economy.service';
 import { EconomyAnomalyScannerService } from './economy-anomaly-scanner.service';
 import { LedgerCheckerService } from './ledger-checker.service';
 import { RewardCapService } from './reward-cap.service';
@@ -24,16 +26,19 @@ import { RewardCapService } from './reward-cap.service';
  * `liveops-cron/`).
  */
 @Module({
+  imports: [InventoryModule],
   providers: [
     PrismaService,
     RewardCapService,
     LedgerCheckerService,
     EconomyAnomalyScannerService,
+    DropEconomyService,
   ],
   exports: [
     RewardCapService,
     LedgerCheckerService,
     EconomyAnomalyScannerService,
+    DropEconomyService,
   ],
 })
 export class EconomyModule {}

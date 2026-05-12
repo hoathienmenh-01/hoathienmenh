@@ -36,6 +36,16 @@ interface AlchemyOutcomeStub {
   inputsConsumed: { itemKey: string; qty: number }[];
 }
 
+interface AlchemyMissingInputStub {
+  itemKey: string;
+  requiredQty: number;
+  ownedQty: number;
+  itemName?: string;
+  materialTier?: number;
+  materialCategory?: string;
+  sourceHint?: string[];
+}
+
 interface AlchemyRecipeStub {
   key: string;
   name: string;
@@ -48,6 +58,8 @@ interface AlchemyRecipeStub {
   realmRequirement: string | null;
   linhThachCost: number;
   successRate: number;
+  /** Phase 26.2 — recipe card source hint surfacing. */
+  missingInputs?: AlchemyMissingInputStub[];
 }
 
 const STUB_RECIPES: AlchemyRecipeStub[] = [
@@ -190,6 +202,39 @@ const i18n = createI18n({
           cost: 'Cost',
           linhThach: 'LT',
           successRate: 'Rate',
+          missingInputs: 'Thiếu',
+          sourceHint: 'Nguồn',
+          dropFrom: 'Rơi từ',
+        },
+        materialCategory: {
+          ALCHEMY_QI: 'Luyện Khí',
+          ALCHEMY_BODY: 'Luyện Thể',
+          QI_BREAKTHROUGH: 'Đột phá Khí',
+          BODY_BREAKTHROUGH: 'Đột phá Thể',
+          TRIBULATION: 'Độ kiếp',
+          COMBAT_BUFF: 'Chiến đấu',
+          EQUIPMENT_CRAFT: 'Trang bị',
+          ARTIFACT_CRAFT: 'Pháp bảo',
+          FURNACE_UPGRADE: 'Nâng lò',
+          GENERAL: 'Phổ thông',
+        },
+        sourceHint: {
+          NORMAL_MONSTER: 'Quái thường',
+          ELITE: 'Tinh anh',
+          BOSS: 'Boss',
+          WORLD_BOSS: 'World Boss',
+          DUNGEON: 'Bí cảnh',
+          BODY_DUNGEON: 'Bí cảnh Luyện Thể',
+          ALCHEMY_DUNGEON: 'Bí cảnh Luyện Khí',
+          QUEST: 'Nhiệm vụ',
+          EVENT: 'Sự kiện',
+          MAIN_QUEST: 'Nhiệm vụ chính',
+          DAILY_QUEST: 'Nhiệm vụ ngày',
+          SECT_SHOP: 'Tông môn shop',
+          NPC_SHOP: 'NPC shop',
+          MARKET: 'Chợ',
+          AUCTION: 'Đấu giá',
+          ADMIN_ONLY: 'Quản trị',
         },
         button: {
           craft: 'Luyện',
@@ -631,5 +676,154 @@ describe('AlchemyView — Phase 11.11.D-3 furnace upgrade', () => {
     await flushPromises();
     const preview = w.find('[data-testid="alchemy-upgrade-preview"]').text();
     expect(preview).toContain('truc_co');
+  });
+});
+
+/**
+ * Phase 26.2 — Drop Economy V2 source-hint surfacing trên recipe card.
+ *
+ * Bao phủ:
+ *  - Recipe có `missingInputs` với sourceHint render "Rơi từ: ..." block.
+ *  - i18n vi: tag `BOSS` → "Boss", `DUNGEON` → "Bí cảnh".
+ *  - Missing input có materialTier render badge `T{tier}`.
+ *  - Missing input thiếu sourceHint (legacy item) KHÔNG crash, KHÔNG render
+ *    block "Rơi từ" cho dòng đó.
+ *  - Recipe không có missing input → KHÔNG render block missingInputs.
+ */
+describe('AlchemyView — Phase 26.2 sourceHint surfacing', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    resetState();
+  });
+
+  it('render missing input block với sourceHint i18n', async () => {
+    alchemyState.recipes = [
+      {
+        ...STUB_RECIPES[0],
+        missingInputs: [
+          {
+            itemKey: 'huyet_tinh_t2',
+            itemName: 'Huyết Tinh',
+            requiredQty: 5,
+            ownedQty: 1,
+            materialTier: 2,
+            materialCategory: 'ALCHEMY_QI',
+            sourceHint: ['BOSS', 'ELITE', 'DUNGEON'],
+          },
+        ],
+      },
+      STUB_RECIPES[1],
+    ];
+    const w = mountView();
+    await flushPromises();
+    const sourceBlock = w.find(
+      '[data-testid="alchemy-missing-source-recipe_tieu_phuc_dan-huyet_tinh_t2"]',
+    );
+    expect(sourceBlock.exists()).toBe(true);
+    const txt = sourceBlock.text();
+    expect(txt).toContain('Rơi từ');
+    expect(txt).toContain('Boss');
+    expect(txt).toContain('Tinh anh');
+    expect(txt).toContain('Bí cảnh');
+  });
+
+  it('render materialTier badge khi missingInput có tier', async () => {
+    alchemyState.recipes = [
+      {
+        ...STUB_RECIPES[0],
+        missingInputs: [
+          {
+            itemKey: 'huyet_tinh_t3',
+            itemName: 'Huyết Tinh Tier 3',
+            requiredQty: 2,
+            ownedQty: 0,
+            materialTier: 3,
+            materialCategory: 'ALCHEMY_QI',
+            sourceHint: ['BOSS'],
+          },
+        ],
+      },
+    ];
+    const w = mountView();
+    await flushPromises();
+    const tierBadge = w.find(
+      '[data-testid="alchemy-missing-tier-recipe_tieu_phuc_dan-huyet_tinh_t3"]',
+    );
+    expect(tierBadge.exists()).toBe(true);
+    expect(tierBadge.text()).toContain('T3');
+  });
+
+  it('missing input KHÔNG có sourceHint vẫn render không crash', async () => {
+    alchemyState.recipes = [
+      {
+        ...STUB_RECIPES[0],
+        missingInputs: [
+          {
+            itemKey: 'legacy_item',
+            itemName: 'Legacy item',
+            requiredQty: 5,
+            ownedQty: 1,
+            // sourceHint omitted (legacy item path).
+          },
+        ],
+      },
+    ];
+    const w = mountView();
+    await flushPromises();
+    // Missing item row vẫn render (item name + qty).
+    const row = w.find(
+      '[data-testid="alchemy-missing-recipe_tieu_phuc_dan-legacy_item"]',
+    );
+    expect(row.exists()).toBe(true);
+    expect(row.text()).toContain('Legacy item');
+    // Nhưng KHÔNG có block "Rơi từ" (sourceHint missing).
+    const sourceBlock = w.find(
+      '[data-testid="alchemy-missing-source-recipe_tieu_phuc_dan-legacy_item"]',
+    );
+    expect(sourceBlock.exists()).toBe(false);
+  });
+
+  it('recipe không có missingInputs → KHÔNG render block missingInputs', async () => {
+    alchemyState.recipes = [
+      {
+        ...STUB_RECIPES[0],
+        missingInputs: [],
+      },
+    ];
+    const w = mountView();
+    await flushPromises();
+    const block = w.find('[data-testid="alchemy-missing-recipe_tieu_phuc_dan"]');
+    expect(block.exists()).toBe(false);
+  });
+
+  it('sourceHint với 1 entry duy nhất vẫn render đúng (no separator)', async () => {
+    alchemyState.recipes = [
+      {
+        ...STUB_RECIPES[0],
+        missingInputs: [
+          {
+            itemKey: 'world_boss_drop',
+            itemName: 'Linh Cốt',
+            requiredQty: 1,
+            ownedQty: 0,
+            materialTier: 5,
+            materialCategory: 'ARTIFACT_CRAFT',
+            sourceHint: ['WORLD_BOSS'],
+          },
+        ],
+      },
+    ];
+    const w = mountView();
+    await flushPromises();
+    const sourceBlock = w.find(
+      '[data-testid="alchemy-missing-source-recipe_tieu_phuc_dan-world_boss_drop"]',
+    );
+    expect(sourceBlock.exists()).toBe(true);
+    expect(sourceBlock.text()).toContain('World Boss');
+    // Single entry KHÔNG có separator ", ".
+    const txt = sourceBlock.text();
+    const dropIdx = txt.indexOf('World Boss');
+    expect(txt.slice(dropIdx)).not.toContain(',');
   });
 });

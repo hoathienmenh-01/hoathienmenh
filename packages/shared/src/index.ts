@@ -80,6 +80,7 @@ export * from './territory';
 export * from './territory-buffs';
 export * from './territory-owner-reward';
 export * from './daily-reward-cap';
+export * from './drop-economy';
 export * from './economy-anomaly';
 export * from './gameplay-anticheat';
 export * from './economy-report';

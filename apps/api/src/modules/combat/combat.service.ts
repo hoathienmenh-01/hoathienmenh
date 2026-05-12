@@ -57,6 +57,12 @@ import { methodStatBonusFor } from '../character/cultivation-method.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { MissionService } from '../mission/mission.service';
 import { QuestService } from '../quest/quest.service';
+import { DropEconomyService } from '../economy/drop-economy.service';
+import {
+  inferDropMonsterType,
+  realmByKey,
+  realmOrderToMaterialTier,
+} from '@xuantoi/shared';
 import { composePassiveTalentMods, type PassiveTalentMods } from '@xuantoi/shared';
 import { composeBuffMods, type BuffMods } from '@xuantoi/shared';
 import { composeTitleMods, type TitleMods } from '@xuantoi/shared';
@@ -215,6 +221,7 @@ export class CombatService {
     @Optional() private readonly buffs?: BuffService,
     @Optional() private readonly titles?: TitleService,
     @Optional() private readonly quests?: QuestService,
+    @Optional() private readonly dropEconomy?: DropEconomyService,
   ) {}
 
   /**
@@ -863,6 +870,66 @@ export class CombatService {
           where: { id: enc.id },
           data: { log: log as unknown as Prisma.InputJsonValue },
         });
+      }
+
+      // Phase 26.2 — Drop Economy V2 material grant. Chạy SONG SONG với
+      // lootTable cũ (không thay thế). Source = NORMAL_MONSTER / ELITE /
+      // BOSS theo monster type; sourceTier = realmOrderToMaterialTier
+      // (dungeon.recommendedRealm.order). effectiveDropTier =
+      // min(playerTier, sourceTier) chống farm endgame ở map thấp.
+      if (this.dropEconomy) {
+        try {
+          const playerOrder =
+            realmByKey(char.realmKey)?.order ?? 0;
+          const sourceOrder =
+            realmByKey(dungeon.recommendedRealm)?.order ?? playerOrder;
+          const sourceTier = realmOrderToMaterialTier(sourceOrder);
+          const monsterType = inferDropMonsterType(monster.monsterType);
+          const source =
+            monsterType === 'BOSS'
+              ? 'BOSS'
+              : monsterType === 'ELITE'
+                ? 'ELITE'
+                : 'NORMAL_MONSTER';
+          const dropMaterials = await this.dropEconomy.rollAndGrant(char.id, {
+            playerRealmOrder: playerOrder,
+            sourceTier,
+            monsterType,
+            source,
+            refType: 'Encounter',
+            refId: enc.id,
+          });
+          for (const dm of dropMaterials) {
+            const def = itemByKey(dm.itemKey);
+            if (!def) continue;
+            lootView.push({
+              itemKey: dm.itemKey,
+              qty: dm.qty,
+              itemName: def.name,
+              quality: def.quality,
+            });
+          }
+          if (dropMaterials.length > 0) {
+            log.push({
+              side: 'system',
+              text: `Phát hiện nguyên liệu: ${dropMaterials
+                .map((d) => {
+                  const def = itemByKey(d.itemKey);
+                  return `${def?.name ?? d.itemKey} ×${d.qty}`;
+                })
+                .join(', ')}.`,
+              ts: Date.now(),
+            });
+            await this.prisma.encounter.update({
+              where: { id: enc.id },
+              data: { log: log as unknown as Prisma.InputJsonValue },
+            });
+          }
+        } catch {
+          // fail-soft: drop economy lỗi không break combat flow (mirror
+          // legacy lootTable grant). Anomaly scanner sẽ phát hiện qua
+          // ledger gap.
+        }
       }
     }
 

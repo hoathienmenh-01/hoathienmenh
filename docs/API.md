@@ -43,7 +43,7 @@ KHÔNG bao giờ throw 500.
 
 | Method | Path | Auth | Mô tả |
 |--------|------|------|-------|
-| GET | `/character/alchemy/recipes` | PLAYER | Trả `{ alchemy: { furnaceLevel, alchemyLevel, alchemyLevelName, alchemyExp, alchemyExpNext, alchemyMastery, nextUpgrade, recipes[] } }`. Mỗi recipe có `recipeTier`, `recipeCategory`, `requiredAlchemyLevel`, `successRateBase`, `successRateFinal`, `possibleGrades`, `maxOutputGrade`, `sourceHint`, `unlockSource`, `missingInputs`, `canCraft`, `failureReason`. |
+| GET | `/character/alchemy/recipes` | PLAYER | Trả `{ alchemy: { furnaceLevel, alchemyLevel, alchemyLevelName, alchemyExp, alchemyExpNext, alchemyMastery, nextUpgrade, recipes[] } }`. Mỗi recipe có `recipeTier`, `recipeCategory`, `requiredAlchemyLevel`, `successRateBase`, `successRateFinal`, `possibleGrades`, `maxOutputGrade`, `sourceHint`, `unlockSource`, `missingInputs`, `canCraft`, `failureReason`. Phase 26.2 — mỗi `missingInput` thêm `itemName`, `materialTier`, `materialCategory`, `sourceHint[]` (subset của `DropSource`) để UI render "Rơi từ: …" hint farm. |
 | POST | `/character/alchemy/craft` | PLAYER | Body `{ recipeKey }`. Server consume nguyên liệu + linh thạch trong transaction, roll success, roll `pillGrade` khi thành công, ghi `AlchemyAttemptLog`, cộng alchemy EXP (fail vẫn 20%). Response `{ furnaceLevel, outcome: { success, recipeKey, outputItem, outputQty, pillGrade, successRate, alchemyExpGained, alchemyLevelBefore, alchemyLevelAfter, inputsConsumed, linhThachConsumed } }`. |
 
 Alchemy craft errors: `RECIPE_NOT_FOUND`, `CHARACTER_NOT_FOUND`, `FURNACE_LEVEL_TOO_LOW`, `ALCHEMY_LEVEL_TOO_LOW`, `RECIPE_TIER_TOO_HIGH`, `REALM_REQUIREMENT_NOT_MET`, `INSUFFICIENT_INGREDIENTS`, `INSUFFICIENT_FUNDS`, `UNKNOWN`.
