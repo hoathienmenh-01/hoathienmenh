@@ -65,13 +65,15 @@ async function load(id: string): Promise<void> {
     profile.value = null;
   } else {
     profile.value = p;
-    try {
-      const cp = await fetchCosmeticProfile(p.id);
-      cosmeticLoadout.value = cp.loadout;
-    } catch (e) {
-      void e;
-      cosmeticLoadout.value = null;
-    }
+    // Fire-and-forget — cosmetic loadout is purely render-only and must
+    // never block the profile from rendering.
+    void fetchCosmeticProfile(p.id)
+      .then((cp) => {
+        cosmeticLoadout.value = cp.loadout;
+      })
+      .catch(() => {
+        cosmeticLoadout.value = null;
+      });
   }
   loading.value = false;
 }
