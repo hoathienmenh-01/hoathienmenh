@@ -350,7 +350,8 @@
       "dungeonRun": "Bí Cảnh Hành",
       "storyDungeons": "Bí Cảnh Cốt Truyện",
       "social": "Xã Giao",
-      "monetization": "Tiên Lộ Lệnh"
+      "monetization": "Tiên Lộ Lệnh",
+      "shopPacks": "Gói Tài Nguyên"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -5401,6 +5402,53 @@
       "MONTHLY_CARD_INACTIVE": "Nguyệt Tạp chưa kích hoạt.",
       "MONTHLY_CARD_ALREADY_CLAIMED": "Hôm nay đã nhận Nguyệt Tạp.",
       "UNKNOWN": "Có lỗi xảy ra, thử lại."
+    }
+  },
+  "shopPacks": {
+    "title": "Gói Tài Nguyên",
+    "empty": "Không có gói nào.",
+    "loadFail": "Không tải được danh sách gói.",
+    "buy": "Mua",
+    "soldOut": "Đã hết",
+    "insufficientFunds": "Thiếu tiền",
+    "noCharacter": "Chưa có nhân vật",
+    "remaining": "Còn lại",
+    "purchaseSuccess": "Mua gói thành công!",
+    "purchaseFail": "Mua gói thất bại.",
+    "confirmTitle": "Xác nhận mua gói",
+    "confirmBody": "Bạn muốn mua {name} với giá {price}?",
+    "currency": {
+      "tienNgoc": "Tiên Ngọc",
+      "tienNgocKhoa": "Tiên Ngọc Khoá",
+      "linhThach": "Linh Thạch"
+    },
+    "window": {
+      "DAY": "Hằng ngày",
+      "WEEK": "Hằng tuần",
+      "MONTH": "Hằng tháng",
+      "SEASON": "Mùa",
+      "LIFETIME": "Vĩnh viễn"
+    },
+    "category": {
+      "DAILY": "Ngày",
+      "WEEKLY": "Tuần",
+      "MONTHLY": "Tháng",
+      "EVENT": "Sự kiện",
+      "STARTER": "Khởi đầu",
+      "VIP": "VIP"
+    },
+    "errors": {
+      "PACK_NOT_FOUND": "Gói không tồn tại.",
+      "PACK_INACTIVE": "Gói chưa hoạt động.",
+      "PACK_NOT_STARTED": "Gói chưa bắt đầu.",
+      "PACK_EXPIRED": "Gói đã hết hạn.",
+      "REALM_TOO_LOW": "Chưa đủ cảnh giới.",
+      "REALM_TOO_HIGH": "Vượt quá cảnh giới.",
+      "VIP_REQUIRED": "Cần VIP.",
+      "PURCHASE_LIMIT_REACHED": "Đã hết lượt mua.",
+      "INSUFFICIENT_FUNDS": "Không đủ tiền.",
+      "DUPLICATE_PURCHASE": "Đã mua rồi.",
+      "INVALID_INPUT": "Dữ liệu không hợp lệ."
     }
   }
 }
