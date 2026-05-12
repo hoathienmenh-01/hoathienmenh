@@ -87,11 +87,8 @@ export class AlchemyService {
       });
       if (!character) throw new AlchemyError('CHARACTER_NOT_FOUND');
 
-      const craftGate = canCraftAlchemyRecipe(character, recipe);
-      if (!craftGate.canCraft) {
-        if (craftGate.failureReason === 'ALCHEMY_LEVEL_TOO_LOW') throw new AlchemyError('ALCHEMY_LEVEL_TOO_LOW');
-        if (craftGate.failureReason === 'FURNACE_LEVEL_TOO_LOW') throw new AlchemyError('FURNACE_LEVEL_TOO_LOW');
-        if (craftGate.failureReason === 'REALM_REQUIREMENT_NOT_MET') throw new AlchemyError('REALM_REQUIREMENT_NOT_MET');
+      if (recipe.furnaceLevel > character.alchemyFurnaceLevel) {
+        throw new AlchemyError('FURNACE_LEVEL_TOO_LOW');
       }
 
       if (recipe.realmRequirement) {
@@ -100,6 +97,10 @@ export class AlchemyService {
         if (!charRealm || !reqRealm || charRealm.order < reqRealm.order) {
           throw new AlchemyError('REALM_REQUIREMENT_NOT_MET');
         }
+      }
+
+      if (recipe.recipeTier > character.alchemyLevel || recipe.requiredAlchemyLevel > character.alchemyLevel) {
+        throw new AlchemyError('ALCHEMY_LEVEL_TOO_LOW');
       }
 
       if (character.linhThach < BigInt(recipe.linhThachCost)) {
@@ -308,7 +309,7 @@ export class AlchemyService {
       select: { itemKey: true, qty: true },
     });
     const qtyByKey = new Map(inventory.map((item) => [item.itemKey, item.qty]));
-    return [...ALCHEMY_RECIPES].map((recipe) => {
+    return [...ALCHEMY_RECIPES].filter((recipe) => recipe.furnaceLevel <= char.alchemyFurnaceLevel).map((recipe) => {
       const missingInputs = recipe.inputs
         .filter((input) => (qtyByKey.get(input.itemKey) ?? 0) < input.qty)
         .map((input) => ({
