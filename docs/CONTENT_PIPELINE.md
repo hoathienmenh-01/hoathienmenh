@@ -151,6 +151,17 @@ Before adding large quest batches:
    - i18n parity where catalog fields have vi/en.
 - i18n: VI + EN.
 
+### 4.1 Phase 22.1 elemental build hook gate
+
+- Phase 21 is **Book I: Phàm Nhân → Hoá Thần**. Phase 22.1 does not add Book II–V quest content.
+- Future story roadmap stays deferred:
+  - Book II: Luyện Hư → Độ Kiếp.
+  - Book III: Nhân Tiên → Thái Ất Kim Tiên.
+  - Book IV: Đại La Kim Tiên → Thiên Đạo.
+  - Book V: Bản Nguyên → Hư Không Chí Tôn.
+- New dungeon/boss/side quest hooks may reference Ngũ Hành gameplay only through shared helpers (`elemental.ts`, `elemental-build.ts`, `elemental-synergy.ts`, `elemental-resistance.ts`) rather than duplicating relationship tables.
+- Equipment may set optional `equipmentElement`; full gem/socket/set-bonus content remains Phase 23.1.
+
 ### 4.2 Skill
 
 1. Mở `packages/shared/src/combat.ts`.
