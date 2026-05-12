@@ -5,6 +5,12 @@
 - Branch: `feat/phase-21-story-quest-content-expansion`
 - PR target: Draft PR `feat(content): Phase 21 Story Quest Content Expansion Mega PR`
 - Source audit: complete for Phase 21 planning; content below must keep following the cited canon.
+- Official scope update: Phase 21 is now a mega content expansion targeting at
+  least 8 gated chapters, 120 main quests, 160 side quests, 64 branch quests,
+  40 hidden quests, 30 daily templates, 20 weekly templates, 100
+  achievements/titles, 600 dialogue entries, and a 30–60 minute guided new
+  player path. If the PR reaches minimums but not high targets, follow-up is
+  **Phase 21B — Additional Story Content Pack**.
 
 ## Guardrails
 
@@ -102,6 +108,22 @@ Current `main` already has static shared catalogs and runtime for quests, NPCs, 
 - `CANON_FROM_STORY_BIBLE`: Hoa Thiên Môn as home sect; Lăng Vân Sinh, Mộc Thanh Y, Hàn Dạ, Tô Nguyệt Ly, Huyết La Sát, Tịch Thiên Điện, Huyết Hà Ma Tông, Tiên Đình Bạch Đế, Hoa Thiên Đạo Tổ, Tịch Thiên Đạo Chủ, Tịch Linh Chủng, Hạt Giống Vô Danh, Ngũ Hành, Bí Cảnh Huyết Nguyệt, and the moral tension around locking or freeing đại đạo.
 - `AI_EXPANDED_LORE`: extra branch quests, hidden triggers, minor relics, extra dungeon beats, extra achievement/title names, and filler NPC-facing incidents used to reach Phase 21 content targets. These expansions must not change the role of canon NPCs or reorder the six canon early chapters.
 - If AI-expanded content introduces a new relic/secret/dungeon, it must cite the canon anchor it extends, for example: Hoa Thiên poverty, Tịch Linh corruption, Ngũ Hành rite, Huyết Hà moral ambiguity, or erased Hoa Thiên inheritance.
+
+### AI-expanded lore ledger
+
+All entries below are additive and exist to turn canon beats into playable
+long-form content without changing canon roles, villains, or chapter order:
+
+| AI_EXPANDED_LORE content | Why needed | Canon anchor | Gameplay opened |
+|---|---|---|---|
+| Outer-court poverty incidents, ration ledgers, broken sword sheaths, debt tablets | Give side quests human stakes beyond kill/fetch loops | Hoa Thiên Môn is poor but keeps dao inheritance | Side quests, NPC affinity, early guided path |
+| Minor Ngũ Hành relic shards and resonance choices | Let each element appear before late-game systems | Linh căn / Ngũ Hành awakening | Branch quests, hidden triggers, dialogue state |
+| Huyết Nguyệt aftermath memories and village ghost debts | Expand the Blood Moon arc without changing the dungeon’s core mystery | Bí Cảnh Huyết Nguyệt and erased Hoa Thiên history | Hidden quests, lore fragments, boss aftermath |
+| Hàn Dạ duel etiquette and Huyền Kiếm messenger disputes | Add moral/sect branching around rival righteous sects | Hàn Dạ + Huyền Kiếm Tông rivalry | Branch quests, NPC affinity, title unlocks |
+| Vạn Bảo caravan rumors and capped market errands | Add economy-flavored quests without monetization or trade/gift systems | Vạn Bảo Thương Hội neutrality | Side quests, daily/weekly templates |
+| Huyết Hà witness testimonies and false accusations | Turn demonic-path ambiguity into choices | Huyết La Sát and Huyết Hà Ma Tông | Branch/hidden quests, đạo tâm flags |
+| Tịch Linh probe events and corrupted field symptoms | Foreshadow the main antagonist through repeatable but capped content | Tịch Thiên Điện / Tịch Linh Chủng | Main gates, daily/weekly templates, integrity tests |
+| A Linh onboarding hints | Ensure first 30–60 minutes are self-explanatory | Game bible: A Linh onboarding fantasy | Guided path, dialogue, quest journal |
 
 ### Chapter gate model
 
