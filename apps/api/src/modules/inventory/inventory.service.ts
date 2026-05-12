@@ -179,7 +179,24 @@ export type ItemLedgerReason =
   // PartyDungeonRewardClaim: `CoopBossRewardClaim` UNIQUE
   // `(runId, characterId)` + CAS guard PENDING → CLAIMED; reward
   // items lấy từ tier-based `computeCoopBossRewardTier` snapshot.
-  | 'COOP_BOSS_REWARD';
+  | 'COOP_BOSS_REWARD'
+  // Phase 23.4 — Equipment Upgrade Economy / Resource Sink.
+  // Merge: 3 món cùng `inputItemKey` consume (qtyDelta=-1 / item) →
+  // `EQUIPMENT_MERGE_CONSUME`; output 1 món quality+1 grant
+  // (qtyDelta=+1) → `EQUIPMENT_MERGE_GRANT`; material spend tagged
+  // `EQUIPMENT_MERGE_COST` (qtyDelta âm). refType='InventoryItem'
+  // (output id) + refId=outputItemId để link audit.
+  | 'EQUIPMENT_MERGE_CONSUME'
+  | 'EQUIPMENT_MERGE_GRANT'
+  | 'EQUIPMENT_MERGE_COST'
+  // Dismantle: consume 1 món equipment (qtyDelta=-1) →
+  // `EQUIPMENT_DISMANTLE_CONSUME`; yield material grant (qtyDelta=+N) →
+  // `EQUIPMENT_DISMANTLE_YIELD`; gem khảm tự tháo grant (qtyDelta=+1) →
+  // `EQUIPMENT_DISMANTLE_RETURN_GEM`. refType='InventoryItem' + refId
+  // của item bị phân giải để link audit.
+  | 'EQUIPMENT_DISMANTLE_CONSUME'
+  | 'EQUIPMENT_DISMANTLE_YIELD'
+  | 'EQUIPMENT_DISMANTLE_RETURN_GEM';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;

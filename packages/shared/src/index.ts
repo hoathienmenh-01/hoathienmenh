@@ -20,6 +20,7 @@ export * from './gems';
 export * from './refine';
 export * from './equipment-upgrade';
 export * from './equipment-progression';
+export * from './equipment-upgrade-economy';
 export * from './equipment-set-bonus';
 export * from './equipment-resonance';
 export * from './equipment-build';

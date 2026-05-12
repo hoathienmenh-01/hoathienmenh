@@ -10,7 +10,25 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
-### Phase 23.3 — Set Bonus + Gear Resonance (PR #541 draft)
+### Phase 23.4 — Equipment Upgrade Economy / Resource Sink (PR #542 draft)
+
+#### Added
+- Shared deterministic economy module `packages/shared/src/equipment-upgrade-economy.ts` exposing cost helpers (`getEquipmentEnhanceCost`, `getEquipmentMergeCost`, `getEquipmentDismantleYield`, `getGemSocketCost`, `getGemUnsocketCost`, `getReforgeCost`, `getProtectionCharmRequirement`) and validators (`validateEquipmentUpgradeRequest`, `validateEquipmentMergeRequest`, `validateDismantleRequest`) plus catalog helpers `findEquipmentMergeRecipe` / `findMergeOutputItem`. Cost basis: tier × slot weight × quality multiplier × `(1.25 ^ currentEnhanceLevel)` for enhance; merge `linhThach 200/600/1800/6000 × tier` + tier-scaled material (PHAM→LINH→HUYEN→TIEN→THAN, THAN không ghép tiếp).
+- **Equipment merge** (`POST /character/equipment/merge`, `POST /character/equipment/merge-preview`): ghép 3 món cùng tier/slot/quality/item family → 1 món quality cao hơn, atomic inside `prisma.$transaction` với `updateMany` race guard, ownership + equipped-slot guard, optional `idempotencyKey` lookup trên `ItemLedger.meta` để retry không double-output. Feature flag `EQUIPMENT_MERGE_ENABLED`.
+- **Equipment dismantle** (`POST /character/equipment/dismantle`, `POST /character/equipment/dismantle-preview`): phân giải đồ cũ thành nguyên liệu + linh thạch, gem đang khảm tự tách trả về inventory qua ledger reason `EQUIPMENT_DISMANTLE_RETURN_GEM`. Yield curve được khoá strictly < cost merge cùng quality (anti-infinite-sink). Feature flag `EQUIPMENT_DISMANTLE_ENABLED`.
+- **Gem socket / unsocket cost**: `GemService.socketGem` / `unsocketGem` nay charge linh thạch (50/100 × equipmentTier × (1 + currentSocketCount × 0.5)) qua `CurrencyService.applyTx` + ghi `CurrencyLedger` reason `GEM_SOCKET_COST` / `GEM_UNSOCKET_COST`. Unsocket consume `tach_ngoc_phu`.
+- **Reforge cap**: `EquipmentService.reforge` enforce `maxReforgeCount` theo quality (PHAM=5 / LINH=8 / HUYEN=12 / TIEN=16 / THAN=20) qua `EquipmentReforgeHistory` aggregate; vượt cap throw `REFORGE_CAP_REACHED`.
+- **Protection charm hook**: `getProtectionCharmRequirement` trả `requirement` + `recommendation` cho UI cảnh báo + monetization hook Phase 25.1 (refine ≥ stage `risky` high-tier hoặc `extreme`). Không bắt buộc consume tại enhance (giữ back-compat).
+- Frontend `EquipmentEconomyPanel.vue` preview enhance/merge/dismantle/socket cost + missing materials + confirm modal cho dismantle phẩm cao (TIEN+) hoặc merge. InventoryView ships merge/dismantle entry points + loading/empty/error states + mobile responsive + vi/en parity (`inventory.economy.*`).
+
+#### Changed
+- `InventoryService.equipBonus` (Phase 23.3) không đổi; chỉ thêm `ItemLedgerReason` enum mở rộng cho merge/dismantle/socket cost. `CurrencyService.applyTx` không thay đổi pattern; chỉ thêm `LedgerReason` mở rộng.
+- Server authority + atomic ledger writes cho mọi mutation; idempotency qua `meta.idempotencyKey` không cần migration schema.
+
+#### Docs
+- Phase 23.4 plan in `docs/phase-23-4-equipment-upgrade-economy-plan.md`. Updates to `GAME_DESIGN_BIBLE.md` §C.6.3, `BALANCE_MODEL.md` §2.9.3.1D, `ECONOMY_MODEL.md` (sinks), and `API.md` (4 endpoints).
+
+### Phase 23.3 — Set Bonus + Gear Resonance (PR #541 merged)
 
 #### Added
 - Shared equipment set bonus catalog (10 sets covering Ngũ Hành — Kim/Mộc/Thuỷ/Hoả/Thổ — mid tier 4 + endgame tier 8) with 2/4/6-piece bonuses, per-set bonus cap, and balance-tuned ATK/DEF/HP/MP/spirit ratios that compose deterministically from raw item baselines.

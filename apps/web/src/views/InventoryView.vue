@@ -37,6 +37,7 @@ import { learnSkillFromBook } from '@/api/skill';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
 import EquipmentUpgradePanel from '@/components/EquipmentUpgradePanel.vue';
+import EquipmentEconomyPanel from '@/components/EquipmentEconomyPanel.vue';
 import EquipmentBuildPanel from '@/components/EquipmentBuildPanel.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
@@ -711,6 +712,13 @@ function handleErr(e: unknown): void {
           <EquipmentUpgradePanel
             v-if="it.item.slot"
             :equipment="it"
+            @changed="refreshInventory"
+          />
+          <!-- Phase 23.4 — Equipment Upgrade Economy / Resource Sink panel. -->
+          <EquipmentEconomyPanel
+            v-if="it.item.slot"
+            :equipment="it"
+            :inventory="items"
             @changed="refreshInventory"
           />
         </div>

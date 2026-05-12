@@ -441,6 +441,59 @@ Phase 23.3 layers a **set bonus** (2/4/6 pieces) and a **gear resonance** system
 
 **Follow-ups**: Phase 23.4 (upgrade economy / resource sink for set completion), Phase 25.1 (Battle Pass / VIP Light), Phase 24.2 (final QA tuning of caps if needed).
 
+### 2.9.3.1D Phase 23.4 — Equipment Upgrade Economy / Resource Sink (DONE this PR)
+
+Phase 23.4 standardises the **cost / yield curves** for every equipment mutation introduced by Phase 23.2 (tier ladder + `requiredRealmOrder` + `powerBudget`) and Phase 23.3 (set bonus + gear resonance). All numbers are emitted by deterministic shared helpers in `packages/shared/src/equipment-upgrade-economy.ts`; runtime services consume the helpers and never hard-code costs.
+
+**Enhance cost** — `getEquipmentEnhanceCost`:
+- `linhThachCost = round(BASE_TIER_COST × slotWeight × qualityMultiplier × 1.25 ^ currentEnhanceLevel)`.
+- `BASE_TIER_COST = 50 × equipmentTier` (linh thạch).
+- `slotWeight` — `WEAPON`/`ARMOR` = 1.0; `HAT`/`BOOTS`/`BELT` = 0.7; `TRAM`/`ARTIFACT` = 0.5.
+- `qualityMultiplier` — `PHAM` = 1.0, `LINH` = 1.3, `HUYEN` = 1.7, `TIEN` = 2.2, `THAN` = 3.0.
+- `protectionRecommended` flips `true` at `currentEnhanceLevel ≥ 6` (stage `risky`) for `HUYEN+`; `protectionRequired` flips at `currentEnhanceLevel ≥ 11` (stage `extreme`) for `HUYEN+`. The legacy `RefineService` is back-compat — protection is **advisory**, not enforced; monetization wire deferred to Phase 25.1.
+
+**Merge cost** — `getEquipmentMergeCost`:
+
+| Source quality | Output quality | Linh thạch (per tier) | Material |
+| --- | --- | --- | --- |
+| `PHAM` ×3 | `LINH` ×1 | 200 × tier | `tinh_thiet` ×(2 × tier) |
+| `LINH` ×3 | `HUYEN` ×1 | 600 × tier | `tinh_thiet` ×(4 × tier) |
+| `HUYEN` ×3 | `TIEN` ×1 | 1800 × tier | `yeu_dan` ×(2 × tier) |
+| `TIEN` ×3 | `THAN` ×1 | 6000 × tier | `han_ngoc` ×(1 × tier) |
+| `THAN` ×3 | — | rejected | `MERGE_CAP_REACHED` |
+
+Merge always operates on **3 items of the same `equipmentTier`, slot, quality, and item family**. Cross-tier merges, cross-slot merges, or rolling `THAN` upward are rejected by `validateEquipmentMergeRequest` before any ledger row is written. `findEquipmentMergeRecipe(itemKey)` returns the canonical output item key (e.g. `kim_phong_kiem` `PHAM` × 3 → `kim_phong_kiem` `LINH`).
+
+**Dismantle yield** — `getEquipmentDismantleYield`:
+
+| Quality | Linh thạch yield | Material yield |
+| --- | --- | --- |
+| `PHAM` | 10 × tier | `tinh_thiet` ×1 |
+| `LINH` | 30 × tier | `tinh_thiet` ×2 (+ `spirit_dust` ×1 if tier ≥ 3) |
+| `HUYEN` | 100 × tier | `yeu_dan` ×1 + `huyen_manh_pham` ×1 |
+| `TIEN` | 300 × tier | `yeu_dan` ×2 + `han_ngoc` ×1 |
+| `THAN` | 1000 × tier | `han_ngoc` ×2 + `than_tinh` ×1 (rare) |
+
+**Anti-infinite-sink invariant** (test enforced): for every quality and tier, `dismantleYield × 3 < mergeCost` for the same input quality at the same tier. A merge cannot be unwound by dismantling the output for a net gain; the economy always burns resources.
+
+**Gem socket / unsocket cost** — `getGemSocketCost` / `getGemUnsocketCost`:
+- `socketCost = round(50 × equipmentTier × (1 + currentSocketCount × 0.5))` linh thạch.
+- `unsocketCost = round(100 × equipmentTier × (1 + currentSocketCount × 0.5))` linh thạch + 1 `tach_ngoc_phu`.
+- Socket cap remains the Phase 23.2 `socketCap(tier, quality)` value. Gem bonus stays capped at 20% per slot.
+
+**Reforge cap** — `getReforgeCost`:
+- `cost = baseReforgeCost(quality) × 1.15 ^ min(reforgeCount, 20)`.
+- `maxReforgeCount` per quality: `PHAM`=5, `LINH`=8, `HUYEN`=12, `TIEN`=16, `THAN`=20. Exceeding the cap throws `REFORGE_CAP_REACHED` in `EquipmentService.reforge`.
+
+**Anti-abuse invariants** (tests under `packages/shared/src/equipment-upgrade-economy.test.ts` + `apps/api/src/modules/character/equipment-economy.service.test.ts`):
+- All cost helpers are **deterministic** — same input → identical output.
+- Merge rejects: not 3 items, duplicate ids, mixed `itemKey`, equipped item, non-owned item, missing catalog recipe, insufficient linh thạch, insufficient material.
+- Dismantle rejects: equipped, non-owned.
+- Idempotency: `mergeEquipment(characterId, ids, idempotencyKey)` retried with the same key replays the original ledger row instead of double-spending. Same pattern for `dismantleEquipment`.
+- Server authority: all mutations run inside `prisma.$transaction` with `updateMany` race guards; partial failure rolls back every ledger row and currency adjustment.
+
+**Follow-ups**: Phase 25.1 wires `refine_protection_charm` into Battle Pass / Monthly Card / VIP Light shops; Phase 23.5 may split out Pháp Bảo (advanced artifact) economy; Phase 24.2 final QA pass on protection thresholds.
+
 ### 2.9.3.2 Phase 14.2.C — Elemental skill tree expansion (DONE this PR)
 
 Phase 14.2.C biến Ngũ Hành từ damage/resist multiplier thành **hệ kỹ năng có hướng chơi riêng**: Mộc = hồi/độc, Hỏa = burst/thiêu, Thổ = khiên/khống, Kim = xuyên/chí, Thủy = control/hồi linh. KHÔNG đụng damage formula, KHÔNG đụng dial 14.2.A, chỉ thêm tag side-effect dial.

@@ -315,3 +315,106 @@ export async function getEquipmentUpgradePreview(
   );
   return unwrap(data).preview;
 }
+
+// ---------------------------------------------------------------------------
+// Phase 23.4 — Equipment Upgrade Economy / Resource Sink.
+// ---------------------------------------------------------------------------
+
+export interface EquipmentMergeResult {
+  outputInventoryItemId: string;
+  outputItemKey: string;
+  outputQuality: 'PHAM' | 'LINH' | 'HUYEN' | 'TIEN' | 'THAN';
+  consumedInventoryItemIds: string[];
+  cost: {
+    linhThachCost: number;
+    materialKey: string;
+    materialQty: number;
+  };
+}
+
+export interface EquipmentDismantleYieldMaterial {
+  itemKey: string;
+  qty: number;
+}
+
+export interface EquipmentDismantleResult {
+  consumedInventoryItemId: string;
+  returnedGems: string[];
+  yield: {
+    materials: EquipmentDismantleYieldMaterial[];
+    linhThachYield: number;
+  };
+}
+
+export interface EquipmentEconomyPreview {
+  itemKey: string;
+  quality: 'PHAM' | 'LINH' | 'HUYEN' | 'TIEN' | 'THAN';
+  equipmentTier: number;
+  enhance: {
+    nextLevel: number;
+    cost: { linhThachCost: number; materialKey: string; materialQty: number };
+  } | null;
+  merge: {
+    outputItemKey: string;
+    outputQuality: 'PHAM' | 'LINH' | 'HUYEN' | 'TIEN' | 'THAN';
+    cost: { linhThachCost: number; materialKey: string; materialQty: number };
+  } | null;
+  dismantle: {
+    materials: EquipmentDismantleYieldMaterial[];
+    linhThachYield: number;
+  };
+  socket: { linhThachCost: number; materialKey: string; materialQty: number };
+  unsocket: { linhThachCost: number; materialKey: string; materialQty: number } | null;
+  reforge: { linhThachCost: number; materialKey: string; materialQty: number } | null;
+  protection: {
+    recommended: boolean;
+    requiredItemKey: string;
+    minLevelThreshold: number;
+  };
+  upgradeValidation: { ok: boolean; code: string };
+}
+
+/**
+ * Phase 23.4 — POST `/character/equipment/merge`. 3 món cùng `itemKey` →
+ * 1 món quality cao hơn. Server verify ownership + equipped + recipe.
+ * Caller phải re-fetch `listInventory()` sau khi success.
+ */
+export async function mergeEquipment(
+  inventoryItemIds: string[],
+): Promise<EquipmentMergeResult> {
+  const { data } = await apiClient.post<Envelope<{ merge: EquipmentMergeResult }>>(
+    '/character/equipment/merge',
+    { inventoryItemIds },
+  );
+  return unwrap(data).merge;
+}
+
+/**
+ * Phase 23.4 — POST `/character/equipment/dismantle`. Phân giải 1 món →
+ * yield material + linhThach + auto-return gem. Caller phải re-fetch
+ * `listInventory()` sau khi success.
+ */
+export async function dismantleEquipment(
+  inventoryItemId: string,
+): Promise<EquipmentDismantleResult> {
+  const { data } = await apiClient.post<Envelope<{ dismantle: EquipmentDismantleResult }>>(
+    '/character/equipment/dismantle',
+    { inventoryItemId },
+  );
+  return unwrap(data).dismantle;
+}
+
+/**
+ * Phase 23.4 — POST `/character/equipment/economy-preview`. Read-only,
+ * trả enhance/merge/dismantle/socket/unsocket/reforge/protection info
+ * cho 1 item. Không mutate.
+ */
+export async function getEquipmentEconomyPreview(
+  inventoryItemId: string,
+): Promise<EquipmentEconomyPreview> {
+  const { data } = await apiClient.post<Envelope<{ preview: EquipmentEconomyPreview }>>(
+    '/character/equipment/economy-preview',
+    { inventoryItemId },
+  );
+  return unwrap(data).preview;
+}

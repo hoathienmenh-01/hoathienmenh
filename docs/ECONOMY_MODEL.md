@@ -95,6 +95,10 @@ Phase 21 adds static quest/mission catalogs only; it does not add a direct curre
 | Repair durability (phase 12) | `inventory.service.ts` (future) | `REPAIR_COST` |
 | **Equipment Reforge (Phase 15.0.A)** | `equipment.service.ts` `reforge` | `EQUIPMENT_REFORGE` |
 | **Equipment Enchant (Phase 15.0.A)** | `equipment.service.ts` `enchant` | `EQUIPMENT_ENCHANT` |
+| **Equipment Merge cost (Phase 23.4)** | `equipment-economy.service.ts` `mergeEquipment` | `EQUIPMENT_MERGE` |
+| **Equipment Dismantle (Phase 23.4, refund only)** | `equipment-economy.service.ts` `dismantleEquipment` | `EQUIPMENT_DISMANTLE` (delta > 0) |
+| **Gem Socket cost (Phase 23.4)** | `gem.service.ts` `socketGem` | `GEM_SOCKET_COST` |
+| **Gem Unsocket cost (Phase 23.4)** | `gem.service.ts` `unsocketGem` | `GEM_UNSOCKET_COST` |
 | Admin revoke | `admin.service.ts` `grantCurrency` (negative) | `ADMIN_REVOKE` |
 
 ##### Phase 15.0.A — Equipment Reforge / Enchant cost table (linhThach sink)
@@ -134,6 +138,26 @@ The equipment economy uses realm-scaled tiers as the retention spine:
 - Enhancement, sockets/gems, set bonuses, reforge, enchant, and Ngũ Hành affinity are sinks/build-depth systems. They must remain capped by item power budget and cannot bypass tier gates.
 - Gem bonus envelope is ≤20% item power. Set bonus envelope is 2pc 3–5%, 4pc 6–10%, 6pc 10–15%/capped special. These percentages keep multi-item farming meaningful without invalidating realm progression.
 - Server equip validation is authoritative (`EQUIPMENT_REALM_LOCKED`), so marketplace/trade/drop luck cannot let a low-realm character wear future-tier gear.
+
+##### Phase 23.4 — Equipment Upgrade Economy / Resource Sink (linhThach sinks + material flows)
+
+Phase 23.4 adds two new mutation sinks (merge / dismantle) and folds linhThach cost into gem socket / unsocket flows. All curves come from `packages/shared/src/equipment-upgrade-economy.ts`; the runtime services never hard-code costs.
+
+| Operation | linhThach delta | Material delta | Item delta | Ledger row(s) |
+| --- | --- | --- | --- | --- |
+| Merge (3 same-quality → 1 next-quality) | `-200/-600/-1800/-6000 × tier` | `-2/-4 tinh_thiet × tier` (PHAM/LINH) / `-2 yeu_dan × tier` (HUYEN) / `-1 han_ngoc × tier` (TIEN) | delete 3 source rows, grant 1 output row | `CurrencyLedger.reason=EQUIPMENT_MERGE` + `ItemLedger.reason=EQUIPMENT_MERGE_{CONSUME,GRANT,COST}` |
+| Dismantle | `+10/+30/+100/+300/+1000 × tier` | quality-scaled material yield | delete item row, return any socketed gems to inventory | `CurrencyLedger.reason=EQUIPMENT_DISMANTLE` (delta > 0) + `ItemLedger.reason=EQUIPMENT_DISMANTLE_{CONSUME,YIELD,RETURN_GEM}` |
+| Gem socket | `-round(50 × tier × (1 + currentSocketCount × 0.5))` | none | mutate `InventoryItem.socketsJson` | `CurrencyLedger.reason=GEM_SOCKET_COST` + `ItemLedger.reason=GEM_SOCKET_COST_MATERIAL` if material consumed |
+| Gem unsocket | `-round(100 × tier × (1 + currentSocketCount × 0.5))` | `-1 tach_ngoc_phu` | mutate `InventoryItem.socketsJson`, grant gem back | `CurrencyLedger.reason=GEM_UNSOCKET_COST` + `ItemLedger.reason=GEM_UNSOCKET_COST_MATERIAL` |
+| Reforge (Phase 23.4 cap polish on Phase 15.0.A) | `-baseReforgeCost(quality) × 1.15 ^ min(reforgeCount, 20)` | unchanged from 15.0.A | unchanged | unchanged + `REFORGE_CAP_REACHED` throw when `reforgeCount ≥ maxReforgeCount(quality)` |
+
+**Anti-infinite-sink invariant** (test-enforced): for any quality and tier, `dismantleYield × 3 < mergeCost` of the same input quality at the same tier. The economy strictly burns linhThach + material across a merge → dismantle round trip. The dismantle yield is **partial refund**, never net positive.
+
+**Idempotency**: `mergeEquipment` / `dismantleEquipment` accept an optional `idempotencyKey` and record it on `ItemLedger.meta.idempotencyKey` and `CurrencyLedger.meta.idempotencyKey`. On retry with the same key, the service replays the prior ledger row instead of producing a second output / second refund. Mirror of the Phase 12 `QUEST_CLAIM` and Phase 13.1.A `SECT_WAR_REWARD` CAS pattern, but done through ledger meta (no schema migration needed).
+
+**Race protection**: all mutations run inside `prisma.$transaction`. Source-item locking uses `updateMany({ where: { id, characterId, equippedSlot: null }, data: ... })` so a concurrent equip-during-merge produces a zero-row result and aborts the transaction without committing any partial ledger row.
+
+**Feature flags**: `EQUIPMENT_MERGE_ENABLED` / `EQUIPMENT_DISMANTLE_ENABLED` allow ops to disable the new sinks instantly without redeploying if abuse is detected.
 
 ### 2.2 tienNgoc (premium hard currency)
 

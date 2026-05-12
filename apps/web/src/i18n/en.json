@@ -946,6 +946,65 @@
         "UNKNOWN": "Unknown error, please retry."
       }
     },
+    "economy": {
+      "title": "Upgrade Economy",
+      "tierNote": "Tier {tier} · {quality} — merging only within the same tier; reaching a higher tier requires farming new gear.",
+      "enhance": {
+        "label": "Enhance",
+        "costLabel": "Lv {level}: {linhThach} linh thạch + {materialQty}× {materialName}",
+        "maxed": "Max level reached."
+      },
+      "merge": {
+        "label": "Merge",
+        "costLabel": "3× → 1× {output} ({outputQuality}). Cost: {linhThach} linh thạch + {materialQty}× {materialName}",
+        "maxed": "Peak quality — cannot merge further.",
+        "insufficientStack": "Need 2 more items of the same kind (unlocked & unequipped) to merge.",
+        "button": "Merge",
+        "confirm": "Merge",
+        "confirmTitle": "Confirm merge",
+        "confirmBody": "Consume 3 items + cost → 1× {output}. Cannot be undone.",
+        "successToast": "Merge succeeded: {item} ({quality})."
+      },
+      "socket": {
+        "label": "Socket / Unsocket",
+        "costLabel": "Socket: {linhThach} linh thạch + {materialQty}× {materialName}",
+        "unsocketCostLabel": "Unsocket: {linhThach} linh thạch + {materialQty}× {materialName}"
+      },
+      "reforge": {
+        "label": "Reforge",
+        "costLabel": "{linhThach} linh thạch + {materialQty}× {materialName}"
+      },
+      "protection": {
+        "label": "Protection Charm Suggested",
+        "recommend": "Suggest using {item} when enhance level ≥ {threshold} (Phase 25.1)."
+      },
+      "dismantle": {
+        "label": "Dismantle",
+        "yieldLabel": "+{linhThach} linh thạch and {materialCount} material types",
+        "button": "Dismantle",
+        "confirm": "Dismantle",
+        "confirmTitle": "Confirm dismantle",
+        "confirmBody": "Dismantling destroys this item and returns materials + linh thạch. Socketed gems are auto-returned. Cannot be undone.",
+        "successToast": "Dismantled: +{linhThach} linh thạch, {materials} material types."
+      },
+      "error": {
+        "MERGE_ITEM_NOT_FOUND": "Item not found (or not yours).",
+        "MERGE_ITEM_NOT_OWNED": "Item does not belong to character.",
+        "MERGE_ITEM_EQUIPPED": "Cannot merge an equipped item.",
+        "MERGE_INPUT_COUNT_INVALID": "Must select exactly 3 items to merge.",
+        "MERGE_INPUT_DUPLICATE": "Duplicate item id — must be distinct.",
+        "MERGE_MIXED_INPUT": "All 3 items must be the same kind.",
+        "MERGE_RECIPE_NOT_FOUND": "No merge recipe for this item.",
+        "MERGE_ITEM_CONSUME_RACE": "An item changed state (e.g. became equipped). Please retry.",
+        "DISMANTLE_ITEM_NOT_FOUND": "Item not found (or not yours).",
+        "DISMANTLE_ITEM_EQUIPPED": "Cannot dismantle an equipped item.",
+        "DISMANTLE_RACE": "Item state changed. Please retry.",
+        "PREVIEW_ITEM_NOT_FOUND": "Item not found (or not yours).",
+        "INSUFFICIENT_FUNDS": "Not enough linh thạch.",
+        "INSUFFICIENT_MATERIAL": "Not enough materials.",
+        "UNKNOWN": "Unknown error, please retry."
+      }
+    },
     "build": {
       "title": "Build Summary (Sets & Resonance)",
       "phaseBadge": "Phase 23.3",
