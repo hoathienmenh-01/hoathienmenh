@@ -20,7 +20,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đèn tổ sư mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'yeu_thu_dong', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_1_1', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 93, exp: 202, congHien: 14, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
+    rewards: { linhThach: 65, exp: 141, congHien: 10, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đèn tổ sư, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -36,7 +36,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về lương khô tân đệ tử mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'thanh_mang_xa', count: 4, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_a_linh', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 96, exp: 214, congHien: 15, affinity: [{ npcKey: 'npc_a_linh', delta: 4 }] },
+    rewards: { linhThach: 67, exp: 150, congHien: 10, affinity: [{ npcKey: 'npc_a_linh', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với lương khô tân đệ tử, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -52,7 +52,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Sơn Cốc bất ổn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'yeu_dan', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 99, exp: 226, congHien: 16, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
+    rewards: { linhThach: 69, exp: 158, congHien: 11, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Sơn Cốc bất ổn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -68,7 +68,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đời sống ngoại môn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'huyet_tinh', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 102, exp: 238, congHien: 17, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 71, exp: 167, congHien: 12, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đời sống ngoại môn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -84,7 +84,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đèn tổ sư mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoa_diem_son', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_1_5', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 105, exp: 250, congHien: 18, affinity: [{ npcKey: 'npc_a_linh', delta: 3 }] },
+    rewards: { linhThach: 74, exp: 175, congHien: 13, affinity: [{ npcKey: 'npc_a_linh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đèn tổ sư, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -100,7 +100,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về lương khô tân đệ tử mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'thuy_lan_yeu', count: 2, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 108, exp: 262, congHien: 19, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }] },
+    rewards: { linhThach: 76, exp: 183, congHien: 13, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với lương khô tân đệ tử, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -116,7 +116,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Sơn Cốc bất ổn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'thanh_lam_dan', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 111, exp: 274, congHien: 20, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 78, exp: 192, congHien: 14, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Sơn Cốc bất ổn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -132,7 +132,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đời sống ngoại môn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'linh_thao', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_a_linh', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 114, exp: 286, congHien: 21, affinity: [{ npcKey: 'npc_a_linh', delta: 2 }] },
+    rewards: { linhThach: 80, exp: 200, congHien: 15, affinity: [{ npcKey: 'npc_a_linh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đời sống ngoại môn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -148,7 +148,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đèn tổ sư mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'yeu_thu_dong', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_1_9', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 117, exp: 298, congHien: 13, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 82, exp: 209, congHien: 9, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đèn tổ sư, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -164,7 +164,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về lương khô tân đệ tử mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'thanh_mang_xa', count: 3, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 120, exp: 310, congHien: 14, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 4 }] },
+    rewards: { linhThach: 84, exp: 217, congHien: 10, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với lương khô tân đệ tử, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -180,7 +180,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Sơn Cốc bất ổn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_a_linh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'han_ngoc', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 123, exp: 322, congHien: 15, affinity: [{ npcKey: 'npc_a_linh', delta: 5 }] },
+    rewards: { linhThach: 86, exp: 225, congHien: 10, affinity: [{ npcKey: 'npc_a_linh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Sơn Cốc bất ổn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -196,7 +196,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đời sống ngoại môn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'yeu_dan', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 126, exp: 334, congHien: 16, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 2 }] },
+    rewards: { linhThach: 88, exp: 234, congHien: 11, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đời sống ngoại môn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -212,7 +212,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đèn tổ sư mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoa_diem_son', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_1_13', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 129, exp: 346, congHien: 17, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
+    rewards: { linhThach: 90, exp: 242, congHien: 12, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đèn tổ sư, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -228,7 +228,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về lương khô tân đệ tử mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'thuy_lan_yeu', count: 4, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_a_linh', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 132, exp: 358, congHien: 18, affinity: [{ npcKey: 'npc_a_linh', delta: 4 }] },
+    rewards: { linhThach: 92, exp: 251, congHien: 13, affinity: [{ npcKey: 'npc_a_linh', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với lương khô tân đệ tử, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -244,7 +244,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Sơn Cốc bất ổn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'hoi_nguyen_dan', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 135, exp: 370, congHien: 19, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
+    rewards: { linhThach: 94, exp: 259, congHien: 13, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Sơn Cốc bất ổn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -260,7 +260,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đời sống ngoại môn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'thanh_lam_dan', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 138, exp: 382, congHien: 20, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 97, exp: 267, congHien: 14, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đời sống ngoại môn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -276,7 +276,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đèn tổ sư mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'yeu_thu_dong', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_1_17', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 141, exp: 394, congHien: 21, affinity: [{ npcKey: 'npc_a_linh', delta: 3 }] },
+    rewards: { linhThach: 99, exp: 276, congHien: 15, affinity: [{ npcKey: 'npc_a_linh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đèn tổ sư, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -292,7 +292,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về lương khô tân đệ tử mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'thanh_mang_xa', count: 2, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 144, exp: 406, congHien: 13, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }] },
+    rewards: { linhThach: 101, exp: 284, congHien: 9, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với lương khô tân đệ tử, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -308,7 +308,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Sơn Cốc bất ổn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'phu_van_ngoc', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 147, exp: 418, congHien: 14, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 103, exp: 293, congHien: 10, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Sơn Cốc bất ổn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -324,7 +324,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đời sống ngoại môn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Phàm Nhân Nhập Đạo và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'han_ngoc', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_a_linh', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 150, exp: 430, congHien: 15, affinity: [{ npcKey: 'npc_a_linh', delta: 2 }] },
+    rewards: { linhThach: 105, exp: 301, congHien: 10, affinity: [{ npcKey: 'npc_a_linh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đời sống ngoại môn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -340,7 +340,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Ngũ Hành sơ cảm mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'moc_huyen_lam', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_2_1', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 123, exp: 297, congHien: 19, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
+    rewards: { linhThach: 86, exp: 208, congHien: 13, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Ngũ Hành sơ cảm, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -356,7 +356,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Tịch Linh vết mờ mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'huyet_lang', count: 4, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_a_linh', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 126, exp: 309, congHien: 20, affinity: [{ npcKey: 'npc_a_linh', delta: 4 }] },
+    rewards: { linhThach: 88, exp: 216, congHien: 14, affinity: [{ npcKey: 'npc_a_linh', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Tịch Linh vết mờ, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -372,7 +372,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về lò đan thiếu dược mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'huyet_tinh', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 129, exp: 321, congHien: 21, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
+    rewards: { linhThach: 90, exp: 225, congHien: 15, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với lò đan thiếu dược, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -388,7 +388,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về linh căn lệch nhịp mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'linh_lo_dan', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 132, exp: 333, congHien: 22, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 92, exp: 233, congHien: 15, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với linh căn lệch nhịp, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -404,7 +404,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Ngũ Hành sơ cảm mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoang_tho_huyet', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_2_5', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 135, exp: 345, congHien: 23, affinity: [{ npcKey: 'npc_a_linh', delta: 3 }] },
+    rewards: { linhThach: 94, exp: 241, congHien: 16, affinity: [{ npcKey: 'npc_a_linh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Ngũ Hành sơ cảm, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -420,7 +420,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Tịch Linh vết mờ mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'son_thu_lon', count: 2, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 138, exp: 357, congHien: 24, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }] },
+    rewards: { linhThach: 97, exp: 250, congHien: 17, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Tịch Linh vết mờ, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -436,7 +436,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về lò đan thiếu dược mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_thao', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 141, exp: 369, congHien: 25, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 99, exp: 258, congHien: 18, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với lò đan thiếu dược, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -452,7 +452,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về linh căn lệch nhịp mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'tinh_thiet', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_a_linh', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 144, exp: 381, congHien: 26, affinity: [{ npcKey: 'npc_a_linh', delta: 2 }] },
+    rewards: { linhThach: 101, exp: 267, congHien: 18, affinity: [{ npcKey: 'npc_a_linh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với linh căn lệch nhịp, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -468,7 +468,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Ngũ Hành sơ cảm mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'moc_huyen_lam', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_2_9', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 147, exp: 393, congHien: 18, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 103, exp: 275, congHien: 13, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Ngũ Hành sơ cảm, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -484,7 +484,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Tịch Linh vết mờ mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'huyet_lang', count: 3, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 150, exp: 405, congHien: 19, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 4 }] },
+    rewards: { linhThach: 105, exp: 284, congHien: 13, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Tịch Linh vết mờ, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -500,7 +500,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về lò đan thiếu dược mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_a_linh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'yeu_dan', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 153, exp: 417, congHien: 20, affinity: [{ npcKey: 'npc_a_linh', delta: 5 }] },
+    rewards: { linhThach: 107, exp: 292, congHien: 14, affinity: [{ npcKey: 'npc_a_linh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với lò đan thiếu dược, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -516,7 +516,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về linh căn lệch nhịp mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'huyet_tinh', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 156, exp: 429, congHien: 21, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 2 }] },
+    rewards: { linhThach: 109, exp: 300, congHien: 15, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với linh căn lệch nhịp, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -532,7 +532,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Ngũ Hành sơ cảm mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoang_tho_huyet', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_2_13', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 159, exp: 441, congHien: 22, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
+    rewards: { linhThach: 111, exp: 309, congHien: 15, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Ngũ Hành sơ cảm, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -548,7 +548,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Tịch Linh vết mờ mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'son_thu_lon', count: 4, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_a_linh', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 162, exp: 453, congHien: 23, affinity: [{ npcKey: 'npc_a_linh', delta: 4 }] },
+    rewards: { linhThach: 113, exp: 317, congHien: 16, affinity: [{ npcKey: 'npc_a_linh', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Tịch Linh vết mờ, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -564,7 +564,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về lò đan thiếu dược mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'thanh_lam_dan', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 165, exp: 465, congHien: 24, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
+    rewards: { linhThach: 115, exp: 326, congHien: 17, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với lò đan thiếu dược, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -580,7 +580,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về linh căn lệch nhịp mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'linh_thao', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 168, exp: 477, congHien: 25, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 118, exp: 334, congHien: 18, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với linh căn lệch nhịp, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -596,7 +596,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Ngũ Hành sơ cảm mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'moc_huyen_lam', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_2_17', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 171, exp: 489, congHien: 26, affinity: [{ npcKey: 'npc_a_linh', delta: 3 }] },
+    rewards: { linhThach: 120, exp: 342, congHien: 18, affinity: [{ npcKey: 'npc_a_linh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Ngũ Hành sơ cảm, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -612,7 +612,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Tịch Linh vết mờ mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'huyet_lang', count: 2, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 174, exp: 501, congHien: 18, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }] },
+    rewards: { linhThach: 122, exp: 351, congHien: 13, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Tịch Linh vết mờ, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -628,7 +628,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về lò đan thiếu dược mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'han_ngoc', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 177, exp: 513, congHien: 19, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 124, exp: 359, congHien: 13, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với lò đan thiếu dược, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -644,7 +644,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về linh căn lệch nhịp mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Linh Căn Thức Tỉnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'yeu_dan', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_a_linh', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 180, exp: 525, congHien: 20, affinity: [{ npcKey: 'npc_a_linh', delta: 2 }] },
+    rewards: { linhThach: 126, exp: 368, congHien: 14, affinity: [{ npcKey: 'npc_a_linh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với linh căn lệch nhịp, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -660,7 +660,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Hàn Dạ khiêu chiến mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'kim_son_mach', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_3_1', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 153, exp: 392, congHien: 24, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 107, exp: 274, congHien: 17, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Hàn Dạ khiêu chiến, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -676,7 +676,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Vạn Bảo giao kèo mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'thi_quy', count: 4, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_van_kim_nuong', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 156, exp: 404, congHien: 25, affinity: [{ npcKey: 'npc_van_kim_nuong', delta: 4 }] },
+    rewards: { linhThach: 109, exp: 283, congHien: 18, affinity: [{ npcKey: 'npc_van_kim_nuong', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Vạn Bảo giao kèo, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -692,7 +692,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về trận kỳ cũ mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_lo_dan', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 159, exp: 416, congHien: 26, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 111, exp: 291, congHien: 18, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với trận kỳ cũ, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -708,7 +708,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về tông môn nghèo mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'hoi_nguyen_dan', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 162, exp: 428, congHien: 27, affinity: [{ npcKey: 'npc_han_da', delta: 2 }] },
+    rewards: { linhThach: 113, exp: 300, congHien: 19, affinity: [{ npcKey: 'npc_han_da', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với tông môn nghèo, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -724,7 +724,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Hàn Dạ khiêu chiến mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'son_coc', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_3_5', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 165, exp: 440, congHien: 28, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 115, exp: 308, congHien: 20, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Hàn Dạ khiêu chiến, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -740,7 +740,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Vạn Bảo giao kèo mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'hac_yeu_xa', count: 2, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_van_kim_nuong', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 168, exp: 452, congHien: 29, affinity: [{ npcKey: 'npc_van_kim_nuong', delta: 4 }] },
+    rewards: { linhThach: 118, exp: 316, congHien: 20, affinity: [{ npcKey: 'npc_van_kim_nuong', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Vạn Bảo giao kèo, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -756,7 +756,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về trận kỳ cũ mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'tinh_thiet', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 171, exp: 464, congHien: 30, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 120, exp: 325, congHien: 21, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với trận kỳ cũ, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -772,7 +772,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về tông môn nghèo mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'phu_van_ngoc', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 174, exp: 476, congHien: 31, affinity: [{ npcKey: 'npc_han_da', delta: 2 }] },
+    rewards: { linhThach: 122, exp: 333, congHien: 22, affinity: [{ npcKey: 'npc_han_da', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với tông môn nghèo, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -788,7 +788,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Hàn Dạ khiêu chiến mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'kim_son_mach', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_3_9', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 177, exp: 488, congHien: 23, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 124, exp: 342, congHien: 16, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Hàn Dạ khiêu chiến, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -804,7 +804,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Vạn Bảo giao kèo mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'thi_quy', count: 3, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_van_kim_nuong', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 180, exp: 500, congHien: 24, affinity: [{ npcKey: 'npc_van_kim_nuong', delta: 4 }] },
+    rewards: { linhThach: 126, exp: 350, congHien: 17, affinity: [{ npcKey: 'npc_van_kim_nuong', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Vạn Bảo giao kèo, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -820,7 +820,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về trận kỳ cũ mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'huyet_tinh', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 183, exp: 512, congHien: 25, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 128, exp: 358, congHien: 18, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với trận kỳ cũ, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -836,7 +836,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về tông môn nghèo mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'linh_lo_dan', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 186, exp: 524, congHien: 26, affinity: [{ npcKey: 'npc_han_da', delta: 2 }] },
+    rewards: { linhThach: 130, exp: 367, congHien: 18, affinity: [{ npcKey: 'npc_han_da', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với tông môn nghèo, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -852,7 +852,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Hàn Dạ khiêu chiến mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'son_coc', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_3_13', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 189, exp: 536, congHien: 27, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 132, exp: 375, congHien: 19, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Hàn Dạ khiêu chiến, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -868,7 +868,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Vạn Bảo giao kèo mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'hac_yeu_xa', count: 4, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_van_kim_nuong', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 192, exp: 548, congHien: 28, affinity: [{ npcKey: 'npc_van_kim_nuong', delta: 4 }] },
+    rewards: { linhThach: 134, exp: 384, congHien: 20, affinity: [{ npcKey: 'npc_van_kim_nuong', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Vạn Bảo giao kèo, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -884,7 +884,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về trận kỳ cũ mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_thao', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 195, exp: 560, congHien: 29, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 136, exp: 392, congHien: 20, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với trận kỳ cũ, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -900,7 +900,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về tông môn nghèo mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'tinh_thiet', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 198, exp: 572, congHien: 30, affinity: [{ npcKey: 'npc_han_da', delta: 2 }] },
+    rewards: { linhThach: 139, exp: 400, congHien: 21, affinity: [{ npcKey: 'npc_han_da', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với tông môn nghèo, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -916,7 +916,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Hàn Dạ khiêu chiến mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'kim_son_mach', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_3_17', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 201, exp: 584, congHien: 31, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 141, exp: 409, congHien: 22, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Hàn Dạ khiêu chiến, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -932,7 +932,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Vạn Bảo giao kèo mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'thi_quy', count: 2, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_van_kim_nuong', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 204, exp: 596, congHien: 23, affinity: [{ npcKey: 'npc_van_kim_nuong', delta: 4 }] },
+    rewards: { linhThach: 143, exp: 417, congHien: 16, affinity: [{ npcKey: 'npc_van_kim_nuong', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Vạn Bảo giao kèo, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -948,7 +948,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về trận kỳ cũ mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'yeu_dan', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 207, exp: 608, congHien: 24, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 145, exp: 426, congHien: 17, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với trận kỳ cũ, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -964,7 +964,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về tông môn nghèo mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tông Môn Sơ Khởi và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'huyet_tinh', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 210, exp: 620, congHien: 25, affinity: [{ npcKey: 'npc_han_da', delta: 2 }] },
+    rewards: { linhThach: 147, exp: 434, congHien: 18, affinity: [{ npcKey: 'npc_han_da', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với tông môn nghèo, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -980,7 +980,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về giếng cổ đổi màu mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'thuy_long_uyen', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_4_1', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 183, exp: 487, congHien: 29, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 128, exp: 341, congHien: 20, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với giếng cổ đổi màu, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -996,7 +996,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về ký ức tổ sư mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'kim_quang_thach_giap', count: 4, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 186, exp: 499, congHien: 30, affinity: [{ npcKey: 'npc_han_da', delta: 4 }] },
+    rewards: { linhThach: 130, exp: 349, congHien: 21, affinity: [{ npcKey: 'npc_han_da', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với ký ức tổ sư, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1012,7 +1012,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về dấu phong ấn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'hoi_nguyen_dan', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 189, exp: 511, congHien: 31, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 132, exp: 358, congHien: 22, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với dấu phong ấn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1028,7 +1028,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về trăng máu còn sót mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'thanh_lam_dan', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_to_nguyet_ly', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 192, exp: 523, congHien: 32, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 2 }] },
+    rewards: { linhThach: 134, exp: 366, congHien: 22, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với trăng máu còn sót, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1044,7 +1044,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về giếng cổ đổi màu mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hac_lam', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_4_5', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 195, exp: 535, congHien: 33, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 136, exp: 374, congHien: 23, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với giếng cổ đổi màu, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1060,7 +1060,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về ký ức tổ sư mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'kim_giap_thu', count: 2, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 198, exp: 547, congHien: 34, affinity: [{ npcKey: 'npc_han_da', delta: 4 }] },
+    rewards: { linhThach: 139, exp: 383, congHien: 24, affinity: [{ npcKey: 'npc_han_da', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với ký ức tổ sư, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1076,7 +1076,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về dấu phong ấn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'phu_van_ngoc', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 201, exp: 559, congHien: 35, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 141, exp: 391, congHien: 24, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với dấu phong ấn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1092,7 +1092,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về trăng máu còn sót mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'han_ngoc', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_to_nguyet_ly', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 204, exp: 571, congHien: 36, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 2 }] },
+    rewards: { linhThach: 143, exp: 400, congHien: 25, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với trăng máu còn sót, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1108,7 +1108,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về giếng cổ đổi màu mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'thuy_long_uyen', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_4_9', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 207, exp: 583, congHien: 28, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 145, exp: 408, congHien: 20, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với giếng cổ đổi màu, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1124,7 +1124,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về ký ức tổ sư mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'kim_quang_thach_giap', count: 3, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 210, exp: 595, congHien: 29, affinity: [{ npcKey: 'npc_han_da', delta: 4 }] },
+    rewards: { linhThach: 147, exp: 416, congHien: 20, affinity: [{ npcKey: 'npc_han_da', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với ký ức tổ sư, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1140,7 +1140,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về dấu phong ấn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_lo_dan', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 213, exp: 607, congHien: 30, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 149, exp: 425, congHien: 21, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với dấu phong ấn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1156,7 +1156,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về trăng máu còn sót mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'hoi_nguyen_dan', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_to_nguyet_ly', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 216, exp: 619, congHien: 31, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 2 }] },
+    rewards: { linhThach: 151, exp: 433, congHien: 22, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với trăng máu còn sót, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1172,7 +1172,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về giếng cổ đổi màu mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hac_lam', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_4_13', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 219, exp: 631, congHien: 32, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 153, exp: 442, congHien: 22, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với giếng cổ đổi màu, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1188,7 +1188,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về ký ức tổ sư mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'kim_giap_thu', count: 4, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 222, exp: 643, congHien: 33, affinity: [{ npcKey: 'npc_han_da', delta: 4 }] },
+    rewards: { linhThach: 155, exp: 450, congHien: 23, affinity: [{ npcKey: 'npc_han_da', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với ký ức tổ sư, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1204,7 +1204,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về dấu phong ấn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'tinh_thiet', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 225, exp: 655, congHien: 34, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 158, exp: 458, congHien: 24, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với dấu phong ấn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1220,7 +1220,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về trăng máu còn sót mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'phu_van_ngoc', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_to_nguyet_ly', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 228, exp: 667, congHien: 35, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 2 }] },
+    rewards: { linhThach: 160, exp: 467, congHien: 24, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với trăng máu còn sót, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1236,7 +1236,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về giếng cổ đổi màu mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'thuy_long_uyen', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_4_17', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 231, exp: 679, congHien: 36, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 162, exp: 475, congHien: 25, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với giếng cổ đổi màu, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1252,7 +1252,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về ký ức tổ sư mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'kim_quang_thach_giap', count: 2, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 234, exp: 691, congHien: 28, affinity: [{ npcKey: 'npc_han_da', delta: 4 }] },
+    rewards: { linhThach: 164, exp: 484, congHien: 20, affinity: [{ npcKey: 'npc_han_da', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với ký ức tổ sư, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1268,7 +1268,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về dấu phong ấn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'huyet_tinh', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 237, exp: 703, congHien: 29, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 166, exp: 492, congHien: 20, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với dấu phong ấn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1284,7 +1284,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về trăng máu còn sót mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Bí Cảnh Huyết Nguyệt và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'linh_lo_dan', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_to_nguyet_ly', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 240, exp: 715, congHien: 30, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 2 }] },
+    rewards: { linhThach: 168, exp: 500, congHien: 21, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với trăng máu còn sót, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1300,7 +1300,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về ma tu bị oan mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoa_diem_son', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_5_1', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 213, exp: 582, congHien: 34, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 149, exp: 407, congHien: 24, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với ma tu bị oan, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1316,7 +1316,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đạo tâm lựa chọn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'thuy_lan_yeu', count: 4, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_ha_su_gia', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 216, exp: 594, congHien: 35, affinity: [{ npcKey: 'npc_huyet_ha_su_gia', delta: 4 }] },
+    rewards: { linhThach: 151, exp: 416, congHien: 24, affinity: [{ npcKey: 'npc_huyet_ha_su_gia', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đạo tâm lựa chọn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1332,7 +1332,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về huyết khí mất kiểm mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'thanh_lam_dan', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 219, exp: 606, congHien: 36, affinity: [{ npcKey: 'npc_han_da', delta: 5 }] },
+    rewards: { linhThach: 153, exp: 424, congHien: 25, affinity: [{ npcKey: 'npc_han_da', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với huyết khí mất kiểm, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1348,7 +1348,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Huyết Hà nhân chứng mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'linh_thao', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_la_sat', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 222, exp: 618, congHien: 37, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 2 }] },
+    rewards: { linhThach: 155, exp: 433, congHien: 26, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Huyết Hà nhân chứng, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1364,7 +1364,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về ma tu bị oan mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'yeu_thu_dong', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_5_5', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 225, exp: 630, congHien: 38, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 158, exp: 441, congHien: 27, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với ma tu bị oan, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1380,7 +1380,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đạo tâm lựa chọn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'thanh_mang_xa', count: 2, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_ha_su_gia', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 228, exp: 642, congHien: 39, affinity: [{ npcKey: 'npc_huyet_ha_su_gia', delta: 4 }] },
+    rewards: { linhThach: 160, exp: 449, congHien: 27, affinity: [{ npcKey: 'npc_huyet_ha_su_gia', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đạo tâm lựa chọn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1396,7 +1396,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về huyết khí mất kiểm mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'han_ngoc', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 231, exp: 654, congHien: 40, affinity: [{ npcKey: 'npc_han_da', delta: 5 }] },
+    rewards: { linhThach: 162, exp: 458, congHien: 28, affinity: [{ npcKey: 'npc_han_da', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với huyết khí mất kiểm, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1412,7 +1412,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Huyết Hà nhân chứng mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'yeu_dan', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_la_sat', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 234, exp: 666, congHien: 41, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 2 }] },
+    rewards: { linhThach: 164, exp: 466, congHien: 29, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Huyết Hà nhân chứng, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1428,7 +1428,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về ma tu bị oan mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoa_diem_son', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_5_9', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 237, exp: 678, congHien: 33, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 166, exp: 475, congHien: 23, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với ma tu bị oan, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1444,7 +1444,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đạo tâm lựa chọn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'thuy_lan_yeu', count: 3, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_ha_su_gia', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 240, exp: 690, congHien: 34, affinity: [{ npcKey: 'npc_huyet_ha_su_gia', delta: 4 }] },
+    rewards: { linhThach: 168, exp: 483, congHien: 24, affinity: [{ npcKey: 'npc_huyet_ha_su_gia', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đạo tâm lựa chọn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1460,7 +1460,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về huyết khí mất kiểm mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'hoi_nguyen_dan', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 243, exp: 702, congHien: 35, affinity: [{ npcKey: 'npc_han_da', delta: 5 }] },
+    rewards: { linhThach: 170, exp: 491, congHien: 24, affinity: [{ npcKey: 'npc_han_da', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với huyết khí mất kiểm, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1476,7 +1476,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Huyết Hà nhân chứng mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'thanh_lam_dan', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_la_sat', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 246, exp: 714, congHien: 36, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 2 }] },
+    rewards: { linhThach: 172, exp: 500, congHien: 25, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Huyết Hà nhân chứng, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1492,7 +1492,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về ma tu bị oan mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'yeu_thu_dong', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_5_13', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 249, exp: 726, congHien: 37, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 174, exp: 508, congHien: 26, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với ma tu bị oan, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1508,7 +1508,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đạo tâm lựa chọn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'thanh_mang_xa', count: 4, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_ha_su_gia', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 252, exp: 738, congHien: 38, affinity: [{ npcKey: 'npc_huyet_ha_su_gia', delta: 4 }] },
+    rewards: { linhThach: 176, exp: 517, congHien: 27, affinity: [{ npcKey: 'npc_huyet_ha_su_gia', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đạo tâm lựa chọn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1524,7 +1524,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về huyết khí mất kiểm mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'phu_van_ngoc', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 255, exp: 750, congHien: 39, affinity: [{ npcKey: 'npc_han_da', delta: 5 }] },
+    rewards: { linhThach: 178, exp: 525, congHien: 27, affinity: [{ npcKey: 'npc_han_da', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với huyết khí mất kiểm, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1540,7 +1540,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Huyết Hà nhân chứng mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'han_ngoc', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_la_sat', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 258, exp: 762, congHien: 40, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 2 }] },
+    rewards: { linhThach: 181, exp: 533, congHien: 28, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Huyết Hà nhân chứng, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1556,7 +1556,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về ma tu bị oan mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoa_diem_son', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_5_17', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 261, exp: 774, congHien: 41, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 183, exp: 542, congHien: 29, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với ma tu bị oan, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1572,7 +1572,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đạo tâm lựa chọn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'thuy_lan_yeu', count: 2, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_ha_su_gia', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 264, exp: 786, congHien: 33, affinity: [{ npcKey: 'npc_huyet_ha_su_gia', delta: 4 }] },
+    rewards: { linhThach: 185, exp: 550, congHien: 23, affinity: [{ npcKey: 'npc_huyet_ha_su_gia', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đạo tâm lựa chọn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1588,7 +1588,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về huyết khí mất kiểm mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_lo_dan', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 267, exp: 798, congHien: 34, affinity: [{ npcKey: 'npc_han_da', delta: 5 }] },
+    rewards: { linhThach: 187, exp: 559, congHien: 24, affinity: [{ npcKey: 'npc_han_da', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với huyết khí mất kiểm, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1604,7 +1604,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Huyết Hà nhân chứng mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ma Tu Xuất Thế và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'hoi_nguyen_dan', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_la_sat', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 270, exp: 810, congHien: 35, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 2 }] },
+    rewards: { linhThach: 189, exp: 567, congHien: 24, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Huyết Hà nhân chứng, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1620,7 +1620,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đàn tế Kim Đan mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoang_tho_huyet', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_6_1', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 243, exp: 677, congHien: 39, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 170, exp: 474, congHien: 27, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đàn tế Kim Đan, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1636,7 +1636,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Tịch Thiên tín hiệu mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'son_thu_lon', count: 4, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_to_nguyet_ly', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 246, exp: 689, congHien: 40, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 4 }] },
+    rewards: { linhThach: 172, exp: 482, congHien: 28, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Tịch Thiên tín hiệu, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1652,7 +1652,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đồng đội hợp lực mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_la_sat', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_thao', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 249, exp: 701, congHien: 41, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 5 }] },
+    rewards: { linhThach: 174, exp: 491, congHien: 29, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đồng đội hợp lực, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1668,7 +1668,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Ngũ Hành cộng hưởng mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'tinh_thiet', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 252, exp: 713, congHien: 42, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 176, exp: 499, congHien: 29, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Ngũ Hành cộng hưởng, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1684,7 +1684,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đàn tế Kim Đan mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'moc_huyen_lam', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_6_5', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 255, exp: 725, congHien: 43, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 178, exp: 507, congHien: 30, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đàn tế Kim Đan, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1700,7 +1700,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Tịch Thiên tín hiệu mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'huyet_lang', count: 2, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_to_nguyet_ly', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 258, exp: 737, congHien: 44, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 4 }] },
+    rewards: { linhThach: 181, exp: 516, congHien: 31, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Tịch Thiên tín hiệu, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1716,7 +1716,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đồng đội hợp lực mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_la_sat', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'yeu_dan', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 261, exp: 749, congHien: 45, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 5 }] },
+    rewards: { linhThach: 183, exp: 524, congHien: 31, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đồng đội hợp lực, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1732,7 +1732,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Ngũ Hành cộng hưởng mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'huyet_tinh', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 264, exp: 761, congHien: 46, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 185, exp: 533, congHien: 32, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Ngũ Hành cộng hưởng, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1748,7 +1748,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đàn tế Kim Đan mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoang_tho_huyet', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_6_9', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 267, exp: 773, congHien: 38, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 187, exp: 541, congHien: 27, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đàn tế Kim Đan, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1764,7 +1764,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Tịch Thiên tín hiệu mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'son_thu_lon', count: 3, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_to_nguyet_ly', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 270, exp: 785, congHien: 39, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 4 }] },
+    rewards: { linhThach: 189, exp: 550, congHien: 27, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Tịch Thiên tín hiệu, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1780,7 +1780,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đồng đội hợp lực mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_la_sat', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'thanh_lam_dan', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 273, exp: 797, congHien: 40, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 5 }] },
+    rewards: { linhThach: 191, exp: 558, congHien: 28, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đồng đội hợp lực, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1796,7 +1796,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Ngũ Hành cộng hưởng mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'linh_thao', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 276, exp: 809, congHien: 41, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 193, exp: 566, congHien: 29, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Ngũ Hành cộng hưởng, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1812,7 +1812,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đàn tế Kim Đan mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'moc_huyen_lam', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_6_13', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 279, exp: 821, congHien: 42, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 195, exp: 575, congHien: 29, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đàn tế Kim Đan, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1828,7 +1828,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Tịch Thiên tín hiệu mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'huyet_lang', count: 4, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_to_nguyet_ly', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 282, exp: 833, congHien: 43, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 4 }] },
+    rewards: { linhThach: 197, exp: 583, congHien: 30, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Tịch Thiên tín hiệu, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1844,7 +1844,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đồng đội hợp lực mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_la_sat', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'han_ngoc', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 285, exp: 845, congHien: 44, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 5 }] },
+    rewards: { linhThach: 200, exp: 592, congHien: 31, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đồng đội hợp lực, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1860,7 +1860,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Ngũ Hành cộng hưởng mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'yeu_dan', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 288, exp: 857, congHien: 45, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 202, exp: 600, congHien: 31, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Ngũ Hành cộng hưởng, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1876,7 +1876,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đàn tế Kim Đan mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoang_tho_huyet', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_6_17', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 291, exp: 869, congHien: 46, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 204, exp: 608, congHien: 32, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đàn tế Kim Đan, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1892,7 +1892,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Tịch Thiên tín hiệu mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'son_thu_lon', count: 2, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_to_nguyet_ly', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 294, exp: 881, congHien: 38, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 4 }] },
+    rewards: { linhThach: 206, exp: 617, congHien: 27, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Tịch Thiên tín hiệu, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1908,7 +1908,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đồng đội hợp lực mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_la_sat', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'hoi_nguyen_dan', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 297, exp: 893, congHien: 39, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 5 }] },
+    rewards: { linhThach: 208, exp: 625, congHien: 27, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đồng đội hợp lực, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1924,7 +1924,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Ngũ Hành cộng hưởng mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Ngũ Hành Thiên Mệnh và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'thanh_lam_dan', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 300, exp: 905, congHien: 40, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 210, exp: 634, congHien: 28, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Ngũ Hành cộng hưởng, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1940,7 +1940,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Tịch Linh Chủng mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'son_coc', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_7_1', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 273, exp: 772, congHien: 44, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
+    rewards: { linhThach: 191, exp: 540, congHien: 31, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Tịch Linh Chủng, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1956,7 +1956,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về ký ức bị khoá mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'hac_yeu_xa', count: 4, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_tich_linh_su_gia', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 276, exp: 784, congHien: 45, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 4 }] },
+    rewards: { linhThach: 193, exp: 549, congHien: 31, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với ký ức bị khoá, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1972,7 +1972,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về lời thề hộ đạo mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'tinh_thiet', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 279, exp: 796, congHien: 46, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
+    rewards: { linhThach: 195, exp: 557, congHien: 32, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với lời thề hộ đạo, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -1988,7 +1988,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về tâm ma Mộc Thanh Y mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'phu_van_ngoc', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 282, exp: 808, congHien: 47, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 197, exp: 566, congHien: 33, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với tâm ma Mộc Thanh Y, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2004,7 +2004,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Tịch Linh Chủng mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'kim_son_mach', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_7_5', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 285, exp: 820, congHien: 48, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 3 }] },
+    rewards: { linhThach: 200, exp: 574, congHien: 34, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Tịch Linh Chủng, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2020,7 +2020,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về ký ức bị khoá mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'thi_quy', count: 2, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 288, exp: 832, congHien: 49, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }] },
+    rewards: { linhThach: 202, exp: 582, congHien: 34, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với ký ức bị khoá, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2036,7 +2036,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về lời thề hộ đạo mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'huyet_tinh', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 291, exp: 844, congHien: 50, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 204, exp: 591, congHien: 35, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với lời thề hộ đạo, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2052,7 +2052,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về tâm ma Mộc Thanh Y mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'linh_lo_dan', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_tich_linh_su_gia', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 294, exp: 856, congHien: 51, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 2 }] },
+    rewards: { linhThach: 206, exp: 599, congHien: 36, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với tâm ma Mộc Thanh Y, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2068,7 +2068,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Tịch Linh Chủng mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'son_coc', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_7_9', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 297, exp: 868, congHien: 43, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 208, exp: 608, congHien: 30, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Tịch Linh Chủng, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2084,7 +2084,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về ký ức bị khoá mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'hac_yeu_xa', count: 3, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 300, exp: 880, congHien: 44, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 4 }] },
+    rewards: { linhThach: 210, exp: 616, congHien: 31, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với ký ức bị khoá, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2100,7 +2100,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về lời thề hộ đạo mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_tich_linh_su_gia', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_thao', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 303, exp: 892, congHien: 45, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 5 }] },
+    rewards: { linhThach: 212, exp: 624, congHien: 31, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với lời thề hộ đạo, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2116,7 +2116,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về tâm ma Mộc Thanh Y mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'tinh_thiet', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 306, exp: 904, congHien: 46, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 2 }] },
+    rewards: { linhThach: 214, exp: 633, congHien: 32, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với tâm ma Mộc Thanh Y, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2132,7 +2132,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Tịch Linh Chủng mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'kim_son_mach', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_7_13', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 309, exp: 916, congHien: 47, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
+    rewards: { linhThach: 216, exp: 641, congHien: 33, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Tịch Linh Chủng, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2148,7 +2148,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về ký ức bị khoá mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'thi_quy', count: 4, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_tich_linh_su_gia', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 312, exp: 928, congHien: 48, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 4 }] },
+    rewards: { linhThach: 218, exp: 650, congHien: 34, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với ký ức bị khoá, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2164,7 +2164,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về lời thề hộ đạo mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'yeu_dan', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 315, exp: 940, congHien: 49, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
+    rewards: { linhThach: 220, exp: 658, congHien: 34, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với lời thề hộ đạo, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2180,7 +2180,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về tâm ma Mộc Thanh Y mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'huyet_tinh', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 318, exp: 952, congHien: 50, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 223, exp: 666, congHien: 35, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với tâm ma Mộc Thanh Y, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2196,7 +2196,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Tịch Linh Chủng mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'son_coc', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_7_17', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 321, exp: 964, congHien: 51, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 3 }] },
+    rewards: { linhThach: 225, exp: 675, congHien: 36, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Tịch Linh Chủng, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2212,7 +2212,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về ký ức bị khoá mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'hac_yeu_xa', count: 2, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 324, exp: 976, congHien: 43, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }] },
+    rewards: { linhThach: 227, exp: 683, congHien: 30, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với ký ức bị khoá, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2228,7 +2228,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về lời thề hộ đạo mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'thanh_lam_dan', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 327, exp: 988, congHien: 44, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 229, exp: 692, congHien: 31, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với lời thề hộ đạo, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2244,7 +2244,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về tâm ma Mộc Thanh Y mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Tâm Ma Của Đại Sư Tỷ và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'linh_thao', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_tich_linh_su_gia', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 330, exp: 1000, congHien: 45, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 2 }] },
+    rewards: { linhThach: 231, exp: 700, congHien: 31, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với tâm ma Mộc Thanh Y, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2260,7 +2260,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đạo thống tầng một mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hac_lam', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_8_1', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 303, exp: 867, congHien: 49, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 3 }] },
+    rewards: { linhThach: 212, exp: 607, congHien: 34, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đạo thống tầng một, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2276,7 +2276,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về kinh lâu cũ mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'kim_giap_thu', count: 4, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_tich_linh_su_gia', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 306, exp: 879, congHien: 50, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 4 }] },
+    rewards: { linhThach: 214, exp: 615, congHien: 35, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với kinh lâu cũ, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2292,7 +2292,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về sứ giả Tịch Thiên mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'phu_van_ngoc', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 309, exp: 891, congHien: 51, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 216, exp: 624, congHien: 36, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với sứ giả Tịch Thiên, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2308,7 +2308,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Hoa Thiên Sơn phong ấn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'han_ngoc', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_hoa_thien_dao_to', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 312, exp: 903, congHien: 52, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 2 }] },
+    rewards: { linhThach: 218, exp: 632, congHien: 36, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Hoa Thiên Sơn phong ấn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2324,7 +2324,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đạo thống tầng một mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'thuy_long_uyen', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_8_5', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 315, exp: 915, congHien: 53, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 3 }] },
+    rewards: { linhThach: 220, exp: 640, congHien: 37, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đạo thống tầng một, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2340,7 +2340,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về kinh lâu cũ mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'kim_quang_thach_giap', count: 2, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 318, exp: 927, congHien: 54, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 4 }] },
+    rewards: { linhThach: 223, exp: 649, congHien: 38, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với kinh lâu cũ, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2356,7 +2356,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về sứ giả Tịch Thiên mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_hoa_thien_dao_to', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_lo_dan', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 321, exp: 939, congHien: 55, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 5 }] },
+    rewards: { linhThach: 225, exp: 657, congHien: 38, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với sứ giả Tịch Thiên, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2372,7 +2372,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Hoa Thiên Sơn phong ấn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'hoi_nguyen_dan', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_tich_linh_su_gia', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 324, exp: 951, congHien: 56, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 2 }] },
+    rewards: { linhThach: 227, exp: 666, congHien: 39, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Hoa Thiên Sơn phong ấn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2388,7 +2388,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đạo thống tầng một mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hac_lam', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_8_9', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 327, exp: 963, congHien: 48, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
+    rewards: { linhThach: 229, exp: 674, congHien: 34, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đạo thống tầng một, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2404,7 +2404,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về kinh lâu cũ mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'kim_giap_thu', count: 3, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_hoa_thien_dao_to', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 330, exp: 975, congHien: 49, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 4 }] },
+    rewards: { linhThach: 231, exp: 682, congHien: 34, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với kinh lâu cũ, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2420,7 +2420,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về sứ giả Tịch Thiên mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_tich_linh_su_gia', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'tinh_thiet', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 333, exp: 987, congHien: 50, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 5 }] },
+    rewards: { linhThach: 233, exp: 691, congHien: 35, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với sứ giả Tịch Thiên, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2436,7 +2436,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Hoa Thiên Sơn phong ấn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'phu_van_ngoc', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 336, exp: 999, congHien: 51, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 235, exp: 699, congHien: 36, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Hoa Thiên Sơn phong ấn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2452,7 +2452,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đạo thống tầng một mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'thuy_long_uyen', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_8_13', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 339, exp: 1011, congHien: 52, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 3 }] },
+    rewards: { linhThach: 237, exp: 708, congHien: 36, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đạo thống tầng một, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2468,7 +2468,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về kinh lâu cũ mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'kim_quang_thach_giap', count: 4, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_tich_linh_su_gia', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 342, exp: 1023, congHien: 53, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 4 }] },
+    rewards: { linhThach: 239, exp: 716, congHien: 37, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với kinh lâu cũ, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2484,7 +2484,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về sứ giả Tịch Thiên mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'huyet_tinh', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 345, exp: 1035, congHien: 54, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 241, exp: 724, congHien: 38, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với sứ giả Tịch Thiên, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2500,7 +2500,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Hoa Thiên Sơn phong ấn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'linh_lo_dan', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_hoa_thien_dao_to', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 348, exp: 1047, congHien: 55, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 2 }] },
+    rewards: { linhThach: 244, exp: 733, congHien: 38, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Hoa Thiên Sơn phong ấn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2516,7 +2516,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về đạo thống tầng một mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hac_lam', count: 1, description: 'Khảo sát địa điểm gắn với câu chuyện phụ.' }, { id: 'step_02', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_side_8_17', count: 1, description: 'Chọn cách giúp người trong cuộc.' }],
-    rewards: { linhThach: 351, exp: 1059, congHien: 56, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 3 }] },
+    rewards: { linhThach: 246, exp: 741, congHien: 39, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với đạo thống tầng một, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2532,7 +2532,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về kinh lâu cũ mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'kill', targetType: 'monster', targetId: 'kim_giap_thu', count: 2, description: 'Đẩy lui mối nguy vừa đủ để bảo vệ nhân vật phụ.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Báo lại để đóng mini-story.' }],
-    rewards: { linhThach: 354, exp: 1071, congHien: 48, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 4 }] },
+    rewards: { linhThach: 248, exp: 750, congHien: 34, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với kinh lâu cũ, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2548,7 +2548,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về sứ giả Tịch Thiên mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'talk', targetType: 'npc', targetId: 'npc_hoa_thien_dao_to', count: 1, description: 'Nghe NPC kể vấn đề cá nhân hoặc lore phụ.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_thao', count: 1, description: 'Tìm chứng cứ nhỏ gắn với lore phụ.' }],
-    rewards: { linhThach: 357, exp: 1083, congHien: 49, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 5 }] },
+    rewards: { linhThach: 250, exp: 758, congHien: 34, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với sứ giả Tịch Thiên, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
   sideQuest({
@@ -2564,7 +2564,7 @@ export const PHASE21_SIDE_QUESTS: readonly QuestDef[] = [
     objective: 'Giải quyết câu chuyện phụ về Hoa Thiên Sơn phong ấn mà không làm lệch canon chính.',
     requirement: 'Đã mở chương Hoa Thiên Sơn Tầng Một và gặp NPC giao nhiệm vụ.',
     steps: [{ id: 'step_01', kind: 'collect', targetType: 'item', targetId: 'tinh_thiet', count: 2, description: 'Thu thập vật liệu giải quyết vấn đề địa phương.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_tich_linh_su_gia', count: 1, description: 'Trao lại kết quả và nhận lời kể phụ.' }],
-    rewards: { linhThach: 360, exp: 1095, congHien: 50, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 2 }] },
+    rewards: { linhThach: 252, exp: 766, congHien: 35, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Side quest gắn với Hoa Thiên Sơn phong ấn, mở thêm đời sống/NPC/lore fragment nhưng reward thấp hơn main quest.',
   }),
 ];

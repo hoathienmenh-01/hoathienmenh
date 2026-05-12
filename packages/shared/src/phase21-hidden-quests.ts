@@ -12,7 +12,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về lương khô tân đệ tử.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_pham_nhan_nhap_dao; theme=lương khô tân đệ tử',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'yeu_thu_dong', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'phu_van_ngoc', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 51, exp: 111, congHien: 8, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
+    rewards: { linhThach: 38, exp: 83, congHien: 6, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với lương khô tân đệ tử; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -24,7 +24,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về Sơn Cốc bất ổn.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_pham_nhan_nhap_dao; theme=Sơn Cốc bất ổn',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'moc_huyen_lam', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'han_ngoc', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 53, exp: 118, congHien: 8, affinity: [{ npcKey: 'npc_a_linh', delta: 4 }] },
+    rewards: { linhThach: 40, exp: 88, congHien: 6, affinity: [{ npcKey: 'npc_a_linh', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với Sơn Cốc bất ổn; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -36,7 +36,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về đời sống ngoại môn.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_pham_nhan_nhap_dao; theme=đời sống ngoại môn',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'kim_son_mach', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'yeu_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 54, exp: 124, congHien: 9, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
+    rewards: { linhThach: 40, exp: 93, congHien: 7, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với đời sống ngoại môn; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -48,7 +48,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về đèn tổ sư.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_pham_nhan_nhap_dao; theme=đèn tổ sư',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'thuy_long_uyen', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'huyet_tinh', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 56, exp: 131, congHien: 9, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 42, exp: 98, congHien: 7, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với đèn tổ sư; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -60,7 +60,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về lương khô tân đệ tử.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_pham_nhan_nhap_dao; theme=lương khô tân đệ tử',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoa_diem_son', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_lo_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 58, exp: 138, congHien: 10, affinity: [{ npcKey: 'npc_a_linh', delta: 3 }] },
+    rewards: { linhThach: 44, exp: 104, congHien: 8, affinity: [{ npcKey: 'npc_a_linh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với lương khô tân đệ tử; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -72,7 +72,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về Tịch Linh vết mờ.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_linh_can_thuc_tinh; theme=Tịch Linh vết mờ',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'moc_huyen_lam', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'han_ngoc', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 68, exp: 163, congHien: 10, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
+    rewards: { linhThach: 51, exp: 122, congHien: 8, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với Tịch Linh vết mờ; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -84,7 +84,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về lò đan thiếu dược.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_linh_can_thuc_tinh; theme=lò đan thiếu dược',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'kim_son_mach', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'yeu_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 69, exp: 170, congHien: 11, affinity: [{ npcKey: 'npc_a_linh', delta: 4 }] },
+    rewards: { linhThach: 52, exp: 128, congHien: 8, affinity: [{ npcKey: 'npc_a_linh', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với lò đan thiếu dược; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -96,7 +96,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về linh căn lệch nhịp.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_linh_can_thuc_tinh; theme=linh căn lệch nhịp',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'thuy_long_uyen', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'huyet_tinh', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 71, exp: 177, congHien: 12, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
+    rewards: { linhThach: 53, exp: 133, congHien: 9, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với linh căn lệch nhịp; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -108,7 +108,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về Ngũ Hành sơ cảm.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_linh_can_thuc_tinh; theme=Ngũ Hành sơ cảm',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoa_diem_son', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_lo_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 73, exp: 183, congHien: 12, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 55, exp: 137, congHien: 9, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với Ngũ Hành sơ cảm; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -120,7 +120,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về Tịch Linh vết mờ.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_linh_can_thuc_tinh; theme=Tịch Linh vết mờ',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoang_tho_huyet', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'hoi_nguyen_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 74, exp: 190, congHien: 13, affinity: [{ npcKey: 'npc_a_linh', delta: 3 }] },
+    rewards: { linhThach: 56, exp: 142, congHien: 10, affinity: [{ npcKey: 'npc_a_linh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với Tịch Linh vết mờ; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -132,7 +132,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về Vạn Bảo giao kèo.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_tong_mon_so_khoi; theme=Vạn Bảo giao kèo',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'kim_son_mach', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'yeu_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 84, exp: 216, congHien: 13, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 63, exp: 162, congHien: 10, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với Vạn Bảo giao kèo; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -144,7 +144,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về trận kỳ cũ.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_tong_mon_so_khoi; theme=trận kỳ cũ',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'thuy_long_uyen', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'huyet_tinh', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 86, exp: 222, congHien: 14, affinity: [{ npcKey: 'npc_van_kim_nuong', delta: 4 }] },
+    rewards: { linhThach: 64, exp: 166, congHien: 10, affinity: [{ npcKey: 'npc_van_kim_nuong', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với trận kỳ cũ; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -156,7 +156,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về tông môn nghèo.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_tong_mon_so_khoi; theme=tông môn nghèo',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoa_diem_son', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_lo_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 87, exp: 229, congHien: 14, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 65, exp: 172, congHien: 10, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với tông môn nghèo; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -168,7 +168,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về Hàn Dạ khiêu chiến.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_tong_mon_so_khoi; theme=Hàn Dạ khiêu chiến',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoang_tho_huyet', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'hoi_nguyen_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 89, exp: 235, congHien: 15, affinity: [{ npcKey: 'npc_han_da', delta: 2 }] },
+    rewards: { linhThach: 67, exp: 176, congHien: 11, affinity: [{ npcKey: 'npc_han_da', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với Hàn Dạ khiêu chiến; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -180,7 +180,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về Vạn Bảo giao kèo.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_tong_mon_so_khoi; theme=Vạn Bảo giao kèo',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'son_coc', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'thanh_lam_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 91, exp: 242, congHien: 15, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 68, exp: 182, congHien: 11, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với Vạn Bảo giao kèo; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -192,7 +192,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về ký ức tổ sư.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_bi_canh_huyet_nguyet; theme=ký ức tổ sư',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'thuy_long_uyen', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'huyet_tinh', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 101, exp: 268, congHien: 16, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 76, exp: 201, congHien: 12, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với ký ức tổ sư; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -204,7 +204,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về dấu phong ấn.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_bi_canh_huyet_nguyet; theme=dấu phong ấn',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoa_diem_son', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_lo_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 102, exp: 274, congHien: 17, affinity: [{ npcKey: 'npc_han_da', delta: 4 }] },
+    rewards: { linhThach: 76, exp: 206, congHien: 13, affinity: [{ npcKey: 'npc_han_da', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với dấu phong ấn; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -216,7 +216,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về trăng máu còn sót.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_bi_canh_huyet_nguyet; theme=trăng máu còn sót',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoang_tho_huyet', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'hoi_nguyen_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 104, exp: 281, congHien: 17, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 78, exp: 211, congHien: 13, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với trăng máu còn sót; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -228,7 +228,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về giếng cổ đổi màu.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_bi_canh_huyet_nguyet; theme=giếng cổ đổi màu',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'son_coc', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'thanh_lam_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 106, exp: 288, congHien: 18, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 2 }] },
+    rewards: { linhThach: 80, exp: 216, congHien: 14, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với giếng cổ đổi màu; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -240,7 +240,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về ký ức tổ sư.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_bi_canh_huyet_nguyet; theme=ký ức tổ sư',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hac_lam', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_thao', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 107, exp: 294, congHien: 18, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 80, exp: 220, congHien: 14, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với ký ức tổ sư; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -252,7 +252,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về đạo tâm lựa chọn.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_ma_tu_xuat_the; theme=đạo tâm lựa chọn',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoa_diem_son', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_lo_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 117, exp: 320, congHien: 19, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 88, exp: 240, congHien: 14, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với đạo tâm lựa chọn; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -264,7 +264,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về huyết khí mất kiểm.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_ma_tu_xuat_the; theme=huyết khí mất kiểm',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoang_tho_huyet', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'hoi_nguyen_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 119, exp: 327, congHien: 19, affinity: [{ npcKey: 'npc_huyet_ha_su_gia', delta: 4 }] },
+    rewards: { linhThach: 89, exp: 245, congHien: 14, affinity: [{ npcKey: 'npc_huyet_ha_su_gia', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với huyết khí mất kiểm; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -276,7 +276,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về Huyết Hà nhân chứng.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_ma_tu_xuat_the; theme=Huyết Hà nhân chứng',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'son_coc', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'thanh_lam_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 120, exp: 333, congHien: 20, affinity: [{ npcKey: 'npc_han_da', delta: 5 }] },
+    rewards: { linhThach: 90, exp: 250, congHien: 15, affinity: [{ npcKey: 'npc_han_da', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với Huyết Hà nhân chứng; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -288,7 +288,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về ma tu bị oan.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_ma_tu_xuat_the; theme=ma tu bị oan',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hac_lam', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_thao', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 122, exp: 340, congHien: 20, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 2 }] },
+    rewards: { linhThach: 92, exp: 255, congHien: 15, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với ma tu bị oan; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -300,7 +300,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về đạo tâm lựa chọn.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_ma_tu_xuat_the; theme=đạo tâm lựa chọn',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'yeu_thu_dong', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'tinh_thiet', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 124, exp: 347, congHien: 21, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 93, exp: 260, congHien: 16, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với đạo tâm lựa chọn; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -312,7 +312,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về Tịch Thiên tín hiệu.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_ngu_hanh_thien_menh; theme=Tịch Thiên tín hiệu',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hoang_tho_huyet', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'hoi_nguyen_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 134, exp: 372, congHien: 21, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 100, exp: 279, congHien: 16, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với Tịch Thiên tín hiệu; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -324,7 +324,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về đồng đội hợp lực.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_ngu_hanh_thien_menh; theme=đồng đội hợp lực',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'son_coc', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'thanh_lam_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 135, exp: 379, congHien: 22, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 4 }] },
+    rewards: { linhThach: 101, exp: 284, congHien: 16, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với đồng đội hợp lực; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -336,7 +336,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về Ngũ Hành cộng hưởng.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_ngu_hanh_thien_menh; theme=Ngũ Hành cộng hưởng',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hac_lam', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_thao', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 137, exp: 386, congHien: 23, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 5 }] },
+    rewards: { linhThach: 103, exp: 290, congHien: 17, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với Ngũ Hành cộng hưởng; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -348,7 +348,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về đàn tế Kim Đan.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_ngu_hanh_thien_menh; theme=đàn tế Kim Đan',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'yeu_thu_dong', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'tinh_thiet', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 139, exp: 392, congHien: 23, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 104, exp: 294, congHien: 17, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với đàn tế Kim Đan; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -360,7 +360,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về Tịch Thiên tín hiệu.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_ngu_hanh_thien_menh; theme=Tịch Thiên tín hiệu',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'moc_huyen_lam', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'phu_van_ngoc', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 140, exp: 399, congHien: 24, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 105, exp: 299, congHien: 18, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với Tịch Thiên tín hiệu; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -372,7 +372,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về ký ức bị khoá.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_tam_ma_dai_su_ty; theme=ký ức bị khoá',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'son_coc', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'thanh_lam_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 150, exp: 425, congHien: 24, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
+    rewards: { linhThach: 112, exp: 319, congHien: 18, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với ký ức bị khoá; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -384,7 +384,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về lời thề hộ đạo.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_tam_ma_dai_su_ty; theme=lời thề hộ đạo',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hac_lam', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_thao', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 152, exp: 431, congHien: 25, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 4 }] },
+    rewards: { linhThach: 114, exp: 323, congHien: 19, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với lời thề hộ đạo; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -396,7 +396,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về tâm ma Mộc Thanh Y.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_tam_ma_dai_su_ty; theme=tâm ma Mộc Thanh Y',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'yeu_thu_dong', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'tinh_thiet', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 153, exp: 438, congHien: 25, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
+    rewards: { linhThach: 115, exp: 328, congHien: 19, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với tâm ma Mộc Thanh Y; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -408,7 +408,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về Tịch Linh Chủng.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_tam_ma_dai_su_ty; theme=Tịch Linh Chủng',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'moc_huyen_lam', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'phu_van_ngoc', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 155, exp: 444, congHien: 26, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 116, exp: 333, congHien: 20, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với Tịch Linh Chủng; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -420,7 +420,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về ký ức bị khoá.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_tam_ma_dai_su_ty; theme=ký ức bị khoá',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'kim_son_mach', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'han_ngoc', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 157, exp: 451, congHien: 26, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 3 }] },
+    rewards: { linhThach: 118, exp: 338, congHien: 20, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với ký ức bị khoá; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -432,7 +432,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về kinh lâu cũ.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_hoa_thien_son_tang_mot; theme=kinh lâu cũ',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'hac_lam', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'linh_thao', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 167, exp: 477, congHien: 27, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 3 }] },
+    rewards: { linhThach: 125, exp: 358, congHien: 20, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với kinh lâu cũ; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -444,7 +444,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về sứ giả Tịch Thiên.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_hoa_thien_son_tang_mot; theme=sứ giả Tịch Thiên',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'yeu_thu_dong', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'tinh_thiet', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 168, exp: 483, congHien: 28, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 4 }] },
+    rewards: { linhThach: 126, exp: 362, congHien: 21, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với sứ giả Tịch Thiên; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -456,7 +456,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về Hoa Thiên Sơn phong ấn.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_hoa_thien_son_tang_mot; theme=Hoa Thiên Sơn phong ấn',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'moc_huyen_lam', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'phu_van_ngoc', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 170, exp: 490, congHien: 28, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 128, exp: 368, congHien: 21, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với Hoa Thiên Sơn phong ấn; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -468,7 +468,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về đạo thống tầng một.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_hoa_thien_son_tang_mot; theme=đạo thống tầng một',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'kim_son_mach', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'han_ngoc', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 172, exp: 497, congHien: 29, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 2 }] },
+    rewards: { linhThach: 129, exp: 373, congHien: 22, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với đạo thống tầng một; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   hiddenQuest({
@@ -480,7 +480,7 @@ export const PHASE21_HIDDEN_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành khám phá ẩn về kinh lâu cũ.', requirement: 'Cần hidden trigger via item/realm/affinity/dungeon condition và tiến trình chương tương ứng.',
     trigger: 'hidden trigger via item/realm/affinity/dungeon condition; chapter=chapter_hoa_thien_son_tang_mot; theme=kinh lâu cũ',
     steps: [{ id: 'step_01', kind: 'explore', targetType: 'region', targetId: 'thuy_long_uyen', count: 1, description: 'Tìm dấu hiệu ẩn chỉ hiện khi đủ trigger.' }, { id: 'step_02', kind: 'collect', targetType: 'item', targetId: 'yeu_dan', count: 1, description: 'Nhặt lore fragment hoặc vật dẫn nhỏ, không phá economy.' }],
-    rewards: { linhThach: 173, exp: 503, congHien: 29, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 3 }] },
+    rewards: { linhThach: 130, exp: 377, congHien: 22, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Hidden content gắn với kinh lâu cũ; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
 ];

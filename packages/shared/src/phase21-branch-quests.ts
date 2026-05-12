@@ -12,7 +12,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về lương khô tân đệ tử.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_pham_nhan_nhap_dao; theme=lương khô tân đệ tử',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch1_1', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 79, exp: 172, congHien: 12, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
+    rewards: { linhThach: 63, exp: 138, congHien: 10, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với lương khô tân đệ tử; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -24,7 +24,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Sơn Cốc bất ổn.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_pham_nhan_nhap_dao; theme=Sơn Cốc bất ổn',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch1_2', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_a_linh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 82, exp: 182, congHien: 13, affinity: [{ npcKey: 'npc_a_linh', delta: 4 }] },
+    rewards: { linhThach: 66, exp: 146, congHien: 10, affinity: [{ npcKey: 'npc_a_linh', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Sơn Cốc bất ổn; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -36,7 +36,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về đời sống ngoại môn.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_pham_nhan_nhap_dao; theme=đời sống ngoại môn',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch1_3', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 84, exp: 192, congHien: 14, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
+    rewards: { linhThach: 67, exp: 154, congHien: 11, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với đời sống ngoại môn; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -48,7 +48,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về đèn tổ sư.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_pham_nhan_nhap_dao; theme=đèn tổ sư',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch1_4', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 87, exp: 202, congHien: 14, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 70, exp: 162, congHien: 11, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với đèn tổ sư; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -60,7 +60,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về lương khô tân đệ tử.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_pham_nhan_nhap_dao; theme=lương khô tân đệ tử',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch1_5', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_a_linh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 89, exp: 213, congHien: 15, affinity: [{ npcKey: 'npc_a_linh', delta: 3 }] },
+    rewards: { linhThach: 71, exp: 170, congHien: 12, affinity: [{ npcKey: 'npc_a_linh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với lương khô tân đệ tử; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -72,7 +72,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Sơn Cốc bất ổn.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_pham_nhan_nhap_dao; theme=Sơn Cốc bất ổn',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch1_6', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 92, exp: 223, congHien: 16, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }] },
+    rewards: { linhThach: 74, exp: 178, congHien: 13, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Sơn Cốc bất ổn; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -84,7 +84,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về đời sống ngoại môn.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_pham_nhan_nhap_dao; theme=đời sống ngoại môn',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch1_7', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 94, exp: 233, congHien: 17, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 75, exp: 186, congHien: 14, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với đời sống ngoại môn; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -96,7 +96,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về đèn tổ sư.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_pham_nhan_nhap_dao; theme=đèn tổ sư',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch1_8', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_a_linh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 97, exp: 243, congHien: 18, affinity: [{ npcKey: 'npc_a_linh', delta: 2 }] },
+    rewards: { linhThach: 78, exp: 194, congHien: 14, affinity: [{ npcKey: 'npc_a_linh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với đèn tổ sư; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -108,7 +108,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Tịch Linh vết mờ.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_linh_can_thuc_tinh; theme=Tịch Linh vết mờ',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch2_1', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 105, exp: 252, congHien: 16, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
+    rewards: { linhThach: 84, exp: 202, congHien: 13, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Tịch Linh vết mờ; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -120,7 +120,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về lò đan thiếu dược.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_linh_can_thuc_tinh; theme=lò đan thiếu dược',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch2_2', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_a_linh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 107, exp: 263, congHien: 17, affinity: [{ npcKey: 'npc_a_linh', delta: 4 }] },
+    rewards: { linhThach: 86, exp: 210, congHien: 14, affinity: [{ npcKey: 'npc_a_linh', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với lò đan thiếu dược; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -132,7 +132,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về linh căn lệch nhịp.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_linh_can_thuc_tinh; theme=linh căn lệch nhịp',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch2_3', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 110, exp: 273, congHien: 18, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
+    rewards: { linhThach: 88, exp: 218, congHien: 14, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với linh căn lệch nhịp; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -144,7 +144,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Ngũ Hành sơ cảm.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_linh_can_thuc_tinh; theme=Ngũ Hành sơ cảm',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch2_4', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 112, exp: 283, congHien: 19, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 90, exp: 226, congHien: 15, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Ngũ Hành sơ cảm; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -156,7 +156,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Tịch Linh vết mờ.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_linh_can_thuc_tinh; theme=Tịch Linh vết mờ',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch2_5', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_a_linh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 115, exp: 293, congHien: 20, affinity: [{ npcKey: 'npc_a_linh', delta: 3 }] },
+    rewards: { linhThach: 92, exp: 234, congHien: 16, affinity: [{ npcKey: 'npc_a_linh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Tịch Linh vết mờ; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -168,7 +168,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về lò đan thiếu dược.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_linh_can_thuc_tinh; theme=lò đan thiếu dược',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch2_6', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 117, exp: 303, congHien: 20, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }] },
+    rewards: { linhThach: 94, exp: 242, congHien: 16, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với lò đan thiếu dược; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -180,7 +180,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về linh căn lệch nhịp.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_linh_can_thuc_tinh; theme=linh căn lệch nhịp',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch2_7', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 120, exp: 314, congHien: 21, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 96, exp: 251, congHien: 17, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với linh căn lệch nhịp; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -192,7 +192,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Ngũ Hành sơ cảm.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_linh_can_thuc_tinh; theme=Ngũ Hành sơ cảm',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch2_8', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_a_linh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 122, exp: 324, congHien: 22, affinity: [{ npcKey: 'npc_a_linh', delta: 2 }] },
+    rewards: { linhThach: 98, exp: 259, congHien: 18, affinity: [{ npcKey: 'npc_a_linh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Ngũ Hành sơ cảm; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -204,7 +204,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Vạn Bảo giao kèo.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_tong_mon_so_khoi; theme=Vạn Bảo giao kèo',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch3_1', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 130, exp: 333, congHien: 20, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 104, exp: 266, congHien: 16, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Vạn Bảo giao kèo; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -216,7 +216,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về trận kỳ cũ.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_tong_mon_so_khoi; theme=trận kỳ cũ',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch3_2', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_van_kim_nuong', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 133, exp: 343, congHien: 21, affinity: [{ npcKey: 'npc_van_kim_nuong', delta: 4 }] },
+    rewards: { linhThach: 106, exp: 274, congHien: 17, affinity: [{ npcKey: 'npc_van_kim_nuong', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với trận kỳ cũ; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -228,7 +228,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về tông môn nghèo.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_tong_mon_so_khoi; theme=tông môn nghèo',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch3_3', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 135, exp: 354, congHien: 22, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 108, exp: 283, congHien: 18, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với tông môn nghèo; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -240,7 +240,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Hàn Dạ khiêu chiến.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_tong_mon_so_khoi; theme=Hàn Dạ khiêu chiến',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch3_4', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 138, exp: 364, congHien: 23, affinity: [{ npcKey: 'npc_han_da', delta: 2 }] },
+    rewards: { linhThach: 110, exp: 291, congHien: 18, affinity: [{ npcKey: 'npc_han_da', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Hàn Dạ khiêu chiến; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -252,7 +252,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Vạn Bảo giao kèo.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_tong_mon_so_khoi; theme=Vạn Bảo giao kèo',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch3_5', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 140, exp: 374, congHien: 24, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 112, exp: 299, congHien: 19, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Vạn Bảo giao kèo; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -264,7 +264,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về trận kỳ cũ.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_tong_mon_so_khoi; theme=trận kỳ cũ',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch3_6', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_van_kim_nuong', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 143, exp: 384, congHien: 25, affinity: [{ npcKey: 'npc_van_kim_nuong', delta: 4 }] },
+    rewards: { linhThach: 114, exp: 307, congHien: 20, affinity: [{ npcKey: 'npc_van_kim_nuong', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với trận kỳ cũ; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -276,7 +276,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về tông môn nghèo.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_tong_mon_so_khoi; theme=tông môn nghèo',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch3_7', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 145, exp: 394, congHien: 26, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 116, exp: 315, congHien: 21, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với tông môn nghèo; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -288,7 +288,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Hàn Dạ khiêu chiến.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_tong_mon_so_khoi; theme=Hàn Dạ khiêu chiến',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch3_8', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 148, exp: 405, congHien: 26, affinity: [{ npcKey: 'npc_han_da', delta: 2 }] },
+    rewards: { linhThach: 118, exp: 324, congHien: 21, affinity: [{ npcKey: 'npc_han_da', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Hàn Dạ khiêu chiến; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -300,7 +300,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về ký ức tổ sư.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_bi_canh_huyet_nguyet; theme=ký ức tổ sư',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch4_1', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 156, exp: 414, congHien: 25, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 125, exp: 331, congHien: 20, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với ký ức tổ sư; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -312,7 +312,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về dấu phong ấn.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_bi_canh_huyet_nguyet; theme=dấu phong ấn',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch4_2', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 158, exp: 424, congHien: 26, affinity: [{ npcKey: 'npc_han_da', delta: 4 }] },
+    rewards: { linhThach: 126, exp: 339, congHien: 21, affinity: [{ npcKey: 'npc_han_da', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với dấu phong ấn; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -324,7 +324,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về trăng máu còn sót.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_bi_canh_huyet_nguyet; theme=trăng máu còn sót',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch4_3', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 161, exp: 434, congHien: 26, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 129, exp: 347, congHien: 21, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với trăng máu còn sót; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -336,7 +336,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về giếng cổ đổi màu.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_bi_canh_huyet_nguyet; theme=giếng cổ đổi màu',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch4_4', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_to_nguyet_ly', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 163, exp: 445, congHien: 27, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 2 }] },
+    rewards: { linhThach: 130, exp: 356, congHien: 22, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với giếng cổ đổi màu; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -348,7 +348,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về ký ức tổ sư.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_bi_canh_huyet_nguyet; theme=ký ức tổ sư',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch4_5', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 166, exp: 455, congHien: 28, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 133, exp: 364, congHien: 22, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với ký ức tổ sư; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -360,7 +360,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về dấu phong ấn.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_bi_canh_huyet_nguyet; theme=dấu phong ấn',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch4_6', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 168, exp: 465, congHien: 29, affinity: [{ npcKey: 'npc_han_da', delta: 4 }] },
+    rewards: { linhThach: 134, exp: 372, congHien: 23, affinity: [{ npcKey: 'npc_han_da', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với dấu phong ấn; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -372,7 +372,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về trăng máu còn sót.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_bi_canh_huyet_nguyet; theme=trăng máu còn sót',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch4_7', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 171, exp: 475, congHien: 30, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 137, exp: 380, congHien: 24, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với trăng máu còn sót; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -384,7 +384,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về giếng cổ đổi màu.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_bi_canh_huyet_nguyet; theme=giếng cổ đổi màu',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch4_8', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_to_nguyet_ly', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 173, exp: 485, congHien: 31, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 2 }] },
+    rewards: { linhThach: 138, exp: 388, congHien: 25, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với giếng cổ đổi màu; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -396,7 +396,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về đạo tâm lựa chọn.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_ma_tu_xuat_the; theme=đạo tâm lựa chọn',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch5_1', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 181, exp: 495, congHien: 29, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 145, exp: 396, congHien: 23, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với đạo tâm lựa chọn; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -408,7 +408,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về huyết khí mất kiểm.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_ma_tu_xuat_the; theme=huyết khí mất kiểm',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch5_2', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_ha_su_gia', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 184, exp: 505, congHien: 30, affinity: [{ npcKey: 'npc_huyet_ha_su_gia', delta: 4 }] },
+    rewards: { linhThach: 147, exp: 404, congHien: 24, affinity: [{ npcKey: 'npc_huyet_ha_su_gia', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với huyết khí mất kiểm; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -420,7 +420,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Huyết Hà nhân chứng.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_ma_tu_xuat_the; theme=Huyết Hà nhân chứng',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch5_3', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 186, exp: 515, congHien: 31, affinity: [{ npcKey: 'npc_han_da', delta: 5 }] },
+    rewards: { linhThach: 149, exp: 412, congHien: 25, affinity: [{ npcKey: 'npc_han_da', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Huyết Hà nhân chứng; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -432,7 +432,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về ma tu bị oan.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_ma_tu_xuat_the; theme=ma tu bị oan',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch5_4', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_la_sat', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 189, exp: 525, congHien: 31, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 2 }] },
+    rewards: { linhThach: 151, exp: 420, congHien: 25, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với ma tu bị oan; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -444,7 +444,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về đạo tâm lựa chọn.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_ma_tu_xuat_the; theme=đạo tâm lựa chọn',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch5_5', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 191, exp: 536, congHien: 32, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 153, exp: 429, congHien: 26, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với đạo tâm lựa chọn; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -456,7 +456,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về huyết khí mất kiểm.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_ma_tu_xuat_the; theme=huyết khí mất kiểm',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch5_6', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_ha_su_gia', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 194, exp: 546, congHien: 33, affinity: [{ npcKey: 'npc_huyet_ha_su_gia', delta: 4 }] },
+    rewards: { linhThach: 155, exp: 437, congHien: 26, affinity: [{ npcKey: 'npc_huyet_ha_su_gia', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với huyết khí mất kiểm; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -468,7 +468,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Huyết Hà nhân chứng.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_ma_tu_xuat_the; theme=Huyết Hà nhân chứng',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch5_7', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_han_da', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 196, exp: 556, congHien: 34, affinity: [{ npcKey: 'npc_han_da', delta: 5 }] },
+    rewards: { linhThach: 157, exp: 445, congHien: 27, affinity: [{ npcKey: 'npc_han_da', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Huyết Hà nhân chứng; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -480,7 +480,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về ma tu bị oan.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_ma_tu_xuat_the; theme=ma tu bị oan',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch5_8', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_la_sat', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 199, exp: 566, congHien: 35, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 2 }] },
+    rewards: { linhThach: 159, exp: 453, congHien: 28, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với ma tu bị oan; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -492,7 +492,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Tịch Thiên tín hiệu.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_ngu_hanh_thien_menh; theme=Tịch Thiên tín hiệu',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch6_1', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 207, exp: 575, congHien: 33, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 166, exp: 460, congHien: 26, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Tịch Thiên tín hiệu; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -504,7 +504,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về đồng đội hợp lực.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_ngu_hanh_thien_menh; theme=đồng đội hợp lực',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch6_2', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_to_nguyet_ly', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 209, exp: 586, congHien: 34, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 4 }] },
+    rewards: { linhThach: 167, exp: 469, congHien: 27, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với đồng đội hợp lực; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -516,7 +516,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Ngũ Hành cộng hưởng.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_ngu_hanh_thien_menh; theme=Ngũ Hành cộng hưởng',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch6_3', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_la_sat', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 212, exp: 596, congHien: 35, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 5 }] },
+    rewards: { linhThach: 170, exp: 477, congHien: 28, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Ngũ Hành cộng hưởng; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -528,7 +528,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về đàn tế Kim Đan.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_ngu_hanh_thien_menh; theme=đàn tế Kim Đan',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch6_4', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 214, exp: 606, congHien: 36, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 171, exp: 485, congHien: 29, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với đàn tế Kim Đan; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -540,7 +540,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Tịch Thiên tín hiệu.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_ngu_hanh_thien_menh; theme=Tịch Thiên tín hiệu',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch6_5', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 217, exp: 616, congHien: 37, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
+    rewards: { linhThach: 174, exp: 493, congHien: 30, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Tịch Thiên tín hiệu; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -552,7 +552,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về đồng đội hợp lực.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_ngu_hanh_thien_menh; theme=đồng đội hợp lực',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch6_6', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_to_nguyet_ly', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 219, exp: 626, congHien: 37, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 4 }] },
+    rewards: { linhThach: 175, exp: 501, congHien: 30, affinity: [{ npcKey: 'npc_to_nguyet_ly', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với đồng đội hợp lực; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -564,7 +564,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Ngũ Hành cộng hưởng.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_ngu_hanh_thien_menh; theme=Ngũ Hành cộng hưởng',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch6_7', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_huyet_la_sat', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 222, exp: 637, congHien: 38, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 5 }] },
+    rewards: { linhThach: 178, exp: 510, congHien: 30, affinity: [{ npcKey: 'npc_huyet_la_sat', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Ngũ Hành cộng hưởng; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -576,7 +576,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về đàn tế Kim Đan.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_ngu_hanh_thien_menh; theme=đàn tế Kim Đan',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch6_8', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 224, exp: 647, congHien: 39, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 179, exp: 518, congHien: 31, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với đàn tế Kim Đan; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -588,7 +588,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về ký ức bị khoá.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_tam_ma_dai_su_ty; theme=ký ức bị khoá',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch7_1', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 232, exp: 656, congHien: 37, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
+    rewards: { linhThach: 186, exp: 525, congHien: 30, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với ký ức bị khoá; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -600,7 +600,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về lời thề hộ đạo.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_tam_ma_dai_su_ty; theme=lời thề hộ đạo',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch7_2', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_tich_linh_su_gia', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 235, exp: 666, congHien: 38, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 4 }] },
+    rewards: { linhThach: 188, exp: 533, congHien: 30, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với lời thề hộ đạo; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -612,7 +612,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về tâm ma Mộc Thanh Y.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_tam_ma_dai_su_ty; theme=tâm ma Mộc Thanh Y',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch7_3', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 237, exp: 677, congHien: 39, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
+    rewards: { linhThach: 190, exp: 542, congHien: 31, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với tâm ma Mộc Thanh Y; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -624,7 +624,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Tịch Linh Chủng.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_tam_ma_dai_su_ty; theme=Tịch Linh Chủng',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch7_4', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 240, exp: 687, congHien: 40, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
+    rewards: { linhThach: 192, exp: 550, congHien: 32, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Tịch Linh Chủng; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -636,7 +636,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về ký ức bị khoá.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_tam_ma_dai_su_ty; theme=ký ức bị khoá',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch7_5', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_tich_linh_su_gia', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 242, exp: 697, congHien: 41, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 3 }] },
+    rewards: { linhThach: 194, exp: 558, congHien: 33, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với ký ức bị khoá; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -648,7 +648,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về lời thề hộ đạo.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_tam_ma_dai_su_ty; theme=lời thề hộ đạo',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch7_6', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_moc_thanh_y', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 245, exp: 707, congHien: 42, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }] },
+    rewards: { linhThach: 196, exp: 566, congHien: 34, affinity: [{ npcKey: 'npc_moc_thanh_y', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với lời thề hộ đạo; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -660,7 +660,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về tâm ma Mộc Thanh Y.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_tam_ma_dai_su_ty; theme=tâm ma Mộc Thanh Y',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch7_7', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 247, exp: 717, congHien: 43, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 198, exp: 574, congHien: 34, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với tâm ma Mộc Thanh Y; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -672,7 +672,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Tịch Linh Chủng.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_tam_ma_dai_su_ty; theme=Tịch Linh Chủng',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch7_8', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_tich_linh_su_gia', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 250, exp: 728, congHien: 43, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 2 }] },
+    rewards: { linhThach: 200, exp: 582, congHien: 34, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Tịch Linh Chủng; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -684,7 +684,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về kinh lâu cũ.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_hoa_thien_son_tang_mot; theme=kinh lâu cũ',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch8_1', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_hoa_thien_dao_to', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 258, exp: 737, congHien: 42, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 3 }] },
+    rewards: { linhThach: 206, exp: 590, congHien: 34, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với kinh lâu cũ; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -696,7 +696,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về sứ giả Tịch Thiên.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_hoa_thien_son_tang_mot; theme=sứ giả Tịch Thiên',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch8_2', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_tich_linh_su_gia', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 260, exp: 747, congHien: 43, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 4 }] },
+    rewards: { linhThach: 208, exp: 598, congHien: 34, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với sứ giả Tịch Thiên; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -708,7 +708,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Hoa Thiên Sơn phong ấn.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_hoa_thien_son_tang_mot; theme=Hoa Thiên Sơn phong ấn',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch8_3', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 263, exp: 757, congHien: 43, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
+    rewards: { linhThach: 210, exp: 606, congHien: 34, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Hoa Thiên Sơn phong ấn; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -720,7 +720,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về đạo thống tầng một.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_hoa_thien_son_tang_mot; theme=đạo thống tầng một',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch8_4', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_hoa_thien_dao_to', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 265, exp: 768, congHien: 44, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 2 }] },
+    rewards: { linhThach: 212, exp: 614, congHien: 35, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với đạo thống tầng một; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -732,7 +732,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về kinh lâu cũ.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_hoa_thien_son_tang_mot; theme=kinh lâu cũ',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch8_5', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_tich_linh_su_gia', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 268, exp: 778, congHien: 45, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 3 }] },
+    rewards: { linhThach: 214, exp: 622, congHien: 36, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 3 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với kinh lâu cũ; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -744,7 +744,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về sứ giả Tịch Thiên.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_hoa_thien_son_tang_mot; theme=sứ giả Tịch Thiên',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch8_6', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_lang_van_sinh', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 270, exp: 788, congHien: 46, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 4 }] },
+    rewards: { linhThach: 216, exp: 630, congHien: 37, affinity: [{ npcKey: 'npc_lang_van_sinh', delta: 4 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với sứ giả Tịch Thiên; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -756,7 +756,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về Hoa Thiên Sơn phong ấn.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_hoa_thien_son_tang_mot; theme=Hoa Thiên Sơn phong ấn',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch8_7', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_hoa_thien_dao_to', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 273, exp: 798, congHien: 47, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 5 }] },
+    rewards: { linhThach: 218, exp: 638, congHien: 38, affinity: [{ npcKey: 'npc_hoa_thien_dao_to', delta: 5 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với Hoa Thiên Sơn phong ấn; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
   branchQuest({
@@ -768,7 +768,7 @@ export const PHASE21_BRANCH_QUESTS: readonly QuestDef[] = [
     objective: 'Hoàn thành lựa chọn nhánh về đạo thống tầng một.', requirement: 'Cần choice/affinity/sect/elemental hook và tiến trình chương tương ứng.',
     trigger: 'choice/affinity/sect/elemental hook; chapter=chapter_hoa_thien_son_tang_mot; theme=đạo thống tầng một',
     steps: [{ id: 'step_01', kind: 'choice', targetType: 'choice', targetId: 'choice_phase21_branch_ch8_8', count: 1, description: 'Chọn hướng xử lý nhánh theo đạo tâm, tông môn hoặc affinity.' }, { id: 'step_02', kind: 'talk', targetType: 'npc', targetId: 'npc_tich_linh_su_gia', count: 1, description: 'Xác nhận hậu quả lựa chọn với NPC liên quan.' }],
-    rewards: { linhThach: 275, exp: 808, congHien: 48, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 2 }] },
+    rewards: { linhThach: 220, exp: 646, congHien: 38, affinity: [{ npcKey: 'npc_tich_linh_su_gia', delta: 2 }] },
     loreSummary: 'AI_EXPANDED_LORE: Branch content gắn với đạo thống tầng một; reward bị cap, ưu tiên affinity/dialogue/lore hơn currency.',
   }),
 ];
