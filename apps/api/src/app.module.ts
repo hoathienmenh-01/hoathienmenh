@@ -62,6 +62,7 @@ import { BackupModule } from './modules/backup/backup.module';
 import { RedisModule } from './common/redis.module';
 import { EconomyModule } from './modules/economy/economy.module';
 import { SecurityModule } from './modules/security/security.module';
+import { MonetizationModule } from './modules/monetization/monetization.module';
 
 @Module({
   imports: [
@@ -206,6 +207,7 @@ import { SecurityModule } from './modules/security/security.module';
     // Cron default disabled qua env BACKUP_CRON_ENABLED=false /
     // BACKUP_VERIFY_CRON_ENABLED=false. KHÔNG expose restore-db.sh.
     BackupModule,
+    MonetizationModule,
   ],
 })
 export class AppModule {}

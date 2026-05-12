@@ -391,6 +391,9 @@ model Character {
   equipmentEnchantHistory  EquipmentEnchantHistory[]
   /// Phase 15.1–15.2 — LiveOps Event Scheduler reward claim (one-time per event).
   liveOpsEventRewardClaims LiveOpsEventRewardClaim[]
+  battlePassProgress       BattlePassProgress[]
+  monthlyCardSubscription  MonthlyCardSubscription?
+  vipProfile               VipProfile?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -428,6 +431,65 @@ model ArenaProfile {
 
   @@index([rating])
   @@index([updatedAt])
+}
+
+model BattlePassSeason {
+  id        String   @id @default(cuid())
+  seasonId  String   @unique
+  name      String
+  startAt   DateTime
+  endAt     DateTime
+  active    Boolean  @default(false)
+  config    Json     @default("{}")
+  progress  BattlePassProgress[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, startAt, endAt])
+}
+
+model BattlePassProgress {
+  id                   String           @id @default(cuid())
+  characterId          String
+  character            Character        @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  seasonId             String
+  season               BattlePassSeason @relation(fields: [seasonId], references: [seasonId], onDelete: Cascade)
+  xp                   Int              @default(0)
+  level                Int              @default(0)
+  premiumUnlocked      Boolean          @default(false)
+  claimedFreeLevels    Int[]            @default([])
+  claimedPremiumLevels Int[]            @default([])
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@unique([characterId, seasonId])
+  @@index([seasonId, level])
+}
+
+model MonthlyCardSubscription {
+  id               String    @id @default(cuid())
+  characterId      String    @unique
+  character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  activeUntil      DateTime
+  lastClaimAt      DateTime?
+  totalClaimedDays Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([activeUntil])
+}
+
+model VipProfile {
+  id                  String    @id @default(cuid())
+  characterId         String    @unique
+  character           Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  vipLevel            Int       @default(0)
+  lifetimeTopupAmount Int       @default(0)
+  grantedByAdmin      Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([vipLevel])
 }
 
 /// Phase 14.1.B — Async Arena Match.
