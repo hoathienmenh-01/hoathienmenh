@@ -2900,7 +2900,7 @@ model CharacterDailyRewardBucket {
   character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
   /// `YYYY-MM-DD` theo timezone reset (default Asia/Ho_Chi_Minh).
   dayBucket      String
-  /// `RewardSource`: 'CULTIVATION' | 'DUNGEON' | 'MISSION' (forward-compat).
+  /// `RewardSource`: 'CULTIVATION' | 'BODY_CULTIVATION' | 'DUNGEON' | 'MISSION' (forward-compat).
   source         String
   /// Tổng EXP đã được grant từ source này trong dayBucket. BigInt khớp Character.exp.
   expAccum       BigInt    @default(0)

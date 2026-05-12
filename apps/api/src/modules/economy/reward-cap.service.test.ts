@@ -327,6 +327,45 @@ describe('RewardCapService.applyCapTx — concurrency', () => {
   });
 });
 
+describe('RewardCapService.applyCapTx — Body Cultivation source', () => {
+  it('BODY_CULTIVATION has an isolated EXP-only bucket', async () => {
+    const f = await makeUserChar(prisma, { realmKey: 'phamnhan' });
+
+    const body = await prisma.$transaction((tx) =>
+      svc.applyCapTx(tx, {
+        characterId: f.characterId,
+        source: 'BODY_CULTIVATION',
+        requestedExp: 5000n,
+        requestedLinhThach: 99n,
+        realmKey: 'phamnhan',
+      }),
+    );
+    const mission = await prisma.$transaction((tx) =>
+      svc.applyCapTx(tx, {
+        characterId: f.characterId,
+        source: 'MISSION',
+        requestedExp: 1500n,
+        requestedLinhThach: 500n,
+        realmKey: 'phamnhan',
+      }),
+    );
+
+    expect(body.grantedExp).toBe(3300n);
+    expect(body.grantedLinhThach).toBe(0n);
+    expect(body.wasCapped).toBe(true);
+    expect(mission.grantedExp).toBe(1500n);
+    expect(mission.grantedLinhThach).toBe(500n);
+    const buckets = await prisma.characterDailyRewardBucket.findMany({
+      where: { characterId: f.characterId },
+      orderBy: { source: 'asc' },
+    });
+    expect(buckets.map((b) => b.source)).toEqual([
+      'BODY_CULTIVATION',
+      'MISSION',
+    ]);
+  });
+});
+
 describe('RewardCapService.applyCapTx — coercion', () => {
   it('negative requestedExp/linhThach → coerce 0n (no negative grant)', async () => {
     const f = await makeUserChar(prisma, { realmKey: 'phamnhan' });

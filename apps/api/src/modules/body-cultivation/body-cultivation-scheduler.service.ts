@@ -2,13 +2,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import { CULTIVATION_TICK_MS } from '@xuantoi/shared';
-import { CULTIVATION_QUEUE } from '../cultivation/cultivation.queue';
+import { BODY_CULTIVATION_QUEUE } from './body-cultivation.queue';
 
 @Injectable()
 export class BodyCultivationSchedulerService {
   private readonly logger = new Logger(BodyCultivationSchedulerService.name);
 
-  constructor(@InjectQueue(CULTIVATION_QUEUE) private readonly queue: Queue) {}
+  constructor(@InjectQueue(BODY_CULTIVATION_QUEUE) private readonly queue: Queue) {}
 
   async scheduleRecurring(): Promise<void> {
     const repeatable = await this.queue.getRepeatableJobs();

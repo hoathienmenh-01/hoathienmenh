@@ -22,6 +22,7 @@
     "smoke:beta": "node scripts/smoke-beta.mjs",
     "smoke:boss": "node scripts/smoke-boss.mjs",
     "smoke:breakthrough": "node scripts/smoke-breakthrough.mjs",
+    "smoke:body-cultivation": "node scripts/smoke-body-cultivation.mjs",
     "smoke:chat": "node scripts/smoke-chat.mjs",
     "smoke:combat": "node scripts/smoke-combat.mjs",
     "smoke:coop": "node scripts/smoke-coop.mjs",

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   BODY_CULTIVATION_INJURY_MS,
@@ -64,7 +64,9 @@ export class BodyCultivationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
+    @Inject(forwardRef(() => InventoryService))
     private readonly inventory: InventoryService,
+    @Inject(forwardRef(() => CharacterService))
     private readonly chars: CharacterService,
   ) {}
 
@@ -201,8 +203,13 @@ export class BodyCultivationService {
           refId: log.id,
         });
       }
-      const updated = await tx.character.update({
-        where: { id: c.id },
+      const updateResult = await tx.character.updateMany({
+        where: {
+          id: c.id,
+          bodyRealmKey: c.bodyRealmKey,
+          bodyStage: c.bodyStage,
+          bodyExp: c.bodyExp,
+        },
         data: success
           ? {
               bodyRealmKey: next.key,
@@ -215,6 +222,12 @@ export class BodyCultivationService {
               bodyExp: c.bodyExp - req.bodyExpCost / 4n,
               bodyInjuryUntil: injuryUntil,
             },
+      });
+      if (updateResult.count !== 1) {
+        throw new BodyCultivationError('CONCURRENT_ATTEMPT');
+      }
+      const updated = await tx.character.findUniqueOrThrow({
+        where: { id: c.id },
         select: {
           id: true,
           userId: true,

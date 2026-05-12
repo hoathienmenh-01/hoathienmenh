@@ -171,11 +171,11 @@ describe('BodyCultivationView', () => {
 
   it('start/stop button calls matching store action', async () => {
     const started = mountView();
-    await started.wrapper.get('button').trigger('click');
+    await started.wrapper.get('[data-testid="body-cultivation-toggle"]').trigger('click');
     expect(started.start).toHaveBeenCalledOnce();
 
     const stopped = mountView({ bodyCultivating: true });
-    await stopped.wrapper.get('button').trigger('click');
+    await stopped.wrapper.get('[data-testid="body-cultivation-toggle"]').trigger('click');
     expect(stopped.stop).toHaveBeenCalledOnce();
   });
 
@@ -183,5 +183,20 @@ describe('BodyCultivationView', () => {
     const { wrapper } = mountView({ canBreakthrough: false });
 
     expect(wrapper.get('[data-testid="body-breakthrough-button"]').attributes('disabled')).toBeDefined();
+  });
+
+  it('opens confirm modal and submits breakthrough', async () => {
+    const { wrapper, breakthrough } = mountView({
+      bodyExp: '120',
+      canBreakthrough: true,
+      missingMaterials: [],
+    });
+
+    await wrapper.get('[data-testid="body-breakthrough-button"]').trigger('click');
+    expect(wrapper.find('[data-testid="body-breakthrough-confirm"]').exists()).toBe(true);
+
+    await wrapper.get('[data-testid="body-breakthrough-confirm-submit"]').trigger('click');
+    expect(breakthrough).toHaveBeenCalledOnce();
+    expect(wrapper.find('[data-testid="body-breakthrough-confirm"]').exists()).toBe(false);
   });
 });
