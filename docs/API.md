@@ -425,6 +425,20 @@ Override timezone qua env `LIVEOPS_TZ` (default `Asia/Ho_Chi_Minh` reuse `MISSIO
 | GET    | `/shop/npc` | Yes  | Catalog NPC items. Mỗi entry kèm `dailyLimit: number \| null` (M10) để FE hiển thị badge "X/Y today". |
 | POST   | `/shop/buy` | Yes  | `{ itemKey, qty }` → trừ tiền + grant item + ghi `ItemLedger reason=SHOP_BUY`. M10 layered guard: **per-user rate limit** 30 req/60s (Redis sliding window + in-memory failover) → 429 `RATE_LIMITED`; **per-item daily cap** từ `ShopEntryDef.dailyLimit` (sum `qtyDelta` ledger SHOP_BUY trong cửa sổ DAILY local tz `MISSION_RESET_TZ`) → 409 `SHOP_DAILY_LIMIT`. Pre-check trước transaction → KHÔNG trừ tiền khi reject. |
 
+## Monetization — `MonetizationController` (Phase 25.1)
+
+> Light monetization only: server-authoritative reward claims, full ledger, no direct top-tier equipment/pháp bảo max-state sale, and no `requiredRealmOrder` bypass. All paths require auth cookie.
+
+| Method | Path | Auth | Mô tả |
+|--------|------|------|-------|
+| GET | `/monetization/battle-pass/current` | Yes | Active Battle Pass season config + player progress `{ xp, level, premiumUnlocked, claimedFreeLevels, claimedPremiumLevels }`. Creates season/progress lazily from shared config. 404 `NO_ACTIVE_SEASON` if no active configured season. |
+| GET | `/monetization/battle-pass/progress` | Yes | Alias shape of current Battle Pass state for UI refresh. |
+| POST | `/monetization/battle-pass/claim` | Yes | Body `{ level: number, track: "free" \| "premium" }`. Validates active season, sufficient level, unclaimed track/level, premium unlock for premium track, and reward config safety; grants via transaction. Errors: 400 `INVALID_INPUT`/`LEVEL_LOCKED`/`PREMIUM_LOCKED`, 409 `ALREADY_CLAIMED`. Ledger: `BATTLE_PASS_REWARD`, refId `<seasonId>:<track>:<level>`. |
+| POST | `/monetization/battle-pass/claim-all` | Yes | Claims all currently claimable free/premium rewards in one transaction. Already-claimed levels are ignored; no duplicate ledger rows. |
+| GET | `/monetization/monthly-card` | Yes | Subscription state + config summary: active, days remaining, can claim today, and today reward preview. UTC day bucket. |
+| POST | `/monetization/monthly-card/claim` | Yes | Claims one daily reward if active and not claimed in current UTC day. Errors: 400 `INACTIVE_MONTHLY_CARD`, 409 `MONTHLY_CARD_ALREADY_CLAIMED`. Ledger: `MONTHLY_CARD_REWARD`, refId `<subscriptionId>:<day>`. |
+| GET | `/monetization/vip` | Yes | Returns `VipProfile` and derived VIP Light perks. Perks are read-only convenience caps from shared config. |
+
 ## Mission — `MissionController`
 
 | Method | Path                  | Auth | Mô tả |
@@ -464,6 +478,9 @@ WS push: `mission:progress` (PR #63) emit sau `MissionService.track()` qua `Miss
 | POST   | `/admin/users/:id/role`               | ADMIN | `{ role }` — ADMIN-only (M8). |
 | POST   | `/admin/users/:id/grant`              | ADMIN | `{ linhThach, tienNgoc, reason }` — qua `CurrencyService` + ghi ledger `ADMIN_GRANT`. |
 | POST   | `/admin/users/:id/inventory/revoke`   | ADMIN | `{ itemKey, qty, reason }` (PR #66) — trừ qty + ghi `ItemLedger reason=ADMIN_REVOKE`. |
+| POST   | `/admin/battle-pass/users/:id/grant-premium` | ADMIN | Phase 25.1: unlock current Battle Pass premium track for target user's character. Requires active season; writes `AdminAuditLog action=admin.battle_pass.grant_premium`. |
+| POST   | `/admin/monthly-card/users/:id/grant` | ADMIN | Phase 25.1: grant/refresh 30-day Monthly Card subscription and upfront reward. Writes `MONTHLY_CARD_REWARD` ledger rows and `AdminAuditLog action=admin.monthly_card.grant`. |
+| POST   | `/admin/vip/users/:id/grant`          | ADMIN | Phase 25.1: body `{ level, lifetimeTopupAmount? }`, clamps through shared VIP tier validation and records `AdminAuditLog action=admin.vip.grant`. |
 | GET    | `/admin/topups?status=&q=&from=&to=&page=` | ADMIN | List đơn topup + filter date/email. |
 | POST   | `/admin/topups/:id/approve`           | ADMIN | `{ note }` → credit tienNgoc + ledger. |
 | POST   | `/admin/topups/:id/reject`            | ADMIN | `{ note }`. |

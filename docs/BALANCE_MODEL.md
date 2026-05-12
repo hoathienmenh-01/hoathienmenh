@@ -1671,6 +1671,29 @@ Hiện tại: `packages/shared/src/topup.ts`. Các dial:
 
 **KHÔNG được** dial topup mà không thông qua user/PM (real-money).
 
+### 8.4 Phase 25.1 Battle Pass / Monthly Card / VIP Light
+
+Source of truth: `packages/shared/src/monetization.ts`.
+
+**Battle Pass / Tiên Lộ Lệnh**
+- Active foundation season `phase_25_1_foundation`, 10 reward levels, `xpPerLevel=100`.
+- Free track grants small `linhThach`, low/mid materials, limited tickets/shards, and a cosmetic aura at the end.
+- Premium track is intentionally moderate acceleration inside the same progression band: extra materials/protection tokens/shards/cosmetics, never direct top equipment or max-state pháp bảo.
+- Shared validators cap per-reward velocity (`linhThach ≤ 5_000`, locked premium ≤ 60, bounded item quantities) and reject forbidden direct-power keys.
+
+**Monthly Card / Nguyệt Tạp**
+- Duration: 30 days, UTC daily bucket.
+- Upfront reward is small locked premium + one limited dungeon ticket.
+- Daily reward is small locked premium + soft currency; special days add bounded utility material/shard rewards.
+- Missed days do not auto-claim, keeping daily value tied to login/claim cadence.
+
+**VIP Light**
+- Tiers 0–5 derive from lifetime topup or admin/test grant.
+- Perks are capped convenience only: auto-sweep bonus ≤2, inventory slot bonus ≤60, gem unsocket/reforge fee discount ≤15%, dungeon entry bonus ≤1/day.
+- No VIP tier grants damage, drop-rate spikes, realm skip, equipment tier bypass, or upgrade certainty to max.
+
+**Fairness invariant**: premium systems may reduce grind by roughly 20–40% inside the player's current realm/tier but must not bypass `requiredRealmOrder`, sell top-tier equipment, or sell max-star/max-awaken pháp bảo.
+
 ---
 
 ## 9. BALANCE DIAL REGISTRY (Phase 11 nâng cao §6 — DONE)

@@ -520,6 +520,7 @@
       "label": "Rewards",
       "linhThach": "Spirit Stones",
       "tienNgoc": "Jade",
+      "tienNgocKhoa": "Locked Jade",
       "exp": "EXP",
       "congHien": "Contribution"
     },
@@ -572,6 +573,7 @@
     "reward": {
       "linhThach": "Spirit Stones",
       "tienNgoc": "Jade",
+      "tienNgocKhoa": "Locked Jade",
       "exp": "EXP"
     },
     "errors": {
@@ -5378,6 +5380,7 @@
     "reward": {
       "linhThach": "Spirit Stones",
       "tienNgoc": "Jade",
+      "tienNgocKhoa": "Locked Jade",
       "STONE_LUYEN_KHI": "Refining Stone",
       "BI_CANH_TICKET": "Dungeon Ticket",
       "GEM_LOW_RANDOM": "Low Gem",

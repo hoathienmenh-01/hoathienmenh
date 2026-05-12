@@ -520,6 +520,7 @@
       "label": "Phần thưởng",
       "linhThach": "Linh Thạch",
       "tienNgoc": "Tiên Ngọc",
+      "tienNgocKhoa": "Tiên Ngọc Khóa",
       "exp": "EXP",
       "congHien": "Cống Hiến"
     },
@@ -572,6 +573,7 @@
     "reward": {
       "linhThach": "Linh Thạch",
       "tienNgoc": "Tiên Ngọc",
+      "tienNgocKhoa": "Tiên Ngọc Khóa",
       "exp": "EXP"
     },
     "errors": {
@@ -5378,6 +5380,7 @@
     "reward": {
       "linhThach": "Linh Thạch",
       "tienNgoc": "Tiên Ngọc",
+      "tienNgocKhoa": "Tiên Ngọc Khóa",
       "STONE_LUYEN_KHI": "Đá Luyện Khí",
       "BI_CANH_TICKET": "Vé Bí Cảnh",
       "GEM_LOW_RANDOM": "Ngọc cấp thấp",
