@@ -63,10 +63,10 @@ describe('STORY_CHAPTERS catalog integrity (Phase 21)', () => {
     }
   });
 
-  it('binds five main quest keys per chapter to QUESTS', () => {
+  it('binds fifteen main quest keys per chapter to QUESTS', () => {
     for (const chapter of STORY_CHAPTERS) {
-      expect(chapter.mainQuestKeys, chapter.chapterKey).toHaveLength(5);
-      expect(new Set(chapter.mainQuestKeys).size, chapter.chapterKey).toBe(5);
+      expect(chapter.mainQuestKeys, chapter.chapterKey).toHaveLength(15);
+      expect(new Set(chapter.mainQuestKeys).size, chapter.chapterKey).toBe(15);
       for (const questKey of chapter.mainQuestKeys) {
         expect(QUEST_KEYS.has(questKey), `${chapter.chapterKey} quest=${questKey}`).toBe(true);
       }

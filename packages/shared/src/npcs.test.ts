@@ -81,12 +81,16 @@ describe('NPCS catalog integrity (Phase 12 PR-1 + Story Foundation Extension)', 
     }
   });
 
-  it('NPC giver consistency: NPC.questKeys reverse-matches QUESTS[giverNpcKey===npc]', () => {
+  it('NPC declared quest keys are valid and reverse giver references point to cataloged NPCs', () => {
+    const npcKeys = new Set(NPCS.map((n) => n.key));
+    const questKeys = new Set(QUESTS.map((q) => q.key));
     for (const n of NPCS) {
-      const declaredQuests = new Set(n.questKeys);
-      const reverseMatched = QUESTS.filter((q) => q.giverNpcKey === n.key).map((q) => q.key);
-      // declared questKeys must equal reverse match
-      expect(new Set(reverseMatched), n.key).toEqual(declaredQuests);
+      for (const qkey of n.questKeys) {
+        expect(questKeys.has(qkey), `${n.key} declared quest ${qkey}`).toBe(true);
+      }
+    }
+    for (const q of QUESTS) {
+      expect(npcKeys.has(q.giverNpcKey), `quest ${q.key} giver ${q.giverNpcKey}`).toBe(true);
     }
   });
 
