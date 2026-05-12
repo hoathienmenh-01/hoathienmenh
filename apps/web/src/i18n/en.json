@@ -349,7 +349,8 @@
       "quests": "Quests",
       "dungeonRun": "Dungeon Run",
       "storyDungeons": "Story Dungeons",
-      "social": "Social"
+      "social": "Social",
+      "monetization": "Monetization"
     },
     "badge": {
       "bossActive": "World boss is live",
@@ -519,6 +520,7 @@
       "label": "Rewards",
       "linhThach": "Spirit Stones",
       "tienNgoc": "Jade",
+      "tienNgocKhoa": "Locked Jade",
       "exp": "EXP",
       "congHien": "Contribution"
     },
@@ -571,6 +573,7 @@
     "reward": {
       "linhThach": "Spirit Stones",
       "tienNgoc": "Jade",
+      "tienNgocKhoa": "Locked Jade",
       "exp": "EXP"
     },
     "errors": {
@@ -5332,6 +5335,72 @@
       "RATE_LIMITED": "Action too fast — slow down a few seconds.",
       "ABUSE_BLOCKED": "Temporarily blocked for abnormal activity. Try again later.",
       "UNKNOWN": "Something went wrong — try again."
+    }
+  },
+  "monetization": {
+    "title": "Monetization",
+    "subtitle": "Battle Pass, Monthly Card, and VIP Light provide light acceleration only; no top gear sales or realm bypass.",
+    "tabs": {
+      "battlePass": "Battle Pass",
+      "monthlyCard": "Monthly Card",
+      "vip": "VIP Light"
+    },
+    "claim": "Claim",
+    "claimed": "Claimed",
+    "claimOk": "Reward claimed.",
+    "claimAllOk": "All available rewards claimed.",
+    "battlePass": {
+      "endsAt": "Ends: {date}",
+      "level": "Level {level}/{max}",
+      "levelShort": "Level {level}",
+      "claimAll": "Claim all",
+      "freeTrack": "Free",
+      "premiumTrack": "Premium",
+      "premiumUnlocked": "Premium is unlocked for this season.",
+      "premiumLocked": "Premium is locked — preview only, cannot claim."
+    },
+    "monthlyCard": {
+      "title": "Monthly Card",
+      "active": "Active for {days} more days.",
+      "inactive": "Monthly Card is not active.",
+      "todayReward": "Today reward",
+      "claimedToday": "Claimed today"
+    },
+    "vip": {
+      "title": "VIP Light",
+      "max": "Current max VIP level reached.",
+      "next": "Next level: VIP {level}",
+      "perks": "Light perks",
+      "autoSweep": "+{n} auto-sweeps/day",
+      "inventory": "+{n} inventory slots",
+      "unsocketDiscount": "{n}% gem unsocket fee discount",
+      "reforgeDiscount": "{n}% reforge fee discount",
+      "dungeonBonus": "+{n} dungeon entry/day (hard cap)"
+    },
+    "reward": {
+      "linhThach": "Spirit Stones",
+      "tienNgoc": "Jade",
+      "tienNgocKhoa": "Locked Jade",
+      "STONE_LUYEN_KHI": "Refining Stone",
+      "BI_CANH_TICKET": "Dungeon Ticket",
+      "GEM_LOW_RANDOM": "Low Gem",
+      "PHAP_BAO_FRAGMENT_T1": "Artifact Fragment T1",
+      "PROTECTION_TALISMAN": "Protection Talisman",
+      "REFORGE_TOKEN": "Reforge Token",
+      "UNSOCKET_TALISMAN": "Unsocket Talisman",
+      "TITLE_TIEN_LO_LENH": "Battle Pass Title"
+    },
+    "errors": {
+      "loadFail": "Could not load monetization data.",
+      "NO_ACTIVE_SEASON": "No active Battle Pass season.",
+      "NO_CHARACTER": "No character found.",
+      "LEVEL_NOT_REACHED": "Level not reached.",
+      "PREMIUM_LOCKED": "Premium is not unlocked.",
+      "ALREADY_CLAIMED": "Reward already claimed.",
+      "NO_CLAIMABLE_REWARD": "No claimable reward.",
+      "MONTHLY_CARD_INACTIVE": "Monthly Card is inactive.",
+      "MONTHLY_CARD_ALREADY_CLAIMED": "Monthly Card already claimed today.",
+      "UNKNOWN": "Something went wrong, try again."
     }
   }
 }

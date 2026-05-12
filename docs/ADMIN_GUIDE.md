@@ -32,6 +32,7 @@ Cờ `banned: true` block đăng nhập + revoke refresh token. Đặt qua `/adm
 | Overview | `GET /admin/stats` + `GET /admin/economy/alerts` (PR #54) | Xem nhanh số user, character, topup approved, ledger total + alert nếu có currency âm / ledger inconsistent. |
 | Users | `GET /admin/users?role=&banned=&q=` | Tìm user theo email/id, filter `role` (ALL/PLAYER/MOD/ADMIN) + `banned` (true/false). Thao tác: ban / unban, đổi role, grant currency, **revoke item** (PR #66 — `POST /admin/users/:id/inventory/revoke`). |
 | Topups | `GET /admin/topups?q=&status=&from=&to=` (PR #67) | Filter email + status + date range. Duyệt / từ chối đơn nạp. |
+| Monetization | `/admin/battle-pass/*`, `/admin/monthly-card/*`, `/admin/vip/*` | Phase 25.1 manual/test grants for Tiên Lộ Lệnh premium, Nguyệt Tạp, and VIP Light. ADMIN-only; all mutations audit. |
 | Audit | `GET /admin/audit?action=&q=` | Filter theo `action` (e.g. `TOPUP_APPROVE`, `USER_ROLE_CHANGE`) + `q` (actor email). |
 | GiftCodes | `GET /admin/giftcodes?q=&status=` (PR #81 G22) | Filter `q` (code search) + `status` (ALL/ACTIVE/REVOKED/EXPIRED). Tạo / list / revoke. Trùng `code` → error `CODE_EXISTS` (PR #84 G23). |
 | Mail | `POST /admin/mail/{send,broadcast}` | Gửi 1 character hoặc broadcast toàn server. |
@@ -57,6 +58,21 @@ Endpoint `POST /admin/users/:id/grant` body `{ linhThach?, tienNgoc?, reason }`.
 - Cộng (delta dương) hoặc trừ (delta âm) qua `CurrencyService.applyTx` → ghi ledger.
 - `reason` bắt buộc → search được trong `/admin/audit` + `CurrencyLedger`.
 - **Cảnh báo**: chưa có hard cap. Admin có thể cộng 10^18 linhThach → ledger có thể overflow downstream nếu không cẩn thận. **Khuyến nghị** quy ước: 1 lần grant ≤ 10^9 linhThach hoặc 10^7 tienNgoc.
+
+### 5.1 Phase 25.1 monetization grants
+
+Manual grants are for testing/support until real payment wiring exists:
+
+| Action | Endpoint | Audit / ledger |
+|---|---|---|
+| Unlock Battle Pass premium | `POST /admin/battle-pass/users/:id/grant-premium` | `AdminAuditLog action=admin.battle_pass.grant_premium` |
+| Grant 30-day Monthly Card | `POST /admin/monthly-card/users/:id/grant` | `AdminAuditLog action=admin.monthly_card.grant` + upfront `MONTHLY_CARD_REWARD` ledger |
+| Grant VIP Light | `POST /admin/vip/users/:id/grant` body `{ level, lifetimeTopupAmount? }` | `AdminAuditLog action=admin.vip.grant` |
+
+Rules:
+- Only grant to an existing user with a character; `NO_CHARACTER` means the user must create a character first.
+- Do not use these endpoints to compensate by selling top-tier equipment, max-star/max-awaken pháp bảo, or realm/tier bypasses. Phase 25.1 rewards are capped convenience/acceleration only.
+- If a grant was wrong, investigate `/admin/audit` plus `CurrencyLedger`/`ItemLedger` by `reason` before issuing a manual reversal.
 
 ## 6. Gift code
 

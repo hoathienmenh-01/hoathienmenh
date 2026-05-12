@@ -10,7 +10,7 @@
 
 ## 1. Current Executive Summary
 
-- **This PR (Phase 23.7 — Pháp Bảo Star-up + Awaken Persistence, PR #545, branch `feat/phase-23-7-phap-bao-star-awaken`)**: turns Phase 23.5 Pháp Bảo foundation into real persisted progression. Additive Prisma migration extends `InventoryItem` with `phapBaoStarLevel @default(1)`, `phapBaoAwakenStage @default(0)`, `locked`, `updatedAt`; shared `phap-bao-progression.ts` owns max-star/max-awaken, refine/star/awaken cost helpers, validation, power/effect scaling, cooldown floor, and realm gates. API `PhapBaoService` exposes `POST /character/phap-bao/:inventoryItemId/{star-up,awaken,refine}` with ownership, `requiredRealmOrder`, cap, quality, star/refine prerequisites, material + linh thạch checks, ledger, `$transaction`, and guarded `updateMany` anti-duplicate. Web `PhapBaoPanel` enables refine/star/awaken with cost preview + confirm modal + vi/en i18n.
+- **This PR (Phase 25.1 — Battle Pass / Monthly Card / VIP Light, PR #546 draft, branch `feat/phase-25-1-battle-pass-monthly-vip-light`)**: adds light monetization only. Shared `packages/shared/src/monetization.ts` defines Battle Pass season/progression helpers, Monthly Card UTC daily rules, VIP Light tier/perk caps, and reward validators that reject direct top-power rewards. Additive Prisma models track `BattlePassSeason`, `BattlePassProgress`, `MonthlyCardSubscription`, and `VipProfile`. API `MonetizationService` exposes `/monetization/battle-pass/*`, `/monetization/monthly-card`, `/monetization/vip`, plus admin/test grants; all claim mutations are server-authoritative, transaction-safe, ledger-backed, and duplicate-claim guarded. Web adds a Monetization page with Tiên Lộ Lệnh / Nguyệt Tạp / VIP Light tabs and vi/en i18n.
 
 - **Previous PR (Phase 23.6 follow-up — Equipment Quality Power Meaning, branch `fix/equipment-quality-power-meaning`)**: aligns equipment quality with real power scaling, not visual-only rarity. Shared quality multipliers now follow PHAM 1.00 / LINH 1.20 / HUYEN 1.50 / TIEN 1.90 / THAN 2.40 in power budget/score, shared `equipment-visuals` maps visual classes from the real `quality`, inventory/pháp bảo UI surfaces tier + phẩm cấp + required realm + powerScore + quality meaning, and tests lock same-tier ordering plus tier-overlap caps.
 
@@ -103,6 +103,7 @@
 
 | Phase | Title | Status | Note |
 |---|---|---|---|
+| 25.1 | Battle Pass / Monthly Card / VIP Light | **OPEN** ⏳ (PR #546) | Light monetization foundation: seasonal BP free/premium tracks, 30-day Monthly Card daily claim, VIP Light read-only perks/admin grant. Guardrails: no top gear/max pháp bảo sale, no `requiredRealmOrder` bypass, full ledger + anti-duplicate. |
 | 0–8 | Foundation: schema + auth + core gameplay | **Done** ✅ | Full feature catalog ở [`ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md) § Completed Features. |
 | 9 | Beta readiness (Phase 9.A→9.E sub-phases polish) | **11/15 Done, 3 Partial** | Detail [`BETA_CHECKLIST.md`](./BETA_CHECKLIST.md). Mail UI gap closed by PR #391. |
 | 10 | Content scale | **5/5 CLOSED** ✅ | All sub-tracks merged. |
@@ -179,8 +180,8 @@
 | Workspace | Test count | Notes |
 |---|---|---|
 | `apps/api` | **2440+** | Phase 23.2 adds inventory equip realm-gate tests (high-tier low-realm fails, eligible realm passes, unequip unaffected). Phase 14.1.D anti-wintrade +21 (service 12 + admin controller 9). Phase 14.1.B Arena +19 (`arena.service.test.ts`). Phase 14 / 12.10 (territory 16 + territory-decay 12 + territory-war 22 + tribulation 105 + npc-affinity 53 + quest 73 + combat 102 + dungeon-run 50 + boss 117 + sect 146 …). Pre-existing `chat.service.test.ts` rate-limit window test occasionally flakes khi chạy parallel; pass cô lập. 6 redis-dependent tests require Redis up. |
-| `packages/shared` | **2027+** | Phase 23.2 adds `equipment-progression.test.ts` (13 cases) for tier coverage, grade mapping, multipliers, caps, deterministic power score, validation, existing item metadata derivation. Phase 14.1.D anti-wintrade +26 (`arena-anti-wintrade.test.ts`). Phase 14.1.B Arena +16 (`arena.test.ts`). Phase 14.1.A combat-rng 25 + combat-snapshot 24 + combat-determinism 15. Phase 14 / 12.10 (territory 79 + tribulation 109 + elemental 131 + npc 35). |
-| `apps/web` | **1507** | Phase 14.1.D anti-wintrade +7 (`AdminArenaAntiWintradePanel.test.ts`). Phase 14.1.B Arena +38 (ArenaView 22 + api/arena 8 + stores/arena 8). Phase 14 / 12.10 (Territory 7 + Tribulation 180 + SkillBookView 18 + Dungeon/Boss + NpcAffinity 37 + Quest 37 + i18n parity 10). |
+| `packages/shared` | **2027+** | Phase 25.1 adds `monetization.test.ts` for BP level mapping, free/premium claimability, duplicate guard helpers, Monthly Card once/day, VIP tier/perk validation, and forbidden direct-power reward checks. Earlier coverage includes Phase 23.2 equipment progression, Phase 14 arena/combat/territory/tribulation/elemental, and NPC tests. |
+| `apps/web` | **1507+** | Phase 25.1 adds `MonetizationView.test.ts` and route coverage for Battle Pass progress/rewards, Monthly Card claim state, VIP perk list, and i18n parity. Earlier coverage includes Arena/Territory/Tribulation/Skill/Dungeon/Boss/NpcAffinity/Quest. |
 | **Total** | **~5924 vitest** | All green local (PG+Redis up). Phase 17.2 `(this)` adds **42 test** (api 31 backup module + web 11 `AdminBackupPanel.test.ts`). |
 
 ### CI

@@ -51,6 +51,7 @@
 | Player toxic / cheat / chat spam | Admin `POST /admin/chat-moderation/mute` (mute user N phút) + `POST /admin/users/:id/ban` (P2) | §2.30 Phase 18.1 (rate-limit / abuse block), §2.31 Phase 18.2 (session revoke) |
 | User bị nghi exploit economy | Kiểm `EconomyAnomaly` → admin grant unlock nếu false-positive | §2.29 Phase 16.1.B (Economy Range Report) |
 | User bị nghi farm coop (anti-leech) | Kiểm `CoopRewardCapCounter` + `EconomyAnomaly` type=`COOP_LEECH_HIGH` | §2.41 Phase 20.2 + Phase 20.3 anti-leech (xem §1.5.4 dưới) |
+| User báo lỗi Battle Pass/Monthly/VIP | Kiểm `BattlePassProgress`, `MonthlyCardSubscription`, `VipProfile`, `CurrencyLedger.reason IN ('BATTLE_PASS_REWARD','MONTHLY_CARD_REWARD')`, và `AdminAuditLog action LIKE 'admin.%'` | Phase 25.1 Monetization; xem `docs/API.md` + `docs/ADMIN_GUIDE.md` §5.1 |
 | User bị block nhầm / false-positive rate-limit | Admin lift block | §2.30.3 + §2.30.4 |
 | Logout 1 user khỏi mọi thiết bị (incident response) | Admin revoke all sessions | §2.31.2 |
 

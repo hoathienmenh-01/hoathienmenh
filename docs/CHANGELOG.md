@@ -10,6 +10,21 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
+### Added — Phase 25.1 Battle Pass / Monthly Card / VIP Light
+
+- Added shared monetization config/helpers in `packages/shared/src/monetization.ts`: Battle Pass seasons/reward validation, Monthly Card daily reward rules, and VIP Light tier/perk validation.
+- Added additive Prisma models and API runtime for Battle Pass progress/claims, Monthly Card subscription/daily claim, and VIP Light profile/perks. Claims are server-authoritative, transaction-safe, ledger-backed, and reject duplicate reward grants.
+- Added admin/test grant endpoints for Battle Pass premium unlock, Monthly Card grant, and VIP Light grant with `AdminAuditLog` coverage.
+- Added web Monetization page with Tiên Lộ Lệnh, Nguyệt Tạp, and VIP Light tabs plus vi/en i18n parity.
+- Added shared/API/web tests covering claimability, duplicate prevention, monthly-card daily guard, VIP perk mapping, route visibility, and UI states.
+
+#### Balance / Economy
+- Phase 25.1 is light monetization only: capped acceleration/convenience/cosmetic rewards, no top-tier equipment sale, no max-star/max-awaken pháp bảo sale, no infinite dungeon/material grants, and no `requiredRealmOrder` bypass.
+- Ledger reasons include `BATTLE_PASS_REWARD` and `MONTHLY_CARD_REWARD`; VIP grants are derived perks recorded through admin audit.
+
+#### Docs
+- Updated design, balance, economy, API, admin guide, runbook, and handoff docs for Phase 25.1 guardrails and operations.
+
 ### Added — Phase 23.7 Pháp Bảo Star-up + Awaken Persistence
 
 - Persisted Pháp Bảo progression on inventory instances: `phapBaoStarLevel`, `phapBaoAwakenStage`, and real `refineLevel` upgrades.

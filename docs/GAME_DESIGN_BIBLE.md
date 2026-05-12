@@ -556,6 +556,16 @@ Chi tiết: [`ECONOMY_MODEL.md`](./ECONOMY_MODEL.md).
 - **Market wash detection** (phase 16): cron quét `Listing` cùng `(itemKey, sellerId, buyerId)` xuất hiện > 3 lần/ngày → flag.
 - **Topup velocity** (phase 16): 1 user nạp > X VND/ngày → manual review.
 
+### E.4 Phase 25.1 — Light monetization guardrails
+
+Phase 25.1 introduces **Battle Pass / Tiên Lộ Lệnh**, **Monthly Card / Nguyệt Tạp**, and **VIP Light** as convenience/acceleration layers, not paid victory:
+
+- Battle Pass is seasonal progress with free + premium tracks. Rewards are capped soft currency, low/mid upgrade materials, limited protection/unsocket/reforge tokens, same-tier pháp bảo shards, and cosmetic keys.
+- Monthly Card grants a small upfront reward plus one server-authoritative daily claim for 30 days. Missed days are not auto-claimed.
+- VIP Light tiers 0–5 add capped convenience perks: small auto-sweep bonus, inventory slots, fee discounts, and at most a tiny daily dungeon-entry bonus.
+- Monetization rewards must never sell top-tier equipment directly, max-star/max-awaken pháp bảo, uncapped dungeon tickets/materials, or any bypass of `requiredRealmOrder`.
+- Free players retain the full farm/drop/craft/event path; premium should only reduce grind within the same realm/tier by roughly 20–40%.
+
 ---
 
 ## F. CONTENT PIPELINE (tóm tắt)

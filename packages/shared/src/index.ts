@@ -38,6 +38,7 @@ export * from './tribulation-mini-battle';
 export * from './tribulation-support-providers';
 export * from './tribulation-support-validate';
 export * from './topup';
+export * from './monetization';
 export * from './shop';
 export * from './map-regions';
 export * from './balance-dials';

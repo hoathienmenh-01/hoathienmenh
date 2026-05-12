@@ -196,7 +196,9 @@ export type ItemLedgerReason =
   // của item bị phân giải để link audit.
   | 'EQUIPMENT_DISMANTLE_CONSUME'
   | 'EQUIPMENT_DISMANTLE_YIELD'
-  | 'EQUIPMENT_DISMANTLE_RETURN_GEM';
+  | 'EQUIPMENT_DISMANTLE_RETURN_GEM'
+  | 'BATTLE_PASS_REWARD'
+  | 'MONTHLY_CARD_REWARD';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;

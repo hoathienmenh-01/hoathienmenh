@@ -393,6 +393,14 @@ async function logout(): Promise<void> {
           />
         </RouterLink>
         <RouterLink
+          to="/monetization"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+          data-testid="shell-nav-monetization"
+        >
+          令 {{ t('shell.nav.monetization') }}
+        </RouterLink>
+        <RouterLink
           to="/activity"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"
