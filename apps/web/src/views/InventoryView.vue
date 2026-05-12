@@ -39,6 +39,7 @@ import MButton from '@/components/ui/MButton.vue';
 import EquipmentUpgradePanel from '@/components/EquipmentUpgradePanel.vue';
 import EquipmentEconomyPanel from '@/components/EquipmentEconomyPanel.vue';
 import EquipmentBuildPanel from '@/components/EquipmentBuildPanel.vue';
+import PhapBaoPanel from '@/components/PhapBaoPanel.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 const auth = useAuthStore();
@@ -51,6 +52,8 @@ const items = ref<InventoryView[]>([]);
 const submitting = ref(false);
 /** Phase 23.3 — bump khi equip/unequip/refine/socket/reforge xong để build panel refetch. */
 const buildRefreshKey = ref(0);
+/** Phase 23.5 — bump để Pháp Bảo panel refetch sau khi equip/unequip/refine. */
+const phapBaoRefreshKey = ref(0);
 /** Phase 11.5.C — per-row protection toggle (key = inventoryItemId). */
 const protectionFlags = ref<Record<string, boolean>>({});
 /** Phase 11.4.C — per-equipment-row gem-key selection (key = equipment inventoryItemId). */
@@ -262,6 +265,8 @@ async function onEquip(it: InventoryView): Promise<void> {
   try {
     items.value = await equipItem(it.id);
     toast.push({ type: 'success', text: t('inventory.equipToast', { name: it.item.name }) });
+    buildRefreshKey.value += 1;
+    phapBaoRefreshKey.value += 1;
   } catch (e) {
     handleErr(e);
   } finally {
@@ -275,6 +280,37 @@ async function onUnequip(slot: EquipSlot): Promise<void> {
   try {
     items.value = await unequipItem(slot);
     toast.push({ type: 'system', text: t('inventory.unequipToast', { slot: slotLabel(slot) }) });
+    buildRefreshKey.value += 1;
+    phapBaoRefreshKey.value += 1;
+  } catch (e) {
+    handleErr(e);
+  } finally {
+    submitting.value = false;
+  }
+}
+
+/** Phase 23.5 — Pháp Bảo panel dùng `/inventory/equip` (realm gate đã có). */
+async function onPhapBaoEquip(inventoryItemId: string): Promise<void> {
+  const it = items.value.find((row) => row.id === inventoryItemId);
+  if (!it) return;
+  await onEquip(it);
+}
+
+/** Phase 23.5 — Pháp Bảo panel emit unequip với slot string → cast về EquipSlot. */
+async function onPhapBaoUnequip(slot: string): Promise<void> {
+  await onUnequip(slot as EquipSlot);
+}
+
+/** Phase 23.5 — Pháp Bảo panel dùng `/character/refine` (cost progression riu00eang tính server-side). */
+async function onPhapBaoRefine(inventoryItemId: string): Promise<void> {
+  if (submitting.value) return;
+  submitting.value = true;
+  try {
+    const result = await refineEquipment(inventoryItemId, false);
+    pushRefineToast(result);
+    items.value = await listInventory();
+    buildRefreshKey.value += 1;
+    phapBaoRefreshKey.value += 1;
   } catch (e) {
     handleErr(e);
   } finally {
@@ -516,6 +552,13 @@ function handleErr(e: unknown): void {
           </MButton>
         </div>
         <EquipmentBuildPanel :refresh-key="buildRefreshKey" class="mt-4" />
+        <PhapBaoPanel
+          :refresh-key="phapBaoRefreshKey"
+          class="mt-4"
+          @equip="onPhapBaoEquip"
+          @unequip="onPhapBaoUnequip"
+          @refine="onPhapBaoRefine"
+        />
       </section>
 
       <!-- Danh sách item chưa đeo -->

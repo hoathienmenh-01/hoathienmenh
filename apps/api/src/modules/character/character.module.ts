@@ -13,6 +13,7 @@ import { SpiritualRootService } from './spiritual-root.service';
 import { CultivationMethodService } from './cultivation-method.service';
 import { GemService } from './gem.service';
 import { RefineService } from './refine.service';
+import { PhapBaoService } from './phap-bao.service';
 import { EquipmentService } from './equipment.service';
 import { EquipmentEconomyService } from './equipment-economy.service';
 import { TribulationService } from './tribulation.service';
@@ -82,6 +83,7 @@ const profileLimiterProvider = {
     TitleService,
     AchievementService,
     AlchemyService,
+    PhapBaoService,
     PrismaService,
     profileLimiterProvider,
   ],
@@ -102,6 +104,7 @@ const profileLimiterProvider = {
     TitleService,
     AchievementService,
     AlchemyService,
+    PhapBaoService,
   ],
 })
 export class CharacterModule {}

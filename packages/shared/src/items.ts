@@ -1216,6 +1216,181 @@ export const ITEMS: readonly ItemDef[] = [
     price: 1600,
   },
 
+  // ----- Phase 23.5 — Pháp Bảo Catalog (Advanced Artifact System) -----
+  // Pháp bảo là slot riêng (ARTIFACT_1..3), không thuộc 8 trang bị chính.
+  // Catalog metadata chi tiết (element/role/active/star/awaken) ở
+  // `packages/shared/src/phap-bao.ts` (PHAP_BAO_CATALOG). Item entries dưới
+  // đây cho phép pipeline equip / refine / shop / drop dùng nguyên
+  // InventoryItem + RefineService đã có (Phase 11.5.B). Stat caps đã qua
+  // `validatePhapBaoDefinition` và `validateItemBudget`.
+  {
+    key: 'ngu_hanh_linh_chau',
+    name: 'Ngũ Hành Linh Châu',
+    description:
+      'Pháp bảo Linh phẩm dạng châu ngũ hành, dung hòa khí cơ — tăng tinh ' +
+      'khí và sinh lực căn bản, hỗ trợ hồi phục theo thời gian.',
+    kind: 'ARTIFACT',
+    quality: 'LINH',
+    stackable: false,
+    slot: 'ARTIFACT_1',
+    equipmentTier: 2,
+    bonuses: { hpMax: 60, mpMax: 60, spirit: 8 },
+    price: 480,
+  },
+  {
+    key: 'thanh_lien_kiem_an',
+    name: 'Thanh Liên Kiếm Ấn',
+    description:
+      'Ấn kiếm Huyền phẩm khắc thanh liên, kết tinh sát khí Kim hệ — kích ' +
+      'hoạt một kiếm ý chém xuyên giáp địch.',
+    kind: 'ARTIFACT',
+    quality: 'HUYEN',
+    stackable: false,
+    slot: 'ARTIFACT_1',
+    equipmentTier: 3,
+    bonuses: { atk: 30, spirit: 12, elementalAtkBonus: { kim: 0.05 } },
+    price: 1_400,
+  },
+  {
+    key: 'huyen_thien_kinh',
+    name: 'Huyền Thiên Kính',
+    description:
+      'Cổ kính Huyền phẩm phản chiếu thiên cơ, ngưng kết hàn khí Thủy hệ ' +
+      '— đóng băng mục tiêu trong khoảnh khắc.',
+    kind: 'ARTIFACT',
+    quality: 'HUYEN',
+    stackable: false,
+    slot: 'ARTIFACT_2',
+    equipmentTier: 4,
+    bonuses: { def: 35, hpMax: 130, spirit: 18, elementalAtkBonus: { thuy: 0.04 } },
+    price: 2_400,
+  },
+  {
+    key: 'huyet_nguyet_ho_lo',
+    name: 'Huyết Nguyệt Hồ Lô',
+    description:
+      'Hồ lô đỏ máu Tiên phẩm, ngưng tụ Hỏa khí ma đạo — gieo độc lửa ' +
+      'thiêu đốt kẻ địch nhiều giây.',
+    kind: 'ARTIFACT',
+    quality: 'TIEN',
+    stackable: false,
+    slot: 'ARTIFACT_2',
+    equipmentTier: 5,
+    bonuses: { atk: 80, hpMax: 240, spirit: 30, elementalAtkBonus: { hoa: 0.06 } },
+    price: 7_200,
+  },
+  {
+    key: 'tho_linh_son_an',
+    name: 'Thổ Linh Sơn Ấn',
+    description:
+      'Ấn núi Tiên phẩm khắc linh văn Thổ hệ, kết khiên đất kiên cố hấp ' +
+      'thụ sát thương lớn trong vài giây.',
+    kind: 'ARTIFACT',
+    quality: 'TIEN',
+    stackable: false,
+    slot: 'ARTIFACT_3',
+    equipmentTier: 5,
+    bonuses: { def: 110, hpMax: 320, elementalAtkBonus: { tho: 0.05 } },
+    price: 7_200,
+  },
+  {
+    key: 'cuu_diem_phien',
+    name: 'Cửu Diễm Phiến',
+    description:
+      'Quạt chín ngọn lửa cổ Tiên phẩm, tung quạt thiêu rụi diện rộng — ' +
+      'một đòn bộc phát quét hàng quân yêu.',
+    kind: 'ARTIFACT',
+    quality: 'TIEN',
+    stackable: false,
+    slot: 'ARTIFACT_1',
+    equipmentTier: 6,
+    bonuses: { atk: 130, hpMax: 200, spirit: 40, elementalAtkBonus: { hoa: 0.07 } },
+    price: 11_500,
+  },
+  {
+    key: 'moc_linh_binh',
+    name: 'Mộc Linh Bình',
+    description:
+      'Bình ngọc Tiên phẩm Mộc hệ chứa linh dịch, rưới nước cam lồ trị ' +
+      'thương — hồi máu lớn và kéo dài hồi phục.',
+    kind: 'ARTIFACT',
+    quality: 'TIEN',
+    stackable: false,
+    slot: 'ARTIFACT_3',
+    equipmentTier: 6,
+    bonuses: { hpMax: 400, mpMax: 200, spirit: 35, elementalAtkBonus: { moc: 0.06 } },
+    price: 11_500,
+  },
+  {
+    key: 'bang_tam_ngoc_kinh',
+    name: 'Băng Tâm Ngọc Kính',
+    description:
+      'Cổ kính ngọc lạnh Tiên phẩm Thủy hệ, soi ra hàn ảnh — làm chậm ' +
+      'địch khu vực, thích hợp control mass mob.',
+    kind: 'ARTIFACT',
+    quality: 'TIEN',
+    stackable: false,
+    slot: 'ARTIFACT_2',
+    equipmentTier: 7,
+    bonuses: { def: 120, hpMax: 380, spirit: 55, elementalAtkBonus: { thuy: 0.07 } },
+    price: 18_500,
+  },
+  {
+    key: 'kim_quang_bao_luan',
+    name: 'Kim Quang Bảo Luân',
+    description:
+      'Bánh xe vàng Thần phẩm xoay vần Kim quang — mở cửa sổ chí mạng + ' +
+      'xuyên giáp ngắn nhưng cực mạnh.',
+    kind: 'ARTIFACT',
+    quality: 'THAN',
+    stackable: false,
+    slot: 'ARTIFACT_1',
+    equipmentTier: 8,
+    bonuses: { atk: 320, hpMax: 800, spirit: 110, elementalAtkBonus: { kim: 0.08 } },
+    price: 36_000,
+  },
+  {
+    key: 'hau_tho_tran_hon_an',
+    name: 'Hậu Thổ Trấn Hồn Ấn',
+    description:
+      'Đại ấn Hậu Thổ cổ xưa Thần phẩm — phản đòn sát thương trong vài ' +
+      'giây, áp chế kẻ phá hoại bằng kim cương cổ.',
+    kind: 'ARTIFACT',
+    quality: 'THAN',
+    stackable: false,
+    slot: 'ARTIFACT_3',
+    equipmentTier: 10,
+    bonuses: { def: 480, hpMax: 2400, spirit: 180, elementalAtkBonus: { tho: 0.08 } },
+    price: 120_000,
+  },
+
+  // ----- Phase 23.5 — Pháp Bảo material (mảnh + thạch thức tỉnh) -----
+  // Drop từ daily / event / boss; được tiêu hao ở `getPhapBaoStarUpCost`
+  // và `getPhapBaoAwakenCost`. Phase 25.1 sẽ wire vào Battle Pass / Monthly
+  // Card shop. **KHÔNG** bán mảnh max tier trực tiếp ở phase này.
+  {
+    key: 'phap_bao_shard',
+    name: 'Mảnh Pháp Bảo',
+    description:
+      'Mảnh vỡ pháp bảo cổ chứa linh văn — nguyên liệu thăng sao pháp bảo. ' +
+      'Drop từ daily / event / boss.',
+    kind: 'ORE',
+    quality: 'HUYEN',
+    stackable: true,
+    price: 600,
+  },
+  {
+    key: 'awaken_stone',
+    name: 'Thức Tỉnh Thạch',
+    description:
+      'Linh thạch chứa khí cơ thức tỉnh — nguyên liệu hiếm khai mở tiềm ' +
+      'năng pháp bảo Tiên/Thần phẩm.',
+    kind: 'ORE',
+    quality: 'TIEN',
+    stackable: true,
+    price: 3_500,
+  },
+
   // ----- Vật phẩm đặc biệt (MISC) -----
   // Lưu ý: MISC chưa có runtime hook (key dungeon, transport scroll
   // sẽ được wire ở Phase 10 PR-3 dungeon pack hoặc PR-4 mission pack).

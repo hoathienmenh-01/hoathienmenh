@@ -159,6 +159,27 @@ Phase 23.4 adds two new mutation sinks (merge / dismantle) and folds linhThach c
 
 **Feature flags**: `EQUIPMENT_MERGE_ENABLED` / `EQUIPMENT_DISMANTLE_ENABLED` allow ops to disable the new sinks instantly without redeploying if abuse is detected.
 
+##### Phase 23.5 — Pháp Bảo Advanced Artifact (read-only foundation, refine-only mutation)
+
+Phase 23.5 ships catalog + read-only API runtime for the Pháp Bảo (advanced artifact) slot. No new currency reasons or item ledger rows are introduced in this phase; refine reuses the existing `/character/refine` path (`InventoryItem.refineLevel` field already present), and equip reuses `/inventory/equip` (Phase 23.2 realm gate already enforces `requiredRealmOrder`). Star-up + awaken **persistence** are deferred to Phase 23.6/25.1 — Phase 23.5 only emits cost previews so FE can render tooltips.
+
+| Operation | linhThach delta | Material delta | Mutation path | Status |
+| --- | --- | --- | --- | --- |
+| Equip pháp bảo (realm-gated) | 0 | 0 | `POST /inventory/equip` (existing) | DONE — reuse Phase 23.2 gate |
+| Unequip pháp bảo | 0 | 0 | `POST /inventory/unequip` (existing) | DONE — no gate |
+| Refine pháp bảo (luyện khí) | `-round(750 × refineLevel × tier × qualityMultiplier × 1.4 ^ refineLevel)` | `<artifactKey>_essence` ×(2 × refineLevel × tier) | `POST /character/refine` (existing) | DONE — same path as equipment refine, server reads cost via `getPhapBaoUpgradeCost` only when item is in `PHAP_BAO_CATALOG` |
+| Star-up pháp bảo (thăng sao) | `-round(1200 × (starLevel + 1) × tier × qualityMultiplier × 1.5 ^ starLevel)` | `<artifactKey>_shard` ×(5 × (starLevel + 1) × tier) | DEFERRED — Phase 23.6 | Preview only (`starUpEnabled: false`) |
+| Awaken pháp bảo (thức tỉnh) | `-round(5000 × (awakenStage + 1) × tier × qualityMultiplier × 1.8 ^ awakenStage)` | `awaken_stone` ×(1 + awakenStage) + material chính ×(10 × tier) | DEFERRED — Phase 23.6/25.1 | Preview only (`awakenEnabled: false`), gated on quality ≥ TIEN + tier ≥ 5 + starLevel ≥ 1 |
+
+**No new ledger reasons**: refine pháp bảo reuses `CurrencyLedger.reason=EQUIPMENT_REFINE` + `ItemLedger.reason=EQUIPMENT_REFINE_COST` (Phase 11.5.B). Star-up + awaken when wired (Phase 23.6/25.1) will introduce `PHAP_BAO_STAR_UP` / `PHAP_BAO_AWAKEN` reasons + matching item ledger reasons; this PR explicitly does NOT add those rows.
+
+**Monetization-safe boundary (Phase 25.1 hook)**: premium drops may grant pháp bảo **within the same tier** as the player's current cảnh giới (never above `requiredRealmOrder`), mảnh / nguyên liệu luyện khí, and bảo hộ phù for refine stages ≥ risky. Premium **cannot** sell:
+- Pháp bảo of higher `artifactTier` than allowed by character `realmOrder` (server enforces `canEquipPhapBao`).
+- Max-star or max-awaken pháp bảo directly (must come from gameplay progression).
+- Top-tier pháp bảo (`THAN` quality, tier 9–10) — these are gameplay-only drops in Phase 25.1 plan.
+
+**Free-player path**: every pháp bảo in the catalog is obtainable through `source ∈ { quest, boss, dungeon, craft, event }` (premium_hook reserved for Phase 25.1 cosmetic skins / shard packages). Free players progress through refine on gameplay material; premium accelerates but cannot bypass realm gates or tier caps.
+
 ### 2.2 tienNgoc (premium hard currency)
 
 #### Sources
