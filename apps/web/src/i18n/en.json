@@ -5448,7 +5448,8 @@
       "PURCHASE_LIMIT_REACHED": "Purchase limit reached.",
       "INSUFFICIENT_FUNDS": "Insufficient funds.",
       "DUPLICATE_PURCHASE": "Already purchased.",
-      "INVALID_INPUT": "Invalid input."
+      "INVALID_INPUT": "Invalid input.",
+      "UNKNOWN": "Something went wrong."
     }
   }
 }

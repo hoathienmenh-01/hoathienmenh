@@ -129,19 +129,28 @@ describe('ShopPacksService', () => {
 
   it('prevents duplicate reward via idempotency key', async () => {
     const f = await makeUserChar(prisma, { tienNgoc: 1000 });
-    await shopPacks.purchase(
+    const first = await shopPacks.purchase(
       f.userId,
       { packId: 'starter_growth', idempotencyKey: 'idem-key-1' },
       NOW,
     );
 
-    await expect(
-      shopPacks.purchase(
-        f.userId,
-        { packId: 'starter_growth', idempotencyKey: 'idem-key-1' },
-        NOW,
-      ),
-    ).rejects.toThrow();
+    const second = await shopPacks.purchase(
+      f.userId,
+      { packId: 'starter_growth', idempotencyKey: 'idem-key-1' },
+      NOW,
+    );
+    expect(second.purchaseId).toBe(first.purchaseId);
+
+    const character = await prisma.character.findUniqueOrThrow({
+      where: { id: f.characterId },
+    });
+    expect(character.tienNgoc).toBe(900);
+
+    const purchases = await prisma.shopPackPurchase.findMany({
+      where: { characterId: f.characterId, packId: 'starter_growth' },
+    });
+    expect(purchases).toHaveLength(1);
   });
 
   it('blocks purchase over weekly limit', async () => {

@@ -5448,7 +5448,8 @@
       "PURCHASE_LIMIT_REACHED": "Đã hết lượt mua.",
       "INSUFFICIENT_FUNDS": "Không đủ tiền.",
       "DUPLICATE_PURCHASE": "Đã mua rồi.",
-      "INVALID_INPUT": "Dữ liệu không hợp lệ."
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "UNKNOWN": "Có lỗi xảy ra."
     }
   }
 }

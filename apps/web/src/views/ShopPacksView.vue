@@ -83,7 +83,8 @@ async function refresh() {
   try {
     packs.value = await getShopPacks();
   } catch (err) {
-    toast.error(t('shopPacks.loadFail'));
+    void err;
+    toast.push({ type: 'error', text: t('shopPacks.loadFail') });
   } finally {
     loading.value = false;
   }
@@ -105,22 +106,28 @@ async function doPurchase() {
   try {
     const idempotencyKey = `${pack.packId}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     await purchaseShopPack(pack.packId, idempotencyKey);
-    toast.success(t('shopPacks.purchaseSuccess'));
-    await game.refreshCharacter();
+    toast.push({ type: 'success', text: t('shopPacks.purchaseSuccess') });
+    await game.fetchState().catch(() => null);
     await refresh();
   } catch (err) {
-    const code = extractApiErrorCodeOrDefault(err, 'shopPacks.purchaseFail');
-    toast.error(t(`shopPacks.errors.${code}`, t('shopPacks.purchaseFail')));
+    const code = extractApiErrorCodeOrDefault(err, 'UNKNOWN');
+    toast.push({
+      type: 'error',
+      text: t(`shopPacks.errors.${code}`, t('shopPacks.purchaseFail')),
+    });
   } finally {
     purchasing.value = null;
   }
 }
 
 onMounted(async () => {
-  if (!auth.isLoggedIn) {
-    router.push('/login');
+  await auth.hydrate();
+  if (!auth.isAuthenticated) {
+    router.replace('/auth');
     return;
   }
+  await game.fetchState().catch(() => null);
+  game.bindSocket();
   await refresh();
 });
 </script>
@@ -192,7 +199,6 @@ onMounted(async () => {
           <MButton
             :disabled="!canBuy(pack) || purchasing === pack.packId"
             :loading="purchasing === pack.packId"
-            size="sm"
             @click="openConfirm(pack)"
           >
             {{ buyDisabledReason(pack) ?? t('shopPacks.buy') }}
@@ -214,7 +220,7 @@ onMounted(async () => {
             {{ t('shopPacks.confirmBody', { name: packName(confirmPack), price: confirmPack.priceAmount }) }}
           </p>
           <div class="flex gap-3 justify-end">
-            <MButton variant="ghost" @click="closeConfirm">{{ t('common.cancel') }}</MButton>
+            <MButton @click="closeConfirm">{{ t('common.cancel') }}</MButton>
             <MButton @click="doPurchase">{{ t('common.confirm') }}</MButton>
           </div>
         </div>

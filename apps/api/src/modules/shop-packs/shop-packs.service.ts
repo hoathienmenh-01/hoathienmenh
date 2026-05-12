@@ -108,6 +108,18 @@ export class ShopPacksService {
     const windowKey = getPurchaseWindowKey(pack.purchaseLimitWindow, now);
 
     const purchaseId = await this.prisma.$transaction(async (tx) => {
+      if (input.idempotencyKey) {
+        const dup = await tx.shopPackPurchase.findUnique({
+          where: { idempotencyKey: input.idempotencyKey },
+        });
+        if (dup) {
+          if (dup.characterId === character.id && dup.packId === pack.packId) {
+            return dup.id;
+          }
+          throw new ShopPackError('DUPLICATE_PURCHASE');
+        }
+      }
+
       // Check purchase limit
       const existing = await tx.shopPackPurchase.findUnique({
         where: {
@@ -120,14 +132,6 @@ export class ShopPacksService {
       });
       if (existing && existing.quantity >= pack.purchaseLimit) {
         throw new ShopPackError('PURCHASE_LIMIT_REACHED');
-      }
-
-      // Idempotency check
-      if (input.idempotencyKey) {
-        const dup = await tx.shopPackPurchase.findUnique({
-          where: { idempotencyKey: input.idempotencyKey },
-        });
-        if (dup) throw new ShopPackError('DUPLICATE_PURCHASE');
       }
 
       // Deduct currency
