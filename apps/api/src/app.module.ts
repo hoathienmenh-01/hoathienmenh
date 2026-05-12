@@ -64,6 +64,7 @@ import { EconomyModule } from './modules/economy/economy.module';
 import { SecurityModule } from './modules/security/security.module';
 import { MonetizationModule } from './modules/monetization/monetization.module';
 import { ShopPacksModule } from './modules/shop-packs/shop-packs.module';
+import { CosmeticsModule } from './modules/cosmetics/cosmetics.module';
 
 @Module({
   imports: [
@@ -210,6 +211,7 @@ import { ShopPacksModule } from './modules/shop-packs/shop-packs.module';
     BackupModule,
     MonetizationModule,
     ShopPacksModule,
+    CosmeticsModule,
   ],
 })
 export class AppModule {}

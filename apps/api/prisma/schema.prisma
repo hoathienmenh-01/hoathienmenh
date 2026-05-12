@@ -395,6 +395,11 @@ model Character {
   monthlyCardSubscription  MonthlyCardSubscription?
   vipProfile               VipProfile?
   shopPackPurchases         ShopPackPurchase[]
+  /// Phase 25.3 — Code-only Cosmetic Effects. Cosmetics never carry power /
+  /// stat bonuses; they only drive CSS rendering on aura / title / frame /
+  /// chat badge / profile decoration / element aura surfaces.
+  cosmeticOwnerships       CosmeticOwnership[]
+  cosmeticLoadout          CosmeticLoadout?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -515,6 +520,57 @@ model ShopPackPurchase {
   @@unique([characterId, packId, purchaseWindowKey])
   @@unique([idempotencyKey])
   @@index([characterId, packId, createdAt])
+}
+
+/// Phase 25.3 — Code-only Cosmetic Effects ownership.
+///
+/// Tracks per-character ownership of a cosmetic catalog entry (`cosmeticId`
+/// resolves to `COSMETICS_CATALOG` in `packages/shared/src/cosmetics.ts`).
+/// UNIQUE on (characterId, cosmeticId) so duplicate grants are idempotent.
+/// `expiresAt` nullable for permanent ownership; events / battle pass keys
+/// optionally set a future timestamp to enforce time-bound cosmetics.
+///
+/// `source` mirrors `CosmeticSource` shared union (`FREE | BATTLE_PASS |
+/// SHOP | VIP | EVENT | ADMIN`). Stored as String to stay schema-light
+/// (no enum migration needed when a new source channel ships).
+model CosmeticOwnership {
+  id           String    @id @default(cuid())
+  characterId  String
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  cosmeticId   String
+  source       String
+  ownedAt      DateTime  @default(now())
+  expiresAt    DateTime?
+  grantReason  String?
+  grantRefId   String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([characterId, cosmeticId])
+  @@index([characterId, expiresAt])
+  @@index([cosmeticId])
+}
+
+/// Phase 25.3 — Code-only Cosmetic Effects loadout.
+///
+/// One row per character with six nullable slot ids (one per `CosmeticType`).
+/// Server enforces that each slot only holds a cosmeticId of the matching
+/// type AND that the character owns a non-expired `CosmeticOwnership` for
+/// that id. Cosmetic loadout is rendered FE-only; it never reads or writes
+/// `Character.power | spirit | speed | luck` or any combat / progression
+/// field — this preserves the Phase 25.x no-power guarantee.
+model CosmeticLoadout {
+  id                        String    @id @default(cuid())
+  characterId               String    @unique
+  character                 Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  activeAuraId              String?
+  activeTitleId             String?
+  activeAvatarFrameId       String?
+  activeChatBadgeId         String?
+  activeProfileDecorationId String?
+  activeElementAuraId       String?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
 }
 
 /// Phase 14.1.B — Async Arena Match.
