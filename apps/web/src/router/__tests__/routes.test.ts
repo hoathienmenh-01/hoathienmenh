@@ -32,6 +32,7 @@ const EXPECTED: RouteExpect[] = [
   { name: 'mail', path: '/mail' },
   { name: 'giftcode', path: '/giftcode' },
   { name: 'topup', path: '/topup' },
+  { name: 'monetization', path: '/monetization' },
   { name: 'admin', path: '/admin' },
   { name: 'profile', path: '/profile/:id' },
   { name: 'activity', path: '/activity' },
