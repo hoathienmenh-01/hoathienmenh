@@ -59,6 +59,12 @@ Mục tiêu: economy KHÔNG vỡ trong 12-24 tháng vận hành, kể cả khi:
 
 ### 2.1 linhThach (soft currency chính)
 
+
+### 2.1.1 Phase 21 story content sources
+
+Phase 21 adds static quest/mission catalogs only; it does not add a direct currency mutation path. Main/side/branch/hidden quest rewards and daily/weekly templates must continue to claim through existing quest/mission services and ledger/idempotency paths. Integrity tests cap Phase 21 daily/weekly templates and compare side/branch/hidden rewards against main quest baseline to avoid making optional content the dominant soft-currency source.
+
+
 #### Sources
 
 | Source | Endpoint / Service | Reason | Idempotency |

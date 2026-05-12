@@ -56,6 +56,11 @@ Người chơi **không** kỳ vọng combat skill cao (đây không phải MMOR
 
 ## B. CORE LOOP
 
+### B.0 Phase 21 story retention layer
+
+Phase 21 extends the core loop into a chapter-gated story layer: quest progress → cultivation/gear/dungeon/boss growth → realm/battle-power/story gate → next chapter. The first 30–60 minutes should teach character creation, A Linh/Hoa Thiên onboarding, first cultivation, spiritual-root discovery, first main quest, first dungeon/skill, sect identity, and light social/party hooks without requiring docs reading.
+
+
 ### B.1 Vòng lặp cốt lõi (server-authoritative)
 
 ```

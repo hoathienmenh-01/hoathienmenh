@@ -10,6 +10,18 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
+
+### Phase 21 — Story Quest Content Expansion Mega PR (PR #538 draft)
+
+#### Added
+- 8 gated story chapters, 120 main quests, 160 side quests, 64 branch quests, 40 hidden quests, daily/weekly story templates, achievement/title expansion, and 600+ NPC dialogue entries.
+- Quest Journal support for Main / Side / Branch / Hidden filters plus chapter/objective/requirement/NPC/lock reason metadata with vi/en i18n parity.
+- Phase 21 content integrity tests for counts, links, gates, triggers, capped daily/weekly templates, dialogue/NPC references, and reward ratios.
+
+#### Docs
+- Updated Phase 21 plan, handoff, content pipeline, design bible, balance/economy notes, and runbook verification guidance.
+
+
 > Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire).
 
 ### Phase 24.1 — Closed Beta QA / Handoff Sync / Regression Smoke (this PR — #537)

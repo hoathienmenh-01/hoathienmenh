@@ -221,3 +221,25 @@ Every new quest entry should encode:
 5. balanced reward intent,
 6. chapter/NPC/lore/gameplay binding,
 7. `CANON_FROM_STORY_BIBLE` or `AI_EXPANDED_LORE` source label in docs/tests where the catalog has no field for it.
+
+
+## Implementation Snapshot — PR #538 Checkpoint
+
+- Chapters: 8 gated story chapters in `packages/shared/src/story-chapters.ts`.
+- Main quests: 120 (`phase21_ch01_main_01` → `phase21_ch08_main_15`), 15 per chapter.
+- Side quests: 160 across 8 chapters, all marked AI-expanded mini-story content.
+- Branch quests: 64 with choice/affinity/sect/elemental hooks and bounded rewards.
+- Hidden quests: 40 with explicit trigger metadata and exploration-first rewards.
+- Daily/weekly templates: catalog now has at least 30 daily and 20 weekly missions; Phase 21 added 24 daily + 15 weekly capped story-loop templates on top of existing baseline.
+- Achievements/titles: Phase 21 added 88 achievements plus linked/chapters titles; combined catalog exceeds the 100 minimum.
+- NPC dialogue: Phase 21 dialogue count exceeds 600, focused on story states and affinity gates for main NPCs.
+- Quest Journal UI: tabs include Main/Side/Branch/Hidden plus existing realm/sect/npc/grind filters, completed count, chapter tags, objective/requirement/NPC/lock reason metadata and vi/en parity.
+- Integrity tests: `packages/shared/src/phase21-content-integrity.test.ts` validates content counts, chapter gates, quest links, NPC/dialogue references, hidden triggers, branch hooks, capped daily/weekly templates, and reward ratios.
+
+### Reward balance result
+
+Phase 21 rewards remain catalog-only and claim paths continue through existing quest/mission services and ledgered reward systems. Side/branch/hidden resource rewards are checked against main quest baseline; hidden and branch rewards favor lore/title/affinity/discovery over soft-currency volume.
+
+### Follow-up
+
+Phase 21B — Additional Story Content Pack should raise the high targets after this minimum-quality PR lands: 140–180 main quests, 200–320 side quests, 80–120 branch quests, 60–80 hidden quests, 40–50 daily templates, 25–30 weekly templates, and 800–1200 dialogue entries.

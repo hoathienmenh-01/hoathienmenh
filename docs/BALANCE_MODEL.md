@@ -1547,6 +1547,11 @@ Override:
 
 **KHÔNG được** chỉnh dial trực tiếp trong service code. Mọi service import từ `BALANCE_DIALS`.
 
+
+## 9.8 Phase 21 quest reward ratios
+
+Phase 21 uses main quests as the resource baseline. Side quests target 25–45% of main resource value, branch quests 35–60%, hidden quests 20–50%, and hidden/branch content favors affinity/title/lore unlocks over currency. `packages/shared/src/phase21-content-integrity.test.ts` enforces aggregate side/branch/hidden ratios against the main quest baseline and checks Phase 21 daily/weekly caps.
+
 ---
 
 ## 10. TEST PATTERN

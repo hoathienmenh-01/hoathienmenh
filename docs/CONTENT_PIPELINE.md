@@ -33,6 +33,13 @@ Mục tiêu: thêm content **không phá CI**, **không lệch curve**, **không
 | **Achievement (legacy row)** | (replaced by `packages/shared/src/achievements.ts` Phase 11.10.A) | (see Achievement row above) | (resolved) |
 | **EventConfig** | (chưa có) | 0 | Phase 15 — DB-backed |
 
+
+### 1.1.1 Phase 21 PR #538 mega content checkpoint
+
+- Story/quest catalog remains static TypeScript for this PR: `story-chapters.ts`, `phase21-main-quests.ts`, `phase21-side-quests.ts`, `phase21-branch-quests.ts`, `phase21-hidden-quests.ts`, `story-dialogues.ts`, `missions.ts`, `achievements.ts`, `titles.ts`.
+- Minimums met in catalog/tests: 8 chapters, 120 main, 160 side, 64 branch, 40 hidden, 30+ daily, 20+ weekly, 100+ achievements/titles, 600+ dialogue.
+- Runtime DB enforcement beyond current quest/mission progress remains follow-up; this PR seeds typed catalog + integrity tests without destructive migration.
+
 ---
 
 ## 2. STATIC vs DB CATALOG
