@@ -106,15 +106,29 @@ describe('ITEMS — equipment integrity', () => {
 describe('ITEMS — pill / consumable integrity', () => {
   const pills = ITEMS.filter((i) => i.kind.startsWith('PILL'));
 
-  it('mọi pill có effect với ≥ 1 stat dương hoặc buffKey (Phase 11.10.E)', () => {
+  it('mọi pill có effect dương hoặc buff/support marker', () => {
     for (const p of pills) {
       expect(p.effect, `pill ${p.key} thiếu effect`).toBeDefined();
       const e = p.effect!;
-      const sum = (e.hp ?? 0) + (e.mp ?? 0) + (e.exp ?? 0);
+      const sum =
+        (e.hp ?? 0) +
+        (e.mp ?? 0) +
+        (e.stamina ?? 0) +
+        (e.exp ?? 0) +
+        (e.bodyExp ?? 0) +
+        (e.qiBreakthroughBonus ?? 0) +
+        (e.bodyBreakthroughBonus ?? 0) +
+        (e.tribulationSupport ?? 0) +
+        (e.bodyInjuryReductionMinutes ?? 0) +
+        (e.taoMaReductionMinutes ?? 0) +
+        (e.cultivationRateBonusPct ?? 0) +
+        (e.bodyCultivationRateBonusPct ?? 0) +
+        (e.bossDamageReductionPct ?? 0);
       const hasBuff = e.buffKey !== undefined;
+      const hasResist = Object.keys(e.elementalResistBonus ?? {}).length > 0;
       expect(
-        sum > 0 || hasBuff,
-        `pill ${p.key} effect toàn 0 và không có buffKey`
+        sum > 0 || hasBuff || hasResist,
+        `pill ${p.key} effect toàn 0 và không có buff/support`
       ).toBe(true);
     }
   });
