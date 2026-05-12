@@ -2917,3 +2917,136 @@ Detection-only thresholds for `MarketTradeAbuseService` (`apps/api/src/modules/a
 - `effect.exp` chỉ cho Luyện Khí; `effect.bodyExp` chỉ cho Luyện Thể và phải qua `BODY_CULTIVATION` daily cap. Đột phá/buff/độ kiếp/trị thương không grant linhThach/tienNgoc.
 - Material drop foundation: NORMAL rất thấp, ELITE thấp-vừa, BOSS/DUNGEON tốt hơn nhưng vẫn phân phối lower/same/rare/special; artifact/body-breakthrough materials hiếm hơn alchemy thường.
 
+
+## Phase 26.2 — Drop Economy V2 / Realm-Tier Weighted Material Drops
+
+### Realm → MaterialTier mapping (9 tier)
+
+Mapping cảnh giới sang material tier (28 realm Qi/Body → 9 tier):
+
+| Tier | Realm keys (Qi axis) |
+|------|----------------------|
+| 1 | Phàm Nhân, Luyện Khí (lk1-3) |
+| 2 | Trúc Cơ (truc_co) |
+| 3 | Kim Đan (kim_dan) |
+| 4 | Nguyên Anh (nguyen_anh), Hóa Thần (hoa_than) |
+| 5 | Luyện Hư, Hợp Thể, Đại Thừa |
+| 6 | Độ Kiếp, Nhân Tiên, Địa Tiên, Thiên Tiên |
+| 7 | Huyền Tiên, Kim Tiên, Thái Ất Kim Tiên, Đại La Kim Tiên |
+| 8 | Chuẩn Thánh, Thánh Nhân, Hỗn Nguyên Đại La, Đạo Quân |
+| 9 | Thiên Đạo, Bản Nguyên, Huyền Huyền, Vô Thủy, Vô Chung, Vĩnh Hằng, Hư Không Chí Tôn |
+
+Helpers (`packages/shared/src/drop-economy.ts`):
+- `realmOrderToMaterialTier(order)` → 1–9
+- `bodyRealmOrderToMaterialTier(order)` → 1–9 (parallel mapping cho Luyện Thể axis)
+- `effectiveDropTier(playerRealmOrder, sourceOrder) = min(playerTier, sourceTier)` — invariant chống farming map thấp cho material cao
+- `clampDropTierForSource(playerTier, sourceTier)` — alias dùng nội bộ catalog
+- `getTierDistance(playerTier, materialTier)` — phân loại offset `lower2OrBelow` / `lower1` / `sameTier` / `above1` / `above2`
+
+### Anti-inflation invariant
+
+**Quy tắc bất biến**: `effectiveDropTier = min(playerRealmTier, sourceTier)`.
+
+- Người chơi cảnh giới cao quay lại map thấp KHÔNG biến map thành mỏ endgame: source tier vẫn là tier của map/quái, không tăng theo người chơi.
+- Người chơi cảnh giới thấp đánh quái/boss cao hơn (nếu vượt gate được) KHÔNG nhảy bậc material vì player tier vẫn giới hạn.
+- Combine cùng 2-step roll: hạn chế cứng tier ≥ player+2 hoặc source+2 không rơi từ `NORMAL`.
+
+### MonsterType drop rate (2-step roll, bước 1 — base material drop rate)
+
+| MonsterType | baseMaterialDropRate | Ghi chú |
+|-------------|----------------------|---------|
+| `NORMAL` | 1%–5% | quái thường |
+| `ELITE` | 8%–18% | tinh anh |
+| `BOSS` | 25%–50% | boss field/raid |
+| `DUNGEON_BOSS` | 30%–55% | boss cuối bí cảnh |
+| `WORLD_BOSS` | 60%–90% | nhưng rare phải có weekly cap |
+| `EVENT_BOSS` | 50%–80% | event-only, season cap |
+
+DUNGEON/BODY_DUNGEON/ALCHEMY_DUNGEON theo source (bước riêng): 35%–65% per encounter, có dailyLimit qua `DungeonRun` model.
+
+### MonsterType weight (2-step roll, bước 2 — tier offset relative to `effectiveDropTier`)
+
+| MonsterType | lower2OrBelow | lower1 | sameTier | above1 | above2 |
+|-------------|---------------|--------|----------|--------|--------|
+| `NORMAL` | 35% | 40% | 24% | 1% | 0% |
+| `ELITE` | 20% | 35% | 40% | 5% | 0% |
+| `BOSS` | 10% | 25% | 55% | 9.5% | 0.5% |
+| `DUNGEON_BOSS` | 10% | 30% | 52% | 8% | 0% |
+| `WORLD_BOSS` | 5% | 15% | 55% | 20% | 5% |
+
+Quy tắc bắt buộc:
+- `NORMAL` KHÔNG rơi tier > player/source +1 (above2 = 0).
+- `BOSS` cho phép above2 0.5% — chỉ áp dụng cho boss đặc biệt nếu rule có `allowAboveTier: true`.
+- `WORLD_BOSS` cho phép above2 5% — bù lại bị weekly cap nghiêm ngặt.
+
+### Material category multiplier
+
+Áp dụng sau bước 2 để điều chỉnh frequency theo loại material:
+
+| Category | Multiplier | Lý do |
+|----------|-----------|-------|
+| `ALCHEMY_QI` | 1.0 | base — nguyên liệu Luyện Khí phổ biến nhất |
+| `ALCHEMY_BODY` | 0.7 | Luyện Thể khó hơn Luyện Khí |
+| `EQUIPMENT_CRAFT` | 0.65 | trang bị craft trung bình |
+| `FURNACE_UPGRADE` | 0.3 | hiếm vừa |
+| `QI_BREAKTHROUGH` | 0.32 | đột phá Khí — hiếm |
+| `BODY_BREAKTHROUGH` | 0.27 | đột phá Thể — hiếm hơn QI |
+| `COMBAT_BUFF` | 0.5 | buff đan phẩm trung bình |
+| `TRIBULATION` | 0.15 | độ kiếp — rất hiếm |
+| `ARTIFACT_CRAFT` | 0.05 | pháp bảo — hiếm nhất (chỉ rơi từ BOSS/DUNGEON_BOSS/WORLD_BOSS) |
+| `GENERAL` | 1.0 | nguyên liệu phổ thông |
+
+Rule bổ sung:
+- Quái thường (`NORMAL`) KHÔNG rơi `ARTIFACT_CRAFT` ≥ tier 4 — auto-strip trong `buildDropRuleCatalog`.
+- Quái thường KHÔNG rơi `BREAKTHROUGH` cùng tier player — chỉ `lower2OrBelow`/`lower1`, và baseChance < 0.5%.
+- Finished pill (đan thành phẩm) KHÔNG rơi từ `NORMAL` — chỉ từ BOSS/DUNGEON/WORLD_BOSS với baseChance < 1%.
+
+### Daily / Weekly cap (anti-inflation)
+
+Prisma models:
+- `DailyMaterialCap` UNIQUE `(characterId, dayBucket, ruleKey)` — `dayBucket` là `YYYY-MM-DD` ICT (UTC+7).
+- `WeeklyMaterialCap` UNIQUE `(characterId, weekBucket, ruleKey)` — `weekBucket` là ISO-8601 `YYYY-Www` (`weekBucketFor` helper).
+
+Mỗi `MaterialDropRule` có thể declare `maxDailyQty` và/hoặc `maxWeeklyQty`:
+- NORMAL rule rare/breakthrough/artifact: daily cap rất thấp (1–3/day).
+- ELITE: daily cap thấp-vừa (3–8/day).
+- BOSS/DUNGEON_BOSS: daily cap theo source (5–15/day).
+- DUNGEON: daily cap follow `DungeonRun.dailyLimit` (per dungeon).
+- WORLD_BOSS: weekly cap nghiêm (1–3/week cho material tier 5+).
+- ARTIFACT_CRAFT/recipe fragment cao cấp: weekly cap luôn-luôn.
+
+Cap enforcement: `DropEconomyService.rollAndGrant` upsert cả 2 cap row trong cùng `$transaction` với grant để CAS race-safe; quantity bị clamp về `min(rolledQty, capRemaining)`. Kết quả ledger ghi rõ `cappedByDaily`/`cappedByWeekly`.
+
+### Ví dụ Trúc Cơ bắt buộc (test enforced)
+
+Trúc Cơ = `materialTier 2`. Player Trúc Cơ farm map Trúc Cơ (sourceTier 2):
+
+| Encounter | baseRate | Tier 1 share | Tier 2 share | Tier 3 share | Tier 4+ share |
+|-----------|----------|--------------|--------------|--------------|---------------|
+| `NORMAL` Trúc Cơ | ~3% | ~75% | ~24% | ≤1% | 0% |
+| `ELITE` Trúc Cơ | ~13% | ~55% | ~40% | ~5% | 0% |
+| `BOSS` Trúc Cơ | ~37% | ~35% | ~55% | ~9.5% | ≤0.5% (boss đặc biệt) |
+
+Tỉ lệ thực để `NORMAL` Trúc Cơ rơi nguyên liệu Kim Đan = `3% × 1% = 0.03%`. Tỉ lệ thực để rơi Nguyên Anh = 0 (above2 = 0% cho NORMAL).
+
+Test enforced bằng 10k-roll simulation trong `packages/shared/src/drop-economy.test.ts` — Tier 4+ count phải = 0 cho `NORMAL`.
+
+Player Đại Thừa quay lại map Trúc Cơ:
+- `effectiveDropTier = min(playerTier=5, sourceTier=2) = 2`.
+- Vẫn rơi material tier 1–2 là chính, KHÔNG rơi material tier 5+ (Đại Thừa). Map thấp KHÔNG thành mỏ endgame.
+
+### Tích hợp combat / dungeon / boss
+
+- **Combat** (`apps/api/src/modules/combat/combat.service.ts`): mỗi monster có `monsterType` → `inferDropMonsterType` map sang `NORMAL_MONSTER`/`ELITE`/`BOSS`; `sourceTier` từ dungeon `recommendedRealm` hoặc fallback `playerRealm`. `dropEconomy.rollAndGrant` chạy sau legacy `lootTable` grant (fail-soft try/catch).
+- **Dungeon** (`apps/api/src/modules/dungeon-run/dungeon-run.service.ts`): `pickDungeonDropSource(dungeonKey)` map `body_*`/`alchemy_*` prefix → `BODY_DUNGEON`/`ALCHEMY_DUNGEON`, mặc định `DUNGEON`. Boss encounter dùng `DUNGEON_BOSS` monsterType. `sourceTier = realmOrderToMaterialTier(dungeon.recommendedRealm.order)`.
+- **World Boss** (`apps/api/src/modules/boss/boss.service.ts` `applyWorldBossDropEconomy`): chạy sau `broadcastBossDefeated`. Mỗi participant slice nhận 1 roll, rank 1 nhận 2 rolls (weekly cap vẫn enforce). `sourceTier` từ `BossDef.recommendedRealm`. Fail-soft per-participant — 1 lỗi không block phần thưởng còn lại.
+
+Tất cả integration đều fail-soft (try/catch + logger.warn) — drop economy lỗi KHÔNG block legacy reward path.
+
+### Forbidden invariants (test enforced)
+
+- Drop KHÔNG được grant `tienNgoc` hoặc `linhThach` (chỉ qua `InventoryItem` grant với `reason='DROP_ECONOMY_MATERIAL'`).
+- KHÔNG duplicate grant khi retry (idempotency qua transaction + cap UNIQUE constraint).
+- NORMAL KHÔNG rơi tier > effective+1 (above2 = 0).
+- ARTIFACT_CRAFT KHÔNG rơi từ NORMAL nếu tier ≥ 4.
+- KHÔNG có P2W path — không bán cap bypass, không VIP tăng drop endgame.
