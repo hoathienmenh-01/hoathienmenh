@@ -33,7 +33,7 @@ afterAll(async () => {
 describe('InventoryService', () => {
   describe('grant + list', () => {
     it('grant non-stackable: tạo row mới mỗi lần', async () => {
-      const u = await makeUserChar(prisma);
+      const u = await makeUserChar(prisma, { realmKey: 'kim_dan' });
       await inv.grant(u.characterId, [{ itemKey: 'so_kiem', qty: 1 }], { reason: 'ADMIN_GRANT' });
       await inv.grant(u.characterId, [{ itemKey: 'so_kiem', qty: 1 }], { reason: 'ADMIN_GRANT' });
 
@@ -44,7 +44,7 @@ describe('InventoryService', () => {
     });
 
     it('grant stackable: gộp qty vào row hiện có (nếu chưa equip)', async () => {
-      const u = await makeUserChar(prisma);
+      const u = await makeUserChar(prisma, { realmKey: 'kim_dan' });
       await inv.grant(u.characterId, [{ itemKey: 'huyet_chi_dan', qty: 3 }], { reason: 'ADMIN_GRANT' });
       await inv.grant(u.characterId, [{ itemKey: 'huyet_chi_dan', qty: 5 }], { reason: 'ADMIN_GRANT' });
 
@@ -55,14 +55,14 @@ describe('InventoryService', () => {
     });
 
     it('grant: itemKey không tồn tại trong catalog → bỏ qua, không tạo row', async () => {
-      const u = await makeUserChar(prisma);
+      const u = await makeUserChar(prisma, { realmKey: 'kim_dan' });
       await inv.grant(u.characterId, [{ itemKey: 'khong_ton_tai', qty: 1 }], { reason: 'ADMIN_GRANT' });
       const rows = await prisma.inventoryItem.findMany({ where: { characterId: u.characterId } });
       expect(rows).toHaveLength(0);
     });
 
     it('list: filter ra item có itemKey không khớp catalog (orphan)', async () => {
-      const u = await makeUserChar(prisma);
+      const u = await makeUserChar(prisma, { realmKey: 'kim_dan' });
       await prisma.inventoryItem.create({
         data: { characterId: u.characterId, itemKey: 'orphan_key', qty: 1 },
       });
@@ -146,6 +146,34 @@ describe('InventoryService', () => {
       await expect(inv.equip(u.userId, pill.id)).rejects.toMatchObject({
         code: 'NOT_EQUIPPABLE',
       });
+    });
+
+    it('equip item cao cấp ở cảnh giới thấp → EQUIPMENT_REALM_LOCKED', async () => {
+      const u = await makeUserChar(prisma, { realmKey: 'luyenkhi' });
+      await inv.grant(u.characterId, [{ itemKey: 'tien_huyen_kiem', qty: 1 }], { reason: 'ADMIN_GRANT' });
+      const sword = await prisma.inventoryItem.findFirstOrThrow({
+        where: { characterId: u.characterId, itemKey: 'tien_huyen_kiem' },
+      });
+
+      await expect(inv.equip(u.userId, sword.id)).rejects.toMatchObject({
+        code: 'EQUIPMENT_REALM_LOCKED',
+      });
+      const fresh = await prisma.inventoryItem.findUniqueOrThrow({ where: { id: sword.id } });
+      expect(fresh.equippedSlot).toBeNull();
+    });
+
+    it('equip item đủ cảnh giới pass và unequip không bị realm gate chặn', async () => {
+      const u = await makeUserChar(prisma, { realmKey: 'nguyen_anh' });
+      await inv.grant(u.characterId, [{ itemKey: 'tien_huyen_kiem', qty: 1 }], { reason: 'ADMIN_GRANT' });
+      const sword = await prisma.inventoryItem.findFirstOrThrow({
+        where: { characterId: u.characterId, itemKey: 'tien_huyen_kiem' },
+      });
+
+      await inv.equip(u.userId, sword.id);
+      await inv.unequip(u.userId, 'WEAPON');
+
+      const fresh = await prisma.inventoryItem.findUniqueOrThrow({ where: { id: sword.id } });
+      expect(fresh.equippedSlot).toBeNull();
     });
 
     it('equip item của character khác → INVENTORY_ITEM_NOT_FOUND', async () => {
@@ -500,7 +528,7 @@ describe('InventoryService', () => {
     });
 
     it('character trang bị 1× huyen_giap_phong_kim → map { kim: 0.95 }', async () => {
-      const u = await makeUserChar(prisma);
+      const u = await makeUserChar(prisma, { realmKey: 'kim_dan' });
       await inv.grant(u.characterId, [{ itemKey: 'huyen_giap_phong_kim', qty: 1 }], {
         reason: 'ADMIN_GRANT',
       });
@@ -524,7 +552,7 @@ describe('InventoryService', () => {
     });
 
     it('character đeo cả armor resist + weapon thường → chỉ armor resist contribute', async () => {
-      const u = await makeUserChar(prisma);
+      const u = await makeUserChar(prisma, { realmKey: 'kim_dan' });
       await inv.grant(
         u.characterId,
         [

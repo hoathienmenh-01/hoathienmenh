@@ -8,6 +8,10 @@
 import type { ElementKey, LootEntry, RolledLoot } from './combat';
 import { monsterByKey } from './combat';
 import type { EquipSlot, Quality } from './enums';
+import {
+  deriveEquipmentProgressionMetadata,
+  type EquipmentGradeWithinTier,
+} from './equipment-progression';
 
 export type ItemKind =
   | 'WEAPON'
@@ -142,6 +146,16 @@ export interface ItemDef {
   slot?: EquipSlot;
   /** Phase 22.1 — optional equipment affinity hook for build recommendation. */
   equipmentElement?: ElementKey | null;
+  /** Phase 23.2 — realm-scaled equipment progression metadata. */
+  equipmentTier?: number;
+  equipmentTierName?: string;
+  equipmentGradeWithinTier?: EquipmentGradeWithinTier | null;
+  requiredRealmOrder?: number;
+  requiredRealmKey?: string;
+  powerBudget?: number;
+  computedPowerScore?: number;
+  maxEnhanceLevel?: number;
+  maxSocketCount?: number;
   bonuses?: ItemBonus;
   effect?: ItemEffect;
   /** Phase 11.2.D — chỉ set khi `kind === 'SKILL_BOOK'`. */
@@ -1403,6 +1417,18 @@ export const ITEMS: readonly ItemDef[] = [
 
 export function itemByKey(key: string): ItemDef | undefined {
   return ITEMS.find((i) => i.key === key);
+}
+
+export function itemWithProgression(item: ItemDef): ItemDef {
+  if (!item.slot) return item;
+  const metadata = deriveEquipmentProgressionMetadata(item);
+  if (!metadata) return item;
+  return { ...item, ...metadata };
+}
+
+export function itemByKeyWithProgression(key: string): ItemDef | undefined {
+  const item = itemByKey(key);
+  return item ? itemWithProgression(item) : undefined;
 }
 
 // LootEntry + RolledLoot types live in combat.ts (Phase 12.4 — avoid circular

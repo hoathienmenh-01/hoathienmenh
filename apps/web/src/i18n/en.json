@@ -825,6 +825,15 @@
     "equipToast": "Equipped {name}.",
     "unequipToast": "Unequipped {slot}.",
     "useToast": "Used {name}.",
+    "progression": {
+      "tierLabel": "Tier {tier} {name} {grade}",
+      "gradeLabel": "grade {grade}",
+      "finalGrade": "final",
+      "requiredRealm": "Requires realm #{order}",
+      "power": "Gear power {power}",
+      "caps": "Enhance +{enhance}, sockets {sockets}",
+      "lockHint": "Server blocks equip until realm #{order}."
+    },
     "refine": {
       "button": "Refine",
       "buttonMaxed": "Refine maxed",
@@ -865,6 +874,7 @@
       "INVENTORY_ITEM_NOT_FOUND": "Item no longer exists.",
       "NOT_EQUIPPABLE": "This item cannot be equipped.",
       "NOT_USABLE": "This item has no effect.",
+      "EQUIPMENT_REALM_LOCKED": "Your realm is too low to equip this gear.",
       "EQUIPMENT_NOT_FOUND": "Equipment no longer exists.",
       "NOT_REFINABLE": "This item cannot be refined.",
       "MAX_LEVEL_REACHED": "Already at max refine level (15).",

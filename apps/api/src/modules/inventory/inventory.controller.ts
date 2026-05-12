@@ -117,6 +117,7 @@ export class InventoryController {
       case 'NOT_USABLE':
       case 'WRONG_SLOT':
       case 'ALREADY_USED':
+      case 'EQUIPMENT_REALM_LOCKED':
         fail(code, HttpStatus.CONFLICT);
       // eslint-disable-next-line no-fallthrough
       default:

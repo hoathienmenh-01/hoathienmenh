@@ -10,6 +10,19 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
+### Phase 23.2 — Realm-scaled Equipment Progression System (PR #540 draft)
+
+#### Added
+- Shared realm-scaled equipment progression helpers: 28 realm orders map into 10 equipment tiers, with I/II/III grade lookup, tier base power, quality multipliers, slot weights, enhancement/socket caps, gem/set cap guards, power budget/score helpers, equip gate helper, and validation.
+- Equipment item payloads can derive progression metadata (`equipmentTier`, `equipmentTierName`, `equipmentGradeWithinTier`, `requiredRealmOrder`, `requiredRealmKey`, `powerBudget`, `computedPowerScore`, `maxEnhanceLevel`, `maxSocketCount`) without destructive migration.
+- Inventory UI displays equipment tier, grade, required realm order, power score, max enhancement/socket cap, and realm-lock hint with vi/en i18n parity.
+
+#### Changed
+- Inventory equip is now server-authoritative for realm requirements: high-tier equipment throws `EQUIPMENT_REALM_LOCKED` if the character realm is too low. Unequip and consumables remain unaffected.
+
+#### Docs
+- Documented equipment tiers, budget rules, economy retention role, API response/error behavior, and Phase 23.2 handoff notes.
+
 ### Phase 22.1 — Ngũ Hành Build Depth Expansion (PR #539 draft)
 
 #### Added

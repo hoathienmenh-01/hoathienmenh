@@ -368,6 +368,33 @@ Phase 14.2.B nâng cấp Phase 14.2.A từ pure-function pipeline trống dữ l
 
 **KHÔNG nới dial Phase 14.2.A** — pipeline foundation, floor, ceil giữ nguyên. Phase 14.2.C tương lai có thể tune `ELEMENT_COUNTER_MULTIPLIER` / `ELEMENT_GENERATE_MULTIPLIER` theo metric thực tế khi player base lớn.
 
+### 2.9.3.1B Phase 23.2 — Realm-scaled Equipment Progression
+
+Equipment power now has an explicit realm/tier axis instead of relying on quality color alone.
+
+| Equipment tier | Name | Realm orders | Base power |
+|---:|---|---:|---:|
+| 1 | Phàm Khí | 1–3 | 100 |
+| 2 | Linh Khí | 4–6 | 260 |
+| 3 | Huyền Khí | 7–9 | 680 |
+| 4 | Địa Khí | 10–12 | 1,750 |
+| 5 | Thiên Khí | 13–15 | 4,500 |
+| 6 | Tiên Khí | 16–18 | 11,500 |
+| 7 | Thánh Khí | 19–21 | 29,000 |
+| 8 | Đạo Khí | 22–24 | 72,000 |
+| 9 | Bản Nguyên Chí Bảo | 25–27 | 175,000 |
+| 10 | Hư Không Chí Bảo | 28 | 420,000 |
+
+**Rules / invariants**:
+- Tier 1–9 have internal grades I/II/III matching the first/second/third realm in the tier; tier 10 is final-only.
+- `requiredRealmOrder` is the authoritative equip gate. API equip throws `EQUIPMENT_REALM_LOCKED` when character realm order is lower; unequip and consumables are unaffected.
+- Quality multipliers stay within tier: PHAM 1.00, LINH 1.15, HUYEN 1.35, TIEN 1.60, THAN 1.90. Quality is rarity, not the whole progression ladder.
+- Slot weights: weapon 1.00, armor 0.85, helmet/trâm 0.55, boots 0.45, belt 0.35, artifact/offhand 0.70, ring/amulet 0.40.
+- Enhance caps are tier-bound (+5, +7, …, +23) with multiplier `1 + enhanceLevel × 0.03`; enhancement cannot replace realm/tier progression.
+- Socket caps are bounded by quality and tier; gem bonus total is capped at 20% item power. Set bonus envelope: 2pc 3–5%, 4pc 6–10%, 6pc 10–15% or cooldown/cap special effect.
+
+Primary code: `packages/shared/src/equipment-progression.ts`. Tests enforce tier coverage, grade mapping, caps, deterministic power score, progression validation, existing item metadata derivation, and API realm gate behavior.
+
 ### 2.9.3.2 Phase 14.2.C — Elemental skill tree expansion (DONE this PR)
 
 Phase 14.2.C biến Ngũ Hành từ damage/resist multiplier thành **hệ kỹ năng có hướng chơi riêng**: Mộc = hồi/độc, Hỏa = burst/thiêu, Thổ = khiên/khống, Kim = xuyên/chí, Thủy = control/hồi linh. KHÔNG đụng damage formula, KHÔNG đụng dial 14.2.A, chỉ thêm tag side-effect dial.

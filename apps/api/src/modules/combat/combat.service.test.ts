@@ -352,6 +352,7 @@ describe('CombatService', () => {
         power: 200,
         hp: 1000,
         hpMax: 1000,
+        realmKey: 'kim_dan',
         spiritualRootGrade: 'tien',
         primaryElement: 'kim',
         secondaryElements: ['thuy', 'hoa'],
@@ -376,6 +377,7 @@ describe('CombatService', () => {
         power: 200,
         hp: 1000,
         hpMax: 1000,
+        realmKey: 'kim_dan',
         spiritualRootGrade: 'linh',
         primaryElement: 'moc',
         secondaryElements: ['thuy'],
@@ -395,6 +397,7 @@ describe('CombatService', () => {
         power: 200,
         hp: 1000,
         hpMax: 1000,
+        realmKey: 'kim_dan',
         // KHÔNG set spiritualRootGrade → null → bypass character bonus.
       });
       const enc = await combat.start(u.userId, 'moc_huyen_lam');
@@ -556,6 +559,7 @@ describe('CombatService', () => {
         power: 200,
         hp: 1000,
         hpMax: 1000,
+        realmKey: 'kim_dan',
         spiritualRootGrade: 'tien',
         primaryElement: 'kim',
         secondaryElements: ['thuy', 'hoa'],
@@ -641,6 +645,7 @@ describe('CombatService', () => {
         power: 200,
         hp: 1000,
         hpMax: 1000,
+        realmKey: 'kim_dan',
         spiritualRootGrade: 'tien',
         primaryElement: 'kim',
       });
@@ -685,6 +690,7 @@ describe('CombatService', () => {
         power: 200,
         hp: 1000,
         hpMax: 1000,
+        realmKey: 'kim_dan',
         spiritualRootGrade: 'tien',
         primaryElement: 'kim',
       });

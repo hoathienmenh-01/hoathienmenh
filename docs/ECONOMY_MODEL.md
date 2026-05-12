@@ -126,6 +126,15 @@ Cost ladder cho 2 sink mới — server compute deterministic qua `getReforgeCos
 - Currency: `CurrencyService.applyTx(tx, characterId, kind, delta, ...)` đã có internal `gte` guard — race fail → throw `INSUFFICIENT_FUNDS`, tx rollback.
 - 2 thread reforge cùng item song song → 1 thread thắng (1 history row), thread kia rollback hoàn toàn → KHÔNG double spend / KHÔNG double history audit.
 
+##### Phase 23.2 — Equipment progression as long-term retention loop
+
+The equipment economy uses realm-scaled tiers as the retention spine:
+- 28 cultivation realms map to 10 equipment tiers; each tier/grade has `requiredRealmOrder`, so high-tier drops are aspirational until the character reaches the matching realm.
+- Quality (`PHAM/LINH/HUYEN/TIEN/THAN`) is rarity within a tier, not the global power ladder. This prevents low-realm THAN gear from replacing higher-realm progression.
+- Enhancement, sockets/gems, set bonuses, reforge, enchant, and Ngũ Hành affinity are sinks/build-depth systems. They must remain capped by item power budget and cannot bypass tier gates.
+- Gem bonus envelope is ≤20% item power. Set bonus envelope is 2pc 3–5%, 4pc 6–10%, 6pc 10–15%/capped special. These percentages keep multi-item farming meaningful without invalidating realm progression.
+- Server equip validation is authoritative (`EQUIPMENT_REALM_LOCKED`), so marketplace/trade/drop luck cannot let a low-realm character wear future-tier gear.
+
 ### 2.2 tienNgoc (premium hard currency)
 
 #### Sources

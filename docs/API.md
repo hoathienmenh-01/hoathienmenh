@@ -104,9 +104,9 @@ Tick EXP thực hiện bởi BullMQ processor `cultivation.processor.ts`. WS eve
 
 | Method | Path                  | Auth | Mô tả |
 |--------|-----------------------|------|-------|
-| GET    | `/inventory/me`       | Yes  | List item + equipped slot. |
-| POST   | `/inventory/equip`    | Yes  | `{ itemId, slot }`. |
-| POST   | `/inventory/unequip`  | Yes  | `{ slot }`. |
+| GET    | `/inventory/me`       | Yes  | List item + equipped slot. Equipment `item` payload may include Phase 23.2 progression metadata: `equipmentTier`, `equipmentTierName`, `equipmentGradeWithinTier`, `requiredRealmOrder`, `requiredRealmKey`, `powerBudget`, `computedPowerScore`, `maxEnhanceLevel`, `maxSocketCount`, `equipmentElement?`. |
+| POST   | `/inventory/equip`    | Yes  | `{ inventoryItemId }`. Server validates ownership, equippable slot, and Phase 23.2 realm gate. If `characterRealmOrder < item.requiredRealmOrder`, returns 409 `EQUIPMENT_REALM_LOCKED`. |
+| POST   | `/inventory/unequip`  | Yes  | `{ slot }`. Unequip is not blocked by realm gate. |
 | POST   | `/inventory/use-pill` | Yes  | Tiêu đan. Ghi `ItemLedger` qtyDelta âm. |
 
 ## Market — `MarketController`

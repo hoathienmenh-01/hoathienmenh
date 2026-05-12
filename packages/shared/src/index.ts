@@ -19,6 +19,7 @@ export * from './cultivation-methods';
 export * from './gems';
 export * from './refine';
 export * from './equipment-upgrade';
+export * from './equipment-progression';
 export * from './skill-templates';
 export * from './spiritual-root';
 export * from './talents';
