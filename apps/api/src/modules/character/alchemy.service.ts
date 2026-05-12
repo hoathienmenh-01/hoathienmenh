@@ -2,15 +2,22 @@ import { Injectable, Optional } from '@nestjs/common';
 import { CurrencyKind } from '@prisma/client';
 import {
   ALCHEMY_FURNACE_MAX_LEVEL,
-  alchemyRecipesAvailableAtFurnace,
+  ALCHEMY_LEVEL_NAMES,
+  canCraftAlchemyRecipe,
+  computeAlchemyExpReward,
+  computeAlchemySuccessRate,
   getAlchemyFurnaceUpgradeDef,
+  getAlchemyLevelExpRequirement,
   getAlchemyRecipeDef,
   itemByKey,
+  possiblePillGrades,
   realmByKey,
+  resolveAlchemyLevelAfter,
+  rollPillGrade,
   simulateAlchemyAttempt,
   ALCHEMY_RECIPES,
   type AlchemyFurnaceUpgradeDef,
-  type AlchemyRecipeDef,
+  type PillGrade,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from './currency.service';
@@ -73,12 +80,18 @@ export class AlchemyService {
           realmKey: true,
           linhThach: true,
           alchemyFurnaceLevel: true,
+          alchemyLevel: true,
+          alchemyExp: true,
+          alchemyMastery: true,
         },
       });
       if (!character) throw new AlchemyError('CHARACTER_NOT_FOUND');
 
-      if (character.alchemyFurnaceLevel < recipe.furnaceLevel) {
-        throw new AlchemyError('FURNACE_LEVEL_TOO_LOW');
+      const craftGate = canCraftAlchemyRecipe(character, recipe);
+      if (!craftGate.canCraft) {
+        if (craftGate.failureReason === 'ALCHEMY_LEVEL_TOO_LOW') throw new AlchemyError('ALCHEMY_LEVEL_TOO_LOW');
+        if (craftGate.failureReason === 'FURNACE_LEVEL_TOO_LOW') throw new AlchemyError('FURNACE_LEVEL_TOO_LOW');
+        if (craftGate.failureReason === 'REALM_REQUIREMENT_NOT_MET') throw new AlchemyError('REALM_REQUIREMENT_NOT_MET');
       }
 
       if (recipe.realmRequirement) {
@@ -93,7 +106,13 @@ export class AlchemyService {
         throw new AlchemyError('INSUFFICIENT_FUNDS');
       }
 
-      // Verify + consume each input ingredient.
+      const successRate = computeAlchemySuccessRate(recipe, {
+        alchemyLevel: character.alchemyLevel,
+        furnaceLevel: character.alchemyFurnaceLevel,
+        alchemyMastery: character.alchemyMastery,
+      });
+      const alchemyLevelBefore = character.alchemyLevel;
+
       for (const ing of recipe.inputs) {
         const row = await tx.inventoryItem.findFirst({
           where: { characterId, itemKey: ing.itemKey, equippedSlot: null },
@@ -121,7 +140,6 @@ export class AlchemyService {
         });
       }
 
-      // Deduct linhThach.
       await this.currency.applyTx(tx, {
         characterId,
         currency: CurrencyKind.LINH_THACH,
@@ -131,15 +149,29 @@ export class AlchemyService {
         refId: recipeKey,
       });
 
-      // Roll outcome.
       const roll = rng();
-      const result = simulateAlchemyAttempt(recipe, roll);
+      const result = simulateAlchemyAttempt({ ...recipe, successRate }, roll);
+      const pillGrade = result.success
+        ? rollPillGrade(
+            recipe,
+            {
+              alchemyLevel: character.alchemyLevel,
+              furnaceLevel: character.alchemyFurnaceLevel,
+              alchemyMastery: character.alchemyMastery,
+            },
+            rng,
+          )
+        : null;
+      const alchemyExpGained = computeAlchemyExpReward(recipe, result.success, pillGrade ?? undefined);
+      const alchemyAfter = resolveAlchemyLevelAfter(
+        character.alchemyLevel,
+        character.alchemyExp,
+        alchemyExpGained,
+      );
 
-      // Grant output if success.
       if (result.success) {
         const outputDef = itemByKey(recipe.outputItem);
         const stackable = outputDef?.stackable ?? true;
-
         if (stackable) {
           const existing = await tx.inventoryItem.findFirst({
             where: { characterId, itemKey: recipe.outputItem, equippedSlot: null },
@@ -155,13 +187,12 @@ export class AlchemyService {
             });
           }
         } else {
-          for (let i = 0; i < result.outputQty; i++) {
+          for (let i = 0; i < result.outputQty; i += 1) {
             await tx.inventoryItem.create({
               data: { characterId, itemKey: recipe.outputItem, qty: 1 },
             });
           }
         }
-
         await tx.itemLedger.create({
           data: {
             characterId,
@@ -174,23 +205,53 @@ export class AlchemyService {
         });
       }
 
+      await tx.character.update({
+        where: { id: characterId },
+        data: {
+          alchemyLevel: alchemyAfter.level,
+          alchemyExp: alchemyAfter.exp,
+          alchemyMastery: { increment: result.success ? 2 : 1 },
+        },
+      });
+
+      await tx.alchemyAttemptLog.create({
+        data: {
+          characterId,
+          recipeKey,
+          recipeTier: recipe.recipeTier,
+          recipeCategory: recipe.recipeCategory,
+          success: result.success,
+          successRate,
+          rollValue: roll,
+          pillGrade,
+          outputItem: result.outputItem,
+          outputQty: result.outputQty,
+          inputsJson: recipe.inputs.map((ing) => ({ itemKey: ing.itemKey, qty: ing.qty })),
+          linhThachConsumed: recipe.linhThachCost,
+          alchemyExpGained,
+        },
+      });
+
       return {
         recipeKey,
         success: result.success,
         rollValue: result.rollValue,
         outputItem: result.outputItem,
         outputQty: result.outputQty,
+        pillGrade,
+        successRate,
+        alchemyExpGained: alchemyExpGained.toString(),
+        alchemyLevelBefore,
+        alchemyLevelAfter: alchemyAfter.level,
         linhThachConsumed: recipe.linhThachCost,
         inputsConsumed: recipe.inputs.map((i) => ({ itemKey: i.itemKey, qty: i.qty })),
       };
     }).then(async (outcome) => {
-      // Phase 11.11.E: track ALCHEMY_CRAFT achievement progress khi success.
-      // Wrap try/catch — fail-soft, không lan ra outcome.
       if (outcome.success && this.achievements) {
         try {
           await this.achievements.trackEvent(characterId, 'ALCHEMY_CRAFT', 1);
         } catch {
-          // bỏ qua
+          // fail-soft by design
         }
       }
       return outcome;
@@ -207,12 +268,69 @@ export class AlchemyService {
     return char.alchemyFurnaceLevel;
   }
 
+  async getAlchemyProfile(characterId: string): Promise<AlchemyProfile> {
+    const char = await this.prisma.character.findUnique({
+      where: { id: characterId },
+      select: {
+        alchemyLevel: true,
+        alchemyExp: true,
+        alchemyMastery: true,
+        alchemyFurnaceLevel: true,
+      },
+    });
+    if (!char) throw new AlchemyError('CHARACTER_NOT_FOUND');
+    return {
+      alchemyLevel: char.alchemyLevel,
+      alchemyLevelName: ALCHEMY_LEVEL_NAMES[char.alchemyLevel - 1] ?? ALCHEMY_LEVEL_NAMES[0],
+      alchemyExp: char.alchemyExp.toString(),
+      alchemyExpNext: getAlchemyLevelExpRequirement(char.alchemyLevel).toString(),
+      alchemyMastery: char.alchemyMastery,
+      furnaceLevel: char.alchemyFurnaceLevel,
+    };
+  }
+
   /** List recipes available at character's current furnace level. */
   async listAvailableRecipes(
     characterId: string,
-  ): Promise<readonly AlchemyRecipeDef[]> {
-    const level = await this.getFurnaceLevel(characterId);
-    return alchemyRecipesAvailableAtFurnace(level);
+  ): Promise<AlchemyRecipeView[]> {
+    const char = await this.prisma.character.findUnique({
+      where: { id: characterId },
+      select: {
+        alchemyFurnaceLevel: true,
+        alchemyLevel: true,
+        alchemyMastery: true,
+        realmKey: true,
+      },
+    });
+    if (!char) throw new AlchemyError('CHARACTER_NOT_FOUND');
+    const inventory = await this.prisma.inventoryItem.findMany({
+      where: { characterId, equippedSlot: null },
+      select: { itemKey: true, qty: true },
+    });
+    const qtyByKey = new Map(inventory.map((item) => [item.itemKey, item.qty]));
+    return [...ALCHEMY_RECIPES].map((recipe) => {
+      const missingInputs = recipe.inputs
+        .filter((input) => (qtyByKey.get(input.itemKey) ?? 0) < input.qty)
+        .map((input) => ({
+          itemKey: input.itemKey,
+          requiredQty: input.qty,
+          ownedQty: qtyByKey.get(input.itemKey) ?? 0,
+        }));
+      const gate = canCraftAlchemyRecipe(char, recipe);
+      return {
+        ...recipe,
+        successRateBase: recipe.successRate,
+        successRateFinal: computeAlchemySuccessRate(recipe, {
+          alchemyLevel: char.alchemyLevel,
+          furnaceLevel: char.alchemyFurnaceLevel,
+          alchemyMastery: char.alchemyMastery,
+        }),
+        possibleGrades: possiblePillGrades(recipe),
+        missingInputs,
+        canCraft: gate.canCraft && missingInputs.length === 0,
+        failureReason: gate.failureReason ?? (missingInputs.length > 0 ? 'INSUFFICIENT_INGREDIENTS' : null),
+      };
+    });
   }
 
   /**
@@ -319,8 +437,49 @@ export interface AlchemyCraftOutcome {
   rollValue: number;
   outputItem: string | null;
   outputQty: number;
+  pillGrade: PillGrade | null;
+  successRate: number;
+  alchemyExpGained: string;
+  alchemyLevelBefore: number;
+  alchemyLevelAfter: number;
   linhThachConsumed: number;
   inputsConsumed: Array<{ itemKey: string; qty: number }>;
+}
+
+export interface AlchemyProfile {
+  alchemyLevel: number;
+  alchemyLevelName: string;
+  alchemyExp: string;
+  alchemyExpNext: string;
+  alchemyMastery: number;
+  furnaceLevel: number;
+}
+
+export interface AlchemyRecipeView {
+  key: string;
+  name: string;
+  description: string;
+  outputItem: string;
+  outputQty: number;
+  outputQuality: 'PHAM' | 'LINH' | 'HUYEN' | 'TIEN' | 'THAN';
+  recipeTier: number;
+  recipeCategory: string;
+  requiredAlchemyLevel: number;
+  furnaceLevel: number;
+  realmRequirement: string | null;
+  targetRealmOrder?: number;
+  maxOutputGrade?: PillGrade;
+  inputs: readonly { itemKey: string; qty: number }[];
+  linhThachCost: number;
+  successRate: number;
+  successRateBase: number;
+  successRateFinal: number;
+  possibleGrades: readonly PillGrade[];
+  sourceHint?: readonly string[];
+  unlockSource?: string;
+  missingInputs: Array<{ itemKey: string; requiredQty: number; ownedQty: number }>;
+  canCraft: boolean;
+  failureReason: string | null;
 }
 
 export interface AlchemyUpgradeOutcome {
@@ -338,7 +497,10 @@ export type AlchemyErrorCode =
   | 'FURNACE_LEVEL_MAX'
   | 'FURNACE_RACE'
   | 'REALM_REQUIREMENT_NOT_MET'
+  | 'ALCHEMY_LEVEL_TOO_LOW'
+  | 'RECIPE_TIER_TOO_HIGH'
   | 'INSUFFICIENT_INGREDIENTS'
+  | 'DAILY_CAP_REACHED'
   | 'INSUFFICIENT_FUNDS';
 
 export class AlchemyError extends Error {

@@ -1603,16 +1603,22 @@ export class CharacterController {
     const character = await this.chars.findByUser(userId);
     if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
     try {
-      const [furnaceLevel, recipes, nextUpgrade] = await Promise.all([
-        this.alchemy.getFurnaceLevel(character.id),
+      const [profile, recipes, nextUpgrade] = await Promise.all([
+        this.alchemy.getAlchemyProfile(character.id),
         this.alchemy.listAvailableRecipes(character.id),
         this.alchemy.getFurnaceUpgradePreview(character.id),
       ]);
+      const furnaceLevel = profile.furnaceLevel;
       return {
         ok: true,
         data: {
           alchemy: {
             furnaceLevel,
+            alchemyLevel: profile.alchemyLevel,
+            alchemyLevelName: profile.alchemyLevelName,
+            alchemyExp: profile.alchemyExp,
+            alchemyExpNext: profile.alchemyExpNext,
+            alchemyMastery: profile.alchemyMastery,
             nextUpgrade: nextUpgrade
               ? {
                   toLevel: nextUpgrade.toLevel,
@@ -1627,11 +1633,24 @@ export class CharacterController {
               outputItem: r.outputItem,
               outputQty: r.outputQty,
               outputQuality: r.outputQuality,
+              recipeTier: r.recipeTier,
+              recipeCategory: r.recipeCategory,
+              requiredAlchemyLevel: r.requiredAlchemyLevel,
               inputs: r.inputs.map((i) => ({ itemKey: i.itemKey, qty: i.qty })),
               furnaceLevel: r.furnaceLevel,
               realmRequirement: r.realmRequirement,
+              targetRealmOrder: r.targetRealmOrder,
+              maxOutputGrade: r.maxOutputGrade,
               linhThachCost: r.linhThachCost,
               successRate: r.successRate,
+              successRateBase: r.successRateBase,
+              successRateFinal: r.successRateFinal,
+              possibleGrades: r.possibleGrades,
+              sourceHint: r.sourceHint,
+              unlockSource: r.unlockSource,
+              missingInputs: r.missingInputs,
+              canCraft: r.canCraft,
+              failureReason: r.failureReason,
             })),
           },
         },
@@ -1687,6 +1706,11 @@ export class CharacterController {
               rollValue: outcome.rollValue,
               outputItem: outcome.outputItem,
               outputQty: outcome.outputQty,
+              pillGrade: outcome.pillGrade,
+              successRate: outcome.successRate,
+              alchemyExpGained: outcome.alchemyExpGained,
+              alchemyLevelBefore: outcome.alchemyLevelBefore,
+              alchemyLevelAfter: outcome.alchemyLevelAfter,
               linhThachConsumed: outcome.linhThachConsumed,
               inputsConsumed: outcome.inputsConsumed.map((i) => ({
                 itemKey: i.itemKey,
@@ -2278,7 +2302,10 @@ function mapAlchemyErrorStatus(code: AlchemyError['code']): HttpStatus {
     case 'FURNACE_LEVEL_MAX':
     case 'FURNACE_RACE':
     case 'REALM_REQUIREMENT_NOT_MET':
+    case 'ALCHEMY_LEVEL_TOO_LOW':
+    case 'RECIPE_TIER_TOO_HIGH':
     case 'INSUFFICIENT_INGREDIENTS':
+    case 'DAILY_CAP_REACHED':
     case 'INSUFFICIENT_FUNDS':
       return HttpStatus.CONFLICT;
     default:

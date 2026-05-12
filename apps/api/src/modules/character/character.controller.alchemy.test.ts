@@ -25,6 +25,10 @@ const STUB_RECIPE: AlchemyRecipeDef = {
   outputQty: 2,
   outputQuality: 'PHAM',
   inputs: [{ itemKey: 'linh_thao', qty: 3 }],
+  recipeTier: 1,
+  recipeCategory: 'HEAL_HP',
+  requiredAlchemyLevel: 1,
+  alchemyExpReward: 40n,
   furnaceLevel: 1,
   realmRequirement: null,
   linhThachCost: 50,
@@ -37,6 +41,11 @@ const STUB_OUTCOME: AlchemyCraftOutcome = {
   rollValue: 0.1,
   outputItem: 'tieu_phuc_dan',
   outputQty: 2,
+  pillGrade: 'TRUNG_PHAM',
+  successRate: 0.85,
+  alchemyExpGained: '40',
+  alchemyLevelBefore: 1,
+  alchemyLevelAfter: 1,
   linhThachConsumed: 50,
   inputsConsumed: [{ itemKey: 'linh_thao', qty: 3 }],
 };
@@ -92,7 +101,7 @@ function makeController(opts: ControllerOpts = {}) {
 describe('CharacterController.alchemyRecipes — Phase 11.11.C', () => {
   it('GET /character/alchemy/recipes returns furnaceLevel + recipe list + nextUpgrade preview', async () => {
     const alchemy = {
-      getFurnaceLevel: async (_id: string) => 1,
+      getAlchemyProfile: async (_id: string) => ({ alchemyLevel: 1, alchemyLevelName: 'Đan Sư Nhập Môn', alchemyExp: '0', alchemyExpNext: '120', alchemyMastery: 0, furnaceLevel: 1 }),
       listAvailableRecipes: async (_id: string) => [STUB_RECIPE],
       getFurnaceUpgradePreview: async (_id: string) => ({
         toLevel: 2,
@@ -134,7 +143,7 @@ describe('CharacterController.alchemyRecipes — Phase 11.11.C', () => {
 
   it('GET /character/alchemy/recipes returns nextUpgrade=null khi furnace ở MAX_LEVEL', async () => {
     const alchemy = {
-      getFurnaceLevel: async (_id: string) => 9,
+      getAlchemyProfile: async (_id: string) => ({ alchemyLevel: 9, alchemyLevelName: 'Đan Đạo Tông Sư', alchemyExp: '0', alchemyExpNext: '0', alchemyMastery: 0, furnaceLevel: 9 }),
       listAvailableRecipes: async (_id: string) => [STUB_RECIPE],
       getFurnaceUpgradePreview: async (_id: string) => null,
     } as unknown as AlchemyService;
@@ -192,7 +201,7 @@ describe('CharacterController.alchemyRecipes — Phase 11.11.C', () => {
 
   it('GET /character/alchemy/recipes map AlchemyError(CHARACTER_NOT_FOUND) → 404', async () => {
     const alchemy = {
-      getFurnaceLevel: async (_id: string) => {
+      getAlchemyProfile: async (_id: string) => {
         throw new AlchemyError('CHARACTER_NOT_FOUND');
       },
       listAvailableRecipes: async (_id: string) => [],

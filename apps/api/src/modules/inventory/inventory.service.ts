@@ -867,8 +867,20 @@ export class InventoryService {
     if (def.effect.mp) {
       updates.mp = Math.min(char.mpMax, char.mp + def.effect.mp);
     }
+    if (def.effect.stamina) {
+      updates.stamina = Math.min(char.staminaMax, char.stamina + def.effect.stamina);
+    }
     if (def.effect.exp) {
       updates.exp = { increment: BigInt(def.effect.exp) };
+    }
+    if (def.effect.bodyExp) {
+      updates.bodyExp = { increment: BigInt(def.effect.bodyExp) };
+    }
+    if (def.effect.bodyInjuryReductionMinutes && char.bodyInjuryUntil) {
+      const reduced = new Date(
+        char.bodyInjuryUntil.getTime() - def.effect.bodyInjuryReductionMinutes * 60_000,
+      );
+      updates.bodyInjuryUntil = reduced > new Date() ? reduced : null;
     }
 
     // Phase 11.10.E — Pill/elixir buff effect. Pre-resolve BuffDef trước khi

@@ -380,6 +380,7 @@ model Character {
   characterSkills          CharacterSkill[]
   tribulationAttemptLogs   TribulationAttemptLog[]
   bodyBreakthroughLogs     BodyBreakthroughAttemptLog[]
+  alchemyAttemptLogs       AlchemyAttemptLog[]
   tribulationEncounters    TribulationEncounter[]
   tribulationMiniBattles   TribulationMiniBattle[]
   breakthroughAttemptLogs  BreakthroughAttemptLog[]
