@@ -45,6 +45,26 @@ type QualityFilter =
 type PillCategoryFilter = 'all' | string;
 type TierFilter = 'all' | number;
 
+function recipeTier(recipe: AlchemyRecipeView): number {
+  return recipe.recipeTier ?? 1;
+}
+
+function recipeCategory(recipe: AlchemyRecipeView): string {
+  return recipe.recipeCategory ?? 'SPECIAL';
+}
+
+function recipeSuccessRateBase(recipe: AlchemyRecipeView): number {
+  return recipe.successRateBase ?? recipe.successRate;
+}
+
+function recipeSuccessRateFinal(recipe: AlchemyRecipeView): number {
+  return recipe.successRateFinal ?? recipe.successRate;
+}
+
+function recipePossibleGrades(recipe: AlchemyRecipeView): string[] {
+  return recipe.possibleGrades ?? ['TRUNG_PHAM'];
+}
+
 const auth = useAuthStore();
 const game = useGameStore();
 const alchemy = useAlchemyStore();
@@ -59,14 +79,14 @@ const tierFilter = ref<TierFilter>('all');
 const filtered = computed<AlchemyRecipeView[]>(() => {
   return alchemy.recipes.filter((r) => {
     if (qualityFilter.value !== 'all' && r.outputQuality !== qualityFilter.value) return false;
-    if (categoryFilter.value !== 'all' && r.recipeCategory !== categoryFilter.value) return false;
-    if (tierFilter.value !== 'all' && r.recipeTier !== tierFilter.value) return false;
+    if (categoryFilter.value !== 'all' && recipeCategory(r) !== categoryFilter.value) return false;
+    if (tierFilter.value !== 'all' && recipeTier(r) !== tierFilter.value) return false;
     return true;
   });
 });
 
-const categoryOptions = computed(() => Array.from(new Set(alchemy.recipes.map((r) => r.recipeCategory))).sort());
-const tierOptions = computed(() => Array.from(new Set(alchemy.recipes.map((r) => r.recipeTier))).sort((a, b) => a - b));
+const categoryOptions = computed(() => Array.from(new Set(alchemy.recipes.map(recipeCategory))).sort());
+const tierOptions = computed(() => Array.from(new Set(alchemy.recipes.map(recipeTier))).sort((a, b) => a - b));
 
 const counts = computed(() => ({
   total: alchemy.recipes.length,
@@ -96,7 +116,7 @@ function craftButtonLabel(recipe: AlchemyRecipeView): string {
 }
 
 function craftButtonDisabled(recipe: AlchemyRecipeView): boolean {
-  return alchemy.isCrafting(recipe.key) || !recipe.canCraft;
+  return alchemy.isCrafting(recipe.key) || recipe.canCraft === false;
 }
 
 function upgradeButtonDisabled(): boolean {
@@ -341,7 +361,7 @@ onMounted(async () => {
                 {{ t('alchemy.furnaceReq', { level: recipe.furnaceLevel }) }}
               </span>
               <span class="text-[10px] px-1.5 py-0.5 rounded border bg-amber-700/30 text-amber-100 border-amber-500/30">
-                {{ t('alchemy.recipeTier', { tier: recipe.recipeTier }) }}
+                {{ t('alchemy.recipeTier', { tier: recipeTier(recipe) }) }}
               </span>
             </div>
           </header>
@@ -351,10 +371,10 @@ onMounted(async () => {
           <div class="text-xs space-y-1">
             <div>
               <span class="text-ink-300">{{ t('alchemy.field.category') }}:</span>
-              <span class="text-violet-200 ml-1">{{ t(`alchemy.category.${recipe.recipeCategory}`) }}</span>
+              <span class="text-violet-200 ml-1">{{ t(`alchemy.category.${recipeCategory(recipe)}`) }}</span>
               <span class="text-ink-300 mx-2">|</span>
               <span class="text-ink-300">{{ t('alchemy.field.requiredAlchemy') }}:</span>
-              <span class="text-amber-200 ml-1">{{ recipe.requiredAlchemyLevel }}</span>
+              <span class="text-amber-200 ml-1">{{ recipe.requiredAlchemyLevel ?? recipeTier(recipe) }}</span>
             </div>
             <div>
               <span class="text-ink-300">{{ t('alchemy.field.output') }}:</span>
@@ -375,10 +395,10 @@ onMounted(async () => {
               <span class="text-ink-300">{{ t('alchemy.field.sourceHint') }}:</span>
               <span class="text-ink-100 ml-1">{{ recipe.sourceHint.join(', ') }}</span>
             </div>
-            <div v-if="recipe.missingInputs.length > 0">
+            <div v-if="(recipe.missingInputs ?? []).length > 0">
               <span class="text-rose-300">{{ t('alchemy.field.missingInputs') }}:</span>
               <span class="text-rose-200 ml-1">
-                <template v-for="(input, idx) in recipe.missingInputs" :key="input.itemKey">
+                <template v-for="(input, idx) in recipe.missingInputs ?? []" :key="input.itemKey">
                   <span v-if="idx > 0">, </span>
                   <span>{{ input.itemKey }} {{ input.ownedQty }}/{{ input.requiredQty }}</span>
                 </template>
@@ -395,13 +415,13 @@ onMounted(async () => {
               <span>
                 <span class="text-ink-300">{{ t('alchemy.field.successRate') }}:</span>
                 <span class="text-sky-200 ml-1" :data-testid="`alchemy-rate-${recipe.key}`">
-                  {{ Math.round(recipe.successRateFinal * 100) }}%
-                  <span class="text-ink-400">({{ Math.round(recipe.successRateBase * 100) }}%)</span>
+                  {{ Math.round(recipeSuccessRateFinal(recipe) * 100) }}%
+                  <span class="text-ink-400">({{ Math.round(recipeSuccessRateBase(recipe) * 100) }}%)</span>
                 </span>
               </span>
               <span>
                 <span class="text-ink-300">{{ t('alchemy.field.possibleGrades') }}:</span>
-                <span class="text-emerald-200 ml-1">{{ recipe.possibleGrades.map((g) => t(`alchemy.grade.${g}`)).join(', ') }}</span>
+                <span class="text-emerald-200 ml-1">{{ recipePossibleGrades(recipe).map((g) => t(`alchemy.grade.${g}`)).join(', ') }}</span>
               </span>
               <span v-if="recipe.maxOutputGrade">
                 <span class="text-ink-300">{{ t('alchemy.field.maxGrade') }}:</span>
