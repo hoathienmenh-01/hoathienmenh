@@ -829,10 +829,12 @@
       "tierLabel": "Tầng {tier} {name} {grade}",
       "gradeLabel": "cấp {grade}",
       "finalGrade": "tối thượng",
+      "quality": "Phẩm cấp {quality}",
       "requiredRealm": "Cần cảnh giới thứ {order}",
       "power": "Lực trang bị {power}",
       "caps": "Cường hóa +{enhance}, khảm {sockets}",
-      "lockHint": "Server sẽ chặn nếu đạo hữu chưa đạt cảnh giới thứ {order}."
+      "qualityMeaning": "Phẩm cấp tăng sức mạnh trong cùng tầng trang bị.",
+      "lockHint": "Cần đạt cảnh giới yêu cầu để sử dụng."
     },
     "refine": {
       "button": "Luyện Khí",
@@ -1056,7 +1058,10 @@
       "sectionOwned": "Pháp Bảo Sở Hữu",
       "sectionCatalog": "Pháp Bảo Toàn Đồ",
       "tierLabel": "Tier {tier}",
+      "qualityLabel": "Phẩm cấp {quality}",
+      "qualityMeaning": "Phẩm cấp tăng sức mạnh trong cùng tầng trang bị.",
       "requiredRealm": "Cần cảnh giới thứ {order}",
+      "lockHint": "Cần đạt cảnh giới yêu cầu để sử dụng.",
       "realmLocked": "Chưa đủ cảnh giới",
       "realmReady": "Đủ cảnh giới",
       "powerScore": "Lực pháp bảo {power}",

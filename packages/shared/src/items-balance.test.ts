@@ -23,6 +23,7 @@ import {
   ITEM_OFF_SLOT_SOFT_CAP_MULTIPLIER,
   ITEM_POWER_EQUIV_WEIGHTS,
 } from './balance-dials';
+import { computeEquipmentPowerScore } from './equipment-progression';
 
 describe('ITEMS — required field contract', () => {
   it('mọi item có key snake_case ASCII, ≥ 2 ký tự', () => {
@@ -216,6 +217,25 @@ describe('ITEMS — stat budget by quality (BALANCE_MODEL §3.3)', () => {
         `${item.key} (${item.quality}) power-equiv ${eq.toFixed(1)} > soft cap ${cap}`,
       ).toBeLessThanOrEqual(cap);
     }
+  });
+});
+
+describe('ITEMS — equipment quality power meaning', () => {
+  it('quality multiplier tăng powerScore trong cùng equipmentTier', () => {
+    const scores = (['PHAM', 'LINH', 'HUYEN', 'TIEN', 'THAN'] as const).map((quality) =>
+      computeEquipmentPowerScore({
+        equipmentTier: 2,
+        equipmentGradeWithinTier: 'I',
+        requiredRealmOrder: 4,
+        quality,
+        slot: 'WEAPON',
+      }),
+    );
+
+    expect(scores[0]).toBeLessThan(scores[1]);
+    expect(scores[1]).toBeLessThan(scores[2]);
+    expect(scores[2]).toBeLessThan(scores[3]);
+    expect(scores[3]).toBeLessThan(scores[4]);
   });
 });
 

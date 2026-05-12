@@ -1855,6 +1855,9 @@ $ pnpm test:balance
 ### 11.4 Tại sao 5 quality (PHAM..THAN)?
 
 - 5 = đủ phân tier mà không quá nhiều slot UI.
+- Phẩm cấp đại diện cho sức mạnh và độ hiếm trong cùng equipmentTier, không chỉ là visual rarity/màu. `computeEquipmentPowerBudget` và `computeEquipmentPowerScore` nhân quality multiplier chuẩn: PHAM 1.00, LINH 1.20, HUYEN 1.50, TIEN 1.90, THAN 2.40.
+- TierBase chuẩn cho 10 equipmentTier: 100, 260, 680, 1750, 4500, 11500, 29000, 72000, 175000, 420000. Công thức: `TierBase × QualityMultiplier × SlotWeight × EnhanceMultiplier × GemMultiplierCap × SetBonusCap`.
+- Balance guard: THAN tier cũ có thể gần PHAM/LINH tier kế nhưng không vượt HUYEN/TIEN tier kế; enhance/gem/set không được biến tier thấp thành tier cao và không phá `requiredRealmOrder`.
 - Tăng thành 7-8 (e.g. thêm "huyền cao", "tiên cao") khi phase 12+ nếu cần.
 
 ### 11.5 Tại sao `linhThach` BigInt mà `tienNgoc` Int?

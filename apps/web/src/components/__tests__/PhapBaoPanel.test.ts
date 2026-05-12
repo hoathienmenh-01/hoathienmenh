@@ -216,8 +216,22 @@ describe('PhapBaoPanel', () => {
     const realmText = w
       .find('[data-testid="phap-bao-realm-ngu_hanh_linh_chau"]')
       .text();
-    // i18n vi: "Cần cảnh giới thứ 4".
-    expect(realmText).toContain('4');
+    expect(realmText).toContain('Cần đạt cảnh giới yêu cầu để sử dụng');
+  });
+
+  it('tooltip hiển thị phẩm cấp và powerScore', async () => {
+    mockedList.mockResolvedValue({
+      items: [sampleOwned],
+      catalog: [sampleDef],
+    });
+    const w = mountPanel();
+    await flushPromises();
+
+    const text = w.find('[data-testid="phap-bao-item-ngu_hanh_linh_chau"]').text();
+    expect(text).toContain('Phẩm cấp');
+    expect(text).toContain('Linh');
+    expect(text).toContain('Lực pháp bảo 145');
+    expect(text).toContain('Phẩm cấp tăng sức mạnh trong cùng tầng trang bị.');
   });
 
   it('open detail modal khi click "Chi tiết" + render preview content', async () => {
