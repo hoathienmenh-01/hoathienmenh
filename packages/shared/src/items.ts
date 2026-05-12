@@ -140,6 +140,8 @@ export interface ItemDef {
   stackable: boolean;
   /** Nếu trang bị được, slot tương ứng. */
   slot?: EquipSlot;
+  /** Phase 22.1 — optional equipment affinity hook for build recommendation. */
+  equipmentElement?: ElementKey | null;
   bonuses?: ItemBonus;
   effect?: ItemEffect;
   /** Phase 11.2.D — chỉ set khi `kind === 'SKILL_BOOK'`. */

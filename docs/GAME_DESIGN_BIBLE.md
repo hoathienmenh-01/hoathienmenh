@@ -231,6 +231,8 @@ Hiện trạng: stage 9 break sang realm kế chỉ check EXP. Không có thiên
 
 **Phase 11.0 catalog foundation đã có (session 9r-8 PR — `packages/shared/src/spiritual-root.ts`)**: 5 grade `pham/linh/huyen/tien/than` + helper `elementMultiplier`/`elementGenerates`/`elementOvercomes`/`characterSkillElementBonus`/`validateSpiritualRootState`. Runtime (schema migration + onboarding roll service + cultivation/combat wire) defer Phase 11.1+ runtime PR.
 
+**Phase 22.1 Ngũ Hành Build Depth**: Ngũ Hành is now a build meta layer rather than only skill flavor. Shared helpers expose the full tương sinh/tương khắc matrix, build recommendations combine primary/secondary linh căn with target weakness/resistance, skill combo rules reward same-element/generating/counter/hybrid chains modestly, boss/dungeon profiles surface weakness/resist/cap hints, and equipment exposes an optional `equipmentElement` affinity hook for Phase 23.1 gear depth. This phase deliberately does **not** add Book II–V story content.
+
 - **Linh căn** (`spiritualRoot`): roll 1 lần khi tạo character, 5 grade (`pham`, `linh`, `huyen`, `tien`, `than`). Ảnh hưởng `cultivationMultiplier` (1.0× phàm → 1.8× thần) + `statBonusPercent` (+0% phàm → +30% thần) + `secondaryElementCount` (0 phàm → 4 thần — toàn linh căn). Re-roll bằng item `linh_can_dan` (cost cao, drop hiếm endgame). Roll RNG distribution: pham 60% / linh 25% / huyen 10% / tien 4% / than 1% (`SPIRITUAL_ROOT_GRADE_DEFS[].rollWeight`). Re-roll chỉ TĂNG grade, không giảm (server-authoritative anti-cheese).
 - **Element multiplier** Ngũ Hành (catalog-level wired phase 11.0):
   - Tương khắc 1.30 (Kim → Mộc → Thổ → Thuỷ → Hoả → Kim).

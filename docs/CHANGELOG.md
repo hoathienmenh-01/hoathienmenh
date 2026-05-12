@@ -10,6 +10,16 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
+### Phase 22.1 — Ngũ Hành Build Depth Expansion (PR #539 draft)
+
+#### Added
+- Shared five-elements relationship helper APIs, build recommendation helpers, skill synergy metadata, boss/dungeon resistance profiles, and equipment affinity hooks.
+- Spiritual Root view now includes a responsive Ngũ Hành build guidance panel with vi/en parity.
+- Focused tests cover relationship cycles, modifiers, build recommendations, skill synergy uniqueness, boss resistance, and equipment affinity.
+
+#### Docs
+- Documented Phase 22.1 as gameplay foundation only; Book II–V story expansion remains future Phase 21B/21C and full equipment endgame remains Phase 23.1.
+
 
 ### Phase 21 — Story Quest Content Expansion Mega PR (PR #538 draft)
 

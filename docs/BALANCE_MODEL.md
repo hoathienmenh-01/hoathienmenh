@@ -258,6 +258,13 @@ elementMultiplier(attacker, defender):  // delegate sang describeElementMatch()
 - Tương khắc: `kim → moc → tho → thuy → hoa → kim` (Kim khắc Mộc, Mộc khắc Thổ, ...)
 - Tương sinh: `kim → thuy → moc → hoa → tho → kim` (Kim sinh Thuỷ, Thuỷ sinh Mộc, ...)
 
+**Phase 22.1 build-depth envelope**:
+- Shared rule helpers in `elemental.ts` expose named APIs for generation/counter lookup, damage/resistance modifiers, and structured matchup classification. They reuse the shipped matrix above; no hidden second tuning table.
+- Build recommendation (`elemental-build.ts`) reads primary/secondary linh căn, boss/dungeon target profile, skills and equipment affinity to return `mainElement`, `secondaryElement`, `recommendedSkills`, `recommendedStats`, `counterTips`, `warnings`, and `equipmentElement`.
+- Skill synergy (`elemental-synergy.ts`) is intentionally modest: same-element `1.05`, generating combo `1.08`, counter combo `1.10`, hybrid reverse-generation `1.04`, validator range `1.00..1.15`. These are recommendation/metadata hooks, not a combat rewrite.
+- Boss/dungeon resistance helper (`elemental-resistance.ts`) caps final preview damage through existing `0.5..1.6` elemental envelope so weakness gives advantage but never auto-win.
+- Equipment affinity hook (`ItemDef.equipmentElement?`) is additive metadata for recommendations; full gem/socket/set-bonus loop remains Phase 23.1.
+
 **Wire điểm**:
 - Player damage (skill flow): `dmg = max(1, round(dmgBase * playerElementMul * talentElementMul * buffElementMul))`.
 - Player damage (talent active flow): same compose, parity với skill flow + breakdown log.

@@ -2141,6 +2141,18 @@
       "legend": "Sáng = chính · mờ = phụ · xám = vô",
       "secondaryLabel": "Element phụ"
     },
+    "build": {
+      "title": "Gợi ý build Ngũ Hành",
+      "subtitle": "Tóm tắt hướng chơi theo linh căn hiện tại, skill, chỉ số và trang bị.",
+      "phaseBadge": "Phase 22.1",
+      "mainElement": "Hệ chính",
+      "secondaryElement": "Hệ phụ",
+      "equipmentElement": "Trang bị nên ưu tiên",
+      "equipmentHint": "Hook nhẹ cho affinity; set/gem để Phase 23.1.",
+      "statsTitle": "Chỉ số nên nâng",
+      "skillsTitle": "Skill gợi ý",
+      "counterTitle": "Counter tip"
+    },
     "reroll": {
       "title": "Tái Khai Linh Căn",
       "description": "Dùng 1× Linh Căn Đan để gieo lại linh căn ngẫu nhiên (grade + element + thuần độ).",

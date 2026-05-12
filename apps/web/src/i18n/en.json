@@ -2141,6 +2141,18 @@
       "legend": "Bright = primary · dim = secondary · gray = inactive",
       "secondaryLabel": "Secondary elements"
     },
+    "build": {
+      "title": "Five-Elements Build Guidance",
+      "subtitle": "Summarizes the current root into skill, stat and equipment direction.",
+      "phaseBadge": "Phase 22.1",
+      "mainElement": "Main element",
+      "secondaryElement": "Secondary",
+      "equipmentElement": "Recommended equipment",
+      "equipmentHint": "Light affinity hook; sets/gems stay for Phase 23.1.",
+      "statsTitle": "Stats to grow",
+      "skillsTitle": "Suggested skills",
+      "counterTitle": "Counter tip"
+    },
     "reroll": {
       "title": "Reroll Spiritual Root",
       "description": "Consume 1× Root Pill to reroll your spiritual root (grade + element + purity).",
