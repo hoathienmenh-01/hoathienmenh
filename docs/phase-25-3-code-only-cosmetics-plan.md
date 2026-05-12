@@ -255,3 +255,32 @@ Push after every commit.
 - Real payment provider integration → later phase.
 - Story / lore expansion that surfaces cosmetic unlocks → later phase.
 - Closed Beta QA pass once 25.3 lands.
+
+---
+
+## 12. Status (post-implementation)
+
+- ✅ Shared catalog `packages/shared/src/cosmetics.ts` ships 25 entries across
+  six allowed types (AURA, TITLE, AVATAR_FRAME, CHAT_BADGE,
+  PROFILE_DECORATION, ELEMENT_AURA). `FORBIDDEN_COSMETIC_TYPES` blocks
+  WEAPON_SKIN/PHAP_BAO_SKIN at type level + tested.
+- ✅ Prisma: additive models `CosmeticOwnership` + `CosmeticLoadout`; migration
+  `20261215000000_phase_25_3_cosmetic_ownership_loadout` (non-destructive,
+  FK cascade only). No edits to existing tables.
+- ✅ API: `CosmeticsService`/`CosmeticsController`/`CosmeticsAdminController`
+  wired into `AppModule`. Endpoints implemented with ownership/expiry/type
+  checks, transactional equip, admin guard, `AdminAuditLog` ledger.
+- ✅ Web: wardrobe view `/cosmetics`, profile inline render
+  (title/aura/element-aura/frame/profile-decoration), chat panel
+  (badge + title prefix) lazy-loaded per `senderId`. AppShell nav link
+  `飾 Y Quán` added. Full vi/en i18n parity.
+- ✅ CSS: `apps/web/src/style/cosmetics.css` ships pure-code visual effects
+  (box-shadow stacks, gradients, text-shadow tiers) gated behind
+  `@media (prefers-reduced-motion: no-preference)`. No `<img>`/svg/canvas.
+- ✅ Tests: shared catalog rules + 21 API integration (catalog/me/equip/
+  unequip/expiry/admin grant+revoke/no-power) + 3 UI render (CosmeticView)
+  — all green locally.
+- ✅ Lint / typecheck / web build clean.
+- ✅ Docs updated: GAME_DESIGN_BIBLE §E.6, BALANCE_MODEL §8.6,
+  ECONOMY_MODEL §3.8, API.md "Cosmetics" section, CHANGELOG Unreleased,
+  AI_HANDOFF_REPORT current summary.

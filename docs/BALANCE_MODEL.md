@@ -1705,6 +1705,17 @@ Source of truth: `packages/shared/src/shop-packs.ts`.
 - Reward velocity caps: linhThach ≤10,000 per pack, bounded item quantities (e.g. `tinh_thiet` ≤30, `han_ngoc` ≤8, `phap_bao_shard` ≤12, `awaken_stone` ≤2, `refine_protection_charm` ≤3).
 - Forbidden rewards: direct top equipment, max-state pháp bảo, realm bypass keys, unlimited dungeon/material grants, direct damage buffs, or 100% upgrade-to-max tokens.
 - Fairness invariant stays Phase 25.1-compatible: packs reduce grind by ~20–40% only inside current realm/tier; F2P farm remains viable.
+
+### 8.6 Phase 25.3 Code-only Cosmetic Effects
+
+Source of truth: `packages/shared/src/cosmetics.ts`.
+
+- Catalog has 25 entries across six types: AURA, TITLE, AVATAR_FRAME, CHAT_BADGE, PROFILE_DECORATION, ELEMENT_AURA (Ngũ Hành kim/mộc/thủy/hỏa/thổ). `WEAPON_SKIN` / `PHAP_BAO_SKIN` are explicitly forbidden by `FORBIDDEN_COSMETIC_TYPES` — Phase 25.3 ships zero asset files.
+- Rendering is CSS-only — `cssClass` + `previewClass` live in `apps/web/src/style/cosmetics.css`. Animations are gated behind `@media (prefers-reduced-motion: no-preference)`; no canvas, particles, or background-image URLs.
+- **No-power invariant**: cosmetics never add to `power` / `spirit` / `speed` / `luck` / `hp` / `mp`. The shared `CosmeticDef` type contract forbids stat fields; the `CosmeticsService` never reads or writes `Character` combat data. Equipping a cosmetic also never bypasses `requiredRealmOrder`.
+- **Ownership model**: `CosmeticOwnership(characterId, cosmeticId)` is unique; `CosmeticLoadout` has one row per character with six nullable slot ids (one active per type). Equip mutates only loadout slot ids. Expired ownership (`expiresAt < now`) cannot be equipped and is hidden from public loadout views.
+- **Source channels**: cosmetics enter the economy via Phase 25.1 (Battle Pass / Monthly Card / VIP Light reward keys) and Phase 25.2 (Shop Pack rewards) and admin grants. Phase 25.3 does not add a paid cosmetic storefront.
+- **Fairness invariant**: cosmetic monetization is pure visual flex with zero P2W vector. F2P players still have access to the FREE-source cosmetics (`title_so_hoc_de_tu`, `aura_neutral_basic`, `chat_badge_dao_tu_basic`, etc.).
 ---
 
 ## 9. BALANCE DIAL REGISTRY (Phase 11 nâng cao §6 — DONE)
