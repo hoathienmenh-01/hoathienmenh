@@ -115,7 +115,7 @@ describe('ShopPacksView', () => {
     const w = await mountView();
     expect(w.text()).toContain('Gói Tu Luyện Hằng Ngày');
     expect(w.text()).toContain('Còn lại: 1/1');
-    expect(w.text()).toContain('Linh Thạch ×2.000');
+    expect(w.text()).toContain('Linh Thạch ×2,000');
   });
 
   it('filters by category', async () => {

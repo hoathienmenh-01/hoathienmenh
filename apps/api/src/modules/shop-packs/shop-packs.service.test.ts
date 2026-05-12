@@ -64,7 +64,7 @@ describe('ShopPacksService', () => {
     const character = await prisma.character.findUniqueOrThrow({
       where: { id: f.characterId },
     });
-    expect(character.linhThach).toBe(2000n);
+    expect(character.linhThach).toBe(3000n);
 
     const items = await prisma.inventoryItem.findMany({
       where: { characterId: f.characterId },
@@ -185,7 +185,7 @@ describe('ShopPacksService', () => {
     const character = await prisma.character.findUniqueOrThrow({
       where: { id: player.characterId },
     });
-    expect(character.linhThach).toBe(2000n);
+    expect(character.linhThach).toBe(3000n);
     expect(character.tienNgoc).toBe(0);
 
     const audit = await prisma.adminAuditLog.findFirst({
