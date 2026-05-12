@@ -11,6 +11,28 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 ## [Unreleased]
 
 
+### Added — Phase 25.3 Code-only Cosmetic Effects
+
+- Added shared cosmetic catalog `packages/shared/src/cosmetics.ts` with 25 entries across six types: AURA, TITLE, AVATAR_FRAME, CHAT_BADGE, PROFILE_DECORATION, ELEMENT_AURA. Each cosmetic has `cosmeticId`, `nameVi/En`, `descriptionVi/En`, `rarity`, optional `elementAffinity`, `source`, optional `price`/`durationDays`, `cssClass`, `previewClass`, `active`. WEAPON_SKIN / PHAP_BAO_SKIN are explicitly forbidden by `FORBIDDEN_COSMETIC_TYPES` so cosmetics in this phase are pure code, no asset files.
+- Added additive Prisma models `CosmeticOwnership` (per-cosmetic ownership history with optional `expiresAt`, `source`, `grantReason`, `grantRefId`) and `CosmeticLoadout` (one row per character, six nullable slot ids — at most one active cosmetic per type). Migration is non-destructive and uses FK Cascade.
+- Added `CosmeticsService` with server-authoritative equip flow: ownership check (`NOT_OWNED`) → expiry check (`OWNERSHIP_EXPIRED`) → type validity (`INVALID_TYPE`) → cosmetic active (`COSMETIC_INACTIVE`) → loadout slot upsert; transactional via `prisma.$transaction`. The service never reads or writes `Character` combat fields (power/spirit/speed/luck/hp/mp/realm).
+- Added `CosmeticsController` (`GET /cosmetics/catalog`, `GET /cosmetics/me`, `GET /cosmetics/profile/:characterId`, `POST /cosmetics/equip`, `POST /cosmetics/unequip`) and `CosmeticsAdminController` (`POST /admin/cosmetics/users/:id/grant`, `POST /admin/cosmetics/users/:id/revoke`) with `@RequireAdmin()` guard and `AdminAuditLog` ledger.
+- Added web wardrobe view (`/cosmetics`) with type/owned filters, owned/locked/equipped badges, equip/unequip buttons, preview tile, loadout summary, mobile responsive layout, toast feedback, and full vi/en i18n parity.
+- Added shell nav link "飾 Y Quán" → `/cosmetics`. ProfileView now renders equipped title + aura + element aura + avatar frame + profile decoration on the character card. ChatPanel renders equipped chat badge + title prefix per message (lazy-fetched per `senderId`).
+- Added CSS effects file `apps/web/src/style/cosmetics.css`: five element auras (kim/mộc/thủy/hỏa/thổ) plus neutral auras, title tiers (common→mythic + tiên-lộ/VIP variants), avatar frames (common→mythic + tiên-lộ/VIP variants), chat badges (vip/đạo-tử/sect-elder/event/admin), profile decorations (celestial/azure/ember). All animations are gated behind `@media (prefers-reduced-motion: no-preference)` for a11y; no `<img>` / `<svg>` asset files, no background-image URLs.
+- Added shared tests (`cosmetics.test.ts`) covering: id uniqueness, type allowlist, forbidden type rejection, rarity/source/element coverage, no `power`/`stat` keys on definitions, css/preview class non-empty, loadout slot mapping.
+- Added API tests (`cosmetics.service.test.ts`) covering: catalog/me read, equip success + replace-same-type, equip failures (not owned, expired, inactive, invalid type, no character), unequip clears slot, ownership idempotency, admin grant + extend duration + audit log, admin revoke clears loadout, public loadout hides expired slots, no power/stat side-effects (negative test re-asserts character row unchanged).
+- Added web tests (`CosmeticView.test.ts`) covering: wardrobe rendering with owned/locked indicators, equip success path, owned-filter behaviour.
+
+#### Balance / Economy
+- Cosmetics never grant power, spirit, speed, luck, hp, mp, or any stat. Cosmetic ownership/equipping never bypasses `requiredRealmOrder`. Schema does not carry stat fields; service contracts never touch combat data.
+- Cosmetics are awarded via existing Phase 25.1 (Battle Pass / Monthly Card / VIP Light) and Phase 25.2 (Shop Packs) reward channels — Phase 25.3 does not add a paid storefront. Admin grant is for QA / customer support only and writes `AdminAuditLog`.
+- Monetization integrity: Phase 25.3 is pure cosmetic monetization with no P2W risk. Players cannot purchase cosmetics directly; ownership comes through code-paths already audited in Phase 25.1/25.2.
+
+#### Docs
+- Updated design, balance, economy, API, changelog, and handoff docs for Phase 25.3 cosmetic catalog, ownership/equip rules, no-power guarantee, and CSS-only approach.
+
+
 ### Added — Phase 25.2 Limited Resource Shop Packs
 
 - Added shared shop pack catalog `packages/shared/src/shop-packs.ts`: 8 pack definitions (daily/weekly/monthly/event/starter), reward validators blocking forbidden top-tier equipment/max-star pháp bảo, purchase window helpers (DAY/WEEK/MONTH/SEASON/LIFETIME with UTC reset).

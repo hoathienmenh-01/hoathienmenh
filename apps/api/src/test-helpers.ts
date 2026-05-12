@@ -195,6 +195,11 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.monthlyCardSubscription.deleteMany({});
   await prisma.battlePassProgress.deleteMany({});
   await prisma.battlePassSeason.deleteMany({});
+  // Phase 25.2 — Shop Pack purchase history (FK Cascade → Character).
+  await prisma.shopPackPurchase.deleteMany({});
+  // Phase 25.3 — Cosmetic ownership + loadout (FK Cascade → Character).
+  await prisma.cosmeticOwnership.deleteMany({});
+  await prisma.cosmeticLoadout.deleteMany({});
   await prisma.itemLedger.deleteMany({});
   await prisma.currencyLedger.deleteMany({});
   // Phase 14.1.B — Async Arena foundation (matches reference Character qua

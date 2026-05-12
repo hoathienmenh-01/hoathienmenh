@@ -1,11 +1,19 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
-import { fullRealmName, realmByKey } from '@xuantoi/shared';
+import {
+  fullRealmName,
+  getCosmeticById,
+  realmByKey,
+} from '@xuantoi/shared';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { getPublicProfile, type PublicProfile } from '@/api/character';
+import {
+  fetchCosmeticProfile,
+  type CosmeticLoadoutView,
+} from '@/api/cosmetics';
 import AppShell from '@/components/shell/AppShell.vue';
 import SkeletonBlock from '@/components/ui/SkeletonBlock.vue';
 
@@ -24,16 +32,48 @@ const { t } = useI18n();
 const profile = ref<PublicProfile | null>(null);
 const loading = ref(true);
 const notFound = ref(false);
+const cosmeticLoadout = ref<CosmeticLoadoutView | null>(null);
+
+const equippedTitle = computed(() => {
+  const id = cosmeticLoadout.value?.activeTitleId;
+  return id ? getCosmeticById(id) : null;
+});
+const equippedAura = computed(() => {
+  const id = cosmeticLoadout.value?.activeAuraId;
+  return id ? getCosmeticById(id) : null;
+});
+const equippedElementAura = computed(() => {
+  const id = cosmeticLoadout.value?.activeElementAuraId;
+  return id ? getCosmeticById(id) : null;
+});
+const equippedAvatarFrame = computed(() => {
+  const id = cosmeticLoadout.value?.activeAvatarFrameId;
+  return id ? getCosmeticById(id) : null;
+});
+const equippedProfileDecoration = computed(() => {
+  const id = cosmeticLoadout.value?.activeProfileDecorationId;
+  return id ? getCosmeticById(id) : null;
+});
 
 async function load(id: string): Promise<void> {
   loading.value = true;
   notFound.value = false;
+  cosmeticLoadout.value = null;
   const p = await getPublicProfile(id);
   if (!p) {
     notFound.value = true;
     profile.value = null;
   } else {
     profile.value = p;
+    // Fire-and-forget — cosmetic loadout is purely render-only and must
+    // never block the profile from rendering.
+    void fetchCosmeticProfile(p.id)
+      .then((cp) => {
+        cosmeticLoadout.value = cp.loadout;
+      })
+      .catch(() => {
+        cosmeticLoadout.value = null;
+      });
   }
   loading.value = false;
 }
@@ -92,14 +132,41 @@ watch(
       </div>
 
       <template v-else-if="profile">
-        <section class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-2">
+        <section
+          class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-2"
+          :class="equippedProfileDecoration ? equippedProfileDecoration.cssClass : ''"
+          :data-cosmetic-profile="equippedProfileDecoration?.cosmeticId ?? ''"
+        >
           <div class="flex items-baseline justify-between gap-2">
-            <div>
-              <h2 class="text-xl text-amber-200">{{ profile.name }}</h2>
-              <p class="text-xs text-ink-300">
-                {{ realmText(profile.realmKey, profile.realmStage) }}
-                · Lv.{{ profile.level }}
-              </p>
+            <div class="flex items-center gap-3">
+              <div
+                v-if="equippedAvatarFrame || equippedAura || equippedElementAura"
+                class="cosmetic-aura-wrap"
+                :class="[
+                  equippedAvatarFrame?.cssClass,
+                  equippedAura?.cssClass,
+                  equippedElementAura?.cssClass,
+                ].filter(Boolean).join(' ')"
+                data-testid="profile-avatar-aura"
+              >
+                <div class="w-12 h-12 rounded-full bg-ink-600 grid place-items-center text-ink-200 text-lg">
+                  {{ profile.name.slice(0, 1).toUpperCase() }}
+                </div>
+              </div>
+              <div>
+                <h2 class="text-xl text-amber-200 flex items-center gap-2">
+                  <span
+                    v-if="equippedTitle"
+                    :class="equippedTitle.cssClass"
+                    data-testid="profile-equipped-title"
+                  >{{ equippedTitle.nameVi }}</span>
+                  <span>{{ profile.name }}</span>
+                </h2>
+                <p class="text-xs text-ink-300">
+                  {{ realmText(profile.realmKey, profile.realmStage) }}
+                  · Lv.{{ profile.level }}
+                </p>
+              </div>
             </div>
             <span
               v-if="profile.role !== 'PLAYER'"

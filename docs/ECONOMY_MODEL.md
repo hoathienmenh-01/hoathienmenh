@@ -369,6 +369,16 @@ Economy constraints:
 - Monthly Card uses UTC day buckets explicitly; duplicate daily request returns `MONTHLY_CARD_ALREADY_CLAIMED` without extra ledger rows.
 - Battle Pass duplicate level/track claims return `ALREADY_CLAIMED` without extra ledger/item rows.
 
+### 3.8 Phase 25.3 cosmetic ownership (no economy impact)
+
+Cosmetics (Phase 25.3) sit **outside** of the currency/item economy:
+
+- Cosmetics never grant `linhThach`, `tienNgoc`, items, or stats. They are pure render-only state on `CosmeticLoadout`.
+- Ownership is granted by Phase 25.1 Battle Pass / Monthly Card / VIP rewards or Phase 25.2 Shop Pack rewards, plus admin grants for QA. Phase 25.3 ships **no** paid cosmetic storefront.
+- `CosmeticsService.equip/unequip/grant/revoke` write **only** to `CosmeticOwnership` + `CosmeticLoadout`; they never call `CurrencyService` or `InventoryService`. Admin grant/revoke writes `AdminAuditLog` for traceability.
+- `CosmeticOwnership.expiresAt` may be set for time-bound cosmetics (e.g. Monthly Card title). Expired ownership cannot be equipped (`OWNERSHIP_EXPIRED`) and is hidden by `GET /cosmetics/profile/:id`. Re-granting extends rather than duplicating.
+- No-power invariant is also enforced at the API contract level: `CosmeticDef` does not allow `power` / `stat` fields, so injecting a power-bearing cosmetic via shared catalog is type-checked at compile time and asserted in `cosmetics.test.ts`.
+
 ---
 
 ## 4. ANTI-ABUSE

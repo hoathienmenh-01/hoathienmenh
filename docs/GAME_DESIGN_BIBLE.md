@@ -576,6 +576,17 @@ Phase 25.2 extends monetization with **limited-availability resource packs** pur
 - Rewards include cultivation materials, forge materials, gem materials, pháp bảo shards (capped), and protection charms. **Same forbidden-reward rules as Phase 25.1**: no top-tier equipment, no max-star/max-awaken pháp bảo, no realm bypass, no unlimited materials.
 - Purchase flow is server-authoritative with transaction safety, full ledger (`SHOP_PACK_PURCHASE` / `SHOP_PACK_REWARD`), and idempotency (optional `idempotencyKey` + unique window constraint).
 - Spender advantage estimated at 20–40% speed boost from shop packs; F2P farm paths remain available.
+
+### E.6 Phase 25.3 — Code-only Cosmetic Effects
+
+Phase 25.3 adds a thin cosmetic monetization layer to make the world feel rewarding without any P2W vector:
+
+- **Catalog** (`packages/shared/src/cosmetics.ts`) ships 25 entries across six types: AURA, TITLE, AVATAR_FRAME, CHAT_BADGE, PROFILE_DECORATION, ELEMENT_AURA (Kim/Mộc/Thủy/Hỏa/Thổ).
+- **No assets, code only.** Effects are pure CSS (`apps/web/src/style/cosmetics.css`) — box-shadow, gradients, text-shadow, border, transform. No `<img>`, no SVG asset files, no canvas, no particle systems. All animations are gated behind `@media (prefers-reduced-motion: no-preference)` for a11y. WEAPON_SKIN / PHAP_BAO_SKIN are explicitly forbidden by `FORBIDDEN_COSMETIC_TYPES`.
+- **No power, no realm bypass.** Cosmetics never add stats. `CosmeticDef` type contract forbids `power`/`stat` keys; `CosmeticsService` never reads or writes `Character` combat data; `cosmetics.test.ts` asserts the invariant negatively.
+- **Ownership + loadout.** `CosmeticOwnership` is unique per `(characterId, cosmeticId)` with optional `expiresAt`/`source`. `CosmeticLoadout` is one-per-character with six nullable slot ids — only one cosmetic of each type can be active. Expired ownership cannot be equipped and is hidden from public profile views.
+- **UI surfaces.** A new wardrobe view at `/cosmetics` (with filters + preview tile + equip/unequip) plus inline rendering on ProfileView (title + aura + element aura + frame + profile decoration) and ChatPanel (chat badge + title prefix).
+- **Monetization integration.** Cosmetics are awarded through existing Phase 25.1 (Battle Pass / Monthly Card / VIP) and Phase 25.2 (Shop Pack) reward channels, plus admin grants for QA. Phase 25.3 does not add a paid storefront. Skin storefronts, payment provider boundary, and story expansion are tracked as follow-ups.
 ---
 
 ## F. CONTENT PIPELINE (tóm tắt)

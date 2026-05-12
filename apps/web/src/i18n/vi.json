@@ -351,7 +351,8 @@
       "storyDungeons": "Bí Cảnh Cốt Truyện",
       "social": "Xã Giao",
       "monetization": "Tiên Lộ Lệnh",
-      "shopPacks": "Gói Tài Nguyên"
+      "shopPacks": "Gói Tài Nguyên",
+      "cosmetics": "Y Quán"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -5449,6 +5450,72 @@
       "INSUFFICIENT_FUNDS": "Không đủ tiền.",
       "DUPLICATE_PURCHASE": "Đã mua rồi.",
       "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "UNKNOWN": "Có lỗi xảy ra."
+    }
+  },
+  "cosmetics": {
+    "title": "Y Quán — Trang Sức",
+    "subtitle": "Phục sức hào quang/danh hiệu/khung avatar/huy hiệu — không tăng sức mạnh, không bypass cảnh giới.",
+    "owned": "Đã sở hữu",
+    "locked": "Chưa sở hữu",
+    "equipped": "Đang sử dụng",
+    "equip": "Trang bị",
+    "unequip": "Tháo",
+    "empty": "Trống",
+    "emptyFiltered": "Không có cosmetic phù hợp bộ lọc.",
+    "equipSuccess": "Đã trang bị cosmetic.",
+    "equipFail": "Không thể trang bị cosmetic.",
+    "unequipSuccess": "Đã tháo cosmetic.",
+    "unequipFail": "Không thể tháo cosmetic.",
+    "sourceLabel": "Nguồn",
+    "elementLabel": "Ngũ Hành",
+    "durationLabel": "Hạn {days} ngày",
+    "types": {
+      "AURA": "Hào Quang",
+      "TITLE": "Danh Hiệu",
+      "AVATAR_FRAME": "Khung Avatar",
+      "CHAT_BADGE": "Huy Hiệu Chat",
+      "PROFILE_DECORATION": "Trang Trí Hồ Sơ",
+      "ELEMENT_AURA": "Hào Quang Ngũ Hành"
+    },
+    "rarity": {
+      "COMMON": "Phổ thông",
+      "RARE": "Hiếm",
+      "EPIC": "Sử thi",
+      "LEGENDARY": "Huyền thoại",
+      "MYTHIC": "Thần thoại"
+    },
+    "source": {
+      "FREE": "Miễn phí",
+      "BATTLE_PASS": "Tiên Lộ Lệnh",
+      "SHOP": "Gói Tài Nguyên",
+      "VIP": "VIP Light",
+      "EVENT": "Sự kiện",
+      "ADMIN": "Quản trị"
+    },
+    "element": {
+      "KIM": "Kim",
+      "MOC": "Mộc",
+      "THUY": "Thủy",
+      "HOA": "Hỏa",
+      "THO": "Thổ",
+      "NEUTRAL": "Vô hệ"
+    },
+    "ownedFilter": {
+      "all": "Tất cả",
+      "owned": "Đang có",
+      "locked": "Chưa có"
+    },
+    "errors": {
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "COSMETIC_NOT_FOUND": "Cosmetic không tồn tại.",
+      "COSMETIC_INACTIVE": "Cosmetic chưa hoạt động.",
+      "NOT_OWNED": "Bạn chưa sở hữu cosmetic này.",
+      "OWNERSHIP_EXPIRED": "Cosmetic đã hết hạn.",
+      "INVALID_TYPE": "Loại cosmetic không hợp lệ.",
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "ALREADY_OWNED_PERMANENT": "Đã sở hữu vĩnh viễn.",
+      "IN_FLIGHT": "Đang xử lý...",
       "UNKNOWN": "Có lỗi xảy ra."
     }
   }

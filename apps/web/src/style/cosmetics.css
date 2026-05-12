@@ -1,0 +1,395 @@
+/* Phase 25.3 — Code-only Cosmetic Effects.
+ *
+ * Pure CSS classes that render cosmetic effects on top of existing markup.
+ * No background-image url(), no <img>, no SVG asset files. Animations are
+ * gated behind @media (prefers-reduced-motion: no-preference) so a11y
+ * users get a static look.
+ *
+ * Naming convention mirrors `cssClass` values in
+ * `packages/shared/src/cosmetics.ts`. Each class is additive — applying
+ * the class to any element gives it the cosmetic look without breaking
+ * layout. Element-aura / aura classes use box-shadow + radial gradient,
+ * frame classes use border + glow, title classes are pure text color +
+ * subtle text-shadow.
+ */
+
+/* ============================================================
+ * Wrapper helpers — anchor for absolute pseudo-element glow.
+ * ============================================================ */
+
+.cosmetic-aura-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+/* ============================================================
+ * Element auras (Ngũ Hành).
+ *
+ * Each element gets a tinted halo via box-shadow stack on the wrapper.
+ * Animation pulses lightly when prefers-reduced-motion is not reduce.
+ * ============================================================ */
+
+.aura-kim,
+.aura-moc,
+.aura-thuy,
+.aura-hoa,
+.aura-tho,
+.aura-neutral {
+  position: relative;
+  border-radius: 9999px;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.05),
+    0 0 12px 4px rgba(255, 255, 255, 0.08);
+}
+
+.aura-kim {
+  /* Kim — gold/silver radiance. */
+  box-shadow:
+    0 0 0 2px rgba(255, 235, 180, 0.35),
+    0 0 16px 6px rgba(255, 215, 100, 0.45),
+    0 0 32px 12px rgba(255, 215, 100, 0.18);
+}
+
+.aura-moc {
+  /* Mộc — verdant green. */
+  box-shadow:
+    0 0 0 2px rgba(120, 220, 120, 0.35),
+    0 0 16px 6px rgba(80, 200, 80, 0.45),
+    0 0 32px 12px rgba(80, 200, 80, 0.18);
+}
+
+.aura-thuy {
+  /* Thủy — cool azure. */
+  box-shadow:
+    0 0 0 2px rgba(120, 200, 255, 0.4),
+    0 0 16px 6px rgba(80, 160, 255, 0.45),
+    0 0 32px 12px rgba(80, 160, 255, 0.2);
+}
+
+.aura-hoa {
+  /* Hỏa — crimson red. */
+  box-shadow:
+    0 0 0 2px rgba(255, 140, 120, 0.4),
+    0 0 16px 6px rgba(255, 80, 60, 0.5),
+    0 0 32px 12px rgba(255, 80, 60, 0.22);
+}
+
+.aura-tho {
+  /* Thổ — warm ochre. */
+  box-shadow:
+    0 0 0 2px rgba(200, 160, 100, 0.4),
+    0 0 16px 6px rgba(180, 130, 60, 0.5),
+    0 0 32px 12px rgba(180, 130, 60, 0.22);
+}
+
+.aura-neutral {
+  /* Neutral — silvery white. */
+  box-shadow:
+    0 0 0 2px rgba(220, 220, 230, 0.35),
+    0 0 16px 6px rgba(200, 200, 220, 0.4),
+    0 0 32px 12px rgba(200, 200, 220, 0.18);
+}
+
+/* Battle Pass / Monthly Card themed auras. */
+.aura-tien-lo-moc-nien {
+  box-shadow:
+    0 0 0 2px rgba(120, 220, 160, 0.4),
+    0 0 18px 8px rgba(80, 200, 140, 0.45),
+    0 0 32px 14px rgba(80, 200, 140, 0.2);
+}
+
+.aura-nguyet-tap-vien-man {
+  box-shadow:
+    0 0 0 2px rgba(220, 220, 255, 0.45),
+    0 0 20px 8px rgba(200, 200, 255, 0.5),
+    0 0 36px 16px rgba(200, 200, 255, 0.25);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .aura-kim,
+  .aura-moc,
+  .aura-thuy,
+  .aura-hoa,
+  .aura-tho,
+  .aura-neutral,
+  .aura-tien-lo-moc-nien,
+  .aura-nguyet-tap-vien-man {
+    animation: cosmetic-aura-pulse 3.6s ease-in-out infinite;
+  }
+}
+
+@keyframes cosmetic-aura-pulse {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.15);
+  }
+}
+
+/* ============================================================
+ * Title classes — text color + subtle shadow per rarity tier.
+ * ============================================================ */
+
+.title-common,
+.title-rare,
+.title-epic,
+.title-legendary,
+.title-mythic,
+.title-tien-lo-lenh,
+.title-vip {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.title-common {
+  color: #d4d4d8;
+  text-shadow: 0 0 4px rgba(212, 212, 216, 0.4);
+}
+
+.title-rare {
+  color: #93c5fd;
+  text-shadow: 0 0 6px rgba(147, 197, 253, 0.5);
+}
+
+.title-epic {
+  color: #c084fc;
+  text-shadow: 0 0 8px rgba(192, 132, 252, 0.55);
+}
+
+.title-legendary {
+  color: #fcd34d;
+  text-shadow: 0 0 10px rgba(252, 211, 77, 0.6);
+}
+
+.title-mythic {
+  color: #f472b6;
+  text-shadow:
+    0 0 8px rgba(244, 114, 182, 0.5),
+    0 0 16px rgba(244, 114, 182, 0.3);
+}
+
+.title-tien-lo-lenh {
+  color: #fde68a;
+  text-shadow: 0 0 8px rgba(253, 230, 138, 0.55);
+}
+
+.title-vip {
+  color: #fbbf24;
+  text-shadow: 0 0 6px rgba(251, 191, 36, 0.55);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .title-mythic,
+  .title-legendary,
+  .title-tien-lo-lenh {
+    animation: cosmetic-title-shimmer 5s ease-in-out infinite;
+  }
+}
+
+@keyframes cosmetic-title-shimmer {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.2);
+  }
+}
+
+/* ============================================================
+ * Avatar frames — border + glow per rarity tier.
+ * ============================================================ */
+
+.avatar-frame-common,
+.avatar-frame-rare,
+.avatar-frame-epic,
+.avatar-frame-legendary,
+.avatar-frame-mythic,
+.avatar-frame-tien-lo-lenh,
+.avatar-frame-vip,
+.avatar-frame-vip-prestige {
+  border-radius: 50%;
+  border-style: solid;
+  border-width: 3px;
+  box-sizing: content-box;
+  padding: 2px;
+  background-clip: padding-box;
+}
+
+.avatar-frame-common {
+  border-color: #71717a;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.avatar-frame-rare {
+  border-color: #60a5fa;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 0 10px rgba(96, 165, 250, 0.55);
+}
+
+.avatar-frame-epic {
+  border-color: #a78bfa;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 0 14px rgba(167, 139, 250, 0.6);
+}
+
+.avatar-frame-legendary {
+  border-color: #f59e0b;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 0 16px rgba(245, 158, 11, 0.65);
+}
+
+.avatar-frame-mythic {
+  border-color: #ec4899;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 0 18px rgba(236, 72, 153, 0.6),
+    0 0 28px rgba(167, 139, 250, 0.4);
+}
+
+.avatar-frame-tien-lo-lenh {
+  border-color: #fde68a;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 14px rgba(253, 230, 138, 0.65);
+}
+
+.avatar-frame-vip {
+  border-color: #fbbf24;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 0 12px rgba(251, 191, 36, 0.5);
+}
+
+.avatar-frame-vip-prestige {
+  border-color: #fbbf24;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 235, 200, 0.18),
+    0 0 18px rgba(251, 191, 36, 0.7),
+    0 0 32px rgba(251, 191, 36, 0.35);
+}
+
+/* ============================================================
+ * Chat badges — pill prefix.
+ * ============================================================ */
+
+.chat-badge-vip,
+.chat-badge-dao-tu,
+.chat-badge-battle-pass,
+.chat-badge-event,
+.chat-badge-newbie {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 6px;
+  margin-right: 4px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.chat-badge-vip {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #1f2937;
+}
+
+.chat-badge-dao-tu {
+  background: linear-gradient(135deg, #93c5fd 0%, #3b82f6 100%);
+  color: #f8fafc;
+}
+
+.chat-badge-battle-pass {
+  background: linear-gradient(135deg, #c4b5fd 0%, #7c3aed 100%);
+  color: #f8fafc;
+}
+
+.chat-badge-event {
+  background: linear-gradient(135deg, #f9a8d4 0%, #db2777 100%);
+  color: #fff7fb;
+}
+
+.chat-badge-newbie {
+  background: linear-gradient(135deg, #6ee7b7 0%, #10b981 100%);
+  color: #022c22;
+}
+
+/* ============================================================
+ * Profile decorations — wrapper background gradient.
+ * ============================================================ */
+
+.profile-decoration-thanh-lien,
+.profile-decoration-tu-khi,
+.profile-decoration-celestial {
+  background-image:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.04) 0%,
+      rgba(255, 255, 255, 0) 60%
+    );
+  border-radius: 12px;
+  padding: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-decoration-thanh-lien {
+  background-image:
+    radial-gradient(circle at 0% 0%, rgba(96, 165, 250, 0.18) 0, transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(125, 211, 252, 0.14) 0, transparent 45%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.7) 0%, rgba(30, 41, 59, 0.7) 100%);
+}
+
+.profile-decoration-tu-khi {
+  background-image:
+    radial-gradient(circle at 0% 0%, rgba(167, 139, 250, 0.2) 0, transparent 45%),
+    radial-gradient(circle at 100% 100%, rgba(236, 72, 153, 0.16) 0, transparent 50%),
+    linear-gradient(135deg, rgba(30, 22, 50, 0.7) 0%, rgba(46, 26, 60, 0.7) 100%);
+}
+
+.profile-decoration-celestial {
+  background-image:
+    radial-gradient(circle at 0% 0%, rgba(253, 230, 138, 0.2) 0, transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(167, 139, 250, 0.16) 0, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(96, 165, 250, 0.18) 0, transparent 45%),
+    linear-gradient(135deg, rgba(20, 22, 40, 0.75) 0%, rgba(36, 28, 64, 0.75) 100%);
+}
+
+/* ============================================================
+ * Wardrobe preview tile — square swatch used in CosmeticView.
+ * ============================================================ */
+
+.cosmetic-preview-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #e5e7eb;
+  font-weight: 600;
+  font-size: 14px;
+  overflow: hidden;
+}
+
+.cosmetic-preview-tile.aura-kim,
+.cosmetic-preview-tile.aura-moc,
+.cosmetic-preview-tile.aura-thuy,
+.cosmetic-preview-tile.aura-hoa,
+.cosmetic-preview-tile.aura-tho,
+.cosmetic-preview-tile.aura-neutral,
+.cosmetic-preview-tile.aura-tien-lo-moc-nien,
+.cosmetic-preview-tile.aura-nguyet-tap-vien-man {
+  border-radius: 9999px;
+}

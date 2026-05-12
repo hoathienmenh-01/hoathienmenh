@@ -451,6 +451,23 @@ Override timezone qua env `LIVEOPS_TZ` (default `Asia/Ho_Chi_Minh` reuse `MISSIO
 | POST | `/shop-packs/purchase` | Yes | Body `{ packId, idempotencyKey? }`. Validates pack active, time window, realm gate, purchase limit, currency balance. Transaction: deduct currency → grant rewards → write ledger → save purchase. Errors: 400 `PACK_NOT_FOUND`/`PACK_INACTIVE`/`REALM_TOO_LOW`/`INVALID_INPUT`, 402 `INSUFFICIENT_FUNDS`, 409 `PURCHASE_LIMIT_REACHED`/`DUPLICATE_PURCHASE`. Ledger: `SHOP_PACK_PURCHASE` (spend), `SHOP_PACK_REWARD` (grant). |
 | POST | `/admin/shop-packs/users/:id/grant` | ADMIN | Body `{ packId }`. Grants pack rewards without currency deduction. Writes `AdminAuditLog`. |
 | POST | `/admin/shop/grant-pack` | ADMIN | Compatibility endpoint. Body `{ userId, packId }`. Same grant behavior/audit log as per-user path. |
+
+## Cosmetics — `CosmeticsController` (Phase 25.3)
+
+> Code-only cosmetic effects (aura/title/avatar frame/chat badge/profile decoration/element aura). Server-authoritative ownership/equip with no stat or power bonus. Cosmetics are CSS-only — no asset files. WEAPON_SKIN / PHAP_BAO_SKIN explicitly forbidden by shared catalog.
+
+| Method | Path | Auth | Mô tả |
+|--------|------|------|---------|
+| GET | `/cosmetics/catalog` | Yes | Returns full active catalog with i18n names, rarity, source, element affinity, optional `price`/`durationDays`, `cssClass`, `previewClass`. |
+| GET | `/cosmetics/me` | Yes | Returns `{ catalog, owned, loadout }` for the caller's character with `owned`/`equipped`/`locked` flags per catalog entry. |
+| GET | `/cosmetics/profile/:characterId` | Yes | Public-safe loadout for any character (used by ProfileView + ChatPanel). Returns only equipped slot ids — no ownership history exposed. Slots with expired ownership are hidden. |
+| POST | `/cosmetics/equip` | Yes | Body `{ cosmeticId }`. Validates ownership (`NOT_OWNED`), expiry (`OWNERSHIP_EXPIRED`), cosmetic active (`COSMETIC_INACTIVE`), type allowlist (`INVALID_TYPE`). Replaces previous active in the same type slot. Transactional. **Never** mutates character power/spirit/speed/luck/hp/mp/realm. |
+| POST | `/cosmetics/unequip` | Yes | Body `{ type }`. Clears the requested loadout slot (`activeAuraId` / `activeTitleId` / `activeAvatarFrameId` / `activeChatBadgeId` / `activeProfileDecorationId` / `activeElementAuraId`). |
+| POST | `/admin/cosmetics/users/:id/grant` | ADMIN | Body `{ cosmeticId, durationDays?, reason?, source? }`. Upserts `CosmeticOwnership` (extends `expiresAt` if re-granting); writes `AdminAuditLog action=admin.cosmetic.grant`. Used for QA / customer support; **not** a paid storefront. |
+| POST | `/admin/cosmetics/users/:id/revoke` | ADMIN | Body `{ cosmeticId }`. Deletes ownership row and clears the matching loadout slot. Writes `AdminAuditLog action=admin.cosmetic.revoke`. |
+
+Errors: 400 `INVALID_INPUT`/`INVALID_TYPE`/`COSMETIC_NOT_FOUND`/`COSMETIC_INACTIVE`/`NO_CHARACTER`, 403 `NOT_OWNED`, 409 `OWNERSHIP_EXPIRED`/`ALREADY_OWNED_PERMANENT`. Catalog is loaded from `packages/shared/src/cosmetics.ts`; tampering attempts cannot inject `power`/`stat` keys because the type contract forbids them.
+
 ## Mission — `MissionController`
 
 | Method | Path                  | Auth | Mô tả |
