@@ -24,6 +24,7 @@ import { AchievementService } from './achievement.service';
 import { BuffService } from './buff.service';
 import { SpiritualRootService } from './spiritual-root.service';
 import { CultivationMethodService } from './cultivation-method.service';
+import { CultivationMethodV2Service } from './cultivation-method-v2.service';
 import { CharacterSkillService } from './character-skill.service';
 import { TitleService } from './title.service';
 
@@ -143,6 +144,10 @@ export class CharacterService {
     // tiếp tục pass undefined; chỉ `attemptBreakthrough()` consume nếu có.
     @Optional()
     private readonly buffs?: BuffService,
+    // Phase 26.3 — Cultivation Method V2. Injected last, Optional. Wire
+    // `grantStarterV2IfMissing` trong `onboard()`.
+    @Optional()
+    private readonly cultivationMethodV2?: CultivationMethodV2Service,
   ) {}
 
   async findByUser(userId: string) {
@@ -226,6 +231,18 @@ export class CharacterService {
       // `khai_thien_quyet`. Idempotent.
       if (this.cultivationMethod) {
         await this.cultivationMethod.grantStarterIfMissing(c.id);
+      }
+      // Phase 26.3 — auto-grant starter V2 methods (`dan_khi_quyet`,
+      // `toi_than_quyet`). Idempotent — chỉ tạo row khi chưa có. KHÔNG
+      // equip vào slot (player chủ động equip sau khi mở UI V2).
+      if (this.cultivationMethodV2) {
+        try {
+          await this.cultivationMethodV2.grantStarterV2IfMissing(c.id);
+        } catch (err) {
+          this.logger.warn(
+            `onboard: failed to grant starter V2 methods for char ${c.id}: ${(err as Error).message}`,
+          );
+        }
       }
       // Phase 11.2.B — auto-grant + auto-equip skill khởi đầu `basic_attack`.
       // Idempotent — re-call an toàn.

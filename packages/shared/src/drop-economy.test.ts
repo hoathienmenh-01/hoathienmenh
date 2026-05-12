@@ -247,6 +247,8 @@ describe('drop rule catalog', () => {
       'ARTIFACT_CRAFT',
       'FURNACE_UPGRADE',
       'GENERAL',
+      // Phase 26.3 — Cultivation Method V2 fragment drops
+      'METHOD_FRAGMENT',
     ]);
     for (const rule of DROP_RULE_CATALOG) {
       expect(valid.has(rule.materialCategory)).toBe(true);

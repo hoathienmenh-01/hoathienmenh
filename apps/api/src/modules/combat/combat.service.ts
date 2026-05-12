@@ -54,6 +54,8 @@ import { TalentService } from '../character/talent.service';
 import { BuffService } from '../character/buff.service';
 import { TitleService } from '../character/title.service';
 import { methodStatBonusFor } from '../character/cultivation-method.service';
+import { CultivationMethodV2Service } from '../character/cultivation-method-v2.service';
+import { aggregateEquippedMethods } from '@xuantoi/shared';
 import { InventoryService } from '../inventory/inventory.service';
 import { MissionService } from '../mission/mission.service';
 import { QuestService } from '../quest/quest.service';
@@ -222,6 +224,8 @@ export class CombatService {
     @Optional() private readonly titles?: TitleService,
     @Optional() private readonly quests?: QuestService,
     @Optional() private readonly dropEconomy?: DropEconomyService,
+    // Phase 26.3 — Cultivation Method V2. Optional; null → mul 1.0 identity.
+    @Optional() private readonly cultivationMethodV2?: CultivationMethodV2Service,
   ) {}
 
   /**
@@ -417,20 +421,38 @@ export class CombatService {
     // Pham starter `khai_thien_quyet` (0%) → identity. hpMaxMul/mpMaxMul là
     // stat cap (defer `CharacterStatService.computeStats`), KHÔNG wire ở đây.
     const methodStat = methodStatBonusFor(char.equippedCultivationMethodKey);
+    // Phase 26.3 — Cultivation Method V2 atk/def bonus. Aggregate qua các
+    // method đang equip (cap ở `METHOD_BONUS_CAPS`). Legacy character không
+    // có V2 row equipped → snapshot=[] → bonus=0 (identity).
+    let methodV2Atk = 1.0;
+    let methodV2Def = 1.0;
+    if (this.cultivationMethodV2) {
+      try {
+        const snapshot = await this.cultivationMethodV2.getEquippedSnapshot(char.id);
+        const v2 = aggregateEquippedMethods(snapshot);
+        methodV2Atk = 1 + v2.atkPercent / 100;
+        methodV2Def = 1 + v2.defPercent / 100;
+      } catch {
+        methodV2Atk = 1.0;
+        methodV2Def = 1.0;
+      }
+    }
     const effPower =
       (char.power + bodyBonus.power + equip.atk) *
       statMul *
       talentMods.atkMul *
       buffMods.atkMul *
       titleMods.atkMul *
-      methodStat.atkMul;
+      methodStat.atkMul *
+      methodV2Atk;
     const effDef =
       (equip.def + bodyBonus.def) *
       statMul *
       talentMods.defMul *
       buffMods.defMul *
       titleMods.defMul *
-      methodStat.defMul;
+      methodStat.defMul *
+      methodV2Def;
 
     const log: EncounterLogLine[] = [
       ...((enc.log as unknown as EncounterLogLine[]) ?? []),
