@@ -49,7 +49,7 @@ function makeInput(opts: {
       key: `mock_${opts.slot}`,
       name: 'Mock',
       description: '',
-      kind: 'EQUIPMENT',
+      kind: 'WEAPON',
       quality: opts.quality ?? 'LINH',
       stackable: false,
       slot: opts.slot,
@@ -58,6 +58,7 @@ function makeInput(opts: {
       bonuses: { atk: 100 },
       powerBudget: 200,
       computedPowerScore: 200,
+      price: 0,
     } as ItemDef,
   };
 }

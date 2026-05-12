@@ -46,7 +46,7 @@ function makeItem(opts: {
     key: `mock_${opts.slot}_${opts.element ?? 'none'}_${opts.equipmentTier}`,
     name: 'Mock',
     description: '',
-    kind: 'EQUIPMENT',
+    kind: 'WEAPON',
     quality: opts.quality ?? 'LINH',
     stackable: false,
     slot: opts.slot,
@@ -55,6 +55,7 @@ function makeItem(opts: {
     bonuses: {
       atk: 100,
     },
+    price: 0,
   } as ItemDef;
 }
 

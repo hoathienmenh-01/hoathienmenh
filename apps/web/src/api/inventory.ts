@@ -6,7 +6,6 @@ import type {
   EquipmentSubstat,
   EquipmentSubstatKind,
   ElementalEnchantEffect,
-  GearResonanceEffect,
   GearResonanceSummary,
   ItemDef,
   Quality,

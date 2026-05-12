@@ -190,9 +190,15 @@ const totalBonusPercent = computed(() => {
               {{ effect.descriptionVi ?? effect.description }}
             </span>
             <span class="text-[10px] text-emerald-200">
-              +{{ pct((effect.ratio.atkRatio ?? 0) + (effect.ratio.defRatio ?? 0)
-                  + (effect.ratio.hpMaxRatio ?? 0) + (effect.ratio.mpMaxRatio ?? 0)
-                  + (effect.ratio.spiritRatio ?? 0)) }}%
+              +{{
+                pct(
+                  (effect.ratio.atkRatio ?? 0) +
+                    (effect.ratio.defRatio ?? 0) +
+                    (effect.ratio.hpMaxRatio ?? 0) +
+                    (effect.ratio.mpMaxRatio ?? 0) +
+                    (effect.ratio.spiritRatio ?? 0),
+                )
+              }}%
             </span>
           </li>
         </ul>

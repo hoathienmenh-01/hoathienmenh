@@ -467,7 +467,6 @@ function handleErr(e: unknown): void {
 
     <div class="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
       <!-- Bộ trang bị + Phase 23.3 Build summary -->
-      <div class="space-y-4">
       <section class="rounded border border-ink-300/40 bg-ink-700/30 p-4 space-y-2">
         <h3 class="text-base font-bold mb-2">{{ t('inventory.gearTitle') }}</h3>
         <div
@@ -515,9 +514,8 @@ function handleErr(e: unknown): void {
             {{ t('inventory.takeOff') }}
           </MButton>
         </div>
+        <EquipmentBuildPanel :refresh-key="buildRefreshKey" class="mt-4" />
       </section>
-      <EquipmentBuildPanel :refresh-key="buildRefreshKey" />
-      </div>
 
       <!-- Danh sách item chưa đeo -->
       <section class="space-y-3">
