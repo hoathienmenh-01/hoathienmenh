@@ -2229,7 +2229,38 @@
       "maxGrade": "Max grade",
       "cost": "Cost",
       "linhThach": "Spirit Stones",
-      "successRate": "Success rate"
+      "successRate": "Success rate",
+      "dropFrom": "Drops from"
+    },
+    "materialCategory": {
+      "ALCHEMY_QI": "Qi Alchemy",
+      "ALCHEMY_BODY": "Body Alchemy",
+      "QI_BREAKTHROUGH": "Qi Breakthrough",
+      "BODY_BREAKTHROUGH": "Body Breakthrough",
+      "TRIBULATION": "Tribulation",
+      "COMBAT_BUFF": "Combat",
+      "EQUIPMENT_CRAFT": "Equipment",
+      "ARTIFACT_CRAFT": "Artifact",
+      "FURNACE_UPGRADE": "Furnace",
+      "GENERAL": "General"
+    },
+    "sourceHint": {
+      "NORMAL_MONSTER": "Normal monsters",
+      "ELITE": "Elite",
+      "BOSS": "Boss",
+      "WORLD_BOSS": "World Boss",
+      "DUNGEON": "Dungeon",
+      "BODY_DUNGEON": "Body Dungeon",
+      "ALCHEMY_DUNGEON": "Alchemy Dungeon",
+      "QUEST": "Quest",
+      "EVENT": "Event",
+      "MAIN_QUEST": "Main quest",
+      "DAILY_QUEST": "Daily quest",
+      "SECT_SHOP": "Sect shop",
+      "NPC_SHOP": "NPC shop",
+      "MARKET": "Market",
+      "AUCTION": "Auction",
+      "ADMIN_ONLY": "Admin"
     },
     "button": {
       "craft": "Craft",

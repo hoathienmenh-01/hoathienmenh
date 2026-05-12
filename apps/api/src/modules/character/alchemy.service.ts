@@ -17,7 +17,9 @@ import {
   simulateAlchemyAttempt,
   ALCHEMY_RECIPES,
   type AlchemyFurnaceUpgradeDef,
+  type MaterialCategory,
   type PillGrade,
+  type SourceHint,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from './currency.service';
@@ -312,11 +314,21 @@ export class AlchemyService {
     return [...ALCHEMY_RECIPES].filter((recipe) => recipe.furnaceLevel <= char.alchemyFurnaceLevel).map((recipe) => {
       const missingInputs = recipe.inputs
         .filter((input) => (qtyByKey.get(input.itemKey) ?? 0) < input.qty)
-        .map((input) => ({
-          itemKey: input.itemKey,
-          requiredQty: input.qty,
-          ownedQty: qtyByKey.get(input.itemKey) ?? 0,
-        }));
+        .map((input) => {
+          // Phase 26.2 — surface materialTier/materialCategory/sourceHint
+          // ngay trong missing entry để FE Alchemy recipe card render
+          // "farm ở đâu" mà KHÔNG cần fetch thêm /items/<key>.
+          const def = itemByKey(input.itemKey);
+          return {
+            itemKey: input.itemKey,
+            requiredQty: input.qty,
+            ownedQty: qtyByKey.get(input.itemKey) ?? 0,
+            itemName: def?.name,
+            materialTier: def?.materialTier,
+            materialCategory: def?.materialCategory as MaterialCategory | undefined,
+            sourceHint: def?.sourceHint as readonly SourceHint[] | undefined,
+          };
+        });
       const gate = canCraftAlchemyRecipe(char, recipe);
       return {
         ...recipe,
@@ -478,7 +490,16 @@ export interface AlchemyRecipeView {
   possibleGrades: readonly PillGrade[];
   sourceHint?: readonly string[];
   unlockSource?: string;
-  missingInputs: Array<{ itemKey: string; requiredQty: number; ownedQty: number }>;
+  missingInputs: Array<{
+    itemKey: string;
+    requiredQty: number;
+    ownedQty: number;
+    /** Phase 26.2 — name + Drop Economy hint surfaced cho FE recipe card. */
+    itemName?: string;
+    materialTier?: number;
+    materialCategory?: MaterialCategory;
+    sourceHint?: readonly SourceHint[];
+  }>;
   canCraft: boolean;
   failureReason: string | null;
 }
