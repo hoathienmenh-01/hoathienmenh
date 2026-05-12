@@ -816,3 +816,36 @@ export function getEquipmentEconomyQualityMultiplier(quality: Quality): {
     powerMultiplier: getQualityMultiplier(quality),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Merge recipes — explicit input itemKey → output itemKey table.
+// ---------------------------------------------------------------------------
+
+export interface EquipmentMergeRecipe {
+  inputItemKey: string;
+  outputItemKey: string;
+}
+
+/**
+ * Phase 23.4 seed merge recipes — minimal table cho weapon + armor PHAM→LINH
+ * và LINH→HUYEN. Mở rộng ở Phase 23.5+.
+ *
+ * Rule:
+ *   - input + output đã có trong ITEMS catalog (verify ở runtime).
+ *   - `slot` + (derived) `equipmentTier` của input ≡ output.
+ *   - `output.quality === next(input.quality)`.
+ */
+export const EQUIPMENT_MERGE_RECIPES: readonly EquipmentMergeRecipe[] = [
+  { inputItemKey: 'so_kiem', outputItemKey: 'huyen_kiem' },
+  { inputItemKey: 'huyen_kiem', outputItemKey: 'diem_phong_dao' },
+  { inputItemKey: 'pham_giap', outputItemKey: 'linh_giap' },
+  { inputItemKey: 'linh_giap', outputItemKey: 'huyet_phach_giap' },
+] as const;
+
+export function findEquipmentMergeRecipe(
+  inputItemKey: string,
+): EquipmentMergeRecipe | null {
+  return (
+    EQUIPMENT_MERGE_RECIPES.find((r) => r.inputItemKey === inputItemKey) ?? null
+  );
+}

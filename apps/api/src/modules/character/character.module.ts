@@ -14,6 +14,7 @@ import { CultivationMethodService } from './cultivation-method.service';
 import { GemService } from './gem.service';
 import { RefineService } from './refine.service';
 import { EquipmentService } from './equipment.service';
+import { EquipmentEconomyService } from './equipment-economy.service';
 import { TribulationService } from './tribulation.service';
 import { TribulationMiniBattleService } from './tribulation-mini-battle.service';
 import { BuffService } from './buff.service';
@@ -73,6 +74,7 @@ const profileLimiterProvider = {
     GemService,
     RefineService,
     EquipmentService,
+    EquipmentEconomyService,
     TribulationService,
     TribulationMiniBattleService,
     BuffService,
@@ -92,6 +94,7 @@ const profileLimiterProvider = {
     GemService,
     RefineService,
     EquipmentService,
+    EquipmentEconomyService,
     TribulationService,
     TribulationMiniBattleService,
     BuffService,

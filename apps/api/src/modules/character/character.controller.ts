@@ -37,6 +37,10 @@ import {
   EquipmentService,
 } from './equipment.service';
 import {
+  EquipmentEconomyError,
+  EquipmentEconomyService,
+} from './equipment-economy.service';
+import {
   TRIBULATION_LOG_DEFAULT_LIMIT,
   TRIBULATION_LOG_MAX_LIMIT,
   TribulationError,
@@ -55,7 +59,7 @@ import { TalentError, TalentService } from './talent.service';
 import { AlchemyError, AlchemyService } from './alchemy.service';
 import { TitleError, TitleService } from './title.service';
 import { BuffService } from './buff.service';
-import { getBuffDef, getTitleDef, TITLES } from '@xuantoi/shared';
+import { getBuffDef, getTitleDef, realmByKey, TITLES } from '@xuantoi/shared';
 import { AuthService } from '../auth/auth.service';
 import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 import {
@@ -134,6 +138,19 @@ const EquipmentUpgradePreviewInput = z.object({
   equipmentInventoryItemId: z.string().min(1).max(64),
 });
 
+// Phase 23.4 — Equipment Upgrade Economy / Resource Sink.
+const EquipmentMergeInput = z.object({
+  inventoryItemIds: z.array(z.string().min(1).max(64)).length(3),
+});
+
+const EquipmentDismantleInput = z.object({
+  inventoryItemId: z.string().min(1).max(64),
+});
+
+const EquipmentEconomyPreviewInput = z.object({
+  inventoryItemId: z.string().min(1).max(64),
+});
+
 const AchievementClaimInput = z.object({
   achievementKey: z.string().min(1).max(64),
 });
@@ -186,6 +203,10 @@ export class CharacterController {
     // tribulation mini-battle. Optional vì module test bỏ qua FeatureFlagModule;
     // nếu inject null → controller skip gate (hành vi cũ = always allow).
     @Optional() private readonly featureFlags?: FeatureFlagService,
+    // Phase 23.4 — Equipment Upgrade Economy / Resource Sink. Injected
+    // last để không phá vị trí positional args trong các test cũ
+    // (`new CharacterController(...)`).
+    @Optional() private readonly equipmentEconomy?: EquipmentEconomyService,
   ) {
     this.profileLimiter =
       profileLimiter ??
@@ -797,6 +818,99 @@ export class CharacterController {
     } catch (e) {
       if (e instanceof EquipmentError) {
         fail(e.code, mapEquipmentErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 23.4 — Ghép phẩm 3 món equipment cùng `itemKey` → 1 món quality
+   * cao hơn theo `EQUIPMENT_MERGE_RECIPES` shared. Server-authoritative:
+   * verify ownership + equipped + recipe + cost + atomic consume/grant +
+   * ledger.
+   */
+  @Post('equipment/merge')
+  @HttpCode(200)
+  async equipmentMerge(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.equipmentEconomy) {
+      fail('EQUIPMENT_ECONOMY_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = EquipmentMergeInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const realm = realmByKey(character.realmKey);
+      const result = await this.equipmentEconomy.mergeEquipment(
+        character.id,
+        parsed.data.inventoryItemIds,
+        { characterRealmOrder: realm?.order ?? undefined },
+      );
+      return { ok: true, data: { merge: result } };
+    } catch (e) {
+      if (e instanceof EquipmentEconomyError) {
+        fail(e.code, mapEquipmentEconomyErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 23.4 — Phân giải 1 món equipment → yield material + linhThach +
+   * tự tháo gem trả về inventory. Yield được shared invariant kiểm tra
+   * không vượt chi phí tạo (`assertDismantleYieldInvariant`).
+   */
+  @Post('equipment/dismantle')
+  @HttpCode(200)
+  async equipmentDismantle(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.equipmentEconomy) {
+      fail('EQUIPMENT_ECONOMY_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = EquipmentDismantleInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const result = await this.equipmentEconomy.dismantleEquipment(
+        character.id,
+        parsed.data.inventoryItemId,
+      );
+      return { ok: true, data: { dismantle: result } };
+    } catch (e) {
+      if (e instanceof EquipmentEconomyError) {
+        fail(e.code, mapEquipmentEconomyErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 23.4 — Read-only preview của toàn bộ cost/yield economy cho 1
+   * item (enhance next, merge recipe, dismantle yield, socket/unsocket
+   * cost, reforge cap, protection requirement).
+   */
+  @Post('equipment/economy-preview')
+  @HttpCode(200)
+  async equipmentEconomyPreview(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.equipmentEconomy) {
+      fail('EQUIPMENT_ECONOMY_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = EquipmentEconomyPreviewInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const preview = await this.equipmentEconomy.previewUpgrade(
+        character.id,
+        parsed.data.inventoryItemId,
+      );
+      return { ok: true, data: { preview } };
+    } catch (e) {
+      if (e instanceof EquipmentEconomyError) {
+        fail(e.code, mapEquipmentEconomyErrorStatus(e.code));
       }
       throw e;
     }
@@ -1724,6 +1838,33 @@ function mapEquipmentErrorStatus(code: EquipmentError['code']): HttpStatus {
     default:
       return HttpStatus.BAD_REQUEST;
   }
+}
+
+/**
+ * Phase 23.4 — map `EquipmentEconomyError.code` → HTTP status. NOT_FOUND
+ * cho id sai/ownership, CONFLICT cho equipped/locked/insufficient funds,
+ * BAD_REQUEST cho validation rule (count/tier/quality mismatch).
+ */
+function mapEquipmentEconomyErrorStatus(code: string): HttpStatus {
+  if (
+    code === 'MERGE_ITEM_NOT_FOUND' ||
+    code === 'MERGE_ITEM_NOT_OWNED' ||
+    code === 'DISMANTLE_ITEM_NOT_FOUND' ||
+    code === 'PREVIEW_ITEM_NOT_FOUND'
+  ) {
+    return HttpStatus.NOT_FOUND;
+  }
+  if (
+    code === 'MERGE_ITEM_EQUIPPED' ||
+    code === 'DISMANTLE_ITEM_EQUIPPED' ||
+    code === 'INSUFFICIENT_FUNDS' ||
+    code === 'INSUFFICIENT_MATERIAL' ||
+    code === 'MERGE_ITEM_CONSUME_RACE' ||
+    code === 'DISMANTLE_RACE'
+  ) {
+    return HttpStatus.CONFLICT;
+  }
+  return HttpStatus.BAD_REQUEST;
 }
 
 /** Map TribulationError code → HTTP status. */

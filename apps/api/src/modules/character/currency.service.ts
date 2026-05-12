@@ -125,7 +125,14 @@ export type LedgerReason =
   // row → đúng 1 winner ghi ledger. Reward source =
   // `computeWeeklyReward(tier)` deterministic theo tier
   // (NONE/BRONZE/SILVER/GOLD/LEGEND) snapshot tại settle.
-  | 'COOP_WEEKLY_REWARD';
+  | 'COOP_WEEKLY_REWARD'
+  // Phase 23.4 — Equipment Upgrade Economy / Resource Sink. linhThach
+  // sink khi merge / dismantle / khảm / tháo gem. refType='InventoryItem'
+  // + refId của target equipment id.
+  | 'EQUIPMENT_MERGE'
+  | 'EQUIPMENT_DISMANTLE'
+  | 'GEM_SOCKET_COST'
+  | 'GEM_UNSOCKET_COST';
 
 export interface CurrencyApplyInput {
   characterId: string;
