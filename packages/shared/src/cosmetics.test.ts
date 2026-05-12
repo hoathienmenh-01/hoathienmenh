@@ -193,9 +193,8 @@ describe('cosmetics validation', () => {
       cssClass: 'x',
       previewClass: 'x',
       active: true,
-      // @ts-expect-error intentional bad field
       power: 100,
-    });
+    } as unknown);
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => e.startsWith('FORBIDDEN_STAT_FIELD'))).toBe(true);
   });
@@ -213,9 +212,8 @@ describe('cosmetics validation', () => {
       cssClass: 'x',
       previewClass: 'x',
       active: true,
-      // @ts-expect-error intentional bad field
       requiredRealmOrder: 5,
-    });
+    } as unknown);
     expect(r.ok).toBe(false);
     expect(r.errors).toContain('FORBIDDEN_STAT_FIELD:requiredRealmOrder');
   });
