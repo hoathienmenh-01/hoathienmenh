@@ -349,7 +349,8 @@
       "quests": "Nhiệm Vụ",
       "dungeonRun": "Bí Cảnh Hành",
       "storyDungeons": "Bí Cảnh Cốt Truyện",
-      "social": "Xã Giao"
+      "social": "Xã Giao",
+      "monetization": "Tiên Lộ Lệnh"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -5332,6 +5333,71 @@
       "RATE_LIMITED": "Thao tác quá nhanh — chậm lại vài giây.",
       "ABUSE_BLOCKED": "Tạm khoá thao tác do hành vi bất thường. Thử lại sau.",
       "UNKNOWN": "Có lỗi xảy ra — thử lại."
+    }
+  },
+  "monetization": {
+    "title": "Tiên Lộ Lệnh",
+    "subtitle": "Battle Pass, Nguyệt Tạp và VIP Light chỉ tăng tốc nhẹ, không bán đồ top hay bỏ qua cảnh giới.",
+    "tabs": {
+      "battlePass": "Tiên Lộ Lệnh",
+      "monthlyCard": "Nguyệt Tạp",
+      "vip": "VIP Light"
+    },
+    "claim": "Nhận",
+    "claimed": "Đã nhận",
+    "claimOk": "Đã nhận thưởng.",
+    "claimAllOk": "Đã nhận toàn bộ thưởng có thể nhận.",
+    "battlePass": {
+      "endsAt": "Kết thúc: {date}",
+      "level": "Cấp {level}/{max}",
+      "levelShort": "Cấp {level}",
+      "claimAll": "Nhận tất cả",
+      "freeTrack": "Miễn phí",
+      "premiumTrack": "Premium",
+      "premiumUnlocked": "Premium đã mở khóa cho mùa này.",
+      "premiumLocked": "Premium đang khóa — chỉ xem trước, không thể nhận."
+    },
+    "monthlyCard": {
+      "title": "Nguyệt Tạp",
+      "active": "Còn {days} ngày hiệu lực.",
+      "inactive": "Chưa kích hoạt Nguyệt Tạp.",
+      "todayReward": "Thưởng hôm nay",
+      "claimedToday": "Hôm nay đã nhận"
+    },
+    "vip": {
+      "title": "VIP Light",
+      "max": "Đã đạt cấp VIP tối đa hiện tại.",
+      "next": "Cấp kế tiếp: VIP {level}",
+      "perks": "Đặc quyền nhẹ",
+      "autoSweep": "+{n} lượt auto-sweep/ngày",
+      "inventory": "+{n} ô túi",
+      "unsocketDiscount": "Giảm {n}% phí tháo ngọc",
+      "reforgeDiscount": "Giảm {n}% phí tẩy luyện",
+      "dungeonBonus": "+{n} lượt bí cảnh/ngày (hard cap)"
+    },
+    "reward": {
+      "linhThach": "Linh Thạch",
+      "tienNgoc": "Tiên Ngọc",
+      "STONE_LUYEN_KHI": "Đá Luyện Khí",
+      "BI_CANH_TICKET": "Vé Bí Cảnh",
+      "GEM_LOW_RANDOM": "Ngọc cấp thấp",
+      "PHAP_BAO_FRAGMENT_T1": "Mảnh Pháp Bảo T1",
+      "PROTECTION_TALISMAN": "Bảo Hộ Phù",
+      "REFORGE_TOKEN": "Tẩy Luyện Phù",
+      "UNSOCKET_TALISMAN": "Tách Ngọc Phù",
+      "TITLE_TIEN_LO_LENH": "Danh hiệu Tiên Lộ Lệnh"
+    },
+    "errors": {
+      "loadFail": "Không tải được dữ liệu monetization.",
+      "NO_ACTIVE_SEASON": "Chưa có mùa Battle Pass đang mở.",
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "LEVEL_NOT_REACHED": "Chưa đủ cấp để nhận thưởng.",
+      "PREMIUM_LOCKED": "Premium chưa mở khóa.",
+      "ALREADY_CLAIMED": "Thưởng đã nhận.",
+      "NO_CLAIMABLE_REWARD": "Không có thưởng có thể nhận.",
+      "MONTHLY_CARD_INACTIVE": "Nguyệt Tạp chưa kích hoạt.",
+      "MONTHLY_CARD_ALREADY_CLAIMED": "Hôm nay đã nhận Nguyệt Tạp.",
+      "UNKNOWN": "Có lỗi xảy ra, thử lại."
     }
   }
 }
