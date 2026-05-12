@@ -52,6 +52,8 @@ import { CurrencyError, CurrencyService } from './currency.service';
  */
 @Injectable()
 export class PhapBaoService {
+  private static readonly activeUpgradeKeys = new Set<string>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
@@ -178,169 +180,203 @@ export class PhapBaoService {
     characterId: string,
     inventoryItemId: string,
   ): Promise<PhapBaoUpgradeResult> {
-    return this.prisma.$transaction(async (tx) => {
-      const ctx = await this.loadUpgradeContextTx(tx, characterId, inventoryItemId);
-      const { def, inv, characterRealmOrder } = ctx;
-      if (inv.locked) throw new PhapBaoError('PHAP_BAO_LOCKED');
-      if (characterRealmOrder < def.requiredRealmOrder) {
-        throw new PhapBaoError('REALM_TOO_LOW');
-      }
-      if (inv.phapBaoStarLevel >= Math.min(def.starCap, 5)) {
-        throw new PhapBaoError('MAX_STAR_REACHED');
-      }
-      const cost = getPhapBaoProgressionStarUpCost({
-        artifact: def,
-        currentStarLevel: inv.phapBaoStarLevel,
-      });
-      const costView = costToView(cost);
-      const consumedMaterials = await this.consumeCostTx(
-        tx,
-        characterId,
-        inv.id,
-        costView,
-        'PHAP_BAO_STAR_UP',
-      );
-      const upd = await tx.inventoryItem.updateMany({
-        where: {
-          id: inv.id,
-          characterId,
-          phapBaoStarLevel: inv.phapBaoStarLevel,
-          phapBaoAwakenStage: inv.phapBaoAwakenStage,
-          refineLevel: inv.refineLevel,
-          locked: false,
-        },
-        data: { phapBaoStarLevel: { increment: 1 } },
-      });
-      if (upd.count !== 1) throw new PhapBaoError('CONCURRENT_UPGRADE');
-      const next = await tx.inventoryItem.findUniqueOrThrow({
-        where: { id: inv.id },
-      });
-      return this.toUpgradeResult(
-        def,
-        next.id,
-        next.refineLevel,
-        next.phapBaoStarLevel,
-        next.phapBaoAwakenStage,
-        next.equippedSlot,
-        characterRealmOrder,
-        costView,
-        consumedMaterials,
-      );
-    });
+    return this.withUpgradeInflightLock(
+      'PHAP_BAO_STAR_UP',
+      inventoryItemId,
+      () =>
+        this.prisma.$transaction(async (tx) => {
+          const ctx = await this.loadUpgradeContextTx(
+            tx,
+            characterId,
+            inventoryItemId,
+          );
+          const { def, inv, characterRealmOrder } = ctx;
+          if (inv.locked) throw new PhapBaoError('PHAP_BAO_LOCKED');
+          if (characterRealmOrder < def.requiredRealmOrder) {
+            throw new PhapBaoError('REALM_TOO_LOW');
+          }
+          if (inv.phapBaoStarLevel >= Math.min(def.starCap, 5)) {
+            throw new PhapBaoError('MAX_STAR_REACHED');
+          }
+          const cost = getPhapBaoProgressionStarUpCost({
+            artifact: def,
+            currentStarLevel: inv.phapBaoStarLevel,
+          });
+          const costView = costToView(cost);
+          const consumedMaterials = await this.consumeCostTx(
+            tx,
+            characterId,
+            inv.id,
+            costView,
+            'PHAP_BAO_STAR_UP',
+          );
+          const upd = await tx.inventoryItem.updateMany({
+            where: {
+              id: inv.id,
+              characterId,
+              phapBaoStarLevel: inv.phapBaoStarLevel,
+              phapBaoAwakenStage: inv.phapBaoAwakenStage,
+              refineLevel: inv.refineLevel,
+              locked: false,
+            },
+            data: { phapBaoStarLevel: { increment: 1 } },
+          });
+          if (upd.count !== 1) throw new PhapBaoError('CONCURRENT_UPGRADE');
+          const next = await tx.inventoryItem.findUniqueOrThrow({
+            where: { id: inv.id },
+          });
+          return this.toUpgradeResult(
+            def,
+            next.id,
+            next.refineLevel,
+            next.phapBaoStarLevel,
+            next.phapBaoAwakenStage,
+            next.equippedSlot,
+            characterRealmOrder,
+            costView,
+            consumedMaterials,
+          );
+        }),
+    );
   }
 
   async awaken(
     characterId: string,
     inventoryItemId: string,
   ): Promise<PhapBaoUpgradeResult> {
-    return this.prisma.$transaction(async (tx) => {
-      const ctx = await this.loadUpgradeContextTx(tx, characterId, inventoryItemId);
-      const { def, inv, characterRealmOrder } = ctx;
-      if (inv.locked) throw new PhapBaoError('PHAP_BAO_LOCKED');
-      if (characterRealmOrder < def.requiredRealmOrder) {
-        throw new PhapBaoError('REALM_TOO_LOW');
-      }
-      if (def.quality !== 'TIEN' && def.quality !== 'THAN') {
-        throw new PhapBaoError('QUALITY_TOO_LOW');
-      }
-      if (inv.phapBaoAwakenStage >= Math.min(def.awakenCap, 3)) {
-        throw new PhapBaoError('MAX_AWAKEN_REACHED');
-      }
-      if (inv.phapBaoStarLevel < requiredStarForAwaken(inv.phapBaoAwakenStage)) {
-        throw new PhapBaoError('STAR_TOO_LOW');
-      }
-      if (inv.refineLevel < requiredRefineForAwaken(def, inv.phapBaoAwakenStage)) {
-        throw new PhapBaoError('REFINE_TOO_LOW');
-      }
-      const cost = getPhapBaoProgressionAwakenCost({
-        artifact: def,
-        currentAwakenStage: inv.phapBaoAwakenStage,
-      });
-      const costView = costToView(cost);
-      const consumedMaterials = await this.consumeCostTx(
-        tx,
-        characterId,
-        inv.id,
-        costView,
-        'PHAP_BAO_AWAKEN',
-      );
-      const upd = await tx.inventoryItem.updateMany({
-        where: {
-          id: inv.id,
-          characterId,
-          phapBaoStarLevel: inv.phapBaoStarLevel,
-          phapBaoAwakenStage: inv.phapBaoAwakenStage,
-          refineLevel: inv.refineLevel,
-          locked: false,
-        },
-        data: { phapBaoAwakenStage: { increment: 1 } },
-      });
-      if (upd.count !== 1) throw new PhapBaoError('CONCURRENT_UPGRADE');
-      const next = await tx.inventoryItem.findUniqueOrThrow({
-        where: { id: inv.id },
-      });
-      return this.toUpgradeResult(
-        def,
-        next.id,
-        next.refineLevel,
-        next.phapBaoStarLevel,
-        next.phapBaoAwakenStage,
-        next.equippedSlot,
-        characterRealmOrder,
-        costView,
-        consumedMaterials,
-      );
-    });
+    return this.withUpgradeInflightLock(
+      'PHAP_BAO_AWAKEN',
+      inventoryItemId,
+      () =>
+        this.prisma.$transaction(async (tx) => {
+          const ctx = await this.loadUpgradeContextTx(
+            tx,
+            characterId,
+            inventoryItemId,
+          );
+          const { def, inv, characterRealmOrder } = ctx;
+          if (inv.locked) throw new PhapBaoError('PHAP_BAO_LOCKED');
+          if (characterRealmOrder < def.requiredRealmOrder) {
+            throw new PhapBaoError('REALM_TOO_LOW');
+          }
+          if (def.quality !== 'TIEN' && def.quality !== 'THAN') {
+            throw new PhapBaoError('QUALITY_TOO_LOW');
+          }
+          if (inv.phapBaoAwakenStage >= Math.min(def.awakenCap, 3)) {
+            throw new PhapBaoError('MAX_AWAKEN_REACHED');
+          }
+          if (
+            inv.phapBaoStarLevel < requiredStarForAwaken(inv.phapBaoAwakenStage)
+          ) {
+            throw new PhapBaoError('STAR_TOO_LOW');
+          }
+          if (
+            inv.refineLevel <
+            requiredRefineForAwaken(def, inv.phapBaoAwakenStage)
+          ) {
+            throw new PhapBaoError('REFINE_TOO_LOW');
+          }
+          const cost = getPhapBaoProgressionAwakenCost({
+            artifact: def,
+            currentAwakenStage: inv.phapBaoAwakenStage,
+          });
+          const costView = costToView(cost);
+          const consumedMaterials = await this.consumeCostTx(
+            tx,
+            characterId,
+            inv.id,
+            costView,
+            'PHAP_BAO_AWAKEN',
+          );
+          const upd = await tx.inventoryItem.updateMany({
+            where: {
+              id: inv.id,
+              characterId,
+              phapBaoStarLevel: inv.phapBaoStarLevel,
+              phapBaoAwakenStage: inv.phapBaoAwakenStage,
+              refineLevel: inv.refineLevel,
+              locked: false,
+            },
+            data: { phapBaoAwakenStage: { increment: 1 } },
+          });
+          if (upd.count !== 1) throw new PhapBaoError('CONCURRENT_UPGRADE');
+          const next = await tx.inventoryItem.findUniqueOrThrow({
+            where: { id: inv.id },
+          });
+          return this.toUpgradeResult(
+            def,
+            next.id,
+            next.refineLevel,
+            next.phapBaoStarLevel,
+            next.phapBaoAwakenStage,
+            next.equippedSlot,
+            characterRealmOrder,
+            costView,
+            consumedMaterials,
+          );
+        }),
+    );
   }
 
   async refine(
     characterId: string,
     inventoryItemId: string,
   ): Promise<PhapBaoUpgradeResult> {
-    return this.prisma.$transaction(async (tx) => {
-      const ctx = await this.loadUpgradeContextTx(tx, characterId, inventoryItemId);
-      const { def, inv, characterRealmOrder } = ctx;
-      if (inv.locked) throw new PhapBaoError('PHAP_BAO_LOCKED');
-      if (inv.refineLevel >= def.refineCap) throw new PhapBaoError('MAX_REFINE_REACHED');
-      const cost = getPhapBaoProgressionRefineCost({
-        artifact: def,
-        currentRefineLevel: inv.refineLevel,
-      });
-      const costView = costToView(cost);
-      const consumedMaterials = await this.consumeCostTx(
-        tx,
-        characterId,
-        inv.id,
-        costView,
-        'PHAP_BAO_REFINE',
-      );
-      const upd = await tx.inventoryItem.updateMany({
-        where: {
-          id: inv.id,
-          characterId,
-          refineLevel: inv.refineLevel,
-          phapBaoStarLevel: inv.phapBaoStarLevel,
-          phapBaoAwakenStage: inv.phapBaoAwakenStage,
-          locked: false,
-        },
-        data: { refineLevel: { increment: 1 } },
-      });
-      if (upd.count !== 1) throw new PhapBaoError('CONCURRENT_UPGRADE');
-      const next = await tx.inventoryItem.findUniqueOrThrow({
-        where: { id: inv.id },
-      });
-      return this.toUpgradeResult(
-        def,
-        next.id,
-        next.refineLevel,
-        next.phapBaoStarLevel,
-        next.phapBaoAwakenStage,
-        next.equippedSlot,
-        characterRealmOrder,
-        costView,
-        consumedMaterials,
-      );
-    });
+    return this.withUpgradeInflightLock(
+      'PHAP_BAO_REFINE',
+      inventoryItemId,
+      () =>
+        this.prisma.$transaction(async (tx) => {
+          const ctx = await this.loadUpgradeContextTx(
+            tx,
+            characterId,
+            inventoryItemId,
+          );
+          const { def, inv, characterRealmOrder } = ctx;
+          if (inv.locked) throw new PhapBaoError('PHAP_BAO_LOCKED');
+          if (inv.refineLevel >= def.refineCap) {
+            throw new PhapBaoError('MAX_REFINE_REACHED');
+          }
+          const cost = getPhapBaoProgressionRefineCost({
+            artifact: def,
+            currentRefineLevel: inv.refineLevel,
+          });
+          const costView = costToView(cost);
+          const consumedMaterials = await this.consumeCostTx(
+            tx,
+            characterId,
+            inv.id,
+            costView,
+            'PHAP_BAO_REFINE',
+          );
+          const upd = await tx.inventoryItem.updateMany({
+            where: {
+              id: inv.id,
+              characterId,
+              refineLevel: inv.refineLevel,
+              phapBaoStarLevel: inv.phapBaoStarLevel,
+              phapBaoAwakenStage: inv.phapBaoAwakenStage,
+              locked: false,
+            },
+            data: { refineLevel: { increment: 1 } },
+          });
+          if (upd.count !== 1) throw new PhapBaoError('CONCURRENT_UPGRADE');
+          const next = await tx.inventoryItem.findUniqueOrThrow({
+            where: { id: inv.id },
+          });
+          return this.toUpgradeResult(
+            def,
+            next.id,
+            next.refineLevel,
+            next.phapBaoStarLevel,
+            next.phapBaoAwakenStage,
+            next.equippedSlot,
+            characterRealmOrder,
+            costView,
+            consumedMaterials,
+          );
+        }),
+    );
   }
 
   /**
@@ -488,6 +524,23 @@ export class PhapBaoService {
       },
     });
     return { itemKey, qty };
+  }
+
+  private async withUpgradeInflightLock<T>(
+    reason: 'PHAP_BAO_STAR_UP' | 'PHAP_BAO_AWAKEN' | 'PHAP_BAO_REFINE',
+    inventoryItemId: string,
+    run: () => Promise<T>,
+  ): Promise<T> {
+    const key = `${reason}:${inventoryItemId}`;
+    if (PhapBaoService.activeUpgradeKeys.has(key)) {
+      throw new PhapBaoError('CONCURRENT_UPGRADE');
+    }
+    PhapBaoService.activeUpgradeKeys.add(key);
+    try {
+      return await run();
+    } finally {
+      PhapBaoService.activeUpgradeKeys.delete(key);
+    }
   }
 
   private toUpgradeResult(
