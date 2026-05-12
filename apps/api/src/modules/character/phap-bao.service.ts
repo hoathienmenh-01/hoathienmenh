@@ -193,7 +193,7 @@ export class PhapBaoService {
         currentStarLevel: inv.phapBaoStarLevel,
       });
       const costView = costToView(cost);
-      await this.consumeCostTx(
+      const consumedMaterials = await this.consumeCostTx(
         tx,
         characterId,
         inv.id,
@@ -224,6 +224,7 @@ export class PhapBaoService {
         next.equippedSlot,
         characterRealmOrder,
         costView,
+        consumedMaterials,
       );
     });
   }
@@ -256,7 +257,7 @@ export class PhapBaoService {
         currentAwakenStage: inv.phapBaoAwakenStage,
       });
       const costView = costToView(cost);
-      await this.consumeCostTx(
+      const consumedMaterials = await this.consumeCostTx(
         tx,
         characterId,
         inv.id,
@@ -287,6 +288,7 @@ export class PhapBaoService {
         next.equippedSlot,
         characterRealmOrder,
         costView,
+        consumedMaterials,
       );
     });
   }
@@ -305,7 +307,7 @@ export class PhapBaoService {
         currentRefineLevel: inv.refineLevel,
       });
       const costView = costToView(cost);
-      await this.consumeCostTx(
+      const consumedMaterials = await this.consumeCostTx(
         tx,
         characterId,
         inv.id,
@@ -336,6 +338,7 @@ export class PhapBaoService {
         next.equippedSlot,
         characterRealmOrder,
         costView,
+        consumedMaterials,
       );
     });
   }
@@ -407,34 +410,35 @@ export class PhapBaoService {
     inventoryItemId: string,
     cost: PhapBaoCostView,
     reason: 'PHAP_BAO_STAR_UP' | 'PHAP_BAO_AWAKEN' | 'PHAP_BAO_REFINE',
-  ): Promise<void> {
-    await this.consumeMaterialTx(
+  ): Promise<PhapBaoConsumedMaterial[]> {
+    const consumed: PhapBaoConsumedMaterial[] = [];
+    consumed.push(await this.consumeMaterialTx(
       tx,
       characterId,
       inventoryItemId,
       cost.materialKey,
       cost.materialQty,
       reason,
-    );
+    ));
     if (cost.shardKey && cost.shardQty) {
-      await this.consumeMaterialTx(
+      consumed.push(await this.consumeMaterialTx(
         tx,
         characterId,
         inventoryItemId,
         cost.shardKey,
         cost.shardQty,
         reason,
-      );
+      ));
     }
     if (cost.awakenStoneKey && cost.awakenStoneQty) {
-      await this.consumeMaterialTx(
+      consumed.push(await this.consumeMaterialTx(
         tx,
         characterId,
         inventoryItemId,
         cost.awakenStoneKey,
         cost.awakenStoneQty,
         reason,
-      );
+      ));
     }
     try {
       await this.currency.applyTx(tx, {
@@ -451,6 +455,7 @@ export class PhapBaoService {
       }
       throw e;
     }
+    return consumed;
   }
 
   private async consumeMaterialTx(
@@ -460,7 +465,7 @@ export class PhapBaoService {
     itemKey: string,
     qty: number,
     reason: string,
-  ): Promise<void> {
+  ): Promise<PhapBaoConsumedMaterial> {
     const row = await tx.inventoryItem.findFirst({
       where: { characterId, itemKey, equippedSlot: null },
       orderBy: { createdAt: 'asc' },
@@ -482,6 +487,7 @@ export class PhapBaoService {
         refId: inventoryItemId,
       },
     });
+    return { itemKey, qty };
   }
 
   private toUpgradeResult(
@@ -493,6 +499,7 @@ export class PhapBaoService {
     equippedSlot: string | null,
     characterRealmOrder: number,
     cost: PhapBaoCostView,
+    consumedMaterials: PhapBaoConsumedMaterial[],
   ): PhapBaoUpgradeResult {
     const view = this.toView(
       def,
@@ -506,6 +513,7 @@ export class PhapBaoService {
     return {
       item: view,
       cost,
+      consumedMaterials,
       nextPreview: {
         refineCost: safeRefineCost(def, refineLevel),
         starCost: safeStarCost(def, starLevel),
@@ -679,11 +687,17 @@ export interface PhapBaoCostView {
 export interface PhapBaoUpgradeResult {
   item: PhapBaoView;
   cost: PhapBaoCostView;
+  consumedMaterials: PhapBaoConsumedMaterial[];
   nextPreview: {
     refineCost: PhapBaoCostView | null;
     starCost: PhapBaoCostView | null;
     awakenCost: PhapBaoCostView | null;
   };
+}
+
+export interface PhapBaoConsumedMaterial {
+  itemKey: string;
+  qty: number;
 }
 
 export class PhapBaoError extends Error {

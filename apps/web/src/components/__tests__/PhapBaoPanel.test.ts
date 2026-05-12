@@ -7,7 +7,7 @@
  *   - Render owned + locked catalog
  *   - Realm lock hint khi canEquip=false
  *   - Detail modal mở khi click "Chi tiết", refresh-key trigger reload
- *   - Star-up + awaken buttons disabled (foundation)
+ *   - Star-up/refine/awaken confirmation modal + action API calls
  *   - i18n vi/en parity (smoke test bằng cách render en)
  */
 import { describe, expect, it, vi, beforeEach } from 'vitest';
@@ -21,6 +21,8 @@ import enMessages from '@/i18n/en.json';
 import {
   listPhapBao,
   previewPhapBao,
+  refinePhapBao,
+  starUpPhapBao,
   type PhapBaoDefView,
   type PhapBaoPreview,
   type PhapBaoView,
@@ -29,10 +31,15 @@ import {
 vi.mock('@/api/phapBao', () => ({
   listPhapBao: vi.fn(),
   previewPhapBao: vi.fn(),
+  refinePhapBao: vi.fn(),
+  starUpPhapBao: vi.fn(),
+  awakenPhapBao: vi.fn(),
 }));
 
 const mockedList = vi.mocked(listPhapBao);
 const mockedPreview = vi.mocked(previewPhapBao);
+const mockedRefine = vi.mocked(refinePhapBao);
+const mockedStarUp = vi.mocked(starUpPhapBao);
 
 function makeI18n(locale: 'vi' | 'en' = 'vi') {
   return createI18n({
@@ -148,19 +155,27 @@ const samplePreview: PhapBaoPreview = {
     linhThachCost: 1200,
     materialKey: 'ngu_hanh_linh_chau_shard',
     materialQty: 10,
-    shardKey: null,
-    shardQty: null,
+    shardKey: 'phap_bao_shard',
+    shardQty: 5,
     awakenStoneKey: null,
     awakenStoneQty: null,
   },
   awakenCost: null,
-  starUpEnabled: false,
+  starUpEnabled: true,
   awakenEnabled: false,
+};
+
+const sampleAfterStar: PhapBaoView = {
+  ...sampleOwned,
+  starLevel: 1,
+  powerScore: 180,
 };
 
 beforeEach(() => {
   mockedList.mockReset();
   mockedPreview.mockReset();
+  mockedRefine.mockReset();
+  mockedStarUp.mockReset();
 });
 
 describe('PhapBaoPanel', () => {
@@ -264,7 +279,59 @@ describe('PhapBaoPanel', () => {
     w.unmount();
   });
 
-  it('star-up + awaken buttons disabled (foundation)', async () => {
+  it('star-up enabled opens confirm and calls API once', async () => {
+    mockedList.mockResolvedValue({
+      items: [sampleOwned],
+      catalog: [sampleDef],
+    });
+    mockedPreview
+      .mockResolvedValueOnce(samplePreview)
+      .mockResolvedValueOnce({
+        ...samplePreview,
+        starLevel: 1,
+        starCost: { ...samplePreview.starCost!, linhThachCost: 4800 },
+      });
+    mockedStarUp.mockResolvedValue({
+      item: sampleAfterStar,
+      cost: samplePreview.starCost!,
+      consumedMaterials: [
+        { itemKey: 'ngu_hanh_linh_chau_shard', qty: 10 },
+        { itemKey: 'phap_bao_shard', qty: 5 },
+      ],
+      nextPreview: {
+        refineCost: samplePreview.refineCost,
+        starCost: samplePreview.starCost,
+        awakenCost: null,
+      },
+    });
+    const w = mountPanel();
+    await flushPromises();
+    await w
+      .find('[data-testid="phap-bao-detail-ngu_hanh_linh_chau"]')
+      .trigger('click');
+    await flushPromises();
+    const starBtn = document.querySelector(
+      '[data-testid="phap-bao-star-action"]',
+    ) as HTMLButtonElement | null;
+    expect(starBtn?.disabled).toBe(false);
+    starBtn?.click();
+    await flushPromises();
+    expect(
+      document.querySelector('[data-testid="phap-bao-upgrade-confirm"]'),
+    ).toBeTruthy();
+    document
+      .querySelector<HTMLButtonElement>(
+        '[data-testid="phap-bao-upgrade-confirm-submit"]',
+      )
+      ?.click();
+    await flushPromises();
+    expect(mockedStarUp).toHaveBeenCalledTimes(1);
+    expect(mockedStarUp).toHaveBeenCalledWith('inv-1');
+    expect(w.emitted('upgraded')?.[0]).toEqual(['inv-1']);
+    w.unmount();
+  });
+
+  it('awaken button disabled khi preview thiếu awakenCost/điều kiện', async () => {
     mockedList.mockResolvedValue({
       items: [sampleOwned],
       catalog: [sampleDef],
@@ -276,23 +343,29 @@ describe('PhapBaoPanel', () => {
       .find('[data-testid="phap-bao-detail-ngu_hanh_linh_chau"]')
       .trigger('click');
     await flushPromises();
-    const starBtn = document.querySelector(
-      '[data-testid="phap-bao-star-action"]',
-    ) as HTMLButtonElement | null;
     const awakenBtn = document.querySelector(
       '[data-testid="phap-bao-awaken-action"]',
     ) as HTMLButtonElement | null;
-    expect(starBtn?.disabled).toBe(true);
     expect(awakenBtn?.disabled).toBe(true);
     w.unmount();
   });
 
-  it('refine action emit "refine" event với inventoryItemId + close modal', async () => {
+  it('refine action uses confirm modal and emits upgraded', async () => {
     mockedList.mockResolvedValue({
       items: [sampleOwned],
       catalog: [sampleDef],
     });
     mockedPreview.mockResolvedValue(samplePreview);
+    mockedRefine.mockResolvedValue({
+      item: { ...sampleOwned, refineLevel: 3 },
+      cost: samplePreview.refineCost!,
+      consumedMaterials: [{ itemKey: 'kim_thach', qty: 6 }],
+      nextPreview: {
+        refineCost: samplePreview.refineCost,
+        starCost: samplePreview.starCost,
+        awakenCost: null,
+      },
+    });
     const w = mountPanel();
     await flushPromises();
     await w
@@ -304,8 +377,17 @@ describe('PhapBaoPanel', () => {
     ) as HTMLElement | null;
     btn?.click();
     await flushPromises();
-    expect(w.emitted('refine')).toBeTruthy();
-    expect(w.emitted('refine')?.[0]).toEqual(['inv-1']);
+    expect(
+      document.querySelector('[data-testid="phap-bao-upgrade-confirm"]'),
+    ).toBeTruthy();
+    document
+      .querySelector<HTMLButtonElement>(
+        '[data-testid="phap-bao-upgrade-confirm-submit"]',
+      )
+      ?.click();
+    await flushPromises();
+    expect(mockedRefine).toHaveBeenCalledWith('inv-1');
+    expect(w.emitted('upgraded')?.[0]).toEqual(['inv-1']);
     w.unmount();
   });
 
