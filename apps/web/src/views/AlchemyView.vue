@@ -42,6 +42,8 @@ type QualityFilter =
   | 'HUYEN'
   | 'TIEN'
   | 'THAN';
+type PillCategoryFilter = 'all' | string;
+type TierFilter = 'all' | number;
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -51,11 +53,20 @@ const router = useRouter();
 const { t } = useI18n();
 
 const qualityFilter = ref<QualityFilter>('all');
+const categoryFilter = ref<PillCategoryFilter>('all');
+const tierFilter = ref<TierFilter>('all');
 
 const filtered = computed<AlchemyRecipeView[]>(() => {
-  if (qualityFilter.value === 'all') return alchemy.recipes;
-  return alchemy.recipes.filter((r) => r.outputQuality === qualityFilter.value);
+  return alchemy.recipes.filter((r) => {
+    if (qualityFilter.value !== 'all' && r.outputQuality !== qualityFilter.value) return false;
+    if (categoryFilter.value !== 'all' && r.recipeCategory !== categoryFilter.value) return false;
+    if (tierFilter.value !== 'all' && r.recipeTier !== tierFilter.value) return false;
+    return true;
+  });
 });
+
+const categoryOptions = computed(() => Array.from(new Set(alchemy.recipes.map((r) => r.recipeCategory))).sort());
+const tierOptions = computed(() => Array.from(new Set(alchemy.recipes.map((r) => r.recipeTier))).sort((a, b) => a - b));
 
 const counts = computed(() => ({
   total: alchemy.recipes.length,
@@ -85,7 +96,7 @@ function craftButtonLabel(recipe: AlchemyRecipeView): string {
 }
 
 function craftButtonDisabled(recipe: AlchemyRecipeView): boolean {
-  return alchemy.isCrafting(recipe.key);
+  return alchemy.isCrafting(recipe.key) || !recipe.canCraft;
 }
 
 function upgradeButtonDisabled(): boolean {
@@ -139,12 +150,14 @@ async function onCraft(recipe: AlchemyRecipeView): Promise<void> {
         text: t('alchemy.craft.success', {
           name: recipe.name,
           qty: outcome.outputQty,
+          grade: outcome.pillGrade ? t(`alchemy.grade.${outcome.pillGrade}`) : '',
+          exp: outcome.alchemyExpGained,
         }),
       });
     } else {
       toast.push({
         type: 'warning',
-        text: t('alchemy.craft.fail', { name: recipe.name }),
+        text: t('alchemy.craft.fail', { name: recipe.name, exp: outcome?.alchemyExpGained ?? '0' }),
       });
     }
     // Re-fetch state để cập nhật furnaceLevel + recipes (defensive — service
@@ -183,11 +196,16 @@ onMounted(async () => {
             {{ t('alchemy.subtitle') }}
           </p>
         </div>
-        <div
-          class="text-xs text-ink-300"
-          data-testid="alchemy-furnace-level"
-        >
-          {{ t('alchemy.furnaceLevel', { level: alchemy.furnaceLevel }) }}
+        <div class="text-xs text-ink-300 text-right space-y-0.5">
+          <div data-testid="alchemy-furnace-level">
+            {{ t('alchemy.furnaceLevel', { level: alchemy.furnaceLevel }) }}
+          </div>
+          <div data-testid="alchemy-master-level" class="text-amber-200">
+            {{ t('alchemy.alchemyLevel', { level: alchemy.alchemyLevel, name: alchemy.alchemyLevelName }) }}
+          </div>
+          <div data-testid="alchemy-master-exp">
+            {{ t('alchemy.alchemyExp', { exp: alchemy.alchemyExp, next: alchemy.alchemyExpNext }) }}
+          </div>
         </div>
       </header>
 
@@ -253,6 +271,32 @@ onMounted(async () => {
             <option value="THAN">{{ t('alchemy.quality.THAN') }}</option>
           </select>
         </div>
+        <div class="flex items-center gap-2">
+          <label class="text-ink-300">{{ t('alchemy.filter.category') }}</label>
+          <select
+            v-model="categoryFilter"
+            data-testid="alchemy-filter-category"
+            class="bg-ink-900 border border-ink-300/30 rounded px-2 py-1 text-ink-100"
+          >
+            <option value="all">{{ t('alchemy.filter.all') }}</option>
+            <option v-for="category in categoryOptions" :key="category" :value="category">
+              {{ t(`alchemy.category.${category}`) }}
+            </option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-ink-300">{{ t('alchemy.filter.tier') }}</label>
+          <select
+            v-model="tierFilter"
+            data-testid="alchemy-filter-tier"
+            class="bg-ink-900 border border-ink-300/30 rounded px-2 py-1 text-ink-100"
+          >
+            <option value="all">{{ t('alchemy.filter.all') }}</option>
+            <option v-for="tier in tierOptions" :key="tier" :value="tier">
+              {{ t('alchemy.recipeTier', { tier }) }}
+            </option>
+          </select>
+        </div>
         <span class="ml-auto text-ink-300" data-testid="alchemy-result-count">
           {{ t('alchemy.filter.shown', { shown: counts.filtered, total: counts.total }) }}
         </span>
@@ -296,12 +340,22 @@ onMounted(async () => {
               >
                 {{ t('alchemy.furnaceReq', { level: recipe.furnaceLevel }) }}
               </span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded border bg-amber-700/30 text-amber-100 border-amber-500/30">
+                {{ t('alchemy.recipeTier', { tier: recipe.recipeTier }) }}
+              </span>
             </div>
           </header>
 
           <p class="text-xs text-ink-300">{{ recipe.description }}</p>
 
           <div class="text-xs space-y-1">
+            <div>
+              <span class="text-ink-300">{{ t('alchemy.field.category') }}:</span>
+              <span class="text-violet-200 ml-1">{{ t(`alchemy.category.${recipe.recipeCategory}`) }}</span>
+              <span class="text-ink-300 mx-2">|</span>
+              <span class="text-ink-300">{{ t('alchemy.field.requiredAlchemy') }}:</span>
+              <span class="text-amber-200 ml-1">{{ recipe.requiredAlchemyLevel }}</span>
+            </div>
             <div>
               <span class="text-ink-300">{{ t('alchemy.field.output') }}:</span>
               <span class="text-emerald-200 ml-1" :data-testid="`alchemy-output-${recipe.key}`">
@@ -317,6 +371,19 @@ onMounted(async () => {
                 </template>
               </span>
             </div>
+            <div v-if="recipe.sourceHint?.length">
+              <span class="text-ink-300">{{ t('alchemy.field.sourceHint') }}:</span>
+              <span class="text-ink-100 ml-1">{{ recipe.sourceHint.join(', ') }}</span>
+            </div>
+            <div v-if="recipe.missingInputs.length > 0">
+              <span class="text-rose-300">{{ t('alchemy.field.missingInputs') }}:</span>
+              <span class="text-rose-200 ml-1">
+                <template v-for="(input, idx) in recipe.missingInputs" :key="input.itemKey">
+                  <span v-if="idx > 0">, </span>
+                  <span>{{ input.itemKey }} {{ input.ownedQty }}/{{ input.requiredQty }}</span>
+                </template>
+              </span>
+            </div>
             <div class="flex flex-wrap gap-x-3">
               <span>
                 <span class="text-ink-300">{{ t('alchemy.field.cost') }}:</span>
@@ -328,9 +395,21 @@ onMounted(async () => {
               <span>
                 <span class="text-ink-300">{{ t('alchemy.field.successRate') }}:</span>
                 <span class="text-sky-200 ml-1" :data-testid="`alchemy-rate-${recipe.key}`">
-                  {{ Math.round(recipe.successRate * 100) }}%
+                  {{ Math.round(recipe.successRateFinal * 100) }}%
+                  <span class="text-ink-400">({{ Math.round(recipe.successRateBase * 100) }}%)</span>
                 </span>
               </span>
+              <span>
+                <span class="text-ink-300">{{ t('alchemy.field.possibleGrades') }}:</span>
+                <span class="text-emerald-200 ml-1">{{ recipe.possibleGrades.map((g) => t(`alchemy.grade.${g}`)).join(', ') }}</span>
+              </span>
+              <span v-if="recipe.maxOutputGrade">
+                <span class="text-ink-300">{{ t('alchemy.field.maxGrade') }}:</span>
+                <span class="text-amber-200 ml-1">{{ t(`alchemy.grade.${recipe.maxOutputGrade}`) }}</span>
+              </span>
+            </div>
+            <div v-if="!recipe.canCraft && recipe.failureReason" class="text-rose-300">
+              {{ t(`alchemy.craft.errors.${recipe.failureReason}`) }}
             </div>
           </div>
 

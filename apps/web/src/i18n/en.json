@@ -2179,9 +2179,14 @@
     "loading": "Loading recipes…",
     "empty": "No recipes match the filter.",
     "furnaceLevel": "Furnace level {level}",
+    "alchemyLevel": "Alchemist level {level}: {name}",
+    "alchemyExp": "Alchemy EXP {exp}/{next}",
+    "recipeTier": "Tier {tier}",
     "furnaceReq": "Furnace ≥ {level}",
     "filter": {
       "quality": "Quality",
+      "category": "Category",
+      "tier": "Tier",
       "all": "All",
       "shown": "Showing {shown}/{total}"
     },
@@ -2192,9 +2197,36 @@
       "TIEN": "Immortal",
       "THAN": "Divine"
     },
+    "grade": {
+      "HA_PHAM": "Low grade",
+      "TRUNG_PHAM": "Mid grade",
+      "THUONG_PHAM": "High grade",
+      "CUC_PHAM": "Extreme grade",
+      "DAN_VAN": "Dao Mark"
+    },
+    "category": {
+      "HEAL_HP": "HP heal",
+      "HEAL_MP": "MP heal",
+      "HEAL_STAMINA": "Stamina heal",
+      "QI_EXP": "Qi EXP",
+      "BODY_EXP": "Body EXP",
+      "QI_BREAKTHROUGH": "Qi breakthrough",
+      "BODY_BREAKTHROUGH": "Body breakthrough",
+      "COMBAT_BUFF": "Combat buff",
+      "TRIBULATION_SUPPORT": "Tribulation support",
+      "INJURY_CURE": "Injury cure",
+      "MIXED_RECOVERY": "Mixed recovery",
+      "SPECIAL": "Special"
+    },
     "field": {
+      "category": "Category",
+      "requiredAlchemy": "Alchemy req",
       "output": "Output",
       "inputs": "Inputs",
+      "sourceHint": "Sources",
+      "missingInputs": "Missing",
+      "possibleGrades": "Possible grades",
+      "maxGrade": "Max grade",
       "cost": "Cost",
       "linhThach": "Spirit Stones",
       "successRate": "Success rate"
@@ -2204,11 +2236,13 @@
       "crafting": "Crafting…"
     },
     "craft": {
-      "success": "Successfully crafted {name} × {qty}!",
-      "fail": "Failed to craft {name}, ingredients lost.",
+      "success": "Successfully crafted {name} × {qty} ({grade}), +{exp} Alchemy EXP!",
+      "fail": "Failed to craft {name}, ingredients lost, +{exp} Alchemy EXP.",
       "errors": {
         "RECIPE_NOT_FOUND": "Recipe not found.",
         "FURNACE_LEVEL_TOO_LOW": "Furnace level too low.",
+        "ALCHEMY_LEVEL_TOO_LOW": "Alchemy level too low.",
+        "RECIPE_TIER_TOO_HIGH": "Recipe tier too high.",
         "REALM_REQUIREMENT_NOT_MET": "Cultivation realm not high enough.",
         "INSUFFICIENT_INGREDIENTS": "Missing ingredients.",
         "INSUFFICIENT_FUNDS": "Not enough Spirit Stones.",

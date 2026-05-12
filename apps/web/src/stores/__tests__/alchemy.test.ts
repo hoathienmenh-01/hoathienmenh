@@ -21,11 +21,20 @@ const STUB_RECIPE: api.AlchemyRecipeView = {
   outputItem: 'tieu_phuc_dan',
   outputQty: 1,
   outputQuality: 'PHAM',
+  recipeTier: 1,
+  recipeCategory: 'HEAL_HP',
+  requiredAlchemyLevel: 1,
   inputs: [{ itemKey: 'linh_thao_pham', qty: 3 }],
   furnaceLevel: 1,
   realmRequirement: null,
   linhThachCost: 50,
   successRate: 0.8,
+  successRateBase: 0.8,
+  successRateFinal: 0.8,
+  possibleGrades: ['HA_PHAM', 'TRUNG_PHAM'],
+  missingInputs: [],
+  canCraft: true,
+  failureReason: null,
 };
 
 describe('useAlchemyStore — Phase 11.11.D', () => {
@@ -49,6 +58,11 @@ describe('useAlchemyStore — Phase 11.11.D', () => {
   it('fetchState: hydrate furnaceLevel + recipes + nextUpgrade + loaded=true', async () => {
     mockedGet.mockResolvedValueOnce({
       furnaceLevel: 2,
+      alchemyLevel: 1,
+      alchemyLevelName: 'Đan Sư Nhập Môn',
+      alchemyExp: '0',
+      alchemyExpNext: '120',
+      alchemyMastery: 0,
       recipes: [STUB_RECIPE],
       nextUpgrade: {
         toLevel: 3,
@@ -69,6 +83,11 @@ describe('useAlchemyStore — Phase 11.11.D', () => {
   it('fetchState: nextUpgrade=null khi furnace ở MAX_LEVEL', async () => {
     mockedGet.mockResolvedValueOnce({
       furnaceLevel: 9,
+      alchemyLevel: 1,
+      alchemyLevelName: 'Đan Sư Nhập Môn',
+      alchemyExp: '0',
+      alchemyExpNext: '120',
+      alchemyMastery: 0,
       recipes: [STUB_RECIPE],
       nextUpgrade: null,
     });
@@ -82,6 +101,11 @@ describe('useAlchemyStore — Phase 11.11.D', () => {
     const s = useAlchemyStore();
     mockedGet.mockResolvedValueOnce({
       furnaceLevel: 1,
+      alchemyLevel: 1,
+      alchemyLevelName: 'Đan Sư Nhập Môn',
+      alchemyExp: '0',
+      alchemyExpNext: '120',
+      alchemyMastery: 0,
       recipes: [],
       nextUpgrade: {
         toLevel: 2,
@@ -115,6 +139,11 @@ describe('useAlchemyStore — Phase 11.11.D', () => {
     const s = useAlchemyStore();
     mockedGet.mockResolvedValueOnce({
       furnaceLevel: 9,
+      alchemyLevel: 1,
+      alchemyLevelName: 'Đan Sư Nhập Môn',
+      alchemyExp: '0',
+      alchemyExpNext: '120',
+      alchemyMastery: 0,
       recipes: [],
       nextUpgrade: null,
     });
@@ -128,6 +157,11 @@ describe('useAlchemyStore — Phase 11.11.D', () => {
     const s = useAlchemyStore();
     mockedGet.mockResolvedValueOnce({
       furnaceLevel: 1,
+      alchemyLevel: 1,
+      alchemyLevelName: 'Đan Sư Nhập Môn',
+      alchemyExp: '0',
+      alchemyExpNext: '120',
+      alchemyMastery: 0,
       recipes: [],
       nextUpgrade: { toLevel: 2, linhThachCost: 500, realmRequirement: null },
     });
@@ -144,6 +178,11 @@ describe('useAlchemyStore — Phase 11.11.D', () => {
     const s = useAlchemyStore();
     mockedGet.mockResolvedValueOnce({
       furnaceLevel: 1,
+      alchemyLevel: 1,
+      alchemyLevelName: 'Đan Sư Nhập Môn',
+      alchemyExp: '0',
+      alchemyExpNext: '120',
+      alchemyMastery: 0,
       recipes: [],
       nextUpgrade: { toLevel: 2, linhThachCost: 500, realmRequirement: null },
     });
@@ -159,6 +198,11 @@ describe('useAlchemyStore — Phase 11.11.D', () => {
     const s = useAlchemyStore();
     mockedGet.mockResolvedValueOnce({
       furnaceLevel: 1,
+      alchemyLevel: 1,
+      alchemyLevelName: 'Đan Sư Nhập Môn',
+      alchemyExp: '0',
+      alchemyExpNext: '120',
+      alchemyMastery: 0,
       recipes: [],
       nextUpgrade: { toLevel: 2, linhThachCost: 500, realmRequirement: null },
     });
@@ -172,6 +216,11 @@ describe('useAlchemyStore — Phase 11.11.D', () => {
     const s = useAlchemyStore();
     mockedGet.mockResolvedValueOnce({
       furnaceLevel: 1,
+      alchemyLevel: 1,
+      alchemyLevelName: 'Đan Sư Nhập Môn',
+      alchemyExp: '0',
+      alchemyExpNext: '120',
+      alchemyMastery: 0,
       recipes: [],
       nextUpgrade: { toLevel: 2, linhThachCost: 500, realmRequirement: null },
     });
@@ -200,6 +249,11 @@ describe('useAlchemyStore — Phase 11.11.D', () => {
     const s = useAlchemyStore();
     mockedGet.mockResolvedValueOnce({
       furnaceLevel: 8,
+      alchemyLevel: 1,
+      alchemyLevelName: 'Đan Sư Nhập Môn',
+      alchemyExp: '0',
+      alchemyExpNext: '120',
+      alchemyMastery: 0,
       recipes: [],
       nextUpgrade: { toLevel: 9, linhThachCost: 800_000, realmRequirement: 'do_kiep' },
     });
@@ -225,6 +279,11 @@ describe('useAlchemyStore — Phase 11.11.D', () => {
         rollValue: 0.42,
         outputItem: 'tieu_phuc_dan',
         outputQty: 1,
+        pillGrade: 'TRUNG_PHAM',
+        successRate: 0.8,
+        alchemyExpGained: '40',
+        alchemyLevelBefore: 1,
+        alchemyLevelAfter: 1,
         linhThachConsumed: 50,
         inputsConsumed: [{ itemKey: 'linh_thao_pham', qty: 3 }],
       },
@@ -247,6 +306,11 @@ describe('useAlchemyStore — Phase 11.11.D', () => {
         rollValue: 0.95,
         outputItem: null,
         outputQty: 0,
+        pillGrade: null,
+        successRate: 0.8,
+        alchemyExpGained: '8',
+        alchemyLevelBefore: 1,
+        alchemyLevelAfter: 1,
         linhThachConsumed: 50,
         inputsConsumed: [{ itemKey: 'linh_thao_pham', qty: 3 }],
       },
@@ -302,6 +366,11 @@ describe('useAlchemyStore — Phase 11.11.D', () => {
         rollValue: 0.5,
         outputItem: 'tieu_phuc_dan',
         outputQty: 1,
+        pillGrade: 'TRUNG_PHAM',
+        successRate: 0.8,
+        alchemyExpGained: '40',
+        alchemyLevelBefore: 1,
+        alchemyLevelAfter: 1,
         linhThachConsumed: 50,
         inputsConsumed: [{ itemKey: 'linh_thao_pham', qty: 3 }],
       },
@@ -329,6 +398,11 @@ describe('useAlchemyStore — Phase 11.11.D', () => {
         rollValue: 0.5,
         outputItem: 'tieu_phuc_dan',
         outputQty: 1,
+        pillGrade: 'TRUNG_PHAM',
+        successRate: 0.8,
+        alchemyExpGained: '40',
+        alchemyLevelBefore: 1,
+        alchemyLevelAfter: 1,
         linhThachConsumed: 50,
         inputsConsumed: [{ itemKey: 'linh_thao_pham', qty: 3 }],
       },
@@ -340,6 +414,11 @@ describe('useAlchemyStore — Phase 11.11.D', () => {
   it('reset: xoá furnaceLevel back to 1 + recipes empty + loaded=false + lastOutcome null + nextUpgrade null', async () => {
     mockedGet.mockResolvedValueOnce({
       furnaceLevel: 3,
+      alchemyLevel: 1,
+      alchemyLevelName: 'Đan Sư Nhập Môn',
+      alchemyExp: '0',
+      alchemyExpNext: '120',
+      alchemyMastery: 0,
       recipes: [STUB_RECIPE],
       nextUpgrade: { toLevel: 4, linhThachCost: 5_000, realmRequirement: 'truc_co' },
     });
@@ -353,6 +432,11 @@ describe('useAlchemyStore — Phase 11.11.D', () => {
         rollValue: 0.42,
         outputItem: 'tieu_phuc_dan',
         outputQty: 1,
+        pillGrade: 'TRUNG_PHAM',
+        successRate: 0.8,
+        alchemyExpGained: '40',
+        alchemyLevelBefore: 1,
+        alchemyLevelAfter: 1,
         linhThachConsumed: 50,
         inputsConsumed: [{ itemKey: 'linh_thao_pham', qty: 3 }],
       },
