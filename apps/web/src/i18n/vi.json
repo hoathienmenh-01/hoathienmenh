@@ -946,6 +946,65 @@
         "UNKNOWN": "Lỗi không xác định, vui lòng thử lại."
       }
     },
+    "economy": {
+      "title": "Kinh Tế Nâng Cấp",
+      "tierNote": "Tier {tier} · {quality} — chỉ ghép trong cùng Tier; lên Tier mới phải farm đồ mới.",
+      "enhance": {
+        "label": "Cường hóa",
+        "costLabel": "Lên cấp {level}: {linhThach} linh thạch + {materialQty}× {materialName}",
+        "maxed": "Đạt cấp tối đa."
+      },
+      "merge": {
+        "label": "Ghép Phẩm",
+        "costLabel": "3× → 1× {output} ({outputQuality}). Phí: {linhThach} linh thạch + {materialQty}× {materialName}",
+        "maxed": "Phẩm đỉnh — không ghép tiếp.",
+        "insufficientStack": "Cần thêm 2 món cùng loại (chưa khoá/equipped) để ghép.",
+        "button": "Ghép Phẩm",
+        "confirm": "Ghép",
+        "confirmTitle": "Xác nhận ghép phẩm",
+        "confirmBody": "Tiêu hao 3 món hiện tại + phí → 1× {output}. Không hoàn tác được.",
+        "successToast": "Ghép phẩm thành công: {item} ({quality})."
+      },
+      "socket": {
+        "label": "Khảm / Tháo Ngọc",
+        "costLabel": "Khảm: {linhThach} linh thạch + {materialQty}× {materialName}",
+        "unsocketCostLabel": "Tháo: {linhThach} linh thạch + {materialQty}× {materialName}"
+      },
+      "reforge": {
+        "label": "Tẩy Luyện",
+        "costLabel": "{linhThach} linh thạch + {materialQty}× {materialName}"
+      },
+      "protection": {
+        "label": "Khuyến nghị Bảo Hộ Phù",
+        "recommend": "Khuyến nghị dùng {item} cho mốc enhance ≥ {threshold} (Phase 25.1)."
+      },
+      "dismantle": {
+        "label": "Phân Giải",
+        "yieldLabel": "+{linhThach} linh thạch và {materialCount} loại nguyên liệu",
+        "button": "Phân Giải",
+        "confirm": "Phân giải",
+        "confirmTitle": "Xác nhận phân giải",
+        "confirmBody": "Phân giải sẽ phá hủy món này và trả về nguyên liệu + linh thạch. Gem khảm sẽ được tự tháo. Không hoàn tác được.",
+        "successToast": "Phân giải xong: +{linhThach} linh thạch, {materials} loại nguyên liệu."
+      },
+      "error": {
+        "MERGE_ITEM_NOT_FOUND": "Không tìm thấy món (hoặc không phải của bạn).",
+        "MERGE_ITEM_NOT_OWNED": "Món không thuộc nhân vật.",
+        "MERGE_ITEM_EQUIPPED": "Không thể ghép món đang equipped.",
+        "MERGE_INPUT_COUNT_INVALID": "Phải chọn đúng 3 món để ghép.",
+        "MERGE_INPUT_DUPLICATE": "ID món trùng — phải khác nhau.",
+        "MERGE_MIXED_INPUT": "3 món phải cùng loại item.",
+        "MERGE_RECIPE_NOT_FOUND": "Không có công thức ghép cho món này.",
+        "MERGE_ITEM_CONSUME_RACE": "Một món đã thay đổi trạng thái (vd. được equipped). Vui lòng thử lại.",
+        "DISMANTLE_ITEM_NOT_FOUND": "Không tìm thấy món (hoặc không phải của bạn).",
+        "DISMANTLE_ITEM_EQUIPPED": "Không thể phân giải món đang equipped.",
+        "DISMANTLE_RACE": "Món đã thay đổi trạng thái. Vui lòng thử lại.",
+        "PREVIEW_ITEM_NOT_FOUND": "Không tìm thấy món (hoặc không phải của bạn).",
+        "INSUFFICIENT_FUNDS": "Không đủ linh thạch.",
+        "INSUFFICIENT_MATERIAL": "Không đủ nguyên liệu.",
+        "UNKNOWN": "Lỗi không xác định, vui lòng thử lại."
+      }
+    },
     "build": {
       "title": "Tổng kết Build (Set & Cộng hưởng)",
       "phaseBadge": "Phase 23.3",
