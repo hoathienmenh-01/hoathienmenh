@@ -6,15 +6,15 @@ import { CharacterModule } from '../character/character.module';
 import { EconomyModule } from '../economy/economy.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { RealtimeModule } from '../realtime/realtime.module';
-import { CULTIVATION_QUEUE } from '../cultivation/cultivation.queue';
 import { BodyCultivationController } from './body-cultivation.controller';
 import { BodyCultivationProcessor } from './body-cultivation.processor';
 import { BodyCultivationService } from './body-cultivation.service';
 import { BodyCultivationSchedulerService } from './body-cultivation-scheduler.service';
+import { BODY_CULTIVATION_QUEUE } from './body-cultivation.queue';
 
 @Module({
   imports: [
-    BullModule.registerQueue({ name: CULTIVATION_QUEUE }),
+    BullModule.registerQueue({ name: BODY_CULTIVATION_QUEUE }),
     AuthModule,
     RealtimeModule,
     EconomyModule,

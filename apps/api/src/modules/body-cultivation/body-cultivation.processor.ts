@@ -12,9 +12,9 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { RewardCapService } from '../economy/reward-cap.service';
-import { CULTIVATION_QUEUE } from '../cultivation/cultivation.queue';
+import { BODY_CULTIVATION_QUEUE } from './body-cultivation.queue';
 
-@Processor(CULTIVATION_QUEUE)
+@Processor(BODY_CULTIVATION_QUEUE)
 export class BodyCultivationProcessor extends WorkerHost {
   private readonly logger = new Logger(BodyCultivationProcessor.name);
 

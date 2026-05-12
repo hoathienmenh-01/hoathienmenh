@@ -173,6 +173,7 @@ onMounted(async () => {
                 type="button"
                 class="px-4 py-2 rounded-xl bg-amber-500 text-ink-950 font-semibold disabled:opacity-50"
                 :disabled="body.actionLoading"
+                data-testid="body-cultivation-toggle"
                 @click="toggleCultivation"
               >
                 {{
@@ -273,10 +274,18 @@ onMounted(async () => {
         <h3 class="text-lg font-bold">{{ t('bodyCultivation.breakthrough.confirmTitle') }}</h3>
         <p class="text-sm text-ink-300 mt-2">{{ t('bodyCultivation.breakthrough.confirmBody') }}</p>
         <div class="mt-5 flex justify-end gap-3">
-          <button class="px-3 py-2 rounded bg-ink-700" @click="confirmOpen = false">
+          <button
+            class="px-3 py-2 rounded bg-ink-700"
+            data-testid="body-breakthrough-cancel"
+            @click="confirmOpen = false"
+          >
             {{ t('common.cancel') }}
           </button>
-          <button class="px-3 py-2 rounded bg-violet-500 text-white" @click="doBreakthrough">
+          <button
+            class="px-3 py-2 rounded bg-violet-500 text-white"
+            data-testid="body-breakthrough-confirm-submit"
+            @click="doBreakthrough"
+          >
             {{ t('bodyCultivation.breakthrough.confirm') }}
           </button>
         </div>
