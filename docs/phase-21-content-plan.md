@@ -42,6 +42,17 @@
 - `docs/story/PHASE12_STORY_PROGRESS.md` — implementation progress source; code on `main` remains runtime truth.
 - `docs/START_HERE.md`, `docs/AI_WORKFLOW_RULES.md`, `docs/AI_HANDOFF_REPORT.md`, `docs/GAME_DESIGN_BIBLE.md`, `docs/CONTENT_PIPELINE.md`, `docs/BALANCE_MODEL.md`, `docs/ECONOMY_MODEL.md`, `docs/API.md`, `docs/RUNBOOK.md`, `docs/CHANGELOG.md`.
 
+### Direct DOCX audit note
+
+The DOCX archive was opened directly for this PR because the owner explicitly
+required it. Its extracted text matches the markdown story bible on the core
+canon used here: Hoa Thiên Môn is the emotional/progression center, Tịch Thiên
+Điện is the main antagonist, the path runs from Phàm Nhân to Hư Không Chí Tôn,
+and rewards must be ledgered/capped so side content does not replace the core
+tu luyện + dungeon + boss loop. The markdown bible remains the working design
+source for line-by-line implementation because it is the maintained mirror with
+implementation links.
+
 ### World context
 
 Tu Tiên Lộ is a long-form tu tiên path from Phàm Nhân to Hư Không Chí Tôn. The emotional center is Hoa Thiên Môn: an ancient, fallen sect that still protects the inheritance used to “mend heavenly dao”. The player begins as a mortal outer disciple, grows through realm progression, restores sect foundations, reconnects with NPCs, faces moral branches, ascends through larger world tiers, and ultimately confronts threats outside normal heavenly law.
