@@ -36,6 +36,56 @@ export type ItemKind =
   | 'SKILL_BOOK'
   | 'MISC';
 
+export type PillCategory =
+  | 'HEAL_HP'
+  | 'HEAL_MP'
+  | 'HEAL_STAMINA'
+  | 'QI_EXP'
+  | 'BODY_EXP'
+  | 'QI_BREAKTHROUGH'
+  | 'BODY_BREAKTHROUGH'
+  | 'COMBAT_BUFF'
+  | 'TRIBULATION_SUPPORT'
+  | 'INJURY_CURE'
+  | 'MIXED_RECOVERY'
+  | 'SPECIAL';
+
+export type PillGrade =
+  | 'HA_PHAM'
+  | 'TRUNG_PHAM'
+  | 'THUONG_PHAM'
+  | 'CUC_PHAM'
+  | 'DAN_VAN';
+
+export type MaterialCategory =
+  | 'ALCHEMY_QI'
+  | 'ALCHEMY_BODY'
+  | 'QI_BREAKTHROUGH'
+  | 'BODY_BREAKTHROUGH'
+  | 'TRIBULATION'
+  | 'COMBAT_BUFF'
+  | 'EQUIPMENT_CRAFT'
+  | 'ARTIFACT_CRAFT'
+  | 'FURNACE_UPGRADE'
+  | 'GENERAL';
+
+export type SourceHint =
+  | 'NORMAL_MONSTER'
+  | 'ELITE'
+  | 'BOSS'
+  | 'WORLD_BOSS'
+  | 'DUNGEON'
+  | 'BODY_DUNGEON'
+  | 'QUEST'
+  | 'MAIN_QUEST'
+  | 'DAILY_QUEST'
+  | 'EVENT'
+  | 'SECT_SHOP'
+  | 'NPC_SHOP'
+  | 'MARKET'
+  | 'AUCTION'
+  | 'ADMIN_ONLY';
+
 export interface ItemBonus {
   atk?: number;
   def?: number;
@@ -110,7 +160,9 @@ export interface ItemBonus {
 export interface ItemEffect {
   hp?: number;
   mp?: number;
+  stamina?: number;
   exp?: number;
+  bodyExp?: number;
   /**
    * Phase 11.10.E — pill/elixir consume → apply BuffDef key cùng tx với
    * decrement inventory (`InventoryService.use()` wire `BuffService.applyBuffTx`).
@@ -120,6 +172,15 @@ export interface ItemEffect {
    * Cross-ref guard: `buffForItem(itemKey)` lookup khỏi catalog drift / typo.
    */
   buffKey?: string;
+  qiBreakthroughBonus?: number;
+  bodyBreakthroughBonus?: number;
+  tribulationSupport?: number;
+  bodyInjuryReductionMinutes?: number;
+  taoMaReductionMinutes?: number;
+  cultivationRateBonusPct?: number;
+  bodyCultivationRateBonusPct?: number;
+  bossDamageReductionPct?: number;
+  elementalResistBonus?: Partial<Record<ElementKey, number>>;
 }
 
 /**
@@ -158,13 +219,24 @@ export interface ItemDef {
   maxSocketCount?: number;
   bonuses?: ItemBonus;
   effect?: ItemEffect;
+  pillCategory?: PillCategory;
+  pillGrade?: PillGrade;
+  materialTier?: number;
+  materialCategory?: MaterialCategory;
+  materialElement?: ElementKey | null;
+  sourceHint?: SourceHint[];
+  targetRealmOrder?: number;
+  recipeTier?: number;
+  bindOnCraft?: boolean;
+  bindOnPickup?: boolean;
+  marketTradeable?: boolean;
   /** Phase 11.2.D — chỉ set khi `kind === 'SKILL_BOOK'`. */
   skillBook?: SkillBookMeta;
   /** Giá tham khảo (linh thạch). */
   price: number;
 }
 
-export const ITEMS: readonly ItemDef[] = [
+const BASE_ITEMS: readonly ItemDef[] = [
   // ----- Vũ khí -----
   {
     key: 'so_kiem',
@@ -285,7 +357,10 @@ export const ITEMS: readonly ItemDef[] = [
     kind: 'PILL_EXP',
     quality: 'PHAM',
     stackable: true,
-    effect: { exp: 120 },
+    effect: { bodyExp: 120 },
+    pillCategory: 'BODY_EXP',
+    recipeTier: 1,
+    targetRealmOrder: 1,
     price: 90,
   },
   {
@@ -295,7 +370,10 @@ export const ITEMS: readonly ItemDef[] = [
     kind: 'PILL_EXP',
     quality: 'LINH',
     stackable: true,
-    effect: { exp: 360 },
+    effect: { bodyExp: 360 },
+    pillCategory: 'BODY_EXP',
+    recipeTier: 2,
+    targetRealmOrder: 2,
     price: 240,
   },
   {
@@ -305,7 +383,10 @@ export const ITEMS: readonly ItemDef[] = [
     kind: 'PILL_EXP',
     quality: 'HUYEN',
     stackable: true,
-    effect: { exp: 800 },
+    effect: { bodyBreakthroughBonus: 0.05, bodyExp: 800 },
+    pillCategory: 'BODY_BREAKTHROUGH',
+    recipeTier: 3,
+    targetRealmOrder: 3,
     price: 700,
   },
   {
@@ -315,7 +396,10 @@ export const ITEMS: readonly ItemDef[] = [
     kind: 'PILL_EXP',
     quality: 'TIEN',
     stackable: true,
-    effect: { exp: 1600 },
+    effect: { bodyBreakthroughBonus: 0.07, bodyExp: 1600 },
+    pillCategory: 'BODY_BREAKTHROUGH',
+    recipeTier: 4,
+    targetRealmOrder: 4,
     price: 1800,
   },
   {
@@ -325,7 +409,10 @@ export const ITEMS: readonly ItemDef[] = [
     kind: 'PILL_EXP',
     quality: 'THAN',
     stackable: true,
-    effect: { exp: 3200 },
+    effect: { bodyBreakthroughBonus: 0.08 },
+    pillCategory: 'BODY_BREAKTHROUGH',
+    recipeTier: 5,
+    targetRealmOrder: 6,
     price: 4200,
   },
   {
@@ -1694,8 +1781,246 @@ export const ITEMS: readonly ItemDef[] = [
   },
 ];
 
+const ALCHEMY_TIER_QUALITY: Record<number, Quality> = {
+  1: 'PHAM',
+  2: 'LINH',
+  3: 'HUYEN',
+  4: 'TIEN',
+  5: 'THAN',
+  6: 'THAN',
+  7: 'THAN',
+  8: 'THAN',
+  9: 'THAN',
+};
+
+const ALCHEMY_PILL_SPECS: Array<{
+  key: string;
+  name: string;
+  tier: number;
+  category: PillCategory;
+  effect: ItemEffect;
+  targetRealmOrder?: number;
+  price: number;
+  marketTradeable?: boolean;
+}> = [
+  { key: 'tieu_phuc_dan_t1', name: 'Tiểu Phục Đan', tier: 1, category: 'HEAL_HP', effect: { hp: 35 }, targetRealmOrder: 1, price: 25 },
+  { key: 'linh_tinh_dan_t1', name: 'Linh Tinh Đan', tier: 1, category: 'HEAL_MP', effect: { mp: 30 }, targetRealmOrder: 1, price: 25 },
+  { key: 'so_huyen_dan_t1', name: 'Sơ Huyền Đan', tier: 1, category: 'QI_EXP', effect: { exp: 180 }, targetRealmOrder: 1, price: 70 },
+  { key: 'khi_huyet_dan_t1', name: 'Khí Huyết Đan', tier: 1, category: 'BODY_EXP', effect: { bodyExp: 90 }, targetRealmOrder: 1, price: 90 },
+  { key: 'cuong_gan_dan_t1', name: 'Cường Gân Đan', tier: 1, category: 'HEAL_STAMINA', effect: { stamina: 18, bodyExp: 50 }, targetRealmOrder: 1, price: 80 },
+  { key: 'duong_than_tan_t1', name: 'Dưỡng Thân Tán', tier: 1, category: 'INJURY_CURE', effect: { bodyInjuryReductionMinutes: 10 }, targetRealmOrder: 1, price: 90 },
+  { key: 'tu_khi_dan_t1', name: 'Tụ Khí Đan', tier: 1, category: 'QI_EXP', effect: { exp: 120, cultivationRateBonusPct: 3 }, targetRealmOrder: 1, price: 85 },
+  { key: 'thanh_lam_dan_t2', name: 'Thanh Lam Đan', tier: 2, category: 'HEAL_HP', effect: { hp: 200 }, targetRealmOrder: 2, price: 160 },
+  { key: 'hoi_nguyen_dan_t2', name: 'Hồi Nguyên Đan', tier: 2, category: 'HEAL_MP', effect: { mp: 220 }, targetRealmOrder: 2, price: 180 },
+  { key: 'co_thien_dan_t2', name: 'Cổ Thiên Đan', tier: 2, category: 'QI_EXP', effect: { exp: 450 }, targetRealmOrder: 2, price: 250 },
+  { key: 'cuong_cot_dan_t2', name: 'Cường Cốt Đan', tier: 2, category: 'BODY_EXP', effect: { bodyExp: 280 }, targetRealmOrder: 2, price: 240 },
+  { key: 'truc_co_ho_mach_dan_t2', name: 'Trúc Cơ Hộ Mạch Đan', tier: 2, category: 'QI_BREAKTHROUGH', effect: { qiBreakthroughBonus: 0.04 }, targetRealmOrder: 2, price: 420, marketTradeable: false },
+  { key: 'doan_cot_pha_quan_dan_t2', name: 'Đoán Cốt Phá Quan Đan', tier: 2, category: 'BODY_BREAKTHROUGH', effect: { bodyBreakthroughBonus: 0.04 }, targetRealmOrder: 2, price: 520, marketTradeable: false },
+  { key: 'huyet_luc_dan_t2', name: 'Huyết Lực Đan', tier: 2, category: 'COMBAT_BUFF', effect: { buffKey: 'buff_pill_huyet_luc' }, targetRealmOrder: 2, price: 350 },
+  { key: 'cuu_huyen_dan_t3', name: 'Cửu Huyền Đan', tier: 3, category: 'HEAL_HP', effect: { hp: 600 }, targetRealmOrder: 3, price: 700 },
+  { key: 'ngoc_lien_dan_t3', name: 'Ngọc Liên Đan', tier: 3, category: 'HEAL_MP', effect: { mp: 800 }, targetRealmOrder: 3, price: 760 },
+  { key: 'van_linh_dan_t3', name: 'Vạn Linh Đan', tier: 3, category: 'QI_EXP', effect: { exp: 1400 }, targetRealmOrder: 3, price: 1200 },
+  { key: 'tay_tuy_dan_t3', name: 'Tẩy Tủy Đan', tier: 3, category: 'BODY_BREAKTHROUGH', effect: { bodyBreakthroughBonus: 0.06 }, targetRealmOrder: 3, price: 900, marketTradeable: false },
+  { key: 'kim_tuy_dan_t3', name: 'Kim Tủy Đan', tier: 3, category: 'BODY_EXP', effect: { bodyExp: 800 }, targetRealmOrder: 3, price: 900 },
+  { key: 'kim_dan_ho_tam_dan_t3', name: 'Kim Đan Hộ Tâm Đan', tier: 3, category: 'QI_BREAKTHROUGH', effect: { qiBreakthroughBonus: 0.06 }, targetRealmOrder: 3, price: 1500, marketTradeable: false },
+  { key: 'thanh_tam_dan_t3', name: 'Thanh Tâm Đan', tier: 3, category: 'INJURY_CURE', effect: { taoMaReductionMinutes: 20, bodyInjuryReductionMinutes: 15 }, targetRealmOrder: 3, price: 1000 },
+  { key: 'anh_nguyen_dan_t4', name: 'Anh Nguyên Đan', tier: 4, category: 'QI_EXP', effect: { exp: 3000 }, targetRealmOrder: 4, price: 3200 },
+  { key: 'huyen_menh_dan_t4', name: 'Huyền Mệnh Đan', tier: 4, category: 'MIXED_RECOVERY', effect: { hp: 900, mp: 650, stamina: 35 }, targetRealmOrder: 4, price: 2800 },
+  { key: 'kim_than_dan_t4', name: 'Kim Thân Đan', tier: 4, category: 'BODY_BREAKTHROUGH', effect: { bodyBreakthroughBonus: 0.07 }, targetRealmOrder: 4, price: 1800, marketTradeable: false },
+  { key: 'ngoc_cot_dan_t4', name: 'Ngọc Cốt Đan', tier: 4, category: 'BODY_EXP', effect: { bodyExp: 1600 }, targetRealmOrder: 4, price: 2300 },
+  { key: 'nguyen_anh_ho_than_dan_t4', name: 'Nguyên Anh Hộ Thần Đan', tier: 4, category: 'QI_BREAKTHROUGH', effect: { qiBreakthroughBonus: 0.07 }, targetRealmOrder: 4, price: 3800, marketTradeable: false },
+  { key: 'kim_cuong_ho_the_dan_t4', name: 'Kim Cương Hộ Thể Đan', tier: 4, category: 'INJURY_CURE', effect: { bodyBreakthroughBonus: 0.05, bodyInjuryReductionMinutes: 30 }, targetRealmOrder: 4, price: 3400, marketTradeable: false },
+  { key: 'than_niem_dan_t4', name: 'Thần Niệm Đan', tier: 4, category: 'COMBAT_BUFF', effect: { buffKey: 'buff_pill_than_niem' }, targetRealmOrder: 4, price: 3200 },
+  { key: 'hu_linh_dan_t5', name: 'Hư Linh Đan', tier: 5, category: 'QI_EXP', effect: { exp: 6500 }, targetRealmOrder: 6, price: 9000 },
+  { key: 'can_khon_dan_t5', name: 'Càn Khôn Đan', tier: 5, category: 'COMBAT_BUFF', effect: { buffKey: 'buff_pill_can_khon' }, targetRealmOrder: 6, price: 10500 },
+  { key: 'bat_hoai_dan_t5', name: 'Bất Hoại Đan', tier: 5, category: 'BODY_BREAKTHROUGH', effect: { bodyBreakthroughBonus: 0.08 }, targetRealmOrder: 6, price: 12000, marketTradeable: false },
+  { key: 'long_huyet_dan_t5', name: 'Long Huyết Đan', tier: 5, category: 'BODY_EXP', effect: { bodyExp: 3600 }, targetRealmOrder: 6, price: 10000 },
+  { key: 'dai_thua_ho_dao_dan_t5', name: 'Đại Thừa Hộ Đạo Đan', tier: 5, category: 'QI_BREAKTHROUGH', effect: { qiBreakthroughBonus: 0.08 }, targetRealmOrder: 8, price: 14000, marketTradeable: false },
+  { key: 'bat_hoai_ho_mach_dan_t5', name: 'Bất Hoại Hộ Mạch Đan', tier: 5, category: 'INJURY_CURE', effect: { bodyBreakthroughBonus: 0.05, bodyInjuryReductionMinutes: 45 }, targetRealmOrder: 6, price: 13000, marketTradeable: false },
+  { key: 'tinh_hon_dan_t5', name: 'Tĩnh Hồn Đan', tier: 5, category: 'INJURY_CURE', effect: { taoMaReductionMinutes: 45 }, targetRealmOrder: 7, price: 9500 },
+  { key: 'nhan_tien_dan_t6', name: 'Nhân Tiên Đan', tier: 6, category: 'QI_EXP', effect: { exp: 12000 }, targetRealmOrder: 10, price: 22000 },
+  { key: 'kiep_loi_ho_menh_dan_t6', name: 'Kiếp Lôi Hộ Mệnh Đan', tier: 6, category: 'TRIBULATION_SUPPORT', effect: { tribulationSupport: 0.06 }, targetRealmOrder: 9, price: 28000, marketTradeable: false },
+  { key: 'tien_phach_dan_t6', name: 'Tiên Phách Đan', tier: 6, category: 'HEAL_HP', effect: { hp: 2500 }, targetRealmOrder: 10, price: 16000 },
+  { key: 'tien_van_dan_t6', name: 'Tiên Vân Đan', tier: 6, category: 'HEAL_MP', effect: { mp: 2500 }, targetRealmOrder: 10, price: 16000 },
+  { key: 'long_tuong_dan_t6', name: 'Long Tượng Đan', tier: 6, category: 'BODY_EXP', effect: { bodyExp: 7600 }, targetRealmOrder: 10, price: 24000 },
+  { key: 'tien_cot_dan_t6', name: 'Tiên Cốt Đan', tier: 6, category: 'BODY_BREAKTHROUGH', effect: { bodyBreakthroughBonus: 0.09 }, targetRealmOrder: 10, price: 30000, marketTradeable: false },
+  { key: 'niet_ban_dan_t6', name: 'Niết Bàn Đan', tier: 6, category: 'SPECIAL', effect: { bodyInjuryReductionMinutes: 60, taoMaReductionMinutes: 60 }, targetRealmOrder: 10, price: 34000, marketTradeable: false },
+  { key: 'huyen_tien_dao_dan_t7', name: 'Huyền Tiên Đạo Đan', tier: 7, category: 'QI_EXP', effect: { exp: 26000 }, targetRealmOrder: 13, price: 52000 },
+  { key: 'kim_tien_ngoc_dich_t7', name: 'Kim Tiên Ngọc Dịch', tier: 7, category: 'MIXED_RECOVERY', effect: { hp: 4200, mp: 4200, stamina: 70 }, targetRealmOrder: 14, price: 48000 },
+  { key: 'thai_at_tu_linh_dan_t7', name: 'Thái Ất Tụ Linh Đan', tier: 7, category: 'QI_EXP', effect: { exp: 22000, cultivationRateBonusPct: 5 }, targetRealmOrder: 15, price: 56000 },
+  { key: 'dai_la_kim_than_dan_t7', name: 'Đại La Kim Thân Đan', tier: 7, category: 'BODY_EXP', effect: { bodyExp: 15000 }, targetRealmOrder: 16, price: 58000 },
+  { key: 'hon_nguyen_the_dan_t7', name: 'Hỗn Nguyên Thể Đan', tier: 7, category: 'BODY_BREAKTHROUGH', effect: { bodyBreakthroughBonus: 0.1 }, targetRealmOrder: 16, price: 70000, marketTradeable: false },
+  { key: 'kim_tien_ho_dao_dan_t7', name: 'Kim Tiên Hộ Đạo Đan', tier: 7, category: 'QI_BREAKTHROUGH', effect: { qiBreakthroughBonus: 0.1 }, targetRealmOrder: 14, price: 76000, marketTradeable: false },
+  { key: 'ngu_hanh_quy_nguyen_dan_t7', name: 'Ngũ Hành Quy Nguyên Đan', tier: 7, category: 'COMBAT_BUFF', effect: { elementalResistBonus: { kim: 0.03, moc: 0.03, thuy: 0.03, hoa: 0.03, tho: 0.03 } }, targetRealmOrder: 15, price: 72000 },
+  { key: 'chuan_thanh_dao_dan_t8', name: 'Chuẩn Thánh Đạo Đan', tier: 8, category: 'QI_EXP', effect: { exp: 54000 }, targetRealmOrder: 17, price: 130000 },
+  { key: 'thanh_nhan_huyet_dan_t8', name: 'Thánh Nhân Huyết Đan', tier: 8, category: 'BODY_EXP', effect: { bodyExp: 32000 }, targetRealmOrder: 18, price: 150000 },
+  { key: 'dao_quan_tu_nguyen_dan_t8', name: 'Đạo Quân Tụ Nguyên Đan', tier: 8, category: 'QI_EXP', effect: { exp: 46000, cultivationRateBonusPct: 6 }, targetRealmOrder: 20, price: 160000 },
+  { key: 'hon_nguyen_bat_diet_dan_t8', name: 'Hỗn Nguyên Bất Diệt Đan', tier: 8, category: 'BODY_BREAKTHROUGH', effect: { bodyBreakthroughBonus: 0.11 }, targetRealmOrder: 19, price: 190000, marketTradeable: false },
+  { key: 'thien_dao_ho_than_dan_t8', name: 'Thiên Đạo Hộ Thân Đan', tier: 8, category: 'TRIBULATION_SUPPORT', effect: { tribulationSupport: 0.08 }, targetRealmOrder: 21, price: 180000, marketTradeable: false },
+  { key: 'van_phap_thanh_tam_dan_t8', name: 'Vạn Pháp Thanh Tâm Đan', tier: 8, category: 'INJURY_CURE', effect: { taoMaReductionMinutes: 90, bodyInjuryReductionMinutes: 90 }, targetRealmOrder: 18, price: 170000 },
+  { key: 'dao_van_dan_t8', name: 'Đạo Văn Đan', tier: 8, category: 'SPECIAL', effect: { buffKey: 'buff_pill_dao_van' }, targetRealmOrder: 20, price: 220000, marketTradeable: false },
+  { key: 'thien_dao_dan_t9', name: 'Thiên Đạo Đan', tier: 9, category: 'QI_EXP', effect: { exp: 120000 }, targetRealmOrder: 21, price: 360000, marketTradeable: false },
+  { key: 'ban_nguyen_dan_t9', name: 'Bản Nguyên Đan', tier: 9, category: 'QI_BREAKTHROUGH', effect: { qiBreakthroughBonus: 0.12 }, targetRealmOrder: 22, price: 420000, marketTradeable: false },
+  { key: 'vo_thuy_dao_dan_t9', name: 'Vô Thủy Đạo Đan', tier: 9, category: 'QI_EXP', effect: { exp: 100000, cultivationRateBonusPct: 7 }, targetRealmOrder: 24, price: 460000, marketTradeable: false },
+  { key: 'vo_chung_bat_diet_dan_t9', name: 'Vô Chung Bất Diệt Đan', tier: 9, category: 'BODY_EXP', effect: { bodyExp: 76000 }, targetRealmOrder: 25, price: 480000, marketTradeable: false },
+  { key: 'vinh_hang_chan_than_dan_t9', name: 'Vĩnh Hằng Chân Thân Đan', tier: 9, category: 'BODY_BREAKTHROUGH', effect: { bodyBreakthroughBonus: 0.12 }, targetRealmOrder: 26, price: 560000, marketTradeable: false },
+  { key: 'hu_khong_chi_ton_dan_t9', name: 'Hư Không Chí Tôn Đan', tier: 9, category: 'SPECIAL', effect: { qiBreakthroughBonus: 0.08, tribulationSupport: 0.08 }, targetRealmOrder: 27, price: 620000, marketTradeable: false },
+  { key: 'dai_dao_niet_ban_dan_t9', name: 'Đại Đạo Niết Bàn Đan', tier: 9, category: 'SPECIAL', effect: { bodyInjuryReductionMinutes: 120, taoMaReductionMinutes: 120 }, targetRealmOrder: 27, price: 680000, marketTradeable: false },
+];
+
+const ALCHEMY_MATERIAL_SPECS: Array<{
+  key: string;
+  name: string;
+  tier: number;
+  category: MaterialCategory;
+  sourceHint: SourceHint[];
+  element?: ElementKey | null;
+  price: number;
+}> = [
+  ['linh_thao_t1', 'Linh Thảo', 1, 'ALCHEMY_QI', ['NORMAL_MONSTER', 'DUNGEON'], null, 18],
+  ['tinh_thuy_lo_t1', 'Tinh Thủy Lộ', 1, 'ALCHEMY_QI', ['NORMAL_MONSTER', 'DUNGEON'], 'thuy', 22],
+  ['khi_huyet_thao_t1', 'Khí Huyết Thảo', 1, 'ALCHEMY_BODY', ['NORMAL_MONSTER', 'BODY_DUNGEON'], null, 32],
+  ['huyet_tinh_nho_t1', 'Huyết Tinh Nhỏ', 1, 'ALCHEMY_BODY', ['ELITE', 'BODY_DUNGEON'], null, 45],
+  ['thu_gan_vun_t1', 'Thú Gân Vụn', 1, 'ALCHEMY_BODY', ['NORMAL_MONSTER', 'ELITE'], null, 35],
+  ['bot_dan_sa_t1', 'Bột Đan Sa', 1, 'GENERAL', ['NPC_SHOP', 'DUNGEON'], 'hoa', 28],
+  ['truc_tam_thao_t2', 'Trúc Tâm Thảo', 2, 'ALCHEMY_QI', ['ELITE', 'DUNGEON'], 'moc', 90],
+  ['han_lo_hoa_t2', 'Hàn Lộ Hoa', 2, 'ALCHEMY_QI', ['DUNGEON', 'BOSS'], 'thuy', 110],
+  ['yeu_dan_non_t2', 'Yêu Đan Non', 2, 'QI_BREAKTHROUGH', ['ELITE', 'BOSS'], null, 180],
+  ['doan_cot_thach_t2', 'Đoán Cốt Thạch', 2, 'BODY_BREAKTHROUGH', ['BODY_DUNGEON', 'BOSS'], 'tho', 220],
+  ['yeu_thu_huyet_tinh_t2', 'Yêu Thú Huyết Tinh', 2, 'ALCHEMY_BODY', ['ELITE', 'BODY_DUNGEON'], null, 170],
+  ['huyet_tuy_t2', 'Huyết Tủy', 2, 'ALCHEMY_BODY', ['BOSS', 'BODY_DUNGEON'], null, 240],
+  ['moc_linh_qua_t2', 'Mộc Linh Quả', 2, 'ALCHEMY_QI', ['DUNGEON', 'QUEST'], 'moc', 150],
+  ['kim_lien_tu_t3', 'Kim Liên Tử', 3, 'ALCHEMY_QI', ['DUNGEON', 'BOSS'], 'kim', 420],
+  ['yeu_dan_t3', 'Yêu Đan', 3, 'QI_BREAKTHROUGH', ['BOSS', 'DUNGEON'], null, 520],
+  ['ngoc_lien_tu_t3', 'Ngọc Liên Tử', 3, 'ALCHEMY_QI', ['DUNGEON'], 'thuy', 430],
+  ['tinh_thiet_t3', 'Tinh Thiết', 3, 'EQUIPMENT_CRAFT', ['ELITE', 'DUNGEON'], 'kim', 360],
+  ['tay_tuy_dich_t3', 'Tẩy Tủy Dịch', 3, 'BODY_BREAKTHROUGH', ['BODY_DUNGEON', 'BOSS'], null, 650],
+  ['kim_tuy_dich_t3', 'Kim Tủy Dịch', 3, 'ALCHEMY_BODY', ['BODY_DUNGEON', 'BOSS'], 'kim', 700],
+  ['hon_tinh_nho_t3', 'Hồn Tinh Nhỏ', 3, 'TRIBULATION', ['BOSS', 'DUNGEON'], null, 720],
+  ['thanh_tam_thao_t3', 'Thanh Tâm Thảo', 3, 'TRIBULATION', ['DUNGEON', 'QUEST'], 'moc', 500],
+  ['anh_nguyen_hoa_t4', 'Anh Nguyên Hoa', 4, 'ALCHEMY_QI', ['BOSS', 'DUNGEON'], 'hoa', 1200],
+  ['hon_tinh_t4', 'Hồn Tinh', 4, 'TRIBULATION', ['BOSS', 'DUNGEON'], null, 1500],
+  ['huyen_bang_ngoc_t4', 'Huyền Băng Ngọc', 4, 'ALCHEMY_QI', ['DUNGEON', 'BOSS'], 'thuy', 1350],
+  ['huyet_tuy_t4', 'Huyết Tủy', 4, 'ALCHEMY_BODY', ['BODY_DUNGEON', 'BOSS'], null, 1600],
+  ['kim_than_tinh_t4', 'Kim Thân Tinh', 4, 'BODY_BREAKTHROUGH', ['BODY_DUNGEON', 'BOSS'], 'kim', 1800],
+  ['ngoc_cot_phan_t4', 'Ngọc Cốt Phấn', 4, 'ALCHEMY_BODY', ['BODY_DUNGEON'], 'tho', 1500],
+  ['linh_chi_t4', 'Linh Chi', 4, 'ALCHEMY_QI', ['DUNGEON', 'QUEST'], 'moc', 1100],
+  ['hu_khong_sa_t5', 'Hư Không Sa', 5, 'ALCHEMY_QI', ['BOSS', 'DUNGEON'], null, 3000],
+  ['linh_hon_sa_t5', 'Linh Hồn Sa', 5, 'TRIBULATION', ['BOSS'], null, 3600],
+  ['can_khon_tuy_t5', 'Càn Khôn Tủy', 5, 'COMBAT_BUFF', ['BOSS', 'DUNGEON'], null, 3900],
+  ['ngu_hanh_tinh_phan_t5', 'Ngũ Hành Tinh Phấn', 5, 'ARTIFACT_CRAFT', ['BOSS'], null, 5200],
+  ['bat_hoai_hon_thach_t5', 'Bất Hoại Hồn Thạch', 5, 'BODY_BREAKTHROUGH', ['BODY_DUNGEON', 'BOSS'], null, 5200],
+  ['kim_than_tinh_t5', 'Kim Thân Tinh', 5, 'ALCHEMY_BODY', ['BODY_DUNGEON'], 'kim', 4200],
+  ['long_huyet_tinh_t5', 'Long Huyết Tinh', 5, 'ALCHEMY_BODY', ['BOSS', 'WORLD_BOSS'], null, 6200],
+  ['yeu_dan_cao_cap_t5', 'Yêu Đan Cao Cấp', 5, 'QI_BREAKTHROUGH', ['BOSS'], null, 5600],
+  ['bo_de_diep_t5', 'Bồ Đề Diệp', 5, 'ALCHEMY_QI', ['QUEST', 'DUNGEON'], 'moc', 4400],
+  ['dao_van_thach_t5', 'Đạo Văn Thạch', 5, 'ARTIFACT_CRAFT', ['BOSS', 'WORLD_BOSS'], null, 9000],
+  ['tien_linh_tuy_t6', 'Tiên Linh Tủy', 6, 'ALCHEMY_QI', ['BOSS', 'DUNGEON'], null, 9000],
+  ['han_ngoc_t6', 'Hàn Ngọc', 6, 'ALCHEMY_QI', ['DUNGEON', 'BOSS'], 'thuy', 8000],
+  ['kiep_loi_tinh_t6', 'Kiếp Lôi Tinh', 6, 'TRIBULATION', ['BOSS', 'WORLD_BOSS'], null, 13000],
+  ['thien_dao_tan_phien_t6', 'Thiên Đạo Tàn Phiến', 6, 'ARTIFACT_CRAFT', ['WORLD_BOSS'], null, 18000],
+  ['tien_phach_hoa_t6', 'Tiên Phách Hoa', 6, 'ALCHEMY_QI', ['DUNGEON', 'BOSS'], 'hoa', 9000],
+  ['tien_van_lo_t6', 'Tiên Vân Lộ', 6, 'ALCHEMY_QI', ['DUNGEON'], 'thuy', 8800],
+  ['tien_kim_sa_t6', 'Tiên Kim Sa', 6, 'EQUIPMENT_CRAFT', ['DUNGEON', 'BOSS'], 'kim', 9400],
+  ['long_cot_t6', 'Long Cốt', 6, 'ALCHEMY_BODY', ['BOSS', 'BODY_DUNGEON'], null, 12500],
+  ['tien_cot_phan_t6', 'Tiên Cốt Phấn', 6, 'BODY_BREAKTHROUGH', ['BODY_DUNGEON', 'BOSS'], null, 14000],
+  ['niet_ban_huyet_t6', 'Niết Bàn Huyết', 6, 'TRIBULATION', ['WORLD_BOSS', 'EVENT'], null, 20000],
+  ['huyen_tien_dao_hoa_t7', 'Huyền Tiên Đạo Hoa', 7, 'ALCHEMY_QI', ['BOSS', 'DUNGEON'], null, 26000],
+  ['kim_tien_ngoc_dich_t7_material', 'Kim Tiên Ngọc Dịch', 7, 'ALCHEMY_QI', ['DUNGEON', 'BOSS'], 'thuy', 28000],
+  ['thai_at_linh_tuy_t7', 'Thái Ất Linh Tủy', 7, 'QI_BREAKTHROUGH', ['BOSS'], null, 34000],
+  ['dai_la_kim_tuy_t7', 'Đại La Kim Tủy', 7, 'ALCHEMY_BODY', ['BODY_DUNGEON', 'BOSS'], 'kim', 36000],
+  ['long_tuong_huyet_t7', 'Long Tượng Huyết', 7, 'ALCHEMY_BODY', ['BOSS', 'WORLD_BOSS'], null, 42000],
+  ['hon_nguyen_linh_chau_t7', 'Hỗn Nguyên Linh Châu', 7, 'BODY_BREAKTHROUGH', ['WORLD_BOSS', 'BOSS'], null, 52000],
+  ['kim_tien_dao_van_t7', 'Kim Tiên Đạo Văn', 7, 'QI_BREAKTHROUGH', ['BOSS'], 'kim', 46000],
+  ['ngu_hanh_tinh_phan_t7', 'Ngũ Hành Tinh Phấn', 7, 'ARTIFACT_CRAFT', ['WORLD_BOSS'], null, 70000],
+  ['chuan_thanh_dao_qua_t8', 'Chuẩn Thánh Đạo Quả', 8, 'ALCHEMY_QI', ['WORLD_BOSS', 'DUNGEON'], null, 90000],
+  ['thanh_huyet_tinh_t8', 'Thánh Huyết Tinh', 8, 'ALCHEMY_BODY', ['WORLD_BOSS', 'BODY_DUNGEON'], null, 105000],
+  ['dao_quan_nguyen_tuy_t8', 'Đạo Quân Nguyên Tủy', 8, 'QI_BREAKTHROUGH', ['WORLD_BOSS'], null, 120000],
+  ['hon_nguyen_linh_chau_t8', 'Hỗn Nguyên Linh Châu', 8, 'BODY_BREAKTHROUGH', ['WORLD_BOSS'], null, 140000],
+  ['thien_dao_tan_phien_t8', 'Thiên Đạo Tàn Phiến', 8, 'ARTIFACT_CRAFT', ['WORLD_BOSS'], null, 180000],
+  ['van_phap_thanh_lien_t8', 'Vạn Pháp Thanh Liên', 8, 'TRIBULATION', ['DUNGEON', 'EVENT'], 'moc', 110000],
+  ['dao_van_thach_t8', 'Đạo Văn Thạch', 8, 'ARTIFACT_CRAFT', ['WORLD_BOSS'], null, 220000],
+  ['thien_dao_tan_phien_t9', 'Thiên Đạo Tàn Phiến', 9, 'ARTIFACT_CRAFT', ['WORLD_BOSS', 'EVENT'], null, 360000],
+  ['ban_nguyen_tuy_t9', 'Bản Nguyên Tủy', 9, 'QI_BREAKTHROUGH', ['WORLD_BOSS'], null, 420000],
+  ['ban_nguyen_thanh_thai_tinh_t9', 'Bản Nguyên Thánh Thai Tinh', 9, 'BODY_BREAKTHROUGH', ['WORLD_BOSS'], null, 460000],
+  ['vo_thuy_dao_tuc_t9', 'Vô Thủy Đạo Tức', 9, 'ALCHEMY_QI', ['WORLD_BOSS'], null, 500000],
+  ['vo_chung_huyet_tuy_t9', 'Vô Chung Huyết Tủy', 9, 'ALCHEMY_BODY', ['WORLD_BOSS'], null, 520000],
+  ['vinh_hang_tuy_t9', 'Vĩnh Hằng Tủy', 9, 'BODY_BREAKTHROUGH', ['WORLD_BOSS'], null, 600000],
+  ['hu_khong_nguyen_tinh_t9', 'Hư Không Nguyên Tinh', 9, 'ARTIFACT_CRAFT', ['WORLD_BOSS'], null, 720000],
+  ['dai_dao_tan_hoa_t9', 'Đại Đạo Tàn Hỏa', 9, 'TRIBULATION', ['WORLD_BOSS', 'EVENT'], 'hoa', 680000],
+  ['niet_ban_huyet_t9', 'Niết Bàn Huyết', 9, 'TRIBULATION', ['WORLD_BOSS', 'EVENT'], null, 760000],
+].map(([key, name, tier, category, sourceHint, element, price]) => ({
+  key,
+  name,
+  tier,
+  category,
+  sourceHint,
+  element,
+  price,
+})) as Array<{
+  key: string;
+  name: string;
+  tier: number;
+  category: MaterialCategory;
+  sourceHint: SourceHint[];
+  element?: ElementKey | null;
+  price: number;
+}>;
+
+function alchemyPillKind(category: PillCategory, effect: ItemEffect): ItemKind {
+  if (category === 'HEAL_MP') return 'PILL_MP';
+  if (category === 'QI_EXP' || category === 'BODY_EXP') return 'PILL_EXP';
+  if (effect.mp && !effect.hp) return 'PILL_MP';
+  return effect.exp || effect.bodyExp ? 'PILL_EXP' : 'PILL_HP';
+}
+
+function pillDescription(spec: (typeof ALCHEMY_PILL_SPECS)[number]): string {
+  return `${spec.name} cấp ${spec.tier}, đan ${spec.category} có dược tính ổn định, không sinh tiền/ngọc.`;
+}
+
+function materialDescription(spec: (typeof ALCHEMY_MATERIAL_SPECS)[number]): string {
+  return `${spec.name} cấp ${spec.tier}, nguyên liệu ${spec.category} cho Đan Đạo; nguồn: ${spec.sourceHint.join(', ')}.`;
+}
+
+export const ALCHEMY_V2_ITEMS: readonly ItemDef[] = [
+  ...ALCHEMY_PILL_SPECS.map((spec) => ({
+    key: spec.key,
+    name: spec.name,
+    description: pillDescription(spec),
+    kind: alchemyPillKind(spec.category, spec.effect),
+    quality: ALCHEMY_TIER_QUALITY[spec.tier] ?? 'THAN',
+    stackable: true,
+    effect: spec.effect,
+    pillCategory: spec.category,
+    pillGrade: 'TRUNG_PHAM' as PillGrade,
+    recipeTier: spec.tier,
+    targetRealmOrder: spec.targetRealmOrder,
+    bindOnCraft: spec.marketTradeable === false,
+    marketTradeable: spec.marketTradeable ?? true,
+    price: spec.price,
+  })),
+  ...ALCHEMY_MATERIAL_SPECS.map((spec) => ({
+    key: spec.key,
+    name: spec.name,
+    description: materialDescription(spec),
+    kind: 'ORE' as ItemKind,
+    quality: ALCHEMY_TIER_QUALITY[spec.tier] ?? 'THAN',
+    stackable: true,
+    materialTier: spec.tier,
+    materialCategory: spec.category,
+    materialElement: spec.element ?? null,
+    sourceHint: spec.sourceHint,
+    marketTradeable: true,
+    price: spec.price,
+  })),
+];
+
+const ALCHEMY_V2_ITEM_BY_KEY = new Map(ALCHEMY_V2_ITEMS.map((i) => [i.key, i]));
+
+export const ITEMS: readonly ItemDef[] = [...BASE_ITEMS, ...ALCHEMY_V2_ITEMS];
+
 export function itemByKey(key: string): ItemDef | undefined {
-  return ITEMS.find((i) => i.key === key);
+  return ALCHEMY_V2_ITEM_BY_KEY.get(key) ?? BASE_ITEMS.find((i) => i.key === key);
 }
 
 export function itemWithProgression(item: ItemDef): ItemDef {

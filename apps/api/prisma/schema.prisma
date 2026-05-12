@@ -322,6 +322,9 @@ model Character {
   /// Default = 1 (mở recipe PHAM tier). Phase 11.11.C sẽ thêm upgrade
   /// cost (linhThach + nguyên liệu cao cấp) cho L2..L9.
   alchemyFurnaceLevel Int @default(1)
+  alchemyLevel        Int    @default(1)
+  alchemyExp          BigInt @default(0)
+  alchemyMastery      Int    @default(0)
 
   /// Admin seed harness Phase 11.X — bonus talent point budget cộng dồn
   /// trên `computeTalentPointBudget(realmOrder)` (3 realm = 1 điểm gốc).
@@ -936,6 +939,29 @@ model BodyBreakthroughAttemptLog {
   createdAt        DateTime  @default(now())
 
   @@index([characterId, createdAt])
+}
+
+model AlchemyAttemptLog {
+  id                 String   @id @default(cuid())
+  characterId        String
+  recipeKey          String
+  recipeTier         Int
+  recipeCategory     String
+  success            Boolean
+  successRate        Float
+  rollValue          Float
+  pillGrade          String?
+  outputItem         String?
+  outputQty          Int
+  inputsJson         Json
+  linhThachConsumed  Int
+  alchemyExpGained   BigInt   @default(0)
+  createdAt          DateTime @default(now())
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([characterId, createdAt])
+  @@index([recipeKey, createdAt])
 }
 
 /// Phase 14.3.D — Tribulation Encounter session (mini-encounter trước khi

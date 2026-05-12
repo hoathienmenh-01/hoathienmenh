@@ -1,3 +1,6 @@
+import { ITEMS, itemByKey, type ItemEffect, type PillCategory, type PillGrade, type SourceHint } from './items';
+import { REALMS, realmByKey } from './realms';
+
 /**
  * Alchemy (Luyện Đan) catalog foundation — Phase 11.X.A
  *
@@ -42,28 +45,56 @@ export interface AlchemyRecipeDef {
   readonly description: string;
   /** Item key của pill output (tham chiếu ITEMS) */
   readonly outputItem: string;
+  readonly recipeTier: number;
+  readonly recipeCategory: PillCategory;
+  readonly requiredAlchemyLevel: number;
   /** Số lượng pill output mỗi lần luyện thành */
   readonly outputQty: number;
   /** Tier output (PHAM..THAN), giúp filter UI */
   readonly outputQuality: 'PHAM' | 'LINH' | 'HUYEN' | 'TIEN' | 'THAN';
+  readonly maxOutputGrade?: PillGrade;
   /** Danh sách nguyên liệu input + qty */
   readonly inputs: readonly AlchemyIngredient[];
   /** Cấp lò đan tối thiểu để dùng được recipe này */
   readonly furnaceLevel: number;
   /** Realm key tối thiểu để học (optional) */
   readonly realmRequirement: string | null;
+  readonly targetRealmOrder?: number;
   /** LinhThach cost cho 1 lần thử (ngay cả khi fail) */
   readonly linhThachCost: number;
   /** Tỉ lệ thành công cơ bản (0..1). Phase 11.X.B sẽ wire bonus từ alchemyMastery */
   readonly successRate: number;
+  readonly alchemyExpReward: bigint;
+  readonly sourceHint?: readonly SourceHint[];
+  readonly unlockSource?:
+    | 'DEFAULT'
+    | 'NPC_SHOP'
+    | 'SECT_SHOP'
+    | 'QUEST'
+    | 'BOSS_DROP'
+    | 'DUNGEON_DROP'
+    | 'EVENT'
+    | 'FRAGMENT_COMBINE';
+  readonly tags?: readonly string[];
 }
+
+type AlchemyRecipeSeed = Omit<
+  AlchemyRecipeDef,
+  'recipeTier' | 'recipeCategory' | 'requiredAlchemyLevel' | 'alchemyExpReward'
+> &
+  Partial<
+    Pick<
+      AlchemyRecipeDef,
+      'recipeTier' | 'recipeCategory' | 'requiredAlchemyLevel' | 'alchemyExpReward'
+    >
+  >;
 
 /**
  * 13 recipe baseline cover toàn bộ pill HP/MP/EXP từ PHAM đến THAN.
  *
  * Stable order: PHAM → LINH → HUYEN → TIEN → THAN.
  */
-export const ALCHEMY_RECIPES: readonly AlchemyRecipeDef[] = [
+const LEGACY_ALCHEMY_RECIPE_SEEDS: readonly AlchemyRecipeSeed[] = [
   // ----- PHAM tier (5 recipe) -----
   {
     key: 'recipe_tieu_phuc_dan',
@@ -357,6 +388,200 @@ export const ALCHEMY_RECIPES: readonly AlchemyRecipeDef[] = [
   },
 ];
 
+const ALCHEMY_TIER_QUALITY: Record<number, AlchemyRecipeDef['outputQuality']> = {
+  1: 'PHAM',
+  2: 'LINH',
+  3: 'HUYEN',
+  4: 'TIEN',
+  5: 'THAN',
+  6: 'THAN',
+  7: 'THAN',
+  8: 'THAN',
+  9: 'THAN',
+};
+
+const ALCHEMY_REALM_BY_TIER: Record<number, string | null> = {
+  1: null,
+  2: 'truc_co',
+  3: 'kim_dan',
+  4: 'nguyen_anh',
+  5: 'luyen_hu',
+  6: 'do_kiep',
+  7: 'huyen_tien',
+  8: 'chuan_thanh',
+  9: 'thien_dao',
+};
+
+const ALCHEMY_DEFAULT_COST_BY_TIER: Record<number, number> = {
+  1: 80,
+  2: 420,
+  3: 1200,
+  4: 3600,
+  5: 10000,
+  6: 28000,
+  7: 70000,
+  8: 180000,
+  9: 520000,
+};
+
+const ALCHEMY_DEFAULT_SUCCESS_BY_TIER: Record<number, number> = {
+  1: 0.92,
+  2: 0.82,
+  3: 0.7,
+  4: 0.58,
+  5: 0.46,
+  6: 0.38,
+  7: 0.32,
+  8: 0.26,
+  9: 0.2,
+};
+
+const PILL_CATEGORY_MATERIALS: Record<PillCategory, string[]> = {
+  HEAL_HP: ['linh_thao_t1', 'truc_tam_thao_t2', 'kim_lien_tu_t3'],
+  HEAL_MP: ['tinh_thuy_lo_t1', 'han_lo_hoa_t2', 'ngoc_lien_tu_t3'],
+  HEAL_STAMINA: ['thu_gan_vun_t1', 'yeu_thu_huyet_tinh_t2'],
+  QI_EXP: ['linh_thao_t1', 'moc_linh_qua_t2', 'kim_lien_tu_t3'],
+  BODY_EXP: ['khi_huyet_thao_t1', 'yeu_thu_huyet_tinh_t2', 'kim_tuy_dich_t3'],
+  QI_BREAKTHROUGH: ['yeu_dan_non_t2', 'yeu_dan_t3', 'yeu_dan_cao_cap_t5'],
+  BODY_BREAKTHROUGH: ['doan_cot_thach_t2', 'tay_tuy_dich_t3', 'bat_hoai_hon_thach_t5'],
+  COMBAT_BUFF: ['bot_dan_sa_t1', 'can_khon_tuy_t5'],
+  TRIBULATION_SUPPORT: ['kiep_loi_tinh_t6', 'thien_dao_tan_phien_t8'],
+  INJURY_CURE: ['thanh_tam_thao_t3', 'van_phap_thanh_lien_t8'],
+  MIXED_RECOVERY: ['huyen_bang_ngoc_t4', 'kim_tien_ngoc_dich_t7_material'],
+  SPECIAL: ['dao_van_thach_t8', 'niet_ban_huyet_t9'],
+};
+
+const ALCHEMY_PILL_RECIPE_SPECS: Array<{ key: string; name: string; tier: number; category: PillCategory }> = [
+  { key: 'tieu_phuc_dan_t1', name: 'Tiểu Phục Đan', tier: 1, category: 'HEAL_HP' },
+  { key: 'linh_tinh_dan_t1', name: 'Linh Tinh Đan', tier: 1, category: 'HEAL_MP' },
+  { key: 'so_huyen_dan_t1', name: 'Sơ Huyền Đan', tier: 1, category: 'QI_EXP' },
+  { key: 'khi_huyet_dan_t1', name: 'Khí Huyết Đan', tier: 1, category: 'BODY_EXP' },
+  { key: 'cuong_gan_dan_t1', name: 'Cường Gân Đan', tier: 1, category: 'HEAL_STAMINA' },
+  { key: 'duong_than_tan_t1', name: 'Dưỡng Thân Tán', tier: 1, category: 'INJURY_CURE' },
+  { key: 'tu_khi_dan_t1', name: 'Tụ Khí Đan', tier: 1, category: 'QI_EXP' },
+  { key: 'thanh_lam_dan_t2', name: 'Thanh Lam Đan', tier: 2, category: 'HEAL_HP' },
+  { key: 'hoi_nguyen_dan_t2', name: 'Hồi Nguyên Đan', tier: 2, category: 'HEAL_MP' },
+  { key: 'co_thien_dan_t2', name: 'Cổ Thiên Đan', tier: 2, category: 'QI_EXP' },
+  { key: 'cuong_cot_dan_t2', name: 'Cường Cốt Đan', tier: 2, category: 'BODY_EXP' },
+  { key: 'cuu_huyen_dan_t3', name: 'Cửu Huyền Đan', tier: 3, category: 'HEAL_HP' },
+  { key: 'ngoc_lien_dan_t3', name: 'Ngọc Liên Đan', tier: 3, category: 'HEAL_MP' },
+  { key: 'van_linh_dan_t3', name: 'Vạn Linh Đan', tier: 3, category: 'QI_EXP' },
+  { key: 'kim_tuy_dan_t3', name: 'Kim Tủy Đan', tier: 3, category: 'BODY_EXP' },
+  { key: 'thanh_tam_dan_t3', name: 'Thanh Tâm Đan', tier: 3, category: 'INJURY_CURE' },
+  { key: 'anh_nguyen_dan_t4', name: 'Anh Nguyên Đan', tier: 4, category: 'QI_EXP' },
+  { key: 'huyen_menh_dan_t4', name: 'Huyền Mệnh Đan', tier: 4, category: 'MIXED_RECOVERY' },
+  { key: 'ngoc_cot_dan_t4', name: 'Ngọc Cốt Đan', tier: 4, category: 'BODY_EXP' },
+  { key: 'kim_cuong_ho_the_dan_t4', name: 'Kim Cương Hộ Thể Đan', tier: 4, category: 'INJURY_CURE' },
+  { key: 'hu_linh_dan_t5', name: 'Hư Linh Đan', tier: 5, category: 'QI_EXP' },
+  { key: 'long_huyet_dan_t5', name: 'Long Huyết Đan', tier: 5, category: 'BODY_EXP' },
+  { key: 'bat_hoai_ho_mach_dan_t5', name: 'Bất Hoại Hộ Mạch Đan', tier: 5, category: 'INJURY_CURE' },
+  { key: 'tinh_hon_dan_t5', name: 'Tĩnh Hồn Đan', tier: 5, category: 'INJURY_CURE' },
+  { key: 'nhan_tien_dan_t6', name: 'Nhân Tiên Đan', tier: 6, category: 'QI_EXP' },
+  { key: 'kiep_loi_ho_menh_dan_t6', name: 'Kiếp Lôi Hộ Mệnh Đan', tier: 6, category: 'TRIBULATION_SUPPORT' },
+  { key: 'tien_phach_dan_t6', name: 'Tiên Phách Đan', tier: 6, category: 'HEAL_HP' },
+  { key: 'tien_van_dan_t6', name: 'Tiên Vân Đan', tier: 6, category: 'HEAL_MP' },
+  { key: 'long_tuong_dan_t6', name: 'Long Tượng Đan', tier: 6, category: 'BODY_EXP' },
+  { key: 'niet_ban_dan_t6', name: 'Niết Bàn Đan', tier: 6, category: 'SPECIAL' },
+  { key: 'huyen_tien_dao_dan_t7', name: 'Huyền Tiên Đạo Đan', tier: 7, category: 'QI_EXP' },
+  { key: 'kim_tien_ngoc_dich_t7', name: 'Kim Tiên Ngọc Dịch', tier: 7, category: 'MIXED_RECOVERY' },
+  { key: 'thai_at_tu_linh_dan_t7', name: 'Thái Ất Tụ Linh Đan', tier: 7, category: 'QI_EXP' },
+  { key: 'dai_la_kim_than_dan_t7', name: 'Đại La Kim Thân Đan', tier: 7, category: 'BODY_EXP' },
+  { key: 'chuan_thanh_dao_dan_t8', name: 'Chuẩn Thánh Đạo Đan', tier: 8, category: 'QI_EXP' },
+  { key: 'thanh_nhan_huyet_dan_t8', name: 'Thánh Nhân Huyết Đan', tier: 8, category: 'BODY_EXP' },
+  { key: 'dao_quan_tu_nguyen_dan_t8', name: 'Đạo Quân Tụ Nguyên Đan', tier: 8, category: 'QI_EXP' },
+  { key: 'thien_dao_ho_than_dan_t8', name: 'Thiên Đạo Hộ Thân Đan', tier: 8, category: 'TRIBULATION_SUPPORT' },
+  { key: 'van_phap_thanh_tam_dan_t8', name: 'Vạn Pháp Thanh Tâm Đan', tier: 8, category: 'INJURY_CURE' },
+  { key: 'dao_van_dan_t8', name: 'Đạo Văn Đan', tier: 8, category: 'SPECIAL' },
+  { key: 'thien_dao_dan_t9', name: 'Thiên Đạo Đan', tier: 9, category: 'QI_EXP' },
+  { key: 'vo_thuy_dao_dan_t9', name: 'Vô Thủy Đạo Đan', tier: 9, category: 'QI_EXP' },
+  { key: 'vo_chung_bat_diet_dan_t9', name: 'Vô Chung Bất Diệt Đan', tier: 9, category: 'BODY_EXP' },
+  { key: 'hu_khong_chi_ton_dan_t9', name: 'Hư Không Chí Tôn Đan', tier: 9, category: 'SPECIAL' },
+  { key: 'dai_dao_niet_ban_dan_t9', name: 'Đại Đạo Niết Bàn Đan', tier: 9, category: 'SPECIAL' },
+];
+
+function recipeInputsFor(tier: number, category: PillCategory): readonly AlchemyIngredient[] {
+  const candidates = PILL_CATEGORY_MATERIALS[category];
+  const primary = candidates[Math.min(candidates.length - 1, Math.max(0, Math.floor((tier - 1) / 3)))] ?? 'linh_thao_t1';
+  const general = tier <= 2 ? 'bot_dan_sa_t1' : tier <= 5 ? 'hon_tinh_t4' : 'tien_linh_tuy_t6';
+  const high = tier >= 8 ? 'thien_dao_tan_phien_t8' : tier >= 6 ? 'kiep_loi_tinh_t6' : null;
+  const inputs: AlchemyIngredient[] = [
+    { itemKey: primary, qty: Math.max(1, tier) },
+    { itemKey: general, qty: Math.max(1, Math.ceil(tier / 2)) },
+  ];
+  if (high) inputs.push({ itemKey: high, qty: Math.max(1, tier - 5) });
+  return inputs;
+}
+
+function makeAlchemyV2Recipe(spec: (typeof ALCHEMY_PILL_RECIPE_SPECS)[number]): AlchemyRecipeDef {
+  const rare = spec.category.includes('BREAKTHROUGH') || spec.category === 'SPECIAL' || spec.category === 'TRIBULATION_SUPPORT';
+  return {
+    key: `recipe_${spec.key}`,
+    name: `Công thức ${spec.name}`,
+    description: `${spec.name} cấp ${spec.tier} thuộc ${spec.category}; recipe server-authoritative với phẩm đan và cap output.`,
+    outputItem: spec.key,
+    recipeTier: spec.tier,
+    recipeCategory: spec.category,
+    requiredAlchemyLevel: spec.tier,
+    outputQty: 1,
+    outputQuality: ALCHEMY_TIER_QUALITY[spec.tier] ?? 'THAN',
+    maxOutputGrade: spec.tier >= 8 || rare ? 'CUC_PHAM' : 'DAN_VAN',
+    inputs: recipeInputsFor(spec.tier, spec.category),
+    furnaceLevel: spec.tier,
+    realmRequirement: ALCHEMY_REALM_BY_TIER[spec.tier] ?? null,
+    targetRealmOrder: itemByKey(spec.key)?.targetRealmOrder,
+    linhThachCost: Math.round((ALCHEMY_DEFAULT_COST_BY_TIER[spec.tier] ?? 1000) * (rare ? 1.35 : 1)),
+    successRate: Number(((ALCHEMY_DEFAULT_SUCCESS_BY_TIER[spec.tier] ?? 0.5) - (rare ? 0.05 : 0)).toFixed(3)),
+    alchemyExpReward: BigInt(40 * spec.tier * spec.tier * (rare ? 2 : 1)),
+    sourceHint: spec.tier <= 2 ? ['NPC_SHOP', 'DUNGEON'] as SourceHint[] : spec.tier <= 5 ? ['DUNGEON', 'BOSS'] as SourceHint[] : ['BOSS', 'WORLD_BOSS'] as SourceHint[],
+    unlockSource: spec.tier <= 2 ? 'DEFAULT' : spec.tier <= 5 ? 'DUNGEON_DROP' : 'BOSS_DROP',
+    tags: [spec.category.toLowerCase(), `tier_${spec.tier}`],
+  };
+}
+
+function inferRecipeTier(seed: AlchemyRecipeSeed): number {
+  if (seed.recipeTier) return seed.recipeTier;
+  const itemTier = itemByKey(seed.outputItem)?.recipeTier;
+  if (itemTier) return itemTier;
+  if (seed.outputQuality === 'PHAM') return 1;
+  if (seed.outputQuality === 'LINH') return 2;
+  if (seed.outputQuality === 'HUYEN') return 3;
+  if (seed.outputQuality === 'TIEN') return 4;
+  return 5;
+}
+
+function inferRecipeCategory(seed: AlchemyRecipeSeed): PillCategory {
+  if (seed.recipeCategory) return seed.recipeCategory;
+  const item = itemByKey(seed.outputItem);
+  if (item?.pillCategory) return item.pillCategory;
+  if (item?.effect?.mp) return 'HEAL_MP';
+  if (item?.effect?.exp) return 'QI_EXP';
+  if (item?.effect?.bodyExp) return 'BODY_EXP';
+  return 'HEAL_HP';
+}
+
+function normalizeAlchemyRecipe(seed: AlchemyRecipeSeed): AlchemyRecipeDef {
+  const recipeTier = inferRecipeTier(seed);
+  const recipeCategory = inferRecipeCategory(seed);
+  return {
+    ...seed,
+    recipeTier,
+    recipeCategory,
+    requiredAlchemyLevel: seed.requiredAlchemyLevel ?? recipeTier,
+    targetRealmOrder: seed.targetRealmOrder ?? itemByKey(seed.outputItem)?.targetRealmOrder,
+    alchemyExpReward: seed.alchemyExpReward ?? BigInt(30 * recipeTier * recipeTier),
+    maxOutputGrade: seed.maxOutputGrade ?? 'DAN_VAN',
+    unlockSource: seed.unlockSource ?? 'DEFAULT',
+    tags: seed.tags ?? [recipeCategory.toLowerCase(), `tier_${recipeTier}`],
+  };
+}
+
+const ALCHEMY_V2_RECIPES = ALCHEMY_PILL_RECIPE_SPECS.map(makeAlchemyV2Recipe);
+
+export const ALCHEMY_RECIPES: readonly AlchemyRecipeDef[] = [
+  ...LEGACY_ALCHEMY_RECIPE_SEEDS.map(normalizeAlchemyRecipe),
+  ...ALCHEMY_V2_RECIPES,
+];
+
 // ============================================================================
 // Helpers
 // ============================================================================
@@ -396,6 +621,309 @@ export function alchemyRecipesAvailableAtFurnace(
     throw new Error(`furnaceLevel must be non-negative finite, got ${furnaceLevel}`);
   }
   return ALCHEMY_RECIPES.filter((r) => r.furnaceLevel <= furnaceLevel);
+}
+
+export const ALCHEMY_MAX_LEVEL = 9 as const;
+
+export const ALCHEMY_LEVEL_NAMES: readonly string[] = [
+  'Đan Sư Nhập Môn',
+  'Nhất Phẩm Đan Sư',
+  'Nhị Phẩm Đan Sư',
+  'Tam Phẩm Đan Sư',
+  'Tứ Phẩm Đan Sư',
+  'Ngũ Phẩm Đan Sư',
+  'Lục Phẩm Đan Sư',
+  'Thất Phẩm Đan Sư',
+  'Đan Đạo Tông Sư',
+];
+
+export interface AlchemyCraftContext {
+  readonly alchemyLevel: number;
+  readonly furnaceLevel: number;
+  readonly alchemyMastery?: number;
+}
+
+export interface AlchemyCraftCharacterContext {
+  readonly alchemyLevel: number;
+  readonly alchemyFurnaceLevel: number;
+  readonly realmKey?: string | null;
+}
+
+export interface AlchemyMaterialDropContext {
+  readonly playerRealmOrder: number;
+  readonly playerBodyRealmOrder?: number;
+  readonly monsterType?: 'NORMAL' | 'ELITE' | 'BOSS' | 'WORLD_BOSS';
+  readonly monsterLevel?: number;
+  readonly dungeonTier?: number;
+  readonly source?: 'NORMAL_MONSTER' | 'ELITE' | 'BOSS' | 'WORLD_BOSS' | 'DUNGEON' | 'BODY_DUNGEON';
+  readonly luck?: number;
+}
+
+export interface RolledAlchemyMaterialDrop {
+  readonly itemKey: string;
+  readonly qty: number;
+  readonly tier: number;
+  readonly rarity: 'lowerTier' | 'sameTier' | 'rareSameTier' | 'special';
+}
+
+const PILL_GRADES: readonly PillGrade[] = [
+  'HA_PHAM',
+  'TRUNG_PHAM',
+  'THUONG_PHAM',
+  'CUC_PHAM',
+  'DAN_VAN',
+];
+
+const PILL_GRADE_ORDER: Record<PillGrade, number> = {
+  HA_PHAM: 1,
+  TRUNG_PHAM: 2,
+  THUONG_PHAM: 3,
+  CUC_PHAM: 4,
+  DAN_VAN: 5,
+};
+
+export function getAlchemyLevelExpRequirement(level: number): bigint {
+  if (!Number.isInteger(level) || level < 1 || level >= ALCHEMY_MAX_LEVEL) return 0n;
+  return BigInt(120 * level * level * level);
+}
+
+export function computeLowerTierCraftBonus(alchemyLevel: number, recipeTier: number): number {
+  const diff = Math.max(0, Math.floor(alchemyLevel) - Math.floor(recipeTier));
+  if (diff <= 0) return 0;
+  return Math.min(0.2, diff * 0.05);
+}
+
+export function computeAlchemySuccessRate(
+  recipe: AlchemyRecipeDef,
+  context: AlchemyCraftContext,
+): number {
+  const lowerTierBonus = computeLowerTierCraftBonus(context.alchemyLevel, recipe.recipeTier);
+  const furnaceBonus = Math.min(
+    0.08,
+    Math.max(0, Math.floor(context.furnaceLevel) - recipe.furnaceLevel) * 0.02,
+  );
+  const masteryBonus = Math.min(0.05, Math.max(0, context.alchemyMastery ?? 0) * 0.0005);
+  const raw = recipe.successRate + lowerTierBonus + furnaceBonus + masteryBonus;
+  return Number(Math.min(0.98, Math.max(0.05, raw)).toFixed(4));
+}
+
+export function pillGradeMultiplier(grade: PillGrade): number {
+  switch (grade) {
+    case 'HA_PHAM':
+      return 0.85;
+    case 'TRUNG_PHAM':
+      return 1;
+    case 'THUONG_PHAM':
+      return 1.15;
+    case 'CUC_PHAM':
+      return 1.3;
+    case 'DAN_VAN':
+      return 1.5;
+  }
+}
+
+function allowedGrades(maxOutputGrade?: PillGrade): readonly PillGrade[] {
+  const maxOrder = maxOutputGrade ? PILL_GRADE_ORDER[maxOutputGrade] : PILL_GRADE_ORDER.DAN_VAN;
+  return PILL_GRADES.filter((grade) => PILL_GRADE_ORDER[grade] <= maxOrder);
+}
+
+export function possiblePillGrades(recipe: AlchemyRecipeDef): readonly PillGrade[] {
+  return allowedGrades(recipe.maxOutputGrade);
+}
+
+export function rollPillGrade(
+  recipe: AlchemyRecipeDef,
+  context: AlchemyCraftContext,
+  rng: () => number,
+): PillGrade {
+  const qualityShift = Math.min(
+    0.12,
+    computeLowerTierCraftBonus(context.alchemyLevel, recipe.recipeTier) / 2 +
+      Math.max(0, context.furnaceLevel - recipe.furnaceLevel) * 0.005 +
+      Math.max(0, context.alchemyMastery ?? 0) * 0.0001,
+  );
+  const weights: Record<PillGrade, number> = {
+    HA_PHAM: Math.max(0.28, 0.45 - qualityShift),
+    TRUNG_PHAM: Math.max(0.24, 0.32 - qualityShift / 2),
+    THUONG_PHAM: 0.16 + qualityShift * 0.7,
+    CUC_PHAM: Math.min(0.18, 0.06 + qualityShift * 0.55),
+    DAN_VAN: Math.min(0.05, 0.01 + qualityShift * 0.2),
+  };
+  for (const grade of PILL_GRADES) {
+    if (!allowedGrades(recipe.maxOutputGrade).includes(grade)) weights[grade] = 0;
+  }
+  const total = PILL_GRADES.reduce((sum, grade) => sum + weights[grade], 0);
+  let roll = Math.min(0.999999, Math.max(0, rng())) * total;
+  for (const grade of PILL_GRADES) {
+    roll -= weights[grade];
+    if (roll <= 0) return grade;
+  }
+  return allowedGrades(recipe.maxOutputGrade).at(-1) ?? 'TRUNG_PHAM';
+}
+
+export function clampPillEffectByRecipeTier(effect: ItemEffect, recipeTier: number): ItemEffect {
+  const scalarCap = Math.max(1, recipeTier) ** 2;
+  return {
+    ...effect,
+    hp: effect.hp === undefined ? undefined : Math.min(effect.hp, 320 * scalarCap),
+    mp: effect.mp === undefined ? undefined : Math.min(effect.mp, 300 * scalarCap),
+    stamina: effect.stamina === undefined ? undefined : Math.min(effect.stamina, 12 + recipeTier * 9),
+    exp: effect.exp === undefined ? undefined : Math.min(effect.exp, 260 * scalarCap),
+    bodyExp: effect.bodyExp === undefined ? undefined : Math.min(effect.bodyExp, 150 * scalarCap),
+    qiBreakthroughBonus:
+      effect.qiBreakthroughBonus === undefined
+        ? undefined
+        : Math.min(effect.qiBreakthroughBonus, 0.025 + recipeTier * 0.012),
+    bodyBreakthroughBonus:
+      effect.bodyBreakthroughBonus === undefined
+        ? undefined
+        : Math.min(effect.bodyBreakthroughBonus, 0.02 + recipeTier * 0.011),
+    tribulationSupport:
+      effect.tribulationSupport === undefined
+        ? undefined
+        : Math.min(effect.tribulationSupport, 0.025 + recipeTier * 0.01),
+    bodyInjuryReductionMinutes:
+      effect.bodyInjuryReductionMinutes === undefined
+        ? undefined
+        : Math.min(effect.bodyInjuryReductionMinutes, 8 + recipeTier * 15),
+    taoMaReductionMinutes:
+      effect.taoMaReductionMinutes === undefined
+        ? undefined
+        : Math.min(effect.taoMaReductionMinutes, 8 + recipeTier * 15),
+  };
+}
+
+export function canCraftAlchemyRecipe(
+  character: AlchemyCraftCharacterContext,
+  recipe: AlchemyRecipeDef,
+): { canCraft: boolean; failureReason: string | null } {
+  if (recipe.recipeTier > character.alchemyLevel || recipe.requiredAlchemyLevel > character.alchemyLevel) {
+    return { canCraft: false, failureReason: 'ALCHEMY_LEVEL_TOO_LOW' };
+  }
+  if (recipe.furnaceLevel > character.alchemyFurnaceLevel) {
+    return { canCraft: false, failureReason: 'FURNACE_LEVEL_TOO_LOW' };
+  }
+  if (recipe.realmRequirement && character.realmKey) {
+    const currentOrder = realmByKey(character.realmKey)?.order ?? -1;
+    const requiredOrder = realmByKey(recipe.realmRequirement)?.order ?? 999;
+    if (currentOrder < requiredOrder) {
+      return { canCraft: false, failureReason: 'REALM_REQUIREMENT_NOT_MET' };
+    }
+  }
+  return { canCraft: true, failureReason: null };
+}
+
+export function computeAlchemyExpReward(
+  recipe: AlchemyRecipeDef,
+  success: boolean,
+  grade?: PillGrade,
+): bigint {
+  const base = success ? recipe.alchemyExpReward : recipe.alchemyExpReward / 5n;
+  if (!success || !grade) return base;
+  return BigInt(Math.max(1, Math.round(Number(base) * pillGradeMultiplier(grade))));
+}
+
+export function resolveAlchemyLevelAfter(
+  currentLevel: number,
+  currentExp: bigint,
+  gainedExp: bigint,
+): { level: number; exp: bigint } {
+  let level = Math.min(ALCHEMY_MAX_LEVEL, Math.max(1, currentLevel));
+  let exp = currentExp + gainedExp;
+  while (level < ALCHEMY_MAX_LEVEL) {
+    const need = getAlchemyLevelExpRequirement(level);
+    if (need <= 0n || exp < need) break;
+    exp -= need;
+    level += 1;
+  }
+  if (level >= ALCHEMY_MAX_LEVEL) {
+    return { level: ALCHEMY_MAX_LEVEL, exp };
+  }
+  return { level, exp };
+}
+
+export function rollMaterialDrop(
+  context: AlchemyMaterialDropContext,
+  rng: () => number = Math.random,
+): RolledAlchemyMaterialDrop | null {
+  const source = context.source ?? context.monsterType ?? 'NORMAL_MONSTER';
+  const luck = Math.max(0, context.luck ?? 0);
+  const dropRates: Record<string, number> = {
+    NORMAL: 0.03,
+    NORMAL_MONSTER: 0.03,
+    ELITE: 0.12,
+    BOSS: 0.35,
+    WORLD_BOSS: 0.45,
+    DUNGEON: 0.28,
+    BODY_DUNGEON: 0.3,
+  };
+  const rate = Math.min(0.55, (dropRates[source] ?? 0.03) + luck * 0.002);
+  if (rng() > rate) return null;
+  const tierBase = Math.min(9, Math.max(1, context.dungeonTier ?? Math.ceil((context.playerRealmOrder + 1) / 3)));
+  const bossLike = source === 'BOSS' || source === 'WORLD_BOSS' || source === 'DUNGEON' || source === 'BODY_DUNGEON';
+  const thresholds = bossLike
+    ? [
+        ['lowerTier', 0.4],
+        ['sameTier', 0.85],
+        ['rareSameTier', 0.97],
+        ['special', 1],
+      ] as const
+    : [
+        ['lowerTier', 0.7],
+        ['sameTier', 0.95],
+        ['rareSameTier', 0.99],
+        ['special', 1],
+      ] as const;
+  const rarityRoll = rng();
+  const rarity = thresholds.find(([, threshold]) => rarityRoll <= threshold)?.[0] ?? 'lowerTier';
+  const tier = rarity === 'lowerTier' ? Math.max(1, tierBase - (rng() < 0.5 ? 1 : 2)) : tierBase;
+  const candidates = ITEMS.filter((item) => {
+    if (item.materialTier !== tier || !item.materialCategory) return false;
+    if (source === 'NORMAL_MONSTER' || source === 'NORMAL') {
+      return item.materialCategory !== 'ARTIFACT_CRAFT' && item.materialCategory !== 'BODY_BREAKTHROUGH';
+    }
+    if (rarity === 'special') return item.materialCategory === 'ARTIFACT_CRAFT' || item.materialCategory === 'TRIBULATION';
+    if (rarity === 'rareSameTier') return item.materialCategory.includes('BREAKTHROUGH') || item.materialCategory === 'TRIBULATION';
+    return item.materialCategory.startsWith('ALCHEMY') || item.materialCategory === 'GENERAL';
+  });
+  if (candidates.length === 0) return null;
+  const item = candidates[Math.floor(rng() * candidates.length)]!;
+  return { itemKey: item.key, qty: bossLike ? 1 + Math.floor(rng() * 2) : 1, tier, rarity };
+}
+
+export function validateAlchemyV2Catalog(): string[] {
+  const errors: string[] = [];
+  const recipeKeys = new Set<string>();
+  const itemKeys = new Set(ITEMS.map((item) => item.key));
+  for (const recipe of ALCHEMY_RECIPES) {
+    if (recipeKeys.has(recipe.key)) errors.push(`duplicate recipe ${recipe.key}`);
+    recipeKeys.add(recipe.key);
+    if (recipe.recipeTier < 1 || recipe.recipeTier > 9) errors.push(`${recipe.key} invalid recipeTier`);
+    if (recipe.requiredAlchemyLevel > 9) errors.push(`${recipe.key} invalid requiredAlchemyLevel`);
+    if (!itemKeys.has(recipe.outputItem)) errors.push(`${recipe.key} missing output ${recipe.outputItem}`);
+    for (const input of recipe.inputs) {
+      if (!itemKeys.has(input.itemKey)) errors.push(`${recipe.key} missing input ${input.itemKey}`);
+    }
+  }
+  for (const item of ITEMS) {
+    if (item.kind === 'PILL_HP' || item.kind === 'PILL_MP' || item.kind === 'PILL_EXP') {
+      const alchemyPill = item.recipeTier !== undefined || item.key.endsWith('_t1') || item.key.endsWith('_t2') || item.key.endsWith('_t3') || item.key.endsWith('_t4') || item.key.endsWith('_t5') || item.key.endsWith('_t6') || item.key.endsWith('_t7') || item.key.endsWith('_t8') || item.key.endsWith('_t9');
+      if (alchemyPill && !item.pillCategory) errors.push(`${item.key} missing pillCategory`);
+      if (item.pillCategory === 'BODY_EXP' && item.effect?.exp !== undefined) errors.push(`${item.key} body pill uses exp`);
+      if (item.pillCategory === 'QI_EXP' && item.effect?.bodyExp !== undefined) errors.push(`${item.key} qi pill uses bodyExp`);
+      if (
+        (item.pillCategory === 'QI_BREAKTHROUGH' || item.pillCategory === 'BODY_BREAKTHROUGH') &&
+        (item.effect?.exp !== undefined || item.effect?.bodyExp !== undefined)
+      ) {
+        errors.push(`${item.key} breakthrough pill grants exp`);
+      }
+    }
+    if (item.materialTier !== undefined) {
+      if (!item.materialCategory) errors.push(`${item.key} missing materialCategory`);
+      if (!item.sourceHint || item.sourceHint.length === 0) errors.push(`${item.key} missing sourceHint`);
+    }
+  }
+  return errors;
 }
 
 // ============================================================================
