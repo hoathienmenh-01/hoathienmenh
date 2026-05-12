@@ -439,6 +439,18 @@ Override timezone qua env `LIVEOPS_TZ` (default `Asia/Ho_Chi_Minh` reuse `MISSIO
 | POST | `/monetization/monthly-card/claim` | Yes | Claims one daily reward if active and not claimed in current UTC day. Errors: 400 `INACTIVE_MONTHLY_CARD`, 409 `MONTHLY_CARD_ALREADY_CLAIMED`. Ledger: `MONTHLY_CARD_REWARD`, refId `<subscriptionId>:<day>`. |
 | GET | `/monetization/vip` | Yes | Returns `VipProfile` and derived VIP Light perks. Perks are read-only convenience caps from shared config. |
 
+
+## Shop Packs — `ShopPacksController` (Phase 25.2)
+
+> Limited resource packs with daily/weekly/monthly/lifetime purchase windows. Server-authoritative with full ledger, idempotency, and anti-duplicate protection. No top-tier equipment or max-star pháp bảo sale.
+
+| Method | Path | Auth | Mô tả |
+|--------|------|------|---------|
+| GET | `/shop-packs` | Yes | List active packs with `remainingPurchases` for current player in each window. |
+| GET | `/shop-packs/purchases` | Yes | Purchase history (last 50 entries). |
+| POST | `/shop-packs/purchase` | Yes | Body `{ packId, idempotencyKey? }`. Validates pack active, time window, realm gate, purchase limit, currency balance. Transaction: deduct currency → grant rewards → write ledger → save purchase. Errors: 400 `PACK_NOT_FOUND`/`PACK_INACTIVE`/`REALM_TOO_LOW`/`INVALID_INPUT`, 402 `INSUFFICIENT_FUNDS`, 409 `PURCHASE_LIMIT_REACHED`/`DUPLICATE_PURCHASE`. Ledger: `SHOP_PACK_PURCHASE` (spend), `SHOP_PACK_REWARD` (grant). |
+| POST | `/admin/shop-packs/users/:id/grant` | ADMIN | Body `{ packId }`. Grants pack rewards without currency deduction. Writes `AdminAuditLog`. |
+| POST | `/admin/shop/grant-pack` | ADMIN | Compatibility endpoint. Body `{ userId, packId }`. Same grant behavior/audit log as per-user path. |
 ## Mission — `MissionController`
 
 | Method | Path                  | Auth | Mô tả |

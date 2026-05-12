@@ -394,6 +394,7 @@ model Character {
   battlePassProgress       BattlePassProgress[]
   monthlyCardSubscription  MonthlyCardSubscription?
   vipProfile               VipProfile?
+  shopPackPurchases         ShopPackPurchase[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -490,6 +491,30 @@ model VipProfile {
   updatedAt           DateTime  @updatedAt
 
   @@index([vipLevel])
+}
+
+/// Phase 25.2 — Limited Resource Shop Pack purchase history.
+/// Tracks purchase + idempotency + limit accounting per window.
+/// UNIQUE on (characterId, packId, purchaseWindowKey) prevents
+/// duplicate purchases in the same window. Optional idempotencyKey
+/// for client-side dedup on retry.
+model ShopPackPurchase {
+  id                String    @id @default(cuid())
+  characterId       String
+  character         Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  packId            String
+  quantity          Int       @default(1)
+  purchaseWindowKey String
+  priceCurrency     String
+  priceAmount       Int
+  rewardsJson       Json      @default("[]")
+  idempotencyKey    String?
+  paymentRef        String?
+  createdAt         DateTime  @default(now())
+
+  @@unique([characterId, packId, purchaseWindowKey])
+  @@unique([idempotencyKey])
+  @@index([characterId, packId, createdAt])
 }
 
 /// Phase 14.1.B — Async Arena Match.

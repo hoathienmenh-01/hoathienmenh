@@ -1694,6 +1694,17 @@ Source of truth: `packages/shared/src/monetization.ts`.
 
 **Fairness invariant**: premium systems may reduce grind by roughly 20–40% inside the player's current realm/tier but must not bypass `requiredRealmOrder`, sell top-tier equipment, or sell max-star/max-awaken pháp bảo.
 
+
+### 8.5 Phase 25.2 Limited Resource Shop Packs
+
+Source of truth: `packages/shared/src/shop-packs.ts`.
+
+- Catalog starts with 8 packs: daily cultivation support, weekly forge/gem/reforge/pháp-bảo essence, monthly protection, starter growth, and event Ngũ Hành materials.
+- Purchase windows use UTC buckets: DAY (`YYYY-MM-DD`), WEEK (`YYYY-W##`), MONTH (`YYYY-MM`), SEASON (`YYYY-Q#`), LIFETIME (`LIFETIME`).
+- Price policy uses `tienNgoc`; no real payment provider is integrated in Phase 25.2.
+- Reward velocity caps: linhThach ≤10,000 per pack, bounded item quantities (e.g. `tinh_thiet` ≤30, `han_ngoc` ≤8, `phap_bao_shard` ≤12, `awaken_stone` ≤2, `refine_protection_charm` ≤3).
+- Forbidden rewards: direct top equipment, max-state pháp bảo, realm bypass keys, unlimited dungeon/material grants, direct damage buffs, or 100% upgrade-to-max tokens.
+- Fairness invariant stays Phase 25.1-compatible: packs reduce grind by ~20–40% only inside current realm/tier; F2P farm remains viable.
 ---
 
 ## 9. BALANCE DIAL REGISTRY (Phase 11 nâng cao §6 — DONE)

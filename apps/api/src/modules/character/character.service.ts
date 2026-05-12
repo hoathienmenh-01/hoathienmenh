@@ -725,6 +725,7 @@ export class CharacterService {
       luck: c.luck,
       linhThach: c.linhThach.toString(),
       tienNgoc: c.tienNgoc,
+      tienNgocKhoa: c.tienNgocKhoa,
       cultivating: c.cultivating,
       sectId: c.sectId,
       sectKey: c.sect ? SECT_NAME_TO_KEY[c.sect.name] ?? null : null,

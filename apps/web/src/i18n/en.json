@@ -350,7 +350,8 @@
       "dungeonRun": "Dungeon Run",
       "storyDungeons": "Story Dungeons",
       "social": "Social",
-      "monetization": "Monetization"
+      "monetization": "Monetization",
+      "shopPacks": "Resource Packs"
     },
     "badge": {
       "bossActive": "World boss is live",
@@ -5401,6 +5402,54 @@
       "MONTHLY_CARD_INACTIVE": "Monthly Card is inactive.",
       "MONTHLY_CARD_ALREADY_CLAIMED": "Monthly Card already claimed today.",
       "UNKNOWN": "Something went wrong, try again."
+    }
+  },
+  "shopPacks": {
+    "title": "Resource Packs",
+    "empty": "No packs available.",
+    "loadFail": "Failed to load packs.",
+    "buy": "Buy",
+    "soldOut": "Sold Out",
+    "insufficientFunds": "Not Enough",
+    "noCharacter": "No character",
+    "remaining": "Remaining",
+    "purchaseSuccess": "Pack purchased!",
+    "purchaseFail": "Purchase failed.",
+    "confirmTitle": "Confirm Purchase",
+    "confirmBody": "Buy {name} for {price}?",
+    "currency": {
+      "tienNgoc": "Tiên Ngọc",
+      "tienNgocKhoa": "Locked Tiên Ngọc",
+      "linhThach": "Spirit Stones"
+    },
+    "window": {
+      "DAY": "Daily",
+      "WEEK": "Weekly",
+      "MONTH": "Monthly",
+      "SEASON": "Seasonal",
+      "LIFETIME": "Lifetime"
+    },
+    "category": {
+      "DAILY": "Daily",
+      "WEEKLY": "Weekly",
+      "MONTHLY": "Monthly",
+      "EVENT": "Event",
+      "STARTER": "Starter",
+      "VIP": "VIP"
+    },
+    "errors": {
+      "PACK_NOT_FOUND": "Pack not found.",
+      "PACK_INACTIVE": "Pack is inactive.",
+      "PACK_NOT_STARTED": "Pack has not started.",
+      "PACK_EXPIRED": "Pack has expired.",
+      "REALM_TOO_LOW": "Realm too low.",
+      "REALM_TOO_HIGH": "Realm too high.",
+      "VIP_REQUIRED": "VIP required.",
+      "PURCHASE_LIMIT_REACHED": "Purchase limit reached.",
+      "INSUFFICIENT_FUNDS": "Insufficient funds.",
+      "DUPLICATE_PURCHASE": "Already purchased.",
+      "INVALID_INPUT": "Invalid input.",
+      "UNKNOWN": "Something went wrong."
     }
   }
 }

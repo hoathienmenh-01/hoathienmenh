@@ -10,6 +10,24 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
+
+### Added — Phase 25.2 Limited Resource Shop Packs
+
+- Added shared shop pack catalog `packages/shared/src/shop-packs.ts`: 8 pack definitions (daily/weekly/monthly/event/starter), reward validators blocking forbidden top-tier equipment/max-star pháp bảo, purchase window helpers (DAY/WEEK/MONTH/SEASON/LIFETIME with UTC reset).
+- Added additive Prisma model `ShopPackPurchase` for purchase history with unique `(characterId, packId, purchaseWindowKey)` constraint + optional `idempotencyKey` for retry safety.
+- Added `ShopPacksService` with server-authoritative purchase flow: pack active check → time window → realm gate → purchase limit → currency deduction → reward grant → ledger write → purchase history — all in one Prisma transaction.
+- Added `ShopPacksController` (GET /shop-packs, GET /shop-packs/purchases, POST /shop-packs/purchase) and `ShopPacksAdminController` (POST /admin/shop-packs/users/:id/grant) with admin audit log.
+- Added web ShopPacksView with category filter, pack cards (name/price/rewards/limit), confirm modal, sold-out/insufficient-funds states, and vi/en i18n parity.
+- Added shared tests (pack id uniqueness, reward validation, window key helpers, realm gate) and API integration tests (purchase success, duplicate prevention, daily/weekly limit, insufficient funds, admin grant).
+- Added `SHOP_PACK_PURCHASE` and `SHOP_PACK_REWARD` ledger reasons to CurrencyService and InventoryService.
+
+#### Balance / Economy
+- Shop packs sell only limited-availability resource bundles: cultivation materials, forge materials, gem materials, pháp bảo shards (capped), protection charms. No top-tier equipment, no max-star pháp bảo, no realm bypass items.
+- Spender advantage from shop packs estimated at 20–40% speed boost; F2P farm paths remain fully available.
+- All currency spent via `SHOP_PACK_PURCHASE` ledger, all rewards via `SHOP_PACK_REWARD` ledger.
+
+#### Docs
+- Updated design, balance, economy, API, changelog, and handoff docs for Phase 25.2 shop pack catalog, purchase limits, and fairness guardrails.
 ### Added — Phase 25.1 Battle Pass / Monthly Card / VIP Light
 
 - Added shared monetization config/helpers in `packages/shared/src/monetization.ts`: Battle Pass seasons/reward validation, Monthly Card daily reward rules, and VIP Light tier/perk validation.
