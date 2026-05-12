@@ -64,7 +64,11 @@
       "arenaProfile": "Failed to load arena profile",
       "arenaOpponents": "Failed to load opponents",
       "arenaChallenge": "Challenge failed",
-      "arenaHistory": "Failed to load match history"
+      "arenaHistory": "Failed to load match history",
+      "bodyCultivationState": "Failed to load body cultivation",
+      "bodyCultivationStart": "Failed to start body cultivation",
+      "bodyCultivationStop": "Failed to stop body cultivation",
+      "bodyCultivationBreakthrough": "Body breakthrough failed"
     }
   },
   "locale": {
@@ -352,6 +356,7 @@
       "social": "Social",
       "monetization": "Monetization",
       "shopPacks": "Resource Packs",
+      "bodyCultivation": "Body",
       "cosmetics": "Wardrobe"
     },
     "badge": {
@@ -5451,6 +5456,64 @@
       "DUPLICATE_PURCHASE": "Already purchased.",
       "INVALID_INPUT": "Invalid input.",
       "UNKNOWN": "Something went wrong."
+    }
+  },
+  "bodyCultivation": {
+    "title": "Body Cultivation",
+    "subtitle": "Forge the body alongside Qi cultivation: slower gains, stronger survival stats.",
+    "loading": "Loading body cultivation…",
+    "empty": "No body cultivation state found.",
+    "realmLabel": "Body realm",
+    "stage": "Stage {stage}",
+    "training": {
+      "on": "Training",
+      "off": "Resting"
+    },
+    "exp": "Body EXP",
+    "rate": "+{rate} body EXP per tick before stamina, injury and daily cap checks",
+    "injury": "Body injury active until {until}; gains are reduced.",
+    "start": "Start body training",
+    "stop": "Stop body training",
+    "backHome": "Back home",
+    "toast": {
+      "started": "Body cultivation started.",
+      "stopped": "Body cultivation stopped."
+    },
+    "stats": {
+      "title": "Body bonuses",
+      "bossReduction": "Boss damage reduction"
+    },
+    "breakthrough": {
+      "button": "Break through",
+      "success": "Body breakthrough succeeded.",
+      "failed": "Breakthrough failed; body injury may reduce gains temporarily.",
+      "requirement": "Breakthrough requirements",
+      "requiredExp": "Required body EXP",
+      "requiredPill": "Required pill",
+      "materials": "Materials",
+      "missing": "Missing materials",
+      "maxed": "Maximum body realm reached or Qi realm gate is blocking the next realm.",
+      "confirmTitle": "Confirm body breakthrough",
+      "confirmBody": "Materials are consumed server-side. Failure can apply a temporary body injury.",
+      "confirm": "Attempt",
+      "errors": {
+        "NO_CHARACTER": "No character found.",
+        "NOT_AT_PEAK": "Reach the peak body stage first.",
+        "MAX_REALM": "Maximum body realm reached.",
+        "QI_GATE": "Qi realm is too low for the next body realm.",
+        "INSUFFICIENT_EXP": "Not enough body EXP.",
+        "MISSING_MATERIALS": "Missing breakthrough materials.",
+        "MISSING_PILL": "Missing required body pill.",
+        "UNKNOWN": "Body breakthrough failed."
+      }
+    },
+    "action": {
+      "errors": {
+        "NO_CHARACTER": "No character found.",
+        "UNAUTHENTICATED": "Session expired — please sign in again.",
+        "INVALID_INPUT": "Invalid input.",
+        "UNKNOWN": "Body cultivation action failed."
+      }
     }
   },
   "cosmetics": {

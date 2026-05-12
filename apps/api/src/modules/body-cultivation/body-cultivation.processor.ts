@@ -57,7 +57,7 @@ export class BodyCultivationProcessor extends WorkerHost {
             source: 'BODY_CULTIVATION',
             requestedExp: requestedGain,
             requestedLinhThach: 0n,
-            realmKey: c.realmKey,
+            realmKey: c.bodyRealmKey,
             refType: 'BodyCultivationTick',
             meta: { jobName: job.name },
           });

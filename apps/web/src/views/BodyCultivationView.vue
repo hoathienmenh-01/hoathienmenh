@@ -228,7 +228,7 @@ onMounted(async () => {
             <div>
               <p class="text-ink-300">
                 {{ t('bodyCultivation.breakthrough.requiredExp') }}:
-                <span class="text-ink-100">{{ status.breakthroughRequirement.requiredBodyExp }}</span>
+                <span class="text-ink-100">{{ status.breakthroughRequirement.bodyExpCost }}</span>
               </p>
               <p v-if="requiredPillName" class="text-ink-300 mt-2">
                 {{ t('bodyCultivation.breakthrough.requiredPill') }}:
@@ -255,7 +255,9 @@ onMounted(async () => {
           >
             <p class="text-sm text-amber-200">{{ t('bodyCultivation.breakthrough.missing') }}</p>
             <ul class="mt-2 text-sm text-ink-200 space-y-1">
-              <li v-for="m in missingNames" :key="m.itemKey">{{ m.name }} × {{ m.qty }}</li>
+              <li v-for="m in missingNames" :key="m.itemKey">
+                {{ m.name }} × {{ m.required }} ({{ m.owned }})
+              </li>
             </ul>
           </div>
         </section>

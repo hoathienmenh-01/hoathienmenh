@@ -97,6 +97,7 @@ describe('ws-events', () => {
       const types: WsEventType[] = [
         'state:update',
         'cultivate:tick',
+        'body-cultivate:tick',
         'logs:append',
         'marquee',
         'chat:msg',
@@ -110,7 +111,7 @@ describe('ws-events', () => {
         'ping',
         'chat:send',
       ];
-      expect(types).toHaveLength(14);
+      expect(types).toHaveLength(15);
       expect(new Set(types).size).toBe(types.length);
     });
   });
@@ -150,6 +151,22 @@ describe('ws-events', () => {
         secondaryElements: [],
         rootPurity: 100,
         title: null,
+        bodyRealmKey: 'pham_than',
+        bodyRealmName: 'Phàm Thân',
+        bodyStage: 1,
+        bodyExp: '0',
+        bodyExpNext: '120',
+        bodyRate: 2.5,
+        bodyCultivating: false,
+        bodyInjuryUntil: null,
+        physiqueKey: null,
+        bodyStatBonus: {
+          hpMax: 0,
+          power: 0,
+          def: 0,
+          staminaMax: 0,
+          bossDamageReduction: 0,
+        },
       };
       expect(snap.role).toBe('PLAYER');
       expect(snap.sectKey).toBeNull();
@@ -205,6 +222,22 @@ describe('ws-events', () => {
         secondaryElements: ['tho', 'kim'],
         rootPurity: 80,
         title: null,
+        bodyRealmKey: 'pham_than',
+        bodyRealmName: 'Phàm Thân',
+        bodyStage: 1,
+        bodyExp: '0',
+        bodyExpNext: '120',
+        bodyRate: 2.5,
+        bodyCultivating: false,
+        bodyInjuryUntil: null,
+        physiqueKey: null,
+        bodyStatBonus: {
+          hpMax: 0,
+          power: 0,
+          def: 0,
+          staminaMax: 0,
+          bossDamageReduction: 0,
+        },
       };
       expect(typeof snap.tribulationCooldownAt).toBe('string');
       expect(typeof snap.taoMaUntil).toBe('string');
@@ -244,6 +277,22 @@ describe('ws-events', () => {
         secondaryElements: ['tho', 'kim'],
         rootPurity: 80,
         title: 'realm_kim_dan_adept',
+        bodyRealmKey: 'pham_than',
+        bodyRealmName: 'Phàm Thân',
+        bodyStage: 1,
+        bodyExp: '0',
+        bodyExpNext: '120',
+        bodyRate: 2.5,
+        bodyCultivating: false,
+        bodyInjuryUntil: null,
+        physiqueKey: null,
+        bodyStatBonus: {
+          hpMax: 0,
+          power: 0,
+          def: 0,
+          staminaMax: 0,
+          bossDamageReduction: 0,
+        },
       };
       expect(snap.spiritualRootGrade).toBe('huyen');
       expect(snap.primaryElement).toBe('thuy');
@@ -286,6 +335,22 @@ describe('ws-events', () => {
         secondaryElements: [],
         rootPurity: 100,
         title: null,
+        bodyRealmKey: 'pham_than',
+        bodyRealmName: 'Phàm Thân',
+        bodyStage: 1,
+        bodyExp: '0',
+        bodyExpNext: '120',
+        bodyRate: 2.5,
+        bodyCultivating: false,
+        bodyInjuryUntil: null,
+        physiqueKey: null,
+        bodyStatBonus: {
+          hpMax: 0,
+          power: 0,
+          def: 0,
+          staminaMax: 0,
+          bossDamageReduction: 0,
+        },
       };
       expect(snap.spiritualRootGrade).toBeNull();
       expect(snap.primaryElement).toBeNull();

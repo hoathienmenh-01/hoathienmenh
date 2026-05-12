@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   BODY_CULTIVATION_INJURY_MS,
-  BODY_CULTIVATION_STAMINA_PER_TICK,
   BODY_REALMS,
   bodyExpCostForStage,
   bodyRateForRealm,

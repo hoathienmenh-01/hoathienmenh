@@ -35,12 +35,14 @@ export interface BodyCultivationStatus {
   };
   canBreakthrough: boolean;
   breakthroughRequirement: {
-    toBodyRealmKey: string | null;
-    requiredBodyExp: string;
+    fromOrder: number;
+    toOrder: number;
+    bodyExpCost: string;
     materials: BodyCultivationMaterialRequirement[];
     pillItemKey: string | null;
+    minSuccessRate: number;
   } | null;
-  missingMaterials: BodyCultivationMaterialRequirement[];
+  missingMaterials: Array<{ itemKey: string; required: number; owned: number }>;
 }
 
 export interface BodyBreakthroughResult {

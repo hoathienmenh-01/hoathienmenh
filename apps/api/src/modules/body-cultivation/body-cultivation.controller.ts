@@ -86,8 +86,18 @@ export class BodyCultivationController {
   async breakthrough(@Req() req: Request) {
     const userId = await this.requireUserId(req);
     try {
-      const bodyCultivation = await this.bodyCultivation.attemptBreakthrough(userId);
-      return { ok: true, data: { bodyCultivation } };
+      const { success, successRate, ...status } =
+        await this.bodyCultivation.attemptBreakthrough(userId);
+      return {
+        ok: true,
+        data: {
+          bodyBreakthrough: {
+            success,
+            successRate,
+            status,
+          },
+        },
+      };
     } catch (e) {
       this.mapError(e);
     }

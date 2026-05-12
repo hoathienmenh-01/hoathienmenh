@@ -73,6 +73,22 @@ const STUB_CHAR: CharacterStatePayload = {
   secondaryElements: [],
   rootPurity: 100,
   title: 'realm_kim_dan_adept',
+  bodyRealmKey: 'pham_than',
+  bodyRealmName: 'Phàm Thân',
+  bodyStage: 1,
+  bodyExp: '0',
+  bodyExpNext: '120',
+  bodyRate: 2.5,
+  bodyCultivating: false,
+  bodyInjuryUntil: null,
+  physiqueKey: null,
+  bodyStatBonus: {
+    hpMax: 0,
+    power: 0,
+    def: 0,
+    staminaMax: 0,
+    bossDamageReduction: 0,
+  },
 };
 
 describe('api/titles — Phase 11.9.C client', () => {
