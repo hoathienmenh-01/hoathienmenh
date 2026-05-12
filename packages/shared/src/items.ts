@@ -7,6 +7,10 @@
 
 import type { ElementKey, LootEntry, RolledLoot } from './combat';
 import { monsterByKey } from './combat';
+import {
+  CULTIVATION_METHODS_V2,
+  type MethodSource,
+} from './cultivation-methods-v2';
 import type { EquipSlot, Quality } from './enums';
 import {
   deriveEquipmentProgressionMetadata,
@@ -67,6 +71,14 @@ export type MaterialCategory =
   | 'EQUIPMENT_CRAFT'
   | 'ARTIFACT_CRAFT'
   | 'FURNACE_UPGRADE'
+  /**
+   * Phase 26.3 — Cultivation Method V2 fragment items. Mỗi method V2 có
+   * 1 fragment item `method_fragment_<methodKey>` với `materialTier` =
+   * method.tier; Drop Economy V2 auto-derive rule rơi dựa trên
+   * `sourceHint`. Multiplier `0.45` ở `drop-economy.ts` — chậm hơn nguyên
+   * liệu thường, nhanh hơn artifact craft, tránh lạm phát.
+   */
+  | 'METHOD_FRAGMENT'
   | 'GENERAL';
 
 export type SourceHint =
@@ -2017,13 +2029,122 @@ export const ALCHEMY_V2_ITEMS: readonly ItemDef[] = [
 
 const ALCHEMY_V2_ITEM_BY_KEY = new Map(ALCHEMY_V2_ITEMS.map((i) => [i.key, i]));
 
+// ─────────────────────────────────────────────────────────────────────
+// Phase 26.3 — Cultivation Method V2 fragment items.
+//
+// Mỗi V2 method có 1 fragment item `method_fragment_<methodKey>`. Item
+// được auto-generate từ catalog V2 với:
+//   - materialTier = method.tier (1..9)
+//   - materialCategory = 'METHOD_FRAGMENT'
+//   - sourceHint: derive từ `MethodSource[]` (STARTER/MAIN_QUEST/...) sang
+//     wire `SourceHint` runtime (NORMAL_MONSTER/ELITE/BOSS/...).
+//
+// Drop Economy V2 (`drop-economy.ts`) tự sinh `MaterialDropRule` cho
+// fragment items qua `buildDropRuleCatalog(ITEMS)` (đã wire vì items có
+// đầy đủ metadata).
+// ─────────────────────────────────────────────────────────────────────
+function methodSourceToItemSourceHints(sources: readonly MethodSource[]): SourceHint[] {
+  const out = new Set<SourceHint>();
+  for (const s of sources) {
+    switch (s) {
+      case 'STARTER':
+        // Starter — skip drop economy entirely; auto-grant via service.
+        break;
+      case 'MAIN_QUEST':
+        out.add('MAIN_QUEST');
+        break;
+      case 'SIDE_QUEST':
+      case 'NPC_SHOP':
+        out.add('NPC_SHOP');
+        out.add('NORMAL_MONSTER');
+        break;
+      case 'SECT_SHOP':
+        out.add('SECT_SHOP');
+        break;
+      case 'DUNGEON_DROP':
+        out.add('DUNGEON');
+        out.add('ELITE');
+        break;
+      case 'BOSS_DROP':
+        out.add('BOSS');
+        out.add('DUNGEON');
+        break;
+      case 'WORLD_BOSS':
+        out.add('WORLD_BOSS');
+        break;
+      case 'EVENT':
+        out.add('EVENT');
+        break;
+      case 'MARKET':
+        out.add('MARKET');
+        break;
+      case 'FRAGMENT_COMBINE':
+        // Fragment_combine implies fragments come from other sources too;
+        // no extra hint.
+        break;
+      case 'ADMIN_ONLY':
+        out.add('ADMIN_ONLY');
+        break;
+      default:
+        break;
+    }
+  }
+  return Array.from(out);
+}
+
+function fragmentQuality(tier: number): Quality {
+  // Reuse ALCHEMY_TIER_QUALITY (tier → quality) — phẩm cấp fragment khớp
+  // method.tier.
+  return ALCHEMY_TIER_QUALITY[tier] ?? 'THAN';
+}
+
+function fragmentPrice(tier: number): number {
+  // Fragment không listing được trên market thông qua price field; chỉ
+  // để hiển thị. Endgame fragment cao hơn, nhưng `marketTradeable=false`
+  // ngăn list thật.
+  return Math.round(40 * Math.pow(2.2, tier - 1));
+}
+
+const METHOD_FRAGMENT_ITEMS: ItemDef[] = CULTIVATION_METHODS_V2.map((m) => {
+  const hints = methodSourceToItemSourceHints(m.sourceHint);
+  const sourceHint: SourceHint[] = hints.length > 0 ? hints : ['ADMIN_ONLY'];
+  return {
+    key: m.fragmentItemKey,
+    name: `Mảnh ${m.name}`,
+    description: `Mảnh công pháp ${m.name} (Tier ${m.tier} - ${m.grade}). Thu thập đủ ${m.fragmentsRequired} mảnh để mở công pháp.`,
+    kind: 'ORE' as ItemKind,
+    quality: fragmentQuality(m.tier),
+    stackable: true,
+    materialTier: m.tier,
+    materialCategory: 'METHOD_FRAGMENT' as MaterialCategory,
+    materialElement: null,
+    sourceHint,
+    marketTradeable: m.tradeable,
+    bindOnPickup: m.bindOnUnlock,
+    price: fragmentPrice(m.tier),
+  };
+});
+
+const METHOD_FRAGMENT_ITEM_BY_KEY = new Map(
+  METHOD_FRAGMENT_ITEMS.map((i) => [i.key, i]),
+);
+
 export const ITEMS: readonly ItemDef[] = [
-  ...BASE_ITEMS.filter((item) => !ALCHEMY_V2_ITEM_BY_KEY.has(item.key)),
+  ...BASE_ITEMS.filter(
+    (item) =>
+      !ALCHEMY_V2_ITEM_BY_KEY.has(item.key) &&
+      !METHOD_FRAGMENT_ITEM_BY_KEY.has(item.key),
+  ),
   ...ALCHEMY_V2_ITEMS,
+  ...METHOD_FRAGMENT_ITEMS,
 ];
 
 export function itemByKey(key: string): ItemDef | undefined {
-  return ALCHEMY_V2_ITEM_BY_KEY.get(key) ?? BASE_ITEMS.find((i) => i.key === key);
+  return (
+    ALCHEMY_V2_ITEM_BY_KEY.get(key) ??
+    METHOD_FRAGMENT_ITEM_BY_KEY.get(key) ??
+    BASE_ITEMS.find((i) => i.key === key)
+  );
 }
 
 export function itemWithProgression(item: ItemDef): ItemDef {

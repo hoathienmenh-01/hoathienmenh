@@ -333,6 +333,12 @@ const MATERIAL_CATEGORY_MULTIPLIER: Readonly<Record<MaterialCategory, number>> =
   EQUIPMENT_CRAFT: 0.65,
   ARTIFACT_CRAFT: 0.05,
   FURNACE_UPGRADE: 0.3,
+  /**
+   * Phase 26.3 — fragment công pháp hiếm hơn alchemy material thường,
+   * dễ hơn artifact craft. Multiplier 0.45 + per-tier daily cap đảm bảo
+   * fragment endgame không lạm phát (xem `dailyCapFor` / `weeklyCapFor`).
+   */
+  METHOD_FRAGMENT: 0.45,
   GENERAL: 1.0,
 };
 
@@ -443,6 +449,19 @@ function dailyCapFor(source: DropSource, tier: number, category: MaterialCategor
   if (category === 'BODY_BREAKTHROUGH') return tier >= 4 ? 2 : 6;
   if (category === 'QI_BREAKTHROUGH') return tier >= 4 ? 2 : 6;
   if (category === 'FURNACE_UPGRADE') return 5;
+  // Phase 26.3 — fragment công pháp cap daily theo tier:
+  //   tier ≤ 2: 12 mảnh/ngày (starter/cơ bản farm nhanh)
+  //   tier 3-5: 6 mảnh/ngày
+  //   tier 6-7: 3 mảnh/ngày (boss/dungeon high)
+  //   tier 8: 2 mảnh/ngày (world boss/event only)
+  //   tier 9: 1 mảnh/ngày (chỉ event hoặc world boss đặc biệt)
+  if (category === 'METHOD_FRAGMENT') {
+    if (tier >= 9) return 1;
+    if (tier >= 8) return 2;
+    if (tier >= 6) return 3;
+    if (tier >= 3) return 6;
+    return 12;
+  }
   return undefined;
 }
 
@@ -451,6 +470,11 @@ function weeklyCapFor(source: DropSource, tier: number, category: MaterialCatego
   if (category === 'ARTIFACT_CRAFT') return Math.max(1, 6 - tier);
   if (category === 'TRIBULATION') return Math.max(2, 10 - tier);
   if (category === 'BODY_BREAKTHROUGH' || category === 'QI_BREAKTHROUGH') return 6;
+  // Phase 26.3 — fragment công pháp endgame thêm weekly cap trên world
+  // boss/event để chống farm dồn cuối tuần.
+  if (category === 'METHOD_FRAGMENT' && tier >= 7) {
+    return Math.max(2, 10 - tier);
+  }
   return undefined;
 }
 
@@ -458,6 +482,9 @@ function qtyRangeFor(tier: number, category: MaterialCategory): [number, number]
   if (category === 'ARTIFACT_CRAFT') return [1, 1];
   if (category === 'TRIBULATION') return [1, tier >= 6 ? 1 : 2];
   if (category === 'BODY_BREAKTHROUGH' || category === 'QI_BREAKTHROUGH') return [1, tier >= 5 ? 1 : 2];
+  // Fragment công pháp — đơn giản: 1 mảnh/lần roll, ngoại trừ tier rất
+  // thấp có thể rơi 1-2.
+  if (category === 'METHOD_FRAGMENT') return tier <= 2 ? [1, 2] : [1, 1];
   if (tier >= 7) return [1, 2];
   if (tier >= 4) return [1, 3];
   return [1, 4];
@@ -569,6 +596,7 @@ export function summarizeDropCatalog(
     'EQUIPMENT_CRAFT',
     'ARTIFACT_CRAFT',
     'FURNACE_UPGRADE',
+    'METHOD_FRAGMENT',
     'GENERAL',
   ];
   const byCategory = Object.fromEntries(categories.map((c) => [c, 0])) as Record<
