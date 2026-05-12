@@ -48,6 +48,41 @@ KHÔNG bao giờ throw 500.
 
 Alchemy craft errors: `RECIPE_NOT_FOUND`, `CHARACTER_NOT_FOUND`, `FURNACE_LEVEL_TOO_LOW`, `ALCHEMY_LEVEL_TOO_LOW`, `RECIPE_TIER_TOO_HIGH`, `REALM_REQUIREMENT_NOT_MET`, `INSUFFICIENT_INGREDIENTS`, `INSUFFICIENT_FUNDS`, `UNKNOWN`.
 
+## Character — Cultivation Method V2 (Phase 26.3)
+
+Multi-slot server-authoritative method progression. 36 methods · 9 grades (PHAM→CHI_TON) · 7 categories · 5 equip slots (`QI_MAIN` / `BODY_MAIN` / `SUPPORT` / `SECT` / `SPECIAL`). All endpoints require an authenticated character; all writes are atomic inside one `$transaction` and write a `MethodUpgradeLog` audit row.
+
+| Method | Path | Auth | Mô tả |
+|--------|------|------|-------|
+| GET  | `/character/cultivation-methods-v2`           | PLAYER | Trả full state snapshot `{ cultivationMethodV2: { catalog[], equippedSlots[], aggregatedBonuses, cultivationRateMul, bodyRateMul } }`. `catalog[]` mỗi entry: `methodKey`, `unlocked`, `level`, `star`, `methodExp`, `equippedSlot \| null`, `fragmentsOwned`, `fragmentsRequiredToUnlock`, `fragmentsPerStar`, `unlockLinhThachCost`, `upgradeLinhThachCost`, `canUnlock`, `canEquip`, `canUpgrade`, `canStarUp`, plus reasons (`reasonUnlock`/`reasonEquip`/`reasonUpgrade`/`reasonStarUp`). `equippedSlots[]` mảng `{ slot, methodKey, level, star }`. `aggregatedBonuses` clamp theo `METHOD_BONUS_CAPS` (qiExpPercent/bodyExpPercent/hpMaxPercent/mpMaxPercent/atkPercent/defPercent/spiritPercent/staminaMaxPercent/bossDamageReduction/elementalAtkBonus/tribulationSupport). Đồng thời gọi `grantStarterV2IfMissing` để đảm bảo 2 starter row (qi + body) tồn tại cho character mới. |
+| POST | `/character/cultivation-methods-v2/unlock`    | PLAYER | Body `{ methodKey: string }`. Validate `unlockRealmOrder` + `unlockBodyRealmOrder` + `requiredSect`, consume `fragmentsRequired` mảnh + `unlockLinhThachCost` linh thạch, tạo `CharacterCultivationMethod{level=1, star=0}`, ghi `MethodUpgradeLog op=UNLOCK`. Trả full state snapshot. |
+| POST | `/character/cultivation-methods-v2/equip`     | PLAYER | Body `{ methodKey: string, slot: MethodEquipSlot }`. Validate method unlocked + `allowedSlots` chứa slot + slot trống (hoặc cùng method). Equip method vào slot, mirror `QI_MAIN` sang legacy `Character.equippedCultivationMethodKey`, ghi log `op=EQUIP`. |
+| POST | `/character/cultivation-methods-v2/unequip`   | PLAYER | Body `{ slot: MethodEquipSlot }`. Clear `equippedSlot` ở row hiện tại, reset legacy field nếu là `QI_MAIN`, log `op=UNEQUIP`. |
+| POST | `/character/cultivation-methods-v2/upgrade`   | PLAYER | Body `{ methodKey: string }`. Validate method unlocked + `level < maxLevel` + đủ `upgradeMaterials` + đủ `methodUpgradeLinhThachCost(tier, level)`. Consume materials + linh thạch, level+1, log `op=UPGRADE` với `levelBefore/levelAfter`. |
+| POST | `/character/cultivation-methods-v2/star-up`   | PLAYER | Body `{ methodKey: string }`. Validate method unlocked + `star < maxStar`. Consume `fragmentsPerStar` mảnh, star+1, log `op=STAR_UP` với `starBefore/starAfter`. |
+
+Error mapping (`CultivationMethodV2Error` → HTTP status):
+
+| Code | HTTP | Mô tả |
+|------|------|-------|
+| `METHOD_NOT_FOUND` | 404 | `methodKey` không tồn tại trong catalog. |
+| `METHOD_DISABLED` | 400 | Catalog entry `enabled=false`. |
+| `METHOD_ALREADY_UNLOCKED` | 409 | Đã có `CharacterCultivationMethod` row. |
+| `METHOD_NOT_UNLOCKED` | 409 | Chưa unlock; cần unlock trước. |
+| `REALM_TOO_LOW` | 403 | `character.realmOrder < unlockRealmOrder`. |
+| `BODY_REALM_TOO_LOW` | 403 | `character.bodyRealmOrder < unlockBodyRealmOrder` (BODY/HYBRID). |
+| `SECT_LOCK` | 403 | `requiredSect` set nhưng character không thuộc sect. |
+| `INSUFFICIENT_FRAGMENTS` | 400 | `inventory.qty(fragmentItemKey) < required`. |
+| `INSUFFICIENT_LINH_THACH` | 400 | `character.linhThach < cost`. |
+| `INSUFFICIENT_MATERIALS` | 400 | Thiếu `upgradeMaterials` / `breakthroughMaterials`. |
+| `SLOT_OCCUPIED` | 409 | Slot đã có method khác. |
+| `SLOT_NOT_ALLOWED` | 400 | Slot không nằm trong `allowedSlots` của method. |
+| `MAX_LEVEL_REACHED` | 400 | `level === maxLevel`. |
+| `MAX_STAR_REACHED` | 400 | `star === maxStar`. |
+| `UNKNOWN` | 500 | Unhandled exception (logged). |
+
+Stat wire: `CultivationMethodV2Service.getEquippedSnapshot(tx)` được gọi từ character stat composer; aggregated bonus chỉ contribute vào safe surfaces (cultivation EXP rate, max HP/MP, ATK/DEF percent, spirit/stamina, boss damage reduction, elemental atk bonus, tribulation support). Không có grant linh thạch/tiên ngọc.
+
 ## Auth — `AuthController` (prefix `_auth`)
 
 | Method | Path                      | Auth | Mô tả |

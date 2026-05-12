@@ -115,6 +115,73 @@ bossDamageReduction = min(0.28, progressUnits * 0.0012)
 
 Balance intent: body growth is roughly 45–55% of Qi EXP speed but pays out mostly survival stats (`hpMax`, `def`, `staminaMax`, boss mitigation) with limited `power`. It must not add spirit/mp, realm bypass, or uncapped PvP burst.
 
+### 2.4.C Cultivation Method V2 — multi-slot progression + fragment system (Phase 26.3)
+
+Phase 26.3 ships `packages/shared/src/cultivation-methods-v2.ts` (1735 lines). 36 methods · 9 grade tiers (PHAM → HUYEN → DIA → THIEN → TIEN → THAN → THANH → CHUAN_THANH → CHI_TON) · 7 categories (QI / BODY / HYBRID / ELEMENTAL / SECT / FORBIDDEN / SPECIAL) · 5 equip slots (`QI_MAIN` / `BODY_MAIN` / `SUPPORT` / `SECT` / `SPECIAL`).
+
+Tier baseline (`TierBaseline`) drives unlock + upgrade cost monotonicity:
+
+| Tier | Grade | `maxLevel` | `maxStar` | `fragmentsRequired` | `fragmentsPerStar` | `unlockLinhThachCost` | `unlockRealmOrder` |
+|---|---|---|---|---|---|---|---|
+| 1 | PHAM | 10 | 3 | 10 (starter override = 0) | 6 | 0 | 0 |
+| 2 | HUYEN | 12 | 3 | 18 | 10 | 800 | 2 |
+| 3 | DIA | 15 | 4 | 28 | 14 | 2 500 | 3 |
+| 4 | THIEN | 18 | 4 | 40 | 18 | 8 000 | 4 |
+| 5 | TIEN | 22 | 5 | 55 | 22 | 22 000 | 6 |
+| 6 | THAN | 25 | 5 | 70 | 28 | 60 000 | 9 |
+| 7 | THANH | 30 | 6 | 90 | 36 | 150 000 | 13 |
+| 8 | CHUAN_THANH | 35 | 6 | 120 | 45 | 360 000 | 17 |
+| 9 | CHI_TON | 40 | 7 | 150 | 60 | 800 000 | 21 |
+
+- `methodUpgradeLinhThachCost(tier, level)` = `baseline.unlockLinhThachCost × upgradeCostFactor(level)` (monotonic per level; level cost ≥ unlock cost from level 2 onward; cap at `maxLevel`).
+- `methodUpgradeExpCost(tier, level)` = derived from `baseline.maxLevel` so curve always ramps; used as soft signal for UI only.
+- Star-up consumes `baseline.fragmentsPerStar` mảnh per star, no linh thạch cost (intentional — star is fragment sink).
+
+Stat composition (`computeMethodStatBonus`):
+
+- `baseStats + perLevelStats × (level - 1) + perStarStats × star`.
+- Each method exposes contributions to 11 surfaces: `qiExpPercent`, `bodyExpPercent`, `hpMaxPercent`, `mpMaxPercent`, `atkPercent`, `defPercent`, `spiritPercent`, `staminaMaxPercent`, `bossDamageReduction`, `elementalAtkBonus`, `tribulationSupport`.
+- `METHOD_BONUS_CAPS` clamp the aggregated sum across up to 5 equipped methods. Caps (post-aggregation):
+
+| Surface | Cap |
+|---|---|
+| `qiExpPercent` | 200 (+200%) |
+| `bodyExpPercent` | 180 (+180%) |
+| `hpMaxPercent` | 60 (+60%) |
+| `mpMaxPercent` | 60 (+60%) |
+| `atkPercent` | 40 (+40%) |
+| `defPercent` | 40 (+40%) |
+| `spiritPercent` | 50 (+50%) |
+| `staminaMaxPercent` | 40 (+40%) |
+| `bossDamageReduction` | 0.30 (-30%) |
+| `elementalAtkBonus` | 0.25 (+25%) |
+| `tribulationSupport` | 0.25 (+25%) |
+
+`aggregateEquippedMethods` sums then clamps. Methods never grant raw HP/MP/ATK/DEF/spirit/luck integers — only percent surfaces.
+
+Slot semantics:
+
+- `QI_MAIN` — primary Qi method; mirrors `Character.equippedCultivationMethodKey` for legacy stat compose path.
+- `BODY_MAIN` — primary Body method; only `BODY`/`HYBRID` categories.
+- `SUPPORT` — auxiliary slot (any category, `tier ≤ 5` recommended).
+- `SECT` — sect-locked methods (`requiredSect` set).
+- `SPECIAL` — endgame / unique / FORBIDDEN slot; many tier 8-9 methods land here.
+
+`allowedSlots` per-method narrows which slot a method can equip into. `canEquipMethod(def, slot)` enforces this.
+
+Fragment economy:
+
+- `methodFragmentItemKey(methodKey)` = `method_fragment_<methodKey>`. Auto-derived as `MaterialItem` in `items.ts` with `materialCategory='METHOD_FRAGMENT'` and `materialTier = method.tier`.
+- Drops flow through Phase 26.2 Drop Economy V2 — realm-gated, capped daily/weekly. Endgame methods (tier 8-9) have **no** shop or top-up source; only fragment drop or sect quest reward (`sourceHint`).
+- Starter methods (`STARTER_METHOD_V2_KEYS`) auto-granted on character creation via `grantStarterV2IfMissing` with 2 rows (one QI, one BODY at tier 1), `unlocked=true`, `level=1`, `star=0`.
+
+Anti-P2W invariants:
+
+- Tier 8-9 methods (THANH / CHUAN_THANH / CHI_TON) cannot appear in shop pack / monetization rewards (validated by `cosmetics.ts` + `shop-packs.ts` forbidden lists already cover material-tier 8+).
+- Method bonuses only contribute to safe surfaces — no direct linhThach/tienNgoc grants, no realm bypass, no maxStar/maxLevel skipping.
+- Realm gating is server-authoritative (`unlockRealmOrder` + `unlockBodyRealmOrder` checked in service before any consumption).
+- Each mutation logs `MethodUpgradeLog` (op / methodKey / linhThachSpent / fragmentsSpent / materialsJson / level+star before-after) for audit replay.
+
 ### 2.5 Buff multiplier (phase 11)
 
 **Phase 11.1.A catalog đã có (session 9r-9 PR — `packages/shared/src/cultivation-methods.ts`)**:

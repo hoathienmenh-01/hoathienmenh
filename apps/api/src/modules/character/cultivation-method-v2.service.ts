@@ -17,7 +17,6 @@ import {
   realmByKey,
   type AggregatedMethodBonuses,
   type CharacterEquipContext,
-  type CultivationMethodV2Def,
   type EquippedMethodSnapshotEntry,
   type MethodEquipSlot,
 } from '@xuantoi/shared';
