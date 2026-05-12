@@ -11,12 +11,18 @@ import {
 
 describe('Phase 16.5 — daily reward cap catalog', () => {
   describe('REWARD_SOURCES enum', () => {
-    it('bao gồm 3 nguồn chính được wire trong PR này', () => {
-      expect(REWARD_SOURCES).toEqual(['CULTIVATION', 'DUNGEON', 'MISSION']);
+    it('bao gồm nguồn chính được wire', () => {
+      expect(REWARD_SOURCES).toEqual([
+        'CULTIVATION',
+        'BODY_CULTIVATION',
+        'DUNGEON',
+        'MISSION',
+      ]);
     });
 
     it('isRewardSource type-narrow đúng', () => {
       expect(isRewardSource('CULTIVATION')).toBe(true);
+      expect(isRewardSource('BODY_CULTIVATION')).toBe(true);
       expect(isRewardSource('DUNGEON')).toBe(true);
       expect(isRewardSource('MISSION')).toBe(true);
       expect(isRewardSource('TERRITORY')).toBe(false);
@@ -25,7 +31,7 @@ describe('Phase 16.5 — daily reward cap catalog', () => {
   });
 
   describe('cap catalog map đầy đủ', () => {
-    it('mỗi realm trong REALMS có entry cho cả 3 source', () => {
+    it('mỗi realm trong REALMS có entry cho mọi source', () => {
       for (const r of REALMS) {
         const entry = DAILY_REWARD_CAP_BY_REALM_AND_SOURCE[r.key];
         expect(entry, `realm ${r.key}`).toBeDefined();
@@ -51,6 +57,14 @@ describe('Phase 16.5 — daily reward cap catalog', () => {
     it('cap CULTIVATION linhThach = 0n (cultivation không grant linh thạch)', () => {
       for (const r of REALMS) {
         const cap = DAILY_REWARD_CAP_BY_REALM_AND_SOURCE[r.key]!.CULTIVATION;
+        expect(cap.linhThachCap).toBe(0n);
+      }
+    });
+
+    it('cap BODY_CULTIVATION riêng và không grant linh thạch', () => {
+      for (const r of REALMS) {
+        const cap = DAILY_REWARD_CAP_BY_REALM_AND_SOURCE[r.key]!.BODY_CULTIVATION;
+        expect(cap.expCap > 0n).toBe(true);
         expect(cap.linhThachCap).toBe(0n);
       }
     });
@@ -95,6 +109,9 @@ describe('Phase 16.5 — daily reward cap catalog', () => {
     it('cap CULTIVATION > 0 cho mọi realm (cultivation luôn cho phép EXP gain)', () => {
       for (const r of REALMS) {
         expect(dailyRewardCapFor(r.key, 'CULTIVATION').expCap > 0n).toBe(true);
+        expect(dailyRewardCapFor(r.key, 'BODY_CULTIVATION').expCap > 0n).toBe(
+          true,
+        );
       }
     });
   });

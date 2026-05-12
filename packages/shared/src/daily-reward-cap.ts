@@ -49,6 +49,11 @@ export const REWARD_SOURCES = [
    */
   'CULTIVATION',
   /**
+   * Body cultivation tick reward (bodyExp) — riêng bucket với CULTIVATION để
+   * player vẫn có progression Luyện Thể song song nhưng không farm vô hạn.
+   */
+  'BODY_CULTIVATION',
+  /**
    * Dungeon run claim — wire ở `dungeon-run.service.ts:claimRun`.
    * Bao gồm cả linhThach + EXP từ `dungeon.runReward` + territory buff
    * bonus (đã apply trước cap → cap apply trên total = base + bonus).
@@ -121,6 +126,7 @@ function realmCapTierMultiplier(realmOrder: number): number {
  */
 const BASE_CAPS: Record<RewardSource, DailyRewardCap> = {
   CULTIVATION: { expCap: 6000n, linhThachCap: 0n },
+  BODY_CULTIVATION: { expCap: 3300n, linhThachCap: 0n },
   DUNGEON: { expCap: 2400n, linhThachCap: 600n },
   MISSION: { expCap: 1500n, linhThachCap: 500n },
 };
@@ -162,6 +168,7 @@ export const DAILY_REWARD_CAP_BY_REALM_AND_SOURCE: Readonly<
       r.key,
       Object.freeze({
         CULTIVATION: dailyRewardCapFor(r.key, 'CULTIVATION'),
+        BODY_CULTIVATION: dailyRewardCapFor(r.key, 'BODY_CULTIVATION'),
         DUNGEON: dailyRewardCapFor(r.key, 'DUNGEON'),
         MISSION: dailyRewardCapFor(r.key, 'MISSION'),
       } satisfies Record<RewardSource, DailyRewardCap>),

@@ -136,6 +136,22 @@ export const ALCHEMY_RECIPES: readonly AlchemyRecipeDef[] = [
     linhThachCost: 180,
     successRate: 0.92,
   },
+  {
+    key: 'recipe_khi_huyet_dan_t1',
+    name: 'Công thức Khí Huyết Đan',
+    description: 'Đan Luyện Thể sơ cấp. Khí huyết thảo × 3 + linh thảo × 2.',
+    outputItem: 'khi_huyet_dan_t1',
+    outputQty: 1,
+    outputQuality: 'PHAM',
+    inputs: [
+      { itemKey: 'khi_huyet_thao', qty: 3 },
+      { itemKey: 'linh_thao', qty: 2 },
+    ],
+    furnaceLevel: 1,
+    realmRequirement: null,
+    linhThachCost: 45,
+    successRate: 0.9,
+  },
 
   // ----- LINH tier (2 recipe) -----
   {
@@ -170,6 +186,22 @@ export const ALCHEMY_RECIPES: readonly AlchemyRecipeDef[] = [
     linhThachCost: 500,
     successRate: 0.8,
   },
+  {
+    key: 'recipe_cuong_cot_dan_t2',
+    name: 'Công thức Cường Cốt Đan',
+    description: 'Đan Luyện Thể cường cốt. Đoán cốt thạch × 2 + yêu thú huyết tinh × 1.',
+    outputItem: 'cuong_cot_dan_t2',
+    outputQty: 1,
+    outputQuality: 'LINH',
+    inputs: [
+      { itemKey: 'doan_cot_thach', qty: 2 },
+      { itemKey: 'yeu_thu_huyet_tinh', qty: 1 },
+    ],
+    furnaceLevel: 3,
+    realmRequirement: 'truc_co',
+    linhThachCost: 140,
+    successRate: 0.76,
+  },
 
   // ----- HUYEN tier (2 recipe) -----
   {
@@ -203,6 +235,22 @@ export const ALCHEMY_RECIPES: readonly AlchemyRecipeDef[] = [
     realmRequirement: 'kim_dan',
     linhThachCost: 1500,
     successRate: 0.65,
+  },
+  {
+    key: 'recipe_tay_tuy_dan_t3',
+    name: 'Công thức Tẩy Tủy Đan',
+    description: 'Đan hỗ trợ phá quan Tẩy Tủy. Tẩy tủy dịch × 2 + đoán cốt thạch × 2.',
+    outputItem: 'tay_tuy_dan_t3',
+    outputQty: 1,
+    outputQuality: 'HUYEN',
+    inputs: [
+      { itemKey: 'tay_tuy_dich', qty: 2 },
+      { itemKey: 'doan_cot_thach', qty: 2 },
+    ],
+    furnaceLevel: 5,
+    realmRequirement: 'kim_dan',
+    linhThachCost: 360,
+    successRate: 0.62,
   },
 
   // ----- TIEN tier (3 recipe) -----
@@ -256,6 +304,22 @@ export const ALCHEMY_RECIPES: readonly AlchemyRecipeDef[] = [
     linhThachCost: 12000,
     successRate: 0.35,
   },
+  {
+    key: 'recipe_kim_than_dan_t4',
+    name: 'Công thức Kim Thân Đan',
+    description: 'Đan Kim Cương Thân. Kim thân tinh × 2 + tẩy tủy dịch × 2.',
+    outputItem: 'kim_than_dan_t4',
+    outputQty: 1,
+    outputQuality: 'TIEN',
+    inputs: [
+      { itemKey: 'kim_than_tinh', qty: 2 },
+      { itemKey: 'tay_tuy_dich', qty: 2 },
+    ],
+    furnaceLevel: 7,
+    realmRequirement: 'hoa_than',
+    linhThachCost: 900,
+    successRate: 0.5,
+  },
 
   // ----- THAN tier (1 recipe) -----
   {
@@ -273,6 +337,22 @@ export const ALCHEMY_RECIPES: readonly AlchemyRecipeDef[] = [
     furnaceLevel: 9,
     realmRequirement: 'do_kiep',
     linhThachCost: 30000,
+    successRate: 0.2,
+  },
+  {
+    key: 'recipe_bat_hoai_dan_t5',
+    name: 'Công thức Bất Hoại Đan',
+    description: 'Đan Bất Hoại Pháp Thân. Bất hoại hồn thạch × 2 + kim thân tinh × 3.',
+    outputItem: 'bat_hoai_dan_t5',
+    outputQty: 1,
+    outputQuality: 'THAN',
+    inputs: [
+      { itemKey: 'bat_hoai_hon_thach', qty: 2 },
+      { itemKey: 'kim_than_tinh', qty: 3 },
+    ],
+    furnaceLevel: 9,
+    realmRequirement: 'do_kiep',
+    linhThachCost: 2200,
     successRate: 0.2,
   },
 ];

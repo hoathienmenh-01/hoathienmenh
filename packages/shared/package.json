@@ -46,6 +46,11 @@
       "import": "./dist/items.js",
       "require": "./dist/items.cjs"
     },
+    "./body-cultivation": {
+      "types": "./dist/body-cultivation.d.ts",
+      "import": "./dist/body-cultivation.js",
+      "require": "./dist/body-cultivation.cjs"
+    },
     "./missions": {
       "types": "./dist/missions.d.ts",
       "import": "./dist/missions.js",

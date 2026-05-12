@@ -278,6 +278,17 @@ model Character {
   settings    Json    @default("{}")
   cultivating Boolean @default(false)
 
+  /// Phase 26.0 — Luyện Thể progression song song Luyện Khí.
+  /// EXP/cảnh giới riêng, tick riêng, breakthrough thủ công qua
+  /// BodyCultivationService. Không vượt quá realmKey.order + 1.
+  bodyRealmKey          String    @default("pham_than")
+  bodyStage             Int       @default(1)
+  bodyExp               BigInt    @default(0)
+  bodyCultivating       Boolean   @default(false)
+  bodyInjuryUntil       DateTime?
+  physiqueKey           String?
+  bodyBreakthroughCount Int       @default(0)
+
   /// Phase 11.3.A — Linh căn / Spiritual Root server-authoritative.
   /// `spiritualRootGrade` ∈ {'pham','linh','huyen','tien','than'} (5-tier).
   /// `primaryElement` ∈ Ngũ Hành {'kim','moc','thuy','hoa','tho'}.
@@ -365,6 +376,7 @@ model Character {
   cultivationMethods       CharacterCultivationMethod[]
   characterSkills          CharacterSkill[]
   tribulationAttemptLogs   TribulationAttemptLog[]
+  bodyBreakthroughLogs     BodyBreakthroughAttemptLog[]
   tribulationEncounters    TribulationEncounter[]
   tribulationMiniBattles   TribulationMiniBattle[]
   breakthroughAttemptLogs  BreakthroughAttemptLog[]
@@ -903,6 +915,27 @@ model TribulationAttemptLog {
 
   @@index([characterId, createdAt])
   @@index([tribulationKey, createdAt])
+}
+
+/// Phase 26.0 — audit log cho mỗi lần đột phá Luyện Thể.
+/// Lưu snapshot requirement/material/pill đã dùng để replay cân bằng và
+/// điều tra race/abuse. FK cascade khi character bị xoá.
+model BodyBreakthroughAttemptLog {
+  id               String    @id @default(cuid())
+  characterId      String
+  character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  fromBodyRealmKey String
+  fromBodyStage    Int
+  toBodyRealmKey   String
+  toBodyStage      Int
+  success          Boolean
+  successRate      Float
+  materialsJson    Json      @default("[]")
+  pillItemKey      String?
+  injuryUntil      DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([characterId, createdAt])
 }
 
 /// Phase 14.3.D — Tribulation Encounter session (mini-encounter trước khi

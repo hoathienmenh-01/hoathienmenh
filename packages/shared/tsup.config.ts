@@ -10,6 +10,7 @@ export default defineConfig({
     'src/api-contracts.ts',
     'src/combat.ts',
     'src/items.ts',
+    'src/body-cultivation.ts',
     'src/missions.ts',
     'src/topup.ts',
     'src/boss.ts',
