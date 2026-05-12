@@ -40,6 +40,7 @@ export * from './tribulation-support-validate';
 export * from './topup';
 export * from './monetization';
 export * from './shop';
+export * from './shop-packs';
 export * from './map-regions';
 export * from './balance-dials';
 export * from './breakthrough-chance';
