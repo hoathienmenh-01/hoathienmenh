@@ -64,7 +64,11 @@
       "arenaProfile": "Không tải được hồ sơ Đấu Đài",
       "arenaOpponents": "Không tải được đối thủ",
       "arenaChallenge": "Khiêu chiến thất bại",
-      "arenaHistory": "Không tải được lịch sử trận"
+      "arenaHistory": "Không tải được lịch sử trận",
+      "bodyCultivationState": "Không lấy được trạng thái luyện thể",
+      "bodyCultivationStart": "Bắt đầu luyện thể thất bại",
+      "bodyCultivationStop": "Dừng luyện thể thất bại",
+      "bodyCultivationBreakthrough": "Đột phá luyện thể thất bại"
     }
   },
   "locale": {
@@ -352,6 +356,7 @@
       "social": "Xã Giao",
       "monetization": "Tiên Lộ Lệnh",
       "shopPacks": "Gói Tài Nguyên",
+      "bodyCultivation": "Luyện Thể",
       "cosmetics": "Y Quán"
     },
     "badge": {
@@ -5451,6 +5456,64 @@
       "DUPLICATE_PURCHASE": "Đã mua rồi.",
       "INVALID_INPUT": "Dữ liệu không hợp lệ.",
       "UNKNOWN": "Có lỗi xảy ra."
+    }
+  },
+  "bodyCultivation": {
+    "title": "Luyện Thể",
+    "subtitle": "Rèn thân thể song song Luyện Khí: tiến chậm hơn nhưng tăng sinh tồn mạnh.",
+    "loading": "Đang tải trạng thái luyện thể…",
+    "empty": "Chưa có trạng thái luyện thể.",
+    "realmLabel": "Cảnh giới thể tu",
+    "stage": "Tầng {stage}",
+    "training": {
+      "on": "Đang luyện",
+      "off": "Nghỉ luyện"
+    },
+    "exp": "Body EXP",
+    "rate": "+{rate} body EXP mỗi tick trước kiểm tra thể lực, thương thế và giới hạn ngày",
+    "injury": "Thể thương hiệu lực tới {until}; EXP nhận bị giảm.",
+    "start": "Bắt đầu luyện thể",
+    "stop": "Dừng luyện thể",
+    "backHome": "Về Đạo Cung",
+    "toast": {
+      "started": "Đã bắt đầu luyện thể.",
+      "stopped": "Đã dừng luyện thể."
+    },
+    "stats": {
+      "title": "Chỉ số Luyện Thể",
+      "bossReduction": "Giảm sát thương boss"
+    },
+    "breakthrough": {
+      "button": "Đột phá",
+      "success": "Đột phá luyện thể thành công.",
+      "failed": "Đột phá thất bại; thể thương có thể giảm EXP tạm thời.",
+      "requirement": "Điều kiện đột phá",
+      "requiredExp": "Body EXP cần",
+      "requiredPill": "Đan cần",
+      "materials": "Nguyên liệu",
+      "missing": "Còn thiếu",
+      "maxed": "Đã đạt tối đa hoặc bị cảnh giới Luyện Khí chặn.",
+      "confirmTitle": "Xác nhận đột phá Luyện Thể",
+      "confirmBody": "Nguyên liệu sẽ bị tiêu hao trên server. Thất bại có thể gây thể thương tạm thời.",
+      "confirm": "Thử đột phá",
+      "errors": {
+        "NO_CHARACTER": "Chưa có nhân vật.",
+        "NOT_AT_PEAK": "Cần đạt đỉnh tầng thể tu trước.",
+        "MAX_REALM": "Đã đạt cảnh giới thể tu tối đa.",
+        "QI_GATE": "Cảnh giới Luyện Khí chưa đủ để mở cảnh Luyện Thể kế tiếp.",
+        "INSUFFICIENT_EXP": "Chưa đủ body EXP.",
+        "MISSING_MATERIALS": "Thiếu nguyên liệu đột phá.",
+        "MISSING_PILL": "Thiếu đan luyện thể cần thiết.",
+        "UNKNOWN": "Đột phá luyện thể thất bại."
+      }
+    },
+    "action": {
+      "errors": {
+        "NO_CHARACTER": "Chưa có nhân vật.",
+        "UNAUTHENTICATED": "Phiên đã hết hạn — hãy đăng nhập lại.",
+        "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+        "UNKNOWN": "Thao tác luyện thể thất bại."
+      }
     }
   },
   "cosmetics": {

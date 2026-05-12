@@ -59,6 +59,11 @@ export async function makeUserChar(
     secondaryElements?: string[];
     rootPurity?: number;
     equippedCultivationMethodKey?: string | null;
+    bodyRealmKey?: string;
+    bodyStage?: number;
+    bodyExp?: bigint;
+    bodyCultivating?: boolean;
+    bodyInjuryUntil?: Date | null;
   },
 ): Promise<TestCharacterFixture> {
   const suffix = nextSuffix();
@@ -97,6 +102,11 @@ export async function makeUserChar(
       secondaryElements: opts?.secondaryElements ?? [],
       rootPurity: opts?.rootPurity ?? 100,
       equippedCultivationMethodKey: opts?.equippedCultivationMethodKey ?? null,
+      bodyRealmKey: opts?.bodyRealmKey ?? 'pham_than',
+      bodyStage: opts?.bodyStage ?? 1,
+      bodyExp: opts?.bodyExp ?? 0n,
+      bodyCultivating: opts?.bodyCultivating ?? false,
+      bodyInjuryUntil: opts?.bodyInjuryUntil ?? null,
     },
   });
   return { userId: user.id, characterId: char.id, email, name };
@@ -135,6 +145,7 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // nhưng explicit cho rõ thứ tự reset state giữa test runs).
   await prisma.rewardCapEvent.deleteMany({});
   await prisma.characterDailyRewardBucket.deleteMany({});
+  await prisma.bodyBreakthroughAttemptLog.deleteMany({});
   // Phase 16.6 — Economy Anti-cheat tables. Xoá `Issue` trước `Run` (FK
   // cascade rồi nhưng explicit cho rõ). `EconomyAnomaly` không có FK
   // tới Character (`characterId String?`) nên xoá đầu cũng OK.

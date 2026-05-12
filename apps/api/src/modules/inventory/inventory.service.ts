@@ -141,6 +141,7 @@ export type ItemLedgerReason =
   // SUPPORT_ITEM_MISSING → rollback toàn bộ tx (KHÔNG ghi log, KHÔNG mất exp,
   // KHÔNG cooldown). Player retry an toàn.
   | 'TRIBULATION_SUPPORT_CONSUME'
+  | 'BODY_BREAKTHROUGH'
   // Phase 12.10.D — NPC Relationship Quest Chain claim item grant. Wire qua
   // `NpcRelationshipChainService.claimChain → InventoryService.grantTx
   // (positive qtyDelta)` với `refType='NpcRelationshipChain'` + `refId=chainKey`.

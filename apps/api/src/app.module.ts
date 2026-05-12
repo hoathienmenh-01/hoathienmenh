@@ -8,6 +8,7 @@ import { InventoryModule } from './modules/inventory/inventory.module';
 import { MarketModule } from './modules/market/market.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { CultivationModule } from './modules/cultivation/cultivation.module';
+import { BodyCultivationModule } from './modules/body-cultivation/body-cultivation.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { SectModule } from './modules/sect/sect.module';
 import { BossModule } from './modules/boss/boss.module';
@@ -80,6 +81,7 @@ import { CosmeticsModule } from './modules/cosmetics/cosmetics.module';
     RealtimeModule,
     CharacterModule,
     CultivationModule,
+    BodyCultivationModule,
     CombatModule,
     DungeonRunModule,
     InventoryModule,

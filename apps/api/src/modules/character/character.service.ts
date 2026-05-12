@@ -1,7 +1,13 @@
 import { forwardRef, Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
+  bodyExpCostForStage,
+  bodyRateForRealm,
+  computeBodyStatBonus,
   computeBreakthroughChance,
+  fullBodyRealmName,
+  getBodyRealmByKey,
+  BODY_REALMS,
   evaluateBreakthroughOutcome,
   expCostForStage,
   getCultivationMethodDef,
@@ -705,6 +711,8 @@ export class CharacterService {
 
   private toState(c: CharRow): CharacterStatePayload {
     const expNext = expCostForStage(c.realmKey, c.realmStage);
+    const bodyRealm = getBodyRealmByKey(c.bodyRealmKey) ?? BODY_REALMS[0]!;
+    const bodyExpNext = bodyExpCostForStage(bodyRealm, c.bodyStage);
     return {
       id: c.id,
       name: c.name,
@@ -752,6 +760,18 @@ export class CharacterService {
       // Server nguồn duy nhất — FE không tự set field này. Catalog key reference
       // ở `packages/shared/src/titles.ts`.
       title: c.title ?? null,
+      bodyRealmKey: bodyRealm.key,
+      bodyRealmName: fullBodyRealmName(bodyRealm, c.bodyStage),
+      bodyStage: c.bodyStage,
+      bodyExp: c.bodyExp.toString(),
+      bodyExpNext: (bodyExpNext ?? 0n).toString(),
+      bodyRate: bodyRateForRealm(bodyRealm.key),
+      bodyCultivating: c.bodyCultivating,
+      bodyInjuryUntil: c.bodyInjuryUntil
+        ? c.bodyInjuryUntil.toISOString()
+        : null,
+      physiqueKey: c.physiqueKey,
+      bodyStatBonus: computeBodyStatBonus(bodyRealm.order, c.bodyStage),
     };
   }
 }

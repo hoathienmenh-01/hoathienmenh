@@ -79,6 +79,42 @@ Target curve: time-to-realm tăng dần nhưng không quá 4× giữa 2 realm li
 
 **KHÔNG được** hardcode override 1 realm cụ thể (e.g. "luyenkhi rate × 2") — phá monotonic curve.
 
+### 2.4.B Body Cultivation / Luyện Thể (Phase 26.0)
+
+Code: `packages/shared/src/body-cultivation.ts`, `apps/api/src/modules/body-cultivation/*`.
+
+Body Cultivation is a parallel progression axis, not a Qi rewrite:
+
+```
+BODY_REALMS.length = REALMS.length = 28
+bodyRealm.order == qiRealm.order
+bodyStage count == Qi realm stage count
+bodyRealmOrder <= qiRealmOrder + 1
+bodyRateForRealm ~= cultivationRateForRealm * 0.5
+```
+
+Runtime rules:
+- Separate fields: `bodyRealmKey`, `bodyStage`, `bodyExp`, `bodyCultivating`.
+- Tick job: `body-tick` on the cultivation queue, using daily cap source `BODY_CULTIVATION`.
+- Stamina: each granted tick costs `BODY_CULTIVATION_STAMINA_PER_TICK`; low stamina pauses body EXP.
+- Injury: failed major breakthrough sets `bodyInjuryUntil`; active injury applies `BODY_CULTIVATION_INJURY_GAIN_MULT` to body EXP gain.
+- Minor stages auto-advance on body EXP overflow; major realm breakthroughs are manual and consume body materials/pills transactionally.
+- No direct premium/body-power sale and no linhThach/tienNgoc grant from body ticks/breakthroughs.
+
+Stat formula:
+
+```
+progressUnits = bodyRealm.order * 9 + (bodyStage - 1)
+tierMul = 1 + bodyRealm.order / 18
+hpMax = min(24_000, round(progressUnits * 24 * tierMul))
+power = min(1_200, round(progressUnits * 1.35 * tierMul))
+def = min(1_500, round(progressUnits * 1.65 * tierMul))
+staminaMax = min(220, round(progressUnits * 0.42))
+bossDamageReduction = min(0.28, progressUnits * 0.0012)
+```
+
+Balance intent: body growth is roughly 45–55% of Qi EXP speed but pays out mostly survival stats (`hpMax`, `def`, `staminaMax`, boss mitigation) with limited `power`. It must not add spirit/mp, realm bypass, or uncapped PvP burst.
+
 ### 2.5 Buff multiplier (phase 11)
 
 **Phase 11.1.A catalog đã có (session 9r-9 PR — `packages/shared/src/cultivation-methods.ts`)**:

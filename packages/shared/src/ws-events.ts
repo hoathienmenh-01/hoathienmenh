@@ -15,6 +15,7 @@ export type WsEventType =
   // server → client
   | 'state:update'
   | 'cultivate:tick'
+  | 'body-cultivate:tick'
   | 'logs:append'
   | 'marquee'
   | 'chat:msg'
@@ -247,6 +248,22 @@ export interface CharacterStatePayload {
    * `packages/shared/src/titles.ts`.
    */
   title: string | null;
+  bodyRealmKey: string;
+  bodyRealmName: string;
+  bodyStage: number;
+  bodyExp: string;
+  bodyExpNext: string;
+  bodyRate: number;
+  bodyCultivating: boolean;
+  bodyInjuryUntil: string | null;
+  physiqueKey: string | null;
+  bodyStatBonus: {
+    hpMax: number;
+    power: number;
+    def: number;
+    staminaMax: number;
+    bossDamageReduction: number;
+  };
 }
 
 export interface CultivateTickPayload {
@@ -257,6 +274,16 @@ export interface CultivateTickPayload {
   realmKey: string;
   realmStage: number;
   brokeThrough: boolean;
+}
+
+export interface BodyCultivateTickPayload {
+  characterId: string;
+  expGained: string;
+  bodyExp: string;
+  bodyExpNext: string;
+  bodyRealmKey: string;
+  bodyStage: number;
+  stagedUp: boolean;
 }
 
 export const WS_HEARTBEAT_INTERVAL_MS = 25_000;

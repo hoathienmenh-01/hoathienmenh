@@ -16,6 +16,7 @@ export * from './alchemy';
 export * from './boss';
 export * from './buffs';
 export * from './cultivation-methods';
+export * from './body-cultivation';
 export * from './gems';
 export * from './refine';
 export * from './equipment-upgrade';
