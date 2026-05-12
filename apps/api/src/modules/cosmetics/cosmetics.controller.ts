@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpException,
   HttpStatus,
+  Param,
   Post,
   Req,
 } from '@nestjs/common';
@@ -45,6 +46,16 @@ export class CosmeticsController {
   @Get('catalog')
   async catalog() {
     return { ok: true, data: { catalog: this.service.catalog(), types: COSMETIC_TYPES } };
+  }
+
+  @Get('profile/:characterId')
+  async profile(@Param('characterId') characterId: string) {
+    try {
+      const loadout = await this.service.loadoutByCharacterId(characterId);
+      return { ok: true, data: { loadout } };
+    } catch (e) {
+      this.failCosmetic(e);
+    }
   }
 
   @Get('me')

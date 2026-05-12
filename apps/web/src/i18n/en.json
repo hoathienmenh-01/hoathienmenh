@@ -351,7 +351,8 @@
       "storyDungeons": "Story Dungeons",
       "social": "Social",
       "monetization": "Monetization",
-      "shopPacks": "Resource Packs"
+      "shopPacks": "Resource Packs",
+      "cosmetics": "Wardrobe"
     },
     "badge": {
       "bossActive": "World boss is live",
@@ -5449,6 +5450,72 @@
       "INSUFFICIENT_FUNDS": "Insufficient funds.",
       "DUPLICATE_PURCHASE": "Already purchased.",
       "INVALID_INPUT": "Invalid input.",
+      "UNKNOWN": "Something went wrong."
+    }
+  },
+  "cosmetics": {
+    "title": "Wardrobe — Cosmetics",
+    "subtitle": "Aura / title / frame / chat badge / profile decoration — no power gain, no realm bypass.",
+    "owned": "Owned",
+    "locked": "Locked",
+    "equipped": "Equipped",
+    "equip": "Equip",
+    "unequip": "Unequip",
+    "empty": "Empty",
+    "emptyFiltered": "No cosmetics match these filters.",
+    "equipSuccess": "Cosmetic equipped.",
+    "equipFail": "Failed to equip cosmetic.",
+    "unequipSuccess": "Cosmetic unequipped.",
+    "unequipFail": "Failed to unequip cosmetic.",
+    "sourceLabel": "Source",
+    "elementLabel": "Element",
+    "durationLabel": "{days} days",
+    "types": {
+      "AURA": "Aura",
+      "TITLE": "Title",
+      "AVATAR_FRAME": "Avatar Frame",
+      "CHAT_BADGE": "Chat Badge",
+      "PROFILE_DECORATION": "Profile Decoration",
+      "ELEMENT_AURA": "Element Aura"
+    },
+    "rarity": {
+      "COMMON": "Common",
+      "RARE": "Rare",
+      "EPIC": "Epic",
+      "LEGENDARY": "Legendary",
+      "MYTHIC": "Mythic"
+    },
+    "source": {
+      "FREE": "Free",
+      "BATTLE_PASS": "Battle Pass",
+      "SHOP": "Shop Pack",
+      "VIP": "VIP Light",
+      "EVENT": "Event",
+      "ADMIN": "Admin"
+    },
+    "element": {
+      "KIM": "Metal",
+      "MOC": "Wood",
+      "THUY": "Water",
+      "HOA": "Fire",
+      "THO": "Earth",
+      "NEUTRAL": "Neutral"
+    },
+    "ownedFilter": {
+      "all": "All",
+      "owned": "Owned",
+      "locked": "Locked"
+    },
+    "errors": {
+      "NO_CHARACTER": "No character.",
+      "COSMETIC_NOT_FOUND": "Cosmetic not found.",
+      "COSMETIC_INACTIVE": "Cosmetic inactive.",
+      "NOT_OWNED": "You do not own this cosmetic.",
+      "OWNERSHIP_EXPIRED": "Cosmetic ownership expired.",
+      "INVALID_TYPE": "Invalid cosmetic type.",
+      "INVALID_INPUT": "Invalid input.",
+      "ALREADY_OWNED_PERMANENT": "Already owned permanently.",
+      "IN_FLIGHT": "Processing...",
       "UNKNOWN": "Something went wrong."
     }
   }

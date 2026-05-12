@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { getCosmeticById } from '@xuantoi/shared';
 import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
 import {
@@ -10,6 +11,10 @@ import {
   type ChatChannel,
   type ChatMessageView,
 } from '@/api/chat';
+import {
+  fetchCosmeticProfile,
+  type CosmeticLoadoutView,
+} from '@/api/cosmetics';
 import { on } from '@/ws/client';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
@@ -31,14 +36,56 @@ const visibleMsgs = computed(() =>
   tab.value === 'WORLD' ? worldMsgs.value : sectMsgs.value,
 );
 
+// Phase 25.3 — lazy cache of senderId → cosmetic loadout for chat badges
+// + title rendering. Sender IDs in chat are character IDs (see chat.service.ts).
+// We dedup fetches with an in-flight Map; loadouts never carry power, so it
+// is safe to render without affecting combat data.
+const cosmeticByCharacterId = reactive(new Map<string, CosmeticLoadoutView>());
+const cosmeticFetching = new Set<string>();
+
+function senderTitle(senderId: string) {
+  const loadout = cosmeticByCharacterId.get(senderId);
+  if (!loadout?.activeTitleId) return null;
+  return getCosmeticById(loadout.activeTitleId);
+}
+
+function senderBadge(senderId: string) {
+  const loadout = cosmeticByCharacterId.get(senderId);
+  if (!loadout?.activeChatBadgeId) return null;
+  return getCosmeticById(loadout.activeChatBadgeId);
+}
+
+async function ensureSenderCosmetics(senderId: string): Promise<void> {
+  if (!senderId) return;
+  if (cosmeticByCharacterId.has(senderId)) return;
+  if (cosmeticFetching.has(senderId)) return;
+  cosmeticFetching.add(senderId);
+  try {
+    const res = await fetchCosmeticProfile(senderId);
+    cosmeticByCharacterId.set(senderId, res.loadout);
+  } catch (e) {
+    void e;
+  } finally {
+    cosmeticFetching.delete(senderId);
+  }
+}
+
+function refreshSenderCosmetics(messages: readonly ChatMessageView[]): void {
+  const unique = new Set<string>();
+  for (const m of messages) unique.add(m.senderId);
+  for (const id of unique) void ensureSenderCosmetics(id);
+}
+
 let unbindMsg: (() => void) | null = null;
 
 async function loadHistory(channel: ChatChannel): Promise<void> {
   try {
     if (channel === 'WORLD') {
       worldMsgs.value = await chatHistory('WORLD');
+      refreshSenderCosmetics(worldMsgs.value);
     } else if (currentSectId.value) {
       sectMsgs.value = await chatHistory('SECT');
+      refreshSenderCosmetics(sectMsgs.value);
     }
     await scrollToBottom();
   } catch {
@@ -93,6 +140,7 @@ onMounted(() => {
     } else if (m.channel === 'SECT' && m.scopeKey === currentSectId.value) {
       sectMsgs.value = [...sectMsgs.value, m].slice(-200);
     }
+    void ensureSenderCosmetics(m.senderId);
     if (
       (m.channel === 'WORLD' && tab.value === 'WORLD') ||
       (m.channel === 'SECT' && tab.value === 'SECT')
@@ -153,6 +201,16 @@ watch(currentSectId, async (id, prev) => {
       </div>
       <div v-for="m in visibleMsgs" :key="m.id" class="leading-tight">
         <span class="text-ink-300/70">[{{ fmtTime(m.createdAt) }}]</span>
+        <span
+          v-if="senderBadge(m.senderId)"
+          :class="senderBadge(m.senderId)!.cssClass"
+          :data-testid="`chat-badge-${m.senderId}`"
+        >{{ senderBadge(m.senderId)!.nameVi }}</span>
+        <span
+          v-if="senderTitle(m.senderId)"
+          :class="senderTitle(m.senderId)!.cssClass"
+          :data-testid="`chat-title-${m.senderId}`"
+        >{{ senderTitle(m.senderId)!.nameVi }}</span>
         <span class="text-amber-300 mx-1">{{ m.senderName }}:</span>
         <span>{{ m.text }}</span>
       </div>

@@ -6,6 +6,7 @@ import { i18n } from './i18n';
 import { initSentryWeb } from './lib/sentry';
 import './design/tokens.css';
 import './style.css';
+import './style/cosmetics.css';
 
 const app = createApp(App);
 // Phase 17.3 — Sentry init phải sau createApp + trước mount để Vue
