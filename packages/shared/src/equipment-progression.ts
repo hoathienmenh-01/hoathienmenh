@@ -1,3 +1,4 @@
+import { REALMS } from './realms';
 import type { EquipSlot, Quality } from './enums';
 
 export type EquipmentTierNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
@@ -43,6 +44,19 @@ export interface EquipmentProgressionItem extends Partial<EquipmentPowerInput> {
   computedPowerScore?: number;
   maxEnhanceLevel?: number;
   maxSocketCount?: number;
+}
+
+export interface DeriveEquipmentProgressionInput {
+  key?: string;
+  quality: Quality;
+  slot?: EquipmentSlotLike;
+  equipmentTier?: number;
+  equipmentGradeWithinTier?: EquipmentGradeWithinTier | null;
+  requiredRealmOrder?: number;
+  requiredRealmKey?: string;
+  enhanceLevel?: number;
+  gemBonusRatio?: number;
+  setBonusRatio?: number;
 }
 
 export interface EquipmentProgressionMetadata {
@@ -329,6 +343,48 @@ export function validateEquipmentProgression(
   }
 }
 
+export function deriveEquipmentProgressionMetadata(
+  item: DeriveEquipmentProgressionInput,
+): EquipmentProgressionMetadata | null {
+  if (!item.slot) return null;
+  const requiredRealmOrder =
+    item.requiredRealmOrder ?? deriveDefaultRequiredRealmOrder(item);
+  const tier = getEquipmentTierForRealmOrder(requiredRealmOrder);
+  const grade = item.equipmentGradeWithinTier ?? getEquipmentGradeWithinTier(requiredRealmOrder);
+  const powerBudget = computeEquipmentPowerBudget({
+    requiredRealmOrder,
+    equipmentTier: tier.tier,
+    equipmentGradeWithinTier: grade,
+    quality: item.quality,
+    slot: item.slot,
+  });
+  return {
+    equipmentTier: tier.tier,
+    equipmentTierName: tier.name,
+    equipmentGradeWithinTier: grade,
+    requiredRealmOrder,
+    requiredRealmKey: item.requiredRealmKey ?? getRealmKeyForEquipmentRealmOrder(requiredRealmOrder),
+    powerBudget,
+    computedPowerScore: computeEquipmentPowerScore({
+      requiredRealmOrder,
+      equipmentTier: tier.tier,
+      equipmentGradeWithinTier: grade,
+      quality: item.quality,
+      slot: item.slot,
+      enhanceLevel: item.enhanceLevel,
+      gemBonusRatio: item.gemBonusRatio,
+      setBonusRatio: item.setBonusRatio,
+    }),
+    maxEnhanceLevel: getEnhanceCapForTier(tier.tier),
+    maxSocketCount: getSocketCapForTierAndQuality(tier.tier, item.quality),
+  };
+}
+
+export function getRealmKeyForEquipmentRealmOrder(realmOrder: number): string | undefined {
+  assertRealmOrder(realmOrder);
+  return REALMS[realmOrder - 1]?.key;
+}
+
 function getTierDef(tier: number): EquipmentTierDef {
   const found = EQUIPMENT_TIERS.find((t) => t.tier === tier);
   if (!found) throw new RangeError(`Invalid equipment tier ${tier}`);
@@ -412,5 +468,26 @@ function normalizeSlot(slot: EquipmentSlotLike): NormalizedSlot {
       return 'AMULET';
     case 'offhand':
       return 'OFFHAND';
+  }
+}
+
+function deriveDefaultRequiredRealmOrder(item: DeriveEquipmentProgressionInput): number {
+  if (item.equipmentTier !== undefined) {
+    return getRequiredRealmOrderForTierGrade(
+      item.equipmentTier,
+      item.equipmentGradeWithinTier ?? 'I',
+    );
+  }
+  switch (item.quality) {
+    case 'PHAM':
+      return 1;
+    case 'LINH':
+      return 2;
+    case 'HUYEN':
+      return 3;
+    case 'TIEN':
+      return 4;
+    case 'THAN':
+      return 5;
   }
 }
