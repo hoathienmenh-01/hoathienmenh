@@ -122,6 +122,30 @@ describe('STORY_DIALOGUES catalog invariant', () => {
     }
   });
 
+  it('Phase 21 adds dialogue states across 12 important NPCs', () => {
+    const coveredNpcKeys = new Set(STORY_DIALOGUES.map((node) => node.npcKey));
+    expect(coveredNpcKeys.size).toBeGreaterThanOrEqual(12);
+    for (const npc of NPCS) {
+      expect(coveredNpcKeys.has(npc.key), npc.key).toBe(true);
+    }
+
+    const phase21Nodes = STORY_DIALOGUES.filter((node) => node.id.includes('_phase21_'));
+    const hasConditionKind = (kind: string) =>
+      phase21Nodes.some((node) => (node.conditions ?? []).some((condition) => condition.kind === kind));
+
+    expect(hasConditionKind('not_seen')).toBe(true);
+    expect(hasConditionKind('quest_status')).toBe(true);
+    expect(hasConditionKind('affinity_min')).toBe(true);
+    expect(hasConditionKind('realm_min')).toBe(true);
+    expect(
+      phase21Nodes.some((node) =>
+        node.choices.some((choice) =>
+          (choice.effects ?? []).some((effect) => effect.kind === 'change_affinity'),
+        ),
+      ),
+    ).toBe(true);
+  });
+
   it('storyDialogueNodeSpecificity ranks quest_status > flag > realm_min > always', () => {
     const always: StoryDialogueNodeDef = {
       id: 'story_dlg_test_always',

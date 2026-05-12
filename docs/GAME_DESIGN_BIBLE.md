@@ -56,6 +56,11 @@ Người chơi **không** kỳ vọng combat skill cao (đây không phải MMOR
 
 ## B. CORE LOOP
 
+### B.0 Phase 21 story retention layer
+
+Phase 21 extends the core loop into a chapter-gated story layer: quest progress → cultivation/gear/dungeon/boss growth → realm/battle-power/story gate → next chapter. The first 30–60 minutes should teach character creation, A Linh/Hoa Thiên onboarding, first cultivation, spiritual-root discovery, first main quest, first dungeon/skill, sect identity, and light social/party hooks without requiring docs reading.
+
+
 ### B.1 Vòng lặp cốt lõi (server-authoritative)
 
 ```
@@ -85,6 +90,23 @@ Người chơi **không** kỳ vọng combat skill cao (đây không phải MMOR
 ```
 
 Mọi mũi tên trong loop trên **bắt buộc đi qua server**. FE chỉ render. Vi phạm = bug critical.
+
+### B.1.1 Phase 21 chapter gate loop
+
+Phase 21 story chapters follow a stricter gate loop than early placeholder catalogs:
+
+```text
+quest/story beat → tu luyện → nâng trang bị → story dungeon/boss →
+đạt realm/cultivation/battle-power gate → mở chapter kế tiếp
+```
+
+Chapter unlock is not “claim previous quest only”. Each chapter catalog entry must combine:
+
+- story prerequisite (`requiredMainQuestKey`, `previousChapterKey`, story flag),
+- strength prerequisite (`requiredRealmKey`, optional cultivation stage, optional battle power),
+- system prerequisite when relevant (dungeon clear, boss defeated, sect rank, elemental affinity).
+
+Current Phase 21 implementation is allowed to seed gates statically first. Any gate not enforceable by existing runtime must be marked as a runtime follow-up, but it still belongs in catalog tests so future UI/API work cannot silently remove it.
 
 ### B.2 Loop theo thời gian thực của người chơi
 

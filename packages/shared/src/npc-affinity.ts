@@ -93,7 +93,7 @@ export interface NpcAffinityDef {
 }
 
 /**
- * Catalog 5 NPC trụ cột — mỗi NPC có cap min/max khác nhau theo bản chất:
+ * Catalog NPC trụ cột — mỗi NPC có cap min/max khác nhau theo bản chất:
  *   - Lăng Vân Sinh / Mộc Thanh Y (Hoa Thiên — đồng môn): `[-50, 200]`,
  *     khó giận lâu, có thể đạt `tri_ky`.
  *   - Hàn Dạ (rival): `[-100, 150]`, có thể trở thành `tri_giao` nhưng
@@ -223,6 +223,143 @@ export const NPC_AFFINITY: readonly NpcAffinityDef[] = [
         tierKey: 'tri_giao',
         description: 'Huyết La Sát hé lộ mặt tối Hoa Thiên đã ruồng bỏ y.',
         descriptionEn: 'Huyết La Sát reveals the dark side of Hoa Thiên that exiled him.',
+      },
+    ],
+  },
+
+  {
+    npcKey: 'npc_a_linh',
+    initialScore: 10,
+    minScore: -20,
+    maxScore: 120,
+    unlockHints: [
+      {
+        tierKey: 'quen_biet',
+        description: 'Mở lời nhắc guided path đầu game và mẹo daily nhẹ.',
+        descriptionEn: 'Unlocks early guided-path reminders and light daily tips.',
+      },
+      {
+        tierKey: 'ban_huu',
+        description: 'A Linh tặng tin đồn nhỏ về ngoại môn và Hạt Giống Vô Danh.',
+        descriptionEn: 'A Linh shares small outer-court rumors about the Nameless Seed.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_van_kim_nuong',
+    initialScore: 0,
+    minScore: -50,
+    maxScore: 150,
+    unlockHints: [
+      {
+        tierKey: 'quen_biet',
+        description: 'Mở dialogue chợ và lịch thương đội Vạn Bảo.',
+        descriptionEn: 'Unlocks market dialogue and Vạn Bảo caravan timing.',
+      },
+      {
+        tierKey: 'ban_huu',
+        description: 'Gợi ý escort/market hidden hooks không phá economy.',
+        descriptionEn: 'Hints at escort/market hidden hooks without breaking economy.',
+      },
+      {
+        tierKey: 'tri_giao',
+        description: 'Được xem sổ giao dịch nghi liên quan Tịch Thiên Điện.',
+        descriptionEn: 'Grants access to ledgers suspected to involve Tịch Thiên Hall.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_bach_de_tu',
+    initialScore: 0,
+    minScore: -100,
+    maxScore: 80,
+    unlockHints: [
+      {
+        tierKey: 'quen_biet',
+        description: 'Hé lộ mâu thuẫn giữa tiên luật và tự do tu tiên.',
+        descriptionEn: 'Reveals tension between immortal law and cultivation freedom.',
+      },
+      {
+        tierKey: 'ban_huu',
+        description: 'Mở nhánh nghi vấn Tiên Đình Bạch Đế.',
+        descriptionEn: 'Unlocks suspicion hooks around the White Emperor Immortal Court.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_tich_linh_su_gia',
+    initialScore: -10,
+    minScore: -150,
+    maxScore: 60,
+    unlockHints: [
+      {
+        tierKey: 'quen_biet',
+        description: 'Sứ giả giải thích triết lý “yên tĩnh” của Tịch Thiên.',
+        descriptionEn: 'The emissary explains Tịch Thiên’s philosophy of imposed stillness.',
+      },
+      {
+        tierKey: 'ban_huu',
+        description: 'Mở manh mối về Tịch Linh Chủng trong cơ thể Mộc Thanh Y.',
+        descriptionEn: 'Unlocks clues about the Nether Spirit Seed inside Mộc Thanh Y.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_huyet_ha_su_gia',
+    initialScore: -5,
+    minScore: -120,
+    maxScore: 100,
+    unlockHints: [
+      {
+        tierKey: 'quen_biet',
+        description: 'Mở lời giải thích về Huyết Hà Ma Tông và chợ đen.',
+        descriptionEn: 'Unlocks explanations of the Blood River sect and black market.',
+      },
+      {
+        tierKey: 'ban_huu',
+        description: 'Gợi ý tuyến ma đạo không đồng nghĩa với ác tuyệt đối.',
+        descriptionEn: 'Hints that demonic path does not always mean absolute evil.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_hoa_thien_dao_to',
+    initialScore: 0,
+    minScore: 0,
+    maxScore: 200,
+    unlockHints: [
+      {
+        tierKey: 'quen_biet',
+        description: 'Nghe tàn niệm tổ sư về “vá thiên đạo”.',
+        descriptionEn: 'Hear the founder remnant explain “mending heavenly dao.”',
+      },
+      {
+        tierKey: 'ban_huu',
+        description: 'Mở ký ức phong ấn Vô Đạo Chủng.',
+        descriptionEn: 'Unlocks memories of the seal against the Dao-less Seed.',
+      },
+      {
+        tierKey: 'tri_giao',
+        description: 'Tổ sư giao lời cảnh báo về quyền tự chọn đạo.',
+        descriptionEn: 'The founder entrusts a warning about the right to choose one’s path.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_tich_thien_dao_chu',
+    initialScore: -50,
+    minScore: -200,
+    maxScore: 50,
+    unlockHints: [
+      {
+        tierKey: 'xa_la',
+        description: 'Chỉ nghe đạo âm đối nghịch, chưa thể tiếp cận bản thể.',
+        descriptionEn: 'Only hears the opposing Dao-echo; the true body remains unreachable.',
+      },
+      {
+        tierKey: 'quen_biet',
+        description: 'Hiểu động cơ khoá đại đạo của phản diện tối cao.',
+        descriptionEn: 'Understands why the final antagonist wants to lock the great Dao.',
       },
     ],
   },

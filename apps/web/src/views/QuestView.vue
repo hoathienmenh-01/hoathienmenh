@@ -41,8 +41,11 @@ const lastError = computed(() => questStore.lastError);
 const kindFilter = computed(() => questStore.kindFilter);
 const filteredQuests = computed(() => questStore.filteredQuests);
 const totalCount = computed(() => questStore.totalCount);
+const completedCount = computed(
+  () => questStore.quests.filter((q) => q.status === 'CLAIMED').length,
+);
 
-const KINDS: QuestKind[] = ['main', 'realm', 'sect', 'npc', 'grind'];
+const KINDS: QuestKind[] = ['main', 'side', 'branch', 'hidden', 'realm', 'sect', 'npc', 'grind'];
 
 function setFilter(kind: QuestKind | null): void {
   questStore.setKindFilter(kind);
@@ -216,6 +219,9 @@ onMounted(async () => {
           <div data-testid="quest-total-count">
             {{ t('quest.totalCount', { n: totalCount }) }}
           </div>
+          <div data-testid="quest-completed-count">
+            {{ t('quest.completedCount', { n: completedCount }) }}
+          </div>
         </div>
       </header>
 
@@ -300,6 +306,13 @@ onMounted(async () => {
                 {{ t(`quest.kind.${q.kind}`) }}
               </span>
               <span
+                v-if="q.chapterKey"
+                class="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded border border-violet-400/40 text-violet-200"
+                :data-testid="`quest-chapter-tag-${q.key}`"
+              >
+                {{ t('quest.chapterTag', { chapter: q.chapterKey }) }}
+              </span>
+              <span
                 v-if="relationshipChainFor(q)"
                 class="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded border border-rose-400/40 text-rose-200"
                 :data-testid="`quest-chain-tag-${q.key}`"
@@ -325,6 +338,20 @@ onMounted(async () => {
           </header>
 
           <p class="text-xs text-ink-300 leading-relaxed">{{ q.description }}</p>
+          <div class="grid gap-1 sm:grid-cols-2 text-[11px] text-ink-400">
+            <div v-if="q.objective" :data-testid="`quest-objective-${q.key}`">
+              <span class="text-ink-300">{{ t('quest.objective') }}:</span> {{ q.objective }}
+            </div>
+            <div v-if="q.requirement" :data-testid="`quest-requirement-${q.key}`">
+              <span class="text-ink-300">{{ t('quest.requirement') }}:</span> {{ q.requirement }}
+            </div>
+            <div v-if="q.giverNpcKey" :data-testid="`quest-npc-${q.key}`">
+              <span class="text-ink-300">{{ t('quest.npc') }}:</span> {{ q.giverNpcKey }}
+            </div>
+            <div v-if="q.status === 'LOCKED'" :data-testid="`quest-lock-reason-${q.key}`">
+              <span class="text-ink-300">{{ t('quest.lockReason') }}:</span> {{ t('quest.lockedHint') }}
+            </div>
+          </div>
 
           <div class="flex items-center gap-3 flex-wrap">
             <button

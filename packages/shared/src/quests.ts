@@ -33,6 +33,11 @@
  * trong `docs/story/PHASE12_STORY_PROGRESS.md` §7.
  */
 
+import { PHASE21_MAIN_QUESTS } from './phase21-main-quests';
+import { PHASE21_SIDE_QUESTS } from './phase21-side-quests';
+import { PHASE21_BRANCH_QUESTS } from './phase21-branch-quests';
+import { PHASE21_HIDDEN_QUESTS } from './phase21-hidden-quests';
+
 /**
  * Quest type — match story bible naming (`main` / `realm` / `sect` / `npc` / `grind`).
  *
@@ -42,7 +47,7 @@
  * - `npc`: nhiệm vụ giao bởi NPC cụ thể (intro NPC + side story).
  * - `grind`: nhiệm vụ cày (kill / collect quantity) — repeatable trong PR-2 nếu cần.
  */
-export type QuestKind = 'main' | 'realm' | 'sect' | 'npc' | 'grind';
+export type QuestKind = 'main' | 'realm' | 'sect' | 'npc' | 'grind' | 'side' | 'branch' | 'hidden';
 
 /**
  * Quest step objective. Phase 12 PR-2 `QuestService.progress` sẽ track theo `(kind, targetType, targetId)`.
@@ -128,6 +133,24 @@ export interface QuestDef {
   chainKey: string | null;
   /** Quest prerequisite — phải claim quest này trước khi available. `null` = không có prereq. */
   prerequisiteQuestKey: string | null;
+  /** Optional chapter binding for expanded story journal catalogs. */
+  chapterKey?: string;
+  /** Optional order inside `chapterKey` or `chainKey`. */
+  order?: number;
+  /** Optional explicit previous key for journal rendering. Runtime still uses prerequisiteQuestKey. */
+  previousQuestKey?: string | null;
+  /** Optional explicit next key for journal rendering. */
+  nextQuestKey?: string | null;
+  /** Optional player-facing objective summary for journal UI. */
+  objective?: string;
+  /** Optional requirement summary for journal UI. */
+  requirement?: string;
+  /** Optional NPC where quest starts; defaults to giverNpcKey. */
+  startNpcKey?: string;
+  /** Optional NPC where quest ends; defaults to giverNpcKey. */
+  endNpcKey?: string;
+  /** Optional story dialogue node ids used by start/progress/complete states. */
+  dialogueKeys?: readonly string[];
   /** Steps theo thứ tự. UI render từ trên xuống. */
   steps: readonly QuestStepDef[];
   /** Reward khi claim — Phase 12 PR-3 đi qua `RewardLedger` idempotency `(characterId, QUEST_CLAIM, questKey)`. */
@@ -199,6 +222,10 @@ export const QUESTS: readonly QuestDef[] = [
     loreSummary:
       'Onboarding chính tuyến. Hạt Giống Vô Danh trong hậu sơn lộ ra khi player giết Sơn Thử cuối cùng. Story bible §9.1 row 0.',
   },
+  ...PHASE21_MAIN_QUESTS,
+  ...PHASE21_SIDE_QUESTS,
+  ...PHASE21_BRANCH_QUESTS,
+  ...PHASE21_HIDDEN_QUESTS,
   {
     key: 'phamnhan_realm_01',
     name: 'Hạt Giống Vô Danh',

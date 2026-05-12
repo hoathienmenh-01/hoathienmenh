@@ -17,6 +17,7 @@ export default defineConfig({
       manifest: false, // dùng public/manifest.webmanifest tự viết
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,webp,png,ico}'],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//, /^\/ws/],
         runtimeCaching: [

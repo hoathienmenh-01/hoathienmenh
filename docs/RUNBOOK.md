@@ -139,6 +139,11 @@ Nếu blocker xuất hiện → tạo issue `closed-beta-blocker-<slug>` + escal
 
 ---
 
+
+### 1.5.9. Phase 21 content verification
+
+Before marking PR #538 ready, run: `pnpm --filter @xuantoi/shared test -- phase21-content-integrity.test.ts`, then full `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`. If content-count or reward-ratio tests fail, treat as P3 content regression pre-release; do not hotfix by skipping tests.
+
 ## 2. Common incident playbooks
 
 Mỗi playbook theo cấu trúc: **Triệu chứng → Verify → Mitigate → Investigate → Postmortem**.

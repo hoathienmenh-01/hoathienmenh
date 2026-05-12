@@ -33,6 +33,13 @@ Mục tiêu: thêm content **không phá CI**, **không lệch curve**, **không
 | **Achievement (legacy row)** | (replaced by `packages/shared/src/achievements.ts` Phase 11.10.A) | (see Achievement row above) | (resolved) |
 | **EventConfig** | (chưa có) | 0 | Phase 15 — DB-backed |
 
+
+### 1.1.1 Phase 21 PR #538 mega content checkpoint
+
+- Story/quest catalog remains static TypeScript for this PR: `story-chapters.ts`, `phase21-main-quests.ts`, `phase21-side-quests.ts`, `phase21-branch-quests.ts`, `phase21-hidden-quests.ts`, `story-dialogues.ts`, `missions.ts`, `achievements.ts`, `titles.ts`.
+- Minimums met in catalog/tests: 8 chapters, 120 main, 160 side, 64 branch, 40 hidden, 30+ daily, 20+ weekly, 100+ achievements/titles, 600+ dialogue.
+- Runtime DB enforcement beyond current quest/mission progress remains follow-up; this PR seeds typed catalog + integrity tests without destructive migration.
+
 ---
 
 ## 2. STATIC vs DB CATALOG
@@ -87,7 +94,8 @@ Mỗi content type có 1 contract chung:
 | Dungeon | `recommendedRealm`, `monsters[]`, `staminaEntry` |
 | Mission | `period`, `goalKind`, `goalAmount`, `rewards`, `requiredRealmOrder?`, `element?` (Ngũ Hành), `regionKey?`, `storyChainKey?` (Phase 11+ chain quest UI), `realmTier?` (REALMS key) |
 | Boss | `level`, `maxHp`, `atk`, `def`, `rewardLinhThach`, `rewardItems[]`, `spawnIntervalMin?` |
-| Quest (phase 11) | `chainKey`, `stepIndex`, `requiredQuestKey?`, `rewards`, `dialogueKey?` |
+| Quest (phase 11+) | `chainKey`, `stepIndex`, `requiredQuestKey?`, `chapterKey?`, `previousQuestKey?`, `nextQuestKey?`, `rewards`, `dialogueKey?`, source label (`CANON_FROM_STORY_BIBLE` / `AI_EXPANDED_LORE` in docs if the catalog has no field) |
+| Story chapter (Phase 21+) | `chapterKey`, `order`, `mainQuestKeys`, `unlockGate` (`requiredRealmKey`, `requiredMainQuestKey`, optional battle power / dungeon / boss / sect / elemental gates), reward caps |
 | Event (phase 15) | `kind`, `configJson`, `startsAt`, `endsAt`, `rewardTiers[]` |
 
 ### 3.3 Audit fields (không bao giờ để FE input)
@@ -121,6 +129,26 @@ Mỗi content type có 1 contract chung:
 
 - `catalog.test.ts` pass: key uniqueness, slot coverage.
 - Power không vượt curve (xem `BALANCE_MODEL.md` §3 power-by-realm).
+
+### 4.0 Phase 21 story/quest mega-content gate
+
+Before adding large quest batches:
+
+1. Confirm chapter gates exist before expanding quest counts. A chapter must not unlock only from a previous quest; it needs story + strength gates.
+2. Use the reward ratio bands in `BALANCE_MODEL.md` §5.8.
+3. Label lore origin in docs/handoff:
+   - `CANON_FROM_STORY_BIBLE` for core canon beats and NPC roles.
+   - `AI_EXPANDED_LORE` for minor branch/hidden/side expansions that do not alter canon.
+4. Add integrity tests for:
+   - duplicate keys,
+   - chapter order,
+   - quest links,
+   - chapter gate presence,
+   - side/branch/hidden reward caps,
+   - hidden triggers,
+   - branch hooks,
+   - daily/weekly cadence caps,
+   - i18n parity where catalog fields have vi/en.
 - i18n: VI + EN.
 
 ### 4.2 Skill

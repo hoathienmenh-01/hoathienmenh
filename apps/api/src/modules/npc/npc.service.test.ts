@@ -23,8 +23,11 @@ afterAll(async () => {
 
 const NPC_LANG_VAN_SINH = 'npc_lang_van_sinh';
 const NPC_MOC_THANH_Y = 'npc_moc_thanh_y';
+const NPC_A_LINH = 'npc_a_linh';
 const NPC_HAN_DA = 'npc_han_da';
 const NPC_TO_NGUYET_LY = 'npc_to_nguyet_ly';
+const NPC_VAN_KIM_NUONG = 'npc_van_kim_nuong';
+const NPC_TICH_LINH_SU_GIA = 'npc_tich_linh_su_gia';
 
 describe('NpcService.listForUser', () => {
   it('throws NO_CHARACTER khi user không có character', async () => {
@@ -33,28 +36,28 @@ describe('NpcService.listForUser', () => {
     );
   });
 
-  it('character realm phamnhan thấy 2 NPC realmGate=0 (Lăng Vân Sinh + Mộc Thanh Y)', async () => {
+  it('character realm phamnhan thấy 3 NPC realmGate=0 including A Linh', async () => {
     const { userId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
     const list = await npcs.listForUser(userId);
     const keys = list.map((n) => n.key).sort();
-    expect(keys).toEqual([NPC_LANG_VAN_SINH, NPC_MOC_THANH_Y].sort());
+    expect(keys).toEqual([NPC_A_LINH, NPC_LANG_VAN_SINH, NPC_MOC_THANH_Y].sort());
   });
 
-  it('character realm luyenkhi thấy thêm Hàn Dạ (realmGate=1) — total 3', async () => {
+  it('character realm luyenkhi thấy thêm Hàn Dạ và Vạn Kim Nương', async () => {
     const { userId } = await makeUserChar(prisma, { realmKey: 'luyenkhi' });
     const list = await npcs.listForUser(userId);
     const keys = list.map((n) => n.key).sort();
     expect(keys).toEqual(
-      [NPC_LANG_VAN_SINH, NPC_MOC_THANH_Y, NPC_HAN_DA].sort(),
+      [NPC_A_LINH, NPC_LANG_VAN_SINH, NPC_MOC_THANH_Y, NPC_HAN_DA, NPC_VAN_KIM_NUONG].sort(),
     );
   });
 
-  it('character realm truc_co thấy đủ 4 NPC (Tô Nguyệt Ly realmGate=2)', async () => {
+  it('character realm truc_co thấy thêm Tô Nguyệt Ly và Tịch Linh Sứ Giả', async () => {
     const { userId } = await makeUserChar(prisma, { realmKey: 'truc_co' });
     const list = await npcs.listForUser(userId);
     const keys = list.map((n) => n.key).sort();
     expect(keys).toEqual(
-      [NPC_LANG_VAN_SINH, NPC_MOC_THANH_Y, NPC_HAN_DA, NPC_TO_NGUYET_LY].sort(),
+      [NPC_A_LINH, NPC_LANG_VAN_SINH, NPC_MOC_THANH_Y, NPC_HAN_DA, NPC_TO_NGUYET_LY, NPC_VAN_KIM_NUONG, NPC_TICH_LINH_SU_GIA].sort(),
     );
   });
 

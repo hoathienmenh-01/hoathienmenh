@@ -52,6 +52,7 @@ afterAll(async () => {
 const NPC_LANG = 'npc_lang_van_sinh';
 const NPC_MOC = 'npc_moc_thanh_y';
 const NODE_LANG_INTRO = 'story_dlg_lang_van_sinh_chapter_1_intro';
+const NODE_LANG_PHASE21_FIRST = 'story_dlg_lang_van_sinh_phase21_first_meet';
 const NODE_LANG_SEED = 'story_dlg_lang_van_sinh_seed_truth';
 const NODE_MOC_LINH_CAN = 'story_dlg_moc_thanh_y_linh_can';
 const QUEST_PHAMNHAN_NPC = 'phamnhan_npc_01';
@@ -90,21 +91,14 @@ describe('StoryDialogueService.getDialogue', () => {
     );
   });
 
-  it('returns highest-specificity node — Lăng Vân Sinh intro chapter 1 cho Phàm Nhân không có quest accepted', async () => {
+  it('returns highest-specificity node — Phase 21 available quest intro for new Phàm Nhân', async () => {
     const { userId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
     const node = await service.getDialogue(userId, NPC_LANG);
-    // Node intro chapter 1 chỉ có realm_min: 0 → match tất cả Phàm Nhân.
-    // Node seed_truth có quest_status=accepted + not_seen, KHÔNG match (chưa accept quest).
-    expect(node.nodeId).toBe(NODE_LANG_INTRO);
+    expect(node.nodeId).toBe(NODE_LANG_PHASE21_FIRST);
     expect(node.npcKey).toBe(NPC_LANG);
-    expect(node.choices.map((c) => c.key)).toContain('respect');
-    expect(node.choices.map((c) => c.key)).toContain('doubt');
-    expect(node.choices.map((c) => c.key)).toContain('ask_seed');
+    expect(node.choices.map((c) => c.key)).toContain('accept_sect_name');
     expect(node.seen).toBe(false);
-    // Choice 'ask_seed' navigates → nextNodeId.
-    const askSeed = node.choices.find((c) => c.key === 'ask_seed')!;
-    expect(askSeed.nextNodeId).toBe(NODE_LANG_SEED);
-    expect(askSeed.available).toBe(true);
+    
   });
 
   it('picks higher-specificity node when quest accepted matches condition', async () => {
@@ -212,7 +206,7 @@ describe('StoryDialogueService.applyChoice — happy paths', () => {
     // node `friendly_chat` (Phase 12.10.A) match điều kiện (seen:intro +
     // not_seen:self) nên server pick node đó làm follow-up. Service KHÔNG return
     // chính node intro để tránh loop.
-    expect(result.nextNode?.nodeId).toBe('story_dlg_lang_van_sinh_friendly_chat');
+    expect(result.nextNode?.nodeId).toBe(NODE_LANG_PHASE21_FIRST);
   });
 });
 
@@ -334,9 +328,11 @@ describe('StoryDialogueService.applyChoice — validation', () => {
 
   it('listForNpc returns chỉ các node visible (filter conditions)', async () => {
     const { userId, characterId } = await makeUserChar(prisma, { realmKey: 'phamnhan' });
-    // Trước khi accept, chỉ intro visible (seed yêu cầu quest accepted).
     let nodes = await service.listForNpc(userId, NPC_LANG);
-    expect(nodes.map((n) => n.nodeId)).toEqual([NODE_LANG_INTRO]);
+    const visibleBeforeAccept = nodes.map((n) => n.nodeId);
+    expect(visibleBeforeAccept).toContain(NODE_LANG_INTRO);
+    expect(visibleBeforeAccept).toContain(NODE_LANG_PHASE21_FIRST);
+    expect(visibleBeforeAccept).not.toContain(NODE_LANG_SEED);
     // Sau khi accept quest, seed cũng visible.
     await seedQuestAccepted(prisma, characterId, QUEST_PHAMNHAN_REALM, {
       step_01: 0,

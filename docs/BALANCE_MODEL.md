@@ -959,6 +959,28 @@ Invariant (xem `story-dungeons.test.ts` describe `validateStoryDungeonCatalog`):
 - `rewardHint.{linhThach, tienNgoc, exp}` integer ≥ 0.
 - `rewardHint.items[].qty` ≥ 1.
 
+### 5.8 Phase 21 quest reward ratio bands
+
+Phase 21 mega story content uses per-chapter main quest reward as the baseline. The intent is progression support, not currency inflation:
+
+| Content type | Resource ratio vs chapter main baseline | Design use |
+|---|---:|---|
+| Main quest | 100% | Primary story progression: cultivation EXP, moderate Linh Thạch, story item, skill fragment, dungeon/boss/chapter unlock. |
+| Side quest | 25–45% | Small help and lore: low EXP/Linh Thạch, common item, small `congHien`, NPC affinity. |
+| Branch quest | 35–60% | Choice value: đạo tâm flag, NPC affinity, dialogue/quest unlock, minor title/utility item. |
+| Hidden quest | 20–50% resource value | Discovery value: achievement/title/lore fragment first; currency stays low. |
+| Daily template | Small fixed cap | Habit loop only; never a main farm source. |
+| Weekly template | Moderate weekly cap | Weekly checklist reward below main-story pacing. |
+
+Validator expectations for Phase 21:
+
+- Main quest rewards should be higher than side/branch/hidden rewards in the same chapter unless an exception is documented as a one-time rare discovery.
+- Side quests should not exceed 45% of the chapter main baseline for currency/EXP.
+- Branch quests should not exceed 60% of the chapter main baseline for currency/EXP.
+- Hidden quests should prefer title/achievement/lore/cosmetic-style value and should not exceed 50% resource baseline.
+- Daily/weekly quest templates must include cadence/cap metadata or docs must mark runtime follow-up.
+- Runtime reward grants still go through existing Quest/Mission reward services and ledgers; no ad-hoc currency/item mutation.
+
 ### 5.4 Gem socket budget (phase 11.4.A)
 
 **Phase 11.4.A catalog đã có (session 9r-10 PR — `packages/shared/src/gems.ts`)**:
@@ -1524,6 +1546,11 @@ Override:
 3. Admin live override (FeatureFlag — phase 15).
 
 **KHÔNG được** chỉnh dial trực tiếp trong service code. Mọi service import từ `BALANCE_DIALS`.
+
+
+## 9.8 Phase 21 quest reward ratios
+
+Phase 21 uses main quests as the resource baseline. Side quests target 25–45% of main resource value, branch quests 35–60%, hidden quests 20–50%, and hidden/branch content favors affinity/title/lore unlocks over currency. `packages/shared/src/phase21-content-integrity.test.ts` enforces aggregate side/branch/hidden ratios against the main quest baseline and checks Phase 21 daily/weekly caps.
 
 ---
 

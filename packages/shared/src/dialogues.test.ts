@@ -76,6 +76,14 @@ describe('DIALOGUES catalog integrity (Phase 12 PR-1 + Story Foundation Extensio
     expect(dialoguesByNpc('npc_huyet_la_sat').length).toBe(1);
   });
 
+  it('Phase 21 covers at least 12 important NPCs with quick dialogues', () => {
+    const coveredNpcKeys = new Set(DIALOGUES.map((d) => d.speakerNpcKey));
+    expect(coveredNpcKeys.size).toBeGreaterThanOrEqual(12);
+    for (const npc of NPCS) {
+      expect(coveredNpcKeys.has(npc.key), npc.key).toBe(true);
+    }
+  });
+
   it('pickDialogueForNpc picks specific (high realm_min) over always for Lăng Vân Sinh', () => {
     // realm 0 (phamnhan) → default
     const r0 = pickDialogueForNpc('npc_lang_van_sinh', 0);
