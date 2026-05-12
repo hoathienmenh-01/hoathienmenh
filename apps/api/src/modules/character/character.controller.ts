@@ -784,6 +784,75 @@ export class CharacterController {
     }
   }
 
+  @Post('phap-bao/:inventoryItemId/star-up')
+  @HttpCode(200)
+  async phapBaoStarUp(
+    @Req() req: Request,
+    @Param('inventoryItemId') inventoryItemId: string,
+  ) {
+    const userId = await this.requireUserId(req);
+    if (!this.phapBao) fail('PHAP_BAO_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const parsed = PhapBaoPreviewParam.safeParse(inventoryItemId);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const result = await this.phapBao.starUp(character.id, parsed.data);
+      return { ok: true, data: { phapBao: result } };
+    } catch (e) {
+      if (e instanceof PhapBaoError) {
+        fail(e.code, mapPhapBaoErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  @Post('phap-bao/:inventoryItemId/awaken')
+  @HttpCode(200)
+  async phapBaoAwaken(
+    @Req() req: Request,
+    @Param('inventoryItemId') inventoryItemId: string,
+  ) {
+    const userId = await this.requireUserId(req);
+    if (!this.phapBao) fail('PHAP_BAO_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const parsed = PhapBaoPreviewParam.safeParse(inventoryItemId);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const result = await this.phapBao.awaken(character.id, parsed.data);
+      return { ok: true, data: { phapBao: result } };
+    } catch (e) {
+      if (e instanceof PhapBaoError) {
+        fail(e.code, mapPhapBaoErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  @Post('phap-bao/:inventoryItemId/refine')
+  @HttpCode(200)
+  async phapBaoRefine(
+    @Req() req: Request,
+    @Param('inventoryItemId') inventoryItemId: string,
+  ) {
+    const userId = await this.requireUserId(req);
+    if (!this.phapBao) fail('PHAP_BAO_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const parsed = PhapBaoPreviewParam.safeParse(inventoryItemId);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const result = await this.phapBao.refine(character.id, parsed.data);
+      return { ok: true, data: { phapBao: result } };
+    } catch (e) {
+      if (e instanceof PhapBaoError) {
+        fail(e.code, mapPhapBaoErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
   /**
    * Phase 15.0.A — Equipment Reforge Foundation. Re-roll substats trong
    * `ALLOWED_SUBSTAT_KINDS` (atk/def/hpMax/mpMax/spirit). Cost theo quality
@@ -1881,6 +1950,18 @@ function mapPhapBaoErrorStatus(code: PhapBaoError['code']): HttpStatus {
       return HttpStatus.NOT_FOUND;
     case 'PHAP_BAO_STAR_UP_DISABLED':
     case 'PHAP_BAO_AWAKEN_DISABLED':
+      return HttpStatus.CONFLICT;
+    case 'REALM_TOO_LOW':
+    case 'MAX_STAR_REACHED':
+    case 'MAX_AWAKEN_REACHED':
+    case 'MAX_REFINE_REACHED':
+    case 'QUALITY_TOO_LOW':
+    case 'STAR_TOO_LOW':
+    case 'REFINE_TOO_LOW':
+    case 'INSUFFICIENT_MATERIAL':
+    case 'INSUFFICIENT_FUNDS':
+    case 'CONCURRENT_UPGRADE':
+    case 'PHAP_BAO_LOCKED':
       return HttpStatus.CONFLICT;
     default:
       return HttpStatus.BAD_REQUEST;

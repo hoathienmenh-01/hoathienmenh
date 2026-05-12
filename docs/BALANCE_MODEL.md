@@ -553,7 +553,22 @@ Phase 23.5 thêm hệ **Pháp Bảo** là slot riêng (`ARTIFACT_1/2/3` đã có
 - Bảo hộ luyện pháp bảo (giảm risk fail khi refine high stage).
 - Lựa chọn pháp bảo từ Battle Pass / event.
 
-**Follow-ups**: Phase 23.6 enable star-up + awaken persistence + visual rarity FX; Phase 25.1 monetization-safe hook (premium drop trong tier, không bán pháp bảo top tier hoặc max sao trực tiếp); Phase 24.2/24.3 final QA polish.
+#### Phase 23.7 update — persisted star/refine/awaken (DONE PR #545)
+
+Phase 23.7 keeps the Phase 23.5 slot/catalog identity and turns progression into persisted server-authoritative state on `InventoryItem`: `phapBaoStarLevel` (1..min(`starCap`, 5)), `refineLevel` (0..`refineCap`), and `phapBaoAwakenStage` (0..min(`awakenCap`, 3)).
+
+**Progression curves**
+- Star-up: `STAR_BASE_COST_BY_TIER` = `300/900/2400/5800/13500/30000/66000/142000/305000/660000 × qualityMultiplier × (currentStar+1)^2`; material = tier material × `round(tier × (currentStar+1) × 1.5)` + `phap_bao_shard` `5/10/20/40/80`. Each star contributes `PHAP_BAO_STAR_POWER_PER_LEVEL` and reduces active cooldown by `PHAP_BAO_STAR_COOLDOWN_REDUCTION_PER_STAR`, capped by `PHAP_BAO_STAR_COOLDOWN_REDUCTION_CAP` and 30s floor.
+- Refine: uses pháp-bảo refine curve (`REFINE_BASE_COST_BY_TIER × qualityMultiplier × 1.4^level × PHAP_BAO_REFINE_COST_MULTIPLIER`) and tier material; high refine stages include `refine_protection_charm` as a Phase 25.1 acceleration/protection hook, not a hard-cap bypass.
+- Awaken: only TIEN/THAN and tier ≥5; requires `starLevel >= 3 + currentAwakenStage`, `refineLevel >= min(refineCap, 2 + currentAwakenStage × 2)`, enough realm, and materials. Cost = refine base × quality × 5 × `2^stage`, tier material × `round(tier × (stage+1) × 2)`, plus `awaken_stone` × `(stage+1) × 2`.
+
+**Balance invariants**
+- Pháp bảo stays stronger than one normal item but weaker than an entire set; total multiplier is capped by `PHAP_BAO_POWER_MULTIPLIER_CAP`.
+- Realm gate is hard: no equip/upgrade above `requiredRealmOrder`.
+- Star-up/awaken never raise `artifactTier`, never exceed caps, and never sell max-state/top-tier power directly.
+- Free path remains drop/farm/craft/event shards/materials; Phase 25.1 may accelerate with in-tier shards/materials/protection only.
+
+**Follow-ups**: Phase 25.1 monetization-safe hook (premium drop/material acceleration trong tier, không bán pháp bảo top tier hoặc max sao trực tiếp); Phase 24.2/24.3 final QA polish.
 
 ### 2.9.3.2 Phase 14.2.C — Elemental skill tree expansion (DONE this PR)
 

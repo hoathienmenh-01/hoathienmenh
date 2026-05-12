@@ -4,9 +4,8 @@ import type { ElementKey, ItemBonus, Quality } from '@xuantoi/shared';
 /**
  * Phase 23.5 — Pháp Bảo Advanced Artifact System (foundation).
  *
- * Read-only API client cho FE Pháp Bảo panel. KHÔNG có mutate endpoint
- * (equip dùng nguyên `/inventory/equip`, refine dùng nguyên `/character/refine`).
- * Star-up / awaken DEFER → flag `starUpEnabled` / `awakenEnabled` false.
+ * API client cho FE Pháp Bảo panel. Equip vẫn dùng nguyên `/inventory/equip`;
+ * refine/star-up/awaken dùng endpoint Phase 23.7 server-authoritative riêng.
  */
 
 export interface PhapBaoDefView {
@@ -63,6 +62,11 @@ export interface PhapBaoCostView {
   awakenStoneQty: number | null;
 }
 
+export interface PhapBaoConsumedMaterial {
+  itemKey: string;
+  qty: number;
+}
+
 export interface PhapBaoActiveSkillPreview {
   available: boolean;
   unlocked?: boolean;
@@ -113,6 +117,17 @@ export interface PhapBaoListResult {
   catalog: PhapBaoDefView[];
 }
 
+export interface PhapBaoUpgradeResult {
+  item: PhapBaoView;
+  cost: PhapBaoCostView;
+  consumedMaterials: PhapBaoConsumedMaterial[];
+  nextPreview: {
+    refineCost: PhapBaoCostView | null;
+    starCost: PhapBaoCostView | null;
+    awakenCost: PhapBaoCostView | null;
+  };
+}
+
 /**
  * Phase 23.5 — `GET /character/phap-bao/list`. Trả pháp bảo sở hữu + catalog
  * metadata (cho FE hiển thị các pháp bảo còn lock / chưa drop).
@@ -136,4 +151,32 @@ export async function previewPhapBao(
     `/character/phap-bao/${encodeURIComponent(inventoryItemId)}/preview`,
   );
   return unwrap(data).preview;
+}
+
+async function mutatePhapBao(
+  inventoryItemId: string,
+  action: 'star-up' | 'awaken' | 'refine',
+): Promise<PhapBaoUpgradeResult> {
+  const { data } = await apiClient.post<
+    Envelope<{ phapBao: PhapBaoUpgradeResult }>
+  >(`/character/phap-bao/${encodeURIComponent(inventoryItemId)}/${action}`);
+  return unwrap(data).phapBao;
+}
+
+export async function starUpPhapBao(
+  inventoryItemId: string,
+): Promise<PhapBaoUpgradeResult> {
+  return mutatePhapBao(inventoryItemId, 'star-up');
+}
+
+export async function awakenPhapBao(
+  inventoryItemId: string,
+): Promise<PhapBaoUpgradeResult> {
+  return mutatePhapBao(inventoryItemId, 'awaken');
+}
+
+export async function refinePhapBao(
+  inventoryItemId: string,
+): Promise<PhapBaoUpgradeResult> {
+  return mutatePhapBao(inventoryItemId, 'refine');
 }

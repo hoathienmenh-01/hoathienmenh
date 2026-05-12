@@ -10,6 +10,13 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
+### Added — Phase 23.7 Pháp Bảo Star-up + Awaken Persistence
+
+- Persisted Pháp Bảo progression on inventory instances: `phapBaoStarLevel`, `phapBaoAwakenStage`, and real `refineLevel` upgrades.
+- Added server-authoritative Pháp Bảo upgrade endpoints for star-up, awaken, and refine with ownership/realm/cap/material/currency checks, ledger rows, transactions, and duplicate-request protection.
+- Enabled Pháp Bảo UI actions with cost preview, confirmation modal, loading/error handling, inventory refresh, and vi/en i18n parity.
+- Added shared/API/UI tests for progression cost, gates, rollback/ledger behavior, race protection, confirm modal actions, and i18n smoke.
+
 ### Fixed — Phase 23.6 follow-up
 
 - Equipment quality/phẩm cấp now represents real strength plus rarity inside the same `equipmentTier`, not merely visual rarity/màu.

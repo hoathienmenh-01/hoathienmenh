@@ -319,20 +319,10 @@ async function onPhapBaoUnequip(slot: string): Promise<void> {
 }
 
 /** Phase 23.5 — Pháp Bảo panel dùng `/character/refine` (cost progression riu00eang tính server-side). */
-async function onPhapBaoRefine(inventoryItemId: string): Promise<void> {
-  if (submitting.value) return;
-  submitting.value = true;
-  try {
-    const result = await refineEquipment(inventoryItemId, false);
-    pushRefineToast(result);
-    items.value = await listInventory();
-    buildRefreshKey.value += 1;
-    phapBaoRefreshKey.value += 1;
-  } catch (e) {
-    handleErr(e);
-  } finally {
-    submitting.value = false;
-  }
+async function onPhapBaoUpgraded(): Promise<void> {
+  items.value = await listInventory();
+  buildRefreshKey.value += 1;
+  phapBaoRefreshKey.value += 1;
 }
 
 async function onUse(it: InventoryView): Promise<void> {
@@ -574,7 +564,7 @@ function handleErr(e: unknown): void {
           class="mt-4"
           @equip="onPhapBaoEquip"
           @unequip="onPhapBaoUnequip"
-          @refine="onPhapBaoRefine"
+          @upgraded="onPhapBaoUpgraded"
         />
       </section>
 

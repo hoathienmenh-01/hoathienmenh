@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PrismaService } from '../../common/prisma.service';
 import { PhapBaoError, PhapBaoService } from './phap-bao.service';
+import { CurrencyService } from './currency.service';
 import { makeUserChar, wipeAll } from '../../test-helpers';
 
 const TEST_DATABASE_URL =
@@ -14,7 +15,8 @@ let svc: PhapBaoService;
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
-  svc = new PhapBaoService(prisma);
+  const currency = new CurrencyService(prisma);
+  svc = new PhapBaoService(prisma, currency);
 });
 
 beforeEach(async () => {
@@ -61,8 +63,8 @@ describe('PhapBaoService.listForCharacter', () => {
     expect(result[0].def.artifactKey).toBe('ngu_hanh_linh_chau');
     expect(result[0].def.artifactTier).toBe(2);
     expect(result[0].refineLevel).toBe(0);
-    expect(result[0].starLevel).toBe(0); // foundation: chưa persist
-    expect(result[0].awakenStage).toBe(0); // foundation: chưa persist
+    expect(result[0].starLevel).toBe(1);
+    expect(result[0].awakenStage).toBe(0);
   });
 
   it('canEquip=false khi cảnh giới character < requiredRealmOrder của pháp bảo', async () => {
@@ -117,7 +119,7 @@ describe('PhapBaoService.preview', () => {
     const preview = await svc.preview(ctx.characterId, item.id);
     expect(preview.def.artifactKey).toBe('ngu_hanh_linh_chau');
     expect(preview.refineLevel).toBe(0);
-    expect(preview.starLevel).toBe(0);
+    expect(preview.starLevel).toBe(1);
     expect(preview.awakenStage).toBe(0);
     // Refine cost luôn có (chưa max).
     expect(preview.refineCost).not.toBeNull();
@@ -143,21 +145,20 @@ describe('PhapBaoService.preview', () => {
     expect(preview.awakenCost).toBeNull();
   });
 
-  it('preview pháp bảo trả awakenEnabled=false (foundation chưa persist star/awaken)', async () => {
+  it('preview pháp bảo trả starUpEnabled=true, awakenEnabled=true (Phase 23.7 persistence live)', async () => {
     const ctx = await makeUserChar(prisma);
     const item = await prisma.inventoryItem.create({
       data: {
         characterId: ctx.characterId,
-        itemKey: 'huyet_nguyet_ho_lo', // quality TIEN, tier 6 — sẽ awaken-able sau Phase 23.6
+        itemKey: 'huyet_nguyet_ho_lo', // quality TIEN, tier 6 — sẽ awaken-able
         qty: 1,
       },
     });
     const preview = await svc.preview(ctx.characterId, item.id);
-    // Phase 23.5 foundation: starLevel hardcode 0 → validatePhapBaoUpgradeRequest
-    // fail awaken vì cần starLevel ≥ 1. awakenCost null đúng spec.
-    expect(preview.awakenCost).toBeNull();
-    expect(preview.awakenEnabled).toBe(false);
-    expect(preview.starUpEnabled).toBe(false);
+    // Phase 23.7: star/awaken enabled.
+    expect(preview.awakenCost).toBeNull(); // starLevel 0 < required → null
+    expect(preview.awakenEnabled).toBe(true);
+    expect(preview.starUpEnabled).toBe(true);
   });
 
   it('throw INVENTORY_ITEM_NOT_FOUND nếu inventoryItem thuộc character khác', async () => {
@@ -214,6 +215,200 @@ describe('PhapBaoService.preview', () => {
     expect(previewHigh.refineCost!.linhThachCost).toBeGreaterThan(
       previewLow.refineCost!.linhThachCost,
     );
+  });
+});
+
+describe('PhapBaoService progression mutations', () => {
+  it('starUp đủ nguyên liệu → tăng sao, trừ cost và ghi ledger', async () => {
+    const ctx = await makeUserChar(prisma, {
+      realmKey: 'nguyen_anh',
+      linhThach: 50_000n,
+    });
+    const item = await prisma.inventoryItem.create({
+      data: {
+        characterId: ctx.characterId,
+        itemKey: 'ngu_hanh_linh_chau',
+        qty: 1,
+      },
+    });
+    await prisma.inventoryItem.create({
+      data: { characterId: ctx.characterId, itemKey: 'tinh_thiet', qty: 50 },
+    });
+    await prisma.inventoryItem.create({
+      data: { characterId: ctx.characterId, itemKey: 'phap_bao_shard', qty: 50 },
+    });
+
+    const result = await svc.starUp(ctx.characterId, item.id);
+
+    expect(result.item.starLevel).toBe(2);
+    expect(result.consumedMaterials).toEqual([
+      { itemKey: 'tinh_thiet', qty: 6 },
+      { itemKey: 'phap_bao_shard', qty: 10 },
+    ]);
+    const updated = await prisma.inventoryItem.findUniqueOrThrow({
+      where: { id: item.id },
+    });
+    expect(updated.phapBaoStarLevel).toBe(2);
+    const materialLedger = await prisma.itemLedger.findMany({
+      where: { refId: item.id, reason: 'PHAP_BAO_STAR_UP' },
+      orderBy: { itemKey: 'asc' },
+    });
+    expect(materialLedger.map((row) => [row.itemKey, row.qtyDelta])).toEqual([
+      ['phap_bao_shard', -10],
+      ['tinh_thiet', -6],
+    ]);
+    const currencyLedger = await prisma.currencyLedger.findMany({
+      where: { refId: item.id, reason: 'PHAP_BAO_STAR_UP' },
+    });
+    expect(currencyLedger).toHaveLength(1);
+    expect(currencyLedger[0].delta).toBe(BigInt(-result.cost.linhThachCost));
+  });
+
+  it('starUp thiếu nguyên liệu → rollback, không ghi ledger', async () => {
+    const ctx = await makeUserChar(prisma, {
+      realmKey: 'nguyen_anh',
+      linhThach: 50_000n,
+    });
+    const item = await prisma.inventoryItem.create({
+      data: {
+        characterId: ctx.characterId,
+        itemKey: 'ngu_hanh_linh_chau',
+        qty: 1,
+      },
+    });
+
+    await expect(svc.starUp(ctx.characterId, item.id)).rejects.toThrow(
+      PhapBaoError,
+    );
+    const updated = await prisma.inventoryItem.findUniqueOrThrow({
+      where: { id: item.id },
+    });
+    expect(updated.phapBaoStarLevel).toBe(1);
+    expect(await prisma.itemLedger.count({ where: { refId: item.id } })).toBe(0);
+    expect(await prisma.currencyLedger.count({ where: { refId: item.id } })).toBe(
+      0,
+    );
+  });
+
+  it('awaken đủ điều kiện → tăng stage và consume awaken stone', async () => {
+    const ctx = await makeUserChar(prisma, {
+      realmKey: 'huyen_tien',
+      linhThach: 500_000n,
+    });
+    const item = await prisma.inventoryItem.create({
+      data: {
+        characterId: ctx.characterId,
+        itemKey: 'huyet_nguyet_ho_lo',
+        qty: 1,
+        refineLevel: 2,
+        phapBaoStarLevel: 3,
+      },
+    });
+    await prisma.inventoryItem.create({
+      data: { characterId: ctx.characterId, itemKey: 'yeu_dan', qty: 50 },
+    });
+    await prisma.inventoryItem.create({
+      data: { characterId: ctx.characterId, itemKey: 'awaken_stone', qty: 10 },
+    });
+
+    const result = await svc.awaken(ctx.characterId, item.id);
+
+    expect(result.item.awakenStage).toBe(1);
+    expect(result.consumedMaterials).toEqual([
+      { itemKey: 'yeu_dan', qty: 10 },
+      { itemKey: 'awaken_stone', qty: 2 },
+    ]);
+    const updated = await prisma.inventoryItem.findUniqueOrThrow({
+      where: { id: item.id },
+    });
+    expect(updated.phapBaoAwakenStage).toBe(1);
+  });
+
+  it('awaken thiếu refine → fail trước khi consume', async () => {
+    const ctx = await makeUserChar(prisma, {
+      realmKey: 'huyen_tien',
+      linhThach: 500_000n,
+    });
+    const item = await prisma.inventoryItem.create({
+      data: {
+        characterId: ctx.characterId,
+        itemKey: 'huyet_nguyet_ho_lo',
+        qty: 1,
+        refineLevel: 1,
+        phapBaoStarLevel: 3,
+      },
+    });
+
+    await expect(svc.awaken(ctx.characterId, item.id)).rejects.toThrow(
+      PhapBaoError,
+    );
+    expect(await prisma.itemLedger.count({ where: { refId: item.id } })).toBe(0);
+  });
+
+  it('refine đủ cost → lưu refineLevel thật', async () => {
+    const ctx = await makeUserChar(prisma, {
+      linhThach: 50_000n,
+    });
+    const item = await prisma.inventoryItem.create({
+      data: {
+        characterId: ctx.characterId,
+        itemKey: 'ngu_hanh_linh_chau',
+        qty: 1,
+      },
+    });
+    await prisma.inventoryItem.create({
+      data: { characterId: ctx.characterId, itemKey: 'tinh_thiet', qty: 50 },
+    });
+
+    const result = await svc.refine(ctx.characterId, item.id);
+
+    expect(result.item.refineLevel).toBe(1);
+    const updated = await prisma.inventoryItem.findUniqueOrThrow({
+      where: { id: item.id },
+    });
+    expect(updated.refineLevel).toBe(1);
+    expect(result.consumedMaterials).toEqual([
+      { itemKey: 'tinh_thiet', qty: 2 },
+    ]);
+  });
+
+  it('duplicate star-up race không double spend', async () => {
+    const ctx = await makeUserChar(prisma, {
+      realmKey: 'nguyen_anh',
+      linhThach: 100_000n,
+    });
+    const item = await prisma.inventoryItem.create({
+      data: {
+        characterId: ctx.characterId,
+        itemKey: 'ngu_hanh_linh_chau',
+        qty: 1,
+      },
+    });
+    await prisma.inventoryItem.create({
+      data: { characterId: ctx.characterId, itemKey: 'tinh_thiet', qty: 500 },
+    });
+    await prisma.inventoryItem.create({
+      data: { characterId: ctx.characterId, itemKey: 'phap_bao_shard', qty: 500 },
+    });
+
+    const settled = await Promise.allSettled([
+      svc.starUp(ctx.characterId, item.id),
+      svc.starUp(ctx.characterId, item.id),
+    ]);
+    const fulfilled = settled.filter((row) => row.status === 'fulfilled');
+    const rejected = settled.filter((row) => row.status === 'rejected');
+
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    const updated = await prisma.inventoryItem.findUniqueOrThrow({
+      where: { id: item.id },
+    });
+    expect(updated.phapBaoStarLevel).toBe(2);
+    expect(
+      await prisma.currencyLedger.count({
+        where: { refId: item.id, reason: 'PHAP_BAO_STAR_UP' },
+      }),
+    ).toBe(1);
   });
 });
 

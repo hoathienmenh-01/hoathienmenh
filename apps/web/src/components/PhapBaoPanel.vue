@@ -1,8 +1,8 @@
 <!--
-  Phase 23.5 — Pháp Bảo Advanced Artifact System (foundation panel).
+  Phase 23.7 — Pháp Bảo persisted progression panel.
   Hiển thị danh sách pháp bảo sở hữu + chi tiết passive/active/cost.
-  Refine reuse `/character/refine` (panel ngoài đã handle). Equip/unequip dùng
-  /inventory/equip (parent InventoryView). Star-up / awaken DEFER → disabled.
+  Refine/star-up/awaken dùng endpoint riêng, server-authoritative.
+  Equip/unequip dùng /inventory/equip (parent InventoryView).
   Mobile-responsive grid, i18n vi/en parity, loading/empty/error states.
 -->
 <script setup lang="ts">
@@ -10,9 +10,13 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { getEquipmentQualityVisual, type Quality } from '@xuantoi/shared';
 import MButton from '@/components/ui/MButton.vue';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import {
+  awakenPhapBao,
   listPhapBao,
   previewPhapBao,
+  refinePhapBao,
+  starUpPhapBao,
   type PhapBaoDefView,
   type PhapBaoPreview,
   type PhapBaoView,
@@ -26,8 +30,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   /** Phát khi user muốn equip một pháp bảo — parent handle qua /inventory/equip. */
   (e: 'equip', inventoryItemId: string): void;
-  /** Phát khi user muốn refine một pháp bảo — parent reuse /character/refine UI. */
-  (e: 'refine', inventoryItemId: string): void;
+  /** Phát sau khi refine/star-up/awaken thành công để parent reload inventory. */
+  (e: 'upgraded', inventoryItemId: string): void;
   /** Phát khi user muốn tháo pháp bảo khỏi slot — parent handle qua /inventory/unequip. */
   (e: 'unequip', slot: string): void;
 }>();
@@ -43,6 +47,9 @@ const selected = ref<PhapBaoView | null>(null);
 const preview = ref<PhapBaoPreview | null>(null);
 const previewLoading = ref(false);
 const previewError = ref<string | null>(null);
+const submittingAction = ref<'refine' | 'star' | 'awaken' | null>(null);
+const actionError = ref<string | null>(null);
+const confirmAction = ref<'refine' | 'star' | 'awaken' | null>(null);
 
 async function load() {
   loading.value = true;
@@ -76,6 +83,8 @@ function closeDetail() {
   selected.value = null;
   preview.value = null;
   previewError.value = null;
+  actionError.value = null;
+  confirmAction.value = null;
 }
 
 onMounted(load);
@@ -113,6 +122,55 @@ function localizedName(def: PhapBaoDefView): string {
 
 function qualityLabel(q: Quality): string {
   return t('quality.' + q);
+}
+
+function actionLabel(action: 'refine' | 'star' | 'awaken'): string {
+  if (action === 'refine') return t('inventory.phapBao.refineButton');
+  if (action === 'star') return t('inventory.phapBao.starButton');
+  return t('inventory.phapBao.awakenButton');
+}
+
+function actionCost(action: 'refine' | 'star' | 'awaken') {
+  if (!preview.value) return null;
+  if (action === 'refine') return preview.value.refineCost;
+  if (action === 'star') return preview.value.starCost;
+  return preview.value.awakenCost;
+}
+
+function errorLabel(code: string): string {
+  const msg = t(`inventory.phapBao.errors.${code}`, '__missing__');
+  return msg === '__missing__' ? t('inventory.phapBao.errors.UNKNOWN') : msg;
+}
+
+function openUpgradeConfirm(action: 'refine' | 'star' | 'awaken') {
+  actionError.value = null;
+  confirmAction.value = action;
+}
+
+async function runUpgrade(action: 'refine' | 'star' | 'awaken') {
+  if (!selected.value || submittingAction.value) return;
+  submittingAction.value = action;
+  actionError.value = null;
+  try {
+    const result =
+      action === 'refine'
+        ? await refinePhapBao(selected.value.inventoryItemId)
+        : action === 'star'
+          ? await starUpPhapBao(selected.value.inventoryItemId)
+          : await awakenPhapBao(selected.value.inventoryItemId);
+    const updated = result.item;
+    items.value = items.value.map((it) =>
+      it.inventoryItemId === updated.inventoryItemId ? updated : it,
+    );
+    selected.value = updated;
+    preview.value = await previewPhapBao(updated.inventoryItemId);
+    emit('upgraded', updated.inventoryItemId);
+    confirmAction.value = null;
+  } catch (e) {
+    actionError.value = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
+  } finally {
+    submittingAction.value = null;
+  }
 }
 </script>
 
@@ -409,10 +467,12 @@ function qualityLabel(q: Quality): string {
                     material: preview.starCost.materialKey,
                   })
                 }}
-                ·
-                <span class="text-amber-200">
-                  {{ t('inventory.phapBao.starUpcoming') }}
-                </span>
+                <template v-if="preview.starCost.shardQty && preview.starCost.shardKey">
+                  · {{ t('inventory.phapBao.shardKey', {
+                    qty: preview.starCost.shardQty,
+                    key: preview.starCost.shardKey,
+                  }) }}
+                </template>
               </p>
               <p
                 v-if="preview.awakenCost"
@@ -426,15 +486,29 @@ function qualityLabel(q: Quality): string {
                     material: preview.awakenCost.materialKey,
                   })
                 }}
+                <template v-if="preview.awakenCost.awakenStoneQty && preview.awakenCost.awakenStoneKey">
+                  · {{ t('inventory.phapBao.awakenStoneKey', {
+                    qty: preview.awakenCost.awakenStoneQty,
+                    key: preview.awakenCost.awakenStoneKey,
+                  }) }}
+                </template>
               </p>
               <p
                 v-else
                 class="text-[11px] text-ink-300"
                 data-testid="phap-bao-awaken-upcoming"
               >
-                {{ t('inventory.phapBao.awakenUpcoming') }}
+                {{ t('inventory.phapBao.awakenLocked') }}
               </p>
             </section>
+
+            <p
+              v-if="actionError"
+              class="text-[11px] text-red-300"
+              data-testid="phap-bao-action-error"
+            >
+              {{ errorLabel(actionError) }}
+            </p>
 
             <!-- Actions -->
             <footer class="flex items-center gap-2 flex-wrap pt-2">
@@ -442,27 +516,82 @@ function qualityLabel(q: Quality): string {
                 v-if="preview.refineCost"
                 class="!px-2 !py-0.5 text-xs"
                 data-testid="phap-bao-refine-action"
-                @click="emit('refine', selected.inventoryItemId); closeDetail()"
+                :loading="submittingAction === 'refine'"
+                @click="openUpgradeConfirm('refine')"
               >
                 {{ t('inventory.phapBao.refineButton') }}
               </MButton>
               <MButton
-                disabled
-                class="!px-2 !py-0.5 text-xs opacity-60"
+                :disabled="!preview.starUpEnabled || !preview.starCost"
+                class="!px-2 !py-0.5 text-xs"
                 data-testid="phap-bao-star-action"
-                :title="t('inventory.phapBao.comingSoon')"
+                :loading="submittingAction === 'star'"
+                :title="preview.starCost ? '' : t('inventory.phapBao.starMax')"
+                @click="openUpgradeConfirm('star')"
               >
                 {{ t('inventory.phapBao.starButton') }}
               </MButton>
               <MButton
-                disabled
-                class="!px-2 !py-0.5 text-xs opacity-60"
+                :disabled="!preview.awakenEnabled || !preview.awakenCost"
+                class="!px-2 !py-0.5 text-xs"
                 data-testid="phap-bao-awaken-action"
-                :title="t('inventory.phapBao.comingSoon')"
+                :loading="submittingAction === 'awaken'"
+                :title="preview.awakenCost ? '' : t('inventory.phapBao.awakenLocked')"
+                @click="openUpgradeConfirm('awaken')"
               >
                 {{ t('inventory.phapBao.awakenButton') }}
               </MButton>
             </footer>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+    <Teleport to="body">
+      <div
+        v-if="confirmAction"
+        class="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4"
+        data-testid="phap-bao-upgrade-confirm"
+        role="dialog"
+        aria-modal="true"
+        @click.self="confirmAction = null"
+      >
+        <div class="rounded border border-amber-300/60 bg-ink-800 p-4 max-w-sm w-full space-y-3">
+          <h3 class="text-sm font-bold text-amber-200">
+            {{ t('inventory.phapBao.confirmTitle', { action: actionLabel(confirmAction) }) }}
+          </h3>
+          <p class="text-xs text-ink-200">
+            {{
+              t('inventory.phapBao.confirmBody', {
+                action: actionLabel(confirmAction),
+                name: selected?.def.nameVi ?? '',
+              })
+            }}
+          </p>
+          <p v-if="actionCost(confirmAction)" class="text-[11px] text-amber-200">
+            {{
+              t('inventory.phapBao.confirmCost', {
+                linhThach: actionCost(confirmAction)!.linhThachCost,
+                qty: actionCost(confirmAction)!.materialQty,
+                material: actionCost(confirmAction)!.materialKey,
+              })
+            }}
+          </p>
+          <div class="flex items-center justify-end gap-2">
+            <MButton
+              class="!px-2 !py-0.5 text-xs"
+              data-testid="phap-bao-upgrade-cancel"
+              @click="confirmAction = null"
+            >
+              {{ t('common.cancel') }}
+            </MButton>
+            <MButton
+              class="!px-2 !py-0.5 text-xs"
+              data-testid="phap-bao-upgrade-confirm-submit"
+              :loading="submittingAction === confirmAction"
+              @click="runUpgrade(confirmAction)"
+            >
+              {{ t('common.confirm') }}
+            </MButton>
           </div>
         </div>
       </div>
