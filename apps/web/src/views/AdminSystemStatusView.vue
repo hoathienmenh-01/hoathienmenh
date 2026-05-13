@@ -45,8 +45,6 @@ const isAdmin = computed(
   () => auth.user?.role === 'MOD' || auth.user?.role === 'ADMIN',
 );
 
-const statusKey = computed<SystemHealthStatus | null>(() => snapshot.value?.status ?? null);
-
 async function load(): Promise<void> {
   loading.value = true;
   errorKey.value = null;
