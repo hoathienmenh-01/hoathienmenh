@@ -123,7 +123,7 @@ async function loadOverview() {
   try {
     overview.value = await adminControlCenterOverview();
   } catch (e) {
-    overviewError.value = extractApiErrorCode(e);
+    overviewError.value = extractApiErrorCode(e) ?? null;
   } finally {
     overviewLoading.value = false;
   }
@@ -141,7 +141,7 @@ async function loadMeAndMatrix() {
     me.value = m;
     matrix.value = mat;
   } catch (e) {
-    matrixError.value = extractApiErrorCode(e);
+    matrixError.value = extractApiErrorCode(e) ?? null;
   } finally {
     meLoading.value = false;
     matrixLoading.value = false;
@@ -159,7 +159,7 @@ async function loadRewardProfiles() {
     else if (rewardActiveFilter.value === 'false') filters.active = false;
     rewardProfiles.value = await listRewardProfiles(filters);
   } catch (e) {
-    rewardError.value = extractApiErrorCode(e);
+    rewardError.value = extractApiErrorCode(e) ?? null;
   } finally {
     rewardLoading.value = false;
   }
@@ -177,7 +177,7 @@ async function loadDropProfiles() {
     else if (dropActiveFilter.value === 'false') filters.active = false;
     dropProfiles.value = await listDropProfiles(filters);
   } catch (e) {
-    dropError.value = extractApiErrorCode(e);
+    dropError.value = extractApiErrorCode(e) ?? null;
   } finally {
     dropLoading.value = false;
   }
@@ -191,7 +191,7 @@ async function loadContentStatuses() {
     if (contentTypeFilter.value) filters.contentType = contentTypeFilter.value;
     contentStatuses.value = await listContentStatuses(filters);
   } catch (e) {
-    contentError.value = extractApiErrorCode(e);
+    contentError.value = extractApiErrorCode(e) ?? null;
   } finally {
     contentLoading.value = false;
   }
@@ -204,7 +204,7 @@ async function loadAuditActions() {
     const res = await adminControlCenterAuditActionTypes();
     auditActions.value = res.actions;
   } catch (e) {
-    auditError.value = extractApiErrorCode(e);
+    auditError.value = extractApiErrorCode(e) ?? null;
   } finally {
     auditLoading.value = false;
   }
@@ -227,7 +227,7 @@ function selectTab(next: Tab) {
 
 onMounted(() => {
   if (!isAdmin.value) {
-    toast.push(t('adminControlCenter.notAdminError'), { type: 'error' });
+    toast.push({ text: t('adminControlCenter.notAdminError'), type: 'error' });
     void router.push({ name: 'home' });
     return;
   }
