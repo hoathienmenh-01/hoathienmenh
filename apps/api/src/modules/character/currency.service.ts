@@ -155,7 +155,14 @@ export type LedgerReason =
   | 'ARTIFACT_V2_UPGRADE'
   | 'ARTIFACT_V2_STAR_UP'
   | 'ARTIFACT_V2_REFINE'
-  | 'ARTIFACT_V2_AWAKEN';
+  | 'ARTIFACT_V2_AWAKEN'
+  // Phase 26.5 — World Content V2 reward sources. Server-authoritative
+  // grant linhThach qua `applyTx`. refType='FarmSession' / 'TrialTowerAttempt'
+  // tương ứng farm session claim / tower floor first-clear. Anti-P2W enforce
+  // qua `WorldCapService.consumeDailyTx`/`consumeWeeklyTx` (premium KHÔNG
+  // bypass).
+  | 'FARM_SESSION_REWARD'
+  | 'TRIAL_TOWER_REWARD';
 
 export interface CurrencyApplyInput {
   characterId: string;

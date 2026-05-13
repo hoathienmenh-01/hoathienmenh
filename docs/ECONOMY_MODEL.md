@@ -873,3 +873,67 @@ Mọi grant ghi `ItemLedger`:
 - `meta.dropEconomy.refType` / `refId` — `Combat`/`DungeonRun`/`WorldBoss`/...
 
 Cho phép replay: từ ledger có thể reconstruct exact roll context để debug.
+
+## Phase 26.5 — World Content V2 economy
+
+### Reward sources
+
+Phase 26.5 mở rộng Drop Economy V2 với 5 nguồn reward mới, tất cả pass qua `DropEconomyService.rollAndGrant` (hoặc kê khai material grant tương đương) với `effectiveDropTier = min(playerRealmTier, sourceTier)`:
+
+| Source | DropSource | sourceTier | Cap key |
+|---|---|---|---|
+| Farm map | `FARM_MAP` | `FarmMapDef.sourceTier` | `farm.sessionMinutes` + daily session count |
+| Region boss | `REGION_BOSS` / `BOSS` | `BossDef.sourceTier` | `boss.region.daily` |
+| Hourly boss | `HOURLY_BOSS` | `BossDef.sourceTier` | `boss.region.daily` (schedule-gated) |
+| World boss | `WORLD_BOSS` (existing) | `BossDef.sourceTier` | `boss.world.weekly` |
+| Event boss | `EVENT_BOSS` | `BossDef.sourceTier` | event-specific cap |
+| Quest boss (main/side) | `QUEST_BOSS` | quest line tier | first-clear-only |
+| Sect dungeon | `SECT_DUNGEON` | `SectDungeonDef.sourceTier` | `sect.dungeon.daily` |
+| Sect boss | `SECT_BOSS` | `SectBossDef.sourceTier` | `sect.boss.weekly` |
+| Trial tower floor | `TRIAL_TOWER` | derived `floor/100` tier | first-clear-only per floor |
+| Opportunity encounter | `OPPORTUNITY` | `OpportunityEncounterDef.sourceTier` | `farm.opportunity.{rarity}` |
+
+Tất cả material grant ghi `ItemLedger.meta.dropEconomy.{ruleKey, source, materialTier, materialCategory, cappedByDaily, cappedByWeekly, refType, refId}` — cho phép forensic replay đầy đủ.
+
+### Premium tier rules (anti-P2W)
+
+Premium (monthly card / VIP subscription) chỉ được bán **convenience**, KHÔNG bao giờ bán **resources**:
+
+| Allowed (convenience) | Forbidden (resources / P2W) |
+|---|---|
+| Extend farm session (`monthlyCardSessionMinutes` 480m / `premiumSessionMinutes` 720–1440m) | Bypass `dailyMaterialCap` / `weeklyMaterialCap` |
+| Auto-continue farm khi session hết hạn (nếu còn stamina + còn cap) | Bypass `dailyOpportunityCap.common` / `.rare` |
+| Skip stamina recharge cooldown (cosmetic timing) | Bypass `dailyDungeonAttempt` / `weeklyWorldBossCap` |
+| Wardrobe cosmetic / titles / chat color | Buy `sectDungeonDailyCap` / `sectBossWeeklyCap` |
+| +1 dungeon sweep ticket/ngày (max +2) | Re-claim `towerFirstClearReward` / `towerMilestoneReward` |
+| Buy auto-resume retry trên trial tower (cosmetic) | Buy tower ranking reward |
+| Buy auto-start farm sau Tinh Anh skip (UX only) | Sell `pháp bảo` top / `công pháp` chí tôn / endgame `đan` |
+
+Test enforcement: `farm.service.test.ts` covers "premium account vẫn nhận cap reach error", `trial-tower.service.test.ts` covers "re-attempt cleared floor → reward = {0,0,0}".
+
+### Reward cap matrix (extended)
+
+Phase 26.5 mở rộng cap matrix trong `WorldCapService`:
+
+| Cap key | Tier-1 example | Tier-3 example | Tier-5+ example |
+|---|---|---|---|
+| `farm.sessionMinutes` | 60 (free) / 480 (card) / 720 (vip) | same | same |
+| `dungeon.dailyAttempts` | 3 | 2 | 1–2 |
+| `boss.region.daily` | 3 (low) | 2 | 1 |
+| `boss.world.weekly` | 3 | 2 | 1 |
+| `sect.dungeon.daily` | 2 | 1 | 1 |
+| `sect.boss.weekly` | 3 | 2 | 1 |
+| `tower.dailyAttempts` | 5 | 5 | 5 |
+| `opportunity.common.daily` | 5 | 4 | 3 |
+| `opportunity.rare.daily` | 1 | 1 | 1 |
+
+ARTIFACT_CRAFT / METHOD_FRAGMENT cao cấp: weekly cap **luôn-luôn**, ngay cả với BOSS/DUNGEON_BOSS/TRIAL_TOWER.
+
+### Anti-P2W invariants (test enforced)
+
+- Drop từ `FARM_MAP` / `TRIAL_TOWER` / `SECT_DUNGEON` / `SECT_BOSS` / `OPPORTUNITY` KHÔNG được grant `linhThach` / `tienNgoc` / `nguyenThach` qua drop path (chỉ qua `InventoryItem` grant với `reason='WORLD_CONTENT_*'` hoặc cap-gated quest reward).
+- Tower repeat attempt cleared floor → `reward = {linhThach:0, exp:0, trialPoints:0}` (no farm).
+- Tower milestone reward dùng `claimedMilestonesJson` SET membership — re-attempt KHÔNG re-claim.
+- Sect dungeon / sect boss reward đi qua `sectId` + `characterId` combined cap — đổi sect KHÔNG reset cap (carry-forward).
+- Opportunity rare reward cap `1/ngày` enforce trước khi roll content reward.
+- KHÔNG có path bán cap bypass — không VIP, không subscription, không event store sản phẩm.

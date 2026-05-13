@@ -3117,3 +3117,83 @@ Tất cả integration đều fail-soft (try/catch + logger.warn) — drop econo
 - NORMAL KHÔNG rơi tier > effective+1 (above2 = 0).
 - ARTIFACT_CRAFT KHÔNG rơi từ NORMAL nếu tier ≥ 4.
 - KHÔNG có P2W path — không bán cap bypass, không VIP tăng drop endgame.
+
+## Phase 26.5 — World Content V2 balance (Farm / Dungeon / Boss / Sect / Trial Tower)
+
+### sourceTier propagation
+
+Toàn bộ content V2 đã khai báo `sourceTier` cố định ngay trong shared catalog:
+
+- `FarmMapDef.sourceTier` — gắn cứng với region/chapter (e.g. `thanh_so_son` → tier 1, `linh_son` → tier 2). KHÔNG bao giờ auto-scale theo `playerRealmTier`.
+- `DungeonDef.sourceTier` + `DungeonDef.dungeonTier` — same lock.
+- `BossDef.sourceTier` + `BossDef.bossTier` — same lock.
+- `SectDungeonDef.sourceTier` / `SectBossDef.sourceTier` — gated by `requiredSectLevel`.
+- `TrialTowerFloorReward.floorTier` — derived from `floor / 100` (Đăng Tiên/Linh Khí/Huyết Thể).
+
+Tất cả grant đi qua Drop Economy V2 dùng `effectiveDropTier = min(playerRealmTier, sourceTier)` — player Đại Thừa quay lại map Thanh Sơ Sơn vẫn chỉ rơi material tier 1.
+
+### Farm session logic
+
+`getFarmSessionLimit(character, entitlements)` chia 3 cấp:
+
+- Free: `freeSessionMinutes = 60`. Phải bấm "Tiếp tục" để start session tiếp theo. Auto-battle CHỈ áp dụng `NORMAL` + `dangerLevel ≤ SAFE` + `monster.realmTier ≤ playerTier`. Tinh anh / Mini boss / cơ duyên thủ công → dừng phiên hoặc lưu pending encounter.
+- MonthlyCard: `monthlyCardSessionMinutes = 480` (8h). Premium auto-continue được nếu còn stamina + còn quota daily/weekly cap.
+- Premium: `premiumSessionMinutes = 720` (12h) hoặc `1440` (24h) — sells **convenience** (longer auto), **NOT** higher rewards or cap bypass.
+
+### Daily / weekly cap enforcement
+
+Tất cả grant đi qua `WorldCapService.consumeDailyTx` / `consumeWeeklyTx`:
+
+- `DailyContentCap` (`@@unique(characterId, capKey, source, date)`) — `dayBucket` theo `Asia/Ho_Chi_Minh` ISO date.
+- `WeeklyContentCap` (`@@unique(characterId, capKey, source, weekKey)`) — `weekKey = YYYY-Www` ISO-8601.
+
+Implementation pattern: Compare-And-Swap atomic upsert trong `prisma.$transaction([upsert, ...grants])` — không có race condition double-consume. Test `world-cap.service.test.ts` cover atomic CAS + concurrent consume + read-only `getDailyUsage` / `getWeeklyUsage`.
+
+Cap keys (kế hoạch mở rộng dần — không phải tất cả enforce ngay trong PR này):
+
+| Cap key | Trigger | Default limit | Premium override? |
+|---|---|---|---|
+| `farm.sessionMinutes` | farm session claim | `freeSessionMinutes` | YES (extend duration only) |
+| `farm.dailySessions` | farm session start | 8 | NO |
+| `farm.opportunity.common` | cơ duyên thường trigger | 5/ngày | NO |
+| `farm.opportunity.rare` | cơ duyên hiếm trigger | 1/ngày | NO |
+| `dungeon.dailyAttempts` | dungeon attempt | `DungeonDef.dailyAttempts` | NO |
+| `boss.region.daily` | region boss kill | `BossDef.dailyRewardCap` | NO |
+| `boss.world.weekly` | world boss kill | `BossDef.weeklyRewardCap` | NO |
+| `sect.dungeon.daily` | sect dungeon attempt | `SectDungeonDef.dailyAttemptsPerMember` | NO |
+| `sect.boss.weekly` | sect boss kill | weekly attempt cap | NO |
+| `tower.dailyAttempts` | tower floor attempt | 5 (config) | NO |
+
+### Trial Tower scaling
+
+`floorPower(floor, towerType) = basePower × scaleFactor(floor) × milestoneMultiplier(floor)`:
+
+- `scaleFactor(floor) = 1.05^floor` (exponential growth).
+- `milestoneMultiplier(floor)`:
+  - `floor % 1000 === 0`: ×6.00 — đại mốc server (đại kiếp nạn).
+  - `floor % 500 === 0`: ×4.00 — đại kiếp nạn.
+  - `floor % 100 === 0`: ×2.50 — boss cảnh giới / checkpoint.
+  - `floor % 50 === 0`: ×1.75 — boss mốc.
+  - `floor % 10 === 0`: ×1.25 — elite / mini boss.
+  - else: ×1.00.
+
+Reward gate:
+
+- `floor` đã có trong `TrialTowerProgress.claimedMilestonesJson` → không grant reward (test `trial-tower.service.test.ts` covers this).
+- `floor` đã `≤ highestFloorCleared` → `success=true` nhưng `reward = {linhThach:0, exp:0, trialPoints:0}` (no-farm).
+- `floor === highestFloorCleared + 1` AND `success=true` → `isFirstClear=true`, grant full reward, bump `highestFloorCleared`.
+- `floor` chia hết cho 10/50/100/500/1000 AND `isFirstClear=true` → `milestoneClaimed=true` thêm milestone reward đè vào `claimedMilestonesJson`.
+
+Anti-P2W: premium / VIP / monthly card KHÔNG được phép:
+- Bypass `claimedMilestonesJson` (re-claim milestone).
+- Skip cooldown `tower.dailyAttempts`.
+- Grant `linhThach` / `tienNgoc` thông qua tower (chỉ qua `InventoryItem` grant).
+- Buy floor ngược (start ở `highestFloorCleared + 10` bỏ qua 1..9).
+
+### Forbidden invariants (test enforced)
+
+- `effectiveDropTier ≤ sourceTier` luôn — không có path nào tăng drop tier vượt mapTier.
+- Premium KHÔNG bỏ `daily*Cap` / `weekly*Cap` (test `farm.service.test.ts`).
+- Tower first-clear reward chỉ grant đúng 1 lần (test `trial-tower.service.test.ts`).
+- Milestone reward chỉ grant đúng 1 lần (idempotency qua `claimedMilestonesJson`).
+- `sectBossWeeklyCap` / `sectDungeonDailyCap` enforce ngay cả khi character đổi sect.

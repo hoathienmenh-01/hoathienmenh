@@ -221,6 +221,36 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/SocialView.vue'),
   },
   {
+    path: '/world',
+    name: 'world-content',
+    component: () => import('@/views/WorldContentView.vue'),
+  },
+  {
+    path: '/world/farm-maps',
+    name: 'world-farm-maps',
+    component: () => import('@/views/FarmMapView.vue'),
+  },
+  {
+    path: '/world/dungeons',
+    name: 'world-dungeons-v2',
+    component: () => import('@/views/DungeonHubV2View.vue'),
+  },
+  {
+    path: '/world/bosses',
+    name: 'world-bosses-v2',
+    component: () => import('@/views/BossHubView.vue'),
+  },
+  {
+    path: '/world/sect',
+    name: 'world-sect',
+    component: () => import('@/views/SectContentView.vue'),
+  },
+  {
+    path: '/world/towers',
+    name: 'world-trial-tower',
+    component: () => import('@/views/TrialTowerView.vue'),
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/views/NotFoundView.vue'),

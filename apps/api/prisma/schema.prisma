@@ -423,6 +423,15 @@ model Character {
   cosmeticOwnerships       CosmeticOwnership[]
   cosmeticLoadout          CosmeticLoadout?
 
+  /// Phase 26.5 — World Content V2 backrefs.
+  farmSessions          FarmSession[]
+  farmEncounters        FarmEncounter[]
+  dailyContentCaps      DailyContentCap[]
+  weeklyContentCaps     WeeklyContentCap[]
+  trialTowerProgress    TrialTowerProgress[]
+  trialTowerAttemptLogs TrialTowerAttemptLog[]
+  sectBossAttemptLogs   SectBossAttemptLog[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -4672,4 +4681,195 @@ model CoopWeeklyRewardClaim {
   @@unique([seasonId, userId])
   @@index([userId, status])
   @@index([seasonId, status])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Phase 26.5 — World Content V2 (Farm / Dungeon / Boss / Sect / Trial Tower)
+// ════════════════════════════════════════════════════════════════════════════
+
+/// Phase 26.5 — Farm session (auto farm theo thời gian).
+///
+/// Server-authoritative: client request `POST /world/farm/start` → tạo
+/// session với `freeSessionMinutes` (hoặc cao hơn nếu entitlement cho phép,
+/// cap `maxSessionMinutes`). Client `POST /world/farm/claim` → server tính
+/// minutes processed = min(requested, capByEntitlement, capByMaxSession,
+/// elapsed wallclock). Resulting reward + encounter generated server-side
+/// và lưu `rewardsJson`/`encountersJson` (audit). Anti-P2W: premium chỉ
+/// nới `maxSessionMinutes` — vẫn enforce daily/weekly cap qua
+/// `DailyContentCap`/`WeeklyContentCap`.
+model FarmSession {
+  id               String    @id @default(cuid())
+  characterId      String
+  character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// `FarmMapDef.key` (shared catalog).
+  farmMapKey       String
+  startedAt        DateTime  @default(now())
+  endedAt          DateTime?
+  /// Tổng phút đã được claim (granted reward). 0 khi session ACTIVE chưa claim.
+  minutesProcessed Int       @default(0)
+  /// `'ACTIVE' | 'CLAIMED' | 'EXPIRED' | 'CANCELLED'`.
+  status           String    @default("ACTIVE")
+  /// Reward payload snapshot khi claim (DropEconomy resolved). Empty until claim.
+  rewardsJson      Json      @default("{}")
+  /// Encounter list emitted trong session (cơ duyên + elite spawn).
+  encountersJson   Json      @default("[]")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  encounters FarmEncounter[]
+
+  @@index([characterId, status])
+  @@index([farmMapKey, startedAt])
+}
+
+/// Phase 26.5 — Farm encounter (cơ duyên + elite/mini-boss/manual spawn).
+///
+/// Tạo trong khi farm session đang chạy; FE hiển thị "Khiêu chiến / Bỏ qua"
+/// (cho elite) hoặc choice list (cho opportunity). Status PENDING khi tạo,
+/// RESOLVED khi player resolve, EXPIRED khi quá hạn (`expiresAt`).
+/// Anti-P2W: cơ duyên hiếm bị `OpportunityEncounterDef.maxWeeklyTriggers`
+/// cap qua `WeeklyContentCap`.
+model FarmEncounter {
+  id                String       @id @default(cuid())
+  characterId       String
+  character         Character    @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  farmSessionId     String?
+  farmSession       FarmSession? @relation(fields: [farmSessionId], references: [id], onDelete: SetNull)
+  /// `OpportunityEncounterDef.key` hoặc monster key (ELITE/MINI_BOSS).
+  encounterKey      String
+  /// `'OPPORTUNITY' | 'ELITE' | 'MINI_BOSS' | 'HIDDEN_BOSS_HINT'`.
+  encounterType     String
+  /// `'PENDING' | 'RESOLVED' | 'EXPIRED' | 'SKIPPED'`.
+  status            String       @default("PENDING")
+  expiresAt         DateTime?
+  /// Reward preview shown to UI before resolve (no grant yet).
+  rewardPreviewJson Json         @default("{}")
+  /// Resolution details (choice taken, success/fail, granted reward).
+  resolutionJson    Json         @default("{}")
+  createdAt         DateTime     @default(now())
+  resolvedAt        DateTime?
+
+  @@index([characterId, status])
+  @@index([farmSessionId])
+  @@index([expiresAt])
+}
+
+/// Phase 26.5 — Daily content cap counter.
+///
+/// Track usage cho daily-capped content keys (farm session minutes, dungeon
+/// attempts, opportunity triggers, sect boss attempts, …). `capKey` =
+/// resolver string vd `farm_session_minutes`, `dungeon_attempt:son_coc_duoc_vien`,
+/// `opportunity_rarity:COMMON`. `source` = content source for analytics.
+/// `dayBucket` = `YYYY-MM-DD` theo timezone server (Asia/Ho_Chi_Minh).
+/// Server-authoritative: mutate qua `WorldCapService.consume()` atomic CAS.
+/// Anti-P2W: premium KHÔNG bypass — chỉ FarmSession `maxSessionMinutes` mở
+/// rộng theo entitlement.
+model DailyContentCap {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  capKey      String
+  source      String
+  /// `YYYY-MM-DD` theo timezone reset.
+  dayBucket   String
+  usedCount   Int       @default(0)
+  usedQty     Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([characterId, dayBucket, capKey])
+  @@index([dayBucket])
+  @@index([characterId, dayBucket])
+}
+
+/// Phase 26.5 — Weekly content cap counter (cho RARE/EPIC opportunity,
+/// WORLD_BOSS, SECT_BOSS INVADER, …).
+///
+/// `weekBucket` = ISO `YYYY-Www` theo timezone server. Mirror logic
+/// `DailyContentCap`; cap rule riêng theo `capKey`.
+model WeeklyContentCap {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  capKey      String
+  source      String
+  /// ISO week `YYYY-Www` theo timezone reset.
+  weekBucket  String
+  usedCount   Int       @default(0)
+  usedQty     Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([characterId, weekBucket, capKey])
+  @@index([weekBucket])
+  @@index([characterId, weekBucket])
+}
+
+/// Phase 26.5 — Trial tower progress (highest floor cleared per character/tower).
+///
+/// Anti-P2W: `claimedMilestonesJson` track milestone reward unique per
+/// (character, tower, milestone). `seasonHighestFloor` reset mỗi
+/// `TrialTowerRankingSeason.durationDays` cho weekly/season ranking; lifetime
+/// `highestFloorCleared` chỉ tăng monotonic.
+model TrialTowerProgress {
+  id                    String    @id @default(cuid())
+  characterId           String
+  character             Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// `TrialTowerDef.key` (shared catalog).
+  towerKey              String
+  highestFloorCleared   Int       @default(0)
+  seasonHighestFloor    Int       @default(0)
+  /// Array of milestone keys (`"every:1000"`, `"every:500"`, …) đã claim.
+  claimedMilestonesJson Json      @default("[]")
+  lastAttemptAt         DateTime?
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([characterId, towerKey])
+  @@index([towerKey, highestFloorCleared])
+  @@index([towerKey, seasonHighestFloor])
+}
+
+/// Phase 26.5 — Trial tower attempt log (audit + ranking input).
+///
+/// Mỗi attempt (success hoặc fail) → 1 row. Reward chỉ grant khi
+/// `success=true` và `floor > previousHighestFloorCleared` (first-clear
+/// only) hoặc milestone chưa claim — service runtime enforce.
+model TrialTowerAttemptLog {
+  id                  String    @id @default(cuid())
+  characterId         String
+  character           Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  towerKey            String
+  floor               Int
+  success             Boolean
+  /// BattlePower snapshot khi attempt (audit).
+  battlePowerSnapshot Int       @default(0)
+  clearTimeSeconds    Int?
+  /// Reward granted snapshot (empty khi fail / repeat).
+  rewardJson          Json      @default("{}")
+  createdAt           DateTime  @default(now())
+
+  @@index([characterId, towerKey, floor])
+  @@index([towerKey, success, createdAt])
+  @@index([createdAt])
+}
+
+/// Phase 26.5 — Sect boss attempt log (per character / per attempt).
+///
+/// Track damage contribution cho ranking + cap weekly. `bossKey` ref
+/// `SectBossDef.key`. `damage` BigInt cho INVADER (HP hàng chục triệu).
+model SectBossAttemptLog {
+  id          String    @id @default(cuid())
+  /// Sect ID — không quan hệ trực tiếp (Sect table giữ FK riêng). Index để query.
+  sectId      String
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  bossKey     String
+  damage      BigInt    @default(0)
+  /// Reward granted snapshot.
+  rewardJson  Json      @default("{}")
+  createdAt   DateTime  @default(now())
+
+  @@index([sectId, bossKey, createdAt])
+  @@index([characterId, bossKey, createdAt])
+  @@index([bossKey, damage])
 }

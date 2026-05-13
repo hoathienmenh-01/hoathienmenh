@@ -156,6 +156,16 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // cascade nhưng explicit cho rõ thứ tự reset state giữa test runs).
   await prisma.dailyMaterialCap.deleteMany({});
   await prisma.weeklyMaterialCap.deleteMany({});
+  // Phase 26.5 — World Content V2 (FarmSession + TrialTower + caps + sect
+  // boss log). Wipe trước Character — FK Cascade nhưng explicit cho rõ thứ
+  // tự reset state giữa test runs (cap unique key bị stale → trùng key).
+  await prisma.farmEncounter.deleteMany({});
+  await prisma.farmSession.deleteMany({});
+  await prisma.dailyContentCap.deleteMany({});
+  await prisma.weeklyContentCap.deleteMany({});
+  await prisma.trialTowerAttemptLog.deleteMany({});
+  await prisma.trialTowerProgress.deleteMany({});
+  await prisma.sectBossAttemptLog.deleteMany({});
   await prisma.characterDailyRewardBucket.deleteMany({});
   await prisma.alchemyAttemptLog.deleteMany({});
   await prisma.bodyBreakthroughAttemptLog.deleteMany({});

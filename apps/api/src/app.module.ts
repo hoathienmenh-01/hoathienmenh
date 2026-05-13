@@ -4,6 +4,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CharacterModule } from './modules/character/character.module';
 import { CombatModule } from './modules/combat/combat.module';
 import { DungeonRunModule } from './modules/dungeon-run/dungeon-run.module';
+import { WorldContentModule } from './modules/world-content/world-content.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { MarketModule } from './modules/market/market.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
@@ -84,6 +85,7 @@ import { CosmeticsModule } from './modules/cosmetics/cosmetics.module';
     BodyCultivationModule,
     CombatModule,
     DungeonRunModule,
+    WorldContentModule,
     InventoryModule,
     MarketModule,
     SectModule,
