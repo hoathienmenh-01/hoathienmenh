@@ -5913,6 +5913,51 @@ model MailAttachmentClaim {
   @@index([characterId, claimedAt])
 }
 
+/// Phase 35.2 — Mentor Milestone Progress (Sư Đồ Phase 2).
+///
+/// Soft-ref `mentorRelationId` to `MentorRelation.id` (Phase 31.0) — không tạo FK
+/// cascade để mirror cùng pattern soft-ref Phase 31.0/35.1. Lifecycle:
+/// LOCKED → AVAILABLE → CLAIMED (per claim role tách qua `MentorRewardClaim`).
+model MentorMilestoneProgress {
+  id               String    @id @default(cuid())
+  mentorRelationId String
+  mentorUserId     String
+  studentUserId    String
+  /// Catalog key — xem `packages/shared/src/mentor-milestone.ts`.
+  milestoneKey     String
+  /// LOCKED | AVAILABLE | CLAIMED (CLAIMED = đã có ít nhất 1 trong 2 role claim;
+  /// mentor/disciple claim độc lập tracked qua `MentorRewardClaim`).
+  status           String    @default("LOCKED")
+  reachedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([mentorRelationId, milestoneKey])
+  @@index([studentUserId, status])
+  @@index([mentorUserId, status])
+}
+
+/// Phase 35.2 — Mentor Reward Claim audit. UNIQUE (relationId, milestoneKey, role)
+/// chống double-claim. Reward gửi qua mail (mailType = SYSTEM) — `mailId` lưu
+/// reference để truy ngược nếu cần audit / refund.
+model MentorRewardClaim {
+  id                 String   @id @default(cuid())
+  mentorRelationId   String
+  milestoneKey       String
+  claimerUserId      String
+  /// 'MENTOR' | 'DISCIPLE'.
+  role               String
+  /// Mail row tương ứng (soft-ref; có thể null nếu mail tạo fail nhưng claim
+  /// row đã insert — service phải atomic-rollback nếu mail fail).
+  mailId             String?
+  /// Snapshot reward đã grant (string-safe BigInt JSON).
+  rewardSnapshotJson Json     @default("{}")
+  claimedAt          DateTime @default(now())
+
+  @@unique([mentorRelationId, milestoneKey, role])
+  @@index([claimerUserId, claimedAt])
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Phase 29.0 — PvP Foundation V1
 // ─────────────────────────────────────────────────────────────────────────────

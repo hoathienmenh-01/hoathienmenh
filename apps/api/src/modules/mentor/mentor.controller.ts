@@ -13,11 +13,16 @@ import type { Request } from 'express';
 import { z } from 'zod';
 import type {
   MentorListStudentsResponse,
+  MentorMilestoneListResponse,
   MentorProfileRow,
   MentorRelationRow,
   StudentMentorContextResponse,
 } from '@xuantoi/shared';
 import { AuthService } from '../auth/auth.service';
+import {
+  MentorMilestoneError,
+  MentorMilestoneService,
+} from './mentor-milestone.service';
 import { MentorError, MentorService } from './mentor.service';
 
 const ACCESS_COOKIE = 'xt_access';
@@ -44,6 +49,7 @@ const RespondInput = z.object({
 export class MentorController {
   constructor(
     private readonly svc: MentorService,
+    private readonly milestones: MentorMilestoneService,
     private readonly auth: AuthService,
   ) {}
 
@@ -130,6 +136,84 @@ export class MentorController {
     if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
     const data = await this.svc.getStudentContext(userId);
     return { ok: true, data };
+  }
+
+  @Get('milestones')
+  async milestonesList(
+    @Req() req: Request,
+  ): Promise<{ ok: true; data: MentorMilestoneListResponse }> {
+    const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
+    if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    try {
+      const data = await this.milestones.listForUser(userId);
+      return { ok: true, data };
+    } catch (e) {
+      this.handleMilestoneErr(e);
+    }
+  }
+
+  @Post('milestones/:milestoneKey/claim')
+  @HttpCode(200)
+  async milestonesClaim(
+    @Req() req: Request,
+    @Param('milestoneKey') milestoneKey: string,
+  ): Promise<{
+    ok: true;
+    data: { role: string; rewardLinhThach: string; mailId: string };
+  }> {
+    const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
+    if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    try {
+      const data = await this.milestones.claim(userId, milestoneKey);
+      return { ok: true, data };
+    } catch (e) {
+      this.handleMilestoneErr(e);
+    }
+  }
+
+  @Post('milestones/recompute')
+  @HttpCode(200)
+  async milestonesRecompute(
+    @Req() req: Request,
+  ): Promise<{
+    ok: true;
+    data: { relationId: string | null; created: number; promoted: number };
+  }> {
+    const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
+    if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    try {
+      const r = await this.milestones.recomputeForUser(userId);
+      return {
+        ok: true,
+        data: r
+          ? { relationId: r.relationId, created: r.created, promoted: r.promoted }
+          : { relationId: null, created: 0, promoted: 0 },
+      };
+    } catch (e) {
+      this.handleMilestoneErr(e);
+    }
+  }
+
+  private handleMilestoneErr(e: unknown): never {
+    if (e instanceof MentorMilestoneError) {
+      switch (e.code) {
+        case 'NO_CHARACTER':
+        case 'NOT_FOUND':
+        case 'MILESTONE_NOT_FOUND':
+          fail(e.code, HttpStatus.NOT_FOUND);
+        // eslint-disable-next-line no-fallthrough
+        case 'NOT_AUTHORIZED':
+          fail(e.code, HttpStatus.FORBIDDEN);
+        // eslint-disable-next-line no-fallthrough
+        case 'NOT_IN_ACTIVE_RELATION':
+          fail(e.code, HttpStatus.BAD_REQUEST);
+        // eslint-disable-next-line no-fallthrough
+        case 'MILESTONE_LOCKED':
+        case 'MILESTONE_ALREADY_CLAIMED':
+          fail(e.code, HttpStatus.CONFLICT);
+      }
+    }
+    throw e;
   }
 
   private handleErr(e: unknown): never {
