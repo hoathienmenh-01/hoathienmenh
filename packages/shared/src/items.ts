@@ -16,6 +16,7 @@ import {
   qualityForArtifactTier,
   type ArtifactMaterialDef,
 } from './artifacts-v2';
+import { PET_ITEMS, PET_ITEM_KEYS } from './pet-items';
 import type { EquipSlot, Quality } from './enums';
 import {
   deriveEquipmentProgressionMetadata,
@@ -2205,16 +2206,20 @@ const ARTIFACT_MATERIAL_ITEM_BY_KEY = new Map(
   ARTIFACT_MATERIAL_ITEMS.map((i) => [i.key, i]),
 );
 
+const PET_ITEM_BY_KEY = new Map(PET_ITEMS.map((i) => [i.key, i]));
+
 export const ITEMS: readonly ItemDef[] = [
   ...BASE_ITEMS.filter(
     (item) =>
       !ALCHEMY_V2_ITEM_BY_KEY.has(item.key) &&
       !METHOD_FRAGMENT_ITEM_BY_KEY.has(item.key) &&
-      !ARTIFACT_MATERIAL_ITEM_BY_KEY.has(item.key),
+      !ARTIFACT_MATERIAL_ITEM_BY_KEY.has(item.key) &&
+      !PET_ITEM_KEYS.has(item.key),
   ),
   ...ALCHEMY_V2_ITEMS,
   ...METHOD_FRAGMENT_ITEMS,
   ...ARTIFACT_MATERIAL_ITEMS,
+  ...PET_ITEMS,
 ];
 
 export function itemByKey(key: string): ItemDef | undefined {
@@ -2222,6 +2227,7 @@ export function itemByKey(key: string): ItemDef | undefined {
     ARTIFACT_MATERIAL_ITEM_BY_KEY.get(key) ??
     ALCHEMY_V2_ITEM_BY_KEY.get(key) ??
     METHOD_FRAGMENT_ITEM_BY_KEY.get(key) ??
+    PET_ITEM_BY_KEY.get(key) ??
     BASE_ITEMS.find((i) => i.key === key)
   );
 }

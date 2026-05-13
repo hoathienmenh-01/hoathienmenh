@@ -63,6 +63,7 @@ import { EventBuilderModule } from './modules/event-builder/event-builder.module
 import { PvpModule } from './modules/pvp/pvp.module';
 import { MarketV2Module } from './modules/market-v2/market-v2.module';
 import { CodexModule } from './modules/codex/codex.module';
+import { PetModule } from './modules/pet/pet.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { SystemStatusModule } from './modules/system-status/system-status.module';
 import { ArenaModule } from './modules/arena/arena.module';
@@ -191,6 +192,9 @@ import { PlayerNavigationModule } from './modules/player-navigation/player-navig
     MarketV2Module,
     // Phase 32.0 — Tu Tiên Bách Khoa / Content Codex / Bestiary.
     CodexModule,
+    // Phase 35.0 — Pet / Linh Thú Full System (catalog, collection,
+    // snapshot, shard, box+pity, upgrade/evolution, sources, admin).
+    PetModule,
     // Phase 16.6 — Economy Anti-cheat (ledger checker + anomaly
     // scanner cron + admin endpoints). SAU AdminModule + EconomyModule.
     AdminEconomySafetyModule,

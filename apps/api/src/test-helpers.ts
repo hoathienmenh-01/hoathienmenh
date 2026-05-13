@@ -280,6 +280,11 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.codexAuditIssue.deleteMany({});
   await prisma.codexReindexLog.deleteMany({});
   await prisma.codexEntry.deleteMany({});
+  // Phase 35.0 — Pet / Linh Thú tables (FK cascade → Character).
+  await prisma.petBoxOpenLog.deleteMany({});
+  await prisma.characterPetBoxPityCounter.deleteMany({});
+  await prisma.characterPetShard.deleteMany({});
+  await prisma.characterPet.deleteMany({});
   // Phase 14.3.E.1 — mini-battle session rows (encounterId pointer chỉ là
   // string, không FK; xoá trước encounter để giữ deterministic order).
   await prisma.tribulationMiniBattle.deleteMany({});

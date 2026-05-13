@@ -219,7 +219,17 @@ export type LedgerReason =
   // V2RewardClaim` UNIQUE `(characterId, questKey)` — race-safe winner duy
   // nhất ghi 1 ledger row / questKey. Reward bound bởi
   // `phase33RewardCap(rewardPolicyKey)` snapshot vào quest catalog.
-  | 'STORY_V2_QUEST_CLAIM';
+  | 'STORY_V2_QUEST_CLAIM'
+  // Phase 35.0 — Pet / Linh Thú. Wire qua PetBoxService.open (cost) /
+  // PetUpgradeService (star/break/evolve/skill cost) / PetAdminService.
+  // refType thường `'PetBox'` (cost mở hộp) / `'CharacterPet'` (upgrade
+  // sink) / `'PetAdmin'` (admin grant currency reverse).
+  | 'PET_BOX_OPEN_COST'
+  | 'PET_UPGRADE_COST'
+  | 'PET_EVOLUTION_COST'
+  | 'PET_BREAKTHROUGH_COST'
+  | 'PET_SKILL_UPGRADE_COST'
+  | 'PET_ADMIN_GRANT';
 
 export interface CurrencyApplyInput {
   characterId: string;

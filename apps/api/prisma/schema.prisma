@@ -492,6 +492,12 @@ model Character {
   storyV2Quests       CharacterStoryV2QuestProgress[]
   storyV2RewardClaims CharacterStoryV2RewardClaim[]
 
+  /// Phase 35.0 — Pet / Linh Thú backrefs.
+  pets           CharacterPet[]
+  petShards      CharacterPetShard[]
+  petBoxPity     CharacterPetBoxPityCounter[]
+  petBoxOpenLogs PetBoxOpenLog[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -6430,20 +6436,129 @@ model CharacterStoryV2QuestProgress {
 /// Đây là audit row — currency/item/exp/affinity grants thực tế đã đi qua
 /// `CurrencyLedger` / `ItemLedger` / `CharacterNpcAffinity` rows riêng.
 model CharacterStoryV2RewardClaim {
-  id                String    @id @default(cuid())
-  characterId       String
-  character         Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  questKey          String
-  linhThachGranted  BigInt    @default(0)
-  tienNgocGranted   Int       @default(0)
-  expGranted        BigInt    @default(0)
-  congHienGranted   Int       @default(0)
+  id               String    @id @default(cuid())
+  characterId      String
+  character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  questKey         String
+  linhThachGranted BigInt    @default(0)
+  tienNgocGranted  Int       @default(0)
+  expGranted       BigInt    @default(0)
+  congHienGranted  Int       @default(0)
   /// JSON `[{itemKey, qty}]`.
-  itemsGranted      Json      @default("[]")
+  itemsGranted     Json      @default("[]")
   /// JSON `[{npcKey, delta}]`.
-  affinityGranted   Json      @default("[]")
-  claimedAt         DateTime  @default(now())
+  affinityGranted  Json      @default("[]")
+  claimedAt        DateTime  @default(now())
 
   @@unique([characterId, questKey])
   @@index([characterId, claimedAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Phase 35.0 — Pet / Linh Thú Full System
+// ─────────────────────────────────────────────────────────────────────────
+//
+// Ownership-side: `CharacterPet` (1 row mỗi instance), `CharacterPetShard`
+// (kho shard per pet), `CharacterPetBoxPityCounter` (per box+pool), and
+// `PetBoxOpenLog` (audit per open). Catalog (`petKey`/`boxKey`/`poolKey`/
+// `rateVersion`) lưu ở shared catalog (`packages/shared/src/pets.ts` +
+// `pet-boxes.ts`). Mọi grant/consume phải đi qua InventoryService /
+// CurrencyService — KHÔNG direct mutate.
+//
+// **Snapshot fields** (`rarity`, `quality`, `element`, `sourceType`)
+// snapshot tại lúc obtain. Catalog có thể đổi (rate version) mà không phá
+// instance hiện hữu.
+model CharacterPet {
+  id              String    @id @default(cuid())
+  characterId     String
+  character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  petKey          String
+  customName      String?
+  level           Int       @default(1)
+  exp             Int       @default(0)
+  star            Int       @default(1)
+  /// Snapshot quality tại lúc obtain (`PHAM` | `LINH` | `HUYEN` | `DIA` | `THIEN` | `THAN`).
+  quality         String
+  /// Snapshot rarity (`COMMON` | … | `MYTHIC`).
+  rarity          String
+  /// Snapshot element (Ngũ Hành + ext).
+  element         String
+  evolutionStage  Int       @default(0)
+  isLocked        Boolean   @default(false)
+  isEquipped      Boolean   @default(false)
+  equippedSlot    Int?
+  /// Skill levels Json: `{ [skillKey]: level }`.
+  skillLevelsJson Json      @default("{}")
+  /// Source tại lúc obtain: BOX | EVENT | DUNGEON | BOSS | ACHIEVEMENT | …
+  sourceType      String
+  obtainedAt      DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([characterId])
+  @@index([petKey])
+  @@index([characterId, isEquipped])
+  @@index([characterId, quality])
+}
+
+/// Shard kho per (character, pet). Server consume khi star-up.
+model CharacterPetShard {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  petKey      String
+  amount      Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([characterId, petKey])
+  @@index([characterId])
+}
+
+/// Pity counter per (character, box, pool). Server tăng/reset khi mở.
+model CharacterPetBoxPityCounter {
+  id                  String    @id @default(cuid())
+  characterId         String
+  character           Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  boxKey              String
+  poolKey             String
+  totalOpens          Int       @default(0)
+  opensSinceRare      Int       @default(0)
+  opensSinceEpic      Int       @default(0)
+  opensSinceLegendary Int       @default(0)
+  opensSinceMythic    Int       @default(0)
+  lastResetAt         DateTime?
+  updatedAt           DateTime  @updatedAt
+  createdAt           DateTime  @default(now())
+
+  @@unique([characterId, boxKey, poolKey])
+  @@index([characterId])
+}
+
+/// Audit log mỗi lần mở hộp. Idempotent qua `(characterId, boxKey,
+/// requestId)` nếu service cung cấp requestId.
+model PetBoxOpenLog {
+  id              String    @id @default(cuid())
+  characterId     String
+  character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  boxKey          String
+  poolKey         String
+  /// `LINH_THACH` | `TIEN_NGOC` | `EVENT_TOKEN` | `TICKET`.
+  costType        String
+  costAmount      BigInt    @default(0)
+  /// `PET` | `SHARD` | `MATERIAL` | `TICKET_REFUND`.
+  resultType      String
+  resultKey       String
+  resultAmount    Int       @default(1)
+  resultRarity    String
+  resultQuality   String
+  pityTriggered   Boolean   @default(false)
+  pityRuleVersion String?
+  rateVersion     Int       @default(1)
+  requestId       String?
+  createdAt       DateTime  @default(now())
+
+  @@unique([characterId, boxKey, requestId])
+  @@index([characterId, createdAt])
+  @@index([boxKey, createdAt])
 }
