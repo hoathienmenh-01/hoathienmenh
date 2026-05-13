@@ -128,6 +128,8 @@ export type AdminPermissionKey =
   /* Phase 30.0 / 32.0 — Market V2 + Codex. */
   | 'ADMIN_MANAGE_MARKET'
   | 'ADMIN_MANAGE_CODEX'
+  /* Phase 35.0 — Pet / Linh Thú. */
+  | 'ADMIN_MANAGE_PETS'
   | 'ADMIN_VIEW_ANTI_CHEAT'
   | 'ADMIN_RESOLVE_ANTI_CHEAT'
   | 'ADMIN_MODERATE_CHAT'
@@ -162,6 +164,7 @@ export const ADMIN_PERMISSION_KEYS: readonly AdminPermissionKey[] = [
   'ADMIN_MANAGE_ANNOUNCEMENT',
   'ADMIN_MANAGE_MARKET',
   'ADMIN_MANAGE_CODEX',
+  'ADMIN_MANAGE_PETS',
   'ADMIN_VIEW_ANTI_CHEAT',
   'ADMIN_RESOLVE_ANTI_CHEAT',
   'ADMIN_MODERATE_CHAT',
@@ -203,6 +206,7 @@ export const ADMIN_ROLE_PERMISSIONS: Readonly<
     'ADMIN_MANAGE_BOSSES',
     'ADMIN_MANAGE_MARKET',
     'ADMIN_MANAGE_CODEX',
+    'ADMIN_MANAGE_PETS',
     'ADMIN_VIEW_ANTI_CHEAT',
   ],
   ECONOMY_ADMIN: [
@@ -360,7 +364,23 @@ export type AdminActionType =
   | 'CODEX_ENTRY_UPDATE'
   | 'CODEX_ENTRY_HIDE'
   | 'CODEX_ENTRY_SHOW'
-  | 'CODEX_AUDIT_RESOLVE';
+  | 'CODEX_AUDIT_RESOLVE'
+  /* Phase 35.0 — Pet / Linh Thú admin audit. */
+  | 'PET_GRANT'
+  | 'PET_REVOKE'
+  | 'PET_LEVEL_ADJUST'
+  | 'PET_STAR_ADJUST'
+  | 'PET_EVOLUTION_ADJUST'
+  | 'PET_SHARD_ADJUST'
+  | 'PET_BOX_RATE_VIEW'
+  | 'PET_BOX_LOG_VIEW'
+  | 'PET_PITY_RESET'
+  | 'PET_LOCK_FORCE'
+  | 'PET_UNLOCK_FORCE'
+  | 'PET_RENAME_FORCE'
+  | 'PET_EQUIP_FORCE'
+  | 'PET_UNEQUIP_FORCE'
+  | 'PET_SKILL_LEVEL_ADJUST';
 
 export const ADMIN_ACTION_TYPES: readonly AdminActionType[] = [
   'CONFIG_UPDATE',
@@ -451,6 +471,22 @@ export const ADMIN_ACTION_TYPES: readonly AdminActionType[] = [
   'CODEX_ENTRY_HIDE',
   'CODEX_ENTRY_SHOW',
   'CODEX_AUDIT_RESOLVE',
+  /* Phase 35.0 — Pet / Linh Thú audit. */
+  'PET_GRANT',
+  'PET_REVOKE',
+  'PET_LEVEL_ADJUST',
+  'PET_STAR_ADJUST',
+  'PET_EVOLUTION_ADJUST',
+  'PET_SHARD_ADJUST',
+  'PET_BOX_RATE_VIEW',
+  'PET_BOX_LOG_VIEW',
+  'PET_PITY_RESET',
+  'PET_LOCK_FORCE',
+  'PET_UNLOCK_FORCE',
+  'PET_RENAME_FORCE',
+  'PET_EQUIP_FORCE',
+  'PET_UNEQUIP_FORCE',
+  'PET_SKILL_LEVEL_ADJUST',
 ] as const;
 
 export function isAdminActionType(s: unknown): s is AdminActionType {
@@ -571,6 +607,22 @@ export const DEFAULT_ACTION_RISK: Readonly<Record<AdminActionType, AdminRiskLeve
   CODEX_ENTRY_HIDE: 'LOW',
   CODEX_ENTRY_SHOW: 'LOW',
   CODEX_AUDIT_RESOLVE: 'LOW',
+  /* Phase 35.0 — Pet / Linh Thú default risk. */
+  PET_GRANT: 'HIGH',
+  PET_REVOKE: 'HIGH',
+  PET_LEVEL_ADJUST: 'MEDIUM',
+  PET_STAR_ADJUST: 'MEDIUM',
+  PET_EVOLUTION_ADJUST: 'HIGH',
+  PET_SHARD_ADJUST: 'MEDIUM',
+  PET_BOX_RATE_VIEW: 'LOW',
+  PET_BOX_LOG_VIEW: 'LOW',
+  PET_PITY_RESET: 'HIGH',
+  PET_LOCK_FORCE: 'LOW',
+  PET_UNLOCK_FORCE: 'LOW',
+  PET_RENAME_FORCE: 'LOW',
+  PET_EQUIP_FORCE: 'LOW',
+  PET_UNEQUIP_FORCE: 'LOW',
+  PET_SKILL_LEVEL_ADJUST: 'MEDIUM',
 };
 
 export function defaultRiskFor(action: AdminActionType): AdminRiskLevel {

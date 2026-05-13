@@ -6469,6 +6469,42 @@
       "UNKNOWN": "Có lỗi xảy ra."
     }
   },
+  "mentorMilestone": {
+    "title": "Cột mốc Sư Đồ",
+    "subtitle": "Đồ đệ đột phá cảnh giới — cả sư phụ và đồ đệ đều có thưởng linh thạch riêng.",
+    "empty": "Bạn chưa có quan hệ sư đồ đang hoạt động.",
+    "rewardLinhThach": "{amount} linh thạch",
+    "status": {
+      "LOCKED": "Chưa đạt",
+      "AVAILABLE": "Có thể nhận",
+      "CLAIMED": "Đã nhận"
+    },
+    "action": {
+      "claim": "Nhận thưởng",
+      "claimedAlready": "Đã nhận"
+    },
+    "mentorView": {
+      "heading": "Đồ đệ: {name}",
+      "realm": "Cảnh giới đồ đệ hiện tại: tier {order}"
+    },
+    "discipleView": {
+      "heading": "Sư phụ: {name}",
+      "realm": "Cảnh giới hiện tại: tier {order}"
+    },
+    "toast": {
+      "claimed": "Đã gửi thư thưởng ({amount} linh thạch). Mở thư để nhận."
+    },
+    "error": {
+      "MILESTONE_NOT_FOUND": "Cột mốc không tồn tại.",
+      "MILESTONE_LOCKED": "Cột mốc chưa mở khoá.",
+      "MILESTONE_ALREADY_CLAIMED": "Bạn đã nhận thưởng cột mốc này.",
+      "NOT_IN_ACTIVE_RELATION": "Không có quan hệ sư đồ đang hoạt động.",
+      "NO_CHARACTER": "Tài khoản chưa có nhân vật.",
+      "NOT_FOUND": "Không tìm thấy quan hệ.",
+      "NOT_AUTHORIZED": "Không có quyền với cột mốc này.",
+      "UNKNOWN": "Có lỗi xảy ra."
+    }
+  },
   "returner": {
     "title": "Trở Lại Tiên Đồ",
     "subtitle": "Quà chào mừng đạo hữu quay lại.",
@@ -7395,6 +7431,132 @@
       "LOADOUT_PRESET_MODE_INVALID": "Chế độ không hợp lệ.",
       "LOADOUT_PRESET_PAYLOAD_INVALID": "Dữ liệu bộ trang bị không hợp lệ.",
       "LOADOUT_PRESET_LIMIT_REACHED": "Đã đạt giới hạn 20 bộ trang bị nhanh."
+    }
+  },
+  "pets": {
+    "title": "Linh Thú",
+    "tabs": {
+      "collection": "Bộ sưu tập",
+      "catalog": "Bách khoa Linh Thú",
+      "boxes": "Hộp Linh Thú",
+      "upgrade": "Nâng cấp",
+      "sources": "Nguồn nhận",
+      "logs": "Lịch sử mở hộp"
+    },
+    "empty": "Chưa sở hữu Linh Thú nào.",
+    "equipped": "Đang trang bị",
+    "level": "Cấp",
+    "star": "Sao",
+    "rarity": "Hiếm",
+    "quality": "Phẩm",
+    "element": "Hệ",
+    "evolution": "Tiến hóa",
+    "stage": "Giai đoạn",
+    "shards": "Mảnh",
+    "skills": "Kỹ năng",
+    "noSkill": "Chưa học kỹ năng nào.",
+    "actions": {
+      "equip": "Trang bị",
+      "unequip": "Tháo",
+      "lock": "Khoá",
+      "unlock": "Mở khoá",
+      "rename": "Đổi tên",
+      "feed": "Cho ăn",
+      "starUp": "Nâng sao",
+      "breakthrough": "Đột phá",
+      "evolve": "Tiến hóa",
+      "upgradeSkill": "Nâng kỹ năng",
+      "open": "Mở 1 lần",
+      "openTen": "Mở 10 lần",
+      "openConfirm": "Xác nhận mở hộp?"
+    },
+    "renamePrompt": "Nhập tên mới (3-20 ký tự):",
+    "boxes": {
+      "rates": "Tỉ lệ rơi",
+      "pity": "Bảo đảm (pity)",
+      "totalOpens": "Đã mở",
+      "sinceRare": "Từ Rare gần nhất",
+      "sinceEpic": "Từ Epic gần nhất",
+      "sinceLegendary": "Từ Legendary gần nhất",
+      "sinceMythic": "Từ Mythic gần nhất",
+      "cost": "Giá mở",
+      "openResult": "Kết quả mở",
+      "premium": "Nạp",
+      "eventLimited": "Sự kiện"
+    },
+    "result": {
+      "pet": "Linh Thú",
+      "shard": "Mảnh Linh Thú",
+      "material": "Nguyên liệu",
+      "ticketRefund": "Hoàn vé"
+    },
+    "snapshot": {
+      "title": "Sức mạnh chiến đấu (snapshot)",
+      "pvpClamp": "PvP đã clamp",
+      "bossClamp": "Boss đã clamp",
+      "capPercent": "Trần đóng góp",
+      "effectMul": "Hệ số hiệu ứng"
+    },
+    "snapshotContexts": {
+      "PVE": "PvE",
+      "PVP": "PvP",
+      "BOSS": "Boss",
+      "DUNGEON": "Phụ bản",
+      "SECRET_REALM": "Bí cảnh"
+    },
+    "sourceList": "Nguồn nhận miễn phí / sự kiện / phụ bản",
+    "logs": {
+      "empty": "Chưa có lần mở hộp nào.",
+      "pity": "Pity",
+      "rate": "Phiên bản tỉ lệ"
+    },
+    "errors": {
+      "PET_NOT_OWNED": "Bạn không sở hữu thú này.",
+      "PET_NOT_FOUND": "Không tìm thấy thú.",
+      "PET_LOCKED": "Thú đang khoá; mở khoá trước khi thao tác.",
+      "PET_NAME_TOO_SHORT": "Tên quá ngắn (tối thiểu 3 ký tự).",
+      "PET_NAME_TOO_LONG": "Tên quá dài (tối đa 40 ký tự).",
+      "PET_NAME_INVALID_CHARS": "Tên có ký tự không hợp lệ.",
+      "PET_BOX_UNKNOWN": "Hộp không tồn tại.",
+      "PET_COST_INSUFFICIENT": "Không đủ chi phí mở hộp.",
+      "PET_SHARD_INSUFFICIENT": "Không đủ mảnh để nâng cấp.",
+      "PET_MAT_INSUFFICIENT": "Không đủ nguyên liệu.",
+      "PET_MAX_LEVEL": "Đã đạt cấp tối đa hiện tại.",
+      "PET_NOT_AT_BREAKTHROUGH_GATE": "Chưa đạt gate đột phá.",
+      "PET_MAX_STAR": "Đã đạt sao tối đa.",
+      "PET_MAX_EVOLUTION": "Đã tiến hóa tối đa.",
+      "PET_SKILL_NOT_OWNED": "Thú chưa sở hữu kỹ năng này.",
+      "PET_SKILL_MAX_LEVEL": "Kỹ năng đã đạt cấp tối đa."
+    }
+  },
+  "adminPets": {
+    "title": "Quản lý Linh Thú",
+    "tabs": {
+      "audit": "Kiểm tra catalog",
+      "character": "Theo nhân vật",
+      "logs": "Lịch sử mở hộp",
+      "grant": "Cấp Linh Thú"
+    },
+    "characterIdPlaceholder": "Character ID",
+    "noIssues": "Không có lỗi.",
+    "actions": {
+      "audit": "Kiểm tra",
+      "load": "Tải",
+      "grant": "Cấp",
+      "shardGrant": "Cấp mảnh",
+      "revoke": "Thu hồi",
+      "adjust": "Điều chỉnh",
+      "pityReset": "Reset pity"
+    },
+    "form": {
+      "petKey": "Pet key",
+      "amount": "Số lượng",
+      "reason": "Lý do",
+      "level": "Cấp",
+      "star": "Sao",
+      "evolution": "Giai đoạn tiến hóa",
+      "boxKey": "Box key",
+      "poolKey": "Pool key (tùy chọn)"
     }
   },
   "webPush": {

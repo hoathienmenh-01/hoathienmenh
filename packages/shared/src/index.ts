@@ -136,6 +136,7 @@ export * from './world-content-summary';
 // ─── Phase 31.0 — Social & Retention Foundation V1 ─────────────────────
 export * from './mail-types';
 export * from './mentor';
+export * from './mentor-milestone';
 export * from './returner';
 export * from './system-gift';
 export * from './admin-mail';
@@ -153,3 +154,9 @@ export * from './secret-realm';
 
 // ─── Phase 42.0 — Visual Effects, Combat Feedback, Item Aura V1 ────────────
 export * from './visual-effects';
+
+// ─── Phase 35.0 — Pet / Linh Thú Full System ───────────────────────────────
+export * from './pets';
+export * from './pet-items';
+export * from './pet-boxes';
+export * from './pet-sources';

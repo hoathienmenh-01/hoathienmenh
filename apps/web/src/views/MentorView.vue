@@ -16,6 +16,7 @@ import {
 } from '@/api/mentor';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import MentorMilestonePanel from '@/components/MentorMilestonePanel.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 const auth = useAuthStore();
@@ -218,6 +219,8 @@ const isMentor = computed(() => !!profile.value);
           </ul>
         </article>
       </div>
+
+      <MentorMilestonePanel />
     </section>
   </AppShell>
 </template>

@@ -249,7 +249,22 @@ export type ItemLedgerReason =
   // `CharacterStoryV2RewardClaim(characterId, questKey)` đảm bảo 1 winner /
   // questKey → grant đúng 1 lần / questKey / character. Mirror cùng
   // `CurrencyLedger` reason `STORY_V2_QUEST_CLAIM` cho linhThach/tienNgoc.
-  | 'STORY_V2_QUEST_CLAIM';
+  | 'STORY_V2_QUEST_CLAIM'
+  // Phase 35.0 — Pet / Linh Thú.
+  // - PET_BOX_OPEN_COST: consume vé hoặc consumable cost của open hộp.
+  // - PET_UPGRADE_COST: consume material star-up / breakthrough / evolution.
+  // - PET_SKILL_UPGRADE_COST: consume `pet_mat_ngu_hanh_tinh_tuy`.
+  // - PET_FEED_COST: consume exp item (linh thảo, huyết linh quả …).
+  // - PET_BOX_REWARD: grant material/ticket trả về từ result type
+  //   `MATERIAL` / `TICKET_REFUND` của hộp.
+  // - PET_ADMIN_*: admin grant/revoke vật phẩm pet.
+  | 'PET_BOX_OPEN_COST'
+  | 'PET_UPGRADE_COST'
+  | 'PET_SKILL_UPGRADE_COST'
+  | 'PET_FEED_COST'
+  | 'PET_BOX_REWARD'
+  | 'PET_ADMIN_GRANT'
+  | 'PET_ADMIN_REVOKE';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;
