@@ -108,23 +108,35 @@ export class PlayerReportController {
 
   private handleErr(e: unknown): never {
     if (e instanceof PlayerReportError) {
-      switch (e.code) {
-        case 'NO_CHARACTER':
-          fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
-        case 'REPORT_NOT_FOUND':
-          fail('REPORT_NOT_FOUND', HttpStatus.NOT_FOUND);
-        case 'REPORT_TARGET_NOT_FOUND':
-          fail('REPORT_TARGET_NOT_FOUND', HttpStatus.NOT_FOUND);
-        case 'REPORT_RATE_LIMITED':
-          fail('REPORT_RATE_LIMITED', HttpStatus.TOO_MANY_REQUESTS);
-        case 'REPORT_SELF_NOT_ALLOWED':
-          fail('REPORT_SELF_NOT_ALLOWED');
-        case 'SUPPORT_PERMISSION_DENIED':
-          fail('SUPPORT_PERMISSION_DENIED', HttpStatus.FORBIDDEN);
-        case 'REPORT_VALIDATION_FAILED':
-        default:
-          fail('REPORT_VALIDATION_FAILED');
-      }
+      const map: Record<string, [string, number]> = {
+        NO_CHARACTER: ['NO_CHARACTER', HttpStatus.NOT_FOUND],
+        REPORT_NOT_FOUND: ['REPORT_NOT_FOUND', HttpStatus.NOT_FOUND],
+        REPORT_TARGET_NOT_FOUND: [
+          'REPORT_TARGET_NOT_FOUND',
+          HttpStatus.NOT_FOUND,
+        ],
+        REPORT_RATE_LIMITED: [
+          'REPORT_RATE_LIMITED',
+          HttpStatus.TOO_MANY_REQUESTS,
+        ],
+        REPORT_SELF_NOT_ALLOWED: [
+          'REPORT_SELF_NOT_ALLOWED',
+          HttpStatus.BAD_REQUEST,
+        ],
+        SUPPORT_PERMISSION_DENIED: [
+          'SUPPORT_PERMISSION_DENIED',
+          HttpStatus.FORBIDDEN,
+        ],
+        REPORT_VALIDATION_FAILED: [
+          'REPORT_VALIDATION_FAILED',
+          HttpStatus.BAD_REQUEST,
+        ],
+      };
+      const [code, status] = map[e.code] ?? [
+        'REPORT_VALIDATION_FAILED',
+        HttpStatus.BAD_REQUEST,
+      ];
+      fail(code, status);
     }
     throw e;
   }
@@ -183,14 +195,13 @@ export class AdminPlayerReportController {
 
 function handleAdminErr(e: unknown): never {
   if (e instanceof PlayerReportError) {
-    switch (e.code) {
-      case 'REPORT_NOT_FOUND':
-        fail('REPORT_NOT_FOUND', HttpStatus.NOT_FOUND);
-      case 'REPORT_VALIDATION_FAILED':
-        fail('REPORT_VALIDATION_FAILED');
-      default:
-        fail('ADMIN_SUPPORT_PERMISSION_DENIED', HttpStatus.FORBIDDEN);
+    if (e.code === 'REPORT_NOT_FOUND') {
+      fail('REPORT_NOT_FOUND', HttpStatus.NOT_FOUND);
     }
+    if (e.code === 'REPORT_VALIDATION_FAILED') {
+      fail('REPORT_VALIDATION_FAILED');
+    }
+    fail('ADMIN_SUPPORT_PERMISSION_DENIED', HttpStatus.FORBIDDEN);
   }
   throw e;
 }

@@ -122,19 +122,27 @@ export class PlayerFeedbackController {
 
   private handleErr(e: unknown): never {
     if (e instanceof FeedbackError) {
-      switch (e.code) {
-        case 'NO_CHARACTER':
-          fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
-        case 'FEEDBACK_NOT_FOUND':
-          fail('FEEDBACK_NOT_FOUND', HttpStatus.NOT_FOUND);
-        case 'SUPPORT_PERMISSION_DENIED':
-          fail('SUPPORT_PERMISSION_DENIED', HttpStatus.FORBIDDEN);
-        case 'FEEDBACK_RATE_LIMITED':
-          fail('FEEDBACK_RATE_LIMITED', HttpStatus.TOO_MANY_REQUESTS);
-        case 'FEEDBACK_VALIDATION_FAILED':
-        default:
-          fail('FEEDBACK_VALIDATION_FAILED');
-      }
+      const map: Record<string, [string, number]> = {
+        NO_CHARACTER: ['NO_CHARACTER', HttpStatus.NOT_FOUND],
+        FEEDBACK_NOT_FOUND: ['FEEDBACK_NOT_FOUND', HttpStatus.NOT_FOUND],
+        SUPPORT_PERMISSION_DENIED: [
+          'SUPPORT_PERMISSION_DENIED',
+          HttpStatus.FORBIDDEN,
+        ],
+        FEEDBACK_RATE_LIMITED: [
+          'FEEDBACK_RATE_LIMITED',
+          HttpStatus.TOO_MANY_REQUESTS,
+        ],
+        FEEDBACK_VALIDATION_FAILED: [
+          'FEEDBACK_VALIDATION_FAILED',
+          HttpStatus.BAD_REQUEST,
+        ],
+      };
+      const [code, status] = map[e.code] ?? [
+        'FEEDBACK_VALIDATION_FAILED',
+        HttpStatus.BAD_REQUEST,
+      ];
+      fail(code, status);
     }
     throw e;
   }
@@ -219,14 +227,13 @@ export class AdminFeedbackController {
 
 function handleAdminErr(e: unknown): never {
   if (e instanceof FeedbackError) {
-    switch (e.code) {
-      case 'FEEDBACK_NOT_FOUND':
-        fail('FEEDBACK_NOT_FOUND', HttpStatus.NOT_FOUND);
-      case 'FEEDBACK_VALIDATION_FAILED':
-        fail('FEEDBACK_VALIDATION_FAILED');
-      default:
-        fail('ADMIN_SUPPORT_PERMISSION_DENIED', HttpStatus.FORBIDDEN);
+    if (e.code === 'FEEDBACK_NOT_FOUND') {
+      fail('FEEDBACK_NOT_FOUND', HttpStatus.NOT_FOUND);
     }
+    if (e.code === 'FEEDBACK_VALIDATION_FAILED') {
+      fail('FEEDBACK_VALIDATION_FAILED');
+    }
+    fail('ADMIN_SUPPORT_PERMISSION_DENIED', HttpStatus.FORBIDDEN);
   }
   throw e;
 }
