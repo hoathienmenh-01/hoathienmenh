@@ -532,3 +532,94 @@ KHÔNG có (cố ý):
 ## 11. CHANGELOG
 
 - **2026-04-30** — Initial creation. Author: Devin AI session 9q.
+
+## 12. WORLD CONTENT V2 — REGION STANDARDS (Phase 26.5)
+
+### Cấu trúc nội dung
+
+```
+Book / Quyển
+  → Chapter / Chương
+    → Region / Khu vực
+      → FarmMap
+      → Dungeon / Bí cảnh
+      → Boss
+      → Monster
+      → Encounter / Cơ duyên
+```
+
+Mỗi region phải tuân thủ **content target standard**:
+
+- 3 farm map (tối thiểu).
+- 2 bí cảnh farm.
+- 1 bí cảnh nhiệm vụ (nếu khu có cốt truyện).
+- 1 boss khu vực.
+- 1 mini boss hoặc tinh anh boss.
+- 1 boss ẩn hoặc boss nhiệm vụ (tùy region).
+- 6–10 quái thường (≥ 2 monster family khác nhau).
+- 2–4 quái tinh anh (chỉ manual battle).
+- 3–5 cơ duyên nhỏ.
+
+PR #555 seed 2–3 khu đầu (`thanh_so_son`, `linh_son`) hoạt động đầy đủ. Các region còn lại mở dần qua content drop PR, dùng `getWorldContentSummary()` để track tiến độ — DO NOT seed placeholder.
+
+### Shared catalog locations
+
+| Catalog | File | Test |
+|---|---|---|
+| Monster taxonomy (12 type × 12 family) | `packages/shared/src/monster-taxonomy.ts` | `monster-taxonomy.test.ts` |
+| Farm map | `packages/shared/src/farm-maps.ts` | `farm-maps.test.ts` |
+| Dungeon V2 | `packages/shared/src/world-dungeons-v2.ts` | `world-dungeons-v2.test.ts` |
+| Boss V2 | `packages/shared/src/world-bosses-v2.ts` | `world-bosses-v2.test.ts` |
+| Sect content | `packages/shared/src/sect-content.ts` | `sect-content.test.ts` |
+| Opportunity encounter | `packages/shared/src/opportunities.ts` | `opportunities.test.ts` |
+| Trial tower | `packages/shared/src/trial-towers.ts` | `trial-towers.test.ts` |
+| Summary aggregator | `packages/shared/src/world-content-summary.ts` | `world-content-summary.test.ts` |
+
+### Region invariants (test enforced)
+
+- Mọi `FarmMapDef` phải reference một `regionKey` tồn tại trong `MAP_REGIONS`.
+- `FarmMapDef.unlockRealmOrder` MUST ≤ `recommendedRealmOrder`.
+- `FarmMapDef.monsterPool` MUST chỉ chứa NORMAL/ELITE — KHÔNG có BOSS/WORLD_BOSS trong farm pool.
+- `DungeonDef.unlockRealmOrder` MUST ≤ `recommendedPower` (đảm bảo gate hợp lý).
+- `BossDef.bossTier` MUST ≥ `BossDef.sourceTier` (boss reward không xuống thấp hơn region tier).
+- `OpportunityEncounterDef.maxDailyTriggers` MUST > 0; rare opportunity MUST ≤ 1/ngày.
+- `TrialTowerDef.infiniteScaling=true` → MUST set `floorFormulaKey` để compute power; `infiniteScaling=false` → MUST set `maxGeneratedFloor`.
+
+### Region progression order
+
+```
+1. thanh_so_son      (sourceTier 1, Luyện Khí Kỳ → Trúc Cơ)
+2. linh_son          (sourceTier 2, Trúc Cơ → Kim Đan)
+3. cuu_u_dia         (sourceTier 3, Kim Đan → Nguyên Anh)
+4. tien_van_co_dia   (sourceTier 4, Nguyên Anh → Hóa Thần)
+5. tam_thien_hai_uc  (sourceTier 5, Hóa Thần → Anh Biến)
+6. ma_uyen_huyet_sa  (sourceTier 6, Anh Biến → Đại Thừa)
+7. dao_anh_thien_tri (sourceTier 7, Đại Thừa → Độ Kiếp)
+8. ngu_hanh_thien_dao (sourceTier 8, Độ Kiếp → Tiên Nhân)
+9. (TBD, late-game)  (sourceTier 9, post-tribulation)
+```
+
+Đặt tên region phải tiếng Việt có dấu (snake_case ASCII transliteration cho key). Tên hiển thị dùng `nameVi` / `nameEn`. Lore dùng `descriptionVi` / `descriptionEn`.
+
+### Adding a new region — checklist
+
+1. Append `MAP_REGIONS` entry trong `packages/shared/src/map-regions.ts`.
+2. Thêm tối thiểu content target standard (3 farm map / 2 dungeon / 1 region boss / 6+ monster / 1 mini boss / 3+ opportunity).
+3. Update `getWorldContentSummary()` không cần code (auto-aggregate từ catalogs).
+4. Update `DROP_RULE_CATALOG` nếu có material mới — đi qua Drop Economy V2.
+5. Thêm `unlockRealmOrder` gate hợp lý.
+6. Run shared tests — phải PASS đầy đủ catalog cross-check.
+7. Update API seed nếu cần (e.g. seed test character starting region).
+8. Update vi/en i18n nếu add boss/dungeon name mới.
+9. Update docs/CONTENT_PIPELINE.md section này thêm region vào progression order.
+
+### Pre-deploy region checklist
+
+- [ ] All `FarmMapDef.monsterPool` entries map → existing `MONSTER_TAXONOMY` key.
+- [ ] All `OpportunityEncounterDef.rewardTable` items map → existing `ITEMS` key.
+- [ ] `getWorldContentSummary()` returns expected totals.
+- [ ] Shared tests `world-content-summary.test.ts` PASS.
+- [ ] API integration `farm.service.test.ts` + `trial-tower.service.test.ts` + `world-cap.service.test.ts` PASS.
+- [ ] Web test `WorldContentView.test.ts` + 5 view tests PASS.
+- [ ] vi/en i18n parity (no missing keys, both directions).
+- [ ] DROP_RULE_CATALOG cap matrix audited cho material mới.

@@ -1419,6 +1419,32 @@ Tất cả endpoint:
 - `BACKUP_DIR` (default `./backups`)
 - `BACKUP_RETENTION_DAYS` (default `0`)
 
+## World Content V2 — `WorldContentController` (prefix `/world`, Phase 26.5)
+
+Server-authoritative PvE content (farm sessions, dungeons, bosses, sect content, trial towers). All reward / cap / progression decisions are computed server-side from `sourceTier` / `dungeonTier` / `bossTier` / `floorFormula`; client never sets values. Premium tier (`monthlyCardSessionMinutes` / `premiumSessionMinutes`) only extends auto-farm duration — it **never** removes `dailyMaterialCap` / `weeklyRareMaterialCap` / `dailyOpportunityCap` / `dailyDungeonAttempt` / `weeklyWorldBossCap` / `sectDungeonDailyCap` / `sectBossWeeklyCap` / `towerFirstClearReward` / `towerMilestoneReward`.
+
+Catalog endpoints (read-only, derived from `packages/shared/src`):
+
+- `GET /world/summary` → `WorldContentSummary` (totalRegions, totalFarmMaps, totalDungeons, totalStoryDungeons, totalSectDungeons, totalTrialTowers, totalBosses, totalWorldBosses, totalEventBosses, totalSectBosses, totalQuestBosses, totalMonsters, totalEliteMonsters, totalOpportunities, contentByRegion[]).
+- `GET /world/farm-maps` → `FarmMapView[]` (per character: unlocked flag + `unlockReason` + `freeSessionMinutes` / `sessionLimitMinutes` / `maxSessionMinutes` / `monsterPoolSize` / `opportunityPoolSize` / `autoFarmAllowed` / `sweepAllowed`).
+- `GET /world/dungeons` → `DungeonV2View[]` (category, regionKey, sourceTier, dungeonTier, unlockRealmOrder, dailyAttempts).
+- `GET /world/bosses` → `BossV2View[]` (category, family, element, regionKey, sourceTier, bossTier, recommendedRealmOrder, dailyRewardCap, weeklyRewardCap, manualOnly).
+- `GET /world/sect-dungeons` → `SectDungeonView[]` (requiredSectLevel, dailyAttemptsPerMember, weeklyAttemptsPerSect, contributionCost). Catalog only — does NOT require character to be in a sect.
+- `GET /world/sect-bosses` → `SectBossView[]` (requiredSectLevel, family, sourceTier).
+- `GET /world/opportunities` → `OpportunityEncounterView[]` (regionKey, rarity, triggerChance, maxDailyTriggers).
+- `GET /world/towers` → `TrialTowerView[]` per character (`unlocked`, `highestFloorCleared`, `seasonHighestFloor`, `dailyAttempts`, `infiniteScaling`, `maxGeneratedFloor?`).
+
+Farm lifecycle:
+
+- `POST /world/farm/:mapKey/start` — start a farm session. Errors: `MAP_NOT_FOUND`, `MAP_LOCKED`, `MAP_DISABLED`, `SESSION_ALREADY_ACTIVE`, `DAILY_LIMIT_REACHED`.
+- `POST /world/farm/sessions/:sessionId/claim` — claim reward, ends the session, applies `effectiveDropTier = min(playerRealmTier, sourceTier)` and `MATERIAL_CATEGORY_MULTIPLIER`, writes `DailyContentCap` (CAS upsert). Returns `FarmSessionClaimResult` (`sessionId`, `minutesProcessed`, `rewards`, `capUsage.{dayBucket,minutesUsed,sessionsUsed,dailyLimit}`). Errors: `SESSION_NOT_FOUND`, `SESSION_NOT_ACTIVE`, `OWNER_MISMATCH`.
+
+Trial tower:
+
+- `POST /world/towers/:towerKey/attempt` body `{ floor: number }` — Server picks `floorFormulaKey` → `requiredPower`. Returns `TrialTowerAttemptResult` (`floor`, `success`, `requiredPower`, `battlePower`, `enemyType`, `isFirstClear`, `milestoneClaimed`, `reward.{linhThach,exp,trialPoints}`). On success, `TrialTowerProgress.highestFloorCleared` is monotonically updated; `claimedMilestonesJson` deduplicates milestone rewards. Repeated attempts on already-cleared floors yield `reward = {0,0,0}` (no farm). Errors: `TOWER_NOT_FOUND`, `TOWER_LOCKED`, `INVALID_FLOOR`, `DAILY_LIMIT_REACHED`.
+
+Error codes (all under `WorldContentError`): `MAP_NOT_FOUND`, `MAP_LOCKED`, `MAP_DISABLED`, `SESSION_NOT_FOUND`, `SESSION_NOT_ACTIVE`, `SESSION_ALREADY_ACTIVE`, `OWNER_MISMATCH`, `DAILY_LIMIT_REACHED`, `WEEKLY_LIMIT_REACHED`, `TOWER_NOT_FOUND`, `TOWER_LOCKED`, `INVALID_FLOOR`. UI fallback: `worldContent.errors.UNKNOWN`.
+
 ## Environment
 
 Xem `.env.example`. Production khởi chạy sẽ assert `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` ≥ 32 ký tự; nếu thiếu sẽ refuse start. Các biến quan trọng:
