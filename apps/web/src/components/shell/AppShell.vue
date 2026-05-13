@@ -238,6 +238,14 @@ async function logout(): Promise<void> {
           套 {{ t('shell.nav.loadouts') }}
         </RouterLink>
         <RouterLink
+          to="/notification-settings"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+          data-testid="shell-nav-notification-settings"
+        >
+          鈴 {{ t('shell.nav.notificationSettings') }}
+        </RouterLink>
+        <RouterLink
           to="/market"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"

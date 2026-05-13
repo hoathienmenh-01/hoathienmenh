@@ -140,6 +140,13 @@ model User {
   eventDefsCreated              EventDef[]              @relation("EventDefCreatedBy")
   eventDefsUpdated              EventDef[]              @relation("EventDefUpdatedBy")
   eventBalancePoliciesUpdated   EventBalancePolicy[]    @relation("EventBalancePolicyUpdatedBy")
+  /// Phase PWA-1 — Web Push subscriptions per user (one per device /
+  /// browser endpoint). Cascade khi user bị xoá để không leak push
+  /// gateway endpoint.
+  webPushSubscriptions          WebPushSubscription[]
+  /// Phase PWA-1 — Per-user push notification preferences (1-1, lazy
+  /// upsert).
+  webPushPreferences            UserPushPreferences?
 }
 
 /// Token đặt lại mật khẩu (forgot/reset-password flow).
@@ -497,7 +504,7 @@ model Character {
   onboardingTasks CharacterOnboardingTaskProgress[]
 
   /// Phase QOL-2 — Loadout Preset PvE/PvP/Boss backref.
-  loadoutPresets      CharacterLoadoutPreset[]
+  loadoutPresets CharacterLoadoutPreset[]
 
   /// Phase 35.0 — Pet / Linh Thú backrefs.
   pets           CharacterPet[]
@@ -6566,23 +6573,23 @@ model CharacterOnboardingProgress {
 /// Idempotency: complete/claim CAS guard qua `updateMany({status:'...'}) `.
 /// Re-call sau khi đã CLAIMED trả về current state, KHÔNG cộng reward.
 model CharacterOnboardingTaskProgress {
-  id            String    @id @default(cuid())
-  characterId   String
-  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  taskKey       String
+  id               String    @id @default(cuid())
+  characterId      String
+  character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  taskKey          String
   /// Denormalized for index — same as `onboardingTaskByKey(taskKey).dayNumber`.
-  dayNumber     Int
+  dayNumber        Int
   /// LOCKED | AVAILABLE | COMPLETED | CLAIMED.
-  status        String    @default("AVAILABLE")
-  completedAt   DateTime?
-  claimedAt     DateTime?
+  status           String    @default("AVAILABLE")
+  completedAt      DateTime?
+  claimedAt        DateTime?
   /// Cached linh thach granted on claim (for audit; mirror
   /// `OnboardingTaskRewardDef.linhThach`).
-  linhThachGranted Int    @default(0)
+  linhThachGranted Int       @default(0)
   /// Cached exp granted on claim.
-  expGranted    Int       @default(0)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  expGranted       Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@unique([characterId, taskKey])
   @@index([characterId, dayNumber, status])
@@ -6610,25 +6617,25 @@ model CharacterOnboardingTaskProgress {
 ///
 /// Backref: `Character.loadoutPresets` (FK Cascade khi xoá character).
 model CharacterLoadoutPreset {
-  id                  String    @id @default(cuid())
-  characterId         String
-  character           Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  id                String    @id @default(cuid())
+  characterId       String
+  character         Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
   /// Tên preset do user chọn (1..40 ký tự, unique per character).
-  name                String
+  name              String
   /// `LoadoutPresetMode` ∈ {`PVE`, `PVP`, `BOSS`, `CUSTOM`}.
-  mode                String
+  mode              String
   /// `Record<EquipSlot, string>` — keys giới hạn `EquipSlot` enum.
-  equipmentSlotJson   Json      @default("{}")
+  equipmentSlotJson Json      @default("{}")
   /// `string[]` skillKey active (cap 4); null = không thay đổi skill khi apply.
-  skillSlotJson       Json?
+  skillSlotJson     Json?
   /// `Record<string, string>` artifact slot → characterArtifactId; null =
   /// không thay đổi pháp bảo khi apply.
-  artifactSlotJson    Json?
-  isDefaultForPve     Boolean   @default(false)
-  isDefaultForPvp     Boolean   @default(false)
-  isDefaultForBoss    Boolean   @default(false)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  artifactSlotJson  Json?
+  isDefaultForPve   Boolean   @default(false)
+  isDefaultForPvp   Boolean   @default(false)
+  isDefaultForBoss  Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@unique([characterId, name])
   @@index([characterId])
@@ -6745,4 +6752,97 @@ model PetBoxOpenLog {
   @@unique([characterId, boxKey, requestId])
   @@index([characterId, createdAt])
   @@index([boxKey, createdAt])
+}
+/// Phase PWA-1 — Web Push subscription endpoint.
+///
+/// 1 row / browser-device (endpoint là unique). Một user có thể
+/// subscribe nhiều device; service cap `PER_USER_SUBSCRIPTION_MAX` ở
+/// layer trên. `enabled=false` khi user unsubscribe hoặc push gateway
+/// trả về 404/410 (subscription invalid).
+///
+/// Privacy:
+///   - `endpoint` chứa device-specific ID từ FCM/Mozilla/Apple push
+///     gateway — KHÔNG log / KHÔNG expose qua public API ngoại trừ
+///     chính user / admin.
+///   - `userAgent` đã sanitize control char + cap 256 chars.
+///
+/// Cleanup:
+///   - 410 Gone / 404 Not Found ⇒ service set `enabled=false`.
+///   - `failureCount >= FAILURE_HARD_DELETE_THRESHOLD` ⇒ admin/cron
+///     hard-delete (best-effort).
+model WebPushSubscription {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Push gateway endpoint URL (FCM / Mozilla AutoPush / Apple WebPush).
+  endpoint     String    @unique
+  /// ECDH P-256 public key (base64url).
+  p256dh       String
+  /// Auth secret (base64url).
+  auth         String
+  userAgent    String?
+  enabled      Boolean   @default(true)
+  failureCount Int       @default(0)
+  /// Last successful push send (server side). Null = never.
+  lastUsedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId, enabled])
+  @@index([enabled, updatedAt])
+}
+
+/// Phase PWA-1 — Per-user notification preferences (1-1 User).
+///
+/// Lazy upsert: row tạo ngay khi user mở settings hoặc subscribe lần
+/// đầu. Defaults trong `DEFAULT_WEB_PUSH_PREFERENCES` (boss/stamina/mail
+/// ON, daily reminder OFF — opt-in).
+///
+/// `quietHoursStart`/`End` là `HH:mm` 24h (UTC theo design ban đầu —
+/// client truyền timezone IANA + service quy đổi trước khi check
+/// `isInQuietHours`). KHÔNG block BOSS_SPAWN trong quiet hours (game
+/// critical).
+///
+/// Cooldown / dedupe key store ở `WebPushSendLog` (model bên dưới);
+/// không persist trực tiếp ở đây để pref row gọn.
+model UserPushPreferences {
+  userId               String   @id
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bossSpawnEnabled     Boolean  @default(true)
+  staminaFullEnabled   Boolean  @default(true)
+  mailEnabled          Boolean  @default(true)
+  /// Default OFF — opt-in: user phải bật rõ ràng.
+  dailyReminderEnabled Boolean  @default(false)
+  quietHoursStart      String?
+  quietHoursEnd        String?
+  timezone             String?
+  updatedAt            DateTime @updatedAt
+}
+
+/// Phase PWA-1 — Push send log (per type / per user) cho cooldown
+/// + dedupe + audit.
+///
+/// 1 row / user / type ⇒ unique. Service upsert mỗi lần send thành
+/// công (status `OK`) hoặc dry-run; lookup `lastSentAt` để
+/// `shouldSendPushNotification` check cooldown.
+///
+/// Retention: rows nhẹ (1 row / user / 4 types = max 4 row / user),
+/// không cần cleanup proactive.
+model WebPushSendLog {
+  id         String   @id @default(cuid())
+  userId     String
+  /// Literal `WebPushNotificationType`:
+  ///   BOSS_SPAWN / STAMINA_FULL / MAIL_NEW / DAILY_REMINDER
+  type       String
+  lastSentAt DateTime @default(now())
+  /// Optional dedupe key (vd `boss-${bossId}-${spawnAt}`) — nếu
+  /// caller cung cấp, service so sánh trước khi send tiếp.
+  dedupeKey  String?
+  /// `OK` / `DRY_RUN` / `BLOCKED_DISABLED` / `BLOCKED_COOLDOWN` /
+  /// `BLOCKED_QUIET_HOURS` / `ERROR_GATEWAY`.
+  lastStatus String   @default("OK")
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, type])
+  @@index([userId, lastSentAt(sort: Desc)])
 }
