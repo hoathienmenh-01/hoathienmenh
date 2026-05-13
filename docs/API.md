@@ -578,8 +578,13 @@ WS push: `mission:progress` (PR #63) emit sau `MissionService.track()` qua `Miss
 | POST   | `/mentor/accept/:relationId`           | Yes  | `{ accept }` — race-safe CAS via `updateMany({status:'PENDING'})`. |
 | GET    | `/mentor/students`                     | Yes  | `{ students: MentorRelationRow[], pending: MentorRelationRow[] }`. |
 | GET    | `/mentor/student-context`              | Yes  | `{ mentor, pending }` cho perspective student. |
+| GET    | `/mentor/milestones`                   | Yes  | Phase 35.2 — `MentorMilestoneListResponse` (asMentor[] + asDisciple). Lazy-recompute on read. |
+| POST   | `/mentor/milestones/:milestoneKey/claim` | Yes | Phase 35.2 — claim reward, server resolves role MENTOR/DISCIPLE từ ACTIVE relation. Reward gửi qua mail SYSTEM (linh thạch only). |
+| POST   | `/mentor/milestones/recompute`         | Yes  | Phase 35.2 — manual recompute, idempotent. Returns `{ relationId, created, promoted }`. |
 
-Error codes: `TIER_TOO_LOW`, `TIER_TOO_HIGH`, `TIER_GAP_TOO_SMALL`, `ALREADY_PENDING`, `SELF_NOT_ALLOWED`, `STUDENT_ALREADY_HAS_MENTOR`, `NOT_AUTHORIZED`, `INVALID_TRANSITION`, `CAPACITY_REACHED`, `MENTOR_NOT_FOUND`, `RELATION_NOT_FOUND`, `MENTOR_NOT_ACCEPTING`, `NO_CHARACTER`.
+Error codes (Phase 31.0): `TIER_TOO_LOW`, `TIER_TOO_HIGH`, `TIER_GAP_TOO_SMALL`, `ALREADY_PENDING`, `SELF_NOT_ALLOWED`, `STUDENT_ALREADY_HAS_MENTOR`, `NOT_AUTHORIZED`, `INVALID_TRANSITION`, `CAPACITY_REACHED`, `MENTOR_NOT_FOUND`, `RELATION_NOT_FOUND`, `MENTOR_NOT_ACCEPTING`, `NO_CHARACTER`.
+
+Error codes (Phase 35.2 — Milestone): `MILESTONE_NOT_FOUND` (404), `MILESTONE_LOCKED` (409), `MILESTONE_ALREADY_CLAIMED` (409), `NOT_IN_ACTIVE_RELATION` (400). Catalog: 8 milestones từ Trúc Cơ (order 2) → Độ Kiếp (order 9). Mentor reward < disciple reward. Reward range: mentor 5k–400k, disciple 8k–600k linh thạch. UNIQUE `(relationId, milestoneKey, role)` chống double-claim. KHÔNG mint Tiên Ngọc / item endgame.
 
 ## Returner — `ReturnerController` (Phase 31.0)
 

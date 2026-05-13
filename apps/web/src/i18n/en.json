@@ -6462,6 +6462,42 @@
       "UNKNOWN": "Something went wrong."
     }
   },
+  "mentorMilestone": {
+    "title": "Mentor Milestones",
+    "subtitle": "Each disciple realm breakthrough rewards both mentor and disciple with spirit stones.",
+    "empty": "You have no active mentor relations yet.",
+    "rewardLinhThach": "{amount} spirit stones",
+    "status": {
+      "LOCKED": "Locked",
+      "AVAILABLE": "Available",
+      "CLAIMED": "Claimed"
+    },
+    "action": {
+      "claim": "Claim",
+      "claimedAlready": "Claimed"
+    },
+    "mentorView": {
+      "heading": "Disciple: {name}",
+      "realm": "Disciple realm tier: {order}"
+    },
+    "discipleView": {
+      "heading": "Mentor: {name}",
+      "realm": "Your realm tier: {order}"
+    },
+    "toast": {
+      "claimed": "Reward mail sent ({amount} spirit stones). Open mail to receive."
+    },
+    "error": {
+      "MILESTONE_NOT_FOUND": "Milestone not found.",
+      "MILESTONE_LOCKED": "Milestone not yet unlocked.",
+      "MILESTONE_ALREADY_CLAIMED": "You already claimed this milestone.",
+      "NOT_IN_ACTIVE_RELATION": "No active mentor relation.",
+      "NO_CHARACTER": "Account has no character.",
+      "NOT_FOUND": "Relation not found.",
+      "NOT_AUTHORIZED": "Not authorized for this milestone.",
+      "UNKNOWN": "Something went wrong."
+    }
+  },
   "returner": {
     "title": "Welcome Back",
     "subtitle": "Returning cultivators get extra support.",

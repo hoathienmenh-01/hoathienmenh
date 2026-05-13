@@ -6462,6 +6462,42 @@
       "UNKNOWN": "Có lỗi xảy ra."
     }
   },
+  "mentorMilestone": {
+    "title": "Cột mốc Sư Đồ",
+    "subtitle": "Đồ đệ đột phá cảnh giới — cả sư phụ và đồ đệ đều có thưởng linh thạch riêng.",
+    "empty": "Bạn chưa có quan hệ sư đồ đang hoạt động.",
+    "rewardLinhThach": "{amount} linh thạch",
+    "status": {
+      "LOCKED": "Chưa đạt",
+      "AVAILABLE": "Có thể nhận",
+      "CLAIMED": "Đã nhận"
+    },
+    "action": {
+      "claim": "Nhận thưởng",
+      "claimedAlready": "Đã nhận"
+    },
+    "mentorView": {
+      "heading": "Đồ đệ: {name}",
+      "realm": "Cảnh giới đồ đệ hiện tại: tier {order}"
+    },
+    "discipleView": {
+      "heading": "Sư phụ: {name}",
+      "realm": "Cảnh giới hiện tại: tier {order}"
+    },
+    "toast": {
+      "claimed": "Đã gửi thư thưởng ({amount} linh thạch). Mở thư để nhận."
+    },
+    "error": {
+      "MILESTONE_NOT_FOUND": "Cột mốc không tồn tại.",
+      "MILESTONE_LOCKED": "Cột mốc chưa mở khoá.",
+      "MILESTONE_ALREADY_CLAIMED": "Bạn đã nhận thưởng cột mốc này.",
+      "NOT_IN_ACTIVE_RELATION": "Không có quan hệ sư đồ đang hoạt động.",
+      "NO_CHARACTER": "Tài khoản chưa có nhân vật.",
+      "NOT_FOUND": "Không tìm thấy quan hệ.",
+      "NOT_AUTHORIZED": "Không có quyền với cột mốc này.",
+      "UNKNOWN": "Có lỗi xảy ra."
+    }
+  },
   "returner": {
     "title": "Trở Lại Tiên Đồ",
     "subtitle": "Quà chào mừng đạo hữu quay lại.",
