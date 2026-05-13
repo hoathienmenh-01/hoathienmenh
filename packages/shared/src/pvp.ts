@@ -184,8 +184,19 @@ export function isPvpSnapshotType(value: unknown): value is PvpSnapshotType {
  *     dùng cho replay summary.
  */
 export interface PvpBattleSnapshot {
+  /** Numeric stable id (hash cuid → 32-bit) cho compat với combat module. */
   characterId: number;
+  /** Original cuid string id (DB ref), optional vì test có thể skip. */
+  characterKey?: string;
+  /** Display name lúc snapshot — UI viewer dùng. */
+  displayName?: string;
+  /** Realm key (e.g. "luyen_khi_1"). */
+  realmKey?: string;
   realmOrder: number;
+  /** Tier trong realm (1–10) — UI viewer. */
+  realmStage?: number;
+  /** Level numeric — UI viewer. */
+  level?: number;
   bodyRealmOrder?: number | null;
   totalPower: number;
   qiPower?: number;
@@ -199,6 +210,8 @@ export interface PvpBattleSnapshot {
   equippedArtifacts?: readonly string[];
   defensiveStats?: Readonly<Record<string, number>>;
   offensiveStats?: Readonly<Record<string, number>>;
+  /** Stats raw (hp/hpMax/mp/mpMax/spirit/speed/luck) tại lúc snapshot. */
+  stats?: Readonly<Record<string, number>>;
   snapshotType: PvpSnapshotType;
   createdAt: string; // ISO datetime
 }
@@ -245,6 +258,8 @@ export interface PvpBattleLog {
  */
 export interface PvpDefenseProfileDef {
   characterId: number;
+  /** Original cuid string id (DB ref) — optional, matches PvpBattleSnapshot.characterKey. */
+  characterKey?: string;
   snapshot: PvpBattleSnapshot;
   /** Note tự do — tên build do player đặt (ví dụ: "Đan Dược Tu", "Hỏa Pháp"). */
   label?: string | null;
