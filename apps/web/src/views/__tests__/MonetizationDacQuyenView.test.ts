@@ -189,7 +189,7 @@ describe('MonetizationDacQuyenView — Phase 27.1–27.5', () => {
 
     const buttons = wrapper.findAll('.shop-item button');
     expect(buttons.length).toBeGreaterThan(0);
-    const soldOutBtn = buttons.find((b) => (b.attributes('disabled') ?? '') !== undefined && b.text().includes('Hết'));
+    const soldOutBtn = buttons.find((b) => b.attributes('disabled') !== undefined && b.text().includes('Hết'));
     expect(soldOutBtn).toBeDefined();
   });
 
