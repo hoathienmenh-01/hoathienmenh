@@ -91,7 +91,9 @@
       "opportunities": "Không lấy được danh sách cơ duyên.",
       "trialTowers": "Không lấy được danh sách tháp.",
       "trialTowerAttempt": "Không leo được tầng tháp."
-    }
+    },
+    "accept": "Chấp nhận",
+    "decline": "Từ chối"
   },
   "locale": {
     "label": "Ngôn ngữ",
@@ -6319,6 +6321,108 @@
       "templates": "Không tải được template ({code}).",
       "detail": "Không tải được chi tiết ({code}).",
       "transition": "Không chuyển được trạng thái ({code})."
+    }
+  },
+  "mentor": {
+    "title": "Sư Đồ",
+    "subtitle": "Cao thủ chỉ điểm đệ tử, đồng hành tu luyện.",
+    "registerToast": "Đã đăng ký thành sư phụ.",
+    "requestSent": "Đã gửi lời bái sư.",
+    "acceptedToast": "Đã chấp nhận đồ đệ.",
+    "declinedToast": "Đã từ chối yêu cầu.",
+    "profile": {
+      "title": "Hồ sơ sư phụ",
+      "notRegistered": "Bạn chưa đăng ký làm sư phụ.",
+      "tier": "Cảnh giới tier {tier}",
+      "studentCount": "Đang dẫn dắt: {count}",
+      "intro": "Giới thiệu",
+      "introPlaceholder": "Vài lời với đệ tử tương lai…",
+      "accepting": "Tiếp nhận đệ tử mới",
+      "register": "Đăng ký làm sư phụ",
+      "update": "Cập nhật hồ sơ"
+    },
+    "students": {
+      "title": "Đồ đệ",
+      "empty": "Chưa có đồ đệ.",
+      "pending": "Yêu cầu chờ duyệt",
+      "noPending": "Không có yêu cầu chờ."
+    },
+    "student": {
+      "title": "Tìm sư phụ",
+      "current": "Sư phụ hiện tại: {name}",
+      "noMentor": "Chưa có sư phụ.",
+      "mentorIdLabel": "User ID sư phụ",
+      "messageLabel": "Lời nhắn",
+      "send": "Gửi yêu cầu",
+      "pendingTitle": "Yêu cầu đã gửi",
+      "noPending": "Chưa gửi yêu cầu nào."
+    },
+    "error": {
+      "TIER_TOO_LOW": "Cảnh giới chưa đủ để làm sư phụ.",
+      "TIER_TOO_HIGH": "Cảnh giới quá cao để bái sư.",
+      "TIER_GAP_TOO_SMALL": "Khoảng cách cảnh giới không đủ.",
+      "ALREADY_PENDING": "Đã có yêu cầu chờ với sư phụ này.",
+      "SELF_NOT_ALLOWED": "Không thể tự bái sư chính mình.",
+      "STUDENT_ALREADY_HAS_MENTOR": "Đệ tử đã có sư phụ.",
+      "NOT_AUTHORIZED": "Không có quyền với quan hệ này.",
+      "INVALID_TRANSITION": "Không thể chuyển trạng thái.",
+      "CAPACITY_REACHED": "Đã đạt giới hạn đệ tử.",
+      "NO_CHARACTER": "Tài khoản chưa có nhân vật.",
+      "MENTOR_NOT_FOUND": "Sư phụ không tồn tại.",
+      "RELATION_NOT_FOUND": "Không tìm thấy quan hệ.",
+      "MENTOR_NOT_ACCEPTING": "Sư phụ tạm ngừng nhận đệ tử.",
+      "UNKNOWN": "Có lỗi xảy ra."
+    }
+  },
+  "returner": {
+    "title": "Trở Lại Tiên Đồ",
+    "subtitle": "Quà chào mừng đạo hữu quay lại.",
+    "noState": "Chưa có dữ liệu trạng thái quay lại.",
+    "inactiveDays": "Đã rời tu luyện: {days} ngày",
+    "currentTier": "Tier hiện tại: {tier}",
+    "noTier": "Chưa đủ điều kiện hỗ trợ quay lại.",
+    "check": "Kiểm tra ngay",
+    "checkSuccess": "Đã kích hoạt hỗ trợ quay lại.",
+    "checkNoop": "Chưa cần kích hoạt (đã nhận hoặc chưa đủ điều kiện)."
+  },
+  "adminMail": {
+    "title": "Quản trị thư",
+    "subtitle": "Gửi thư cá nhân, bulk, toàn server và xem audit log.",
+    "tabs": {
+      "sendOne": "Gửi 1 người",
+      "sendBulk": "Gửi nhiều người",
+      "sendGlobal": "Gửi toàn server",
+      "logs": "Audit log"
+    },
+    "form": {
+      "mailType": "Loại thư",
+      "subject": "Tiêu đề",
+      "body": "Nội dung",
+      "reason": "Lý do (audit)",
+      "recipient": "Character ID",
+      "recipients": "Danh sách Character ID (phẩy)",
+      "targetType": "Quy tắc đối tượng",
+      "previewOnly": "Chỉ preview, không gửi",
+      "expiresAt": "Hết hạn (ISO)",
+      "submit": "Gửi"
+    },
+    "toast": {
+      "sent": "Đã gửi {count} thư.",
+      "preview": "Preview: {count} đối tượng khớp."
+    },
+    "logs": {
+      "kind": "Loại",
+      "subject": "Tiêu đề",
+      "mailCount": "Số thư",
+      "reason": "Lý do",
+      "createdAt": "Thời gian"
+    },
+    "error": {
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "INVALID_RECIPIENT": "Người nhận không tồn tại.",
+      "GIFT_NOT_FOUND": "Quà không tồn tại.",
+      "GIFT_EXPIRED": "Quà đã hết hạn.",
+      "UNKNOWN": "Có lỗi xảy ra."
     }
   }
 }

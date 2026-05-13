@@ -91,7 +91,9 @@
       "opportunities": "Failed to load opportunities.",
       "trialTowers": "Failed to load trial towers.",
       "trialTowerAttempt": "Failed to attempt tower floor."
-    }
+    },
+    "accept": "Accept",
+    "decline": "Decline"
   },
   "locale": {
     "label": "Language",
@@ -6319,6 +6321,108 @@
       "templates": "Template load failed ({code}).",
       "detail": "Detail load failed ({code}).",
       "transition": "Transition failed ({code})."
+    }
+  },
+  "mentor": {
+    "title": "Mentor & Disciple",
+    "subtitle": "Higher cultivators guide disciples on the path.",
+    "registerToast": "Mentor profile registered.",
+    "requestSent": "Mentor request sent.",
+    "acceptedToast": "Accepted disciple.",
+    "declinedToast": "Declined request.",
+    "profile": {
+      "title": "Mentor Profile",
+      "notRegistered": "You have not registered as a mentor.",
+      "tier": "Realm tier {tier}",
+      "studentCount": "Active disciples: {count}",
+      "intro": "Intro",
+      "introPlaceholder": "Words to your future disciples…",
+      "accepting": "Accepting new disciples",
+      "register": "Register as mentor",
+      "update": "Update profile"
+    },
+    "students": {
+      "title": "Disciples",
+      "empty": "No active disciples.",
+      "pending": "Pending requests",
+      "noPending": "No pending requests."
+    },
+    "student": {
+      "title": "Find a mentor",
+      "current": "Current mentor: {name}",
+      "noMentor": "No mentor yet.",
+      "mentorIdLabel": "Mentor user ID",
+      "messageLabel": "Message",
+      "send": "Send request",
+      "pendingTitle": "Outgoing requests",
+      "noPending": "No outgoing requests."
+    },
+    "error": {
+      "TIER_TOO_LOW": "Cultivation tier too low for mentor.",
+      "TIER_TOO_HIGH": "Cultivation tier too high to be a disciple.",
+      "TIER_GAP_TOO_SMALL": "Cultivation gap is not enough.",
+      "ALREADY_PENDING": "Request already pending with this mentor.",
+      "SELF_NOT_ALLOWED": "Cannot be your own mentor.",
+      "STUDENT_ALREADY_HAS_MENTOR": "You already have an active mentor.",
+      "NOT_AUTHORIZED": "Not authorized for this relation.",
+      "INVALID_TRANSITION": "Invalid state transition.",
+      "CAPACITY_REACHED": "Disciple capacity reached.",
+      "NO_CHARACTER": "Account has no character.",
+      "MENTOR_NOT_FOUND": "Mentor not found.",
+      "RELATION_NOT_FOUND": "Relation not found.",
+      "MENTOR_NOT_ACCEPTING": "Mentor is not accepting disciples right now.",
+      "UNKNOWN": "Something went wrong."
+    }
+  },
+  "returner": {
+    "title": "Welcome Back",
+    "subtitle": "Returning cultivators get extra support.",
+    "noState": "No returner state yet.",
+    "inactiveDays": "Inactive for {days} days",
+    "currentTier": "Current tier: {tier}",
+    "noTier": "Not yet eligible for returner support.",
+    "check": "Check now",
+    "checkSuccess": "Returner support activated.",
+    "checkNoop": "No action needed (already claimed or not eligible)."
+  },
+  "adminMail": {
+    "title": "Admin Mail",
+    "subtitle": "Send mail to one user, many users, or all users; view audit log.",
+    "tabs": {
+      "sendOne": "Send one",
+      "sendBulk": "Send bulk",
+      "sendGlobal": "Send global",
+      "logs": "Audit log"
+    },
+    "form": {
+      "mailType": "Mail type",
+      "subject": "Subject",
+      "body": "Body",
+      "reason": "Reason (audit)",
+      "recipient": "Character ID",
+      "recipients": "Character IDs (comma-sep)",
+      "targetType": "Target rule",
+      "previewOnly": "Preview only, do not send",
+      "expiresAt": "Expires at (ISO)",
+      "submit": "Send"
+    },
+    "toast": {
+      "sent": "Sent {count} mails.",
+      "preview": "Preview: {count} targets matched."
+    },
+    "logs": {
+      "kind": "Kind",
+      "subject": "Subject",
+      "mailCount": "Mails",
+      "reason": "Reason",
+      "createdAt": "Created at"
+    },
+    "error": {
+      "INVALID_INPUT": "Invalid input.",
+      "INVALID_RECIPIENT": "Recipient not found.",
+      "GIFT_NOT_FOUND": "Gift not found.",
+      "GIFT_EXPIRED": "Gift expired.",
+      "UNKNOWN": "Something went wrong."
     }
   }
 }
