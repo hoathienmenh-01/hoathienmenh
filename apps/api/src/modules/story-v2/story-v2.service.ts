@@ -792,6 +792,85 @@ export class Phase33StoryService {
     });
   }
 
+  /**
+   * Phase 33.3 — World Objective Deep Wire. Fail-soft hook gọi từ
+   * `DungeonRunService` / `CombatService` / `StoryDungeonService` khi
+   * người chơi kill monster hoặc collect item.
+   *
+   * Mirror Phase 12 `QuestService.track` pattern: tìm các quest ACCEPTED
+   * có step `kind === kind && targetType === targetType && targetId === targetId`,
+   * tăng `stepProgress[step.id]` lên min(step.count, cur + amount), auto-flip
+   * COMPLETED nếu all-steps done.
+   *
+   * Phase 33.3 mở rộng `SUPPORTED_PROGRESS_STEP_KINDS` (chỉ talk/explore/
+   * choice/flag_set) bằng cách thêm cửa riêng `track()` không kiểm tra
+   * SUPPORTED_PROGRESS_STEP_KINDS, vì caller (combat / dungeon) chỉ gọi
+   * cho kill/collect. `progressQuest()` user-facing vẫn block kill/collect
+   * (player KHÔNG self-track combat — runtime auto-hook).
+   *
+   * No-op nếu user chưa accept quest có step match.
+   */
+  async track(
+    characterId: string,
+    kind: 'kill' | 'collect',
+    targetType: Phase33QuestStepDef['targetType'],
+    targetId: string,
+    amount = 1,
+  ): Promise<void> {
+    if (amount <= 0) return;
+    const matchingQuestKeys: string[] = [];
+    for (const def of STORY_QUEST_EXPANSION) {
+      for (const step of def.steps) {
+        if (
+          step.kind === kind &&
+          step.targetType === targetType &&
+          step.targetId === targetId
+        ) {
+          matchingQuestKeys.push(def.questKey);
+          break;
+        }
+      }
+    }
+    if (matchingQuestKeys.length === 0) return;
+
+    const rows = await this.prisma.characterStoryV2QuestProgress.findMany({
+      where: {
+        characterId,
+        questKey: { in: matchingQuestKeys },
+        status: 'ACCEPTED',
+      },
+    });
+    for (const row of rows) {
+      const def = phase33QuestByKey(row.questKey);
+      if (!def) continue;
+      const progress = readStepProgress(row.stepProgress);
+      let changed = false;
+      for (const step of def.steps) {
+        if (
+          step.kind !== kind ||
+          step.targetType !== targetType ||
+          step.targetId !== targetId
+        ) {
+          continue;
+        }
+        const cur = progress[step.id] ?? 0;
+        if (cur >= step.count) continue;
+        const next = Math.min(step.count, cur + amount);
+        if (next === cur) continue;
+        progress[step.id] = next;
+        changed = true;
+      }
+      if (!changed) continue;
+      await this.prisma.characterStoryV2QuestProgress.updateMany({
+        where: { id: row.id, status: 'ACCEPTED' },
+        data: { stepProgress: progress as Prisma.InputJsonValue },
+      });
+      if (isAllStepsDone(def, progress)) {
+        await this.transitionToCompleted(row.id);
+      }
+    }
+  }
+
   /* ─────────────── internal helpers ───────────────── */
 
   private async transitionToCompleted(rowId: string): Promise<void> {

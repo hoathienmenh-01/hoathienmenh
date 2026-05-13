@@ -25,6 +25,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { QuestService } from '../quest/quest.service';
+import { Phase33StoryService } from '../story-v2/story-v2.service';
 
 /**
  * Phase 12.8.A + 12.8.B — Story Dungeon API service.
@@ -258,6 +259,11 @@ export class StoryDungeonService {
     @Optional() @Inject(CurrencyService) private readonly currency?: CurrencyService,
     @Optional() @Inject(InventoryService) private readonly inventory?: InventoryService,
     @Optional() @Inject(QuestService) private readonly quests?: QuestService,
+    // Phase 33.3 — Story V2 (Phase 33 catalog) kill/collect step deep wire.
+    // Optional → giữ Phase 12 story-dungeon path unchanged khi DI thiếu module.
+    @Optional()
+    @Inject(Phase33StoryService)
+    private readonly phase33Story?: Phase33StoryService,
   ) {}
 
   // ──────────────────────────────────────────────────────────────────────
@@ -463,6 +469,18 @@ export class StoryDungeonService {
           await this.quests.track(characterId, 'kill', 'monster', id, 1);
         } catch {
           // fail-soft: quest tracking lỗi không break flow.
+        }
+      }
+    }
+    // Phase 33.3 — Story V2 kill step tracking, fail-soft, additive.
+    if (this.phase33Story) {
+      const trackIds = new Set<string>([monster.key]);
+      for (const id of monster.questTargetIds ?? []) trackIds.add(id);
+      for (const id of trackIds) {
+        try {
+          await this.phase33Story.track(characterId, 'kill', 'monster', id, 1);
+        } catch {
+          // fail-soft: Story V2 không break Phase 12 story-dungeon path.
         }
       }
     }

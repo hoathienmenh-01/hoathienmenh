@@ -399,6 +399,73 @@ describe('Phase33StoryService.claimReward', () => {
   });
 });
 
+describe('Phase33StoryService.track (Phase 33.3 deep wire)', () => {
+  // Use chap 9 main_02 (kill step_2 monster=tich_thien_giam_quan).
+  async function acceptMain02(userId: string, characterId: string) {
+    // Setup main_02 ACCEPTED with stepProgress kept by service (matches def steps).
+    const def = phase33QuestByKey(Q_CH09_MAIN_02)!;
+    const stepProgress = Object.fromEntries(
+      def.steps.map((s) => [s.id, 0]),
+    );
+    await prisma.characterStoryV2QuestProgress.create({
+      data: {
+        characterId,
+        questKey: Q_CH09_MAIN_02,
+        chapKey: CHAP_9,
+        status: 'ACCEPTED',
+        stepProgress,
+        acceptedAt: new Date(),
+      },
+    });
+  }
+
+  it('track kill monster target tăng stepProgress của quest matching', async () => {
+    const { userId, characterId } = await realmDoKiepChar();
+    await acceptMain02(userId, characterId);
+    const def = phase33QuestByKey(Q_CH09_MAIN_02)!;
+    const killStep = def.steps.find((s) => s.kind === 'kill')!;
+    await story.track(characterId, 'kill', 'monster', killStep.targetId, 1);
+    const row = await prisma.characterStoryV2QuestProgress.findUnique({
+      where: {
+        characterId_questKey: { characterId, questKey: Q_CH09_MAIN_02 },
+      },
+    });
+    const progress = row!.stepProgress as Record<string, number>;
+    expect(progress[killStep.id]).toBe(1);
+  });
+
+  it('track no-op nếu không có quest ACCEPTED matching', async () => {
+    const { characterId } = await realmDoKiepChar();
+    // No ACCEPTED quest → track returns silently.
+    await story.track(characterId, 'kill', 'monster', 'tich_thien_giam_quan', 1);
+    const rows = await prisma.characterStoryV2QuestProgress.findMany({
+      where: { characterId },
+    });
+    expect(rows.length).toBe(0);
+  });
+
+  it('track không tăng quá step.count (clamp)', async () => {
+    const { userId, characterId } = await realmDoKiepChar();
+    await acceptMain02(userId, characterId);
+    const def = phase33QuestByKey(Q_CH09_MAIN_02)!;
+    const killStep = def.steps.find((s) => s.kind === 'kill')!;
+    await story.track(
+      characterId,
+      'kill',
+      'monster',
+      killStep.targetId,
+      killStep.count + 100,
+    );
+    const row = await prisma.characterStoryV2QuestProgress.findUnique({
+      where: {
+        characterId_questKey: { characterId, questKey: Q_CH09_MAIN_02 },
+      },
+    });
+    const progress = row!.stepProgress as Record<string, number>;
+    expect(progress[killStep.id]).toBe(killStep.count);
+  });
+});
+
 describe('Phase33StoryService.listDialoguesForQuest', () => {
   it('throws STORY_V2_QUEST_UNKNOWN cho quest key sai', async () => {
     const { userId } = await realmDoKiepChar();

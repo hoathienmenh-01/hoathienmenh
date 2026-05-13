@@ -60,6 +60,7 @@ import { aggregateEquippedMethods } from '@xuantoi/shared';
 import { InventoryService } from '../inventory/inventory.service';
 import { MissionService } from '../mission/mission.service';
 import { QuestService } from '../quest/quest.service';
+import { Phase33StoryService } from '../story-v2/story-v2.service';
 import { DropEconomyService } from '../economy/drop-economy.service';
 import {
   inferDropMonsterType,
@@ -225,6 +226,9 @@ export class CombatService {
     @Optional() private readonly titles?: TitleService,
     @Optional() private readonly quests?: QuestService,
     @Optional() private readonly dropEconomy?: DropEconomyService,
+    // Phase 33.3 — Story V2 (Phase 33 catalog) kill/collect step deep wire.
+    // Optional → giữ Phase 12 combat path unchanged khi DI thiếu module.
+    @Optional() private readonly phase33Story?: Phase33StoryService,
     // Phase 26.3 — Cultivation Method V2. Optional; null → mul 1.0 identity.
     @Optional() private readonly cultivationMethodV2?: CultivationMethodV2Service,
     // Phase 26.4 — Artifact / Pháp Bảo V2 stat snapshot. Optional → identity
@@ -1013,6 +1017,20 @@ export class CombatService {
             await this.quests.track(char.id, 'kill', 'monster', id, 1);
           }
         }
+        // Phase 33.3 — Story V2 kill step tracking, fail-soft, additive.
+        // Mirror Phase 12 quest.track pattern. Phase 33 catalog dùng cùng
+        // step.targetId convention (monster.key + questTargetIds[*]).
+        if (this.phase33Story) {
+          const trackIds = new Set<string>([monster.key]);
+          for (const id of monster.questTargetIds ?? []) trackIds.add(id);
+          for (const id of trackIds) {
+            try {
+              await this.phase33Story.track(char.id, 'kill', 'monster', id, 1);
+            } catch {
+              // fail-soft: Story V2 không break Phase 12 combat path.
+            }
+          }
+        }
       }
       if (nextStatus === EncounterStatus.WON) {
         await this.missions.track(char.id, 'CLEAR_DUNGEON', 1);
@@ -1466,6 +1484,20 @@ export class CombatService {
           for (const id of monster.questTargetIds ?? []) trackIds.add(id);
           for (const id of trackIds) {
             await this.quests.track(char.id, 'kill', 'monster', id, 1);
+          }
+        }
+        // Phase 33.3 — Story V2 kill step tracking, fail-soft, additive.
+        // Mirror Phase 12 quest.track pattern. Phase 33 catalog dùng cùng
+        // step.targetId convention (monster.key + questTargetIds[*]).
+        if (this.phase33Story) {
+          const trackIds = new Set<string>([monster.key]);
+          for (const id of monster.questTargetIds ?? []) trackIds.add(id);
+          for (const id of trackIds) {
+            try {
+              await this.phase33Story.track(char.id, 'kill', 'monster', id, 1);
+            } catch {
+              // fail-soft: Story V2 không break Phase 12 combat path.
+            }
           }
         }
       }

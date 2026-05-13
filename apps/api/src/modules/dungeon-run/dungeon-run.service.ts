@@ -29,6 +29,7 @@ import { InventoryService } from '../inventory/inventory.service';
 import { DropEconomyService } from '../economy/drop-economy.service';
 import { RewardCapService } from '../economy/reward-cap.service';
 import { QuestService } from '../quest/quest.service';
+import { Phase33StoryService } from '../story-v2/story-v2.service';
 import { startOfLocalDay } from '../combat/combat.service';
 import { SectWarService } from '../sect-war/sect-war.service';
 import { TerritoryService } from '../territory/territory.service';
@@ -246,6 +247,11 @@ export class DungeonRunService {
     @Optional()
     private readonly liveOpsEvents?: LiveOpsEventSchedulerService,
     @Optional() private readonly dropEconomy?: DropEconomyService,
+    // Phase 33.3 — Story V2 (Phase 33 catalog) kill/collect step deep wire.
+    // Optional + đặt CUỐI constructor để giữ positional compat với Phase 12
+    // tests construct `new DungeonRunService(prisma, ..., quests, undefined,
+    // undefined, liveOps)` (xem liveops-event-runtime.integration.test).
+    @Optional() private readonly phase33Story?: Phase33StoryService,
   ) {}
 
   /**
@@ -551,6 +557,19 @@ export class DungeonRunService {
           await this.quests.track(char.id, 'kill', 'monster', id, 1);
         } catch {
           // fail-soft: quest tracking lỗi không nên break dungeon flow.
+        }
+      }
+    }
+    // Phase 33.3 — Story V2 (Phase 33 catalog) kill step tracking,
+    // fail-soft, additive. Mở rộng quest hook mà KHÔNG đụng Phase 12.
+    if (this.phase33Story) {
+      const trackIds = new Set<string>([monster.key]);
+      for (const id of monster.questTargetIds ?? []) trackIds.add(id);
+      for (const id of trackIds) {
+        try {
+          await this.phase33Story.track(char.id, 'kill', 'monster', id, 1);
+        } catch {
+          // fail-soft: Story V2 không break Phase 12 dungeon-run path.
         }
       }
     }
