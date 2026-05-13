@@ -261,6 +261,21 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/SocialView.vue'),
   },
   {
+    path: '/mentor',
+    name: 'mentor',
+    component: () => import('@/views/MentorView.vue'),
+  },
+  {
+    path: '/returner',
+    name: 'returner',
+    component: () => import('@/views/ReturnerView.vue'),
+  },
+  {
+    path: '/admin/mail',
+    name: 'admin-mail',
+    component: () => import('@/views/AdminMailView.vue'),
+  },
+  {
     path: '/world',
     name: 'world-content',
     component: () => import('@/views/WorldContentView.vue'),

@@ -293,7 +293,19 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.questProgress.deleteMany({});
   await prisma.giftCodeRedemption.deleteMany({});
   await prisma.giftCode.deleteMany({});
+  // Phase 31.0 — Social & Retention Foundation V1. Mail attachment
+  // claim (FK soft-ref mailId — wipe trước Mail). AdminMailLog /
+  // SystemGift / SystemGiftClaim / MentorProfile / MentorRelation /
+  // CharacterReturnerState đều standalone tables (không FK Character)
+  // — wipe explicit để reset state giữa test runs.
+  await prisma.mailAttachmentClaim.deleteMany({});
   await prisma.mail.deleteMany({});
+  await prisma.adminMailLog.deleteMany({});
+  await prisma.systemGiftClaim.deleteMany({});
+  await prisma.systemGift.deleteMany({});
+  await prisma.mentorRelation.deleteMany({});
+  await prisma.mentorProfile.deleteMany({});
+  await prisma.characterReturnerState.deleteMany({});
   await prisma.topupOrder.deleteMany({});
   // Phase 15.6 — Config Version + Rollback Run (xoá trước User; cả 2
   // FK SET NULL khi User bị xoá, nhưng explicit cho rõ thứ tự).

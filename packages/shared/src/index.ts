@@ -122,6 +122,13 @@ export * from './trial-towers';
 export * from './opportunities';
 export * from './world-content-summary';
 
+// ─── Phase 31.0 — Social & Retention Foundation V1 ─────────────────────
+export * from './mail-types';
+export * from './mentor';
+export * from './returner';
+export * from './system-gift';
+export * from './admin-mail';
+
 // ─── Phase 33.0 — Tu Tiên Lộ Story Quest Expansion V2 / Quyển II–IV ────────
 export * from './story-chapters-quyen-ii-iv';
 export * from './story-quest-expansion';

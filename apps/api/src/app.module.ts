@@ -70,6 +70,11 @@ import { SecurityModule } from './modules/security/security.module';
 import { MonetizationModule } from './modules/monetization/monetization.module';
 import { ShopPacksModule } from './modules/shop-packs/shop-packs.module';
 import { CosmeticsModule } from './modules/cosmetics/cosmetics.module';
+// Phase 31.0 — Social & Retention Foundation V1.
+import { MentorModule } from './modules/mentor/mentor.module';
+import { SystemGiftModule } from './modules/system-gift/system-gift.module';
+import { ReturnerModule } from './modules/returner/returner.module';
+import { AdminMailModule } from './modules/admin-mail/admin-mail.module';
 
 @Module({
   imports: [
@@ -237,6 +242,15 @@ import { CosmeticsModule } from './modules/cosmetics/cosmetics.module';
     MonetizationModule,
     ShopPacksModule,
     CosmeticsModule,
+    // Phase 31.0 — Social & Retention Foundation V1. Mentor / Returner /
+    // SystemGift / AdminMail modules. Mỗi module standalone (chỉ depend
+    // AuthModule + MailModule + PrismaService). KHÔNG đụng Phase 29
+    // (combat/pvp/arena/sect-war/territory). Mail/Notification/Social
+    // foundation đã có ở Phase 19.x — Phase 31 chỉ extend.
+    MentorModule,
+    SystemGiftModule,
+    ReturnerModule,
+    AdminMailModule,
   ],
 })
 export class AppModule {}
