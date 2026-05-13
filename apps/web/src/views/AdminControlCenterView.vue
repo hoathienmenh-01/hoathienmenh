@@ -225,7 +225,17 @@ function selectTab(next: Tab) {
     void loadAuditActions();
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // QA-004 — hydrate auth store trước khi check role để tránh race condition
+  // khi user reload trực tiếp `/admin/control-center`. Trên direct page load,
+  // pinia store chưa có `user` cho tới khi `/auth/session` resolve; nếu kiểm
+  // tra `isAdmin.value` ngay lập tức, admin hợp lệ vẫn bị reject. Pattern này
+  // khớp với `AdminEventBuilderView.vue` / `AdminView.vue`.
+  await auth.hydrate();
+  if (!auth.isAuthenticated) {
+    void router.push({ name: 'auth' });
+    return;
+  }
   if (!isAdmin.value) {
     toast.push({ text: t('adminControlCenter.notAdminError'), type: 'error' });
     void router.push({ name: 'home' });
