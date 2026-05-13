@@ -1,0 +1,21 @@
+P3.5 E2E_FULL CI workflow audit.
+
+File: .github/workflows/e2e-full.yml — EXISTS.
+
+Triggers configured:
+  - workflow_dispatch (manual)
+  - pull_request paths: apps/web/**, apps/api/**, packages/shared/**,
+    pnpm-lock.yaml, pnpm-workspace.yaml, package.json,
+    .github/workflows/e2e-full.yml
+  - push branches: main, same paths
+
+Recent runs on main (5 most recent):
+  04063d2 (Merge #573 phase-33-1-story-ru…) — success — 2026-05-13T21:23:40Z
+  1552cde (Merge #568 test/full-regression-062…) — success — 2026-05-13T21:00:20Z
+  a84d711 (Merge #567 phase-33-0b-story-c…) — success — 2026-05-13T20:35:29Z
+  5aedc13 (Merge #570 phase-42-visual-effects-…) — success — 2026-05-13T20:22:41Z
+  c9b7983 (Merge #569 phase-43-production-read…) — success — 2026-05-13T20:18:56Z
+
+All 5 latest main runs GREEN. Workflow is properly wired.
+
+Status: PASS — E2E_FULL CI is wired with proper triggers; recent runs all green.

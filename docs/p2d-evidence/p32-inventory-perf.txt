@@ -1,0 +1,39 @@
+P3.2 Inventory 1000-item perf — measurement at /inventory with 750 valid items rendered.
+
+Setup:
+- Inserted 1000 InventoryItem rows for qaplayer2 (cmp4igv7v000ko3dvm74brdmz)
+- itemKey mix: huyet_chi_dan / linh_lo_dan / pham_giap / pham_kiem (×250 each)
+- pham_kiem is NOT a registered catalog key → inventory.service filters → 750 visible items
+
+API timing (curl from API, 5 runs warmed):
+  Run 1: 0.024s
+  Run 2: 0.020s
+  Run 3: 0.017s
+  Run 4: 0.017s
+  Run 5: 0.016s
+  Mean: 18.8ms / p95: 24.0ms
+  Response payload: 324,450 bytes (324 KB)
+
+Browser fetch timing (in-page console.fetch):
+  apiInventoryMs: 24.8
+  apiItemCount: 750
+  pageTTFBMs: 4.9
+  pageFCPMs: 544.0
+  memoryUsedMB: 110.7
+  domNodesInMain: 16046  ← high; each item ~21 DOM nodes
+
+Render result:
+  /inventory page renders 750 item cards.
+  Page does NOT crash, scrolling functional.
+  No infinite loading or 5xx.
+
+Vue dev warning observed (P3.2 finding):
+  [Vue warn]: Unhandled error during execution of component update
+    at <EquipmentEconomyPanel key=1 equipment= Object inventory= Array(750)  ... >
+    at <InventoryView>
+  Repeated ~30 times during initial render.
+
+Status: PASS (perf budget met) with FOLLOWUP NOTE on EquipmentEconomyPanel warning.
+
+Cleanup:
+  DELETE FROM InventoryItem WHERE id LIKE 'perf_%'; → DELETE 1000

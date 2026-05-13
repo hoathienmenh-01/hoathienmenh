@@ -1,0 +1,30 @@
+  player=5, source=5 → 5 (expect 5) ✓
+  player=7, source=1 → 1 (expect 1) ✓
+  player=1, source=9 → 1 (expect 1) ✓
+  player=9, source=9 → 9 (expect 9) ✓
+  player=0, source=5 → 1 (expect 1) ✓
+  player=5, source=0 → 1 (expect 1) ✓
+  player=99, source=99 → 9 (expect 9) ✓
+  player=-1, source=5 → 1 (expect 1) ✓
+
+### Invariant 2: high-player on low-source map ≤ sourceTier+2
+  player=T7, source=T1 → effTier=T1, maxRolled=T3, limit≤T3 ✓
+
+### Invariant 3: no below-floor leak (drop tier ≥ 1)
+  180000 rolls, below-floor leaks=0 ✓
+
+### Invariant 4: empirical distribution roughly matches weights
+  BOSS @ effTier=5 (N=10000):
+    tier=3: got=1016, expected≈1000, dev=1.6% ✓
+    tier=4: got=2445, expected≈2500, dev=2.2% ✓
+    tier=5: got=5512, expected≈5500, dev=0.2% ✓
+    tier=6: got=974, expected≈950, dev=2.5% ✓
+    tier=7: got=53, expected≈50, dev=6.0% ✓
+
+### Invariant 5: effTier=1 cannot roll to tier > 3
+  effTier=1, maxRolled=T3, limit≤T3 ✓
+
+### Invariant 6: effTier=9 cannot roll above tier 9
+  effTier=9, maxRolled=T9, limit≤T9 ✓
+
+=== Result: PASS ===

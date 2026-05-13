@@ -1,0 +1,22 @@
+
+=== P2.2 WebSocket Mass Reconnect Stress (N=20) ===
+
+### Step 1: Login player
+  ✓ player login status=200
+
+### Step 2: Open 20 sockets concurrently
+  ✓ 20/20 connected in 68ms
+
+### Step 3: Disconnect all 20 sockets
+  ✓ 20 sockets disconnected (waited 500ms for server cleanup, total 503ms)
+
+### Step 4: Reconnect 20 sockets concurrently with same cookie
+  ✓ 20/20 reconnected in 53ms — no UNAUTHENTICATED leak
+
+### Step 5: Send chat:msg, verify at least 1 socket receives frame
+  ✓ 20/20 sockets received chat:msg — broadcast intact post-reconnect
+
+### Step 6: Clean disconnect all
+  ✓ 20 sockets clean disconnected
+
+=== Result: PASS (total 2993ms) ===
