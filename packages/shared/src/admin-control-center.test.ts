@@ -62,10 +62,12 @@ describe('admin-control-center — roles & permissions', () => {
     expect(new Set(ADMIN_ROLE_KEYS).size).toBe(7);
   });
 
-  it('exposes exactly 30 admin permission keys (Phase 29.0 §0 — +ADMIN_MANAGE_PVP)', () => {
-    expect(ADMIN_PERMISSION_KEYS.length).toBe(30);
-    expect(new Set(ADMIN_PERMISSION_KEYS).size).toBe(30);
+  it('exposes exactly 32 admin permission keys (Phase 30.0/32.0 §0 — +ADMIN_MANAGE_MARKET + ADMIN_MANAGE_CODEX)', () => {
+    expect(ADMIN_PERMISSION_KEYS.length).toBe(32);
+    expect(new Set(ADMIN_PERMISSION_KEYS).size).toBe(32);
     expect(ADMIN_PERMISSION_KEYS).toContain('ADMIN_MANAGE_PVP');
+    expect(ADMIN_PERMISSION_KEYS).toContain('ADMIN_MANAGE_MARKET');
+    expect(ADMIN_PERMISSION_KEYS).toContain('ADMIN_MANAGE_CODEX');
   });
 
   it('SUPER_ADMIN has all permissions', () => {

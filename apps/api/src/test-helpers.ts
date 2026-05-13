@@ -261,6 +261,24 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.pvpBattle.deleteMany({});
   await prisma.pvpDefenseProfile.deleteMany({});
   await prisma.pvpAnomalyLog.deleteMany({});
+  // Phase 30.0 — Market V2 + Codex (14 model). Wipe trước Character/Sect.
+  // FK Cascade nhưng explicit để giữ deterministic test order.
+  await prisma.marketBid.deleteMany({});
+  await prisma.marketAuction.deleteMany({});
+  await prisma.marketClaimBoxEntry.deleteMany({});
+  await prisma.marketPriceSnapshot.deleteMany({});
+  await prisma.marketItemPolicy.deleteMany({});
+  await prisma.marketAnomaly.deleteMany({});
+  await prisma.personalStall.deleteMany({});
+  await prisma.sectInternalAuctionBid.deleteMany({});
+  await prisma.sectInternalAuction.deleteMany({});
+  await prisma.sectTreasuryItem.deleteMany({});
+  await prisma.sectTreasuryLog.deleteMany({});
+  // Phase 32.0 — Codex tables.
+  await prisma.characterCodexProgress.deleteMany({});
+  await prisma.codexAuditIssue.deleteMany({});
+  await prisma.codexReindexLog.deleteMany({});
+  await prisma.codexEntry.deleteMany({});
   // Phase 14.3.E.1 — mini-battle session rows (encounterId pointer chỉ là
   // string, không FK; xoá trước encounter để giữ deterministic order).
   await prisma.tribulationMiniBattle.deleteMany({});
