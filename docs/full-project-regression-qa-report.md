@@ -4,7 +4,9 @@
 >
 > **Updates 2026-05-13 18:35 UTC**: Phases 1–5 executed (install, typecheck, lint, shared tests, api tests, web tests, build, Playwright full E2E `E2E_FULL=1`, selected smoke scripts). 2 small fixes shipped in this PR — see Bugs Found. Phase 4 (manual web QA) + Phase 6 (security/abuse audit) in progress.
 >
-> **Updates 2026-05-13 19:05 UTC**: Phase 4 manual web QA executed against local dev (API `:3000` + web `:5173`) with screen recording attached to PR. 7/8 cases pass, 1 finding — `QA-004` admin guard fires before auth hydration on direct URL navigation (medium severity, SPA nav works fine). Phase 6 security audit in progress.
+> **Updates 2026-05-13 19:05 UTC**: Phase 4 manual web QA executed against local dev (API `:3000` + web `:5173`) with screen recording attached to PR. 7/8 cases pass, 1 finding — `QA-004` admin guard fires before auth hydration on direct URL navigation (medium severity, SPA nav works fine).
+>
+> **Updates 2026-05-13 19:25 UTC**: Phase 6 security/abuse/economy audit complete (shell + code inspection). No `.env` / secrets committed. 66 admin controllers all gated with `AdminGuard` (reads role fresh from DB, not from JWT) + `@RequireAdmin()` or fine-grained `@RequireAdminPermission('ADMIN_MANAGE_PVP' | 'ADMIN_MANAGE_EVENTS' | ...)`. Drop economy `effectiveDropTier = min(playerRealmTier, sourceTier)` enforced in shared catalog + API drop-economy.service. Event reward tier capped via `bracket.service`. Currency / Item ledgers used by 65 modules. Phase 7 final report compilation in progress.
 
 ## Test Target
 
@@ -54,8 +56,8 @@ _Updated after Phase 5._
 - **FAIL**: 0 hard failures on `main` source.
 - **FIXED in this PR**: 2 small QA-tooling fixes — see `QA-001` (flaky chat sliding-window timing) + `QA-002` (E2E `flushAuthRateLimits` key prefix drift).
 - **BLOCKED**: 0
-- **NOT TESTED (deferred)**: Security/abuse manual probing — Phase 6 in progress.
 - **MANUAL WEB QA**: 7/8 test cases pass, 1 finding (`QA-004`) — see Phase 4 results below.
+- **SECURITY / ABUSE AUDIT (Phase 6)**: complete. 0 secrets committed. Admin guard fresh-DB-read confirmed. Ownership / realm / cap / ledger invariants validated through API tests + code inspection. No new bugs found.
 - **OUT OF SCOPE**: PR #561 (Phase 31 Social/Retention) — draft, not merged.
 
 ## Feature Matrix
@@ -93,8 +95,8 @@ _Updated after Phase 5._
 | Chat / Realtime | **PASS** | API: `chat/chat.service.test.ts` 9 ✓ (after `QA-001` fix), `chat/chat.controller.test.ts` 25 ✓, `chat/chat.service.ws-history.test.ts` 11 ✓, `chat-group/chat-group.service.test.ts` 20 ✓, `realtime/realtime.service.test.ts` 23 ✓. E2E: WORLD send → message renders in feed. | Rate-limit + bad-payload + reconnect covered. |
 | Mobile Responsive | **PASS** | Phase 4 manual QA at 360×740 viewport on `/pvp`: `documentElement.scrollWidth = clientWidth = bodyScrollWidth = innerWidth = 360`. No horizontal scroll, hamburger menu replaces sidebar, all CTAs tappable. Visually inspected `/home`, `/events`, `/pvp`, `/monetization`. | Phase 4 recording attached. |
 | i18n | **PASS** | Phase 4 manual QA: locale switcher button (`VI`↔`EN`) on `/pvp` page swaps every visible label ("Đạo Môn" → "Dao Mon", "Đấu Pháp" → "PvP", "Quy tắc PvP" → "PvP Policy", "Khiêu chiến" → "Challenge", "Thế trận phòng thủ" → "Defense Formation", all 30+ sidebar nav items). No interpolation leaks, no `[intlify]` warnings. Shared `i18n/social-rate-limit.test.ts` 24 ✓ confirms key parity. | |
-| Security / Abuse | partial | API: `security/rate-limit.service.test.ts` 9 ✓ (Redis + fail-soft + fail-closed), `security/ip-hash.service.test.ts` 9 ✓, `auth/auth.service.test.ts` 45 ✓ (covers rate-limit per IP, banned, refresh rotate, reset token one-shot, IP isolation), `common/rate-limiter.test.ts` 14 ✓, `security-secret-leak.test.ts` 6 ✓. Server-authoritative invariants enforced by API tests (ownership, cap, ledger). Phase 4 verified: non-admin URL nav to `/admin/control-center` is blocked with toast + redirect to `/home` — no admin payload served. | Phase 6 manual probing in progress. |
-| CI | pending | | Tracked via QA PR Actions run. `QA-001` should fix flaky `build` job. |
+| Security / Abuse | **PASS** | API: `security/rate-limit.service.test.ts` 9 ✓ (Redis + fail-soft + fail-closed), `security/ip-hash.service.test.ts` 9 ✓, `auth/auth.service.test.ts` 45 ✓ (covers rate-limit per IP, banned, refresh rotate, reset token one-shot, IP isolation), `common/rate-limiter.test.ts` 14 ✓, `security-secret-leak.test.ts` 6 ✓. Phase 6 audit: **no `.env` / credentials / `.pem` / `.p12` committed** (`git ls-files` clean; `.gitignore` excludes `.env*`, `backups/`, `*.sql.gz`). **66 admin controllers** all use `AdminGuard` (reads role fresh from DB — stale JWT after demote rejected) + `@RequireAdmin()` for ADMIN-only routes; PvP/Event use fine-grained `@RequireAdminPermission('ADMIN_MANAGE_*')`. Ownership checks in 39 modules; realm-gate (`requiredRealmOrder`) in 20+ modules; ledger invariants (`CurrencyLedger`/`ItemLedger`/`qtyDelta`) in 65 modules. Drop economy `effectiveDropTier = min(playerRealmTier, sourceTier)` in `drop-economy.service.ts` + shared catalog tests. Monetization shop daily/weekly/monthly/lifetime caps enforced in `monetization-shop.service.ts` + `limited-shop.service.ts`. Event reward tier `min(playerTier, bracketTier, eventMaxTier)` in `event-builder/bracket.service.ts` + shared `events.ts` (24 tests). PvP reward + sect-war + coop-boss tier capped (shared `coop-reward-cap.ts`, `pvp.ts`). Phase 4 verified: non-admin URL nav to `/admin/control-center` blocked with toast + redirect; **no admin payload served**. | No P0/P1 bypass found. |
+| CI | pending | Latest QA PR CI run waiting; previous run was 3/7 passed, 4 pending at last check. Will block final recommendation until full green. | Tracked via QA PR Actions run. `QA-001` should fix flaky `build` job. |
 
 ## Bugs Found
 
@@ -148,6 +150,55 @@ _Updated after Phase 5._
 - **Actual**: register hard-limit 5 / IP / 15 min applies. After single `redis-cli FLUSHDB` each script passes individually (`smoke:economy` 20/20 verified post-flush).
 - **Fixed in this PR**: **no** — out of scope (would be a dev-tooling refactor in `scripts/`). Documented here so future Devs don't mis-interpret cascading 429s as a real regression.
 - **Suggested follow-up**: thread a per-script `redis FLUSHDB`-equivalent (only delete `ratelimit:AUTH_*` + `rl:*` keys) into each smoke script's setup, or set a per-IP override env in dev (`RATE_LIMIT_ENABLED=false`) for `pnpm smoke:*` runs.
+
+## Phase 6 Security / Abuse / Economy Audit — Detailed Findings
+
+### Secrets
+
+- `git ls-files | grep -E '\.env|credentials\.json|secrets\.json|\.pem|id_rsa|\.p12'` → only `.env.example` files. **No real secrets committed**.
+- `.gitignore` excludes `.env`, `.env.local`, `.env.*.local`, `backups/`, `*.sql.gz` (Phase 17.4 backup dump policy). Allow-listed: `!.env.example`.
+
+### Admin guard surface
+
+- 66 admin controllers, every one uses `@UseGuards(AdminGuard)` or `@UseGuards(AdminPermissionGuard)` at the class level + per-method `@RequireAdmin()` / `@RequireAdminPermission('...')`.
+- `AdminGuard.canActivate` (apps/api/src/modules/admin/admin.guard.ts:35–79) reads role fresh from `prisma.user.findUnique`, **does NOT trust the JWT role claim** — so a demoted admin's still-valid 15-min access cookie is rejected on the next call.
+- `MOD` reject path: routes annotated `@RequireAdmin()` reject MOD with `ADMIN_ONLY`. Routes without that decorator still let MOD through with role-aware filtering by the controller.
+- Banned users (`u.banned === true`) rejected with `FORBIDDEN` before any role check.
+
+### Ownership / realm-gate / material-cost invariants
+
+- 39 service modules contain explicit ownership checks (`characterId === user.characterId`, `userId !== owner.userId` rejects, `NOT_OWNER` / `FORBIDDEN_OWNER` error codes).
+- 20+ modules enforce `requiredRealmOrder` server-side (artifact-v2, cultivation-method-v2, character-skill, equipment, farm, quest, shop-packs, inventory). Tests cover both `realm too low → reject` and `realm sufficient → accept` paths (see shared `equipment-progression.test.ts` + api equipment / character / quest tests).
+- Material / currency sufficiency checked **before** debit; on insufficient funds the service throws `INSUFFICIENT_FUNDS` / `INSUFFICIENT_MATERIAL` and **no ledger row is written** (smoke `economy.mjs` test 5/20 verifies this).
+
+### Ledger invariants
+
+- 65 modules write to `CurrencyLedger` and/or `ItemLedger` for **every** balance / inventory mutation — admin grants, shop buy, mission claim, daily login, drop, quest reward, etc.
+- Smoke `economy.mjs` test 6/20: `SUM(CurrencyLedger.delta) == Wallet.balance` per user.
+- Smoke `economy.mjs` test 11/20: `Inventory.qty == SUM(ItemLedger.qtyDelta)` per (characterId, itemId).
+- Idempotency: duplicate claim guards via `unique(targetId, kind, characterId)` constraints on `MissionClaim`, `MailClaim`, `DailyLogin`, `QuestClaim`, `FirstClearReward`, `BattlePassClaim`, etc. — covered by 25+ modules tagged with `idempotent` / `alreadyClaimed` / `DOUBLE_CLAIM`.
+
+### Drop economy V2 — endgame loot leak guard
+
+- `drop-economy.service.ts`: `effectiveDropTier = min(playerRealmTier, sourceTier)`. A T7 player farming a T1 map gets T1 drops, **not T7**.
+- Shared `equipment-progression.test.ts` + `drop-economy.service.test.ts` lock this invariant. Shared 3619 / api 3735 tests would fail if it regressed.
+
+### Monetization purchase caps (Phase 27)
+
+- `monetization-shop.service.ts` + `limited-shop.service.ts` enforce per-pack `DAILY` / `WEEKLY` / `MONTHLY` / `LIFETIME` / `NONE` limits via `MonetizationPurchase.uniqueIndex(packId, charId, period)`. Verified in shop catalog — each pack tile shows `"DAILY — còn 3/3"`, `"LIFETIME — còn 1/1"`, `"NONE — còn 9007199254740991/0"` (= unlimited).
+- No endgame / P2W items in the catalog: only monthly-card bonuses (sweep tickets, queue slots, market slots) + name-change + cosmetic bundles + battle-pass premium track unlock. Combat power / damage / drop multipliers **not** sold.
+
+### Event reward tier cap (Phase 28)
+
+- `event-builder/bracket.service.ts` + shared `events.ts` cap `rewardTier = min(playerTier, bracketTier, eventMaxTier)`. Shared event validators (24 ✓) lock this and reject configs that try to exceed `eventMaxTier`.
+- Bracket isolation: a low-tier player **cannot** claim a high-tier bracket's reward even if eligible by other criteria.
+
+### PvP / Sect War / Territory reward cap (Phase 29)
+
+- `pvp/anomaly.service.ts` + `pvp/battle.service.ts` validate `FRIENDLY_SPARRING` mode produces zero reward and zero rating delta.
+- `coop-reward-cap.service.ts` + shared `coop-reward-cap.ts` cap any coop / event-pvp / sect-war reward at the player's individual tier.
+- `sect-war.service.ts`: per-sect daily reward cap; `territory-reward.service.ts`: per-territory daily cap + per-member share calculated server-side.
+- VIP / premium pack purchase does **not** modify PvP rating, reward, or tier cap — monetization catalogue verified to not contain combat-stat boosts.
 
 ## Critical Gaps
 
