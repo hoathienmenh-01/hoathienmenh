@@ -6224,5 +6224,101 @@
       "WEEKLY_CAP_REACHED": "Đã chạm cap tuần.",
       "INVALID_INPUT": "Tham số không hợp lệ."
     }
+  },
+  "events": {
+    "title": "Sự Kiện",
+    "subtitle": "Sự kiện LiveOps tier-balanced (Phase 28.0)",
+    "loading": "Đang tải sự kiện…",
+    "empty": "Hiện chưa có sự kiện nào.",
+    "eventType": "Loại",
+    "remaining": "Còn lại",
+    "endedShort": "Đã kết thúc",
+    "myBracket": "Bracket của bạn",
+    "myRewardTier": "Reward tier hiệu lực",
+    "tab": {
+      "all": "Tất cả",
+      "personal": "Cá nhân"
+    },
+    "detail": {
+      "yourBracket": "Bracket của bạn",
+      "tier": "Tier",
+      "rewardTier": "Reward tier hiệu lực",
+      "tokenMul": "Hệ số token",
+      "missions": "Nhiệm vụ",
+      "noMissions": "Chưa có nhiệm vụ.",
+      "leaderboard": "Bảng xếp hạng",
+      "loadLeaderboard": "Tải BXH"
+    },
+    "mission": {
+      "claim": "Nhận thưởng",
+      "claimed": "Đã nhận thưởng nhiệm vụ.",
+      "claimFailed": "Không nhận được thưởng ({code}).",
+      "alreadyClaimed": "Đã nhận",
+      "inProgress": "Chưa hoàn thành"
+    },
+    "personal": {
+      "empty": "Chưa kích hoạt sự kiện cá nhân nào.",
+      "trigger": "Trigger ({type})",
+      "expiresAt": "Hết hạn",
+      "claim": "Nhận thưởng",
+      "claimed": "Đã nhận thưởng sự kiện cá nhân.",
+      "claimFailed": "Không nhận được thưởng ({code}).",
+      "alreadyClaimed": "Đã nhận",
+      "notCompleted": "Chưa hoàn thành"
+    },
+    "errors": {
+      "loadFailed": "Không tải được sự kiện ({code})."
+    }
+  },
+  "adminEvents": {
+    "title": "Event Builder & LiveOps V2",
+    "subtitle": "Quản lý sự kiện tier-balanced (Phase 28.0)",
+    "loading": "Đang tải…",
+    "empty": "Chưa có sự kiện nào.",
+    "selectFirst": "Chọn sự kiện ở tab Events trước.",
+    "promptReason": "Nhập lý do chuyển trạng thái (audit log):",
+    "transitionSuccess": "Đã chuyển trạng thái sang {status}.",
+    "tab": {
+      "events": "Sự kiện",
+      "brackets": "Bracket",
+      "missions": "Nhiệm vụ",
+      "shops": "Shop",
+      "bosses": "Boss",
+      "rankings": "Ranking",
+      "items": "Item",
+      "templates": "Template"
+    },
+    "filter": {
+      "allStatuses": "Mọi trạng thái",
+      "allTypes": "Mọi loại",
+      "anyEnabled": "Mọi enabled",
+      "enabled": "Đang bật",
+      "disabled": "Tắt"
+    },
+    "table": {
+      "key": "Key",
+      "name": "Tên",
+      "type": "Loại",
+      "status": "Trạng thái",
+      "bracketMode": "Bracket mode",
+      "enabled": "Bật"
+    },
+    "action": {
+      "open": "Mở",
+      "transitionTo": "Chuyển → {status}"
+    },
+    "detail": {
+      "key": "Key",
+      "status": "Trạng thái",
+      "bracketMode": "Bracket mode",
+      "window": "Thời gian"
+    },
+    "errors": {
+      "catalog": "Không tải được catalog ({code}).",
+      "list": "Không tải được danh sách ({code}).",
+      "templates": "Không tải được template ({code}).",
+      "detail": "Không tải được chi tiết ({code}).",
+      "transition": "Không chuyển được trạng thái ({code})."
+    }
   }
 }
