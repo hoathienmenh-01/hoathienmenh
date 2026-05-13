@@ -23,6 +23,7 @@ import { NpcAffinityModule } from './modules/npc-affinity/npc-affinity.module';
 import { StoryDialogueModule } from './modules/story-dialogue/story-dialogue.module';
 import { StoryDungeonModule } from './modules/story-dungeon/story-dungeon.module';
 import { Phase33StoryModule } from './modules/story-v2/story-v2.module';
+import { OnboardingQuestModule } from './modules/onboarding-quest/onboarding-quest.module';
 import { GiftCodeModule } from './modules/giftcode/giftcode.module';
 import { MailModule } from './modules/mail/mail.module';
 import { EmailModule } from './modules/email/email.module';
@@ -40,6 +41,7 @@ import { AdminEconomySafetyModule } from './modules/admin-economy-safety/admin-e
 import { AdminAnticheatModule } from './modules/admin-anticheat/admin-anticheat.module';
 import { AdminMarketAbuseModule } from './modules/admin-market-abuse/admin-market-abuse.module';
 import { SocialModule } from './modules/social/social.module';
+import { CoCultivationModule } from './modules/co-cultivation/co-cultivation.module';
 import { ChatPrivateModule } from './modules/chat-private/chat-private.module';
 import { ChatGroupModule } from './modules/chat-group/chat-group.module';
 import { PresenceModule } from './modules/presence/presence.module';
@@ -83,6 +85,7 @@ import { AdminMailModule } from './modules/admin-mail/admin-mail.module';
 import { PlayerSettingsModule } from './modules/player-settings/player-settings.module';
 import { PlayerDashboardModule } from './modules/player-dashboard/player-dashboard.module';
 import { PlayerFeedbackModule } from './modules/player-feedback/player-feedback.module';
+import { LoadoutPresetModule } from './modules/loadout-preset/loadout-preset.module';
 import { PlayerReportModule } from './modules/player-report/player-report.module';
 import { PlayerNavigationModule } from './modules/player-navigation/player-navigation.module';
 
@@ -119,6 +122,7 @@ import { PlayerNavigationModule } from './modules/player-navigation/player-navig
     StoryDialogueModule,
     StoryDungeonModule,
     Phase33StoryModule,
+    OnboardingQuestModule,
     GiftCodeModule,
     MailModule,
     EmailModule,
@@ -205,6 +209,11 @@ import { PlayerNavigationModule } from './modules/player-navigation/player-navig
     // module re-use isBlockedBetween + areFriends. RealtimeModule đã
     // imported gián tiếp qua ChatModule — explicit re-import an toàn.
     SocialModule,
+    // Phase 35.1 — Co-Cultivation / Hợp Luyện. Reuse SocialService
+    // (areFriends/isBlockedBetween) + RealtimeService (isOnline) +
+    // RewardCapService (bonus EXP áp 1 lần ở complete, source
+    // CULTIVATION share budget). KHÔNG sửa cultivation.processor.
+    CoCultivationModule,
     ChatPrivateModule,
     ChatGroupModule,
     // Phase 19.2 — Chat Moderation & Report System. User report
@@ -283,6 +292,8 @@ import { PlayerNavigationModule } from './modules/player-navigation/player-navig
     PlayerFeedbackModule,
     PlayerReportModule,
     PlayerNavigationModule,
+    /// Phase QOL-2 — Loadout Preset PvE/PvP/Boss.
+    LoadoutPresetModule,
   ],
 })
 export class AppModule {}

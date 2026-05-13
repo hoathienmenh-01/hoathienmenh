@@ -492,11 +492,19 @@ model Character {
   storyV2Quests       CharacterStoryV2QuestProgress[]
   storyV2RewardClaims CharacterStoryV2RewardClaim[]
 
+  /// Phase 34.0 — 7-Day Onboarding Questline backrefs.
+  onboardingDays  CharacterOnboardingProgress[]
+  onboardingTasks CharacterOnboardingTaskProgress[]
+
+  /// Phase QOL-2 — Loadout Preset PvE/PvP/Boss backref.
+  loadoutPresets      CharacterLoadoutPreset[]
+
   /// Phase 35.0 — Pet / Linh Thú backrefs.
   pets           CharacterPet[]
   petShards      CharacterPetShard[]
   petBoxPity     CharacterPetBoxPityCounter[]
   petBoxOpenLogs PetBoxOpenLog[]
+
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2136,6 +2144,74 @@ model PlayerBlock {
 
   @@unique([blockerUserId, blockedUserId])
   @@index([blockedUserId])
+}
+
+/// Phase 35.1 — Co-Cultivation / Hợp Luyện session lifecycle.
+///
+/// PENDING → ACTIVE (partner accept) → COMPLETED (initiator complete) hoặc
+/// CANCELLED / EXPIRED.
+///
+/// Server-authoritative — bonus EXP áp 1 lần ở `complete` qua
+/// `RewardCapService.applyCapTx({ source: 'CULTIVATION' })` (share budget
+/// tránh dual-farm với regular tick). `rewardApplied` boolean CAS-guard
+/// idempotent — không double-apply nếu controller retry.
+///
+/// Anti-abuse: cần friendship (Phase 19.1) + cả 2 không block + presence
+/// optional + daily cap 3/30 phút.
+enum CoCultivationStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+model CoCultivationSession {
+  id                   String              @id @default(cuid())
+  /// userId người gửi yêu cầu hợp luyện.
+  initiatorUserId      String
+  /// userId người nhận yêu cầu hợp luyện.
+  partnerUserId        String
+  /// Snapshot characterId tại lúc tạo — phục vụ audit + future
+  /// processor wire. Không FK để mirror soft-ref Phase 19.1 social.
+  initiatorCharacterId String
+  partnerCharacterId   String
+  status               CoCultivationStatus @default(PENDING)
+  /// Tổng thời lượng buff dự kiến (giây). Default 600s = 10 phút.
+  durationSec          Int                 @default(600)
+  /// Phần trăm bonus áp lên base cultivation rate (1..5). Server clamp.
+  buffPercent          Int                 @default(3)
+  startedAt            DateTime?
+  completedAt          DateTime?
+  /// Hạn chót để accept (PENDING expire). Service hoặc cron set/check.
+  expiresAt            DateTime?
+  rewardApplied        Boolean             @default(false)
+  /// Tổng EXP bonus thực sự được grant (cả initiator + partner sau cap).
+  bonusExpGranted      BigInt              @default(0)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  @@index([initiatorUserId, status, createdAt])
+  @@index([partnerUserId, status, createdAt])
+  @@index([status, createdAt])
+}
+
+/// Phase 35.1 — Daily usage bucket per-user cho co-cultivation. Track
+/// `sessionsCompleted` (cap 3/ngày) + `totalBuffSeconds` (cap 1800s/ngày)
+/// + `totalBonusExp` (audit). Reset theo `dateKey` (YYYY-MM-DD theo
+/// `DAILY_REWARD_CAP_TZ`, default Asia/Ho_Chi_Minh).
+model CoCultivationDailyUsage {
+  id                String   @id @default(cuid())
+  userId            String
+  dateKey           String
+  sessionsCompleted Int      @default(0)
+  totalBuffSeconds  Int      @default(0)
+  totalBonusExp     BigInt   @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([userId, dateKey])
+  @@index([dateKey])
 }
 
 /// Phase 19.1 — Loại chat thread:
@@ -6452,6 +6528,114 @@ model CharacterStoryV2RewardClaim {
 
   @@unique([characterId, questKey])
   @@index([characterId, claimedAt])
+}
+
+/// Phase 34.0 — 7-Day Onboarding Day-level Progress.
+///
+/// Một row mỗi (characterId, dayNumber). Lazy-create AVAILABLE row khi
+/// character lần đầu mở `/onboarding-quest`. Status flow:
+///
+///   LOCKED → AVAILABLE → IN_PROGRESS → COMPLETED
+///
+/// Day 1 luôn AVAILABLE. Day N (N≥2) AVAILABLE khi tất cả task của Day
+/// N-1 đã ở status `COMPLETED` hoặc `CLAIMED`.
+model CharacterOnboardingProgress {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  dayNumber   Int
+  /// LOCKED | AVAILABLE | IN_PROGRESS | COMPLETED.
+  status      String    @default("LOCKED")
+  unlockedAt  DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([characterId, dayNumber])
+  @@index([characterId, status])
+}
+
+/// Phase 34.0 — 7-Day Onboarding Task-level Progress.
+///
+/// Một row mỗi (characterId, taskKey). Lazy-create AVAILABLE row khi
+/// `GET /onboarding-quest/v1/progress` được gọi và day cha đang AVAILABLE
+/// hoặc IN_PROGRESS. Status flow:
+///
+///   LOCKED → AVAILABLE → COMPLETED → CLAIMED
+///
+/// Idempotency: complete/claim CAS guard qua `updateMany({status:'...'}) `.
+/// Re-call sau khi đã CLAIMED trả về current state, KHÔNG cộng reward.
+model CharacterOnboardingTaskProgress {
+  id            String    @id @default(cuid())
+  characterId   String
+  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  taskKey       String
+  /// Denormalized for index — same as `onboardingTaskByKey(taskKey).dayNumber`.
+  dayNumber     Int
+  /// LOCKED | AVAILABLE | COMPLETED | CLAIMED.
+  status        String    @default("AVAILABLE")
+  completedAt   DateTime?
+  claimedAt     DateTime?
+  /// Cached linh thach granted on claim (for audit; mirror
+  /// `OnboardingTaskRewardDef.linhThach`).
+  linhThachGranted Int    @default(0)
+  /// Cached exp granted on claim.
+  expGranted    Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([characterId, taskKey])
+  @@index([characterId, dayNumber, status])
+}
+
+/// Phase QOL-2 — Loadout Preset PvE/PvP/Boss.
+///
+/// Mỗi preset là snapshot lựa chọn của 3 nhóm equip:
+///   - `equipmentSlotJson` — `Record<EquipSlot, inventoryItemId>` cho gear.
+///   - `skillSlotJson` — `string[]` skillKey active (cap = 4 theo equip rule
+///     hiện hành ở `CharacterSkill.isEquipped`).
+///   - `artifactSlotJson` — `Record<ArtifactEquipSlot, characterArtifactId>`
+///     cho Pháp Bảo V2.
+///
+/// `mode` ∈ {`PVE`, `PVP`, `BOSS`, `CUSTOM`} — hỗ trợ set-default mỗi mode
+/// qua `isDefaultForPve`, `isDefaultForPvp`, `isDefaultForBoss`. Khi
+/// set-default mode X cho preset A, server tự bỏ default cờ trên các preset
+/// khác cùng character cùng cờ.
+///
+/// `apply(presetId)` atomic: validate toàn bộ ownership + slot trước khi
+/// rewrite `InventoryItem.equippedSlot` / `CharacterSkill.isEquipped` /
+/// `CharacterArtifactV2.equippedSlot` trong cùng `$transaction`. Item
+/// `locked` vẫn equip được (chỉ chặn `use`). Item missing → reject toàn bộ
+/// apply, trả warning.
+///
+/// Backref: `Character.loadoutPresets` (FK Cascade khi xoá character).
+model CharacterLoadoutPreset {
+  id                  String    @id @default(cuid())
+  characterId         String
+  character           Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Tên preset do user chọn (1..40 ký tự, unique per character).
+  name                String
+  /// `LoadoutPresetMode` ∈ {`PVE`, `PVP`, `BOSS`, `CUSTOM`}.
+  mode                String
+  /// `Record<EquipSlot, string>` — keys giới hạn `EquipSlot` enum.
+  equipmentSlotJson   Json      @default("{}")
+  /// `string[]` skillKey active (cap 4); null = không thay đổi skill khi apply.
+  skillSlotJson       Json?
+  /// `Record<string, string>` artifact slot → characterArtifactId; null =
+  /// không thay đổi pháp bảo khi apply.
+  artifactSlotJson    Json?
+  isDefaultForPve     Boolean   @default(false)
+  isDefaultForPvp     Boolean   @default(false)
+  isDefaultForBoss    Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@unique([characterId, name])
+  @@index([characterId])
+  @@index([characterId, mode])
+  @@index([characterId, isDefaultForPve])
+  @@index([characterId, isDefaultForPvp])
+  @@index([characterId, isDefaultForBoss])
 }
 
 // ─────────────────────────────────────────────────────────────────────────

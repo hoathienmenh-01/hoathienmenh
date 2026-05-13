@@ -11,6 +11,7 @@ export * from './arena-season';
 export * from './arena-anti-wintrade';
 export * from './items';
 export * from './inventory-sort';
+export * from './loadout-presets';
 export * from './missions';
 export * from './achievements';
 export * from './alchemy';
@@ -92,6 +93,7 @@ export * from './economy-report';
 export * from './market-price-band';
 export * from './market-trade-abuse';
 export * from './social';
+export * from './co-cultivation';
 export * from './public-profile';
 export * from './chat-moderation';
 export * from './notification';
@@ -141,6 +143,9 @@ export * from './admin-mail';
 export * from './story-chapters-quyen-ii-iv';
 export * from './story-quest-expansion';
 export * from './story-quest-dialogues';
+
+// ─── Phase 34.0 — 7-Day Onboarding Questline ───────────────────────────────
+export * from './onboarding-7-day';
 
 // ─── Phase 42.0 — Visual Effects, Combat Feedback, Item Aura V1 ────────────
 export * from './visual-effects';

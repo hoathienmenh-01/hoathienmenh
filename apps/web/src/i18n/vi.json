@@ -80,6 +80,12 @@
       "artifactV2Equip": "Trang bị Pháp Bảo thất bại",
       "artifactV2Unequip": "Gỡ Pháp Bảo thất bại",
       "artifactV2Upgrade": "Thăng cấp / luyện hóa / thức tỉnh Pháp Bảo thất bại",
+      "loadoutList": "Không lấy được danh sách bộ trang bị nhanh",
+      "loadoutCreate": "Tạo bộ trang bị nhanh thất bại",
+      "loadoutUpdate": "Cập nhật bộ trang bị nhanh thất bại",
+      "loadoutDelete": "Xoá bộ trang bị nhanh thất bại",
+      "loadoutApply": "Áp dụng bộ trang bị nhanh thất bại",
+      "loadoutSetDefault": "Đặt mặc định thất bại",
       "worldSummary": "Không lấy được tổng quan thế giới.",
       "farmMaps": "Không lấy được danh sách map farm.",
       "farmStart": "Không bắt đầu được phiên farm.",
@@ -360,6 +366,7 @@
       "home": "Đạo Tràng",
       "dungeon": "Luyện Khí Đường",
       "inventory": "Linh Bảo Các",
+      "loadouts": "Bộ Trang Bị Nhanh",
       "market": "Phường Thị",
       "shop": "NPC Tiệm",
       "sect": "Tông Môn",
@@ -7089,6 +7096,121 @@
       "STORY_V2_QUEST_ALREADY_CLAIMED": "Phần thưởng đã được lĩnh.",
       "STORY_V2_QUEST_STEP_UNKNOWN": "Bước nhiệm vụ không tồn tại.",
       "STORY_V2_QUEST_STEP_KIND_NOT_SUPPORTED": "Bước nhiệm vụ chưa hỗ trợ tiến qua giao diện."
+    }
+  },
+  "onboardingQuest": {
+    "title": "Khai Đạo 7 Ngày",
+    "subtitle": "Hành trình 7 ngày khai mở nền tảng tu tiên (26 nhiệm vụ).",
+    "overallProgress": "Tiến độ: {claimed}/{total} ({pct}%)",
+    "dayLabel": "Ngày {n}",
+    "totalTasks": "{n} nhiệm vụ",
+    "doneCount": "{done}/{total} hoàn thành",
+    "empty": "Chưa có ngày nào khai mở.",
+    "back": "← Trở lại danh sách ngày",
+    "completeToast": "Đã hoàn thành: {name}.",
+    "claimToast": "Đã lĩnh thưởng — +{linhThach} LT · +{exp} EXP.",
+    "claimToastTitle": "Đã lĩnh thưởng + danh hiệu mới: {title}.",
+    "novice_cultivator_title": "Tân Tu Sĩ Sơ Khai",
+    "dayStatus": {
+      "LOCKED": "Đang khoá",
+      "AVAILABLE": "Khả dụng",
+      "IN_PROGRESS": "Đang tiến",
+      "COMPLETED": "Hoàn tất"
+    },
+    "taskStatus": {
+      "LOCKED": "Khoá",
+      "AVAILABLE": "Sẵn sàng",
+      "COMPLETED": "Hoàn thành",
+      "CLAIMED": "Đã thưởng"
+    },
+    "category": {
+      "tutorial": "Hướng dẫn",
+      "cultivation": "Tu luyện",
+      "combat": "Chiến đấu",
+      "story": "Cốt truyện",
+      "social": "Xã hội",
+      "system": "Hệ thống"
+    },
+    "actions": {
+      "open": "Mở chức năng",
+      "complete": "Báo cáo",
+      "claim": "Lĩnh thưởng",
+      "claimed": "Đã lĩnh"
+    },
+    "reward": {
+      "linhThach": "Linh thạch",
+      "exp": "Kinh nghiệm",
+      "title": "Danh hiệu"
+    },
+    "error": {
+      "UNKNOWN_ERROR": "Lỗi không xác định.",
+      "UNAUTHENTICATED": "Cần đăng nhập trước.",
+      "NO_CHARACTER": "Chưa có nhân vật — vui lòng tạo trước.",
+      "ONBOARDING_TASK_UNKNOWN": "Nhiệm vụ không tồn tại.",
+      "ONBOARDING_DAY_UNKNOWN": "Ngày không tồn tại.",
+      "ONBOARDING_TASK_LOCKED": "Nhiệm vụ vẫn đang khoá.",
+      "ONBOARDING_TASK_NOT_COMPLETED": "Cần hoàn thành nhiệm vụ trước khi lĩnh thưởng.",
+      "ONBOARDING_TASK_ALREADY_CLAIMED": "Phần thưởng đã được lĩnh."
+    }
+  },
+  "loadout": {
+    "title": "Bộ Trang Bị Nhanh",
+    "subtitle": "Lưu bộ trang bị + thuật pháp + pháp bảo theo PvE / PvP / Boss để chuyển nhanh.",
+    "empty": "Chưa có bộ trang bị nhanh nào. Tạo một bộ để bắt đầu.",
+    "loadFail": "Không tải được danh sách bộ trang bị nhanh.",
+    "mode": {
+      "PVE": "PvE",
+      "PVP": "PvP",
+      "BOSS": "Boss",
+      "CUSTOM": "Tự do"
+    },
+    "form": {
+      "name": "Tên bộ",
+      "namePlaceholder": "VD: Build công sát PvE",
+      "mode": "Chế độ",
+      "equipmentLabel": "Trang bị ({n})",
+      "skillLabel": "Thuật pháp ({n}/4)",
+      "artifactLabel": "Pháp bảo ({n})",
+      "skillEmpty": "Bỏ trống để giữ nguyên thuật pháp khi áp dụng.",
+      "artifactEmpty": "Bỏ trống để giữ nguyên pháp bảo khi áp dụng.",
+      "submitCreate": "Tạo bộ",
+      "submitUpdate": "Lưu thay đổi",
+      "cancel": "Huỷ"
+    },
+    "actions": {
+      "create": "Tạo bộ mới",
+      "apply": "Áp dụng",
+      "edit": "Chỉnh sửa",
+      "delete": "Xoá",
+      "setDefault": "Đặt mặc định",
+      "isDefault": "Mặc định",
+      "deleteConfirm": "Xoá bộ \"{name}\"?"
+    },
+    "summary": {
+      "equipmentCount": "{n} trang bị",
+      "skillCount": "{n} thuật pháp",
+      "skillUntouched": "Không thay đổi thuật pháp",
+      "artifactCount": "{n} pháp bảo",
+      "artifactUntouched": "Không thay đổi pháp bảo",
+      "appliedToast": "Đã áp dụng {name}.",
+      "deletedToast": "Đã xoá {name}.",
+      "createdToast": "Đã tạo {name}.",
+      "updatedToast": "Đã cập nhật {name}.",
+      "defaultSetToast": "Đã đặt {name} làm mặc định {mode}."
+    },
+    "warning": {
+      "title": "Không áp dụng được — thiếu vật phẩm:",
+      "EQUIPMENT_MISSING": "Trang bị slot {slot} không còn trong túi.",
+      "SKILL_NOT_LEARNED": "Chưa lĩnh hội thuật pháp {ref}.",
+      "ARTIFACT_MISSING": "Pháp bảo slot {slot} không còn."
+    },
+    "errors": {
+      "LOADOUT_PRESET_NOT_FOUND": "Không tìm thấy bộ trang bị nhanh này.",
+      "LOADOUT_PRESET_NAME_TAKEN": "Tên bộ đã được dùng.",
+      "LOADOUT_PRESET_NAME_INVALID": "Tên bộ phải từ 1 đến 40 ký tự.",
+      "LOADOUT_PRESET_MODE_INVALID": "Chế độ không hợp lệ.",
+      "LOADOUT_PRESET_PAYLOAD_INVALID": "Dữ liệu bộ trang bị không hợp lệ.",
+      "LOADOUT_PRESET_LIMIT_REACHED": "Đã đạt giới hạn 20 bộ trang bị nhanh."
     }
   }
 }

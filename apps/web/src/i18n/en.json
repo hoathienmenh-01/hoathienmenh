@@ -80,6 +80,12 @@
       "artifactV2Equip": "Failed to equip artifact",
       "artifactV2Unequip": "Failed to unequip artifact",
       "artifactV2Upgrade": "Failed to upgrade / refine / awaken artifact",
+      "loadoutList": "Failed to load loadout presets",
+      "loadoutCreate": "Failed to create loadout preset",
+      "loadoutUpdate": "Failed to update loadout preset",
+      "loadoutDelete": "Failed to delete loadout preset",
+      "loadoutApply": "Failed to apply loadout preset",
+      "loadoutSetDefault": "Failed to set default loadout",
       "worldSummary": "Failed to load world summary.",
       "farmMaps": "Failed to load farm maps.",
       "farmStart": "Failed to start farm session.",
@@ -360,6 +366,7 @@
       "home": "Home",
       "dungeon": "Sparring Hall",
       "inventory": "Inventory",
+      "loadouts": "Loadouts",
       "market": "Market",
       "shop": "NPC Shop",
       "sect": "Sect",
@@ -7089,6 +7096,121 @@
       "STORY_V2_QUEST_ALREADY_CLAIMED": "Reward already claimed.",
       "STORY_V2_QUEST_STEP_UNKNOWN": "Quest step not found.",
       "STORY_V2_QUEST_STEP_KIND_NOT_SUPPORTED": "This quest step kind cannot be progressed via UI."
+    }
+  },
+  "onboardingQuest": {
+    "title": "7-Day Path Awakening",
+    "subtitle": "A 7-day journey unlocking the foundations of cultivation (26 tasks).",
+    "overallProgress": "Progress: {claimed}/{total} ({pct}%)",
+    "dayLabel": "Day {n}",
+    "totalTasks": "{n} tasks",
+    "doneCount": "{done}/{total} done",
+    "empty": "No days unlocked yet.",
+    "back": "← Back to day list",
+    "completeToast": "Completed: {name}.",
+    "claimToast": "Reward claimed — +{linhThach} LT · +{exp} EXP.",
+    "claimToastTitle": "Reward claimed + new title: {title}.",
+    "novice_cultivator_title": "Novice Cultivator",
+    "dayStatus": {
+      "LOCKED": "Locked",
+      "AVAILABLE": "Available",
+      "IN_PROGRESS": "In progress",
+      "COMPLETED": "Completed"
+    },
+    "taskStatus": {
+      "LOCKED": "Locked",
+      "AVAILABLE": "Ready",
+      "COMPLETED": "Completed",
+      "CLAIMED": "Claimed"
+    },
+    "category": {
+      "tutorial": "Tutorial",
+      "cultivation": "Cultivation",
+      "combat": "Combat",
+      "story": "Story",
+      "social": "Social",
+      "system": "System"
+    },
+    "actions": {
+      "open": "Open",
+      "complete": "Report",
+      "claim": "Claim",
+      "claimed": "Claimed"
+    },
+    "reward": {
+      "linhThach": "Linh Thach",
+      "exp": "EXP",
+      "title": "Title"
+    },
+    "error": {
+      "UNKNOWN_ERROR": "Unknown error.",
+      "UNAUTHENTICATED": "Please log in first.",
+      "NO_CHARACTER": "No character — please create one first.",
+      "ONBOARDING_TASK_UNKNOWN": "Task not found.",
+      "ONBOARDING_DAY_UNKNOWN": "Day not found.",
+      "ONBOARDING_TASK_LOCKED": "Task still locked.",
+      "ONBOARDING_TASK_NOT_COMPLETED": "Complete the task before claiming.",
+      "ONBOARDING_TASK_ALREADY_CLAIMED": "Reward already claimed."
+    }
+  },
+  "loadout": {
+    "title": "Loadout Presets",
+    "subtitle": "Save equipment + skill + artifact presets per PvE / PvP / Boss for quick swap.",
+    "empty": "No loadout presets yet. Create one to get started.",
+    "loadFail": "Failed to load loadout presets.",
+    "mode": {
+      "PVE": "PvE",
+      "PVP": "PvP",
+      "BOSS": "Boss",
+      "CUSTOM": "Custom"
+    },
+    "form": {
+      "name": "Name",
+      "namePlaceholder": "e.g. PvE damage build",
+      "mode": "Mode",
+      "equipmentLabel": "Equipment ({n})",
+      "skillLabel": "Skills ({n}/4)",
+      "artifactLabel": "Artifacts ({n})",
+      "skillEmpty": "Leave blank to keep current skills on apply.",
+      "artifactEmpty": "Leave blank to keep current artifacts on apply.",
+      "submitCreate": "Create",
+      "submitUpdate": "Save",
+      "cancel": "Cancel"
+    },
+    "actions": {
+      "create": "New preset",
+      "apply": "Apply",
+      "edit": "Edit",
+      "delete": "Delete",
+      "setDefault": "Set default",
+      "isDefault": "Default",
+      "deleteConfirm": "Delete \"{name}\"?"
+    },
+    "summary": {
+      "equipmentCount": "{n} items",
+      "skillCount": "{n} skills",
+      "skillUntouched": "Skills unchanged",
+      "artifactCount": "{n} artifacts",
+      "artifactUntouched": "Artifacts unchanged",
+      "appliedToast": "Applied {name}.",
+      "deletedToast": "Deleted {name}.",
+      "createdToast": "Created {name}.",
+      "updatedToast": "Updated {name}.",
+      "defaultSetToast": "Set {name} as default {mode}."
+    },
+    "warning": {
+      "title": "Cannot apply — missing items:",
+      "EQUIPMENT_MISSING": "Equipment slot {slot} not in inventory.",
+      "SKILL_NOT_LEARNED": "Skill {ref} not learned.",
+      "ARTIFACT_MISSING": "Artifact slot {slot} missing."
+    },
+    "errors": {
+      "LOADOUT_PRESET_NOT_FOUND": "Loadout preset not found.",
+      "LOADOUT_PRESET_NAME_TAKEN": "Preset name already taken.",
+      "LOADOUT_PRESET_NAME_INVALID": "Preset name must be 1–40 chars.",
+      "LOADOUT_PRESET_MODE_INVALID": "Invalid mode.",
+      "LOADOUT_PRESET_PAYLOAD_INVALID": "Invalid preset payload.",
+      "LOADOUT_PRESET_LIMIT_REACHED": "Loadout preset cap reached (20)."
     }
   }
 }

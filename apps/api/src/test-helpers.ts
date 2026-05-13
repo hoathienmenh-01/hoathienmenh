@@ -13,6 +13,7 @@ import { DungeonRunService } from './modules/dungeon-run/dungeon-run.service';
 import { RewardCapService } from './modules/economy/reward-cap.service';
 import { StoryDungeonService } from './modules/story-dungeon/story-dungeon.service';
 import { Phase33StoryService } from './modules/story-v2/story-v2.service';
+import { OnboardingQuestService } from './modules/onboarding-quest/onboarding-quest.service';
 
 /**
  * Helpers cho integration test — tạo fixture user/character nhanh, không
@@ -214,6 +215,10 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.friendRequest.deleteMany({});
   await prisma.friendship.deleteMany({});
   await prisma.playerBlock.deleteMany({});
+  // Phase 35.1 — Co-Cultivation session + daily usage (soft-ref user/character,
+  // wipe trước User/Character để tránh stale state giữa test runs).
+  await prisma.coCultivationSession.deleteMany({});
+  await prisma.coCultivationDailyUsage.deleteMany({});
   // Phase 15.0.A — Equipment Reforge / Enchant audit history (xoá trước
   // ItemLedger/Character — FK cascade tới Character nhưng explicit cho rõ).
   await prisma.equipmentReforgeHistory.deleteMany({});
@@ -339,6 +344,8 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.playerReport.deleteMany({});
   await prisma.playerFeedback.deleteMany({});
   await prisma.playerSettings.deleteMany({});
+  // Phase QOL-2 — Loadout Preset PvE/PvP/Boss (FK Cascade Character; explicit wipe).
+  await prisma.characterLoadoutPreset.deleteMany({});
   await prisma.topupOrder.deleteMany({});
   // Phase 15.6 — Config Version + Rollback Run (xoá trước User; cả 2
   // FK SET NULL khi User bị xoá, nhưng explicit cho rõ thứ tự).
@@ -479,6 +486,21 @@ export function makeNpcRelationshipChainService(prisma: PrismaService): {
   const quests = new QuestService(prisma, currency, inventory, affinity);
   const chains = new NpcRelationshipChainService(prisma, currency, inventory, affinity);
   return { chains, quests, affinity, inventory, currency };
+}
+
+/**
+ * Phase 34.0 — Dựng `OnboardingQuestService` cho integration test (bypass DI).
+ * Wire `CurrencyService` cho `applyTx('ONBOARDING_TASK_CLAIM')`. KHÔNG cần
+ * `InventoryService` / `NpcAffinityService` vì Phase 34.0 chỉ grant linh
+ * thach + exp (cosmetic title không ghi inventory).
+ */
+export function makeOnboardingQuestService(prisma: PrismaService): {
+  onboarding: OnboardingQuestService;
+  currency: CurrencyService;
+} {
+  const currency = new CurrencyService(prisma);
+  const onboarding = new OnboardingQuestService(prisma, currency);
+  return { onboarding, currency };
 }
 
 export const TEST_DATABASE_URL =

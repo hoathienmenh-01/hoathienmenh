@@ -124,6 +124,15 @@ const SeedDailyLoginStreakInput = z.object({
   days: z.number().int().min(1).max(30),
   reason: z.string().max(200).default(''),
 });
+const SeedReturnerInactiveInput = z.object({
+  /**
+   * Số ngày inactive (`lastLoginAt = now - days days`). Service cap [1..120].
+   * Sau seed, `POST /returner/check` sẽ resolve tùy `days`:
+   * SHORT 7-13 / MEDIUM 14-29 / LONG 30+ / null < 7.
+   */
+  days: z.number().int().min(1).max(120),
+  reason: z.string().max(200).default(''),
+});
 const TopupActionInput = z.object({
   note: z.string().max(200).default(''),
 });
@@ -645,6 +654,38 @@ export class AdminController {
     if (!parsed.success) fail('INVALID_INPUT');
     try {
       const result = await this.admin.seedDailyLoginStreak(
+        req.userId,
+        req.role,
+        id,
+        parsed.data.days,
+        parsed.data.reason,
+      );
+      return { ok: true, data: result };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Backdate `CharacterReturnerState.lastLoginAt` cho target character về
+   * `now - days days` để smoke positive-path returner banner / mail.
+   * QA tester làm: (1) admin gọi endpoint này với `days=8` (MEDIUM) /
+   * `days=30` (LONG); (2) login as player; (3) `POST /returner/check`
+   * → tả about returner tier + mail. Audit `admin.returner.seed_inactive`.
+   * KHÔNG gửi mail trực tiếp (admin chỉ seed state).
+   */
+  @Post('users/:id/seed-returner-inactive')
+  @HttpCode(200)
+  @RequireAdmin()
+  async seedReturnerInactive(
+    @Req() req: AdminReq,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = SeedReturnerInactiveInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const result = await this.admin.seedReturnerInactive(
         req.userId,
         req.role,
         id,

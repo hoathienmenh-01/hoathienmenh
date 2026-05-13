@@ -230,6 +230,14 @@ async function logout(): Promise<void> {
           寶 {{ t('shell.nav.inventory') }}
         </RouterLink>
         <RouterLink
+          to="/loadouts"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+          data-testid="shell-nav-loadouts"
+        >
+          套 {{ t('shell.nav.loadouts') }}
+        </RouterLink>
+        <RouterLink
           to="/market"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"

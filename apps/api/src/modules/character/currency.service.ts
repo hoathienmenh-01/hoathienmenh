@@ -220,6 +220,13 @@ export type LedgerReason =
   // nhất ghi 1 ledger row / questKey. Reward bound bởi
   // `phase33RewardCap(rewardPolicyKey)` snapshot vào quest catalog.
   | 'STORY_V2_QUEST_CLAIM'
+  // Phase 34.0 — 7-Day Onboarding task claim. Wire qua
+  // `OnboardingQuestService.claimTask` → `applyTx` cho linhThach với
+  // `refType='OnboardingTask'` + `refId=taskKey`. Idempotency lấy từ
+  // `CharacterOnboardingTaskProgress.status='CLAIMED'` CAS guard — race-safe
+  // winner duy nhất ghi 1 ledger row / taskKey. Reward bound bởi catalog
+  // `OnboardingTaskRewardDef.linhThach` snapshot — KHÔNG mint Tien Ngoc.
+  | 'ONBOARDING_TASK_CLAIM'
   // Phase 35.0 — Pet / Linh Thú. Wire qua PetBoxService.open (cost) /
   // PetUpgradeService (star/break/evolve/skill cost) / PetAdminService.
   // refType thường `'PetBox'` (cost mở hộp) / `'CharacterPet'` (upgrade
