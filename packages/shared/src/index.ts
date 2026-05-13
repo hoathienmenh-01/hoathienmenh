@@ -94,6 +94,7 @@ export * from './social';
 export * from './public-profile';
 export * from './chat-moderation';
 export * from './notification';
+export * from './player-experience';
 export * from './party';
 export * from './coop-dungeon';
 export * from './coop-boss';

@@ -470,6 +470,13 @@ model Character {
   pvpDefenseProfile  PvpDefenseProfile?
   pvpAnomalyLogs     PvpAnomalyLog[]
 
+  /// Phase 41.0 — Player Experience QoL backrefs.
+  playerSettingsRow      PlayerSettings?
+  playerFeedbackReports  PlayerFeedback[] @relation("PlayerFeedbackReporter")
+  playerFeedbackTargeted PlayerFeedback[] @relation("PlayerFeedbackTarget")
+  playerReportsAuthored  PlayerReport[]   @relation("PlayerReportReporter")
+  playerReportsTargeted  PlayerReport[]   @relation("PlayerReportTarget")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -5931,4 +5938,89 @@ model PvpAnomalyLog {
   @@index([characterId, createdAt])
   @@index([sectId, createdAt])
   @@index([resolution, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 41.0 — Player Experience QoL Foundation
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// 3 model additive cho:
+//   - `PlayerSettings`: settings JSON (font / appearance / compact / …)
+//     1-1 với Character. Settings cũ ở `Character.settings` Json giữ nguyên
+//     (legacy schema, có thể chứa flag khác). Phase 41 dùng bảng riêng để
+//     versioning + index timestamps.
+//   - `PlayerFeedback`: trung tâm bug report / balance / UI feedback /
+//     lost-item / payment / market / quest / cheat report. KHÔNG auto-ban.
+//   - `PlayerReport`: report người-chơi-báo-người-chơi foundation; admin
+//     review thủ công. KHÔNG auto-ban.
+
+/// Phase 41.0 — Player settings (1-1 với Character).
+///
+/// `settingsJson` lưu shape `PlayerSettings` (shared catalog). Default
+/// trả về khi row chưa tồn tại — service lazy-create khi PATCH lần đầu.
+model PlayerSettings {
+  characterId  String   @id
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  settingsJson Json     @default("{}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([updatedAt])
+}
+
+/// Phase 41.0 — Player feedback / bug report center.
+///
+/// KHÔNG dùng cho gameplay action (combat report). Chỉ phục vụ support
+/// channel (BUG / BALANCE / UI / LOST_ITEM / PAYMENT / MARKET / PLAYER /
+/// CHEAT / QUEST_STUCK / OTHER). `targetCharacterId` chỉ tham chiếu;
+/// KHÔNG có auto-ban side-effect.
+model PlayerFeedback {
+  id                  String   @id @default(cuid())
+  reporterCharacterId String
+  reporter            Character @relation("PlayerFeedbackReporter", fields: [reporterCharacterId], references: [id], onDelete: Cascade)
+  type                String
+  title               String
+  description         String
+  severity            String   @default("MEDIUM")
+  status              String   @default("NEW")
+  relatedFeature      String?
+  relatedEntityType   String?
+  relatedEntityId     String?
+  targetCharacterId   String?
+  targetCharacter     Character? @relation("PlayerFeedbackTarget", fields: [targetCharacterId], references: [id], onDelete: SetNull)
+  adminNote           String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  resolvedAt          DateTime?
+
+  @@index([reporterCharacterId, createdAt])
+  @@index([status, createdAt])
+  @@index([type, status, createdAt])
+  @@index([targetCharacterId, createdAt])
+}
+
+/// Phase 41.0 — Player report (player → player) foundation.
+///
+/// Có status `NEW → REVIEWING → ACTION_TAKEN | DISMISSED | DUPLICATE`.
+/// Không auto-ban; chỉ track để admin/MOD review. Anti-spam soft cap qua
+/// service layer (xem `PLAYER_REPORT_LIMITS`).
+model PlayerReport {
+  id                  String   @id @default(cuid())
+  reporterCharacterId String
+  reporter            Character @relation("PlayerReportReporter", fields: [reporterCharacterId], references: [id], onDelete: Cascade)
+  targetCharacterId   String
+  targetCharacter     Character @relation("PlayerReportTarget", fields: [targetCharacterId], references: [id], onDelete: Cascade)
+  reportType          String
+  status              String   @default("NEW")
+  description         String
+  evidenceJson        Json?
+  adminNote           String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  resolvedAt          DateTime?
+
+  @@index([reporterCharacterId, createdAt])
+  @@index([targetCharacterId, createdAt])
+  @@index([status, createdAt])
+  @@index([reportType, status, createdAt])
 }

@@ -75,6 +75,11 @@ import { MentorModule } from './modules/mentor/mentor.module';
 import { SystemGiftModule } from './modules/system-gift/system-gift.module';
 import { ReturnerModule } from './modules/returner/returner.module';
 import { AdminMailModule } from './modules/admin-mail/admin-mail.module';
+import { PlayerSettingsModule } from './modules/player-settings/player-settings.module';
+import { PlayerDashboardModule } from './modules/player-dashboard/player-dashboard.module';
+import { PlayerFeedbackModule } from './modules/player-feedback/player-feedback.module';
+import { PlayerReportModule } from './modules/player-report/player-report.module';
+import { PlayerNavigationModule } from './modules/player-navigation/player-navigation.module';
 
 @Module({
   imports: [
@@ -251,6 +256,14 @@ import { AdminMailModule } from './modules/admin-mail/admin-mail.module';
     SystemGiftModule,
     ReturnerModule,
     AdminMailModule,
+    // Phase 41.0 — Player Experience QoL V1: settings, dashboard, feedback,
+    // report, navigation. KHÔNG đụng story/quest/PvP/economy logic. Modules
+    // chỉ đọc các bảng đã có (Mail/Notification) + 3 bảng mới Phase 41.
+    PlayerSettingsModule,
+    PlayerDashboardModule,
+    PlayerFeedbackModule,
+    PlayerReportModule,
+    PlayerNavigationModule,
   ],
 })
 export class AppModule {}

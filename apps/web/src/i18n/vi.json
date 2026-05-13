@@ -93,7 +93,16 @@
       "trialTowerAttempt": "Không leo được tầng tháp."
     },
     "accept": "Chấp nhận",
-    "decline": "Từ chối"
+    "decline": "Từ chối",
+    "open": "Mở",
+    "retry": "Thử lại",
+    "empty": {
+      "title": "Chưa có dữ liệu",
+      "description": "Hiện không có mục nào để hiển thị."
+    },
+    "error": {
+      "UNKNOWN": "Đã có lỗi xảy ra. Vui lòng thử lại."
+    }
   },
   "locale": {
     "label": "Ngôn ngữ",
@@ -383,7 +392,10 @@
       "monetization": "Tiên Lộ Lệnh",
       "shopPacks": "Gói Tài Nguyên",
       "bodyCultivation": "Luyện Thể",
-      "cosmetics": "Y Quán"
+      "cosmetics": "Y Quán",
+      "dashboard": "Bảng Đk",
+      "feedback": "Phản hồi",
+      "reportPlayer": "Tố cáo"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -6537,6 +6549,282 @@
       "invalidate": "Invalidate thất bại ({code}).",
       "resolve": "Resolve thất bại ({code}).",
       "reasonRequired": "Vui lòng nhập reason ≥ 3 ký tự."
+    }
+  },
+  "dashboard": {
+    "title": "Bảng Điều Khiển",
+    "subtitle": "Tổng quan nhân vật, nhật vụ trong ngày và truy cập nhanh.",
+    "character": {
+      "title": "Nhân vật",
+      "name": "Tên",
+      "realm": "Cảnh giới",
+      "stage": "Tầng",
+      "bodyRealm": "Luyện thể",
+      "power": "Lực chiến"
+    },
+    "progression": {
+      "linhThach": "Linh Thạch",
+      "tienNgoc": "Tiên Ngọc"
+    },
+    "counters": {
+      "unreadMail": "Hộp thư chưa đọc",
+      "unreadNotification": "Thông báo mới",
+      "activeFeedbackCount": "Phản hồi đang chờ",
+      "activeReportCount": "Tố cáo đang chờ"
+    },
+    "warnings": {
+      "title": "Cảnh báo",
+      "mailBackedUp": "Hộp thư có nhiều mail chưa đọc.",
+      "notificationBackedUp": "Thông báo dồn đọng. Hãy mở để dọn."
+    },
+    "checklist": {
+      "title": "Hôm nay",
+      "START_CULTIVATION": {
+        "title": "Bắt đầu tu luyện",
+        "description": "Mở khoá tốc độ exp passively bằng cách kích hoạt tu luyện."
+      },
+      "CLAIM_MAIL": {
+        "title": "Nhận thư",
+        "description": "Mở hộp thư để nhận phần thưởng và thông báo hệ thống."
+      },
+      "RUN_FARM": {
+        "title": "Tu luyện hoang địa",
+        "description": "Chạy 1 farm session để gom kinh nghiệm và vật phẩm."
+      },
+      "CLEAR_DUNGEON": {
+        "title": "Vượt bí cảnh",
+        "description": "Hoàn thành 1 dungeon run hôm nay."
+      },
+      "CLIMB_TOWER": {
+        "title": "Leo Trảm Yêu Tháp",
+        "description": "Thử thách tầng tháp mới."
+      },
+      "CHECK_MARKET": {
+        "title": "Tuần thị thường",
+        "description": "Kiểm tra danh sách phẩm vật ưa thích."
+      },
+      "JOIN_SECT_ACTIVITY": {
+        "title": "Hoạt động tông môn",
+        "description": "Tham gia hoạt động ngày của tông môn."
+      },
+      "READ_MENTOR_REQUEST": {
+        "title": "Sư đồ",
+        "description": "Xem các yêu cầu bái sư / dạy đệ tử."
+      },
+      "CHECK_RETURNER": {
+        "title": "Hồi quy",
+        "description": "Xem quà tặng hồi quy nếu có."
+      }
+    },
+    "quickLinks": {
+      "title": "Truy cập nhanh",
+      "mail": "Thư",
+      "cultivation": "Tu luyện",
+      "inventory": "Túi đồ",
+      "feedback": "Phản hồi",
+      "settings": "Cài đặt"
+    },
+    "errors": {
+      "UNKNOWN": "Không thể tải bảng điều khiển. Vui lòng thử lại.",
+      "NO_CHARACTER": "Bạn chưa có nhân vật.",
+      "UNAUTHENTICATED": "Vui lòng đăng nhập lại."
+    }
+  },
+  "feedback": {
+    "title": "Trung tâm Phản hồi",
+    "subtitle": "Gửi báo lỗi, đề xuất, hoặc phản ánh để đội ngũ xử lý.",
+    "form": {
+      "title": "Tạo phản hồi mới",
+      "fields": {
+        "type": "Loại",
+        "title": "Tiêu đề",
+        "description": "Nội dung chi tiết",
+        "severity": "Mức độ"
+      },
+      "errors": {
+        "tooShort": "Vui lòng nhập chi tiết hơn."
+      },
+      "submit": "Gửi",
+      "submitted": "Đã gửi phản hồi. Cảm ơn bạn!"
+    },
+    "list": {
+      "title": "Phản hồi của tôi",
+      "allStatuses": "Tất cả trạng thái",
+      "emptyTitle": "Chưa có phản hồi nào",
+      "emptyDescription": "Bạn chưa gửi phản hồi nào. Hãy giúp cải thiện thế giới."
+    },
+    "types": {
+      "BUG_REPORT": "Báo lỗi (Bug)",
+      "BALANCE_FEEDBACK": "Cân bằng/Game design",
+      "UI_FEEDBACK": "Giao diện",
+      "LOST_ITEM_REPORT": "Mất vật phẩm",
+      "PAYMENT_REPORT": "Thanh toán/Nạp",
+      "MARKET_REPORT": "Chợ giao dịch",
+      "PLAYER_REPORT": "Tố cáo người chơi",
+      "CHEAT_REPORT": "Hack/Cheat",
+      "QUEST_STUCK_REPORT": "Nhiệm vụ kẹt",
+      "OTHER": "Khác"
+    },
+    "statuses": {
+      "NEW": "Mới",
+      "TRIAGE": "Đang phân loại",
+      "IN_PROGRESS": "Đang xử lý",
+      "RESOLVED": "Đã giải quyết",
+      "DUPLICATE": "Trùng lặp",
+      "CLOSED": "Đã đóng"
+    },
+    "severities": {
+      "LOW": "Thấp",
+      "MEDIUM": "Trung bình",
+      "HIGH": "Cao",
+      "CRITICAL": "Nghiêm trọng"
+    },
+    "errors": {
+      "UNKNOWN": "Không thể gửi phản hồi. Vui lòng thử lại.",
+      "FEEDBACK_VALIDATION_FAILED": "Nội dung không hợp lệ.",
+      "FEEDBACK_RATE_LIMITED": "Bạn có quá nhiều phản hồi đang chờ. Hãy đợi xử lý xong rồi gửi tiếp.",
+      "FEEDBACK_NOT_FOUND": "Không tìm thấy phản hồi.",
+      "NO_CHARACTER": "Bạn chưa có nhân vật.",
+      "SUPPORT_PERMISSION_DENIED": "Bạn không có quyền xem phản hồi này.",
+      "UNAUTHENTICATED": "Vui lòng đăng nhập lại."
+    }
+  },
+  "report": {
+    "title": "Tố cáo Người chơi",
+    "subtitle": "Gửi tố cáo người chơi. Hành vi của bạn KHÔNG ban được. Quản trị viên sẽ xem xét.",
+    "form": {
+      "title": "Tố cáo mới",
+      "fields": {
+        "targetCharacterId": "ID/tên nhân vật bị tố cáo",
+        "reportType": "Loại hành vi",
+        "description": "Mô tả"
+      },
+      "errors": {
+        "tooShort": "Vui lòng mô tả rõ hơn."
+      },
+      "submit": "Gửi tố cáo",
+      "submitted": "Đã gửi tố cáo. Cảm ơn.",
+      "disclaimer": "Tố cáo sai sự thật có thể dẫn đến hạn chế tài khoản của bạn."
+    },
+    "list": {
+      "title": "Tố cáo của tôi",
+      "emptyTitle": "Chưa có tố cáo",
+      "emptyDescription": "Bạn chưa gửi tố cáo nào."
+    },
+    "types": {
+      "HARASSMENT": "Quấy rối",
+      "CHEATING": "Hack/Cheat",
+      "SCAM": "Lừa đảo",
+      "MARKET_ABUSE": "Lạm dụng chợ",
+      "BUG_EXPLOIT": "Khai thác bug",
+      "OFFENSIVE_NAME": "Tên phản cảm",
+      "SPAM": "Spam",
+      "OTHER": "Khác"
+    },
+    "statuses": {
+      "NEW": "Mới",
+      "REVIEWING": "Đang xem xét",
+      "ACTION_TAKEN": "Đã xử lý",
+      "DISMISSED": "Bác bỏ",
+      "DUPLICATE": "Trùng lặp"
+    },
+    "errors": {
+      "UNKNOWN": "Không gửi được tố cáo. Vui lòng thử lại.",
+      "REPORT_VALIDATION_FAILED": "Nội dung không hợp lệ.",
+      "REPORT_RATE_LIMITED": "Bạn có quá nhiều tố cáo đang chờ.",
+      "REPORT_NOT_FOUND": "Không tìm thấy tố cáo.",
+      "REPORT_TARGET_NOT_FOUND": "Không tìm thấy nhân vật bị tố cáo.",
+      "REPORT_SELF_NOT_ALLOWED": "Không thể tự tố cáo chính mình.",
+      "NO_CHARACTER": "Bạn chưa có nhân vật.",
+      "SUPPORT_PERMISSION_DENIED": "Không có quyền xem tố cáo này.",
+      "UNAUTHENTICATED": "Vui lòng đăng nhập lại."
+    }
+  },
+  "adminFeedback": {
+    "title": "Quản trị · Phản hồi",
+    "subtitle": "Xem và xử lý phản hồi của người chơi.",
+    "allTypes": "Tất cả loại",
+    "total": "{count} phản hồi",
+    "emptyTitle": "Không có phản hồi",
+    "emptyDescription": "Hiện không có phản hồi nào trong bộ lọc.",
+    "notAdminTitle": "Không có quyền",
+    "notAdminDescription": "Khu vực này dành cho MOD/ADMIN.",
+    "patched": "Đã cập nhật phản hồi.",
+    "errors": {
+      "UNKNOWN": "Không tải được phản hồi.",
+      "ADMIN_SUPPORT_PERMISSION_DENIED": "Bạn không có quyền truy cập.",
+      "UNAUTHENTICATED": "Vui lòng đăng nhập lại."
+    }
+  },
+  "adminReports": {
+    "title": "Quản trị · Tố cáo",
+    "subtitle": "Xem và xử lý tố cáo người chơi. KHÔNG auto-ban.",
+    "allStatuses": "Tất cả trạng thái",
+    "total": "{count} tố cáo",
+    "emptyTitle": "Không có tố cáo",
+    "emptyDescription": "Hiện không có tố cáo nào trong bộ lọc.",
+    "notAdminTitle": "Không có quyền",
+    "notAdminDescription": "Khu vực này dành cho MOD/ADMIN.",
+    "patched": "Đã cập nhật tố cáo.",
+    "errors": {
+      "UNKNOWN": "Không tải được tố cáo.",
+      "ADMIN_SUPPORT_PERMISSION_DENIED": "Bạn không có quyền truy cập.",
+      "UNAUTHENTICATED": "Vui lòng đăng nhập lại."
+    }
+  },
+  "playerLogs": {
+    "title": "Nhật ký hoạt động",
+    "subtitle": "Lịch sử hoạt động liên quan đến tài khoản của bạn.",
+    "emptyTitle": "Đang xây dựng",
+    "emptyDescription": "Tính năng nhật ký chi tiết sẽ có ở Phase 41.1+."
+  },
+  "navigation": {
+    "commandPalette": {
+      "title": "Tìm chức năng",
+      "placeholder": "Gõ để tìm trang…",
+      "empty": "Không có kết quả."
+    }
+  },
+  "playerSettings": {
+    "title": "Tùy chỉnh trải nghiệm",
+    "subtitle": "Cá nhân hóa giao diện, ngôn ngữ và thông báo.",
+    "fields": {
+      "fontSize": "Cỡ chữ",
+      "appearance": "Giao diện",
+      "compactMode": "Chế độ thu gọn",
+      "reduceMotion": "Giảm hiệu ứng chuyển động",
+      "numberFormat": "Hiển thị số",
+      "language": "Ngôn ngữ ưu tiên",
+      "landingPage": "Trang vào mặc định",
+      "timezone": "Múi giờ",
+      "showCombatLogDetail": "Hiện log chiến đấu",
+      "showSystemTips": "Hiện gợi ý cảnh giới"
+    },
+    "appearance": {
+      "light": "Sáng",
+      "dark": "Tối",
+      "system": "Theo hệ thống"
+    },
+    "fontSize": {
+      "small": "Nhỏ",
+      "normal": "Vừa",
+      "large": "Lớn",
+      "xlarge": "Rất lớn"
+    },
+    "numberFormat": {
+      "FULL": "Đầy đủ",
+      "COMPACT": "Rút gọn"
+    },
+    "resetConfirm": "Khôi phục cài đặt mặc định?",
+    "resetButton": "Khôi phục mặc định",
+    "saveButton": "Lưu",
+    "saved": "Đã lưu cài đặt.",
+    "errors": {
+      "UNKNOWN": "Không lưu được cài đặt.",
+      "PLAYER_SETTINGS_INVALID": "Giá trị cài đặt không hợp lệ.",
+      "PLAYER_SETTINGS_PAYLOAD_TOO_LARGE": "Cài đặt quá lớn.",
+      "NO_CHARACTER": "Bạn chưa có nhân vật.",
+      "UNAUTHENTICATED": "Vui lòng đăng nhập lại."
     }
   }
 }
