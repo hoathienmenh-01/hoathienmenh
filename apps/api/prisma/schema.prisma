@@ -464,6 +464,12 @@ model Character {
   eventRankingEntries    EventRankingEntry[]
   personalEventProgress  PersonalEventProgress[]
 
+  /// Phase 29.0 — PvP Foundation backrefs.
+  pvpBattlesAttacker     PvpBattle[]                 @relation("PvpBattleAttacker")
+  pvpBattlesDefender     PvpBattle[]                 @relation("PvpBattleDefender")
+  pvpDefenseProfile      PvpDefenseProfile?
+  pvpAnomalyLogs         PvpAnomalyLog[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -1992,6 +1998,8 @@ model Sect {
   treasuryLinhThach BigInt      @default(0)
   leaderId          String?     @unique
   characters        Character[]
+  /// Phase 29.0 — PvP anomaly backref.
+  pvpAnomalyLogs    PvpAnomalyLog[]
   createdAt         DateTime    @default(now())
 }
 
@@ -5610,4 +5618,125 @@ model PersonalEventProgress {
   @@unique([eventKey, characterId])
   @@index([characterId, expiresAt])
   @@index([eventKey, triggerType])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 29.0 — PvP Foundation V1
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Unified PvP layer:
+//   - `PvpBattle`: 1 row / trận, mode = DUEL|FRIENDLY_SPARRING|EVENT_PVP|
+//     SECT_WAR|TERRITORY_WAR. Mode ARENA tiếp tục dùng `ArenaMatch` riêng.
+//   - `PvpDefenseProfile`: saved defense formation độc lập với
+//     `ArenaProfile.defenseSnapshotJson` (per-season). Đây là "global"
+//     defense load khi nhận challenge ngoài arena.
+//   - `PvpAnomalyLog`: anti-cheat anomaly detection (8 type theo
+//     spec PHẦN 15). Admin review qua `/admin/pvp/anomalies`.
+
+/// Phase 29.0 — Trận PvP non-arena (DUEL/FRIENDLY/EVENT/SECT_WAR/TERRITORY).
+///
+/// Mode `ARENA` tiếp tục dùng `ArenaMatch` (Phase 14.1.B) — bảng này chỉ
+/// store các mode còn lại để giữ schema modular. Player UI gom cả 2 bảng
+/// trong battle log viewer (xem `pvp.controller.ts → GET /pvp/battle-logs`).
+///
+/// Snapshot không sửa sau resolve (anti-cheat invariant). Admin có thể
+/// flag `status=INVALIDATED` (qua `PVP_BATTLE_INVALIDATE` audit) nhưng
+/// `roundsJson` / `rewardJson` immutable.
+model PvpBattle {
+  id                    String    @id @default(cuid())
+  /// PvpMode literal (DUEL | FRIENDLY_SPARRING | EVENT_PVP | SECT_WAR | TERRITORY_WAR).
+  mode                  String
+  attackerCharacterId   String
+  attacker              Character @relation("PvpBattleAttacker", fields: [attackerCharacterId], references: [id], onDelete: Cascade)
+  defenderCharacterId   String?
+  defender              Character? @relation("PvpBattleDefender", fields: [defenderCharacterId], references: [id], onDelete: SetNull)
+  /// PvpBattleStatus (PENDING|RESOLVED|CANCELLED|EXPIRED|INVALIDATED).
+  status                String    @default("PENDING")
+  /// PvpResult — null khi PENDING.
+  result                String?
+  /// Snapshot tại thời điểm queue (validatePvpSnapshot enforced).
+  attackerSnapshotJson  Json
+  defenderSnapshotJson  Json
+  /// Resolve seed for replay verify. Random nhưng deterministic.
+  seed                  Int       @default(0)
+  /// Round summary array (KHÔNG frame-by-frame, chỉ delta).
+  roundsJson            Json
+  /// Reward snapshot — chỉ display, không re-grant. Null khi FRIENDLY_SPARRING.
+  rewardJson            Json?
+  /// Rating change (nếu mode = DUEL có rating). Arena vẫn ở ArenaMatch.
+  ratingChangeJson      Json?
+  /// Reference key (ví dụ eventKey, sectWarMatchId, territoryKey).
+  sourceModuleKey       String?
+  /// Đã grant reward chưa? Idempotency check.
+  rewardGranted         Boolean   @default(false)
+  /// Idempotency token để chặn double-resolve.
+  idempotencyKey        String?
+  createdAt             DateTime  @default(now())
+  resolvedAt            DateTime?
+
+  @@unique([idempotencyKey])
+  @@index([attackerCharacterId, mode, createdAt])
+  @@index([defenderCharacterId, mode, createdAt])
+  @@index([mode, status, createdAt])
+  @@index([sourceModuleKey, mode])
+}
+
+/// Phase 29.0 — Saved defense formation (global, không phải arena-only).
+///
+/// 1 character có 1 defense profile (UNIQUE). Khi character bị
+/// challenge ngoài arena (DUEL hoặc SECT_WAR/TERRITORY_WAR), server load
+/// snapshot này thay vì rebuild từ current equipment/methods/artifacts.
+///
+/// `label` cho player tự đặt tên (vd "Hỏa Pháp", "Đan Dược Tu"). Snapshot
+/// được verify qua `validatePvpDefenseProfile` (snapshotType ∈
+/// {DEFENDER, SECT_MEMBER}).
+model PvpDefenseProfile {
+  id            String    @id @default(cuid())
+  characterId   String    @unique
+  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Snapshot JSON tuân `validatePvpDefenseProfile`.
+  snapshotJson  Json
+  /// Player-defined label (tối đa 60 ký tự — validator enforce).
+  label         String?
+  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now())
+
+  @@index([updatedAt])
+}
+
+/// Phase 29.0 — Anti-cheat anomaly detection log.
+///
+/// 8 anomaly type theo spec PHẦN 15. Mỗi anomaly có severity weight
+/// (`PVP_ANOMALY_RISK_WEIGHT`). Admin queue review qua
+/// `/admin/pvp/anomalies`. `resolvedBy` = adminUserId nếu admin
+/// đã đánh giá; `resolution` ∈ {DISMISSED | CONFIRMED | ESCALATED}.
+///
+/// `relatedBattleId` reference `PvpBattle.id` hoặc `ArenaMatch.id`
+/// (string-based, không FK cứng để gom được nhiều bảng).
+model PvpAnomalyLog {
+  id              String    @id @default(cuid())
+  /// PvpAnomalyType literal.
+  anomalyType     String
+  /// Severity 0.0–1.0 (PVP_ANOMALY_RISK_WEIGHT lookup).
+  severity        Float
+  characterId     String?
+  character       Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  sectId          String?
+  sect            Sect?     @relation(fields: [sectId], references: [id], onDelete: SetNull)
+  /// PvpBattle.id / ArenaMatch.id / SectWarMatch.id (string, no FK).
+  relatedBattleId String?
+  /// Reason chi tiết (LLM-friendly text + JSON detail).
+  detailJson      Json
+  /// Auto-block reward claim nếu severity ≥ 0.8.
+  blockedReward   Boolean   @default(false)
+  resolvedBy      String?
+  resolution      String?
+  resolvedAt      DateTime?
+  resolveReason   String?
+  createdAt       DateTime  @default(now())
+
+  @@index([anomalyType, createdAt])
+  @@index([characterId, createdAt])
+  @@index([sectId, createdAt])
+  @@index([resolution, createdAt])
 }
