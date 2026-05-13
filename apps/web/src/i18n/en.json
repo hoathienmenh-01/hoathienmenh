@@ -93,7 +93,16 @@
       "trialTowerAttempt": "Failed to attempt tower floor."
     },
     "accept": "Accept",
-    "decline": "Decline"
+    "decline": "Decline",
+    "open": "Open",
+    "retry": "Retry",
+    "empty": {
+      "title": "No data",
+      "description": "There are no items to display yet."
+    },
+    "error": {
+      "UNKNOWN": "Something went wrong. Please try again."
+    }
   },
   "locale": {
     "label": "Language",
@@ -6537,6 +6546,282 @@
       "invalidate": "Invalidate failed ({code}).",
       "resolve": "Resolve failed ({code}).",
       "reasonRequired": "Please enter reason ≥ 3 chars."
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Character overview, today's checklist and quick access.",
+    "character": {
+      "title": "Character",
+      "name": "Name",
+      "realm": "Realm",
+      "stage": "Stage",
+      "bodyRealm": "Body Realm",
+      "power": "Power"
+    },
+    "progression": {
+      "linhThach": "Linh Thach",
+      "tienNgoc": "Tien Ngoc"
+    },
+    "counters": {
+      "unreadMail": "Unread mail",
+      "unreadNotification": "New notifications",
+      "activeFeedbackCount": "Pending feedback",
+      "activeReportCount": "Pending reports"
+    },
+    "warnings": {
+      "title": "Warnings",
+      "mailBackedUp": "Your inbox has many unread mails.",
+      "notificationBackedUp": "Notifications are piling up. Open them to clear."
+    },
+    "checklist": {
+      "title": "Today",
+      "START_CULTIVATION": {
+        "title": "Begin cultivating",
+        "description": "Toggle on cultivation to gain passive exp."
+      },
+      "CLAIM_MAIL": {
+        "title": "Read mail",
+        "description": "Open your inbox to claim rewards and notices."
+      },
+      "RUN_FARM": {
+        "title": "Wild farming",
+        "description": "Run a farm session to gather exp and items."
+      },
+      "CLEAR_DUNGEON": {
+        "title": "Clear a dungeon",
+        "description": "Complete a dungeon run today."
+      },
+      "CLIMB_TOWER": {
+        "title": "Climb the Trial Tower",
+        "description": "Attempt a new tower floor."
+      },
+      "CHECK_MARKET": {
+        "title": "Browse market",
+        "description": "Check your watchlist of favourite items."
+      },
+      "JOIN_SECT_ACTIVITY": {
+        "title": "Sect activity",
+        "description": "Participate in your sect daily activity."
+      },
+      "READ_MENTOR_REQUEST": {
+        "title": "Mentor",
+        "description": "Review pending mentor/disciple requests."
+      },
+      "CHECK_RETURNER": {
+        "title": "Returner",
+        "description": "Claim returner gifts if available."
+      }
+    },
+    "quickLinks": {
+      "title": "Quick Access",
+      "mail": "Mail",
+      "cultivation": "Cultivation",
+      "inventory": "Inventory",
+      "feedback": "Feedback",
+      "settings": "Settings"
+    },
+    "errors": {
+      "UNKNOWN": "Could not load dashboard. Please retry.",
+      "NO_CHARACTER": "You do not have a character yet.",
+      "UNAUTHENTICATED": "Please log in again."
+    }
+  },
+  "feedback": {
+    "title": "Feedback Center",
+    "subtitle": "Send bug reports, feedback, or appeals to the team.",
+    "form": {
+      "title": "New feedback",
+      "fields": {
+        "type": "Type",
+        "title": "Title",
+        "description": "Description",
+        "severity": "Severity"
+      },
+      "errors": {
+        "tooShort": "Please provide more detail."
+      },
+      "submit": "Submit",
+      "submitted": "Feedback submitted. Thank you!"
+    },
+    "list": {
+      "title": "My feedback",
+      "allStatuses": "All statuses",
+      "emptyTitle": "No feedback yet",
+      "emptyDescription": "You haven't submitted any feedback yet. Help us improve."
+    },
+    "types": {
+      "BUG_REPORT": "Bug report",
+      "BALANCE_FEEDBACK": "Balance / design",
+      "UI_FEEDBACK": "UI feedback",
+      "LOST_ITEM_REPORT": "Lost item",
+      "PAYMENT_REPORT": "Payment",
+      "MARKET_REPORT": "Market",
+      "PLAYER_REPORT": "Report player",
+      "CHEAT_REPORT": "Cheating",
+      "QUEST_STUCK_REPORT": "Quest stuck",
+      "OTHER": "Other"
+    },
+    "statuses": {
+      "NEW": "New",
+      "TRIAGE": "Triage",
+      "IN_PROGRESS": "In progress",
+      "RESOLVED": "Resolved",
+      "DUPLICATE": "Duplicate",
+      "CLOSED": "Closed"
+    },
+    "severities": {
+      "LOW": "Low",
+      "MEDIUM": "Medium",
+      "HIGH": "High",
+      "CRITICAL": "Critical"
+    },
+    "errors": {
+      "UNKNOWN": "Could not submit feedback. Please retry.",
+      "FEEDBACK_VALIDATION_FAILED": "Invalid content.",
+      "FEEDBACK_RATE_LIMITED": "You have too many pending feedback. Wait for some to resolve.",
+      "FEEDBACK_NOT_FOUND": "Feedback not found.",
+      "NO_CHARACTER": "You do not have a character yet.",
+      "SUPPORT_PERMISSION_DENIED": "You do not have access to this feedback.",
+      "UNAUTHENTICATED": "Please log in again."
+    }
+  },
+  "report": {
+    "title": "Report Player",
+    "subtitle": "File a player report. You CANNOT ban anyone — admins will review.",
+    "form": {
+      "title": "New report",
+      "fields": {
+        "targetCharacterId": "Target character ID/name",
+        "reportType": "Behaviour type",
+        "description": "Description"
+      },
+      "errors": {
+        "tooShort": "Please describe in more detail."
+      },
+      "submit": "Submit report",
+      "submitted": "Report submitted. Thank you.",
+      "disclaimer": "False reports may result in restrictions to your account."
+    },
+    "list": {
+      "title": "My reports",
+      "emptyTitle": "No reports",
+      "emptyDescription": "You have not filed any reports."
+    },
+    "types": {
+      "HARASSMENT": "Harassment",
+      "CHEATING": "Cheating",
+      "SCAM": "Scam",
+      "MARKET_ABUSE": "Market abuse",
+      "BUG_EXPLOIT": "Bug exploit",
+      "OFFENSIVE_NAME": "Offensive name",
+      "SPAM": "Spam",
+      "OTHER": "Other"
+    },
+    "statuses": {
+      "NEW": "New",
+      "REVIEWING": "Reviewing",
+      "ACTION_TAKEN": "Action taken",
+      "DISMISSED": "Dismissed",
+      "DUPLICATE": "Duplicate"
+    },
+    "errors": {
+      "UNKNOWN": "Could not submit report. Please retry.",
+      "REPORT_VALIDATION_FAILED": "Invalid content.",
+      "REPORT_RATE_LIMITED": "You have too many pending reports.",
+      "REPORT_NOT_FOUND": "Report not found.",
+      "REPORT_TARGET_NOT_FOUND": "Target character not found.",
+      "REPORT_SELF_NOT_ALLOWED": "You can't report yourself.",
+      "NO_CHARACTER": "You do not have a character yet.",
+      "SUPPORT_PERMISSION_DENIED": "You do not have access to this report.",
+      "UNAUTHENTICATED": "Please log in again."
+    }
+  },
+  "adminFeedback": {
+    "title": "Admin · Feedback",
+    "subtitle": "Triage and resolve player feedback.",
+    "allTypes": "All types",
+    "total": "{count} feedback",
+    "emptyTitle": "No feedback",
+    "emptyDescription": "No feedback matches the filters.",
+    "notAdminTitle": "No access",
+    "notAdminDescription": "This view is restricted to MOD/ADMIN.",
+    "patched": "Feedback updated.",
+    "errors": {
+      "UNKNOWN": "Failed to load feedback.",
+      "ADMIN_SUPPORT_PERMISSION_DENIED": "You do not have permission.",
+      "UNAUTHENTICATED": "Please log in again."
+    }
+  },
+  "adminReports": {
+    "title": "Admin · Reports",
+    "subtitle": "Triage and resolve player reports. NO auto-ban.",
+    "allStatuses": "All statuses",
+    "total": "{count} reports",
+    "emptyTitle": "No reports",
+    "emptyDescription": "No reports match the filters.",
+    "notAdminTitle": "No access",
+    "notAdminDescription": "This view is restricted to MOD/ADMIN.",
+    "patched": "Report updated.",
+    "errors": {
+      "UNKNOWN": "Failed to load reports.",
+      "ADMIN_SUPPORT_PERMISSION_DENIED": "You do not have permission.",
+      "UNAUTHENTICATED": "Please log in again."
+    }
+  },
+  "playerLogs": {
+    "title": "Activity Logs",
+    "subtitle": "Account activity history.",
+    "emptyTitle": "Coming soon",
+    "emptyDescription": "Detailed activity logs will land in Phase 41.1+."
+  },
+  "navigation": {
+    "commandPalette": {
+      "title": "Find feature",
+      "placeholder": "Type to search pages…",
+      "empty": "No results."
+    }
+  },
+  "playerSettings": {
+    "title": "Experience Settings",
+    "subtitle": "Personalize UI, language and notifications.",
+    "fields": {
+      "fontSize": "Font size",
+      "appearance": "Appearance",
+      "compactMode": "Compact mode",
+      "reduceMotion": "Reduce motion",
+      "numberFormat": "Number format",
+      "language": "Preferred language",
+      "landingPage": "Landing page",
+      "showCombatLog": "Show combat log",
+      "showRealmTooltips": "Show realm tooltips",
+      "timezone": "Timezone"
+    },
+    "appearance": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "fontSize": {
+      "small": "Small",
+      "normal": "Normal",
+      "large": "Large",
+      "xlarge": "X-Large"
+    },
+    "numberFormat": {
+      "FULL": "Full",
+      "COMPACT": "Compact"
+    },
+    "resetConfirm": "Reset to default settings?",
+    "resetButton": "Reset to default",
+    "saveButton": "Save",
+    "saved": "Settings saved.",
+    "errors": {
+      "UNKNOWN": "Could not save settings.",
+      "PLAYER_SETTINGS_INVALID": "Invalid setting value.",
+      "PLAYER_SETTINGS_PAYLOAD_TOO_LARGE": "Settings payload too large.",
+      "NO_CHARACTER": "You do not have a character yet.",
+      "UNAUTHENTICATED": "Please log in again."
     }
   }
 }
