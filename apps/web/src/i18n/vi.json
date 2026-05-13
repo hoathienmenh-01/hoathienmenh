@@ -5231,6 +5231,56 @@
       "UNKNOWN": "Có lỗi xảy ra — thử lại."
     }
   },
+  "coCultivation": {
+    "tab": "Hợp Luyện",
+    "title": "Hợp Luyện",
+    "subtitle": "Cùng đạo hữu hợp luyện để nhận thưởng EXP nhẹ (đã đóng dấu cap ngày).",
+    "today": {
+      "sessions": "Phiên hôm nay",
+      "buffSeconds": "Tổng buff (giây)",
+      "bonusExp": "EXP bonus hôm nay"
+    },
+    "active": {
+      "title": "Phiên hiện tại",
+      "empty": "Chưa có phiên nào — mời đạo hữu hợp luyện ở bên dưới.",
+      "partner": "Đạo hữu",
+      "status": "Trạng thái",
+      "duration": "Thời lượng"
+    },
+    "send": {
+      "partner": "User ID đạo hữu",
+      "placeholder": "Nhập userId của đạo hữu (phải là bạn).",
+      "action": "Mời hợp luyện"
+    },
+    "action": {
+      "accept": "Chấp nhận",
+      "complete": "Hoàn thành",
+      "cancel": "Huỷ"
+    },
+    "history": {
+      "title": "Lịch sử phiên",
+      "empty": "Chưa có phiên hợp luyện nào."
+    },
+    "requestSent": "Đã gửi lời mời hợp luyện.",
+    "accepted": "Đã chấp nhận hợp luyện.",
+    "cancelled": "Đã huỷ phiên.",
+    "completed": "Hoàn thành phiên — đã nhận EXP bonus.",
+    "errors": {
+      "SELF_NOT_ALLOWED": "Không thể hợp luyện với chính mình.",
+      "NOT_FRIEND": "Phải là đạo hữu (bạn bè) mới hợp luyện được.",
+      "BLOCKED": "Hai bên đang chặn nhau.",
+      "ALREADY_ACTIVE": "Đang có phiên đang hoạt động — kết thúc trước khi mở mới.",
+      "DAILY_CAP_REACHED": "Đã đạt giới hạn phiên trong ngày.",
+      "BUFF_BUDGET_EXCEEDED": "Vượt quá tổng thời lượng buff hôm nay.",
+      "COOLDOWN_ACTIVE": "Đang trong thời gian hồi — đợi vài giây.",
+      "PARTNER_OFFLINE": "Đạo hữu đang ngoại tuyến.",
+      "INVALID_TRANSITION": "Phiên không ở trạng thái phù hợp với thao tác.",
+      "NOT_AUTHORIZED": "Không có quyền thao tác trên phiên này.",
+      "NOT_FOUND": "Không tìm thấy phiên.",
+      "NO_CHARACTER": "Cần tạo nhân vật trước khi hợp luyện.",
+      "UNKNOWN": "Có lỗi xảy ra — thử lại."
+    }
+  },
   "publicProfile": {
     "title": "Hồ sơ đạo hữu",
     "viewProfile": "Xem hồ sơ",
