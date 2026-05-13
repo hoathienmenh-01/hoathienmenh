@@ -873,6 +873,24 @@
     "equipToast": "Equipped {name}.",
     "unequipToast": "Unequipped {slot}.",
     "useToast": "Used {name}.",
+    "sort": {
+      "label": "Sort",
+      "preset": {
+        "default": "Default",
+        "newest": "Newest",
+        "quality": "Quality",
+        "tier": "Tier",
+        "level": "Refine level",
+        "element": "Element"
+      }
+    },
+    "lock": {
+      "showLockedOnly": "Show locked only",
+      "lockTooltip": "Lock item to prevent accidental use",
+      "unlockTooltip": "Unlock this item",
+      "lockedToast": "Locked {name}.",
+      "unlockedToast": "Unlocked {name}."
+    },
     "progression": {
       "tierLabel": "Tier {tier} {name} {grade}",
       "gradeLabel": "grade {grade}",
@@ -922,6 +940,7 @@
     },
     "errors": {
       "INVENTORY_ITEM_NOT_FOUND": "Item no longer exists.",
+      "INVENTORY_ITEM_LOCKED": "Item is locked — unlock it first.",
       "NOT_EQUIPPABLE": "This item cannot be equipped.",
       "NOT_USABLE": "This item has no effect.",
       "EQUIPMENT_REALM_LOCKED": "Your realm is too low to equip this gear.",

@@ -590,4 +590,168 @@ describe('InventoryService', () => {
       expect(out.size).toBe(0);
     });
   });
+
+  describe('QOL-1 — lock / unlock', () => {
+    it('lock + unlock toggle flag + idempotent', async () => {
+      const u = await makeUserChar(prisma);
+      await inv.grant(u.characterId, [{ itemKey: 'huyet_chi_dan', qty: 1 }], {
+        reason: 'ADMIN_GRANT',
+      });
+      const list1 = await inv.list(u.characterId);
+      expect(list1[0].locked).toBe(false);
+
+      const locked = await inv.lock(u.userId, list1[0].id);
+      expect(locked.locked).toBe(true);
+
+      // Idempotent — gọi lần 2 OK.
+      const lockedAgain = await inv.lock(u.userId, list1[0].id);
+      expect(lockedAgain.locked).toBe(true);
+
+      const unlocked = await inv.unlock(u.userId, list1[0].id);
+      expect(unlocked.locked).toBe(false);
+    });
+
+    it('use() → INVENTORY_ITEM_LOCKED khi row đã lock', async () => {
+      const u = await makeUserChar(prisma);
+      await inv.grant(u.characterId, [{ itemKey: 'huyet_chi_dan', qty: 1 }], {
+        reason: 'ADMIN_GRANT',
+      });
+      const list = await inv.list(u.characterId);
+      const row = list[0]!;
+      await inv.lock(u.userId, row.id);
+
+      try {
+        await inv.use(u.userId, row.id);
+        throw new Error('expected throw');
+      } catch (e) {
+        expect(e).toBeInstanceOf(InventoryError);
+        expect((e as InventoryError).code).toBe('INVENTORY_ITEM_LOCKED');
+      }
+
+      // Verify qty không bị decrement.
+      const after = await inv.list(u.characterId);
+      expect(after[0]?.qty).toBe(1);
+      expect(after[0]?.locked).toBe(true);
+    });
+
+    it('use() OK sau khi unlock', async () => {
+      const u = await makeUserChar(prisma);
+      await inv.grant(u.characterId, [{ itemKey: 'huyet_chi_dan', qty: 1 }], {
+        reason: 'ADMIN_GRANT',
+      });
+      const list = await inv.list(u.characterId);
+      const row = list[0]!;
+      await inv.lock(u.userId, row.id);
+      await inv.unlock(u.userId, row.id);
+      await inv.use(u.userId, row.id);
+
+      const after = await inv.list(u.characterId);
+      expect(after.length).toBe(0);
+    });
+
+    it('lock() throw INVENTORY_ITEM_NOT_FOUND khi id thuộc character khác', async () => {
+      const u1 = await makeUserChar(prisma);
+      const u2 = await makeUserChar(prisma);
+      await inv.grant(u1.characterId, [{ itemKey: 'huyet_chi_dan', qty: 1 }], {
+        reason: 'ADMIN_GRANT',
+      });
+      const list = await inv.list(u1.characterId);
+      try {
+        await inv.lock(u2.userId, list[0].id);
+        throw new Error('expected throw');
+      } catch (e) {
+        expect(e).toBeInstanceOf(InventoryError);
+        expect((e as InventoryError).code).toBe('INVENTORY_ITEM_NOT_FOUND');
+      }
+    });
+
+    it('lockBatch: lock nhiều row, idempotent skip no-op', async () => {
+      const u = await makeUserChar(prisma);
+      await inv.grant(
+        u.characterId,
+        [
+          { itemKey: 'so_kiem', qty: 1 },
+          { itemKey: 'so_kiem', qty: 1 },
+          { itemKey: 'so_kiem', qty: 1 },
+        ],
+        { reason: 'ADMIN_GRANT' },
+      );
+      const list = await inv.list(u.characterId);
+      const ids = list.map((r) => r.id);
+      const result = await inv.lockBatch(u.userId, ids, true);
+      expect(result.total).toBe(3);
+      expect(result.changed).toBe(3);
+
+      // Lock lần 2: changed=0.
+      const result2 = await inv.lockBatch(u.userId, ids, true);
+      expect(result2.total).toBe(3);
+      expect(result2.changed).toBe(0);
+
+      const after = await inv.list(u.characterId);
+      expect(after.every((r) => r.locked)).toBe(true);
+    });
+
+    it('lockBatch: 1 id không thuộc character → rollback toàn bộ', async () => {
+      const u1 = await makeUserChar(prisma);
+      const u2 = await makeUserChar(prisma);
+      await inv.grant(u1.characterId, [{ itemKey: 'huyet_chi_dan', qty: 1 }], {
+        reason: 'ADMIN_GRANT',
+      });
+      await inv.grant(u2.characterId, [{ itemKey: 'huyet_chi_dan', qty: 1 }], {
+        reason: 'ADMIN_GRANT',
+      });
+      const list1 = await inv.list(u1.characterId);
+      const list2 = await inv.list(u2.characterId);
+
+      try {
+        await inv.lockBatch(
+          u1.userId,
+          [list1[0].id, list2[0].id], // 2nd id thuộc u2.
+          true,
+        );
+        throw new Error('expected throw');
+      } catch (e) {
+        expect(e).toBeInstanceOf(InventoryError);
+        expect((e as InventoryError).code).toBe('INVENTORY_ITEM_NOT_FOUND');
+      }
+
+      // Cả 2 row đều KHÔNG bị lock (rollback).
+      const after1 = await inv.list(u1.characterId);
+      const after2 = await inv.list(u2.characterId);
+      expect(after1[0].locked).toBe(false);
+      expect(after2[0].locked).toBe(false);
+    });
+
+    it('lockBatch: dedupe duplicate ids', async () => {
+      const u = await makeUserChar(prisma);
+      await inv.grant(u.characterId, [{ itemKey: 'huyet_chi_dan', qty: 1 }], {
+        reason: 'ADMIN_GRANT',
+      });
+      const list = await inv.list(u.characterId);
+      const result = await inv.lockBatch(
+        u.userId,
+        [list[0].id, list[0].id, list[0].id],
+        true,
+      );
+      // Dedupe → total=1.
+      expect(result.total).toBe(1);
+      expect(result.changed).toBe(1);
+    });
+
+    it('lockBatch: empty ids → no-op', async () => {
+      const u = await makeUserChar(prisma);
+      const result = await inv.lockBatch(u.userId, [], true);
+      expect(result).toEqual({ changed: 0, total: 0 });
+    });
+
+    it('list: trả về locked + createdAt cho mỗi row', async () => {
+      const u = await makeUserChar(prisma);
+      await inv.grant(u.characterId, [{ itemKey: 'huyet_chi_dan', qty: 1 }], {
+        reason: 'ADMIN_GRANT',
+      });
+      const list = await inv.list(u.characterId);
+      expect(list[0]).toHaveProperty('locked', false);
+      expect(list[0].createdAt).toBeInstanceOf(Date);
+    });
+  });
 });

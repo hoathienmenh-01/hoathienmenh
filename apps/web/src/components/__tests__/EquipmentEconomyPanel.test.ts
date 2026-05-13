@@ -145,6 +145,8 @@ function makeInv(over: Partial<InventoryView> = {}): InventoryView {
     substats: [],
     enchantElement: null,
     enchantLevel: 0,
+    locked: false,
+    createdAt: new Date('2025-01-01T00:00:00.000Z').toISOString(),
     ...over,
   };
 }
