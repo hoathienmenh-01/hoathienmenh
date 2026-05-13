@@ -7011,5 +7011,65 @@
       "reducedMotion": "Đang dùng chế độ giảm chuyển động.",
       "live": "Khu vực thông báo trực tiếp"
     }
+  },
+  "storyV2": {
+    "title": "Tu Tiên Lộ — Quyển II–IV",
+    "subtitle": "Hành trình Tiên Giới → Thánh Đạo → Bản Nguyên (Chương 9 đến 27).",
+    "totalCount": "Chương: {n}",
+    "inProgressCount": "Đang tiến: {n}",
+    "completedCount": "Đã viên mãn: {n}",
+    "empty": "Chưa có chương nào hiện diện. Tu vi của con chưa đủ để vén màn.",
+    "mainProgress": "Chính tuyến: {done}/{total}",
+    "back": "← Trở lại danh sách chương",
+    "noQuest": "Không có nhiệm vụ thuộc nhóm này trong chương.",
+    "acceptToast": "Đã nhận nhiệm vụ: {name}.",
+    "completeToast": "Đã hoàn thành: {name}.",
+    "claimToast": "Đã lĩnh thưởng {name} — +{linhThach} LT · +{exp} EXP.",
+    "chapterStatus": {
+      "LOCKED": "Đang khoá",
+      "AVAILABLE": "Khả dụng",
+      "IN_PROGRESS": "Đang tiến",
+      "COMPLETED": "Viên mãn"
+    },
+    "questStatus": {
+      "LOCKED": "Khoá",
+      "AVAILABLE": "Khả dụng",
+      "ACCEPTED": "Đang làm",
+      "COMPLETED": "Hoàn thành",
+      "CLAIMED": "Đã thưởng"
+    },
+    "kindTab": {
+      "all": "Tất cả",
+      "main": "Chính tuyến",
+      "side": "Phụ",
+      "branch": "Nhánh",
+      "hidden": "Ẩn",
+      "daily": "Mỗi ngày",
+      "weekly": "Mỗi tuần"
+    },
+    "actions": {
+      "accept": "Nhận nhiệm vụ",
+      "complete": "Báo cáo",
+      "claim": "Lĩnh thưởng",
+      "claimed": "Đã lĩnh"
+    },
+    "error": {
+      "UNKNOWN_ERROR": "Lỗi không xác định.",
+      "UNAUTHENTICATED": "Cần đăng nhập trước.",
+      "NO_CHARACTER": "Chưa có nhân vật — vui lòng tạo trước.",
+      "STORY_V2_QUEST_UNKNOWN": "Nhiệm vụ không tồn tại trong danh sách.",
+      "STORY_V2_CHAPTER_UNKNOWN": "Chương không tồn tại trong danh sách.",
+      "STORY_V2_QUEST_LOCKED_REALM": "Cảnh giới chưa đủ để mở nhiệm vụ này.",
+      "STORY_V2_QUEST_LOCKED_PREREQUISITE": "Còn nhiệm vụ tiên quyết chưa hoàn thành.",
+      "STORY_V2_QUEST_LOCKED_FLAGS": "Còn cờ truyện chưa kích hoạt.",
+      "STORY_V2_QUEST_LOCKED_AFFINITY": "Hảo cảm với NPC liên quan chưa đủ.",
+      "STORY_V2_QUEST_NOT_AVAILABLE": "Nhiệm vụ không ở trạng thái có thể nhận.",
+      "STORY_V2_QUEST_NOT_ACCEPTED": "Cần nhận nhiệm vụ trước.",
+      "STORY_V2_QUEST_NOT_COMPLETABLE": "Còn mục tiêu chưa hoàn thành.",
+      "STORY_V2_QUEST_NOT_COMPLETED": "Nhiệm vụ chưa ở trạng thái Hoàn thành.",
+      "STORY_V2_QUEST_ALREADY_CLAIMED": "Phần thưởng đã được lĩnh.",
+      "STORY_V2_QUEST_STEP_UNKNOWN": "Bước nhiệm vụ không tồn tại.",
+      "STORY_V2_QUEST_STEP_KIND_NOT_SUPPORTED": "Bước nhiệm vụ chưa hỗ trợ tiến qua giao diện."
+    }
   }
 }

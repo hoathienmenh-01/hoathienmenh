@@ -276,6 +276,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/QuestView.vue'),
   },
   {
+    // Phase 33.2 — Story V2 (Tu Tiên Lộ Quyển II–IV) StoryV2View.
+    path: '/story-v2',
+    name: 'story-v2',
+    component: () => import('@/views/StoryV2View.vue'),
+  },
+  {
     path: '/social',
     name: 'social',
     component: () => import('@/views/SocialView.vue'),
