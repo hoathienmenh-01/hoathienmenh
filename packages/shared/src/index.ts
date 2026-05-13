@@ -103,6 +103,9 @@ export * from './security-alerts';
 export * from './backup';
 export * from './auth-session';
 
+// ─── Phase 27.6 — Admin Control Center V2 / Config-Driven LiveOps Admin ──
+export * from './admin-control-center';
+
 // ─── Phase 26.5 — World Content V2 ─────────────────────────────────────────
 export * from './monster-taxonomy';
 export * from './farm-maps';
