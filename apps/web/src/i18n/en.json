@@ -392,7 +392,10 @@
       "monetization": "Monetization",
       "shopPacks": "Resource Packs",
       "bodyCultivation": "Body",
-      "cosmetics": "Wardrobe"
+      "cosmetics": "Wardrobe",
+      "dashboard": "Dashboard",
+      "feedback": "Feedback",
+      "reportPlayer": "Report"
     },
     "badge": {
       "bossActive": "World boss is live",
@@ -6793,9 +6796,9 @@
       "numberFormat": "Number format",
       "language": "Preferred language",
       "landingPage": "Landing page",
-      "showCombatLog": "Show combat log",
-      "showRealmTooltips": "Show realm tooltips",
-      "timezone": "Timezone"
+      "timezone": "Timezone",
+      "showCombatLogDetail": "Show combat log",
+      "showSystemTips": "Show realm tooltips"
     },
     "appearance": {
       "light": "Light",

@@ -392,7 +392,10 @@
       "monetization": "Tiên Lộ Lệnh",
       "shopPacks": "Gói Tài Nguyên",
       "bodyCultivation": "Luyện Thể",
-      "cosmetics": "Y Quán"
+      "cosmetics": "Y Quán",
+      "dashboard": "Bảng Đk",
+      "feedback": "Phản hồi",
+      "reportPlayer": "Tố cáo"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -6793,9 +6796,9 @@
       "numberFormat": "Hiển thị số",
       "language": "Ngôn ngữ ưu tiên",
       "landingPage": "Trang vào mặc định",
-      "showCombatLog": "Hiện log chiến đấu",
-      "showRealmTooltips": "Hiện gợi ý cảnh giới",
-      "timezone": "Múi giờ"
+      "timezone": "Múi giờ",
+      "showCombatLogDetail": "Hiện log chiến đấu",
+      "showSystemTips": "Hiện gợi ý cảnh giới"
     },
     "appearance": {
       "light": "Sáng",

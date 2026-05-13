@@ -193,6 +193,14 @@ async function logout(): Promise<void> {
           />
         </RouterLink>
         <RouterLink
+          to="/dashboard"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+          data-testid="shell-nav-dashboard"
+        >
+          鑑 {{ t('shell.nav.dashboard') }}
+        </RouterLink>
+        <RouterLink
           to="/dungeon"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"
@@ -386,6 +394,22 @@ async function logout(): Promise<void> {
           active-class="bg-ink-700/60 text-ink-50"
         >
           禮 {{ t('shell.nav.giftcode') }}
+        </RouterLink>
+        <RouterLink
+          to="/support/feedback"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+          data-testid="shell-nav-feedback"
+        >
+          諫 {{ t('shell.nav.feedback') }}
+        </RouterLink>
+        <RouterLink
+          to="/support/report-player"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+          data-testid="shell-nav-report-player"
+        >
+          訟 {{ t('shell.nav.reportPlayer') }}
         </RouterLink>
         <RouterLink
           to="/leaderboard"
