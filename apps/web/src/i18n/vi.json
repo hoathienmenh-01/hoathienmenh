@@ -7071,5 +7071,60 @@
       "STORY_V2_QUEST_STEP_UNKNOWN": "Bước nhiệm vụ không tồn tại.",
       "STORY_V2_QUEST_STEP_KIND_NOT_SUPPORTED": "Bước nhiệm vụ chưa hỗ trợ tiến qua giao diện."
     }
+  },
+  "onboardingQuest": {
+    "title": "Khai Đạo 7 Ngày",
+    "subtitle": "Hành trình 7 ngày khai mở nền tảng tu tiên (26 nhiệm vụ).",
+    "overallProgress": "Tiến độ: {claimed}/{total} ({pct}%)",
+    "dayLabel": "Ngày {n}",
+    "totalTasks": "{n} nhiệm vụ",
+    "doneCount": "{done}/{total} hoàn thành",
+    "empty": "Chưa có ngày nào khai mở.",
+    "back": "← Trở lại danh sách ngày",
+    "completeToast": "Đã hoàn thành: {name}.",
+    "claimToast": "Đã lĩnh thưởng — +{linhThach} LT · +{exp} EXP.",
+    "claimToastTitle": "Đã lĩnh thưởng + danh hiệu mới: {title}.",
+    "novice_cultivator_title": "Tân Tu Sĩ Sơ Khai",
+    "dayStatus": {
+      "LOCKED": "Đang khoá",
+      "AVAILABLE": "Khả dụng",
+      "IN_PROGRESS": "Đang tiến",
+      "COMPLETED": "Hoàn tất"
+    },
+    "taskStatus": {
+      "LOCKED": "Khoá",
+      "AVAILABLE": "Sẵn sàng",
+      "COMPLETED": "Hoàn thành",
+      "CLAIMED": "Đã thưởng"
+    },
+    "category": {
+      "tutorial": "Hướng dẫn",
+      "cultivation": "Tu luyện",
+      "combat": "Chiến đấu",
+      "story": "Cốt truyện",
+      "social": "Xã hội",
+      "system": "Hệ thống"
+    },
+    "actions": {
+      "open": "Mở chức năng",
+      "complete": "Báo cáo",
+      "claim": "Lĩnh thưởng",
+      "claimed": "Đã lĩnh"
+    },
+    "reward": {
+      "linhThach": "Linh thạch",
+      "exp": "Kinh nghiệm",
+      "title": "Danh hiệu"
+    },
+    "error": {
+      "UNKNOWN_ERROR": "Lỗi không xác định.",
+      "UNAUTHENTICATED": "Cần đăng nhập trước.",
+      "NO_CHARACTER": "Chưa có nhân vật — vui lòng tạo trước.",
+      "ONBOARDING_TASK_UNKNOWN": "Nhiệm vụ không tồn tại.",
+      "ONBOARDING_DAY_UNKNOWN": "Ngày không tồn tại.",
+      "ONBOARDING_TASK_LOCKED": "Nhiệm vụ vẫn đang khoá.",
+      "ONBOARDING_TASK_NOT_COMPLETED": "Cần hoàn thành nhiệm vụ trước khi lĩnh thưởng.",
+      "ONBOARDING_TASK_ALREADY_CLAIMED": "Phần thưởng đã được lĩnh."
+    }
   }
 }

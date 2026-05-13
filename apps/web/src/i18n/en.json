@@ -7071,5 +7071,60 @@
       "STORY_V2_QUEST_STEP_UNKNOWN": "Quest step not found.",
       "STORY_V2_QUEST_STEP_KIND_NOT_SUPPORTED": "This quest step kind cannot be progressed via UI."
     }
+  },
+  "onboardingQuest": {
+    "title": "7-Day Path Awakening",
+    "subtitle": "A 7-day journey unlocking the foundations of cultivation (26 tasks).",
+    "overallProgress": "Progress: {claimed}/{total} ({pct}%)",
+    "dayLabel": "Day {n}",
+    "totalTasks": "{n} tasks",
+    "doneCount": "{done}/{total} done",
+    "empty": "No days unlocked yet.",
+    "back": "← Back to day list",
+    "completeToast": "Completed: {name}.",
+    "claimToast": "Reward claimed — +{linhThach} LT · +{exp} EXP.",
+    "claimToastTitle": "Reward claimed + new title: {title}.",
+    "novice_cultivator_title": "Novice Cultivator",
+    "dayStatus": {
+      "LOCKED": "Locked",
+      "AVAILABLE": "Available",
+      "IN_PROGRESS": "In progress",
+      "COMPLETED": "Completed"
+    },
+    "taskStatus": {
+      "LOCKED": "Locked",
+      "AVAILABLE": "Ready",
+      "COMPLETED": "Completed",
+      "CLAIMED": "Claimed"
+    },
+    "category": {
+      "tutorial": "Tutorial",
+      "cultivation": "Cultivation",
+      "combat": "Combat",
+      "story": "Story",
+      "social": "Social",
+      "system": "System"
+    },
+    "actions": {
+      "open": "Open",
+      "complete": "Report",
+      "claim": "Claim",
+      "claimed": "Claimed"
+    },
+    "reward": {
+      "linhThach": "Linh Thach",
+      "exp": "EXP",
+      "title": "Title"
+    },
+    "error": {
+      "UNKNOWN_ERROR": "Unknown error.",
+      "UNAUTHENTICATED": "Please log in first.",
+      "NO_CHARACTER": "No character — please create one first.",
+      "ONBOARDING_TASK_UNKNOWN": "Task not found.",
+      "ONBOARDING_DAY_UNKNOWN": "Day not found.",
+      "ONBOARDING_TASK_LOCKED": "Task still locked.",
+      "ONBOARDING_TASK_NOT_COMPLETED": "Complete the task before claiming.",
+      "ONBOARDING_TASK_ALREADY_CLAIMED": "Reward already claimed."
+    }
   }
 }
