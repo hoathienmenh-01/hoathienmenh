@@ -109,6 +109,9 @@ export * from './admin-control-center';
 // ─── Phase 28.0 — Event Builder & Tier-Balanced LiveOps Event System V2 ──
 export * from './events';
 
+// ─── Phase 29.0 — PvP Foundation V1 / Unified PvP Battle Log + Defense ──
+export * from './pvp';
+
 // ─── Phase 26.5 — World Content V2 ─────────────────────────────────────────
 export * from './monster-taxonomy';
 export * from './farm-maps';

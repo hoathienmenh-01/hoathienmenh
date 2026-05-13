@@ -59,6 +59,7 @@ import { ConfigVersionModule } from './modules/config-version/config-version.mod
 import { ConfigVersionAdminModule } from './modules/config-version-admin/config-version-admin.module';
 import { AdminControlCenterModule } from './modules/admin-control-center/admin-control-center.module';
 import { EventBuilderModule } from './modules/event-builder/event-builder.module';
+import { PvpModule } from './modules/pvp/pvp.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { ArenaModule } from './modules/arena/arena.module';
 import { ArenaAntiWintradeAdminModule } from './modules/arena-anti-wintrade-admin/arena-anti-wintrade-admin.module';
@@ -170,6 +171,11 @@ import { AdminMailModule } from './modules/admin-mail/admin-mail.module';
     // ranking + personal milestone runtime. Tách khỏi LiveOpsModule cũ
     // (cron / announcement / scheduler) — focus vào event V2.
     EventBuilderModule,
+    // Phase 29.0 — PvP Foundation V1. Unified `PvpBattle` log + saved
+    // `PvpDefenseProfile` + `PvpAnomalyLog` anti-cheat. Non-arena modes
+    // (DUEL / FRIENDLY_SPARRING / SECT_WAR / TERRITORY_WAR / EVENT_PVP)
+    // qua module này; ARENA tiếp tục dùng `ArenaModule` (Phase 14.1.B/C).
+    PvpModule,
     // Phase 16.6 — Economy Anti-cheat (ledger checker + anomaly
     // scanner cron + admin endpoints). SAU AdminModule + EconomyModule.
     AdminEconomySafetyModule,

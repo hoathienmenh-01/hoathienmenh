@@ -6424,5 +6424,119 @@
       "GIFT_EXPIRED": "Quà đã hết hạn.",
       "UNKNOWN": "Có lỗi xảy ra."
     }
+  },
+  "pvp": {
+    "title": "Đấu Pháp",
+    "intro": "Khiêu chiến đối thủ, lưu thế trận phòng thủ và xem nhật ký trận đấu.",
+    "loading": "Đang tải…",
+    "modes": {
+      "DUEL": "Đấu Đơn",
+      "FRIENDLY_SPARRING": "Giao Hữu"
+    },
+    "policy": {
+      "title": "Quy tắc PvP",
+      "maxDailyChallenge": "Khiêu chiến/ngày",
+      "sameTargetCooldownMinutes": "Cooldown cùng mục tiêu (phút)",
+      "powerGapWarning": "Cảnh báo lệch lực",
+      "powerGapBlock": "Chặn khi lệch lực"
+    },
+    "defense": {
+      "title": "Thế trận phòng thủ",
+      "hint": "Snapshot lưu lại stats hiện tại, dùng khi bạn offline. Có thể đổi label mô tả build.",
+      "empty": "Chưa lưu thế trận. Stats hiện tại sẽ được dùng khi bị khiêu chiến.",
+      "label": "Tên build",
+      "labelPlaceholder": "VD: Hỏa Pháp",
+      "save": "Lưu thế trận",
+      "snapshotPower": "Lực chiến snapshot",
+      "snapshotRealm": "Cảnh giới",
+      "updatedAt": "Cập nhật lúc"
+    },
+    "challenge": {
+      "title": "Khiêu chiến",
+      "hint": "Khiêu chiến mode DUEL có rating; FRIENDLY_SPARRING không reward và không ảnh hưởng rating.",
+      "target": "ID mục tiêu",
+      "targetPlaceholder": "characterId của đối thủ",
+      "mode": "Chế độ",
+      "submit": "Khiêu chiến",
+      "lastResult": "Kết quả gần nhất",
+      "result": "Kết quả",
+      "powerGap": "Lệch lực",
+      "rewardGranted": "Thưởng",
+      "ratingDelta": "Thay đổi rating"
+    },
+    "logs": {
+      "title": "Nhật ký trận đấu",
+      "filter": "Lọc theo mode",
+      "all": "Tất cả",
+      "empty": "Chưa có trận đấu nào.",
+      "mode": "Mode",
+      "result": "Kết quả",
+      "powerGap": "Lệch lực",
+      "reward": "Thưởng",
+      "createdAt": "Thời điểm"
+    },
+    "toast": {
+      "defenseSaved": "Đã lưu thế trận phòng thủ.",
+      "challengeResolved": "Trận đấu kết thúc: {result}"
+    },
+    "errors": {
+      "load": "Không tải được dữ liệu PvP ({code}).",
+      "defenseSave": "Không lưu được thế trận ({code}).",
+      "challenge": "Khiêu chiến thất bại ({code}).",
+      "targetRequired": "Vui lòng nhập ID mục tiêu."
+    }
+  },
+  "adminPvp": {
+    "title": "Trung tâm PvP (Admin)",
+    "intro": "Xem policy hiện hành, search battle log + invalidate, review anomaly queue.",
+    "loading": "Đang tải…",
+    "policy": {
+      "title": "Cấu hình PvP",
+      "maxDailyChallenge": "Khiêu chiến/ngày",
+      "maxDailyPaidChallenge": "Khiêu chiến trả phí/ngày",
+      "sameTargetCooldown": "Cooldown cùng mục tiêu",
+      "maxArenaTokenPerDay": "Cap token Arena/ngày",
+      "powerGapBlock": "Chặn lệch lực ≥",
+      "maxSeasonRewardTierDelta": "Delta reward tier mùa"
+    },
+    "battles": {
+      "title": "Battle Logs",
+      "modeFilter": "Mode",
+      "allModes": "Tất cả",
+      "characterFilter": "Character ID",
+      "characterPlaceholder": "characterId",
+      "search": "Tìm kiếm",
+      "empty": "Không có trận đấu nào.",
+      "invalidate": "Invalidate"
+    },
+    "anomalies": {
+      "title": "Anomaly Queue",
+      "statusFilter": "Trạng thái",
+      "empty": "Không có anomaly nào.",
+      "resolve": "Resolve"
+    },
+    "invalidate": {
+      "title": "Invalidate trận đấu",
+      "warning": "Hành động này flip status sang INVALIDATED và zero rewardGranted. Cần audit reason.",
+      "reasonPlaceholder": "Lý do invalidate (tối thiểu 3 ký tự)…",
+      "confirm": "Xác nhận invalidate"
+    },
+    "resolve": {
+      "title": "Resolve Anomaly",
+      "resolutionLabel": "Resolution",
+      "reasonPlaceholder": "Lý do resolve (tối thiểu 3 ký tự)…",
+      "confirm": "Xác nhận resolve"
+    },
+    "toast": {
+      "invalidated": "Đã invalidate trận đấu.",
+      "resolved": "Đã resolve anomaly."
+    },
+    "errors": {
+      "load": "Không tải được dữ liệu admin PvP ({code}).",
+      "search": "Tìm kiếm thất bại ({code}).",
+      "invalidate": "Invalidate thất bại ({code}).",
+      "resolve": "Resolve thất bại ({code}).",
+      "reasonRequired": "Vui lòng nhập reason ≥ 3 ký tự."
+    }
   }
 }

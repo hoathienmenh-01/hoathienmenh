@@ -256,6 +256,11 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // wipe explicitly để reset state giữa test runs).
   await prisma.arenaWintradeAlert.deleteMany({});
   await prisma.arenaSeason.deleteMany({});
+  // Phase 29.0 — PvP Foundation V1 (battle log + defense profile + anomaly).
+  // Wipe trước Character — FK Cascade nhưng explicit cho rõ thứ tự.
+  await prisma.pvpBattle.deleteMany({});
+  await prisma.pvpDefenseProfile.deleteMany({});
+  await prisma.pvpAnomalyLog.deleteMany({});
   // Phase 14.3.E.1 — mini-battle session rows (encounterId pointer chỉ là
   // string, không FK; xoá trước encounter để giữ deterministic order).
   await prisma.tribulationMiniBattle.deleteMany({});

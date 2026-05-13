@@ -6424,5 +6424,119 @@
       "GIFT_EXPIRED": "Gift expired.",
       "UNKNOWN": "Something went wrong."
     }
+  },
+  "pvp": {
+    "title": "PvP",
+    "intro": "Challenge opponents, save your defense formation and view battle history.",
+    "loading": "Loading…",
+    "modes": {
+      "DUEL": "Duel",
+      "FRIENDLY_SPARRING": "Friendly Sparring"
+    },
+    "policy": {
+      "title": "PvP Policy",
+      "maxDailyChallenge": "Challenges/day",
+      "sameTargetCooldownMinutes": "Same-target cooldown (min)",
+      "powerGapWarning": "Power gap warning",
+      "powerGapBlock": "Block on power gap"
+    },
+    "defense": {
+      "title": "Defense Formation",
+      "hint": "Snapshot stores your current stats for when you are offline. Label is optional build name.",
+      "empty": "No saved formation. Current stats will be used when challenged.",
+      "label": "Build label",
+      "labelPlaceholder": "e.g. Fire Caster",
+      "save": "Save formation",
+      "snapshotPower": "Snapshot power",
+      "snapshotRealm": "Realm",
+      "updatedAt": "Updated"
+    },
+    "challenge": {
+      "title": "Challenge",
+      "hint": "DUEL adjusts rating; FRIENDLY_SPARRING grants no reward and does not change rating.",
+      "target": "Target ID",
+      "targetPlaceholder": "opponent characterId",
+      "mode": "Mode",
+      "submit": "Challenge",
+      "lastResult": "Last result",
+      "result": "Result",
+      "powerGap": "Power gap",
+      "rewardGranted": "Reward",
+      "ratingDelta": "Rating delta"
+    },
+    "logs": {
+      "title": "Battle history",
+      "filter": "Filter mode",
+      "all": "All",
+      "empty": "No battles yet.",
+      "mode": "Mode",
+      "result": "Result",
+      "powerGap": "Gap",
+      "reward": "Reward",
+      "createdAt": "When"
+    },
+    "toast": {
+      "defenseSaved": "Defense formation saved.",
+      "challengeResolved": "Battle resolved: {result}"
+    },
+    "errors": {
+      "load": "Failed to load PvP data ({code}).",
+      "defenseSave": "Failed to save defense ({code}).",
+      "challenge": "Challenge failed ({code}).",
+      "targetRequired": "Please enter a target ID."
+    }
+  },
+  "adminPvp": {
+    "title": "PvP Center (Admin)",
+    "intro": "View current policy, search battle logs + invalidate, review anomaly queue.",
+    "loading": "Loading…",
+    "policy": {
+      "title": "PvP Configuration",
+      "maxDailyChallenge": "Challenges/day",
+      "maxDailyPaidChallenge": "Paid challenges/day",
+      "sameTargetCooldown": "Same-target cooldown",
+      "maxArenaTokenPerDay": "Arena token cap/day",
+      "powerGapBlock": "Block power gap ≥",
+      "maxSeasonRewardTierDelta": "Season reward tier delta"
+    },
+    "battles": {
+      "title": "Battle Logs",
+      "modeFilter": "Mode",
+      "allModes": "All",
+      "characterFilter": "Character ID",
+      "characterPlaceholder": "characterId",
+      "search": "Search",
+      "empty": "No battles.",
+      "invalidate": "Invalidate"
+    },
+    "anomalies": {
+      "title": "Anomaly Queue",
+      "statusFilter": "Status",
+      "empty": "No anomalies.",
+      "resolve": "Resolve"
+    },
+    "invalidate": {
+      "title": "Invalidate Battle",
+      "warning": "This flips status to INVALIDATED and zeroes rewardGranted. Audit reason required.",
+      "reasonPlaceholder": "Reason for invalidation (min 3 chars)…",
+      "confirm": "Confirm invalidate"
+    },
+    "resolve": {
+      "title": "Resolve Anomaly",
+      "resolutionLabel": "Resolution",
+      "reasonPlaceholder": "Resolve reason (min 3 chars)…",
+      "confirm": "Confirm resolve"
+    },
+    "toast": {
+      "invalidated": "Battle invalidated.",
+      "resolved": "Anomaly resolved."
+    },
+    "errors": {
+      "load": "Failed to load admin PvP data ({code}).",
+      "search": "Search failed ({code}).",
+      "invalidate": "Invalidate failed ({code}).",
+      "resolve": "Resolve failed ({code}).",
+      "reasonRequired": "Please enter reason ≥ 3 chars."
+    }
   }
 }
