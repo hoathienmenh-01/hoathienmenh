@@ -134,6 +134,26 @@ export class ClaimBoxService {
    * return ENTRY_NOT_PENDING.
    */
   async claim(characterId: string, entryId: string) {
+    // Pre-check expired BEFORE opening transaction so we can mark EXPIRED
+    // without the transaction rollback losing it.
+    const preEntry = await this.prisma.marketClaimBoxEntry.findUnique({
+      where: { id: entryId },
+    });
+    if (!preEntry) throw new ClaimBoxError('ENTRY_NOT_FOUND');
+    if (preEntry.characterId !== characterId) {
+      throw new ClaimBoxError('NOT_OWNER');
+    }
+    if (
+      preEntry.status === 'PENDING' &&
+      preEntry.expiresAt &&
+      preEntry.expiresAt.getTime() < Date.now()
+    ) {
+      await this.prisma.marketClaimBoxEntry.updateMany({
+        where: { id: preEntry.id, status: 'PENDING' },
+        data: { status: 'EXPIRED' },
+      });
+      throw new ClaimBoxError('ENTRY_EXPIRED');
+    }
     return this.prisma.$transaction(async (tx) => {
       const entry = await tx.marketClaimBoxEntry.findUnique({
         where: { id: entryId },
@@ -144,13 +164,6 @@ export class ClaimBoxService {
       }
       if (entry.status !== 'PENDING') {
         throw new ClaimBoxError('ENTRY_NOT_PENDING');
-      }
-      if (entry.expiresAt && entry.expiresAt.getTime() < Date.now()) {
-        await tx.marketClaimBoxEntry.updateMany({
-          where: { id: entry.id, status: 'PENDING' },
-          data: { status: 'EXPIRED' },
-        });
-        throw new ClaimBoxError('ENTRY_EXPIRED');
       }
       const flip = await tx.marketClaimBoxEntry.updateMany({
         where: { id: entry.id, status: 'PENDING' },
