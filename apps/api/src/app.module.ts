@@ -23,6 +23,7 @@ import { NpcAffinityModule } from './modules/npc-affinity/npc-affinity.module';
 import { StoryDialogueModule } from './modules/story-dialogue/story-dialogue.module';
 import { StoryDungeonModule } from './modules/story-dungeon/story-dungeon.module';
 import { Phase33StoryModule } from './modules/story-v2/story-v2.module';
+import { OnboardingQuestModule } from './modules/onboarding-quest/onboarding-quest.module';
 import { GiftCodeModule } from './modules/giftcode/giftcode.module';
 import { MailModule } from './modules/mail/mail.module';
 import { EmailModule } from './modules/email/email.module';
@@ -118,6 +119,7 @@ import { PlayerNavigationModule } from './modules/player-navigation/player-navig
     StoryDialogueModule,
     StoryDungeonModule,
     Phase33StoryModule,
+    OnboardingQuestModule,
     GiftCodeModule,
     MailModule,
     EmailModule,
