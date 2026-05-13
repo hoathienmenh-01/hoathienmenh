@@ -2006,9 +2006,7 @@ export function phase33ReferencedDungeonKeys(): readonly string[] {
 }
 
 /** Trả reward cap theo policy. */
-export function phase33RewardCap(
-  policyKey: Phase33RewardPolicyKey,
-): { main: number; side: number; hidden: number; daily: number; weekly: number; exp: number } {
+export function phase33RewardCap(policyKey: Phase33RewardPolicyKey): Phase33RewardCapDef {
   return REWARD_CAP[policyKey];
 }
 
