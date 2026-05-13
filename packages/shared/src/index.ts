@@ -109,3 +109,4 @@ export * from './world-bosses-v2';
 export * from './sect-content';
 export * from './trial-towers';
 export * from './opportunities';
+export * from './world-content-summary';
