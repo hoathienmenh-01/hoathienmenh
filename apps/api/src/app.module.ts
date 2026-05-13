@@ -40,6 +40,7 @@ import { AdminEconomySafetyModule } from './modules/admin-economy-safety/admin-e
 import { AdminAnticheatModule } from './modules/admin-anticheat/admin-anticheat.module';
 import { AdminMarketAbuseModule } from './modules/admin-market-abuse/admin-market-abuse.module';
 import { SocialModule } from './modules/social/social.module';
+import { CoCultivationModule } from './modules/co-cultivation/co-cultivation.module';
 import { ChatPrivateModule } from './modules/chat-private/chat-private.module';
 import { ChatGroupModule } from './modules/chat-group/chat-group.module';
 import { PresenceModule } from './modules/presence/presence.module';
@@ -201,6 +202,11 @@ import { PlayerNavigationModule } from './modules/player-navigation/player-navig
     // module re-use isBlockedBetween + areFriends. RealtimeModule đã
     // imported gián tiếp qua ChatModule — explicit re-import an toàn.
     SocialModule,
+    // Phase 35.1 — Co-Cultivation / Hợp Luyện. Reuse SocialService
+    // (areFriends/isBlockedBetween) + RealtimeService (isOnline) +
+    // RewardCapService (bonus EXP áp 1 lần ở complete, source
+    // CULTIVATION share budget). KHÔNG sửa cultivation.processor.
+    CoCultivationModule,
     ChatPrivateModule,
     ChatGroupModule,
     // Phase 19.2 — Chat Moderation & Report System. User report

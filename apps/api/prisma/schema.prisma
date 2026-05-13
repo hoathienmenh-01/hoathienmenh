@@ -2132,6 +2132,74 @@ model PlayerBlock {
   @@index([blockedUserId])
 }
 
+/// Phase 35.1 — Co-Cultivation / Hợp Luyện session lifecycle.
+///
+/// PENDING → ACTIVE (partner accept) → COMPLETED (initiator complete) hoặc
+/// CANCELLED / EXPIRED.
+///
+/// Server-authoritative — bonus EXP áp 1 lần ở `complete` qua
+/// `RewardCapService.applyCapTx({ source: 'CULTIVATION' })` (share budget
+/// tránh dual-farm với regular tick). `rewardApplied` boolean CAS-guard
+/// idempotent — không double-apply nếu controller retry.
+///
+/// Anti-abuse: cần friendship (Phase 19.1) + cả 2 không block + presence
+/// optional + daily cap 3/30 phút.
+enum CoCultivationStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+model CoCultivationSession {
+  id                   String              @id @default(cuid())
+  /// userId người gửi yêu cầu hợp luyện.
+  initiatorUserId      String
+  /// userId người nhận yêu cầu hợp luyện.
+  partnerUserId        String
+  /// Snapshot characterId tại lúc tạo — phục vụ audit + future
+  /// processor wire. Không FK để mirror soft-ref Phase 19.1 social.
+  initiatorCharacterId String
+  partnerCharacterId   String
+  status               CoCultivationStatus @default(PENDING)
+  /// Tổng thời lượng buff dự kiến (giây). Default 600s = 10 phút.
+  durationSec          Int                 @default(600)
+  /// Phần trăm bonus áp lên base cultivation rate (1..5). Server clamp.
+  buffPercent          Int                 @default(3)
+  startedAt            DateTime?
+  completedAt          DateTime?
+  /// Hạn chót để accept (PENDING expire). Service hoặc cron set/check.
+  expiresAt            DateTime?
+  rewardApplied        Boolean             @default(false)
+  /// Tổng EXP bonus thực sự được grant (cả initiator + partner sau cap).
+  bonusExpGranted      BigInt              @default(0)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  @@index([initiatorUserId, status, createdAt])
+  @@index([partnerUserId, status, createdAt])
+  @@index([status, createdAt])
+}
+
+/// Phase 35.1 — Daily usage bucket per-user cho co-cultivation. Track
+/// `sessionsCompleted` (cap 3/ngày) + `totalBuffSeconds` (cap 1800s/ngày)
+/// + `totalBonusExp` (audit). Reset theo `dateKey` (YYYY-MM-DD theo
+/// `DAILY_REWARD_CAP_TZ`, default Asia/Ho_Chi_Minh).
+model CoCultivationDailyUsage {
+  id                String   @id @default(cuid())
+  userId            String
+  dateKey           String
+  sessionsCompleted Int      @default(0)
+  totalBuffSeconds  Int      @default(0)
+  totalBonusExp     BigInt   @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([userId, dateKey])
+  @@index([dateKey])
+}
+
 /// Phase 19.1 — Loại chat thread:
 ///   - `PRIVATE`: 1-1 message giữa 2 user (`PrivateChatThread` +
 ///     `PrivateChatMessage`).
@@ -6430,19 +6498,19 @@ model CharacterStoryV2QuestProgress {
 /// Đây là audit row — currency/item/exp/affinity grants thực tế đã đi qua
 /// `CurrencyLedger` / `ItemLedger` / `CharacterNpcAffinity` rows riêng.
 model CharacterStoryV2RewardClaim {
-  id                String    @id @default(cuid())
-  characterId       String
-  character         Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  questKey          String
-  linhThachGranted  BigInt    @default(0)
-  tienNgocGranted   Int       @default(0)
-  expGranted        BigInt    @default(0)
-  congHienGranted   Int       @default(0)
+  id               String    @id @default(cuid())
+  characterId      String
+  character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  questKey         String
+  linhThachGranted BigInt    @default(0)
+  tienNgocGranted  Int       @default(0)
+  expGranted       BigInt    @default(0)
+  congHienGranted  Int       @default(0)
   /// JSON `[{itemKey, qty}]`.
-  itemsGranted      Json      @default("[]")
+  itemsGranted     Json      @default("[]")
   /// JSON `[{npcKey, delta}]`.
-  affinityGranted   Json      @default("[]")
-  claimedAt         DateTime  @default(now())
+  affinityGranted  Json      @default("[]")
+  claimedAt        DateTime  @default(now())
 
   @@unique([characterId, questKey])
   @@index([characterId, claimedAt])
