@@ -128,3 +128,7 @@ export * from './mentor';
 export * from './returner';
 export * from './system-gift';
 export * from './admin-mail';
+
+// ─── Phase 33.0 — Tu Tiên Lộ Story Quest Expansion V2 / Quyển II–IV ────────
+export * from './story-chapters-quyen-ii-iv';
+export * from './story-quest-expansion';

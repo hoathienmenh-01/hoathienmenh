@@ -420,6 +420,77 @@ export const DIALOGUES: readonly DialogueLineDef[] = [
       { key: 'leave', label: 'Cắt đứt đạo âm.', closeDialogue: true },
     ],
   },
+  // ─── Phase 33 — Quyển II–IV NPC default dialogues ─────────────────────────
+  {
+    id: 'dlg_luc_binh_default',
+    speakerNpcKey: 'npc_luc_binh',
+    condition: { kind: 'realm_min', realmOrder: 9 },
+    text: 'Phi thăng giả à? Đừng tin lời tiên đình. Xích còn đây, gông cùm cũng còn — nếu ngươi muốn xin tự do, hãy đứng bên ta.',
+    choices: [
+      { key: 'ask_chain', label: 'Cho ta xem mảnh xích.', closeDialogue: true },
+      { key: 'leave', label: 'Ta cần thời gian suy nghĩ.', closeDialogue: true },
+    ],
+  },
+  {
+    id: 'dlg_tich_thien_thanh_su_default',
+    speakerNpcKey: 'npc_tich_thien_thanh_su',
+    condition: { kind: 'realm_min', realmOrder: 16 },
+    text: 'Hậu bối Hoa Thiên… ngươi đứng giữa ngã ba. Ngươi vẫn tin đại đạo đáng được mở hay đã bắt đầu thấy chúng sinh đáng bị khoá?',
+    choices: [
+      { key: 'reject_lock', label: 'Đại đạo vẫn đáng được mở.', closeDialogue: true },
+      { key: 'consider_lock', label: 'Cho ta nghe lý do của ngươi.', closeDialogue: true },
+    ],
+  },
+  {
+    id: 'dlg_dao_vuc_chi_tam_default',
+    speakerNpcKey: 'npc_dao_vuc_chi_tam',
+    condition: { kind: 'realm_min', realmOrder: 19 },
+    text: 'Ta là tiếng nói của vạn sinh trong Đạo Vực ngươi mở. Nếu luật ngươi đặt khiến ta câm, ngươi đã đánh mất chúng ta.',
+    choices: [
+      { key: 'ask_soft_law', label: 'Nói cho ta nghe nguyện vọng của các ngươi.', closeDialogue: true },
+      { key: 'declare_iron_law', label: 'Trật tự cần thiết hơn tiếng nói.', closeDialogue: true },
+    ],
+  },
+  {
+    id: 'dlg_nguyen_linh_nu_default',
+    speakerNpcKey: 'npc_nguyen_linh_nu',
+    condition: { kind: 'realm_min', realmOrder: 22 },
+    text: 'Bản Nguyên Hải nuôi mọi sinh linh sơ khai. Ngươi đến đây vì đói đạo hay vì muốn dạy chúng ta cách sống?',
+    choices: [
+      { key: 'humble_listen', label: 'Ta đến để học, không để dạy.', closeDialogue: true },
+      { key: 'arrogant_teach', label: 'Ta đem đạo Hoa Thiên đến.', closeDialogue: true },
+    ],
+  },
+  {
+    id: 'dlg_huyen_huyen_giam_quan_default',
+    speakerNpcKey: 'npc_huyen_huyen_giam_quan',
+    condition: { kind: 'realm_min', realmOrder: 23 },
+    text: 'Huyền Huyền Cổ Bi khắc khác nhau với từng người. Ngươi sẵn sàng nghe câu hỏi mà bia dành riêng cho ngươi chưa?',
+    choices: [
+      { key: 'read_inscription', label: 'Ta nghe.', closeDialogue: true },
+      { key: 'leave', label: 'Chưa phải lúc.', closeDialogue: true },
+    ],
+  },
+  {
+    id: 'dlg_vo_thuy_lao_nhan_default',
+    speakerNpcKey: 'npc_vo_thuy_lao_nhan',
+    condition: { kind: 'realm_min', realmOrder: 24 },
+    text: 'Ta câu thời gian, không câu cá. Khởi đầu của ngươi không ở Thanh Khê. Ngươi có chắc muốn biết nó ở đâu không?',
+    choices: [
+      { key: 'ask_origin', label: 'Cho ta biết khởi đầu thật.', closeDialogue: true },
+      { key: 'refuse', label: 'Đừng nói. Ta tự đi tiếp.', closeDialogue: true },
+    ],
+  },
+  {
+    id: 'dlg_vo_chung_dong_tu_default',
+    speakerNpcKey: 'npc_vo_chung_dong_tu',
+    condition: { kind: 'realm_min', realmOrder: 25 },
+    text: 'Cổng Vô Chung đã mở. Phía bên kia là ngươi-tương-lai đang chờ. Hắn không phải kẻ thù, nhưng cũng không còn là ngươi.',
+    choices: [
+      { key: 'meet_future_self', label: 'Đưa ta đến gặp hắn.', closeDialogue: true },
+      { key: 'leave', label: 'Ta chưa sẵn sàng.', closeDialogue: true },
+    ],
+  },
 
 ] as const;
 

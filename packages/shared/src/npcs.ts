@@ -301,6 +301,84 @@ export const NPCS: readonly NpcDef[] = [
     loreSummary:
       'Muốn khoá đại đạo vì tin chúng sinh sẽ tự huỷ; Phase 21 chỉ foreshadow triết học, không cho gặp trực diện. Story bible §6.',
   },
+  // ─── Phase 33 — Tu Tiên Lộ Quyển II–IV NPC trụ cột ─────────────────────────
+  {
+    key: 'npc_luc_binh',
+    name: 'Lục Bình',
+    faction: 'wandering',
+    realmGateOrder: 9,
+    defaultDialogueId: 'dlg_luc_binh_default',
+    questKeys: [],
+    description: 'Phi thăng giả nữ ở Phi Thăng Doanh, giữ một mảnh xích cũ của Tiên Đình.',
+    loreSummary:
+      'Phase 33 Quyển II: bạn đồng hành ở Chap 10 Phi Thăng Doanh; ký ức xích phi thăng mở route giải phóng phạm nhân.',
+  },
+  {
+    key: 'npc_tich_thien_thanh_su',
+    name: 'Tịch Thiên Thánh Sứ',
+    faction: 'tich_thien_dien',
+    realmGateOrder: 16,
+    defaultDialogueId: 'dlg_tich_thien_thanh_su_default',
+    questKeys: [],
+    description: 'Sứ giả Tịch Thiên Điện cấp Thánh Cảnh; chân thân lộ tại Chap 21.',
+    loreSummary:
+      'Phase 33 Quyển III–IV: cánh tay Tịch Thiên ở Thánh Cảnh / Thiên Đạo; affinity cao mở route tiết lộ chân tướng Vô Đạo Chung.',
+  },
+  {
+    key: 'npc_dao_vuc_chi_tam',
+    name: 'Đạo Vực Chi Tâm',
+    faction: 'hoa_thien_mon',
+    realmGateOrder: 19,
+    defaultDialogueId: 'dlg_dao_vuc_chi_tam_default',
+    questKeys: [],
+    description: 'Linh thể nhân hóa của Đạo Vực Hoa Thiên, phát ngôn tập thể của vạn sinh linh.',
+    loreSummary:
+      'Phase 33 Quyển III Chap 20: NPC ngữ pháp đại diện Đạo Vực; chọn luật mềm mở affinity, luật sắt khiến NPC im lặng.',
+  },
+  {
+    key: 'npc_nguyen_linh_nu',
+    name: 'Nguyên Linh Nữ',
+    faction: 'wandering',
+    realmGateOrder: 22,
+    defaultDialogueId: 'dlg_nguyen_linh_nu_default',
+    questKeys: [],
+    description: 'Nguyên linh canh giữ Bản Nguyên Hải, ngân tóc bạc đầu, mắt như nước nguyên.',
+    loreSummary:
+      'Phase 33 Quyển IV Chap 22: NPC bản nguyên đầu tiên; affinity cao hé route Đạo Liên Hoa Thiên tiến hóa.',
+  },
+  {
+    key: 'npc_huyen_huyen_giam_quan',
+    name: 'Huyền Huyền Giám Quan',
+    faction: 'wandering',
+    realmGateOrder: 23,
+    defaultDialogueId: 'dlg_huyen_huyen_giam_quan_default',
+    questKeys: [],
+    description: 'Giám quan Huyền Huyền Cổ Bi — đọc câu khắc khác nhau cho mỗi người.',
+    loreSummary:
+      'Phase 33 Quyển IV Chap 23: NPC ngoại đạo; câu hỏi của hắn lộ phần dị giáo của đạo người chơi.',
+  },
+  {
+    key: 'npc_vo_thuy_lao_nhan',
+    name: 'Vô Thủy Lão Nhân',
+    faction: 'wandering',
+    realmGateOrder: 24,
+    defaultDialogueId: 'dlg_vo_thuy_lao_nhan_default',
+    questKeys: [],
+    description: 'Lão nhân Vô Thủy ngồi câu cá ở Thời Gian Luân Hải, biết tất cả khởi đầu nhưng không tiết lộ.',
+    loreSummary:
+      'Phase 33 Quyển IV Chap 24: NPC thời gian; gợi mở khởi đầu thật của người chơi không ở Thanh Khê.',
+  },
+  {
+    key: 'npc_vo_chung_dong_tu',
+    name: 'Vô Chung Đồng Tử',
+    faction: 'wandering',
+    realmGateOrder: 25,
+    defaultDialogueId: 'dlg_vo_chung_dong_tu_default',
+    questKeys: [],
+    description: 'Đồng tử Vô Chung giữ cửa Vô Chung Chi Môn, lời nói ghép từ tương lai và hiện tại.',
+    loreSummary:
+      'Phase 33 Quyển IV Chap 25: NPC tương lai chiến trường; hé thư từ Tịch Thiên Thánh Sứ tương lai.',
+  },
 ] as const;
 
 export function npcByKey(key: string): NpcDef | undefined {
