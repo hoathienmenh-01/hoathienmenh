@@ -121,3 +121,7 @@ export * from './sect-content';
 export * from './trial-towers';
 export * from './opportunities';
 export * from './world-content-summary';
+
+// ─── Phase 33.0 — Tu Tiên Lộ Story Quest Expansion V2 / Quyển II–IV ────────
+export * from './story-chapters-quyen-ii-iv';
+export * from './story-quest-expansion';

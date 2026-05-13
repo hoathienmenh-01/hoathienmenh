@@ -363,6 +363,118 @@ export const NPC_AFFINITY: readonly NpcAffinityDef[] = [
       },
     ],
   },
+  // ─── Phase 33 — Quyển II–IV NPC affinity config ───────────────────────────
+  {
+    npcKey: 'npc_luc_binh',
+    initialScore: 0,
+    minScore: -60,
+    maxScore: 200,
+    unlockHints: [
+      {
+        tierKey: 'quen_biet',
+        description: 'Mở dialogue về xích phi thăng và Phi Thăng Doanh.',
+        descriptionEn: 'Unlocks dialogue about ascension chains and the Ascension Camp.',
+      },
+      {
+        tierKey: 'ban_huu',
+        description: 'Mở route giải phóng phạm nhân Phi Thăng Doanh.',
+        descriptionEn: 'Unlocks the route to free Ascension Camp prisoners.',
+      },
+      {
+        tierKey: 'tri_giao',
+        description: 'Tiết lộ ký ức cảnh tiên giới phía sau.',
+        descriptionEn: 'Reveals memory of the deeper immortal realm behind the camp.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_tich_thien_thanh_su',
+    initialScore: -20,
+    minScore: -120,
+    maxScore: 120,
+    unlockHints: [
+      {
+        tierKey: 'quen_biet',
+        description: 'Mở lập luận triết học của Tịch Thiên Điện.',
+        descriptionEn: 'Unlocks the philosophical argument of Tịch Thiên Hall.',
+      },
+      {
+        tierKey: 'ban_huu',
+        description: 'Mở route tiết lộ chân tướng Vô Đạo Chung.',
+        descriptionEn: 'Unlocks the route revealing the true nature of the Endless Bell.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_dao_vuc_chi_tam',
+    initialScore: 0,
+    minScore: -80,
+    maxScore: 200,
+    unlockHints: [
+      {
+        tierKey: 'quen_biet',
+        description: 'Đạo Vực sinh linh tin tưởng người chơi và tự nói nguyện vọng.',
+        descriptionEn: 'Dao Domain lives trust the player and voice their wishes.',
+      },
+      {
+        tierKey: 'ban_huu',
+        description: 'Mở route luật mềm cho Đạo Vực Hoa Thiên.',
+        descriptionEn: 'Unlocks the soft-law route for the Hoa Thiên Dao Domain.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_nguyen_linh_nu',
+    initialScore: 0,
+    minScore: -80,
+    maxScore: 220,
+    unlockHints: [
+      {
+        tierKey: 'ban_huu',
+        description: 'Mở route Đạo Liên Hoa Thiên tiến hóa khỏi Bản Nguyên Hải.',
+        descriptionEn: 'Unlocks the route for the Hoa Thiên Dao Lotus to evolve from the Origin Sea.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_huyen_huyen_giam_quan',
+    initialScore: 0,
+    minScore: -50,
+    maxScore: 150,
+    unlockHints: [
+      {
+        tierKey: 'quen_biet',
+        description: 'Đọc câu khắc Huyền Huyền dành riêng cho đạo người chơi.',
+        descriptionEn: 'Reads the Huyền Huyền inscription tailored to the player’s dao.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_vo_thuy_lao_nhan',
+    initialScore: 10,
+    minScore: -50,
+    maxScore: 180,
+    unlockHints: [
+      {
+        tierKey: 'ban_huu',
+        description: 'Tiết lộ khởi đầu thật của người chơi.',
+        descriptionEn: 'Reveals the player’s true beginning.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_vo_chung_dong_tu',
+    initialScore: 0,
+    minScore: -60,
+    maxScore: 180,
+    unlockHints: [
+      {
+        tierKey: 'ban_huu',
+        description: 'Mở thư từ ngươi-tương-lai và Tịch Thiên Thánh Sứ tương lai.',
+        descriptionEn: 'Unlocks letters from future-self and future Tịch Thiên Saint Envoy.',
+      },
+    ],
+  },
 ] as const;
 
 /** Cap delta tuyệt đối / 1 dialogue choice — ngăn farm khi catalog tự ý tăng. */
