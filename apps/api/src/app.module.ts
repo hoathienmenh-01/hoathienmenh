@@ -60,6 +60,8 @@ import { ConfigVersionAdminModule } from './modules/config-version-admin/config-
 import { AdminControlCenterModule } from './modules/admin-control-center/admin-control-center.module';
 import { EventBuilderModule } from './modules/event-builder/event-builder.module';
 import { PvpModule } from './modules/pvp/pvp.module';
+import { MarketV2Module } from './modules/market-v2/market-v2.module';
+import { CodexModule } from './modules/codex/codex.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { ArenaModule } from './modules/arena/arena.module';
 import { ArenaAntiWintradeAdminModule } from './modules/arena-anti-wintrade-admin/arena-anti-wintrade-admin.module';
@@ -171,6 +173,11 @@ import { CosmeticsModule } from './modules/cosmetics/cosmetics.module';
     // (DUEL / FRIENDLY_SPARRING / SECT_WAR / TERRITORY_WAR / EVENT_PVP)
     // qua module này; ARENA tiếp tục dùng `ArenaModule` (Phase 14.1.B/C).
     PvpModule,
+    // Phase 30.0 — Market V2 / Auction House / Sect Treasury.
+    // Phụ thuộc CharacterModule (CurrencyService) + AdminControlCenterModule.
+    MarketV2Module,
+    // Phase 32.0 — Tu Tiên Bách Khoa / Content Codex / Bestiary.
+    CodexModule,
     // Phase 16.6 — Economy Anti-cheat (ledger checker + anomaly
     // scanner cron + admin endpoints). SAU AdminModule + EconomyModule.
     AdminEconomySafetyModule,
