@@ -151,7 +151,22 @@ export async function waitCharacter(
  *   - `globalSetup` (1 lần trước toàn suite, để clear state cũ).
  *   - `test.beforeEach` (cover case suite > 5 register/IP/15min).
  */
-const RATE_LIMIT_PATTERNS = ['rl:register:*', 'rl:login:*', 'rl:forgot-password:*'];
+const RATE_LIMIT_PATTERNS = [
+  // Legacy AuthModule per-route limiters (kept for backwards compat).
+  'rl:register:*',
+  'rl:login:*',
+  'rl:forgot-password:*',
+  // Unified `@RateLimitPolicy(...)` keys (Phase 15.x+ security guard) —
+  // canonical Redis prefix is `ratelimit:{policy}:{scope}:{subject}`,
+  // see `buildRateLimitKey()` in `packages/shared/src/security-rate-limit.ts`.
+  // Without this entry, AUTH_REGISTER / AUTH_LOGIN guards (mounted via
+  // `@RateLimitPolicy('AUTH_REGISTER')`) keep counting across E2E_FULL
+  // test runs and fast-running suites hit 429 after ~5 registers / IP.
+  'ratelimit:AUTH_REGISTER:*',
+  'ratelimit:AUTH_LOGIN:*',
+  'ratelimit:AUTH_REFRESH:*',
+  'ratelimit:AUTH_PASSWORD_RESET:*',
+];
 
 export async function flushAuthRateLimits(): Promise<void> {
   const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379';
