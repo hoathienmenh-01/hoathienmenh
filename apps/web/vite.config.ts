@@ -20,6 +20,10 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//, /^\/ws/],
+        // Phase PWA-1 — import auxiliary `push` + `notificationclick`
+        // handlers from `public/push-sw.js`. KHÔNG đụng Workbox
+        // generateSW pipeline (precache + runtime caching vẫn nguyên).
+        importScripts: ['push-sw.js'],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.startsWith('/api/'),

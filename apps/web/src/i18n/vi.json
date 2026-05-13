@@ -86,6 +86,12 @@
       "loadoutDelete": "Xoá bộ trang bị nhanh thất bại",
       "loadoutApply": "Áp dụng bộ trang bị nhanh thất bại",
       "loadoutSetDefault": "Đặt mặc định thất bại",
+      "pushVapid": "Không tải được khoá công khai push.",
+      "pushSubscribe": "Đăng ký thông báo đẩy thất bại.",
+      "pushUnsubscribe": "Huỷ thông báo đẩy thất bại.",
+      "pushList": "Không tải được danh sách thiết bị đã đăng ký.",
+      "pushPrefs": "Không tải được cấu hình thông báo.",
+      "pushPrefsUpdate": "Cập nhật cấu hình thông báo thất bại.",
       "worldSummary": "Không lấy được tổng quan thế giới.",
       "farmMaps": "Không lấy được danh sách map farm.",
       "farmStart": "Không bắt đầu được phiên farm.",
@@ -367,6 +373,7 @@
       "dungeon": "Luyện Khí Đường",
       "inventory": "Linh Bảo Các",
       "loadouts": "Bộ Trang Bị Nhanh",
+      "notificationSettings": "Thông báo đẩy",
       "market": "Phường Thị",
       "shop": "NPC Tiệm",
       "sect": "Tông Môn",
@@ -7261,6 +7268,56 @@
       "LOADOUT_PRESET_MODE_INVALID": "Chế độ không hợp lệ.",
       "LOADOUT_PRESET_PAYLOAD_INVALID": "Dữ liệu bộ trang bị không hợp lệ.",
       "LOADOUT_PRESET_LIMIT_REACHED": "Đã đạt giới hạn 20 bộ trang bị nhanh."
+    }
+  },
+  "webPush": {
+    "title": "Thông báo đẩy",
+    "subtitle": "Nhận thông báo ngay cả khi đóng game. Bạn có thể tắt bất cứ lúc nào.",
+    "unsupported": "Trình duyệt hiện không hỗ trợ Web Push. Hãy dùng Chrome / Edge / Firefox phiên bản mới hoặc trình duyệt máy tính.",
+    "permissionDenied": "Trình duyệt đang chặn thông báo cho trang này. Mở cài đặt trình duyệt để cho phép thông báo rồi tải lại trang.",
+    "masterTitle": "Bật trên thiết bị này",
+    "masterDescription": "Cho phép Xuân Tôi gửi thông báo đẩy đến trình duyệt.",
+    "enable": "Bật",
+    "disable": "Tắt",
+    "perTypeTitle": "Loại thông báo",
+    "on": "Bật",
+    "off": "Tắt",
+    "type": {
+      "boss": {
+        "title": "Boss xuất hiện",
+        "description": "World boss vừa xuất hiện (bỏ qua khung giờ yên tĩnh)."
+      },
+      "stamina": {
+        "title": "Đầy thể lực",
+        "description": "Thể lực đã hồi phục đầy."
+      },
+      "mail": {
+        "title": "Có thư mới",
+        "description": "Có thư mới trong hộp thư trong game."
+      },
+      "daily": {
+        "title": "Nhắc nhở điểm danh",
+        "description": "Lời nhắc nhận thưởng hằng ngày (mặc định tắt)."
+      }
+    },
+    "errors": {
+      "UNSUPPORTED": "Trình duyệt này không hỗ trợ thông báo đẩy.",
+      "PERMISSION_DENIED": "Bạn chưa cấp quyền hiển thị thông báo.",
+      "SW_NOT_REGISTERED": "Service worker chưa sẵn sàng — hãy tải lại trang và thử lại.",
+      "KEYS_MISSING": "Đăng ký thông báo đẩy thiếu khoá bắt buộc.",
+      "VAPID_NOT_CONFIGURED": "Máy chủ chưa cấu hình khoá VAPID.",
+      "PAYLOAD_INVALID": "Dữ liệu yêu cầu không hợp lệ.",
+      "ENDPOINT_INVALID": "Endpoint push không hợp lệ.",
+      "ENDPOINT_TOO_LONG": "Endpoint push quá dài.",
+      "P256DH_INVALID": "Khoá push không hợp lệ.",
+      "AUTH_INVALID": "Khoá auth push không hợp lệ.",
+      "USER_AGENT_TOO_LONG": "Chuỗi User-Agent quá dài.",
+      "SUBSCRIPTION_LIMIT_REACHED": "Bạn đã đạt giới hạn 10 thiết bị đăng ký push.",
+      "UNAUTHENTICATED": "Bạn cần đăng nhập để quản lý thông báo đẩy.",
+      "FORBIDDEN": "Bạn không có quyền với đăng ký này.",
+      "TYPE_INVALID": "Loại thông báo không hợp lệ.",
+      "ERROR": "Có lỗi không mong muốn. Vui lòng thử lại.",
+      "UNKNOWN": "Lỗi không xác định."
     }
   }
 }
