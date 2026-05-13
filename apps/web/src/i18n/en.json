@@ -1043,7 +1043,7 @@
       },
       "socket": {
         "label": "Socket / Unsocket",
-        "costLabel": "Socket: {linhThach} linh thạch + {materialQty}× {materialName}",
+        "costLabel": "Socket: {linhThach} linh thạch",
         "unsocketCostLabel": "Unsocket: {linhThach} linh thạch + {materialQty}× {materialName}"
       },
       "reforge": {
@@ -5235,6 +5235,56 @@
       "INVALID_INPUT": "Invalid input.",
       "RATE_LIMITED": "Too fast — please slow down and try again.",
       "ABUSE_BLOCKED": "Social action temporarily blocked due to abuse. Try again in a few minutes.",
+      "UNKNOWN": "Something went wrong — please retry."
+    }
+  },
+  "coCultivation": {
+    "tab": "Co-Cultivation",
+    "title": "Co-Cultivation",
+    "subtitle": "Cultivate together with a friend for a small EXP bonus (daily cap applied).",
+    "today": {
+      "sessions": "Sessions today",
+      "buffSeconds": "Buff seconds total",
+      "bonusExp": "Bonus EXP today"
+    },
+    "active": {
+      "title": "Current session",
+      "empty": "No active session — invite a friend below.",
+      "partner": "Partner",
+      "status": "Status",
+      "duration": "Duration"
+    },
+    "send": {
+      "partner": "Partner user ID",
+      "placeholder": "Enter a friend's userId.",
+      "action": "Invite to co-cultivate"
+    },
+    "action": {
+      "accept": "Accept",
+      "complete": "Complete",
+      "cancel": "Cancel"
+    },
+    "history": {
+      "title": "Recent sessions",
+      "empty": "No sessions yet."
+    },
+    "requestSent": "Invitation sent.",
+    "accepted": "Session accepted.",
+    "cancelled": "Session cancelled.",
+    "completed": "Session completed — bonus EXP granted.",
+    "errors": {
+      "SELF_NOT_ALLOWED": "Cannot co-cultivate with yourself.",
+      "NOT_FRIEND": "Must be friends to co-cultivate.",
+      "BLOCKED": "One of you has blocked the other.",
+      "ALREADY_ACTIVE": "An active session already exists — finish it first.",
+      "DAILY_CAP_REACHED": "Daily session cap reached.",
+      "BUFF_BUDGET_EXCEEDED": "Daily buff budget exceeded.",
+      "COOLDOWN_ACTIVE": "Cooldown active — try again in a few seconds.",
+      "PARTNER_OFFLINE": "Partner is offline.",
+      "INVALID_TRANSITION": "Session state does not allow this action.",
+      "NOT_AUTHORIZED": "You do not have permission for this session.",
+      "NOT_FOUND": "Session not found.",
+      "NO_CHARACTER": "You need a character before co-cultivating.",
       "UNKNOWN": "Something went wrong — please retry."
     }
   },

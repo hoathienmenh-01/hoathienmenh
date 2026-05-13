@@ -216,6 +216,27 @@ Tick EXP thực hiện bởi BullMQ processor `cultivation.processor.ts`. WS eve
 | GET    | `/social/profile/:userId`               | Yes  | `SOCIAL_PROFILE_VIEW` (60/60s user, block 5m) | **Phase 19.1.C** — Public player profile / inspect. Trả `PublicPlayerProfileDto` `{userId, displayName, character?, relationshipStatus (SELF/FRIEND/PENDING_INCOMING/PENDING_OUTGOING/BLOCKED_BY_ME/STRANGER), actions, online, joinedYearMonth, mutualFriendCount, sameSect}`. **Privacy mask**: target đã block viewer → 404 (KHÔNG leak existence). User/character không tồn tại → 404. **Whitelisted fields only** — KHÔNG bao giờ trả email/role/banned/currency (linhThach/tienNgoc)/inventory/payment/ipHash/sessionId. `character` snapshot = `{characterName, level, powerScore, realmKey, realmStage, realmFullName, title?, sectId?, sectName?}` (KHÔNG raw stats power/spirit/speed/hp/mp/settings). `mutualFriendCount` chỉ trả khi `STRANGER` (FRIEND → `null` privacy social-graph). `BLOCKED_BY_ME` trả minimal profile `character=null`. |
 | GET    | `/social/presence?userIds=csv`          | Yes  | —                   | **Phase 19.3** — Batch presence query. Query param `userIds` CSV (cap 50, dedupe). Trả `PresenceQueryResponse` `{presences: PresenceRow[]}` với `{userId, status (ONLINE/OFFLINE), lastSeenAt?}`. **Privacy mask**: target đã block viewer → `OFFLINE + lastSeenAt=null` (KHÔNG leak online time). |
 
+## Co-Cultivation — `CoCultivationController` (Phase 35.1)
+
+> Lightweight EXP buff khi 2 friend hợp luyện (online, không block, không vượt cap ngày). Bonus EXP áp 1 lần lúc `complete` qua `RewardCapService.applyCapTx({ source: 'CULTIVATION' })` → share daily cap budget với regular cultivation tick (prevent dual-farm). Idempotent qua `rewardApplied` CAS guard. Soft-ref `userId/characterId` (mirror Phase 19.1 — không FK). Error code: `SELF_NOT_ALLOWED`, `NOT_FRIEND`, `BLOCKED`, `ALREADY_ACTIVE`, `DAILY_CAP_REACHED`, `BUFF_BUDGET_EXCEEDED`, `COOLDOWN_ACTIVE`, `PARTNER_OFFLINE`, `INVALID_TRANSITION`, `NOT_AUTHORIZED`, `NOT_FOUND`, `NO_CHARACTER`, `INVALID_INPUT`.
+
+Limits (server-clamped, không nhận từ client tự do):
+
+- `BUFF_PERCENT_MIN..MAX` = 1..5 (default 3).
+- `MIN_DURATION_SEC..MAX_DURATION_SEC` = 60..1800 (default 600).
+- `DAILY_SESSIONS_CAP` = 3 / user / day.
+- `DAILY_BUFF_SECONDS_CAP` = 1800s / user / day.
+- `COMPLETE_COOLDOWN_SEC` = 60s giữa 2 lần `complete`.
+
+| Method | Path                                                | Auth | Mô tả |
+|--------|-----------------------------------------------------|------|-------|
+| GET    | `/social/co-cultivation/status`                     | Yes  | Trả `{ active: CoCultivationSessionRow \| null, today: CoCultivationDailyUsageRow + remainingSessions + remainingBuffSeconds }`. |
+| GET    | `/social/co-cultivation/history?limit=&before=`     | Yes  | Lịch sử phiên (initiator/partner), `orderBy createdAt desc`, `limit ≤ HISTORY_LIMIT_MAX (50)`. `{ sessions: [], hasMore: boolean }`. |
+| POST   | `/social/co-cultivation/sessions`                   | Yes  | Body `{ partnerUserId, durationSec?, buffPercent? }`. Guard: friend (Phase 19.1), không block, không self, partner online (best-effort RealtimeService), không có session ACTIVE/PENDING, daily cap, cooldown. Trả `{ session }` ở status `PENDING`. |
+| POST   | `/social/co-cultivation/sessions/:id/accept`        | Yes  | Partner only (NOT_AUTHORIZED nếu khác). Chỉ `PENDING → ACTIVE`. Defensive partner-side cap check (DAILY_CAP_REACHED). Trả `{ session }` ACTIVE + `startedAt`. |
+| POST   | `/social/co-cultivation/sessions/:id/cancel`        | Yes  | Initiator hoặc partner. `PENDING/ACTIVE → CANCELLED`. Idempotent OK trên `CANCELLED` (NOT-OK trên `COMPLETED/EXPIRED`). |
+| POST   | `/social/co-cultivation/sessions/:id/complete`      | Yes  | Initiator hoặc partner. Chỉ `ACTIVE → COMPLETED`. Compute bonus EXP qua `computeCoCultivationBonusExp(durationSec, buffPercent)` → áp qua `RewardCapService.applyCapTx({ source: 'CULTIVATION', refType: 'CoCultivationComplete', refId: session.id })` cho **cả 2 character**. Upsert `CoCultivationDailyUsage` cho cả 2 user. **Idempotent**: nếu `rewardApplied=true` và `status='COMPLETED'`, trả về row hiện tại không grant lần 2. |
+
 ## Notification — `NotificationController` (Phase 19.3)
 
 > Bell + dropdown notification inbox. Server-authoritative own-user-only — mọi REST filter `WHERE userId === requesterUserId`. **i18n-key only** `titleKey`/`bodyKey` — KHÔNG nhận free-text (chống XSS / injection). Sender/group name nhúng vào `dataJson` đã sanitize qua `sanitizeNotificationData` (cap depth=3 + length=500). Trigger nguồn: friend request (received/accepted), private message received, group message received, group invite/member added, chat report resolved, security alert. Error code (Envelope): `NOTIFICATION_NOT_FOUND`, `FORBIDDEN`. Realtime mirror: server emit `notification:new` + `notification:unread-count` WS event (emit-to-user-only) khi user online.
