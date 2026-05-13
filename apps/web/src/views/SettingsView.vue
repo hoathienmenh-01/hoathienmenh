@@ -11,6 +11,18 @@ import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import ConfirmModal from '@/components/ui/ConfirmModal.vue';
+import {
+  APPEARANCE_VALUES,
+  FONT_SIZE_VALUES,
+  NUMBER_FORMAT_VALUES,
+  DEFAULT_PLAYER_SETTINGS,
+  type PlayerSettings,
+} from '@xuantoi/shared';
+import {
+  fetchPlayerSettings,
+  patchPlayerSettings,
+  resetPlayerSettings,
+} from '@/api/playerExperience';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -32,6 +44,11 @@ const passwordTooShort = computed(
   () => newPassword.value.length > 0 && newPassword.value.length < 8,
 );
 
+const playerSettings = ref<PlayerSettings>({ ...DEFAULT_PLAYER_SETTINGS });
+const playerSettingsLoading = ref(true);
+const playerSettingsSaving = ref(false);
+const resetConfirmOpen = ref(false);
+
 onMounted(async () => {
   await auth.hydrate();
   if (!auth.isAuthenticated) {
@@ -40,7 +57,52 @@ onMounted(async () => {
   }
   await game.fetchState().catch(() => null);
   game.bindSocket();
+  try {
+    const row = await fetchPlayerSettings();
+    playerSettings.value = row.settings;
+  } catch {
+    // Silently fall back to default (NO_CHARACTER hoặc lỗi mạng).
+  } finally {
+    playerSettingsLoading.value = false;
+  }
 });
+
+async function savePlayerSettings(patch: Partial<PlayerSettings>): Promise<void> {
+  if (playerSettingsSaving.value) return;
+  playerSettingsSaving.value = true;
+  try {
+    const row = await patchPlayerSettings(patch);
+    playerSettings.value = row.settings;
+    toast.push({ type: 'success', text: t('playerSettings.saved') });
+  } catch (e) {
+    const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
+    toast.push({
+      type: 'error',
+      text: t(`playerSettings.errors.${code}`, t('playerSettings.errors.UNKNOWN')),
+    });
+  } finally {
+    playerSettingsSaving.value = false;
+  }
+}
+
+async function doResetPlayerSettings(): Promise<void> {
+  if (playerSettingsSaving.value) return;
+  playerSettingsSaving.value = true;
+  try {
+    const row = await resetPlayerSettings();
+    playerSettings.value = row.settings;
+    toast.push({ type: 'success', text: t('playerSettings.saved') });
+  } catch (e) {
+    const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
+    toast.push({
+      type: 'error',
+      text: t(`playerSettings.errors.${code}`, t('playerSettings.errors.UNKNOWN')),
+    });
+  } finally {
+    playerSettingsSaving.value = false;
+    resetConfirmOpen.value = false;
+  }
+}
 
 async function submitChangePassword(): Promise<void> {
   if (submittingPwd.value) return;
@@ -201,6 +263,115 @@ function changeLocale(value: string): void {
         </select>
       </section>
 
+      <!-- Phase 41 — Player experience preferences -->
+      <section
+        class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-3 text-sm"
+        data-testid="player-settings-section"
+      >
+        <h2 class="text-amber-200 text-base">{{ t('playerSettings.title') }}</h2>
+        <p class="text-xs text-ink-300">{{ t('playerSettings.subtitle') }}</p>
+        <div v-if="playerSettingsLoading" class="text-xs text-ink-300">
+          {{ t('common.loading') }}
+        </div>
+        <template v-else>
+          <label class="block">
+            <span class="text-ink-300">{{ t('playerSettings.fields.fontSize') }}</span>
+            <select
+              :value="playerSettings.fontSize"
+              class="w-full bg-ink-700/40 border border-ink-300/30 rounded px-2 py-1 mt-1"
+              data-testid="settings-font-size"
+              @change="
+                savePlayerSettings({
+                  fontSize: ($event.target as HTMLSelectElement).value as PlayerSettings['fontSize'],
+                })
+              "
+            >
+              <option v-for="fs in FONT_SIZE_VALUES" :key="fs" :value="fs">
+                {{ t(`playerSettings.fontSize.${fs}`) }}
+              </option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="text-ink-300">{{ t('playerSettings.fields.appearance') }}</span>
+            <select
+              :value="playerSettings.appearance"
+              class="w-full bg-ink-700/40 border border-ink-300/30 rounded px-2 py-1 mt-1"
+              data-testid="settings-appearance"
+              @change="
+                savePlayerSettings({
+                  appearance: ($event.target as HTMLSelectElement).value as PlayerSettings['appearance'],
+                })
+              "
+            >
+              <option v-for="ap in APPEARANCE_VALUES" :key="ap" :value="ap">
+                {{ t(`playerSettings.appearance.${ap}`) }}
+              </option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="text-ink-300">{{ t('playerSettings.fields.numberFormat') }}</span>
+            <select
+              :value="playerSettings.numberFormat"
+              class="w-full bg-ink-700/40 border border-ink-300/30 rounded px-2 py-1 mt-1"
+              data-testid="settings-number-format"
+              @change="
+                savePlayerSettings({
+                  numberFormat: ($event.target as HTMLSelectElement).value as PlayerSettings['numberFormat'],
+                })
+              "
+            >
+              <option v-for="nf in NUMBER_FORMAT_VALUES" :key="nf" :value="nf">
+                {{ t(`playerSettings.numberFormat.${nf}`) }}
+              </option>
+            </select>
+          </label>
+          <label class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              :checked="playerSettings.compactMode"
+              data-testid="settings-compact"
+              @change="savePlayerSettings({ compactMode: ($event.target as HTMLInputElement).checked })"
+            />
+            <span>{{ t('playerSettings.fields.compactMode') }}</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              :checked="playerSettings.reduceMotion"
+              data-testid="settings-reduce-motion"
+              @change="savePlayerSettings({ reduceMotion: ($event.target as HTMLInputElement).checked })"
+            />
+            <span>{{ t('playerSettings.fields.reduceMotion') }}</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              :checked="playerSettings.showCombatLogDetail"
+              @change="savePlayerSettings({ showCombatLogDetail: ($event.target as HTMLInputElement).checked })"
+            />
+            <span>{{ t('playerSettings.fields.showCombatLogDetail') }}</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              :checked="playerSettings.showSystemTips"
+              @change="savePlayerSettings({ showSystemTips: ($event.target as HTMLInputElement).checked })"
+            />
+            <span>{{ t('playerSettings.fields.showSystemTips') }}</span>
+          </label>
+          <div class="pt-2">
+            <button
+              :disabled="playerSettingsSaving"
+              class="px-3 py-1.5 rounded border border-ink-300/40 hover:bg-ink-700/60 text-xs"
+              data-testid="settings-reset-btn"
+              @click="resetConfirmOpen = true"
+            >
+              {{ t('playerSettings.resetButton') }}
+            </button>
+          </div>
+        </template>
+      </section>
+
       <!-- Logout all sessions -->
       <section class="bg-ink-700/30 border border-red-400/30 rounded p-4 space-y-2 text-sm">
         <h2 class="text-red-300 text-base">{{ t('settings.logoutAll.title') }}</h2>
@@ -226,6 +397,16 @@ function changeLocale(value: string): void {
       test-id="logout-all-confirm-modal"
       @confirm="submitLogoutAll()"
       @cancel="cancelLogoutAllConfirm()"
+    />
+    <ConfirmModal
+      :open="resetConfirmOpen"
+      :title="t('playerSettings.resetButton')"
+      :message="t('playerSettings.resetConfirm')"
+      :confirm-text="t('playerSettings.resetButton')"
+      :loading="playerSettingsSaving"
+      test-id="settings-reset-confirm-modal"
+      @confirm="doResetPlayerSettings()"
+      @cancel="resetConfirmOpen = false"
     />
   </AppShell>
 </template>

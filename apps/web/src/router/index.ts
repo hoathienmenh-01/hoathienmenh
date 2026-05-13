@@ -325,6 +325,38 @@ const routes: RouteRecordRaw[] = [
     name: 'world-trial-tower',
     component: () => import('@/views/TrialTowerView.vue'),
   },
+  // Phase 41.0 — Player Experience QoL V1 (dashboard, feedback, report,
+  // logs viewer). KHÔNG đụng gameplay routes; layout chuẩn AppShell.
+  {
+    path: '/dashboard',
+    name: 'dashboard',
+    component: () => import('@/views/DashboardView.vue'),
+  },
+  {
+    path: '/support/feedback',
+    name: 'support-feedback',
+    component: () => import('@/views/FeedbackView.vue'),
+  },
+  {
+    path: '/support/report-player',
+    name: 'support-report-player',
+    component: () => import('@/views/ReportPlayerView.vue'),
+  },
+  {
+    path: '/support/logs',
+    name: 'support-logs',
+    component: () => import('@/views/PlayerLogsView.vue'),
+  },
+  {
+    path: '/admin/feedback',
+    name: 'admin-feedback',
+    component: () => import('@/views/AdminFeedbackView.vue'),
+  },
+  {
+    path: '/admin/reports',
+    name: 'admin-reports',
+    component: () => import('@/views/AdminReportsView.vue'),
+  },
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
