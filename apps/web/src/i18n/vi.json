@@ -6843,6 +6843,46 @@
       "UNAUTHENTICATED": "Vui lòng đăng nhập lại."
     }
   },
+  "adminSystemStatus": {
+    "title": "Quản trị · Tình trạng hệ thống",
+    "subtitle": "Health · phiên bản · uptime · lỗi gần đây · integrity check (chỉ đọc).",
+    "notAdminTitle": "Không có quyền",
+    "notAdminDescription": "Khu vực này dành cho MOD/ADMIN.",
+    "emptyTitle": "Chưa có dữ liệu",
+    "emptyDescription": "Endpoint /admin/system/status chưa trả dữ liệu — thử tải lại.",
+    "serviceName": "Service",
+    "environment": "Môi trường",
+    "version": "Phiên bản",
+    "buildCommit": "Build commit",
+    "nodeVersion": "Node",
+    "uptime": "Uptime",
+    "timestamp": "Thời điểm",
+    "dependencyChecks": "Kiểm tra phụ thuộc",
+    "activity24h": "Hoạt động 24h gần nhất",
+    "recentErrorsTotal": "Tổng số lỗi (24h)",
+    "adminActions": "Admin action (24h)",
+    "integrityTitle": "Integrity check gần nhất",
+    "integrityNeverRun": "Chưa chạy `pnpm integrity:check` lần nào, hoặc Redis chưa có artefact.",
+    "integrityRunAt": "Chạy lúc",
+    "integrityScopes": "Scope",
+    "integrityIssueCount": "Số vấn đề",
+    "integrityStatus": {
+      "CLEAN": "Sạch",
+      "ISSUES": "Có vấn đề"
+    },
+    "recentErrorsTitle": "Sự kiện bảo mật gần đây (20 dòng)",
+    "recentErrorsEmpty": "Chưa có sự kiện nào trong cửa sổ truy vấn.",
+    "status": {
+      "ok": "Ổn",
+      "degraded": "Suy giảm",
+      "down": "Lỗi"
+    },
+    "errors": {
+      "UNKNOWN": "Không tải được tình trạng hệ thống.",
+      "UNAUTHENTICATED": "Vui lòng đăng nhập lại.",
+      "FORBIDDEN": "Bạn không có quyền truy cập."
+    }
+  },
   "playerLogs": {
     "title": "Nhật ký hoạt động",
     "subtitle": "Lịch sử hoạt động liên quan đến tài khoản của bạn.",

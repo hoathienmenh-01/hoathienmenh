@@ -6843,6 +6843,46 @@
       "UNAUTHENTICATED": "Please log in again."
     }
   },
+  "adminSystemStatus": {
+    "title": "Admin · System Status",
+    "subtitle": "Health · version · uptime · recent errors · integrity check (read-only).",
+    "notAdminTitle": "No access",
+    "notAdminDescription": "This view is restricted to MOD/ADMIN.",
+    "emptyTitle": "No data",
+    "emptyDescription": "/admin/system/status returned no payload — try reloading.",
+    "serviceName": "Service",
+    "environment": "Environment",
+    "version": "Version",
+    "buildCommit": "Build commit",
+    "nodeVersion": "Node",
+    "uptime": "Uptime",
+    "timestamp": "Timestamp",
+    "dependencyChecks": "Dependency checks",
+    "activity24h": "Last 24h activity",
+    "recentErrorsTotal": "Errors (24h)",
+    "adminActions": "Admin actions (24h)",
+    "integrityTitle": "Latest integrity check",
+    "integrityNeverRun": "`pnpm integrity:check` has not run yet or Redis has no artefact.",
+    "integrityRunAt": "Run at",
+    "integrityScopes": "Scope",
+    "integrityIssueCount": "Issues",
+    "integrityStatus": {
+      "CLEAN": "Clean",
+      "ISSUES": "Has issues"
+    },
+    "recentErrorsTitle": "Recent security events (last 20)",
+    "recentErrorsEmpty": "No events in the query window.",
+    "status": {
+      "ok": "OK",
+      "degraded": "Degraded",
+      "down": "Down"
+    },
+    "errors": {
+      "UNKNOWN": "Failed to load system status.",
+      "UNAUTHENTICATED": "Please log in again.",
+      "FORBIDDEN": "You do not have permission."
+    }
+  },
   "playerLogs": {
     "title": "Activity Logs",
     "subtitle": "Account activity history.",

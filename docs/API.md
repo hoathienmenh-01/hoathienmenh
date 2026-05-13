@@ -18,7 +18,16 @@ Tóm tắt mọi endpoint REST + WebSocket event đang có ở `@xuantoi/api`. M
 | GET    | `/healthz` | —    | Liveness. 200 luôn nếu process chạy; trả `{ ok, uptimeMs, ts }`. |
 | GET    | `/readyz`  | —    | Readiness. Check DB + Redis. 200 ok, 503 khi fail. |
 | GET    | `/version` | —    | `{ name, version, commit, node, ts }`. |
+| GET    | `/health` | —    | **Phase 43** — Light liveness alias. Trả `{ status: 'ok', serviceName, environment, uptimeSeconds, ts, version, buildCommit, node }`. KHÔNG hit DB / Redis. |
+| GET    | `/health/db` | —    | **Phase 43** — DB probe (timeout 2s). Status `ok` / `degraded` (latency > 1s) / `down`. 200 khi `ok`, 503 khi `degraded`/`down`. Error message đã scrub. |
+| GET    | `/health/redis` | —    | **Phase 43** — Redis probe (timeout 2s). Status `ok` / `degraded` (latency > 500ms) / `down`. 200 khi `ok`, 503 khi `degraded`/`down`. |
+| GET    | `/health/version` | —    | **Phase 43** — Alias `/version`. |
+| GET    | `/health/full` | —    | **Phase 43** — Aggregate snapshot: `{ status, serviceName, environment, uptimeSeconds, timestamp, version, buildCommit, node, checks: { db, redis } }`. Status rollup: `ok` (cả 2 ok) / `degraded` (Redis chậm/down nhưng DB ok) / `down` (DB down). HTTP 200/503. |
 | GET    | `/admin/metrics` | ADMIN | **Phase 17.5** — Runtime metrics snapshot (admin-only, `@RequireAdmin()` — PLAYER + MOD reject 403). JSON shape `{ ok: true, data: MetricsSnapshot }` (xem dưới). Không audit log (polled high-frequency). Không trả PII / secret / cookie / token. |
+| GET    | `/admin/system/status` | ADMIN/MOD | **Phase 43** — Aggregate system status (read-only ops dashboard): `{ status, serviceName, environment, uptimeSeconds, timestamp, version, buildCommit, node, checks: { api, db, redis }, recentErrors: { last24h, bySeverity: { INFO, WARN, ERROR, FATAL } }, adminActivity: { last24h }, integrity }`. Fail-soft (KHÔNG throw). Không audit log (polled). |
+| GET    | `/admin/system/errors` | ADMIN/MOD | **Phase 43** — Paginated SecurityEvent. Query: `limit` (1..100, default 20), `severity` (`INFO`/`WARN`/`ERROR`/`FATAL`), `type`, `since` (ISO datetime). Trả `{ items: SystemErrorRow[], total, nextCursor? }`. `detailJson` scrub allow-list 15 key (`reason`, `code`, `route`, `method`, `statusCode`, `durationMs`, `requestId`, …). |
+| GET    | `/admin/system/errors/:id` | ADMIN/MOD | **Phase 43** — Single event detail (same scrub). 404 nếu không tồn tại. |
+| GET    | `/admin/system/integrity/last-run` | ADMIN/MOD | **Phase 43** — Đọc artefact Redis `xt:system-status:integrity:last-run` (TTL 7d) ghi bởi `pnpm integrity:check`. Trả `SystemIntegrityLastRun \| null`. |
 
 ### Phase 17.5 — `MetricsSnapshot` payload
 

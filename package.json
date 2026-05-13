@@ -31,6 +31,7 @@
     "smoke:daily-login": "node scripts/smoke-daily-login.mjs",
     "smoke:dungeon-run": "node scripts/smoke-dungeon-run.mjs",
     "smoke:economy": "node scripts/smoke-economy.mjs",
+    "smoke:health": "node scripts/smoke-health.mjs",
     "smoke:giftcode": "node scripts/smoke-giftcode.mjs",
     "smoke:inventory": "node scripts/smoke-inventory.mjs",
     "smoke:leaderboard": "node scripts/smoke-leaderboard.mjs",
@@ -51,7 +52,9 @@
     "smoke:ws": "node scripts/smoke-ws.mjs",
     "load:smoke": "k6 run scripts/load/k6-smoke.js",
     "load:api": "k6 run scripts/load/k6-api-baseline.js",
-    "load:ws": "k6 run scripts/load/k6-ws-baseline.js"
+    "load:ws": "k6 run scripts/load/k6-ws-baseline.js",
+    "smoke:all": "node scripts/smoke-all.mjs",
+    "integrity:check": "node scripts/integrity-check.mjs"
   },
   "engines": {
     "node": ">=20",
