@@ -20,6 +20,7 @@ export default defineConfig({
     'src/equipment-progression.ts',
     'src/notification.ts',
     'src/inventory-sort.ts',
+    'src/loadout-presets.ts',
   ],
   format: ['esm', 'cjs'],
   dts: true,

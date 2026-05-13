@@ -496,6 +496,9 @@ model Character {
   onboardingDays  CharacterOnboardingProgress[]
   onboardingTasks CharacterOnboardingTaskProgress[]
 
+  /// Phase QOL-2 — Loadout Preset PvE/PvP/Boss backref.
+  loadoutPresets      CharacterLoadoutPreset[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -6576,4 +6579,54 @@ model CharacterOnboardingTaskProgress {
 
   @@unique([characterId, taskKey])
   @@index([characterId, dayNumber, status])
+}
+
+/// Phase QOL-2 — Loadout Preset PvE/PvP/Boss.
+///
+/// Mỗi preset là snapshot lựa chọn của 3 nhóm equip:
+///   - `equipmentSlotJson` — `Record<EquipSlot, inventoryItemId>` cho gear.
+///   - `skillSlotJson` — `string[]` skillKey active (cap = 4 theo equip rule
+///     hiện hành ở `CharacterSkill.isEquipped`).
+///   - `artifactSlotJson` — `Record<ArtifactEquipSlot, characterArtifactId>`
+///     cho Pháp Bảo V2.
+///
+/// `mode` ∈ {`PVE`, `PVP`, `BOSS`, `CUSTOM`} — hỗ trợ set-default mỗi mode
+/// qua `isDefaultForPve`, `isDefaultForPvp`, `isDefaultForBoss`. Khi
+/// set-default mode X cho preset A, server tự bỏ default cờ trên các preset
+/// khác cùng character cùng cờ.
+///
+/// `apply(presetId)` atomic: validate toàn bộ ownership + slot trước khi
+/// rewrite `InventoryItem.equippedSlot` / `CharacterSkill.isEquipped` /
+/// `CharacterArtifactV2.equippedSlot` trong cùng `$transaction`. Item
+/// `locked` vẫn equip được (chỉ chặn `use`). Item missing → reject toàn bộ
+/// apply, trả warning.
+///
+/// Backref: `Character.loadoutPresets` (FK Cascade khi xoá character).
+model CharacterLoadoutPreset {
+  id                  String    @id @default(cuid())
+  characterId         String
+  character           Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Tên preset do user chọn (1..40 ký tự, unique per character).
+  name                String
+  /// `LoadoutPresetMode` ∈ {`PVE`, `PVP`, `BOSS`, `CUSTOM`}.
+  mode                String
+  /// `Record<EquipSlot, string>` — keys giới hạn `EquipSlot` enum.
+  equipmentSlotJson   Json      @default("{}")
+  /// `string[]` skillKey active (cap 4); null = không thay đổi skill khi apply.
+  skillSlotJson       Json?
+  /// `Record<string, string>` artifact slot → characterArtifactId; null =
+  /// không thay đổi pháp bảo khi apply.
+  artifactSlotJson    Json?
+  isDefaultForPve     Boolean   @default(false)
+  isDefaultForPvp     Boolean   @default(false)
+  isDefaultForBoss    Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@unique([characterId, name])
+  @@index([characterId])
+  @@index([characterId, mode])
+  @@index([characterId, isDefaultForPve])
+  @@index([characterId, isDefaultForPvp])
+  @@index([characterId, isDefaultForBoss])
 }
