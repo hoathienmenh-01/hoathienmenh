@@ -43,6 +43,7 @@ export * from './tribulation-support-validate';
 export * from './topup';
 export * from './monetization';
 export * from './monetization-foundation';
+export * from './monetization-systems';
 export * from './shop';
 export * from './shop-packs';
 export * from './cosmetics';
