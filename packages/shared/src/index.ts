@@ -112,6 +112,12 @@ export * from './events';
 // ─── Phase 29.0 — PvP Foundation V1 / Unified PvP Battle Log + Defense ──
 export * from './pvp';
 
+// ─── Phase 30.0 — Market V2 / Auction House / Sect Treasury / Anti-Abuse ──
+export * from './market-v2';
+
+// ─── Phase 32.0 — Tu Tiên Bách Khoa / Content Codex / Bestiary / Guidebook ──
+export * from './codex';
+
 // ─── Phase 26.5 — World Content V2 ─────────────────────────────────────────
 export * from './monster-taxonomy';
 export * from './farm-maps';
