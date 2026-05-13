@@ -217,7 +217,21 @@ export type ItemLedgerReason =
   // refType='CharacterCultivationMethod' + refId=methodKey để audit.
   | 'METHOD_FRAGMENT_CONSUME'
   | 'METHOD_UPGRADE_MATERIAL'
-  | 'METHOD_FRAGMENT_GRANT';
+  | 'METHOD_FRAGMENT_GRANT'
+  // Phase 26.4 — Artifact / Pháp Bảo V2 ops (server-authoritative).
+  //   * ARTIFACT_V2_CRAFT_CONSUME: trừ nguyên liệu (phôi/blueprint/ore/...)
+  //     trong `ArtifactV2Service.craft` (kể cả khi RNG fail).
+  //   * ARTIFACT_V2_UPGRADE_CONSUME: trừ nguyên liệu khi level up.
+  //   * ARTIFACT_V2_STAR_UP_CONSUME: trừ nguyên liệu khi nâng sao.
+  //   * ARTIFACT_V2_REFINE_CONSUME: trừ refine stone / elemental essence.
+  //   * ARTIFACT_V2_AWAKEN_CONSUME: trừ awaken core / boss core.
+  // refType='ArtifactCraftAttemptLog' / 'ArtifactUpgradeLogV2'; refId=
+  // blueprintKey / artifactId.
+  | 'ARTIFACT_V2_CRAFT_CONSUME'
+  | 'ARTIFACT_V2_UPGRADE_CONSUME'
+  | 'ARTIFACT_V2_STAR_UP_CONSUME'
+  | 'ARTIFACT_V2_REFINE_CONSUME'
+  | 'ARTIFACT_V2_AWAKEN_CONSUME';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;

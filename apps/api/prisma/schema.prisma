@@ -378,6 +378,9 @@ model Character {
   spiritualRootRollLogs    SpiritualRootRollLog[]
   cultivationMethods       CharacterCultivationMethod[]
   methodUpgradeLogs        MethodUpgradeLog[]
+  artifactsV2              CharacterArtifactV2[]
+  artifactCraftLogs        ArtifactCraftAttemptLog[]
+  artifactUpgradeLogsV2    ArtifactUpgradeLogV2[]
   characterSkills          CharacterSkill[]
   tribulationAttemptLogs   TribulationAttemptLog[]
   bodyBreakthroughLogs     BodyBreakthroughAttemptLog[]
@@ -891,6 +894,111 @@ model MethodUpgradeLog {
   createdAt     DateTime  @default(now())
 
   @@index([characterId, methodKey])
+  @@index([characterId, createdAt])
+}
+
+/// Phase 26.4 — Pháp bảo V2 instance (1 row per artifact owned).
+/// Sống song song với hệ pháp bảo cũ (Phase 23.5/23.7 dùng `InventoryItem`
+/// slot ARTIFACT_1..3). Slot V2 mới (MAIN/DEFENSE/SUPPORT/ALCHEMY/SPECIAL
+/// đuôi `_ARTIFACT_V2`) lưu vào `equippedSlot` dạng String.
+///
+/// Stats / substats / skills snapshot vào JSONB để combat snapshot không
+/// phải JOIN catalog tại runtime; chỉ cần lookup ArtifactDef khi craft /
+/// upgrade / refine / awaken (server-authoritative).
+///
+/// Partial unique `(characterId, equippedSlot)` chỉ áp dụng khi
+/// `equippedSlot` IS NOT NULL — implement qua raw SQL trong migration
+/// 20261230000000_phase_26_4_artifact_crafting_v2 (Prisma không hỗ trợ
+/// partial unique trực tiếp; index thường thay thế).
+model CharacterArtifactV2 {
+  id           String    @id @default(cuid())
+  characterId  String
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  artifactKey  String
+  name         String
+  /// `ArtifactType` (FLYING_SWORD | CAULDRON | BELL | SEAL | BANNER |
+  /// MIRROR | PEARL | ARMOR | RING | GOURD).
+  type         String
+  /// `ArtifactElement` (kim/moc/thuy/hoa/tho/NONE/MIXED/HON_NGUYEN).
+  element      String
+  tier         Int
+  /// `ArtifactGrade` (HA_PHAM | TRUNG_PHAM | THUONG_PHAM | CUC_PHAM |
+  /// LINH_VAN | DAO_VAN).
+  grade        String
+  level        Int       @default(1)
+  star         Int       @default(0)
+  refineLevel  Int       @default(0)
+  awakenLevel  Int       @default(0)
+  spiritExp    BigInt    @default(0)
+  spiritLevel  Int       @default(0)
+  locked       Boolean   @default(false)
+  /// `ArtifactEquipSlot` (`MAIN_ARTIFACT_V2` | … | `SPECIAL_ARTIFACT_V2`)
+  /// hoặc NULL nếu chưa equip.
+  equippedSlot String?
+  /// Snapshot stat đã clamp (atk/def/hp/mp/spirit + % bonuses) dạng
+  /// `ArtifactStatBlock` JSON.
+  statsJson    Json
+  /// Snapshot substats: `Array<{ key, value }>`.
+  subStatsJson Json?
+  /// Snapshot skill keys đã awaken: `Array<string>`.
+  skillsJson   Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([characterId])
+  @@index([characterId, artifactKey])
+  @@index([characterId, equippedSlot])
+}
+
+/// Phase 26.4 — log từng craft attempt pháp bảo V2 (success hoặc fail).
+/// Server-authoritative; mỗi attempt 1 row, materials JSON snapshot
+/// nguyên liệu/linhThach đã consume (kể cả khi fail). Hỗ trợ replay
+/// + audit anti-cheat + dashboard balance.
+model ArtifactCraftAttemptLog {
+  id                String    @id @default(cuid())
+  characterId       String
+  character         Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  blueprintKey      String
+  success           Boolean
+  successRate       Float
+  rollValue         Float
+  artifactKey       String?
+  artifactTier      Int
+  artifactGrade     String?
+  /// `{ items: [{ key, qty }], linhThach: number }`.
+  materialsJson     Json
+  linhThachConsumed Int       @default(0)
+  createdAt         DateTime  @default(now())
+
+  @@index([characterId])
+  @@index([characterId, createdAt])
+}
+
+/// Phase 26.4 — log từng level / star-up / refine / awaken / spirit
+/// pháp bảo V2 (success hoặc fail). Một row mỗi attempt.
+model ArtifactUpgradeLogV2 {
+  id              String    @id @default(cuid())
+  characterId     String
+  character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  artifactId      String
+  /// `'UPGRADE'` (level up) | `'STAR_UP'` | `'REFINE'` | `'AWAKEN'` |
+  /// `'SPIRIT_FEED'`.
+  action          String
+  fromLevel       Int?
+  toLevel         Int?
+  fromStar        Int?
+  toStar          Int?
+  fromRefineLevel Int?
+  toRefineLevel   Int?
+  fromAwakenLevel Int?
+  toAwakenLevel   Int?
+  success         Boolean
+  /// `{ items: [{ key, qty }], linhThach: number }`.
+  materialsJson   Json
+  createdAt       DateTime  @default(now())
+
+  @@index([characterId])
+  @@index([characterId, artifactId])
   @@index([characterId, createdAt])
 }
 

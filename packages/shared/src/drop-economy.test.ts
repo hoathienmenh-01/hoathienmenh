@@ -273,14 +273,51 @@ describe('drop rule catalog', () => {
     }
   });
 
-  it('ARTIFACT_CRAFT category rules all have low baseChance and caps when not from world boss', () => {
-    const artifactRules = DROP_RULE_CATALOG.filter((r) => r.materialCategory === 'ARTIFACT_CRAFT');
+  it('ARTIFACT_CRAFT category rules all have low baseChance and tight daily caps', () => {
+    // Phase 26.4 policy:
+    //   - NORMAL_MONSTER / ELITE / SECT_SHOP / NPC_SHOP / MARKET / AUCTION
+    //     / ADMIN_ONLY: daily cap = 0 (quái thường không rơi nguyên liệu
+    //     pháp bảo hiếm; shop không bán nguyên liệu pháp bảo vô hạn).
+    //   - BOSS / DUNGEON / BODY_DUNGEON / ALCHEMY_DUNGEON: cap ≤ 2/day,
+    //     và tier ≥ 7 = 0 (boss thường / dungeon không drop endgame
+    //     artifact material).
+    //   - WORLD_BOSS: cap ≤ 2/day + có weekly cap.
+    //   - EVENT: cap riêng theo event window (undefined cho phép unlimited
+    //     trong event timeframe nhưng cần daily cap khác từ event config).
+    const artifactRules = DROP_RULE_CATALOG.filter(
+      (r) => r.materialCategory === 'ARTIFACT_CRAFT',
+    );
     expect(artifactRules.length).toBeGreaterThan(0);
     for (const r of artifactRules) {
       expect(r.baseChance).toBeLessThan(0.05);
-      if (r.source !== 'WORLD_BOSS') {
-        // Non-WORLD_BOSS ARTIFACT rules should be daily-capped to 0 (gated).
-        expect(r.maxDailyQty).toBe(0);
+      if (
+        r.source === 'NORMAL_MONSTER' ||
+        r.source === 'ELITE' ||
+        r.source === 'SECT_SHOP' ||
+        r.source === 'NPC_SHOP' ||
+        r.source === 'MARKET' ||
+        r.source === 'AUCTION' ||
+        r.source === 'ADMIN_ONLY'
+      ) {
+        expect(
+          r.maxDailyQty,
+          `${r.source} ${r.itemKey} should be daily-capped to 0`,
+        ).toBe(0);
+      } else if (
+        r.source === 'BOSS' ||
+        r.source === 'DUNGEON' ||
+        r.source === 'BODY_DUNGEON' ||
+        r.source === 'ALCHEMY_DUNGEON' ||
+        r.source === 'WORLD_BOSS'
+      ) {
+        expect(r.maxDailyQty).toBeDefined();
+        expect(r.maxDailyQty!).toBeLessThanOrEqual(2);
+        if (r.materialTier >= 7 && r.source !== 'WORLD_BOSS') {
+          expect(
+            r.maxDailyQty,
+            `${r.source} tier ${r.materialTier} ${r.itemKey} should be 0`,
+          ).toBe(0);
+        }
       }
     }
   });

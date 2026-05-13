@@ -444,7 +444,29 @@ function baseChanceFor(source: DropSource, tier: number, category: MaterialCateg
  * vô hạn. Số tham khảo, server có thể override qua admin config future.
  */
 function dailyCapFor(source: DropSource, tier: number, category: MaterialCategory): number | undefined {
-  if (category === 'ARTIFACT_CRAFT') return source === 'WORLD_BOSS' ? 2 : 0;
+  // Phase 26.4 — Artifact V2 materials. Caps theo source + tier:
+  //   - WORLD_BOSS: tier ≤ 4 → 2/day; tier 5–6 → 1/day; tier 7+ → 1/day.
+  //   - BOSS: tier ≤ 3 → 2/day; tier 4–6 → 1/day; tier 7+ → 0 (boss thường
+  //     không drop endgame artifact mat).
+  //   - DUNGEON / BODY_DUNGEON / ALCHEMY_DUNGEON: tier ≤ 3 → 1/day; tier 4+ → 0.
+  //   - EVENT: cap riêng theo cấu hình event (vô hiệu hoá daily cap qua undefined → fallback infinite trong event window).
+  //   - NORMAL_MONSTER / ELITE: 0 — quái thường không rơi nguyên liệu pháp bảo hiếm.
+  if (category === 'ARTIFACT_CRAFT') {
+    if (source === 'WORLD_BOSS') {
+      if (tier <= 4) return 2;
+      return 1;
+    }
+    if (source === 'BOSS') {
+      if (tier <= 3) return 2;
+      if (tier <= 6) return 1;
+      return 0;
+    }
+    if (source === 'DUNGEON' || source === 'BODY_DUNGEON' || source === 'ALCHEMY_DUNGEON') {
+      return tier <= 3 ? 1 : 0;
+    }
+    if (source === 'EVENT') return undefined;
+    return 0;
+  }
   if (category === 'TRIBULATION') return tier >= 5 ? 1 : 3;
   if (category === 'BODY_BREAKTHROUGH') return tier >= 4 ? 2 : 6;
   if (category === 'QI_BREAKTHROUGH') return tier >= 4 ? 2 : 6;

@@ -74,7 +74,12 @@
       "cultivationMethodV2Equip": "Failed to equip cultivation method V2",
       "cultivationMethodV2Unequip": "Failed to unequip cultivation method V2",
       "cultivationMethodV2Upgrade": "Failed to upgrade cultivation method",
-      "cultivationMethodV2StarUp": "Failed to star-up cultivation method"
+      "cultivationMethodV2StarUp": "Failed to star-up cultivation method",
+      "artifactV2State": "Failed to load artifact V2 state",
+      "artifactV2Craft": "Failed to craft artifact",
+      "artifactV2Equip": "Failed to equip artifact",
+      "artifactV2Unequip": "Failed to unequip artifact",
+      "artifactV2Upgrade": "Failed to upgrade / refine / awaken artifact"
     }
   },
   "locale": {
@@ -350,6 +355,7 @@
       "alchemy": "Alchemy",
       "cultivationMethod": "Method",
       "cultivationMethodV2": "Method V2",
+      "artifactV2": "Artifact V2",
       "spiritualRoot": "Root",
       "skillBook": "Skill Book",
       "achievements": "Achievements",
@@ -2515,6 +2521,114 @@
       "UNAUTHENTICATED": "Session expired.",
       "CULTIVATION_METHOD_V2_UNAVAILABLE": "Cultivation method V2 system temporarily unavailable.",
       "IN_FLIGHT": "Processing…",
+      "UNKNOWN": "Action failed, please retry."
+    }
+  },
+  "artifactV2": {
+    "title": "Artifact Hall — V2",
+    "subtitle": "Artifact V2 system: 9 tiers, 6 grades, 10 types, 5 elements, 5 equip slots. Craft / upgrade / refine / awaken are server-authoritative and anti-inflation.",
+    "loading": "Loading artifacts…",
+    "empty": "No artifact matches the filter.",
+    "reloadError": "Failed to load — please retry.",
+    "reload": "Reload",
+    "tab": {
+      "owned": "Owned artifacts",
+      "blueprint": "Blueprints",
+      "preview": "Equipped overview"
+    },
+    "slot": {
+      "MAIN_ARTIFACT_V2": "Main Artifact",
+      "DEFENSE_ARTIFACT_V2": "Defense Artifact",
+      "SUPPORT_ARTIFACT_V2": "Support Artifact",
+      "ALCHEMY_ARTIFACT_V2": "Alchemy Artifact",
+      "SPECIAL_ARTIFACT_V2": "Special Artifact"
+    },
+    "type": {
+      "FLYING_SWORD": "Flying Sword",
+      "CAULDRON": "Cauldron",
+      "BELL": "Bell",
+      "SEAL": "Seal",
+      "BANNER": "Banner",
+      "MIRROR": "Mirror",
+      "PEARL": "Pearl",
+      "ARMOR": "Armor",
+      "RING": "Ring",
+      "GOURD": "Gourd"
+    },
+    "element": {
+      "kim": "Metal",
+      "moc": "Wood",
+      "thuy": "Water",
+      "hoa": "Fire",
+      "tho": "Earth",
+      "NONE": "Neutral",
+      "MIXED": "Mixed",
+      "HON_NGUYEN": "Primordial"
+    },
+    "grade": {
+      "HA_PHAM": "Lower",
+      "TRUNG_PHAM": "Middle",
+      "THUONG_PHAM": "Upper",
+      "CUC_PHAM": "Supreme",
+      "LINH_VAN": "Spirit-marked",
+      "DAO_VAN": "Dao-marked"
+    },
+    "filter": {
+      "type": "Type",
+      "element": "Element",
+      "tier": "Tier",
+      "grade": "Grade",
+      "equipped": "Equipped",
+      "all": "All",
+      "clear": "Clear filters",
+      "shown": "Showing {shown}/{total} artifacts"
+    },
+    "field": {
+      "tier": "Tier {tier}",
+      "level": "Level {level}/{max}",
+      "star": "Star {star}/{max}",
+      "refine": "Refine {refine}/{max}",
+      "awaken": "Awaken {awaken}/{max}",
+      "spiritLevel": "Spirit {spirit}",
+      "powerScore": "Power {score}",
+      "sourceHint": "Source",
+      "linhThachCost": "{value} Spirit Stones",
+      "successRate": "Success {value}%",
+      "possibleGrades": "Possible grades",
+      "missingMaterials": "Missing materials",
+      "noBlueprint": "No blueprint available"
+    },
+    "action": {
+      "craft": "Craft",
+      "equip": "Equip",
+      "unequip": "Unequip",
+      "upgrade": "Level Up",
+      "starUp": "Star Up",
+      "refine": "Refine",
+      "awaken": "Awaken"
+    },
+    "toast": {
+      "craftSuccess": "Crafted: {name} ({grade})",
+      "craftFail": "Craft failed; materials consumed (rate {rate}%)",
+      "equipSuccess": "Equipped {name} into {slot}",
+      "unequipSuccess": "Unequipped {name}",
+      "upgradeSuccess": "{action} succeeded",
+      "upgradeFail": "{action} failed; materials consumed"
+    },
+    "error": {
+      "BLUEPRINT_NOT_FOUND": "Blueprint not found.",
+      "ARTIFACT_NOT_FOUND": "Artifact not found.",
+      "REALM_TOO_LOW": "Realm too low.",
+      "BODY_REALM_TOO_LOW": "Body cultivation too low.",
+      "TIER_TOO_HIGH": "Artifact tier is too high for your realm.",
+      "INSUFFICIENT_MATERIALS": "Missing materials.",
+      "INSUFFICIENT_LINH_THACH": "Not enough Spirit Stones.",
+      "MAX_LEVEL": "Already at max level.",
+      "MAX_STAR": "Already at max star.",
+      "MAX_REFINE": "Already at max refine.",
+      "MAX_AWAKEN": "Already at max awaken.",
+      "AWAKEN_NOT_AVAILABLE": "Low-tier artifacts cannot be awakened.",
+      "SLOT_INVALID_FOR_TYPE": "Slot incompatible with artifact type.",
       "UNKNOWN": "Action failed, please retry."
     }
   },

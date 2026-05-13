@@ -55,6 +55,7 @@ import { BuffService } from '../character/buff.service';
 import { TitleService } from '../character/title.service';
 import { methodStatBonusFor } from '../character/cultivation-method.service';
 import { CultivationMethodV2Service } from '../character/cultivation-method-v2.service';
+import { ArtifactV2Service } from '../character/artifact-v2.service';
 import { aggregateEquippedMethods } from '@xuantoi/shared';
 import { InventoryService } from '../inventory/inventory.service';
 import { MissionService } from '../mission/mission.service';
@@ -226,6 +227,10 @@ export class CombatService {
     @Optional() private readonly dropEconomy?: DropEconomyService,
     // Phase 26.3 — Cultivation Method V2. Optional; null → mul 1.0 identity.
     @Optional() private readonly cultivationMethodV2?: CultivationMethodV2Service,
+    // Phase 26.4 — Artifact / Pháp Bảo V2 stat snapshot. Optional → identity
+    // baseline (atkFlat/defFlat/...=0; atkPercent/defPercent=0) khi DI thiếu
+    // hoặc character chưa equip V2 artifact.
+    @Optional() private readonly artifactV2?: ArtifactV2Service,
   ) {}
 
   /**
@@ -437,8 +442,29 @@ export class CombatService {
         methodV2Def = 1.0;
       }
     }
+    // Phase 26.4 — Artifact / Pháp Bảo V2 stat snapshot (flat atk/def/spirit
+    // + speed/crit %). Identity (0) baseline khi DI thiếu hoặc character chưa
+    // equip V2 artifact. Snapshot đã clamp ở `aggregateArtifactV2Snapshot` →
+    // không thể vượt `ARTIFACT_BONUS_CAPS`. % bonuses (cultivation/alchemy
+    // /drop/luck) wire ở các pipeline tương ứng (cultivation/alchemy/loot),
+    // KHÔNG cộng vào atk/def combat tránh double-dip.
+    let artifactV2Atk = 0;
+    let artifactV2Def = 0;
+    let artifactV2Spirit = 0;
+    if (this.artifactV2) {
+      try {
+        const snap = await this.artifactV2.getEquippedSnapshot(char.id);
+        artifactV2Atk = snap.atk;
+        artifactV2Def = snap.def;
+        artifactV2Spirit = snap.spirit;
+      } catch {
+        artifactV2Atk = 0;
+        artifactV2Def = 0;
+        artifactV2Spirit = 0;
+      }
+    }
     const effPower =
-      (char.power + bodyBonus.power + equip.atk) *
+      (char.power + bodyBonus.power + equip.atk + artifactV2Atk) *
       statMul *
       talentMods.atkMul *
       buffMods.atkMul *
@@ -446,13 +472,17 @@ export class CombatService {
       methodStat.atkMul *
       methodV2Atk;
     const effDef =
-      (equip.def + bodyBonus.def) *
+      (equip.def + bodyBonus.def + artifactV2Def) *
       statMul *
       talentMods.defMul *
       buffMods.defMul *
       titleMods.defMul *
       methodStat.defMul *
       methodV2Def;
+    // `artifactV2Spirit` is composed later in spirit-based formulas if
+    // needed (defense stat for boss damage reduction). Reserved for future
+    // wiring; suppress unused warning by referencing once.
+    void artifactV2Spirit;
 
     const log: EncounterLogLine[] = [
       ...((enc.log as unknown as EncounterLogLine[]) ?? []),

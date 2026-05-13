@@ -74,7 +74,12 @@
       "cultivationMethodV2Equip": "Vận công pháp V2 thất bại",
       "cultivationMethodV2Unequip": "Gỡ công pháp V2 thất bại",
       "cultivationMethodV2Upgrade": "Thăng cấp công pháp thất bại",
-      "cultivationMethodV2StarUp": "Thăng sao công pháp thất bại"
+      "cultivationMethodV2StarUp": "Thăng sao công pháp thất bại",
+      "artifactV2State": "Không lấy được trạng thái Pháp Bảo V2",
+      "artifactV2Craft": "Luyện chế Pháp Bảo thất bại",
+      "artifactV2Equip": "Trang bị Pháp Bảo thất bại",
+      "artifactV2Unequip": "Gỡ Pháp Bảo thất bại",
+      "artifactV2Upgrade": "Thăng cấp / luyện hóa / thức tỉnh Pháp Bảo thất bại"
     }
   },
   "locale": {
@@ -350,6 +355,7 @@
       "alchemy": "Luyện Đan",
       "cultivationMethod": "Công Pháp",
       "cultivationMethodV2": "Công Pháp V2",
+      "artifactV2": "Pháp Bảo V2",
       "spiritualRoot": "Linh Căn",
       "skillBook": "Pháp Quyển",
       "achievements": "Thành Tựu",
@@ -2515,6 +2521,114 @@
       "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
       "CULTIVATION_METHOD_V2_UNAVAILABLE": "Hệ thống công pháp V2 tạm khoá.",
       "IN_FLIGHT": "Đang xử lý…",
+      "UNKNOWN": "Thao tác thất bại, thử lại."
+    }
+  },
+  "artifactV2": {
+    "title": "Pháp Bảo Đường — V2",
+    "subtitle": "Hệ Pháp Bảo V2: 9 tầng phẩm cấp · 6 phẩm chất · 10 loại · ngũ hành · 5 slot. Luyện chế / nâng cấp / luyện hóa / thức tỉnh server-authoritative, kháng lạm phát.",
+    "loading": "Đang tải Pháp Bảo…",
+    "empty": "Không có Pháp Bảo nào khớp bộ lọc.",
+    "reloadError": "Tải dữ liệu thất bại — thử lại.",
+    "reload": "Tải lại",
+    "tab": {
+      "owned": "Pháp Bảo sở hữu",
+      "blueprint": "Bản vẽ luyện chế",
+      "preview": "Tổng quan trang bị"
+    },
+    "slot": {
+      "MAIN_ARTIFACT_V2": "Pháp Bảo Chính",
+      "DEFENSE_ARTIFACT_V2": "Pháp Bảo Phòng Ngự",
+      "SUPPORT_ARTIFACT_V2": "Pháp Bảo Hỗ Trợ",
+      "ALCHEMY_ARTIFACT_V2": "Pháp Bảo Đan Đạo",
+      "SPECIAL_ARTIFACT_V2": "Pháp Bảo Đặc Biệt"
+    },
+    "type": {
+      "FLYING_SWORD": "Phi Kiếm",
+      "CAULDRON": "Bảo Đỉnh",
+      "BELL": "Linh Chung",
+      "SEAL": "Bảo Ấn",
+      "BANNER": "Chiến Kỳ",
+      "MIRROR": "Bảo Kính",
+      "PEARL": "Linh Châu",
+      "ARMOR": "Bảo Giáp",
+      "RING": "Linh Giới Chỉ",
+      "GOURD": "Bảo Hồ Lô"
+    },
+    "element": {
+      "kim": "Kim",
+      "moc": "Mộc",
+      "thuy": "Thủy",
+      "hoa": "Hỏa",
+      "tho": "Thổ",
+      "NONE": "Vô Hệ",
+      "MIXED": "Hỗn Hành",
+      "HON_NGUYEN": "Hỗn Nguyên"
+    },
+    "grade": {
+      "HA_PHAM": "Hạ Phẩm",
+      "TRUNG_PHAM": "Trung Phẩm",
+      "THUONG_PHAM": "Thượng Phẩm",
+      "CUC_PHAM": "Cực Phẩm",
+      "LINH_VAN": "Linh Văn",
+      "DAO_VAN": "Đạo Văn"
+    },
+    "filter": {
+      "type": "Loại",
+      "element": "Ngũ hành",
+      "tier": "Tầng",
+      "grade": "Phẩm chất",
+      "equipped": "Đang trang bị",
+      "all": "Tất cả",
+      "clear": "Xoá lọc",
+      "shown": "Hiển thị {shown}/{total} Pháp Bảo"
+    },
+    "field": {
+      "tier": "Tầng {tier}",
+      "level": "Cấp {level}/{max}",
+      "star": "Sao {star}/{max}",
+      "refine": "Luyện hóa {refine}/{max}",
+      "awaken": "Thức tỉnh {awaken}/{max}",
+      "spiritLevel": "Linh Tính {spirit}",
+      "powerScore": "Lực Lượng {score}",
+      "sourceHint": "Nguồn",
+      "linhThachCost": "{value} Linh Thạch",
+      "successRate": "Tỉ lệ {value}%",
+      "possibleGrades": "Phẩm có thể",
+      "missingMaterials": "Thiếu nguyên liệu",
+      "noBlueprint": "Chưa có bản vẽ phù hợp"
+    },
+    "action": {
+      "craft": "Luyện chế",
+      "equip": "Trang bị",
+      "unequip": "Gỡ",
+      "upgrade": "Tăng cấp",
+      "starUp": "Tăng sao",
+      "refine": "Luyện hóa",
+      "awaken": "Thức tỉnh"
+    },
+    "toast": {
+      "craftSuccess": "Luyện chế thành công: {name} ({grade})",
+      "craftFail": "Luyện chế thất bại, mất nguyên liệu (tỉ lệ {rate}%)",
+      "equipSuccess": "Đã trang bị {name} vào {slot}",
+      "unequipSuccess": "Đã gỡ {name}",
+      "upgradeSuccess": "{action} thành công",
+      "upgradeFail": "{action} thất bại, nguyên liệu đã mất"
+    },
+    "error": {
+      "BLUEPRINT_NOT_FOUND": "Không tìm thấy bản vẽ.",
+      "ARTIFACT_NOT_FOUND": "Không tìm thấy Pháp Bảo.",
+      "REALM_TOO_LOW": "Cảnh giới chưa đủ.",
+      "BODY_REALM_TOO_LOW": "Luyện Thể chưa đủ.",
+      "TIER_TOO_HIGH": "Tầng Pháp Bảo cao hơn cảnh giới quá xa.",
+      "INSUFFICIENT_MATERIALS": "Thiếu nguyên liệu.",
+      "INSUFFICIENT_LINH_THACH": "Thiếu Linh Thạch.",
+      "MAX_LEVEL": "Đã đạt cấp tối đa.",
+      "MAX_STAR": "Đã đạt sao tối đa.",
+      "MAX_REFINE": "Đã đạt luyện hóa tối đa.",
+      "MAX_AWAKEN": "Đã đạt thức tỉnh tối đa.",
+      "AWAKEN_NOT_AVAILABLE": "Pháp Bảo tầng thấp chưa thể thức tỉnh.",
+      "SLOT_INVALID_FOR_TYPE": "Slot không phù hợp với loại Pháp Bảo.",
       "UNKNOWN": "Thao tác thất bại, thử lại."
     }
   },
