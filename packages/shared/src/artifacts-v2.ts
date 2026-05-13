@@ -855,6 +855,7 @@ const ARTIFACT_SPECS: readonly ArtifactSpec[] = [
   { key: 'tay_tuy_bao_dinh_t3', nameVi: 'Tẩy Tủy Bảo Đỉnh', nameEn: 'Marrow-cleansing Cauldron', type: 'CAULDRON', element: 'hoa', tier: 3 },
   { key: 'thanh_tam_kinh_t3', nameVi: 'Thanh Tâm Kính', nameEn: 'Clear-heart Mirror', type: 'MIRROR', element: 'thuy', tier: 3 },
   { key: 'hau_tho_an_t3', nameVi: 'Hậu Thổ Ấn', nameEn: 'Earth Lord Seal', type: 'SEAL', element: 'tho', tier: 3 },
+  { key: 'co_duyen_linh_nhan_t3', nameVi: 'Cơ Duyên Linh Nhẫn', nameEn: 'Fortune Spirit Ring', type: 'RING', element: 'NONE', tier: 3 },
   // Tier 4
   { key: 'nguyen_anh_linh_kiem_t4', nameVi: 'Nguyên Anh Linh Kiếm', nameEn: 'Nascent Soul Sword', type: 'FLYING_SWORD', element: 'kim', tier: 4 },
   { key: 'kim_cuong_bao_giap_t4', nameVi: 'Kim Cương Bảo Giáp', nameEn: 'Diamond Plate', type: 'ARMOR', element: 'tho', tier: 4 },
@@ -870,6 +871,7 @@ const ARTIFACT_SPECS: readonly ArtifactSpec[] = [
   { key: 'tien_cot_bao_giap_t6', nameVi: 'Tiên Cốt Bảo Giáp', nameEn: 'Immortal-Bone Plate', type: 'ARMOR', element: 'tho', tier: 6 },
   { key: 'long_tuong_chien_an_t6', nameVi: 'Long Tượng Chiến Ấn', nameEn: 'Dragon-Elephant War Seal', type: 'SEAL', element: 'hoa', tier: 6 },
   { key: 'tien_van_linh_chau_t6', nameVi: 'Tiên Vân Linh Châu', nameEn: 'Immortal-Cloud Spirit Pearl', type: 'PEARL', element: 'thuy', tier: 6 },
+  { key: 'tien_co_bao_gioi_t6', nameVi: 'Tiên Cơ Bảo Giới', nameEn: 'Immortal-Mechanism Treasure Ring', type: 'RING', element: 'NONE', tier: 6 },
   // Tier 7
   { key: 'dai_la_kim_kiem_t7', nameVi: 'Đại La Kim Kiếm', nameEn: 'Daluo Golden Sword', type: 'FLYING_SWORD', element: 'kim', tier: 7 },
   { key: 'hon_nguyen_dao_dinh_t7', nameVi: 'Hỗn Nguyên Đạo Đỉnh', nameEn: 'Primordial Dao Cauldron', type: 'CAULDRON', element: 'HON_NGUYEN', tier: 7 },

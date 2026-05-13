@@ -27,7 +27,6 @@ import {
   ARTIFACT_GRADES,
   ARTIFACT_TYPES,
   ARTIFACT_ELEMENTS,
-  type ArtifactEquipSlot,
   type ArtifactGrade,
   type ArtifactType,
   type ArtifactElement,
@@ -276,8 +275,8 @@ function fmtPercent(v: number): string {
           role="tab"
           :aria-selected="tab === key"
           :class="{ active: tab === key }"
-          @click="tab = key"
           :data-testid="`artifact-v2-tab-${key}`"
+          @click="tab = key"
         >
           {{ t(`artifactV2.tab.${key}`) }}
         </button>
@@ -321,10 +320,10 @@ function fmtPercent(v: number): string {
           </select>
         </label>
         <label v-if="tab === 'owned'">
-          <input type="checkbox" v-model="equippedOnly" />
+          <input v-model="equippedOnly" type="checkbox" />
           {{ t('artifactV2.filter.equipped') }}
         </label>
-        <button type="button" @click="clearFilters" data-testid="artifact-v2-clear-filters">
+        <button type="button" data-testid="artifact-v2-clear-filters" @click="clearFilters">
           {{ t('artifactV2.filter.clear') }}
         </button>
       </div>
@@ -386,8 +385,8 @@ function fmtPercent(v: number): string {
                 <button
                   type="button"
                   :disabled="inFlight !== null"
-                  @click="onUnequip(row)"
                   :data-testid="`artifact-v2-unequip-${row.id}`"
+                  @click="onUnequip(row)"
                 >
                   {{ t('artifactV2.action.unequip') }}
                 </button>
@@ -395,8 +394,8 @@ function fmtPercent(v: number): string {
               <template v-else>
                 <select
                   :value="pickSlot(row.id, defaultSlotFor(row))"
-                  @change="(ev) => (slotChoice[row.id] = (ev.target as HTMLSelectElement).value as ArtifactEquipSlotV2)"
                   :data-testid="`artifact-v2-slot-select-${row.id}`"
+                  @change="(ev) => (slotChoice[row.id] = (ev.target as HTMLSelectElement).value as ArtifactEquipSlotV2)"
                 >
                   <option v-for="slot in ARTIFACT_EQUIP_SLOTS" :key="slot" :value="slot">
                     {{ t(`artifactV2.slot.${slot}`) }}
@@ -405,8 +404,8 @@ function fmtPercent(v: number): string {
                 <button
                   type="button"
                   :disabled="inFlight !== null"
-                  @click="onEquip(row)"
                   :data-testid="`artifact-v2-equip-${row.id}`"
+                  @click="onEquip(row)"
                 >
                   {{ t('artifactV2.action.equip') }}
                 </button>
@@ -414,32 +413,32 @@ function fmtPercent(v: number): string {
               <button
                 type="button"
                 :disabled="inFlight !== null"
-                @click="runUpgradeOp(row, 'upgrade')"
                 :data-testid="`artifact-v2-upgrade-${row.id}`"
+                @click="runUpgradeOp(row, 'upgrade')"
               >
                 {{ t('artifactV2.action.upgrade') }}
               </button>
               <button
                 type="button"
                 :disabled="inFlight !== null"
-                @click="runUpgradeOp(row, 'starUp')"
                 :data-testid="`artifact-v2-star-${row.id}`"
+                @click="runUpgradeOp(row, 'starUp')"
               >
                 {{ t('artifactV2.action.starUp') }}
               </button>
               <button
                 type="button"
                 :disabled="inFlight !== null"
-                @click="runUpgradeOp(row, 'refine')"
                 :data-testid="`artifact-v2-refine-${row.id}`"
+                @click="runUpgradeOp(row, 'refine')"
               >
                 {{ t('artifactV2.action.refine') }}
               </button>
               <button
                 type="button"
                 :disabled="inFlight !== null || row.tier < 5"
-                @click="runUpgradeOp(row, 'awaken')"
                 :data-testid="`artifact-v2-awaken-${row.id}`"
+                @click="runUpgradeOp(row, 'awaken')"
               >
                 {{ t('artifactV2.action.awaken') }}
               </button>
@@ -493,8 +492,8 @@ function fmtPercent(v: number): string {
             <button
               type="button"
               :disabled="!bp.canCraft || inFlight !== null"
-              @click="onCraft(bp)"
               :data-testid="`artifact-v2-craft-${bp.key}`"
+              @click="onCraft(bp)"
             >
               {{ t('artifactV2.action.craft') }}
             </button>
