@@ -99,3 +99,64 @@ export async function getStudentMentorContext(): Promise<{
   >('/mentor/student-context');
   return unwrap(data);
 }
+
+// Phase 35.2 — Mentor Milestone (Sư Đồ Phase 2).
+
+export type MentorMilestoneStatus = 'LOCKED' | 'AVAILABLE' | 'CLAIMED';
+export type MentorMilestoneRole = 'MENTOR' | 'DISCIPLE';
+
+export interface MentorMilestoneProgressRow {
+  milestoneKey: string;
+  status: MentorMilestoneStatus;
+  reachedAt: string | null;
+  titleVi: string;
+  titleEn: string;
+  viewerRewardLinhThach: string;
+  viewerClaimed: boolean;
+}
+
+export interface MentorMilestoneListResponse {
+  asMentor: Array<{
+    relationId: string;
+    studentUserId: string;
+    studentDisplayName: string | null;
+    studentRealmKey: string;
+    studentRealmOrder: number;
+    progress: MentorMilestoneProgressRow[];
+  }>;
+  asDisciple: {
+    relationId: string;
+    mentorUserId: string;
+    mentorDisplayName: string | null;
+    selfRealmKey: string;
+    selfRealmOrder: number;
+    progress: MentorMilestoneProgressRow[];
+  } | null;
+}
+
+export async function listMentorMilestones(): Promise<MentorMilestoneListResponse> {
+  const { data } = await apiClient.get<Envelope<MentorMilestoneListResponse>>(
+    '/mentor/milestones',
+  );
+  return unwrap(data);
+}
+
+export async function claimMentorMilestone(
+  milestoneKey: string,
+): Promise<{ role: MentorMilestoneRole; rewardLinhThach: string; mailId: string }> {
+  const { data } = await apiClient.post<
+    Envelope<{ role: MentorMilestoneRole; rewardLinhThach: string; mailId: string }>
+  >(`/mentor/milestones/${encodeURIComponent(milestoneKey)}/claim`);
+  return unwrap(data);
+}
+
+export async function recomputeMentorMilestones(): Promise<{
+  relationId: string | null;
+  created: number;
+  promoted: number;
+}> {
+  const { data } = await apiClient.post<
+    Envelope<{ relationId: string | null; created: number; promoted: number }>
+  >('/mentor/milestones/recompute');
+  return unwrap(data);
+}
