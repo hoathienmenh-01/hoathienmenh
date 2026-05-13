@@ -15,6 +15,29 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { MonetizationFoundationError } from './monetization-shop.service';
 
+/**
+ * Ensure `BattlePassSeason` row exists in DB — required for FK constraint
+ * on `BattlePassProgress.seasonId` and `BattlePassMissionProgress.seasonId`.
+ * Idempotent upsert.
+ */
+async function ensureSeasonRow(
+  prisma: PrismaService,
+  season: BattlePassSeasonDef,
+): Promise<void> {
+  await prisma.battlePassSeason.upsert({
+    where: { seasonId: season.seasonId },
+    create: {
+      seasonId: season.seasonId,
+      name: season.nameVi,
+      startAt: new Date(season.startAt),
+      endAt: new Date(season.endAt),
+      active: season.active,
+      config: season as unknown as Prisma.InputJsonValue,
+    },
+    update: {},
+  });
+}
+
 export interface MissionViewItem {
   mission: BattlePassMissionDef;
   scopeBucket: string;
@@ -160,6 +183,8 @@ export class BattlePassV2Service {
       };
     }
 
+    await ensureSeasonRow(this.prisma, season);
+
     let totalGranted = 0;
     const completed: string[] = [];
 
@@ -276,6 +301,7 @@ export class BattlePassV2Service {
   ): Promise<void> {
     const season = getActiveBattlePassSeason(now);
     if (!season) throw new MonetizationFoundationError('NO_ACTIVE_SEASON');
+    await ensureSeasonRow(this.prisma, season);
     await this.prisma.$transaction(async (tx) => {
       const existing = await tx.battlePassProgress.findUnique({
         where: {

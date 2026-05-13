@@ -312,6 +312,19 @@ export class MonetizationShopService {
     if (product.productType === 'BATTLE_PASS_PREMIUM') {
       const season = getActiveBattlePassSeason(now);
       if (!season) throw new MonetizationFoundationError('NO_ACTIVE_SEASON');
+      // Ensure BattlePassSeason FK target exists (idempotent).
+      await tx.battlePassSeason.upsert({
+        where: { seasonId: season.seasonId },
+        create: {
+          seasonId: season.seasonId,
+          name: season.nameVi,
+          startAt: new Date(season.startAt),
+          endAt: new Date(season.endAt),
+          active: season.active,
+          config: season as unknown as Prisma.InputJsonValue,
+        },
+        update: {},
+      });
       const existing = await tx.battlePassProgress.findUnique({
         where: {
           characterId_seasonId: { characterId, seasonId: season.seasonId },
