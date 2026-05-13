@@ -11,6 +11,11 @@ import {
   CULTIVATION_METHODS_V2,
   type MethodSource,
 } from './cultivation-methods-v2';
+import {
+  ARTIFACT_MATERIAL_CATALOG,
+  qualityForArtifactTier,
+  type ArtifactMaterialDef,
+} from './artifacts-v2';
 import type { EquipSlot, Quality } from './enums';
 import {
   deriveEquipmentProgressionMetadata,
@@ -2129,18 +2134,92 @@ const METHOD_FRAGMENT_ITEM_BY_KEY = new Map(
   METHOD_FRAGMENT_ITEMS.map((i) => [i.key, i]),
 );
 
+// ─────────────────────────────────────────────────────────────────────
+// Phase 26.4 — Artifact V2 craft materials.
+//
+// Auto-generated từ `ARTIFACT_MATERIAL_CATALOG` (artifacts-v2.ts). Mỗi
+// material map vào `MaterialCategory` (`EQUIPMENT_CRAFT` cho tier 1–3
+// lite ore, `ARTIFACT_CRAFT` cho boss_core / refine_stone / awaken_core /
+// spirit_essence / blueprint-item / phôi tier 4+ / elemental essence tier
+// 4+). Drop Economy V2 tự sinh `MaterialDropRule` qua
+// `buildDropRuleCatalog(ITEMS)` (đã có) — cap daily/weekly nằm ở
+// `dailyCapFor` / `weeklyCapFor` trong `drop-economy.ts`.
+// ─────────────────────────────────────────────────────────────────────
+function artifactMaterialSourceHints(def: ArtifactMaterialDef): SourceHint[] {
+  const out = new Set<SourceHint>();
+  for (const s of def.sourceHint) {
+    switch (s) {
+      case 'BOSS':
+        out.add('BOSS');
+        break;
+      case 'WORLD_BOSS':
+        out.add('WORLD_BOSS');
+        break;
+      case 'DUNGEON':
+        out.add('DUNGEON');
+        break;
+      case 'EVENT':
+        out.add('EVENT');
+        break;
+      case 'QUEST':
+        out.add('MAIN_QUEST');
+        break;
+      case 'SECT_SHOP':
+        out.add('SECT_SHOP');
+        break;
+      case 'ADMIN_ONLY':
+        out.add('ADMIN_ONLY');
+        break;
+      case 'CRAFT':
+        // CRAFT-only material không drop từ combat, skip.
+        break;
+      default:
+        break;
+    }
+  }
+  if (out.size === 0) out.add('ADMIN_ONLY');
+  return Array.from(out);
+}
+
+function artifactMaterialDescription(def: ArtifactMaterialDef): string {
+  return `${def.nameVi} (tier ${def.tier}, ${def.rarity}). Nguyên liệu hệ Pháp Bảo V2; nguồn: ${def.sourceHint.join(', ')}.`;
+}
+
+const ARTIFACT_MATERIAL_ITEMS: ItemDef[] = ARTIFACT_MATERIAL_CATALOG.map((def) => ({
+  key: def.key,
+  name: def.nameVi,
+  description: artifactMaterialDescription(def),
+  kind: 'ORE' as ItemKind,
+  quality: qualityForArtifactTier(def.tier),
+  stackable: true,
+  materialTier: def.tier,
+  materialCategory: def.itemMaterialCategory,
+  materialElement: null,
+  sourceHint: artifactMaterialSourceHints(def),
+  marketTradeable: def.marketTradeable,
+  bindOnPickup: def.bindOnPickup,
+  price: def.price,
+}));
+
+const ARTIFACT_MATERIAL_ITEM_BY_KEY = new Map(
+  ARTIFACT_MATERIAL_ITEMS.map((i) => [i.key, i]),
+);
+
 export const ITEMS: readonly ItemDef[] = [
   ...BASE_ITEMS.filter(
     (item) =>
       !ALCHEMY_V2_ITEM_BY_KEY.has(item.key) &&
-      !METHOD_FRAGMENT_ITEM_BY_KEY.has(item.key),
+      !METHOD_FRAGMENT_ITEM_BY_KEY.has(item.key) &&
+      !ARTIFACT_MATERIAL_ITEM_BY_KEY.has(item.key),
   ),
   ...ALCHEMY_V2_ITEMS,
   ...METHOD_FRAGMENT_ITEMS,
+  ...ARTIFACT_MATERIAL_ITEMS,
 ];
 
 export function itemByKey(key: string): ItemDef | undefined {
   return (
+    ARTIFACT_MATERIAL_ITEM_BY_KEY.get(key) ??
     ALCHEMY_V2_ITEM_BY_KEY.get(key) ??
     METHOD_FRAGMENT_ITEM_BY_KEY.get(key) ??
     BASE_ITEMS.find((i) => i.key === key)

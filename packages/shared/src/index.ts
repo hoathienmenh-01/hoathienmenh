@@ -29,6 +29,7 @@ export * from './equipment-resonance';
 export * from './equipment-build';
 export * from './phap-bao';
 export * from './phap-bao-progression';
+export * from './artifacts-v2';
 export * from './skill-templates';
 export * from './spiritual-root';
 export * from './talents';
