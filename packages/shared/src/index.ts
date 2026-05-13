@@ -118,3 +118,10 @@ export * from './sect-content';
 export * from './trial-towers';
 export * from './opportunities';
 export * from './world-content-summary';
+
+// ─── Phase 31.0 — Social & Retention Foundation V1 ─────────────────────
+export * from './mail-types';
+export * from './mentor';
+export * from './returner';
+export * from './system-gift';
+export * from './admin-mail';
