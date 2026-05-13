@@ -264,6 +264,12 @@ model Character {
   congHien         Int    @default(0)
   congDuc          Int    @default(0)
   chienCongTongMon Int    @default(0)
+  /// Phase 27.0 — Wallet currency (Đăng Tiên Tháp / Linh Khí Tháp / Huyết
+  /// Thể Tháp). Earn từ trial tower clear; spend qua trial-tower shop.
+  trialPoint       Int    @default(0)
+  /// Phase 27.0 — Event token (hoạt động mùa, event pass). Earn từ event;
+  /// spend qua event shop.
+  eventToken       Int    @default(0)
 
   /// Phase 13.1.B — Sect contribution balance (currency cho Sect Shop).
   /// `sectContribBalance` = spendable, mutate qua `SectContributionLedger`
@@ -368,60 +374,66 @@ model Character {
   sectId String?
   sect   Sect?   @relation(fields: [sectId], references: [id])
 
-  inventory                InventoryItem[]
-  ledger                   CurrencyLedger[]
-  itemLedger               ItemLedger[]
-  missionProgress          MissionProgress[]
-  questProgress            QuestProgress[]
-  mails                    Mail[]
-  dailyLoginClaims         DailyLoginClaim[]
-  spiritualRootRollLogs    SpiritualRootRollLog[]
-  cultivationMethods       CharacterCultivationMethod[]
-  methodUpgradeLogs        MethodUpgradeLog[]
-  artifactsV2              CharacterArtifactV2[]
-  artifactCraftLogs        ArtifactCraftAttemptLog[]
-  artifactUpgradeLogsV2    ArtifactUpgradeLogV2[]
-  characterSkills          CharacterSkill[]
-  tribulationAttemptLogs   TribulationAttemptLog[]
-  bodyBreakthroughLogs     BodyBreakthroughAttemptLog[]
-  alchemyAttemptLogs       AlchemyAttemptLog[]
-  tribulationEncounters    TribulationEncounter[]
-  tribulationMiniBattles   TribulationMiniBattle[]
-  breakthroughAttemptLogs  BreakthroughAttemptLog[]
-  buffs                    CharacterBuff[]
-  talents                  CharacterTalent[]
-  titleUnlocks             CharacterTitleUnlock[]
-  achievements             CharacterAchievement[]
-  sectMissionClaims        SectMissionClaim[]
-  sectShopPurchases        SectShopPurchase[]
-  sectContributionLedger   SectContributionLedger[]
-  sectSeasonClaims         SectSeasonClaim[]
-  npcAffinities            CharacterNpcAffinity[]
-  npcGiftLogs              CharacterNpcGiftLog[]
-  dailyRewardBuckets       CharacterDailyRewardBucket[]
-  rewardCapEvents          RewardCapEvent[]
-  dailyMaterialCaps        DailyMaterialCap[]
-  weeklyMaterialCaps       WeeklyMaterialCap[]
-  arenaProfile             ArenaProfile?
-  arenaMatchesAttacker     ArenaMatch[]                 @relation("ArenaMatchAttacker")
-  arenaMatchesDefender     ArenaMatch[]                 @relation("ArenaMatchDefender")
-  arenaStandings           ArenaStanding[]
-  arenaSeasonRewardGrants  ArenaSeasonRewardGrant[]
+  inventory                 InventoryItem[]
+  ledger                    CurrencyLedger[]
+  itemLedger                ItemLedger[]
+  missionProgress           MissionProgress[]
+  questProgress             QuestProgress[]
+  mails                     Mail[]
+  dailyLoginClaims          DailyLoginClaim[]
+  spiritualRootRollLogs     SpiritualRootRollLog[]
+  cultivationMethods        CharacterCultivationMethod[]
+  methodUpgradeLogs         MethodUpgradeLog[]
+  artifactsV2               CharacterArtifactV2[]
+  artifactCraftLogs         ArtifactCraftAttemptLog[]
+  artifactUpgradeLogsV2     ArtifactUpgradeLogV2[]
+  characterSkills           CharacterSkill[]
+  tribulationAttemptLogs    TribulationAttemptLog[]
+  bodyBreakthroughLogs      BodyBreakthroughAttemptLog[]
+  alchemyAttemptLogs        AlchemyAttemptLog[]
+  tribulationEncounters     TribulationEncounter[]
+  tribulationMiniBattles    TribulationMiniBattle[]
+  breakthroughAttemptLogs   BreakthroughAttemptLog[]
+  buffs                     CharacterBuff[]
+  talents                   CharacterTalent[]
+  titleUnlocks              CharacterTitleUnlock[]
+  achievements              CharacterAchievement[]
+  sectMissionClaims         SectMissionClaim[]
+  sectShopPurchases         SectShopPurchase[]
+  sectContributionLedger    SectContributionLedger[]
+  sectSeasonClaims          SectSeasonClaim[]
+  npcAffinities             CharacterNpcAffinity[]
+  npcGiftLogs               CharacterNpcGiftLog[]
+  dailyRewardBuckets        CharacterDailyRewardBucket[]
+  rewardCapEvents           RewardCapEvent[]
+  dailyMaterialCaps         DailyMaterialCap[]
+  weeklyMaterialCaps        WeeklyMaterialCap[]
+  arenaProfile              ArenaProfile?
+  arenaMatchesAttacker      ArenaMatch[]                 @relation("ArenaMatchAttacker")
+  arenaMatchesDefender      ArenaMatch[]                 @relation("ArenaMatchDefender")
+  arenaStandings            ArenaStanding[]
+  arenaSeasonRewardGrants   ArenaSeasonRewardGrant[]
   /// Phase 15.0.A — Equipment Reforge / Enchant Foundation.
   /// Audit history per attempt; FK Cascade khi xoá character.
-  equipmentReforgeHistory  EquipmentReforgeHistory[]
-  equipmentEnchantHistory  EquipmentEnchantHistory[]
+  equipmentReforgeHistory   EquipmentReforgeHistory[]
+  equipmentEnchantHistory   EquipmentEnchantHistory[]
   /// Phase 15.1–15.2 — LiveOps Event Scheduler reward claim (one-time per event).
-  liveOpsEventRewardClaims LiveOpsEventRewardClaim[]
-  battlePassProgress       BattlePassProgress[]
-  monthlyCardSubscription  MonthlyCardSubscription?
-  vipProfile               VipProfile?
-  shopPackPurchases        ShopPackPurchase[]
+  liveOpsEventRewardClaims  LiveOpsEventRewardClaim[]
+  battlePassProgress        BattlePassProgress[]
+  monthlyCardSubscription   MonthlyCardSubscription[]
+  vipProfile                VipProfile?
+  shopPackPurchases         ShopPackPurchase[]
+  /// Phase 27.0 — Monetization Foundation backrefs.
+  premiumEntitlements       PremiumEntitlement[]
+  monetizationShopPurchases MonetizationShopPurchase[]
+  paidLimitPurchases        PaidLimitPurchase[]
+  sweepTicketLogs           SweepTicketLog[]
+  growthFundStates          GrowthFundState[]
   /// Phase 25.3 — Code-only Cosmetic Effects. Cosmetics never carry power /
   /// stat bonuses; they only drive CSS rendering on aura / title / frame /
   /// chat badge / profile decoration / element aura surfaces.
-  cosmeticOwnerships       CosmeticOwnership[]
-  cosmeticLoadout          CosmeticLoadout?
+  cosmeticOwnerships        CosmeticOwnership[]
+  cosmeticLoadout           CosmeticLoadout?
 
   /// Phase 26.5 — World Content V2 backrefs.
   farmSessions          FarmSession[]
@@ -505,14 +517,20 @@ model BattlePassProgress {
 
 model MonthlyCardSubscription {
   id               String    @id @default(cuid())
-  characterId      String    @unique
+  characterId      String
   character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Phase 27.0 — Monthly card variant key (vd `tieu_nguyet_tap`,
+  /// `dai_nguyet_tap`, `the_luyen_dan`, …). Match `MonthlyCardKey` từ
+  /// shared `monetization-foundation`. Default `tieu_nguyet_tap` cho
+  /// data legacy pre-Phase 27.0.
+  cardKey          String    @default("tieu_nguyet_tap")
   activeUntil      DateTime
   lastClaimAt      DateTime?
   totalClaimedDays Int       @default(0)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
+  @@unique([characterId, cardKey])
   @@index([activeUntil])
 }
 
@@ -527,6 +545,130 @@ model VipProfile {
   updatedAt           DateTime  @updatedAt
 
   @@index([vipLevel])
+}
+
+/// Phase 27.0 — Premium entitlement. Quyền lợi mà character đang sở hữu do
+/// mua gói / thẻ tháng / pass / unlock tiện ích. Service-layer call
+/// `EntitlementService.getActiveEntitlements(characterId)` để check quyền lợi
+/// còn hạn (so sánh `expiresAt > now`).
+///
+/// `entitlementKey` ∈ shared `EntitlementKey` (`MONTHLY_CARD_SMALL/LARGE`,
+/// `AUTO_FARM_EXTENDED`, `DAILY_DUNGEON_EXTRA_ATTEMPT`, `SWEEP_TICKET_DAILY`,
+/// `ALCHEMY_QUEUE_SLOT`, `BODY_TRIAL_EXTRA_ATTEMPT`, `MARKET_SLOT_BONUS`,
+/// `INVENTORY_SLOT_BONUS`).
+///
+/// `source` ghi nguồn grant — vd `MONTHLY_CARD:tieu_nguyet_tap`,
+/// `SHOP:inventory_slot_pack`, `ADMIN_GRANT`, `EVENT`.
+/// `valueJson` = giá trị runtime entitlement (vd `{ "minutes": 480 }` cho
+/// AUTO_FARM_EXTENDED). Server enforce cap (`ENTITLEMENT_VALUE_CAPS`).
+/// `active=false` để soft-disable (admin revoke) thay vì delete.
+model PremiumEntitlement {
+  id             String    @id @default(cuid())
+  characterId    String
+  character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  entitlementKey String
+  source         String
+  startsAt       DateTime  @default(now())
+  expiresAt      DateTime?
+  valueJson      Json      @default("{}")
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([characterId, entitlementKey])
+  @@index([characterId, active, expiresAt])
+  @@index([entitlementKey])
+}
+
+/// Phase 27.0 — Shop product purchase log + idempotency. UNIQUE
+/// `(characterId, productKey, periodKey)` enforce purchase limit theo period
+/// (`DAILY` / `WEEKLY` / `MONTHLY` / `LIFETIME`). Mỗi row = 1 lần purchase
+/// thành công + reward grant + ledger row.
+///
+/// `priceCurrency` ∈ `CurrencyKind` (sau Phase 27.0 đã extend đủ 6 currency).
+/// `rewardJson` snapshot reward đã grant — debug + audit. `status` =
+/// `'COMPLETED'` (foundation phase chỉ có completed flow; future refund flow
+/// có thể thêm `'REFUNDED'`).
+model MonetizationShopPurchase {
+  id            String       @id @default(cuid())
+  characterId   String
+  character     Character    @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  productKey    String
+  productType   String
+  priceCurrency CurrencyKind
+  priceAmount   Int
+  rewardJson    Json         @default("{}")
+  status        String       @default("COMPLETED")
+  /// Period bucket — `'lifetime'` cho LIFETIME/NONE; `'YYYY-MM-DD'` cho DAILY;
+  /// `'YYYY-Www'` cho WEEKLY; `'YYYY-MM'` cho MONTHLY.
+  periodKey     String
+  createdAt     DateTime     @default(now())
+
+  @@index([characterId, productKey, periodKey])
+  @@index([characterId, productKey, createdAt])
+  @@index([productKey, createdAt])
+}
+
+/// Phase 27.0 — Per-day paid limit counter cho mua thêm lượt (`extra
+/// attempt`). UNIQUE `(characterId, limitKey, periodKey)` đảm bảo CAS-safe
+/// upsert: mỗi day-bucket / character / limitKey chỉ có 1 row, increment
+/// `usedCount` qua `updateMany` guard `usedCount < maxCount`.
+///
+/// `limitKey` ∈ shared `ExtraAttemptLimitKey` (`DAILY_DUNGEON` /
+/// `PERSONAL_BOSS` / `FARM_MAP`). `maxCount` snapshot tại thời điểm tạo row;
+/// nếu catalog đổi cap thì row cũ vẫn enforce cap snapshot (đỡ migration
+/// pain). `periodKey` = `'YYYY-MM-DD'` UTC bucket (đồng bộ với
+/// `CurrencyLedger`).
+model PaidLimitPurchase {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  limitKey    String
+  periodKey   String
+  usedCount   Int       @default(0)
+  maxCount    Int
+  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now())
+
+  @@unique([characterId, limitKey, periodKey])
+  @@index([characterId, limitKey])
+}
+
+/// Phase 27.0 — Sweep ticket consumption log. Mỗi row = 1 lần dùng vé quét
+/// cho 1 nội dung đã clear. `contentType` ∈ shared `SweepableContentType`
+/// (`DUNGEON` / `FARM_MAP` / `SECT_DUNGEON`). `rewardJson` snapshot reward
+/// được grant — vẫn tính daily attempt + material cap (Phase 26.2 +
+/// Phase 26.5 caps không bị bypass).
+model SweepTicketLog {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  ticketKey   String
+  contentType String
+  contentKey  String
+  rewardJson  Json      @default("{}")
+  createdAt   DateTime  @default(now())
+
+  @@index([characterId, createdAt])
+  @@index([characterId, contentType, contentKey, createdAt])
+}
+
+/// Phase 27.0 — Growth Fund state (Quỹ Trưởng Thành). Mua 1 lần per
+/// `(characterId, fundKey)`; mỗi milestone (đạt cảnh giới) chỉ claim 1 lần.
+/// `claimedMilestonesJson` = `string[]` of `GrowthFundMilestoneDef.key` đã
+/// claim — server enforce idempotency qua `updateMany` CAS guard
+/// `NOT (key in claimedMilestonesJson)`.
+model GrowthFundState {
+  id                    String    @id @default(cuid())
+  characterId           String
+  character             Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  fundKey               String
+  purchasedAt           DateTime  @default(now())
+  claimedMilestonesJson Json      @default("[]")
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([characterId, fundKey])
+  @@index([characterId])
 }
 
 /// Phase 25.2 — Limited Resource Shop Pack purchase history.
@@ -2173,6 +2315,18 @@ enum EncounterStatus {
 enum CurrencyKind {
   LINH_THACH
   TIEN_NGOC
+  /// Phase 27.0 — Bound premium currency. Không giao dịch được; reward
+  /// thẻ tháng / pass / event / bồi thường / vé quét.
+  TIEN_NGOC_KHOA
+  /// Phase 27.0 — Cống Hiến Tông Môn. Earn từ nhiệm vụ / boss / bí cảnh
+  /// tông môn. Khác `sectContribBalance` (Phase 13.1.B spendable) — đây
+  /// là wallet view chung cho monetization layer.
+  CONG_HIEN_TONG_MON
+  /// Phase 27.0 — Trial Point (Đăng Tiên Tháp / Linh Khí Tháp / Huyết
+  /// Thể Tháp). Earn từ trial tower clear.
+  TRIAL_POINT
+  /// Phase 27.0 — Event token. Earn từ hoạt động mùa, event pass.
+  EVENT_TOKEN
 }
 
 /// Audit trail mọi mutation của linhThach / tienNgoc (Phase 4-8). Một dòng = một

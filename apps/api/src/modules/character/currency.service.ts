@@ -2,6 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { CurrencyKind, Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
 
+/**
+ * Phase 27.0 — Mapping từ `CurrencyKind` (Int variants) → tên cột
+ * `Character`. `LINH_THACH` (BigInt) xử lý riêng. Spread thêm currency
+ * mới ở đây nếu thêm field.
+ */
+const INT_CURRENCY_FIELD: Partial<Record<CurrencyKind, keyof Prisma.CharacterUncheckedUpdateInput>> = {
+  [CurrencyKind.TIEN_NGOC]: 'tienNgoc',
+  [CurrencyKind.TIEN_NGOC_KHOA]: 'tienNgocKhoa',
+  [CurrencyKind.CONG_HIEN_TONG_MON]: 'sectContribBalance',
+  [CurrencyKind.TRIAL_POINT]: 'trialPoint',
+  [CurrencyKind.EVENT_TOKEN]: 'eventToken',
+};
+
 export class CurrencyError extends Error {
   constructor(
     public code: 'INSUFFICIENT_FUNDS' | 'NOT_FOUND' | 'INVALID_INPUT',
@@ -162,7 +175,22 @@ export type LedgerReason =
   // qua `WorldCapService.consumeDailyTx`/`consumeWeeklyTx` (premium KHÔNG
   // bypass).
   | 'FARM_SESSION_REWARD'
-  | 'TRIAL_TOWER_REWARD';
+  | 'TRIAL_TOWER_REWARD'
+  // Phase 27.0 — Monetization Foundation. Shop purchase (debit), reward
+  // grant (credit), entitlement purchase, paid extra attempt, sweep ticket
+  // consume, growth fund purchase / claim, monthly card upfront / daily.
+  // refType ∈ { 'MonetizationShopPurchase' | 'PremiumEntitlement' |
+  // 'MonthlyCardSubscription' | 'PaidLimitPurchase' | 'SweepTicketLog' |
+  // 'GrowthFundState' }. Idempotency lấy từ UNIQUE constraint của bảng
+  // tương ứng + CAS guard trong service.
+  | 'MONETIZATION_SHOP_BUY'
+  | 'MONETIZATION_SHOP_REFUND'
+  | 'MONETIZATION_ENTITLEMENT_GRANT'
+  | 'MONETIZATION_EXTRA_ATTEMPT_BUY'
+  | 'MONETIZATION_SWEEP_TICKET_USE'
+  | 'MONETIZATION_GROWTH_FUND_BUY'
+  | 'MONETIZATION_GROWTH_FUND_CLAIM'
+  | 'MONETIZATION_MONTHLY_CARD_BUY';
 
 export interface CurrencyApplyInput {
   characterId: string;
@@ -214,17 +242,23 @@ export class CurrencyService {
         await this.throwBecauseNoUpdate(tx, input.characterId);
       }
     } else {
+      // Int currency: TIEN_NGOC | TIEN_NGOC_KHOA | CONG_HIEN_TONG_MON |
+      // TRIAL_POINT | EVENT_TOKEN.
       const deltaNum = Number(input.delta);
       if (!Number.isSafeInteger(deltaNum)) {
         throw new CurrencyError('INVALID_INPUT');
       }
+      const fieldName = INT_CURRENCY_FIELD[input.currency];
+      if (!fieldName) {
+        throw new CurrencyError('INVALID_INPUT');
+      }
       const where: Prisma.CharacterWhereInput =
         deltaNum < 0
-          ? { ...baseWhere, tienNgoc: { gte: -deltaNum } }
+          ? { ...baseWhere, [fieldName]: { gte: -deltaNum } }
           : baseWhere;
       const upd = await tx.character.updateMany({
         where,
-        data: { tienNgoc: { increment: deltaNum } },
+        data: { [fieldName]: { increment: deltaNum } },
       });
       if (upd.count === 0) {
         await this.throwBecauseNoUpdate(tx, input.characterId);

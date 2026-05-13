@@ -231,7 +231,16 @@ export type ItemLedgerReason =
   | 'ARTIFACT_V2_UPGRADE_CONSUME'
   | 'ARTIFACT_V2_STAR_UP_CONSUME'
   | 'ARTIFACT_V2_REFINE_CONSUME'
-  | 'ARTIFACT_V2_AWAKEN_CONSUME';
+  | 'ARTIFACT_V2_AWAKEN_CONSUME'
+  // Phase 27.0 — Monetization Foundation item grants. Wire qua
+  // `MonetizationShopService.purchase` / `GrowthFundService.claimMilestone` /
+  // `MonetizationShopService.grantRewardTx` (monthly card upfront). Positive
+  // qtyDelta (grant). refType ∈ { 'MonetizationShopPurchase' |
+  // 'MonthlyCardSubscription' | 'GrowthFundState' }; refId là productKey /
+  // subscriptionId:upfront / fundKey:milestoneKey tương ứng.
+  | 'MONETIZATION_SHOP_BUY'
+  | 'MONETIZATION_MONTHLY_CARD_BUY'
+  | 'MONETIZATION_GROWTH_FUND_CLAIM';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;

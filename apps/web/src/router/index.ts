@@ -106,6 +106,16 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/MonetizationView.vue'),
   },
   {
+    path: '/wallet',
+    name: 'wallet',
+    component: () => import('@/views/WalletView.vue'),
+  },
+  {
+    path: '/monetization-shop',
+    name: 'monetizationShop',
+    component: () => import('@/views/MonetizationShopView.vue'),
+  },
+  {
     path: '/shop-packs',
     name: 'shopPacks',
     component: () => import('@/views/ShopPacksView.vue'),

@@ -150,7 +150,9 @@ export class MonetizationService {
   async monthlyCard(userId: string, now: Date = new Date()) {
     const characterId = await this.getCharacterId(userId);
     const subscription = await this.prisma.monthlyCardSubscription.findUnique({
-      where: { characterId },
+      where: {
+        characterId_cardKey: { characterId, cardKey: LEGACY_MONTHLY_CARD_KEY },
+      },
     });
     const nextDay = (subscription?.totalClaimedDays ?? 0) + 1;
     return {
@@ -167,7 +169,9 @@ export class MonetizationService {
     const characterId = await this.getCharacterId(userId);
     await this.prisma.$transaction(async (tx) => {
       const subscription = await tx.monthlyCardSubscription.findUnique({
-        where: { characterId },
+        where: {
+          characterId_cardKey: { characterId, cardKey: LEGACY_MONTHLY_CARD_KEY },
+        },
       });
       if (!subscription || subscription.activeUntil <= now) {
         throw new MonetizationError('INACTIVE_MONTHLY_CARD');
@@ -245,8 +249,10 @@ export class MonetizationService {
     const activeUntil = new Date(now.getTime() + MONTHLY_CARD_CONFIG.durationDays * 86_400_000);
     await this.prisma.$transaction(async (tx) => {
       const subscription = await tx.monthlyCardSubscription.upsert({
-        where: { characterId },
-        create: { characterId, activeUntil },
+        where: {
+          characterId_cardKey: { characterId, cardKey: LEGACY_MONTHLY_CARD_KEY },
+        },
+        create: { characterId, cardKey: LEGACY_MONTHLY_CARD_KEY, activeUntil },
         update: { activeUntil },
       });
       await this.grantRewardsTx(tx, characterId, MONTHLY_CARD_CONFIG.upfrontReward, {
@@ -468,3 +474,10 @@ export class MonetizationService {
 function startOfUtcDay(now: Date): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
+
+/**
+ * Phase 27.0 — Legacy MonthlyCardSubscription rows pre-Phase 27.0 default to
+ * `tieu_nguyet_tap` ("Tiểu Nguyệt Tạp"). Thứ tụ đổi unique sang composite
+  * `(characterId, cardKey)` nên lối đi "legacy" vẫn dùng `cardKey` này.
+ */
+const LEGACY_MONTHLY_CARD_KEY = 'tieu_nguyet_tap';

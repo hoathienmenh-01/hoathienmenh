@@ -226,6 +226,13 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // để FK cleanup đơn giản, mirror order liveOpsScheduledEvent).
   await prisma.liveOpsAnnouncement.deleteMany({});
   await prisma.vipProfile.deleteMany({});
+  // Phase 27.0 — Monetization Foundation. Xoá trước MonthlyCardSubscription
+  // và CurrencyLedger để FK + cap state reset đầy đủ giữa các test.
+  await prisma.growthFundState.deleteMany({});
+  await prisma.sweepTicketLog.deleteMany({});
+  await prisma.paidLimitPurchase.deleteMany({});
+  await prisma.monetizationShopPurchase.deleteMany({});
+  await prisma.premiumEntitlement.deleteMany({});
   await prisma.monthlyCardSubscription.deleteMany({});
   await prisma.battlePassProgress.deleteMany({});
   await prisma.battlePassSeason.deleteMany({});
