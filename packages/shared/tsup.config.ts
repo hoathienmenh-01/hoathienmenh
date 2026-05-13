@@ -19,6 +19,7 @@ export default defineConfig({
     'src/elemental.ts',
     'src/equipment-progression.ts',
     'src/notification.ts',
+    'src/inventory-sort.ts',
   ],
   format: ['esm', 'cjs'],
   dts: true,

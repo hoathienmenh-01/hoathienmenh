@@ -7,19 +7,24 @@ import {
   QUALITY_COLOR,
   REALMS,
   REFINE_MAX_LEVEL,
+  SORT_PRESETS,
   canEquipItemAtRealm,
   combineGems as catalogCombineGems,
+  filterInventory,
   getEquipmentQualityVisual,
   getGemDef,
   getRefineAttemptCost,
+  isSortPresetKey,
   itemWithProgression,
   itemByKey,
   skillByKey,
   socketCapacityForQuality,
+  sortInventory,
   type EquipSlot,
   type GemCompatibleSlot,
   type GemDef,
   type ItemDef,
+  type SortPresetKey,
 } from '@xuantoi/shared';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
@@ -28,9 +33,11 @@ import {
   combineGemsApi,
   equipItem,
   listInventory,
+  lockInventoryItem,
   refineEquipment,
   socketGem,
   unequipItem,
+  unlockInventoryItem,
   unsocketGem,
   useItem,
   type InventoryView,
@@ -147,7 +154,68 @@ const equipped = computed(() => {
   return map;
 });
 
-const unequipped = computed(() => items.value.filter((i) => !i.equippedSlot));
+/**
+ * Phase QOL-1 — sort preset (persist localStorage). Default = `default`
+ * preset (locked desc → kind asc → quality desc → tier desc → level desc →
+ * acquiredAt desc). User có thể đổi: newest / quality / tier / level / element.
+ */
+const SORT_STORAGE_KEY = 'xt:inventory-sort-preset-v1';
+const SHOW_LOCKED_ONLY_KEY = 'xt:inventory-show-locked-only-v1';
+
+function loadSortPreset(): SortPresetKey {
+  try {
+    const v = localStorage.getItem(SORT_STORAGE_KEY);
+    return isSortPresetKey(v) ? v : 'default';
+  } catch {
+    return 'default';
+  }
+}
+
+function loadShowLockedOnly(): boolean {
+  try {
+    return localStorage.getItem(SHOW_LOCKED_ONLY_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+const sortPreset = ref<SortPresetKey>(loadSortPreset());
+const showLockedOnly = ref<boolean>(loadShowLockedOnly());
+
+function onSortPresetChange(v: SortPresetKey): void {
+  sortPreset.value = v;
+  try {
+    localStorage.setItem(SORT_STORAGE_KEY, v);
+  } catch {
+    // ignore
+  }
+}
+
+function onShowLockedOnlyChange(v: boolean): void {
+  showLockedOnly.value = v;
+  try {
+    localStorage.setItem(SHOW_LOCKED_ONLY_KEY, v ? '1' : '0');
+  } catch {
+    // ignore
+  }
+}
+
+const SORT_PRESET_KEYS: SortPresetKey[] = [
+  'default',
+  'newest',
+  'quality',
+  'tier',
+  'level',
+  'element',
+];
+
+const unequipped = computed(() => {
+  const raw = items.value.filter((i) => !i.equippedSlot);
+  const filtered = showLockedOnly.value
+    ? filterInventory(raw, { locked: true })
+    : raw;
+  return sortInventory(filtered, SORT_PRESETS[sortPreset.value].slice());
+});
 
 function bonusText(item: ItemDef): string {
   if (!item.bonuses) return '';
@@ -332,6 +400,43 @@ async function onUse(it: InventoryView): Promise<void> {
     items.value = await useItem(it.id);
     toast.push({ type: 'success', text: t('inventory.useToast', { name: it.item.name }) });
   } catch (e) {
+    handleErr(e);
+  } finally {
+    submitting.value = false;
+  }
+}
+
+/**
+ * Phase QOL-1 — toggle lock state. Optimistic: replace item in list ngay,
+ * sau đó reconcile khi server reply. Nếu server reject, revert.
+ */
+async function onToggleLock(it: InventoryView): Promise<void> {
+  if (submitting.value) return;
+  submitting.value = true;
+  const idx = items.value.findIndex((x) => x.id === it.id);
+  const original = idx >= 0 ? items.value[idx] : null;
+  // Optimistic update.
+  if (idx >= 0 && original) {
+    items.value = items.value.map((x, i) =>
+      i === idx ? { ...x, locked: !x.locked } : x,
+    );
+  }
+  try {
+    const updated = it.locked
+      ? await unlockInventoryItem(it.id)
+      : await lockInventoryItem(it.id);
+    items.value = items.value.map((x) => (x.id === updated.id ? updated : x));
+    toast.push({
+      type: 'success',
+      text: updated.locked
+        ? t('inventory.lock.lockedToast', { name: it.item.name })
+        : t('inventory.lock.unlockedToast', { name: it.item.name }),
+    });
+  } catch (e) {
+    // Revert optimistic update.
+    if (idx >= 0 && original) {
+      items.value = items.value.map((x, i) => (i === idx ? original : x));
+    }
     handleErr(e);
   } finally {
     submitting.value = false;
@@ -570,6 +675,35 @@ function handleErr(e: unknown): void {
 
       <!-- Danh sách item chưa đeo -->
       <section class="space-y-3">
+        <!-- Phase QOL-1 — sort preset + show-locked filter (persisted localStorage). -->
+        <div
+          class="flex flex-wrap items-center gap-3 rounded border border-ink-300/30 bg-ink-700/20 p-2"
+          data-testid="inventory-sort-controls"
+        >
+          <label class="flex items-center gap-2 text-xs text-ink-200">
+            <span>{{ t('inventory.sort.label') }}</span>
+            <select
+              :value="sortPreset"
+              data-testid="inventory-sort-preset"
+              class="rounded bg-ink-700 px-2 py-1 text-xs text-ink-100 border border-ink-300/40 focus:outline-none focus:ring-1 focus:ring-amber-400/60"
+              @change="onSortPresetChange(($event.target as HTMLSelectElement).value as SortPresetKey)"
+            >
+              <option v-for="k in SORT_PRESET_KEYS" :key="k" :value="k">
+                {{ t(`inventory.sort.preset.${k}`) }}
+              </option>
+            </select>
+          </label>
+          <label class="flex items-center gap-2 text-xs text-ink-200 cursor-pointer">
+            <input
+              type="checkbox"
+              :checked="showLockedOnly"
+              data-testid="inventory-show-locked-only"
+              class="h-3 w-3 accent-amber-400"
+              @change="onShowLockedOnlyChange(($event.target as HTMLInputElement).checked)"
+            />
+            <span>{{ t('inventory.lock.showLockedOnly') }}</span>
+          </label>
+        </div>
         <div v-if="unequipped.length === 0" class="text-ink-300 italic">
           {{ t('inventory.emptyAll') }}
         </div>
@@ -581,6 +715,32 @@ function handleErr(e: unknown): void {
           <div class="flex items-center gap-3">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  :title="
+                    it.locked
+                      ? t('inventory.lock.unlockTooltip')
+                      : t('inventory.lock.lockTooltip')
+                  "
+                  :aria-label="
+                    it.locked
+                      ? t('inventory.lock.unlockTooltip')
+                      : t('inventory.lock.lockTooltip')
+                  "
+                  :aria-pressed="it.locked"
+                  data-testid="inventory-lock-toggle"
+                  :data-locked="it.locked ? 'true' : 'false'"
+                  class="text-base leading-none rounded px-1 py-0.5 transition-colors focus:outline-none focus:ring-1 focus:ring-amber-400/60"
+                  :class="
+                    it.locked
+                      ? 'text-amber-300 hover:bg-amber-300/10'
+                      : 'text-ink-300 hover:bg-ink-300/10 hover:text-ink-100'
+                  "
+                  :disabled="submitting"
+                  @click="onToggleLock(it)"
+                >
+                  <span aria-hidden="true">{{ it.locked ? '🔒' : '🔓' }}</span>
+                </button>
                 <span class="font-bold" :class="equipmentQualityClass(it.item)">
                   {{ it.item.name }}
                 </span>

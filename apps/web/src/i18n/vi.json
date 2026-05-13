@@ -873,6 +873,24 @@
     "equipToast": "Đã mang {name}.",
     "unequipToast": "Đã tháo {slot}.",
     "useToast": "Đã dùng {name}.",
+    "sort": {
+      "label": "Sắp xếp",
+      "preset": {
+        "default": "Mặc định",
+        "newest": "Mới nhận",
+        "quality": "Phẩm cấp",
+        "tier": "Tầng trang bị",
+        "level": "Cấp luyện khí",
+        "element": "Ngũ Hành"
+      }
+    },
+    "lock": {
+      "showLockedOnly": "Chỉ hiện món đang khóa",
+      "lockTooltip": "Khóa món để tránh dùng nhầm",
+      "unlockTooltip": "Mở khóa món này",
+      "lockedToast": "Đã khóa {name}.",
+      "unlockedToast": "Đã mở khóa {name}."
+    },
     "progression": {
       "tierLabel": "Tầng {tier} {name} {grade}",
       "gradeLabel": "cấp {grade}",
@@ -922,6 +940,7 @@
     },
     "errors": {
       "INVENTORY_ITEM_NOT_FOUND": "Vật phẩm không còn nữa.",
+      "INVENTORY_ITEM_LOCKED": "Vật phẩm đang khóa — mở khóa trước khi dùng.",
       "NOT_EQUIPPABLE": "Vật phẩm này không trang bị được.",
       "NOT_USABLE": "Vật phẩm này không có hiệu ứng.",
       "EQUIPMENT_REALM_LOCKED": "Cảnh giới chưa đủ để mặc trang bị này.",

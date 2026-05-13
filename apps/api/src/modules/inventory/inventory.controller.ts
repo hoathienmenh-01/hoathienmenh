@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpException,
   HttpStatus,
+  Param,
   Post,
   Req,
 } from '@nestjs/common';
@@ -32,6 +33,13 @@ const UnequipInput = z.object({
   ]),
 });
 const UseInput = z.object({ inventoryItemId: z.string().min(1) });
+const LockBatchInput = z.object({
+  inventoryItemIds: z
+    .array(z.string().min(1))
+    .min(1, { message: 'INVENTORY_ITEM_IDS_EMPTY' })
+    .max(100, { message: 'INVENTORY_ITEM_IDS_TOO_MANY' }),
+  lock: z.boolean(),
+});
 
 function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
   throw new HttpException({ ok: false, error: { code, message: code } }, status);
@@ -169,6 +177,59 @@ export class InventoryController {
     }
   }
 
+  /**
+   * Phase QOL-1 — lock 1 inventory item (idempotent). Trang bị khóa sẽ
+   * bị `use()` từ chối. Còn equip/unequip vẫn OK (UX: tránh consume
+   * nhầm món quan trọng, còn sử dụng ngoài thống nhất).
+   */
+  @Post(':id/lock')
+  @HttpCode(200)
+  async lockItem(@Req() req: Request, @Param('id') id: string) {
+    const { userId } = await this.requireCharacter(req);
+    if (!id || id.length < 1) fail('INVALID_INPUT');
+    try {
+      const item = await this.inv.lock(userId, id);
+      return { ok: true, data: { item } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  @Post(':id/unlock')
+  @HttpCode(200)
+  async unlockItem(@Req() req: Request, @Param('id') id: string) {
+    const { userId } = await this.requireCharacter(req);
+    if (!id || id.length < 1) fail('INVALID_INPUT');
+    try {
+      const item = await this.inv.unlock(userId, id);
+      return { ok: true, data: { item } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Phase QOL-1 — batch lock/unlock. Tối đa 100 row mỗi call. Atomic:
+   * nếu 1 row không thuộc character → toàn bộ rollback.
+   */
+  @Post('lock/batch')
+  @HttpCode(200)
+  async lockBatch(@Req() req: Request, @Body() body: unknown) {
+    const { userId } = await this.requireCharacter(req);
+    const parsed = LockBatchInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const result = await this.inv.lockBatch(
+        userId,
+        parsed.data.inventoryItemIds,
+        parsed.data.lock,
+      );
+      return { ok: true, data: result };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
   private handleErr(e: unknown): never {
     const code = (e as { code?: string })?.code;
     switch (code) {
@@ -182,6 +243,7 @@ export class InventoryController {
       case 'WRONG_SLOT':
       case 'ALREADY_USED':
       case 'EQUIPMENT_REALM_LOCKED':
+      case 'INVENTORY_ITEM_LOCKED':
         fail(code, HttpStatus.CONFLICT);
       // eslint-disable-next-line no-fallthrough
       default:

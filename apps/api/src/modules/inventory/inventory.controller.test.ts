@@ -54,6 +54,13 @@ function makeController(
     equipImpl?: (uid: string, id: string) => Promise<InventoryView[]>;
     unequipImpl?: (uid: string, slot: string) => Promise<InventoryView[]>;
     useImpl?: (uid: string, id: string) => Promise<InventoryView[]>;
+    lockImpl?: (uid: string, id: string) => Promise<InventoryView>;
+    unlockImpl?: (uid: string, id: string) => Promise<InventoryView>;
+    lockBatchImpl?: (
+      uid: string,
+      ids: string[],
+      lock: boolean,
+    ) => Promise<{ changed: number; total: number }>;
   } = {},
 ) {
   const auth = {
@@ -68,11 +75,16 @@ function makeController(
           : { id: opts.characterId ?? 'c1' },
     },
   } as unknown as PrismaService;
+  const STUB_ITEM = {} as unknown as InventoryView;
   const inv = {
     list: opts.listImpl ?? (async () => STUB_INV),
     equip: opts.equipImpl ?? (async () => STUB_INV),
     unequip: opts.unequipImpl ?? (async () => STUB_INV),
     use: opts.useImpl ?? (async () => STUB_INV),
+    lock: opts.lockImpl ?? (async () => STUB_ITEM),
+    unlock: opts.unlockImpl ?? (async () => STUB_ITEM),
+    lockBatch:
+      opts.lockBatchImpl ?? (async () => ({ changed: 0, total: 0 })),
   } as unknown as InventoryService;
   return new InventoryController(inv, auth, prisma);
 }
@@ -344,6 +356,162 @@ describe('InventoryController', () => {
       await expect(
         c.use(makeReq('valid'), { inventoryItemId: 'i1' }),
       ).rejects.toBe(boom);
+    });
+  });
+
+  describe('POST /inventory/:id/lock — QOL-1', () => {
+    it('200 envelope { item }', async () => {
+      const calls: string[] = [];
+      const c = makeController({
+        lockImpl: async (uid, id) => {
+          calls.push(`${uid}:${id}`);
+          return { id, locked: true } as unknown as InventoryView;
+        },
+      });
+      const res = await c.lockItem(makeReq('valid'), 'inv-1');
+      expect(res).toMatchObject({
+        ok: true,
+        data: { item: { id: 'inv-1', locked: true } },
+      });
+      expect(calls).toEqual(['u1:inv-1']);
+    });
+
+    it('404 INVENTORY_ITEM_NOT_FOUND → mapping', async () => {
+      const c = makeController({
+        lockImpl: async () => {
+          throw new DuckErr('INVENTORY_ITEM_NOT_FOUND');
+        },
+      });
+      await expectHttpError(
+        c.lockItem(makeReq('valid'), 'inv-x'),
+        HttpStatus.NOT_FOUND,
+        'INVENTORY_ITEM_NOT_FOUND',
+      );
+    });
+
+    it('401 khi không cookie', async () => {
+      const c = makeController();
+      await expectHttpError(
+        c.lockItem(makeReq(undefined), 'inv-1'),
+        HttpStatus.UNAUTHORIZED,
+        'UNAUTHENTICATED',
+      );
+    });
+  });
+
+  describe('POST /inventory/:id/unlock — QOL-1', () => {
+    it('200 envelope { item }', async () => {
+      const c = makeController({
+        unlockImpl: async (_uid, id) =>
+          ({ id, locked: false }) as unknown as InventoryView,
+      });
+      const res = await c.unlockItem(makeReq('valid'), 'inv-2');
+      expect(res).toMatchObject({
+        ok: true,
+        data: { item: { id: 'inv-2', locked: false } },
+      });
+    });
+
+    it('404 INVENTORY_ITEM_NOT_FOUND → mapping', async () => {
+      const c = makeController({
+        unlockImpl: async () => {
+          throw new DuckErr('INVENTORY_ITEM_NOT_FOUND');
+        },
+      });
+      await expectHttpError(
+        c.unlockItem(makeReq('valid'), 'inv-x'),
+        HttpStatus.NOT_FOUND,
+        'INVENTORY_ITEM_NOT_FOUND',
+      );
+    });
+  });
+
+  describe('POST /inventory/lock/batch — QOL-1', () => {
+    it('200 envelope { changed, total }', async () => {
+      const calls: { ids: string[]; lock: boolean }[] = [];
+      const c = makeController({
+        lockBatchImpl: async (_uid, ids, lock) => {
+          calls.push({ ids, lock });
+          return { changed: ids.length, total: ids.length };
+        },
+      });
+      const res = await c.lockBatch(makeReq('valid'), {
+        inventoryItemIds: ['a', 'b', 'c'],
+        lock: true,
+      });
+      expect(res).toMatchObject({
+        ok: true,
+        data: { changed: 3, total: 3 },
+      });
+      expect(calls).toEqual([{ ids: ['a', 'b', 'c'], lock: true }]);
+    });
+
+    it('400 INVALID_INPUT khi không có inventoryItemIds', async () => {
+      const c = makeController();
+      await expectHttpError(
+        c.lockBatch(makeReq('valid'), { lock: true }),
+        HttpStatus.BAD_REQUEST,
+        'INVALID_INPUT',
+      );
+    });
+
+    it('400 INVALID_INPUT khi quá 100 ids', async () => {
+      const c = makeController();
+      const ids = Array.from({ length: 101 }, (_, i) => `i${i}`);
+      await expectHttpError(
+        c.lockBatch(makeReq('valid'), { inventoryItemIds: ids, lock: true }),
+        HttpStatus.BAD_REQUEST,
+        'INVALID_INPUT',
+      );
+    });
+
+    it('400 INVALID_INPUT khi empty array', async () => {
+      const c = makeController();
+      await expectHttpError(
+        c.lockBatch(makeReq('valid'), { inventoryItemIds: [], lock: true }),
+        HttpStatus.BAD_REQUEST,
+        'INVALID_INPUT',
+      );
+    });
+
+    it('400 INVALID_INPUT khi thiếu lock flag', async () => {
+      const c = makeController();
+      await expectHttpError(
+        c.lockBatch(makeReq('valid'), { inventoryItemIds: ['a'] }),
+        HttpStatus.BAD_REQUEST,
+        'INVALID_INPUT',
+      );
+    });
+
+    it('404 mapping khi service throw INVENTORY_ITEM_NOT_FOUND', async () => {
+      const c = makeController({
+        lockBatchImpl: async () => {
+          throw new DuckErr('INVENTORY_ITEM_NOT_FOUND');
+        },
+      });
+      await expectHttpError(
+        c.lockBatch(makeReq('valid'), {
+          inventoryItemIds: ['a'],
+          lock: true,
+        }),
+        HttpStatus.NOT_FOUND,
+        'INVENTORY_ITEM_NOT_FOUND',
+      );
+    });
+  });
+
+  describe('error mapping — INVENTORY_ITEM_LOCKED', () => {
+    it('use: 409 INVENTORY_ITEM_LOCKED khi service reject locked row', async () => {
+      const c = makeController({
+        useImpl: async () => {
+          throw new DuckErr('INVENTORY_ITEM_LOCKED');
+        },
+      });
+      await expectHttpError(
+        c.use(makeReq('valid'), { inventoryItemId: 'i1' }),
+        HttpStatus.CONFLICT,
+        'INVENTORY_ITEM_LOCKED',
+      );
     });
   });
 });

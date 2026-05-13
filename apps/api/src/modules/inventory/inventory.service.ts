@@ -262,7 +262,8 @@ export class InventoryError extends Error {
       | 'WRONG_SLOT'
       | 'ALREADY_USED'
       | 'EQUIPMENT_REALM_LOCKED'
-      | 'INSUFFICIENT_QTY',
+      | 'INSUFFICIENT_QTY'
+      | 'INVENTORY_ITEM_LOCKED',
   ) {
     super(code);
   }
@@ -294,6 +295,17 @@ export interface InventoryView {
    * `0` = chưa enchant.
    */
   enchantLevel: number;
+  /**
+   * Phase QOL-1 — instance lock. `true` ⇒ item KHÔNG được phép
+   * `use` / `transfer` / market-list / salvage. Toggle qua
+   * `lock()` / `unlock()`.
+   *
+   * Pháp Bảo (Phase 23.7) cũng dùng cờ này — gating đã có sẵn ở
+   * `PhapBaoService`. QOL-1 mở public API cho mọi item.
+   */
+  locked: boolean;
+  /** Phase QOL-1 — millis epoch khi item được tạo (cho `acquiredAt` sort). */
+  createdAt: Date;
 }
 
 /**
@@ -360,6 +372,8 @@ export class InventoryService {
         substats: parseSubstatsJson(r.substatsJson),
         enchantElement: parseEnchantElement(r.enchantElement),
         enchantLevel: r.enchantLevel ?? 0,
+        locked: r.locked ?? false,
+        createdAt: r.createdAt,
       });
     }
     return out;
@@ -958,6 +972,11 @@ export class InventoryService {
     if (!inv || inv.characterId !== char.id) {
       throw new InventoryError('INVENTORY_ITEM_NOT_FOUND');
     }
+    // Phase QOL-1 — locked row KHÔNG được consume (anti-misclick).
+    // Caller phải `unlock()` trước.
+    if (inv.locked) {
+      throw new InventoryError('INVENTORY_ITEM_LOCKED');
+    }
     const def = itemByKey(inv.itemKey);
     if (!def) throw new InventoryError('ITEM_NOT_FOUND');
     if (!def.effect) throw new InventoryError('NOT_USABLE');
@@ -1037,6 +1056,135 @@ export class InventoryService {
 
     await this.refreshState(userId);
     return this.list(char.id);
+  }
+
+  /**
+   * Phase QOL-1 — lock 1 inventory row. Idempotent: gọi 2 lần OK.
+   *
+   * Locked row sẽ bị `use()` reject. Equipped slot vẫn lock được — không
+   * ảnh hưởng equip stats hoặc combat. Caller chịu trách nhiệm UX: hiện
+   * icon khóa trên slot inventory.
+   *
+   * Throw:
+   *  - NO_CHARACTER → user không có nhân vật.
+   *  - INVENTORY_ITEM_NOT_FOUND → row không thuộc character của user.
+   */
+  async lock(userId: string, inventoryItemId: string): Promise<InventoryView> {
+    return this.setLocked(userId, inventoryItemId, true);
+  }
+
+  async unlock(
+    userId: string,
+    inventoryItemId: string,
+  ): Promise<InventoryView> {
+    return this.setLocked(userId, inventoryItemId, false);
+  }
+
+  private async setLocked(
+    userId: string,
+    inventoryItemId: string,
+    locked: boolean,
+  ): Promise<InventoryView> {
+    const char = await this.prisma.character.findUnique({ where: { userId } });
+    if (!char) throw new InventoryError('NO_CHARACTER');
+    const inv = await this.prisma.inventoryItem.findUnique({
+      where: { id: inventoryItemId },
+    });
+    if (!inv || inv.characterId !== char.id) {
+      throw new InventoryError('INVENTORY_ITEM_NOT_FOUND');
+    }
+    if (inv.locked === locked) {
+      // Idempotent — vẫn trả view hiện tại.
+      const item =
+        itemByKeyWithProgression(inv.itemKey) ?? itemOrGemByKey(inv.itemKey);
+      if (!item) throw new InventoryError('ITEM_NOT_FOUND');
+      return this.toView(inv, item);
+    }
+    const updated = await this.prisma.inventoryItem.update({
+      where: { id: inv.id },
+      data: { locked },
+    });
+    const item =
+      itemByKeyWithProgression(updated.itemKey) ??
+      itemOrGemByKey(updated.itemKey);
+    if (!item) throw new InventoryError('ITEM_NOT_FOUND');
+    return this.toView(updated, item);
+  }
+
+  /**
+   * Phase QOL-1 — lock/unlock nhiều row 1 lệnh. Atomic transaction: nếu
+   * 1 row không thuộc character → toàn bộ rollback, throw
+   * INVENTORY_ITEM_NOT_FOUND. Duplicate id trong list được dedupe.
+   *
+   * Trả về số lượng row thực sự bị thay đổi (đã exclude no-op idempotent).
+   */
+  async lockBatch(
+    userId: string,
+    inventoryItemIds: string[],
+    locked: boolean,
+  ): Promise<{ changed: number; total: number }> {
+    const char = await this.prisma.character.findUnique({ where: { userId } });
+    if (!char) throw new InventoryError('NO_CHARACTER');
+    const ids = Array.from(new Set(inventoryItemIds)).filter(
+      (s) => typeof s === 'string' && s.length > 0,
+    );
+    if (ids.length === 0) return { changed: 0, total: 0 };
+    return this.prisma.$transaction(async (tx) => {
+      const rows = await tx.inventoryItem.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, characterId: true, locked: true },
+      });
+      if (rows.length !== ids.length) {
+        throw new InventoryError('INVENTORY_ITEM_NOT_FOUND');
+      }
+      for (const r of rows) {
+        if (r.characterId !== char.id) {
+          throw new InventoryError('INVENTORY_ITEM_NOT_FOUND');
+        }
+      }
+      const toUpdate = rows
+        .filter((r) => r.locked !== locked)
+        .map((r) => r.id);
+      if (toUpdate.length === 0) return { changed: 0, total: rows.length };
+      const res = await tx.inventoryItem.updateMany({
+        where: { id: { in: toUpdate } },
+        data: { locked },
+      });
+      return { changed: res.count, total: rows.length };
+    });
+  }
+
+  /** Phase QOL-1 — convert Prisma row → InventoryView (reuse `list()` shape). */
+  private toView(
+    r: {
+      id: string;
+      itemKey: string;
+      qty: number;
+      equippedSlot: EquipSlot | null;
+      sockets: string[];
+      refineLevel: number;
+      substatsJson: unknown;
+      enchantElement: string | null;
+      enchantLevel: number;
+      locked: boolean;
+      createdAt: Date;
+    },
+    item: ItemDef,
+  ): InventoryView {
+    return {
+      id: r.id,
+      itemKey: r.itemKey,
+      qty: r.qty,
+      equippedSlot: r.equippedSlot,
+      item,
+      sockets: r.sockets,
+      refineLevel: r.refineLevel,
+      substats: parseSubstatsJson(r.substatsJson),
+      enchantElement: parseEnchantElement(r.enchantElement),
+      enchantLevel: r.enchantLevel ?? 0,
+      locked: r.locked ?? false,
+      createdAt: r.createdAt,
+    };
   }
 
   private async refreshState(userId: string): Promise<void> {

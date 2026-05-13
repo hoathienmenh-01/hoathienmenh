@@ -29,6 +29,13 @@ export interface InventoryView {
   enchantElement: ElementKey | null;
   /** Phase 15.0.A Equipment Enchant — level 0..MAX_ENCHANT_LEVEL. */
   enchantLevel: number;
+  /**
+   * Phase QOL-1 — instance lock. `true` ⇒ item KHÔNG được phép `use`.
+   * Backend reject `INVENTORY_ITEM_LOCKED` (409). UI hiện icon khóa.
+   */
+  locked: boolean;
+  /** Phase QOL-1 — ISO date (server serialize Date) để sort theo acquired time. */
+  createdAt: string;
 }
 
 /**
@@ -117,6 +124,42 @@ export async function useItem(inventoryItemId: string): Promise<InventoryView[]>
     { inventoryItemId },
   );
   return unwrap(data).items;
+}
+
+/**
+ * Phase QOL-1 — POST `/inventory/:id/lock`. Idempotent: gọi 2 lần OK.
+ * Trả về `InventoryView` đã cập nhật. Caller có thể replace optimistically
+ * trong list hoặc re-fetch.
+ */
+export async function lockInventoryItem(
+  inventoryItemId: string,
+): Promise<InventoryView> {
+  const { data } = await apiClient.post<Envelope<{ item: InventoryView }>>(
+    `/inventory/${encodeURIComponent(inventoryItemId)}/lock`,
+  );
+  return unwrap(data).item;
+}
+
+export async function unlockInventoryItem(
+  inventoryItemId: string,
+): Promise<InventoryView> {
+  const { data } = await apiClient.post<Envelope<{ item: InventoryView }>>(
+    `/inventory/${encodeURIComponent(inventoryItemId)}/unlock`,
+  );
+  return unwrap(data).item;
+}
+
+/**
+ * Phase QOL-1 — POST `/inventory/lock/batch`. Max 100 ids per call.
+ */
+export async function lockInventoryBatch(
+  inventoryItemIds: string[],
+  lock: boolean,
+): Promise<{ changed: number; total: number }> {
+  const { data } = await apiClient.post<
+    Envelope<{ changed: number; total: number }>
+  >('/inventory/lock/batch', { inventoryItemIds, lock });
+  return unwrap(data);
 }
 
 /**
