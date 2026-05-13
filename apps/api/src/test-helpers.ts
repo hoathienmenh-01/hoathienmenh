@@ -214,6 +214,10 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.friendRequest.deleteMany({});
   await prisma.friendship.deleteMany({});
   await prisma.playerBlock.deleteMany({});
+  // Phase 35.1 — Co-Cultivation session + daily usage (soft-ref user/character,
+  // wipe trước User/Character để tránh stale state giữa test runs).
+  await prisma.coCultivationSession.deleteMany({});
+  await prisma.coCultivationDailyUsage.deleteMany({});
   // Phase 15.0.A — Equipment Reforge / Enchant audit history (xoá trước
   // ItemLedger/Character — FK cascade tới Character nhưng explicit cho rõ).
   await prisma.equipmentReforgeHistory.deleteMany({});

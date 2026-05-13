@@ -273,12 +273,14 @@ export class CoCultivationService {
     ) {
       throw new CoCultivationError('NOT_AUTHORIZED');
     }
+    // Idempotent re-complete: nếu đã COMPLETED + rewardApplied → trả về
+    // row hiện tại không grant lần 2. Đặt TRƯỚC `status !== ACTIVE` để
+    // controller retry không nhận lỗi INVALID_TRANSITION.
+    if (row.rewardApplied && row.status === 'COMPLETED') {
+      return this.toRow(row);
+    }
     if (row.status !== 'ACTIVE') {
       throw new CoCultivationError('INVALID_TRANSITION');
-    }
-    if (row.rewardApplied) {
-      // Re-completing → just return row (idempotent).
-      return this.toRow(row);
     }
 
     const requestedExp = BigInt(
