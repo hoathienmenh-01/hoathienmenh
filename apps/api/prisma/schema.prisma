@@ -135,6 +135,11 @@ model User {
   rewardProfilesUpdated         RewardProfile[]         @relation("RewardProfileUpdatedBy")
   dropProfilesUpdated           DropProfile[]           @relation("DropProfileUpdatedBy")
   contentStatusesUpdated        ContentStatus[]         @relation("ContentStatusUpdatedBy")
+  /// Phase 28.0 — Event Builder audit (admin tạo / cập nhật event definition).
+  /// SET NULL khi admin bị xoá — event row giữ lịch sử.
+  eventDefsCreated              EventDef[]              @relation("EventDefCreatedBy")
+  eventDefsUpdated              EventDef[]              @relation("EventDefUpdatedBy")
+  eventBalancePoliciesUpdated   EventBalancePolicy[]    @relation("EventBalancePolicyUpdatedBy")
 }
 
 /// Token đặt lại mật khẩu (forgot/reset-password flow).
@@ -451,6 +456,13 @@ model Character {
   trialTowerProgress    TrialTowerProgress[]
   trialTowerAttemptLogs TrialTowerAttemptLog[]
   sectBossAttemptLogs   SectBossAttemptLog[]
+
+  /// Phase 28.0 — Event Builder backrefs.
+  eventMissionProgresses EventMissionProgress[]
+  eventShopPurchases     EventShopPurchase[]
+  eventTokenWallets      EventTokenWallet[]
+  eventRankingEntries    EventRankingEntry[]
+  personalEventProgress  PersonalEventProgress[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -5211,4 +5223,391 @@ model ContentStatus {
   @@unique([contentType, contentKey])
   @@index([contentType, enabled])
   @@index([enabled, paused])
+}
+
+// ============================================================================
+// Phase 28.0 — Event Builder & Tier-Balanced LiveOps Event System V2
+// ============================================================================
+//
+// Mở rộng `LiveOpsScheduledEvent` (Phase 15.1 — runtime multiplier event) bằng
+// hệ event gameplay đầy đủ mà admin có thể bật/tắt và TỰ TẠO mới không cần
+// code/redeploy. Khác model cũ ở chỗ: Phase 28 model gồm token wallet,
+// mission progress, shop purchase, ranking entry, personal trigger.
+//
+// Tất cả model **additive** — KHÔNG ALTER `LiveOpsScheduledEvent` cũ. Cron
+// runtime / combat hook wire ở PR2 (tách riêng).
+
+/// EventDef — catalog event-builder. Lifecycle DRAFT → SCHEDULED → ACTIVE →
+/// PAUSED/REWARD_LOCKED → ENDED → FINALIZED → ARCHIVED / CANCELLED.
+model EventDef {
+  id               String   @id @default(cuid())
+  /// Pattern `^[a-z0-9][a-z0-9_-]{1,62}[a-z0-9]$`.
+  key              String   @unique
+  name             String
+  description      String   @default("")
+  eventType        String
+  status           String   @default("DRAFT")
+  startsAt         DateTime
+  endsAt           DateTime
+  timezone         String   @default("Asia/Ho_Chi_Minh")
+  bannerUrl        String?
+  iconUrl          String?
+  /// Admin-only nội bộ (không trả endpoint player).
+  adminNote        String?
+  /// Markdown VI/EN show cho player.
+  playerNotice     String?
+  enabled          Boolean  @default(true)
+  /// Khớp `BracketMode` ở shared.
+  bracketMode      String   @default("NONE")
+  tokenKey         String?
+  eventShopKey     String?
+  missionGroupKey  String?
+  bossGroupKey     String?
+  rankingGroupKey  String?
+  rewardProfileKey String?
+  createdByAdminId String?
+  createdByAdmin   User?    @relation("EventDefCreatedBy", fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  updatedByAdminId String?
+  updatedByAdmin   User?    @relation("EventDefUpdatedBy", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  brackets           EventBracket[]
+  balancePolicy      EventBalancePolicy?
+  itemConfigs        EventItemConfig[]
+  missionDefs        EventMissionDef[]
+  missionProgresses  EventMissionProgress[]
+  shops              EventShopDef[]
+  shopPurchases      EventShopPurchase[]
+  tokenWallets       EventTokenWallet[]
+  bosses             EventBossDef[]
+  rankings           EventRankingDef[]
+  rankingEntries     EventRankingEntry[]
+  personalProgresses PersonalEventProgress[]
+
+  @@index([status, startsAt])
+  @@index([status, endsAt])
+  @@index([eventType, status])
+  @@index([enabled, status])
+}
+
+/// Bracket cho 1 event. `bracketMode=NONE` thì KHÔNG có row nào.
+model EventBracket {
+  id                       String   @id @default(cuid())
+  key                      String   @unique
+  eventKey                 String
+  event                    EventDef @relation(fields: [eventKey], references: [key], onDelete: Cascade)
+  name                     String
+  minRealmOrder            Int
+  maxRealmOrder            Int
+  minBodyRealmOrder        Int?
+  maxBodyRealmOrder        Int?
+  bracketTier              Int
+  rewardTierMin            Int
+  rewardTierMax            Int
+  /// Cap tuyệt đối cho event này.
+  eventMaxTier             Int
+  rankingEnabled           Boolean  @default(true)
+  shopFilterTier           Int      @default(9)
+  bossPowerMultiplier      Float    @default(1.0)
+  missionScalingMultiplier Float    @default(1.0)
+  enabled                  Boolean  @default(true)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@unique([eventKey, key])
+  @@index([eventKey, enabled])
+  @@index([minRealmOrder, maxRealmOrder])
+}
+
+/// EventBalancePolicy — cap & policy per-event. 1-1 với EventDef.
+model EventBalancePolicy {
+  id                                     String   @id @default(cuid())
+  eventKey                               String   @unique
+  event                                  EventDef @relation(fields: [eventKey], references: [key], onDelete: Cascade)
+  maxTokenPerDay                         Int
+  maxTokenPerWeek                        Int
+  maxTokenPerEvent                       Int
+  maxRareRewardPerDay                    Int      @default(2)
+  maxRareRewardPerWeek                   Int      @default(5)
+  maxShopRareExchangePerEvent            Int      @default(10)
+  allowHighLevelEnterLowBracket          Boolean  @default(true)
+  highLevelLowBracketTokenPenaltyPercent Float    @default(0.5)
+  highLevelLowBracketRankingDisabled     Boolean  @default(true)
+  sourceTierRewardCap                    Int      @default(9)
+  maxAllowedRewardTierDelta              Int      @default(1)
+  /// Match `PaidRewardPolicy` ở shared.
+  paidRewardPolicy                       String   @default("FREE_ONLY")
+  enabled                                Boolean  @default(true)
+  updatedByAdminId                       String?
+  updatedByAdmin                         User?    @relation("EventBalancePolicyUpdatedBy", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+  createdAt                              DateTime @default(now())
+  updatedAt                              DateTime @updatedAt
+
+  @@index([enabled])
+}
+
+/// EventItemConfig — định nghĩa item event (token / chest / ticket / cosmetic).
+/// Khác `Item` catalog ở chỗ item event thường ephemeral (expiresAt) hoặc
+/// bind-on-pickup, có cap riêng.
+model EventItemConfig {
+  id                   String    @id @default(cuid())
+  key                  String    @unique
+  eventKey             String?
+  event                EventDef? @relation(fields: [eventKey], references: [key], onDelete: SetNull)
+  name                 String
+  description          String    @default("")
+  itemKind             String
+  itemTier             Int       @default(1)
+  rarity               String    @default("COMMON")
+  category             String    @default("event")
+  expiresAt            DateTime?
+  tradeable            Boolean   @default(false)
+  bindOnPickup         Boolean   @default(true)
+  maxStack             Int       @default(99999)
+  dailyGainCap         Int?
+  weeklyGainCap        Int?
+  eventGainCap         Int?
+  allowedSourcesJson   Json      @default("[]")
+  forbiddenSourcesJson Json      @default("[]")
+  sourceHint           String?
+  lootTableJson        Json      @default("[]")
+  enabled              Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([eventKey, enabled])
+  @@index([itemKind, enabled])
+}
+
+/// EventMissionDef — nhiệm vụ event.
+model EventMissionDef {
+  id               String   @id @default(cuid())
+  key              String   @unique
+  eventKey         String
+  event            EventDef @relation(fields: [eventKey], references: [key], onDelete: Cascade)
+  bracketKey       String?
+  name             String
+  description      String   @default("")
+  missionType      String
+  targetValue      Int
+  /// DAILY / WEEKLY / EVENT_ONCE.
+  resetType        String   @default("EVENT_ONCE")
+  rewardProfileKey String?
+  scoreAmount      Int      @default(0)
+  tokenReward      Int      @default(0)
+  enabled          Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  progresses EventMissionProgress[]
+
+  @@index([eventKey, enabled])
+  @@index([bracketKey, enabled])
+}
+
+/// EventMissionProgress — tiến độ per character per mission.
+model EventMissionProgress {
+  id           String          @id @default(cuid())
+  eventKey     String
+  event        EventDef        @relation(fields: [eventKey], references: [key], onDelete: Cascade)
+  missionKey   String
+  mission      EventMissionDef @relation(fields: [missionKey], references: [key], onDelete: Cascade)
+  characterId  String
+  character    Character       @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  bracketKey   String?
+  currentValue Int             @default(0)
+  completedAt  DateTime?
+  claimedAt    DateTime?
+  /// Reset cycle id (vd ngày YYYYMMDD cho DAILY; week ISO cho WEEKLY).
+  resetCycleId String          @default("EVENT")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([missionKey, characterId, resetCycleId])
+  @@index([characterId, eventKey])
+  @@index([eventKey, missionKey])
+}
+
+/// EventShopDef — shop event gom các shop item.
+model EventShopDef {
+  id               String   @id @default(cuid())
+  key              String   @unique
+  eventKey         String
+  event            EventDef @relation(fields: [eventKey], references: [key], onDelete: Cascade)
+  name             String
+  tokenCurrencyKey String
+  startsAt         DateTime
+  endsAt           DateTime
+  enabled          Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  items EventShopItemDef[]
+
+  @@index([eventKey, enabled])
+}
+
+/// Item trong shop event.
+model EventShopItemDef {
+  id                  String       @id @default(cuid())
+  key                 String       @unique
+  shopKey             String
+  shop                EventShopDef @relation(fields: [shopKey], references: [key], onDelete: Cascade)
+  itemKey             String
+  rewardsJson         Json         @default("[]")
+  priceTokenAmount    Int
+  requiredBracketKey  String?
+  minRealmOrder       Int?
+  maxRealmOrder       Int?
+  purchaseLimitDaily  Int?
+  purchaseLimitWeekly Int?
+  purchaseLimitEvent  Int?
+  enabled             Boolean      @default(true)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  purchases EventShopPurchase[]
+
+  @@index([shopKey, enabled])
+}
+
+/// EventShopPurchase — lịch sử mua shop event, hỗ trợ track limit.
+model EventShopPurchase {
+  id          String           @id @default(cuid())
+  eventKey    String
+  event       EventDef         @relation(fields: [eventKey], references: [key], onDelete: Cascade)
+  shopItemKey String
+  shopItem    EventShopItemDef @relation(fields: [shopItemKey], references: [key], onDelete: Cascade)
+  characterId String
+  character   Character        @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  qty         Int              @default(1)
+  pricePaid   Int
+  resetDay    String /// YYYYMMDD theo timezone event.
+  resetWeek   String /// YYYYWW ISO.
+  createdAt   DateTime         @default(now())
+
+  @@index([characterId, eventKey, createdAt(sort: Desc)])
+  @@index([eventKey, shopItemKey])
+  @@index([shopItemKey, characterId, resetDay])
+  @@index([shopItemKey, characterId, resetWeek])
+}
+
+/// EventTokenWallet — số dư token event per character.
+model EventTokenWallet {
+  id           String    @id @default(cuid())
+  eventKey     String
+  event        EventDef  @relation(fields: [eventKey], references: [key], onDelete: Cascade)
+  characterId  String
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  tokenKey     String
+  balance      Int       @default(0)
+  dailyEarned  Int       @default(0)
+  weeklyEarned Int       @default(0)
+  eventEarned  Int       @default(0)
+  resetDay     String    @default("")
+  resetWeek    String    @default("")
+  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime  @default(now())
+
+  @@unique([eventKey, characterId, tokenKey])
+  @@index([characterId, eventKey])
+}
+
+/// EventBossDef — boss event runtime spec (PR2 sẽ hook combat).
+model EventBossDef {
+  id                            String   @id @default(cuid())
+  key                           String   @unique
+  eventKey                      String
+  event                         EventDef @relation(fields: [eventKey], references: [key], onDelete: Cascade)
+  bracketKey                    String?
+  name                          String
+  description                   String   @default("")
+  bossType                      String
+  sourceTier                    Int
+  bossTier                      Int
+  recommendedPower              Int      @default(0)
+  hpFormulaKey                  String?
+  scheduleKey                   String?
+  participationRewardProfileKey String?
+  damageRankingRewardProfileKey String?
+  lastHitRewardProfileKey       String?
+  sectRewardProfileKey          String?
+  dailyAttempts                 Int      @default(3)
+  weeklyAttempts                Int?
+  enabled                       Boolean  @default(true)
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+
+  @@index([eventKey, enabled])
+  @@index([bracketKey, enabled])
+}
+
+/// EventRankingDef — bảng ranking event.
+model EventRankingDef {
+  id               String   @id @default(cuid())
+  key              String   @unique
+  eventKey         String
+  event            EventDef @relation(fields: [eventKey], references: [key], onDelete: Cascade)
+  rankingType      String
+  bracketMode      String
+  bracketKey       String?
+  scoreFormulaKey  String
+  rewardProfileKey String?
+  startsAt         DateTime
+  endsAt           DateTime
+  finalized        Boolean  @default(false)
+  enabled          Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  entries EventRankingEntry[]
+
+  @@index([eventKey, enabled])
+}
+
+/// EventRankingEntry — score per character per ranking.
+model EventRankingEntry {
+  id              String          @id @default(cuid())
+  eventKey        String
+  event           EventDef        @relation(fields: [eventKey], references: [key], onDelete: Cascade)
+  rankingKey      String
+  ranking         EventRankingDef @relation(fields: [rankingKey], references: [key], onDelete: Cascade)
+  characterId     String
+  character       Character       @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  bracketKey      String?
+  score           Int             @default(0)
+  rank            Int?
+  rewardClaimedAt DateTime?
+  updatedAt       DateTime        @updatedAt
+  createdAt       DateTime        @default(now())
+
+  @@unique([rankingKey, characterId])
+  @@index([rankingKey, bracketKey, score(sort: Desc)])
+  @@index([characterId, eventKey])
+}
+
+/// PersonalEventProgress — instance event cá nhân (auto trigger).
+model PersonalEventProgress {
+  id                 String    @id @default(cuid())
+  /// Tham chiếu `EventDef.key` của event personal (template tạo từ admin).
+  eventKey           String
+  event              EventDef  @relation(fields: [eventKey], references: [key], onDelete: Cascade)
+  characterId        String
+  character          Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  triggerType        String
+  triggerValue       Int
+  startedAt          DateTime  @default(now())
+  expiresAt          DateTime
+  completedAt        DateTime?
+  claimedAt          DateTime?
+  bracketTier        Int       @default(1)
+  /// Snapshot reward khi claim — audit history.
+  rewardSnapshotJson Json      @default("{}")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@unique([eventKey, characterId])
+  @@index([characterId, expiresAt])
+  @@index([eventKey, triggerType])
 }

@@ -6224,5 +6224,101 @@
       "WEEKLY_CAP_REACHED": "Weekly cap reached.",
       "INVALID_INPUT": "Invalid input."
     }
+  },
+  "events": {
+    "title": "Events",
+    "subtitle": "Tier-balanced LiveOps events (Phase 28.0)",
+    "loading": "Loading events…",
+    "empty": "No active events.",
+    "eventType": "Type",
+    "remaining": "Remaining",
+    "endedShort": "Ended",
+    "myBracket": "Your bracket",
+    "myRewardTier": "Effective reward tier",
+    "tab": {
+      "all": "All",
+      "personal": "Personal"
+    },
+    "detail": {
+      "yourBracket": "Your bracket",
+      "tier": "Tier",
+      "rewardTier": "Effective reward tier",
+      "tokenMul": "Token multiplier",
+      "missions": "Missions",
+      "noMissions": "No missions defined.",
+      "leaderboard": "Leaderboard",
+      "loadLeaderboard": "Load leaderboard"
+    },
+    "mission": {
+      "claim": "Claim",
+      "claimed": "Mission reward claimed.",
+      "claimFailed": "Mission claim failed ({code}).",
+      "alreadyClaimed": "Claimed",
+      "inProgress": "In progress"
+    },
+    "personal": {
+      "empty": "No personal milestone events active.",
+      "trigger": "Trigger ({type})",
+      "expiresAt": "Expires at",
+      "claim": "Claim",
+      "claimed": "Personal milestone claimed.",
+      "claimFailed": "Personal claim failed ({code}).",
+      "alreadyClaimed": "Claimed",
+      "notCompleted": "Not completed"
+    },
+    "errors": {
+      "loadFailed": "Failed to load events ({code})."
+    }
+  },
+  "adminEvents": {
+    "title": "Event Builder & LiveOps V2",
+    "subtitle": "Manage tier-balanced events (Phase 28.0)",
+    "loading": "Loading…",
+    "empty": "No events.",
+    "selectFirst": "Open an event from the Events tab first.",
+    "promptReason": "Reason for status transition (audit log):",
+    "transitionSuccess": "Transitioned to {status}.",
+    "tab": {
+      "events": "Events",
+      "brackets": "Brackets",
+      "missions": "Missions",
+      "shops": "Shops",
+      "bosses": "Bosses",
+      "rankings": "Rankings",
+      "items": "Items",
+      "templates": "Templates"
+    },
+    "filter": {
+      "allStatuses": "All statuses",
+      "allTypes": "All types",
+      "anyEnabled": "Any enabled",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "table": {
+      "key": "Key",
+      "name": "Name",
+      "type": "Type",
+      "status": "Status",
+      "bracketMode": "Bracket mode",
+      "enabled": "Enabled"
+    },
+    "action": {
+      "open": "Open",
+      "transitionTo": "→ {status}"
+    },
+    "detail": {
+      "key": "Key",
+      "status": "Status",
+      "bracketMode": "Bracket mode",
+      "window": "Window"
+    },
+    "errors": {
+      "catalog": "Catalog load failed ({code}).",
+      "list": "List load failed ({code}).",
+      "templates": "Template load failed ({code}).",
+      "detail": "Detail load failed ({code}).",
+      "transition": "Transition failed ({code})."
+    }
   }
 }
