@@ -25,7 +25,21 @@
 import { STORY_CHAPTERS_V2 } from './story-chapters-quyen-ii-iv';
 import type { Phase33RewardPolicyKey } from './story-chapters-quyen-ii-iv';
 
-export type Phase33QuestKind = 'main' | 'side' | 'hidden' | 'daily' | 'weekly';
+export type Phase33QuestKind = 'main' | 'side' | 'hidden' | 'daily' | 'weekly' | 'branch';
+
+/**
+ * Phase 33.0B — reward tier theo `requiredRealmOrder` để reward scale mịn hơn
+ * trong cùng một Volume. Multiplier áp lên base policy của Volume; kết quả luôn
+ * clamp dưới `volume_cap` để không phá test reward cap hiện hữu.
+ */
+export type Phase33RewardTier =
+  | 't1_early'
+  | 't2_mid'
+  | 't3_late'
+  | 't4_thanh'
+  | 't5_thien_dao'
+  | 't6_ban_nguyen'
+  | 't7_endgame';
 
 export type Phase33StepKind =
   | 'talk'
@@ -150,14 +164,67 @@ interface Phase33ChapterTemplate {
   affinityScore: number;
 }
 
-const REWARD_CAP: Record<
-  Phase33RewardPolicyKey,
-  { main: number; side: number; hidden: number; daily: number; weekly: number; exp: number }
-> = {
-  reward_policy_quyen_ii: { main: 4_000, side: 1_800, hidden: 2_500, daily: 350, weekly: 1_500, exp: 4_500 },
-  reward_policy_quyen_iii: { main: 7_500, side: 3_200, hidden: 4_500, daily: 600, weekly: 2_800, exp: 8_500 },
-  reward_policy_quyen_iv: { main: 12_000, side: 5_500, hidden: 7_500, daily: 1_000, weekly: 4_500, exp: 14_000 },
+interface Phase33RewardCapDef {
+  main: number;
+  side: number;
+  /** Branch cap = side * 0.8 (Phase 33.0B). */
+  branch: number;
+  hidden: number;
+  daily: number;
+  weekly: number;
+  exp: number;
+}
+
+const REWARD_CAP: Record<Phase33RewardPolicyKey, Phase33RewardCapDef> = {
+  reward_policy_quyen_ii: { main: 4_000, side: 1_800, branch: 1_440, hidden: 2_500, daily: 350, weekly: 1_500, exp: 4_500 },
+  reward_policy_quyen_iii: { main: 7_500, side: 3_200, branch: 2_560, hidden: 4_500, daily: 600, weekly: 2_800, exp: 8_500 },
+  reward_policy_quyen_iv: { main: 12_000, side: 5_500, branch: 4_400, hidden: 7_500, daily: 1_000, weekly: 4_500, exp: 14_000 },
 };
+
+const TIER_MULTIPLIER: Record<Phase33RewardTier, number> = {
+  t1_early: 0.85,
+  t2_mid: 1.0,
+  t3_late: 1.15,
+  t4_thanh: 1.0,
+  t5_thien_dao: 1.2,
+  t6_ban_nguyen: 1.0,
+  t7_endgame: 1.2,
+};
+
+/** Realm order → reward tier (Phase 33.0B). */
+export function getStoryRewardTierForRealmOrder(order: number): Phase33RewardTier {
+  if (order <= 10) return 't1_early';
+  if (order <= 13) return 't2_mid';
+  if (order <= 16) return 't3_late';
+  if (order <= 19) return 't4_thanh';
+  if (order <= 21) return 't5_thien_dao';
+  if (order <= 24) return 't6_ban_nguyen';
+  return 't7_endgame';
+}
+
+function tierMultiplierFor(realmOrder: number): number {
+  return TIER_MULTIPLIER[getStoryRewardTierForRealmOrder(realmOrder)];
+}
+
+/** Reward budget linhThach cho 1 quest theo chapter + kind (Phase 33.0B helper). */
+export function getStoryRewardBudgetForChapter(
+  chapKey: string,
+  kind: Phase33QuestKind,
+): number {
+  const chapter = STORY_CHAPTERS_V2.find((c) => c.chapKey === chapKey);
+  if (!chapter) return 0;
+  const cap = REWARD_CAP[chapter.rewardPolicyKey];
+  const mult = tierMultiplierFor(chapter.requiredRealmOrder);
+  const raw =
+    kind === 'main' ? cap.main
+    : kind === 'side' ? cap.side
+    : kind === 'branch' ? cap.branch
+    : kind === 'hidden' ? cap.hidden
+    : kind === 'daily' ? cap.daily
+    : cap.weekly;
+  // Always clamp under per-kind volume cap so PR A doesn't break reward cap test.
+  return Math.min(raw, Math.floor(raw * mult));
+}
 
 function mainQuestsFor(t: Phase33ChapterTemplate): readonly Phase33QuestDef[] {
   const cap = REWARD_CAP[t.rewardPolicyKey];
@@ -449,7 +516,291 @@ function mainQuestsFor(t: Phase33ChapterTemplate): readonly Phase33QuestDef[] {
     loreSummaryEn: `Chapter climax: boss down, clear flag set, next chapter unlocks.`,
   };
 
-  return [q1, q2, q3, q4, q5];
+  /* ── Phase 33.0B — extra main beats q6..q16 (post-boss aftermath → next chapter seed). ── */
+
+  const tierMult = tierMultiplierFor(t.realmOrder);
+  const mainBudget = Math.min(cap.main, Math.floor(cap.main * tierMult));
+  const expBudget = Math.min(cap.exp, Math.floor(cap.exp * tierMult));
+
+  function mkExtraMain(
+    seq: number,
+    titleViSuffix: string,
+    titleEnSuffix: string,
+    descVi: string,
+    descEn: string,
+    giverNpc: string,
+    prereqKey: string,
+    steps: readonly Phase33QuestStepDef[],
+    rewardFactor: number,
+    extraAffinity: readonly Phase33AffinityDelta[],
+    flagSet: string | null,
+    loreVi: string,
+    loreEn: string,
+  ): Phase33QuestDef {
+    const linhThach = Math.min(mainBudget, Math.floor(mainBudget * rewardFactor));
+    const exp = Math.min(expBudget, Math.floor(expBudget * rewardFactor));
+    return {
+      questKey: `q_ch${padded}_main_${String(seq).padStart(2, '0')}`,
+      kind: 'main',
+      chapKey: t.chapKey,
+      volumeKey: t.volumeKey,
+      titleVi: `${t.mainTitleVi} — ${titleViSuffix}`,
+      titleEn: `${t.mainTitleEn} — ${titleEnSuffix}`,
+      descriptionVi: descVi,
+      descriptionEn: descEn,
+      giverNpcKey: giverNpc,
+      requiredRealmKey: t.realmKey,
+      requiredRealmOrder: t.realmOrder,
+      prerequisiteQuestKey: prereqKey,
+      requiredStoryFlags: [t.storyFlagIntro],
+      requiredAffinityNpcKey: null,
+      requiredAffinityScore: null,
+      steps,
+      rewards: {
+        linhThach,
+        exp,
+        congHien: 6 + seq,
+        affinity: extraAffinity,
+        ...(flagSet ? { storyFlags: [flagSet] } : {}),
+      },
+      rewardPolicyKey: t.rewardPolicyKey,
+      dailyCap: null,
+      weeklyCap: null,
+      hiddenTriggerHintVi: null,
+      hiddenTriggerHintEn: null,
+      loreSummaryVi: loreVi,
+      loreSummaryEn: loreEn,
+    };
+  }
+
+  const flagAftermath = `flag_ch${padded}_aftermath`;
+  const flagInnerTested = `flag_ch${padded}_inner_tested`;
+  const flagSecretDoor = `flag_ch${padded}_secret_door`;
+  const flagSectDispute = `flag_ch${padded}_sect_dispute`;
+  const flagFiveElements = `flag_ch${padded}_ngu_hanh`;
+  const flagNextSeed = `flag_ch${padded}_next_seed`;
+
+  const q6 = mkExtraMain(
+    6,
+    'Hậu sự',
+    'Aftermath',
+    `Sau khi hạ ${t.boss}, ${t.primaryNpc} cần dọn ${t.region} kẻo tàn dư còn nuôi mưu.`,
+    `After ${t.boss} falls, ${t.primaryNpc} insists on clearing ${t.region} before remnants regroup.`,
+    t.primaryNpc,
+    `q_ch${padded}_main_05`,
+    [
+      step(1, 'kill', 'monster', t.monster, 4, `Dẹp đám ${t.monster} tản binh.`, `Mop up scattered ${t.monster}.`),
+      step(2, 'collect', 'item', t.collectItem, 1, `Lượm tang vật còn sót.`, `Pick up the last evidence.`),
+      step(3, 'flag_set', 'flag', flagAftermath, 1, `Đóng cờ hậu sự.`, `Close the aftermath flag.`),
+    ],
+    0.55,
+    [{ npcKey: t.primaryNpc, delta: 2 }],
+    flagAftermath,
+    `Hậu sự sau boss — dọn region, mở đường tâm tư cho NPC chính.`,
+    `Aftermath sweep — clears the region and opens the primary NPC's reflection arc.`,
+  );
+
+  const q7 = mkExtraMain(
+    7,
+    'Tâm ma thoáng hiện',
+    'Inner Demon Glimpse',
+    `${t.primaryNpc} nhận ra một bóng tâm ma soi qua thiên kiếp Chap ${t.chapNumber} — cần quyết định nuốt hay dồn lại.`,
+    `${t.primaryNpc} senses an inner demon casting through the Chap ${t.chapNumber} tribulation — swallow it or seal it.`,
+    t.primaryNpc,
+    `q_ch${padded}_main_06`,
+    [
+      step(1, 'talk', 'npc', t.primaryNpc, 1, `Hỏi ${t.primaryNpc} về bóng tâm ma.`, `Ask ${t.primaryNpc} about the demon.`),
+      step(2, 'choice', 'choice', `choice_ch${padded}_main_07_demon`, 1, `Chọn nuốt tâm ma hay dồn ấn.`, `Swallow the demon or seal it.`),
+      step(3, 'flag_set', 'flag', flagInnerTested, 1, `Đóng cờ tâm ma đã thử.`, `Set the inner-demon-tested flag.`),
+    ],
+    0.5,
+    [{ npcKey: t.primaryNpc, delta: 3 }],
+    flagInnerTested,
+    `Choice tâm ma — ảnh hưởng affinity và mở hidden tâm cảnh về sau.`,
+    `Inner demon choice — colors affinity and opens a later hidden mind dungeon.`,
+  );
+
+  const q8 = mkExtraMain(
+    8,
+    'Đồng đạo thử lửa',
+    'Ally Trial',
+    `${t.secondaryNpc} đề nghị thử lửa cùng nhau ở ${t.region} để củng cố đạo tâm trước chương sau.`,
+    `${t.secondaryNpc} proposes a joint trial at ${t.region} to firm up daoist resolve for the chapters ahead.`,
+    t.secondaryNpc,
+    `q_ch${padded}_main_07`,
+    [
+      step(1, 'explore', 'region', t.region, 1, `Khảo sát ${t.region} cùng ${t.secondaryNpc}.`, `Sweep ${t.region} with ${t.secondaryNpc}.`),
+      step(2, 'kill', 'monster', t.monster, 5, `Dẹp ${t.monster} canh phục.`, `Defeat lurking ${t.monster}.`),
+      step(3, 'collect', 'item', t.collectItem, 1, `Lượm vật tế đạo.`, `Pick a daoist token.`),
+    ],
+    0.55,
+    [{ npcKey: t.secondaryNpc, delta: 4 }],
+    null,
+    `Đồng hành side beat — khắc hoạ tình thân ${t.secondaryNpc}.`,
+    `Joint trial — deepens the bond with ${t.secondaryNpc}.`,
+  );
+
+  const q9 = mkExtraMain(
+    9,
+    'Xung đột tông môn',
+    'Sect Dispute',
+    `Một tông môn nhỏ tại ${t.region} tranh chấp với người của ${t.primaryNpc}; cần phán xét nhanh.`,
+    `A minor sect at ${t.region} clashes with ${t.primaryNpc}'s people; a swift verdict is needed.`,
+    t.primaryNpc,
+    `q_ch${padded}_main_08`,
+    [
+      step(1, 'talk', 'npc', t.primaryNpc, 1, `Nghe trình bày từ ${t.primaryNpc}.`, `Take ${t.primaryNpc}'s brief.`),
+      step(2, 'kill', 'monster', t.monster, 3, `Trấn áp đám hộ vệ tông môn nhỏ.`, `Put down the minor sect guards.`),
+      step(3, 'choice', 'choice', `choice_ch${padded}_main_09_sect`, 1, `Tha hay diệt tông môn nhỏ.`, `Spare or annihilate the minor sect.`),
+      step(4, 'flag_set', 'flag', flagSectDispute, 1, `Đóng cờ phán xét.`, `Lock the verdict flag.`),
+    ],
+    0.6,
+    [{ npcKey: t.primaryNpc, delta: 3 }],
+    flagSectDispute,
+    `Xung đột phân nhánh — quyết định ảnh hưởng faction state ở chapter sau.`,
+    `Sect dispute branch — the verdict echoes in later faction state.`,
+  );
+
+  const q10 = mkExtraMain(
+    10,
+    'Bí mật địa phương',
+    'Local Secret',
+    `${t.hiddenNpc} chỉ một cánh cửa giấu trong ${t.region} — chỉ mở khi đã hạ ${t.boss}.`,
+    `${t.hiddenNpc} hints at a hidden door in ${t.region} — only after ${t.boss} falls.`,
+    t.hiddenNpc,
+    `q_ch${padded}_main_09`,
+    [
+      step(1, 'explore', 'region', t.region, 1, `Theo dấu ${t.hiddenNpc}.`, `Follow ${t.hiddenNpc}'s trail.`),
+      step(2, 'collect', 'item', t.collectItem, 1, `Mở khoá chứng vật.`, `Lift the key token.`),
+      step(3, 'flag_set', 'flag', flagSecretDoor, 1, `Đóng cờ cánh cửa bí.`, `Lock the secret door flag.`),
+    ],
+    0.55,
+    [{ npcKey: t.hiddenNpc, delta: 4 }],
+    flagSecretDoor,
+    `Bí mật địa phương — mở tuyến hidden phụ về sau (hidden_02).`,
+    `Local secret — opens a later hidden branch (hidden_02).`,
+  );
+
+  const q11 = mkExtraMain(
+    11,
+    'Pháp bảo phế tích',
+    'Dharma Treasure Ruin',
+    `${t.secondaryNpc} cho hay có pháp bảo cũ tại ${t.region} — tìm trước khi thế lực phụ thừa cơ.`,
+    `${t.secondaryNpc} reports a derelict dharma treasure in ${t.region} — recover it before a minor faction does.`,
+    t.secondaryNpc,
+    `q_ch${padded}_main_10`,
+    [
+      step(1, 'collect', 'item', t.collectItem, 2, `Thu hồi pháp bảo lõi.`, `Recover the core relic.`),
+      step(2, 'talk', 'npc', t.secondaryNpc, 1, `Bàn giao cho ${t.secondaryNpc}.`, `Hand off to ${t.secondaryNpc}.`),
+    ],
+    0.55,
+    [{ npcKey: t.secondaryNpc, delta: 3 }],
+    null,
+    `Pháp bảo cũ — gắn lore Quyển ${t.volumeKey.includes('ii_') ? 'II' : t.volumeKey.includes('iii_') ? 'III' : 'IV'}.`,
+    `Dharma ruin — ties into the volume's lore.`,
+  );
+
+  const q12 = mkExtraMain(
+    12,
+    'Trận pháp Ngũ Hành',
+    'Five Elements Array',
+    `Trận pháp Ngũ Hành phía sau ${t.region} bất ổn — cần kích lại để giữ mạch tiên.`,
+    `The Five Elements array behind ${t.region} flickers — re-attune it to keep the vein stable.`,
+    t.primaryNpc,
+    `q_ch${padded}_main_11`,
+    [
+      step(1, 'kill', 'monster', t.monster, 4, `Diệt yêu thú phá trận.`, `Slay array-breakers.`),
+      step(2, 'explore', 'region', t.region, 1, `Đi đủ năm cửa Ngũ Hành.`, `Walk all five element gates.`),
+      step(3, 'flag_set', 'flag', flagFiveElements, 1, `Đóng cờ Ngũ Hành.`, `Lock the Five Elements flag.`),
+    ],
+    0.55,
+    [{ npcKey: t.primaryNpc, delta: 2 }],
+    flagFiveElements,
+    `Trận pháp Ngũ Hành — beat gameplay khác main boss.`,
+    `Five elements array — a non-boss gameplay beat.`,
+  );
+
+  const q13 = mkExtraMain(
+    13,
+    'Cứu trợ điều tra',
+    'Relief Investigation',
+    `Một tu sĩ tán tu kêu cứu ở ${t.region}; ${t.primaryNpc} bảo điều tra trước khi rút.`,
+    `A wandering cultivator cries for help at ${t.region}; ${t.primaryNpc} insists on a quick probe first.`,
+    t.primaryNpc,
+    `q_ch${padded}_main_12`,
+    [
+      step(1, 'talk', 'npc', t.hiddenNpc, 1, `Nghe lời chứng từ ${t.hiddenNpc}.`, `Hear the witness at ${t.hiddenNpc}.`),
+      step(2, 'explore', 'region', t.region, 1, `Lần hiện trường.`, `Survey the site.`),
+      step(3, 'choice', 'choice', `choice_ch${padded}_main_13_aid`, 1, `Cứu rồi điều tra hay điều tra rồi cứu.`, `Save then probe or probe then save.`),
+    ],
+    0.5,
+    [{ npcKey: t.hiddenNpc, delta: 3 }],
+    null,
+    `Cứu trợ + điều tra — beat đạo đức nhỏ trong chap.`,
+    `Aid + probe — a small moral beat in the chapter.`,
+  );
+
+  const q14 = mkExtraMain(
+    14,
+    'Đạo tâm thử thách',
+    'Dao Heart Trial',
+    `${t.primaryNpc} hỏi: kết chap rồi, đạo tâm có vững không? Một thử thách nhỏ chứng minh.`,
+    `${t.primaryNpc} asks: with the chapter closed, does your dao heart hold? A small trial proves it.`,
+    t.primaryNpc,
+    `q_ch${padded}_main_13`,
+    [
+      step(1, 'choice', 'choice', `choice_ch${padded}_main_14_resolve`, 1, `Đối mặt câu hỏi đạo tâm.`, `Face the dao heart question.`),
+      step(2, 'flag_set', 'flag', `flag_ch${padded}_dao_heart`, 1, `Đóng cờ đạo tâm.`, `Lock the dao heart flag.`),
+    ],
+    0.5,
+    [{ npcKey: t.primaryNpc, delta: 4 }],
+    `flag_ch${padded}_dao_heart`,
+    `Choice đạo tâm — tăng affinity primary, mở dialog node mới.`,
+    `Dao heart choice — boosts primary affinity, opens a new dialogue node.`,
+  );
+
+  const q15 = mkExtraMain(
+    15,
+    'Tôn sư đàm đạo',
+    'Master Council',
+    `Trước khi rời ${t.region}, ${t.secondaryNpc} thỉnh ${t.primaryNpc} đàm đạo về cảnh giới sau.`,
+    `Before leaving ${t.region}, ${t.secondaryNpc} invites ${t.primaryNpc} to discuss the next realm.`,
+    t.secondaryNpc,
+    `q_ch${padded}_main_14`,
+    [
+      step(1, 'talk', 'npc', t.primaryNpc, 1, `Đàm đạo cùng ${t.primaryNpc}.`, `Council with ${t.primaryNpc}.`),
+      step(2, 'talk', 'npc', t.secondaryNpc, 1, `Đối thoại sâu với ${t.secondaryNpc}.`, `Deeper exchange with ${t.secondaryNpc}.`),
+    ],
+    0.5,
+    [
+      { npcKey: t.primaryNpc, delta: 3 },
+      { npcKey: t.secondaryNpc, delta: 3 },
+    ],
+    null,
+    `Đàm đạo — beat nhịp chậm, tăng affinity đôi và mở dialogue.`,
+    `Council — slow beat, double affinity boost and dialogue opener.`,
+  );
+
+  const q16 = mkExtraMain(
+    16,
+    'Mở mạch chương sau',
+    'Next Chapter Seed',
+    `${t.primaryNpc} đặt một mảnh tin nhỏ — đó là hạt mầm dẫn vào chương ${t.chapNumber + 1}.`,
+    `${t.primaryNpc} leaves a small clue — the seed for Chapter ${t.chapNumber + 1}.`,
+    t.primaryNpc,
+    `q_ch${padded}_main_15`,
+    [
+      step(1, 'talk', 'npc', t.primaryNpc, 1, `Nhận lời gửi gắm.`, `Take the parting word.`),
+      step(2, 'flag_set', 'flag', flagNextSeed, 1, `Đóng cờ mở mạch.`, `Lock the seed flag.`),
+    ],
+    0.5,
+    [{ npcKey: t.primaryNpc, delta: 3 }],
+    flagNextSeed,
+    `Mở mạch — seed flag cho chương sau (UNWIRED tới Phase 33.1 runtime).`,
+    `Chapter seed flag — UNWIRED to runtime until Phase 33.1.`,
+  );
+
+  return [q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15, q16];
 }
 
 function sideQuestsFor(t: Phase33ChapterTemplate): readonly Phase33QuestDef[] {
@@ -467,7 +818,7 @@ function sideQuestsFor(t: Phase33ChapterTemplate): readonly Phase33QuestDef[] {
     extraAffinity: readonly Phase33AffinityDelta[],
   ): Phase33QuestDef {
     return {
-      questKey: `q_ch${padded}_side_0${seq}`,
+      questKey: `q_ch${padded}_side_${String(seq).padStart(2, '0')}`,
       kind: 'side',
       chapKey: t.chapKey,
       volumeKey: t.volumeKey,
@@ -484,8 +835,12 @@ function sideQuestsFor(t: Phase33ChapterTemplate): readonly Phase33QuestDef[] {
       requiredAffinityScore: null,
       steps,
       rewards: {
-        linhThach: Math.floor(cap.side * (0.7 + seq * 0.1)),
-        exp: Math.floor(cap.exp * 0.18),
+        // Phase 33.0B: scale theo tier + clamp dưới side cap.
+        linhThach: Math.min(
+          cap.side,
+          Math.floor(cap.side * Math.min(0.95, 0.45 + Math.min(seq, 11) * 0.05) * tierMultiplierFor(t.realmOrder)),
+        ),
+        exp: Math.min(cap.exp, Math.floor(cap.exp * 0.18 * tierMultiplierFor(t.realmOrder))),
         congHien: 6,
         items: [{ itemKey: t.sideRewardItem, qty: 1, bind: true }],
         affinity: extraAffinity,
@@ -543,7 +898,294 @@ function sideQuestsFor(t: Phase33ChapterTemplate): readonly Phase33QuestDef[] {
     [{ npcKey: t.hiddenNpc, delta: 6 }],
   );
 
-  return [s1, s2, s3];
+  /* ── Phase 33.0B — extra side themes s4..s11 (8 themes mở rộng thế giới). ── */
+
+  const s4 = side(
+    4,
+    `Chap ${t.chapNumber} — Trợ đan cho ${t.secondaryNpc}`,
+    `Chapter ${t.chapNumber} — Alchemy Aid for ${t.secondaryNpc}`,
+    t.secondaryNpc,
+    `${t.secondaryNpc} đang luyện đan, cần nguyên liệu từ ${t.region}.`,
+    `${t.secondaryNpc} is brewing a pill and needs material from ${t.region}.`,
+    [
+      { id: 'step_1', kind: 'collect', targetType: 'item', targetId: t.collectItem, count: 3, descriptionVi: 'Lấy nguyên liệu đan.', descriptionEn: 'Gather alchemy material.' },
+      { id: 'step_2', kind: 'talk', targetType: 'npc', targetId: t.secondaryNpc, count: 1, descriptionVi: 'Giao liệu.', descriptionEn: 'Deliver.' },
+    ],
+    [{ npcKey: t.secondaryNpc, delta: 3 }],
+  );
+
+  const s5 = side(
+    5,
+    `Chap ${t.chapNumber} — Lệch trận pháp`,
+    `Chapter ${t.chapNumber} — Formation Mishap`,
+    t.primaryNpc,
+    `Trận pháp phụ tại ${t.region} lệch nhịp — phải sửa nhanh.`,
+    `An auxiliary array at ${t.region} drifts — fix it before it cracks.`,
+    [
+      { id: 'step_1', kind: 'explore', targetType: 'region', targetId: t.region, count: 1, descriptionVi: 'Trứ ngụ tại trận tâm.', descriptionEn: 'Stand at the array core.' },
+      { id: 'step_2', kind: 'kill', targetType: 'monster', targetId: t.monster, count: 3, descriptionVi: 'Dẹp phá trận.', descriptionEn: 'Slay array breakers.' },
+      { id: 'step_3', kind: 'collect', targetType: 'item', targetId: t.collectItem, count: 1, descriptionVi: 'Lấy đá định trận.', descriptionEn: 'Recover the anchor stone.' },
+    ],
+    [{ npcKey: t.primaryNpc, delta: 3 }],
+  );
+
+  const s6 = side(
+    6,
+    `Chap ${t.chapNumber} — Tuần tra tông môn`,
+    `Chapter ${t.chapNumber} — Sect Patrol`,
+    t.primaryNpc,
+    `${t.primaryNpc} nhờ bạn tuần tra vòng ${t.region} để giữ trật tự.`,
+    `${t.primaryNpc} asks you to patrol ${t.region} to keep order.`,
+    [
+      { id: 'step_1', kind: 'kill', targetType: 'monster', targetId: t.monster, count: 6, descriptionVi: 'Tuần tra diệt yêu.', descriptionEn: 'Patrol and slay.' },
+    ],
+    [{ npcKey: t.primaryNpc, delta: 3 }],
+  );
+
+  const s7 = side(
+    7,
+    `Chap ${t.chapNumber} — Gặt lộc tiên thức`,
+    `Chapter ${t.chapNumber} — Gathering Run`,
+    t.hiddenNpc,
+    `${t.hiddenNpc} cần thu gỗm lộc tiên thức xung quanh ${t.region}.`,
+    `${t.hiddenNpc} needs to gather immortal foodstuff around ${t.region}.`,
+    [
+      { id: 'step_1', kind: 'collect', targetType: 'item', targetId: t.collectItem, count: 5, descriptionVi: 'Gặt lộc.', descriptionEn: 'Harvest the bounty.' },
+      { id: 'step_2', kind: 'talk', targetType: 'npc', targetId: t.hiddenNpc, count: 1, descriptionVi: 'Giao lệ.', descriptionEn: 'Hand off.' },
+    ],
+    [{ npcKey: t.hiddenNpc, delta: 3 }],
+  );
+
+  const s8 = side(
+    8,
+    `Chap ${t.chapNumber} — Thuần phục yêu thú`,
+    `Chapter ${t.chapNumber} — Beast Tamer`,
+    t.secondaryNpc,
+    `Một yêu thú hiển nhân tính ở ${t.region} — ${t.secondaryNpc} muốn thử thuần phục.`,
+    `A beast at ${t.region} shows wit — ${t.secondaryNpc} wants to try taming.`,
+    [
+      { id: 'step_1', kind: 'kill', targetType: 'monster', targetId: t.monster, count: 2, descriptionVi: 'Làm suy yếu yêu thú lãnh đạo.', descriptionEn: 'Weaken the leader beast.' },
+      { id: 'step_2', kind: 'choice', targetType: 'choice', targetId: `choice_ch${padded}_side_08_tame`, count: 1, descriptionVi: 'Thuần phục hay diệt.', descriptionEn: 'Tame or slay.' },
+    ],
+    [{ npcKey: t.secondaryNpc, delta: 4 }],
+  );
+
+  const s9 = side(
+    9,
+    `Chap ${t.chapNumber} — Truy lùng lời đồn`,
+    `Chapter ${t.chapNumber} — Rumour Tracker`,
+    t.primaryNpc,
+    `Một lời đồn đen tối lan khắp ${t.region} — truy vết mà dập.`,
+    `A dark rumour circles ${t.region} — trace it and quench it.`,
+    [
+      { id: 'step_1', kind: 'talk', targetType: 'npc', targetId: t.primaryNpc, count: 1, descriptionVi: 'Nghe đầu mối.', descriptionEn: 'Take the lead.' },
+      { id: 'step_2', kind: 'explore', targetType: 'region', targetId: t.region, count: 1, descriptionVi: 'Lần dấu.', descriptionEn: 'Track the source.' },
+      { id: 'step_3', kind: 'talk', targetType: 'npc', targetId: t.hiddenNpc, count: 1, descriptionVi: 'Buộc người tụ lời đồn nhận.', descriptionEn: 'Confront the source.' },
+    ],
+    [{ npcKey: t.primaryNpc, delta: 3 }],
+  );
+
+  const s10 = side(
+    10,
+    `Chap ${t.chapNumber} — Thư pháp cổ nghiên`,
+    `Chapter ${t.chapNumber} — Old Scripture`,
+    t.hiddenNpc,
+    `${t.hiddenNpc} tìm được một đoạn thư pháp cổ ở ${t.region}; cần dịch.`,
+    `${t.hiddenNpc} found old script fragments at ${t.region}; help translate.`,
+    [
+      { id: 'step_1', kind: 'collect', targetType: 'item', targetId: t.collectItem, count: 2, descriptionVi: 'Lấy đủ mảnh thư.', descriptionEn: 'Gather all fragments.' },
+      { id: 'step_2', kind: 'choice', targetType: 'choice', targetId: `choice_ch${padded}_side_10_translate`, count: 1, descriptionVi: 'Dịch ẩn hay công khai.', descriptionEn: 'Translate quietly or publicly.' },
+    ],
+    [{ npcKey: t.hiddenNpc, delta: 4 }],
+  );
+
+  const s11 = side(
+    11,
+    `Chap ${t.chapNumber} — Hộ tống đoàn buôn`,
+    `Chapter ${t.chapNumber} — Escort Caravan`,
+    t.primaryNpc,
+    `Một đoàn buôn nhỏ đi ngang ${t.region} mong cửu đợ — ${t.primaryNpc} nhận.`,
+    `A small caravan crosses ${t.region} — ${t.primaryNpc} accepts the escort.`,
+    [
+      { id: 'step_1', kind: 'explore', targetType: 'region', targetId: t.region, count: 1, descriptionVi: 'Hộ tống đoàn.', descriptionEn: 'Escort the caravan.' },
+      { id: 'step_2', kind: 'kill', targetType: 'monster', targetId: t.monster, count: 4, descriptionVi: 'Dẹp kẻ cướp.', descriptionEn: 'Defeat bandits.' },
+      { id: 'step_3', kind: 'talk', targetType: 'npc', targetId: t.primaryNpc, count: 1, descriptionVi: 'Báo cáo kết thuán.', descriptionEn: 'Report safe passage.' },
+    ],
+    [{ npcKey: t.primaryNpc, delta: 3 }],
+  );
+
+  return [s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11];
+}
+
+function branchQuestsFor(t: Phase33ChapterTemplate): readonly Phase33QuestDef[] {
+  const cap = REWARD_CAP[t.rewardPolicyKey];
+  const padded = String(t.chapNumber).padStart(2, '0');
+  const tierMult = tierMultiplierFor(t.realmOrder);
+  const branchBudget = Math.min(cap.branch, Math.floor(cap.branch * tierMult));
+  const expBudget = Math.min(cap.exp, Math.floor(cap.exp * 0.16 * tierMult));
+
+  function branch(
+    seq: number,
+    titleViSuffix: string,
+    titleEnSuffix: string,
+    descVi: string,
+    descEn: string,
+    giverNpc: string,
+    affinityNpc: string,
+    affinityScore: number,
+    chainKey: string,
+    steps: readonly Phase33QuestStepDef[],
+    rewardFactor: number,
+    extraAffinity: readonly Phase33AffinityDelta[],
+  ): Phase33QuestDef {
+    return {
+      questKey: `q_ch${padded}_branch_${String(seq).padStart(2, '0')}`,
+      kind: 'branch',
+      chapKey: t.chapKey,
+      volumeKey: t.volumeKey,
+      titleVi: `Chap ${t.chapNumber} — Nhánh: ${titleViSuffix}`,
+      titleEn: `Chapter ${t.chapNumber} — Branch: ${titleEnSuffix}`,
+      descriptionVi: descVi,
+      descriptionEn: descEn,
+      giverNpcKey: giverNpc,
+      requiredRealmKey: t.realmKey,
+      requiredRealmOrder: t.realmOrder,
+      prerequisiteQuestKey: `q_ch${padded}_main_05`,
+      requiredStoryFlags: [t.storyFlagIntro],
+      requiredAffinityNpcKey: affinityNpc,
+      requiredAffinityScore: affinityScore,
+      steps,
+      rewards: {
+        // Branch cap < side; clamp dưới branch cap.
+        linhThach: Math.min(branchBudget, Math.floor(branchBudget * rewardFactor)),
+        exp: expBudget,
+        congHien: 4 + seq,
+        items: [{ itemKey: t.sideRewardItem, qty: 1, bind: true }],
+        affinity: extraAffinity,
+      },
+      rewardPolicyKey: t.rewardPolicyKey,
+      dailyCap: null,
+      weeklyCap: null,
+      hiddenTriggerHintVi: `Nhánh ${chainKey} mở khi affinity ${affinityNpc} ≥ ${affinityScore}.`,
+      hiddenTriggerHintEn: `Branch ${chainKey} opens when affinity with ${affinityNpc} reaches ${affinityScore}.`,
+      loreSummaryVi: `Branch chain ${chainKey} — nhánh phụ affinity-gated, không ảnh hưởng main plot.`,
+      loreSummaryEn: `Branch chain ${chainKey} — affinity-gated side path, no main plot impact.`,
+    };
+  }
+
+  const b1 = branch(
+    1,
+    `Tâm giao nhỏ với ${t.primaryNpc}`,
+    `Small Bond with ${t.primaryNpc}`,
+    `Sẩn dịp sau boss, ${t.primaryNpc} ngỏ lời tâm giao sâu hơn.`,
+    `After the boss falls, ${t.primaryNpc} offers a deeper bond.`,
+    t.primaryNpc,
+    t.primaryNpc,
+    20,
+    `branch_ch${padded}_primary_bond`,
+    [
+      { id: 'step_1', kind: 'talk', targetType: 'npc', targetId: t.primaryNpc, count: 1, descriptionVi: 'Lắng nghe.', descriptionEn: 'Listen.' },
+      { id: 'step_2', kind: 'choice', targetType: 'choice', targetId: `choice_ch${padded}_branch_01_bond`, count: 1, descriptionVi: 'Nhận lời hay giữ khoảng cách.', descriptionEn: 'Accept or keep distance.' },
+    ],
+    0.6,
+    [{ npcKey: t.primaryNpc, delta: 4 }],
+  );
+
+  const b2 = branch(
+    2,
+    `Ẩn sư ${t.hiddenNpc} hé lộ`,
+    `Hidden Mentor ${t.hiddenNpc} Reveal`,
+    `${t.hiddenNpc} hạ màn nửa — tiết lộ đoạn công pháp phụ cho người đủ tình.`,
+    `${t.hiddenNpc} lowers their veil halfway — a side technique for those close enough.`,
+    t.hiddenNpc,
+    t.hiddenNpc,
+    25,
+    `branch_ch${padded}_hidden_mentor`,
+    [
+      { id: 'step_1', kind: 'talk', targetType: 'npc', targetId: t.hiddenNpc, count: 1, descriptionVi: 'Nghe giải.', descriptionEn: 'Take the teaching.' },
+      { id: 'step_2', kind: 'collect', targetType: 'item', targetId: t.collectItem, count: 1, descriptionVi: 'Lấy vật chứng pháp.', descriptionEn: 'Take the proof token.' },
+    ],
+    0.7,
+    [{ npcKey: t.hiddenNpc, delta: 5 }],
+  );
+
+  const b3 = branch(
+    3,
+    `Thế lực phụ của ${t.secondaryNpc}`,
+    `Side Faction of ${t.secondaryNpc}`,
+    `${t.secondaryNpc} dung nạp một thế lực nhỏ — cần môi giới tin tưởng.`,
+    `${t.secondaryNpc} adopts a minor faction — needs a trusted broker.`,
+    t.secondaryNpc,
+    t.secondaryNpc,
+    22,
+    `branch_ch${padded}_secondary_faction`,
+    [
+      { id: 'step_1', kind: 'talk', targetType: 'npc', targetId: t.secondaryNpc, count: 1, descriptionVi: 'Nhận vai môi giới.', descriptionEn: 'Take the broker role.' },
+      { id: 'step_2', kind: 'explore', targetType: 'region', targetId: t.region, count: 1, descriptionVi: 'Gặp thế lực mới.', descriptionEn: 'Meet the minor faction.' },
+      { id: 'step_3', kind: 'choice', targetType: 'choice', targetId: `choice_ch${padded}_branch_03_faction`, count: 1, descriptionVi: 'Chánh trực hay trách khéo.', descriptionEn: 'Forthright or smooth.' },
+    ],
+    0.65,
+    [{ npcKey: t.secondaryNpc, delta: 4 }],
+  );
+
+  const b4 = branch(
+    4,
+    `Mở cửa hàng phụ với ${t.primaryNpc}`,
+    `Side Shop with ${t.primaryNpc}`,
+    `${t.primaryNpc} muốn mở cửa hàng nhỏ ở ${t.region} — cần số vốn khởi.`,
+    `${t.primaryNpc} opens a side shop at ${t.region} — needs seed capital.`,
+    t.primaryNpc,
+    t.primaryNpc,
+    28,
+    `branch_ch${padded}_shop_unlock`,
+    [
+      { id: 'step_1', kind: 'collect', targetType: 'item', targetId: t.collectItem, count: 3, descriptionVi: 'Lấy nguyên liệu khởi.', descriptionEn: 'Gather starter materials.' },
+      { id: 'step_2', kind: 'talk', targetType: 'npc', targetId: t.primaryNpc, count: 1, descriptionVi: 'Góp vốn.', descriptionEn: 'Invest.' },
+    ],
+    0.7,
+    [{ npcKey: t.primaryNpc, delta: 5 }],
+  );
+
+  const b5 = branch(
+    5,
+    `Lựa chọn hậu quả với ${t.secondaryNpc}`,
+    `Echoed Choice with ${t.secondaryNpc}`,
+    `Một lựa chọn cũ cuốn lại — ${t.secondaryNpc} hỏi bạn có đổi không.`,
+    `An old choice returns — ${t.secondaryNpc} asks if you'd change it.`,
+    t.secondaryNpc,
+    t.secondaryNpc,
+    30,
+    `branch_ch${padded}_choice_echo`,
+    [
+      { id: 'step_1', kind: 'talk', targetType: 'npc', targetId: t.secondaryNpc, count: 1, descriptionVi: 'Đối thoại về lựa chọn cũ.', descriptionEn: 'Discuss the old choice.' },
+      { id: 'step_2', kind: 'choice', targetType: 'choice', targetId: `choice_ch${padded}_branch_05_echo`, count: 1, descriptionVi: 'Giữ hay đổi.', descriptionEn: 'Hold or alter.' },
+      { id: 'step_3', kind: 'flag_set', targetType: 'flag', targetId: `flag_ch${padded}_branch_echo`, count: 1, descriptionVi: 'Đóng cờ hậu quả.', descriptionEn: 'Lock the echo flag.' },
+    ],
+    0.7,
+    [{ npcKey: t.secondaryNpc, delta: 5 }],
+  );
+
+  const b6 = branch(
+    6,
+    `Tông môn phụ của ${t.hiddenNpc}`,
+    `Side Palace of ${t.hiddenNpc}`,
+    `${t.hiddenNpc} tiết lộ một tông môn phụ cũ ở ${t.region}, cần người tu sửa.`,
+    `${t.hiddenNpc} reveals a derelict side palace at ${t.region}; restoration needed.`,
+    t.hiddenNpc,
+    t.hiddenNpc,
+    35,
+    `branch_ch${padded}_side_palace`,
+    [
+      { id: 'step_1', kind: 'explore', targetType: 'region', targetId: t.region, count: 1, descriptionVi: 'Thăm tông môn phế.', descriptionEn: 'Visit the abandoned palace.' },
+      { id: 'step_2', kind: 'kill', targetType: 'monster', targetId: t.monster, count: 3, descriptionVi: 'Xử tàn dư.', descriptionEn: 'Clear remnants.' },
+      { id: 'step_3', kind: 'collect', targetType: 'item', targetId: t.collectItem, count: 1, descriptionVi: 'Phục hồi bản tứ.', descriptionEn: 'Recover the founding crest.' },
+      { id: 'step_4', kind: 'flag_set', targetType: 'flag', targetId: `flag_ch${padded}_branch_palace`, count: 1, descriptionVi: 'Đóng cờ tông môn phụ.', descriptionEn: 'Lock the side palace flag.' },
+    ],
+    0.8,
+    [{ npcKey: t.hiddenNpc, delta: 6 }],
+  );
+
+  return [b1, b2, b3, b4, b5, b6];
 }
 
 function hiddenQuestFor(t: Phase33ChapterTemplate): readonly Phase33QuestDef[] {
@@ -589,7 +1231,94 @@ function hiddenQuestFor(t: Phase33ChapterTemplate): readonly Phase33QuestDef[] {
     loreSummaryEn: `Chapter ${t.chapNumber} karma — affinity gated memory shard.`,
   };
 
-  return [hidden];
+  /* ── Phase 33.0B — extra hidden h2 (flag gate) + h3 (double gate). ── */
+
+  const tierMult = tierMultiplierFor(t.realmOrder);
+  const hiddenBudget = Math.min(cap.hidden, Math.floor(cap.hidden * tierMult));
+  const hiddenExp = Math.min(cap.exp, Math.floor(cap.exp * 0.32 * tierMult));
+  const flagSecretDoor = `flag_ch${padded}_secret_door`;
+  const flagAftermath = `flag_ch${padded}_aftermath`;
+  const flagInnerTested = `flag_ch${padded}_inner_tested`;
+  const flagSecondaryWitness = `route_ch${padded}_secondary_witness`;
+  const flagEchoedMemory = `route_ch${padded}_echoed_memory`;
+
+  const hidden2: Phase33QuestDef = {
+    questKey: `q_ch${padded}_hidden_02`,
+    kind: 'hidden',
+    chapKey: t.chapKey,
+    volumeKey: t.volumeKey,
+    titleVi: `Cơ duyên Chap ${t.chapNumber} — Cánh cửa bí`,
+    titleEn: `Karma Chap ${t.chapNumber} — Secret Door`,
+    descriptionVi: `Cánh cửa bí mật tại ${t.region} chỉ mở khi đã hậu sự sạch và bí mật địa phương đã hé lộ.`,
+    descriptionEn: `The secret door at ${t.region} opens only after aftermath is done and the local secret is exposed.`,
+    giverNpcKey: t.hiddenNpc,
+    requiredRealmKey: t.realmKey,
+    requiredRealmOrder: t.realmOrder,
+    prerequisiteQuestKey: `q_ch${padded}_main_10`,
+    requiredStoryFlags: [flagAftermath, flagSecretDoor],
+    requiredAffinityNpcKey: t.hiddenNpc,
+    requiredAffinityScore: Math.max(20, t.affinityScore - 10),
+    steps: [
+      { id: 'step_1', kind: 'explore', targetType: 'region', targetId: t.region, count: 1, descriptionVi: 'Tới cánh cửa bí.', descriptionEn: 'Approach the secret door.' },
+      { id: 'step_2', kind: 'collect', targetType: 'item', targetId: t.collectItem, count: 1, descriptionVi: 'Lấy chìa khoá ẩn.', descriptionEn: 'Take the hidden key.' },
+      { id: 'step_3', kind: 'flag_set', targetType: 'flag', targetId: flagSecondaryWitness, count: 1, descriptionVi: 'Đóng cờ chứng kiến phụ.', descriptionEn: 'Set the witness flag.' },
+    ],
+    rewards: {
+      linhThach: hiddenBudget,
+      exp: hiddenExp,
+      congHien: 14,
+      items: [{ itemKey: t.hiddenRewardItem, qty: 1, bind: true }],
+      storyFlags: [flagSecondaryWitness],
+      affinity: [{ npcKey: t.hiddenNpc, delta: 6 }],
+    },
+    rewardPolicyKey: t.rewardPolicyKey,
+    dailyCap: null,
+    weeklyCap: null,
+    hiddenTriggerHintVi: `Hậu sự sạch + bí mật địa phương + thân ${t.hiddenNpc} mới mở.`,
+    hiddenTriggerHintEn: `Open only after aftermath cleared, local secret exposed, and close to ${t.hiddenNpc}.`,
+    loreSummaryVi: `Hidden 2 — flag gate kép, mở dialogue node ẩn cho NPC ${t.hiddenNpc}.`,
+    loreSummaryEn: `Hidden 2 — double flag gate, opens a hidden dialogue node for ${t.hiddenNpc}.`,
+  };
+
+  const hidden3: Phase33QuestDef = {
+    questKey: `q_ch${padded}_hidden_03`,
+    kind: 'hidden',
+    chapKey: t.chapKey,
+    volumeKey: t.volumeKey,
+    titleVi: `Cơ duyên Chap ${t.chapNumber} — Mảnh ký ức vọng`,
+    titleEn: `Karma Chap ${t.chapNumber} — Echoed Memory`,
+    descriptionVi: `Khi tâm ma đã thử và đạo tâm vững, một mảnh ký ức của ${t.affinityNpcForHidden} vọng lại.`,
+    descriptionEn: `Once the inner demon is tested and the dao heart holds, ${t.affinityNpcForHidden}'s memory echoes back.`,
+    giverNpcKey: t.affinityNpcForHidden,
+    requiredRealmKey: t.realmKey,
+    requiredRealmOrder: t.realmOrder,
+    prerequisiteQuestKey: `q_ch${padded}_main_14`,
+    requiredStoryFlags: [flagInnerTested, `flag_ch${padded}_dao_heart`],
+    requiredAffinityNpcKey: t.affinityNpcForHidden,
+    requiredAffinityScore: t.affinityScore + 5,
+    steps: [
+      { id: 'step_1', kind: 'talk', targetType: 'npc', targetId: t.affinityNpcForHidden, count: 1, descriptionVi: 'Nghe ký ức.', descriptionEn: 'Hear the echo.' },
+      { id: 'step_2', kind: 'choice', targetType: 'choice', targetId: `choice_ch${padded}_hidden_03_echo`, count: 1, descriptionVi: 'Lựa chọn lưu hay xoá.', descriptionEn: 'Keep or erase.' },
+      { id: 'step_3', kind: 'flag_set', targetType: 'flag', targetId: flagEchoedMemory, count: 1, descriptionVi: 'Đóng cờ ký ức vọng.', descriptionEn: 'Lock the echoed memory flag.' },
+    ],
+    rewards: {
+      linhThach: Math.min(cap.hidden, Math.floor(hiddenBudget * 0.95)),
+      exp: Math.min(cap.exp, Math.floor(hiddenExp * 0.95)),
+      congHien: 14,
+      items: [{ itemKey: t.hiddenRewardItem, qty: 1, bind: true }],
+      storyFlags: [flagEchoedMemory],
+      affinity: [{ npcKey: t.affinityNpcForHidden, delta: 7 }],
+    },
+    rewardPolicyKey: t.rewardPolicyKey,
+    dailyCap: null,
+    weeklyCap: null,
+    hiddenTriggerHintVi: `Cần tâm ma đã thử + đạo tâm vững + affinity ${t.affinityNpcForHidden} cao.`,
+    hiddenTriggerHintEn: `Needs inner demon tested + dao heart held + high affinity with ${t.affinityNpcForHidden}.`,
+    loreSummaryVi: `Hidden 3 — gate sâu nhất, mở mảnh ký ức bản nguyên cho ${t.affinityNpcForHidden}.`,
+    loreSummaryEn: `Hidden 3 — deepest gate, unveils a memory shard for ${t.affinityNpcForHidden}.`,
+  };
+
+  return [hidden, hidden2, hidden3];
 }
 
 function dailyQuestFor(t: Phase33ChapterTemplate): readonly Phase33QuestDef[] {
@@ -1199,6 +1928,7 @@ export const STORY_QUEST_EXPANSION: readonly Phase33QuestDef[] =
   CHAPTER_TEMPLATES.flatMap((template) => [
     ...mainQuestsFor(template),
     ...sideQuestsFor(template),
+    ...branchQuestsFor(template),
     ...hiddenQuestFor(template),
     ...dailyQuestFor(template),
     ...weeklyQuestFor(template),

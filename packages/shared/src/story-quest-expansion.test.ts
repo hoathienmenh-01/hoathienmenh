@@ -32,6 +32,8 @@ import {
 } from './story-chapters-quyen-ii-iv';
 import {
   STORY_QUEST_EXPANSION,
+  getStoryRewardBudgetForChapter,
+  getStoryRewardTierForRealmOrder,
   phase33QuestByKey,
   phase33QuestsByChapter,
   phase33QuestsByKind,
@@ -175,28 +177,45 @@ describe('Phase 33 — Story chapters V2 catalog', () => {
 });
 
 describe('Phase 33 — Story Quest Expansion catalog', () => {
-  it('has ≥ 5 main quests per chapter (target 95 total)', () => {
+  // Phase 33.0B: density target = 16 main / 11 side / 6 branch / 3 hidden / 1 daily / 1 weekly
+  // = 38 quest/chapter, 19 chapters → 722 total.
+  it('has ≥ 15 and ≤ 20 main quests per chapter (Phase 33.0B target 16, total 304)', () => {
     const mains = phase33QuestsByKind('main');
-    expect(mains).toHaveLength(19 * 5);
+    expect(mains).toHaveLength(19 * 16);
     for (const chapter of STORY_CHAPTERS_V2) {
       const list = mains.filter((q) => q.chapKey === chapter.chapKey);
-      expect(list.length, `${chapter.chapKey} main count`).toBeGreaterThanOrEqual(5);
+      expect(list.length, `${chapter.chapKey} main count`).toBeGreaterThanOrEqual(15);
+      expect(list.length, `${chapter.chapKey} main count≤`).toBeLessThanOrEqual(20);
     }
   });
 
-  it('has ≥ 3 side quests per chapter (target 57 total)', () => {
+  it('has ≥ 10 and ≤ 15 side quests per chapter (Phase 33.0B target 11, total 209)', () => {
     const sides = phase33QuestsByKind('side');
-    expect(sides).toHaveLength(19 * 3);
+    expect(sides).toHaveLength(19 * 11);
     for (const chapter of STORY_CHAPTERS_V2) {
-      expect(sides.filter((q) => q.chapKey === chapter.chapKey).length, `${chapter.chapKey} side count`).toBeGreaterThanOrEqual(3);
+      const list = sides.filter((q) => q.chapKey === chapter.chapKey);
+      expect(list.length, `${chapter.chapKey} side count`).toBeGreaterThanOrEqual(10);
+      expect(list.length, `${chapter.chapKey} side count≤`).toBeLessThanOrEqual(15);
     }
   });
 
-  it('has ≥ 1 hidden quest per chapter (target 19 total)', () => {
-    const hiddens = phase33QuestsByKind('hidden');
-    expect(hiddens).toHaveLength(19);
+  it('has ≥ 5 and ≤ 8 branch quests per chapter (Phase 33.0B target 6, total 114)', () => {
+    const branches = phase33QuestsByKind('branch');
+    expect(branches).toHaveLength(19 * 6);
     for (const chapter of STORY_CHAPTERS_V2) {
-      expect(hiddens.filter((q) => q.chapKey === chapter.chapKey).length, `${chapter.chapKey} hidden count`).toBeGreaterThanOrEqual(1);
+      const list = branches.filter((q) => q.chapKey === chapter.chapKey);
+      expect(list.length, `${chapter.chapKey} branch count`).toBeGreaterThanOrEqual(5);
+      expect(list.length, `${chapter.chapKey} branch count≤`).toBeLessThanOrEqual(8);
+    }
+  });
+
+  it('has ≥ 2 and ≤ 4 hidden quests per chapter (Phase 33.0B target 3, total 57)', () => {
+    const hiddens = phase33QuestsByKind('hidden');
+    expect(hiddens).toHaveLength(19 * 3);
+    for (const chapter of STORY_CHAPTERS_V2) {
+      const list = hiddens.filter((q) => q.chapKey === chapter.chapKey);
+      expect(list.length, `${chapter.chapKey} hidden count`).toBeGreaterThanOrEqual(2);
+      expect(list.length, `${chapter.chapKey} hidden count≤`).toBeLessThanOrEqual(4);
     }
   });
 
@@ -223,7 +242,7 @@ describe('Phase 33 — Story Quest Expansion catalog', () => {
       expect(seen.has(q.questKey), q.questKey).toBe(false);
       seen.add(q.questKey);
       expect(PHASE21_QUEST_KEYS.has(q.questKey), `phase21 collision ${q.questKey}`).toBe(false);
-      expect(q.questKey).toMatch(/^q_ch\d{2}_(main|side|hidden|daily|weekly)_\d{2}$/);
+      expect(q.questKey).toMatch(/^q_ch\d{2}_(main|side|branch|hidden|daily|weekly)_\d{2}$/);
     }
   });
 
@@ -279,6 +298,10 @@ describe('Phase 33 — Story Quest Expansion catalog', () => {
         case 'side':
           expect(linhThach, q.questKey).toBeLessThanOrEqual(cap.side);
           break;
+        case 'branch':
+          // Phase 33.0B: branch cap = side * 0.8.
+          expect(linhThach, q.questKey).toBeLessThanOrEqual(Math.floor(cap.side * 0.8));
+          break;
         case 'hidden':
           expect(linhThach, q.questKey).toBeLessThanOrEqual(cap.hidden);
           break;
@@ -293,11 +316,76 @@ describe('Phase 33 — Story Quest Expansion catalog', () => {
     }
   });
 
+  it('Phase 33.0B reward tier helper covers realm order 9..27', () => {
+    expect(getStoryRewardTierForRealmOrder(9)).toBe('t1_early');
+    expect(getStoryRewardTierForRealmOrder(10)).toBe('t1_early');
+    expect(getStoryRewardTierForRealmOrder(11)).toBe('t2_mid');
+    expect(getStoryRewardTierForRealmOrder(13)).toBe('t2_mid');
+    expect(getStoryRewardTierForRealmOrder(14)).toBe('t3_late');
+    expect(getStoryRewardTierForRealmOrder(16)).toBe('t3_late');
+    expect(getStoryRewardTierForRealmOrder(17)).toBe('t4_thanh');
+    expect(getStoryRewardTierForRealmOrder(19)).toBe('t4_thanh');
+    expect(getStoryRewardTierForRealmOrder(20)).toBe('t5_thien_dao');
+    expect(getStoryRewardTierForRealmOrder(21)).toBe('t5_thien_dao');
+    expect(getStoryRewardTierForRealmOrder(22)).toBe('t6_ban_nguyen');
+    expect(getStoryRewardTierForRealmOrder(24)).toBe('t6_ban_nguyen');
+    expect(getStoryRewardTierForRealmOrder(25)).toBe('t7_endgame');
+    expect(getStoryRewardTierForRealmOrder(27)).toBe('t7_endgame');
+  });
+
+  it('Phase 33.0B reward budget per chapter respects volume cap', () => {
+    for (const chapter of STORY_CHAPTERS_V2) {
+      const cap = phase33RewardCap(chapter.rewardPolicyKey);
+      const mainBudget = getStoryRewardBudgetForChapter(chapter.chapKey, 'main');
+      const sideBudget = getStoryRewardBudgetForChapter(chapter.chapKey, 'side');
+      const branchBudget = getStoryRewardBudgetForChapter(chapter.chapKey, 'branch');
+      const hiddenBudget = getStoryRewardBudgetForChapter(chapter.chapKey, 'hidden');
+      expect(mainBudget, chapter.chapKey).toBeGreaterThan(0);
+      expect(mainBudget, chapter.chapKey).toBeLessThanOrEqual(cap.main);
+      expect(sideBudget, chapter.chapKey).toBeLessThanOrEqual(cap.side);
+      // Branch <= side * 0.8 (volume-level), but tier multiplier can raise budget; clamp under branch cap.
+      expect(branchBudget, chapter.chapKey).toBeLessThanOrEqual(cap.branch);
+      expect(hiddenBudget, chapter.chapKey).toBeLessThanOrEqual(cap.hidden);
+    }
+  });
+
   it('hidden quest has either affinity gate or required story flag', () => {
     for (const q of phase33QuestsByKind('hidden')) {
       const hasAffinity = q.requiredAffinityNpcKey !== null && (q.requiredAffinityScore ?? 0) > 0;
       const hasFlagGate = q.requiredStoryFlags.length > 0;
       expect(hasAffinity || hasFlagGate, q.questKey).toBe(true);
+    }
+  });
+
+  it('Phase 33.0B branch quest is affinity-gated and reward stays under side cap × 0.8', () => {
+    const branches = phase33QuestsByKind('branch');
+    expect(branches.length, 'has branches').toBeGreaterThan(0);
+    for (const q of branches) {
+      // Affinity gate required.
+      expect(q.requiredAffinityNpcKey, q.questKey).not.toBeNull();
+      expect(q.requiredAffinityScore ?? 0, q.questKey).toBeGreaterThanOrEqual(18);
+      // Branch never grants endgame items.
+      for (const item of q.rewards.items ?? []) {
+        expect(item.itemKey, q.questKey).not.toMatch(FORBIDDEN_ENDGAME_REWARD_REGEX);
+      }
+      // Branch never grants Volume unlock flag.
+      for (const flag of q.rewards.storyFlags ?? []) {
+        expect(flag, q.questKey).not.toMatch(/^flag_volume_/);
+        expect(flag, q.questKey).not.toMatch(/^ending_/);
+      }
+      // Cap clamp.
+      const cap = phase33RewardCap(q.rewardPolicyKey);
+      const linhThach = q.rewards.linhThach ?? 0;
+      expect(linhThach, q.questKey).toBeLessThanOrEqual(Math.floor(cap.side * 0.8));
+    }
+  });
+
+  it('Phase 33.0B NPC realm gate ≤ quest required realm order', () => {
+    const npcByKey = new Map(NPCS.map((n) => [n.key, n]));
+    for (const q of STORY_QUEST_EXPANSION) {
+      const npc = npcByKey.get(q.giverNpcKey);
+      expect(npc, `${q.questKey} giver=${q.giverNpcKey}`).toBeDefined();
+      expect(npc!.realmGateOrder, q.questKey).toBeLessThanOrEqual(q.requiredRealmOrder);
     }
   });
 
@@ -320,9 +408,12 @@ describe('Phase 33 — Story Quest Expansion catalog', () => {
   it('phase33QuestByKey and phase33QuestsByVolume lookups work', () => {
     expect(phase33QuestByKey('q_ch09_main_01')?.kind).toBe('main');
     expect(phase33QuestByKey('q_ch16_main_05')?.chapKey).toBe('ch16');
-    expect(phase33QuestsByVolume('quyen_ii_tien_gioi').length).toBe(8 * 11);
-    expect(phase33QuestsByVolume('quyen_iii_thanh_dao').length).toBe(5 * 11);
-    expect(phase33QuestsByVolume('quyen_iv_ban_nguyen').length).toBe(6 * 11);
+    expect(phase33QuestByKey('q_ch09_branch_01')?.kind).toBe('branch');
+    expect(phase33QuestByKey('q_ch27_main_16')?.kind).toBe('main');
+    // Phase 33.0B density = 38/chapter (16 main + 11 side + 6 branch + 3 hidden + 1 daily + 1 weekly).
+    expect(phase33QuestsByVolume('quyen_ii_tien_gioi').length).toBe(8 * 38);
+    expect(phase33QuestsByVolume('quyen_iii_thanh_dao').length).toBe(5 * 38);
+    expect(phase33QuestsByVolume('quyen_iv_ban_nguyen').length).toBe(6 * 38);
   });
 
   it('referenced NPC keys all resolve', () => {
