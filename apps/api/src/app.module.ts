@@ -57,6 +57,7 @@ import { MaintenanceWindowModule } from './modules/maintenance-window/maintenanc
 import { MaintenanceWindowAdminModule } from './modules/maintenance-window-admin/maintenance-window-admin.module';
 import { ConfigVersionModule } from './modules/config-version/config-version.module';
 import { ConfigVersionAdminModule } from './modules/config-version-admin/config-version-admin.module';
+import { AdminControlCenterModule } from './modules/admin-control-center/admin-control-center.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { ArenaModule } from './modules/arena/arena.module';
 import { ArenaAntiWintradeAdminModule } from './modules/arena-anti-wintrade-admin/arena-anti-wintrade-admin.module';
@@ -150,6 +151,14 @@ import { CosmeticsModule } from './modules/cosmetics/cosmetics.module';
     ConfigVersionModule,
     // Phase 15.6 — Admin endpoints cho version listing + dry-run/rollback.
     ConfigVersionAdminModule,
+    // Phase 27.6 — Admin Control Center V2 / Config-Driven LiveOps Admin.
+    // Overview dashboard, role-permission matrix, RewardProfile +
+    // DropProfile CRUD/validate/simulate, ContentStatus toggle. Dùng
+    // `AdminPermissionGuard` riêng (granular permission) thay vì
+    // `AdminGuard` cũ (role binary). Audit ghi `AdminAuditLog` qua
+    // `AdminAuditWriter` — meta JSON extend permissionKey/riskLevel/
+    // reason/targetType/targetId/beforeJson/afterJson.
+    AdminControlCenterModule,
     // Phase 16.6 — Economy Anti-cheat (ledger checker + anomaly
     // scanner cron + admin endpoints). SAU AdminModule + EconomyModule.
     AdminEconomySafetyModule,

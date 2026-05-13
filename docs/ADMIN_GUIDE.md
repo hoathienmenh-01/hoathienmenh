@@ -238,7 +238,76 @@ Invariant tự clamp: nếu `max < min` → max = min; nếu `default` out of `[
 - Redis: `redis-cli FLUSHDB` (chỉ với redis dev/staging, **không bao giờ** với production khi còn rate-limit live).
 - MinIO: xoá bucket qua console.
 
-## 13. Liên kết
+## 13. Phase 27.6 — Admin Control Center V2 (config-driven)
+
+PR foundation Phase 27.6 (xem PR #558) thêm 1 view admin mới `/admin/control-center` tách khỏi `/admin` cũ. View mới dùng `AdminPermissionGuard` granular thay vì `AdminGuard` cũ (role binary ADMIN/MOD). Mapping back-compat:
+
+| `User.role` | `AdminRoleKey` mapping (PR1) | Quyền effective |
+|---|---|---|
+| `ADMIN` | `SUPER_ADMIN` | 29/29 quyền (toàn quyền) |
+| `MOD` | `MODERATOR` | `ADMIN_VIEW_DASHBOARD`, `ADMIN_VIEW_PLAYERS`, `ADMIN_MODERATE_CHAT`, `ADMIN_MUTE_USER`, `ADMIN_BAN_USER`, `ADMIN_VIEW_LEDGER`, `ADMIN_VIEW_REPORTS` |
+| `PLAYER` | — | 0 quyền (reject `FORBIDDEN`) |
+
+PR sau sẽ thêm bảng `AdminRoleAssignment` cho per-admin role override (ví dụ assign `ECONOMY_ADMIN` cho 1 user cụ thể).
+
+### 13.1 — 7 vai trò admin (catalog)
+
+`packages/shared/src/admin-control-center.ts` export `ADMIN_ROLE_KEYS`:
+
+| Role | Mục đích |
+|---|---|
+| `SUPER_ADMIN` | Toàn quyền — owner / lead engineer. |
+| `OPERATIONS_ADMIN` | LiveOps event, feature flag, maintenance, schedule, bản tin. KHÔNG grant currency. |
+| `ECONOMY_ADMIN` | Reward profile, drop profile, shop pack, monthly card, currency adjust (có cap), refund. |
+| `CONTENT_ADMIN` | Map, dungeon, boss, sect content, trial tower content (config). |
+| `SUPPORT_ADMIN` | Player support — currency adjust cap 100k LINH_THACH, item grant whitelist, refund nhỏ. KHÔNG TIEN_NGOC nạp. |
+| `MODERATOR` | Chat moderation, mute, ban PLAYER (back-compat MOD cũ). |
+| `QA_ADMIN` | Dev tool, simulate, dry-run validate. KHÔNG mutation production data. |
+
+### 13.2 — Endpoint mới (PR #558)
+
+| Method | Path | Permission yêu cầu |
+|---|---|---|
+| GET | `/admin/control-center/overview` | `ADMIN_VIEW_DASHBOARD` |
+| GET | `/admin/control-center/permissions/me` | `ADMIN_VIEW_DASHBOARD` |
+| GET | `/admin/control-center/permissions/matrix` | `ADMIN_VIEW_DASHBOARD` |
+| GET | `/admin/control-center/audit-action-types` | `ADMIN_VIEW_DASHBOARD` |
+| GET / POST | `/admin/control-center/reward-profiles` | `ADMIN_MANAGE_REWARD_PROFILE` |
+| POST | `/admin/control-center/reward-profiles/:key/activate` | `ADMIN_MANAGE_REWARD_PROFILE` |
+| POST | `/admin/control-center/reward-profiles/:key/deactivate` | `ADMIN_MANAGE_REWARD_PROFILE` |
+| POST | `/admin/control-center/reward-profiles/validate` | `ADMIN_MANAGE_REWARD_PROFILE` |
+| GET / POST | `/admin/control-center/drop-profiles` | `ADMIN_MANAGE_DROP_PROFILE` |
+| POST | `/admin/control-center/drop-profiles/:key/activate` | `ADMIN_MANAGE_DROP_PROFILE` |
+| POST | `/admin/control-center/drop-profiles/:key/deactivate` | `ADMIN_MANAGE_DROP_PROFILE` |
+| POST | `/admin/control-center/drop-profiles/validate` | `ADMIN_MANAGE_DROP_PROFILE` |
+| POST | `/admin/control-center/drop-profiles/simulate` | `ADMIN_MANAGE_DROP_PROFILE` |
+| GET | `/admin/control-center/content-statuses` | `ADMIN_VIEW_DASHBOARD` |
+| POST | `/admin/control-center/content-statuses` | `ADMIN_MANAGE_GAME_CONFIG` |
+
+Mọi mutation ghi `AdminAuditLog` qua `AdminAuditWriter` — `meta` JSON extend `permissionKey + riskLevel + reason + targetType + targetId + beforeJson + afterJson` (KHÔNG migration `AdminAuditLog` cũ).
+
+### 13.3 — Anti-P2W validator (shared)
+
+`validateRewardProfile(spec)` + `validateDropProfile(spec)` ở `packages/shared/src/admin-control-center.ts` chặn:
+
+- **Tier leak**: source T1 boss reward T9 item → `TIER_LEAK_FORBIDDEN`.
+- **Forbidden item**: 6 item endgame (`hau_tho_tran_hon_an`, `ban_nguyen_chi_bao`, `hu_khong_chi_bao`, `tien_huyen_kiem`, `tien_huyen_giap`, `than_dan`) → `FORBIDDEN_ITEM`.
+- **TIEN_NGOC grant**: drop currency = `TIEN_NGOC` → `TIEN_NGOC_GRANT_FORBIDDEN` (admin KHÔNG được cấp Tiên Ngọc nạp — chỉ topup mới mint).
+- **Qty cap per tier**: T9 mat > 5 / drop → `REWARD_QTY_OVER_TIER_CAP`.
+- **Rare T7+ thiếu weekly cap**: → `WEEKLY_CAP_REQUIRED_FOR_RARE`.
+- **Drop rareRate > 25%**: → `RARE_RATE_TOO_HIGH`.
+- **`NORMAL_MONSTER` rares T5+**: → `NORMAL_MONSTER_RARE_TIER_FORBIDDEN`.
+- **`ARTIFACT_CRAFT` rareRate > 5%**: → `ARTIFACT_RARE_HIGHER_THAN_ALCHEMY`.
+
+### 13.4 — Roadmap (PR2-6, chưa làm ở PR1)
+
+- **PR2** — Player support endpoints (currency adjust với cap per-role, item grant whitelist, refund, kick session).
+- **PR3** — RewardProfile / DropProfile editor UI (form full CRUD + activate confirm modal + simulate panel).
+- **PR4** — LiveOpsSchedule + GameConfig versioning (extend `ConfigVersion` cho 2 entity mới).
+- **PR5** — Anti-cheat action (resolve flag, soft-ban, IP block, device block).
+- **PR6** — Docs hoàn chỉnh + runbook khẩn cấp + E2E test scenario.
+
+## 14. Liên kết
 
 - Vận hành / chạy local: `docs/RUN_LOCAL.md`.
 - Deploy production: `docs/DEPLOY.md`.
