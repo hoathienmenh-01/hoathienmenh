@@ -14,6 +14,8 @@ import { RewardCapService } from './modules/economy/reward-cap.service';
 import { StoryDungeonService } from './modules/story-dungeon/story-dungeon.service';
 import { Phase33StoryService } from './modules/story-v2/story-v2.service';
 import { OnboardingQuestService } from './modules/onboarding-quest/onboarding-quest.service';
+import { DailyEncounterService } from './modules/daily-encounter/daily-encounter.service';
+import { SecretRealmRuntimeService } from './modules/secret-realm-runtime/secret-realm-runtime.service';
 
 /**
  * Helpers cho integration test — tạo fixture user/character nhanh, không
@@ -505,6 +507,30 @@ export function makeOnboardingQuestService(prisma: PrismaService): {
   const currency = new CurrencyService(prisma);
   const onboarding = new OnboardingQuestService(prisma, currency);
   return { onboarding, currency };
+}
+
+/**
+ * Phase 34.1 — Dựng `DailyEncounterService` cho integration test.
+ */
+export function makeDailyEncounterService(prisma: PrismaService): {
+  daily: DailyEncounterService;
+  currency: CurrencyService;
+} {
+  const currency = new CurrencyService(prisma);
+  const daily = new DailyEncounterService(prisma, currency);
+  return { daily, currency };
+}
+
+/**
+ * Phase 34.2 — Dựng `SecretRealmRuntimeService` cho integration test.
+ */
+export function makeSecretRealmRuntimeService(prisma: PrismaService): {
+  secretRealm: SecretRealmRuntimeService;
+  currency: CurrencyService;
+} {
+  const currency = new CurrencyService(prisma);
+  const secretRealm = new SecretRealmRuntimeService(prisma, currency);
+  return { secretRealm, currency };
 }
 
 export const TEST_DATABASE_URL =

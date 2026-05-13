@@ -7246,6 +7246,133 @@
       "ONBOARDING_TASK_ALREADY_CLAIMED": "Reward already claimed."
     }
   },
+  "encounter": {
+    "title": "Daily Encounter",
+    "subtitle": "One random fortune each day — embrace or pass.",
+    "loading": "Loading encounter…",
+    "accept": "Accept",
+    "complete": "Complete",
+    "skip": "Skip",
+    "claim": "Claim",
+    "claimToast": "Claimed — +{linhThach} LT · +{exp} EXP.",
+    "status": {
+      "AVAILABLE": "Available",
+      "ACCEPTED": "Accepted",
+      "COMPLETED": "Completed",
+      "CLAIMED": "Claimed",
+      "SKIPPED": "Skipped"
+    },
+    "rarity": {
+      "common": "Common",
+      "uncommon": "Uncommon",
+      "rare": "Rare",
+      "hidden": "Hidden"
+    },
+    "reward": {
+      "linhThach": "LT",
+      "exp": "EXP"
+    },
+    "error": {
+      "UNKNOWN_ERROR": "Unknown error.",
+      "NO_CHARACTER": "No character yet.",
+      "ENCOUNTER_NOT_FOUND": "No encounter today.",
+      "ENCOUNTER_CATALOG_MISSING": "Encounter catalog missing definition.",
+      "ENCOUNTER_NOT_COMPLETED": "Complete the encounter before claiming.",
+      "ENCOUNTER_FROZEN": "Encounter is closed.",
+      "ENCOUNTER_HAS_NO_CHOICES": "Encounter has no choices.",
+      "ENCOUNTER_CHOICE_INVALID": "Invalid choice."
+    }
+  },
+  "secretRealm": {
+    "title": "Secret Realm",
+    "subtitle": "Hidden realms — trials and rewards.",
+    "loading": "Loading secret realms…",
+    "enter": "Enter",
+    "complete": "Complete",
+    "claim": "Claim",
+    "markObjective": "Mark complete",
+    "requiredRealm": "Requires realm #{n}",
+    "claimToast": "Claimed — +{linhThach} LT · +{exp} EXP.",
+    "gate": {
+      "LOCKED": "Locked",
+      "AVAILABLE": "Open"
+    },
+    "status": {
+      "ENTERED": "Exploring",
+      "CLEARED": "Cleared",
+      "CLAIMED": "Claimed",
+      "EXPIRED": "Expired"
+    },
+    "reward": {
+      "linhThach": "LT",
+      "exp": "EXP"
+    },
+    "error": {
+      "UNKNOWN_ERROR": "Unknown error.",
+      "NO_CHARACTER": "No character yet.",
+      "SECRET_REALM_NOT_FOUND": "Secret realm does not exist.",
+      "SECRET_REALM_REALM_LOCKED": "Realm tier too low.",
+      "SECRET_REALM_RUN_ACTIVE": "A run is already active.",
+      "SECRET_REALM_RUN_NOT_FOUND": "Run not found.",
+      "SECRET_REALM_NOT_CLEARED": "Clear before claiming.",
+      "SECRET_REALM_OBJECTIVE_INVALID": "Objective not found.",
+      "SECRET_REALM_OBJECTIVES_INCOMPLETE": "Objectives not complete.",
+      "SECRET_REALM_COOLDOWN": "Cooldown active."
+    }
+  },
+  "inventoryAutoSort": {
+    "title": "Inventory — Auto-sort & Lock",
+    "subtitle": "Filter, sort, and lock items in bulk.",
+    "loading": "Loading…",
+    "empty": "No items match the filter.",
+    "searchPlaceholder": "Search by name / itemKey…",
+    "applyFilters": "Apply",
+    "selected": "Selected {n}",
+    "bulkLock": "Lock selected",
+    "bulkUnlock": "Unlock selected",
+    "clearSelection": "Clear selection",
+    "bulkLockedToast": "Locked {n} items.",
+    "bulkUnlockedToast": "Unlocked {n} items.",
+    "counts": "{filtered} / {total} items",
+    "sort": {
+      "default": "Default",
+      "quality_desc": "Quality ↓",
+      "quality_asc": "Quality ↑",
+      "kind": "Kind",
+      "equipped_first": "Equipped first",
+      "locked_first": "Locked first",
+      "newest": "Newest",
+      "oldest": "Oldest"
+    },
+    "bucket": {
+      "all": "All",
+      "equipment": "Equipment",
+      "artifact": "Artifact",
+      "consumable": "Consumable",
+      "material": "Material",
+      "skill_book": "Skill book",
+      "quest": "Quest",
+      "locked": "Locked"
+    },
+    "slot": {
+      "WEAPON": "Weapon",
+      "ARMOR": "Armor",
+      "BELT": "Belt",
+      "BOOTS": "Boots",
+      "HAT": "Hat",
+      "TRAM": "Tram",
+      "ARTIFACT_1": "Artifact I",
+      "ARTIFACT_2": "Artifact II",
+      "ARTIFACT_3": "Artifact III"
+    },
+    "error": {
+      "UNKNOWN_ERROR": "Unknown error.",
+      "NO_CHARACTER": "No character yet.",
+      "INVALID_INPUT": "Invalid input.",
+      "INVENTORY_ITEM_NOT_FOUND": "Item not found.",
+      "INVENTORY_ITEM_LOCKED": "Item is locked."
+    }
+  },
   "loadout": {
     "title": "Loadout Presets",
     "subtitle": "Save equipment + skill + artifact presets per PvE / PvP / Boss for quick swap.",

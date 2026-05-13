@@ -503,6 +503,12 @@ model Character {
   onboardingDays  CharacterOnboardingProgress[]
   onboardingTasks CharacterOnboardingTaskProgress[]
 
+  /// Phase 34.1 — Daily Random Encounter backrefs.
+  dailyEncounters CharacterDailyEncounter[]
+
+  /// Phase 34.2 — Secret Realm Run backrefs.
+  secretRealmRuns CharacterSecretRealmRun[]
+
   /// Phase QOL-2 — Loadout Preset PvE/PvP/Boss backref.
   loadoutPresets CharacterLoadoutPreset[]
 
@@ -6638,6 +6644,81 @@ model CharacterOnboardingTaskProgress {
 
   @@unique([characterId, taskKey])
   @@index([characterId, dayNumber, status])
+}
+
+/// Phase 34.1 — Daily Random Encounter / Kỳ Ngộ runtime row.
+///
+/// One row per (characterId, dateKey). `dateKey` is `YYYY-MM-DD` in
+/// `MISSION_RESET_TZ` (default Asia/Ho_Chi_Minh). Lazy-create on first
+/// `GET /encounters/v1/today`. Status flow:
+///
+///   AVAILABLE → ACCEPTED → COMPLETED → CLAIMED (terminal)
+///                     ↘ SKIPPED (terminal)
+///
+/// `encounterKey` is rolled deterministically from `(characterId, dateKey)` so
+/// re-reading the same day returns the same encounter. `choiceKey` optional
+/// (only set when encounter has multi-choice branches). `payloadJson` stores
+/// arbitrary metadata (e.g. reroll seed, rolled reward profile).
+model CharacterDailyEncounter {
+  id           String    @id @default(cuid())
+  characterId  String
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  encounterKey String
+  /// Server-controlled rarity bucket — common | uncommon | rare | hidden.
+  rarity       String    @default("common")
+  /// `YYYY-MM-DD` in `MISSION_RESET_TZ`.
+  dateKey      String
+  /// AVAILABLE | ACCEPTED | COMPLETED | CLAIMED | SKIPPED.
+  status       String    @default("AVAILABLE")
+  choiceKey    String?
+  /// Cached linh thach / exp granted on claim (for audit).
+  linhThachGranted Int    @default(0)
+  expGranted       Int    @default(0)
+  /// Optional metadata: rolled reward profile, journal hint, etc.
+  payloadJson  Json      @default("{}")
+  acceptedAt   DateTime?
+  completedAt  DateTime?
+  claimedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([characterId, dateKey])
+  @@index([characterId, status])
+  @@index([dateKey, status])
+}
+
+/// Phase 34.2 — Secret Realm / Bí Cảnh runtime run row.
+///
+/// One row per (characterId, secretRealmKey, startedAt) — multiple historical
+/// runs allowed. Active run gated by `realmKey` cooldown +
+/// `requiredRealmOrder` (enforced in `SecretRealmService.enter`).
+///
+/// Status flow:
+///   ENTERED → CLEARED → CLAIMED (terminal)
+///        ↘ EXPIRED (background cleanup, not implemented v1)
+model CharacterSecretRealmRun {
+  id            String    @id @default(cuid())
+  characterId   String
+  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  secretRealmKey String
+  /// ENTERED | CLEARED | CLAIMED | EXPIRED.
+  status        String    @default("ENTERED")
+  startedAt     DateTime  @default(now())
+  clearedAt     DateTime?
+  claimedAt     DateTime?
+  expiresAt     DateTime?
+  /// Map objectiveKey → currentCount (e.g. `{clear_rooms:2,collect:1}`).
+  objectiveProgressJson Json @default("{}")
+  /// Cached linh thach / exp granted on claim.
+  linhThachGranted Int    @default(0)
+  expGranted       Int    @default(0)
+  /// SHA256 hash of rolled reward profile (for idempotency vs replay).
+  rewardHash    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([characterId, secretRealmKey, status])
+  @@index([secretRealmKey, status])
 }
 
 /// Phase QOL-2 — Loadout Preset PvE/PvP/Boss.

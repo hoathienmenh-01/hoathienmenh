@@ -498,3 +498,35 @@ export async function getEquipmentEconomyPreview(
   );
   return unwrap(data).preview;
 }
+
+/**
+ * Phase 34.3 — QoL view (server-side sort + filter).
+ *
+ * Endpoint: GET `/inventory/qol/v1/items?sort=...&bucket=...&search=...`.
+ * `sort` ∈ {default,quality_desc,quality_asc,kind,equipped_first,
+ * locked_first,newest,oldest}; `bucket` ∈ {all,equipment,artifact,
+ * consumable,material,skill_book,quest,locked}; `search` free-text.
+ */
+export interface InventoryQolView {
+  items: InventoryView[];
+  total: number;
+  filtered: number;
+  sort: string;
+  bucket: string;
+}
+
+export async function fetchInventoryQol(opts: {
+  sort?: string;
+  bucket?: string;
+  search?: string;
+}): Promise<InventoryQolView> {
+  const qs = new URLSearchParams();
+  if (opts.sort) qs.set('sort', opts.sort);
+  if (opts.bucket) qs.set('bucket', opts.bucket);
+  if (opts.search) qs.set('search', opts.search);
+  const path = `/inventory/qol/v1/items${qs.toString() ? `?${qs.toString()}` : ''}`;
+  const { data } = await apiClient.get<Envelope<InventoryQolView>>(path);
+  return unwrap(data);
+}
+
+

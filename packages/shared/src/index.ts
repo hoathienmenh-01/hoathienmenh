@@ -148,6 +148,9 @@ export * from './story-quest-dialogues';
 
 // ─── Phase 34.0 — 7-Day Onboarding Questline ───────────────────────────────
 export * from './onboarding-7-day';
+export * from './inventory-qol';
+export * from './daily-encounter';
+export * from './secret-realm';
 
 // ─── Phase 42.0 — Visual Effects, Combat Feedback, Item Aura V1 ────────────
 export * from './visual-effects';
