@@ -151,6 +151,16 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/EventsView.vue'),
   },
   {
+    path: '/pvp',
+    name: 'pvp',
+    component: () => import('@/views/PvpView.vue'),
+  },
+  {
+    path: '/admin/pvp',
+    name: 'adminPvp',
+    component: () => import('@/views/AdminPvpCenterView.vue'),
+  },
+  {
     path: '/profile/:id',
     name: 'profile',
     component: () => import('@/views/ProfileView.vue'),
