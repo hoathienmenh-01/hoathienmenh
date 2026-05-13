@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { HttpException } from '@nestjs/common';
 import { SystemStatusController } from './system-status.controller';
 import type {
+  SystemErrorListOptions,
   SystemErrorListResult,
   SystemIntegrityLastRun,
   SystemStatusService,
@@ -22,7 +23,7 @@ import type {
 function makeSvc(
   overrides: Partial<{
     getStatus: () => Promise<SystemStatusSnapshot>;
-    listErrors: () => Promise<SystemErrorListResult>;
+    listErrors: (opts?: SystemErrorListOptions) => Promise<SystemErrorListResult>;
     getIntegrityLastRun: () => Promise<SystemIntegrityLastRun | null>;
   }> = {},
 ): SystemStatusService {
@@ -71,13 +72,19 @@ describe('Phase 43 — SystemStatusController.getStatus', () => {
 
 describe('Phase 43 — SystemStatusController.listErrors', () => {
   it('accepts valid query', async () => {
-    const fn = vi.fn(async () => ({ rows: [], total: 0 }) as SystemErrorListResult);
+    const fn = vi.fn(
+      async (_opts?: SystemErrorListOptions) =>
+        ({ rows: [], total: 0 }) as SystemErrorListResult,
+    );
     const ctrl = new SystemStatusController(makeSvc({ listErrors: fn }));
     const out = await ctrl.listErrors({ limit: 50, severity: 'WARN' });
     expect(out.ok).toBe(true);
     expect(fn).toHaveBeenCalledTimes(1);
-    expect(fn.mock.calls[0][0].limit).toBe(50);
-    expect(fn.mock.calls[0][0].severity).toBe('WARN');
+    const firstCall = fn.mock.calls[0];
+    expect(firstCall).toBeDefined();
+    const opts = firstCall?.[0];
+    expect(opts?.limit).toBe(50);
+    expect(opts?.severity).toBe('WARN');
   });
 
   it('rejects unknown severity', async () => {

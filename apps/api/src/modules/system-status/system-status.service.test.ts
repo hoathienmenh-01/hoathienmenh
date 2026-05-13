@@ -155,13 +155,17 @@ describe('Phase 43 — SystemStatusService.listErrors scrub allow-list', () => {
     const redis = makeRedis({});
     const svc = new SystemStatusService(prisma, redis);
     await svc.listErrors({ limit: 9999 });
-    const call = (prisma.securityEvent.findMany as unknown as ReturnType<typeof vi.fn>)
-      .mock.calls[0][0];
-    expect(call.take).toBeLessThanOrEqual(100);
+    const findManyMock = prisma.securityEvent
+      .findMany as unknown as ReturnType<typeof vi.fn>;
+    const firstCall = findManyMock.mock.calls[0];
+    expect(firstCall).toBeDefined();
+    const call = firstCall?.[0] as { take?: number } | undefined;
+    expect(call?.take).toBeLessThanOrEqual(100);
     await svc.listErrors({ limit: -5 });
-    const call2 = (prisma.securityEvent.findMany as unknown as ReturnType<typeof vi.fn>)
-      .mock.calls[1][0];
-    expect(call2.take).toBeGreaterThanOrEqual(1);
+    const secondCall = findManyMock.mock.calls[1];
+    expect(secondCall).toBeDefined();
+    const call2 = secondCall?.[0] as { take?: number } | undefined;
+    expect(call2?.take).toBeGreaterThanOrEqual(1);
   });
 });
 
