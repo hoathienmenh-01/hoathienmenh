@@ -130,6 +130,11 @@ model User {
   /// admin bị xoá — version + rollback rows giữ history.
   configVersionsChanged         ConfigVersion[]         @relation("ConfigVersionChangedBy")
   configRollbacksRun            ConfigRollbackRun[]     @relation("ConfigRollbackPerformedBy")
+  /// Phase 27.6 — Admin Control Center V2 audit. SET NULL khi admin bị
+  /// xoá — config row vẫn giữ history.
+  rewardProfilesUpdated         RewardProfile[]         @relation("RewardProfileUpdatedBy")
+  dropProfilesUpdated           DropProfile[]           @relation("DropProfileUpdatedBy")
+  contentStatusesUpdated        ContentStatus[]         @relation("ContentStatusUpdatedBy")
 }
 
 /// Token đặt lại mật khẩu (forgot/reset-password flow).
@@ -5080,4 +5085,130 @@ model SectBossAttemptLog {
   @@index([sectId, bossKey, createdAt])
   @@index([characterId, bossKey, createdAt])
   @@index([bossKey, damage])
+}
+
+// ─── Phase 27.6 — Admin Control Center V2 / Config-Driven LiveOps Admin ──
+//
+// Mở rộng admin foundation (`FeatureFlag` Phase 15.4, `MaintenanceWindow`
+// Phase 15.5, `ConfigVersion` Phase 15.6, `AdminAuditLog` Phase 18.x) bằng
+// 3 model `additive`:
+//
+//   - `RewardProfile`  — config reward set theo `contentType+contentKey`
+//     (BOSS_PERSONAL_T3_DEFAULT, DUNGEON_T5_RARE, MONTHLY_CARD_DAILY ...).
+//     Versioning + active flag — chỉ 1 profile `active=true` per (contentType, contentKey).
+//     Validator anti-P2W ở shared `validateRewardProfile` chặn tier leak +
+//     forbidden item + TIEN_NGOC + missing weekly cap rare T7+.
+//   - `DropProfile`    — config drop table theo `sourceType+sourceTier`
+//     (NORMAL_MONSTER_T3, BOSS_T5_GENERAL, WORLD_BOSS_T9_ARTIFACT ...).
+//     Validator chặn NORMAL_MONSTER rơi T5+, ARTIFACT_CRAFT rareRate > 5%,
+//     rareRate > 25%, tier leak.
+//   - `ContentStatus`  — per-content enable/pause/disableReward/disableClaim.
+//     Phase 27.6 cho admin tắt nguồn lạm phát nhanh (1 farm map xấu → pause)
+//     không cần redeploy.
+//
+// KHÔNG đụng `FeatureFlag`, `MaintenanceWindow`, `ConfigVersion`,
+// `LiveOpsScheduledEvent`, `LiveOpsAnnouncement`, `AdminAuditLog` — đã có.
+// Audit log dùng `AdminAuditLog` (Phase 18.x) với `meta.permissionKey` +
+// `meta.riskLevel` + `meta.reason` + `meta.targetType` + `meta.targetId` +
+// `meta.beforeJson` + `meta.afterJson` (extend qua JSON, không migration).
+
+model RewardProfile {
+  id               String   @id @default(cuid())
+  /// Unique slug (e.g. `BOSS_PERSONAL_T3_DEFAULT`, `DUNGEON_T5_RARE`).
+  key              String   @unique
+  name             String
+  description      String?
+  /// Match `RewardProfileContentType` ở shared (FARM_MAP, DUNGEON, BOSS,
+  /// WORLD_BOSS, HOURLY_BOSS, EVENT_BOSS, TRIAL_TOWER, SECT_DUNGEON,
+  /// SECT_BOSS, SHOP, MONTHLY_CARD, BATTLE_PASS, GROWTH_FUND, QUEST,
+  /// DAILY_LOGIN, EVENT, MAIL_BROADCAST). Lưu raw string để forward-compat.
+  contentType      String
+  /// Optional content key (e.g. `boss_t3_dummy`). NULL = profile mặc định
+  /// cho cả contentType.
+  contentKey       String?
+  /// Tier nguồn (1..9) — validator chặn reward tier > sourceTier.
+  sourceTier       Int
+  /// JSON snapshot rewards: `RewardProfileEntry[]` ở shared.
+  rewardsJson      Json     @default("[]")
+  /// JSON snapshot cap rule: `RewardProfileCapRule` ở shared (dailyCount,
+  /// dailyQty, weeklyCount, weeklyQty).
+  capRuleJson      Json     @default("{}")
+  /// Chỉ 1 profile active=true per (contentType, contentKey). Validator
+  /// service phải tự enforce trong transaction.
+  active           Boolean  @default(false)
+  /// Version increment mỗi khi UPDATE — dùng để rollback target version.
+  version          Int      @default(1)
+  /// Admin gần nhất sửa. SET NULL khi admin bị xoá.
+  updatedByAdminId String?
+  updatedByAdmin   User?    @relation("RewardProfileUpdatedBy", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([contentType, active])
+  @@index([contentType, contentKey, active])
+  @@index([sourceTier])
+}
+
+model DropProfile {
+  id               String   @id @default(cuid())
+  /// Unique slug (e.g. `BOSS_T5_GENERAL`, `WORLD_BOSS_T9_ARTIFACT`).
+  key              String   @unique
+  name             String
+  description      String?
+  /// Match `DropProfileSourceType` ở shared (NORMAL_MONSTER, ELITE_MONSTER,
+  /// BOSS, WORLD_BOSS, EVENT_BOSS, DUNGEON, TRIAL_TOWER, SECT_DUNGEON).
+  sourceType       String
+  /// Tier nguồn (1..9).
+  sourceTier       Int
+  /// Match `DropMaterialCategory` ở shared (GENERAL, ALCHEMY, REFINE,
+  /// ARTIFACT_CRAFT, GEM, COSMETIC). NULL = generic.
+  materialCategory String?
+  /// Probability baseline (0..1).
+  baseRate         Float
+  /// Probability rare (0..1). Validator chặn > DROP_RARE_RATE_MAX (0.25).
+  rareRate         Float
+  /// JSON snapshot: `DropProfileItemWeight[]` ở shared (itemKey, tier,
+  /// weight, rare).
+  weightsJson      Json     @default("[]")
+  /// JSON snapshot: `DropProfileCapRule` ở shared (dailyRare, weeklyRare,
+  /// dailyTotal). Bắt buộc weeklyRare khi rareRate > 0.
+  capsJson         Json     @default("{}")
+  active           Boolean  @default(false)
+  version          Int      @default(1)
+  updatedByAdminId String?
+  updatedByAdmin   User?    @relation("DropProfileUpdatedBy", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([sourceType, active])
+  @@index([sourceType, sourceTier, active])
+  @@index([materialCategory])
+}
+
+model ContentStatus {
+  id               String   @id @default(cuid())
+  /// Match `ContentStatusType` ở shared (FARM_MAP, DUNGEON, BOSS, ...).
+  contentType      String
+  /// Vd: `farm_phong_van`, `dungeon_huyet_long`, `boss_tu_thien`.
+  contentKey       String
+  /// `false` = content KHÔNG khả dụng (player vào sẽ bị `CONTENT_DISABLED`).
+  enabled          Boolean  @default(true)
+  /// `true` = pause tạm thời (player thấy nhưng không reward). Yêu cầu
+  /// `enabled=true` (validator).
+  paused           Boolean  @default(false)
+  /// `true` = giữ enable nhưng KHÔNG grant reward (admin debug). Yêu cầu
+  /// `enabled=true` (validator).
+  disableReward    Boolean  @default(false)
+  /// `true` = chặn claim reward đã rơi (vd: rare drop nghi bug).
+  disableClaim     Boolean  @default(false)
+  /// Message banner cho player (tối đa 1000 ký tự).
+  message          String?
+  updatedByAdminId String?
+  updatedByAdmin   User?    @relation("ContentStatusUpdatedBy", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([contentType, contentKey])
+  @@index([contentType, enabled])
+  @@index([enabled, paused])
 }
