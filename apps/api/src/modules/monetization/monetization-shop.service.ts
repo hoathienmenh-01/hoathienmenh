@@ -13,6 +13,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { EntitlementService } from './entitlement.service';
 import { WalletService } from './wallet.service';
+import { getActiveBattlePassSeason } from '@xuantoi/shared';
 
 export class MonetizationFoundationError extends Error {
   constructor(public code: MonetizationErrorCode, message?: string) {
@@ -305,18 +306,46 @@ export class MonetizationShopService {
       });
     }
 
-    // 5. Battle pass premium unlock — flip flag on current season progress
+    // 5. Battle pass premium unlock — flip `premiumUnlocked = true` on
+    // current season `BattlePassProgress`. (Phase 27.1–27.5 — wire real
+    // unlock; foundation phase chỉ là marker.)
     if (product.productType === 'BATTLE_PASS_PREMIUM') {
-      // Foundation: marker entitlement. Existing battlePassProgress
-      // upgrade flow (premiumUnlocked) sẽ wire ở Phase 27.2.
-      await this.entitlements.grantEntitlementTx(tx, {
-        characterId,
-        key: 'MONTHLY_CARD_SMALL', // placeholder marker; real flag wired Phase 27.2
-        value: 1,
-        durationDays: 60,
-        source,
-        now,
+      const season = getActiveBattlePassSeason(now);
+      if (!season) throw new MonetizationFoundationError('NO_ACTIVE_SEASON');
+      // Ensure BattlePassSeason FK target exists (idempotent).
+      await tx.battlePassSeason.upsert({
+        where: { seasonId: season.seasonId },
+        create: {
+          seasonId: season.seasonId,
+          name: season.nameVi,
+          startAt: new Date(season.startAt),
+          endAt: new Date(season.endAt),
+          active: season.active,
+          config: season as unknown as Prisma.InputJsonValue,
+        },
+        update: {},
       });
+      const existing = await tx.battlePassProgress.findUnique({
+        where: {
+          characterId_seasonId: { characterId, seasonId: season.seasonId },
+        },
+      });
+      if (existing) {
+        if (!existing.premiumUnlocked) {
+          await tx.battlePassProgress.update({
+            where: { id: existing.id },
+            data: { premiumUnlocked: true },
+          });
+        }
+      } else {
+        await tx.battlePassProgress.create({
+          data: {
+            characterId,
+            seasonId: season.seasonId,
+            premiumUnlocked: true,
+          },
+        });
+      }
     }
   }
 }

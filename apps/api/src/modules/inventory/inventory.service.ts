@@ -240,7 +240,8 @@ export type ItemLedgerReason =
   // subscriptionId:upfront / fundKey:milestoneKey tương ứng.
   | 'MONETIZATION_SHOP_BUY'
   | 'MONETIZATION_MONTHLY_CARD_BUY'
-  | 'MONETIZATION_GROWTH_FUND_CLAIM';
+  | 'MONETIZATION_GROWTH_FUND_CLAIM'
+  | 'MONETIZATION_LIMITED_SHOP_BUY';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;

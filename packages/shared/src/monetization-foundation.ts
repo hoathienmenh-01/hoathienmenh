@@ -541,6 +541,21 @@ export const SHOP_PRODUCTS: readonly ShopProductDef[] = [
     descriptionVi:
       'Mua 1 lần. Nhận thưởng theo mốc Luyện Khí → Hoá Thần. Không vượt cảnh giới.',
   },
+  {
+    key: 'growth_fund_tien',
+    nameVi: 'Quỹ Trưởng Thành — Tiên',
+    nameEn: 'Growth Fund — Immortal',
+    productType: 'GROWTH_FUND',
+    priceCurrency: 'TIEN_NGOC',
+    priceAmount: 680,
+    reward: [],
+    growthFundKey: 'tien',
+    purchaseLimitType: 'LIFETIME',
+    purchaseLimitCount: 1,
+    enabled: true,
+    descriptionVi:
+      'Mua 1 lần. Nhận thưởng theo mốc Luyện Hư → Nhân Tiên. Không vượt cảnh giới.',
+  },
   // Misc one-shots
   {
     key: 'name_change',
@@ -626,7 +641,13 @@ export function getExtraAttemptLimit(key: string): ExtraAttemptLimitDef | undefi
 
 // ─── Growth fund ───────────────────────────────────────────────────────────
 
-export const GROWTH_FUND_KEYS = ['pham'] as const;
+/**
+ * `pham` (Phase 27.0) — Phàm: Luyện Khí → Hoá Thần.
+ * `tien` (Phase 27.1–27.5) — Tiên: Luyện Hư → Nhân Tiên (catalog ở
+ * `monetization-systems.ts` GROWTH_FUND_V2_VARIANTS, server merge khi
+ * dùng `getAnyGrowthFundVariant`).
+ */
+export const GROWTH_FUND_KEYS = ['pham', 'tien'] as const;
 
 export type GrowthFundKey = (typeof GROWTH_FUND_KEYS)[number];
 
@@ -712,6 +733,69 @@ export const GROWTH_FUND_VARIANTS: readonly GrowthFundVariantDef[] = [
       },
     ],
   },
+  // Phase 27.1–27.5 — `tien` (late game) variant. Mốc Luyện Hư → Nhân
+  // Tiên; KHÔNG bump cảnh giới, chỉ thưởng resource có cap.
+  {
+    key: 'tien',
+    nameVi: 'Quỹ Trưởng Thành — Tiên',
+    nameEn: 'Growth Fund — Immortal',
+    priceCurrency: 'TIEN_NGOC',
+    priceAmount: 680,
+    descriptionVi:
+      'Mua 1 lần. Nhận thưởng theo mốc Luyện Hư → Nhân Tiên. Không vượt cảnh giới.',
+    milestones: [
+      {
+        key: 'luyen_hu',
+        realmKey: 'luyen_hu',
+        realmOrder: 6,
+        nameVi: 'Đạt Luyện Hư',
+        reward: [
+          { kind: 'currency', key: 'TIEN_NGOC_KHOA', qty: 400 },
+          { kind: 'currency', key: 'LINH_THACH', qty: 18_000 },
+        ],
+      },
+      {
+        key: 'hop_the',
+        realmKey: 'hop_the',
+        realmOrder: 7,
+        nameVi: 'Đạt Hợp Thể',
+        reward: [
+          { kind: 'currency', key: 'TIEN_NGOC_KHOA', qty: 480 },
+          { kind: 'currency', key: 'LINH_THACH', qty: 24_000 },
+        ],
+      },
+      {
+        key: 'dai_thua',
+        realmKey: 'dai_thua',
+        realmOrder: 8,
+        nameVi: 'Đạt Đại Thừa',
+        reward: [
+          { kind: 'currency', key: 'TIEN_NGOC_KHOA', qty: 560 },
+          { kind: 'currency', key: 'LINH_THACH', qty: 32_000 },
+        ],
+      },
+      {
+        key: 'do_kiep',
+        realmKey: 'do_kiep',
+        realmOrder: 9,
+        nameVi: 'Đạt Độ Kiếp',
+        reward: [
+          { kind: 'currency', key: 'TIEN_NGOC_KHOA', qty: 640 },
+          { kind: 'currency', key: 'LINH_THACH', qty: 42_000 },
+        ],
+      },
+      {
+        key: 'nhan_tien',
+        realmKey: 'nhan_tien',
+        realmOrder: 10,
+        nameVi: 'Đạt Nhân Tiên',
+        reward: [
+          { kind: 'currency', key: 'TIEN_NGOC_KHOA', qty: 800 },
+          { kind: 'currency', key: 'LINH_THACH', qty: 60_000 },
+        ],
+      },
+    ],
+  },
 ] as const;
 
 export function getGrowthFundVariant(key: string): GrowthFundVariantDef | undefined {
@@ -748,6 +832,8 @@ export const MONETIZATION_ERROR_CODES = [
   'CARD_ALREADY_ACTIVE',
   'INACTIVE_CARD',
   'INVALID_INPUT',
+  'NO_ACTIVE_SEASON',
+  'NO_CHARACTER',
 ] as const;
 
 export type MonetizationErrorCode = (typeof MONETIZATION_ERROR_CODES)[number];

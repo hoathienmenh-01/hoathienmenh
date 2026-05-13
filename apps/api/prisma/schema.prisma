@@ -429,6 +429,9 @@ model Character {
   paidLimitPurchases        PaidLimitPurchase[]
   sweepTicketLogs           SweepTicketLog[]
   growthFundStates          GrowthFundState[]
+  /// Phase 27.1–27.5 — Monetization Systems V1 backrefs.
+  battlePassMissions        BattlePassMissionProgress[]
+  limitedShopPurchases      LimitedShopPurchase[]
   /// Phase 25.3 — Code-only Cosmetic Effects. Cosmetics never carry power /
   /// stat bonuses; they only drive CSS rendering on aura / title / frame /
   /// chat badge / profile decoration / element aura surfaces.
@@ -669,6 +672,57 @@ model GrowthFundState {
 
   @@unique([characterId, fundKey])
   @@index([characterId])
+}
+
+/// Phase 27.1–27.5 — Battle Pass V2 mission progress. Mỗi row track 1
+/// `(characterId, seasonId, missionKey, scopeBucket)`. `scopeBucket` =
+/// period key (DAILY = `YYYY-MM-DD`, WEEKLY = `YYYY-Www`, SEASON =
+/// `season`). `progress` cộng dồn cho tới `target`; `completed = true`
+/// khi đạt → cộng `expReward` vào `BattlePassProgress.xp` (1 lần / row).
+/// `claimedAt` = thời điểm convert exp; UNIQUE đảm bảo không double-grant.
+model BattlePassMissionProgress {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  seasonId    String
+  missionKey  String
+  scopeBucket String
+  progress    Int       @default(0)
+  target      Int
+  completed   Boolean   @default(false)
+  claimedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([characterId, seasonId, missionKey, scopeBucket])
+  @@index([characterId, seasonId])
+  @@index([characterId, completed, claimedAt])
+}
+
+/// Phase 27.1–27.5 — Limited Periodic Shop purchase ledger. Mỗi row =
+/// 1 lần mua thành công cho `(characterId, shopKey, itemKey, periodKey)`.
+/// UNIQUE đảm bảo tổng số `quantity` mua trong period ≤
+/// `LimitedShopItemDef.purchaseLimitCount`.
+///
+/// `shopKey` ∈ `LimitedShopKey` (`DAILY_SHOP`/`WEEKLY_SHOP`/`MONTHLY_SHOP`).
+/// `periodKey` đồng bộ với `periodKey(now, period)` từ shared.
+/// `rewardJson` snapshot reward đã grant — audit + debug.
+model LimitedShopPurchase {
+  id            String    @id @default(cuid())
+  characterId   String
+  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  shopKey       String
+  itemKey       String
+  periodKey     String
+  quantity      Int       @default(0)
+  priceCurrency String
+  priceAmount   Int
+  rewardJson    Json      @default("{}")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([characterId, shopKey, itemKey, periodKey])
+  @@index([characterId, shopKey, periodKey])
 }
 
 /// Phase 25.2 — Limited Resource Shop Pack purchase history.

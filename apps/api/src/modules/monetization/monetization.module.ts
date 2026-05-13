@@ -15,6 +15,9 @@ import {
   SweepTicketService,
 } from './sweep-attempt.service';
 import { GrowthFundService } from './growth-fund.service';
+import { BattlePassV2Service } from './battle-pass-v2.service';
+import { LimitedShopService } from './limited-shop.service';
+import { MonetizationOverviewService } from './monetization-overview.service';
 
 @Module({
   imports: [AuthModule, CharacterModule, InventoryModule, AdminModule],
@@ -28,6 +31,9 @@ import { GrowthFundService } from './growth-fund.service';
     SweepTicketService,
     ExtraAttemptService,
     GrowthFundService,
+    BattlePassV2Service,
+    LimitedShopService,
+    MonetizationOverviewService,
   ],
   exports: [
     MonetizationService,
@@ -37,6 +43,9 @@ import { GrowthFundService } from './growth-fund.service';
     SweepTicketService,
     ExtraAttemptService,
     GrowthFundService,
+    BattlePassV2Service,
+    LimitedShopService,
+    MonetizationOverviewService,
   ],
 })
 export class MonetizationModule {}
