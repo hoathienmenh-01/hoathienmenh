@@ -1,0 +1,30 @@
+
+### Step 1: Admin login
+  ✓ admin login status=200, role=ADMIN
+
+### Step 2: Player login + fetch character
+  ✓ player login status=200
+  ✓ character.id=cmp4igv7v000ko3dvm74brdmz
+
+### Step 3: Snapshot linhThach pre-claim
+  ✓ pre-claim linhThach=1000
+
+### Step 4: Admin send mail with reward LT=1000
+  ✓ mail sent, mailId=cmp4kyond000j6c7yy0mnyduv, rewardLT=1000
+
+### Step 5: Fire 20 parallel POST /mail/:id/claim
+  Duration: 90ms
+  Successes: 1 (status 200)
+  Conflicts: 19 (ALREADY_CLAIMED)
+  Others: 0
+  ✓ Exactly 1 success — CAS race-safe
+  ✓ 19 ALREADY_CLAIMED rejections — no double-grant
+
+### Step 6: Verify post-claim linhThach delta
+  ✓ pre=1000, post=2000, delta=1000, expected=1000
+  ✓ Exactly 1× grant — no double-grant
+
+### Step 7: Verify single attachment claim ledger row (DB)
+  ✓ Re-claim returns ALREADY_CLAIMED (status=409, code=ALREADY_CLAIMED) — idempotent
+
+=== Result: PASS ===

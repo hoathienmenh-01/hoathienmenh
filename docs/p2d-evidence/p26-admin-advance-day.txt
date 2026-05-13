@@ -1,0 +1,27 @@
+P2.6 Admin advance-day endpoint search.
+
+Search command:
+  grep -rn "advance-time\|advance-day\|advanceTime\|advanceDay\|fast-forward\|simulate-time"
+       apps/api/src/
+
+Hits found (production source):
+  apps/api/src/modules/territory/territory-war.service.ts:35
+    Comment-only: "khi muốn 'cắt' giữa tuần (test / fast-forward)"
+    — no endpoint exposed.
+
+NO endpoint matching POST /api/admin/dev/advance-time / advance-day / set-day / simulate-time.
+
+This is documented in the backlog:
+  docs/testing-backlog-report.md:201
+    "Implement admin endpoint POST /api/admin/dev/advance-time
+     (dev/staging only, behind feature flag)."
+
+And in archives:
+  docs/ARCHIVE_HANDOFF.md:48, :808, :1250 — repeated mentions of "pending
+  admin advance-day / set-streak / fast-forward" admin endpoints, all of
+  which were deferred or never landed.
+
+Status: UNTESTED — BLOCKED on feature implementation.
+Recommended follow-up: implement POST /api/admin/dev/advance-time as a separate
+PR (dev/staging only, behind ENABLE_DEV_ADMIN flag), then re-run multi-day
+login rollover smoke test.

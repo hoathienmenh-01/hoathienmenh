@@ -1,0 +1,25 @@
+=== P2.3 Anti-cheat Anomaly Classifier Audit ===
+
+### Check 1: PVP_ANOMALY_TYPES has 8 entries
+  count=8 ✓
+
+### Check 2: PVP_ANOMALY_RISK_WEIGHT has 8 entries
+  count=8 ✓
+
+### Check 3: Each of 8 anomaly types classifies correctly
+  PVP_POWER_JUMP_BEFORE_MATCH: severity=0.8 (expect 0.8) ✓ | blockReward=true (expect true) ✓
+  PVP_DAMAGE_OUTLIER: severity=0.6 (expect 0.6) ✓ | blockReward=false (expect false) ✓
+  ARENA_RATING_GAIN_OUTLIER: severity=0.7 (expect 0.7) ✓ | blockReward=false (expect false) ✓
+  ARENA_TARGET_FARMING: severity=0.9 (expect 0.9) ✓ | blockReward=true (expect true) ✓
+  SECT_WAR_SCORE_OUTLIER: severity=0.7 (expect 0.7) ✓ | blockReward=false (expect false) ✓
+  TERRITORY_PRODUCTION_DUPLICATE_CLAIM: severity=1 (expect 1) ✓ | blockReward=true (expect true) ✓
+  SEASON_REWARD_DOUBLE_CLAIM: severity=1 (expect 1) ✓ | blockReward=true (expect true) ✓
+  ROSTER_SWAP_EXPLOIT: severity=1 (expect 1) ✓ | blockReward=true (expect true) ✓
+
+### Check 4: blockRewardClaim ⇔ severity ≥ 0.8
+  invariant breaks=0 ✓
+
+### Check 5: isPvpAnomalyType type-guard
+  accept valid: 8/8, reject invalid: 6/6 ✓
+
+=== Result: PASS ===
