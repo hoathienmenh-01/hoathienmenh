@@ -4653,6 +4653,94 @@
       "message": "This feature is temporarily disabled for maintenance. Please come back later."
     }
   },
+  "adminControlCenter": {
+    "title": "Admin Control Center (Phase 27.6)",
+    "roleLabel": "Admin role: {role}",
+    "notAdminError": "Only admins can access this page.",
+    "errorLoad": "Failed to load ({code}).",
+    "tab": {
+      "overview": "Overview",
+      "permissions": "Permissions",
+      "rewardProfiles": "Reward Profiles",
+      "dropProfiles": "Drop Profiles",
+      "contentStatuses": "Content Status",
+      "auditActions": "Audit Actions"
+    },
+    "overview": {
+      "title": "Operations Overview",
+      "generatedAt": "Snapshot at {ts}",
+      "stat": {
+        "totalUsers": "Total users",
+        "activeUsersToday": "Active users today",
+        "activeCharacters": "Active characters",
+        "newUsersToday": "New users today",
+        "mintedToday": "Linh Thạch minted today",
+        "spentToday": "Linh Thạch spent today",
+        "rareDropsToday": "Rare drops today",
+        "farmSessionsToday": "Farm sessions today",
+        "dungeonRunsToday": "Dungeon runs today",
+        "bossKillsToday": "Boss kills today",
+        "towerAttemptsToday": "Tower attempts today",
+        "battlePassActiveSeason": "Battle Pass active season",
+        "monthlyCardActiveCount": "Monthly cards active",
+        "suspiciousEventsCount": "Suspicious events",
+        "pendingTopupsCount": "Pending topups",
+        "activeFeatureFlags": "Active feature flags",
+        "activeEvents": "Active LiveOps events",
+        "maintenanceStatus": "Maintenance"
+      }
+    },
+    "permissions": {
+      "title": "Role × Permission matrix (7 × 29)",
+      "yourRole": "Your role",
+      "permissionCount": "{n} permissions",
+      "colPermission": "Permission"
+    },
+    "rewardProfiles": {
+      "title": "Reward Profiles",
+      "filterContentType": "Content type",
+      "filterActive": "Active",
+      "empty": "No reward profiles yet.",
+      "colKey": "Key",
+      "colName": "Name",
+      "colContent": "Content",
+      "colTier": "Tier",
+      "colRewards": "Rewards",
+      "colVersion": "Version",
+      "colActive": "Active"
+    },
+    "dropProfiles": {
+      "title": "Drop Profiles",
+      "filterSourceType": "Source",
+      "filterTier": "Tier",
+      "filterActive": "Active",
+      "empty": "No drop profiles yet.",
+      "colKey": "Key",
+      "colName": "Name",
+      "colSource": "Source",
+      "colBase": "Base rate",
+      "colRare": "Rare rate",
+      "colItems": "Items",
+      "colActive": "Active"
+    },
+    "contentStatuses": {
+      "title": "Content Status",
+      "filterContentType": "Content type",
+      "empty": "No content statuses yet.",
+      "colContent": "Content",
+      "colEnabled": "Enabled",
+      "colPaused": "Paused",
+      "colDisableReward": "No reward",
+      "colDisableClaim": "No claim",
+      "colMessage": "Message"
+    },
+    "auditActions": {
+      "title": "Audit Action Catalog",
+      "colAction": "Action",
+      "colRisk": "Risk",
+      "colConfirm": "Confirm required"
+    }
+  },
   "adminFeatureFlags": {
     "title": "Feature Flags",
     "hint": "Toggle core systems (Arena, Reforge, LiveOps, Market…) without redeploying.",

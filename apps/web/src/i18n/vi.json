@@ -4653,6 +4653,94 @@
       "message": "Tính năng đang tạm tắt để bảo trì. Vui lòng quay lại sau."
     }
   },
+  "adminControlCenter": {
+    "title": "Trung Tâm Vận Hành (Phase 27.6)",
+    "roleLabel": "Vai trò admin: {role}",
+    "notAdminError": "Chỉ admin được vào trang này.",
+    "errorLoad": "Tải dữ liệu thất bại ({code}).",
+    "tab": {
+      "overview": "Tổng quan",
+      "permissions": "Phân quyền",
+      "rewardProfiles": "Cấu hình thưởng",
+      "dropProfiles": "Cấu hình rơi đồ",
+      "contentStatuses": "Trạng thái nội dung",
+      "auditActions": "Hành động audit"
+    },
+    "overview": {
+      "title": "Tổng quan vận hành",
+      "generatedAt": "Snapshot lúc {ts}",
+      "stat": {
+        "totalUsers": "Tài khoản",
+        "activeUsersToday": "User hoạt động hôm nay",
+        "activeCharacters": "Nhân vật",
+        "newUsersToday": "User mới hôm nay",
+        "mintedToday": "Linh thạch phát ra (hôm nay)",
+        "spentToday": "Linh thạch tiêu thụ (hôm nay)",
+        "rareDropsToday": "Vật phẩm hiếm rơi (hôm nay)",
+        "farmSessionsToday": "Phiên farm (hôm nay)",
+        "dungeonRunsToday": "Lượt phụ bản (hôm nay)",
+        "bossKillsToday": "Boss bị hạ (hôm nay)",
+        "towerAttemptsToday": "Lượt thử tháp (hôm nay)",
+        "battlePassActiveSeason": "Battle Pass đang chạy",
+        "monthlyCardActiveCount": "Thẻ tháng còn hiệu lực",
+        "suspiciousEventsCount": "Cảnh báo bất thường",
+        "pendingTopupsCount": "Topup chờ xử lý",
+        "activeFeatureFlags": "Feature flag đang bật",
+        "activeEvents": "Sự kiện LiveOps đang chạy",
+        "maintenanceStatus": "Bảo trì"
+      }
+    },
+    "permissions": {
+      "title": "Ma trận quyền 7 × 29",
+      "yourRole": "Quyền của bạn",
+      "permissionCount": "{n} quyền",
+      "colPermission": "Quyền"
+    },
+    "rewardProfiles": {
+      "title": "Cấu hình thưởng (RewardProfile)",
+      "filterContentType": "Loại nội dung",
+      "filterActive": "Đang dùng",
+      "empty": "Chưa có RewardProfile nào.",
+      "colKey": "Key",
+      "colName": "Tên",
+      "colContent": "Nội dung",
+      "colTier": "Tier",
+      "colRewards": "Số reward",
+      "colVersion": "Phiên bản",
+      "colActive": "Active"
+    },
+    "dropProfiles": {
+      "title": "Cấu hình rơi đồ (DropProfile)",
+      "filterSourceType": "Nguồn",
+      "filterTier": "Tier",
+      "filterActive": "Đang dùng",
+      "empty": "Chưa có DropProfile nào.",
+      "colKey": "Key",
+      "colName": "Tên",
+      "colSource": "Nguồn",
+      "colBase": "Tỉ lệ rơi",
+      "colRare": "Tỉ lệ hiếm",
+      "colItems": "Số item",
+      "colActive": "Active"
+    },
+    "contentStatuses": {
+      "title": "Trạng thái nội dung (ContentStatus)",
+      "filterContentType": "Loại nội dung",
+      "empty": "Chưa có ContentStatus nào.",
+      "colContent": "Nội dung",
+      "colEnabled": "Mở",
+      "colPaused": "Pause",
+      "colDisableReward": "Tắt reward",
+      "colDisableClaim": "Tắt claim",
+      "colMessage": "Thông báo"
+    },
+    "auditActions": {
+      "title": "Catalog hành động audit",
+      "colAction": "Hành động",
+      "colRisk": "Mức rủi ro",
+      "colConfirm": "Cần xác nhận"
+    }
+  },
   "adminFeatureFlags": {
     "title": "Feature Flags",
     "hint": "Bật / tắt nhanh các hệ thống lõi (Arena, Reforge, LiveOps, Market...) mà không cần deploy.",
