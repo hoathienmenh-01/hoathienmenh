@@ -241,7 +241,15 @@ export type ItemLedgerReason =
   | 'MONETIZATION_SHOP_BUY'
   | 'MONETIZATION_MONTHLY_CARD_BUY'
   | 'MONETIZATION_GROWTH_FUND_CLAIM'
-  | 'MONETIZATION_LIMITED_SHOP_BUY';
+  | 'MONETIZATION_LIMITED_SHOP_BUY'
+  // Phase 33.1 — Story V2 (Phase 33 catalog) quest claim item grant. Wire qua
+  // `Phase33StoryService.claimReward → InventoryService.grantTx(positive
+  // qtyDelta)` với `refType='Phase33Quest'` + `refId=questKey`. CAS claim
+  // guard (`CharacterStoryV2QuestProgress.claimedAt` updateMany) + UNIQUE
+  // `CharacterStoryV2RewardClaim(characterId, questKey)` đảm bảo 1 winner /
+  // questKey → grant đúng 1 lần / questKey / character. Mirror cùng
+  // `CurrencyLedger` reason `STORY_V2_QUEST_CLAIM` cho linhThach/tienNgoc.
+  | 'STORY_V2_QUEST_CLAIM';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;

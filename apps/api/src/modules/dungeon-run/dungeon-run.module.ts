@@ -6,6 +6,7 @@ import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { QuestModule } from '../quest/quest.module';
+import { Phase33StoryModule } from '../story-v2/story-v2.module';
 import { SectWarModule } from '../sect-war/sect-war.module';
 import { TerritoryModule } from '../territory/territory.module';
 import { EconomyModule } from '../economy/economy.module';
@@ -29,6 +30,7 @@ import { LiveOpsEventSchedulerModule } from '../liveops-event-scheduler/liveops-
     CharacterModule,
     InventoryModule,
     QuestModule,
+    Phase33StoryModule,
     SectWarModule,
     TerritoryModule,
     EconomyModule,

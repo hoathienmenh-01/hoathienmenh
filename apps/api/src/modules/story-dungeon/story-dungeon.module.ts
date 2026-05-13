@@ -6,6 +6,7 @@ import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { QuestModule } from '../quest/quest.module';
+import { Phase33StoryModule } from '../story-v2/story-v2.module';
 
 /**
  * Phase 12.8.A + 12.8.B — Story Dungeon module.
@@ -20,7 +21,13 @@ import { QuestModule } from '../quest/quest.module';
  *                        khi advance (mirror DungeonRunService.nextEncounter).
  */
 @Module({
-  imports: [AuthModule, CharacterModule, InventoryModule, QuestModule],
+  imports: [
+    AuthModule,
+    CharacterModule,
+    InventoryModule,
+    QuestModule,
+    Phase33StoryModule,
+  ],
   controllers: [StoryDungeonController],
   providers: [StoryDungeonService, PrismaService],
   exports: [StoryDungeonService],

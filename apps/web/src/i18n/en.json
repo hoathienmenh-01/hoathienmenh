@@ -7011,5 +7011,65 @@
       "reducedMotion": "Reduce-motion mode is active.",
       "live": "Live announcement region"
     }
+  },
+  "storyV2": {
+    "title": "Tu Tien Lo — Volume II–IV",
+    "subtitle": "Journey through Immortal Realm → Holy Way → Eternal Origin (Chapters 9 to 27).",
+    "totalCount": "Chapters: {n}",
+    "inProgressCount": "In progress: {n}",
+    "completedCount": "Completed: {n}",
+    "empty": "No chapters available yet. Your cultivation is not enough to unveil.",
+    "mainProgress": "Main: {done}/{total}",
+    "back": "← Back to chapter list",
+    "noQuest": "No quests of this kind in the chapter.",
+    "acceptToast": "Accepted: {name}.",
+    "completeToast": "Completed: {name}.",
+    "claimToast": "Claimed {name} — +{linhThach} LT · +{exp} EXP.",
+    "chapterStatus": {
+      "LOCKED": "Locked",
+      "AVAILABLE": "Available",
+      "IN_PROGRESS": "In Progress",
+      "COMPLETED": "Completed"
+    },
+    "questStatus": {
+      "LOCKED": "Locked",
+      "AVAILABLE": "Available",
+      "ACCEPTED": "Accepted",
+      "COMPLETED": "Completed",
+      "CLAIMED": "Claimed"
+    },
+    "kindTab": {
+      "all": "All",
+      "main": "Main",
+      "side": "Side",
+      "branch": "Branch",
+      "hidden": "Hidden",
+      "daily": "Daily",
+      "weekly": "Weekly"
+    },
+    "actions": {
+      "accept": "Accept",
+      "complete": "Report",
+      "claim": "Claim",
+      "claimed": "Claimed"
+    },
+    "error": {
+      "UNKNOWN_ERROR": "Unknown error.",
+      "UNAUTHENTICATED": "Sign-in required.",
+      "NO_CHARACTER": "No character — please create one first.",
+      "STORY_V2_QUEST_UNKNOWN": "Quest not found in catalog.",
+      "STORY_V2_CHAPTER_UNKNOWN": "Chapter not found in catalog.",
+      "STORY_V2_QUEST_LOCKED_REALM": "Insufficient realm to unlock this quest.",
+      "STORY_V2_QUEST_LOCKED_PREREQUISITE": "A prerequisite quest is incomplete.",
+      "STORY_V2_QUEST_LOCKED_FLAGS": "Required story flags missing.",
+      "STORY_V2_QUEST_LOCKED_AFFINITY": "Affinity with related NPC insufficient.",
+      "STORY_V2_QUEST_NOT_AVAILABLE": "Quest not in an acceptable state.",
+      "STORY_V2_QUEST_NOT_ACCEPTED": "Quest must be accepted first.",
+      "STORY_V2_QUEST_NOT_COMPLETABLE": "Quest still has incomplete objectives.",
+      "STORY_V2_QUEST_NOT_COMPLETED": "Quest is not in Completed state.",
+      "STORY_V2_QUEST_ALREADY_CLAIMED": "Reward already claimed.",
+      "STORY_V2_QUEST_STEP_UNKNOWN": "Quest step not found.",
+      "STORY_V2_QUEST_STEP_KIND_NOT_SUPPORTED": "This quest step kind cannot be progressed via UI."
+    }
   }
 }

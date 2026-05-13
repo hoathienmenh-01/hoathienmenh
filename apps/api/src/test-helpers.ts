@@ -12,6 +12,7 @@ import { QuestService } from './modules/quest/quest.service';
 import { DungeonRunService } from './modules/dungeon-run/dungeon-run.service';
 import { RewardCapService } from './modules/economy/reward-cap.service';
 import { StoryDungeonService } from './modules/story-dungeon/story-dungeon.service';
+import { Phase33StoryService } from './modules/story-v2/story-v2.service';
 
 /**
  * Helpers cho integration test — tạo fixture user/character nhanh, không
@@ -309,6 +310,11 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.inventoryItem.deleteMany({});
   await prisma.missionProgress.deleteMany({});
   await prisma.questProgress.deleteMany({});
+  // Phase 33.1 — Story V2 (Phase 33 catalog) runtime. FK Cascade Character —
+  // wipe explicit để integration test khởi đầu sạch.
+  await prisma.characterStoryV2RewardClaim.deleteMany({});
+  await prisma.characterStoryV2QuestProgress.deleteMany({});
+  await prisma.characterStoryV2ChapterProgress.deleteMany({});
   await prisma.giftCodeRedemption.deleteMany({});
   await prisma.giftCode.deleteMany({});
   // Phase 31.0 — Social & Retention Foundation V1. Mail attachment
@@ -378,6 +384,21 @@ export function makeQuestService(prisma: PrismaService): QuestService {
   // mock) — match production wiring trong QuestModule.
   const npcAffinity = new NpcAffinityService(prisma, inventory);
   return new QuestService(prisma, currency, inventory, npcAffinity);
+}
+
+/**
+ * Phase 33.1 — Dựng `Phase33StoryService` cho integration test (bypass DI
+ * container). Wire `CurrencyService` + `InventoryService` + `NpcAffinityService`
+ * cùng pattern với `makeQuestService` để claim path đi qua ledger thật + npc
+ * affinity grant thật (match production wiring trong `Phase33StoryModule`).
+ */
+export function makePhase33StoryService(prisma: PrismaService): Phase33StoryService {
+  const realtime = new RealtimeService();
+  const chars = new CharacterService(prisma, realtime);
+  const currency = new CurrencyService(prisma);
+  const inventory = new InventoryService(prisma, realtime, chars);
+  const npcAffinity = new NpcAffinityService(prisma, inventory);
+  return new Phase33StoryService(prisma, currency, inventory, npcAffinity);
 }
 
 /**

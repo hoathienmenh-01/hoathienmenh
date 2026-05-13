@@ -487,6 +487,11 @@ model Character {
   playerReportsAuthored  PlayerReport[]   @relation("PlayerReportReporter")
   playerReportsTargeted  PlayerReport[]   @relation("PlayerReportTarget")
 
+  /// Phase 33.1 — Story V2 (Phase 33 catalog) runtime backrefs.
+  storyV2Chapters     CharacterStoryV2ChapterProgress[]
+  storyV2Quests       CharacterStoryV2QuestProgress[]
+  storyV2RewardClaims CharacterStoryV2RewardClaim[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -6353,4 +6358,92 @@ model PlayerReport {
   @@index([targetCharacterId, createdAt])
   @@index([status, createdAt])
   @@index([reportType, status, createdAt])
+}
+
+// ─── Phase 33.1 — Story V2 Runtime (Phase 33 catalog) ─────────────────────────
+// Additive, separate tables from Phase 12 `QuestProgress`. Catalog vẫn ở
+// `packages/shared/src/story-quest-expansion.ts` + `story-quest-dialogues.ts`.
+
+/// Phase 33.1 — Per-character per-chapter progress for Phase 33 story chapters
+/// (`ch09`..`ch27`). Status enum stored as String (mirror QuestProgress.status
+/// pattern): LOCKED | AVAILABLE | IN_PROGRESS | COMPLETED.
+///
+/// Lazy-created khi character reach required realm cho chapter — service tự
+/// insert AVAILABLE row. Transition AVAILABLE→IN_PROGRESS khi player accept
+/// quest đầu tiên trong chapter; IN_PROGRESS→COMPLETED khi tất cả MAIN quest
+/// COMPLETED (mainQuestsCompletedCount === mainQuestsTotal cho chapter).
+model CharacterStoryV2ChapterProgress {
+  id                       String    @id @default(cuid())
+  characterId              String
+  character                Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  chapKey                  String
+  /// LOCKED | AVAILABLE | IN_PROGRESS | COMPLETED.
+  status                   String    @default("AVAILABLE")
+  mainQuestsCompletedCount Int       @default(0)
+  unlockedAt               DateTime?
+  completedAt              DateTime?
+  /// Array story flags player đã bật trong chapter này (subset của
+  /// `phase33StoryFlagsFromQuests()`). JSON serialized.
+  storyFlags               Json      @default("[]")
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  @@unique([characterId, chapKey])
+  @@index([characterId, status])
+}
+
+/// Phase 33.1 — Per-character per-quest progress cho Phase 33 catalog
+/// (`STORY_QUEST_EXPANSION`). Tách bạch hoàn toàn với Phase 12 `QuestProgress`
+/// (Phase 12 dùng catalog `QUESTS`).
+///
+/// Status flow: LOCKED → AVAILABLE → ACCEPTED → COMPLETED → CLAIMED.
+/// stepProgress Json map `{ <stepId>: <currentCount> }`. Step kind talk /
+/// explore / choice / flag_set increment qua `progressQuest()`; kill / collect
+/// defer Phase 33.3 World Objective Deep Wire (PR D).
+model CharacterStoryV2QuestProgress {
+  id           String    @id @default(cuid())
+  characterId  String
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  questKey     String
+  /// Denormalized for index — same as `phase33QuestByKey(questKey).chapKey`.
+  chapKey      String
+  /// LOCKED | AVAILABLE | ACCEPTED | COMPLETED | CLAIMED.
+  status       String    @default("AVAILABLE")
+  /// Map `{ <stepId>: <currentCount> }`. Default `{}`.
+  stepProgress Json      @default("{}")
+  acceptedAt   DateTime?
+  completedAt  DateTime?
+  claimedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([characterId, questKey])
+  @@index([characterId, chapKey, status])
+  @@index([status, completedAt])
+}
+
+/// Phase 33.1 — Idempotent claim audit ledger. Insert duy nhất 1 row khi
+/// claim transaction commit thành công. Race-loser KHÔNG insert (CAS guard
+/// trên QuestProgress.claimedAt fail trước khi reach insert ledger).
+///
+/// Mirror `LiveOpsEventRewardClaim` pattern (one-time per character per key).
+/// Đây là audit row — currency/item/exp/affinity grants thực tế đã đi qua
+/// `CurrencyLedger` / `ItemLedger` / `CharacterNpcAffinity` rows riêng.
+model CharacterStoryV2RewardClaim {
+  id                String    @id @default(cuid())
+  characterId       String
+  character         Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  questKey          String
+  linhThachGranted  BigInt    @default(0)
+  tienNgocGranted   Int       @default(0)
+  expGranted        BigInt    @default(0)
+  congHienGranted   Int       @default(0)
+  /// JSON `[{itemKey, qty}]`.
+  itemsGranted      Json      @default("[]")
+  /// JSON `[{npcKey, delta}]`.
+  affinityGranted   Json      @default("[]")
+  claimedAt         DateTime  @default(now())
+
+  @@unique([characterId, questKey])
+  @@index([characterId, claimedAt])
 }

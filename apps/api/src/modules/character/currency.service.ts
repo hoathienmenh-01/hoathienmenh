@@ -211,7 +211,15 @@ export type LedgerReason =
   | 'CLAIM_BOX_SECT_AUCTION_REFUND'
   | 'SECT_AUCTION_BID_ESCROW'
   | 'SECT_AUCTION_BID_REFUND'
-  | 'SECT_TREASURY_WITHDRAW';
+  | 'SECT_TREASURY_WITHDRAW'
+  // Phase 33.1 — Story V2 (Phase 33 catalog) quest claim. Wire qua
+  // `Phase33StoryService.claimReward` → `applyTx` cho linhThach/tienNgoc
+  // với `refType='Phase33Quest'` + `refId=questKey`. Idempotency lấy từ
+  // `CharacterStoryV2QuestProgress.claimedAt` CAS guard + `CharacterStory
+  // V2RewardClaim` UNIQUE `(characterId, questKey)` — race-safe winner duy
+  // nhất ghi 1 ledger row / questKey. Reward bound bởi
+  // `phase33RewardCap(rewardPolicyKey)` snapshot vào quest catalog.
+  | 'STORY_V2_QUEST_CLAIM';
 
 export interface CurrencyApplyInput {
   characterId: string;
