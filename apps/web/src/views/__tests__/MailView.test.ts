@@ -119,6 +119,9 @@ function makeMail(over: Partial<MailView> = {}): MailView {
     expiresAt: null,
     createdAt: '2026-04-30T07:00:00.000Z',
     claimable: false,
+    mailType: 'SYSTEM',
+    status: 'UNREAD',
+    deleted: false,
     ...over,
   };
 }

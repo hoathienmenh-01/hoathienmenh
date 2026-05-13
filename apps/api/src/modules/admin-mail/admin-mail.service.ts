@@ -4,7 +4,6 @@ import {
   ADMIN_MAIL_LIMITS,
   validateAdminMailSendInput,
   type AdminMailLogRow,
-  type AdminMailReward,
   type AdminMailSendBulkInput,
   type AdminMailSendGlobalInput,
   type AdminMailSendInput,
