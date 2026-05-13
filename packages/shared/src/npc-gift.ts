@@ -374,6 +374,112 @@ export const NPC_GIFT_PREFERENCES: readonly NpcGiftPreferenceDef[] = [
       },
     ],
   },
+  // ─── Phase 33 — Quyển II–IV NPC gift preferences (minimal seed) ───────────
+  {
+    npcKey: 'npc_luc_binh',
+    dailyLimit: 2,
+    loreNote: 'Lục Bình trân trọng vật chứng tự do — vật phẩm phá xích tu sĩ phi thăng.',
+    loreNoteEn: 'Lục Bình treasures freedom relics — items that break ascension chains.',
+    acceptedItems: [
+      {
+        itemKey: 'linh_lo_dan',
+        affinityMin: 4,
+        affinityMax: 6,
+        flavor: 'Linh Lộ Đan — nàng nghiền nhỏ rắc lên mảnh xích, mong tan chảy.',
+        flavorEn: 'Linh Lộ pill — she crushes it onto the chain shard, hoping it will dissolve.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_tich_thien_thanh_su',
+    dailyLimit: 1,
+    loreNote: 'Thánh Sứ chỉ chấp nhận lễ vật trang nghiêm như khẳng định quan điểm.',
+    loreNoteEn: 'The Saint Envoy accepts only solemn tributes as ideological affirmation.',
+    acceptedItems: [
+      {
+        itemKey: 'han_ngoc',
+        affinityMin: 2,
+        affinityMax: 4,
+        flavor: 'Hàn Ngọc — Thánh Sứ ghi nhận, nhưng vẫn không gật đầu.',
+        flavorEn: 'Hàn Ngọc — the Saint Envoy notes it, yet still does not nod.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_dao_vuc_chi_tam',
+    dailyLimit: 2,
+    loreNote: 'Đạo Vực Chi Tâm nhận vật phẩm thể hiện sự bao dung với vạn linh.',
+    loreNoteEn: 'The Dao Domain Heart welcomes items that show compassion for all lives.',
+    acceptedItems: [
+      {
+        itemKey: 'linh_lo_dan',
+        affinityMin: 3,
+        affinityMax: 5,
+        flavor: 'Linh Lộ Đan — vạn linh chia nhau nuốt, ấm cả Đạo Vực.',
+        flavorEn: 'Linh Lộ pill — ten thousand lives share it, warming the entire Dao Domain.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_nguyen_linh_nu',
+    dailyLimit: 1,
+    loreNote: 'Nguyên Linh Nữ thích vật phẩm nguyên thuỷ, không tinh luyện quá tinh xảo.',
+    loreNoteEn: 'Nguyên Linh Nữ favors raw, unrefined materials.',
+    acceptedItems: [
+      {
+        itemKey: 'han_ngoc',
+        affinityMin: 3,
+        affinityMax: 5,
+        flavor: 'Hàn Ngọc — nàng nhúng vào Bản Nguyên Hải, ngọc tan thành sương sớm.',
+        flavorEn: 'Hàn Ngọc — she dips it into the Origin Sea, and it dissolves into morning mist.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_huyen_huyen_giam_quan',
+    dailyLimit: 1,
+    loreNote: 'Giám Quan ghi câu hỏi của ngươi vào bia, lễ vật chỉ là dấu mực.',
+    loreNoteEn: 'The Inspector records your question onto the stele; the gift is only ink.',
+    acceptedItems: [
+      {
+        itemKey: 'phu_van_ngoc',
+        affinityMin: 2,
+        affinityMax: 4,
+        flavor: 'Phù Vân Ngọc — bia hấp thụ phù văn, sáng lên một dòng mới.',
+        flavorEn: 'Phù Vân Ngọc — the stele absorbs the rune and lights up a new inscription.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_vo_thuy_lao_nhan',
+    dailyLimit: 1,
+    loreNote: 'Lão nhân thích vật nhỏ liên quan đến khởi đầu — đan cấp thấp, ngọc cũ.',
+    loreNoteEn: 'The old man enjoys humble origin-themed gifts — low-tier pills, aged jade.',
+    acceptedItems: [
+      {
+        itemKey: 'linh_lo_dan',
+        affinityMin: 3,
+        affinityMax: 5,
+        flavor: 'Linh Lộ Đan — lão chấm vào nước hồ, đan tan trong tích tắc như ký ức.',
+        flavorEn: 'Linh Lộ pill — he dips it into the lake; it dissolves instantly like a memory.',
+      },
+    ],
+  },
+  {
+    npcKey: 'npc_vo_chung_dong_tu',
+    dailyLimit: 1,
+    loreNote: 'Đồng tử nhận lễ vật như tem thư gửi cho ngươi-tương-lai.',
+    loreNoteEn: 'The boy accepts gifts as postage stamps for future-you.',
+    acceptedItems: [
+      {
+        itemKey: 'phu_van_ngoc',
+        affinityMin: 2,
+        affinityMax: 4,
+        flavor: 'Phù Vân Ngọc — đồng tử dán phù lên thư rồi gửi vào Vô Chung Chi Môn.',
+        flavorEn: 'Phù Vân Ngọc — the boy seals the letter with the rune and sends it through the Endless Gate.',
+      },
+    ],
+  },
 ] as const;
 
 // ============================================================================

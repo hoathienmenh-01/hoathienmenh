@@ -26,8 +26,8 @@ describe('NPCS catalog integrity (Phase 12 PR-1 + Story Foundation Extension)', 
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it('catalogs Phase 21 NPC trụ cột including 5 early-game quest givers', () => {
-    expect(NPCS).toHaveLength(12);
+  it('catalogs Phase 21 NPC trụ cột including 5 early-game quest givers (Phase 33 adds 7 Quyển II–IV NPCs)', () => {
+    expect(NPCS).toHaveLength(19);
     expect(npcByKey('npc_lang_van_sinh')).toBeDefined();
     expect(npcByKey('npc_moc_thanh_y')).toBeDefined();
     expect(npcByKey('npc_han_da')).toBeDefined();
@@ -40,6 +40,14 @@ describe('NPCS catalog integrity (Phase 12 PR-1 + Story Foundation Extension)', 
     expect(npcByKey('npc_huyet_ha_su_gia')).toBeDefined();
     expect(npcByKey('npc_hoa_thien_dao_to')).toBeDefined();
     expect(npcByKey('npc_tich_thien_dao_chu')).toBeDefined();
+    // Phase 33 Quyển II–IV trụ cột:
+    expect(npcByKey('npc_luc_binh')).toBeDefined();
+    expect(npcByKey('npc_tich_thien_thanh_su')).toBeDefined();
+    expect(npcByKey('npc_dao_vuc_chi_tam')).toBeDefined();
+    expect(npcByKey('npc_nguyen_linh_nu')).toBeDefined();
+    expect(npcByKey('npc_huyen_huyen_giam_quan')).toBeDefined();
+    expect(npcByKey('npc_vo_thuy_lao_nhan')).toBeDefined();
+    expect(npcByKey('npc_vo_chung_dong_tu')).toBeDefined();
   });
 
   it('every NPC key starts with `npc_`', () => {
@@ -95,12 +103,13 @@ describe('NPCS catalog integrity (Phase 12 PR-1 + Story Foundation Extension)', 
   });
 
   it('npcsByFaction returns correct count', () => {
-    expect(npcsByFaction('hoa_thien_mon').length).toBe(4); // core sect + A Linh + Đạo Tổ remnant
+    expect(npcsByFaction('hoa_thien_mon').length).toBe(5); // core sect + A Linh + Đạo Tổ remnant + Đạo Vực Chi Tâm
     expect(npcsByFaction('huyen_kiem_tong').length).toBe(1); // Hàn Dạ
     expect(npcsByFaction('van_bao_thuong_hoi').length).toBe(1); // Vạn Kim Nương
     expect(npcsByFaction('huyet_ha_ma_tong').length).toBe(2); // Huyết La Sát + sứ giả
-    expect(npcsByFaction('tich_thien_dien').length).toBe(2); // sứ giả + Đạo Chủ echo
+    expect(npcsByFaction('tich_thien_dien').length).toBe(3); // sứ giả + Đạo Chủ echo + Phase 33 Thánh Sứ
     expect(npcsByFaction('tien_dinh_bach_de').length).toBe(1); // Bạch Đế Tử
+    expect(npcsByFaction('wandering').length).toBe(5); // Phase 33 Quyển II–IV wandering NPCs
   });
 
   it('npcsAvailableAtRealm gates correctly', () => {

@@ -6802,6 +6802,66 @@ export const STORY_DIALOGUES: readonly StoryDialogueNodeDef[] = [
     text: 'Phase 21 [Hoa Thiên Sơn Tầng Một / affinity_high] — lời thoại ngắn gắn với canon hoặc lore phụ, nhắc người chơi về gate, đạo tâm và quan hệ NPC.',
     textEn: 'Phase 21 [Hoa Thiên Sơn Tầng Một / affinity_high] — short dialogue tied to canon or expanded lore, reminding the player about gates, dao heart, and NPC affinity.',
     choices: [{ key: 'continue', label: 'Ghi nhớ lời này.', labelEn: 'Remember this.', effects: [{ kind: 'change_affinity', npcKey: 'npc_tich_thien_dao_chu', delta: 2 }] }],
+  },
+  // ─── Phase 33 — Quyển II–IV NPC story dialogue seeds ──────────────────────
+  // Mỗi NPC có 1 node default (realm_min) — Phase 33 chỉ catalog seed; runtime
+  // tự kéo về service `STORY_DIALOGUES`. Quest expansion dùng dialogueNodeKeys
+  // ở `story-chapters-quyen-ii-iv.ts` cho per-chapter cinematics.
+  {
+    id: 'story_dlg_luc_binh_phase33_intro',
+    npcKey: 'npc_luc_binh',
+    conditions: [{ kind: 'realm_min', realmOrder: 9 }],
+    text: 'Phase 33 — Phi Thăng Doanh: xích trên cổ ta là xích Tiên Đình. Ngươi vừa phi thăng đã thấy rồi đấy, đại đạo có thật sự công bằng không?',
+    textEn: 'Phase 33 — Ascension Camp: the chain at my neck belongs to the Heavenly Court. Just ascended and already you see it — is the great Dao truly fair?',
+    choices: [{ key: 'continue', label: 'Lắng nghe.', labelEn: 'Listen.', effects: [{ kind: 'change_affinity', npcKey: 'npc_luc_binh', delta: 1 }] }],
+  },
+  {
+    id: 'story_dlg_tich_thien_thanh_su_phase33_intro',
+    npcKey: 'npc_tich_thien_thanh_su',
+    conditions: [{ kind: 'realm_min', realmOrder: 16 }],
+    text: 'Phase 33 — Thánh Cảnh: Ta không đến để chiêu hàng. Ta đến để hỏi: ngươi thực sự nghĩ vạn linh tự lo được đại đạo không?',
+    textEn: 'Phase 33 — Saint Realm: I do not come to recruit. I come to ask: do you truly believe ten thousand lives can handle the great Dao on their own?',
+    choices: [{ key: 'continue', label: 'Ghi nhớ câu hỏi.', labelEn: 'Remember the question.', effects: [{ kind: 'set_flag', flagKey: 'phase33_tich_thien_thanh_su_seen', value: true }] }],
+  },
+  {
+    id: 'story_dlg_dao_vuc_chi_tam_phase33_intro',
+    npcKey: 'npc_dao_vuc_chi_tam',
+    conditions: [{ kind: 'realm_min', realmOrder: 19 }],
+    text: 'Phase 33 — Đạo Vực: Vạn linh hỏi luật ngươi mềm hay sắt. Cả hai đều đúng, nhưng chỉ một sẽ giữ được Đạo Vực này.',
+    textEn: 'Phase 33 — Dao Domain: ten thousand lives ask if your law is soft or iron. Both are right, but only one will hold this Dao Domain together.',
+    choices: [{ key: 'continue', label: 'Suy ngẫm.', labelEn: 'Reflect.', effects: [{ kind: 'change_affinity', npcKey: 'npc_dao_vuc_chi_tam', delta: 1 }] }],
+  },
+  {
+    id: 'story_dlg_nguyen_linh_nu_phase33_intro',
+    npcKey: 'npc_nguyen_linh_nu',
+    conditions: [{ kind: 'realm_min', realmOrder: 22 }],
+    text: 'Phase 33 — Bản Nguyên Hải: ngươi muốn lấy bản nguyên hay muốn nuôi nó? Cách hỏi sẽ quyết định cách Đạo Liên Hoa Thiên tiến hóa.',
+    textEn: 'Phase 33 — Origin Sea: do you want to take the origin or to nurture it? How you ask will decide how the Hoa Thiên Lotus evolves.',
+    choices: [{ key: 'continue', label: 'Lặng nhìn nguyên hải.', labelEn: 'Gaze into the Origin Sea.', effects: [{ kind: 'set_flag', flagKey: 'phase33_nguyen_linh_nu_seen', value: true }] }],
+  },
+  {
+    id: 'story_dlg_huyen_huyen_giam_quan_phase33_intro',
+    npcKey: 'npc_huyen_huyen_giam_quan',
+    conditions: [{ kind: 'realm_min', realmOrder: 23 }],
+    text: 'Phase 33 — Huyền Huyền Cổ Bi: bia khắc cho ngươi không giống ta — bia khắc câu hỏi mà chính đạo ngươi né tránh.',
+    textEn: 'Phase 33 — Mystery Stele: the words it carves for you differ from mine — it carves the question your dao has been avoiding.',
+    choices: [{ key: 'continue', label: 'Đọc câu khắc.', labelEn: 'Read the inscription.', effects: [{ kind: 'change_affinity', npcKey: 'npc_huyen_huyen_giam_quan', delta: 1 }] }],
+  },
+  {
+    id: 'story_dlg_vo_thuy_lao_nhan_phase33_intro',
+    npcKey: 'npc_vo_thuy_lao_nhan',
+    conditions: [{ kind: 'realm_min', realmOrder: 24 }],
+    text: 'Phase 33 — Thời Gian Luân Hải: ngươi không sinh ra ở Thanh Khê. Ngươi tự đến đó. Câu hỏi là: vì sao?',
+    textEn: 'Phase 33 — River of Time: you were not born in Thanh Khê. You came there. The question is: why?',
+    choices: [{ key: 'continue', label: 'Nhớ lại.', labelEn: 'Recall.', effects: [{ kind: 'set_flag', flagKey: 'phase33_vo_thuy_origin_hint', value: true }] }],
+  },
+  {
+    id: 'story_dlg_vo_chung_dong_tu_phase33_intro',
+    npcKey: 'npc_vo_chung_dong_tu',
+    conditions: [{ kind: 'realm_min', realmOrder: 25 }],
+    text: 'Phase 33 — Vô Chung Chi Môn: ngươi-tương-lai đang viết thư cho ngươi-hiện-tại. Bức thư đầu tiên rất ngắn — chỉ một câu: "Đừng tin Tịch Thiên Thánh Sứ."',
+    textEn: 'Phase 33 — Endless Gate: future-you is writing letters to present-you. The first letter is short — one line: "Do not trust the Tịch Thiên Saint Envoy."',
+    choices: [{ key: 'continue', label: 'Cất bức thư.', labelEn: 'Tuck away the letter.', effects: [{ kind: 'change_affinity', npcKey: 'npc_vo_chung_dong_tu', delta: 1 }] }],
   }
 ] as const;
 
