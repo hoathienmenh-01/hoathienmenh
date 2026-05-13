@@ -84,6 +84,7 @@ import { AdminMailModule } from './modules/admin-mail/admin-mail.module';
 import { PlayerSettingsModule } from './modules/player-settings/player-settings.module';
 import { PlayerDashboardModule } from './modules/player-dashboard/player-dashboard.module';
 import { PlayerFeedbackModule } from './modules/player-feedback/player-feedback.module';
+import { LoadoutPresetModule } from './modules/loadout-preset/loadout-preset.module';
 import { PlayerReportModule } from './modules/player-report/player-report.module';
 import { PlayerNavigationModule } from './modules/player-navigation/player-navigation.module';
 
@@ -287,6 +288,8 @@ import { PlayerNavigationModule } from './modules/player-navigation/player-navig
     PlayerFeedbackModule,
     PlayerReportModule,
     PlayerNavigationModule,
+    /// Phase QOL-2 — Loadout Preset PvE/PvP/Boss.
+    LoadoutPresetModule,
   ],
 })
 export class AppModule {}

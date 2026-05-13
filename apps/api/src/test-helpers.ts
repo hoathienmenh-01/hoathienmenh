@@ -339,6 +339,8 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.playerReport.deleteMany({});
   await prisma.playerFeedback.deleteMany({});
   await prisma.playerSettings.deleteMany({});
+  // Phase QOL-2 — Loadout Preset PvE/PvP/Boss (FK Cascade Character; explicit wipe).
+  await prisma.characterLoadoutPreset.deleteMany({});
   await prisma.topupOrder.deleteMany({});
   // Phase 15.6 — Config Version + Rollback Run (xoá trước User; cả 2
   // FK SET NULL khi User bị xoá, nhưng explicit cho rõ thứ tự).
