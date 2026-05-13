@@ -465,10 +465,20 @@ model Character {
   personalEventProgress  PersonalEventProgress[]
 
   /// Phase 29.0 — PvP Foundation backrefs.
-  pvpBattlesAttacker     PvpBattle[]                 @relation("PvpBattleAttacker")
-  pvpBattlesDefender     PvpBattle[]                 @relation("PvpBattleDefender")
-  pvpDefenseProfile      PvpDefenseProfile?
-  pvpAnomalyLogs         PvpAnomalyLog[]
+  pvpBattlesAttacker PvpBattle[]        @relation("PvpBattleAttacker")
+  pvpBattlesDefender PvpBattle[]        @relation("PvpBattleDefender")
+  pvpDefenseProfile  PvpDefenseProfile?
+  pvpAnomalyLogs     PvpAnomalyLog[]
+
+  /// Phase 30.0 — Market V2 / Auction House.
+  marketAuctionsAsSeller  MarketAuction[]          @relation("MarketAuctionSeller")
+  marketAuctionsAsBidder  MarketAuction[]          @relation("MarketAuctionBidder")
+  marketBids              MarketBid[]
+  marketClaimBoxEntries   MarketClaimBoxEntry[]
+  personalStall           PersonalStall?
+  sectInternalAuctionBids SectInternalAuctionBid[]
+  /// Phase 32.0 — Codex progress.
+  codexProgress           CharacterCodexProgress[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1991,16 +2001,20 @@ model Listing {
 }
 
 model Sect {
-  id                String      @id @default(cuid())
-  name              String      @unique
-  description       String      @default("")
-  level             Int         @default(1)
-  treasuryLinhThach BigInt      @default(0)
-  leaderId          String?     @unique
-  characters        Character[]
+  id                   String                @id @default(cuid())
+  name                 String                @unique
+  description          String                @default("")
+  level                Int                   @default(1)
+  treasuryLinhThach    BigInt                @default(0)
+  leaderId             String?               @unique
+  characters           Character[]
   /// Phase 29.0 — PvP anomaly backref.
-  pvpAnomalyLogs    PvpAnomalyLog[]
-  createdAt         DateTime    @default(now())
+  pvpAnomalyLogs       PvpAnomalyLog[]
+  /// Phase 30.0 — Sect treasury items + log + internal auction.
+  treasuryItems        SectTreasuryItem[]
+  treasuryLogs         SectTreasuryLog[]
+  sectInternalAuctions SectInternalAuction[]
+  createdAt            DateTime              @default(now())
 }
 
 enum ChatChannel {
@@ -5643,36 +5657,36 @@ model PersonalEventProgress {
 /// flag `status=INVALIDATED` (qua `PVP_BATTLE_INVALIDATE` audit) nhưng
 /// `roundsJson` / `rewardJson` immutable.
 model PvpBattle {
-  id                    String    @id @default(cuid())
+  id                   String     @id @default(cuid())
   /// PvpMode literal (DUEL | FRIENDLY_SPARRING | EVENT_PVP | SECT_WAR | TERRITORY_WAR).
-  mode                  String
-  attackerCharacterId   String
-  attacker              Character @relation("PvpBattleAttacker", fields: [attackerCharacterId], references: [id], onDelete: Cascade)
-  defenderCharacterId   String?
-  defender              Character? @relation("PvpBattleDefender", fields: [defenderCharacterId], references: [id], onDelete: SetNull)
+  mode                 String
+  attackerCharacterId  String
+  attacker             Character  @relation("PvpBattleAttacker", fields: [attackerCharacterId], references: [id], onDelete: Cascade)
+  defenderCharacterId  String?
+  defender             Character? @relation("PvpBattleDefender", fields: [defenderCharacterId], references: [id], onDelete: SetNull)
   /// PvpBattleStatus (PENDING|RESOLVED|CANCELLED|EXPIRED|INVALIDATED).
-  status                String    @default("PENDING")
+  status               String     @default("PENDING")
   /// PvpResult — null khi PENDING.
-  result                String?
+  result               String?
   /// Snapshot tại thời điểm queue (validatePvpSnapshot enforced).
-  attackerSnapshotJson  Json
-  defenderSnapshotJson  Json
+  attackerSnapshotJson Json
+  defenderSnapshotJson Json
   /// Resolve seed for replay verify. Random nhưng deterministic.
-  seed                  Int       @default(0)
+  seed                 Int        @default(0)
   /// Round summary array (KHÔNG frame-by-frame, chỉ delta).
-  roundsJson            Json
+  roundsJson           Json
   /// Reward snapshot — chỉ display, không re-grant. Null khi FRIENDLY_SPARRING.
-  rewardJson            Json?
+  rewardJson           Json?
   /// Rating change (nếu mode = DUEL có rating). Arena vẫn ở ArenaMatch.
-  ratingChangeJson      Json?
+  ratingChangeJson     Json?
   /// Reference key (ví dụ eventKey, sectWarMatchId, territoryKey).
-  sourceModuleKey       String?
+  sourceModuleKey      String?
   /// Đã grant reward chưa? Idempotency check.
-  rewardGranted         Boolean   @default(false)
+  rewardGranted        Boolean    @default(false)
   /// Idempotency token để chặn double-resolve.
-  idempotencyKey        String?
-  createdAt             DateTime  @default(now())
-  resolvedAt            DateTime?
+  idempotencyKey       String?
+  createdAt            DateTime   @default(now())
+  resolvedAt           DateTime?
 
   @@unique([idempotencyKey])
   @@index([attackerCharacterId, mode, createdAt])
@@ -5691,15 +5705,15 @@ model PvpBattle {
 /// được verify qua `validatePvpDefenseProfile` (snapshotType ∈
 /// {DEFENDER, SECT_MEMBER}).
 model PvpDefenseProfile {
-  id            String    @id @default(cuid())
-  characterId   String    @unique
-  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  id           String    @id @default(cuid())
+  characterId  String    @unique
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
   /// Snapshot JSON tuân `validatePvpDefenseProfile`.
-  snapshotJson  Json
+  snapshotJson Json
   /// Player-defined label (tối đa 60 ký tự — validator enforce).
-  label         String?
-  updatedAt     DateTime  @updatedAt
-  createdAt     DateTime  @default(now())
+  label        String?
+  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime  @default(now())
 
   @@index([updatedAt])
 }
@@ -5714,7 +5728,7 @@ model PvpDefenseProfile {
 /// `relatedBattleId` reference `PvpBattle.id` hoặc `ArenaMatch.id`
 /// (string-based, không FK cứng để gom được nhiều bảng).
 model PvpAnomalyLog {
-  id              String    @id @default(cuid())
+  id              String     @id @default(cuid())
   /// PvpAnomalyType literal.
   anomalyType     String
   /// Severity 0.0–1.0 (PVP_ANOMALY_RISK_WEIGHT lookup).
@@ -5722,21 +5736,337 @@ model PvpAnomalyLog {
   characterId     String?
   character       Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
   sectId          String?
-  sect            Sect?     @relation(fields: [sectId], references: [id], onDelete: SetNull)
+  sect            Sect?      @relation(fields: [sectId], references: [id], onDelete: SetNull)
   /// PvpBattle.id / ArenaMatch.id / SectWarMatch.id (string, no FK).
   relatedBattleId String?
   /// Reason chi tiết (LLM-friendly text + JSON detail).
   detailJson      Json
   /// Auto-block reward claim nếu severity ≥ 0.8.
-  blockedReward   Boolean   @default(false)
+  blockedReward   Boolean    @default(false)
   resolvedBy      String?
   resolution      String?
   resolvedAt      DateTime?
   resolveReason   String?
-  createdAt       DateTime  @default(now())
+  createdAt       DateTime   @default(now())
 
   @@index([anomalyType, createdAt])
   @@index([characterId, createdAt])
   @@index([sectId, createdAt])
   @@index([resolution, createdAt])
+}
+
+// =========================================================================
+// Phase 30.0 — Market V2 / Auction House
+// =========================================================================
+
+/// Phase 30.0 — Auction session. Snapshot fields:
+/// `currentBid`/`currentBidderId` cập nhật mỗi bid hợp lệ; full bid
+/// history ở `MarketBid`. `status` ∈ MARKET_AUCTION_STATUSES.
+model MarketAuction {
+  id                String      @id @default(cuid())
+  sellerCharacterId String
+  seller            Character   @relation("MarketAuctionSeller", fields: [sellerCharacterId], references: [id], onDelete: Cascade)
+  itemKey           String
+  quantity          Int
+  /// MarketCurrency literal.
+  currency          String
+  startPrice        BigInt
+  buyoutPrice       BigInt?
+  minBidStep        BigInt
+  currentBid        BigInt?
+  currentBidderId   String?
+  currentBidder     Character?  @relation("MarketAuctionBidder", fields: [currentBidderId], references: [id], onDelete: SetNull)
+  /// MarketAuctionStatus literal.
+  status            String      @default("ACTIVE")
+  startsAt          DateTime
+  endsAt            DateTime
+  finalizedAt       DateTime?
+  feeAmount         BigInt      @default(0)
+  taxAmount         BigInt      @default(0)
+  lockedBy          String?
+  lockedReason      String?
+  metadataJson      Json        @default("{}")
+  bids              MarketBid[]
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([status, endsAt])
+  @@index([sellerCharacterId, status])
+  @@index([itemKey, status])
+}
+
+/// Phase 30.0 — Single bid. `status` ∈ MARKET_BID_STATUSES.
+/// Refund flow: khi bid bị outbid → status=OUTBID, refund vào claim box.
+/// Khi auction finalize → winner.status=WON, others=REFUNDED.
+model MarketBid {
+  id                String        @id @default(cuid())
+  auctionId         String
+  auction           MarketAuction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  bidderCharacterId String
+  bidder            Character     @relation(fields: [bidderCharacterId], references: [id], onDelete: Cascade)
+  bidAmount         BigInt
+  currency          String
+  status            String        @default("ACTIVE")
+  wasBuyout         Boolean       @default(false)
+  refundedAt        DateTime?
+  createdAt         DateTime      @default(now())
+
+  @@index([auctionId, createdAt])
+  @@index([bidderCharacterId, createdAt])
+  @@index([status, createdAt])
+}
+
+/// Phase 30.0 — Claim box entry. Mỗi entry = 1 reward chờ player nhận
+/// (idempotent). `source` ∈ MARKET_CLAIM_BOX_SOURCES. `sourceRefId` =
+/// auctionId / listingId / ledger tx id để dedupe.
+model MarketClaimBoxEntry {
+  id           String    @id @default(cuid())
+  characterId  String
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  source       String
+  sourceRefId  String?
+  itemKey      String?
+  itemQty      Int?
+  currency     String?
+  amount       BigInt?
+  status       String    @default("PENDING")
+  expiresAt    DateTime?
+  claimedAt    DateTime?
+  metadataJson Json      @default("{}")
+  createdAt    DateTime  @default(now())
+
+  @@index([characterId, status])
+  @@index([source, sourceRefId])
+  @@index([status, expiresAt])
+}
+
+/// Phase 30.0 — Aggregated price snapshot per itemKey. Updated cron-style.
+model MarketPriceSnapshot {
+  id          String   @id @default(cuid())
+  itemKey     String   @unique
+  avgPrice24h BigInt   @default(0)
+  avgPrice7d  BigInt   @default(0)
+  avgPrice30d BigInt   @default(0)
+  minPrice    BigInt   @default(0)
+  maxPrice    BigInt   @default(0)
+  volume24h   BigInt   @default(0)
+  volume7d    BigInt   @default(0)
+  updatedAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([updatedAt])
+}
+
+/// Phase 30.0 — Per-item policy override. KHÔNG sửa catalog code.
+/// `tradability` ∈ ITEM_TRADABILITIES.
+model MarketItemPolicy {
+  id                     String   @id @default(cuid())
+  itemKey                String   @unique
+  tradability            String
+  minPrice               BigInt?
+  maxPrice               BigInt?
+  maxListingsPerDay      Int?
+  maxQtyPerListing       Int?
+  taxRatePctOverride     Float?
+  listingFeeFlatOverride BigInt?
+  reason                 String?
+  updatedBy              String?
+  updatedAt              DateTime
+  createdAt              DateTime @default(now())
+
+  @@index([tradability])
+}
+
+/// Phase 30.0 — Personal stall config (1-1 character).
+model PersonalStall {
+  id               String    @id @default(cuid())
+  characterId      String    @unique
+  character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  stallName        String
+  description      String?
+  slotLimit        Int       @default(6)
+  autoRenewEnabled Boolean   @default(false)
+  themeKey         String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+/// Phase 30.0 — Sect treasury bag. Unique per (sectId, itemKey).
+model SectTreasuryItem {
+  id        String   @id @default(cuid())
+  sectId    String
+  sect      Sect     @relation(fields: [sectId], references: [id], onDelete: Cascade)
+  itemKey   String
+  quantity  Int      @default(0)
+  lockedQty Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sectId, itemKey])
+  @@index([sectId])
+}
+
+/// Phase 30.0 — Sect treasury audit log. action ∈
+/// SECT_TREASURY_ACTION_TYPES.
+model SectTreasuryLog {
+  id               String   @id @default(cuid())
+  sectId           String
+  sect             Sect     @relation(fields: [sectId], references: [id], onDelete: Cascade)
+  actorCharacterId String?
+  actorAdminId     String?
+  action           String
+  itemKey          String?
+  quantity         Int?
+  reason           String?
+  metadataJson     Json     @default("{}")
+  createdAt        DateTime @default(now())
+
+  @@index([sectId, createdAt])
+  @@index([action, createdAt])
+}
+
+/// Phase 30.0 — Sect internal auction. Tách khỏi MarketAuction vì
+/// scope sect-only + currency = SECT_CONTRIBUTION/LINH_THACH.
+model SectInternalAuction {
+  id                   String                   @id @default(cuid())
+  sectId               String
+  sect                 Sect                     @relation(fields: [sectId], references: [id], onDelete: Cascade)
+  itemKey              String
+  quantity             Int
+  currency             String
+  startPrice           BigInt
+  minBidStep           BigInt
+  currentBid           BigInt?
+  currentBidderId      String?
+  status               String                   @default("ACTIVE")
+  startsAt             DateTime
+  endsAt               DateTime
+  finalizedAt          DateTime?
+  createdByCharacterId String?
+  bids                 SectInternalAuctionBid[]
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+
+  @@index([sectId, status])
+  @@index([status, endsAt])
+}
+
+/// Phase 30.0 — Bid của sect internal auction.
+model SectInternalAuctionBid {
+  id                String              @id @default(cuid())
+  sectAuctionId     String
+  sectAuction       SectInternalAuction @relation(fields: [sectAuctionId], references: [id], onDelete: Cascade)
+  bidderCharacterId String
+  bidder            Character           @relation(fields: [bidderCharacterId], references: [id], onDelete: Cascade)
+  bidAmount         BigInt
+  currency          String
+  status            String              @default("ACTIVE")
+  createdAt         DateTime            @default(now())
+
+  @@index([sectAuctionId, createdAt])
+  @@index([bidderCharacterId, createdAt])
+}
+
+/// Phase 30.0 — Market anomaly (V2 broader than Phase 16.4
+/// MarketTradeAnomaly). anomalyType ∈ MARKET_ANOMALY_TYPES.
+model MarketAnomaly {
+  id                String    @id @default(cuid())
+  anomalyType       String
+  severity          String
+  sellerCharacterId String?
+  buyerCharacterId  String?
+  listingId         String?
+  auctionId         String?
+  totalValue        BigInt?
+  detailJson        Json      @default("{}")
+  resolvedBy        String?
+  resolvedAt        DateTime?
+  resolveReason     String?
+  createdAt         DateTime  @default(now())
+
+  @@index([anomalyType, createdAt])
+  @@index([severity, resolvedAt])
+  @@index([sellerCharacterId])
+  @@index([buyerCharacterId])
+}
+
+// =========================================================================
+// Phase 32.0 — Tu Tiên Bách Khoa / Codex / Bestiary
+// =========================================================================
+
+/// Phase 32.0 — Codex entry per item/monster/map/realm/method. Generated
+/// bởi `CodexIndexerService` từ catalog hiện có. Admin có thể override
+/// description/visibility nhưng KHÔNG nên đổi entryKey/type/refKey.
+model CodexEntry {
+  id                   String   @id @default(cuid())
+  entryKey             String   @unique
+  type                 String
+  refKey               String
+  displayName          String
+  description          String?
+  iconKey              String?
+  visibility           String   @default("PUBLIC")
+  tagsJson             Json     @default("[]")
+  sourceHintsJson      Json     @default("[]")
+  usageHintsJson       Json     @default("[]")
+  relatedEntryKeysJson Json     @default("[]")
+  realmRequired        String?
+  quality              String?
+  tier                 Int?
+  updatedBy            String?
+  updatedAt            DateTime
+  createdAt            DateTime @default(now())
+
+  @@index([type])
+  @@index([refKey])
+  @@index([visibility])
+}
+
+/// Phase 32.0 — Character discovery progress. Insert khi player lần
+/// đầu chạm entry (kill monster, loot item, …). Unique per
+/// (characterId, entryKey) — idempotent.
+model CharacterCodexProgress {
+  id           String    @id @default(cuid())
+  characterId  String
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  entryKey     String
+  discoveredAt DateTime  @default(now())
+  context      String?
+  metadataJson Json      @default("{}")
+
+  @@unique([characterId, entryKey])
+  @@index([characterId])
+  @@index([entryKey])
+}
+
+/// Phase 32.0 — Codex audit issue. Generated bởi
+/// `CodexAuditService` + admin manual.
+model CodexAuditIssue {
+  id         String    @id @default(cuid())
+  issueKey   String    @unique
+  entryKey   String
+  type       String
+  severity   String
+  message    String
+  resolved   Boolean   @default(false)
+  resolvedBy String?
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([entryKey])
+  @@index([severity, resolved])
+}
+
+/// Phase 32.0 — Reindex log. Mỗi lần admin trigger reindex →
+/// 1 row với summary.
+model CodexReindexLog {
+  id              String   @id @default(cuid())
+  triggeredBy     String
+  entriesUpserted Int      @default(0)
+  entriesRemoved  Int      @default(0)
+  issuesFound     Int      @default(0)
+  summaryJson     Json     @default("{}")
+  createdAt       DateTime @default(now())
+
+  @@index([createdAt])
 }
