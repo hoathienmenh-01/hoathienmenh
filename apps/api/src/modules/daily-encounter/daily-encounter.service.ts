@@ -4,7 +4,6 @@ import {
   dailyEncounterByKey,
   realmByKey,
   rollDailyEncounter,
-  type DailyEncounterDef,
 } from '@xuantoi/shared';
 import { CurrencyKind } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
