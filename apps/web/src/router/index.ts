@@ -161,6 +161,26 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/AdminPvpCenterView.vue'),
   },
   {
+    path: '/market-v2',
+    name: 'marketV2',
+    component: () => import('@/views/MarketV2View.vue'),
+  },
+  {
+    path: '/codex',
+    name: 'codex',
+    component: () => import('@/views/CodexView.vue'),
+  },
+  {
+    path: '/admin/market-v2',
+    name: 'adminMarketV2',
+    component: () => import('@/views/AdminMarketV2View.vue'),
+  },
+  {
+    path: '/admin/codex',
+    name: 'adminCodex',
+    component: () => import('@/views/AdminCodexView.vue'),
+  },
+  {
     path: '/profile/:id',
     name: 'profile',
     component: () => import('@/views/ProfileView.vue'),

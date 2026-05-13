@@ -73,6 +73,18 @@ const PolicyZ = z
 const ResolveZ = z
   .object({ resolution: z.enum(['DISMISSED', 'CONFIRMED', 'ESCALATED']), reason: z.string().min(3).max(500) })
   .strict();
+const RefundZ = z
+  .object({
+    characterId: z.string().min(1),
+    itemKey: z.string().min(1).optional(),
+    itemQty: z.number().int().min(1).max(1_000_000).optional(),
+    currency: z
+      .enum(['LINH_THACH', 'TIEN_NGOC_KHOA', 'EVENT_TOKEN', 'CONG_HIEN_TONG_MON'])
+      .optional(),
+    amount: z.string().regex(/^\d+$/).optional(),
+    reason: z.string().min(3).max(500),
+  })
+  .strict();
 
 @Controller('admin/market-v2')
 @UseGuards(AdminPermissionGuard)
@@ -308,5 +320,29 @@ export class MarketV2AdminController {
       reason: `finalized ${result.finalized}/${result.candidates}`,
     });
     return { ok: true, data: result };
+  }
+
+  @Post('refund')
+  @RequireAdminPermission('ADMIN_MANAGE_MARKET')
+  async refund(@Req() req: AdminReq, @Body() body: unknown) {
+    const parsed = RefundZ.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const entry = await this.claimBox.deposit({
+      characterId: parsed.data.characterId,
+      source: 'ADMIN_REFUND',
+      itemKey: parsed.data.itemKey,
+      itemQty: parsed.data.itemQty,
+      currency: parsed.data.currency,
+      amount: parsed.data.amount ? BigInt(parsed.data.amount) : undefined,
+    });
+    await this.audit.write({
+      adminUserId: req.userId,
+      adminRole: req.adminRole,
+      actionType: 'MARKET_REFUND',
+      targetType: 'MarketClaimBoxEntry',
+      targetId: entry.id,
+      reason: parsed.data.reason,
+    });
+    return { ok: true, data: entry };
   }
 }

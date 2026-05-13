@@ -10,11 +10,13 @@
  * — không expose discover endpoint public để tránh self-discover bypass.
  */
 import {
+  Body,
   Controller,
   Get,
   HttpException,
   HttpStatus,
   Param,
+  Post,
   Query,
   Req,
 } from '@nestjs/common';
@@ -105,6 +107,27 @@ export class CodexPlayerController {
     const characterId = await this.getCharacterIdMaybe(req);
     if (!characterId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
     return { ok: true, data: await this.codex.getProgress(characterId!) };
+  }
+
+  @Post('entries/:entryKey/discover')
+  async discover(
+    @Req() req: Request,
+    @Param('entryKey') entryKey: string,
+    @Body() body: { context?: string },
+  ) {
+    const characterId = await this.getCharacterIdMaybe(req);
+    if (!characterId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    try {
+      return {
+        ok: true,
+        data: await this.codex.discover(characterId!, entryKey, body.context),
+      };
+    } catch (e) {
+      if (e instanceof CodexError) {
+        fail(e.code, HttpStatus.NOT_FOUND);
+      }
+      throw e;
+    }
   }
 
   @Get('types')
