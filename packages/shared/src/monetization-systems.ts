@@ -42,7 +42,11 @@ import type {
   GrowthFundMilestoneDef,
   GrowthFundVariantDef,
 } from './monetization-foundation';
-import { ENTITLEMENT_VALUE_CAPS } from './monetization-foundation';
+import {
+  ENTITLEMENT_VALUE_CAPS,
+  getGrowthFundVariant,
+  GROWTH_FUND_VARIANTS as GROWTH_FUND_VARIANTS_ALL,
+} from './monetization-foundation';
 
 // ─── Anti-P2W reward validators (Phase 27.1–27.5) ─────────────────────────
 
@@ -331,78 +335,26 @@ export function getBattlePassMissionsBySource(
 export const BATTLE_PASS_PAID_UNLOCK_PRODUCT_KEY = 'battle_pass_premium_unlock';
 
 // ─── Growth Fund V2 — bổ sung biến thể `tien` (late game) ──────────────────
+//
+// Catalog `tien` đã được merge vào `GROWTH_FUND_VARIANTS` của
+// `monetization-foundation.ts` (đảm bảo `getGrowthFundVariant('tien')`
+// hoạt động). Constant dưới chỉ là alias để filter V2-only ở test/UI.
 
 export const GROWTH_FUND_V2_KEYS = ['tien'] as const;
 
 export type GrowthFundV2Key = (typeof GROWTH_FUND_V2_KEYS)[number];
 
 /**
- * Quỹ Trưởng Thành biến thể `tien` — mua 1 lần late game. Mốc Hợp Thể →
- * Nhân Tiên. KHÔNG cộng cảnh giới; chỉ thưởng resource có cap.
+ * Quỹ Trưởng Thành biến thể `tien` — mua 1 lần late game. Mốc Luyện Hư
+ * → Nhân Tiên. KHÔNG cộng cảnh giới; chỉ thưởng resource có cap.
+ *
+ * Catalog data là alias của `GROWTH_FUND_VARIANTS` filter `tien` —
+ * single source of truth ở foundation file.
  */
-export const GROWTH_FUND_V2_VARIANTS: readonly GrowthFundVariantDef[] = [
-  {
-    key: 'tien' as GrowthFundKey,
-    nameVi: 'Quỹ Trưởng Thành — Tiên',
-    nameEn: 'Growth Fund — Immortal',
-    priceCurrency: 'TIEN_NGOC' as WalletCurrencyKey,
-    priceAmount: 680,
-    descriptionVi:
-      'Mua 1 lần. Nhận thưởng theo mốc Luyện Hư → Nhân Tiên. Không vượt cảnh giới.',
-    milestones: [
-      {
-        key: 'luyen_hu',
-        realmKey: 'luyen_hu',
-        realmOrder: 6,
-        nameVi: 'Đạt Luyện Hư',
-        reward: [
-          { kind: 'currency', key: 'TIEN_NGOC_KHOA', qty: 400 },
-          { kind: 'currency', key: 'LINH_THACH', qty: 18_000 },
-        ],
-      },
-      {
-        key: 'hop_the',
-        realmKey: 'hop_the',
-        realmOrder: 7,
-        nameVi: 'Đạt Hợp Thể',
-        reward: [
-          { kind: 'currency', key: 'TIEN_NGOC_KHOA', qty: 480 },
-          { kind: 'currency', key: 'LINH_THACH', qty: 24_000 },
-        ],
-      },
-      {
-        key: 'dai_thua',
-        realmKey: 'dai_thua',
-        realmOrder: 8,
-        nameVi: 'Đạt Đại Thừa',
-        reward: [
-          { kind: 'currency', key: 'TIEN_NGOC_KHOA', qty: 560 },
-          { kind: 'currency', key: 'LINH_THACH', qty: 32_000 },
-        ],
-      },
-      {
-        key: 'do_kiep',
-        realmKey: 'do_kiep',
-        realmOrder: 9,
-        nameVi: 'Đạt Độ Kiếp',
-        reward: [
-          { kind: 'currency', key: 'TIEN_NGOC_KHOA', qty: 640 },
-          { kind: 'currency', key: 'LINH_THACH', qty: 42_000 },
-        ],
-      },
-      {
-        key: 'nhan_tien',
-        realmKey: 'nhan_tien',
-        realmOrder: 10,
-        nameVi: 'Đạt Nhân Tiên',
-        reward: [
-          { kind: 'currency', key: 'TIEN_NGOC_KHOA', qty: 800 },
-          { kind: 'currency', key: 'LINH_THACH', qty: 60_000 },
-        ],
-      },
-    ],
-  },
-] as const;
+export const GROWTH_FUND_V2_VARIANTS: readonly GrowthFundVariantDef[] =
+  GROWTH_FUND_VARIANTS_ALL.filter((v) =>
+    (GROWTH_FUND_V2_KEYS as readonly string[]).includes(v.key),
+  );
 
 export function getGrowthFundV2Variant(
   key: string,
@@ -417,6 +369,17 @@ export function getGrowthFundV2Milestone(
   const variant = getGrowthFundV2Variant(fundKey);
   if (!variant) return undefined;
   return variant.milestones.find((m) => m.key === milestoneKey);
+}
+
+/**
+ * Lookup unified Growth Fund variant — merge Phase 27.0 (`pham`) +
+ * Phase 27.1–27.5 (`tien`). Service GrowthFundService dùng helper này
+ * thay vì `getGrowthFundVariant` để hỗ trợ cả hai biến thể.
+ */
+export function getAnyGrowthFundVariant(
+  key: string,
+): GrowthFundVariantDef | undefined {
+  return getGrowthFundVariant(key) ?? getGrowthFundV2Variant(key);
 }
 
 // ─── Limited Periodic Shop ────────────────────────────────────────────────

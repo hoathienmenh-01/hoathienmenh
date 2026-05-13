@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
-  getGrowthFundVariant,
+  getAnyGrowthFundVariant,
   type GrowthFundKey,
   type GrowthFundMilestoneDef,
   type MonetizationReward,
@@ -61,7 +61,7 @@ export class GrowthFundService {
     characterId: string,
     fundKey: string,
   ): Promise<GrowthFundView | null> {
-    const variant = getGrowthFundVariant(fundKey);
+    const variant = getAnyGrowthFundVariant(fundKey);
     if (!variant) return null;
     const state = await this.prisma.growthFundState.findUnique({
       where: { characterId_fundKey: { characterId, fundKey } },
@@ -93,7 +93,7 @@ export class GrowthFundService {
   }
 
   async claimMilestone(input: ClaimGrowthFundMilestoneInput): Promise<GrowthFundView> {
-    const variant = getGrowthFundVariant(input.fundKey);
+    const variant = getAnyGrowthFundVariant(input.fundKey);
     if (!variant) {
       throw new MonetizationFoundationError('FUND_NOT_PURCHASED');
     }

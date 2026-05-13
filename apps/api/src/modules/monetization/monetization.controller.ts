@@ -25,6 +25,10 @@ import { MonetizationShopService, MonetizationFoundationError } from './monetiza
 import { SweepTicketService, ExtraAttemptService } from './sweep-attempt.service';
 import { GrowthFundService } from './growth-fund.service';
 import { PrismaService } from '../../common/prisma.service';
+import { BattlePassV2Service } from './battle-pass-v2.service';
+import { LimitedShopService } from './limited-shop.service';
+import { MonetizationOverviewService } from './monetization-overview.service';
+import { LIMITED_SHOP_KEYS } from '@xuantoi/shared';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -52,6 +56,11 @@ const GrowthFundClaimInput = z.object({
   milestoneKey: z.string().min(1).max(64),
 });
 
+const LimitedShopPurchaseInput = z.object({
+  shopKey: z.enum(LIMITED_SHOP_KEYS),
+  itemKey: z.string().min(1).max(64),
+});
+
 const WalletLedgerQuery = z.object({
   limit: z.coerce.number().int().min(1).max(200).optional(),
   currency: z.enum(WALLET_CURRENCY_KEYS).optional(),
@@ -75,6 +84,9 @@ export class MonetizationController {
     private readonly sweep: SweepTicketService,
     private readonly extraAttempt: ExtraAttemptService,
     private readonly growthFund: GrowthFundService,
+    private readonly battlePassV2: BattlePassV2Service,
+    private readonly limitedShop: LimitedShopService,
+    private readonly overviewService: MonetizationOverviewService,
     private readonly auth: AuthService,
     private readonly prisma: PrismaService,
   ) {}
@@ -259,6 +271,51 @@ export class MonetizationController {
         fundKey: parsed.data.fundKey,
         milestoneKey: parsed.data.milestoneKey,
       });
+      return { ok: true, data };
+    } catch (e) {
+      this.failFoundation(e);
+    }
+  }
+
+  // ─── Phase 27.1–27.5 — Monetization Systems V1 endpoints ──────────────
+
+  @Get('overview')
+  async overview(@Req() req: Request) {
+    const characterId = await this.requireCharacterId(req);
+    const data = await this.overviewService.overview(characterId);
+    return { ok: true, data };
+  }
+
+  @Get('battle-pass/missions')
+  async battlePassMissions(@Req() req: Request) {
+    const characterId = await this.requireCharacterId(req);
+    try {
+      const data = await this.battlePassV2.listMissions(characterId);
+      return { ok: true, data };
+    } catch (e) {
+      this.failFoundation(e);
+    }
+  }
+
+  @Get('limited-shops')
+  async listLimitedShops(@Req() req: Request) {
+    const characterId = await this.requireCharacterId(req);
+    const data = await this.limitedShop.listShops(characterId);
+    return { ok: true, data };
+  }
+
+  @Post('limited-shops/buy')
+  @HttpCode(200)
+  async buyLimitedShop(@Req() req: Request, @Body() body: unknown) {
+    const characterId = await this.requireCharacterId(req);
+    const parsed = LimitedShopPurchaseInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const data = await this.limitedShop.purchase(
+        characterId,
+        parsed.data.shopKey,
+        parsed.data.itemKey,
+      );
       return { ok: true, data };
     } catch (e) {
       this.failFoundation(e);
