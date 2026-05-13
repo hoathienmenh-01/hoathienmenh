@@ -3,6 +3,8 @@
 > Live regression report. Sections are filled in as tests run. Do **NOT** mark any row PASS without evidence.
 >
 > **Updates 2026-05-13 18:35 UTC**: Phases 1–5 executed (install, typecheck, lint, shared tests, api tests, web tests, build, Playwright full E2E `E2E_FULL=1`, selected smoke scripts). 2 small fixes shipped in this PR — see Bugs Found. Phase 4 (manual web QA) + Phase 6 (security/abuse audit) in progress.
+>
+> **Updates 2026-05-13 19:05 UTC**: Phase 4 manual web QA executed against local dev (API `:3000` + web `:5173`) with screen recording attached to PR. 7/8 cases pass, 1 finding — `QA-004` admin guard fires before auth hydration on direct URL navigation (medium severity, SPA nav works fine). Phase 6 security audit in progress.
 
 ## Test Target
 
@@ -52,7 +54,8 @@ _Updated after Phase 5._
 - **FAIL**: 0 hard failures on `main` source.
 - **FIXED in this PR**: 2 small QA-tooling fixes — see `QA-001` (flaky chat sliding-window timing) + `QA-002` (E2E `flushAuthRateLimits` key prefix drift).
 - **BLOCKED**: 0
-- **NOT TESTED (deferred)**: Manual web QA via browser (mobile 360/390/414, tablet, desktop, VI/EN, all major flows) — Phase 4 in progress. Security/abuse manual probing — Phase 6 in progress.
+- **NOT TESTED (deferred)**: Security/abuse manual probing — Phase 6 in progress.
+- **MANUAL WEB QA**: 7/8 test cases pass, 1 finding (`QA-004`) — see Phase 4 results below.
 - **OUT OF SCOPE**: PR #561 (Phase 31 Social/Retention) — draft, not merged.
 
 ## Feature Matrix
@@ -88,9 +91,9 @@ _Updated after Phase 5._
 | Social / Retention | **PASS (scoped)** | Existing on `main`: API `social/social.rate-limit.test.ts` 5 ✓, `npc-affinity/npc-relationship-chain.service.test.ts` 11 ✓, `chat-group/chat-group.service.test.ts` 20 ✓ + rate-limit 4 ✓, `chat-private/chat-private.rate-limit.test.ts` 2 ✓, `mail/mail.controller.test.ts` 24 ✓, `mail/mail-unread-count.test.ts` 7 ✓. | PR #561 Phase 31 (returner / mentor / system gift) is **draft, not merged** — NOT tested. |
 | Mail / System Gift | **PASS (mail only)** | API: `mail.controller.test.ts` 24 ✓ + `mail-unread-count.test.ts` 7 ✓. E2E: mail page loads + empty state for fresh char. | System Gift only lands with PR #561 — not in scope. |
 | Chat / Realtime | **PASS** | API: `chat/chat.service.test.ts` 9 ✓ (after `QA-001` fix), `chat/chat.controller.test.ts` 25 ✓, `chat/chat.service.ws-history.test.ts` 11 ✓, `chat-group/chat-group.service.test.ts` 20 ✓, `realtime/realtime.service.test.ts` 23 ✓. E2E: WORLD send → message renders in feed. | Rate-limit + bad-payload + reconnect covered. |
-| Mobile Responsive | pending | | Phase 4 manual web QA (360/390/414/tablet/desktop). |
-| i18n | pending | | Phase 4 web QA — VI/EN switching. Shared `i18n/social-rate-limit.test.ts` 24 ✓ confirms key parity. |
-| Security / Abuse | partial | API: `security/rate-limit.service.test.ts` 9 ✓ (Redis + fail-soft + fail-closed), `security/ip-hash.service.test.ts` 9 ✓, `auth/auth.service.test.ts` 45 ✓ (covers rate-limit per IP, banned, refresh rotate, reset token one-shot, IP isolation), `common/rate-limiter.test.ts` 14 ✓, `security-secret-leak.test.ts` 6 ✓. Server-authoritative invariants enforced by API tests (ownership, cap, ledger). | Phase 6 manual probing in progress. |
+| Mobile Responsive | **PASS** | Phase 4 manual QA at 360×740 viewport on `/pvp`: `documentElement.scrollWidth = clientWidth = bodyScrollWidth = innerWidth = 360`. No horizontal scroll, hamburger menu replaces sidebar, all CTAs tappable. Visually inspected `/home`, `/events`, `/pvp`, `/monetization`. | Phase 4 recording attached. |
+| i18n | **PASS** | Phase 4 manual QA: locale switcher button (`VI`↔`EN`) on `/pvp` page swaps every visible label ("Đạo Môn" → "Dao Mon", "Đấu Pháp" → "PvP", "Quy tắc PvP" → "PvP Policy", "Khiêu chiến" → "Challenge", "Thế trận phòng thủ" → "Defense Formation", all 30+ sidebar nav items). No interpolation leaks, no `[intlify]` warnings. Shared `i18n/social-rate-limit.test.ts` 24 ✓ confirms key parity. | |
+| Security / Abuse | partial | API: `security/rate-limit.service.test.ts` 9 ✓ (Redis + fail-soft + fail-closed), `security/ip-hash.service.test.ts` 9 ✓, `auth/auth.service.test.ts` 45 ✓ (covers rate-limit per IP, banned, refresh rotate, reset token one-shot, IP isolation), `common/rate-limiter.test.ts` 14 ✓, `security-secret-leak.test.ts` 6 ✓. Server-authoritative invariants enforced by API tests (ownership, cap, ledger). Phase 4 verified: non-admin URL nav to `/admin/control-center` is blocked with toast + redirect to `/home` — no admin payload served. | Phase 6 manual probing in progress. |
 | CI | pending | | Tracked via QA PR Actions run. `QA-001` should fix flaky `build` job. |
 
 ## Bugs Found
@@ -123,6 +126,19 @@ _Updated after Phase 5._
 - **Fixed in this PR**: **yes**. Added `ratelimit:AUTH_REGISTER:*`, `ratelimit:AUTH_LOGIN:*`, `ratelimit:AUTH_REFRESH:*`, `ratelimit:AUTH_PASSWORD_RESET:*` to `RATE_LIMIT_PATTERNS`. Kept legacy `rl:*` prefixes for backwards compat with `AuthModule`'s `REGISTER_RATE_LIMITER` / `FORGOT_PASSWORD_RATE_LIMITER` (still wired via DI; see `auth.module.ts:35`).
 - **Suggested follow-up**: also export the canonical policy list from `@xuantoi/shared` so smoke scripts (`scripts/smoke-*.mjs`) can re-use the same flusher, then add a single `pnpm flush:auth-rate-limits` CLI for local dev. Out of scope for this QA PR.
 
+### QA-004 — AdminControlCenter route guard fires before auth store hydrates on direct URL navigation
+
+- **Severity**: medium (UX bug; does NOT leak admin payload — server still enforces ADMIN role on `/api/admin/**`). Admin users cannot bookmark / hard-refresh `/admin/control-center` directly; SPA navigation via the sidebar link works fine.
+- **Area**: web — `apps/web/src/views/AdminControlCenterView.vue:228-236` `onMounted(() => { if (!isAdmin.value) { ...router.push('home') } ... })`.
+- **Steps to reproduce**:
+  1. Log in as `admin@example.com` (role=`ADMIN`).
+  2. In the address bar, type `http://localhost:5173/admin/control-center` and press Enter (hard navigation).
+- **Expected**: admin sees the Control Center page (tabs: Overview, Permissions, Reward Profiles, etc.).
+- **Actual**: red toast `"Chỉ admin được vào trang này"` (`adminControlCenter.notAdminError`) appears, immediately redirected to `/home`. The page mount fires `onMounted` synchronously before the Pinia auth store finishes hydrating from `/api/auth/me`, so `isAdmin` is still `false` when the guard runs.
+- **Evidence/log**: full-page reload to `/admin/control-center` reproduces the toast in 100% of attempts. SPA navigation by clicking the sidebar `官 Quản Trị` link to `/admin` works correctly (page renders Vai trò: ADMIN). Verified player path: non-admin user typing the same URL is correctly redirected with the same toast — the **guard logic is sound, the timing is wrong**. Screen recording attached to PR.
+- **Fixed in this PR**: **no** — borderline Phase 8 fix (small UX), but touches an admin lifecycle hook so deserves a dedicated micro-PR for review rather than mixed into a QA bundle. Documented for follow-up.
+- **Suggested follow-up**: in `AdminControlCenterView.vue` `onMounted`, `await` the auth store's hydration promise (e.g. `await authStore.ensureUserLoaded()`) before checking `isAdmin.value`. Same pattern likely needed in any other view that synchronously checks role on mount. Or move the role check into the Vue router `beforeEnter` guard (route-level) so the guard naturally awaits resolution.
+
 ### QA-003 — Smoke scripts share host IP and exhaust `AUTH_REGISTER` rate-limit when run sequentially
 
 - **Severity**: medium (does not affect production — only blocks running > 1 `smoke:*` against the same dev API/Redis without flushing between runs).
@@ -141,7 +157,7 @@ _Populated incrementally; finalised after Phase 6._
 - **Bundle splitting** — `apps/web` ships a single 2.37 MB JS chunk (gzip 432 KB). Pre-existing warning, not a regression, but worth a follow-up before closed beta to improve cold-load on mobile.
 - **No production monitoring / backup smoke** — backup scheduler tests pass in isolation; no end-to-end production drill exercised in this regression run.
 - **Smoke-script IP isolation** — documented in `QA-003`; recommend a `scripts/smoke-flush.mjs` helper before opening beta.
-- **Manual mobile + i18n + UI regression** — covered separately by Phase 4 web QA recording; rows remain `pending` until that step completes.
+- **Manual mobile + i18n + UI regression** — Phase 4 web QA complete with screen recording attached to PR. 7/8 test cases pass, 1 finding (`QA-004`).
 
 ## Final Recommendation
 
