@@ -191,6 +191,16 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/AdminCodexView.vue'),
   },
   {
+    path: '/pets',
+    name: 'pets',
+    component: () => import('@/views/PetsView.vue'),
+  },
+  {
+    path: '/admin/pets',
+    name: 'adminPets',
+    component: () => import('@/views/AdminPetsView.vue'),
+  },
+  {
     path: '/profile/:id',
     name: 'profile',
     component: () => import('@/views/ProfileView.vue'),

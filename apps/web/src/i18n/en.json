@@ -7270,6 +7270,132 @@
       "LOADOUT_PRESET_LIMIT_REACHED": "Loadout preset cap reached (20)."
     }
   },
+  "pets": {
+    "title": "Spirit Pets",
+    "tabs": {
+      "collection": "Collection",
+      "catalog": "Catalog",
+      "boxes": "Boxes",
+      "upgrade": "Upgrade",
+      "sources": "Sources",
+      "logs": "Box history"
+    },
+    "empty": "You don't own any Spirit Pets yet.",
+    "equipped": "Equipped",
+    "level": "Lv",
+    "star": "Star",
+    "rarity": "Rarity",
+    "quality": "Quality",
+    "element": "Element",
+    "evolution": "Evolution",
+    "stage": "Stage",
+    "shards": "Shards",
+    "skills": "Skills",
+    "noSkill": "No skills learned.",
+    "actions": {
+      "equip": "Equip",
+      "unequip": "Unequip",
+      "lock": "Lock",
+      "unlock": "Unlock",
+      "rename": "Rename",
+      "feed": "Feed",
+      "starUp": "Star up",
+      "breakthrough": "Breakthrough",
+      "evolve": "Evolve",
+      "upgradeSkill": "Upgrade skill",
+      "open": "Open x1",
+      "openTen": "Open x10",
+      "openConfirm": "Open this box?"
+    },
+    "renamePrompt": "Enter new name (3-20 chars):",
+    "boxes": {
+      "rates": "Drop rates",
+      "pity": "Pity guarantee",
+      "totalOpens": "Total opens",
+      "sinceRare": "Since last Rare",
+      "sinceEpic": "Since last Epic",
+      "sinceLegendary": "Since last Legendary",
+      "sinceMythic": "Since last Mythic",
+      "cost": "Cost",
+      "openResult": "Open result",
+      "premium": "Premium",
+      "eventLimited": "Event"
+    },
+    "result": {
+      "pet": "Spirit Pet",
+      "shard": "Pet shard",
+      "material": "Material",
+      "ticketRefund": "Ticket refund"
+    },
+    "snapshot": {
+      "title": "Combat snapshot",
+      "pvpClamp": "PvP clamped",
+      "bossClamp": "Boss clamped",
+      "capPercent": "Contribution cap",
+      "effectMul": "Effect multiplier"
+    },
+    "snapshotContexts": {
+      "PVE": "PvE",
+      "PVP": "PvP",
+      "BOSS": "Boss",
+      "DUNGEON": "Dungeon",
+      "SECRET_REALM": "Secret realm"
+    },
+    "sourceList": "Free / event / dungeon sources",
+    "logs": {
+      "empty": "No box opens yet.",
+      "pity": "Pity",
+      "rate": "Rate version"
+    },
+    "errors": {
+      "PET_NOT_OWNED": "You don't own this pet.",
+      "PET_NOT_FOUND": "Pet not found.",
+      "PET_LOCKED": "Pet is locked; unlock first.",
+      "PET_NAME_TOO_SHORT": "Name too short (min 3).",
+      "PET_NAME_TOO_LONG": "Name too long (max 40).",
+      "PET_NAME_INVALID_CHARS": "Name contains invalid characters.",
+      "PET_BOX_UNKNOWN": "Unknown box.",
+      "PET_COST_INSUFFICIENT": "Insufficient cost.",
+      "PET_SHARD_INSUFFICIENT": "Not enough shards.",
+      "PET_MAT_INSUFFICIENT": "Not enough materials.",
+      "PET_MAX_LEVEL": "Pet has reached the current max level.",
+      "PET_NOT_AT_BREAKTHROUGH_GATE": "Not at a breakthrough gate.",
+      "PET_MAX_STAR": "Pet has reached max star.",
+      "PET_MAX_EVOLUTION": "Pet has fully evolved.",
+      "PET_SKILL_NOT_OWNED": "Pet doesn't own this skill.",
+      "PET_SKILL_MAX_LEVEL": "Skill at max level."
+    }
+  },
+  "adminPets": {
+    "title": "Pet Admin",
+    "tabs": {
+      "audit": "Catalog audit",
+      "character": "By character",
+      "logs": "Box logs",
+      "grant": "Grant pet"
+    },
+    "characterIdPlaceholder": "Character ID",
+    "noIssues": "No issues.",
+    "actions": {
+      "audit": "Audit",
+      "load": "Load",
+      "grant": "Grant",
+      "shardGrant": "Grant shards",
+      "revoke": "Revoke",
+      "adjust": "Adjust",
+      "pityReset": "Reset pity"
+    },
+    "form": {
+      "petKey": "Pet key",
+      "amount": "Amount",
+      "reason": "Reason",
+      "level": "Level",
+      "star": "Star",
+      "evolution": "Evolution stage",
+      "boxKey": "Box key",
+      "poolKey": "Pool key (optional)"
+    }
+  },
   "webPush": {
     "title": "Push notifications",
     "subtitle": "Receive notifications even when the game is closed. You can opt out anytime.",

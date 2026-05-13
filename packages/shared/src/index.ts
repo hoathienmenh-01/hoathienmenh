@@ -150,3 +150,9 @@ export * from './onboarding-7-day';
 
 // ─── Phase 42.0 — Visual Effects, Combat Feedback, Item Aura V1 ────────────
 export * from './visual-effects';
+
+// ─── Phase 35.0 — Pet / Linh Thú Full System ───────────────────────────────
+export * from './pets';
+export * from './pet-items';
+export * from './pet-boxes';
+export * from './pet-sources';
