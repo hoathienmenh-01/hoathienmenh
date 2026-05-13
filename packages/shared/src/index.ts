@@ -133,3 +133,6 @@ export * from './admin-mail';
 // ─── Phase 33.0 — Tu Tiên Lộ Story Quest Expansion V2 / Quyển II–IV ────────
 export * from './story-chapters-quyen-ii-iv';
 export * from './story-quest-expansion';
+
+// ─── Phase 42.0 — Visual Effects, Combat Feedback, Item Aura V1 ────────────
+export * from './visual-effects';
