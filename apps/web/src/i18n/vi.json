@@ -6798,7 +6798,15 @@
       "landingPage": "Trang vào mặc định",
       "timezone": "Múi giờ",
       "showCombatLogDetail": "Hiện log chiến đấu",
-      "showSystemTips": "Hiện gợi ý cảnh giới"
+      "showSystemTips": "Hiện gợi ý cảnh giới",
+      "visualEffectLevel": "Mức hiệu ứng hình ảnh",
+      "showFloatingCombatText": "Hiện damage popup",
+      "showRareDropPopup": "Hiện popup rớt đồ hiếm",
+      "showBossWarning": "Hiện cảnh báo boss",
+      "showBreakthroughEffect": "Hiện hiệu ứng đột phá",
+      "showCraftingEffect": "Hiện hiệu ứng luyện đan/chế tạo",
+      "showItemAura": "Hiện aura quanh trang bị",
+      "showStatusEffectBar": "Hiện thanh trạng thái buff/debuff"
     },
     "appearance": {
       "light": "Sáng",
@@ -6825,6 +6833,72 @@
       "PLAYER_SETTINGS_PAYLOAD_TOO_LARGE": "Cài đặt quá lớn.",
       "NO_CHARACTER": "Bạn chưa có nhân vật.",
       "UNAUTHENTICATED": "Vui lòng đăng nhập lại."
+    }
+  },
+  "visualEffects": {
+    "title": "Hiệu ứng & Cảm giác chiến đấu",
+    "subtitle": "Cấu hình hiệu ứng hình ảnh không ảnh hưởng cân bằng.",
+    "level": {
+      "OFF": "Tắt",
+      "LOW": "Thấp",
+      "MEDIUM": "Vừa",
+      "HIGH": "Cao"
+    },
+    "reducedMotionHint": "Khi bật \"Giảm chuyển động\" hệ thống sẽ tự hạ xuống mức Thấp.",
+    "preview": {
+      "title": "Xem trước hiệu ứng",
+      "subtitle": "Sandbox đọc-only — không ảnh hưởng dữ liệu thật.",
+      "sections": {
+        "floatingText": "Damage popup",
+        "statusEffects": "Buff/Debuff",
+        "itemAura": "Aura trang bị",
+        "rareDrop": "Popup đồ hiếm",
+        "boss": "Cảnh báo boss",
+        "breakthrough": "Đột phá",
+        "crafting": "Luyện chế",
+        "queue": "Queue manager"
+      },
+      "playSample": "Chạy mẫu",
+      "clear": "Xoá",
+      "queueState": "Trạng thái queue",
+      "settingsHint": "Mức hiện tại: {level} (reducedMotion: {reduce})"
+    },
+    "rareDrop": {
+      "headline": "Vật phẩm hiếm rơi ra",
+      "source": "Nguồn: {source}"
+    },
+    "boss": {
+      "BOSS_APPEAR": "Boss xuất hiện",
+      "BOSS_WARNING": "Cảnh báo",
+      "BOSS_CHARGING": "Đang tích lực",
+      "BOSS_ENRAGE": "Phẫn nộ",
+      "BOSS_SHIELD": "Khiên",
+      "BOSS_HEALING": "Hồi máu",
+      "BOSS_LOW_HP": "Sắp tử",
+      "BOSS_DEFEATED": "Bị hạ"
+    },
+    "breakthrough": {
+      "success": "Đột phá thành công!",
+      "failed": "Đột phá thất bại",
+      "body": "Luyện thể đột phá"
+    },
+    "crafting": {
+      "ALCHEMY_SUCCESS": "Luyện đan thành công",
+      "ALCHEMY_FAIL": "Luyện đan thất bại",
+      "ALCHEMY_HIGH_QUALITY": "Đan dược thượng phẩm",
+      "DAN_VAN_APPEAR": "Đan vân hiển hiện",
+      "CRAFT_SUCCESS": "Chế tạo thành công",
+      "CRAFT_FAIL": "Chế tạo thất bại",
+      "ARTIFACT_AWAKEN": "Pháp bảo thức tỉnh"
+    },
+    "status": {
+      "buff": "Buff",
+      "debuff": "Debuff",
+      "stacks": "Lớp"
+    },
+    "accessibility": {
+      "reducedMotion": "Đang dùng chế độ giảm chuyển động.",
+      "live": "Khu vực thông báo trực tiếp"
     }
   }
 }

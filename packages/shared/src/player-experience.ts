@@ -42,6 +42,20 @@ export const LANDING_PAGE_VALUES = [
 ] as const;
 export type LandingPage = (typeof LANDING_PAGE_VALUES)[number];
 
+/**
+ * Phase 42.0 — Visual effect motion level cho PlayerSettings.
+ *
+ * Cứ "OFF" → tắt mọi animation, fallback static. "LOW" → chỉ effect
+ * nhẹ. "MEDIUM" (mặc định) → cần thiết. "HIGH" → đầy đủ.
+ */
+export const VISUAL_EFFECT_LEVEL_VALUES = [
+  'OFF',
+  'LOW',
+  'MEDIUM',
+  'HIGH',
+] as const;
+export type VisualEffectLevel = (typeof VISUAL_EFFECT_LEVEL_VALUES)[number];
+
 /** Player Settings hard limits / default. */
 export const PLAYER_SETTINGS_LIMITS = {
   /** Cap JSON size để tránh blow-up DB row. */
@@ -65,6 +79,26 @@ export interface PlayerSettings {
   timezone: string | null;
   /** Notification preferences (per Phase 31 NotificationType key). */
   notificationPreferencesJson: Record<string, boolean>;
+  /**
+   * Phase 42.0 — Visual effect master level. OFF tắt mọi animation;
+   * tuân thủ `reduceMotion` cũ — nếu reduceMotion=true, runtime override
+   * mọi mức về LOW max.
+   */
+  visualEffectLevel: VisualEffectLevel;
+  /** Phase 42.0 — Hiện floating combat text (damage/heal/miss popup). */
+  showFloatingCombatText: boolean;
+  /** Phase 42.0 — Hiện rare drop popup khi loot rare ≥ RARE. */
+  showRareDropPopup: boolean;
+  /** Phase 42.0 — Hiện boss warning banner. */
+  showBossWarning: boolean;
+  /** Phase 42.0 — Hiện breakthrough/đột phá banner. */
+  showBreakthroughEffect: boolean;
+  /** Phase 42.0 — Hiện crafting/alchemy result banner. */
+  showCraftingEffect: boolean;
+  /** Phase 42.0 — Bật item aura frame ở inventory/item cards. */
+  showItemAura: boolean;
+  /** Phase 42.0 — Bật status effect bar trong combat HUD. */
+  showStatusEffectBar: boolean;
 }
 
 export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = Object.freeze({
@@ -81,6 +115,15 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = Object.freeze({
   numberFormat: 'FULL',
   timezone: null,
   notificationPreferencesJson: {},
+  // Phase 42.0 — visual effect prefs (default MEDIUM, mọi toggle bật).
+  visualEffectLevel: 'MEDIUM',
+  showFloatingCombatText: true,
+  showRareDropPopup: true,
+  showBossWarning: true,
+  showBreakthroughEffect: true,
+  showCraftingEffect: true,
+  showItemAura: true,
+  showStatusEffectBar: true,
 });
 
 export interface PlayerSettingsRow {
@@ -183,6 +226,16 @@ export function validatePlayerSettings(
   pickBoolean('showCombatLogDetail');
   pickBoolean('showFarmLogDetail');
   pickBoolean('showSystemTips');
+
+  // Phase 42.0 — visual effect fields
+  pickEnum('visualEffectLevel', VISUAL_EFFECT_LEVEL_VALUES);
+  pickBoolean('showFloatingCombatText');
+  pickBoolean('showRareDropPopup');
+  pickBoolean('showBossWarning');
+  pickBoolean('showBreakthroughEffect');
+  pickBoolean('showCraftingEffect');
+  pickBoolean('showItemAura');
+  pickBoolean('showStatusEffectBar');
 
   if (raw.timezone !== undefined) {
     if (raw.timezone === null) {

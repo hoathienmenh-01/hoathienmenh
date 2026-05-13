@@ -6798,7 +6798,15 @@
       "landingPage": "Landing page",
       "timezone": "Timezone",
       "showCombatLogDetail": "Show combat log",
-      "showSystemTips": "Show realm tooltips"
+      "showSystemTips": "Show realm tooltips",
+      "visualEffectLevel": "Visual effect level",
+      "showFloatingCombatText": "Show damage popups",
+      "showRareDropPopup": "Show rare drop popup",
+      "showBossWarning": "Show boss warnings",
+      "showBreakthroughEffect": "Show breakthrough banner",
+      "showCraftingEffect": "Show alchemy/craft banner",
+      "showItemAura": "Show item aura frame",
+      "showStatusEffectBar": "Show buff/debuff status bar"
     },
     "appearance": {
       "light": "Light",
@@ -6825,6 +6833,72 @@
       "PLAYER_SETTINGS_PAYLOAD_TOO_LARGE": "Settings payload too large.",
       "NO_CHARACTER": "You do not have a character yet.",
       "UNAUTHENTICATED": "Please log in again."
+    }
+  },
+  "visualEffects": {
+    "title": "Effects & Combat Feedback",
+    "subtitle": "Configure presentation-only visual effects — no balance impact.",
+    "level": {
+      "OFF": "Off",
+      "LOW": "Low",
+      "MEDIUM": "Medium",
+      "HIGH": "High"
+    },
+    "reducedMotionHint": "While Reduce Motion is on, the system clamps to Low.",
+    "preview": {
+      "title": "Effect Preview",
+      "subtitle": "Read-only sandbox — does not affect live data.",
+      "sections": {
+        "floatingText": "Damage popups",
+        "statusEffects": "Buffs/Debuffs",
+        "itemAura": "Item aura",
+        "rareDrop": "Rare drop popup",
+        "boss": "Boss warnings",
+        "breakthrough": "Breakthrough",
+        "crafting": "Crafting",
+        "queue": "Queue manager"
+      },
+      "playSample": "Play sample",
+      "clear": "Clear",
+      "queueState": "Queue state",
+      "settingsHint": "Current level: {level} (reducedMotion: {reduce})"
+    },
+    "rareDrop": {
+      "headline": "Rare item drop",
+      "source": "From: {source}"
+    },
+    "boss": {
+      "BOSS_APPEAR": "Boss appears",
+      "BOSS_WARNING": "Warning",
+      "BOSS_CHARGING": "Charging",
+      "BOSS_ENRAGE": "Enraged",
+      "BOSS_SHIELD": "Shielded",
+      "BOSS_HEALING": "Healing",
+      "BOSS_LOW_HP": "Low HP",
+      "BOSS_DEFEATED": "Defeated"
+    },
+    "breakthrough": {
+      "success": "Breakthrough successful!",
+      "failed": "Breakthrough failed",
+      "body": "Body cultivation breakthrough"
+    },
+    "crafting": {
+      "ALCHEMY_SUCCESS": "Alchemy succeeded",
+      "ALCHEMY_FAIL": "Alchemy failed",
+      "ALCHEMY_HIGH_QUALITY": "High-quality pill",
+      "DAN_VAN_APPEAR": "Pill mark manifested",
+      "CRAFT_SUCCESS": "Craft succeeded",
+      "CRAFT_FAIL": "Craft failed",
+      "ARTIFACT_AWAKEN": "Artifact awakened"
+    },
+    "status": {
+      "buff": "Buff",
+      "debuff": "Debuff",
+      "stacks": "Stacks"
+    },
+    "accessibility": {
+      "reducedMotion": "Reduce-motion mode is active.",
+      "live": "Live announcement region"
     }
   }
 }

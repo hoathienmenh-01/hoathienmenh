@@ -9,6 +9,7 @@ import { changePassword, logoutAll } from '@/api/auth';
 import { setLocale, type LocaleKey } from '@/i18n';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import EffectSettingsPanel from '@/components/visual-effects/EffectSettingsPanel.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import ConfirmModal from '@/components/ui/ConfirmModal.vue';
 import {
@@ -359,6 +360,12 @@ function changeLocale(value: string): void {
             />
             <span>{{ t('playerSettings.fields.showSystemTips') }}</span>
           </label>
+          <EffectSettingsPanel
+            :settings="playerSettings"
+            :loading="playerSettingsLoading"
+            :saving="playerSettingsSaving"
+            @patch="savePlayerSettings"
+          />
           <div class="pt-2">
             <button
               :disabled="playerSettingsSaving"

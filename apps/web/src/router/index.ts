@@ -337,6 +337,12 @@ const routes: RouteRecordRaw[] = [
     name: 'admin-reports',
     component: () => import('@/views/AdminReportsView.vue'),
   },
+  // Phase 42.0 — Visual effects developer preview lab.
+  {
+    path: '/dev/effects-preview',
+    name: 'dev-effects-preview',
+    component: () => import('@/views/EffectsPreviewView.vue'),
+  },
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
