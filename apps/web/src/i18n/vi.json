@@ -7145,5 +7145,177 @@
       "ONBOARDING_TASK_NOT_COMPLETED": "Cần hoàn thành nhiệm vụ trước khi lĩnh thưởng.",
       "ONBOARDING_TASK_ALREADY_CLAIMED": "Phần thưởng đã được lĩnh."
     }
+  },
+  "encounter": {
+    "title": "Kỳ Ngộ",
+    "subtitle": "Mỗi ngày một sự kiện ngẫu nhiên — đón hay bỏ tuỳ duyên.",
+    "loading": "Đang tải kỳ ngộ…",
+    "accept": "Đón nhận",
+    "complete": "Hoàn tất",
+    "skip": "Bỏ qua",
+    "claim": "Lĩnh thưởng",
+    "claimToast": "Đã lĩnh — +{linhThach} LT · +{exp} EXP.",
+    "status": {
+      "AVAILABLE": "Khả dụng",
+      "ACCEPTED": "Đã đón",
+      "COMPLETED": "Đã hoàn thành",
+      "CLAIMED": "Đã lĩnh",
+      "SKIPPED": "Đã bỏ qua"
+    },
+    "rarity": {
+      "common": "Phổ thông",
+      "uncommon": "Hiếm",
+      "rare": "Trân quý",
+      "hidden": "Ẩn"
+    },
+    "reward": {
+      "linhThach": "LT",
+      "exp": "EXP"
+    },
+    "error": {
+      "UNKNOWN_ERROR": "Lỗi không xác định.",
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "ENCOUNTER_NOT_FOUND": "Không tìm thấy kỳ ngộ hôm nay.",
+      "ENCOUNTER_CATALOG_MISSING": "Catalog kỳ ngộ thiếu định nghĩa.",
+      "ENCOUNTER_NOT_COMPLETED": "Cần hoàn thành trước khi lĩnh thưởng.",
+      "ENCOUNTER_FROZEN": "Kỳ ngộ đã đóng.",
+      "ENCOUNTER_HAS_NO_CHOICES": "Kỳ ngộ không có lựa chọn.",
+      "ENCOUNTER_CHOICE_INVALID": "Lựa chọn không hợp lệ."
+    }
+  },
+  "secretRealm": {
+    "title": "Bí Cảnh",
+    "subtitle": "Các cảnh giới ẩn — thí luyện và thu hoạch.",
+    "loading": "Đang tải bí cảnh…",
+    "enter": "Vào bí cảnh",
+    "complete": "Hoàn thành",
+    "claim": "Lĩnh thưởng",
+    "markObjective": "Đánh dấu hoàn thành",
+    "requiredRealm": "Cần cấp #{n}",
+    "claimToast": "Đã lĩnh — +{linhThach} LT · +{exp} EXP.",
+    "gate": {
+      "LOCKED": "Khoá",
+      "AVAILABLE": "Mở"
+    },
+    "status": {
+      "ENTERED": "Đang khám phá",
+      "CLEARED": "Đã thông quan",
+      "CLAIMED": "Đã lĩnh thưởng",
+      "EXPIRED": "Hết hạn"
+    },
+    "reward": {
+      "linhThach": "LT",
+      "exp": "EXP"
+    },
+    "error": {
+      "UNKNOWN_ERROR": "Lỗi không xác định.",
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "SECRET_REALM_NOT_FOUND": "Bí cảnh không tồn tại.",
+      "SECRET_REALM_REALM_LOCKED": "Chưa đủ cảnh giới.",
+      "SECRET_REALM_RUN_ACTIVE": "Đang có lượt thi luyện chưa kết thúc.",
+      "SECRET_REALM_RUN_NOT_FOUND": "Lượt thi luyện không tồn tại.",
+      "SECRET_REALM_NOT_CLEARED": "Cần thông quan trước khi lĩnh thưởng.",
+      "SECRET_REALM_OBJECTIVE_INVALID": "Mục tiêu không tồn tại.",
+      "SECRET_REALM_OBJECTIVES_INCOMPLETE": "Chưa đạt đủ mục tiêu.",
+      "SECRET_REALM_COOLDOWN": "Đang trong thời gian hồi."
+    }
+  },
+  "loadoutPreset": {
+    "title": "Preset Trang Bị",
+    "subtitle": "Lưu và áp dụng nhanh bộ trang bị PvE / PvP / Boss.",
+    "loading": "Đang tải preset…",
+    "saveCurrent": "Lưu cấu hình hiện tại",
+    "apply": "Áp dụng",
+    "validate": "Kiểm tra",
+    "delete": "Xoá",
+    "noPreset": "Chưa có preset cho loại này.",
+    "namePlaceholder": "Tên preset (≤32 ký tự)",
+    "slotCount": "{n} ô trang bị",
+    "savedToast": "Đã lưu preset.",
+    "appliedToast": "Đã áp dụng {applied} ô (bỏ qua {skipped}).",
+    "validateOk": "Preset hợp lệ.",
+    "validateFail": "Preset không hợp lệ: {code}.",
+    "presetType": {
+      "PVE": "PvE",
+      "PVP": "PvP",
+      "BOSS": "Boss",
+      "CULTIVATION": "Tu luyện",
+      "CUSTOM": "Tuỳ biến"
+    },
+    "slot": {
+      "WEAPON": "Vũ khí",
+      "ARMOR": "Giáp",
+      "BELT": "Đai",
+      "BOOTS": "Hài",
+      "HAT": "Quan",
+      "TRAM": "Trâm",
+      "ARTIFACT_1": "Pháp bảo I",
+      "ARTIFACT_2": "Pháp bảo II",
+      "ARTIFACT_3": "Pháp bảo III"
+    },
+    "error": {
+      "UNKNOWN_ERROR": "Lỗi không xác định.",
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "LOADOUT_PRESET_NOT_FOUND": "Preset không tồn tại.",
+      "LOADOUT_PRESET_TYPE_EXISTS": "Loại preset đã tồn tại.",
+      "LOADOUT_PRESET_LIMIT_REACHED": "Đã đạt giới hạn preset.",
+      "LOADOUT_PRESET_NAME_EMPTY": "Tên không được trống.",
+      "LOADOUT_PRESET_NAME_TOO_LONG": "Tên quá 32 ký tự.",
+      "LOADOUT_PRESET_SLOT_DUPLICATE": "Có ô trang bị trùng.",
+      "LOADOUT_PRESET_APPLY_FAILED": "Áp dụng thất bại."
+    }
+  },
+  "inventoryAutoSort": {
+    "title": "Túi Đồ — Tự Sắp / Khoá",
+    "subtitle": "Lọc, sắp xếp và khoá hàng loạt.",
+    "loading": "Đang tải…",
+    "empty": "Không có vật phẩm nào khớp bộ lọc.",
+    "searchPlaceholder": "Tìm theo tên / itemKey…",
+    "applyFilters": "Áp dụng",
+    "selected": "Đã chọn {n}",
+    "bulkLock": "Khoá lựa chọn",
+    "bulkUnlock": "Mở khoá lựa chọn",
+    "clearSelection": "Bỏ chọn",
+    "bulkLockedToast": "Đã khoá {n} vật phẩm.",
+    "bulkUnlockedToast": "Đã mở khoá {n} vật phẩm.",
+    "counts": "{filtered} / {total} vật phẩm",
+    "sort": {
+      "default": "Mặc định",
+      "quality_desc": "Phẩm chất ↓",
+      "quality_asc": "Phẩm chất ↑",
+      "kind": "Loại",
+      "equipped_first": "Đang trang bị trước",
+      "locked_first": "Đã khoá trước",
+      "newest": "Mới nhất",
+      "oldest": "Cũ nhất"
+    },
+    "bucket": {
+      "all": "Tất cả",
+      "equipment": "Trang bị",
+      "artifact": "Pháp bảo",
+      "consumable": "Tiêu hao",
+      "material": "Vật liệu",
+      "skill_book": "Sách kỹ năng",
+      "quest": "Nhiệm vụ",
+      "locked": "Đã khoá"
+    },
+    "slot": {
+      "WEAPON": "Vũ khí",
+      "ARMOR": "Giáp",
+      "BELT": "Đai",
+      "BOOTS": "Hài",
+      "HAT": "Quan",
+      "TRAM": "Trâm",
+      "ARTIFACT_1": "Pháp bảo I",
+      "ARTIFACT_2": "Pháp bảo II",
+      "ARTIFACT_3": "Pháp bảo III"
+    },
+    "error": {
+      "UNKNOWN_ERROR": "Lỗi không xác định.",
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "INVALID_INPUT": "Tham số không hợp lệ.",
+      "INVENTORY_ITEM_NOT_FOUND": "Vật phẩm không tồn tại.",
+      "INVENTORY_ITEM_LOCKED": "Vật phẩm đang bị khoá."
+    }
   }
 }

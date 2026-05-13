@@ -288,6 +288,30 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/OnboardingQuestView.vue'),
   },
   {
+    // Phase 34.1 — Daily Random Encounter / Kỳ Ngộ.
+    path: '/encounter',
+    name: 'encounter',
+    component: () => import('@/views/EncounterView.vue'),
+  },
+  {
+    // Phase 34.2 — Secret Realm / Bí Cảnh.
+    path: '/secret-realm',
+    name: 'secret-realm',
+    component: () => import('@/views/SecretRealmView.vue'),
+  },
+  {
+    // Phase 34.3 — Inventory Auto-sort & Lock.
+    path: '/inventory-auto-sort',
+    name: 'inventory-auto-sort',
+    component: () => import('@/views/InventoryAutoSortView.vue'),
+  },
+  {
+    // Phase 34.4 — Loadout Preset.
+    path: '/loadout-preset',
+    name: 'loadout-preset',
+    component: () => import('@/views/LoadoutPresetView.vue'),
+  },
+  {
     path: '/social',
     name: 'social',
     component: () => import('@/views/SocialView.vue'),
