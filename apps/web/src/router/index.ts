@@ -358,6 +358,13 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/AdminReportsView.vue'),
   },
   {
+    // Phase 43 — Admin System Status (health + version + recent errors +
+    // integrity last-run, read-only).
+    path: '/admin/system-status',
+    name: 'admin-system-status',
+    component: () => import('@/views/AdminSystemStatusView.vue'),
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/views/NotFoundView.vue'),

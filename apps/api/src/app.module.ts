@@ -63,6 +63,7 @@ import { PvpModule } from './modules/pvp/pvp.module';
 import { MarketV2Module } from './modules/market-v2/market-v2.module';
 import { CodexModule } from './modules/codex/codex.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
+import { SystemStatusModule } from './modules/system-status/system-status.module';
 import { ArenaModule } from './modules/arena/arena.module';
 import { ArenaAntiWintradeAdminModule } from './modules/arena-anti-wintrade-admin/arena-anti-wintrade-admin.module';
 import { BackupModule } from './modules/backup/backup.module';
@@ -238,6 +239,11 @@ import { PlayerNavigationModule } from './modules/player-navigation/player-navig
     // Phase 17.5 — Metrics endpoint (admin-only) + collectors. SAU
     // AdminModule + RealtimeModule (đã imported indirectly).
     MetricsModule,
+    // Phase 43 — System Status admin endpoints (read-only ops dashboard:
+    // health snapshot + recent SecurityEvent + integrity last-run). SAU
+    // AdminModule (cần AdminGuard) + AuthModule. KHÔNG tạo bảng mới —
+    // reuse SecurityEvent + AdminAuditLog.
+    SystemStatusModule,
     // Phase 14.1.B — Async Arena Foundation. Standalone module (chỉ
     // depend AuthModule + PrismaService). Không cycle với
     // CharacterModule.
