@@ -77,8 +77,50 @@ Player giờ có thể kill placeholder qua `DungeonRunService.nextEncounter` (`
 | 2 | `truc_co` | `truc_co_main_01` Trúc Đạo Cơ | 4/4 | 4/4 | Lăng Vân Sinh, Mộc Thanh Y, Tô Nguyệt Ly | 2026-05-05 | PR-1 + PR-2 |
 | 3 | `kim_dan` | `kim_dan_main_01` Kết Đan Phong Ba | 4/4 (realm/sect/grind/npc) | catalog-only (PR-2/3 runtime auto-pick) | Lăng Vân Sinh, Mộc Thanh Y, Huyết La Sát | 2026-05-05 | Story Foundation Extension |
 | 4 | `nguyen_anh` | `nguyen_anh_main_01` Nguyên Anh Vấn Tâm | 4/4 | catalog-only (PR-2/3 runtime auto-pick) | Lăng Vân Sinh, Mộc Thanh Y, Huyết La Sát | 2026-05-05 | Story Foundation Extension |
+| 9..27 | `do_kiep` → `hu_khong_chi_ton` | 5 main/chap × 19 chap (`q_ch09_main_01` … `q_ch27_main_05`) | 3 side + 1 hidden + 1 daily + 1 weekly per chap (catalog only) | catalog-only (no runtime wiring trong PR này — chỉ Phase 33 catalog foundation) | xem §4 cho 7 NPC mới Quyển II–IV + reuse NPC Phase 21 | 2026-05-13 | Phase 33.0 Story Quest Expansion V2 |
 
-**Runtime status**: catalog (PR-1 #425) + persistence (PR-2 #426 — `QuestProgress` Prisma + `QuestService.list/accept/progress/track`) + claim (PR-3 — `QuestService.claim` + `CurrencyLedger`/`ItemLedger` rows) DONE.
+**Runtime status**: catalog (PR-1 #425) + persistence (PR-2 #426 — `QuestProgress` Prisma + `QuestService.list/accept/progress/track`) + claim (PR-3 — `QuestService.claim` + `CurrencyLedger`/`ItemLedger` rows) DONE. **Phase 33 (this PR) catalog-only — runtime wiring nằm ở PR tiếp theo (Phase 33.1).**
+
+### Phase 33.0 — Quyển II–IV catalog snapshot (2026-05-13)
+
+19 chương spanning realm order 9..27:
+
+| Quyển | Chương | Tên | Realm | Theme |
+|---|---|---|---|---|
+| II | Ch9 | Cửu Trọng Thiên Kiếp | do_kiep (9) | Vượt 9 thiên kiếp, mở Tiên Giới |
+| II | Ch10 | Phi Thăng Doanh | nhan_tien (10) | Lao tù Tiên Đình, route tự do |
+| II | Ch11 | Tiểu Tiên Mạch | dia_tien (11) | Tranh mạch tiên thạch + Tiểu Tiên Hội |
+| II | Ch12 | Thiên Môn Khai Mở | thien_tien (12) | Mở Thiên Môn, phong ấn Vô Đạo Chung |
+| II | Ch13 | Sử Sách Bị Niêm Phong | huyen_tien (13) | Mở thư viện Tiên Sử, sự thật Hoa Thiên |
+| II | Ch14 | Kim Thân Lập Vị | kim_tien (14) | Đúc Kim Thân tiên gia + Pháp Bảo Đỉnh |
+| II | Ch15 | Thái Ất Tranh Pháp | thai_at_kim_tien (15) | Đại hội tranh pháp tiên giới, leaderboard |
+| II | Ch16 | Đại La Bất Diệt | dai_la_kim_tien (16) | Mở Đại La cảnh, foundation Đạo Vực |
+| III | Ch17 | Trảm Tam Niệm | chuan_thanh (17) | Trảm Quá Khứ / Hiện Tại / Vị Lai niệm |
+| III | Ch18 | Lập Đạo | thanh_nhan (18) | Đạo hiệu + Tín Ngưỡng + Thánh Kiếp |
+| III | Ch19 | Hỗn Nguyên Quy Nhất | hon_nguyen (19) | Hỗn Nguyên Chi Hải + hợp pháp tắc |
+| III | Ch20 | Một Đạo Vực, Vạn Sinh Linh | dao_quan (20) | Mở Đạo Vực Hoa Thiên + chọn luật mềm/sắt |
+| III | Ch21 | Ta Là Trời Hay Trời Là Ta | thien_dao (21) | Đối đầu Thiên Đạo Bản Ngã + Tịch Thiên |
+| IV | Ch22 | Vào Bản Nguyên Hải | ban_nguyen (22) | Nguyên Linh Nữ + Đạo Liên Hoa Thiên evo |
+| IV | Ch23 | Huyền Huyền Đối Vấn | huyen_huyen (23) | Huyền Huyền Cổ Bi + chất vấn đạo |
+| IV | Ch24 | Vô Thủy Vọng Khởi | vo_thuy (24) | Thời Gian Luân Hải + khởi đầu thật |
+| IV | Ch25 | Vô Chung Chiến Trường | vo_chung (25) | Vô Chung Chi Môn + thư tương lai |
+| IV | Ch26 | Vĩnh Hằng Khắc Tự | vinh_hang (26) | Bia Vĩnh Hằng + ending flags |
+| IV | Ch27 | Hoa Thiên Nở Trong Hư Không | hu_khong_chi_ton (27) | Hư Không Ngoại Vực + endgame routes |
+
+**Quest count per chap**: 5 main + 3 side + 1 hidden + 1 daily + 1 weekly = 11 quest/chap → 209 quest Phase 33.
+
+**Reward cap policy** (LinhThach, per-quest):
+
+| Quyển | main | side | hidden | daily | weekly | exp |
+|---|---|---|---|---|---|---|
+| II | 4 000 | 1 800 | 2 500 | 350 | 1 500 | 4 500 |
+| III | 7 500 | 3 200 | 4 500 | 600 | 2 800 | 8 500 |
+| IV | 12 000 | 5 500 | 7 500 | 1 000 | 4 500 | 14 000 |
+
+**Catalog files**:
+- `packages/shared/src/story-chapters-quyen-ii-iv.ts` — 19 `Phase33ChapterDef` + 3 `Phase33VolumeDef` + 5 helpers.
+- `packages/shared/src/story-quest-expansion.ts` — 209 `Phase33QuestDef` + reward cap policy + 10 helpers.
+- `packages/shared/src/story-quest-expansion.test.ts` — 38 integrity tests.
 
 (Chuẩn bị để track 28 cảnh giới Phàm Nhân → Hư Không Chí Tôn — danh sách đầy đủ ở [`./TU_TIEN_LO_STORY_BIBLE.md`](./TU_TIEN_LO_STORY_BIBLE.md) §9.1.)
 
@@ -93,10 +135,17 @@ Player giờ có thể kill placeholder qua `DungeonRunService.nextEncounter` (`
 | Hàn Dạ | huyen_kiem_tong | 1 (luyenkhi) | 1 line (default rivalry) | Done ✅ (PR-4) | 1 quest (`luyenkhi_npc_01`) | 2026-05-05 | PR-1 + PR-4 |
 | Tô Nguyệt Ly | null (lưu đày) | 2 (truc_co) | 1 line (default hidden) | Done ✅ (PR-4) | 1 quest (`truc_co_npc_01`) | 2026-05-05 | PR-1 + PR-4 |
 | Huyết La Sát | huyet_ha_ma_tong | 3 (kim_dan) | 1 line (default ma đạo) | catalog-only (auto-pick UI sau merge) | 2 quest (`kim_dan_npc_01` + `nguyen_anh_npc_01`) | 2026-05-05 | Story Foundation Extension |
+| Lục Bình | wandering | 9 (do_kiep) | 1 line default + 1 phase33 seed | catalog-only | catalog reference (Ch10 main NPC) | 2026-05-13 | Phase 33.0 |
+| Tịch Thiên Thánh Sứ | tich_thien_dien | 16 (dai_la_kim_tien) | 1 line default + 1 phase33 seed | catalog-only | catalog reference (Ch16/Ch21/Ch25 antagonist) | 2026-05-13 | Phase 33.0 |
+| Đạo Vực Chi Tâm | hoa_thien_mon | 19 (hon_nguyen) | 1 line default + 1 phase33 seed | catalog-only | catalog reference (Ch20 dao domain voice) | 2026-05-13 | Phase 33.0 |
+| Nguyên Linh Nữ | wandering | 22 (ban_nguyen) | 1 line default + 1 phase33 seed | catalog-only | catalog reference (Ch22 origin sea) | 2026-05-13 | Phase 33.0 |
+| Huyền Huyền Giám Quan | wandering | 23 (huyen_huyen) | 1 line default + 1 phase33 seed | catalog-only | catalog reference (Ch23 stele inspector) | 2026-05-13 | Phase 33.0 |
+| Vô Thủy Lão Nhân | wandering | 24 (vo_thuy) | 1 line default + 1 phase33 seed | catalog-only | catalog reference (Ch24 river of time) | 2026-05-13 | Phase 33.0 |
+| Vô Chung Đồng Tử | wandering | 25 (vo_chung) | 1 line default + 1 phase33 seed | catalog-only | catalog reference (Ch25 endless gate) | 2026-05-13 | Phase 33.0 |
 
 **Dialogue UI**: 4 NPC đều có `NpcDialogueModal.vue` server-authoritative (Phase 12 PR-4). Branch picker server-side filter theo realm + quest status; choice annotate sẵn `acceptQuestStatus` cho FE để disable quest đã accept/claimed.
 
-(Chuẩn bị để track 4 NPC còn lại — Vạn Kim Nương, Bạch Đế Tử, Hoa Thiên Đạo Tổ, Tịch Thiên Đạo Chủ — sẽ thêm khi cảnh giới tương ứng được code.)
+Phase 33 NPC chỉ catalog: `NpcDialogueModal.vue` đã auto-pick theo `defaultDialogueId`; affinity + gift + shop entries minimal (1 item / NPC) — sẽ mở rộng ở Phase 33.1 runtime.
 
 ## 5. Implemented quest chains
 
