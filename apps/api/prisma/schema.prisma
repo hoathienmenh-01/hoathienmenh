@@ -492,6 +492,10 @@ model Character {
   storyV2Quests       CharacterStoryV2QuestProgress[]
   storyV2RewardClaims CharacterStoryV2RewardClaim[]
 
+  /// Phase 34.0 — 7-Day Onboarding Questline backrefs.
+  onboardingDays  CharacterOnboardingProgress[]
+  onboardingTasks CharacterOnboardingTaskProgress[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -6514,4 +6518,62 @@ model CharacterStoryV2RewardClaim {
 
   @@unique([characterId, questKey])
   @@index([characterId, claimedAt])
+}
+
+/// Phase 34.0 — 7-Day Onboarding Day-level Progress.
+///
+/// Một row mỗi (characterId, dayNumber). Lazy-create AVAILABLE row khi
+/// character lần đầu mở `/onboarding-quest`. Status flow:
+///
+///   LOCKED → AVAILABLE → IN_PROGRESS → COMPLETED
+///
+/// Day 1 luôn AVAILABLE. Day N (N≥2) AVAILABLE khi tất cả task của Day
+/// N-1 đã ở status `COMPLETED` hoặc `CLAIMED`.
+model CharacterOnboardingProgress {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  dayNumber   Int
+  /// LOCKED | AVAILABLE | IN_PROGRESS | COMPLETED.
+  status      String    @default("LOCKED")
+  unlockedAt  DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([characterId, dayNumber])
+  @@index([characterId, status])
+}
+
+/// Phase 34.0 — 7-Day Onboarding Task-level Progress.
+///
+/// Một row mỗi (characterId, taskKey). Lazy-create AVAILABLE row khi
+/// `GET /onboarding-quest/v1/progress` được gọi và day cha đang AVAILABLE
+/// hoặc IN_PROGRESS. Status flow:
+///
+///   LOCKED → AVAILABLE → COMPLETED → CLAIMED
+///
+/// Idempotency: complete/claim CAS guard qua `updateMany({status:'...'}) `.
+/// Re-call sau khi đã CLAIMED trả về current state, KHÔNG cộng reward.
+model CharacterOnboardingTaskProgress {
+  id            String    @id @default(cuid())
+  characterId   String
+  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  taskKey       String
+  /// Denormalized for index — same as `onboardingTaskByKey(taskKey).dayNumber`.
+  dayNumber     Int
+  /// LOCKED | AVAILABLE | COMPLETED | CLAIMED.
+  status        String    @default("AVAILABLE")
+  completedAt   DateTime?
+  claimedAt     DateTime?
+  /// Cached linh thach granted on claim (for audit; mirror
+  /// `OnboardingTaskRewardDef.linhThach`).
+  linhThachGranted Int    @default(0)
+  /// Cached exp granted on claim.
+  expGranted    Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([characterId, taskKey])
+  @@index([characterId, dayNumber, status])
 }
