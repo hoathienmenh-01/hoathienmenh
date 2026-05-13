@@ -16,6 +16,7 @@
  * không cần init Nest application.
  */
 import type { HelmetOptions } from 'helmet';
+import { buildCspDirectives } from './security/csp-config';
 
 /**
  * JWT secret value mặc định "không-được-dùng-prod". Server sẽ throw khi
@@ -101,21 +102,26 @@ export function corsConfig(env: NodeJS.ProcessEnv = process.env): CorsConfig {
  *
  * Dev: tắt CSP — Vite dev server inline script / HMR / eval sẽ bị CSP chặn.
  *
- * Production: bật CSP với policy chặt phù hợp cho REST + WebSocket API
- * không serve HTML. Nếu sau này host web static cùng domain, cần relax
- * `script-src` / `connect-src` / `style-src` theo domain CDN / WS endpoint.
+ * Production: bật CSP với policy chặt, **directive build qua
+ * `buildCspDirectives()`** (M7 — env-driven CDN/API/WS origins). Khi env
+ * CSP `WEB_PUBLIC_CDN_ORIGIN` / `API_PUBLIC_ORIGIN` / `WS_PUBLIC_ORIGIN`
+ * trống → fallback policy `'self'` (backward-compat).
  *
  * Directive coverage (verify khi audit):
  *  - default-src 'self'
- *  - script-src 'self'        (API không render HTML → no inline)
- *  - style-src 'self'         (no inline style)
- *  - img-src 'self' data:     (data: cho avatar inline base64 + favicon)
- *  - connect-src 'self'       (ajax + WS same-origin; relax khi cross-domain)
- *  - font-src 'self' data:
- *  - object-src 'none'        (chống Flash/PDF embed)
+ *  - script-src 'self' + CDN (opt-in via WEB_PUBLIC_CDN_ORIGIN)
+ *  - style-src 'self' + CDN
+ *  - img-src 'self' data: + CDN (data: cho avatar inline base64 + favicon)
+ *  - connect-src 'self' + API + WS + extra (xem CSP_EXTRA_CONNECT_SRC)
+ *  - font-src 'self' data: + CDN
+ *  - worker-src 'self' blob: + CDN (cho Service Worker PWA)
+ *  - manifest-src 'self' + CDN (cho manifest.webmanifest)
+ *  - media-src 'self' + CDN (audio cue / video)
+ *  - frame-src 'none' (override qua CSP_EXTRA_FRAME_SRC — payment iframe)
+ *  - object-src 'none' (chống Flash/PDF embed)
  *  - base-uri 'self'
  *  - form-action 'self'
- *  - frame-ancestors 'none'   (chống clickjacking)
+ *  - frame-ancestors 'none' (chống clickjacking — KHÔNG cho relax)
  *  - upgrade-insecure-requests
  *
  * Khác:
@@ -123,6 +129,9 @@ export function corsConfig(env: NodeJS.ProcessEnv = process.env): CorsConfig {
  *  - referrer-policy = no-referrer.
  *  - cross-origin-resource-policy = same-site (CDN cache phân biệt origin).
  *  - cross-origin-embedder-policy disabled (API trả JSON/WS, không cần COEP).
+ *
+ * CSP_REPORT_ONLY=1 → đổi `Content-Security-Policy` → report-only header
+ * (Helmet sẽ chuyển khi `reportOnly: true`). Dùng cho rollout dần production.
  */
 export function helmetConfig(
   env: NodeJS.ProcessEnv = process.env,
@@ -130,22 +139,17 @@ export function helmetConfig(
   if (env.NODE_ENV !== 'production') {
     return { contentSecurityPolicy: false };
   }
+  const cspResult = buildCspDirectives(env);
+  // Helmet expects each directive value as `Iterable<string>`. Cast to
+  // `Record<string, Iterable<string>>` since our types are pure `string[]`.
   return {
     contentSecurityPolicy: {
       useDefaults: true,
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
-        styleSrc: ["'self'"],
-        imgSrc: ["'self'", 'data:'],
-        connectSrc: ["'self'"],
-        fontSrc: ["'self'", 'data:'],
-        objectSrc: ["'none'"],
-        baseUri: ["'self'"],
-        formAction: ["'self'"],
-        frameAncestors: ["'none'"],
-        upgradeInsecureRequests: [],
-      },
+      reportOnly: cspResult.reportOnly,
+      directives: cspResult.directives as unknown as Record<
+        string,
+        Iterable<string>
+      >,
     },
     crossOriginResourcePolicy: { policy: 'same-site' },
     crossOriginEmbedderPolicy: false,
