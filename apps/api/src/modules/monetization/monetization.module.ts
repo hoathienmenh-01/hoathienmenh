@@ -7,11 +7,36 @@ import { PrismaService } from '../../common/prisma.service';
 import { MonetizationAdminController } from './monetization-admin.controller';
 import { MonetizationController } from './monetization.controller';
 import { MonetizationService } from './monetization.service';
+import { WalletService } from './wallet.service';
+import { EntitlementService } from './entitlement.service';
+import { MonetizationShopService } from './monetization-shop.service';
+import {
+  ExtraAttemptService,
+  SweepTicketService,
+} from './sweep-attempt.service';
+import { GrowthFundService } from './growth-fund.service';
 
 @Module({
   imports: [AuthModule, CharacterModule, InventoryModule, AdminModule],
   controllers: [MonetizationController, MonetizationAdminController],
-  providers: [PrismaService, MonetizationService],
-  exports: [MonetizationService],
+  providers: [
+    PrismaService,
+    MonetizationService,
+    WalletService,
+    EntitlementService,
+    MonetizationShopService,
+    SweepTicketService,
+    ExtraAttemptService,
+    GrowthFundService,
+  ],
+  exports: [
+    MonetizationService,
+    WalletService,
+    EntitlementService,
+    MonetizationShopService,
+    SweepTicketService,
+    ExtraAttemptService,
+    GrowthFundService,
+  ],
 })
 export class MonetizationModule {}
