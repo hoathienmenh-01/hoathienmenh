@@ -22,6 +22,8 @@ import {
   computeMethodElementAffinityForCharacter,
   methodExpMultiplierFor,
 } from '../character/cultivation-method.service';
+import { CultivationMethodV2Service } from '../character/cultivation-method-v2.service';
+import { computeMethodCultivationRateBonus } from '@xuantoi/shared';
 import { TalentService } from '../character/talent.service';
 import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
 import { CULTIVATION_QUEUE } from './cultivation.queue';
@@ -51,6 +53,11 @@ export class CultivationProcessor extends WorkerHost {
     @Optional() private readonly buffs?: BuffService,
     @Optional()
     private readonly liveOpsEvents?: LiveOpsEventSchedulerService,
+    // Phase 26.3 — Cultivation Method V2 equipped bonus wire. Optional cho
+    // backward-compat test bootstrap. Legacy character chưa unlock V2 →
+    // snapshot rỗng → mul = 1.0 identity.
+    @Optional()
+    private readonly cultivationMethodV2?: CultivationMethodV2Service,
   ) {
     super();
   }
@@ -167,6 +174,19 @@ export class CultivationProcessor extends WorkerHost {
         // default 1 identity nếu không có buff). Pure debuff path (không stack
         // buff khác hiện tại — single source `breakthrough` `tam_ma_light`).
         const buffCultivationRateMul = buffMods?.cultivationRateMul ?? 1;
+        // Phase 26.3 — Cultivation Method V2 aggregated equipped bonus.
+        // `computeMethodCultivationRateBonus` returns `1 + qiExpPercent/100`
+        // (clamped ở `aggregateEquippedMethods` qua `METHOD_BONUS_CAPS`).
+        // Legacy character chưa unlock V2 → snapshot=[] → mul=1.0.
+        let methodV2Mul = 1.0;
+        if (this.cultivationMethodV2) {
+          try {
+            const snapshot = await this.cultivationMethodV2.getEquippedSnapshot(c.id);
+            methodV2Mul = computeMethodCultivationRateBonus(snapshot);
+          } catch {
+            methodV2Mul = 1.0;
+          }
+        }
         // Phase 15.2 — compose LiveOps `CULTIVATION_EXP_BOOST` vào cuối
         // chuỗi multiplier (sau cultivation/method/element/talent/buff).
         // Server-authoritative cap ≤ 2.0 — multiplier đã clamp ở service.
@@ -178,6 +198,7 @@ export class CultivationProcessor extends WorkerHost {
                 cultivationMul *
                 methodMul *
                 methodElementAffinityMul *
+                methodV2Mul *
                 talentExpMul *
                 buffCultivationRateMul *
                 liveOpsExpMul,

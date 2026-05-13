@@ -161,6 +161,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/CultivationMethodView.vue'),
   },
   {
+    path: '/cultivation-method-v2',
+    name: 'cultivation-method-v2',
+    component: () => import('@/views/CultivationMethodV2View.vue'),
+  },
+  {
     path: '/body-cultivation',
     name: 'body-cultivation',
     component: () => import('@/views/BodyCultivationView.vue'),

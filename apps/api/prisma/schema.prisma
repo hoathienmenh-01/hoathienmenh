@@ -377,6 +377,7 @@ model Character {
   dailyLoginClaims         DailyLoginClaim[]
   spiritualRootRollLogs    SpiritualRootRollLog[]
   cultivationMethods       CharacterCultivationMethod[]
+  methodUpgradeLogs        MethodUpgradeLog[]
   characterSkills          CharacterSkill[]
   tribulationAttemptLogs   TribulationAttemptLog[]
   bodyBreakthroughLogs     BodyBreakthroughAttemptLog[]
@@ -817,25 +818,80 @@ model SpiritualRootRollLog {
   @@index([rolledAt])
 }
 
-/// Phase 11.1.B — Sổ tay công pháp đã học của character. Mỗi cặp
-/// (characterId, methodKey) duy nhất 1 row. `learn(...)` rely on `@@unique`
-/// để đảm bảo idempotency (P2002 → return existing). `equip()` chỉ set
-/// `Character.equippedCultivationMethodKey` chứ không sửa row này.
+/// Phase 11.1.B / Phase 26.3 — Sổ tay công pháp đã học của character.
+/// Mỗi cặp (characterId, methodKey) duy nhất 1 row.
+///
+/// Phase 26.3 mở rộng cho hệ Cultivation Method V2:
+///   - `level` (default 1, max = method.maxLevel) tăng qua upgrade.
+///   - `star` (default 0, max = method.maxStar) tăng qua star-up consume
+///     fragments + breakthrough materials.
+///   - `methodExp` (BigInt default 0) tích lũy từ tu luyện / consumable
+///     để chuyển hoá thành level up cost (Phase 26.3+ feature).
+///   - `equippedSlot` nullable enum MethodEquipSlot (`QI_MAIN` |
+///     `BODY_MAIN` | `SUPPORT` | `SECT` | `SPECIAL`) — chỉ 1 method
+///     mỗi slot per character (xem index unique partial bên dưới).
+///   - `methodSource` (rename của `source` cũ để rõ nghĩa "method
+///     source" vs "row source") forward-compat — vẫn map String.
+///
+/// `learn(...)` rely on `@@unique([characterId, methodKey])` để đảm bảo
+/// idempotency (P2002 → return existing). `equip(slot)` set `equippedSlot`
+/// trên row tương ứng. Để giữ tương thích Phase 11.1.B legacy code,
+/// `Character.equippedCultivationMethodKey` MIRROR slot QI_MAIN sau khi
+/// equip (xem CultivationMethodV2Service).
 model CharacterCultivationMethod {
   id          String    @id @default(cuid())
   characterId String
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  /// Khoá tham chiếu `CULTIVATION_METHODS` trong `packages/shared/src/cultivation-methods.ts`.
+  /// Khoá tham chiếu `CULTIVATION_METHODS` (legacy) hoặc
+  /// `CULTIVATION_METHODS_V2` (Phase 26.3) trong shared.
   methodKey   String
-  /// Nguồn học method: `starter` (auto-grant onboard) | `dungeon_drop` |
-  /// `boss_drop` | `sect_shop` | `event` | `quest_milestone` | `admin_grant`.
-  /// Khớp với `CultivationMethodSource` (nhưng dùng String để forward-compat
-  /// thêm source mới khi cần).
+  /// Nguồn học method: `starter` | `dungeon_drop` | `boss_drop` |
+  /// `sect_shop` | `event` | `quest_milestone` | `admin_grant` |
+  /// `fragment_combine` (Phase 26.3). Khớp với `MethodSource` enum
+  /// nhưng String để forward-compat.
   source      String
   learnedAt   DateTime  @default(now())
 
+  // Phase 26.3 — progression V2 fields.
+  level        Int      @default(1)
+  star         Int      @default(0)
+  methodExp    BigInt   @default(0)
+  /// Slot equipped: `QI_MAIN` | `BODY_MAIN` | `SUPPORT` | `SECT` |
+  /// `SPECIAL`. Null = chưa equip. Constraint mỗi (characterId, slot)
+  /// chỉ 1 row (xem `@@unique` partial index migration tay sau khi
+  /// generate).
+  equippedSlot String?
+  updatedAt    DateTime @default(now()) @updatedAt
+
   @@unique([characterId, methodKey])
   @@index([characterId])
+  @@index([characterId, equippedSlot])
+}
+
+/// Phase 26.3 — log từng lần upgrade/star-up method để audit/replay.
+/// Một row mỗi attempt (success hoặc fail). Materials JSON snapshot
+/// vật phẩm/linhThach đã consume hoặc dự kiến consume.
+model MethodUpgradeLog {
+  id            String    @id @default(cuid())
+  characterId   String
+  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  methodKey     String
+  /// `'UPGRADE'` (level up) | `'STAR_UP'` (sao up) | `'UNLOCK'`.
+  action        String
+  fromLevel     Int
+  toLevel       Int
+  fromStar      Int
+  toStar        Int
+  success       Boolean
+  /// JSON snapshot vật phẩm/linhThach đã consume:
+  ///   `{ items: [{key,qty}], linhThach: number }`
+  materialsJson Json
+  /// JSON snapshot bonus mới (sau khi success) hoặc lỗi (nếu fail).
+  resultJson    Json?
+  createdAt     DateTime  @default(now())
+
+  @@index([characterId, methodKey])
+  @@index([characterId, createdAt])
 }
 
 /// Phase 11.2.B — Skill mastery progression. Mỗi cặp (characterId, skillKey)

@@ -68,7 +68,13 @@
       "bodyCultivationState": "Không lấy được trạng thái luyện thể",
       "bodyCultivationStart": "Bắt đầu luyện thể thất bại",
       "bodyCultivationStop": "Dừng luyện thể thất bại",
-      "bodyCultivationBreakthrough": "Đột phá luyện thể thất bại"
+      "bodyCultivationBreakthrough": "Đột phá luyện thể thất bại",
+      "cultivationMethodV2State": "Không lấy được trạng thái công pháp V2",
+      "cultivationMethodV2Unlock": "Khai mở công pháp thất bại",
+      "cultivationMethodV2Equip": "Vận công pháp V2 thất bại",
+      "cultivationMethodV2Unequip": "Gỡ công pháp V2 thất bại",
+      "cultivationMethodV2Upgrade": "Thăng cấp công pháp thất bại",
+      "cultivationMethodV2StarUp": "Thăng sao công pháp thất bại"
     }
   },
   "locale": {
@@ -343,6 +349,7 @@
       "talents": "Ngộ Đạo",
       "alchemy": "Luyện Đan",
       "cultivationMethod": "Công Pháp",
+      "cultivationMethodV2": "Công Pháp V2",
       "spiritualRoot": "Linh Căn",
       "skillBook": "Pháp Quyển",
       "achievements": "Thành Tựu",
@@ -2386,6 +2393,129 @@
         "IN_FLIGHT": "Đang xử lý…",
         "UNKNOWN": "Vận công pháp thất bại, thử lại."
       }
+    }
+  },
+  "cultivationMethodV2": {
+    "title": "Công Pháp Đường — Phiên Bản 2",
+    "subtitle": "Hệ thống công pháp V2: 5 slot (Khí / Thể / Hỗ Trợ / Tông / Đặc Biệt), 9 tầng phẩm cấp, mở khoá bằng mảnh + linh thạch.",
+    "loading": "Đang tải công pháp…",
+    "empty": "Không có công pháp nào khớp bộ lọc.",
+    "reloadError": "Tải dữ liệu thất bại — thử lại.",
+    "reload": "Tải lại",
+    "slot": {
+      "QI_MAIN": "Khí Chủ",
+      "BODY_MAIN": "Thể Chủ",
+      "SUPPORT": "Hỗ Trợ",
+      "SECT": "Tông Pháp",
+      "SPECIAL": "Đặc Biệt"
+    },
+    "category": {
+      "all": "Tất cả",
+      "QI": "Luyện Khí",
+      "BODY": "Luyện Thể",
+      "HYBRID": "Song Tu",
+      "ELEMENTAL": "Nguyên Tố",
+      "SECT": "Tông Môn",
+      "FORBIDDEN": "Cấm Pháp",
+      "SPECIAL": "Đặc Biệt"
+    },
+    "grade": {
+      "PHAM": "Phàm phẩm",
+      "HUYEN": "Huyền phẩm",
+      "DIA": "Địa phẩm",
+      "THIEN": "Thiên phẩm",
+      "TIEN": "Tiên phẩm",
+      "THAN": "Thần phẩm",
+      "THANH": "Thánh phẩm",
+      "CHUAN_THANH": "Chuẩn Thánh",
+      "CHI_TON": "Chí Tôn"
+    },
+    "filter": {
+      "category": "Phân loại",
+      "tier": "Tầng",
+      "slot": "Slot",
+      "unlocked": "Đã khai mở",
+      "all": "Tất cả",
+      "clear": "Xoá lọc",
+      "shown": "Hiển thị {shown}/{total} công pháp"
+    },
+    "summary": {
+      "title": "Tổng quan slot",
+      "empty": "Slot trống",
+      "cultivationRate": "Tốc độ tu luyện ×{mul}",
+      "bodyRate": "Tốc độ luyện thể ×{mul}",
+      "bonuses": "Bonus tổng hợp"
+    },
+    "stat": {
+      "qiExpPercent": "+{value}% Khí EXP",
+      "bodyExpPercent": "+{value}% Thể EXP",
+      "hpMaxPercent": "+{value}% HP",
+      "mpMaxPercent": "+{value}% MP",
+      "atkPercent": "+{value}% ATK",
+      "defPercent": "+{value}% DEF",
+      "spiritPercent": "+{value}% Linh",
+      "staminaMaxPercent": "+{value}% Bền",
+      "bossDamageReduction": "-{value}% sát thương Boss",
+      "elementalAtkBonus": "+{value}% Nguyên Tố ATK",
+      "tribulationSupport": "+{value}% Vượt Kiếp"
+    },
+    "field": {
+      "level": "Cấp {level}/{max}",
+      "star": "Sao {star}/{max}",
+      "fragments": "Mảnh {owned}/{required}",
+      "fragmentsStar": "Mảnh sao kế {owned}/{required}",
+      "unlockCost": "Chi phí khai mở: {linhThach} Linh Thạch + {fragments} mảnh",
+      "upgradeCost": "Thăng cấp: {linhThach} Linh Thạch",
+      "tier": "Tầng {tier} · {grade}",
+      "sourceHint": "Nguồn: {sources}",
+      "equippedAt": "Đang vận ở slot {slot}"
+    },
+    "action": {
+      "unlock": "Khai mở",
+      "unlocking": "Đang khai mở…",
+      "unlocked": "Đã khai mở",
+      "equip": "Vận công ({slot})",
+      "equipping": "Đang vận…",
+      "unequip": "Gỡ slot {slot}",
+      "upgrade": "Thăng cấp",
+      "upgrading": "Đang thăng cấp…",
+      "starUp": "Thăng sao",
+      "starringUp": "Đang thăng sao…",
+      "maxLevel": "Đã max cấp",
+      "maxStar": "Đã max sao"
+    },
+    "success": {
+      "unlock": "Đã khai mở {name}.",
+      "equip": "Đã vận {name} vào slot {slot}.",
+      "unequip": "Đã gỡ công pháp khỏi slot {slot}.",
+      "upgrade": "Đã thăng cấp {name} lên cấp {level}.",
+      "starUp": "Đã thăng sao {name} lên {star} sao."
+    },
+    "errors": {
+      "METHOD_NOT_FOUND": "Công pháp không tồn tại.",
+      "METHOD_DISABLED": "Công pháp tạm khoá.",
+      "METHOD_NOT_UNLOCKED": "Bạn chưa khai mở công pháp này.",
+      "METHOD_ALREADY_UNLOCKED": "Công pháp đã khai mở.",
+      "CHARACTER_NOT_FOUND": "Chưa tạo nhân vật.",
+      "NO_CHARACTER": "Chưa tạo nhân vật.",
+      "REALM_TOO_LOW": "Cảnh giới chưa đạt yêu cầu.",
+      "BODY_REALM_TOO_LOW": "Thể cảnh chưa đạt yêu cầu.",
+      "WRONG_SECT": "Công pháp này dành cho tông môn khác.",
+      "SLOT_NOT_ALLOWED": "Slot không hợp lệ cho công pháp này.",
+      "SLOT_CONFLICT": "Slot đang bị chiếm bởi công pháp khác.",
+      "ELEMENT_CONFLICT": "Linh căn xung đột với công pháp này.",
+      "NOT_UNLOCKED": "Chưa khai mở.",
+      "MAX_LEVEL": "Đã đạt cấp tối đa.",
+      "MAX_STAR": "Đã đạt sao tối đa.",
+      "INSUFFICIENT_FRAGMENTS": "Không đủ mảnh công pháp.",
+      "INSUFFICIENT_MATERIALS": "Không đủ vật phẩm thăng cấp.",
+      "INSUFFICIENT_LINH_THACH": "Không đủ Linh Thạch.",
+      "INSUFFICIENT_QTY": "Không đủ vật phẩm.",
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
+      "CULTIVATION_METHOD_V2_UNAVAILABLE": "Hệ thống công pháp V2 tạm khoá.",
+      "IN_FLIGHT": "Đang xử lý…",
+      "UNKNOWN": "Thao tác thất bại, thử lại."
     }
   },
   "spiritualRoot": {

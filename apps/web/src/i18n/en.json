@@ -68,7 +68,13 @@
       "bodyCultivationState": "Failed to load body cultivation",
       "bodyCultivationStart": "Failed to start body cultivation",
       "bodyCultivationStop": "Failed to stop body cultivation",
-      "bodyCultivationBreakthrough": "Body breakthrough failed"
+      "bodyCultivationBreakthrough": "Body breakthrough failed",
+      "cultivationMethodV2State": "Failed to load cultivation method V2 state",
+      "cultivationMethodV2Unlock": "Failed to unlock cultivation method",
+      "cultivationMethodV2Equip": "Failed to equip cultivation method V2",
+      "cultivationMethodV2Unequip": "Failed to unequip cultivation method V2",
+      "cultivationMethodV2Upgrade": "Failed to upgrade cultivation method",
+      "cultivationMethodV2StarUp": "Failed to star-up cultivation method"
     }
   },
   "locale": {
@@ -343,6 +349,7 @@
       "talents": "Talents",
       "alchemy": "Alchemy",
       "cultivationMethod": "Method",
+      "cultivationMethodV2": "Method V2",
       "spiritualRoot": "Root",
       "skillBook": "Skill Book",
       "achievements": "Achievements",
@@ -2386,6 +2393,129 @@
         "IN_FLIGHT": "Processing…",
         "UNKNOWN": "Activation failed, please retry."
       }
+    }
+  },
+  "cultivationMethodV2": {
+    "title": "Cultivation Method Hall — V2",
+    "subtitle": "Cultivation Method V2: 5 slots (Qi / Body / Support / Sect / Special), 9 grade tiers, unlocked via fragments + linh thach.",
+    "loading": "Loading cultivation methods…",
+    "empty": "No methods match the filter.",
+    "reloadError": "Failed to load data — please retry.",
+    "reload": "Reload",
+    "slot": {
+      "QI_MAIN": "Qi Main",
+      "BODY_MAIN": "Body Main",
+      "SUPPORT": "Support",
+      "SECT": "Sect",
+      "SPECIAL": "Special"
+    },
+    "category": {
+      "all": "All",
+      "QI": "Qi",
+      "BODY": "Body",
+      "HYBRID": "Hybrid",
+      "ELEMENTAL": "Elemental",
+      "SECT": "Sect",
+      "FORBIDDEN": "Forbidden",
+      "SPECIAL": "Special"
+    },
+    "grade": {
+      "PHAM": "Mortal",
+      "HUYEN": "Mystic",
+      "DIA": "Earth",
+      "THIEN": "Heaven",
+      "TIEN": "Immortal",
+      "THAN": "Divine",
+      "THANH": "Saint",
+      "CHUAN_THANH": "Quasi-Saint",
+      "CHI_TON": "Supreme"
+    },
+    "filter": {
+      "category": "Category",
+      "tier": "Tier",
+      "slot": "Slot",
+      "unlocked": "Unlocked only",
+      "all": "All",
+      "clear": "Clear filters",
+      "shown": "Showing {shown}/{total} methods"
+    },
+    "summary": {
+      "title": "Slot summary",
+      "empty": "Empty slot",
+      "cultivationRate": "Cultivation rate ×{mul}",
+      "bodyRate": "Body rate ×{mul}",
+      "bonuses": "Aggregated bonuses"
+    },
+    "stat": {
+      "qiExpPercent": "+{value}% Qi EXP",
+      "bodyExpPercent": "+{value}% Body EXP",
+      "hpMaxPercent": "+{value}% HP",
+      "mpMaxPercent": "+{value}% MP",
+      "atkPercent": "+{value}% ATK",
+      "defPercent": "+{value}% DEF",
+      "spiritPercent": "+{value}% Spirit",
+      "staminaMaxPercent": "+{value}% Stamina",
+      "bossDamageReduction": "-{value}% Boss damage",
+      "elementalAtkBonus": "+{value}% Elemental ATK",
+      "tribulationSupport": "+{value}% Tribulation support"
+    },
+    "field": {
+      "level": "Level {level}/{max}",
+      "star": "Star {star}/{max}",
+      "fragments": "Fragments {owned}/{required}",
+      "fragmentsStar": "Star fragments {owned}/{required}",
+      "unlockCost": "Unlock cost: {linhThach} Linh Thach + {fragments} fragments",
+      "upgradeCost": "Upgrade: {linhThach} Linh Thach",
+      "tier": "Tier {tier} · {grade}",
+      "sourceHint": "Source: {sources}",
+      "equippedAt": "Equipped at slot {slot}"
+    },
+    "action": {
+      "unlock": "Unlock",
+      "unlocking": "Unlocking…",
+      "unlocked": "Unlocked",
+      "equip": "Equip ({slot})",
+      "equipping": "Equipping…",
+      "unequip": "Unequip slot {slot}",
+      "upgrade": "Upgrade",
+      "upgrading": "Upgrading…",
+      "starUp": "Star up",
+      "starringUp": "Starring up…",
+      "maxLevel": "Max level",
+      "maxStar": "Max star"
+    },
+    "success": {
+      "unlock": "Unlocked {name}.",
+      "equip": "Equipped {name} to slot {slot}.",
+      "unequip": "Unequipped method from slot {slot}.",
+      "upgrade": "Upgraded {name} to level {level}.",
+      "starUp": "Starred up {name} to {star} stars."
+    },
+    "errors": {
+      "METHOD_NOT_FOUND": "Method not found.",
+      "METHOD_DISABLED": "Method is disabled.",
+      "METHOD_NOT_UNLOCKED": "You have not unlocked this method.",
+      "METHOD_ALREADY_UNLOCKED": "Method already unlocked.",
+      "CHARACTER_NOT_FOUND": "Character not created.",
+      "NO_CHARACTER": "Character not created.",
+      "REALM_TOO_LOW": "Realm requirement not met.",
+      "BODY_REALM_TOO_LOW": "Body realm requirement not met.",
+      "WRONG_SECT": "This method belongs to a different sect.",
+      "SLOT_NOT_ALLOWED": "Slot is not allowed for this method.",
+      "SLOT_CONFLICT": "Slot is occupied by another method.",
+      "ELEMENT_CONFLICT": "Spiritual root conflicts with this method.",
+      "NOT_UNLOCKED": "Not unlocked.",
+      "MAX_LEVEL": "Already at max level.",
+      "MAX_STAR": "Already at max star.",
+      "INSUFFICIENT_FRAGMENTS": "Not enough method fragments.",
+      "INSUFFICIENT_MATERIALS": "Not enough upgrade materials.",
+      "INSUFFICIENT_LINH_THACH": "Not enough Linh Thach.",
+      "INSUFFICIENT_QTY": "Not enough materials in inventory.",
+      "INVALID_INPUT": "Invalid input.",
+      "UNAUTHENTICATED": "Session expired.",
+      "CULTIVATION_METHOD_V2_UNAVAILABLE": "Cultivation method V2 system temporarily unavailable.",
+      "IN_FLIGHT": "Processing…",
+      "UNKNOWN": "Action failed, please retry."
     }
   },
   "spiritualRoot": {

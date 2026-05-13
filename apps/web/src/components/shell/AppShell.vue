@@ -276,6 +276,13 @@ async function logout(): Promise<void> {
           法 {{ t('shell.nav.cultivationMethod') }}
         </RouterLink>
         <RouterLink
+          to="/cultivation-method-v2"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
+          訣 {{ t('shell.nav.cultivationMethodV2') }}
+        </RouterLink>
+        <RouterLink
           to="/body-cultivation"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"

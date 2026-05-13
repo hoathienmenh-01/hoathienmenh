@@ -1,5 +1,5 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
+import { Logger, Optional } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import {
   BODY_CULTIVATION_INJURY_GAIN_MULT,
@@ -7,11 +7,13 @@ import {
   type BodyCultivateTickPayload,
   bodyExpCostForStage,
   bodyRateForRealm,
+  computeMethodBodyRateBonus,
   getBodyRealmByKey,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { RewardCapService } from '../economy/reward-cap.service';
+import { CultivationMethodV2Service } from '../character/cultivation-method-v2.service';
 import { BODY_CULTIVATION_QUEUE } from './body-cultivation.queue';
 
 @Processor(BODY_CULTIVATION_QUEUE)
@@ -22,6 +24,10 @@ export class BodyCultivationProcessor extends WorkerHost {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
     private readonly rewardCap: RewardCapService,
+    // Phase 26.3 — body method V2 EXP bonus wire. Optional cho backward-
+    // compat test bootstrap. Snapshot rỗng → mul 1.0 identity.
+    @Optional()
+    private readonly cultivationMethodV2?: CultivationMethodV2Service,
   ) {
     super();
   }
@@ -48,8 +54,22 @@ export class BodyCultivationProcessor extends WorkerHost {
           c.bodyInjuryUntil && c.bodyInjuryUntil.getTime() > Date.now()
             ? BODY_CULTIVATION_INJURY_GAIN_MULT
             : 1;
+        // Phase 26.3 — body method V2 aggregated equipped bonus. Mul cap
+        // ở `aggregateEquippedMethods` via `METHOD_BONUS_CAPS.bodyExpPercent`.
+        let methodV2Mul = 1.0;
+        if (this.cultivationMethodV2) {
+          try {
+            const snapshot = await this.cultivationMethodV2.getEquippedSnapshot(c.id);
+            methodV2Mul = computeMethodBodyRateBonus(snapshot);
+          } catch {
+            methodV2Mul = 1.0;
+          }
+        }
         const requestedGain = BigInt(
-          Math.max(1, Math.round(bodyRateForRealm(c.bodyRealmKey) * injuryMul)),
+          Math.max(
+            1,
+            Math.round(bodyRateForRealm(c.bodyRealmKey) * injuryMul * methodV2Mul),
+          ),
         );
         const outcome = await this.prisma.$transaction(async (tx) => {
           const cap = await this.rewardCap.applyCapTx(tx, {
