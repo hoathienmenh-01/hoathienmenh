@@ -530,10 +530,58 @@ WS push: `mission:progress` (PR #63) emit sau `MissionService.track()` qua `Miss
 
 | Method | Path                | Auth  | Mô tả |
 |--------|---------------------|-------|-------|
-| GET    | `/mail/me`          | Yes   | Inbox (≤100 mail desc). |
+| GET    | `/mail/me`          | Yes   | Inbox (≤100 mail desc). Mail có `mailType`/`status`/`deleted` (Phase 31). |
+| GET    | `/mail/:id`         | Yes   | 1 mail (Phase 31). |
 | GET    | `/mail/unread-count`| Yes   | `{ count }`. Hydrate badge sau login (PR #71, M7). |
 | POST   | `/mail/:id/read`    | Yes   | Đánh dấu đã đọc. |
 | POST   | `/mail/:id/claim`   | Yes   | Nhận thưởng; CAS chống double-claim. |
+| POST   | `/mail/:id/delete`  | Yes   | Soft-delete (Phase 31). |
+| POST   | `/mail/claim-all`   | Yes   | Bulk claim — CAS `updateMany({claimedAt:null,deletedAt:null})` chống duplicate (Phase 31). |
+
+## Mentor — `MentorController` (Phase 31.0)
+
+| Method | Path                                   | Auth | Mô tả |
+|--------|----------------------------------------|------|-------|
+| GET    | `/mentor/profile`                      | Yes  | `MentorProfileRow \| null`. |
+| POST   | `/mentor/register`                     | Yes  | `{ intro?, acceptingStudents? }` → `MentorProfileRow`. Tier ≥9 required. |
+| POST   | `/mentor/request`                      | Yes  | `{ mentorUserId, message? }` → `MentorRelationRow`. Tier ≤6 + gap≥3 + cap 5 students. |
+| POST   | `/mentor/accept/:relationId`           | Yes  | `{ accept }` — race-safe CAS via `updateMany({status:'PENDING'})`. |
+| GET    | `/mentor/students`                     | Yes  | `{ students: MentorRelationRow[], pending: MentorRelationRow[] }`. |
+| GET    | `/mentor/student-context`              | Yes  | `{ mentor, pending }` cho perspective student. |
+
+Error codes: `TIER_TOO_LOW`, `TIER_TOO_HIGH`, `TIER_GAP_TOO_SMALL`, `ALREADY_PENDING`, `SELF_NOT_ALLOWED`, `STUDENT_ALREADY_HAS_MENTOR`, `NOT_AUTHORIZED`, `INVALID_TRANSITION`, `CAPACITY_REACHED`, `MENTOR_NOT_FOUND`, `RELATION_NOT_FOUND`, `MENTOR_NOT_ACCEPTING`, `NO_CHARACTER`.
+
+## Returner — `ReturnerController` (Phase 31.0)
+
+| Method | Path                       | Auth | Mô tả |
+|--------|----------------------------|------|-------|
+| GET    | `/returner/state`          | Yes  | `ReturnerStateView \| null` (`inactiveDays`, `currentTier`, `lastCycleKey`, `lastLoginAt`). |
+| POST   | `/returner/check`          | Yes  | `{ tier, mailId }` — manual trigger (idempotent per `userId:tier:YYYY-MM-DD`). |
+
+Tier thresholds: `SHORT=7 days`, `MEDIUM=14 days`, `LONG=30 days`. Reward `tienNgoc=0` (Phase 31 cap), Linh Thạch 10k/30k/100k, items filtered + tier-clamped.
+
+## Admin Mail — `AdminMailController` (Phase 31.0, role `ADMIN`)
+
+| Method | Path                          | Auth   | Mô tả |
+|--------|-------------------------------|--------|-------|
+| GET    | `/admin/mail`                 | ADMIN  | List audit logs (`?cursor=&limit=` cursor-based). |
+| GET    | `/admin/mail/:id/logs`        | ADMIN  | 1 `AdminMailLogRow`. |
+| POST   | `/admin/mail/send-one`        | ADMIN  | `AdminMailSendOneInput` → `AdminMailSendResult`. |
+| POST   | `/admin/mail/send-bulk`       | ADMIN  | `AdminMailSendBulkInput` (≤500 ids) → `AdminMailSendResult`. |
+| POST   | `/admin/mail/send-global`     | ADMIN  | `AdminMailSendGlobalInput` (targetRule + `previewOnly?`) → `AdminMailSendResult`. |
+
+Audit: mỗi call tạo 1 `AdminMailLog` row với `reason` (≥4 chars), `recipientsSnapshot.slice(0,50)`, `targetRuleSnapshot` (chỉ SEND_GLOBAL).
+
+## System Gift — `SystemGiftController` (Phase 31.0, role `ADMIN`)
+
+| Method | Path                                      | Auth   | Mô tả |
+|--------|-------------------------------------------|--------|-------|
+| GET    | `/system-gift`                            | ADMIN  | List 200 most recent defs. |
+| GET    | `/system-gift/:giftKey`                   | ADMIN  | 1 def. |
+| POST   | `/system-gift`                            | ADMIN  | Upsert `SystemGiftDef`. |
+| POST   | `/system-gift/:giftKey/distribute`        | ADMIN  | Fan-out qua `MailService.sendToCharacter`. Idempotent via UNIQUE `(giftKey,characterId)`. |
+
+Target rule types: `ALL_PLAYERS`, `REALM_RANGE`, `CREATED_BEFORE`, `ACTIVE_IN_LAST_DAYS`, `SECT_MEMBERS`, `EVENT_PARTICIPANTS`. Hard cap 50k targets/resolve.
 
 ## Giftcode — `GiftcodeController` + `AdminController`
 

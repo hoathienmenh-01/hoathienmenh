@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CurrencyKind, Prisma } from '@prisma/client';
+import { CurrencyKind, MailType, Prisma } from '@prisma/client';
+import { DEFAULT_MAIL_TYPE, deriveMailStatus, type MailStatus } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
@@ -13,6 +14,7 @@ export class MailError extends Error {
       | 'MAIL_EXPIRED'
       | 'NO_REWARD'
       | 'ALREADY_CLAIMED'
+      | 'MAIL_DELETED'
       | 'RECIPIENT_NOT_FOUND'
       | 'INVALID_INPUT',
   ) {
@@ -40,6 +42,12 @@ export interface MailView {
   createdAt: string;
   /** Có reward gì đó (LT/TN/EXP/item) và chưa claim + chưa hết hạn. */
   claimable: boolean;
+  /** Phase 31.0 — taxonomy lý do gửi mail. */
+  mailType: MailType;
+  /** Phase 31.0 — derived status (UNREAD/READ/CLAIMED/EXPIRED). */
+  status: MailStatus;
+  /** Phase 31.0 — true nếu user đã soft-delete mail. List inbox ẩn nhưng `getById` vẫn trả về. */
+  deleted: boolean;
 }
 
 export interface MailSendInput {
@@ -53,6 +61,8 @@ export interface MailSendInput {
   rewardItems?: MailRewardItem[];
   expiresAt?: Date;
   createdByAdminId?: string;
+  /** Phase 31.0 — mặc định `SYSTEM` để compat. */
+  mailType?: MailType;
 }
 
 export interface MailBroadcastInput {
@@ -65,10 +75,29 @@ export interface MailBroadcastInput {
   rewardItems?: MailRewardItem[];
   expiresAt?: Date;
   createdByAdminId?: string;
+  /** Phase 31.0 — restrict broadcast to specific recipientIds. Nếu omit → mọi character. */
+  recipientCharacterIds?: string[];
+  /** Phase 31.0 — mặc định `SYSTEM` để compat. */
+  mailType?: MailType;
+}
+
+export interface ClaimAllResult {
+  /** Số mail đã claim thành công. */
+  claimedCount: number;
+  /** Tổng linh thạch đã trao (string bigint). */
+  totalLinhThach: string;
+  /** Tổng tiên ngọc đã trao. */
+  totalTienNgoc: number;
+  /** Tổng EXP đã trao (string bigint). */
+  totalExp: string;
+  /** Số mail đã thử claim nhưng skip (hết hạn / no-reward). */
+  skippedCount: number;
 }
 
 const MAX_INBOX = 100;
 const MAX_ITEMS_PER_MAIL = 10;
+/** Phase 31.0 — cap per `claim-all` call. User claim nhiều hơn → gọi lần 2. */
+const MAX_CLAIM_ALL_BATCH = 50;
 
 /**
  * Service thư hệ thống + thư từ admin.
@@ -93,19 +122,37 @@ export class MailService {
     private readonly realtime: RealtimeService,
   ) {}
 
-  async inbox(userId: string): Promise<MailView[]> {
+  async inbox(userId: string, opts?: { mailType?: MailType }): Promise<MailView[]> {
     const char = await this.prisma.character.findUnique({
       where: { userId },
       select: { id: true },
     });
     if (!char) throw new MailError('NO_CHARACTER');
     const rows = await this.prisma.mail.findMany({
-      where: { recipientId: char.id },
+      where: {
+        recipientId: char.id,
+        deletedAt: null,
+        ...(opts?.mailType ? { mailType: opts.mailType } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       take: MAX_INBOX,
     });
     const now = new Date();
     return rows.map((r) => toView(r, now));
+  }
+
+  /**
+   * Phase 31.0 — GET /mail/:id. Trả về mail row đầy đủ (kể cả khi đã
+   * soft-delete). 404 mask cho ownership: user khác không thấy mail của
+   * người khác — trả `MAIL_NOT_FOUND`.
+   */
+  async getById(userId: string, mailId: string): Promise<MailView> {
+    const char = await this.requireCharacter(userId);
+    const mail = await this.prisma.mail.findFirst({
+      where: { id: mailId, recipientId: char.id },
+    });
+    if (!mail) throw new MailError('MAIL_NOT_FOUND');
+    return toView(mail, new Date());
   }
 
   /**
@@ -126,6 +173,7 @@ export class MailService {
       where: {
         recipientId: char.id,
         readAt: null,
+        deletedAt: null,
         OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
       },
     });
@@ -137,12 +185,39 @@ export class MailService {
       where: { id: mailId, recipientId: char.id },
     });
     if (!mail) throw new MailError('MAIL_NOT_FOUND');
+    if (mail.deletedAt) throw new MailError('MAIL_DELETED');
     if (!mail.readAt) {
       await this.prisma.mail.update({
         where: { id: mailId },
         data: { readAt: new Date() },
       });
     }
+    const updated = await this.prisma.mail.findUniqueOrThrow({
+      where: { id: mailId },
+    });
+    return toView(updated, new Date());
+  }
+
+  /**
+   * Phase 31.0 — POST /mail/:id/delete. Soft-delete bởi user. Mail bị
+   * delete vẫn còn trong DB nhưng KHÔNG hiển thị trong inbox (và không
+   * tính vào unread count). User KHÔNG thể claim sau khi delete (anti-
+   * trick: delete sau khi claim không refund; delete trước khi claim
+   * mất quyền claim — kiểm tra ở claim path).
+   */
+  async softDelete(userId: string, mailId: string): Promise<MailView> {
+    const char = await this.requireCharacter(userId);
+    const mail = await this.prisma.mail.findFirst({
+      where: { id: mailId, recipientId: char.id },
+    });
+    if (!mail) throw new MailError('MAIL_NOT_FOUND');
+    if (mail.deletedAt) {
+      return toView(mail, new Date());
+    }
+    await this.prisma.mail.update({
+      where: { id: mailId },
+      data: { deletedAt: new Date() },
+    });
     const updated = await this.prisma.mail.findUniqueOrThrow({
       where: { id: mailId },
     });
@@ -157,6 +232,7 @@ export class MailService {
         where: { id: mailId, recipientId: char.id },
       });
       if (!mail) throw new MailError('MAIL_NOT_FOUND');
+      if (mail.deletedAt) throw new MailError('MAIL_DELETED');
       if (mail.claimedAt) throw new MailError('ALREADY_CLAIMED');
       if (mail.expiresAt && mail.expiresAt.getTime() <= Date.now()) {
         throw new MailError('MAIL_EXPIRED');
@@ -171,10 +247,27 @@ export class MailService {
 
       // CAS: chỉ set claimedAt nếu vẫn null.
       const upd = await tx.mail.updateMany({
-        where: { id: mailId, claimedAt: null },
+        where: { id: mailId, claimedAt: null, deletedAt: null },
         data: { claimedAt: new Date(), readAt: mail.readAt ?? new Date() },
       });
       if (upd.count !== 1) throw new MailError('ALREADY_CLAIMED');
+
+      // Phase 31.0 — belt-and-suspenders idempotency: ghi 1 row vào
+      // MailAttachmentClaim. Nếu đã có (do retry / race) → unique
+      // constraint throw → CAS phía trên đã catch trước, nhưng giữ
+      // ledger để audit.
+      await tx.mailAttachmentClaim.create({
+        data: {
+          mailId,
+          characterId: char.id,
+          rewardSnapshotJson: {
+            linhThach: mail.rewardLinhThach.toString(),
+            tienNgoc: mail.rewardTienNgoc,
+            exp: mail.rewardExp.toString(),
+            items,
+          } as unknown as Prisma.InputJsonValue,
+        },
+      });
 
       if (mail.rewardLinhThach > 0n) {
         await this.currency.applyTx(tx, {
@@ -217,6 +310,68 @@ export class MailService {
     return toView(updated, new Date());
   }
 
+  /**
+   * Phase 31.0 — POST /mail/claim-all. Claim mọi mail có reward, chưa
+   * claim, chưa hết hạn, chưa soft-delete. Idempotent per-mail qua CAS
+   * (`Mail.claimedAt` null) — spam request KHÔNG duplicate reward.
+   *
+   * Cap per call: 50 mail (`MAX_CLAIM_ALL_BATCH`). User cần claim
+   * nhiều hơn → gọi lần 2.
+   */
+  async claimAll(userId: string): Promise<ClaimAllResult> {
+    const char = await this.requireCharacter(userId);
+    const now = new Date();
+    const candidates = await this.prisma.mail.findMany({
+      where: {
+        recipientId: char.id,
+        claimedAt: null,
+        deletedAt: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+      orderBy: { createdAt: 'asc' },
+      take: MAX_CLAIM_ALL_BATCH,
+    });
+    let totalLT = 0n;
+    let totalTN = 0;
+    let totalEx = 0n;
+    let claimed = 0;
+    let skipped = 0;
+    for (const m of candidates) {
+      const items = parseItems(m.rewardItems);
+      const hasReward =
+        m.rewardLinhThach > 0n ||
+        m.rewardTienNgoc > 0 ||
+        m.rewardExp > 0n ||
+        items.length > 0;
+      if (!hasReward) {
+        skipped += 1;
+        continue;
+      }
+      try {
+        // Reuse single-claim path → atomic + idempotent qua CAS.
+        await this.claim(userId, m.id);
+        claimed += 1;
+        totalLT += m.rewardLinhThach;
+        totalTN += m.rewardTienNgoc;
+        totalEx += m.rewardExp;
+      } catch (e) {
+        if (e instanceof MailError) {
+          // ALREADY_CLAIMED / MAIL_EXPIRED / NO_REWARD → skip & continue.
+          skipped += 1;
+          continue;
+        }
+        throw e;
+      }
+    }
+    return {
+      claimedCount: claimed,
+      totalLinhThach: totalLT.toString(),
+      totalTienNgoc: totalTN,
+      totalExp: totalEx.toString(),
+      skippedCount: skipped,
+    };
+  }
+
   async sendToCharacter(input: MailSendInput): Promise<MailView> {
     this.validateInput(input);
     const exists = await this.prisma.character.findUnique({
@@ -236,6 +391,7 @@ export class MailService {
         rewardItems: (input.rewardItems ?? []) as unknown as Prisma.InputJsonValue,
         expiresAt: input.expiresAt ?? null,
         createdByAdminId: input.createdByAdminId ?? null,
+        mailType: input.mailType ?? (DEFAULT_MAIL_TYPE as MailType),
       },
     });
     const view = toView(row, new Date());
@@ -248,10 +404,14 @@ export class MailService {
     return view;
   }
 
-  /** Gửi cho TẤT CẢ nhân vật hiện có. Trả về số thư đã tạo. */
+  /** Gửi cho TẤT CẢ nhân vật hiện có (hoặc subset qua `recipientCharacterIds`). Trả về số thư đã tạo. */
   async broadcast(input: MailBroadcastInput): Promise<number> {
     this.validateInput(input);
+    const where = input.recipientCharacterIds
+      ? { id: { in: input.recipientCharacterIds } }
+      : {};
     const chars = await this.prisma.character.findMany({
+      where,
       select: { id: true, userId: true },
     });
     if (chars.length === 0) return 0;
@@ -267,6 +427,7 @@ export class MailService {
         rewardItems: (input.rewardItems ?? []) as unknown as Prisma.InputJsonValue,
         expiresAt: input.expiresAt ?? null,
         createdByAdminId: input.createdByAdminId ?? null,
+        mailType: input.mailType ?? (DEFAULT_MAIL_TYPE as MailType),
       })),
     });
     const hasReward =
@@ -372,6 +533,8 @@ function toView(
     claimedAt: Date | null;
     expiresAt: Date | null;
     createdAt: Date;
+    mailType?: MailType;
+    deletedAt?: Date | null;
   },
   now: Date,
 ): MailView {
@@ -382,6 +545,14 @@ function toView(
     row.rewardTienNgoc > 0 ||
     row.rewardExp > 0n ||
     items.length > 0;
+  const status = deriveMailStatus({
+    readAt: row.readAt?.toISOString() ?? null,
+    claimedAt: row.claimedAt?.toISOString() ?? null,
+    expiresAt: row.expiresAt?.toISOString() ?? null,
+    now: now.toISOString(),
+    hasReward,
+    deletedAt: row.deletedAt?.toISOString() ?? null,
+  });
   return {
     id: row.id,
     senderName: row.senderName,
@@ -395,6 +566,9 @@ function toView(
     claimedAt: row.claimedAt?.toISOString() ?? null,
     expiresAt: row.expiresAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
-    claimable: hasReward && !row.claimedAt && !expired,
+    claimable: hasReward && !row.claimedAt && !expired && !row.deletedAt,
+    mailType: row.mailType ?? ('SYSTEM' as MailType),
+    status,
+    deleted: !!row.deletedAt,
   };
 }

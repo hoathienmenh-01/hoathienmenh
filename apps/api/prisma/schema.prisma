@@ -465,10 +465,10 @@ model Character {
   personalEventProgress  PersonalEventProgress[]
 
   /// Phase 29.0 — PvP Foundation backrefs.
-  pvpBattlesAttacker     PvpBattle[]                 @relation("PvpBattleAttacker")
-  pvpBattlesDefender     PvpBattle[]                 @relation("PvpBattleDefender")
-  pvpDefenseProfile      PvpDefenseProfile?
-  pvpAnomalyLogs         PvpAnomalyLog[]
+  pvpBattlesAttacker PvpBattle[]        @relation("PvpBattleAttacker")
+  pvpBattlesDefender PvpBattle[]        @relation("PvpBattleDefender")
+  pvpDefenseProfile  PvpDefenseProfile?
+  pvpAnomalyLogs     PvpAnomalyLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1864,11 +1864,19 @@ model Mail {
   expiresAt        DateTime?
   /// userId của admin đã gửi (null cho hệ thống / script).
   createdByAdminId String?
-  createdAt        DateTime  @default(now())
+  /// Phase 31.0 — taxonomy lý do gửi mail. Mail cũ migrate sang `SYSTEM`.
+  mailType         MailType  @default(SYSTEM)
+  /// Phase 31.0 — soft delete bởi user (user delete mail trong inbox). Khác
+  /// với expire/claim. Mail bị deletedAt KHÔNG hiển thị trong list nhưng vẫn
+  /// đếm vào audit (admin có thể xem qua admin route nếu cần).
+  deletedAt        DateTime?
+
+  createdAt DateTime @default(now())
 
   @@index([recipientId, createdAt])
   @@index([recipientId, claimedAt])
   @@index([recipientId, readAt])
+  @@index([recipientId, mailType, createdAt])
   @@index([expiresAt])
 }
 
@@ -1991,16 +1999,16 @@ model Listing {
 }
 
 model Sect {
-  id                String      @id @default(cuid())
-  name              String      @unique
-  description       String      @default("")
-  level             Int         @default(1)
-  treasuryLinhThach BigInt      @default(0)
-  leaderId          String?     @unique
+  id                String          @id @default(cuid())
+  name              String          @unique
+  description       String          @default("")
+  level             Int             @default(1)
+  treasuryLinhThach BigInt          @default(0)
+  leaderId          String?         @unique
   characters        Character[]
   /// Phase 29.0 — PvP anomaly backref.
   pvpAnomalyLogs    PvpAnomalyLog[]
-  createdAt         DateTime    @default(now())
+  createdAt         DateTime        @default(now())
 }
 
 enum ChatChannel {
@@ -5620,6 +5628,190 @@ model PersonalEventProgress {
   @@index([eventKey, triggerType])
 }
 
+// ─── Phase 31.0 — Social & Retention Foundation V1 ────────────────────────
+
+/// Phase 31.0 — taxonomy lý do gửi mail. Mail từ Phase 12 chưa có cột
+/// `mailType`; migration thêm `mailType MailType @default(SYSTEM)` để
+/// row cũ map sang `SYSTEM`. Reserved `PVP` cho Phase 29 (PvP / Arena /
+/// Sect War / Territory) — Phase 31 KHÔNG write rows với type này.
+enum MailType {
+  SYSTEM
+  ADMIN
+  REWARD
+  EVENT
+  MAINTENANCE
+  PURCHASE
+  SECT
+  FRIEND
+  RETURNER
+  PVP
+}
+
+/// Phase 31.0 — Audit log của mọi admin mail send (one / bulk / global).
+/// Mỗi row sinh ra trong CÙNG transaction với việc create Mail rows →
+/// đảm bảo invariant "không có admin mail nào không có audit". Recipient
+/// snapshot truncate cho SEND_BULK lớn (chỉ giữ ~50 đầu tiên để cap row
+/// size). `mailIds` lưu list id mail đã tạo để trace.
+///
+/// Server-authoritative: caller (`AdminMailService.sendAuthorized`) phải
+/// pass `reason ≥ 4 chars` (validator). Mọi route POST `/admin/mail/*`
+/// đều ghi 1 row vào bảng này.
+model AdminMailLog {
+  id                 String   @id @default(cuid())
+  adminUserId        String
+  kind               String
+  mailType           MailType @default(ADMIN)
+  subject            String
+  reason             String
+  mailCount          Int      @default(0)
+  /// JSON string[] — recipient userIds / characterIds snapshot (≤50).
+  recipientsSnapshot Json     @default("[]")
+  /// JSON object — SystemGiftTargetRule snapshot for SEND_GLOBAL (null otherwise).
+  targetRuleSnapshot Json?
+  /// JSON string[] — ids của mail đã tạo trong transaction.
+  mailIdsSnapshot    Json     @default("[]")
+  previewOnly        Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  @@index([adminUserId, createdAt])
+  @@index([kind, createdAt])
+}
+
+/// Phase 31.0 — System Gift template / compensation row.
+///
+/// Mỗi row là 1 template để admin / cron "phát" thành Mail rows tới
+/// target list. Claim đi qua mail flow thông thường (idempotent qua
+/// `Mail.claimedAt`). `targetRuleJson` chứa rule resolve (xem
+/// `SystemGiftTargetRule` shared catalog).
+///
+/// Anti-replay: `SystemGiftClaim` đảm bảo 1 character claim 1 gift
+/// chỉ 1 lần (`@@unique([giftKey, characterId])`).
+model SystemGift {
+  id               String    @id @default(cuid())
+  giftKey          String    @unique
+  title            String
+  body             String
+  /// JSON SystemGiftReward shape.
+  rewardJson       Json      @default("{}")
+  /// JSON SystemGiftTargetRule shape.
+  targetRuleJson   Json      @default("{}")
+  expiresAt        DateTime?
+  createdByAdminId String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([createdAt])
+  @@index([expiresAt])
+}
+
+/// Phase 31.0 — Idempotency record cho 1 character đã nhận 1 gift.
+/// Đảm bảo claim chỉ chạy 1 lần kể cả khi cron retry / race. Phép tạo
+/// Mail row chỉ thực hiện nếu insert vào bảng này thành công (unique
+/// constraint).
+model SystemGiftClaim {
+  id          String   @id @default(cuid())
+  giftKey     String
+  characterId String
+  mailId      String?
+  claimedAt   DateTime @default(now())
+
+  @@unique([giftKey, characterId])
+  @@index([characterId])
+  @@index([giftKey])
+}
+
+/// Phase 31.0 — Returner state cho 1 character.
+///
+/// Cập nhật khi character login: tính inactiveDays từ `lastLoginAt`
+/// cũ, resolve tier, idempotent trigger 1 lần / cycle (cycleKey =
+/// `userId:tier:YYYY-MM-DD`). Lưu `currentTier` để FE biết hiển thị
+/// banner returner.
+///
+/// Anti-replay: `lastCycleKey` unique constraint loose (qua filter
+/// service-level). Không cần unique riêng vì 1 character chỉ có 1 row.
+model CharacterReturnerState {
+  characterId   String    @id
+  /// ISO datetime của lần login PREVIOUS (trước login hiện tại). Dùng
+  /// để compute inactiveDays.
+  prevLoginAt   DateTime?
+  /// ISO datetime của lần login hiện tại.
+  lastLoginAt   DateTime?
+  inactiveDays  Int       @default(0)
+  /// SHORT / MEDIUM / LONG hoặc null nếu chưa qualify.
+  currentTier   String?
+  /// `userId:tier:YYYY-MM-DD` của trigger gần nhất (idempotent).
+  lastCycleKey  String?
+  /// ISO datetime của lần trigger gần nhất.
+  lastTriggerAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([currentTier])
+  @@index([lastTriggerAt])
+}
+
+/// Phase 31.0 — Mentor profile cho người chơi cao cảnh giới.
+///
+/// Mỗi user chỉ có 0 hoặc 1 MentorProfile (PK = userId). Tạo profile
+/// = "đăng ký làm mentor". `acceptingStudents` cho phép mentor pause
+/// nhận học trò.
+model MentorProfile {
+  mentorUserId       String   @id
+  /// Snapshot tên hiển thị tại lúc tạo / update.
+  displayName        String?
+  /// Snapshot realm tier tại lúc tạo / update (auto sync khi mentor breakthrough).
+  realmTier          Int      @default(0)
+  intro              String?
+  acceptingStudents  Boolean  @default(true)
+  /// Counter ACTIVE student — cache để check cap nhanh; service phải
+  /// đồng bộ qua transaction khi accept/end.
+  activeStudentCount Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([realmTier])
+  @@index([acceptingStudents])
+}
+
+/// Phase 31.0 — Mentor / Student relation.
+///
+/// Lifecycle: PENDING → ACTIVE | DECLINED, ACTIVE → ENDED.
+/// Một student chỉ có MAX 1 quan hệ ACTIVE tại 1 thời điểm (enforce
+/// service-level: query `findFirst` rồi reject `STUDENT_ALREADY_HAS_MENTOR`).
+model MentorRelation {
+  id                 String    @id @default(cuid())
+  mentorUserId       String
+  studentUserId      String
+  status             String    @default("PENDING")
+  message            String?
+  mentorDisplayName  String?
+  studentDisplayName String?
+  createdAt          DateTime  @default(now())
+  respondedAt        DateTime?
+  endedAt            DateTime?
+
+  @@index([mentorUserId, status, createdAt])
+  @@index([studentUserId, status, createdAt])
+  @@index([status, createdAt])
+}
+
+/// Phase 31.0 — Mail attachment claim ledger (idempotent audit). Phase
+/// 31 mail vẫn dùng `Mail.claimedAt` làm CAS chính, nhưng bảng này
+/// thêm 1 lớp idempotency riêng cho từng (mailId, characterId) — hữu
+/// dụng khi tương lai 1 mail có nhiều attachment claim độc lập. Phase
+/// 31 mỗi mail chỉ có 1 claim row.
+model MailAttachmentClaim {
+  id                 String   @id @default(cuid())
+  mailId             String
+  characterId        String
+  /// JSON snapshot reward đã claim (string-safe BigInt). Audit.
+  rewardSnapshotJson Json     @default("{}")
+  claimedAt          DateTime @default(now())
+
+  @@unique([mailId, characterId])
+  @@index([characterId, claimedAt])
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Phase 29.0 — PvP Foundation V1
 // ─────────────────────────────────────────────────────────────────────────────
@@ -5643,36 +5835,36 @@ model PersonalEventProgress {
 /// flag `status=INVALIDATED` (qua `PVP_BATTLE_INVALIDATE` audit) nhưng
 /// `roundsJson` / `rewardJson` immutable.
 model PvpBattle {
-  id                    String    @id @default(cuid())
+  id                   String     @id @default(cuid())
   /// PvpMode literal (DUEL | FRIENDLY_SPARRING | EVENT_PVP | SECT_WAR | TERRITORY_WAR).
-  mode                  String
-  attackerCharacterId   String
-  attacker              Character @relation("PvpBattleAttacker", fields: [attackerCharacterId], references: [id], onDelete: Cascade)
-  defenderCharacterId   String?
-  defender              Character? @relation("PvpBattleDefender", fields: [defenderCharacterId], references: [id], onDelete: SetNull)
+  mode                 String
+  attackerCharacterId  String
+  attacker             Character  @relation("PvpBattleAttacker", fields: [attackerCharacterId], references: [id], onDelete: Cascade)
+  defenderCharacterId  String?
+  defender             Character? @relation("PvpBattleDefender", fields: [defenderCharacterId], references: [id], onDelete: SetNull)
   /// PvpBattleStatus (PENDING|RESOLVED|CANCELLED|EXPIRED|INVALIDATED).
-  status                String    @default("PENDING")
+  status               String     @default("PENDING")
   /// PvpResult — null khi PENDING.
-  result                String?
+  result               String?
   /// Snapshot tại thời điểm queue (validatePvpSnapshot enforced).
-  attackerSnapshotJson  Json
-  defenderSnapshotJson  Json
+  attackerSnapshotJson Json
+  defenderSnapshotJson Json
   /// Resolve seed for replay verify. Random nhưng deterministic.
-  seed                  Int       @default(0)
+  seed                 Int        @default(0)
   /// Round summary array (KHÔNG frame-by-frame, chỉ delta).
-  roundsJson            Json
+  roundsJson           Json
   /// Reward snapshot — chỉ display, không re-grant. Null khi FRIENDLY_SPARRING.
-  rewardJson            Json?
+  rewardJson           Json?
   /// Rating change (nếu mode = DUEL có rating). Arena vẫn ở ArenaMatch.
-  ratingChangeJson      Json?
+  ratingChangeJson     Json?
   /// Reference key (ví dụ eventKey, sectWarMatchId, territoryKey).
-  sourceModuleKey       String?
+  sourceModuleKey      String?
   /// Đã grant reward chưa? Idempotency check.
-  rewardGranted         Boolean   @default(false)
+  rewardGranted        Boolean    @default(false)
   /// Idempotency token để chặn double-resolve.
-  idempotencyKey        String?
-  createdAt             DateTime  @default(now())
-  resolvedAt            DateTime?
+  idempotencyKey       String?
+  createdAt            DateTime   @default(now())
+  resolvedAt           DateTime?
 
   @@unique([idempotencyKey])
   @@index([attackerCharacterId, mode, createdAt])
@@ -5691,15 +5883,15 @@ model PvpBattle {
 /// được verify qua `validatePvpDefenseProfile` (snapshotType ∈
 /// {DEFENDER, SECT_MEMBER}).
 model PvpDefenseProfile {
-  id            String    @id @default(cuid())
-  characterId   String    @unique
-  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  id           String    @id @default(cuid())
+  characterId  String    @unique
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
   /// Snapshot JSON tuân `validatePvpDefenseProfile`.
-  snapshotJson  Json
+  snapshotJson Json
   /// Player-defined label (tối đa 60 ký tự — validator enforce).
-  label         String?
-  updatedAt     DateTime  @updatedAt
-  createdAt     DateTime  @default(now())
+  label        String?
+  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime  @default(now())
 
   @@index([updatedAt])
 }
@@ -5714,7 +5906,7 @@ model PvpDefenseProfile {
 /// `relatedBattleId` reference `PvpBattle.id` hoặc `ArenaMatch.id`
 /// (string-based, không FK cứng để gom được nhiều bảng).
 model PvpAnomalyLog {
-  id              String    @id @default(cuid())
+  id              String     @id @default(cuid())
   /// PvpAnomalyType literal.
   anomalyType     String
   /// Severity 0.0–1.0 (PVP_ANOMALY_RISK_WEIGHT lookup).
@@ -5722,18 +5914,18 @@ model PvpAnomalyLog {
   characterId     String?
   character       Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
   sectId          String?
-  sect            Sect?     @relation(fields: [sectId], references: [id], onDelete: SetNull)
+  sect            Sect?      @relation(fields: [sectId], references: [id], onDelete: SetNull)
   /// PvpBattle.id / ArenaMatch.id / SectWarMatch.id (string, no FK).
   relatedBattleId String?
   /// Reason chi tiết (LLM-friendly text + JSON detail).
   detailJson      Json
   /// Auto-block reward claim nếu severity ≥ 0.8.
-  blockedReward   Boolean   @default(false)
+  blockedReward   Boolean    @default(false)
   resolvedBy      String?
   resolution      String?
   resolvedAt      DateTime?
   resolveReason   String?
-  createdAt       DateTime  @default(now())
+  createdAt       DateTime   @default(now())
 
   @@index([anomalyType, createdAt])
   @@index([characterId, createdAt])

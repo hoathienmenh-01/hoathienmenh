@@ -5,6 +5,20 @@ export interface MailRewardItem {
   qty: number;
 }
 
+export type MailType =
+  | 'SYSTEM'
+  | 'ADMIN'
+  | 'REWARD'
+  | 'EVENT'
+  | 'MAINTENANCE'
+  | 'PURCHASE'
+  | 'SECT'
+  | 'FRIEND'
+  | 'RETURNER'
+  | 'PVP';
+
+export type MailStatus = 'UNREAD' | 'READ' | 'CLAIMED' | 'EXPIRED' | 'DELETED';
+
 export interface MailView {
   id: string;
   senderName: string;
@@ -19,6 +33,20 @@ export interface MailView {
   expiresAt: string | null;
   createdAt: string;
   claimable: boolean;
+  /** Phase 31.0 — taxonomy enum. */
+  mailType: MailType;
+  /** Phase 31.0 — derived status. */
+  status: MailStatus;
+  /** Phase 31.0 — soft-delete flag. */
+  deleted: boolean;
+}
+
+export interface MailClaimAllResult {
+  claimedCount: number;
+  totalLinhThach: string;
+  totalTienNgoc: number;
+  totalExp: string;
+  skippedCount: number;
 }
 
 interface Envelope<T> {
@@ -60,4 +88,30 @@ export async function claimMail(id: string): Promise<MailView> {
     {},
   );
   return unwrap(data).mail;
+}
+
+/** Phase 31.0 — single mail getter. */
+export async function fetchMail(id: string): Promise<MailView> {
+  const { data } = await apiClient.get<Envelope<{ mail: MailView }>>(
+    `/mail/${encodeURIComponent(id)}`,
+  );
+  return unwrap(data).mail;
+}
+
+/** Phase 31.0 — soft-delete (set deletedAt). */
+export async function deleteMail(id: string): Promise<MailView> {
+  const { data } = await apiClient.post<Envelope<{ mail: MailView }>>(
+    `/mail/${encodeURIComponent(id)}/delete`,
+    {},
+  );
+  return unwrap(data).mail;
+}
+
+/** Phase 31.0 — bulk claim. */
+export async function claimAllMail(): Promise<MailClaimAllResult> {
+  const { data } = await apiClient.post<Envelope<{ result: MailClaimAllResult }>>(
+    '/mail/claim-all',
+    {},
+  );
+  return unwrap(data).result;
 }
