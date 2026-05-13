@@ -13,6 +13,7 @@ import { DungeonRunService } from './modules/dungeon-run/dungeon-run.service';
 import { RewardCapService } from './modules/economy/reward-cap.service';
 import { StoryDungeonService } from './modules/story-dungeon/story-dungeon.service';
 import { Phase33StoryService } from './modules/story-v2/story-v2.service';
+import { OnboardingQuestService } from './modules/onboarding-quest/onboarding-quest.service';
 
 /**
  * Helpers cho integration test — tạo fixture user/character nhanh, không
@@ -478,6 +479,21 @@ export function makeNpcRelationshipChainService(prisma: PrismaService): {
   const quests = new QuestService(prisma, currency, inventory, affinity);
   const chains = new NpcRelationshipChainService(prisma, currency, inventory, affinity);
   return { chains, quests, affinity, inventory, currency };
+}
+
+/**
+ * Phase 34.0 — Dựng `OnboardingQuestService` cho integration test (bypass DI).
+ * Wire `CurrencyService` cho `applyTx('ONBOARDING_TASK_CLAIM')`. KHÔNG cần
+ * `InventoryService` / `NpcAffinityService` vì Phase 34.0 chỉ grant linh
+ * thach + exp (cosmetic title không ghi inventory).
+ */
+export function makeOnboardingQuestService(prisma: PrismaService): {
+  onboarding: OnboardingQuestService;
+  currency: CurrencyService;
+} {
+  const currency = new CurrencyService(prisma);
+  const onboarding = new OnboardingQuestService(prisma, currency);
+  return { onboarding, currency };
 }
 
 export const TEST_DATABASE_URL =

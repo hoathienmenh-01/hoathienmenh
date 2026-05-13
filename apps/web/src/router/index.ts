@@ -282,6 +282,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/StoryV2View.vue'),
   },
   {
+    // Phase 34.0 — 7-Day Onboarding Questline.
+    path: '/onboarding-quest',
+    name: 'onboarding-quest',
+    component: () => import('@/views/OnboardingQuestView.vue'),
+  },
+  {
     path: '/social',
     name: 'social',
     component: () => import('@/views/SocialView.vue'),
