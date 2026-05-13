@@ -226,7 +226,20 @@ export type LedgerReason =
   // `CharacterOnboardingTaskProgress.status='CLAIMED'` CAS guard — race-safe
   // winner duy nhất ghi 1 ledger row / taskKey. Reward bound bởi catalog
   // `OnboardingTaskRewardDef.linhThach` snapshot — KHÔNG mint Tien Ngoc.
-  | 'ONBOARDING_TASK_CLAIM';
+  | 'ONBOARDING_TASK_CLAIM'
+  // Phase 34.1 — Daily Random Encounter claim. Wire qua
+  // `DailyEncounterService.claim` → `applyTx` cho linhThach với
+  // `refType='DailyEncounter'` + `refId=<characterId>:<dateKey>`.
+  // Idempotency lấy từ `CharacterDailyEncounter.status='CLAIMED'` CAS guard.
+  // Reward bound bởi catalog `DailyEncounterRewardDef` snapshot — KHÔNG mint
+  // Tien Ngoc.
+  | 'ENCOUNTER_CLAIM'
+  // Phase 34.2 — Secret Realm clear claim. Wire qua
+  // `SecretRealmService.claimRun` → `applyTx` cho linhThach với
+  // `refType='SecretRealmRun'` + `refId=runId`. Idempotency lấy từ
+  // `CharacterSecretRealmRun.status='CLAIMED'` CAS guard. Reward bound bởi
+  // catalog `SecretRealmRewardDef` snapshot — KHÔNG mint Tien Ngoc.
+  | 'SECRET_REALM_CLAIM';
 
 export interface CurrencyApplyInput {
   characterId: string;

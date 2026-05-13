@@ -24,6 +24,9 @@ import { StoryDialogueModule } from './modules/story-dialogue/story-dialogue.mod
 import { StoryDungeonModule } from './modules/story-dungeon/story-dungeon.module';
 import { Phase33StoryModule } from './modules/story-v2/story-v2.module';
 import { OnboardingQuestModule } from './modules/onboarding-quest/onboarding-quest.module';
+import { DailyEncounterModule } from './modules/daily-encounter/daily-encounter.module';
+import { SecretRealmRuntimeModule } from './modules/secret-realm-runtime/secret-realm-runtime.module';
+import { LoadoutPresetModule } from './modules/loadout-preset/loadout-preset.module';
 import { GiftCodeModule } from './modules/giftcode/giftcode.module';
 import { MailModule } from './modules/mail/mail.module';
 import { EmailModule } from './modules/email/email.module';
@@ -121,6 +124,9 @@ import { PlayerNavigationModule } from './modules/player-navigation/player-navig
     StoryDungeonModule,
     Phase33StoryModule,
     OnboardingQuestModule,
+    DailyEncounterModule,
+    SecretRealmRuntimeModule,
+    LoadoutPresetModule,
     GiftCodeModule,
     MailModule,
     EmailModule,

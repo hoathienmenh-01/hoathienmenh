@@ -12,9 +12,22 @@ import {
 import type { Request } from 'express';
 import type { EquipSlot } from '@prisma/client';
 import { z } from 'zod';
+import {
+  applyInventoryQolView,
+  INVENTORY_QOL_FILTER_BUCKETS,
+  INVENTORY_QOL_SORT_KEYS,
+  type InventoryQolFilterBucket,
+  type InventoryQolSortKey,
+} from '@xuantoi/shared';
 import { InventoryService, type InventoryView } from './inventory.service';
 import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../../common/prisma.service';
+
+const QolQueryInput = z.object({
+  sort: z.enum(INVENTORY_QOL_SORT_KEYS).optional(),
+  bucket: z.enum(INVENTORY_QOL_FILTER_BUCKETS).optional(),
+  search: z.string().max(64).optional(),
+});
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -69,6 +82,68 @@ export class InventoryController {
     const { characterId } = await this.requireCharacter(req);
     const items = await this.inv.list(characterId);
     return { ok: true, data: { items } };
+  }
+
+  /**
+   * Phase 34.3 — Inventory Auto-sort / Lock QoL view.
+   *
+   * Server-side wrapper around `list()` that applies the same sort + filter
+   * util shared with the FE (`applyInventoryQolView`). Useful for mobile UI
+   * that wants to render only the active bucket without round-tripping the
+   * full inventory.
+   *
+   * Query params:
+   *  - `sort`  ∈ `INVENTORY_QOL_SORT_KEYS` (default `'default'`).
+   *  - `bucket` ∈ `INVENTORY_QOL_FILTER_BUCKETS` (default `'all'`).
+   *  - `search` free-text, case-insensitive on `itemKey` + `name`.
+   */
+  @Get('qol/v1/items')
+  async listQol(
+    @Req() req: Request,
+  ): Promise<{
+    ok: true;
+    data: {
+      items: InventoryView[];
+      total: number;
+      filtered: number;
+      sort: InventoryQolSortKey;
+      bucket: InventoryQolFilterBucket;
+    };
+  }> {
+    const { characterId } = await this.requireCharacter(req);
+    const query = (req.query ?? {}) as Record<string, unknown>;
+    const parsed = QolQueryInput.safeParse({
+      sort: query.sort,
+      bucket: query.bucket,
+      search: query.search,
+    });
+    if (!parsed.success) fail('INVALID_INPUT');
+    const items = await this.inv.list(characterId);
+    const sort: InventoryQolSortKey = parsed.data.sort ?? 'default';
+    const bucket: InventoryQolFilterBucket = parsed.data.bucket ?? 'all';
+    const out = applyInventoryQolView(
+      items.map((r) => ({
+        id: r.id,
+        itemKey: r.itemKey,
+        qty: r.qty,
+        equippedSlot: r.equippedSlot,
+        locked: r.locked,
+        createdAt: r.createdAt,
+        item: r.item,
+      })),
+      { sort, bucket, search: parsed.data.search },
+    );
+    const filtered = out.map((row) => items.find((i) => i.id === row.id)!);
+    return {
+      ok: true,
+      data: {
+        items: filtered,
+        total: items.length,
+        filtered: filtered.length,
+        sort,
+        bucket,
+      },
+    };
   }
 
   @Post('equip')
