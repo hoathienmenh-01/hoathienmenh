@@ -5664,6 +5664,78 @@
       "UNKNOWN": "Something went wrong — try again."
     }
   },
+  "dacQuyen": {
+    "title": "Top-up / Convenience / Entitlements",
+    "subtitle": "Manage monthly cards, sweep tickets, extra attempts, Battle Pass, Growth Fund, Limited Shop and active entitlements. NO selling of top-tier items / cap bypass / realm skip.",
+    "loading": "Loading data…",
+    "error": "Error: {msg}",
+    "tabs": {
+      "entitlements": "Entitlements",
+      "monthlyCard": "Monthly Card",
+      "sweep": "Sweep Tickets",
+      "extraAttempt": "Extra Attempts",
+      "battlePass": "Battle Pass",
+      "growthFund": "Growth Fund",
+      "limitedShop": "Limited Shop"
+    },
+    "entitlements": {
+      "title": "Active entitlements",
+      "empty": "No active entitlements.",
+      "value": "Value: {v}",
+      "source": "Source: {src}",
+      "expiresAt": "Expires: {date}"
+    },
+    "monthlyCard": {
+      "title": "Active monthly cards",
+      "empty": "No active monthly cards.",
+      "daysRemaining": "{days} days remaining",
+      "canClaim": "Can claim today's reward",
+      "claimed": "Already claimed today"
+    },
+    "sweep": {
+      "title": "Sweep tickets in inventory",
+      "description": "Sweep tickets only work for content cleared ≥1 time, still consume attempts/caps and do NOT trigger special encounters.",
+      "quantity": "Quantity: {q}"
+    },
+    "extraAttempt": {
+      "title": "Extra attempts purchased today",
+      "empty": "No extra attempts purchased today.",
+      "used": "{used}/{max} used"
+    },
+    "battlePass": {
+      "title": "Battle Pass",
+      "noSeason": "No active season at the moment.",
+      "season": "Season: {id}",
+      "level": "Level {level}/{max}",
+      "xp": "XP: {xp}",
+      "premiumUnlocked": "Premium track unlocked.",
+      "premiumLocked": "Premium track locked.",
+      "missionsDaily": "Daily missions",
+      "missionsWeekly": "Weekly missions",
+      "missionsSeason": "Season missions"
+    },
+    "growthFund": {
+      "title": "Growth Fund",
+      "purchased": "Purchased — claimed {count} milestones",
+      "notPurchased": "Not purchased"
+    },
+    "limitedShop": {
+      "title": "Limited Shops",
+      "DAILY_SHOP": "Daily Shop",
+      "WEEKLY_SHOP": "Weekly Shop",
+      "MONTHLY_SHOP": "Monthly Shop",
+      "period": "Period: {p}",
+      "remaining": "Remaining: {rem}/{max}",
+      "buy": "Buy",
+      "soldOut": "Sold out",
+      "errors": {
+        "PURCHASE_LIMIT_REACHED": "Purchase limit reached for this period.",
+        "INSUFFICIENT_CURRENCY": "Not enough currency.",
+        "PRODUCT_NOT_FOUND": "Item not found.",
+        "TRANSACTION_CONFLICT": "Transaction conflict — retry."
+      }
+    }
+  },
   "monetization": {
     "title": "Monetization",
     "subtitle": "Battle Pass, Monthly Card, and VIP Light provide light acceleration only; no top gear sales or realm bypass.",

@@ -5664,6 +5664,78 @@
       "UNKNOWN": "Có lỗi xảy ra — thử lại."
     }
   },
+  "dacQuyen": {
+    "title": "Nạp / Tiện Ích / Đặc Quyền",
+    "subtitle": "Quản lý thẻ tháng, vé quét, mua thêm lượt, Tiên Lộ Lệnh, Quỹ trưởng thành, Shop giới hạn và quyền lợi đang có. KHÔNG bán đồ top / bỏ cap / vượt cảnh giới.",
+    "loading": "Đang tải dữ liệu…",
+    "error": "Lỗi: {msg}",
+    "tabs": {
+      "entitlements": "Quyền lợi",
+      "monthlyCard": "Thẻ tháng",
+      "sweep": "Vé quét",
+      "extraAttempt": "Mua thêm lượt",
+      "battlePass": "Tiên Lộ Lệnh",
+      "growthFund": "Quỹ trưởng thành",
+      "limitedShop": "Shop giới hạn"
+    },
+    "entitlements": {
+      "title": "Quyền lợi đang có",
+      "empty": "Chưa có quyền lợi nào.",
+      "value": "Giá trị: {v}",
+      "source": "Nguồn: {src}",
+      "expiresAt": "Hết hạn: {date}"
+    },
+    "monthlyCard": {
+      "title": "Thẻ tháng đang hoạt động",
+      "empty": "Chưa có thẻ tháng đang hoạt động.",
+      "daysRemaining": "Còn {days} ngày",
+      "canClaim": "Có thể nhận thưởng hôm nay",
+      "claimed": "Hôm nay đã nhận"
+    },
+    "sweep": {
+      "title": "Vé quét đang giữ",
+      "description": "Vé quét chỉ dùng được với content đã clear ≥1 lần, vẫn tốn lượt/cap và KHÔNG mở encounter đặc biệt.",
+      "quantity": "Số lượng: {q}"
+    },
+    "extraAttempt": {
+      "title": "Mua thêm lượt hôm nay",
+      "empty": "Chưa mua thêm lượt nào hôm nay.",
+      "used": "{used}/{max} đã dùng"
+    },
+    "battlePass": {
+      "title": "Tiên Lộ Lệnh",
+      "noSeason": "Hiện không có mùa nào đang hoạt động.",
+      "season": "Mùa: {id}",
+      "level": "Cấp {level}/{max}",
+      "xp": "EXP: {xp}",
+      "premiumUnlocked": "Đã mở khóa premium.",
+      "premiumLocked": "Chưa mở khóa premium.",
+      "missionsDaily": "Nhiệm vụ ngày",
+      "missionsWeekly": "Nhiệm vụ tuần",
+      "missionsSeason": "Nhiệm vụ mùa"
+    },
+    "growthFund": {
+      "title": "Quỹ Trưởng Thành",
+      "purchased": "Đã mua — đã nhận {count} mốc",
+      "notPurchased": "Chưa mua"
+    },
+    "limitedShop": {
+      "title": "Shop giới hạn",
+      "DAILY_SHOP": "Shop ngày",
+      "WEEKLY_SHOP": "Shop tuần",
+      "MONTHLY_SHOP": "Shop tháng",
+      "period": "Kỳ: {p}",
+      "remaining": "Còn lại: {rem}/{max}",
+      "buy": "Mua",
+      "soldOut": "Hết lượt",
+      "errors": {
+        "PURCHASE_LIMIT_REACHED": "Đã đạt giới hạn mua trong kỳ.",
+        "INSUFFICIENT_CURRENCY": "Không đủ tiền.",
+        "PRODUCT_NOT_FOUND": "Item không tồn tại.",
+        "TRANSACTION_CONFLICT": "Xung đột giao dịch — thử lại sau."
+      }
+    }
+  },
   "monetization": {
     "title": "Tiên Lộ Lệnh",
     "subtitle": "Battle Pass, Nguyệt Tạp và VIP Light chỉ tăng tốc nhẹ, không bán đồ top hay bỏ qua cảnh giới.",

@@ -296,3 +296,145 @@ export async function claimGrowthFundMilestone(
   );
   return data.data;
 }
+
+// ─── Phase 27.1–27.5 — Monetization Systems V1 ───────────────────────────
+
+export interface MonetizationOverview {
+  activeEntitlements: Array<{
+    key: string;
+    value: number;
+    source: string;
+    expiresAt: string | null;
+  }>;
+  monthlyCards: Array<{
+    cardKey: string;
+    activeUntil: string;
+    daysRemaining: number;
+    canClaimToday: boolean;
+    lastClaimAt: string | null;
+  }>;
+  battlePass: {
+    seasonId: string | null;
+    level: number;
+    maxLevel: number;
+    xp: number;
+    xpPerLevel: number;
+    premiumUnlocked: boolean;
+    endsAt: string | null;
+  };
+  growthFunds: Array<{
+    fundKey: string;
+    purchased: boolean;
+    purchasedAt: string | null;
+    claimedMilestones: string[];
+  }>;
+  limitedShops: Array<{
+    shopKey: string;
+    period: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+    periodKey: string;
+  }>;
+  sweepTickets: Array<{ itemKey: string; quantity: number }>;
+  extraAttempts: Array<{
+    limitKey: string;
+    usedToday: number;
+    maxPerDay: number;
+    nextResetAt: string;
+  }>;
+  wallet: Array<{ currency: string; amount: number }>;
+}
+
+export interface BattlePassMissionView {
+  mission: {
+    key: string;
+    scope: 'DAILY' | 'WEEKLY' | 'SEASON';
+    source: string;
+    target: number;
+    expReward: number;
+    nameVi: string;
+    nameEn: string;
+    descriptionVi: string;
+  };
+  scopeBucket: string;
+  progress: number;
+  target: number;
+  completed: boolean;
+  claimed: boolean;
+}
+
+export interface BattlePassMissionsView {
+  seasonId: string;
+  daily: BattlePassMissionView[];
+  weekly: BattlePassMissionView[];
+  season: BattlePassMissionView[];
+}
+
+export interface LimitedShopItemListing {
+  item: {
+    shopKey: 'DAILY_SHOP' | 'WEEKLY_SHOP' | 'MONTHLY_SHOP';
+    itemKey: string;
+    nameVi: string;
+    nameEn: string;
+    descriptionVi: string;
+    priceCurrency: string;
+    priceAmount: number;
+    purchaseLimitCount: number;
+    reward: MonetizationReward[];
+    enabled: boolean;
+  };
+  periodKey: string;
+  purchasedInPeriod: number;
+  remaining: number;
+  soldOut: boolean;
+}
+
+export interface LimitedShopListing {
+  shopKey: 'DAILY_SHOP' | 'WEEKLY_SHOP' | 'MONTHLY_SHOP';
+  period: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+  periodKey: string;
+  items: LimitedShopItemListing[];
+}
+
+export async function getMonetizationOverview(): Promise<MonetizationOverview> {
+  const { data } = await apiClient.get<ApiEnvelope<MonetizationOverview>>(
+    '/monetization/overview',
+  );
+  return data.data;
+}
+
+export async function getBattlePassMissions(): Promise<BattlePassMissionsView> {
+  const { data } = await apiClient.get<ApiEnvelope<BattlePassMissionsView>>(
+    '/monetization/battle-pass/missions',
+  );
+  return data.data;
+}
+
+export async function getLimitedShops(): Promise<LimitedShopListing[]> {
+  const { data } = await apiClient.get<ApiEnvelope<LimitedShopListing[]>>(
+    '/monetization/limited-shops',
+  );
+  return data.data;
+}
+
+export async function buyLimitedShopItem(
+  shopKey: 'DAILY_SHOP' | 'WEEKLY_SHOP' | 'MONTHLY_SHOP',
+  itemKey: string,
+): Promise<{
+  shopKey: string;
+  itemKey: string;
+  periodKey: string;
+  quantity: number;
+  totalInPeriod: number;
+  limit: number;
+}> {
+  const { data } = await apiClient.post<
+    ApiEnvelope<{
+      shopKey: string;
+      itemKey: string;
+      periodKey: string;
+      quantity: number;
+      totalInPeriod: number;
+      limit: number;
+    }>
+  >(`/monetization/limited-shops/buy`, { shopKey, itemKey });
+  return data.data;
+}
