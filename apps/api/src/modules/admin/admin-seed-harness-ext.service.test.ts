@@ -681,3 +681,204 @@ describe('AdminService.seedDailyLoginStreak', () => {
     expect(rows).toHaveLength(6);
   });
 });
+
+// ───────────────── seedReturnerInactive ─────────────────
+
+describe('AdminService.seedReturnerInactive', () => {
+  it('happy path: ADMIN seed 8 days → CharacterReturnerState.lastLoginAt backdated, audit ghi đủ', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const player = await makeUserChar(prisma, { role: 'PLAYER' });
+
+    const now = new Date('2026-05-04T12:00:00Z');
+    const result = await admin.seedReturnerInactive(
+      adminU.userId,
+      'ADMIN',
+      player.userId,
+      8,
+      'phase 31 returner smoke',
+      now,
+    );
+
+    expect(result.characterId).toBe(player.characterId);
+    expect(result.days).toBe(8);
+    expect(result.wasExisting).toBe(false);
+    // 8 days before 2026-05-04T12:00:00Z = 2026-04-26T12:00:00Z.
+    expect(result.lastLoginAt).toBe('2026-04-26T12:00:00.000Z');
+
+    const row = await prisma.characterReturnerState.findUnique({
+      where: { characterId: player.characterId },
+    });
+    expect(row).not.toBeNull();
+    expect(row!.lastLoginAt?.toISOString()).toBe('2026-04-26T12:00:00.000Z');
+    expect(row!.prevLoginAt).toBeNull();
+    expect(row!.inactiveDays).toBe(0);
+    expect(row!.currentTier).toBeNull();
+    expect(row!.lastCycleKey).toBeNull();
+    expect(row!.lastTriggerAt).toBeNull();
+
+    const audits = await prisma.adminAuditLog.findMany({
+      where: { actorUserId: adminU.userId, action: 'admin.returner.seed_inactive' },
+    });
+    expect(audits).toHaveLength(1);
+    const meta = audits[0].meta as Record<string, unknown>;
+    expect(meta.days).toBe(8);
+    expect(meta.targetUserId).toBe(player.userId);
+    expect(meta.characterId).toBe(player.characterId);
+    expect(meta.lastLoginAt).toBe('2026-04-26T12:00:00.000Z');
+    expect(meta.wasExisting).toBe(false);
+    expect(meta.reason).toBe('phase 31 returner smoke');
+  });
+
+  it('idempotent overwrite: seed 5 days then 30 days → row giữ 1, lastLoginAt cập nhật mới, wasExisting=true lần 2', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const player = await makeUserChar(prisma, { role: 'PLAYER' });
+    const now = new Date('2026-05-04T12:00:00Z');
+
+    const r1 = await admin.seedReturnerInactive(
+      adminU.userId,
+      'ADMIN',
+      player.userId,
+      5,
+      '',
+      now,
+    );
+    const r2 = await admin.seedReturnerInactive(
+      adminU.userId,
+      'ADMIN',
+      player.userId,
+      30,
+      '',
+      now,
+    );
+
+    expect(r1.wasExisting).toBe(false);
+    expect(r2.wasExisting).toBe(true);
+    expect(r2.lastLoginAt).toBe('2026-04-04T12:00:00.000Z');
+
+    const rows = await prisma.characterReturnerState.findMany({
+      where: { characterId: player.characterId },
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].lastLoginAt?.toISOString()).toBe('2026-04-04T12:00:00.000Z');
+
+    const audits = await prisma.adminAuditLog.findMany({
+      where: { actorUserId: adminU.userId, action: 'admin.returner.seed_inactive' },
+    });
+    expect(audits).toHaveLength(2);
+  });
+
+  it('preserves existing cycle/trigger reset → next /returner/check can fire', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const player = await makeUserChar(prisma, { role: 'PLAYER' });
+    const now = new Date('2026-05-04T12:00:00Z');
+
+    // Pre-seed a row with currentTier + lastCycleKey + lastTriggerAt set
+    // (simulate prior cycle).
+    await prisma.characterReturnerState.create({
+      data: {
+        characterId: player.characterId,
+        prevLoginAt: new Date('2026-04-01T00:00:00Z'),
+        lastLoginAt: new Date('2026-04-05T00:00:00Z'),
+        inactiveDays: 4,
+        currentTier: 'SHORT',
+        lastCycleKey: `${player.userId}:SHORT:2026-04-05`,
+        lastTriggerAt: new Date('2026-04-05T00:00:00Z'),
+      },
+    });
+
+    const result = await admin.seedReturnerInactive(
+      adminU.userId,
+      'ADMIN',
+      player.userId,
+      14,
+      'reset for MEDIUM smoke',
+      now,
+    );
+
+    expect(result.wasExisting).toBe(true);
+
+    const row = await prisma.characterReturnerState.findUnique({
+      where: { characterId: player.characterId },
+    });
+    expect(row!.currentTier).toBeNull();
+    expect(row!.lastCycleKey).toBeNull();
+    expect(row!.lastTriggerAt).toBeNull();
+    expect(row!.prevLoginAt).toBeNull();
+    expect(row!.lastLoginAt?.toISOString()).toBe('2026-04-20T12:00:00.000Z');
+  });
+
+  it('INVALID_INPUT khi days = 0', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const player = await makeUserChar(prisma, { role: 'PLAYER' });
+
+    await expect(
+      admin.seedReturnerInactive(adminU.userId, 'ADMIN', player.userId, 0, ''),
+    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+  });
+
+  it('INVALID_INPUT khi days > 120 (cap)', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const player = await makeUserChar(prisma, { role: 'PLAYER' });
+
+    await expect(
+      admin.seedReturnerInactive(adminU.userId, 'ADMIN', player.userId, 121, ''),
+    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+  });
+
+  it('INVALID_INPUT khi days không phải integer (vd 7.5)', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const player = await makeUserChar(prisma, { role: 'PLAYER' });
+
+    await expect(
+      admin.seedReturnerInactive(adminU.userId, 'ADMIN', player.userId, 7.5, ''),
+    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+  });
+
+  it('CANNOT_TARGET_SELF khi actor === target', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+
+    await expect(
+      admin.seedReturnerInactive(adminU.userId, 'ADMIN', adminU.userId, 8, ''),
+    ).rejects.toMatchObject({ code: 'CANNOT_TARGET_SELF' });
+  });
+
+  it('NOT_FOUND khi target user không tồn tại', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+
+    await expect(
+      admin.seedReturnerInactive(adminU.userId, 'ADMIN', 'no-such-user', 8, ''),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('FORBIDDEN khi MOD seed cho ADMIN', async () => {
+    const modU = await makeUserChar(prisma, { role: 'MOD' });
+    const adminTarget = await makeUserChar(prisma, { role: 'ADMIN' });
+
+    await expect(
+      admin.seedReturnerInactive(modU.userId, 'MOD', adminTarget.userId, 8, ''),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('MOD seed cho PLAYER → ok (role hierarchy mirror seedDailyLoginStreak)', async () => {
+    const modU = await makeUserChar(prisma, { role: 'MOD' });
+    const player = await makeUserChar(prisma, { role: 'PLAYER' });
+    const now = new Date('2026-05-04T12:00:00Z');
+
+    const result = await admin.seedReturnerInactive(
+      modU.userId,
+      'MOD',
+      player.userId,
+      8,
+      '',
+      now,
+    );
+
+    expect(result.days).toBe(8);
+    expect(result.wasExisting).toBe(false);
+
+    const row = await prisma.characterReturnerState.findUnique({
+      where: { characterId: player.characterId },
+    });
+    expect(row).not.toBeNull();
+  });
+});
