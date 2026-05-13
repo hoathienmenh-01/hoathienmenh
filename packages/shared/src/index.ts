@@ -104,3 +104,5 @@ export * from './auth-session';
 // ─── Phase 26.5 — World Content V2 ─────────────────────────────────────────
 export * from './monster-taxonomy';
 export * from './farm-maps';
+export * from './world-dungeons-v2';
+export * from './world-bosses-v2';
