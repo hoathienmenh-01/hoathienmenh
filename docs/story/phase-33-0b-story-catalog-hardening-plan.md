@@ -212,4 +212,75 @@ Mỗi checkpoint phải pass `pnpm --filter @xuantoi/shared typecheck` (local) t
 - Phase 33.0 baseline: PR #564 (merged main).
 - Source narrative: `docs/story/TU_TIEN_LO_QUYEN_II_TIEN_GIOI.md`, `..._QUYEN_III_*.md`, `..._QUYEN_IV_*.md`.
 - Phase 12 quest format: `packages/shared/src/quests.ts`.
+
+---
+
+## 12. Phase 33.0C — Quest Dialogue Coverage (gộp vào PR A theo yêu cầu user)
+
+> User quyết định **gộp dialogue coverage vào PR A đang mở** thay vì stack PR A2.
+> Scope core: MAIN 5-phase + HIDDEN 4-phase + BRANCH opening/ending + BOSS_PRE/VICTORY.
+
+### Source priority
+
+Theo "Quest Dialogue Writing Rules":
+
+1. File 4 Master Implementation (priority cao nhất).
+2. File 1–3 cốt truyện Quyển II/III/IV.
+3. AI tự viết khi nguồn chỉ có tóm tắt sự kiện.
+
+5 file docx nguồn **không có dialogue chi tiết per-quest** (chỉ có cốt truyện + tóm tắt sự kiện chương). Do đó tất cả dòng dialogue trong PR A đều **tự viết theo bối cảnh chương**, không bịa main plot / NPC role / boss / kết quả chương. Đối chiếu source path:
+
+- `~/attachments/.../TuTienLo_QuyenII_TienGioi_CotTruyen.docx` → cốt truyện Quyển II.
+- `~/attachments/.../TuTienLo_QuyenIII_ThanhDaoVanThien_CotTruyen.docx` → cốt truyện Quyển III.
+- `~/attachments/.../TuTienLo_QuyenIV_BanNguyenVinhHang_CotTruyen.docx` → cốt truyện Quyển IV.
+- `~/attachments/.../TuTienLo_Master_QuyenII_IV_AI_Implementation.docx` → master plan, không có dialogue.
+
+### Coverage matrix
+
+| Kind | # Quest | Phase / quest | Tổng line |
+|---|---|---|---|
+| MAIN | 304 | INTRO + ACCEPT + IN_PROGRESS + COMPLETE + CLAIMED | 1520 |
+| MAIN boss climax (q05) | 19 | thêm BOSS_PRE + BOSS_VICTORY | +38 |
+| HIDDEN | 57 | HIDDEN_HINT + HIDDEN_TRIGGER + COMPLETE + AFTERMATH | 228 |
+| BRANCH | 114 | INTRO (opening) + AFTERMATH (ending) | 228 |
+| **Tổng** | — | — | **2014** |
+
+SIDE / DAILY / WEEKLY **chưa cover** trong Phase 33.0C core — có thể bổ sung trong stacked PR sau nếu credit cho phép. Side quest đã có `descriptionVi/En` đủ ngữ cảnh nhập vai ngắn.
+
+### Phong cách theo realm tier
+
+- **Ch9–16** (Tiên Giới): gần gũi, dẫn dắt, mentor-style.
+- **Ch17–21** (Thánh Đạo Vạn Thiên): trang trọng, dao-doctrine, có khí chất tiên/thánh.
+- **Ch22–27** (Bản Nguyên Vĩnh Hằng): cao cấp, cosmic, abstract, hư không / vô thủy.
+
+Mỗi line 1–3 câu, nhúng ít nhất một token chapter-specific (`regionName` / `chapNumber` / `themeVi` / `bossName`) để **không trùng exact text** giữa các chương.
+
+### Test enforcement
+
+`story-quest-dialogues.test.ts` (14 test cases, +0 fail):
+
+- `dialogueId` unique + match regex `^dlg_q_ch\d{2}_(main|hidden|branch)_\d{2}_<PHASE>$`.
+- `questKey` resolve trong `STORY_QUEST_EXPANSION`.
+- `speakerNpcKey` resolve trong `NPCS`; `realmGateOrder ≤ quest.requiredRealmOrder`.
+- `chapterKey` = quest `chapKey`.
+- `textVi` / `textEn` đều non-empty, ≥ 10 chars, không placeholder.
+- Mọi MAIN có 5 phase chính; MAIN boss có thêm BOSS_PRE/VICTORY.
+- Mọi HIDDEN có HINT + TRIGGER + COMPLETE + AFTERMATH.
+- Mọi BRANCH có INTRO + AFTERMATH.
+- Catalog ≥ 1900 line; mỗi chap ≥ `mainCount × 5` line.
+- Không > 50 line VI trùng exact text (anti copy-paste).
+- Catalog không mutate story flag / không có `nextDialogueId` (read-only Phase 33.0C — runtime sẽ wire ở PR B).
+
+### File mới
+
+- `packages/shared/src/story-quest-dialogues.ts` — type + catalog + lookup helpers.
+- `packages/shared/src/story-quest-dialogues.test.ts` — 14 test.
+
+### Forbidden
+
+- Không thay đổi main plot / NPC role / boss / kết quả chương.
+- Không grant endgame item / unlock flag qua dialogue.
+- Không tiết lộ hidden quest quá thẳng.
+- Không copy-paste rename giữa các chương (đã enforce qua test "≤ 50 identical VI lines").
+- Không daily/weekly dialogue trong scope core (deferred).
 - Workflow rules: `docs/AI_WORKFLOW_RULES.md`.
