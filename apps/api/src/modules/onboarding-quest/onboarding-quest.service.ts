@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CurrencyKind, Prisma } from '@prisma/client';
+import { CurrencyKind } from '@prisma/client';
 import {
   ONBOARDING_DAYS,
   ONBOARDING_TASKS,
@@ -531,8 +531,7 @@ export class OnboardingQuestService {
     const now = new Date();
 
     let claimed = false;
-    try {
-      await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
         const cas = await tx.characterOnboardingTaskProgress.updateMany({
           where: { characterId, taskKey, status: 'COMPLETED' },
           data: {
@@ -564,11 +563,7 @@ export class OnboardingQuestService {
           });
         }
         claimed = true;
-      });
-    } catch (e) {
-      // Lỗi không ngờ — re-throw.
-      throw e;
-    }
+    });
 
     // Verify status post-tx.
     const row = await this.prisma.characterOnboardingTaskProgress.findUnique({

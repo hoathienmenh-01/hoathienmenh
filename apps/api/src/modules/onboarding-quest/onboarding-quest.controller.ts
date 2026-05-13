@@ -150,16 +150,19 @@ export class OnboardingQuestController {
 
   private handleErr(e: unknown): never {
     if (e instanceof OnboardingQuestError) {
-      switch (e.code) {
-        case 'NO_CHARACTER':
-          fail(e.code, HttpStatus.NOT_FOUND);
-        case 'ONBOARDING_TASK_UNKNOWN':
-        case 'ONBOARDING_DAY_UNKNOWN':
-          fail(e.code, HttpStatus.NOT_FOUND);
-        case 'ONBOARDING_TASK_LOCKED':
-        case 'ONBOARDING_TASK_NOT_COMPLETED':
-        case 'ONBOARDING_TASK_ALREADY_CLAIMED':
-          fail(e.code, HttpStatus.CONFLICT);
+      if (
+        e.code === 'NO_CHARACTER' ||
+        e.code === 'ONBOARDING_TASK_UNKNOWN' ||
+        e.code === 'ONBOARDING_DAY_UNKNOWN'
+      ) {
+        fail(e.code, HttpStatus.NOT_FOUND);
+      }
+      if (
+        e.code === 'ONBOARDING_TASK_LOCKED' ||
+        e.code === 'ONBOARDING_TASK_NOT_COMPLETED' ||
+        e.code === 'ONBOARDING_TASK_ALREADY_CLAIMED'
+      ) {
+        fail(e.code, HttpStatus.CONFLICT);
       }
     }
     throw e;

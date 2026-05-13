@@ -1502,6 +1502,26 @@ Trial tower:
 
 Error codes (all under `WorldContentError`): `MAP_NOT_FOUND`, `MAP_LOCKED`, `MAP_DISABLED`, `SESSION_NOT_FOUND`, `SESSION_NOT_ACTIVE`, `SESSION_ALREADY_ACTIVE`, `OWNER_MISMATCH`, `DAILY_LIMIT_REACHED`, `WEEKLY_LIMIT_REACHED`, `TOWER_NOT_FOUND`, `TOWER_LOCKED`, `INVALID_FLOOR`. UI fallback: `worldContent.errors.UNKNOWN`.
 
+## Onboarding Quest V1 — `OnboardingQuestController` (prefix `/onboarding-quest/v1`, Phase 34.0)
+
+7-Day Onboarding Questline. Lazy-create progress rows on first `GET /progress`. JWT-gated cookie (`xt_access`). Response envelope `{ ok, data?, error? }`.
+
+- `GET /progress` — Full 7-day overview `OnboardingProgressView` (totalDays, totalTasks, completedTasks, claimedTasks, days[]).
+- `GET /days/:dayNumber` — Single day detail (`:dayNumber` ∈ `1..7`). Errors: `ONBOARDING_DAY_UNKNOWN` (404).
+- `POST /tasks/:taskKey/accept` — Cosmetic flip day AVAILABLE→IN_PROGRESS.
+- `POST /tasks/:taskKey/complete` — CAS guard `AVAILABLE → COMPLETED`. Cascades day-completion + next-day unlock when all tasks COMPLETED/CLAIMED.
+- `POST /tasks/:taskKey/claim` — Atomic `$transaction`: CAS `COMPLETED → CLAIMED` + `currency.applyTx({reason:'ONBOARDING_TASK_CLAIM'})` linh thạch + exp increment. Returns `OnboardingClaimResult` (taskKey, status, claimed, linhThachGranted, expGranted, titleKey?). **Idempotent**: re-claim returns `claimed:false, linhThachGranted:0`.
+- `POST /recompute` — Admin/debug: re-evaluate day statuses (idempotent, no reward).
+
+Error codes (under `OnboardingQuestError`): `NO_CHARACTER` (404), `ONBOARDING_TASK_UNKNOWN` (404), `ONBOARDING_DAY_UNKNOWN` (404), `ONBOARDING_TASK_LOCKED` (409), `ONBOARDING_TASK_NOT_COMPLETED` (409), `ONBOARDING_TASK_ALREADY_CLAIMED` (409). UI fallback: `onboardingQuest.error.UNKNOWN_ERROR`.
+
+Reward guardrails (catalog enforces):
+- Only `linhThach` ∈ [50, 500] per task + `exp` per task.
+- **NO** `tienNgoc` minted (catalog enforced `tienNgoc = 0`).
+- **NO** endgame item / inventory grant (no item rewards in Phase 34.0 catalog).
+- Total cap: **≤ 4500 linh thạch + ≤ 2000 exp** for all 26 tasks.
+- Day 7 final task `d7_complete_onboarding` returns `titleKey: 'novice_cultivator'` (cosmetic only, FE renders via i18n).
+
 ## Environment
 
 Xem `.env.example`. Production khởi chạy sẽ assert `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` ≥ 32 ký tự; nếu thiếu sẽ refuse start. Các biến quan trọng:
