@@ -32,6 +32,11 @@ import {
   type CultivationMethodV2ErrorCode,
 } from './cultivation-method-v2.service';
 import {
+  ArtifactV2Error,
+  ArtifactV2Service,
+  type ArtifactV2ErrorCode,
+} from './artifact-v2.service';
+import {
   CharacterSkillError,
   CharacterSkillService,
 } from './character-skill.service';
@@ -118,6 +123,29 @@ const CultivationMethodV2UpgradeInput = z.object({
 });
 const CultivationMethodV2StarUpInput = z.object({
   methodKey: z.string().min(1).max(64),
+});
+
+// Phase 26.4 — Artifact / Pháp Bảo V2 endpoints (server-authoritative).
+const ARTIFACT_V2_SLOT_ENUM = z.enum([
+  'MAIN_ARTIFACT_V2',
+  'DEFENSE_ARTIFACT_V2',
+  'SUPPORT_ARTIFACT_V2',
+  'ALCHEMY_ARTIFACT_V2',
+  'SPECIAL_ARTIFACT_V2',
+]);
+const ArtifactV2CraftInput = z.object({
+  blueprintKey: z.string().min(1).max(96),
+  externalSuccessBonus: z.number().min(0).max(0.15).optional(),
+});
+const ArtifactV2EquipInput = z.object({
+  artifactId: z.string().min(1).max(64),
+  slot: ARTIFACT_V2_SLOT_ENUM,
+});
+const ArtifactV2UnequipInput = z.object({
+  artifactId: z.string().min(1).max(64),
+});
+const ArtifactV2UpgradeInput = z.object({
+  artifactId: z.string().min(1).max(64),
 });
 
 const SkillKeyInput = z.object({
@@ -242,6 +270,10 @@ export class CharacterController {
     // controller test cũ. Endpoint trả 501 `CULTIVATION_METHOD_V2_UNAVAILABLE`
     // nếu null.
     @Optional() private readonly cultivationMethodV2?: CultivationMethodV2Service,
+    // Phase 26.4 — Artifact / Pháp Bảo V2 (craft / equip / upgrade / refine
+    // / awaken). Optional vì các controller test cũ inject thiếu; endpoint
+    // trả 501 `ARTIFACT_V2_UNAVAILABLE` khi null.
+    @Optional() private readonly artifactV2?: ArtifactV2Service,
   ) {
     this.profileLimiter =
       profileLimiter ??
@@ -666,6 +698,168 @@ export class CharacterController {
       (e as { code?: string }).code === 'INSUFFICIENT_QTY'
     ) {
       fail('INSUFFICIENT_MATERIALS', HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+    throw e;
+  }
+
+  // ────────────────────────────────────────────────────────────────────
+  // Phase 26.4 — Artifact / Pháp Bảo V2 endpoints.
+  // ────────────────────────────────────────────────────────────────────
+
+  @Get('artifacts-v2')
+  async artifactsV2State(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.artifactV2) fail('ARTIFACT_V2_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    const state = await this.artifactV2.getState(character.id);
+    return { ok: true, data: { artifactsV2: state } };
+  }
+
+  @Post('artifacts-v2/craft')
+  @HttpCode(200)
+  async artifactsV2Craft(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.artifactV2) fail('ARTIFACT_V2_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const parsed = ArtifactV2CraftInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const result = await this.artifactV2.craft(
+        character.id,
+        parsed.data.blueprintKey,
+        parsed.data.externalSuccessBonus,
+      );
+      const state = await this.artifactV2.getState(character.id);
+      return { ok: true, data: { craft: result, artifactsV2: state } };
+    } catch (e) {
+      this.handleArtifactV2Error(e);
+    }
+  }
+
+  @Post('artifacts-v2/equip')
+  @HttpCode(200)
+  async artifactsV2Equip(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.artifactV2) fail('ARTIFACT_V2_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const parsed = ArtifactV2EquipInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const state = await this.artifactV2.equip(
+        character.id,
+        parsed.data.artifactId,
+        parsed.data.slot,
+      );
+      return { ok: true, data: { artifactsV2: state } };
+    } catch (e) {
+      this.handleArtifactV2Error(e);
+    }
+  }
+
+  @Post('artifacts-v2/unequip')
+  @HttpCode(200)
+  async artifactsV2Unequip(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.artifactV2) fail('ARTIFACT_V2_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const parsed = ArtifactV2UnequipInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const state = await this.artifactV2.unequip(character.id, parsed.data.artifactId);
+      return { ok: true, data: { artifactsV2: state } };
+    } catch (e) {
+      this.handleArtifactV2Error(e);
+    }
+  }
+
+  @Post('artifacts-v2/upgrade')
+  @HttpCode(200)
+  async artifactsV2Upgrade(@Req() req: Request, @Body() body: unknown) {
+    return this.runArtifactV2Upgrade(req, body, 'upgradeLevel');
+  }
+
+  @Post('artifacts-v2/star-up')
+  @HttpCode(200)
+  async artifactsV2StarUp(@Req() req: Request, @Body() body: unknown) {
+    return this.runArtifactV2Upgrade(req, body, 'starUp');
+  }
+
+  @Post('artifacts-v2/refine')
+  @HttpCode(200)
+  async artifactsV2Refine(@Req() req: Request, @Body() body: unknown) {
+    return this.runArtifactV2Upgrade(req, body, 'refine');
+  }
+
+  @Post('artifacts-v2/awaken')
+  @HttpCode(200)
+  async artifactsV2Awaken(@Req() req: Request, @Body() body: unknown) {
+    return this.runArtifactV2Upgrade(req, body, 'awaken');
+  }
+
+  private async runArtifactV2Upgrade(
+    req: Request,
+    body: unknown,
+    method: 'upgradeLevel' | 'starUp' | 'refine' | 'awaken',
+  ) {
+    const userId = await this.requireUserId(req);
+    if (!this.artifactV2) fail('ARTIFACT_V2_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const parsed = ArtifactV2UpgradeInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const result = await this.artifactV2[method](
+        character.id,
+        parsed.data.artifactId,
+      );
+      const state = await this.artifactV2.getState(character.id);
+      return { ok: true, data: { upgrade: result, artifactsV2: state } };
+    } catch (e) {
+      this.handleArtifactV2Error(e);
+    }
+  }
+
+  private handleArtifactV2Error(e: unknown): never {
+    if (e instanceof ArtifactV2Error) {
+      const code: ArtifactV2ErrorCode = e.code;
+      const httpStatus =
+        code === 'CHARACTER_NOT_FOUND' ||
+        code === 'ARTIFACT_NOT_FOUND' ||
+        code === 'BLUEPRINT_NOT_FOUND'
+          ? HttpStatus.NOT_FOUND
+          : code === 'SLOT_CONFLICT' ||
+              code === 'MAX_LEVEL' ||
+              code === 'MAX_STAR' ||
+              code === 'MAX_REFINE' ||
+              code === 'MAX_AWAKEN' ||
+              code === 'AWAKEN_NOT_AVAILABLE'
+            ? HttpStatus.CONFLICT
+            : code === 'INSUFFICIENT_MATERIALS' ||
+                code === 'INSUFFICIENT_LINH_THACH' ||
+                code === 'DAILY_CAP_REACHED'
+              ? HttpStatus.UNPROCESSABLE_ENTITY
+              : HttpStatus.BAD_REQUEST;
+      fail(code, httpStatus);
+    }
+    if (
+      typeof e === 'object' &&
+      e !== null &&
+      'code' in e &&
+      (e as { code?: string }).code === 'INSUFFICIENT_QTY'
+    ) {
+      fail('INSUFFICIENT_MATERIALS', HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+    if (
+      typeof e === 'object' &&
+      e !== null &&
+      'code' in e &&
+      (e as { code?: string }).code === 'INSUFFICIENT_FUNDS'
+    ) {
+      fail('INSUFFICIENT_LINH_THACH', HttpStatus.UNPROCESSABLE_ENTITY);
     }
     throw e;
   }

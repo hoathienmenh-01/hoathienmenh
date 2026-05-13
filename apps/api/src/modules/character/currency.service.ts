@@ -146,7 +146,16 @@ export type LedgerReason =
   // + refId=methodKey. Pure sink — không grant lại tiền cho fragment.
   | 'METHOD_UNLOCK'
   | 'METHOD_UPGRADE'
-  | 'METHOD_STAR_UP';
+  | 'METHOD_STAR_UP'
+  // Phase 26.4 — Artifact / Pháp Bảo V2 currency sinks. Wire qua
+  // `ArtifactV2Service.craft / upgradeLevel / starUp / refine / awaken`.
+  // refType='ArtifactCraftAttemptLog' (craft) hoặc 'ArtifactUpgradeLogV2'
+  // (upgrade/star/refine/awaken). Pure sink (delta < 0); KHÔNG có grant.
+  | 'ARTIFACT_V2_CRAFT'
+  | 'ARTIFACT_V2_UPGRADE'
+  | 'ARTIFACT_V2_STAR_UP'
+  | 'ARTIFACT_V2_REFINE'
+  | 'ARTIFACT_V2_AWAKEN';
 
 export interface CurrencyApplyInput {
   characterId: string;

@@ -12,6 +12,7 @@ import { CurrencyService } from './currency.service';
 import { SpiritualRootService } from './spiritual-root.service';
 import { CultivationMethodService } from './cultivation-method.service';
 import { CultivationMethodV2Service } from './cultivation-method-v2.service';
+import { ArtifactV2Service } from './artifact-v2.service';
 import { GemService } from './gem.service';
 import { RefineService } from './refine.service';
 import { PhapBaoService } from './phap-bao.service';
@@ -73,6 +74,7 @@ const profileLimiterProvider = {
     SpiritualRootService,
     CultivationMethodService,
     CultivationMethodV2Service,
+    ArtifactV2Service,
     CharacterSkillService,
     GemService,
     RefineService,
@@ -95,6 +97,7 @@ const profileLimiterProvider = {
     SpiritualRootService,
     CultivationMethodService,
     CultivationMethodV2Service,
+    ArtifactV2Service,
     CharacterSkillService,
     GemService,
     RefineService,
