@@ -56,6 +56,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/LoadoutView.vue'),
   },
   {
+    path: '/notification-settings',
+    name: 'notification-settings',
+    component: () => import('@/views/NotificationSettingsView.vue'),
+  },
+  {
     path: '/market',
     name: 'market',
     component: () => import('@/views/MarketView.vue'),

@@ -86,6 +86,12 @@
       "loadoutDelete": "Failed to delete loadout preset",
       "loadoutApply": "Failed to apply loadout preset",
       "loadoutSetDefault": "Failed to set default loadout",
+      "pushVapid": "Failed to load push public key.",
+      "pushSubscribe": "Failed to subscribe to push notifications.",
+      "pushUnsubscribe": "Failed to unsubscribe from push notifications.",
+      "pushList": "Failed to list push subscriptions.",
+      "pushPrefs": "Failed to load push preferences.",
+      "pushPrefsUpdate": "Failed to update push preferences.",
       "worldSummary": "Failed to load world summary.",
       "farmMaps": "Failed to load farm maps.",
       "farmStart": "Failed to start farm session.",
@@ -367,6 +373,7 @@
       "dungeon": "Sparring Hall",
       "inventory": "Inventory",
       "loadouts": "Loadouts",
+      "notificationSettings": "Push Settings",
       "market": "Market",
       "shop": "NPC Shop",
       "sect": "Sect",
@@ -7211,6 +7218,56 @@
       "LOADOUT_PRESET_MODE_INVALID": "Invalid mode.",
       "LOADOUT_PRESET_PAYLOAD_INVALID": "Invalid preset payload.",
       "LOADOUT_PRESET_LIMIT_REACHED": "Loadout preset cap reached (20)."
+    }
+  },
+  "webPush": {
+    "title": "Push notifications",
+    "subtitle": "Receive notifications even when the game is closed. You can opt out anytime.",
+    "unsupported": "Your browser does not support Web Push notifications. Try a recent version of Chrome, Edge, Firefox, or a desktop browser.",
+    "permissionDenied": "Notifications are blocked for this site. Open browser settings and re-enable notifications, then refresh this page.",
+    "masterTitle": "Enable on this device",
+    "masterDescription": "Allow push notifications from Xuân Tôi to this browser.",
+    "enable": "Enable",
+    "disable": "Disable",
+    "perTypeTitle": "Notification types",
+    "on": "On",
+    "off": "Off",
+    "type": {
+      "boss": {
+        "title": "Boss spawn",
+        "description": "World boss has just spawned (bypasses quiet hours)."
+      },
+      "stamina": {
+        "title": "Stamina full",
+        "description": "Your stamina has returned to maximum."
+      },
+      "mail": {
+        "title": "New mail",
+        "description": "You have a new in-game mail."
+      },
+      "daily": {
+        "title": "Daily login reminder",
+        "description": "Optional reminder for daily rewards (off by default)."
+      }
+    },
+    "errors": {
+      "UNSUPPORTED": "This browser does not support push notifications.",
+      "PERMISSION_DENIED": "Notification permission was denied.",
+      "SW_NOT_REGISTERED": "Service worker is not registered yet — refresh and try again.",
+      "KEYS_MISSING": "Push subscription is missing required keys.",
+      "VAPID_NOT_CONFIGURED": "Server VAPID key is not configured yet.",
+      "PAYLOAD_INVALID": "Invalid request payload.",
+      "ENDPOINT_INVALID": "Push endpoint is invalid.",
+      "ENDPOINT_TOO_LONG": "Push endpoint is too long.",
+      "P256DH_INVALID": "Push key is invalid.",
+      "AUTH_INVALID": "Push auth secret is invalid.",
+      "USER_AGENT_TOO_LONG": "User agent is too long.",
+      "SUBSCRIPTION_LIMIT_REACHED": "You have reached the maximum number of subscribed devices (10).",
+      "UNAUTHENTICATED": "You must be signed in to manage push notifications.",
+      "FORBIDDEN": "You cannot modify this subscription.",
+      "TYPE_INVALID": "Notification type is invalid.",
+      "ERROR": "Unexpected error. Please try again.",
+      "UNKNOWN": "Unknown error."
     }
   }
 }

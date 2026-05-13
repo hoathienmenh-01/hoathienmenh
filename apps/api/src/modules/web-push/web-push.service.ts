@@ -465,9 +465,11 @@ export class WebPushService {
       this.webpushModCache = await this.webpushClientFactory();
       return this.webpushModCache;
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mod: any = await import('web-push');
-    const wp: WebPushClient = mod.default ?? mod;
+    const mod = (await import('web-push')) as unknown as
+      | WebPushClient
+      | { default: WebPushClient };
+    const wp: WebPushClient =
+      'default' in mod && mod.default ? mod.default : (mod as WebPushClient);
     wp.setVapidDetails(
       this.vapidSubject,
       this.vapidPublicKey,
