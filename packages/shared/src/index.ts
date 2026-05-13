@@ -140,3 +140,6 @@ export * from './admin-mail';
 export * from './story-chapters-quyen-ii-iv';
 export * from './story-quest-expansion';
 export * from './story-quest-dialogues';
+
+// ─── Phase 42.0 — Visual Effects, Combat Feedback, Item Aura V1 ────────────
+export * from './visual-effects';

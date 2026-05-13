@@ -1,0 +1,254 @@
+/* ───────────────────────────────────────────────────────────────────
+ * Phase 42.0 — Visual Effects animations (presentation-only).
+ *
+ * Quy tắc:
+ *   - Animation phải nhẹ (CPU + GPU thân thiện mobile).
+ *   - Duration ≤ 1100ms cho HIGH, ≤ 700ms cho MEDIUM, ≤ 350ms cho LOW.
+ *   - Mọi animation đều có override `.reduced-motion` để fallback static.
+ *   - Không dùng filter blur/heavy keyframes lặp vô hạn.
+ * ─────────────────────────────────────────────────────────────────── */
+
+@keyframes ve-float-up {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, -32px, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes ve-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ve-pulse-soft {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+@keyframes ve-glow-subtle {
+  0%,
+  100% {
+    box-shadow: 0 0 4px rgba(255, 220, 130, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(255, 220, 130, 0.45);
+  }
+}
+
+@keyframes ve-aura-ring {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgba(255, 220, 130, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 8px 2px rgba(255, 220, 130, 0.5);
+  }
+}
+
+@keyframes ve-shimmer-light {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes ve-shake-small {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  25% {
+    transform: translate3d(-2px, 0, 0);
+  }
+  75% {
+    transform: translate3d(2px, 0, 0);
+  }
+}
+
+@keyframes ve-boss-warning-pulse {
+  0%,
+  100% {
+    background-color: rgba(220, 38, 38, 0.18);
+  }
+  50% {
+    background-color: rgba(220, 38, 38, 0.35);
+  }
+}
+
+@keyframes ve-rare-drop-pop {
+  0% {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes ve-breakthrough-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 6px rgba(253, 224, 71, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(253, 224, 71, 0.7);
+  }
+}
+
+/* Utility classes */
+.ve-anim-float-up {
+  animation: ve-float-up 1100ms ease-out forwards;
+  will-change: transform, opacity;
+}
+.ve-anim-fade-in {
+  animation: ve-fade-in 300ms ease-out forwards;
+}
+.ve-anim-pulse-soft {
+  animation: ve-pulse-soft 1400ms ease-in-out infinite;
+}
+.ve-anim-glow-subtle {
+  animation: ve-glow-subtle 1800ms ease-in-out infinite;
+}
+.ve-anim-aura-ring {
+  animation: ve-aura-ring 2200ms ease-in-out infinite;
+}
+.ve-anim-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 220, 130, 0.18) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: ve-shimmer-light 2000ms linear infinite;
+}
+.ve-anim-shake-small {
+  animation: ve-shake-small 250ms ease-in-out;
+}
+.ve-anim-boss-warning-pulse {
+  animation: ve-boss-warning-pulse 1400ms ease-in-out infinite;
+}
+.ve-anim-rare-drop-pop {
+  animation: ve-rare-drop-pop 400ms ease-out forwards;
+}
+.ve-anim-breakthrough-glow {
+  animation: ve-breakthrough-glow 1500ms ease-in-out infinite;
+}
+
+/* Reduced-motion override — stops all infinite/transform animations. */
+.reduced-motion .ve-anim-float-up,
+.reduced-motion .ve-anim-pulse-soft,
+.reduced-motion .ve-anim-glow-subtle,
+.reduced-motion .ve-anim-aura-ring,
+.reduced-motion .ve-anim-shimmer,
+.reduced-motion .ve-anim-shake-small,
+.reduced-motion .ve-anim-boss-warning-pulse,
+.reduced-motion .ve-anim-rare-drop-pop,
+.reduced-motion .ve-anim-breakthrough-glow,
+.reduced-motion .ve-anim-fade-in {
+  animation: none !important;
+  transform: none !important;
+  background-position: 0 0 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ve-anim-float-up,
+  .ve-anim-pulse-soft,
+  .ve-anim-glow-subtle,
+  .ve-anim-aura-ring,
+  .ve-anim-shimmer,
+  .ve-anim-shake-small,
+  .ve-anim-boss-warning-pulse,
+  .ve-anim-rare-drop-pop,
+  .ve-anim-breakthrough-glow,
+  .ve-anim-fade-in {
+    animation: none !important;
+    transform: none !important;
+    background-position: 0 0 !important;
+  }
+}
+
+/* Item aura — tier/rarity intensity classes (static layer; combined with
+ * ve-anim-* via component logic). */
+.ve-aura-none {
+  /* nothing */
+}
+.ve-aura-low {
+  outline: 1px solid rgba(191, 166, 106, 0.35);
+}
+.ve-aura-medium {
+  outline: 1px solid rgba(191, 166, 106, 0.55);
+  box-shadow: 0 0 6px rgba(191, 166, 106, 0.25);
+}
+.ve-aura-high {
+  outline: 1px solid rgba(253, 224, 71, 0.65);
+  box-shadow: 0 0 10px rgba(253, 224, 71, 0.35);
+}
+.ve-aura-legendary {
+  outline: 1px solid rgba(248, 113, 113, 0.7);
+  box-shadow: 0 0 14px rgba(248, 113, 113, 0.45);
+}
+.ve-aura-immortal {
+  outline: 1px solid rgba(192, 132, 252, 0.75);
+  box-shadow: 0 0 18px rgba(192, 132, 252, 0.55);
+}
+
+/* Element tints (used together with ve-aura-*). */
+.ve-element-fire {
+  color: rgb(253, 164, 86);
+}
+.ve-element-water {
+  color: rgb(96, 165, 250);
+}
+.ve-element-wood {
+  color: rgb(134, 239, 172);
+}
+.ve-element-metal {
+  color: rgb(253, 224, 71);
+}
+.ve-element-earth {
+  color: rgb(202, 138, 4);
+}
+.ve-element-lightning {
+  color: rgb(250, 204, 21);
+}
+.ve-element-wind {
+  color: rgb(167, 243, 208);
+}
+.ve-element-dark {
+  color: rgb(192, 132, 252);
+}
+.ve-element-light {
+  color: rgb(254, 252, 232);
+}
+.ve-element-chaos {
+  color: rgb(244, 114, 182);
+}
+.ve-element-void {
+  color: rgb(216, 180, 254);
+}
