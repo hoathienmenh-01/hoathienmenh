@@ -1036,7 +1036,7 @@
       },
       "socket": {
         "label": "Khảm / Tháo Ngọc",
-        "costLabel": "Khảm: {linhThach} linh thạch + {materialQty}× {materialName}",
+        "costLabel": "Khảm: {linhThach} linh thạch",
         "unsocketCostLabel": "Tháo: {linhThach} linh thạch + {materialQty}× {materialName}"
       },
       "reforge": {

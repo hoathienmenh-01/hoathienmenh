@@ -1036,7 +1036,7 @@
       },
       "socket": {
         "label": "Socket / Unsocket",
-        "costLabel": "Socket: {linhThach} linh thạch + {materialQty}× {materialName}",
+        "costLabel": "Socket: {linhThach} linh thạch",
         "unsocketCostLabel": "Unsocket: {linhThach} linh thạch + {materialQty}× {materialName}"
       },
       "reforge": {

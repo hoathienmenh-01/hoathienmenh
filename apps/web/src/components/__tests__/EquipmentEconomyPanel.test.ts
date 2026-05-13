@@ -75,7 +75,7 @@ const i18n = createI18n({
           },
           socket: {
             label: 'Khảm',
-            costLabel: 'Khảm: {linhThach}+{materialQty}× {materialName}',
+            costLabel: 'Khảm: {linhThach}',
             unsocketCostLabel: 'Tháo: {linhThach}+{materialQty}× {materialName}',
           },
           reforge: {
@@ -155,29 +155,49 @@ function makePreview(
   over: Partial<EquipmentEconomyPreview> = {},
 ): EquipmentEconomyPreview {
   return {
+    inventoryItemId: 'inv_1',
     itemKey: 'so_kiem',
     quality: 'PHAM',
     equipmentTier: 1,
+    slot: 'WEAPON',
+    currentEnhanceLevel: 0,
+    maxEnhanceLevel: 5,
     enhance: {
-      nextLevel: 1,
-      cost: { linhThachCost: 100, materialKey: 'tinh_thiet', materialQty: 1 },
+      linhThachCost: 100,
+      materialKey: 'tinh_thiet',
+      materialQty: 1,
+      protectionRecommended: false,
+      protectionRequired: false,
     },
     merge: {
+      inputItemKey: 'so_kiem',
       outputItemKey: 'huyen_kiem',
       outputQuality: 'LINH',
-      cost: { linhThachCost: 500, materialKey: 'tinh_thiet', materialQty: 3 },
+      cost: {
+        linhThachCost: 500,
+        materialKey: 'tinh_thiet',
+        materialQty: 3,
+        outputQuality: 'LINH',
+      },
     },
     dismantle: {
-      materials: [{ itemKey: 'tinh_thiet', qty: 1 }],
       linhThachYield: 30,
+      materials: [{ itemKey: 'tinh_thiet', qty: 1 }],
+      valueScore: 90,
     },
-    socket: { linhThachCost: 200, materialKey: 'phu_van_ngoc', materialQty: 1 },
+    socket: { linhThachCost: 200 },
     unsocket: null,
-    reforge: { linhThachCost: 240, materialKey: 'tinh_thiet', materialQty: 5 },
+    reforge: {
+      linhThachCost: 240,
+      materialKey: 'tinh_thiet',
+      materialQty: 5,
+      maxReforgeCount: 5,
+      currentReforgeCount: 0,
+    },
     protection: {
       recommended: false,
-      requiredItemKey: 'refine_protection_charm',
-      minLevelThreshold: 10,
+      required: false,
+      itemKey: 'refine_protection_charm',
     },
     upgradeValidation: { ok: true, code: 'OK' },
     ...over,
@@ -316,10 +336,11 @@ describe('EquipmentEconomyPanel — Phase 23.4 UI', () => {
   it('renders protection hint when recommended=true', async () => {
     previewMock.mockResolvedValueOnce(
       makePreview({
+        currentEnhanceLevel: 5,
         protection: {
           recommended: true,
-          requiredItemKey: 'refine_protection_charm',
-          minLevelThreshold: 10,
+          required: false,
+          itemKey: 'refine_protection_charm',
         },
       }),
     );
@@ -331,5 +352,64 @@ describe('EquipmentEconomyPanel — Phase 23.4 UI', () => {
     expect(
       wrapper.find('[data-testid="equipment-economy-protection"]').exists(),
     ).toBe(true);
+  });
+
+  /**
+   * F-2 regression — at scale (≥1000 inventory items, mounting many panels)
+   * the schema-drift in `EquipmentEconomyPreview` produced
+   * `Cannot read properties of undefined (reading 'linhThachCost')` from
+   * `preview.enhance.cost.linhThachCost` at render time, fired once per panel.
+   * The fix aligns the client type + template with the actual server shape.
+   *
+   * This test forwards a 1000-item inventory to a single panel + mounts 50
+   * panels in a row and asserts:
+   *   1. Vue's `app.config.errorHandler` captures no error.
+   *   2. `console.error` is not called by the render path.
+   *   3. The rendered text contains the cost numbers from the preview (so we
+   *      know the template actually walked the new flat shape, not "undefined").
+   */
+  it('mounts many panels with 1000-item inventory without render errors (F-2)', async () => {
+    previewMock.mockResolvedValue(makePreview());
+
+    const inventory: InventoryView[] = [];
+    for (let i = 0; i < 1000; i++) {
+      inventory.push(makeInv({ id: `perf_${i}`, itemKey: 'so_kiem' }));
+    }
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const capturedErrors: unknown[] = [];
+
+    const wrappers: ReturnType<typeof mount>[] = [];
+    for (let i = 0; i < 50; i++) {
+      wrappers.push(
+        mount(EquipmentEconomyPanel, {
+          props: { equipment: inventory[i], inventory },
+          global: {
+            plugins: [i18n],
+            config: {
+              errorHandler: (err: unknown) => capturedErrors.push(err),
+            },
+          },
+        }),
+      );
+    }
+    await flushPromises();
+
+    expect(capturedErrors).toEqual([]);
+    const renderErrorCalls = consoleSpy.mock.calls.filter((args) =>
+      String(args[0]).includes('linhThachCost'),
+    );
+    expect(renderErrorCalls).toEqual([]);
+
+    const sample = wrappers[0];
+    expect(sample.find('[data-testid="equipment-economy-enhance"]').text()).toContain(
+      '100',
+    );
+    expect(sample.find('[data-testid="equipment-economy-socket"]').text()).toContain(
+      '200',
+    );
+
+    consoleSpy.mockRestore();
+    for (const w of wrappers) w.unmount();
   });
 });

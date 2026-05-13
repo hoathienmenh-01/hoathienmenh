@@ -234,10 +234,10 @@ async function confirmDismantle(): Promise<void> {
         <p v-if="preview.enhance" class="text-xs text-ink-100">
           {{
             t('inventory.economy.enhance.costLabel', {
-              level: preview.enhance.nextLevel,
-              linhThach: preview.enhance.cost.linhThachCost,
-              materialQty: preview.enhance.cost.materialQty,
-              materialName: materialName(preview.enhance.cost.materialKey),
+              level: preview.currentEnhanceLevel + 1,
+              linhThach: preview.enhance.linhThachCost,
+              materialQty: preview.enhance.materialQty,
+              materialName: materialName(preview.enhance.materialKey),
             })
           }}
         </p>
@@ -300,8 +300,6 @@ async function confirmDismantle(): Promise<void> {
           {{
             t('inventory.economy.socket.costLabel', {
               linhThach: preview.socket.linhThachCost,
-              materialQty: preview.socket.materialQty,
-              materialName: materialName(preview.socket.materialKey),
             })
           }}
         </p>
@@ -310,7 +308,9 @@ async function confirmDismantle(): Promise<void> {
             t('inventory.economy.socket.unsocketCostLabel', {
               linhThach: preview.unsocket.linhThachCost,
               materialQty: preview.unsocket.materialQty,
-              materialName: materialName(preview.unsocket.materialKey),
+              materialName: preview.unsocket.materialKey
+                ? materialName(preview.unsocket.materialKey)
+                : '',
             })
           }}
         </p>
@@ -348,8 +348,8 @@ async function confirmDismantle(): Promise<void> {
         <p class="text-xs text-amber-300">
           {{
             t('inventory.economy.protection.recommend', {
-              item: materialName(preview.protection.requiredItemKey),
-              threshold: preview.protection.minLevelThreshold,
+              item: materialName(preview.protection.itemKey),
+              threshold: preview.currentEnhanceLevel + 1,
             })
           }}
         </p>
