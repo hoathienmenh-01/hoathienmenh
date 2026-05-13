@@ -47,6 +47,10 @@ const STUB_MAIL: MailView = {
   rewardExp: '0',
   rewardItems: [],
   claimable: false,
+  // Phase 31.0
+  mailType: 'SYSTEM',
+  status: 'UNREAD',
+  deleted: false,
 };
 
 function makeReq(cookie: string | undefined): Request {
