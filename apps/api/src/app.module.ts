@@ -85,6 +85,7 @@ import { PlayerSettingsModule } from './modules/player-settings/player-settings.
 import { PlayerDashboardModule } from './modules/player-dashboard/player-dashboard.module';
 import { PlayerFeedbackModule } from './modules/player-feedback/player-feedback.module';
 import { LoadoutPresetModule } from './modules/loadout-preset/loadout-preset.module';
+import { WebPushModule } from './modules/web-push/web-push.module';
 import { PlayerReportModule } from './modules/player-report/player-report.module';
 import { PlayerNavigationModule } from './modules/player-navigation/player-navigation.module';
 
@@ -290,6 +291,8 @@ import { PlayerNavigationModule } from './modules/player-navigation/player-navig
     PlayerNavigationModule,
     /// Phase QOL-2 — Loadout Preset PvE/PvP/Boss.
     LoadoutPresetModule,
+    /// Phase PWA-1 — PWA Web Push Notifications.
+    WebPushModule,
   ],
 })
 export class AppModule {}

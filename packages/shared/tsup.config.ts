@@ -21,6 +21,7 @@ export default defineConfig({
     'src/notification.ts',
     'src/inventory-sort.ts',
     'src/loadout-presets.ts',
+    'src/web-push.ts',
   ],
   format: ['esm', 'cjs'],
   dts: true,
