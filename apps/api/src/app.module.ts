@@ -58,6 +58,7 @@ import { MaintenanceWindowAdminModule } from './modules/maintenance-window-admin
 import { ConfigVersionModule } from './modules/config-version/config-version.module';
 import { ConfigVersionAdminModule } from './modules/config-version-admin/config-version-admin.module';
 import { AdminControlCenterModule } from './modules/admin-control-center/admin-control-center.module';
+import { EventBuilderModule } from './modules/event-builder/event-builder.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { ArenaModule } from './modules/arena/arena.module';
 import { ArenaAntiWintradeAdminModule } from './modules/arena-anti-wintrade-admin/arena-anti-wintrade-admin.module';
@@ -159,6 +160,11 @@ import { CosmeticsModule } from './modules/cosmetics/cosmetics.module';
     // `AdminAuditWriter` — meta JSON extend permissionKey/riskLevel/
     // reason/targetType/targetId/beforeJson/afterJson.
     AdminControlCenterModule,
+    // Phase 28.0 — Event Builder & Tier-Balanced LiveOps Event System V2.
+    // Module gom event-def + bracket + balance + mission + shop + boss +
+    // ranking + personal milestone runtime. Tách khỏi LiveOpsModule cũ
+    // (cron / announcement / scheduler) — focus vào event V2.
+    EventBuilderModule,
     // Phase 16.6 — Economy Anti-cheat (ledger checker + anomaly
     // scanner cron + admin endpoints). SAU AdminModule + EconomyModule.
     AdminEconomySafetyModule,
