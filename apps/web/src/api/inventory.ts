@@ -389,30 +389,67 @@ export interface EquipmentDismantleResult {
   };
 }
 
+/**
+ * Phase 23.4 — Read-only preview returned by `POST /character/equipment/economy-preview`.
+ *
+ * Shape mirrors `EquipmentEconomyPreview` in
+ * `apps/api/src/modules/character/equipment-economy.service.ts` exactly so the
+ * UI binds against the actual server payload. Earlier versions of this type
+ * declared a nested `enhance.cost` and a `protection.{requiredItemKey,
+ * minLevelThreshold}` shape that the server has never returned — that drift
+ * silently produced `Cannot read properties of undefined (reading 'linhThachCost')`
+ * exceptions at render time when many panels mounted simultaneously (large
+ * inventory). All cost helpers in `@xuantoi/shared` return flat objects, so
+ * `enhance`, `socket`, `unsocket`, and `reforge` are flat here too.
+ */
 export interface EquipmentEconomyPreview {
+  inventoryItemId: string;
   itemKey: string;
-  quality: 'PHAM' | 'LINH' | 'HUYEN' | 'TIEN' | 'THAN';
   equipmentTier: number;
+  quality: 'PHAM' | 'LINH' | 'HUYEN' | 'TIEN' | 'THAN';
+  slot: string;
+  currentEnhanceLevel: number;
+  maxEnhanceLevel: number;
   enhance: {
-    nextLevel: number;
-    cost: { linhThachCost: number; materialKey: string; materialQty: number };
+    linhThachCost: number;
+    materialKey: string;
+    materialQty: number;
+    protectionRecommended: boolean;
+    protectionRequired: boolean;
   } | null;
   merge: {
+    inputItemKey: string;
     outputItemKey: string;
     outputQuality: 'PHAM' | 'LINH' | 'HUYEN' | 'TIEN' | 'THAN';
-    cost: { linhThachCost: number; materialKey: string; materialQty: number };
+    cost: {
+      linhThachCost: number;
+      materialKey: string;
+      materialQty: number;
+      outputQuality: 'PHAM' | 'LINH' | 'HUYEN' | 'TIEN' | 'THAN';
+    };
   } | null;
   dismantle: {
-    materials: EquipmentDismantleYieldMaterial[];
     linhThachYield: number;
+    materials: EquipmentDismantleYieldMaterial[];
+    valueScore: number;
   };
-  socket: { linhThachCost: number; materialKey: string; materialQty: number };
-  unsocket: { linhThachCost: number; materialKey: string; materialQty: number } | null;
-  reforge: { linhThachCost: number; materialKey: string; materialQty: number } | null;
+  socket: { linhThachCost: number };
+  unsocket: {
+    linhThachCost: number;
+    materialKey: string | null;
+    materialQty: number;
+  } | null;
+  reforge: {
+    linhThachCost: number;
+    materialKey: string;
+    materialQty: number;
+    maxReforgeCount: number;
+    currentReforgeCount: number;
+  } | null;
   protection: {
     recommended: boolean;
-    requiredItemKey: string;
-    minLevelThreshold: number;
+    required: boolean;
+    itemKey: string;
   };
   upgradeValidation: { ok: boolean; code: string };
 }

@@ -16,7 +16,6 @@ import { Phase33StoryService } from './modules/story-v2/story-v2.service';
 import { OnboardingQuestService } from './modules/onboarding-quest/onboarding-quest.service';
 import { DailyEncounterService } from './modules/daily-encounter/daily-encounter.service';
 import { SecretRealmRuntimeService } from './modules/secret-realm-runtime/secret-realm-runtime.service';
-import { LoadoutPresetService } from './modules/loadout-preset/loadout-preset.service';
 
 /**
  * Helpers cho integration test — tạo fixture user/character nhanh, không
@@ -342,6 +341,12 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.playerReport.deleteMany({});
   await prisma.playerFeedback.deleteMany({});
   await prisma.playerSettings.deleteMany({});
+  // Phase QOL-2 — Loadout Preset PvE/PvP/Boss (FK Cascade Character; explicit wipe).
+  await prisma.characterLoadoutPreset.deleteMany({});
+  // Phase PWA-1 — Web Push (FK Cascade User; explicit wipe trước User).
+  await prisma.webPushSendLog.deleteMany({});
+  await prisma.webPushSubscription.deleteMany({});
+  await prisma.userPushPreferences.deleteMany({});
   await prisma.topupOrder.deleteMany({});
   // Phase 15.6 — Config Version + Rollback Run (xoá trước User; cả 2
   // FK SET NULL khi User bị xoá, nhưng explicit cho rõ thứ tự).
@@ -521,16 +526,6 @@ export function makeSecretRealmRuntimeService(prisma: PrismaService): {
   const currency = new CurrencyService(prisma);
   const secretRealm = new SecretRealmRuntimeService(prisma, currency);
   return { secretRealm, currency };
-}
-
-/**
- * Phase 34.4 — Dựng `LoadoutPresetService` cho integration test.
- */
-export function makeLoadoutPresetService(prisma: PrismaService): {
-  loadout: LoadoutPresetService;
-} {
-  const loadout = new LoadoutPresetService(prisma);
-  return { loadout };
 }
 
 export const TEST_DATABASE_URL =

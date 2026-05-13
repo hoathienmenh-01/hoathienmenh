@@ -50,6 +50,7 @@ const MAX_GRANT_QTY = 999; // mirror revoke cap cho admin grant item
 const MAX_GRANT_EXP = 10n ** 18n; // 10^18 — đủ cho mọi cảnh giới + buffer; chặn nhập sai BigInt
 const MAX_GRANT_TALENT_POINT = 99; // đủ buffer cho mọi tier talent (catalog max ~30 tổng cost), chặn nhập sai
 const MAX_SEED_DAILY_LOGIN_DAYS = 30; // 1 tháng — đủ smoke multi-day, chặn admin gõ nhầm seed lớn
+const MAX_SEED_RETURNER_INACTIVE_DAYS = 120; // 4 tháng — đủ test cả tier LONG (≥30) + biên SHORT/MEDIUM, chặn admin gõ nhầm
 const MAX_QUEST_TRACK_AMOUNT = 999; // đủ buffer mọi step.count (catalog max kill 5/collect 5), chặn admin gõ nhầm
 const PAGE_SIZE = 30;
 
@@ -1257,6 +1258,111 @@ export class AdminService {
       // Nếu seed hoàn toàn fresh (rowsCreated === days) → days + 1.
       // Nếu đã có row yesterday từ trước → tùy chain, nhưng audit ghi đủ.
       newStreakWillBe: days + 1,
+    };
+  }
+
+  /**
+   * Backdate `CharacterReturnerState.lastLoginAt` cho target character về
+   * `now - days days` để smoke positive-path returner banner / mail
+   * (SHORT 7-13 / MEDIUM 14-29 / LONG 30+ inactive). Sau seed, lần
+   * `POST /returner/check` (hoặc trigger từ FE) sẽ tính `inactiveDays =
+   * now - lastLoginAt ≈ days` → resolveReturnerTier → trigger mail.
+   *
+   *  - `days` ∈ [1..120] — đủ test cả tier LONG (≥30) + biên SHORT/MEDIUM;
+   *    chặn admin gõ nhầm.
+   *  - **KHÔNG gửi mail / trao thưởng**: admin chỉ seed state.
+   *    `lastTriggerAt` / `lastCycleKey` set null để check tiếp theo không
+   *    bị CAS chặn.
+   *  - **Idempotent**: dùng upsert, gọi nhiều lần với cùng `days` cho
+   *    cùng target chỉ ghi đè timestamps (KHÔNG gom rows). Audit mỗi
+   *    lần đều ghi để rollback.
+   *  - **AnchorTime**: trừ `days * 86_400_000 ms` từ `now` để build
+   *    `lastLoginAt`. `prevLoginAt = null` để returner.onLogin tính
+   *    `inactiveDays` từ `lastLoginAt` (semantic giống first-login-back).
+   *  - MOD chỉ seed cho PLAYER; ADMIN seed được mọi role (mirror
+   *    `seedDailyLoginStreak`).
+   *  - Audit `AdminAuditLog action='admin.returner.seed_inactive'` ghi
+   *    `targetUserId`, `characterId`, `days`, `lastLoginAt`, `reason`,
+   *    `wasExisting` (true nếu row đã tồn tại).
+   */
+  async seedReturnerInactive(
+    actorId: string,
+    actorRole: Role,
+    targetUserId: string,
+    days: number,
+    reason: string,
+    now: Date = new Date(),
+  ): Promise<{ characterId: string; days: number; lastLoginAt: string; wasExisting: boolean }> {
+    if (actorId === targetUserId) throw new AdminError('CANNOT_TARGET_SELF');
+    if (
+      !Number.isInteger(days) ||
+      days < 1 ||
+      days > MAX_SEED_RETURNER_INACTIVE_DAYS
+    ) {
+      throw new AdminError('INVALID_INPUT');
+    }
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { role: true },
+    });
+    if (!targetUser) throw new AdminError('NOT_FOUND');
+    if (actorRole !== 'ADMIN' && targetUser.role !== 'PLAYER') {
+      throw new AdminError('FORBIDDEN');
+    }
+    const target = await this.prisma.character.findUnique({
+      where: { userId: targetUserId },
+      select: { id: true },
+    });
+    if (!target) throw new AdminError('NOT_FOUND');
+
+    const lastLoginAt = new Date(now.getTime() - days * 86_400_000);
+
+    const existing = await this.prisma.characterReturnerState.findUnique({
+      where: { characterId: target.id },
+      select: { characterId: true },
+    });
+    const wasExisting = existing !== null;
+
+    if (!existing) {
+      await this.prisma.characterReturnerState.create({
+        data: {
+          characterId: target.id,
+          prevLoginAt: null,
+          lastLoginAt,
+          inactiveDays: 0,
+          currentTier: null,
+          lastCycleKey: null,
+          lastTriggerAt: null,
+        },
+      });
+    } else {
+      await this.prisma.characterReturnerState.update({
+        where: { characterId: target.id },
+        data: {
+          prevLoginAt: null,
+          lastLoginAt,
+          inactiveDays: 0,
+          currentTier: null,
+          lastCycleKey: null,
+          lastTriggerAt: null,
+        },
+      });
+    }
+
+    await this.audit(actorId, 'admin.returner.seed_inactive', {
+      targetUserId,
+      characterId: target.id,
+      days,
+      lastLoginAt: lastLoginAt.toISOString(),
+      wasExisting,
+      reason,
+    });
+
+    return {
+      characterId: target.id,
+      days,
+      lastLoginAt: lastLoginAt.toISOString(),
+      wasExisting,
     };
   }
 

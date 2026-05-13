@@ -80,6 +80,18 @@
       "artifactV2Equip": "Failed to equip artifact",
       "artifactV2Unequip": "Failed to unequip artifact",
       "artifactV2Upgrade": "Failed to upgrade / refine / awaken artifact",
+      "loadoutList": "Failed to load loadout presets",
+      "loadoutCreate": "Failed to create loadout preset",
+      "loadoutUpdate": "Failed to update loadout preset",
+      "loadoutDelete": "Failed to delete loadout preset",
+      "loadoutApply": "Failed to apply loadout preset",
+      "loadoutSetDefault": "Failed to set default loadout",
+      "pushVapid": "Failed to load push public key.",
+      "pushSubscribe": "Failed to subscribe to push notifications.",
+      "pushUnsubscribe": "Failed to unsubscribe from push notifications.",
+      "pushList": "Failed to list push subscriptions.",
+      "pushPrefs": "Failed to load push preferences.",
+      "pushPrefsUpdate": "Failed to update push preferences.",
       "worldSummary": "Failed to load world summary.",
       "farmMaps": "Failed to load farm maps.",
       "farmStart": "Failed to start farm session.",
@@ -360,6 +372,8 @@
       "home": "Home",
       "dungeon": "Sparring Hall",
       "inventory": "Inventory",
+      "loadouts": "Loadouts",
+      "notificationSettings": "Push Settings",
       "market": "Market",
       "shop": "NPC Shop",
       "sect": "Sect",
@@ -1036,7 +1050,7 @@
       },
       "socket": {
         "label": "Socket / Unsocket",
-        "costLabel": "Socket: {linhThach} linh thạch + {materialQty}× {materialName}",
+        "costLabel": "Socket: {linhThach} linh thạch",
         "unsocketCostLabel": "Unsocket: {linhThach} linh thạch + {materialQty}× {materialName}"
       },
       "reforge": {
@@ -5231,6 +5245,56 @@
       "UNKNOWN": "Something went wrong — please retry."
     }
   },
+  "coCultivation": {
+    "tab": "Co-Cultivation",
+    "title": "Co-Cultivation",
+    "subtitle": "Cultivate together with a friend for a small EXP bonus (daily cap applied).",
+    "today": {
+      "sessions": "Sessions today",
+      "buffSeconds": "Buff seconds total",
+      "bonusExp": "Bonus EXP today"
+    },
+    "active": {
+      "title": "Current session",
+      "empty": "No active session — invite a friend below.",
+      "partner": "Partner",
+      "status": "Status",
+      "duration": "Duration"
+    },
+    "send": {
+      "partner": "Partner user ID",
+      "placeholder": "Enter a friend's userId.",
+      "action": "Invite to co-cultivate"
+    },
+    "action": {
+      "accept": "Accept",
+      "complete": "Complete",
+      "cancel": "Cancel"
+    },
+    "history": {
+      "title": "Recent sessions",
+      "empty": "No sessions yet."
+    },
+    "requestSent": "Invitation sent.",
+    "accepted": "Session accepted.",
+    "cancelled": "Session cancelled.",
+    "completed": "Session completed — bonus EXP granted.",
+    "errors": {
+      "SELF_NOT_ALLOWED": "Cannot co-cultivate with yourself.",
+      "NOT_FRIEND": "Must be friends to co-cultivate.",
+      "BLOCKED": "One of you has blocked the other.",
+      "ALREADY_ACTIVE": "An active session already exists — finish it first.",
+      "DAILY_CAP_REACHED": "Daily session cap reached.",
+      "BUFF_BUDGET_EXCEEDED": "Daily buff budget exceeded.",
+      "COOLDOWN_ACTIVE": "Cooldown active — try again in a few seconds.",
+      "PARTNER_OFFLINE": "Partner is offline.",
+      "INVALID_TRANSITION": "Session state does not allow this action.",
+      "NOT_AUTHORIZED": "You do not have permission for this session.",
+      "NOT_FOUND": "Session not found.",
+      "NO_CHARACTER": "You need a character before co-cultivating.",
+      "UNKNOWN": "Something went wrong — please retry."
+    }
+  },
   "publicProfile": {
     "title": "Player profile",
     "viewProfile": "View profile",
@@ -7220,51 +7284,6 @@
       "SECRET_REALM_COOLDOWN": "Cooldown active."
     }
   },
-  "loadoutPreset": {
-    "title": "Loadout Preset",
-    "subtitle": "Save and apply gear presets for PvE / PvP / Boss.",
-    "loading": "Loading presets…",
-    "saveCurrent": "Save current loadout",
-    "apply": "Apply",
-    "validate": "Validate",
-    "delete": "Delete",
-    "noPreset": "No preset for this type yet.",
-    "namePlaceholder": "Preset name (≤32 chars)",
-    "slotCount": "{n} slots",
-    "savedToast": "Preset saved.",
-    "appliedToast": "Applied {applied} slot(s) (skipped {skipped}).",
-    "validateOk": "Preset is valid.",
-    "validateFail": "Preset invalid: {code}.",
-    "presetType": {
-      "PVE": "PvE",
-      "PVP": "PvP",
-      "BOSS": "Boss",
-      "CULTIVATION": "Cultivation",
-      "CUSTOM": "Custom"
-    },
-    "slot": {
-      "WEAPON": "Weapon",
-      "ARMOR": "Armor",
-      "BELT": "Belt",
-      "BOOTS": "Boots",
-      "HAT": "Hat",
-      "TRAM": "Tram",
-      "ARTIFACT_1": "Artifact I",
-      "ARTIFACT_2": "Artifact II",
-      "ARTIFACT_3": "Artifact III"
-    },
-    "error": {
-      "UNKNOWN_ERROR": "Unknown error.",
-      "NO_CHARACTER": "No character yet.",
-      "LOADOUT_PRESET_NOT_FOUND": "Preset not found.",
-      "LOADOUT_PRESET_TYPE_EXISTS": "Preset of this type already exists.",
-      "LOADOUT_PRESET_LIMIT_REACHED": "Preset limit reached.",
-      "LOADOUT_PRESET_NAME_EMPTY": "Name cannot be empty.",
-      "LOADOUT_PRESET_NAME_TOO_LONG": "Name exceeds 32 chars.",
-      "LOADOUT_PRESET_SLOT_DUPLICATE": "Duplicate slot.",
-      "LOADOUT_PRESET_APPLY_FAILED": "Apply failed."
-    }
-  },
   "inventoryAutoSort": {
     "title": "Inventory — Auto-sort & Lock",
     "subtitle": "Filter, sort, and lock items in bulk.",
@@ -7316,6 +7335,116 @@
       "INVALID_INPUT": "Invalid input.",
       "INVENTORY_ITEM_NOT_FOUND": "Item not found.",
       "INVENTORY_ITEM_LOCKED": "Item is locked."
+    }
+  },
+  "loadout": {
+    "title": "Loadout Presets",
+    "subtitle": "Save equipment + skill + artifact presets per PvE / PvP / Boss for quick swap.",
+    "empty": "No loadout presets yet. Create one to get started.",
+    "loadFail": "Failed to load loadout presets.",
+    "mode": {
+      "PVE": "PvE",
+      "PVP": "PvP",
+      "BOSS": "Boss",
+      "CUSTOM": "Custom"
+    },
+    "form": {
+      "name": "Name",
+      "namePlaceholder": "e.g. PvE damage build",
+      "mode": "Mode",
+      "equipmentLabel": "Equipment ({n})",
+      "skillLabel": "Skills ({n}/4)",
+      "artifactLabel": "Artifacts ({n})",
+      "skillEmpty": "Leave blank to keep current skills on apply.",
+      "artifactEmpty": "Leave blank to keep current artifacts on apply.",
+      "submitCreate": "Create",
+      "submitUpdate": "Save",
+      "cancel": "Cancel"
+    },
+    "actions": {
+      "create": "New preset",
+      "apply": "Apply",
+      "edit": "Edit",
+      "delete": "Delete",
+      "setDefault": "Set default",
+      "isDefault": "Default",
+      "deleteConfirm": "Delete \"{name}\"?"
+    },
+    "summary": {
+      "equipmentCount": "{n} items",
+      "skillCount": "{n} skills",
+      "skillUntouched": "Skills unchanged",
+      "artifactCount": "{n} artifacts",
+      "artifactUntouched": "Artifacts unchanged",
+      "appliedToast": "Applied {name}.",
+      "deletedToast": "Deleted {name}.",
+      "createdToast": "Created {name}.",
+      "updatedToast": "Updated {name}.",
+      "defaultSetToast": "Set {name} as default {mode}."
+    },
+    "warning": {
+      "title": "Cannot apply — missing items:",
+      "EQUIPMENT_MISSING": "Equipment slot {slot} not in inventory.",
+      "SKILL_NOT_LEARNED": "Skill {ref} not learned.",
+      "ARTIFACT_MISSING": "Artifact slot {slot} missing."
+    },
+    "errors": {
+      "LOADOUT_PRESET_NOT_FOUND": "Loadout preset not found.",
+      "LOADOUT_PRESET_NAME_TAKEN": "Preset name already taken.",
+      "LOADOUT_PRESET_NAME_INVALID": "Preset name must be 1–40 chars.",
+      "LOADOUT_PRESET_MODE_INVALID": "Invalid mode.",
+      "LOADOUT_PRESET_PAYLOAD_INVALID": "Invalid preset payload.",
+      "LOADOUT_PRESET_LIMIT_REACHED": "Loadout preset cap reached (20)."
+    }
+  },
+  "webPush": {
+    "title": "Push notifications",
+    "subtitle": "Receive notifications even when the game is closed. You can opt out anytime.",
+    "unsupported": "Your browser does not support Web Push notifications. Try a recent version of Chrome, Edge, Firefox, or a desktop browser.",
+    "permissionDenied": "Notifications are blocked for this site. Open browser settings and re-enable notifications, then refresh this page.",
+    "masterTitle": "Enable on this device",
+    "masterDescription": "Allow push notifications from Xuân Tôi to this browser.",
+    "enable": "Enable",
+    "disable": "Disable",
+    "perTypeTitle": "Notification types",
+    "on": "On",
+    "off": "Off",
+    "type": {
+      "boss": {
+        "title": "Boss spawn",
+        "description": "World boss has just spawned (bypasses quiet hours)."
+      },
+      "stamina": {
+        "title": "Stamina full",
+        "description": "Your stamina has returned to maximum."
+      },
+      "mail": {
+        "title": "New mail",
+        "description": "You have a new in-game mail."
+      },
+      "daily": {
+        "title": "Daily login reminder",
+        "description": "Optional reminder for daily rewards (off by default)."
+      }
+    },
+    "errors": {
+      "UNSUPPORTED": "This browser does not support push notifications.",
+      "PERMISSION_DENIED": "Notification permission was denied.",
+      "SW_NOT_REGISTERED": "Service worker is not registered yet — refresh and try again.",
+      "KEYS_MISSING": "Push subscription is missing required keys.",
+      "VAPID_NOT_CONFIGURED": "Server VAPID key is not configured yet.",
+      "PAYLOAD_INVALID": "Invalid request payload.",
+      "ENDPOINT_INVALID": "Push endpoint is invalid.",
+      "ENDPOINT_TOO_LONG": "Push endpoint is too long.",
+      "P256DH_INVALID": "Push key is invalid.",
+      "AUTH_INVALID": "Push auth secret is invalid.",
+      "USER_AGENT_TOO_LONG": "User agent is too long.",
+      "SUBSCRIPTION_LIMIT_REACHED": "You have reached the maximum number of subscribed devices (10).",
+      "UNAUTHENTICATED": "You must be signed in to manage push notifications.",
+      "FORBIDDEN": "You cannot modify this subscription.",
+      "TYPE_INVALID": "Notification type is invalid.",
+      "ERROR": "Unexpected error. Please try again.",
+      "UNKNOWN": "Unknown error."
     }
   }
 }

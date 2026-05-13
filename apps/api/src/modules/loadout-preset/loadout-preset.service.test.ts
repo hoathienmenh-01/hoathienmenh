@@ -1,216 +1,353 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+/**
+ * Phase QOL-2 — LoadoutPresetService integration tests.
+ *
+ * Cần Postgres (CI provisions postgres:16-alpine).
+ */
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PrismaService } from '../../common/prisma.service';
+import { TEST_DATABASE_URL, makeUserChar, wipeAll } from '../../test-helpers';
 import {
   LoadoutPresetError,
   LoadoutPresetService,
 } from './loadout-preset.service';
-import {
-  TEST_DATABASE_URL,
-  makeLoadoutPresetService,
-  makeUserChar,
-  wipeAll,
-} from '../../test-helpers';
 
 let prisma: PrismaService;
-let loadout: LoadoutPresetService;
+let svc: LoadoutPresetService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
-  ({ loadout } = makeLoadoutPresetService(prisma));
+  svc = new LoadoutPresetService(prisma);
 });
 
 beforeEach(async () => {
   await wipeAll(prisma);
 });
 
-afterAll(async () => {
-  await prisma.$disconnect();
-});
-
-async function grantItem(
-  characterId: string,
-  itemKey: string,
-  opts?: { equippedSlot?: string | null },
-): Promise<string> {
-  const row = await prisma.inventoryItem.create({
-    data: {
-      characterId,
-      itemKey,
-      qty: 1,
-      equippedSlot: (opts?.equippedSlot ?? null) as never,
-    },
+async function makeWeapon(characterId: string, itemKey = 'long_huyen_kiem') {
+  return prisma.inventoryItem.create({
+    data: { characterId, itemKey, qty: 1 },
   });
-  return row.id;
 }
 
-describe('LoadoutPresetService.create', () => {
-  it('throws NO_CHARACTER khi user không có character', async () => {
-    await expect(
-      loadout.create('no-such-user', { presetType: 'PVE', name: 'A' }),
-    ).rejects.toThrow(new LoadoutPresetError('NO_CHARACTER'));
+async function makeSkill(characterId: string, skillKey: string) {
+  return prisma.characterSkill.create({
+    data: {
+      characterId,
+      skillKey,
+      masteryLevel: 1,
+      source: 'starter',
+      isEquipped: false,
+    },
   });
+}
 
-  it('snapshot trang bị hiện tại nếu equipment không được truyền', async () => {
-    const { userId, characterId } = await makeUserChar(prisma);
-    await grantItem(characterId, 'so_kiem', { equippedSlot: 'WEAPON' });
-    const p = await loadout.create(userId, {
-      presetType: 'PVE',
-      name: 'My PVE',
+async function makeArtifact(characterId: string, artifactKey = 'flying_sword_basic') {
+  return prisma.characterArtifactV2.create({
+    data: {
+      characterId,
+      artifactKey,
+      name: 'Test Artifact',
+      type: 'FLYING_SWORD',
+      element: 'NONE',
+      tier: 1,
+      grade: 'HA_PHAM',
+      level: 1,
+      statsJson: { atk: 0, def: 0, hp: 0, mp: 0, spirit: 0 },
+    },
+  });
+}
+
+describe('LoadoutPresetService — Phase QOL-2', () => {
+  describe('create', () => {
+    it('creates preset minimal payload', async () => {
+      const u = await makeUserChar(prisma);
+      const p = await svc.create(u.characterId, {
+        name: 'PvE Build',
+        mode: 'PVE',
+      });
+      expect(p.name).toBe('PvE Build');
+      expect(p.mode).toBe('PVE');
+      expect(p.equipmentSlots).toEqual({});
+      expect(p.skillSlots).toBeNull();
+      expect(p.artifactSlots).toBeNull();
+      expect(p.isDefaultForPve).toBe(false);
     });
-    expect(p.presetType).toBe('PVE');
-    expect(p.name).toBe('My PVE');
-    expect(p.equipment).toHaveLength(1);
-    expect(p.equipment[0]?.slot).toBe('WEAPON');
-  });
 
-  it('reject tên rỗng', async () => {
-    const { userId } = await makeUserChar(prisma);
-    await expect(
-      loadout.create(userId, { presetType: 'PVE', name: '   ' }),
-    ).rejects.toThrow(new LoadoutPresetError('LOADOUT_PRESET_NAME_EMPTY'));
-  });
-
-  it('reject tên > 32 ký tự', async () => {
-    const { userId } = await makeUserChar(prisma);
-    await expect(
-      loadout.create(userId, { presetType: 'PVE', name: 'x'.repeat(33) }),
-    ).rejects.toThrow(new LoadoutPresetError('LOADOUT_PRESET_NAME_TOO_LONG'));
-  });
-
-  it('reject duplicate presetType cùng character', async () => {
-    const { userId } = await makeUserChar(prisma);
-    await loadout.create(userId, { presetType: 'PVE', name: 'A' });
-    await expect(
-      loadout.create(userId, { presetType: 'PVE', name: 'B' }),
-    ).rejects.toThrow(new LoadoutPresetError('LOADOUT_PRESET_TYPE_EXISTS'));
-  });
-
-  it('reject duplicate slot trong equipment array', async () => {
-    const { userId, characterId } = await makeUserChar(prisma);
-    const id1 = await grantItem(characterId, 'so_kiem');
-    const id2 = await grantItem(characterId, 'so_kiem');
-    await expect(
-      loadout.create(userId, {
-        presetType: 'PVE',
-        name: 'A',
-        equipment: [
-          { slot: 'WEAPON', inventoryItemId: id1 },
-          { slot: 'WEAPON', inventoryItemId: id2 },
-        ],
-      }),
-    ).rejects.toThrow(new LoadoutPresetError('LOADOUT_PRESET_SLOT_DUPLICATE'));
-  });
-
-  it('reject quá 5 preset / character', async () => {
-    const { userId } = await makeUserChar(prisma);
-    await loadout.create(userId, { presetType: 'PVE', name: 'A' });
-    await loadout.create(userId, { presetType: 'PVP', name: 'B' });
-    await loadout.create(userId, { presetType: 'BOSS', name: 'C' });
-    await loadout.create(userId, { presetType: 'CULTIVATION', name: 'D' });
-    await loadout.create(userId, { presetType: 'CUSTOM', name: 'E' });
-    // Already at cap of 5; impossible to create a 6th type.
-    // But we can test the count guard by violating type uniqueness which
-    // throws first — so the cap guard is exercised implicitly.
-    // Add a non-typed test ensuring total <= 5 across types holds.
-    const list = await loadout.list(userId);
-    expect(list).toHaveLength(5);
-  });
-});
-
-describe('LoadoutPresetService.update + delete + saveCurrent', () => {
-  it('update name', async () => {
-    const { userId } = await makeUserChar(prisma);
-    const p = await loadout.create(userId, { presetType: 'PVE', name: 'A' });
-    const u = await loadout.update(userId, p.id, { name: 'Boss Hunter' });
-    expect(u.name).toBe('Boss Hunter');
-  });
-
-  it('delete preset', async () => {
-    const { userId } = await makeUserChar(prisma);
-    const p = await loadout.create(userId, { presetType: 'PVE', name: 'A' });
-    await loadout.delete(userId, p.id);
-    await expect(loadout.findOne(userId, p.id)).rejects.toThrow(
-      new LoadoutPresetError('LOADOUT_PRESET_NOT_FOUND'),
-    );
-  });
-
-  it('saveCurrent snapshot equipped slots into preset', async () => {
-    const { userId, characterId } = await makeUserChar(prisma);
-    await grantItem(characterId, 'so_kiem', { equippedSlot: 'WEAPON' });
-    await grantItem(characterId, 'so_kiem', { equippedSlot: null });
-    const p = await loadout.saveCurrent(userId, {
-      presetType: 'PVP',
-      name: 'Quick',
+    it('creates preset with equipmentSlots', async () => {
+      const u = await makeUserChar(prisma);
+      const w = await makeWeapon(u.characterId);
+      const p = await svc.create(u.characterId, {
+        name: 'Sword Build',
+        mode: 'PVE',
+        equipmentSlots: { WEAPON: w.id },
+      });
+      expect(p.equipmentSlots).toEqual({ WEAPON: w.id });
     });
-    // Only the equipped item is included in the snapshot.
-    expect(p.equipment).toHaveLength(1);
-    expect(p.equipment[0]?.slot).toBe('WEAPON');
-  });
-});
 
-describe('LoadoutPresetService.validate + apply', () => {
-  it('validate trả ok=true khi preset hợp lệ', async () => {
-    const { userId, characterId } = await makeUserChar(prisma);
-    const wid = await grantItem(characterId, 'so_kiem');
-    const p = await loadout.create(userId, {
-      presetType: 'PVE',
-      name: 'A',
-      equipment: [{ slot: 'WEAPON', inventoryItemId: wid }],
+    it('rejects empty name', async () => {
+      const u = await makeUserChar(prisma);
+      await expect(
+        svc.create(u.characterId, { name: '', mode: 'PVE' }),
+      ).rejects.toBeInstanceOf(LoadoutPresetError);
     });
-    const v = await loadout.validate(userId, p.id);
-    expect(v.ok).toBe(true);
-    expect(v.errors).toHaveLength(0);
-  });
 
-  it('validate detect missing item', async () => {
-    const { userId, characterId } = await makeUserChar(prisma);
-    const wid = await grantItem(characterId, 'so_kiem');
-    const p = await loadout.create(userId, {
-      presetType: 'PVE',
-      name: 'A',
-      equipment: [{ slot: 'WEAPON', inventoryItemId: wid }],
+    it('rejects unknown mode', async () => {
+      const u = await makeUserChar(prisma);
+      await expect(
+        svc.create(u.characterId, { name: 'X', mode: 'FARM' as never }),
+      ).rejects.toMatchObject({ code: 'LOADOUT_PRESET_MODE_INVALID' });
     });
-    await prisma.inventoryItem.delete({ where: { id: wid } });
-    const v = await loadout.validate(userId, p.id);
-    expect(v.ok).toBe(false);
-    expect(v.errors[0]?.code).toBe('INVENTORY_ITEM_NOT_FOUND');
-  });
 
-  it('apply equip vũ khí thành công', async () => {
-    const { userId, characterId } = await makeUserChar(prisma);
-    const wid = await grantItem(characterId, 'so_kiem');
-    const p = await loadout.create(userId, {
-      presetType: 'PVE',
-      name: 'A',
-      equipment: [{ slot: 'WEAPON', inventoryItemId: wid }],
+    it('rejects duplicate name same character', async () => {
+      const u = await makeUserChar(prisma);
+      await svc.create(u.characterId, { name: 'dup', mode: 'PVE' });
+      await expect(
+        svc.create(u.characterId, { name: 'dup', mode: 'PVP' }),
+      ).rejects.toMatchObject({ code: 'LOADOUT_PRESET_NAME_TAKEN' });
     });
-    const r = await loadout.apply(userId, p.id);
-    expect(r.applied).toHaveLength(1);
-    expect(r.applied[0]?.slot).toBe('WEAPON');
-    const inv = await prisma.inventoryItem.findUnique({ where: { id: wid } });
-    expect(inv?.equippedSlot).toBe('WEAPON');
-  });
 
-  it('apply NO partial — throw nếu 1 item missing', async () => {
-    const { userId, characterId } = await makeUserChar(prisma);
-    const wid = await grantItem(characterId, 'so_kiem');
-    const p = await loadout.create(userId, {
-      presetType: 'PVE',
-      name: 'A',
-      equipment: [{ slot: 'WEAPON', inventoryItemId: wid }],
+    it('rejects duplicate item across slots', async () => {
+      const u = await makeUserChar(prisma);
+      const w = await makeWeapon(u.characterId);
+      await expect(
+        svc.create(u.characterId, {
+          name: 'bad',
+          mode: 'PVE',
+          equipmentSlots: { WEAPON: w.id, ARMOR: w.id },
+        }),
+      ).rejects.toMatchObject({ code: 'LOADOUT_PRESET_PAYLOAD_INVALID' });
     });
-    await prisma.inventoryItem.delete({ where: { id: wid } });
-    await expect(loadout.apply(userId, p.id)).rejects.toThrow(
-      /LOADOUT_PRESET_APPLY_FAILED/,
-    );
+
+    it('rejects after hitting per-character cap', async () => {
+      const u = await makeUserChar(prisma);
+      // Cap = 20. Tạo 20 preset hợp lệ.
+      for (let i = 0; i < 20; i += 1) {
+        await svc.create(u.characterId, { name: `p${i}`, mode: 'CUSTOM' });
+      }
+      await expect(
+        svc.create(u.characterId, { name: 'over', mode: 'CUSTOM' }),
+      ).rejects.toMatchObject({ code: 'LOADOUT_PRESET_LIMIT_REACHED' });
+    });
   });
 
-  it('list trả presets ordered theo presetType + createdAt', async () => {
-    const { userId } = await makeUserChar(prisma);
-    await loadout.create(userId, { presetType: 'PVP', name: 'PvP' });
-    await loadout.create(userId, { presetType: 'PVE', name: 'PvE' });
-    const list = await loadout.list(userId);
-    expect(list.map((p) => p.presetType)).toEqual(['PVE', 'PVP']);
+  describe('list / get / update', () => {
+    it('list returns presets ordered by default flag + updatedAt', async () => {
+      const u = await makeUserChar(prisma);
+      const a = await svc.create(u.characterId, { name: 'A', mode: 'PVE' });
+      const b = await svc.create(u.characterId, { name: 'B', mode: 'PVP' });
+      await svc.setDefault(u.characterId, b.id, 'PVP');
+      const list = await svc.list(u.characterId);
+      expect(list).toHaveLength(2);
+      expect(list[0].id).toBe(b.id); // default first
+      expect(list[1].id).toBe(a.id);
+    });
+
+    it('get returns own preset', async () => {
+      const u = await makeUserChar(prisma);
+      const p = await svc.create(u.characterId, { name: 'X', mode: 'PVE' });
+      const got = await svc.get(u.characterId, p.id);
+      expect(got.id).toBe(p.id);
+    });
+
+    it('get rejects cross-character access', async () => {
+      const u1 = await makeUserChar(prisma);
+      const u2 = await makeUserChar(prisma);
+      const p = await svc.create(u1.characterId, { name: 'X', mode: 'PVE' });
+      await expect(svc.get(u2.characterId, p.id)).rejects.toMatchObject({
+        code: 'LOADOUT_PRESET_NOT_FOUND',
+      });
+    });
+
+    it('update changes name + payload', async () => {
+      const u = await makeUserChar(prisma);
+      const p = await svc.create(u.characterId, { name: 'orig', mode: 'PVE' });
+      const w = await makeWeapon(u.characterId);
+      const updated = await svc.update(u.characterId, p.id, {
+        name: 'renamed',
+        equipmentSlots: { WEAPON: w.id },
+      });
+      expect(updated.name).toBe('renamed');
+      expect(updated.equipmentSlots).toEqual({ WEAPON: w.id });
+    });
+
+    it('update rejects cross-character', async () => {
+      const u1 = await makeUserChar(prisma);
+      const u2 = await makeUserChar(prisma);
+      const p = await svc.create(u1.characterId, { name: 'p', mode: 'PVE' });
+      await expect(
+        svc.update(u2.characterId, p.id, { name: 'x' }),
+      ).rejects.toMatchObject({ code: 'LOADOUT_PRESET_NOT_FOUND' });
+    });
+
+    it('delete removes preset', async () => {
+      const u = await makeUserChar(prisma);
+      const p = await svc.create(u.characterId, { name: 'p', mode: 'PVE' });
+      await svc.delete(u.characterId, p.id);
+      const list = await svc.list(u.characterId);
+      expect(list).toHaveLength(0);
+    });
+
+    it('delete rejects cross-character', async () => {
+      const u1 = await makeUserChar(prisma);
+      const u2 = await makeUserChar(prisma);
+      const p = await svc.create(u1.characterId, { name: 'p', mode: 'PVE' });
+      await expect(svc.delete(u2.characterId, p.id)).rejects.toMatchObject({
+        code: 'LOADOUT_PRESET_NOT_FOUND',
+      });
+    });
+  });
+
+  describe('setDefault', () => {
+    it('toggles default cờ chỉ trên 1 preset mỗi mode', async () => {
+      const u = await makeUserChar(prisma);
+      const a = await svc.create(u.characterId, { name: 'A', mode: 'PVE' });
+      const b = await svc.create(u.characterId, { name: 'B', mode: 'PVE' });
+      await svc.setDefault(u.characterId, a.id, 'PVE');
+      let list = await svc.list(u.characterId);
+      expect(list.find((x) => x.id === a.id)?.isDefaultForPve).toBe(true);
+      expect(list.find((x) => x.id === b.id)?.isDefaultForPve).toBe(false);
+      // Re-assign default to B → A.isDefaultForPve = false.
+      await svc.setDefault(u.characterId, b.id, 'PVE');
+      list = await svc.list(u.characterId);
+      expect(list.find((x) => x.id === a.id)?.isDefaultForPve).toBe(false);
+      expect(list.find((x) => x.id === b.id)?.isDefaultForPve).toBe(true);
+    });
+
+    it('rejects CUSTOM mode (no default field)', async () => {
+      const u = await makeUserChar(prisma);
+      const p = await svc.create(u.characterId, { name: 'c', mode: 'CUSTOM' });
+      await expect(
+        svc.setDefault(u.characterId, p.id, 'CUSTOM'),
+      ).rejects.toMatchObject({ code: 'LOADOUT_PRESET_MODE_INVALID' });
+    });
+  });
+
+  describe('apply', () => {
+    it('rejects non-owned inventoryItem → warnings + không apply', async () => {
+      const u1 = await makeUserChar(prisma);
+      const u2 = await makeUserChar(prisma);
+      const wOther = await makeWeapon(u2.characterId);
+      const preset = await svc.create(u1.characterId, {
+        name: 'cheat',
+        mode: 'PVE',
+        equipmentSlots: { WEAPON: wOther.id },
+      });
+      const result = await svc.apply(u1.characterId, preset.id);
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings[0].code).toBe('EQUIPMENT_MISSING');
+      expect(result.appliedEquipmentCount).toBe(0);
+      // Other character's item still untouched.
+      const row = await prisma.inventoryItem.findUnique({ where: { id: wOther.id } });
+      expect(row?.equippedSlot).toBeNull();
+    });
+
+    it('applies equipment: clears old equipped + sets preset slot', async () => {
+      const u = await makeUserChar(prisma);
+      const w1 = await makeWeapon(u.characterId);
+      const w2 = await makeWeapon(u.characterId, 'huyen_thiet_dao');
+      // Set w1 currently equipped WEAPON.
+      await prisma.inventoryItem.update({
+        where: { id: w1.id },
+        data: { equippedSlot: 'WEAPON' },
+      });
+      const preset = await svc.create(u.characterId, {
+        name: 'swap',
+        mode: 'PVE',
+        equipmentSlots: { WEAPON: w2.id },
+      });
+      const result = await svc.apply(u.characterId, preset.id);
+      expect(result.warnings).toHaveLength(0);
+      expect(result.appliedEquipmentCount).toBe(1);
+      const after1 = await prisma.inventoryItem.findUnique({ where: { id: w1.id } });
+      const after2 = await prisma.inventoryItem.findUnique({ where: { id: w2.id } });
+      expect(after1?.equippedSlot).toBeNull();
+      expect(after2?.equippedSlot).toBe('WEAPON');
+    });
+
+    it('applies skill: clears old isEquipped + sets preset skills', async () => {
+      const u = await makeUserChar(prisma);
+      const s1 = await makeSkill(u.characterId, 'basic_strike');
+      await makeSkill(u.characterId, 'fire_palm');
+      // s1 currently equipped.
+      await prisma.characterSkill.update({
+        where: { id: s1.id },
+        data: { isEquipped: true },
+      });
+      const preset = await svc.create(u.characterId, {
+        name: 'skills',
+        mode: 'PVE',
+        skillSlots: ['fire_palm'],
+      });
+      const result = await svc.apply(u.characterId, preset.id);
+      expect(result.warnings).toHaveLength(0);
+      expect(result.appliedSkillCount).toBe(1);
+      const rows = await prisma.characterSkill.findMany({
+        where: { characterId: u.characterId },
+      });
+      expect(rows.find((r) => r.skillKey === 'basic_strike')?.isEquipped).toBe(false);
+      expect(rows.find((r) => r.skillKey === 'fire_palm')?.isEquipped).toBe(true);
+    });
+
+    it('applies artifact: rewrites equippedSlot', async () => {
+      const u = await makeUserChar(prisma);
+      const a1 = await makeArtifact(u.characterId);
+      const preset = await svc.create(u.characterId, {
+        name: 'art',
+        mode: 'BOSS',
+        artifactSlots: { MAIN_ARTIFACT_V2: a1.id },
+      });
+      const result = await svc.apply(u.characterId, preset.id);
+      expect(result.warnings).toHaveLength(0);
+      expect(result.appliedArtifactCount).toBe(1);
+      const after = await prisma.characterArtifactV2.findUnique({
+        where: { id: a1.id },
+      });
+      expect(after?.equippedSlot).toBe('MAIN_ARTIFACT_V2');
+    });
+
+    it('skillSlots = null → preserves existing isEquipped', async () => {
+      const u = await makeUserChar(prisma);
+      const s1 = await makeSkill(u.characterId, 'basic_strike');
+      await prisma.characterSkill.update({
+        where: { id: s1.id },
+        data: { isEquipped: true },
+      });
+      const preset = await svc.create(u.characterId, {
+        name: 'p',
+        mode: 'PVE',
+        // không truyền skillSlots → giữ nguyên
+      });
+      const result = await svc.apply(u.characterId, preset.id);
+      expect(result.warnings).toHaveLength(0);
+      const row = await prisma.characterSkill.findUnique({ where: { id: s1.id } });
+      expect(row?.isEquipped).toBe(true);
+    });
+
+    it('apply rejects cross-character preset', async () => {
+      const u1 = await makeUserChar(prisma);
+      const u2 = await makeUserChar(prisma);
+      const p = await svc.create(u1.characterId, { name: 'p', mode: 'PVE' });
+      await expect(svc.apply(u2.characterId, p.id)).rejects.toMatchObject({
+        code: 'LOADOUT_PRESET_NOT_FOUND',
+      });
+    });
+
+    it('skill not learned → warning + không apply gear/skill/artifact', async () => {
+      const u = await makeUserChar(prisma);
+      const w = await makeWeapon(u.characterId);
+      // Mark w currently NOT equipped → after apply nó phải vẫn null.
+      const preset = await svc.create(u.characterId, {
+        name: 'mixed',
+        mode: 'PVE',
+        equipmentSlots: { WEAPON: w.id },
+        skillSlots: ['unlearned_skill'],
+      });
+      const result = await svc.apply(u.characterId, preset.id);
+      expect(result.warnings.length).toBeGreaterThan(0);
+      expect(result.appliedEquipmentCount).toBe(0);
+      const after = await prisma.inventoryItem.findUnique({ where: { id: w.id } });
+      expect(after?.equippedSlot).toBeNull();
+    });
   });
 });

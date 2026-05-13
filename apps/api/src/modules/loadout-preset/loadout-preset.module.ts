@@ -1,14 +1,14 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module';
 import { PrismaService } from '../../common/prisma.service';
+import { AuthModule } from '../auth/auth.module';
 import { LoadoutPresetController } from './loadout-preset.controller';
 import { LoadoutPresetService } from './loadout-preset.service';
 
 /**
- * Phase 34.4 — Loadout Preset Module.
+ * Phase QOL-2 — Loadout Preset PvE/PvP/Boss.
  *
- * Wraps `CharacterLoadoutPreset` CRUD + atomic apply. Pure equipment
- * snapshot — no currency/exp/item grant.
+ * CRUD + apply atomic. KHÔNG đụng combat formula, KHÔNG đụng Story V2,
+ * KHÔNG đụng Reward/Currency/Quest service core.
  */
 @Module({
   imports: [AuthModule],

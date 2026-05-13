@@ -51,6 +51,16 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/InventoryView.vue'),
   },
   {
+    path: '/loadouts',
+    name: 'loadouts',
+    component: () => import('@/views/LoadoutView.vue'),
+  },
+  {
+    path: '/notification-settings',
+    name: 'notification-settings',
+    component: () => import('@/views/NotificationSettingsView.vue'),
+  },
+  {
     path: '/market',
     name: 'market',
     component: () => import('@/views/MarketView.vue'),
@@ -304,12 +314,6 @@ const routes: RouteRecordRaw[] = [
     path: '/inventory-auto-sort',
     name: 'inventory-auto-sort',
     component: () => import('@/views/InventoryAutoSortView.vue'),
-  },
-  {
-    // Phase 34.4 — Loadout Preset.
-    path: '/loadout-preset',
-    name: 'loadout-preset',
-    component: () => import('@/views/LoadoutPresetView.vue'),
   },
   {
     path: '/social',

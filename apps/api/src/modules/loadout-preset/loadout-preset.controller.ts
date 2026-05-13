@@ -1,3 +1,9 @@
+/**
+ * Phase QOL-2 — Loadout Preset REST endpoints.
+ *
+ * Auth via `xt_access` cookie (cùng pattern `InventoryController`).
+ * Tất cả route đều `/loadouts` prefix.
+ */
 import {
   Body,
   Controller,
@@ -7,173 +13,198 @@ import {
   HttpException,
   HttpStatus,
   Param,
+  Patch,
   Post,
-  Put,
   Req,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { z } from 'zod';
-import { AuthService } from '../auth/auth.service';
 import {
-  LOADOUT_PRESET_NAME_MAX,
-  LOADOUT_PRESET_TYPES,
+  ARTIFACT_EQUIP_SLOTS,
+  EQUIP_SLOTS,
+  LOADOUT_PRESET_MODES,
+  type ArtifactEquipSlot,
+  type EquipSlot,
+  type LoadoutApplyResult,
+  type LoadoutPresetMode,
+  type LoadoutPresetView,
+} from '@xuantoi/shared';
+import { AuthService } from '../auth/auth.service';
+import { PrismaService } from '../../common/prisma.service';
+import {
   LoadoutPresetError,
   LoadoutPresetService,
 } from './loadout-preset.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
-const PresetTypeSchema = z.enum(LOADOUT_PRESET_TYPES);
-const NameSchema = z.string().min(1).max(LOADOUT_PRESET_NAME_MAX);
-const EquipmentEntrySchema = z.object({
-  slot: z.enum([
-    'WEAPON',
-    'ARMOR',
-    'BELT',
-    'BOOTS',
-    'HAT',
-    'TRAM',
-    'ARTIFACT_1',
-    'ARTIFACT_2',
-    'ARTIFACT_3',
-  ]),
-  inventoryItemId: z.string().min(1),
-});
+const EquipSlotEnum = z.enum(EQUIP_SLOTS as readonly [EquipSlot, ...EquipSlot[]]);
+const ArtifactEquipSlotEnum = z.enum(
+  ARTIFACT_EQUIP_SLOTS as readonly [ArtifactEquipSlot, ...ArtifactEquipSlot[]],
+);
+const ModeEnum = z.enum(
+  LOADOUT_PRESET_MODES as readonly [LoadoutPresetMode, ...LoadoutPresetMode[]],
+);
+
+const EquipmentSlotsSchema = z.record(EquipSlotEnum, z.string().min(1)).optional().nullable();
+const ArtifactSlotsSchema = z
+  .record(ArtifactEquipSlotEnum, z.string().min(1))
+  .optional()
+  .nullable();
+const SkillSlotsSchema = z.array(z.string().min(1)).optional().nullable();
+
 const CreateInput = z.object({
-  presetType: PresetTypeSchema,
-  name: NameSchema,
-  equipment: z.array(EquipmentEntrySchema).max(9).optional(),
+  name: z.string().min(1).max(40),
+  mode: ModeEnum,
+  equipmentSlots: EquipmentSlotsSchema,
+  skillSlots: SkillSlotsSchema,
+  artifactSlots: ArtifactSlotsSchema,
 });
+
 const UpdateInput = z.object({
-  name: NameSchema.optional(),
-  equipment: z.array(EquipmentEntrySchema).max(9).optional(),
+  name: z.string().min(1).max(40).optional(),
+  mode: ModeEnum.optional(),
+  equipmentSlots: EquipmentSlotsSchema,
+  skillSlots: SkillSlotsSchema,
+  artifactSlots: ArtifactSlotsSchema,
 });
-const SaveCurrentInput = z.object({
-  presetType: PresetTypeSchema,
-  name: NameSchema,
+
+const SetDefaultInput = z.object({
+  mode: ModeEnum,
 });
 
 function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
   throw new HttpException({ ok: false, error: { code, message: code } }, status);
 }
 
-@Controller('loadouts/v1')
+@Controller('loadouts')
 export class LoadoutPresetController {
   constructor(
     private readonly svc: LoadoutPresetService,
     private readonly auth: AuthService,
+    private readonly prisma: PrismaService,
   ) {}
 
-  private async requireUserId(req: Request): Promise<string> {
+  private async requireCharacter(
+    req: Request,
+  ): Promise<{ userId: string; characterId: string }> {
     const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
     if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
-    return userId;
+    const c = await this.prisma.character.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!c) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    return { userId, characterId: c.id };
   }
 
   @Get()
-  async list(@Req() req: Request) {
-    const userId = await this.requireUserId(req);
-    try {
-      const presets = await this.svc.list(userId);
-      return { ok: true, data: { presets } };
-    } catch (e) {
-      this.handleErr(e);
-    }
-  }
-
-  @Get(':presetId')
-  async detail(@Req() req: Request, @Param('presetId') presetId: string) {
-    const userId = await this.requireUserId(req);
-    if (!presetId) fail('INVALID_INPUT');
-    try {
-      const preset = await this.svc.findOne(userId, presetId);
-      return { ok: true, data: { preset } };
-    } catch (e) {
-      this.handleErr(e);
-    }
+  async list(
+    @Req() req: Request,
+  ): Promise<{ ok: true; data: { presets: LoadoutPresetView[] } }> {
+    const { characterId } = await this.requireCharacter(req);
+    const presets = await this.svc.list(characterId);
+    return { ok: true, data: { presets } };
   }
 
   @Post()
-  @HttpCode(200)
-  async create(@Req() req: Request, @Body() body: unknown) {
-    const userId = await this.requireUserId(req);
+  @HttpCode(201)
+  async create(
+    @Req() req: Request,
+    @Body() body: unknown,
+  ): Promise<{ ok: true; data: { preset: LoadoutPresetView } }> {
     const parsed = CreateInput.safeParse(body);
-    if (!parsed.success) fail('INVALID_INPUT');
+    if (!parsed.success) fail('LOADOUT_PRESET_PAYLOAD_INVALID');
+    const { characterId } = await this.requireCharacter(req);
     try {
-      const preset = await this.svc.create(userId, parsed.data);
+      const preset = await this.svc.create(characterId, {
+        name: parsed.data.name,
+        mode: parsed.data.mode,
+        equipmentSlots: parsed.data.equipmentSlots ?? null,
+        skillSlots: parsed.data.skillSlots ?? null,
+        artifactSlots: parsed.data.artifactSlots ?? null,
+      });
       return { ok: true, data: { preset } };
     } catch (e) {
       this.handleErr(e);
     }
   }
 
-  @Put(':presetId')
-  @HttpCode(200)
+  @Patch(':id')
   async update(
     @Req() req: Request,
-    @Param('presetId') presetId: string,
+    @Param('id') id: string,
     @Body() body: unknown,
-  ) {
-    const userId = await this.requireUserId(req);
-    if (!presetId) fail('INVALID_INPUT');
+  ): Promise<{ ok: true; data: { preset: LoadoutPresetView } }> {
     const parsed = UpdateInput.safeParse(body);
-    if (!parsed.success) fail('INVALID_INPUT');
+    if (!parsed.success) fail('LOADOUT_PRESET_PAYLOAD_INVALID');
+    const { characterId } = await this.requireCharacter(req);
     try {
-      const preset = await this.svc.update(userId, presetId, parsed.data);
+      const preset = await this.svc.update(characterId, id, {
+        name: parsed.data.name,
+        mode: parsed.data.mode,
+        equipmentSlots:
+          parsed.data.equipmentSlots === undefined
+            ? undefined
+            : (parsed.data.equipmentSlots ?? null),
+        skillSlots:
+          parsed.data.skillSlots === undefined
+            ? undefined
+            : (parsed.data.skillSlots ?? null),
+        artifactSlots:
+          parsed.data.artifactSlots === undefined
+            ? undefined
+            : (parsed.data.artifactSlots ?? null),
+      });
       return { ok: true, data: { preset } };
     } catch (e) {
       this.handleErr(e);
     }
   }
 
-  @Delete(':presetId')
+  @Delete(':id')
   @HttpCode(200)
-  async remove(@Req() req: Request, @Param('presetId') presetId: string) {
-    const userId = await this.requireUserId(req);
-    if (!presetId) fail('INVALID_INPUT');
+  async remove(
+    @Req() req: Request,
+    @Param('id') id: string,
+  ): Promise<{ ok: true; data: { deleted: true } }> {
+    const { characterId } = await this.requireCharacter(req);
     try {
-      await this.svc.delete(userId, presetId);
-      return { ok: true, data: {} };
+      await this.svc.delete(characterId, id);
+      return { ok: true, data: { deleted: true } };
     } catch (e) {
       this.handleErr(e);
     }
   }
 
-  @Post('save-current')
+  @Post(':id/apply')
   @HttpCode(200)
-  async saveCurrent(@Req() req: Request, @Body() body: unknown) {
-    const userId = await this.requireUserId(req);
-    const parsed = SaveCurrentInput.safeParse(body);
-    if (!parsed.success) fail('INVALID_INPUT');
+  async apply(
+    @Req() req: Request,
+    @Param('id') id: string,
+  ): Promise<{ ok: true; data: LoadoutApplyResult }> {
+    const { characterId } = await this.requireCharacter(req);
     try {
-      const preset = await this.svc.saveCurrent(userId, parsed.data);
-      return { ok: true, data: { preset } };
-    } catch (e) {
-      this.handleErr(e);
-    }
-  }
-
-  @Post(':presetId/validate')
-  @HttpCode(200)
-  async validate(@Req() req: Request, @Param('presetId') presetId: string) {
-    const userId = await this.requireUserId(req);
-    if (!presetId) fail('INVALID_INPUT');
-    try {
-      const result = await this.svc.validate(userId, presetId);
+      const result = await this.svc.apply(characterId, id);
       return { ok: true, data: result };
     } catch (e) {
       this.handleErr(e);
     }
   }
 
-  @Post(':presetId/apply')
+  @Post(':id/set-default')
   @HttpCode(200)
-  async apply(@Req() req: Request, @Param('presetId') presetId: string) {
-    const userId = await this.requireUserId(req);
-    if (!presetId) fail('INVALID_INPUT');
+  async setDefault(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ): Promise<{ ok: true; data: { preset: LoadoutPresetView } }> {
+    const parsed = SetDefaultInput.safeParse(body);
+    if (!parsed.success) fail('LOADOUT_PRESET_PAYLOAD_INVALID');
+    const { characterId } = await this.requireCharacter(req);
     try {
-      const report = await this.svc.apply(userId, presetId);
-      return { ok: true, data: report };
+      const preset = await this.svc.setDefault(characterId, id, parsed.data.mode);
+      return { ok: true, data: { preset } };
     } catch (e) {
       this.handleErr(e);
     }
@@ -181,31 +212,27 @@ export class LoadoutPresetController {
 
   private handleErr(e: unknown): never {
     if (e instanceof LoadoutPresetError) {
-      const code = e.code;
-      switch (code) {
-        case 'NO_CHARACTER':
-        case 'LOADOUT_PRESET_NOT_FOUND':
-          fail(code, HttpStatus.NOT_FOUND);
-        // eslint-disable-next-line no-fallthrough
-        case 'LOADOUT_PRESET_LIMIT_REACHED':
-        case 'LOADOUT_PRESET_TYPE_EXISTS':
-          fail(code, HttpStatus.CONFLICT);
-        // eslint-disable-next-line no-fallthrough
-        case 'LOADOUT_PRESET_NAME_EMPTY':
-        case 'LOADOUT_PRESET_NAME_TOO_LONG':
-        case 'LOADOUT_PRESET_TYPE_INVALID':
-        case 'LOADOUT_PRESET_SLOT_INVALID':
-        case 'LOADOUT_PRESET_SLOT_DUPLICATE':
-        case 'LOADOUT_PRESET_ITEM_INVALID':
-          fail(code, HttpStatus.BAD_REQUEST);
-        // eslint-disable-next-line no-fallthrough
-        default:
-          if (code.startsWith('LOADOUT_PRESET_APPLY_FAILED:')) {
-            fail(code, HttpStatus.CONFLICT);
-          }
-          fail(code, HttpStatus.BAD_REQUEST);
-      }
+      const status = mapErrorStatus(e.code);
+      fail(e.code, status);
     }
+    if (e instanceof HttpException) throw e;
     throw e;
+  }
+}
+
+function mapErrorStatus(code: string): number {
+  switch (code) {
+    case 'LOADOUT_PRESET_NOT_FOUND':
+      return HttpStatus.NOT_FOUND;
+    case 'LOADOUT_PRESET_NAME_TAKEN':
+      return HttpStatus.CONFLICT;
+    case 'LOADOUT_PRESET_LIMIT_REACHED':
+      return HttpStatus.CONFLICT;
+    case 'LOADOUT_PRESET_NAME_INVALID':
+    case 'LOADOUT_PRESET_MODE_INVALID':
+    case 'LOADOUT_PRESET_PAYLOAD_INVALID':
+      return HttpStatus.BAD_REQUEST;
+    default:
+      return HttpStatus.BAD_REQUEST;
   }
 }

@@ -69,33 +69,3 @@ ALTER TABLE "CharacterSecretRealmRun"
     ADD CONSTRAINT "CharacterSecretRealmRun_characterId_fkey"
     FOREIGN KEY ("characterId") REFERENCES "Character"("id")
     ON DELETE CASCADE ON UPDATE CASCADE;
-
--- ── Phase 34.4 — Loadout Preset PvE/PvP/Boss/Cultivation ─────────────────────
-CREATE TABLE "CharacterLoadoutPreset" (
-    "id" TEXT NOT NULL,
-    "characterId" TEXT NOT NULL,
-    "presetType" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "equipmentJson" JSONB NOT NULL DEFAULT '[]',
-    "skillJson" JSONB NOT NULL DEFAULT '[]',
-    "petJson" JSONB NOT NULL DEFAULT '{}',
-    "elementTagsJson" JSONB NOT NULL DEFAULT '[]',
-    "isActiveForPve" BOOLEAN NOT NULL DEFAULT false,
-    "isActiveForPvp" BOOLEAN NOT NULL DEFAULT false,
-    "isActiveForBoss" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "CharacterLoadoutPreset_pkey" PRIMARY KEY ("id")
-);
-
-CREATE UNIQUE INDEX "CharacterLoadoutPreset_characterId_presetType_key"
-    ON "CharacterLoadoutPreset"("characterId", "presetType");
-
-CREATE INDEX "CharacterLoadoutPreset_characterId_updatedAt_idx"
-    ON "CharacterLoadoutPreset"("characterId", "updatedAt");
-
-ALTER TABLE "CharacterLoadoutPreset"
-    ADD CONSTRAINT "CharacterLoadoutPreset_characterId_fkey"
-    FOREIGN KEY ("characterId") REFERENCES "Character"("id")
-    ON DELETE CASCADE ON UPDATE CASCADE;

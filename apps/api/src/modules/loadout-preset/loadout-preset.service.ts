@@ -1,468 +1,490 @@
+/**
+ * Phase QOL-2 — Loadout Preset PvE / PvP / Boss service.
+ *
+ * Server-authoritative CRUD + apply. Apply là `$transaction` atomic:
+ *   1. Validate ownership (gear inventoryItemId, skillKey learned, artifactId).
+ *   2. Unequip TẤT CẢ slot tương ứng (gear, skill, artifact) cho character.
+ *   3. Equip lại theo preset.
+ *
+ * Nếu thiếu reference (item bị xoá / skill chưa học / artifact bị xoá) →
+ * KHÔNG apply một phần, trả warnings cho UI + giữ trạng thái cũ.
+ *
+ * Lưu ý: KHÔNG đụng combat formula, KHÔNG đụng Reward/Currency/Quest,
+ * KHÔNG đụng Story V2.
+ */
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import {
-  canEquipItemAtRealm,
-  itemByKeyWithProgression,
-  realmByKey,
-  type EquipSlot,
+  LOADOUT_PRESET_PER_CHARACTER_MAX,
+  LoadoutPresetValidationError,
+  parseLoadoutPresetPayload,
+  validatePresetMode,
+  validatePresetName,
+  type LoadoutApplyResult,
+  type LoadoutApplyWarning,
+  type LoadoutPresetMode,
+  type LoadoutPresetView,
 } from '@xuantoi/shared';
+import type { EquipSlot } from '@xuantoi/shared';
+import type { ArtifactEquipSlot } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 
-/**
- * Phase 34.4 — Loadout Preset PvE/PvP/Boss/Cultivation.
- *
- * Lưu/nạp bộ trang bị nhanh cho từng context. Snapshot lưu ID-only — apply
- * path resolve ID tại runtime để bắt buộc validate ownership + realm gate.
- *
- * Reward guardrails:
- *  - KHÔNG mint currency / item — preset chỉ là chuyển equippedSlot trên các
- *    `InventoryItem` đã thuộc character.
- *  - Apply atomic via `$transaction` — nếu 1 slot fail thì ROLLBACK toàn bộ
- *    (no partial apply).
- *  - Validate: item exists, owns item, đủ realm/level, không locked-out.
- *  - Idempotency: apply lại preset cũ ⇒ skip slot đã đúng item.
- */
-export const LOADOUT_PRESET_TYPES = [
-  'PVE',
-  'PVP',
-  'BOSS',
-  'CULTIVATION',
-  'CUSTOM',
-] as const;
-export type LoadoutPresetType = (typeof LOADOUT_PRESET_TYPES)[number];
-
-export const LOADOUT_PRESET_MAX_PER_CHARACTER = 5;
-export const LOADOUT_PRESET_NAME_MAX = 32;
-
-const LOADOUT_EQUIP_SLOTS: readonly EquipSlot[] = [
-  'WEAPON',
-  'ARMOR',
-  'BELT',
-  'BOOTS',
-  'HAT',
-  'TRAM',
-  'ARTIFACT_1',
-  'ARTIFACT_2',
-  'ARTIFACT_3',
-];
-
-export interface LoadoutPresetEquipmentEntry {
-  slot: EquipSlot;
-  inventoryItemId: string;
-}
-
-export interface LoadoutPresetView {
-  id: string;
-  characterId: string;
-  presetType: LoadoutPresetType;
-  name: string;
-  equipment: LoadoutPresetEquipmentEntry[];
-  isActiveForPve: boolean;
-  isActiveForPvp: boolean;
-  isActiveForBoss: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface LoadoutPresetApplyReport {
-  preset: LoadoutPresetView;
-  applied: LoadoutPresetEquipmentEntry[];
-  skipped: { slot: EquipSlot; reason: string }[];
-}
+export type LoadoutPresetErrorCode =
+  | 'LOADOUT_PRESET_NOT_FOUND'
+  | 'LOADOUT_PRESET_NAME_TAKEN'
+  | 'LOADOUT_PRESET_NAME_INVALID'
+  | 'LOADOUT_PRESET_MODE_INVALID'
+  | 'LOADOUT_PRESET_PAYLOAD_INVALID'
+  | 'LOADOUT_PRESET_LIMIT_REACHED';
 
 export class LoadoutPresetError extends Error {
-  constructor(public readonly code: string) {
+  constructor(public readonly code: LoadoutPresetErrorCode) {
     super(code);
     this.name = 'LoadoutPresetError';
   }
+}
+
+/** Input nhận từ controller cho create/update. */
+export interface LoadoutPresetWriteInput {
+  name: string;
+  mode: LoadoutPresetMode;
+  equipmentSlots?: Partial<Record<EquipSlot, string>> | null;
+  skillSlots?: readonly string[] | null;
+  artifactSlots?: Partial<Record<ArtifactEquipSlot, string>> | null;
 }
 
 @Injectable()
 export class LoadoutPresetService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async getCharacterIdByUser(userId: string): Promise<string> {
-    const c = await this.prisma.character.findUnique({
-      where: { userId },
-      select: { id: true },
-    });
-    if (!c) throw new LoadoutPresetError('NO_CHARACTER');
-    return c.id;
-  }
+  // -----------------------------------------------------------------------
+  // CRUD
+  // -----------------------------------------------------------------------
 
-  /** List all presets for the current character. */
-  async list(userId: string): Promise<LoadoutPresetView[]> {
-    const characterId = await this.getCharacterIdByUser(userId);
+  async list(characterId: string): Promise<LoadoutPresetView[]> {
     const rows = await this.prisma.characterLoadoutPreset.findMany({
       where: { characterId },
-      orderBy: [{ presetType: 'asc' }, { createdAt: 'asc' }],
+      orderBy: [
+        { isDefaultForPve: 'desc' },
+        { isDefaultForPvp: 'desc' },
+        { isDefaultForBoss: 'desc' },
+        { updatedAt: 'desc' },
+      ],
     });
-    return rows.map((r) => this.toView(r));
+    return rows.map(toView);
   }
 
-  async findOne(userId: string, presetId: string): Promise<LoadoutPresetView> {
-    const characterId = await this.getCharacterIdByUser(userId);
+  async get(characterId: string, id: string): Promise<LoadoutPresetView> {
     const row = await this.prisma.characterLoadoutPreset.findUnique({
-      where: { id: presetId },
+      where: { id },
     });
     if (!row || row.characterId !== characterId) {
       throw new LoadoutPresetError('LOADOUT_PRESET_NOT_FOUND');
     }
-    return this.toView(row);
+    return toView(row);
   }
 
-  /**
-   * Create a new preset. Snapshot from current equipment is taken when
-   * `equipment` is null (no input). Name max 32 chars.
-   *
-   * Constraints:
-   *  - `presetType` UNIQUE per character ⇒ creating second PVE replaces err.
-   *  - Up to LOADOUT_PRESET_MAX_PER_CHARACTER total presets per character.
-   */
   async create(
-    userId: string,
-    input: {
-      presetType: LoadoutPresetType;
-      name: string;
-      equipment?: LoadoutPresetEquipmentEntry[];
-    },
+    characterId: string,
+    raw: LoadoutPresetWriteInput,
   ): Promise<LoadoutPresetView> {
-    const characterId = await this.getCharacterIdByUser(userId);
-    this.validateName(input.name);
-    if (!LOADOUT_PRESET_TYPES.includes(input.presetType)) {
-      throw new LoadoutPresetError('LOADOUT_PRESET_TYPE_INVALID');
-    }
+    const { name, mode, payload } = this.parseWriteInput(raw);
+
     const existingCount = await this.prisma.characterLoadoutPreset.count({
       where: { characterId },
     });
-    if (existingCount >= LOADOUT_PRESET_MAX_PER_CHARACTER) {
+    if (existingCount >= LOADOUT_PRESET_PER_CHARACTER_MAX) {
       throw new LoadoutPresetError('LOADOUT_PRESET_LIMIT_REACHED');
     }
-    const existingByType = await this.prisma.characterLoadoutPreset.findUnique({
-      where: {
-        characterId_presetType: {
+
+    try {
+      const row = await this.prisma.characterLoadoutPreset.create({
+        data: {
           characterId,
-          presetType: input.presetType,
+          name,
+          mode,
+          equipmentSlotJson: payload.equipmentSlots as Prisma.InputJsonValue,
+          skillSlotJson:
+            payload.skillSlots === null
+              ? Prisma.JsonNull
+              : (payload.skillSlots as Prisma.InputJsonValue),
+          artifactSlotJson:
+            payload.artifactSlots === null
+              ? Prisma.JsonNull
+              : (payload.artifactSlots as Prisma.InputJsonValue),
         },
-      },
-    });
-    if (existingByType) {
-      throw new LoadoutPresetError('LOADOUT_PRESET_TYPE_EXISTS');
-    }
-    const equipment = input.equipment
-      ? this.validateEquipmentShape(input.equipment)
-      : await this.snapshotCurrentEquipment(characterId);
-
-    const created = await this.prisma.characterLoadoutPreset.create({
-      data: {
-        characterId,
-        presetType: input.presetType,
-        name: input.name.trim(),
-        equipmentJson: equipment as never,
-      },
-    });
-    return this.toView(created);
-  }
-
-  /**
-   * Update name and/or equipment snapshot. Each is optional. `equipment`
-   * replaces the entire snapshot — no merge semantics.
-   */
-  async update(
-    userId: string,
-    presetId: string,
-    input: { name?: string; equipment?: LoadoutPresetEquipmentEntry[] },
-  ): Promise<LoadoutPresetView> {
-    const characterId = await this.getCharacterIdByUser(userId);
-    const existing = await this.prisma.characterLoadoutPreset.findUnique({
-      where: { id: presetId },
-    });
-    if (!existing || existing.characterId !== characterId) {
-      throw new LoadoutPresetError('LOADOUT_PRESET_NOT_FOUND');
-    }
-    const data: Record<string, unknown> = {};
-    if (input.name !== undefined) {
-      this.validateName(input.name);
-      data.name = input.name.trim();
-    }
-    if (input.equipment !== undefined) {
-      data.equipmentJson = this.validateEquipmentShape(
-        input.equipment,
-      ) as never;
-    }
-    if (Object.keys(data).length === 0) {
-      return this.toView(existing);
-    }
-    const updated = await this.prisma.characterLoadoutPreset.update({
-      where: { id: presetId },
-      data,
-    });
-    return this.toView(updated);
-  }
-
-  async delete(userId: string, presetId: string): Promise<void> {
-    const characterId = await this.getCharacterIdByUser(userId);
-    const existing = await this.prisma.characterLoadoutPreset.findUnique({
-      where: { id: presetId },
-    });
-    if (!existing || existing.characterId !== characterId) {
-      throw new LoadoutPresetError('LOADOUT_PRESET_NOT_FOUND');
-    }
-    await this.prisma.characterLoadoutPreset.delete({ where: { id: presetId } });
-  }
-
-  /**
-   * Snapshot the character's current equipment into a new preset of the
-   * given type. Convenience wrapper around `create()` with `equipment` =
-   * derived from `InventoryItem.equippedSlot`.
-   */
-  async saveCurrent(
-    userId: string,
-    input: { presetType: LoadoutPresetType; name: string },
-  ): Promise<LoadoutPresetView> {
-    return this.create(userId, { presetType: input.presetType, name: input.name });
-  }
-
-  /**
-   * Validate preset without applying — used by FE to grey out broken presets.
-   * Returns the list of slot-level errors. Empty array ⇒ apply-safe.
-   */
-  async validate(
-    userId: string,
-    presetId: string,
-  ): Promise<{ ok: boolean; errors: { slot: EquipSlot; code: string }[] }> {
-    const characterId = await this.getCharacterIdByUser(userId);
-    const existing = await this.prisma.characterLoadoutPreset.findUnique({
-      where: { id: presetId },
-    });
-    if (!existing || existing.characterId !== characterId) {
-      throw new LoadoutPresetError('LOADOUT_PRESET_NOT_FOUND');
-    }
-    const errors = await this.collectApplyErrors(
-      characterId,
-      this.parseEquipmentJson(existing.equipmentJson),
-    );
-    return { ok: errors.length === 0, errors };
-  }
-
-  /**
-   * Atomic apply. Validates EVERY slot first; if ANY slot fails, throws
-   * `LOADOUT_PRESET_APPLY_FAILED` with detail — NO partial equip.
-   *
-   * After validation:
-   *  - For each (slot, inventoryItemId) in preset, set
-   *    `inventoryItem.equippedSlot = slot`.
-   *  - Items currently equipped at preset's slots BUT NOT in preset list ⇒
-   *    set `equippedSlot=null` (i.e. unequip overwritten slots).
-   *  - Items NOT in preset stay as-is.
-   */
-  async apply(
-    userId: string,
-    presetId: string,
-  ): Promise<LoadoutPresetApplyReport> {
-    const characterId = await this.getCharacterIdByUser(userId);
-    const existing = await this.prisma.characterLoadoutPreset.findUnique({
-      where: { id: presetId },
-    });
-    if (!existing || existing.characterId !== characterId) {
-      throw new LoadoutPresetError('LOADOUT_PRESET_NOT_FOUND');
-    }
-    const entries = this.parseEquipmentJson(existing.equipmentJson);
-    const errors = await this.collectApplyErrors(characterId, entries);
-    if (errors.length > 0) {
-      throw new LoadoutPresetError(
-        `LOADOUT_PRESET_APPLY_FAILED:${errors[0]!.code}`,
-      );
-    }
-    const skipped: { slot: EquipSlot; reason: string }[] = [];
-    const applied: LoadoutPresetEquipmentEntry[] = [];
-    await this.prisma.$transaction(async (tx) => {
-      // Unequip current items occupying the preset's slots.
-      const slotSet = new Set(entries.map((e) => e.slot));
-      const currentEquipped = await tx.inventoryItem.findMany({
-        where: { characterId, equippedSlot: { in: Array.from(slotSet) } },
       });
-      for (const cur of currentEquipped) {
-        // Only unequip if a different item takes its slot.
-        const next = entries.find((e) => e.slot === cur.equippedSlot);
-        if (!next || next.inventoryItemId === cur.id) continue;
-        await tx.inventoryItem.update({
-          where: { id: cur.id },
-          data: { equippedSlot: null },
-        });
-      }
-      // Apply each preset entry.
-      for (const entry of entries) {
-        const inv = await tx.inventoryItem.findUnique({
-          where: { id: entry.inventoryItemId },
-        });
-        if (!inv || inv.characterId !== characterId) {
-          skipped.push({ slot: entry.slot, reason: 'ITEM_GONE' });
-          continue;
-        }
-        if (inv.equippedSlot === entry.slot) {
-          applied.push(entry);
-          continue;
-        }
-        await tx.inventoryItem.update({
-          where: { id: inv.id },
-          data: { equippedSlot: entry.slot },
-        });
-        applied.push(entry);
-      }
-    });
-    const fresh = await this.prisma.characterLoadoutPreset.findUnique({
-      where: { id: presetId },
-    });
-    return { preset: this.toView(fresh!), applied, skipped };
-  }
-
-  // ── internal helpers ───────────────────────────────────────────────────
-
-  private validateName(name: string): void {
-    const t = name?.trim?.() ?? '';
-    if (t.length < 1) throw new LoadoutPresetError('LOADOUT_PRESET_NAME_EMPTY');
-    if (t.length > LOADOUT_PRESET_NAME_MAX) {
-      throw new LoadoutPresetError('LOADOUT_PRESET_NAME_TOO_LONG');
-    }
-  }
-
-  private validateEquipmentShape(
-    entries: LoadoutPresetEquipmentEntry[],
-  ): LoadoutPresetEquipmentEntry[] {
-    const seenSlots = new Set<EquipSlot>();
-    for (const e of entries) {
-      if (!LOADOUT_EQUIP_SLOTS.includes(e.slot)) {
-        throw new LoadoutPresetError('LOADOUT_PRESET_SLOT_INVALID');
-      }
-      if (!e.inventoryItemId || typeof e.inventoryItemId !== 'string') {
-        throw new LoadoutPresetError('LOADOUT_PRESET_ITEM_INVALID');
-      }
-      if (seenSlots.has(e.slot)) {
-        throw new LoadoutPresetError('LOADOUT_PRESET_SLOT_DUPLICATE');
-      }
-      seenSlots.add(e.slot);
-    }
-    return entries.map((e) => ({
-      slot: e.slot,
-      inventoryItemId: e.inventoryItemId,
-    }));
-  }
-
-  private async snapshotCurrentEquipment(
-    characterId: string,
-  ): Promise<LoadoutPresetEquipmentEntry[]> {
-    const rows = await this.prisma.inventoryItem.findMany({
-      where: { characterId, equippedSlot: { not: null } },
-      select: { id: true, equippedSlot: true },
-    });
-    return rows.map((r) => ({
-      slot: r.equippedSlot as EquipSlot,
-      inventoryItemId: r.id,
-    }));
-  }
-
-  private parseEquipmentJson(raw: unknown): LoadoutPresetEquipmentEntry[] {
-    if (!Array.isArray(raw)) return [];
-    const out: LoadoutPresetEquipmentEntry[] = [];
-    for (const e of raw) {
+      return toView(row);
+    } catch (e) {
       if (
-        e &&
-        typeof e === 'object' &&
-        typeof (e as { slot?: unknown }).slot === 'string' &&
-        typeof (e as { inventoryItemId?: unknown }).inventoryItemId === 'string'
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
       ) {
-        const slot = (e as { slot: string }).slot as EquipSlot;
-        if (LOADOUT_EQUIP_SLOTS.includes(slot)) {
-          out.push({
-            slot,
-            inventoryItemId: (e as { inventoryItemId: string }).inventoryItemId,
+        throw new LoadoutPresetError('LOADOUT_PRESET_NAME_TAKEN');
+      }
+      throw e;
+    }
+  }
+
+  async update(
+    characterId: string,
+    id: string,
+    raw: Partial<LoadoutPresetWriteInput>,
+  ): Promise<LoadoutPresetView> {
+    const existing = await this.prisma.characterLoadoutPreset.findUnique({
+      where: { id },
+    });
+    if (!existing || existing.characterId !== characterId) {
+      throw new LoadoutPresetError('LOADOUT_PRESET_NOT_FOUND');
+    }
+
+    const data: Prisma.CharacterLoadoutPresetUpdateInput = {};
+    if (raw.name !== undefined) {
+      try {
+        data.name = validatePresetName(raw.name);
+      } catch (e) {
+        if (e instanceof LoadoutPresetValidationError) {
+          throw new LoadoutPresetError('LOADOUT_PRESET_NAME_INVALID');
+        }
+        throw e;
+      }
+    }
+    if (raw.mode !== undefined) {
+      try {
+        data.mode = validatePresetMode(raw.mode);
+      } catch (e) {
+        if (e instanceof LoadoutPresetValidationError) {
+          throw new LoadoutPresetError('LOADOUT_PRESET_MODE_INVALID');
+        }
+        throw e;
+      }
+    }
+    if (
+      raw.equipmentSlots !== undefined ||
+      raw.skillSlots !== undefined ||
+      raw.artifactSlots !== undefined
+    ) {
+      let parsed;
+      try {
+        parsed = parseLoadoutPresetPayload({
+          equipmentSlots: raw.equipmentSlots ?? null,
+          skillSlots: raw.skillSlots ?? null,
+          artifactSlots: raw.artifactSlots ?? null,
+        });
+      } catch (e) {
+        if (e instanceof LoadoutPresetValidationError) {
+          throw new LoadoutPresetError('LOADOUT_PRESET_PAYLOAD_INVALID');
+        }
+        throw e;
+      }
+      if (raw.equipmentSlots !== undefined) {
+        data.equipmentSlotJson = parsed.equipmentSlots as Prisma.InputJsonValue;
+      }
+      if (raw.skillSlots !== undefined) {
+        data.skillSlotJson =
+          parsed.skillSlots === null
+            ? Prisma.JsonNull
+            : (parsed.skillSlots as Prisma.InputJsonValue);
+      }
+      if (raw.artifactSlots !== undefined) {
+        data.artifactSlotJson =
+          parsed.artifactSlots === null
+            ? Prisma.JsonNull
+            : (parsed.artifactSlots as Prisma.InputJsonValue);
+      }
+    }
+
+    try {
+      const row = await this.prisma.characterLoadoutPreset.update({
+        where: { id },
+        data,
+      });
+      return toView(row);
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        throw new LoadoutPresetError('LOADOUT_PRESET_NAME_TAKEN');
+      }
+      throw e;
+    }
+  }
+
+  async delete(characterId: string, id: string): Promise<void> {
+    const existing = await this.prisma.characterLoadoutPreset.findUnique({
+      where: { id },
+    });
+    if (!existing || existing.characterId !== characterId) {
+      throw new LoadoutPresetError('LOADOUT_PRESET_NOT_FOUND');
+    }
+    await this.prisma.characterLoadoutPreset.delete({ where: { id } });
+  }
+
+  /**
+   * Set-default cho mode: chỉ 1 preset đang default per mode per character.
+   * Nếu `presetId` không tương ứng mode (e.g. mode=CUSTOM) → reject.
+   */
+  async setDefault(
+    characterId: string,
+    id: string,
+    mode: LoadoutPresetMode,
+  ): Promise<LoadoutPresetView> {
+    const existing = await this.prisma.characterLoadoutPreset.findUnique({
+      where: { id },
+    });
+    if (!existing || existing.characterId !== characterId) {
+      throw new LoadoutPresetError('LOADOUT_PRESET_NOT_FOUND');
+    }
+    if (mode === 'CUSTOM') {
+      throw new LoadoutPresetError('LOADOUT_PRESET_MODE_INVALID');
+    }
+    const field =
+      mode === 'PVE'
+        ? 'isDefaultForPve'
+        : mode === 'PVP'
+          ? 'isDefaultForPvp'
+          : 'isDefaultForBoss';
+
+    await this.prisma.$transaction(async (tx) => {
+      // Bỏ default cờ trên các preset khác cùng character, cùng mode.
+      await tx.characterLoadoutPreset.updateMany({
+        where: { characterId, [field]: true } as never,
+        data: { [field]: false } as never,
+      });
+      await tx.characterLoadoutPreset.update({
+        where: { id },
+        data: { [field]: true } as never,
+      });
+    });
+
+    const row = await this.prisma.characterLoadoutPreset.findUnique({
+      where: { id },
+    });
+    if (!row) throw new LoadoutPresetError('LOADOUT_PRESET_NOT_FOUND');
+    return toView(row);
+  }
+
+  // -----------------------------------------------------------------------
+  // Apply
+  // -----------------------------------------------------------------------
+
+  /**
+   * Apply preset atomic. Validate ownership trước; chỉ rewrite trong cùng
+   * `$transaction`. Item missing → warnings + KHÔNG apply.
+   */
+  async apply(characterId: string, id: string): Promise<LoadoutApplyResult> {
+    const preset = await this.prisma.characterLoadoutPreset.findUnique({
+      where: { id },
+    });
+    if (!preset || preset.characterId !== characterId) {
+      throw new LoadoutPresetError('LOADOUT_PRESET_NOT_FOUND');
+    }
+
+    const equipmentSlots = preset.equipmentSlotJson as Partial<
+      Record<EquipSlot, string>
+    >;
+    const skillSlots = preset.skillSlotJson as readonly string[] | null;
+    const artifactSlots = preset.artifactSlotJson as Partial<
+      Record<ArtifactEquipSlot, string>
+    > | null;
+
+    const warnings: LoadoutApplyWarning[] = [];
+
+    // 1. Validate equipment ownership.
+    const equipmentEntries = Object.entries(equipmentSlots).filter(
+      ([, v]) => typeof v === 'string' && v.length > 0,
+    ) as [EquipSlot, string][];
+    const equipmentIds = equipmentEntries.map(([, id]) => id);
+    const ownedEquipment = equipmentIds.length
+      ? await this.prisma.inventoryItem.findMany({
+          where: { id: { in: equipmentIds }, characterId },
+          select: { id: true },
+        })
+      : [];
+    const ownedEquipmentIds = new Set(ownedEquipment.map((r) => r.id));
+    for (const [slot, invId] of equipmentEntries) {
+      if (!ownedEquipmentIds.has(invId)) {
+        warnings.push({ code: 'EQUIPMENT_MISSING', ref: invId, slot });
+      }
+    }
+
+    // 2. Validate skill learned.
+    const skillsToEquip = skillSlots ?? null;
+    let ownedSkillKeys: Set<string> = new Set();
+    if (skillsToEquip && skillsToEquip.length > 0) {
+      const rows = await this.prisma.characterSkill.findMany({
+        where: { characterId, skillKey: { in: skillsToEquip.slice() } },
+        select: { skillKey: true },
+      });
+      ownedSkillKeys = new Set(rows.map((r) => r.skillKey));
+      for (const k of skillsToEquip) {
+        if (!ownedSkillKeys.has(k)) {
+          warnings.push({ code: 'SKILL_NOT_LEARNED', ref: k });
+        }
+      }
+    }
+
+    // 3. Validate artifact ownership.
+    const artifactEntries = artifactSlots
+      ? (Object.entries(artifactSlots).filter(
+          ([, v]) => typeof v === 'string' && v.length > 0,
+        ) as [ArtifactEquipSlot, string][])
+      : [];
+    const artifactIds = artifactEntries.map(([, id]) => id);
+    const ownedArtifacts = artifactIds.length
+      ? await this.prisma.characterArtifactV2.findMany({
+          where: { id: { in: artifactIds }, characterId },
+          select: { id: true },
+        })
+      : [];
+    const ownedArtifactIds = new Set(ownedArtifacts.map((r) => r.id));
+    for (const [slot, artId] of artifactEntries) {
+      if (!ownedArtifactIds.has(artId)) {
+        warnings.push({ code: 'ARTIFACT_MISSING', ref: artId, slot });
+      }
+    }
+
+    // Nếu có warning → KHÔNG apply (transaction-safe).
+    if (warnings.length > 0) {
+      return {
+        preset: toView(preset),
+        warnings,
+        appliedEquipmentCount: 0,
+        appliedSkillCount: 0,
+        appliedArtifactCount: 0,
+      };
+    }
+
+    // 4. Apply atomic.
+    await this.prisma.$transaction(async (tx) => {
+      // Equipment: clear hết equippedSlot character → set theo preset.
+      await tx.inventoryItem.updateMany({
+        where: { characterId, equippedSlot: { not: null } },
+        data: { equippedSlot: null },
+      });
+      for (const [slot, invId] of equipmentEntries) {
+        await tx.inventoryItem.update({
+          where: { id: invId },
+          data: { equippedSlot: slot },
+        });
+      }
+
+      // Skill: chỉ rewrite khi preset có skillSlots field set (null = giữ nguyên).
+      if (skillsToEquip !== null) {
+        await tx.characterSkill.updateMany({
+          where: { characterId, isEquipped: true },
+          data: { isEquipped: false },
+        });
+        if (skillsToEquip.length > 0) {
+          await tx.characterSkill.updateMany({
+            where: { characterId, skillKey: { in: skillsToEquip.slice() } },
+            data: { isEquipped: true },
           });
         }
       }
-    }
-    return out;
-  }
 
-  /**
-   * Returns the list of validation errors blocking `apply()`. Empty array
-   * means the preset is apply-safe.
-   */
-  private async collectApplyErrors(
-    characterId: string,
-    entries: LoadoutPresetEquipmentEntry[],
-  ): Promise<{ slot: EquipSlot; code: string }[]> {
-    const char = await this.prisma.character.findUnique({
-      where: { id: characterId },
-      select: { realmKey: true },
+      // Artifact V2: tương tự.
+      if (artifactSlots !== null) {
+        await tx.characterArtifactV2.updateMany({
+          where: { characterId, equippedSlot: { not: null } },
+          data: { equippedSlot: null },
+        });
+        for (const [slot, artId] of artifactEntries) {
+          await tx.characterArtifactV2.update({
+            where: { id: artId },
+            data: { equippedSlot: slot },
+          });
+        }
+      }
     });
-    if (!char) {
-      return entries.map((e) => ({ slot: e.slot, code: 'NO_CHARACTER' }));
-    }
-    const realmOrder = (realmByKey(char.realmKey)?.order ?? -1) + 1;
-    const errors: { slot: EquipSlot; code: string }[] = [];
-    for (const e of entries) {
-      const inv = await this.prisma.inventoryItem.findUnique({
-        where: { id: e.inventoryItemId },
-      });
-      if (!inv) {
-        errors.push({ slot: e.slot, code: 'INVENTORY_ITEM_NOT_FOUND' });
-        continue;
-      }
-      if (inv.characterId !== characterId) {
-        errors.push({ slot: e.slot, code: 'INVENTORY_ITEM_NOT_OWNED' });
-        continue;
-      }
-      const def = itemByKeyWithProgression(inv.itemKey);
-      if (!def) {
-        errors.push({ slot: e.slot, code: 'ITEM_NOT_FOUND' });
-        continue;
-      }
-      if (!def.slot) {
-        errors.push({ slot: e.slot, code: 'NOT_EQUIPPABLE' });
-        continue;
-      }
-      // For multi-artifact items, allow any ARTIFACT_* slot when def.slot is
-      // 'ARTIFACT_1' (artifact items are interchangeable across the 3 slots).
-      const wantsArtifactSlot = e.slot.startsWith('ARTIFACT_');
-      const defIsArtifact = def.slot.startsWith('ARTIFACT_');
-      const slotMatches = wantsArtifactSlot && defIsArtifact
-        ? true
-        : def.slot === e.slot;
-      if (!slotMatches) {
-        errors.push({ slot: e.slot, code: 'WRONG_SLOT' });
-        continue;
-      }
-      if (!canEquipItemAtRealm(def, realmOrder)) {
-        errors.push({ slot: e.slot, code: 'EQUIPMENT_REALM_LOCKED' });
-        continue;
-      }
-    }
-    return errors;
-  }
 
-  private toView(row: {
-    id: string;
-    characterId: string;
-    presetType: string;
-    name: string;
-    equipmentJson: unknown;
-    isActiveForPve: boolean;
-    isActiveForPvp: boolean;
-    isActiveForBoss: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-  }): LoadoutPresetView {
     return {
-      id: row.id,
-      characterId: row.characterId,
-      presetType: row.presetType as LoadoutPresetType,
-      name: row.name,
-      equipment: this.parseEquipmentJson(row.equipmentJson),
-      isActiveForPve: row.isActiveForPve,
-      isActiveForPvp: row.isActiveForPvp,
-      isActiveForBoss: row.isActiveForBoss,
-      createdAt: row.createdAt.toISOString(),
-      updatedAt: row.updatedAt.toISOString(),
+      preset: toView(preset),
+      warnings: [],
+      appliedEquipmentCount: equipmentEntries.length,
+      appliedSkillCount: skillsToEquip?.length ?? 0,
+      appliedArtifactCount: artifactEntries.length,
     };
   }
+
+  // -----------------------------------------------------------------------
+  // Internals
+  // -----------------------------------------------------------------------
+
+  private parseWriteInput(raw: LoadoutPresetWriteInput): {
+    name: string;
+    mode: LoadoutPresetMode;
+    payload: ReturnType<typeof parseLoadoutPresetPayload>;
+  } {
+    let name: string;
+    try {
+      name = validatePresetName(raw.name);
+    } catch (e) {
+      if (e instanceof LoadoutPresetValidationError) {
+        throw new LoadoutPresetError('LOADOUT_PRESET_NAME_INVALID');
+      }
+      throw e;
+    }
+    let mode: LoadoutPresetMode;
+    try {
+      mode = validatePresetMode(raw.mode);
+    } catch (e) {
+      if (e instanceof LoadoutPresetValidationError) {
+        throw new LoadoutPresetError('LOADOUT_PRESET_MODE_INVALID');
+      }
+      throw e;
+    }
+    let payload;
+    try {
+      payload = parseLoadoutPresetPayload({
+        equipmentSlots: raw.equipmentSlots ?? null,
+        skillSlots: raw.skillSlots ?? null,
+        artifactSlots: raw.artifactSlots ?? null,
+      });
+    } catch (e) {
+      if (e instanceof LoadoutPresetValidationError) {
+        throw new LoadoutPresetError('LOADOUT_PRESET_PAYLOAD_INVALID');
+      }
+      throw e;
+    }
+    return { name, mode, payload };
+  }
+}
+
+function toView(row: {
+  id: string;
+  name: string;
+  mode: string;
+  equipmentSlotJson: Prisma.JsonValue;
+  skillSlotJson: Prisma.JsonValue;
+  artifactSlotJson: Prisma.JsonValue;
+  isDefaultForPve: boolean;
+  isDefaultForPvp: boolean;
+  isDefaultForBoss: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}): LoadoutPresetView {
+  return {
+    id: row.id,
+    name: row.name,
+    mode: row.mode as LoadoutPresetMode,
+    equipmentSlots:
+      (row.equipmentSlotJson as Partial<Record<EquipSlot, string>>) ?? {},
+    skillSlots:
+      row.skillSlotJson === null
+        ? null
+        : ((row.skillSlotJson as unknown as string[]) ?? null),
+    artifactSlots:
+      row.artifactSlotJson === null
+        ? null
+        : ((row.artifactSlotJson as Partial<
+            Record<ArtifactEquipSlot, string>
+          >) ?? null),
+    isDefaultForPve: row.isDefaultForPve,
+    isDefaultForPvp: row.isDefaultForPvp,
+    isDefaultForBoss: row.isDefaultForBoss,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
 }

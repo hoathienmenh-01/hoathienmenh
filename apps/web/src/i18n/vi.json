@@ -80,6 +80,18 @@
       "artifactV2Equip": "Trang bị Pháp Bảo thất bại",
       "artifactV2Unequip": "Gỡ Pháp Bảo thất bại",
       "artifactV2Upgrade": "Thăng cấp / luyện hóa / thức tỉnh Pháp Bảo thất bại",
+      "loadoutList": "Không lấy được danh sách bộ trang bị nhanh",
+      "loadoutCreate": "Tạo bộ trang bị nhanh thất bại",
+      "loadoutUpdate": "Cập nhật bộ trang bị nhanh thất bại",
+      "loadoutDelete": "Xoá bộ trang bị nhanh thất bại",
+      "loadoutApply": "Áp dụng bộ trang bị nhanh thất bại",
+      "loadoutSetDefault": "Đặt mặc định thất bại",
+      "pushVapid": "Không tải được khoá công khai push.",
+      "pushSubscribe": "Đăng ký thông báo đẩy thất bại.",
+      "pushUnsubscribe": "Huỷ thông báo đẩy thất bại.",
+      "pushList": "Không tải được danh sách thiết bị đã đăng ký.",
+      "pushPrefs": "Không tải được cấu hình thông báo.",
+      "pushPrefsUpdate": "Cập nhật cấu hình thông báo thất bại.",
       "worldSummary": "Không lấy được tổng quan thế giới.",
       "farmMaps": "Không lấy được danh sách map farm.",
       "farmStart": "Không bắt đầu được phiên farm.",
@@ -360,6 +372,8 @@
       "home": "Đạo Tràng",
       "dungeon": "Luyện Khí Đường",
       "inventory": "Linh Bảo Các",
+      "loadouts": "Bộ Trang Bị Nhanh",
+      "notificationSettings": "Thông báo đẩy",
       "market": "Phường Thị",
       "shop": "NPC Tiệm",
       "sect": "Tông Môn",
@@ -1036,7 +1050,7 @@
       },
       "socket": {
         "label": "Khảm / Tháo Ngọc",
-        "costLabel": "Khảm: {linhThach} linh thạch + {materialQty}× {materialName}",
+        "costLabel": "Khảm: {linhThach} linh thạch",
         "unsocketCostLabel": "Tháo: {linhThach} linh thạch + {materialQty}× {materialName}"
       },
       "reforge": {
@@ -5231,6 +5245,56 @@
       "UNKNOWN": "Có lỗi xảy ra — thử lại."
     }
   },
+  "coCultivation": {
+    "tab": "Hợp Luyện",
+    "title": "Hợp Luyện",
+    "subtitle": "Cùng đạo hữu hợp luyện để nhận thưởng EXP nhẹ (đã đóng dấu cap ngày).",
+    "today": {
+      "sessions": "Phiên hôm nay",
+      "buffSeconds": "Tổng buff (giây)",
+      "bonusExp": "EXP bonus hôm nay"
+    },
+    "active": {
+      "title": "Phiên hiện tại",
+      "empty": "Chưa có phiên nào — mời đạo hữu hợp luyện ở bên dưới.",
+      "partner": "Đạo hữu",
+      "status": "Trạng thái",
+      "duration": "Thời lượng"
+    },
+    "send": {
+      "partner": "User ID đạo hữu",
+      "placeholder": "Nhập userId của đạo hữu (phải là bạn).",
+      "action": "Mời hợp luyện"
+    },
+    "action": {
+      "accept": "Chấp nhận",
+      "complete": "Hoàn thành",
+      "cancel": "Huỷ"
+    },
+    "history": {
+      "title": "Lịch sử phiên",
+      "empty": "Chưa có phiên hợp luyện nào."
+    },
+    "requestSent": "Đã gửi lời mời hợp luyện.",
+    "accepted": "Đã chấp nhận hợp luyện.",
+    "cancelled": "Đã huỷ phiên.",
+    "completed": "Hoàn thành phiên — đã nhận EXP bonus.",
+    "errors": {
+      "SELF_NOT_ALLOWED": "Không thể hợp luyện với chính mình.",
+      "NOT_FRIEND": "Phải là đạo hữu (bạn bè) mới hợp luyện được.",
+      "BLOCKED": "Hai bên đang chặn nhau.",
+      "ALREADY_ACTIVE": "Đang có phiên đang hoạt động — kết thúc trước khi mở mới.",
+      "DAILY_CAP_REACHED": "Đã đạt giới hạn phiên trong ngày.",
+      "BUFF_BUDGET_EXCEEDED": "Vượt quá tổng thời lượng buff hôm nay.",
+      "COOLDOWN_ACTIVE": "Đang trong thời gian hồi — đợi vài giây.",
+      "PARTNER_OFFLINE": "Đạo hữu đang ngoại tuyến.",
+      "INVALID_TRANSITION": "Phiên không ở trạng thái phù hợp với thao tác.",
+      "NOT_AUTHORIZED": "Không có quyền thao tác trên phiên này.",
+      "NOT_FOUND": "Không tìm thấy phiên.",
+      "NO_CHARACTER": "Cần tạo nhân vật trước khi hợp luyện.",
+      "UNKNOWN": "Có lỗi xảy ra — thử lại."
+    }
+  },
   "publicProfile": {
     "title": "Hồ sơ đạo hữu",
     "viewProfile": "Xem hồ sơ",
@@ -7220,51 +7284,6 @@
       "SECRET_REALM_COOLDOWN": "Đang trong thời gian hồi."
     }
   },
-  "loadoutPreset": {
-    "title": "Preset Trang Bị",
-    "subtitle": "Lưu và áp dụng nhanh bộ trang bị PvE / PvP / Boss.",
-    "loading": "Đang tải preset…",
-    "saveCurrent": "Lưu cấu hình hiện tại",
-    "apply": "Áp dụng",
-    "validate": "Kiểm tra",
-    "delete": "Xoá",
-    "noPreset": "Chưa có preset cho loại này.",
-    "namePlaceholder": "Tên preset (≤32 ký tự)",
-    "slotCount": "{n} ô trang bị",
-    "savedToast": "Đã lưu preset.",
-    "appliedToast": "Đã áp dụng {applied} ô (bỏ qua {skipped}).",
-    "validateOk": "Preset hợp lệ.",
-    "validateFail": "Preset không hợp lệ: {code}.",
-    "presetType": {
-      "PVE": "PvE",
-      "PVP": "PvP",
-      "BOSS": "Boss",
-      "CULTIVATION": "Tu luyện",
-      "CUSTOM": "Tuỳ biến"
-    },
-    "slot": {
-      "WEAPON": "Vũ khí",
-      "ARMOR": "Giáp",
-      "BELT": "Đai",
-      "BOOTS": "Hài",
-      "HAT": "Quan",
-      "TRAM": "Trâm",
-      "ARTIFACT_1": "Pháp bảo I",
-      "ARTIFACT_2": "Pháp bảo II",
-      "ARTIFACT_3": "Pháp bảo III"
-    },
-    "error": {
-      "UNKNOWN_ERROR": "Lỗi không xác định.",
-      "NO_CHARACTER": "Chưa có nhân vật.",
-      "LOADOUT_PRESET_NOT_FOUND": "Preset không tồn tại.",
-      "LOADOUT_PRESET_TYPE_EXISTS": "Loại preset đã tồn tại.",
-      "LOADOUT_PRESET_LIMIT_REACHED": "Đã đạt giới hạn preset.",
-      "LOADOUT_PRESET_NAME_EMPTY": "Tên không được trống.",
-      "LOADOUT_PRESET_NAME_TOO_LONG": "Tên quá 32 ký tự.",
-      "LOADOUT_PRESET_SLOT_DUPLICATE": "Có ô trang bị trùng.",
-      "LOADOUT_PRESET_APPLY_FAILED": "Áp dụng thất bại."
-    }
-  },
   "inventoryAutoSort": {
     "title": "Túi Đồ — Tự Sắp / Khoá",
     "subtitle": "Lọc, sắp xếp và khoá hàng loạt.",
@@ -7316,6 +7335,116 @@
       "INVALID_INPUT": "Tham số không hợp lệ.",
       "INVENTORY_ITEM_NOT_FOUND": "Vật phẩm không tồn tại.",
       "INVENTORY_ITEM_LOCKED": "Vật phẩm đang bị khoá."
+    }
+  },
+  "loadout": {
+    "title": "Bộ Trang Bị Nhanh",
+    "subtitle": "Lưu bộ trang bị + thuật pháp + pháp bảo theo PvE / PvP / Boss để chuyển nhanh.",
+    "empty": "Chưa có bộ trang bị nhanh nào. Tạo một bộ để bắt đầu.",
+    "loadFail": "Không tải được danh sách bộ trang bị nhanh.",
+    "mode": {
+      "PVE": "PvE",
+      "PVP": "PvP",
+      "BOSS": "Boss",
+      "CUSTOM": "Tự do"
+    },
+    "form": {
+      "name": "Tên bộ",
+      "namePlaceholder": "VD: Build công sát PvE",
+      "mode": "Chế độ",
+      "equipmentLabel": "Trang bị ({n})",
+      "skillLabel": "Thuật pháp ({n}/4)",
+      "artifactLabel": "Pháp bảo ({n})",
+      "skillEmpty": "Bỏ trống để giữ nguyên thuật pháp khi áp dụng.",
+      "artifactEmpty": "Bỏ trống để giữ nguyên pháp bảo khi áp dụng.",
+      "submitCreate": "Tạo bộ",
+      "submitUpdate": "Lưu thay đổi",
+      "cancel": "Huỷ"
+    },
+    "actions": {
+      "create": "Tạo bộ mới",
+      "apply": "Áp dụng",
+      "edit": "Chỉnh sửa",
+      "delete": "Xoá",
+      "setDefault": "Đặt mặc định",
+      "isDefault": "Mặc định",
+      "deleteConfirm": "Xoá bộ \"{name}\"?"
+    },
+    "summary": {
+      "equipmentCount": "{n} trang bị",
+      "skillCount": "{n} thuật pháp",
+      "skillUntouched": "Không thay đổi thuật pháp",
+      "artifactCount": "{n} pháp bảo",
+      "artifactUntouched": "Không thay đổi pháp bảo",
+      "appliedToast": "Đã áp dụng {name}.",
+      "deletedToast": "Đã xoá {name}.",
+      "createdToast": "Đã tạo {name}.",
+      "updatedToast": "Đã cập nhật {name}.",
+      "defaultSetToast": "Đã đặt {name} làm mặc định {mode}."
+    },
+    "warning": {
+      "title": "Không áp dụng được — thiếu vật phẩm:",
+      "EQUIPMENT_MISSING": "Trang bị slot {slot} không còn trong túi.",
+      "SKILL_NOT_LEARNED": "Chưa lĩnh hội thuật pháp {ref}.",
+      "ARTIFACT_MISSING": "Pháp bảo slot {slot} không còn."
+    },
+    "errors": {
+      "LOADOUT_PRESET_NOT_FOUND": "Không tìm thấy bộ trang bị nhanh này.",
+      "LOADOUT_PRESET_NAME_TAKEN": "Tên bộ đã được dùng.",
+      "LOADOUT_PRESET_NAME_INVALID": "Tên bộ phải từ 1 đến 40 ký tự.",
+      "LOADOUT_PRESET_MODE_INVALID": "Chế độ không hợp lệ.",
+      "LOADOUT_PRESET_PAYLOAD_INVALID": "Dữ liệu bộ trang bị không hợp lệ.",
+      "LOADOUT_PRESET_LIMIT_REACHED": "Đã đạt giới hạn 20 bộ trang bị nhanh."
+    }
+  },
+  "webPush": {
+    "title": "Thông báo đẩy",
+    "subtitle": "Nhận thông báo ngay cả khi đóng game. Bạn có thể tắt bất cứ lúc nào.",
+    "unsupported": "Trình duyệt hiện không hỗ trợ Web Push. Hãy dùng Chrome / Edge / Firefox phiên bản mới hoặc trình duyệt máy tính.",
+    "permissionDenied": "Trình duyệt đang chặn thông báo cho trang này. Mở cài đặt trình duyệt để cho phép thông báo rồi tải lại trang.",
+    "masterTitle": "Bật trên thiết bị này",
+    "masterDescription": "Cho phép Xuân Tôi gửi thông báo đẩy đến trình duyệt.",
+    "enable": "Bật",
+    "disable": "Tắt",
+    "perTypeTitle": "Loại thông báo",
+    "on": "Bật",
+    "off": "Tắt",
+    "type": {
+      "boss": {
+        "title": "Boss xuất hiện",
+        "description": "World boss vừa xuất hiện (bỏ qua khung giờ yên tĩnh)."
+      },
+      "stamina": {
+        "title": "Đầy thể lực",
+        "description": "Thể lực đã hồi phục đầy."
+      },
+      "mail": {
+        "title": "Có thư mới",
+        "description": "Có thư mới trong hộp thư trong game."
+      },
+      "daily": {
+        "title": "Nhắc nhở điểm danh",
+        "description": "Lời nhắc nhận thưởng hằng ngày (mặc định tắt)."
+      }
+    },
+    "errors": {
+      "UNSUPPORTED": "Trình duyệt này không hỗ trợ thông báo đẩy.",
+      "PERMISSION_DENIED": "Bạn chưa cấp quyền hiển thị thông báo.",
+      "SW_NOT_REGISTERED": "Service worker chưa sẵn sàng — hãy tải lại trang và thử lại.",
+      "KEYS_MISSING": "Đăng ký thông báo đẩy thiếu khoá bắt buộc.",
+      "VAPID_NOT_CONFIGURED": "Máy chủ chưa cấu hình khoá VAPID.",
+      "PAYLOAD_INVALID": "Dữ liệu yêu cầu không hợp lệ.",
+      "ENDPOINT_INVALID": "Endpoint push không hợp lệ.",
+      "ENDPOINT_TOO_LONG": "Endpoint push quá dài.",
+      "P256DH_INVALID": "Khoá push không hợp lệ.",
+      "AUTH_INVALID": "Khoá auth push không hợp lệ.",
+      "USER_AGENT_TOO_LONG": "Chuỗi User-Agent quá dài.",
+      "SUBSCRIPTION_LIMIT_REACHED": "Bạn đã đạt giới hạn 10 thiết bị đăng ký push.",
+      "UNAUTHENTICATED": "Bạn cần đăng nhập để quản lý thông báo đẩy.",
+      "FORBIDDEN": "Bạn không có quyền với đăng ký này.",
+      "TYPE_INVALID": "Loại thông báo không hợp lệ.",
+      "ERROR": "Có lỗi không mong muốn. Vui lòng thử lại.",
+      "UNKNOWN": "Lỗi không xác định."
     }
   }
 }

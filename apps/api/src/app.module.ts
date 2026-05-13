@@ -26,7 +26,6 @@ import { Phase33StoryModule } from './modules/story-v2/story-v2.module';
 import { OnboardingQuestModule } from './modules/onboarding-quest/onboarding-quest.module';
 import { DailyEncounterModule } from './modules/daily-encounter/daily-encounter.module';
 import { SecretRealmRuntimeModule } from './modules/secret-realm-runtime/secret-realm-runtime.module';
-import { LoadoutPresetModule } from './modules/loadout-preset/loadout-preset.module';
 import { GiftCodeModule } from './modules/giftcode/giftcode.module';
 import { MailModule } from './modules/mail/mail.module';
 import { EmailModule } from './modules/email/email.module';
@@ -87,6 +86,8 @@ import { AdminMailModule } from './modules/admin-mail/admin-mail.module';
 import { PlayerSettingsModule } from './modules/player-settings/player-settings.module';
 import { PlayerDashboardModule } from './modules/player-dashboard/player-dashboard.module';
 import { PlayerFeedbackModule } from './modules/player-feedback/player-feedback.module';
+import { LoadoutPresetModule } from './modules/loadout-preset/loadout-preset.module';
+import { WebPushModule } from './modules/web-push/web-push.module';
 import { PlayerReportModule } from './modules/player-report/player-report.module';
 import { PlayerNavigationModule } from './modules/player-navigation/player-navigation.module';
 
@@ -126,7 +127,6 @@ import { PlayerNavigationModule } from './modules/player-navigation/player-navig
     OnboardingQuestModule,
     DailyEncounterModule,
     SecretRealmRuntimeModule,
-    LoadoutPresetModule,
     GiftCodeModule,
     MailModule,
     EmailModule,
@@ -293,6 +293,10 @@ import { PlayerNavigationModule } from './modules/player-navigation/player-navig
     PlayerFeedbackModule,
     PlayerReportModule,
     PlayerNavigationModule,
+    /// Phase QOL-2 — Loadout Preset PvE/PvP/Boss.
+    LoadoutPresetModule,
+    /// Phase PWA-1 — PWA Web Push Notifications.
+    WebPushModule,
   ],
 })
 export class AppModule {}
