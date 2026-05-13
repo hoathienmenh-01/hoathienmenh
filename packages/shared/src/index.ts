@@ -100,3 +100,7 @@ export * from './security-rate-limit';
 export * from './security-alerts';
 export * from './backup';
 export * from './auth-session';
+
+// ─── Phase 26.5 — World Content V2 ─────────────────────────────────────────
+export * from './monster-taxonomy';
+export * from './farm-maps';
