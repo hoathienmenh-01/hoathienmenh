@@ -23,7 +23,6 @@ import {
   type LoadoutApplyResult,
   type LoadoutApplyWarning,
   type LoadoutPresetMode,
-  type LoadoutPresetPayload,
   type LoadoutPresetView,
 } from '@xuantoi/shared';
 import type { EquipSlot } from '@xuantoi/shared';
