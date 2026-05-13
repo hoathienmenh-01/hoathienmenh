@@ -107,3 +107,4 @@ export * from './farm-maps';
 export * from './world-dungeons-v2';
 export * from './world-bosses-v2';
 export * from './sect-content';
+export * from './trial-towers';
