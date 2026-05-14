@@ -57,6 +57,23 @@ KHÔNG bao giờ throw 500.
 
 Alchemy craft errors: `RECIPE_NOT_FOUND`, `CHARACTER_NOT_FOUND`, `FURNACE_LEVEL_TOO_LOW`, `ALCHEMY_LEVEL_TOO_LOW`, `RECIPE_TIER_TOO_HIGH`, `REALM_REQUIREMENT_NOT_MET`, `INSUFFICIENT_INGREDIENTS`, `INSUFFICIENT_FUNDS`, `UNKNOWN`.
 
+## Homestead — Động Phủ / Linh Điền / Dược Viên (Phase 36.0)
+
+Server-authoritative personal homestead resource production. Rewards always go through `InventoryService`/`CurrencyService` ledger paths and `WorldCapService` daily caps.
+
+| Method | Path | Auth | Mô tả |
+|--------|------|------|-------|
+| GET | `/homestead` | PLAYER | Lazy-create/read homestead. Trả `{ homestead, upgrade, caps, fields[], garden[], cropCatalog[], gardenCatalog[] }`. Energy sync applies offline cap before response. |
+| POST | `/homestead/upgrade` | PLAYER | Body `{}`. Upgrade +1 level if realm, linh thạch, and spiritual energy đủ. Ghi `CurrencyLedger.reason=HOMESTEAD_UPGRADE`. |
+| GET | `/homestead/fields` | PLAYER | Trả field slots + crop catalog + caps. |
+| POST | `/homestead/fields/plant` | PLAYER | Body `{ slotIndex, cropKey }`. Validate unlocked slot, homestead level, realm/tier, energy; creates `HomesteadField`. |
+| POST | `/homestead/fields/harvest` | PLAYER | Body `{ slotIndex }`. CAS `harvestedAt IS NULL AND readyAt <= now`; consumes daily cap `homestead:field:${outputItemKey}`; grants item with `ItemLedger.reason=HOMESTEAD_FIELD_HARVEST`. |
+| GET | `/homestead/garden` | PLAYER | Trả garden slots + production catalog + caps. |
+| POST | `/homestead/garden/start` | PLAYER | Body `{ slotIndex, productionKey }`. Validate unlocked slot, tier/realm, energy; creates `HomesteadGardenPlot`. |
+| POST | `/homestead/garden/claim` | PLAYER | Body `{ slotIndex }`. CAS `claimedAt IS NULL AND readyAt <= now`; consumes daily cap `homestead:garden:${outputItemKey}`; grants item with `ItemLedger.reason=HOMESTEAD_GARDEN_CLAIM`. |
+
+Errors: `INVALID_INPUT`, `UNAUTHENTICATED`, `NO_CHARACTER`, `CHARACTER_NOT_FOUND`, `HOMESTEAD_NOT_FOUND`, `FIELD_NOT_FOUND`, `GARDEN_NOT_FOUND`, `CROP_NOT_FOUND`, `PRODUCTION_NOT_FOUND`, `CONFIG_NOT_FOUND`, `MAX_LEVEL`, `REALM_TOO_LOW`, `HOMESTEAD_LEVEL_TOO_LOW`, `INSUFFICIENT_FUNDS`, `INSUFFICIENT_SPIRITUAL_ENERGY`, `SLOT_LOCKED`, `SLOT_OCCUPIED`, `NOT_READY`, `ALREADY_CLAIMED`, `DAILY_CAP_REACHED`, `STATE_CHANGED`.
+
 ## Character — Cultivation Method V2 (Phase 26.3)
 
 Multi-slot server-authoritative method progression. 36 methods · 9 grades (PHAM→CHI_TON) · 7 categories · 5 equip slots (`QI_MAIN` / `BODY_MAIN` / `SUPPORT` / `SECT` / `SPECIAL`). All endpoints require an authenticated character; all writes are atomic inside one `$transaction` and write a `MethodUpgradeLog` audit row.
