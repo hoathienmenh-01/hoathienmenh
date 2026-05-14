@@ -50,6 +50,14 @@ describe('xianxia UI primitives', () => {
     expect(wrapper.findAll('[data-testid="qi-particle"]').length).toBe(0);
   });
 
+  it('visualEffectLevel=OFF thì particle tắt', () => {
+    const wrapper = mount(SpiritualAmbientLayer, {
+      props: { reducedMotion: false, visualEffectLevel: 'OFF' },
+    });
+    expect(wrapper.find('[data-testid="spiritual-ambient-layer"]').exists()).toBe(true);
+    expect(wrapper.findAll('[data-testid="qi-particle"]').length).toBe(0);
+  });
+
   it('TodayChecklist render data và phát navigate event', async () => {
     const wrapper = mount(TodayChecklistCard, {
       props: {
@@ -79,12 +87,12 @@ describe('xianxia UI primitives', () => {
     expect(wrapper.text()).toContain('0/0');
   });
 
-  it('Back button fallback về /home nếu không có history', async () => {
+  it('Back button fallback về /dashboard nếu không có history', async () => {
     vi.spyOn(window.history, 'length', 'get').mockReturnValue(1);
     const wrapper = mount(XianxiaBackButton, {
       global: { plugins: [i18n] },
     });
     await wrapper.find('[data-testid="xianxia-back-button"]').trigger('click');
-    expect(routerPushMock).toHaveBeenCalledWith('/home');
+    expect(routerPushMock).toHaveBeenCalledWith('/dashboard');
   });
 });

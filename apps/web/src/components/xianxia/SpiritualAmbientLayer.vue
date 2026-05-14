@@ -15,7 +15,11 @@ const props = withDefaults(
 const active = computed(
   () => !props.reducedMotion && props.visualEffectLevel !== 'OFF',
 );
-const particleCount = computed(() => (props.visualEffectLevel === 'HIGH' ? 18 : 10));
+const particleCount = computed(() => {
+  if (props.visualEffectLevel === 'LOW') return 6;
+  if (props.visualEffectLevel === 'HIGH') return 18;
+  return 10;
+});
 </script>
 
 <template>
