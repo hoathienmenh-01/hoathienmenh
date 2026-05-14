@@ -147,9 +147,9 @@
 
 .xt-ambient-layer {
   background:
-    radial-gradient(circle at 15% 15%, rgba(94, 234, 212, 0.16), transparent 28%),
-    radial-gradient(circle at 85% 10%, rgba(167, 139, 250, 0.15), transparent 26%),
-    radial-gradient(circle at 55% 92%, rgba(246, 217, 141, 0.1), transparent 26%);
+    radial-gradient(circle at 15% 15%, rgba(174, 229, 212, 0.46), transparent 28%),
+    radial-gradient(circle at 85% 10%, rgba(184, 212, 232, 0.34), transparent 26%),
+    radial-gradient(circle at 55% 92%, rgba(216, 183, 106, 0.18), transparent 26%);
 }
 
 .xt-mist {
@@ -157,7 +157,7 @@
   width: 42rem;
   height: 16rem;
   border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(103, 232, 249, 0.08), transparent);
+  background: linear-gradient(90deg, transparent, rgba(143, 179, 201, 0.18), transparent);
   animation: xt-mist-drift 18s ease-in-out infinite;
 }
 
@@ -180,8 +180,8 @@
   width: 0.22rem;
   height: 0.22rem;
   border-radius: 999px;
-  background: rgba(165, 243, 252, 0.9);
-  box-shadow: 0 0 16px rgba(103, 232, 249, 0.82);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0 16px rgba(74, 169, 143, 0.62);
   animation: xt-qi-rise calc(9s + (var(--qi-index) * 0.31s)) ease-in-out infinite;
   animation-delay: calc(var(--qi-index) * -0.7s);
 }

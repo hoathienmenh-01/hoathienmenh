@@ -25,10 +25,10 @@ const emit = defineEmits<{
   <XianxiaCard accent="violet" data-testid="dashboard-checklist">
     <div class="mb-4 flex items-center justify-between gap-3">
       <div>
-        <h2 class="text-lg font-bold text-slate-50">Hôm nay nên làm</h2>
-        <p class="text-xs text-slate-400">Giữ nhịp tu hành, bí cảnh và tông môn.</p>
+        <h2 class="text-lg font-bold text-emerald-950">Hôm nay nên làm</h2>
+        <p class="text-xs text-emerald-900/60">Giữ nhịp tu hành, bí cảnh và tông môn.</p>
       </div>
-      <span class="rounded-full border border-cyan-200/20 bg-cyan-300/10 px-3 py-1 text-xs text-cyan-100">
+      <span class="rounded-full border border-emerald-300/30 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900">
         {{ items.filter((item) => item.done).length }}/{{ items.length }}
       </span>
     </div>
@@ -36,25 +36,25 @@ const emit = defineEmits<{
       <li
         v-for="item in items"
         :key="item.key"
-        class="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3"
+        class="flex items-center gap-3 rounded-2xl border border-emerald-200/35 bg-white/55 p-3"
         :data-testid="`checklist-${item.key}`"
       >
         <GameIcon :name="item.icon" size="sm" />
         <div class="min-w-0 flex-1">
-          <p class="text-sm font-semibold text-slate-100">{{ item.title }}</p>
-          <p class="truncate text-xs text-slate-400">
+          <p class="text-sm font-semibold text-emerald-950">{{ item.title }}</p>
+          <p class="truncate text-xs text-emerald-900/65">
             {{ item.description }}
-            <span v-if="item.progressText" class="text-amber-200">{{ item.progressText }}</span>
+            <span v-if="item.progressText" class="text-amber-700">{{ item.progressText }}</span>
           </p>
         </div>
         <span
           class="h-2.5 w-2.5 rounded-full"
-          :class="item.done ? 'bg-emerald-300' : 'bg-amber-300'"
+          :class="item.done ? 'bg-emerald-500' : 'bg-amber-400'"
           aria-hidden="true"
         />
         <button
           type="button"
-          class="rounded-xl border border-cyan-200/20 px-3 py-2 text-xs text-cyan-50 transition hover:bg-cyan-300/10 focus:outline-none focus:ring-2 focus:ring-cyan-300/60"
+          class="rounded-xl border border-emerald-300/30 bg-white/60 px-3 py-2 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-300/60"
           @click="emit('navigate', item.route)"
         >
           Đi tới

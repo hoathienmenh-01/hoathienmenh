@@ -23,11 +23,11 @@ withDefaults(
   >
     <div class="flex items-start justify-between gap-3">
       <div>
-        <p class="text-xs uppercase tracking-[0.22em] text-slate-400">{{ label }}</p>
-        <p class="mt-2 text-2xl font-bold text-slate-50">{{ value }}</p>
+        <p class="text-xs uppercase tracking-[0.22em] text-emerald-900/60">{{ label }}</p>
+        <p class="mt-2 text-2xl font-bold text-emerald-950">{{ value }}</p>
       </div>
       <GameIcon :name="icon" />
     </div>
-    <p class="mt-3 text-xs text-slate-400">{{ description }}</p>
+    <p class="mt-3 text-xs text-emerald-900/65">{{ description }}</p>
   </div>
 </template>

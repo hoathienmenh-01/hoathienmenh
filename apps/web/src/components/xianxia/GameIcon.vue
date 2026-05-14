@@ -15,13 +15,22 @@ const props = withDefaults(
 
 const iconMap: Record<string, string> = {
   home: '⌂',
+  dashboard: '星',
   character: '人',
   cultivation: '✦',
+  breakthrough: '焰',
   body: '盾',
+  bodyCultivation: '盾',
+  method: '卷',
+  cultivationMethod: '卷',
+  spiritualRoot: '芽',
+  skill: '符',
+  skillBook: '符',
   inventory: '包',
   equipment: '⚔',
   pet: '♞',
   realm: '◇',
+  secretRealm: '山',
   roguelike: '骰',
   tower: '塔',
   sect: '門',
@@ -33,15 +42,18 @@ const iconMap: Record<string, string> = {
   notification: '鈴',
   settings: '設',
   stone: '◈',
+  linhThach: '◈',
   jade: '◆',
+  tienNgoc: '◆',
   power: '劍',
   realmBadge: '境',
   pill: '丹',
   boss: '☠',
-  dashboard: '星',
   alchemy: '鼎',
   farm: '田',
   social: '友',
+  title: '印',
+  reputation: '冠',
   support: '問',
   admin: '官',
   close: '×',
@@ -58,7 +70,7 @@ const sizeClass = computed(() => {
 
 <template>
   <span
-    class="inline-flex shrink-0 items-center justify-center rounded-xl border border-cyan-200/15 bg-cyan-200/5 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.14)]"
+    class="inline-flex shrink-0 items-center justify-center rounded-xl border border-emerald-300/25 bg-white/55 text-emerald-800 shadow-[0_0_18px_rgba(74,169,143,0.18)]"
     :class="sizeClass"
     :role="label ? 'img' : undefined"
     :aria-label="label || undefined"

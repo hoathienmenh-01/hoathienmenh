@@ -1,57 +1,51 @@
-# XT Premium Modern Xianxia UI Guide
+# XT Modern Xianxia UI Guide
 
 ## Scope
 
-UI-1 refreshes the web interface into a usable modern xianxia shell. The primary product name in the UI is **XT** and the shell subtitle is **Tu Tiên Lộ**.
+UI-1.4 keeps the XT shell usable and route-first while moving the visual system to **Celestial Jade Palace**: light jade, paper cream, mist blue, smoke lam, soft gold, and ink green. This PR intentionally touches only web UI/routing/docs/tests; no gameplay, combat, economy, or backend behavior changes.
 
 ## Route mapping
 
-- Core: `/home`, `/dashboard`, `/character` (safe placeholder).
-- Cultivation: `/cultivation` (safe placeholder), `/breakthrough`, `/body-cultivation`, `/cultivation-method`, `/spiritual-root`, `/skill-book`, `/alchemy`.
-- Activities: `/inventory`, `/equipment` → `/inventory`, `/pets`, `/secret-realms` → `/secret-realm`, `/dungeon-run`, `/roguelike-realms` → `/roguelike`, `/tower` → `/world/towers`, `/boss`, `/missions`.
-- Social: `/sect`, `/market`, `/auction` → `/market`, `/events`, `/achievements`, `/mail`, `/social`, `/leaderboard`.
-- System: `/settings`, `/notification-settings`, `/activity`, `/giftcode`, `/topup`, `/support/feedback`, `/support/report-player`, `/admin` for staff.
+See [`FRONTEND_ROUTE_MAPPING.md`](./FRONTEND_ROUTE_MAPPING.md) for the full route table. Navigation rules:
 
-No dead buttons are intentionally left in the shell/dashboard. If a function does not yet have a polished view, route through a safe placeholder or redirect to the closest existing feature.
+- Every sidebar/dashboard/menu action must route to a real page, a redirect alias, or a safe placeholder.
+- Placeholders use `XianxiaPlaceholderView.vue` with “Chức năng đang được phát triển” and a “Quay lại Dashboard” CTA.
+- Back fallback is `/dashboard` when browser history is absent.
 
 ## Components
 
-New shared UI lives under `apps/web/src/components/xianxia/`:
+Shared UI lives under `apps/web/src/components/xianxia/`:
 
-- `GameIcon.vue` — compact icon mapping with fallback dot.
-- `SpiritualAmbientLayer.vue` — CSS-only qi particles/mist layer.
-- `XianxiaBackButton.vue` — back action with `/home` fallback when browser history is absent.
+- `GameIcon.vue` — compact icon mapping with fallback dot; includes dashboard, cultivation, pet, realm, boss, market, notification, resources, etc.
+- `SpiritualAmbientLayer.vue` — CSS-only qi particles/mist/cloud-like ambient layer.
+- `XianxiaBackButton.vue` — `router.back()` or `/dashboard` fallback.
 - `XianxiaCard.vue`, `XianxiaButton.vue`, `ResourceChip.vue`, `RealmBadge.vue`, `ProgressRuneBar.vue`, `StatCard.vue`.
 - Dashboard sections: `CultivationHeroCard.vue`, `TodayChecklistCard.vue`, `QuickActionGrid.vue`.
 
 ## Theme tokens
 
-`apps/web/src/design/tokens.css` defines XT dark surface/accent tokens:
+`apps/web/src/design/tokens.css` defines Celestial Jade tokens:
 
-- Background: deep navy `--xt-bg-primary` and glass surfaces.
-- Accents: jade, cyan, violet, warm gold, boss danger.
-- Global CSS utilities in `apps/web/src/style.css`: `.xt-card`, `.xt-button`, resource chip tones, rune circle.
+- Base: `--xt-bg-primary #F7FBF8`, `--xt-bg-paper #FFF8EA`, `--xt-bg-palace #F8F1DF`.
+- Accents: jade `#CDEFE3`, mist blue `#DCECF5`, smoke lam `#8FB3C9`, gold `#D8B76A`.
+- Text: ink green `#183C36` / muted `#5F7F78`.
+- Utility classes in `apps/web/src/style.css`: `.xt-page-gradient`, `.xt-card`, `.xt-button`, resource chip tones, rune circle.
 
-Tailwind still uses the existing `ink` palette and `font-co` serif stack; the new tokens extend visual treatment without replacing gameplay logic.
+## Typography and labels
 
-## Animation and reduce-motion rules
+- Prefer Vietnamese UI labels. Do not show raw route/enum keys such as `pets`, `luyenkhi 1`, or `pham_than 1`.
+- Use helpers in `apps/web/src/lib/xianxiaFormat.ts`:
+  - `formatRealmName('luyenkhi', 1)` → `Luyện Khí · Tầng 1`
+  - `formatFeatureLabel('pets')` → `Linh Thú`
+  - `formatNumberCompact(12345)` → compact vi-VN output
+- `dashboard.title` is “Thiên Cung Tổng Quan”.
+
+## Animation and reduced-motion rules
 
 Effects are CSS/Tailwind only: no canvas, no WebGL, no heavy images. `SpiritualAmbientLayer` renders particles only when `reducedMotion=false` and `visualEffectLevel !== 'OFF'`; CSS also disables motion under `prefers-reduced-motion: reduce` and `.reduced-motion`.
 
 ## Open/exit/back mechanics
 
 - Mobile sidebar opens with `shell-mobile-toggle`, closes by backdrop, Escape, route change, or explicit close button labeled “Thoát menu”.
-- `XianxiaBackButton` calls `router.back()` when history exists; otherwise it pushes `/home`.
-- Dashboard cards and checklist buttons call `router.push(route)`.
-
-## Done in UI-1
-
-- XT branding applied in VI/EN i18n.
-- Premium AppShell with grouped navigation, active route highlight, mobile drawer, topbar resources, and chat dock.
-- Dashboard hero/stat/checklist/quick-action/right-panel refresh.
-- Safe route placeholders/redirect aliases for missing navigation targets.
-- Focused component/render tests.
-
-## Follow-up polish
-
-Inventory, Pet, SecretRealm, Market/Auction, and dedicated Character/Cultivation pages can receive deeper per-view polish in follow-up PRs. UI-1 intentionally avoids gameplay/backend rewrites.
+- Dashboard quick actions/checklist/right-panel cards call `router.push(route)`.
+- Resource chips remain readable and non-wrapping; content uses `min-w-0` and responsive grids to avoid horizontal overflow.

@@ -1,5 +1,18 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 
+const celestialPlaceholder = (
+  path: string,
+  name: string,
+  title: string,
+  description: string,
+  icon = 'cultivation',
+): RouteRecordRaw => ({
+  path,
+  name,
+  component: () => import('@/views/XianxiaPlaceholderView.vue'),
+  meta: { title, description, icon },
+});
+
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/home' },
   {
@@ -25,24 +38,20 @@ const routes: RouteRecordRaw[] = [
     name: 'home',
     component: () => import('@/views/HomeView.vue'),
   },
-  {
-    path: '/character',
-    name: 'character',
-    component: () => import('@/views/XianxiaPlaceholderView.vue'),
-    meta: {
-      title: 'Nhân Vật',
-      description: 'Chức năng hồ sơ nhân vật chuyên sâu đang được phát triển. Các chỉ số chính hiện hiển thị trong dashboard XT.',
-    },
-  },
-  {
-    path: '/cultivation',
-    name: 'cultivation',
-    component: () => import('@/views/XianxiaPlaceholderView.vue'),
-    meta: {
-      title: 'Tu Luyện',
-      description: 'Màn tu luyện chuyên sâu đang được phát triển. Bạn vẫn có thể bật/tắt nhập định và đột phá từ Trang Chủ.',
-    },
-  },
+  celestialPlaceholder(
+    '/character',
+    'character',
+    'Nhân Vật',
+    'Hồ sơ nhân vật chuyên sâu đang được phát triển. Các chỉ số chính hiện hiển thị trong Thiên Cung Tổng Quan.',
+    'character',
+  ),
+  celestialPlaceholder(
+    '/cultivation',
+    'cultivation',
+    'Tu Luyện',
+    'Màn tu luyện chuyên sâu đang được phát triển. Bạn vẫn có thể bật/tắt nhập định và đột phá từ Trang Chủ.',
+    'cultivation',
+  ),
   {
     path: '/onboarding',
     name: 'onboarding',
@@ -319,6 +328,26 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/SkillBookView.vue'),
   },
   {
+    path: '/skills',
+    name: 'skills',
+    redirect: '/skill-book',
+  },
+  {
+    path: '/methods',
+    name: 'methods',
+    redirect: '/cultivation-method',
+  },
+  {
+    path: '/cultivation-methods',
+    name: 'cultivation-methods',
+    redirect: '/cultivation-method',
+  },
+  {
+    path: '/spiritual-roots',
+    name: 'spiritual-roots',
+    redirect: '/spiritual-root',
+  },
+  {
     path: '/achievements',
     name: 'achievements',
     component: () => import('@/views/AchievementView.vue'),
@@ -382,6 +411,18 @@ const routes: RouteRecordRaw[] = [
     name: 'secret-realms',
     redirect: '/secret-realm',
   },
+  {
+    path: '/spirit-pets',
+    name: 'spirit-pets',
+    redirect: '/pets',
+  },
+  celestialPlaceholder(
+    '/notifications',
+    'notifications',
+    'Thông Báo',
+    'Trung tâm thông báo trong game đang được phát triển. Thiết lập thông báo đẩy đã có ở mục Thông Báo trong hệ thống.',
+    'notification',
+  ),
   {
     // Phase 34.3 — Inventory Auto-sort & Lock.
     path: '/inventory-auto-sort',

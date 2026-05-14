@@ -22,8 +22,8 @@ defineProps<{
         <div class="flex flex-wrap items-center gap-3">
           <GameIcon name="cultivation" size="lg" />
           <div>
-            <p class="text-xs uppercase tracking-[0.28em] text-cyan-200/75">XT · Tu Tiên Lộ</p>
-            <h1 class="mt-1 text-3xl font-black tracking-wide text-slate-50 md:text-4xl">
+            <p class="text-xs uppercase tracking-[0.28em] text-emerald-700/75">Thiên Cung Giao Diện · XT</p>
+            <h1 class="mt-1 text-3xl font-black tracking-wide text-emerald-950 md:text-4xl">
               {{ name }}
             </h1>
           </div>
@@ -34,10 +34,10 @@ defineProps<{
           <ProgressRuneBar label="Luyện thể" :value="bodyProgress" />
         </div>
       </div>
-      <div class="flex min-w-48 flex-col justify-between gap-4 rounded-3xl border border-amber-200/20 bg-slate-950/40 p-4">
+      <div class="flex min-w-48 flex-col justify-between gap-4 rounded-3xl border border-amber-300/35 bg-white/60 p-4 shadow-inner shadow-amber-100/50">
         <div>
-          <p class="text-xs uppercase tracking-[0.24em] text-amber-200/75">Lực chiến</p>
-          <p class="mt-2 text-3xl font-black text-amber-100">{{ power }}</p>
+          <p class="text-xs uppercase tracking-[0.24em] text-amber-700/75">Lực chiến</p>
+          <p class="mt-2 text-3xl font-black text-amber-800">{{ power }}</p>
         </div>
         <div class="grid gap-2">
           <XianxiaButton to="/cultivation">Tu Luyện</XianxiaButton>
