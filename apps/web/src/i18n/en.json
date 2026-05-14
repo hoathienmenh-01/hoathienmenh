@@ -396,6 +396,7 @@
       "skillBook": "Skill Book",
       "achievements": "Achievements",
       "titles": "Titles",
+      "reputation": "Reputation",
       "tribulation": "Tribulation",
       "breakthrough": "Breakthrough",
       "npcs": "NPCs",
@@ -3664,6 +3665,35 @@
       "NO_CHARACTER": "No character found, create one first.",
       "INVALID_INPUT": "Invalid input.",
       "UNKNOWN": "Title action failed, please retry."
+    }
+  },
+  "reputation": {
+    "title": "Reputation & Long-term Goals",
+    "subtitle": "Track grouped reputation and retention goals without direct power grants.",
+    "summary": "Reputation: {score} • Goals: {completed}/{total}",
+    "loading": "Loading reputation…",
+    "empty": "No goals match the selected filter.",
+    "groupsTitle": "Reputation",
+    "goalsTitle": "Long-term goals",
+    "score": "{score} points",
+    "dailyCap": "Daily cap",
+    "progress": "Progress",
+    "filter": {
+      "group": "Group",
+      "goal": "Goal",
+      "all": "All"
+    },
+    "goalStatus": {
+      "active": "Active",
+      "completed": "Completed"
+    },
+    "goalCategory": {
+      "realm": "Realm",
+      "body": "Body",
+      "pet": "Pet",
+      "dungeon": "Dungeon",
+      "boss": "Boss",
+      "sect": "Sect"
     }
   },
   "buffs": {

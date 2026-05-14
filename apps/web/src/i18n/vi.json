@@ -396,6 +396,7 @@
       "skillBook": "Pháp Quyển",
       "achievements": "Thành Tựu",
       "titles": "Danh Hiệu",
+      "reputation": "Uy Danh",
       "tribulation": "Thiên Kiếp",
       "breakthrough": "Đột Phá",
       "npcs": "Đạo Hữu",
@@ -3664,6 +3665,35 @@
       "NO_CHARACTER": "Chưa có nhân vật, hãy khai đạo trước.",
       "INVALID_INPUT": "Dữ liệu không hợp lệ.",
       "UNKNOWN": "Thao tác danh hiệu thất bại, thử lại."
+    }
+  },
+  "reputation": {
+    "title": "Uy Danh & Mục Tiêu Dài Hạn",
+    "subtitle": "Theo dõi uy danh từng nhóm và mục tiêu giữ chân dài hạn, không cộng sức mạnh trực tiếp.",
+    "summary": "Uy danh: {score} • Mục tiêu: {completed}/{total}",
+    "loading": "Đang tải uy danh…",
+    "empty": "Không có mục tiêu phù hợp bộ lọc.",
+    "groupsTitle": "Uy danh",
+    "goalsTitle": "Mục tiêu dài hạn",
+    "score": "{score} điểm",
+    "dailyCap": "Giới hạn ngày",
+    "progress": "Tiến độ",
+    "filter": {
+      "group": "Nhóm",
+      "goal": "Mục tiêu",
+      "all": "Tất cả"
+    },
+    "goalStatus": {
+      "active": "Đang tiến hành",
+      "completed": "Hoàn thành"
+    },
+    "goalCategory": {
+      "realm": "Cảnh giới",
+      "body": "Luyện thể",
+      "pet": "Linh thú",
+      "dungeon": "Bí cảnh",
+      "boss": "Boss",
+      "sect": "Tông môn"
     }
   },
   "buffs": {
