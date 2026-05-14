@@ -60,6 +60,8 @@
       "titlesState": "Không lấy được danh hiệu",
       "titleEquip": "Trang bị danh hiệu thất bại",
       "titleUnequip": "Gỡ danh hiệu thất bại",
+      "reputationState": "Không lấy được uy danh",
+      "longTermGoalsState": "Không lấy được mục tiêu dài hạn",
       "buffsState": "Không lấy được trạng thái buff",
       "arenaProfile": "Không tải được hồ sơ Đấu Đài",
       "arenaOpponents": "Không tải được đối thủ",

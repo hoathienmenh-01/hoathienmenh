@@ -60,6 +60,8 @@
       "titlesState": "Failed to load titles",
       "titleEquip": "Failed to equip title",
       "titleUnequip": "Failed to unequip title",
+      "reputationState": "Failed to load reputation",
+      "longTermGoalsState": "Failed to load long-term goals",
       "buffsState": "Failed to load buff state",
       "arenaProfile": "Failed to load arena profile",
       "arenaOpponents": "Failed to load opponents",
