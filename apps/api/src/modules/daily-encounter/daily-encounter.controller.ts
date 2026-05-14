@@ -12,6 +12,7 @@ import {
 import type { Request } from 'express';
 import { z } from 'zod';
 import { AuthService } from '../auth/auth.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 import {
   DailyEncounterError,
   DailyEncounterService,
@@ -29,6 +30,7 @@ export class DailyEncounterController {
   constructor(
     private readonly svc: DailyEncounterService,
     private readonly auth: AuthService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   private async requireUserId(req: Request): Promise<string> {
@@ -66,6 +68,9 @@ export class DailyEncounterController {
   @Post('today/accept')
   @HttpCode(200)
   async accept(@Req() req: Request) {
+    // Phase 45.0 — DAILY_ENCOUNTER_ENABLED kill switch. Tắt khi reward
+    // catalog lỗi hoặc xuất hiện claim trung gian bất thường.
+    await this.featureFlags.requireEnabled('DAILY_ENCOUNTER_ENABLED');
     const userId = await this.requireUserId(req);
     try {
       const encounter = await this.svc.accept(userId);
@@ -116,6 +121,7 @@ export class DailyEncounterController {
   @Post('today/claim')
   @HttpCode(200)
   async claim(@Req() req: Request) {
+    await this.featureFlags.requireEnabled('DAILY_ENCOUNTER_ENABLED');
     const userId = await this.requireUserId(req);
     try {
       const result = await this.svc.claim(userId);

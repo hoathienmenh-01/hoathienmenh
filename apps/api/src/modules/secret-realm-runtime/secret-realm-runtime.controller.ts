@@ -13,6 +13,7 @@ import {
 import type { Request } from 'express';
 import { z } from 'zod';
 import { AuthService } from '../auth/auth.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 import {
   SecretRealmError,
   SecretRealmRuntimeService,
@@ -34,6 +35,7 @@ export class SecretRealmRuntimeController {
   constructor(
     private readonly svc: SecretRealmRuntimeService,
     private readonly auth: AuthService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   private async requireUserId(req: Request): Promise<string> {
@@ -71,6 +73,9 @@ export class SecretRealmRuntimeController {
   @Post('enter')
   @HttpCode(200)
   async enter(@Req() req: Request, @Body() body: unknown) {
+    // Phase 45.0 — SECRET_REALM_ENABLED kill switch. Trả 503 khi admin tắt
+    // (vd reward audit findings) — người chơi nhận FEATURE_DISABLED.
+    await this.featureFlags.requireEnabled('SECRET_REALM_ENABLED');
     const userId = await this.requireUserId(req);
     const parsed = EnterInput.safeParse(body);
     if (!parsed.success) fail('INVALID_INPUT');

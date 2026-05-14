@@ -11,6 +11,7 @@ import { AuthModule } from '../auth/auth.module';
 import { AdminControlCenterModule } from '../admin-control-center/admin-control-center.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { CharacterModule } from '../character/character.module';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 import { PetCatalogService } from './pet-catalog.service';
 import { PetCollectionService } from './pet-collection.service';
 import { PetSnapshotService } from './pet-snapshot.service';
@@ -22,7 +23,7 @@ import { PetPlayerController } from './pet.player.controller';
 import { PetAdminController } from './pet.admin.controller';
 
 @Module({
-  imports: [AuthModule, AdminControlCenterModule, InventoryModule, CharacterModule],
+  imports: [AuthModule, AdminControlCenterModule, InventoryModule, CharacterModule, FeatureFlagModule],
   controllers: [PetPlayerController, PetAdminController],
   providers: [
     PrismaService,

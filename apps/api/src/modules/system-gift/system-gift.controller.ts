@@ -14,6 +14,7 @@ import type { Request } from 'express';
 import type { SystemGiftDef } from '@xuantoi/shared';
 import { AdminGuard } from '../admin/admin.guard';
 import { RequireAdmin } from '../admin/require-admin.decorator';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 import { DistributeResult, SystemGiftError, SystemGiftService } from './system-gift.service';
 
 function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
@@ -24,7 +25,10 @@ function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
 @UseGuards(AdminGuard)
 @RequireAdmin()
 export class SystemGiftAdminController {
-  constructor(private readonly svc: SystemGiftService) {}
+  constructor(
+    private readonly svc: SystemGiftService,
+    private readonly featureFlags: FeatureFlagService,
+  ) {}
 
   @Get()
   async list(): Promise<{ ok: true; data: { gifts: SystemGiftDef[] } }> {
@@ -61,6 +65,9 @@ export class SystemGiftAdminController {
     @Req() req: Request & { userId?: string },
     @Param('giftKey') giftKey: string,
   ): Promise<{ ok: true; data: DistributeResult }> {
+    // Phase 45.0 — admin-gift kill switch. Admin tắt flag khi phát hiện
+    // lạm dụng grant bất thường → 404/503 cho đến khi check xong.
+    await this.featureFlags.requireEnabled('ADMIN_GIFT_ENABLED');
     try {
       const data = await this.svc.distribute(giftKey, req.userId ?? null);
       return { ok: true, data };

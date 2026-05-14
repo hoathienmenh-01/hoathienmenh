@@ -58,6 +58,12 @@ function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
 const PatchBodyZ = z
   .object({
     enabled: z.boolean(),
+    /**
+     * Phase 45.0 — audit reason. Optional cho backward-compat với Phase 15.4
+     * client; nếu truyền, độ dài [3, 500] để chống typo / empty string. Lưu
+     * vào `AdminAuditLog.meta.reason` cho traceback.
+     */
+    reason: z.string().min(3).max(500).optional(),
   })
   .strict();
 
@@ -108,6 +114,7 @@ export class AdminFeatureFlagController {
       enabled: view.enabled,
       defaultEnabled: view.defaultEnabled,
       category: view.category,
+      reason: parsed.data.reason ?? null,
     });
     return { ok: true, data: view };
   }

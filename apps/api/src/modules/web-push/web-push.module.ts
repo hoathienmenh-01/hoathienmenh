@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 import { WebPushController } from './web-push.controller';
 import { WebPushService } from './web-push.service';
 
@@ -13,7 +14,7 @@ import { WebPushService } from './web-push.service';
  * nhỏ để PR này gọn (KHÔNG đụng combat / mail core).
  */
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, FeatureFlagModule],
   controllers: [WebPushController],
   providers: [WebPushService, PrismaService],
   exports: [WebPushService],

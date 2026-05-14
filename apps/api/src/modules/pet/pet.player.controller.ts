@@ -59,6 +59,7 @@ import { PetShardService, PetShardError } from './pet-shard.service';
 import { PetBoxService, PetBoxError } from './pet-box.service';
 import { PetUpgradeService, PetUpgradeError } from './pet-upgrade.service';
 import { PetSourceService } from './pet-source.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -100,6 +101,7 @@ export class PetPlayerController {
     private readonly boxes: PetBoxService,
     private readonly upgrade: PetUpgradeService,
     private readonly sources: PetSourceService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   private async requireCharacter(req: Request): Promise<string> {
@@ -233,6 +235,9 @@ export class PetPlayerController {
     @Param('boxKey') boxKey: string,
     @Body() body: unknown,
   ) {
+    // Phase 45.0 — PET_BOX_ENABLED kill switch. Admin tắt khi audit pity /
+    // gacha pool bất thường → 503 FEATURE_DISABLED cho đến khi resolved.
+    await this.featureFlags.requireEnabled('PET_BOX_ENABLED');
     const characterId = await this.requireCharacter(req);
     const parsed = OpenBoxZ.safeParse(body ?? {});
     if (!parsed.success) fail('INVALID_INPUT');

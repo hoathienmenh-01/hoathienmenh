@@ -3,6 +3,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { AdminModule } from '../admin/admin.module';
 import { AuthModule } from '../auth/auth.module';
 import { MailModule } from '../mail/mail.module';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 import { SystemGiftAdminController } from './system-gift.controller';
 import { SystemGiftService } from './system-gift.service';
 
@@ -14,7 +15,7 @@ import { SystemGiftService } from './system-gift.service';
  * duplicate qua `SystemGiftClaim` unique constraint.
  */
 @Module({
-  imports: [AuthModule, AdminModule, MailModule],
+  imports: [AuthModule, AdminModule, MailModule, FeatureFlagModule],
   controllers: [SystemGiftAdminController],
   providers: [SystemGiftService, PrismaService],
   exports: [SystemGiftService],

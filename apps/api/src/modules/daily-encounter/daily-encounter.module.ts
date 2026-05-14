@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 import { PrismaService } from '../../common/prisma.service';
 import { DailyEncounterController } from './daily-encounter.controller';
 import { DailyEncounterService } from './daily-encounter.service';
@@ -12,7 +13,7 @@ import { DailyEncounterService } from './daily-encounter.service';
  * `CharacterDailyEncounter` rows + currency/exp grant on claim.
  */
 @Module({
-  imports: [AuthModule, CharacterModule],
+  imports: [AuthModule, CharacterModule, FeatureFlagModule],
   controllers: [DailyEncounterController],
   providers: [DailyEncounterService, PrismaService],
   exports: [DailyEncounterService],

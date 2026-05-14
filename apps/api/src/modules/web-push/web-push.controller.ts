@@ -14,6 +14,7 @@ import type {
   WebPushSubscriptionView,
 } from '@xuantoi/shared';
 import { AuthService } from '../auth/auth.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 import { WebPushService } from './web-push.service';
 
 const ACCESS_COOKIE = 'xt_access';
@@ -50,6 +51,7 @@ export class WebPushController {
   constructor(
     private readonly webPush: WebPushService,
     private readonly auth: AuthService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   @Get('vapid-public-key')
@@ -62,6 +64,9 @@ export class WebPushController {
     @Req() req: Request,
     @Body() body: unknown,
   ): Promise<{ ok: true; data: WebPushSubscriptionView }> {
+    // Phase 45.0 — WEB_PUSH_ENABLED kill switch. Khi VAPID/provider lỗi
+    // hoặc admin tắt để giảm fanout, trả 503 FEATURE_DISABLED.
+    await this.featureFlags.requireEnabled('WEB_PUSH_ENABLED');
     const userId = await this.requireUserId(req);
     const ua = (req.headers['user-agent'] ?? null) as string | null;
     const merged =
