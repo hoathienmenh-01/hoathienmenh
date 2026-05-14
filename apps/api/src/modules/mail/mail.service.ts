@@ -5,7 +5,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { RealtimeService } from '../realtime/realtime.service';
-import { WebPushTriggerService } from '../web-push/web-push-trigger.service';
+import { WebPushService } from '../web-push/web-push.service';
 
 export class MailError extends Error {
   constructor(
@@ -123,8 +123,7 @@ export class MailService {
     private readonly currency: CurrencyService,
     private readonly inventory: InventoryService,
     private readonly realtime: RealtimeService,
-    // Phase 44.1 — Web Push trigger. Optional inject (tests bỏ qua an toàn).
-    @Optional() private readonly webPushTrigger?: WebPushTriggerService,
+    @Optional() private readonly webPush?: WebPushService,
   ) {}
 
   async inbox(userId: string, opts?: { mailType?: MailType }): Promise<MailView[]> {
@@ -406,18 +405,20 @@ export class MailService {
       senderName: view.senderName,
       hasReward: view.claimable,
     });
-    // Phase 44.1 — Web Push trigger: mail mới → notify nếu user opt-in.
-    if (this.webPushTrigger) {
-      this.webPushTrigger
-        .notifyMailNew({
-          userId: exists.userId,
-          mailId: view.id,
-          subject: view.subject,
-          senderName: view.senderName,
+    // Phase 44.1 — Web Push 'MAIL_NEW' fire-and-forget. Push log de-dupe
+    // theo mailId. Fail-soft — push gateway error không crash mail send.
+    if (this.webPush) {
+      void this.webPush
+        .sendToUser(exists.userId, 'MAIL_NEW', {
+          title: `Thư mới: ${view.senderName}`,
+          body: view.subject,
+          url: '/mail',
+          tag: `mail-${view.id}`,
+          dedupeKey: `mail-${view.id}`,
         })
         .catch((e) =>
           this.logger.warn(
-            `webPush.notifyMailNew failed: ${(e as Error).message}`,
+            `mail push send userId=${exists.userId} mailId=${view.id}: ${(e as Error).message}`,
           ),
         );
     }
@@ -501,6 +502,28 @@ export class MailService {
             ),
           );
       }
+    }
+    // Phase 44.1 — Web Push 'MAIL_NEW' broadcast. Per-user cooldown (30s)
+    // + dedupeKey theo broadcast batch đảm bảo không spam recipient.
+    if (this.webPush && chars.length > 0) {
+      const dedupeKey = `mail-broadcast-${Date.now()}-${input.subject.slice(0, 24)}`;
+      void this.webPush
+        .broadcastToUsers(
+          chars.map((c) => c.userId),
+          'MAIL_NEW',
+          {
+            title: `Thư mới: ${input.senderName ?? 'Thiên Đạo Sứ Giả'}`,
+            body: input.subject,
+            url: '/mail',
+            tag: dedupeKey,
+            dedupeKey,
+          },
+        )
+        .catch((e) =>
+          this.logger.warn(
+            `mail broadcast push fan-out failed: ${(e as Error).message}`,
+          ),
+        );
     }
     return chars.length;
   }

@@ -52,6 +52,7 @@ export type TitleRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic';
  * - `sect_season`: unlock khi season milestone claim grant title (Phase 13.2.B).
  * - `event`: unlock khi event participation match (Phase 15+).
  * - `donation`: unlock khi cumulative topup tier match (Phase 16+).
+ * - `onboarding`: unlock khi hoàn thành onboarding 7 ngày (Phase 34.0 → 44.1).
  */
 export type TitleSource =
   | 'realm_milestone'
@@ -61,7 +62,6 @@ export type TitleSource =
   | 'sect_season'
   | 'event'
   | 'donation'
-  /** Phase 44.1 — onboarding 7-day questline title (Day 7 final task). */
   | 'onboarding';
 
 export interface TitleDef {
@@ -1432,13 +1432,13 @@ export const TITLES: readonly TitleDef[] = [
     unlockSectRole: null,
     flavorStatBonus: { statTarget: 'atk', value: 1.04 },
   },
-  // Phase 44.1 — Onboarding 7-day final reward title (Day 7 last task).
+  // ===== ONBOARDING — Phase 44.1 =====
   {
     key: 'onboarding_novice_cultivator',
-    nameVi: 'Tân Tu Sĩ',
+    nameVi: 'Tu Sĩ Tân Đồ',
     nameEn: 'Novice Cultivator',
     description:
-      'Hoàn thành 7 ngày onboarding — bước đầu vững vàng trên đường tu tiên.',
+      'Hoàn thành 7 ngày onboarding — tân tu sĩ chính thức bước vào đại lục.',
     rarity: 'common',
     source: 'onboarding',
     element: null,
@@ -1446,7 +1446,8 @@ export const TITLES: readonly TitleDef[] = [
     unlockAchievementKey: null,
     unlockSectRole: null,
     flavorStatBonus: null,
-  }];
+  },
+];
 
 const TITLES_BY_KEY = new Map<string, TitleDef>(TITLES.map((t) => [t.key, t]));
 

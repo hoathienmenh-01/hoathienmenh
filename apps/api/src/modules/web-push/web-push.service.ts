@@ -540,6 +540,135 @@ export class WebPushService {
   }
 
   // -------------------------------------------------------------------------
+  // Phase 44.1 — Broadcast helpers (eligible-user discovery + bulk send).
+  //
+  // Triggers (BossService, MailService, CultivationProcessor, daily reminder
+  // scheduler) gọi 1 trong các method dưới để fan-out push tới đúng tập user
+  // đã opt-in. KHÔNG thay đổi pipeline `sendToUser` — chỉ wrap loop ngoài.
+  //
+  // Recency filter (lastSeenAt ≥ `recentSinceMs` ago) chống spam push tới
+  // account dead-cold. Default = 7 ngày, override per-trigger qua opts.
+  // -------------------------------------------------------------------------
+
+  private prefColumnForType(type: WebPushNotificationType): string {
+    switch (type) {
+      case 'BOSS_SPAWN':
+        return 'bossSpawnEnabled';
+      case 'STAMINA_FULL':
+        return 'staminaFullEnabled';
+      case 'MAIL_NEW':
+        return 'mailEnabled';
+      case 'DAILY_REMINDER':
+        return 'dailyReminderEnabled';
+    }
+  }
+
+  /**
+   * Tìm tập userId đã opt-in cho `type` cụ thể (preference TRUE) + có
+   * subscription enabled + (optional) lastSeenAt trong window. Bounded
+   * bởi `limit` để chống fan-out toàn DB.
+   */
+  async findEligibleUserIds(
+    type: WebPushNotificationType,
+    opts: { recentSinceMs?: number; limit?: number } = {},
+  ): Promise<string[]> {
+    const col = this.prefColumnForType(type);
+    const limit = Math.min(Math.max(1, opts.limit ?? 5_000), 50_000);
+    const recencyCutoff =
+      opts.recentSinceMs && opts.recentSinceMs > 0
+        ? new Date(Date.now() - opts.recentSinceMs)
+        : null;
+    const prefRows = await this.prisma.userPushPreferences.findMany({
+      where: { [col]: true } as Record<string, boolean>,
+      select: { userId: true },
+      take: limit,
+    });
+    if (prefRows.length === 0) return [];
+    const userIds = prefRows.map((r) => r.userId);
+    const subs = await this.prisma.webPushSubscription.findMany({
+      where: { userId: { in: userIds }, enabled: true },
+      select: { userId: true },
+      distinct: ['userId'],
+    });
+    const subSet = new Set(subs.map((s) => s.userId));
+    let eligible = userIds.filter((u) => subSet.has(u));
+    if (recencyCutoff && eligible.length > 0) {
+      const presence = await this.prisma.userPresence.findMany({
+        where: { userId: { in: eligible }, lastSeenAt: { gte: recencyCutoff } },
+        select: { userId: true },
+      });
+      const recentSet = new Set(presence.map((p) => p.userId));
+      eligible = eligible.filter((u) => recentSet.has(u));
+    }
+    return eligible;
+  }
+
+  /**
+   * Bulk dispatch — gọi `sendToUser` lặp với cùng payload + dedupeKey.
+   * Lỗi từng user log + tiếp tục — KHÔNG throw để 1 user lỗi không phá
+   * trigger boss spawn chung.
+   *
+   * Return aggregate counters cho audit/log.
+   */
+  async broadcastToUsers(
+    userIds: readonly string[],
+    type: WebPushNotificationType,
+    input: {
+      title: string;
+      body: string;
+      url?: string | null;
+      tag?: string | null;
+      dedupeKey?: string | null;
+    },
+  ): Promise<{ attempted: number; ok: number; blocked: number; errors: number }> {
+    let ok = 0;
+    let blocked = 0;
+    let errors = 0;
+    for (const userId of userIds) {
+      try {
+        const out = await this.sendToUser(userId, type, input);
+        if (out.ok) ok += 1;
+        else blocked += 1;
+      } catch (err) {
+        errors += 1;
+        this.logger.warn(
+          `broadcastToUsers ${type} userId=${userId} failed: ${
+            (err as Error).message ?? err
+          }`,
+        );
+      }
+    }
+    return { attempted: userIds.length, ok, blocked, errors };
+  }
+
+  /**
+   * Daily reminder cron entry-point. Iterates over users with
+   * `dailyReminderEnabled=true` (opt-in), preference cooldown 23h trong
+   * shared catalog đảm bảo cron 24h không gửi trùng. Bounded.
+   */
+  async dispatchDailyReminders(opts: { limit?: number } = {}): Promise<{
+    attempted: number;
+    ok: number;
+    blocked: number;
+    errors: number;
+  }> {
+    const userIds = await this.findEligibleUserIds('DAILY_REMINDER', {
+      limit: opts.limit ?? 5_000,
+    });
+    if (userIds.length === 0) {
+      return { attempted: 0, ok: 0, blocked: 0, errors: 0 };
+    }
+    const dateKey = new Date().toISOString().slice(0, 10);
+    return this.broadcastToUsers(userIds, 'DAILY_REMINDER', {
+      title: 'Tu sĩ ơi, đã đến giờ tu luyện',
+      body: 'Quay lại đại lục — phần thưởng điểm danh hôm nay đang chờ.',
+      url: '/daily-login',
+      tag: `daily-reminder-${dateKey}`,
+      dedupeKey: `daily-reminder-${dateKey}`,
+    });
+  }
+
+  // -------------------------------------------------------------------------
   // Catalog convenience
   // -------------------------------------------------------------------------
 

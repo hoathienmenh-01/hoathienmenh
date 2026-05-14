@@ -1,26 +1,34 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { WebPushTriggerService } from './web-push-trigger.service';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
+import { WebPushService } from './web-push.service';
 
 /**
- * Phase 44.1 — Daily reminder scheduler (Web Push).
+ * Phase 44.1 — Daily reminder cron scheduler (lightweight in-process timer).
  *
- * Sequence:
- *   - setInterval mỗi 10 phút.
- *   - Tại tick, nếu `nowUTC.hour === WEB_PUSH_DAILY_REMINDER_HOUR_UTC` thì gọi
- *     `WebPushTriggerService.runDailyReminder({ dateKey })`.
- *   - `dateKey` = `YYYY-MM-DD` UTC → mỗi ngày 1 lần (dedupeKey trùng → skip).
+ * Mục tiêu:
+ *   - Gọi `WebPushService.dispatchDailyReminders()` mỗi 24h (default).
+ *   - Đọc env `WEB_PUSH_DAILY_REMINDER_CRON_ENABLED` (default `false`,
+ *     opt-in để tránh fan-out push sai trong dev/test).
+ *   - Đọc env `WEB_PUSH_DAILY_REMINDER_INTERVAL_MS` (override interval
+ *     cho test, default `86_400_000` ms = 24h).
  *
- * Idempotency layers (defense in depth):
- *   1. dedupeKey `daily-reminder:{dateKey}` ở `WebPushSendLog` (per user/type).
- *   2. Cooldown 23h ở `WEB_PUSH_COOLDOWN_MS.DAILY_REMINDER` (per user/type).
- *   3. setInterval-only check `nowUTC.hour === targetHour` → 1 tick fire/hour
- *      (vài tick trong giờ đó vẫn no-op vì dedupeKey).
+ * Idempotency:
+ *   - Mỗi run dùng dedupeKey `daily-reminder-<UTC-date>` ⇒ nếu cron re-fire
+ *     trong cùng ngày (ví dụ restart process) thì `sendToUser` block
+ *     `COOLDOWN` không gửi trùng (preference catalog đã cooldown 23h
+ *     cho DAILY_REMINDER).
  *
- * Env gate:
- *   - `WEB_PUSH_DAILY_REMINDER_ENABLED=true` để bật scheduler.
- *   - `WEB_PUSH_DAILY_REMINDER_HOUR_UTC=12` (default → 19h VN).
+ * Race-safety:
+ *   - Single-instance khuyến nghị. Multi-instance vẫn an toàn vì
+ *     dedupeKey check trong `WebPushSendLog` (unique per user/type).
  *
- * Test seam: `runOnce()` cho tests gọi trực tiếp KHÔNG cần đợi setInterval.
+ * Test seam:
+ *   - Toàn bộ flow logic vẫn nằm trong `WebPushService.dispatchDailyReminders()`
+ *     (đã có test riêng). Scheduler class chỉ là wrapper timer.
  */
 @Injectable()
 export class WebPushDailyReminderScheduler
@@ -28,23 +36,38 @@ export class WebPushDailyReminderScheduler
 {
   private readonly logger = new Logger(WebPushDailyReminderScheduler.name);
   private timer: ReturnType<typeof setInterval> | null = null;
-  private lastTriggeredDateKey: string | null = null;
 
-  constructor(private readonly trigger: WebPushTriggerService) {}
+  constructor(private readonly webPush: WebPushService) {}
 
   onModuleInit(): void {
-    if (!this.isEnabled()) {
+    const enabled =
+      String(process.env.WEB_PUSH_DAILY_REMINDER_CRON_ENABLED ?? 'false') ===
+      'true';
+    if (!enabled) {
       this.logger.log(
-        'daily reminder scheduler disabled (WEB_PUSH_DAILY_REMINDER_ENABLED!=true)',
+        'daily reminder cron disabled (WEB_PUSH_DAILY_REMINDER_CRON_ENABLED=false)',
       );
       return;
     }
-    this.timer = setInterval(
-      () => this.tick().catch(() => undefined),
-      10 * 60 * 1000,
+    const intervalMsRaw = Number(
+      process.env.WEB_PUSH_DAILY_REMINDER_INTERVAL_MS ?? 86_400_000,
     );
+    const intervalMs =
+      Number.isFinite(intervalMsRaw) && intervalMsRaw >= 60_000
+        ? intervalMsRaw
+        : 86_400_000;
+    this.timer = setInterval(() => {
+      this.runOnce().catch((e) =>
+        this.logger.error('daily reminder cron error', e as Error),
+      );
+    }, intervalMs);
+    // Run-once shortly after boot (60s) — không gọi đồng bộ trong onModuleInit
+    // để không block bootstrap.
+    setTimeout(() => {
+      this.runOnce().catch(() => undefined);
+    }, 60_000);
     this.logger.log(
-      `daily reminder scheduler enabled (hour=${this.targetHourUTC()})`,
+      `daily reminder cron registered intervalMs=${intervalMs}`,
     );
   }
 
@@ -52,54 +75,18 @@ export class WebPushDailyReminderScheduler
     if (this.timer) clearInterval(this.timer);
   }
 
-  /** Test-only seam: trigger one pass. Returns `runDailyReminder` outcome. */
-  async runOnce(nowMs: number = Date.now()): Promise<{
-    sentUserCount: number;
-    candidateCount: number;
-    skipped: boolean;
-  }> {
-    const now = new Date(nowMs);
-    const hour = now.getUTCHours();
-    const dateKey = formatDateKeyUTC(now);
-    if (hour !== this.targetHourUTC()) {
-      return { sentUserCount: 0, candidateCount: 0, skipped: true };
-    }
-    if (this.lastTriggeredDateKey === dateKey) {
-      return { sentUserCount: 0, candidateCount: 0, skipped: true };
-    }
-    const out = await this.trigger.runDailyReminder({ dateKey });
-    this.lastTriggeredDateKey = dateKey;
-    return { ...out, skipped: false };
-  }
-
-  private async tick(): Promise<void> {
+  /**
+   * Public method (test seam) — gọi 1 lần dispatch. Bọc try/catch để 1
+   * lần dispatch fail không stop timer.
+   */
+  async runOnce(): Promise<void> {
     try {
-      const res = await this.runOnce();
-      if (!res.skipped) {
-        this.logger.log(
-          `daily reminder pass: sent=${res.sentUserCount} candidates=${res.candidateCount}`,
-        );
-      }
+      const res = await this.webPush.dispatchDailyReminders();
+      this.logger.log(
+        `daily reminder dispatched attempted=${res.attempted} ok=${res.ok} blocked=${res.blocked} errors=${res.errors}`,
+      );
     } catch (e) {
-      // Defensive: KHÔNG cho cron tick crash worker.
-      this.logger.warn(`daily reminder tick error: ${(e as Error).message}`);
+      this.logger.warn(`daily reminder dispatch failed: ${(e as Error).message}`);
     }
   }
-
-  private isEnabled(): boolean {
-    return String(process.env.WEB_PUSH_DAILY_REMINDER_ENABLED ?? 'false') === 'true';
-  }
-
-  private targetHourUTC(): number {
-    const raw = Number(process.env.WEB_PUSH_DAILY_REMINDER_HOUR_UTC ?? '12');
-    if (!Number.isFinite(raw) || raw < 0 || raw > 23) return 12;
-    return Math.floor(raw);
-  }
-}
-
-function formatDateKeyUTC(d: Date): string {
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(d.getUTCDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
 }

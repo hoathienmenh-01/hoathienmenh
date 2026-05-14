@@ -353,4 +353,91 @@ describe('Phase PWA-1 — WebPushService', () => {
       expect(d.dailyReminderEnabled).toBe(false);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Phase 44.1 — broadcast helpers: eligible discovery + bulk fan-out.
+  // ---------------------------------------------------------------------------
+  describe('Phase 44.1 broadcast helpers', () => {
+    it('findEligibleUserIds(BOSS_SPAWN) trả user opt-in + có subscription enabled', async () => {
+      // u1 — opted in (default), has sub.
+      const u1 = await makeUser();
+      await svc.subscribe(u1, subPayload('e-u1'));
+      // u2 — opted in (default), KHÔNG có sub → exclude.
+      const u2 = await makeUser();
+      await prisma.userPushPreferences.create({ data: { userId: u2 } });
+      // u3 — opted OUT, có sub → exclude.
+      const u3 = await makeUser();
+      await svc.subscribe(u3, subPayload('e-u3'));
+      await prisma.userPushPreferences.update({
+        where: { userId: u3 },
+        data: { bossSpawnEnabled: false },
+      });
+      const eligible = await svc.findEligibleUserIds('BOSS_SPAWN');
+      expect(eligible).toContain(u1);
+      expect(eligible).not.toContain(u2);
+      expect(eligible).not.toContain(u3);
+    });
+
+    it('boss spawn broadcast — chỉ user bật notification nhận push (Test #1)', async () => {
+      const userOptIn = await makeUser();
+      const userOptOut = await makeUser();
+      await svc.subscribe(userOptIn, subPayload('boss-in'));
+      await svc.subscribe(userOptOut, subPayload('boss-out'));
+      await prisma.userPushPreferences.update({
+        where: { userId: userOptOut },
+        data: { bossSpawnEnabled: false },
+      });
+      const eligible = await svc.findEligibleUserIds('BOSS_SPAWN');
+      const res = await svc.broadcastToUsers(eligible, 'BOSS_SPAWN', {
+        title: 'Boss',
+        body: 'spawn',
+        url: '/boss',
+        dedupeKey: 'boss:spawn:test',
+      });
+      expect(res.attempted).toBe(1);
+      expect(res.ok).toBe(1);
+      const logs = await prisma.webPushSendLog.findMany();
+      const ids = logs.map((l) => l.userId);
+      expect(ids).toContain(userOptIn);
+      expect(ids).not.toContain(userOptOut);
+    });
+
+    it('cooldown chống spam — broadcast 2 lần cùng dedupeKey, lần 2 bị COOLDOWN (Test #3)', async () => {
+      const u = await makeUser();
+      await svc.subscribe(u, subPayload('cd'));
+      const r1 = await svc.broadcastToUsers([u], 'BOSS_SPAWN', {
+        title: 'Boss',
+        body: 'spawn',
+        dedupeKey: 'boss:spawn:cd-test',
+      });
+      expect(r1.ok).toBe(1);
+      const r2 = await svc.broadcastToUsers([u], 'BOSS_SPAWN', {
+        title: 'Boss',
+        body: 'spawn',
+        dedupeKey: 'boss:spawn:cd-test', // cùng dedupeKey
+      });
+      // Lần 2: blocked bởi dedupeKey duplicate check.
+      expect(r2.ok).toBe(0);
+      expect(r2.blocked).toBe(1);
+    });
+
+    it('dispatchDailyReminders không gửi user tắt preference (Test #5)', async () => {
+      // u1: bật daily reminder.
+      const u1 = await makeUser();
+      await svc.subscribe(u1, subPayload('d1'));
+      await prisma.userPushPreferences.update({
+        where: { userId: u1 },
+        data: { dailyReminderEnabled: true },
+      });
+      // u2: tắt daily reminder (default).
+      const u2 = await makeUser();
+      await svc.subscribe(u2, subPayload('d2'));
+      const res = await svc.dispatchDailyReminders({ limit: 10 });
+      expect(res.attempted).toBe(1);
+      expect(res.ok).toBe(1);
+      // Re-run trong cùng dateKey: dedupeKey block → 0 send mới.
+      const res2 = await svc.dispatchDailyReminders({ limit: 10 });
+      expect(res2.ok).toBe(0);
+    });
+  });
 });

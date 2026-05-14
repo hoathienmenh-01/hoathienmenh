@@ -183,6 +183,20 @@ export class PetPlayerController {
     };
   }
 
+  /**
+   * Phase 44.1 — Combat / profile preview. Trả snapshot pet cho TẤT CẢ
+   * contexts (PVE/PVP/BOSS/DUNGEON/SECRET_REALM) trong 1 request → UI render
+   * bảng "Pet đóng góp gì ở đâu" + cap rõ ràng.
+   */
+  @Get('preview')
+  async previewGet(@Req() req: Request) {
+    const characterId = await this.requireCharacter(req);
+    return {
+      ok: true,
+      data: await this.snapshot.getPreviewForAllContexts(characterId),
+    };
+  }
+
   // ─── Box endpoints (public catalog, auth open) ────────────────────────
   @Get('boxes')
   boxList() {

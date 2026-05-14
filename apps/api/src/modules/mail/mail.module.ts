@@ -9,8 +9,6 @@ import { RealtimeModule } from '../realtime/realtime.module';
 import { WebPushModule } from '../web-push/web-push.module';
 
 @Module({
-  // Phase 44.1 — wire `WebPushModule` để MailService Optional-inject
-  // `WebPushTriggerService` gổi push "mail mới" theo opt-in.
   imports: [
     AuthModule,
     CharacterModule,

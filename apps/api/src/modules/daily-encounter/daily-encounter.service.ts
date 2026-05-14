@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   DAILY_ENCOUNTER_REWARD_CAPS,
   dailyEncounterByKey,
@@ -8,6 +8,8 @@ import {
 import { CurrencyKind } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
+import { RealtimeService } from '../realtime/realtime.service';
+import { WebPushService } from '../web-push/web-push.service';
 
 /**
  * Phase 34.1 — Daily Random Encounter / Kỳ Ngộ Service.
@@ -88,10 +90,34 @@ export function dailyEncounterDateKey(now: Date = new Date()): string {
 
 @Injectable()
 export class DailyEncounterService {
+  private readonly logger = new Logger(DailyEncounterService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
+    // Phase 44.1 — Realtime + WebPush optional cho rare/hidden encounter
+    // notification. Fail-soft — không phá flow encounter nếu notify fail.
+    @Optional() private readonly realtime?: RealtimeService,
+    @Optional() private readonly webPush?: WebPushService,
   ) {}
+
+  /**
+   * Phase 44.1 — Battle encounter adapter TODO.
+   *
+   * `DAILY_ENCOUNTER_TYPES` có 'minor_boss' / 'tiny_secret_realm' là encounter
+   * dạng battle. Combat hook chưa "safe" để wire trực tiếp (combat.service.ts
+   * required `monsterKey` + queue tick — không match encounter signature đơn
+   * giản). PR này KHÔNG sửa combat.service.
+   *
+   * Khi balance team / combat team mở hook adapter:
+   *   1. Thêm `encounter.battleAdapter` field vào catalog với
+   *      `{ monsterKey, lootProfileKey }`.
+   *   2. Trong `accept()`, nếu encounter có battleAdapter → enqueue 1
+   *      `CombatStartJob` thay vì flip status `ACCEPTED`.
+   *   3. Khi combat job finish → callback flip `COMPLETED`.
+   *
+   * Hiện tại flow vẫn là tutorial-style choose → complete → claim.
+   */
 
   private async getCharacter(
     userId: string,
@@ -301,7 +327,7 @@ export class DailyEncounterService {
       seed: `${characterId}|${dateKey}`,
       realmOrder,
     });
-    return this.prisma.characterDailyEncounter.create({
+    const row = await this.prisma.characterDailyEncounter.create({
       data: {
         characterId,
         dateKey,
@@ -310,6 +336,69 @@ export class DailyEncounterService {
         status: 'AVAILABLE',
       },
     });
+    // Phase 44.1 — Notify khi rare/hidden encounter generate (1 lần / dateKey).
+    // Realtime banner cho người online + push cho người offline. Fire-and-forget.
+    if (def.rarity === 'rare' || def.rarity === 'hidden') {
+      this.notifyImportantEncounter(characterId, dateKey, def.key, def.rarity);
+    }
+    return row;
+  }
+
+  /**
+   * Phase 44.1 — Realtime + push notify cho rare/hidden encounter. Fail-soft.
+   * Push dedupeKey = `encounter-<characterId>-<dateKey>` đảm bảo retry không
+   * gửi trùng.
+   */
+  private notifyImportantEncounter(
+    characterId: string,
+    dateKey: string,
+    encounterKey: string,
+    rarity: string,
+  ): void {
+    try {
+      const def = dailyEncounterByKey(encounterKey);
+      const title = def?.titleVi ?? 'Kỳ ngộ hiếm';
+      // Realtime banner
+      if (this.realtime) {
+        // Find user from character (best-effort).
+        void this.prisma.character
+          .findUnique({
+            where: { id: characterId },
+            select: { userId: true },
+          })
+          .then((c) => {
+            if (!c?.userId) return;
+            this.realtime!.emitToUser(c.userId, 'encounter:new', {
+              encounterKey,
+              rarity,
+              dateKey,
+              titleVi: title,
+            });
+            // Web Push fallback nếu user offline. WebPushService cooldown
+            // BOSS_SPAWN không dùng — đây là MAIL_NEW-ish 1-off, dùng
+            // dedupeKey để guard.
+            if (this.webPush) {
+              const dedupeKey = `encounter-${characterId}-${dateKey}`;
+              void this.webPush
+                .sendToUser(c.userId, 'MAIL_NEW', {
+                  title: `Kỳ ngộ hiếm: ${title}`,
+                  body: 'Một kỳ ngộ hiếm đang chờ — mở Kỳ Ngộ để chọn lựa.',
+                  url: '/encounter',
+                  tag: dedupeKey,
+                  dedupeKey,
+                })
+                .catch((e) =>
+                  this.logger.warn(
+                    `encounter push send characterId=${characterId} encounterKey=${encounterKey}: ${(e as Error).message}`,
+                  ),
+                );
+            }
+          })
+          .catch(() => undefined);
+      }
+    } catch (e) {
+      this.logger.warn(`notifyImportantEncounter failed: ${(e as Error).message}`);
+    }
   }
 
   private toView(row: {
