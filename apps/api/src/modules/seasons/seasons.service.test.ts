@@ -108,11 +108,17 @@ describe('SeasonsService seasons', () => {
   });
 
   it('ended seasons do not accept new points', async () => {
-    const season = await createSeason(SeasonStatus.ENDED);
+    await createSeason(SeasonStatus.ENDED);
     const { characterId } = await makeUserChar(prisma);
 
     await expect(
-      seasons.addPoints(characterId, 'BOSS', 20, {}, new Date('2026-06-01T00:00:00.000Z')),
+      seasons.addPoints(
+        characterId,
+        'BOSS',
+        20,
+        {},
+        new Date('2026-06-01T00:00:00.000Z'),
+      ),
     ).resolves.toBeNull();
   });
 });

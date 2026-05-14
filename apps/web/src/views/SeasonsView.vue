@@ -211,8 +211,8 @@ onMounted(() => {
                   class="mt-4 w-full rounded-xl bg-amber-300 px-3 py-2 text-sm font-bold text-ink-900 disabled:opacity-50"
                   :disabled="
                     !reward.claimable ||
-                    reward.claimed ||
-                    store.submittingRewardKey === reward.rewardKey
+                      reward.claimed ||
+                      store.submittingRewardKey === reward.rewardKey
                   "
                   @click="onClaim(reward)"
                 >
