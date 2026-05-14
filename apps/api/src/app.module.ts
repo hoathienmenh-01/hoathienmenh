@@ -5,6 +5,7 @@ import { CharacterModule } from './modules/character/character.module';
 import { CombatModule } from './modules/combat/combat.module';
 import { DungeonRunModule } from './modules/dungeon-run/dungeon-run.module';
 import { WorldContentModule } from './modules/world-content/world-content.module';
+import { HomesteadModule } from './modules/homestead/homestead.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { MarketModule } from './modules/market/market.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
@@ -112,6 +113,7 @@ import { PlayerNavigationModule } from './modules/player-navigation/player-navig
     CombatModule,
     DungeonRunModule,
     WorldContentModule,
+    HomesteadModule,
     InventoryModule,
     MarketModule,
     SectModule,

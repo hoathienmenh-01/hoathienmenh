@@ -17,6 +17,7 @@ export * from './missions';
 export * from './achievements';
 export * from './reputation-goals';
 export * from './alchemy';
+export * from './homestead';
 export * from './boss';
 export * from './buffs';
 export * from './cultivation-methods';

@@ -264,7 +264,9 @@ export type ItemLedgerReason =
   | 'PET_FEED_COST'
   | 'PET_BOX_REWARD'
   | 'PET_ADMIN_GRANT'
-  | 'PET_ADMIN_REVOKE';
+  | 'PET_ADMIN_REVOKE'
+  | 'HOMESTEAD_FIELD_HARVEST'
+  | 'HOMESTEAD_GARDEN_CLAIM';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;

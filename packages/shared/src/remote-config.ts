@@ -44,7 +44,8 @@ export type RemoteConfigKey =
   | 'reward_safety_mode'
   | 'market_enabled'
   | 'secret_realm_enabled'
-  | 'pet_box_enabled';
+  | 'pet_box_enabled'
+  | 'homestead_balance';
 
 export const REMOTE_CONFIG_KEYS: readonly RemoteConfigKey[] = [
   'max_daily_claims',
@@ -54,6 +55,7 @@ export const REMOTE_CONFIG_KEYS: readonly RemoteConfigKey[] = [
   'market_enabled',
   'secret_realm_enabled',
   'pet_box_enabled',
+  'homestead_balance',
 ] as const;
 
 export function isRemoteConfigKey(s: string): s is RemoteConfigKey {
@@ -176,6 +178,23 @@ export const REMOTE_CONFIG_CATALOG: readonly RemoteConfigDef[] = [
     descriptionEn:
       'Enable/disable Pet Box via remote config.',
     public: false,
+  },
+  {
+    key: 'homestead_balance',
+    valueType: 'json',
+    defaultValue: {
+      energyRegenPerHourMultiplier: 1,
+      fieldGrowthMinutesMultiplier: 1,
+      gardenDurationMinutesMultiplier: 1,
+      dailyCapMultiplier: 1,
+      upgradeCostMultiplier: 1,
+    },
+    descriptionVi:
+      'Config cân bằng Động Phủ: multiplier regen/cost/time/daily cap. Chỉ multiplier trong [0.5, 2] để tránh lạm phát.',
+    descriptionEn:
+      'Homestead balance multipliers for regen/cost/time/daily caps. Values capped to [0.5, 2].',
+    public: false,
+    cap: { maxBytes: 1024 },
   },
 ] as const;
 
