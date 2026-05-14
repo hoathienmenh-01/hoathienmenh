@@ -26,7 +26,7 @@ function onClick(): void {
   <button
     type="button"
     class="xt-button"
-    :class="`xt-button--${variant}`"
+    :class="[`xt-button--${variant}`, disabled ? 'cursor-not-allowed opacity-55' : '']"
     :disabled="disabled"
     @click="onClick"
   >

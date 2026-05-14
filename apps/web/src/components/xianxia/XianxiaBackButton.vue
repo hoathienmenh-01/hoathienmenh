@@ -8,7 +8,7 @@ const props = withDefaults(
     label?: string;
   }>(),
   {
-    fallback: '/home',
+    fallback: '/dashboard',
     label: 'Quay lại',
   },
 );
@@ -27,7 +27,7 @@ function goBack(): void {
 <template>
   <button
     type="button"
-    class="inline-flex min-h-10 items-center gap-2 rounded-2xl border border-cyan-200/20 bg-slate-950/45 px-3 py-2 text-sm text-cyan-50 transition hover:-translate-y-0.5 hover:border-cyan-200/45 hover:bg-cyan-300/10 focus:outline-none focus:ring-2 focus:ring-cyan-300/60"
+    class="inline-flex min-h-10 items-center gap-2 rounded-2xl border border-emerald-300/30 bg-white/65 px-3 py-2 text-sm font-semibold text-emerald-950 transition hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-300/60"
     data-testid="xianxia-back-button"
     @click="goBack"
   >

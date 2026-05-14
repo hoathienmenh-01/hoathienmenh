@@ -17,6 +17,7 @@ import ResourceChip from '@/components/xianxia/ResourceChip.vue';
 import RealmBadge from '@/components/xianxia/RealmBadge.vue';
 import SpiritualAmbientLayer from '@/components/xianxia/SpiritualAmbientLayer.vue';
 import XianxiaBackButton from '@/components/xianxia/XianxiaBackButton.vue';
+import { formatFeatureLabel, formatNumberCompact } from '@/lib/xianxiaFormat';
 
 interface NavItem {
   key: string;
@@ -55,11 +56,11 @@ const navGroups: NavGroup[] = [
     titleKey: 'shell.group.cultivation',
     items: [
       { key: 'cultivation', icon: 'cultivation', to: '/cultivation' },
-      { key: 'breakthrough', icon: 'realmBadge', to: '/breakthrough' },
-      { key: 'bodyCultivation', icon: 'body', to: '/body-cultivation' },
-      { key: 'cultivationMethod', icon: 'cultivation', to: '/cultivation-method' },
-      { key: 'spiritualRoot', icon: 'realmBadge', to: '/spiritual-root' },
-      { key: 'skillBook', icon: 'cultivation', to: '/skill-book' },
+      { key: 'breakthrough', icon: 'breakthrough', to: '/breakthrough' },
+      { key: 'bodyCultivation', icon: 'bodyCultivation', to: '/body-cultivation' },
+      { key: 'cultivationMethod', icon: 'method', to: '/cultivation-method' },
+      { key: 'spiritualRoot', icon: 'spiritualRoot', to: '/spiritual-root' },
+      { key: 'skillBook', icon: 'skill', to: '/skill-book' },
       { key: 'alchemy', icon: 'alchemy', to: '/alchemy' },
     ],
   },
@@ -69,8 +70,8 @@ const navGroups: NavGroup[] = [
       { key: 'inventory', icon: 'inventory', to: '/inventory' },
       { key: 'equipment', icon: 'equipment', to: '/equipment', testId: 'shell-nav-equipment' },
       { key: 'pets', icon: 'pet', to: '/pets' },
-      { key: 'secretRealms', icon: 'realm', to: '/secret-realms' },
-      { key: 'dungeonRun', icon: 'realm', to: '/dungeon-run' },
+      { key: 'secretRealms', icon: 'secretRealm', to: '/secret-realms' },
+      { key: 'dungeonRun', icon: 'secretRealm', to: '/dungeon-run' },
       { key: 'roguelike', icon: 'roguelike', to: '/roguelike-realms' },
       { key: 'tower', icon: 'tower', to: '/tower' },
       { key: 'boss', icon: 'boss', to: '/boss', badge: 'boss' },
@@ -93,6 +94,7 @@ const navGroups: NavGroup[] = [
   {
     titleKey: 'shell.group.system',
     items: [
+      { key: 'notifications', icon: 'notification', to: '/notification-settings', testId: 'shell-nav-notifications' },
       { key: 'settings', icon: 'settings', to: '/settings' },
       { key: 'notificationSettings', icon: 'notification', to: '/notification-settings', testId: 'shell-nav-notification-settings' },
       { key: 'activity', icon: 'stone', to: '/activity' },
@@ -138,7 +140,13 @@ function closeMobileNav(): void {
 
 function navLabel(key: string): string {
   const i18nKey = `shell.nav.${key}`;
-  return te(i18nKey) ? t(i18nKey) : key;
+  return te(i18nKey) ? t(i18nKey) : formatFeatureLabel(key);
+}
+
+function isNavActive(item: NavItem): boolean {
+  const resolved = router.resolve(item.to);
+  const target = resolved.redirectedFrom?.path ?? resolved.path;
+  return route.path === target || route.path.startsWith(`${target}/`);
 }
 
 function badgeValue(kind?: NavItem['badge']): string | null {
@@ -201,7 +209,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="relative min-h-screen overflow-hidden bg-[#06111f] text-slate-100">
+  <div class="xt-page-gradient relative min-h-screen overflow-hidden text-emerald-950">
     <SpiritualAmbientLayer visual-effect-level="MEDIUM" />
     <MaintenanceBanner
       v-if="maintenance.active && maintenance.status && (game.character?.role === 'ADMIN' || game.character?.role === 'MOD')"
@@ -212,29 +220,29 @@ onBeforeUnmount(() => {
     <div class="relative z-10 min-h-screen lg:grid lg:grid-cols-[18rem_minmax(0,1fr)_19rem]">
       <div
         v-if="mobileNavOpen"
-        class="fixed inset-0 z-40 bg-slate-950/75 backdrop-blur-sm lg:hidden"
+        class="fixed inset-0 z-40 bg-emerald-950/30 backdrop-blur-sm lg:hidden"
         data-testid="shell-mobile-backdrop"
         @click="closeMobileNav()"
       />
 
       <aside
-        class="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[86vw] flex-col border-r border-cyan-200/15 bg-slate-950/95 p-4 shadow-2xl shadow-cyan-950/40 transition-transform duration-200 lg:static lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0 lg:bg-slate-950/55 lg:backdrop-blur-xl"
+        class="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[86vw] flex-col border-r border-amber-300/30 bg-white/95 p-4 shadow-2xl shadow-emerald-950/10 transition-transform duration-200 lg:static lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0 lg:bg-white/65 lg:backdrop-blur-xl"
         :class="mobileNavOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
         data-testid="shell-sidebar"
       >
         <div class="mb-5 flex items-center justify-between gap-3">
-          <RouterLink to="/home" class="flex items-center gap-3 rounded-3xl focus:outline-none focus:ring-2 focus:ring-cyan-300/60">
-            <div class="flex h-12 w-12 items-center justify-center rounded-3xl border border-cyan-200/30 bg-gradient-to-br from-emerald-300/20 via-cyan-300/15 to-violet-300/20 text-xl font-black text-cyan-50 shadow-[0_0_26px_rgba(34,211,238,0.25)]">
+          <RouterLink to="/dashboard" class="flex items-center gap-3 rounded-3xl focus:outline-none focus:ring-2 focus:ring-emerald-300/60">
+            <div class="flex h-12 w-12 items-center justify-center rounded-3xl border border-amber-300/45 bg-gradient-to-br from-white via-emerald-100 to-amber-100 text-xl font-black text-emerald-900 shadow-[0_0_26px_rgba(74,169,143,0.2)]">
               XT
             </div>
             <div>
-              <p class="text-lg font-black tracking-[0.24em] text-slate-50">XT</p>
-              <p class="text-xs uppercase tracking-[0.28em] text-cyan-200/70">Tu Tiên Lộ</p>
+              <p class="text-lg font-black tracking-[0.24em] text-emerald-950">XT</p>
+              <p class="text-xs uppercase tracking-[0.28em] text-emerald-800/70">Tu Tiên Lộ</p>
             </div>
           </RouterLink>
           <button
             type="button"
-            class="rounded-2xl border border-cyan-200/15 p-2 text-slate-300 lg:hidden"
+            class="rounded-2xl border border-emerald-300/30 bg-white/60 p-2 text-emerald-950 lg:hidden"
             aria-label="Thoát menu"
             @click="closeMobileNav()"
           >
@@ -244,7 +252,7 @@ onBeforeUnmount(() => {
 
         <nav class="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1" aria-label="XT navigation">
           <section v-for="group in navGroups" :key="group.titleKey" class="space-y-2">
-            <p class="px-2 text-[10px] font-bold uppercase tracking-[0.28em] text-slate-500">
+            <p class="px-2 text-[10px] font-bold uppercase tracking-[0.28em] text-emerald-900/50">
               {{ t(group.titleKey) }}
             </p>
             <div class="space-y-1">
@@ -252,15 +260,15 @@ onBeforeUnmount(() => {
                 v-for="item in group.items.filter((entry) => !entry.staffOnly || isStaff)"
                 :key="item.to"
                 :to="item.to"
-                class="group relative flex min-h-11 items-center gap-3 rounded-2xl px-3 py-2 text-sm text-slate-300 transition hover:-translate-y-0.5 hover:bg-cyan-300/10 hover:text-cyan-50 focus:outline-none focus:ring-2 focus:ring-cyan-300/60"
-                active-class="bg-gradient-to-r from-emerald-300/20 via-cyan-300/15 to-violet-300/20 text-cyan-50 ring-1 ring-cyan-200/25 shadow-[0_0_24px_rgba(34,211,238,0.16)]"
+                class="group relative flex min-h-11 items-center gap-3 rounded-2xl px-3 py-2 text-sm font-semibold text-emerald-900/75 transition hover:-translate-y-0.5 hover:bg-emerald-50 hover:text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-300/60"
+                :class="isNavActive(item) ? 'bg-gradient-to-r from-emerald-100 via-white to-amber-100 text-emerald-950 ring-1 ring-amber-300/35 shadow-[0_0_24px_rgba(74,169,143,0.14)]' : ''"
                 :data-testid="item.testId ?? `shell-nav-${item.key}`"
               >
                 <GameIcon :name="item.icon" size="sm" />
                 <span class="min-w-0 flex-1 truncate">{{ navLabel(item.key) }}</span>
                 <span
                   v-if="showDot(item.badge)"
-                  class="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full ring-2 ring-slate-950"
+                  class="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full ring-2 ring-white"
                   :class="dotClass(item.badge)"
                   :title="dotTitle(item.badge)"
                   :data-testid="item.badge === 'breakthrough' ? 'shell-nav-home-breakthrough-badge' : undefined"
@@ -279,11 +287,11 @@ onBeforeUnmount(() => {
       </aside>
 
       <div class="flex min-h-screen min-w-0 flex-col">
-        <header class="sticky top-0 z-30 border-b border-cyan-200/10 bg-slate-950/70 px-3 py-3 backdrop-blur-xl md:px-5">
+        <header class="sticky top-0 z-30 border-b border-emerald-200/35 bg-white/70 px-3 py-3 backdrop-blur-xl md:px-5">
           <div class="flex items-center gap-3">
             <button
               type="button"
-              class="rounded-2xl border border-cyan-200/15 p-2 text-slate-200 lg:hidden"
+              class="rounded-2xl border border-emerald-300/30 bg-white/60 p-2 text-emerald-950 lg:hidden"
               :aria-label="t('shell.nav.toggle')"
               :aria-expanded="mobileNavOpen"
               data-testid="shell-mobile-toggle"
@@ -292,13 +300,13 @@ onBeforeUnmount(() => {
               <span aria-hidden="true" class="text-xl leading-none">{{ mobileNavOpen ? '✕' : '☰' }}</span>
             </button>
             <XianxiaBackButton
-              v-if="route.path !== '/home'"
+              v-if="route.path !== '/dashboard'"
               class="hidden md:inline-flex"
               :label="t('common.back')"
             />
             <div class="min-w-0">
-              <p class="truncate text-lg font-black tracking-wide text-slate-50">{{ pageTitle }}</p>
-              <p class="hidden text-xs text-cyan-200/65 md:block">{{ t('app.tagline') }}</p>
+              <p class="truncate text-lg font-black tracking-wide text-emerald-950">{{ pageTitle }}</p>
+              <p class="hidden text-xs text-emerald-900/60 md:block">{{ t('app.tagline') }}</p>
             </div>
 
             <div class="ml-auto flex min-w-0 items-center justify-end gap-2">
@@ -306,21 +314,21 @@ onBeforeUnmount(() => {
                 <BuffBar />
               </div>
               <div v-if="game.character" class="hidden min-w-0 flex-col items-end gap-1 md:flex">
-                <span class="max-w-40 truncate text-sm font-bold text-slate-50">{{ game.character.name }}</span>
-                <span v-if="equippedTitleName" class="text-xs text-amber-200" data-testid="shell-equipped-title">
+                <span class="max-w-40 truncate text-sm font-bold text-emerald-950">{{ game.character.name }}</span>
+                <span v-if="equippedTitleName" class="text-xs text-amber-700" data-testid="shell-equipped-title">
                   {{ equippedTitleName }}
                 </span>
                 <RealmBadge :label="realmText" />
               </div>
               <div v-if="game.character" class="hidden w-28 md:block">
-                <div class="flex justify-between text-[10px] text-slate-400">
+                <div class="flex justify-between text-[10px] text-emerald-900/55">
                   <span>EXP</span>
                   <span>{{ expPct }}%</span>
                 </div>
-                <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-900">
+                <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-emerald-50">
                   <div
                     class="h-full transition-all"
-                    :class="cultivating ? 'bg-emerald-400' : 'bg-slate-400'"
+                    :class="cultivating ? 'bg-emerald-400' : 'bg-emerald-200'"
                     :style="{ width: expPct + '%' }"
                   />
                 </div>
@@ -329,7 +337,7 @@ onBeforeUnmount(() => {
               <LocaleSwitcher />
               <button
                 type="button"
-                class="hidden rounded-2xl border border-rose-200/20 px-3 py-2 text-xs text-rose-100 transition hover:bg-rose-400/10 md:inline-flex"
+                class="hidden rounded-2xl border border-rose-300/30 bg-rose-50/60 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 md:inline-flex"
                 @click="logout"
               >
                 {{ t('home.logout') }}
@@ -341,13 +349,13 @@ onBeforeUnmount(() => {
             class="mt-3 flex gap-2 overflow-x-auto pb-1"
             data-testid="shell-resource-chips"
           >
-            <ResourceChip icon="stone" :label="t('dashboard.progression.linhThach')" :value="game.character.linhThach" tone="gold" />
-            <ResourceChip icon="jade" :label="t('dashboard.progression.tienNgoc')" :value="game.character.tienNgoc" tone="jade" />
-            <ResourceChip icon="power" label="Lực chiến" :value="game.character.power" tone="violet" />
+            <ResourceChip icon="linhThach" :label="t('dashboard.progression.linhThach')" :value="formatNumberCompact(game.character.linhThach)" tone="gold" />
+            <ResourceChip icon="tienNgoc" :label="t('dashboard.progression.tienNgoc')" :value="formatNumberCompact(game.character.tienNgoc)" tone="jade" />
+            <ResourceChip icon="power" label="Lực chiến" :value="formatNumberCompact(game.character.power)" tone="violet" />
             <ResourceChip icon="cultivation" :label="t('shell.stamina')" :value="`${game.character.stamina}/${game.character.staminaMax}`" tone="cyan" />
             <span
               class="inline-flex shrink-0 items-center rounded-2xl border px-3 py-2 text-xs"
-              :class="game.wsConnected ? 'border-emerald-200/20 bg-emerald-300/10 text-emerald-100' : 'border-rose-200/20 bg-rose-300/10 text-rose-100'"
+              :class="game.wsConnected ? 'border-emerald-300/30 bg-emerald-50 text-emerald-800' : 'border-rose-300/30 bg-rose-50 text-rose-700'"
             >
               {{ game.wsConnected ? t('shell.wsOn') : t('shell.wsOff') }}
             </span>
@@ -359,7 +367,7 @@ onBeforeUnmount(() => {
         </main>
       </div>
 
-      <aside class="hidden min-h-screen border-l border-cyan-200/10 bg-slate-950/45 p-3 backdrop-blur-xl lg:flex lg:flex-col">
+      <aside class="hidden min-h-screen border-l border-emerald-200/35 bg-white/45 p-3 backdrop-blur-xl lg:flex lg:flex-col">
         <ChatPanel />
       </aside>
     </div>
