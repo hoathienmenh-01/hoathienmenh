@@ -1570,6 +1570,7 @@
       "chatModeration": "Chat Moderation",
       "featureFlags": "Feature Flags",
       "remoteConfig": "Remote Config",
+      "achievementReputation": "Achievement/Reputation",
       "maintenance": "Maintenance",
       "configVersion": "Config Version",
       "security": "Security",
@@ -2129,6 +2130,31 @@
       "INVALID_BOSS_KEY": "Boss key not found in catalog.",
       "INVALID_LEVEL": "Level must be an integer 1..10.",
       "UNKNOWN": "Something went wrong."
+    }
+  },
+  "adminAchievement": {
+    "title": "Achievement / Reputation Admin",
+    "subtitle": "View catalog and player progress; read-only, no reward grants.",
+    "summary": "{achievements} achievements • {titles} titles • {groups} groups • {goals} goals",
+    "loading": "Loading catalog…",
+    "catalogTitle": "Foundation catalog",
+    "progressTitle": "Player progress",
+    "userIdPlaceholder": "Enter userId to view progress",
+    "loadProgress": "Load progress",
+    "stat": {
+      "achievements": "Achievements",
+      "titles": "Titles",
+      "groups": "Reputation groups",
+      "goals": "Goals"
+    },
+    "progress": {
+      "achievements": "{count} achievement rows",
+      "titles": "{count} title unlocks",
+      "reputation": "{count} reputation rows"
+    },
+    "errors": {
+      "load": "Failed to load catalog.",
+      "progress": "Failed to load player progress."
     }
   },
   "talents": {

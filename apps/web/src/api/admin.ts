@@ -1,10 +1,14 @@
 import { apiClient } from './client';
 import type { TopupOrderView } from './topup';
 import type {
+  AchievementDef,
   EconomyReportResponse,
   LiveOpsAnnouncementSeverity,
   LiveOpsAnnouncementStatus,
   LiveOpsAnnouncementTarget,
+  LongTermGoalDef,
+  ReputationGroupDef,
+  TitleDef,
 } from '@xuantoi/shared';
 
 export type Role = 'PLAYER' | 'MOD' | 'ADMIN';
@@ -33,6 +37,42 @@ export interface AdminAuditRow {
   action: string;
   meta: unknown;
   createdAt: string;
+}
+
+export interface AdminAchievementCatalogSummary {
+  achievements: readonly AchievementDef[];
+  titles: readonly TitleDef[];
+  reputationGroups: readonly ReputationGroupDef[];
+  longTermGoals: readonly LongTermGoalDef[];
+}
+
+export interface AdminPlayerProgressSummary {
+  userId: string;
+  characterId: string;
+  characterName: string;
+  achievements: Array<{
+    achievementKey: string;
+    progress: number;
+    completedAt: string | null;
+    claimedAt: string | null;
+  }>;
+  titles: Array<{
+    titleKey: string;
+    source: string;
+    unlockedAt: string;
+  }>;
+  reputation: Array<{
+    reputationGroup: string;
+    score: number;
+    dailyGain: number;
+    dailyKey: string | null;
+    lastGainedAt: string | null;
+  }>;
+  longTermGoals: Array<{
+    goalKey: string;
+    progress: number;
+    completedAt: string | null;
+  }>;
 }
 
 interface Envelope<T> {
@@ -86,6 +126,22 @@ export async function adminListUsers(
   const { data } = await apiClient.get<Envelope<Page<AdminUserRow>>>('/admin/users', {
     params,
   });
+  return unwrap(data);
+}
+
+export async function adminAchievementCatalog(): Promise<AdminAchievementCatalogSummary> {
+  const { data } = await apiClient.get<Envelope<AdminAchievementCatalogSummary>>(
+    '/admin/achievement-reputation/catalog',
+  );
+  return unwrap(data);
+}
+
+export async function adminAchievementProgress(
+  userId: string,
+): Promise<AdminPlayerProgressSummary> {
+  const { data } = await apiClient.get<Envelope<AdminPlayerProgressSummary>>(
+    `/admin/users/${encodeURIComponent(userId)}/achievement-reputation`,
+  );
   return unwrap(data);
 }
 

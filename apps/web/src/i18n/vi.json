@@ -1570,6 +1570,7 @@
       "chatModeration": "Kiểm duyệt chat",
       "featureFlags": "Feature Flags",
       "remoteConfig": "Remote Config",
+      "achievementReputation": "Thành tựu/Uy danh",
       "maintenance": "Bảo trì",
       "configVersion": "Config Version",
       "security": "Bảo mật",
@@ -2129,6 +2130,31 @@
       "INVALID_BOSS_KEY": "Boss key không có trong catalog.",
       "INVALID_LEVEL": "Cấp độ phải là số nguyên 1..10.",
       "UNKNOWN": "Có lỗi xảy ra."
+    }
+  },
+  "adminAchievement": {
+    "title": "Quản trị Thành Tựu / Uy Danh",
+    "subtitle": "Xem catalog và tiến độ người chơi; chỉ đọc, không grant thưởng.",
+    "summary": "{achievements} thành tựu • {titles} danh hiệu • {groups} nhóm • {goals} mục tiêu",
+    "loading": "Đang tải catalog…",
+    "catalogTitle": "Catalog foundation",
+    "progressTitle": "Tiến độ người chơi",
+    "userIdPlaceholder": "Nhập userId để xem tiến độ",
+    "loadProgress": "Tải tiến độ",
+    "stat": {
+      "achievements": "Thành tựu",
+      "titles": "Danh hiệu",
+      "groups": "Nhóm uy danh",
+      "goals": "Mục tiêu"
+    },
+    "progress": {
+      "achievements": "{count} achievement rows",
+      "titles": "{count} title unlocks",
+      "reputation": "{count} reputation rows"
+    },
+    "errors": {
+      "load": "Tải catalog thất bại.",
+      "progress": "Tải tiến độ người chơi thất bại."
     }
   },
   "talents": {

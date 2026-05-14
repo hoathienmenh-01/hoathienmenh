@@ -57,6 +57,7 @@ import AdminEconomyRangeReportPanel from '@/components/AdminEconomyRangeReportPa
 import AdminArenaAntiWintradePanel from '@/components/AdminArenaAntiWintradePanel.vue';
 import AdminFeatureFlagsPanel from '@/components/AdminFeatureFlagsPanel.vue';
 import AdminRemoteConfigPanel from '@/components/AdminRemoteConfigPanel.vue';
+import AdminAchievementReputationView from '@/views/AdminAchievementReputationView.vue';
 import AdminMaintenancePanel from '@/components/AdminMaintenancePanel.vue';
 import AdminConfigVersionPanel from '@/components/AdminConfigVersionPanel.vue';
 import AdminSecurityPanel from '@/components/AdminSecurityPanel.vue';
@@ -90,6 +91,7 @@ type Tab =
   | 'chatModeration'
   | 'featureFlags'
   | 'remoteConfig'
+  | 'achievementReputation'
   | 'maintenance'
   | 'configVersion'
   | 'security'
@@ -767,7 +769,7 @@ const isAdmin = () => game.character?.role === 'ADMIN';
 
       <nav class="flex gap-1 border-b border-ink-300/30 text-sm">
         <button
-          v-for="tk in (['stats','users','topups','audit','giftcodes','boss','liveops','economy','arenaAntiWintrade','gameplayAntiCheat','marketAbuse','chatModeration','featureFlags','remoteConfig','maintenance','configVersion','security','securityAlerts','backup'] as const)"
+          v-for="tk in (['stats','users','topups','audit','giftcodes','boss','liveops','economy','arenaAntiWintrade','gameplayAntiCheat','marketAbuse','chatModeration','featureFlags','remoteConfig','achievementReputation','maintenance','configVersion','security','securityAlerts','backup'] as const)"
           :key="tk"
           class="px-3 py-2 relative"
           :class="tab === tk ? 'border-b-2 border-amber-300 text-ink-50' : 'text-ink-300'"
@@ -1762,6 +1764,14 @@ const isAdmin = () => game.character?.role === 'ADMIN';
         data-testid="admin-remote-config-section"
       >
         <AdminRemoteConfigPanel />
+      </section>
+
+      <section
+        v-else-if="tab === 'achievementReputation'"
+        class="space-y-3"
+        data-testid="admin-achievement-reputation-section"
+      >
+        <AdminAchievementReputationView embedded />
       </section>
 
       <!-- MAINTENANCE TAB (Phase 15.5) -->

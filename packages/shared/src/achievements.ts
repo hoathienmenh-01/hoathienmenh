@@ -621,7 +621,7 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     goalAmount: 5_000,
     element: null,
     rewardTitleKey: 'phase46_title_pet_bonder',
-    reward: { linhThach: 300, exp: 120 },
+    reward: { linhThach: 200, exp: 120 },
     hidden: false,
   },
   {
@@ -691,7 +691,7 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     goalAmount: 20_000,
     element: null,
     rewardTitleKey: null,
-    reward: { linhThach: 500, exp: 200 },
+    reward: { linhThach: 200, exp: 200 },
     hidden: false,
   },
   {
