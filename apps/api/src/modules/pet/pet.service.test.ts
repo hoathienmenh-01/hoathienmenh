@@ -29,7 +29,15 @@ import { PetBoxService } from './pet-box.service';
 import { PetUpgradeService, PetUpgradeError } from './pet-upgrade.service';
 import { PetSourceService } from './pet-source.service';
 import { makeUserChar, wipeAll } from '../../test-helpers';
-import { PETS } from '@xuantoi/shared';
+import {
+  PETS,
+  PET_COMBAT_CONTEXTS,
+  PET_PVE_CAP_PERCENT,
+  PET_PVP_DAMAGE_CAP_PERCENT,
+  PET_BOSS_DAMAGE_CAP_PERCENT,
+  PET_PVP_EFFECT_MULTIPLIER,
+  PET_RARE_MAX_DROP_RATE_PCT,
+} from '@xuantoi/shared';
 
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ??
@@ -398,5 +406,120 @@ describe('PetUpgradeService', () => {
     await expect(upgrade.breakthrough(characterId, a.id)).rejects.toBeInstanceOf(
       PetUpgradeError,
     );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Phase 44.1 — Pet deep wiring tests (#6, #7, #8 trong PR brief)
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('Phase 44.1 — Pet preview adapter (test #6)', () => {
+  it('getCombatBonus PVE: contributionCapPercent = PET_PVE_CAP_PERCENT, damageCap = PET_PVE_CAP_PERCENT', async () => {
+    const { characterId } = await makeUserChar(prisma);
+    const a = await collection.grantPet({
+      characterId,
+      petKey: PETS[0]!.petKey,
+      source: 'TEST',
+    });
+    await collection.equip(characterId, a.id);
+    const bonus = await snapshot.getCombatBonus(characterId, 'PVE');
+    expect(bonus).not.toBeNull();
+    expect(bonus!.contributionCapPercent).toBe(PET_PVE_CAP_PERCENT);
+    expect(bonus!.damageContributionCapPercent).toBe(PET_PVE_CAP_PERCENT);
+    expect(bonus!.pvpEffectivenessMultiplier).toBeGreaterThan(0);
+  });
+
+  it('getCombatBonus null khi không có pet equipped', async () => {
+    const { characterId } = await makeUserChar(prisma);
+    const bonus = await snapshot.getCombatBonus(characterId, 'PVE');
+    expect(bonus).toBeNull();
+  });
+
+  it('getPreviewForAllContexts trả 5 contexts khi pet equipped', async () => {
+    const { characterId } = await makeUserChar(prisma);
+    const a = await collection.grantPet({
+      characterId,
+      petKey: PETS[0]!.petKey,
+      source: 'TEST',
+    });
+    await collection.equip(characterId, a.id);
+    const preview = await snapshot.getPreviewForAllContexts(characterId);
+    expect(preview.petKey).toBe(PETS[0]!.petKey);
+    for (const ctx of PET_COMBAT_CONTEXTS) {
+      expect(preview.byContext[ctx]).not.toBeNull();
+    }
+  });
+});
+
+describe('Phase 44.1 — Pet contribution cap (test #7)', () => {
+  it('PvE cap không bị vượt — damageContributionCapPercent ≤ PET_PVE_CAP_PERCENT', async () => {
+    const { characterId } = await makeUserChar(prisma);
+    const a = await collection.grantPet({
+      characterId,
+      petKey: PETS[0]!.petKey,
+      source: 'TEST',
+    });
+    await collection.equip(characterId, a.id);
+    // Pet level/star/evolve max — verify cap vẫn clamp.
+    await prisma.characterPet.update({
+      where: { id: a.id },
+      data: { level: 60, star: 7, evolutionStage: 3 },
+    });
+    const snap = await snapshot.getEquippedPetSnapshot(characterId, 'PVE');
+    expect(snap!.damageContributionCapPercent).toBeLessThanOrEqual(
+      PET_PVE_CAP_PERCENT,
+    );
+    expect(snap!.contributionCapPercent).toBeLessThanOrEqual(
+      PET_PVE_CAP_PERCENT,
+    );
+  });
+
+  it('PVP cap chặt hơn PvE — damageCap ≤ PET_PVP_DAMAGE_CAP_PERCENT + effect ×PET_PVP_EFFECT_MULTIPLIER', async () => {
+    const { characterId } = await makeUserChar(prisma);
+    const a = await collection.grantPet({
+      characterId,
+      petKey: PETS[0]!.petKey,
+      source: 'TEST',
+    });
+    await collection.equip(characterId, a.id);
+    const snap = await snapshot.getEquippedPetSnapshot(characterId, 'PVP');
+    expect(snap!.damageContributionCapPercent).toBeLessThanOrEqual(
+      PET_PVP_DAMAGE_CAP_PERCENT,
+    );
+    expect(snap!.pvpEffectivenessMultiplier).toBeCloseTo(
+      PET_PVP_EFFECT_MULTIPLIER,
+      5,
+    );
+  });
+
+  it('BOSS cap riêng — damageCap ≤ PET_BOSS_DAMAGE_CAP_PERCENT', async () => {
+    const { characterId } = await makeUserChar(prisma);
+    const a = await collection.grantPet({
+      characterId,
+      petKey: PETS[0]!.petKey,
+      source: 'TEST',
+    });
+    await collection.equip(characterId, a.id);
+    const snap = await snapshot.getEquippedPetSnapshot(characterId, 'BOSS');
+    expect(snap!.damageContributionCapPercent).toBeLessThanOrEqual(
+      PET_BOSS_DAMAGE_CAP_PERCENT,
+    );
+  });
+});
+
+describe('Phase 44.1 — Pet rare drop policy (test #8)', () => {
+  it('audit không có PET_RARE_HAS_EASY_PATH — pet hiếm không rơi free/achievement', () => {
+    const issues = sources.audit();
+    const rareEasy = issues.filter((i) => i.code === 'PET_RARE_HAS_EASY_PATH');
+    expect(rareEasy).toHaveLength(0);
+  });
+
+  it('audit không có PET_RARE_DROP_RATE_TOO_HIGH — mọi rare source ≤ PET_RARE_MAX_DROP_RATE_PCT%', () => {
+    const issues = sources.audit();
+    const tooHigh = issues.filter(
+      (i) => i.code === 'PET_RARE_DROP_RATE_TOO_HIGH',
+    );
+    expect(tooHigh).toHaveLength(0);
+    expect(PET_RARE_MAX_DROP_RATE_PCT).toBeGreaterThan(0);
   });
 });
