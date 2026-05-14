@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { createI18n } from 'vue-i18n';
-import { defineComponent, h } from 'vue';
+
 
 /**
  * UI-2.0 shell smoke tests. Cover:
@@ -356,15 +356,10 @@ describe('XTPageHeader', () => {
 describe('XTIcon', () => {
   it('render <svg data-testid="xt-icon" data-name="home"/>', async () => {
     const XTIcon = (await import('@/components/xianxia/XTIcon.vue')).default;
-    // Lưu ý: phải mount với global plugins để vue-i18n không lỗi (XTIcon
-    // không dùng i18n nhưng safety).
-    const Wrapper = defineComponent({
-      components: { XTIcon },
-      template: '<XTIcon name="home" />',
-    });
-    wrapper = mount(Wrapper, {
+    wrapper = mount(XTIcon, {
       attachTo: document.body,
       global: { plugins: [i18n] },
+      props: { name: 'home' },
     });
     await flushPromises();
     const svg = document.querySelector('[data-testid="xt-icon"]');
@@ -374,14 +369,10 @@ describe('XTIcon', () => {
 
   it('icon không có trong map → fallback icon menu (không crash)', async () => {
     const XTIcon = (await import('@/components/xianxia/XTIcon.vue')).default;
-    const Wrapper = defineComponent({
-      components: { XTIcon },
-      // eslint-disable-next-line vue/multi-word-component-names
-      render: () => h(XTIcon, { name: 'absolutely-unknown-icon' }),
-    });
-    wrapper = mount(Wrapper, {
+    wrapper = mount(XTIcon, {
       attachTo: document.body,
       global: { plugins: [i18n] },
+      props: { name: 'absolutely-unknown-icon' },
     });
     await flushPromises();
     expect(document.querySelector('[data-testid="xt-icon"]')).not.toBeNull();
