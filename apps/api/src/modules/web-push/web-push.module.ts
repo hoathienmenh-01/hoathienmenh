@@ -3,6 +3,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
 import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 import { WebPushController } from './web-push.controller';
+import { WebPushDailyReminderScheduler } from './web-push-daily-reminder.scheduler';
 import { WebPushService } from './web-push.service';
 
 /**
@@ -16,7 +17,7 @@ import { WebPushService } from './web-push.service';
 @Module({
   imports: [AuthModule, FeatureFlagModule],
   controllers: [WebPushController],
-  providers: [WebPushService, PrismaService],
+  providers: [WebPushService, WebPushDailyReminderScheduler, PrismaService],
   exports: [WebPushService],
 })
 export class WebPushModule {}

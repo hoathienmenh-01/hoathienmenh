@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { CurrencyKind, MailType, Prisma } from '@prisma/client';
 import { DEFAULT_MAIL_TYPE, deriveMailStatus, type MailStatus } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { WebPushService } from '../web-push/web-push.service';
 
 export class MailError extends Error {
   constructor(
@@ -115,11 +116,14 @@ const MAX_CLAIM_ALL_BATCH = 50;
  */
 @Injectable()
 export class MailService {
+  private readonly logger = new Logger(MailService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
     private readonly inventory: InventoryService,
     private readonly realtime: RealtimeService,
+    @Optional() private readonly webPush?: WebPushService,
   ) {}
 
   async inbox(userId: string, opts?: { mailType?: MailType }): Promise<MailView[]> {
@@ -401,6 +405,23 @@ export class MailService {
       senderName: view.senderName,
       hasReward: view.claimable,
     });
+    // Phase 44.1 — Web Push 'MAIL_NEW' fire-and-forget. Push log de-dupe
+    // theo mailId. Fail-soft — push gateway error không crash mail send.
+    if (this.webPush) {
+      void this.webPush
+        .sendToUser(exists.userId, 'MAIL_NEW', {
+          title: `Thư mới: ${view.senderName}`,
+          body: view.subject,
+          url: '/mail',
+          tag: `mail-${view.id}`,
+          dedupeKey: `mail-${view.id}`,
+        })
+        .catch((e) =>
+          this.logger.warn(
+            `mail push send userId=${exists.userId} mailId=${view.id}: ${(e as Error).message}`,
+          ),
+        );
+    }
     return view;
   }
 
@@ -441,6 +462,28 @@ export class MailService {
         senderName: input.senderName ?? 'Thiên Đạo Sứ Giả',
         hasReward,
       });
+    }
+    // Phase 44.1 — Web Push 'MAIL_NEW' broadcast. Per-user cooldown (30s)
+    // + dedupeKey theo broadcast batch đảm bảo không spam recipient.
+    if (this.webPush && chars.length > 0) {
+      const dedupeKey = `mail-broadcast-${Date.now()}-${input.subject.slice(0, 24)}`;
+      void this.webPush
+        .broadcastToUsers(
+          chars.map((c) => c.userId),
+          'MAIL_NEW',
+          {
+            title: `Thư mới: ${input.senderName ?? 'Thiên Đạo Sứ Giả'}`,
+            body: input.subject,
+            url: '/mail',
+            tag: dedupeKey,
+            dedupeKey,
+          },
+        )
+        .catch((e) =>
+          this.logger.warn(
+            `mail broadcast push fan-out failed: ${(e as Error).message}`,
+          ),
+        );
     }
     return chars.length;
   }
