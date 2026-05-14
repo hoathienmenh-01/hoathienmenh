@@ -161,10 +161,15 @@ describe('Phase 44.1 — WebPushTriggerService', () => {
         subject: 'X',
         senderName: 'Y',
       });
+      // Implementation ghi audit row với `BLOCKED_DISABLED` thay vì skip
+      // silent — giúp QA debug & UI hiển thị "prefs đang tắt nên không có
+      // notification". Quan trọng là `lastStatus !== 'OK'` ⇒ không có push
+      // thực sự được phát đi (web-push gateway KHÔNG được gọi).
       const log = await prisma.webPushSendLog.findUnique({
         where: { userId_type: { userId: user, type: 'MAIL_NEW' } },
       });
-      expect(log).toBeNull();
+      expect(log).not.toBeNull();
+      expect(log?.lastStatus).toBe('BLOCKED_DISABLED');
     });
   });
 
