@@ -12,3 +12,135 @@ body,
   display: flex;
   flex-direction: column;
 }
+
+body {
+  background: var(--xt-bg-primary);
+}
+
+.xt-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.84), rgba(15, 29, 51, 0.58)),
+    radial-gradient(circle at 20% 0%, rgba(103, 232, 249, 0.12), transparent 32%);
+  border-color: rgba(148, 163, 184, 0.16);
+  box-shadow: 0 20px 70px rgba(2, 6, 23, 0.34);
+  backdrop-filter: blur(18px);
+}
+
+.xt-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(120deg, transparent 20%, rgba(255, 255, 255, 0.06), transparent 80%);
+  opacity: 0.55;
+}
+
+.xt-card--elevated:hover {
+  transform: translateY(-2px);
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.xt-card--jade {
+  border-color: rgba(94, 234, 212, 0.24);
+  box-shadow: 0 20px 70px rgba(13, 148, 136, 0.16);
+}
+
+.xt-card--cyan {
+  border-color: rgba(103, 232, 249, 0.24);
+  box-shadow: 0 20px 70px rgba(8, 145, 178, 0.16);
+}
+
+.xt-card--violet {
+  border-color: rgba(167, 139, 250, 0.24);
+  box-shadow: 0 20px 70px rgba(124, 58, 237, 0.16);
+}
+
+.xt-card--gold {
+  border-color: rgba(246, 217, 141, 0.26);
+  box-shadow: 0 20px 70px rgba(217, 119, 6, 0.14);
+}
+
+.xt-card--danger {
+  border-color: rgba(251, 113, 133, 0.3);
+  box-shadow: 0 20px 70px rgba(190, 18, 60, 0.18);
+}
+
+.xt-button {
+  min-height: 2.5rem;
+  border-radius: 1rem;
+  padding: 0.6rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
+}
+
+.xt-button:hover {
+  transform: translateY(-1px);
+}
+
+.xt-button:focus-visible {
+  outline: 2px solid rgba(103, 232, 249, 0.75);
+  outline-offset: 2px;
+}
+
+.xt-button--primary {
+  border: 1px solid rgba(94, 234, 212, 0.36);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.38), rgba(8, 145, 178, 0.32));
+  color: #ecfeff;
+}
+
+.xt-button--secondary {
+  border: 1px solid rgba(246, 217, 141, 0.36);
+  background: rgba(246, 217, 141, 0.12);
+  color: #fef3c7;
+}
+
+.xt-button--ghost {
+  border: 1px solid rgba(103, 232, 249, 0.2);
+  background: rgba(15, 23, 42, 0.42);
+  color: #cffafe;
+}
+
+.resource-chip--jade {
+  border-color: rgba(94, 234, 212, 0.22);
+}
+
+.resource-chip--cyan {
+  border-color: rgba(103, 232, 249, 0.22);
+}
+
+.resource-chip--violet {
+  border-color: rgba(167, 139, 250, 0.22);
+}
+
+.resource-chip--gold {
+  border-color: rgba(246, 217, 141, 0.26);
+}
+
+.xt-rune-circle {
+  position: absolute;
+  right: -5rem;
+  top: -5rem;
+  width: 18rem;
+  height: 18rem;
+  border: 1px solid rgba(103, 232, 249, 0.18);
+  border-radius: 999px;
+  box-shadow: inset 0 0 48px rgba(103, 232, 249, 0.08), 0 0 60px rgba(167, 139, 250, 0.1);
+}
+
+.xt-rune-circle::before,
+.xt-rune-circle::after {
+  content: '';
+  position: absolute;
+  inset: 2rem;
+  border-radius: inherit;
+  border: 1px dashed rgba(246, 217, 141, 0.2);
+}
+
+.xt-rune-circle::after {
+  inset: 4.5rem;
+  border-color: rgba(94, 234, 212, 0.18);
+}

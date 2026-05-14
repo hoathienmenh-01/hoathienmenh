@@ -26,6 +26,24 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/HomeView.vue'),
   },
   {
+    path: '/character',
+    name: 'character',
+    component: () => import('@/views/XianxiaPlaceholderView.vue'),
+    meta: {
+      title: 'Nhân Vật',
+      description: 'Chức năng hồ sơ nhân vật chuyên sâu đang được phát triển. Các chỉ số chính hiện hiển thị trong dashboard XT.',
+    },
+  },
+  {
+    path: '/cultivation',
+    name: 'cultivation',
+    component: () => import('@/views/XianxiaPlaceholderView.vue'),
+    meta: {
+      title: 'Tu Luyện',
+      description: 'Màn tu luyện chuyên sâu đang được phát triển. Bạn vẫn có thể bật/tắt nhập định và đột phá từ Trang Chủ.',
+    },
+  },
+  {
     path: '/onboarding',
     name: 'onboarding',
     component: () => import('@/views/OnboardingView.vue'),
@@ -46,6 +64,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/RoguelikeView.vue'),
   },
   {
+    path: '/roguelike-realms',
+    name: 'roguelike-realms',
+    redirect: '/roguelike',
+  },
+  {
     path: '/seasons',
     name: 'seasons',
     component: () => import('@/views/SeasonsView.vue'),
@@ -61,6 +84,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/InventoryView.vue'),
   },
   {
+    path: '/equipment',
+    name: 'equipment',
+    redirect: '/inventory',
+  },
+  {
     path: '/loadouts',
     name: 'loadouts',
     component: () => import('@/views/LoadoutView.vue'),
@@ -74,6 +102,11 @@ const routes: RouteRecordRaw[] = [
     path: '/market',
     name: 'market',
     component: () => import('@/views/MarketView.vue'),
+  },
+  {
+    path: '/auction',
+    name: 'auction',
+    redirect: '/market',
   },
   {
     path: '/shop',
@@ -345,6 +378,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/SecretRealmView.vue'),
   },
   {
+    path: '/secret-realms',
+    name: 'secret-realms',
+    redirect: '/secret-realm',
+  },
+  {
     // Phase 34.3 — Inventory Auto-sort & Lock.
     path: '/inventory-auto-sort',
     name: 'inventory-auto-sort',
@@ -386,6 +424,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/DungeonHubV2View.vue'),
   },
   {
+    path: '/dungeons',
+    name: 'dungeons',
+    redirect: '/world/dungeons',
+  },
+  {
     path: '/world/bosses',
     name: 'world-bosses-v2',
     component: () => import('@/views/BossHubView.vue'),
@@ -399,6 +442,11 @@ const routes: RouteRecordRaw[] = [
     path: '/world/towers',
     name: 'world-trial-tower',
     component: () => import('@/views/TrialTowerView.vue'),
+  },
+  {
+    path: '/tower',
+    name: 'tower',
+    redirect: '/world/towers',
   },
   // Phase 41.0 — Player Experience QoL V1 (dashboard, feedback, report,
   // logs viewer). KHÔNG đụng gameplay routes; layout chuẩn AppShell.

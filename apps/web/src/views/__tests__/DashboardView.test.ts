@@ -38,7 +38,7 @@ const i18n = createI18n({
   missingFallbackWarn: false,
   messages: {
     vi: {
-      common: { loading: '...', open: 'Mở', retry: 'Thử lại' },
+      common: { loading: '...', open: 'Mở', retry: 'Thử lại', refresh: 'Làm mới' },
       dashboard: {
         title: 'Bảng Điều Khiển',
         subtitle: 'Tổng quan',
@@ -58,8 +58,17 @@ const i18n = createI18n({
           activeReportCount: 'RP',
         },
         warnings: { title: 'Cảnh báo' },
-        checklist: { title: 'Hôm nay' },
-        quickLinks: { title: 'Truy cập nhanh' },
+        checklist: { title: 'Hôm nay', START_CULTIVATION: { title: 'Tu luyện', description: 'Nhập định' } },
+        quickLinks: { title: 'Truy cập nhanh', feedback: 'Phản hồi' },
+        stat: {
+          power: 'Lực Chiến', powerDesc: 'Power desc',
+          spirit: 'Linh Lực', spiritDesc: 'Spirit desc',
+          realm: 'Cảnh Giới', realmDesc: 'Realm desc',
+          body: 'Luyện Thể', bodyDesc: 'Body desc',
+          pill: 'Đan Dược', pillDesc: 'Pill desc',
+          tower: 'Đăng Tiên Tháp', towerDesc: 'Tower desc',
+        },
+        right: { title: 'Thiên Cơ', subtitle: 'Tóm tắt', events: 'Sự kiện', boss: 'Boss', realms: 'Bí cảnh', equipment: 'Trang bị', mail: 'Thư' },
         errors: { UNKNOWN: 'lỗi' },
       },
     },

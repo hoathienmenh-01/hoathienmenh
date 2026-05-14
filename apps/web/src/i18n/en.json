@@ -1,8 +1,8 @@
 {
   "app": {
-    "title": "Xuantoi · Dao Mon",
-    "brand": "Dao Mon",
-    "tagline": "Text-based cultivation MUD – Xianxia"
+    "title": "XT · Cultivation Path",
+    "brand": "XT",
+    "tagline": "Modern xianxia cultivation interface"
   },
   "common": {
     "loading": "Working…",
@@ -380,6 +380,12 @@
     "wsOff": "WS ×",
     "nav": {
       "home": "Home",
+      "character": "Character",
+      "cultivation": "Cultivation",
+      "equipment": "Equipment",
+      "secretRealms": "Secret Realms",
+      "tower": "Ascension Tower",
+      "auction": "Auction",
       "dungeon": "Sparring Hall",
       "inventory": "Inventory",
       "loadouts": "Loadouts",
@@ -424,6 +430,13 @@
       "feedback": "Feedback",
       "reportPlayer": "Report",
       "homestead": "Homestead"
+    },
+    "group": {
+      "core": "Core",
+      "cultivation": "Cultivation",
+      "activity": "Activities",
+      "social": "Social",
+      "system": "System"
     },
     "badge": {
       "bossActive": "World boss is live",
@@ -6990,8 +7003,8 @@
     "noIssues": "No unresolved issues."
   },
   "dashboard": {
-    "title": "Dashboard",
-    "subtitle": "Character overview, today's checklist and quick access.",
+    "title": "Cultivation Dashboard",
+    "subtitle": "Overview of power, resources, daily tasks, and XT feature shortcuts.",
     "character": {
       "title": "Character",
       "name": "Name",
@@ -7062,11 +7075,38 @@
       "feedback": "Feedback",
       "settings": "Settings"
     },
+    "stat": {
+      "power": "Power",
+      "powerDesc": "Combined realm, foundation, and gear strength.",
+      "spirit": "Spirit",
+      "spiritDesc": "Core cultivation and spell potential.",
+      "realm": "Realm",
+      "realmDesc": "Current cultivation realm and stage.",
+      "body": "Body",
+      "bodyDesc": "Body cultivation and survivability.",
+      "pill": "Pills",
+      "pillDesc": "Alchemy support for cultivation and breakthrough.",
+      "tower": "Ascension Tower",
+      "towerDesc": "Tower challenges and prestige progress."
+    },
+    "right": {
+      "title": "Today’s Omens",
+      "subtitle": "Events, bosses, realms, gear, and mail.",
+      "events": "Active events",
+      "boss": "World boss",
+      "realms": "Secret realms",
+      "equipment": "Featured equipment",
+      "mail": "Mail / notifications"
+    },
     "errors": {
       "UNKNOWN": "Could not load dashboard. Please retry.",
       "NO_CHARACTER": "You do not have a character yet.",
       "UNAUTHENTICATED": "Please log in again."
     }
+  },
+  "xianxiaPlaceholder": {
+    "title": "Feature in development",
+    "description": "This safe route keeps navigation functional. Detailed UI will be expanded in a follow-up phase."
   },
   "feedback": {
     "title": "Feedback Center",
@@ -7813,7 +7853,7 @@
     "unsupported": "Your browser does not support Web Push notifications. Try a recent version of Chrome, Edge, Firefox, or a desktop browser.",
     "permissionDenied": "Notifications are blocked for this site. Open browser settings and re-enable notifications, then refresh this page.",
     "masterTitle": "Enable on this device",
-    "masterDescription": "Allow push notifications from Xuân Tôi to this browser.",
+    "masterDescription": "Allow push notifications from XT to this browser.",
     "enable": "Enable",
     "disable": "Disable",
     "perTypeTitle": "Notification types",
