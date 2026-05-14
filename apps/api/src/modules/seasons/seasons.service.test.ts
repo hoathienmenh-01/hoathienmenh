@@ -147,9 +147,8 @@ describe('SeasonsService points and leaderboard', () => {
     );
     expect(floorBoard.entries[0]?.score).toBe(8);
 
-    await expect(
-      seasons.addPoints(a.characterId, 'EVENT', 120),
-    ).rejects.toThrow(new SeasonError('POINT_CAP_REACHED'));
+    const capped = await seasons.addPoints(a.characterId, 'EVENT', 120);
+    expect(capped).toMatchObject({ granted: 0, points: 50, capped: true });
   });
 
   it('records server milestone progress', async () => {
@@ -181,7 +180,7 @@ describe('SeasonsService rewards', () => {
       where: {
         characterId,
         currency: CurrencyKind.LINH_THACH,
-        reason: 'SEASON_REWARD_CLAIM',
+        reason: 'SEASON_REWARD',
       },
     });
     expect(ledger).toHaveLength(1);
