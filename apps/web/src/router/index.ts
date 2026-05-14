@@ -241,6 +241,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/AlchemyView.vue'),
   },
   {
+    path: '/homestead',
+    name: 'homestead',
+    component: () => import('@/views/HomesteadView.vue'),
+  },
+  {
     path: '/cultivation-method',
     name: 'cultivation-method',
     component: () => import('@/views/CultivationMethodView.vue'),

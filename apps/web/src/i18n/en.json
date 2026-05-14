@@ -104,7 +104,13 @@
       "sectBosses": "Failed to load sect bosses.",
       "opportunities": "Failed to load opportunities.",
       "trialTowers": "Failed to load trial towers.",
-      "trialTowerAttempt": "Failed to attempt tower floor."
+      "trialTowerAttempt": "Failed to attempt tower floor.",
+      "homesteadState": "Failed to load homestead state",
+      "homesteadUpgrade": "Failed to upgrade homestead",
+      "homesteadPlant": "Failed to plant field",
+      "homesteadHarvest": "Failed to harvest field",
+      "homesteadGardenStart": "Failed to start garden production",
+      "homesteadGardenClaim": "Failed to claim garden production"
     },
     "accept": "Accept",
     "decline": "Decline",
@@ -412,7 +418,8 @@
       "cosmetics": "Wardrobe",
       "dashboard": "Dashboard",
       "feedback": "Feedback",
-      "reportPlayer": "Report"
+      "reportPlayer": "Report",
+      "homestead": "Homestead"
     },
     "badge": {
       "bossActive": "World boss is live",
@@ -7713,6 +7720,62 @@
       "TYPE_INVALID": "Notification type is invalid.",
       "ERROR": "Unexpected error. Please try again.",
       "UNKNOWN": "Unknown error."
+    }
+  },
+  "homestead": {
+    "title": "Homestead",
+    "subtitle": "Spiritual Fields, Alchemy Garden, and capped resource production.",
+    "loading": "Opening homestead…",
+    "empty": "No homestead data yet.",
+    "level": "Level {level}",
+    "offlineCap": "Offline production is capped at {hours} hours with daily and storage caps.",
+    "energy": "Spiritual energy",
+    "fields": "Fields",
+    "garden": "Garden",
+    "maxTier": "Max tier",
+    "upgradeTitle": "Homestead upgrade",
+    "upgradeCost": "Level {level}: {linhThach} spirit stones + {energy} energy · realm {realm}",
+    "upgrade": "Upgrade",
+    "maxLevel": "Homestead is at max level.",
+    "tabs": {
+      "fields": "Spiritual Fields",
+      "garden": "Alchemy Garden"
+    },
+    "selectCrop": "Select crop",
+    "selectProduction": "Select production",
+    "costLine": "Costs {energy} energy · cap {cap}/day · outputs {item}",
+    "locked": "locked",
+    "rare": "rare",
+    "slot": "Slot {n}",
+    "emptyField": "Empty field slot, ready for planting.",
+    "emptyGarden": "Empty garden slot, ready to start production.",
+    "plant": "Plant",
+    "harvest": "Harvest",
+    "startGarden": "Start",
+    "claim": "Claim",
+    "ready": "Ready",
+    "toast": {
+      "upgraded": "Homestead upgraded.",
+      "harvested": "Harvested +{qty} materials.",
+      "claimed": "Garden claimed +{qty} materials."
+    },
+    "error": {
+      "UNKNOWN": "Homestead action failed.",
+      "IN_FLIGHT": "Previous action is still running.",
+      "MAX_LEVEL": "Homestead is already max level.",
+      "REALM_TOO_LOW": "Realm is too low.",
+      "HOMESTEAD_LEVEL_TOO_LOW": "Homestead level is too low.",
+      "INSUFFICIENT_FUNDS": "Not enough spirit stones.",
+      "INSUFFICIENT_SPIRITUAL_ENERGY": "Not enough homestead energy.",
+      "SLOT_LOCKED": "This slot is locked.",
+      "SLOT_OCCUPIED": "This slot is occupied.",
+      "NOT_READY": "Production is not ready yet.",
+      "ALREADY_CLAIMED": "Reward was already claimed.",
+      "DAILY_CAP_REACHED": "Daily production cap reached.",
+      "CROP_NOT_FOUND": "Crop not found.",
+      "PRODUCTION_NOT_FOUND": "Garden production not found.",
+      "FIELD_NOT_FOUND": "Field slot not found.",
+      "GARDEN_NOT_FOUND": "Garden slot not found."
     }
   }
 }

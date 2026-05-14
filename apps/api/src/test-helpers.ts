@@ -293,6 +293,10 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.characterPetBoxPityCounter.deleteMany({});
   await prisma.characterPetShard.deleteMany({});
   await prisma.characterPet.deleteMany({});
+  // Phase 36.0 — Homestead resource production runtime.
+  await prisma.homesteadGardenPlot.deleteMany({});
+  await prisma.homesteadField.deleteMany({});
+  await prisma.homestead.deleteMany({});
   // Phase 14.3.E.1 — mini-battle session rows (encounterId pointer chỉ là
   // string, không FK; xoá trước encounter để giữ deterministic order).
   await prisma.tribulationMiniBattle.deleteMany({});

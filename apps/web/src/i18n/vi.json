@@ -104,7 +104,13 @@
       "sectBosses": "Không lấy được boss tông môn.",
       "opportunities": "Không lấy được danh sách cơ duyên.",
       "trialTowers": "Không lấy được danh sách tháp.",
-      "trialTowerAttempt": "Không leo được tầng tháp."
+      "trialTowerAttempt": "Không leo được tầng tháp.",
+      "homesteadState": "Không lấy được trạng thái Động Phủ",
+      "homesteadUpgrade": "Nâng cấp Động Phủ thất bại",
+      "homesteadPlant": "Trồng Linh Điền thất bại",
+      "homesteadHarvest": "Thu hoạch Linh Điền thất bại",
+      "homesteadGardenStart": "Khởi động Dược Viên thất bại",
+      "homesteadGardenClaim": "Nhận Dược Viên thất bại"
     },
     "accept": "Chấp nhận",
     "decline": "Từ chối",
@@ -412,7 +418,8 @@
       "cosmetics": "Y Quán",
       "dashboard": "Bảng Đk",
       "feedback": "Phản hồi",
-      "reportPlayer": "Tố cáo"
+      "reportPlayer": "Tố cáo",
+      "homestead": "Động Phủ"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -7713,6 +7720,62 @@
       "TYPE_INVALID": "Loại thông báo không hợp lệ.",
       "ERROR": "Có lỗi không mong muốn. Vui lòng thử lại.",
       "UNKNOWN": "Lỗi không xác định."
+    }
+  },
+  "homestead": {
+    "title": "Động Phủ",
+    "subtitle": "Linh Điền, Dược Viên và sản xuất nguyên liệu có giới hạn.",
+    "loading": "Đang khai mở động phủ…",
+    "empty": "Chưa có dữ liệu Động Phủ.",
+    "level": "Cấp {level}",
+    "offlineCap": "Sản xuất offline tối đa {hours} giờ, có cap ngày và cap kho.",
+    "energy": "Linh khí",
+    "fields": "Linh Điền",
+    "garden": "Dược Viên",
+    "maxTier": "Tier tối đa",
+    "upgradeTitle": "Nâng cấp động phủ",
+    "upgradeCost": "Lên cấp {level}: {linhThach} linh thạch + {energy} linh khí · cảnh giới {realm}",
+    "upgrade": "Nâng cấp",
+    "maxLevel": "Động phủ đã đạt cấp tối đa.",
+    "tabs": {
+      "fields": "Linh Điền",
+      "garden": "Dược Viên"
+    },
+    "selectCrop": "Chọn linh thảo",
+    "selectProduction": "Chọn sản xuất",
+    "costLine": "Tốn {energy} linh khí · cap {cap}/ngày · ra {item}",
+    "locked": "khóa",
+    "rare": "hiếm",
+    "slot": "Ô {n}",
+    "emptyField": "Ô đất trống, có thể gieo linh thảo.",
+    "emptyGarden": "Ô dược viên trống, có thể bắt đầu sản xuất.",
+    "plant": "Trồng",
+    "harvest": "Thu hoạch",
+    "startGarden": "Bắt đầu",
+    "claim": "Nhận",
+    "ready": "Sẵn sàng",
+    "toast": {
+      "upgraded": "Động Phủ đã nâng cấp.",
+      "harvested": "Thu hoạch +{qty} nguyên liệu.",
+      "claimed": "Dược Viên nhận +{qty} nguyên liệu."
+    },
+    "error": {
+      "UNKNOWN": "Thao tác Động Phủ thất bại.",
+      "IN_FLIGHT": "Đang xử lý thao tác trước.",
+      "MAX_LEVEL": "Động phủ đã đạt cấp tối đa.",
+      "REALM_TOO_LOW": "Cảnh giới chưa đủ.",
+      "HOMESTEAD_LEVEL_TOO_LOW": "Cấp động phủ chưa đủ.",
+      "INSUFFICIENT_FUNDS": "Không đủ linh thạch.",
+      "INSUFFICIENT_SPIRITUAL_ENERGY": "Không đủ linh khí động phủ.",
+      "SLOT_LOCKED": "Ô này chưa mở khóa.",
+      "SLOT_OCCUPIED": "Ô này đang bận.",
+      "NOT_READY": "Chưa đủ thời gian thu hoạch.",
+      "ALREADY_CLAIMED": "Phần thưởng đã được nhận.",
+      "DAILY_CAP_REACHED": "Đã chạm giới hạn sản lượng ngày.",
+      "CROP_NOT_FOUND": "Không tìm thấy linh thảo.",
+      "PRODUCTION_NOT_FOUND": "Không tìm thấy công thức Dược Viên.",
+      "FIELD_NOT_FOUND": "Không tìm thấy ô Linh Điền.",
+      "GARDEN_NOT_FOUND": "Không tìm thấy ô Dược Viên."
     }
   }
 }

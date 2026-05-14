@@ -293,6 +293,14 @@ async function logout(): Promise<void> {
           丹 {{ t('shell.nav.alchemy') }}
         </RouterLink>
         <RouterLink
+          to="/homestead"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+          data-testid="shell-nav-homestead"
+        >
+          府 {{ t('shell.nav.homestead') }}
+        </RouterLink>
+        <RouterLink
           to="/cultivation-method"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"

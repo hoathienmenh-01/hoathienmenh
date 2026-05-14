@@ -46,6 +46,7 @@ export type LedgerReason =
   | 'ACHIEVEMENT_REWARD'
   | 'ALCHEMY_COST'
   | 'ALCHEMY_FURNACE_UPGRADE'
+  | 'HOMESTEAD_UPGRADE'
   // Phase 12 Story PR-3 — Quest claim reward. Wire `QuestService.claim` qua
   // `applyTx` cho linhThach/tienNgoc với `refType='Quest'` + `refId=questKey`.
   // Idempotency lấy từ `QuestProgress.claimedAt` CAS guard (race-safe winner

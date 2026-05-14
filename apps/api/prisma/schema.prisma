@@ -523,9 +523,80 @@ model Character {
   petBoxPity     CharacterPetBoxPityCounter[]
   petBoxOpenLogs PetBoxOpenLog[]
 
+  /// Phase 36.0 — Động Phủ cá nhân + Linh Điền / Dược Viên runtime.
+  homestead Homestead?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// Phase 36.0 — Động Phủ cá nhân.
+///
+/// 1-1 với Character, lazy-create khi player gọi `GET /homestead`.
+/// `spiritualEnergy` là năng lượng vận hành nội bộ của động phủ, regen
+/// server-authoritative theo catalog và bị cap offline-hours để không tạo
+/// nguồn tài nguyên vô hạn.
+model Homestead {
+  id                       String   @id @default(cuid())
+  characterId              String   @unique
+  character                Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  level                    Int      @default(1)
+  spiritualEnergy          Int      @default(40)
+  spiritualEnergyUpdatedAt DateTime @default(now())
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  fields HomesteadField[]
+  garden HomesteadGardenPlot[]
+
+  @@index([characterId, level])
+}
+
+/// Phase 36.0 — Linh Điền plot.
+///
+/// Mỗi slot chỉ có tối đa 1 crop active/harvested record tại một thời điểm.
+/// Thu hoạch dùng CAS `harvestedAt IS NULL AND readyAt <= now` để chống spam
+/// song song; reward grant qua `InventoryService.grantTx`.
+model HomesteadField {
+  id            String     @id @default(cuid())
+  homesteadId   String
+  homestead     Homestead  @relation(fields: [homesteadId], references: [id], onDelete: Cascade)
+  slotIndex     Int
+  cropKey       String
+  outputItemKey String
+  expectedYield Int
+  plantedAt     DateTime   @default(now())
+  readyAt       DateTime
+  harvestedAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@unique([homesteadId, slotIndex])
+  @@index([homesteadId, harvestedAt])
+  @@index([readyAt])
+}
+
+/// Phase 36.0 — Dược Viên production plot.
+///
+/// Tương tự Linh Điền nhưng sản xuất nguyên liệu phụ luyện đan với daily cap
+/// riêng và yield nhỏ hơn để tránh lạm phát nguyên liệu hiếm.
+model HomesteadGardenPlot {
+  id            String     @id @default(cuid())
+  homesteadId   String
+  homestead     Homestead  @relation(fields: [homesteadId], references: [id], onDelete: Cascade)
+  slotIndex     Int
+  productionKey String
+  outputItemKey String
+  expectedYield Int
+  startedAt     DateTime   @default(now())
+  readyAt       DateTime
+  claimedAt     DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@unique([homesteadId, slotIndex])
+  @@index([homesteadId, claimedAt])
+  @@index([readyAt])
 }
 
 /// Phase 14.1.B — Async Arena Foundation profile.
