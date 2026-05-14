@@ -242,9 +242,9 @@ onBeforeUnmount(() => {
 
         <nav class="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1" aria-label="XT navigation">
           <section v-for="group in navGroups" :key="group.titleKey" class="space-y-2">
-            <h2 class="px-2 text-[10px] font-bold uppercase tracking-[0.28em] text-slate-500">
+            <p class="px-2 text-[10px] font-bold uppercase tracking-[0.28em] text-slate-500">
               {{ t(group.titleKey) }}
-            </h2>
+            </p>
             <div class="space-y-1">
               <RouterLink
                 v-for="item in group.items.filter((entry) => !entry.staffOnly || isStaff)"
