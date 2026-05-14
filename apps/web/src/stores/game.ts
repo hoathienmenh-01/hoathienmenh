@@ -25,6 +25,7 @@ export const useGameStore = defineStore('game', () => {
   const wsConnected = ref(false);
   const unreadMail = ref(0);
   const lastMailEvent = ref<MailNewEvent | null>(null);
+  let socketBound = false;
 
   const realmFullName = computed(() => {
     if (!character.value) return '';
@@ -78,6 +79,8 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function bindSocket(): void {
+    if (socketBound) return;
+    socketBound = true;
     const s = connect();
     s.on('connect', () => (wsConnected.value = true));
     s.on('disconnect', () => (wsConnected.value = false));
