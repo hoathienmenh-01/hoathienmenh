@@ -16,62 +16,70 @@ import { TitleService } from '../character/title.service';
 /**
  * Phase 44.1 — Onboarding auto-track action types. Hook callsites trong
  * gameplay (cultivation start/tick, combat win, dungeon enter/clear, mail
- * open, ...) gọi `notifyAction(characterId, type)` → auto-flip task
- * AVAILABLE → COMPLETED. Best-effort, fail-soft.
+ * open, ...) gọi `recordAction(characterId, type)` hoặc `notifyAction(...)`
+ * → auto-flip task AVAILABLE → COMPLETED. Best-effort, fail-soft.
+ *
+ * Naming convention: UPPERCASE_SNAKE_CASE — phù hợp convention thành
+ * viên `Action` enum khác trong codebase (ledger reason, mission action,
+ * ...). Lowercase alias giữ lại để backwards-compat nếu có caller cũ.
  *
  * Mapping `OnboardingActionType` → `taskKey[]` ở const dưới.
  */
 export type OnboardingActionType =
-  | 'daily_login_claim'
-  | 'inventory_view'
-  | 'cultivation_start'
-  | 'cultivation_tick'
-  | 'quest_view'
-  | 'quest_complete_tutorial'
-  | 'realm_view'
-  | 'equip_weapon'
-  | 'spiritual_root_view'
-  | 'combat_win'
-  | 'dungeon_enter'
-  | 'dungeon_clear'
-  | 'loot_collect'
-  | 'story_view'
-  | 'story_progress'
-  | 'npc_talk'
-  | 'sect_view'
-  | 'chat_open'
-  | 'mail_open'
-  | 'artifact_view'
-  | 'elemental_view'
-  | 'material_collect'
-  | 'dashboard_view'
-  | 'next_action_view';
+  | 'DAILY_LOGIN_CLAIM'
+  | 'INVENTORY_OPEN'
+  | 'CULTIVATION_START'
+  | 'CULTIVATION_TICK'
+  | 'QUEST_VIEW'
+  | 'QUEST_COMPLETE_TUTORIAL'
+  | 'REALM_VIEW'
+  | 'EQUIP_WEAPON'
+  | 'SPIRITUAL_ROOT_VIEW'
+  | 'COMBAT_WIN'
+  | 'DUNGEON_ENTER'
+  | 'DUNGEON_CLEAR'
+  | 'LOOT_COLLECT'
+  | 'STORY_VIEW'
+  | 'STORY_PROGRESS'
+  | 'NPC_TALK'
+  | 'SECT_VIEW'
+  | 'CHAT_OPEN'
+  | 'MAIL_OPEN'
+  | 'ARTIFACT_VIEW'
+  | 'ELEMENTAL_VIEW'
+  | 'MATERIAL_COLLECT'
+  | 'DASHBOARD_VIEW'
+  | 'NEXT_ACTION_VIEW'
+  | 'PROFILE_OPEN';
 
 const ONBOARDING_ACTION_TO_TASKS: Record<OnboardingActionType, string[]> = {
-  daily_login_claim: ['d1_claim_daily_login'],
-  inventory_view: ['d1_open_inventory'],
-  cultivation_start: ['d1_first_cultivation'],
-  cultivation_tick: ['d2_cultivate_30min'],
-  quest_view: ['d1_view_quest'],
-  quest_complete_tutorial: ['d1_finish_tutorial_quest'],
-  realm_view: ['d2_check_realm'],
-  equip_weapon: ['d2_equip_weapon'],
-  spiritual_root_view: ['d2_check_spiritual_root'],
-  combat_win: ['d3_first_combat_win'],
-  dungeon_enter: ['d3_enter_dungeon'],
-  dungeon_clear: ['d3_clear_dungeon'],
-  loot_collect: ['d3_check_drop_loot'],
-  story_view: ['d4_open_story_v2'],
-  story_progress: ['d4_complete_story_step'],
-  npc_talk: ['d4_talk_npc'],
-  sect_view: ['d5_view_sect_list'],
-  chat_open: ['d5_check_chat'],
-  mail_open: ['d5_check_mail'],
-  artifact_view: ['d6_view_artifact'],
-  elemental_view: ['d6_check_elemental'],
-  material_collect: ['d6_collect_material'],
-  dashboard_view: ['d7_review_dashboard'],
-  next_action_view: ['d7_check_next_action'],
+  DAILY_LOGIN_CLAIM: ['d1_claim_daily_login'],
+  INVENTORY_OPEN: ['d1_open_inventory'],
+  CULTIVATION_START: ['d1_first_cultivation'],
+  CULTIVATION_TICK: ['d2_cultivate_30min'],
+  QUEST_VIEW: ['d1_view_quest'],
+  QUEST_COMPLETE_TUTORIAL: ['d1_finish_tutorial_quest'],
+  REALM_VIEW: ['d2_check_realm'],
+  EQUIP_WEAPON: ['d2_equip_weapon'],
+  SPIRITUAL_ROOT_VIEW: ['d2_check_spiritual_root'],
+  COMBAT_WIN: ['d3_first_combat_win'],
+  DUNGEON_ENTER: ['d3_enter_dungeon'],
+  DUNGEON_CLEAR: ['d3_clear_dungeon'],
+  LOOT_COLLECT: ['d3_check_drop_loot'],
+  STORY_VIEW: ['d4_open_story_v2'],
+  STORY_PROGRESS: ['d4_complete_story_step'],
+  NPC_TALK: ['d4_talk_npc'],
+  SECT_VIEW: ['d5_view_sect_list'],
+  CHAT_OPEN: ['d5_check_chat'],
+  MAIL_OPEN: ['d5_check_mail'],
+  ARTIFACT_VIEW: ['d6_view_artifact'],
+  ELEMENTAL_VIEW: ['d6_check_elemental'],
+  MATERIAL_COLLECT: ['d6_collect_material'],
+  DASHBOARD_VIEW: ['d7_review_dashboard'],
+  NEXT_ACTION_VIEW: ['d7_check_next_action'],
+  // PROFILE_OPEN — 1 trigger 2 task (xem profile lúc đầu ≡ review realm +
+  // dashboard panel). Day-gating guả rằng task LOCKED sẽ không flip.
+  PROFILE_OPEN: ['d2_check_realm', 'd7_review_dashboard'],
 };
 
 /**
@@ -201,19 +209,23 @@ export class OnboardingQuestService {
    *
    * Không grant reward ở đây — player phải call `claimTask(taskKey)` để
    * nhận. Auto-track chỉ flip status.
+   *
+   * @returns string[] danh sách taskKey vừa flip AVAILABLE → COMPLETED.
+   *   Empty nếu không flip gì (task LOCKED, đã COMPLETED, hoặc progress
+   *   rows chưa tồn tại).
    */
-  async notifyAction(
+  async recordAction(
     characterId: string,
     actionType: OnboardingActionType,
-  ): Promise<void> {
+  ): Promise<string[]> {
     try {
       const taskKeys = ONBOARDING_ACTION_TO_TASKS[actionType];
-      if (!taskKeys || taskKeys.length === 0) return;
+      if (!taskKeys || taskKeys.length === 0) return [];
       // Skip nếu chưa có progress rows (player chưa từng mở onboarding).
       const hasAny = await this.prisma.characterOnboardingTaskProgress.count({
         where: { characterId, taskKey: { in: taskKeys } },
       });
-      if (hasAny === 0) return;
+      if (hasAny === 0) return [];
       const now = new Date();
       const flipped: string[] = [];
       for (const taskKey of taskKeys) {
@@ -223,7 +235,7 @@ export class OnboardingQuestService {
         });
         if (res.count === 1) flipped.push(taskKey);
       }
-      if (flipped.length === 0) return;
+      if (flipped.length === 0) return flipped;
       // Day promote: bất kỳ task flip → mark day IN_PROGRESS nếu chưa.
       const dayNumbers = new Set<number>();
       for (const taskKey of flipped) {
@@ -239,11 +251,25 @@ export class OnboardingQuestService {
       }
       // Cascade unlock day N+1 nếu day N vừa hết tasks.
       await this.ensureProgressRows(characterId);
-    } catch (e) {
+      return flipped;
+    } catch (e: unknown) {
       this.logger.warn(
-        `notifyAction characterId=${characterId} action=${actionType} failed: ${(e as Error).message}`,
+        `recordAction characterId=${characterId} action=${actionType} failed: ${(e as Error).message}`,
       );
+      return [];
     }
+  }
+
+  /**
+   * Phase 44.1 — Fire-and-forget alias of `recordAction` for callers that
+   * only need the side-effect (auto-flip) and don't care which tasks moved.
+   * Returning `void` keeps integration easier for non-test callers.
+   */
+  async notifyAction(
+    characterId: string,
+    actionType: OnboardingActionType,
+  ): Promise<void> {
+    await this.recordAction(characterId, actionType);
   }
 
   // ---------------------------------------------------------------------------
@@ -686,27 +712,10 @@ export class OnboardingQuestService {
             data: { exp: { increment: exp } },
           });
         }
-        // Phase 44.1 — Day 7 final task có titleKey → unlock vào Title system
-        // atomically. Idempotent (tx CAS createMany skipDuplicates).
-        if (taskDef.reward.titleKey) {
-          try {
-            await this.title.unlockTitleTx(
-              tx,
-              characterId,
-              taskDef.reward.titleKey,
-              'onboarding',
-            );
-          } catch (e) {
-            if (e instanceof TitleError && e.code === 'TITLE_NOT_FOUND') {
-              // Title chưa đăng ký trong catalog — giữ cosmetic, log warn.
-              this.logger.warn(
-                `onboarding title ${taskDef.reward.titleKey} not in catalog`,
-              );
-            } else {
-              throw e;
-            }
-          }
-        }
+        // Phase 44.1 — Title unlock làm fail-soft sau khi tx commit ở block
+        // dưới (nếu titles service inject). Giữ in-tx scope chỉ cho các
+        // reward tài chính (linh thạch + exp) — title cosmetic không đáng
+        // rollback toàn bộ reward khi catalog miss.
         claimed = true;
     });
 

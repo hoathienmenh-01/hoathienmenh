@@ -6,7 +6,6 @@ import { WebPushController } from './web-push.controller';
 import { WebPushDailyReminderScheduler } from './web-push-daily-reminder.scheduler';
 import { WebPushService } from './web-push.service';
 import { WebPushTriggerService } from './web-push-trigger.service';
-import { WebPushDailyReminderScheduler } from './web-push-daily-reminder.scheduler';
 
 /**
  * Phase PWA-1 — Web Push module.
@@ -19,7 +18,12 @@ import { WebPushDailyReminderScheduler } from './web-push-daily-reminder.schedul
 @Module({
   imports: [AuthModule, FeatureFlagModule],
   controllers: [WebPushController],
-  providers: [WebPushService, WebPushDailyReminderScheduler, PrismaService],
-  exports: [WebPushService],
+  providers: [
+    WebPushService,
+    WebPushTriggerService,
+    WebPushDailyReminderScheduler,
+    PrismaService,
+  ],
+  exports: [WebPushService, WebPushTriggerService],
 })
 export class WebPushModule {}

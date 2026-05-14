@@ -6,6 +6,7 @@ import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { WebPushService } from '../web-push/web-push.service';
+import { WebPushTriggerService } from '../web-push/web-push-trigger.service';
 
 export class MailError extends Error {
   constructor(
@@ -124,6 +125,9 @@ export class MailService {
     private readonly inventory: InventoryService,
     private readonly realtime: RealtimeService,
     @Optional() private readonly webPush?: WebPushService,
+    // Phase 44.1 — high-level web push trigger composer. Optional inject
+    // — test bootstrap có thể bỏ.
+    @Optional() private readonly webPushTrigger?: WebPushTriggerService,
   ) {}
 
   async inbox(userId: string, opts?: { mailType?: MailType }): Promise<MailView[]> {
@@ -470,7 +474,7 @@ export class MailService {
           take: chars.length,
           select: { id: true, recipientId: true },
         });
-      } catch (e) {
+      } catch (e: unknown) {
         this.logger.warn(
           `mail broadcast: failed to fetch mail ids for push: ${(e as Error).message}`,
         );
@@ -496,7 +500,7 @@ export class MailService {
             subject: input.subject,
             senderName: input.senderName ?? 'Thiên Đạo Sứ Giả',
           })
-          .catch((e) =>
+          .catch((e: unknown) =>
             this.logger.warn(
               `webPush.notifyMailNew (broadcast) failed: ${(e as Error).message}`,
             ),

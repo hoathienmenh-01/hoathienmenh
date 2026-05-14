@@ -56,6 +56,7 @@ import { TerritoryService } from '../territory/territory.service';
 import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
 import { DropEconomyService } from '../economy/drop-economy.service';
 import { WebPushService } from '../web-push/web-push.service';
+import { WebPushTriggerService } from '../web-push/web-push-trigger.service';
 
 export class BossError extends Error {
   constructor(
@@ -183,6 +184,9 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     private readonly liveOpsEvents?: LiveOpsEventSchedulerService,
     @Optional() private readonly dropEconomy?: DropEconomyService,
     @Optional() private readonly webPush?: WebPushService,
+    // Phase 44.1 — high-level web push trigger composer. Optional inject
+    // — test bootstrap có thể bỏ. Fail-soft trong service.
+    @Optional() private readonly webPushTrigger?: WebPushTriggerService,
   ) {}
 
   onModuleInit(): void {
@@ -875,7 +879,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
           level: created.level,
           regionKey: created.regionKey,
         })
-        .catch((e) =>
+        .catch((e: unknown) =>
           this.logger.warn(
             `webPush.notifyBossSpawn failed: ${(e as Error).message}`,
           ),
