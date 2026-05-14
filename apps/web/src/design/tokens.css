@@ -1,12 +1,21 @@
 /* Cổ phong thuỷ mặc — design tokens (file 01 §4.2 rút gọn) */
 :root {
-  --m-bg-base: #1b150a;
-  --m-bg-paper: #efe7d2;
+  --m-bg-base: #06111f;
+  --m-bg-paper: #0f1d33;
   --m-ink-strong: #1b150a;
   --m-ink-mid: #3a2f1c;
   --m-ink-soft: #8a6e34;
-  --m-gold: #bfa66a;
-  --m-gold-soft: #d9c187;
+  --m-gold: #f6d98d;
+  --m-gold-soft: #fde9ad;
+  --xt-bg-primary: #06111f;
+  --xt-bg-surface: rgba(15, 29, 51, 0.72);
+  --xt-bg-glass: rgba(15, 23, 42, 0.58);
+  --xt-accent-jade: #5eead4;
+  --xt-accent-cyan: #67e8f9;
+  --xt-accent-violet: #a78bfa;
+  --xt-accent-gold: #f6d98d;
+  --xt-danger-boss: #fb7185;
+  --xt-border-glow: rgba(103, 232, 249, 0.24);
   --m-danger: #b13a3a;
   --m-success: #4f7a3a;
 

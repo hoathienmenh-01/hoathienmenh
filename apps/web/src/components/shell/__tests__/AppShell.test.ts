@@ -16,7 +16,7 @@ import { setActivePinia, createPinia } from 'pinia';
 const routerPushMock = vi.fn();
 vi.mock('vue-router', () => ({
   useRouter: () => ({ push: routerPushMock }),
-  useRoute: () => ({ fullPath: '/home' }),
+  useRoute: () => ({ fullPath: '/home', path: '/home' }),
   RouterLink: {
     name: 'RouterLinkStub',
     props: ['to'],
@@ -38,6 +38,9 @@ type FakeChar = {
   stamina: number;
   staminaMax: number;
   linhThach: string;
+  tienNgoc: number;
+  power: number;
+  title?: string | null;
   role: 'PLAYER' | 'MOD' | 'ADMIN';
 };
 
@@ -89,7 +92,7 @@ const i18n = createI18n({
   fallbackWarn: false,
   messages: {
     vi: {
-      app: { brand: 'Xuân Tôi', tagline: 'Con đường trường sinh bắt đầu từ đây' },
+      app: { brand: 'XT', tagline: 'Tu Tiên Lộ' },
       shell: {
         stamina: 'Nguyên khí',
         wsOn: 'Tuyến linh',
@@ -97,6 +100,21 @@ const i18n = createI18n({
         nav: {
           toggle: 'Mở menu',
           home: 'Đạo Cung',
+          dashboard: 'Dashboard',
+          character: 'Nhân Vật',
+          cultivation: 'Tu Luyện',
+          breakthrough: 'Đột Phá',
+          bodyCultivation: 'Luyện Thể',
+          cultivationMethod: 'Công Pháp',
+          spiritualRoot: 'Linh Căn',
+          skillBook: 'Kỹ Năng',
+          alchemy: 'Luyện Đan',
+          equipment: 'Trang Bị',
+          pets: 'Linh Thú',
+          secretRealms: 'Bí Cảnh',
+          dungeonRun: 'Phụ Bản',
+          roguelike: 'Ảo Cảnh',
+          tower: 'Đăng Tiên Tháp',
           dungeon: 'Kiếm Mộ',
           inventory: 'Tàng Bảo Các',
           market: 'Hắc Thị',
@@ -105,14 +123,22 @@ const i18n = createI18n({
           boss: 'Yêu Vương',
           talents: 'Ngộ Đạo',
           missions: 'Nhiệm Vụ',
+          auction: 'Đấu Giá',
+          events: 'Sự Kiện',
+          achievements: 'Thành Tựu',
+          social: 'Đạo Hữu',
           mail: 'Thư Truyền',
+          notificationSettings: 'Thông Báo',
           giftcode: 'Quà Tặng',
           leaderboard: 'Bảng Phong',
           topup: 'Nạp Tiên Ngọc',
           activity: 'Sổ Đạo',
+          feedback: 'Phản hồi',
+          reportPlayer: 'Tố cáo',
           settings: 'Tâm Pháp',
           admin: 'Đại Diện',
         },
+        group: { core: 'Chính', cultivation: 'Tu Luyện', activity: 'Hoạt Động', social: 'Xã Hội', system: 'Hệ Thống' },
         badge: {
           breakthroughReady: 'Sẵn sàng đột phá',
           bossActive: 'Yêu vương xuất hiện',
@@ -120,6 +146,7 @@ const i18n = createI18n({
         },
       },
       home: { logout: 'Xuất quan' },
+      dashboard: { progression: { linhThach: 'Linh Thạch', tienNgoc: 'Tiên Ngọc' } },
     },
   },
 });
@@ -134,6 +161,9 @@ function buildChar(overrides: Partial<FakeChar> = {}): FakeChar {
     stamina: 60,
     staminaMax: 100,
     linhThach: '1234',
+    tienNgoc: 88,
+    power: 999,
+    title: null,
     role: 'PLAYER',
     ...overrides,
   };
@@ -326,6 +356,16 @@ describe('AppShell — staff-only admin link + cultivating color + logout', () =
     mountShell();
     await flushPromises();
     expect(document.querySelector<HTMLElement>('.bg-emerald-400')).toBeNull();
+  });
+
+  it('topbar resource chips render', async () => {
+    gameState.character = buildChar({ linhThach: '4567', tienNgoc: 99, power: 12345 });
+    mountShell();
+    await flushPromises();
+    const chips = document.querySelector<HTMLElement>('[data-testid="shell-resource-chips"]');
+    expect(chips?.textContent).toContain('4567');
+    expect(chips?.textContent).toContain('99');
+    expect(chips?.textContent).toContain('12345');
   });
 
   it('wsConnected = true → pill "Tuyến linh" emerald; = false → "Mất liên" red', async () => {

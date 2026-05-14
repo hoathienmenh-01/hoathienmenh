@@ -1,8 +1,8 @@
 {
   "app": {
-    "title": "Xuân Tôi · Đạo Môn",
-    "brand": "Đạo Môn",
-    "tagline": "Trải nghiệm tu tiên MUD - Cổ phong"
+    "title": "XT · Tu Tiên Lộ",
+    "brand": "XT",
+    "tagline": "Tu Tiên Lộ · Linh khí hiện đại"
   },
   "common": {
     "loading": "Đang xử lý…",
@@ -327,7 +327,7 @@
     "alinhName": "A Linh",
     "alinhRole": "Linh Đồng Dẫn Lộ",
     "step1": {
-      "title": "Chào mừng đạo hữu vào Đạo Môn",
+      "title": "Chào mừng đạo hữu vào XT",
       "lines": [
         "Ta là A Linh, linh đồng dẫn lộ của Thiên Đạo Sứ Giả.",
         "Đạo hữu vừa thoát phàm trần, sẽ cùng ta khởi đầu hành trình tu tiên.",
@@ -379,7 +379,13 @@
     "wsOn": "WS ✓",
     "wsOff": "WS ×",
     "nav": {
-      "home": "Đạo Tràng",
+      "home": "Trang Chủ",
+      "character": "Nhân Vật",
+      "cultivation": "Tu Luyện",
+      "equipment": "Trang Bị",
+      "secretRealms": "Bí Cảnh",
+      "tower": "Đăng Tiên Tháp",
+      "auction": "Đấu Giá",
       "dungeon": "Luyện Khí Đường",
       "inventory": "Linh Bảo Các",
       "loadouts": "Bộ Trang Bị Nhanh",
@@ -420,10 +426,17 @@
       "shopPacks": "Gói Tài Nguyên",
       "bodyCultivation": "Luyện Thể",
       "cosmetics": "Y Quán",
-      "dashboard": "Bảng Đk",
+      "dashboard": "Dashboard",
       "feedback": "Phản hồi",
       "reportPlayer": "Tố cáo",
       "homestead": "Động Phủ"
+    },
+    "group": {
+      "core": "Chính",
+      "cultivation": "Tu Luyện",
+      "activity": "Hoạt Động",
+      "social": "Xã Hội",
+      "system": "Hệ Thống"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -6990,8 +7003,8 @@
     "noIssues": "Không có vấn đề chưa giải quyết."
   },
   "dashboard": {
-    "title": "Bảng Điều Khiển",
-    "subtitle": "Tổng quan nhân vật, nhật vụ trong ngày và truy cập nhanh.",
+    "title": "Dashboard Tu Tiên",
+    "subtitle": "Tổng quan linh lực, tài nguyên, nhật vụ và lối tắt chức năng của XT.",
     "character": {
       "title": "Nhân vật",
       "name": "Tên",
@@ -7062,11 +7075,38 @@
       "feedback": "Phản hồi",
       "settings": "Cài đặt"
     },
+    "stat": {
+      "power": "Lực Chiến",
+      "powerDesc": "Tổng hợp cảnh giới, đạo cơ và trang bị.",
+      "spirit": "Linh Lực",
+      "spiritDesc": "Nền tảng pháp thuật và tu luyện.",
+      "realm": "Cảnh Giới",
+      "realmDesc": "Bậc tu vi hiện tại của nhân vật.",
+      "body": "Luyện Thể",
+      "bodyDesc": "Cường hóa thân thể và sinh tồn.",
+      "pill": "Đan Dược",
+      "pillDesc": "Luyện đan hỗ trợ nhập định và đột phá.",
+      "tower": "Đăng Tiên Tháp",
+      "towerDesc": "Thử thách tầng tháp và nhận vinh dự."
+    },
+    "right": {
+      "title": "Thiên Cơ Hôm Nay",
+      "subtitle": "Sự kiện, boss, bí cảnh, trang bị và thư mới.",
+      "events": "Sự kiện đang diễn ra",
+      "boss": "Boss thế giới",
+      "realms": "Bí cảnh",
+      "equipment": "Trang bị nổi bật",
+      "mail": "Thư / thông báo"
+    },
     "errors": {
       "UNKNOWN": "Không thể tải bảng điều khiển. Vui lòng thử lại.",
       "NO_CHARACTER": "Bạn chưa có nhân vật.",
       "UNAUTHENTICATED": "Vui lòng đăng nhập lại."
     }
+  },
+  "xianxiaPlaceholder": {
+    "title": "Chức năng đang được phát triển",
+    "description": "Khu vực này đã có route an toàn để navigation không bị chết. UI chi tiết sẽ được bổ sung trong phase tiếp theo."
   },
   "feedback": {
     "title": "Trung tâm Phản hồi",
@@ -7813,7 +7853,7 @@
     "unsupported": "Trình duyệt hiện không hỗ trợ Web Push. Hãy dùng Chrome / Edge / Firefox phiên bản mới hoặc trình duyệt máy tính.",
     "permissionDenied": "Trình duyệt đang chặn thông báo cho trang này. Mở cài đặt trình duyệt để cho phép thông báo rồi tải lại trang.",
     "masterTitle": "Bật trên thiết bị này",
-    "masterDescription": "Cho phép Xuân Tôi gửi thông báo đẩy đến trình duyệt.",
+    "masterDescription": "Cho phép XT gửi thông báo đẩy đến trình duyệt.",
     "enable": "Bật",
     "disable": "Tắt",
     "perTypeTitle": "Loại thông báo",
