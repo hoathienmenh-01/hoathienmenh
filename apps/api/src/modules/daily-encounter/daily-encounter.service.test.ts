@@ -189,4 +189,38 @@ describe('DailyEncounterService lifecycle', () => {
     expect(ledger.length).toBeGreaterThan(0);
     expect(ledger[0]!.currency).toBe(CurrencyKind.LINH_THACH);
   });
+
+  // Phase 44.1 — parallel claim race (test #13: anti-spam claim).
+  it('parallel claim 5x → chỉ 1 winner; ledger chỉ 1 entry', async () => {
+    const { userId, characterId } = await makeUserChar(prisma);
+    await daily.today(userId);
+    await daily.accept(userId);
+    await daily.complete(userId);
+    const results = await Promise.all([
+      daily.claim(userId).catch(() => null),
+      daily.claim(userId).catch(() => null),
+      daily.claim(userId).catch(() => null),
+      daily.claim(userId).catch(() => null),
+      daily.claim(userId).catch(() => null),
+    ]);
+    const winners = results.filter((r) => r && r.claimed === true);
+    expect(winners).toHaveLength(1);
+    const ledger = await prisma.currencyLedger.findMany({
+      where: { characterId, reason: 'ENCOUNTER_CLAIM' },
+    });
+    expect(ledger).toHaveLength(1);
+  });
+
+  // Phase 44.1 — daily cap (test #12 mirror): chỉ 1 encounter / ngày, không
+  // thể tạo encounter mới khi `today()` được gọi sau khi đã CLAIMED.
+  it('daily cap — sau CLAIMED, today() trả về cùng row CLAIMED', async () => {
+    const { userId } = await makeUserChar(prisma);
+    await daily.today(userId);
+    await daily.accept(userId);
+    await daily.complete(userId);
+    const r = await daily.claim(userId);
+    const after = await daily.today(userId);
+    expect(after.status).toBe('CLAIMED');
+    expect(after.encounterKey).toBe(r.view.encounterKey);
+  });
 });

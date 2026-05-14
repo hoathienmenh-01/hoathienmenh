@@ -15,6 +15,7 @@ import { OnboardingQuestService } from './onboarding-quest.service';
  * Reuse Phase 12 services qua module import singleton:
  *   - `CurrencyService` từ `CharacterModule` cho
  *     `applyTx('ONBOARDING_TASK_CLAIM')`.
+ *   - Phase 44.1 — `TitleService` từ `CharacterModule` cho Day 7 unlock title.
  */
 @Module({
   imports: [AuthModule, CharacterModule],

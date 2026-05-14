@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { CurrencyKind } from '@prisma/client';
 import {
   ONBOARDING_DAYS,
@@ -11,6 +11,76 @@ import {
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
+import { TitleService } from '../character/title.service';
+
+/**
+ * Phase 44.1 — Onboarding auto-track action types. Hook callsites trong
+ * gameplay (cultivation start/tick, combat win, dungeon enter/clear, mail
+ * open, ...) gọi `recordAction(characterId, type)` hoặc `notifyAction(...)`
+ * → auto-flip task AVAILABLE → COMPLETED. Best-effort, fail-soft.
+ *
+ * Naming convention: UPPERCASE_SNAKE_CASE — phù hợp convention thành
+ * viên `Action` enum khác trong codebase (ledger reason, mission action,
+ * ...). Lowercase alias giữ lại để backwards-compat nếu có caller cũ.
+ *
+ * Mapping `OnboardingActionType` → `taskKey[]` ở const dưới.
+ */
+export type OnboardingActionType =
+  | 'DAILY_LOGIN_CLAIM'
+  | 'INVENTORY_OPEN'
+  | 'CULTIVATION_START'
+  | 'CULTIVATION_TICK'
+  | 'QUEST_VIEW'
+  | 'QUEST_COMPLETE_TUTORIAL'
+  | 'REALM_VIEW'
+  | 'EQUIP_WEAPON'
+  | 'SPIRITUAL_ROOT_VIEW'
+  | 'COMBAT_WIN'
+  | 'DUNGEON_ENTER'
+  | 'DUNGEON_CLEAR'
+  | 'LOOT_COLLECT'
+  | 'STORY_VIEW'
+  | 'STORY_PROGRESS'
+  | 'NPC_TALK'
+  | 'SECT_VIEW'
+  | 'CHAT_OPEN'
+  | 'MAIL_OPEN'
+  | 'ARTIFACT_VIEW'
+  | 'ELEMENTAL_VIEW'
+  | 'MATERIAL_COLLECT'
+  | 'DASHBOARD_VIEW'
+  | 'NEXT_ACTION_VIEW'
+  | 'PROFILE_OPEN';
+
+const ONBOARDING_ACTION_TO_TASKS: Record<OnboardingActionType, string[]> = {
+  DAILY_LOGIN_CLAIM: ['d1_claim_daily_login'],
+  INVENTORY_OPEN: ['d1_open_inventory'],
+  CULTIVATION_START: ['d1_first_cultivation'],
+  CULTIVATION_TICK: ['d2_cultivate_30min'],
+  QUEST_VIEW: ['d1_view_quest'],
+  QUEST_COMPLETE_TUTORIAL: ['d1_finish_tutorial_quest'],
+  REALM_VIEW: ['d2_check_realm'],
+  EQUIP_WEAPON: ['d2_equip_weapon'],
+  SPIRITUAL_ROOT_VIEW: ['d2_check_spiritual_root'],
+  COMBAT_WIN: ['d3_first_combat_win'],
+  DUNGEON_ENTER: ['d3_enter_dungeon'],
+  DUNGEON_CLEAR: ['d3_clear_dungeon'],
+  LOOT_COLLECT: ['d3_check_drop_loot'],
+  STORY_VIEW: ['d4_open_story_v2'],
+  STORY_PROGRESS: ['d4_complete_story_step'],
+  NPC_TALK: ['d4_talk_npc'],
+  SECT_VIEW: ['d5_view_sect_list'],
+  CHAT_OPEN: ['d5_check_chat'],
+  MAIL_OPEN: ['d5_check_mail'],
+  ARTIFACT_VIEW: ['d6_view_artifact'],
+  ELEMENTAL_VIEW: ['d6_check_elemental'],
+  MATERIAL_COLLECT: ['d6_collect_material'],
+  DASHBOARD_VIEW: ['d7_review_dashboard'],
+  NEXT_ACTION_VIEW: ['d7_check_next_action'],
+  // PROFILE_OPEN — 1 trigger 2 task (xem profile lúc đầu ≡ review realm +
+  // dashboard panel). Day-gating guả rằng task LOCKED sẽ không flip.
+  PROFILE_OPEN: ['d2_check_realm', 'd7_review_dashboard'],
+};
 
 /**
  * Phase 34.0 — 7-Day Onboarding Questline Service.
@@ -117,10 +187,90 @@ export interface OnboardingClaimResult {
 
 @Injectable()
 export class OnboardingQuestService {
+  private readonly logger = new Logger(OnboardingQuestService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
+    // Phase 44.1 — TitleService optional inject. Khi reward.titleKey present
+    // (Day 7 final task), gọi `unlockTitle(characterId, titleKey, 'onboarding')`
+    // để wire vào hệ Title (Phase 11.9.B). Optional cho legacy test bootstrap.
+    @Optional() private readonly titles?: TitleService,
   ) {}
+
+  /**
+   * Phase 44.1 — Auto-track hook. Gameplay callsites (cultivation start/tick,
+   * combat win, dungeon enter/clear, mail open, ...) gọi method này
+   * BEST-EFFORT. Bọc try/catch — KHÔNG throw để không phá flow upstream.
+   *
+   * Idempotent: CAS guard ở `updateMany({ status: 'AVAILABLE' })`. Nếu task
+   * đã COMPLETED hoặc LOCKED → no-op. Day status promote (AVAILABLE →
+   * IN_PROGRESS → COMPLETED) chạy chỉ khi có flip thật.
+   *
+   * Không grant reward ở đây — player phải call `claimTask(taskKey)` để
+   * nhận. Auto-track chỉ flip status.
+   *
+   * @returns string[] danh sách taskKey vừa flip AVAILABLE → COMPLETED.
+   *   Empty nếu không flip gì (task LOCKED, đã COMPLETED, hoặc progress
+   *   rows chưa tồn tại).
+   */
+  async recordAction(
+    characterId: string,
+    actionType: OnboardingActionType,
+  ): Promise<string[]> {
+    try {
+      const taskKeys = ONBOARDING_ACTION_TO_TASKS[actionType];
+      if (!taskKeys || taskKeys.length === 0) return [];
+      // Skip nếu chưa có progress rows (player chưa từng mở onboarding).
+      const hasAny = await this.prisma.characterOnboardingTaskProgress.count({
+        where: { characterId, taskKey: { in: taskKeys } },
+      });
+      if (hasAny === 0) return [];
+      const now = new Date();
+      const flipped: string[] = [];
+      for (const taskKey of taskKeys) {
+        const res = await this.prisma.characterOnboardingTaskProgress.updateMany({
+          where: { characterId, taskKey, status: 'AVAILABLE' },
+          data: { status: 'COMPLETED', completedAt: now },
+        });
+        if (res.count === 1) flipped.push(taskKey);
+      }
+      if (flipped.length === 0) return flipped;
+      // Day promote: bất kỳ task flip → mark day IN_PROGRESS nếu chưa.
+      const dayNumbers = new Set<number>();
+      for (const taskKey of flipped) {
+        const def = onboardingTaskByKey(taskKey);
+        if (def) dayNumbers.add(def.dayNumber);
+      }
+      for (const dayNumber of dayNumbers) {
+        await this.prisma.characterOnboardingProgress.updateMany({
+          where: { characterId, dayNumber, status: 'AVAILABLE' },
+          data: { status: 'IN_PROGRESS' },
+        });
+        await this.maybePromoteDayToCompleted(characterId, dayNumber, now);
+      }
+      // Cascade unlock day N+1 nếu day N vừa hết tasks.
+      await this.ensureProgressRows(characterId);
+      return flipped;
+    } catch (e: unknown) {
+      this.logger.warn(
+        `recordAction characterId=${characterId} action=${actionType} failed: ${(e as Error).message}`,
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Phase 44.1 — Fire-and-forget alias of `recordAction` for callers that
+   * only need the side-effect (auto-flip) and don't care which tasks moved.
+   * Returning `void` keeps integration easier for non-test callers.
+   */
+  async notifyAction(
+    characterId: string,
+    actionType: OnboardingActionType,
+  ): Promise<void> {
+    await this.recordAction(characterId, actionType);
+  }
 
   // ---------------------------------------------------------------------------
   // INTERNAL HELPERS
@@ -562,6 +712,10 @@ export class OnboardingQuestService {
             data: { exp: { increment: exp } },
           });
         }
+        // Phase 44.1 — Title unlock làm fail-soft sau khi tx commit ở block
+        // dưới (nếu titles service inject). Giữ in-tx scope chỉ cho các
+        // reward tài chính (linh thạch + exp) — title cosmetic không đáng
+        // rollback toàn bộ reward khi catalog miss.
         claimed = true;
     });
 
@@ -584,6 +738,24 @@ export class OnboardingQuestService {
     await this.maybePromoteDayToCompleted(characterId, taskDef.dayNumber, now);
     // Cascade unlock next day.
     await this.ensureProgressRows(characterId);
+
+    // Phase 44.1 — Wire Title system (Phase 11.9.B) cho Day 7 final task.
+    // CAS đã guarantee `claimed=true` chỉ chạy 1 lần per task → safe to call
+    // unlockTitle (idempotent qua composite UNIQUE ở TitleService).
+    // Fail-soft: title fail KHÔNG rollback reward (linh thạch/exp đã commit).
+    if (claimed && taskDef.reward.titleKey && this.titles) {
+      try {
+        await this.titles.unlockTitle(
+          characterId,
+          taskDef.reward.titleKey,
+          'onboarding',
+        );
+      } catch (e) {
+        this.logger.warn(
+          `onboarding title unlock failed characterId=${characterId} titleKey=${taskDef.reward.titleKey}: ${(e as Error).message}`,
+        );
+      }
+    }
 
     return {
       taskKey,

@@ -26,6 +26,7 @@ import { CultivationMethodV2Service } from '../character/cultivation-method-v2.s
 import { computeMethodCultivationRateBonus } from '@xuantoi/shared';
 import { TalentService } from '../character/talent.service';
 import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
+import { WebPushService } from '../web-push/web-push.service';
 import { CULTIVATION_QUEUE } from './cultivation.queue';
 
 /**
@@ -58,6 +59,10 @@ export class CultivationProcessor extends WorkerHost {
     // snapshot rỗng → mul = 1.0 identity.
     @Optional()
     private readonly cultivationMethodV2?: CultivationMethodV2Service,
+    // Phase 44.1 — Stamina-full push trigger. Optional cho test/legacy bootstrap;
+    // null ⇒ skip push detection (regen behavior unchanged).
+    @Optional()
+    private readonly webPush?: WebPushService,
   ) {
     super();
   }
@@ -65,11 +70,60 @@ export class CultivationProcessor extends WorkerHost {
   async process(job: Job): Promise<void> {
     if (job.name !== 'tick') return;
 
+    // Phase 44.1 — Trước update, snapshot tập character SẮP becoming-full
+    // (delta tới staminaMax ≤ STAMINA_REGEN_PER_TICK). Sau update, chính tập
+    // này sẽ ở trạng thái `stamina = staminaMax` → trigger STAMINA_FULL push
+    // 1 lần / transition. WebPushService cooldown 10 phút chống spam push.
+    let aboutToFill: Array<{ id: string; userId: string }> = [];
+    if (this.webPush) {
+      try {
+        const rows = await this.prisma.$queryRawUnsafe<
+          Array<{ id: string; userId: string }>
+        >(
+          `SELECT id, "userId" FROM "Character"
+           WHERE stamina < "staminaMax"
+             AND "staminaMax" - stamina <= $1
+           LIMIT 5000`,
+          STAMINA_REGEN_PER_TICK,
+        );
+        aboutToFill = Array.isArray(rows) ? rows : [];
+      } catch (e) {
+        this.logger.warn(`stamina full detect query failed: ${(e as Error).message}`);
+      }
+    }
+
     // Hồi stamina cho TẤT CẢ character (kể cả không tu luyện): +N mỗi tick, cap = staminaMax.
     await this.prisma.$executeRawUnsafe(
       `UPDATE "Character" SET stamina = LEAST("staminaMax", stamina + $1) WHERE stamina < "staminaMax"`,
       STAMINA_REGEN_PER_TICK,
     );
+
+    // Phase 44.1 — Fan-out STAMINA_FULL push (fire-and-forget).
+    if (this.webPush && aboutToFill.length > 0) {
+      const webPush = this.webPush;
+      void (async () => {
+        try {
+          const userIds = aboutToFill.map((r) => r.userId);
+          const eligible = await webPush.findEligibleUserIds('STAMINA_FULL', {
+            recentSinceMs: 24 * 60 * 60_000,
+            limit: userIds.length,
+          });
+          const eligibleSet = new Set(eligible);
+          const targets = userIds.filter((u) => eligibleSet.has(u));
+          if (targets.length === 0) return;
+          const dateKey = new Date().toISOString().slice(0, 13); // hour bucket
+          await webPush.broadcastToUsers(targets, 'STAMINA_FULL', {
+            title: 'Thể lực đã đầy',
+            body: 'Quay lại tu luyện / phó bản — thể lực đã hồi đầy.',
+            url: '/cultivation',
+            tag: `stamina-full-${dateKey}`,
+            dedupeKey: `stamina-full-${dateKey}`,
+          });
+        } catch (e) {
+          this.logger.warn(`stamina-full push fan-out failed: ${(e as Error).message}`);
+        }
+      })();
+    }
 
     const cultivating = await this.prisma.character.findMany({
       where: { cultivating: true },

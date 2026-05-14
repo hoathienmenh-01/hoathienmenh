@@ -14,6 +14,7 @@ import { RewardCapService } from './modules/economy/reward-cap.service';
 import { StoryDungeonService } from './modules/story-dungeon/story-dungeon.service';
 import { Phase33StoryService } from './modules/story-v2/story-v2.service';
 import { OnboardingQuestService } from './modules/onboarding-quest/onboarding-quest.service';
+import { TitleService } from './modules/character/title.service';
 import { DailyEncounterService } from './modules/daily-encounter/daily-encounter.service';
 import { SecretRealmRuntimeService } from './modules/secret-realm-runtime/secret-realm-runtime.service';
 
@@ -505,7 +506,9 @@ export function makeOnboardingQuestService(prisma: PrismaService): {
   currency: CurrencyService;
 } {
   const currency = new CurrencyService(prisma);
-  const onboarding = new OnboardingQuestService(prisma, currency);
+  // Phase 44.1 — TitleService cần để Day 7 unlock title.
+  const title = new TitleService(prisma);
+  const onboarding = new OnboardingQuestService(prisma, currency, title);
   return { onboarding, currency };
 }
 

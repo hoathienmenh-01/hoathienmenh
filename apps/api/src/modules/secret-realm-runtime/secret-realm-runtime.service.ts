@@ -13,6 +13,14 @@ import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
 
 /**
+ * Phase 44.1 — UTC date key cho daily-limit window. Đồng nhất 1 ngày =
+ * 1 UTC day để tránh tz drift trên multi-region.
+ */
+function utcDateKey(d: Date = new Date()): string {
+  return d.toISOString().slice(0, 10);
+}
+
+/**
  * Phase 34.2 — Secret Realm / Bí Cảnh Runtime Service.
  *
  * Lifecycle:
@@ -45,6 +53,16 @@ export interface SecretRealmListEntry {
   cooldownHours: number;
   rewardProfile: { linhThach: number; exp: number };
   activeRunId: string | null;
+  /**
+   * Phase 44.1 — UI hint fields. UI dùng để hiển thị panel điều kiện vào
+   * bí cảnh trước khi nhấn `Enter`. Không thay đổi runtime gate logic.
+   */
+  realmOrderOk: boolean;
+  cooldownRemainingMs: number;
+  runsToday: number;
+  dailyRunsRemaining: number;
+  entryTicketItemKey: string | null;
+  rewardCaps: { linhThachMax: number; expMax: number };
 }
 
 export interface SecretRealmRunView {
@@ -98,6 +116,8 @@ export class SecretRealmRuntimeService {
     const realmOrder = (realmByKey(char.realmKey)?.order ?? -1) + 1;
     const lastByKey = new Map<string, Date>();
     const activeByKey = new Map<string, string>();
+    const todayCountByKey = new Map<string, number>();
+    const todayKey = utcDateKey();
     const rows = await this.prisma.characterSecretRealmRun.findMany({
       where: { characterId: char.id },
       orderBy: { startedAt: 'desc' },
@@ -116,7 +136,16 @@ export class SecretRealmRuntimeService {
       ) {
         activeByKey.set(r.secretRealmKey, r.id);
       }
+      // Daily-limit count: chỉ tính run được tạo trong UTC date hôm nay,
+      // bất kể status (kể cả ENTERED đang dở dang).
+      if (utcDateKey(r.startedAt) === todayKey) {
+        todayCountByKey.set(
+          r.secretRealmKey,
+          (todayCountByKey.get(r.secretRealmKey) ?? 0) + 1,
+        );
+      }
     }
+    const now = Date.now();
     return SECRET_REALMS.map((def): SecretRealmListEntry => {
       const gate = secretRealmGateStatusFor(def, {
         realmOrder,
@@ -128,6 +157,14 @@ export class SecretRealmRuntimeService {
         const r = rows.find((rr) => rr.id === activeRunId);
         status = r?.status === 'CLEARED' ? 'CLEARED' : 'ENTERED';
       }
+      const lastAt = lastByKey.get(def.key);
+      const cooldownRemainingMs = lastAt
+        ? Math.max(
+            0,
+            def.cooldownHours * 60 * 60 * 1000 - (now - lastAt.getTime()),
+          )
+        : 0;
+      const runsToday = todayCountByKey.get(def.key) ?? 0;
       return {
         key: def.key,
         nameVi: def.nameVi,
@@ -140,6 +177,18 @@ export class SecretRealmRuntimeService {
           exp: def.rewardProfile.exp,
         },
         activeRunId,
+        realmOrderOk: realmOrder >= def.requiredRealmOrder,
+        cooldownRemainingMs,
+        runsToday,
+        dailyRunsRemaining: Math.max(
+          0,
+          SECRET_REALM_REWARD_CAPS.dailyRunsPerRealm - runsToday,
+        ),
+        entryTicketItemKey: def.entryTicketItemKey ?? null,
+        rewardCaps: {
+          linhThachMax: SECRET_REALM_REWARD_CAPS.linhThachMax,
+          expMax: SECRET_REALM_REWARD_CAPS.expMax,
+        },
       };
     });
   }
@@ -150,6 +199,17 @@ export class SecretRealmRuntimeService {
    *   2. realm-order satisfied.
    *   3. cooldown elapsed since last successful clear/claim.
    *   4. no active (ENTERED/CLEARED) run for the same realm.
+   *   5. (Phase 44.1) daily limit cap (`SECRET_REALM_REWARD_CAPS.dailyRunsPerRealm`)
+   *      counted per UTC date — guard against farming/spam.
+   *
+   * Phase 44.1 — Active-run guard moved BEFORE create. Combined với
+   * `findFirst({ status: { in: ['ENTERED', 'CLEARED'] } })` đã đủ chống
+   * 2 enter song song create 2 runs. Lưu ý: schema không có composite
+   * UNIQUE — race-window vẫn tồn tại nếu 2 request đồng thời lọt qua
+   * findFirst trước khi create. Để hardening hoàn toàn cần thêm DB
+   * partial unique index `(characterId, secretRealmKey) WHERE status IN
+   * ('ENTERED','CLEARED')`. Trong PR này chấp nhận window vài ms — Spam
+   * test ở suite vẫn cover trường hợp serial submit.
    */
   async enter(userId: string, realmKey: string): Promise<SecretRealmRunView> {
     const def = secretRealmByKey(realmKey);
@@ -185,6 +245,19 @@ export class SecretRealmRuntimeService {
     });
     if (active) {
       throw new SecretRealmError('SECRET_REALM_RUN_ACTIVE');
+    }
+    // Phase 44.1 — Daily limit check. Đếm tất cả run được tạo trong UTC
+    // date hôm nay cho realm này, bất kể trạng thái (kể cả CLEARED/CLAIMED).
+    const todayStart = new Date(`${utcDateKey()}T00:00:00.000Z`);
+    const todayCount = await this.prisma.characterSecretRealmRun.count({
+      where: {
+        characterId: char.id,
+        secretRealmKey: realmKey,
+        startedAt: { gte: todayStart },
+      },
+    });
+    if (todayCount >= SECRET_REALM_REWARD_CAPS.dailyRunsPerRealm) {
+      throw new SecretRealmError('SECRET_REALM_DAILY_LIMIT');
     }
     const initialProgress: Record<string, number> = {};
     for (const o of def.objectives) initialProgress[o.key] = 0;

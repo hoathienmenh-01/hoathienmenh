@@ -326,3 +326,101 @@ describe('Phase 34.0 cap audit', () => {
     expect(dayTaskSum).toBe(ONBOARDING_TASKS.length);
   });
 });
+
+// Phase 44.1 — auto-track recordAction + Day 7 unlock title.
+describe('Phase 44.1 — recordAction auto-track', () => {
+  it('CULTIVATION_START → d1_first_cultivation AVAILABLE → COMPLETED (test #9)', async () => {
+    const { userId, characterId } = await makeUserChar(prisma);
+    await onboarding.getProgress(userId);
+    const flipped = await onboarding.recordAction(
+      characterId,
+      'CULTIVATION_START',
+    );
+    expect(flipped).toContain('d1_first_cultivation');
+    const row = await prisma.characterOnboardingTaskProgress.findUnique({
+      where: {
+        characterId_taskKey: {
+          characterId,
+          taskKey: 'd1_first_cultivation',
+        },
+      },
+    });
+    expect(row?.status).toBe('COMPLETED');
+  });
+
+  it('recordAction lần 2 idempotent — KHÔNG re-flip task đã COMPLETED', async () => {
+    const { userId, characterId } = await makeUserChar(prisma);
+    await onboarding.getProgress(userId);
+    const r1 = await onboarding.recordAction(characterId, 'INVENTORY_OPEN');
+    const r2 = await onboarding.recordAction(characterId, 'INVENTORY_OPEN');
+    expect(r1).toContain('d1_open_inventory');
+    expect(r2).toEqual([]);
+  });
+
+  it('recordAction trên task LOCKED (day chưa unlock) → KHÔNG flip', async () => {
+    const { userId, characterId } = await makeUserChar(prisma);
+    await onboarding.getProgress(userId);
+    // PROFILE_OPEN map đến d2_check_realm + d7_review_dashboard, cả 2 đều
+    // ở day LOCKED nếu chưa hoàn thành day 1.
+    const flipped = await onboarding.recordAction(characterId, 'PROFILE_OPEN');
+    expect(flipped).toEqual([]);
+  });
+});
+
+describe('Phase 44.1 — Onboarding reward không claim trùng (test #10)', () => {
+  it('claim 2 lần liên tiếp → second call claimed=false', async () => {
+    const { userId, characterId } = await makeUserChar(prisma, {
+      linhThach: 0n,
+    });
+    await onboarding.completeTask(userId, DAY_1_FIRST);
+    const a = await onboarding.claimTask(userId, DAY_1_FIRST);
+    const b = await onboarding.claimTask(userId, DAY_1_FIRST);
+    expect(a.claimed).toBe(true);
+    expect(b.claimed).toBe(false);
+    // Ledger chỉ 1 entry cho task này.
+    const ledger = await prisma.currencyLedger.findMany({
+      where: { characterId, reason: 'ONBOARDING_TASK_CLAIM' },
+    });
+    expect(ledger).toHaveLength(1);
+  });
+});
+
+describe('Phase 44.1 — Day 7 title nối Title system (test #11)', () => {
+  it('Day 7 final claim unlock title `onboarding_novice_cultivator` qua TitleService', async () => {
+    const { userId, characterId } = await makeUserChar(prisma);
+    for (let day = 1; day <= 7; day++) {
+      for (const tdef of onboardingTasksForDay(day)) {
+        await onboarding.completeTask(userId, tdef.taskKey);
+      }
+    }
+    const res = await onboarding.claimTask(userId, DAY_7_FINAL);
+    expect(res.claimed).toBe(true);
+    expect(res.titleKey).toBe('onboarding_novice_cultivator');
+    // Hard check — Title row exists.
+    const row = await prisma.characterTitleUnlock.findUnique({
+      where: {
+        characterId_titleKey: {
+          characterId,
+          titleKey: 'onboarding_novice_cultivator',
+        },
+      },
+    });
+    expect(row).not.toBeNull();
+    expect(row?.source).toBe('onboarding');
+  });
+
+  it('Day 7 claim 2 lần idempotent — title chỉ unlock 1 row', async () => {
+    const { userId, characterId } = await makeUserChar(prisma);
+    for (let day = 1; day <= 7; day++) {
+      for (const tdef of onboardingTasksForDay(day)) {
+        await onboarding.completeTask(userId, tdef.taskKey);
+      }
+    }
+    await onboarding.claimTask(userId, DAY_7_FINAL);
+    await onboarding.claimTask(userId, DAY_7_FINAL);
+    const rows = await prisma.characterTitleUnlock.findMany({
+      where: { characterId, titleKey: 'onboarding_novice_cultivator' },
+    });
+    expect(rows).toHaveLength(1);
+  });
+});

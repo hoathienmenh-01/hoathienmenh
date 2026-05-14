@@ -55,6 +55,8 @@ import { SectWarService } from '../sect-war/sect-war.service';
 import { TerritoryService } from '../territory/territory.service';
 import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
 import { DropEconomyService } from '../economy/drop-economy.service';
+import { WebPushService } from '../web-push/web-push.service';
+import { WebPushTriggerService } from '../web-push/web-push-trigger.service';
 
 export class BossError extends Error {
   constructor(
@@ -181,6 +183,10 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     @Optional()
     private readonly liveOpsEvents?: LiveOpsEventSchedulerService,
     @Optional() private readonly dropEconomy?: DropEconomyService,
+    @Optional() private readonly webPush?: WebPushService,
+    // Phase 44.1 — high-level web push trigger composer. Optional inject
+    // — test bootstrap có thể bỏ. Fail-soft trong service.
+    @Optional() private readonly webPushTrigger?: WebPushTriggerService,
   ) {}
 
   onModuleInit(): void {
@@ -861,9 +867,38 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       expiresAt: created.expiresAt.toISOString(),
       regionKey: created.regionKey,
     });
+    // Phase 44.1 — Web Push trigger: boss spawn → notify mọi user opt-in
+    // `bossSpawnEnabled`. Fail-soft trong WebPushTriggerService (gateway lỗi,
+    // env off, prefs disabled, cooldown 5 phút → log + no-op, KHÔNG crash).
+    if (this.webPushTrigger) {
+      this.webPushTrigger
+        .notifyBossSpawn({
+          id: created.id,
+          bossKey: created.bossKey,
+          name: created.name,
+          level: created.level,
+          regionKey: created.regionKey,
+        })
+        .catch((e: unknown) =>
+          this.logger.warn(
+            `webPush.notifyBossSpawn failed: ${(e as Error).message}`,
+          ),
+        );
+    }
     this.logger.log(
       `Boss spawn region=${created.regionKey}: ${created.name} Lv.${created.level} maxHp=${maxHp}`,
     );
+    // Phase 44.1 — Web Push fan-out cho người chơi đã opt-in BOSS_SPAWN.
+    // Fire-and-forget — push fail không được phá realtime broadcast hay
+    // boss spawn flow. Dedupe key = `boss-<id>` đảm bảo cùng 1 spawn
+    // không gửi push trùng nếu heartbeat re-fire.
+    if (this.webPush) {
+      void this.dispatchBossSpawnPush(created).catch((e) =>
+        this.logger.warn(
+          `boss spawn push fan-out failed region=${created.regionKey} bossId=${created.id}: ${(e as Error).message}`,
+        ),
+      );
+    }
     return {
       id: created.id,
       bossKey: created.bossKey,
@@ -1042,6 +1077,35 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       maxHp: spawned.maxHp.toString(),
       regionKey: spawned.regionKey,
     };
+  }
+
+  /**
+   * Phase 44.1 — Fan-out push 'BOSS_SPAWN' tới user opt-in. Recency 7 ngày
+   * chặn dead-cold accounts. WebPushService cooldown 5 phút + dedupeKey
+   * `boss-<id>` đảm bảo không gửi trùng cùng 1 spawn ngay cả nếu heartbeat
+   * race re-call.
+   */
+  private async dispatchBossSpawnPush(boss: {
+    id: string;
+    bossKey: string;
+    name: string;
+    level: number;
+    regionKey: string;
+  }): Promise<void> {
+    if (!this.webPush) return;
+    const userIds = await this.webPush.findEligibleUserIds('BOSS_SPAWN', {
+      recentSinceMs: 7 * 24 * 60 * 60_000,
+      limit: 5_000,
+    });
+    if (userIds.length === 0) return;
+    const dedupeKey = `boss-${boss.id}`;
+    await this.webPush.broadcastToUsers(userIds, 'BOSS_SPAWN', {
+      title: `Yêu thú xuất hiện: ${boss.name}`,
+      body: `Lv.${boss.level} đã xuất hiện ở vùng ${boss.regionKey}. Tham chiến ngay để giành thưởng.`,
+      url: `/world-boss?region=${encodeURIComponent(boss.regionKey)}`,
+      tag: dedupeKey,
+      dedupeKey,
+    });
   }
 
   private async broadcastBossUpdate(bossId: string, _hp: bigint): Promise<void> {
