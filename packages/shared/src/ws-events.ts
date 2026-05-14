@@ -170,6 +170,12 @@ export type WsEventType =
    * user owner của claim (không leak cross-party).
    */
   | 'coop-boss:reward-available'
+  /**
+   * Phase 44.1 — Daily Encounter / Kỳ Ngộ realtime banner. Server emit khi
+   * rare/hidden encounter được generate trong `DailyEncounterService.ensureTodayRow`.
+   * Payload: { encounterKey, rarity, dateKey, titleVi }.
+   */
+  | 'encounter:new'
   | 'pong'
   // client → server
   | 'ping'
