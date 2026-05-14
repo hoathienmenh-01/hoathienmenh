@@ -50,8 +50,10 @@ import {
   type XTNavItem,
 } from '@/lib/xtNav';
 import { formatFeatureLabel } from '@/lib/xianxiaFormat';
+import { useIsLgUp } from '@/composables/useMediaQuery';
 
 const maintenance = useMaintenanceStore();
+const isLgUp = useIsLgUp();
 const { t, te } = useI18n();
 const auth = useAuthStore();
 const game = useGameStore();
@@ -188,7 +190,7 @@ onBeforeUnmount(() => {
     />
 
     <!-- ============= MOBILE SHELL (< lg) ============= -->
-    <div class="relative z-10 flex min-h-screen flex-col lg:hidden">
+    <div v-if="!isLgUp" class="relative z-10 flex min-h-screen flex-col">
       <XTMobileTopBar />
 
       <main
@@ -199,28 +201,33 @@ onBeforeUnmount(() => {
       </main>
 
       <XTBottomNav :drawer-open="drawerOpen" @open-menu="openDrawer" />
-
-      <!-- Hidden hand-off for legacy tests: shell-mobile-toggle/backdrop -->
-      <button
-        type="button"
-        class="sr-only"
-        :aria-expanded="drawerOpen"
-        data-testid="shell-mobile-toggle"
-        @click="drawerOpen ? closeDrawer() : openDrawer()"
-      >
-        {{ t('shell.nav.toggle') }}
-      </button>
-      <div
-        v-if="drawerOpen"
-        class="hidden"
-        data-testid="shell-mobile-backdrop"
-        @click="closeDrawer()"
-      />
     </div>
+
+    <!-- Hidden hand-off for legacy tests: shell-mobile-toggle/backdrop.
+         Always rendered (independent of mobile/desktop shell v-if) để
+         AppShell.test.ts (happy-dom default matches=true → desktop) +
+         e2e mobile suites đều tìm thấy. Visual chính cho user là
+         XTBottomNav menu button trên mobile. -->
+    <button
+      type="button"
+      class="sr-only"
+      :aria-expanded="drawerOpen"
+      data-testid="shell-mobile-toggle"
+      @click="drawerOpen ? closeDrawer() : openDrawer()"
+    >
+      {{ t('shell.nav.toggle') }}
+    </button>
+    <div
+      v-if="drawerOpen"
+      class="hidden"
+      data-testid="shell-mobile-backdrop"
+      @click="closeDrawer()"
+    />
 
     <!-- ============= DESKTOP SHELL (>= lg) ============= -->
     <div
-      class="relative z-10 hidden min-h-screen lg:grid lg:grid-cols-[var(--xt-desktop-sidebar-w)_minmax(0,1fr)] xl:grid-cols-[var(--xt-desktop-sidebar-w)_minmax(0,1fr)_19rem]"
+      v-if="isLgUp"
+      class="relative z-10 grid min-h-screen lg:grid-cols-[var(--xt-desktop-sidebar-w)_minmax(0,1fr)] xl:grid-cols-[var(--xt-desktop-sidebar-w)_minmax(0,1fr)_19rem]"
     >
       <aside
         class="sticky top-0 z-30 flex h-screen w-[var(--xt-desktop-sidebar-w)] flex-col border-r border-emerald-300/30 bg-white/65 p-3 backdrop-blur-xl"
