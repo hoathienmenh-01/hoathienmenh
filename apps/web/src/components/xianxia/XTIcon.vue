@@ -197,6 +197,9 @@ const ariaProps = computed<Record<string, string>>(() => {
 </script>
 
 <template>
+  <!-- eslint-disable vue/no-v-html -->
+  <!-- `inner` is sourced exclusively from the static ICON_PATHS map in this
+       file (never from user input), so v-html is safe here. -->
   <svg
     v-bind="ariaProps"
     class="inline-block shrink-0 align-middle"

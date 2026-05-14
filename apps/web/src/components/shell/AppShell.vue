@@ -180,8 +180,8 @@ onBeforeUnmount(() => {
     <MaintenanceBanner
       v-if="
         maintenance.active &&
-        maintenance.status &&
-        (game.character?.role === 'ADMIN' || game.character?.role === 'MOD')
+          maintenance.status &&
+          (game.character?.role === 'ADMIN' || game.character?.role === 'MOD')
       "
       :status="maintenance.status"
       class="relative z-20"
