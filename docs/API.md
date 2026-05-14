@@ -367,6 +367,22 @@ WS events (best-effort fanout chỉ tới participant của room — KHÔNG broa
 | POST | `/roguelike-runs/:id/claim` | Yes | Claim completed reward once. CAS guard + weekly cap + daily reward cap source `ROGUELIKE`; ledger reasons `ROGUELIKE_FLOOR_REWARD` / `ROGUELIKE_MILESTONE_REWARD`. |
 | GET | `/roguelike-runs/leaderboard?period=week&limit=50` | Yes | Depth leaderboard rows `{ characterName,bestFloor,bestScore,fastestClearMs,weekBucket,monthBucket }`. |
 
+## Seasonal Server Progression — `SeasonsController` (Phase 39.0)
+
+> Mùa giải server theo tháng/quý. Leaderboard reset mềm theo `seasonId`; không reset tài sản chính. Reward claim idempotent qua `SeasonRewardClaim` UNIQUE + grant qua `RewardCapService`, `CurrencyService`, `InventoryService`.
+
+| Method | Path | Auth | Mô tả |
+|---|---|---|---|
+| GET | `/seasons/current` | No | Current active season or `season=null`. |
+| GET | `/seasons/:seasonKey` | No | Season detail by key: status, dates, point config, rewards, milestones. |
+| GET | `/seasons/me/progress` | Yes | Current active season + caller progress, cap usage, claimable/claimed rewards. |
+| GET | `/seasons/leaderboard?kind=POINTS&limit=50` | No | Seasonal leaderboard. `kind`: `POINTS`, `ROGUELIKE_FLOOR`, `BOSS_DEFEATS`, `DUNGEON_CLEARS`. |
+| POST | `/seasons/rewards/:rewardKey/claim` | Yes | Claim personal season reward once. Rejects `NO_ACTIVE_SEASON`, `REWARD_NOT_FOUND`, `REWARD_NOT_UNLOCKED`, `REWARD_ALREADY_CLAIMED`. |
+| GET | `/seasons/server-milestones` | No | Active season aggregate milestones with progress/unlocked state. |
+| POST | `/admin/seasons` | ADMIN/MOD with liveops permission | Create season. Body includes `seasonKey`, `name`, `startAt`, `endAt`, optional config, `reason`; active create enforces single active season and writes audit. |
+| PATCH | `/admin/seasons/:seasonKey` | ADMIN/MOD with liveops permission | Update metadata/config with `reason`; reward config updates use `SEASON_REWARD_CONFIG_UPDATE` audit action. |
+| PATCH | `/admin/seasons/:seasonKey/status` | ADMIN/MOD with liveops permission | Set `UPCOMING`/`ACTIVE`/`ENDED`/`ARCHIVED`; `ACTIVE` enforces single active season and all changes are audited. |
+
 ## Chat Private — `ChatPrivateController` (Phase 19.1 + Phase 19.1.B)
 
 > Chat riêng 1-1. Thread invariant: `userAId < userBId` (lexicographic). Server-side: non-member → 404 mask (KHÔNG 403 leak existence). Block 2 chiều reject `sendPrivateMessage` với `BLOCKED`. Message body 1..500ch trimmed. Cột **Rate** = `@RateLimitPolicy()` key gắn ở controller (Phase 19.1.B).

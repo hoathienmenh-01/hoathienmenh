@@ -36,6 +36,7 @@ Nếu mọi thay đổi cần deploy → cycle quá chậm + risk cao. Live ops 
 | Topup approve manual | ✅ |
 | Cron (BullMQ) | ✅ (cultivation tick + cleanup + mission reset) |
 | Admin audit log | ✅ |
+| Server seasons | ✅ Phase 39 foundation (`ServerSeason`, scoped leaderboard, capped rewards, milestones) |
 
 Phase 15 sẽ thêm phần lớn live-ops infra ở table trên.
 
