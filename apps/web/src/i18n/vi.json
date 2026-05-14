@@ -426,7 +426,7 @@
       "shopPacks": "Gói Tài Nguyên",
       "bodyCultivation": "Luyện Thể",
       "cosmetics": "Y Quán",
-      "dashboard": "Dashboard",
+      "dashboard": "Thiên Cung Tổng Quan",
       "feedback": "Phản hồi",
       "reportPlayer": "Tố cáo",
       "homestead": "Động Phủ"
@@ -7003,8 +7003,8 @@
     "noIssues": "Không có vấn đề chưa giải quyết."
   },
   "dashboard": {
-    "title": "Dashboard Tu Tiên",
-    "subtitle": "Tổng quan linh lực, tài nguyên, nhật vụ và lối tắt chức năng của XT.",
+    "title": "Thiên Cung Tổng Quan",
+    "subtitle": "Tổng quan tiên lộ, linh lực, tài nguyên, nhật vụ và lối tắt chức năng của XT.",
     "character": {
       "title": "Nhân vật",
       "name": "Tên",

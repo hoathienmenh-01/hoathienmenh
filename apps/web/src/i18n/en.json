@@ -426,7 +426,7 @@
       "shopPacks": "Resource Packs",
       "bodyCultivation": "Body",
       "cosmetics": "Wardrobe",
-      "dashboard": "Dashboard",
+      "dashboard": "Celestial Overview",
       "feedback": "Feedback",
       "reportPlayer": "Report",
       "homestead": "Homestead"
@@ -7003,8 +7003,8 @@
     "noIssues": "No unresolved issues."
   },
   "dashboard": {
-    "title": "Cultivation Dashboard",
-    "subtitle": "Overview of power, resources, daily tasks, and XT feature shortcuts.",
+    "title": "Celestial Overview",
+    "subtitle": "Overview of cultivation path, resources, daily tasks, and XT feature shortcuts.",
     "character": {
       "title": "Character",
       "name": "Name",
