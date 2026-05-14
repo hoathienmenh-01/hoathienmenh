@@ -146,12 +146,7 @@ export class HomesteadController {
   }
 
   private handleHomesteadErr(e: unknown): never {
-    let err: HomesteadError;
-    try {
-      err = normalizeHomesteadError(e);
-    } catch (unknownErr) {
-      throw unknownErr;
-    }
+    const err: HomesteadError = normalizeHomesteadError(e);
     switch (err.code) {
       case 'CHARACTER_NOT_FOUND':
       case 'HOMESTEAD_NOT_FOUND':
