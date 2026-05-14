@@ -169,6 +169,11 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // tự reset state giữa test runs (cap unique key bị stale → trùng key).
   await prisma.farmEncounter.deleteMany({});
   await prisma.farmSession.deleteMany({});
+  await prisma.seasonRewardClaim.deleteMany({});
+  await prisma.seasonLeaderboardEntry.deleteMany({});
+  await prisma.seasonServerMilestone.deleteMany({});
+  await prisma.seasonProgress.deleteMany({});
+  await prisma.serverSeason.deleteMany({});
   await prisma.roguelikeLeaderboard.deleteMany({});
   await prisma.roguelikeRun.deleteMany({});
   await prisma.dailyContentCap.deleteMany({});
