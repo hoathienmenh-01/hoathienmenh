@@ -123,6 +123,9 @@ model User {
   /// Phase 15.4 — FeatureFlag audit (admin gần nhất bật/tắt flag).
   /// SET NULL khi admin bị xoá — flag row giữ updatedAt + value.
   featureFlagsUpdated           FeatureFlag[]           @relation("FeatureFlagUpdatedBy")
+  /// Phase 45.0 — RemoteConfig audit (admin gần nhất chỉnh config).
+  /// SET NULL khi admin bị xoá — config row giữ updatedAt + value.
+  remoteConfigsUpdated          RemoteConfig[]          @relation("RemoteConfigUpdatedBy")
   /// Phase 15.5 — MaintenanceWindow audit (admin tạo bảo trì).
   /// SET NULL khi admin bị xoá — window row vẫn giữ history.
   maintenanceWindowsCreated     MaintenanceWindow[]     @relation("MaintenanceWindowCreatedBy")
@@ -3860,6 +3863,10 @@ model FeatureFlag {
   category         String   @default("GAMEPLAY")
   /// Mô tả admin UI (vi). Cache cho list endpoint.
   description      String   @default("")
+  /// Phase 45.0 — optional environment scoping marker (`prod` / `staging` /
+  /// `dev`). Nullable = global. Runtime guard chưa đọc field này; field
+  /// chỉ phục vụ admin UI gắn tag để filter. Wire runtime defer Phase 45.1.
+  environment      String?
   updatedByAdminId String?
   updatedByAdmin   User?    @relation("FeatureFlagUpdatedBy", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
   createdAt        DateTime @default(now())
@@ -3867,6 +3874,47 @@ model FeatureFlag {
 
   @@index([category])
   @@index([enabled])
+  @@index([environment])
+}
+
+/// Phase 45.0 — Remote Config Center V1.
+///
+/// Key/value runtime config admin chỉnh không cần redeploy. Khác với
+/// `FeatureFlag` (boolean on/off), `RemoteConfig` lưu nhiều type:
+/// `string` / `number` / `boolean` / `json` qua field `valueType` +
+/// `valueString` (raw, JSON.stringify cho json).
+///
+/// Validate: shared `validateRemoteConfigValue` chạy ở admin controller
+/// trước khi persist (cap maxLength / range / enum / json bytes).
+///
+/// Catalog: hardcoded shared `REMOTE_CONFIG_CATALOG` — admin chỉ update
+/// được key thuộc catalog. `key` UNIQUE + lazy ensure-default upsert.
+///
+/// Audit: reuse `AdminAuditLog` action `ADMIN_REMOTE_CONFIG_UPDATE` —
+/// KHÔNG tạo bảng audit riêng.
+///
+/// Cache: 2-tier mirror `FeatureFlagService` (L1 in-memory + L2 Redis,
+/// TTL 30s, invalidate on update, fail-open default catalog).
+model RemoteConfig {
+  id               String   @id @default(cuid())
+  /// Stable key — bắt buộc match `RemoteConfigKey` (catalog shared).
+  key              String   @unique
+  /// `RemoteConfigValueType` ∈ `string|number|boolean|json`. Phải match
+  /// catalog — admin không đổi được valueType (catalog là source-of-truth).
+  valueType        String
+  /// Raw stored value: chuỗi tự nhiên cho string; `String(n)` cho number;
+  /// `"true"` / `"false"` cho boolean; `JSON.stringify(...)` cho json.
+  /// Service parse khi đọc.
+  valueString      String
+  /// Optional environment scoping marker (mirror FeatureFlag.environment).
+  /// Nullable = global. Runtime chưa wire (defer Phase 45.1).
+  environment      String?
+  updatedByAdminId String?
+  updatedByAdmin   User?    @relation("RemoteConfigUpdatedBy", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([environment])
 }
 
 /// Phase 15.5 — Maintenance Window.

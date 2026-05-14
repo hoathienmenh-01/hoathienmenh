@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 import { PrismaService } from '../../common/prisma.service';
 import { SecretRealmRuntimeController } from './secret-realm-runtime.controller';
 import { SecretRealmRuntimeService } from './secret-realm-runtime.service';
@@ -12,7 +13,7 @@ import { SecretRealmRuntimeService } from './secret-realm-runtime.service';
  * `CharacterSecretRealmRun` rows + currency/exp grant on claim.
  */
 @Module({
-  imports: [AuthModule, CharacterModule],
+  imports: [AuthModule, CharacterModule, FeatureFlagModule],
   controllers: [SecretRealmRuntimeController],
   providers: [SecretRealmRuntimeService, PrismaService],
   exports: [SecretRealmRuntimeService],

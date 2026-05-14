@@ -58,6 +58,8 @@ import { LiveOpsEventSchedulerModule } from './modules/liveops-event-scheduler/l
 import { LiveOpsAnnouncementModule } from './modules/liveops-announcement/liveops-announcement.module';
 import { FeatureFlagModule } from './modules/feature-flag/feature-flag.module';
 import { FeatureFlagAdminModule } from './modules/feature-flag-admin/feature-flag-admin.module';
+import { RemoteConfigModule } from './modules/remote-config/remote-config.module';
+import { RemoteConfigAdminModule } from './modules/remote-config-admin/remote-config-admin.module';
 import { MaintenanceWindowModule } from './modules/maintenance-window/maintenance-window.module';
 import { MaintenanceWindowAdminModule } from './modules/maintenance-window-admin/maintenance-window-admin.module';
 import { ConfigVersionModule } from './modules/config-version/config-version.module';
@@ -160,6 +162,10 @@ import { PlayerNavigationModule } from './modules/player-navigation/player-navig
     // cycle: AppModule → CharacterModule → FeatureFlagModule → AdminModule
     // → CharacterModule). Pattern mirror `ArenaAntiWintradeAdminModule`.
     FeatureFlagAdminModule,
+    // Phase 45.0 — Remote Config Center runtime + public + admin. Pattern
+    // mirror FeatureFlag: tách Module / AdminModule để tránh cycle.
+    RemoteConfigModule,
+    RemoteConfigAdminModule,
     // Phase 15.5 — Maintenance Window runtime + public endpoint
     // (`GET /maintenance/status`). Service exported cho middleware
     // (`MaintenanceWindowGuardMiddleware`) inject mà không kéo theo
