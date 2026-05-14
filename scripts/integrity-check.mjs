@@ -29,7 +29,44 @@
 import { PrismaClient } from '@prisma/client';
 import IORedis from 'ioredis';
 
-const ALL_SCOPES = ['currency', 'inventory', 'giftcode', 'character'];
+const ALL_SCOPES = [
+  'currency',
+  'inventory',
+  'giftcode',
+  'character',
+  // Phase 44.0 — Economy Integrity, Reward Safety & Anti-Duplicate Claim Audit V1
+  'mail',
+  'system-gift',
+  'reward-log',
+  'admin-grant',
+];
+
+// Phase 44.0 — reason claim-only ledger (mỗi (char, currency, refType,
+// refId) chỉ 1 row). Mirror packages/shared/src/reward-policy + apps/api/
+// src/modules/economy/economy-integrity-audit.ts.
+const CLAIM_ONLY_LEDGER_REASONS = [
+  'MAIL_CLAIM',
+  'MISSION_CLAIM',
+  'QUEST_CLAIM',
+  'DUNGEON_RUN_REWARD',
+  'STORY_DUNGEON_REWARD',
+  'SECT_WAR_REWARD',
+  'SECT_SEASON_REWARD',
+  'BOSS_REWARD',
+  'GIFTCODE_REDEEM',
+  'ONBOARDING_CLAIM',
+  'DAILY_ENCOUNTER_CLAIM',
+  'SECRET_REALM_CLAIM',
+  'MENTOR_MILESTONE_CLAIM',
+  'LIVEOPS_EVENT_REWARD',
+];
+
+// Phase 44.0 — admin grant policy caps (mirror shared/reward-policy.ts +
+// admin.service.ts).
+const MAX_ADMIN_GRANT_LINH_THACH = 1_000_000_000n;
+const MAX_ADMIN_GRANT_TIEN_NGOC = 1_000_000;
+const MIN_REASON_LENGTH = 3;
+const ADMIN_GRANT_SINCE_DAYS = 90;
 
 /** Mỗi check trả về danh sách `IntegrityIssue`. */
 async function checkCurrencyNegative(prisma) {
@@ -161,11 +198,160 @@ async function checkOrphanCharacter(prisma) {
   return issues;
 }
 
+// ─── Phase 44.0 — Economy Integrity & Reward Safety V1 ────────────────────
+
+/**
+ * Mail claim duplicate — schema có UNIQUE(mailId, characterId), check
+ * defensive nếu unique bị bypass / migration sai.
+ */
+async function checkMailClaimDuplicate(prisma) {
+  const dupes = await prisma.$queryRaw`
+    SELECT "mailId", "characterId", COUNT(*)::int AS c
+    FROM "MailAttachmentClaim"
+    GROUP BY "mailId", "characterId"
+    HAVING COUNT(*) > 1
+    LIMIT 50
+  `;
+  if (!Array.isArray(dupes) || dupes.length === 0) return [];
+  return [
+    {
+      scope: 'mail',
+      severity: 'FATAL',
+      message: `${dupes.length} (mailId,characterId) pair có > 1 MailAttachmentClaim — UNIQUE bị bypass?`,
+      count: dupes.length,
+    },
+  ];
+}
+
+/**
+ * SystemGiftClaim duplicate — schema có UNIQUE(giftKey, characterId).
+ */
+async function checkSystemGiftDuplicate(prisma) {
+  const dupes = await prisma.$queryRaw`
+    SELECT "giftKey", "characterId", COUNT(*)::int AS c
+    FROM "SystemGiftClaim"
+    GROUP BY "giftKey", "characterId"
+    HAVING COUNT(*) > 1
+    LIMIT 50
+  `;
+  if (!Array.isArray(dupes) || dupes.length === 0) return [];
+  return [
+    {
+      scope: 'system-gift',
+      severity: 'FATAL',
+      message: `${dupes.length} (giftKey,characterId) pair có > 1 SystemGiftClaim — UNIQUE bị bypass?`,
+      count: dupes.length,
+    },
+  ];
+}
+
+/**
+ * Reward-log duplicate — flag CurrencyLedger row trùng cho các reason
+ * claim-only. Phân biệt theo currency (mail có 2 row / mail nếu cấp
+ * cả linh thạch + tiên ngọc).
+ */
+async function checkRewardLogDuplicate(prisma) {
+  const dupes = await prisma.$queryRaw`
+    SELECT
+      "characterId",
+      "currency"::text AS currency,
+      "reason",
+      "refType",
+      "refId",
+      COUNT(*)::int AS c
+    FROM "CurrencyLedger"
+    WHERE "reason" = ANY(${CLAIM_ONLY_LEDGER_REASONS}::text[])
+      AND "refType" IS NOT NULL
+      AND "refId" IS NOT NULL
+    GROUP BY "characterId", "currency", "reason", "refType", "refId"
+    HAVING COUNT(*) > 1
+    LIMIT 50
+  `;
+  if (!Array.isArray(dupes) || dupes.length === 0) return [];
+  return [
+    {
+      scope: 'reward-log',
+      severity: 'ERROR',
+      message: `${dupes.length} ledger row(s) trùng (characterId,currency,reason,refType,refId) cho claim-only reason — duplicate claim?`,
+      count: dupes.length,
+    },
+  ];
+}
+
+/**
+ * Admin grant policy violations — reason rỗng / quá ngắn, hoặc vượt cap.
+ */
+async function checkAdminGrantPolicy(prisma) {
+  const since = new Date(Date.now() - ADMIN_GRANT_SINCE_DAYS * 24 * 3600 * 1000);
+  const rows = await prisma.$queryRaw`
+    SELECT id, "characterId", "currency"::text AS currency, delta, reason,
+           meta, "actorUserId", "createdAt"
+    FROM "CurrencyLedger"
+    WHERE reason = 'ADMIN_GRANT' AND "createdAt" >= ${since}
+    LIMIT 5000
+  `;
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+  let missingReason = 0;
+  let overCapLT = 0;
+  let overCapTN = 0;
+  for (const r of rows) {
+    const metaReason =
+      r.meta &&
+      typeof r.meta === 'object' &&
+      !Array.isArray(r.meta) &&
+      typeof r.meta.reason === 'string'
+        ? r.meta.reason
+        : null;
+    if (metaReason == null || metaReason.trim().length < MIN_REASON_LENGTH) {
+      missingReason++;
+    }
+    if (r.currency === 'LINH_THACH') {
+      const abs = r.delta < 0n ? -r.delta : r.delta;
+      if (abs > MAX_ADMIN_GRANT_LINH_THACH) overCapLT++;
+    } else if (r.currency === 'TIEN_NGOC' || r.currency === 'TIEN_NGOC_KHOA') {
+      const num = Number(r.delta);
+      const abs = num < 0 ? -num : num;
+      if (Number.isFinite(abs) && abs > MAX_ADMIN_GRANT_TIEN_NGOC) overCapTN++;
+    }
+  }
+  const issues = [];
+  if (missingReason > 0) {
+    issues.push({
+      scope: 'admin-grant',
+      severity: 'WARN',
+      message: `${missingReason} admin grant row(s) có reason rỗng/quá ngắn (< ${MIN_REASON_LENGTH} chars) trong ${ADMIN_GRANT_SINCE_DAYS}d gần nhất`,
+      count: missingReason,
+    });
+  }
+  if (overCapLT > 0) {
+    issues.push({
+      scope: 'admin-grant',
+      severity: 'ERROR',
+      message: `${overCapLT} admin grant row(s) vượt cap linhThach (${MAX_ADMIN_GRANT_LINH_THACH.toString()}) trong ${ADMIN_GRANT_SINCE_DAYS}d`,
+      count: overCapLT,
+    });
+  }
+  if (overCapTN > 0) {
+    issues.push({
+      scope: 'admin-grant',
+      severity: 'ERROR',
+      message: `${overCapTN} admin grant row(s) vượt cap tienNgoc (${MAX_ADMIN_GRANT_TIEN_NGOC}) trong ${ADMIN_GRANT_SINCE_DAYS}d`,
+      count: overCapTN,
+    });
+  }
+  return issues;
+}
+
 const SCOPE_FNS = {
   currency: [checkCurrencyNegative],
   inventory: [checkInventoryNegative, checkInventoryZeroStale],
   giftcode: [checkGiftcodeDuplicate],
   character: [checkOrphanCharacter],
+  // Phase 44.0 scopes.
+  mail: [checkMailClaimDuplicate],
+  'system-gift': [checkSystemGiftDuplicate],
+  'reward-log': [checkRewardLogDuplicate],
+  'admin-grant': [checkAdminGrantPolicy],
 };
 
 function parseArgs(argv) {
@@ -195,7 +381,7 @@ function parseArgs(argv) {
     } else if (a === '--help' || a === '-h') {
       // eslint-disable-next-line no-console
       console.log(
-        'Usage: pnpm integrity:check [--json] [--scope=currency,inventory,giftcode,character] [--no-redis]',
+        `Usage: pnpm integrity:check [--json] [--scope=${ALL_SCOPES.join(',')}] [--no-redis]`,
       );
       process.exit(0);
     } else {
