@@ -12,6 +12,7 @@ export default defineConfig({
     'src/items.ts',
     'src/body-cultivation.ts',
     'src/missions.ts',
+    'src/reputation-goals.ts',
     'src/topup.ts',
     'src/boss.ts',
     'src/map-regions.ts',

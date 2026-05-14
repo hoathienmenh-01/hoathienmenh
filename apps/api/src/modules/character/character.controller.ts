@@ -66,6 +66,14 @@ import {
   AchievementError,
   AchievementService,
 } from './achievement.service';
+import {
+  ReputationError,
+  ReputationService,
+} from './reputation.service';
+import {
+  LongTermGoalError,
+  LongTermGoalService,
+} from './long-term-goal.service';
 import { TalentError, TalentService } from './talent.service';
 import { AlchemyError, AlchemyService } from './alchemy.service';
 import { TitleError, TitleService } from './title.service';
@@ -274,6 +282,8 @@ export class CharacterController {
     // / awaken). Optional vì các controller test cũ inject thiếu; endpoint
     // trả 501 `ARTIFACT_V2_UNAVAILABLE` khi null.
     @Optional() private readonly artifactV2?: ArtifactV2Service,
+    @Optional() private readonly reputation?: ReputationService,
+    @Optional() private readonly longTermGoals?: LongTermGoalService,
   ) {
     this.profileLimiter =
       profileLimiter ??
@@ -1829,6 +1839,68 @@ export class CharacterController {
     }
   }
 
+  @Get('reputation/me')
+  async reputationState(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.reputation) {
+      fail('REPUTATION_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const rows = await this.reputation.list(character.id);
+      return {
+        ok: true,
+        data: {
+          reputation: rows.map((row) => ({
+            group: row.group,
+            score: row.score,
+            dailyGain: row.dailyGain,
+            dailyCap: row.dailyCap,
+            lastGainedAt:
+              row.lastGainedAt === null ? null : row.lastGainedAt.toISOString(),
+            def: row.def,
+          })),
+        },
+      };
+    } catch (e) {
+      if (e instanceof ReputationError) {
+        fail(e.code, mapReputationErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  @Get('long-term-goals/me')
+  async longTermGoalsState(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.longTermGoals) {
+      fail('LONG_TERM_GOALS_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const rows = await this.longTermGoals.list(character.id);
+      return {
+        ok: true,
+        data: {
+          goals: rows.map((row) => ({
+            goalKey: row.goalKey,
+            progress: row.progress,
+            completedAt:
+              row.completedAt === null ? null : row.completedAt.toISOString(),
+            def: row.def,
+          })),
+        },
+      };
+    } catch (e) {
+      if (e instanceof LongTermGoalError) {
+        fail(e.code, mapLongTermGoalErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
   /**
    * Phase 11.10.C-1 Achievement claim — atomic grant linhThach/tienNgoc/exp
    * + auto-unlock title qua `titleForAchievement`.
@@ -2634,6 +2706,32 @@ function mapAchievementErrorStatus(
     case 'NOT_COMPLETED':
     case 'ALREADY_CLAIMED':
       return HttpStatus.CONFLICT;
+    case 'INVALID_AMOUNT':
+      return HttpStatus.BAD_REQUEST;
+    default:
+      return HttpStatus.BAD_REQUEST;
+  }
+}
+
+function mapReputationErrorStatus(code: ReputationError['code']): HttpStatus {
+  switch (code) {
+    case 'REPUTATION_GROUP_NOT_FOUND':
+    case 'CHARACTER_NOT_FOUND':
+      return HttpStatus.NOT_FOUND;
+    case 'INVALID_AMOUNT':
+      return HttpStatus.BAD_REQUEST;
+    default:
+      return HttpStatus.BAD_REQUEST;
+  }
+}
+
+function mapLongTermGoalErrorStatus(
+  code: LongTermGoalError['code'],
+): HttpStatus {
+  switch (code) {
+    case 'GOAL_NOT_FOUND':
+    case 'CHARACTER_NOT_FOUND':
+      return HttpStatus.NOT_FOUND;
     case 'INVALID_AMOUNT':
       return HttpStatus.BAD_REQUEST;
     default:

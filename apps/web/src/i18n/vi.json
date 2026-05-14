@@ -60,6 +60,8 @@
       "titlesState": "Không lấy được danh hiệu",
       "titleEquip": "Trang bị danh hiệu thất bại",
       "titleUnequip": "Gỡ danh hiệu thất bại",
+      "reputationState": "Không lấy được uy danh",
+      "longTermGoalsState": "Không lấy được mục tiêu dài hạn",
       "buffsState": "Không lấy được trạng thái buff",
       "arenaProfile": "Không tải được hồ sơ Đấu Đài",
       "arenaOpponents": "Không tải được đối thủ",
@@ -396,6 +398,7 @@
       "skillBook": "Pháp Quyển",
       "achievements": "Thành Tựu",
       "titles": "Danh Hiệu",
+      "reputation": "Uy Danh",
       "tribulation": "Thiên Kiếp",
       "breakthrough": "Đột Phá",
       "npcs": "Đạo Hữu",
@@ -1569,6 +1572,7 @@
       "chatModeration": "Kiểm duyệt chat",
       "featureFlags": "Feature Flags",
       "remoteConfig": "Remote Config",
+      "achievementReputation": "Thành tựu/Uy danh",
       "maintenance": "Bảo trì",
       "configVersion": "Config Version",
       "security": "Bảo mật",
@@ -2128,6 +2132,31 @@
       "INVALID_BOSS_KEY": "Boss key không có trong catalog.",
       "INVALID_LEVEL": "Cấp độ phải là số nguyên 1..10.",
       "UNKNOWN": "Có lỗi xảy ra."
+    }
+  },
+  "adminAchievement": {
+    "title": "Quản trị Thành Tựu / Uy Danh",
+    "subtitle": "Xem catalog và tiến độ người chơi; chỉ đọc, không grant thưởng.",
+    "summary": "{achievements} thành tựu • {titles} danh hiệu • {groups} nhóm • {goals} mục tiêu",
+    "loading": "Đang tải catalog…",
+    "catalogTitle": "Catalog foundation",
+    "progressTitle": "Tiến độ người chơi",
+    "userIdPlaceholder": "Nhập userId để xem tiến độ",
+    "loadProgress": "Tải tiến độ",
+    "stat": {
+      "achievements": "Thành tựu",
+      "titles": "Danh hiệu",
+      "groups": "Nhóm uy danh",
+      "goals": "Mục tiêu"
+    },
+    "progress": {
+      "achievements": "{count} achievement rows",
+      "titles": "{count} title unlocks",
+      "reputation": "{count} reputation rows"
+    },
+    "errors": {
+      "load": "Tải catalog thất bại.",
+      "progress": "Tải tiến độ người chơi thất bại."
     }
   },
   "talents": {
@@ -3664,6 +3693,35 @@
       "NO_CHARACTER": "Chưa có nhân vật, hãy khai đạo trước.",
       "INVALID_INPUT": "Dữ liệu không hợp lệ.",
       "UNKNOWN": "Thao tác danh hiệu thất bại, thử lại."
+    }
+  },
+  "reputation": {
+    "title": "Uy Danh & Mục Tiêu Dài Hạn",
+    "subtitle": "Theo dõi uy danh từng nhóm và mục tiêu giữ chân dài hạn, không cộng sức mạnh trực tiếp.",
+    "summary": "Uy danh: {score} • Mục tiêu: {completed}/{total}",
+    "loading": "Đang tải uy danh…",
+    "empty": "Không có mục tiêu phù hợp bộ lọc.",
+    "groupsTitle": "Uy danh",
+    "goalsTitle": "Mục tiêu dài hạn",
+    "score": "{score} điểm",
+    "dailyCap": "Giới hạn ngày",
+    "progress": "Tiến độ",
+    "filter": {
+      "group": "Nhóm",
+      "goal": "Mục tiêu",
+      "all": "Tất cả"
+    },
+    "goalStatus": {
+      "active": "Đang tiến hành",
+      "completed": "Hoàn thành"
+    },
+    "goalCategory": {
+      "realm": "Cảnh giới",
+      "body": "Luyện thể",
+      "pet": "Linh thú",
+      "dungeon": "Bí cảnh",
+      "boss": "Boss",
+      "sect": "Tông môn"
     }
   },
   "buffs": {

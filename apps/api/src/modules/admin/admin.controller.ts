@@ -196,6 +196,22 @@ export class AdminController {
     );
   }
 
+  @Get('achievement-reputation/catalog')
+  @RateLimitPolicy('ADMIN_REPORT_VIEW')
+  async achievementReputationCatalog() {
+    return { ok: true, data: this.admin.getAchievementCatalogSummary() };
+  }
+
+  @Get('users/:id/achievement-reputation')
+  @RateLimitPolicy('ADMIN_REPORT_VIEW')
+  async achievementReputationProgress(@Param('id') id: string) {
+    try {
+      return { ok: true, data: await this.admin.getAchievementProgress(id) };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
   @Get('users')
   @RateLimitPolicy('ADMIN_REPORT_VIEW')
   async users(

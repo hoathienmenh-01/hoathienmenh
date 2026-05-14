@@ -24,6 +24,8 @@ import { BuffService } from './buff.service';
 import { TalentService } from './talent.service';
 import { TitleService } from './title.service';
 import { AchievementService } from './achievement.service';
+import { ReputationService } from './reputation.service';
+import { LongTermGoalService } from './long-term-goal.service';
 import { AlchemyService } from './alchemy.service';
 import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
@@ -86,6 +88,8 @@ const profileLimiterProvider = {
     TalentService,
     TitleService,
     AchievementService,
+    ReputationService,
+    LongTermGoalService,
     AlchemyService,
     PhapBaoService,
     PrismaService,
@@ -109,6 +113,8 @@ const profileLimiterProvider = {
     TalentService,
     TitleService,
     AchievementService,
+    ReputationService,
+    LongTermGoalService,
     AlchemyService,
     PhapBaoService,
   ],

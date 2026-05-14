@@ -191,6 +191,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/AdminCodexView.vue'),
   },
   {
+    path: '/admin/achievement-reputation',
+    name: 'adminAchievementReputation',
+    component: () => import('@/views/AdminAchievementReputationView.vue'),
+  },
+  {
     path: '/pets',
     name: 'pets',
     component: () => import('@/views/PetsView.vue'),
@@ -274,6 +279,11 @@ const routes: RouteRecordRaw[] = [
     path: '/titles',
     name: 'titles',
     component: () => import('@/views/TitleView.vue'),
+  },
+  {
+    path: '/reputation',
+    name: 'reputation',
+    component: () => import('@/views/ReputationView.vue'),
   },
   {
     path: '/tribulation',

@@ -418,6 +418,8 @@ model Character {
   talents                   CharacterTalent[]
   titleUnlocks              CharacterTitleUnlock[]
   achievements              CharacterAchievement[]
+  reputation                CharacterReputation[]
+  longTermGoals             CharacterLongTermGoal[]
   sectMissionClaims         SectMissionClaim[]
   sectShopPurchases         SectShopPurchase[]
   sectContributionLedger    SectContributionLedger[]
@@ -1748,6 +1750,37 @@ model CharacterAchievement {
   @@unique([characterId, achievementKey])
   @@index([characterId, completedAt])
   @@index([characterId, claimedAt])
+}
+
+model CharacterReputation {
+  id              String    @id @default(cuid())
+  characterId     String
+  character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  reputationGroup String
+  score           Int       @default(0)
+  dailyGain       Int       @default(0)
+  dailyKey        String?
+  lastGainedAt    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([characterId, reputationGroup])
+  @@index([characterId, score])
+  @@index([reputationGroup, score])
+}
+
+model CharacterLongTermGoal {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  goalKey     String
+  progress    Int       @default(0)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([characterId, goalKey])
+  @@index([characterId, completedAt])
 }
 
 /// Phase 12.10.A — NPC Affinity & Relationship Foundation.

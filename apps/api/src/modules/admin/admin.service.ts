@@ -2,6 +2,10 @@ import { Injectable, Optional } from '@nestjs/common';
 import { CurrencyKind, Prisma, Role, TopupStatus } from '@prisma/client';
 import {
   ELEMENTS,
+  ACHIEVEMENTS,
+  LONG_TERM_GOALS,
+  REPUTATION_GROUPS,
+  TITLES,
   SPIRITUAL_ROOT_GRADES,
   expCostForStage,
   getCultivationMethodDef,
@@ -69,6 +73,42 @@ export interface AdminUserRow {
     linhThach: string;
     tienNgoc: number;
   } | null;
+}
+
+export interface AdminAchievementCatalogSummary {
+  achievements: typeof ACHIEVEMENTS;
+  titles: typeof TITLES;
+  reputationGroups: typeof REPUTATION_GROUPS;
+  longTermGoals: typeof LONG_TERM_GOALS;
+}
+
+export interface AdminPlayerProgressSummary {
+  userId: string;
+  characterId: string;
+  characterName: string;
+  achievements: Array<{
+    achievementKey: string;
+    progress: number;
+    completedAt: string | null;
+    claimedAt: string | null;
+  }>;
+  titles: Array<{
+    titleKey: string;
+    source: string;
+    unlockedAt: string;
+  }>;
+  reputation: Array<{
+    reputationGroup: string;
+    score: number;
+    dailyGain: number;
+    dailyKey: string | null;
+    lastGainedAt: string | null;
+  }>;
+  longTermGoals: Array<{
+    goalKey: string;
+    progress: number;
+    completedAt: string | null;
+  }>;
 }
 
 @Injectable()
@@ -175,6 +215,71 @@ export class AdminService {
       total,
       page,
       pageSize: PAGE_SIZE,
+    };
+  }
+
+  getAchievementCatalogSummary(): AdminAchievementCatalogSummary {
+    return {
+      achievements: ACHIEVEMENTS,
+      titles: TITLES,
+      reputationGroups: REPUTATION_GROUPS,
+      longTermGoals: LONG_TERM_GOALS,
+    };
+  }
+
+  async getAchievementProgress(
+    userId: string,
+  ): Promise<AdminPlayerProgressSummary> {
+    const character = await this.prisma.character.findUnique({
+      where: { userId },
+      select: { id: true, name: true },
+    });
+    if (!character) throw new AdminError('NOT_FOUND');
+    const [achievements, titles, reputation, longTermGoals] = await Promise.all([
+      this.prisma.characterAchievement.findMany({
+        where: { characterId: character.id },
+        orderBy: [{ completedAt: 'desc' }, { achievementKey: 'asc' }],
+      }),
+      this.prisma.characterTitleUnlock.findMany({
+        where: { characterId: character.id },
+        orderBy: [{ unlockedAt: 'desc' }, { titleKey: 'asc' }],
+      }),
+      this.prisma.characterReputation.findMany({
+        where: { characterId: character.id },
+        orderBy: [{ score: 'desc' }, { reputationGroup: 'asc' }],
+      }),
+      this.prisma.characterLongTermGoal.findMany({
+        where: { characterId: character.id },
+        orderBy: [{ completedAt: 'desc' }, { goalKey: 'asc' }],
+      }),
+    ]);
+    return {
+      userId,
+      characterId: character.id,
+      characterName: character.name,
+      achievements: achievements.map((row) => ({
+        achievementKey: row.achievementKey,
+        progress: row.progress,
+        completedAt: row.completedAt?.toISOString() ?? null,
+        claimedAt: row.claimedAt?.toISOString() ?? null,
+      })),
+      titles: titles.map((row) => ({
+        titleKey: row.titleKey,
+        source: row.source,
+        unlockedAt: row.unlockedAt.toISOString(),
+      })),
+      reputation: reputation.map((row) => ({
+        reputationGroup: row.reputationGroup,
+        score: row.score,
+        dailyGain: row.dailyGain,
+        dailyKey: row.dailyKey,
+        lastGainedAt: row.lastGainedAt?.toISOString() ?? null,
+      })),
+      longTermGoals: longTermGoals.map((row) => ({
+        goalKey: row.goalKey,
+        progress: row.progress,
+        completedAt: row.completedAt?.toISOString() ?? null,
+      })),
     };
   }
 
