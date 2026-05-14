@@ -3,14 +3,10 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { itemByKey, type RoguelikeChoiceDef } from '@xuantoi/shared';
 import AppShell from '@/components/shell/AppShell.vue';
-import { useAuthStore } from '@/stores/auth';
-import { useGameStore } from '@/stores/game';
 import { useRoguelikeStore } from '@/stores/roguelike';
 import { useToastStore } from '@/stores/toast';
 import type { RoguelikeClaimResult, RoguelikeRealmView } from '@/api/roguelike';
 
-const auth = useAuthStore();
-const game = useGameStore();
 const store = useRoguelikeStore();
 const toast = useToastStore();
 const { locale, t } = useI18n();
