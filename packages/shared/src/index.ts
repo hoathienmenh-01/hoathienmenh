@@ -155,6 +155,7 @@ export * from './onboarding-7-day';
 export * from './inventory-qol';
 export * from './daily-encounter';
 export * from './secret-realm';
+export * from './roguelike';
 
 // ─── Phase 42.0 — Visual Effects, Combat Feedback, Item Aura V1 ────────────
 export * from './visual-effects';
