@@ -64,6 +64,11 @@ export const REWARD_SOURCES = [
    * từ `MissionDef.rewards`. Mission 1 ngày tổng số reward bị cap.
    */
   'MISSION',
+  /**
+   * Phase 38.0 — Roguelike Bí Cảnh final claim. Reward preview theo tầng
+   * sâu, claim idempotent qua `RoguelikeRun.status COMPLETED → CLAIMED`.
+   */
+  'ROGUELIKE',
 ] as const;
 
 export type RewardSource = (typeof REWARD_SOURCES)[number];
@@ -129,6 +134,7 @@ const BASE_CAPS: Record<RewardSource, DailyRewardCap> = {
   BODY_CULTIVATION: { expCap: 3300n, linhThachCap: 0n },
   DUNGEON: { expCap: 2400n, linhThachCap: 600n },
   MISSION: { expCap: 1500n, linhThachCap: 500n },
+  ROGUELIKE: { expCap: 7000n, linhThachCap: 2400n },
 };
 
 /**
@@ -171,6 +177,7 @@ export const DAILY_REWARD_CAP_BY_REALM_AND_SOURCE: Readonly<
         BODY_CULTIVATION: dailyRewardCapFor(r.key, 'BODY_CULTIVATION'),
         DUNGEON: dailyRewardCapFor(r.key, 'DUNGEON'),
         MISSION: dailyRewardCapFor(r.key, 'MISSION'),
+        ROGUELIKE: dailyRewardCapFor(r.key, 'ROGUELIKE'),
       } satisfies Record<RewardSource, DailyRewardCap>),
     ]),
   ),

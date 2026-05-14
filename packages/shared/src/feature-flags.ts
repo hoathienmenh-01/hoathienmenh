@@ -105,7 +105,8 @@ export type FeatureFlagKey =
   | 'ONBOARDING_ENABLED'
   | 'ALCHEMY_ENABLED'
   | 'BOSS_ENABLED'
-  | 'DUNGEON_ENABLED';
+  | 'DUNGEON_ENABLED'
+  | 'ROGUELIKE_ENABLED';
 
 export const FEATURE_FLAG_KEYS: readonly FeatureFlagKey[] = [
   'ARENA_ENABLED',
@@ -139,6 +140,7 @@ export const FEATURE_FLAG_KEYS: readonly FeatureFlagKey[] = [
   'ALCHEMY_ENABLED',
   'BOSS_ENABLED',
   'DUNGEON_ENABLED',
+  'ROGUELIKE_ENABLED',
 ] as const;
 
 export function isFeatureFlagKey(s: string): s is FeatureFlagKey {
@@ -518,6 +520,18 @@ export const FEATURE_FLAG_CATALOG: readonly FeatureFlagDef[] = [
     public: false,
     requiresRestart: false,
     module: 'dungeon',
+  },
+  {
+    key: 'ROGUELIKE_ENABLED',
+    category: 'ECONOMY',
+    defaultEnabled: true,
+    descriptionVi:
+      'Bật/tắt Roguelike Bí Cảnh (random adventure + capped reward claim).',
+    descriptionEn:
+      'Enable/disable Roguelike Secret Realm (random adventure + capped reward claim).',
+    public: false,
+    requiresRestart: false,
+    module: 'roguelike',
   },
 ] as const;
 

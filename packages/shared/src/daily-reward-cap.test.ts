@@ -17,6 +17,7 @@ describe('Phase 16.5 — daily reward cap catalog', () => {
         'BODY_CULTIVATION',
         'DUNGEON',
         'MISSION',
+        'ROGUELIKE',
       ]);
     });
 
@@ -25,6 +26,7 @@ describe('Phase 16.5 — daily reward cap catalog', () => {
       expect(isRewardSource('BODY_CULTIVATION')).toBe(true);
       expect(isRewardSource('DUNGEON')).toBe(true);
       expect(isRewardSource('MISSION')).toBe(true);
+      expect(isRewardSource('ROGUELIKE')).toBe(true);
       expect(isRewardSource('TERRITORY')).toBe(false);
       expect(isRewardSource('')).toBe(false);
     });

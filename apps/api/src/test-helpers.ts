@@ -17,6 +17,9 @@ import { OnboardingQuestService } from './modules/onboarding-quest/onboarding-qu
 import { TitleService } from './modules/character/title.service';
 import { DailyEncounterService } from './modules/daily-encounter/daily-encounter.service';
 import { SecretRealmRuntimeService } from './modules/secret-realm-runtime/secret-realm-runtime.service';
+import { RoguelikeService } from './modules/roguelike/roguelike.service';
+import { WorldCapService } from './modules/world-content/world-cap.service';
+import { RemoteConfigService } from './modules/remote-config/remote-config.service';
 
 /**
  * Helpers cho integration test — tạo fixture user/character nhanh, không
@@ -166,6 +169,8 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // tự reset state giữa test runs (cap unique key bị stale → trùng key).
   await prisma.farmEncounter.deleteMany({});
   await prisma.farmSession.deleteMany({});
+  await prisma.roguelikeLeaderboard.deleteMany({});
+  await prisma.roguelikeRun.deleteMany({});
   await prisma.dailyContentCap.deleteMany({});
   await prisma.weeklyContentCap.deleteMany({});
   await prisma.trialTowerAttemptLog.deleteMany({});
@@ -540,6 +545,34 @@ export function makeSecretRealmRuntimeService(prisma: PrismaService): {
   const currency = new CurrencyService(prisma);
   const secretRealm = new SecretRealmRuntimeService(prisma, currency);
   return { secretRealm, currency };
+}
+
+/**
+ * Phase 38.0 — Dựng `RoguelikeService` cho integration test.
+ */
+export function makeRoguelikeService(prisma: PrismaService): {
+  roguelike: RoguelikeService;
+  currency: CurrencyService;
+  inventory: InventoryService;
+  rewardCap: RewardCapService;
+  worldCap: WorldCapService;
+} {
+  const realtime = new RealtimeService();
+  const chars = new CharacterService(prisma, realtime);
+  const currency = new CurrencyService(prisma);
+  const inventory = new InventoryService(prisma, realtime, chars);
+  const rewardCap = new RewardCapService(prisma);
+  const worldCap = new WorldCapService(prisma);
+  const remoteConfig = new RemoteConfigService(prisma, null);
+  const roguelike = new RoguelikeService(
+    prisma,
+    currency,
+    inventory,
+    rewardCap,
+    worldCap,
+    remoteConfig,
+  );
+  return { roguelike, currency, inventory, rewardCap, worldCap };
 }
 
 export const TEST_DATABASE_URL =

@@ -89,6 +89,9 @@ export type ItemLedgerReason =
   // `DUNGEON_RUN_REWARD`. Khác `COMBAT_LOOT` (per-encounter random loot drop
   // trong combat flow turn-based, không idempotent — drop 1 lần per kill).
   | 'DUNGEON_RUN_REWARD'
+  // Phase 38.0 — Roguelike milestone item reward. Only final claim can grant,
+  // guarded by `RoguelikeRun.status COMPLETED → CLAIMED` CAS.
+  | 'ROGUELIKE_MILESTONE_REWARD'
   // Phase 12.3 — DungeonRun per-encounter loot drop. Wire qua
   // `DungeonRunService.nextEncounter → InventoryService.grant(positive qtyDelta)`
   // với `refType='DungeonRun'` + `refId=runId` + `extra={ dungeonKey,

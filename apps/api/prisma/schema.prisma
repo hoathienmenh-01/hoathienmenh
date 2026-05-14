@@ -513,6 +513,9 @@ model Character {
 
   /// Phase 34.2 — Secret Realm Run backrefs.
   secretRealmRuns CharacterSecretRealmRun[]
+  /// Phase 38.0 — Roguelike Bí Cảnh backrefs.
+  roguelikeRuns        RoguelikeRun[]
+  roguelikeLeaderboard RoguelikeLeaderboard?
 
   /// Phase QOL-2 — Loadout Preset PvE/PvP/Boss backref.
   loadoutPresets CharacterLoadoutPreset[]
@@ -2732,6 +2735,77 @@ model DungeonRun {
   @@index([characterId, status])
   @@index([characterId, startedAt])
   @@index([characterId, templateKey, startedAt])
+}
+
+/// Phase 38.0 — Roguelike Bí Cảnh run status.
+///
+/// ACTIVE → COMPLETED/FAILED/ABANDONED → CLAIMED (only COMPLETED can claim).
+/// CLAIMED is terminal and guarded by atomic status CAS to prevent duplicate
+/// ledger/inventory grants under parallel claim spam.
+enum RoguelikeRunStatus {
+  ACTIVE
+  COMPLETED
+  FAILED
+  ABANDONED
+  CLAIMED
+}
+
+/// Phase 38.0 — Roguelike Bí Cảnh / Random Adventure runtime.
+///
+/// A run is a seeded multi-floor adventure. Floor definitions and choice
+/// outcomes live in `packages/shared/src/roguelike.ts`; this table persists only
+/// character state (HP/resource), active temporary buffs/debuffs and floor log.
+/// Rewards are granted once at final claim via CurrencyLedger/ItemLedger and
+/// daily/weekly caps.
+model RoguelikeRun {
+  id             String             @id @default(cuid())
+  characterId    String
+  character      Character          @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  realmKey       String
+  status         RoguelikeRunStatus @default(ACTIVE)
+  seed           String
+  currentFloor   Int                @default(0)
+  hp             Int
+  hpMax          Int
+  resource       Int                @default(0)
+  score          Int                @default(0)
+  rewardMul      Float              @default(1)
+  activeBuffs    Json               @default("[]")
+  floorHistory   Json               @default("[]")
+  rewardPreview  Json               @default("{}")
+  lastChoiceKey  String?
+  startedAt      DateTime           @default(now())
+  completedAt    DateTime?
+  failedAt       DateTime?
+  abandonedAt    DateTime?
+  claimedAt      DateTime?
+  expiresAt      DateTime?
+  updatedAt      DateTime           @updatedAt
+
+  @@index([characterId, status])
+  @@index([characterId, startedAt])
+  @@index([realmKey, status])
+}
+
+/// Phase 38.0 — Roguelike leaderboard foundation.
+///
+/// Stores all-time best per character plus coarse weekly/monthly bucket of the
+/// latest best update. Reward distribution is intentionally deferred.
+model RoguelikeLeaderboard {
+  id               String    @id @default(cuid())
+  characterId      String    @unique
+  character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  bestFloor        Int       @default(0)
+  bestScore        Int       @default(0)
+  fastestClearMs   Int?
+  bestRunId        String?
+  weekBucket       String
+  monthBucket      String
+  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime  @default(now())
+
+  @@index([weekBucket, bestFloor, bestScore])
+  @@index([monthBucket, bestFloor, bestScore])
 }
 
 /// Phase 12.8.B — StoryDungeonRun runtime status. Khác `DungeonRun`:

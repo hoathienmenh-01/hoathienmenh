@@ -71,6 +71,7 @@ Phase 21 adds static quest/mission catalogs only; it does not add a direct curre
 |---|---|---|---|
 | Cultivation tick | `cultivation.processor.ts` | `CULTIVATION_TICK` | Per-tick (job already idempotent via BullMQ) — KHÔNG ghi ledger từng tick (chỉ ghi exp). **Note**: hiện tu luyện grant EXP, không grant linhThach. linhThach drop từ dungeon. |
 | Dungeon monster kill | `combat.service.ts` `applyMonsterDrop` | `DUNGEON_DROP` | Per-encounter (Encounter.id) |
+| Roguelike Bí Cảnh run claim | `roguelike.service.ts` `claim` | `ROGUELIKE_FLOOR_REWARD` / `ROGUELIKE_MILESTONE_REWARD` | CAS `RoguelikeRun.status COMPLETED→CLAIMED`, weekly claim cap, daily reward cap source `ROGUELIKE` (`7000 EXP` / `2400 Linh Thạch`), no `tienNgoc`. |
 | Boss damage reward | `boss.service.ts` `distributeRewards` | `BOSS_REWARD` | Per `(bossId, characterId)` — verify với `BossDamage` row |
 | Mission claim | `mission.service.ts` `claimReward` | `MISSION_CLAIM` | `MissionProgress.claimed` flag |
 | Mail claim | `mail.service.ts` `claimMail` | `MAIL_CLAIM` | `Mail.claimedAt` not null |
