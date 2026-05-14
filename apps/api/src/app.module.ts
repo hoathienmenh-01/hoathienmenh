@@ -28,6 +28,7 @@ import { OnboardingQuestModule } from './modules/onboarding-quest/onboarding-que
 import { DailyEncounterModule } from './modules/daily-encounter/daily-encounter.module';
 import { SecretRealmRuntimeModule } from './modules/secret-realm-runtime/secret-realm-runtime.module';
 import { RoguelikeModule } from './modules/roguelike/roguelike.module';
+import { SeasonsModule } from './modules/seasons/seasons.module';
 import { GiftCodeModule } from './modules/giftcode/giftcode.module';
 import { MailModule } from './modules/mail/mail.module';
 import { EmailModule } from './modules/email/email.module';
@@ -134,6 +135,7 @@ import { PlayerNavigationModule } from './modules/player-navigation/player-navig
     DailyEncounterModule,
     SecretRealmRuntimeModule,
     RoguelikeModule,
+    SeasonsModule,
     GiftCodeModule,
     MailModule,
     EmailModule,

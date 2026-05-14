@@ -516,6 +516,10 @@ model Character {
   /// Phase 38.0 — Roguelike Bí Cảnh backrefs.
   roguelikeRuns        RoguelikeRun[]
   roguelikeLeaderboard RoguelikeLeaderboard?
+  /// Phase 39.0 — Seasonal Server Progression backrefs.
+  seasonProgress           SeasonProgress[]
+  seasonLeaderboardEntries SeasonLeaderboardEntry[]
+  seasonRewardClaims       SeasonRewardClaim[]
 
   /// Phase QOL-2 — Loadout Preset PvE/PvP/Boss backref.
   loadoutPresets CharacterLoadoutPreset[]
@@ -2806,6 +2810,129 @@ model RoguelikeLeaderboard {
 
   @@index([weekBucket, bestFloor, bestScore])
   @@index([monthBucket, bestFloor, bestScore])
+}
+
+/// Phase 39.0 — Server season lifecycle.
+enum SeasonStatus {
+  UPCOMING
+  ACTIVE
+  ENDED
+  ARCHIVED
+}
+
+/// Phase 39.0 — Season leaderboard categories.
+enum SeasonLeaderboardKind {
+  POINTS
+  ROGUELIKE_FLOOR
+  BOSS_DEFEATS
+  DUNGEON_CLEARS
+}
+
+/// Phase 39.0 — Monthly/quarterly liveops season.
+///
+/// A season is a soft-reset competitive window. It owns points,
+/// leaderboards, server milestones and reward claims, but never mutates core
+/// player assets when a new season starts.
+model ServerSeason {
+  id               String       @id @default(cuid())
+  seasonKey        String       @unique
+  name             String
+  description      String       @default("")
+  status           SeasonStatus @default(UPCOMING)
+  startAt          DateTime
+  endAt            DateTime
+  pointConfig      Json         @default("{}")
+  rewardConfig     Json         @default("[]")
+  milestoneConfig  Json         @default("[]")
+  createdByAdminId String?
+  updatedByAdminId String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  progress           SeasonProgress[]
+  leaderboardEntries SeasonLeaderboardEntry[]
+  rewardClaims       SeasonRewardClaim[]
+  serverMilestones   SeasonServerMilestone[]
+
+  @@index([status, startAt, endAt])
+  @@index([startAt, endAt])
+}
+
+/// Phase 39.0 — Per-character progress scoped to one season.
+model SeasonProgress {
+  id                String       @id @default(cuid())
+  seasonId          String
+  season            ServerSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  characterId       String
+  character         Character    @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  points            Int          @default(0)
+  bestRoguelikeFloor Int         @default(0)
+  bossDefeats       Int          @default(0)
+  dungeonClears     Int          @default(0)
+  craftCount        Int          @default(0)
+  breakthroughCount Int          @default(0)
+  lastPointAt       DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@unique([seasonId, characterId])
+  @@index([seasonId, points])
+  @@index([characterId, updatedAt])
+}
+
+/// Phase 39.0 — Soft-reset leaderboard row per season/category/character.
+model SeasonLeaderboardEntry {
+  id          String                @id @default(cuid())
+  seasonId    String
+  season      ServerSeason          @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  characterId String
+  character   Character             @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  kind        SeasonLeaderboardKind
+  score       Int                   @default(0)
+  tieBreaker  Int                   @default(0)
+  meta        Json                  @default("{}")
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@unique([seasonId, kind, characterId])
+  @@index([seasonId, kind, score, tieBreaker])
+}
+
+/// Phase 39.0 — Idempotent reward claim guard.
+model SeasonRewardClaim {
+  id          String       @id @default(cuid())
+  seasonId    String
+  season      ServerSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  characterId String
+  character   Character    @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  rewardKey   String
+  grantJson   Json         @default("{}")
+  claimedAt   DateTime     @default(now())
+  createdAt   DateTime     @default(now())
+
+  @@unique([seasonId, characterId, rewardKey])
+  @@index([characterId, claimedAt])
+  @@index([seasonId, rewardKey])
+}
+
+/// Phase 39.0 — Server-wide milestone progress scoped to one season.
+model SeasonServerMilestone {
+  id           String       @id @default(cuid())
+  seasonId     String
+  season       ServerSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  milestoneKey String
+  metric       String
+  target       Int
+  progress     Int          @default(0)
+  unlockedAt   DateTime?
+  effectKey    String?
+  meta         Json         @default("{}")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([seasonId, milestoneKey])
+  @@index([seasonId, metric])
+  @@index([seasonId, unlockedAt])
 }
 
 /// Phase 12.8.B — StoryDungeonRun runtime status. Khác `DungeonRun`:

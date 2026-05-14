@@ -18,6 +18,7 @@ describe('Phase 16.5 — daily reward cap catalog', () => {
         'DUNGEON',
         'MISSION',
         'ROGUELIKE',
+        'SEASON',
       ]);
     });
 
@@ -27,6 +28,7 @@ describe('Phase 16.5 — daily reward cap catalog', () => {
       expect(isRewardSource('DUNGEON')).toBe(true);
       expect(isRewardSource('MISSION')).toBe(true);
       expect(isRewardSource('ROGUELIKE')).toBe(true);
+      expect(isRewardSource('SEASON')).toBe(true);
       expect(isRewardSource('TERRITORY')).toBe(false);
       expect(isRewardSource('')).toBe(false);
     });

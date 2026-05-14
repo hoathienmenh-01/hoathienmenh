@@ -28,6 +28,7 @@ import { CurrencyService } from '../character/currency.service';
 import { RewardCapService } from '../economy/reward-cap.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { RemoteConfigService } from '../remote-config/remote-config.service';
+import { SeasonsService } from '../seasons/seasons.service';
 import { WorldCapError, WorldCapService } from '../world-content/world-cap.service';
 
 export interface RoguelikeRealmView {
@@ -151,6 +152,7 @@ export class RoguelikeService {
     private readonly rewardCap: RewardCapService,
     private readonly worldCap: WorldCapService,
     private readonly remoteConfig: RemoteConfigService,
+    private readonly seasons?: SeasonsService,
   ) {}
 
   async listRealms(userId: string): Promise<{
@@ -304,6 +306,13 @@ export class RoguelikeService {
     });
     if (status !== RoguelikeRunStatus.ACTIVE) {
       await this.updateLeaderboard(char.id, updated);
+      if (status === RoguelikeRunStatus.COMPLETED) {
+        await this.seasons?.recordRoguelikeCompletion(
+          char.id,
+          updated.currentFloor,
+          updated.score,
+        );
+      }
     }
     return this.toRunView(updated);
   }
