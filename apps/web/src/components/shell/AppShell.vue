@@ -215,6 +215,13 @@ async function logout(): Promise<void> {
           闖 {{ t('shell.nav.dungeonRun') }}
         </RouterLink>
         <RouterLink
+          to="/roguelike"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
+          玄 {{ t('shell.nav.roguelike') }}
+        </RouterLink>
+        <RouterLink
           to="/story-dungeons"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"
