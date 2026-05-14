@@ -50,14 +50,18 @@ const gameState: {
   unreadMail: number;
   realmFullName: string;
   expProgress: number;
+  fetchState: ReturnType<typeof vi.fn>;
   hydrateUnreadMail: ReturnType<typeof vi.fn>;
+  bindSocket: ReturnType<typeof vi.fn>;
 } = {
   character: null,
   wsConnected: false,
   unreadMail: 0,
   realmFullName: '—',
   expProgress: 0,
+  fetchState: vi.fn().mockResolvedValue(undefined),
   hydrateUnreadMail: vi.fn().mockResolvedValue(undefined),
+  bindSocket: vi.fn(),
 };
 vi.mock('@/stores/game', () => ({
   useGameStore: () => gameState,
@@ -366,6 +370,13 @@ describe('AppShell — staff-only admin link + cultivating color + logout', () =
     expect(chips?.textContent).toContain('4567');
     expect(chips?.textContent).toContain('99');
     expect(chips?.textContent).toContain('12345');
+  });
+
+  it('hydrates shell character state on mount', async () => {
+    mountShell();
+    await flushPromises();
+    expect(gameState.fetchState).toHaveBeenCalledOnce();
+    expect(gameState.bindSocket).toHaveBeenCalledOnce();
   });
 
   it('wsConnected = true → pill "Tuyến linh" emerald; = false → "Mất liên" red', async () => {

@@ -188,7 +188,9 @@ watch(
 
 onMounted(() => {
   badges.start();
+  void game.fetchState();
   void game.hydrateUnreadMail();
+  game.bindSocket();
   window.addEventListener('keydown', onKeydown);
 });
 
