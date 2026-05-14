@@ -17,7 +17,7 @@ import ResourceChip from '@/components/xianxia/ResourceChip.vue';
 import RealmBadge from '@/components/xianxia/RealmBadge.vue';
 import SpiritualAmbientLayer from '@/components/xianxia/SpiritualAmbientLayer.vue';
 import XianxiaBackButton from '@/components/xianxia/XianxiaBackButton.vue';
-import { formatFeatureLabel, formatNumberCompact } from '@/lib/xianxiaFormat';
+import { formatFeatureLabel } from '@/lib/xianxiaFormat';
 
 interface NavItem {
   key: string;
@@ -352,9 +352,9 @@ onBeforeUnmount(() => {
             class="mt-3 flex gap-2 overflow-x-auto pb-1"
             data-testid="shell-resource-chips"
           >
-            <ResourceChip icon="linhThach" :label="t('dashboard.progression.linhThach')" :value="formatNumberCompact(game.character.linhThach)" tone="gold" />
-            <ResourceChip icon="tienNgoc" :label="t('dashboard.progression.tienNgoc')" :value="formatNumberCompact(game.character.tienNgoc)" tone="jade" />
-            <ResourceChip icon="power" label="Lực chiến" :value="formatNumberCompact(game.character.power)" tone="violet" />
+            <ResourceChip icon="linhThach" :label="t('dashboard.progression.linhThach')" :value="game.character.linhThach" tone="gold" />
+            <ResourceChip icon="tienNgoc" :label="t('dashboard.progression.tienNgoc')" :value="game.character.tienNgoc" tone="jade" />
+            <ResourceChip icon="power" label="Lực chiến" :value="game.character.power" tone="violet" />
             <ResourceChip icon="cultivation" :label="t('shell.stamina')" :value="`${game.character.stamina}/${game.character.staminaMax}`" tone="cyan" />
             <span
               class="inline-flex shrink-0 items-center rounded-2xl border px-3 py-2 text-xs"
