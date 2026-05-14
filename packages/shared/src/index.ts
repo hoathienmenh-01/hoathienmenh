@@ -111,6 +111,7 @@ export * from './security-rate-limit';
 export * from './security-alerts';
 export * from './backup';
 export * from './auth-session';
+export * from './seasons';
 
 // ─── Phase 27.6 — Admin Control Center V2 / Config-Driven LiveOps Admin ──
 export * from './admin-control-center';

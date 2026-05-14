@@ -177,6 +177,7 @@ export type LedgerReason =
   // bypass).
   | 'FARM_SESSION_REWARD'
   | 'TRIAL_TOWER_REWARD'
+  | 'SEASON_REWARD'
   // Phase 27.0 — Monetization Foundation. Shop purchase (debit), reward
   // grant (credit), entitlement purchase, paid extra attempt, sweep ticket
   // consume, growth fund purchase / claim, monthly card upfront / daily.

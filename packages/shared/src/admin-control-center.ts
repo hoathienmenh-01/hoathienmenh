@@ -380,7 +380,14 @@ export type AdminActionType =
   | 'PET_RENAME_FORCE'
   | 'PET_EQUIP_FORCE'
   | 'PET_UNEQUIP_FORCE'
-  | 'PET_SKILL_LEVEL_ADJUST';
+  | 'PET_SKILL_LEVEL_ADJUST'
+  /* Phase 39.0 — Seasonal Server Progression admin audit. */
+  | 'SEASON_CREATE'
+  | 'SEASON_UPDATE'
+  | 'SEASON_ACTIVATE'
+  | 'SEASON_END'
+  | 'SEASON_ARCHIVE'
+  | 'SEASON_REWARD_CONFIG_UPDATE';
 
 export const ADMIN_ACTION_TYPES: readonly AdminActionType[] = [
   'CONFIG_UPDATE',
@@ -487,6 +494,13 @@ export const ADMIN_ACTION_TYPES: readonly AdminActionType[] = [
   'PET_EQUIP_FORCE',
   'PET_UNEQUIP_FORCE',
   'PET_SKILL_LEVEL_ADJUST',
+  /* Phase 39.0 — Season admin audit. */
+  'SEASON_CREATE',
+  'SEASON_UPDATE',
+  'SEASON_ACTIVATE',
+  'SEASON_END',
+  'SEASON_ARCHIVE',
+  'SEASON_REWARD_CONFIG_UPDATE',
 ] as const;
 
 export function isAdminActionType(s: unknown): s is AdminActionType {
@@ -623,6 +637,12 @@ export const DEFAULT_ACTION_RISK: Readonly<Record<AdminActionType, AdminRiskLeve
   PET_EQUIP_FORCE: 'LOW',
   PET_UNEQUIP_FORCE: 'LOW',
   PET_SKILL_LEVEL_ADJUST: 'MEDIUM',
+  SEASON_CREATE: 'MEDIUM',
+  SEASON_UPDATE: 'MEDIUM',
+  SEASON_ACTIVATE: 'HIGH',
+  SEASON_END: 'HIGH',
+  SEASON_ARCHIVE: 'MEDIUM',
+  SEASON_REWARD_CONFIG_UPDATE: 'HIGH',
 };
 
 export function defaultRiskFor(action: AdminActionType): AdminRiskLevel {

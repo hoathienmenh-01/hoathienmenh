@@ -69,6 +69,11 @@ export const REWARD_SOURCES = [
    * sâu, claim idempotent qua `RoguelikeRun.status COMPLETED → CLAIMED`.
    */
   'ROGUELIKE',
+  /**
+   * Phase 39.0 — Seasonal Server Progression personal milestone reward.
+   * Claim idempotent qua `SeasonRewardClaim` UNIQUE và reward nhỏ/capped.
+   */
+  'SEASON',
 ] as const;
 
 export type RewardSource = (typeof REWARD_SOURCES)[number];
@@ -135,6 +140,7 @@ const BASE_CAPS: Record<RewardSource, DailyRewardCap> = {
   DUNGEON: { expCap: 2400n, linhThachCap: 600n },
   MISSION: { expCap: 1500n, linhThachCap: 500n },
   ROGUELIKE: { expCap: 7000n, linhThachCap: 2400n },
+  SEASON: { expCap: 2000n, linhThachCap: 800n },
 };
 
 /**
@@ -178,6 +184,7 @@ export const DAILY_REWARD_CAP_BY_REALM_AND_SOURCE: Readonly<
         DUNGEON: dailyRewardCapFor(r.key, 'DUNGEON'),
         MISSION: dailyRewardCapFor(r.key, 'MISSION'),
         ROGUELIKE: dailyRewardCapFor(r.key, 'ROGUELIKE'),
+        SEASON: dailyRewardCapFor(r.key, 'SEASON'),
       } satisfies Record<RewardSource, DailyRewardCap>),
     ]),
   ),

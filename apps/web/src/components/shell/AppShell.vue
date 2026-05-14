@@ -222,6 +222,14 @@ async function logout(): Promise<void> {
           玄 {{ t('shell.nav.roguelike') }}
         </RouterLink>
         <RouterLink
+          to="/seasons"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+          data-testid="shell-nav-seasons"
+        >
+          季 {{ t('shell.nav.seasons') }}
+        </RouterLink>
+        <RouterLink
           to="/story-dungeons"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"

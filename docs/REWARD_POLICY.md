@@ -105,6 +105,7 @@ Trả `ReadonlyArray<PolicyViolation>` rỗng nếu hợp lệ. `PolicyViolation
 | `admin.service.ts` | **DONE** | Runtime đã chặn `MAX_GRANT_LINH_THACH` / `MAX_GRANT_TIEN_NGOC` / `MAX_GRANT_EXP` / `MAX_GRANT_QTY` + `reason` required (Phase 22). |
 | `co-cultivation.service.ts` | **DONE** | `rewardApplied` CAS guard + daily cap session/buff. |
 | `roguelike.service.ts` | **DONE** | Phase 38: 1 active run guard, daily entry cap, weekly claim cap, reward cap source `ROGUELIKE` (`7000 EXP` / `2400 Linh Thạch`), CAS `COMPLETED→CLAIMED`, ledger reasons `ROGUELIKE_FLOOR_REWARD` / `ROGUELIKE_MILESTONE_REWARD`, no `tienNgoc`, no endgame drops. |
+| `seasons.service.ts` | **DONE** | Phase 39: `SeasonRewardClaim` UNIQUE `(seasonId, characterId, rewardKey)`, `RewardCapService.applyCapTx(source='SEASON')`, `CurrencyService.applyTx(reason='SEASON_REWARD_CLAIM')`, `InventoryService.grantTx(reason='SEASON_REWARD_CLAIM')`; config stays capped/low-mid tier, no automatic premium currency/endgame distribution in V1. |
 | Shared `reward-policy.ts` validators | **PARTIAL** | Validators sẵn sàng nhưng **chưa được wire vào** `admin.service.ts` / `mail.service.ts`. Defer Phase 44.1 sau khi audit chạy clean trên production data. |
 
 **RISK** (chưa cover trong PR này):
