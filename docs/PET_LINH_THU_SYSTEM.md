@@ -181,3 +181,28 @@ snapshot read-only — they never mutate the pet record themselves.
 - Combat wire for `LinhThuSkill` active casts (currently snapshot only).
 - Sect / Co-op modes integration (Phase 35.x).
 - Pet trade listing on Auction House V2 (currently bind-on-pickup tickets).
+
+## 14. Phase 44.1 — Deep wiring update (PR #591)
+
+Phase 44.1 KHÔNG thêm pet mới, KHÔNG sửa formula combat, chỉ nối thêm
+adapter cho UI preview + audit rare drop policy + cap tests:
+
+- `PetSnapshotService.getCombatBonus(characterId, context)` — adapter
+  trả `PetCombatBonus` (flat % cap + petStats + skills + pvp
+  multiplier). Consumer DUY NHẤT là FE preview hiện tại.
+- `PetSnapshotService.getPreviewForAllContexts(characterId)` — helper
+  render bảng "Pet giúp gì ở chỗ nào" cho profile UI (5 context).
+- **Cap reaffirmed** (xem `packages/shared/src/pets.ts`):
+  PvE 12% / PvP damage 5% × `0.4` effectiveness multiplier / BOSS 8% /
+  Dungeon 10% / Secret Realm 10%.
+- **Audit**: `auditPetSources()` (shared) thêm 2 issue code Phase 44.1:
+  `PET_RARE_HAS_EASY_PATH` (rare pet có `FREE`/`ACHIEVEMENT` source) +
+  `PET_RARE_DROP_RATE_TOO_HIGH` (rare source > 5%). Catalog clean
+  (0 issue) — kiểm chứng qua `pet.service.test.ts` Phase 44.1.
+- **Test cases** (#6 / #7 / #8 trong PR brief):
+  - Preview adapter — `getCombatBonus` PVE / null khi không equip /
+    `getPreviewForAllContexts` 5 context.
+  - Contribution cap — PvE / PvP / BOSS clamp respected.
+  - Rare drop policy — audit không có issue.
+- **TODO Phase 44.2**: combat backend wire `getCombatBonus` vào damage
+  formula sau balance approval. Hiện tại combat KHÔNG đụng pet bonus.

@@ -160,11 +160,59 @@ i18n keys under `onboardingQuest.*` (both `vi.json` and `en.json`).
 
 ## Future follow-ups (NOT in this PR)
 
-- Auto-tracking — hook `CombatService`, `CultivationService`, `Phase33StoryService`,
-  `SectService` to auto-call `completeTask` on relevant events (currently
-  player must self-acknowledge via FE "Báo cáo" button).
-- Title catalog — add `onboarding_novice_cultivator` entry to
-  `packages/shared/src/titles.ts` so the Day 7 title is unlocked through
-  `CharacterTitleUnlock` and gets the `flavorStatBonus` like other titles.
 - Cross-link from `DailyLoginView` and `QuestView` ("👀 You also have an
   onboarding task there!").
+
+## Phase 44.1 — Auto-track + Day 7 title (PR #591)
+
+Phase 44.1 nối auto-tracking thay vì "bấm báo cáo" và wire Day 7 title
+qua `TitleService` thật:
+
+### Auto-tracking
+
+`OnboardingQuestService.recordAction(characterId, actionType)` (Phase 44.1)
+— map `OnboardingActionType` (UPPERCASE_SNAKE_CASE) → `taskKey[]` qua
+`ONBOARDING_ACTION_TO_TASKS`, flip task `AVAILABLE → COMPLETED` qua
+`updateMany` CAS. Trả về list `taskKey` đã flip.
+
+`notifyAction(...)` — fire-and-forget wrapper, không throw nếu fail.
+
+**Day gating respected**: LOCKED tasks KHÔNG bị flip. Sau khi tất cả task
+Day N COMPLETED, Day N+1 unlock qua `recompute()`.
+
+**Action types** wire vào hành động thật:
+- `CULTIVATION_START` → `d1_first_cultivation`
+- `INVENTORY_OPEN` → `d1_open_inventory`
+- `EQUIP_WEAPON` → `d2_equip_weapon`
+- `DUNGEON_ENTER` → `d3_first_dungeon`
+- `STORY_VIEW` → `d4_start_story`
+- `NPC_TALK` → `d5_talk_to_npc`
+- `MAIL_OPEN` → `d6_open_mail`
+- `PROFILE_OPEN` → `d2_check_realm` + `d7_review_dashboard`
+- ... (xem `ONBOARDING_ACTION_TO_TASKS` full map)
+
+### Day 7 title
+
+Final task `d7_become_novice` → claim trả `titleKey =
+'onboarding_novice_cultivator'`. Wire qua `TitleService.unlockTitle()`
+(Phase 13.0 LiveOps Title catalog đã có entry này). Fail-soft — nếu
+Title service không inject, claim vẫn thành công, chỉ skip title.
+
+### Tests (#9, #10, #11 trong Phase 44.1)
+
+- `CULTIVATION_START → d1_first_cultivation AVAILABLE → COMPLETED`.
+- `recordAction` 2 lần idempotent — không re-flip task đã COMPLETED.
+- `PROFILE_OPEN` → flip dual task `d2_check_realm` + `d7_review_dashboard`
+  (chỉ task `AVAILABLE` mới flip).
+- Onboarding reward claim 2 lần idempotent — ledger chỉ 1 entry.
+- Day 7 final claim unlock title qua `CharacterTitleUnlock`.
+- Day 7 claim 2 lần — title chỉ unlock 1 row.
+
+### Risks & follow-ups
+
+- `ONBOARDING_ACTION_TO_TASKS` chưa cover 100% task — vài task vẫn cần
+  manual `completeTask` nếu runtime emit event chưa wire (e.g., social /
+  alchemy).
+- Caller phải thêm `recordAction(...)` call ở các service emit hành động
+  thật. Phase 44.1 đã wire ở 1 vài chỗ — Phase 44.2 cần audit và wire
+  thêm.
