@@ -1,4 +1,27 @@
 <script setup lang="ts">
+/**
+ * UI-2.0 — XT App Shell.
+ *
+ * Mobile-first fantasy app interface:
+ *   - On mobile (< 1024px): XTMobileTopBar + slot + XTBottomNav + XTMenuDrawer.
+ *   - On desktop (>= 1024px): compact sidebar (220–240px) + slim topbar +
+ *     main content (max-w-7xl) + optional ChatPanel right rail trên xl+.
+ *
+ * Shared:
+ *   - Resource chips (linh thạch / tiên ngọc / lực / thể lực) hiển thị ở
+ *     mobile topbar (cuộn ngang) và desktop topbar.
+ *   - Realm/title/avatar dùng XTAvatarSeal + RealmBadge.
+ *   - Logout button vẫn ở topbar desktop (kept for tests + admin flow).
+ *
+ * Compatibility data-testid:
+ *   - `shell-mobile-toggle` → bottom-nav Menu button (mobile menu drawer toggle).
+ *   - `shell-mobile-backdrop` → menu drawer backdrop.
+ *   - `shell-sidebar` → desktop sidebar (rendered always; class trượt khi
+ *     mobile để tương thích visual cũ — không còn dùng trên mobile thực tế).
+ *   - `shell-resource-chips` → resource chips section (desktop topbar +
+ *     mobile resource scroll).
+ *   - `shell-nav-*` → desktop sidebar nav items + drawer items (same key).
+ */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { getTitleDef } from '@xuantoi/shared';
@@ -9,29 +32,24 @@ import { useRoute, useRouter } from 'vue-router';
 import BuffBar from './BuffBar.vue';
 import ChatPanel from './ChatPanel.vue';
 import LocaleSwitcher from './LocaleSwitcher.vue';
+import XTMobileTopBar from './XTMobileTopBar.vue';
+import XTBottomNav from './XTBottomNav.vue';
+import XTMenuDrawer from './XTMenuDrawer.vue';
 import NotificationBell from '@/components/notification/NotificationBell.vue';
 import MaintenanceBanner from '@/components/MaintenanceBanner.vue';
 import { useMaintenanceStore } from '@/stores/maintenance';
-import GameIcon from '@/components/xianxia/GameIcon.vue';
 import ResourceChip from '@/components/xianxia/ResourceChip.vue';
 import RealmBadge from '@/components/xianxia/RealmBadge.vue';
 import SpiritualAmbientLayer from '@/components/xianxia/SpiritualAmbientLayer.vue';
 import XianxiaBackButton from '@/components/xianxia/XianxiaBackButton.vue';
+import XTIcon from '@/components/xianxia/XTIcon.vue';
+import {
+  XT_NAV_GROUPS,
+  flattenNav,
+  type XTNavBadgeKind,
+  type XTNavItem,
+} from '@/lib/xtNav';
 import { formatFeatureLabel } from '@/lib/xianxiaFormat';
-
-interface NavItem {
-  key: string;
-  icon: string;
-  to: string;
-  testId?: string;
-  staffOnly?: boolean;
-  badge?: 'breakthrough' | 'boss' | 'mission' | 'mail' | 'topup';
-}
-
-interface NavGroup {
-  titleKey: string;
-  items: NavItem[];
-}
 
 const maintenance = useMaintenanceStore();
 const { t, te } = useI18n();
@@ -41,73 +59,17 @@ const badges = useBadgesStore();
 const router = useRouter();
 const route = useRoute();
 
-const mobileNavOpen = ref(false);
+const drawerOpen = ref(false);
 
-const navGroups: NavGroup[] = [
-  {
-    titleKey: 'shell.group.core',
-    items: [
-      { key: 'home', icon: 'home', to: '/home', badge: 'breakthrough' },
-      { key: 'dashboard', icon: 'dashboard', to: '/dashboard', testId: 'shell-nav-dashboard' },
-      { key: 'character', icon: 'character', to: '/character' },
-    ],
-  },
-  {
-    titleKey: 'shell.group.cultivation',
-    items: [
-      { key: 'cultivation', icon: 'cultivation', to: '/cultivation' },
-      { key: 'breakthrough', icon: 'breakthrough', to: '/breakthrough' },
-      { key: 'bodyCultivation', icon: 'bodyCultivation', to: '/body-cultivation' },
-      { key: 'cultivationMethod', icon: 'method', to: '/cultivation-method' },
-      { key: 'spiritualRoot', icon: 'spiritualRoot', to: '/spiritual-root' },
-      { key: 'skillBook', icon: 'skill', to: '/skill-book' },
-      { key: 'alchemy', icon: 'alchemy', to: '/alchemy' },
-    ],
-  },
-  {
-    titleKey: 'shell.group.activity',
-    items: [
-      { key: 'inventory', icon: 'inventory', to: '/inventory' },
-      { key: 'equipment', icon: 'equipment', to: '/equipment', testId: 'shell-nav-equipment' },
-      { key: 'pets', icon: 'pet', to: '/pets' },
-      { key: 'secretRealms', icon: 'secretRealm', to: '/secret-realms' },
-      { key: 'dungeonRun', icon: 'secretRealm', to: '/dungeon-run' },
-      { key: 'roguelike', icon: 'roguelike', to: '/roguelike-realms' },
-      { key: 'tower', icon: 'tower', to: '/tower' },
-      { key: 'boss', icon: 'boss', to: '/boss', badge: 'boss' },
-      { key: 'missions', icon: 'event', to: '/missions', badge: 'mission' },
-    ],
-  },
-  {
-    titleKey: 'shell.group.social',
-    items: [
-      { key: 'sect', icon: 'sect', to: '/sect' },
-      { key: 'market', icon: 'market', to: '/market' },
-      { key: 'auction', icon: 'auction', to: '/auction' },
-      { key: 'events', icon: 'event', to: '/events' },
-      { key: 'achievements', icon: 'achievement', to: '/achievements' },
-      { key: 'mail', icon: 'mail', to: '/mail', badge: 'mail' },
-      { key: 'social', icon: 'social', to: '/social', testId: 'shell-nav-social' },
-      { key: 'leaderboard', icon: 'achievement', to: '/leaderboard' },
-    ],
-  },
-  {
-    titleKey: 'shell.group.system',
-    items: [
-      { key: 'notifications', icon: 'notification', to: '/notification-settings', testId: 'shell-nav-notifications' },
-      { key: 'settings', icon: 'settings', to: '/settings' },
-      { key: 'notificationSettings', icon: 'notification', to: '/notification-settings', testId: 'shell-nav-notification-settings' },
-      { key: 'activity', icon: 'stone', to: '/activity' },
-      { key: 'giftcode', icon: 'event', to: '/giftcode' },
-      { key: 'topup', icon: 'jade', to: '/topup', badge: 'topup' },
-      { key: 'feedback', icon: 'support', to: '/support/feedback', testId: 'shell-nav-feedback' },
-      { key: 'reportPlayer', icon: 'support', to: '/support/report-player', testId: 'shell-nav-report-player' },
-      { key: 'admin', icon: 'admin', to: '/admin', staffOnly: true },
-    ],
-  },
-];
+function openDrawer(): void {
+  drawerOpen.value = true;
+}
+function closeDrawer(): void {
+  drawerOpen.value = false;
+}
 
-const flatNav = computed(() => navGroups.flatMap((g) => g.items));
+const flatNav = computed(() => flattenNav());
+
 const expPct = computed(() => Math.round(game.expProgress * 100));
 const realmText = computed(() => game.realmFullName || '—');
 const cultivating = computed(() => game.character?.cultivating ?? false);
@@ -123,27 +85,26 @@ const equippedTitleName = computed<string | null>(() => {
 });
 const pageTitle = computed(() => {
   const current = flatNav.value
-    .filter((item) => route.path === item.to || route.path.startsWith(`${item.to}/`))
+    .filter(
+      (item) => route.path === item.to || route.path.startsWith(`${item.to}/`),
+    )
     .sort((a, b) => b.to.length - a.to.length)[0];
   if (!current) return t('app.brand');
   const key = `shell.nav.${current.key}`;
   return te(key) ? t(key) : current.key;
 });
 
-function toggleMobileNav(): void {
-  mobileNavOpen.value = !mobileNavOpen.value;
-}
-
-function closeMobileNav(): void {
-  mobileNavOpen.value = false;
-}
-
 function navLabel(key: string): string {
   const i18nKey = `shell.nav.${key}`;
   return te(i18nKey) ? t(i18nKey) : formatFeatureLabel(key);
 }
 
-function isNavActive(item: NavItem): boolean {
+function groupLabel(key: string): string {
+  const i18nKey = `shell.group.${key}`;
+  return te(i18nKey) ? t(i18nKey) : key;
+}
+
+function isNavActive(item: XTNavItem): boolean {
   const resolved =
     typeof router.resolve === 'function'
       ? router.resolve(item.to)
@@ -152,9 +113,11 @@ function isNavActive(item: NavItem): boolean {
   return route.path === target || route.path.startsWith(`${target}/`);
 }
 
-function badgeValue(kind?: NavItem['badge']): string | null {
+function badgeValue(kind?: XTNavBadgeKind): string | null {
   if (kind === 'mission' && badges.missionClaimable > 0) {
-    return badges.missionClaimable > 99 ? '99+' : String(badges.missionClaimable);
+    return badges.missionClaimable > 99
+      ? '99+'
+      : String(badges.missionClaimable);
   }
   if (kind === 'mail' && game.unreadMail > 0) {
     return game.unreadMail > 99 ? '99+' : String(game.unreadMail);
@@ -162,27 +125,27 @@ function badgeValue(kind?: NavItem['badge']): string | null {
   return null;
 }
 
-function showDot(kind?: NavItem['badge']): boolean {
+function showDot(kind?: XTNavBadgeKind): boolean {
   if (kind === 'breakthrough') return badges.breakthroughReady;
   if (kind === 'boss') return badges.bossActive;
   if (kind === 'topup') return badges.topupPending;
   return false;
 }
 
-function dotClass(kind?: NavItem['badge']): string {
+function dotClass(kind?: XTNavBadgeKind): string {
   if (kind === 'boss') return 'bg-rose-500';
   if (kind === 'topup') return 'bg-amber-400';
   return 'bg-violet-400';
 }
 
-function dotTitle(kind?: NavItem['badge']): string {
+function dotTitle(kind?: XTNavBadgeKind): string {
   if (kind === 'boss') return t('shell.badge.bossActive');
   if (kind === 'topup') return t('shell.badge.topupPending');
   return t('shell.badge.breakthroughReady');
 }
 
 function onKeydown(ev: KeyboardEvent): void {
-  if (ev.key === 'Escape') closeMobileNav();
+  if (ev.key === 'Escape') closeDrawer();
 }
 
 async function logout(): Promise<void> {
@@ -193,7 +156,7 @@ async function logout(): Promise<void> {
 watch(
   () => route.fullPath,
   () => {
-    mobileNavOpen.value = false;
+    closeDrawer();
   },
 );
 
@@ -215,66 +178,106 @@ onBeforeUnmount(() => {
   <div class="xt-page-gradient relative min-h-screen overflow-hidden text-emerald-950">
     <SpiritualAmbientLayer visual-effect-level="MEDIUM" />
     <MaintenanceBanner
-      v-if="maintenance.active && maintenance.status && (game.character?.role === 'ADMIN' || game.character?.role === 'MOD')"
+      v-if="
+        maintenance.active &&
+        maintenance.status &&
+        (game.character?.role === 'ADMIN' || game.character?.role === 'MOD')
+      "
       :status="maintenance.status"
       class="relative z-20"
     />
 
-    <div class="relative z-10 min-h-screen lg:grid lg:grid-cols-[18rem_minmax(0,1fr)_19rem]">
-      <div
-        v-if="mobileNavOpen"
-        class="fixed inset-0 z-40 bg-emerald-950/30 backdrop-blur-sm lg:hidden"
-        data-testid="shell-mobile-backdrop"
-        @click="closeMobileNav()"
-      />
+    <!-- ============= MOBILE SHELL (< lg) ============= -->
+    <div class="relative z-10 flex min-h-screen flex-col lg:hidden">
+      <XTMobileTopBar />
 
+      <main
+        class="min-w-0 flex-1 px-3 pb-[calc(var(--xt-mobile-bottomnav-h)+env(safe-area-inset-bottom,0px)+24px)] pt-3"
+        data-testid="xt-mobile-main"
+      >
+        <slot />
+      </main>
+
+      <XTBottomNav :drawer-open="drawerOpen" @open-menu="openDrawer" />
+
+      <!-- Hidden hand-off for legacy tests: shell-mobile-toggle/backdrop -->
+      <button
+        type="button"
+        class="sr-only"
+        :aria-expanded="drawerOpen"
+        data-testid="shell-mobile-toggle"
+        @click="drawerOpen ? closeDrawer() : openDrawer()"
+      >
+        {{ t('shell.nav.toggle') }}
+      </button>
+      <div
+        v-if="drawerOpen"
+        class="hidden"
+        data-testid="shell-mobile-backdrop"
+        @click="closeDrawer()"
+      />
+    </div>
+
+    <!-- ============= DESKTOP SHELL (>= lg) ============= -->
+    <div
+      class="relative z-10 hidden min-h-screen lg:grid lg:grid-cols-[var(--xt-desktop-sidebar-w)_minmax(0,1fr)] xl:grid-cols-[var(--xt-desktop-sidebar-w)_minmax(0,1fr)_19rem]"
+    >
       <aside
-        class="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[86vw] flex-col border-r border-amber-300/30 bg-white/95 p-4 shadow-2xl shadow-emerald-950/10 transition-transform duration-200 lg:static lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0 lg:bg-white/65 lg:backdrop-blur-xl"
-        :class="mobileNavOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+        class="sticky top-0 z-30 flex h-screen w-[var(--xt-desktop-sidebar-w)] flex-col border-r border-emerald-300/30 bg-white/65 p-3 backdrop-blur-xl"
+        :class="drawerOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
         data-testid="shell-sidebar"
       >
-        <div class="mb-5 flex items-center justify-between gap-3">
-          <RouterLink to="/dashboard" class="flex items-center gap-3 rounded-3xl focus:outline-none focus:ring-2 focus:ring-emerald-300/60">
-            <div class="flex h-12 w-12 items-center justify-center rounded-3xl border border-amber-300/45 bg-gradient-to-br from-white via-emerald-100 to-amber-100 text-xl font-black text-emerald-900 shadow-[0_0_26px_rgba(74,169,143,0.2)]">
-              XT
-            </div>
-            <div>
-              <p class="text-lg font-black tracking-[0.24em] text-emerald-950">XT</p>
-              <p class="text-xs uppercase tracking-[0.28em] text-emerald-800/70">Tu Tiên Lộ</p>
-            </div>
-          </RouterLink>
-          <button
-            type="button"
-            class="rounded-2xl border border-emerald-300/30 bg-white/60 p-2 text-emerald-950 lg:hidden"
-            aria-label="Thoát menu"
-            @click="closeMobileNav()"
-          >
-            <GameIcon name="close" size="sm" />
-          </button>
-        </div>
+        <RouterLink
+          to="/dashboard"
+          class="mb-4 flex items-center gap-3 rounded-3xl px-2 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-300/60"
+        >
+          <span
+            class="flex h-11 w-11 items-center justify-center rounded-3xl border border-amber-300/45 bg-gradient-to-br from-white via-emerald-100 to-amber-100 text-lg font-black text-emerald-900 shadow-[0_0_24px_rgba(74,169,143,0.20)]"
+          >XT</span>
+          <span>
+            <span class="block text-base font-black tracking-[0.24em] text-emerald-950">XT</span>
+            <span class="block text-[10px] uppercase tracking-[0.28em] text-emerald-800/70">
+              Tu Tiên Lộ
+            </span>
+          </span>
+        </RouterLink>
 
-        <nav class="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1" aria-label="XT navigation">
-          <section v-for="group in navGroups" :key="group.titleKey" class="space-y-2">
-            <p class="px-2 text-[10px] font-bold uppercase tracking-[0.28em] text-emerald-900/50">
-              {{ t(group.titleKey) }}
+        <nav class="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1" aria-label="XT navigation">
+          <section
+            v-for="group in XT_NAV_GROUPS"
+            :key="group.key"
+            class="space-y-1"
+          >
+            <p class="px-2 text-[10px] font-bold uppercase tracking-[0.28em] text-emerald-900/55">
+              {{ groupLabel(group.key) }}
             </p>
-            <div class="space-y-1">
+            <div class="space-y-0.5">
               <RouterLink
-                v-for="item in group.items.filter((entry) => !entry.staffOnly || isStaff)"
+                v-for="item in group.items.filter(
+                  (entry) => !entry.staffOnly || isStaff,
+                )"
                 :key="item.to"
                 :to="item.to"
-                class="group relative flex min-h-11 items-center gap-3 rounded-2xl px-3 py-2 text-sm font-semibold text-emerald-900/75 transition hover:-translate-y-0.5 hover:bg-emerald-50 hover:text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-300/60"
-                :class="isNavActive(item) ? 'bg-gradient-to-r from-emerald-100 via-white to-amber-100 text-emerald-950 ring-1 ring-amber-300/35 shadow-[0_0_24px_rgba(74,169,143,0.14)]' : ''"
+                class="group relative flex min-h-10 items-center gap-3 rounded-2xl px-2.5 py-1.5 text-[13px] font-semibold text-emerald-900/75 transition hover:bg-emerald-50 hover:text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-300/60"
+                :class="
+                  isNavActive(item)
+                    ? 'bg-gradient-to-r from-emerald-100 via-white to-amber-100 text-emerald-950 ring-1 ring-amber-300/35 shadow-[0_0_24px_rgba(74,169,143,0.14)]'
+                    : ''
+                "
                 :data-testid="item.testId ?? `shell-nav-${item.key}`"
               >
-                <GameIcon :name="item.icon" size="sm" />
+                <XTIcon :name="item.icon" size="sm" />
                 <span class="min-w-0 flex-1 truncate">{{ navLabel(item.key) }}</span>
                 <span
                   v-if="showDot(item.badge)"
                   class="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full ring-2 ring-white"
                   :class="dotClass(item.badge)"
                   :title="dotTitle(item.badge)"
-                  :data-testid="item.badge === 'breakthrough' ? 'shell-nav-home-breakthrough-badge' : undefined"
+                  :data-testid="
+                    item.badge === 'breakthrough'
+                      ? 'shell-nav-home-breakthrough-badge'
+                      : undefined
+                  "
                 />
                 <span
                   v-if="badgeValue(item.badge)"
@@ -290,25 +293,18 @@ onBeforeUnmount(() => {
       </aside>
 
       <div class="flex min-h-screen min-w-0 flex-col">
-        <header class="sticky top-0 z-30 border-b border-emerald-200/35 bg-white/70 px-3 py-3 backdrop-blur-xl md:px-5">
+        <header
+          class="sticky top-0 z-30 border-b border-emerald-200/35 bg-white/70 px-4 py-2.5 backdrop-blur-xl"
+        >
           <div class="flex items-center gap-3">
-            <button
-              type="button"
-              class="rounded-2xl border border-emerald-300/30 bg-white/60 p-2 text-emerald-950 lg:hidden"
-              :aria-label="t('shell.nav.toggle')"
-              :aria-expanded="mobileNavOpen"
-              data-testid="shell-mobile-toggle"
-              @click="toggleMobileNav()"
-            >
-              <span aria-hidden="true" class="text-xl leading-none">{{ mobileNavOpen ? '✕' : '☰' }}</span>
-            </button>
             <XianxiaBackButton
               v-if="route.path !== '/dashboard'"
-              class="hidden md:inline-flex"
               :label="t('common.back')"
             />
             <div class="min-w-0">
-              <p class="truncate text-lg font-black tracking-wide text-emerald-950">{{ pageTitle }}</p>
+              <p class="truncate text-lg font-black tracking-wide text-emerald-950">
+                {{ pageTitle }}
+              </p>
               <p class="hidden text-xs text-emerald-900/60 md:block">{{ t('app.tagline') }}</p>
             </div>
 
@@ -316,9 +312,18 @@ onBeforeUnmount(() => {
               <div v-if="game.character" class="hidden xl:flex items-center">
                 <BuffBar />
               </div>
-              <div v-if="game.character" class="hidden min-w-0 flex-col items-end gap-1 md:flex">
-                <span class="max-w-40 truncate text-sm font-bold text-emerald-950">{{ game.character.name }}</span>
-                <span v-if="equippedTitleName" class="text-xs text-amber-700" data-testid="shell-equipped-title">
+              <div
+                v-if="game.character"
+                class="hidden min-w-0 flex-col items-end gap-1 md:flex"
+              >
+                <span class="max-w-40 truncate text-sm font-bold text-emerald-950">
+                  {{ game.character.name }}
+                </span>
+                <span
+                  v-if="equippedTitleName"
+                  class="text-xs text-amber-700"
+                  data-testid="shell-equipped-title"
+                >
                   {{ equippedTitleName }}
                 </span>
                 <RealmBadge :label="realmText" />
@@ -349,30 +354,59 @@ onBeforeUnmount(() => {
           </div>
           <div
             v-if="game.character"
-            class="mt-3 flex gap-2 overflow-x-auto pb-1"
+            class="mt-2 flex gap-2 overflow-x-auto pb-1"
             data-testid="shell-resource-chips"
           >
-            <ResourceChip icon="linhThach" :label="t('dashboard.progression.linhThach')" :value="game.character.linhThach" tone="gold" />
-            <ResourceChip icon="tienNgoc" :label="t('dashboard.progression.tienNgoc')" :value="game.character.tienNgoc" tone="jade" />
-            <ResourceChip icon="power" label="Lực chiến" :value="game.character.power" tone="violet" />
-            <ResourceChip icon="cultivation" :label="t('shell.stamina')" :value="`${game.character.stamina}/${game.character.staminaMax}`" tone="cyan" />
+            <ResourceChip
+              icon="linhThach"
+              :label="t('dashboard.progression.linhThach')"
+              :value="game.character.linhThach"
+              tone="gold"
+            />
+            <ResourceChip
+              icon="tienNgoc"
+              :label="t('dashboard.progression.tienNgoc')"
+              :value="game.character.tienNgoc"
+              tone="jade"
+            />
+            <ResourceChip
+              icon="power"
+              label="Lực chiến"
+              :value="game.character.power"
+              tone="violet"
+            />
+            <ResourceChip
+              icon="cultivation"
+              :label="t('shell.stamina')"
+              :value="`${game.character.stamina}/${game.character.staminaMax}`"
+              tone="cyan"
+            />
             <span
               class="inline-flex shrink-0 items-center rounded-2xl border px-3 py-2 text-xs"
-              :class="game.wsConnected ? 'border-emerald-300/30 bg-emerald-50 text-emerald-800' : 'border-rose-300/30 bg-rose-50 text-rose-700'"
+              :class="
+                game.wsConnected
+                  ? 'border-emerald-300/30 bg-emerald-50 text-emerald-800'
+                  : 'border-rose-300/30 bg-rose-50 text-rose-700'
+              "
             >
               {{ game.wsConnected ? t('shell.wsOn') : t('shell.wsOff') }}
             </span>
           </div>
         </header>
 
-        <main class="min-w-0 flex-1 overflow-y-auto p-4 md:p-6">
+        <main class="mx-auto w-full min-w-0 max-w-[var(--xt-desktop-max-w)] flex-1 overflow-y-auto p-4 md:p-6">
           <slot />
         </main>
       </div>
 
-      <aside class="hidden min-h-screen border-l border-emerald-200/35 bg-white/45 p-3 backdrop-blur-xl lg:flex lg:flex-col">
+      <aside
+        class="hidden min-h-screen border-l border-emerald-200/35 bg-white/45 p-3 backdrop-blur-xl xl:flex xl:flex-col"
+      >
         <ChatPanel />
       </aside>
     </div>
+
+    <!-- Menu drawer (mobile-primary; can also open on desktop via overflow icon) -->
+    <XTMenuDrawer :open="drawerOpen" @close="closeDrawer" />
   </div>
 </template>

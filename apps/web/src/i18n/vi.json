@@ -429,14 +429,24 @@
       "dashboard": "Thiên Cung Tổng Quan",
       "feedback": "Phản hồi",
       "reportPlayer": "Tố cáo",
-      "homestead": "Động Phủ"
+      "homestead": "Động Phủ",
+      "menu": "Menu",
+      "activity": "Hoạt Động",
+      "world": "Thế Giới",
+      "farm": "Linh Sơn Farm",
+      "artifact": "Pháp Bảo",
+      "events": "Sự Kiện",
+      "pets": "Linh Thú"
     },
     "group": {
       "core": "Chính",
       "cultivation": "Tu Luyện",
       "activity": "Hoạt Động",
       "social": "Xã Hội",
-      "system": "Hệ Thống"
+      "system": "Hệ Thống",
+      "inventory": "Vật Phẩm",
+      "market": "Kinh Tế",
+      "longTerm": "Dài Hạn"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -7951,6 +7961,60 @@
       "PRODUCTION_NOT_FOUND": "Không tìm thấy công thức Dược Viên.",
       "FIELD_NOT_FOUND": "Không tìm thấy ô Linh Điền.",
       "GARDEN_NOT_FOUND": "Không tìm thấy ô Dược Viên."
+    }
+  },
+  "xt": {
+    "brand": {
+      "home": "Về Thiên Cung Tổng Quan"
+    },
+    "character": {
+      "unknown": "Đạo hữu vô danh"
+    },
+    "menu": {
+      "title": "Menu Tu Tiên Lộ",
+      "subtitle": "Toàn bộ chức năng — bấm để mở."
+    },
+    "dashboard": {
+      "hero": {
+        "title": "Đạo Thân",
+        "power": "Lực Chiến",
+        "realm": "Cảnh Giới",
+        "linhCan": "Linh Căn",
+        "sect": "Tông Môn",
+        "title": "Danh Hiệu",
+        "cultivate": "Tu Luyện",
+        "breakthrough": "Đột Phá",
+        "secret": "Bí Cảnh",
+        "empty": "Chưa có dữ liệu nhân vật. Khai đạo để bắt đầu."
+      },
+      "progress": {
+        "title": "Tiến Độ Tu Luyện",
+        "cultivation": "Tu Luyện",
+        "body": "Luyện Thể",
+        "method": "Công Pháp",
+        "speed": "Tốc độ tu luyện",
+        "methodEmpty": "Chưa vận công pháp."
+      },
+      "today": {
+        "title": "Hôm Nay Nên Làm",
+        "empty": "Không có nhiệm vụ hôm nay — quay lại sau.",
+        "go": "Đi",
+        "done": "Đã xong"
+      },
+      "featured": {
+        "title": "Hoạt Động Nổi Bật",
+        "empty": "Hiện chưa có hoạt động đặc biệt.",
+        "join": "Tham gia",
+        "cooldownActive": "Còn hồi",
+        "rewardPreview": "Phần thưởng"
+      },
+      "quickActions": {
+        "title": "Hành Động Nhanh"
+      }
+    },
+    "placeholder": {
+      "title": "Đang phát triển",
+      "desc": "Chức năng này đang được xây dựng. Trở lại Thiên Cung Tổng Quan để tiếp tục."
     }
   }
 }
