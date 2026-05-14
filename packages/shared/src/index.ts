@@ -15,6 +15,7 @@ export * from './loadout-presets';
 export * from './web-push';
 export * from './missions';
 export * from './achievements';
+export * from './reputation-goals';
 export * from './alchemy';
 export * from './boss';
 export * from './buffs';

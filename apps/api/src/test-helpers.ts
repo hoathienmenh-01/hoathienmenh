@@ -304,6 +304,8 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.characterTalent.deleteMany({});
   await prisma.characterTitleUnlock.deleteMany({});
   await prisma.characterAchievement.deleteMany({});
+  await prisma.characterReputation.deleteMany({});
+  await prisma.characterLongTermGoal.deleteMany({});
   await prisma.characterCultivationMethod.deleteMany({});
   // Phase 26.4 — Artifact V2 tables (FK cascade → Character; explicit wipe
   // để reset state giữa file test, mirror các bảng phase 26.x khác).
