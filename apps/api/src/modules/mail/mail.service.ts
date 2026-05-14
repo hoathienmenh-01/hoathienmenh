@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { CurrencyKind, MailType, Prisma } from '@prisma/client';
 import { DEFAULT_MAIL_TYPE, deriveMailStatus, type MailStatus } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { WebPushTriggerService } from '../web-push/web-push-trigger.service';
 
 export class MailError extends Error {
   constructor(
@@ -115,11 +116,15 @@ const MAX_CLAIM_ALL_BATCH = 50;
  */
 @Injectable()
 export class MailService {
+  private readonly logger = new Logger(MailService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
     private readonly inventory: InventoryService,
     private readonly realtime: RealtimeService,
+    // Phase 44.1 — Web Push trigger. Optional inject (tests bỏ qua an toàn).
+    @Optional() private readonly webPushTrigger?: WebPushTriggerService,
   ) {}
 
   async inbox(userId: string, opts?: { mailType?: MailType }): Promise<MailView[]> {
@@ -401,6 +406,21 @@ export class MailService {
       senderName: view.senderName,
       hasReward: view.claimable,
     });
+    // Phase 44.1 — Web Push trigger: mail mới → notify nếu user opt-in.
+    if (this.webPushTrigger) {
+      this.webPushTrigger
+        .notifyMailNew({
+          userId: exists.userId,
+          mailId: view.id,
+          subject: view.subject,
+          senderName: view.senderName,
+        })
+        .catch((e) =>
+          this.logger.warn(
+            `webPush.notifyMailNew failed: ${(e as Error).message}`,
+          ),
+        );
+    }
     return view;
   }
 
@@ -435,12 +455,52 @@ export class MailService {
       (input.rewardTienNgoc ?? 0) > 0 ||
       (input.rewardExp ?? 0n) > 0n ||
       (input.rewardItems ?? []).length > 0;
+    // Phase 44.1 — query các mail vừa tạo để có mailId cho web push dedupe.
+    let createdMails: { id: string; recipientId: string }[] = [];
+    if (this.webPushTrigger) {
+      try {
+        createdMails = await this.prisma.mail.findMany({
+          where: {
+            recipientId: { in: chars.map((c) => c.id) },
+            subject: input.subject,
+            senderName: input.senderName ?? 'Thiên Đạo Sứ Giả',
+          },
+          orderBy: { createdAt: 'desc' },
+          take: chars.length,
+          select: { id: true, recipientId: true },
+        });
+      } catch (e) {
+        this.logger.warn(
+          `mail broadcast: failed to fetch mail ids for push: ${(e as Error).message}`,
+        );
+      }
+    }
+    const mailByRecipient = new Map(
+      createdMails.map((m) => [m.recipientId, m.id]),
+    );
     for (const c of chars) {
       this.realtime.emitToUser(c.userId, 'mail:new', {
         subject: input.subject,
         senderName: input.senderName ?? 'Thiên Đạo Sứ Giả',
         hasReward,
       });
+      // Phase 44.1 — Web Push trigger broadcast. Fail-soft.
+      if (this.webPushTrigger) {
+        const mailId = mailByRecipient.get(c.id);
+        if (!mailId) continue;
+        this.webPushTrigger
+          .notifyMailNew({
+            userId: c.userId,
+            mailId,
+            subject: input.subject,
+            senderName: input.senderName ?? 'Thiên Đạo Sứ Giả',
+          })
+          .catch((e) =>
+            this.logger.warn(
+              `webPush.notifyMailNew (broadcast) failed: ${(e as Error).message}`,
+            ),
+          );
+      }
     }
     return chars.length;
   }

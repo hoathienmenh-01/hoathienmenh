@@ -243,6 +243,30 @@ describe('Phase 35 — pet snapshot clamp', () => {
       expect(snap.damageContributionCapPercent).toBeGreaterThan(0);
     }
   });
+
+  // Phase 44.1 — preview surfaces passive skill info (test #6).
+  it('preview snapshot xuất hiện passive skill cùng category trong skills[]', () => {
+    // pet_lapin_qi có skill `pet_skill_qi_nurture` (PASSIVE — cultivation
+    // bonus) + `pet_skill_scout_step` → snapshot phải expose category cho FE
+    // hiển thị icon.
+    const lapin = petByKey('pet_lapin_qi')!;
+    const snap = computePetSnapshot(lapin, {
+      petKey: lapin.petKey,
+      level: 10,
+      star: 1,
+      evolutionStage: 0,
+      skillLevels: { pet_skill_qi_nurture: 1 },
+      context: 'PVE',
+    });
+    expect(snap.skills.length).toBeGreaterThanOrEqual(1);
+    const qi = snap.skills.find((s) => s.skillKey === 'pet_skill_qi_nurture');
+    expect(qi).toBeDefined();
+    expect(qi?.category).toBe('PASSIVE');
+    expect(qi?.effectClampedPct).toBeGreaterThan(0);
+    // Snapshot phải có stats để preview render.
+    expect(snap.stats.hp).toBeGreaterThan(0);
+    expect(snap.stats.atk).toBeGreaterThan(0);
+  });
 });
 
 describe('Phase 35 — pet boxes', () => {
@@ -381,6 +405,21 @@ describe('Phase 35 — pet sources', () => {
   it('material source lookup', () => {
     const srcs = sourcesForMaterial('pet_mat_thu_hon_thach');
     expect(srcs.length).toBeGreaterThanOrEqual(1);
+  });
+
+  // Phase 44.1 — rare drop policy.
+  it('LEGENDARY+ pets không có source `FREE`/`ACHIEVEMENT` (rare pet policy)', () => {
+    const issues = auditPetSources();
+    const easy = issues.filter((i) => i.code === 'PET_RARE_HAS_EASY_PATH');
+    expect(easy, JSON.stringify(easy)).toEqual([]);
+  });
+
+  it('LEGENDARY+ pets có estDropRatePct ≤ cap (rare pet drop policy)', () => {
+    const issues = auditPetSources();
+    const tooHigh = issues.filter(
+      (i) => i.code === 'PET_RARE_DROP_RATE_TOO_HIGH',
+    );
+    expect(tooHigh, JSON.stringify(tooHigh)).toEqual([]);
   });
 });
 

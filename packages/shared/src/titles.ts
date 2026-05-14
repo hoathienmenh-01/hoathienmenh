@@ -60,7 +60,9 @@ export type TitleSource =
   | 'sect_rank'
   | 'sect_season'
   | 'event'
-  | 'donation';
+  | 'donation'
+  /** Phase 44.1 — onboarding 7-day questline title (Day 7 final task). */
+  | 'onboarding';
 
 export interface TitleDef {
   readonly key: string;
@@ -1429,6 +1431,21 @@ export const TITLES: readonly TitleDef[] = [
     unlockAchievementKey: 'phase21_achievement_100',
     unlockSectRole: null,
     flavorStatBonus: { statTarget: 'atk', value: 1.04 },
+  },
+  // Phase 44.1 — Onboarding 7-day final reward title (Day 7 last task).
+  {
+    key: 'onboarding_novice_cultivator',
+    nameVi: 'Tân Tu Sĩ',
+    nameEn: 'Novice Cultivator',
+    description:
+      'Hoàn thành 7 ngày onboarding — bước đầu vững vàng trên đường tu tiên.',
+    rarity: 'common',
+    source: 'onboarding',
+    element: null,
+    unlockRealmKey: null,
+    unlockAchievementKey: null,
+    unlockSectRole: null,
+    flavorStatBonus: null,
   }];
 
 const TITLES_BY_KEY = new Map<string, TitleDef>(TITLES.map((t) => [t.key, t]));

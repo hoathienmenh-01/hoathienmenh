@@ -387,9 +387,45 @@ export function sourcesForMaterial(itemKey: string): PetSourceEntry[] {
 export interface PetSourceIssue {
   petKey?: string;
   itemKey?: string;
-  code: 'PET_NO_SOURCE' | 'PET_NO_FREE_PATH' | 'INVALID_SOURCE_REF' | 'CAP_INVALID';
+  code:
+    | 'PET_NO_SOURCE'
+    | 'PET_NO_FREE_PATH'
+    | 'INVALID_SOURCE_REF'
+    | 'CAP_INVALID'
+    /**
+     * Phase 44.1 — rare pet (LEGENDARY+) KHÔNG được có `FREE`/`ACHIEVEMENT`
+     * source path → bắt buộc qua paywall nặng (BOSS/SECRET_REALM/BOX/EVENT/
+     * TRIAL_TOWER) để tránh pet hiếm rơi quá dễ.
+     */
+    | 'PET_RARE_HAS_EASY_PATH'
+    /**
+     * Phase 44.1 — rare pet (LEGENDARY+) drop rate vượt ngưỡng policy
+     * (`PET_RARE_MAX_DROP_RATE_PCT`).
+     */
+    | 'PET_RARE_DROP_RATE_TOO_HIGH';
   message: string;
 }
+
+/**
+ * Phase 44.1 — Drop rate cap (theo %) cho pet rarity ≥ LEGENDARY. Mỗi
+ * source entry `estDropRatePct` cho rare pet không được vượt ngưỡng này.
+ * Việc giới hạn này là mức balance “soft cap” kiểm tra bởi audit — tách
+ * với runtime drop logic.
+ */
+export const PET_RARE_MAX_DROP_RATE_PCT = 5 as const;
+
+/** Pet rarity coi như “rare” để áp policy. */
+const RARE_PLUS_RARITIES: ReadonlySet<string> = new Set([
+  'LEGENDARY',
+  'MYTHIC',
+  'IMMORTAL',
+]);
+
+/** Source tag bị coi là “đường dễ” cho rare pet. */
+const RARE_FORBIDDEN_TAGS: ReadonlySet<PetSourceTag> = new Set<PetSourceTag>([
+  'FREE',
+  'ACHIEVEMENT',
+]);
 
 /**
  * Audit catalog source: mọi pet phải có ≥1 source; pet không premium-only/
@@ -424,6 +460,31 @@ export function auditPetSources(
     }
     if (s.weeklyCap !== undefined && s.weeklyCap < 0) {
       issues.push({ petKey: s.petKey, itemKey: s.itemKey, code: 'CAP_INVALID', message: 'weeklyCap < 0' });
+    }
+  }
+
+  // Phase 44.1 — rare pet drop policy.
+  for (const p of pets) {
+    if (!RARE_PLUS_RARITIES.has(p.rarity)) continue;
+    const own = sources.filter((s) => s.petKey === p.petKey);
+    for (const s of own) {
+      if (RARE_FORBIDDEN_TAGS.has(s.tag)) {
+        issues.push({
+          petKey: p.petKey,
+          code: 'PET_RARE_HAS_EASY_PATH',
+          message: `rare pet has forbidden source tag ${s.tag}`,
+        });
+      }
+      if (
+        typeof s.estDropRatePct === 'number' &&
+        s.estDropRatePct > PET_RARE_MAX_DROP_RATE_PCT
+      ) {
+        issues.push({
+          petKey: p.petKey,
+          code: 'PET_RARE_DROP_RATE_TOO_HIGH',
+          message: `rare pet ${p.petKey} drop rate ${s.estDropRatePct}% > cap ${PET_RARE_MAX_DROP_RATE_PCT}%`,
+        });
+      }
     }
   }
   return issues;

@@ -31,8 +31,11 @@ const VALID_SOURCES: readonly TitleSource[] = [
   'element_mastery',
   'achievement',
   'sect_rank',
+  'sect_season',
   'event',
   'donation',
+  // Phase 44.1 — onboarding 7-day Day 7 title source.
+  'onboarding',
 ];
 
 const VALID_STAT_TARGETS = [

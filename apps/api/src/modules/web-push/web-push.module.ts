@@ -4,19 +4,26 @@ import { AuthModule } from '../auth/auth.module';
 import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 import { WebPushController } from './web-push.controller';
 import { WebPushService } from './web-push.service';
+import { WebPushTriggerService } from './web-push-trigger.service';
+import { WebPushDailyReminderScheduler } from './web-push-daily-reminder.scheduler';
 
 /**
  * Phase PWA-1 — Web Push module.
+ * Phase 44.1 — expose `WebPushTriggerService` cho BossModule, MailModule,
+ * StaminaWorker, DailyReminderScheduler gọi để trigger push.
  *
- * Exports `WebPushService` cho các module trigger (MailModule,
- * BossModule, StaminaWorker, DailyReminderScheduler) gọi
- * `sendToUser` khi event xảy ra. Trigger wiring sẽ ở follow-up PR
- * nhỏ để PR này gọn (KHÔNG đụng combat / mail core).
+ * Trigger service tự gate `pushEnabled`, fail-soft khi gateway / prefs /
+ * cooldown sai. Module gốc (Boss/Mail) inject Optional → tests không cần.
  */
 @Module({
   imports: [AuthModule, FeatureFlagModule],
   controllers: [WebPushController],
-  providers: [WebPushService, PrismaService],
-  exports: [WebPushService],
+  providers: [
+    WebPushService,
+    WebPushTriggerService,
+    WebPushDailyReminderScheduler,
+    PrismaService,
+  ],
+  exports: [WebPushService, WebPushTriggerService, WebPushDailyReminderScheduler],
 })
 export class WebPushModule {}

@@ -55,6 +55,7 @@ import { SectWarService } from '../sect-war/sect-war.service';
 import { TerritoryService } from '../territory/territory.service';
 import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
 import { DropEconomyService } from '../economy/drop-economy.service';
+import { WebPushTriggerService } from '../web-push/web-push-trigger.service';
 
 export class BossError extends Error {
   constructor(
@@ -181,6 +182,8 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     @Optional()
     private readonly liveOpsEvents?: LiveOpsEventSchedulerService,
     @Optional() private readonly dropEconomy?: DropEconomyService,
+    // Phase 44.1 — Web Push trigger. Optional inject (tests bỏ qua an toàn).
+    @Optional() private readonly webPushTrigger?: WebPushTriggerService,
   ) {}
 
   onModuleInit(): void {
@@ -861,6 +864,24 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       expiresAt: created.expiresAt.toISOString(),
       regionKey: created.regionKey,
     });
+    // Phase 44.1 — Web Push trigger: boss spawn → notify mọi user opt-in
+    // `bossSpawnEnabled`. Fail-soft trong WebPushTriggerService (gateway lỗi,
+    // env off, prefs disabled, cooldown 5 phút → log + no-op, KHÔNG crash).
+    if (this.webPushTrigger) {
+      this.webPushTrigger
+        .notifyBossSpawn({
+          id: created.id,
+          bossKey: created.bossKey,
+          name: created.name,
+          level: created.level,
+          regionKey: created.regionKey,
+        })
+        .catch((e) =>
+          this.logger.warn(
+            `webPush.notifyBossSpawn failed: ${(e as Error).message}`,
+          ),
+        );
+    }
     this.logger.log(
       `Boss spawn region=${created.regionKey}: ${created.name} Lv.${created.level} maxHp=${maxHp}`,
     );

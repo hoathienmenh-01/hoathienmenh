@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { CurrencyKind } from '@prisma/client';
 import {
   ONBOARDING_DAYS,
@@ -11,6 +11,55 @@ import {
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
+import { TitleService, TitleError } from '../character/title.service';
+
+/**
+ * Phase 44.1 — Hành động thật được auto-track. Mỗi action map → 1+ taskKey.
+ *
+ * Nguyên tắc:
+ *   - Chỉ auto-complete task `category` phù hợp; task duration-based
+ *     (vd. `d2_cultivate_30min`) KHÔNG nằm trong map này.
+ *   - Auto-track ép qua flow `_autoCompleteTask` (CAS AVAILABLE→COMPLETED) →
+ *     không ảnh hưởng task đã CLAIMED.
+ *   - Caller fail-soft: try/catch quanh `recordAction` ở module gốc.
+ */
+export type OnboardingAction =
+  | 'DAILY_LOGIN_CLAIM'
+  | 'INVENTORY_OPEN'
+  | 'CULTIVATION_START'
+  | 'QUEST_OPEN'
+  | 'COMBAT_WIN'
+  | 'DUNGEON_ENTER'
+  | 'DUNGEON_CLEAR'
+  | 'STORY_OPEN'
+  | 'MAIL_OPEN'
+  | 'SECT_LIST_OPEN'
+  | 'CHAT_OPEN'
+  | 'PROFILE_OPEN'
+  | 'SPIRITUAL_ROOT_OPEN'
+  | 'ARTIFACT_OPEN';
+
+/**
+ * Mapping action → taskKey(s). Mỗi entry KHÔNG chứa task duration-based.
+ *
+ * Nếu thêm task mới có khả năng auto-track, cập nhật map này + thêm action.
+ */
+const ACTION_TASK_MAP: Record<OnboardingAction, readonly string[]> = {
+  DAILY_LOGIN_CLAIM: ['d1_claim_daily_login'],
+  INVENTORY_OPEN: ['d1_open_inventory'],
+  CULTIVATION_START: ['d1_first_cultivation'],
+  QUEST_OPEN: ['d1_view_quest'],
+  COMBAT_WIN: ['d3_first_combat_win'],
+  DUNGEON_ENTER: ['d3_enter_dungeon'],
+  DUNGEON_CLEAR: ['d3_clear_dungeon'],
+  STORY_OPEN: ['d4_open_story_v2'],
+  MAIL_OPEN: ['d5_check_mail'],
+  SECT_LIST_OPEN: ['d5_view_sect_list'],
+  CHAT_OPEN: ['d5_check_chat'],
+  PROFILE_OPEN: ['d2_check_realm', 'd7_review_dashboard'],
+  SPIRITUAL_ROOT_OPEN: ['d2_check_spiritual_root', 'd6_check_elemental'],
+  ARTIFACT_OPEN: ['d6_view_artifact'],
+};
 
 /**
  * Phase 34.0 — 7-Day Onboarding Questline Service.
@@ -117,10 +166,78 @@ export interface OnboardingClaimResult {
 
 @Injectable()
 export class OnboardingQuestService {
+  private readonly logger = new Logger(OnboardingQuestService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
+    private readonly title: TitleService,
   ) {}
+
+  /**
+   * Phase 44.1 — Auto-track hành động thật.
+   *
+   * Caller gọi với `characterId` + `action`. Service:
+   *   - Map sang taskKey(s) thông qua `ACTION_TASK_MAP`.
+   *   - Với mỗi task: CAS AVAILABLE → COMPLETED + cascade unlock day kế.
+   *   - Fail-soft: bất kỳ lỗi nào (catalog, DB) → log warn + return list rỗng.
+   *
+   * Idempotency: task đã COMPLETED/CLAIMED sẽ bị bỏ qua (CAS where
+   * `status:'AVAILABLE'` → 0 row affected). Không grant reward — reward chỉ
+   * khi `claimTask` được gọi.
+   *
+   * Trả về danh sách taskKey vừa được transition.
+   */
+  async recordAction(
+    characterId: string,
+    action: OnboardingAction,
+  ): Promise<string[]> {
+    try {
+      const taskKeys = ACTION_TASK_MAP[action];
+      if (!taskKeys || taskKeys.length === 0) return [];
+      // Ensure rows tồn tại để `updateMany` không miss.
+      await this.ensureProgressRows(characterId);
+
+      const flipped: string[] = [];
+      const now = new Date();
+      for (const taskKey of taskKeys) {
+        const taskDef = onboardingTaskByKey(taskKey);
+        if (!taskDef) continue;
+        const cas = await this.prisma.characterOnboardingTaskProgress.updateMany(
+          {
+            where: { characterId, taskKey, status: 'AVAILABLE' },
+            data: { status: 'COMPLETED', completedAt: now },
+          },
+        );
+        if (cas.count === 1) {
+          flipped.push(taskKey);
+          await this.prisma.characterOnboardingProgress.updateMany({
+            where: {
+              characterId,
+              dayNumber: taskDef.dayNumber,
+              status: 'AVAILABLE',
+            },
+            data: { status: 'IN_PROGRESS' },
+          });
+          await this.maybePromoteDayToCompleted(
+            characterId,
+            taskDef.dayNumber,
+            now,
+          );
+        }
+      }
+      if (flipped.length > 0) {
+        // Cascade unlock day kế nếu vừa hết tasks của day hiện tại.
+        await this.ensureProgressRows(characterId);
+      }
+      return flipped;
+    } catch (e) {
+      this.logger.warn(
+        `recordAction(${action}) failed for character=${characterId}: ${(e as Error).message}`,
+      );
+      return [];
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // INTERNAL HELPERS
@@ -561,6 +678,27 @@ export class OnboardingQuestService {
             where: { id: characterId },
             data: { exp: { increment: exp } },
           });
+        }
+        // Phase 44.1 — Day 7 final task có titleKey → unlock vào Title system
+        // atomically. Idempotent (tx CAS createMany skipDuplicates).
+        if (taskDef.reward.titleKey) {
+          try {
+            await this.title.unlockTitleTx(
+              tx,
+              characterId,
+              taskDef.reward.titleKey,
+              'onboarding',
+            );
+          } catch (e) {
+            if (e instanceof TitleError && e.code === 'TITLE_NOT_FOUND') {
+              // Title chưa đăng ký trong catalog — giữ cosmetic, log warn.
+              this.logger.warn(
+                `onboarding title ${taskDef.reward.titleKey} not in catalog`,
+              );
+            } else {
+              throw e;
+            }
+          }
         }
         claimed = true;
     });
