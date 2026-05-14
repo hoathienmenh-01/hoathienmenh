@@ -69,6 +69,7 @@ export * from './liveops-event-scheduler';
 export * from './liveops-announcement';
 export * from './liveops-cron-health';
 export * from './feature-flags';
+export * from './remote-config';
 export * from './maintenance-window';
 export * from './config-version';
 export * from './sect-war';

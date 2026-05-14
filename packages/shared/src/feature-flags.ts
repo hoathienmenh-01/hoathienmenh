@@ -85,7 +85,27 @@ export type FeatureFlagKey =
   | 'TERRITORY_WAR_ENABLED'
   | 'MARKET_ENABLED'
   | 'SHOP_DISCOUNT_EVENTS_ENABLED'
-  | 'SECT_SHOP_DISCOUNT_EVENTS_ENABLED';
+  | 'SECT_SHOP_DISCOUNT_EVENTS_ENABLED'
+  // Phase 45.0 — expansion (kill-switch broad gameplay modules).
+  | 'STORY_V2_ENABLED'
+  | 'AUCTION_HOUSE_ENABLED'
+  | 'CODEX_ENABLED'
+  | 'VISUAL_EFFECTS_ENABLED'
+  | 'PET_SYSTEM_ENABLED'
+  | 'PET_BOX_ENABLED'
+  | 'SECRET_REALM_ENABLED'
+  | 'DAILY_ENCOUNTER_ENABLED'
+  | 'EVENT_BUILDER_ENABLED'
+  | 'PVP_ENABLED'
+  | 'SECT_WAR_ENABLED'
+  | 'MAIL_ENABLED'
+  | 'MENTOR_ENABLED'
+  | 'WEB_PUSH_ENABLED'
+  | 'ADMIN_GIFT_ENABLED'
+  | 'ONBOARDING_ENABLED'
+  | 'ALCHEMY_ENABLED'
+  | 'BOSS_ENABLED'
+  | 'DUNGEON_ENABLED';
 
 export const FEATURE_FLAG_KEYS: readonly FeatureFlagKey[] = [
   'ARENA_ENABLED',
@@ -99,6 +119,26 @@ export const FEATURE_FLAG_KEYS: readonly FeatureFlagKey[] = [
   'MARKET_ENABLED',
   'SHOP_DISCOUNT_EVENTS_ENABLED',
   'SECT_SHOP_DISCOUNT_EVENTS_ENABLED',
+  // Phase 45.0
+  'STORY_V2_ENABLED',
+  'AUCTION_HOUSE_ENABLED',
+  'CODEX_ENABLED',
+  'VISUAL_EFFECTS_ENABLED',
+  'PET_SYSTEM_ENABLED',
+  'PET_BOX_ENABLED',
+  'SECRET_REALM_ENABLED',
+  'DAILY_ENCOUNTER_ENABLED',
+  'EVENT_BUILDER_ENABLED',
+  'PVP_ENABLED',
+  'SECT_WAR_ENABLED',
+  'MAIL_ENABLED',
+  'MENTOR_ENABLED',
+  'WEB_PUSH_ENABLED',
+  'ADMIN_GIFT_ENABLED',
+  'ONBOARDING_ENABLED',
+  'ALCHEMY_ENABLED',
+  'BOSS_ENABLED',
+  'DUNGEON_ENABLED',
 ] as const;
 
 export function isFeatureFlagKey(s: string): s is FeatureFlagKey {
@@ -260,6 +300,224 @@ export const FEATURE_FLAG_CATALOG: readonly FeatureFlagDef[] = [
     public: false,
     requiresRestart: false,
     module: 'sect',
+  },
+  // ---------------------------------------------------------------------
+  // Phase 45.0 — Feature Flags & Remote Config Center V1.
+  //
+  // 18 module kill-switch. Mặc định fail-open (`defaultEnabled=true`) —
+  // admin chủ động tắt module khi gặp lỗi runtime hoặc data bất thường.
+  // Trong Phase 45.0, chỉ 6 module wire light guard runtime:
+  // VISUAL_EFFECTS_ENABLED / PET_BOX_ENABLED / SECRET_REALM_ENABLED /
+  // DAILY_ENCOUNTER_ENABLED / WEB_PUSH_ENABLED / ADMIN_GIFT_ENABLED.
+  // 12 còn lại (STORY_V2/AUCTION_HOUSE/CODEX/PET_SYSTEM/EVENT_BUILDER/
+  // PVP/SECT_WAR/MAIL/MENTOR/ONBOARDING/ALCHEMY/BOSS/DUNGEON) chưa wire
+  // — chỉ phuả cổng catalog + admin UI; integration runtime defer
+  // Phase 45.1+.
+  // ---------------------------------------------------------------------
+  {
+    key: 'STORY_V2_ENABLED',
+    category: 'GAMEPLAY',
+    defaultEnabled: true,
+    descriptionVi: 'Bật/tắt Story V2 (Tu Tiên Lộ Quyển II+ runtime).',
+    descriptionEn: 'Enable/disable Story V2 runtime gating.',
+    public: false,
+    requiresRestart: false,
+    module: 'story',
+  },
+  {
+    key: 'AUCTION_HOUSE_ENABLED',
+    category: 'ECONOMY',
+    defaultEnabled: true,
+    descriptionVi:
+      'Bật/tắt Auction House (đấu giá phường thị tập trung).',
+    descriptionEn: 'Enable/disable Auction House.',
+    public: false,
+    requiresRestart: false,
+    module: 'auction',
+  },
+  {
+    key: 'CODEX_ENABLED',
+    category: 'GAMEPLAY',
+    defaultEnabled: true,
+    descriptionVi: 'Bật/tắt Codex (bách khoa monster/item/skill).',
+    descriptionEn: 'Enable/disable Codex.',
+    public: false,
+    requiresRestart: false,
+    module: 'codex',
+  },
+  {
+    key: 'VISUAL_EFFECTS_ENABLED',
+    category: 'GAMEPLAY',
+    defaultEnabled: true,
+    descriptionVi:
+      'Bật/tắt hiệu ứng hình ảnh nặng (combat FX / boss banner). Tắt khi server stress.',
+    descriptionEn:
+      'Enable/disable heavy visual effects (combat FX / boss banner).',
+    public: true,
+    requiresRestart: false,
+    module: 'visual-effects',
+  },
+  {
+    key: 'PET_SYSTEM_ENABLED',
+    category: 'GAMEPLAY',
+    defaultEnabled: true,
+    descriptionVi: 'Bật/tắt toàn bộ Pet System (Linh Thú).',
+    descriptionEn: 'Enable/disable entire Pet System.',
+    public: false,
+    requiresRestart: false,
+    module: 'pet',
+  },
+  {
+    key: 'PET_BOX_ENABLED',
+    category: 'ECONOMY',
+    defaultEnabled: true,
+    descriptionVi: 'Bật/tắt Pet Box (gacha / pity counter).',
+    descriptionEn: 'Enable/disable Pet Box (gacha / pity).',
+    public: false,
+    requiresRestart: false,
+    module: 'pet-box',
+  },
+  {
+    key: 'SECRET_REALM_ENABLED',
+    category: 'GAMEPLAY',
+    defaultEnabled: true,
+    descriptionVi: 'Bật/tắt Secret Realm (bí cảnh run + reward).',
+    descriptionEn: 'Enable/disable Secret Realm.',
+    public: false,
+    requiresRestart: false,
+    module: 'secret-realm',
+  },
+  {
+    key: 'DAILY_ENCOUNTER_ENABLED',
+    category: 'GAMEPLAY',
+    defaultEnabled: true,
+    descriptionVi:
+      'Bật/tắt Daily Encounter (kỳ ngộ daily roll + claim).',
+    descriptionEn: 'Enable/disable Daily Encounter (daily roll + claim).',
+    public: false,
+    requiresRestart: false,
+    module: 'daily-encounter',
+  },
+  {
+    key: 'EVENT_BUILDER_ENABLED',
+    category: 'LIVEOPS',
+    defaultEnabled: true,
+    descriptionVi:
+      'Bật/tắt Event Builder runtime (Phase 28 admin-authored event).',
+    descriptionEn: 'Enable/disable Event Builder runtime.',
+    public: false,
+    requiresRestart: false,
+    module: 'event-builder',
+  },
+  {
+    key: 'PVP_ENABLED',
+    category: 'GAMEPLAY',
+    defaultEnabled: true,
+    descriptionVi:
+      'Bật/tắt PvP (Phase 29 ranked/duel; trực giao Arena nhưng độc lập).',
+    descriptionEn:
+      'Enable/disable PvP (independent of Arena flag).',
+    public: false,
+    requiresRestart: false,
+    module: 'pvp',
+  },
+  {
+    key: 'SECT_WAR_ENABLED',
+    category: 'GAMEPLAY',
+    defaultEnabled: true,
+    descriptionVi:
+      'Bật/tắt Sect War (contribute / war queue). Tách với TERRITORY_WAR_ENABLED.',
+    descriptionEn:
+      'Enable/disable Sect War (separate from Territory War).',
+    public: false,
+    requiresRestart: false,
+    module: 'sect-war',
+  },
+  {
+    key: 'MAIL_ENABLED',
+    category: 'GAMEPLAY',
+    defaultEnabled: true,
+    descriptionVi:
+      'Bật/tắt Mail system (claim/list/broadcast). Tắt khi reward audit findings chưa fix.',
+    descriptionEn:
+      'Enable/disable Mail system. Off when reward audit findings unresolved.',
+    public: false,
+    requiresRestart: false,
+    module: 'mail',
+  },
+  {
+    key: 'MENTOR_ENABLED',
+    category: 'GAMEPLAY',
+    defaultEnabled: true,
+    descriptionVi: 'Bật/tắt Mentor / Sư đồ (milestone + reward).',
+    descriptionEn: 'Enable/disable Mentor system.',
+    public: false,
+    requiresRestart: false,
+    module: 'mentor',
+  },
+  {
+    key: 'WEB_PUSH_ENABLED',
+    category: 'GAMEPLAY',
+    defaultEnabled: true,
+    descriptionVi:
+      'Bật/tắt Web Push subscription/send. Tắt khi VAPID/provider lỗi.',
+    descriptionEn:
+      'Enable/disable Web Push subscription/send.',
+    public: true,
+    requiresRestart: false,
+    module: 'web-push',
+  },
+  {
+    key: 'ADMIN_GIFT_ENABLED',
+    category: 'ADMIN',
+    defaultEnabled: true,
+    descriptionVi:
+      'Bật/tắt Admin Gift broadcast/grant. Tắt khắn khi phát hiện exploit.',
+    descriptionEn:
+      'Enable/disable Admin Gift broadcast/grant. Kill-switch on exploit.',
+    public: false,
+    requiresRestart: false,
+    module: 'admin-gift',
+  },
+  {
+    key: 'ONBOARDING_ENABLED',
+    category: 'GAMEPLAY',
+    defaultEnabled: true,
+    descriptionVi: 'Bật/tắt Onboarding 7-day reward task.',
+    descriptionEn: 'Enable/disable Onboarding 7-day reward.',
+    public: false,
+    requiresRestart: false,
+    module: 'onboarding',
+  },
+  {
+    key: 'ALCHEMY_ENABLED',
+    category: 'GAMEPLAY',
+    defaultEnabled: true,
+    descriptionVi: 'Bật/tắt Alchemy (luyện đan).',
+    descriptionEn: 'Enable/disable Alchemy.',
+    public: false,
+    requiresRestart: false,
+    module: 'alchemy',
+  },
+  {
+    key: 'BOSS_ENABLED',
+    category: 'GAMEPLAY',
+    defaultEnabled: true,
+    descriptionVi: 'Bật/tắt Boss spawn/encounter/reward.',
+    descriptionEn: 'Enable/disable Boss spawn/encounter/reward.',
+    public: false,
+    requiresRestart: false,
+    module: 'boss',
+  },
+  {
+    key: 'DUNGEON_ENABLED',
+    category: 'GAMEPLAY',
+    defaultEnabled: true,
+    descriptionVi: 'Bật/tắt Dungeon run (instance + farm + story).',
+    descriptionEn: 'Enable/disable Dungeon run.',
+    public: false,
+    requiresRestart: false,
+    module: 'dungeon',
   },
 ] as const;
 
