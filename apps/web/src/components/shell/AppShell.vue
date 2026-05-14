@@ -144,7 +144,10 @@ function navLabel(key: string): string {
 }
 
 function isNavActive(item: NavItem): boolean {
-  const resolved = router.resolve(item.to);
+  const resolved =
+    typeof router.resolve === 'function'
+      ? router.resolve(item.to)
+      : { path: item.to, redirectedFrom: undefined };
   const target = resolved.redirectedFrom?.path ?? resolved.path;
   return route.path === target || route.path.startsWith(`${target}/`);
 }
