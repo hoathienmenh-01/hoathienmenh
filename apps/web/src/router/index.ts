@@ -46,6 +46,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/RoguelikeView.vue'),
   },
   {
+    path: '/seasons',
+    name: 'seasons',
+    component: () => import('@/views/SeasonsView.vue'),
+  },
+  {
     path: '/story-dungeons',
     name: 'story-dungeons',
     component: () => import('@/views/StoryDungeonView.vue'),
