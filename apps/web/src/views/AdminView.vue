@@ -56,6 +56,7 @@ import AdminChatModerationPanel from '@/components/AdminChatModerationPanel.vue'
 import AdminEconomyRangeReportPanel from '@/components/AdminEconomyRangeReportPanel.vue';
 import AdminArenaAntiWintradePanel from '@/components/AdminArenaAntiWintradePanel.vue';
 import AdminFeatureFlagsPanel from '@/components/AdminFeatureFlagsPanel.vue';
+import AdminRemoteConfigPanel from '@/components/AdminRemoteConfigPanel.vue';
 import AdminMaintenancePanel from '@/components/AdminMaintenancePanel.vue';
 import AdminConfigVersionPanel from '@/components/AdminConfigVersionPanel.vue';
 import AdminSecurityPanel from '@/components/AdminSecurityPanel.vue';
@@ -88,6 +89,7 @@ type Tab =
   | 'marketAbuse'
   | 'chatModeration'
   | 'featureFlags'
+  | 'remoteConfig'
   | 'maintenance'
   | 'configVersion'
   | 'security'
@@ -765,7 +767,7 @@ const isAdmin = () => game.character?.role === 'ADMIN';
 
       <nav class="flex gap-1 border-b border-ink-300/30 text-sm">
         <button
-          v-for="tk in (['stats','users','topups','audit','giftcodes','boss','liveops','economy','arenaAntiWintrade','gameplayAntiCheat','marketAbuse','chatModeration','featureFlags','maintenance','configVersion','security','securityAlerts','backup'] as const)"
+          v-for="tk in (['stats','users','topups','audit','giftcodes','boss','liveops','economy','arenaAntiWintrade','gameplayAntiCheat','marketAbuse','chatModeration','featureFlags','remoteConfig','maintenance','configVersion','security','securityAlerts','backup'] as const)"
           :key="tk"
           class="px-3 py-2 relative"
           :class="tab === tk ? 'border-b-2 border-amber-300 text-ink-50' : 'text-ink-300'"
@@ -1751,6 +1753,15 @@ const isAdmin = () => game.character?.role === 'ADMIN';
         data-testid="admin-feature-flags-section"
       >
         <AdminFeatureFlagsPanel />
+      </section>
+
+      <!-- REMOTE CONFIG TAB (Phase 45.0) -->
+      <section
+        v-else-if="tab === 'remoteConfig'"
+        class="space-y-3"
+        data-testid="admin-remote-config-section"
+      >
+        <AdminRemoteConfigPanel />
       </section>
 
       <!-- MAINTENANCE TAB (Phase 15.5) -->

@@ -168,7 +168,7 @@ describe('AdminRemoteConfigController.update', () => {
       setImpl: async () => {
         throw new RemoteConfigValidationError('max_daily_claims', [
           {
-            code: 'NUMBER_ABOVE_MAX',
+            code: 'VALUE_OUT_OF_RANGE',
             message: 'value > 1000',
           },
         ]);

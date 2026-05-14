@@ -1568,6 +1568,7 @@
       "marketAbuse": "Market Abuse Detection",
       "chatModeration": "Chat Moderation",
       "featureFlags": "Feature Flags",
+      "remoteConfig": "Remote Config",
       "maintenance": "Maintenance",
       "configVersion": "Config Version",
       "security": "Security",
@@ -4833,6 +4834,53 @@
     },
     "errors": {
       "FEATURE_FLAG_KEY_INVALID": "Flag key is not in the catalog.",
+      "INVALID_INPUT": "Invalid input.",
+      "UNAUTHENTICATED": "Admin login required.",
+      "FORBIDDEN": "Account is not an admin.",
+      "UNKNOWN": "Operation failed — please retry."
+    }
+  },
+  "adminRemoteConfig": {
+    "title": "Remote Config",
+    "hint": "Operational knobs (daily claim cap, maintenance message, effect level…) editable at runtime without redeploy.",
+    "loading": "Loading remote config…",
+    "empty": "No remote config matches the filter.",
+    "filter": {
+      "searchPlaceholder": "Search by key / description…"
+    },
+    "row": {
+      "default": "Default: {value}",
+      "current": "Current: {value}",
+      "updatedAt": "Updated: {at}",
+      "notUpdated": "never changed",
+      "publicTag": "PUBLIC",
+      "publicHint": "This config is exposed via /remote-config/public for the frontend.",
+      "reasonPlaceholder": "Change reason (≥ 3 chars, goes into audit log)"
+    },
+    "actions": {
+      "edit": "Edit",
+      "save": "Save",
+      "cancel": "Cancel",
+      "refresh": "Refresh",
+      "refreshDefaults": "Sync defaults",
+      "clearCache": "Clear cache"
+    },
+    "confirm": {
+      "title": "Confirm remote config change?",
+      "message": "You are about to set {key} = {value}. Reason: {reason}. The change applies immediately on confirm."
+    },
+    "toast": {
+      "saved": "{key} updated.",
+      "refreshedDefaults": "Defaults synced: created {created} · kept {existing}.",
+      "cacheCleared": "Remote config cache cleared."
+    },
+    "errors": {
+      "REASON_REQUIRED": "Reason is required (≥ 3 chars) before saving.",
+      "PARSE_NUMBER": "Value is not a valid number.",
+      "PARSE_BOOLEAN": "Boolean value must be `true` or `false`.",
+      "PARSE_JSON": "Invalid JSON.",
+      "REMOTE_CONFIG_KEY_INVALID": "Config key is not in the catalog.",
+      "REMOTE_CONFIG_VALIDATION_FAILED": "Value is invalid (cap exceeded / wrong type / not in enum).",
       "INVALID_INPUT": "Invalid input.",
       "UNAUTHENTICATED": "Admin login required.",
       "FORBIDDEN": "Account is not an admin.",

@@ -34,7 +34,6 @@ import {
   type RemoteConfigPublicView,
   type RemoteConfigValue,
   type RemoteConfigViolation,
-  getDefaultRemoteConfigValue,
   getRemoteConfigDef,
   isRemoteConfigKey,
   validateRemoteConfigValue,

@@ -1568,6 +1568,7 @@
       "marketAbuse": "Chợ - Phát hiện trục lợi",
       "chatModeration": "Kiểm duyệt chat",
       "featureFlags": "Feature Flags",
+      "remoteConfig": "Remote Config",
       "maintenance": "Bảo trì",
       "configVersion": "Config Version",
       "security": "Bảo mật",
@@ -4833,6 +4834,53 @@
     },
     "errors": {
       "FEATURE_FLAG_KEY_INVALID": "Key flag không có trong catalog.",
+      "INVALID_INPUT": "Dữ liệu gửi lên không hợp lệ.",
+      "UNAUTHENTICATED": "Cần đăng nhập admin.",
+      "FORBIDDEN": "Tài khoản không phải admin.",
+      "UNKNOWN": "Thao tác thất bại — thử lại."
+    }
+  },
+  "adminRemoteConfig": {
+    "title": "Remote Config",
+    "hint": "Cấu hình vận hành (giới hạn claim ngày, message bảo trì, mức hiệu ứng…) sửa runtime không cần deploy.",
+    "loading": "Đang tải remote config…",
+    "empty": "Không tìm thấy config nào khớp bộ lọc.",
+    "filter": {
+      "searchPlaceholder": "Tìm theo key / mô tả…"
+    },
+    "row": {
+      "default": "Mặc định: {value}",
+      "current": "Hiện tại: {value}",
+      "updatedAt": "Cập nhật: {at}",
+      "notUpdated": "chưa thay đổi",
+      "publicTag": "PUBLIC",
+      "publicHint": "Config này được trả qua /remote-config/public cho frontend.",
+      "reasonPlaceholder": "Lý do thay đổi (≥ 3 ký tự, sẽ vào audit log)"
+    },
+    "actions": {
+      "edit": "Sửa",
+      "save": "Lưu",
+      "cancel": "Huỷ",
+      "refresh": "Làm mới",
+      "refreshDefaults": "Đồng bộ default",
+      "clearCache": "Xoá cache"
+    },
+    "confirm": {
+      "title": "Xác nhận thay đổi remote config?",
+      "message": "Bạn sắp set {key} = {value}. Lý do: {reason}. Thay đổi áp dụng ngay sau khi xác nhận."
+    },
+    "toast": {
+      "saved": "Đã cập nhật {key}.",
+      "refreshedDefaults": "Seed default xong: tạo {created} · giữ {existing}.",
+      "cacheCleared": "Đã xoá cache remote config."
+    },
+    "errors": {
+      "REASON_REQUIRED": "Cần nhập lý do (≥ 3 ký tự) trước khi lưu.",
+      "PARSE_NUMBER": "Giá trị không phải số hợp lệ.",
+      "PARSE_BOOLEAN": "Giá trị boolean phải là `true` hoặc `false`.",
+      "PARSE_JSON": "JSON không hợp lệ.",
+      "REMOTE_CONFIG_KEY_INVALID": "Key config không có trong catalog.",
+      "REMOTE_CONFIG_VALIDATION_FAILED": "Giá trị không hợp lệ (vượt cap / sai type / sai enum).",
       "INVALID_INPUT": "Dữ liệu gửi lên không hợp lệ.",
       "UNAUTHENTICATED": "Cần đăng nhập admin.",
       "FORBIDDEN": "Tài khoản không phải admin.",
