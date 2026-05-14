@@ -177,6 +177,7 @@ export const DAILY_REWARD_CAP_BY_REALM_AND_SOURCE: Readonly<
         BODY_CULTIVATION: dailyRewardCapFor(r.key, 'BODY_CULTIVATION'),
         DUNGEON: dailyRewardCapFor(r.key, 'DUNGEON'),
         MISSION: dailyRewardCapFor(r.key, 'MISSION'),
+        ROGUELIKE: dailyRewardCapFor(r.key, 'ROGUELIKE'),
       } satisfies Record<RewardSource, DailyRewardCap>),
     ]),
   ),

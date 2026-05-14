@@ -241,6 +241,12 @@ export type LedgerReason =
   // `CharacterSecretRealmRun.status='CLAIMED'` CAS guard. Reward bound bởi
   // catalog `SecretRealmRewardDef` snapshot — KHÔNG mint Tien Ngoc.
   | 'SECRET_REALM_CLAIM'
+  // Phase 38.0 — Roguelike Bí Cảnh final reward claim. Wire qua
+  // `RoguelikeService.claim` với `refType='RoguelikeRun'` + `refId=runId`.
+  // Idempotent qua CAS `RoguelikeRun.status COMPLETED → CLAIMED`; soft
+  // currency only, no tienNgoc mint.
+  | 'ROGUELIKE_FLOOR_REWARD'
+  | 'ROGUELIKE_MILESTONE_REWARD'
   // Phase 35.0 — Pet / Linh Thú. Wire qua PetBoxService.open (cost) /
   // PetUpgradeService (star/break/evolve/skill cost) / PetAdminService.
   // refType thường `'PetBox'` (cost mở hộp) / `'CharacterPet'` (upgrade
