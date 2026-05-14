@@ -352,6 +352,21 @@ WS events (best-effort fanout chỉ tới participant của room — KHÔNG broa
 | `party-dungeon:completed`          | Room participants                   | `PartyDungeonCompletedBroadcastPayload{roomId,partyId,runId,result}`          |
 | `party-dungeon:reward-available`   | Reward owner only (per-user)        | `PartyDungeonRewardAvailableBroadcastPayload{roomId,partyId,runId,userId,rewardClaimId}` |
 
+## Roguelike Bí Cảnh — `RoguelikeController` (Phase 38.0)
+
+> Seeded random adventure foundation. Mỗi character chỉ có **1 ACTIVE run**; start consume daily content cap, claim consume weekly content cap + reward cap. Reward soft-currency only, server authoritative, grant qua `CurrencyService.applyTx` + `InventoryService.grantTx`, idempotent CAS `RoguelikeRun.status COMPLETED→CLAIMED`.
+
+| Method | Path | Auth | Mô tả |
+|---|---|---|---|
+| GET | `/roguelike-realms` | Yes | List realm catalog availability + daily/weekly usage + `activeRun`. Feature flag `ROGUELIKE_ENABLED`; remote config key `roguelike_balance`. |
+| POST | `/roguelike-realms/:realmKey/start` | Yes | Start seeded run. Reject `NO_CHARACTER`/`FEATURE_DISABLED`/`REALM_NOT_FOUND`/`REALM_LOCKED`/`ALREADY_IN_RUN`/`DAILY_LIMIT_REACHED`. |
+| GET | `/roguelike-runs/current` | Yes | Current ACTIVE/COMPLETED unclaimed run or `run=null`. |
+| GET | `/roguelike-runs/:id` | Yes | Run detail owned by caller: floor state, HP/resource, temp buffs, choices, reward preview, history. |
+| POST | `/roguelike-runs/:id/choose` | Yes | Body `{ choiceKey }`. Resolve next floor, apply HP/resource/score/buff/debuff/reward preview, update leaderboard on completion/fail. Reject invalid/non-active choices. |
+| POST | `/roguelike-runs/:id/abandon` | Yes | Mark ACTIVE run `ABANDONED`; temporary buffs/resources end with run. |
+| POST | `/roguelike-runs/:id/claim` | Yes | Claim completed reward once. CAS guard + weekly cap + daily reward cap source `ROGUELIKE`; ledger reasons `ROGUELIKE_FLOOR_REWARD` / `ROGUELIKE_MILESTONE_REWARD`. |
+| GET | `/roguelike-runs/leaderboard?period=week&limit=50` | Yes | Depth leaderboard rows `{ characterName,bestFloor,bestScore,fastestClearMs,weekBucket,monthBucket }`. |
+
 ## Chat Private — `ChatPrivateController` (Phase 19.1 + Phase 19.1.B)
 
 > Chat riêng 1-1. Thread invariant: `userAId < userBId` (lexicographic). Server-side: non-member → 404 mask (KHÔNG 403 leak existence). Block 2 chiều reject `sendPrivateMessage` với `BLOCKED`. Message body 1..500ch trimmed. Cột **Rate** = `@RateLimitPolicy()` key gắn ở controller (Phase 19.1.B).
