@@ -33,6 +33,7 @@ import {
 } from '@/api/eventBuilder';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import type {
   EventDef,
@@ -237,7 +238,8 @@ onMounted(async () => {
   <AppShell>
     <div class="admin-event-builder">
       <header class="header">
-        <h1>{{ t('adminEvents.title') }}</h1>
+        <XTHeroEyebrow han="事德羍造" label="Sự Đức Là Ngổ" />
+        <h1 class="mt-1">{{ t('adminEvents.title') }}</h1>
         <p class="muted">{{ t('adminEvents.subtitle') }}</p>
       </header>
 

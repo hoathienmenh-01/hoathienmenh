@@ -17,6 +17,7 @@ import {
 } from '@/api/codex';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 
 const { t } = useI18n();
@@ -88,7 +89,8 @@ onMounted(refresh);
 <template>
   <AppShell>
     <div class="space-y-4 p-4">
-      <h1 class="text-xl font-bold">{{ t('adminCodex.title') }}</h1>
+      <XTHeroEyebrow han="天籍总表" label="Thiên Tiịch Tổng Bác" />
+      <h1 class="text-xl font-bold mt-1">{{ t('adminCodex.title') }}</h1>
 
       <!-- Reindex -->
       <div class="bg-gray-800 rounded p-3 space-y-2">

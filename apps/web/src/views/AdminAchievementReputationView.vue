@@ -11,6 +11,7 @@ import {
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 
 defineProps<{ embedded?: boolean }>();
 
@@ -70,7 +71,8 @@ onMounted(async () => {
     <div class="max-w-6xl mx-auto space-y-4">
       <header class="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
-          <h1 class="text-2xl tracking-widest font-bold">
+          <XTHeroEyebrow han="功冶纪心" label="Công Trạng Thẩm Định" />
+          <h1 class="text-2xl tracking-widest font-bold mt-1">
             {{ t('adminAchievement.title') }}
           </h1>
           <p class="text-xs text-ink-300 mt-1">{{ t('adminAchievement.subtitle') }}</p>
