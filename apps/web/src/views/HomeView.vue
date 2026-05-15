@@ -9,6 +9,7 @@ import { useBadgesStore } from '@/stores/badges';
 import { useStoryDungeonStore } from '@/stores/storyDungeon';
 import { getCharacter } from '@/api/character';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import NextActionPanel from '@/components/NextActionPanel.vue';
 import OnboardingChecklist from '@/components/OnboardingChecklist.vue';
@@ -113,6 +114,9 @@ async function onBreakthrough(): Promise<void> {
 
 <template>
   <AppShell>
+    <header class="mb-3" data-testid="home-eyebrow">
+      <XTHeroEyebrow han="仙游归处" label="Tiên Du Quy Xứ" />
+    </header>
     <!-- Phase 15.3.B — Global LiveOps announcement marquee. Render trên cùng
          HomeView (kể cả khi chưa có character) để anonymous viewer cũng thấy
          announcement target=ALL. -->

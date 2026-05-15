@@ -7,6 +7,7 @@ import { useGameStore } from '@/stores/game';
 import { useStoryV2Store } from '@/stores/storyV2';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import type {
   Phase33ChapterView,
   Phase33QuestView,
@@ -187,7 +188,8 @@ onMounted(async () => {
       <!-- Header -->
       <header class="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
-          <h1 class="text-2xl tracking-widest font-bold">
+          <XTHeroEyebrow han="仙遃叙事" label="Tiên Duệ Tự Sự" />
+          <h1 class="text-2xl tracking-widest font-bold mt-1">
             {{ t('storyV2.title') }}
           </h1>
           <p class="text-sm text-ink-300">{{ t('storyV2.subtitle') }}</p>

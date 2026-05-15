@@ -11,6 +11,7 @@ import { useI18n } from 'vue-i18n';
 import { useWorldContentStore } from '@/stores/worldContent';
 import type { BossV2View } from '@/api/worldContent';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 
 const { t, locale } = useI18n();
 const store = useWorldContentStore();
@@ -50,7 +51,8 @@ onMounted(() => {
   <AppShell>
     <section class="boss-hub" data-testid="boss-hub-view">
       <header>
-        <h1>{{ t('worldContent.boss.title') }}</h1>
+        <XTHeroEyebrow han="群魔名册" label="Quần Ma Danh Sách" />
+        <h1 class="mt-1">{{ t('worldContent.boss.title') }}</h1>
         <p>{{ t('worldContent.boss.subtitle') }}</p>
       </header>
 

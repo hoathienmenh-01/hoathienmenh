@@ -36,6 +36,7 @@ import { useCultivationMethodV2Store } from '@/stores/cultivationMethodV2';
 import { useToastStore } from '@/stores/toast';
 import type { CultivationMethodV2CatalogEntry } from '@/api/cultivationMethodV2';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -263,7 +264,8 @@ onMounted(async () => {
     <div class="max-w-6xl mx-auto space-y-4">
       <header class="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
-          <h1 class="text-2xl tracking-widest font-bold">
+          <XTHeroEyebrow han="五行补胦" label="Ngũ Hành Bổ Nạp" />
+          <h1 class="text-2xl tracking-widest font-bold mt-1">
             {{ t('cultivationMethodV2.title') }}
           </h1>
           <p class="text-xs text-ink-300 mt-1">
