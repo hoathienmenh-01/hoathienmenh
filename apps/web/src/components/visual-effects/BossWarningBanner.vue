@@ -42,16 +42,23 @@ const effect = computed(() => getBossWarningEffect(props.warningType));
 const severityClass = computed(() => {
   switch (props.severity) {
     case 'INFO':
-      return 'border-blue-300/60 bg-blue-900/30 text-blue-100';
+      return 'border-[var(--xt-border-mist)] bg-[var(--xt-mist-soft)] text-[var(--xt-text-mist)]';
     case 'WARNING':
-      return 'border-amber-300/60 bg-amber-900/30 text-amber-100';
+      return 'border-[var(--xt-border-gold)] bg-[var(--xt-gold-soft)] text-[var(--xt-text-gold)]';
     case 'DANGER':
-      return 'border-red-400/60 bg-red-900/30 text-red-100';
+      return 'border-[var(--xt-border-seal)] bg-[var(--xt-ink-deep)]/70 text-[var(--xt-text-seal)]';
     case 'FATAL':
-      return 'border-rose-400/70 bg-rose-900/40 text-rose-100';
+      return 'border-[var(--xt-seal-bright)] bg-[var(--xt-ink-abyss)]/80 text-[var(--xt-seal-bright)]';
   }
   return '';
 });
+
+const showMucRoi = computed(
+  () =>
+    !props.reducedMotion &&
+    props.visualEffectLevel !== 'OFF' &&
+    props.severity === 'FATAL',
+);
 
 const containerClass = computed(() => {
   const parts: string[] = [
@@ -100,5 +107,28 @@ const showCountdown = computed(
     >
       HP {{ Math.round(props.hpPercent * 100) }}%
     </p>
+
+    <!-- Mực rơi (ink curtain) overlay — chỉ render khi FATAL + có effect level. -->
+    <Teleport to="body">
+      <div
+        v-if="showMucRoi"
+        class="fixed inset-0 z-[9998] pointer-events-none overflow-hidden"
+        data-testid="boss-muc-roi"
+        aria-hidden="true"
+      >
+        <div
+          class="absolute inset-x-0 -top-1/3 h-[160%] ve-anim-muc-roi-curtain"
+          style="
+            background:
+              linear-gradient(180deg, rgba(7, 9, 14, 0.96) 0%, rgba(11, 16, 24, 0.85) 50%, transparent 100%),
+              radial-gradient(ellipse at 50% 30%, rgba(208, 79, 79, 0.42) 0%, transparent 60%);
+          "
+        />
+        <div
+          class="absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 h-72 w-72 rounded-full ve-anim-muc-roi-splash"
+          style="background: radial-gradient(circle, rgba(208, 79, 79, 0.78) 0%, rgba(208, 79, 79, 0) 65%)"
+        />
+      </div>
+    </Teleport>
   </div>
 </template>
