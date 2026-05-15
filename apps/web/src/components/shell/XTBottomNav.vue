@@ -1,11 +1,12 @@
 <script setup lang="ts">
 /**
- * UI-2.0 — Mobile bottom navigation (5 items).
+ * Cửu Thiên Mộng — Mobile bottom navigation (silk ribbon scroll).
  *
- * Spec (PHẦN 1 — MOBILE-FIRST LAYOUT):
+ * Spec:
  *   - 5 mục: Trang Chủ / Tu Luyện / Túi Đồ / Hoạt Động / Menu.
- *   - Icon + label, active state rõ, vùng bấm ≥ 40px, fixed bottom.
- *   - Bấm “Menu” mở drawer/bottom sheet (component cha quản lý).
+ *   - Background: dải lụa cuộn — dark ink với viền vàng triều và sóng ngang.
+ *   - Active state: ngọc bài (jade tag) + dấu son (red dot) bên trên.
+ *   - Vùng bấm ≥ 40px, fixed bottom, an toàn vùng safe-area.
  *
  * Khi route hiện tại match `to` của 1 item → active.
  */
@@ -56,41 +57,28 @@ function handleClick(idx: number): void {
 
 <template>
   <nav
-    class="xt-bottomnav fixed bottom-0 left-0 right-0 z-[var(--xt-z-bottom-nav)] border-t border-emerald-300/35 bg-white/85 backdrop-blur-xl"
+    class="xt-bottomnav fixed bottom-0 left-0 right-0 z-[var(--xt-z-bottom-nav)]"
     style="padding-bottom: env(safe-area-inset-bottom, 0px)"
     aria-label="XT mobile navigation"
     data-testid="xt-bottom-nav"
   >
-    <ul class="grid grid-cols-5">
+    <div class="xt-bottomnav__ribbon" aria-hidden="true" />
+    <ul class="relative grid grid-cols-5">
       <li v-for="(item, idx) in items" :key="item.key">
         <button
           type="button"
-          class="group flex h-[66px] w-full flex-col items-center justify-center gap-1 px-1 text-[11px] font-medium tracking-wide transition"
-          :class="
-            item.active
-              ? 'text-emerald-700'
-              : 'text-emerald-900/60 hover:text-emerald-800'
-          "
+          class="xt-bottomnav__btn group flex h-[66px] w-full flex-col items-center justify-center gap-1 px-1 text-[11px] font-medium tracking-wide transition"
+          :class="item.active ? 'is-active' : ''"
           :data-testid="item.testId ?? `xt-bottomnav-${item.key}`"
           :data-active="item.active ? 'true' : 'false'"
           :aria-current="item.active ? 'page' : undefined"
           @click="handleClick(idx)"
         >
-          <span
-            class="relative flex h-9 w-9 items-center justify-center rounded-2xl transition"
-            :class="
-              item.active
-                ? 'bg-emerald-100/80 ring-1 ring-emerald-300/60 shadow-[0_8px_22px_rgba(74,169,143,0.22)]'
-                : 'bg-transparent'
-            "
-          >
+          <span class="xt-bottomnav__chip">
             <XTIcon :name="item.icon" size="md" />
-            <span
-              v-if="item.active"
-              class="pointer-events-none absolute -top-1 h-1.5 w-1.5 rounded-full bg-amber-400"
-            />
+            <span v-if="item.active" class="xt-bottomnav__dot" aria-hidden="true" />
           </span>
-          <span class="truncate">{{ item.label }}</span>
+          <span class="xt-bottomnav__label truncate">{{ item.label }}</span>
         </button>
       </li>
     </ul>
@@ -99,6 +87,80 @@ function handleClick(idx: number): void {
 
 <style scoped>
 .xt-bottomnav {
-  box-shadow: 0 -10px 32px rgba(60, 100, 88, 0.14);
+  isolation: isolate;
+  background: linear-gradient(180deg, rgba(14, 19, 24, 0.96) 0%, rgba(8, 9, 11, 0.98) 100%);
+  border-top: 1px solid var(--xt-border-gold);
+  box-shadow: 0 -18px 38px rgba(0, 0, 0, 0.62);
+}
+
+.xt-bottomnav__ribbon {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 6px;
+  background:
+    linear-gradient(180deg, transparent 0%, rgba(208, 79, 79, 0.85) 35%, rgba(136, 42, 42, 0.95) 100%),
+    linear-gradient(180deg, transparent 0%, rgba(242, 215, 137, 0.45) 65%, rgba(242, 215, 137, 0.25) 100%);
+  background-blend-mode: overlay;
+  border-bottom: 1px solid rgba(242, 215, 137, 0.45);
+  box-shadow:
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+    0 0 18px rgba(208, 79, 79, 0.18);
+}
+
+.xt-bottomnav__btn {
+  color: rgba(240, 230, 204, 0.7);
+}
+
+.xt-bottomnav__btn:hover {
+  color: var(--xt-jade-bright);
+}
+
+.xt-bottomnav__btn.is-active {
+  color: var(--xt-gold-bright);
+}
+
+.xt-bottomnav__chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 14px;
+  transition: all var(--xt-motion-base, 220ms) ease;
+}
+
+.xt-bottomnav__btn.is-active .xt-bottomnav__chip {
+  background: linear-gradient(180deg, rgba(58, 46, 24, 0.88), rgba(28, 22, 12, 0.96));
+  border: 1px solid rgba(242, 215, 137, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 246, 224, 0.18),
+    0 6px 16px rgba(0, 0, 0, 0.5),
+    var(--xt-shadow-gold-glow);
+}
+
+.xt-bottomnav__dot {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f0d56a, #b23b3b);
+  box-shadow:
+    0 0 8px rgba(208, 79, 79, 0.85),
+    inset 0 0 4px rgba(255, 246, 224, 0.5);
+}
+
+.xt-bottomnav__label {
+  font-family: var(--xt-font-display);
+  letter-spacing: 0.05em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xt-bottomnav__chip {
+    transition: none;
+  }
 }
 </style>

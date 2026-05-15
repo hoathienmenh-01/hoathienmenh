@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <defs>
+    <radialGradient id="moon" cx="80%" cy="18%" r="14%">
+      <stop offset="0%" stop-color="#fff6e0" stop-opacity="0.95"/>
+      <stop offset="55%" stop-color="#f2d789" stop-opacity="0.32"/>
+      <stop offset="100%" stop-color="#f2d789" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0e1318"/>
+      <stop offset="55%" stop-color="#131922"/>
+      <stop offset="100%" stop-color="#1a2028"/>
+    </linearGradient>
+    <filter id="ink-blur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+    <filter id="ink-grain" x="0" y="0">
+      <feTurbulence type="fractalNoise" baseFrequency="1.5" numOctaves="1" seed="11"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.18 0"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#sky)"/>
+  <rect width="1600" height="1000" fill="url(#moon)"/>
+
+  <!-- Far mountains (silhouettes) -->
+  <g fill="#1a2430" opacity="0.78">
+    <path d="M0 720 L120 600 L210 670 L340 540 L460 660 L600 580 L780 670 L920 540 L1080 660 L1240 580 L1400 660 L1520 600 L1600 700 L1600 1000 L0 1000 Z"/>
+  </g>
+  <!-- Mid mountains -->
+  <g fill="#0e1822" opacity="0.85">
+    <path d="M0 820 L160 690 L300 770 L460 660 L640 760 L820 680 L1020 770 L1240 670 L1440 760 L1600 700 L1600 1000 L0 1000 Z"/>
+  </g>
+  <!-- Mist drift -->
+  <g opacity="0.32" filter="url(#ink-blur)" fill="#b9d6e8">
+    <ellipse cx="200" cy="640" rx="320" ry="22"/>
+    <ellipse cx="780" cy="700" rx="420" ry="28"/>
+    <ellipse cx="1380" cy="630" rx="280" ry="20"/>
+  </g>
+  <g opacity="0.18" filter="url(#ink-blur)" fill="#f0e6cc">
+    <ellipse cx="520" cy="780" rx="380" ry="18"/>
+    <ellipse cx="1180" cy="800" rx="360" ry="22"/>
+  </g>
+  <!-- Front pine silhouette right -->
+  <g fill="#08090b" opacity="0.92">
+    <path d="M1320 1000 L1320 720 L1310 720 Q1290 700 1260 705 Q1280 680 1310 685 L1310 660 Q1300 640 1280 645 Q1310 620 1330 638 L1330 600 Q1320 580 1300 585 Q1330 560 1352 580 L1352 540 Q1342 520 1325 522 Q1350 505 1370 525 L1370 1000 Z"/>
+  </g>
+  <!-- Grain overlay -->
+  <rect width="1600" height="1000" filter="url(#ink-grain)" opacity="0.4"/>
+</svg>

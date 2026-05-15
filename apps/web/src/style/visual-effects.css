@@ -146,10 +146,35 @@
 }
 
 .xt-ambient-layer {
+  /* Cửu Thiên Mộng — qi-glow tints over deep ink. The actual scene
+   * artwork is layered via body[data-scene=*] in style.css. This layer
+   * adds particle motion + soft hue without dominating colour. */
   background:
-    radial-gradient(circle at 15% 15%, rgba(174, 229, 212, 0.46), transparent 28%),
-    radial-gradient(circle at 85% 10%, rgba(184, 212, 232, 0.34), transparent 26%),
-    radial-gradient(circle at 55% 92%, rgba(216, 183, 106, 0.18), transparent 26%);
+    radial-gradient(circle at 14% 18%, rgba(95, 227, 198, 0.16), transparent 30%),
+    radial-gradient(circle at 86% 12%, rgba(185, 214, 232, 0.14), transparent 28%),
+    radial-gradient(circle at 50% 95%, rgba(242, 215, 137, 0.12), transparent 32%);
+}
+.xt-ambient-layer[data-tone='boss'] {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(224, 122, 58, 0.22), transparent 36%),
+    radial-gradient(circle at 18% 88%, rgba(208, 79, 79, 0.18), transparent 32%);
+}
+.xt-ambient-layer[data-tone='secret'] {
+  background:
+    radial-gradient(circle at 30% 30%, rgba(185, 214, 232, 0.22), transparent 32%),
+    radial-gradient(circle at 75% 60%, rgba(169, 159, 212, 0.18), transparent 34%);
+}
+.xt-ambient-layer[data-tone='market'],
+.xt-ambient-layer[data-tone='sect'] {
+  background:
+    radial-gradient(circle at 50% 12%, rgba(242, 215, 137, 0.2), transparent 30%),
+    radial-gradient(circle at 20% 80%, rgba(208, 79, 79, 0.14), transparent 32%);
+}
+.xt-ambient-layer[data-tone='cultivation'] {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 246, 224, 0.16), transparent 30%),
+    radial-gradient(circle at 18% 78%, rgba(95, 227, 198, 0.16), transparent 32%),
+    radial-gradient(circle at 82% 75%, rgba(185, 214, 232, 0.14), transparent 30%);
 }
 
 .xt-mist {
@@ -157,8 +182,10 @@
   width: 42rem;
   height: 16rem;
   border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(143, 179, 201, 0.18), transparent);
+  background: linear-gradient(90deg, transparent, rgba(185, 214, 232, 0.2), transparent);
+  filter: blur(28px);
   animation: xt-mist-drift 18s ease-in-out infinite;
+  opacity: 0.7;
 }
 
 .xt-mist-one {
@@ -170,20 +197,46 @@
   right: -10rem;
   bottom: 12%;
   animation-duration: 24s;
+  background: linear-gradient(90deg, transparent, rgba(242, 215, 137, 0.16), transparent);
 }
 
 .xt-qi-particle {
   --qi-index: 1;
   position: absolute;
   left: calc((var(--qi-index) * 13%) - 9%);
-  top: calc(18% + (var(--qi-index) % 7) * 10%);
-  width: 0.22rem;
-  height: 0.22rem;
+  top: calc(22% + (var(--qi-index) % 7) * 9%);
+  width: 0.26rem;
+  height: 0.26rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 0 16px rgba(74, 169, 143, 0.62);
+  background: rgba(255, 246, 224, 0.95);
+  box-shadow:
+    0 0 6px rgba(255, 246, 224, 0.75),
+    0 0 18px rgba(95, 227, 198, 0.7),
+    0 0 32px rgba(95, 227, 198, 0.35);
   animation: xt-qi-rise calc(9s + (var(--qi-index) * 0.31s)) ease-in-out infinite;
   animation-delay: calc(var(--qi-index) * -0.7s);
+}
+.xt-ambient-layer[data-tone='boss'] .xt-qi-particle {
+  background: rgba(255, 220, 200, 0.9);
+  box-shadow:
+    0 0 6px rgba(255, 220, 200, 0.75),
+    0 0 18px rgba(208, 79, 79, 0.7),
+    0 0 32px rgba(208, 79, 79, 0.35);
+}
+.xt-ambient-layer[data-tone='secret'] .xt-qi-particle {
+  background: rgba(220, 230, 255, 0.95);
+  box-shadow:
+    0 0 6px rgba(220, 230, 255, 0.7),
+    0 0 18px rgba(185, 214, 232, 0.7),
+    0 0 32px rgba(185, 214, 232, 0.35);
+}
+.xt-ambient-layer[data-tone='market'] .xt-qi-particle,
+.xt-ambient-layer[data-tone='sect'] .xt-qi-particle {
+  background: rgba(255, 240, 200, 0.95);
+  box-shadow:
+    0 0 6px rgba(255, 240, 200, 0.7),
+    0 0 18px rgba(242, 215, 137, 0.7),
+    0 0 32px rgba(242, 215, 137, 0.35);
 }
 
 .xt-ambient-layer--static .xt-mist,

@@ -37,7 +37,7 @@ function go(path: string): void {
 
 <template>
   <header
-    class="xt-mobile-topbar sticky top-0 z-[var(--xt-z-topbar)] border-b border-emerald-300/30 bg-white/85 backdrop-blur-xl"
+    class="xt-mobile-topbar sticky top-0 z-[var(--xt-z-topbar)] border-b border-[var(--xt-border-gold)]"
     style="padding-top: env(safe-area-inset-top, 0px)"
     data-testid="xt-mobile-topbar"
   >
@@ -48,15 +48,12 @@ function go(path: string): void {
         :aria-label="t('xt.brand.home')"
         @click="go('/dashboard')"
       >
-        <span
-          class="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-base font-black text-white shadow-[0_8px_22px_rgba(74,169,143,0.32)]"
-          aria-hidden="true"
-        >XT</span>
+        <span class="xt-seal" aria-hidden="true">玄</span>
         <span class="truncate text-left">
-          <span class="block text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-700/75">
+          <span class="xt-eyebrow block !text-[9px]">
             {{ t('app.tagline') }}
           </span>
-          <span class="block truncate text-sm font-semibold leading-tight text-emerald-950">
+          <span class="xt-heading-co block truncate text-sm leading-tight">
             {{ game.character?.name ?? t('xt.character.unknown') }}
           </span>
         </span>
@@ -65,7 +62,7 @@ function go(path: string): void {
       <span class="ml-auto flex items-center gap-2">
         <button
           type="button"
-          class="relative flex h-10 w-10 items-center justify-center rounded-full border border-emerald-300/40 bg-white/70 text-emerald-900 transition hover:bg-emerald-50"
+          class="xt-topbar-icon-btn relative flex h-10 w-10 items-center justify-center rounded-full"
           :aria-label="t('shell.nav.mail')"
           data-testid="xt-mobile-mail"
           @click="go('/mail')"
@@ -73,14 +70,14 @@ function go(path: string): void {
           <XTIcon name="mail" size="md" />
           <span
             v-if="mailCount > 0"
-            class="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white"
+            class="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-[var(--xt-seal)] px-1 text-[10px] font-semibold text-[var(--xt-scroll-paper-bright)] shadow-[var(--xt-shadow-seal)]"
           >
             {{ mailCount > 99 ? '99+' : mailCount }}
           </span>
         </button>
         <button
           type="button"
-          class="relative flex h-10 w-10 items-center justify-center rounded-full border border-emerald-300/40 bg-white/70 text-emerald-900 transition hover:bg-emerald-50"
+          class="xt-topbar-icon-btn relative flex h-10 w-10 items-center justify-center rounded-full"
           :aria-label="t('shell.nav.notifications')"
           data-testid="xt-mobile-notifications"
           @click="go('/notifications')"
@@ -88,12 +85,12 @@ function go(path: string): void {
           <XTIcon name="notification" size="md" />
           <span
             v-if="bossActive"
-            class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-amber-400"
+            class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[var(--xt-gold-bright)] shadow-[0_0_6px_rgba(242,215,137,0.85)]"
           />
         </button>
         <button
           type="button"
-          class="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-300/40 bg-white/70 text-emerald-900 transition hover:bg-emerald-50"
+          class="xt-topbar-icon-btn flex h-10 w-10 items-center justify-center rounded-full"
           :aria-label="t('shell.nav.settings')"
           @click="go('/settings')"
         >
@@ -105,11 +102,11 @@ function go(path: string): void {
     <div class="flex items-center gap-2 overflow-x-auto px-3 pb-2 pt-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-testid="xt-mobile-resources">
       <button
         type="button"
-        class="flex shrink-0 items-center gap-2 rounded-full border border-emerald-300/35 bg-white/70 px-2 py-1.5 text-xs"
+        class="xt-topbar-realm-chip flex shrink-0 items-center gap-2 rounded-full border px-2 py-1.5 text-xs"
         @click="go('/character')"
       >
         <XTAvatarSeal :name="game.character?.name" size="sm" />
-        <span class="truncate text-emerald-900">{{ realmText }}</span>
+        <span class="truncate">{{ realmText }}</span>
       </button>
       <ResourceChip icon="linhThach" :value="game.character?.linhThach ?? '0'" :label="t('dashboard.progression.linhThach')" />
       <ResourceChip icon="jade" :value="game.character?.tienNgoc ?? 0" :label="t('dashboard.progression.tienNgoc')" tone="gold" />
@@ -121,6 +118,42 @@ function go(path: string): void {
 <style scoped>
 .xt-mobile-topbar {
   min-height: var(--xt-mobile-topbar-h);
-  box-shadow: 0 6px 22px rgba(60, 100, 88, 0.08);
+  background:
+    linear-gradient(180deg, rgba(14, 19, 24, 0.92) 0%, rgba(20, 28, 38, 0.86) 100%);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
+  position: relative;
+}
+.xt-mobile-topbar::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 -1px 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(242, 215, 137, 0.45) 18%,
+    rgba(242, 215, 137, 0.6) 50%,
+    rgba(242, 215, 137, 0.45) 82%,
+    transparent 100%
+  );
+}
+
+.xt-topbar-icon-btn {
+  border: 1px solid var(--xt-border-jade);
+  background: rgba(20, 28, 38, 0.68);
+  color: var(--xt-text-primary);
+  transition: all var(--xt-motion-fast, 140ms) ease;
+}
+.xt-topbar-icon-btn:hover {
+  border-color: rgba(95, 227, 198, 0.6);
+  background: rgba(27, 59, 52, 0.7);
+  color: var(--xt-jade-bright);
+}
+
+.xt-topbar-realm-chip {
+  border-color: var(--xt-border-gold);
+  background: rgba(28, 22, 12, 0.7);
+  color: var(--xt-text-primary);
 }
 </style>

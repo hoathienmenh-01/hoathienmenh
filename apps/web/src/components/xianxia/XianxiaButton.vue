@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 const props = withDefaults(
   defineProps<{
     to?: string;
-    variant?: 'primary' | 'secondary' | 'ghost';
+    variant?: 'primary' | 'secondary' | 'ghost' | 'seal';
     disabled?: boolean;
   }>(),
   {
