@@ -32,6 +32,14 @@ import {
   setSfxVolume,
   playSfxConfirm,
 } from '@/lib/sfx';
+import {
+  isBgmMuted,
+  setBgmMuted,
+  getBgmVolume,
+  setBgmVolume,
+  playSceneBgm,
+  stopBgm,
+} from '@/lib/bgm';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -60,6 +68,8 @@ const resetConfirmOpen = ref(false);
 
 const sfxMuted = ref(false);
 const sfxVolume = ref(0.6);
+const bgmMuted = ref(false);
+const bgmVolume = ref(0.35);
 
 function onSfxMutedChange(ev: Event): void {
   const target = ev.target as HTMLInputElement;
@@ -76,6 +86,23 @@ function onSfxVolumeChange(ev: Event): void {
 function previewSfx(): void {
   playSfxConfirm();
 }
+function onBgmMutedChange(ev: Event): void {
+  const target = ev.target as HTMLInputElement;
+  bgmMuted.value = target.checked;
+  setBgmMuted(target.checked);
+  if (target.checked) {
+    stopBgm(400);
+  } else {
+    const scene = (document.body.dataset.scene ?? 'default') as Parameters<typeof playSceneBgm>[0];
+    playSceneBgm(scene);
+  }
+}
+function onBgmVolumeChange(ev: Event): void {
+  const target = ev.target as HTMLInputElement;
+  const v = Number(target.value) / 100;
+  bgmVolume.value = v;
+  setBgmVolume(v);
+}
 
 onMounted(async () => {
   await auth.hydrate();
@@ -85,6 +112,8 @@ onMounted(async () => {
   }
   sfxMuted.value = isSfxMuted();
   sfxVolume.value = getSfxVolume();
+  bgmMuted.value = isBgmMuted();
+  bgmVolume.value = getBgmVolume();
   await game.fetchState().catch(() => null);
   game.bindSocket();
   try {
@@ -377,6 +406,34 @@ function changeLocale(value: string): void {
                 data-testid="settings-sfx-preview"
                 @click="previewSfx"
               >Thử</button>
+            </div>
+          </div>
+          <div class="block rounded border border-[var(--xt-border-gold)]/40 bg-[var(--xt-ink-deep)]/40 p-3" data-testid="settings-bgm">
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-ink-100 font-medium">Nhạc nền</span>
+              <label class="flex items-center gap-2 text-xs text-ink-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  :checked="bgmMuted"
+                  data-testid="settings-bgm-muted"
+                  @change="onBgmMutedChange"
+                />
+                <span>Tắt tiếng</span>
+              </label>
+            </div>
+            <div class="mt-2 flex items-center gap-3">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                :value="Math.round(bgmVolume * 100)"
+                :disabled="bgmMuted"
+                class="flex-1"
+                data-testid="settings-bgm-volume"
+                @input="onBgmVolumeChange"
+              />
+              <span class="w-10 text-right text-xs text-ink-300">{{ Math.round(bgmVolume * 100) }}%</span>
             </div>
           </div>
           <label class="block">

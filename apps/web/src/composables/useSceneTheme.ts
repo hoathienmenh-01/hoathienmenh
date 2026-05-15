@@ -1,5 +1,6 @@
 import { computed, onMounted, onUnmounted, ref, watch, type ComputedRef } from 'vue';
 import { useRoute } from 'vue-router';
+import { playSceneBgm, stopBgm } from '@/lib/bgm';
 
 /**
  * Cửu Thiên Mộng — bind `body[data-scene]` to the current route group so the
@@ -92,6 +93,7 @@ export function useSceneTheme(): UseSceneThemeResult {
     if (typeof document === 'undefined') return;
     document.body.dataset.scene = scene;
     document.body.classList.add('xt-scene');
+    playSceneBgm(scene);
   }
 
   onMounted(() => {
@@ -109,6 +111,7 @@ export function useSceneTheme(): UseSceneThemeResult {
     if (typeof document === 'undefined') return;
     document.body.classList.remove('xt-scene');
     delete document.body.dataset.scene;
+    stopBgm();
   });
 
   return {
