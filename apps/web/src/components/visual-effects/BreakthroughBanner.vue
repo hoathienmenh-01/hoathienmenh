@@ -6,9 +6,10 @@
  * Hiển thị banner đột phá thành công/thất bại (luyện khí / luyện thể).
  * KHÔNG sửa cultivation formula. Tôn trọng reducedMotion + visualEffectLevel.
  */
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { getEffectOrFallback } from '@xuantoi/shared';
+import { playSfxBreakthrough, playSfxConfirm } from '@/lib/sfx';
 
 const props = withDefaults(
   defineProps<{
@@ -75,6 +76,15 @@ const showThienKiep = computed(
     props.visualEffectLevel === 'HIGH' &&
     !props.reducedMotion,
 );
+
+onMounted(() => {
+  if (props.visualEffectLevel === 'OFF') return;
+  if (showThienKiep.value) {
+    playSfxBreakthrough();
+  } else if (props.success) {
+    playSfxConfirm();
+  }
+});
 </script>
 
 <template>

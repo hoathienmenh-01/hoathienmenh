@@ -25,6 +25,13 @@ import {
   resetPlayerSettings,
 } from '@/api/playerExperience';
 import { applyAppearance, type AppearanceMode } from '@/lib/appearance';
+import {
+  isSfxMuted,
+  setSfxMuted,
+  getSfxVolume,
+  setSfxVolume,
+  playSfxConfirm,
+} from '@/lib/sfx';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -51,12 +58,33 @@ const playerSettingsLoading = ref(true);
 const playerSettingsSaving = ref(false);
 const resetConfirmOpen = ref(false);
 
+const sfxMuted = ref(false);
+const sfxVolume = ref(0.6);
+
+function onSfxMutedChange(ev: Event): void {
+  const target = ev.target as HTMLInputElement;
+  sfxMuted.value = target.checked;
+  setSfxMuted(target.checked);
+  if (!target.checked) playSfxConfirm();
+}
+function onSfxVolumeChange(ev: Event): void {
+  const target = ev.target as HTMLInputElement;
+  const v = Number(target.value) / 100;
+  sfxVolume.value = v;
+  setSfxVolume(v);
+}
+function previewSfx(): void {
+  playSfxConfirm();
+}
+
 onMounted(async () => {
   await auth.hydrate();
   if (!auth.isAuthenticated) {
     router.replace('/auth');
     return;
   }
+  sfxMuted.value = isSfxMuted();
+  sfxVolume.value = getSfxVolume();
   await game.fetchState().catch(() => null);
   game.bindSocket();
   try {
@@ -316,6 +344,41 @@ function changeLocale(value: string): void {
               </option>
             </select>
           </label>
+          <div class="block rounded border border-[var(--xt-border-gold)]/40 bg-[var(--xt-ink-deep)]/40 p-3" data-testid="settings-sfx">
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-ink-100 font-medium">Âm thanh hiệu ứng</span>
+              <label class="flex items-center gap-2 text-xs text-ink-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  :checked="sfxMuted"
+                  data-testid="settings-sfx-muted"
+                  @change="onSfxMutedChange"
+                />
+                <span>Tắt tiếng</span>
+              </label>
+            </div>
+            <div class="mt-2 flex items-center gap-3">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                :value="Math.round(sfxVolume * 100)"
+                :disabled="sfxMuted"
+                class="flex-1"
+                data-testid="settings-sfx-volume"
+                @input="onSfxVolumeChange"
+              />
+              <span class="w-10 text-right text-xs text-ink-300">{{ Math.round(sfxVolume * 100) }}%</span>
+              <button
+                type="button"
+                class="text-xs text-[var(--xt-text-jade)] underline disabled:opacity-50"
+                :disabled="sfxMuted"
+                data-testid="settings-sfx-preview"
+                @click="previewSfx"
+              >Thử</button>
+            </div>
+          </div>
           <label class="block">
             <span class="text-ink-300">{{ t('playerSettings.fields.numberFormat') }}</span>
             <select

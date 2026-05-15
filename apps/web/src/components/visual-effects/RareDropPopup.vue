@@ -5,13 +5,14 @@
  * Hiển thị khi drop một item rarity ≥ RARE. Tự auto-dismiss nếu caller
  * dùng `useEffectQueue`. Reduced-motion: static card.
  */
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
   getEffectOrFallback,
   type VisualEffectElement,
   type VisualEffectRarity,
 } from '@xuantoi/shared';
+import { playSfxRareDrop } from '@/lib/sfx';
 
 const props = withDefaults(
   defineProps<{
@@ -94,6 +95,11 @@ const rarityRune = computed(() => {
     default:
       return '物';
   }
+});
+
+onMounted(() => {
+  if (props.visualEffectLevel === 'OFF') return;
+  playSfxRareDrop();
 });
 
 const containerClass = computed(() => {
