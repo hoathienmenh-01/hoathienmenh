@@ -45,6 +45,7 @@ import { useGameStore } from '@/stores/game';
 import { useTribulationStore } from '@/stores/tribulation';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import TribulationMiniBattlePanel from '@/components/TribulationMiniBattlePanel.vue';
 
 const auth = useAuthStore();
@@ -535,7 +536,8 @@ onUnmounted(() => {
     <div class="max-w-3xl mx-auto space-y-4">
       <header class="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
-          <h1 class="text-2xl tracking-widest font-bold">{{ t('tribulation.title') }}</h1>
+          <XTHeroEyebrow han="天劫降世" label="Thiên Kiếp Giáng Thế" />
+          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('tribulation.title') }}</h1>
           <p class="text-xs text-ink-300 mt-1">
             {{ t('tribulation.subtitle') }}
           </p>

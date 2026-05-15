@@ -23,6 +23,7 @@ import {
 } from '@/api/boss';
 import { on } from '@/ws/client';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import BossSchedulePanel from '@/components/BossSchedulePanel.vue';
 import BossElementTooltip from '@/components/BossElementTooltip.vue';
 import MButton from '@/components/ui/MButton.vue';
@@ -337,7 +338,8 @@ function timeLeftText(iso: string): string {
 
 <template>
   <AppShell>
-    <h2 class="text-xl tracking-widest mb-4">鬼 {{ t('boss.title') }}</h2>
+    <XTHeroEyebrow han="魔王讨伐" label="Truy Sát Ma Vương" />
+    <h2 class="text-xl tracking-widest mb-4 mt-1">鬼 {{ t('boss.title') }}</h2>
 
     <!-- Phase 13.0 §E — Lịch Boss hôm nay (LiveOps schedule). -->
     <BossSchedulePanel />

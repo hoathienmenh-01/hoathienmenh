@@ -45,6 +45,7 @@ import {
 } from '@/api/inventory';
 import { learnSkillFromBook } from '@/api/skill';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import EquipmentArtCell from '@/components/xianxia/EquipmentArtCell.vue';
 import EquipmentUpgradePanel from '@/components/EquipmentUpgradePanel.vue';
@@ -613,7 +614,8 @@ function handleErr(e: unknown): void {
 
 <template>
   <AppShell>
-    <h2 class="text-xl tracking-widest mb-4">{{ t('inventory.title') }}</h2>
+    <XTHeroEyebrow han="乾坤袋" label="Càn Khôn Túi" />
+    <h2 class="text-xl tracking-widest mb-4 mt-1">{{ t('inventory.title') }}</h2>
 
     <div class="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
       <!-- Bộ trang bị + Phase 23.3 Build summary -->

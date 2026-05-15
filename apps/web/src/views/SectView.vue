@@ -17,6 +17,7 @@ import {
   type SectListView,
 } from '@/api/sect';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
@@ -147,7 +148,8 @@ const myStash = computed(() => game.character?.linhThach ?? '0');
 
 <template>
   <AppShell>
-    <h2 class="text-xl tracking-widest mb-4">{{ t('sect.title') }}</h2>
+    <XTHeroEyebrow han="宗门殿" label="Tông Môn Điện" />
+    <h2 class="text-xl tracking-widest mb-4 mt-1">{{ t('sect.title') }}</h2>
 
     <!-- Phase 13.1.B — Sect War CTA. -->
     <section
