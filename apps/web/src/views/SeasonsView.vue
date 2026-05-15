@@ -3,6 +3,7 @@ import { computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { itemByKey } from '@xuantoi/shared';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import { useSeasonStore } from '@/stores/seasons';
 import { useToastStore } from '@/stores/toast';
 import type { SeasonLeaderboardKind, SeasonRewardView } from '@/api/seasons';
@@ -94,7 +95,8 @@ onMounted(() => {
       <header class="rounded-3xl border border-amber-300/30 bg-ink-800/70 p-5">
         <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p class="text-xs uppercase tracking-[0.3em] text-amber-300">
+            <XTHeroEyebrow han="甚访限丌" label="Vô Thường Phân Kiếp" />
+            <p class="mt-1 text-xs uppercase tracking-[0.3em] text-amber-300">
               {{ t('seasons.kicker') }}
             </p>
             <h1 class="mt-2 text-3xl font-bold text-ink-50">

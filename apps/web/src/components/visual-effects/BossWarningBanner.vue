@@ -5,12 +5,13 @@
  * Hiển thị banner cảnh báo khi boss appear / charging / enrage / low_hp ...
  * Caller cung cấp severity + message + (optional) turnsRemaining.
  */
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import {
   getBossWarningEffect,
   type VisualEffectElement,
 } from '@xuantoi/shared';
 import type { BossWarningType } from '@/lib/visual-effect-adapters';
+import { playSfxBoss } from '@/lib/sfx';
 
 const props = withDefaults(
   defineProps<{
@@ -59,6 +60,13 @@ const showMucRoi = computed(
     props.visualEffectLevel !== 'OFF' &&
     props.severity === 'FATAL',
 );
+
+onMounted(() => {
+  if (props.visualEffectLevel === 'OFF') return;
+  if (props.severity === 'DANGER' || props.severity === 'FATAL') {
+    playSfxBoss();
+  }
+});
 
 const containerClass = computed(() => {
   const parts: string[] = [

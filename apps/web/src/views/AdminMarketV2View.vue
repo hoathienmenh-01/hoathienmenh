@@ -18,6 +18,7 @@ import {
 } from '@/api/marketV2';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 
 const { t } = useI18n();
@@ -95,7 +96,8 @@ onMounted(refresh);
 <template>
   <AppShell>
     <div class="space-y-4 p-4">
-      <h1 class="text-xl font-bold">{{ t('adminMarket.title') }}</h1>
+      <XTHeroEyebrow han="商集总控" label="Thương Tập Tổng Khiển" />
+      <h1 class="text-xl font-bold mt-1">{{ t('adminMarket.title') }}</h1>
 
       <div class="flex items-center gap-2">
         <select v-model="statusFilter" class="bg-gray-800 text-white rounded px-2 py-1" @change="refresh">

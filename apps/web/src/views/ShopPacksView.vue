@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import {
   getShopPacks,
@@ -134,6 +135,7 @@ onMounted(async () => {
 
 <template>
   <AppShell :title="t('shopPacks.title')">
+    <XTHeroEyebrow han="仙礼理包" label="Tiên Lễ Trang Bao" />
     <!-- Category filter -->
     <div class="flex flex-wrap gap-2 mb-4">
       <button

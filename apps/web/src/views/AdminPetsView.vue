@@ -30,6 +30,7 @@ import {
 } from '@/api/pet';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 
 const { t } = useI18n();
 const toast = useToastStore();
@@ -178,7 +179,8 @@ onMounted(loadAudit);
 <template>
   <AppShell>
     <div class="space-y-4 p-4">
-      <h1 class="text-xl font-bold">{{ t('adminPets.title') }}</h1>
+      <XTHeroEyebrow han="灵兽谱录" label="Linh Thú Phổ Lục" />
+      <h1 class="text-xl font-bold mt-1">{{ t('adminPets.title') }}</h1>
 
       <div class="flex gap-2 flex-wrap">
         <button

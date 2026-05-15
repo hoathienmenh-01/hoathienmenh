@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" preserveAspectRatio="none">
+  <g fill="#a99fd4" opacity="0.18">
+    <path d="M0 480 Q200 360 400 460 T800 440 T1200 470 L1200 600 L0 600 Z"/>
+  </g>
+  <g fill="#5fe3c6" opacity="0.1">
+    <path d="M0 520 Q260 420 520 510 T1040 500 T1200 530 L1200 600 L0 600 Z"/>
+  </g>
+  <g fill="#08090b" opacity="0.55">
+    <path d="M0 560 Q300 500 600 550 T1200 555 L1200 600 L0 600 Z"/>
+  </g>
+</svg>

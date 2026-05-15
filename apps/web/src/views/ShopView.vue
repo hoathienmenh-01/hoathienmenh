@@ -8,6 +8,7 @@ import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
 import { buyFromShop, listNpcShop, type ShopEntry } from '@/api/shop';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
@@ -98,7 +99,8 @@ onMounted(async () => {
     <div class="max-w-4xl mx-auto space-y-4">
       <header class="flex items-baseline justify-between gap-3">
         <div>
-          <h1 class="text-2xl tracking-widest font-bold">{{ t('shop.title') }}</h1>
+          <XTHeroEyebrow han="仙阒招牌" label="Tiên Trạm Chính Biển" />
+          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('shop.title') }}</h1>
           <p class="text-sm text-ink-300">{{ t('shop.subtitle') }}</p>
         </div>
         <div class="text-right text-sm">

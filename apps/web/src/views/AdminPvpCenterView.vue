@@ -24,6 +24,7 @@ import {
 } from '@/api/pvp';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import type { PvpBalancePolicy } from '@xuantoi/shared';
 
@@ -153,7 +154,8 @@ async function confirmResolve() {
   <AppShell>
     <section class="admin-pvp" data-test="admin-pvp-view">
       <header class="admin-pvp__header">
-        <h1>{{ t('adminPvp.title') }}</h1>
+        <XTHeroEyebrow han="斗阠总控" label="Đấu Khiển Phủ" />
+        <h1 class="mt-1">{{ t('adminPvp.title') }}</h1>
         <p>{{ t('adminPvp.intro') }}</p>
       </header>
 

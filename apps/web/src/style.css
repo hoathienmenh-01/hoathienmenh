@@ -110,6 +110,114 @@ body[data-scene='inventory'] {
   --xt-scene-opacity: 0.72;
 }
 
+/* ── Custom cursor (Cửu Thiên Mộng Phase 2). ────────────────────────── */
+html[data-theme='night'] body {
+  cursor: url('/cursor/xt-cursor-default.svg') 4 4, auto;
+}
+html[data-theme='night'] a,
+html[data-theme='night'] button,
+html[data-theme='night'] [role='button'],
+html[data-theme='night'] input[type='submit'],
+html[data-theme='night'] input[type='button'],
+html[data-theme='night'] label,
+html[data-theme='night'] .xt-clickable {
+  cursor: url('/cursor/xt-cursor-pointer.svg') 16 16, pointer;
+}
+html[data-theme='night'] :disabled,
+html[data-theme='night'] [aria-disabled='true'] {
+  cursor: not-allowed;
+}
+@media (pointer: coarse) {
+  /* Touch devices — disable custom cursor (irrelevant). */
+  html[data-theme='night'] body,
+  html[data-theme='night'] a,
+  html[data-theme='night'] button,
+  html[data-theme='night'] [role='button'] {
+    cursor: auto;
+  }
+}
+
+/* ── Parallax background (Cửu Thiên Mộng Phase 2). ──────────────────── */
+.xt-parallax {
+  --xt-parallax-far-hue: 200deg;
+  --xt-parallax-mid-hue: 0deg;
+  --xt-parallax-near-hue: 0deg;
+}
+.xt-parallax-layer {
+  position: absolute;
+  inset: -20% -10% -10% -10%;
+  background-repeat: repeat-x;
+  background-size: auto 100%;
+  pointer-events: none;
+  will-change: transform;
+}
+.xt-parallax-layer--far {
+  background-image: url('/textures/parallax-clouds.svg');
+  background-size: 2400px 600px;
+  opacity: 0.55;
+  filter: blur(2px) hue-rotate(var(--xt-parallax-far-hue));
+  animation: xt-parallax-drift-slow 90s linear infinite;
+}
+.xt-parallax-layer--mid {
+  background-image: url('/textures/parallax-clouds.svg');
+  background-size: 1800px 480px;
+  background-position: 0 22%;
+  opacity: 0.4;
+  filter: blur(1px) hue-rotate(var(--xt-parallax-mid-hue));
+  animation: xt-parallax-drift-medium 60s linear infinite;
+}
+.xt-parallax-layer--near {
+  inset: auto 0 0 0;
+  height: 36%;
+  background-image: url('/textures/parallax-mountains.svg');
+  background-size: 1800px 100%;
+  background-position: center bottom;
+  opacity: 0.7;
+  filter: hue-rotate(var(--xt-parallax-near-hue));
+  animation: xt-parallax-drift-near 120s linear infinite;
+}
+.xt-parallax[data-animate='off'] .xt-parallax-layer {
+  animation: none;
+}
+.xt-parallax[data-tone='cultivation'] {
+  --xt-parallax-far-hue: 140deg;
+  --xt-parallax-mid-hue: 120deg;
+}
+.xt-parallax[data-tone='boss'] {
+  --xt-parallax-far-hue: -20deg;
+  --xt-parallax-mid-hue: -10deg;
+  --xt-parallax-near-hue: -15deg;
+}
+.xt-parallax[data-tone='secret'] {
+  --xt-parallax-far-hue: 260deg;
+  --xt-parallax-mid-hue: 240deg;
+  --xt-parallax-near-hue: 220deg;
+}
+.xt-parallax[data-tone='sect'] {
+  --xt-parallax-far-hue: 20deg;
+  --xt-parallax-mid-hue: 10deg;
+}
+.xt-parallax[data-tone='market'] {
+  --xt-parallax-far-hue: 40deg;
+  --xt-parallax-mid-hue: 30deg;
+  --xt-parallax-near-hue: 20deg;
+}
+@keyframes xt-parallax-drift-slow {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-1200px, 0, 0); }
+}
+@keyframes xt-parallax-drift-medium {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-900px, 0, 0); }
+}
+@keyframes xt-parallax-drift-near {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-900px, 0, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xt-parallax-layer { animation: none !important; }
+}
+
 /* ── Page-level gradient wrappers (UI-1.x compatibility). ───────────── */
 .xt-bg-celestial,
 .xt-page-gradient {
