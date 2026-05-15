@@ -23,6 +23,7 @@ import MaintenanceOverlay from '@/components/MaintenanceOverlay.vue';
 import { useMaintenanceStore } from '@/stores/maintenance';
 import { useGameStore } from '@/stores/game';
 import { on as wsOn } from '@/ws/client';
+import { silkTransitionName } from '@/lib/silkTransition';
 
 const maintenance = useMaintenanceStore();
 const game = useGameStore();
@@ -61,7 +62,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <RouterView />
+  <RouterView v-slot="{ Component, route }">
+    <Transition :name="silkTransitionName(route)" mode="out-in">
+      <component :is="Component" :key="route.fullPath" />
+    </Transition>
+  </RouterView>
   <MToast />
   <MaintenanceOverlay v-if="showOverlay && maintenance.status" :status="maintenance.status" />
 </template>

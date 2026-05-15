@@ -630,6 +630,36 @@ html[data-theme='night'] [aria-disabled='true'] {
   background: linear-gradient(180deg, var(--xt-gold-bright), var(--xt-gold));
 }
 
+/* ── Silk transition (Cửu Thiên Mộng Phase 3 module B). ─────────────── */
+/*
+ * Lụa cuộn từ trái → phải khi enter, từ phải → trái khi leave. Dùng
+ * clip-path inset() để khỏi reflow hệ con. Tôn trọng prefers-reduced-motion
+ * + .xt-silk-disabled (set ở <html> để bypass tạm thời).
+ */
+.xt-silk-enter-active,
+.xt-silk-leave-active {
+  transition:
+    clip-path 0.72s cubic-bezier(0.32, 0.72, 0.24, 1),
+    opacity 0.6s ease-out;
+  will-change: clip-path, opacity;
+}
+.xt-silk-enter-from {
+  clip-path: inset(0 100% 0 0);
+  opacity: 0;
+}
+.xt-silk-enter-to {
+  clip-path: inset(0 0 0 0);
+  opacity: 1;
+}
+.xt-silk-leave-from {
+  clip-path: inset(0 0 0 0);
+  opacity: 1;
+}
+.xt-silk-leave-to {
+  clip-path: inset(0 0 0 100%);
+  opacity: 0;
+}
+
 /* ── Reduced motion fallback (re-affirm) ────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .xt-card--elevated:hover,
@@ -637,4 +667,27 @@ html[data-theme='night'] [aria-disabled='true'] {
   .xt-button:active {
     transform: none;
   }
+  .xt-silk-enter-active,
+  .xt-silk-leave-active {
+    transition: opacity 0.18s ease-out;
+  }
+  .xt-silk-enter-from,
+  .xt-silk-leave-to {
+    clip-path: none;
+    opacity: 0;
+  }
+  .xt-silk-enter-to,
+  .xt-silk-leave-from {
+    clip-path: none;
+    opacity: 1;
+  }
+}
+html.xt-silk-disabled .xt-silk-enter-active,
+html.xt-silk-disabled .xt-silk-leave-active {
+  transition: none;
+}
+html.xt-silk-disabled .xt-silk-enter-from,
+html.xt-silk-disabled .xt-silk-leave-to {
+  clip-path: none;
+  opacity: 1;
 }
