@@ -197,6 +197,7 @@ async function onBreakthrough(): Promise<void> {
         </p>
       </section>
 
+      <DailyLoginCard class="mb-4 ve-section-enter ve-section-enter-delay-3" />
       <OnboardingChecklist class="mb-4 ve-section-enter ve-section-enter-delay-3" />
       <NextActionPanel class="mb-4 ve-section-enter ve-section-enter-delay-4" />
 
