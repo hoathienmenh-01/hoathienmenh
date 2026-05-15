@@ -15,6 +15,7 @@ import {
   type CosmeticLoadoutView,
 } from '@/api/cosmetics';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import SkeletonBlock from '@/components/ui/SkeletonBlock.vue';
 
 function realmText(key: string, stage: number): string {
@@ -107,7 +108,8 @@ watch(
   <AppShell>
     <div class="max-w-2xl mx-auto space-y-4">
       <header>
-        <h1 class="text-2xl tracking-widest font-bold">{{ t('profile.title') }}</h1>
+        <XTHeroEyebrow han="身交争" label="Thân Thế Công Trạng" />
+        <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('profile.title') }}</h1>
       </header>
 
       <div v-if="loading" class="space-y-3" data-testid="profile-skeleton">

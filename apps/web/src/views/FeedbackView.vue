@@ -9,6 +9,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import LoadingState from '@/components/ui/LoadingState.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
@@ -111,7 +112,8 @@ onMounted(() => {
   <AppShell>
     <div class="max-w-3xl mx-auto space-y-6">
       <header>
-        <h1 class="text-2xl tracking-widest font-bold">{{ t('feedback.title') }}</h1>
+        <XTHeroEyebrow han="请安仪" label="Thỉnh An Nghi" />
+        <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('feedback.title') }}</h1>
         <p class="text-xs text-ink-300 mt-1">{{ t('feedback.subtitle') }}</p>
       </header>
 
