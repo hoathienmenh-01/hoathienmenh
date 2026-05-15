@@ -12,7 +12,7 @@
  *   - ESC
  *   - Sau khi click item (auto-close → route change)
  */
-import { computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { XT_NAV_GROUPS } from '@/lib/xtNav';
@@ -37,8 +37,11 @@ const isStaff = computed(() => {
   return r === 'ADMIN' || r === 'MOD';
 });
 
-const groups = computed(() =>
-  XT_NAV_GROUPS.map((group) => ({
+const drawerSearch = ref('');
+
+const groups = computed(() => {
+  const q = drawerSearch.value.trim().toLowerCase();
+  return XT_NAV_GROUPS.map((group) => ({
     key: group.key,
     label: tSafe(`shell.group.${group.key}`),
     accent: group.accent,
@@ -47,9 +50,10 @@ const groups = computed(() =>
       .map((it) => ({
         ...it,
         label: tSafe(`shell.nav.${it.key}`),
-      })),
-  })).filter((g) => g.items.length > 0),
-);
+      }))
+      .filter((it) => !q || it.label.toLowerCase().includes(q)),
+  })).filter((g) => g.items.length > 0);
+});
 
 function badgeCount(kind: string | undefined): number {
   if (!kind) return 0;
@@ -127,6 +131,15 @@ watch(
           </button>
         </div>
 
+        <div class="px-4 pt-3 pb-1">
+          <input
+            v-model="drawerSearch"
+            type="text"
+            class="w-full rounded-xl border border-[var(--xt-border-gold)]/40 bg-[rgba(20,28,38,0.6)] px-3 py-2 text-sm text-[var(--xt-text-primary)] placeholder-[var(--xt-text-muted)] outline-none focus:border-[var(--xt-jade-bright)]/60 focus:ring-1 focus:ring-[rgba(95,227,198,0.55)] transition"
+            :placeholder="t('shell.searchPlaceholder')"
+            data-testid="xt-menu-search"
+          />
+        </div>
         <div class="space-y-4 px-4 py-4">
           <section
             v-for="group in groups"
