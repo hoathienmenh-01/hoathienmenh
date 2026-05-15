@@ -313,17 +313,17 @@ onMounted(() => {
     <div class="space-y-5" data-testid="dashboard-modern">
       <header class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div class="min-w-0">
-          <p class="text-[10px] uppercase tracking-[0.32em] text-emerald-700/70 md:text-xs">
+          <p class="text-[10px] uppercase tracking-[0.32em] text-[var(--xt-text-jade)] md:text-xs">
             Thiên Cung Giao Diện · XT
           </p>
-          <h1 class="mt-1 text-xl font-black tracking-wide text-emerald-950 md:text-3xl">
+          <h1 class="mt-1 text-xl font-black tracking-wide text-[var(--xt-text-primary)] md:text-3xl">
             {{ t('dashboard.title') }}
           </h1>
-          <p class="mt-1 text-xs text-emerald-900/65 md:text-sm">{{ t('dashboard.subtitle') }}</p>
+          <p class="mt-1 text-xs text-[var(--xt-text-muted)] md:text-sm">{{ t('dashboard.subtitle') }}</p>
         </div>
         <button
           type="button"
-          class="inline-flex h-10 items-center justify-center rounded-2xl border border-emerald-300/30 bg-white/65 px-3 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-50 md:px-4 md:text-sm"
+          class="inline-flex h-10 items-center justify-center rounded-2xl border border-[var(--xt-border-jade)] bg-[var(--xt-bg-surface)] px-3 text-xs font-semibold text-[var(--xt-text-primary)] transition hover:bg-[var(--xt-jade-soft)] md:px-4 md:text-sm"
           @click="load()"
         >
           <XTIcon name="refresh" size="sm" class="mr-1.5" />
@@ -353,13 +353,13 @@ onMounted(() => {
 
           <XianxiaCard accent="gold" data-testid="dashboard-right-panel" class="hidden xl:block">
             <div class="mb-3">
-              <h2 class="text-base font-bold text-emerald-950">{{ t('dashboard.right.title') }}</h2>
-              <p class="text-[11px] text-emerald-900/65">{{ t('dashboard.right.subtitle') }}</p>
+              <h2 class="text-base font-bold text-[var(--xt-text-primary)]">{{ t('dashboard.right.title') }}</h2>
+              <p class="text-[11px] text-[var(--xt-text-muted)]">{{ t('dashboard.right.subtitle') }}</p>
             </div>
             <div class="space-y-2">
               <div
                 v-if="rightPanelItems.every((item) => item.count === 0)"
-                class="rounded-2xl border border-amber-200/45 bg-white/55 p-3 text-xs text-emerald-900/70"
+                class="rounded-2xl border border-amber-200/45 bg-[var(--xt-bg-surface)] p-3 text-xs text-[var(--xt-text-muted)]"
                 data-testid="dashboard-right-empty"
               >
                 Chưa có lời nào từ thiên cơ. Sự kiện, boss và bí cảnh sẽ sáng lên khi có dữ liệu mới.
@@ -368,11 +368,11 @@ onMounted(() => {
                 v-for="item in rightPanelItems"
                 :key="item.title"
                 type="button"
-                class="flex w-full items-center gap-3 rounded-2xl border border-emerald-200/35 bg-white/55 p-2 text-left transition hover:bg-emerald-50"
+                class="flex w-full items-center gap-3 rounded-2xl border border-[var(--xt-border-jade)] bg-[var(--xt-bg-surface)] p-2 text-left transition hover:bg-[var(--xt-jade-soft)]"
                 @click="go(item.route)"
               >
                 <GameIcon :name="item.icon" size="sm" />
-                <span class="min-w-0 flex-1 truncate text-xs font-semibold text-emerald-950">{{ item.title }}</span>
+                <span class="min-w-0 flex-1 truncate text-xs font-semibold text-[var(--xt-text-primary)]">{{ item.title }}</span>
                 <span v-if="item.count > 0" class="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
                   {{ item.count > 99 ? '99+' : item.count }}
                 </span>
@@ -411,8 +411,8 @@ onMounted(() => {
               w.severity === 'CRITICAL'
                 ? 'border-red-300/60 bg-red-50 text-red-700'
                 : w.severity === 'WARNING'
-                  ? 'border-amber-300/60 bg-amber-50 text-amber-800'
-                  : 'border-emerald-300/35 bg-emerald-50 text-emerald-800',
+                  ? 'border-[var(--xt-border-gold)] bg-[var(--xt-gold-soft)] text-[var(--xt-text-gold)]'
+                  : 'border-[var(--xt-border-jade)] bg-[var(--xt-jade-soft)] text-[var(--xt-text-primary)]',
             ]"
             @click="go(w.route)"
           >

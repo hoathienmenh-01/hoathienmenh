@@ -21,7 +21,7 @@ defineProps<{
 
 <template>
   <header
-    class="flex flex-wrap items-center gap-3 border-b border-emerald-300/20 bg-white/40 px-4 py-3 backdrop-blur md:rounded-t-3xl md:border md:border-emerald-300/30 md:bg-white/55"
+    class="flex flex-wrap items-center gap-3 border-b border-emerald-300/20 bg-white/40 px-4 py-3 backdrop-blur md:rounded-t-3xl md:border md:border-[var(--xt-border-jade)] md:bg-[var(--xt-bg-surface)]"
     data-testid="xt-page-header"
   >
     <XTBackButton
@@ -31,12 +31,12 @@ defineProps<{
     />
     <div class="min-w-0 flex-1">
       <h1
-        class="truncate text-base font-semibold tracking-wide text-emerald-950 md:text-2xl"
+        class="truncate text-base font-semibold tracking-wide text-[var(--xt-text-primary)] md:text-2xl"
         data-testid="xt-page-title"
       >
         {{ title }}
       </h1>
-      <p v-if="subtitle" class="truncate text-xs text-emerald-900/65 md:text-sm">
+      <p v-if="subtitle" class="truncate text-xs text-[var(--xt-text-muted)] md:text-sm">
         {{ subtitle }}
       </p>
     </div>

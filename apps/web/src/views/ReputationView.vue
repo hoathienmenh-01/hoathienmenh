@@ -124,7 +124,7 @@ onMounted(async () => {
                 </div>
                 <div class="h-2 rounded bg-ink-950 overflow-hidden">
                   <div
-                    class="h-full bg-emerald-500"
+                    class="h-full bg-[var(--xt-jade-bright)]"
                     :style="{ width: `${progressPct(row.dailyGain, row.dailyCap)}%` }"
                   />
                 </div>

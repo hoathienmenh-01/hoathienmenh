@@ -10,6 +10,7 @@ export * from './arena';
 export * from './arena-season';
 export * from './arena-anti-wintrade';
 export * from './items';
+export * from './equipment-images';
 export * from './inventory-sort';
 export * from './loadout-presets';
 export * from './web-push';

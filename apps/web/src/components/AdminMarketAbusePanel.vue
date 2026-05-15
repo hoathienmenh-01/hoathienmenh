@@ -499,7 +499,7 @@ const showEmpty = computed(
                 </button>
                 <button
                   v-if="a.status !== 'RESOLVED'"
-                  class="px-2 py-0.5 text-xs bg-emerald-500/60 text-ink-900 rounded"
+                  class="px-2 py-0.5 text-xs bg-[var(--xt-jade)] text-ink-900 rounded"
                   data-testid="admin-market-abuse-resolve-btn"
                   @click="resolveAnomaly(a.id)"
                 >

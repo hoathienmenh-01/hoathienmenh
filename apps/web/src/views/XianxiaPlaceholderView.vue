@@ -29,17 +29,17 @@ const icon = computed(() =>
   <AppShell>
     <div class="mx-auto flex min-h-[60vh] max-w-3xl items-center justify-center">
       <XianxiaCard accent="violet" class="w-full text-center" data-testid="xianxia-placeholder">
-        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-amber-300/40 bg-white/65">
+        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-amber-300/40 bg-[var(--xt-bg-surface)]">
           <GameIcon :name="icon" size="lg" />
         </div>
-        <p class="text-xs uppercase tracking-[0.32em] text-emerald-700/70">XT</p>
-        <h1 class="mt-2 text-3xl font-black text-emerald-950">{{ title }}</h1>
-        <p class="mx-auto mt-3 max-w-xl text-sm text-emerald-900/70">{{ description }}</p>
+        <p class="text-xs uppercase tracking-[0.32em] text-[var(--xt-text-jade)]">XT</p>
+        <h1 class="mt-2 text-3xl font-black text-[var(--xt-text-primary)]">{{ title }}</h1>
+        <p class="mx-auto mt-3 max-w-xl text-sm text-[var(--xt-text-muted)]">{{ description }}</p>
         <div class="mt-6 flex flex-wrap justify-center gap-3">
           <XianxiaBackButton :label="t('common.back')" />
           <RouterLink
             to="/dashboard"
-            class="inline-flex min-h-10 items-center rounded-2xl border border-emerald-300/30 bg-emerald-100/70 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-300/60"
+            class="inline-flex min-h-10 items-center rounded-2xl border border-[var(--xt-border-jade)] bg-emerald-100/70 px-4 py-2 text-sm font-semibold text-[var(--xt-text-primary)] transition hover:bg-[var(--xt-jade-soft)] focus:outline-none focus:ring-2 focus:ring-emerald-300/60"
           >
             Quay lại Dashboard
           </RouterLink>

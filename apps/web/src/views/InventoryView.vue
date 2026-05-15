@@ -46,6 +46,7 @@ import {
 import { learnSkillFromBook } from '@/api/skill';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import EquipmentArtCell from '@/components/xianxia/EquipmentArtCell.vue';
 import EquipmentUpgradePanel from '@/components/EquipmentUpgradePanel.vue';
 import EquipmentEconomyPanel from '@/components/EquipmentEconomyPanel.vue';
 import EquipmentBuildPanel from '@/components/EquipmentBuildPanel.vue';
@@ -621,9 +622,17 @@ function handleErr(e: unknown): void {
         <div
           v-for="slot in EQUIP_SLOTS"
           :key="slot"
-          class="flex items-center justify-between text-sm border-b border-ink-300/20 last:border-0 py-2"
+          class="flex items-center gap-2 text-sm border-b border-ink-300/20 last:border-0 py-2"
         >
-          <span class="text-ink-300 w-24">{{ slotLabel(slot) }}</span>
+          <EquipmentArtCell
+            :equip-slot="slot"
+            :tier="equipped.get(slot)?.item?.equipmentTier ?? null"
+            :equipped="!!equipped.get(slot)"
+            :alt="equipped.get(slot)?.item?.name ?? slotLabel(slot)"
+            size="sm"
+            show-tier
+          />
+          <span class="text-ink-300 w-20 shrink-0">{{ slotLabel(slot) }}</span>
           <span v-if="equipped.get(slot)" :class="equipmentQualityClass(equipped.get(slot)!.item)">
             {{ equipped.get(slot)!.item.name }}
             <span class="text-[10px] text-cyan-200 font-normal ml-1">
@@ -713,6 +722,13 @@ function handleErr(e: unknown): void {
           class="rounded border border-ink-300/40 bg-ink-700/30 p-3 flex flex-col gap-3"
         >
           <div class="flex items-center gap-3">
+            <EquipmentArtCell
+              :equip-slot="it.item.slot ?? null"
+              :tier="it.item.equipmentTier ?? null"
+              :alt="it.item.name"
+              size="md"
+              show-tier
+            />
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
                 <button

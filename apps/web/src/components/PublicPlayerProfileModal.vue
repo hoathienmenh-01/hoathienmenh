@@ -360,7 +360,7 @@ async function onUnblock(): Promise<void> {
             <button
               v-if="profile.actions.canSendFriendRequest"
               type="button"
-              class="rounded border border-emerald-400/50 px-3 py-1.5 text-xs uppercase tracking-widest text-emerald-200 hover:bg-emerald-500/10 disabled:opacity-50"
+              class="rounded border border-emerald-400/50 px-3 py-1.5 text-xs uppercase tracking-widest text-emerald-200 hover:bg-[var(--xt-jade-soft)] disabled:opacity-50"
               :disabled="!!busyAction"
               data-testid="public-profile-action-friend"
               @click="onSendFriendRequest"

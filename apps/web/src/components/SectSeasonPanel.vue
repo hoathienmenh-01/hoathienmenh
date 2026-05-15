@@ -367,7 +367,7 @@ function startCountdown(): void {
         <!-- Phase 13.2.B — claim result toast (last successful claim). -->
         <div
           v-if="claimResult"
-          class="mt-3 rounded border border-emerald-300/40 bg-emerald-500/10 text-emerald-100 text-sm p-3 flex items-start justify-between gap-3"
+          class="mt-3 rounded border border-emerald-300/40 bg-[var(--xt-jade-soft)] text-emerald-100 text-sm p-3 flex items-start justify-between gap-3"
           data-test="sect-season-claim-result"
         >
           <div>
@@ -398,7 +398,7 @@ function startCountdown(): void {
           </div>
           <button
             type="button"
-            class="text-xs px-2 py-0.5 rounded border border-emerald-300/40 hover:bg-emerald-500/20"
+            class="text-xs px-2 py-0.5 rounded border border-emerald-300/40 hover:bg-[var(--xt-jade-soft)]"
             data-test="sect-season-claim-result-dismiss"
             @click="dismissClaimResult"
           >
