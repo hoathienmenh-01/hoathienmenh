@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <defs>
+    <radialGradient id="hall" cx="50%" cy="40%" r="56%">
+      <stop offset="0%" stop-color="#3b3220" stop-opacity="0.55"/>
+      <stop offset="60%" stop-color="#2a2418" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#1a1610" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="hall-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#10120c"/>
+      <stop offset="100%" stop-color="#1c1c12"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#hall-bg)"/>
+  <rect width="1600" height="1000" fill="url(#hall)"/>
+  <!-- Hanging lanterns -->
+  <g>
+    <g transform="translate(220 80)">
+      <line x1="0" y1="0" x2="0" y2="80" stroke="#3b3220" stroke-width="1"/>
+      <ellipse cx="0" cy="120" rx="36" ry="46" fill="#b23b3b"/>
+      <ellipse cx="0" cy="120" rx="34" ry="44" fill="#d04f4f" opacity="0.85"/>
+      <rect x="-18" y="76" width="36" height="6" fill="#3b3220"/>
+      <rect x="-18" y="158" width="36" height="6" fill="#3b3220"/>
+      <text x="0" y="128" text-anchor="middle" font-family="serif" font-size="32" fill="#fff6e0" opacity="0.85">福</text>
+    </g>
+    <g transform="translate(1380 60)">
+      <line x1="0" y1="0" x2="0" y2="80" stroke="#3b3220" stroke-width="1"/>
+      <ellipse cx="0" cy="120" rx="32" ry="42" fill="#b23b3b"/>
+      <ellipse cx="0" cy="120" rx="30" ry="40" fill="#d04f4f" opacity="0.85"/>
+      <rect x="-16" y="78" width="32" height="6" fill="#3b3220"/>
+      <rect x="-16" y="156" width="32" height="6" fill="#3b3220"/>
+      <text x="0" y="126" text-anchor="middle" font-family="serif" font-size="28" fill="#fff6e0" opacity="0.85">財</text>
+    </g>
+  </g>
+  <!-- Distant arches (sect halls) -->
+  <g fill="#0a0a06" opacity="0.85">
+    <path d="M260 760 L260 600 L320 540 L380 600 L380 760 Z"/>
+    <path d="M540 760 L540 580 L620 510 L700 580 L700 760 Z"/>
+    <path d="M880 760 L880 580 L960 510 L1040 580 L1040 760 Z"/>
+    <path d="M1180 760 L1180 600 L1240 540 L1300 600 L1300 760 Z"/>
+  </g>
+  <!-- Ground reflection -->
+  <rect y="760" width="1600" height="240" fill="#0c0c08"/>
+  <g fill="#c9a45a" opacity="0.4">
+    <rect x="220" y="780" width="200" height="2"/>
+    <rect x="500" y="800" width="240" height="2"/>
+    <rect x="860" y="800" width="220" height="2"/>
+    <rect x="1180" y="780" width="160" height="2"/>
+  </g>
+</svg>

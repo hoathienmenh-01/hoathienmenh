@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 80" preserveAspectRatio="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="silk" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#5a1c1c"/>
+      <stop offset="48%" stop-color="#882a2a"/>
+      <stop offset="52%" stop-color="#a83434"/>
+      <stop offset="100%" stop-color="#5a1c1c"/>
+    </linearGradient>
+    <linearGradient id="silk-highlight" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff6e0" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#fff6e0" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#fff6e0" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- main ribbon -->
+  <path d="M0 16 Q60 8 120 16 T240 16 T360 16 T480 16 T600 16 T720 16 T840 16 T960 16 T1080 16 T1200 16 T1320 16 T1440 16 T1560 16 L1600 16 L1600 72 Q1540 80 1480 72 T1360 72 T1240 72 T1120 72 T1000 72 T880 72 T760 72 T640 72 T520 72 T400 72 T280 72 T160 72 T40 72 L0 72 Z" fill="url(#silk)"/>
+  <path d="M0 16 Q60 8 120 16 T240 16 T360 16 T480 16 T600 16 T720 16 T840 16 T960 16 T1080 16 T1200 16 T1320 16 T1440 16 T1560 16 L1600 16 L1600 72 Q1540 80 1480 72 T1360 72 T1240 72 T1120 72 T1000 72 T880 72 T760 72 T640 72 T520 72 T400 72 T280 72 T160 72 T40 72 L0 72 Z" fill="url(#silk-highlight)"/>
+  <path d="M0 16 Q60 8 120 16 T240 16 T360 16 T480 16 T600 16 T720 16 T840 16 T960 16 T1080 16 T1200 16 T1320 16 T1440 16 T1560 16" stroke="#f2d789" stroke-width="1.2" fill="none" opacity="0.55"/>
+  <path d="M0 72 Q60 80 120 72 T240 72 T360 72 T480 72 T600 72 T720 72 T840 72 T960 72 T1080 72 T1200 72 T1320 72 T1440 72 T1560 72" stroke="#f2d789" stroke-width="1.2" fill="none" opacity="0.55"/>
+</svg>

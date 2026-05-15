@@ -1,14 +1,29 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+/**
+ * Cửu Thiên Mộng — ambient layer.
+ *
+ * `tone` chuyển palette particle/mist theo nhóm route (default / cultivation
+ * / boss / secret / sect / market). Khi không truyền, dùng tone "default".
+ * Layer này KHÔNG vẽ scene art — phần đó do body[data-scene=*] xử lý.
+ */
 const props = withDefaults(
   defineProps<{
     reducedMotion?: boolean;
     visualEffectLevel?: 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH';
+    tone?:
+      | 'default'
+      | 'cultivation'
+      | 'boss'
+      | 'secret'
+      | 'sect'
+      | 'market';
   }>(),
   {
     reducedMotion: false,
     visualEffectLevel: 'MEDIUM',
+    tone: 'default',
   },
 );
 
@@ -26,6 +41,7 @@ const particleCount = computed(() => {
   <div
     class="xt-ambient-layer pointer-events-none absolute inset-0 overflow-hidden"
     :class="{ 'xt-ambient-layer--static': !active }"
+    :data-tone="tone"
     aria-hidden="true"
     data-testid="spiritual-ambient-layer"
   >

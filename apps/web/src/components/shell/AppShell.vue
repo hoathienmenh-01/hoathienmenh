@@ -51,6 +51,9 @@ import {
 } from '@/lib/xtNav';
 import { formatFeatureLabel } from '@/lib/xianxiaFormat';
 import { useIsLgUp } from '@/composables/useMediaQuery';
+import { useSceneTheme } from '@/composables/useSceneTheme';
+
+const { tone: sceneTone } = useSceneTheme();
 
 const maintenance = useMaintenanceStore();
 const isLgUp = useIsLgUp();
@@ -177,8 +180,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="xt-page-gradient relative min-h-screen overflow-hidden text-emerald-950">
-    <SpiritualAmbientLayer visual-effect-level="MEDIUM" />
+  <div class="relative min-h-screen overflow-hidden text-[var(--xt-text-primary)]">
+    <SpiritualAmbientLayer visual-effect-level="MEDIUM" :tone="sceneTone" />
     <MaintenanceBanner
       v-if="
         maintenance.active &&
@@ -230,20 +233,21 @@ onBeforeUnmount(() => {
       class="relative z-10 grid min-h-screen lg:grid-cols-[var(--xt-desktop-sidebar-w)_minmax(0,1fr)] xl:grid-cols-[var(--xt-desktop-sidebar-w)_minmax(0,1fr)_19rem]"
     >
       <aside
-        class="sticky top-0 z-30 flex h-screen w-[var(--xt-desktop-sidebar-w)] flex-col border-r border-emerald-300/30 bg-white/65 p-3 backdrop-blur-xl"
+        class="sticky top-0 z-30 flex h-screen w-[var(--xt-desktop-sidebar-w)] flex-col border-r border-[var(--xt-border-gold)] bg-[rgba(14,19,24,0.86)] p-3 backdrop-blur-xl"
         :class="drawerOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
         data-testid="shell-sidebar"
       >
         <RouterLink
           to="/dashboard"
-          class="mb-4 flex items-center gap-3 rounded-3xl px-2 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-300/60"
+          class="mb-4 flex items-center gap-3 rounded-2xl px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[rgba(95,227,198,0.55)]"
         >
           <span
-            class="flex h-11 w-11 items-center justify-center rounded-3xl border border-amber-300/45 bg-gradient-to-br from-white via-emerald-100 to-amber-100 text-lg font-black text-emerald-900 shadow-[0_0_24px_rgba(74,169,143,0.20)]"
-          >XT</span>
+            class="xt-seal xt-seal--lg"
+            aria-hidden="true"
+          >玄</span>
           <span>
-            <span class="block text-base font-black tracking-[0.24em] text-emerald-950">XT</span>
-            <span class="block text-[10px] uppercase tracking-[0.28em] text-emerald-800/70">
+            <span class="xt-heading-co block text-base tracking-[0.24em]">Cửu Thiên Mộng</span>
+            <span class="xt-eyebrow block !text-[9px] mt-0.5">
               Tu Tiên Lộ
             </span>
           </span>
@@ -255,7 +259,7 @@ onBeforeUnmount(() => {
             :key="group.key"
             class="space-y-1"
           >
-            <p class="px-2 text-[10px] font-bold uppercase tracking-[0.28em] text-emerald-900/55">
+            <p class="px-2 text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--xt-gold-bright)]/85">
               {{ groupLabel(group.key) }}
             </p>
             <div class="space-y-0.5">
@@ -265,10 +269,10 @@ onBeforeUnmount(() => {
                 )"
                 :key="item.to"
                 :to="item.to"
-                class="group relative flex min-h-10 items-center gap-3 rounded-2xl px-2.5 py-1.5 text-[13px] font-semibold text-emerald-900/75 transition hover:bg-emerald-50 hover:text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-300/60"
+                class="group relative flex min-h-10 items-center gap-3 rounded-xl px-2.5 py-1.5 text-[13px] font-semibold text-[var(--xt-text-primary)]/75 transition hover:bg-[rgba(95,227,198,0.08)] hover:text-[var(--xt-jade-bright)] focus:outline-none focus:ring-2 focus:ring-[rgba(95,227,198,0.55)]"
                 :class="
                   isNavActive(item)
-                    ? 'bg-gradient-to-r from-emerald-100 via-white to-amber-100 text-emerald-950 ring-1 ring-amber-300/35 shadow-[0_0_24px_rgba(74,169,143,0.14)]'
+                    ? 'bg-gradient-to-r from-[rgba(27,59,52,0.85)] via-[rgba(20,28,38,0.85)] to-[rgba(74,59,24,0.65)] text-[var(--xt-jade-bright)] ring-1 ring-[rgba(242,215,137,0.4)] shadow-[0_0_18px_rgba(95,227,198,0.22)]'
                     : ''
                 "
                 :data-testid="item.testId ?? `shell-nav-${item.key}`"
@@ -277,7 +281,7 @@ onBeforeUnmount(() => {
                 <span class="min-w-0 flex-1 truncate">{{ navLabel(item.key) }}</span>
                 <span
                   v-if="showDot(item.badge)"
-                  class="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full ring-2 ring-white"
+                  class="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full ring-2 ring-[var(--xt-ink-deep)]"
                   :class="dotClass(item.badge)"
                   :title="dotTitle(item.badge)"
                   :data-testid="
@@ -289,7 +293,7 @@ onBeforeUnmount(() => {
                 <span
                   v-if="badgeValue(item.badge)"
                   class="rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white shadow-lg"
-                  :class="item.badge === 'mail' ? 'bg-red-600' : 'bg-amber-500'"
+                  :class="item.badge === 'mail' ? 'bg-red-600 shadow-[var(--xt-shadow-seal)]' : 'bg-amber-500 shadow-[var(--xt-shadow-gold-glow)]'"
                 >
                   {{ badgeValue(item.badge) }}
                 </span>
@@ -301,7 +305,7 @@ onBeforeUnmount(() => {
 
       <div class="flex min-h-screen min-w-0 flex-col">
         <header
-          class="sticky top-0 z-30 border-b border-emerald-200/35 bg-white/70 px-4 py-2.5 backdrop-blur-xl"
+          class="sticky top-0 z-30 border-b border-[var(--xt-border-gold)] bg-[rgba(14,19,24,0.82)] px-4 py-2.5 backdrop-blur-xl"
         >
           <div class="flex items-center gap-3">
             <XianxiaBackButton
@@ -309,10 +313,10 @@ onBeforeUnmount(() => {
               :label="t('common.back')"
             />
             <div class="min-w-0">
-              <p class="truncate text-lg font-black tracking-wide text-emerald-950">
+              <p class="xt-heading-co truncate text-lg tracking-wide">
                 {{ pageTitle }}
               </p>
-              <p class="hidden text-xs text-emerald-900/60 md:block">{{ t('app.tagline') }}</p>
+              <p class="hidden text-xs text-[var(--xt-text-muted)] md:block">{{ t('app.tagline') }}</p>
             </div>
 
             <div class="ml-auto flex min-w-0 items-center justify-end gap-2">
@@ -323,12 +327,12 @@ onBeforeUnmount(() => {
                 v-if="game.character"
                 class="hidden min-w-0 flex-col items-end gap-1 md:flex"
               >
-                <span class="max-w-40 truncate text-sm font-bold text-emerald-950">
+                <span class="max-w-40 truncate text-sm font-bold text-[var(--xt-scroll-paper-bright)]">
                   {{ game.character.name }}
                 </span>
                 <span
                   v-if="equippedTitleName"
-                  class="text-xs text-amber-700"
+                  class="text-xs text-[var(--xt-gold-bright)]"
                   data-testid="shell-equipped-title"
                 >
                   {{ equippedTitleName }}
@@ -336,14 +340,14 @@ onBeforeUnmount(() => {
                 <RealmBadge :label="realmText" />
               </div>
               <div v-if="game.character" class="hidden w-28 md:block">
-                <div class="flex justify-between text-[10px] text-emerald-900/55">
+                <div class="flex justify-between text-[10px] text-[var(--xt-text-muted)]">
                   <span>EXP</span>
                   <span>{{ expPct }}%</span>
                 </div>
-                <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-emerald-50">
+                <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-[rgba(20,28,38,0.8)] border border-[var(--xt-border-jade)]">
                   <div
                     class="h-full transition-all"
-                    :class="cultivating ? 'bg-emerald-400' : 'bg-emerald-200'"
+                    :class="cultivating ? 'bg-emerald-400 shadow-[0_0_8px_rgba(95,227,198,0.6)]' : 'bg-ink-300'"
                     :style="{ width: expPct + '%' }"
                   />
                 </div>
@@ -352,7 +356,7 @@ onBeforeUnmount(() => {
               <LocaleSwitcher />
               <button
                 type="button"
-                class="hidden rounded-2xl border border-rose-300/30 bg-rose-50/60 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 md:inline-flex"
+                class="xt-button xt-button--ghost hidden !min-h-9 !text-xs md:inline-flex"
                 @click="logout"
               >
                 {{ t('home.logout') }}
@@ -392,8 +396,8 @@ onBeforeUnmount(() => {
               class="inline-flex shrink-0 items-center rounded-2xl border px-3 py-2 text-xs"
               :class="
                 game.wsConnected
-                  ? 'border-emerald-300/30 bg-emerald-50 text-emerald-800'
-                  : 'border-rose-300/30 bg-rose-50 text-rose-700'
+                  ? 'border-[var(--xt-border-jade)] bg-[rgba(27,59,52,0.5)] text-[var(--xt-jade-bright)]'
+                  : 'border-[var(--xt-border-seal)] bg-[rgba(58,22,22,0.5)] text-[var(--xt-seal-bright)]'
               "
             >
               {{ game.wsConnected ? t('shell.wsOn') : t('shell.wsOff') }}
@@ -407,7 +411,7 @@ onBeforeUnmount(() => {
       </div>
 
       <aside
-        class="hidden min-h-screen border-l border-emerald-200/35 bg-white/45 p-3 backdrop-blur-xl xl:flex xl:flex-col"
+        class="hidden min-h-screen border-l border-[var(--xt-border-gold)] bg-[rgba(14,19,24,0.6)] p-3 backdrop-blur-xl xl:flex xl:flex-col"
       >
         <ChatPanel />
       </aside>

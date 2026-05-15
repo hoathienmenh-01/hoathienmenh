@@ -1,12 +1,9 @@
 <script setup lang="ts">
 /**
- * UI-2.0 — Fallback avatar seal.
+ * Cửu Thiên Mộng — fallback avatar "ấn ký rune" (jade seal style).
  *
- * XT chưa có ảnh nhân vật cho tất cả người chơi. Khi thiếu ảnh, hiển thị
- * một “ấn ký rune” bằng CSS/SVG: vòng tròn ngọc + 2 chữ initial + rune
- * mờ phía sau. Không phụ thuộc ảnh lớn.
- *
- * Khi `src` được truyền, hiển thị ảnh; fallback về initials nếu lỗi.
+ * Khi `src` được truyền và load thành công, hiển thị ảnh. Ngược lại,
+ * fallback về initials trên nền ngọc tối với rune mờ phía sau.
  */
 import { computed, ref } from 'vue';
 
@@ -48,13 +45,13 @@ const showImage = computed(() => Boolean(props.src) && !failed.value);
 
 <template>
   <div
-    class="relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-emerald-300/40 bg-gradient-to-br from-white via-emerald-50 to-amber-50 font-semibold text-emerald-900 shadow-[0_8px_28px_rgba(74,169,143,0.16)]"
+    class="xt-avatar-seal relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full"
     :class="sizeClass"
     data-testid="xt-avatar-seal"
   >
     <svg
       v-if="!showImage"
-      class="pointer-events-none absolute inset-0 h-full w-full text-emerald-700/12"
+      class="pointer-events-none absolute inset-0 h-full w-full text-[var(--xt-jade-bright)]/30"
       viewBox="0 0 64 64"
       aria-hidden="true"
     >
@@ -76,6 +73,21 @@ const showImage = computed(() => Boolean(props.src) && !failed.value);
       class="relative h-full w-full object-cover"
       @error="failed = true"
     />
-    <span v-else class="relative tracking-wider">{{ initials }}</span>
+    <span v-else class="relative tracking-wider font-bold">{{ initials }}</span>
   </div>
 </template>
+
+<style scoped>
+.xt-avatar-seal {
+  border: 1px solid var(--xt-border-gold);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(95, 227, 198, 0.32) 0%, transparent 55%),
+    linear-gradient(135deg, rgba(28, 22, 12, 0.95) 0%, rgba(14, 19, 24, 0.95) 100%);
+  color: var(--xt-gold-bright);
+  font-family: var(--xt-font-display);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 246, 224, 0.12),
+    0 6px 18px rgba(0, 0, 0, 0.45),
+    var(--xt-shadow-jade-glow);
+}
+</style>

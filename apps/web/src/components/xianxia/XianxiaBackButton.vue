@@ -27,7 +27,7 @@ function goBack(): void {
 <template>
   <button
     type="button"
-    class="inline-flex min-h-10 items-center gap-2 rounded-2xl border border-emerald-300/30 bg-white/65 px-3 py-2 text-sm font-semibold text-emerald-950 transition hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-300/60"
+    class="xt-back-button inline-flex min-h-10 items-center gap-2 rounded-2xl border px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-[rgba(95,227,198,0.55)]"
     data-testid="xianxia-back-button"
     @click="goBack"
   >
@@ -35,3 +35,18 @@ function goBack(): void {
     {{ label }}
   </button>
 </template>
+
+<style scoped>
+.xt-back-button {
+  border-color: var(--xt-border-jade);
+  background: rgba(20, 28, 38, 0.62);
+  color: var(--xt-text-primary);
+  backdrop-filter: blur(8px);
+}
+.xt-back-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(242, 215, 137, 0.6);
+  background: rgba(28, 22, 12, 0.7);
+  color: var(--xt-gold-bright);
+}
+</style>

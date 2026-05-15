@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+  <defs>
+    <radialGradient id="seal-bg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#d04f4f"/>
+      <stop offset="100%" stop-color="#882a2a"/>
+    </radialGradient>
+    <filter id="ink-seal" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="2.5" numOctaves="2" seed="13"/>
+      <feDisplacementMap in="SourceGraphic" scale="3"/>
+    </filter>
+  </defs>
+  <g filter="url(#ink-seal)">
+    <rect x="60" y="60" width="480" height="480" rx="18" fill="url(#seal-bg)"/>
+    <rect x="74" y="74" width="452" height="452" rx="14" fill="none" stroke="#fff6e0" stroke-width="6"/>
+    <rect x="92" y="92" width="416" height="416" rx="10" fill="none" stroke="#fff6e0" stroke-width="2"/>
+  </g>
+</svg>
