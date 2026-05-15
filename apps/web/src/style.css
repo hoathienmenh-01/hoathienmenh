@@ -635,6 +635,90 @@ html[data-theme='day'] [aria-disabled='true'] {
   font-size: 0.75rem;
 }
 
+/* ── Typography v2 utility classes (Phase 5) ─────────────────────────
+ * Helpers map 1:1 với tokens `--xt-text-*`. Component nội bộ có thể
+ * dùng class hoặc `var()` trực tiếp — class chỉ để xài nhanh trong
+ * view markup mà không phải nhớ leading + tracking. */
+.xt-text-hero {
+  font-family: var(--xt-font-display);
+  font-size: var(--xt-text-hero);
+  line-height: var(--xt-text-hero-leading);
+  letter-spacing: var(--xt-text-hero-tracking);
+  font-weight: 700;
+}
+.xt-text-h1 {
+  font-family: var(--xt-font-display);
+  font-size: var(--xt-text-h1);
+  line-height: var(--xt-text-h1-leading);
+  letter-spacing: var(--xt-text-h1-tracking);
+  font-weight: 600;
+}
+.xt-text-h2 {
+  font-family: var(--xt-font-display);
+  font-size: var(--xt-text-h2);
+  line-height: var(--xt-text-h2-leading);
+  letter-spacing: var(--xt-text-h2-tracking);
+  font-weight: 600;
+}
+.xt-text-h3 {
+  font-family: var(--xt-font-display);
+  font-size: var(--xt-text-h3);
+  line-height: var(--xt-text-h3-leading);
+  letter-spacing: var(--xt-text-h3-tracking);
+  font-weight: 600;
+}
+.xt-text-body {
+  font-family: var(--xt-font-body);
+  font-size: var(--xt-text-body);
+  line-height: var(--xt-text-body-leading);
+  letter-spacing: var(--xt-text-body-tracking);
+}
+.xt-text-small {
+  font-family: var(--xt-font-body);
+  font-size: var(--xt-text-small);
+  line-height: var(--xt-text-small-leading);
+}
+.xt-text-caption {
+  font-family: var(--xt-font-body);
+  font-size: var(--xt-text-caption);
+  line-height: var(--xt-text-caption-leading);
+  letter-spacing: var(--xt-text-caption-tracking);
+  text-transform: uppercase;
+  color: var(--xt-text-muted);
+}
+.xt-text-eyebrow {
+  font-family: var(--xt-font-display);
+  font-size: var(--xt-text-eyebrow);
+  line-height: var(--xt-text-eyebrow-leading);
+  letter-spacing: var(--xt-text-eyebrow-tracking);
+  text-transform: uppercase;
+  color: var(--xt-text-jade);
+}
+.xt-text-stat {
+  font-family: var(--xt-font-mono);
+  font-size: var(--xt-text-stat);
+  line-height: var(--xt-text-stat-leading);
+  letter-spacing: var(--xt-text-stat-tracking);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.xt-text-stat-sm {
+  font-family: var(--xt-font-mono);
+  font-size: var(--xt-text-stat-sm);
+  line-height: var(--xt-text-stat-sm-leading);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.xt-text-watermark {
+  font-family: var(--xt-font-display);
+  font-size: var(--xt-text-watermark);
+  line-height: var(--xt-text-watermark-leading);
+  letter-spacing: var(--xt-text-watermark-tracking);
+  font-weight: 300;
+  color: var(--xt-text-muted);
+  opacity: 0.18;
+}
+
 /* ── Scrollbars in cổ phong tone ────────────────────────────────────── */
 *::-webkit-scrollbar {
   width: 10px;

@@ -197,6 +197,66 @@
   --xt-font-display: 'Noto Serif SC', 'LXGW WenKai TC', 'Songti SC', serif;
   --xt-font-decorative: 'Ma Shan Zheng', 'LXGW WenKai TC', 'Noto Serif SC', serif;
   --xt-font-body: 'Noto Sans SC', 'Noto Sans', 'Inter', system-ui, sans-serif;
+  --xt-font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace,
+    SFMono-Regular, monospace;
+
+  /* ---- Typography v2 (Phase 5) -----------------------------------
+     Scale dùng cho hệ 3 hướng (Cinematic / Bento / Minimal). Mỗi step
+     có 2 size: mobile-first (360px) → desktop (>=1024px). Component sẽ
+     dùng `clamp()` để chuyển mượt giữa hai cỡ thay vì breakpoint cứng.
+     Tracking + line-height đính kèm để giữ rhythm 8pt grid. */
+  --xt-text-hero: clamp(32px, 6vw, 48px); /* Hán hero centered (hướng C) */
+  --xt-text-hero-leading: 1.05;
+  --xt-text-hero-tracking: 0.02em;
+
+  --xt-text-h1: clamp(22px, 3.6vw, 32px); /* page H1 (hub bento) */
+  --xt-text-h1-leading: 1.18;
+  --xt-text-h1-tracking: 0;
+
+  --xt-text-h2: clamp(18px, 2.6vw, 22px); /* section title */
+  --xt-text-h2-leading: 1.22;
+  --xt-text-h2-tracking: 0;
+
+  --xt-text-h3: 16px; /* card title / bento tile title */
+  --xt-text-h3-leading: 1.3;
+  --xt-text-h3-tracking: 0.01em;
+
+  --xt-text-body: 14px;
+  --xt-text-body-leading: 1.45;
+  --xt-text-body-tracking: 0;
+
+  --xt-text-small: 13px;
+  --xt-text-small-leading: 1.45;
+  --xt-text-small-tracking: 0;
+
+  --xt-text-caption: 12px;
+  --xt-text-caption-leading: 1.35;
+  --xt-text-caption-tracking: 0.08em; /* uppercase caption */
+
+  --xt-text-eyebrow: 11px;
+  --xt-text-eyebrow-leading: 1.2;
+  --xt-text-eyebrow-tracking: 0.32em;
+
+  --xt-text-stat: clamp(22px, 4vw, 32px); /* big tabular number */
+  --xt-text-stat-leading: 1.05;
+  --xt-text-stat-tracking: -0.01em;
+
+  --xt-text-stat-sm: 16px;
+  --xt-text-stat-sm-leading: 1.1;
+  --xt-text-stat-sm-tracking: 0;
+
+  /* Vertical Hán watermark used by minimal mode (hướng B) at side rail. */
+  --xt-text-watermark: clamp(72px, 12vw, 132px);
+  --xt-text-watermark-leading: 1;
+  --xt-text-watermark-tracking: 0.18em;
+
+  /* ---- Easing curves (Phase 5 motion) ----------------------------
+     Tile press / silk slide / spring drag share a few hand-tuned curves.
+     Component sẽ pick một curve hợp với context để giữ feel nhất quán. */
+  --xt-ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --xt-ease-in: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  --xt-ease-soft: cubic-bezier(0.32, 0.72, 0.24, 1);
+  --xt-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   color-scheme: dark;
 }
