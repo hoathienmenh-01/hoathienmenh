@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createI18n } from 'vue-i18n';
 import MButton from '@/components/ui/MButton.vue';
+import * as sfx from '@/lib/sfx';
 
 /**
  * MButton smoke tests (session 9j task M): primary button primitive used
@@ -64,5 +65,48 @@ describe('MButton', () => {
   it('không loading + không disabled → không disabled attr', () => {
     const w = mountBtn();
     expect(w.find('button').attributes('disabled')).toBeUndefined();
+  });
+
+  describe('sfx prop (Phase 3 polish)', () => {
+    beforeEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('không sfx prop → không phát âm thanh khi click', async () => {
+      const spyClick = vi.spyOn(sfx, 'playSfxClick').mockImplementation(() => undefined);
+      const spyConfirm = vi.spyOn(sfx, 'playSfxConfirm').mockImplementation(() => undefined);
+      const w = mountBtn();
+      await w.find('button').trigger('click');
+      expect(spyClick).not.toHaveBeenCalled();
+      expect(spyConfirm).not.toHaveBeenCalled();
+    });
+
+    it('sfx="click" → playSfxClick được gọi khi click', async () => {
+      const spyClick = vi.spyOn(sfx, 'playSfxClick').mockImplementation(() => undefined);
+      const w = mountBtn({ sfx: 'click' });
+      await w.find('button').trigger('click');
+      expect(spyClick).toHaveBeenCalledTimes(1);
+    });
+
+    it('sfx="confirm" → playSfxConfirm được gọi khi click', async () => {
+      const spyConfirm = vi.spyOn(sfx, 'playSfxConfirm').mockImplementation(() => undefined);
+      const w = mountBtn({ sfx: 'confirm' });
+      await w.find('button').trigger('click');
+      expect(spyConfirm).toHaveBeenCalledTimes(1);
+    });
+
+    it('disabled=true + sfx="click" → không phát âm thanh', async () => {
+      const spyClick = vi.spyOn(sfx, 'playSfxClick').mockImplementation(() => undefined);
+      const w = mountBtn({ sfx: 'click', disabled: true });
+      await w.find('button').trigger('click');
+      expect(spyClick).not.toHaveBeenCalled();
+    });
+
+    it('loading=true + sfx="confirm" → không phát âm thanh', async () => {
+      const spyConfirm = vi.spyOn(sfx, 'playSfxConfirm').mockImplementation(() => undefined);
+      const w = mountBtn({ sfx: 'confirm', loading: true });
+      await w.find('button').trigger('click');
+      expect(spyConfirm).not.toHaveBeenCalled();
+    });
   });
 });

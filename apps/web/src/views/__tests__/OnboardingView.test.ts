@@ -363,3 +363,18 @@ describe('OnboardingView — sect selection + finish flow', () => {
     expect(w.text()).toContain('4 / 4');
   });
 });
+
+describe('OnboardingView — Cửu Thiên Mộng Phase 3 polish', () => {
+  beforeEach(() => {
+    getCharacterMock.mockResolvedValue(null);
+  });
+
+  it('render XTHeroEyebrow với chữ Hán + label Cửu Thiên Mộng Cảnh', async () => {
+    const w = mountView();
+    await flushPromises();
+    const eyebrow = w.find('[data-testid="xt-hero-eyebrow"]');
+    expect(eyebrow.exists()).toBe(true);
+    expect(eyebrow.text()).toContain('九天梦境');
+    expect(eyebrow.text()).toContain('Cửu Thiên Mộng Cảnh');
+  });
+});
