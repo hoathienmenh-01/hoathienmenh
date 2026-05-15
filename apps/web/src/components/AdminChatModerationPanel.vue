@@ -617,7 +617,7 @@ const showMutesEmpty = computed(
                   </button>
                   <button
                     v-if="r.status === 'OPEN' || r.status === 'ACKNOWLEDGED'"
-                    class="rounded border border-emerald-400/60 px-2 py-0.5 text-[10px] uppercase tracking-widest text-emerald-200 hover:bg-emerald-500/10"
+                    class="rounded border border-emerald-400/60 px-2 py-0.5 text-[10px] uppercase tracking-widest text-emerald-200 hover:bg-[var(--xt-jade-soft)]"
                     data-testid="admin-chat-moderation-resolve-btn"
                     @click="resolveReport(r.id, 'RESOLVED')"
                   >
@@ -847,7 +847,7 @@ const showMutesEmpty = computed(
               <td class="px-2 py-1 whitespace-nowrap">
                 <button
                   v-if="m.isActive"
-                  class="rounded border border-emerald-400/60 px-2 py-0.5 text-[10px] uppercase tracking-widest text-emerald-200 hover:bg-emerald-500/10"
+                  class="rounded border border-emerald-400/60 px-2 py-0.5 text-[10px] uppercase tracking-widest text-emerald-200 hover:bg-[var(--xt-jade-soft)]"
                   data-testid="admin-chat-moderation-mute-revoke-btn"
                   @click="revokeMute(m.id)"
                 >

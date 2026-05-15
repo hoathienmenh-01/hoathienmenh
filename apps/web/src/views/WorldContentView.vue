@@ -15,6 +15,7 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useWorldContentStore } from '@/stores/worldContent';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 
 const { t } = useI18n();
 const router = useRouter();
@@ -43,7 +44,8 @@ function goto(name: string): void {
   <AppShell>
     <section class="world-content" data-testid="world-content-view">
       <header class="world-content__header">
-        <h1>{{ t('worldContent.title') }}</h1>
+        <XTHeroEyebrow han="千仙世界" label="Thiên Tiên Thế Giới" />
+        <h1 class="mt-1">{{ t('worldContent.title') }}</h1>
         <p>{{ t('worldContent.subtitle') }}</p>
       </header>
 

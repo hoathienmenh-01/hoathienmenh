@@ -309,7 +309,7 @@ function statusClass(s: string): string {
               </button>
               <button
                 v-if="a.status !== 'RESOLVED'"
-                class="px-2 py-0.5 bg-emerald-500/60 text-ink-900 rounded text-xs"
+                class="px-2 py-0.5 bg-[var(--xt-jade)] text-ink-900 rounded text-xs"
                 data-testid="admin-arena-anti-wintrade-alert-resolve"
                 @click="resolveAlert(a.id)"
               >

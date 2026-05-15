@@ -20,6 +20,7 @@ import {
 } from '@/api/market';
 import { listInventory, type InventoryView } from '@/api/inventory';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import SkeletonBlock from '@/components/ui/SkeletonBlock.vue';
@@ -188,7 +189,8 @@ function handleErr(e: unknown): void {
 
 <template>
   <AppShell>
-    <h2 class="text-xl tracking-widest mb-4">{{ t('market.title') }}</h2>
+    <XTHeroEyebrow han="千幻商街" label="Thiên Hạnh Thương Phố" />
+    <h2 class="text-xl tracking-widest mb-4 mt-1">{{ t('market.title') }}</h2>
 
     <div class="flex gap-2 mb-4">
       <MButton :class="tab === 'buy' ? '!bg-ink-50 !text-ink-900' : ''" @click="tab = 'buy'">

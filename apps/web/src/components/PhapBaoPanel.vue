@@ -10,6 +10,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { getEquipmentQualityVisual, type Quality } from '@xuantoi/shared';
 import MButton from '@/components/ui/MButton.vue';
+import EquipmentArtCell from '@/components/xianxia/EquipmentArtCell.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import {
   awakenPhapBao,
@@ -231,15 +232,25 @@ async function runUpgrade(action: 'refine' | 'star' | 'awaken') {
           :class="{ 'opacity-60': !it.canEquip }"
           :data-testid="`phap-bao-item-${it.def.artifactKey}`"
         >
-          <div class="flex items-center justify-between gap-2">
-            <span class="font-bold" :class="qualityClass(it.def.quality)">
-              {{ it.def.nameVi }}
-            </span>
-            <span
-              class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-200"
-            >
-              {{ t('inventory.phapBao.tierLabel', { tier: it.def.artifactTier }) }}
-            </span>
+          <div class="flex items-start gap-3">
+            <EquipmentArtCell
+              art-name="phapbao"
+              :tier="it.def.artifactTier"
+              :equipped="!!it.equippedSlot"
+              :alt="it.def.nameVi"
+              size="md"
+              show-tier
+            />
+            <div class="flex-1 min-w-0 flex items-center justify-between gap-2">
+              <span class="font-bold" :class="qualityClass(it.def.quality)">
+                {{ it.def.nameVi }}
+              </span>
+              <span
+                class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-200"
+              >
+                {{ t('inventory.phapBao.tierLabel', { tier: it.def.artifactTier }) }}
+              </span>
+            </div>
           </div>
           <p class="text-[11px] text-ink-300">
             {{ t('inventory.phapBao.qualityLabel', { quality: qualityLabel(it.def.quality) }) }} ·

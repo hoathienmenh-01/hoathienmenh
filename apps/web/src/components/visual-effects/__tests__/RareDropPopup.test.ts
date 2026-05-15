@@ -27,7 +27,10 @@ describe('RareDropPopup', () => {
     expect(el.attributes('data-rarity')).toBe('LEGENDARY');
     expect(el.text()).toContain('Hỏa Vân Đan');
     expect(el.text()).toContain('Tower 7');
-    expect(el.classes().some((c) => c.includes('border-amber-300'))).toBe(true);
+    // Cửu Thiên Mộng: LEGENDARY now uses the gold border token.
+    expect(
+      el.classes().some((c) => c.includes('xt-border-gold')),
+    ).toBe(true);
   });
 
   it('reducedMotion → no pop animation', () => {

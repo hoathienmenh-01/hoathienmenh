@@ -70,7 +70,7 @@ const sizeClass = computed(() => {
 
 <template>
   <span
-    class="inline-flex shrink-0 items-center justify-center rounded-xl border border-emerald-300/25 bg-white/55 text-emerald-800 shadow-[0_0_18px_rgba(74,169,143,0.18)]"
+    class="inline-flex shrink-0 items-center justify-center rounded-xl border border-[var(--xt-border-jade)] bg-[var(--xt-bg-surface)] text-[var(--xt-text-primary)] shadow-[0_0_18px_rgba(74,169,143,0.18)]"
     :class="sizeClass"
     :role="label ? 'img' : undefined"
     :aria-label="label || undefined"

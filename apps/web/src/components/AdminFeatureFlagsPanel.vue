@@ -350,7 +350,7 @@ function fmtUpdatedAt(iso: string | null): string {
             <span
               :class="
                 flag.enabled
-                  ? 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10'
+                  ? 'text-emerald-300 border-emerald-500/40 bg-[var(--xt-jade-soft)]'
                   : 'text-rose-300 border-rose-500/40 bg-rose-500/10'
               "
               class="text-xs px-2 py-0.5 rounded border"

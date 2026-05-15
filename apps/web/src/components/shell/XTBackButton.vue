@@ -46,7 +46,7 @@ function go(): void {
 <template>
   <button
     type="button"
-    class="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-emerald-300/35 bg-white/70 px-3 py-1.5 text-sm font-medium text-emerald-900 transition hover:bg-white"
+    class="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[var(--xt-border-jade)] bg-[var(--xt-bg-surface)] px-3 py-1.5 text-sm font-medium text-[var(--xt-text-primary)] transition hover:bg-white"
     :aria-label="label"
     data-testid="xt-back-button"
     @click="go"

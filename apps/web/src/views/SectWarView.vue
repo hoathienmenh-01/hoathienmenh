@@ -11,6 +11,7 @@ import {
   type SectWarCurrent,
 } from '@/api/sectWar';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import SectWarLeaderboardPanel from '@/components/SectWarLeaderboardPanel.vue';
 import SectWarMyProgressPanel from '@/components/SectWarMyProgressPanel.vue';
 import SectWarActivityRulesPanel from '@/components/SectWarActivityRulesPanel.vue';
@@ -141,7 +142,8 @@ async function onClaim(): Promise<void> {
 <template>
   <AppShell>
     <header class="mb-4">
-      <h2 class="text-xl tracking-widest">{{ t('sectWar.title') }}</h2>
+      <XTHeroEyebrow han="宗门大战" label="Tông Môn Đại Chiến" />
+      <h2 class="text-xl tracking-widest mt-1">{{ t('sectWar.title') }}</h2>
       <p class="text-xs text-ink-300 mt-1">{{ t('sectWar.subtitle') }}</p>
     </header>
 

@@ -563,7 +563,7 @@ function receiverLabel(req: FriendRequestRow): string {
               <div class="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
-                  class="rounded border border-emerald-400/40 px-2 py-1 text-xs text-emerald-200 hover:bg-emerald-500/10 disabled:opacity-50"
+                  class="rounded border border-emerald-400/40 px-2 py-1 text-xs text-emerald-200 hover:bg-[var(--xt-jade-soft)] disabled:opacity-50"
                   :disabled="busyRequestId === req.id"
                   data-testid="social-incoming-accept"
                   @click="onAccept(req)"

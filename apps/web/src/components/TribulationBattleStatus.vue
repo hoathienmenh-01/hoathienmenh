@@ -133,7 +133,7 @@ function stateBadgeClass(state: TribulationMiniBattleView['state']): string {
       </div>
       <div class="h-2 rounded bg-ink-700/40 overflow-hidden">
         <div
-          class="h-full bg-emerald-500/80 transition-all"
+          class="h-full bg-[var(--xt-jade-bright)] transition-all"
           :style="{ width: playerHpPct + '%' }"
         />
       </div>

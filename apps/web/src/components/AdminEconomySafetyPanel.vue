@@ -358,7 +358,7 @@ function statusClass(s: string): string {
               </button>
               <button
                 v-if="issue.status !== 'RESOLVED'"
-                class="px-2 py-0.5 bg-emerald-500/60 text-ink-900 rounded text-xs"
+                class="px-2 py-0.5 bg-[var(--xt-jade)] text-ink-900 rounded text-xs"
                 data-testid="admin-economy-safety-issue-resolve"
                 @click="resolveIssue(issue.id)"
               >
@@ -451,7 +451,7 @@ function statusClass(s: string): string {
               </button>
               <button
                 v-if="a.status !== 'RESOLVED'"
-                class="px-2 py-0.5 bg-emerald-500/60 text-ink-900 rounded text-xs"
+                class="px-2 py-0.5 bg-[var(--xt-jade)] text-ink-900 rounded text-xs"
                 data-testid="admin-economy-safety-anomaly-resolve"
                 @click="resolveAnomaly(a.id)"
               >

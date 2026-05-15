@@ -7,6 +7,7 @@ import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
 import { claimMail, listMail, readMail, type MailView } from '@/api/mail';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { formatItemRewardList } from '@/lib/itemName';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
@@ -121,7 +122,8 @@ function formatDate(iso: string): string {
 <template>
   <AppShell>
     <div class="flex items-center gap-3 mb-4 flex-wrap">
-      <h2 class="text-xl tracking-widest">{{ t('mail.title') }}</h2>
+      <XTHeroEyebrow han="飞鸽传书" label="Phi Cáp Truyền Thư" />
+      <h2 class="text-xl tracking-widest mt-1">{{ t('mail.title') }}</h2>
       <span
         v-if="unread > 0"
         class="text-[11px] px-1.5 py-0.5 rounded bg-amber-700/40 text-amber-200"

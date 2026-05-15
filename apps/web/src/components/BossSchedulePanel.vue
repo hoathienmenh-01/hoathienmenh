@@ -75,7 +75,7 @@ function statusLabel(status: BossScheduleViewModel['status']): string {
 }
 
 function statusClass(status: BossScheduleViewModel['status']): string {
-  if (status === 'active') return 'border-emerald-500/60 bg-emerald-500/10 text-emerald-200';
+  if (status === 'active') return 'border-emerald-500/60 bg-[var(--xt-jade-soft)] text-emerald-200';
   if (status === 'upcoming') return 'border-amber-500/50 bg-amber-500/10 text-amber-200';
   return 'border-ink-300/40 bg-ink-700/30 text-ink-300';
 }

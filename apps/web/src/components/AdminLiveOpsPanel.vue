@@ -70,7 +70,7 @@ const cronStatusError = ref<string | null>(null);
 function healthBadgeClass(status: AdminLiveOpsCronHealthView['status']): string {
   switch (status) {
     case 'OK':
-      return 'bg-emerald-500/15 text-emerald-300 border-emerald-300/30';
+      return 'bg-[var(--xt-jade-soft)] text-emerald-300 border-[var(--xt-border-jade)]';
     case 'STALE':
       return 'bg-amber-500/15 text-amber-300 border-amber-300/30';
     case 'DEGRADED':

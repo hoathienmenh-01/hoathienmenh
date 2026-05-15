@@ -23,6 +23,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useTerritoryStore } from '@/stores/territory';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import type { TerritoryRegionBuffPreviewLite } from '@/api/territory';
 
 type TerritoryTab = 'overview' | 'leaderboard' | 'me' | 'war';
@@ -283,7 +284,8 @@ async function onAdminGrantWeeklyTerritoryReward(): Promise<void> {
 <template>
   <AppShell>
     <header class="mb-4">
-      <h2 class="text-xl tracking-widest">{{ t('territory.title') }}</h2>
+      <XTHeroEyebrow han="疆土争霸" label="Cương Thổ Tranh Bá" />
+      <h2 class="text-xl tracking-widest mt-1">{{ t('territory.title') }}</h2>
       <p class="text-xs text-ink-300 mt-1">{{ t('territory.subtitle') }}</p>
     </header>
 

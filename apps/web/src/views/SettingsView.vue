@@ -24,6 +24,7 @@ import {
   patchPlayerSettings,
   resetPlayerSettings,
 } from '@/api/playerExperience';
+import { applyAppearance, type AppearanceMode } from '@/lib/appearance';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -61,6 +62,8 @@ onMounted(async () => {
   try {
     const row = await fetchPlayerSettings();
     playerSettings.value = row.settings;
+    // Sync appearance từ server vào DOM (override cache nếu khác).
+    applyAppearance(row.settings.appearance as AppearanceMode);
   } catch {
     // Silently fall back to default (NO_CHARACTER hoặc lỗi mạng).
   } finally {
@@ -74,6 +77,9 @@ async function savePlayerSettings(patch: Partial<PlayerSettings>): Promise<void>
   try {
     const row = await patchPlayerSettings(patch);
     playerSettings.value = row.settings;
+    if (patch.appearance) {
+      applyAppearance(patch.appearance as AppearanceMode);
+    }
     toast.push({ type: 'success', text: t('playerSettings.saved') });
   } catch (e) {
     const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
@@ -92,6 +98,7 @@ async function doResetPlayerSettings(): Promise<void> {
   try {
     const row = await resetPlayerSettings();
     playerSettings.value = row.settings;
+    applyAppearance(row.settings.appearance as AppearanceMode);
     toast.push({ type: 'success', text: t('playerSettings.saved') });
   } catch (e) {
     const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');

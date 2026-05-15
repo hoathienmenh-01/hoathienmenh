@@ -167,7 +167,7 @@ const sizeClass = computed(() => {
 const toneClass = computed(() => {
   switch (props.tone) {
     case 'jade':
-      return 'text-emerald-700';
+      return 'text-[var(--xt-text-jade)]';
     case 'gold':
       return 'text-amber-600';
     case 'cyan':
@@ -177,7 +177,7 @@ const toneClass = computed(() => {
     case 'danger':
       return 'text-rose-600';
     case 'muted':
-      return 'text-emerald-900/55';
+      return 'text-[var(--xt-text-subtle)]';
     default:
       return '';
   }

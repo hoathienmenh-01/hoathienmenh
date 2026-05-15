@@ -2,6 +2,7 @@
 import { computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useHomesteadStore } from '@/stores/homestead';
 import { useToastStore } from '@/stores/toast';
@@ -135,7 +136,8 @@ onMounted(async () => {
     <section class="space-y-4 p-4" data-testid="homestead-page">
       <header class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 class="text-2xl font-bold">{{ t('homestead.title') }}</h1>
+          <XTHeroEyebrow han="洞府溅居" label="Động Phủ Nương Cư" />
+          <h1 class="text-2xl font-bold mt-1">{{ t('homestead.title') }}</h1>
           <p class="text-sm text-gray-300">{{ t('homestead.subtitle') }}</p>
         </div>
         <button

@@ -30,6 +30,7 @@ import {
   type EncounterView,
 } from '@/api/combat';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import ElementBadge from '@/components/ElementBadge.vue';
 import ElementIdentityPanel from '@/components/ElementIdentityPanel.vue';
@@ -262,7 +263,8 @@ function handleErr(e: unknown): void {
 
 <template>
   <AppShell>
-    <h2 class="text-xl tracking-widest mb-4">{{ t('dungeon.title') }}</h2>
+    <XTHeroEyebrow han="秘境探查" label="Bí Cảnh Thám Tra" />
+    <h2 class="text-xl tracking-widest mb-4 mt-1">{{ t('dungeon.title') }}</h2>
 
     <div class="grid gap-6 lg:grid-cols-[1fr_2fr]">
       <!-- Dungeon list -->

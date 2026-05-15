@@ -12,6 +12,7 @@ import { useQuestStore } from '@/stores/quest';
 import { useStoryDungeonStore } from '@/stores/storyDungeon';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import type { QuestKind, QuestProgressView } from '@/api/quest';
 import type { StoryDungeonView } from '@/api/storyDungeon';
 
@@ -210,7 +211,8 @@ onMounted(async () => {
     <div class="max-w-4xl mx-auto space-y-4" data-testid="quest-view">
       <header class="flex items-baseline justify-between gap-3">
         <div>
-          <h1 class="text-2xl tracking-widest font-bold">
+          <XTHeroEyebrow han="天命任务" label="Thiên Mệnh Nhiệm Vụ" />
+          <h1 class="text-2xl tracking-widest font-bold mt-1">
             {{ t('quest.title') }}
           </h1>
           <p class="text-sm text-ink-300">{{ t('quest.subtitle') }}</p>

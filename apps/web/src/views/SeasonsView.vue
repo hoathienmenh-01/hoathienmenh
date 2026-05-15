@@ -279,7 +279,7 @@ onMounted(() => {
                   <h3 class="font-bold">{{ title(m) }}</h3>
                   <span
                     class="rounded-full px-2 py-0.5 text-xs"
-                    :class="m.unlockedAt ? 'bg-emerald-500/20 text-emerald-200' : 'bg-ink-700 text-ink-300'"
+                    :class="m.unlockedAt ? 'bg-[var(--xt-jade-soft)] text-emerald-200' : 'bg-ink-700 text-ink-300'"
                   >
                     {{ m.unlockedAt ? t('seasons.unlocked') : t('seasons.locked') }}
                   </span>

@@ -58,7 +58,7 @@ const containerClass = computed(() => {
       parts.push('ve-anim-glow-subtle');
     }
   } else {
-    parts.push('border-emerald-300/60 bg-emerald-900/25 text-emerald-100');
+    parts.push('border-[var(--xt-border-jade)] bg-emerald-900/25 text-emerald-100');
   }
   return parts.join(' ');
 });

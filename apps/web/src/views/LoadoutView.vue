@@ -31,6 +31,8 @@ import {
   getArtifactV2State,
   type ArtifactV2OwnedEntry,
 } from '@/api/artifactsV2';
+import EquipmentArtCell from '@/components/xianxia/EquipmentArtCell.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 
 interface DraftForm {
   id: string | null;
@@ -78,6 +80,13 @@ function isDefaultModeFlag(p: LoadoutPresetView, mode: LoadoutPresetMode): boole
   if (mode === 'PVP') return p.isDefaultForPvp;
   if (mode === 'BOSS') return p.isDefaultForBoss;
   return false;
+}
+
+function selectedEquipmentTier(slot: EquipSlot): number | null {
+  const id = draft.value?.equipmentSlots[slot];
+  if (!id) return null;
+  const iv = inventory.value.find((i) => i.id === id);
+  return iv?.item.equipmentTier ?? null;
 }
 
 function eligibleEquipmentForSlot(slot: EquipSlot): InventoryView[] {
@@ -277,7 +286,8 @@ onMounted(refresh);
   <main class="page-shell space-y-4 px-3 sm:px-6 py-4">
     <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
       <div>
-        <h1 class="text-xl sm:text-2xl font-bold">{{ t('loadout.title') }}</h1>
+        <XTHeroEyebrow han="架对仪谱" label="Giá Đối Nghi Phổ" />
+        <h1 class="text-xl sm:text-2xl font-bold mt-1">{{ t('loadout.title') }}</h1>
         <p class="text-sm text-ink-400">{{ t('loadout.subtitle') }}</p>
       </div>
       <button
@@ -363,20 +373,29 @@ onMounted(refresh);
           <label
             v-for="slot in EQUIP_SLOTS"
             :key="slot"
-            class="flex flex-col gap-1 text-xs"
+            class="flex items-center gap-2 text-xs"
           >
-            <span>{{ slot }}</span>
-            <select
-              :value="draft.equipmentSlots[slot] ?? ''"
-              class="input"
-              @change="(e) => setEquipment(slot, (e.target as HTMLSelectElement).value)"
-            >
-              <option value="">—</option>
-              <option v-for="iv in eligibleEquipmentForSlot(slot)" :key="iv.id" :value="iv.id">
-                {{ iv.item.name ?? iv.itemKey }}
-                <template v-if="iv.refineLevel > 0">(+{{ iv.refineLevel }})</template>
-              </option>
-            </select>
+            <EquipmentArtCell
+              :equip-slot="slot"
+              :tier="selectedEquipmentTier(slot)"
+              :equipped="!!draft.equipmentSlots[slot]"
+              :alt="slot"
+              size="sm"
+            />
+            <div class="flex-1 min-w-0 flex flex-col gap-1">
+              <span>{{ slot }}</span>
+              <select
+                :value="draft.equipmentSlots[slot] ?? ''"
+                class="input"
+                @change="(e) => setEquipment(slot, (e.target as HTMLSelectElement).value)"
+              >
+                <option value="">—</option>
+                <option v-for="iv in eligibleEquipmentForSlot(slot)" :key="iv.id" :value="iv.id">
+                  {{ iv.item.name ?? iv.itemKey }}
+                  <template v-if="iv.refineLevel > 0">(+{{ iv.refineLevel }})</template>
+                </option>
+              </select>
+            </div>
           </label>
         </div>
       </details>

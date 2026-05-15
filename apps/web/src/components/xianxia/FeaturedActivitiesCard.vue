@@ -64,7 +64,7 @@ function toneIcon(tone?: XianxiaFeaturedItem['tone']): string {
     case 'event':
       return 'text-sky-700';
     default:
-      return 'text-emerald-700';
+      return 'text-[var(--xt-text-jade)]';
   }
 }
 
@@ -75,18 +75,18 @@ function go(item: XianxiaFeaturedItem): void {
 
 <template>
   <section
-    class="rounded-3xl border border-emerald-300/30 bg-white/65 p-4 shadow-[0_18px_50px_rgba(74,169,143,0.1)]"
+    class="rounded-3xl border border-[var(--xt-border-jade)] bg-[var(--xt-bg-surface)] p-4 shadow-[0_18px_50px_rgba(74,169,143,0.1)]"
     data-testid="dashboard-featured"
   >
     <header class="mb-3 flex items-center justify-between">
-      <h2 class="text-base font-semibold tracking-wide text-emerald-950 md:text-lg">
+      <h2 class="text-base font-semibold tracking-wide text-[var(--xt-text-primary)] md:text-lg">
         {{ t('xt.dashboard.featured.title') }}
       </h2>
     </header>
 
     <div
       v-if="props.items.length === 0"
-      class="rounded-2xl border border-emerald-200/40 bg-emerald-50/40 p-5 text-sm text-emerald-900/75"
+      class="rounded-2xl border border-emerald-200/40 bg-[var(--xt-jade-soft)]/40 p-5 text-sm text-[var(--xt-text-primary)]/75"
       data-testid="dashboard-featured-empty"
     >
       {{ t('xt.dashboard.featured.empty') }}
@@ -102,28 +102,28 @@ function go(item: XianxiaFeaturedItem): void {
       >
         <div class="flex items-start gap-3">
           <span
-            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/70 ring-1 ring-emerald-300/40"
+            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--xt-bg-surface)] ring-1 ring-emerald-300/40"
             :class="toneIcon(item.tone)"
           >
             <XTIcon :name="item.icon" size="lg" />
           </span>
           <div class="min-w-0 flex-1">
-            <h3 class="truncate text-sm font-semibold text-emerald-950 md:text-base">
+            <h3 class="truncate text-sm font-semibold text-[var(--xt-text-primary)] md:text-base">
               {{ item.title }}
             </h3>
-            <p v-if="item.description" class="mt-0.5 line-clamp-2 text-xs text-emerald-900/70">
+            <p v-if="item.description" class="mt-0.5 line-clamp-2 text-xs text-[var(--xt-text-muted)]">
               {{ item.description }}
             </p>
-            <div class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-emerald-900/65">
+            <div class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--xt-text-muted)]">
               <span
                 v-if="item.status"
-                class="inline-flex items-center rounded-full bg-white/75 px-2 py-0.5 font-semibold text-emerald-800 ring-1 ring-emerald-300/35"
+                class="inline-flex items-center rounded-full bg-white/75 px-2 py-0.5 font-semibold text-[var(--xt-text-primary)] ring-1 ring-emerald-300/35"
               >
                 {{ item.status }}
               </span>
               <span
                 v-if="item.cooldown"
-                class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-700 ring-1 ring-amber-300/40"
+                class="inline-flex items-center rounded-full bg-[var(--xt-gold-soft)] px-2 py-0.5 font-semibold text-[var(--xt-text-gold)] ring-1 ring-[var(--xt-border-gold)]"
               >
                 {{ t('xt.dashboard.featured.cooldownActive') }} · {{ item.cooldown }}
               </span>
@@ -135,7 +135,7 @@ function go(item: XianxiaFeaturedItem): void {
               <span
                 v-for="r in item.rewards.slice(0, 3)"
                 :key="r"
-                class="inline-flex items-center rounded-full bg-white/70 px-2 py-0.5 text-emerald-900/80 ring-1 ring-emerald-200/40"
+                class="inline-flex items-center rounded-full bg-[var(--xt-bg-surface)] px-2 py-0.5 text-[var(--xt-text-primary)]/80 ring-1 ring-emerald-200/40"
               >
                 {{ r }}
               </span>
@@ -144,7 +144,7 @@ function go(item: XianxiaFeaturedItem): void {
         </div>
         <button
           type="button"
-          class="mt-3 inline-flex w-full items-center justify-center rounded-2xl border border-emerald-300/40 bg-white/75 px-3 py-2 text-xs font-semibold text-emerald-950 transition hover:bg-emerald-50"
+          class="mt-3 inline-flex w-full items-center justify-center rounded-2xl border border-emerald-300/40 bg-white/75 px-3 py-2 text-xs font-semibold text-[var(--xt-text-primary)] transition hover:bg-[var(--xt-jade-soft)]"
           :data-testid="`featured-${item.key}-go`"
           :disabled="!item.route"
           @click="go(item)"
