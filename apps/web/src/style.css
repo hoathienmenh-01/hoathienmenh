@@ -110,7 +110,7 @@ body[data-scene='inventory'] {
   --xt-scene-opacity: 0.72;
 }
 
-/* ── Custom cursor (Cửu Thiên Mộng Phase 2). ────────────────────────── */
+/* ── Custom cursor (Cửu Thiên Mộng Phase 2 + Phase 3 day variant). ──── */
 html[data-theme='night'] body {
   cursor: url('/cursor/xt-cursor-default.svg') 4 4, auto;
 }
@@ -127,12 +127,34 @@ html[data-theme='night'] :disabled,
 html[data-theme='night'] [aria-disabled='true'] {
   cursor: not-allowed;
 }
+
+html[data-theme='day'] body {
+  cursor: url('/cursor/xt-cursor-default-day.svg') 4 4, auto;
+}
+html[data-theme='day'] a,
+html[data-theme='day'] button,
+html[data-theme='day'] [role='button'],
+html[data-theme='day'] input[type='submit'],
+html[data-theme='day'] input[type='button'],
+html[data-theme='day'] label,
+html[data-theme='day'] .xt-clickable {
+  cursor: url('/cursor/xt-cursor-pointer-day.svg') 16 16, pointer;
+}
+html[data-theme='day'] :disabled,
+html[data-theme='day'] [aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
 @media (pointer: coarse) {
   /* Touch devices — disable custom cursor (irrelevant). */
   html[data-theme='night'] body,
   html[data-theme='night'] a,
   html[data-theme='night'] button,
-  html[data-theme='night'] [role='button'] {
+  html[data-theme='night'] [role='button'],
+  html[data-theme='day'] body,
+  html[data-theme='day'] a,
+  html[data-theme='day'] button,
+  html[data-theme='day'] [role='button'] {
     cursor: auto;
   }
 }
