@@ -255,6 +255,11 @@
     "logout": "Leave",
     "wip": "Game shell work in progress — Topbar, Sidebar, ChatDock and GameHome.",
     "expLabel": "Spiritual Qi (EXP)",
+    "tabs": {
+      "overview": "Overview",
+      "events": "Events",
+      "character": "Character"
+    },
     "stats": {
       "title": "Attributes",
       "power": "POW",
@@ -378,6 +383,7 @@
     "stamina": "Stamina",
     "wsOn": "WS ✓",
     "wsOff": "WS ×",
+    "searchPlaceholder": "Search features…",
     "nav": {
       "home": "Home",
       "character": "Character",

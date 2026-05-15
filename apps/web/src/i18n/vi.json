@@ -255,6 +255,11 @@
     "logout": "Xuất Quan",
     "wip": "Game shell sẽ được thi công ở Phase 2 — bao gồm Topbar, Sidebar, ChatDock và GameHome.",
     "expLabel": "Linh Khí (EXP)",
+    "tabs": {
+      "overview": "Tổng Quan",
+      "events": "Sự Kiện",
+      "character": "Nhân Vật"
+    },
     "stats": {
       "title": "Đạo Cơ",
       "power": "Lực",
@@ -378,6 +383,7 @@
     "stamina": "Thể Lực",
     "wsOn": "WS ✓",
     "wsOff": "WS ×",
+    "searchPlaceholder": "Tìm chức năng…",
     "nav": {
       "home": "Trang Chủ",
       "character": "Nhân Vật",

@@ -66,6 +66,36 @@ const router = useRouter();
 const route = useRoute();
 
 const drawerOpen = ref(false);
+const collapsedGroups = ref<Set<string>>(new Set());
+const sidebarSearch = ref('');
+
+function toggleGroup(key: string): void {
+  const next = new Set(collapsedGroups.value);
+  if (next.has(key)) {
+    next.delete(key);
+  } else {
+    next.add(key);
+  }
+  collapsedGroups.value = next;
+}
+
+function isGroupCollapsed(key: string): boolean {
+  return collapsedGroups.value.has(key);
+}
+
+const filteredNavGroups = computed(() => {
+  const q = sidebarSearch.value.trim().toLowerCase();
+  if (!q) return XT_NAV_GROUPS;
+  return XT_NAV_GROUPS
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        const label = navLabel(item.key).toLowerCase();
+        return label.includes(q);
+      }),
+    }))
+    .filter((g) => g.items.length > 0);
+});
 
 function openDrawer(): void {
   drawerOpen.value = true;
@@ -255,16 +285,38 @@ onBeforeUnmount(() => {
           </span>
         </RouterLink>
 
-        <nav class="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1" aria-label="XT navigation">
+        <!-- Sidebar search -->
+        <div class="mb-3 px-1">
+          <input
+            v-model="sidebarSearch"
+            type="text"
+            class="w-full rounded-xl border border-[var(--xt-border-gold)]/40 bg-[rgba(20,28,38,0.6)] px-3 py-1.5 text-xs text-[var(--xt-text-primary)] placeholder-[var(--xt-text-muted)] outline-none focus:border-[var(--xt-jade-bright)]/60 focus:ring-1 focus:ring-[var(--xt-jade-glow)] transition"
+            :placeholder="t('shell.searchPlaceholder')"
+            data-testid="shell-sidebar-search"
+          />
+        </div>
+
+        <nav class="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1" aria-label="XT navigation">
           <section
-            v-for="group in XT_NAV_GROUPS"
+            v-for="group in filteredNavGroups"
             :key="group.key"
-            class="space-y-1"
+            class="space-y-0.5"
           >
-            <p class="px-2 text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--xt-gold-bright)]/85">
-              {{ groupLabel(group.key) }}
-            </p>
-            <div class="space-y-0.5">
+            <button
+              type="button"
+              class="flex w-full items-center justify-between rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--xt-gold-bright)]/85 hover:bg-[rgba(242,215,137,0.06)] transition"
+              @click="toggleGroup(group.key)"
+            >
+              <span>{{ groupLabel(group.key) }}</span>
+              <svg
+                class="h-3 w-3 transition-transform"
+                :class="isGroupCollapsed(group.key) ? '-rotate-90' : 'rotate-0'"
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div v-show="!isGroupCollapsed(group.key) || sidebarSearch.trim()" class="space-y-0.5">
               <RouterLink
                 v-for="item in group.items.filter(
                   (entry) => !entry.staffOnly || isStaff,

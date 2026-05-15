@@ -29,6 +29,7 @@ const storyDungeonStore = useStoryDungeonStore();
 const { t } = useI18n();
 
 const submitting = ref(false);
+const activeTab = ref<'overview' | 'events' | 'character'>('overview');
 
 const expText = computed(() => {
   const c = game.character;
@@ -114,104 +115,188 @@ async function onBreakthrough(): Promise<void> {
 
 <template>
   <AppShell>
-    <header class="mb-3" data-testid="home-eyebrow">
+    <header class="mb-3 ve-section-enter" data-testid="home-eyebrow">
       <XTHeroEyebrow han="仙游归处" label="Tiên Du Quy Xứ" />
     </header>
-    <!-- Phase 15.3.B — Global LiveOps announcement marquee. Render trên cùng
-         HomeView (kể cả khi chưa có character) để anonymous viewer cũng thấy
-         announcement target=ALL. -->
-    <LiveOpsAnnouncementMarquee class="mb-2" />
-    <OnboardingChecklist v-if="game.character" class="mb-4" />
-    <DailyLoginCard v-if="game.character" class="mb-4" />
-    <LiveOpsTodayPanel v-if="game.character" class="mb-4" />
-    <LiveOpsActiveEventsPanel v-if="game.character" class="mb-4" />
-    <LiveOpsNotice v-if="game.character" />
-    <!-- Phase 13.1.B — Sect mission CTA. -->
-    <section
+
+    <LiveOpsAnnouncementMarquee class="mb-2 ve-section-enter ve-section-enter-delay-1" />
+
+    <!-- Tab navigation -->
+    <nav
       v-if="game.character"
-      class="mb-4 rounded border border-amber-300/30 bg-ink-700/30 p-3 flex items-center justify-between gap-3"
-      data-test="home-sect-mission-cta"
+      class="mb-4 flex gap-1 rounded-xl border border-[rgba(242,215,137,0.2)] bg-[rgba(14,19,24,0.6)] p-1 ve-section-enter ve-section-enter-delay-1"
+      data-testid="home-tabs"
     >
-      <div class="min-w-0">
-        <div class="text-sm text-amber-200">{{ t('homeLiveOps.sectMissionTitle') }}</div>
-        <div class="text-xs text-ink-300/80 truncate">{{ t('homeLiveOps.sectMissionDesc') }}</div>
-      </div>
-      <MButton @click="router.push('/sect-war?tab=missions')">
-        {{ t('homeLiveOps.openBtn') }}
-      </MButton>
-    </section>
-    <!-- Phase 12.8.C — Story Dungeon CTA. -->
-    <section
-      v-if="game.character && storyDungeonCtaVisible"
-      class="mb-4 rounded border border-violet-400/40 bg-ink-700/30 p-3 flex items-center justify-between gap-3"
-      data-testid="home-story-dungeon-cta"
-    >
-      <div class="min-w-0">
-        <div class="text-sm text-violet-200">{{ t('home.storyDungeon.title') }}</div>
-        <div class="text-xs text-ink-300/80 truncate">
-          {{
-            storyDungeonHasActive
-              ? t('home.storyDungeon.descActive')
-              : t('home.storyDungeon.descAvailable', { n: storyDungeonAvailableCount })
-          }}
+      <button
+        v-for="tab in (['overview', 'events', 'character'] as const)"
+        :key="tab"
+        type="button"
+        class="flex-1 rounded-lg px-3 py-2 text-sm font-semibold tracking-wide transition-all"
+        :class="activeTab === tab
+          ? 'bg-gradient-to-r from-[rgba(27,59,52,0.85)] to-[rgba(74,59,24,0.65)] text-[var(--xt-jade-bright)] shadow-[0_0_12px_rgba(95,227,198,0.18)] ring-1 ring-[rgba(242,215,137,0.35)]'
+          : 'text-[var(--xt-text-muted)] hover:text-[var(--xt-text-primary)] hover:bg-[rgba(95,227,198,0.06)]'"
+        @click="activeTab = tab"
+      >
+        {{
+          tab === 'overview' ? t('home.tabs.overview', 'T\u1ED5ng Quan')
+          : tab === 'events' ? t('home.tabs.events', 'S\u1EF1 Ki\u1EC7n')
+            : t('home.tabs.character', 'Nh\u00E2n V\u1EADt')
+        }}
+      </button>
+    </nav>
+
+    <!-- ============= TAB: Overview ============= -->
+    <div v-if="game.character && activeTab === 'overview'">
+      <!-- Compact character summary card -->
+      <section class="mb-4 rounded-xl border border-[rgba(242,215,137,0.25)] bg-[rgba(14,19,24,0.55)] p-4 ve-section-enter ve-section-enter-delay-2 ve-card-interactive ve-card-glow" data-testid="home-char-summary">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <h2 class="text-lg tracking-widest font-bold">{{ game.character.name }}</h2>
+            <span class="text-xs text-[var(--xt-gold-bright)]">{{ game.realmFullName }}</span>
+          </div>
+          <div class="flex gap-2">
+            <MButton size="sm" :loading="submitting" @click="toggleCultivate">
+              {{ game.character.cultivating ? t('home.cultivate.stop') : t('home.cultivate.start') }}
+            </MButton>
+            <MButton size="sm" :loading="submitting" :disabled="!atPeak" @click="onBreakthrough">
+              {{ t('home.breakthrough.submit') }}
+            </MButton>
+          </div>
         </div>
+        <div class="space-y-2">
+          <div>
+            <div class="flex justify-between text-xs text-ink-300">
+              <span>{{ t('home.expLabel') }}</span>
+              <span>{{ expText }}</span>
+            </div>
+            <div class="h-2 mt-1 rounded-full bg-ink-900/60 overflow-hidden">
+              <div
+                class="h-full rounded-full transition-all"
+                :class="game.character.cultivating ? 'bg-emerald-400 shadow-[0_0_8px_rgba(95,227,198,0.5)]' : 'bg-ink-300'"
+                :style="{ width: Math.round(game.expProgress * 100) + '%' }"
+              />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <div class="text-xs text-ink-300 flex justify-between"><span>HP</span><span>{{ game.character.hp }} / {{ game.character.hpMax }}</span></div>
+              <div class="h-1.5 mt-1 rounded-full bg-ink-900/60 overflow-hidden">
+                <div class="h-full rounded-full bg-rose-400 shadow-[0_0_6px_rgba(244,63,94,0.4)]" :style="{ width: (game.character.hp / game.character.hpMax) * 100 + '%' }" />
+              </div>
+            </div>
+            <div>
+              <div class="text-xs text-ink-300 flex justify-between"><span>MP</span><span>{{ game.character.mp }} / {{ game.character.mpMax }}</span></div>
+              <div class="h-1.5 mt-1 rounded-full bg-ink-900/60 overflow-hidden">
+                <div class="h-full rounded-full bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.4)]" :style="{ width: (game.character.mp / game.character.mpMax) * 100 + '%' }" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <p v-if="game.lastTickAt" class="text-xs text-ink-300 mt-2">
+          {{ t('home.lastTick', { gain: game.lastTickGain, time: new Date(game.lastTickAt).toLocaleTimeString() }) }}
+        </p>
+      </section>
+
+      <DailyLoginCard class="mb-4 ve-section-enter ve-section-enter-delay-3" />
+      <OnboardingChecklist class="mb-4 ve-section-enter ve-section-enter-delay-3" />
+      <NextActionPanel class="mb-4 ve-section-enter ve-section-enter-delay-4" />
+
+      <!-- Quick actions grid -->
+      <div class="grid grid-cols-2 gap-3 mb-4 ve-section-enter ve-section-enter-delay-5">
+        <section
+          class="rounded-xl border border-amber-300/30 bg-[rgba(14,19,24,0.55)] p-3 ve-card-interactive cursor-pointer"
+          data-test="home-sect-mission-cta"
+          @click="router.push('/sect-war?tab=missions')"
+        >
+          <div class="text-sm text-amber-200 font-medium">{{ t('homeLiveOps.sectMissionTitle') }}</div>
+          <div class="text-xs text-ink-300/80 truncate mt-1">{{ t('homeLiveOps.sectMissionDesc') }}</div>
+        </section>
+        <section
+          v-if="storyDungeonCtaVisible"
+          class="rounded-xl border border-violet-400/40 bg-[rgba(14,19,24,0.55)] p-3 ve-card-interactive flex items-center justify-between gap-3"
+          data-testid="home-story-dungeon-cta"
+        >
+          <div class="min-w-0">
+            <div class="text-sm text-violet-200 font-medium">{{ t('home.storyDungeon.title') }}</div>
+            <div class="text-xs text-ink-300/80 truncate mt-1">
+              {{ storyDungeonHasActive ? t('home.storyDungeon.descActive') : t('home.storyDungeon.descAvailable', { n: storyDungeonAvailableCount }) }}
+            </div>
+          </div>
+          <MButton @click="router.push('/story-dungeons')">
+            {{ t('home.storyDungeon.openBtn') }}
+          </MButton>
+        </section>
       </div>
-      <MButton @click="router.push('/story-dungeons')">
-        {{ t('home.storyDungeon.openBtn') }}
-      </MButton>
-    </section>
-    <NextActionPanel v-if="game.character" class="mb-6" />
-    <div v-if="game.character" class="grid gap-6 lg:grid-cols-[2fr_1fr]">
-      <section class="rounded border border-ink-300/40 bg-ink-700/30 p-5">
+
+      <!-- Stats compact -->
+      <section class="rounded-xl border border-ink-300/40 bg-[rgba(14,19,24,0.55)] p-4 ve-section-enter ve-section-enter-delay-5 ve-card-interactive">
+        <h3 class="text-sm tracking-widest text-ink-300 uppercase mb-2">{{ t('home.stats.title') }}</h3>
+        <div class="grid grid-cols-4 gap-3 text-center">
+          <div>
+            <div class="text-lg font-bold text-[var(--xt-jade-bright)]">{{ game.character.power }}</div>
+            <div class="text-[10px] text-ink-300">{{ t('home.stats.power') }}</div>
+          </div>
+          <div>
+            <div class="text-lg font-bold text-[var(--xt-gold-bright)]">{{ game.character.spirit }}</div>
+            <div class="text-[10px] text-ink-300">{{ t('home.stats.spirit') }}</div>
+          </div>
+          <div>
+            <div class="text-lg font-bold text-sky-400">{{ game.character.speed }}</div>
+            <div class="text-[10px] text-ink-300">{{ t('home.stats.speed') }}</div>
+          </div>
+          <div>
+            <div class="text-lg font-bold text-amber-300">{{ game.character.luck }}</div>
+            <div class="text-[10px] text-ink-300">{{ t('home.stats.luck') }}</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============= TAB: Events ============= -->
+    <div v-if="game.character && activeTab === 'events'">
+      <DailyLoginCard class="mb-4 ve-section-enter" />
+      <LiveOpsTodayPanel class="mb-4 ve-section-enter ve-section-enter-delay-1" />
+      <LiveOpsActiveEventsPanel class="mb-4 ve-section-enter ve-section-enter-delay-2" />
+      <LiveOpsNotice class="ve-section-enter ve-section-enter-delay-3" />
+    </div>
+
+    <!-- ============= TAB: Character ============= -->
+    <div v-if="game.character && activeTab === 'character'">
+      <section class="mb-4 rounded-xl border border-[rgba(242,215,137,0.25)] bg-[rgba(14,19,24,0.55)] p-5 ve-section-enter ve-card-glow">
         <header class="mb-3 flex items-center justify-between">
           <h2 class="text-xl tracking-widest">{{ game.character.name }}</h2>
-          <span class="text-xs text-ink-300">{{ game.realmFullName }}</span>
+          <span class="text-xs text-[var(--xt-gold-bright)]">{{ game.realmFullName }}</span>
         </header>
-
         <div class="space-y-3">
           <div>
             <div class="flex justify-between text-xs text-ink-300">
               <span>{{ t('home.expLabel') }}</span>
               <span>{{ expText }}</span>
             </div>
-            <div class="h-2 mt-1 rounded bg-ink-900/60 overflow-hidden">
+            <div class="h-2.5 mt-1 rounded-full bg-ink-900/60 overflow-hidden">
               <div
-                class="h-full transition-all"
-                :class="game.character.cultivating ? 'bg-emerald-400' : 'bg-ink-300'"
+                class="h-full rounded-full transition-all"
+                :class="game.character.cultivating ? 'bg-emerald-400 shadow-[0_0_10px_rgba(95,227,198,0.6)]' : 'bg-ink-300'"
                 :style="{ width: Math.round(game.expProgress * 100) + '%' }"
               />
             </div>
           </div>
-
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <div class="text-xs text-ink-300 flex justify-between">
-                <span>HP</span>
-                <span>{{ game.character.hp }} / {{ game.character.hpMax }}</span>
-              </div>
-              <div class="h-1.5 mt-1 rounded bg-ink-900/60 overflow-hidden">
-                <div
-                  class="h-full bg-rose-400"
-                  :style="{ width: (game.character.hp / game.character.hpMax) * 100 + '%' }"
-                />
+              <div class="text-xs text-ink-300 flex justify-between"><span>HP</span><span>{{ game.character.hp }} / {{ game.character.hpMax }}</span></div>
+              <div class="h-2 mt-1 rounded-full bg-ink-900/60 overflow-hidden">
+                <div class="h-full rounded-full bg-rose-400 shadow-[0_0_6px_rgba(244,63,94,0.4)]" :style="{ width: (game.character.hp / game.character.hpMax) * 100 + '%' }" />
               </div>
             </div>
             <div>
-              <div class="text-xs text-ink-300 flex justify-between">
-                <span>MP</span>
-                <span>{{ game.character.mp }} / {{ game.character.mpMax }}</span>
-              </div>
-              <div class="h-1.5 mt-1 rounded bg-ink-900/60 overflow-hidden">
-                <div
-                  class="h-full bg-sky-400"
-                  :style="{ width: (game.character.mp / game.character.mpMax) * 100 + '%' }"
-                />
+              <div class="text-xs text-ink-300 flex justify-between"><span>MP</span><span>{{ game.character.mp }} / {{ game.character.mpMax }}</span></div>
+              <div class="h-2 mt-1 rounded-full bg-ink-900/60 overflow-hidden">
+                <div class="h-full rounded-full bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.4)]" :style="{ width: (game.character.mp / game.character.mpMax) * 100 + '%' }" />
               </div>
             </div>
           </div>
         </div>
-
-        <div class="mt-5 flex flex-wrap gap-2">
+        <div class="mt-4 flex flex-wrap gap-2">
           <MButton :loading="submitting" @click="toggleCultivate">
             {{ game.character.cultivating ? t('home.cultivate.stop') : t('home.cultivate.start') }}
           </MButton>
@@ -219,32 +304,26 @@ async function onBreakthrough(): Promise<void> {
             {{ t('home.breakthrough.submit') }}
           </MButton>
         </div>
-
         <p v-if="game.lastTickAt" class="text-xs text-ink-300 mt-3">
-          {{ t('home.lastTick', {
-            gain: game.lastTickGain,
-            time: new Date(game.lastTickAt).toLocaleTimeString(),
-          }) }}
+          {{ t('home.lastTick', { gain: game.lastTickGain, time: new Date(game.lastTickAt).toLocaleTimeString() }) }}
         </p>
       </section>
 
-      <section class="rounded border border-ink-300/40 bg-ink-700/30 p-5">
+      <section class="rounded-xl border border-ink-300/40 bg-[rgba(14,19,24,0.55)] p-5 ve-section-enter ve-section-enter-delay-1 ve-card-interactive">
         <h3 class="text-sm tracking-widest text-ink-300 uppercase mb-3">{{ t('home.stats.title') }}</h3>
         <dl class="grid grid-cols-2 gap-y-2 text-sm">
           <dt class="text-ink-300">{{ t('home.stats.power') }}</dt>
-          <dd class="text-right">{{ game.character.power }}</dd>
+          <dd class="text-right font-bold text-[var(--xt-jade-bright)]">{{ game.character.power }}</dd>
           <dt class="text-ink-300">{{ t('home.stats.spirit') }}</dt>
-          <dd class="text-right">{{ game.character.spirit }}</dd>
+          <dd class="text-right font-bold text-[var(--xt-gold-bright)]">{{ game.character.spirit }}</dd>
           <dt class="text-ink-300">{{ t('home.stats.speed') }}</dt>
-          <dd class="text-right">{{ game.character.speed }}</dd>
+          <dd class="text-right font-bold text-sky-400">{{ game.character.speed }}</dd>
           <dt class="text-ink-300">{{ t('home.stats.luck') }}</dt>
-          <dd class="text-right">{{ game.character.luck }}</dd>
+          <dd class="text-right font-bold text-amber-300">{{ game.character.luck }}</dd>
         </dl>
-        <p class="text-xs text-ink-300 mt-4">
-          {{ t('home.wip') }}
-        </p>
       </section>
     </div>
-    <div v-else class="text-center text-ink-300">{{ t('home.loadingChar') }}</div>
+
+    <div v-if="!game.character" class="text-center text-ink-300">{{ t('home.loadingChar') }}</div>
   </AppShell>
 </template>
