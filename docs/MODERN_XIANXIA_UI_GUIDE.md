@@ -1,5 +1,13 @@
 # XT Modern Xianxia UI Guide
 
+> **UI-2.0 update**: see [`XT_MOBILE_FIRST_UI_GUIDE.md`](./XT_MOBILE_FIRST_UI_GUIDE.md)
+> for the mobile-first shell (XTMobileTopBar, XTBottomNav 5-mục, XTMenuDrawer,
+> XTBackButton, XTPageHeader), `xtNav.ts` single source-of-truth for navigation,
+> dashboard mobile-first layout, FeaturedActivitiesCard, and the expanded design
+> tokens (mobile shell heights, motion, per-group accents). This doc continues
+> to be the reference for Celestial Jade palette, base components, and
+> reduced-motion rules — UI-2.0 inherits and extends them.
+
 ## Scope
 
 UI-1.4 keeps the XT shell usable and route-first while moving the visual system to **Celestial Jade Palace**: light jade, paper cream, mist blue, smoke lam, soft gold, and ink green. This PR intentionally touches only web UI/routing/docs/tests; no gameplay, combat, economy, or backend behavior changes.

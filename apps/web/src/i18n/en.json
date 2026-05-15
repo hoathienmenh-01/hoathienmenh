@@ -429,14 +429,24 @@
       "dashboard": "Celestial Overview",
       "feedback": "Feedback",
       "reportPlayer": "Report",
-      "homestead": "Homestead"
+      "homestead": "Homestead",
+      "menu": "Menu",
+      "activity": "Activity",
+      "world": "World",
+      "farm": "Spirit Farm",
+      "artifact": "Artifacts",
+      "events": "Events",
+      "pets": "Spirit Pets"
     },
     "group": {
       "core": "Core",
       "cultivation": "Cultivation",
       "activity": "Activities",
       "social": "Social",
-      "system": "System"
+      "system": "System",
+      "inventory": "Inventory",
+      "market": "Economy",
+      "longTerm": "Long-term"
     },
     "badge": {
       "bossActive": "World boss is live",
@@ -7951,6 +7961,60 @@
       "PRODUCTION_NOT_FOUND": "Garden production not found.",
       "FIELD_NOT_FOUND": "Field slot not found.",
       "GARDEN_NOT_FOUND": "Garden slot not found."
+    }
+  },
+  "xt": {
+    "brand": {
+      "home": "Back to Celestial Overview"
+    },
+    "character": {
+      "unknown": "Wandering cultivator"
+    },
+    "menu": {
+      "title": "XT Menu",
+      "subtitle": "Open any feature — every entry is reachable."
+    },
+    "dashboard": {
+      "hero": {
+        "title": "Dao Body",
+        "power": "Power",
+        "realm": "Realm",
+        "linhCan": "Spirit Root",
+        "sect": "Sect",
+        "title": "Title",
+        "cultivate": "Cultivate",
+        "breakthrough": "Breakthrough",
+        "secret": "Secret Realm",
+        "empty": "No character data yet. Start your path."
+      },
+      "progress": {
+        "title": "Cultivation Progress",
+        "cultivation": "Cultivation",
+        "body": "Body",
+        "method": "Method",
+        "speed": "Cultivation speed",
+        "methodEmpty": "No method equipped."
+      },
+      "today": {
+        "title": "Today's Path",
+        "empty": "No tasks for today — come back later.",
+        "go": "Go",
+        "done": "Done"
+      },
+      "featured": {
+        "title": "Featured Activities",
+        "empty": "No featured activities right now.",
+        "join": "Enter",
+        "cooldownActive": "Cooldown",
+        "rewardPreview": "Rewards"
+      },
+      "quickActions": {
+        "title": "Quick Actions"
+      }
+    },
+    "placeholder": {
+      "title": "Coming soon",
+      "desc": "This feature is under development. Return to Celestial Overview to continue."
     }
   }
 }

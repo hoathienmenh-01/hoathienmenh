@@ -1,5 +1,15 @@
-/* Celestial Jade Palace — design tokens (UI-1.4). */
+/* Celestial Jade Palace — design tokens.
+ *
+ * Updated for UI-2.0 (XT Mobile-First Fantasy App Interface):
+ *   - Bổ sung tokens cho mobile shell (safe-area, top bar height, bottom nav
+ *     height, drawer z-index, page padding).
+ *   - Bổ sung accent màu theo nhóm chức năng (combat/secret/alchemy/...) để
+ *     từng nhóm có sắc riêng nhưng vẫn nằm trong palette nền (trắng ngọc,
+ *     kem giấy, xanh ngọc, lam khói, vàng kim).
+ *   - Bổ sung token motion cho reduceMotion / visualEffectLevel.
+ */
 :root {
+  /* ---- Base palette (jade / paper / mist / gold) ---- */
   --m-bg-base: #f7fbf8;
   --m-bg-paper: #fff8ea;
   --m-ink-strong: #183c36;
@@ -7,22 +17,32 @@
   --m-ink-soft: #5f7f78;
   --m-gold: #d8b76a;
   --m-gold-soft: #f4dfaa;
+
   --xt-bg-primary: #f7fbf8;
   --xt-bg-surface: rgba(255, 255, 255, 0.78);
   --xt-bg-glass: rgba(238, 248, 243, 0.72);
   --xt-bg-paper: #fff8ea;
   --xt-bg-palace: #f8f1df;
+
   --xt-accent-jade: #aee5d4;
   --xt-accent-jade-strong: #4aa98f;
   --xt-accent-cyan: #b8d4e8;
   --xt-accent-violet: #cfc7ef;
   --xt-accent-gold: #d8b76a;
+  --xt-accent-gold-strong: #b88f3c;
   --xt-danger-boss: #c86f68;
+  --xt-warning: #e0a948;
+  --xt-success: #5fa583;
+
   --xt-text-primary: #183c36;
   --xt-text-muted: #5f7f78;
+  --xt-text-subtle: #88a299;
+  --xt-text-on-dark: #f7fbf8;
+
   --xt-border-jade: rgba(74, 169, 143, 0.24);
   --xt-border-gold: rgba(216, 183, 106, 0.34);
   --xt-border-glow: rgba(74, 169, 143, 0.24);
+
   --m-danger: #b13a3a;
   --m-success: #4f7a3a;
 
@@ -34,4 +54,70 @@
 
   --m-radius: 6px;
   --m-blur: 8px;
+
+  /* ---- UI-2.0: mobile-first shell tokens ---- */
+  --xt-radius-sm: 10px;
+  --xt-radius-md: 14px;
+  --xt-radius-lg: 20px;
+  --xt-radius-xl: 28px;
+
+  --xt-shadow-card: 0 18px 50px rgba(74, 169, 143, 0.16);
+  --xt-shadow-soft: 0 8px 24px rgba(74, 169, 143, 0.10);
+  --xt-shadow-floating: 0 -14px 38px rgba(60, 100, 88, 0.16);
+
+  --xt-mobile-topbar-h: 60px;
+  --xt-mobile-bottomnav-h: 66px;
+  --xt-mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --xt-mobile-safe-top: env(safe-area-inset-top, 0px);
+  --xt-mobile-content-pb: calc(
+    var(--xt-mobile-bottomnav-h) + var(--xt-mobile-safe-bottom) + 16px
+  );
+
+  --xt-desktop-sidebar-w: 232px;
+  --xt-desktop-topbar-h: 64px;
+  --xt-desktop-max-w: 1280px;
+
+  --xt-z-content: 1;
+  --xt-z-topbar: 30;
+  --xt-z-bottom-nav: 40;
+  --xt-z-drawer: 60;
+  --xt-z-modal: 70;
+  --xt-z-toast: 80;
+
+  /* Motion durations honoured by reduceMotion / visualEffectLevel. */
+  --xt-motion-fast: 140ms;
+  --xt-motion-base: 220ms;
+  --xt-motion-slow: 360ms;
+
+  /* Group accents — keep palette anchored on jade/paper. Each accent is a
+     tint, not a full repaint, so the overall app keeps the celestial jade
+     identity. */
+  --xt-accent-dashboard: #4aa98f;
+  --xt-accent-cultivation: #6fb6a3;
+  --xt-accent-combat: #c86f68;
+  --xt-accent-secret: #8e9bcf;
+  --xt-accent-inventory: #b88f3c;
+  --xt-accent-alchemy: #7fa472;
+  --xt-accent-pet: #6fa07a;
+  --xt-accent-sect: #4aa98f;
+  --xt-accent-market: #b88f3c;
+  --xt-accent-admin: #6f8090;
+}
+
+/* When the user opts into reduced motion or low visual effect level, we
+ * collapse motion durations so transitions remain perceptible but not
+ * distracting. Components that opt-in to this token automatically respect
+ * reduceMotion without extra JS. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --xt-motion-fast: 1ms;
+    --xt-motion-base: 1ms;
+    --xt-motion-slow: 1ms;
+  }
+}
+
+html[data-motion='off'] {
+  --xt-motion-fast: 1ms;
+  --xt-motion-base: 1ms;
+  --xt-motion-slow: 1ms;
 }
