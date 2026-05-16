@@ -18,6 +18,7 @@ import {
 } from '@/api/sect';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
@@ -148,8 +149,19 @@ const myStash = computed(() => game.character?.linhThach ?? '0');
 
 <template>
   <AppShell>
-    <XTPageEyebrow label="Tông Môn Điện" />
-    <h2 class="text-xl tracking-widest mb-4 mt-1">{{ t('sect.title') }}</h2>
+    <XTSealFrame
+      tone="gold"
+      corner-ornaments="❀❦❀❦"
+      watermark-letter="G"
+      rounded="xl"
+      inset="tight"
+      test-id="sect-view-seal-frame"
+      aria-label="Tông Môn Điện hero frame"
+      class="mb-4"
+    >
+      <XTPageEyebrow caps="TÔNG MÔN ĐIỆN" label="Tông Môn Điện" />
+      <h2 class="text-xl tracking-widest mt-1">{{ t('sect.title') }}</h2>
+    </XTSealFrame>
 
     <!-- Phase 13.1.B — Sect War CTA. -->
     <section

@@ -9,6 +9,7 @@ import { useStoryDungeonStore } from '@/stores/storyDungeon';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import StoryDungeonRunPanel from '@/components/StoryDungeonRunPanel.vue';
 import StoryDungeonDialoguePanel from '@/components/StoryDungeonDialoguePanel.vue';
 import StoryDungeonRewardModal from '@/components/StoryDungeonRewardModal.vue';
@@ -234,26 +235,36 @@ onMounted(async () => {
       class="max-w-5xl mx-auto space-y-4"
       data-testid="story-dungeon-view"
     >
-      <header class="flex items-baseline justify-between gap-3 flex-wrap">
-        <div>
-          <XTPageEyebrow label="Cổ Triết Mộng Cảnh" />
-          <h1 class="text-2xl tracking-widest font-bold mt-1">
-            {{ t('storyDungeon.title') }}
-          </h1>
-          <p class="text-sm text-ink-300">{{ t('storyDungeon.subtitle') }}</p>
-        </div>
-        <div class="text-right text-xs text-ink-300 space-y-0.5">
-          <div data-testid="story-dungeon-total-count">
-            {{ t('storyDungeon.totalCount', { n: totalCount }) }}
+      <XTSealFrame
+        tone="gold"
+        corner-ornaments="❀❦❀❦"
+        watermark-letter="G"
+        rounded="xl"
+        inset="tight"
+        test-id="story-dungeon-seal-frame"
+        aria-label="Cổ Triết Mộng Cảnh hero frame"
+      >
+        <header class="flex items-baseline justify-between gap-3 flex-wrap">
+          <div>
+            <XTPageEyebrow caps="CỔ TRIẾT MỘNG CẢNH" label="Cổ Triết Mộng Cảnh" />
+            <h1 class="text-2xl tracking-widest font-bold mt-1">
+              {{ t('storyDungeon.title') }}
+            </h1>
+            <p class="text-sm text-ink-300">{{ t('storyDungeon.subtitle') }}</p>
           </div>
-          <div data-testid="story-dungeon-available-count">
-            {{ t('storyDungeon.availableCount', { n: availableCount }) }}
+          <div class="text-right text-xs text-ink-300 space-y-0.5">
+            <div data-testid="story-dungeon-total-count">
+              {{ t('storyDungeon.totalCount', { n: totalCount }) }}
+            </div>
+            <div data-testid="story-dungeon-available-count">
+              {{ t('storyDungeon.availableCount', { n: availableCount }) }}
+            </div>
+            <div data-testid="story-dungeon-cleared-count">
+              {{ t('storyDungeon.clearedCount', { n: clearedCount }) }}
+            </div>
           </div>
-          <div data-testid="story-dungeon-cleared-count">
-            {{ t('storyDungeon.clearedCount', { n: clearedCount }) }}
-          </div>
-        </div>
-      </header>
+        </header>
+      </XTSealFrame>
 
       <!-- Active run panel (inline) -->
       <StoryDungeonRunPanel
