@@ -10,6 +10,7 @@ import { useStoryDungeonStore } from '@/stores/storyDungeon';
 import { getCharacter } from '@/api/character';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import MButton from '@/components/ui/MButton.vue';
 import NextActionPanel from '@/components/NextActionPanel.vue';
 import OnboardingChecklist from '@/components/OnboardingChecklist.vue';
@@ -147,55 +148,71 @@ async function onBreakthrough(): Promise<void> {
 
     <!-- ============= TAB: Overview ============= -->
     <div v-if="game.character && activeTab === 'overview'">
-      <!-- Compact character summary card -->
-      <section class="mb-4 rounded-xl border border-[rgba(242,215,137,0.25)] bg-[rgba(14,19,24,0.55)] p-4 ve-section-enter ve-section-enter-delay-2 ve-card-interactive ve-card-glow" data-testid="home-char-summary">
-        <div class="flex items-center justify-between gap-3 mb-3">
-          <div>
-            <h2 class="text-lg tracking-widest font-bold">{{ game.character.name }}</h2>
-            <span class="text-xs text-[var(--xt-gold-bright)]">{{ game.realmFullName }}</span>
-          </div>
-          <div class="flex gap-2">
-            <MButton size="sm" :loading="submitting" @click="toggleCultivate">
-              {{ game.character.cultivating ? t('home.cultivate.stop') : t('home.cultivate.start') }}
-            </MButton>
-            <MButton size="sm" :loading="submitting" :disabled="!atPeak" @click="onBreakthrough">
-              {{ t('home.breakthrough.submit') }}
-            </MButton>
-          </div>
-        </div>
-        <div class="space-y-2">
-          <div>
-            <div class="flex justify-between text-xs text-ink-300">
-              <span>{{ t('home.expLabel') }}</span>
-              <span>{{ expText }}</span>
-            </div>
-            <div class="h-2 mt-1 rounded-full bg-ink-900/60 overflow-hidden">
-              <div
-                class="h-full rounded-full transition-all"
-                :class="game.character.cultivating ? 'bg-emerald-400 shadow-[0_0_8px_rgba(95,227,198,0.5)]' : 'bg-ink-300'"
-                :style="{ width: Math.round(game.expProgress * 100) + '%' }"
+      <!-- Compact character summary card — wrap với XTSealFrame jade tone (Đạo Thân presence). -->
+      <XTSealFrame
+        tone="jade"
+        corner-glyphs="仙游归处"
+        watermark="道"
+        rounded="xl"
+        inset="tight"
+        class="mb-4 ve-section-enter ve-section-enter-delay-2"
+        test-id="home-char-summary-frame"
+        aria-label="Character summary frame"
+      >
+        <section class="rounded-xl border border-[rgba(242,215,137,0.25)] bg-[rgba(14,19,24,0.55)] p-4 ve-card-interactive ve-card-glow" data-testid="home-char-summary">
+          <div class="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <XTHeroEyebrow
+                han="道身仙骨"
+                label="Đạo Thân Tiên Cốt"
+                test-id="home-char-summary-eyebrow"
               />
+              <h2 class="mt-1 text-lg tracking-widest font-bold">{{ game.character.name }}</h2>
+              <span class="text-xs text-[var(--xt-gold-bright)]">{{ game.realmFullName }}</span>
+            </div>
+            <div class="flex gap-2">
+              <MButton size="sm" :loading="submitting" @click="toggleCultivate">
+                {{ game.character.cultivating ? t('home.cultivate.stop') : t('home.cultivate.start') }}
+              </MButton>
+              <MButton size="sm" :loading="submitting" :disabled="!atPeak" @click="onBreakthrough">
+                {{ t('home.breakthrough.submit') }}
+              </MButton>
             </div>
           </div>
-          <div class="grid grid-cols-2 gap-3">
+          <div class="space-y-2">
             <div>
-              <div class="text-xs text-ink-300 flex justify-between"><span>HP</span><span>{{ game.character.hp }} / {{ game.character.hpMax }}</span></div>
-              <div class="h-1.5 mt-1 rounded-full bg-ink-900/60 overflow-hidden">
-                <div class="h-full rounded-full bg-rose-400 shadow-[0_0_6px_rgba(244,63,94,0.4)]" :style="{ width: (game.character.hp / game.character.hpMax) * 100 + '%' }" />
+              <div class="flex justify-between text-xs text-ink-300">
+                <span>{{ t('home.expLabel') }}</span>
+                <span>{{ expText }}</span>
+              </div>
+              <div class="h-2 mt-1 rounded-full bg-ink-900/60 overflow-hidden">
+                <div
+                  class="h-full rounded-full transition-all"
+                  :class="game.character.cultivating ? 'bg-emerald-400 shadow-[0_0_8px_rgba(95,227,198,0.5)]' : 'bg-ink-300'"
+                  :style="{ width: Math.round(game.expProgress * 100) + '%' }"
+                />
               </div>
             </div>
-            <div>
-              <div class="text-xs text-ink-300 flex justify-between"><span>MP</span><span>{{ game.character.mp }} / {{ game.character.mpMax }}</span></div>
-              <div class="h-1.5 mt-1 rounded-full bg-ink-900/60 overflow-hidden">
-                <div class="h-full rounded-full bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.4)]" :style="{ width: (game.character.mp / game.character.mpMax) * 100 + '%' }" />
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="text-xs text-ink-300 flex justify-between"><span>HP</span><span>{{ game.character.hp }} / {{ game.character.hpMax }}</span></div>
+                <div class="h-1.5 mt-1 rounded-full bg-ink-900/60 overflow-hidden">
+                  <div class="h-full rounded-full bg-rose-400 shadow-[0_0_6px_rgba(244,63,94,0.4)]" :style="{ width: (game.character.hp / game.character.hpMax) * 100 + '%' }" />
+                </div>
+              </div>
+              <div>
+                <div class="text-xs text-ink-300 flex justify-between"><span>MP</span><span>{{ game.character.mp }} / {{ game.character.mpMax }}</span></div>
+                <div class="h-1.5 mt-1 rounded-full bg-ink-900/60 overflow-hidden">
+                  <div class="h-full rounded-full bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.4)]" :style="{ width: (game.character.mp / game.character.mpMax) * 100 + '%' }" />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <p v-if="game.lastTickAt" class="text-xs text-ink-300 mt-2">
-          {{ t('home.lastTick', { gain: game.lastTickGain, time: new Date(game.lastTickAt).toLocaleTimeString() }) }}
-        </p>
-      </section>
+          <p v-if="game.lastTickAt" class="text-xs text-ink-300 mt-2">
+            {{ t('home.lastTick', { gain: game.lastTickGain, time: new Date(game.lastTickAt).toLocaleTimeString() }) }}
+          </p>
+        </section>
+      </XTSealFrame>
 
       <DailyLoginCard class="mb-4 ve-section-enter ve-section-enter-delay-3" />
       <OnboardingChecklist class="mb-4 ve-section-enter ve-section-enter-delay-3" />

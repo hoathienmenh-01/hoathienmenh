@@ -41,6 +41,7 @@ import FeaturedActivitiesCard, {
 } from '@/components/xianxia/FeaturedActivitiesCard.vue';
 import GameIcon from '@/components/xianxia/GameIcon.vue';
 import XTIcon from '@/components/xianxia/XTIcon.vue';
+import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import {
   formatBodyRealmName,
   formatNumberCompact,
@@ -313,11 +314,11 @@ onMounted(() => {
     <div class="space-y-5" data-testid="dashboard-modern">
       <header class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div class="min-w-0">
-          <p class="flex items-center gap-2 text-[10px] uppercase tracking-[0.32em] text-[var(--xt-text-jade)] md:text-xs">
-            <span aria-hidden="true" class="inline-block h-px w-6 bg-[var(--xt-border-jade)]" />
-            <span style="font-family: 'Ma Shan Zheng', 'Noto Serif SC', serif; font-size: 14px; letter-spacing: 0.16em;">九天梦境</span>
-            <span>· Cửu Thiên Mộng</span>
-          </p>
+          <XTHeroEyebrow
+            han="九天梦境"
+            label="Cửu Thiên Mộng"
+            test-id="dashboard-hero-eyebrow"
+          />
           <h1 class="mt-1 text-xl font-black tracking-wide text-[var(--xt-text-primary)] md:text-3xl">
             {{ t('dashboard.title') }}
           </h1>
