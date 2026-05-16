@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import {
   fetchInventoryQol,
   lockInventoryBatch,
@@ -165,7 +165,7 @@ onMounted(async () => {
   <AppShell>
     <section class="space-y-4 p-4">
       <header class="space-y-1">
-        <XTHeroEyebrow han="乾坤整资" label="Càn Khôn Chỉnh Tư" />
+        <XTPageEyebrow label="Càn Khôn Chỉnh Tư" />
         <h1 class="text-2xl font-bold mt-1">{{ t('inventoryAutoSort.title') }}</h1>
         <p class="text-sm text-gray-300">
           {{ t('inventoryAutoSort.subtitle') }}

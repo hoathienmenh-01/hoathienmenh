@@ -36,7 +36,8 @@ import { useCultivationMethodV2Store } from '@/stores/cultivationMethodV2';
 import { useToastStore } from '@/stores/toast';
 import type { CultivationMethodV2CatalogEntry } from '@/api/cultivationMethodV2';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -264,7 +265,7 @@ onMounted(async () => {
     <div class="max-w-6xl mx-auto space-y-4">
       <header class="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
-          <XTHeroEyebrow han="五行补胦" label="Ngũ Hành Bổ Nạp" />
+          <XTPageEyebrow caps="NGŨ HÀNH BỔ NẠP" label="Ngũ Hành Bổ Nạp" />
           <h1 class="text-2xl tracking-widest font-bold mt-1">
             {{ t('cultivationMethodV2.title') }}
           </h1>
@@ -293,159 +294,169 @@ onMounted(async () => {
         </div>
       </header>
 
-      <section
-        class="bg-ink-700/30 border border-ink-300/20 rounded p-3 space-y-2"
-        data-testid="cultivation-method-v2-summary"
+      <XTSealFrame
+        tone="jade"
+        corner-ornaments="❖✦❖✦"
+        watermark-letter="Đ"
+        rounded="xl"
+        inset="tight"
+        test-id="cultivation-method-v2-seal-frame"
+        aria-label="Ngũ Hành Bổ Nạp hero frame"
       >
-        <h2 class="text-sm text-amber-200 font-semibold">
-          {{ t('cultivationMethodV2.summary.title') }}
-        </h2>
-        <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs">
-          <li
-            v-for="entry in slotSummary"
-            :key="entry.slot"
-            class="bg-ink-900/40 border border-ink-300/20 rounded p-2 space-y-1"
-            :data-testid="`cultivation-method-v2-slot-${entry.slot}`"
-          >
-            <div class="text-[10px] text-ink-300 uppercase tracking-wider">
-              {{ t(`cultivationMethodV2.slot.${entry.slot}`) }}
-            </div>
-            <template v-if="entry.row">
-              <div class="text-amber-200 font-semibold truncate">
-                {{ entry.row.def.name }}
-              </div>
-              <div class="text-ink-300">
-                {{
-                  t('cultivationMethodV2.field.level', {
-                    level: entry.row.entry.level,
-                    max: entry.row.def.maxLevel,
-                  })
-                }}
-                ·
-                {{
-                  t('cultivationMethodV2.field.star', {
-                    star: entry.row.entry.star,
-                    max: entry.row.def.maxStar,
-                  })
-                }}
-              </div>
-              <button
-                type="button"
-                class="text-[10px] px-2 py-1 rounded border bg-ink-900/60 hover:bg-ink-700 border-ink-300/30 text-ink-200"
-                :data-testid="`cultivation-method-v2-unequip-${entry.slot}`"
-                :disabled="store.busy(`slot:${entry.slot}:unequip`)"
-                @click="onUnequip(entry.slot)"
-              >
-                {{
-                  t('cultivationMethodV2.action.unequip', {
-                    slot: t(`cultivationMethodV2.slot.${entry.slot}`),
-                  })
-                }}
-              </button>
-            </template>
-            <template v-else>
-              <div class="text-ink-300 italic">
-                {{ t('cultivationMethodV2.summary.empty') }}
-              </div>
-            </template>
-          </li>
-        </ul>
-
-        <div
-          v-if="store.aggregatedBonuses"
-          class="text-[11px] text-ink-300 flex flex-wrap gap-x-3 gap-y-1 pt-1"
-          data-testid="cultivation-method-v2-bonuses"
+        <section
+          class="bg-ink-700/30 border border-ink-300/20 rounded p-3 space-y-2"
+          data-testid="cultivation-method-v2-summary"
         >
-          <span class="text-ink-400 uppercase tracking-wider">
-            {{ t('cultivationMethodV2.summary.bonuses') }}:
-          </span>
-          <span
-            v-if="store.aggregatedBonuses.qiExpPercent > 0"
-            class="text-emerald-200"
-            data-testid="cultivation-method-v2-bonus-qiExpPercent"
+          <h2 class="text-sm text-amber-200 font-semibold">
+            {{ t('cultivationMethodV2.summary.title') }}
+          </h2>
+          <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs">
+            <li
+              v-for="entry in slotSummary"
+              :key="entry.slot"
+              class="bg-ink-900/40 border border-ink-300/20 rounded p-2 space-y-1"
+              :data-testid="`cultivation-method-v2-slot-${entry.slot}`"
+            >
+              <div class="text-[10px] text-ink-300 uppercase tracking-wider">
+                {{ t(`cultivationMethodV2.slot.${entry.slot}`) }}
+              </div>
+              <template v-if="entry.row">
+                <div class="text-amber-200 font-semibold truncate">
+                  {{ entry.row.def.name }}
+                </div>
+                <div class="text-ink-300">
+                  {{
+                    t('cultivationMethodV2.field.level', {
+                      level: entry.row.entry.level,
+                      max: entry.row.def.maxLevel,
+                    })
+                  }}
+                  ·
+                  {{
+                    t('cultivationMethodV2.field.star', {
+                      star: entry.row.entry.star,
+                      max: entry.row.def.maxStar,
+                    })
+                  }}
+                </div>
+                <button
+                  type="button"
+                  class="text-[10px] px-2 py-1 rounded border bg-ink-900/60 hover:bg-ink-700 border-ink-300/30 text-ink-200"
+                  :data-testid="`cultivation-method-v2-unequip-${entry.slot}`"
+                  :disabled="store.busy(`slot:${entry.slot}:unequip`)"
+                  @click="onUnequip(entry.slot)"
+                >
+                  {{
+                    t('cultivationMethodV2.action.unequip', {
+                      slot: t(`cultivationMethodV2.slot.${entry.slot}`),
+                    })
+                  }}
+                </button>
+              </template>
+              <template v-else>
+                <div class="text-ink-300 italic">
+                  {{ t('cultivationMethodV2.summary.empty') }}
+                </div>
+              </template>
+            </li>
+          </ul>
+
+          <div
+            v-if="store.aggregatedBonuses"
+            class="text-[11px] text-ink-300 flex flex-wrap gap-x-3 gap-y-1 pt-1"
+            data-testid="cultivation-method-v2-bonuses"
           >
-            {{
-              t('cultivationMethodV2.stat.qiExpPercent', {
-                value: formatPercent(store.aggregatedBonuses.qiExpPercent),
-              })
-            }}
-          </span>
-          <span
-            v-if="store.aggregatedBonuses.bodyExpPercent > 0"
-            class="text-emerald-200"
-            data-testid="cultivation-method-v2-bonus-bodyExpPercent"
-          >
-            {{
-              t('cultivationMethodV2.stat.bodyExpPercent', {
-                value: formatPercent(store.aggregatedBonuses.bodyExpPercent),
-              })
-            }}
-          </span>
-          <span v-if="store.aggregatedBonuses.hpMaxPercent > 0" class="text-rose-200">
-            {{
-              t('cultivationMethodV2.stat.hpMaxPercent', {
-                value: formatPercent(store.aggregatedBonuses.hpMaxPercent),
-              })
-            }}
-          </span>
-          <span v-if="store.aggregatedBonuses.mpMaxPercent > 0" class="text-sky-200">
-            {{
-              t('cultivationMethodV2.stat.mpMaxPercent', {
-                value: formatPercent(store.aggregatedBonuses.mpMaxPercent),
-              })
-            }}
-          </span>
-          <span v-if="store.aggregatedBonuses.atkPercent > 0" class="text-amber-200">
-            {{
-              t('cultivationMethodV2.stat.atkPercent', {
-                value: formatPercent(store.aggregatedBonuses.atkPercent),
-              })
-            }}
-          </span>
-          <span v-if="store.aggregatedBonuses.defPercent > 0" class="text-emerald-300">
-            {{
-              t('cultivationMethodV2.stat.defPercent', {
-                value: formatPercent(store.aggregatedBonuses.defPercent),
-              })
-            }}
-          </span>
-          <span v-if="store.aggregatedBonuses.spiritPercent > 0" class="text-violet-200">
-            {{
-              t('cultivationMethodV2.stat.spiritPercent', {
-                value: formatPercent(store.aggregatedBonuses.spiritPercent),
-              })
-            }}
-          </span>
-          <span v-if="store.aggregatedBonuses.staminaMaxPercent > 0" class="text-orange-200">
-            {{
-              t('cultivationMethodV2.stat.staminaMaxPercent', {
-                value: formatPercent(store.aggregatedBonuses.staminaMaxPercent),
-              })
-            }}
-          </span>
-          <span v-if="store.aggregatedBonuses.bossDamageReduction > 0" class="text-emerald-300">
-            {{
-              t('cultivationMethodV2.stat.bossDamageReduction', {
-                value: formatPercent(store.aggregatedBonuses.bossDamageReduction),
-              })
-            }}
-          </span>
-          <span v-if="store.aggregatedBonuses.elementalAtkBonus > 0" class="text-amber-200">
-            {{
-              t('cultivationMethodV2.stat.elementalAtkBonus', {
-                value: formatPercent(store.aggregatedBonuses.elementalAtkBonus),
-              })
-            }}
-          </span>
-          <span v-if="store.aggregatedBonuses.tribulationSupport > 0" class="text-amber-300">
-            {{
-              t('cultivationMethodV2.stat.tribulationSupport', {
-                value: formatPercent(store.aggregatedBonuses.tribulationSupport),
-              })
-            }}
-          </span>
-        </div>
-      </section>
+            <span class="text-ink-400 uppercase tracking-wider">
+              {{ t('cultivationMethodV2.summary.bonuses') }}:
+            </span>
+            <span
+              v-if="store.aggregatedBonuses.qiExpPercent > 0"
+              class="text-emerald-200"
+              data-testid="cultivation-method-v2-bonus-qiExpPercent"
+            >
+              {{
+                t('cultivationMethodV2.stat.qiExpPercent', {
+                  value: formatPercent(store.aggregatedBonuses.qiExpPercent),
+                })
+              }}
+            </span>
+            <span
+              v-if="store.aggregatedBonuses.bodyExpPercent > 0"
+              class="text-emerald-200"
+              data-testid="cultivation-method-v2-bonus-bodyExpPercent"
+            >
+              {{
+                t('cultivationMethodV2.stat.bodyExpPercent', {
+                  value: formatPercent(store.aggregatedBonuses.bodyExpPercent),
+                })
+              }}
+            </span>
+            <span v-if="store.aggregatedBonuses.hpMaxPercent > 0" class="text-rose-200">
+              {{
+                t('cultivationMethodV2.stat.hpMaxPercent', {
+                  value: formatPercent(store.aggregatedBonuses.hpMaxPercent),
+                })
+              }}
+            </span>
+            <span v-if="store.aggregatedBonuses.mpMaxPercent > 0" class="text-sky-200">
+              {{
+                t('cultivationMethodV2.stat.mpMaxPercent', {
+                  value: formatPercent(store.aggregatedBonuses.mpMaxPercent),
+                })
+              }}
+            </span>
+            <span v-if="store.aggregatedBonuses.atkPercent > 0" class="text-amber-200">
+              {{
+                t('cultivationMethodV2.stat.atkPercent', {
+                  value: formatPercent(store.aggregatedBonuses.atkPercent),
+                })
+              }}
+            </span>
+            <span v-if="store.aggregatedBonuses.defPercent > 0" class="text-emerald-300">
+              {{
+                t('cultivationMethodV2.stat.defPercent', {
+                  value: formatPercent(store.aggregatedBonuses.defPercent),
+                })
+              }}
+            </span>
+            <span v-if="store.aggregatedBonuses.spiritPercent > 0" class="text-violet-200">
+              {{
+                t('cultivationMethodV2.stat.spiritPercent', {
+                  value: formatPercent(store.aggregatedBonuses.spiritPercent),
+                })
+              }}
+            </span>
+            <span v-if="store.aggregatedBonuses.staminaMaxPercent > 0" class="text-orange-200">
+              {{
+                t('cultivationMethodV2.stat.staminaMaxPercent', {
+                  value: formatPercent(store.aggregatedBonuses.staminaMaxPercent),
+                })
+              }}
+            </span>
+            <span v-if="store.aggregatedBonuses.bossDamageReduction > 0" class="text-emerald-300">
+              {{
+                t('cultivationMethodV2.stat.bossDamageReduction', {
+                  value: formatPercent(store.aggregatedBonuses.bossDamageReduction),
+                })
+              }}
+            </span>
+            <span v-if="store.aggregatedBonuses.elementalAtkBonus > 0" class="text-amber-200">
+              {{
+                t('cultivationMethodV2.stat.elementalAtkBonus', {
+                  value: formatPercent(store.aggregatedBonuses.elementalAtkBonus),
+                })
+              }}
+            </span>
+            <span v-if="store.aggregatedBonuses.tribulationSupport > 0" class="text-amber-300">
+              {{
+                t('cultivationMethodV2.stat.tribulationSupport', {
+                  value: formatPercent(store.aggregatedBonuses.tribulationSupport),
+                })
+              }}
+            </span>
+          </div>
+        </section>
+      </XTSealFrame>
 
       <section class="flex flex-wrap gap-3 items-center text-xs">
         <div class="flex items-center gap-2">

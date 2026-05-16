@@ -20,7 +20,8 @@ import {
 } from '@/api/market';
 import { listInventory, type InventoryView } from '@/api/inventory';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import SkeletonBlock from '@/components/ui/SkeletonBlock.vue';
@@ -189,8 +190,19 @@ function handleErr(e: unknown): void {
 
 <template>
   <AppShell>
-    <XTHeroEyebrow han="千幻商街" label="Thiên Hạnh Thương Phố" />
-    <h2 class="text-xl tracking-widest mb-4 mt-1">{{ t('market.title') }}</h2>
+    <XTSealFrame
+      tone="gold"
+      corner-ornaments="❀❦❀❦"
+      watermark-letter="G"
+      rounded="xl"
+      inset="tight"
+      test-id="market-view-seal-frame"
+      aria-label="Thiên Hạnh Thương Phố hero frame"
+      class="mb-4"
+    >
+      <XTPageEyebrow caps="THIÊN HẠNH THƯƠNG PHỐ" label="Thiên Hạnh Thương Phố" />
+      <h2 class="text-xl tracking-widest mt-1">{{ t('market.title') }}</h2>
+    </XTSealFrame>
 
     <div class="flex gap-2 mb-4">
       <MButton :class="tab === 'buy' ? '!bg-ink-50 !text-ink-900' : ''" @click="tab = 'buy'">

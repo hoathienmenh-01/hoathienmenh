@@ -7,7 +7,8 @@ import { useGameStore } from '@/stores/game';
 import { useStoryV2Store } from '@/stores/storyV2';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import type {
   Phase33ChapterView,
   Phase33QuestView,
@@ -186,26 +187,36 @@ onMounted(async () => {
   <AppShell>
     <div class="max-w-6xl mx-auto space-y-4" data-testid="story-v2-view">
       <!-- Header -->
-      <header class="flex items-baseline justify-between gap-3 flex-wrap">
-        <div>
-          <XTHeroEyebrow han="仙遃叙事" label="Tiên Duệ Tự Sự" />
-          <h1 class="text-2xl tracking-widest font-bold mt-1">
-            {{ t('storyV2.title') }}
-          </h1>
-          <p class="text-sm text-ink-300">{{ t('storyV2.subtitle') }}</p>
-        </div>
-        <div class="text-right text-xs text-ink-300 space-y-0.5">
-          <div data-testid="story-v2-total-count">
-            {{ t('storyV2.totalCount', { n: totalChapterCount }) }}
+      <XTSealFrame
+        tone="gold"
+        corner-ornaments="❀❦❀❦"
+        watermark-letter="G"
+        rounded="xl"
+        inset="tight"
+        test-id="story-v2-seal-frame"
+        aria-label="Tiên Duệ Tự Sự hero frame"
+      >
+        <header class="flex items-baseline justify-between gap-3 flex-wrap">
+          <div>
+            <XTPageEyebrow caps="TIÊN DUỆ TỰ SỰ" label="Tiên Duệ Tự Sự" />
+            <h1 class="text-2xl tracking-widest font-bold mt-1">
+              {{ t('storyV2.title') }}
+            </h1>
+            <p class="text-sm text-ink-300">{{ t('storyV2.subtitle') }}</p>
           </div>
-          <div data-testid="story-v2-in-progress-count">
-            {{ t('storyV2.inProgressCount', { n: inProgressChapterCount }) }}
+          <div class="text-right text-xs text-ink-300 space-y-0.5">
+            <div data-testid="story-v2-total-count">
+              {{ t('storyV2.totalCount', { n: totalChapterCount }) }}
+            </div>
+            <div data-testid="story-v2-in-progress-count">
+              {{ t('storyV2.inProgressCount', { n: inProgressChapterCount }) }}
+            </div>
+            <div data-testid="story-v2-completed-count">
+              {{ t('storyV2.completedCount', { n: completedChapterCount }) }}
+            </div>
           </div>
-          <div data-testid="story-v2-completed-count">
-            {{ t('storyV2.completedCount', { n: completedChapterCount }) }}
-          </div>
-        </div>
-      </header>
+        </header>
+      </XTSealFrame>
 
       <!-- Loading / error -->
       <div

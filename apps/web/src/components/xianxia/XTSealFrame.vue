@@ -1,31 +1,43 @@
 <script setup lang="ts">
 /**
- * Cửu Thiên Mộng — `XTSealFrame` (PR3 hero polish primitive).
+ * Cửu Thiên Mộng — `XTSealFrame` (PR3.5 thuần Việt polish primitive).
  *
- * Wrap card "đạo thân" / hero với khung lacquer cổ phong: 4 viền vàng
- * mỏng, 4 triện chu (seal stamp) ở 4 góc in chữ Hán, optional vertical
- * watermark dọc cạnh phải. Dùng trên Dashboard / Home / Cultivation hero
- * card, KHÔNG ăn vào layout (chỉ là ::before / corner overlays absolute).
+ * Wrap card "đạo thân" / hero với khung lacquer cổ phong: 4 viền vàng mỏng,
+ * 4 triện chu (seal stamp) ở 4 góc in ký tự trang trí thuần Việt (mặc định
+ * "❖✦❖✦"), optional vertical watermark letter dọc cạnh phải.
  *
- * Props:
+ * Props (API mới — PR3.5):
  *   - `tone`: `gold` (default) | `jade` | `seal` — đổi màu viền + seal.
- *   - `cornerGlyphs`: chuỗi 4 ký tự Hán cho 4 góc (mặc định 「真修丹道」).
- *     Nếu < 4 ký tự thì pad bằng glyph cuối. Truyền chuỗi rỗng để ẩn seal.
- *   - `watermark`: 1 ký tự Hán (vd 「天」) hiển thị mờ dọc cạnh phải.
+ *   - `cornerOrnaments`: chuỗi 4 ký tự ornament cho 4 góc
+ *     (mặc định "❖✦❖✦"). Pad bằng glyph cuối nếu <4; truncate 4 đầu nếu >4.
+ *     Truyền chuỗi rỗng để ẩn 4 góc.
+ *   - `watermarkLetter`: 1 ký tự thuần Việt (vd "Đ", "T", "M") hiển thị
+ *     mờ dọc cạnh phải. Tự cắt còn 1 ký tự.
  *   - `rounded`: `lg` (default) | `xl` | `2xl` để đồng bộ radius card.
- *   - `inset`: cách viền vào trong content area (`tight` | `relaxed`).
- *   - `interactive`: nếu true, áp dụng subtle hover lift / glow.
+ *   - `inset`: `tight` | `relaxed`.
+ *   - `interactive`: hover lift / glow nhẹ.
  *   - `testId` / `ariaLabel`.
  *
- * Reduced motion: shimmer trên seal tự dừng qua media-query;
- * không animate khi `prefers-reduced-motion: reduce`.
+ * Backward-compat: `cornerGlyphs` / `watermark` được giữ làm alias cho
+ * `cornerOrnaments` / `watermarkLetter`. Nếu cả hai prop cùng truyền, prop
+ * mới (`cornerOrnaments` / `watermarkLetter`) thắng. Các giá trị legacy
+ * chứa ký tự Hán sẽ bị thay bằng default ornaments để giữ "thuần Việt".
+ *
+ * Reduced motion: shimmer trên seal tự dừng qua media-query.
  */
 import { computed } from 'vue';
+
+const DEFAULT_ORNAMENTS = '❖✦❖✦';
+const HAN_RE = /[\u4e00-\u9fff]/;
 
 const props = withDefaults(
   defineProps<{
     tone?: 'gold' | 'jade' | 'seal';
+    cornerOrnaments?: string;
+    /** @deprecated use `cornerOrnaments`. */
     cornerGlyphs?: string;
+    watermarkLetter?: string | null;
+    /** @deprecated use `watermarkLetter`. */
     watermark?: string | null;
     rounded?: 'lg' | 'xl' | '2xl';
     inset?: 'tight' | 'relaxed';
@@ -35,8 +47,10 @@ const props = withDefaults(
   }>(),
   {
     tone: 'gold',
-    cornerGlyphs: '真修丹道',
-    watermark: null,
+    cornerOrnaments: DEFAULT_ORNAMENTS,
+    cornerGlyphs: undefined,
+    watermarkLetter: null,
+    watermark: undefined,
     rounded: 'xl',
     inset: 'relaxed',
     interactive: false,
@@ -45,9 +59,34 @@ const props = withDefaults(
   },
 );
 
-/** Pad / truncate `cornerGlyphs` thành đúng 4 ký tự (TL TR BL BR). */
+/** Resolve ornament string ưu tiên prop mới, fallback prop legacy.
+ *  Nếu chuỗi chứa ký tự Hán → ép về default ornaments thuần Việt. */
+const resolvedOrnaments = computed<string>(() => {
+  const newProp = props.cornerOrnaments;
+  if (typeof newProp === 'string' && newProp !== DEFAULT_ORNAMENTS) {
+    return HAN_RE.test(newProp) ? DEFAULT_ORNAMENTS : newProp;
+  }
+  if (typeof props.cornerGlyphs === 'string') {
+    return HAN_RE.test(props.cornerGlyphs) ? DEFAULT_ORNAMENTS : props.cornerGlyphs;
+  }
+  return DEFAULT_ORNAMENTS;
+});
+
+/** Resolve watermark letter ưu tiên prop mới, fallback prop legacy. */
+const resolvedWatermark = computed<string | null>(() => {
+  const newProp = props.watermarkLetter;
+  if (newProp != null && newProp.length > 0) {
+    return HAN_RE.test(newProp) ? null : newProp.slice(0, 1);
+  }
+  if (props.watermark != null && props.watermark.length > 0) {
+    return HAN_RE.test(props.watermark) ? null : props.watermark.slice(0, 1);
+  }
+  return null;
+});
+
+/** Pad / truncate ornaments thành đúng 4 ký tự (TL TR BL BR). */
 const corners = computed<readonly [string, string, string, string]>(() => {
-  const raw = (props.cornerGlyphs ?? '').slice(0, 4);
+  const raw = resolvedOrnaments.value.slice(0, 4);
   if (raw.length === 0) return ['', '', '', ''] as const;
   const arr = [...raw];
   const last = arr[arr.length - 1] ?? '';
@@ -55,7 +94,7 @@ const corners = computed<readonly [string, string, string, string]>(() => {
   return [arr[0]!, arr[1]!, arr[2]!, arr[3]!] as const;
 });
 
-const showCorners = computed(() => (props.cornerGlyphs ?? '').length > 0);
+const showCorners = computed(() => resolvedOrnaments.value.length > 0);
 </script>
 
 <template>
@@ -73,7 +112,7 @@ const showCorners = computed(() => (props.cornerGlyphs ?? '').length > 0);
     <!-- Lacquered gold inner border (purely decorative). -->
     <span class="xt-seal-frame__border" aria-hidden="true" />
 
-    <!-- 4 góc triện chu — lacquered red square stamp với chữ Hán. -->
+    <!-- 4 góc triện chu — lacquered red square stamp với ornament thuần Việt. -->
     <template v-if="showCorners">
       <span
         class="xt-seal-frame__corner xt-seal-frame__corner--tl"
@@ -97,13 +136,13 @@ const showCorners = computed(() => (props.cornerGlyphs ?? '').length > 0);
       >{{ corners[3] }}</span>
     </template>
 
-    <!-- Vertical Hán watermark mờ dọc cạnh phải (decorative only). -->
+    <!-- Vertical watermark letter (decorative only). -->
     <span
-      v-if="watermark"
+      v-if="resolvedWatermark"
       class="xt-seal-frame__watermark"
       aria-hidden="true"
       :data-testid="`${testId}-watermark`"
-    >{{ watermark }}</span>
+    >{{ resolvedWatermark }}</span>
 
     <div class="xt-seal-frame__content">
       <slot />
@@ -150,7 +189,7 @@ const showCorners = computed(() => (props.cornerGlyphs ?? '').length > 0);
   z-index: 1;
 }
 
-/* Tone palettes — gold (default, "hoàng triều"), jade (tu luyện), seal (chiến). */
+/* Tone palettes. */
 .xt-seal-frame--gold {
   --frame-border: rgba(242, 215, 137, 0.48);
   --frame-border-inner: rgba(242, 215, 137, 0.2);
@@ -179,7 +218,7 @@ const showCorners = computed(() => (props.cornerGlyphs ?? '').length > 0);
   --watermark-color: rgba(208, 79, 79, 0.22);
 }
 
-/* 4 góc triện chu — lacquered red square with chữ Hán inside. */
+/* 4 góc triện chu — lacquered red square với ornament thuần Việt. */
 .xt-seal-frame__corner {
   position: absolute;
   z-index: 3;
@@ -192,7 +231,7 @@ const showCorners = computed(() => (props.cornerGlyphs ?? '').length > 0);
   background: var(--seal-bg);
   border: 1px solid var(--seal-border);
   color: var(--seal-text);
-  font-family: var(--xt-font-decorative, 'Ma Shan Zheng'), var(--xt-font-display);
+  font-family: var(--xt-font-decorative), var(--xt-font-display);
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 0;
@@ -222,14 +261,13 @@ const showCorners = computed(() => (props.cornerGlyphs ?? '').length > 0);
   transform: rotate(-3deg);
 }
 
-/* Vertical Hán watermark — large pale glyph along the right edge.
-   Pure decoration, hidden from a11y / screen readers. */
+/* Vertical watermark letter — large pale glyph along the right edge. */
 .xt-seal-frame__watermark {
   position: absolute;
   top: 50%;
   right: -2px;
   transform: translateY(-50%) rotate(0deg);
-  font-family: var(--xt-font-decorative, 'Ma Shan Zheng'), var(--xt-font-display);
+  font-family: var(--xt-font-decorative), var(--xt-font-display);
   font-size: clamp(64px, 8vw, 120px);
   line-height: 1;
   color: var(--watermark-color);

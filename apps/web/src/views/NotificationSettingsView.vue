@@ -2,6 +2,8 @@
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useWebPush } from '@/composables/useWebPush';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 
 const { t } = useI18n();
 const push = useWebPush();
@@ -40,17 +42,23 @@ async function togglePref(
 
 <template>
   <section class="max-w-3xl mx-auto p-4 space-y-4">
-    <header class="space-y-1">
-      <p class="flex items-center gap-2 text-[10px] uppercase tracking-[0.32em] text-[var(--xt-text-jade)] md:text-xs">
-        <span aria-hidden="true" class="inline-block h-px w-6 bg-[var(--xt-border-jade)]" />
-        <span aria-hidden="true" style="font-family: 'Ma Shan Zheng', 'Noto Serif SC', serif; font-size: 14px; letter-spacing: 0.16em;">得仪召心</span>
-        <span>· Đài Truyền Tin Hiệu</span>
-      </p>
-      <h1 class="text-xl font-semibold text-ink-50 mt-1">
-        {{ t('webPush.title') }}
-      </h1>
-      <p class="text-sm text-ink-300">{{ t('webPush.subtitle') }}</p>
-    </header>
+    <XTSealFrame
+      tone="gold"
+      corner-ornaments="❀✦❀✦"
+      watermark-letter="T"
+      rounded="xl"
+      inset="tight"
+      test-id="notification-settings-view-seal-frame"
+      aria-label="Đài Truyền Tin Hiệu hero frame"
+    >
+      <header class="space-y-1">
+        <XTPageEyebrow caps="ĐÀI TRUYỀN TIN HIỆU" label="Đài Truyền Tin Hiệu" />
+        <h1 class="text-xl font-semibold text-ink-50 mt-1">
+          {{ t('webPush.title') }}
+        </h1>
+        <p class="text-sm text-ink-300">{{ t('webPush.subtitle') }}</p>
+      </header>
+    </XTSealFrame>
 
     <div
       v-if="!push.supported.value"

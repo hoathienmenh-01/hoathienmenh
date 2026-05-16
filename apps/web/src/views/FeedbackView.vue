@@ -9,7 +9,8 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import MButton from '@/components/ui/MButton.vue';
 import LoadingState from '@/components/ui/LoadingState.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
@@ -111,11 +112,21 @@ onMounted(() => {
 <template>
   <AppShell>
     <div class="max-w-3xl mx-auto space-y-6">
-      <header>
-        <XTHeroEyebrow han="请安仪" label="Thỉnh An Nghi" />
-        <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('feedback.title') }}</h1>
-        <p class="text-xs text-ink-300 mt-1">{{ t('feedback.subtitle') }}</p>
-      </header>
+      <XTSealFrame
+        tone="gold"
+        corner-ornaments="❀✦❀✦"
+        watermark-letter="T"
+        rounded="xl"
+        inset="tight"
+        test-id="feedback-view-seal-frame"
+        aria-label="Thỉnh An Nghi hero frame"
+      >
+        <header>
+          <XTPageEyebrow caps="THỈNH AN NGHI" label="Thỉnh An Nghi" />
+          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('feedback.title') }}</h1>
+          <p class="text-xs text-ink-300 mt-1">{{ t('feedback.subtitle') }}</p>
+        </header>
+      </XTSealFrame>
 
       <!-- Form -->
       <section

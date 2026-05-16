@@ -10,7 +10,8 @@
  */
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import SocialPanel from '@/components/SocialPanel.vue';
 import PrivateChatPanel from '@/components/PrivateChatPanel.vue';
 import GroupChatPanel from '@/components/GroupChatPanel.vue';
@@ -36,11 +37,21 @@ const tab = ref<Tab>('friends');
 
 <template>
   <section class="space-y-4" data-testid="social-view">
-    <header class="space-y-1">
-      <XTHeroEyebrow han="江湖交际" label="Giang Hồ Giao Tế" />
-      <h1 class="text-2xl tracking-widest mt-1">{{ t('social.viewTitle') }}</h1>
-      <p class="text-xs text-ink-300/80">{{ t('social.viewSubtitle') }}</p>
-    </header>
+    <XTSealFrame
+      tone="gold"
+      corner-ornaments="❀❦❀❦"
+      watermark-letter="G"
+      rounded="xl"
+      inset="tight"
+      test-id="social-view-seal-frame"
+      aria-label="Giang Hồ Giao Tế hero frame"
+    >
+      <header class="space-y-1">
+        <XTPageEyebrow caps="GIANG HỒ GIAO TẾ" label="Giang Hồ Giao Tế" />
+        <h1 class="text-2xl tracking-widest mt-1">{{ t('social.viewTitle') }}</h1>
+        <p class="text-xs text-ink-300/80">{{ t('social.viewSubtitle') }}</p>
+      </header>
+    </XTSealFrame>
 
     <nav class="flex flex-wrap gap-2" role="tablist">
       <button

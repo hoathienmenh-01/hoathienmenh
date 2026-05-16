@@ -9,6 +9,8 @@ import { changePassword, logoutAll } from '@/api/auth';
 import { setLocale, type LocaleKey } from '@/i18n';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import EffectSettingsPanel from '@/components/visual-effects/EffectSettingsPanel.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import ConfirmModal from '@/components/ui/ConfirmModal.vue';
@@ -24,7 +26,13 @@ import {
   patchPlayerSettings,
   resetPlayerSettings,
 } from '@/api/playerExperience';
-import { applyAppearance, type AppearanceMode } from '@/lib/appearance';
+import {
+  applyAppearance,
+  loadCachedTheme,
+  setTheme,
+  type AppearanceMode,
+  type ThemeName,
+} from '@/lib/appearance';
 import {
   isSfxMuted,
   setSfxMuted,
@@ -71,6 +79,20 @@ const sfxVolume = ref(0.6);
 const bgmMuted = ref(false);
 const bgmVolume = ref(0.35);
 
+const currentTheme = ref<ThemeName>('night');
+
+function toggleTheme(theme: ThemeName): void {
+  currentTheme.value = theme;
+  setTheme(theme);
+  if (theme === 'day') {
+    playerSettings.value = { ...playerSettings.value, appearance: 'light' };
+  } else {
+    playerSettings.value = { ...playerSettings.value, appearance: 'dark' };
+  }
+  // Best-effort: persist to backend nếu user đã login. Không block UI.
+  savePlayerSettings({ appearance: theme === 'day' ? 'light' : 'dark' }).catch(() => null);
+}
+
 function onSfxMutedChange(ev: Event): void {
   const target = ev.target as HTMLInputElement;
   sfxMuted.value = target.checked;
@@ -114,6 +136,7 @@ onMounted(async () => {
   sfxVolume.value = getSfxVolume();
   bgmMuted.value = isBgmMuted();
   bgmVolume.value = getBgmVolume();
+  currentTheme.value = loadCachedTheme();
   await game.fetchState().catch(() => null);
   game.bindSocket();
   try {
@@ -252,10 +275,66 @@ function changeLocale(value: string): void {
 <template>
   <AppShell>
     <div class="max-w-2xl mx-auto space-y-6">
-      <header>
-        <h1 class="text-2xl tracking-widest font-bold">{{ t('settings.title') }}</h1>
-        <p class="text-xs text-ink-300 mt-1">{{ t('settings.subtitle') }}</p>
-      </header>
+      <XTSealFrame
+        tone="gold"
+        corner-ornaments="❀✦❀✦"
+        watermark-letter="T"
+        rounded="xl"
+        inset="tight"
+        test-id="settings-view-seal-frame"
+        aria-label="Tâm Trần Tu Chỉnh hero frame"
+      >
+        <header>
+          <XTPageEyebrow caps="TÂM TRẦN TU CHỈNH" label="Tâm Trần Tu Chỉnh" />
+          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('settings.title') }}</h1>
+          <p class="text-xs text-ink-300 mt-1">{{ t('settings.subtitle') }}</p>
+        </header>
+      </XTSealFrame>
+
+      <!-- Ngày / Đêm theme toggle -->
+      <section
+        class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-3 text-sm"
+        data-testid="settings-theme-toggle"
+      >
+        <h2 class="text-amber-200 text-base">Chế độ giao diện</h2>
+        <p class="text-xs text-ink-300">
+          Chọn tông màu hiển thị: Ngày sáng hoặc Đêm tối.
+        </p>
+        <div
+          class="inline-flex rounded border border-ink-300/30 overflow-hidden"
+          role="group"
+          aria-label="Ngày / Đêm"
+        >
+          <button
+            type="button"
+            class="px-4 py-1.5 text-xs transition"
+            :class="
+              currentTheme === 'day'
+                ? 'bg-amber-500 text-ink-950 font-semibold'
+                : 'bg-ink-700/40 text-ink-200 hover:bg-ink-700/60'
+            "
+            data-testid="settings-theme-day"
+            :aria-pressed="currentTheme === 'day'"
+            @click="toggleTheme('day')"
+          >
+            Ngày
+          </button>
+          <button
+            type="button"
+            class="px-4 py-1.5 text-xs transition"
+            :class="
+              currentTheme === 'night'
+                ? 'bg-ink-900 text-amber-100 font-semibold'
+                : 'bg-ink-700/40 text-ink-200 hover:bg-ink-700/60'
+            "
+            data-testid="settings-theme-night"
+            :aria-pressed="currentTheme === 'night'"
+            @click="toggleTheme('night')"
+          >
+            Đêm
+          </button>
+        </div>
+      </section>
 
       <!-- Account info -->
       <section class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-2 text-sm">

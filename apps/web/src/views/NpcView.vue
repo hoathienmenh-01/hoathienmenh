@@ -7,6 +7,8 @@ import { useGameStore } from '@/stores/game';
 import { useNpcStore } from '@/stores/npc';
 import { useNpcAffinityStore } from '@/stores/npcAffinity';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import NpcAffinityPanel from '@/components/NpcAffinityPanel.vue';
 import NpcDialogueModal from '@/components/NpcDialogueModal.vue';
 import StoryDialogueModal from '@/components/StoryDialogueModal.vue';
@@ -100,17 +102,28 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="max-w-4xl mx-auto space-y-4" data-testid="npc-view">
-      <header class="flex items-baseline justify-between gap-3">
-        <div>
-          <h1 class="text-2xl tracking-widest font-bold">{{ t('npc.title') }}</h1>
-          <p class="text-sm text-ink-300">{{ t('npc.subtitle') }}</p>
-        </div>
-        <div class="text-right text-xs text-ink-300">
-          <div data-testid="npc-visible-count">
-            {{ t('npc.visibleCount', { n: npcs.length }) }}
+      <XTSealFrame
+        tone="gold"
+        corner-ornaments="❀❦❀❦"
+        watermark-letter="G"
+        rounded="xl"
+        inset="tight"
+        test-id="npc-view-seal-frame"
+        aria-label="Kỳ Nhân Diện Kiến hero frame"
+      >
+        <header class="flex items-baseline justify-between gap-3">
+          <div>
+            <XTPageEyebrow caps="KỲ NHÂN DIỆN KIẾN" label="Kỳ Nhân Diện Kiến" />
+            <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('npc.title') }}</h1>
+            <p class="text-sm text-ink-300">{{ t('npc.subtitle') }}</p>
           </div>
-        </div>
-      </header>
+          <div class="text-right text-xs text-ink-300">
+            <div data-testid="npc-visible-count">
+              {{ t('npc.visibleCount', { n: npcs.length }) }}
+            </div>
+          </div>
+        </header>
+      </XTSealFrame>
 
       <div
         v-if="loading && !loaded"

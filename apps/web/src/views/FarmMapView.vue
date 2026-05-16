@@ -15,7 +15,8 @@ import { useWorldContentStore } from '@/stores/worldContent';
 import { useToastStore } from '@/stores/toast';
 import type { FarmMapView } from '@/api/worldContent';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 
 const { t, locale } = useI18n();
 const store = useWorldContentStore();
@@ -75,11 +76,21 @@ function claimBusy(sessionId: string): boolean {
 <template>
   <AppShell>
     <section class="farm-map" data-testid="farm-map-view">
-      <header class="farm-map__header">
-        <XTHeroEyebrow han="灵田助资" label="Linh Điền Tồn Dưỡng" />
-        <h1 class="mt-1">{{ t('worldContent.farm.title') }}</h1>
-        <p>{{ t('worldContent.farm.subtitle') }}</p>
-      </header>
+      <XTSealFrame
+        tone="jade"
+        corner-ornaments="❖❧❖❧"
+        watermark-letter="M"
+        rounded="xl"
+        inset="tight"
+        test-id="farm-map-view-seal-frame"
+        aria-label="Linh Điền Tồn Dưỡng hero frame"
+      >
+        <header class="farm-map__header">
+          <XTPageEyebrow caps="LINH ĐIỀN TỒN DƯỠNG" label="Linh Điền Tồn Dưỡng" />
+          <h1 class="mt-1">{{ t('worldContent.farm.title') }}</h1>
+          <p>{{ t('worldContent.farm.subtitle') }}</p>
+        </header>
+      </XTSealFrame>
 
       <div
         v-if="reloadFailed && maps.length === 0"

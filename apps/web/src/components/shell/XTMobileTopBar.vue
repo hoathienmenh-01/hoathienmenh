@@ -48,7 +48,7 @@ function go(path: string): void {
         :aria-label="t('xt.brand.home')"
         @click="go('/dashboard')"
       >
-        <span class="xt-seal" aria-hidden="true">玄</span>
+        <span class="xt-seal" aria-hidden="true">❖</span>
         <span class="truncate text-left">
           <span class="xt-eyebrow block !text-[9px]">
             {{ t('app.tagline') }}

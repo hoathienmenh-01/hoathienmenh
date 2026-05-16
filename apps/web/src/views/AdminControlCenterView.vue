@@ -56,7 +56,7 @@ import {
 } from '@/api/adminControlCenter';
 import { extractApiErrorCode } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 
 const { t } = useI18n();
@@ -255,7 +255,7 @@ const contentTypes = CONTENT_STATUS_TYPES;
   <AppShell>
     <div class="max-w-6xl mx-auto space-y-4">
       <header class="flex items-center gap-3">
-        <XTHeroEyebrow han="主控天宋" label="Chủ Khiển Thiên Điện" />
+        <XTPageEyebrow caps="CHỦ KHIỂN THIÊN ĐIỆN" label="Chủ Khiển Thiên Điện" />
         <h1 class="text-2xl tracking-widest font-bold mt-1">
           {{ t('adminControlCenter.title') }}
         </h1>

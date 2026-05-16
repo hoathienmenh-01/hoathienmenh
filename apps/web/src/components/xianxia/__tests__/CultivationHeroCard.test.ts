@@ -3,16 +3,18 @@ import { mount } from '@vue/test-utils';
 import CultivationHeroCard from '@/components/xianxia/CultivationHeroCard.vue';
 
 /**
- * Cửu Thiên Mộng PR3 — `CultivationHeroCard` polish smoke.
+ * Cửu Thiên Mộng PR3.5 — `CultivationHeroCard` polish smoke (thuần Việt).
  *
  * Đảm bảo:
- *   - Card được wrap trong `XTSealFrame` (seal frame có 4 góc triện chu).
- *   - Eyebrow Hán + Việt render qua `XTHeroEyebrow` (không còn chuỗi inline
- *     "Cửu Thiên Mộng · XT" cũ).
+ *   - Card được wrap trong `XTSealFrame` (4 góc triện chu với ornament
+ *     thuần Việt "❖✦❖✦").
+ *   - Eyebrow render qua `XTPageEyebrow` với caps "ĐẠO THÂN TIÊN CỐT" +
+ *     label "Đạo Thân Tiên Cốt" (không còn chữ Hán).
  *   - Props `name` / `realm` / `power` render đúng.
  *   - `ProgressRuneBar` × 2 (cultivation jade + body gold) vẫn ở chỗ cũ.
+ *   - Toàn bộ HTML output không còn ký tự Hán.
  */
-describe('CultivationHeroCard (PR3 polish)', () => {
+describe('CultivationHeroCard (PR3.5 thuần Việt polish)', () => {
   function mountCard() {
     return mount(CultivationHeroCard, {
       props: {
@@ -33,21 +35,26 @@ describe('CultivationHeroCard (PR3 polish)', () => {
     });
   }
 
-  it('wraps card with XTSealFrame (cultivation-hero-seal-frame testid)', () => {
+  it('wraps card with XTSealFrame (cultivation-hero-seal-frame testid + ornaments thuần Việt)', () => {
     const w = mountCard();
     expect(w.find('[data-testid="cultivation-hero-seal-frame"]').exists()).toBe(true);
-    expect(w.find('[data-testid="cultivation-hero-seal-frame-corner-tl"]').text()).toBe('真');
-    expect(w.find('[data-testid="cultivation-hero-seal-frame-corner-tr"]').text()).toBe('修');
-    expect(w.find('[data-testid="cultivation-hero-seal-frame-corner-bl"]').text()).toBe('丹');
-    expect(w.find('[data-testid="cultivation-hero-seal-frame-corner-br"]').text()).toBe('道');
+    expect(w.find('[data-testid="cultivation-hero-seal-frame-corner-tl"]').text()).toBe('❖');
+    expect(w.find('[data-testid="cultivation-hero-seal-frame-corner-tr"]').text()).toBe('✦');
+    expect(w.find('[data-testid="cultivation-hero-seal-frame-corner-bl"]').text()).toBe('❖');
+    expect(w.find('[data-testid="cultivation-hero-seal-frame-corner-br"]').text()).toBe('✦');
   });
 
-  it('renders XTHeroEyebrow với Hán 道身仙骨 + label Đạo Thân Tiên Cốt', () => {
+  it('renders XTPageEyebrow với caps + label thuần Việt', () => {
     const w = mountCard();
     const eyebrow = w.find('[data-testid="cultivation-hero-eyebrow"]');
     expect(eyebrow.exists()).toBe(true);
-    expect(eyebrow.text()).toContain('道身仙骨');
+    expect(eyebrow.text()).toContain('ĐẠO THÂN TIÊN CỐT');
     expect(eyebrow.text()).toContain('Đạo Thân Tiên Cốt');
+  });
+
+  it('không còn chữ Hán trong toàn bộ output', () => {
+    const w = mountCard();
+    expect(/[\u4e00-\u9fff]/.test(w.html())).toBe(false);
   });
 
   it('does NOT contain inline legacy eyebrow chuỗi "Cửu Thiên Mộng · XT"', () => {

@@ -12,7 +12,7 @@ defineProps<{
 
 <template>
   <span class="xt-realm-badge" data-testid="realm-badge">
-    <span class="xt-realm-badge__rune" aria-hidden="true">道</span>
+    <span class="xt-realm-badge__rune" aria-hidden="true">◈</span>
     {{ label }}
   </span>
 </template>

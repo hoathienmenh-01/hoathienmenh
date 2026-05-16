@@ -30,7 +30,7 @@ const props = withDefaults(
     equipped?: boolean;
     /** Hiện text tier nhỏ ở góc phải dưới. */
     showTier?: boolean;
-    /** Glyph fallback (ký tự rune) khi không có ảnh. Mặc định "宝". */
+    /** Glyph fallback (rune trang trí) khi không có ảnh. Mặc định "◈". */
     fallbackGlyph?: string;
   }>(),
   {
@@ -42,7 +42,7 @@ const props = withDefaults(
     alt: null,
     equipped: false,
     showTier: false,
-    fallbackGlyph: '宝',
+    fallbackGlyph: '◈',
   },
 );
 
@@ -130,7 +130,7 @@ const sizeClass = computed(() => {
   inset: 0;
   display: grid;
   place-items: center;
-  font-family: var(--xt-font-decorative, 'Ma Shan Zheng', serif);
+  font-family: var(--xt-font-decorative, 'Cinzel', serif);
   font-size: 1.5rem;
   color: var(--xt-gold-bright, #f2d789);
   opacity: 0.75;

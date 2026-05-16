@@ -187,14 +187,14 @@ onMounted(() => {
         >
           <span
             style="
-              font-family: 'Ma Shan Zheng', 'Noto Serif SC', serif;
+              font-family: 'Cinzel', 'Cormorant Garamond', serif;
               font-size: 132px;
               line-height: 1;
               color: var(--xt-gold-bright);
               text-shadow: 0 0 24px rgba(242, 215, 137, 0.8), 0 0 8px rgba(255, 255, 255, 0.5);
             "
           >
-            破
+            ✺
           </span>
         </div>
       </div>

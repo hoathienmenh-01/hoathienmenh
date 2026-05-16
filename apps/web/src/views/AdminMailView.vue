@@ -14,7 +14,7 @@ import {
 } from '@/api/adminMail';
 import type { MailType } from '@/api/mail';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
@@ -147,7 +147,7 @@ function handleErr(e: unknown): void {
 <template>
   <AppShell>
     <section class="admin-mail-view" data-testid="admin-mail-view">
-      <XTHeroEyebrow han="繁隄函交" label="Phi Tiên Báo Tán" />
+      <XTPageEyebrow caps="PHI TIÊN BÁO TÁN" label="Phi Tiên Báo Tán" />
       <h1 class="mt-1">{{ t('adminMail.title') }}</h1>
       <p class="muted">{{ t('adminMail.subtitle') }}</p>
 

@@ -276,7 +276,7 @@ onBeforeUnmount(() => {
           <span
             class="xt-seal xt-seal--lg"
             aria-hidden="true"
-          >玄</span>
+          >❖</span>
           <span>
             <span class="xt-heading-co block text-base tracking-[0.24em]">Cửu Thiên Mộng</span>
             <span class="xt-eyebrow block !text-[9px] mt-0.5">

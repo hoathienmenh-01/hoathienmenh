@@ -9,7 +9,7 @@ import { useBadgesStore } from '@/stores/badges';
 import { useStoryDungeonStore } from '@/stores/storyDungeon';
 import { getCharacter } from '@/api/character';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import MButton from '@/components/ui/MButton.vue';
 import NextActionPanel from '@/components/NextActionPanel.vue';
@@ -117,7 +117,7 @@ async function onBreakthrough(): Promise<void> {
 <template>
   <AppShell>
     <header class="mb-3 ve-section-enter" data-testid="home-eyebrow">
-      <XTHeroEyebrow han="仙游归处" label="Tiên Du Quy Xứ" />
+      <XTPageEyebrow label="Tiên Du Quy Xứ" />
     </header>
 
     <LiveOpsAnnouncementMarquee class="mb-2 ve-section-enter ve-section-enter-delay-1" />
@@ -151,8 +151,8 @@ async function onBreakthrough(): Promise<void> {
       <!-- Compact character summary card — wrap với XTSealFrame jade tone (Đạo Thân presence). -->
       <XTSealFrame
         tone="jade"
-        corner-glyphs="仙游归处"
-        watermark="道"
+        
+        
         rounded="xl"
         inset="tight"
         class="mb-4 ve-section-enter ve-section-enter-delay-2"
@@ -162,11 +162,9 @@ async function onBreakthrough(): Promise<void> {
         <section class="rounded-xl border border-[rgba(242,215,137,0.25)] bg-[rgba(14,19,24,0.55)] p-4 ve-card-interactive ve-card-glow" data-testid="home-char-summary">
           <div class="flex items-center justify-between gap-3 mb-3">
             <div>
-              <XTHeroEyebrow
-                han="道身仙骨"
+              <XTPageEyebrow
                 label="Đạo Thân Tiên Cốt"
-                test-id="home-char-summary-eyebrow"
-              />
+                test-id="home-char-summary-eyebrow" />
               <h2 class="mt-1 text-lg tracking-widest font-bold">{{ game.character.name }}</h2>
               <span class="text-xs text-[var(--xt-gold-bright)]">{{ game.realmFullName }}</span>
             </div>

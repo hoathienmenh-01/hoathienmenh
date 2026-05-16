@@ -1,23 +1,27 @@
 <script setup lang="ts">
 /**
- * Cửu Thiên Mộng — `XTSealDivider` (Phase 5 decorative primitive).
+ * Cửu Thiên Mộng — `XTSealDivider` (PR3.5 thuần Việt divider).
  *
  * Dải phân cách section cổ phong. Đường gold mỏng kéo từ 2 bên, một con
  * "triện chu" (seal) hình vuông nhỏ ở giữa đè lên đường — gợi tới ấn son
  * triện trên giấy tranh thủy mặc.
  *
  * Có 3 mode:
- *   - `default`: seal hình vuông in chữ Hán (prop `glyph`, default 「天」).
+ *   - `default`: seal hình vuông in ornament thuần Việt (prop `glyph`,
+ *     default "❖"). Cho phép tối đa 2 ký tự.
  *   - `dot`: seal là 1 chấm tròn jade — dùng trong minimal admin.
  *   - `bare`: chỉ dải gold không có seal — dùng giữa các tile bento dày.
  *
  * Props:
- *   - `glyph`: 1 ký tự Hán hiển thị trong seal (auto giới hạn 1-2 char).
+ *   - `glyph`: 1-2 ký tự thuần Việt hiển thị trong seal (default "❖").
+ *     Nếu chứa ký tự Hán → fallback về "❖".
  *   - `align`: `center` | `left` | `right` — vị trí seal trên dải.
  *   - `tone`: `gold` (default) | `jade` | `seal` cho màu dải/khung.
  *   - `width`: prop dạng CSS length cho dài tối đa, hoặc `full`.
  */
 import { computed } from 'vue';
+
+const HAN_RE = /[\u4e00-\u9fff]/;
 
 const props = withDefaults(
   defineProps<{
@@ -31,7 +35,7 @@ const props = withDefaults(
   }>(),
   {
     mode: 'default',
-    glyph: '天',
+    glyph: '❖',
     align: 'center',
     tone: 'gold',
     width: 'full',
@@ -45,7 +49,12 @@ const widthStyle = computed(() => {
   return { width: props.width, maxWidth: '100%' };
 });
 
-const truncatedGlyph = computed(() => (props.glyph ?? '').slice(0, 2));
+/** Ép thuần Việt: nếu glyph chứa Hán, fallback về ornament mặc định. */
+const truncatedGlyph = computed(() => {
+  const raw = (props.glyph ?? '').slice(0, 2);
+  if (!raw) return '❖';
+  return HAN_RE.test(raw) ? '❖' : raw;
+});
 </script>
 
 <template>

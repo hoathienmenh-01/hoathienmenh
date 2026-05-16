@@ -12,7 +12,8 @@ import { useI18n } from 'vue-i18n';
 import { useWorldContentStore } from '@/stores/worldContent';
 import type { SectBossView, SectDungeonView } from '@/api/worldContent';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 
 const { t, locale } = useI18n();
 const store = useWorldContentStore();
@@ -45,11 +46,21 @@ onMounted(() => {
 <template>
   <AppShell>
     <section class="sect-content" data-testid="sect-content-view">
-      <header>
-        <XTHeroEyebrow han="宗门豆其" label="Tông Môn Nội Vụ" />
-        <h1 class="mt-1">{{ t('worldContent.sect.title') }}</h1>
-        <p>{{ t('worldContent.sect.subtitle') }}</p>
-      </header>
+      <XTSealFrame
+        tone="gold"
+        corner-ornaments="❀❦❀❦"
+        watermark-letter="G"
+        rounded="xl"
+        inset="tight"
+        test-id="sect-content-seal-frame"
+        aria-label="Tông Môn Nội Vụ hero frame"
+      >
+        <header>
+          <XTPageEyebrow caps="TÔNG MÔN NỘI VỤ" label="Tông Môn Nội Vụ" />
+          <h1 class="mt-1">{{ t('worldContent.sect.title') }}</h1>
+          <p>{{ t('worldContent.sect.subtitle') }}</p>
+        </header>
+      </XTSealFrame>
 
       <nav class="sect-content__tabs">
         <button

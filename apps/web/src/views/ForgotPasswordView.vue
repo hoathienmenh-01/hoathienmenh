@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n';
 import { useToastStore } from '@/stores/toast';
 import * as authApi from '@/api/auth';
 import MButton from '@/components/ui/MButton.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 /**
@@ -67,7 +68,8 @@ function goReset(): void {
     <div
       class="w-full max-w-md border-2 border-ink-300/60 rounded-md bg-ink-700/40 backdrop-blur-md p-6 shadow-2xl"
     >
-      <h1 class="text-2xl text-center text-ink-100 tracking-widest">
+      <XTPageEyebrow caps="QUÊN MẬT KHÓA" label="Quên Mật Khóa" />
+      <h1 class="text-2xl text-center text-ink-100 tracking-widest mt-1">
         {{ t('auth.forgot.title') }}
       </h1>
       <p class="text-center text-ink-300 italic mt-2 text-sm">

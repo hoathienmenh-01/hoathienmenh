@@ -81,19 +81,24 @@ const rarityClass = computed(() => {
   }
 });
 
+/**
+ * Cửu Thiên Mộng PR3.5 — rune thuần Việt cho `RareDropPopup`.
+ *
+ * Mỗi tier rarity map sang một symbol decorative thay cho chữ Hán cũ.
+ */
 const rarityRune = computed(() => {
   switch (props.rarity) {
     case 'RARE':
-      return '珍';
+      return '◆';
     case 'EPIC':
-      return '奇';
+      return '✦';
     case 'LEGENDARY':
-      return '宝';
+      return '✺';
     case 'MYTHIC':
     case 'IMMORTAL':
-      return '神';
+      return '❖';
     default:
-      return '物';
+      return '•';
   }
 });
 
@@ -204,7 +209,7 @@ const silkRollerStyle = computed(() => {
           height: 52px;
           background: radial-gradient(circle, rgba(74, 59, 24, 0.42) 0%, rgba(11, 16, 24, 0.85) 80%);
           box-shadow: inset 0 0 8px rgba(242, 215, 137, 0.22);
-          font-family: 'Ma Shan Zheng', 'Noto Serif SC', serif;
+          font-family: 'Cinzel', 'Cormorant Garamond', serif;
           font-size: 28px;
           line-height: 1;
         "

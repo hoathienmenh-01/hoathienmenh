@@ -42,7 +42,7 @@ import {
 import { getCurrentBoss, type BossView } from '@/api/boss';
 import type { TopupOrderView } from '@/api/topup';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import ConfirmModal from '@/components/ui/ConfirmModal.vue';
 import AdminLiveOpsPanel from '@/components/AdminLiveOpsPanel.vue';
@@ -764,7 +764,7 @@ const isAdmin = () => game.character?.role === 'ADMIN';
   <AppShell>
     <div class="max-w-6xl mx-auto space-y-4">
       <header class="flex flex-col gap-1">
-        <XTHeroEyebrow han="天床仮堡" label="Thiên Sàng Dương Quan" />
+        <XTPageEyebrow caps="THIÊN SÀNG DƯƠNG QUAN" label="Thiên Sàng Dương Quan" />
         <div class="flex items-center gap-3 mt-1">
           <h1 class="text-2xl tracking-widest font-bold">{{ t('admin.title') }}</h1>
           <span class="text-amber-200 text-xs">{{ t('admin.roleLabel', { role: game.character?.role ?? '?' }) }}</span>

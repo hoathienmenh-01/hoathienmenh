@@ -6,7 +6,8 @@ import { useAuthStore } from '@/stores/auth';
 import { useOnboardingQuestStore } from '@/stores/onboardingQuest';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import type {
   OnboardingDayView,
   OnboardingTaskView,
@@ -138,24 +139,34 @@ onMounted(async () => {
 <template>
   <AppShell>
     <section class="space-y-4 p-4">
-      <header class="space-y-1">
-        <XTHeroEyebrow han="初到仙途" label="Sơ Kiến Tiên Lộ" />
-        <h1 class="text-2xl font-bold mt-1">
-          {{ t('onboardingQuest.title') }}
-        </h1>
-        <p class="text-sm text-gray-300">
-          {{ t('onboardingQuest.subtitle') }}
-        </p>
-        <p class="text-sm text-amber-300">
-          {{
-            t('onboardingQuest.overallProgress', {
-              claimed: store.totalClaimed,
-              total: store.totalTasks,
-              pct: store.overallPct,
-            })
-          }}
-        </p>
-      </header>
+      <XTSealFrame
+        tone="gold"
+        corner-ornaments="❀✦❀✦"
+        watermark-letter="T"
+        rounded="xl"
+        inset="tight"
+        test-id="onboarding-quest-view-seal-frame"
+        aria-label="Sơ Kiến Tiên Lộ hero frame"
+      >
+        <header class="space-y-1">
+          <XTPageEyebrow caps="SƠ KIẾN TIÊN LỘ" label="Sơ Kiến Tiên Lộ" />
+          <h1 class="text-2xl font-bold mt-1">
+            {{ t('onboardingQuest.title') }}
+          </h1>
+          <p class="text-sm text-gray-300">
+            {{ t('onboardingQuest.subtitle') }}
+          </p>
+          <p class="text-sm text-amber-300">
+            {{
+              t('onboardingQuest.overallProgress', {
+                claimed: store.totalClaimed,
+                total: store.totalTasks,
+                pct: store.overallPct,
+              })
+            }}
+          </p>
+        </header>
+      </XTSealFrame>
 
       <!-- Day grid -->
       <div v-if="selectedDay === null">

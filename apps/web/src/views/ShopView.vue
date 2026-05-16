@@ -8,7 +8,8 @@ import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
 import { buyFromShop, listNpcShop, type ShopEntry } from '@/api/shop';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
@@ -97,17 +98,27 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="max-w-4xl mx-auto space-y-4">
-      <header class="flex items-baseline justify-between gap-3">
-        <div>
-          <XTHeroEyebrow han="仙阒招牌" label="Tiên Trạm Chính Biển" />
-          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('shop.title') }}</h1>
-          <p class="text-sm text-ink-300">{{ t('shop.subtitle') }}</p>
-        </div>
-        <div class="text-right text-sm">
-          <div class="text-amber-200 font-bold">{{ balance }}</div>
-          <div class="text-xs text-ink-300">{{ t('shop.balance') }}</div>
-        </div>
-      </header>
+      <XTSealFrame
+        tone="gold"
+        corner-ornaments="❀✦❀✦"
+        watermark-letter="T"
+        rounded="xl"
+        inset="tight"
+        test-id="shop-view-seal-frame"
+        aria-label="Tiên Trạm Chính Biển hero frame"
+      >
+        <header class="flex items-baseline justify-between gap-3">
+          <div>
+            <XTPageEyebrow caps="TIÊN TRẠM CHÍNH BIỂN" label="Tiên Trạm Chính Biển" />
+            <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('shop.title') }}</h1>
+            <p class="text-sm text-ink-300">{{ t('shop.subtitle') }}</p>
+          </div>
+          <div class="text-right text-sm">
+            <div class="text-amber-200 font-bold">{{ balance }}</div>
+            <div class="text-xs text-ink-300">{{ t('shop.balance') }}</div>
+          </div>
+        </header>
+      </XTSealFrame>
 
       <div v-if="loading" class="text-ink-300 text-sm">{{ t('common.loading') }}</div>
 

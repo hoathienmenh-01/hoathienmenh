@@ -17,7 +17,8 @@ import {
   type LogType,
 } from '@/api/logs';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import SkeletonBlock from '@/components/ui/SkeletonBlock.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
@@ -122,11 +123,21 @@ const errorMessage = computed(() => {
 <template>
   <AppShell>
     <div class="max-w-3xl mx-auto space-y-4">
-      <header>
-        <XTHeroEyebrow han="佳节盛会" label="Giải Tiệc Thịnh Hội" />
-        <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('activity.title') }}</h1>
-        <p class="text-sm text-ink-300">{{ t('activity.subtitle') }}</p>
-      </header>
+      <XTSealFrame
+        tone="jade"
+        corner-ornaments="❖❧❖❧"
+        watermark-letter="M"
+        rounded="xl"
+        inset="tight"
+        test-id="activity-view-seal-frame"
+        aria-label="Giải Tiệc Thịnh Hội hero frame"
+      >
+        <header>
+          <XTPageEyebrow caps="GIẢI TIỆC THỊNH HỘI" label="Giải Tiệc Thịnh Hội" />
+          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('activity.title') }}</h1>
+          <p class="text-sm text-ink-300">{{ t('activity.subtitle') }}</p>
+        </header>
+      </XTSealFrame>
 
       <nav class="flex gap-2" data-testid="activity-tabs">
         <button
