@@ -47,8 +47,10 @@ let npc: NpcService;
  * (1 cho `notifyAction.then`, 1 cho update).
  */
 async function flushFireAndForget(): Promise<void> {
-  await new Promise((r) => setImmediate(r));
-  await new Promise((r) => setImmediate(r));
+  // 2 macrotask ticks đủ cho `void notifyAction(...)` → `updateMany`
+  // promise chain flush vào DB.
+  await new Promise((r) => setTimeout(r, 0));
+  await new Promise((r) => setTimeout(r, 0));
 }
 
 beforeAll(() => {
