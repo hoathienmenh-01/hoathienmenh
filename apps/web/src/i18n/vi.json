@@ -7319,6 +7319,63 @@
       "UNAUTHENTICATED": "Vui lòng đăng nhập lại."
     }
   },
+  "adminHallOfFame": {
+    "eyebrow": "Tong Mon Tuong Vinh",
+    "title": "Quản trị · Tông Môn Tướng Vinh",
+    "subtitle": "Lịch sử top sect · MVP · trạng thái phát thưởng · snapshot champion (chỉ đọc).",
+    "notAdminTitle": "Không có quyền",
+    "notAdminDescription": "Khu vực này chỉ dành cho ADMIN.",
+    "emptyTitle": "Chưa có mùa giải nào",
+    "emptyDescription": "Endpoint /admin/sect-season/hall-of-fame chưa có season nào đã chốt — quay lại sau khi cron settlement chạy.",
+    "checkedAt": "Lấy lúc",
+    "filters": {
+      "title": "Lọc danh sách",
+      "season": "Khoá mùa giải (chứa…)",
+      "sect": "Tông Môn (chứa…)",
+      "mvp": "MVP (chứa…)",
+      "clear": "Xoá lọc",
+      "count": "Hiển thị {visible}/{total}"
+    },
+    "seasons": {
+      "title": "Tóm tắt mùa giải",
+      "filteredEmpty": "Không có mùa giải nào khớp bộ lọc.",
+      "season": "Mùa giải",
+      "finalizedAt": "Chốt lúc",
+      "champion": "Quán quân Tông",
+      "score": "Điểm",
+      "totals": "Tông / Thành viên / Tổng điểm",
+      "mvp": "MVP",
+      "mvpSect": "Tông MVP",
+      "points": "Điểm",
+      "rewardStatus": "Trạng thái phát thưởng",
+      "championGrants": "Champion grant",
+      "mvpGrants": "MVP grant",
+      "lastChampionGrantAt": "Champion grant gần nhất",
+      "lastMvpGrantAt": "MVP grant gần nhất",
+      "snapshotMembers": "Snapshot member",
+      "snapshotMissing": "Thiếu snapshot membership (legacy hoặc chưa chốt)."
+    },
+    "aggregate": {
+      "title": "Hall of Fame tổng hợp",
+      "totalSeasons": "Tổng số mùa giải đã chốt: {n}",
+      "topSects": "Top Tông Môn",
+      "topSectsEmpty": "Chưa có Tông nào được vinh danh.",
+      "topMembers": "Top Cá nhân",
+      "topMembersEmpty": "Chưa có cá nhân nào được vinh danh.",
+      "col": {
+        "championships": "Chức vô địch",
+        "podiums": "Top 3",
+        "appearances": "Lần góp mặt",
+        "bestRank": "Hạng cao nhất",
+        "mvps": "Số lần MVP"
+      }
+    },
+    "errors": {
+      "UNKNOWN": "Không tải được dữ liệu Hall of Fame.",
+      "UNAUTHENTICATED": "Vui lòng đăng nhập lại.",
+      "FORBIDDEN": "Bạn không có quyền truy cập."
+    }
+  },
   "adminSystemStatus": {
     "title": "Quản trị · Tình trạng hệ thống",
     "subtitle": "Health · phiên bản · uptime · lỗi gần đây · integrity check (chỉ đọc).",
