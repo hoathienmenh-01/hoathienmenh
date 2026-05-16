@@ -65,6 +65,10 @@ const gameState: {
   bindSocket: ReturnType<typeof vi.fn>;
   setCultivating: ReturnType<typeof vi.fn>;
   breakthrough: ReturnType<typeof vi.fn>;
+  hydrateUnreadMail: ReturnType<typeof vi.fn>;
+  hydrateCurrentSect: ReturnType<typeof vi.fn>;
+  unreadMail: number;
+  currentSect: null;
 } = {
   character: null,
   realmFullName: 'Luyện Khí — Sơ Cấp 1',
@@ -75,6 +79,10 @@ const gameState: {
   bindSocket: vi.fn(),
   setCultivating: vi.fn().mockResolvedValue(undefined),
   breakthrough: vi.fn().mockResolvedValue(undefined),
+  hydrateUnreadMail: vi.fn().mockResolvedValue(undefined),
+  hydrateCurrentSect: vi.fn().mockResolvedValue(undefined),
+  unreadMail: 0,
+  currentSect: null,
 };
 vi.mock('@/stores/game', () => ({
   useGameStore: () => gameState,

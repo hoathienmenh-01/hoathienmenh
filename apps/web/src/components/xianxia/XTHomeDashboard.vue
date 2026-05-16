@@ -17,11 +17,23 @@
  * sidebar / topbar / bottom-nav riêng nên dashboard chỉ render phần
  * **nội dung**, tránh trùng lặp navigation.
  *
- * Tất cả data lấy từ `@/data/homeDashboardMock` — UI-only, không gọi API.
+ * Phase 15.10 — Live player data wiring. Trước đây toàn bộ panel đọc từ
+ * `@/data/homeDashboardMock` (mock VIP: "Thiên Vân — Đại Thừa Kỳ Bậc 9 /
+ * 12.568.890 Linh Thạch / Thanh Vân Tông …"). Bây giờ các trường người
+ * chơi thấy ngay (tên / cảnh giới / lực chiến / linh thạch / tiên ngọc /
+ * tông môn / mail badge) đọc từ `useGameStore` (character, currentSect,
+ * unreadMail). Khi `game.character` rỗng → empty state an toàn ("—" / 0 /
+ * "Chưa gia nhập tông môn"), **không** fallback về mock VIP.
+ *
+ * Các section gameplay sâu (recent quests, equipment slots, sect chat
+ * messages, daily reward, sidebar/bottomNav/feature cards) tạm thời vẫn
+ * đọc từ mock structure vì chưa có store mapping 1:1 sẵn — sẽ wire ở PR
+ * tiếp theo (xem `docs/AI_HANDOFF_REPORT.md` Phase 15.10).
  */
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useIsLgUp } from '@/composables/useMediaQuery';
+import { useGameStore } from '@/stores/game';
 import XTHomeSidebar from './XTHomeSidebar.vue';
 import XTHomeTopBar from './XTHomeTopBar.vue';
 import XTHomeHeroBanner from './XTHomeHeroBanner.vue';
@@ -40,18 +52,15 @@ import {
   heroBanner,
   heroQuickActions,
   mobileIconGrid,
-  playerHeader,
   recentQuests,
-  resources,
   sidebarGroups,
-  statTiles,
-  statTilesMobile,
-  topbarMail,
-  sectPanel,
+  sectPanel as sectPanelMock,
   equipmentSlots,
   inventoryPanel,
   dailyReward,
   type HomeBottomNavItem,
+  type HomeResource,
+  type HomeStatTile,
 } from '@/data/homeDashboardMock';
 
 withDefaults(
@@ -76,6 +85,7 @@ withDefaults(
 
 const isLgUp = useIsLgUp();
 const router = useRouter();
+const game = useGameStore();
 
 const showDesktopChrome = computed(
   () => isLgUp.value,
@@ -83,6 +93,171 @@ const showDesktopChrome = computed(
 const showMobileChrome = computed(
   () => !isLgUp.value,
 );
+
+const EMPTY_VALUE = '—';
+const NO_SECT = 'Chưa gia nhập tông môn';
+
+function formatVN(n: number | bigint | string | null | undefined): string {
+  if (n === null || n === undefined || n === '') return '0';
+  try {
+    if (typeof n === 'string') return new Intl.NumberFormat('vi-VN').format(BigInt(n));
+    return new Intl.NumberFormat('vi-VN').format(n);
+  } catch {
+    return '0';
+  }
+}
+
+/**
+ * Phase 15.10 — Live player header derived từ `game.character`. Khi store
+ * chưa có character (chưa hydrate hoặc fail) → empty placeholders, KHÔNG
+ * lộ mock VIP "Thiên Vân / Đại Thừa Kỳ Bậc 9 / 8.256.789".
+ */
+const livePlayerHeader = computed(() => {
+  const c = game.character;
+  if (!c) {
+    return {
+      name: EMPTY_VALUE,
+      realm: EMPTY_VALUE,
+      stage: EMPTY_VALUE,
+      stagePill: EMPTY_VALUE,
+      level: 0,
+      power: '0',
+      avatarGlyph: '☯',
+    };
+  }
+  const realm = game.realmFullName || c.realmKey || EMPTY_VALUE;
+  return {
+    name: c.name,
+    realm,
+    stage: realm,
+    stagePill: `Bậc ${c.realmStage}`,
+    level: c.level,
+    power: formatVN(c.power),
+    avatarGlyph: '☯',
+  };
+});
+
+/**
+ * Phase 15.10 — Resources strip (topbar + mobile header). Linh thạch / tiên
+ * ngọc đọc từ store; tử tinh + danh vọng chưa có trong `CharacterStatePayload`
+ * nên giữ giá trị 0 (an toàn, không lộ mock VIP). Wire thật khi BE thêm field.
+ */
+const liveResources = computed<HomeResource[]>(() => {
+  const c = game.character;
+  return [
+    {
+      key: 'linhThach',
+      label: 'Linh thạch',
+      value: c ? formatVN(c.linhThach) : '0',
+      glyph: '◈',
+      tone: 'jade',
+    },
+    {
+      key: 'tienNgoc',
+      label: 'Tiên ngọc',
+      value: c ? formatVN(c.tienNgoc) : '0',
+      glyph: '◆',
+      tone: 'gold',
+    },
+    { key: 'tuTinh', label: 'Tử tinh', value: '0', glyph: '✦', tone: 'violet' },
+    { key: 'danhVong', label: 'Danh vọng', value: '0', glyph: '♛', tone: 'smoke' },
+  ];
+});
+
+/**
+ * Phase 15.10 — Desktop stat tiles row (6 ô). Tu vi / lực chiến / linh thạch
+ * / tiên ngọc / sect đọc thật từ store. Danh vọng tạm 0 (BE chưa có).
+ */
+const liveStatTiles = computed<HomeStatTile[]>(() => {
+  const c = game.character;
+  const sect = game.currentSect;
+  if (!c) {
+    return [
+      { key: 'tuVi', label: 'Tu vi', value: '0', meta: EMPTY_VALUE, glyph: '✦', tone: 'jade' },
+      { key: 'lucChien', label: 'Lực chiến', value: '0', glyph: '⚔', tone: 'seal' },
+      { key: 'linhThach', label: 'Linh thạch', value: '0', glyph: '◈', tone: 'cyan' },
+      { key: 'tienNgoc', label: 'Tiên ngọc', value: '0', glyph: '◆', tone: 'gold' },
+      { key: 'danhVong', label: 'Danh vọng', value: '0', glyph: '♛', tone: 'violet' },
+      { key: 'sect', label: 'Tông môn', value: NO_SECT, glyph: '⛩', tone: 'jade' },
+    ];
+  }
+  return [
+    {
+      key: 'tuVi',
+      label: 'Tu vi',
+      value: formatVN(c.exp),
+      meta: game.realmFullName || c.realmKey || EMPTY_VALUE,
+      glyph: '✦',
+      tone: 'jade',
+    },
+    { key: 'lucChien', label: 'Lực chiến', value: formatVN(c.power), glyph: '⚔', tone: 'seal' },
+    { key: 'linhThach', label: 'Linh thạch', value: formatVN(c.linhThach), glyph: '◈', tone: 'cyan' },
+    { key: 'tienNgoc', label: 'Tiên ngọc', value: formatVN(c.tienNgoc), glyph: '◆', tone: 'gold' },
+    { key: 'danhVong', label: 'Danh vọng', value: '0', glyph: '♛', tone: 'violet' },
+    {
+      key: 'sect',
+      label: 'Tông môn',
+      value: sect?.name ?? NO_SECT,
+      glyph: '⛩',
+      tone: 'jade',
+    },
+  ];
+});
+
+/**
+ * Phase 15.10 — Mobile compact stat tiles (4 ô). Cùng nguồn store, chỉ rút
+ * gọn còn 4 mục cho viewport hẹp.
+ */
+const liveStatTilesMobile = computed<HomeStatTile[]>(() => {
+  const c = game.character;
+  const sect = game.currentSect;
+  if (!c) {
+    return [
+      { key: 'linhThach', label: 'Linh thạch', value: '0', glyph: '◈', tone: 'cyan' },
+      { key: 'tienNgoc', label: 'Tiên ngọc', value: '0', glyph: '◆', tone: 'gold' },
+      { key: 'danhVong', label: 'Danh vọng', value: '0', glyph: '♛', tone: 'violet' },
+      { key: 'sect', label: 'Tông môn', value: NO_SECT, glyph: '⛩', tone: 'jade' },
+    ];
+  }
+  return [
+    { key: 'linhThach', label: 'Linh thạch', value: formatVN(c.linhThach), glyph: '◈', tone: 'cyan' },
+    { key: 'tienNgoc', label: 'Tiên ngọc', value: formatVN(c.tienNgoc), glyph: '◆', tone: 'gold' },
+    { key: 'danhVong', label: 'Danh vọng', value: '0', glyph: '♛', tone: 'violet' },
+    {
+      key: 'sect',
+      label: 'Tông môn',
+      value: sect?.name ?? NO_SECT,
+      glyph: '⛩',
+      tone: 'jade',
+    },
+  ];
+});
+
+/** Phase 15.10 — Mail badge số thư chưa đọc, từ `game.unreadMail`. */
+const liveMailBadge = computed(() => game.unreadMail);
+
+/**
+ * Phase 15.10 — Sect & chat panel info. Tên / cấp / số thành viên lấy từ
+ * `game.currentSect`; nếu chưa có (chưa hydrate hoặc player chưa vào tông)
+ * → empty state "Chưa gia nhập tông môn" + cấp 0.
+ */
+const liveSectPanel = computed(() => {
+  const sect = game.currentSect;
+  if (!sect) {
+    return {
+      title: sectPanelMock.title,
+      sectName: NO_SECT,
+      sectLevel: 0,
+      members: '0 / 0',
+    };
+  }
+  return {
+    title: sectPanelMock.title,
+    sectName: sect.name,
+    sectLevel: sect.level,
+    members: `${sect.memberCount}`,
+  };
+});
 
 function onQuickAction(key: string): void {
   switch (key) {
@@ -142,24 +317,24 @@ function onChatSend(_msg: string): void {
     </template>
 
     <div class="xt-home-dash__main" :class="{ 'xt-home-dash__main--with-sidebar': chrome === 'standalone' && showDesktopChrome }">
-      <!-- Standalone mobile header -->
+      <!-- Standalone mobile header (Phase 15.10 — wired live player + resources). -->
       <XTHomeMobileHeader
         v-if="chrome === 'standalone' && showMobileChrome"
-        :player="playerHeader"
-        :resources="resources"
-        :mail-badge="topbarMail.badge"
+        :player="livePlayerHeader"
+        :resources="liveResources"
+        :mail-badge="liveMailBadge"
         :brand="heroBanner"
         @open-mail="onMail"
         @open-menu="onMenu"
         @claim-resource="onResource"
       />
 
-      <!-- Standalone desktop topbar -->
+      <!-- Standalone desktop topbar (Phase 15.10 — wired live). -->
       <XTHomeTopBar
         v-if="chrome === 'standalone' && showDesktopChrome"
-        :player="playerHeader"
-        :resources="resources"
-        :mail-badge="topbarMail.badge"
+        :player="livePlayerHeader"
+        :resources="liveResources"
+        :mail-badge="liveMailBadge"
         @claim-resource="onResource"
         @open-mail="onMail"
         @open-menu="onMenu"
@@ -186,9 +361,11 @@ function onChatSend(_msg: string): void {
           @claim-reward="onClaimReward"
         />
 
-        <!-- Stat tiles -->
+        <!-- Stat tiles (Phase 15.10 — wired live tu vi / lực chiến / linh thạch /
+             tiên ngọc / tông môn từ `useGameStore`, fallback 0 + "Chưa gia
+             nhập tông môn" khi store rỗng). -->
         <XTHomeStatTiles
-          :tiles="showMobileChrome ? statTilesMobile : statTiles"
+          :tiles="showMobileChrome ? liveStatTilesMobile : liveStatTiles"
           :columns="showMobileChrome ? 'four' : 'six'"
           test-id="home-stat-tiles"
         />
@@ -227,8 +404,11 @@ function onChatSend(_msg: string): void {
             :compact="showMobileChrome"
             test-id="home-inventory-panel"
           />
+          <!-- Phase 15.10 — sect panel header (tên / cấp / số thành viên) đã
+               wire từ `game.currentSect`. Chat messages tạm thời vẫn dùng mock
+               vì BE chat live socket chưa wire ở đây — sẽ thay tiếp PR sau. -->
           <XTHomeSectChatPanel
-            :info="sectPanel"
+            :info="liveSectPanel"
             :messages="chatMessages"
             :compact="showMobileChrome"
             test-id="home-sect-chat-panel"
