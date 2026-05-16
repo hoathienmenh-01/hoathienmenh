@@ -568,3 +568,101 @@ describe('Phase 15.8 — sectSeasonCronStatus.health', () => {
     expect(r.data.health.status).toBe('STALE');
   });
 });
+
+/**
+ * Phase 15.8 — Composite cron health overview endpoint. Trả về snapshot
+ * health của territory + sect-season + weekly trong 1 request. Worst
+ * status được tính bằng `pickWorstCronHealthStatus`.
+ */
+describe('Phase 15.8 — cronHealthOverview', () => {
+  const ORIGINAL_ENV = { ...process.env };
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV };
+  });
+
+  it('shape: trả 3 cron entries + worstStatus + checkedAt ISO', async () => {
+    process.env.TERRITORY_CRON_ENABLED = 'true';
+    process.env.SECT_SEASON_CRON_ENABLED = 'true';
+    const c = makeStatusController({});
+    const r = await c.cronHealthOverview();
+    expect(r.ok).toBe(true);
+    expect(typeof r.data.checkedAt).toBe('string');
+    expect(r.data.checkedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(r.data.crons.map((x) => x.cronKey).sort()).toEqual(
+      ['sect-season', 'territory', 'weekly'].sort(),
+    );
+    expect(['OK', 'STALE', 'DEGRADED', 'DISABLED']).toContain(
+      r.data.worstStatus,
+    );
+    for (const entry of r.data.crons) {
+      expect(typeof entry.enabled).toBe('boolean');
+      expect(typeof entry.cron).toBe('string');
+      expect(typeof entry.timezone).toBe('string');
+      expect(typeof entry.maxSilenceMs).toBe('number');
+      expect(entry.maxSilenceMs).toBeGreaterThan(0);
+    }
+  });
+
+  it('worstStatus DEGRADED khi 1 cron DEGRADED + còn lại OK', async () => {
+    process.env.TERRITORY_CRON_ENABLED = 'true';
+    process.env.SECT_SEASON_CRON_ENABLED = 'true';
+    const recentOk = new Date(Date.now() - 6 * 60 * 60 * 1000);
+    const recentErr = new Date(Date.now() - 1 * 60 * 60 * 1000);
+    const oldOk = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    const c = makeStatusController({
+      cronRunLogs: {
+        territory: [
+          { startedAt: recentOk, finishedAt: recentOk, success: true },
+        ],
+        'sect-season': [
+          { startedAt: oldOk, finishedAt: oldOk, success: true },
+          {
+            startedAt: recentErr,
+            finishedAt: recentErr,
+            success: false,
+          },
+        ],
+        weekly: [
+          { startedAt: recentOk, finishedAt: recentOk, success: true },
+        ],
+      },
+    });
+    const r = await c.cronHealthOverview();
+    expect(r.data.worstStatus).toBe('DEGRADED');
+    const sectEntry = r.data.crons.find(
+      (x) => x.cronKey === 'sect-season',
+    );
+    expect(sectEntry?.status).toBe('DEGRADED');
+  });
+
+  it('worstStatus DISABLED khi tất cả disabled', async () => {
+    process.env.TERRITORY_CRON_ENABLED = 'false';
+    process.env.SECT_SEASON_CRON_ENABLED = 'false';
+    const c = makeStatusController({});
+    const r = await c.cronHealthOverview();
+    expect(r.data.worstStatus).toBe('DISABLED');
+    for (const entry of r.data.crons) {
+      expect(entry.enabled).toBe(false);
+      expect(entry.status).toBe('DISABLED');
+    }
+  });
+
+  it('worstStatus STALE khi enabled nhưng chưa từng run', async () => {
+    process.env.TERRITORY_CRON_ENABLED = 'true';
+    process.env.SECT_SEASON_CRON_ENABLED = 'true';
+    const c = makeStatusController({});
+    const r = await c.cronHealthOverview();
+    // Enabled crons + chưa có run log nào → STALE; weekly chia sẻ
+    // territory enable.
+    expect(['STALE']).toContain(r.data.worstStatus);
+  });
+
+  it('weekly entry dùng WEEKLY_CRON_MAX_SILENCE_MS = 8 ngày', async () => {
+    process.env.TERRITORY_CRON_ENABLED = 'true';
+    const c = makeStatusController({});
+    const r = await c.cronHealthOverview();
+    const weekly = r.data.crons.find((x) => x.cronKey === 'weekly');
+    expect(weekly).toBeTruthy();
+    expect(weekly!.maxSilenceMs).toBe(8 * 24 * 60 * 60 * 1000);
+  });
+});
