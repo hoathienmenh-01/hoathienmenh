@@ -62,6 +62,8 @@ const DISABLED_CFG: BackupConfig = {
   timezone: 'Asia/Ho_Chi_Minh',
   backupDir: './backups',
   retentionDays: 0,
+  offsiteUploadEnabled: false,
+  alertConsecutiveFailures: 0,
 };
 
 describe('Phase 17.2 — BackupScheduler.scheduleRecurring', () => {
