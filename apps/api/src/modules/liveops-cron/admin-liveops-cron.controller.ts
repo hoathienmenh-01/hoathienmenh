@@ -15,8 +15,14 @@ import {
   previousTerritoryPeriodKey,
   SECT_SEASON_CRON_MAX_SILENCE_MS,
   TERRITORY_CRON_MAX_SILENCE_MS,
+  WEEKLY_CRON_MAX_SILENCE_MS,
+  LIVEOPS_CRON_KEYS,
   computeLiveOpsCronHealth,
+  pickWorstCronHealthStatus,
+  type LiveOpsCronHealthEntry,
+  type LiveOpsCronHealthOverview,
   type LiveOpsCronHealthStatus,
+  type LiveOpsCronKeyShared,
 } from '@xuantoi/shared';
 import { AdminGuard } from '../admin/admin.guard';
 import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
@@ -26,6 +32,7 @@ import { readLiveOpsCronConfig } from './liveops-cron.config';
 import {
   LIVEOPS_CRON_KEY_SECT_SEASON,
   LIVEOPS_CRON_KEY_TERRITORY,
+  LIVEOPS_CRON_KEY_WEEKLY,
   LiveOpsCronService,
   type LiveOpsCronKey,
   type SectSeasonCycleSummary,
@@ -419,6 +426,107 @@ export class AdminLiveOpsCronController {
           staleReason: health.staleReason,
           nextExpectedRunAt: health.nextExpectedRunAt,
         },
+      },
+    };
+  }
+
+  /**
+   * Phase 15.8 — `GET /admin/liveops/cron-health`. Composite snapshot
+   * trả health của mọi cron key (territory + sect-season + weekly) trong
+   * 1 request. Admin dashboard dùng để render badge tổng + per-cron
+   * detail mà không cần gọi 3 endpoint riêng.
+   *
+   * Read-only — không audit (paper trail không cần thiết cho status check;
+   * AdminGuard đã ghi access log).
+   */
+  @Get('admin/liveops/cron-health')
+  @RequireAdmin()
+  async cronHealthOverview(): Promise<{
+    ok: true;
+    data: LiveOpsCronHealthOverview;
+  }> {
+    const cfg = readLiveOpsCronConfig();
+    const now = new Date();
+    const [territoryHealth, sectSeasonHealth, weeklyHealth] =
+      await Promise.all([
+        readCronHealth(
+          this.prisma,
+          LIVEOPS_CRON_KEY_TERRITORY,
+          cfg.territoryEnabled,
+          TERRITORY_CRON_MAX_SILENCE_MS,
+          now,
+        ),
+        readCronHealth(
+          this.prisma,
+          LIVEOPS_CRON_KEY_SECT_SEASON,
+          cfg.sectSeasonEnabled,
+          SECT_SEASON_CRON_MAX_SILENCE_MS,
+          now,
+        ),
+        readCronHealth(
+          this.prisma,
+          LIVEOPS_CRON_KEY_WEEKLY,
+          // Weekly cron không có ENV toggle riêng — coi như enabled khi
+          // territory enabled (orchestrator chạy chung lease với
+          // territory cycle). Future-proof: nếu split, đổi config.
+          cfg.territoryEnabled,
+          WEEKLY_CRON_MAX_SILENCE_MS,
+          now,
+        ),
+      ]);
+    const crons: LiveOpsCronHealthEntry[] = [
+      {
+        cronKey: LIVEOPS_CRON_KEYS.TERRITORY as LiveOpsCronKeyShared,
+        enabled: cfg.territoryEnabled,
+        cron: cfg.territoryCron,
+        timezone: cfg.timezone,
+        maxSilenceMs: TERRITORY_CRON_MAX_SILENCE_MS,
+        status: territoryHealth.status,
+        lastRunAt: territoryHealth.lastRunAt,
+        lastSuccessAt: territoryHealth.lastSuccessAt,
+        lastErrorAt: territoryHealth.lastErrorAt,
+        staleReason: territoryHealth.staleReason,
+        nextExpectedRunAt: territoryHealth.nextExpectedRunAt,
+      },
+      {
+        cronKey: LIVEOPS_CRON_KEYS.SECT_SEASON as LiveOpsCronKeyShared,
+        enabled: cfg.sectSeasonEnabled,
+        cron: cfg.sectSeasonCron,
+        timezone: cfg.timezone,
+        maxSilenceMs: SECT_SEASON_CRON_MAX_SILENCE_MS,
+        status: sectSeasonHealth.status,
+        lastRunAt: sectSeasonHealth.lastRunAt,
+        lastSuccessAt: sectSeasonHealth.lastSuccessAt,
+        lastErrorAt: sectSeasonHealth.lastErrorAt,
+        staleReason: sectSeasonHealth.staleReason,
+        nextExpectedRunAt: sectSeasonHealth.nextExpectedRunAt,
+      },
+      {
+        cronKey: LIVEOPS_CRON_KEYS.WEEKLY as LiveOpsCronKeyShared,
+        enabled: cfg.territoryEnabled,
+        // Weekly cron không có expression độc lập (chạy đồng pha
+        // với territory). Reuse territory expression để admin biết
+        // cadence — KHÔNG hardcode '5 0 * * 1' để tránh lệch khi env
+        // override territory cron.
+        cron: cfg.territoryCron,
+        timezone: cfg.timezone,
+        maxSilenceMs: WEEKLY_CRON_MAX_SILENCE_MS,
+        status: weeklyHealth.status,
+        lastRunAt: weeklyHealth.lastRunAt,
+        lastSuccessAt: weeklyHealth.lastSuccessAt,
+        lastErrorAt: weeklyHealth.lastErrorAt,
+        staleReason: weeklyHealth.staleReason,
+        nextExpectedRunAt: weeklyHealth.nextExpectedRunAt,
+      },
+    ];
+    return {
+      ok: true,
+      data: {
+        checkedAt: now.toISOString(),
+        crons,
+        worstStatus: pickWorstCronHealthStatus(
+          crons.map((c) => c.status),
+        ),
       },
     };
   }

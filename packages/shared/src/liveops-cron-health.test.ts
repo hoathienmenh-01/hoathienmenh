@@ -7,6 +7,9 @@ import {
   computeLiveOpsCronHealth,
   TERRITORY_CRON_MAX_SILENCE_MS,
   SECT_SEASON_CRON_MAX_SILENCE_MS,
+  WEEKLY_CRON_MAX_SILENCE_MS,
+  LIVEOPS_CRON_KEYS,
+  pickWorstCronHealthStatus,
 } from './liveops-cron-health';
 
 const NOW = new Date('2026-08-01T00:00:00.000Z');
@@ -126,5 +129,56 @@ describe('Phase 15.8 — computeLiveOpsCronHealth', () => {
       now: NOW,
     });
     expect(r.status).toBe('DISABLED');
+  });
+
+  it('WEEKLY_CRON_MAX_SILENCE_MS = 8 ngày — STALE khi > 8d, OK khi <= 8d', () => {
+    const justInside = computeLiveOpsCronHealth({
+      enabled: true,
+      lastRunAt: new Date(NOW.getTime() - 7 * DAY),
+      lastSuccessAt: new Date(NOW.getTime() - 7 * DAY),
+      lastErrorAt: null,
+      maxSilenceMs: WEEKLY_CRON_MAX_SILENCE_MS,
+      now: NOW,
+    });
+    expect(justInside.status).toBe('OK');
+    const justOver = computeLiveOpsCronHealth({
+      enabled: true,
+      lastRunAt: new Date(NOW.getTime() - 9 * DAY),
+      lastSuccessAt: new Date(NOW.getTime() - 9 * DAY),
+      lastErrorAt: null,
+      maxSilenceMs: WEEKLY_CRON_MAX_SILENCE_MS,
+      now: NOW,
+    });
+    expect(justOver.status).toBe('STALE');
+  });
+});
+
+describe('Phase 15.8 — LIVEOPS_CRON_KEYS const', () => {
+  it('expose territory/sect-season/weekly literal strings', () => {
+    expect(LIVEOPS_CRON_KEYS.TERRITORY).toBe('territory');
+    expect(LIVEOPS_CRON_KEYS.SECT_SEASON).toBe('sect-season');
+    expect(LIVEOPS_CRON_KEYS.WEEKLY).toBe('weekly');
+  });
+});
+
+describe('Phase 15.8 — pickWorstCronHealthStatus', () => {
+  it('empty → OK (no alarm)', () => {
+    expect(pickWorstCronHealthStatus([])).toBe('OK');
+  });
+  it('toàn DISABLED → DISABLED', () => {
+    expect(pickWorstCronHealthStatus(['DISABLED', 'DISABLED'])).toBe(
+      'DISABLED',
+    );
+  });
+  it('OK trộn DISABLED → OK (OK rank > DISABLED)', () => {
+    expect(pickWorstCronHealthStatus(['DISABLED', 'OK'])).toBe('OK');
+  });
+  it('STALE thắng OK', () => {
+    expect(pickWorstCronHealthStatus(['OK', 'STALE'])).toBe('STALE');
+  });
+  it('DEGRADED thắng STALE', () => {
+    expect(pickWorstCronHealthStatus(['STALE', 'DEGRADED', 'OK'])).toBe(
+      'DEGRADED',
+    );
   });
 });

@@ -3,7 +3,9 @@ import { SectSeasonService } from './sect-season.service';
 import { SectSeasonHistoryService } from './sect-season-history.service';
 import { SectSeasonRewardService } from './sect-season-reward.service';
 import { SectSeasonController } from './sect-season.controller';
+import { AdminSectSeasonController } from './admin-sect-season.controller';
 import { PrismaService } from '../../common/prisma.service';
+import { AdminModule } from '../admin/admin.module';
 import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
 import { InventoryModule } from '../inventory/inventory.module';
@@ -17,8 +19,8 @@ import { InventoryModule } from '../inventory/inventory.module';
 // snapshot đã chốt. Reward delivery 100% qua Mail (không touch
 // CurrencyService trực tiếp — player tự MAIL_CLAIM).
 @Module({
-  imports: [AuthModule, CharacterModule, InventoryModule],
-  controllers: [SectSeasonController],
+  imports: [AdminModule, AuthModule, CharacterModule, InventoryModule],
+  controllers: [SectSeasonController, AdminSectSeasonController],
   providers: [
     SectSeasonService,
     SectSeasonHistoryService,

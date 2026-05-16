@@ -573,6 +573,13 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/AdminSystemStatusView.vue'),
   },
   {
+    // Phase 15.8 — Admin Hall of Fame (sect season history + reward
+    // grant status + champion snapshot meta, read-only ADMIN-only).
+    path: '/admin/hall-of-fame',
+    name: 'admin-hall-of-fame',
+    component: () => import('@/views/AdminHallOfFameView.vue'),
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/views/NotFoundView.vue'),

@@ -7319,6 +7319,63 @@
       "UNAUTHENTICATED": "Please log in again."
     }
   },
+  "adminHallOfFame": {
+    "eyebrow": "Sect Hall of Fame",
+    "title": "Admin · Sect Hall of Fame",
+    "subtitle": "Top sect / MVP history · reward grant status · champion snapshot (read-only).",
+    "notAdminTitle": "No access",
+    "notAdminDescription": "This view is restricted to ADMIN.",
+    "emptyTitle": "No finalized season yet",
+    "emptyDescription": "/admin/sect-season/hall-of-fame has no finalized season — come back once the settlement cron runs.",
+    "checkedAt": "Fetched at",
+    "filters": {
+      "title": "Filter list",
+      "season": "Season key (contains…)",
+      "sect": "Sect (contains…)",
+      "mvp": "MVP (contains…)",
+      "clear": "Clear filters",
+      "count": "Showing {visible}/{total}"
+    },
+    "seasons": {
+      "title": "Season summary",
+      "filteredEmpty": "No season matches the current filters.",
+      "season": "Season",
+      "finalizedAt": "Finalized at",
+      "champion": "Champion sect",
+      "score": "Score",
+      "totals": "Sects / Contributors / Total points",
+      "mvp": "MVP",
+      "mvpSect": "MVP sect",
+      "points": "Points",
+      "rewardStatus": "Reward grant status",
+      "championGrants": "Champion grants",
+      "mvpGrants": "MVP grants",
+      "lastChampionGrantAt": "Last champion grant",
+      "lastMvpGrantAt": "Last MVP grant",
+      "snapshotMembers": "Snapshot members",
+      "snapshotMissing": "Champion snapshot missing (legacy or not yet finalized)."
+    },
+    "aggregate": {
+      "title": "Aggregate Hall of Fame",
+      "totalSeasons": "Total finalized seasons: {n}",
+      "topSects": "Top sects",
+      "topSectsEmpty": "No sect has been honored yet.",
+      "topMembers": "Top members",
+      "topMembersEmpty": "No member has been honored yet.",
+      "col": {
+        "championships": "Championships",
+        "podiums": "Podiums",
+        "appearances": "Appearances",
+        "bestRank": "Best rank",
+        "mvps": "MVPs"
+      }
+    },
+    "errors": {
+      "UNKNOWN": "Failed to load Hall of Fame.",
+      "UNAUTHENTICATED": "Please log in again.",
+      "FORBIDDEN": "You do not have permission."
+    }
+  },
   "adminSystemStatus": {
     "title": "Admin · System Status",
     "subtitle": "Health · version · uptime · recent errors · integrity check (read-only).",

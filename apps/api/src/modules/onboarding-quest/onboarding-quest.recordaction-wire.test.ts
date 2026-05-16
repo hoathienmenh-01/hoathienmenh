@@ -41,16 +41,23 @@ let mail: MailService;
 let npc: NpcService;
 
 /**
- * Wait 1 microtask cycle để fire-and-forget `notifyAction` flush vào DB.
- * recordAction await `updateMany` — đã trả Promise. Caller dùng `void
- * notifyAction(...)` → await ở test chỉ cần `await Promise.resolve()` 2 lần
- * (1 cho `notifyAction.then`, 1 cho update).
+ * Track all in-flight `notifyAction` promises kicked off by `void
+ * onboarding.notifyAction(...)` in production callers (mail/npc/inventory).
+ * `flushFireAndForget` drains this queue deterministically — replaces the
+ * earlier `setTimeout(0)` x2 race which flaked under CI load.
+ */
+const pendingNotifies: Promise<void>[] = [];
+
+/**
+ * Drain all queued `notifyAction` promises. Loops until the queue is empty
+ * because awaiting one notify can chain further work (defensive — current
+ * impl is single-step but cheap to guard).
  */
 async function flushFireAndForget(): Promise<void> {
-  // 2 macrotask ticks đủ cho `void notifyAction(...)` → `updateMany`
-  // promise chain flush vào DB.
-  await new Promise((r) => setTimeout(r, 0));
-  await new Promise((r) => setTimeout(r, 0));
+  while (pendingNotifies.length > 0) {
+    const batch = pendingNotifies.splice(0);
+    await Promise.all(batch);
+  }
 }
 
 beforeAll(() => {
@@ -61,6 +68,19 @@ beforeAll(() => {
   const currency = new CurrencyService(prisma);
   const title = new TitleService(prisma);
   onboarding = new OnboardingQuestService(prisma, currency, title);
+  // Wrap `notifyAction` so every `void this.onboarding.notifyAction(...)`
+  // call from production code registers its Promise in `pendingNotifies`.
+  // Method lookup happens dynamically on the instance, so callers that
+  // were constructed below pick up the wrapped impl automatically.
+  const originalNotify = onboarding.notifyAction.bind(onboarding);
+  onboarding.notifyAction = (
+    characterId: string,
+    actionType: Parameters<typeof originalNotify>[1],
+  ): Promise<void> => {
+    const p = originalNotify(characterId, actionType);
+    pendingNotifies.push(p);
+    return p;
+  };
   inventory = new InventoryService(prisma, realtime, chars, undefined, onboarding);
   const webPush = new WebPushService(prisma);
   mail = new MailService(

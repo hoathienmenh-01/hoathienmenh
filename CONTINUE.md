@@ -1,137 +1,149 @@
-# CONTINUE — Beta Safe Integration & Operations Sweep
+# CONTINUE — Phase 15.8 LiveOps Maintenance Polish Bundle
 
-Branch: `devin/20260516-153244-beta-safe-integration-ops`
+Branch: `devin/20260516-182312-phase-15-8-liveops-maintenance-polish`
 Base: `main` của `hoathienmenh-01/xuantoi`.
 
-Mục tiêu: vá các integration gap còn lại trước beta (feature flag wiring,
-gameplay follow-up, backup runtime, smoke rate-limit, NPC gift timezone) mà
-KHÔNG mở scope mới (Alchemy V2, NPC Romance/Marriage, Arena V2, Sect War,
-Spirit Vein Territory, Admin Control Center V2 PR2-PR6, Real-time PvP đều
-defer).
+Mục tiêu: vận hành beta/liveops an toàn — cron health metric +
+staleness alert, champion membership snapshot cho audit, admin Hall of
+Fame view xem lịch sử top sect / MVP qua mùa giải, runbook hướng dẫn
+ops. KHÔNG mở scope mới (Alchemy V2, NPC Romance / Marriage, Arena V2,
+Sect War, Spirit Vein Territory, Real-time PvP đều defer).
+
+> Lịch sử PR trước (Beta Safe Integration & Ops Sweep — branch
+> `devin/20260516-153244-beta-safe-integration-ops`) đã merge `main`
+> (PR #617, commit `8ab1baf2`). Mục lưu trữ tham khảo dưới phần "PR
+> trước" cuối file.
 
 ---
 
 ## TỔNG QUAN
 
-PR = 7 commit + 1 docs commit:
-
 | Commit | Phase | Summary |
 |---|---|---|
-| `1d8d8f3f` | 45.0 finish | Feature flag + remote config audit wiring |
-| `719b397e` | 44.2 | Gameplay sweep (combat/inventory/mail/npc/onboarding) |
-| `b0eef2f7` | 44.2 fix | `setTimeout` thay `setImmediate` cho lint |
-| `7293cfd5` | 17.3 part 1 | Backup offsite + alert config foundation |
-| `c0656c35` | 3.2–3.5 | Backup verification + offsite upload runtime + admin UI |
-| `f6b3ea44` | 5 (QA-003) | Smoke flush auth rate-limit helper |
-| `6574da19` | 6 | NPC gift daily bucket UTC → ICT (Asia/Ho_Chi_Minh) |
-| `<docs>` | 7 | Update `CONTINUE.md` + `docs/AI_HANDOFF_REPORT.md` |
-
-Phase 4 (QA-004 admin reload redirect) đã ship trong foundation commit
-`e28f1e33` (đã merge `main`) — KHÔNG cần thêm code trong PR này.
+| `82fdfdc4` | 1 | `LiveOpsCronHealth` model + service + shared `evaluateCronStaleness()` + admin endpoint |
+| `c2109033` | 2 | `SectSeasonChampionSnapshot` + `SectSeasonChampionSnapshotMember` + settlement wire + idempotent upsert |
+| `3ca8c0e7` | 3 (API) | `getAdminHallOfFame()` service + `GET /admin/sect-season/hall-of-fame` (`@RequireAdmin()`) + tests |
+| `7b57f82e` | 3 (web) | `adminSectSeason.ts` client + `AdminHallOfFameView.vue` + route `/admin/hall-of-fame` + i18n VI/EN + 7 component tests |
+| `<docs>` | 4 | `docs/runbooks/liveops-maintenance.md` + update `CONTINUE.md` + `docs/AI_HANDOFF_REPORT.md` |
 
 ---
 
 ## PHASE LOG
 
-### Phase 45.0 finish — Feature flag wiring (`1d8d8f3f`)
-- `VISUAL_EFFECTS_ENABLED`: AppShell skip `XTAmbientCanvas` layer (mesh +
-  halo + motes) khi admin toggle off. Fail-open nếu store chưa hydrate.
-- Admin remote-config audit history view: read-only endpoint
-  `GET /admin/remote-config/audit` (filter: key / action / limit cap 200,
-  hits `AdminAuditLog` scoped `ADMIN_REMOTE_CONFIG_*`, KHÔNG expose secret)
-  + FE `AdminRemoteConfigHistoryPanel.vue` + i18n VI/EN parity.
-- Mid-priority flag wired:
-  - `AUCTION_HOUSE_ENABLED`: xtNav entry filtered khi off; `/auction` +
-    `/market-v2` route gated qua `beforeEnter` guard.
-  - `STORY_V2_ENABLED`: `/story-v2` route gated qua `beforeEnter` guard.
-  - Cả 2 flag flip `public:true` để FE store đọc được.
-- Guard fail-open khi fetch lỗi; server vẫn enforce `FEATURE_DISABLED` 503
-  ở lớp cuối (defense-in-depth).
+### Phase 1 — Cron health metric + staleness alert (`82fdfdc4`)
 
-### Phase 44.2 — Gameplay integration sweep (`719b397e` + `b0eef2f7`)
-- Combat: CombatModule import PetCombatModule; CombatService inject
-  optional pet stat aggregator → wire pet combat bonus.
-- Inventory: InventoryModule import NotificationModule; InventoryService
-  trigger stamina-full passive notification khi player chạm cap.
-- Mail: MailModule import OnboardingQuestModule để cascade quest action
-  khi mail claim.
-- NPC: NpcModule import OnboardingQuestModule (parity với mail) — gift /
-  chat action `recordAction` cascade.
-- Onboarding: regression test
-  `onboarding-quest.recordaction-wire.test.ts` (~241 dòng) verify cascade
-  end-to-end qua combat / inventory / mail / npc.
-- Migration additive `phase_44_2_secret_realm_active_unique` (UNIQUE
-  partial index `WHERE state IN ('ACTIVE','PENDING')` → chống duplicate
-  active secret realm run per character).
-- Lint fix: `setImmediate` không hợp lệ trong test runtime → swap sang
-  `setTimeout(..., 0)`.
+- `packages/shared/src/liveops-cron-health.ts`: pure
+  `evaluateCronStaleness({ cadence, lastRunAt, now })` trả `OK | STALE
+  | OVERDUE | NEVER_RAN`. Thresholds shared (FE+API):
+  - `weekly`: stale ≥ 7d, overdue ≥ 14d.
+  - `daily`: stale ≥ 24h, overdue ≥ 48h.
+- `LiveOpsCronHealth` Prisma model (UNIQUE `jobKey`, `lastRunAt`,
+  `lastStatus`, `lastDurationMs`, `lastError` truncated 1KB,
+  `consecutiveFailures` reset-on-OK / inc-on-FAIL).
+- `LiveOpsCronHealthService.recordRun()` upsert sau mỗi cron tick,
+  wired vào `LiveOpsCronService.runWeeklyCycle()`, territory weekly,
+  sect-season weekly settlement.
+- `GET /admin/liveops/cron-health` (`@RequireAdmin()`) — read-only,
+  return per-job `staleness` + `staleSinceMs` + last-run + last-status
+  + consecutiveFailures.
+- Tests: shared threshold matrix
+  (`packages/shared/src/liveops-cron-health.test.ts`) + admin
+  controller guard / payload shape
+  (`apps/api/src/modules/liveops-cron/admin-liveops-cron.controller.test.ts`).
 
-### Phase 17.3 part 1 — Backup config foundation (`7293cfd5`)
-- `backup.config.ts`: thêm `offsiteUploadEnabled`
-  (`BACKUP_OFFSITE_UPLOAD_ENABLED`, default `false`) +
-  `alertConsecutiveFailures` (`BACKUP_ALERT_CONSECUTIVE_FAILURES`, default
-  `3`). Cover bằng `backup.config.test.ts` (+29 dòng).
-- `packages/shared/src/backup.ts`: thêm type `BackupOffsiteEntry` +
-  `BackupAlertState`, mở rộng `BackupStatusResponse`.
-- Chưa wire vào `BackupService` runtime (xong ở Phase 3.2–3.5).
+### Phase 2 — Champion membership snapshot (`c2109033`)
 
-### Phase 3.2–3.5 — Backup verification + offsite upload runtime (`c0656c35`)
-- `BackupService` verify hardening: hash digest compare, size guard,
-  schema sanity check; structured `BackupAlertState` (consecutive failure
-  counter, last failure reason, last verified at).
-- Offsite upload: gated qua flag; ghi `BackupOffsiteEntry` per snapshot
-  (bucket / path / hash / size / timestamp). Lỗi không crash backup
-  primary path — chỉ tăng counter + log alert.
-- Admin UI: `AdminBackupPanel.vue` thêm offsite section + alert badge.
-  i18n VI/EN parity (12 key mới).
-- Test mới: `backup.service.test.ts` (+329 dòng) +
-  `admin-backup.controller.test.ts` (+12 dòng) +
-  `AdminBackupPanel.test.ts` (+93 dòng).
+- Prisma additive:
+  - `SectSeasonChampionSnapshot` (UNIQUE `(seasonId, sectId)`, `rank`,
+    `memberCount`, `createdAt`, `updatedAt`).
+  - `SectSeasonChampionSnapshotMember` (FK + UNIQUE `(snapshotId,
+    characterId)`, `userId`, `characterName`, `role`, `contribution`,
+    `power`, `joinedAt`).
+- Cap: `SECT_SEASON_CHAMPION_MEMBER_CAP = 100` (enforce ở write
+  path).
+- Idempotent: `upsert` snapshot + `createMany skipDuplicates`
+  members. Chạy settlement 2 lần → cùng state, KHÔNG duplicate, KHÔNG
+  re-grant (`SectSeasonRewardGrant` UNIQUE vẫn là source of truth).
+- Member rời sect SAU settlement → snapshot KHÔNG bị xoá (decoupled
+  khỏi `Membership`).
+- Legacy seasons trước Phase 15.8 không có snapshot → admin endpoint
+  trả `snapshotMissing: true` (UI hiển thị badge "snapshot missing
+  (legacy or not yet finalized)"), KHÔNG backfill.
 
-### Phase 5 (QA-003) — Smoke flush auth rate-limit (`f6b3ea44`)
-- `scripts/flush-auth-rate-limits.mjs`: refactor để vừa chạy CLI vừa
-  expose `flushAuthRateLimits()` programmatic API.
-- `scripts/smoke-auth.mjs`: wire flush trước khi smoke register flow.
-- `scripts/smoke-all.mjs`: import flush helper trước aggregator.
-- `apps/api/src/ops/flush-rate-limits.test.ts`: 221 dòng regression
-  coverage (Redis keyspace match, partial flush no-op safe, env override).
-- Resolve open issue QA-003 trong `docs/AI_HANDOFF_REPORT.md`.
+### Phase 3 — Admin Hall of Fame view (`3ca8c0e7` API + `7b57f82e` web)
 
-### Phase 6 — NPC gift daily bucket UTC → ICT (`6574da19`)
-- `npc-affinity.service.ts`: `getDailyGiftBucket()` từ
-  `new Date().toISOString().slice(0, 10)` (UTC) → format ICT
-  (`Asia/Ho_Chi_Minh`) parity với mission / daily-login reset.
-- Test: `npc-affinity.service.test.ts` thêm assertion cross-day boundary
-  (23:30 UTC = ICT 06:30 hôm sau → cùng-day ICT bucket cũ vẫn còn 30 phút).
-- Resolve impl-note "NPC Gift daily bucket reset 07:00 ICT bất tiện"
-  trong `docs/AI_HANDOFF_REPORT.md`.
+API (`3ca8c0e7`):
+- `SectSeasonHistoryService.getAdminHallOfFame()` join:
+  - `SectSeasonSnapshot` (finalized seasons, sort `finalizedAt` DESC).
+  - `SectSeasonSectRank` (top sect / score per season).
+  - `SectSeasonTopMember` (MVP per season).
+  - `SectSeasonRewardGrant` aggregate (count + max(createdAt) grouped
+    by `seasonId` × `kind` = CHAMPION / MVP).
+  - `SectSeasonChampionSnapshot` (member count + createdAt).
+  - Existing `getHallOfFame()` aggregate (top sects / members across
+    all seasons + totalSeasonsFinalized).
+- New TS types: `AdminSectSeasonRewardStatus`,
+  `AdminSectSeasonChampionSnapshotMeta`, `AdminSectSeasonSummary`,
+  `AdminSectSeasonHallOfFameView`.
+- `GET /admin/sect-season/hall-of-fame` (`@RequireAdmin()`,
+  read-only). Non-admin → `FORBIDDEN`.
+- No sensitive data exposed: chỉ character names, points, sect
+  names, timestamps đã có public trên hall-of-fame panel của player.
+  Reward AMOUNTS và per-grant ledger rows KHÔNG expose — chỉ count +
+  last-at.
 
-### Phase 7 — Docs + final gate
-Commit này: update `CONTINUE.md` + `docs/AI_HANDOFF_REPORT.md` với log đầy
-đủ rồi mở PR.
+Web (`7b57f82e`):
+- `apps/web/src/api/adminSectSeason.ts` — client wrapper
+  `getAdminSectSeasonHallOfFame()` + types parity với API DTO.
+- `apps/web/src/views/AdminHallOfFameView.vue` — Cửu Thiên Mộng admin
+  view, ADMIN-only (MOD cũng forbidden ở 15.8). Non-admin → endpoint
+  KHÔNG được gọi.
+  - Filter bar (client-side substring): season key / sect / MVP +
+    Clear + count badge `visible/total`.
+  - Per-season cards: champion + score, MVP + points, reward grant
+    counts + last-at, snapshot member count, snapshot-missing badge
+    cho legacy.
+  - Aggregate Hall of Fame: top sects / top members / total seasons.
+- Route `/admin/hall-of-fame` lazy-loaded.
+- i18n parity: `adminHallOfFame.*` `vi.json` + `en.json`.
+- 7 component tests: forbidden cho PLAYER / MOD (endpoint NOT
+  called), empty, populated, filter season / MVP / sect, clear.
+
+### Phase 4 — Docs / runbook
+
+- New: `docs/runbooks/liveops-maintenance.md` — runbook tập trung:
+  cron health flow + thresholds + triage, champion snapshot purpose +
+  verification SQL probes, admin Hall of Fame route + access control,
+  test evidence, defer list.
+- Updated `CONTINUE.md` (file này) + `docs/AI_HANDOFF_REPORT.md`
+  executive summary entry cho Phase 15.8.
 
 ---
 
 ## RISK NOTES
 
-- **Feature flag gating**: cả 3 flag (`VISUAL_EFFECTS_ENABLED`,
-  `AUCTION_HOUSE_ENABLED`, `STORY_V2_ENABLED`) fail-open khi store chưa
-  hydrate hoặc fetch lỗi. Server `FEATURE_DISABLED` 503 vẫn là lớp cuối
-  ngăn truy cập runtime — KHÔNG dựa duy nhất vào FE guard.
-- **Backup offsite**: mặc định OFF (`BACKUP_OFFSITE_UPLOAD_ENABLED=false`).
-  Khi bật, lỗi upload không crash backup primary — chỉ tăng
-  `BackupAlertState.consecutiveFailures` + log alert. Admin phải config
-  bucket env trước khi enable.
-- **Pet combat bonus**: optional inject — nếu PetCombatModule chưa load,
-  CombatService fallback skip bonus aggregation (không throw).
-- **Stamina-full notification**: debounce qua InventoryService internal
-  flag → chỉ trigger 1 lần per breach point, không spam khi player tick
-  liên tục ở cap.
-- **Auth hydration admin route**: QA-004 fix đã ship trong foundation
-  commit (`e28f1e33` merged `main`). PR này KHÔNG đụng lại.
-- **NPC gift timezone**: chuyển UTC → ICT có thể cho player claim gift
-  thêm 1 lượt nếu hôm trước claim lúc UTC bucket gần 17:00 ICT. Gift tier
-  nhỏ (< 200 linh thạch/lượt), KHÔNG vi phạm econ.
+- **Cron health thresholds**: `weekly` 7d/14d, `daily` 24h/48h
+  hard-coded trong shared module — đảm bảo FE+API in sync. Future
+  tuning qua env additive (signature đã nhận `{ cadence }`). KHÔNG
+  paging ở 15.8; state là read-only trong admin view. Operator
+  action khi STALE / OVERDUE → xem
+  `docs/runbooks/liveops-maintenance.md` §1.4.
+- **Snapshot idempotency**: `SectSeasonChampionSnapshot` upsert keyed
+  `(seasonId, sectId)`; members `createMany skipDuplicates` keyed
+  `(snapshotId, characterId)`. Chạy settlement 2 lần → identical
+  state, KHÔNG re-grant (`SectSeasonRewardGrant` UNIQUE vẫn
+  authoritative). Member-cap = 100 enforce ở write time, KHÔNG
+  retroactively prune.
+- **Admin Hall of Fame access control**: `@RequireAdmin()` reject
+  non-ADMIN (MOD included) với `FORBIDDEN`. FE double-guard (MOD
+  thấy not-admin empty state và request KHÔNG fire). Endpoint
+  read-only — không mutation, không rewrite history. Ledger details
+  per-grant KHÔNG expose; chỉ count + last-grant-at.
+- **No Prisma migration drift**: chỉ additive tables / indexes
+  (Phase 1 `LiveOpsCronHealth`, Phase 2 `SectSeasonChampionSnapshot`
+  + `SectSeasonChampionSnapshotMember`). Rollback strategy
+  `docs/RUNBOOK.md` §1.5.7 áp dụng — soft revert by removing code
+  path is safe, hard drop chỉ sau soak.
 
 ---
 
@@ -139,38 +151,61 @@ Commit này: update `CONTINUE.md` + `docs/AI_HANDOFF_REPORT.md` với log đầy
 
 | Workspace | Result |
 |---|---|
-| `pnpm --filter @xuantoi/shared build` | ✅ pass |
-| `pnpm --filter @xuantoi/shared test` | ✅ 4169/4169 |
-| `pnpm -C apps/api lint` | ✅ pass |
-| `pnpm -C apps/api test` | ⏳ chạy với Postgres + Redis up (Phase 7) |
-| `pnpm -C apps/web lint` | ✅ pass |
-| `pnpm -C apps/web typecheck` | ✅ pass |
-| `pnpm -C apps/web test` | ✅ 2486/2486 |
-| Han gate `rg '[\x{4e00}-\x{9fff}]' apps/web/src` | ✅ 0 match |
+| `pnpm -C apps/api lint` | pass |
+| `pnpm -C apps/api test` | new suites pass (cron health, sect-season history admin, admin controller); pre-existing unrelated flakes ở rate-limiter / maintenance-window — KHÔNG trong scope 15.8 |
+| `pnpm -C apps/web lint` (max-warnings 0) | pass |
+| `pnpm -C apps/web typecheck` | pass |
+| `pnpm -C apps/web test` | 234 files / 2493 tests pass |
+| Han gate `[\u4e00-\u9fff]` over `apps/web/src` | 0 match |
+
+New tests Phase 15.8:
+- `packages/shared/src/liveops-cron-health.test.ts` — threshold matrix
+  per cadence + null / NEVER_RAN.
+- `apps/api/src/modules/liveops-cron/admin-liveops-cron.controller.test.ts`
+  — admin guard + payload shape + mixed staleness.
+- `apps/api/src/modules/sect-season/admin-sect-season.controller.test.ts`
+  — Hall of Fame endpoint guard + shape.
+- `apps/api/src/modules/sect-season/sect-season-history.service.test.ts`
+  — `getAdminHallOfFame` multi-season aggregation, reward grant
+  status, snapshot meta, sort descending.
+- `apps/web/src/views/__tests__/AdminHallOfFameView.test.ts` — 7 cases
+  (forbidden cho PLAYER + MOD, empty, populated render, filter
+  season / MVP / sect, clear).
 
 ---
 
 ## CỐ Ý KHÔNG LÀM (defer)
 
-- Alchemy V2 (Phase 26.1).
-- NPC Romance / Marriage Path (Phase 12.10.E).
-- Arena V2 follow-up (season reward / Hall of Fame / ELO curve).
-- Sect War foundation (Phase 29.1).
-- Spirit Vein Territory (Phase 29.2).
-- Admin Control Center V2 PR2-PR6 (player support / editor UI /
-  LiveOpsSchedule versioning / anti-cheat actions / runbook).
+- Alchemy V2.
+- NPC Romance / Marriage Path.
+- Arena V2 follow-up (season reward / ELO curve).
+- Sect War foundation.
+- Spirit Vein Territory.
 - Real-time PvP.
+- Real-time alerting / paging on cron failures (state surfaced trong
+  admin view; paging là follow-up phase).
+- Mutating endpoint trên Admin Hall of Fame (read-only by design).
+- Reward settlement logic change (snapshot là audit-only, grant gate
+  KHÔNG đổi).
 
 ---
 
 ## QUY TẮC CỨNG (đã tuân thủ)
 
-- KHÔNG push thẳng `main`.
-- KHÔNG mở PR mới — finalize 1 PR duy nhất trên branch hiện hành.
-- KHÔNG disable / xoá test để pass. KHÔNG fake green.
+- KHÔNG push thẳng `main`. Branch đã push GitHub TRƯỚC khi code.
+- KHÔNG giữ code local: mỗi phase commit + push ngay (`82fdfdc4` →
+  `c2109033` → `3ca8c0e7` → `7b57f82e` → docs).
+- KHÔNG tách PR — 1 PR duy nhất trên branch hiện hành.
+- KHÔNG mở hệ thống lớn ngoài scope (xem defer list).
+- KHÔNG disable / xoá test. KHÔNG fake green.
 - KHÔNG commit secret.
 - KHÔNG bypass `ECONOMY_MODEL` invariant.
 - KHÔNG grant Tiên Ngọc qua admin bypass.
-- KHÔNG đổi Prisma schema / migration ngoài UNIQUE additive đã ship.
+- KHÔNG đổi Prisma schema / migration ngoài UNIQUE / additive đã
+  ship.
 - KHÔNG phá i18n parity, KHÔNG thêm chữ Hán (`[\u4e00-\u9fff]`) vào
-  `apps/web/src`, KHÔNG phá `data-testid`.
+  `apps/web/src`.
+- KHÔNG phá admin guard — `@RequireAdmin()` enforce ở mọi endpoint
+  mới + FE double-guard.
+- KHÔNG phá reward settlement — `SectSeasonRewardGrant` UNIQUE vẫn
+  source of truth; snapshot chỉ là audit layer.

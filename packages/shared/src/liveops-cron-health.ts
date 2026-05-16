@@ -66,6 +66,88 @@ export const TERRITORY_CRON_MAX_SILENCE_MS = 8 * DAY_MS;
  */
 export const SECT_SEASON_CRON_MAX_SILENCE_MS = 2 * DAY_MS;
 
+/**
+ * Phase 15.8 — Recommended silence threshold cho weekly composite cron
+ * (admin force-run hoặc inner orchestrator). Cùng kỳ vọng như territory
+ * (Mon 00:05 ICT) → 8 ngày trước khi báo STALE.
+ *
+ * Đặt riêng để future-proof: nếu tách weekly cron khỏi territory cycle
+ * (vd batch newsletter / leaderboard wrap-up) thì threshold không bị
+ * lock theo territory.
+ */
+export const WEEKLY_CRON_MAX_SILENCE_MS = 8 * DAY_MS;
+
+/**
+ * Phase 15.8 — Stable cron key literals shared giữa BE và FE. Match
+ * `LiveOpsCronRunLog.cronKey` enum string ở runtime; FE dùng để render
+ * label / icon nhất quán.
+ */
+export const LIVEOPS_CRON_KEYS = {
+  TERRITORY: 'territory',
+  SECT_SEASON: 'sect-season',
+  WEEKLY: 'weekly',
+} as const;
+
+export type LiveOpsCronKeyShared =
+  (typeof LIVEOPS_CRON_KEYS)[keyof typeof LIVEOPS_CRON_KEYS];
+
+/**
+ * Phase 15.8 — Composite `GET /admin/liveops/cron-health` payload shape.
+ * Trả về snapshot health của mọi cron key cùng lúc cho admin dashboard.
+ *
+ * `crons[*].cronKey` dùng {@link LIVEOPS_CRON_KEYS}.
+ * `crons[*].maxSilenceMs` denormalize threshold để FE quyết định tô màu
+ * mà không cần hardcode lại constant.
+ */
+export interface LiveOpsCronHealthEntry {
+  readonly cronKey: LiveOpsCronKeyShared;
+  readonly enabled: boolean;
+  readonly cron: string;
+  readonly timezone: string;
+  readonly maxSilenceMs: number;
+  readonly status: LiveOpsCronHealthStatus;
+  readonly lastRunAt: string | null;
+  readonly lastSuccessAt: string | null;
+  readonly lastErrorAt: string | null;
+  readonly staleReason: string | null;
+  readonly nextExpectedRunAt: string | null;
+}
+
+export interface LiveOpsCronHealthOverview {
+  readonly checkedAt: string;
+  readonly crons: ReadonlyArray<LiveOpsCronHealthEntry>;
+  /**
+   * Worst-case status across mọi cron entry (priority:
+   * `DEGRADED` > `STALE` > `OK` > `DISABLED`). Cho admin badge tổng
+   * chung — nếu là `OK` thì không có cron nào báo động.
+   */
+  readonly worstStatus: LiveOpsCronHealthStatus;
+}
+
+const STATUS_RANK: Record<LiveOpsCronHealthStatus, number> = {
+  DEGRADED: 3,
+  STALE: 2,
+  OK: 1,
+  DISABLED: 0,
+};
+
+/**
+ * Phase 15.8 — Pick worst status từ list (max rank). Trả `OK` nếu mảng
+ * rỗng (mặc định no-data → don't alarm). Khi list non-empty, bắt đầu
+ * từ phần tử đầu tiên (không default `OK`) để mọi-DISABLED → DISABLED.
+ */
+export function pickWorstCronHealthStatus(
+  statuses: ReadonlyArray<LiveOpsCronHealthStatus>,
+): LiveOpsCronHealthStatus {
+  if (statuses.length === 0) return 'OK';
+  let worst: LiveOpsCronHealthStatus = statuses[0]!;
+  for (let i = 1; i < statuses.length; i++) {
+    const s = statuses[i]!;
+    if (STATUS_RANK[s] > STATUS_RANK[worst]) worst = s;
+  }
+  return worst;
+}
+
 export function computeLiveOpsCronHealth(
   input: LiveOpsCronHealthInput,
 ): LiveOpsCronHealth {
