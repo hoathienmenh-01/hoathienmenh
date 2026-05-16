@@ -37,8 +37,9 @@ PR (draft): xem link cuối — nối tiếp PR #600 (PR1 đã merge).
 - [x] `FloatingCombatText.vue` — typeface cổ phong (Noto Serif SC / LXGW WenKai TC) + element-tinted text-shadow.
 
 ### B. Hero views polish (PR4–PR6)
-- [ ] `DashboardView.vue` — đã sweep token, còn thiếu eyebrow Hán/Việt + seal frame trên hero card.
-- [ ] `HomeView.vue`.
+- [x] `DashboardView.vue` — eyebrow Hán/Việt (`九天梦境 · Cửu Thiên Mộng`) qua `XTHeroEyebrow` (PR3).
+- [x] `HomeView.vue` — character summary card wrap trong `XTSealFrame` jade tone + eyebrow `道身仙骨 · Đạo Thân Tiên Cốt` (PR3).
+- [x] `CultivationHeroCard.vue` (dùng trên Dashboard) — eyebrow `道身仙骨` + `XTSealFrame` gold tone với 4 góc `真修丹道` + watermark `天` (PR3).
 - [ ] `CultivationMethodV2View.vue`, `BodyCultivationView.vue`, `SpiritualRootView.vue`.
 - [ ] Combat: `BossView`, `BossHubView`, `PvpView`, `ArenaView`, `TribulationView`, `DungeonHubV2View`, `DungeonRunView`, `SecretRealmView`, `RoguelikeView`, `TrialTowerView`, `TerritoryView`, `SectWarView`.
 - [ ] Social: `SectView`, `SectContentView`, `MarketV2View`, `MarketView`, `SocialView`, `MailView`, `NpcView`, `StoryV2View`, `StoryDungeonView`.
