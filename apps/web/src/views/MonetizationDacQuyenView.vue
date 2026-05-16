@@ -69,13 +69,13 @@ async function onBuy(
 <template>
   <main class="dac-quyen-view">
     <XTLuxHero
-      eyebrow="TIÊN LỘ ĐẶC QUYỀN"
-      label="Tiên Lộ Đặc Quyền"
+      :eyebrow="t('luxHero.monetizationDacQuyen.eyebrow')"
+      :label="t('luxHero.monetizationDacQuyen.label')"
       :title="t('dacQuyen.pageTitle', 'Đặc Quyền')"
       :subtitle="t('dacQuyen.pageSubtitle', '')"
       tone="gold"
       watermark-letter="T"
-      breadcrumb="Kho Báu · Đặc Quyền"
+      :breadcrumb="t('luxHero.monetizationDacQuyen.breadcrumb')"
       test-id="monetization-dac-quyen-view-hero"
     >
       <header class="dac-quyen-header">

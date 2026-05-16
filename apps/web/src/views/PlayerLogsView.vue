@@ -18,13 +18,13 @@ const { t } = useI18n();
   <AppShell>
     <div class="max-w-3xl mx-auto space-y-4">
       <XTLuxHero
-        eyebrow="NHẬT KÝ HUÝ KỶ"
-        label="Nhật Ký Huý Kỷ"
+        :eyebrow="t('luxHero.playerLogs.eyebrow')"
+        :label="t('luxHero.playerLogs.label')"
         :title="t('playerLogs.title')"
         :subtitle="t('playerLogs.subtitle')"
         tone="gold"
         watermark-letter="N"
-        breadcrumb="Hỗ Trợ · Nhật Ký"
+        :breadcrumb="t('luxHero.playerLogs.breadcrumb')"
         test-id="player-logs-view-hero"
       >
         <XTPageEyebrow caps="NHẬT KÝ HUÝ KỶ" label="Nhật Ký Huý Kỷ" class="sr-only" />

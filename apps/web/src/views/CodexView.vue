@@ -66,13 +66,13 @@ onMounted(refresh);
   <AppShell>
     <div class="space-y-4 p-4">
       <XTLuxHero
-        eyebrow="THIÊN HẠNH NGHI PHỔ"
-        label="Thiên Hạnh Nghi Phổ"
+        :eyebrow="t('luxHero.codex.eyebrow')"
+        :label="t('luxHero.codex.label')"
         :title="t('codex.title')"
         :subtitle="t('codex.subtitle', '')"
         tone="jade"
         watermark-letter="T"
-        breadcrumb="Nhiệm Vụ · Bách Khoa"
+        :breadcrumb="t('luxHero.codex.breadcrumb')"
         test-id="codex-view-hero"
       >
         <XTPageEyebrow caps="THIÊN HẠNH NGHI PHỔ" label="Thiên Hạnh Nghi Phổ" class="sr-only" />

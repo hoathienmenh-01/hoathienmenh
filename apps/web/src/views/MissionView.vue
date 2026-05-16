@@ -176,13 +176,13 @@ function rewardSummary(m: MissionProgressView): string {
 <template>
   <AppShell>
     <XTLuxHero
-      eyebrow="PHỤNG ĐẠO SỨ MỆNH"
-      label="Phụng Đạo Sứ Mệnh"
+      :eyebrow="t('luxHero.mission.eyebrow')"
+      :label="t('luxHero.mission.label')"
       :title="t('mission.title')"
       :subtitle="t('mission.subtitle', '')"
       tone="jade"
       watermark-letter="P"
-      breadcrumb="Nhiệm Vụ · Sứ Mệnh"
+      :breadcrumb="t('luxHero.mission.breadcrumb')"
       test-id="mission-view-hero"
       class="mb-4"
     >

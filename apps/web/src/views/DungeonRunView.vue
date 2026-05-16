@@ -205,13 +205,13 @@ onMounted(async () => {
   <AppShell>
     <div class="max-w-5xl mx-auto space-y-4" data-testid="dungeon-run-view">
       <XTLuxHero
-        eyebrow="BÍ CẢNH LƯU PHÁT"
-        label="Bí Cảnh Lưu Phát"
+        :eyebrow="t('luxHero.dungeonRun.eyebrow')"
+        :label="t('luxHero.dungeonRun.label')"
         :title="t('dungeonRun.title')"
         :subtitle="t('dungeonRun.subtitle')"
         tone="seal"
         watermark-letter="B"
-        breadcrumb="Chiến Đạo · Hành Trình"
+        :breadcrumb="t('luxHero.dungeonRun.breadcrumb')"
         test-id="dungeon-run-hero"
       >
         <XTPageEyebrow caps="BÍ CẢNH LƯU PHÁT" label="Bí Cảnh Lưu Phát" class="sr-only" />

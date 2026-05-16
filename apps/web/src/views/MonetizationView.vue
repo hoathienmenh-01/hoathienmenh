@@ -177,13 +177,13 @@ onMounted(async () => {
   <AppShell>
     <div class="max-w-6xl mx-auto space-y-4">
       <XTLuxHero
-        eyebrow="TIÊN LỘ PHÚC LỄ"
-        label="Tiên Lộ Phúc Lễ"
+        :eyebrow="t('luxHero.monetization.eyebrow')"
+        :label="t('luxHero.monetization.label')"
         :title="t('monetization.title')"
         :subtitle="t('monetization.subtitle')"
         tone="gold"
         watermark-letter="T"
-        breadcrumb="Kho Báu · Phúc Lễ"
+        :breadcrumb="t('luxHero.monetization.breadcrumb')"
         test-id="monetization-view-hero"
       >
         <XTPageEyebrow caps="TIÊN LỘ PHÚC LỄ" label="Tiên Lộ Phúc Lễ" class="sr-only" />

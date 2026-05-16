@@ -96,13 +96,13 @@ function attemptBusy(towerKey: string, floor: number): boolean {
   <AppShell>
     <section class="trial-tower" data-testid="trial-tower-view">
       <XTLuxHero
-        eyebrow="THÍ LUYỆN THÁP"
-        label="Thí Luyện Tháp"
+        :eyebrow="t('luxHero.trialTower.eyebrow')"
+        :label="t('luxHero.trialTower.label')"
         :title="t('worldContent.tower.title')"
         :subtitle="t('worldContent.tower.subtitle')"
         tone="seal"
         watermark-letter="T"
-        breadcrumb="Chiến Đạo · Tháp"
+        :breadcrumb="t('luxHero.trialTower.breadcrumb')"
         test-id="trial-tower-hero"
       >
         <XTPageEyebrow caps="THÍ LUYỆN THÁP" label="Thí Luyện Tháp" class="sr-only" />

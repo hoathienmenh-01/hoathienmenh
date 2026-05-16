@@ -45,13 +45,13 @@ function goto(name: string): void {
   <AppShell>
     <section class="world-content" data-testid="world-content-view">
       <XTLuxHero
-        eyebrow="THIÊN TIÊN THẾ GIỚI"
-        label="Thiên Tiên Thế Giới"
+        :eyebrow="t('luxHero.worldContent.eyebrow')"
+        :label="t('luxHero.worldContent.label')"
         :title="t('worldContent.title')"
         :subtitle="t('worldContent.subtitle')"
         tone="jade"
         watermark-letter="T"
-        breadcrumb="Nhiệm Vụ · Thế Giới"
+        :breadcrumb="t('luxHero.worldContent.breadcrumb')"
         test-id="world-content-view-hero"
       >
         <XTPageEyebrow caps="THIÊN TIÊN THẾ GIỚI" label="Thiên Tiên Thế Giới" class="sr-only" />

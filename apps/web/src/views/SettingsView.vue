@@ -276,13 +276,13 @@ function changeLocale(value: string): void {
   <AppShell>
     <div class="max-w-2xl mx-auto space-y-6">
       <XTLuxHero
-        eyebrow="TÂM TRẦN TU CHỈNH"
-        label="Tạng Bảo Các"
+        :eyebrow="t('luxHero.settings.eyebrow')"
+        :label="t('luxHero.settings.label')"
         :title="t('settings.title')"
         :subtitle="t('settings.subtitle')"
         tone="gold"
         watermark-letter="T"
-        breadcrumb="Hệ Thống · Thiết Lập"
+        :breadcrumb="t('luxHero.settings.breadcrumb')"
         test-id="settings-view-hero"
       >
         <XTPageEyebrow

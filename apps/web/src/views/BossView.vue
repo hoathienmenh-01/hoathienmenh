@@ -400,13 +400,13 @@ function timeLeftText(iso: string): string {
 <template>
   <AppShell>
     <XTLuxHero
-      eyebrow="TRUY SÁT MA VƯƠNG"
-      label="Ma Đường Chiến Trường"
+      :eyebrow="t('luxHero.boss.eyebrow')"
+      :label="t('luxHero.boss.label')"
       :title="t('boss.title')"
-      subtitle="Truy sát ma vương, tích góp chiến công, phân chia chiến lợi phẩm theo bậc."
+      :subtitle="t('luxHero.boss.subtitle')"
       tone="seal"
       watermark-letter="C"
-      breadcrumb="Chiến Đạo · Boss"
+      :breadcrumb="t('luxHero.boss.breadcrumb')"
       test-id="boss-view-hero"
       class="mb-4"
     >

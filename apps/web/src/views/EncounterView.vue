@@ -93,13 +93,13 @@ onMounted(async () => {
   <AppShell>
     <section class="space-y-4 p-4">
       <XTLuxHero
-        eyebrow="KỲ NGỘ MỘNG CẢNH"
-        label="Kỳ Ngộ Mộng Cảnh"
+        :eyebrow="t('luxHero.encounter.eyebrow')"
+        :label="t('luxHero.encounter.label')"
         :title="t('encounter.title')"
         :subtitle="t('encounter.subtitle')"
         tone="jade"
         watermark-letter="K"
-        breadcrumb="Nhiệm Vụ · Kỳ Ngộ"
+        :breadcrumb="t('luxHero.encounter.breadcrumb')"
         test-id="encounter-view-hero"
       >
         <XTPageEyebrow caps="KỲ NGỘ MỘNG CẢNH" label="Kỳ Ngộ Mộng Cảnh" class="sr-only" />

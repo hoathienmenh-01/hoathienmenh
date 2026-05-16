@@ -47,13 +47,13 @@ onMounted(() => {
   <AppShell>
     <section class="sect-content" data-testid="sect-content-view">
       <XTLuxHero
-        eyebrow="TÔNG MÔN NỘI VỤ"
-        label="Tông Môn Nội Vụ"
+        :eyebrow="t('luxHero.sectContent.eyebrow')"
+        :label="t('luxHero.sectContent.label')"
         :title="t('worldContent.sect.title')"
         :subtitle="t('worldContent.sect.subtitle')"
         tone="gold"
         watermark-letter="T"
-        breadcrumb="Xã Hội · Tông Môn"
+        :breadcrumb="t('luxHero.sectContent.breadcrumb')"
         test-id="sect-content-hero"
       >
         <XTPageEyebrow caps="TÔNG MÔN NỘI VỤ" label="Tông Môn Nội Vụ" class="sr-only" />

@@ -183,13 +183,13 @@ const sectAccent = computed<string>(() => {
 <template>
   <AppShell>
     <XTLuxHero
-      eyebrow="TÔNG MÔN ĐIỆN"
-      label="Đại Điện Tông Môn"
+      :eyebrow="t('luxHero.sect.eyebrow')"
+      :label="t('luxHero.sect.label')"
       :title="t('sect.title')"
-      subtitle="Lập tông — gia nhập — cống hiến — chinh chiến tông đối đầu."
+      :subtitle="t('luxHero.sect.subtitle')"
       tone="gold"
       watermark-letter="G"
-      breadcrumb="Tông Môn · Đại Điện"
+      :breadcrumb="t('luxHero.sect.breadcrumb')"
       test-id="sect-view-hero"
       class="mb-4"
     >
@@ -255,10 +255,10 @@ const sectAccent = computed<string>(() => {
               <span
                 class="xt-sect-badge inline-flex items-center gap-1 rounded border px-2 py-[1px] text-[10px] uppercase tracking-widest"
                 data-testid="sect-mine-badge"
-                aria-label="Sắc tông môn"
+                :aria-label="t('sect.mineBadge.ariaLabel')"
               >
                 <span aria-hidden="true">❖</span>
-                <span>Tông sắc</span>
+                <span>{{ t('sect.mineBadge.label') }}</span>
               </span>
             </div>
             <div v-if="me.leaderName" class="text-xs text-ink-300">

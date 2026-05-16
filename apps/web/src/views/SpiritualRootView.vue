@@ -163,13 +163,13 @@ onMounted(async () => {
   <AppShell>
     <div class="max-w-3xl mx-auto space-y-4">
       <XTLuxHero
-        eyebrow="LINH CĂN ĐẠO TRẠCH"
-        label="Linh Căn Đạo Trạch"
+        :eyebrow="t('luxHero.spiritualRoot.eyebrow')"
+        :label="t('luxHero.spiritualRoot.label')"
         :title="t('spiritualRoot.title')"
         :subtitle="t('spiritualRoot.subtitle')"
         tone="jade"
         watermark-letter="L"
-        breadcrumb="Tu Vi · Linh Căn"
+        :breadcrumb="t('luxHero.spiritualRoot.breadcrumb')"
         test-id="spiritual-root-view-hero"
       >
         <XTPageEyebrow caps="LINH CĂN ĐẠO TRẠCH" label="Linh Căn Đạo Trạch" class="sr-only" />

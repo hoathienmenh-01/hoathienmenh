@@ -157,13 +157,13 @@ function outcomeKind(outcome: string, attackerId: string): 'win' | 'lose' | 'dra
   <AppShell>
     <section class="px-4 py-6 max-w-4xl mx-auto" data-testid="arena-view">
       <XTLuxHero
-        eyebrow="LONG HỔ ĐẤU TRƯỜNG"
-        label="Long Hổ Đấu Trường"
+        :eyebrow="t('luxHero.arena.eyebrow')"
+        :label="t('luxHero.arena.label')"
         :title="t('arena.title')"
         :subtitle="t('arena.subtitle')"
         tone="seal"
         watermark-letter="L"
-        breadcrumb="Chiến Đạo · Đấu Trường"
+        :breadcrumb="t('luxHero.arena.breadcrumb')"
         test-id="arena-view-hero"
         class="mb-6"
       >

@@ -56,6 +56,9 @@ const safeWatermark = computed<string | null>(() => {
   if (HAN_RE.test(w)) return null;
   return w.slice(0, 1);
 });
+
+// Phase 9 — a11y: derive deterministic id for aria-labelledby pairing.
+const titleId = computed(() => `${props.testId}-title`);
 </script>
 
 <template>
@@ -63,6 +66,8 @@ const safeWatermark = computed<string | null>(() => {
     class="xt-lux-hero"
     :class="[`xt-lux-hero--${tone}`, `xt-lux-hero--align-${align}`]"
     :data-testid="testId"
+    role="region"
+    :aria-labelledby="titleId"
   >
     <div class="xt-lux-hero__backdrop" aria-hidden="true" />
     <div class="xt-lux-hero__border" aria-hidden="true" />
@@ -97,7 +102,11 @@ const safeWatermark = computed<string | null>(() => {
         <span v-if="label" class="xt-lux-hero__label">{{ label }}</span>
       </p>
 
-      <h1 class="xt-lux-hero__title" :data-testid="`${testId}-title`">
+      <h1
+        :id="titleId"
+        class="xt-lux-hero__title"
+        :data-testid="`${testId}-title`"
+      >
         {{ title }}
       </h1>
 

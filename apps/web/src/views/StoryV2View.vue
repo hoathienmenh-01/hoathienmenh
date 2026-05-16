@@ -188,13 +188,13 @@ onMounted(async () => {
     <div class="max-w-6xl mx-auto space-y-4" data-testid="story-v2-view">
       <!-- Header -->
       <XTLuxHero
-        eyebrow="TIÊN DUỆ TỰ SỰ"
-        label="Tiên Duệ Tự Sự"
+        :eyebrow="t('luxHero.storyV2.eyebrow')"
+        :label="t('luxHero.storyV2.label')"
         :title="t('storyV2.title')"
         :subtitle="t('storyV2.subtitle')"
         tone="gold"
         watermark-letter="T"
-        breadcrumb="Nhiệm Vụ · Cốt Truyện"
+        :breadcrumb="t('luxHero.storyV2.breadcrumb')"
         test-id="story-v2-hero"
       >
         <XTPageEyebrow caps="TIÊN DUỆ TỰ SỰ" label="Tiên Duệ Tự Sự" class="sr-only" />

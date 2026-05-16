@@ -191,13 +191,13 @@ function handleErr(e: unknown): void {
 <template>
   <AppShell>
     <XTLuxHero
-      eyebrow="THIÊN HẠNH THƯƠNG PHỐ"
-      label="Thiên Hạnh Thương Phố"
+      :eyebrow="t('luxHero.market.eyebrow')"
+      :label="t('luxHero.market.label')"
       :title="t('market.title')"
       :subtitle="t('market.subtitle', '')"
       tone="gold"
       watermark-letter="T"
-      breadcrumb="Kinh Tế · Thương Phố"
+      :breadcrumb="t('luxHero.market.breadcrumb')"
       test-id="market-view-hero"
       class="mb-4"
     >

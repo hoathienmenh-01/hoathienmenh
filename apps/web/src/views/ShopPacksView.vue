@@ -137,13 +137,13 @@ onMounted(async () => {
 <template>
   <AppShell :title="t('shopPacks.title')">
     <XTLuxHero
-      eyebrow="TIÊN LỄ TRANG BAO"
-      label="Tiên Lễ Trang Bao"
+      :eyebrow="t('luxHero.shopPacks.eyebrow')"
+      :label="t('luxHero.shopPacks.label')"
       :title="t('shopPacks.title')"
       :subtitle="t('shopPacks.subtitle', '')"
       tone="gold"
       watermark-letter="T"
-      breadcrumb="Kho Báu · Lễ Bao"
+      :breadcrumb="t('luxHero.shopPacks.breadcrumb')"
       test-id="shop-packs-view-hero"
       class="mb-4"
     >

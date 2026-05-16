@@ -38,13 +38,13 @@ const tab = ref<Tab>('friends');
 <template>
   <section class="space-y-4" data-testid="social-view">
     <XTLuxHero
-      eyebrow="GIANG HỒ GIAO TẾ"
-      label="Giang Hồ Giao Tế"
+      :eyebrow="t('luxHero.social.eyebrow')"
+      :label="t('luxHero.social.label')"
       :title="t('social.viewTitle')"
       :subtitle="t('social.viewSubtitle')"
       tone="gold"
       watermark-letter="G"
-      breadcrumb="Xã Hội · Giao Tế"
+      :breadcrumb="t('luxHero.social.breadcrumb')"
       test-id="social-view-hero"
     >
       <XTPageEyebrow caps="GIANG HỒ GIAO TẾ" label="Giang Hồ Giao Tế" class="sr-only" />

@@ -53,13 +53,13 @@ onMounted(() => {
   <AppShell>
     <section class="boss-hub" data-testid="boss-hub-view">
       <XTLuxHero
-        eyebrow="QUẦN MA DANH SÁCH"
-        label="Vong Tử Thủy Nghên"
+        :eyebrow="t('luxHero.bossHub.eyebrow')"
+        :label="t('luxHero.bossHub.label')"
         :title="t('worldContent.boss.title')"
         :subtitle="t('worldContent.boss.subtitle')"
         tone="seal"
         watermark-letter="C"
-        breadcrumb="Chiến Đạo · Trường Lục"
+        :breadcrumb="t('luxHero.bossHub.breadcrumb')"
         test-id="boss-hub-hero"
       >
         <XTPageEyebrow

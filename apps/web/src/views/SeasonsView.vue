@@ -94,13 +94,13 @@ onMounted(() => {
   <AppShell>
     <main class="max-w-7xl mx-auto px-4 py-6 space-y-6" data-testid="seasons-page">
       <XTLuxHero
-        eyebrow="VÔ THƯỜNG PHÂN KIẾP"
-        label="Vô Thường Phân Kiếp"
+        :eyebrow="t('luxHero.seasons.eyebrow')"
+        :label="t('luxHero.seasons.label')"
         :title="t('seasons.title')"
         :subtitle="t('seasons.subtitle')"
         tone="gold"
         watermark-letter="V"
-        breadcrumb="Sự Kiện · Mùa Giải"
+        :breadcrumb="t('luxHero.seasons.breadcrumb')"
         test-id="seasons-view-hero"
       >
         <XTPageEyebrow caps="VÔ THƯỜNG PHÂN KIẾP" label="Vô Thường Phân Kiếp" class="sr-only" />

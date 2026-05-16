@@ -954,3 +954,106 @@ html[data-motion='off'] .xt-hover-lift:hover {
     transition: none;
   }
 }
+
+/* ── Typography utility scale (Cửu Thiên Mộng Phase 9). ─────────────── */
+/*
+ * Scale primitives bind vào token typography từ design/tokens.css.
+ * Mục tiêu: thay thế class rải rác `text-2xl font-bold tracking-widest`
+ * bằng helper class có line-height + tracking + font-family chuẩn,
+ * không yêu cầu Tailwind config riêng.
+ */
+.xt-display-xl {
+  font-family: var(--xt-font-display, serif);
+  font-size: var(--xt-text-hero, clamp(32px, 6vw, 48px));
+  line-height: var(--xt-text-hero-leading, 1.05);
+  letter-spacing: var(--xt-text-hero-tracking, 0.02em);
+  font-weight: 600;
+}
+.xt-display-lg {
+  font-family: var(--xt-font-display, serif);
+  font-size: var(--xt-text-h1, clamp(22px, 3.6vw, 32px));
+  line-height: var(--xt-text-h1-leading, 1.18);
+  letter-spacing: var(--xt-text-h1-tracking, 0);
+  font-weight: 600;
+}
+.xt-display-md {
+  font-family: var(--xt-font-display, serif);
+  font-size: var(--xt-text-h2, clamp(18px, 2.6vw, 22px));
+  line-height: var(--xt-text-h2-leading, 1.22);
+  letter-spacing: var(--xt-text-h2-tracking, 0);
+  font-weight: 600;
+}
+.xt-display-sm {
+  font-family: var(--xt-font-display, serif);
+  font-size: var(--xt-text-h3, 16px);
+  line-height: var(--xt-text-h3-leading, 1.3);
+  letter-spacing: var(--xt-text-h3-tracking, 0.01em);
+  font-weight: 600;
+}
+.xt-body {
+  font-family: var(--xt-font-body, system-ui, sans-serif);
+  font-size: var(--xt-text-body, 14px);
+  line-height: var(--xt-text-body-leading, 1.45);
+  letter-spacing: var(--xt-text-body-tracking, 0);
+}
+.xt-body-sm {
+  font-family: var(--xt-font-body, system-ui, sans-serif);
+  font-size: var(--xt-text-small, 13px);
+  line-height: var(--xt-text-small-leading, 1.45);
+  letter-spacing: var(--xt-text-small-tracking, 0);
+}
+.xt-caption {
+  font-family: var(--xt-font-body, system-ui, sans-serif);
+  font-size: var(--xt-text-caption, 12px);
+  line-height: var(--xt-text-caption-leading, 1.35);
+  letter-spacing: var(--xt-text-caption-tracking, 0.08em);
+  text-transform: uppercase;
+}
+.xt-eyebrow {
+  font-family: var(--xt-font-decorative, var(--xt-font-display, serif));
+  font-size: var(--xt-text-eyebrow, 11px);
+  line-height: var(--xt-text-eyebrow-leading, 1.2);
+  letter-spacing: var(--xt-text-eyebrow-tracking, 0.32em);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.xt-stat-number {
+  font-family: var(--xt-font-display, serif);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--xt-text-stat, clamp(22px, 4vw, 32px));
+  line-height: var(--xt-text-stat-leading, 1.05);
+  letter-spacing: var(--xt-text-stat-tracking, -0.01em);
+  font-weight: 600;
+}
+.xt-stat-number-sm {
+  font-family: var(--xt-font-display, serif);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--xt-text-stat-sm, 16px);
+  line-height: var(--xt-text-stat-sm-leading, 1.1);
+  letter-spacing: var(--xt-text-stat-sm-tracking, 0);
+  font-weight: 600;
+}
+.xt-text-muted {
+  color: var(--xt-text-muted);
+}
+.xt-text-subtle {
+  color: var(--xt-text-subtle);
+}
+.xt-text-gold {
+  color: var(--xt-text-gold);
+}
+.xt-text-jade {
+  color: var(--xt-text-jade);
+}
+
+/* ── Global focus ring (Cửu Thiên Mộng Phase 9 a11y). ───────────────── */
+/*
+ * Cảm hứng vàng nhẹ cho focus-visible. Không override component-level
+ * focus đã chỉ định màu khác. Chỉ áp cho element interactive không có
+ * focus-visible style riêng.
+ */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--xt-gold-bright, #f5e3a1);
+  outline-offset: 2px;
+  border-radius: var(--xt-focus-radius, 6px);
+}

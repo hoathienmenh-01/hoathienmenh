@@ -43,13 +43,13 @@ async function togglePref(
 <template>
   <section class="max-w-3xl mx-auto p-4 space-y-4">
     <XTLuxHero
-      eyebrow="ĐÀI TRUYỀN TIN HIỆU"
-      label="Đài Truyền Tin Hiệu"
+      :eyebrow="t('luxHero.notificationSettings.eyebrow')"
+      :label="t('luxHero.notificationSettings.label')"
       :title="t('webPush.title')"
       :subtitle="t('webPush.subtitle')"
       tone="gold"
       watermark-letter="Đ"
-      breadcrumb="Cài Đặt · Thông Báo"
+      :breadcrumb="t('luxHero.notificationSettings.breadcrumb')"
       test-id="notification-settings-view-hero"
     >
       <XTPageEyebrow caps="ĐÀI TRUYỀN TIN HIỆU" label="Đài Truyền Tin Hiệu" class="sr-only" />

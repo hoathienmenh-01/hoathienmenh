@@ -111,13 +111,13 @@ watch(
   <AppShell>
     <div class="max-w-2xl mx-auto space-y-4">
       <XTLuxHero
-        eyebrow="THÂN THẾ CÔNG TRẠNG"
-        label="Đạo Tâm Truyện"
+        :eyebrow="t('luxHero.profile.eyebrow')"
+        :label="t('luxHero.profile.label')"
         :title="t('profile.title')"
-        subtitle="Thân thế công trạng, cảnh giới tu vi và công đức của đạo hữu."
+        :subtitle="t('luxHero.profile.subtitle')"
         tone="gold"
         watermark-letter="T"
-        breadcrumb="Tông Môn · Thân Thế"
+        :breadcrumb="t('luxHero.profile.breadcrumb')"
         test-id="profile-view-hero"
       >
         <XTPageEyebrow

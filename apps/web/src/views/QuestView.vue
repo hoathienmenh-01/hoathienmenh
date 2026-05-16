@@ -212,13 +212,13 @@ onMounted(async () => {
   <AppShell>
     <div class="max-w-4xl mx-auto space-y-4" data-testid="quest-view">
       <XTLuxHero
-        eyebrow="THIÊN MỆNH NHIỆM VỤ"
-        label="Thiên Mệnh Nhiệm Vụ"
+        :eyebrow="t('luxHero.quest.eyebrow')"
+        :label="t('luxHero.quest.label')"
         :title="t('quest.title')"
         :subtitle="t('quest.subtitle')"
         tone="jade"
         watermark-letter="T"
-        breadcrumb="Nhiệm Vụ · Thiên Mệnh"
+        :breadcrumb="t('luxHero.quest.breadcrumb')"
         test-id="quest-view-hero"
       >
         <XTPageEyebrow caps="THIÊN MỆNH NHIỆM VỤ" label="Thiên Mệnh Nhiệm Vụ" class="sr-only" />

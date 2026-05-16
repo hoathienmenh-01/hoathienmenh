@@ -62,13 +62,13 @@ async function onRedeem(): Promise<void> {
   <AppShell>
     <div class="max-w-md mx-auto">
       <XTLuxHero
-        eyebrow="TỨ PHÚC LONG SAO"
-        label="Tứ Phúc Long Sao"
+        :eyebrow="t('luxHero.giftCode.eyebrow')"
+        :label="t('luxHero.giftCode.label')"
         :title="t('giftcode.title')"
         :subtitle="t('giftcode.hint')"
         tone="gold"
         watermark-letter="T"
-        breadcrumb="Kho Báu · Quà Tặng"
+        :breadcrumb="t('luxHero.giftCode.breadcrumb')"
         test-id="gift-code-view-hero"
       >
         <XTPageEyebrow caps="TỨ PHÚC LONG SAO" label="Tứ Phúc Long Sao" class="sr-only" />

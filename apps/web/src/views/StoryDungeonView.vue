@@ -236,13 +236,13 @@ onMounted(async () => {
       data-testid="story-dungeon-view"
     >
       <XTLuxHero
-        eyebrow="CỔ TRIẾT MỘNG CẢNH"
-        label="Cổ Triết Mộng Cảnh"
+        :eyebrow="t('luxHero.storyDungeon.eyebrow')"
+        :label="t('luxHero.storyDungeon.label')"
         :title="t('storyDungeon.title')"
         :subtitle="t('storyDungeon.subtitle')"
         tone="gold"
         watermark-letter="C"
-        breadcrumb="Nhiệm Vụ · Mộng Cảnh"
+        :breadcrumb="t('luxHero.storyDungeon.breadcrumb')"
         test-id="story-dungeon-hero"
       >
         <XTPageEyebrow caps="CỔ TRIẾT MỘNG CẢNH" label="Cổ Triết Mộng Cảnh" class="sr-only" />

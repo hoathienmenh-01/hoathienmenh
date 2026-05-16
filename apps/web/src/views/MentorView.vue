@@ -136,13 +136,13 @@ const isMentor = computed(() => !!profile.value);
   <AppShell>
     <section class="mentor-view" data-testid="mentor-view">
       <XTLuxHero
-        eyebrow="SƯ MÔN TRUYỀN ĐẠO"
-        label="Sư Môn Truyền Đạo"
+        :eyebrow="t('luxHero.mentor.eyebrow')"
+        :label="t('luxHero.mentor.label')"
         :title="t('mentor.title')"
         :subtitle="t('mentor.subtitle')"
         tone="jade"
         watermark-letter="S"
-        breadcrumb="Nhiệm Vụ · Sư Môn"
+        :breadcrumb="t('luxHero.mentor.breadcrumb')"
         test-id="mentor-view-hero"
       >
         <XTPageEyebrow caps="SƯ MÔN TRUYỀN ĐẠO" label="Sư Môn Truyền Đạo" class="sr-only" />

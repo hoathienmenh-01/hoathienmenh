@@ -143,13 +143,13 @@ async function onClaim(): Promise<void> {
 <template>
   <AppShell>
     <XTLuxHero
-      eyebrow="TÔNG MÔN ĐẠI CHIẾN"
-      label="Tông Môn Đại Chiến"
+      :eyebrow="t('luxHero.sectWar.eyebrow')"
+      :label="t('luxHero.sectWar.label')"
       :title="t('sectWar.title')"
       :subtitle="t('sectWar.subtitle')"
       tone="seal"
       watermark-letter="T"
-      breadcrumb="Chiến Đạo · Tông Môn"
+      :breadcrumb="t('luxHero.sectWar.breadcrumb')"
       test-id="sect-war-hero"
       class="mb-4"
     >

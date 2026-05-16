@@ -134,13 +134,13 @@ onMounted(() => {
   <AppShell>
     <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
       <XTLuxHero
-        eyebrow="VÔ HẠN LỘ"
-        label="Vô Hạn Lộ"
+        :eyebrow="t('luxHero.roguelike.eyebrow')"
+        :label="t('luxHero.roguelike.label')"
         :title="t('roguelike.title')"
         :subtitle="t('roguelike.subtitle')"
         tone="seal"
         watermark-letter="V"
-        breadcrumb="Chiến Đấu · Vô Hạn"
+        :breadcrumb="t('luxHero.roguelike.breadcrumb')"
         test-id="roguelike-view-hero"
       >
         <XTPageEyebrow caps="VÔ HẠN LỘ" label="Vô Hạn Lộ" class="sr-only" />

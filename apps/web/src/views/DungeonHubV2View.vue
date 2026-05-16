@@ -57,13 +57,13 @@ onMounted(() => {
   <AppShell>
     <section class="dungeon-hub" data-testid="dungeon-hub-v2-view">
       <XTLuxHero
-        eyebrow="TIÊN HẠCH TỔNG TRẠM"
-        label="Tiên Hạch Tổng Trạm"
+        :eyebrow="t('luxHero.dungeonHubV2.eyebrow')"
+        :label="t('luxHero.dungeonHubV2.label')"
         :title="t('worldContent.dungeon.title')"
         :subtitle="t('worldContent.dungeon.subtitle')"
         tone="seal"
         watermark-letter="T"
-        breadcrumb="Chiến Đạo · Bí Cảnh"
+        :breadcrumb="t('luxHero.dungeonHubV2.breadcrumb')"
         test-id="dungeon-hub-v2-hero"
       >
         <XTPageEyebrow caps="TIÊN HẠCH TỔNG TRẠM" label="Tiên Hạch Tổng Trạm" class="sr-only" />

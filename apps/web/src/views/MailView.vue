@@ -124,13 +124,13 @@ function formatDate(iso: string): string {
 <template>
   <AppShell>
     <XTLuxHero
-      eyebrow="PHI CÁP TRUYỀN THƯ"
-      label="Phi Cáp Truyền Thư"
+      :eyebrow="t('luxHero.mail.eyebrow')"
+      :label="t('luxHero.mail.label')"
       :title="t('mail.title')"
       :subtitle="t('mail.subtitle', '')"
       tone="gold"
       watermark-letter="P"
-      breadcrumb="Xã Hội · Hòm Thư"
+      :breadcrumb="t('luxHero.mail.breadcrumb')"
       test-id="mail-view-hero"
       class="mb-4"
     >

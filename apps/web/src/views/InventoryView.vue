@@ -628,13 +628,13 @@ function handleErr(e: unknown): void {
 <template>
   <AppShell>
     <XTLuxHero
-      eyebrow="CÀN KHÔN TÚI"
-      label="Tạng Phẩm Các"
+      :eyebrow="t('luxHero.inventory.eyebrow')"
+      :label="t('luxHero.inventory.label')"
       :title="t('inventory.title')"
-      subtitle="Trang bị, bảo vật, phẩm linh — trang bị thuận đạo, đả tầm mặt."
+      :subtitle="t('luxHero.inventory.subtitle')"
       tone="gold"
       watermark-letter="T"
-      breadcrumb="Tông Môn · Túi Đồ"
+      :breadcrumb="t('luxHero.inventory.breadcrumb')"
       test-id="inventory-view-hero"
       class="mb-4"
     >

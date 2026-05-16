@@ -285,13 +285,13 @@ async function onAdminGrantWeeklyTerritoryReward(): Promise<void> {
 <template>
   <AppShell>
     <XTLuxHero
-      eyebrow="CƯƠNG THỔ TRANH BÁ"
-      label="Cương Thổ Tranh Bá"
+      :eyebrow="t('luxHero.territory.eyebrow')"
+      :label="t('luxHero.territory.label')"
       :title="t('territory.title')"
       :subtitle="t('territory.subtitle')"
       tone="seal"
       watermark-letter="C"
-      breadcrumb="Chiến Đạo · Cương Thổ"
+      :breadcrumb="t('luxHero.territory.breadcrumb')"
       test-id="territory-view-hero"
       class="mb-4"
     >

@@ -77,13 +77,13 @@ function claimBusy(sessionId: string): boolean {
   <AppShell>
     <section class="farm-map" data-testid="farm-map-view">
       <XTLuxHero
-        eyebrow="LINH ĐIỀN TỒN DƯỠNG"
-        label="Linh Điền Tồn Dưỡng"
+        :eyebrow="t('luxHero.farmMap.eyebrow')"
+        :label="t('luxHero.farmMap.label')"
         :title="t('worldContent.farm.title')"
         :subtitle="t('worldContent.farm.subtitle')"
         tone="jade"
         watermark-letter="L"
-        breadcrumb="Nhiệm Vụ · Linh Điền"
+        :breadcrumb="t('luxHero.farmMap.breadcrumb')"
         test-id="farm-map-view-hero"
       >
         <XTPageEyebrow caps="LINH ĐIỀN TỒN DƯỠNG" label="Linh Điền Tồn Dưỡng" class="sr-only" />

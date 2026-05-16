@@ -158,13 +158,13 @@ const policyHints = computed(() => {
   <AppShell>
     <section data-test="pvp-view" class="pvp-view">
       <XTLuxHero
-        eyebrow="SÁT PHẠT TRANH HUNG"
-        label="Sát Phạt Tranh Hung"
+        :eyebrow="t('luxHero.pvp.eyebrow')"
+        :label="t('luxHero.pvp.label')"
         :title="t('pvp.title')"
         :subtitle="t('pvp.intro')"
         tone="seal"
         watermark-letter="S"
-        breadcrumb="Chiến Đạo · PvP"
+        :breadcrumb="t('luxHero.pvp.breadcrumb')"
         test-id="pvp-view-hero"
       >
         <XTPageEyebrow caps="SÁT PHẠT TRANH HUNG" label="Sát Phạt Tranh Hung" class="sr-only" />

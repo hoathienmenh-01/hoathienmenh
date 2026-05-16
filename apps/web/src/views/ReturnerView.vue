@@ -72,13 +72,13 @@ function handleErr(e: unknown): void {
   <AppShell>
     <section class="returner-view" data-testid="returner-view">
       <XTLuxHero
-        eyebrow="CỐ NHÂN QUY HOÀN"
-        label="Cố Nhân Quy Hoàn"
+        :eyebrow="t('luxHero.returner.eyebrow')"
+        :label="t('luxHero.returner.label')"
         :title="t('returner.title')"
         :subtitle="t('returner.subtitle')"
         tone="gold"
         watermark-letter="C"
-        breadcrumb="Sự Kiện · Hồi Quy"
+        :breadcrumb="t('luxHero.returner.breadcrumb')"
         test-id="returner-view-hero"
       >
         <XTPageEyebrow caps="CỐ NHÂN QUY HOÀN" label="Cố Nhân Quy Hoàn" class="sr-only" />

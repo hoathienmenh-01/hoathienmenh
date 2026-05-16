@@ -124,13 +124,13 @@ const errorMessage = computed(() => {
   <AppShell>
     <div class="max-w-3xl mx-auto space-y-4">
       <XTLuxHero
-        eyebrow="GIẢI TIỆC THỊNH HỘI"
-        label="Giải Tiệc Thịnh Hội"
+        :eyebrow="t('luxHero.activity.eyebrow')"
+        :label="t('luxHero.activity.label')"
         :title="t('activity.title')"
         :subtitle="t('activity.subtitle')"
         tone="jade"
         watermark-letter="G"
-        breadcrumb="Nhiệm Vụ · Hoạt Động"
+        :breadcrumb="t('luxHero.activity.breadcrumb')"
         test-id="activity-view-hero"
       >
         <XTPageEyebrow caps="GIẢI TIỆC THỊNH HỘI" label="Giải Tiệc Thịnh Hội" class="sr-only" />

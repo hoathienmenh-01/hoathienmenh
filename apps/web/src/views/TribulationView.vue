@@ -536,13 +536,13 @@ onUnmounted(() => {
   <AppShell>
     <div class="max-w-3xl mx-auto space-y-4">
       <XTLuxHero
-        eyebrow="THIÊN KIẾP GIÁNG THẾ"
-        label="Thiên Kiếp Giáng Thế"
+        :eyebrow="t('luxHero.tribulation.eyebrow')"
+        :label="t('luxHero.tribulation.label')"
         :title="t('tribulation.title')"
         :subtitle="t('tribulation.subtitle')"
         tone="seal"
         watermark-letter="T"
-        breadcrumb="Chiến Đạo · Vượt Kiếp"
+        :breadcrumb="t('luxHero.tribulation.breadcrumb')"
         test-id="tribulation-view-hero"
       >
         <XTPageEyebrow caps="THIÊN KIẾP GIÁNG THẾ" label="Thiên Kiếp Giáng Thế" class="sr-only" />

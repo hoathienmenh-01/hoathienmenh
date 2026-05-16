@@ -97,13 +97,13 @@ function fmtVND(n: number): string {
   <AppShell>
     <div class="max-w-5xl mx-auto space-y-6">
       <XTLuxHero
-        eyebrow="TIÊN NGỌC HƯƠNG HỎA"
-        label="Tiên Ngọc Hương Hỏa"
+        :eyebrow="t('luxHero.topup.eyebrow')"
+        :label="t('luxHero.topup.label')"
         :title="t('topup.title')"
         :subtitle="t('topup.intro')"
         tone="gold"
         watermark-letter="T"
-        breadcrumb="Kho Báu · Nạp Thẻ"
+        :breadcrumb="t('luxHero.topup.breadcrumb')"
         test-id="topup-view-hero"
       >
         <XTPageEyebrow caps="TIÊN NGỌC HƯƠNG HỎA" label="Tiên Ngọc Hương Hỏa" class="sr-only" />

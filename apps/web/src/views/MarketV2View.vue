@@ -69,13 +69,13 @@ const pendingCount = computed(() => claimEntries.value.filter((e) => e.status ==
   <AppShell>
     <div class="space-y-4 p-4">
       <XTLuxHero
-        eyebrow="MA THƯƠNG LIÊN CANG"
-        label="Thiên Hạ Thương Cảng"
+        :eyebrow="t('luxHero.marketV2.eyebrow')"
+        :label="t('luxHero.marketV2.label')"
         :title="t('marketV2.title')"
-        subtitle="Đấu giá bảo vật — nhận phần thưởng — trao đổi liên thông toàn mạng."
+        :subtitle="t('luxHero.marketV2.subtitle')"
         tone="gold"
         watermark-letter="G"
-        breadcrumb="Xã Hội · Thương Cảng"
+        :breadcrumb="t('luxHero.marketV2.breadcrumb')"
         test-id="market-v2-hero"
       >
         <XTPageEyebrow

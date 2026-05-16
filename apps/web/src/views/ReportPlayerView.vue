@@ -100,13 +100,13 @@ onMounted(() => {
   <AppShell>
     <div class="max-w-3xl mx-auto space-y-6">
       <XTLuxHero
-        eyebrow="PHÁT GIÁC CAO THÙY"
-        label="Phát Giác Cao Thùy"
+        :eyebrow="t('luxHero.reportPlayer.eyebrow')"
+        :label="t('luxHero.reportPlayer.label')"
         :title="t('report.title')"
         :subtitle="t('report.subtitle')"
         tone="gold"
         watermark-letter="P"
-        breadcrumb="Hỗ Trợ · Tố Cáo"
+        :breadcrumb="t('luxHero.reportPlayer.breadcrumb')"
         test-id="report-player-view-hero"
       >
         <XTPageEyebrow caps="PHÁT GIÁC CAO THÙY" label="Phát Giác Cao Thùy" class="sr-only" />

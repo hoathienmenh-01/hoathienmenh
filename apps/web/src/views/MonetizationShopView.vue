@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
@@ -22,6 +23,7 @@ import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 const auth = useAuthStore();
 const router = useRouter();
 const toast = useToastStore();
+const { t } = useI18n();
 
 const wallet = ref<WalletSnapshot | null>(null);
 const listings = ref<ShopListing[]>([]);
@@ -104,13 +106,13 @@ async function buyAttempt(limitKey: string): Promise<void> {
   <AppShell>
     <section class="shop-page">
       <XTLuxHero
-        eyebrow="TIÊN TRẠM NẠP LỄ"
-        label="Tiên Trạm Nạp Lễ"
+        :eyebrow="t('luxHero.monetizationShop.eyebrow')"
+        :label="t('luxHero.monetizationShop.label')"
         title="Cửa hàng nạp"
-        subtitle="Thẻ tháng, sweep tickets, premium battle pass, quỹ trưởng thành, mở slot inventory/queue/market."
+        :subtitle="t('luxHero.monetizationShop.subtitle')"
         tone="gold"
         watermark-letter="T"
-        breadcrumb="Kho Báu · Cửa Hàng"
+        :breadcrumb="t('luxHero.monetizationShop.breadcrumb')"
         test-id="monetization-shop-view-hero"
       >
         <XTPageEyebrow caps="TIÊN TRẠM NẠP LỄ" label="Tiên Trạm Nạp Lễ" class="sr-only" />

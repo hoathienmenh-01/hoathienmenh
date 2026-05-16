@@ -177,13 +177,13 @@ onMounted(async () => {
   <AppShell>
     <div class="max-w-5xl mx-auto space-y-4">
       <XTLuxHero
-        eyebrow="KỶ ĐỨC BI"
-        label="Kỷ Đức Bi"
+        :eyebrow="t('luxHero.achievement.eyebrow')"
+        :label="t('luxHero.achievement.label')"
         :title="t('achievements.title')"
         :subtitle="t('achievements.subtitle')"
         tone="jade"
         watermark-letter="K"
-        breadcrumb="Nhiệm Vụ · Thành Tựu"
+        :breadcrumb="t('luxHero.achievement.breadcrumb')"
         test-id="achievement-view-hero"
       >
         <XTPageEyebrow caps="KỶ ĐỨC BI" label="Kỷ Đức Bi" class="sr-only" />

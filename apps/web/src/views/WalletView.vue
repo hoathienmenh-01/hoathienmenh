@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
@@ -21,6 +22,7 @@ import {
 const auth = useAuthStore();
 const router = useRouter();
 const toast = useToastStore();
+const { t } = useI18n();
 
 const wallet = ref<WalletSnapshot | null>(null);
 const ledger = ref<WalletLedgerEntry[]>([]);
@@ -81,13 +83,13 @@ function formatDelta(delta: number): string {
   <AppShell>
     <section class="wallet-page">
       <XTLuxHero
-        eyebrow="CÀN KHÔN CẨM NANG"
-        label="Tài Vật Tiên Viện"
+        :eyebrow="t('luxHero.wallet.eyebrow')"
+        :label="t('luxHero.wallet.label')"
         title="Ví Tu Tiên"
-        subtitle="Tổng hợp 6 loại tiền tệ và đặc quyền đang active, server-authoritative."
+        :subtitle="t('luxHero.wallet.subtitle')"
         tone="gold"
         watermark-letter="T"
-        breadcrumb="Hệ Thống · Ví"
+        :breadcrumb="t('luxHero.wallet.breadcrumb')"
         test-id="wallet-view-hero"
       >
         <XTPageEyebrow
