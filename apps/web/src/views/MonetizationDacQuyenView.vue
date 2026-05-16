@@ -2,6 +2,8 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMonetizationSystemsStore } from '@/stores/monetizationSystems';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 
 /**
  * Phase 27.1–27.5 — Đặc Quyền view tổng (Nạp / Tiện Ích / Đặc Quyền).
@@ -66,10 +68,21 @@ async function onBuy(
 
 <template>
   <main class="dac-quyen-view">
-    <header class="dac-quyen-header">
-      <h1>{{ t('dacQuyen.title') }}</h1>
-      <p class="subtitle">{{ t('dacQuyen.subtitle') }}</p>
-    </header>
+    <XTSealFrame
+      tone="gold"
+      corner-ornaments="❀✦❀✦"
+      watermark-letter="T"
+      rounded="xl"
+      inset="tight"
+      test-id="monetization-dac-quyen-view-seal-frame"
+      aria-label="Tiên Lộ Đặc Quyền hero frame"
+    >
+      <header class="dac-quyen-header">
+        <XTPageEyebrow caps="TIÊN LỘ ĐẶC QUYỀN" label="Tiên Lộ Đặc Quyền" />
+        <h1 class="mt-1">{{ t('dacQuyen.title') }}</h1>
+        <p class="subtitle">{{ t('dacQuyen.subtitle') }}</p>
+      </header>
+    </XTSealFrame>
 
     <nav class="tabs" role="tablist">
       <button

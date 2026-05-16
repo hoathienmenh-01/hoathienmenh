@@ -16,6 +16,7 @@ import {
 } from '@/api/cosmetics';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import SkeletonBlock from '@/components/ui/SkeletonBlock.vue';
 
 function realmText(key: string, stage: number): string {
@@ -107,10 +108,20 @@ watch(
 <template>
   <AppShell>
     <div class="max-w-2xl mx-auto space-y-4">
-      <header>
-        <XTPageEyebrow label="Thân Thế Công Trạng" />
-        <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('profile.title') }}</h1>
-      </header>
+      <XTSealFrame
+        tone="gold"
+        corner-ornaments="❀✦❀✦"
+        watermark-letter="T"
+        rounded="xl"
+        inset="tight"
+        test-id="profile-view-seal-frame"
+        aria-label="Thân Thế Công Trạng hero frame"
+      >
+        <header>
+          <XTPageEyebrow caps="THÂN THẾ CÔNG TRẠNG" label="Thân Thế Công Trạng" />
+          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('profile.title') }}</h1>
+        </header>
+      </XTSealFrame>
 
       <div v-if="loading" class="space-y-3" data-testid="profile-skeleton">
         <section class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-2">

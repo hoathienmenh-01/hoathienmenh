@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { itemByKey } from '@xuantoi/shared';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import { useSeasonStore } from '@/stores/seasons';
 import { useToastStore } from '@/stores/toast';
 import type { SeasonLeaderboardKind, SeasonRewardView } from '@/api/seasons';
@@ -92,30 +93,40 @@ onMounted(() => {
 <template>
   <AppShell>
     <main class="max-w-7xl mx-auto px-4 py-6 space-y-6" data-testid="seasons-page">
-      <header class="rounded-3xl border border-amber-300/30 bg-ink-800/70 p-5">
-        <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <XTPageEyebrow label="Vô Thường Phân Kiếp" />
-            <p class="mt-1 text-xs uppercase tracking-[0.3em] text-amber-300">
-              {{ t('seasons.kicker') }}
-            </p>
-            <h1 class="mt-2 text-3xl font-bold text-ink-50">
-              {{ t('seasons.title') }}
-            </h1>
-            <p class="mt-2 max-w-3xl text-sm text-ink-300">
-              {{ t('seasons.subtitle') }}
-            </p>
+      <XTSealFrame
+        tone="gold"
+        corner-ornaments="❀✦❀✦"
+        watermark-letter="T"
+        rounded="xl"
+        inset="tight"
+        test-id="seasons-view-seal-frame"
+        aria-label="Vô Thường Phân Kiếp hero frame"
+      >
+        <header class="rounded-3xl border border-amber-300/30 bg-ink-800/70 p-5">
+          <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <XTPageEyebrow caps="VÔ THƯỜNG PHÂN KIẾP" label="Vô Thường Phân Kiếp" />
+              <p class="mt-1 text-xs uppercase tracking-[0.3em] text-amber-300">
+                {{ t('seasons.kicker') }}
+              </p>
+              <h1 class="mt-2 text-3xl font-bold text-ink-50">
+                {{ t('seasons.title') }}
+              </h1>
+              <p class="mt-2 max-w-3xl text-sm text-ink-300">
+                {{ t('seasons.subtitle') }}
+              </p>
+            </div>
+            <button
+              type="button"
+              class="rounded-xl border border-ink-300/30 px-4 py-2 text-sm hover:bg-ink-700"
+              :disabled="store.loading"
+              @click="loadAll()"
+            >
+              {{ t('common.refresh') }}
+            </button>
           </div>
-          <button
-            type="button"
-            class="rounded-xl border border-ink-300/30 px-4 py-2 text-sm hover:bg-ink-700"
-            :disabled="store.loading"
-            @click="loadAll()"
-          >
-            {{ t('common.refresh') }}
-          </button>
-        </div>
-      </header>
+        </header>
+      </XTSealFrame>
 
       <section
         v-if="store.lastError"

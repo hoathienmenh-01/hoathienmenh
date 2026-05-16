@@ -8,6 +8,7 @@ import { useToastStore } from '@/stores/toast';
 import { redeemGiftCode, type GiftCodeRedeemResult } from '@/api/giftcode';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { itemName } from '@/lib/itemName';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
@@ -60,9 +61,21 @@ async function onRedeem(): Promise<void> {
 <template>
   <AppShell>
     <div class="max-w-md mx-auto">
-      <XTPageEyebrow label="Tứ Phúc Long Sao" />
-      <h2 class="text-xl tracking-widest mb-2 mt-1">{{ t('giftcode.title') }}</h2>
-      <p class="text-sm text-ink-300 mb-4">{{ t('giftcode.hint') }}</p>
+      <XTSealFrame
+        tone="gold"
+        corner-ornaments="❀✦❀✦"
+        watermark-letter="T"
+        rounded="xl"
+        inset="tight"
+        test-id="gift-code-view-seal-frame"
+        aria-label="Tứ Phúc Long Sao hero frame"
+      >
+        <header>
+          <XTPageEyebrow caps="TỨ PHÚC LONG SAO" label="Tứ Phúc Long Sao" />
+          <h2 class="text-xl tracking-widest mb-2 mt-1">{{ t('giftcode.title') }}</h2>
+          <p class="text-sm text-ink-300 mb-2">{{ t('giftcode.hint') }}</p>
+        </header>
+      </XTSealFrame>
 
       <form class="flex flex-col gap-3" @submit.prevent="onRedeem">
         <input

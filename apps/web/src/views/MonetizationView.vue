@@ -7,6 +7,8 @@ import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import {
   claimAllBattlePass,
   claimBattlePass,
@@ -174,10 +176,21 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="max-w-6xl mx-auto space-y-4">
-      <header class="space-y-1">
-        <h1 class="text-2xl tracking-widest font-bold">{{ t('monetization.title') }}</h1>
-        <p class="text-sm text-ink-300">{{ t('monetization.subtitle') }}</p>
-      </header>
+      <XTSealFrame
+        tone="gold"
+        corner-ornaments="❀✦❀✦"
+        watermark-letter="T"
+        rounded="xl"
+        inset="tight"
+        test-id="monetization-view-seal-frame"
+        aria-label="Tiên Lộ Phúc Lễ hero frame"
+      >
+        <header class="space-y-1">
+          <XTPageEyebrow caps="TIÊN LỘ PHÚC LỄ" label="Tiên Lộ Phúc Lễ" />
+          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('monetization.title') }}</h1>
+          <p class="text-sm text-ink-300">{{ t('monetization.subtitle') }}</p>
+        </header>
+      </XTSealFrame>
 
       <nav class="flex flex-wrap gap-2" role="tablist">
         <button

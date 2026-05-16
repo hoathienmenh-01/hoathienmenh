@@ -90,7 +90,7 @@ async function onChange(): Promise<void> {
     <div
       class="w-full max-w-md border-2 border-ink-300/60 rounded-md bg-ink-700/40 backdrop-blur-md p-6 shadow-2xl"
     >
-      <XTPageEyebrow label="Tiên Sơn Bốc Định" />
+      <XTPageEyebrow caps="TIÊN SƠN BỐC ĐỊNH" label="Tiên Sơn Bốc Định" />
       <h1 class="text-3xl text-center text-ink-100 tracking-widest mt-1">{{ t('app.brand') }}</h1>
       <p class="text-center text-ink-300 italic mt-2 text-sm">"{{ proverb }}"</p>
 

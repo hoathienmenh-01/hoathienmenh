@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import {
   getWallet,
   getWalletLedger,
@@ -69,14 +70,24 @@ function formatDelta(delta: number): string {
 <template>
   <AppShell>
     <section class="wallet-page">
-      <header class="wallet-header">
-        <XTPageEyebrow label="Càn Khôn Cẩm Nang" />
-        <h1 class="mt-1">Ví Tu Tiên (Phase 27.0 Foundation)</h1>
-        <p class="muted">
-          Tổng hợp 6 loại tiền tệ + entitlements đang active. Mọi giao dịch
-          chạy server-authoritative qua CurrencyLedger.
-        </p>
-      </header>
+      <XTSealFrame
+        tone="gold"
+        corner-ornaments="❀✦❀✦"
+        watermark-letter="T"
+        rounded="xl"
+        inset="tight"
+        test-id="wallet-view-seal-frame"
+        aria-label="Càn Khôn Cẩm Nang hero frame"
+      >
+        <header class="wallet-header">
+          <XTPageEyebrow caps="CÀN KHÔN CẨM NANG" label="Càn Khôn Cẩm Nang" />
+          <h1 class="mt-1">Ví Tu Tiên (Phase 27.0 Foundation)</h1>
+          <p class="muted">
+            Tổng hợp 6 loại tiền tệ + entitlements đang active. Mọi giao dịch
+            chạy server-authoritative qua CurrencyLedger.
+          </p>
+        </header>
+      </XTSealFrame>
 
       <div v-if="loading" class="wallet-loading">Đang tải…</div>
       <template v-else>
