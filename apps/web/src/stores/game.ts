@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import { realmByKey, fullRealmName, type CharacterStatePayload } from '@xuantoi/shared';
 import { apiClient } from '@/api/client';
 import { fetchMailUnreadCount } from '@/api/mail';
+import { mySect, type SectDetailView } from '@/api/sect';
 import { connect, on } from '@/ws/client';
 
 interface Envelope<T> {
@@ -25,6 +26,7 @@ export const useGameStore = defineStore('game', () => {
   const wsConnected = ref(false);
   const unreadMail = ref(0);
   const lastMailEvent = ref<MailNewEvent | null>(null);
+  const currentSect = ref<SectDetailView | null>(null);
   let socketBound = false;
 
   const realmFullName = computed(() => {
@@ -57,6 +59,21 @@ export const useGameStore = defineStore('game', () => {
   async function hydrateUnreadMail(): Promise<void> {
     try {
       unreadMail.value = await fetchMailUnreadCount();
+    } catch {
+      // silent
+    }
+  }
+
+  /**
+   * Hydrate `currentSect` từ `/sect/me`. Gọi cùng login flow hoặc khi vào
+   * view cần đọc tên / cấp / số thành viên tông môn của người chơi (Home
+   * dashboard, sidebar mobile, sect chat panel …). Silent error — nếu API
+   * tạm fail thì `currentSect` giữ giá trị trước đó (mặc định `null`) và
+   * UI hiển thị empty state "Chưa gia nhập tông môn".
+   */
+  async function hydrateCurrentSect(): Promise<void> {
+    try {
+      currentSect.value = await mySect();
     } catch {
       // silent
     }
@@ -128,10 +145,12 @@ export const useGameStore = defineStore('game', () => {
     wsConnected,
     unreadMail,
     lastMailEvent,
+    currentSect,
     realmFullName,
     expProgress,
     fetchState,
     hydrateUnreadMail,
+    hydrateCurrentSect,
     setCultivating,
     breakthrough,
     bindSocket,

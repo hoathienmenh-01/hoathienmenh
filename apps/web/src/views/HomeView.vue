@@ -76,6 +76,11 @@ onMounted(async () => {
   await game.fetchState();
   game.bindSocket();
   badges.refresh();
+  // Phase 15.10 — hydrate mail unread + sect info để `XTHomeDashboard`
+  // render mail badge thật + tên tông môn thật thay vì mock (3 / "Thanh
+  // Vân Tông"). Fail-soft trong store nên không block flow chính.
+  game.hydrateUnreadMail().catch(() => null);
+  game.hydrateCurrentSect().catch(() => null);
   // Phase 12.8.C — fetch story dungeon catalog cho Home CTA. Fail-soft —
   // không block render trang chính nếu API fail.
   storyDungeonStore.load().catch(() => null);
