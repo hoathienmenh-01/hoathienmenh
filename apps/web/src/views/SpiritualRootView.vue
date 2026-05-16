@@ -34,6 +34,8 @@ import { useGameStore } from '@/stores/game';
 import { useSpiritualRootStore } from '@/stores/spiritualRoot';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -162,7 +164,8 @@ onMounted(async () => {
     <div class="max-w-3xl mx-auto space-y-4">
       <header class="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
-          <h1 class="text-2xl tracking-widest font-bold">{{ t('spiritualRoot.title') }}</h1>
+          <XTPageEyebrow caps="LINH CĂN ĐẠO TRẠCH" label="Linh Căn Đạo Trạch" />
+          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('spiritualRoot.title') }}</h1>
           <p class="text-xs text-ink-300 mt-1">{{ t('spiritualRoot.subtitle') }}</p>
         </div>
         <div
@@ -191,223 +194,233 @@ onMounted(async () => {
       </section>
 
       <template v-else>
-        <article
-          class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-3"
-          data-testid="spiritual-root-grade-card"
+        <XTSealFrame
+          tone="jade"
+          corner-ornaments="❖✦❖✦"
+          watermark-letter="Đ"
+          rounded="xl"
+          inset="tight"
+          test-id="spiritual-root-seal-frame"
+          aria-label="Linh Căn Đạo Trạch hero frame"
         >
-          <header class="flex items-baseline justify-between gap-2 flex-wrap">
-            <div class="flex items-baseline gap-2">
-              <h2 class="text-amber-200 text-lg font-semibold" data-testid="spiritual-root-grade-name">
-                {{ gradeDef.name }}
-              </h2>
-              <span
-                :class="['text-[10px] px-1.5 py-0.5 rounded border', gradeBadgeClass(gradeDef.key)]"
-                :data-testid="`spiritual-root-grade-badge-${gradeDef.key}`"
-              >
-                {{ t(`spiritualRoot.grade.${gradeDef.key}`) }}
-              </span>
-              <span
-                class="text-[10px] px-1.5 py-0.5 rounded border bg-ink-700/40 text-ink-200 border-ink-300/30"
-                data-testid="spiritual-root-tier"
-              >
-                {{ t('spiritualRoot.field.tier', { tier: gradeDef.tier }) }}
-              </span>
-            </div>
-            <div class="flex items-center gap-3 text-xs text-ink-300">
-              <span data-testid="spiritual-root-purity">
-                {{ t('spiritualRoot.field.purity') }}:
-                <span class="text-emerald-200 ml-1">{{ root.state.purity }}/100</span>
-              </span>
-            </div>
-          </header>
-
-          <p class="text-xs text-ink-300" data-testid="spiritual-root-grade-description">
-            {{ gradeDef.description }}
-          </p>
-
-          <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-            <span data-testid="spiritual-root-cultivation-multiplier">
-              <span class="text-ink-300">{{ t('spiritualRoot.field.cultivationMultiplier') }}</span>
-              <span class="text-amber-200 ml-1">×{{ gradeDef.cultivationMultiplier.toFixed(2) }}</span>
-            </span>
-            <span data-testid="spiritual-root-stat-bonus">
-              <span class="text-ink-300">{{ t('spiritualRoot.field.statBonus') }}</span>
-              <span class="text-emerald-200 ml-1">+{{ gradeDef.statBonusPercent }}%</span>
-            </span>
-            <span data-testid="spiritual-root-secondary-count">
-              <span class="text-ink-300">{{ t('spiritualRoot.field.secondaryCount') }}</span>
-              <span class="text-ink-100 ml-1">{{ gradeDef.secondaryElementCount }}</span>
-            </span>
-          </div>
-        </article>
-
-        <article
-          class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-4"
-          data-testid="elemental-build-panel"
-        >
-          <header class="flex items-baseline justify-between gap-2 flex-wrap">
-            <div>
-              <h2 class="text-base font-semibold text-ink-100">
-                {{ t('spiritualRoot.build.title') }}
-              </h2>
-              <p class="text-xs text-ink-300 mt-0.5">{{ t('spiritualRoot.build.subtitle') }}</p>
-            </div>
-            <span class="text-[10px] px-2 py-0.5 rounded border border-amber-400/40 text-amber-100 bg-amber-700/20">
-              {{ t('spiritualRoot.build.phaseBadge') }}
-            </span>
-          </header>
-
-          <div class="grid gap-3 sm:grid-cols-2">
-            <div class="rounded border border-ink-300/20 bg-ink-900/20 p-3">
-              <div class="text-[10px] uppercase tracking-wider text-ink-400">
-                {{ t('spiritualRoot.build.mainElement') }}
-              </div>
-              <div class="mt-1 text-lg font-semibold text-amber-100" data-testid="elemental-build-main">
-                {{ elementLabel(buildRecommendation.mainElement) }}
-              </div>
-              <div class="text-xs text-ink-300">
-                {{ t('spiritualRoot.build.secondaryElement') }}:
-                <span class="text-sky-200">{{ elementLabel(buildRecommendation.secondaryElement) }}</span>
-              </div>
-            </div>
-
-            <div class="rounded border border-ink-300/20 bg-ink-900/20 p-3">
-              <div class="text-[10px] uppercase tracking-wider text-ink-400">
-                {{ t('spiritualRoot.build.equipmentElement') }}
-              </div>
-              <div class="mt-1 text-lg font-semibold text-emerald-100" data-testid="elemental-build-equipment">
-                {{ elementLabel(buildRecommendation.equipmentElement) }}
-              </div>
-              <div class="text-xs text-ink-300">{{ t('spiritualRoot.build.equipmentHint') }}</div>
-            </div>
-          </div>
-
-          <div class="grid gap-3 md:grid-cols-3">
-            <section class="space-y-2">
-              <h3 class="text-xs font-semibold text-ink-100">
-                {{ t('spiritualRoot.build.statsTitle') }}
-              </h3>
-              <div class="flex flex-wrap gap-1" data-testid="elemental-build-stats">
+          <article
+            class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-3"
+            data-testid="spiritual-root-grade-card"
+          >
+            <header class="flex items-baseline justify-between gap-2 flex-wrap">
+              <div class="flex items-baseline gap-2">
+                <h2 class="text-amber-200 text-lg font-semibold" data-testid="spiritual-root-grade-name">
+                  {{ gradeDef.name }}
+                </h2>
                 <span
-                  v-for="stat in buildRecommendation.recommendedStats"
-                  :key="stat"
-                  class="text-[10px] rounded border border-ink-300/20 bg-ink-900/30 px-1.5 py-0.5 text-ink-200"
+                  :class="['text-[10px] px-1.5 py-0.5 rounded border', gradeBadgeClass(gradeDef.key)]"
+                  :data-testid="`spiritual-root-grade-badge-${gradeDef.key}`"
                 >
-                  {{ stat }}
+                  {{ t(`spiritualRoot.grade.${gradeDef.key}`) }}
+                </span>
+                <span
+                  class="text-[10px] px-1.5 py-0.5 rounded border bg-ink-700/40 text-ink-200 border-ink-300/30"
+                  data-testid="spiritual-root-tier"
+                >
+                  {{ t('spiritualRoot.field.tier', { tier: gradeDef.tier }) }}
                 </span>
               </div>
-            </section>
+              <div class="flex items-center gap-3 text-xs text-ink-300">
+                <span data-testid="spiritual-root-purity">
+                  {{ t('spiritualRoot.field.purity') }}:
+                  <span class="text-emerald-200 ml-1">{{ root.state.purity }}/100</span>
+                </span>
+              </div>
+            </header>
 
-            <section class="space-y-2">
-              <h3 class="text-xs font-semibold text-ink-100">
-                {{ t('spiritualRoot.build.skillsTitle') }}
-              </h3>
-              <ul class="space-y-1 text-xs text-ink-300" data-testid="elemental-build-skills">
-                <li
-                  v-for="skill in buildRecommendation.recommendedSkills.slice(0, 5)"
-                  :key="skill"
-                  class="truncate"
-                >
-                  {{ skill }}
-                </li>
-              </ul>
-            </section>
+            <p class="text-xs text-ink-300" data-testid="spiritual-root-grade-description">
+              {{ gradeDef.description }}
+            </p>
 
-            <section class="space-y-2">
-              <h3 class="text-xs font-semibold text-ink-100">
-                {{ t('spiritualRoot.build.counterTitle') }}
-              </h3>
-              <ul class="space-y-1 text-xs text-ink-300" data-testid="elemental-build-tips">
-                <li v-for="tip in buildRecommendation.counterTips" :key="tip">
-                  {{ tip }}
-                </li>
-              </ul>
-            </section>
-          </div>
-
-          <div
-            v-if="buildRecommendation.warnings.length > 0"
-            class="rounded border border-amber-400/30 bg-amber-900/20 p-2 text-xs text-amber-100"
-            data-testid="elemental-build-warning"
-          >
-            {{ buildRecommendation.warnings.join(' · ') }}
-          </div>
-        </article>
-
-        <article
-          class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-3"
-          data-testid="spiritual-root-elements-card"
-        >
-          <header class="flex items-baseline justify-between gap-2 flex-wrap">
-            <h2 class="text-base font-semibold text-ink-100">{{ t('spiritualRoot.elements.title') }}</h2>
-            <p class="text-xs text-ink-300">{{ t('spiritualRoot.elements.legend') }}</p>
-          </header>
-
-          <div
-            class="grid grid-cols-5 gap-2"
-            data-testid="spiritual-root-element-wheel"
-          >
-            <div
-              v-for="el in ELEMENTS"
-              :key="el"
-              :class="['flex flex-col items-center justify-center rounded border px-2 py-3 transition', elementCellClass(el)]"
-              :data-testid="`spiritual-root-element-${el}`"
-              :data-role="elementCellRole(el)"
-            >
-              <span class="text-base font-semibold leading-none">{{ t(`spiritualRoot.element.${el}`) }}</span>
-              <span class="text-[10px] mt-1 opacity-80">
-                <template v-if="elementCellRole(el) === 'primary'">
-                  {{ t('spiritualRoot.element.role.primary') }}
-                </template>
-                <template v-else-if="elementCellRole(el) === 'secondary'">
-                  {{ t('spiritualRoot.element.role.secondary') }}
-                </template>
-                <template v-else>
-                  {{ t('spiritualRoot.element.role.inactive') }}
-                </template>
+            <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+              <span data-testid="spiritual-root-cultivation-multiplier">
+                <span class="text-ink-300">{{ t('spiritualRoot.field.cultivationMultiplier') }}</span>
+                <span class="text-amber-200 ml-1">×{{ gradeDef.cultivationMultiplier.toFixed(2) }}</span>
+              </span>
+              <span data-testid="spiritual-root-stat-bonus">
+                <span class="text-ink-300">{{ t('spiritualRoot.field.statBonus') }}</span>
+                <span class="text-emerald-200 ml-1">+{{ gradeDef.statBonusPercent }}%</span>
+              </span>
+              <span data-testid="spiritual-root-secondary-count">
+                <span class="text-ink-300">{{ t('spiritualRoot.field.secondaryCount') }}</span>
+                <span class="text-ink-100 ml-1">{{ gradeDef.secondaryElementCount }}</span>
               </span>
             </div>
-          </div>
+          </article>
 
-          <div
-            v-if="root.state.secondaryElements.length > 0"
-            class="text-xs text-ink-300"
-            data-testid="spiritual-root-secondary-list"
+          <article
+            class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-4"
+            data-testid="elemental-build-panel"
           >
-            {{ t('spiritualRoot.elements.secondaryLabel') }}:
-            <span class="text-sky-200 ml-1">
+            <header class="flex items-baseline justify-between gap-2 flex-wrap">
+              <div>
+                <h2 class="text-base font-semibold text-ink-100">
+                  {{ t('spiritualRoot.build.title') }}
+                </h2>
+                <p class="text-xs text-ink-300 mt-0.5">{{ t('spiritualRoot.build.subtitle') }}</p>
+              </div>
+              <span class="text-[10px] px-2 py-0.5 rounded border border-amber-400/40 text-amber-100 bg-amber-700/20">
+                {{ t('spiritualRoot.build.phaseBadge') }}
+              </span>
+            </header>
+
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div class="rounded border border-ink-300/20 bg-ink-900/20 p-3">
+                <div class="text-[10px] uppercase tracking-wider text-ink-400">
+                  {{ t('spiritualRoot.build.mainElement') }}
+                </div>
+                <div class="mt-1 text-lg font-semibold text-amber-100" data-testid="elemental-build-main">
+                  {{ elementLabel(buildRecommendation.mainElement) }}
+                </div>
+                <div class="text-xs text-ink-300">
+                  {{ t('spiritualRoot.build.secondaryElement') }}:
+                  <span class="text-sky-200">{{ elementLabel(buildRecommendation.secondaryElement) }}</span>
+                </div>
+              </div>
+
+              <div class="rounded border border-ink-300/20 bg-ink-900/20 p-3">
+                <div class="text-[10px] uppercase tracking-wider text-ink-400">
+                  {{ t('spiritualRoot.build.equipmentElement') }}
+                </div>
+                <div class="mt-1 text-lg font-semibold text-emerald-100" data-testid="elemental-build-equipment">
+                  {{ elementLabel(buildRecommendation.equipmentElement) }}
+                </div>
+                <div class="text-xs text-ink-300">{{ t('spiritualRoot.build.equipmentHint') }}</div>
+              </div>
+            </div>
+
+            <div class="grid gap-3 md:grid-cols-3">
+              <section class="space-y-2">
+                <h3 class="text-xs font-semibold text-ink-100">
+                  {{ t('spiritualRoot.build.statsTitle') }}
+                </h3>
+                <div class="flex flex-wrap gap-1" data-testid="elemental-build-stats">
+                  <span
+                    v-for="stat in buildRecommendation.recommendedStats"
+                    :key="stat"
+                    class="text-[10px] rounded border border-ink-300/20 bg-ink-900/30 px-1.5 py-0.5 text-ink-200"
+                  >
+                    {{ stat }}
+                  </span>
+                </div>
+              </section>
+
+              <section class="space-y-2">
+                <h3 class="text-xs font-semibold text-ink-100">
+                  {{ t('spiritualRoot.build.skillsTitle') }}
+                </h3>
+                <ul class="space-y-1 text-xs text-ink-300" data-testid="elemental-build-skills">
+                  <li
+                    v-for="skill in buildRecommendation.recommendedSkills.slice(0, 5)"
+                    :key="skill"
+                    class="truncate"
+                  >
+                    {{ skill }}
+                  </li>
+                </ul>
+              </section>
+
+              <section class="space-y-2">
+                <h3 class="text-xs font-semibold text-ink-100">
+                  {{ t('spiritualRoot.build.counterTitle') }}
+                </h3>
+                <ul class="space-y-1 text-xs text-ink-300" data-testid="elemental-build-tips">
+                  <li v-for="tip in buildRecommendation.counterTips" :key="tip">
+                    {{ tip }}
+                  </li>
+                </ul>
+              </section>
+            </div>
+
+            <div
+              v-if="buildRecommendation.warnings.length > 0"
+              class="rounded border border-amber-400/30 bg-amber-900/20 p-2 text-xs text-amber-100"
+              data-testid="elemental-build-warning"
+            >
+              {{ buildRecommendation.warnings.join(' · ') }}
+            </div>
+          </article>
+
+          <article
+            class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-3"
+            data-testid="spiritual-root-elements-card"
+          >
+            <header class="flex items-baseline justify-between gap-2 flex-wrap">
+              <h2 class="text-base font-semibold text-ink-100">{{ t('spiritualRoot.elements.title') }}</h2>
+              <p class="text-xs text-ink-300">{{ t('spiritualRoot.elements.legend') }}</p>
+            </header>
+
+            <div
+              class="grid grid-cols-5 gap-2"
+              data-testid="spiritual-root-element-wheel"
+            >
+              <div
+                v-for="el in ELEMENTS"
+                :key="el"
+                :class="['flex flex-col items-center justify-center rounded border px-2 py-3 transition', elementCellClass(el)]"
+                :data-testid="`spiritual-root-element-${el}`"
+                :data-role="elementCellRole(el)"
+              >
+                <span class="text-base font-semibold leading-none">{{ t(`spiritualRoot.element.${el}`) }}</span>
+                <span class="text-[10px] mt-1 opacity-80">
+                  <template v-if="elementCellRole(el) === 'primary'">
+                    {{ t('spiritualRoot.element.role.primary') }}
+                  </template>
+                  <template v-else-if="elementCellRole(el) === 'secondary'">
+                    {{ t('spiritualRoot.element.role.secondary') }}
+                  </template>
+                  <template v-else>
+                    {{ t('spiritualRoot.element.role.inactive') }}
+                  </template>
+                </span>
+              </div>
+            </div>
+
+            <div
+              v-if="root.state.secondaryElements.length > 0"
+              class="text-xs text-ink-300"
+              data-testid="spiritual-root-secondary-list"
+            >
+              {{ t('spiritualRoot.elements.secondaryLabel') }}:
+              <span class="text-sky-200 ml-1">
+                {{
+                  root.state.secondaryElements
+                    .map((el) => t(`spiritualRoot.element.${el}`))
+                    .join(', ')
+                }}
+              </span>
+            </div>
+          </article>
+
+          <article
+            class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-3"
+            data-testid="spiritual-root-reroll-card"
+          >
+            <header class="flex items-baseline justify-between gap-2 flex-wrap">
+              <h2 class="text-base font-semibold text-ink-100">{{ t('spiritualRoot.reroll.title') }}</h2>
+            </header>
+            <p class="text-xs text-ink-300">{{ t('spiritualRoot.reroll.description') }}</p>
+            <p class="text-xs text-amber-200/80">{{ t('spiritualRoot.reroll.warning') }}</p>
+            <button
+              type="button"
+              :disabled="root.rerolling"
+              data-testid="spiritual-root-reroll-button"
+              class="px-3 py-1.5 text-sm rounded bg-amber-700 text-amber-50 hover:bg-amber-600 disabled:bg-ink-700/40 disabled:text-ink-300 disabled:cursor-not-allowed"
+              @click="openRerollConfirm"
+            >
               {{
-                root.state.secondaryElements
-                  .map((el) => t(`spiritualRoot.element.${el}`))
-                  .join(', ')
+                root.rerolling
+                  ? t('spiritualRoot.reroll.button.inFlight')
+                  : t('spiritualRoot.reroll.button.idle')
               }}
-            </span>
-          </div>
-        </article>
-
-        <article
-          class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-3"
-          data-testid="spiritual-root-reroll-card"
-        >
-          <header class="flex items-baseline justify-between gap-2 flex-wrap">
-            <h2 class="text-base font-semibold text-ink-100">{{ t('spiritualRoot.reroll.title') }}</h2>
-          </header>
-          <p class="text-xs text-ink-300">{{ t('spiritualRoot.reroll.description') }}</p>
-          <p class="text-xs text-amber-200/80">{{ t('spiritualRoot.reroll.warning') }}</p>
-          <button
-            type="button"
-            :disabled="root.rerolling"
-            data-testid="spiritual-root-reroll-button"
-            class="px-3 py-1.5 text-sm rounded bg-amber-700 text-amber-50 hover:bg-amber-600 disabled:bg-ink-700/40 disabled:text-ink-300 disabled:cursor-not-allowed"
-            @click="openRerollConfirm"
-          >
-            {{
-              root.rerolling
-                ? t('spiritualRoot.reroll.button.inFlight')
-                : t('spiritualRoot.reroll.button.idle')
-            }}
-          </button>
-        </article>
+            </button>
+          </article>
+        </XTSealFrame>
       </template>
 
       <div

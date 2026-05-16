@@ -8,6 +8,8 @@ import { useBodyCultivationStore } from '@/stores/bodyCultivation';
 import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 
 const auth = useAuthStore();
 const body = useBodyCultivationStore();
@@ -96,7 +98,8 @@ onMounted(async () => {
     <div class="max-w-5xl mx-auto space-y-4">
       <header class="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
-          <h1 class="text-2xl tracking-widest font-bold">{{ t('bodyCultivation.title') }}</h1>
+          <XTPageEyebrow caps="LUYỆN THỂ ĐẠO" label="Luyện Thể Đạo" />
+          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('bodyCultivation.title') }}</h1>
           <p class="text-xs text-ink-300 mt-1">{{ t('bodyCultivation.subtitle') }}</p>
         </div>
         <RouterLink to="/home" class="text-xs text-amber-200 hover:text-amber-100">
@@ -119,149 +122,159 @@ onMounted(async () => {
       </section>
 
       <template v-else>
-        <section class="grid md:grid-cols-3 gap-4">
-          <div class="md:col-span-2 rounded-2xl border border-amber-500/30 bg-ink-900/80 p-5">
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <p class="text-xs uppercase tracking-[0.25em] text-amber-300">
-                  {{ t('bodyCultivation.realmLabel') }}
-                </p>
-                <h2 class="text-2xl font-bold mt-1">{{ status.bodyRealmName }}</h2>
-                <p class="text-sm text-ink-300 mt-1">
-                  {{ t('bodyCultivation.stage', { stage: status.bodyStage }) }}
+        <XTSealFrame
+          tone="jade"
+          corner-ornaments="❖✦❖✦"
+          watermark-letter="Đ"
+          rounded="xl"
+          inset="tight"
+          test-id="body-cultivation-seal-frame"
+          aria-label="Luyện Thể Đạo hero frame"
+        >
+          <section class="grid md:grid-cols-3 gap-4">
+            <div class="md:col-span-2 rounded-2xl border border-amber-500/30 bg-ink-900/80 p-5">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="text-xs uppercase tracking-[0.25em] text-amber-300">
+                    {{ t('bodyCultivation.realmLabel') }}
+                  </p>
+                  <h2 class="text-2xl font-bold mt-1">{{ status.bodyRealmName }}</h2>
+                  <p class="text-sm text-ink-300 mt-1">
+                    {{ t('bodyCultivation.stage', { stage: status.bodyStage }) }}
+                  </p>
+                </div>
+                <span
+                  class="px-3 py-1 rounded-full text-xs border"
+                  :class="
+                    status.bodyCultivating
+                      ? 'border-emerald-400/50 text-emerald-200 bg-emerald-950/30'
+                      : 'border-ink-500 text-ink-300 bg-ink-800/70'
+                  "
+                >
+                  {{
+                    status.bodyCultivating
+                      ? t('bodyCultivation.training.on')
+                      : t('bodyCultivation.training.off')
+                  }}
+                </span>
+              </div>
+
+              <div class="mt-5">
+                <div class="flex justify-between text-xs text-ink-300 mb-1">
+                  <span>{{ t('bodyCultivation.exp') }}</span>
+                  <span>{{ bodyExpText }}</span>
+                </div>
+                <div class="h-3 rounded-full bg-ink-800 overflow-hidden">
+                  <div class="h-full bg-amber-400" :style="{ width: progressPct }" />
+                </div>
+                <p class="text-xs text-ink-400 mt-2">
+                  {{ t('bodyCultivation.rate', { rate: status.bodyRate }) }}
                 </p>
               </div>
-              <span
-                class="px-3 py-1 rounded-full text-xs border"
-                :class="
-                  status.bodyCultivating
-                    ? 'border-emerald-400/50 text-emerald-200 bg-emerald-950/30'
-                    : 'border-ink-500 text-ink-300 bg-ink-800/70'
-                "
+
+              <div
+                v-if="injuryActive"
+                class="mt-4 rounded-xl border border-rose-500/40 bg-rose-950/30 p-3 text-sm text-rose-100"
+                data-testid="body-injury"
               >
-                {{
-                  status.bodyCultivating
-                    ? t('bodyCultivation.training.on')
-                    : t('bodyCultivation.training.off')
-                }}
-              </span>
+                {{ t('bodyCultivation.injury', { until: status.bodyInjuryUntil }) }}
+              </div>
+
+              <div class="mt-5 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  class="px-4 py-2 rounded-xl bg-amber-500 text-ink-950 font-semibold disabled:opacity-50"
+                  :disabled="body.actionLoading"
+                  data-testid="body-cultivation-toggle"
+                  @click="toggleCultivation"
+                >
+                  {{
+                    status.bodyCultivating
+                      ? t('bodyCultivation.stop')
+                      : t('bodyCultivation.start')
+                  }}
+                </button>
+                <button
+                  type="button"
+                  class="px-4 py-2 rounded-xl bg-violet-500 text-white font-semibold disabled:opacity-50"
+                  :disabled="body.actionLoading || !status.canBreakthrough"
+                  data-testid="body-breakthrough-button"
+                  @click="confirmOpen = true"
+                >
+                  {{ t('bodyCultivation.breakthrough.button') }}
+                </button>
+              </div>
             </div>
 
-            <div class="mt-5">
-              <div class="flex justify-between text-xs text-ink-300 mb-1">
-                <span>{{ t('bodyCultivation.exp') }}</span>
-                <span>{{ bodyExpText }}</span>
+            <aside class="rounded-2xl border border-ink-600/70 bg-ink-900/70 p-5">
+              <h3 class="font-semibold text-ink-100">{{ t('bodyCultivation.stats.title') }}</h3>
+              <dl class="mt-3 space-y-2 text-sm">
+                <div class="flex justify-between">
+                  <dt>HP Max</dt>
+                  <dd>+{{ status.statBonus.hpMax }}</dd>
+                </div>
+                <div class="flex justify-between">
+                  <dt>Power</dt>
+                  <dd>+{{ status.statBonus.power }}</dd>
+                </div>
+                <div class="flex justify-between">
+                  <dt>DEF</dt>
+                  <dd>+{{ status.statBonus.def }}</dd>
+                </div>
+                <div class="flex justify-between">
+                  <dt>Stamina</dt>
+                  <dd>+{{ status.statBonus.staminaMax }}</dd>
+                </div>
+                <div class="flex justify-between">
+                  <dt>{{ t('bodyCultivation.stats.bossReduction') }}</dt>
+                  <dd>{{ Math.round(status.statBonus.bossDamageReduction * 100) }}%</dd>
+                </div>
+              </dl>
+            </aside>
+          </section>
+
+          <section class="rounded-2xl border border-ink-600/70 bg-ink-900/70 p-5">
+            <h3 class="font-semibold text-ink-100">
+              {{ t('bodyCultivation.breakthrough.requirement') }}
+            </h3>
+            <div v-if="status.breakthroughRequirement" class="mt-3 grid md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p class="text-ink-300">
+                  {{ t('bodyCultivation.breakthrough.requiredExp') }}:
+                  <span class="text-ink-100">{{ status.breakthroughRequirement.bodyExpCost }}</span>
+                </p>
+                <p v-if="requiredPillName" class="text-ink-300 mt-2">
+                  {{ t('bodyCultivation.breakthrough.requiredPill') }}:
+                  <span class="text-ink-100">{{ requiredPillName }}</span>
+                </p>
               </div>
-              <div class="h-3 rounded-full bg-ink-800 overflow-hidden">
-                <div class="h-full bg-amber-400" :style="{ width: progressPct }" />
+              <div>
+                <p class="text-ink-300">{{ t('bodyCultivation.breakthrough.materials') }}</p>
+                <ul class="mt-2 space-y-1">
+                  <li v-for="m in requirementMaterials" :key="m.itemKey">
+                    {{ m.name }} × {{ m.qty }}
+                  </li>
+                </ul>
               </div>
-              <p class="text-xs text-ink-400 mt-2">
-                {{ t('bodyCultivation.rate', { rate: status.bodyRate }) }}
-              </p>
             </div>
+            <p v-else class="mt-3 text-sm text-ink-300">
+              {{ t('bodyCultivation.breakthrough.maxed') }}
+            </p>
 
             <div
-              v-if="injuryActive"
-              class="mt-4 rounded-xl border border-rose-500/40 bg-rose-950/30 p-3 text-sm text-rose-100"
-              data-testid="body-injury"
+              v-if="missingNames.length > 0"
+              class="mt-4 rounded-xl border border-amber-500/30 bg-amber-950/20 p-3"
+              data-testid="body-missing-materials"
             >
-              {{ t('bodyCultivation.injury', { until: status.bodyInjuryUntil }) }}
-            </div>
-
-            <div class="mt-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                class="px-4 py-2 rounded-xl bg-amber-500 text-ink-950 font-semibold disabled:opacity-50"
-                :disabled="body.actionLoading"
-                data-testid="body-cultivation-toggle"
-                @click="toggleCultivation"
-              >
-                {{
-                  status.bodyCultivating
-                    ? t('bodyCultivation.stop')
-                    : t('bodyCultivation.start')
-                }}
-              </button>
-              <button
-                type="button"
-                class="px-4 py-2 rounded-xl bg-violet-500 text-white font-semibold disabled:opacity-50"
-                :disabled="body.actionLoading || !status.canBreakthrough"
-                data-testid="body-breakthrough-button"
-                @click="confirmOpen = true"
-              >
-                {{ t('bodyCultivation.breakthrough.button') }}
-              </button>
-            </div>
-          </div>
-
-          <aside class="rounded-2xl border border-ink-600/70 bg-ink-900/70 p-5">
-            <h3 class="font-semibold text-ink-100">{{ t('bodyCultivation.stats.title') }}</h3>
-            <dl class="mt-3 space-y-2 text-sm">
-              <div class="flex justify-between">
-                <dt>HP Max</dt>
-                <dd>+{{ status.statBonus.hpMax }}</dd>
-              </div>
-              <div class="flex justify-between">
-                <dt>Power</dt>
-                <dd>+{{ status.statBonus.power }}</dd>
-              </div>
-              <div class="flex justify-between">
-                <dt>DEF</dt>
-                <dd>+{{ status.statBonus.def }}</dd>
-              </div>
-              <div class="flex justify-between">
-                <dt>Stamina</dt>
-                <dd>+{{ status.statBonus.staminaMax }}</dd>
-              </div>
-              <div class="flex justify-between">
-                <dt>{{ t('bodyCultivation.stats.bossReduction') }}</dt>
-                <dd>{{ Math.round(status.statBonus.bossDamageReduction * 100) }}%</dd>
-              </div>
-            </dl>
-          </aside>
-        </section>
-
-        <section class="rounded-2xl border border-ink-600/70 bg-ink-900/70 p-5">
-          <h3 class="font-semibold text-ink-100">
-            {{ t('bodyCultivation.breakthrough.requirement') }}
-          </h3>
-          <div v-if="status.breakthroughRequirement" class="mt-3 grid md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <p class="text-ink-300">
-                {{ t('bodyCultivation.breakthrough.requiredExp') }}:
-                <span class="text-ink-100">{{ status.breakthroughRequirement.bodyExpCost }}</span>
-              </p>
-              <p v-if="requiredPillName" class="text-ink-300 mt-2">
-                {{ t('bodyCultivation.breakthrough.requiredPill') }}:
-                <span class="text-ink-100">{{ requiredPillName }}</span>
-              </p>
-            </div>
-            <div>
-              <p class="text-ink-300">{{ t('bodyCultivation.breakthrough.materials') }}</p>
-              <ul class="mt-2 space-y-1">
-                <li v-for="m in requirementMaterials" :key="m.itemKey">
-                  {{ m.name }} × {{ m.qty }}
+              <p class="text-sm text-amber-200">{{ t('bodyCultivation.breakthrough.missing') }}</p>
+              <ul class="mt-2 text-sm text-ink-200 space-y-1">
+                <li v-for="m in missingNames" :key="m.itemKey">
+                  {{ m.name }} × {{ m.required }} ({{ m.owned }})
                 </li>
               </ul>
             </div>
-          </div>
-          <p v-else class="mt-3 text-sm text-ink-300">
-            {{ t('bodyCultivation.breakthrough.maxed') }}
-          </p>
-
-          <div
-            v-if="missingNames.length > 0"
-            class="mt-4 rounded-xl border border-amber-500/30 bg-amber-950/20 p-3"
-            data-testid="body-missing-materials"
-          >
-            <p class="text-sm text-amber-200">{{ t('bodyCultivation.breakthrough.missing') }}</p>
-            <ul class="mt-2 text-sm text-ink-200 space-y-1">
-              <li v-for="m in missingNames" :key="m.itemKey">
-                {{ m.name }} × {{ m.required }} ({{ m.owned }})
-              </li>
-            </ul>
-          </div>
-        </section>
+          </section>
+        </XTSealFrame>
       </template>
     </div>
 
