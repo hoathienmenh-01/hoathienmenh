@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
 import { PrismaService } from '../../common/prisma.service';
@@ -16,9 +16,14 @@ import { OnboardingQuestService } from './onboarding-quest.service';
  *   - `CurrencyService` từ `CharacterModule` cho
  *     `applyTx('ONBOARDING_TASK_CLAIM')`.
  *   - Phase 44.1 — `TitleService` từ `CharacterModule` cho Day 7 unlock title.
+ *
+ * Phase 44.2 — `CharacterModule` qua forwardRef để break cycle:
+ * `InventoryModule → forwardRef(OnboardingQuestModule)` +
+ * `CharacterModule → forwardRef(InventoryModule)` tạo cycle 3-cạnh khi
+ * Nest scan từ EconomyModule → InventoryModule → CharacterModule → ...
  */
 @Module({
-  imports: [AuthModule, CharacterModule],
+  imports: [AuthModule, forwardRef(() => CharacterModule)],
   controllers: [OnboardingQuestController],
   providers: [OnboardingQuestService, PrismaService],
   exports: [OnboardingQuestService],
