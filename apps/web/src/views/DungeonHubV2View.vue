@@ -13,7 +13,7 @@ import { useWorldContentStore } from '@/stores/worldContent';
 import type { DungeonV2View } from '@/api/worldContent';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 
 const { t, locale } = useI18n();
 const store = useWorldContentStore();
@@ -56,21 +56,18 @@ onMounted(() => {
 <template>
   <AppShell>
     <section class="dungeon-hub" data-testid="dungeon-hub-v2-view">
-      <XTSealFrame
+      <XTLuxHero
+        :eyebrow="t('luxHero.dungeonHubV2.eyebrow')"
+        :label="t('luxHero.dungeonHubV2.label')"
+        :title="t('worldContent.dungeon.title')"
+        :subtitle="t('worldContent.dungeon.subtitle')"
         tone="seal"
-        corner-ornaments="◆✦◆✦"
-        watermark-letter="C"
-        rounded="xl"
-        inset="tight"
-        test-id="dungeon-hub-v2-seal-frame"
-        aria-label="Tiên Hạch Tổng Trạm hero frame"
+        watermark-letter="T"
+        :breadcrumb="t('luxHero.dungeonHubV2.breadcrumb')"
+        test-id="dungeon-hub-v2-hero"
       >
-        <header>
-          <XTPageEyebrow caps="TIÊN HẠCH TỔNG TRẠM" label="Tiên Hạch Tổng Trạm" />
-          <h1 class="mt-1">{{ t('worldContent.dungeon.title') }}</h1>
-          <p>{{ t('worldContent.dungeon.subtitle') }}</p>
-        </header>
-      </XTSealFrame>
+        <XTPageEyebrow caps="TIÊN HẠCH TỔNG TRẠM" label="Tiên Hạch Tổng Trạm" class="sr-only" />
+      </XTLuxHero>
 
       <div
         v-if="reloadFailed && dungeons.length === 0"

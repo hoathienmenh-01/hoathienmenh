@@ -7,7 +7,7 @@ import { useOnboardingQuestStore } from '@/stores/onboardingQuest';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import type {
   OnboardingDayView,
   OnboardingTaskView,
@@ -139,34 +139,27 @@ onMounted(async () => {
 <template>
   <AppShell>
     <section class="space-y-4 p-4">
-      <XTSealFrame
+      <XTLuxHero
+        :eyebrow="t('luxHero.onboardingQuest.eyebrow')"
+        :label="t('luxHero.onboardingQuest.label')"
+        :title="t('onboardingQuest.title')"
+        :subtitle="t('onboardingQuest.subtitle')"
         tone="gold"
-        corner-ornaments="❀✦❀✦"
-        watermark-letter="T"
-        rounded="xl"
-        inset="tight"
-        test-id="onboarding-quest-view-seal-frame"
-        aria-label="Sơ Kiến Tiên Lộ hero frame"
+        watermark-letter="S"
+        :breadcrumb="t('luxHero.onboardingQuest.breadcrumb')"
+        test-id="onboarding-quest-view-hero"
       >
-        <header class="space-y-1">
-          <XTPageEyebrow caps="SƠ KIẾN TIÊN LỘ" label="Sơ Kiến Tiên Lộ" />
-          <h1 class="text-2xl font-bold mt-1">
-            {{ t('onboardingQuest.title') }}
-          </h1>
-          <p class="text-sm text-gray-300">
-            {{ t('onboardingQuest.subtitle') }}
-          </p>
-          <p class="text-sm text-amber-300">
-            {{
-              t('onboardingQuest.overallProgress', {
-                claimed: store.totalClaimed,
-                total: store.totalTasks,
-                pct: store.overallPct,
-              })
-            }}
-          </p>
-        </header>
-      </XTSealFrame>
+        <XTPageEyebrow caps="SƠ KIẾN TIÊN LỘ" label="Sơ Kiến Tiên Lộ" class="sr-only" />
+        <p class="text-sm text-amber-300 mt-2">
+          {{
+            t('onboardingQuest.overallProgress', {
+              claimed: store.totalClaimed,
+              total: store.totalTasks,
+              pct: store.overallPct,
+            })
+          }}
+        </p>
+      </XTLuxHero>
 
       <!-- Day grid -->
       <div v-if="selectedDay === null">

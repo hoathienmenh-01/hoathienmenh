@@ -315,13 +315,13 @@ onMounted(() => {
   <AppShell>
     <div class="space-y-5" data-testid="dashboard-modern">
       <XTLuxHero
-        eyebrow="CỬU THIÊN MỘNG"
-        label="Đạo Tràng Tổng Quan"
+        :eyebrow="t('luxHero.dashboard.eyebrow')"
+        :label="t('luxHero.dashboard.label')"
         :title="t('dashboard.title')"
         :subtitle="t('dashboard.subtitle')"
         tone="gold"
         watermark-letter="C"
-        breadcrumb="Tu Tiên Lộ · Cửu Thiên"
+        :breadcrumb="t('luxHero.dashboard.breadcrumb')"
         test-id="dashboard-hero"
       >
         <XTPageEyebrow

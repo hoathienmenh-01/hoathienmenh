@@ -16,7 +16,7 @@ import {
 } from '@/api/mentor';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import MButton from '@/components/ui/MButton.vue';
 import MentorMilestonePanel from '@/components/MentorMilestonePanel.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
@@ -135,19 +135,18 @@ const isMentor = computed(() => !!profile.value);
 <template>
   <AppShell>
     <section class="mentor-view" data-testid="mentor-view">
-      <XTSealFrame
+      <XTLuxHero
+        :eyebrow="t('luxHero.mentor.eyebrow')"
+        :label="t('luxHero.mentor.label')"
+        :title="t('mentor.title')"
+        :subtitle="t('mentor.subtitle')"
         tone="jade"
-        corner-ornaments="❖❧❖❧"
-        watermark-letter="M"
-        rounded="xl"
-        inset="tight"
-        test-id="mentor-view-seal-frame"
-        aria-label="Sư Môn Truyền Đạo hero frame"
+        watermark-letter="S"
+        :breadcrumb="t('luxHero.mentor.breadcrumb')"
+        test-id="mentor-view-hero"
       >
-        <XTPageEyebrow caps="SƯ MÔN TRUYỀN ĐẠO" label="Sư Môn Truyền Đạo" />
-        <h1 class="mt-1">{{ t('mentor.title') }}</h1>
-        <p class="muted">{{ t('mentor.subtitle') }}</p>
-      </XTSealFrame>
+        <XTPageEyebrow caps="SƯ MÔN TRUYỀN ĐẠO" label="Sư Môn Truyền Đạo" class="sr-only" />
+      </XTLuxHero>
 
       <div v-if="loading" data-testid="mentor-loading">{{ t('common.loading') }}</div>
 

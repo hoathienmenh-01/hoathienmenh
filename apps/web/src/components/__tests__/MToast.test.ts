@@ -46,7 +46,7 @@ describe('MToast', () => {
 
   it('empty store → 0 toast div rendered', () => {
     const w = mount(MToast, { global: { plugins: [i18n] } });
-    expect(w.findAll('.font-bold')).toHaveLength(0);
+    expect(w.findAll('.xt-toast')).toHaveLength(0);
   });
 
   it('1 toast info → render title + text', async () => {
@@ -56,25 +56,25 @@ describe('MToast', () => {
     expect(w.text()).toContain('Hello');
   });
 
-  it('error toast → red border class', () => {
+  it('error toast → seal tone class xt-toast--error', () => {
     const store = useToastStore();
     store.push({ type: 'error', text: 'Boom' });
     const w = mount(MToast, { global: { plugins: [i18n] } });
-    expect(w.html()).toContain('border-red-700');
+    expect(w.html()).toContain('xt-toast--error');
   });
 
-  it('warning toast → yellow border class', () => {
+  it('warning toast → warning tone class xt-toast--warning', () => {
     const store = useToastStore();
     store.push({ type: 'warning', text: 'Careful' });
     const w = mount(MToast, { global: { plugins: [i18n] } });
-    expect(w.html()).toContain('border-yellow-600');
+    expect(w.html()).toContain('xt-toast--warning');
   });
 
-  it('success toast → emerald border class', () => {
+  it('success toast → jade tone class xt-toast--success', () => {
     const store = useToastStore();
     store.push({ type: 'success', text: 'Done' });
     const w = mount(MToast, { global: { plugins: [i18n] } });
-    expect(w.html()).toContain('border-emerald-700');
+    expect(w.html()).toContain('xt-toast--success');
   });
 
   it('multiple toasts → preserved order', () => {
@@ -93,7 +93,7 @@ describe('MToast', () => {
     store.push({ type: 'info', text: 'Click me' });
     const w = mount(MToast, { global: { plugins: [i18n] } });
     expect(store.toasts).toHaveLength(1);
-    await w.find('.cursor-pointer').trigger('click');
+    await w.find('.xt-toast').trigger('click');
     expect(store.toasts).toHaveLength(0);
   });
 

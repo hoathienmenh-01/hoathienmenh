@@ -20,6 +20,7 @@ import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import XTGlyphBadge from '@/components/xianxia/XTGlyphBadge.vue';
+import XTStatTile from '@/components/xianxia/XTStatTile.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
@@ -146,18 +147,49 @@ function handleErr(e: unknown): void {
 }
 
 const myStash = computed(() => game.character?.linhThach ?? '0');
+
+/**
+ * Phase 8 — sect-color tint (no store shape change).
+ *
+ * Map sect id → accent color deterministically từ palette luxury tokens.
+ * Khi user thuộc tông môn, viền / glow card "Tông của tôi" sẽ tint nhẹ
+ * theo màu này (không tint background lớn, không đổi store).
+ */
+const SECT_ACCENT_PALETTE = [
+  'var(--xt-gold-bright, #f5e3a1)',
+  'var(--xt-jade-bright, #5fe3c6)',
+  'var(--xt-mist-bright, #62c8dc)',
+  'var(--xt-smoke-bright, #a884de)',
+  'var(--xt-seal-bright, #b8484a)',
+  'var(--xt-fire, #e89a5a)',
+] as const;
+
+function hashString(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (h << 5) - h + s.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h);
+}
+
+const sectAccent = computed<string>(() => {
+  if (!me.value) return SECT_ACCENT_PALETTE[0];
+  const seed = me.value.id || me.value.name || 'mặc-định';
+  return SECT_ACCENT_PALETTE[hashString(seed) % SECT_ACCENT_PALETTE.length];
+});
 </script>
 
 <template>
   <AppShell>
     <XTLuxHero
-      eyebrow="TÔNG MÔN ĐIỆN"
-      label="Đại Điện Tông Môn"
+      :eyebrow="t('luxHero.sect.eyebrow')"
+      :label="t('luxHero.sect.label')"
       :title="t('sect.title')"
-      subtitle="Lập tông — gia nhập — cống hiến — chinh chiến tông đối đầu."
+      :subtitle="t('luxHero.sect.subtitle')"
       tone="gold"
       watermark-letter="G"
-      breadcrumb="Tông Môn · Đại Điện"
+      :breadcrumb="t('luxHero.sect.breadcrumb')"
       test-id="sect-view-hero"
       class="mb-4"
     >
@@ -211,22 +243,55 @@ const myStash = computed(() => game.character?.linhThach ?? '0');
 
     <!-- TÔNG CỦA TÔI -->
     <section v-if="tab === 'mine' && me" class="space-y-4">
-      <div class="border border-ink-300/40 rounded p-4 bg-ink-700/30">
+      <div
+        class="xt-sect-tinted border border-ink-300/40 rounded p-4 bg-ink-700/30"
+        :style="{ '--xt-accent-sect': sectAccent }"
+        data-testid="sect-mine-card"
+      >
         <div class="flex items-start gap-3 flex-wrap">
           <div class="flex-1 min-w-0">
-            <div class="text-lg text-ink-50">{{ me.name }}</div>
-            <div class="text-xs text-ink-300">
-              {{ t('sect.level', { lv: me.level }) }} · {{ t('sect.members', { n: me.memberCount }) }}
-              <span v-if="me.leaderName"> · {{ t('sect.leader', { name: me.leaderName }) }}</span>
+            <div class="flex items-center gap-2 flex-wrap">
+              <div class="text-lg text-ink-50">{{ me.name }}</div>
+              <span
+                class="xt-sect-badge inline-flex items-center gap-1 rounded border px-2 py-[1px] text-[10px] uppercase tracking-widest"
+                data-testid="sect-mine-badge"
+                :aria-label="t('sect.mineBadge.ariaLabel')"
+              >
+                <span aria-hidden="true">❖</span>
+                <span>{{ t('sect.mineBadge.label') }}</span>
+              </span>
+            </div>
+            <div v-if="me.leaderName" class="text-xs text-ink-300">
+              {{ t('sect.leader', { name: me.leaderName }) }}
             </div>
             <p v-if="me.description" class="text-sm text-ink-200 mt-2 whitespace-pre-line">
               {{ me.description }}
             </p>
           </div>
-          <div class="text-xs text-right">
-            <div class="text-ink-300">{{ t('sect.treasury') }}</div>
-            <div class="text-amber-300 text-base">⛀ {{ me.treasuryLinhThach }}</div>
-          </div>
+        </div>
+
+        <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3" data-testid="sect-stats-grid">
+          <XTStatTile
+            :label="t('sect.level', { lv: '' })"
+            :value="me.level"
+            tone="gold"
+            icon="sect"
+            test-id="sect-stat-level"
+          />
+          <XTStatTile
+            :label="t('sect.members', { n: '' })"
+            :value="me.memberCount"
+            tone="jade"
+            icon="social"
+            test-id="sect-stat-members"
+          />
+          <XTStatTile
+            :label="t('sect.treasury')"
+            :value="me.treasuryLinhThach"
+            tone="gold"
+            icon="wallet"
+            test-id="sect-stat-treasury"
+          />
         </div>
         <div class="mt-3 flex gap-2 items-end">
           <div class="flex-1">

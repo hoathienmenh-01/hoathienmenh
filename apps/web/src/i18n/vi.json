@@ -19,6 +19,9 @@
     "no": "Không",
     "reload": "Tải lại",
     "refresh": "Làm mới",
+    "pullToRefresh": "Kéo xuống để làm mới",
+    "releaseToRefresh": "Thả để làm mới",
+    "refreshing": "Đang làm mới…",
     "search": "Tìm",
     "total": "Tổng",
     "page": "Trang",
@@ -437,7 +440,6 @@
       "reportPlayer": "Tố cáo",
       "homestead": "Động Phủ",
       "menu": "Menu",
-      "activity": "Hoạt Động",
       "world": "Thế Giới",
       "farm": "Linh Sơn Farm",
       "artifact": "Pháp Bảo",
@@ -1554,6 +1556,10 @@
       "INSUFFICIENT_LINH_THACH": "Không đủ linh thạch.",
       "NAME_TAKEN": "Tên này đã có người dùng.",
       "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
+    },
+    "mineBadge": {
+      "label": "Tông sắc",
+      "ariaLabel": "Sắc tông môn"
     }
   },
   "boss": {
@@ -7982,12 +7988,11 @@
     },
     "dashboard": {
       "hero": {
-        "title": "Đạo Thân",
+        "title": "Danh Hiệu",
         "power": "Lực Chiến",
         "realm": "Cảnh Giới",
         "linhCan": "Linh Căn",
         "sect": "Tông Môn",
-        "title": "Danh Hiệu",
         "cultivate": "Tu Luyện",
         "breakthrough": "Đột Phá",
         "secret": "Bí Cảnh",
@@ -8021,6 +8026,290 @@
     "placeholder": {
       "title": "Đang phát triển",
       "desc": "Chức năng này đang được xây dựng. Trở lại Thiên Cung Tổng Quan để tiếp tục."
+    }
+  },
+  "luxHero": {
+    "achievement": {
+      "eyebrow": "KỶ ĐỨC BI",
+      "label": "Kỷ Đức Bi",
+      "breadcrumb": "Nhiệm Vụ · Thành Tựu"
+    },
+    "activity": {
+      "eyebrow": "GIẢI TIỆC THỊNH HỘI",
+      "label": "Giải Tiệc Thịnh Hội",
+      "breadcrumb": "Nhiệm Vụ · Hoạt Động"
+    },
+    "arena": {
+      "eyebrow": "LONG HỔ ĐẤU TRƯỜNG",
+      "label": "Long Hổ Đấu Trường",
+      "breadcrumb": "Chiến Đạo · Đấu Trường"
+    },
+    "bodyCultivation": {
+      "eyebrow": "LUYỆN THỂ ĐẠO",
+      "label": "Đại Đạo Tu Thể",
+      "breadcrumb": "Tu Tiên Lộ · Luyện Thể"
+    },
+    "boss": {
+      "eyebrow": "TRUY SÁT MA VƯƠNG",
+      "label": "Ma Đường Chiến Trường",
+      "subtitle": "Truy sát ma vương, tích góp chiến công, phân chia chiến lợi phẩm theo bậc.",
+      "breadcrumb": "Chiến Đạo · Boss"
+    },
+    "bossHub": {
+      "eyebrow": "QUẦN MA DANH SÁCH",
+      "label": "Vong Tử Thủy Nghên",
+      "breadcrumb": "Chiến Đạo · Trường Lục"
+    },
+    "codex": {
+      "eyebrow": "THIÊN HẠNH NGHI PHỔ",
+      "label": "Thiên Hạnh Nghi Phổ",
+      "breadcrumb": "Nhiệm Vụ · Bách Khoa"
+    },
+    "cosmetic": {
+      "eyebrow": "Y BÀO TRANG SỨC",
+      "label": "Y Bào Trang Sức",
+      "breadcrumb": "Kho Báu · Y Bào"
+    },
+    "cultivationMethodV2": {
+      "eyebrow": "NGŨ HÀNH BỔ NẠP",
+      "label": "Đạo Lộ Công Pháp",
+      "breadcrumb": "Tu Tiên Lộ · Công Pháp"
+    },
+    "dashboard": {
+      "eyebrow": "CỬU THIÊN MỘNG",
+      "label": "Đạo Tràng Tổng Quan",
+      "breadcrumb": "Tu Tiên Lộ · Cửu Thiên"
+    },
+    "dungeonHubV2": {
+      "eyebrow": "TIÊN HẠCH TỔNG TRẠM",
+      "label": "Tiên Hạch Tổng Trạm",
+      "breadcrumb": "Chiến Đạo · Bí Cảnh"
+    },
+    "dungeonRun": {
+      "eyebrow": "BÍ CẢNH LƯU PHÁT",
+      "label": "Bí Cảnh Lưu Phát",
+      "breadcrumb": "Chiến Đạo · Hành Trình"
+    },
+    "encounter": {
+      "eyebrow": "KỲ NGỘ MỘNG CẢNH",
+      "label": "Kỳ Ngộ Mộng Cảnh",
+      "breadcrumb": "Nhiệm Vụ · Kỳ Ngộ"
+    },
+    "farmMap": {
+      "eyebrow": "LINH ĐIỀN TỒN DƯỠNG",
+      "label": "Linh Điền Tồn Dưỡng",
+      "breadcrumb": "Nhiệm Vụ · Linh Điền"
+    },
+    "feedback": {
+      "eyebrow": "THỈNH AN NGHI",
+      "label": "Thỉnh An Nghi",
+      "breadcrumb": "Hỗ Trợ · Góp Ý"
+    },
+    "giftCode": {
+      "eyebrow": "TỨ PHÚC LONG SAO",
+      "label": "Tứ Phúc Long Sao",
+      "breadcrumb": "Kho Báu · Quà Tặng"
+    },
+    "inventory": {
+      "eyebrow": "CÀN KHÔN TÚI",
+      "label": "Tạng Phẩm Các",
+      "subtitle": "Trang bị, bảo vật, phẩm linh — trang bị thuận đạo, đả tầm mặt.",
+      "breadcrumb": "Tông Môn · Túi Đồ"
+    },
+    "mail": {
+      "eyebrow": "PHI CÁP TRUYỀN THƯ",
+      "label": "Phi Cáp Truyền Thư",
+      "breadcrumb": "Xã Hội · Hòm Thư"
+    },
+    "market": {
+      "eyebrow": "THIÊN HẠNH THƯƠNG PHỐ",
+      "label": "Thiên Hạnh Thương Phố",
+      "breadcrumb": "Kinh Tế · Thương Phố"
+    },
+    "marketV2": {
+      "eyebrow": "MA THƯƠNG LIÊN CANG",
+      "label": "Thiên Hạ Thương Cảng",
+      "subtitle": "Đấu giá bảo vật — nhận phần thưởng — trao đổi liên thông toàn mạng.",
+      "breadcrumb": "Xã Hội · Thương Cảng"
+    },
+    "mentor": {
+      "eyebrow": "SƯ MÔN TRUYỀN ĐẠO",
+      "label": "Sư Môn Truyền Đạo",
+      "breadcrumb": "Nhiệm Vụ · Sư Môn"
+    },
+    "mission": {
+      "eyebrow": "PHỤNG ĐẠO SỨ MỆNH",
+      "label": "Phụng Đạo Sứ Mệnh",
+      "breadcrumb": "Nhiệm Vụ · Sứ Mệnh"
+    },
+    "monetization": {
+      "eyebrow": "TIÊN LỘ PHÚC LỄ",
+      "label": "Tiên Lộ Phúc Lễ",
+      "breadcrumb": "Kho Báu · Phúc Lễ"
+    },
+    "monetizationDacQuyen": {
+      "eyebrow": "TIÊN LỘ ĐẶC QUYỀN",
+      "label": "Tiên Lộ Đặc Quyền",
+      "breadcrumb": "Kho Báu · Đặc Quyền"
+    },
+    "monetizationShop": {
+      "eyebrow": "TIÊN TRẠM NẠP LỄ",
+      "label": "Tiên Trạm Nạp Lễ",
+      "subtitle": "Thẻ tháng, sweep tickets, premium battle pass, quỹ trưởng thành, mở slot inventory/queue/market.",
+      "breadcrumb": "Kho Báu · Cửa Hàng"
+    },
+    "notificationSettings": {
+      "eyebrow": "ĐÀI TRUYỀN TIN HIỆU",
+      "label": "Đài Truyền Tin Hiệu",
+      "breadcrumb": "Cài Đặt · Thông Báo"
+    },
+    "npc": {
+      "eyebrow": "KỲ NHÂN DIỆN KIẾN",
+      "label": "Kỳ Nhân Diện Kiến",
+      "breadcrumb": "Xã Hội · Kỳ Nhân"
+    },
+    "onboardingQuest": {
+      "eyebrow": "SƠ KIẾN TIÊN LỘ",
+      "label": "Sơ Kiến Tiên Lộ",
+      "breadcrumb": "Khởi Đầu · 7 Ngày"
+    },
+    "playerLogs": {
+      "eyebrow": "NHẬT KÝ HUÝ KỶ",
+      "label": "Nhật Ký Huý Kỷ",
+      "breadcrumb": "Hỗ Trợ · Nhật Ký"
+    },
+    "profile": {
+      "eyebrow": "THÂN THẾ CÔNG TRẠNG",
+      "label": "Đạo Tâm Truyện",
+      "subtitle": "Thân thế công trạng, cảnh giới tu vi và công đức của đạo hữu.",
+      "breadcrumb": "Tông Môn · Thân Thế"
+    },
+    "pvp": {
+      "eyebrow": "SÁT PHẠT TRANH HUNG",
+      "label": "Sát Phạt Tranh Hung",
+      "breadcrumb": "Chiến Đạo · PvP"
+    },
+    "quest": {
+      "eyebrow": "THIÊN MỆNH NHIỆM VỤ",
+      "label": "Thiên Mệnh Nhiệm Vụ",
+      "breadcrumb": "Nhiệm Vụ · Thiên Mệnh"
+    },
+    "reportPlayer": {
+      "eyebrow": "PHÁT GIÁC CAO THÙY",
+      "label": "Phát Giác Cao Thùy",
+      "breadcrumb": "Hỗ Trợ · Tố Cáo"
+    },
+    "reputation": {
+      "eyebrow": "HIỆP DANH THIÊN HẠ",
+      "label": "Hiệp Danh Thiên Hạ",
+      "breadcrumb": "Nhiệm Vụ · Hiệp Danh"
+    },
+    "returner": {
+      "eyebrow": "CỐ NHÂN QUY HOÀN",
+      "label": "Cố Nhân Quy Hoàn",
+      "breadcrumb": "Sự Kiện · Hồi Quy"
+    },
+    "roguelike": {
+      "eyebrow": "VÔ HẠN LỘ",
+      "label": "Vô Hạn Lộ",
+      "breadcrumb": "Chiến Đấu · Vô Hạn"
+    },
+    "seasons": {
+      "eyebrow": "VÔ THƯỜNG PHÂN KIẾP",
+      "label": "Vô Thường Phân Kiếp",
+      "breadcrumb": "Sự Kiện · Mùa Giải"
+    },
+    "secretRealm": {
+      "eyebrow": "BÍ CẢNH THỬ LUYỆN",
+      "label": "Bí Cảnh Thử Luyện",
+      "breadcrumb": "Chiến Đạo · Bí Cảnh"
+    },
+    "sect": {
+      "eyebrow": "TÔNG MÔN ĐIỆN",
+      "label": "Đại Điện Tông Môn",
+      "subtitle": "Lập tông — gia nhập — cống hiến — chinh chiến tông đối đầu.",
+      "breadcrumb": "Tông Môn · Đại Điện"
+    },
+    "sectContent": {
+      "eyebrow": "TÔNG MÔN NỘI VỤ",
+      "label": "Tông Môn Nội Vụ",
+      "breadcrumb": "Xã Hội · Tông Môn"
+    },
+    "sectWar": {
+      "eyebrow": "TÔNG MÔN ĐẠI CHIẾN",
+      "label": "Tông Môn Đại Chiến",
+      "breadcrumb": "Chiến Đạo · Tông Môn"
+    },
+    "settings": {
+      "eyebrow": "TÂM TRẦN TU CHỈNH",
+      "label": "Tạng Bảo Các",
+      "breadcrumb": "Hệ Thống · Thiết Lập"
+    },
+    "shop": {
+      "eyebrow": "TIÊN TRẠM CHÍNH BIỂN",
+      "label": "Tiên Trạm Thương Cảng",
+      "breadcrumb": "Xã Hội · Tiên Trạm"
+    },
+    "shopPacks": {
+      "eyebrow": "TIÊN LỄ TRANG BAO",
+      "label": "Tiên Lễ Trang Bao",
+      "breadcrumb": "Kho Báu · Lễ Bao"
+    },
+    "social": {
+      "eyebrow": "GIANG HỒ GIAO TẾ",
+      "label": "Giang Hồ Giao Tế",
+      "breadcrumb": "Xã Hội · Giao Tế"
+    },
+    "spiritualRoot": {
+      "eyebrow": "LINH CĂN ĐẠO TRẠCH",
+      "label": "Linh Căn Đạo Trạch",
+      "breadcrumb": "Tu Vi · Linh Căn"
+    },
+    "storyDungeon": {
+      "eyebrow": "CỔ TRIẾT MỘNG CẢNH",
+      "label": "Cổ Triết Mộng Cảnh",
+      "breadcrumb": "Nhiệm Vụ · Mộng Cảnh"
+    },
+    "storyV2": {
+      "eyebrow": "TIÊN DUỆ TỰ SỰ",
+      "label": "Tiên Duệ Tự Sự",
+      "breadcrumb": "Nhiệm Vụ · Cốt Truyện"
+    },
+    "territory": {
+      "eyebrow": "CƯƠNG THỔ TRANH BÁ",
+      "label": "Cương Thổ Tranh Bá",
+      "breadcrumb": "Chiến Đạo · Cương Thổ"
+    },
+    "title": {
+      "eyebrow": "HIỂN DANH HỘ HỘ",
+      "label": "Hiển Danh Hộ Hộ",
+      "breadcrumb": "Kho Báu · Danh Hiệu"
+    },
+    "topup": {
+      "eyebrow": "TIÊN NGỌC HƯƠNG HỎA",
+      "label": "Tiên Ngọc Hương Hỏa",
+      "breadcrumb": "Kho Báu · Nạp Thẻ"
+    },
+    "trialTower": {
+      "eyebrow": "THÍ LUYỆN THÁP",
+      "label": "Thí Luyện Tháp",
+      "breadcrumb": "Chiến Đạo · Tháp"
+    },
+    "tribulation": {
+      "eyebrow": "THIÊN KIẾP GIÁNG THẾ",
+      "label": "Thiên Kiếp Giáng Thế",
+      "breadcrumb": "Chiến Đạo · Vượt Kiếp"
+    },
+    "wallet": {
+      "eyebrow": "CÀN KHÔN CẨM NANG",
+      "label": "Tài Vật Tiên Viện",
+      "subtitle": "Tổng hợp 6 loại tiền tệ và đặc quyền đang active, server-authoritative.",
+      "breadcrumb": "Hệ Thống · Ví"
+    },
+    "worldContent": {
+      "eyebrow": "THIÊN TIÊN THẾ GIỚI",
+      "label": "Thiên Tiên Thế Giới",
+      "breadcrumb": "Nhiệm Vụ · Thế Giới"
     }
   }
 }

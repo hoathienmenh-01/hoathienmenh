@@ -9,7 +9,7 @@ import { useDungeonRunStore } from '@/stores/dungeonRun';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import type {
   DungeonAvailabilityView,
   DungeonClaimResult,
@@ -204,18 +204,19 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="max-w-5xl mx-auto space-y-4" data-testid="dungeon-run-view">
-      <XTSealFrame
+      <XTLuxHero
+        :eyebrow="t('luxHero.dungeonRun.eyebrow')"
+        :label="t('luxHero.dungeonRun.label')"
+        :title="t('dungeonRun.title')"
+        :subtitle="t('dungeonRun.subtitle')"
         tone="seal"
-        corner-ornaments="◆✦◆✦"
-        watermark-letter="C"
-        rounded="xl"
-        inset="tight"
-        test-id="dungeon-run-seal-frame"
-        aria-label="Bí Cảnh Lưu Phát hero frame"
+        watermark-letter="B"
+        :breadcrumb="t('luxHero.dungeonRun.breadcrumb')"
+        test-id="dungeon-run-hero"
       >
+        <XTPageEyebrow caps="BÍ CẢNH LƯU PHÁT" label="Bí Cảnh Lưu Phát" class="sr-only" />
         <header class="flex items-baseline justify-between gap-3 flex-wrap">
           <div>
-            <XTPageEyebrow caps="BÍ CẢNH LƯU PHÁT" label="Bí Cảnh Lưu Phát" />
             <h1 class="text-2xl tracking-widest font-bold mt-1">
               {{ t('dungeonRun.title') }}
             </h1>
@@ -230,7 +231,7 @@ onMounted(async () => {
             </div>
           </div>
         </header>
-      </XTSealFrame>
+      </XTLuxHero>
 
       <!-- Active run card -->
       <section

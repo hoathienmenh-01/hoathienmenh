@@ -6,7 +6,7 @@ import { useDailyEncounterStore } from '@/stores/dailyEncounter';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 
 /**
  * Phase 34.1 — Daily Random Encounter / Kỳ Ngộ view.
@@ -92,21 +92,18 @@ onMounted(async () => {
 <template>
   <AppShell>
     <section class="space-y-4 p-4">
-      <XTSealFrame
+      <XTLuxHero
+        :eyebrow="t('luxHero.encounter.eyebrow')"
+        :label="t('luxHero.encounter.label')"
+        :title="t('encounter.title')"
+        :subtitle="t('encounter.subtitle')"
         tone="jade"
-        corner-ornaments="❖❧❖❧"
-        watermark-letter="M"
-        rounded="xl"
-        inset="tight"
-        test-id="encounter-view-seal-frame"
-        aria-label="Kỳ Ngộ Mộng Cảnh hero frame"
+        watermark-letter="K"
+        :breadcrumb="t('luxHero.encounter.breadcrumb')"
+        test-id="encounter-view-hero"
       >
-        <header class="space-y-1">
-          <XTPageEyebrow caps="KỲ NGỘ MỘNG CẢNH" label="Kỳ Ngộ Mộng Cảnh" />
-          <h1 class="text-2xl font-bold mt-1">{{ t('encounter.title') }}</h1>
-          <p class="text-sm text-gray-300">{{ t('encounter.subtitle') }}</p>
-        </header>
-      </XTSealFrame>
+        <XTPageEyebrow caps="KỲ NGỘ MỘNG CẢNH" label="Kỳ Ngộ Mộng Cảnh" class="sr-only" />
+      </XTLuxHero>
 
       <p
         v-if="store.loading"

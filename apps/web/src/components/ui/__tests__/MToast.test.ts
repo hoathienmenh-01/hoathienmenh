@@ -21,7 +21,7 @@ beforeEach(() => {
 describe('MToast', () => {
   it('store rỗng → không render toast div nào', () => {
     const w = mountToast();
-    expect(w.findAll('[class*="rounded"][class*="border-2"]')).toHaveLength(0);
+    expect(w.findAll('.xt-toast')).toHaveLength(0);
   });
 
   it('push 1 toast → render title + text', () => {
@@ -32,26 +32,25 @@ describe('MToast', () => {
     expect(w.text()).toContain('Đã lưu');
   });
 
-  it('type=error → có class border-red-700', () => {
+  it('type=error → có tone class xt-toast--error', () => {
     const store = useToastStore();
     store.push({ type: 'error', title: 'Lỗi', text: 'Hỏng rồi' });
     const w = mountToast();
-    const html = w.html();
-    expect(html).toContain('border-red-700');
+    expect(w.html()).toContain('xt-toast--error');
   });
 
-  it('type=success → có class border-emerald-700', () => {
+  it('type=success → có tone class xt-toast--success', () => {
     const store = useToastStore();
     store.push({ type: 'success', title: 'OK', text: 'Lưu xong' });
     const w = mountToast();
-    expect(w.html()).toContain('border-emerald-700');
+    expect(w.html()).toContain('xt-toast--success');
   });
 
-  it('type=warning → có class border-yellow-600', () => {
+  it('type=warning → có tone class xt-toast--warning', () => {
     const store = useToastStore();
     store.push({ type: 'warning', title: 'Cảnh báo', text: 'Sắp hết' });
     const w = mountToast();
-    expect(w.html()).toContain('border-yellow-600');
+    expect(w.html()).toContain('xt-toast--warning');
   });
 
   it('push nhiều toast → render nhiều div', () => {
@@ -70,11 +69,9 @@ describe('MToast', () => {
     store.push({ type: 'info', title: 'X', text: 'click me' });
     const w = mountToast();
     expect(w.text()).toContain('click me');
-    // Find the first toast div (has rounded + border-2 classes)
-    const toastDiv = w.findAll('div').find((d) => d.classes().includes('rounded'));
-    expect(toastDiv).toBeDefined();
-    await toastDiv!.trigger('click');
-    // After click, toasts array should be empty (or the specific id removed)
+    const toastDiv = w.find('.xt-toast');
+    expect(toastDiv.exists()).toBe(true);
+    await toastDiv.trigger('click');
     expect(store.toasts.length).toBe(0);
   });
 });

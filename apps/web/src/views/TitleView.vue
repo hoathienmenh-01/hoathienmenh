@@ -38,7 +38,7 @@ import { useTitlesStore } from '@/stores/titles';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 
 type SourceFilter = 'all' | TitleSource;
 type RarityFilter = 'all' | TitleRarity;
@@ -162,21 +162,18 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="max-w-5xl mx-auto space-y-4">
-      <XTSealFrame
+      <XTLuxHero
+        :eyebrow="t('luxHero.title.eyebrow')"
+        :label="t('luxHero.title.label')"
+        :title="t('titles.title')"
+        :subtitle="t('titles.subtitle')"
         tone="gold"
-        corner-ornaments="❀✦❀✦"
-        watermark-letter="T"
-        rounded="xl"
-        inset="tight"
-        test-id="title-view-seal-frame"
-        aria-label="Hiển Danh Hộ Hộ hero frame"
+        watermark-letter="H"
+        :breadcrumb="t('luxHero.title.breadcrumb')"
+        test-id="title-view-hero"
       >
-        <header class="flex items-baseline justify-between gap-3 flex-wrap">
-          <div>
-            <XTPageEyebrow caps="HIỂN DANH HỘ HỘ" label="Hiển Danh Hộ Hộ" />
-            <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('titles.title') }}</h1>
-            <p class="text-xs text-ink-300 mt-1">{{ t('titles.subtitle') }}</p>
-          </div>
+        <XTPageEyebrow caps="HIỂN DANH HỘ HỘ" label="Hiển Danh Hộ Hộ" class="sr-only" />
+        <header class="flex items-baseline justify-end gap-3 flex-wrap">
           <div
             class="text-xs text-ink-300"
             data-testid="titles-summary"
@@ -189,7 +186,7 @@ onMounted(async () => {
             }}
           </div>
         </header>
-      </XTSealFrame>
+      </XTLuxHero>
 
       <section
         v-if="titles.equipped"

@@ -8,7 +8,7 @@ import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import {
   claimAllBattlePass,
   claimBattlePass,
@@ -176,21 +176,18 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="max-w-6xl mx-auto space-y-4">
-      <XTSealFrame
+      <XTLuxHero
+        :eyebrow="t('luxHero.monetization.eyebrow')"
+        :label="t('luxHero.monetization.label')"
+        :title="t('monetization.title')"
+        :subtitle="t('monetization.subtitle')"
         tone="gold"
-        corner-ornaments="❀✦❀✦"
         watermark-letter="T"
-        rounded="xl"
-        inset="tight"
-        test-id="monetization-view-seal-frame"
-        aria-label="Tiên Lộ Phúc Lễ hero frame"
+        :breadcrumb="t('luxHero.monetization.breadcrumb')"
+        test-id="monetization-view-hero"
       >
-        <header class="space-y-1">
-          <XTPageEyebrow caps="TIÊN LỘ PHÚC LỄ" label="Tiên Lộ Phúc Lễ" />
-          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('monetization.title') }}</h1>
-          <p class="text-sm text-ink-300">{{ t('monetization.subtitle') }}</p>
-        </header>
-      </XTSealFrame>
+        <XTPageEyebrow caps="TIÊN LỘ PHÚC LỄ" label="Tiên Lộ Phúc Lễ" class="sr-only" />
+      </XTLuxHero>
 
       <nav class="flex flex-wrap gap-2" role="tablist">
         <button

@@ -8,7 +8,7 @@ import { useNpcStore } from '@/stores/npc';
 import { useNpcAffinityStore } from '@/stores/npcAffinity';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import NpcAffinityPanel from '@/components/NpcAffinityPanel.vue';
 import NpcDialogueModal from '@/components/NpcDialogueModal.vue';
 import StoryDialogueModal from '@/components/StoryDialogueModal.vue';
@@ -102,28 +102,25 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="max-w-4xl mx-auto space-y-4" data-testid="npc-view">
-      <XTSealFrame
+      <XTLuxHero
+        :eyebrow="t('luxHero.npc.eyebrow')"
+        :label="t('luxHero.npc.label')"
+        :title="t('npc.title')"
+        :subtitle="t('npc.subtitle')"
         tone="gold"
-        corner-ornaments="❀❦❀❦"
-        watermark-letter="G"
-        rounded="xl"
-        inset="tight"
-        test-id="npc-view-seal-frame"
-        aria-label="Kỳ Nhân Diện Kiến hero frame"
+        watermark-letter="K"
+        :breadcrumb="t('luxHero.npc.breadcrumb')"
+        test-id="npc-view-hero"
       >
-        <header class="flex items-baseline justify-between gap-3">
-          <div>
-            <XTPageEyebrow caps="KỲ NHÂN DIỆN KIẾN" label="Kỳ Nhân Diện Kiến" />
-            <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('npc.title') }}</h1>
-            <p class="text-sm text-ink-300">{{ t('npc.subtitle') }}</p>
-          </div>
+        <XTPageEyebrow caps="KỲ NHÂN DIỆN KIẾN" label="Kỳ Nhân Diện Kiến" class="sr-only" />
+        <header class="flex items-baseline justify-end gap-3">
           <div class="text-right text-xs text-ink-300">
             <div data-testid="npc-visible-count">
               {{ t('npc.visibleCount', { n: npcs.length }) }}
             </div>
           </div>
         </header>
-      </XTSealFrame>
+      </XTLuxHero>
 
       <div
         v-if="loading && !loaded"

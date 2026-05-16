@@ -24,7 +24,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useTerritoryStore } from '@/stores/territory';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import type { TerritoryRegionBuffPreviewLite } from '@/api/territory';
 
 type TerritoryTab = 'overview' | 'leaderboard' | 'me' | 'war';
@@ -284,22 +284,23 @@ async function onAdminGrantWeeklyTerritoryReward(): Promise<void> {
 
 <template>
   <AppShell>
-    <XTSealFrame
+    <XTLuxHero
+      :eyebrow="t('luxHero.territory.eyebrow')"
+      :label="t('luxHero.territory.label')"
+      :title="t('territory.title')"
+      :subtitle="t('territory.subtitle')"
       tone="seal"
-      corner-ornaments="◆✦◆✦"
       watermark-letter="C"
-      rounded="xl"
-      inset="tight"
-      test-id="territory-view-seal-frame"
-      aria-label="Cương Thổ Tranh Bá hero frame"
+      :breadcrumb="t('luxHero.territory.breadcrumb')"
+      test-id="territory-view-hero"
       class="mb-4"
     >
+      <XTPageEyebrow caps="CƯƠNG THỔ TRANH BÁ" label="Cương Thổ Tranh Bá" class="sr-only" />
       <header>
-        <XTPageEyebrow caps="CƯƠNG THỔ TRANH BÁ" label="Cương Thổ Tranh Bá" />
-        <h2 class="text-xl tracking-widest mt-1">{{ t('territory.title') }}</h2>
+        <h2 class="text-xl tracking-widest mt-1 sr-only">{{ t('territory.title') }}</h2>
         <p class="text-xs text-ink-300 mt-1">{{ t('territory.subtitle') }}</p>
       </header>
-    </XTSealFrame>
+    </XTLuxHero>
 
     <div
       v-if="territory.regionsLoading || territory.meLoading"

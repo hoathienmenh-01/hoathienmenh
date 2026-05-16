@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createI18n } from 'vue-i18n';
 import GameIcon from '@/components/xianxia/GameIcon.vue';
+import RealmBadge from '@/components/xianxia/RealmBadge.vue';
 import SpiritualAmbientLayer from '@/components/xianxia/SpiritualAmbientLayer.vue';
 import TodayChecklistCard from '@/components/xianxia/TodayChecklistCard.vue';
 import XianxiaBackButton from '@/components/xianxia/XianxiaBackButton.vue';
@@ -32,6 +33,80 @@ describe('xianxia UI primitives', () => {
       props: { name: 'unknown-key' },
     });
     expect(wrapper.text()).toContain('•');
+  });
+
+  it('GameIcon mở rộng — combat/pvp/dungeon/quest/codex/mentor', () => {
+    const cases: Array<[string, string]> = [
+      ['combat', '⚔'],
+      ['pvp', '⚔'],
+      ['arena', '⚔'],
+      ['dungeon', '⛰'],
+      ['encounter', '✺'],
+      ['quest', '✎'],
+      ['codex', '📖'],
+      ['mentor', '☘'],
+      ['feedback', '✎'],
+      ['wallet', '💰'],
+      ['shop', '🏪'],
+      ['gift', '🎁'],
+      ['weapon', '⚔'],
+      ['armor', '🛡'],
+      ['fire', '🔥'],
+      ['water', '💧'],
+    ];
+    for (const [name, glyph] of cases) {
+      const w = mount(GameIcon, { props: { name } });
+      expect(w.text(), name).toContain(glyph);
+    }
+  });
+
+  it('GameIcon tone tint class reflect prop', () => {
+    const cases = ['jade', 'gold', 'seal', 'violet', 'cyan', 'smoke'] as const;
+    for (const tone of cases) {
+      const w = mount(GameIcon, { props: { name: 'power', tone } });
+      expect(w.classes()).toContain(`xt-game-icon--${tone}`);
+    }
+  });
+
+  it('GameIcon data-icon attr phản ánh name', () => {
+    const w = mount(GameIcon, { props: { name: 'codex' } });
+    expect(w.attributes('data-icon')).toBe('codex');
+  });
+
+  it('GameIcon label → role=img + aria-label', () => {
+    const w = mount(GameIcon, { props: { name: 'mail', label: 'Hộp thư' } });
+    expect(w.attributes('role')).toBe('img');
+    expect(w.attributes('aria-label')).toBe('Hộp thư');
+  });
+
+  it('GameIcon không có label → aria-hidden=true', () => {
+    const w = mount(GameIcon, { props: { name: 'mail' } });
+    expect(w.attributes('aria-hidden')).toBe('true');
+  });
+
+  it('RealmBadge default tier=pham → sigil ◈', () => {
+    const w = mount(RealmBadge, { props: { label: 'Luyện Khí · Tầng 3' } });
+    expect(w.text()).toContain('◈');
+    expect(w.text()).toContain('Luyện Khí · Tầng 3');
+    expect(w.classes()).toContain('xt-realm-badge--tier-pham');
+    expect(w.attributes('data-tier')).toBe('pham');
+  });
+
+  it('RealmBadge tier mapping sigil', () => {
+    const cases: Array<[string, string]> = [
+      ['nhan_tien', '✦'],
+      ['tien_gioi', '✺'],
+      ['hon_nguyen', '☯'],
+      ['ban_nguyen', '✶'],
+      ['vinh_hang', '✷'],
+    ];
+    for (const [tier, sigil] of cases) {
+      const w = mount(RealmBadge, {
+        props: { label: 'X', tier: tier as never },
+      });
+      expect(w.text(), tier).toContain(sigil);
+      expect(w.classes(), tier).toContain(`xt-realm-badge--tier-${tier}`);
+    }
   });
 
   it('SpiritualAmbientLayer render particles khi effect enabled', () => {

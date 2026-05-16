@@ -46,7 +46,7 @@ import { useTribulationStore } from '@/stores/tribulation';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import TribulationMiniBattlePanel from '@/components/TribulationMiniBattlePanel.vue';
 
 const auth = useAuthStore();
@@ -535,19 +535,19 @@ onUnmounted(() => {
 <template>
   <AppShell>
     <div class="max-w-3xl mx-auto space-y-4">
-      <XTSealFrame
+      <XTLuxHero
+        :eyebrow="t('luxHero.tribulation.eyebrow')"
+        :label="t('luxHero.tribulation.label')"
+        :title="t('tribulation.title')"
+        :subtitle="t('tribulation.subtitle')"
         tone="seal"
-        corner-ornaments="◆✦◆✦"
-        watermark-letter="C"
-        rounded="xl"
-        inset="tight"
-        test-id="tribulation-view-seal-frame"
-        aria-label="Thiên Kiếp Giáng Thế hero frame"
+        watermark-letter="T"
+        :breadcrumb="t('luxHero.tribulation.breadcrumb')"
+        test-id="tribulation-view-hero"
       >
+        <XTPageEyebrow caps="THIÊN KIẾP GIÁNG THẾ" label="Thiên Kiếp Giáng Thế" class="sr-only" />
         <header class="flex items-baseline justify-between gap-3 flex-wrap">
           <div>
-            <XTPageEyebrow caps="THIÊN KIẾP GIÁNG THẾ" label="Thiên Kiếp Giáng Thế" />
-            <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('tribulation.title') }}</h1>
             <p class="text-xs text-ink-300 mt-1">
               {{ t('tribulation.subtitle') }}
             </p>
@@ -560,7 +560,7 @@ onUnmounted(() => {
             {{ t('tribulation.currentRealm', { name: currentRealmFull }) }}
           </div>
         </header>
-      </XTSealFrame>
+      </XTLuxHero>
 
       <!-- Phase 11.6.E — cooldown banner (live countdown) -->
       <section

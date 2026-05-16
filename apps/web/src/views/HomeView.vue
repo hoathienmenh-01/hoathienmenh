@@ -11,6 +11,8 @@ import { getCharacter } from '@/api/character';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTStatTile from '@/components/xianxia/XTStatTile.vue';
+import XTLuxSection from '@/components/xianxia/XTLuxSection.vue';
 import MButton from '@/components/ui/MButton.vue';
 import NextActionPanel from '@/components/NextActionPanel.vue';
 import OnboardingChecklist from '@/components/OnboardingChecklist.vue';
@@ -243,28 +245,46 @@ async function onBreakthrough(): Promise<void> {
         </section>
       </div>
 
-      <!-- Stats compact -->
-      <section class="rounded-xl border border-ink-300/40 bg-[rgba(14,19,24,0.55)] p-4 ve-section-enter ve-section-enter-delay-5 ve-card-interactive">
-        <h3 class="text-sm tracking-widest text-ink-300 uppercase mb-2">{{ t('home.stats.title') }}</h3>
-        <div class="grid grid-cols-4 gap-3 text-center">
-          <div>
-            <div class="text-lg font-bold text-[var(--xt-jade-bright)]">{{ game.character.power }}</div>
-            <div class="text-[10px] text-ink-300">{{ t('home.stats.power') }}</div>
-          </div>
-          <div>
-            <div class="text-lg font-bold text-[var(--xt-gold-bright)]">{{ game.character.spirit }}</div>
-            <div class="text-[10px] text-ink-300">{{ t('home.stats.spirit') }}</div>
-          </div>
-          <div>
-            <div class="text-lg font-bold text-sky-400">{{ game.character.speed }}</div>
-            <div class="text-[10px] text-ink-300">{{ t('home.stats.speed') }}</div>
-          </div>
-          <div>
-            <div class="text-lg font-bold text-amber-300">{{ game.character.luck }}</div>
-            <div class="text-[10px] text-ink-300">{{ t('home.stats.luck') }}</div>
-          </div>
+      <!-- Stats compact - luxury tiles -->
+      <XTLuxSection
+        :eyebrow="t('home.stats.title')"
+        tone="gold"
+        surface="card"
+        padding="tight"
+        class="ve-section-enter ve-section-enter-delay-5"
+        test-id="home-stats-section"
+      >
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <XTStatTile
+            :label="t('home.stats.power')"
+            :value="game.character.power"
+            tone="seal"
+            icon="combat"
+            test-id="home-stat-power"
+          />
+          <XTStatTile
+            :label="t('home.stats.spirit')"
+            :value="game.character.spirit"
+            tone="jade"
+            icon="cultivation"
+            test-id="home-stat-spirit"
+          />
+          <XTStatTile
+            :label="t('home.stats.speed')"
+            :value="game.character.speed"
+            tone="mist"
+            icon="quest"
+            test-id="home-stat-speed"
+          />
+          <XTStatTile
+            :label="t('home.stats.luck')"
+            :value="game.character.luck"
+            tone="gold"
+            icon="gift"
+            test-id="home-stat-luck"
+          />
         </div>
-      </section>
+      </XTLuxSection>
     </div>
 
     <!-- ============= TAB: Events ============= -->

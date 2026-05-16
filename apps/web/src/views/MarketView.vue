@@ -21,7 +21,7 @@ import {
 import { listInventory, type InventoryView } from '@/api/inventory';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import SkeletonBlock from '@/components/ui/SkeletonBlock.vue';
@@ -190,19 +190,19 @@ function handleErr(e: unknown): void {
 
 <template>
   <AppShell>
-    <XTSealFrame
+    <XTLuxHero
+      :eyebrow="t('luxHero.market.eyebrow')"
+      :label="t('luxHero.market.label')"
+      :title="t('market.title')"
+      :subtitle="t('market.subtitle', '')"
       tone="gold"
-      corner-ornaments="❀❦❀❦"
-      watermark-letter="G"
-      rounded="xl"
-      inset="tight"
-      test-id="market-view-seal-frame"
-      aria-label="Thiên Hạnh Thương Phố hero frame"
+      watermark-letter="T"
+      :breadcrumb="t('luxHero.market.breadcrumb')"
+      test-id="market-view-hero"
       class="mb-4"
     >
-      <XTPageEyebrow caps="THIÊN HẠNH THƯƠNG PHỐ" label="Thiên Hạnh Thương Phố" />
-      <h2 class="text-xl tracking-widest mt-1">{{ t('market.title') }}</h2>
-    </XTSealFrame>
+      <XTPageEyebrow caps="THIÊN HẠNH THƯƠNG PHỐ" label="Thiên Hạnh Thương Phố" class="sr-only" />
+    </XTLuxHero>
 
     <div class="flex gap-2 mb-4">
       <MButton :class="tab === 'buy' ? '!bg-ink-50 !text-ink-900' : ''" @click="tab = 'buy'">

@@ -48,6 +48,7 @@ import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import XTGlyphBadge from '@/components/xianxia/XTGlyphBadge.vue';
+import XTBottomSheet from '@/components/xianxia/XTBottomSheet.vue';
 import MButton from '@/components/ui/MButton.vue';
 import EquipmentArtCell from '@/components/xianxia/EquipmentArtCell.vue';
 import EquipmentUpgradePanel from '@/components/EquipmentUpgradePanel.vue';
@@ -212,6 +213,16 @@ const SORT_PRESET_KEYS: SortPresetKey[] = [
   'level',
   'element',
 ];
+
+// Phase 8 — XTBottomSheet for mobile sort preset.
+const sortSheetOpen = ref(false);
+function openSortSheet(): void {
+  sortSheetOpen.value = true;
+}
+function pickSortPreset(v: SortPresetKey): void {
+  onSortPresetChange(v);
+  sortSheetOpen.value = false;
+}
 
 const unequipped = computed(() => {
   const raw = items.value.filter((i) => !i.equippedSlot);
@@ -617,13 +628,13 @@ function handleErr(e: unknown): void {
 <template>
   <AppShell>
     <XTLuxHero
-      eyebrow="CÀN KHÔN TÚI"
-      label="Tạng Phẩm Các"
+      :eyebrow="t('luxHero.inventory.eyebrow')"
+      :label="t('luxHero.inventory.label')"
       :title="t('inventory.title')"
-      subtitle="Trang bị, bảo vật, phẩm linh — trang bị thuận đạo, đả tầm mặt."
+      :subtitle="t('luxHero.inventory.subtitle')"
       tone="gold"
       watermark-letter="T"
-      breadcrumb="Tông Môn · Túi Đồ"
+      :breadcrumb="t('luxHero.inventory.breadcrumb')"
       test-id="inventory-view-hero"
       class="mb-4"
     >
@@ -720,6 +731,16 @@ function handleErr(e: unknown): void {
               </option>
             </select>
           </label>
+          <button
+            type="button"
+            class="md:hidden inline-flex items-center gap-1 rounded border border-amber-300/40 bg-ink-900/50 px-2 py-1 text-xs text-amber-100"
+            data-testid="inventory-sort-sheet-trigger"
+            aria-haspopup="dialog"
+            @click="openSortSheet"
+          >
+            <span aria-hidden="true">⚲</span>
+            <span>{{ t('inventory.sort.label') }}</span>
+          </button>
           <label class="flex items-center gap-2 text-xs text-ink-200 cursor-pointer">
             <input
               type="checkbox"
@@ -731,6 +752,28 @@ function handleErr(e: unknown): void {
             <span>{{ t('inventory.lock.showLockedOnly') }}</span>
           </label>
         </div>
+        <XTBottomSheet
+          v-model:open="sortSheetOpen"
+          :title="t('inventory.sort.label')"
+          tone="gold"
+          height="auto"
+          test-id="inventory-sort-sheet"
+        >
+          <ul class="flex flex-col gap-1" data-testid="inventory-sort-sheet-list">
+            <li v-for="k in SORT_PRESET_KEYS" :key="k">
+              <button
+                type="button"
+                class="w-full text-left rounded border border-ink-300/30 bg-ink-700/40 px-3 py-2 text-sm text-ink-100 focus:outline-none focus:ring-1 focus:ring-amber-400/60"
+                :class="k === sortPreset ? 'border-amber-300/60 text-amber-100 bg-ink-700/60' : ''"
+                :data-testid="`inventory-sort-sheet-option-${k}`"
+                :aria-pressed="k === sortPreset"
+                @click="pickSortPreset(k)"
+              >
+                {{ t(`inventory.sort.preset.${k}`) }}
+              </button>
+            </li>
+          </ul>
+        </XTBottomSheet>
         <div v-if="unequipped.length === 0" class="text-ink-300 italic">
           {{ t('inventory.emptyAll') }}
         </div>

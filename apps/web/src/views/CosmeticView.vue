@@ -13,7 +13,7 @@ import { useCosmeticsStore } from '@/stores/cosmetics';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import MButton from '@/components/ui/MButton.vue';
 
 type TypeFilter = 'all' | CosmeticType;
@@ -125,22 +125,18 @@ onMounted(async () => {
 
 <template>
   <AppShell :title="t('cosmetics.title')">
-    <XTSealFrame
+    <XTLuxHero
+      :eyebrow="t('luxHero.cosmetic.eyebrow')"
+      :label="t('luxHero.cosmetic.label')"
+      :title="t('cosmetics.title')"
+      :subtitle="t('cosmetics.subtitle')"
       tone="gold"
-      corner-ornaments="❀✦❀✦"
-      watermark-letter="T"
-      rounded="xl"
-      inset="tight"
-      test-id="cosmetic-view-seal-frame"
-      aria-label="Y Bào Trang Sức hero frame"
+      watermark-letter="Y"
+      :breadcrumb="t('luxHero.cosmetic.breadcrumb')"
+      test-id="cosmetic-view-hero"
     >
-      <header>
-        <XTPageEyebrow caps="Y BÀO TRANG SỨC" label="Y Bào Trang Sức" />
-        <p class="text-sm text-zinc-400 mt-1">
-          {{ t('cosmetics.subtitle') }}
-        </p>
-      </header>
-    </XTSealFrame>
+      <XTPageEyebrow caps="Y BÀO TRANG SỨC" label="Y Bào Trang Sức" class="sr-only" />
+    </XTLuxHero>
 
     <!-- Filters -->
     <div class="flex flex-wrap items-center gap-2 mb-4">

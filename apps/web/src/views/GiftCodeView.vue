@@ -8,7 +8,7 @@ import { useToastStore } from '@/stores/toast';
 import { redeemGiftCode, type GiftCodeRedeemResult } from '@/api/giftcode';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { itemName } from '@/lib/itemName';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
@@ -61,21 +61,18 @@ async function onRedeem(): Promise<void> {
 <template>
   <AppShell>
     <div class="max-w-md mx-auto">
-      <XTSealFrame
+      <XTLuxHero
+        :eyebrow="t('luxHero.giftCode.eyebrow')"
+        :label="t('luxHero.giftCode.label')"
+        :title="t('giftcode.title')"
+        :subtitle="t('giftcode.hint')"
         tone="gold"
-        corner-ornaments="❀✦❀✦"
         watermark-letter="T"
-        rounded="xl"
-        inset="tight"
-        test-id="gift-code-view-seal-frame"
-        aria-label="Tứ Phúc Long Sao hero frame"
+        :breadcrumb="t('luxHero.giftCode.breadcrumb')"
+        test-id="gift-code-view-hero"
       >
-        <header>
-          <XTPageEyebrow caps="TỨ PHÚC LONG SAO" label="Tứ Phúc Long Sao" />
-          <h2 class="text-xl tracking-widest mb-2 mt-1">{{ t('giftcode.title') }}</h2>
-          <p class="text-sm text-ink-300 mb-2">{{ t('giftcode.hint') }}</p>
-        </header>
-      </XTSealFrame>
+        <XTPageEyebrow caps="TỨ PHÚC LONG SAO" label="Tứ Phúc Long Sao" class="sr-only" />
+      </XTLuxHero>
 
       <form class="flex flex-col gap-3" @submit.prevent="onRedeem">
         <input

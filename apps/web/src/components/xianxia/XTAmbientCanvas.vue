@@ -15,19 +15,109 @@
  *
  *  Reduced-motion: dừng toàn bộ animation, layer vẫn render tĩnh.
  *  Z-index: `-z-20` để luôn nằm phía sau `XTParallaxBackground` (`-z-10`).
+ *
+ *  Phase 10 performance heuristic:
+ *  - Trước render đo `deviceMemory` + `hardwareConcurrency` để detect low-end
+ *    device. Nếu low-end (memory ≤ 2GB hoặc CPU ≤ 2 luồng) thì giảm intensity.
+ *  - Sau khi mount đo FPS qua rAF; nếu trung bình < 30 fps trong 60 frame
+ *    đầu thì set `quality = 'reduced'` (CSS dim mesh + halo, motes off).
+ *  - Không tự ý tắt hoàn toàn — vẫn giữ layer tĩnh để không vỡ layout.
  */
-withDefaults(
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+
+const props = withDefaults(
   defineProps<{
     /** Tone phối màu mesh theo nhóm scene. */
     tone?: 'default' | 'cultivation' | 'boss' | 'secret' | 'sect' | 'market';
     /** Cường độ ambient (sang trọng cho hero, dim cho list). */
     intensity?: 'soft' | 'medium' | 'lux';
+    /** Test/SSR hook: ép quality nếu caller đã biết FPS. */
+    forceQuality?: 'auto' | 'full' | 'reduced';
   }>(),
   {
     tone: 'default',
     intensity: 'lux',
+    forceQuality: 'auto',
   },
 );
+
+type Quality = 'full' | 'reduced';
+
+function detectLowEndDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const nav = navigator as Navigator & {
+    deviceMemory?: number;
+    hardwareConcurrency?: number;
+  };
+  if (typeof nav.deviceMemory === 'number' && nav.deviceMemory > 0 && nav.deviceMemory <= 2) {
+    return true;
+  }
+  if (typeof nav.hardwareConcurrency === 'number' && nav.hardwareConcurrency > 0 && nav.hardwareConcurrency <= 2) {
+    return true;
+  }
+  return false;
+}
+
+function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return false;
+  }
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
+
+const quality = ref<Quality>(
+  props.forceQuality === 'reduced' || (props.forceQuality === 'auto' && detectLowEndDevice())
+    ? 'reduced'
+    : 'full',
+);
+
+let rafId: number | null = null;
+let fpsFrames = 0;
+let fpsAccumMs = 0;
+let lastTs: number | null = null;
+let sampleDeadline = 0;
+
+function measureFps(ts: number): void {
+  if (lastTs !== null) {
+    const dt = ts - lastTs;
+    if (dt > 0 && dt < 1000) {
+      fpsAccumMs += dt;
+      fpsFrames += 1;
+    }
+  }
+  lastTs = ts;
+  // Sample window: 60 frames or 2s, whichever first.
+  if (fpsFrames < 60 && ts < sampleDeadline) {
+    rafId = requestAnimationFrame(measureFps);
+    return;
+  }
+  const avg = fpsFrames > 0 ? (fpsFrames * 1000) / fpsAccumMs : 60;
+  if (avg < 30 && props.forceQuality === 'auto') {
+    quality.value = 'reduced';
+  }
+  rafId = null;
+}
+
+onMounted(() => {
+  if (props.forceQuality !== 'auto') return;
+  if (typeof window === 'undefined' || typeof requestAnimationFrame !== 'function') return;
+  // Skip FPS measurement when reduced-motion is on — animations are paused,
+  // so the sample would always be ~60fps but give no useful signal.
+  if (prefersReducedMotion()) return;
+  sampleDeadline = performance.now() + 2000;
+  rafId = requestAnimationFrame(measureFps);
+});
+
+onBeforeUnmount(() => {
+  if (rafId !== null && typeof cancelAnimationFrame === 'function') {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+});
 </script>
 
 <template>
@@ -35,6 +125,7 @@ withDefaults(
     class="xt-ambient pointer-events-none fixed inset-0 -z-20 overflow-hidden"
     :data-tone="tone"
     :data-intensity="intensity"
+    :data-quality="quality"
     aria-hidden="true"
     data-testid="xt-ambient-canvas"
   >
@@ -169,6 +260,22 @@ withDefaults(
 }
 .xt-ambient[data-intensity='medium'] .xt-ambient__halo {
   opacity: 0.42;
+}
+
+/* Reduced quality (low-end device hoặc FPS đo được < 30):
+   - Dim mesh + halo ~40% strength
+   - Tắt motes layer (chiếm nhiều paint nhất do nhiều radial-gradient)
+   - Dừng halo spin để tiết kiệm GPU */
+.xt-ambient[data-quality='reduced'] .xt-ambient__mesh {
+  opacity: 0.4;
+  animation: none;
+}
+.xt-ambient[data-quality='reduced'] .xt-ambient__halo {
+  opacity: 0.18;
+  animation: none;
+}
+.xt-ambient[data-quality='reduced'] .xt-ambient__motes {
+  display: none;
 }
 
 /* Constellation motes via stacked box-shadow on a 1px point.

@@ -35,7 +35,7 @@ import { useSpiritualRootStore } from '@/stores/spiritualRoot';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -162,20 +162,25 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="max-w-3xl mx-auto space-y-4">
-      <header class="flex items-baseline justify-between gap-3 flex-wrap">
-        <div>
-          <XTPageEyebrow caps="LINH CĂN ĐẠO TRẠCH" label="Linh Căn Đạo Trạch" />
-          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('spiritualRoot.title') }}</h1>
-          <p class="text-xs text-ink-300 mt-1">{{ t('spiritualRoot.subtitle') }}</p>
-        </div>
+      <XTLuxHero
+        :eyebrow="t('luxHero.spiritualRoot.eyebrow')"
+        :label="t('luxHero.spiritualRoot.label')"
+        :title="t('spiritualRoot.title')"
+        :subtitle="t('spiritualRoot.subtitle')"
+        tone="jade"
+        watermark-letter="L"
+        :breadcrumb="t('luxHero.spiritualRoot.breadcrumb')"
+        test-id="spiritual-root-view-hero"
+      >
+        <XTPageEyebrow caps="LINH CĂN ĐẠO TRẠCH" label="Linh Căn Đạo Trạch" class="sr-only" />
         <div
           v-if="root.state"
-          class="text-xs text-ink-300"
+          class="text-xs text-ink-300 mt-2"
           data-testid="spiritual-root-reroll-count"
         >
           {{ t('spiritualRoot.rerollCount', { count: root.state.rerollCount }) }}
         </div>
-      </header>
+      </XTLuxHero>
 
       <section
         v-if="!root.loaded"
@@ -194,15 +199,7 @@ onMounted(async () => {
       </section>
 
       <template v-else>
-        <XTSealFrame
-          tone="jade"
-          corner-ornaments="❖✦❖✦"
-          watermark-letter="Đ"
-          rounded="xl"
-          inset="tight"
-          test-id="spiritual-root-seal-frame"
-          aria-label="Linh Căn Đạo Trạch hero frame"
-        >
+        <div class="space-y-4">
           <article
             class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-3"
             data-testid="spiritual-root-grade-card"
@@ -420,7 +417,7 @@ onMounted(async () => {
               }}
             </button>
           </article>
-        </XTSealFrame>
+        </div>
       </template>
 
       <div

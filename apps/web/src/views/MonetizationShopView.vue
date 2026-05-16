@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import {
   buyExtraAttempt,
   getExtraAttempts,
@@ -22,6 +23,7 @@ import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 const auth = useAuthStore();
 const router = useRouter();
 const toast = useToastStore();
+const { t } = useI18n();
 
 const wallet = ref<WalletSnapshot | null>(null);
 const listings = ref<ShopListing[]>([]);
@@ -103,30 +105,23 @@ async function buyAttempt(limitKey: string): Promise<void> {
 <template>
   <AppShell>
     <section class="shop-page">
-      <XTSealFrame
+      <XTLuxHero
+        :eyebrow="t('luxHero.monetizationShop.eyebrow')"
+        :label="t('luxHero.monetizationShop.label')"
+        title="Cửa hàng nạp"
+        :subtitle="t('luxHero.monetizationShop.subtitle')"
         tone="gold"
-        corner-ornaments="❀✦❀✦"
         watermark-letter="T"
-        rounded="xl"
-        inset="tight"
-        test-id="monetization-shop-view-seal-frame"
-        aria-label="Tiên Trạm Nạp Lễ hero frame"
+        :breadcrumb="t('luxHero.monetizationShop.breadcrumb')"
+        test-id="monetization-shop-view-hero"
       >
-        <header class="shop-header">
-          <XTPageEyebrow caps="TIÊN TRẠM NẠP LỄ" label="Tiên Trạm Nạp Lễ" />
-          <h1>Cửa hàng nạp (Phase 27.0)</h1>
-          <p class="muted">
-            Mua thẻ tháng, sweep tickets, mở khoá premium battle pass, quỹ trưởng
-            thành, mở slot inventory/queue/market. Tất cả giao dịch chạy
-            server-authoritative với cap chống P2W.
-          </p>
-          <div v-if="wallet" class="wallet-summary">
-            <span><strong>Tiên Ngọc</strong>: {{ wallet.TIEN_NGOC }}</span>
-            <span><strong>Tiên Ngọc Khoá</strong>: {{ wallet.TIEN_NGOC_KHOA }}</span>
-            <span><strong>Linh Thạch</strong>: {{ wallet.LINH_THACH }}</span>
-          </div>
-        </header>
-      </XTSealFrame>
+        <XTPageEyebrow caps="TIÊN TRẠM NẠP LỄ" label="Tiên Trạm Nạp Lễ" class="sr-only" />
+        <div v-if="wallet" class="wallet-summary mt-3">
+          <span><strong>Tiên Ngọc</strong>: {{ wallet.TIEN_NGOC }}</span>
+          <span><strong>Tiên Ngọc Khoá</strong>: {{ wallet.TIEN_NGOC_KHOA }}</span>
+          <span><strong>Linh Thạch</strong>: {{ wallet.LINH_THACH }}</span>
+        </div>
+      </XTLuxHero>
 
       <div v-if="loading" class="loading">Đang tải…</div>
       <template v-else>
