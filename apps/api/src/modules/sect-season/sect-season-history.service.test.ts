@@ -473,3 +473,100 @@ describe('SectSeasonHistoryService.getHallOfFame', () => {
     expect(mA.latestSectName).toBe('SectA');
   });
 });
+
+describe('SectSeasonHistoryService.getAdminHallOfFame', () => {
+  it('chưa có season nào → empty seasons + empty hallOfFame', async () => {
+    const view = await history.getAdminHallOfFame(new Date('2026-07-01T00:00:00Z'));
+    expect(view.checkedAt).toBe('2026-07-01T00:00:00.000Z');
+    expect(view.seasons).toEqual([]);
+    expect(view.hallOfFame.sects).toEqual([]);
+    expect(view.hallOfFame.members).toEqual([]);
+    expect(view.hallOfFame.totalSeasonsFinalized).toBe(0);
+  });
+
+  it('aggregate season summaries + reward status + champion snapshot meta', async () => {
+    const sectA = await makeSect('SectA');
+    const sectB = await makeSect('SectB');
+    const uA = await makeUserChar(prisma, { sectId: sectA.id });
+    const uB = await makeUserChar(prisma, { sectId: sectB.id });
+    const s1 = sectSeasonByKey('season_2026_s1')!;
+    const s2 = sectSeasonByKey('season_2026_s2')!;
+
+    // S1: SectA #1 (uA #1).
+    await seedContribution({
+      weekKey: sectSeasonWeekKeys(s1)[0],
+      sectId: sectA.id,
+      characterId: uA.characterId,
+      points: 500,
+    });
+    await history.snapshotSeason(s1.key, { now: AFTER_S1 });
+
+    // S2: SectB #1 (uB #1).
+    await seedContribution({
+      weekKey: sectSeasonWeekKeys(s2)[0],
+      sectId: sectB.id,
+      characterId: uB.characterId,
+      points: 700,
+    });
+    await history.snapshotSeason(s2.key, { now: AFTER_S2 });
+
+    // Mô phỏng reward grant: S1 đã grant 1 CHAMPION + 1 MVP, S2 chưa grant.
+    const s1ChampionAt = new Date('2026-04-28T00:00:00Z');
+    const s1MvpAt = new Date('2026-04-28T00:01:00Z');
+    await prisma.sectSeasonRewardGrant.create({
+      data: {
+        seasonKey: s1.key,
+        rewardType: 'CHAMPION',
+        characterId: uA.characterId,
+        sectId: sectA.id,
+        mailId: null,
+        rewardJson: { linhThach: 1000, exp: 0, itemRewards: [] },
+        grantedAt: s1ChampionAt,
+      },
+    });
+    await prisma.sectSeasonRewardGrant.create({
+      data: {
+        seasonKey: s1.key,
+        rewardType: 'MVP',
+        characterId: uA.characterId,
+        sectId: sectA.id,
+        mailId: null,
+        rewardJson: { linhThach: 2000, exp: 0, itemRewards: [] },
+        grantedAt: s1MvpAt,
+      },
+    });
+
+    const view = await history.getAdminHallOfFame(new Date('2026-05-30T00:00:00Z'));
+    expect(view.checkedAt).toBe('2026-05-30T00:00:00.000Z');
+    // Sort desc by finalizedAt → S2 trước S1.
+    expect(view.seasons.map((s) => s.seasonKey)).toEqual([s2.key, s1.key]);
+
+    const sumS1 = view.seasons.find((s) => s.seasonKey === s1.key)!;
+    expect(sumS1.champion?.sectId).toBe(sectA.id);
+    expect(sumS1.mvp?.characterId).toBe(uA.characterId);
+    expect(sumS1.rewardStatus.championGrants).toBe(1);
+    expect(sumS1.rewardStatus.mvpGrants).toBe(1);
+    expect(sumS1.rewardStatus.lastChampionGrantAt).toBe(s1ChampionAt.toISOString());
+    expect(sumS1.rewardStatus.lastMvpGrantAt).toBe(s1MvpAt.toISOString());
+    expect(sumS1.championSnapshot).not.toBeNull();
+    expect(sumS1.championSnapshot!.sectId).toBe(sectA.id);
+    expect(sumS1.championSnapshot!.rank).toBe(1);
+    // SectA chỉ có uA tại lúc snapshot → memberCount = 1.
+    expect(sumS1.championSnapshot!.memberCount).toBe(1);
+
+    const sumS2 = view.seasons.find((s) => s.seasonKey === s2.key)!;
+    expect(sumS2.champion?.sectId).toBe(sectB.id);
+    expect(sumS2.mvp?.characterId).toBe(uB.characterId);
+    // Chưa grant reward cho S2.
+    expect(sumS2.rewardStatus.championGrants).toBe(0);
+    expect(sumS2.rewardStatus.mvpGrants).toBe(0);
+    expect(sumS2.rewardStatus.lastChampionGrantAt).toBeNull();
+    expect(sumS2.rewardStatus.lastMvpGrantAt).toBeNull();
+    expect(sumS2.championSnapshot).not.toBeNull();
+    expect(sumS2.championSnapshot!.sectId).toBe(sectB.id);
+
+    // HallOfFame aggregate reuse getHallOfFame logic.
+    expect(view.hallOfFame.totalSeasonsFinalized).toBe(2);
+    expect(view.hallOfFame.sects).toHaveLength(2);
+  });
+});

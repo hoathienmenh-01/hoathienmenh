@@ -70,6 +70,51 @@ export interface SectSeasonChampionSnapshotDetail {
   readonly createdAt: string;
 }
 
+/**
+ * Phase 15.8 — Per-season summary cho Admin Hall of Fame view. Mở
+ * rộng public summary với:
+ *   - `rewardStatus`: số CHAMPION/MVP grant đã chốt + thời điểm grant
+ *     gần nhất (đọc từ `SectSeasonRewardGrant`). Admin dùng để phát
+ *     hiện season finalize xong nhưng reward grant chưa chạy.
+ *   - `championSnapshot`: meta (sectId + memberCount) của bản
+ *     champion membership snapshot (`SectSeasonChampionSnapshot`).
+ *     `null` cho legacy season pre-15.8 (chưa có snapshot row).
+ *
+ * KHÔNG expose `memberCharacterIds` — admin muốn full list phải gọi
+ * riêng `GET /admin/sect-season/:seasonKey/champion-snapshot`.
+ */
+export interface AdminSectSeasonRewardStatus {
+  readonly championGrants: number;
+  readonly mvpGrants: number;
+  readonly lastChampionGrantAt: string | null;
+  readonly lastMvpGrantAt: string | null;
+}
+
+export interface AdminSectSeasonChampionSnapshotMeta {
+  readonly sectId: string;
+  readonly rank: number;
+  readonly memberCount: number;
+  readonly createdAt: string;
+}
+
+export interface AdminSectSeasonSummary {
+  readonly seasonKey: string;
+  readonly finalizedAt: string;
+  readonly totalSects: number;
+  readonly totalContributors: number;
+  readonly totalPoints: number;
+  readonly champion: SectSeasonHistorySectEntry | null;
+  readonly mvp: SectSeasonHistoryMemberEntry | null;
+  readonly rewardStatus: AdminSectSeasonRewardStatus;
+  readonly championSnapshot: AdminSectSeasonChampionSnapshotMeta | null;
+}
+
+export interface AdminSectSeasonHallOfFameView {
+  readonly checkedAt: string;
+  readonly seasons: ReadonlyArray<AdminSectSeasonSummary>;
+  readonly hallOfFame: SectHallOfFameView;
+}
+
 export class SectSeasonHistoryError extends Error {
   readonly code: SectSeasonHistoryErrorCode;
   constructor(code: SectSeasonHistoryErrorCode, message?: string) {
@@ -414,6 +459,117 @@ export class SectSeasonHistoryService {
       sects,
       members,
       totalSeasonsFinalized: snapshotCount,
+    };
+  }
+
+  /**
+   * Phase 15.8 — Admin Hall of Fame view. Tổng hợp:
+   *   - Per-season summary (champion sect, MVP, totals, finalizedAt)
+   *   - Reward grant stats (số CHAMPION/MVP đã grant + thời điểm grant
+   *     gần nhất) đọc từ `SectSeasonRewardGrant`.
+   *   - Champion membership snapshot meta (`sectId`, `memberCount`).
+   *   - Aggregate Hall of Fame qua mọi season (reuse `getHallOfFame`).
+   *
+   * Read-only. Volume bounded bởi số season đã finalize × top-N. Không
+   * expose `memberCharacterIds` (admin gọi riêng `getChampionSnapshot`).
+   */
+  async getAdminHallOfFame(now: Date = new Date()): Promise<AdminSectSeasonHallOfFameView> {
+    const [snapshots, grantStats, championSnapshots, hallOfFame] = await Promise.all([
+      this.prisma.sectSeasonSnapshot.findMany({
+        orderBy: { finalizedAt: 'desc' },
+      }),
+      this.prisma.sectSeasonRewardGrant.groupBy({
+        by: ['seasonKey', 'rewardType'],
+        _count: { _all: true },
+        _max: { grantedAt: true },
+      }),
+      this.prisma.sectSeasonChampionSnapshot.findMany({
+        where: { rank: 1 },
+        select: {
+          seasonKey: true,
+          sectId: true,
+          rank: true,
+          memberCount: true,
+          createdAt: true,
+        },
+      }),
+      this.getHallOfFame(),
+    ]);
+
+    const grantByKey = new Map<string, { count: number; lastAt: Date | null }>();
+    for (const g of grantStats) {
+      grantByKey.set(`${g.seasonKey}::${g.rewardType}`, {
+        count: g._count._all,
+        lastAt: g._max.grantedAt ?? null,
+      });
+    }
+    const championSnapshotByKey = new Map<
+      string,
+      { sectId: string; rank: number; memberCount: number; createdAt: Date }
+    >();
+    for (const cs of championSnapshots) {
+      championSnapshotByKey.set(cs.seasonKey, cs);
+    }
+
+    const seasons: AdminSectSeasonSummary[] = snapshots.map((r) => {
+      const champion: SectSeasonHistorySectEntry | null = r.championSectId
+        ? {
+            rank: 1,
+            sectId: r.championSectId,
+            sectName: r.championSectName ?? r.championSectId,
+            points: r.championPoints ?? 0,
+            // Header-level summary KHÔNG có `contributors`/`weeksContributed`
+            // (chỉ có ở SectSeasonSectRank rows). Admin muốn full chi tiết
+            // gọi `GET /admin/sect-season/:seasonKey/history`.
+            contributors: 0,
+            weeksContributed: 0,
+          }
+        : null;
+      const mvp: SectSeasonHistoryMemberEntry | null =
+        r.mvpCharacterId && r.mvpCharacterName !== null && r.mvpPoints !== null
+          ? {
+              rank: 1,
+              characterId: r.mvpCharacterId,
+              characterName: r.mvpCharacterName,
+              sectId: r.mvpSectId,
+              sectName: r.mvpSectName,
+              points: r.mvpPoints,
+            }
+          : null;
+      const championGrant = grantByKey.get(`${r.seasonKey}::CHAMPION`);
+      const mvpGrant = grantByKey.get(`${r.seasonKey}::MVP`);
+      const cs = championSnapshotByKey.get(r.seasonKey);
+      return {
+        seasonKey: r.seasonKey,
+        finalizedAt: r.finalizedAt.toISOString(),
+        totalSects: r.totalSects,
+        totalContributors: r.totalContributors,
+        totalPoints: r.totalPoints,
+        champion,
+        mvp,
+        rewardStatus: {
+          championGrants: championGrant?.count ?? 0,
+          mvpGrants: mvpGrant?.count ?? 0,
+          lastChampionGrantAt: championGrant?.lastAt
+            ? championGrant.lastAt.toISOString()
+            : null,
+          lastMvpGrantAt: mvpGrant?.lastAt ? mvpGrant.lastAt.toISOString() : null,
+        },
+        championSnapshot: cs
+          ? {
+              sectId: cs.sectId,
+              rank: cs.rank,
+              memberCount: cs.memberCount,
+              createdAt: cs.createdAt.toISOString(),
+            }
+          : null,
+      };
+    });
+
+    return {
+      checkedAt: now.toISOString(),
+      seasons,
+      hallOfFame,
     };
   }
 
