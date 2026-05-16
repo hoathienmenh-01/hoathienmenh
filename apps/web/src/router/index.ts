@@ -35,18 +35,12 @@ function featureFlagGuard(
   };
 }
 
-const celestialPlaceholder = (
-  path: string,
-  name: string,
-  title: string,
-  description: string,
-  icon = 'cultivation',
-): RouteRecordRaw => ({
-  path,
-  name,
-  component: () => import('@/views/XianxiaPlaceholderView.vue'),
-  meta: { title, description, icon },
-});
+// `XianxiaPlaceholderView.vue` is intentionally kept in the repo as a
+// fallback for future routes-under-development. Earlier `celestialPlaceholder`
+// factory wiring (used to mount `/character`, `/cultivation`, `/notifications`
+// onto that view) was removed when those paths were redirected to live
+// gameplay views (`/dashboard`, `/cultivation-method-v2`, `/mail`). If a new
+// placeholder is ever needed, re-add the factory or inline the import.
 
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/home' },
@@ -73,20 +67,22 @@ const routes: RouteRecordRaw[] = [
     name: 'home',
     component: () => import('@/views/HomeView.vue'),
   },
-  celestialPlaceholder(
-    '/character',
-    'character',
-    'Nhân Vật',
-    'Hồ sơ nhân vật chuyên sâu đang được phát triển. Các chỉ số chính hiện hiển thị trong Thiên Cung Tổng Quan.',
-    'character',
-  ),
-  celestialPlaceholder(
-    '/cultivation',
-    'cultivation',
-    'Tu Luyện',
-    'Màn tu luyện chuyên sâu đang được phát triển. Bạn vẫn có thể bật/tắt nhập định và đột phá từ Trang Chủ.',
-    'cultivation',
-  ),
+  // Phase 15.9 — Replace 3 `celestialPlaceholder` dead routes with redirects
+  // to live gameplay views. Earlier `/character` + `/cultivation` rendered
+  // `XianxiaPlaceholderView` ("đang được phát triển"), but Dashboard and
+  // Cultivation Method V2 cover the same player intent. Keep names so any
+  // existing `router.push({ name: 'character' })` / `'cultivation'` callers
+  // still resolve, just via redirect.
+  {
+    path: '/character',
+    name: 'character',
+    redirect: '/dashboard',
+  },
+  {
+    path: '/cultivation',
+    name: 'cultivation',
+    redirect: '/cultivation-method-v2',
+  },
   {
     path: '/onboarding',
     name: 'onboarding',
@@ -454,13 +450,15 @@ const routes: RouteRecordRaw[] = [
     name: 'spirit-pets',
     redirect: '/pets',
   },
-  celestialPlaceholder(
-    '/notifications',
-    'notifications',
-    'Thông Báo',
-    'Trung tâm thông báo trong game đang được phát triển. Thiết lập thông báo đẩy đã có ở mục Thông Báo trong hệ thống.',
-    'notification',
-  ),
+  // Phase 15.9 — `/notifications` previously rendered placeholder; redirect
+  // to `/mail` which is the live in-game notification surface
+  // (`/notification-settings` covers push-notification preferences and is
+  // reachable from Settings already).
+  {
+    path: '/notifications',
+    name: 'notifications',
+    redirect: '/mail',
+  },
   {
     // Phase 34.3 — Inventory Auto-sort & Lock.
     path: '/inventory-auto-sort',
