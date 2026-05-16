@@ -510,8 +510,14 @@ describe('HomeView — Phase 12.8 Story Dungeon CTA', () => {
     storyDungeonState.loaded = false;
     mountView();
     await flushPromises();
-    // Character section vẫn render (verify HomeView không crash khi load throw)
-    expect(document.body.innerHTML).toContain('Tiêu Viêm');
+    // Phase 15.12 — XTHomeDashboard đã stub nên tên "Tiêu Viêm" do hero
+    // dashboard render không còn xuất hiện ở body của HomeView; verify
+    // HomeView không crash bằng cách check shell + tabs + dashboard stub.
+    expect(document.querySelector('[data-testid="app-shell-stub"]')).not.toBeNull();
+    expect(document.querySelector('[data-testid="home-tabs"]')).not.toBeNull();
+    // `XTHomeDashboard` ở HomeView template gắn `data-testid="home-dashboard"`,
+    // attribute này fallthrough vào root của stub → check theo testid gốc.
+    expect(document.querySelector('[data-testid="home-dashboard"]')).not.toBeNull();
     expect(document.querySelector('[data-testid="home-story-dungeon-cta"]')).toBeNull();
   });
 
