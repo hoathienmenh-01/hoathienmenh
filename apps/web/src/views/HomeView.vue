@@ -10,7 +10,6 @@ import { useStoryDungeonStore } from '@/stores/storyDungeon';
 import { getCharacter } from '@/api/character';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import XTStatTile from '@/components/xianxia/XTStatTile.vue';
 import XTLuxSection from '@/components/xianxia/XTLuxSection.vue';
 import XTHomeDashboard from '@/components/xianxia/XTHomeDashboard.vue';
