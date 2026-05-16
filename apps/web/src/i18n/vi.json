@@ -5486,6 +5486,18 @@
       "FORBIDDEN": "Tài khoản không phải admin.",
       "ADMIN_ONLY": "Chỉ admin mới được chạy backup/verify.",
       "UNKNOWN": "Thao tác thất bại — thử lại."
+    },
+    "offsite": {
+      "title": "Upload offsite (S3)",
+      "statusOk": "OK",
+      "statusStale": "STALE",
+      "statusDisabled": "DISABLED",
+      "statusDegraded": "DEGRADED",
+      "lastUploadedAt": "Lần upload S3 gần nhất",
+      "missingEnv": "Env còn thiếu / sai"
+    },
+    "alert": {
+      "banner": "Cảnh báo: backup fail liên tiếp {count} lần — cần kiểm tra ngay."
     }
   },
   "social": {

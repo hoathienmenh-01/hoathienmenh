@@ -5486,6 +5486,18 @@
       "FORBIDDEN": "Account is not an admin.",
       "ADMIN_ONLY": "Only admin can run backup/verify.",
       "UNKNOWN": "Operation failed — please retry."
+    },
+    "offsite": {
+      "title": "Offsite upload (S3)",
+      "statusOk": "OK",
+      "statusStale": "STALE",
+      "statusDisabled": "DISABLED",
+      "statusDegraded": "DEGRADED",
+      "lastUploadedAt": "Last successful S3 upload",
+      "missingEnv": "Missing / invalid env"
+    },
+    "alert": {
+      "banner": "Alert: {count} consecutive backup failures — please investigate now."
     }
   },
   "social": {

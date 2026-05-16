@@ -31,6 +31,8 @@ import {
   BACKUP_CRON_MAX_SILENCE_MS,
   BACKUP_VERIFY_CRON_MAX_SILENCE_MS,
   computeLiveOpsCronHealth,
+  type BackupAlertState,
+  type BackupOffsiteEntry,
   type BackupRunSummary,
   type BackupStatusEntry,
   type BackupStatusResponse,
@@ -38,6 +40,7 @@ import {
   type BackupVerifyRunSummary,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { parseBackupS3Config } from '../../ops/backup-s3-config';
 import { readBackupConfig, type BackupConfig } from './backup.config';
 
 const MAX_ERROR_MESSAGE_LEN = 2048;
@@ -52,6 +55,13 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..', '..');
 const BACKUP_SCRIPT_PATH = path.join(REPO_ROOT, 'scripts', 'backup-db.sh');
 const VERIFY_SCRIPT_PATH = path.join(REPO_ROOT, 'scripts', 'verify-restore.sh');
 
+/**
+ * Phase 17.3 — Offsite upload script. Spawn sau khi backup local SUCCESS
+ * (best-effort, fail KHÔNG ảnh hưởng BackupRun.status). Script tự tìm
+ * file `.sql.gz` mới nhất trong `BACKUP_DIR`.
+ */
+const OFFSITE_SCRIPT_PATH = path.join(REPO_ROOT, 'scripts', 'backup-to-s3.sh');
+
 interface SpawnResult {
   readonly exitCode: number;
   readonly stdout: string;
@@ -64,7 +74,7 @@ interface SpawnResult {
  * memory nếu shell verbose. Timeout default 10 phút (backup lớn có
  * thể chạy lâu trên DB ~1GB).
  */
-async function spawnScript(
+async function defaultSpawnScript(
   scriptPath: string,
   env: NodeJS.ProcessEnv,
   timeoutMs = 10 * 60 * 1000,
@@ -117,6 +127,20 @@ async function spawnScript(
     });
   });
 }
+
+/**
+ * Phase 17.3 — Test hook holder. `BackupService` luôn gọi
+ * `scriptRunner.spawn(...)` để cho phép test ghi đè bằng `vi.spyOn` mà
+ * không phải spawn shell thật. Production code path không đổi:
+ * `scriptRunner.spawn === defaultSpawnScript`.
+ */
+export const scriptRunner: {
+  spawn: (
+    scriptPath: string,
+    env: NodeJS.ProcessEnv,
+    timeoutMs?: number,
+  ) => Promise<SpawnResult>;
+} = { spawn: defaultSpawnScript };
 
 /**
  * Parse stdout của `backup-db.sh` để extract `fileName` +
@@ -213,7 +237,7 @@ export class BackupService {
     );
 
     try {
-      const result = await spawnScript(BACKUP_SCRIPT_PATH, {
+      const result = await scriptRunner.spawn(BACKUP_SCRIPT_PATH, {
         ...process.env,
         BACKUP_DIR: config.backupDir,
         BACKUP_RETENTION_DAYS: String(config.retentionDays),
@@ -221,7 +245,7 @@ export class BackupService {
 
       if (result.exitCode === 0) {
         const parsed = parseBackupDoneLine(result.stdout);
-        const updated = await this.prisma.backupRun.update({
+        let updated = await this.prisma.backupRun.update({
           where: { id: row.id },
           data: {
             status: 'SUCCESS',
@@ -233,6 +257,18 @@ export class BackupService {
         this.logger.log(
           `backup DONE  id=${row.id} file=${parsed.fileName ?? '-'} size=${parsed.fileSizeBytes ?? '-'}`,
         );
+
+        // Phase 17.3 — offsite upload best-effort. KHÔNG để fail
+        // offsite ảnh hưởng BackupRun.status='SUCCESS' của backup local.
+        if (config.offsiteUploadEnabled) {
+          const offsiteOk = await this.tryOffsiteUpload(row.id, config);
+          if (offsiteOk) {
+            updated = await this.prisma.backupRun.update({
+              where: { id: row.id },
+              data: { storage: 'S3' },
+            });
+          }
+        }
         return this.toBackupSummary(updated);
       }
 
@@ -267,6 +303,50 @@ export class BackupService {
   }
 
   /**
+   * Phase 17.3 — Spawn `scripts/backup-to-s3.sh` để upload offsite.
+   *
+   * Best-effort: KHÔNG throw, KHÔNG fail backup local. Log warning khi
+   * env thiếu/invalid hoặc shell fail. Return `true` chỉ khi upload
+   * thành công (exitCode 0) — caller dùng để update
+   * `BackupRun.storage = 'S3'`.
+   */
+  private async tryOffsiteUpload(
+    backupRunId: string,
+    config: BackupConfig,
+  ): Promise<boolean> {
+    try {
+      const parsed = parseBackupS3Config(process.env);
+      if (!parsed.ok) {
+        this.logger.warn(
+          `offsite SKIP id=${backupRunId} missing=${parsed.missing.join(',')} invalid=${parsed.invalid.join(',')}`,
+        );
+        return false;
+      }
+      const result = await scriptRunner.spawn(OFFSITE_SCRIPT_PATH, {
+        ...process.env,
+        BACKUP_DIR: config.backupDir,
+      });
+      if (result.exitCode === 0) {
+        this.logger.log(`offsite DONE id=${backupRunId} script=backup-to-s3.sh`);
+        return true;
+      }
+      const errMsg = truncateErr(
+        result.stderr || result.stdout || `exit=${result.exitCode}`,
+        512,
+      );
+      this.logger.warn(
+        `offsite FAIL id=${backupRunId} exit=${result.exitCode} err=${errMsg.slice(0, 200)}`,
+      );
+      return false;
+    } catch (e) {
+      this.logger.warn(
+        `offsite THROW id=${backupRunId} err=${truncateErr(e, 200)}`,
+      );
+      return false;
+    }
+  }
+
+  /**
    * Chạy 1 lần verify-restore (spawn `scripts/verify-restore.sh`),
    * record row. Verify script READ-ONLY — không đụng row DB target.
    */
@@ -289,7 +369,7 @@ export class BackupService {
     );
 
     try {
-      const result = await spawnScript(VERIFY_SCRIPT_PATH, {
+      const result = await scriptRunner.spawn(VERIFY_SCRIPT_PATH, {
         ...process.env,
       });
 
@@ -382,13 +462,120 @@ export class BackupService {
       BACKUP_VERIFY_CRON_MAX_SILENCE_MS,
       now,
     );
+    const [offsite, alert] = await Promise.all([
+      this.computeOffsiteEntry(config),
+      this.computeAlertState(config),
+    ]);
 
     return {
       backup: backupEntry,
       verify: verifyEntry,
       latestBackup: latestBackupRow ? this.toBackupSummary(latestBackupRow) : null,
       latestVerify: latestVerifyRow ? this.toVerifySummary(latestVerifyRow) : null,
+      offsite,
+      alert,
       generatedAt: now.toISOString(),
+    };
+  }
+
+  /**
+   * Phase 17.3 — Compute alert state cho consecutive backup failures.
+   *
+   * Đọc tối đa 10 row gần nhất (đủ window cho threshold default 3), bỏ
+   * `RUNNING` (chưa có kết quả), đếm chuỗi `FAILED` liên tiếp tính từ
+   * row mới nhất ngược về quá khứ. Dừng ngay khi gặp `SUCCESS`.
+   *
+   * `triggered = consecutiveFailures >= threshold && threshold > 0`.
+   * Threshold 0 ⇒ chỉ track count, không escalate.
+   */
+  private async computeAlertState(
+    config: BackupConfig,
+  ): Promise<BackupAlertState> {
+    let consecutiveFailures = 0;
+    try {
+      const rows = await this.prisma.backupRun.findMany({
+        where: { status: { in: ['SUCCESS', 'FAILED'] } },
+        orderBy: [{ finishedAt: 'desc' }, { startedAt: 'desc' }],
+        take: 10,
+        select: { status: true },
+      });
+      for (const r of rows) {
+        if (r.status === 'FAILED') consecutiveFailures += 1;
+        else break;
+      }
+    } catch (e) {
+      this.logger.warn(
+        `alert query fail-soft: ${(e as Error).message}`,
+      );
+    }
+    const threshold = config.alertConsecutiveFailures;
+    return {
+      consecutiveFailures,
+      threshold,
+      triggered: threshold > 0 && consecutiveFailures >= threshold,
+    };
+  }
+
+  /**
+   * Phase 17.3 — Compute offsite upload health.
+   *
+   * Mapping:
+   *   - `!enabled`             → `DISABLED`.
+   *   - `enabled && missingEnv` → `DEGRADED` (kèm tên env thiếu).
+   *   - `enabled && env OK && chưa có upload nào` → `STALE`.
+   *   - `enabled && env OK && có upload SUCCESS gần đây` → `OK`.
+   */
+  private async computeOffsiteEntry(
+    config: BackupConfig,
+  ): Promise<BackupOffsiteEntry> {
+    if (!config.offsiteUploadEnabled) {
+      return {
+        enabled: false,
+        status: 'DISABLED',
+        staleReason: null,
+        lastUploadedAt: null,
+        missingEnv: [],
+      };
+    }
+    const parsed = parseBackupS3Config(process.env);
+    if (!parsed.ok) {
+      const missingEnv = [...parsed.missing, ...parsed.invalid];
+      return {
+        enabled: true,
+        status: 'DEGRADED',
+        staleReason: `missing or invalid env: ${missingEnv.join(', ')}`,
+        lastUploadedAt: null,
+        missingEnv,
+      };
+    }
+    let lastUploadedAt: Date | null = null;
+    try {
+      const row = await this.prisma.backupRun.findFirst({
+        where: { storage: 'S3', status: 'SUCCESS', finishedAt: { not: null } },
+        orderBy: { finishedAt: 'desc' },
+        select: { finishedAt: true },
+      });
+      lastUploadedAt = row?.finishedAt ?? null;
+    } catch (e) {
+      this.logger.warn(
+        `offsite status query fail-soft: ${(e as Error).message}`,
+      );
+    }
+    if (lastUploadedAt === null) {
+      return {
+        enabled: true,
+        status: 'STALE',
+        staleReason: 'offsite upload enabled but no successful upload recorded yet',
+        lastUploadedAt: null,
+        missingEnv: [],
+      };
+    }
+    return {
+      enabled: true,
+      status: 'OK',
+      staleReason: null,
+      lastUploadedAt: lastUploadedAt.toISOString(),
+      missingEnv: [],
     };
   }
 

@@ -10,7 +10,7 @@
  *   - parseBackupDoneLine extract đúng filename + bytes.
  *   - parseVerifyOutput extract đúng table count + migration name.
  */
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   BACKUP_CRON_MAX_SILENCE_MS,
   type BackupRunStatus,
@@ -19,6 +19,7 @@ import {
   BackupService,
   parseBackupDoneLine,
   parseVerifyOutput,
+  scriptRunner,
 } from './backup.service';
 import type { PrismaService } from '../../common/prisma.service';
 import type { BackupConfig } from './backup.config';
@@ -105,6 +106,20 @@ function makePrismaStub(store: FakeStore): PrismaService {
         Object.assign(row, data);
         return row;
       }),
+      findMany: vi.fn(async ({ where, take }: any = {}) => {
+        let rows = [...store.backupRuns];
+        if (where?.status?.in) {
+          const allowed: string[] = where.status.in;
+          rows = rows.filter((r) => allowed.includes(r.status));
+        }
+        rows.sort((a, b) => {
+          const af = a.finishedAt?.getTime() ?? a.startedAt.getTime();
+          const bf = b.finishedAt?.getTime() ?? b.startedAt.getTime();
+          return bf - af;
+        });
+        if (typeof take === 'number') rows = rows.slice(0, take);
+        return rows;
+      }),
     },
     backupVerifyRun: {
       findFirst: vi.fn(async ({ where, orderBy }: any) => {
@@ -163,12 +178,28 @@ const DISABLED_CFG: BackupConfig = {
   timezone: 'Asia/Ho_Chi_Minh',
   backupDir: './backups',
   retentionDays: 0,
+  offsiteUploadEnabled: false,
+  alertConsecutiveFailures: 3,
 };
 
 const ENABLED_CFG: BackupConfig = {
   ...DISABLED_CFG,
   backupEnabled: true,
   verifyEnabled: true,
+};
+
+const OFFSITE_ENABLED_CFG: BackupConfig = {
+  ...DISABLED_CFG,
+  offsiteUploadEnabled: true,
+};
+
+/** Đủ env BACKUP_S3_* hợp lệ để `parseBackupS3Config` trả ok. */
+const VALID_S3_ENV = {
+  BACKUP_S3_ENDPOINT: 'https://s3.example.com',
+  BACKUP_S3_BUCKET: 'xuantoi-backup',
+  BACKUP_S3_ACCESS_KEY_ID: 'AKIAEXAMPLE',
+  BACKUP_S3_SECRET_ACCESS_KEY: 'examplesecret',
+  BACKUP_S3_REGION: 'us-east-1',
 };
 
 describe('Phase 17.2 — parseBackupDoneLine', () => {
@@ -347,5 +378,301 @@ describe('Phase 17.2 — BackupService.getStatus', () => {
     const now = new Date('2026-07-11T12:34:56.789Z');
     const out = await svc.getStatus(now, DISABLED_CFG);
     expect(out.generatedAt).toBe(now.toISOString());
+  });
+});
+
+describe('Phase 17.3 — BackupService.getStatus offsite + alert', () => {
+  function makeService(store: FakeStore) {
+    return new BackupService(makePrismaStub(store));
+  }
+
+  function withEnv(env: Record<string, string | undefined>, fn: () => Promise<void>) {
+    const saved: Record<string, string | undefined> = {};
+    for (const k of Object.keys(env)) saved[k] = process.env[k];
+    for (const [k, v] of Object.entries(env)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    return fn().finally(() => {
+      for (const [k, v] of Object.entries(saved)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    });
+  }
+
+  it('alert: 0 backup → consecutiveFailures=0, triggered=false', async () => {
+    const store: FakeStore = { backupRuns: [], verifyRuns: [] };
+    const svc = makeService(store);
+    const out = await svc.getStatus(new Date(), DISABLED_CFG);
+    expect(out.alert.consecutiveFailures).toBe(0);
+    expect(out.alert.threshold).toBe(3);
+    expect(out.alert.triggered).toBe(false);
+  });
+
+  it('alert: 3 FAILED liên tiếp + threshold=3 → triggered=true', async () => {
+    const now = new Date('2026-07-11T00:00:00Z');
+    const store: FakeStore = {
+      backupRuns: [
+        makeFailedRow('b-1', new Date(now.getTime() - 3 * 60 * 60 * 1000)),
+        makeFailedRow('b-2', new Date(now.getTime() - 2 * 60 * 60 * 1000)),
+        makeFailedRow('b-3', new Date(now.getTime() - 1 * 60 * 60 * 1000)),
+      ],
+      verifyRuns: [],
+    };
+    const svc = makeService(store);
+    const out = await svc.getStatus(now, DISABLED_CFG);
+    expect(out.alert.consecutiveFailures).toBe(3);
+    expect(out.alert.triggered).toBe(true);
+  });
+
+  it('alert: 2 FAILED + 1 SUCCESS + 1 FAILED (chuỗi mới nhất) → consecutiveFailures=1', async () => {
+    const now = new Date('2026-07-11T00:00:00Z');
+    const store: FakeStore = {
+      backupRuns: [
+        makeFailedRow('b-1', new Date(now.getTime() - 4 * 60 * 60 * 1000)),
+        makeFailedRow('b-2', new Date(now.getTime() - 3 * 60 * 60 * 1000)),
+        makeSuccessRow('b-3', new Date(now.getTime() - 2 * 60 * 60 * 1000)),
+        makeFailedRow('b-4', new Date(now.getTime() - 1 * 60 * 60 * 1000)),
+      ],
+      verifyRuns: [],
+    };
+    const svc = makeService(store);
+    const out = await svc.getStatus(now, DISABLED_CFG);
+    expect(out.alert.consecutiveFailures).toBe(1);
+    expect(out.alert.triggered).toBe(false);
+  });
+
+  it('alert: threshold=0 → triggered=false ngay cả khi nhiều FAILED', async () => {
+    const now = new Date('2026-07-11T00:00:00Z');
+    const cfg: BackupConfig = { ...DISABLED_CFG, alertConsecutiveFailures: 0 };
+    const store: FakeStore = {
+      backupRuns: [
+        makeFailedRow('b-1', new Date(now.getTime() - 2 * 60 * 60 * 1000)),
+        makeFailedRow('b-2', new Date(now.getTime() - 1 * 60 * 60 * 1000)),
+      ],
+      verifyRuns: [],
+    };
+    const svc = makeService(store);
+    const out = await svc.getStatus(now, cfg);
+    expect(out.alert.consecutiveFailures).toBe(2);
+    expect(out.alert.threshold).toBe(0);
+    expect(out.alert.triggered).toBe(false);
+  });
+
+  it('offsite: disabled → status=DISABLED, enabled=false', async () => {
+    const store: FakeStore = { backupRuns: [], verifyRuns: [] };
+    const svc = makeService(store);
+    const out = await svc.getStatus(new Date(), DISABLED_CFG);
+    expect(out.offsite.enabled).toBe(false);
+    expect(out.offsite.status).toBe('DISABLED');
+    expect(out.offsite.missingEnv).toEqual([]);
+    expect(out.offsite.lastUploadedAt).toBeNull();
+  });
+
+  it('offsite: enabled + thiếu env → status=DEGRADED, missingEnv non-empty', async () => {
+    await withEnv(
+      {
+        BACKUP_S3_ENDPOINT: undefined,
+        BACKUP_S3_BUCKET: undefined,
+        BACKUP_S3_ACCESS_KEY_ID: undefined,
+        BACKUP_S3_SECRET_ACCESS_KEY: undefined,
+      },
+      async () => {
+        const store: FakeStore = { backupRuns: [], verifyRuns: [] };
+        const svc = makeService(store);
+        const out = await svc.getStatus(new Date(), OFFSITE_ENABLED_CFG);
+        expect(out.offsite.enabled).toBe(true);
+        expect(out.offsite.status).toBe('DEGRADED');
+        expect(out.offsite.missingEnv.length).toBeGreaterThan(0);
+        expect(out.offsite.missingEnv).toContain('BACKUP_S3_ENDPOINT');
+      },
+    );
+  });
+
+  it('offsite: enabled + env ok + chưa có upload S3 nào → status=STALE', async () => {
+    await withEnv(VALID_S3_ENV, async () => {
+      const store: FakeStore = { backupRuns: [], verifyRuns: [] };
+      const svc = makeService(store);
+      const out = await svc.getStatus(new Date(), OFFSITE_ENABLED_CFG);
+      expect(out.offsite.enabled).toBe(true);
+      expect(out.offsite.status).toBe('STALE');
+      expect(out.offsite.lastUploadedAt).toBeNull();
+      expect(out.offsite.missingEnv).toEqual([]);
+    });
+  });
+
+  it('offsite: enabled + env ok + có upload S3 SUCCESS → status=OK + lastUploadedAt', async () => {
+    await withEnv(VALID_S3_ENV, async () => {
+      const now = new Date('2026-07-11T00:00:00Z');
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      const store: FakeStore = {
+        backupRuns: [
+          {
+            ...makeSuccessRow('b-1', oneHourAgo),
+            storage: 'S3',
+          },
+        ],
+        verifyRuns: [],
+      };
+      const svc = makeService(store);
+      const out = await svc.getStatus(now, OFFSITE_ENABLED_CFG);
+      expect(out.offsite.enabled).toBe(true);
+      expect(out.offsite.status).toBe('OK');
+      expect(out.offsite.lastUploadedAt).toBe(oneHourAgo.toISOString());
+    });
+  });
+});
+
+function makeSuccessRow(id: string, at: Date): FakeBackupRow {
+  return {
+    id,
+    status: 'SUCCESS',
+    startedAt: at,
+    finishedAt: at,
+    fileName: `./backups/${id}.sql.gz`,
+    fileSizeBytes: 100n,
+    checksumSha256: null,
+    storage: 'LOCAL',
+    errorMessage: null,
+    triggeredBy: 'CRON',
+    actorUserId: null,
+  };
+}
+
+function makeFailedRow(id: string, at: Date): FakeBackupRow {
+  return {
+    id,
+    status: 'FAILED',
+    startedAt: at,
+    finishedAt: at,
+    fileName: null,
+    fileSizeBytes: null,
+    checksumSha256: null,
+    storage: 'LOCAL',
+    errorMessage: 'pg_dump: connection refused',
+    triggeredBy: 'CRON',
+    actorUserId: null,
+  };
+}
+
+describe('Phase 17.3 — BackupService.runBackup offsite upload', () => {
+  function makeService(store: FakeStore) {
+    return new BackupService(makePrismaStub(store));
+  }
+
+  const BACKUP_OK_STDOUT =
+    '[backup-db] Done: ./backups/xuantoi-20260711-030000.sql.gz (1M, 1234567 bytes)\n';
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('offsite disabled → KHÔNG spawn backup-to-s3.sh', async () => {
+    const spawnSpy = vi
+      .spyOn(scriptRunner, 'spawn')
+      .mockResolvedValue({ exitCode: 0, stdout: BACKUP_OK_STDOUT, stderr: '' });
+    const store: FakeStore = { backupRuns: [], verifyRuns: [] };
+    const svc = makeService(store);
+    const summary = await svc.runBackup('CRON', null, DISABLED_CFG);
+    expect(summary.status).toBe('SUCCESS');
+    expect(summary.storage).toBe('LOCAL');
+    expect(spawnSpy).toHaveBeenCalledTimes(1);
+    const firstCall = spawnSpy.mock.calls[0][0];
+    expect(firstCall).toContain('backup-db.sh');
+    expect(firstCall).not.toContain('backup-to-s3.sh');
+  });
+
+  it('offsite enabled + đủ env S3 → spawn backup-to-s3.sh, storage=S3', async () => {
+    const saved = { ...process.env };
+    Object.assign(process.env, {
+      BACKUP_S3_ENDPOINT: 'https://s3.example.com',
+      BACKUP_S3_BUCKET: 'xuantoi',
+      BACKUP_S3_ACCESS_KEY_ID: 'AKIAEXAMPLE',
+      BACKUP_S3_SECRET_ACCESS_KEY: 'examplesecret',
+    });
+    try {
+      const spawnSpy = vi
+        .spyOn(scriptRunner, 'spawn')
+        .mockResolvedValueOnce({
+          exitCode: 0,
+          stdout: BACKUP_OK_STDOUT,
+          stderr: '',
+        })
+        .mockResolvedValueOnce({
+          exitCode: 0,
+          stdout: '[backup-to-s3] Done.\n',
+          stderr: '',
+        });
+      const store: FakeStore = { backupRuns: [], verifyRuns: [] };
+      const svc = makeService(store);
+      const summary = await svc.runBackup('CRON', null, OFFSITE_ENABLED_CFG);
+      expect(summary.status).toBe('SUCCESS');
+      expect(summary.storage).toBe('S3');
+      expect(spawnSpy).toHaveBeenCalledTimes(2);
+      expect(spawnSpy.mock.calls[0][0]).toContain('backup-db.sh');
+      expect(spawnSpy.mock.calls[1][0]).toContain('backup-to-s3.sh');
+    } finally {
+      process.env = saved;
+    }
+  });
+
+  it('offsite enabled + thiếu env → backup local SUCCESS, storage=LOCAL, KHÔNG crash', async () => {
+    const saved = { ...process.env };
+    for (const k of [
+      'BACKUP_S3_ENDPOINT',
+      'BACKUP_S3_BUCKET',
+      'BACKUP_S3_ACCESS_KEY_ID',
+      'BACKUP_S3_SECRET_ACCESS_KEY',
+    ]) {
+      delete (process.env as Record<string, string | undefined>)[k];
+    }
+    try {
+      const spawnSpy = vi
+        .spyOn(scriptRunner, 'spawn')
+        .mockResolvedValue({ exitCode: 0, stdout: BACKUP_OK_STDOUT, stderr: '' });
+      const store: FakeStore = { backupRuns: [], verifyRuns: [] };
+      const svc = makeService(store);
+      const summary = await svc.runBackup('CRON', null, OFFSITE_ENABLED_CFG);
+      expect(summary.status).toBe('SUCCESS');
+      expect(summary.storage).toBe('LOCAL');
+      // Chỉ spawn backup-db.sh, không spawn offsite vì env thiếu.
+      expect(spawnSpy).toHaveBeenCalledTimes(1);
+      expect(spawnSpy.mock.calls[0][0]).toContain('backup-db.sh');
+    } finally {
+      process.env = saved;
+    }
+  });
+
+  it('offsite enabled + env ok + offsite script fail → backup local vẫn SUCCESS storage=LOCAL', async () => {
+    const saved = { ...process.env };
+    Object.assign(process.env, {
+      BACKUP_S3_ENDPOINT: 'https://s3.example.com',
+      BACKUP_S3_BUCKET: 'xuantoi',
+      BACKUP_S3_ACCESS_KEY_ID: 'AKIAEXAMPLE',
+      BACKUP_S3_SECRET_ACCESS_KEY: 'examplesecret',
+    });
+    try {
+      const spawnSpy = vi
+        .spyOn(scriptRunner, 'spawn')
+        .mockResolvedValueOnce({
+          exitCode: 0,
+          stdout: BACKUP_OK_STDOUT,
+          stderr: '',
+        })
+        .mockResolvedValueOnce({
+          exitCode: 5,
+          stdout: '',
+          stderr: 'aws s3 cp failed',
+        });
+      const store: FakeStore = { backupRuns: [], verifyRuns: [] };
+      const svc = makeService(store);
+      const summary = await svc.runBackup('CRON', null, OFFSITE_ENABLED_CFG);
+      expect(summary.status).toBe('SUCCESS');
+      expect(summary.storage).toBe('LOCAL');
+      expect(spawnSpy).toHaveBeenCalledTimes(2);
+    } finally {
+      process.env = saved;
+    }
   });
 });

@@ -53,6 +53,9 @@ const pendingRunVerify = ref(false);
 const runningVerify = ref(false);
 
 type BadgeLevel = 'OK' | 'STALE' | 'FAILED' | 'DISABLED';
+/** Phase 17.3 — offsite badge giữ nguyên 4 bucket BE trả về (UI map sang
+ *  cùng `badgeClass` mà cron badge dùng, nhưng KHÔNG ép `DEGRADED → FAILED`). */
+type OffsiteBadgeLevel = 'OK' | 'STALE' | 'DISABLED' | 'DEGRADED';
 
 /** Map raw cron health → 4-bucket badge mà UI hiển thị. */
 function toBadgeLevel(entry: BackupStatusEntry): BadgeLevel {
@@ -68,6 +71,10 @@ const backupBadge = computed<BadgeLevel | null>(() =>
 );
 const verifyBadge = computed<BadgeLevel | null>(() =>
   status.value ? toBadgeLevel(status.value.verify) : null,
+);
+
+const offsiteBadge = computed<OffsiteBadgeLevel | null>(() =>
+  status.value ? status.value.offsite.status : null,
 );
 
 const errorText = computed(() => {
@@ -171,18 +178,33 @@ function fmtSize(bytes: number | null | undefined): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
-function badgeClass(level: BadgeLevel | null): string {
+function badgeClass(level: BadgeLevel | OffsiteBadgeLevel | null): string {
   switch (level) {
     case 'OK':
       return 'bg-emerald-700/40 text-emerald-200 border-emerald-400/40';
     case 'STALE':
       return 'bg-amber-700/40 text-amber-200 border-amber-400/40';
     case 'FAILED':
+    case 'DEGRADED':
       return 'bg-rose-700/40 text-rose-200 border-rose-400/40';
     case 'DISABLED':
       return 'bg-ink-700/40 text-ink-300 border-ink-300/30';
     default:
       return 'bg-ink-700/40 text-ink-300 border-ink-300/30';
+  }
+}
+
+function offsiteBadgeLabelKey(level: OffsiteBadgeLevel | null): string {
+  switch (level) {
+    case 'OK':
+      return 'adminBackup.offsite.statusOk';
+    case 'STALE':
+      return 'adminBackup.offsite.statusStale';
+    case 'DEGRADED':
+      return 'adminBackup.offsite.statusDegraded';
+    case 'DISABLED':
+    default:
+      return 'adminBackup.offsite.statusDisabled';
   }
 }
 
@@ -221,6 +243,21 @@ onMounted(() => {
 
     <!-- EMPTY: status fetched OK but no rows yet -->
     <template v-else-if="status">
+      <!-- ALERT BANNER: hiển thị khi BE đánh dấu triggered=true (consecutive
+           backup failures vượt threshold). Dùng tone ROSE giống lỗi nghiêm
+           trọng để admin chú ý ngay. -->
+      <div
+        v-if="status.alert.triggered"
+        class="bg-rose-900/40 border border-rose-400/50 rounded p-3 text-sm text-rose-100"
+        data-testid="admin-backup-alert-banner"
+      >
+        {{
+          t('adminBackup.alert.banner', {
+            count: status.alert.consecutiveFailures,
+          })
+        }}
+      </div>
+
       <!-- SUMMARY: 2 health badges + 2 action buttons -->
       <section
         class="grid grid-cols-1 md:grid-cols-2 gap-3"
@@ -439,6 +476,53 @@ onMounted(() => {
             }}
           </MButton>
         </div>
+      </section>
+
+      <!-- OFFSITE UPLOAD CARD (Phase 17.3) — render sau cron summary để
+           admin biết backup local có sync sang S3 hay không. -->
+      <section
+        class="bg-ink-700/30 border border-ink-300/20 rounded p-3 space-y-2"
+        data-testid="admin-backup-offsite-card"
+      >
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm text-amber-200">
+            {{ t('adminBackup.offsite.title') }}
+          </h3>
+          <span
+            class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border"
+            :class="badgeClass(offsiteBadge)"
+            data-testid="admin-backup-offsite-status"
+          >
+            {{ t(offsiteBadgeLabelKey(offsiteBadge)) }}
+          </span>
+        </div>
+        <dl class="text-xs text-ink-200 space-y-1">
+          <div class="flex justify-between gap-2">
+            <dt class="text-ink-300">
+              {{ t('adminBackup.offsite.lastUploadedAt') }}
+            </dt>
+            <dd data-testid="admin-backup-offsite-last-uploaded-at">
+              {{ fmtDate(status.offsite.lastUploadedAt) }}
+            </dd>
+          </div>
+          <div
+            v-if="status.offsite.staleReason"
+            class="text-amber-300"
+            data-testid="admin-backup-offsite-stale-reason"
+          >
+            {{ status.offsite.staleReason }}
+          </div>
+          <div
+            v-if="status.offsite.missingEnv.length > 0"
+            class="text-rose-200"
+            data-testid="admin-backup-offsite-missing-env"
+          >
+            {{ t('adminBackup.offsite.missingEnv') }}:
+            <span class="font-mono">{{
+              status.offsite.missingEnv.join(', ')
+            }}</span>
+          </div>
+        </dl>
       </section>
 
       <p class="text-[11px] text-ink-300" data-testid="admin-backup-generated-at">
