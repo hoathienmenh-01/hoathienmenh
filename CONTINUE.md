@@ -30,11 +30,11 @@ PR (draft): xem link cuối — nối tiếp PR #600 (PR1 đã merge).
 
 ## CÒN THIẾU (todo cho người tiếp theo)
 
-### A. Visual effects (PR2 trong roadmap cũ)
-- [ ] `BreakthroughView.vue` / `BreakthroughBanner.vue` — thêm thiên kiếp sấm sét full-screen (CSS-only, tôn trọng `visualEffectLevel` + `prefers-reduced-motion`).
-- [ ] `BossView.vue` — hiệu ứng "mực rơi" shutter khi boss phase change.
-- [ ] `RareDropPopup.vue` — portrait card cuộn lụa khi drop mythic/legendary.
-- [ ] `FloatingCombatText.vue` — typeface cổ phong + element-tinted shadow.
+### A. Visual effects (PR2 trong roadmap cũ) — ĐÃ XONG
+- [x] `BreakthroughView.vue` / `BreakthroughBanner.vue` — thiên kiếp sấm sét full-screen (CSS-only, tôn trọng `visualEffectLevel` + `prefers-reduced-motion`).
+- [x] `BossView.vue` — hiệu ứng "mực rơi" shutter khi boss phase change (HP cross 75/50/25%).
+- [x] `RareDropPopup.vue` — portrait card cuộn lụa khi drop MYTHIC / IMMORTAL / LEGENDARY.
+- [x] `FloatingCombatText.vue` — typeface cổ phong (Noto Serif SC / LXGW WenKai TC) + element-tinted text-shadow.
 
 ### B. Hero views polish (PR4–PR6)
 - [ ] `DashboardView.vue` — đã sweep token, còn thiếu eyebrow Hán/Việt + seal frame trên hero card.

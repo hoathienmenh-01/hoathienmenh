@@ -399,3 +399,108 @@ describe('BossView — realtime WS events', () => {
     });
   });
 });
+
+/**
+ * Overlay rendered via `<Teleport to="body">` → query document.body
+ * thay vì wrapper. Helper trả về element nếu có hoặc null.
+ */
+function findMucRoiOverlay(): Element | null {
+  return document.body.querySelector('[data-testid="boss-view-muc-roi"]');
+}
+
+describe('BossView — mực rơi shutter (Cửu Thiên Mộng PR2)', () => {
+  beforeEach(() => {
+    // Các test phía trước (vd "boss:update → currentHp") cũng có thể
+    // trigger overlay (cross 75% → 50%) và để wrapper sống trong body
+    // → cần xoá teleport residue trước khi assert baseline.
+    document.body
+      .querySelectorAll('[data-testid="boss-view-muc-roi"]')
+      .forEach((n) => n.remove());
+  });
+
+  afterEach(() => {
+    document.body
+      .querySelectorAll('[data-testid="boss-view-muc-roi"]')
+      .forEach((n) => n.remove());
+  });
+
+  it('không render overlay khi boss vừa load (baseline)', async () => {
+    getActiveBossesMock.mockResolvedValue([
+      makeBoss({ id: 'b1', currentHp: '8000', maxHp: '10000' }), // 80% → bucket 1
+    ]);
+    mountView();
+    await flushPromises();
+    expect(findMucRoiOverlay()).toBeNull();
+  });
+
+  it('boss:update cross 75% → render overlay', async () => {
+    getActiveBossesMock.mockResolvedValue([
+      makeBoss({ id: 'b1', currentHp: '8000', maxHp: '10000' }), // 80% → bucket 1
+    ]);
+    mountView();
+    await flushPromises();
+    // HP rớt qua 50% threshold (bucket 1 → 2).
+    const handlers = wsHandlers['boss:update'] ?? [];
+    for (const h of handlers) {
+      h({
+        payload: {
+          id: 'b1',
+          currentHp: '6000', // 60% → bucket 2
+          maxHp: '10000',
+          status: 'ACTIVE',
+          leaderboardTop5: [],
+        },
+      });
+    }
+    await flushPromises();
+    expect(findMucRoiOverlay()).not.toBeNull();
+  });
+
+  it('overlay tự dismiss sau ~1.5s', async () => {
+    getActiveBossesMock.mockResolvedValue([
+      makeBoss({ id: 'b1', currentHp: '8000', maxHp: '10000' }),
+    ]);
+    mountView();
+    await flushPromises();
+    const handlers = wsHandlers['boss:update'] ?? [];
+    for (const h of handlers) {
+      h({
+        payload: {
+          id: 'b1',
+          currentHp: '2000', // 20% → bucket 4
+          maxHp: '10000',
+          status: 'ACTIVE',
+          leaderboardTop5: [],
+        },
+      });
+    }
+    await flushPromises();
+    expect(findMucRoiOverlay()).not.toBeNull();
+    // Fake timer advance vượt 1.5s và flush microtasks.
+    vi.advanceTimersByTime(1600);
+    await flushPromises();
+    expect(findMucRoiOverlay()).toBeNull();
+  });
+
+  it('không trigger khi HP tăng (heal)', async () => {
+    getActiveBossesMock.mockResolvedValue([
+      makeBoss({ id: 'b1', currentHp: '4000', maxHp: '10000' }), // 40% bucket 3
+    ]);
+    mountView();
+    await flushPromises();
+    const handlers = wsHandlers['boss:update'] ?? [];
+    for (const h of handlers) {
+      h({
+        payload: {
+          id: 'b1',
+          currentHp: '8000', // heal về 80% bucket 1
+          maxHp: '10000',
+          status: 'ACTIVE',
+          leaderboardTop5: [],
+        },
+      });
+    }
+    await flushPromises();
+    expect(findMucRoiOverlay()).toBeNull();
+  });
+});

@@ -57,4 +57,24 @@ describe('FloatingCombatText', () => {
     const el = w.get('[data-testid="floating-combat-text"]');
     expect(el.classes().some((c) => c === 've-element-fire')).toBe(true);
   });
+
+  it('always wears the cổ phong display typeface class', () => {
+    const w = mountFct({ type: 'normal', amount: 1 });
+    const el = w.get('[data-testid="floating-combat-text"]');
+    expect(el.classes()).toContain('ve-fct-display');
+  });
+
+  it('element=LIGHTNING adds element-tinted text-shadow class', () => {
+    const w = mountFct({ type: 'normal', amount: 50, element: 'LIGHTNING' });
+    const el = w.get('[data-testid="floating-combat-text"]');
+    const classes = el.classes();
+    expect(classes).toContain('ve-element-lightning');
+    expect(classes).toContain('ve-fct-shadow-lightning');
+  });
+
+  it('element=NONE → no element-tinted shadow class', () => {
+    const w = mountFct({ type: 'normal', amount: 50, element: 'NONE' });
+    const el = w.get('[data-testid="floating-combat-text"]');
+    expect(el.classes().some((c) => c.startsWith('ve-fct-shadow-'))).toBe(false);
+  });
 });
