@@ -1,52 +1,155 @@
 <script setup lang="ts">
 /**
- * Cửu Thiên Mộng — `XTHomeSectChatPanel` (UI-3.2 sect + chat preview panel).
+ * Cửu Thiên Mộng — `XTHomeSectChatPanel` (UI-3.2 sect + chat panel).
  *
  * Panel "Tông môn & Đạo hữu":
  *   - header: tên tông + cấp tông + thành viên + nút "Vào tông môn".
- *   - 3 chat preview với avatar glyph + tên + tin nhắn + thời gian.
- *   - ô nhập + nút "Gửi" (form chỉ emit `send`).
+ *   - chat messages preview của kênh SECT (load real history qua
+ *     `chatHistory('SECT')`, subscribe WS `chat:msg` cho live update).
+ *   - ô nhập + nút "Gửi": gửi qua `chatSendSect`.
+ *   - Khi player chưa gia nhập tông môn → input disabled + empty state
+ *     "Chưa thuộc tông môn nào", **không** dùng mock chat trong player Home.
+ *   - Loading / error state nhẹ nhàng (toast cho error qua `useToastStore`).
+ *
+ * Pattern reference: `apps/web/src/components/shell/ChatPanel.vue` (đã wire
+ * world + sect chat full pipeline). Panel này là biến thể compact dành cho
+ * Home dashboard.
  */
-import { ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
+import { useGameStore } from '@/stores/game';
+import { useToastStore } from '@/stores/toast';
 import {
-  chatMessages,
-  sectPanel,
-  type HomeChatMessage,
-} from '@/data/homeDashboardMock';
+  chatHistory,
+  chatSendSect,
+  type ChatMessageView,
+} from '@/api/chat';
+import { on } from '@/ws/client';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
-withDefaults(
+interface SectPanelInfo {
+  title: string;
+  sectName: string;
+  sectLevel: number | string;
+  members: string;
+}
+
+const props = withDefaults(
   defineProps<{
-    info?: typeof sectPanel;
-    messages?: HomeChatMessage[];
+    info?: SectPanelInfo;
+    /**
+     * Override messages (dev/demo preview). Khi không truyền (default),
+     * panel tự load real chat history qua `chatHistory('SECT')` + WS.
+     */
+    messages?: ChatMessageView[] | null;
     compact?: boolean;
     testId?: string;
   }>(),
   {
-    info: () => sectPanel,
-    messages: () => chatMessages,
+    info: () => ({
+      title: 'Tông môn & Đạo hữu',
+      sectName: 'Chưa gia nhập tông môn',
+      sectLevel: 0,
+      members: '0',
+    }),
+    messages: null,
     compact: false,
     testId: 'home-sect-chat-panel',
   },
 );
 
-const emit = defineEmits<{
-  send: [message: string];
-}>();
-
 const router = useRouter();
+const { t } = useI18n();
+const game = useGameStore();
+const toast = useToastStore();
+
+const inSect = computed(() => !!game.character?.sectId);
+const currentSectId = computed(() => game.character?.sectId ?? null);
+
+const liveMessages = ref<ChatMessageView[]>([]);
+const loading = ref(false);
+const sending = ref(false);
 const draft = ref('');
 
-function onSubmit(e: Event): void {
+/**
+ * Khi `messages` prop được truyền (dev/demo) → render preview override.
+ * Mặc định → dùng `liveMessages` đọc từ API + WS.
+ */
+const visibleMessages = computed<ChatMessageView[]>(() => {
+  if (props.messages && props.messages.length > 0) return props.messages;
+  return liveMessages.value;
+});
+
+let unbindMsg: (() => void) | null = null;
+
+async function loadHistory(): Promise<void> {
+  if (!inSect.value) {
+    liveMessages.value = [];
+    return;
+  }
+  loading.value = true;
+  try {
+    liveMessages.value = await chatHistory('SECT');
+  } catch {
+    // silent — UI sẽ hiện empty state thay vì crash
+  } finally {
+    loading.value = false;
+  }
+}
+
+function handleErr(e: unknown): void {
+  const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
+  const key = `chat.errors.${code}`;
+  const text = t(key, '__missing__');
+  toast.push({
+    type: 'error',
+    text: text === '__missing__' ? t('chat.errors.UNKNOWN') : text,
+  });
+}
+
+async function onSubmit(e: Event): Promise<void> {
   e.preventDefault();
-  if (!draft.value.trim()) return;
-  emit('send', draft.value.trim());
-  draft.value = '';
+  const msg = draft.value.trim();
+  if (!msg || sending.value || !inSect.value) return;
+  sending.value = true;
+  try {
+    await chatSendSect(msg);
+    draft.value = '';
+    // Không append local — chờ WS `chat:msg` echo về để giữ thứ tự server.
+  } catch (err) {
+    handleErr(err);
+  } finally {
+    sending.value = false;
+  }
 }
 
 function openSect(): void {
   router.push('/sect').catch(() => null);
 }
+
+function fmtTime(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '';
+  }
+}
+
+onMounted(() => {
+  void loadHistory();
+  unbindMsg = on<ChatMessageView>('chat:msg', (frame) => {
+    const m = frame.payload;
+    if (m.channel !== 'SECT') return;
+    if (currentSectId.value && m.scopeKey !== currentSectId.value) return;
+    liveMessages.value = [...liveMessages.value, m].slice(-200);
+  });
+});
+
+onUnmounted(() => {
+  unbindMsg?.();
+});
 </script>
 
 <template>
@@ -90,43 +193,57 @@ function openSect(): void {
       </dl>
     </div>
 
-    <ul class="xt-home-sect__messages">
+    <ul
+      v-if="inSect && visibleMessages.length > 0"
+      class="xt-home-sect__messages"
+      :data-testid="`${testId}-messages`"
+    >
       <li
-        v-for="msg in messages"
-        :key="msg.key"
+        v-for="msg in visibleMessages"
+        :key="msg.id"
         class="xt-home-sect__msg"
-        :class="`xt-home-sect__msg--${msg.role}`"
-        :data-testid="`${testId}-msg-${msg.key}`"
+        :data-testid="`${testId}-msg-${msg.id}`"
       >
-        <span class="xt-home-sect__avatar" aria-hidden="true">{{ msg.avatarGlyph }}</span>
+        <span class="xt-home-sect__avatar" aria-hidden="true">☯</span>
         <div class="xt-home-sect__msg-body">
           <div class="xt-home-sect__msg-meta">
-            <span class="xt-home-sect__msg-author">{{ msg.author }}</span>
-            <span class="xt-home-sect__msg-time">{{ msg.time }}</span>
+            <span class="xt-home-sect__msg-author">{{ msg.senderName }}</span>
+            <span class="xt-home-sect__msg-time">{{ fmtTime(msg.createdAt) }}</span>
           </div>
-          <p class="xt-home-sect__msg-text">{{ msg.message }}</p>
+          <p class="xt-home-sect__msg-text">{{ msg.text }}</p>
         </div>
       </li>
     </ul>
+    <div
+      v-else
+      class="xt-home-sect__empty"
+      :data-testid="`${testId}-empty`"
+    >
+      <p v-if="loading">{{ t('chat.empty') }}</p>
+      <p v-else-if="!inSect">{{ t('chat.noSectShort') }}</p>
+      <p v-else>{{ t('chat.empty') }}</p>
+    </div>
 
     <form class="xt-home-sect__form" @submit="onSubmit">
-      <label class="sr-only" :for="`${testId}-input`">Nhập tin nhắn cho tông môn</label>
+      <label class="sr-only" :for="`${testId}-input`">{{ t('chat.placeholder.sect') }}</label>
       <input
         :id="`${testId}-input`"
         v-model="draft"
         type="text"
+        maxlength="200"
         class="xt-home-sect__input"
-        placeholder="Gửi lời cho đạo hữu..."
+        :placeholder="t('chat.placeholder.sect')"
         autocomplete="off"
+        :disabled="!inSect || sending"
         :data-testid="`${testId}-input`"
       />
       <button
         type="submit"
         class="xt-home-sect__send"
         :data-testid="`${testId}-send`"
-        :disabled="!draft.trim()"
-        aria-label="Gửi lời cho tông môn"
-      >Gửi lời</button>
+        :disabled="!inSect || !draft.trim() || sending"
+        :aria-label="t('chat.send')"
+      >{{ t('chat.send') }}</button>
     </form>
   </section>
 </template>
@@ -303,10 +420,6 @@ function openSect(): void {
   border: 1px solid rgba(242, 215, 137, 0.18);
 }
 
-.xt-home-sect__msg--sect-elder { border-color: rgba(242, 215, 137, 0.45); }
-.xt-home-sect__msg--disciple { border-color: rgba(95, 227, 198, 0.3); }
-.xt-home-sect__msg--friend { border-color: rgba(168, 132, 222, 0.3); }
-
 .xt-home-sect__avatar {
   display: inline-flex;
   align-items: center;
@@ -356,6 +469,25 @@ function openSect(): void {
   word-wrap: break-word;
 }
 
+.xt-home-sect__empty {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(8, 9, 11, 0.5);
+  border: 1px dashed rgba(242, 215, 137, 0.2);
+  color: var(--xt-text-muted, rgba(208, 200, 180, 0.6));
+  font-size: 12px;
+  text-align: center;
+}
+
+.xt-home-sect__empty p {
+  margin: 0;
+}
+
 .xt-home-sect__form {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -380,6 +512,11 @@ function openSect(): void {
   outline: 2px solid rgba(95, 227, 198, 0.55);
   outline-offset: 2px;
   border-color: rgba(242, 215, 137, 0.8);
+}
+
+.xt-home-sect__input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .xt-home-sect__send {
