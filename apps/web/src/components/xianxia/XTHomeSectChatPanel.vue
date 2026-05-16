@@ -125,7 +125,8 @@ function openSect(): void {
         class="xt-home-sect__send"
         :data-testid="`${testId}-send`"
         :disabled="!draft.trim()"
-      >Gửi</button>
+        aria-label="Gửi lời cho tông môn"
+      >Gửi lời</button>
     </form>
   </section>
 </template>
