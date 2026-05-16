@@ -14,6 +14,7 @@ import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import XTGlyphBadge from '@/components/xianxia/XTGlyphBadge.vue';
+import XTPullRefresh from '@/components/xianxia/XTPullRefresh.vue';
 
 const { t, locale } = useI18n();
 const store = useWorldContentStore();
@@ -72,88 +73,96 @@ onMounted(() => {
         </template>
       </XTLuxHero>
 
-      <div
-        v-if="reloadFailed && bosses.length === 0"
-        class="boss-hub__state boss-hub__state--error"
-        data-testid="boss-hub-error"
+      <XTPullRefresh
+        :on-refresh="refresh"
+        test-id="boss-hub-pull-refresh"
+        :pull-label="t('common.pullToRefresh')"
+        :release-label="t('common.releaseToRefresh')"
+        :refreshing-label="t('common.refreshing')"
       >
-        <p>{{ t('worldContent.reloadError') }}</p>
-        <button @click="refresh">{{ t('worldContent.reload') }}</button>
-      </div>
+        <div
+          v-if="reloadFailed && bosses.length === 0"
+          class="boss-hub__state boss-hub__state--error"
+          data-testid="boss-hub-error"
+        >
+          <p>{{ t('worldContent.reloadError') }}</p>
+          <button @click="refresh">{{ t('worldContent.reload') }}</button>
+        </div>
 
-      <div
-        v-else-if="bosses.length === 0 && !isLoaded"
-        class="boss-hub__state"
-        data-testid="boss-hub-loading"
-      >
-        {{ t('worldContent.boss.loading') }}
-      </div>
+        <div
+          v-else-if="bosses.length === 0 && !isLoaded"
+          class="boss-hub__state"
+          data-testid="boss-hub-loading"
+        >
+          {{ t('worldContent.boss.loading') }}
+        </div>
 
-      <div
-        v-else-if="bosses.length === 0"
-        class="boss-hub__state"
-        data-testid="boss-hub-empty"
-      >
-        {{ t('worldContent.boss.empty') }}
-      </div>
+        <div
+          v-else-if="bosses.length === 0"
+          class="boss-hub__state"
+          data-testid="boss-hub-empty"
+        >
+          {{ t('worldContent.boss.empty') }}
+        </div>
 
-      <template v-else>
-        <label class="boss-hub__filter">
-          {{ t('worldContent.boss.category') }}:
-          <select v-model="categoryFilter" data-testid="boss-hub-filter">
-            <option value="ALL">{{ t('worldContent.boss.all') }}</option>
-            <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
-          </select>
-        </label>
+        <template v-else>
+          <label class="boss-hub__filter">
+            {{ t('worldContent.boss.category') }}:
+            <select v-model="categoryFilter" data-testid="boss-hub-filter">
+              <option value="ALL">{{ t('worldContent.boss.all') }}</option>
+              <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
+            </select>
+          </label>
 
-        <ul class="boss-hub__list" data-testid="boss-hub-list">
-          <li
-            v-for="b in filtered"
-            :key="b.key"
-            class="boss-hub__item"
-            :data-testid="`boss-hub-item-${b.key}`"
-          >
-            <div class="boss-hub__item-head">
-              <h2>{{ pickName(b) }}</h2>
-              <span class="boss-hub__chip">{{ b.category }}</span>
-            </div>
-            <dl>
-              <div>
-                <dt>{{ t('worldContent.boss.family') }}</dt>
-                <dd>{{ b.family }}</dd>
+          <ul class="boss-hub__list" data-testid="boss-hub-list">
+            <li
+              v-for="b in filtered"
+              :key="b.key"
+              class="boss-hub__item"
+              :data-testid="`boss-hub-item-${b.key}`"
+            >
+              <div class="boss-hub__item-head">
+                <h2>{{ pickName(b) }}</h2>
+                <span class="boss-hub__chip">{{ b.category }}</span>
               </div>
-              <div>
-                <dt>{{ t('worldContent.boss.element') }}</dt>
-                <dd>{{ b.element }}</dd>
-              </div>
-              <div>
-                <dt>{{ t('worldContent.boss.region') }}</dt>
-                <dd>{{ b.regionKey ?? '—' }}</dd>
-              </div>
-              <div>
-                <dt>{{ t('worldContent.boss.sourceTier') }}</dt>
-                <dd>{{ b.sourceTier }}</dd>
-              </div>
-              <div>
-                <dt>{{ t('worldContent.boss.realm') }}</dt>
-                <dd>{{ b.recommendedRealmOrder }}</dd>
-              </div>
-              <div>
-                <dt>{{ t('worldContent.boss.dailyCap') }}</dt>
-                <dd>{{ b.dailyRewardCap ?? '—' }}</dd>
-              </div>
-              <div>
-                <dt>{{ t('worldContent.boss.weeklyCap') }}</dt>
-                <dd>{{ b.weeklyRewardCap ?? '—' }}</dd>
-              </div>
-              <div v-if="b.manualOnly">
-                <dt>{{ t('worldContent.boss.manualOnly') }}</dt>
-                <dd>✓</dd>
-              </div>
-            </dl>
-          </li>
-        </ul>
-      </template>
+              <dl>
+                <div>
+                  <dt>{{ t('worldContent.boss.family') }}</dt>
+                  <dd>{{ b.family }}</dd>
+                </div>
+                <div>
+                  <dt>{{ t('worldContent.boss.element') }}</dt>
+                  <dd>{{ b.element }}</dd>
+                </div>
+                <div>
+                  <dt>{{ t('worldContent.boss.region') }}</dt>
+                  <dd>{{ b.regionKey ?? '—' }}</dd>
+                </div>
+                <div>
+                  <dt>{{ t('worldContent.boss.sourceTier') }}</dt>
+                  <dd>{{ b.sourceTier }}</dd>
+                </div>
+                <div>
+                  <dt>{{ t('worldContent.boss.realm') }}</dt>
+                  <dd>{{ b.recommendedRealmOrder }}</dd>
+                </div>
+                <div>
+                  <dt>{{ t('worldContent.boss.dailyCap') }}</dt>
+                  <dd>{{ b.dailyRewardCap ?? '—' }}</dd>
+                </div>
+                <div>
+                  <dt>{{ t('worldContent.boss.weeklyCap') }}</dt>
+                  <dd>{{ b.weeklyRewardCap ?? '—' }}</dd>
+                </div>
+                <div v-if="b.manualOnly">
+                  <dt>{{ t('worldContent.boss.manualOnly') }}</dt>
+                  <dd>✓</dd>
+                </div>
+              </dl>
+            </li>
+          </ul>
+        </template>
+      </XTPullRefresh>
     </section>
   </AppShell>
 </template>

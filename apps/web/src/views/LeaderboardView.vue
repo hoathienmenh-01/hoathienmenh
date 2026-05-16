@@ -10,6 +10,7 @@ import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { realmByKey, fullRealmName } from '@xuantoi/shared';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTPullRefresh from '@/components/xianxia/XTPullRefresh.vue';
 import SkeletonTable from '@/components/ui/SkeletonTable.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import {
@@ -33,6 +34,10 @@ const sectRows = ref<LeaderboardSectRow[]>([]);
 
 const loading = ref(false);
 const error = ref<string | null>(null);
+
+async function refresh(): Promise<void> {
+  await load(tab.value);
+}
 
 async function load(target: Tab = tab.value): Promise<void> {
   loading.value = true;
@@ -116,204 +121,212 @@ onMounted(() => {
         </button>
       </nav>
 
-      <SkeletonTable
-        v-if="loading"
-        :rows="10"
-        :cols="5"
-        test-id="leaderboard-skeleton"
-      />
-      <div v-else-if="error" class="py-8 text-center text-sm text-red-400">
-        {{ t('leaderboard.error') }}
-        <button
-          type="button"
-          class="ml-2 rounded border border-ink-300/40 px-2 py-0.5 text-[11px] uppercase tracking-widest hover:bg-ink-700/60"
-          @click="load()"
-        >
-          {{ t('leaderboard.retry') }}
-        </button>
-      </div>
-
-      <!-- POWER tab -->
-      <template v-else-if="tab === 'power'">
-        <div
-          v-if="powerRows.length === 0"
-          class="py-8 text-center text-sm text-ink-300"
-        >
-          {{ t('leaderboard.empty') }}
+      <XTPullRefresh
+        :on-refresh="refresh"
+        test-id="leaderboard-pull-refresh"
+        :pull-label="t('common.pullToRefresh')"
+        :release-label="t('common.releaseToRefresh')"
+        :refreshing-label="t('common.refreshing')"
+      >
+        <SkeletonTable
+          v-if="loading"
+          :rows="10"
+          :cols="5"
+          test-id="leaderboard-skeleton"
+        />
+        <div v-else-if="error" class="py-8 text-center text-sm text-red-400">
+          {{ t('leaderboard.error') }}
+          <button
+            type="button"
+            class="ml-2 rounded border border-ink-300/40 px-2 py-0.5 text-[11px] uppercase tracking-widest hover:bg-ink-700/60"
+            @click="load()"
+          >
+            {{ t('leaderboard.retry') }}
+          </button>
         </div>
-        <table
-          v-else
-          class="w-full text-sm"
-          data-testid="leaderboard-table"
-        >
-          <thead class="text-xs uppercase tracking-widest text-ink-300">
-            <tr>
-              <th class="py-2 pr-2 text-left w-12">#</th>
-              <th class="py-2 pr-2 text-left">
-                {{ t('leaderboard.col.name') }}
-              </th>
-              <th class="py-2 pr-2 text-left">
-                {{ t('leaderboard.col.realm') }}
-              </th>
-              <th class="py-2 pr-2 text-left">
-                {{ t('leaderboard.col.sect') }}
-              </th>
-              <th class="py-2 pr-2 text-right">
-                {{ t('leaderboard.col.power') }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="r in powerRows"
-              :key="r.characterId"
-              class="border-t border-ink-300/10 hover:bg-ink-700/40"
-            >
-              <td class="py-1.5 pr-2 font-mono">
-                <span
-                  v-if="r.rank <= 3"
-                  class="inline-block rounded bg-amber-500/20 px-1.5 text-amber-200"
-                >{{ r.rank }}</span>
-                <span v-else>{{ r.rank }}</span>
-              </td>
-              <td class="py-1.5 pr-2 text-ink-50">{{ r.name }}</td>
-              <td class="py-1.5 pr-2 text-ink-200">
-                {{ realmDisplay(r.realmKey, r.realmStage) }}
-              </td>
-              <td class="py-1.5 pr-2 text-ink-300">
-                {{ sectName(r.sectKey) }}
-              </td>
-              <td class="py-1.5 pr-2 text-right font-mono text-ink-50">
-                {{ r.power.toLocaleString() }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </template>
 
-      <!-- TOPUP tab -->
-      <template v-else-if="tab === 'topup'">
-        <div
-          v-if="topupRows.length === 0"
-          class="py-8 text-center text-sm text-ink-300"
-        >
-          {{ t('leaderboard.empty') }}
-        </div>
-        <table
-          v-else
-          class="w-full text-sm"
-          data-testid="leaderboard-topup-table"
-        >
-          <thead class="text-xs uppercase tracking-widest text-ink-300">
-            <tr>
-              <th class="py-2 pr-2 text-left w-12">#</th>
-              <th class="py-2 pr-2 text-left">
-                {{ t('leaderboard.col.name') }}
-              </th>
-              <th class="py-2 pr-2 text-left">
-                {{ t('leaderboard.col.realm') }}
-              </th>
-              <th class="py-2 pr-2 text-left">
-                {{ t('leaderboard.col.sect') }}
-              </th>
-              <th class="py-2 pr-2 text-right">
-                {{ t('leaderboard.col.totalTienNgoc') }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="r in topupRows"
-              :key="r.characterId"
-              class="border-t border-ink-300/10 hover:bg-ink-700/40"
-            >
-              <td class="py-1.5 pr-2 font-mono">
-                <span
-                  v-if="r.rank <= 3"
-                  class="inline-block rounded bg-amber-500/20 px-1.5 text-amber-200"
-                >{{ r.rank }}</span>
-                <span v-else>{{ r.rank }}</span>
-              </td>
-              <td class="py-1.5 pr-2 text-ink-50">{{ r.name }}</td>
-              <td class="py-1.5 pr-2 text-ink-200">
-                {{ realmDisplay(r.realmKey, r.realmStage) }}
-              </td>
-              <td class="py-1.5 pr-2 text-ink-300">
-                {{ sectName(r.sectKey) }}
-              </td>
-              <td class="py-1.5 pr-2 text-right font-mono text-amber-200">
-                {{ r.totalTienNgoc.toLocaleString() }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </template>
+        <!-- POWER tab -->
+        <template v-else-if="tab === 'power'">
+          <div
+            v-if="powerRows.length === 0"
+            class="py-8 text-center text-sm text-ink-300"
+          >
+            {{ t('leaderboard.empty') }}
+          </div>
+          <table
+            v-else
+            class="w-full text-sm"
+            data-testid="leaderboard-table"
+          >
+            <thead class="text-xs uppercase tracking-widest text-ink-300">
+              <tr>
+                <th class="py-2 pr-2 text-left w-12">#</th>
+                <th class="py-2 pr-2 text-left">
+                  {{ t('leaderboard.col.name') }}
+                </th>
+                <th class="py-2 pr-2 text-left">
+                  {{ t('leaderboard.col.realm') }}
+                </th>
+                <th class="py-2 pr-2 text-left">
+                  {{ t('leaderboard.col.sect') }}
+                </th>
+                <th class="py-2 pr-2 text-right">
+                  {{ t('leaderboard.col.power') }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="r in powerRows"
+                :key="r.characterId"
+                class="border-t border-ink-300/10 hover:bg-ink-700/40"
+              >
+                <td class="py-1.5 pr-2 font-mono">
+                  <span
+                    v-if="r.rank <= 3"
+                    class="inline-block rounded bg-amber-500/20 px-1.5 text-amber-200"
+                  >{{ r.rank }}</span>
+                  <span v-else>{{ r.rank }}</span>
+                </td>
+                <td class="py-1.5 pr-2 text-ink-50">{{ r.name }}</td>
+                <td class="py-1.5 pr-2 text-ink-200">
+                  {{ realmDisplay(r.realmKey, r.realmStage) }}
+                </td>
+                <td class="py-1.5 pr-2 text-ink-300">
+                  {{ sectName(r.sectKey) }}
+                </td>
+                <td class="py-1.5 pr-2 text-right font-mono text-ink-50">
+                  {{ r.power.toLocaleString() }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
 
-      <!-- SECT tab -->
-      <template v-else>
-        <div
-          v-if="sectRows.length === 0"
-          class="py-8 text-center text-sm text-ink-300"
-        >
-          {{ t('leaderboard.empty') }}
-        </div>
-        <table
-          v-else
-          class="w-full text-sm"
-          data-testid="leaderboard-sect-table"
-        >
-          <thead class="text-xs uppercase tracking-widest text-ink-300">
-            <tr>
-              <th class="py-2 pr-2 text-left w-12">#</th>
-              <th class="py-2 pr-2 text-left">
-                {{ t('leaderboard.col.sectName') }}
-              </th>
-              <th class="py-2 pr-2 text-left">
-                {{ t('leaderboard.col.leader') }}
-              </th>
-              <th class="py-2 pr-2 text-right">
-                {{ t('leaderboard.col.level') }}
-              </th>
-              <th class="py-2 pr-2 text-right">
-                {{ t('leaderboard.col.members') }}
-              </th>
-              <th class="py-2 pr-2 text-right">
-                {{ t('leaderboard.col.treasury') }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="r in sectRows"
-              :key="r.sectId"
-              class="border-t border-ink-300/10 hover:bg-ink-700/40"
-            >
-              <td class="py-1.5 pr-2 font-mono">
-                <span
-                  v-if="r.rank <= 3"
-                  class="inline-block rounded bg-amber-500/20 px-1.5 text-amber-200"
-                >{{ r.rank }}</span>
-                <span v-else>{{ r.rank }}</span>
-              </td>
-              <td class="py-1.5 pr-2 text-ink-50">
-                {{ r.sectKey ? sectName(r.sectKey) : r.name }}
-              </td>
-              <td class="py-1.5 pr-2 text-ink-200">
-                {{ r.leaderName ?? '—' }}
-              </td>
-              <td class="py-1.5 pr-2 text-right font-mono text-ink-50">
-                {{ r.level }}
-              </td>
-              <td class="py-1.5 pr-2 text-right font-mono text-ink-200">
-                {{ r.memberCount }}
-              </td>
-              <td class="py-1.5 pr-2 text-right font-mono text-amber-200">
-                {{ formatBigIntString(r.treasuryLinhThach) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </template>
+        <!-- TOPUP tab -->
+        <template v-else-if="tab === 'topup'">
+          <div
+            v-if="topupRows.length === 0"
+            class="py-8 text-center text-sm text-ink-300"
+          >
+            {{ t('leaderboard.empty') }}
+          </div>
+          <table
+            v-else
+            class="w-full text-sm"
+            data-testid="leaderboard-topup-table"
+          >
+            <thead class="text-xs uppercase tracking-widest text-ink-300">
+              <tr>
+                <th class="py-2 pr-2 text-left w-12">#</th>
+                <th class="py-2 pr-2 text-left">
+                  {{ t('leaderboard.col.name') }}
+                </th>
+                <th class="py-2 pr-2 text-left">
+                  {{ t('leaderboard.col.realm') }}
+                </th>
+                <th class="py-2 pr-2 text-left">
+                  {{ t('leaderboard.col.sect') }}
+                </th>
+                <th class="py-2 pr-2 text-right">
+                  {{ t('leaderboard.col.totalTienNgoc') }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="r in topupRows"
+                :key="r.characterId"
+                class="border-t border-ink-300/10 hover:bg-ink-700/40"
+              >
+                <td class="py-1.5 pr-2 font-mono">
+                  <span
+                    v-if="r.rank <= 3"
+                    class="inline-block rounded bg-amber-500/20 px-1.5 text-amber-200"
+                  >{{ r.rank }}</span>
+                  <span v-else>{{ r.rank }}</span>
+                </td>
+                <td class="py-1.5 pr-2 text-ink-50">{{ r.name }}</td>
+                <td class="py-1.5 pr-2 text-ink-200">
+                  {{ realmDisplay(r.realmKey, r.realmStage) }}
+                </td>
+                <td class="py-1.5 pr-2 text-ink-300">
+                  {{ sectName(r.sectKey) }}
+                </td>
+                <td class="py-1.5 pr-2 text-right font-mono text-amber-200">
+                  {{ r.totalTienNgoc.toLocaleString() }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
+
+        <!-- SECT tab -->
+        <template v-else>
+          <div
+            v-if="sectRows.length === 0"
+            class="py-8 text-center text-sm text-ink-300"
+          >
+            {{ t('leaderboard.empty') }}
+          </div>
+          <table
+            v-else
+            class="w-full text-sm"
+            data-testid="leaderboard-sect-table"
+          >
+            <thead class="text-xs uppercase tracking-widest text-ink-300">
+              <tr>
+                <th class="py-2 pr-2 text-left w-12">#</th>
+                <th class="py-2 pr-2 text-left">
+                  {{ t('leaderboard.col.sectName') }}
+                </th>
+                <th class="py-2 pr-2 text-left">
+                  {{ t('leaderboard.col.leader') }}
+                </th>
+                <th class="py-2 pr-2 text-right">
+                  {{ t('leaderboard.col.level') }}
+                </th>
+                <th class="py-2 pr-2 text-right">
+                  {{ t('leaderboard.col.members') }}
+                </th>
+                <th class="py-2 pr-2 text-right">
+                  {{ t('leaderboard.col.treasury') }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="r in sectRows"
+                :key="r.sectId"
+                class="border-t border-ink-300/10 hover:bg-ink-700/40"
+              >
+                <td class="py-1.5 pr-2 font-mono">
+                  <span
+                    v-if="r.rank <= 3"
+                    class="inline-block rounded bg-amber-500/20 px-1.5 text-amber-200"
+                  >{{ r.rank }}</span>
+                  <span v-else>{{ r.rank }}</span>
+                </td>
+                <td class="py-1.5 pr-2 text-ink-50">
+                  {{ r.sectKey ? sectName(r.sectKey) : r.name }}
+                </td>
+                <td class="py-1.5 pr-2 text-ink-200">
+                  {{ r.leaderName ?? '—' }}
+                </td>
+                <td class="py-1.5 pr-2 text-right font-mono text-ink-50">
+                  {{ r.level }}
+                </td>
+                <td class="py-1.5 pr-2 text-right font-mono text-ink-200">
+                  {{ r.memberCount }}
+                </td>
+                <td class="py-1.5 pr-2 text-right font-mono text-amber-200">
+                  {{ formatBigIntString(r.treasuryLinhThach) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
+      </XTPullRefresh>
     </section>
   </AppShell>
 </template>

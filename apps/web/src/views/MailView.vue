@@ -10,6 +10,7 @@ import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import XTListStagger from '@/components/xianxia/XTListStagger.vue';
+import XTPullRefresh from '@/components/xianxia/XTPullRefresh.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { formatItemRewardList } from '@/lib/itemName';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
@@ -148,95 +149,103 @@ function formatDate(iso: string): string {
       </div>
     </XTLuxHero>
 
-    <div class="grid grid-cols-1 md:grid-cols-[16rem_minmax(0,1fr)] gap-4">
-      <aside class="border border-ink-300/40 rounded bg-ink-700/30 p-2 max-h-[70vh] overflow-y-auto">
-        <div v-if="loading && mails.length === 0" class="text-ink-300 text-sm p-2">
-          {{ t('common.loadingData') }}
-        </div>
-        <div v-else-if="mails.length === 0" class="text-ink-300 text-sm p-2">
-          {{ t('mail.empty') }}
-        </div>
-        <XTListStagger v-else tag="ul" class="space-y-1">
-          <li
-            v-for="(m, idx) in mails"
-            :key="m.id"
-            class="cursor-pointer rounded p-2 text-sm hover:bg-ink-900/60"
-            :class="selectedId === m.id ? 'bg-ink-900/60' : ''"
-            :style="{ '--xt-list-index': idx }"
-            @click="select(m)"
-          >
-            <div class="flex items-center gap-2">
-              <span
-                v-if="!m.readAt"
-                class="w-1.5 h-1.5 rounded-full bg-amber-400"
-                :aria-label="t('mail.unread')"
-              />
-              <span class="flex-1 truncate" :class="m.readAt ? 'text-ink-300' : 'text-ink-50'">
-                {{ m.subject }}
-              </span>
-              <span
-                v-if="m.claimable"
-                class="text-[10px] px-1 py-0.5 rounded bg-amber-700/40 text-amber-200"
-              >
-                {{ t('mail.rewardBadge') }}
-              </span>
-            </div>
-            <div class="text-[10px] text-ink-300 mt-0.5">
-              {{ m.senderName }} · {{ formatDate(m.createdAt) }}
-            </div>
-          </li>
-        </XTListStagger>
-      </aside>
-
-      <section class="border border-ink-300/40 rounded bg-ink-700/30 p-4 min-h-[50vh]">
-        <div v-if="!selected" class="text-ink-300 text-sm">
-          {{ t('mail.selectHint') }}
-        </div>
-        <div v-else>
-          <div class="flex items-start gap-3 flex-wrap">
-            <div class="flex-1 min-w-0">
-              <div class="text-lg text-ink-50 font-bold break-words">
-                {{ selected.subject }}
+    <XTPullRefresh
+      :on-refresh="refresh"
+      test-id="mail-pull-refresh"
+      :pull-label="t('common.pullToRefresh')"
+      :release-label="t('common.releaseToRefresh')"
+      :refreshing-label="t('common.refreshing')"
+    >
+      <div class="grid grid-cols-1 md:grid-cols-[16rem_minmax(0,1fr)] gap-4">
+        <aside class="border border-ink-300/40 rounded bg-ink-700/30 p-2 max-h-[70vh] overflow-y-auto">
+          <div v-if="loading && mails.length === 0" class="text-ink-300 text-sm p-2">
+            {{ t('common.loadingData') }}
+          </div>
+          <div v-else-if="mails.length === 0" class="text-ink-300 text-sm p-2">
+            {{ t('mail.empty') }}
+          </div>
+          <XTListStagger v-else tag="ul" class="space-y-1">
+            <li
+              v-for="(m, idx) in mails"
+              :key="m.id"
+              class="cursor-pointer rounded p-2 text-sm hover:bg-ink-900/60"
+              :class="selectedId === m.id ? 'bg-ink-900/60' : ''"
+              :style="{ '--xt-list-index': idx }"
+              @click="select(m)"
+            >
+              <div class="flex items-center gap-2">
+                <span
+                  v-if="!m.readAt"
+                  class="w-1.5 h-1.5 rounded-full bg-amber-400"
+                  :aria-label="t('mail.unread')"
+                />
+                <span class="flex-1 truncate" :class="m.readAt ? 'text-ink-300' : 'text-ink-50'">
+                  {{ m.subject }}
+                </span>
+                <span
+                  v-if="m.claimable"
+                  class="text-[10px] px-1 py-0.5 rounded bg-amber-700/40 text-amber-200"
+                >
+                  {{ t('mail.rewardBadge') }}
+                </span>
               </div>
-              <div class="text-xs text-ink-300 mt-1">
-                {{ t('mail.from') }}: {{ selected.senderName }} ·
-                {{ formatDate(selected.createdAt) }}
+              <div class="text-[10px] text-ink-300 mt-0.5">
+                {{ m.senderName }} · {{ formatDate(m.createdAt) }}
+              </div>
+            </li>
+          </XTListStagger>
+        </aside>
+
+        <section class="border border-ink-300/40 rounded bg-ink-700/30 p-4 min-h-[50vh]">
+          <div v-if="!selected" class="text-ink-300 text-sm">
+            {{ t('mail.selectHint') }}
+          </div>
+          <div v-else>
+            <div class="flex items-start gap-3 flex-wrap">
+              <div class="flex-1 min-w-0">
+                <div class="text-lg text-ink-50 font-bold break-words">
+                  {{ selected.subject }}
+                </div>
+                <div class="text-xs text-ink-300 mt-1">
+                  {{ t('mail.from') }}: {{ selected.senderName }} ·
+                  {{ formatDate(selected.createdAt) }}
+                </div>
+                <div
+                  v-if="selected.expiresAt"
+                  class="text-[11px] text-amber-200 mt-1"
+                >
+                  {{ t('mail.expiresAt') }}: {{ formatDate(selected.expiresAt) }}
+                </div>
+              </div>
+              <div v-if="selected.claimable" class="shrink-0">
+                <MButton
+                  :disabled="claiming === selected.id"
+                  @click="onClaim(selected)"
+                >
+                  {{ claiming === selected.id ? t('common.loading') : t('mail.claim') }}
+                </MButton>
               </div>
               <div
-                v-if="selected.expiresAt"
-                class="text-[11px] text-amber-200 mt-1"
+                v-else-if="selected.claimedAt"
+                class="shrink-0 text-[11px] px-2 py-1 rounded bg-emerald-700/40 text-emerald-200"
               >
-                {{ t('mail.expiresAt') }}: {{ formatDate(selected.expiresAt) }}
+                {{ t('mail.status.claimed') }}
               </div>
             </div>
-            <div v-if="selected.claimable" class="shrink-0">
-              <MButton
-                :disabled="claiming === selected.id"
-                @click="onClaim(selected)"
-              >
-                {{ claiming === selected.id ? t('common.loading') : t('mail.claim') }}
-              </MButton>
-            </div>
+
             <div
-              v-else-if="selected.claimedAt"
-              class="shrink-0 text-[11px] px-2 py-1 rounded bg-emerald-700/40 text-emerald-200"
+              v-if="hasAnyReward(selected)"
+              class="mt-3 text-[12px] text-ink-200 border border-ink-300/30 rounded p-2"
             >
-              {{ t('mail.status.claimed') }}
+              {{ t('mail.reward.label') }}: {{ rewardSummary(selected) }}
+            </div>
+
+            <div class="mt-4 whitespace-pre-wrap text-sm text-ink-100">
+              {{ selected.body }}
             </div>
           </div>
-
-          <div
-            v-if="hasAnyReward(selected)"
-            class="mt-3 text-[12px] text-ink-200 border border-ink-300/30 rounded p-2"
-          >
-            {{ t('mail.reward.label') }}: {{ rewardSummary(selected) }}
-          </div>
-
-          <div class="mt-4 whitespace-pre-wrap text-sm text-ink-100">
-            {{ selected.body }}
-          </div>
-        </div>
-      </section>
-    </div>
+        </section>
+      </div>
+    </XTPullRefresh>
   </AppShell>
 </template>

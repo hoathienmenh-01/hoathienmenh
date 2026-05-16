@@ -57,8 +57,11 @@ Commit `feat(web): add special effects gestures and performance polish`.
 - Performance: `XTAmbientCanvas` thêm FPS measurement qua `requestAnimationFrame` (sample 60 frame hoặc 2s, lấy avg) + low-end heuristic (`navigator.deviceMemory ≤ 2GB` hoặc `hardwareConcurrency ≤ 2`) → tự động set `data-quality="reduced"` → dim mesh, dim halo, ẩn motes, dừng animation. Skip đo FPS khi `prefers-reduced-motion: reduce`. Prop `forceQuality?: 'auto' | 'full' | 'reduced'` để override.
 - Route-level lazy load: kiểm 80+ route trong `apps/web/src/router/index.ts` — toàn bộ đã dùng `() => import(...)` từ trước, không có view nào cần convert. KHÔNG đụng route names / guards.
 
-### Phase 11 — Final docs + gates + PR finalize (commit này)
+### Phase 11 — Final docs + gates + PR finalize
 Commit `docs(web): update Cửu Thiên Mộng luxury UI completion report`. Update `CONTINUE.md` + `docs/AI_HANDOFF_REPORT.md` với log đầy đủ. Chạy gate cuối (han / lint / typecheck / test / build), đổi PR title thành `feat(web): complete Cửu Thiên Mộng luxury UI roadmap` và flip draft → ready for review.
+
+### Phase 10.B — Wire `XTPullRefresh` vào production view (commit này)
+Commit `feat(web): wire XTPullRefresh into production views`. Phase 10 chỉ ship primitive — phase này wrap vào 7 list-heavy view (MailView, MissionView, BossHubView, LeaderboardView, AchievementView, QuestView, MarketV2View) với handler refresh hiện hữu (`refresh()` / `load()` / `questStore.load()` / `achievements.fetchState()` …). Thêm 3 key i18n trong `common`: `pullToRefresh`, `releaseToRefresh`, `refreshing` (vi.json + en.json). Test mới `src/views/__tests__/XTPullRefreshWiring.test.ts` assert primitive được mount với test-id chuẩn `<view>-pull-refresh` cho ít nhất 2 view. Touch gesture giữ nguyên (jsdom không simulate được), chỉ verify wiring + slot label. Không đụng business logic, không thêm dependency, không tạo branch mới.
 
 ---
 

@@ -14,6 +14,7 @@ import {
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
+import XTPullRefresh from '@/components/xianxia/XTPullRefresh.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import { formatItemRewardList } from '@/lib/itemName';
@@ -189,107 +190,115 @@ function rewardSummary(m: MissionProgressView): string {
       <XTPageEyebrow caps="PHỤNG ĐẠO SỨ MỆNH" label="Phụng Đạo Sứ Mệnh" class="sr-only" />
     </XTLuxHero>
 
-    <div class="flex gap-2 mb-4 flex-wrap">
-      <MButton
-        :class="tab === 'DAILY' ? '!bg-ink-50 !text-ink-900' : ''"
-        @click="tab = 'DAILY'"
-      >
-        {{ t('mission.tab.daily') }}
-        <span class="text-[10px] ml-1 text-ink-300">
-          ({{ summary.DAILY.done }}/{{ summary.DAILY.total }})
-        </span>
-      </MButton>
-      <MButton
-        :class="tab === 'WEEKLY' ? '!bg-ink-50 !text-ink-900' : ''"
-        @click="tab = 'WEEKLY'"
-      >
-        {{ t('mission.tab.weekly') }}
-        <span class="text-[10px] ml-1 text-ink-300">
-          ({{ summary.WEEKLY.done }}/{{ summary.WEEKLY.total }})
-        </span>
-      </MButton>
-      <MButton
-        :class="tab === 'ONCE' ? '!bg-ink-50 !text-ink-900' : ''"
-        @click="tab = 'ONCE'"
-      >
-        {{ t('mission.tab.once') }}
-        <span class="text-[10px] ml-1 text-ink-300">
-          ({{ summary.ONCE.done }}/{{ summary.ONCE.total }})
-        </span>
-      </MButton>
-      <MButton class="ml-auto" :disabled="loading" @click="refresh">
-        {{ t('common.reload') }}
-      </MButton>
-    </div>
+    <XTPullRefresh
+      :on-refresh="refresh"
+      test-id="mission-pull-refresh"
+      :pull-label="t('common.pullToRefresh')"
+      :release-label="t('common.releaseToRefresh')"
+      :refreshing-label="t('common.refreshing')"
+    >
+      <div class="flex gap-2 mb-4 flex-wrap">
+        <MButton
+          :class="tab === 'DAILY' ? '!bg-ink-50 !text-ink-900' : ''"
+          @click="tab = 'DAILY'"
+        >
+          {{ t('mission.tab.daily') }}
+          <span class="text-[10px] ml-1 text-ink-300">
+            ({{ summary.DAILY.done }}/{{ summary.DAILY.total }})
+          </span>
+        </MButton>
+        <MButton
+          :class="tab === 'WEEKLY' ? '!bg-ink-50 !text-ink-900' : ''"
+          @click="tab = 'WEEKLY'"
+        >
+          {{ t('mission.tab.weekly') }}
+          <span class="text-[10px] ml-1 text-ink-300">
+            ({{ summary.WEEKLY.done }}/{{ summary.WEEKLY.total }})
+          </span>
+        </MButton>
+        <MButton
+          :class="tab === 'ONCE' ? '!bg-ink-50 !text-ink-900' : ''"
+          @click="tab = 'ONCE'"
+        >
+          {{ t('mission.tab.once') }}
+          <span class="text-[10px] ml-1 text-ink-300">
+            ({{ summary.ONCE.done }}/{{ summary.ONCE.total }})
+          </span>
+        </MButton>
+        <MButton class="ml-auto" :disabled="loading" @click="refresh">
+          {{ t('common.reload') }}
+        </MButton>
+      </div>
 
-    <div v-if="loading && missions.length === 0" class="text-ink-300 text-sm">
-      {{ t('common.loadingData') }}
-    </div>
+      <div v-if="loading && missions.length === 0" class="text-ink-300 text-sm">
+        {{ t('common.loadingData') }}
+      </div>
 
-    <div v-else-if="filtered.length === 0" class="text-ink-300 text-sm">
-      {{ t('mission.empty') }}
-    </div>
+      <div v-else-if="filtered.length === 0" class="text-ink-300 text-sm">
+        {{ t('mission.empty') }}
+      </div>
 
-    <ul v-else class="space-y-3">
-      <li
-        v-for="m in filtered"
-        :key="m.key"
-        class="border border-ink-300/40 rounded p-4 bg-ink-700/30"
-      >
-        <div class="flex items-start gap-3 flex-wrap">
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-ink-50 font-bold">{{ m.name }}</span>
-              <span
-                class="text-[10px] px-1.5 py-0.5 rounded bg-ink-900/60 text-ink-300"
-              >
-                {{ t(`mission.quality.${m.quality}`) }}
-              </span>
-              <span
-                v-if="m.claimed"
-                class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-700/40 text-emerald-200"
-              >
-                {{ t('mission.status.claimed') }}
-              </span>
-              <span
-                v-else-if="m.completable"
-                class="text-[10px] px-1.5 py-0.5 rounded bg-amber-700/40 text-amber-200"
-              >
-                {{ t('mission.status.ready') }}
-              </span>
+      <ul v-else class="space-y-3">
+        <li
+          v-for="m in filtered"
+          :key="m.key"
+          class="border border-ink-300/40 rounded p-4 bg-ink-700/30"
+        >
+          <div class="flex items-start gap-3 flex-wrap">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-ink-50 font-bold">{{ m.name }}</span>
+                <span
+                  class="text-[10px] px-1.5 py-0.5 rounded bg-ink-900/60 text-ink-300"
+                >
+                  {{ t(`mission.quality.${m.quality}`) }}
+                </span>
+                <span
+                  v-if="m.claimed"
+                  class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-700/40 text-emerald-200"
+                >
+                  {{ t('mission.status.claimed') }}
+                </span>
+                <span
+                  v-else-if="m.completable"
+                  class="text-[10px] px-1.5 py-0.5 rounded bg-amber-700/40 text-amber-200"
+                >
+                  {{ t('mission.status.ready') }}
+                </span>
+              </div>
+              <div class="text-xs text-ink-300 mt-1">{{ m.description }}</div>
+              <div class="text-[11px] text-ink-300 mt-2">
+                {{ t('mission.reward.label') }}: {{ rewardSummary(m) }}
+              </div>
             </div>
-            <div class="text-xs text-ink-300 mt-1">{{ m.description }}</div>
-            <div class="text-[11px] text-ink-300 mt-2">
-              {{ t('mission.reward.label') }}: {{ rewardSummary(m) }}
-            </div>
-          </div>
-          <div class="flex flex-col items-end gap-2 min-w-[10rem]">
-            <div class="text-[11px] text-ink-300">
-              {{ m.currentAmount }} / {{ m.goalAmount }}
-            </div>
-            <div class="w-40 h-1.5 rounded bg-ink-900/60 overflow-hidden">
+            <div class="flex flex-col items-end gap-2 min-w-[10rem]">
+              <div class="text-[11px] text-ink-300">
+                {{ m.currentAmount }} / {{ m.goalAmount }}
+              </div>
+              <div class="w-40 h-1.5 rounded bg-ink-900/60 overflow-hidden">
+                <div
+                  class="h-full transition-all"
+                  :class="m.claimed ? 'bg-emerald-600' : m.completable ? 'bg-amber-400' : 'bg-ink-300'"
+                  :style="{ width: progressPct(m) + '%' }"
+                />
+              </div>
               <div
-                class="h-full transition-all"
-                :class="m.claimed ? 'bg-emerald-600' : m.completable ? 'bg-amber-400' : 'bg-ink-300'"
-                :style="{ width: progressPct(m) + '%' }"
-              />
+                v-if="m.windowEnd && !m.claimed"
+                class="text-[10px] text-ink-300"
+              >
+                {{ t('mission.resetIn') }}: {{ formatCountdown(m.windowEnd) }}
+              </div>
+              <MButton
+                v-if="!m.claimed"
+                :disabled="!m.completable || claiming === m.key"
+                @click="onClaim(m)"
+              >
+                {{ claiming === m.key ? t('common.loading') : t('mission.claim') }}
+              </MButton>
             </div>
-            <div
-              v-if="m.windowEnd && !m.claimed"
-              class="text-[10px] text-ink-300"
-            >
-              {{ t('mission.resetIn') }}: {{ formatCountdown(m.windowEnd) }}
-            </div>
-            <MButton
-              v-if="!m.claimed"
-              :disabled="!m.completable || claiming === m.key"
-              @click="onClaim(m)"
-            >
-              {{ claiming === m.key ? t('common.loading') : t('mission.claim') }}
-            </MButton>
           </div>
-        </div>
-      </li>
-    </ul>
+        </li>
+      </ul>
+    </XTPullRefresh>
   </AppShell>
 </template>
