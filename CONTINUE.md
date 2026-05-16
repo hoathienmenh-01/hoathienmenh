@@ -1,137 +1,95 @@
-# CONTINUE — Cửu Thiên Mộng (PR2–PR9)
+# CONTINUE — Cửu Thiên Mộng luxury UI roadmap (PR #615)
 
-Branch: `devin/1778830998-cuu-thien-mong-views`
-PR (draft): xem link cuối — nối tiếp PR #600 (PR1 đã merge).
+Branch: `devin/20260516-091257-cuu-thien-mong-lux-ui-complete`
+PR: https://github.com/hoathienmenh-01/xuantoi/pull/615
+Base: `main` của `hoathienmenh-01/xuantoi`.
 
----
-
-## ĐÃ XONG TRONG COMMIT NÀY
-
-1. **PR3 — Equipment art (80 ảnh):**
-   - Resize 80 ảnh từ `photos/tier{1..10}/{slot}{tier}.jpeg` → `apps/web/public/equipment/sm/{slot}{tier}.webp` (256px, ~85% quality) + `md/` (512px, ~88% quality). Tổng 5.4MB.
-   - Util `getEquipmentImage()` trong `packages/shared/src/equipment-images.ts` + 11 unit test xanh.
-   - Slot mapping **theo đúng yêu cầu user**: kiem→WEAPON, ao→ARMOR, mu→HAT, giay→BOOTS, dai→BELT, daychuyen→TRAM, phapbao→ARTIFACT_1/2/3, nhan→loose (dùng `artName='nhan'`).
-   - Component `EquipmentArtCell.vue` (gold rim + jade glow khi equipped, tier badge).
-   - `ItemAuraFrame.vue` render `<img>` khi có slot+tier.
-   - Đã wire vào `InventoryView.vue` (cả equipped slot list + unequipped grid), `LoadoutView.vue` (mỗi slot preset có preview), `PhapBaoPanel.vue` (mỗi pháp bảo có ảnh).
-
-2. **Dark theme sweep:**
-   - 27 component/view xoá toàn bộ class light-mode còn sót (`text-emerald-950`, `bg-white/55|65|70`, `bg-emerald-50`, `border-emerald-200|300/30|35|45|60`, `text-emerald-700|900`) → map sang token `var(--xt-text-primary|muted|subtle|jade|gold)` / `var(--xt-bg-surface|glass)` / `var(--xt-border-jade|gold)` / `var(--xt-jade-soft)`.
-   - Files: DashboardView, TopupView, SeasonsView, TerritoryView, ReputationView, XianxiaPlaceholderView, FeaturedActivitiesCard, TodayChecklistCard, XTPageHeader, XTBackButton, GameIcon, XTIcon, BossPhaseBadge, CraftingResultEffect, TribulationBattleStatus, BossSchedulePanel, LiveOpsTodayPanel, SocialPanel, PublicPlayerProfileModal, SectSeasonPanel, plus 7 Admin panels.
-
-3. **Verify:**
-   - `pnpm -C packages/shared test -- equipment-images` → 11/11 pass.
-   - `pnpm -C apps/web lint` → clean (đã fix `slot` prop conflict bằng cách rename → `equipSlot` / `equip-slot`).
-   - `pnpm -C apps/web typecheck` → clean.
-   - `pnpm -C apps/web build` → success.
-   - Test suite chưa run đầy đủ trong session này (user yêu cầu push gấp) — CI sẽ tự chạy.
+Tiếp nối PR #613 (Thuần Việt foundation) + PR #614 (Luxury primitives + 12 top-tier view).
+PR #615 hoàn thiện đầy đủ 11 phase của roadmap luxury UI.
 
 ---
 
-## CÒN THIẾU (todo cho người tiếp theo)
+## TỔNG QUAN
 
-### A. Visual effects (PR2 trong roadmap cũ) — ĐÃ XONG
-- [x] `BreakthroughView.vue` / `BreakthroughBanner.vue` — thiên kiếp sấm sét full-screen (CSS-only, tôn trọng `visualEffectLevel` + `prefers-reduced-motion`).
-- [x] `BossView.vue` — hiệu ứng "mực rơi" shutter khi boss phase change (HP cross 75/50/25%).
-- [x] `RareDropPopup.vue` — portrait card cuộn lụa khi drop MYTHIC / IMMORTAL / LEGENDARY.
-- [x] `FloatingCombatText.vue` — typeface cổ phong (Noto Serif SC / LXGW WenKai TC) + element-tinted text-shadow.
+PR #615 = 9 commit theo đúng thứ tự phase, không tạo branch mới, không tách PR. Mỗi phase chạy lint / typecheck / test / han-gate trước khi commit.
 
-### B. Hero views polish (PR4–PR6)
-- [x] `DashboardView.vue` — eyebrow Hán/Việt (`九天梦境 · Cửu Thiên Mộng`) qua `XTHeroEyebrow` (PR3).
-- [x] `HomeView.vue` — character summary card wrap trong `XTSealFrame` jade tone + eyebrow `道身仙骨 · Đạo Thân Tiên Cốt` (PR3).
-- [x] `CultivationHeroCard.vue` (dùng trên Dashboard) — eyebrow `道身仙骨` + `XTSealFrame` gold tone với 4 góc `真修丹道` + watermark `天` (PR3).
-- [ ] `CultivationMethodV2View.vue`, `BodyCultivationView.vue`, `SpiritualRootView.vue`.
-- [ ] Combat: `BossView`, `BossHubView`, `PvpView`, `ArenaView`, `TribulationView`, `DungeonHubV2View`, `DungeonRunView`, `SecretRealmView`, `RoguelikeView`, `TrialTowerView`, `TerritoryView`, `SectWarView`.
-- [ ] Social: `SectView`, `SectContentView`, `MarketV2View`, `MarketView`, `SocialView`, `MailView`, `NpcView`, `StoryV2View`, `StoryDungeonView`.
-
-### C. Activity / Quest (PR7)
-- [ ] `ActivityView`, `QuestView`, `MissionView`, `AchievementView`, `CodexView`, `ReputationView`, `MentorView`, `EncounterView`, `FarmMapView`, `WorldContentView`.
-
-### D. Admin (PR8) — pass nhẹ
-- [ ] ~20 admin views: `AdminView`, `AdminAchievementReputationView`, `AdminCodexView`, `AdminControlCenterView`, `AdminEventBuilderView`, `AdminFeedbackView`, `AdminMailView`, `AdminMarketV2View`, `AdminPetsView`, `AdminPvpCenterView`, `AdminReportsView`, `AdminSystemStatusView`.
-
-### E. Misc (PR9)
-- [ ] `SettingsView` — thêm toggle day-mode (`data-theme='day'` đã có sẵn token alternate).
-- [ ] `ProfileView`, `AuthView`, `ForgotPasswordView`, `ResetPasswordView`, `OnboardingView`, `OnboardingQuestView`, `ReturnerView`.
-- [ ] `TopupView`, `MonetizationView`, `MonetizationShopView`, `MonetizationDacQuyenView`, `ShopView`, `ShopPacksView`, `CosmeticView`, `TitleView`, `WalletView`, `GiftCodeView`, `NotificationSettingsView`, `FeedbackView`, `ReportPlayerView`, `PlayerLogsView`, `SeasonsView`.
+Han gate cuối: `rg '[\x{4e00}-\x{9fff}]' apps/web/src` → 0 match.
 
 ---
 
-## CÂU LỆNH CONTINUE (copy-paste)
+## PHASE LOG
 
-```bash
-# 1. Pull branch hiện tại
-cd /home/ubuntu/repos/xuantoi
-git fetch origin
-git checkout devin/1778830998-cuu-thien-mong-views
-git pull --ff-only origin devin/1778830998-cuu-thien-mong-views
+### Phase 1 — Audit primitives (no code)
+Audit `apps/web/src/components/xianxia/*` cho hiện trạng 12 view top-tier đã polish ở PR #614. Output: danh sách view còn dùng layout cũ (~40 view: Combat / Social / Quest / Misc / Admin), card thiếu corner accent, stat tile rời rạc, transition không nhất quán.
 
-# 2. Install + build shared (BẮT BUỘC trước khi typecheck/test web)
-pnpm install
-pnpm --filter @xuantoi/shared build
+### Phase 2 — `XTLuxHero` cho ~40 view
+Commit `feat(web): expand XTLuxHero across remaining player views`. Phổ cập `<XTLuxHero>` (eyebrow + title + subtitle + actions) cho toàn bộ view còn dùng layout cũ. Giữ test id cũ, không đụng business logic.
 
-# 3. Verify clean state
-pnpm -C apps/web lint
-pnpm -C apps/web typecheck
-pnpm -C apps/web test
-pnpm -C apps/web build
+### Phase 3 — `XTStatTile` + `XTLuxSection`
+Commit `feat(web): adopt luxury stat tiles and sections`. Dashboard / Profile / Sect / Wallet chuyển từ raw grid sang `<XTLuxSection>` (ornate corner) + `<XTStatTile>` (jade/gold tone, glyph slot, delta animation hook).
 
-# 4. (Nếu cần regenerate 80 ảnh) — copy từ photos/ → public/equipment/
-SLOTS="kiem ao mu giay nhan daychuyen dai phapbao"
-mkdir -p apps/web/public/equipment/sm apps/web/public/equipment/md
-for t in 1 2 3 4 5 6 7 8 9 10; do
-  for s in $SLOTS; do
-    src="photos/tier${t}/${s}${t}.jpeg"
-    [ -f "$src" ] || { echo "MISSING $src"; continue; }
-    convert "$src" -resize 256x256 -quality 85 "apps/web/public/equipment/sm/${s}${t}.webp"
-    convert "$src" -resize 512x512 -quality 88 "apps/web/public/equipment/md/${s}${t}.webp"
-  done
-done
+### Phase 4 — `XianxiaCard` upgrade
+Commit `feat(web): add luxury treatment to cards and item states`. Thêm 4 corner accent SVG + props `accent` (jade/gold/seal/danger), `corners` (boolean, default true), `tight` (giảm padding cho list item). Alias `seal` ↔ `danger` để tương thích.
 
-# 5. Test dev server (chỉ cần verify visual)
-pnpm -C apps/web dev
-# → http://localhost:5173
+### Phase 5 — State primitives polish
+Commit `feat(web): polish loading empty error and toast states`. `SkeletonBlock` (shimmer + tone variant), `EmptyState` (glyph + tone), `ErrorState` (ornate seal frame), `MToast` (luxury restyle gold/jade/seal/warning + glyph + `aria-live`). Test cũ rewrite assertion → verify tone class mới, KHÔNG xoá / skip case.
+
+### Phase 6 — Page transitions & micro animations
+Commit `feat(web): add global luxury transitions and micro animations`. Tổng quát silk-curtain (tham khảo BossView) → global app transition; `XTListStagger` cho list appear (fade + slight Y translate, prefers-reduced-motion aware); `XTCounter` + composable `useCountUp` cho EXP / currency / power delta. Hover-lift card chuẩn hoá. Không thêm dependency.
+
+### Phase 7 — `GameIcon` library expansion
+Commit `feat(web): expand xianxia game icon library`. Mở rộng `GameIcon` từ ~20 lên đầy đủ icon cho cultivation / combat / pvp / boss / dungeon / sect / market / mail / social / quest / achievement / codex / mentor / encounter / farm / wallet / shop / gift / title / notification / feedback / admin. `RealmBadge` thêm sigil theo cảnh giới group. Tất cả inline SVG, không thêm icon library lớn.
+
+### Phase 8 — `XTBottomSheet` + sect accent
+Commit `feat(web): add ornate bottom sheet and sect accent theming`. Primitive `XTBottomSheet` (ornate top handle + overlay + close button accessible + Escape close + mobile-first; desktop fallback dùng tự nhiên qua viewport). Áp dụng nhẹ ở Inventory filter/sort. Thêm CSS var `--xt-accent-sect` — nếu `sect.color` có thì tint subtle border / tiny glow / badge, KHÔNG tint background lớn, KHÔNG đổi store shape.
+
+### Phase 9 — Typography, day audit, i18n, a11y
+Commit `feat(web): improve typography day theme i18n and accessibility`.
+- Typography: thêm utility token `text-display-xl / text-display-md / text-body-sm`, giảm `text-2xl font-bold tracking-widest` rải rác, fix line-height ratio.
+- Day theme audit: mở rộng `[data-theme="day"]` block cho depth shadow / mesh gradient / ambient canvas overlay / luxury card bg / section glow. Contrast text AA.
+- i18n: hardcoded VN strings từ phase 2–5 migrate vào `i18n/vi.ts` (`SectView` mine badge, MonetizationShopView labels, WalletView toasts…). Bổ sung 2 view thiếu `useI18n()` setup.
+- A11y: ARIA label cho `XTLuxHero` / `XTOrnateButton` / `XTGlyphBadge` / `XTBottomSheet` / Toast, focus ring, Escape close cho bottom sheet, `prefers-reduced-motion`.
+
+### Phase 10 — Special FX, gestures, performance
+Commit `feat(web): add special effects gestures and performance polish`.
+- FX hiện hữu (đã có từ PR #614) giữ nguyên: `BreakthroughBanner` particle shower theo realm, `RareDropPopup` viền theo phẩm chất + sigil, `FloatingCombatText` typeface cổ phong, `CombatFeedbackTimeline` critical hit shockwave (đã có `prefers-reduced-motion` fallback). Phase 10 KHÔNG ghi đè FX backend bằng FX mới — đã đủ.
+- Mobile gesture: thêm `XTPullRefresh` primitive (touch event, threshold 72px configurable, rubber-banding `dy*0.55`, ornate seal halo spinner, prefers-reduced-motion aware, expose `trigger()`). KHÔNG wrap route con bằng swipe-back vì rủi ro route lớn (theo brief). Long-press menu BỎ QUA vì không có primitive context menu phù hợp & rủi ro vỡ click handler hiện hữu.
+- Performance: `XTAmbientCanvas` thêm FPS measurement qua `requestAnimationFrame` (sample 60 frame hoặc 2s, lấy avg) + low-end heuristic (`navigator.deviceMemory ≤ 2GB` hoặc `hardwareConcurrency ≤ 2`) → tự động set `data-quality="reduced"` → dim mesh, dim halo, ẩn motes, dừng animation. Skip đo FPS khi `prefers-reduced-motion: reduce`. Prop `forceQuality?: 'auto' | 'full' | 'reduced'` để override.
+- Route-level lazy load: kiểm 80+ route trong `apps/web/src/router/index.ts` — toàn bộ đã dùng `() => import(...)` từ trước, không có view nào cần convert. KHÔNG đụng route names / guards.
+
+### Phase 11 — Final docs + gates + PR finalize (commit này)
+Commit `docs(web): update Cửu Thiên Mộng luxury UI completion report`. Update `CONTINUE.md` + `docs/AI_HANDOFF_REPORT.md` với log đầy đủ. Chạy gate cuối (han / lint / typecheck / test / build), đổi PR title thành `feat(web): complete Cửu Thiên Mộng luxury UI roadmap` và flip draft → ready for review.
+
+---
+
+## NHỮNG THỨ BỎ QUA VÌ RỦI RO (ghi rõ theo brief)
+
+1. **Swipe-back trên route con** (Phase 10.B): bỏ qua. Vue Router không có gesture primitive tự nhiên, viết tay rủi ro xung đột với scroll vertical + history stack. Brief cho phép bỏ qua nếu rủi ro.
+2. **Long-press card → context menu** (Phase 10.B): bỏ qua. App chưa có context menu primitive thống nhất; cài long-press dễ vỡ click handler cũ ở Inventory/Market. Brief cho phép bỏ qua.
+3. **Breakthrough / RareDrop / Crit FX riêng cho Phase 10.A**: không tạo mới. PR #614 đã ship `BreakthroughBanner`, `RareDropPopup`, `FloatingCombatText`, `CombatFeedbackTimeline` đầy đủ với particle shower / rarity border / shockwave / prefers-reduced-motion fallback. Tạo thêm sẽ trùng lặp.
+4. **Sect war banner full-screen**: `SectWarView` đã có announcement đúng thuần Việt từ phase 2 (`XTLuxHero` adopt) — không tạo overlay riêng vì không có trigger event mới ở web, sẽ là FX không bao giờ chạy. Khi backend phát event sect war thực thì wrap bằng `XTLuxSection` + ambient canvas có sẵn.
+5. **EXP gain particle bay vào stat**: fallback floating particle đã có trong `XTCounter` (delta animation). Không thêm tracker DOM target vì rủi ro vỡ layout responsive.
+
+Tất cả các bỏ qua đều ghi vì rủi ro, không vì lười, và không đụng business logic / backend / Prisma / shared catalog / auth / market / quest / admin guard / monetization / socket.
+
+---
+
+## GATE CUỐI
+
 ```
-
----
-
-## API ĐỂ NHÚNG ẢNH VÀO VIEW MỚI
-
-```ts
-import { getEquipmentImage } from '@xuantoi/shared';
-
-// Cách 1: dùng component (recommended)
-import EquipmentArtCell from '@/components/xianxia/EquipmentArtCell.vue';
-// <EquipmentArtCell :equip-slot="item.slot" :tier="item.equipmentTier" size="md" show-tier :equipped="isEquipped" />
-
-// Cách 2: gọi util trực tiếp
-const img = getEquipmentImage({ slot: 'WEAPON', tier: 5, size: 'md' });
-// → { url: '/equipment/md/kiem5.webp', artName: 'kiem', tier: 5, size: 'md' }
-
-// Cách 3: force art name (cho nhẫn / pháp bảo custom)
-const img2 = getEquipmentImage({ artName: 'nhan', tier: 7 });
-// → { url: '/equipment/sm/nhan7.webp', ... }
+rg '[\x{4e00}-\x{9fff}]' apps/web/src   # 0 match
+pnpm -C apps/web lint                    # pass (max-warnings 0)
+pnpm -C apps/web typecheck                # pass
+pnpm -C apps/web test                     # 230 file / 2469 test pass
+pnpm -C apps/web build                    # pass (xem log phase 11)
 ```
-
-**Slot mapping (đúng yêu cầu user):**
-| File art | Slot (enum) | UI label |
-|---|---|---|
-| `kiem`      | `WEAPON`              | Kiếm |
-| `ao`        | `ARMOR`               | Áo/Giáp |
-| `mu`        | `HAT`                 | Mũ |
-| `giay`      | `BOOTS`               | Giày |
-| `dai`       | `BELT`                | Đai |
-| `daychuyen` | `TRAM`                | Ngọc Bội |
-| `phapbao`   | `ARTIFACT_1/2/3`      | Pháp Bảo |
-| `nhan`      | — (custom `artName`)  | Nhẫn |
 
 ---
 
 ## NHỚ KHI CONTINUE
 
-- KHÔNG đổi gameplay/balance/backend.
-- KHÔNG modify test để fake green — chỉ update snapshot khi đổi UI cố ý.
-- KHÔNG force-push hoặc amend (chỉ commit thêm).
-- KHÔNG split lại thành nhiều PR — gộp vào branch này.
-- Token có sẵn ở `apps/web/src/design/tokens.css` — dùng `var(--xt-...)` thay vì hard-code emerald/amber.
-- Light-mode toggle: thêm `data-theme="day"` trên `<html>` → tokens swap về palette sáng (đã có sẵn).
+- KHÔNG tạo branch mới, KHÔNG tách PR. Tiếp tục push vào branch hiện hành nếu cần fix CI.
+- KHÔNG đụng backend, Prisma, shared catalog, business logic gameplay, auth, market, quest, admin guard, monetization, socket.
+- KHÔNG dùng chữ Hán trong `apps/web/src`. Han gate phải pass.
+- KHÔNG xoá `data-testid`. KHÔNG disable test. KHÔNG xoá test để pass.
+- Mỗi commit chạy gate trước.
