@@ -42,6 +42,8 @@ import FeaturedActivitiesCard, {
 import GameIcon from '@/components/xianxia/GameIcon.vue';
 import XTIcon from '@/components/xianxia/XTIcon.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
+import XTOrnateButton from '@/components/xianxia/XTOrnateButton.vue';
 import {
   formatBodyRealmName,
   formatNumberCompact,
@@ -312,25 +314,33 @@ onMounted(() => {
 <template>
   <AppShell>
     <div class="space-y-5" data-testid="dashboard-modern">
-      <header class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div class="min-w-0">
-          <XTPageEyebrow
-            label="Cửu Thiên Mộng"
-            test-id="dashboard-hero-eyebrow" />
-          <h1 class="mt-1 text-xl font-black tracking-wide text-[var(--xt-text-primary)] md:text-3xl">
-            {{ t('dashboard.title') }}
-          </h1>
-          <p class="mt-1 text-xs text-[var(--xt-text-muted)] md:text-sm">{{ t('dashboard.subtitle') }}</p>
-        </div>
-        <button
-          type="button"
-          class="inline-flex h-10 items-center justify-center rounded-2xl border border-[var(--xt-border-jade)] bg-[var(--xt-bg-surface)] px-3 text-xs font-semibold text-[var(--xt-text-primary)] transition hover:bg-[var(--xt-jade-soft)] md:px-4 md:text-sm"
+      <XTLuxHero
+        eyebrow="CỬU THIÊN MỘNG"
+        label="Đạo Tràng Tổng Quan"
+        :title="t('dashboard.title')"
+        :subtitle="t('dashboard.subtitle')"
+        tone="gold"
+        watermark-letter="C"
+        breadcrumb="Tu Tiên Lộ · Cửu Thiên"
+        test-id="dashboard-hero"
+      >
+        <XTPageEyebrow
+          label="Cửu Thiên Mộng"
+          test-id="dashboard-hero-eyebrow"
+          class="sr-only"
+        />
+        <XTOrnateButton
+          variant="ghost"
+          size="md"
+          test-id="dashboard-refresh"
           @click="load()"
         >
-          <XTIcon name="refresh" size="sm" class="mr-1.5" />
+          <template #icon>
+            <XTIcon name="refresh" size="sm" />
+          </template>
           {{ t('common.refresh') }}
-        </button>
-      </header>
+        </XTOrnateButton>
+      </XTLuxHero>
 
       <LoadingState v-if="loading" data-testid="dashboard-loading" />
       <ErrorState

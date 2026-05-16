@@ -10,6 +10,7 @@ import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 
 const auth = useAuthStore();
 const body = useBodyCultivationStore();
@@ -96,16 +97,25 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="max-w-5xl mx-auto space-y-4">
-      <header class="flex items-baseline justify-between gap-3 flex-wrap">
-        <div>
-          <XTPageEyebrow caps="LUYỆN THỂ ĐẠO" label="Luyện Thể Đạo" />
-          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('bodyCultivation.title') }}</h1>
-          <p class="text-xs text-ink-300 mt-1">{{ t('bodyCultivation.subtitle') }}</p>
-        </div>
+      <XTLuxHero
+        eyebrow="LUYỆN THỂ ĐẠO"
+        label="Đại Đạo Tu Thể"
+        :title="t('bodyCultivation.title')"
+        :subtitle="t('bodyCultivation.subtitle')"
+        tone="jade"
+        watermark-letter="Đ"
+        breadcrumb="Tu Tiên Lộ · Luyện Thể"
+        test-id="body-cultivation-hero"
+      >
+        <XTPageEyebrow
+          caps="LUYỆN THỂ ĐẠO"
+          label="Luyện Thể Đạo"
+          class="sr-only"
+        />
         <RouterLink to="/home" class="text-xs text-amber-200 hover:text-amber-100">
           {{ t('bodyCultivation.backHome') }}
         </RouterLink>
-      </header>
+      </XTLuxHero>
 
       <section
         v-if="body.loading && !body.loaded"
