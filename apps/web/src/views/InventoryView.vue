@@ -46,6 +46,8 @@ import {
 import { learnSkillFromBook } from '@/api/skill';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
+import XTGlyphBadge from '@/components/xianxia/XTGlyphBadge.vue';
 import MButton from '@/components/ui/MButton.vue';
 import EquipmentArtCell from '@/components/xianxia/EquipmentArtCell.vue';
 import EquipmentUpgradePanel from '@/components/EquipmentUpgradePanel.vue';
@@ -614,8 +616,22 @@ function handleErr(e: unknown): void {
 
 <template>
   <AppShell>
-    <XTPageEyebrow label="Càn Khôn Túi" />
-    <h2 class="text-xl tracking-widest mb-4 mt-1">{{ t('inventory.title') }}</h2>
+    <XTLuxHero
+      eyebrow="CÀN KHÔN TÚI"
+      label="Tạng Phẩm Các"
+      :title="t('inventory.title')"
+      subtitle="Trang bị, bảo vật, phẩm linh — trang bị thuận đạo, đả tầm mặt."
+      tone="gold"
+      watermark-letter="T"
+      breadcrumb="Tông Môn · Túi Đồ"
+      test-id="inventory-view-hero"
+      class="mb-4"
+    >
+      <XTPageEyebrow caps="CÀN KHÔN TÚI" label="Càn Khôn Túi" class="sr-only" />
+      <template #meta>
+        <XTGlyphBadge tone="gold" size="sm" glyph="❀">{{ items.length }} vật phẩm</XTGlyphBadge>
+      </template>
+    </XTLuxHero>
 
     <div class="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
       <!-- Bộ trang bị + Phase 23.3 Build summary -->

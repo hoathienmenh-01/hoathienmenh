@@ -18,7 +18,8 @@ import {
 } from '@/api/sect';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
+import XTGlyphBadge from '@/components/xianxia/XTGlyphBadge.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
@@ -149,19 +150,26 @@ const myStash = computed(() => game.character?.linhThach ?? '0');
 
 <template>
   <AppShell>
-    <XTSealFrame
+    <XTLuxHero
+      eyebrow="TÔNG MÔN ĐIỆN"
+      label="Đại Điện Tông Môn"
+      :title="t('sect.title')"
+      subtitle="Lập tông — gia nhập — cống hiến — chinh chiến tông đối đầu."
       tone="gold"
-      corner-ornaments="❀❦❀❦"
       watermark-letter="G"
-      rounded="xl"
-      inset="tight"
-      test-id="sect-view-seal-frame"
-      aria-label="Tông Môn Điện hero frame"
+      breadcrumb="Tông Môn · Đại Điện"
+      test-id="sect-view-hero"
       class="mb-4"
     >
-      <XTPageEyebrow caps="TÔNG MÔN ĐIỆN" label="Tông Môn Điện" />
-      <h2 class="text-xl tracking-widest mt-1">{{ t('sect.title') }}</h2>
-    </XTSealFrame>
+      <XTPageEyebrow
+        caps="TÔNG MÔN ĐIỆN"
+        label="Tông Môn Điện"
+        class="sr-only"
+      />
+      <template #meta>
+        <XTGlyphBadge tone="gold" size="sm" glyph="❀">Linh thạch: {{ myStash }}</XTGlyphBadge>
+      </template>
+    </XTLuxHero>
 
     <!-- Phase 13.1.B — Sect War CTA. -->
     <section

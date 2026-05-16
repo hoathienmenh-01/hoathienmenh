@@ -38,6 +38,8 @@ import type { CultivationMethodV2CatalogEntry } from '@/api/cultivationMethodV2'
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
+import XTGlyphBadge from '@/components/xianxia/XTGlyphBadge.vue';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -263,36 +265,43 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="max-w-6xl mx-auto space-y-4">
-      <header class="flex items-baseline justify-between gap-3 flex-wrap">
-        <div>
-          <XTPageEyebrow caps="NGŨ HÀNH BỔ NẠP" label="Ngũ Hành Bổ Nạp" />
-          <h1 class="text-2xl tracking-widest font-bold mt-1">
-            {{ t('cultivationMethodV2.title') }}
-          </h1>
-          <p class="text-xs text-ink-300 mt-1">
-            {{ t('cultivationMethodV2.subtitle') }}
-          </p>
-        </div>
-        <div
-          class="text-xs text-ink-300 flex flex-wrap items-center gap-2"
-          data-testid="cultivation-method-v2-rates"
-        >
-          <span>
-            {{
-              t('cultivationMethodV2.summary.cultivationRate', {
-                mul: store.cultivationRateMul.toFixed(2),
-              })
-            }}
-          </span>
-          <span>
-            {{
-              t('cultivationMethodV2.summary.bodyRate', {
-                mul: store.bodyRateMul.toFixed(2),
-              })
-            }}
-          </span>
-        </div>
-      </header>
+      <XTLuxHero
+        eyebrow="NGŨ HÀNH BỔ NẠP"
+        label="Đạo Lộ Công Pháp"
+        :title="t('cultivationMethodV2.title')"
+        :subtitle="t('cultivationMethodV2.subtitle')"
+        tone="jade"
+        watermark-letter="Đ"
+        breadcrumb="Tu Tiên Lộ · Công Pháp"
+        test-id="cultivation-method-v2-hero"
+      >
+        <XTPageEyebrow
+          caps="NGŨ HÀNH BỔ NẠP"
+          label="Ngũ Hành Bổ Nạp"
+          class="sr-only"
+        />
+        <template #meta>
+          <div
+            class="flex flex-wrap items-center gap-2"
+            data-testid="cultivation-method-v2-rates"
+          >
+            <XTGlyphBadge tone="jade" size="sm" glyph="❖">
+              {{
+                t('cultivationMethodV2.summary.cultivationRate', {
+                  mul: store.cultivationRateMul.toFixed(2),
+                })
+              }}
+            </XTGlyphBadge>
+            <XTGlyphBadge tone="gold" size="sm" glyph="✦">
+              {{
+                t('cultivationMethodV2.summary.bodyRate', {
+                  mul: store.bodyRateMul.toFixed(2),
+                })
+              }}
+            </XTGlyphBadge>
+          </div>
+        </template>
+      </XTLuxHero>
 
       <XTSealFrame
         tone="jade"

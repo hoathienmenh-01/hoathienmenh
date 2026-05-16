@@ -19,7 +19,8 @@ import {
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
+import XTGlyphBadge from '@/components/xianxia/XTGlyphBadge.vue';
 import MButton from '@/components/ui/MButton.vue';
 
 const { t } = useI18n();
@@ -67,18 +68,30 @@ const pendingCount = computed(() => claimEntries.value.filter((e) => e.status ==
 <template>
   <AppShell>
     <div class="space-y-4 p-4">
-      <XTSealFrame
+      <XTLuxHero
+        eyebrow="MA THƯƠNG LIÊN CANG"
+        label="Thiên Hạ Thương Cảng"
+        :title="t('marketV2.title')"
+        subtitle="Đấu giá bảo vật — nhận phần thưởng — trao đổi liên thông toàn mạng."
         tone="gold"
-        corner-ornaments="❀❦❀❦"
         watermark-letter="G"
-        rounded="xl"
-        inset="tight"
-        test-id="market-v2-seal-frame"
-        aria-label="Ma Thương Liên Cang hero frame"
+        breadcrumb="Xã Hội · Thương Cảng"
+        test-id="market-v2-hero"
       >
-        <XTPageEyebrow caps="MA THƯƠNG LIÊN CANG" label="Ma Thương Liên Cang" />
-        <h1 class="text-xl font-bold mt-1">{{ t('marketV2.title') }}</h1>
-      </XTSealFrame>
+        <XTPageEyebrow
+          caps="MA THƯƠNG LIÊN CANG"
+          label="Ma Thương Liên Cang"
+          class="sr-only"
+        />
+        <template #meta>
+          <XTGlyphBadge
+            v-if="pendingCount > 0"
+            tone="seal"
+            size="sm"
+            glyph="✦"
+          >{{ pendingCount }} hộp chờ</XTGlyphBadge>
+        </template>
+      </XTLuxHero>
       <div class="flex gap-2 border-b mb-4">
         <button
           v-for="tb in (['auctions', 'claimBox'] as const)"

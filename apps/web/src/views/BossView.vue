@@ -24,7 +24,8 @@ import {
 import { on } from '@/ws/client';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
+import XTGlyphBadge from '@/components/xianxia/XTGlyphBadge.vue';
 import BossSchedulePanel from '@/components/BossSchedulePanel.vue';
 import BossElementTooltip from '@/components/BossElementTooltip.vue';
 import MButton from '@/components/ui/MButton.vue';
@@ -398,19 +399,26 @@ function timeLeftText(iso: string): string {
 
 <template>
   <AppShell>
-    <XTSealFrame
+    <XTLuxHero
+      eyebrow="TRUY SÁT MA VƯƠNG"
+      label="Ma Đường Chiến Trường"
+      :title="t('boss.title')"
+      subtitle="Truy sát ma vương, tích góp chiến công, phân chia chiến lợi phẩm theo bậc."
       tone="seal"
-      corner-ornaments="◆✦◆✦"
       watermark-letter="C"
-      rounded="xl"
-      inset="tight"
-      test-id="boss-view-seal-frame"
-      aria-label="Truy Sát Ma Vương hero frame"
+      breadcrumb="Chiến Đạo · Boss"
+      test-id="boss-view-hero"
       class="mb-4"
     >
-      <XTPageEyebrow caps="TRUY SÁT MA VƯƠNG" label="Truy Sát Ma Vương" />
-      <h2 class="text-xl tracking-widest mt-1">☠ {{ t('boss.title') }}</h2>
-    </XTSealFrame>
+      <XTPageEyebrow
+        caps="TRUY SÁT MA VƯƠNG"
+        label="Truy Sát Ma Vương"
+        class="sr-only"
+      />
+      <template #meta>
+        <XTGlyphBadge tone="seal" size="sm" glyph="☠">Boss sống</XTGlyphBadge>
+      </template>
+    </XTLuxHero>
 
     <!-- Phase 13.0 §E — Lịch Boss hôm nay (LiveOps schedule). -->
     <BossSchedulePanel />

@@ -10,7 +10,7 @@ import { setLocale, type LocaleKey } from '@/i18n';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import EffectSettingsPanel from '@/components/visual-effects/EffectSettingsPanel.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import ConfirmModal from '@/components/ui/ConfirmModal.vue';
@@ -275,21 +275,22 @@ function changeLocale(value: string): void {
 <template>
   <AppShell>
     <div class="max-w-2xl mx-auto space-y-6">
-      <XTSealFrame
+      <XTLuxHero
+        eyebrow="TÂM TRẦN TU CHỈNH"
+        label="Tạng Bảo Các"
+        :title="t('settings.title')"
+        :subtitle="t('settings.subtitle')"
         tone="gold"
-        corner-ornaments="❀✦❀✦"
         watermark-letter="T"
-        rounded="xl"
-        inset="tight"
-        test-id="settings-view-seal-frame"
-        aria-label="Tâm Trần Tu Chỉnh hero frame"
+        breadcrumb="Hệ Thống · Thiết Lập"
+        test-id="settings-view-hero"
       >
-        <header>
-          <XTPageEyebrow caps="TÂM TRẦN TU CHỈNH" label="Tâm Trần Tu Chỉnh" />
-          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('settings.title') }}</h1>
-          <p class="text-xs text-ink-300 mt-1">{{ t('settings.subtitle') }}</p>
-        </header>
-      </XTSealFrame>
+        <XTPageEyebrow
+          caps="TÂM TRẦN TU CHỈNH"
+          label="Tâm Trần Tu Chỉnh"
+          class="sr-only"
+        />
+      </XTLuxHero>
 
       <!-- Ngày / Đêm theme toggle -->
       <section

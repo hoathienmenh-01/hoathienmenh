@@ -41,6 +41,7 @@ import { useMaintenanceStore } from '@/stores/maintenance';
 import ResourceChip from '@/components/xianxia/ResourceChip.vue';
 import RealmBadge from '@/components/xianxia/RealmBadge.vue';
 import SpiritualAmbientLayer from '@/components/xianxia/SpiritualAmbientLayer.vue';
+import XTAmbientCanvas from '@/components/xianxia/XTAmbientCanvas.vue';
 import XTParallaxBackground from '@/components/xianxia/XTParallaxBackground.vue';
 import XianxiaBackButton from '@/components/xianxia/XianxiaBackButton.vue';
 import XTIcon from '@/components/xianxia/XTIcon.vue';
@@ -212,6 +213,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="relative min-h-screen overflow-hidden text-[var(--xt-text-primary)]">
+    <XTAmbientCanvas :tone="sceneTone" intensity="lux" />
     <XTParallaxBackground :tone="sceneTone" />
     <SpiritualAmbientLayer visual-effect-level="MEDIUM" :tone="sceneTone" />
     <MaintenanceBanner
