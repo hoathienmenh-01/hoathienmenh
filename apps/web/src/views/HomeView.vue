@@ -13,6 +13,7 @@ import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import XTStatTile from '@/components/xianxia/XTStatTile.vue';
 import XTLuxSection from '@/components/xianxia/XTLuxSection.vue';
+import XTHomeDashboard from '@/components/xianxia/XTHomeDashboard.vue';
 import MButton from '@/components/ui/MButton.vue';
 import NextActionPanel from '@/components/NextActionPanel.vue';
 import OnboardingChecklist from '@/components/OnboardingChecklist.vue';
@@ -123,6 +124,16 @@ async function onBreakthrough(): Promise<void> {
     </header>
 
     <LiveOpsAnnouncementMarquee class="mb-2 ve-section-enter ve-section-enter-delay-1" />
+
+    <!-- Luxury home dashboard (UI-3.2): hero / stat tiles / feature grid /
+         quest|inventory|sect panels. Render bên trong AppShell nên dùng
+         chrome="embedded" để không double-stack sidebar / bottom-nav. -->
+    <XTHomeDashboard
+      v-if="game.character"
+      chrome="embedded"
+      class="mb-4 ve-section-enter ve-section-enter-delay-2"
+      data-testid="home-dashboard"
+    />
 
     <!-- Tab navigation -->
     <nav
