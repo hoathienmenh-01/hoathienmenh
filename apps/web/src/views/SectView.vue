@@ -20,6 +20,7 @@ import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import XTGlyphBadge from '@/components/xianxia/XTGlyphBadge.vue';
+import XTStatTile from '@/components/xianxia/XTStatTile.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
@@ -215,18 +216,37 @@ const myStash = computed(() => game.character?.linhThach ?? '0');
         <div class="flex items-start gap-3 flex-wrap">
           <div class="flex-1 min-w-0">
             <div class="text-lg text-ink-50">{{ me.name }}</div>
-            <div class="text-xs text-ink-300">
-              {{ t('sect.level', { lv: me.level }) }} · {{ t('sect.members', { n: me.memberCount }) }}
-              <span v-if="me.leaderName"> · {{ t('sect.leader', { name: me.leaderName }) }}</span>
+            <div v-if="me.leaderName" class="text-xs text-ink-300">
+              {{ t('sect.leader', { name: me.leaderName }) }}
             </div>
             <p v-if="me.description" class="text-sm text-ink-200 mt-2 whitespace-pre-line">
               {{ me.description }}
             </p>
           </div>
-          <div class="text-xs text-right">
-            <div class="text-ink-300">{{ t('sect.treasury') }}</div>
-            <div class="text-amber-300 text-base">⛀ {{ me.treasuryLinhThach }}</div>
-          </div>
+        </div>
+
+        <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3" data-testid="sect-stats-grid">
+          <XTStatTile
+            :label="t('sect.level', { lv: '' })"
+            :value="me.level"
+            tone="gold"
+            icon="sect"
+            test-id="sect-stat-level"
+          />
+          <XTStatTile
+            :label="t('sect.members', { n: '' })"
+            :value="me.memberCount"
+            tone="jade"
+            icon="social"
+            test-id="sect-stat-members"
+          />
+          <XTStatTile
+            :label="t('sect.treasury')"
+            :value="me.treasuryLinhThach"
+            tone="gold"
+            icon="wallet"
+            test-id="sect-stat-treasury"
+          />
         </div>
         <div class="mt-3 flex gap-2 items-end">
           <div class="flex-1">

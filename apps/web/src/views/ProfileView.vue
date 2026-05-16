@@ -17,6 +17,8 @@ import {
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
+import XTStatTile from '@/components/xianxia/XTStatTile.vue';
+import XTLuxSection from '@/components/xianxia/XTLuxSection.vue';
 import SkeletonBlock from '@/components/ui/SkeletonBlock.vue';
 
 function realmText(key: string, stage: number): string {
@@ -199,19 +201,43 @@ watch(
           </div>
         </section>
 
-        <section class="bg-ink-700/30 border border-ink-300/20 rounded p-4">
-          <h3 class="text-amber-200 mb-2">{{ t('profile.stats') }}</h3>
-          <dl class="grid grid-cols-2 gap-2 text-sm">
-            <dt class="text-ink-300">{{ t('profile.power') }}</dt>
-            <dd>{{ profile.power }}</dd>
-            <dt class="text-ink-300">{{ t('profile.spirit') }}</dt>
-            <dd>{{ profile.spirit }}</dd>
-            <dt class="text-ink-300">{{ t('profile.speed') }}</dt>
-            <dd>{{ profile.speed }}</dd>
-            <dt class="text-ink-300">{{ t('profile.luck') }}</dt>
-            <dd>{{ profile.luck }}</dd>
-          </dl>
-        </section>
+        <XTLuxSection
+          :eyebrow="t('profile.stats')"
+          tone="jade"
+          padding="tight"
+          test-id="profile-stats-section"
+        >
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <XTStatTile
+              :label="t('profile.power')"
+              :value="profile.power"
+              tone="seal"
+              icon="combat"
+              test-id="profile-stat-power"
+            />
+            <XTStatTile
+              :label="t('profile.spirit')"
+              :value="profile.spirit"
+              tone="jade"
+              icon="cultivation"
+              test-id="profile-stat-spirit"
+            />
+            <XTStatTile
+              :label="t('profile.speed')"
+              :value="profile.speed"
+              tone="mist"
+              icon="quest"
+              test-id="profile-stat-speed"
+            />
+            <XTStatTile
+              :label="t('profile.luck')"
+              :value="profile.luck"
+              tone="gold"
+              icon="gift"
+              test-id="profile-stat-luck"
+            />
+          </div>
+        </XTLuxSection>
       </template>
     </div>
   </AppShell>
