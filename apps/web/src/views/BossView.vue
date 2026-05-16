@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { RouterLink, useRouter } from 'vue-router';
 import {
@@ -98,6 +98,61 @@ const hpPct = computed(() => {
 });
 
 const myStash = computed(() => game.character?.linhThach ?? '0');
+
+/**
+ * Cửu Thiên Mộng — boss phase change visual cue ("mực rơi" shutter).
+ *
+ * Boss HP buckets: >=75 → 1, >=50 → 2, >=25 → 3, <25 → 4. Khi bucket
+ * giảm (boss vào phase mới — phẫn nộ / yếu / sắp chết) thì kích hoạt
+ * overlay full-screen `ve-anim-muc-roi-curtain` + `ve-anim-muc-roi-splash`
+ * trong ~1500ms. Toàn bộ CSS-only, tôn trọng `prefers-reduced-motion`
+ * (xem `apps/web/src/style/visual-effects.css`).
+ */
+const showMucRoi = ref(false);
+let mucRoiTimer: ReturnType<typeof setTimeout> | null = null;
+let mucRoiPrevBossId: string | null = null;
+let mucRoiPrevBucket = 0;
+
+function hpBucket(pct: number): number {
+  if (pct >= 75) return 1;
+  if (pct >= 50) return 2;
+  if (pct >= 25) return 3;
+  return 4;
+}
+
+watch(
+  () => ({
+    bossId: boss.value?.id ?? null,
+    status: boss.value?.status ?? null,
+    pct: hpPct.value,
+  }),
+  (next) => {
+    if (!next.bossId || next.status !== 'ACTIVE') {
+      mucRoiPrevBossId = next.bossId;
+      mucRoiPrevBucket = 0;
+      return;
+    }
+    const bucket = hpBucket(next.pct);
+    // Boss mới (region switch hoặc spawn) — reset baseline, không trigger.
+    if (next.bossId !== mucRoiPrevBossId) {
+      mucRoiPrevBossId = next.bossId;
+      mucRoiPrevBucket = bucket;
+      return;
+    }
+    // Bucket tăng = bullet timer baseline (vd boss được heal); chỉ trigger
+    // khi bucket giảm (HP cross threshold xuống). Skip 0 baseline.
+    if (mucRoiPrevBucket > 0 && bucket > mucRoiPrevBucket) {
+      showMucRoi.value = true;
+      if (mucRoiTimer) clearTimeout(mucRoiTimer);
+      mucRoiTimer = setTimeout(() => {
+        showMucRoi.value = false;
+        mucRoiTimer = null;
+      }, 1500);
+    }
+    mucRoiPrevBucket = bucket;
+  },
+  { immediate: true },
+);
 
 onMounted(async () => {
   await auth.hydrate();
@@ -242,6 +297,10 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (tickTimer) clearInterval(tickTimer);
+  if (mucRoiTimer) {
+    clearTimeout(mucRoiTimer);
+    mucRoiTimer = null;
+  }
   for (const off of offHandlers) off();
   offHandlers.length = 0;
 });
@@ -551,5 +610,32 @@ function timeLeftText(iso: string): string {
         </ul>
       </div>
     </section>
+
+    <!--
+      Mực rơi (ink curtain) shutter overlay — kích hoạt khi boss vượt
+      ngưỡng HP (75/50/25%). Teleport sang body để phủ toàn màn hình;
+      CSS-only animation tự dừng sau 1.5s và component unmount sau timer.
+    -->
+    <Teleport to="body">
+      <div
+        v-if="showMucRoi"
+        class="fixed inset-0 z-[9998] pointer-events-none overflow-hidden"
+        data-testid="boss-view-muc-roi"
+        aria-hidden="true"
+      >
+        <div
+          class="absolute inset-x-0 -top-1/3 h-[160%] ve-anim-muc-roi-curtain"
+          style="
+            background:
+              linear-gradient(180deg, rgba(7, 9, 14, 0.96) 0%, rgba(11, 16, 24, 0.85) 50%, transparent 100%),
+              radial-gradient(ellipse at 50% 30%, rgba(208, 79, 79, 0.42) 0%, transparent 60%);
+          "
+        />
+        <div
+          class="absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 h-72 w-72 rounded-full ve-anim-muc-roi-splash"
+          style="background: radial-gradient(circle, rgba(208, 79, 79, 0.78) 0%, rgba(208, 79, 79, 0) 65%)"
+        />
+      </div>
+    </Teleport>
   </AppShell>
 </template>

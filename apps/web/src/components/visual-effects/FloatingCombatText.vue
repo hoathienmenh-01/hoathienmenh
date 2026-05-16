@@ -52,7 +52,9 @@ const showAnimation = computed(
 
 const containerClass = computed(() => {
   const parts: string[] = [
-    'inline-block px-2 py-0.5 rounded text-sm font-semibold pointer-events-none select-none',
+    // Cửu Thiên Mộng — typeface cổ phong (Noto Serif SC / LXGW WenKai TC)
+    // qua `ve-fct-display`; element-tinted shadow áp dụng dưới.
+    'inline-block px-2 py-0.5 rounded text-sm font-semibold pointer-events-none select-none ve-fct-display',
   ];
   if (props.type === 'crit') parts.push('text-amber-300 ve-anim-pulse-soft');
   else if (props.type === 'miss') parts.push('text-ink-300');
@@ -64,7 +66,11 @@ const containerClass = computed(() => {
   else if (props.type === 'heal') parts.push('text-green-300');
   else parts.push('text-ink-50');
   if (props.element && props.element !== 'NONE') {
-    parts.push(`ve-element-${props.element.toLowerCase()}`);
+    const el = props.element.toLowerCase();
+    parts.push(`ve-element-${el}`);
+    // Element-tinted text-shadow override (`.ve-fct-shadow-*` thắng
+    // `.ve-fct-display` nhờ source order — không cần `!important`).
+    parts.push(`ve-fct-shadow-${el}`);
   }
   if (showAnimation.value) parts.push('ve-anim-float-up');
   return parts.join(' ');

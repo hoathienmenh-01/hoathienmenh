@@ -113,8 +113,38 @@ const containerClass = computed(() => {
     if (props.visualEffectLevel === 'HIGH') {
       parts.push('ve-anim-glow-subtle');
     }
+    // Cửu Thiên Mộng — cuộn lụa unfurl chỉ chạy cho MYTHIC/IMMORTAL/
+    // LEGENDARY (đủ "wow" để biện minh full clip-path anim).
+    if (showSilkScroll.value) {
+      parts.push('ve-anim-silk-unfurl');
+    }
   }
   return parts.join(' ');
+});
+
+/** Cuộn lụa overlay only renders for MYTHIC / IMMORTAL / LEGENDARY drops. */
+const showSilkScroll = computed(
+  () =>
+    !props.reducedMotion &&
+    props.visualEffectLevel !== 'OFF' &&
+    (props.rarity === 'MYTHIC' ||
+      props.rarity === 'IMMORTAL' ||
+      props.rarity === 'LEGENDARY'),
+);
+
+const silkRollerStyle = computed(() => {
+  const tone =
+    props.rarity === 'MYTHIC' || props.rarity === 'IMMORTAL'
+      ? 'rgba(192, 132, 252, 0.85)'
+      : 'rgba(242, 215, 137, 0.85)';
+  return `
+    background:
+      linear-gradient(90deg, rgba(74, 59, 24, 0.55) 0%, ${tone} 50%, rgba(74, 59, 24, 0.55) 100%);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.2) inset,
+      0 -1px 0 rgba(0, 0, 0, 0.35) inset,
+      0 0 12px rgba(242, 215, 137, 0.35);
+  `;
 });
 </script>
 
@@ -124,6 +154,7 @@ const containerClass = computed(() => {
     :data-testid="props.testId"
     :data-effect-key="resolvedEffect.key"
     :data-rarity="props.rarity"
+    :data-silk-scroll="showSilkScroll ? 'true' : 'false'"
     role="status"
     style="
       background-image:
@@ -137,6 +168,32 @@ const containerClass = computed(() => {
       class="pointer-events-none absolute inset-x-3 -top-1 h-1.5 rounded-b-md"
       style="background: linear-gradient(90deg, transparent 0%, var(--xt-gold-bright) 50%, transparent 100%)"
     />
+    <!--
+      Cuộn lụa portrait card: chỉ render khi LEGENDARY / MYTHIC / IMMORTAL.
+      Top + bottom rollers slide ra ngoài frame, silk shimmer chạy diagonal.
+    -->
+    <template v-if="showSilkScroll">
+      <!-- Top roller (gỗ + viền vàng/tím) -->
+      <div
+        aria-hidden="true"
+        data-testid="rare-drop-silk-roller-top"
+        class="pointer-events-none absolute left-2 right-2 top-0 h-2.5 rounded ve-anim-silk-roller-top"
+        :style="silkRollerStyle"
+      />
+      <!-- Bottom roller — mirror -->
+      <div
+        aria-hidden="true"
+        data-testid="rare-drop-silk-roller-bottom"
+        class="pointer-events-none absolute left-2 right-2 bottom-0 h-2.5 rounded ve-anim-silk-roller-bottom"
+        :style="silkRollerStyle"
+      />
+      <!-- Silk shimmer overlay — chạy diagonal, screen blend mode -->
+      <div
+        aria-hidden="true"
+        data-testid="rare-drop-silk-shimmer"
+        class="pointer-events-none absolute inset-0 ve-anim-silk-shimmer rounded-2xl"
+      />
+    </template>
     <div class="flex items-start gap-3">
       <!-- Rune seal portrait -->
       <div

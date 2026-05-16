@@ -49,6 +49,60 @@ describe('RareDropPopup', () => {
     });
     expect(w.text()).toContain('×5');
   });
+
+  it('LEGENDARY drop renders cuộn lụa overlay', () => {
+    const w = mount(RareDropPopup, {
+      props: { itemName: 'Hỏa Vân Đan', rarity: 'LEGENDARY' },
+      global: { plugins: [makeI18n()] },
+    });
+    const el = w.get('[data-testid="rare-drop-popup"]');
+    expect(el.attributes('data-silk-scroll')).toBe('true');
+    expect(el.classes().some((c) => c.includes('ve-anim-silk-unfurl'))).toBe(true);
+    expect(w.find('[data-testid="rare-drop-silk-roller-top"]').exists()).toBe(true);
+    expect(w.find('[data-testid="rare-drop-silk-roller-bottom"]').exists()).toBe(true);
+    expect(w.find('[data-testid="rare-drop-silk-shimmer"]').exists()).toBe(true);
+  });
+
+  it('MYTHIC drop renders cuộn lụa overlay', () => {
+    const w = mount(RareDropPopup, {
+      props: { itemName: 'X', rarity: 'MYTHIC' },
+      global: { plugins: [makeI18n()] },
+    });
+    const el = w.get('[data-testid="rare-drop-popup"]');
+    expect(el.attributes('data-silk-scroll')).toBe('true');
+    expect(w.find('[data-testid="rare-drop-silk-roller-top"]').exists()).toBe(true);
+  });
+
+  it('EPIC drop does NOT render cuộn lụa overlay', () => {
+    const w = mount(RareDropPopup, {
+      props: { itemName: 'X', rarity: 'EPIC' },
+      global: { plugins: [makeI18n()] },
+    });
+    const el = w.get('[data-testid="rare-drop-popup"]');
+    expect(el.attributes('data-silk-scroll')).toBe('false');
+    expect(w.find('[data-testid="rare-drop-silk-roller-top"]').exists()).toBe(false);
+    expect(el.classes().some((c) => c.includes('ve-anim-silk-unfurl'))).toBe(false);
+  });
+
+  it('reducedMotion → no cuộn lụa even on MYTHIC', () => {
+    const w = mount(RareDropPopup, {
+      props: { itemName: 'X', rarity: 'MYTHIC', reducedMotion: true },
+      global: { plugins: [makeI18n()] },
+    });
+    const el = w.get('[data-testid="rare-drop-popup"]');
+    expect(el.attributes('data-silk-scroll')).toBe('false');
+    expect(w.find('[data-testid="rare-drop-silk-roller-top"]').exists()).toBe(false);
+  });
+
+  it('visualEffectLevel=OFF → no cuộn lụa even on LEGENDARY', () => {
+    const w = mount(RareDropPopup, {
+      props: { itemName: 'X', rarity: 'LEGENDARY', visualEffectLevel: 'OFF' },
+      global: { plugins: [makeI18n()] },
+    });
+    const el = w.get('[data-testid="rare-drop-popup"]');
+    expect(el.attributes('data-silk-scroll')).toBe('false');
+    expect(w.find('[data-testid="rare-drop-silk-roller-top"]').exists()).toBe(false);
+  });
 });
 
 describe('RareDropQueueHost', () => {
