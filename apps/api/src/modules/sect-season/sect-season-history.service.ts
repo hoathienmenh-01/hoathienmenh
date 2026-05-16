@@ -49,7 +49,26 @@ import { PrismaService } from '../../common/prisma.service';
 export type SectSeasonHistoryErrorCode =
   | 'SEASON_NOT_FOUND'
   | 'SEASON_NOT_ENDED'
-  | 'SNAPSHOT_NOT_FOUND';
+  | 'SNAPSHOT_NOT_FOUND'
+  | 'CHAMPION_SNAPSHOT_NOT_FOUND';
+
+/**
+ * Phase 15.8 — Champion membership snapshot detail dùng cho admin
+ * inspect / audit. Trả `memberCharacterIds` đầy đủ + denormalized
+ * `memberCount` để cross-check với reward grant rows.
+ *
+ * Empty (`memberCharacterIds=[]`) khi season chốt nhưng champion sect
+ * không có member nào tại finalize time — KHÔNG phải lỗi, chỉ là
+ * edge case (vd sect bị disband ngay trước boundary).
+ */
+export interface SectSeasonChampionSnapshotDetail {
+  readonly seasonKey: string;
+  readonly sectId: string;
+  readonly rank: number;
+  readonly memberCount: number;
+  readonly memberCharacterIds: ReadonlyArray<string>;
+  readonly createdAt: string;
+}
 
 export class SectSeasonHistoryError extends Error {
   readonly code: SectSeasonHistoryErrorCode;
@@ -395,6 +414,51 @@ export class SectSeasonHistoryService {
       sects,
       members,
       totalSeasonsFinalized: snapshotCount,
+    };
+  }
+
+  /**
+   * Phase 15.8 — Admin inspect champion membership snapshot cho 1 season.
+   *
+   * Trả về danh sách `characterId` đã được snapshot tại lúc settlement —
+   * dùng để audit "ai được nhận reward champion" (deterministic, không
+   * phụ thuộc current sect membership).
+   *
+   * Throws:
+   *   - `CHAMPION_SNAPSHOT_NOT_FOUND`: season chưa có snapshot rank 1
+   *     (vd legacy pre-15.8, hoặc season chưa chốt).
+   */
+  async getChampionSnapshot(
+    seasonKey: string,
+  ): Promise<SectSeasonChampionSnapshotDetail> {
+    // Phase 15.8 mặc định mỗi season 1 row rank=1 → findFirst đủ.
+    // Composite UNIQUE `(seasonKey, sectId, rank)` đảm bảo idempotent,
+    // findFirst với `seasonKey + rank: 1` trả về row duy nhất.
+    const snapshot = await this.prisma.sectSeasonChampionSnapshot.findFirst({
+      where: { seasonKey, rank: 1 },
+      select: {
+        seasonKey: true,
+        sectId: true,
+        rank: true,
+        memberCount: true,
+        memberCharacterIdsJson: true,
+        createdAt: true,
+      },
+    });
+    if (!snapshot) {
+      throw new SectSeasonHistoryError('CHAMPION_SNAPSHOT_NOT_FOUND');
+    }
+    const raw = snapshot.memberCharacterIdsJson;
+    const memberCharacterIds: string[] = Array.isArray(raw)
+      ? raw.filter((v): v is string => typeof v === 'string')
+      : [];
+    return {
+      seasonKey: snapshot.seasonKey,
+      sectId: snapshot.sectId,
+      rank: snapshot.rank,
+      memberCount: snapshot.memberCount,
+      memberCharacterIds,
+      createdAt: snapshot.createdAt.toISOString(),
     };
   }
 
