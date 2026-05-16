@@ -58,6 +58,7 @@ import AdminEconomyRangeReportPanel from '@/components/AdminEconomyRangeReportPa
 import AdminArenaAntiWintradePanel from '@/components/AdminArenaAntiWintradePanel.vue';
 import AdminFeatureFlagsPanel from '@/components/AdminFeatureFlagsPanel.vue';
 import AdminRemoteConfigPanel from '@/components/AdminRemoteConfigPanel.vue';
+import AdminRemoteConfigHistoryPanel from '@/components/AdminRemoteConfigHistoryPanel.vue';
 import AdminAchievementReputationView from '@/views/AdminAchievementReputationView.vue';
 import AdminMaintenancePanel from '@/components/AdminMaintenancePanel.vue';
 import AdminConfigVersionPanel from '@/components/AdminConfigVersionPanel.vue';
@@ -1761,13 +1762,14 @@ const isAdmin = () => game.character?.role === 'ADMIN';
         <AdminFeatureFlagsPanel />
       </section>
 
-      <!-- REMOTE CONFIG TAB (Phase 45.0) -->
+      <!-- REMOTE CONFIG TAB (Phase 45.0 + finish history view) -->
       <section
         v-else-if="tab === 'remoteConfig'"
         class="space-y-3"
         data-testid="admin-remote-config-section"
       >
         <AdminRemoteConfigPanel />
+        <AdminRemoteConfigHistoryPanel />
       </section>
 
       <section

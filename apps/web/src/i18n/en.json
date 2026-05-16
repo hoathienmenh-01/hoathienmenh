@@ -5122,6 +5122,41 @@
       "UNKNOWN": "Operation failed — please retry."
     }
   },
+  "adminRemoteConfigHistory": {
+    "title": "Remote Config History",
+    "hint": "Read-only audit — recent update / refresh-defaults / clear-cache events. Secrets are not exposed.",
+    "loading": "Loading audit log…",
+    "empty": "No audit entries match the filter.",
+    "filter": {
+      "keyPlaceholder": "Filter by key…",
+      "actionLabel": "Type",
+      "actionAll": "All",
+      "actionUpdate": "Value update",
+      "actionRefreshDefaults": "Sync defaults",
+      "actionClearCache": "Clear cache",
+      "limitLabel": "Rows",
+      "apply": "Apply"
+    },
+    "columns": {
+      "changedAt": "Changed at",
+      "actor": "Admin",
+      "action": "Action",
+      "key": "Key",
+      "value": "New value",
+      "reason": "Reason"
+    },
+    "row": {
+      "noKey": "—",
+      "noReason": "—",
+      "valuePlaceholder": "—"
+    },
+    "errors": {
+      "INVALID_INPUT": "Invalid filter.",
+      "FORBIDDEN": "Account is not an admin.",
+      "UNAUTHENTICATED": "Admin login required.",
+      "UNKNOWN": "Failed to load audit log."
+    }
+  },
   "maintenance": {
     "overlay": {
       "title": "System under maintenance",

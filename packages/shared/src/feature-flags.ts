@@ -322,7 +322,10 @@ export const FEATURE_FLAG_CATALOG: readonly FeatureFlagDef[] = [
     defaultEnabled: true,
     descriptionVi: 'Bật/tắt Story V2 (Tu Tiên Lộ Quyển II+ runtime).',
     descriptionEn: 'Enable/disable Story V2 runtime gating.',
-    public: false,
+    // Beta safe integration sweep — public để FE gate route entry + menu.
+    // Server vẫn check `FEATURE_DISABLED` 503 ở Phase33StoryModule khi
+    // flag off, FE chỉ hide UI để giảm friction.
+    public: true,
     requiresRestart: false,
     module: 'story',
   },
@@ -333,7 +336,10 @@ export const FEATURE_FLAG_CATALOG: readonly FeatureFlagDef[] = [
     descriptionVi:
       'Bật/tắt Auction House (đấu giá phường thị tập trung).',
     descriptionEn: 'Enable/disable Auction House.',
-    public: false,
+    // Beta safe integration sweep — public để FE gate MarketV2 view (tabs
+    // Đấu giá + Hộp nhận). Server vẫn check `FEATURE_DISABLED` 503 ở
+    // MarketV2 module khi flag off.
+    public: true,
     requiresRestart: false,
     module: 'auction',
   },

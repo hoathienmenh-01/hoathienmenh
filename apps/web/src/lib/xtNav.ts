@@ -15,7 +15,9 @@
  *   - Optional `staffOnly` flag (admin links).
  *   - Optional `badge` key to surface store badges.
  *   - Optional `accent` for per-group tint (Phần 7 theme nhóm).
+ *   - Optional `featureFlag` to hide entry when feature flag store reports OFF.
  */
+import type { FeatureFlagKey } from '@xuantoi/shared';
 
 export type XTNavBadgeKind =
   | 'breakthrough'
@@ -50,6 +52,13 @@ export interface XTNavItem {
   badge?: XTNavBadgeKind;
   /** Optional per-item testid (used by AppShell tests + Playwright). */
   testId?: string;
+  /**
+   * Beta safe integration sweep — optional feature-flag gate.
+   * Khi `featureFlag` set và `featureFlagsStore.isDisabled(key) === true`,
+   * shell ẩn entry (menu drawer + sidebar). Server vẫn gate cuối qua
+   * `FEATURE_DISABLED` — FE chỉ giảm friction UX.
+   */
+  featureFlag?: FeatureFlagKey;
 }
 
 export interface XTNavGroup {
@@ -194,7 +203,12 @@ export const XT_NAV_GROUPS: XTNavGroup[] = [
     accent: 'market',
     items: [
       { key: 'market', icon: 'market', to: '/market' },
-      { key: 'auction', icon: 'auction', to: '/auction' },
+      {
+        key: 'auction',
+        icon: 'auction',
+        to: '/auction',
+        featureFlag: 'AUCTION_HOUSE_ENABLED',
+      },
       { key: 'shop', icon: 'market', to: '/shop' },
       { key: 'topup', icon: 'jade', to: '/topup', badge: 'topup' },
     ],

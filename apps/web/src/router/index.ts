@@ -1,4 +1,39 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
+import {
+  createRouter,
+  createWebHistory,
+  type NavigationGuardWithThis,
+  type RouteRecordRaw,
+} from 'vue-router';
+import type { FeatureFlagKey } from '@xuantoi/shared';
+
+/**
+ * Beta safe integration sweep — Phase 45.0 finish.
+ *
+ * Mid-priority flag gate. Khi flag OFF, redirect về `/home` thay vì
+ * crash route. Guard `await ensureLoaded()` để fail-closed sau khi store
+ * đã hydrate; nếu fetch lỗi, store fallback ON (fail-open) — UI vẫn
+ * giữ behavior hiện tại. Server vẫn enforce `FEATURE_DISABLED` cuối.
+ *
+ * Lazy import store để tránh circular import giữa router ↔ pinia init.
+ */
+function featureFlagGuard(
+  flag: FeatureFlagKey,
+): NavigationGuardWithThis<undefined> {
+  return async (_to, _from, next) => {
+    const { useFeatureFlagsStore } = await import('@/stores/featureFlags');
+    const store = useFeatureFlagsStore();
+    try {
+      await store.ensureLoaded();
+    } catch {
+      // Fail-open: hydrate lỗi → cho qua, server vẫn gate cuối.
+    }
+    if (store.isDisabled(flag)) {
+      next({ name: 'home', replace: true });
+      return;
+    }
+    next();
+  };
+}
 
 const celestialPlaceholder = (
   path: string,
@@ -116,6 +151,7 @@ const routes: RouteRecordRaw[] = [
     path: '/auction',
     name: 'auction',
     redirect: '/market',
+    beforeEnter: featureFlagGuard('AUCTION_HOUSE_ENABLED'),
   },
   {
     path: '/shop',
@@ -226,6 +262,7 @@ const routes: RouteRecordRaw[] = [
     path: '/market-v2',
     name: 'marketV2',
     component: () => import('@/views/MarketV2View.vue'),
+    beforeEnter: featureFlagGuard('AUCTION_HOUSE_ENABLED'),
   },
   {
     path: '/codex',
@@ -387,6 +424,7 @@ const routes: RouteRecordRaw[] = [
     path: '/story-v2',
     name: 'story-v2',
     component: () => import('@/views/StoryV2View.vue'),
+    beforeEnter: featureFlagGuard('STORY_V2_ENABLED'),
   },
   {
     // Phase 34.0 — 7-Day Onboarding Questline.

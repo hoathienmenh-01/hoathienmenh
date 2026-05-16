@@ -5122,6 +5122,41 @@
       "UNKNOWN": "Thao tác thất bại — thử lại."
     }
   },
+  "adminRemoteConfigHistory": {
+    "title": "Lịch sử Remote Config",
+    "hint": "Audit read-only — các lần update/refresh-defaults/clear-cache gần nhất. Không hiện secret.",
+    "loading": "Đang tải audit log…",
+    "empty": "Chưa có audit log phù hợp.",
+    "filter": {
+      "keyPlaceholder": "Lọc theo key…",
+      "actionLabel": "Loại",
+      "actionAll": "Tất cả",
+      "actionUpdate": "Update giá trị",
+      "actionRefreshDefaults": "Đồng bộ default",
+      "actionClearCache": "Xoá cache",
+      "limitLabel": "Số dòng",
+      "apply": "Áp dụng"
+    },
+    "columns": {
+      "changedAt": "Thời điểm",
+      "actor": "Admin",
+      "action": "Hành động",
+      "key": "Key",
+      "value": "Giá trị mới",
+      "reason": "Lý do"
+    },
+    "row": {
+      "noKey": "—",
+      "noReason": "—",
+      "valuePlaceholder": "—"
+    },
+    "errors": {
+      "INVALID_INPUT": "Bộ lọc không hợp lệ.",
+      "FORBIDDEN": "Tài khoản không phải admin.",
+      "UNAUTHENTICATED": "Cần đăng nhập admin.",
+      "UNKNOWN": "Tải audit log thất bại."
+    }
+  },
   "maintenance": {
     "overlay": {
       "title": "Hệ thống đang bảo trì",
