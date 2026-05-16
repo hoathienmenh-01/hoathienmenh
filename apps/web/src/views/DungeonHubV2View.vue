@@ -12,7 +12,7 @@ import { useI18n } from 'vue-i18n';
 import { useWorldContentStore } from '@/stores/worldContent';
 import type { DungeonV2View } from '@/api/worldContent';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 
 const { t, locale } = useI18n();
 const store = useWorldContentStore();
@@ -56,7 +56,7 @@ onMounted(() => {
   <AppShell>
     <section class="dungeon-hub" data-testid="dungeon-hub-v2-view">
       <header>
-        <XTHeroEyebrow han="仙陕总塔" label="Tiên Hạch Tổng Trạm" />
+        <XTPageEyebrow label="Tiên Hạch Tổng Trạm" />
         <h1 class="mt-1">{{ t('worldContent.dungeon.title') }}</h1>
         <p>{{ t('worldContent.dungeon.subtitle') }}</p>
       </header>

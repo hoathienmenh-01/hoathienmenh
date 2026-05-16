@@ -8,7 +8,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import LoadingState from '@/components/ui/LoadingState.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import ErrorState from '@/components/ui/ErrorState.vue';
@@ -105,7 +105,7 @@ onMounted(() => {
   <AppShell>
     <div class="max-w-5xl mx-auto space-y-4">
       <header>
-        <XTHeroEyebrow han="民意仪总陆" label="Dân Ý Tham Vấn" />
+        <XTPageEyebrow label="Dân Ý Tham Vấn" />
         <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('adminFeedback.title') }}</h1>
         <p class="text-xs text-ink-300 mt-1">{{ t('adminFeedback.subtitle') }}</p>
       </header>

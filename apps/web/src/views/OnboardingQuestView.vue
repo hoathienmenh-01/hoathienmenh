@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useOnboardingQuestStore } from '@/stores/onboardingQuest';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import type {
   OnboardingDayView,
   OnboardingTaskView,
@@ -139,7 +139,7 @@ onMounted(async () => {
   <AppShell>
     <section class="space-y-4 p-4">
       <header class="space-y-1">
-        <XTHeroEyebrow han="初到仙途" label="Sơ Kiến Tiên Lộ" />
+        <XTPageEyebrow label="Sơ Kiến Tiên Lộ" />
         <h1 class="text-2xl font-bold mt-1">
           {{ t('onboardingQuest.title') }}
         </h1>

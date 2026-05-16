@@ -18,7 +18,7 @@ import {
 } from '@/api/marketV2';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 
 const { t } = useI18n();
@@ -66,7 +66,7 @@ const pendingCount = computed(() => claimEntries.value.filter((e) => e.status ==
 <template>
   <AppShell>
     <div class="space-y-4 p-4">
-      <XTHeroEyebrow han="魔商联纲" label="Ma Thương Liên Cang" />
+      <XTPageEyebrow label="Ma Thương Liên Cang" />
       <h1 class="text-xl font-bold mt-1">{{ t('marketV2.title') }}</h1>
       <div class="flex gap-2 border-b mb-4">
         <button

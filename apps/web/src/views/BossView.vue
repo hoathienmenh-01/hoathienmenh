@@ -23,7 +23,7 @@ import {
 } from '@/api/boss';
 import { on } from '@/ws/client';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import BossSchedulePanel from '@/components/BossSchedulePanel.vue';
 import BossElementTooltip from '@/components/BossElementTooltip.vue';
 import MButton from '@/components/ui/MButton.vue';
@@ -397,8 +397,8 @@ function timeLeftText(iso: string): string {
 
 <template>
   <AppShell>
-    <XTHeroEyebrow han="魔王讨伐" label="Truy Sát Ma Vương" />
-    <h2 class="text-xl tracking-widest mb-4 mt-1">鬼 {{ t('boss.title') }}</h2>
+    <XTPageEyebrow label="Truy Sát Ma Vương" />
+    <h2 class="text-xl tracking-widest mb-4 mt-1">☠ {{ t('boss.title') }}</h2>
 
     <!-- Phase 13.0 §E — Lịch Boss hôm nay (LiveOps schedule). -->
     <BossSchedulePanel />
@@ -508,8 +508,8 @@ function timeLeftText(iso: string): string {
           </select>
           <span class="text-xs text-ink-300 ml-2">
             ⛁ {{ game.character?.mp }}/{{ game.character?.mpMax }}
-            · 力 {{ game.character?.stamina }}/{{ game.character?.staminaMax }}
-            · 血 {{ game.character?.hp }}/{{ game.character?.hpMax }}
+            · ⚔ {{ game.character?.stamina }}/{{ game.character?.staminaMax }}
+            · ❤ {{ game.character?.hp }}/{{ game.character?.hpMax }}
           </span>
           <span class="ml-auto text-xs text-ink-300">⛀ {{ myStash }}</span>
         </div>

@@ -19,7 +19,7 @@ import {
 } from '@/api/codex';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import { CODEX_ENTRY_TYPES, type CodexEntryType } from '@xuantoi/shared';
 
 const { t } = useI18n();
@@ -64,7 +64,7 @@ onMounted(refresh);
 <template>
   <AppShell>
     <div class="space-y-4 p-4">
-      <XTHeroEyebrow han="千幻仪谱" label="Thiên Hạnh Nghi Phổ" />
+      <XTPageEyebrow label="Thiên Hạnh Nghi Phổ" />
       <h1 class="text-xl font-bold mt-1">{{ t('codex.title') }}</h1>
 
       <!-- Progress summary -->

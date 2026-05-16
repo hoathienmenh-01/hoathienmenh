@@ -369,12 +369,13 @@ describe('OnboardingView — Cửu Thiên Mộng Phase 3 polish', () => {
     getCharacterMock.mockResolvedValue(null);
   });
 
-  it('render XTHeroEyebrow với chữ Hán + label Cửu Thiên Mộng Cảnh', async () => {
+  it('render XTPageEyebrow với label Cửu Thiên Mộng Cảnh (thuần Việt, không còn chữ Hán)', async () => {
     const w = mountView();
     await flushPromises();
-    const eyebrow = w.find('[data-testid="xt-hero-eyebrow"]');
+    const eyebrow = w.find('[data-testid="xt-page-eyebrow"]');
     expect(eyebrow.exists()).toBe(true);
-    expect(eyebrow.text()).toContain('九天梦境');
     expect(eyebrow.text()).toContain('Cửu Thiên Mộng Cảnh');
+    // PR3.5 — bảo đảm không còn ký tự Hán nào trong eyebrow.
+    expect(/[\u4e00-\u9fff]/.test(eyebrow.html())).toBe(false);
   });
 });

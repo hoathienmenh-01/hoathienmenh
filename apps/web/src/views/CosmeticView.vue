@@ -12,7 +12,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useCosmeticsStore } from '@/stores/cosmetics';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 
 type TypeFilter = 'all' | CosmeticType;
@@ -124,7 +124,7 @@ onMounted(async () => {
 
 <template>
   <AppShell :title="t('cosmetics.title')">
-    <XTHeroEyebrow han="锥衣思装" label="Xó Y Nê Trương" />
+    <XTPageEyebrow label="Xó Y Nê Trương" />
     <p class="text-sm text-zinc-400 mb-4 mt-1">
       {{ t('cosmetics.subtitle') }}
     </p>

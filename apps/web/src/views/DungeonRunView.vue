@@ -8,7 +8,7 @@ import { useGameStore } from '@/stores/game';
 import { useDungeonRunStore } from '@/stores/dungeonRun';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import type {
   DungeonAvailabilityView,
   DungeonClaimResult,
@@ -205,7 +205,7 @@ onMounted(async () => {
     <div class="max-w-5xl mx-auto space-y-4" data-testid="dungeon-run-view">
       <header class="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
-          <XTHeroEyebrow han="秘境拾走" label="Bí Cảnh Lưu Phát" />
+          <XTPageEyebrow label="Bí Cảnh Lưu Phát" />
           <h1 class="text-2xl tracking-widest font-bold mt-1">
             {{ t('dungeonRun.title') }}
           </h1>

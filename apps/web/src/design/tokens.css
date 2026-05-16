@@ -192,11 +192,11 @@
   --xt-accent-story: var(--xt-smoke-bright);
   --xt-accent-tribulation: var(--xt-thunder);
 
-  /* Fonts: Noto Serif SC + LXGW WenKai cho cổ phong, Inter fallback cho
-     readability ở mobile small text. */
-  --xt-font-display: 'Noto Serif SC', 'LXGW WenKai TC', 'Songti SC', serif;
-  --xt-font-decorative: 'Ma Shan Zheng', 'LXGW WenKai TC', 'Noto Serif SC', serif;
-  --xt-font-body: 'Noto Sans SC', 'Noto Sans', 'Inter', system-ui, sans-serif;
+  /* Fonts: Cormorant Garamond + Cinzel cho cổ phong thuần Việt,
+     Be Vietnam Pro fallback cho readability ở mobile small text. */
+  --xt-font-display: 'Cormorant Garamond', 'Crimson Pro', 'Be Vietnam Pro', serif;
+  --xt-font-decorative: 'Cinzel', 'Cormorant Garamond', 'Be Vietnam Pro', serif;
+  --xt-font-body: 'Be Vietnam Pro', 'Inter', system-ui, sans-serif;
   --xt-font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace,
     SFMono-Regular, monospace;
 

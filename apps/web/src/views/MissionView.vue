@@ -12,7 +12,7 @@ import {
   type MissionProgressView,
 } from '@/api/mission';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import { formatItemRewardList } from '@/lib/itemName';
@@ -174,7 +174,7 @@ function rewardSummary(m: MissionProgressView): string {
 
 <template>
   <AppShell>
-    <XTHeroEyebrow han="奉道使命" label="Phụng Đạo Sứ Mệnh" />
+    <XTPageEyebrow label="Phụng Đạo Sứ Mệnh" />
     <h2 class="text-xl tracking-widest mb-4 mt-1">{{ t('mission.title') }}</h2>
 
     <div class="flex gap-2 mb-4 flex-wrap">

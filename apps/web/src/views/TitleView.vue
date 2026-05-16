@@ -37,7 +37,7 @@ import { useGameStore } from '@/stores/game';
 import { useTitlesStore } from '@/stores/titles';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 
 type SourceFilter = 'all' | TitleSource;
 type RarityFilter = 'all' | TitleRarity;
@@ -163,7 +163,7 @@ onMounted(async () => {
     <div class="max-w-5xl mx-auto space-y-4">
       <header class="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
-          <XTHeroEyebrow han="险名鋉另" label="Hiển Danh Hộ Hộ" />
+          <XTPageEyebrow label="Hiển Danh Hộ Hộ" />
           <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('titles.title') }}</h1>
           <p class="text-xs text-ink-300 mt-1">{{ t('titles.subtitle') }}</p>
         </div>

@@ -14,7 +14,7 @@ import {
   type TopupPackage,
 } from '@/api/topup';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
@@ -96,7 +96,7 @@ function fmtVND(n: number): string {
   <AppShell>
     <div class="max-w-5xl mx-auto space-y-6">
       <header>
-        <XTHeroEyebrow han="仙玉香火" label="Tiên Ngọc Hương Hỏa" />
+        <XTPageEyebrow label="Tiên Ngọc Hương Hỏa" />
         <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('topup.title') }}</h1>
         <p class="text-ink-300 text-sm mt-1">
           {{ t('topup.intro') }}

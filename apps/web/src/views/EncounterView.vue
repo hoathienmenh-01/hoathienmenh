@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useDailyEncounterStore } from '@/stores/dailyEncounter';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 
 /**
  * Phase 34.1 — Daily Random Encounter / Kỳ Ngộ view.
@@ -92,7 +92,7 @@ onMounted(async () => {
   <AppShell>
     <section class="space-y-4 p-4">
       <header class="space-y-1">
-        <XTHeroEyebrow han="奇遇梦境" label="Kỳ Ngộ Mộng Cảnh" />
+        <XTPageEyebrow label="Kỳ Ngộ Mộng Cảnh" />
         <h1 class="text-2xl font-bold mt-1">{{ t('encounter.title') }}</h1>
         <p class="text-sm text-gray-300">{{ t('encounter.subtitle') }}</p>
       </header>

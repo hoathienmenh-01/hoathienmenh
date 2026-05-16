@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import {
   getWallet,
   getWalletLedger,
@@ -70,7 +70,7 @@ function formatDelta(delta: number): string {
   <AppShell>
     <section class="wallet-page">
       <header class="wallet-header">
-        <XTHeroEyebrow han="乾坤锦囊" label="Càn Khôn Cẩm Nang" />
+        <XTPageEyebrow label="Càn Khôn Cẩm Nang" />
         <h1 class="mt-1">Ví Tu Tiên (Phase 27.0 Foundation)</h1>
         <p class="muted">
           Tổng hợp 6 loại tiền tệ + entitlements đang active. Mọi giao dịch

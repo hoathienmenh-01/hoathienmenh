@@ -12,7 +12,7 @@ import { useI18n } from 'vue-i18n';
 import { useWorldContentStore } from '@/stores/worldContent';
 import type { SectBossView, SectDungeonView } from '@/api/worldContent';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 
 const { t, locale } = useI18n();
 const store = useWorldContentStore();
@@ -46,7 +46,7 @@ onMounted(() => {
   <AppShell>
     <section class="sect-content" data-testid="sect-content-view">
       <header>
-        <XTHeroEyebrow han="宗门豆其" label="Tông Môn Nội Vụ" />
+        <XTPageEyebrow label="Tông Môn Nội Vụ" />
         <h1 class="mt-1">{{ t('worldContent.sect.title') }}</h1>
         <p>{{ t('worldContent.sect.subtitle') }}</p>
       </header>

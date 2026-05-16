@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import { getCharacter, onboard, type OnboardInput } from '@/api/character';
 import MButton from '@/components/ui/MButton.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import { extractApiErrorCode } from '@/lib/apiError';
 
 const router = useRouter();
@@ -84,12 +84,13 @@ async function finish(): Promise<void> {
     <div
       class="w-full max-w-xl border-2 border-ink-300/60 rounded-md bg-ink-700/40 backdrop-blur-md p-6 shadow-2xl"
     >
-      <XTHeroEyebrow han="九天梦境" label="Cửu Thiên Mộng Cảnh" />
+      <XTPageEyebrow label="Cửu Thiên Mộng Cảnh" />
       <header class="flex items-center gap-3 border-b border-ink-300/40 pb-3 mb-4 mt-2">
         <div
           class="w-12 h-12 rounded-full bg-ink-300/20 border-2 border-ink-300 flex items-center justify-center text-2xl"
+          aria-hidden="true"
         >
-          靈
+          ❀
         </div>
         <div>
           <div class="text-ink-100 font-bold tracking-wide">{{ t('onboarding.alinhName') }}</div>

@@ -17,7 +17,7 @@ import {
   type LogType,
 } from '@/api/logs';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import SkeletonBlock from '@/components/ui/SkeletonBlock.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
@@ -123,7 +123,7 @@ const errorMessage = computed(() => {
   <AppShell>
     <div class="max-w-3xl mx-auto space-y-4">
       <header>
-        <XTHeroEyebrow han="佳节盛会" label="Giải Tiệc Thịnh Hội" />
+        <XTPageEyebrow label="Giải Tiệc Thịnh Hội" />
         <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('activity.title') }}</h1>
         <p class="text-sm text-ink-300">{{ t('activity.subtitle') }}</p>
       </header>

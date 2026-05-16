@@ -15,7 +15,7 @@ import {
   type MentorRelationRow,
 } from '@/api/mentor';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import MentorMilestonePanel from '@/components/MentorMilestonePanel.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
@@ -134,7 +134,7 @@ const isMentor = computed(() => !!profile.value);
 <template>
   <AppShell>
     <section class="mentor-view" data-testid="mentor-view">
-      <XTHeroEyebrow han="师门传道" label="Sư Môn Truyền Đạo" />
+      <XTPageEyebrow label="Sư Môn Truyền Đạo" />
       <h1 class="mt-1">{{ t('mentor.title') }}</h1>
       <p class="muted">{{ t('mentor.subtitle') }}</p>
 

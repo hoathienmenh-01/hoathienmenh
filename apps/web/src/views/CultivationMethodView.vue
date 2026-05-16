@@ -41,7 +41,7 @@ import { useCultivationMethodStore } from '@/stores/cultivationMethod';
 import { useToastStore } from '@/stores/toast';
 import type { CultivationMethodLearnedRow } from '@/api/cultivationMethod';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 
 type GradeFilter = 'all' | CultivationMethodGrade;
 
@@ -139,7 +139,7 @@ onMounted(async () => {
     <div class="max-w-5xl mx-auto space-y-4">
       <header class="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
-          <XTHeroEyebrow han="心法传承" label="Tâm Pháp Truyền Thừa" />
+          <XTPageEyebrow label="Tâm Pháp Truyền Thừa" />
           <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('cultivationMethod.title') }}</h1>
           <p class="text-xs text-ink-300 mt-1">
             {{ t('cultivationMethod.subtitle') }}

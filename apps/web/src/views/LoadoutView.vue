@@ -32,7 +32,7 @@ import {
   type ArtifactV2OwnedEntry,
 } from '@/api/artifactsV2';
 import EquipmentArtCell from '@/components/xianxia/EquipmentArtCell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 
 interface DraftForm {
   id: string | null;
@@ -286,7 +286,7 @@ onMounted(refresh);
   <main class="page-shell space-y-4 px-3 sm:px-6 py-4">
     <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
       <div>
-        <XTHeroEyebrow han="架对仪谱" label="Giá Đối Nghi Phổ" />
+        <XTPageEyebrow label="Giá Đối Nghi Phổ" />
         <h1 class="text-xl sm:text-2xl font-bold mt-1">{{ t('loadout.title') }}</h1>
         <p class="text-sm text-ink-400">{{ t('loadout.subtitle') }}</p>
       </div>

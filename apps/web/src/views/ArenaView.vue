@@ -17,7 +17,7 @@ import { useArenaStore } from '@/stores/arena';
 import { useToastStore } from '@/stores/toast';
 import { useFeatureFlagsStore } from '@/stores/featureFlags';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import FeatureDisabledBanner from '@/components/FeatureDisabledBanner.vue';
 
@@ -156,7 +156,7 @@ function outcomeKind(outcome: string, attackerId: string): 'win' | 'lose' | 'dra
   <AppShell>
     <section class="px-4 py-6 max-w-4xl mx-auto" data-testid="arena-view">
       <header class="mb-6">
-        <XTHeroEyebrow han="龙虞斗场" label="Long Hổ Đấu Trường" />
+        <XTPageEyebrow label="Long Hổ Đấu Trường" />
         <h1 class="text-2xl font-bold text-[var(--xt-text-gold)] mt-1">{{ t('arena.title') }}</h1>
         <p class="text-sm text-slate-400 mt-1">{{ t('arena.subtitle') }}</p>
       </header>

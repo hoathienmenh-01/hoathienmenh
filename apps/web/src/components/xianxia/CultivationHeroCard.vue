@@ -1,18 +1,18 @@
 <script setup lang="ts">
 /**
- * Cửu Thiên Mộng — PR3 hero polish.
+ * Cửu Thiên Mộng — PR3.5 thuần Việt hero polish.
  *
- * Hero "Đạo Thân" card sử dụng `XTHeroEyebrow` (Hán + Việt) cho dòng eyebrow
- * chính và `XTSealFrame` ốp 4 góc triện chu + viền lacquer vàng quanh card.
- * Trước PR3, eyebrow là chuỗi inline `Cửu Thiên Mộng · XT` không nhất quán
- * với các view khác — giờ đồng bộ qua `XTHeroEyebrow han="道身仙骨"`.
+ * Hero "Đạo Thân" card sử dụng `XTPageEyebrow` (caps + label thuần Việt)
+ * cho dòng eyebrow chính và `XTSealFrame` ốp 4 góc triện chu + viền lacquer
+ * vàng quanh card. Từ PR3.5 eyebrow không còn dùng chữ Hán: caps `Đạo T hân`
+ * viết hoa decorative + label `Đạo Thân Tiên Cốt`.
  */
 import GameIcon from './GameIcon.vue';
 import ProgressRuneBar from './ProgressRuneBar.vue';
 import RealmBadge from './RealmBadge.vue';
 import XianxiaButton from './XianxiaButton.vue';
 import XianxiaCard from './XianxiaCard.vue';
-import XTHeroEyebrow from './XTHeroEyebrow.vue';
+import XTPageEyebrow from './XTPageEyebrow.vue';
 import XTSealFrame from './XTSealFrame.vue';
 
 defineProps<{
@@ -27,8 +27,8 @@ defineProps<{
 <template>
   <XTSealFrame
     tone="gold"
-    corner-glyphs="真修丹道"
-    watermark="天"
+    corner-ornaments="❖✦❖✦"
+    watermark-letter="Đ"
     rounded="2xl"
     inset="tight"
     test-id="cultivation-hero-seal-frame"
@@ -38,8 +38,8 @@ defineProps<{
       <div class="xt-rune-circle" aria-hidden="true" />
       <div class="relative grid gap-6 lg:grid-cols-[1fr_auto]">
         <div class="space-y-4">
-          <XTHeroEyebrow
-            han="道身仙骨"
+          <XTPageEyebrow
+            caps="ĐẠO THÂN TIÊN CỐT"
             label="Đạo Thân Tiên Cốt"
             test-id="cultivation-hero-eyebrow"
           />

@@ -8,7 +8,7 @@ import { useGameStore } from '@/stores/game';
 import { useStoryDungeonStore } from '@/stores/storyDungeon';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import StoryDungeonRunPanel from '@/components/StoryDungeonRunPanel.vue';
 import StoryDungeonDialoguePanel from '@/components/StoryDungeonDialoguePanel.vue';
 import StoryDungeonRewardModal from '@/components/StoryDungeonRewardModal.vue';
@@ -236,7 +236,7 @@ onMounted(async () => {
     >
       <header class="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
-          <XTHeroEyebrow han="古哲梦境" label="Cổ Triết Mộng Cảnh" />
+          <XTPageEyebrow label="Cổ Triết Mộng Cảnh" />
           <h1 class="text-2xl tracking-widest font-bold mt-1">
             {{ t('storyDungeon.title') }}
           </h1>

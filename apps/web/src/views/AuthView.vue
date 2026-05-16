@@ -6,6 +6,7 @@ import { randomProverb } from '@xuantoi/shared';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import MButton from '@/components/ui/MButton.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import * as authApi from '@/api/auth';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
@@ -89,15 +90,7 @@ async function onChange(): Promise<void> {
     <div
       class="w-full max-w-md border-2 border-ink-300/60 rounded-md bg-ink-700/40 backdrop-blur-md p-6 shadow-2xl"
     >
-      <p class="flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.32em] text-[var(--xt-text-jade)] md:text-xs">
-        <span aria-hidden="true" class="inline-block h-px w-6 bg-[var(--xt-border-jade)]" />
-        <span
-          aria-hidden="true"
-          style="font-family: 'Ma Shan Zheng', 'Noto Serif SC', serif; font-size: 14px; letter-spacing: 0.16em;"
-        >仙森示咢</span>
-        <span>· Tiên Sơn Bốc Định</span>
-        <span aria-hidden="true" class="inline-block h-px w-6 bg-[var(--xt-border-jade)]" />
-      </p>
+      <XTPageEyebrow label="Tiên Sơn Bốc Định" />
       <h1 class="text-3xl text-center text-ink-100 tracking-widest mt-1">{{ t('app.brand') }}</h1>
       <p class="text-center text-ink-300 italic mt-2 text-sm">"{{ proverb }}"</p>
 

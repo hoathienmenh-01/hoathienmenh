@@ -7,7 +7,7 @@
  */
 import { useI18n } from 'vue-i18n';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 
 const { t } = useI18n();
@@ -17,7 +17,7 @@ const { t } = useI18n();
   <AppShell>
     <div class="max-w-3xl mx-auto space-y-4">
       <header>
-        <XTHeroEyebrow han="请安記" label="Nhật Ký Huý Kỷ" />
+        <XTPageEyebrow label="Nhật Ký Huý Kỷ" />
         <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('playerLogs.title') }}</h1>
         <p class="text-xs text-ink-300 mt-1">{{ t('playerLogs.subtitle') }}</p>
       </header>

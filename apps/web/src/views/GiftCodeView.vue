@@ -7,7 +7,7 @@ import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
 import { redeemGiftCode, type GiftCodeRedeemResult } from '@/api/giftcode';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { itemName } from '@/lib/itemName';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
@@ -60,7 +60,7 @@ async function onRedeem(): Promise<void> {
 <template>
   <AppShell>
     <div class="max-w-md mx-auto">
-      <XTHeroEyebrow han="赐福隆套" label="Tứ Phúc Long Sao" />
+      <XTPageEyebrow label="Tứ Phúc Long Sao" />
       <h2 class="text-xl tracking-widest mb-2 mt-1">{{ t('giftcode.title') }}</h2>
       <p class="text-sm text-ink-300 mb-4">{{ t('giftcode.hint') }}</p>
 

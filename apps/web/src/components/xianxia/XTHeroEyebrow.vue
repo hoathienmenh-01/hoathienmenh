@@ -1,39 +1,41 @@
 <script setup lang="ts">
 /**
- * Cửu Thiên Mộng — Hán eyebrow line.
+ * Cửu Thiên Mộng — `XTHeroEyebrow` (PR3.5 backward-compatible alias).
  *
- * Hiển thị một dòng "eyebrow" cổ phong với chữ Hán + dải phân cách + nhãn.
- * Dùng phía trên `<h1>` của các view chính.
+ * Thuần Việt từ PR3.5: alias mỏng cho `XTPageEyebrow`. Giữ API cũ (`han`
+ * / `label`) cho các call site chưa migrate; prop `han` map sang `caps`,
+ * NHƯNG nếu `han` chứa ký tự Hán thì bị bỏ qua (không render Hán) để giữ
+ * cam kết "thuần Việt apps/web/src". Khuyên dùng `XTPageEyebrow` trực
+ * tiếp với `caps?: string | null` + `label: string`.
  */
-withDefaults(
+import { computed } from 'vue';
+import XTPageEyebrow from './XTPageEyebrow.vue';
+
+const HAN_RE = /[\u4e00-\u9fff]/;
+
+const props = withDefaults(
   defineProps<{
-    han: string;
-    label?: string | null;
+    han?: string | null;
+    caps?: string | null;
+    label: string;
     testId?: string;
   }>(),
   {
-    label: null,
+    han: null,
+    caps: null,
     testId: 'xt-hero-eyebrow',
   },
 );
+
+const resolvedCaps = computed<string | null>(() => {
+  if (props.caps && props.caps.length > 0) return props.caps;
+  if (props.han && props.han.length > 0 && !HAN_RE.test(props.han)) {
+    return props.han;
+  }
+  return null;
+});
 </script>
 
 <template>
-  <p
-    class="flex items-center gap-2 text-[10px] uppercase tracking-[0.32em] text-[var(--xt-text-jade)] md:text-xs"
-    :data-testid="testId"
-  >
-    <span aria-hidden="true" class="inline-block h-px w-6 bg-[var(--xt-border-jade)]" />
-    <span
-      aria-hidden="true"
-      style="
-        font-family: 'Ma Shan Zheng', 'Noto Serif SC', serif;
-        font-size: 14px;
-        letter-spacing: 0.16em;
-      "
-    >
-      {{ han }}
-    </span>
-    <span v-if="label">· {{ label }}</span>
-  </p>
+  <XTPageEyebrow :caps="resolvedCaps" :label="label" :test-id="testId" />
 </template>
