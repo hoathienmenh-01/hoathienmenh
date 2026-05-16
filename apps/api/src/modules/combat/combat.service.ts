@@ -62,6 +62,7 @@ import { MissionService } from '../mission/mission.service';
 import { QuestService } from '../quest/quest.service';
 import { Phase33StoryService } from '../story-v2/story-v2.service';
 import { DropEconomyService } from '../economy/drop-economy.service';
+import { PetSnapshotService } from '../pet/pet-snapshot.service';
 import {
   inferDropMonsterType,
   realmByKey,
@@ -235,6 +236,10 @@ export class CombatService {
     // baseline (atkFlat/defFlat/...=0; atkPercent/defPercent=0) khi DI thiếu
     // hoặc character chưa equip V2 artifact.
     @Optional() private readonly artifactV2?: ArtifactV2Service,
+    // Phase 44.2 — Pet PvE combat bonus. `getCombatBonus(DUNGEON)` trả về
+    // damage cap (12% PvE / 12% DUNGEON / 8% BOSS) + pet stats. Identity
+    // (no-op) khi DI thiếu, hoặc khi character chưa equip pet.
+    @Optional() private readonly petSnapshot?: PetSnapshotService,
   ) {}
 
   /**
@@ -543,10 +548,36 @@ export class CombatService {
 
     // — Player attack (Phase 11.2.B — atkScale + mpCost từ mastery curve)
     const dmgBase = rollDamage(effPower, monster.def, effective.atkScale);
+    // Phase 44.2 — Pet PvE/DUNGEON combat bonus. Công thức contribution:
+    //   contribFrac = clamp(petAtk / effPower, 0, dmgCap/100)
+    //   petCombatMul = 1 + contribFrac
+    // Luôn dùng context DUNGEON (PvE dungeon tích hợp) — cap 12%. Identity
+    // (1.0, no-op) khi DI thiếu hoặc chưa equip pet. KHÔNG double-apply với
+    // PvP (combat này chỉ PvE — PvP module riêng). KHÔNG lổi mainline khi pet
+    // service throw — try-catch fallback identity.
+    let petCombatMul = 1.0;
+    if (this.petSnapshot) {
+      try {
+        const petBonus = await this.petSnapshot.getCombatBonus(char.id, 'DUNGEON');
+        if (petBonus && effPower > 0) {
+          const capFrac = petBonus.damageContributionCapPercent / 100;
+          const rawFrac = petBonus.petStats.atk / effPower;
+          const contribFrac = Math.max(0, Math.min(rawFrac, capFrac));
+          petCombatMul = 1 + contribFrac;
+        }
+      } catch {
+        petCombatMul = 1.0;
+      }
+    }
     const dmg = Math.max(
       1,
       Math.round(
-        dmgBase * playerElementMul * talentElementMul * buffElementMul * phase142Mul,
+        dmgBase *
+          playerElementMul *
+          talentElementMul *
+          buffElementMul *
+          phase142Mul *
+          petCombatMul,
       ),
     );
     let monsterHp = state.monsterHp - dmg;

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import {
   DIALOGUES,
   NPCS,
@@ -10,6 +10,7 @@ import {
   type NpcFaction,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { OnboardingQuestService } from '../onboarding-quest/onboarding-quest.service';
 
 /**
  * Phase 12 Story PR-4 — NPC dialogue UI runtime.
@@ -173,7 +174,12 @@ function annotateChoice(
 
 @Injectable()
 export class NpcService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    // Phase 44.2 — Onboarding auto-track NPC_TALK. Optional inject — legacy
+    // test bootstrap không có OnboardingQuestModule sẽ skip silent.
+    @Optional() private readonly onboarding?: OnboardingQuestService,
+  ) {}
 
   /**
    * List tất cả NPC mà character đang thấy (realmGateOrder <= character.realmOrder),
@@ -200,6 +206,11 @@ export class NpcService {
     }
     const dialogue = this.pickDialogue(npc, ctx);
     if (!dialogue) throw new NpcError('NO_DIALOGUE');
+    // Phase 44.2 — Onboarding auto-track NPC_TALK. Fire-and-forget;
+    // recordAction wrap try-catch nội bộ nên upstream KHÔNG fail.
+    if (this.onboarding) {
+      void this.onboarding.notifyAction(ctx.characterId, 'NPC_TALK');
+    }
     return dialogue;
   }
 
