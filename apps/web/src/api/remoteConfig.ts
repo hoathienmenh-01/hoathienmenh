@@ -120,3 +120,47 @@ export async function adminClearRemoteConfigCache(): Promise<{
   );
   return unwrap(data);
 }
+
+/**
+ * Beta safe integration sweep — Phase 45.0 finish.
+ *
+ * Read-only audit log entry shape (mirror controller `RemoteConfigAuditEntry`).
+ * Không có secret — `value/reason` đã ghi server-side khi admin commit
+ * mutation. FE chỉ render historical view.
+ */
+export interface RemoteConfigAuditEntry {
+  readonly id: string;
+  readonly actorUserId: string;
+  readonly action:
+    | 'ADMIN_REMOTE_CONFIG_UPDATE'
+    | 'ADMIN_REMOTE_CONFIG_REFRESH_DEFAULTS'
+    | 'ADMIN_REMOTE_CONFIG_CLEAR_CACHE';
+  readonly key: string | null;
+  readonly value: unknown;
+  readonly valueType: string | null;
+  readonly reason: string | null;
+  readonly createdAt: string;
+  readonly meta: Record<string, unknown>;
+}
+
+export interface AdminRemoteConfigAuditFilter {
+  /** Optional `meta.key` filter. */
+  key?: string;
+  /** Optional action filter. */
+  action?: RemoteConfigAuditEntry['action'];
+  /** Server cap 200, default 50. */
+  limit?: number;
+}
+
+export async function adminListRemoteConfigAudit(
+  filter: AdminRemoteConfigAuditFilter = {},
+): Promise<RemoteConfigAuditEntry[]> {
+  const params: Record<string, string> = {};
+  if (filter.key) params.key = filter.key;
+  if (filter.action) params.action = filter.action;
+  if (typeof filter.limit === 'number') params.limit = String(filter.limit);
+  const { data } = await apiClient.get<
+    Envelope<{ entries: RemoteConfigAuditEntry[] }>
+  >('/admin/remote-config/audit', { params });
+  return unwrap(data).entries;
+}

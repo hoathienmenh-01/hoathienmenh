@@ -143,11 +143,54 @@ export interface BackupVerifyRunSummary {
   readonly triggeredBy: BackupTriggeredBy;
 }
 
+/**
+ * Phase 17.3 — Offsite upload health snapshot. KHÔNG có cron riêng — chạy
+ * piggy-back sau mỗi `runBackup` SUCCESS khi `enabled=true`. `OK` =
+ * upload thành công gần nhất; `STALE` = enabled nhưng chưa có backup
+ * SUCCESS nào để upload; `DEGRADED` = enabled nhưng env `BACKUP_S3_*`
+ * thiếu hoặc upload gần nhất fail; `DISABLED` = toggle off (default).
+ */
+export interface BackupOffsiteEntry {
+  readonly enabled: boolean;
+  readonly status: 'OK' | 'STALE' | 'DISABLED' | 'DEGRADED';
+  /** Lý do mismatch (env thiếu / upload fail / chưa upload bao giờ). */
+  readonly staleReason: string | null;
+  /**
+   * Backup gần nhất đã upload offsite thành công (storage='S3'/'MINIO'/'GCS').
+   * Null khi chưa có upload nào hoặc offsite disabled.
+   */
+  readonly lastUploadedAt: string | null;
+  /**
+   * Tên các env vars bắt buộc nhưng trống (subset của `REQUIRED_S3_KEYS`).
+   * Empty array khi đủ. Render trong admin panel cho ops biết cần set gì.
+   */
+  readonly missingEnv: readonly string[];
+}
+
+/**
+ * Phase 17.3 — Backup alert state. Khi backup fail liên tiếp ≥
+ * `threshold` lần (default 3 tuần) → `triggered=true`, admin panel
+ * render badge ROSE. `triggered=false` cho phép admin theo dõi count
+ * mà không hoảng (vd 1-2 fail isolated).
+ */
+export interface BackupAlertState {
+  /** Số lần FAILED liên tiếp tính từ run mới nhất ngược về quá khứ. */
+  readonly consecutiveFailures: number;
+  /** Threshold compare. 0 = disable alert escalation, chỉ track count. */
+  readonly threshold: number;
+  /** `consecutiveFailures >= threshold && threshold > 0`. */
+  readonly triggered: boolean;
+}
+
 export interface BackupStatusResponse {
   readonly backup: BackupStatusEntry;
   readonly verify: BackupStatusEntry;
   readonly latestBackup: BackupRunSummary | null;
   readonly latestVerify: BackupVerifyRunSummary | null;
+  /** Phase 17.3 — offsite upload health. */
+  readonly offsite: BackupOffsiteEntry;
+  /** Phase 17.3 — alert state cho consecutive failures. */
+  readonly alert: BackupAlertState;
   /** ISO 8601 thời điểm server compute response (smoke debug). */
   readonly generatedAt: string;
 }

@@ -105,6 +105,18 @@ function makeStatus(
     verify: makeEntry(),
     latestBackup: SAMPLE_BACKUP_ROW,
     latestVerify: SAMPLE_VERIFY_ROW,
+    offsite: {
+      enabled: false,
+      status: 'DISABLED',
+      staleReason: null,
+      lastUploadedAt: null,
+      missingEnv: [],
+    },
+    alert: {
+      consecutiveFailures: 0,
+      threshold: 3,
+      triggered: false,
+    },
     generatedAt: '2026-05-04T05:00:00Z',
     ...overrides,
   };
@@ -311,5 +323,86 @@ describe('AdminBackupPanel', () => {
     expect(w.text()).toContain('Backup & Verify Restore');
     expect(w.text()).toContain('Run backup now');
     expect(w.text()).toContain('Run verify now');
+  });
+
+  // -- Phase 17.3 — offsite section + alert banner -----------------
+
+  it('offsite DISABLED → render badge DISABLED, KHÔNG hiện missingEnv', async () => {
+    statusMock.mockResolvedValue(makeStatus());
+    const w = mountPanel();
+    await flushPromises();
+    const badge = w.get('[data-testid="admin-backup-offsite-status"]');
+    expect(badge.text()).toBe('DISABLED');
+    expect(
+      w.find('[data-testid="admin-backup-offsite-missing-env"]').exists(),
+    ).toBe(false);
+  });
+
+  it('offsite DEGRADED + missingEnv → render danh sách env thiếu', async () => {
+    statusMock.mockResolvedValue(
+      makeStatus({
+        offsite: {
+          enabled: true,
+          status: 'DEGRADED',
+          staleReason: 'missing or invalid env: BACKUP_S3_BUCKET',
+          lastUploadedAt: null,
+          missingEnv: ['BACKUP_S3_BUCKET', 'BACKUP_S3_ACCESS_KEY_ID'],
+        },
+      }),
+    );
+    const w = mountPanel();
+    await flushPromises();
+    expect(
+      w.get('[data-testid="admin-backup-offsite-status"]').text(),
+    ).toBe('DEGRADED');
+    const missing = w.get('[data-testid="admin-backup-offsite-missing-env"]');
+    expect(missing.text()).toContain('BACKUP_S3_BUCKET');
+    expect(missing.text()).toContain('BACKUP_S3_ACCESS_KEY_ID');
+  });
+
+  it('offsite OK + lastUploadedAt → render badge OK + date formatted', async () => {
+    statusMock.mockResolvedValue(
+      makeStatus({
+        offsite: {
+          enabled: true,
+          status: 'OK',
+          staleReason: null,
+          lastUploadedAt: '2026-05-04T03:10:00Z',
+          missingEnv: [],
+        },
+      }),
+    );
+    const w = mountPanel();
+    await flushPromises();
+    expect(w.get('[data-testid="admin-backup-offsite-status"]').text()).toBe(
+      'OK',
+    );
+    const last = w.get('[data-testid="admin-backup-offsite-last-uploaded-at"]');
+    expect(last.text()).not.toBe('—');
+  });
+
+  it('alert.triggered=false → KHÔNG render alert banner', async () => {
+    statusMock.mockResolvedValue(makeStatus());
+    const w = mountPanel();
+    await flushPromises();
+    expect(
+      w.find('[data-testid="admin-backup-alert-banner"]').exists(),
+    ).toBe(false);
+  });
+
+  it('alert.triggered=true → render banner với count', async () => {
+    statusMock.mockResolvedValue(
+      makeStatus({
+        alert: {
+          consecutiveFailures: 5,
+          threshold: 3,
+          triggered: true,
+        },
+      }),
+    );
+    const w = mountPanel();
+    await flushPromises();
+    const banner = w.get('[data-testid="admin-backup-alert-banner"]');
+    expect(banner.text()).toContain('5');
   });
 });

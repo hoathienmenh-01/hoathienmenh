@@ -464,15 +464,33 @@ export class NpcAffinityService {
   }
 
   /**
-   * UTC ISO date `YYYY-MM-DD`. Daily reset boundary: 00:00 UTC. Lý do dùng
-   * UTC thay timezone vận hành VN (UTC+7): tránh DST drift, đơn giản test.
-   * Phase 12.10.B-W (ngoài scope) sẽ xét `Character.timezone` nếu bổ sung.
+   * ISO date `YYYY-MM-DD` theo timezone vận hành `Asia/Ho_Chi_Minh`
+   * (UTC+07, không DST). Daily reset boundary: 00:00 ICT = 17:00 UTC
+   * hôm trước.
+   *
+   * Phase 18.x — align với mission/daily-login/dungeon (đều reset theo ICT),
+   * trước đây dùng UTC khiến reset gift NPC lệch 7 giờ so với reset mission
+   * (mission reset 17:00 UTC, gift reset 00:00 UTC). Player ở VN gift sau
+   * 00:00 UTC (= 07:00 sáng ICT) đã bị reset count nhưng mission chưa,
+   * dẫn đến UX bất nhất "đang trong ngày mà gift counter đã reset".
+   *
+   * Reuse `Intl.DateTimeFormat` (en-CA → YYYY-MM-DD bất kể locale). Mirror
+   * exact pattern của `daily-login.service.ts:getLocalDateString` để tránh
+   * drift giữa các module reset daily.
+   *
+   * Boundary examples:
+   *   - 23:30 ICT (16:30 UTC) → bucket = "ngày hiện tại" (chưa reset).
+   *   - 00:30 ICT (17:30 UTC) → bucket = "ngày mới" (đã reset).
+   *   - 00:30 UTC = 07:30 ICT → vẫn cùng bucket ngày ICT (giữa ngày).
    */
   static dayBucketFor(date: Date): string {
-    const y = date.getUTCFullYear();
-    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const d = String(date.getUTCDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    return fmt.format(date);
   }
 
   private isUniqueConstraintError(err: unknown): boolean {

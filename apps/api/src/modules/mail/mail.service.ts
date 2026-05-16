@@ -7,6 +7,7 @@ import { InventoryService } from '../inventory/inventory.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { WebPushService } from '../web-push/web-push.service';
 import { WebPushTriggerService } from '../web-push/web-push-trigger.service';
+import { OnboardingQuestService } from '../onboarding-quest/onboarding-quest.service';
 
 export class MailError extends Error {
   constructor(
@@ -128,6 +129,11 @@ export class MailService {
     // Phase 44.1 — high-level web push trigger composer. Optional inject
     // — test bootstrap có thể bỏ.
     @Optional() private readonly webPushTrigger?: WebPushTriggerService,
+    // Phase 44.2 — Onboarding auto-track. Khi user mở một thư (markRead),
+    // gọi `recordAction(MAIL_OPEN)` fire-and-forget để flip task
+    // `d5_check_mail`. Optional inject — legacy test bootstrap không có
+    // OnboardingQuestModule sẽ skip silent (no-op, không throw).
+    @Optional() private readonly onboarding?: OnboardingQuestService,
   ) {}
 
   async inbox(userId: string, opts?: { mailType?: MailType }): Promise<MailView[]> {
@@ -203,6 +209,11 @@ export class MailService {
     const updated = await this.prisma.mail.findUniqueOrThrow({
       where: { id: mailId },
     });
+    // Phase 44.2 — Onboarding auto-track MAIL_OPEN. Fire-and-forget;
+    // recordAction wrap try-catch nội bộ nên upstream KHÔNG fail.
+    if (this.onboarding) {
+      void this.onboarding.notifyAction(char.id, 'MAIL_OPEN');
+    }
     return toView(updated, new Date());
   }
 

@@ -67,6 +67,18 @@ function makeStubs(
     },
     latestBackup: null,
     latestVerify: null,
+    offsite: {
+      enabled: false,
+      status: 'DISABLED',
+      staleReason: null,
+      lastUploadedAt: null,
+      missingEnv: [],
+    },
+    alert: {
+      consecutiveFailures: 0,
+      threshold: 3,
+      triggered: false,
+    },
     generatedAt: '2026-07-11T00:00:00.000Z',
   };
 

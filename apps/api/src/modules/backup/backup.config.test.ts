@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BACKUP_ALERT_CONSECUTIVE_FAILURES_DEFAULT,
   BACKUP_CRON_DEFAULT_TZ,
   BACKUP_CRON_SCHEDULE_DEFAULT,
   BACKUP_DIR_DEFAULT,
@@ -86,5 +87,33 @@ describe('Phase 17.2 — readBackupConfig', () => {
     expect(cfg.backupSchedule).toBe(BACKUP_CRON_SCHEDULE_DEFAULT);
     expect(cfg.timezone).toBe(BACKUP_CRON_DEFAULT_TZ);
     expect(cfg.backupDir).toBe(BACKUP_DIR_DEFAULT);
+  });
+
+  it('Phase 17.3 — offsiteUploadEnabled default false, opt-in qua env', () => {
+    expect(readBackupConfig({}).offsiteUploadEnabled).toBe(false);
+    expect(
+      readBackupConfig({ BACKUP_OFFSITE_UPLOAD_ENABLED: 'true' })
+        .offsiteUploadEnabled,
+    ).toBe(true);
+    // Khi env giá trị lạ → fallback false (giống các bool khác).
+    expect(
+      readBackupConfig({ BACKUP_OFFSITE_UPLOAD_ENABLED: 'maybe' })
+        .offsiteUploadEnabled,
+    ).toBe(false);
+  });
+
+  it('Phase 17.3 — alertConsecutiveFailures default 3, env override int', () => {
+    expect(readBackupConfig({}).alertConsecutiveFailures).toBe(
+      BACKUP_ALERT_CONSECUTIVE_FAILURES_DEFAULT,
+    );
+    expect(
+      readBackupConfig({ BACKUP_ALERT_CONSECUTIVE_FAILURES: '5' })
+        .alertConsecutiveFailures,
+    ).toBe(5);
+    // Invalid int → fallback default.
+    expect(
+      readBackupConfig({ BACKUP_ALERT_CONSECUTIVE_FAILURES: 'abc' })
+        .alertConsecutiveFailures,
+    ).toBe(BACKUP_ALERT_CONSECUTIVE_FAILURES_DEFAULT);
   });
 });

@@ -136,6 +136,8 @@
 // Config
 // -----------------------------------------------------------------------------
 
+import { flushAuthRateLimits } from './flush-auth-rate-limits.mjs';
+
 const BASE = (process.env.SMOKE_API_BASE ?? 'http://localhost:3000').replace(/\/+$/, '');
 const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS ?? 10_000);
 const VERBOSE = process.env.SMOKE_VERBOSE === '1';
@@ -327,6 +329,13 @@ function randomPassword() {
 
 async function main() {
   console.log(`[smoke:auth] API base = ${BASE}, timeout = ${TIMEOUT_MS}ms`);
+
+  // QA-003 — flush AUTH_REGISTER + AUTH_LOGIN + ... rate-limit Redis keys
+  // BEFORE the smoke flow so this process can run > 5 register/IP/15m
+  // without tripping the unified rate-limit guard. No-op in production
+  // (NODE_ENV check inside `flushAuthRateLimits`). Redis unreachable
+  // → best-effort warn, smoke continues.
+  await flushAuthRateLimits();
 
   const email = randomEmail();
   const pw1 = randomPassword();

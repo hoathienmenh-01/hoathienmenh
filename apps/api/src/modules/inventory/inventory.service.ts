@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Optional } from '@nestjs/common';
 import type { EquipSlot, Prisma } from '@prisma/client';
 import {
   applyBuildBonusRatio,
@@ -27,6 +27,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { BuffService } from '../character/buff.service';
 import { CharacterService } from '../character/character.service';
+import { OnboardingQuestService } from '../onboarding-quest/onboarding-quest.service';
 
 /**
  * Lý do thay đổi vật phẩm — ghi vào `ItemLedger.reason`.
@@ -376,6 +377,12 @@ export class InventoryService {
     // không có DI module) tiếp tục work — null = skip apply, không throw.
     @Inject(forwardRef(() => BuffService))
     private readonly buffs?: BuffService,
+    // Phase 44.2 — Onboarding auto-track. Khi player equip weapon thành công,
+    // gọi `recordAction(EQUIP_WEAPON)` fire-and-forget để flip task
+    // `d2_equip_weapon`. Optional inject — legacy test bootstrap không có
+    // OnboardingQuestModule sẽ skip silent (no-op, không throw).
+    @Optional()
+    private readonly onboarding?: OnboardingQuestService,
   ) {}
 
   async list(characterId: string): Promise<InventoryView[]> {
@@ -974,6 +981,13 @@ export class InventoryService {
     });
 
     await this.refreshState(userId);
+    // Phase 44.2 — Onboarding auto-track. Fire-and-forget sau khi equip
+    // thành công. Chỉ flip task `d2_equip_weapon` khi slot = WEAPON; các
+    // slot khác (ARMOR/BELT/...) không trigger task. recordAction wrap
+    // try-catch nội bộ → upstream KHÔNG fail khi onboarding lỗi.
+    if (def.slot === 'WEAPON' && this.onboarding) {
+      void this.onboarding.notifyAction(char.id, 'EQUIP_WEAPON');
+    }
     return this.list(char.id);
   }
 

@@ -28,6 +28,7 @@ import { getTitleDef } from '@xuantoi/shared';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useBadgesStore } from '@/stores/badges';
+import { useFeatureFlagsStore } from '@/stores/featureFlags';
 import { useRoute, useRouter } from 'vue-router';
 import BuffBar from './BuffBar.vue';
 import ChatPanel from './ChatPanel.vue';
@@ -63,8 +64,21 @@ const { t, te } = useI18n();
 const auth = useAuthStore();
 const game = useGameStore();
 const badges = useBadgesStore();
+const featureFlags = useFeatureFlagsStore();
 const router = useRouter();
 const route = useRoute();
+
+/**
+ * Beta safe integration sweep — wire `VISUAL_EFFECTS_ENABLED` flag.
+ * Khi flag OFF (admin chuỗng động tắt khi server stress), bỏ qua
+ * `XTAmbientCanvas` (layer nặng nhất: mesh + halo spin + motes
+ * shadow). Fail-open: store chưa load → coi như ON để không flicker
+ * UI cho user hợp lệ. `SpiritualAmbientLayer` và `XTParallaxBackground`
+ * không bị gate — chúng dùng CSS reduced-motion + là background nhẹ.
+ */
+const visualEffectsEnabled = computed(() =>
+  featureFlags.isEnabled('VISUAL_EFFECTS_ENABLED'),
+);
 
 const drawerOpen = ref(false);
 const collapsedGroups = ref<Set<string>>(new Set());
@@ -84,13 +98,24 @@ function isGroupCollapsed(key: string): boolean {
   return collapsedGroups.value.has(key);
 }
 
+/**
+ * Beta safe integration sweep — hide nav entries when feature flag is
+ * known to be OFF. Fail-open: store chưa load → `isDisabled` trả `false`,
+ * entry vẫn hiển thị bình thường để tránh flicker khi vừa nhảy route.
+ */
+function isNavItemFlagDisabled(item: XTNavItem): boolean {
+  if (!item.featureFlag) return false;
+  return featureFlags.isDisabled(item.featureFlag);
+}
+
 const filteredNavGroups = computed(() => {
   const q = sidebarSearch.value.trim().toLowerCase();
-  if (!q) return XT_NAV_GROUPS;
   return XT_NAV_GROUPS
     .map((group) => ({
       ...group,
       items: group.items.filter((item) => {
+        if (isNavItemFlagDisabled(item)) return false;
+        if (!q) return true;
         const label = navLabel(item.key).toLowerCase();
         return label.includes(q);
       }),
@@ -202,6 +227,9 @@ onMounted(() => {
   void game.fetchState();
   void game.hydrateUnreadMail();
   game.bindSocket();
+  // Beta safe integration sweep — nhắc store load public feature flags
+  // (TTL 30s). Fail-open nếu API lỗi, không block UI.
+  void featureFlags.ensureLoaded();
   window.addEventListener('keydown', onKeydown);
 });
 
@@ -213,7 +241,12 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="relative min-h-screen overflow-hidden text-[var(--xt-text-primary)]">
-    <XTAmbientCanvas :tone="sceneTone" intensity="lux" />
+    <XTAmbientCanvas
+      v-if="visualEffectsEnabled"
+      :tone="sceneTone"
+      intensity="lux"
+      data-testid="shell-ambient-canvas"
+    />
     <XTParallaxBackground :tone="sceneTone" />
     <SpiritualAmbientLayer visual-effect-level="MEDIUM" :tone="sceneTone" />
     <MaintenanceBanner

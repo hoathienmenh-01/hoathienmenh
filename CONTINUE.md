@@ -1,98 +1,176 @@
-# CONTINUE — Cửu Thiên Mộng luxury UI roadmap (PR #615)
+# CONTINUE — Beta Safe Integration & Operations Sweep
 
-Branch: `devin/20260516-091257-cuu-thien-mong-lux-ui-complete`
-PR: https://github.com/hoathienmenh-01/xuantoi/pull/615
+Branch: `devin/20260516-153244-beta-safe-integration-ops`
 Base: `main` của `hoathienmenh-01/xuantoi`.
 
-Tiếp nối PR #613 (Thuần Việt foundation) + PR #614 (Luxury primitives + 12 top-tier view).
-PR #615 hoàn thiện đầy đủ 11 phase của roadmap luxury UI.
+Mục tiêu: vá các integration gap còn lại trước beta (feature flag wiring,
+gameplay follow-up, backup runtime, smoke rate-limit, NPC gift timezone) mà
+KHÔNG mở scope mới (Alchemy V2, NPC Romance/Marriage, Arena V2, Sect War,
+Spirit Vein Territory, Admin Control Center V2 PR2-PR6, Real-time PvP đều
+defer).
 
 ---
 
 ## TỔNG QUAN
 
-PR #615 = 9 commit theo đúng thứ tự phase, không tạo branch mới, không tách PR. Mỗi phase chạy lint / typecheck / test / han-gate trước khi commit.
+PR = 7 commit + 1 docs commit:
 
-Han gate cuối: `rg '[\x{4e00}-\x{9fff}]' apps/web/src` → 0 match.
+| Commit | Phase | Summary |
+|---|---|---|
+| `1d8d8f3f` | 45.0 finish | Feature flag + remote config audit wiring |
+| `719b397e` | 44.2 | Gameplay sweep (combat/inventory/mail/npc/onboarding) |
+| `b0eef2f7` | 44.2 fix | `setTimeout` thay `setImmediate` cho lint |
+| `7293cfd5` | 17.3 part 1 | Backup offsite + alert config foundation |
+| `c0656c35` | 3.2–3.5 | Backup verification + offsite upload runtime + admin UI |
+| `f6b3ea44` | 5 (QA-003) | Smoke flush auth rate-limit helper |
+| `6574da19` | 6 | NPC gift daily bucket UTC → ICT (Asia/Ho_Chi_Minh) |
+| `<docs>` | 7 | Update `CONTINUE.md` + `docs/AI_HANDOFF_REPORT.md` |
+
+Phase 4 (QA-004 admin reload redirect) đã ship trong foundation commit
+`e28f1e33` (đã merge `main`) — KHÔNG cần thêm code trong PR này.
 
 ---
 
 ## PHASE LOG
 
-### Phase 1 — Audit primitives (no code)
-Audit `apps/web/src/components/xianxia/*` cho hiện trạng 12 view top-tier đã polish ở PR #614. Output: danh sách view còn dùng layout cũ (~40 view: Combat / Social / Quest / Misc / Admin), card thiếu corner accent, stat tile rời rạc, transition không nhất quán.
+### Phase 45.0 finish — Feature flag wiring (`1d8d8f3f`)
+- `VISUAL_EFFECTS_ENABLED`: AppShell skip `XTAmbientCanvas` layer (mesh +
+  halo + motes) khi admin toggle off. Fail-open nếu store chưa hydrate.
+- Admin remote-config audit history view: read-only endpoint
+  `GET /admin/remote-config/audit` (filter: key / action / limit cap 200,
+  hits `AdminAuditLog` scoped `ADMIN_REMOTE_CONFIG_*`, KHÔNG expose secret)
+  + FE `AdminRemoteConfigHistoryPanel.vue` + i18n VI/EN parity.
+- Mid-priority flag wired:
+  - `AUCTION_HOUSE_ENABLED`: xtNav entry filtered khi off; `/auction` +
+    `/market-v2` route gated qua `beforeEnter` guard.
+  - `STORY_V2_ENABLED`: `/story-v2` route gated qua `beforeEnter` guard.
+  - Cả 2 flag flip `public:true` để FE store đọc được.
+- Guard fail-open khi fetch lỗi; server vẫn enforce `FEATURE_DISABLED` 503
+  ở lớp cuối (defense-in-depth).
 
-### Phase 2 — `XTLuxHero` cho ~40 view
-Commit `feat(web): expand XTLuxHero across remaining player views`. Phổ cập `<XTLuxHero>` (eyebrow + title + subtitle + actions) cho toàn bộ view còn dùng layout cũ. Giữ test id cũ, không đụng business logic.
+### Phase 44.2 — Gameplay integration sweep (`719b397e` + `b0eef2f7`)
+- Combat: CombatModule import PetCombatModule; CombatService inject
+  optional pet stat aggregator → wire pet combat bonus.
+- Inventory: InventoryModule import NotificationModule; InventoryService
+  trigger stamina-full passive notification khi player chạm cap.
+- Mail: MailModule import OnboardingQuestModule để cascade quest action
+  khi mail claim.
+- NPC: NpcModule import OnboardingQuestModule (parity với mail) — gift /
+  chat action `recordAction` cascade.
+- Onboarding: regression test
+  `onboarding-quest.recordaction-wire.test.ts` (~241 dòng) verify cascade
+  end-to-end qua combat / inventory / mail / npc.
+- Migration additive `phase_44_2_secret_realm_active_unique` (UNIQUE
+  partial index `WHERE state IN ('ACTIVE','PENDING')` → chống duplicate
+  active secret realm run per character).
+- Lint fix: `setImmediate` không hợp lệ trong test runtime → swap sang
+  `setTimeout(..., 0)`.
 
-### Phase 3 — `XTStatTile` + `XTLuxSection`
-Commit `feat(web): adopt luxury stat tiles and sections`. Dashboard / Profile / Sect / Wallet chuyển từ raw grid sang `<XTLuxSection>` (ornate corner) + `<XTStatTile>` (jade/gold tone, glyph slot, delta animation hook).
+### Phase 17.3 part 1 — Backup config foundation (`7293cfd5`)
+- `backup.config.ts`: thêm `offsiteUploadEnabled`
+  (`BACKUP_OFFSITE_UPLOAD_ENABLED`, default `false`) +
+  `alertConsecutiveFailures` (`BACKUP_ALERT_CONSECUTIVE_FAILURES`, default
+  `3`). Cover bằng `backup.config.test.ts` (+29 dòng).
+- `packages/shared/src/backup.ts`: thêm type `BackupOffsiteEntry` +
+  `BackupAlertState`, mở rộng `BackupStatusResponse`.
+- Chưa wire vào `BackupService` runtime (xong ở Phase 3.2–3.5).
 
-### Phase 4 — `XianxiaCard` upgrade
-Commit `feat(web): add luxury treatment to cards and item states`. Thêm 4 corner accent SVG + props `accent` (jade/gold/seal/danger), `corners` (boolean, default true), `tight` (giảm padding cho list item). Alias `seal` ↔ `danger` để tương thích.
+### Phase 3.2–3.5 — Backup verification + offsite upload runtime (`c0656c35`)
+- `BackupService` verify hardening: hash digest compare, size guard,
+  schema sanity check; structured `BackupAlertState` (consecutive failure
+  counter, last failure reason, last verified at).
+- Offsite upload: gated qua flag; ghi `BackupOffsiteEntry` per snapshot
+  (bucket / path / hash / size / timestamp). Lỗi không crash backup
+  primary path — chỉ tăng counter + log alert.
+- Admin UI: `AdminBackupPanel.vue` thêm offsite section + alert badge.
+  i18n VI/EN parity (12 key mới).
+- Test mới: `backup.service.test.ts` (+329 dòng) +
+  `admin-backup.controller.test.ts` (+12 dòng) +
+  `AdminBackupPanel.test.ts` (+93 dòng).
 
-### Phase 5 — State primitives polish
-Commit `feat(web): polish loading empty error and toast states`. `SkeletonBlock` (shimmer + tone variant), `EmptyState` (glyph + tone), `ErrorState` (ornate seal frame), `MToast` (luxury restyle gold/jade/seal/warning + glyph + `aria-live`). Test cũ rewrite assertion → verify tone class mới, KHÔNG xoá / skip case.
+### Phase 5 (QA-003) — Smoke flush auth rate-limit (`f6b3ea44`)
+- `scripts/flush-auth-rate-limits.mjs`: refactor để vừa chạy CLI vừa
+  expose `flushAuthRateLimits()` programmatic API.
+- `scripts/smoke-auth.mjs`: wire flush trước khi smoke register flow.
+- `scripts/smoke-all.mjs`: import flush helper trước aggregator.
+- `apps/api/src/ops/flush-rate-limits.test.ts`: 221 dòng regression
+  coverage (Redis keyspace match, partial flush no-op safe, env override).
+- Resolve open issue QA-003 trong `docs/AI_HANDOFF_REPORT.md`.
 
-### Phase 6 — Page transitions & micro animations
-Commit `feat(web): add global luxury transitions and micro animations`. Tổng quát silk-curtain (tham khảo BossView) → global app transition; `XTListStagger` cho list appear (fade + slight Y translate, prefers-reduced-motion aware); `XTCounter` + composable `useCountUp` cho EXP / currency / power delta. Hover-lift card chuẩn hoá. Không thêm dependency.
+### Phase 6 — NPC gift daily bucket UTC → ICT (`6574da19`)
+- `npc-affinity.service.ts`: `getDailyGiftBucket()` từ
+  `new Date().toISOString().slice(0, 10)` (UTC) → format ICT
+  (`Asia/Ho_Chi_Minh`) parity với mission / daily-login reset.
+- Test: `npc-affinity.service.test.ts` thêm assertion cross-day boundary
+  (23:30 UTC = ICT 06:30 hôm sau → cùng-day ICT bucket cũ vẫn còn 30 phút).
+- Resolve impl-note "NPC Gift daily bucket reset 07:00 ICT bất tiện"
+  trong `docs/AI_HANDOFF_REPORT.md`.
 
-### Phase 7 — `GameIcon` library expansion
-Commit `feat(web): expand xianxia game icon library`. Mở rộng `GameIcon` từ ~20 lên đầy đủ icon cho cultivation / combat / pvp / boss / dungeon / sect / market / mail / social / quest / achievement / codex / mentor / encounter / farm / wallet / shop / gift / title / notification / feedback / admin. `RealmBadge` thêm sigil theo cảnh giới group. Tất cả inline SVG, không thêm icon library lớn.
-
-### Phase 8 — `XTBottomSheet` + sect accent
-Commit `feat(web): add ornate bottom sheet and sect accent theming`. Primitive `XTBottomSheet` (ornate top handle + overlay + close button accessible + Escape close + mobile-first; desktop fallback dùng tự nhiên qua viewport). Áp dụng nhẹ ở Inventory filter/sort. Thêm CSS var `--xt-accent-sect` — nếu `sect.color` có thì tint subtle border / tiny glow / badge, KHÔNG tint background lớn, KHÔNG đổi store shape.
-
-### Phase 9 — Typography, day audit, i18n, a11y
-Commit `feat(web): improve typography day theme i18n and accessibility`.
-- Typography: thêm utility token `text-display-xl / text-display-md / text-body-sm`, giảm `text-2xl font-bold tracking-widest` rải rác, fix line-height ratio.
-- Day theme audit: mở rộng `[data-theme="day"]` block cho depth shadow / mesh gradient / ambient canvas overlay / luxury card bg / section glow. Contrast text AA.
-- i18n: hardcoded VN strings từ phase 2–5 migrate vào `i18n/vi.ts` (`SectView` mine badge, MonetizationShopView labels, WalletView toasts…). Bổ sung 2 view thiếu `useI18n()` setup.
-- A11y: ARIA label cho `XTLuxHero` / `XTOrnateButton` / `XTGlyphBadge` / `XTBottomSheet` / Toast, focus ring, Escape close cho bottom sheet, `prefers-reduced-motion`.
-
-### Phase 10 — Special FX, gestures, performance
-Commit `feat(web): add special effects gestures and performance polish`.
-- FX hiện hữu (đã có từ PR #614) giữ nguyên: `BreakthroughBanner` particle shower theo realm, `RareDropPopup` viền theo phẩm chất + sigil, `FloatingCombatText` typeface cổ phong, `CombatFeedbackTimeline` critical hit shockwave (đã có `prefers-reduced-motion` fallback). Phase 10 KHÔNG ghi đè FX backend bằng FX mới — đã đủ.
-- Mobile gesture: thêm `XTPullRefresh` primitive (touch event, threshold 72px configurable, rubber-banding `dy*0.55`, ornate seal halo spinner, prefers-reduced-motion aware, expose `trigger()`). KHÔNG wrap route con bằng swipe-back vì rủi ro route lớn (theo brief). Long-press menu BỎ QUA vì không có primitive context menu phù hợp & rủi ro vỡ click handler hiện hữu.
-- Performance: `XTAmbientCanvas` thêm FPS measurement qua `requestAnimationFrame` (sample 60 frame hoặc 2s, lấy avg) + low-end heuristic (`navigator.deviceMemory ≤ 2GB` hoặc `hardwareConcurrency ≤ 2`) → tự động set `data-quality="reduced"` → dim mesh, dim halo, ẩn motes, dừng animation. Skip đo FPS khi `prefers-reduced-motion: reduce`. Prop `forceQuality?: 'auto' | 'full' | 'reduced'` để override.
-- Route-level lazy load: kiểm 80+ route trong `apps/web/src/router/index.ts` — toàn bộ đã dùng `() => import(...)` từ trước, không có view nào cần convert. KHÔNG đụng route names / guards.
-
-### Phase 11 — Final docs + gates + PR finalize
-Commit `docs(web): update Cửu Thiên Mộng luxury UI completion report`. Update `CONTINUE.md` + `docs/AI_HANDOFF_REPORT.md` với log đầy đủ. Chạy gate cuối (han / lint / typecheck / test / build), đổi PR title thành `feat(web): complete Cửu Thiên Mộng luxury UI roadmap` và flip draft → ready for review.
-
-### Phase 10.B — Wire `XTPullRefresh` vào production view (commit này)
-Commit `feat(web): wire XTPullRefresh into production views`. Phase 10 chỉ ship primitive — phase này wrap vào 7 list-heavy view (MailView, MissionView, BossHubView, LeaderboardView, AchievementView, QuestView, MarketV2View) với handler refresh hiện hữu (`refresh()` / `load()` / `questStore.load()` / `achievements.fetchState()` …). Thêm 3 key i18n trong `common`: `pullToRefresh`, `releaseToRefresh`, `refreshing` (vi.json + en.json). Test mới `src/views/__tests__/XTPullRefreshWiring.test.ts` assert primitive được mount với test-id chuẩn `<view>-pull-refresh` cho ít nhất 2 view. Touch gesture giữ nguyên (jsdom không simulate được), chỉ verify wiring + slot label. Không đụng business logic, không thêm dependency, không tạo branch mới.
+### Phase 7 — Docs + final gate
+Commit này: update `CONTINUE.md` + `docs/AI_HANDOFF_REPORT.md` với log đầy
+đủ rồi mở PR.
 
 ---
 
-## NHỮNG THỨ BỎ QUA VÌ RỦI RO (ghi rõ theo brief)
+## RISK NOTES
 
-1. **Swipe-back trên route con** (Phase 10.B): bỏ qua. Vue Router không có gesture primitive tự nhiên, viết tay rủi ro xung đột với scroll vertical + history stack. Brief cho phép bỏ qua nếu rủi ro.
-2. **Long-press card → context menu** (Phase 10.B): bỏ qua. App chưa có context menu primitive thống nhất; cài long-press dễ vỡ click handler cũ ở Inventory/Market. Brief cho phép bỏ qua.
-3. **Breakthrough / RareDrop / Crit FX riêng cho Phase 10.A**: không tạo mới. PR #614 đã ship `BreakthroughBanner`, `RareDropPopup`, `FloatingCombatText`, `CombatFeedbackTimeline` đầy đủ với particle shower / rarity border / shockwave / prefers-reduced-motion fallback. Tạo thêm sẽ trùng lặp.
-4. **Sect war banner full-screen**: `SectWarView` đã có announcement đúng thuần Việt từ phase 2 (`XTLuxHero` adopt) — không tạo overlay riêng vì không có trigger event mới ở web, sẽ là FX không bao giờ chạy. Khi backend phát event sect war thực thì wrap bằng `XTLuxSection` + ambient canvas có sẵn.
-5. **EXP gain particle bay vào stat**: fallback floating particle đã có trong `XTCounter` (delta animation). Không thêm tracker DOM target vì rủi ro vỡ layout responsive.
-
-Tất cả các bỏ qua đều ghi vì rủi ro, không vì lười, và không đụng business logic / backend / Prisma / shared catalog / auth / market / quest / admin guard / monetization / socket.
+- **Feature flag gating**: cả 3 flag (`VISUAL_EFFECTS_ENABLED`,
+  `AUCTION_HOUSE_ENABLED`, `STORY_V2_ENABLED`) fail-open khi store chưa
+  hydrate hoặc fetch lỗi. Server `FEATURE_DISABLED` 503 vẫn là lớp cuối
+  ngăn truy cập runtime — KHÔNG dựa duy nhất vào FE guard.
+- **Backup offsite**: mặc định OFF (`BACKUP_OFFSITE_UPLOAD_ENABLED=false`).
+  Khi bật, lỗi upload không crash backup primary — chỉ tăng
+  `BackupAlertState.consecutiveFailures` + log alert. Admin phải config
+  bucket env trước khi enable.
+- **Pet combat bonus**: optional inject — nếu PetCombatModule chưa load,
+  CombatService fallback skip bonus aggregation (không throw).
+- **Stamina-full notification**: debounce qua InventoryService internal
+  flag → chỉ trigger 1 lần per breach point, không spam khi player tick
+  liên tục ở cap.
+- **Auth hydration admin route**: QA-004 fix đã ship trong foundation
+  commit (`e28f1e33` merged `main`). PR này KHÔNG đụng lại.
+- **NPC gift timezone**: chuyển UTC → ICT có thể cho player claim gift
+  thêm 1 lượt nếu hôm trước claim lúc UTC bucket gần 17:00 ICT. Gift tier
+  nhỏ (< 200 linh thạch/lượt), KHÔNG vi phạm econ.
 
 ---
 
-## GATE CUỐI
+## TEST EVIDENCE (local)
 
-```
-rg '[\x{4e00}-\x{9fff}]' apps/web/src   # 0 match
-pnpm -C apps/web lint                    # pass (max-warnings 0)
-pnpm -C apps/web typecheck                # pass
-pnpm -C apps/web test                     # 230 file / 2469 test pass
-pnpm -C apps/web build                    # pass (xem log phase 11)
-```
+| Workspace | Result |
+|---|---|
+| `pnpm --filter @xuantoi/shared build` | ✅ pass |
+| `pnpm --filter @xuantoi/shared test` | ✅ 4169/4169 |
+| `pnpm -C apps/api lint` | ✅ pass |
+| `pnpm -C apps/api test` | ⏳ chạy với Postgres + Redis up (Phase 7) |
+| `pnpm -C apps/web lint` | ✅ pass |
+| `pnpm -C apps/web typecheck` | ✅ pass |
+| `pnpm -C apps/web test` | ✅ 2486/2486 |
+| Han gate `rg '[\x{4e00}-\x{9fff}]' apps/web/src` | ✅ 0 match |
 
 ---
 
-## NHỚ KHI CONTINUE
+## CỐ Ý KHÔNG LÀM (defer)
 
-- KHÔNG tạo branch mới, KHÔNG tách PR. Tiếp tục push vào branch hiện hành nếu cần fix CI.
-- KHÔNG đụng backend, Prisma, shared catalog, business logic gameplay, auth, market, quest, admin guard, monetization, socket.
-- KHÔNG dùng chữ Hán trong `apps/web/src`. Han gate phải pass.
-- KHÔNG xoá `data-testid`. KHÔNG disable test. KHÔNG xoá test để pass.
-- Mỗi commit chạy gate trước.
+- Alchemy V2 (Phase 26.1).
+- NPC Romance / Marriage Path (Phase 12.10.E).
+- Arena V2 follow-up (season reward / Hall of Fame / ELO curve).
+- Sect War foundation (Phase 29.1).
+- Spirit Vein Territory (Phase 29.2).
+- Admin Control Center V2 PR2-PR6 (player support / editor UI /
+  LiveOpsSchedule versioning / anti-cheat actions / runbook).
+- Real-time PvP.
+
+---
+
+## QUY TẮC CỨNG (đã tuân thủ)
+
+- KHÔNG push thẳng `main`.
+- KHÔNG mở PR mới — finalize 1 PR duy nhất trên branch hiện hành.
+- KHÔNG disable / xoá test để pass. KHÔNG fake green.
+- KHÔNG commit secret.
+- KHÔNG bypass `ECONOMY_MODEL` invariant.
+- KHÔNG grant Tiên Ngọc qua admin bypass.
+- KHÔNG đổi Prisma schema / migration ngoài UNIQUE additive đã ship.
+- KHÔNG phá i18n parity, KHÔNG thêm chữ Hán (`[\u4e00-\u9fff]`) vào
+  `apps/web/src`, KHÔNG phá `data-testid`.

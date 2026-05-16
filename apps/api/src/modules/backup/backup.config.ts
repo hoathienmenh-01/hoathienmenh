@@ -37,6 +37,22 @@ export interface BackupConfig {
   readonly backupDir: string;
   /** Auto-prune ngày (`scripts/backup-db.sh` $BACKUP_RETENTION_DAYS). 0 = disabled. */
   readonly retentionDays: number;
+  /**
+   * Phase 17.3 — Offsite upload (S3/MinIO) toggle. Khi `true`, sau mỗi
+   * backup local SUCCESS, `BackupService` sẽ spawn
+   * `scripts/backup-to-s3.sh` để upload offsite. Khi env `BACKUP_S3_*`
+   * thiếu/invalid → skip với warning (KHÔNG fail backup local).
+   *
+   * Default `false` ở local/test/staging — production phải set tường
+   * minh `BACKUP_OFFSITE_UPLOAD_ENABLED=true` cùng đủ `BACKUP_S3_*`.
+   */
+  readonly offsiteUploadEnabled: boolean;
+  /**
+   * Phase 17.3 — Số tuần backup fail liên tiếp trước khi admin panel
+   * raise alert. Default 3 (≈ 3 tuần với cron weekly). Set 0 để disable
+   * alert (chỉ hiển thị count, không escalate).
+   */
+  readonly alertConsecutiveFailures: number;
 }
 
 /**
@@ -64,6 +80,12 @@ export const BACKUP_CRON_DEFAULT_TZ = 'Asia/Ho_Chi_Minh';
 
 /** Default `BACKUP_DIR` (forward xuống shell script). */
 export const BACKUP_DIR_DEFAULT = './backups';
+
+/**
+ * Phase 17.3 — Default alert threshold cho consecutive backup failures.
+ * 3 tuần × 1 cron weekly = 3 lần fail → admin panel raise alert.
+ */
+export const BACKUP_ALERT_CONSECUTIVE_FAILURES_DEFAULT = 3;
 
 const TRUE_VALUES = new Set(['true', '1', 'yes', 'on']);
 
@@ -124,5 +146,11 @@ export function readBackupConfig(
     timezone: readString(env, 'BACKUP_CRON_TZ', BACKUP_CRON_DEFAULT_TZ),
     backupDir: readString(env, 'BACKUP_DIR', BACKUP_DIR_DEFAULT),
     retentionDays: readInt(env, 'BACKUP_RETENTION_DAYS', 0),
+    offsiteUploadEnabled: readBool(env, 'BACKUP_OFFSITE_UPLOAD_ENABLED', false),
+    alertConsecutiveFailures: readInt(
+      env,
+      'BACKUP_ALERT_CONSECUTIVE_FAILURES',
+      BACKUP_ALERT_CONSECUTIVE_FAILURES_DEFAULT,
+    ),
   };
 }
