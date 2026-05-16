@@ -9,6 +9,7 @@ import { claimMail, listMail, readMail, type MailView } from '@/api/mail';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
+import XTListStagger from '@/components/xianxia/XTListStagger.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { formatItemRewardList } from '@/lib/itemName';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
@@ -155,12 +156,13 @@ function formatDate(iso: string): string {
         <div v-else-if="mails.length === 0" class="text-ink-300 text-sm p-2">
           {{ t('mail.empty') }}
         </div>
-        <ul v-else class="space-y-1">
+        <XTListStagger v-else tag="ul" class="space-y-1">
           <li
-            v-for="m in mails"
+            v-for="(m, idx) in mails"
             :key="m.id"
             class="cursor-pointer rounded p-2 text-sm hover:bg-ink-900/60"
             :class="selectedId === m.id ? 'bg-ink-900/60' : ''"
+            :style="{ '--xt-list-index': idx }"
             @click="select(m)"
           >
             <div class="flex items-center gap-2">
@@ -183,7 +185,7 @@ function formatDate(iso: string): string {
               {{ m.senderName }} · {{ formatDate(m.createdAt) }}
             </div>
           </li>
-        </ul>
+        </XTListStagger>
       </aside>
 
       <section class="border border-ink-300/40 rounded bg-ink-700/30 p-4 min-h-[50vh]">

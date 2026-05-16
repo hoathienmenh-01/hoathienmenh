@@ -312,16 +312,18 @@ onMounted(async () => {
         {{ t('achievements.empty') }}
       </section>
 
-      <section
+      <XTListStagger
         v-else
+        tag="section"
         class="grid grid-cols-1 md:grid-cols-2 gap-3"
         data-testid="achievements-list"
       >
         <article
-          v-for="row in filtered"
+          v-for="(row, idx) in filtered"
           :key="row.achievementKey"
-          class="bg-ink-700/30 border border-ink-300/20 rounded p-3 space-y-2"
+          class="bg-ink-700/30 border border-ink-300/20 rounded p-3 space-y-2 xt-hover-lift"
           :data-testid="`achievements-card-${row.achievementKey}`"
+          :style="{ '--xt-list-index': idx }"
         >
           <header class="flex items-baseline justify-between gap-2 flex-wrap">
             <h2 class="text-amber-200 text-base font-semibold">{{ row.def.nameVi }}</h2>
@@ -421,7 +423,7 @@ onMounted(async () => {
             {{ claimButtonLabel(row) }}
           </button>
         </article>
-      </section>
+      </XTListStagger>
     </div>
   </AppShell>
 </template>

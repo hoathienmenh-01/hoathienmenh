@@ -797,3 +797,105 @@ html.xt-silk-disabled .xt-silk-leave-to {
   clip-path: none;
   opacity: 1;
 }
+
+/* ── List stagger (Cửu Thiên Mộng Phase 6). ─────────────────────────── */
+/*
+ * Cho TransitionGroup `xt-list-item` — fade-in + slight Y translate +
+ * stagger delay theo CSS var `--xt-list-index` (set inline ở từng row).
+ * Tôn trọng prefers-reduced-motion + html[data-motion="off"] (collapse).
+ */
+.xt-list-item-enter-active,
+.xt-list-item-appear-active {
+  transition:
+    opacity 0.42s var(--xt-ease-out, cubic-bezier(0.22, 0.61, 0.36, 1)),
+    transform 0.42s var(--xt-ease-out, cubic-bezier(0.22, 0.61, 0.36, 1));
+  transition-delay: calc(var(--xt-list-index, 0) * 40ms);
+  will-change: opacity, transform;
+}
+.xt-list-item-enter-from,
+.xt-list-item-appear-from {
+  opacity: 0;
+  transform: translate3d(0, 8px, 0);
+}
+.xt-list-item-enter-to,
+.xt-list-item-appear-to {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+.xt-list-item-leave-active {
+  transition:
+    opacity 0.22s ease-out,
+    transform 0.22s ease-out;
+}
+.xt-list-item-leave-from {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+.xt-list-item-leave-to {
+  opacity: 0;
+  transform: translate3d(0, -4px, 0);
+}
+.xt-list-item-move {
+  transition: transform 0.32s var(--xt-ease-soft, cubic-bezier(0.32, 0.72, 0.24, 1));
+}
+@media (prefers-reduced-motion: reduce) {
+  .xt-list-item-enter-active,
+  .xt-list-item-appear-active,
+  .xt-list-item-leave-active,
+  .xt-list-item-move {
+    transition: opacity 0.12s ease-out;
+    transition-delay: 0ms;
+  }
+  .xt-list-item-enter-from,
+  .xt-list-item-appear-from,
+  .xt-list-item-leave-to {
+    transform: none;
+  }
+}
+html[data-motion='off'] .xt-list-item-enter-active,
+html[data-motion='off'] .xt-list-item-appear-active,
+html[data-motion='off'] .xt-list-item-leave-active,
+html[data-motion='off'] .xt-list-item-move {
+  transition: none;
+  transition-delay: 0ms;
+}
+html[data-motion='off'] .xt-list-item-enter-from,
+html[data-motion='off'] .xt-list-item-appear-from {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Hover-lift utility (Cửu Thiên Mộng Phase 6). ───────────────────── */
+/*
+ * Tiêu chuẩn hoá cảm giác "ngẩng lên" cho mọi card / row interactive.
+ * Áp dụng song song với `.xt-card--elevated` đã có; class này dùng cho
+ * những trường hợp KHÔNG dùng XianxiaCard (ví dụ ul > li, button row).
+ *
+ * Mobile (pointer: coarse) tự disable lift để tránh sticky-hover.
+ */
+.xt-hover-lift {
+  transition:
+    transform var(--xt-motion-base, 220ms) var(--xt-ease-soft, ease),
+    box-shadow var(--xt-motion-base, 220ms) var(--xt-ease-soft, ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .xt-hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--xt-shadow-depth-2, 0 8px 18px rgba(0, 0, 0, 0.42));
+  }
+  .xt-hover-lift:focus-visible {
+    transform: translateY(-2px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xt-hover-lift,
+  .xt-hover-lift:hover {
+    transition: none;
+    transform: none;
+  }
+}
+html[data-motion='off'] .xt-hover-lift,
+html[data-motion='off'] .xt-hover-lift:hover {
+  transition: none;
+  transform: none;
+}

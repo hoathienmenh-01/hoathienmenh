@@ -14,6 +14,7 @@ import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
+import XTListStagger from '@/components/xianxia/XTListStagger.vue';
 import type { QuestKind, QuestProgressView } from '@/api/quest';
 import type { StoryDungeonView } from '@/api/storyDungeon';
 
@@ -295,16 +296,18 @@ onMounted(async () => {
         }}
       </div>
 
-      <ul
+      <XTListStagger
         v-else
+        tag="ul"
         class="space-y-3"
         data-testid="quest-list"
       >
         <li
-          v-for="q in filteredQuests"
+          v-for="(q, idx) in filteredQuests"
           :key="q.key"
-          class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-2"
+          class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-2 xt-hover-lift"
           :data-testid="`quest-row-${q.key}`"
+          :style="{ '--xt-list-index': idx }"
         >
           <header class="flex items-baseline justify-between gap-2 flex-wrap">
             <div class="flex items-baseline gap-2 flex-wrap">
@@ -495,7 +498,7 @@ onMounted(async () => {
             </div>
           </div>
         </li>
-      </ul>
+      </XTListStagger>
     </div>
   </AppShell>
 </template>
