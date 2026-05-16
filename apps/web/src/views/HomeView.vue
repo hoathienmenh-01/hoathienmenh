@@ -166,69 +166,35 @@ async function onBreakthrough(): Promise<void> {
 
     <!-- ============= TAB: Overview ============= -->
     <div v-if="game.character && activeTab === 'overview'">
-      <!-- Compact character summary card — wrap với XTSealFrame jade tone (Đạo Thân presence). -->
-      <XTSealFrame
-        tone="jade"
-        
-        
-        rounded="xl"
-        inset="tight"
-        class="mb-4 ve-section-enter ve-section-enter-delay-2"
-        test-id="home-char-summary-frame"
-        aria-label="Character summary frame"
+      <!-- Phase 15.12 — Overview action strip. Tên / cảnh giới / EXP / HP /
+           MP / lực chiến đã được render trong `XTHomeDashboard` (hero +
+           stat tiles) ở trên (PR 2 đã wire real data). Ở đây chỉ giữ 2
+           hành động gameplay (cultivate toggle + breakthrough) + last-tick
+           info để player thao tác trực tiếp từ Overview, KHÔNG lặp lại
+           tên / cảnh giới / lực chiến. Detail summary đầy đủ thuộc về
+           Character tab. -->
+      <section
+        class="mb-4 rounded-xl border border-[rgba(242,215,137,0.25)] bg-[rgba(14,19,24,0.55)] p-3 ve-section-enter ve-section-enter-delay-2 ve-card-interactive"
+        data-testid="home-char-actions"
       >
-        <section class="rounded-xl border border-[rgba(242,215,137,0.25)] bg-[rgba(14,19,24,0.55)] p-4 ve-card-interactive ve-card-glow" data-testid="home-char-summary">
-          <div class="flex items-center justify-between gap-3 mb-3">
-            <div>
-              <XTPageEyebrow
-                label="Đạo Thân Tiên Cốt"
-                test-id="home-char-summary-eyebrow" />
-              <h2 class="mt-1 text-lg tracking-widest font-bold">{{ game.character.name }}</h2>
-              <span class="text-xs text-[var(--xt-gold-bright)]">{{ game.realmFullName }}</span>
-            </div>
-            <div class="flex gap-2">
-              <MButton size="sm" :loading="submitting" @click="toggleCultivate">
-                {{ game.character.cultivating ? t('home.cultivate.stop') : t('home.cultivate.start') }}
-              </MButton>
-              <MButton size="sm" :loading="submitting" :disabled="!atPeak" @click="onBreakthrough">
-                {{ t('home.breakthrough.submit') }}
-              </MButton>
-            </div>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <XTPageEyebrow
+            label="Đạo Thân Tiên Cốt"
+            test-id="home-char-summary-eyebrow"
+          />
+          <div class="flex gap-2">
+            <MButton size="sm" :loading="submitting" @click="toggleCultivate">
+              {{ game.character.cultivating ? t('home.cultivate.stop') : t('home.cultivate.start') }}
+            </MButton>
+            <MButton size="sm" :loading="submitting" :disabled="!atPeak" @click="onBreakthrough">
+              {{ t('home.breakthrough.submit') }}
+            </MButton>
           </div>
-          <div class="space-y-2">
-            <div>
-              <div class="flex justify-between text-xs text-ink-300">
-                <span>{{ t('home.expLabel') }}</span>
-                <span>{{ expText }}</span>
-              </div>
-              <div class="h-2 mt-1 rounded-full bg-ink-900/60 overflow-hidden">
-                <div
-                  class="h-full rounded-full transition-all"
-                  :class="game.character.cultivating ? 'bg-emerald-400 shadow-[0_0_8px_rgba(95,227,198,0.5)]' : 'bg-ink-300'"
-                  :style="{ width: Math.round(game.expProgress * 100) + '%' }"
-                />
-              </div>
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <div class="text-xs text-ink-300 flex justify-between"><span>HP</span><span>{{ game.character.hp }} / {{ game.character.hpMax }}</span></div>
-                <div class="h-1.5 mt-1 rounded-full bg-ink-900/60 overflow-hidden">
-                  <div class="h-full rounded-full bg-rose-400 shadow-[0_0_6px_rgba(244,63,94,0.4)]" :style="{ width: (game.character.hp / game.character.hpMax) * 100 + '%' }" />
-                </div>
-              </div>
-              <div>
-                <div class="text-xs text-ink-300 flex justify-between"><span>MP</span><span>{{ game.character.mp }} / {{ game.character.mpMax }}</span></div>
-                <div class="h-1.5 mt-1 rounded-full bg-ink-900/60 overflow-hidden">
-                  <div class="h-full rounded-full bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.4)]" :style="{ width: (game.character.mp / game.character.mpMax) * 100 + '%' }" />
-                </div>
-              </div>
-            </div>
-          </div>
-          <p v-if="game.lastTickAt" class="text-xs text-ink-300 mt-2">
-            {{ t('home.lastTick', { gain: game.lastTickGain, time: new Date(game.lastTickAt).toLocaleTimeString() }) }}
-          </p>
-        </section>
-      </XTSealFrame>
+        </div>
+        <p v-if="game.lastTickAt" class="text-xs text-ink-300 mt-2">
+          {{ t('home.lastTick', { gain: game.lastTickGain, time: new Date(game.lastTickAt).toLocaleTimeString() }) }}
+        </p>
+      </section>
 
       <DailyLoginCard class="mb-4 ve-section-enter ve-section-enter-delay-3" />
       <OnboardingChecklist class="mb-4 ve-section-enter ve-section-enter-delay-3" />
@@ -313,11 +279,18 @@ async function onBreakthrough(): Promise<void> {
 
     <!-- ============= TAB: Character ============= -->
     <div v-if="game.character && activeTab === 'character'">
-      <section class="mb-4 rounded-xl border border-[rgba(242,215,137,0.25)] bg-[rgba(14,19,24,0.55)] p-5 ve-section-enter ve-card-glow">
-        <header class="mb-3 flex items-center justify-between">
-          <h2 class="text-xl tracking-widest">{{ game.character.name }}</h2>
-          <span class="text-xs text-[var(--xt-gold-bright)]">{{ game.realmFullName }}</span>
-        </header>
+      <!-- Phase 15.12 — Character tab giữ EXP / HP / MP bars + cultivate /
+           breakthrough actions; tên + cảnh giới đã hiển thị ở `XTHomeDashboard`
+           hero ở trên, không lặp lại header nữa để tránh duplicate. -->
+      <section
+        class="mb-4 rounded-xl border border-[rgba(242,215,137,0.25)] bg-[rgba(14,19,24,0.55)] p-5 ve-section-enter ve-card-glow"
+        data-testid="home-char-detail"
+      >
+        <XTPageEyebrow
+          label="Trạng Thái Cốt Thân"
+          class="mb-3"
+          test-id="home-char-detail-eyebrow"
+        />
         <div class="space-y-3">
           <div>
             <div class="flex justify-between text-xs text-ink-300">
