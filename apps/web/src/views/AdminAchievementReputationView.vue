@@ -71,7 +71,7 @@ onMounted(async () => {
     <div class="max-w-6xl mx-auto space-y-4">
       <header class="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
-          <XTPageEyebrow label="Công Trạng Thẩm Định" />
+          <XTPageEyebrow caps="CÔNG TRẠNG THẨM ĐỊNH" label="Công Trạng Thẩm Định" />
           <h1 class="text-2xl tracking-widest font-bold mt-1">
             {{ t('adminAchievement.title') }}
           </h1>

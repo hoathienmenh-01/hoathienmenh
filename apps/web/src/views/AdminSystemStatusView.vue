@@ -99,7 +99,7 @@ onMounted(() => {
   <AppShell>
     <div class="max-w-5xl mx-auto space-y-4">
       <header>
-        <XTPageEyebrow label="Xã Tắc Trần Ủy" />
+        <XTPageEyebrow caps="XÃ TẮC TRẦN ỦY" label="Xã Tắc Trần Ủy" />
         <h1 class="text-2xl tracking-widest font-bold mt-1">
           {{ t('adminSystemStatus.title') }}
         </h1>

@@ -154,7 +154,7 @@ async function confirmResolve() {
   <AppShell>
     <section class="admin-pvp" data-test="admin-pvp-view">
       <header class="admin-pvp__header">
-        <XTPageEyebrow label="Đấu Khiển Phủ" />
+        <XTPageEyebrow caps="ĐẤU KHIỂN PHỦ" label="Đấu Khiển Phủ" />
         <h1 class="mt-1">{{ t('adminPvp.title') }}</h1>
         <p>{{ t('adminPvp.intro') }}</p>
       </header>

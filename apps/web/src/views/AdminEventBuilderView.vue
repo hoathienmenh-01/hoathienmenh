@@ -238,7 +238,7 @@ onMounted(async () => {
   <AppShell>
     <div class="admin-event-builder">
       <header class="header">
-        <XTPageEyebrow label="Sự Đức Là Ngổ" />
+        <XTPageEyebrow caps="SỰ KIỆN TẾ ĐÀN" label="Sự Kiện Tế Đàn" />
         <h1 class="mt-1">{{ t('adminEvents.title') }}</h1>
         <p class="muted">{{ t('adminEvents.subtitle') }}</p>
       </header>

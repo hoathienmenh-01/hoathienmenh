@@ -147,7 +147,7 @@ function handleErr(e: unknown): void {
 <template>
   <AppShell>
     <section class="admin-mail-view" data-testid="admin-mail-view">
-      <XTPageEyebrow label="Phi Tiên Báo Tán" />
+      <XTPageEyebrow caps="PHI TIÊN BÁO TÁN" label="Phi Tiên Báo Tán" />
       <h1 class="mt-1">{{ t('adminMail.title') }}</h1>
       <p class="muted">{{ t('adminMail.subtitle') }}</p>
 

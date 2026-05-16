@@ -179,7 +179,7 @@ onMounted(loadAudit);
 <template>
   <AppShell>
     <div class="space-y-4 p-4">
-      <XTPageEyebrow label="Linh Thú Phổ Lục" />
+      <XTPageEyebrow caps="LINH THÚ PHỔ LỤC" label="Linh Thú Phổ Lục" />
       <h1 class="text-xl font-bold mt-1">{{ t('adminPets.title') }}</h1>
 
       <div class="flex gap-2 flex-wrap">

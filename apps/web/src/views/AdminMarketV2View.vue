@@ -96,7 +96,7 @@ onMounted(refresh);
 <template>
   <AppShell>
     <div class="space-y-4 p-4">
-      <XTPageEyebrow label="Thương Tập Tổng Khiển" />
+      <XTPageEyebrow caps="THƯƠNG TẬP TỔNG KHIỂN" label="Thương Tập Tổng Khiển" />
       <h1 class="text-xl font-bold mt-1">{{ t('adminMarket.title') }}</h1>
 
       <div class="flex items-center gap-2">

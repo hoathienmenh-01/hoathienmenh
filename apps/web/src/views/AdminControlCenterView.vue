@@ -255,7 +255,7 @@ const contentTypes = CONTENT_STATUS_TYPES;
   <AppShell>
     <div class="max-w-6xl mx-auto space-y-4">
       <header class="flex items-center gap-3">
-        <XTPageEyebrow label="Chủ Khiển Thiên Điện" />
+        <XTPageEyebrow caps="CHỦ KHIỂN THIÊN ĐIỆN" label="Chủ Khiển Thiên Điện" />
         <h1 class="text-2xl tracking-widest font-bold mt-1">
           {{ t('adminControlCenter.title') }}
         </h1>

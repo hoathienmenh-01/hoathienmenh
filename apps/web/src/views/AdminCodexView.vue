@@ -89,7 +89,7 @@ onMounted(refresh);
 <template>
   <AppShell>
     <div class="space-y-4 p-4">
-      <XTPageEyebrow label="Thiên Tiịch Tổng Bác" />
+      <XTPageEyebrow caps="THIÊN TỊCH TỔNG BÁC" label="Thiên Tịch Tổng Bác" />
       <h1 class="text-xl font-bold mt-1">{{ t('adminCodex.title') }}</h1>
 
       <!-- Reindex -->

@@ -79,7 +79,7 @@ onMounted(() => {
   <AppShell>
     <div class="max-w-5xl mx-auto space-y-4">
       <header>
-        <XTPageEyebrow label="Ngự Sử Đài" />
+        <XTPageEyebrow caps="NGỰ SỬ ĐÀI" label="Ngự Sử Đài" />
         <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('adminReports.title') }}</h1>
         <p class="text-xs text-ink-300 mt-1">{{ t('adminReports.subtitle') }}</p>
       </header>
