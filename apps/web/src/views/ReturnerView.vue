@@ -12,7 +12,7 @@ import {
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 const auth = useAuthStore();
@@ -71,19 +71,18 @@ function handleErr(e: unknown): void {
 <template>
   <AppShell>
     <section class="returner-view" data-testid="returner-view">
-      <XTSealFrame
+      <XTLuxHero
+        eyebrow="CỐ NHÂN QUY HOÀN"
+        label="Cố Nhân Quy Hoàn"
+        :title="t('returner.title')"
+        :subtitle="t('returner.subtitle')"
         tone="gold"
-        corner-ornaments="❀✦❀✦"
-        watermark-letter="T"
-        rounded="xl"
-        inset="tight"
-        test-id="returner-view-seal-frame"
-        aria-label="Cố Nhân Quy Hoàn hero frame"
+        watermark-letter="C"
+        breadcrumb="Sự Kiện · Hồi Quy"
+        test-id="returner-view-hero"
       >
-        <XTPageEyebrow caps="CỐ NHÂN QUY HOÀN" label="Cố Nhân Quy Hoàn" />
-        <h1 class="mt-1">{{ t('returner.title') }}</h1>
-        <p class="muted">{{ t('returner.subtitle') }}</p>
-      </XTSealFrame>
+        <XTPageEyebrow caps="CỐ NHÂN QUY HOÀN" label="Cố Nhân Quy Hoàn" class="sr-only" />
+      </XTLuxHero>
 
       <div v-if="loading" data-testid="returner-loading">{{ t('common.loading') }}</div>
 

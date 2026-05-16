@@ -8,7 +8,7 @@ import { useToastStore } from '@/stores/toast';
 import { claimMail, listMail, readMail, type MailView } from '@/api/mail';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { formatItemRewardList } from '@/lib/itemName';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
@@ -122,19 +122,19 @@ function formatDate(iso: string): string {
 
 <template>
   <AppShell>
-    <XTSealFrame
+    <XTLuxHero
+      eyebrow="PHI CÁP TRUYỀN THƯ"
+      label="Phi Cáp Truyền Thư"
+      :title="t('mail.title')"
+      :subtitle="t('mail.subtitle', '')"
       tone="gold"
-      corner-ornaments="❀❦❀❦"
-      watermark-letter="G"
-      rounded="xl"
-      inset="tight"
-      test-id="mail-view-seal-frame"
-      aria-label="Phi Cáp Truyền Thư hero frame"
+      watermark-letter="P"
+      breadcrumb="Xã Hội · Hòm Thư"
+      test-id="mail-view-hero"
       class="mb-4"
     >
-      <div class="flex items-center gap-3 flex-wrap">
-        <XTPageEyebrow caps="PHI CÁP TRUYỀN THƯ" label="Phi Cáp Truyền Thư" />
-        <h2 class="text-xl tracking-widest mt-1">{{ t('mail.title') }}</h2>
+      <XTPageEyebrow caps="PHI CÁP TRUYỀN THƯ" label="Phi Cáp Truyền Thư" class="sr-only" />
+      <div class="flex items-center gap-3 flex-wrap mt-3">
         <span
           v-if="unread > 0"
           class="text-[11px] px-1.5 py-0.5 rounded bg-amber-700/40 text-amber-200"
@@ -145,7 +145,7 @@ function formatDate(iso: string): string {
           {{ t('common.reload') }}
         </MButton>
       </div>
-    </XTSealFrame>
+    </XTLuxHero>
 
     <div class="grid grid-cols-1 md:grid-cols-[16rem_minmax(0,1fr)] gap-4">
       <aside class="border border-ink-300/40 rounded bg-ink-700/30 p-2 max-h-[70vh] overflow-y-auto">

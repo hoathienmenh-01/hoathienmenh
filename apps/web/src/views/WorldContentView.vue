@@ -16,7 +16,7 @@ import { useRouter } from 'vue-router';
 import { useWorldContentStore } from '@/stores/worldContent';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 
 const { t } = useI18n();
 const router = useRouter();
@@ -44,21 +44,18 @@ function goto(name: string): void {
 <template>
   <AppShell>
     <section class="world-content" data-testid="world-content-view">
-      <XTSealFrame
+      <XTLuxHero
+        eyebrow="THIÊN TIÊN THẾ GIỚI"
+        label="Thiên Tiên Thế Giới"
+        :title="t('worldContent.title')"
+        :subtitle="t('worldContent.subtitle')"
         tone="jade"
-        corner-ornaments="❖❧❖❧"
-        watermark-letter="M"
-        rounded="xl"
-        inset="tight"
-        test-id="world-content-view-seal-frame"
-        aria-label="Thiên Tiên Thế Giới hero frame"
+        watermark-letter="T"
+        breadcrumb="Nhiệm Vụ · Thế Giới"
+        test-id="world-content-view-hero"
       >
-        <header class="world-content__header">
-          <XTPageEyebrow caps="THIÊN TIÊN THẾ GIỚI" label="Thiên Tiên Thế Giới" />
-          <h1 class="mt-1">{{ t('worldContent.title') }}</h1>
-          <p>{{ t('worldContent.subtitle') }}</p>
-        </header>
-      </XTSealFrame>
+        <XTPageEyebrow caps="THIÊN TIÊN THẾ GIỚI" label="Thiên Tiên Thế Giới" class="sr-only" />
+      </XTLuxHero>
 
       <nav class="world-content__tabs">
         <button @click="goto('world-farm-maps')">

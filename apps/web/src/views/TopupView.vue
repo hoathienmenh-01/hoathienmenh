@@ -15,7 +15,7 @@ import {
 } from '@/api/topup';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
@@ -96,23 +96,18 @@ function fmtVND(n: number): string {
 <template>
   <AppShell>
     <div class="max-w-5xl mx-auto space-y-6">
-      <XTSealFrame
+      <XTLuxHero
+        eyebrow="TIÊN NGỌC HƯƠNG HỎA"
+        label="Tiên Ngọc Hương Hỏa"
+        :title="t('topup.title')"
+        :subtitle="t('topup.intro')"
         tone="gold"
-        corner-ornaments="❀✦❀✦"
         watermark-letter="T"
-        rounded="xl"
-        inset="tight"
-        test-id="topup-view-seal-frame"
-        aria-label="Tiên Ngọc Hương Hỏa hero frame"
+        breadcrumb="Kho Báu · Nạp Thẻ"
+        test-id="topup-view-hero"
       >
-        <header>
-          <XTPageEyebrow caps="TIÊN NGỌC HƯƠNG HỎA" label="Tiên Ngọc Hương Hỏa" />
-          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('topup.title') }}</h1>
-          <p class="text-ink-300 text-sm mt-1">
-            {{ t('topup.intro') }}
-          </p>
-        </header>
-      </XTSealFrame>
+        <XTPageEyebrow caps="TIÊN NGỌC HƯƠNG HỎA" label="Tiên Ngọc Hương Hỏa" class="sr-only" />
+      </XTLuxHero>
 
       <!-- Lưu ý nạp -->
       <section class="rounded border border-amber-300/40 bg-amber-900/20 p-3 text-xs text-amber-100">

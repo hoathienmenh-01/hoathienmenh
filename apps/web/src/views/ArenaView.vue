@@ -18,7 +18,7 @@ import { useToastStore } from '@/stores/toast';
 import { useFeatureFlagsStore } from '@/stores/featureFlags';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import MButton from '@/components/ui/MButton.vue';
 import FeatureDisabledBanner from '@/components/FeatureDisabledBanner.vue';
 
@@ -156,22 +156,19 @@ function outcomeKind(outcome: string, attackerId: string): 'win' | 'lose' | 'dra
 <template>
   <AppShell>
     <section class="px-4 py-6 max-w-4xl mx-auto" data-testid="arena-view">
-      <XTSealFrame
+      <XTLuxHero
+        eyebrow="LONG HỔ ĐẤU TRƯỜNG"
+        label="Long Hổ Đấu Trường"
+        :title="t('arena.title')"
+        :subtitle="t('arena.subtitle')"
         tone="seal"
-        corner-ornaments="◆✦◆✦"
-        watermark-letter="C"
-        rounded="xl"
-        inset="tight"
-        test-id="arena-view-seal-frame"
-        aria-label="Long Hổ Đấu Trường hero frame"
+        watermark-letter="L"
+        breadcrumb="Chiến Đạo · Đấu Trường"
+        test-id="arena-view-hero"
         class="mb-6"
       >
-        <header>
-          <XTPageEyebrow caps="LONG HỔ ĐẤU TRƯỜNG" label="Long Hổ Đấu Trường" />
-          <h1 class="text-2xl font-bold text-[var(--xt-text-gold)] mt-1">{{ t('arena.title') }}</h1>
-          <p class="text-sm text-slate-400 mt-1">{{ t('arena.subtitle') }}</p>
-        </header>
-      </XTSealFrame>
+        <XTPageEyebrow caps="LONG HỔ ĐẤU TRƯỜNG" label="Long Hổ Đấu Trường" class="sr-only" />
+      </XTLuxHero>
 
       <!-- Phase 15.4 — Arena disabled banner. -->
       <FeatureDisabledBanner

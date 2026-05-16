@@ -8,7 +8,7 @@ import { useStoryV2Store } from '@/stores/storyV2';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import type {
   Phase33ChapterView,
   Phase33QuestView,
@@ -187,23 +187,18 @@ onMounted(async () => {
   <AppShell>
     <div class="max-w-6xl mx-auto space-y-4" data-testid="story-v2-view">
       <!-- Header -->
-      <XTSealFrame
+      <XTLuxHero
+        eyebrow="TIÊN DUỆ TỰ SỰ"
+        label="Tiên Duệ Tự Sự"
+        :title="t('storyV2.title')"
+        :subtitle="t('storyV2.subtitle')"
         tone="gold"
-        corner-ornaments="❀❦❀❦"
-        watermark-letter="G"
-        rounded="xl"
-        inset="tight"
-        test-id="story-v2-seal-frame"
-        aria-label="Tiên Duệ Tự Sự hero frame"
+        watermark-letter="T"
+        breadcrumb="Nhiệm Vụ · Cốt Truyện"
+        test-id="story-v2-hero"
       >
-        <header class="flex items-baseline justify-between gap-3 flex-wrap">
-          <div>
-            <XTPageEyebrow caps="TIÊN DUỆ TỰ SỰ" label="Tiên Duệ Tự Sự" />
-            <h1 class="text-2xl tracking-widest font-bold mt-1">
-              {{ t('storyV2.title') }}
-            </h1>
-            <p class="text-sm text-ink-300">{{ t('storyV2.subtitle') }}</p>
-          </div>
+        <XTPageEyebrow caps="TIÊN DUỆ TỰ SỰ" label="Tiên Duệ Tự Sự" class="sr-only" />
+        <header class="flex items-baseline justify-end gap-3 flex-wrap">
           <div class="text-right text-xs text-ink-300 space-y-0.5">
             <div data-testid="story-v2-total-count">
               {{ t('storyV2.totalCount', { n: totalChapterCount }) }}
@@ -216,7 +211,7 @@ onMounted(async () => {
             </div>
           </div>
         </header>
-      </XTSealFrame>
+      </XTLuxHero>
 
       <!-- Loading / error -->
       <div

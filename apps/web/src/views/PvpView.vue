@@ -26,7 +26,7 @@ import {
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import MButton from '@/components/ui/MButton.vue';
 import type {
   PvpBalancePolicy,
@@ -157,21 +157,18 @@ const policyHints = computed(() => {
 <template>
   <AppShell>
     <section data-test="pvp-view" class="pvp-view">
-      <XTSealFrame
+      <XTLuxHero
+        eyebrow="SÁT PHẠT TRANH HUNG"
+        label="Sát Phạt Tranh Hung"
+        :title="t('pvp.title')"
+        :subtitle="t('pvp.intro')"
         tone="seal"
-        corner-ornaments="◆✦◆✦"
-        watermark-letter="C"
-        rounded="xl"
-        inset="tight"
-        test-id="pvp-view-seal-frame"
-        aria-label="Sát Phạt Tranh Hung hero frame"
+        watermark-letter="S"
+        breadcrumb="Chiến Đạo · PvP"
+        test-id="pvp-view-hero"
       >
-        <header class="pvp-view__header">
-          <XTPageEyebrow caps="SÁT PHẠT TRANH HUNG" label="Sát Phạt Tranh Hung" />
-          <h1>{{ t('pvp.title') }}</h1>
-          <p class="pvp-view__intro">{{ t('pvp.intro') }}</p>
-        </header>
-      </XTSealFrame>
+        <XTPageEyebrow caps="SÁT PHẠT TRANH HUNG" label="Sát Phạt Tranh Hung" class="sr-only" />
+      </XTLuxHero>
 
       <div v-if="loading && !policy" class="pvp-view__loading" data-test="pvp-loading">
         {{ t('pvp.loading') }}

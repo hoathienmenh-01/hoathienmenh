@@ -44,7 +44,7 @@ import { useToastStore } from '@/stores/toast';
 import type { AchievementRow } from '@/api/achievements';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 
 type CategoryFilter = 'all' | AchievementCategory;
 type TierFilter = 'all' | AchievementTier;
@@ -176,23 +176,18 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="max-w-5xl mx-auto space-y-4">
-      <XTSealFrame
+      <XTLuxHero
+        eyebrow="KỶ ĐỨC BI"
+        label="Kỷ Đức Bi"
+        :title="t('achievements.title')"
+        :subtitle="t('achievements.subtitle')"
         tone="jade"
-        corner-ornaments="❖❧❖❧"
-        watermark-letter="M"
-        rounded="xl"
-        inset="tight"
-        test-id="achievement-view-seal-frame"
-        aria-label="Kỷ Đức Bi hero frame"
+        watermark-letter="K"
+        breadcrumb="Nhiệm Vụ · Thành Tựu"
+        test-id="achievement-view-hero"
       >
-        <header class="flex items-baseline justify-between gap-3 flex-wrap">
-          <div>
-            <XTPageEyebrow caps="KỶ ĐỨC BI" label="Kỷ Đức Bi" />
-            <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('achievements.title') }}</h1>
-            <p class="text-xs text-ink-300 mt-1">
-              {{ t('achievements.subtitle') }}
-            </p>
-          </div>
+        <XTPageEyebrow caps="KỶ ĐỨC BI" label="Kỷ Đức Bi" class="sr-only" />
+        <header class="flex items-baseline justify-end gap-3 flex-wrap">
           <div
             class="text-xs text-ink-300"
             data-testid="achievements-summary"
@@ -205,7 +200,7 @@ onMounted(async () => {
             }}
           </div>
         </header>
-      </XTSealFrame>
+      </XTLuxHero>
 
       <!--
         Phase 11.10.F — stats summary 4 badge (total/locked/claimable/claimed)

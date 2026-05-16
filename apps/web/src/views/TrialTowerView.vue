@@ -14,7 +14,7 @@ import { useToastStore } from '@/stores/toast';
 import type { TrialTowerView } from '@/api/worldContent';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 
 const { t, locale } = useI18n();
 const store = useWorldContentStore();
@@ -95,21 +95,18 @@ function attemptBusy(towerKey: string, floor: number): boolean {
 <template>
   <AppShell>
     <section class="trial-tower" data-testid="trial-tower-view">
-      <XTSealFrame
+      <XTLuxHero
+        eyebrow="THÍ LUYỆN THÁP"
+        label="Thí Luyện Tháp"
+        :title="t('worldContent.tower.title')"
+        :subtitle="t('worldContent.tower.subtitle')"
         tone="seal"
-        corner-ornaments="◆✦◆✦"
-        watermark-letter="C"
-        rounded="xl"
-        inset="tight"
-        test-id="trial-tower-seal-frame"
-        aria-label="Thí Luyện Tháp hero frame"
+        watermark-letter="T"
+        breadcrumb="Chiến Đạo · Tháp"
+        test-id="trial-tower-hero"
       >
-        <header>
-          <XTPageEyebrow caps="THÍ LUYỆN THÁP" label="Thí Luyện Tháp" />
-          <h1 class="mt-1">{{ t('worldContent.tower.title') }}</h1>
-          <p>{{ t('worldContent.tower.subtitle') }}</p>
-        </header>
-      </XTSealFrame>
+        <XTPageEyebrow caps="THÍ LUYỆN THÁP" label="Thí Luyện Tháp" class="sr-only" />
+      </XTLuxHero>
 
       <div
         v-if="reloadFailed && towers.length === 0"

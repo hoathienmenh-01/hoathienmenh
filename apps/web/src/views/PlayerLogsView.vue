@@ -8,7 +8,7 @@
 import { useI18n } from 'vue-i18n';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 
 const { t } = useI18n();
@@ -17,21 +17,18 @@ const { t } = useI18n();
 <template>
   <AppShell>
     <div class="max-w-3xl mx-auto space-y-4">
-      <XTSealFrame
+      <XTLuxHero
+        eyebrow="NHẬT KÝ HUÝ KỶ"
+        label="Nhật Ký Huý Kỷ"
+        :title="t('playerLogs.title')"
+        :subtitle="t('playerLogs.subtitle')"
         tone="gold"
-        corner-ornaments="❀✦❀✦"
-        watermark-letter="T"
-        rounded="xl"
-        inset="tight"
-        test-id="player-logs-view-seal-frame"
-        aria-label="Nhật Ký Huý Kỷ hero frame"
+        watermark-letter="N"
+        breadcrumb="Hỗ Trợ · Nhật Ký"
+        test-id="player-logs-view-hero"
       >
-        <header>
-          <XTPageEyebrow caps="NHẬT KÝ HUÝ KỶ" label="Nhật Ký Huý Kỷ" />
-          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('playerLogs.title') }}</h1>
-          <p class="text-xs text-ink-300 mt-1">{{ t('playerLogs.subtitle') }}</p>
-        </header>
-      </XTSealFrame>
+        <XTPageEyebrow caps="NHẬT KÝ HUÝ KỶ" label="Nhật Ký Huý Kỷ" class="sr-only" />
+      </XTLuxHero>
       <EmptyState
         title-key="playerLogs.emptyTitle"
         description-key="playerLogs.emptyDescription"

@@ -7,7 +7,7 @@ import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import MButton from '@/components/ui/MButton.vue';
 import {
   getShopPacks,
@@ -136,19 +136,19 @@ onMounted(async () => {
 
 <template>
   <AppShell :title="t('shopPacks.title')">
-    <XTSealFrame
+    <XTLuxHero
+      eyebrow="TIÊN LỄ TRANG BAO"
+      label="Tiên Lễ Trang Bao"
+      :title="t('shopPacks.title')"
+      :subtitle="t('shopPacks.subtitle', '')"
       tone="gold"
-      corner-ornaments="❀✦❀✦"
       watermark-letter="T"
-      rounded="xl"
-      inset="tight"
-      test-id="shop-packs-view-seal-frame"
-      aria-label="Tiên Lễ Trang Bao hero frame"
+      breadcrumb="Kho Báu · Lễ Bao"
+      test-id="shop-packs-view-hero"
+      class="mb-4"
     >
-      <header>
-        <XTPageEyebrow caps="TIÊN LỄ TRANG BAO" label="Tiên Lễ Trang Bao" />
-      </header>
-    </XTSealFrame>
+      <XTPageEyebrow caps="TIÊN LỄ TRANG BAO" label="Tiên Lễ Trang Bao" class="sr-only" />
+    </XTLuxHero>
     <!-- Category filter -->
     <div class="flex flex-wrap gap-2 mb-4">
       <button

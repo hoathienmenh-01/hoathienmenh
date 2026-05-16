@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { itemByKey, type RoguelikeChoiceDef } from '@xuantoi/shared';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import { useRoguelikeStore } from '@/stores/roguelike';
 import { useToastStore } from '@/stores/toast';
 import type { RoguelikeClaimResult, RoguelikeRealmView } from '@/api/roguelike';
@@ -133,27 +133,22 @@ onMounted(() => {
 <template>
   <AppShell>
     <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
-      <XTSealFrame
+      <XTLuxHero
+        eyebrow="VÔ HẠN LỘ"
+        label="Vô Hạn Lộ"
+        :title="t('roguelike.title')"
+        :subtitle="t('roguelike.subtitle')"
         tone="seal"
-        corner-ornaments="◆✦◆✦"
-        watermark-letter="C"
-        rounded="xl"
-        inset="tight"
-        test-id="roguelike-seal-frame"
-        aria-label="Vô Hạn Lộ hero frame"
+        watermark-letter="V"
+        breadcrumb="Chiến Đấu · Vô Hạn"
+        test-id="roguelike-view-hero"
       >
+        <XTPageEyebrow caps="VÔ HẠN LỘ" label="Vô Hạn Lộ" class="sr-only" />
         <header class="rounded-3xl border border-amber-300/30 bg-ink-800/70 p-5">
           <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <XTPageEyebrow caps="VÔ HẠN LỘ" label="Vô Hạn Lộ" />
-              <p class="text-xs uppercase tracking-[0.3em] text-amber-300 mt-1">
+              <p class="text-xs uppercase tracking-[0.3em] text-amber-300">
                 {{ t('roguelike.kicker') }}
-              </p>
-              <h1 class="mt-2 text-3xl font-bold text-ink-50">
-                {{ t('roguelike.title') }}
-              </h1>
-              <p class="mt-2 max-w-3xl text-sm text-ink-300">
-                {{ t('roguelike.subtitle') }}
               </p>
             </div>
             <button
@@ -440,6 +435,7 @@ onMounted(() => {
             </button>
           </div>
         </div>
-      </xtsealframe></main>
+      </XTLuxHero>
+    </main>
   </AppShell>
 </template>

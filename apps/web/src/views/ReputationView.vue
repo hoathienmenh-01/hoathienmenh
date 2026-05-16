@@ -9,7 +9,7 @@ import { useReputationGoalsStore } from '@/stores/reputationGoals';
 import type { LongTermGoalRow } from '@/api/reputation-goals';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
-import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 
 type GroupFilter = 'all' | ReputationGroup;
 type GoalFilter = 'all' | LongTermGoalCategory | 'completed' | 'active';
@@ -58,21 +58,18 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="max-w-5xl mx-auto space-y-4">
-      <XTSealFrame
+      <XTLuxHero
+        eyebrow="HIỆP DANH THIÊN HẠ"
+        label="Hiệp Danh Thiên Hạ"
+        :title="t('reputation.title')"
+        :subtitle="t('reputation.subtitle')"
         tone="jade"
-        corner-ornaments="❖❧❖❧"
-        watermark-letter="M"
-        rounded="xl"
-        inset="tight"
-        test-id="reputation-view-seal-frame"
-        aria-label="Hiệp Danh Thiên Hạ hero frame"
+        watermark-letter="H"
+        breadcrumb="Nhiệm Vụ · Hiệp Danh"
+        test-id="reputation-view-hero"
       >
-        <header class="flex items-baseline justify-between gap-3 flex-wrap">
-          <div>
-            <XTPageEyebrow caps="HIỆP DANH THIÊN HẠ" label="Hiệp Danh Thiên Hạ" />
-            <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('reputation.title') }}</h1>
-            <p class="text-xs text-ink-300 mt-1">{{ t('reputation.subtitle') }}</p>
-          </div>
+        <XTPageEyebrow caps="HIỆP DANH THIÊN HẠ" label="Hiệp Danh Thiên Hạ" class="sr-only" />
+        <header class="flex items-baseline justify-end gap-3 flex-wrap">
           <div class="text-xs text-ink-300" data-testid="reputation-summary">
             {{
               t('reputation.summary', {
@@ -83,7 +80,7 @@ onMounted(async () => {
             }}
           </div>
         </header>
-      </XTSealFrame>
+      </XTLuxHero>
 
       <section
         v-if="!store.loaded"
