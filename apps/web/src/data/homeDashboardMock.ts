@@ -102,15 +102,6 @@ export interface HomeEquipmentSlot {
     | 'bottomRight';
 }
 
-export interface HomeChatMessage {
-  key: string;
-  author: string;
-  role: 'sect-elder' | 'disciple' | 'friend';
-  avatarGlyph: string;
-  message: string;
-  time: string;
-}
-
 export interface HomeQuickAction {
   key: string;
   label: string;
@@ -525,34 +516,13 @@ export const sectPanel = {
   members: '128/150',
 };
 
-export const chatMessages: HomeChatMessage[] = [
-  {
-    key: 'msg-1',
-    author: 'Sư huynh Lạc Vân',
-    role: 'sect-elder',
-    avatarGlyph: '☯',
-    message: 'Tông môn chuẩn bị công chiếm Linh Mạch Cấm Địa, mọi người chuẩn bị.',
-    time: '10:23',
-  },
-  {
-    key: 'msg-2',
-    author: 'Đạo hữu Minh Nguyệt',
-    role: 'disciple',
-    avatarGlyph: '☘',
-    message: 'Ai đi Phụ bản Ma Ảnh cùng không? Còn 2 slot.',
-    time: '10:19',
-  },
-  {
-    key: 'msg-3',
-    author: 'Đạo hữu Hàn Phong',
-    role: 'friend',
-    avatarGlyph: '✶',
-    message: 'Đã cống hiến 500 linh thạch cho tông môn.',
-    time: '10:15',
-  },
-];
-
-/* ───────────── BOTTOM NAV (mobile, 5 tab, giữa lớn) ───────────── */
+/* ───────────── BOTTOM NAV (mobile, 5 tab, giữa lớn) ─────────────
+ * Phase 15.13 — Chỉ dùng cho preview standalone của `XTHomeDashboard`
+ * (component prop `:nav-items` mặc định map vào đây). Production AppShell
+ * nav source-of-truth là `apps/web/src/lib/xtNav.ts` (`XT_BOTTOM_NAV` +
+ * `XT_NAV_GROUPS`). KHÔNG dùng `bottomNavItems` ở player `/home` chrome —
+ * `XTHomeBottomNav` chỉ render khi `chrome === "standalone"`, mà
+ * `HomeView` luôn nhúng dashboard dưới `chrome="embedded"`. */
 export const bottomNavItems: HomeBottomNavItem[] = [
   { key: 'home', label: 'Trang chủ', glyph: '⌂', to: '/home' },
   { key: 'cultivation', label: 'Tu luyện', glyph: '✦', to: '/cultivation' },
