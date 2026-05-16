@@ -13,6 +13,7 @@ import { useStoryDungeonStore } from '@/stores/storyDungeon';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import type { QuestKind, QuestProgressView } from '@/api/quest';
 import type { StoryDungeonView } from '@/api/storyDungeon';
 
@@ -209,23 +210,33 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="max-w-4xl mx-auto space-y-4" data-testid="quest-view">
-      <header class="flex items-baseline justify-between gap-3">
-        <div>
-          <XTPageEyebrow label="Thiên Mệnh Nhiệm Vụ" />
-          <h1 class="text-2xl tracking-widest font-bold mt-1">
-            {{ t('quest.title') }}
-          </h1>
-          <p class="text-sm text-ink-300">{{ t('quest.subtitle') }}</p>
-        </div>
-        <div class="text-right text-xs text-ink-300">
-          <div data-testid="quest-total-count">
-            {{ t('quest.totalCount', { n: totalCount }) }}
+      <XTSealFrame
+        tone="jade"
+        corner-ornaments="❖❧❖❧"
+        watermark-letter="M"
+        rounded="xl"
+        inset="tight"
+        test-id="quest-view-seal-frame"
+        aria-label="Thiên Mệnh Nhiệm Vụ hero frame"
+      >
+        <header class="flex items-baseline justify-between gap-3">
+          <div>
+            <XTPageEyebrow caps="THIÊN MỆNH NHIỆM VỤ" label="Thiên Mệnh Nhiệm Vụ" />
+            <h1 class="text-2xl tracking-widest font-bold mt-1">
+              {{ t('quest.title') }}
+            </h1>
+            <p class="text-sm text-ink-300">{{ t('quest.subtitle') }}</p>
           </div>
-          <div data-testid="quest-completed-count">
-            {{ t('quest.completedCount', { n: completedCount }) }}
+          <div class="text-right text-xs text-ink-300">
+            <div data-testid="quest-total-count">
+              {{ t('quest.totalCount', { n: totalCount }) }}
+            </div>
+            <div data-testid="quest-completed-count">
+              {{ t('quest.completedCount', { n: completedCount }) }}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      </XTSealFrame>
 
       <nav
         class="flex flex-wrap gap-2 text-sm"

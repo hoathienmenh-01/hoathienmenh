@@ -20,6 +20,7 @@ import {
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import { CODEX_ENTRY_TYPES, type CodexEntryType } from '@xuantoi/shared';
 
 const { t } = useI18n();
@@ -64,8 +65,18 @@ onMounted(refresh);
 <template>
   <AppShell>
     <div class="space-y-4 p-4">
-      <XTPageEyebrow label="Thiên Hạnh Nghi Phổ" />
-      <h1 class="text-xl font-bold mt-1">{{ t('codex.title') }}</h1>
+      <XTSealFrame
+        tone="jade"
+        corner-ornaments="❖❧❖❧"
+        watermark-letter="M"
+        rounded="xl"
+        inset="tight"
+        test-id="codex-view-seal-frame"
+        aria-label="Thiên Hạnh Nghi Phổ hero frame"
+      >
+        <XTPageEyebrow caps="THIÊN HẠNH NGHI PHỔ" label="Thiên Hạnh Nghi Phổ" />
+        <h1 class="text-xl font-bold mt-1">{{ t('codex.title') }}</h1>
+      </XTSealFrame>
 
       <!-- Progress summary -->
       <div v-if="progress" class="flex gap-4 text-sm bg-gray-800 rounded p-3">

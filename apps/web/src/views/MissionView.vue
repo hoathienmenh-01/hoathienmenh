@@ -13,6 +13,7 @@ import {
 } from '@/api/mission';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import { formatItemRewardList } from '@/lib/itemName';
@@ -174,8 +175,19 @@ function rewardSummary(m: MissionProgressView): string {
 
 <template>
   <AppShell>
-    <XTPageEyebrow label="Phụng Đạo Sứ Mệnh" />
-    <h2 class="text-xl tracking-widest mb-4 mt-1">{{ t('mission.title') }}</h2>
+    <XTSealFrame
+      tone="jade"
+      corner-ornaments="❖❧❖❧"
+      watermark-letter="M"
+      rounded="xl"
+      inset="tight"
+      test-id="mission-view-seal-frame"
+      aria-label="Phụng Đạo Sứ Mệnh hero frame"
+      class="mb-4"
+    >
+      <XTPageEyebrow caps="PHỤNG ĐẠO SỨ MỆNH" label="Phụng Đạo Sứ Mệnh" />
+      <h2 class="text-xl tracking-widest mt-1">{{ t('mission.title') }}</h2>
+    </XTSealFrame>
 
     <div class="flex gap-2 mb-4 flex-wrap">
       <MButton
