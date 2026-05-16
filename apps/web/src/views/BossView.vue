@@ -24,6 +24,7 @@ import {
 import { on } from '@/ws/client';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import BossSchedulePanel from '@/components/BossSchedulePanel.vue';
 import BossElementTooltip from '@/components/BossElementTooltip.vue';
 import MButton from '@/components/ui/MButton.vue';
@@ -397,8 +398,19 @@ function timeLeftText(iso: string): string {
 
 <template>
   <AppShell>
-    <XTPageEyebrow label="Truy Sát Ma Vương" />
-    <h2 class="text-xl tracking-widest mb-4 mt-1">☠ {{ t('boss.title') }}</h2>
+    <XTSealFrame
+      tone="seal"
+      corner-ornaments="◆✦◆✦"
+      watermark-letter="C"
+      rounded="xl"
+      inset="tight"
+      test-id="boss-view-seal-frame"
+      aria-label="Truy Sát Ma Vương hero frame"
+      class="mb-4"
+    >
+      <XTPageEyebrow caps="TRUY SÁT MA VƯƠNG" label="Truy Sát Ma Vương" />
+      <h2 class="text-xl tracking-widest mt-1">☠ {{ t('boss.title') }}</h2>
+    </XTSealFrame>
 
     <!-- Phase 13.0 §E — Lịch Boss hôm nay (LiveOps schedule). -->
     <BossSchedulePanel />

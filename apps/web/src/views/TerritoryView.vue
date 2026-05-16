@@ -24,6 +24,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useTerritoryStore } from '@/stores/territory';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import type { TerritoryRegionBuffPreviewLite } from '@/api/territory';
 
 type TerritoryTab = 'overview' | 'leaderboard' | 'me' | 'war';
@@ -283,11 +284,22 @@ async function onAdminGrantWeeklyTerritoryReward(): Promise<void> {
 
 <template>
   <AppShell>
-    <header class="mb-4">
-      <XTPageEyebrow label="Cương Thổ Tranh Bá" />
-      <h2 class="text-xl tracking-widest mt-1">{{ t('territory.title') }}</h2>
-      <p class="text-xs text-ink-300 mt-1">{{ t('territory.subtitle') }}</p>
-    </header>
+    <XTSealFrame
+      tone="seal"
+      corner-ornaments="◆✦◆✦"
+      watermark-letter="C"
+      rounded="xl"
+      inset="tight"
+      test-id="territory-view-seal-frame"
+      aria-label="Cương Thổ Tranh Bá hero frame"
+      class="mb-4"
+    >
+      <header>
+        <XTPageEyebrow caps="CƯƠNG THỔ TRANH BÁ" label="Cương Thổ Tranh Bá" />
+        <h2 class="text-xl tracking-widest mt-1">{{ t('territory.title') }}</h2>
+        <p class="text-xs text-ink-300 mt-1">{{ t('territory.subtitle') }}</p>
+      </header>
+    </XTSealFrame>
 
     <div
       v-if="territory.regionsLoading || territory.meLoading"

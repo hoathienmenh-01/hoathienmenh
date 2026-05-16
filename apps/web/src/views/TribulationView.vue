@@ -46,6 +46,7 @@ import { useTribulationStore } from '@/stores/tribulation';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import TribulationMiniBattlePanel from '@/components/TribulationMiniBattlePanel.vue';
 
 const auth = useAuthStore();
@@ -534,22 +535,32 @@ onUnmounted(() => {
 <template>
   <AppShell>
     <div class="max-w-3xl mx-auto space-y-4">
-      <header class="flex items-baseline justify-between gap-3 flex-wrap">
-        <div>
-          <XTPageEyebrow label="Thiên Kiếp Giáng Thế" />
-          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('tribulation.title') }}</h1>
-          <p class="text-xs text-ink-300 mt-1">
-            {{ t('tribulation.subtitle') }}
-          </p>
-        </div>
-        <div
-          v-if="game.character"
-          class="text-xs text-ink-300"
-          data-testid="tribulation-current-realm"
-        >
-          {{ t('tribulation.currentRealm', { name: currentRealmFull }) }}
-        </div>
-      </header>
+      <XTSealFrame
+        tone="seal"
+        corner-ornaments="◆✦◆✦"
+        watermark-letter="C"
+        rounded="xl"
+        inset="tight"
+        test-id="tribulation-view-seal-frame"
+        aria-label="Thiên Kiếp Giáng Thế hero frame"
+      >
+        <header class="flex items-baseline justify-between gap-3 flex-wrap">
+          <div>
+            <XTPageEyebrow caps="THIÊN KIẾP GIÁNG THẾ" label="Thiên Kiếp Giáng Thế" />
+            <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('tribulation.title') }}</h1>
+            <p class="text-xs text-ink-300 mt-1">
+              {{ t('tribulation.subtitle') }}
+            </p>
+          </div>
+          <div
+            v-if="game.character"
+            class="text-xs text-ink-300"
+            data-testid="tribulation-current-realm"
+          >
+            {{ t('tribulation.currentRealm', { name: currentRealmFull }) }}
+          </div>
+        </header>
+      </XTSealFrame>
 
       <!-- Phase 11.6.E — cooldown banner (live countdown) -->
       <section

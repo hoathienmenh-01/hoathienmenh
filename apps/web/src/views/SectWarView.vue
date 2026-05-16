@@ -12,6 +12,7 @@ import {
 } from '@/api/sectWar';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import SectWarLeaderboardPanel from '@/components/SectWarLeaderboardPanel.vue';
 import SectWarMyProgressPanel from '@/components/SectWarMyProgressPanel.vue';
 import SectWarActivityRulesPanel from '@/components/SectWarActivityRulesPanel.vue';
@@ -141,11 +142,22 @@ async function onClaim(): Promise<void> {
 
 <template>
   <AppShell>
-    <header class="mb-4">
-      <XTPageEyebrow label="Tông Môn Đại Chiến" />
-      <h2 class="text-xl tracking-widest mt-1">{{ t('sectWar.title') }}</h2>
-      <p class="text-xs text-ink-300 mt-1">{{ t('sectWar.subtitle') }}</p>
-    </header>
+    <XTSealFrame
+      tone="seal"
+      corner-ornaments="◆✦◆✦"
+      watermark-letter="C"
+      rounded="xl"
+      inset="tight"
+      test-id="sect-war-seal-frame"
+      aria-label="Tông Môn Đại Chiến hero frame"
+      class="mb-4"
+    >
+      <header>
+        <XTPageEyebrow caps="TÔNG MÔN ĐẠI CHIẾN" label="Tông Môn Đại Chiến" />
+        <h2 class="text-xl tracking-widest mt-1">{{ t('sectWar.title') }}</h2>
+        <p class="text-xs text-ink-300 mt-1">{{ t('sectWar.subtitle') }}</p>
+      </header>
+    </XTSealFrame>
 
     <div v-if="loading" class="text-ink-300 text-sm" data-test="sect-war-loading">
       {{ t('sectWar.loading') }}

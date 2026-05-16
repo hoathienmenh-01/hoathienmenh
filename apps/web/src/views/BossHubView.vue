@@ -12,6 +12,7 @@ import { useWorldContentStore } from '@/stores/worldContent';
 import type { BossV2View } from '@/api/worldContent';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 
 const { t, locale } = useI18n();
 const store = useWorldContentStore();
@@ -50,11 +51,21 @@ onMounted(() => {
 <template>
   <AppShell>
     <section class="boss-hub" data-testid="boss-hub-view">
-      <header>
-        <XTPageEyebrow label="Quần Ma Danh Sách" />
-        <h1 class="mt-1">{{ t('worldContent.boss.title') }}</h1>
-        <p>{{ t('worldContent.boss.subtitle') }}</p>
-      </header>
+      <XTSealFrame
+        tone="seal"
+        corner-ornaments="◆✦◆✦"
+        watermark-letter="C"
+        rounded="xl"
+        inset="tight"
+        test-id="boss-hub-seal-frame"
+        aria-label="Quần Ma Danh Sách hero frame"
+      >
+        <header>
+          <XTPageEyebrow caps="QUẦN MA DANH SÁCH" label="Quần Ma Danh Sách" />
+          <h1 class="mt-1">{{ t('worldContent.boss.title') }}</h1>
+          <p>{{ t('worldContent.boss.subtitle') }}</p>
+        </header>
+      </XTSealFrame>
 
       <div
         v-if="reloadFailed && bosses.length === 0"

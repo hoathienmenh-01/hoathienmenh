@@ -13,6 +13,8 @@ import { useWorldContentStore } from '@/stores/worldContent';
 import { useToastStore } from '@/stores/toast';
 import type { TrialTowerView } from '@/api/worldContent';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 
 const { t, locale } = useI18n();
 const store = useWorldContentStore();
@@ -93,10 +95,21 @@ function attemptBusy(towerKey: string, floor: number): boolean {
 <template>
   <AppShell>
     <section class="trial-tower" data-testid="trial-tower-view">
-      <header>
-        <h1>{{ t('worldContent.tower.title') }}</h1>
-        <p>{{ t('worldContent.tower.subtitle') }}</p>
-      </header>
+      <XTSealFrame
+        tone="seal"
+        corner-ornaments="◆✦◆✦"
+        watermark-letter="C"
+        rounded="xl"
+        inset="tight"
+        test-id="trial-tower-seal-frame"
+        aria-label="Thí Luyện Tháp hero frame"
+      >
+        <header>
+          <XTPageEyebrow caps="THÍ LUYỆN THÁP" label="Thí Luyện Tháp" />
+          <h1 class="mt-1">{{ t('worldContent.tower.title') }}</h1>
+          <p>{{ t('worldContent.tower.subtitle') }}</p>
+        </header>
+      </XTSealFrame>
 
       <div
         v-if="reloadFailed && towers.length === 0"

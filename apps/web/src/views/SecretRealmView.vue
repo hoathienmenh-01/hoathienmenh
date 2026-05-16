@@ -5,6 +5,8 @@ import { useAuthStore } from '@/stores/auth';
 import { useSecretRealmStore } from '@/stores/secretRealm';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTSealFrame from '@/components/xianxia/XTSealFrame.vue';
 import type { SecretRealmListEntry } from '@/api/secretRealm';
 
 /**
@@ -103,10 +105,21 @@ onMounted(async () => {
 <template>
   <AppShell>
     <section class="space-y-4 p-4">
-      <header class="space-y-1">
-        <h1 class="text-2xl font-bold">{{ t('secretRealm.title') }}</h1>
-        <p class="text-sm text-gray-300">{{ t('secretRealm.subtitle') }}</p>
-      </header>
+      <XTSealFrame
+        tone="seal"
+        corner-ornaments="◆✦◆✦"
+        watermark-letter="C"
+        rounded="xl"
+        inset="tight"
+        test-id="secret-realm-seal-frame"
+        aria-label="Bí Cảnh Thử Luyện hero frame"
+      >
+        <header class="space-y-1">
+          <XTPageEyebrow caps="BÍ CẢNH THỬ LUYỆN" label="Bí Cảnh Thử Luyện" />
+          <h1 class="text-2xl font-bold mt-1">{{ t('secretRealm.title') }}</h1>
+          <p class="text-sm text-gray-300">{{ t('secretRealm.subtitle') }}</p>
+        </header>
+      </XTSealFrame>
 
       <p
         v-if="store.loading"
