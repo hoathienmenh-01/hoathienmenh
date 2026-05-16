@@ -531,14 +531,39 @@ describe('NpcAffinityService.giftNpc', () => {
     });
   });
 
-  it('dayBucketFor trả ISO YYYY-MM-DD UTC', () => {
+  it('dayBucketFor trả ISO YYYY-MM-DD theo timezone ICT (Asia/Ho_Chi_Minh)', () => {
+    // 00:00 UTC = 07:00 ICT — vẫn cùng ngày ICT 2026-06-09.
     expect(NpcAffinityService.dayBucketFor(new Date('2026-06-09T00:00:00Z'))).toBe(
       '2026-06-09',
     );
-    expect(NpcAffinityService.dayBucketFor(new Date('2026-06-09T23:59:59Z'))).toBe(
+
+    // Boundary 1: 23:30 ICT (16:30 UTC) cùng ngày — chưa reset.
+    expect(NpcAffinityService.dayBucketFor(new Date('2026-06-09T16:30:00Z'))).toBe(
       '2026-06-09',
     );
-    // Boundary: VN 07:00 → UTC 00:00 → next UTC day.
+    // Boundary 2: 16:59:59 UTC = 23:59:59 ICT — cùng ngày, sát reset.
+    expect(NpcAffinityService.dayBucketFor(new Date('2026-06-09T16:59:59Z'))).toBe(
+      '2026-06-09',
+    );
+    // Boundary 3: 17:00:00 UTC = 00:00:00 ICT hôm sau — ICT reset → bucket
+    // mới `2026-06-10`. Đây là điểm khác biệt chính với behavior UTC cũ
+    // (UTC bucket trước fix vẫn còn `2026-06-09` ở mốc này).
+    expect(NpcAffinityService.dayBucketFor(new Date('2026-06-09T17:00:00Z'))).toBe(
+      '2026-06-10',
+    );
+    // Boundary 4: 00:30 ICT (17:30 UTC) — ngày mới ICT.
+    expect(NpcAffinityService.dayBucketFor(new Date('2026-06-09T17:30:00Z'))).toBe(
+      '2026-06-10',
+    );
+
+    // Boundary 5: 23:59:59 UTC = 06:59:59 ICT hôm sau — bucket ICT đã sang
+    // ngày sau từ rất lâu (so với UTC vẫn ngày cũ 2026-06-09).
+    expect(NpcAffinityService.dayBucketFor(new Date('2026-06-09T23:59:59Z'))).toBe(
+      '2026-06-10',
+    );
+
+    // Boundary 6: 00:00 UTC ngày sau = 07:00 ICT — vẫn cùng bucket
+    // 2026-06-10 với boundary 3+4+5 (giữa ngày ICT, không reset).
     expect(NpcAffinityService.dayBucketFor(new Date('2026-06-10T00:00:00Z'))).toBe(
       '2026-06-10',
     );
