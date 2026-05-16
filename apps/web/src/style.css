@@ -899,3 +899,58 @@ html[data-motion='off'] .xt-hover-lift:hover {
   transition: none;
   transform: none;
 }
+
+/* ── Sect-color accent theming (Cửu Thiên Mộng Phase 8). ────────────── */
+/*
+ * Cho phép tint nhẹ theo màu tông môn của user. Caller chỉ cần set
+ * `--xt-accent-sect` inline trên một wrapper bằng style binding
+ * (`:style="{ '--xt-accent-sect': sectColor }"`) — không thay đổi
+ * store shape, không tint background lớn.
+ *
+ * Helper class `xt-sect-tinted` áp 3 hiệu ứng kín đáo:
+ *   - viền dưới gradient theo sect color
+ *   - glow ring nhẹ trên focus / hover
+ *   - badge sigil tint theo accent
+ *
+ * Mặc định `--xt-accent-sect` lùi về gold (giữ visual nhất quán nếu
+ * user chưa thuộc tông môn).
+ */
+.xt-sect-tinted {
+  --xt-sect-tint-color: var(--xt-accent-sect, var(--xt-gold-bright, #f5e3a1));
+  position: relative;
+  border-color: color-mix(in srgb, var(--xt-sect-tint-color) 38%, transparent);
+  transition:
+    box-shadow var(--xt-motion-base, 220ms) var(--xt-ease-out, ease),
+    border-color var(--xt-motion-base, 220ms) var(--xt-ease-out, ease);
+}
+.xt-sect-tinted::after {
+  content: '';
+  position: absolute;
+  inset: auto 12px 0 12px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--xt-sect-tint-color) 50%,
+    transparent 100%
+  );
+  opacity: 0.45;
+  pointer-events: none;
+}
+.xt-sect-tinted:hover,
+.xt-sect-tinted:focus-within {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--xt-sect-tint-color) 28%, transparent),
+    0 0 16px color-mix(in srgb, var(--xt-sect-tint-color) 22%, transparent);
+}
+.xt-sect-badge {
+  --xt-sect-tint-color: var(--xt-accent-sect, var(--xt-gold-bright, #f5e3a1));
+  color: var(--xt-sect-tint-color);
+  border-color: color-mix(in srgb, var(--xt-sect-tint-color) 45%, transparent);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--xt-sect-tint-color) 35%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .xt-sect-tinted {
+    transition: none;
+  }
+}

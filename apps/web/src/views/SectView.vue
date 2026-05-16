@@ -147,6 +147,37 @@ function handleErr(e: unknown): void {
 }
 
 const myStash = computed(() => game.character?.linhThach ?? '0');
+
+/**
+ * Phase 8 — sect-color tint (no store shape change).
+ *
+ * Map sect id → accent color deterministically từ palette luxury tokens.
+ * Khi user thuộc tông môn, viền / glow card "Tông của tôi" sẽ tint nhẹ
+ * theo màu này (không tint background lớn, không đổi store).
+ */
+const SECT_ACCENT_PALETTE = [
+  'var(--xt-gold-bright, #f5e3a1)',
+  'var(--xt-jade-bright, #5fe3c6)',
+  'var(--xt-mist-bright, #62c8dc)',
+  'var(--xt-smoke-bright, #a884de)',
+  'var(--xt-seal-bright, #b8484a)',
+  'var(--xt-fire, #e89a5a)',
+] as const;
+
+function hashString(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (h << 5) - h + s.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h);
+}
+
+const sectAccent = computed<string>(() => {
+  if (!me.value) return SECT_ACCENT_PALETTE[0];
+  const seed = me.value.id || me.value.name || 'mặc-định';
+  return SECT_ACCENT_PALETTE[hashString(seed) % SECT_ACCENT_PALETTE.length];
+});
 </script>
 
 <template>
@@ -212,10 +243,24 @@ const myStash = computed(() => game.character?.linhThach ?? '0');
 
     <!-- TÔNG CỦA TÔI -->
     <section v-if="tab === 'mine' && me" class="space-y-4">
-      <div class="border border-ink-300/40 rounded p-4 bg-ink-700/30">
+      <div
+        class="xt-sect-tinted border border-ink-300/40 rounded p-4 bg-ink-700/30"
+        :style="{ '--xt-accent-sect': sectAccent }"
+        data-testid="sect-mine-card"
+      >
         <div class="flex items-start gap-3 flex-wrap">
           <div class="flex-1 min-w-0">
-            <div class="text-lg text-ink-50">{{ me.name }}</div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <div class="text-lg text-ink-50">{{ me.name }}</div>
+              <span
+                class="xt-sect-badge inline-flex items-center gap-1 rounded border px-2 py-[1px] text-[10px] uppercase tracking-widest"
+                data-testid="sect-mine-badge"
+                aria-label="Sắc tông môn"
+              >
+                <span aria-hidden="true">❖</span>
+                <span>Tông sắc</span>
+              </span>
+            </div>
             <div v-if="me.leaderName" class="text-xs text-ink-300">
               {{ t('sect.leader', { name: me.leaderName }) }}
             </div>
