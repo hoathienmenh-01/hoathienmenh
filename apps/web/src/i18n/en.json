@@ -898,7 +898,7 @@
       "sect": "Send to sect…"
     },
     "send": "Send",
-  "sendSect": "Send to sect",
+    "sendSect": "Send to sect",
     "errors": {
       "EMPTY_TEXT": "Empty message.",
       "TEXT_TOO_LONG": "Max 200 characters.",
@@ -8608,5 +8608,36 @@
       "label": "Thiên Tiên Thế Giới",
       "breadcrumb": "Nhiệm Vụ · Thế Giới"
     }
+  },
+  "notificationCenter": {
+    "viewTitle": "Notification Center",
+    "viewSubtitle": "All your notifications in one place.",
+    "filter": {
+      "all": "All",
+      "system": "System",
+      "rewards": "Rewards",
+      "sect": "Sect",
+      "trading": "Trading",
+      "combat": "Combat",
+      "mission": "Mission",
+      "social": "Social"
+    },
+    "empty": "No notifications to display.",
+    "emptyHint": "Notifications from mail, social, and game events will appear here.",
+    "time": {
+      "justNow": "Just now",
+      "minutesAgo": "{n}m ago",
+      "hoursAgo": "{n}h ago",
+      "daysAgo": "{n}d ago"
+    }
+  },
+  "onlineFriends": {
+    "title": "Friends",
+    "viewAll": "View all",
+    "error": "Failed to load friends.",
+    "noFriends": "No friends yet. Add friends in the Social tab!",
+    "noneOnline": "No friends online right now.",
+    "onlineCount": "{n} online",
+    "recentlyOffline": "Offline"
   }
 }
