@@ -34,6 +34,7 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useIsLgUp } from '@/composables/useMediaQuery';
 import { useGameStore } from '@/stores/game';
+import { useBadgesStore } from '@/stores/badges';
 import XTHomeSidebar from './XTHomeSidebar.vue';
 import XTHomeTopBar from './XTHomeTopBar.vue';
 import XTHomeHeroBanner from './XTHomeHeroBanner.vue';
@@ -58,6 +59,7 @@ import {
   inventoryPanel,
   dailyReward,
   type HomeBottomNavItem,
+  type HomeFeatureCard,
   type HomeResource,
   type HomeStatTile,
 } from '@/data/homeDashboardMock';
@@ -85,6 +87,7 @@ withDefaults(
 const isLgUp = useIsLgUp();
 const router = useRouter();
 const game = useGameStore();
+const badges = useBadgesStore();
 
 const showDesktopChrome = computed(
   () => isLgUp.value,
@@ -258,6 +261,41 @@ const liveSectPanel = computed(() => {
   };
 });
 
+/**
+ * PR-A1 (Phase 15.14) — Live wiring cho feature grid + mobile icon grid
+ * badge counters (audit deep feature 2026-05-17 §10 P0). Trước đây các
+ * card có badge cứng "mail 3 / missions 1 / boss 1 / friends 1" trong
+ * `homeDashboardMock` — gây hiểu nhầm cho player thật. Giờ override
+ * `badge` field qua live count từ `useBadgesStore` + `useGameStore.unreadMail`.
+ *
+ * Trả `undefined` cho key chưa có store source → feature card hide badge
+ * (panel skip render khi `badge === undefined || badge === 0`).
+ */
+function liveBadgeFor(cardKey: string): number | undefined {
+  if (cardKey === 'mail') {
+    return game.unreadMail > 0 ? game.unreadMail : undefined;
+  }
+  if (cardKey === 'missions') {
+    return badges.missionClaimable > 0 ? badges.missionClaimable : undefined;
+  }
+  if (cardKey === 'boss') {
+    return badges.bossActive ? 1 : undefined;
+  }
+  if (cardKey === 'topup') {
+    return badges.topupPending ? 1 : undefined;
+  }
+  // friends/equipment/cultivation/... chưa có store badge → ẩn.
+  return undefined;
+}
+
+const liveFeatureCards = computed<HomeFeatureCard[]>(() =>
+  featureCards.map((c) => ({ ...c, badge: liveBadgeFor(c.key) })),
+);
+
+const liveMobileIconGrid = computed<HomeFeatureCard[]>(() =>
+  mobileIconGrid.map((c) => ({ ...c, badge: liveBadgeFor(c.key) })),
+);
+
 function onQuickAction(key: string): void {
   switch (key) {
     case 'fast-cultivate':
@@ -370,13 +408,13 @@ function onMenu(): void {
              Mobile: 21 mục icon-only (icon grid). -->
         <XTHomeFeatureGrid
           v-if="showDesktopChrome"
-          :cards="featureCards"
+          :cards="liveFeatureCards"
           layout="auto"
           test-id="home-feature-grid"
         />
         <XTHomeFeatureGrid
           v-else
-          :cards="mobileIconGrid"
+          :cards="liveMobileIconGrid"
           layout="iconGrid"
           test-id="home-feature-grid"
         />
