@@ -453,14 +453,13 @@ const routes: RouteRecordRaw[] = [
     name: 'spirit-pets',
     redirect: '/pets',
   },
-  // Phase 15.9 — `/notifications` previously rendered placeholder; redirect
-  // to `/mail` which is the live in-game notification surface
-  // (`/notification-settings` covers push-notification preferences and is
-  // reachable from Settings already).
+  // Phase 15.16 (PR #628) — `/notifications` is now a real Notification
+  // Center view aggregating notifications + mail into a unified feed with
+  // category filters and an online-friends presence widget sidebar.
   {
     path: '/notifications',
     name: 'notifications',
-    redirect: '/mail',
+    component: () => import('@/views/NotificationCenterView.vue'),
   },
   {
     // Phase 34.3 — Inventory Auto-sort & Lock.

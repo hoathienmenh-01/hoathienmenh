@@ -898,7 +898,7 @@
       "sect": "Gửi tông môn…"
     },
     "send": "Gửi",
-  "sendSect": "Gửi tông môn",
+    "sendSect": "Gửi tông môn",
     "errors": {
       "EMPTY_TEXT": "Nội dung trống.",
       "TEXT_TOO_LONG": "Tối đa 200 ký tự.",
@@ -8608,5 +8608,36 @@
       "label": "Thiên Tiên Thế Giới",
       "breadcrumb": "Nhiệm Vụ · Thế Giới"
     }
+  },
+  "notificationCenter": {
+    "viewTitle": "Trung Tam Thong Bao",
+    "viewSubtitle": "Tat ca thong bao cua ban tai mot noi.",
+    "filter": {
+      "all": "Tat ca",
+      "system": "He thong",
+      "rewards": "Phan thuong",
+      "sect": "Mon phai",
+      "trading": "Giao dich",
+      "combat": "Chien dau",
+      "mission": "Nhiem vu",
+      "social": "Xa hoi"
+    },
+    "empty": "Khong co thong bao nao.",
+    "emptyHint": "Thong bao tu thu, xa hoi, va su kien game se hien thi o day.",
+    "time": {
+      "justNow": "Vua xong",
+      "minutesAgo": "{n} phut truoc",
+      "hoursAgo": "{n} gio truoc",
+      "daysAgo": "{n} ngay truoc"
+    }
+  },
+  "onlineFriends": {
+    "title": "Ban be",
+    "viewAll": "Xem tat ca",
+    "error": "Khong the tai danh sach ban be.",
+    "noFriends": "Chua co ban be. Them ban trong tab Xa Hoi!",
+    "noneOnline": "Khong co ban nao dang online.",
+    "onlineCount": "{n} dang online",
+    "recentlyOffline": "Ngoai tuyen"
   }
 }
