@@ -3,8 +3,11 @@ import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { createMemoryHistory, createRouter, type Router } from 'vue-router';
 import { createI18n, type I18n } from 'vue-i18n';
+import { flushPromises } from '@vue/test-utils';
 import XTHomeDashboard from '@/components/xianxia/XTHomeDashboard.vue';
 import { useGameStore } from '@/stores/game';
+import { useQuestStore } from '@/stores/quest';
+import { useReputationGoalsStore } from '@/stores/reputationGoals';
 import type { CharacterStatePayload } from '@xuantoi/shared';
 import type { SectDetailView } from '@/api/sect';
 
@@ -25,6 +28,18 @@ vi.mock('@/ws/client', () => ({
   on: vi.fn(() => () => undefined),
   connect: vi.fn(),
   resolveWsOrigin: vi.fn(() => 'http://localhost'),
+}));
+
+// Phase 15.16 (PR 626) — Home Data Correctness Pack. Mock các API/store
+// được hydrate fail-soft trong `XTHomeDashboard.onMounted` để test không
+// phanh axios. Mỗi `it` có thể override mock thông qua mock function trả về.
+const listInventoryMock = vi.fn();
+vi.mock('@/api/inventory', () => ({
+  listInventory: () => listInventoryMock(),
+}));
+const getDailyLoginStatusMock = vi.fn();
+vi.mock('@/api/dailyLogin', () => ({
+  getDailyLoginStatus: () => getDailyLoginStatusMock(),
 }));
 
 /**
@@ -184,6 +199,11 @@ describe('XTHomeDashboard', () => {
     setActivePinia(createPinia());
     router = buildRouter();
     i18n = buildI18n();
+    // Phase 15.16 — default fail-soft (rỗng) cho mock async hydrate.
+    listInventoryMock.mockReset();
+    listInventoryMock.mockResolvedValue([]);
+    getDailyLoginStatusMock.mockReset();
+    getDailyLoginStatusMock.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -332,5 +352,226 @@ describe('XTHomeDashboard', () => {
     expect(text).toContain('88');
     expect(text).not.toContain('Thiên Vân');
     expect(text).not.toContain('12.568.890');
+  });
+
+  // ─── Phase 15.16 (PR 626) — Home Data Correctness Pack ─────────────
+  //
+  // Verify rằng `XTHomeDashboard` không bao giờ lộ các giá trị mock
+  // gameplay cũ (recentQuests / equipmentSlots / inventoryPanel /
+  // dailyReward) ra player-facing /home và xử lý đúng Tử tinh / Danh
+  // vọng (ẩn khi chưa có nguồn data thật, không giả 0 gây hiểu nhầm).
+
+  it('embedded + desktop: KHÔNG lộ mock gameplay cũ (Đột Phá Đại Thừa / 86/120 / 2.156.780 / 6/10 / +10 / +11 / +12)', async () => {
+    setViewport(1280);
+    const game = useGameStore();
+    game.character = buildCharacter({ name: 'Verifier' });
+    const w = mount(XTHomeDashboard, {
+      props: { chrome: 'embedded' },
+      global: { plugins: [router, i18n] },
+    });
+    await router.isReady();
+    await flushPromises();
+    const text = w.text();
+    // Recent quest mock entries.
+    expect(text).not.toContain('Đột Phá Đại Thừa');
+    expect(text).not.toContain('Linh Thú Xuất Thế');
+    expect(text).not.toContain('Nhiệm Vụ Tông Môn');
+    expect(text).not.toContain('Tu Luyện Hằng Ngày');
+    // Inventory panel mock numbers.
+    expect(text).not.toContain('86/120');
+    expect(text).not.toContain('2.156.780');
+    // Equipment slot plus mock values.
+    expect(text).not.toContain('+10');
+    expect(text).not.toContain('+11');
+    expect(text).not.toContain('+12');
+    // Daily reward mock counter.
+    expect(text).not.toContain('6/10');
+  });
+
+  it('embedded + desktop: empty quest store → quest panel render empty state', async () => {
+    setViewport(1280);
+    const game = useGameStore();
+    game.character = buildCharacter();
+    const quest = useQuestStore();
+    quest.quests = [];
+    quest.loaded = true;
+    const w = mount(XTHomeDashboard, {
+      props: { chrome: 'embedded' },
+      global: { plugins: [router, i18n] },
+    });
+    await router.isReady();
+    await flushPromises();
+    expect(w.find('[data-testid="home-quest-panel-empty"]').exists()).toBe(true);
+    expect(w.text()).toContain('Chưa có nhiệm vụ');
+  });
+
+  it('embedded + desktop: empty inventory → KHÔNG hiện gear power "2.156.780" hoặc capacity "86/120"', async () => {
+    setViewport(1280);
+    listInventoryMock.mockResolvedValueOnce([]);
+    const game = useGameStore();
+    game.character = buildCharacter();
+    const w = mount(XTHomeDashboard, {
+      props: { chrome: 'embedded' },
+      global: { plugins: [router, i18n] },
+    });
+    await router.isReady();
+    await flushPromises();
+    const text = w.text();
+    expect(text).not.toContain('2.156.780');
+    expect(text).not.toContain('86/120');
+    // Inventory panel exists.
+    expect(w.find('[data-testid="home-inventory-panel"]').exists()).toBe(true);
+    // Capacity bar / gear-power test-ids should be absent (component ẩn
+    // khi info.gearPower rỗng + capacity.total === 0).
+    expect(w.find('[data-testid="home-inventory-panel-gear-power"]').exists()).toBe(false);
+    expect(w.find('[data-testid="home-inventory-panel-capacity"]').exists()).toBe(false);
+  });
+
+  it('embedded + desktop: chưa có daily login status → KHÔNG render reward card "Phúc lợi hôm nay" với "6/10"', async () => {
+    setViewport(1280);
+    getDailyLoginStatusMock.mockResolvedValueOnce(null);
+    const game = useGameStore();
+    game.character = buildCharacter();
+    const w = mount(XTHomeDashboard, {
+      props: { chrome: 'embedded' },
+      global: { plugins: [router, i18n] },
+    });
+    await router.isReady();
+    await flushPromises();
+    const text = w.text();
+    expect(text).not.toContain('6/10');
+    // Hero reward card test-id absent khi reward = null.
+    expect(w.find('[data-testid="home-hero-reward"]').exists()).toBe(false);
+  });
+
+  it('standalone + desktop: KHÔNG có Tử tinh ở topbar/strip + KHÔNG render Danh vọng "0" mặc định', async () => {
+    setViewport(1440);
+    const game = useGameStore();
+    game.character = buildCharacter({ name: 'Verifier' });
+    const w = mount(XTHomeDashboard, {
+      props: { chrome: 'standalone' },
+      global: { plugins: [router, i18n] },
+    });
+    await router.isReady();
+    await flushPromises();
+    const text = w.text();
+    // Tử tinh đã hide hẳn (BE chưa có field).
+    expect(text).not.toContain('Tử tinh');
+    // Danh vọng chỉ render khi reputation store đã loaded — chưa load
+    // (test này không bật) → ẩn, KHÔNG hiển thị "0" giả.
+    expect(text).not.toContain('Danh vọng');
+  });
+
+  it('standalone + desktop: reputation store loaded → Danh vọng hiện đúng totalReputation thật', async () => {
+    setViewport(1440);
+    const game = useGameStore();
+    game.character = buildCharacter({ name: 'Verifier' });
+    const rep = useReputationGoalsStore();
+    rep.reputation = [
+      // 2 row reputation, sum = 1234.
+      // Cast `as any` để bỏ qua đầy đủ ReputationGroupDef (ko cần cho test).
+      { group: 'TONG_MON', score: 1000, dailyGain: 0, dailyCap: 1000, lastGainedAt: null, def: {} as any },
+      { group: 'XA_HOI', score: 234, dailyGain: 0, dailyCap: 1000, lastGainedAt: null, def: {} as any },
+    ];
+    rep.loaded = true;
+    const w = mount(XTHomeDashboard, {
+      props: { chrome: 'standalone' },
+      global: { plugins: [router, i18n] },
+    });
+    await router.isReady();
+    await flushPromises();
+    const text = w.text();
+    expect(text).toContain('Danh vọng');
+    // Sandbox Node ICU không bundle `vi-VN` → fallback locale có thể trả
+    // separator `.` hoặc `,` tùy ICU version. Cả hai đều chấp nhận.
+    expect(text).toMatch(/1[.,]234/);
+    expect(text).not.toContain('Tử tinh');
+    // Đảm bảo KHÔNG còn fake "26.540".
+    expect(text).not.toContain('26.540');
+    expect(text).not.toContain('26,540');
+  });
+
+  it('standalone + mobile: empty inventory + chưa daily login → KHÔNG lộ "+10/+11/+12" / "6/10"', async () => {
+    setViewport(420);
+    listInventoryMock.mockResolvedValueOnce([]);
+    getDailyLoginStatusMock.mockResolvedValueOnce(null);
+    const game = useGameStore();
+    game.character = buildCharacter();
+    const w = mount(XTHomeDashboard, {
+      props: { chrome: 'standalone' },
+      global: { plugins: [router, i18n] },
+    });
+    await router.isReady();
+    await flushPromises();
+    const text = w.text();
+    expect(text).not.toContain('+10');
+    expect(text).not.toContain('+11');
+    expect(text).not.toContain('+12');
+    expect(text).not.toContain('6/10');
+    expect(text).not.toContain('86/120');
+    expect(text).not.toContain('2.156.780');
+  });
+
+  it('embedded + desktop: inventory store có 2 trang bị + 1 free → equipment slots render plus thật theo refineLevel', async () => {
+    setViewport(1280);
+    listInventoryMock.mockResolvedValueOnce([
+      {
+        id: 'inv-1',
+        itemKey: 'so_kiem',
+        qty: 1,
+        equippedSlot: 'WEAPON',
+        item: { key: 'so_kiem', name: 'Sơ Kiếm', kind: 'WEAPON' } as any,
+        sockets: [],
+        refineLevel: 4,
+        substats: [],
+        enchantElement: null,
+        enchantLevel: 0,
+        locked: false,
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'inv-2',
+        itemKey: 'kim_giap',
+        qty: 1,
+        equippedSlot: 'ARMOR',
+        item: { key: 'kim_giap', name: 'Kim Giáp', kind: 'ARMOR' } as any,
+        sockets: [],
+        refineLevel: 2,
+        substats: [],
+        enchantElement: null,
+        enchantLevel: 0,
+        locked: false,
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'inv-3',
+        itemKey: 'huyet_chi_dan',
+        qty: 5,
+        equippedSlot: null,
+        item: { key: 'huyet_chi_dan', name: 'Huyết Chỉ Đan', kind: 'PILL' } as any,
+        sockets: [],
+        refineLevel: 0,
+        substats: [],
+        enchantElement: null,
+        enchantLevel: 0,
+        locked: false,
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+    const game = useGameStore();
+    game.character = buildCharacter();
+    const w = mount(XTHomeDashboard, {
+      props: { chrome: 'embedded' },
+      global: { plugins: [router, i18n] },
+    });
+    await router.isReady();
+    await flushPromises();
+    const text = w.text();
+    // Plus values từ refineLevel thật (không phải 10/11/12 mock).
+    expect(text).toContain('+4');
+    expect(text).toContain('+2');
+    expect(text).not.toContain('+10');
+    expect(text).not.toContain('+11');
+    expect(text).not.toContain('+12');
   });
 });

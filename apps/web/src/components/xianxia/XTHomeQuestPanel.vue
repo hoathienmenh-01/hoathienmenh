@@ -12,7 +12,7 @@
  * Có biến thể `compact` cho mobile (giảm padding, ẩn subtitle).
  */
 import { useRouter } from 'vue-router';
-import { recentQuests, type HomeQuest, type QuestTag } from '@/data/homeDashboardMock';
+import { type HomeQuest, type QuestTag } from '@/data/homeDashboardMock';
 
 withDefaults(
   defineProps<{
@@ -21,7 +21,7 @@ withDefaults(
     testId?: string;
   }>(),
   {
-    quests: () => recentQuests,
+    quests: () => [],
     compact: false,
     testId: 'home-quest-panel',
   },
@@ -63,7 +63,7 @@ function openAll(): void {
       </button>
     </header>
 
-    <ul class="xt-home-quest__list">
+    <ul v-if="quests.length > 0" class="xt-home-quest__list">
       <li
         v-for="quest in quests"
         :key="quest.key"
@@ -93,6 +93,13 @@ function openAll(): void {
         </span>
       </li>
     </ul>
+    <p
+      v-else
+      class="xt-home-quest__empty"
+      :data-testid="`${testId}-empty`"
+    >
+      Chưa có nhiệm vụ đang theo đuổi.
+    </p>
   </section>
 </template>
 
@@ -189,6 +196,17 @@ function openAll(): void {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.xt-home-quest__empty {
+  margin: 0;
+  padding: 16px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--xt-text-muted, rgba(208, 200, 180, 0.7));
+  border-radius: 12px;
+  border: 1px dashed rgba(242, 215, 137, 0.25);
+  background: rgba(8, 9, 11, 0.5);
 }
 
 .xt-home-quest__item {

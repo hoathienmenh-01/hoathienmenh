@@ -25,16 +25,33 @@
  * unreadMail). Khi `game.character` rỗng → empty state an toàn ("—" / 0 /
  * "Chưa gia nhập tông môn"), **không** fallback về mock VIP.
  *
- * Các section gameplay sâu (recent quests, equipment slots, sect chat
- * messages, daily reward, sidebar/bottomNav/feature cards) tạm thời vẫn
- * đọc từ mock structure vì chưa có store mapping 1:1 sẵn — sẽ wire ở PR
- * tiếp theo (xem `docs/AI_HANDOFF_REPORT.md` Phase 15.10).
+ * Phase 15.16 (PR 626) — Home Data Correctness Pack. Hoàn thiện wire 4
+ * surface gameplay sâu còn lại + sửa Tử tinh/Danh vọng:
+ *   - `recentQuests`: từ `useQuestStore` (status ACCEPTED + COMPLETED, cap 4).
+ *   - `equipmentSlots` + `inventoryPanel`: từ `listInventory()` (lazy fetch).
+ *   - `dailyReward`: từ `getDailyLoginStatus()` (`currentStreak % 7` / 7).
+ *   - `tuTinh`: backend KHÔNG có field này → ẩn hẳn khỏi resources strip
+ *     và stat tiles (không giả 0).
+ *   - `danhVong`: từ `useReputationGoalsStore.totalReputation`. Nếu store
+ *     chưa load → ẩn tile (không giả 0).
+ *   - Feature card / mobile icon-grid badge: tiếp tục dùng `useBadgesStore`
+ *     + `game.unreadMail`; key chưa có store source → ẩn hẳn.
+ *
+ * Player-facing /home không bao giờ fallback về `homeDashboardMock`.
+ * `homeDashboardMock` chỉ giữ cho dev preview standalone (storybook /
+ * route `/effects-preview` nếu có) và default props cho component test.
  */
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useIsLgUp } from '@/composables/useMediaQuery';
 import { useGameStore } from '@/stores/game';
 import { useBadgesStore } from '@/stores/badges';
+import { useQuestStore } from '@/stores/quest';
+import { useReputationGoalsStore } from '@/stores/reputationGoals';
+import { listInventory, type InventoryView } from '@/api/inventory';
+import { getDailyLoginStatus, type DailyLoginStatus } from '@/api/dailyLogin';
+import type { QuestKind, QuestProgressView } from '@/api/quest';
+import type { EquipSlot } from '@xuantoi/shared';
 import XTHomeSidebar from './XTHomeSidebar.vue';
 import XTHomeTopBar from './XTHomeTopBar.vue';
 import XTHomeHeroBanner from './XTHomeHeroBanner.vue';
@@ -52,16 +69,15 @@ import {
   heroBanner,
   heroQuickActions,
   mobileIconGrid,
-  recentQuests,
   sidebarGroups,
   sectPanel as sectPanelMock,
-  equipmentSlots,
-  inventoryPanel,
-  dailyReward,
   type HomeBottomNavItem,
+  type HomeEquipmentSlot,
   type HomeFeatureCard,
+  type HomeQuest,
   type HomeResource,
   type HomeStatTile,
+  type QuestTag,
 } from '@/data/homeDashboardMock';
 
 withDefaults(
@@ -88,6 +104,8 @@ const isLgUp = useIsLgUp();
 const router = useRouter();
 const game = useGameStore();
 const badges = useBadgesStore();
+const questStore = useQuestStore();
+const reputation = useReputationGoalsStore();
 
 const showDesktopChrome = computed(
   () => isLgUp.value,
@@ -140,13 +158,15 @@ const livePlayerHeader = computed(() => {
 });
 
 /**
- * Phase 15.10 — Resources strip (topbar + mobile header). Linh thạch / tiên
- * ngọc đọc từ store; tử tinh + danh vọng chưa có trong `CharacterStatePayload`
- * nên giữ giá trị 0 (an toàn, không lộ mock VIP). Wire thật khi BE thêm field.
+ * Phase 15.16 (PR 626) — Resources strip (topbar + mobile header).
+ *   - Linh thạch / tiên ngọc đọc từ `game.character`.
+ *   - Tử tinh: backend chưa có field — **ẩn hẳn**, không fake 0.
+ *   - Danh vọng: lấy từ `reputation.totalReputation`; nếu store chưa load
+ *     (`!reputation.loaded`) → **ẩn hẳn**, không fake 0.
  */
 const liveResources = computed<HomeResource[]>(() => {
   const c = game.character;
-  return [
+  const list: HomeResource[] = [
     {
       key: 'linhThach',
       label: 'Linh thạch',
@@ -161,78 +181,111 @@ const liveResources = computed<HomeResource[]>(() => {
       glyph: '◆',
       tone: 'gold',
     },
-    { key: 'tuTinh', label: 'Tử tinh', value: '0', glyph: '✦', tone: 'violet' },
-    { key: 'danhVong', label: 'Danh vọng', value: '0', glyph: '♛', tone: 'smoke' },
   ];
+  if (reputation.loaded) {
+    list.push({
+      key: 'danhVong',
+      label: 'Danh vọng',
+      value: formatVN(reputation.totalReputation),
+      glyph: '♛',
+      tone: 'smoke',
+    });
+  }
+  return list;
 });
 
 /**
- * Phase 15.10 — Desktop stat tiles row (6 ô). Tu vi / lực chiến / linh thạch
- * / tiên ngọc / sect đọc thật từ store. Danh vọng tạm 0 (BE chưa có).
+ * Phase 15.16 (PR 626) — Desktop stat tiles row.
+ *   - Tu vi / lực chiến / linh thạch / tiên ngọc / sect đọc thật từ store.
+ *   - Tử tinh: ẩn (BE không có field).
+ *   - Danh vọng: chỉ render khi `reputation.loaded`; giá trị từ
+ *     `totalReputation`. Tránh hiển thị 0 cứng gây hiểu nhầm.
  */
 const liveStatTiles = computed<HomeStatTile[]>(() => {
   const c = game.character;
   const sect = game.currentSect;
+  const list: HomeStatTile[] = [];
   if (!c) {
-    return [
+    list.push(
       { key: 'tuVi', label: 'Tu vi', value: '0', meta: EMPTY_VALUE, glyph: '✦', tone: 'jade' },
       { key: 'lucChien', label: 'Lực chiến', value: '0', glyph: '⚔', tone: 'seal' },
       { key: 'linhThach', label: 'Linh thạch', value: '0', glyph: '◈', tone: 'cyan' },
       { key: 'tienNgoc', label: 'Tiên ngọc', value: '0', glyph: '◆', tone: 'gold' },
-      { key: 'danhVong', label: 'Danh vọng', value: '0', glyph: '♛', tone: 'violet' },
-      { key: 'sect', label: 'Tông môn', value: NO_SECT, glyph: '⛩', tone: 'jade' },
-    ];
+    );
+  } else {
+    list.push(
+      {
+        key: 'tuVi',
+        label: 'Tu vi',
+        value: formatVN(c.exp),
+        meta: game.realmFullName || c.realmKey || EMPTY_VALUE,
+        glyph: '✦',
+        tone: 'jade',
+      },
+      { key: 'lucChien', label: 'Lực chiến', value: formatVN(c.power), glyph: '⚔', tone: 'seal' },
+      { key: 'linhThach', label: 'Linh thạch', value: formatVN(c.linhThach), glyph: '◈', tone: 'cyan' },
+      { key: 'tienNgoc', label: 'Tiên ngọc', value: formatVN(c.tienNgoc), glyph: '◆', tone: 'gold' },
+    );
   }
-  return [
-    {
-      key: 'tuVi',
-      label: 'Tu vi',
-      value: formatVN(c.exp),
-      meta: game.realmFullName || c.realmKey || EMPTY_VALUE,
-      glyph: '✦',
-      tone: 'jade',
-    },
-    { key: 'lucChien', label: 'Lực chiến', value: formatVN(c.power), glyph: '⚔', tone: 'seal' },
-    { key: 'linhThach', label: 'Linh thạch', value: formatVN(c.linhThach), glyph: '◈', tone: 'cyan' },
-    { key: 'tienNgoc', label: 'Tiên ngọc', value: formatVN(c.tienNgoc), glyph: '◆', tone: 'gold' },
-    { key: 'danhVong', label: 'Danh vọng', value: '0', glyph: '♛', tone: 'violet' },
-    {
-      key: 'sect',
-      label: 'Tông môn',
-      value: sect?.name ?? NO_SECT,
-      glyph: '⛩',
-      tone: 'jade',
-    },
-  ];
+  if (reputation.loaded) {
+    list.push({
+      key: 'danhVong',
+      label: 'Danh vọng',
+      value: formatVN(reputation.totalReputation),
+      glyph: '♛',
+      tone: 'violet',
+    });
+  }
+  list.push({
+    key: 'sect',
+    label: 'Tông môn',
+    value: sect?.name ?? NO_SECT,
+    glyph: '⛩',
+    tone: 'jade',
+  });
+  return list;
 });
 
 /**
- * Phase 15.10 — Mobile compact stat tiles (4 ô). Cùng nguồn store, chỉ rút
- * gọn còn 4 mục cho viewport hẹp.
+ * Phase 15.16 (PR 626) — Mobile compact stat tiles. Cùng nguồn store, rút
+ * gọn còn 3-4 mục; danh vọng ẩn nếu chưa load.
  */
 const liveStatTilesMobile = computed<HomeStatTile[]>(() => {
   const c = game.character;
   const sect = game.currentSect;
-  if (!c) {
-    return [
-      { key: 'linhThach', label: 'Linh thạch', value: '0', glyph: '◈', tone: 'cyan' },
-      { key: 'tienNgoc', label: 'Tiên ngọc', value: '0', glyph: '◆', tone: 'gold' },
-      { key: 'danhVong', label: 'Danh vọng', value: '0', glyph: '♛', tone: 'violet' },
-      { key: 'sect', label: 'Tông môn', value: NO_SECT, glyph: '⛩', tone: 'jade' },
-    ];
-  }
-  return [
-    { key: 'linhThach', label: 'Linh thạch', value: formatVN(c.linhThach), glyph: '◈', tone: 'cyan' },
-    { key: 'tienNgoc', label: 'Tiên ngọc', value: formatVN(c.tienNgoc), glyph: '◆', tone: 'gold' },
-    { key: 'danhVong', label: 'Danh vọng', value: '0', glyph: '♛', tone: 'violet' },
+  const list: HomeStatTile[] = [
     {
-      key: 'sect',
-      label: 'Tông môn',
-      value: sect?.name ?? NO_SECT,
-      glyph: '⛩',
-      tone: 'jade',
+      key: 'linhThach',
+      label: 'Linh thạch',
+      value: c ? formatVN(c.linhThach) : '0',
+      glyph: '◈',
+      tone: 'cyan',
+    },
+    {
+      key: 'tienNgoc',
+      label: 'Tiên ngọc',
+      value: c ? formatVN(c.tienNgoc) : '0',
+      glyph: '◆',
+      tone: 'gold',
     },
   ];
+  if (reputation.loaded) {
+    list.push({
+      key: 'danhVong',
+      label: 'Danh vọng',
+      value: formatVN(reputation.totalReputation),
+      glyph: '♛',
+      tone: 'violet',
+    });
+  }
+  list.push({
+    key: 'sect',
+    label: 'Tông môn',
+    value: sect?.name ?? NO_SECT,
+    glyph: '⛩',
+    tone: 'jade',
+  });
+  return list;
 });
 
 /** Phase 15.10 — Mail badge số thư chưa đọc, từ `game.unreadMail`. */
@@ -295,6 +348,187 @@ const liveFeatureCards = computed<HomeFeatureCard[]>(() =>
 const liveMobileIconGrid = computed<HomeFeatureCard[]>(() =>
   mobileIconGrid.map((c) => ({ ...c, badge: liveBadgeFor(c.key) })),
 );
+
+/* ────────────────────────────────────────────────────────────────────
+ * Phase 15.16 (PR 626) — Recent quest panel wire từ `useQuestStore`.
+ *
+ * Lọc quest đang theo đuổi (ACCEPTED) + đã hoàn thành chưa nhận thưởng
+ * (COMPLETED), bỏ LOCKED / AVAILABLE / CLAIMED. Cap 4 entry để khớp UI.
+ * Nếu store chưa load hoặc rỗng → panel hiển thị empty state, KHÔNG fallback
+ * về `recentQuests` mock ("Đột Phá Đại Thừa", v.v.).
+ * ──────────────────────────────────────────────────────────────────── */
+const QUEST_KIND_TAG: Record<QuestKind, QuestTag> = {
+  main: 'main',
+  realm: 'main',
+  sect: 'weekly',
+  npc: 'side',
+  grind: 'daily',
+  side: 'side',
+  branch: 'side',
+  hidden: 'side',
+};
+
+function progressOf(q: QuestProgressView): { current: number; total: number } {
+  const total = q.steps.reduce((s, st) => s + Math.max(st.count, 1), 0);
+  const current = q.steps.reduce(
+    (s, st) => s + Math.min(st.currentCount, Math.max(st.count, 1)),
+    0,
+  );
+  return { current, total: Math.max(total, 1) };
+}
+
+function rewardOf(q: QuestProgressView): { glyph: string; amount: string } {
+  const r = q.rewards;
+  if (r.linhThach && r.linhThach > 0) {
+    return { glyph: '◈', amount: formatVN(r.linhThach) };
+  }
+  if (r.tienNgoc && r.tienNgoc > 0) {
+    return { glyph: '◆', amount: formatVN(r.tienNgoc) };
+  }
+  if (r.exp && r.exp > 0) {
+    return { glyph: '✦', amount: formatVN(r.exp) };
+  }
+  if (r.items && r.items.length > 0) {
+    const total = r.items.reduce((s, it) => s + it.qty, 0);
+    return { glyph: '✿', amount: `× ${total}` };
+  }
+  return { glyph: '✧', amount: '—' };
+}
+
+const liveRecentQuests = computed<HomeQuest[]>(() => {
+  const list = questStore.quests
+    .filter((q) => q.status === 'ACCEPTED' || q.status === 'COMPLETED')
+    .slice(0, 4);
+  return list.map((q) => ({
+    key: q.key,
+    tag: QUEST_KIND_TAG[q.kind] ?? 'side',
+    title: q.name,
+    subtitle: q.objective ?? q.description ?? '',
+    progress: progressOf(q),
+    reward: rewardOf(q),
+  }));
+});
+
+/* ────────────────────────────────────────────────────────────────────
+ * Phase 15.16 (PR 626) — Inventory panel + equipment slots wire từ
+ * `listInventory()` API.
+ *
+ * `equipmentSlots`: 6 ô trên silhouette tương ứng 6 slot trong
+ * `EQUIP_SLOTS` chính (HAT/TRAM/ARMOR/BELT/WEAPON/BOOTS). Chỉ map slot
+ * có item đang equip (`equippedSlot != null`). Plus = `refineLevel`
+ * (luyện khí). Glyph theo slot (vũ khí ⚔, giáp ●, …).
+ *
+ * `inventoryPanel.capacity`: server hiện không trả tổng cap → chỉ hiển
+ * thị `current` (số dòng inventory) trong empty-friendly form. Component
+ * tự ẩn capacity bar khi `total === 0`.
+ *
+ * `inventoryPanel.gearPower`: chưa có endpoint; để rỗng → component ẩn.
+ * ──────────────────────────────────────────────────────────────────── */
+interface SlotMeta {
+  position: HomeEquipmentSlot['position'];
+  glyph: string;
+  tone: HomeEquipmentSlot['tone'];
+  label: string;
+}
+const SLOT_META: Partial<Record<EquipSlot, SlotMeta>> = {
+  HAT: { position: 'topLeft', glyph: '◈', tone: 'gold', label: 'Mũ' },
+  TRAM: { position: 'topRight', glyph: '◆', tone: 'cyan', label: 'Phù' },
+  ARMOR: { position: 'midLeft', glyph: '●', tone: 'seal', label: 'Giáp' },
+  BELT: { position: 'midRight', glyph: '◍', tone: 'gold', label: 'Đai' },
+  WEAPON: { position: 'bottomLeft', glyph: '⚔', tone: 'cyan', label: 'Vũ khí' },
+  BOOTS: { position: 'bottomRight', glyph: '✦', tone: 'jade', label: 'Giày' },
+};
+
+const inventoryItems = ref<InventoryView[]>([]);
+const inventoryLoaded = ref(false);
+
+const liveEquipmentSlots = computed<HomeEquipmentSlot[]>(() => {
+  if (!inventoryLoaded.value) return [];
+  const out: HomeEquipmentSlot[] = [];
+  for (const it of inventoryItems.value) {
+    if (!it.equippedSlot) continue;
+    const meta = SLOT_META[it.equippedSlot as EquipSlot];
+    if (!meta) continue;
+    out.push({
+      key: it.id,
+      label: meta.label,
+      glyph: meta.glyph,
+      plus: Math.max(0, it.refineLevel ?? 0),
+      tone: meta.tone,
+      position: meta.position,
+    });
+  }
+  return out;
+});
+
+const liveInventoryInfo = computed(() => {
+  const total = inventoryLoaded.value ? inventoryItems.value.length : 0;
+  return {
+    title: 'Trang bị & Túi đồ',
+    capacity: { current: total, total: 0 },
+    // Không có endpoint gear power realtime → để rỗng, component ẩn block.
+    gearPower: '',
+  };
+});
+
+/* ────────────────────────────────────────────────────────────────────
+ * Phase 15.16 (PR 626) — Daily reward card wire từ `getDailyLoginStatus`.
+ *
+ * Server không expose tổng số ngày trong cycle, nhưng phía FE đã quy ước
+ * cycle 7 ngày (xem `DailyLoginCard` reward grid). Hiển thị progress
+ * `currentStreak % 7` / 7. Khi chưa có status (chưa login hoặc API fail)
+ * → reward = null → `XTHomeHeroBanner` ẩn block, KHÔNG render "6/10" mock.
+ * ──────────────────────────────────────────────────────────────────── */
+const dailyStatus = ref<DailyLoginStatus | null>(null);
+const DAILY_CYCLE = 7;
+
+const liveDailyReward = computed(() => {
+  const s = dailyStatus.value;
+  if (!s) return null;
+  const claimed = s.canClaimToday
+    ? s.currentStreak % DAILY_CYCLE
+    : ((s.currentStreak - 1) % DAILY_CYCLE + DAILY_CYCLE) % DAILY_CYCLE + 1;
+  return {
+    title: 'Phúc lợi hôm nay',
+    claimed: Math.min(claimed, DAILY_CYCLE),
+    total: DAILY_CYCLE,
+    cta: s.canClaimToday ? 'Mở rương' : 'Đã nhận',
+  };
+});
+
+/* ─────────────── lazy hydration ─────────────── */
+async function hydrateRecentQuests(): Promise<void> {
+  if (questStore.loaded) return;
+  await questStore.load().catch(() => undefined);
+}
+async function hydrateReputation(): Promise<void> {
+  if (reputation.loaded) return;
+  await reputation.fetchState().catch(() => undefined);
+}
+async function hydrateInventory(): Promise<void> {
+  try {
+    inventoryItems.value = await listInventory();
+    inventoryLoaded.value = true;
+  } catch {
+    // silent — panel hiển thị empty state
+  }
+}
+async function hydrateDailyLogin(): Promise<void> {
+  try {
+    dailyStatus.value = await getDailyLoginStatus();
+  } catch {
+    dailyStatus.value = null;
+  }
+}
+
+onMounted(() => {
+  // Fail-soft: parallel kick, không block render. Dữ liệu null/empty đã có
+  // safe state ở các computed phía trên.
+  void hydrateRecentQuests();
+  void hydrateReputation();
+  void hydrateInventory();
+  void hydrateDailyLogin();
+});
 
 function onQuickAction(key: string): void {
   switch (key) {
@@ -388,7 +622,7 @@ function onMenu(): void {
           v-else
           :brand="heroBanner"
           :quick-actions="heroQuickActions"
-          :reward="dailyReward"
+          :reward="liveDailyReward"
           test-id="home-hero"
           @quick-action="onQuickAction"
           @claim-reward="onClaimReward"
@@ -427,13 +661,13 @@ function onMenu(): void {
           :class="{ 'xt-home-dash__panels--mobile': showMobileChrome }"
         >
           <XTHomeQuestPanel
-            :quests="recentQuests"
+            :quests="liveRecentQuests"
             :compact="showMobileChrome"
             test-id="home-quest-panel"
           />
           <XTHomeInventoryPanel
-            :slots="equipmentSlots"
-            :info="inventoryPanel"
+            :slots="liveEquipmentSlots"
+            :info="liveInventoryInfo"
             :compact="showMobileChrome"
             test-id="home-inventory-panel"
           />

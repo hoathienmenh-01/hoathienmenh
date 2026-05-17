@@ -7,6 +7,11 @@
  * gradient (KHÔNG dùng ảnh raster, KHÔNG cần asset). Phải: "Thao tác nhanh"
  * card (4 ô) + "Phúc lợi hôm nay" card (progress bar + nút claim).
  *
+ * Phase 15.16 (PR 626) — `reward` cho phép `null` để Home không lộ giá trị
+ * cứng "6/10" khi caller chưa có daily-login data thật. Default `reward`
+ * giữ nguyên mock cho dev preview standalone, nhưng trong `XTHomeDashboard`
+ * caller sẽ truyền live data hoặc `null` để ẩn block.
+ *
  * Emits:
  *   - `quick-action(key)` — khi click một quick action.
  *   - `claim-reward` — khi click rương "Phúc lợi hôm nay".
@@ -22,7 +27,7 @@ withDefaults(
   defineProps<{
     brand?: typeof heroBanner;
     quickActions?: HomeQuickAction[];
-    reward?: typeof dailyReward;
+    reward?: typeof dailyReward | null;
     testId?: string;
   }>(),
   {
@@ -128,6 +133,7 @@ defineEmits<{
       </div>
 
       <button
+        v-if="reward"
         type="button"
         class="xt-home-hero__card xt-home-hero__card--reward"
         :data-testid="`${testId}-reward`"

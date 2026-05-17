@@ -6,27 +6,50 @@
  *   - cột trái: nhân vật silhouette ở giữa, các slot trang bị bao quanh
  *     (top-left, mid-left, bottom-left, top-right, mid-right, bottom-right).
  *   - cột phải: grid mini items 4×3 (placeholder slot) + thông tin
- *     capacity (86/120) + gear power (2.156.780).
+ *     capacity (nếu có) + gear power (nếu có).
+ *
+ * Phase 15.16 (PR 626) — đọc đúng `props.slots` thay vì import trực tiếp
+ * `equipmentSlots` từ mock. Trước đây hàm `slotAt()` dùng biến mock
+ * import-time, khiến slot avatar luôn hiện `+10/+11/+12` từ mock VIP dù
+ * caller đã truyền `:slots="liveEquipmentSlots"` rỗng. Giờ slot grid
+ * theo nguyên `props.slots`; khi rỗng → hiện 6 ô empty (không glyph,
+ * không +N).
+ *
+ * `props.info` chứa `gearPower` (string) và `capacity` (current/total)
+ * — cả hai đều optional. Khi không có data thật:
+ *   - `gearPower` rỗng / 0 → ẩn block "Lực chiến trang bị".
+ *   - `capacity.total === 0` → ẩn thanh capacity + counter.
+ * Trước đây panel luôn hiển thị "2.156.780" và "86/120" dù caller chưa
+ * có nguồn thật.
  *
  * Silhouette là SVG thuần (không cần asset PNG) — gradient jade/gold + halo.
  */
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import {
-  equipmentSlots,
-  inventoryPanel,
   type HomeEquipmentSlot,
 } from '@/data/homeDashboardMock';
 
-withDefaults(
+interface InventoryPanelInfo {
+  title: string;
+  capacity: { current: number; total: number };
+  gearPower: string;
+}
+
+const props = withDefaults(
   defineProps<{
     slots?: HomeEquipmentSlot[];
-    info?: typeof inventoryPanel;
+    info?: InventoryPanelInfo;
     compact?: boolean;
     testId?: string;
   }>(),
   {
-    slots: () => equipmentSlots,
-    info: () => inventoryPanel,
+    slots: () => [],
+    info: () => ({
+      title: 'Trang bị & Túi đồ',
+      capacity: { current: 0, total: 0 },
+      gearPower: '',
+    }),
     compact: false,
     testId: 'home-inventory-panel',
   },
@@ -34,9 +57,26 @@ withDefaults(
 
 const router = useRouter();
 
+const slotPositions: Array<HomeEquipmentSlot['position']> = [
+  'topLeft',
+  'midLeft',
+  'bottomLeft',
+  'topRight',
+  'midRight',
+  'bottomRight',
+];
+
 function slotAt(position: HomeEquipmentSlot['position']): HomeEquipmentSlot | undefined {
-  return equipmentSlots.find((s) => s.position === position);
+  return props.slots.find((s) => s.position === position);
 }
+
+const showCapacity = computed(
+  () => props.info.capacity && props.info.capacity.total > 0,
+);
+const showGearPower = computed(() => {
+  const v = props.info.gearPower;
+  return Boolean(v) && v !== '0';
+});
 
 function openInventory(): void {
   router.push('/inventory').catch(() => null);
@@ -62,9 +102,7 @@ function openInventory(): void {
       >
         Mở túi đồ <span aria-hidden="true">→</span>
       </button>
-    </header>
-
-    <div class="xt-home-inv__body">
+    </header>    <div class="xt-home-inv__body">
       <div class="xt-home-inv__avatar-area" aria-hidden="true">
         <div class="xt-home-inv__avatar">
           <svg viewBox="0 0 120 180" class="xt-home-inv__avatar-svg">
@@ -98,46 +136,55 @@ function openInventory(): void {
         </div>
 
         <span
-          v-for="slot in ['topLeft','midLeft','bottomLeft','topRight','midRight','bottomRight']"
+          v-for="slot in slotPositions"
           :key="slot"
           class="xt-home-inv__slot"
           :class="`xt-home-inv__slot--${slot}`"
         >
-          <template v-if="slotAt(slot as HomeEquipmentSlot['position'])">
+          <template v-if="slotAt(slot)">
             <span
               class="xt-home-inv__slot-glyph"
-              :class="`xt-home-inv__slot-glyph--${slotAt(slot as HomeEquipmentSlot['position'])!.tone}`"
-            >{{ slotAt(slot as HomeEquipmentSlot['position'])!.glyph }}</span>
-            <span class="xt-home-inv__slot-plus">+{{ slotAt(slot as HomeEquipmentSlot['position'])!.plus }}</span>
+              :class="`xt-home-inv__slot-glyph--${slotAt(slot)!.tone}`"
+            >{{ slotAt(slot)!.glyph }}</span>
+            <span v-if="slotAt(slot)!.plus > 0" class="xt-home-inv__slot-plus">+{{ slotAt(slot)!.plus }}</span>
           </template>
         </span>
       </div>
 
       <div class="xt-home-inv__sidebar">
-        <p class="xt-home-inv__meta-label">Lực chiến trang bị</p>
-        <p class="xt-home-inv__meta-value">{{ info.gearPower }}</p>
+        <template v-if="showGearPower">
+          <p class="xt-home-inv__meta-label">Lực chiến trang bị</p>
+          <p class="xt-home-inv__meta-value" :data-testid="`${testId}-gear-power`">{{ info.gearPower }}</p>
+        </template>
         <p class="xt-home-inv__meta-label">Túi đồ</p>
-        <div class="xt-home-inv__capacity">
+        <div v-if="showCapacity" class="xt-home-inv__capacity">
           <div class="xt-home-inv__capacity-bar">
             <div
               class="xt-home-inv__capacity-fill"
               :style="{ width: `${Math.round((info.capacity.current / Math.max(info.capacity.total, 1)) * 100)}%` }"
             />
           </div>
-          <span class="xt-home-inv__capacity-text">
+          <span class="xt-home-inv__capacity-text" :data-testid="`${testId}-capacity`">
             {{ info.capacity.current }}/{{ info.capacity.total }}
           </span>
         </div>
+        <p
+          v-else
+          class="xt-home-inv__capacity-text"
+          :data-testid="`${testId}-capacity-empty`"
+        >
+          {{ info.capacity.current > 0 ? `${info.capacity.current} vật phẩm` : 'Chưa có vật phẩm' }}
+        </p>
 
-        <div class="xt-home-inv__grid">
+        <div v-if="showCapacity || info.capacity.current > 0" class="xt-home-inv__grid">
           <span
             v-for="i in 12"
             :key="i"
             class="xt-home-inv__grid-cell"
-            :class="{ 'xt-home-inv__grid-cell--filled': i <= 7 }"
+            :class="{ 'xt-home-inv__grid-cell--filled': i <= Math.min(7, info.capacity.current) }"
             aria-hidden="true"
           >
-            <span v-if="i <= 7" class="xt-home-inv__grid-glyph">◇</span>
+            <span v-if="i <= Math.min(7, info.capacity.current)" class="xt-home-inv__grid-glyph">◇</span>
           </span>
         </div>
       </div>
