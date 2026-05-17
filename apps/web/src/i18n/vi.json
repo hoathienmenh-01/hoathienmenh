@@ -706,6 +706,7 @@
       "sect": "Gửi tông môn…"
     },
     "send": "Gửi",
+  "sendSect": "Gửi tông môn",
     "errors": {
       "EMPTY_TEXT": "Nội dung trống.",
       "TEXT_TOO_LONG": "Tối đa 200 ký tự.",

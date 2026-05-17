@@ -242,7 +242,7 @@ onUnmounted(() => {
         class="xt-home-sect__send"
         :data-testid="`${testId}-send`"
         :disabled="!inSect || !draft.trim() || sending"
-        :aria-label="t('chat.send')"
+        :aria-label="t('chat.sendSect', 'Gửi tông môn')"
       >{{ t('chat.send') }}</button>
     </form>
   </section>
