@@ -99,6 +99,19 @@ async function finish(): Promise<void> {
         <div class="ml-auto text-xs text-ink-300">{{ step }} / 4</div>
       </header>
 
+      <!-- Step progress indicator -->
+      <div class="flex items-center gap-1 mb-4" data-testid="onboarding-step-indicator">
+        <div
+          v-for="s in [1, 2, 3, 4]"
+          :key="s"
+          :class="[
+            'h-1.5 flex-1 rounded-full transition-all duration-300',
+            s <= step ? 'bg-amber-400' : 'bg-ink-300/30',
+          ]"
+          :data-testid="`onboarding-step-bar-${s}`"
+        />
+      </div>
+
       <section v-if="step === 1">
         <h2 class="text-xl text-ink-50 mb-3">{{ t('onboarding.step1.title') }}</h2>
         <p

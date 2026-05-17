@@ -898,7 +898,7 @@
       "sect": "Gửi tông môn…"
     },
     "send": "Gửi",
-  "sendSect": "Gửi tông môn",
+    "sendSect": "Gửi tông môn",
     "errors": {
       "EMPTY_TEXT": "Nội dung trống.",
       "TEXT_TOO_LONG": "Tối đa 200 ký tự.",
@@ -6925,7 +6925,10 @@
     },
     "action": {
       "open": "Mở",
-      "transitionTo": "Chuyển → {status}"
+      "transitionTo": "Chuyển → {status}",
+      "create": "Tạo sự kiện",
+      "edit": "Sửa",
+      "delete": "Xóa"
     },
     "detail": {
       "key": "Key",
@@ -6938,7 +6941,47 @@
       "list": "Không tải được danh sách ({code}).",
       "templates": "Không tải được template ({code}).",
       "detail": "Không tải được chi tiết ({code}).",
-      "transition": "Không chuyển được trạng thái ({code})."
+      "transition": "Không chuyển được trạng thái ({code}).",
+      "delete": "Xóa thất bại ({code})."
+    },
+    "promptDeleteReason": "Nhập lý do xóa sự kiện này (audit log):",
+    "deleteSuccess": "Đã xóa sự kiện {key}.",
+    "form": {
+      "titleCreate": "Tạo sự kiện mới",
+      "titleEdit": "Sửa sự kiện",
+      "template": "Dùng template nhanh",
+      "noTemplate": "— Không dùng template —",
+      "key": "Key sự kiện",
+      "keyPlaceholder": "vd: xuan_le_2026",
+      "keyHint": "Chữ thường, số, dấu gạch dưới. 3-64 ký tự.",
+      "name": "Tên hiển thị",
+      "namePlaceholder": "vd: Xuân Lễ 2026",
+      "type": "Loại sự kiện",
+      "selectType": "— Chọn loại —",
+      "bracketMode": "Chế độ bracket",
+      "description": "Mô tả",
+      "descPlaceholder": "Mô tả ngắn cho admin (không bắt buộc)",
+      "startsAt": "Bắt đầu",
+      "endsAt": "Kết thúc",
+      "enabled": "Bật",
+      "reason": "Lý do audit",
+      "reasonPlaceholder": "Bạn thay đổi vì sao?",
+      "reasonHint": "Bắt buộc cho audit log. Tối thiểu 3 ký tự.",
+      "validateBtn": "Kiểm tra",
+      "validateOk": "Kiểm tra thành công!",
+      "create": "Tạo",
+      "save": "Lưu thay đổi",
+      "editSuccess": "Đã cập nhật sự kiện {key}.",
+      "createSuccess": "Đã tạo sự kiện {key}.",
+      "submitFailed": "Gửi thất bại: {code}",
+      "errors": {
+        "keyFormat": "Key phải 3-64 ký tự, chữ thường, số, dấu gạch dưới.",
+        "nameRequired": "Tên bắt buộc (tối đa 120 ký tự).",
+        "typeRequired": "Loại sự kiện bắt buộc.",
+        "datesRequired": "Ngày bắt đầu và kết thúc bắt buộc.",
+        "dateRange": "Ngày kết thúc phải sau ngày bắt đầu.",
+        "reasonRequired": "Lý do audit bắt buộc (tối thiểu 3 ký tự)."
+      }
     }
   },
   "mentor": {
@@ -7837,6 +7880,23 @@
       "claim": "Lĩnh thưởng",
       "claimed": "Đã lĩnh"
     },
+    "cta": {
+      "dailyLogin": "Đến Điểm Danh",
+      "inventory": "Mở Túi Đồ",
+      "cultivation": "Bắt Đầu Tu Luyện",
+      "quest": "Xem Nhiệm Vụ",
+      "profile": "Xem Hồ Sơ",
+      "spiritualRoot": "Kiểm Tra Linh Căn",
+      "combat": "Vào Chiến Đấu",
+      "dungeon": "Khám Phá Bí Cảnh",
+      "story": "Mở Cốt Truyện",
+      "sect": "Xem Tông Môn",
+      "chat": "Mở Chat",
+      "mail": "Kiểm Tra Thư",
+      "home": "Về Trang Chính"
+    },
+    "loading": "Đang tải tiến trình khai đạo…",
+    "currentDayCta": "← Bạn đang ở đây! Nhấn để tiếp tục →",
     "reward": {
       "linhThach": "Linh thạch",
       "exp": "Kinh nghiệm",
@@ -8608,5 +8668,36 @@
       "label": "Thiên Tiên Thế Giới",
       "breadcrumb": "Nhiệm Vụ · Thế Giới"
     }
+  },
+  "notificationCenter": {
+    "viewTitle": "Trung Tam Thong Bao",
+    "viewSubtitle": "Tat ca thong bao cua ban tai mot noi.",
+    "filter": {
+      "all": "Tat ca",
+      "system": "He thong",
+      "rewards": "Phan thuong",
+      "sect": "Mon phai",
+      "trading": "Giao dich",
+      "combat": "Chien dau",
+      "mission": "Nhiem vu",
+      "social": "Xa hoi"
+    },
+    "empty": "Khong co thong bao nao.",
+    "emptyHint": "Thong bao tu thu, xa hoi, va su kien game se hien thi o day.",
+    "time": {
+      "justNow": "Vua xong",
+      "minutesAgo": "{n} phut truoc",
+      "hoursAgo": "{n} gio truoc",
+      "daysAgo": "{n} ngay truoc"
+    }
+  },
+  "onlineFriends": {
+    "title": "Ban be",
+    "viewAll": "Xem tat ca",
+    "error": "Khong the tai danh sach ban be.",
+    "noFriends": "Chua co ban be. Them ban trong tab Xa Hoi!",
+    "noneOnline": "Khong co ban nao dang online.",
+    "onlineCount": "{n} dang online",
+    "recentlyOffline": "Ngoai tuyen"
   }
 }

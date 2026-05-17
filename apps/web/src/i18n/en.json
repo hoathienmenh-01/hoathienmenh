@@ -898,7 +898,7 @@
       "sect": "Send to sect…"
     },
     "send": "Send",
-  "sendSect": "Send to sect",
+    "sendSect": "Send to sect",
     "errors": {
       "EMPTY_TEXT": "Empty message.",
       "TEXT_TOO_LONG": "Max 200 characters.",
@@ -6925,7 +6925,10 @@
     },
     "action": {
       "open": "Open",
-      "transitionTo": "→ {status}"
+      "transitionTo": "→ {status}",
+      "create": "Create Event",
+      "edit": "Edit",
+      "delete": "Delete"
     },
     "detail": {
       "key": "Key",
@@ -6938,7 +6941,47 @@
       "list": "List load failed ({code}).",
       "templates": "Template load failed ({code}).",
       "detail": "Detail load failed ({code}).",
-      "transition": "Transition failed ({code})."
+      "transition": "Transition failed ({code}).",
+      "delete": "Delete failed ({code})."
+    },
+    "promptDeleteReason": "Reason for deleting this event (audit log):",
+    "deleteSuccess": "Event {key} deleted.",
+    "form": {
+      "titleCreate": "Create New Event",
+      "titleEdit": "Edit Event",
+      "template": "Quick-fill from template",
+      "noTemplate": "— No template —",
+      "key": "Event key",
+      "keyPlaceholder": "e.g. spring_festival_2026",
+      "keyHint": "Lowercase letters, digits, underscore. 3-64 chars.",
+      "name": "Display name",
+      "namePlaceholder": "e.g. Spring Festival 2026",
+      "type": "Event type",
+      "selectType": "— Select type —",
+      "bracketMode": "Bracket mode",
+      "description": "Description",
+      "descPlaceholder": "Brief description for admin panel (optional)",
+      "startsAt": "Starts at",
+      "endsAt": "Ends at",
+      "enabled": "Enabled",
+      "reason": "Audit reason",
+      "reasonPlaceholder": "Why are you making this change?",
+      "reasonHint": "Required for audit log. Min 3 characters.",
+      "validateBtn": "Validate",
+      "validateOk": "Validation passed!",
+      "create": "Create",
+      "save": "Save Changes",
+      "editSuccess": "Event {key} updated successfully.",
+      "createSuccess": "Event {key} created successfully.",
+      "submitFailed": "Submit failed: {code}",
+      "errors": {
+        "keyFormat": "Key must be 3-64 chars, lowercase, digits, underscore.",
+        "nameRequired": "Name is required (max 120 chars).",
+        "typeRequired": "Event type is required.",
+        "datesRequired": "Start and end dates are required.",
+        "dateRange": "End date must be after start date.",
+        "reasonRequired": "Audit reason is required (min 3 chars)."
+      }
     }
   },
   "mentor": {
@@ -7837,6 +7880,23 @@
       "claim": "Claim",
       "claimed": "Claimed"
     },
+    "cta": {
+      "dailyLogin": "Go to Daily Login",
+      "inventory": "Open Inventory",
+      "cultivation": "Start Cultivating",
+      "quest": "View Quests",
+      "profile": "View Profile",
+      "spiritualRoot": "Check Spiritual Root",
+      "combat": "Enter Combat",
+      "dungeon": "Explore Dungeon",
+      "story": "Open Story",
+      "sect": "Browse Sects",
+      "chat": "Open Chat",
+      "mail": "Check Mail",
+      "home": "Go to Home"
+    },
+    "loading": "Loading onboarding progress…",
+    "currentDayCta": "← You are here! Tap to continue →",
     "reward": {
       "linhThach": "Linh Thach",
       "exp": "EXP",
@@ -8608,5 +8668,36 @@
       "label": "Thiên Tiên Thế Giới",
       "breadcrumb": "Nhiệm Vụ · Thế Giới"
     }
+  },
+  "notificationCenter": {
+    "viewTitle": "Notification Center",
+    "viewSubtitle": "All your notifications in one place.",
+    "filter": {
+      "all": "All",
+      "system": "System",
+      "rewards": "Rewards",
+      "sect": "Sect",
+      "trading": "Trading",
+      "combat": "Combat",
+      "mission": "Mission",
+      "social": "Social"
+    },
+    "empty": "No notifications to display.",
+    "emptyHint": "Notifications from mail, social, and game events will appear here.",
+    "time": {
+      "justNow": "Just now",
+      "minutesAgo": "{n}m ago",
+      "hoursAgo": "{n}h ago",
+      "daysAgo": "{n}d ago"
+    }
+  },
+  "onlineFriends": {
+    "title": "Friends",
+    "viewAll": "View all",
+    "error": "Failed to load friends.",
+    "noFriends": "No friends yet. Add friends in the Social tab!",
+    "noneOnline": "No friends online right now.",
+    "onlineCount": "{n} online",
+    "recentlyOffline": "Offline"
   }
 }
