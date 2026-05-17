@@ -29,12 +29,14 @@ import {
   adminListBosses,
   adminListItems,
   adminTransitionEvent,
+  adminDeleteEvent,
   type EventCatalog,
 } from '@/api/eventBuilder';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
+import AdminEventCreateForm from '@/components/admin/AdminEventCreateForm.vue';
 import type {
   EventDef,
   EventStatus,
@@ -182,6 +184,67 @@ function closeEvent(): void {
   selectedEvent.value = null;
 }
 
+// ── Create/Edit form state ──
+const showForm = ref(false);
+const editingEvent = ref<EventDef | null>(null);
+const deleting = ref(false);
+
+function openCreate(): void {
+  editingEvent.value = null;
+  showForm.value = true;
+}
+
+function openEdit(): void {
+  if (!selectedEvent.value) return;
+  editingEvent.value = selectedEvent.value;
+  showForm.value = true;
+}
+
+function onFormSaved(ev: EventDef): void {
+  showForm.value = false;
+  editingEvent.value = null;
+  // Update local list
+  const idx = events.value.findIndex((e) => e.key === ev.key);
+  if (idx >= 0) {
+    events.value[idx] = ev;
+  } else {
+    events.value.unshift(ev);
+  }
+  if (selectedEvent.value?.key === ev.key) {
+    selectedEvent.value = ev;
+  }
+}
+
+function onFormCancel(): void {
+  showForm.value = false;
+  editingEvent.value = null;
+}
+
+async function deleteCurrentEvent(): Promise<void> {
+  if (!selectedEvent.value) return;
+  const reason = window.prompt(t('adminEvents.promptDeleteReason'), '');
+  if (reason === null) return;
+  deleting.value = true;
+  try {
+    await adminDeleteEvent(selectedEvent.value.key, reason || undefined);
+    events.value = events.value.filter((e) => e.key !== selectedEvent.value!.key);
+    toast.push({
+      type: 'success',
+      text: t('adminEvents.deleteSuccess', { key: selectedEvent.value.key }),
+    });
+    closeEvent();
+  } catch (err) {
+    toast.push({
+      type: 'error',
+      text: t('adminEvents.errors.delete', {
+        code: extractApiErrorCodeOrDefault(err, 'UNKNOWN'),
+      }),
+    });
+  } finally {
+    deleting.value = false;
+  }
+}
+
 async function transition(key: string, nextStatus: EventStatus): Promise<void> {
   const reason = window.prompt(t('adminEvents.promptReason'), '');
   if (reason === null) return;
@@ -259,73 +322,88 @@ onMounted(async () => {
 
       <!-- EVENTS TAB -->
       <section v-if="tab === 'events'">
-        <div class="filters">
-          <select v-model="filterStatus" @change="refreshEvents">
-            <option value="">
-              {{ t('adminEvents.filter.allStatuses') }}
-            </option>
-            <option
-              v-for="s in catalog?.statuses ?? []"
-              :key="s"
-              :value="s"
-            >
-              {{ s }}
-            </option>
-          </select>
-          <select v-model="filterType" @change="refreshEvents">
-            <option value="">{{ t('adminEvents.filter.allTypes') }}</option>
-            <option
-              v-for="x in catalog?.types ?? []"
-              :key="x"
-              :value="x"
-            >
-              {{ x }}
-            </option>
-          </select>
-          <select v-model="filterEnabled" @change="refreshEvents">
-            <option value="">{{ t('adminEvents.filter.anyEnabled') }}</option>
-            <option value="true">{{ t('adminEvents.filter.enabled') }}</option>
-            <option value="false">
-              {{ t('adminEvents.filter.disabled') }}
-            </option>
-          </select>
-        </div>
-        <div v-if="loading" class="muted">{{ t('adminEvents.loading') }}</div>
-        <div v-else-if="events.length === 0" class="muted">
-          {{ t('adminEvents.empty') }}
-        </div>
-        <table v-else class="table">
-          <thead>
-            <tr>
-              <th>{{ t('adminEvents.table.key') }}</th>
-              <th>{{ t('adminEvents.table.name') }}</th>
-              <th>{{ t('adminEvents.table.type') }}</th>
-              <th>{{ t('adminEvents.table.status') }}</th>
-              <th>{{ t('adminEvents.table.bracketMode') }}</th>
-              <th>{{ t('adminEvents.table.enabled') }}</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="e in events" :key="e.key">
-              <td><code>{{ e.key }}</code></td>
-              <td>{{ e.name }}</td>
-              <td>{{ e.eventType }}</td>
-              <td>
-                <span :class="['badge', e.status.toLowerCase()]">
-                  {{ e.status }}
-                </span>
-              </td>
-              <td>{{ e.bracketMode }}</td>
-              <td>{{ e.enabled ? '✓' : '×' }}</td>
-              <td>
-                <MButton @click="openEvent(e.key)">
-                  {{ t('adminEvents.action.open') }}
-                </MButton>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <!-- Create/Edit Form (overlay) -->
+        <AdminEventCreateForm
+          v-if="showForm"
+          :catalog="catalog"
+          :templates="templates"
+          :edit-event="editingEvent"
+          @saved="onFormSaved"
+          @cancel="onFormCancel"
+        />
+
+        <template v-else>
+          <div class="filters">
+            <MButton data-testid="event-create-btn" @click="openCreate">
+              + {{ t('adminEvents.action.create') }}
+            </MButton>
+            <select v-model="filterStatus" @change="refreshEvents">
+              <option value="">
+                {{ t('adminEvents.filter.allStatuses') }}
+              </option>
+              <option
+                v-for="s in catalog?.statuses ?? []"
+                :key="s"
+                :value="s"
+              >
+                {{ s }}
+              </option>
+            </select>
+            <select v-model="filterType" @change="refreshEvents">
+              <option value="">{{ t('adminEvents.filter.allTypes') }}</option>
+              <option
+                v-for="x in catalog?.types ?? []"
+                :key="x"
+                :value="x"
+              >
+                {{ x }}
+              </option>
+            </select>
+            <select v-model="filterEnabled" @change="refreshEvents">
+              <option value="">{{ t('adminEvents.filter.anyEnabled') }}</option>
+              <option value="true">{{ t('adminEvents.filter.enabled') }}</option>
+              <option value="false">
+                {{ t('adminEvents.filter.disabled') }}
+              </option>
+            </select>
+          </div>
+          <div v-if="loading" class="muted">{{ t('adminEvents.loading') }}</div>
+          <div v-else-if="events.length === 0" class="muted">
+            {{ t('adminEvents.empty') }}
+          </div>
+          <table v-else class="table">
+            <thead>
+              <tr>
+                <th>{{ t('adminEvents.table.key') }}</th>
+                <th>{{ t('adminEvents.table.name') }}</th>
+                <th>{{ t('adminEvents.table.type') }}</th>
+                <th>{{ t('adminEvents.table.status') }}</th>
+                <th>{{ t('adminEvents.table.bracketMode') }}</th>
+                <th>{{ t('adminEvents.table.enabled') }}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="e in events" :key="e.key">
+                <td><code>{{ e.key }}</code></td>
+                <td>{{ e.name }}</td>
+                <td>{{ e.eventType }}</td>
+                <td>
+                  <span :class="['badge', e.status.toLowerCase()]">
+                    {{ e.status }}
+                  </span>
+                </td>
+                <td>{{ e.bracketMode }}</td>
+                <td>{{ e.enabled ? '✓' : '×' }}</td>
+                <td>
+                  <MButton @click="openEvent(e.key)">
+                    {{ t('adminEvents.action.open') }}
+                  </MButton>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
       </section>
 
       <!-- DETAIL TABS (need selected event) -->
@@ -429,6 +507,20 @@ onMounted(async () => {
             @click="transition(selectedEvent.key, next)"
           >
             {{ t('adminEvents.action.transitionTo', { status: next }) }}
+          </MButton>
+        </div>
+        <div class="edit-buttons">
+          <MButton data-testid="event-edit-btn" @click="openEdit">
+            {{ t('adminEvents.action.edit') }}
+          </MButton>
+          <MButton
+            v-if="selectedEvent.status === 'DRAFT' || selectedEvent.status === 'CANCELLED'"
+            :loading="deleting"
+            variant="danger"
+            data-testid="event-delete-btn"
+            @click="deleteCurrentEvent"
+          >
+            {{ t('adminEvents.action.delete') }}
           </MButton>
         </div>
       </aside>
@@ -539,5 +631,12 @@ onMounted(async () => {
   flex-wrap: wrap;
   gap: 0.4rem;
   margin-top: 0.8rem;
+}
+.edit-buttons {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--border, #333);
 }
 </style>

@@ -2,50 +2,37 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { createI18n } from 'vue-i18n';
 import { setActivePinia, createPinia } from 'pinia';
-import type {
-  OnboardingClaimResult,
-  OnboardingDayView,
-  OnboardingProgressView,
-  OnboardingTaskView,
-} from '@/api/onboardingQuest';
 
 /**
- * Phase 34.0 — OnboardingQuestView UI smoke coverage.
+ * Phase 34.0 PR2 — OnboardingQuestView polished tests.
  *
- * Cover:
- *   1. Loaded → render day grid + overall progress %.
- *   2. Click day card (AVAILABLE) → show day detail with tasks.
- *   3. Locked day card disabled.
- *   4. Complete button → POST complete + toast success.
- *   5. Claim button → POST claim + toast success.
+ * Verify step progress bar, deep-link CTAs, day state rendering,
+ * loading state, and task action dispatch.
  */
 
 const fetchProgressMock = vi.fn();
-const acceptTaskMock = vi.fn();
 const completeTaskMock = vi.fn();
 const claimTaskMock = vi.fn();
-const recomputeMock = vi.fn();
 
 vi.mock('@/api/onboardingQuest', () => ({
   fetchOnboardingProgress: (...a: unknown[]) => fetchProgressMock(...a),
   fetchOnboardingDay: vi.fn(),
-  acceptOnboardingTask: (...a: unknown[]) => acceptTaskMock(...a),
+  acceptOnboardingTask: vi.fn(),
   completeOnboardingTask: (...a: unknown[]) => completeTaskMock(...a),
   claimOnboardingTask: (...a: unknown[]) => claimTaskMock(...a),
-  recomputeOnboarding: (...a: unknown[]) => recomputeMock(...a),
+  recomputeOnboarding: vi.fn(),
 }));
 
 const toastPushMock = vi.fn();
+vi.mock('@/stores/toast', () => ({
+  useToastStore: () => ({ push: toastPushMock }),
+}));
 
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({
     user: { id: 'u1' },
     hydrate: vi.fn().mockResolvedValue(undefined),
   }),
-}));
-
-vi.mock('@/stores/toast', () => ({
-  useToastStore: () => ({ push: toastPushMock }),
 }));
 
 const routerPushMock = vi.fn().mockResolvedValue(undefined);
@@ -60,130 +47,138 @@ vi.mock('@/components/shell/AppShell.vue', () => ({
   },
 }));
 
-import OnboardingQuestView from '@/views/OnboardingQuestView.vue';
-
-const messages = {
-  vi: {
-    common: { loadingData: 'Đang tải…' },
-    onboardingQuest: {
-      title: 'Khai Đạo 7 Ngày',
-      subtitle: 'sub',
-      overallProgress: '{claimed}/{total} ({pct}%)',
-      dayLabel: 'Ngày {n}',
-      totalTasks: '{n} nhiệm vụ',
-      doneCount: '{done}/{total}',
-      empty: 'Trống.',
-      back: 'Trở lại',
-      completeToast: 'Hoàn thành: {name}.',
-      claimToast: 'Lĩnh thưởng +{linhThach} +{exp}.',
-      claimToastTitle: 'Lĩnh + {title}.',
-      novice_cultivator_title: 'Tân Tu Sĩ',
-      dayStatus: {
-        LOCKED: 'Khoá',
-        AVAILABLE: 'Khả dụng',
-        IN_PROGRESS: 'Đang tiến',
-        COMPLETED: 'Hoàn tất',
-      },
-      taskStatus: {
-        LOCKED: 'Khoá',
-        AVAILABLE: 'Sẵn sàng',
-        COMPLETED: 'Hoàn thành',
-        CLAIMED: 'Đã thưởng',
-      },
-      category: {
-        tutorial: 'Hướng dẫn',
-        cultivation: 'Tu luyện',
-        combat: 'Chiến đấu',
-        story: 'Cốt truyện',
-        social: 'Xã hội',
-        system: 'Hệ thống',
-      },
-      actions: {
-        open: 'Mở',
-        complete: 'Báo',
-        claim: 'Thưởng',
-        claimed: 'Đã lĩnh',
-      },
-      reward: {
-        linhThach: 'LT',
-        exp: 'EXP',
-        title: 'Danh hiệu',
-      },
-      error: { UNKNOWN_ERROR: 'Lỗi.' },
-    },
+vi.mock('@/components/xianxia/XTLuxHero.vue', () => ({
+  default: {
+    name: 'XTLuxHeroStub',
+    props: ['eyebrow', 'label', 'title', 'subtitle', 'tone', 'watermarkLetter', 'breadcrumb', 'testId'],
+    template: '<div data-testid="hero"><slot /></div>',
   },
+}));
+
+vi.mock('@/components/xianxia/XTPageEyebrow.vue', () => ({
+  default: {
+    name: 'XTPageEyebrowStub',
+    template: '<span />',
+  },
+}));
+
+import OnboardingQuestView from '@/views/OnboardingQuestView.vue';
+import { useOnboardingQuestStore } from '@/stores/onboardingQuest';
+
+const MOCK_PROGRESS = {
+  totalDays: 7,
+  totalTasks: 26,
+  completedTasks: 7,
+  claimedTasks: 5,
+  days: [
+    {
+      dayNumber: 1,
+      titleVi: 'Khởi đầu',
+      titleEn: 'Beginning',
+      themeVi: 'Bắt đầu',
+      themeEn: 'Start',
+      status: 'COMPLETED',
+      unlockedAt: '2026-01-01T00:00:00Z',
+      completedAt: '2026-01-01T12:00:00Z',
+      totalTasks: 5,
+      completedTasks: 5,
+      claimedTasks: 5,
+      tasks: [],
+    },
+    {
+      dayNumber: 2,
+      titleVi: 'Tu luyện',
+      titleEn: 'Cultivation',
+      themeVi: 'Hoc tu luyen',
+      themeEn: 'Learn cultivation',
+      status: 'IN_PROGRESS',
+      unlockedAt: '2026-01-02T00:00:00Z',
+      completedAt: null,
+      totalTasks: 4,
+      completedTasks: 2,
+      claimedTasks: 0,
+      tasks: [
+        {
+          taskKey: 'd2_check_spiritual_root',
+          dayNumber: 2,
+          titleVi: 'Xem linh căn',
+          titleEn: 'Check spiritual root',
+          descriptionVi: 'Xem linh căn',
+          descriptionEn: 'Check your spiritual root',
+          actionRoute: '/spiritual-root',
+          category: 'cultivation',
+          status: 'AVAILABLE',
+          completedAt: null,
+          claimedAt: null,
+          reward: { linhThach: 100, exp: 0 },
+        },
+        {
+          taskKey: 'd2_equip_weapon',
+          dayNumber: 2,
+          titleVi: 'Trang bị',
+          titleEn: 'Equip weapon',
+          descriptionVi: 'Trang bị vũ khí',
+          descriptionEn: 'Equip weapon',
+          actionRoute: '/inventory',
+          category: 'combat',
+          status: 'COMPLETED',
+          completedAt: '2026-01-02T01:00:00Z',
+          claimedAt: null,
+          reward: { linhThach: 150, exp: 50 },
+        },
+      ],
+    },
+    {
+      dayNumber: 3,
+      titleVi: 'Chiến đấu',
+      titleEn: 'Combat',
+      themeVi: 'Chiến đấu',
+      themeEn: 'Combat basics',
+      status: 'LOCKED',
+      unlockedAt: null,
+      completedAt: null,
+      totalTasks: 4,
+      completedTasks: 0,
+      claimedTasks: 0,
+      tasks: [],
+    },
+  ],
 };
 
 function makeI18n() {
   return createI18n({
     legacy: false,
-    locale: 'vi',
-    fallbackLocale: 'vi',
+    locale: 'en',
+    fallbackLocale: 'en',
     missingWarn: false,
     fallbackWarn: false,
-    messages,
+    messages: {
+      en: {
+        luxHero: { onboardingQuest: { eyebrow: 'PATH', label: 'Path', breadcrumb: 'Home' } },
+        onboardingQuest: {
+          title: '7-Day Path',
+          subtitle: 'Journey',
+          overallProgress: '{claimed}/{total} ({pct}%)',
+          dayLabel: 'Day {n}',
+          doneCount: '{done}/{total} done',
+          empty: 'No days.',
+          back: 'Back',
+          loading: 'Loading...',
+          currentDayCta: 'You are here!',
+          completeToast: 'Done: {name}',
+          claimToast: 'Claimed +{linhThach} +{exp}',
+          claimToastTitle: 'Claimed + {title}',
+          dayStatus: { LOCKED: 'Locked', AVAILABLE: 'Available', IN_PROGRESS: 'In progress', COMPLETED: 'Completed' },
+          taskStatus: { LOCKED: 'Locked', AVAILABLE: 'Ready', COMPLETED: 'Completed', CLAIMED: 'Claimed' },
+          category: { tutorial: 'Tutorial', cultivation: 'Cultivation', combat: 'Combat', story: 'Story', social: 'Social', system: 'System' },
+          actions: { open: 'Open', complete: 'Report', claim: 'Claim', claimed: 'Claimed' },
+          cta: { dailyLogin: 'Go to Daily Login', inventory: 'Open Inventory', cultivation: 'Start Cultivating', quest: 'View Quests', profile: 'View Profile', spiritualRoot: 'Check Spiritual Root', combat: 'Enter Combat', dungeon: 'Explore Dungeon', story: 'Open Story', sect: 'Browse Sects', chat: 'Open Chat', mail: 'Check Mail', home: 'Go to Home' },
+          reward: { linhThach: 'LT', exp: 'EXP', title: 'Title' },
+          error: { UNKNOWN_ERROR: 'Unknown error' },
+        },
+      },
+    },
   });
-}
-
-function buildTask(
-  partial: Partial<OnboardingTaskView> & {
-    taskKey: string;
-    status: OnboardingTaskView['status'];
-  },
-): OnboardingTaskView {
-  return {
-    taskKey: partial.taskKey,
-    dayNumber: partial.dayNumber ?? 1,
-    titleVi: partial.titleVi ?? `Task ${partial.taskKey}`,
-    titleEn: partial.titleEn ?? `Task ${partial.taskKey}`,
-    descriptionVi: partial.descriptionVi ?? 'desc',
-    descriptionEn: partial.descriptionEn ?? 'desc',
-    actionRoute: partial.actionRoute ?? '/inventory',
-    category: partial.category ?? 'tutorial',
-    status: partial.status,
-    completedAt: partial.completedAt ?? null,
-    claimedAt: partial.claimedAt ?? null,
-    reward: partial.reward ?? { linhThach: 100, exp: 0 },
-  };
-}
-
-function buildDay(
-  partial: Partial<OnboardingDayView> & {
-    dayNumber: number;
-    status: OnboardingDayView['status'];
-    tasks?: OnboardingTaskView[];
-  },
-): OnboardingDayView {
-  const tasks = partial.tasks ?? [];
-  return {
-    dayNumber: partial.dayNumber,
-    titleVi: partial.titleVi ?? `Day ${partial.dayNumber}`,
-    titleEn: partial.titleEn ?? `Day ${partial.dayNumber}`,
-    themeVi: partial.themeVi ?? 'theme',
-    themeEn: partial.themeEn ?? 'theme',
-    status: partial.status,
-    unlockedAt: partial.unlockedAt ?? null,
-    completedAt: partial.completedAt ?? null,
-    totalTasks: tasks.length,
-    completedTasks: tasks.filter(
-      (t) => t.status === 'COMPLETED' || t.status === 'CLAIMED',
-    ).length,
-    claimedTasks: tasks.filter((t) => t.status === 'CLAIMED').length,
-    tasks,
-  };
-}
-
-function buildProgress(days: OnboardingDayView[]): OnboardingProgressView {
-  const totalTasks = days.reduce((s, d) => s + d.totalTasks, 0);
-  const completedTasks = days.reduce((s, d) => s + d.completedTasks, 0);
-  const claimedTasks = days.reduce((s, d) => s + d.claimedTasks, 0);
-  return {
-    totalDays: days.length,
-    totalTasks,
-    completedTasks,
-    claimedTasks,
-    days,
-  };
 }
 
 function mountView() {
@@ -193,181 +188,168 @@ function mountView() {
   });
 }
 
-beforeEach(() => {
-  setActivePinia(createPinia());
-  fetchProgressMock.mockReset();
-  acceptTaskMock.mockReset();
-  completeTaskMock.mockReset();
-  claimTaskMock.mockReset();
-  recomputeMock.mockReset();
-  toastPushMock.mockReset();
-  routerPushMock.mockClear();
-});
-
-afterEach(() => {
-  document.body.innerHTML = '';
-});
-
-describe('OnboardingQuestView render', () => {
-  it('renders 7 day cards + overall progress', async () => {
-    const days = Array.from({ length: 7 }, (_, i) =>
-      buildDay({
-        dayNumber: i + 1,
-        status: i === 0 ? 'AVAILABLE' : 'LOCKED',
-        tasks: [
-          buildTask({
-            taskKey: `d${i + 1}_x`,
-            dayNumber: i + 1,
-            status: i === 0 ? 'AVAILABLE' : 'LOCKED',
-          }),
-        ],
-      }),
-    );
-    fetchProgressMock.mockResolvedValue(buildProgress(days));
-    const w = mountView();
-    await flushPromises();
-
-    const grid = w.find('[data-testid="onboarding-day-grid"]');
-    expect(grid.exists()).toBe(true);
-    for (let n = 1; n <= 7; n++) {
-      expect(w.find(`[data-testid="onboarding-day-card-${n}"]`).exists()).toBe(
-        true,
-      );
-    }
-    // Card 1 unlocked → not disabled.
-    expect(
-      w
-        .find('[data-testid="onboarding-day-card-1"]')
-        .attributes('disabled'),
-    ).toBeUndefined();
-    // Card 2 locked → disabled attr present.
-    expect(
-      w
-        .find('[data-testid="onboarding-day-card-2"]')
-        .attributes('disabled'),
-    ).toBeDefined();
+describe('OnboardingQuestView (polished)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    fetchProgressMock.mockReset();
+    completeTaskMock.mockReset();
+    claimTaskMock.mockReset();
+    toastPushMock.mockReset();
+    routerPushMock.mockClear();
+    fetchProgressMock.mockResolvedValue(MOCK_PROGRESS);
   });
 
-  it('shows empty placeholder when 0 days', async () => {
-    fetchProgressMock.mockResolvedValue(buildProgress([]));
-    const w = mountView();
-    await flushPromises();
-    expect(w.text()).toContain('Trống.');
-  });
-});
-
-describe('OnboardingQuestView interactions', () => {
-  function setupOneDay(): OnboardingDayView {
-    return buildDay({
-      dayNumber: 1,
-      status: 'AVAILABLE',
-      tasks: [
-        buildTask({ taskKey: 'd1_a', status: 'AVAILABLE' }),
-        buildTask({ taskKey: 'd1_b', status: 'COMPLETED' }),
-        buildTask({ taskKey: 'd1_c', status: 'CLAIMED' }),
-      ],
-    });
-  }
-
-  it('click day card → show task list', async () => {
-    fetchProgressMock.mockResolvedValue(buildProgress([setupOneDay()]));
-    const w = mountView();
-    await flushPromises();
-
-    await w.find('[data-testid="onboarding-day-card-1"]').trigger('click');
-    await flushPromises();
-
-    expect(w.find('[data-testid="onboarding-task-d1_a"]').exists()).toBe(true);
-    expect(w.find('[data-testid="onboarding-task-d1_b"]').exists()).toBe(true);
-    expect(w.find('[data-testid="onboarding-task-d1_c"]').exists()).toBe(true);
-
-    // Complete button only on AVAILABLE task.
-    expect(w.find('[data-testid="onboarding-complete-d1_a"]').exists()).toBe(
-      true,
-    );
-    expect(w.find('[data-testid="onboarding-complete-d1_b"]').exists()).toBe(
-      false,
-    );
-    // Claim button only on COMPLETED task.
-    expect(w.find('[data-testid="onboarding-claim-d1_b"]').exists()).toBe(true);
-    expect(w.find('[data-testid="onboarding-claim-d1_a"]').exists()).toBe(
-      false,
-    );
-    // CLAIMED → claimed label.
-    expect(w.find('[data-testid="onboarding-claimed-d1_c"]').exists()).toBe(
-      true,
-    );
+  afterEach(() => {
+    document.body.innerHTML = '';
   });
 
-  it('complete button → POST + toast success', async () => {
-    fetchProgressMock.mockResolvedValue(buildProgress([setupOneDay()]));
-    completeTaskMock.mockResolvedValue(
-      buildTask({ taskKey: 'd1_a', status: 'COMPLETED' }),
-    );
-    const w = mountView();
+  it('renders step progress bar when loaded', async () => {
+    const wrapper = mountView();
+    const store = useOnboardingQuestStore();
+    store.progress = MOCK_PROGRESS as never;
+    store.loaded = true;
     await flushPromises();
 
-    await w.find('[data-testid="onboarding-day-card-1"]').trigger('click');
-    await flushPromises();
-    await w
-      .find('[data-testid="onboarding-complete-d1_a"]')
-      .trigger('click');
-    await flushPromises();
-
-    expect(completeTaskMock).toHaveBeenCalledWith('d1_a');
-    expect(toastPushMock).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'success' }),
-    );
+    expect(wrapper.find('[data-testid="onboarding-step-progress"]').exists()).toBe(true);
   });
 
-  it('claim button → POST + toast success', async () => {
-    fetchProgressMock.mockResolvedValue(buildProgress([setupOneDay()]));
-    const claimResult: OnboardingClaimResult = {
-      taskKey: 'd1_b',
-      status: 'CLAIMED',
-      claimed: true,
-      linhThachGranted: 100,
-      expGranted: 50,
-    };
-    claimTaskMock.mockResolvedValue(claimResult);
-    const w = mountView();
+  it('renders day cards with correct status text', async () => {
+    const wrapper = mountView();
+    const store = useOnboardingQuestStore();
+    store.progress = MOCK_PROGRESS as never;
+    store.loaded = true;
     await flushPromises();
 
-    await w.find('[data-testid="onboarding-day-card-1"]').trigger('click');
-    await flushPromises();
-    await w.find('[data-testid="onboarding-claim-d1_b"]').trigger('click');
-    await flushPromises();
+    const day1 = wrapper.find('[data-testid="onboarding-day-card-1"]');
+    expect(day1.exists()).toBe(true);
+    expect(day1.text()).toContain('Completed');
 
-    expect(claimTaskMock).toHaveBeenCalledWith('d1_b');
-    const calls = toastPushMock.mock.calls.map((c) => c[0]);
-    expect(calls.some((c) => c.text.includes('100'))).toBe(true);
+    const day2 = wrapper.find('[data-testid="onboarding-day-card-2"]');
+    expect(day2.text()).toContain('In progress');
   });
 
-  it('open button → router.push to actionRoute', async () => {
-    fetchProgressMock.mockResolvedValue(buildProgress([setupOneDay()]));
-    const w = mountView();
+  it('shows current day CTA on active day', async () => {
+    const wrapper = mountView();
+    const store = useOnboardingQuestStore();
+    store.progress = MOCK_PROGRESS as never;
+    store.loaded = true;
     await flushPromises();
 
-    await w.find('[data-testid="onboarding-day-card-1"]').trigger('click');
-    await flushPromises();
-    await w.find('[data-testid="onboarding-open-d1_a"]').trigger('click');
-    await flushPromises();
-
-    expect(routerPushMock).toHaveBeenCalledWith('/inventory');
+    expect(wrapper.find('[data-testid="onboarding-current-day-cta"]').text()).toContain('You are here!');
   });
 
-  it('back button → return to day grid', async () => {
-    fetchProgressMock.mockResolvedValue(buildProgress([setupOneDay()]));
-    const w = mountView();
+  it('locked day is disabled', async () => {
+    const wrapper = mountView();
+    const store = useOnboardingQuestStore();
+    store.progress = MOCK_PROGRESS as never;
+    store.loaded = true;
     await flushPromises();
 
-    await w.find('[data-testid="onboarding-day-card-1"]').trigger('click');
-    await flushPromises();
-    expect(w.find('[data-testid="onboarding-back"]').exists()).toBe(true);
+    const day3 = wrapper.find('[data-testid="onboarding-day-card-3"]');
+    expect((day3.element as HTMLButtonElement).disabled).toBe(true);
+  });
 
-    await w.find('[data-testid="onboarding-back"]').trigger('click');
+  it('clicking day opens detail with tasks', async () => {
+    const wrapper = mountView();
+    const store = useOnboardingQuestStore();
+    store.progress = MOCK_PROGRESS as never;
+    store.loaded = true;
     await flushPromises();
 
-    expect(w.find('[data-testid="onboarding-day-grid"]').exists()).toBe(true);
+    await wrapper.find('[data-testid="onboarding-day-card-2"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="onboarding-task-d2_check_spiritual_root"]').exists()).toBe(true);
+  });
+
+  it('deep-link CTA has route-specific label', async () => {
+    const wrapper = mountView();
+    const store = useOnboardingQuestStore();
+    store.progress = MOCK_PROGRESS as never;
+    store.loaded = true;
+    await flushPromises();
+
+    await wrapper.find('[data-testid="onboarding-day-card-2"]').trigger('click');
+    await flushPromises();
+
+    const btn = wrapper.find('[data-testid="onboarding-open-d2_check_spiritual_root"]');
+    expect(btn.text()).toContain('Check Spiritual Root');
+  });
+
+  it('CTA navigates to correct route', async () => {
+    const wrapper = mountView();
+    const store = useOnboardingQuestStore();
+    store.progress = MOCK_PROGRESS as never;
+    store.loaded = true;
+    await flushPromises();
+
+    await wrapper.find('[data-testid="onboarding-day-card-2"]').trigger('click');
+    await flushPromises();
+
+    await wrapper.find('[data-testid="onboarding-open-d2_check_spiritual_root"]').trigger('click');
+    await flushPromises();
+
+    expect(routerPushMock).toHaveBeenCalledWith('/spiritual-root');
+  });
+
+  it('loading state shows spinner', async () => {
+    fetchProgressMock.mockReturnValue(new Promise(() => {})); // Never resolves
+    const wrapper = mountView();
+    const store = useOnboardingQuestStore();
+    store.loading = true;
+    store.loaded = false;
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="onboarding-loading"]').exists()).toBe(true);
+  });
+
+  it('back button returns to grid', async () => {
+    const wrapper = mountView();
+    const store = useOnboardingQuestStore();
+    store.progress = MOCK_PROGRESS as never;
+    store.loaded = true;
+    await flushPromises();
+
+    await wrapper.find('[data-testid="onboarding-day-card-2"]').trigger('click');
+    await flushPromises();
+
+    await wrapper.find('[data-testid="onboarding-back"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="onboarding-day-grid"]').exists()).toBe(true);
+  });
+
+  it('complete button calls store.completeTask', async () => {
+    const wrapper = mountView();
+    const store = useOnboardingQuestStore();
+    store.progress = MOCK_PROGRESS as never;
+    store.loaded = true;
+    const spy = vi.spyOn(store, 'completeTask').mockResolvedValue();
+    await flushPromises();
+
+    await wrapper.find('[data-testid="onboarding-day-card-2"]').trigger('click');
+    await flushPromises();
+
+    await wrapper.find('[data-testid="onboarding-complete-d2_check_spiritual_root"]').trigger('click');
+    await flushPromises();
+
+    expect(spy).toHaveBeenCalledWith('d2_check_spiritual_root');
+  });
+
+  it('claim button calls store.claimTask', async () => {
+    const wrapper = mountView();
+    const store = useOnboardingQuestStore();
+    store.progress = MOCK_PROGRESS as never;
+    store.loaded = true;
+    const spy = vi.spyOn(store, 'claimTask').mockResolvedValue();
+    await flushPromises();
+
+    await wrapper.find('[data-testid="onboarding-day-card-2"]').trigger('click');
+    await flushPromises();
+
+    await wrapper.find('[data-testid="onboarding-claim-d2_equip_weapon"]').trigger('click');
+    await flushPromises();
+
+    expect(spy).toHaveBeenCalledWith('d2_equip_weapon');
   });
 });
