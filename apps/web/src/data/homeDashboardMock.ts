@@ -84,6 +84,8 @@ export interface HomeQuest {
   subtitle: string;
   progress: { current: number; total: number };
   reward: { glyph: string; amount: string };
+  /** Optional quest status for UI badge (ACCEPTED = in-progress, COMPLETED = claimable). */
+  status?: 'ACCEPTED' | 'COMPLETED';
 }
 
 export interface HomeEquipmentSlot {

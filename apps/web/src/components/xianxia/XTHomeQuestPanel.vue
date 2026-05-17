@@ -4,9 +4,11 @@
  *
  * Panel "Nhiệm vụ gần đây" cho dashboard. Mỗi entry:
  *   - tag pill (Chính / Phụ / Tuần / Ngày)
- *   - title + subtitle
+ *   - title + subtitle (objective)
+ *   - status badge (Đang làm / Nhận thưởng)
  *   - thanh progress + counter
  *   - cụm reward (glyph + amount)
+ *   - Go button → /missions
  * Nút "Xem tất cả" ở header → route /missions.
  *
  * Có biến thể `compact` cho mobile (giảm padding, ẩn subtitle).
@@ -39,6 +41,10 @@ const tagLabels: Record<QuestTag, string> = {
 function openAll(): void {
   router.push('/missions').catch(() => null);
 }
+
+function goQuest(): void {
+  router.push('/missions').catch(() => null);
+}
 </script>
 
 <template>
@@ -68,13 +74,26 @@ function openAll(): void {
         v-for="quest in quests"
         :key="quest.key"
         class="xt-home-quest__item"
-        :class="`xt-home-quest__item--${quest.tag}`"
+        :class="[
+          `xt-home-quest__item--${quest.tag}`,
+          quest.status === 'COMPLETED' ? 'xt-home-quest__item--claimable' : '',
+        ]"
         :data-testid="`${testId}-item-${quest.key}`"
       >
         <span class="xt-home-quest__tag">{{ tagLabels[quest.tag] }}</span>
         <div class="xt-home-quest__body">
-          <p class="xt-home-quest__quest-title">{{ quest.title }}</p>
-          <p v-if="!compact" class="xt-home-quest__quest-sub">{{ quest.subtitle }}</p>
+          <div class="xt-home-quest__title-row">
+            <p class="xt-home-quest__quest-title">{{ quest.title }}</p>
+            <span
+              v-if="quest.status"
+              class="xt-home-quest__status-badge"
+              :class="quest.status === 'COMPLETED' ? 'xt-home-quest__status-badge--claimable' : ''"
+              :data-testid="`${testId}-status-${quest.key}`"
+            >
+              {{ quest.status === 'COMPLETED' ? 'Nhận thưởng' : 'Đang làm' }}
+            </span>
+          </div>
+          <p v-if="!compact && quest.subtitle" class="xt-home-quest__quest-sub">{{ quest.subtitle }}</p>
           <div class="xt-home-quest__progress">
             <div class="xt-home-quest__progress-bar" aria-hidden="true">
               <div
@@ -87,10 +106,20 @@ function openAll(): void {
             </span>
           </div>
         </div>
-        <span class="xt-home-quest__reward" :aria-label="`Thưởng ${quest.reward.amount}`">
-          <span class="xt-home-quest__reward-glyph" aria-hidden="true">{{ quest.reward.glyph }}</span>
-          <span class="xt-home-quest__reward-amount">{{ quest.reward.amount }}</span>
-        </span>
+        <div class="xt-home-quest__actions">
+          <span class="xt-home-quest__reward" :aria-label="`Thưởng ${quest.reward.amount}`">
+            <span class="xt-home-quest__reward-glyph" aria-hidden="true">{{ quest.reward.glyph }}</span>
+            <span class="xt-home-quest__reward-amount">{{ quest.reward.amount }}</span>
+          </span>
+          <button
+            type="button"
+            class="xt-home-quest__go-btn"
+            :data-testid="`${testId}-go-${quest.key}`"
+            @click="goQuest"
+          >
+            Đi →
+          </button>
+        </div>
       </li>
     </ul>
     <p
@@ -344,6 +373,68 @@ function openAll(): void {
 
 .xt-home-quest__reward-glyph {
   font-size: 14px;
+}
+
+.xt-home-quest__title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.xt-home-quest__status-badge {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(95, 227, 198, 0.15);
+  color: var(--xt-jade-bright, #5fe3c6);
+  border: 1px solid rgba(95, 227, 198, 0.3);
+}
+
+.xt-home-quest__status-badge--claimable {
+  background: rgba(242, 215, 137, 0.18);
+  color: var(--xt-gold-bright, #f2d789);
+  border-color: rgba(242, 215, 137, 0.5);
+  animation: xt-quest-pulse 2s ease-in-out infinite;
+}
+
+@keyframes xt-quest-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.xt-home-quest__item--claimable {
+  border-color: rgba(242, 215, 137, 0.55);
+  box-shadow: 0 0 12px rgba(242, 215, 137, 0.15);
+}
+
+.xt-home-quest__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.xt-home-quest__go-btn {
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(242, 215, 137, 0.4);
+  background: linear-gradient(180deg, rgba(28, 36, 46, 0.85) 0%, rgba(8, 9, 11, 0.95) 100%);
+  color: var(--xt-gold-bright, #f2d789);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.xt-home-quest__go-btn:hover {
+  border-color: rgba(242, 215, 137, 0.8);
+  box-shadow: 0 0 8px rgba(242, 215, 137, 0.25);
 }
 
 .xt-home-quest--compact {

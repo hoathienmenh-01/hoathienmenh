@@ -406,6 +406,7 @@ const liveRecentQuests = computed<HomeQuest[]>(() => {
     subtitle: q.objective ?? q.description ?? '',
     progress: progressOf(q),
     reward: rewardOf(q),
+    status: q.status as 'ACCEPTED' | 'COMPLETED',
   }));
 });
 
