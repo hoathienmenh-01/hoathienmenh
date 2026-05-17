@@ -17,6 +17,7 @@ import MButton from '@/components/ui/MButton.vue';
 import NextActionPanel from '@/components/NextActionPanel.vue';
 import OnboardingChecklist from '@/components/OnboardingChecklist.vue';
 import DailyLoginCard from '@/components/DailyLoginCard.vue';
+import DailyLoopPanel from '@/components/DailyLoopPanel.vue';
 import LiveOpsTodayPanel from '@/components/LiveOpsTodayPanel.vue';
 import LiveOpsNotice from '@/components/LiveOpsNotice.vue';
 import LiveOpsActiveEventsPanel from '@/components/LiveOpsActiveEventsPanel.vue';
@@ -198,6 +199,7 @@ async function onBreakthrough(): Promise<void> {
       <DailyLoginCard class="mb-4 ve-section-enter ve-section-enter-delay-3" />
       <OnboardingChecklist class="mb-4 ve-section-enter ve-section-enter-delay-3" />
       <NextActionPanel class="mb-4 ve-section-enter ve-section-enter-delay-4" />
+      <DailyLoopPanel class="mb-4 ve-section-enter ve-section-enter-delay-4" />
 
       <!-- Quick actions grid -->
       <div class="grid grid-cols-2 gap-3 mb-4 ve-section-enter ve-section-enter-delay-5">
