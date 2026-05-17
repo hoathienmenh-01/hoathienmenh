@@ -67,16 +67,14 @@ const routes: RouteRecordRaw[] = [
     name: 'home',
     component: () => import('@/views/HomeView.vue'),
   },
-  // Phase 15.9 — Replace 3 `celestialPlaceholder` dead routes with redirects
-  // to live gameplay views. Earlier `/character` + `/cultivation` rendered
-  // `XianxiaPlaceholderView` ("đang được phát triển"), but Dashboard and
-  // Cultivation Method V2 cover the same player intent. Keep names so any
-  // existing `router.push({ name: 'character' })` / `'cultivation'` callers
-  // still resolve, just via redirect.
+  // Phase 15.9 — `/cultivation` placeholder still redirects (cultivation hub
+  // PR is the next roadmap item). `/notifications` redirect lives further
+  // below. `/character` was a redirect from PR #619 but is now a real
+  // player-profile page (Phase 15.14).
   {
     path: '/character',
     name: 'character',
-    redirect: '/dashboard',
+    component: () => import('@/views/CharacterView.vue'),
   },
   {
     path: '/cultivation',

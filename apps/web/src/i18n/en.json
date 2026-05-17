@@ -508,6 +508,107 @@
     "speed": "Speed",
     "luck": "Luck"
   },
+  "characterView": {
+    "eyebrow": "Cultivator",
+    "label": "Character Profile",
+    "title": "My Cultivator",
+    "subtitle": "Full overview of your character, methods, root and sect.",
+    "breadcrumb": "Home · Character profile",
+    "noCharacter": {
+      "title": "No character yet.",
+      "hint": "Finish character creation to view your full profile.",
+      "cta": "Create character"
+    },
+    "stats": {
+      "section": "Core Stats",
+      "power": "Power",
+      "spirit": "Spirit",
+      "speed": "Speed",
+      "luck": "Luck",
+      "level": "Level"
+    },
+    "resources": {
+      "section": "Cultivator Resources",
+      "linhThach": "Spirit Stones",
+      "tienNgoc": "Immortal Jade",
+      "tienNgocKhoa": "Bound Jade",
+      "stamina": "Stamina"
+    },
+    "cultivation": {
+      "section": "Cultivation Path",
+      "realm": "Realm",
+      "exp": "Cultivation",
+      "expProgress": "Breakthrough progress",
+      "cultivating": "Cultivating",
+      "idle": "Resting",
+      "atPeak": "At peak — ready to break through.",
+      "goCultivate": "Go to Method",
+      "goBreakthrough": "Go to Breakthrough",
+      "goSkillBook": "Go to Skill Book"
+    },
+    "body": {
+      "section": "Body Cultivation",
+      "realm": "Body realm",
+      "stage": "Stage",
+      "exp": "Body cultivation",
+      "rate": "Body cultivation rate",
+      "cultivating": "Body cultivating",
+      "idle": "Resting body",
+      "injuryUntil": "Injured until",
+      "physique": "Physique",
+      "noPhysique": "No physique unlocked yet.",
+      "go": "Go to Body Cultivation"
+    },
+    "spiritualRoot": {
+      "section": "Spiritual Root",
+      "grade": "Grade",
+      "primary": "Primary element",
+      "secondary": "Secondary elements",
+      "purity": "Purity",
+      "rerollCount": "Reroll count",
+      "noRoot": "Spiritual root not awakened.",
+      "go": "Go to Spiritual Root"
+    },
+    "method": {
+      "section": "Active Cultivation Method",
+      "equipped": "Equipped",
+      "none": "No method equipped yet.",
+      "affinity": "Root affinity",
+      "learnedCount": "{count} method(s) learned",
+      "go": "Go to Methods"
+    },
+    "sect": {
+      "section": "Sect",
+      "none": "No sect joined yet.",
+      "level": "Sect level",
+      "members": "Members",
+      "go": "Go to Sect",
+      "joinHint": "Find a sect at the Sect Hall."
+    },
+    "shortcuts": {
+      "section": "Quick Links",
+      "equipment": "Equipment",
+      "loadouts": "Loadouts",
+      "achievements": "Achievements",
+      "title": "Titles",
+      "skill": "Skill Book",
+      "tribulation": "Tribulation"
+    },
+    "elementName": {
+      "kim": "Metal",
+      "moc": "Wood",
+      "thuy": "Water",
+      "hoa": "Fire",
+      "tho": "Earth"
+    },
+    "rootGrade": {
+      "pham": "Mortal",
+      "linh": "Spiritual",
+      "huyen": "Profound",
+      "tien": "Immortal",
+      "than": "Divine"
+    }
+  },
   "activity": {
     "title": "Activity Log",
     "subtitle": "History of currency and item changes for your character.",
