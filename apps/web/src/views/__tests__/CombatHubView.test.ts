@@ -4,26 +4,21 @@ import { createI18n } from 'vue-i18n';
 import { setActivePinia, createPinia } from 'pinia';
 
 /**
- * PartyDungeonView polish tests (PR #631).
+ * CombatHubView tests (PR #631).
  *
  * Coverage:
  *   1. Guest → redirect to /auth.
  *   2. No character → shows no-character state.
- *   3. No party → shows no-party warning + panel still mounts.
- *   4. Authenticated with party → mounts PartyDungeonPanel.
- *   5. Back button navigates to /party.
- *   6. Info section renders how-it-works steps.
+ *   3. Authenticated → renders combat surface grid with 5 cards.
+ *   4. Party-required surfaces show "need party" badge when no party.
+ *   5. Daily tip section renders.
+ *   6. Card click navigates to correct route.
  */
 
 const routerReplaceMock = vi.fn();
 const routerPushMock = vi.fn(() => Promise.resolve());
 vi.mock('vue-router', () => ({
   useRouter: () => ({ replace: routerReplaceMock, push: routerPushMock }),
-}));
-
-const toastPushMock = vi.fn();
-vi.mock('@/stores/toast', () => ({
-  useToastStore: () => ({ push: toastPushMock }),
 }));
 
 const authState = {
@@ -42,6 +37,23 @@ const gameState = {
 };
 vi.mock('@/stores/game', () => ({
   useGameStore: () => gameState,
+}));
+
+const dungeonRunStoreState = {
+  startableCount: 3,
+  hasActiveRun: false,
+  load: vi.fn().mockResolvedValue(undefined),
+};
+vi.mock('@/stores/dungeonRun', () => ({
+  useDungeonRunStore: () => dungeonRunStoreState,
+}));
+
+// Mock dynamic imports for boss/combat API
+vi.mock('@/api/boss', () => ({
+  getActiveBosses: vi.fn().mockResolvedValue([{ id: 'b1' }]),
+}));
+vi.mock('@/api/combat', () => ({
+  getActiveEncounter: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('@xuantoi/shared', () => ({}));
@@ -73,15 +85,8 @@ vi.mock('@/components/ui/MButton.vue', () => ({
     template: '<button v-bind="$attrs" @click="$emit(\'click\')"><slot /></button>',
   },
 }));
-vi.mock('@/components/PartyDungeonPanel.vue', () => ({
-  default: {
-    name: 'PartyDungeonPanelStub',
-    inheritAttrs: true,
-    template: '<div data-testid="party-dungeon-panel-mount"></div>',
-  },
-}));
 
-import PartyDungeonView from '@/views/PartyDungeonView.vue';
+import CombatHubView from '@/views/CombatHubView.vue';
 
 const i18n = createI18n({
   legacy: false,
@@ -95,7 +100,7 @@ const i18n = createI18n({
 let wrapper: ReturnType<typeof mount> | null = null;
 
 function mountView() {
-  wrapper = mount(PartyDungeonView, {
+  wrapper = mount(CombatHubView, {
     global: { plugins: [i18n] },
   });
   return wrapper;
@@ -105,13 +110,15 @@ beforeEach(() => {
   setActivePinia(createPinia());
   routerReplaceMock.mockReset();
   routerPushMock.mockReset().mockResolvedValue(undefined);
-  toastPushMock.mockReset();
   authState.isAuthenticated = true;
   authState.hydrate.mockReset().mockResolvedValue(undefined);
   gameState.fetchState.mockReset().mockResolvedValue(undefined);
   gameState.bindSocket.mockReset();
   gameState.character = { id: 'c1', name: 'Test' };
   gameState.party = { id: 'p1' };
+  dungeonRunStoreState.load.mockReset().mockResolvedValue(undefined);
+  dungeonRunStoreState.startableCount = 3;
+  dungeonRunStoreState.hasActiveRun = false;
 });
 
 afterEach(() => {
@@ -119,7 +126,7 @@ afterEach(() => {
   wrapper = null;
 });
 
-describe('PartyDungeonView — auth gating', () => {
+describe('CombatHubView — auth gating', () => {
   it('guest → router.replace("/auth")', async () => {
     authState.isAuthenticated = false;
     mountView();
@@ -128,61 +135,57 @@ describe('PartyDungeonView — auth gating', () => {
   });
 });
 
-describe('PartyDungeonView — no character', () => {
+describe('CombatHubView — no character', () => {
   it('no character → shows no-character state', async () => {
     gameState.character = null;
     mountView();
     await flushPromises();
-    expect(wrapper?.find('[data-testid="party-dungeon-no-character"]').exists()).toBe(true);
-    expect(wrapper?.find('[data-testid="party-dungeon-panel-mount"]').exists()).toBe(false);
+    expect(wrapper?.find('[data-testid="combat-hub-no-character"]').exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="combat-hub-grid"]').exists()).toBe(false);
   });
 });
 
-describe('PartyDungeonView — no party (removed)', () => {
-  it('always shows panel (panel handles party error internally)', async () => {
+describe('CombatHubView — authenticated grid', () => {
+  it('renders 5 combat surface cards', async () => {
     mountView();
     await flushPromises();
-    expect(wrapper?.find('[data-testid="party-dungeon-panel-mount"]').exists()).toBe(true);
+    const grid = wrapper?.find('[data-testid="combat-hub-grid"]');
+    expect(grid?.exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="combat-hub-card-dungeon"]').exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="combat-hub-card-dungeon-run"]').exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="combat-hub-card-boss"]').exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="combat-hub-card-coop-boss"]').exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="combat-hub-card-party-dungeon"]').exists()).toBe(true);
+  });
+
+  it('party-required surfaces are always accessible (panel handles no-party)', async () => {
+    mountView();
+    await flushPromises();
+    expect(wrapper?.find('[data-testid="combat-hub-card-coop-boss"]').exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="combat-hub-card-party-dungeon"]').exists()).toBe(true);
   });
 });
 
-describe('PartyDungeonView — authenticated with party', () => {
-  it('mounts PartyDungeonPanel', async () => {
+describe('CombatHubView — daily tip', () => {
+  it('renders daily tip section', async () => {
     mountView();
     await flushPromises();
-    expect(wrapper?.find('[data-testid="party-dungeon-panel-mount"]').exists()).toBe(true);
-    expect(wrapper?.find('[data-testid="party-dungeon-no-party"]').exists()).toBe(false);
-    expect(wrapper?.find('[data-testid="party-dungeon-no-character"]').exists()).toBe(false);
+    expect(wrapper?.find('[data-testid="combat-hub-daily-tip"]').exists()).toBe(true);
   });
 });
 
-describe('PartyDungeonView — info section', () => {
-  it('renders how-it-works info section', async () => {
+describe('CombatHubView — navigation', () => {
+  it('clicking dungeon card navigates to /dungeon', async () => {
     mountView();
     await flushPromises();
-    expect(wrapper?.find('[data-testid="party-dungeon-info"]').exists()).toBe(true);
-  });
-});
-
-describe('PartyDungeonView — navigation', () => {
-  it('back button navigates to /party', async () => {
-    mountView();
-    await flushPromises();
-    await wrapper?.find('[data-testid="party-dungeon-back"]').trigger('click');
-    expect(routerPushMock).toHaveBeenCalledWith('/party');
+    await wrapper?.find('[data-testid="combat-hub-card-dungeon"]').trigger('click');
+    expect(routerPushMock).toHaveBeenCalledWith('/dungeon');
   });
 
-  it('solo dungeon button navigates to /dungeon-run', async () => {
+  it('clicking boss card navigates to /boss', async () => {
     mountView();
     await flushPromises();
-    await wrapper?.find('[data-testid="party-dungeon-to-solo"]').trigger('click');
-    expect(routerPushMock).toHaveBeenCalledWith('/dungeon-run');
-  });
-
-  it('combat hub button navigates to /combat', async () => {
-    mountView();
-    await flushPromises();
-    await wrapper?.find('[data-testid="party-dungeon-to-combat"]').trigger('click');
-    expect(routerPushMock).toHaveBeenCalledWith('/combat');
+    await wrapper?.find('[data-testid="combat-hub-card-boss"]').trigger('click');
+    expect(routerPushMock).toHaveBeenCalledWith('/boss');
   });
 });

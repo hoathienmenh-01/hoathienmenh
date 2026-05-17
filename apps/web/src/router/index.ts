@@ -488,6 +488,12 @@ const routes: RouteRecordRaw[] = [
     name: 'party-coop-boss',
     component: () => import('@/views/CoopBossView.vue'),
   },
+  // PR #631 — Combat Hub: unified entry point for all combat surfaces.
+  {
+    path: '/combat',
+    name: 'combat-hub',
+    component: () => import('@/views/CombatHubView.vue'),
+  },
   {
     path: '/mentor',
     name: 'mentor',
