@@ -609,6 +609,97 @@
       "than": "Divine"
     }
   },
+  "cultivationHub": {
+    "eyebrow": "Cultivation Path",
+    "label": "Cultivation Hub",
+    "title": "Cultivation Path",
+    "subtitle": "{name}'s cultivation journey",
+    "breadcrumb": "Home · Cultivation hub",
+    "noCharacter": {
+      "title": "No character yet.",
+      "hint": "Finish character creation to view the cultivation hub.",
+      "cta": "Create character"
+    },
+    "recommend": {
+      "eyebrow": "Recommended action",
+      "cta": "Go",
+      "breakthrough": "At peak — ready to break through to a new realm.",
+      "bodyBreakthrough": "Body fully tempered — try a body breakthrough.",
+      "startCultivating": "Start cultivating to accumulate cultivation EXP.",
+      "equipMethod": "Equip a cultivation method to speed up training.",
+      "awakenRoot": "Awaken your spiritual root to reveal its elements.",
+      "keepCultivating": "Keep cultivating steadily to accumulate EXP."
+    },
+    "cultivation": {
+      "section": "Cultivation & Realm",
+      "realm": "Realm",
+      "level": "Level",
+      "power": "Power",
+      "rate": "Cultivation rate",
+      "exp": "Cultivation",
+      "cultivating": "Cultivating",
+      "idle": "Resting",
+      "atPeak": "At peak — ready to break through."
+    },
+    "method": {
+      "section": "Active Cultivation Method",
+      "equipped": "Equipped",
+      "none": "No method equipped yet.",
+      "affinity": "Root affinity",
+      "learnedCount": "Methods learned",
+      "v2Equipped": "V2 method slots in use",
+      "go": "Go to Methods"
+    },
+    "spiritualRoot": {
+      "section": "Spiritual Root",
+      "grade": "Grade",
+      "primary": "Primary element",
+      "secondary": "Secondary elements",
+      "purity": "Purity",
+      "noRoot": "Spiritual root not awakened.",
+      "go": "Go to Spiritual Root"
+    },
+    "body": {
+      "section": "Body Cultivation",
+      "realm": "Body realm",
+      "stage": "Stage",
+      "exp": "Body cultivation",
+      "rate": "Body cultivation rate",
+      "ready": "Eligible for a body breakthrough.",
+      "injuryUntil": "Injured until",
+      "go": "Go to Body Cultivation"
+    },
+    "breakthrough": {
+      "section": "Breakthrough Readiness",
+      "ready": "At peak — you may attempt a breakthrough now.",
+      "notReady": "Not enough EXP yet — keep cultivating.",
+      "go": "Go to Breakthrough",
+      "goTribulation": "Go to Tribulation"
+    },
+    "deepLinks": {
+      "section": "Quick Links",
+      "method": "Method",
+      "breakthrough": "Breakthrough",
+      "body": "Body",
+      "root": "Root",
+      "skill": "Skill Book",
+      "tribulation": "Tribulation"
+    },
+    "elementName": {
+      "kim": "Metal",
+      "moc": "Wood",
+      "thuy": "Water",
+      "hoa": "Fire",
+      "tho": "Earth"
+    },
+    "rootGrade": {
+      "pham": "Mortal",
+      "linh": "Spiritual",
+      "huyen": "Profound",
+      "tien": "Immortal",
+      "than": "Divine"
+    }
+  },
   "activity": {
     "title": "Activity Log",
     "subtitle": "History of currency and item changes for your character.",

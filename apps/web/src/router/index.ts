@@ -76,10 +76,15 @@ const routes: RouteRecordRaw[] = [
     name: 'character',
     component: () => import('@/views/CharacterView.vue'),
   },
+  // Phase 15.15 (PR #625) — `/cultivation` is now a real read-only hub
+  // (`CultivationHubView`) that aggregates qi/body/method/root/breakthrough
+  // progression and surfaces deep links to the dedicated views. Replaces
+  // the legacy `redirect: '/cultivation-method-v2'` placeholder kept since
+  // PR #619/#622 — see `docs/AI_HANDOFF_REPORT.md`.
   {
     path: '/cultivation',
     name: 'cultivation',
-    redirect: '/cultivation-method-v2',
+    component: () => import('@/views/CultivationHubView.vue'),
   },
   {
     path: '/onboarding',
