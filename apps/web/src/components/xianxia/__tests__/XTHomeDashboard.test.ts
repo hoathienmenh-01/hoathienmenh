@@ -2,10 +2,30 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { createMemoryHistory, createRouter, type Router } from 'vue-router';
+import { createI18n, type I18n } from 'vue-i18n';
 import XTHomeDashboard from '@/components/xianxia/XTHomeDashboard.vue';
 import { useGameStore } from '@/stores/game';
 import type { CharacterStatePayload } from '@xuantoi/shared';
 import type { SectDetailView } from '@/api/sect';
+
+// Phase 15.11 — XTHomeSectChatPanel hiện autonomous (load `chatHistory`
+// + WS), mock chat API để test panel không phanh axios và stub WS bind.
+vi.mock('@/api/chat', () => ({
+  chatHistory: vi.fn().mockResolvedValue([]),
+  chatSendSect: vi.fn().mockResolvedValue({
+    id: 'm1', channel: 'SECT', scopeKey: 's', senderId: 'u',
+    senderName: 'x', text: '', createdAt: new Date().toISOString(),
+  }),
+  chatSendWorld: vi.fn().mockResolvedValue({
+    id: 'm1', channel: 'WORLD', scopeKey: 'world', senderId: 'u',
+    senderName: 'x', text: '', createdAt: new Date().toISOString(),
+  }),
+}));
+vi.mock('@/ws/client', () => ({
+  on: vi.fn(() => () => undefined),
+  connect: vi.fn(),
+  resolveWsOrigin: vi.fn(() => 'http://localhost'),
+}));
 
 /**
  * Cửu Thiên Mộng UI-3.2 — `XTHomeDashboard` composer.
@@ -99,8 +119,40 @@ function buildRouter(): Router {
       { path: '/world', component: { template: '<div/>' } },
       { path: '/wallet', component: { template: '<div/>' } },
       { path: '/mail', component: { template: '<div/>' } },
+      { path: '/sect', component: { template: '<div/>' } },
       { path: '/settings', component: { template: '<div/>' } },
     ],
+  });
+}
+
+function buildI18n(): I18n {
+  return createI18n({
+    legacy: false,
+    locale: 'vi',
+    fallbackLocale: 'vi',
+    missingWarn: false,
+    fallbackWarn: false,
+    messages: {
+      vi: {
+        chat: {
+          title: 'Tâm Cảnh Đường',
+          tab: { world: 'Thế Giới', sect: 'Tông Môn' },
+          noSect: 'Chưa thuộc tông môn nào',
+          noSectShort: 'Chưa thuộc tông môn nào.',
+          empty: 'Chưa có lời nào…',
+          placeholder: { world: 'Gửi thế giới…', sect: 'Gửi tông môn…' },
+          send: 'Gửi',
+          errors: {
+            EMPTY_TEXT: 'Nội dung trống.',
+            TEXT_TOO_LONG: 'Tối đa 200 ký tự.',
+            RATE_LIMITED: 'Nói chậm thôi đạo hữu.',
+            NO_SECT: 'Bạn chưa thuộc tông môn nào.',
+            NO_CHARACTER: 'Chưa có nhân vật.',
+            UNKNOWN: 'Không gửi được, thử lại.',
+          },
+        },
+      },
+    },
   });
 }
 
@@ -126,10 +178,12 @@ function setViewport(width: number): void {
 
 describe('XTHomeDashboard', () => {
   let router: Router;
+  let i18n: I18n;
 
   beforeEach(() => {
     setActivePinia(createPinia());
     router = buildRouter();
+    i18n = buildI18n();
   });
 
   afterEach(() => {
@@ -140,7 +194,7 @@ describe('XTHomeDashboard', () => {
     setViewport(1280);
     const w = mount(XTHomeDashboard, {
       props: { chrome: 'embedded' },
-      global: { plugins: [router] },
+      global: { plugins: [router, i18n] },
     });
     await router.isReady();
     expect(w.find('[data-testid="home-dashboard"]').exists()).toBe(true);
@@ -156,7 +210,7 @@ describe('XTHomeDashboard', () => {
     setViewport(1280);
     const w = mount(XTHomeDashboard, {
       props: { chrome: 'embedded' },
-      global: { plugins: [router] },
+      global: { plugins: [router, i18n] },
     });
     await router.isReady();
     const text = w.text();
@@ -174,7 +228,7 @@ describe('XTHomeDashboard', () => {
     setViewport(1280);
     const w = mount(XTHomeDashboard, {
       props: { chrome: 'embedded' },
-      global: { plugins: [router] },
+      global: { plugins: [router, i18n] },
     });
     await router.isReady();
     const html = w.html();
@@ -185,7 +239,7 @@ describe('XTHomeDashboard', () => {
     setViewport(420);
     const w = mount(XTHomeDashboard, {
       props: { chrome: 'standalone' },
-      global: { plugins: [router] },
+      global: { plugins: [router, i18n] },
     });
     await router.isReady();
     expect(w.find('[data-testid="home-dashboard"]').exists()).toBe(true);
@@ -198,7 +252,7 @@ describe('XTHomeDashboard', () => {
     setViewport(1440);
     const w = mount(XTHomeDashboard, {
       props: { chrome: 'standalone' },
-      global: { plugins: [router] },
+      global: { plugins: [router, i18n] },
     });
     await router.isReady();
     expect(w.find('[data-testid="home-sidebar"]').exists()).toBe(true);
@@ -215,7 +269,7 @@ describe('XTHomeDashboard', () => {
     setViewport(1440);
     const w = mount(XTHomeDashboard, {
       props: { chrome: 'standalone' },
-      global: { plugins: [router] },
+      global: { plugins: [router, i18n] },
     });
     await router.isReady();
     const text = w.text();
@@ -240,7 +294,7 @@ describe('XTHomeDashboard', () => {
     game.unreadMail = 5;
     const w = mount(XTHomeDashboard, {
       props: { chrome: 'standalone' },
-      global: { plugins: [router] },
+      global: { plugins: [router, i18n] },
     });
     await router.isReady();
     const text = w.text();
@@ -269,7 +323,7 @@ describe('XTHomeDashboard', () => {
     });
     const w = mount(XTHomeDashboard, {
       props: { chrome: 'embedded' },
-      global: { plugins: [router] },
+      global: { plugins: [router, i18n] },
     });
     await router.isReady();
     const text = w.text();

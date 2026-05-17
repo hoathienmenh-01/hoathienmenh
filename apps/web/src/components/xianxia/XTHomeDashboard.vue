@@ -47,7 +47,6 @@ import XTHomeMobileHero from './XTHomeMobileHero.vue';
 import XTHomeBottomNav from './XTHomeBottomNav.vue';
 import {
   bottomNavItems,
-  chatMessages,
   featureCards,
   heroBanner,
   heroQuickActions,
@@ -293,10 +292,6 @@ function onMail(): void {
 function onMenu(): void {
   router.push('/settings').catch(() => null);
 }
-
-function onChatSend(_msg: string): void {
-  // UI-only stub; future wiring sẽ gửi qua game socket khi back-end ready.
-}
 </script>
 
 <template>
@@ -404,15 +399,14 @@ function onChatSend(_msg: string): void {
             :compact="showMobileChrome"
             test-id="home-inventory-panel"
           />
-          <!-- Phase 15.10 — sect panel header (tên / cấp / số thành viên) đã
-               wire từ `game.currentSect`. Chat messages tạm thời vẫn dùng mock
-               vì BE chat live socket chưa wire ở đây — sẽ thay tiếp PR sau. -->
+          <!-- Phase 15.11 — sect panel + chat đều wire real data: header lấy
+               từ `game.currentSect`; chat messages load `chatHistory('SECT')`
+               + subscribe WS `chat:msg`, send qua `chatSendSect`. Player chưa
+               vào tông → input disabled + empty state, KHÔNG dùng mock. -->
           <XTHomeSectChatPanel
             :info="liveSectPanel"
-            :messages="chatMessages"
             :compact="showMobileChrome"
             test-id="home-sect-chat-panel"
-            @send="onChatSend"
           />
         </div>
       </div>

@@ -706,6 +706,7 @@
       "sect": "Send to sect…"
     },
     "send": "Send",
+  "sendSect": "Send to sect",
     "errors": {
       "EMPTY_TEXT": "Empty message.",
       "TEXT_TOO_LONG": "Max 200 characters.",

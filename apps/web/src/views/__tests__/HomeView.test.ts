@@ -130,6 +130,15 @@ vi.mock('@/components/DailyLoginCard.vue', () => ({
     template: '<div data-testid="daily-login-stub" />',
   },
 }));
+// Phase 15.12 — `XTHomeDashboard` đã tự test riêng + tự render hero / stat
+// tiles / sect-chat panel của nó; tại đây chỉ cần stub để HomeView tests
+// không phụ thuộc i18n / store nội bộ của dashboard.
+vi.mock('@/components/xianxia/XTHomeDashboard.vue', () => ({
+  default: {
+    name: 'XTHomeDashboardStub',
+    template: '<div data-testid="home-dashboard-stub" />',
+  },
+}));
 
 import HomeView from '@/views/HomeView.vue';
 
@@ -305,15 +314,38 @@ describe('HomeView — render với character', () => {
     document.body.innerHTML = '';
   });
 
-  it('hiển thị tên nhân vật, realm, exp text, HP/MP, stats', async () => {
+  it('Overview tab: render action card (cultivate / breakthrough) + KHÔNG lặp lại tên / cảnh giới / EXP / HP / MP (đã có trong XTHomeDashboard)', async () => {
     mountView();
     await flushPromises();
+    // XTHomeDashboard đã được stub → tên/realm/EXP/HP/MP không xuất hiện
+    // ở HomeView nữa (chúng do dashboard tự render).
     const html = document.body.innerHTML;
-    expect(html).toContain('Tiêu Viêm');
-    expect(html).toContain('Luyện Khí');
-    expect(html).toContain('50 / 100');
+    expect(html).not.toContain('50 / 100');
+    expect(html).not.toContain('80 / 100');
+    expect(html).not.toContain('40 / 60');
+    // Action card vẫn có cultivate + breakthrough buttons.
+    expect(document.querySelector('[data-testid="home-char-actions"]')).not.toBeNull();
+    const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('button'));
+    expect(buttons.some((b) => b.textContent?.includes('Bắt đầu tu luyện'))).toBe(true);
+    expect(buttons.some((b) => b.textContent?.includes('Đột phá'))).toBe(true);
+  });
+
+  it('Character tab: render EXP / HP / MP bars + stats grid (power / spirit / speed / luck)', async () => {
+    mountView();
+    await flushPromises();
+    // Switch sang tab "Nhân Vật"
+    const tabBtns = Array.from(document.querySelectorAll<HTMLButtonElement>('button'));
+    const charTab = tabBtns.find((b) => b.textContent?.includes('Nhân Vật'));
+    expect(charTab).toBeDefined();
+    charTab!.click();
+    await flushPromises();
+    const html = document.body.innerHTML;
+    expect(html).toContain('50 / 100'); // EXP
     expect(html).toContain('80 / 100'); // HP
     expect(html).toContain('40 / 60'); // MP
+    // Stats grid (power / spirit / speed / luck).
+    expect(html).toContain('Thuộc tính'); // home.stats.title
+    expect(document.querySelector('[data-testid="home-char-detail"]')).not.toBeNull();
   });
 
   it('toggleCultivate: gọi setCultivating(true) khi character đang nghỉ → toast started', async () => {
@@ -478,8 +510,14 @@ describe('HomeView — Phase 12.8 Story Dungeon CTA', () => {
     storyDungeonState.loaded = false;
     mountView();
     await flushPromises();
-    // Character section vẫn render (verify HomeView không crash khi load throw)
-    expect(document.body.innerHTML).toContain('Tiêu Viêm');
+    // Phase 15.12 — XTHomeDashboard đã stub nên tên "Tiêu Viêm" do hero
+    // dashboard render không còn xuất hiện ở body của HomeView; verify
+    // HomeView không crash bằng cách check shell + tabs + dashboard stub.
+    expect(document.querySelector('[data-testid="app-shell-stub"]')).not.toBeNull();
+    expect(document.querySelector('[data-testid="home-tabs"]')).not.toBeNull();
+    // `XTHomeDashboard` ở HomeView template gắn `data-testid="home-dashboard"`,
+    // attribute này fallthrough vào root của stub → check theo testid gốc.
+    expect(document.querySelector('[data-testid="home-dashboard"]')).not.toBeNull();
     expect(document.querySelector('[data-testid="home-story-dungeon-cta"]')).toBeNull();
   });
 
