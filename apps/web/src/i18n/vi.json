@@ -508,6 +508,107 @@
     "speed": "Tốc",
     "luck": "May"
   },
+  "characterView": {
+    "eyebrow": "Đạo Thân",
+    "label": "Hồ Sơ Tu Sĩ",
+    "title": "Cốt Thân Đạo Trình",
+    "subtitle": "Toàn cảnh nhân vật, công pháp, linh căn và tông môn.",
+    "breadcrumb": "Trang chủ · Hồ sơ tu sĩ",
+    "noCharacter": {
+      "title": "Chưa khai mở đạo thân.",
+      "hint": "Hãy hoàn tất khởi tạo nhân vật để xem hồ sơ chi tiết.",
+      "cta": "Khởi tạo nhân vật"
+    },
+    "stats": {
+      "section": "Đạo Cơ Cốt Bản",
+      "power": "Lực Chiến",
+      "spirit": "Linh Lực",
+      "speed": "Thần Tốc",
+      "luck": "Khí Vận",
+      "level": "Cấp Bậc"
+    },
+    "resources": {
+      "section": "Tài Sản Tu Đạo",
+      "linhThach": "Linh Thạch",
+      "tienNgoc": "Tiên Ngọc",
+      "tienNgocKhoa": "Tiên Ngọc Khoá",
+      "stamina": "Thể Lực"
+    },
+    "cultivation": {
+      "section": "Đường Tu Tiên",
+      "realm": "Cảnh giới",
+      "exp": "Tu vi",
+      "expProgress": "Tiến độ đột phá",
+      "cultivating": "Đang tu luyện",
+      "idle": "Đang ngơi nghỉ",
+      "atPeak": "Đã đạt đỉnh — chuẩn bị đột phá.",
+      "goCultivate": "Tới Công Pháp",
+      "goBreakthrough": "Tới Đột Phá",
+      "goSkillBook": "Tới Pháp Quyết"
+    },
+    "body": {
+      "section": "Đường Luyện Thể",
+      "realm": "Thân cảnh",
+      "stage": "Giai đoạn",
+      "exp": "Thân tu vi",
+      "rate": "Tốc độ luyện thể",
+      "cultivating": "Đang luyện thể",
+      "idle": "Đang dưỡng thân",
+      "injuryUntil": "Đang dưỡng thương đến",
+      "physique": "Thể chất",
+      "noPhysique": "Chưa khai mở thể chất.",
+      "go": "Tới Luyện Thể"
+    },
+    "spiritualRoot": {
+      "section": "Linh Căn Ngũ Hành",
+      "grade": "Phẩm cấp",
+      "primary": "Chủ hệ",
+      "secondary": "Phụ hệ",
+      "purity": "Thuần độ",
+      "rerollCount": "Số lần tẩy",
+      "noRoot": "Chưa khai mở linh căn.",
+      "go": "Tới Linh Căn"
+    },
+    "method": {
+      "section": "Công Pháp Đang Vận",
+      "equipped": "Đang vận",
+      "none": "Chưa lĩnh hội công pháp.",
+      "affinity": "Tương hợp linh căn",
+      "learnedCount": "Đã lĩnh hội {count} công pháp",
+      "go": "Tới Công Pháp"
+    },
+    "sect": {
+      "section": "Tông Môn",
+      "none": "Chưa gia nhập tông môn.",
+      "level": "Cấp tông môn",
+      "members": "Thành viên",
+      "go": "Tới Tông Môn",
+      "joinHint": "Tìm tông môn phù hợp tại Đại Điện Tông Môn."
+    },
+    "shortcuts": {
+      "section": "Lối Tắt Đạo Trình",
+      "equipment": "Trang Bị",
+      "loadouts": "Bộ Trang Bị",
+      "achievements": "Thành Tựu",
+      "title": "Danh Hiệu",
+      "skill": "Pháp Quyết",
+      "tribulation": "Thiên Kiếp"
+    },
+    "elementName": {
+      "kim": "Kim",
+      "moc": "Mộc",
+      "thuy": "Thuỷ",
+      "hoa": "Hoả",
+      "tho": "Thổ"
+    },
+    "rootGrade": {
+      "pham": "Phàm Căn",
+      "linh": "Linh Căn",
+      "huyen": "Huyền Căn",
+      "tien": "Tiên Căn",
+      "than": "Thần Căn"
+    }
+  },
   "activity": {
     "title": "Sổ Hoạt Động",
     "subtitle": "Lịch sử thu chi linh thạch / tiên ngọc và xuất nhập linh bảo của đạo hữu.",
