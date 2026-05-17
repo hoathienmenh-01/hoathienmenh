@@ -6,7 +6,6 @@ import { createI18n } from 'vue-i18n';
 import DailyLoopPanel from '@/components/DailyLoopPanel.vue';
 import { useGameStore } from '@/stores/game';
 import { useBadgesStore } from '@/stores/badges';
-import { useQuestStore } from '@/stores/quest';
 import type { CharacterStatePayload } from '@xuantoi/shared';
 
 // Mock dailyLogin API
