@@ -129,7 +129,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/equipment',
     name: 'equipment',
-    redirect: '/inventory',
+    component: () => import('@/views/EquipmentView.vue'),
   },
   {
     path: '/loadouts',
@@ -471,6 +471,22 @@ const routes: RouteRecordRaw[] = [
     path: '/social',
     name: 'social',
     component: () => import('@/views/SocialView.vue'),
+  },
+  // Phase 19.4+ (PR #629) — Party Hub + Party Dungeon + Co-op Boss surfaces.
+  {
+    path: '/party',
+    name: 'party',
+    component: () => import('@/views/PartyHubView.vue'),
+  },
+  {
+    path: '/party/dungeon',
+    name: 'party-dungeon',
+    component: () => import('@/views/PartyDungeonView.vue'),
+  },
+  {
+    path: '/party/coop-boss',
+    name: 'party-coop-boss',
+    component: () => import('@/views/CoopBossView.vue'),
   },
   {
     path: '/mentor',
