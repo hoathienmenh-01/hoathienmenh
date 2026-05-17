@@ -470,9 +470,7 @@ describe('XTHomeDashboard', () => {
     rep.reputation = [
       // 2 row reputation, sum = 1234.
       // Cast `as any` để bỏ qua đầy đủ ReputationGroupDef (ko cần cho test).
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { group: 'TONG_MON', score: 1000, dailyGain: 0, dailyCap: 1000, lastGainedAt: null, def: {} as any },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { group: 'XA_HOI', score: 234, dailyGain: 0, dailyCap: 1000, lastGainedAt: null, def: {} as any },
     ];
     rep.loaded = true;
@@ -522,7 +520,6 @@ describe('XTHomeDashboard', () => {
         itemKey: 'so_kiem',
         qty: 1,
         equippedSlot: 'WEAPON',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         item: { key: 'so_kiem', name: 'Sơ Kiếm', kind: 'WEAPON' } as any,
         sockets: [],
         refineLevel: 4,
@@ -537,7 +534,6 @@ describe('XTHomeDashboard', () => {
         itemKey: 'kim_giap',
         qty: 1,
         equippedSlot: 'ARMOR',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         item: { key: 'kim_giap', name: 'Kim Giáp', kind: 'ARMOR' } as any,
         sockets: [],
         refineLevel: 2,
@@ -552,7 +548,6 @@ describe('XTHomeDashboard', () => {
         itemKey: 'huyet_chi_dan',
         qty: 5,
         equippedSlot: null,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         item: { key: 'huyet_chi_dan', name: 'Huyết Chỉ Đan', kind: 'PILL' } as any,
         sockets: [],
         refineLevel: 0,
