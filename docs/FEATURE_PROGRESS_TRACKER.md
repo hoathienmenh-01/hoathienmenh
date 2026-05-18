@@ -64,7 +64,7 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 1 | Daily Loop First Session Polish | #637 | feat/daily-loop-first-session-polish | 2026-05-19 |
 | 2 | Equipment Flow Cleanup | — | feat/equipment-flow-cleanup | 2026-05-19 |
 | 3 | Core Loop Smoke Proof Pack | — | feat/core-loop-smoke-proof-pack | 2026-05-19 |
-| 4 | Combat Entry Consolidation | — | feat/combat-entry-consolidation | 2026-05-19 |
+| 4 | Combat Entry Consolidation | #640 | feat/combat-entry-consolidation | 2026-05-19 |
 
 ## Deferred / Do Not Build
 
