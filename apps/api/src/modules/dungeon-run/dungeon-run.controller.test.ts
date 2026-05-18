@@ -79,7 +79,10 @@ function makeController(
     nextEncounter: opts.nextImpl ?? (async () => STUB_RUN),
     claimRun: opts.claimImpl ?? (async () => STUB_CLAIM),
   } as unknown as DungeonRunService;
-  return new DungeonRunController(runs, auth);
+  const featureFlags = {
+    requireEnabled: async () => {},
+  } as unknown as import('../feature-flag/feature-flag.service').FeatureFlagService;
+  return new DungeonRunController(runs, auth, featureFlags);
 }
 
 describe('DungeonRunController auth gate', () => {

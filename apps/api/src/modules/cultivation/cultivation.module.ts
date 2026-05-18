@@ -9,6 +9,7 @@ import { CharacterModule } from '../character/character.module';
 import { EconomyModule } from '../economy/economy.module';
 import { LiveOpsEventSchedulerModule } from '../liveops-event-scheduler/liveops-event-scheduler.module';
 import { WebPushModule } from '../web-push/web-push.module';
+import { OnboardingQuestModule } from '../onboarding-quest/onboarding-quest.module';
 import { CULTIVATION_QUEUE } from './cultivation.queue';
 
 @Module({
@@ -27,6 +28,7 @@ import { CULTIVATION_QUEUE } from './cultivation.queue';
     EconomyModule,
     LiveOpsEventSchedulerModule,
     WebPushModule,
+    OnboardingQuestModule,
   ],
   providers: [CultivationProcessor, CultivationService, PrismaService],
   exports: [CultivationService],

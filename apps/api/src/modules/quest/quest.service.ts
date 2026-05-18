@@ -15,6 +15,7 @@ import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { NpcAffinityService } from '../npc-affinity/npc-affinity.service';
 import { SectWarService } from '../sect-war/sect-war.service';
+import { OnboardingQuestService } from '../onboarding-quest/onboarding-quest.service';
 
 /**
  * Phase 12 Story PR-2 — Quest runtime persistence.
@@ -158,6 +159,7 @@ export class QuestService {
     // `NpcAffinityModule.exports.NpcAffinityService`.
     private readonly npcAffinity: NpcAffinityService,
     @Optional() private readonly sectWar?: SectWarService,
+    @Optional() private readonly onboarding?: OnboardingQuestService,
   ) {}
 
   /**
@@ -594,6 +596,14 @@ export class QuestService {
           affinity: affinityGranted,
         },
       };
+    }).then((result) => {
+      // Phase 44.1 — onboarding auto-track tutorial quest completion.
+      // Fire-and-forget after transaction commits. Tutorial = first main quest
+      // (requiredRealmOrder === 0, kind === 'main').
+      if (this.onboarding && def.kind === 'main' && def.requiredRealmOrder === 0) {
+        void this.onboarding.notifyAction(characterId, 'QUEST_COMPLETE_TUTORIAL');
+      }
+      return result;
     });
   }
 

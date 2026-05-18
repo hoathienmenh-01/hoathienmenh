@@ -4,6 +4,7 @@ import { CharacterModule } from '../character/character.module';
 import { PrismaService } from '../../common/prisma.service';
 import { OnboardingQuestController } from './onboarding-quest.controller';
 import { OnboardingQuestService } from './onboarding-quest.service';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 
 /**
  * Phase 34.0 — 7-Day Onboarding Questline Module.
@@ -23,7 +24,7 @@ import { OnboardingQuestService } from './onboarding-quest.service';
  * Nest scan từ EconomyModule → InventoryModule → CharacterModule → ...
  */
 @Module({
-  imports: [AuthModule, forwardRef(() => CharacterModule)],
+  imports: [AuthModule, forwardRef(() => CharacterModule), FeatureFlagModule],
   controllers: [OnboardingQuestController],
   providers: [OnboardingQuestService, PrismaService],
   exports: [OnboardingQuestService],

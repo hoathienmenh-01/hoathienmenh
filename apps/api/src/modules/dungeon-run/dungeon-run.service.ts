@@ -34,6 +34,7 @@ import { startOfLocalDay } from '../combat/combat.service';
 import { SectWarService } from '../sect-war/sect-war.service';
 import { TerritoryService } from '../territory/territory.service';
 import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
+import { OnboardingQuestService } from '../onboarding-quest/onboarding-quest.service';
 
 /**
  * Phase 12.2.B — DungeonRun runtime service.
@@ -252,6 +253,7 @@ export class DungeonRunService {
     // tests construct `new DungeonRunService(prisma, ..., quests, undefined,
     // undefined, liveOps)` (xem liveops-event-runtime.integration.test).
     @Optional() private readonly phase33Story?: Phase33StoryService,
+    @Optional() private readonly onboarding?: OnboardingQuestService,
   ) {}
 
   /**
@@ -414,6 +416,11 @@ export class DungeonRunService {
       });
     });
 
+    // Phase 44.1 — onboarding auto-track. Fire-and-forget.
+    if (this.onboarding) {
+      void this.onboarding.notifyAction(char.id, 'DUNGEON_ENTER');
+    }
+
     return this.toView(run);
   }
 
@@ -572,6 +579,11 @@ export class DungeonRunService {
           // fail-soft: Story V2 không break Phase 12 dungeon-run path.
         }
       }
+    }
+
+    // Phase 44.1 — onboarding auto-track dungeon clear. Fire-and-forget.
+    if (isLast && this.onboarding) {
+      void this.onboarding.notifyAction(char.id, 'DUNGEON_CLEAR');
     }
 
     const fresh = await this.prisma.dungeonRun.findUnique({ where: { id: run.id } });

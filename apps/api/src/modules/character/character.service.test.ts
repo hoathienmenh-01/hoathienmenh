@@ -121,8 +121,10 @@ describe('CharacterService.findPublicProfile', () => {
   });
 
   it('character có sect → sectId/sectKey/sectName được điền đúng', async () => {
-    const sect = await prisma.sect.create({
-      data: { name: 'Thanh Vân Môn' },
+    const sect = await prisma.sect.upsert({
+      where: { name: 'Thanh Vân Môn' },
+      create: { name: 'Thanh Vân Môn' },
+      update: {},
     });
     const f = await makeUserChar(prisma, { sectId: sect.id });
     const r = await chars.findPublicProfile(f.characterId);

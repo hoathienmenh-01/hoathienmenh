@@ -48,6 +48,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
 import { CharacterSkillService } from '../character/character-skill.service';
+import { OnboardingQuestService } from '../onboarding-quest/onboarding-quest.service';
 import { CurrencyService } from '../character/currency.service';
 import { AchievementService } from '../character/achievement.service';
 import { TalentService } from '../character/talent.service';
@@ -240,6 +241,7 @@ export class CombatService {
     // damage cap (12% PvE / 12% DUNGEON / 8% BOSS) + pet stats. Identity
     // (no-op) khi DI thiếu, hoặc khi character chưa equip pet.
     @Optional() private readonly petSnapshot?: PetSnapshotService,
+    @Optional() private readonly onboarding?: OnboardingQuestService,
   ) {}
 
   /**
@@ -1068,6 +1070,10 @@ export class CombatService {
         if (this.achievements) {
           await this.achievements.trackEvent(char.id, 'CLEAR_DUNGEON', 1);
         }
+        // Phase 44.1 — onboarding auto-track. Fire-and-forget.
+        if (this.onboarding) {
+          void this.onboarding.notifyAction(char.id, 'COMBAT_WIN');
+        }
       }
     } catch {
       // bỏ qua
@@ -1536,6 +1542,10 @@ export class CombatService {
         await this.missions.track(char.id, 'CLEAR_DUNGEON', 1);
         if (this.achievements) {
           await this.achievements.trackEvent(char.id, 'CLEAR_DUNGEON', 1);
+        }
+        // Phase 44.1 — onboarding auto-track. Fire-and-forget.
+        if (this.onboarding) {
+          void this.onboarding.notifyAction(char.id, 'COMBAT_WIN');
         }
       }
     } catch {

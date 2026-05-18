@@ -21,6 +21,8 @@ import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
 import {
+  equipItem,
+  unequipItem,
   listInventory,
   type InventoryView as InvItem,
 } from '@/api/inventory';
@@ -39,6 +41,8 @@ const { t } = useI18n();
 
 const items = ref<InvItem[]>([]);
 const loading = ref(true);
+const actionInFlight = ref(false);
+const equipModalSlot = ref<EquipSlot | null>(null);
 
 const equipped = computed(() => {
   const map = new Map<EquipSlot, InvItem>();
@@ -114,6 +118,59 @@ function goToInventory(): void {
 function goToLoadouts(): void {
   router.push('/loadouts');
 }
+
+// ---------------------------------------------------------------------------
+// Equip / Unequip actions
+// ---------------------------------------------------------------------------
+
+/** Items in inventory that can be equipped to the given slot. */
+const availableForSlot = computed(() => {
+  return (slot: EquipSlot): InvItem[] => {
+    return items.value.filter(
+      (it) => !it.equippedSlot && it.item.slot === slot && !it.locked,
+    );
+  };
+});
+
+async function onUnequip(slot: EquipSlot): Promise<void> {
+  if (actionInFlight.value) return;
+  actionInFlight.value = true;
+  try {
+    items.value = await unequipItem(slot);
+    toast.push({
+      type: 'success',
+      text: t('equipment.unequipSuccess', { slot: slotLabel(slot) }),
+    });
+  } catch {
+    toast.push({ type: 'error', text: t('equipment.unequipFail') });
+  } finally {
+    actionInFlight.value = false;
+  }
+}
+
+function openEquipModal(slot: EquipSlot): void {
+  equipModalSlot.value = slot;
+}
+
+function closeEquipModal(): void {
+  equipModalSlot.value = null;
+}
+
+async function onEquip(inventoryItemId: string): Promise<void> {
+  if (actionInFlight.value) return;
+  actionInFlight.value = true;
+  try {
+    items.value = await equipItem(inventoryItemId);
+    equipModalSlot.value = null;
+    toast.push({ type: 'success', text: t('equipment.equipSuccess') });
+  } catch {
+    toast.push({ type: 'error', text: t('equipment.equipFail') });
+  } finally {
+    actionInFlight.value = false;
+  }
+}
+
+
 </script>
 
 <template>
@@ -190,15 +247,107 @@ function goToLoadouts(): void {
             <p class="text-xs text-emerald-300">
               {{ bonusText(equipped.get(slot)!.item) }}
             </p>
+            <div class="flex gap-2 mt-2">
+              <button
+                type="button"
+                class="text-[10px] px-2 py-0.5 rounded border border-amber-500/40 text-amber-200 hover:bg-amber-700/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="actionInFlight"
+                :data-testid="`equipment-unequip-${slot}`"
+                @click="onUnequip(slot)"
+              >
+                {{ t('equipment.unequip', 'Tháo') }}
+              </button>
+              <button
+                type="button"
+                class="text-[10px] px-2 py-0.5 rounded border border-sky-500/40 text-sky-200 hover:bg-sky-700/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="actionInFlight"
+                :data-testid="`equipment-swap-${slot}`"
+                @click="openEquipModal(slot)"
+              >
+                {{ t('equipment.swap', 'Đổi') }}
+              </button>
+            </div>
           </template>
           <template v-else>
             <p class="text-sm italic text-ink-400" data-testid="equipment-empty-slot">
               {{ t('equipment.emptySlot', 'Trống') }}
             </p>
+            <button
+              type="button"
+              class="text-[10px] px-2 py-0.5 mt-2 rounded border border-emerald-500/40 text-emerald-200 hover:bg-emerald-700/30 disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="actionInFlight"
+              :data-testid="`equipment-equip-${slot}`"
+              @click="openEquipModal(slot)"
+            >
+              {{ t('equipment.equip', 'Trang bị') }}
+            </button>
           </template>
         </div>
       </div>
     </section>
+
+    <!-- Equip Modal -->
+    <div
+      v-if="equipModalSlot"
+      class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+      data-testid="equipment-equip-modal"
+      role="dialog"
+      aria-modal="true"
+      @click.self="closeEquipModal"
+    >
+      <div class="bg-ink-900 border border-ink-300/30 rounded p-4 space-y-3 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <header class="flex items-center justify-between">
+          <h3 class="text-base font-semibold text-amber-200">
+            {{ t('equipment.modalTitle', { slot: slotLabel(equipModalSlot) }) }}
+          </h3>
+          <button
+            type="button"
+            class="text-ink-400 hover:text-ink-200 text-lg"
+            data-testid="equipment-modal-close"
+            @click="closeEquipModal"
+          >
+            &times;
+          </button>
+        </header>
+
+        <div
+          v-if="availableForSlot(equipModalSlot).length === 0"
+          class="text-center py-6 text-ink-400 text-sm"
+          data-testid="equipment-modal-empty"
+        >
+          {{ t('equipment.modalEmpty', 'Không có vật phẩm phù hợp trong kho đồ') }}
+        </div>
+
+        <ul v-else class="space-y-2" data-testid="equipment-modal-list">
+          <li
+            v-for="it in availableForSlot(equipModalSlot)"
+            :key="it.id"
+            class="flex items-center gap-3 rounded border border-ink-300/20 bg-ink-800/40 p-2 hover:border-amber-500/40 cursor-pointer transition-colors"
+            :data-testid="`equipment-modal-item-${it.id}`"
+            @click="onEquip(it.id)"
+          >
+            <EquipmentArtCell
+              :equip-slot="equipModalSlot"
+              :tier="it.item.equipmentTier ?? null"
+              :equipped="false"
+              :alt="it.item.name"
+              size="sm"
+              show-tier
+            />
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-ink-100 truncate">{{ it.item.name }}</p>
+              <p class="text-xs text-emerald-300">{{ bonusText(it.item) }}</p>
+            </div>
+            <span
+              v-if="it.refineLevel > 0"
+              class="text-[10px] text-amber-300 font-bold"
+            >
+              +{{ it.refineLevel }}
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
 
     <!-- Empty state when no gear at all -->
     <div

@@ -18,6 +18,7 @@ import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../../common/prisma.service';
 import { AdminGuard } from '../admin/admin.guard';
 import { RequireAdmin } from '../admin/require-admin.decorator';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -70,6 +71,7 @@ export class BossController {
     private readonly boss: BossService,
     private readonly auth: AuthService,
     private readonly prisma: PrismaService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   private async getViewer(req: Request): Promise<{
@@ -123,6 +125,7 @@ export class BossController {
   async attack(@Req() req: Request, @Body() body: unknown) {
     const { userId } = await this.getViewer(req);
     if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    await this.featureFlags.requireEnabled('BOSS_ENABLED');
     const parsed = AttackInput.safeParse(body);
     if (!parsed.success) fail('INVALID_INPUT');
     try {

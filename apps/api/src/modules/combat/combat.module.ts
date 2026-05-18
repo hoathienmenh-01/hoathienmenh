@@ -11,6 +11,7 @@ import { QuestModule } from '../quest/quest.module';
 import { EconomyModule } from '../economy/economy.module';
 import { Phase33StoryModule } from '../story-v2/story-v2.module';
 import { PetModule } from '../pet/pet.module';
+import { OnboardingQuestModule } from '../onboarding-quest/onboarding-quest.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { PetModule } from '../pet/pet.module';
     // `getCombatBonus(DUNGEON)` apply pet damage contribution capped ở
     // `PET_PVE_CAP_PERCENT` (12%). Identity (no-op) khi DI thiếu/legacy.
     PetModule,
+    OnboardingQuestModule,
   ],
   controllers: [CombatController],
   providers: [CombatService, PrismaService],

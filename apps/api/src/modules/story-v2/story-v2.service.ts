@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { CurrencyKind, Prisma } from '@prisma/client';
 import {
   STORY_CHAPTERS_V2,
@@ -18,6 +18,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { NpcAffinityService } from '../npc-affinity/npc-affinity.service';
+import { OnboardingQuestService } from '../onboarding-quest/onboarding-quest.service';
 
 /**
  * Phase 33.1 — Story V2 Runtime Service.
@@ -198,6 +199,7 @@ export class Phase33StoryService {
     private readonly currency: CurrencyService,
     private readonly inventory: InventoryService,
     private readonly npcAffinity: NpcAffinityService,
+    @Optional() private readonly onboarding?: OnboardingQuestService,
   ) {}
 
   /**
@@ -578,6 +580,10 @@ export class Phase33StoryService {
 
     if (isAllStepsDone(def, progress)) {
       await this.transitionToCompleted(row.id);
+      // Phase 44.1 — onboarding auto-track. Fire-and-forget.
+      if (this.onboarding) {
+        void this.onboarding.notifyAction(char.id, 'STORY_PROGRESS');
+      }
     }
 
     const fresh = await this.prisma.characterStoryV2QuestProgress.findUnique({

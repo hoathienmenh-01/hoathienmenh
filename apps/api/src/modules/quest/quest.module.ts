@@ -6,6 +6,7 @@ import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { NpcAffinityModule } from '../npc-affinity/npc-affinity.module';
+import { OnboardingQuestModule } from '../onboarding-quest/onboarding-quest.module';
 
 // Phase 12 PR-3 — claim path injects `CurrencyService` (CharacterModule) +
 // `InventoryService` (InventoryModule). Đã có `forwardRef` giữa
@@ -16,7 +17,7 @@ import { NpcAffinityModule } from '../npc-affinity/npc-affinity.module';
 // cho quest reward affinity (`QuestRewardDef.affinity[]`). Inject trực tiếp,
 // claim transaction wrap luôn affinity grant để đảm bảo idempotent CAS.
 @Module({
-  imports: [AuthModule, CharacterModule, InventoryModule, NpcAffinityModule],
+  imports: [AuthModule, CharacterModule, InventoryModule, NpcAffinityModule, OnboardingQuestModule],
   controllers: [QuestController],
   providers: [QuestService, PrismaService],
   exports: [QuestService],

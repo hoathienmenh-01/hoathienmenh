@@ -8699,5 +8699,26 @@
     "noneOnline": "No friends online right now.",
     "onlineCount": "{n} online",
     "recentlyOffline": "Offline"
+  },
+  "equipment": {
+    "title": "Current Equipment",
+    "subtitle": "Overview of your equipped gear",
+    "totalPower": "Total Power",
+    "noStats": "No bonuses yet",
+    "emptySlot": "Empty",
+    "emptyAll": "No equipment equipped",
+    "goInventory": "Open Inventory",
+    "linkInventory": "Inventory",
+    "linkLoadouts": "Loadouts",
+    "unequip": "Remove",
+    "swap": "Swap",
+    "equip": "Equip",
+    "unequipSuccess": "Removed {slot}",
+    "unequipFail": "Failed to unequip",
+    "equipSuccess": "Equipped successfully",
+    "equipFail": "Failed to equip",
+    "modalTitle": "Select item for {slot}",
+    "modalEmpty": "No matching items in inventory",
+    "loadFail": "Failed to load equipment"
   }
 }

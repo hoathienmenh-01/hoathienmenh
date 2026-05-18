@@ -8699,5 +8699,26 @@
     "noneOnline": "Khong co ban nao dang online.",
     "onlineCount": "{n} dang online",
     "recentlyOffline": "Ngoai tuyen"
+  },
+  "equipment": {
+    "title": "Trang Bị Hiện Tại",
+    "subtitle": "Tổng quan bộ trang bị đang đeo",
+    "totalPower": "Tổng Chiến Lực",
+    "noStats": "Chưa có bonus nào",
+    "emptySlot": "Trống",
+    "emptyAll": "Chưa đeo trang bị nào",
+    "goInventory": "Mở Kho Đồ",
+    "linkInventory": "Kho Đồ",
+    "linkLoadouts": "Bộ Trang Bị",
+    "unequip": "Tháo",
+    "swap": "Đổi",
+    "equip": "Trang bị",
+    "unequipSuccess": "Đã tháo {slot}",
+    "unequipFail": "Tháo trang bị thất bại",
+    "equipSuccess": "Trang bị thành công",
+    "equipFail": "Trang bị thất bại",
+    "modalTitle": "Chọn trang bị cho {slot}",
+    "modalEmpty": "Không có vật phẩm phù hợp trong kho đồ",
+    "loadFail": "Không tải được trang bị"
   }
 }

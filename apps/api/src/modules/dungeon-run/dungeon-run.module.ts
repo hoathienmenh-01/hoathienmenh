@@ -11,6 +11,8 @@ import { SectWarModule } from '../sect-war/sect-war.module';
 import { TerritoryModule } from '../territory/territory.module';
 import { EconomyModule } from '../economy/economy.module';
 import { LiveOpsEventSchedulerModule } from '../liveops-event-scheduler/liveops-event-scheduler.module';
+import { OnboardingQuestModule } from '../onboarding-quest/onboarding-quest.module';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 
 /**
  * Phase 12.2.B — DungeonRun runtime module.
@@ -35,6 +37,8 @@ import { LiveOpsEventSchedulerModule } from '../liveops-event-scheduler/liveops-
     TerritoryModule,
     EconomyModule,
     LiveOpsEventSchedulerModule,
+    OnboardingQuestModule,
+    FeatureFlagModule,
   ],
   controllers: [DungeonRunController],
   providers: [DungeonRunService, PrismaService],

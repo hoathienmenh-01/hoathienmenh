@@ -128,7 +128,10 @@ function makeController(opts: MakeOpts = {}) {
     completeQuest: opts.completeImpl ?? (async () => STUB_QUEST_VIEW),
     claimReward: opts.claimImpl ?? (async () => STUB_CLAIM),
   } as unknown as Phase33StoryService;
-  return new Phase33StoryController(story, auth);
+  const featureFlags = {
+    requireEnabled: async () => {},
+  } as unknown as import('../feature-flag/feature-flag.service').FeatureFlagService;
+  return new Phase33StoryController(story, auth, featureFlags);
 }
 
 async function expectHttpError(

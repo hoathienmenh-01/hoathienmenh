@@ -114,8 +114,10 @@ describe('LeaderboardService.topByPower', () => {
   });
 
   it('sectKey populated khi character có sect', async () => {
-    const sect = await prisma.sect.create({
-      data: { name: 'Thanh Vân Môn' },
+    const sect = await prisma.sect.upsert({
+      where: { name: 'Thanh Vân Môn' },
+      create: { name: 'Thanh Vân Môn' },
+      update: {},
     });
     const fix = await makeUserChar(prisma, {
       realmKey: 'luyenkhi',
@@ -278,7 +280,11 @@ describe('LeaderboardService.topByTopup', () => {
   });
 
   it('row contains expected fields + sectKey', async () => {
-    const sect = await prisma.sect.create({ data: { name: 'Huyền Thuỷ Cung' } });
+    const sect = await prisma.sect.upsert({
+      where: { name: 'Huyền Thuỷ Cung' },
+      create: { name: 'Huyền Thuỷ Cung' },
+      update: {},
+    });
     const a = await makeUserChar(prisma, {
       realmKey: 'truc_co',
       realmStage: 5,
@@ -314,14 +320,20 @@ describe('LeaderboardService.topBySect', () => {
   });
 
   it('sort theo treasuryLinhThach desc → level desc → createdAt asc', async () => {
-    const s1 = await prisma.sect.create({
-      data: { name: 'Thanh Vân Môn', level: 1, treasuryLinhThach: 100n },
+    const s1 = await prisma.sect.upsert({
+      where: { name: 'Thanh Vân Môn' },
+      create: { name: 'Thanh Vân Môn', level: 1, treasuryLinhThach: 100n },
+      update: { level: 1, treasuryLinhThach: 100n },
     });
-    const s2 = await prisma.sect.create({
-      data: { name: 'Huyền Thuỷ Cung', level: 5, treasuryLinhThach: 1000n },
+    const s2 = await prisma.sect.upsert({
+      where: { name: 'Huyền Thuỷ Cung' },
+      create: { name: 'Huyền Thuỷ Cung', level: 5, treasuryLinhThach: 1000n },
+      update: { level: 5, treasuryLinhThach: 1000n },
     });
-    const s3 = await prisma.sect.create({
-      data: { name: 'Tu La Tông', level: 3, treasuryLinhThach: 500n },
+    const s3 = await prisma.sect.upsert({
+      where: { name: 'Tu La Tông' },
+      create: { name: 'Tu La Tông', level: 3, treasuryLinhThach: 500n },
+      update: { level: 3, treasuryLinhThach: 500n },
     });
     const rows = await svc.topBySect(10);
     expect(rows.map((r) => r.sectId)).toEqual([s2.id, s3.id, s1.id]);
@@ -333,8 +345,10 @@ describe('LeaderboardService.topBySect', () => {
   });
 
   it('memberCount + leaderName populated', async () => {
-    const sect = await prisma.sect.create({
-      data: { name: 'Thanh Vân Môn', treasuryLinhThach: 50n },
+    const sect = await prisma.sect.upsert({
+      where: { name: 'Thanh Vân Môn' },
+      create: { name: 'Thanh Vân Môn', treasuryLinhThach: 50n },
+      update: { treasuryLinhThach: 50n },
     });
     const leader = await makeUserChar(prisma, { sectId: sect.id });
     await makeUserChar(prisma, { sectId: sect.id });
@@ -350,16 +364,20 @@ describe('LeaderboardService.topBySect', () => {
   });
 
   it('sect không có leader → leaderName null', async () => {
-    await prisma.sect.create({
-      data: { name: 'Thanh Vân Môn', treasuryLinhThach: 10n },
+    await prisma.sect.upsert({
+      where: { name: 'Thanh Vân Môn' },
+      create: { name: 'Thanh Vân Môn', treasuryLinhThach: 10n },
+      update: { treasuryLinhThach: 10n },
     });
     const rows = await svc.topBySect();
     expect(rows[0].leaderName).toBeNull();
   });
 
   it('sect tự lập name lạ → sectKey null không crash', async () => {
-    await prisma.sect.create({
-      data: { name: 'Thiên Hỏa Tự (player-created)', treasuryLinhThach: 0n },
+    await prisma.sect.upsert({
+      where: { name: 'Thiên Hỏa Tự (player-created)' },
+      create: { name: 'Thiên Hỏa Tự (player-created)', treasuryLinhThach: 0n },
+      update: { treasuryLinhThach: 0n },
     });
     const rows = await svc.topBySect();
     expect(rows).toHaveLength(1);
