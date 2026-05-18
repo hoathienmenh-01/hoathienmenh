@@ -46,6 +46,66 @@ const hasParty = ref(true); // Assume has party; panels handle no-party error in
 const dungeonStartable = computed(() => dungeonRunStore.startableCount);
 const dungeonActiveRun = computed(() => dungeonRunStore.hasActiveRun);
 
+interface RecommendedAction {
+  key: string;
+  title: string;
+  description: string;
+  route: string;
+  tone: string;
+  icon: string;
+}
+
+const recommended = computed<RecommendedAction | null>(() => {
+  if (hasActiveEncounter.value) {
+    return {
+      key: 'continue-encounter',
+      title: t('combatHub.recommend.continueEncounter.title', 'Đang chiến đấu!'),
+      description: t('combatHub.recommend.continueEncounter.description', 'Bạn có trận chiến đang dở. Tiếp tục để hoàn thành bí cảnh.'),
+      route: '/dungeon',
+      tone: 'amber',
+      icon: '⚔',
+    };
+  }
+  if (activeBossCount.value > 0) {
+    return {
+      key: 'fight-boss',
+      title: t('combatHub.recommend.fightBoss.title', 'Boss đang xuất hiện!'),
+      description: t('combatHub.recommend.fightBoss.description', { n: activeBossCount.value }),
+      route: '/boss',
+      tone: 'rose',
+      icon: '☠',
+    };
+  }
+  if (dungeonActiveRun.value) {
+    return {
+      key: 'continue-run',
+      title: t('combatHub.recommend.continueRun.title', 'Bí cảnh đang chạy'),
+      description: t('combatHub.recommend.continueRun.description', 'Tiếp tục expedition để nhận thưởng.'),
+      route: '/dungeon-run',
+      tone: 'emerald',
+      icon: '🏔',
+    };
+  }
+  if (dungeonStartable.value > 0) {
+    return {
+      key: 'start-run',
+      title: t('combatHub.recommend.startRun.title', 'Bắt đầu Bí Cảnh Lưu Phát'),
+      description: t('combatHub.recommend.startRun.description', { n: dungeonStartable.value }),
+      route: '/dungeon-run',
+      tone: 'emerald',
+      icon: '🏔',
+    };
+  }
+  return {
+    key: 'explore-dungeon',
+    title: t('combatHub.recommend.exploreDungeon.title', 'Thám hiểm Bí Cảnh'),
+    description: t('combatHub.recommend.exploreDungeon.description', 'Chiến đấu turn-based qua từng quái để nhận EXP và vật phẩm.'),
+    route: '/dungeon',
+    tone: 'amber',
+    icon: '⚔',
+  };
+});
+
 interface CombatSurface {
   key: string;
   title: string;
@@ -232,74 +292,109 @@ onMounted(async () => {
       </MButton>
     </section>
 
-    <!-- Combat surface grid -->
-    <div
-      v-else
-      class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-      data-testid="combat-hub-grid"
-    >
-      <article
-        v-for="surface in surfaces"
-        :key="surface.key"
-        class="rounded-lg border bg-ink-700/30 p-4 space-y-3 cursor-pointer transition-all hover:bg-ink-700/50"
-        :class="[
-          toneClass(surface.tone),
-          { 'opacity-60': !surface.available },
-        ]"
-        :data-testid="`combat-hub-card-${surface.key}`"
+    <!-- Recommended action + Grid (only when ready and has character) -->
+    <template v-else>
+      <!-- Recommended action -->
+      <section
+        v-if="recommended"
+        class="mb-6 rounded-lg border-2 p-4 space-y-2 cursor-pointer transition-all hover:brightness-110"
+        :class="{
+          'border-amber-400/60 bg-amber-900/20': recommended.tone === 'amber',
+          'border-rose-400/60 bg-rose-900/20': recommended.tone === 'rose',
+          'border-emerald-400/60 bg-emerald-900/20': recommended.tone === 'emerald',
+        }"
+        data-testid="combat-hub-recommend"
         role="button"
-        :tabindex="surface.available ? 0 : -1"
-        @click="surface.available && navigateTo(surface)"
-        @keydown.enter="surface.available && navigateTo(surface)"
+        tabindex="0"
+        @click="router.push(recommended.route)"
+        @keydown.enter="router.push(recommended.route)"
       >
-        <header class="flex items-start justify-between gap-2">
-          <div class="flex items-center gap-2">
-            <span class="text-2xl" aria-hidden="true">{{ surface.icon }}</span>
-            <h3 class="text-sm font-bold tracking-wide text-ink-100">
-              {{ surface.title }}
+        <div class="flex items-center gap-2">
+          <span class="text-xs uppercase tracking-widest text-amber-200/80" data-testid="combat-hub-recommend-label">
+            {{ t('combatHub.recommend.label', 'Nên làm') }}
+          </span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-3xl" aria-hidden="true">{{ recommended.icon }}</span>
+          <div class="flex-1 min-w-0">
+            <h3 class="text-base font-bold text-ink-100" data-testid="combat-hub-recommend-title">
+              {{ recommended.title }}
             </h3>
+            <p class="text-sm text-ink-300" data-testid="combat-hub-recommend-desc">
+              {{ recommended.description }}
+            </p>
           </div>
-          <span
-            v-if="surface.badge"
-            class="shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-widest"
-            :class="badgeClass(surface.tone)"
-            :data-testid="`combat-hub-badge-${surface.key}`"
-          >
-            {{ surface.badge }}
-          </span>
-        </header>
+          <span class="text-ink-300/60 text-xl">→</span>
+        </div>
+      </section>
 
-        <p class="text-xs text-ink-300 leading-relaxed">
-          {{ surface.description }}
+      <!-- Combat surface grid -->
+      <div
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        data-testid="combat-hub-grid"
+      >
+        <article
+          v-for="surface in surfaces"
+          :key="surface.key"
+          class="rounded-lg border bg-ink-700/30 p-4 space-y-3 cursor-pointer transition-all hover:bg-ink-700/50"
+          :class="[
+            toneClass(surface.tone),
+            { 'opacity-60': !surface.available },
+          ]"
+          :data-testid="`combat-hub-card-${surface.key}`"
+          role="button"
+          :tabindex="surface.available ? 0 : -1"
+          @click="surface.available && navigateTo(surface)"
+          @keydown.enter="surface.available && navigateTo(surface)"
+        >
+          <header class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl" aria-hidden="true">{{ surface.icon }}</span>
+              <h3 class="text-sm font-bold tracking-wide text-ink-100">
+                {{ surface.title }}
+              </h3>
+            </div>
+            <span
+              v-if="surface.badge"
+              class="shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-widest"
+              :class="badgeClass(surface.tone)"
+              :data-testid="`combat-hub-badge-${surface.key}`"
+            >
+              {{ surface.badge }}
+            </span>
+          </header>
+
+          <p class="text-xs text-ink-300 leading-relaxed">
+            {{ surface.description }}
+          </p>
+
+          <footer class="flex items-center justify-between">
+            <span
+              v-if="!surface.available && surface.requiresParty"
+              class="text-[10px] text-amber-300/80"
+            >
+              {{ t('combatHub.requiresParty', 'Yêu cầu tổ đội') }}
+            </span>
+            <span v-else class="text-[10px] text-ink-300/60">
+              {{ t('combatHub.tapToEnter', 'Nhấn để vào') }}
+            </span>
+            <span class="text-ink-300/40 text-sm">→</span>
+          </footer>
+        </article>
+      </div>
+
+      <!-- Daily tip -->
+      <section
+        class="mt-8 rounded border border-ink-300/20 bg-ink-700/20 p-4 space-y-2"
+        data-testid="combat-hub-daily-tip"
+      >
+        <h4 class="text-xs uppercase tracking-widest text-amber-200/80">
+          {{ t('combatHub.dailyTip.title', 'Mẹo Hàng Ngày') }}
+        </h4>
+        <p class="text-xs text-ink-300">
+          {{ t('combatHub.dailyTip.body', 'Hoàn thành Bí Cảnh Lưu Phát hàng ngày để tối đa hoá EXP và Linh Thạch. Kết hợp đánh World Boss khi spawn để nhận vật phẩm hiếm. Tham gia Co-op Boss cùng tổ đội để nhận thưởng cấp MVP.') }}
         </p>
-
-        <footer class="flex items-center justify-between">
-          <span
-            v-if="!surface.available && surface.requiresParty"
-            class="text-[10px] text-amber-300/80"
-          >
-            {{ t('combatHub.requiresParty', 'Yêu cầu tổ đội') }}
-          </span>
-          <span v-else class="text-[10px] text-ink-300/60">
-            {{ t('combatHub.tapToEnter', 'Nhấn để vào') }}
-          </span>
-          <span class="text-ink-300/40 text-sm">→</span>
-        </footer>
-      </article>
-    </div>
-
-    <!-- Daily tip -->
-    <section
-      v-if="ready && !noCharacter"
-      class="mt-8 rounded border border-ink-300/20 bg-ink-700/20 p-4 space-y-2"
-      data-testid="combat-hub-daily-tip"
-    >
-      <h4 class="text-xs uppercase tracking-widest text-amber-200/80">
-        {{ t('combatHub.dailyTip.title', 'Mẹo Hàng Ngày') }}
-      </h4>
-      <p class="text-xs text-ink-300">
-        {{ t('combatHub.dailyTip.body', 'Hoàn thành Bí Cảnh Lưu Phát hàng ngày để tối đa hoá EXP và Linh Thạch. Kết hợp đánh World Boss khi spawn để nhận vật phẩm hiếm. Tham gia Co-op Boss cùng tổ đội để nhận thưởng cấp MVP.') }}
-      </p>
-    </section>
+      </section>
+    </template>
   </AppShell>
 </template>
