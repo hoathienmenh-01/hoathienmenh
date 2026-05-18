@@ -314,6 +314,61 @@
         "CULTIVATE_IDLE": "You're not cultivating — tap ‘Cultivate’ to absorb qi."
       }
     },
+    "dailyLoop": {
+      "title": "What To Do Today?",
+      "go": "Go",
+      "goClaim": "Claim",
+      "goStart": "Start",
+      "goContinue": "Continue",
+      "goChallenge": "Challenge",
+      "goJoin": "Join",
+      "goRead": "Read",
+      "goAdvance": "Advance",
+      "status": {
+        "claimable": "Claim now",
+        "active": "Running",
+        "available": "Ready",
+        "completed": "Done",
+        "priority": "Priority {n}"
+      },
+      "dailyLogin": {
+        "title": "Daily Check-in",
+        "reward": "+{amount} spirit stones",
+        "rewardStreak": "Day {streak} streak · +{amount} spirit stones"
+      },
+      "cultivate": {
+        "title": "Cultivate",
+        "rewardActive": "Accumulating qi each tick",
+        "rewardIdle": "Start cultivating to absorb qi"
+      },
+      "missions": {
+        "title": "Missions",
+        "count": "{n} mission(s) ready",
+        "reward": "Spirit stones + EXP"
+      },
+      "quests": {
+        "title": "Quests",
+        "count": "{n} quest(s) completed",
+        "reward": "Rewards waiting to claim"
+      },
+      "boss": {
+        "title": "World Boss",
+        "reward": "Rare gear + spirit stones"
+      },
+      "sect": {
+        "title": "Sect",
+        "reward": "Contribution + sect reputation"
+      },
+      "mail": {
+        "title": "Mailbox",
+        "count": "{n} new mail(s)",
+        "reward": "May contain gifts"
+      },
+      "breakthrough": {
+        "title": "Breakthrough",
+        "reward": "Advance realm + unlock features"
+      }
+    },
     "onboarding": {
       "title": "Beginner Guide",
       "go": "Go",
