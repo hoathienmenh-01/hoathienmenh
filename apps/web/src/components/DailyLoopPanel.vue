@@ -27,6 +27,14 @@ import { getDailyLoginStatus, type DailyLoginStatus } from '@/api/dailyLogin';
 
 export type ActivityStatus = 'claimable' | 'active' | 'available' | 'completed' | 'locked';
 
+const STATUS_PRIORITY: Record<ActivityStatus, number> = {
+  claimable: 0,
+  active: 1,
+  available: 2,
+  locked: 3,
+  completed: 4,
+};
+
 export interface DailyActivity {
   key: string;
   title: string;
@@ -35,6 +43,7 @@ export interface DailyActivity {
   rewardHint?: string;
   route: string;
   glyph: string;
+  ctaLabel: string;
 }
 
 const { t } = useI18n();
@@ -63,44 +72,51 @@ const activities = computed<DailyActivity[]>(() => {
     const ds = dailyStatus.value;
     list.push({
       key: 'daily-login',
-      title: t('dailyLoop.dailyLogin.title', 'Nhận thưởng đăng nhập'),
+      title: t('dailyLoop.dailyLogin.title', 'Điểm Danh'),
       status: ds.canClaimToday ? 'claimable' : 'completed',
       statusLabel: ds.canClaimToday
         ? t('dailyLoop.status.claimable', 'Nhận ngay')
-        : t('dailyLoop.status.completed', 'Hoàn thành'),
+        : t('dailyLoop.status.completed', 'Xong'),
       rewardHint: ds.canClaimToday
-        ? t('dailyLoop.dailyLogin.reward', { amount: ds.nextRewardLinhThach })
+        ? (ds.currentStreak > 1
+          ? t('dailyLoop.dailyLogin.rewardStreak', { streak: ds.currentStreak, amount: ds.nextRewardLinhThach })
+          : t('dailyLoop.dailyLogin.reward', { amount: ds.nextRewardLinhThach }))
         : undefined,
       route: '/home',
       glyph: '🎁',
+      ctaLabel: t('dailyLoop.goClaim', 'Nhận'),
     });
   }
 
   // 2. Cultivation
   list.push({
     key: 'cultivate',
-    title: t('dailyLoop.cultivate.title', 'Tu luyện'),
+    title: t('dailyLoop.cultivate.title', 'Tu Luyện'),
     status: c.cultivating ? 'active' : 'available',
     statusLabel: c.cultivating
       ? t('dailyLoop.status.active', 'Đang chạy')
-      : t('dailyLoop.status.available', 'Bắt đầu'),
+      : t('dailyLoop.status.available', 'Sẵn sàng'),
     rewardHint: c.cultivating
-      ? t('dailyLoop.cultivate.rewardActive', 'Đang tích luỹ tu vi')
-      : t('dailyLoop.cultivate.rewardIdle', 'Bắt đầu để nhận tu vi'),
+      ? t('dailyLoop.cultivate.rewardActive', 'Đang tích luỹ tu vi mỗi tick')
+      : t('dailyLoop.cultivate.rewardIdle', 'Nhập định để hấp thụ linh khí'),
     route: '/cultivation',
     glyph: '✦',
+    ctaLabel: c.cultivating
+      ? t('dailyLoop.goContinue', 'Tiếp tục')
+      : t('dailyLoop.goStart', 'Bắt đầu'),
   });
 
   // 3. Missions claimable
   if (badges.missionClaimable > 0) {
     list.push({
       key: 'missions',
-      title: t('dailyLoop.missions.title', 'Nhiệm vụ có thể nhận'),
+      title: t('dailyLoop.missions.title', 'Nhiệm Vụ'),
       status: 'claimable',
       statusLabel: t('dailyLoop.missions.count', { n: badges.missionClaimable }),
       rewardHint: t('dailyLoop.missions.reward', 'Linh thạch + EXP'),
       route: '/missions',
       glyph: '✎',
+      ctaLabel: t('dailyLoop.goClaim', 'Nhận'),
     });
   }
 
@@ -108,12 +124,13 @@ const activities = computed<DailyActivity[]>(() => {
   if (questStore.claimableCount > 0) {
     list.push({
       key: 'quests',
-      title: t('dailyLoop.quests.title', 'Nhiệm vụ hoàn thành'),
+      title: t('dailyLoop.quests.title', 'Thử Thách'),
       status: 'claimable',
       statusLabel: t('dailyLoop.quests.count', { n: questStore.claimableCount }),
       rewardHint: t('dailyLoop.quests.reward', 'Phần thưởng chờ nhận'),
       route: '/missions',
       glyph: '📜',
+      ctaLabel: t('dailyLoop.goClaim', 'Nhận'),
     });
   }
 
@@ -121,12 +138,13 @@ const activities = computed<DailyActivity[]>(() => {
   if (badges.bossActive) {
     list.push({
       key: 'boss',
-      title: t('dailyLoop.boss.title', 'Boss xuất hiện'),
+      title: t('dailyLoop.boss.title', 'Boss Xuất Thế'),
       status: 'available',
-      statusLabel: t('dailyLoop.status.available', 'Thách đấu'),
-      rewardHint: t('dailyLoop.boss.reward', 'Rơi trang bị + linh thạch'),
+      statusLabel: t('dailyLoop.status.available', 'Sẵn sàng'),
+      rewardHint: t('dailyLoop.boss.reward', 'Rơi trang bị + linh thạch hiếm'),
       route: '/boss',
       glyph: '☠',
+      ctaLabel: t('dailyLoop.goChallenge', 'Thách đấu'),
     });
   }
 
@@ -134,12 +152,13 @@ const activities = computed<DailyActivity[]>(() => {
   if (game.currentSect) {
     list.push({
       key: 'sect',
-      title: t('dailyLoop.sect.title', 'Đóng góp tông môn'),
+      title: t('dailyLoop.sect.title', 'Tông Môn'),
       status: 'available',
-      statusLabel: t('dailyLoop.status.available', 'Tham gia'),
-      rewardHint: t('dailyLoop.sect.reward', 'Công hiến + uy danh'),
+      statusLabel: t('dailyLoop.status.available', 'Sẵn sàng'),
+      rewardHint: t('dailyLoop.sect.reward', 'Công hiến + uy danh tông môn'),
       route: '/sect-war?tab=missions',
       glyph: '⛩',
+      ctaLabel: t('dailyLoop.goJoin', 'Tham gia'),
     });
   }
 
@@ -147,12 +166,13 @@ const activities = computed<DailyActivity[]>(() => {
   if (game.unreadMail > 0) {
     list.push({
       key: 'mail',
-      title: t('dailyLoop.mail.title', 'Thư chưa đọc'),
+      title: t('dailyLoop.mail.title', 'Hộp Thư'),
       status: 'available',
       statusLabel: t('dailyLoop.mail.count', { n: game.unreadMail }),
-      rewardHint: t('dailyLoop.mail.reward', 'Có thể chứa phần thưởng'),
+      rewardHint: t('dailyLoop.mail.reward', 'Có thể chứa quà tặng'),
       route: '/mail',
       glyph: '✉',
+      ctaLabel: t('dailyLoop.goRead', 'Đọc'),
     });
   }
 
@@ -160,15 +180,18 @@ const activities = computed<DailyActivity[]>(() => {
   if (badges.breakthroughReady) {
     list.push({
       key: 'breakthrough',
-      title: t('dailyLoop.breakthrough.title', 'Đột phá cảnh giới'),
+      title: t('dailyLoop.breakthrough.title', 'Đột Phá'),
       status: 'claimable',
-      statusLabel: t('dailyLoop.status.claimable', 'Sẵn sàng'),
-      rewardHint: t('dailyLoop.breakthrough.reward', 'Tăng cảnh giới + mở khoá'),
+      statusLabel: t('dailyLoop.status.claimable', 'Nhận ngay'),
+      rewardHint: t('dailyLoop.breakthrough.reward', 'Thăng cảnh giới + mở khoá tính năng'),
       route: '/breakthrough',
       glyph: '⚡',
+      ctaLabel: t('dailyLoop.goAdvance', 'Thăng tiến'),
     });
   }
 
+  // Sort: claimable → active → available → completed
+  list.sort((a, b) => STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status]);
   return list;
 });
 
@@ -205,12 +228,13 @@ function go(route: string): void {
 
     <ul class="xt-daily-loop__list">
       <li
-        v-for="act in activities"
+        v-for="(act, idx) in activities"
         :key="act.key"
         class="xt-daily-loop__item"
         :class="statusClass(act.status)"
         :data-testid="`daily-loop-item-${act.key}`"
       >
+        <span class="xt-daily-loop__priority" aria-hidden="true">{{ idx + 1 }}</span>
         <span class="xt-daily-loop__glyph" aria-hidden="true">{{ act.glyph }}</span>
         <div class="xt-daily-loop__body">
           <p class="xt-daily-loop__item-title">{{ act.title }}</p>
@@ -225,7 +249,7 @@ function go(route: string): void {
             :data-testid="`daily-loop-go-${act.key}`"
             @click="go(act.route)"
           >
-            {{ t('dailyLoop.go', 'Đi') }}
+            {{ act.ctaLabel }}
           </button>
         </div>
       </li>
@@ -284,7 +308,7 @@ function go(route: string): void {
 
 .xt-daily-loop__item {
   display: grid;
-  grid-template-columns: 32px 1fr auto;
+  grid-template-columns: 22px 32px 1fr auto;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
@@ -312,6 +336,21 @@ function go(route: string): void {
 .xt-daily-loop__item--completed {
   border-color: rgba(100, 116, 139, 0.3);
   opacity: 0.6;
+}
+
+.xt-daily-loop__priority {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(242, 215, 137, 0.15);
+  border: 1px solid rgba(242, 215, 137, 0.3);
+  color: var(--xt-gold-bright, #f2d789);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .xt-daily-loop__glyph {

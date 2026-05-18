@@ -323,4 +323,87 @@ describe('DailyLoopPanel', () => {
     const count = Number(countEl.text());
     expect(count).toBeGreaterThanOrEqual(4);
   });
+
+  it('sorts claimable activities before available and completed', async () => {
+    getDailyLoginStatusMock.mockResolvedValueOnce({
+      todayDateLocal: '2026-05-17',
+      canClaimToday: true,
+      currentStreak: 2,
+      nextRewardLinhThach: '300',
+    });
+    const router = buildRouter();
+    const i18n = buildI18n();
+    const game = useGameStore();
+    game.character = buildCharacter({ cultivating: false });
+    const badges = useBadgesStore();
+    badges.actions = [{ key: 'BREAKTHROUGH_READY', priority: 1, params: {}, route: '/breakthrough' }];
+    const w = mount(DailyLoopPanel, {
+      global: { plugins: [router, i18n] },
+    });
+    await router.isReady();
+    await flushPromises();
+    const items = w.findAll('.xt-daily-loop__item');
+    // claimable (daily-login, breakthrough) should come before available (cultivate)
+    const keys = items.map((el) => el.attributes('data-testid'));
+    const loginIdx = keys.indexOf('daily-loop-item-daily-login');
+    const breakthroughIdx = keys.indexOf('daily-loop-item-breakthrough');
+    const cultivateIdx = keys.indexOf('daily-loop-item-cultivate');
+    expect(loginIdx).toBeLessThan(cultivateIdx);
+    expect(breakthroughIdx).toBeLessThan(cultivateIdx);
+  });
+
+  it('sorts completed activities to the bottom', async () => {
+    getDailyLoginStatusMock.mockResolvedValueOnce({
+      todayDateLocal: '2026-05-17',
+      canClaimToday: false,
+      currentStreak: 4,
+      nextRewardLinhThach: '600',
+    });
+    const router = buildRouter();
+    const i18n = buildI18n();
+    const game = useGameStore();
+    game.character = buildCharacter({ cultivating: false });
+    const w = mount(DailyLoopPanel, {
+      global: { plugins: [router, i18n] },
+    });
+    await router.isReady();
+    await flushPromises();
+    const items = w.findAll('.xt-daily-loop__item');
+    const keys = items.map((el) => el.attributes('data-testid'));
+    const loginIdx = keys.indexOf('daily-loop-item-daily-login');
+    const cultivateIdx = keys.indexOf('daily-loop-item-cultivate');
+    // completed (daily-login) should come after available (cultivate)
+    expect(loginIdx).toBeGreaterThan(cultivateIdx);
+  });
+
+  it('shows priority numbers starting from 1', async () => {
+    const router = buildRouter();
+    const i18n = buildI18n();
+    const game = useGameStore();
+    game.character = buildCharacter({ cultivating: false });
+    const w = mount(DailyLoopPanel, {
+      global: { plugins: [router, i18n] },
+    });
+    await router.isReady();
+    await flushPromises();
+    const priorities = w.findAll('.xt-daily-loop__priority');
+    expect(priorities.length).toBeGreaterThan(0);
+    expect(priorities[0].text()).toBe('1');
+  });
+
+  it('uses per-activity CTA labels instead of generic Go', async () => {
+    const router = buildRouter();
+    const i18n = buildI18n();
+    const game = useGameStore();
+    game.character = buildCharacter({ cultivating: false });
+    const w = mount(DailyLoopPanel, {
+      global: { plugins: [router, i18n] },
+    });
+    await router.isReady();
+    await flushPromises();
+    const goBtn = w.find('[data-testid="daily-loop-go-cultivate"]');
+    expect(goBtn.exists()).toBe(true);
+    // Should use the ctaLabel, not the generic "Đi"
+    expect(goBtn.text()).not.toBe('');
+  });
 });

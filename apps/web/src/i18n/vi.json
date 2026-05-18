@@ -314,6 +314,61 @@
         "CULTIVATE_IDLE": "Đạo hữu chưa nhập định — bấm ‘Nhập Định’ để hấp thụ linh khí."
       }
     },
+    "dailyLoop": {
+      "title": "Hôm Nay Làm Gì?",
+      "go": "Đi",
+      "goClaim": "Nhận",
+      "goStart": "Bắt đầu",
+      "goContinue": "Tiếp tục",
+      "goChallenge": "Thách đấu",
+      "goJoin": "Tham gia",
+      "goRead": "Đọc",
+      "goAdvance": "Thăng tiến",
+      "status": {
+        "claimable": "Nhận ngay",
+        "active": "Đang chạy",
+        "available": "Sẵn sàng",
+        "completed": "Xong",
+        "priority": "Ưu tiên {n}"
+      },
+      "dailyLogin": {
+        "title": "Điểm Danh",
+        "reward": "+{amount} linh thạch",
+        "rewardStreak": "Chuỗi {streak} ngày · +{amount} linh thạch"
+      },
+      "cultivate": {
+        "title": "Tu Luyện",
+        "rewardActive": "Đang tích luỹ tu vi mỗi tick",
+        "rewardIdle": "Nhập định để hấp thụ linh khí"
+      },
+      "missions": {
+        "title": "Nhiệm Vụ",
+        "count": "{n} nhiệm vụ sẵn sàng",
+        "reward": "Linh thạch + EXP"
+      },
+      "quests": {
+        "title": "Thử Thách",
+        "count": "{n} thử thách hoàn thành",
+        "reward": "Phần thưởng chờ nhận"
+      },
+      "boss": {
+        "title": "Boss Xuất Thế",
+        "reward": "Rơi trang bị + linh thạch hiếm"
+      },
+      "sect": {
+        "title": "Tông Môn",
+        "reward": "Công hiến + uy danh tông môn"
+      },
+      "mail": {
+        "title": "Hộp Thư",
+        "count": "{n} thư mới",
+        "reward": "Có thể chứa quà tặng"
+      },
+      "breakthrough": {
+        "title": "Đột Phá",
+        "reward": "Thăng cảnh giới + mở khoá tính năng"
+      }
+    },
     "onboarding": {
       "title": "Tân Thủ Chỉ Nam",
       "go": "Đi",

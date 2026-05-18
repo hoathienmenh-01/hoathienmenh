@@ -37,7 +37,7 @@
 | Market / Auction | PARTIAL | `market`, `market-v2`, `MarketView.vue`, `MarketV2View.vue`, `market-v2.ts` | Market V2 gated; positive smoke and abuse workflow polish | Medium | Defer until core loop polish |
 | Monetization / Topup / Wallet | PARTIAL | `topup`, `monetization`, `WalletView.vue`, `MonetizationView.vue`, `TopupView.vue` | Policy review needed before expansion | Medium | Keep conservative |
 | Notification / Mail | DONE | `notification`, `mail`, `NotificationCenterView.vue`, `MailView.vue`, `NotificationBell.vue` | More gameplay trigger wiring | Medium | Boss Notification Integration |
-| Daily Loop / Onboarding | PARTIAL | `DailyLoopPanel.vue`, `OnboardingView.vue`, `OnboardingQuestView.vue`, `onboarding-quest` | Best next UX target; first session still under-guided | High | Daily Loop First Session Polish |
+| Daily Loop / Onboarding | PARTIAL | `DailyLoopPanel.vue`, `OnboardingView.vue`, `OnboardingQuestView.vue`, `onboarding-quest` | Daily Loop polished (sorted, i18n, CTAs); onboarding quest flow remains | Medium | Boss Notification Integration |
 | Events / LiveOps | PARTIAL | `liveops-*`, `event-builder`, `AdminEventBuilderView.vue`, `EventsView.vue` | Some cron/reward automation remains operator-driven | Medium | Polish after beta UX |
 | Admin | DONE | `admin`, `admin-control-center`, many admin panels/tests | Known direct reload guard UX issue | High | Admin Reload Guard Fix |
 | Backup / Deploy / Ops | PARTIAL | `backup`, `AdminBackupPanel.vue`, `docs/DEPLOY.md`, `docs/BACKUP_RESTORE.md` | Production restore drill/observability | High | Track in ops roadmap |
@@ -79,7 +79,6 @@ Do not rebuild these systems from scratch:
 ### 4.3 UI exists but needs real data/action/gating
 
 - CombatHub is useful, but should better route players to the single best available combat action.
-- DailyLoopPanel should highlight fewer, clearer first-session actions.
 - Party surfaces need stronger membership/invite gating.
 - Notification center needs more visible gameplay triggers, especially boss/activity notifications.
 
@@ -104,7 +103,7 @@ Do not rebuild these systems from scratch:
 
 | Rank | PR Name | Goal | Main Files / Modules | Risk | Size | Status |
 |---|---|---|---|---|---|---|
-| 1 | Daily Loop First Session Polish | Make `/home` clearly tell a new player what to do next | `DailyLoopPanel.vue`, `HomeView.vue`, `NextActionPanel.vue`, `player-dashboard` | Low | Medium | TODO |
+| 1 | Daily Loop First Session Polish | Make `/home` clearly tell a new player what to do next | `DailyLoopPanel.vue`, `HomeView.vue`, `NextActionPanel.vue`, `player-dashboard` | Low | Medium | DONE |
 | 2 | Equipment Flow Cleanup | Make equip/unequip/upgrade paths understandable from equipment and inventory | `EquipmentView.vue`, `InventoryView.vue`, `EquipmentUpgradePanel.vue`, `apps/web/src/api/inventory.ts` | Medium | Medium | TODO |
 | 3 | Core Loop Smoke Proof Pack | Add beta proof for breakthrough success and mission claim | smoke scripts, `breakthrough`, `mission` | Medium | Small | TODO |
 | 4 | Combat Entry Consolidation | Reduce route confusion and route players to the right combat surface | `CombatHubView.vue`, `DungeonView.vue`, `DungeonRunView.vue`, router | Low | Medium | TODO |
@@ -117,14 +116,14 @@ Do not rebuild these systems from scratch:
 
 ## 6. Next 3 PR Plan
 
-### PR 1: Daily Loop First Session Polish
+### PR 1: Daily Loop First Session Polish ✅ DONE
 
 - Goal: make the first session self-directed without asking the player to understand the whole route map.
 - Scope: improve priority ordering, labels, completion states, and route CTAs on the home/daily loop surface.
-- Files likely touched: `apps/web/src/components/DailyLoopPanel.vue`, `apps/web/src/views/HomeView.vue`, `apps/web/src/components/NextActionPanel.vue`, optionally `apps/api/src/modules/player-dashboard`.
-- Tests to run: targeted web component/view tests; Playwright smoke if `/home` flow changes.
-- Done criteria: fresh character sees 3-5 highest-value actions, each action has state, reward hint, and correct route; completed actions are visually de-prioritized.
-- What not to touch: no backend economy changes, no balance changes, no new gameplay module.
+- Files touched: `apps/web/src/components/DailyLoopPanel.vue`, `apps/web/src/i18n/vi.json`, `apps/web/src/i18n/en.json`, `apps/web/src/components/__tests__/DailyLoopPanel.test.ts`, `docs/FEATURE_PROGRESS_TRACKER.md`, `docs/FEATURE_AUDIT_AND_ROADMAP.md`, `docs/AI_HANDOFF_REPORT.md`.
+- Tests run: typecheck ✅, lint ✅, build ✅, DailyLoopPanel 17/17 ✅, Han gate 0 ✅.
+- Done criteria met: activities sorted by priority (claimable → active → available → completed), priority numbers shown, per-activity CTA labels, i18n keys in vi.json+en.json, reward hints improved.
+- What was not touched: no backend changes, no balance changes, no new gameplay module.
 
 ### PR 2: Equipment Flow Cleanup
 
@@ -187,7 +186,7 @@ Do not rebuild these systems from scratch:
 |---|---:|
 | Playable core | 8/10 |
 | New player UX | 6/10 |
-| Daily loop | 6.5/10 |
+| Daily loop | 7/10 |
 | Combat loop | 8/10 |
 | Economy safety | 7.5/10 |
 | Admin/LiveOps | 7/10 |
