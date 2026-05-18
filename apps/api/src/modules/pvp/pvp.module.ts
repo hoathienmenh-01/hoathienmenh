@@ -19,9 +19,10 @@ import { PvpBattleService } from './battle.service';
 import { PvpAnomalyService } from './anomaly.service';
 import { PvpPlayerController } from './pvp.player.controller';
 import { PvpAdminController } from './pvp.admin.controller';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 
 @Module({
-  imports: [AuthModule, AdminControlCenterModule],
+  imports: [AuthModule, AdminControlCenterModule, FeatureFlagModule],
   controllers: [PvpPlayerController, PvpAdminController],
   providers: [
     PrismaService,

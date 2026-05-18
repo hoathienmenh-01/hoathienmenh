@@ -19,6 +19,7 @@ import {
   OnboardingQuestService,
   OnboardingTaskView,
 } from './onboarding-quest.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -37,6 +38,7 @@ export class OnboardingQuestController {
   constructor(
     private readonly svc: OnboardingQuestService,
     private readonly auth: AuthService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   @Get('progress')
@@ -84,6 +86,7 @@ export class OnboardingQuestController {
       req.cookies?.[ACCESS_COOKIE],
     );
     if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    await this.featureFlags.requireEnabled('ONBOARDING_ENABLED');
     if (!taskKey || taskKey.length > 64) fail('INVALID_INPUT');
     try {
       const data = await this.svc.acceptTask(userId, taskKey);

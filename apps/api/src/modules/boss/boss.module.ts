@@ -13,6 +13,7 @@ import { TerritoryModule } from '../territory/territory.module';
 import { LiveOpsEventSchedulerModule } from '../liveops-event-scheduler/liveops-event-scheduler.module';
 import { EconomyModule } from '../economy/economy.module';
 import { WebPushModule } from '../web-push/web-push.module';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 
 // Phase 15.3.A — `LiveOpsEventSchedulerModule` wire để BossService đọc
 // BOSS_REWARD_BOOST runtime modifier (Optional inject — test có thể bỏ).
@@ -31,6 +32,7 @@ import { WebPushModule } from '../web-push/web-push.module';
     LiveOpsEventSchedulerModule,
     EconomyModule,
     WebPushModule,
+    FeatureFlagModule,
   ],
   controllers: [BossController],
   providers: [BossService, PrismaService],

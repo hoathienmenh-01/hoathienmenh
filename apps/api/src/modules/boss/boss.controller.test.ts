@@ -109,7 +109,10 @@ function makeController(
     attack: opts.attackImpl ?? (async () => STUB_ATTACK),
     adminSpawn: opts.spawnImpl ?? (async () => STUB_BOSS),
   } as unknown as BossService;
-  return new BossController(boss, auth, prisma);
+  const featureFlags = {
+    requireEnabled: async () => {},
+  } as unknown as import('../feature-flag/feature-flag.service').FeatureFlagService;
+  return new BossController(boss, auth, prisma, featureFlags);
 }
 
 async function expectHttpError(

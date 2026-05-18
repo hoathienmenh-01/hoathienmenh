@@ -21,6 +21,7 @@ import {
   Phase33StoryError,
   Phase33StoryService,
 } from './story-v2.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -60,6 +61,7 @@ export class Phase33StoryController {
   constructor(
     private readonly storyV2: Phase33StoryService,
     private readonly auth: AuthService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   @Get('chapters')
@@ -120,6 +122,7 @@ export class Phase33StoryController {
   async accept(@Req() req: Request, @Body() body: unknown) {
     const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
     if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    await this.featureFlags.requireEnabled('STORY_V2_ENABLED');
     const parsed = QuestKeyInput.safeParse(body);
     if (!parsed.success) fail('INVALID_INPUT');
     try {

@@ -36,6 +36,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { PvpDefenseService, PvpDefenseError } from './defense.service';
 import { PvpBattleService, PvpBattleError } from './battle.service';
 import { PvpSnapshotError } from './snapshot.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -67,6 +68,7 @@ export class PvpPlayerController {
     private readonly prisma: PrismaService,
     private readonly defense: PvpDefenseService,
     private readonly battle: PvpBattleService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   private async requireCharacter(req: Request): Promise<string> {
@@ -117,6 +119,7 @@ export class PvpPlayerController {
   @HttpCode(HttpStatus.OK)
   async challenge(@Req() req: Request, @Body() body: unknown) {
     const attackerCharacterId = await this.requireCharacter(req);
+    await this.featureFlags.requireEnabled('PVP_ENABLED');
     const parsed = ChallengeZ.safeParse(body);
     if (!parsed.success) fail('PVP_CHALLENGE_PAYLOAD_INVALID');
     try {

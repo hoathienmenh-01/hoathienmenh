@@ -13,6 +13,7 @@ import type { Request } from 'express';
 import { z } from 'zod';
 import { AuthService } from '../auth/auth.service';
 import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 import {
   DungeonClaimResult,
   DungeonListView,
@@ -54,6 +55,7 @@ export class DungeonRunController {
   constructor(
     private readonly runs: DungeonRunService,
     private readonly auth: AuthService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   @Get('dungeons/me')
@@ -79,6 +81,7 @@ export class DungeonRunController {
   ): Promise<{ ok: true; data: { run: DungeonRunView } }> {
     const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
     if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    await this.featureFlags.requireEnabled('DUNGEON_ENABLED');
     const parsed = TemplateKeyParam.safeParse(templateKey);
     if (!parsed.success) fail('INVALID_INPUT');
     try {

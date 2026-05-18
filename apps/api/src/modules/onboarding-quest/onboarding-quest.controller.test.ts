@@ -100,7 +100,10 @@ function makeController(opts: MakeOpts = {}) {
     claimTask: opts.claimImpl ?? (async () => STUB_CLAIM_RESULT),
     recompute: opts.recomputeImpl ?? (async () => STUB_PROGRESS_VIEW),
   } as unknown as OnboardingQuestService;
-  return new OnboardingQuestController(svc, auth);
+  const featureFlags = {
+    requireEnabled: async () => {},
+  } as unknown as import('../feature-flag/feature-flag.service').FeatureFlagService;
+  return new OnboardingQuestController(svc, auth, featureFlags);
 }
 
 async function expectHttpError(
