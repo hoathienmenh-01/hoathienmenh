@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import type { NotificationRow } from '@xuantoi/shared';
 import { useNotificationsStore } from '@/stores/notifications';
+import { useBadgesStore } from '@/stores/badges';
 
 defineProps<{
   open: boolean;
@@ -13,12 +14,14 @@ const emit = defineEmits<(e: 'close') => void>();
 
 const { t } = useI18n();
 const store = useNotificationsStore();
+const badges = useBadgesStore();
 const router = useRouter();
 
 const items = computed(() => store.items);
 const loading = computed(() => store.loading);
 const errorCode = computed(() => store.errorCode);
 const hasUnread = computed(() => store.hasUnread);
+const bossActive = computed(() => badges.bossActive);
 
 /**
  * Phase 19.3 — map notification entity to a FE route. Server gives
@@ -77,6 +80,11 @@ async function handleRetry(): Promise<void> {
   await store.refresh();
 }
 
+async function handleBossClick(): Promise<void> {
+  emit('close');
+  await router.push('/boss');
+}
+
 function senderLabel(row: NotificationRow): string {
   const data = row.dataJson as Record<string, unknown>;
   const candidates = [
@@ -131,6 +139,27 @@ function titleForRow(row: NotificationRow): string {
         {{ t('notification.markAllRead') }}
       </button>
     </header>
+
+    <!-- Boss active alert -->
+    <div
+      v-if="bossActive"
+      class="px-3 py-2 border-b border-ink-300/20 bg-rose-900/20 cursor-pointer hover:bg-rose-900/30 transition"
+      data-testid="notification-boss-alert"
+      @click="handleBossClick"
+    >
+      <div class="flex items-center gap-2">
+        <span class="text-lg" aria-hidden="true">☠</span>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold text-rose-200">
+            {{ t('notification.bossAlert.title') }}
+          </p>
+          <p class="text-xs text-rose-300/80">
+            {{ t('notification.bossAlert.body') }}
+          </p>
+        </div>
+        <span class="text-xs text-rose-300/60">→</span>
+      </div>
+    </div>
 
     <div v-if="loading && items.length === 0" class="px-3 py-4 text-sm text-ink-300" data-testid="notification-loading">
       {{ t('notification.loading') }}

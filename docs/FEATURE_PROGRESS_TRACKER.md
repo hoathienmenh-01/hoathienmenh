@@ -33,7 +33,7 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 3 | Core Loop Smoke Proof Pack | DONE | Beta needs proof that the core progression loop works end-to-end. | Add positive smoke for breakthrough success and mission claim; optionally spiritual-root reroll if seed exists. | `scripts/smoke-*.mjs`, `breakthrough`, `mission`, `admin`, docs checklist | Smoke passes for breakthrough success and mission claim with no duplicate reward. | 2026-05-19 |
 | 4 | Combat Entry Consolidation | DONE | Combat has several entry routes and can confuse players. | Route players from combat hub to the best available combat action. | `CombatHubView.vue`, `DungeonView.vue`, `DungeonRunView.vue`, router | One obvious combat CTA for fresh and returning players; no broken route loops. | 2026-05-19 |
 | 5 | Quest/Mission/Story Labeling Polish | TODO | Players need to understand mission vs quest vs story progression. | Clarify labels, tabs, status, and CTAs. | `QuestView.vue`, `MissionView.vue`, `StoryV2View.vue`, i18n | Each surface explains its role through labels and status without long tutorial text. | 2026-05-19 |
-| 6 | Boss Notification Integration | TODO | Active bosses are strong daily-return content but need visibility. | Wire active boss cues into notifications/daily loop where backend supports it. | `boss`, `notification`, `web-push`, `DailyLoopPanel.vue` | Active boss appears in daily loop/notification with correct route and safe fallback. | 2026-05-19 |
+| 6 | Boss Notification Integration | DONE | Active bosses are strong daily-return content but need visibility. | Wire active boss cues into notifications/daily loop where backend supports it. | `boss`, `notification`, `web-push`, `DailyLoopPanel.vue` | Active boss appears in daily loop/notification with correct route and safe fallback. | 2026-05-19 |
 | 7 | Party Membership / Invite Polish | TODO | Party/co-op systems exist but need clearer social entry. | Improve create/invite/member state and co-op entry gating. | `party`, `PartyHubView.vue`, `PartyPanel.vue` | Player can create/join/invite or understand why unavailable; co-op routes respect party state. | 2026-05-19 |
 | 8 | Admin Reload Guard Fix | TODO | Admin direct reload is a known UX bug for beta operators. | Ensure auth hydrate finishes before admin role redirect. | `AdminControlCenterView.vue`, auth store/router guard | Direct reload of `/admin/control-center` works for admin and still blocks non-admin. | 2026-05-19 |
 | 9 | Beta Checklist Refresh | TODO | Current beta docs are partially stale versus code. | Sync beta/QA docs with current code and tracker. | `docs/BETA_CHECKLIST.md`, `docs/QA_CHECKLIST.md`, `docs/FEATURE_AUDIT_AND_ROADMAP.md`, this file | Checklist reflects current DONE/PARTIAL/DEFERRED state and next smoke gaps. | 2026-05-19 |
@@ -41,7 +41,7 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 
 ## Current Recommended Next Task
 
-`Quest/Mission/Story Labeling Polish`
+`Party Membership / Invite Polish`
 
 ## Active Task Template
 
@@ -65,6 +65,8 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 2 | Equipment Flow Cleanup | — | feat/equipment-flow-cleanup | 2026-05-19 |
 | 3 | Core Loop Smoke Proof Pack | — | feat/core-loop-smoke-proof-pack | 2026-05-19 |
 | 4 | Combat Entry Consolidation | #640 | feat/combat-entry-consolidation | 2026-05-19 |
+| 5 | Quest/Mission/Story Labeling Polish | #641 | feat/quest-mission-story-labeling | 2026-05-19 |
+| 6 | Boss Notification Integration | #642 | feat/boss-notification-integration | 2026-05-19 |
 
 ## Deferred / Do Not Build
 

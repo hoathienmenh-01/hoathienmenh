@@ -353,6 +353,7 @@
       },
       "boss": {
         "title": "Boss Xuất Thế",
+        "titleNamed": "{name} Xuất Thế (Lv.{level})",
         "reward": "Rơi trang bị + linh thạch hiếm"
       },
       "sect": {
@@ -6231,6 +6232,10 @@
     "empty": "Không có thông báo nào.",
     "errorGeneric": "Không tải được thông báo.",
     "retry": "Thử lại",
+    "bossAlert": {
+      "title": "Boss đang xuất thế!",
+      "body": "Nhấn để vào truy sát ma vương."
+    },
     "FRIEND_REQUEST_RECEIVED": {
       "title": "Lời mời kết bạn mới",
       "body": "{sender} đã gửi lời mời kết bạn."

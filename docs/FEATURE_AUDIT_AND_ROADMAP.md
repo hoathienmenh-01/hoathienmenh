@@ -108,7 +108,7 @@ Do not rebuild these systems from scratch:
 | 3 | Core Loop Smoke Proof Pack | Add beta proof for breakthrough success and mission claim | smoke scripts, `breakthrough`, `mission`, `admin` | Medium | Small | DONE |
 | 4 | Combat Entry Consolidation | Reduce route confusion and route players to the right combat surface | `CombatHubView.vue`, `DungeonView.vue`, `DungeonRunView.vue`, router | Low | Medium | DONE |
 | 5 | Quest/Mission/Story Labeling Polish | Clarify what is a quest, mission, story chapter, and story dungeon | `QuestView.vue`, `MissionView.vue`, `StoryV2View.vue`, i18n | Low | Medium | TODO |
-| 6 | Boss Notification Integration | Surface active boss events in daily loop/notifications | `boss`, `notification`, `web-push`, `DailyLoopPanel.vue` | Medium | Medium | TODO |
+| 6 | Boss Notification Integration | Surface active boss events in daily loop/notifications | `boss`, `notification`, `web-push`, `DailyLoopPanel.vue` | Medium | Medium | DONE |
 | 7 | Party Membership / Invite Polish | Make party creation, invite, member state, and co-op entry clearer | `party`, `PartyHubView.vue`, `PartyPanel.vue` | Medium | Medium | TODO |
 | 8 | Admin Reload Guard Fix | Prevent admin direct reload from redirecting before auth hydrate | `AdminControlCenterView.vue`, auth store/router guard | Low | Small | TODO |
 | 9 | Beta Checklist Refresh | Sync beta readiness docs with current code and this tracker | `docs/BETA_CHECKLIST.md`, `docs/QA_CHECKLIST.md`, this file | Low | Small | TODO |

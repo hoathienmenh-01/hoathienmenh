@@ -136,9 +136,15 @@ const activities = computed<DailyActivity[]>(() => {
 
   // 5. Boss active
   if (badges.bossActive) {
+    const bossAction = badges.actions.find((x) => x.key === 'BOSS_ACTIVE');
+    const bossName = bossAction?.params?.name;
+    const bossLevel = bossAction?.params?.level;
+    const title = bossName
+      ? t('dailyLoop.boss.titleNamed', { name: bossName, level: bossLevel ?? '' })
+      : t('dailyLoop.boss.title', 'Boss Xuất Thế');
     list.push({
       key: 'boss',
-      title: t('dailyLoop.boss.title', 'Boss Xuất Thế'),
+      title,
       status: 'available',
       statusLabel: t('dailyLoop.status.available', 'Sẵn sàng'),
       rewardHint: t('dailyLoop.boss.reward', 'Rơi trang bị + linh thạch hiếm'),
