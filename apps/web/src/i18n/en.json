@@ -369,6 +369,30 @@
         "reward": "Advance realm + unlock features"
       }
     },
+    "equipment": {
+      "title": "Current Equipment",
+      "subtitle": "Overview of your equipped gear",
+      "totalPower": "Total Power",
+      "noStats": "No bonuses yet",
+      "emptySlot": "Empty",
+      "emptyAll": "No equipment equipped",
+      "emptyHint": "Open Inventory to find and equip gear for your character.",
+      "goInventory": "Open Inventory",
+      "linkInventory": "Inventory",
+      "linkLoadouts": "Loadouts",
+      "unequip": "Remove",
+      "swap": "Swap",
+      "equip": "Equip",
+      "upgrade": "Upgrade",
+      "substats": "sub",
+      "modalTitle": "Choose gear for {slot}",
+      "modalEmpty": "No matching items in inventory",
+      "equipSuccess": "Equipped successfully",
+      "equipFail": "Failed to equip",
+      "unequipSuccess": "Removed {slot}",
+      "unequipFail": "Failed to remove",
+      "loadFail": "Failed to load equipment"
+    },
     "onboarding": {
       "title": "Beginner Guide",
       "go": "Go",
@@ -1298,6 +1322,7 @@
   "inventory": {
     "title": "Inventory",
     "gearTitle": "Equipped",
+    "goEquipment": "View Full Equipment",
     "empty": "empty",
     "takeOff": "Unequip",
     "equip": "Equip",

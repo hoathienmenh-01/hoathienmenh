@@ -241,9 +241,29 @@ async function onEquip(inventoryItemId: string): Promise<void> {
             <p class="font-bold text-ink-100 text-sm">
               {{ equipped.get(slot)!.item.name }}
             </p>
-            <p v-if="equipped.get(slot)!.refineLevel > 0" class="text-[10px] text-amber-300 font-bold">
-              +{{ equipped.get(slot)!.refineLevel }}
-            </p>
+            <div class="flex flex-wrap gap-1.5 mt-0.5">
+              <span
+                v-if="equipped.get(slot)!.refineLevel > 0"
+                class="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/40 text-amber-300 font-bold"
+                data-testid="equipment-refine-badge"
+              >
+                +{{ equipped.get(slot)!.refineLevel }}
+              </span>
+              <span
+                v-if="equipped.get(slot)!.enchantElement && equipped.get(slot)!.enchantLevel > 0"
+                class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-900/40 text-cyan-300 font-bold"
+                data-testid="equipment-enchant-badge"
+              >
+                {{ t(`elementBadge.element.${equipped.get(slot)!.enchantElement}`) }} +{{ equipped.get(slot)!.enchantLevel }}
+              </span>
+              <span
+                v-if="equipped.get(slot)!.substats.length > 0"
+                class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/40 text-emerald-300 font-bold"
+                data-testid="equipment-substats-badge"
+              >
+                {{ equipped.get(slot)!.substats.length }} {{ t('equipment.substats', 'phụ') }}
+              </span>
+            </div>
             <p class="text-xs text-emerald-300">
               {{ bonusText(equipped.get(slot)!.item) }}
             </p>
@@ -265,6 +285,15 @@ async function onEquip(inventoryItemId: string): Promise<void> {
                 @click="openEquipModal(slot)"
               >
                 {{ t('equipment.swap', 'Đổi') }}
+              </button>
+              <button
+                type="button"
+                class="text-[10px] px-2 py-0.5 rounded border border-emerald-500/40 text-emerald-200 hover:bg-emerald-700/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="actionInFlight"
+                :data-testid="`equipment-upgrade-${slot}`"
+                @click="goToInventory()"
+              >
+                {{ t('equipment.upgrade', 'Nâng cấp') }}
               </button>
             </div>
           </template>
@@ -356,6 +385,7 @@ async function onEquip(inventoryItemId: string): Promise<void> {
       data-testid="equipment-empty-state"
     >
       <p class="text-ink-300 text-lg">{{ t('equipment.emptyAll', 'Chưa đeo trang bị nào') }}</p>
+      <p class="text-ink-400 text-sm">{{ t('equipment.emptyHint', 'Mở Kho Đồ để chọn trang bị và trang bị cho nhân vật.') }}</p>
       <MButton data-testid="equipment-go-inventory" @click="goToInventory">
         {{ t('equipment.goInventory', 'Mở Kho Đồ') }}
       </MButton>
