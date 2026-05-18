@@ -235,3 +235,56 @@ describe('EquipmentView — navigation links', () => {
     expect(routerPushMock).toHaveBeenCalledWith('/loadouts');
   });
 });
+
+describe('EquipmentView — badges', () => {
+  it('shows refine badge when refineLevel > 0', async () => {
+    const items = [makeItem('WEAPON', 'Kiếm', { atk: 10 })];
+    (items[0] as any).refineLevel = 5;
+    listInventoryMock.mockResolvedValue(items);
+    mountView();
+    await flushPromises();
+
+    const badge = wrapper?.find('[data-testid="equipment-refine-badge"]');
+    expect(badge?.exists()).toBe(true);
+    expect(badge?.text()).toContain('+5');
+  });
+
+  it('shows enchant badge when enchantElement is set', async () => {
+    const items = [makeItem('WEAPON', 'Kiếm', { atk: 10 })];
+    (items[0] as any).enchantElement = 'hoa';
+    (items[0] as any).enchantLevel = 3;
+    listInventoryMock.mockResolvedValue(items);
+    mountView();
+    await flushPromises();
+
+    const badge = wrapper?.find('[data-testid="equipment-enchant-badge"]');
+    expect(badge?.exists()).toBe(true);
+    expect(badge?.text()).toContain('+3');
+  });
+
+  it('shows substats badge when substats exist', async () => {
+    const items = [makeItem('WEAPON', 'Kiếm', { atk: 10 })];
+    (items[0] as any).substats = [{ kind: 'atk', value: 5 }];
+    listInventoryMock.mockResolvedValue(items);
+    mountView();
+    await flushPromises();
+
+    const badge = wrapper?.find('[data-testid="equipment-substats-badge"]');
+    expect(badge?.exists()).toBe(true);
+  });
+});
+
+describe('EquipmentView — upgrade button', () => {
+  it('upgrade button navigates to /inventory', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeItem('WEAPON', 'Kiếm', { atk: 10 }),
+    ]);
+    mountView();
+    await flushPromises();
+
+    const btn = wrapper?.find('[data-testid="equipment-upgrade-WEAPON"]');
+    expect(btn?.exists()).toBe(true);
+    await btn?.trigger('click');
+    expect(routerPushMock).toHaveBeenCalledWith('/inventory');
+  });
+});

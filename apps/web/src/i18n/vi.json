@@ -369,6 +369,30 @@
         "reward": "Thăng cảnh giới + mở khoá tính năng"
       }
     },
+    "equipment": {
+      "title": "Trang Bị Hiện Tại",
+      "subtitle": "Tổng quan bộ trang bị đang đeo",
+      "totalPower": "Tổng Chiến Lực",
+      "noStats": "Chưa có bonus nào",
+      "emptySlot": "Trống",
+      "emptyAll": "Chưa đeo trang bị nào",
+      "emptyHint": "Mở Kho Đồ để chọn trang bị và trang bị cho nhân vật.",
+      "goInventory": "Mở Kho Đồ",
+      "linkInventory": "Kho Đồ",
+      "linkLoadouts": "Bộ Trang Bị",
+      "unequip": "Tháo",
+      "swap": "Đổi",
+      "equip": "Trang bị",
+      "upgrade": "Nâng cấp",
+      "substats": "phụ",
+      "modalTitle": "Chọn trang bị cho {slot}",
+      "modalEmpty": "Không có vật phẩm phù hợp trong kho đồ",
+      "equipSuccess": "Trang bị thành công",
+      "equipFail": "Trang bị thất bại",
+      "unequipSuccess": "Đã tháo {slot}",
+      "unequipFail": "Tháo trang bị thất bại",
+      "loadFail": "Không tải được trang bị"
+    },
     "onboarding": {
       "title": "Tân Thủ Chỉ Nam",
       "go": "Đi",
@@ -1298,6 +1322,7 @@
   "inventory": {
     "title": "Linh Bảo Các",
     "gearTitle": "Bộ Trang Bị",
+    "goEquipment": "Xem Trang Bị Đầy Đủ",
     "empty": "trống",
     "takeOff": "Tháo",
     "equip": "Mang",

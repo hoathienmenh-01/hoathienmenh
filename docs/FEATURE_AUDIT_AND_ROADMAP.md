@@ -23,7 +23,7 @@
 | Tribulation | PARTIAL | `tribulation.service.ts`, `tribulation-mini-battle.service.ts`, `TribulationView.vue`, `TribulationMiniBattlePanel.vue` | Mini-battle gating/availability clarity | Medium | Polish only after core loop |
 | Skill / Công pháp / Kỹ năng | PARTIAL | `character-skill.service.ts`, `SkillBookView.vue`, `skill-templates.ts`, `combat.ts` | Skill book drop/consume/evolution deferred | Medium | Do not expand until core UX is clearer |
 | Inventory | DONE | `apps/api/src/modules/inventory`, `InventoryView.vue`, `apps/web/src/api/inventory.ts` | UX can be simplified | High | Align with equipment flow |
-| Equipment | PARTIAL | `EquipmentView.vue`, `EquipmentUpgradePanel.vue`, `equipment.service.ts`, `equipment-economy.service.ts` | Equip/enhance path split across views | High | Equipment Flow Cleanup |
+| Equipment | PARTIAL | `EquipmentView.vue`, `EquipmentUpgradePanel.vue`, `equipment.service.ts`, `equipment-economy.service.ts` | Badges + upgrade CTA added; full upgrade still in inventory | Medium | Combat Entry Consolidation |
 | Alchemy | DONE | `alchemy.service.ts`, `AlchemyView.vue`, `packages/shared/src/alchemy.ts` | Material source onboarding can improve | Medium | Keep stable; polish later |
 | Dungeon / Combat | DONE | `combat.controller.ts`, `combat.service.ts`, `DungeonView.vue`, `DungeonRunView.vue`, `CombatHubView.vue` | Entry points are fragmented | High | Combat Entry Consolidation |
 | Boss | DONE | `boss.service.ts`, `BossView.vue`, `BossHubView.vue`, `packages/shared/src/boss.ts` | Active boss notification/visibility | Medium | Boss Notification Integration |
@@ -71,7 +71,7 @@ Do not rebuild these systems from scratch:
 
 ### 4.2 Backend exists but UI needs polish
 
-- Equipment economy and upgrade actions exist, but the player flow is split across inventory/equipment/upgrade panels.
+- Equipment economy and upgrade actions exist; EquipmentView now shows progression badges and upgrade CTA, but full upgrade (reforge/enchant) remains in InventoryView.
 - Market V2 auction/claim box backend exists but player UI is utilitarian and gated.
 - Backup/admin ops exists but needs clearer production operator workflow.
 - Party/party dungeon/co-op boss APIs exist, but hub flow and membership/invite UX are not yet strong.
@@ -85,7 +85,7 @@ Do not rebuild these systems from scratch:
 ### 4.4 UX is confusing
 
 - Combat routes are fragmented: `/combat`, `/dungeon`, `/dungeon-run`, `/world/dungeons`, `/boss`, `/world/bosses`.
-- Equipment, inventory, loadouts, reforge, enchant, gems, and economy preview are split across several mental models.
+- Equipment view now has progression badges + upgrade CTA; inventory has cross-link. Full upgrade panels still in inventory.
 - Quest, mission, story, onboarding quest, and story dungeon labels are easy to confuse.
 - There are many advanced systems before the first-session path is fully polished.
 
@@ -104,7 +104,7 @@ Do not rebuild these systems from scratch:
 | Rank | PR Name | Goal | Main Files / Modules | Risk | Size | Status |
 |---|---|---|---|---|---|---|
 | 1 | Daily Loop First Session Polish | Make `/home` clearly tell a new player what to do next | `DailyLoopPanel.vue`, `HomeView.vue`, `NextActionPanel.vue`, `player-dashboard` | Low | Medium | DONE |
-| 2 | Equipment Flow Cleanup | Make equip/unequip/upgrade paths understandable from equipment and inventory | `EquipmentView.vue`, `InventoryView.vue`, `EquipmentUpgradePanel.vue`, `apps/web/src/api/inventory.ts` | Medium | Medium | TODO |
+| 2 | Equipment Flow Cleanup | Make equip/unequip/upgrade paths understandable from equipment and inventory | `EquipmentView.vue`, `InventoryView.vue`, `EquipmentUpgradePanel.vue`, `apps/web/src/api/inventory.ts` | Medium | Medium | DONE |
 | 3 | Core Loop Smoke Proof Pack | Add beta proof for breakthrough success and mission claim | smoke scripts, `breakthrough`, `mission` | Medium | Small | TODO |
 | 4 | Combat Entry Consolidation | Reduce route confusion and route players to the right combat surface | `CombatHubView.vue`, `DungeonView.vue`, `DungeonRunView.vue`, router | Low | Medium | TODO |
 | 5 | Quest/Mission/Story Labeling Polish | Clarify what is a quest, mission, story chapter, and story dungeon | `QuestView.vue`, `MissionView.vue`, `StoryV2View.vue`, i18n | Low | Medium | TODO |
@@ -125,14 +125,14 @@ Do not rebuild these systems from scratch:
 - Done criteria met: activities sorted by priority (claimable → active → available → completed), priority numbers shown, per-activity CTA labels, i18n keys in vi.json+en.json, reward hints improved.
 - What was not touched: no backend changes, no balance changes, no new gameplay module.
 
-### PR 2: Equipment Flow Cleanup
+### PR 2: Equipment Flow Cleanup ✅ DONE
 
 - Goal: make equipment management feel like one coherent flow.
-- Scope: strengthen equip/unequip CTA, empty-slot action, inventory return path, and upgrade entry points.
-- Files likely touched: `apps/web/src/views/EquipmentView.vue`, `apps/web/src/views/InventoryView.vue`, `apps/web/src/components/EquipmentUpgradePanel.vue`, `apps/web/src/api/inventory.ts`.
-- Tests to run: `EquipmentView.test.ts`, `InventoryView.test.ts`, related API-client/store tests.
-- Done criteria: player can understand what is equipped, what can be equipped, how to unequip, and where to upgrade without leaving context.
-- What not to touch: no new equipment backend, no schema migration, no balance/stat formula changes.
+- Scope: add progression badges (refine/enchant/substats) on equipped items, add Upgrade CTA per slot, add cross-navigation between EquipmentView and InventoryView, add i18n keys.
+- Files touched: `apps/web/src/views/EquipmentView.vue`, `apps/web/src/views/InventoryView.vue`, `apps/web/src/i18n/vi.json`, `apps/web/src/i18n/en.json`, `apps/web/src/views/__tests__/EquipmentView.test.ts`.
+- Tests run: typecheck ✅, lint ✅, build ✅, EquipmentView 9/9 ✅, Han gate 0 ✅.
+- Done criteria met: equipped items show refine/enchant/substats badges, Upgrade button navigates to inventory, "View Full Equipment" button in inventory sidebar, full i18n parity.
+- What was not touched: no new equipment backend, no schema migration, no balance/stat formula changes.
 
 ### PR 3: Core Loop Smoke Proof Pack
 

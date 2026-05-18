@@ -29,7 +29,7 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | Rank | Task / PR | Status | Why It Matters | Scope | Main Files / Modules | Done Criteria | Last Updated |
 |---|---|---|---|---|---|---|---|
 | 1 | Daily Loop First Session Polish | DONE | New players need a clear first-session path; this is the highest-impact beta polish. | Improve priority, copy, reward hints, completion states, and CTAs on home/daily loop. | `DailyLoopPanel.vue`, `HomeView.vue`, `NextActionPanel.vue`, optional `player-dashboard` | Fresh character sees 3-5 best actions with route, state, and reward hint; completed actions de-prioritized. | 2026-05-19 |
-| 2 | Equipment Flow Cleanup | TODO | Equipment is core progression, but the current path is split across inventory/equipment/upgrade surfaces. | Make equip/unequip/upgrade entry points coherent. | `EquipmentView.vue`, `InventoryView.vue`, `EquipmentUpgradePanel.vue`, `apps/web/src/api/inventory.ts` | Player can understand equipped slots, available gear, unequip, and upgrade route from one flow. | 2026-05-19 |
+| 2 | Equipment Flow Cleanup | DONE | Equipment is core progression, but the current path is split across inventory/equipment/upgrade surfaces. | Make equip/unequip/upgrade entry points coherent. | `EquipmentView.vue`, `InventoryView.vue`, `EquipmentUpgradePanel.vue`, `apps/web/src/api/inventory.ts` | Player can understand equipped slots, available gear, unequip, and upgrade route from one flow. | 2026-05-19 |
 | 3 | Core Loop Smoke Proof Pack | TODO | Beta needs proof that the core progression loop works end-to-end. | Add positive smoke for breakthrough success and mission claim; optionally spiritual-root reroll if seed exists. | `scripts/smoke-*.mjs`, `breakthrough`, `mission`, docs checklist | Smoke passes for breakthrough success and mission claim with no duplicate reward. | 2026-05-19 |
 | 4 | Combat Entry Consolidation | TODO | Combat has several entry routes and can confuse players. | Route players from combat hub to the best available combat action. | `CombatHubView.vue`, `DungeonView.vue`, `DungeonRunView.vue`, router | One obvious combat CTA for fresh and returning players; no broken route loops. | 2026-05-19 |
 | 5 | Quest/Mission/Story Labeling Polish | TODO | Players need to understand mission vs quest vs story progression. | Clarify labels, tabs, status, and CTAs. | `QuestView.vue`, `MissionView.vue`, `StoryV2View.vue`, i18n | Each surface explains its role through labels and status without long tutorial text. | 2026-05-19 |
@@ -41,7 +41,7 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 
 ## Current Recommended Next Task
 
-`Equipment Flow Cleanup`
+`Core Loop Smoke Proof Pack`
 
 ## Active Task Template
 
@@ -61,7 +61,8 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 
 | # | Task | PR | Branch | Date |
 |---|---|---|---|---|
-| 1 | Daily Loop First Session Polish | — | feat/daily-loop-first-session-polish | 2026-05-19 |
+| 1 | Daily Loop First Session Polish | #637 | feat/daily-loop-first-session-polish | 2026-05-19 |
+| 2 | Equipment Flow Cleanup | — | feat/equipment-flow-cleanup | 2026-05-19 |
 
 ## Deferred / Do Not Build
 

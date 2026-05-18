@@ -701,6 +701,15 @@ function handleErr(e: unknown): void {
             {{ t('inventory.takeOff') }}
           </MButton>
         </div>
+        <div class="mt-3">
+          <MButton
+            class="w-full text-xs"
+            data-testid="inventory-go-equipment"
+            @click="router.push('/equipment')"
+          >
+            {{ t('inventory.goEquipment', 'Xem Trang Bị Đầy Đủ') }}
+          </MButton>
+        </div>
         <EquipmentBuildPanel :refresh-key="buildRefreshKey" class="mt-4" />
         <PhapBaoPanel
           :refresh-key="phapBaoRefreshKey"
