@@ -27,6 +27,7 @@ import { CultivationMethodService } from './cultivation-method.service';
 import { CultivationMethodV2Service } from './cultivation-method-v2.service';
 import { CharacterSkillService } from './character-skill.service';
 import { TitleService } from './title.service';
+import { OnboardingQuestService } from '../onboarding-quest/onboarding-quest.service';
 
 interface OnboardInput {
   name: string;
@@ -148,6 +149,8 @@ export class CharacterService {
     // `grantStarterV2IfMissing` trong `onboard()`.
     @Optional()
     private readonly cultivationMethodV2?: CultivationMethodV2Service,
+    @Optional()
+    private readonly onboarding?: OnboardingQuestService,
   ) {}
 
   async findByUser(userId: string) {
@@ -296,6 +299,10 @@ export class CharacterService {
       data: { cultivating: on },
       include: { sect: true, user: true },
     });
+    // Phase 44.1 — onboarding auto-track cultivation start. Fire-and-forget.
+    if (on && this.onboarding) {
+      void this.onboarding.notifyAction(c.id, 'CULTIVATION_START');
+    }
     const state = this.toState(updated);
     this.realtime.emitToUser(userId, 'state:update', state);
     return state;

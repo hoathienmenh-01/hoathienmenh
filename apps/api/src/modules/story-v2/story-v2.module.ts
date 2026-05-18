@@ -3,6 +3,7 @@ import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { NpcAffinityModule } from '../npc-affinity/npc-affinity.module';
+import { OnboardingQuestModule } from '../onboarding-quest/onboarding-quest.module';
 import { PrismaService } from '../../common/prisma.service';
 import { Phase33StoryController } from './story-v2.controller';
 import { Phase33StoryService } from './story-v2.service';
@@ -20,7 +21,7 @@ import { Phase33StoryService } from './story-v2.service';
  *   - `NpcAffinityService` từ `NpcAffinityModule` cho `addAffinityTx(QUEST_REWARD)`.
  */
 @Module({
-  imports: [AuthModule, CharacterModule, InventoryModule, NpcAffinityModule],
+  imports: [AuthModule, CharacterModule, InventoryModule, NpcAffinityModule, OnboardingQuestModule],
   controllers: [Phase33StoryController],
   providers: [Phase33StoryService, PrismaService],
   exports: [Phase33StoryService],

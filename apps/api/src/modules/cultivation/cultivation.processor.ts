@@ -27,6 +27,7 @@ import { computeMethodCultivationRateBonus } from '@xuantoi/shared';
 import { TalentService } from '../character/talent.service';
 import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
 import { WebPushService } from '../web-push/web-push.service';
+import { OnboardingQuestService } from '../onboarding-quest/onboarding-quest.service';
 import { CULTIVATION_QUEUE } from './cultivation.queue';
 
 /**
@@ -63,6 +64,8 @@ export class CultivationProcessor extends WorkerHost {
     // null ⇒ skip push detection (regen behavior unchanged).
     @Optional()
     private readonly webPush?: WebPushService,
+    @Optional()
+    private readonly onboarding?: OnboardingQuestService,
   ) {
     super();
   }
@@ -398,6 +401,10 @@ export class CultivationProcessor extends WorkerHost {
             if (brokeThrough) {
               await this.achievements.trackEvent(c.id, 'BREAKTHROUGH', 1);
             }
+          }
+          // Phase 44.1 — onboarding auto-track cultivation tick. Fire-and-forget.
+          if (this.onboarding) {
+            void this.onboarding.notifyAction(c.id, 'CULTIVATION_TICK');
           }
         } catch (e) {
           this.logger.warn(

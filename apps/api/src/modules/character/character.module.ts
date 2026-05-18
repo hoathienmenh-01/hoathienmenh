@@ -1,4 +1,5 @@
 import { forwardRef, Module } from '@nestjs/common';
+import { OnboardingQuestModule } from '../onboarding-quest/onboarding-quest.module';
 import type { Redis } from 'ioredis';
 import {
   CharacterController,
@@ -67,6 +68,7 @@ const profileLimiterProvider = {
     AuthModule,
     RealtimeModule,
     forwardRef(() => InventoryModule),
+    forwardRef(() => OnboardingQuestModule),
     FeatureFlagModule,
   ],
   controllers: [CharacterController],

@@ -5,6 +5,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
 import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
 import { getMissionResetTz } from '../mission/mission.service';
+import { OnboardingQuestService } from '../onboarding-quest/onboarding-quest.service';
 import { SectWarService } from '../sect-war/sect-war.service';
 
 export class DailyLoginError extends Error {
@@ -78,6 +79,7 @@ export class DailyLoginService {
     @Optional() private readonly sectWar?: SectWarService,
     @Optional()
     private readonly liveOpsEvents?: LiveOpsEventSchedulerService,
+    @Optional() private readonly onboarding?: OnboardingQuestService,
   ) {}
 
   private async getCharacterIdByUser(userId: string): Promise<string> {
@@ -230,6 +232,10 @@ export class DailyLoginService {
           }
         }
       });
+      // Phase 44.1 — onboarding auto-track. Fire-and-forget.
+      if (this.onboarding) {
+        void this.onboarding.notifyAction(characterId, 'DAILY_LOGIN_CLAIM');
+      }
       return {
         claimed: true,
         linhThachDelta: totalDelta.toString(),

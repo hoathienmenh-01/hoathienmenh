@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CurrencyKind } from '@prisma/client';
+import { CurrencyKind, Prisma } from '@prisma/client';
 import {
   isSecretRealmCleared,
   realmByKey,
@@ -261,14 +261,22 @@ export class SecretRealmRuntimeService {
     }
     const initialProgress: Record<string, number> = {};
     for (const o of def.objectives) initialProgress[o.key] = 0;
-    const row = await this.prisma.characterSecretRealmRun.create({
-      data: {
-        characterId: char.id,
-        secretRealmKey: realmKey,
-        status: 'ENTERED',
-        objectiveProgressJson: initialProgress as never,
-      },
-    });
+    let row;
+    try {
+      row = await this.prisma.characterSecretRealmRun.create({
+        data: {
+          characterId: char.id,
+          secretRealmKey: realmKey,
+          status: 'ENTERED',
+          objectiveProgressJson: initialProgress as never,
+        },
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new SecretRealmError('SECRET_REALM_RUN_ACTIVE');
+      }
+      throw e;
+    }
     return this.toRunView(row, def);
   }
 
