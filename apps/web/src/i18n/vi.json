@@ -353,6 +353,7 @@
       },
       "boss": {
         "title": "Boss Xuất Thế",
+        "titleNamed": "{name} Xuất Thế (Lv.{level})",
         "reward": "Rơi trang bị + linh thạch hiếm"
       },
       "sect": {
@@ -6244,6 +6245,10 @@
     "empty": "Không có thông báo nào.",
     "errorGeneric": "Không tải được thông báo.",
     "retry": "Thử lại",
+    "bossAlert": {
+      "title": "Boss đang xuất thế!",
+      "body": "Nhấn để vào truy sát ma vương."
+    },
     "FRIEND_REQUEST_RECEIVED": {
       "title": "Lời mời kết bạn mới",
       "body": "{sender} đã gửi lời mời kết bạn."
@@ -8819,5 +8824,73 @@
     "modalTitle": "Chọn trang bị cho {slot}",
     "modalEmpty": "Không có vật phẩm phù hợp trong kho đồ",
     "loadFail": "Không tải được trang bị"
+  },
+  "combatHub": {
+    "eyebrow": "CHIẾN TRƯỜNG",
+    "label": "Chiến Trường",
+    "title": "Chiến Trường Tổng Quan",
+    "subtitle": "Chọn nội dung chiến đấu phù hợp với bạn hôm nay",
+    "breadcrumb": "Chiến Trường",
+    "noCharacter": "Bạn cần tạo nhân vật để tham gia chiến đấu.",
+    "createCharacter": "Tạo Nhân Vật",
+    "requiresParty": "Yêu cầu tổ đội",
+    "tapToEnter": "Nhấn để vào",
+    "recommend": {
+      "label": "Nên làm",
+      "continueEncounter": {
+        "title": "Đang chiến đấu!",
+        "description": "Bạn có trận chiến đang dở. Tiếp tục để hoàn thành bí cảnh."
+      },
+      "fightBoss": {
+        "title": "Boss đang xuất hiện!",
+        "description": "Có {n} boss đang chờ bạn tham chiến."
+      },
+      "continueRun": {
+        "title": "Bí cảnh đang chạy",
+        "description": "Tiếp tục expedition để nhận thưởng."
+      },
+      "startRun": {
+        "title": "Bắt đầu Bí Cảnh Lưu Phát",
+        "description": "Bạn có {n} bí cảnh có thể bắt đầu hôm nay."
+      },
+      "exploreDungeon": {
+        "title": "Thám hiểm Bí Cảnh",
+        "description": "Chiến đấu turn-based qua từng quái để nhận EXP và vật phẩm."
+      }
+    },
+    "surfaces": {
+      "dungeon": {
+        "title": "Bí Cảnh Thám Tra",
+        "description": "Chiến đấu turn-based qua từng quái. Chọn kỹ năng, sử dụng thiên phú."
+      },
+      "dungeonRun": {
+        "title": "Bí Cảnh Lưu Phát",
+        "description": "Farm expedition tự động qua nhiều quái. Nhanh, hiệu quả, có giới hạn hàng ngày."
+      },
+      "boss": {
+        "title": "Truy Sát Ma Vương",
+        "description": "World Boss đa khu vực. Gây sát thương, leo bảng xếp hạng, nhận thưởng theo thứ hạng."
+      },
+      "coopBoss": {
+        "title": "Co-op Boss",
+        "description": "Hợp lực đánh boss cùng tổ đội. Phần thưởng phân theo đóng góp."
+      },
+      "partyDungeon": {
+        "title": "Party Dungeon",
+        "description": "Dungeon co-op PvE. Cùng tổ đội vào phòng, sẵn sàng, và chiến đấu."
+      }
+    },
+    "badge": {
+      "inProgress": "Đang chiến đấu",
+      "activeRun": "Có run đang chạy",
+      "startable": "{n} có thể bắt đầu",
+      "bossActive": "{n} boss đang sống",
+      "bossNone": "Chờ spawn",
+      "needParty": "Cần tổ đội"
+    },
+    "dailyTip": {
+      "title": "Mẹo Hàng Ngày",
+      "body": "Hoàn thành Bí Cảnh Lưu Phát hàng ngày để tối đa hoá EXP và Linh Thạch. Kết hợp đánh World Boss khi spawn để nhận vật phẩm hiếm. Tham gia Co-op Boss cùng tổ đội để nhận thưởng cấp MVP."
+    }
   }
 }

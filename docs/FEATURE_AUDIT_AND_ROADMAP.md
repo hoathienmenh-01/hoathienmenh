@@ -106,9 +106,9 @@ Do not rebuild these systems from scratch:
 | 1 | Daily Loop First Session Polish | Make `/home` clearly tell a new player what to do next | `DailyLoopPanel.vue`, `HomeView.vue`, `NextActionPanel.vue`, `player-dashboard` | Low | Medium | DONE |
 | 2 | Equipment Flow Cleanup | Make equip/unequip/upgrade paths understandable from equipment and inventory | `EquipmentView.vue`, `InventoryView.vue`, `EquipmentUpgradePanel.vue`, `apps/web/src/api/inventory.ts` | Medium | Medium | DONE |
 | 3 | Core Loop Smoke Proof Pack | Add beta proof for breakthrough success and mission claim | smoke scripts, `breakthrough`, `mission`, `admin` | Medium | Small | DONE |
-| 4 | Combat Entry Consolidation | Reduce route confusion and route players to the right combat surface | `CombatHubView.vue`, `DungeonView.vue`, `DungeonRunView.vue`, router | Low | Medium | TODO |
+| 4 | Combat Entry Consolidation | Reduce route confusion and route players to the right combat surface | `CombatHubView.vue`, `DungeonView.vue`, `DungeonRunView.vue`, router | Low | Medium | DONE |
 | 5 | Quest/Mission/Story Labeling Polish | Clarify what is a quest, mission, story chapter, and story dungeon | `QuestView.vue`, `MissionView.vue`, `StoryV2View.vue`, i18n | Low | Medium | DONE |
-| 6 | Boss Notification Integration | Surface active boss events in daily loop/notifications | `boss`, `notification`, `web-push`, `DailyLoopPanel.vue` | Medium | Medium | TODO |
+| 6 | Boss Notification Integration | Surface active boss events in daily loop/notifications | `boss`, `notification`, `web-push`, `DailyLoopPanel.vue` | Medium | Medium | DONE |
 | 7 | Party Membership / Invite Polish | Make party creation, invite, member state, and co-op entry clearer | `party`, `PartyHubView.vue`, `PartyPanel.vue` | Medium | Medium | TODO |
 | 8 | Admin Reload Guard Fix | Prevent admin direct reload from redirecting before auth hydrate | `AdminControlCenterView.vue`, auth store/router guard | Low | Small | TODO |
 | 9 | Beta Checklist Refresh | Sync beta readiness docs with current code and this tracker | `docs/BETA_CHECKLIST.md`, `docs/QA_CHECKLIST.md`, this file | Low | Small | TODO |
@@ -187,7 +187,7 @@ Do not rebuild these systems from scratch:
 | Playable core | 8/10 |
 | New player UX | 6/10 |
 | Daily loop | 7/10 |
-| Combat loop | 8/10 |
+| Combat loop | 8.5/10 |
 | Economy safety | 7.5/10 |
 | Admin/LiveOps | 7/10 |
 | Test/CI/Smoke | 8/10 |

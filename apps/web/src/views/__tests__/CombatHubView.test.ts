@@ -189,3 +189,77 @@ describe('CombatHubView — navigation', () => {
     expect(routerPushMock).toHaveBeenCalledWith('/boss');
   });
 });
+
+describe('CombatHubView — recommended action', () => {
+  it('active encounter → recommend continue encounter (/dungeon)', async () => {
+    const { getActiveEncounter } = await import('@/api/combat');
+    (getActiveEncounter as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ status: 'ACTIVE' });
+    mountView();
+    await flushPromises();
+    const rec = wrapper?.find('[data-testid="combat-hub-recommend"]');
+    expect(rec?.exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="combat-hub-recommend-title"]').text()).toContain('Đang chiến đấu');
+    await rec?.trigger('click');
+    expect(routerPushMock).toHaveBeenCalledWith('/dungeon');
+  });
+
+  it('active boss → recommend fight boss (/boss)', async () => {
+    const { getActiveBosses } = await import('@/api/boss');
+    (getActiveBosses as ReturnType<typeof vi.fn>).mockResolvedValueOnce([{ id: 'b1' }, { id: 'b2' }]);
+    mountView();
+    await flushPromises();
+    const rec = wrapper?.find('[data-testid="combat-hub-recommend"]');
+    expect(rec?.exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="combat-hub-recommend-title"]').text()).toContain('Boss');
+    await rec?.trigger('click');
+    expect(routerPushMock).toHaveBeenCalledWith('/boss');
+  });
+
+  it('active dungeon run → recommend continue run (/dungeon-run)', async () => {
+    dungeonRunStoreState.hasActiveRun = true;
+    const bossApi = await import('@/api/boss');
+    (bossApi.getActiveBosses as ReturnType<typeof vi.fn>).mockResolvedValueOnce([]);
+    mountView();
+    await flushPromises();
+    const rec = wrapper?.find('[data-testid="combat-hub-recommend"]');
+    expect(rec?.exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="combat-hub-recommend-title"]').text()).toContain('đang chạy');
+    await rec?.trigger('click');
+    expect(routerPushMock).toHaveBeenCalledWith('/dungeon-run');
+  });
+
+  it('startable dungeon runs → recommend start run (/dungeon-run)', async () => {
+    dungeonRunStoreState.startableCount = 5;
+    dungeonRunStoreState.hasActiveRun = false;
+    const bossApi = await import('@/api/boss');
+    (bossApi.getActiveBosses as ReturnType<typeof vi.fn>).mockResolvedValueOnce([]);
+    mountView();
+    await flushPromises();
+    const rec = wrapper?.find('[data-testid="combat-hub-recommend"]');
+    expect(rec?.exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="combat-hub-recommend-title"]').text()).toContain('Lưu Phát');
+    await rec?.trigger('click');
+    expect(routerPushMock).toHaveBeenCalledWith('/dungeon-run');
+  });
+
+  it('no special state → recommend explore dungeon (/dungeon)', async () => {
+    dungeonRunStoreState.startableCount = 0;
+    dungeonRunStoreState.hasActiveRun = false;
+    const bossApi = await import('@/api/boss');
+    (bossApi.getActiveBosses as ReturnType<typeof vi.fn>).mockResolvedValueOnce([]);
+    mountView();
+    await flushPromises();
+    const rec = wrapper?.find('[data-testid="combat-hub-recommend"]');
+    expect(rec?.exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="combat-hub-recommend-title"]').text()).toContain('Bí Cảnh');
+    await rec?.trigger('click');
+    expect(routerPushMock).toHaveBeenCalledWith('/dungeon');
+  });
+
+  it('recommend panel does not render when no character', async () => {
+    gameState.character = null;
+    mountView();
+    await flushPromises();
+    expect(wrapper?.find('[data-testid="combat-hub-recommend"]').exists()).toBe(false);
+  });
+});

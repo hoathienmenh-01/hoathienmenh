@@ -353,6 +353,7 @@
       },
       "boss": {
         "title": "World Boss",
+        "titleNamed": "{name} Has Appeared (Lv.{level})",
         "reward": "Rare gear + spirit stones"
       },
       "sect": {
@@ -6244,6 +6245,10 @@
     "empty": "No notifications yet.",
     "errorGeneric": "Failed to load notifications.",
     "retry": "Retry",
+    "bossAlert": {
+      "title": "Boss has appeared!",
+      "body": "Tap to go fight the world boss."
+    },
     "FRIEND_REQUEST_RECEIVED": {
       "title": "New friend request",
       "body": "{sender} sent you a friend request."
@@ -8819,5 +8824,73 @@
     "modalTitle": "Select item for {slot}",
     "modalEmpty": "No matching items in inventory",
     "loadFail": "Failed to load equipment"
+  },
+  "combatHub": {
+    "eyebrow": "BATTLEFIELD",
+    "label": "Battlefield",
+    "title": "Battlefield Overview",
+    "subtitle": "Choose the combat content that suits you today",
+    "breadcrumb": "Battlefield",
+    "noCharacter": "You need to create a character to participate in combat.",
+    "createCharacter": "Create Character",
+    "requiresParty": "Requires party",
+    "tapToEnter": "Tap to enter",
+    "recommend": {
+      "label": "Recommended",
+      "continueEncounter": {
+        "title": "Battle in progress!",
+        "description": "You have an ongoing fight. Continue to finish the dungeon."
+      },
+      "fightBoss": {
+        "title": "Boss has appeared!",
+        "description": "{n} boss(es) are waiting for you to fight."
+      },
+      "continueRun": {
+        "title": "Dungeon run in progress",
+        "description": "Continue the expedition to claim rewards."
+      },
+      "startRun": {
+        "title": "Start Dungeon Run",
+        "description": "You have {n} dungeon(s) you can start today."
+      },
+      "exploreDungeon": {
+        "title": "Explore Dungeon",
+        "description": "Turn-based combat through enemies for EXP and items."
+      }
+    },
+    "surfaces": {
+      "dungeon": {
+        "title": "Dungeon Expedition",
+        "description": "Turn-based combat through enemies. Choose skills, use talents."
+      },
+      "dungeonRun": {
+        "title": "Dungeon Run",
+        "description": "Auto-resolve farm expedition. Fast, efficient, with daily limits."
+      },
+      "boss": {
+        "title": "World Boss Hunt",
+        "description": "Multi-region World Boss. Deal damage, climb rankings, earn rank rewards."
+      },
+      "coopBoss": {
+        "title": "Co-op Boss",
+        "description": "Team up with your party to fight bosses. Rewards based on contribution."
+      },
+      "partyDungeon": {
+        "title": "Party Dungeon",
+        "description": "Co-op PvE dungeon. Enter room with party, ready up, and fight."
+      }
+    },
+    "badge": {
+      "inProgress": "In battle",
+      "activeRun": "Run active",
+      "startable": "{n} available",
+      "bossActive": "{n} boss alive",
+      "bossNone": "Waiting for spawn",
+      "needParty": "Need party"
+    },
+    "dailyTip": {
+      "title": "Daily Tip",
+      "body": "Complete Dungeon Runs daily to maximize EXP and Linh Thach. Fight World Bosses when they spawn for rare items. Join Co-op Boss with your party for MVP-tier rewards."
+    }
   }
 }
