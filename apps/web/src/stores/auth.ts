@@ -15,7 +15,11 @@ export const useAuthStore = defineStore('auth', {
   },
   actions: {
     async hydrate(): Promise<void> {
-      this.user = await api.session();
+      try {
+        this.user = await api.session();
+      } catch {
+        this.user = null;
+      }
     },
     async login(email: string, password: string, rememberEmail = false): Promise<PublicUser> {
       this.loading = true;
