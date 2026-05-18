@@ -11,6 +11,7 @@ import { GiftCodeModule } from '../giftcode/giftcode.module';
 import { MailModule } from '../mail/mail.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { QuestModule } from '../quest/quest.module';
+import { MissionModule } from '../mission/mission.module';
 import { ArenaModule } from '../arena/arena.module';
 import { PrismaService } from '../../common/prisma.service';
 
@@ -28,6 +29,7 @@ import { PrismaService } from '../../common/prisma.service';
     MailModule,
     InventoryModule,
     QuestModule,
+    MissionModule,
     ArenaModule,
   ],
   controllers: [AdminController],

@@ -4,13 +4,15 @@
  *
  * Chạy chuỗi smoke nền phục vụ QA regression + deploy verify:
  *
- *   1. smoke:health  — Health endpoints (no auth, no DB seed).
- *   2. smoke:auth    — Auth flow (login/register/forgot/reset).
- *   3. smoke:admin   — Admin login + read-only admin endpoints.
- *   4. smoke:economy — Currency ledger invariants nền.
+ *   1. smoke:health         — Health endpoints (no auth, no DB seed).
+ *   2. smoke:auth           — Auth flow (login/register/forgot/reset).
+ *   3. smoke:admin          — Admin login + read-only admin endpoints.
+ *   4. smoke:economy        — Currency ledger invariants nền.
+ *   5. smoke:breakthrough   — Breakthrough negative + positive path (admin seed).
+ *   6. smoke:mission        — Mission negative + positive claim (admin seed).
+ *   7. smoke:spiritual-root — Spiritual root negative + positive reroll (admin seed).
  *
- * Không cố gắng cover toàn bộ gameplay smoke — chỉ "nền vận hành"
- * theo spec Phase 43. Mỗi module có thể chạy riêng qua `pnpm smoke:<name>`.
+ * Mỗi module có thể chạy riêng qua `pnpm smoke:<name>`.
  *
  * Mỗi step có timeout cứng 60s. Step fail → tiếp tục step kế tiếp +
  * tổng kết failures cuối cùng. Exit code:
@@ -36,6 +38,9 @@ const ALL_SUITES = [
   { name: 'auth', script: 'scripts/smoke-auth.mjs' },
   { name: 'admin', script: 'scripts/smoke-admin.mjs' },
   { name: 'economy', script: 'scripts/smoke-economy.mjs' },
+  { name: 'breakthrough', script: 'scripts/smoke-breakthrough.mjs' },
+  { name: 'mission', script: 'scripts/smoke-mission.mjs' },
+  { name: 'spiritual-root', script: 'scripts/smoke-spiritual-root.mjs' },
 ];
 
 const STEP_TIMEOUT_MS = Number(process.env.SMOKE_ALL_TIMEOUT_MS ?? 60_000);

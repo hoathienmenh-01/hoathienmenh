@@ -20,6 +20,7 @@ import { CharacterService } from '../character/character.service';
 import { CurrencyError, CurrencyService } from '../character/currency.service';
 import { EconomyAnomalyScannerService } from '../economy/economy-anomaly-scanner.service';
 import { QuestService } from '../quest/quest.service';
+import { MissionService } from '../mission/mission.service';
 import {
   addDaysLocal,
   getLocalDateString,
@@ -121,6 +122,8 @@ export class AdminService {
     private readonly currency: CurrencyService,
     private readonly inventory: InventoryService,
     private readonly quests: QuestService,
+    @Optional()
+    private readonly missions: MissionService | null = null,
     /**
      * Phase 16.6 — admin grant alert hook. `@Optional` để các unit test
      * fixture cũ (Phase 11/12/13) constructor 7-arg KHÔNG phải pass
@@ -806,6 +809,63 @@ export class AdminService {
 
     const state = await this.chars.findByUser(targetUserId);
     if (state) this.realtime.emitToUser(targetUserId, 'state:update', state);
+  }
+
+  /**
+   * Admin seed harness — track mission progress trực tiếp. Use-case:
+   * positive-path smoke mission claim (`POST /missions/claim`) không cần
+   * spin gameplay loop thật (breakthrough/clear-dungeon/boss-hit).
+   *
+   *  - `goalKind` ∈ MissionGoalKind catalog (BREAKTHROUGH, KILL_MONSTER, ...).
+   *  - `amount` 1..999 — mirror quest-track cap.
+   *  - Reuse `MissionService.track()` → match all missions with same
+   *    goalKind, increment currentAmount atomic + auto-cap at goalAmount.
+   *  - KHÔNG ghi ledger (mission progress ≠ currency/item ledger — claim
+   *    path ở `MissionService.claim` mới ghi ledger). Audit qua
+   *    `AdminAuditLog action='admin.mission.track'`.
+   */
+  async grantMissionTrack(
+    actorId: string,
+    actorRole: Role,
+    targetUserId: string,
+    input: {
+      goalKind: string;
+      amount: number;
+      reason: string;
+    },
+  ): Promise<void> {
+    if (actorId === targetUserId) throw new AdminError('CANNOT_TARGET_SELF');
+    if (
+      !Number.isInteger(input.amount) ||
+      input.amount <= 0 ||
+      input.amount > MAX_QUEST_TRACK_AMOUNT
+    ) {
+      throw new AdminError('INVALID_INPUT');
+    }
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { role: true },
+    });
+    if (!targetUser) throw new AdminError('NOT_FOUND');
+    if (actorRole !== 'ADMIN' && targetUser.role !== 'PLAYER') {
+      throw new AdminError('FORBIDDEN');
+    }
+    const target = await this.prisma.character.findUnique({
+      where: { userId: targetUserId },
+      select: { id: true },
+    });
+    if (!target) throw new AdminError('NOT_FOUND');
+    if (!this.missions) throw new AdminError('INVALID_INPUT');
+
+    await this.missions.track(target.id, input.goalKind as any, input.amount);
+
+    await this.audit(actorId, 'admin.mission.track', {
+      targetUserId,
+      characterId: target.id,
+      goalKind: input.goalKind,
+      amount: input.amount,
+      reason: input.reason,
+    });
   }
 
   /**
