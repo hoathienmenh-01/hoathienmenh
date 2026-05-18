@@ -24,3 +24,24 @@ config.global.stubs = {
   RouterLink: RouterLinkStub,
   'router-link': RouterLinkStub,
 };
+
+/**
+ * Locale-stable Intl.NumberFormat — Node.js sandbox thiếu full ICU data
+ * cho `vi-VN` nên `.toLocaleString()` fallback về locale khác. Mock
+ * `Number.prototype.toLocaleString` để dùng `en-US` khi gọi không có
+ * locale arg (component templates dùng `.toLocaleString()` không arg),
+ * nhưng giữ nguyên behavior khi caller truyền locale tường minh
+ * (xianxiaFormat.ts dùng `Intl.NumberFormat('vi-VN')`).
+ */
+const _origToLocaleString = Number.prototype.toLocaleString;
+Number.prototype.toLocaleString = function (
+  locales?: string | string[],
+  options?: Intl.NumberFormatOptions,
+) {
+  // Nếu caller không truyền locale → force en-US cho consistent test output
+  // Nếu caller truyền locale tường minh → giữ nguyên (xianxiaFormat test)
+  if (locales === undefined) {
+    return _origToLocaleString.call(this, 'en-US', options);
+  }
+  return _origToLocaleString.call(this, locales, options);
+};

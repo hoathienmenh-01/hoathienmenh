@@ -8670,25 +8670,25 @@
     }
   },
   "notificationCenter": {
-    "viewTitle": "Trung Tam Thong Bao",
-    "viewSubtitle": "Tat ca thong bao cua ban tai mot noi.",
+    "viewTitle": "Trung Tâm Thông Báo",
+    "viewSubtitle": "Tất cả thông báo của bạn tại một nơi.",
     "filter": {
-      "all": "Tat ca",
-      "system": "He thong",
-      "rewards": "Phan thuong",
-      "sect": "Mon phai",
-      "trading": "Giao dich",
-      "combat": "Chien dau",
-      "mission": "Nhiem vu",
-      "social": "Xa hoi"
+      "all": "Tất cả",
+      "system": "Hệ thống",
+      "rewards": "Phần thưởng",
+      "sect": "Môn phái",
+      "trading": "Giao dịch",
+      "combat": "Chiến đấu",
+      "mission": "Nhiệm vụ",
+      "social": "Xã hội"
     },
-    "empty": "Khong co thong bao nao.",
-    "emptyHint": "Thong bao tu thu, xa hoi, va su kien game se hien thi o day.",
+    "empty": "Không có thông báo nào.",
+    "emptyHint": "Thông báo từ thư, xã hội, và sự kiện game sẽ hiển thị ở đây.",
     "time": {
-      "justNow": "Vua xong",
-      "minutesAgo": "{n} phut truoc",
-      "hoursAgo": "{n} gio truoc",
-      "daysAgo": "{n} ngay truoc"
+      "justNow": "Vừa xong",
+      "minutesAgo": "{n} phút trước",
+      "hoursAgo": "{n} giờ trước",
+      "daysAgo": "{n} ngày trước"
     }
   },
   "onlineFriends": {
