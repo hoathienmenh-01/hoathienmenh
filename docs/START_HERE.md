@@ -6,11 +6,12 @@
 
 ## Always read first (mỗi session)
 
-3 file **bắt buộc đọc** khi bắt đầu phiên làm việc mới — đủ context cho hầu hết task:
+4 file **bắt buộc đọc** khi bắt đầu phiên làm việc mới — đủ context cho hầu hết task:
 
-1. [`docs/START_HERE.md`](./START_HERE.md) ← **bạn đang ở đây** — bản đồ điều hướng docs.
-2. [`docs/AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) — Fast but Safe Delivery Mode + 8 luật delivery (UI Module / Docs Update / Handoff Structure / Test Fast Path / Batching / Safety Correction / Speed Target / Next Task Auto-Selection).
-3. [`docs/AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md) — snapshot trạng thái live (≤ **250 dòng**): Executive Summary + Recent Changes 10 PR + Phase Status + Known Issues + Tests/CI/Smoke + Recommended Next Roadmap. **Đầu file = mới nhất.**
+1. [`AGENTS.md`](../AGENTS.md) — universal AI agent instructions: read order, token-saving rules, next-task tracker, progress update rule, test fast path.
+2. [`docs/START_HERE.md`](./START_HERE.md) ← **bạn đang ở đây** — bản đồ điều hướng docs.
+3. [`docs/AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) — Fast but Safe Delivery Mode + 8 luật delivery (UI Module / Docs Update / Handoff Structure / Test Fast Path / Batching / Safety Correction / Speed Target / Next Task Auto-Selection).
+4. [`docs/AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md) — snapshot trạng thái live (≤ **250 dòng**): Executive Summary + Recent Changes 10 PR + Phase Status + Known Issues + Tests/CI/Smoke + Recommended Next Roadmap. **Đầu file = mới nhất.**
 
 ## Do not read every session
 
