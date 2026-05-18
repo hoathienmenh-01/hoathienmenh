@@ -369,19 +369,21 @@ The core gameplay loop is **fully real** (end-to-end wired to DB + WS). No mock/
 | Bosses | 14 definitions | Complete |
 | Balance dials | 62 exports | Complete |
 
-### Redirects (no dedicated view yet)
+### Redirects (aliased routes, not stubs)
 
-These routes redirect to related views — not stubs, but aliased:
+All gameplay routes now have real views backed by stores + APIs. These remaining redirects are convenience aliases:
 
-| Route | Redirects to | Could have own view |
+| Route | Redirects to | Note |
 |---|---|---|
-| `/notifications` | `/mail` | Yes — notification center |
-| `/skill-book` | `/cultivation-method` | Already merged into method view |
-| `/spiritual-root` | `/cultivation-method` | Already in cultivation hub |
-| `/secret-realm` | `/roguelike` | Could separate |
-| `/pets` | `/roguelike` | Yes — pet system view |
-| `/world/dungeons` | `/dungeon-run` | Could be hub |
-| `/world/towers` | `/trial-tower` | Could be hub |
+| `/skills` | `/skill-book` | Alias |
+| `/spiritual-roots` | `/spiritual-root` | Alias |
+| `/secret-realms` | `/secret-realm` | Alias |
+| `/spirit-pets` | `/pets` | Alias |
+| `/dungeons` | `/world/dungeons` | Alias |
+| `/tower` | `/world/towers` | Alias |
+| `/methods` | `/cultivation-method` | Alias |
+| `/cultivation-methods` | `/cultivation-method` | Alias |
+| `/auction` | `/market` | Feature-gated (`AUCTION_HOUSE_ENABLED`) |
 
 ### Home dashboard mock data
 
