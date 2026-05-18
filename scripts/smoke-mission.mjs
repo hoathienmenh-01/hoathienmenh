@@ -97,20 +97,17 @@
  *                        nào tồn tại trong `packages/shared/src/missions.ts`
  *                        và không completable bởi fresh char đều dùng được).
  *
- * Yêu cầu môi trường (giống smoke:giftcode):
+ * Yêu cầu môi trường (giống smoke:breakthrough):
  *   - `pnpm infra:up` (Postgres + Redis)
  *   - `pnpm --filter @xuantoi/api exec prisma migrate deploy`
+ *   - `pnpm --filter @xuantoi/api bootstrap` (seed admin + 3 sect)
  *   - `pnpm --filter @xuantoi/api dev` (API listen :3000)
  *   - Tab khác: `pnpm smoke:mission`
  *
- * Defer: positive claim path (track mission progress qua breakthrough /
- * clear-dungeon / boss-hit gameplay event đến `currentAmount >= goalAmount`
- * → POST /missions/claim → ledger applyTx LINH_THACH+TIEN_NGOC+exp +
- * inventory.grantTx + atomic CAS update claimed=true → idempotent retry
- * → ALREADY_CLAIMED 409) yêu cầu gameplay automation hoặc admin
- * `mission.track` seed → defer cho future smoke. Tương tự ALREADY_CLAIMED
- * 409 (claim 2 lần liên tiếp, atomic guard `updateMany count !== 1`)
- * cũng defer.
+ * Positive claim path: admin seed mission progress qua
+ * `POST /admin/users/:id/mission-track` {goalKind:'BREAKTHROUGH',amount:1}
+ * → player `POST /missions/claim` → ledger applyTx rewards + atomic CAS
+ * update claimed=true → idempotent retry → ALREADY_CLAIMED 409.
  *
  * Exit code:
  *   0 — toàn bộ invariant OK.
@@ -128,6 +125,8 @@ const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS ?? 10_000);
 const VERBOSE = process.env.SMOKE_VERBOSE === '1';
 const SECT_KEY = process.env.SMOKE_SECT_KEY ?? 'thanh_van';
 const MISSION_KEY = process.env.SMOKE_MISSION_KEY ?? 'once_first_breakthrough';
+const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL ?? 'admin@example.com';
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? 'change-me-bootstrap-pass';
 
 // -----------------------------------------------------------------------------
 // Cookie jar.
@@ -161,6 +160,17 @@ function storeSetCookie(res) {
 function cookieHeader() {
   if (cookieJar.size === 0) return undefined;
   return Array.from(cookieJar, ([k, v]) => `${k}=${v}`).join('; ');
+}
+
+/** Snapshot cookieJar để switch tạm sang admin rồi restore lại player. */
+function snapshotCookies() {
+  return new Map(cookieJar);
+}
+
+/** @param {Map<string,string>} snapshot */
+function restoreCookies(snapshot) {
+  cookieJar.clear();
+  for (const [k, v] of snapshot) cookieJar.set(k, v);
 }
 
 // -----------------------------------------------------------------------------
@@ -482,7 +492,143 @@ async function main() {
     );
   });
 
-  // 14. logout + GET /me + POST /claim → 401.
+  // -----------------------------------------------------------------------------
+  // POSITIVE PATH — admin seed mission.track BREAKTHROUGH × 1 → player claim.
+  // -----------------------------------------------------------------------------
+
+  /** @type {Map<string,string>} */
+  let playerCookieSnap;
+
+  // 14. Snapshot player cookies + admin login → swap jar.
+  await step('admin login — swap cookie jar (player → admin)', async () => {
+    playerCookieSnap = snapshotCookies();
+    cookieJar.clear();
+    const r = await http('/api/_auth/login', {
+      method: 'POST',
+      body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    assertStatus(r, 200, 'admin login');
+    if (!r.body?.ok) throw new Error(`admin login: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const u = r.body?.data?.user;
+    assert(u?.role === 'ADMIN', `admin login: role phải ADMIN (cần bootstrap admin@example.com), got ${u?.role}`);
+  });
+
+  // 15. Admin POST /admin/users/:id/mission-track {goalKind:'BREAKTHROUGH',amount:1}.
+  /** @type {string} */
+  let targetUserId;
+  await step("admin POST /admin/users/:id/mission-track {goalKind:'BREAKTHROUGH',amount:1}", async () => {
+    // Resolve userId from admin user search by email.
+    const search = await http(`/api/admin/users?q=${encodeURIComponent(email)}`);
+    assertStatus(search, 200, 'admin search user');
+    const rows = search.body?.data?.rows ?? [];
+    const target = rows.find((/** @type {any} */ u) => u.email === email);
+    assert(target, `admin search: user ${email} not found`);
+    targetUserId = target.id;
+
+    const r = await http(`/api/admin/users/${targetUserId}/mission-track`, {
+      method: 'POST',
+      body: { goalKind: 'BREAKTHROUGH', amount: 1, reason: 'smoke mission positive claim seed' },
+    });
+    assertStatus(r, 200, 'admin mission-track');
+    assert(
+      r.body?.ok === true && r.body?.data?.ok === true,
+      `mission-track 200: shape mismatch, got ${JSON.stringify(r.body)}`,
+    );
+  });
+
+  // 16. Admin logout → restore player cookies.
+  await step('admin logout + restore player cookies', async () => {
+    const r = await http('/api/_auth/logout', { method: 'POST' });
+    assertStatus(r, [200, 204], 'admin logout');
+    cookieJar.clear();
+    restoreCookies(playerCookieSnap);
+  });
+
+  // 17. GET /missions/me → once_first_breakthrough completable=true, currentAmount=1.
+  await step('GET /missions/me — once_first_breakthrough completable=true post-seed', async () => {
+    const r = await http('/api/missions/me');
+    assertStatus(r, 200, 'GET /missions/me post-seed');
+    const missions = r.body?.data?.missions ?? [];
+    const target = missions.find((/** @type {any} */ m) => m.key === MISSION_KEY);
+    assert(target, `mission '${MISSION_KEY}' not found post-seed`);
+    assert(
+      target.currentAmount >= 1,
+      `mission '${MISSION_KEY}': currentAmount expect >= 1, got ${target.currentAmount}`,
+    );
+    assert(
+      target.completable === true,
+      `mission '${MISSION_KEY}': completable expect true post-seed, got ${target.completable}`,
+    );
+    assert(
+      target.claimed === false,
+      `mission '${MISSION_KEY}': claimed expect false pre-claim, got ${target.claimed}`,
+    );
+  });
+
+  // Snapshot currency BEFORE positive claim.
+  const beforeClaim = await fetchCharCurrencies();
+
+  // 18. POST /missions/claim {missionKey} → 200 + rewards applied.
+  await step('POST /missions/claim — positive claim → 200 + rewards', async () => {
+    const r = await http('/api/missions/claim', {
+      method: 'POST',
+      body: { missionKey: MISSION_KEY },
+    });
+    assertStatus(r, 200, 'POST /missions/claim positive');
+    if (!r.body?.ok) throw new Error(`claim positive: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const missions = r.body?.data?.missions ?? [];
+    const target = missions.find((/** @type {any} */ m) => m.key === MISSION_KEY);
+    assert(target, `mission '${MISSION_KEY}' not found in claim response`);
+    assert(
+      target.claimed === true,
+      `mission '${MISSION_KEY}': claimed expect true post-claim, got ${target.claimed}`,
+    );
+  });
+
+  // 19. Verify currency changed (rewards: linhThach +300).
+  await step('currency changed — linhThach +300 post-claim', async () => {
+    const after = await fetchCharCurrencies();
+    const beforeLt = BigInt(beforeClaim.linhThach);
+    const afterLt = BigInt(after.linhThach);
+    // Mission rewards: linhThach 300 (from once_first_breakthrough def).
+    assert(
+      afterLt === beforeLt + 300n,
+      `linhThach expect ${beforeLt + 300n} (was ${beforeLt} + 300), got ${afterLt}`,
+    );
+  });
+
+  // 20. GET /inventory → verify item reward (thanh_lam_dan × 2).
+  await step('GET /inventory — verify thanh_lam_dan × 2 (mission item reward)', async () => {
+    const r = await http('/api/inventory');
+    assertStatus(r, 200, 'GET /inventory post-claim');
+    const items = r.body?.data?.items ?? [];
+    const stack = items.find((/** @type {any} */ it) => it.itemKey === 'thanh_lam_dan');
+    assert(stack, 'inventory: missing thanh_lam_dan post-claim');
+    assert(stack.qty >= 2, `thanh_lam_dan qty: expect >= 2, got ${stack.qty}`);
+  });
+
+  // 21. POST /missions/claim again → 409 ALREADY_CLAIMED.
+  await step('POST /missions/claim — ALREADY_CLAIMED (idempotent retry)', async () => {
+    const r = await http('/api/missions/claim', {
+      method: 'POST',
+      body: { missionKey: MISSION_KEY },
+    });
+    assertStatus(r, 409, 'POST /missions/claim already-claimed');
+    assertErrorCode(r, 'ALREADY_CLAIMED', 'POST /missions/claim already-claimed');
+  });
+
+  // 22. Anti-FE-self-grant: currency unchanged sau ALREADY_CLAIMED.
+  await step('anti-FE-self-grant — currency unchanged sau ALREADY_CLAIMED', async () => {
+    const after = await fetchCharCurrencies();
+    const claimLt = BigInt(beforeClaim.linhThach) + 300n;
+    const afterLt = BigInt(after.linhThach);
+    assert(
+      afterLt === claimLt,
+      `linhThach VẪN ${claimLt} sau ALREADY_CLAIMED, got ${afterLt}`,
+    );
+  });
+
+  // 23. logout + GET /me + POST /claim → 401.
   await step('logout + GET /missions/me + POST /missions/claim — 401 UNAUTHENTICATED', async () => {
     const logout = await http('/api/_auth/logout', { method: 'POST' });
     assertStatus(logout, [200, 204], 'logout');

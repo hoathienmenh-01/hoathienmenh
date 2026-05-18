@@ -108,6 +108,11 @@ const QuestTrackInput = z.object({
   amount: z.number().int().positive().max(999),
   reason: z.string().max(200).default(''),
 });
+const MissionTrackInput = z.object({
+  goalKind: z.string().min(1).max(80),
+  amount: z.number().int().positive().max(999),
+  reason: z.string().max(200).default(''),
+});
 const GrantCurrencyInput = z.object({
   currency: z.enum(['LINH_THACH', 'TIEN_NGOC']),
   /** BigInt-as-string (mirror grant-exp pattern). Có thể âm để trừ. */
@@ -482,6 +487,35 @@ export class AdminController {
         kind: parsed.data.kind,
         targetType: parsed.data.targetType,
         targetId: parsed.data.targetId,
+        amount: parsed.data.amount,
+        reason: parsed.data.reason,
+      });
+      return { ok: true, data: { ok: true } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Admin seed harness — track mission progress directly. Use-case:
+   * positive-path smoke mission claim (`POST /missions/claim`) without
+   * spinning a real gameplay loop. Reuse `MissionService.track()` →
+   * match all missions with same goalKind, increment currentAmount.
+   * Audit `admin.mission.track`.
+   */
+  @Post('users/:id/mission-track')
+  @HttpCode(200)
+  @RequireAdmin()
+  async grantMissionTrack(
+    @Req() req: AdminReq,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = MissionTrackInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      await this.admin.grantMissionTrack(req.userId, req.role, id, {
+        goalKind: parsed.data.goalKind,
         amount: parsed.data.amount,
         reason: parsed.data.reason,
       });

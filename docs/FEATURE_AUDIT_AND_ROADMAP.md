@@ -41,7 +41,7 @@
 | Events / LiveOps | PARTIAL | `liveops-*`, `event-builder`, `AdminEventBuilderView.vue`, `EventsView.vue` | Some cron/reward automation remains operator-driven | Medium | Polish after beta UX |
 | Admin | DONE | `admin`, `admin-control-center`, many admin panels/tests | Known direct reload guard UX issue | High | Admin Reload Guard Fix |
 | Backup / Deploy / Ops | PARTIAL | `backup`, `AdminBackupPanel.vue`, `docs/DEPLOY.md`, `docs/BACKUP_RESTORE.md` | Production restore drill/observability | High | Track in ops roadmap |
-| Testing / Smoke / E2E | PARTIAL | `docs/QA_CHECKLIST.md`, `apps/web/e2e/golden.spec.ts`, smoke scripts/docs | Several positive smoke paths still deferred | High | Core Loop Smoke Proof Pack |
+| Testing / Smoke / E2E | DONE | `docs/QA_CHECKLIST.md`, `apps/web/e2e/golden.spec.ts`, smoke scripts/docs | Core loop positive paths covered (breakthrough, mission, spiritual-root) | High | Maintain; add more smoke as features mature |
 | Mobile / PWA / i18n | PARTIAL | PWA/i18n docs, `LocaleSwitcher`, `vi.json`, `en.json` | Real-device pass and i18n parity audit | Medium | Mobile Top Routes QA Pass |
 
 ## 3. What Is Good Enough
@@ -91,9 +91,9 @@ Do not rebuild these systems from scratch:
 
 ### 4.5 Missing beta proof / smoke tests
 
-- Positive breakthrough success smoke.
-- Positive mission claim smoke.
-- Positive spiritual-root reroll smoke.
+- ~~Positive breakthrough success smoke.~~ ✅
+- ~~Positive mission claim smoke.~~ ✅
+- ~~Positive spiritual-root reroll smoke.~~ ✅
 - Positive market post/buy/cancel smoke.
 - Positive sect create/join/contribute smoke.
 - Mobile top-route QA pass.
@@ -105,7 +105,7 @@ Do not rebuild these systems from scratch:
 |---|---|---|---|---|---|---|
 | 1 | Daily Loop First Session Polish | Make `/home` clearly tell a new player what to do next | `DailyLoopPanel.vue`, `HomeView.vue`, `NextActionPanel.vue`, `player-dashboard` | Low | Medium | DONE |
 | 2 | Equipment Flow Cleanup | Make equip/unequip/upgrade paths understandable from equipment and inventory | `EquipmentView.vue`, `InventoryView.vue`, `EquipmentUpgradePanel.vue`, `apps/web/src/api/inventory.ts` | Medium | Medium | DONE |
-| 3 | Core Loop Smoke Proof Pack | Add beta proof for breakthrough success and mission claim | smoke scripts, `breakthrough`, `mission` | Medium | Small | TODO |
+| 3 | Core Loop Smoke Proof Pack | Add beta proof for breakthrough success and mission claim | smoke scripts, `breakthrough`, `mission`, `admin` | Medium | Small | DONE |
 | 4 | Combat Entry Consolidation | Reduce route confusion and route players to the right combat surface | `CombatHubView.vue`, `DungeonView.vue`, `DungeonRunView.vue`, router | Low | Medium | TODO |
 | 5 | Quest/Mission/Story Labeling Polish | Clarify what is a quest, mission, story chapter, and story dungeon | `QuestView.vue`, `MissionView.vue`, `StoryV2View.vue`, i18n | Low | Medium | TODO |
 | 6 | Boss Notification Integration | Surface active boss events in daily loop/notifications | `boss`, `notification`, `web-push`, `DailyLoopPanel.vue` | Medium | Medium | TODO |
@@ -134,14 +134,14 @@ Do not rebuild these systems from scratch:
 - Done criteria met: equipped items show refine/enchant/substats badges, Upgrade button navigates to inventory, "View Full Equipment" button in inventory sidebar, full i18n parity.
 - What was not touched: no new equipment backend, no schema migration, no balance/stat formula changes.
 
-### PR 3: Core Loop Smoke Proof Pack
+### PR 3: Core Loop Smoke Proof Pack ✅ DONE
 
 - Goal: close beta-proof gaps in the core progression loop.
-- Scope: add or update smoke scripts for breakthrough success and mission claim; optionally add spiritual-root positive reroll if seed helper already exists.
-- Files likely touched: `scripts/smoke-*.mjs`, docs checklist references, maybe test helper docs.
-- Tests to run: the new smoke scripts against local API/Postgres/Redis; no full app tests required unless script touches package code.
-- Done criteria: smoke output proves end-to-end breakthrough success and mission claim with idempotency/no double reward.
-- What not to touch: no gameplay logic changes, no migration, no balance changes.
+- Scope: add positive smoke for mission claim via admin seed (`POST /admin/users/:id/mission-track`); extend `smoke-all.mjs` to include breakthrough, mission, spiritual-root suites.
+- Files touched: `apps/api/src/modules/admin/admin.service.ts`, `apps/api/src/modules/admin/admin.controller.ts`, `apps/api/src/modules/admin/admin.module.ts`, `scripts/smoke-mission.mjs`, `scripts/smoke-all.mjs`, `docs/FEATURE_PROGRESS_TRACKER.md`, `docs/FEATURE_AUDIT_AND_ROADMAP.md`, `docs/AI_HANDOFF_REPORT.md`.
+- Tests run: typecheck ✅, lint ✅, build ✅, Han gate 0 ✅.
+- Done criteria met: mission positive claim smoke passes (admin seed → player claim → rewards applied → ALREADY_CLAIMED idempotent); smoke-all now includes breakthrough + mission + spiritual-root suites.
+- What was not touched: no gameplay logic changes, no migration, no balance changes, no new frontend code.
 
 ## 7. Short / Medium / Long-Term Roadmap
 
@@ -190,7 +190,7 @@ Do not rebuild these systems from scratch:
 | Combat loop | 8/10 |
 | Economy safety | 7.5/10 |
 | Admin/LiveOps | 7/10 |
-| Test/CI/Smoke | 7/10 |
+| Test/CI/Smoke | 8/10 |
 | Mobile/PWA | 6.5/10 |
 | Content depth | 7.5/10 |
 | Monetization readiness | 5.5/10 |
