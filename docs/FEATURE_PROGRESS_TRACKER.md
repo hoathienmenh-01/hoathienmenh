@@ -65,7 +65,7 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 2 | Equipment Flow Cleanup | — | feat/equipment-flow-cleanup | 2026-05-19 |
 | 3 | Core Loop Smoke Proof Pack | — | feat/core-loop-smoke-proof-pack | 2026-05-19 |
 | 4 | Combat Entry Consolidation | #640 | feat/combat-entry-consolidation | 2026-05-19 |
-| 5 | Quest/Mission/Story Labeling Polish | — | feat/quest-mission-story-labeling | 2026-05-19 |
+| 5 | Quest/Mission/Story Labeling Polish | #641 | feat/quest-mission-story-labeling | 2026-05-19 |
 
 ## Deferred / Do Not Build
 
