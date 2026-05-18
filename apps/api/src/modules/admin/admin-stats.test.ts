@@ -42,11 +42,15 @@ describe('AdminService.stats', () => {
   });
 
   it('đếm users + characters + cultivating + bySect + circulating', async () => {
-    const sectA = await prisma.sect.create({
-      data: { name: 'Thanh Vân Môn' },
+    const sectA = await prisma.sect.upsert({
+      where: { name: 'Thanh Vân Môn' },
+      create: { name: 'Thanh Vân Môn' },
+      update: {},
     });
-    const sectB = await prisma.sect.create({
-      data: { name: 'Huyền Thuỷ Cung' },
+    const sectB = await prisma.sect.upsert({
+      where: { name: 'Huyền Thuỷ Cung' },
+      create: { name: 'Huyền Thuỷ Cung' },
+      update: {},
     });
     const a = await makeUserChar(prisma, {
       linhThach: 100n,
