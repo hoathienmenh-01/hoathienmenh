@@ -31,6 +31,7 @@
 | **Item / skill / monster / boss / dungeon / mission / quest / event / title / achievement (catalog)** | [`docs/CONTENT_PIPELINE.md`](./CONTENT_PIPELINE.md) + [`docs/BALANCE_MODEL.md`](./BALANCE_MODEL.md) — process step-by-step + naming convention + balance gate + curve + dial registry + decision log. Achievement/title/reputation foundation cụ thể → [`docs/ACHIEVEMENT_TITLE_REPUTATION.md`](./ACHIEVEMENT_TITLE_REPUTATION.md). |
 | **Test / smoke / E2E** | [`docs/QA_CHECKLIST.md`](./QA_CHECKLIST.md) — test scope + smoke pattern + E2E gate. Smoke detail per module → [`docs/ARCHIVE_HANDOFF.md`](./ARCHIVE_HANDOFF.md) § Smoke Detail. |
 | **Beta readiness** | [`docs/BETA_CHECKLIST.md`](./BETA_CHECKLIST.md) — checklist Phase 9.A→9.E sub-phases. |
+| **Feature audit / roadmap / next PR queue** | [`docs/FEATURE_AUDIT_AND_ROADMAP.md`](./FEATURE_AUDIT_AND_ROADMAP.md) + [`docs/FEATURE_PROGRESS_TRACKER.md`](./FEATURE_PROGRESS_TRACKER.md) — current feature status, polish gaps, recommended next PR, and living task queue. |
 | **Live ops / event / admin / feature flag / maintenance** | [`docs/LIVE_OPS_MODEL.md`](./LIVE_OPS_MODEL.md) + [`docs/ADMIN_GUIDE.md`](./ADMIN_GUIDE.md) — EventConfig/Announcement/MaintenanceWindow/FeatureFlag/ConfigVersion lifecycle + permission matrix + admin panel. |
 | **Roadmap / phase planning / dependency rule** | [`docs/LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) — Phase 9 → 17 với DO-NOT-BUILD-YET list. |
 | **Game design / vision / core loop / 13 system** | [`docs/GAME_DESIGN_BIBLE.md`](./GAME_DESIGN_BIBLE.md) — vision + core loop + 13 system + product principles. |
@@ -132,6 +133,8 @@ Khi tài liệu xung đột nhau, ưu tiên theo thứ tự sau:
 - [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) — Fast but Safe Delivery Mode (8 luật delivery/scope). **MUST READ trước PR đầu tiên.**
 - [`GAME_DESIGN_BIBLE.md`](./GAME_DESIGN_BIBLE.md) — vision + core loop + 13 system + principles.
 - [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) — Phase 9 → 17.
+- [`FEATURE_AUDIT_AND_ROADMAP.md`](./FEATURE_AUDIT_AND_ROADMAP.md) — feature status matrix, top recommended PRs, beta readiness score.
+- [`FEATURE_PROGRESS_TRACKER.md`](./FEATURE_PROGRESS_TRACKER.md) — living task queue. Read this before choosing the next autonomous PR.
 - [`ECONOMY_MODEL.md`](./ECONOMY_MODEL.md) — currency invariants + anti-abuse.
 - [`CONTENT_PIPELINE.md`](./CONTENT_PIPELINE.md) — process thêm content.
 - [`BALANCE_MODEL.md`](./BALANCE_MODEL.md) — curve + dial + decision log.
