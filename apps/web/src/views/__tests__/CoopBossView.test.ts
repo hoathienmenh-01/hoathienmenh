@@ -4,22 +4,16 @@ import { createI18n } from 'vue-i18n';
 import { setActivePinia, createPinia } from 'pinia';
 
 /**
- * CoopBossView smoke tests (PR #629).
+ * CoopBossView polish tests (PR #631).
  *
  * Coverage:
  *   1. Guest → redirect to /auth.
- *   2. No active run → shows empty state.
- *   3. Active run → renders run data.
- *   4. Recent history renders when available.
+ *   2. No character → shows no-character state.
+ *   3. No party → shows no-party warning + panel still mounts.
+ *   4. Authenticated with party → mounts CoopBossPanel.
  *   5. Back button navigates to /party.
+ *   6. Info section renders how-it-works steps.
  */
-
-const getMyCoopBossRunMock = vi.fn();
-const listMyCoopBossRunsMock = vi.fn();
-vi.mock('@/api/coopBoss', () => ({
-  getMyCoopBossRun: (...a: unknown[]) => getMyCoopBossRunMock(...a),
-  listMyCoopBossRuns: (...a: unknown[]) => listMyCoopBossRunsMock(...a),
-}));
 
 const routerReplaceMock = vi.fn();
 const routerPushMock = vi.fn(() => Promise.resolve());
@@ -41,7 +35,8 @@ vi.mock('@/stores/auth', () => ({
 }));
 
 const gameState = {
-  character: null,
+  character: { id: 'c1', name: 'Test' } as Record<string, unknown> | null,
+  party: { id: 'p1' } as Record<string, unknown> | null,
   bindSocket: vi.fn(),
   fetchState: vi.fn().mockResolvedValue(undefined),
 };
@@ -78,6 +73,13 @@ vi.mock('@/components/ui/MButton.vue', () => ({
     template: '<button v-bind="$attrs" @click="$emit(\'click\')"><slot /></button>',
   },
 }));
+vi.mock('@/components/CoopBossPanel.vue', () => ({
+  default: {
+    name: 'CoopBossPanelStub',
+    inheritAttrs: true,
+    template: '<div data-testid="coop-boss-panel-mount"></div>',
+  },
+}));
 
 import CoopBossView from '@/views/CoopBossView.vue';
 
@@ -108,8 +110,8 @@ beforeEach(() => {
   authState.hydrate.mockReset().mockResolvedValue(undefined);
   gameState.fetchState.mockReset().mockResolvedValue(undefined);
   gameState.bindSocket.mockReset();
-  getMyCoopBossRunMock.mockReset().mockRejectedValue(new Error('no run'));
-  listMyCoopBossRunsMock.mockReset().mockRejectedValue(new Error('no history'));
+  gameState.character = { id: 'c1', name: 'Test' };
+  gameState.party = { id: 'p1' };
 });
 
 afterEach(() => {
@@ -123,59 +125,64 @@ describe('CoopBossView — auth gating', () => {
     mountView();
     await flushPromises();
     expect(routerReplaceMock).toHaveBeenCalledWith('/auth');
-    expect(getMyCoopBossRunMock).not.toHaveBeenCalled();
   });
 });
 
-describe('CoopBossView — empty state', () => {
-  it('no active run → shows empty state', async () => {
-    getMyCoopBossRunMock.mockResolvedValue(null);
-    listMyCoopBossRunsMock.mockResolvedValue(null);
+describe('CoopBossView — no character', () => {
+  it('no character → shows no-character state', async () => {
+    gameState.character = null;
     mountView();
     await flushPromises();
-    expect(wrapper?.find('[data-testid="coop-boss-empty"]').exists()).toBe(true);
-    expect(wrapper?.find('[data-testid="coop-boss-active-run"]').exists()).toBe(false);
+    expect(wrapper?.find('[data-testid="coop-boss-no-character"]').exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="coop-boss-panel-mount"]').exists()).toBe(false);
   });
 });
 
-describe('CoopBossView — active run', () => {
-  it('active run → renders run data', async () => {
-    getMyCoopBossRunMock.mockResolvedValue({ runId: 'run-1', status: 'IN_PROGRESS', bossKey: 'world_boss_1' });
-    listMyCoopBossRunsMock.mockResolvedValue(null);
+describe('CoopBossView — no party (removed)', () => {
+  it('always shows panel (panel handles party error internally)', async () => {
     mountView();
     await flushPromises();
-    expect(wrapper?.find('[data-testid="coop-boss-active-run"]').exists()).toBe(true);
-    expect(wrapper?.find('[data-testid="coop-boss-empty"]').exists()).toBe(false);
+    expect(wrapper?.find('[data-testid="coop-boss-panel-mount"]').exists()).toBe(true);
   });
 });
 
-describe('CoopBossView — history', () => {
-  it('recent runs render when available', async () => {
-    getMyCoopBossRunMock.mockResolvedValue(null);
-    listMyCoopBossRunsMock.mockResolvedValue({
-      runs: [
-        { id: 'r1', bossKey: 'boss_a', status: 'CLEARED' },
-        { id: 'r2', bossKey: 'boss_b', status: 'FAILED' },
-      ],
-    });
+describe('CoopBossView — authenticated with party', () => {
+  it('mounts CoopBossPanel', async () => {
     mountView();
     await flushPromises();
-    expect(wrapper?.find('[data-testid="coop-boss-history"]').exists()).toBe(true);
-    const historyText = wrapper?.find('[data-testid="coop-boss-history"]').text();
-    expect(historyText).toContain('boss_a');
-    expect(historyText).toContain('CLEARED');
-    expect(historyText).toContain('boss_b');
-    expect(historyText).toContain('FAILED');
+    expect(wrapper?.find('[data-testid="coop-boss-panel-mount"]').exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="coop-boss-no-party"]').exists()).toBe(false);
+    expect(wrapper?.find('[data-testid="coop-boss-no-character"]').exists()).toBe(false);
+  });
+});
+
+describe('CoopBossView — info section', () => {
+  it('renders how-it-works info section', async () => {
+    mountView();
+    await flushPromises();
+    expect(wrapper?.find('[data-testid="coop-boss-info"]').exists()).toBe(true);
   });
 });
 
 describe('CoopBossView — navigation', () => {
   it('back button navigates to /party', async () => {
-    getMyCoopBossRunMock.mockResolvedValue(null);
-    listMyCoopBossRunsMock.mockResolvedValue(null);
     mountView();
     await flushPromises();
     await wrapper?.find('[data-testid="coop-boss-back"]').trigger('click');
     expect(routerPushMock).toHaveBeenCalledWith('/party');
+  });
+
+  it('boss button navigates to /boss', async () => {
+    mountView();
+    await flushPromises();
+    await wrapper?.find('[data-testid="coop-boss-to-boss"]').trigger('click');
+    expect(routerPushMock).toHaveBeenCalledWith('/boss');
+  });
+
+  it('combat hub button navigates to /combat', async () => {
+    mountView();
+    await flushPromises();
+    await wrapper?.find('[data-testid="coop-boss-to-combat"]').trigger('click');
+    expect(routerPushMock).toHaveBeenCalledWith('/combat');
   });
 });

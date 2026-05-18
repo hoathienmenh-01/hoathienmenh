@@ -1,31 +1,28 @@
 <script setup lang="ts">
 /**
- * PartyDungeonView — `/party/dungeon` entry surface (PR #629).
+ * PartyDungeonView — `/party/dungeon` entry surface (PR #631).
  *
- * Hub-style view that shows the player's active party dungeon room
- * status. Uses the real `partyDungeon.ts` API. If no active room,
- * shows an empty state with context. Does NOT implement full dungeon
- * run flow — that requires combat/matchmaking which is out of scope.
+ * Full polished view for the Party Dungeon co-op feature. Delegates
+ * all room lifecycle interaction to PartyDungeonPanel.
  */
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
-import { getMyPartyDungeonRoom } from '@/api/partyDungeon';
-import type { MyPartyDungeonRoomResponse } from '@xuantoi/shared';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
+import PartyDungeonPanel from '@/components/PartyDungeonPanel.vue';
 
 const auth = useAuthStore();
 const game = useGameStore();
 const router = useRouter();
 const { t } = useI18n();
 
-const loading = ref(true);
-const room = ref<MyPartyDungeonRoomResponse | null>(null);
+const ready = ref(false);
+const noCharacter = ref(false);
 
 onMounted(async () => {
   await auth.hydrate();
@@ -35,17 +32,24 @@ onMounted(async () => {
   }
   await game.fetchState().catch(() => null);
   game.bindSocket();
-  try {
-    room.value = await getMyPartyDungeonRoom();
-  } catch {
-    room.value = null;
-  } finally {
-    loading.value = false;
+  if (!game.character) {
+    noCharacter.value = true;
+    ready.value = true;
+    return;
   }
+  ready.value = true;
 });
 
 function goToPartyHub(): void {
   router.push('/party');
+}
+
+function goToDungeonRun(): void {
+  router.push('/dungeon-run');
+}
+
+function goToCombatHub(): void {
+  router.push('/combat');
 }
 </script>
 
@@ -66,40 +70,57 @@ function goToPartyHub(): void {
     </XTLuxHero>
 
     <!-- Loading -->
-    <div v-if="loading" class="text-center py-8 text-ink-400" data-testid="party-dungeon-loading">
-      {{ t('common.loading', 'Loading...') }}
+    <div v-if="!ready" class="text-center py-8 text-ink-400" data-testid="party-dungeon-loading">
+      {{ t('common.loading', 'Đang tải...') }}
     </div>
 
-    <!-- Active Room -->
+    <!-- No character -->
     <section
-      v-else-if="room"
-      class="rounded border border-ink-300/40 bg-ink-700/30 p-4 mb-4 space-y-3"
-      data-testid="party-dungeon-active-room"
-    >
-      <h3 class="font-bold text-ink-100">
-        {{ t('partyDungeon.activeRoom', 'Phòng Đang Hoạt Động') }}
-      </h3>
-      <pre class="text-xs text-ink-300 whitespace-pre-wrap overflow-auto max-h-48">{{ JSON.stringify(room, null, 2) }}</pre>
-    </section>
-
-    <!-- No active room — empty state -->
-    <section
-      v-else
-      class="text-center py-8 space-y-4"
-      data-testid="party-dungeon-empty"
+      v-else-if="noCharacter"
+      class="text-center py-8 space-y-3"
+      data-testid="party-dungeon-no-character"
     >
       <p class="text-ink-300 text-lg">
-        {{ t('partyDungeon.noRoom', 'Chưa có phòng dungeon nào đang hoạt động') }}
+        {{ t('partyDungeon.noCharacter', 'Bạn cần tạo nhân vật trước khi tham gia Party Dungeon') }}
       </p>
-      <p class="text-ink-400 text-sm">
-        {{ t('partyDungeon.hint', 'Hãy tạo hoặc tham gia phòng từ tổ đội của bạn') }}
-      </p>
+      <MButton data-testid="party-dungeon-create-char" @click="router.push('/onboarding')">
+        {{ t('partyDungeon.createCharacter', 'Tạo Nhân Vật') }}
+      </MButton>
     </section>
 
+    <!-- Content: delegates to PartyDungeonPanel which handles party/no-party internally -->
+    <template v-else>
+      <!-- Main panel -->
+      <PartyDungeonPanel data-testid="party-dungeon-panel-mount" />
+
+      <!-- Info: how party dungeon works -->
+      <section
+        class="mt-6 rounded border border-ink-300/20 bg-ink-700/20 p-4 space-y-2"
+        data-testid="party-dungeon-info"
+      >
+        <h4 class="text-xs uppercase tracking-widest text-ink-200">
+          {{ t('partyDungeon.info.title', 'Cách Thức Hoạt Động') }}
+        </h4>
+        <ul class="text-xs text-ink-300 space-y-1 list-disc list-inside">
+          <li>{{ t('partyDungeon.info.step1', 'Leader chọn dungeon và tạo phòng.') }}</li>
+          <li>{{ t('partyDungeon.info.step2', 'Thành viên tổ đội tham gia và bấm Sẵn Sàng.') }}</li>
+          <li>{{ t('partyDungeon.info.step3', 'Leader bấm Bắt Đầu khi đủ người sẵn sàng.') }}</li>
+          <li>{{ t('partyDungeon.info.step4', 'Dungeon tự động xử lý — kết quả hiện ngay.') }}</li>
+          <li>{{ t('partyDungeon.info.step5', 'Mỗi thành viên nhận thưởng riêng — bấm Nhận Thưởng.') }}</li>
+        </ul>
+      </section>
+    </template>
+
     <!-- Navigation -->
-    <section class="flex flex-wrap gap-3" data-testid="party-dungeon-actions">
+    <section class="flex flex-wrap gap-3 mt-6" data-testid="party-dungeon-actions">
       <MButton data-testid="party-dungeon-back" @click="goToPartyHub">
         {{ t('partyDungeon.backToParty', '← Về Tổ Đội') }}
+      </MButton>
+      <MButton data-testid="party-dungeon-to-solo" @click="goToDungeonRun">
+        {{ t('partyDungeon.goToSolo', '🏔 Bí Cảnh Solo') }}
+      </MButton>
+      <MButton data-testid="party-dungeon-to-combat" @click="goToCombatHub">
+        {{ t('partyDungeon.goToCombat', '🗺 Chiến Trường') }}
       </MButton>
     </section>
   </AppShell>
