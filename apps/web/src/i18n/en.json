@@ -353,6 +353,7 @@
       },
       "boss": {
         "title": "World Boss",
+        "titleNamed": "{name} Has Appeared (Lv.{level})",
         "reward": "Rare gear + spirit stones"
       },
       "sect": {
@@ -6231,6 +6232,10 @@
     "empty": "No notifications yet.",
     "errorGeneric": "Failed to load notifications.",
     "retry": "Retry",
+    "bossAlert": {
+      "title": "Boss has appeared!",
+      "body": "Tap to go fight the world boss."
+    },
     "FRIEND_REQUEST_RECEIVED": {
       "title": "New friend request",
       "body": "{sender} sent you a friend request."
