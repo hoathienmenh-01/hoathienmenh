@@ -392,3 +392,24 @@ describe('CharacterView — populated render', () => {
     expect(wrapper?.find('[data-testid="character-view-sect-name"]').exists()).toBe(false);
   });
 });
+
+describe('CharacterView — role hint + cross-nav', () => {
+  it('render role hint', async () => {
+    gameState.character = buildCharacter();
+    gameState.realmFullName = 'Luyện Khí';
+    mountView();
+    await flushPromises();
+    expect(wrapper?.find('[data-testid="character-view-role-section"]').exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="character-view-role-hint"]').text()).toBeTruthy();
+  });
+
+  it('render cross-nav với link đúng', async () => {
+    gameState.character = buildCharacter();
+    gameState.realmFullName = 'Luyện Khí';
+    mountView();
+    await flushPromises();
+    expect(wrapper?.find('[data-testid="character-view-cross-nav"]').exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="character-view-cross-nav-cultivation"]').exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="character-view-cross-nav-equipment"]').exists()).toBe(true);
+  });
+});

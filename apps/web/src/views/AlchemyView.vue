@@ -34,6 +34,8 @@ import { useAlchemyStore } from '@/stores/alchemy';
 import { useToastStore } from '@/stores/toast';
 import type { AlchemyRecipeView } from '@/api/alchemy';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 
 type QualityFilter =
   | 'all'
@@ -209,25 +211,57 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="max-w-5xl mx-auto space-y-4">
-      <header class="flex items-baseline justify-between gap-3 flex-wrap">
-        <div>
-          <h1 class="text-2xl tracking-widest font-bold">{{ t('alchemy.title') }}</h1>
-          <p class="text-xs text-ink-300 mt-1">
-            {{ t('alchemy.subtitle') }}
-          </p>
-        </div>
-        <div class="text-xs text-ink-300 text-right space-y-0.5">
-          <div data-testid="alchemy-furnace-level">
-            {{ t('alchemy.furnaceLevel', { level: alchemy.furnaceLevel }) }}
+      <XTLuxHero
+        eyebrow="LUYỆN ĐAN ĐƯỜNG"
+        label="Luyện Đan Đường"
+        :title="t('alchemy.title')"
+        :subtitle="t('alchemy.subtitle')"
+        tone="gold"
+        watermark-letter="L"
+        breadcrumb="Tu Vi · Luyện Đan"
+        test-id="alchemy-hero"
+        class="mb-4"
+      >
+        <XTPageEyebrow caps="LUYỆN ĐAN ĐƯỜNG" label="Luyện Đan Đường" class="sr-only" />
+        <template #meta>
+          <div class="text-xs text-ink-300 text-right space-y-0.5">
+            <div data-testid="alchemy-furnace-level">
+              {{ t('alchemy.furnaceLevel', { level: alchemy.furnaceLevel }) }}
+            </div>
+            <div data-testid="alchemy-master-level" class="text-amber-200">
+              {{ t('alchemy.alchemyLevel', { level: alchemy.alchemyLevel, name: alchemy.alchemyLevelName }) }}
+            </div>
+            <div data-testid="alchemy-master-exp">
+              {{ t('alchemy.alchemyExp', { exp: alchemy.alchemyExp, next: alchemy.alchemyExpNext }) }}
+            </div>
           </div>
-          <div data-testid="alchemy-master-level" class="text-amber-200">
-            {{ t('alchemy.alchemyLevel', { level: alchemy.alchemyLevel, name: alchemy.alchemyLevelName }) }}
-          </div>
-          <div data-testid="alchemy-master-exp">
-            {{ t('alchemy.alchemyExp', { exp: alchemy.alchemyExp, next: alchemy.alchemyExpNext }) }}
-          </div>
-        </div>
-      </header>
+        </template>
+      </XTLuxHero>
+
+      <!-- Role hint + cross-nav -->
+      <div class="space-y-2" data-testid="alchemy-role-section">
+        <p class="text-xs text-ink-300 leading-relaxed" data-testid="alchemy-role-hint">
+          {{ t('alchemy.roleHint') }}
+        </p>
+        <nav class="flex flex-wrap gap-2 text-xs" data-testid="alchemy-cross-nav">
+          <span class="text-ink-400">{{ t('alchemy.crossNav.label') }}:</span>
+          <router-link
+            to="/inventory"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="alchemy-cross-nav-inventory"
+          >
+            {{ t('alchemy.crossNav.inventory') }}
+          </router-link>
+          <span class="text-ink-500">·</span>
+          <router-link
+            to="/cultivation"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="alchemy-cross-nav-cultivation"
+          >
+            {{ t('alchemy.crossNav.cultivation') }}
+          </router-link>
+        </nav>
+      </div>
 
       <section
         v-if="alchemy.loaded"

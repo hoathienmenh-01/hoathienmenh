@@ -170,6 +170,31 @@ function outcomeKind(outcome: string, attackerId: string): 'win' | 'lose' | 'dra
         <XTPageEyebrow caps="LONG HỔ ĐẤU TRƯỜNG" label="Long Hổ Đấu Trường" class="sr-only" />
       </XTLuxHero>
 
+      <!-- Role hint + cross-nav -->
+      <div class="space-y-2 mb-4" data-testid="arena-role-section">
+        <p class="text-xs text-ink-300 leading-relaxed" data-testid="arena-role-hint">
+          {{ t('arena.roleHint') }}
+        </p>
+        <nav class="flex flex-wrap gap-2 text-xs" data-testid="arena-cross-nav">
+          <span class="text-ink-400">{{ t('arena.crossNav.label') }}:</span>
+          <router-link
+            to="/combat"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="arena-cross-nav-combat"
+          >
+            {{ t('arena.crossNav.combat') }}
+          </router-link>
+          <span class="text-ink-500">·</span>
+          <router-link
+            to="/leaderboard"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="arena-cross-nav-leaderboard"
+          >
+            {{ t('arena.crossNav.leaderboard') }}
+          </router-link>
+        </nav>
+      </div>
+
       <!-- Phase 15.4 — Arena disabled banner. -->
       <FeatureDisabledBanner
         v-if="arenaDisabled"

@@ -997,6 +997,12 @@
   },
   "dungeon": {
     "title": "Sparring Hall",
+    "roleHint": "Dungeons are solo instances — pick one matching your realm, spend stamina, fight monsters for rewards.",
+    "crossNav": {
+      "label": "See also",
+      "dungeonRun": "Dungeon Run",
+      "combat": "Combat Hub"
+    },
     "staminaEntry": "{stam} stamina",
     "monsterCount": "{n} fights",
     "inFight": "In fight",
@@ -1034,6 +1040,12 @@
   "dungeonRun": {
     "title": "Dungeon Run",
     "subtitle": "Multi-encounter expedition — clear all monsters then claim the completion bonus.",
+    "roleHint": "Dungeon Run is an auto-expedition — clear multiple encounters for rewards. Has daily attempt limits.",
+    "crossNav": {
+      "label": "See also",
+      "dungeon": "Dungeon",
+      "combat": "Combat Hub"
+    },
     "totalCount": "Total: {n}",
     "startableCount": "Startable: {n}",
     "activeBadge": "In progress",
@@ -1329,6 +1341,12 @@
   },
   "inventory": {
     "title": "Inventory",
+    "roleHint": "Inventory holds equipment, items and materials. Equip gear here or upgrade equipment.",
+    "crossNav": {
+      "label": "See also",
+      "equipment": "Equipment",
+      "alchemy": "Alchemy"
+    },
     "gearTitle": "Equipped",
     "goEquipment": "View Full Equipment",
     "empty": "empty",
@@ -1851,6 +1869,12 @@
   },
   "boss": {
     "title": "World Boss",
+    "roleHint": "World Bosses appear periodically — defeat them for rare gear and spirit stones. Rewards based on damage dealt.",
+    "crossNav": {
+      "label": "See also",
+      "combat": "Combat Hub",
+      "bossHub": "Boss List"
+    },
     "noneTitle": "No boss is around right now.",
     "noneHint": "A new boss spawns a few dozen minutes after the previous one is defeated or expired.",
     "timeLeft": "Time left",
@@ -2741,6 +2765,12 @@
   "alchemy": {
     "title": "Alchemy Hall",
     "subtitle": "Craft pills from herbs + recipes — server rolls RNG, ingredients are not refunded on failure.",
+    "roleHint": "Alchemy crafts pills from herbs — upgrade your furnace and skill level to unlock higher-tier recipes.",
+    "crossNav": {
+      "label": "See also",
+      "inventory": "Inventory",
+      "cultivation": "Cultivation"
+    },
     "loading": "Loading recipes…",
     "empty": "No recipes match the filter.",
     "furnaceLevel": "Furnace level {level}",
@@ -3187,6 +3217,12 @@
   "spiritualRoot": {
     "title": "Spiritual Root Hall",
     "subtitle": "Your spiritual root determines cultivation speed, combat element and stat bonuses. The server rolls it on onboarding; you may reroll with a Root Pill.",
+    "roleHint": "Spiritual Root determines your elemental affinity, cultivation speed, and combat bonuses. Use a Root Pill to reroll.",
+    "crossNav": {
+      "label": "See also",
+      "cultivation": "Cultivation",
+      "breakthrough": "Breakthrough"
+    },
     "loading": "Loading spiritual root…",
     "empty": "No spiritual root data — please finish onboarding first.",
     "rerollCount": "Rerolled {count} times",
@@ -3371,6 +3407,12 @@
   "achievements": {
     "title": "Achievements",
     "subtitle": "Each milestone on your path of cultivation. Complete them to claim spirit stones, immortal jade, EXP and titles.",
+    "roleHint": "Achievements are milestones on your cultivation path — complete them for rewards and titles.",
+    "crossNav": {
+      "label": "See also",
+      "missions": "Missions",
+      "leaderboard": "Leaderboard"
+    },
     "loading": "Loading achievements…",
     "empty": "No achievements match the selected filter.",
     "summary": "Completed: {completed} • Claimable: {claimable}",
@@ -3787,6 +3829,12 @@
   "breakthrough": {
     "title": "Advanced Breakthrough",
     "subtitle": "Probability-based breakthrough — server rolls RNG and decides outcome. Failure invites Light Heart Demon.",
+    "roleHint": "Breakthrough advances your realm — requires peak stage and sufficient EXP. Failure triggers Heart Demon.",
+    "crossNav": {
+      "label": "See also",
+      "cultivation": "Cultivation",
+      "tribulation": "Tribulation"
+    },
     "currentRealm": "Current realm: {realm}",
     "action": {
       "title": "Begin breakthrough",
@@ -5111,6 +5159,12 @@
   "arena": {
     "title": "Arena",
     "subtitle": "Async PvP. Server keeps snapshots and resolves by seed — deterministic outcome.",
+    "roleHint": "Arena is async PvP — challenge other players, results computed server-side. Climb the ranks for seasonal rewards.",
+    "crossNav": {
+      "label": "See also",
+      "combat": "Combat Hub",
+      "leaderboard": "Leaderboard"
+    },
     "profile": {
       "rating": "Rating",
       "tier": "Tier",
@@ -6715,6 +6769,12 @@
   "bodyCultivation": {
     "title": "Body Cultivation",
     "subtitle": "Forge the body alongside Qi cultivation: slower gains, stronger survival stats.",
+    "roleHint": "Body Cultivation trains the physical body — increases HP and survival stats alongside Qi cultivation.",
+    "crossNav": {
+      "label": "See also",
+      "cultivation": "Cultivation",
+      "breakthrough": "Breakthrough"
+    },
     "loading": "Loading body cultivation…",
     "empty": "No body cultivation state found.",
     "realmLabel": "Body realm",
@@ -6915,6 +6975,12 @@
     "boss": {
       "title": "Bosses V2 / Elite Targets",
       "subtitle": "Region · hourly · world · sect bosses",
+      "roleHint": "Full boss catalog — view type, element, realm requirements, and daily/weekly limits.",
+      "crossNav": {
+        "label": "See also",
+        "boss": "World Boss",
+        "combat": "Combat Hub"
+      },
       "loading": "Loading bosses…",
       "empty": "No bosses available.",
       "category": "Category",
@@ -7490,6 +7556,12 @@
     "subtitle": "Overview of cultivation path, resources, daily tasks, and XT feature shortcuts.",
     "character": {
       "title": "Character",
+      "roleHint": "Character is your cultivation profile — view realm, stats, equipment and progression.",
+      "crossNav": {
+        "label": "See also",
+        "cultivation": "Cultivation",
+        "equipment": "Equipment"
+      },
       "name": "Name",
       "realm": "Realm",
       "stage": "Stage",

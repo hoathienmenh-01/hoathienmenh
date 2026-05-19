@@ -117,6 +117,31 @@ onMounted(async () => {
         </RouterLink>
       </XTLuxHero>
 
+      <!-- Role hint + cross-nav -->
+      <div class="space-y-2 mb-4" data-testid="body-cultivation-role-section">
+        <p class="text-xs text-ink-300 leading-relaxed" data-testid="body-cultivation-role-hint">
+          {{ t('bodyCultivation.roleHint') }}
+        </p>
+        <nav class="flex flex-wrap gap-2 text-xs" data-testid="body-cultivation-cross-nav">
+          <span class="text-ink-400">{{ t('bodyCultivation.crossNav.label') }}:</span>
+          <router-link
+            to="/cultivation"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="body-cultivation-cross-nav-cultivation"
+          >
+            {{ t('bodyCultivation.crossNav.cultivation') }}
+          </router-link>
+          <span class="text-ink-500">·</span>
+          <router-link
+            to="/breakthrough"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="body-cultivation-cross-nav-breakthrough"
+          >
+            {{ t('bodyCultivation.crossNav.breakthrough') }}
+          </router-link>
+        </nav>
+      </div>
+
       <section
         v-if="body.loading && !body.loaded"
         class="rounded-2xl border border-ink-600/70 bg-ink-900/70 p-5 text-sm text-ink-300"

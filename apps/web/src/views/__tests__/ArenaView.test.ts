@@ -330,6 +330,12 @@ const i18n = createI18n({
           reward: 'Reward',
           noReward: 'None',
         },
+        roleHint: 'Thách đấu tu sĩ khác, leo bảng xếp hạng.',
+        crossNav: {
+          label: 'Đi nhanh',
+          combat: 'Chiến đấu',
+          leaderboard: 'Bảng xếp hạng',
+        },
       },
     },
   },
@@ -952,5 +958,27 @@ describe('ArenaView — history rating delta', () => {
     const delta = w.find('[data-testid="arena-history-delta-mlose"]');
     expect(delta.exists()).toBe(true);
     expect(delta.text()).toContain('-8');
+  });
+});
+
+describe('ArenaView — role hint + cross-nav', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    resetState();
+  });
+
+  it('render role hint', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="arena-role-section"]').exists()).toBe(true);
+    expect(w.find('[data-testid="arena-role-hint"]').text()).toBeTruthy();
+  });
+
+  it('render cross-nav với link đúng', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="arena-cross-nav"]').exists()).toBe(true);
+    expect(w.find('[data-testid="arena-cross-nav-combat"]').exists()).toBe(true);
+    expect(w.find('[data-testid="arena-cross-nav-leaderboard"]').exists()).toBe(true);
   });
 });

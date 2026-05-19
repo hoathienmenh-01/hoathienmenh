@@ -208,6 +208,31 @@ onMounted(async () => {
         </header>
       </XTLuxHero>
 
+      <!-- Role hint + cross-nav -->
+      <div class="space-y-2 mb-4" data-testid="achievement-role-section">
+        <p class="text-xs text-ink-300 leading-relaxed" data-testid="achievement-role-hint">
+          {{ t('achievements.roleHint') }}
+        </p>
+        <nav class="flex flex-wrap gap-2 text-xs" data-testid="achievement-cross-nav">
+          <span class="text-ink-400">{{ t('achievements.crossNav.label') }}:</span>
+          <router-link
+            to="/missions"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="achievement-cross-nav-missions"
+          >
+            {{ t('achievements.crossNav.missions') }}
+          </router-link>
+          <span class="text-ink-500">·</span>
+          <router-link
+            to="/leaderboard"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="achievement-cross-nav-leaderboard"
+          >
+            {{ t('achievements.crossNav.leaderboard') }}
+          </router-link>
+        </nav>
+      </div>
+
       <XTPullRefresh
         :on-refresh="refresh"
         test-id="achievement-pull-refresh"

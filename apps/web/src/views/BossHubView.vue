@@ -73,6 +73,31 @@ onMounted(() => {
         </template>
       </XTLuxHero>
 
+      <!-- Role hint + cross-nav -->
+      <div class="space-y-2 mb-4" data-testid="boss-hub-role-section">
+        <p class="text-xs text-ink-300 leading-relaxed" data-testid="boss-hub-role-hint">
+          {{ t('worldContent.boss.roleHint') }}
+        </p>
+        <nav class="flex flex-wrap gap-2 text-xs" data-testid="boss-hub-cross-nav">
+          <span class="text-ink-400">{{ t('worldContent.boss.crossNav.label') }}:</span>
+          <router-link
+            to="/boss"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="boss-hub-cross-nav-boss"
+          >
+            {{ t('worldContent.boss.crossNav.boss') }}
+          </router-link>
+          <span class="text-ink-500">·</span>
+          <router-link
+            to="/combat"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="boss-hub-cross-nav-combat"
+          >
+            {{ t('worldContent.boss.crossNav.combat') }}
+          </router-link>
+        </nav>
+      </div>
+
       <XTPullRefresh
         :on-refresh="refresh"
         test-id="boss-hub-pull-refresh"

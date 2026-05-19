@@ -152,6 +152,15 @@ Do not rebuild these systems from scratch:
 - Done criteria met: PartyHubView has role hint + cross-nav + full i18n; 8 admin views have auth hydrate guard; beta checklist reflects current test counts; MissionView responsive at 375px.
 - What was not touched: no backend changes, no schema migration, no new gameplay module, no balance changes.
 
+### PR 5: Views UX Polish Pack (Task #15) ✅ DONE
+
+- Goal: Add XTLuxHero + roleHint + crossNav to 12 views missing the standard UX pattern.
+- Scope: (1) XTLuxHero added to 3 views (AlchemyView, BreakthroughView, DungeonView); (2) roleHint + crossNav added to all 12 views; (3) i18n keys in vi+en for all 12 namespaces; (4) 2 tests per file (24 new tests total).
+- Files touched: 12 view files, 12 test files, `vi.json`, `en.json`, 3 doc files.
+- Tests run: typecheck ✅, lint ✅, build ✅, tests 245/245 files (2647/2647) ✅, Han gate 0 ✅.
+- Done criteria met: all 12 views have XTLuxHero + roleHint + crossNav; i18n parity; all tests pass.
+- What was not touched: no backend changes, no schema migration, no new gameplay module, no balance changes.
+
 ### Short term: 1-2 weeks
 
 - ~~Daily Loop First Session Polish.~~ ✅

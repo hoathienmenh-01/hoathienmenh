@@ -32,6 +32,8 @@ import { useGameStore } from '@/stores/game';
 import { useBreakthroughStore } from '@/stores/breakthrough';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
+import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import type { BreakthroughHistoryFilter } from '@/stores/breakthrough';
 
@@ -177,13 +179,47 @@ function setFilter(f: BreakthroughHistoryFilter): void {
 <template>
   <AppShell>
     <div class="space-y-4">
-      <header class="rounded border border-ink-300/40 bg-ink-700/30 p-4">
-        <h2 class="text-lg tracking-widest">{{ t('breakthrough.title') }}</h2>
-        <p class="text-xs text-ink-300 mt-1">{{ t('breakthrough.subtitle') }}</p>
-        <p class="text-xs text-ink-300 mt-2">
+      <XTLuxHero
+        eyebrow="ĐỘT PHÁ NÂNG CAO"
+        label="Đột Phá Nâng Cao"
+        :title="t('breakthrough.title')"
+        :subtitle="t('breakthrough.subtitle')"
+        tone="seal"
+        watermark-letter="B"
+        breadcrumb="Tu Vi · Đột Phá"
+        test-id="breakthrough-hero"
+        class="mb-4"
+      >
+        <XTPageEyebrow caps="ĐỘT PHÁ NÂNG CAO" label="Đột Phá Nâng Cao" class="sr-only" />
+        <p class="text-xs text-ink-300 mt-1">
           {{ t('breakthrough.currentRealm', { realm: currentRealmFull }) }}
         </p>
-      </header>
+      </XTLuxHero>
+
+      <!-- Role hint + cross-nav -->
+      <div class="space-y-2" data-testid="breakthrough-role-section">
+        <p class="text-xs text-ink-300 leading-relaxed" data-testid="breakthrough-role-hint">
+          {{ t('breakthrough.roleHint') }}
+        </p>
+        <nav class="flex flex-wrap gap-2 text-xs" data-testid="breakthrough-cross-nav">
+          <span class="text-ink-400">{{ t('breakthrough.crossNav.label') }}:</span>
+          <router-link
+            to="/cultivation"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="breakthrough-cross-nav-cultivation"
+          >
+            {{ t('breakthrough.crossNav.cultivation') }}
+          </router-link>
+          <span class="text-ink-500">·</span>
+          <router-link
+            to="/tribulation"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="breakthrough-cross-nav-tribulation"
+          >
+            {{ t('breakthrough.crossNav.tribulation') }}
+          </router-link>
+        </nav>
+      </div>
 
       <!-- Pre-attempt action card -->
       <section

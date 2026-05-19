@@ -349,3 +349,34 @@ describe('SpiritualRootView — reroll flow', () => {
     expect(btn.text()).toContain('Đang gieo');
   });
 });
+
+describe('SpiritualRootView — role hint + cross-nav', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    rootState.loaded = true;
+    rootState.rerolling = false;
+    rootState.state = {
+      grade: 'linh',
+      primaryElement: 'thuy',
+      secondaryElements: ['kim'],
+      purity: 80,
+      rerollCount: 0,
+    };
+  });
+
+  it('render role hint', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="spiritual-root-role-section"]').exists()).toBe(true);
+    expect(w.find('[data-testid="spiritual-root-role-hint"]').text()).toBeTruthy();
+  });
+
+  it('render cross-nav với link đúng', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="spiritual-root-cross-nav"]').exists()).toBe(true);
+    expect(w.find('[data-testid="spiritual-root-cross-nav-cultivation"]').exists()).toBe(true);
+    expect(w.find('[data-testid="spiritual-root-cross-nav-breakthrough"]').exists()).toBe(true);
+  });
+});

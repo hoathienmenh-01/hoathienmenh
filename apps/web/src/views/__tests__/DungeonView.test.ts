@@ -587,3 +587,32 @@ describe('DungeonView — Phase 11.7.F active talent cast + pre-select', () => {
     ).toBe(false);
   });
 });
+
+describe('DungeonView — role hint + cross-nav', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    routeQueryMock.value = {};
+    talentsState.learned = new Map();
+    talentsState.cooldowns = new Map();
+  });
+
+  it('render role hint', async () => {
+    listDungeonsMock.mockResolvedValue([]);
+    getActiveEncounterMock.mockResolvedValue(null);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="dungeon-role-section"]').exists()).toBe(true);
+    expect(w.find('[data-testid="dungeon-role-hint"]').text()).toBeTruthy();
+  });
+
+  it('render cross-nav với link đúng', async () => {
+    listDungeonsMock.mockResolvedValue([]);
+    getActiveEncounterMock.mockResolvedValue(null);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="dungeon-cross-nav"]').exists()).toBe(true);
+    expect(w.find('[data-testid="dungeon-cross-nav-dungeon-run"]').exists()).toBe(true);
+    expect(w.find('[data-testid="dungeon-cross-nav-combat"]').exists()).toBe(true);
+  });
+});

@@ -262,6 +262,12 @@ const i18n = createI18n({
             UNKNOWN: 'Lỗi',
           },
         },
+        roleHint: 'Theo dõi và nhận thưởng thành tựu.',
+        crossNav: {
+          label: 'Đi nhanh',
+          missions: 'Nhiệm vụ',
+          leaderboard: 'Bảng xếp hạng',
+        },
       },
     },
   },
@@ -596,5 +602,28 @@ describe('AchievementView — Phase 11.10.F stats summary', () => {
     // Filter is descendant-and-following, so result includes
     // DOCUMENT_POSITION_FOLLOWING (4). Use simple ordering check.
     expect(pos === Node.DOCUMENT_POSITION_FOLLOWING).toBe(true);
+  });
+});
+
+describe('AchievementView — role hint + cross-nav', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    resetState();
+  });
+
+  it('render role hint', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="achievement-role-section"]').exists()).toBe(true);
+    expect(w.find('[data-testid="achievement-role-hint"]').text()).toBeTruthy();
+  });
+
+  it('render cross-nav với link đúng', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="achievement-cross-nav"]').exists()).toBe(true);
+    expect(w.find('[data-testid="achievement-cross-nav-missions"]').exists()).toBe(true);
+    expect(w.find('[data-testid="achievement-cross-nav-leaderboard"]').exists()).toBe(true);
   });
 });

@@ -114,3 +114,22 @@ describe('BossHubView', () => {
     expect(w.find('[data-testid="boss-hub-item-tinh_anh_yeu_vuong"]').exists()).toBe(true);
   });
 });
+
+describe('BossHubView — role hint + cross-nav', () => {
+  it('render role hint', async () => {
+    listBossesV2Mock.mockResolvedValueOnce(STUB);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="boss-hub-role-section"]').exists()).toBe(true);
+    expect(w.find('[data-testid="boss-hub-role-hint"]').text()).toBeTruthy();
+  });
+
+  it('render cross-nav với link đúng', async () => {
+    listBossesV2Mock.mockResolvedValueOnce(STUB);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="boss-hub-cross-nav"]').exists()).toBe(true);
+    expect(w.find('[data-testid="boss-hub-cross-nav-boss"]').exists()).toBe(true);
+    expect(w.find('[data-testid="boss-hub-cross-nav-combat"]').exists()).toBe(true);
+  });
+});

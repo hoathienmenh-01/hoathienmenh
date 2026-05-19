@@ -182,6 +182,31 @@ onMounted(async () => {
         </div>
       </XTLuxHero>
 
+      <!-- Role hint + cross-nav -->
+      <div class="space-y-2 mb-4" data-testid="spiritual-root-role-section">
+        <p class="text-xs text-ink-300 leading-relaxed" data-testid="spiritual-root-role-hint">
+          {{ t('spiritualRoot.roleHint') }}
+        </p>
+        <nav class="flex flex-wrap gap-2 text-xs" data-testid="spiritual-root-cross-nav">
+          <span class="text-ink-400">{{ t('spiritualRoot.crossNav.label') }}:</span>
+          <router-link
+            to="/cultivation"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="spiritual-root-cross-nav-cultivation"
+          >
+            {{ t('spiritualRoot.crossNav.cultivation') }}
+          </router-link>
+          <span class="text-ink-500">·</span>
+          <router-link
+            to="/breakthrough"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="spiritual-root-cross-nav-breakthrough"
+          >
+            {{ t('spiritualRoot.crossNav.breakthrough') }}
+          </router-link>
+        </nav>
+      </div>
+
       <section
         v-if="!root.loaded"
         class="bg-ink-700/30 border border-ink-300/20 rounded p-6 text-center text-ink-300"

@@ -997,6 +997,12 @@
   },
   "dungeon": {
     "title": "Luyện Khí Đường",
+    "roleHint": "Bí Cảnh là dungeon solo — chọn bí cảnh phù hợp cảnh giới, tiêu hao thể lực, đánh quái để nhận thưởng.",
+    "crossNav": {
+      "label": "Xem thêm",
+      "dungeonRun": "Bí Cảnh Lưu Phát",
+      "combat": "Chiến Trường"
+    },
     "staminaEntry": "{stam} thể lực",
     "monsterCount": "{n} ải",
     "inFight": "Đang trong ải",
@@ -1034,6 +1040,12 @@
   "dungeonRun": {
     "title": "Bí Cảnh Hành",
     "subtitle": "Đoàn ải nhiều quái — vào bí cảnh, vượt từng ải, lĩnh thưởng kết thúc.",
+    "roleHint": "Bí Cảnh Lưu Phát là dungeon tự động — vượt nhiều ải liên tục để nhận thưởng. Có giới hạn lượt/ngày.",
+    "crossNav": {
+      "label": "Xem thêm",
+      "dungeon": "Bí Cảnh",
+      "combat": "Chiến Trường"
+    },
     "totalCount": "Bí cảnh: {n}",
     "startableCount": "Có thể vào: {n}",
     "activeBadge": "Đang vận hành",
@@ -1329,6 +1341,12 @@
   },
   "inventory": {
     "title": "Linh Bảo Các",
+    "roleHint": "Túi Đồ chứa trang bị, vật phẩm và nguyên liệu. Trang bị gear tại đây hoặc nâng cấp trang bị.",
+    "crossNav": {
+      "label": "Xem thêm",
+      "equipment": "Trang Bị",
+      "alchemy": "Luyện Đan"
+    },
     "gearTitle": "Bộ Trang Bị",
     "goEquipment": "Xem Trang Bị Đầy Đủ",
     "empty": "trống",
@@ -1851,6 +1869,12 @@
   },
   "boss": {
     "title": "Boss Đại Hội",
+    "roleHint": "Boss Thế Giới xuất hiện định kỳ — đánh bại để nhận trang bị và linh thạch hiếm. Thưởng theo sát thương gây ra.",
+    "crossNav": {
+      "label": "Xem thêm",
+      "combat": "Chiến Trường",
+      "bossHub": "Danh Sách Boss"
+    },
     "noneTitle": "Hiện không có Boss nào trên thế gian.",
     "noneHint": "Boss tự sinh sau khoảng vài chục phút sau khi boss trước bị hạ hoặc rút lui.",
     "timeLeft": "Còn lại",
@@ -2741,6 +2765,12 @@
   "alchemy": {
     "title": "Luyện Đan Đường",
     "subtitle": "Luyện đan từ linh thảo + đan phương — server roll RNG, không hoàn lại nguyên liệu khi thất bại.",
+    "roleHint": "Luyện Đan là nơi chế tạo đan dược từ linh thảo — nâng cấp lò luyện và tay nghề để mở khoá đan phương cao cấp.",
+    "crossNav": {
+      "label": "Xem thêm",
+      "inventory": "Túi Đồ",
+      "cultivation": "Tu Luyện"
+    },
     "loading": "Đang tải đan phương…",
     "empty": "Không có đan phương nào khớp bộ lọc.",
     "furnaceLevel": "Lò luyện cấp {level}",
@@ -3187,6 +3217,12 @@
   "spiritualRoot": {
     "title": "Linh Căn Đường",
     "subtitle": "Linh căn quyết định tốc độ tu luyện, hệ chiến đấu và chỉ số bonus. Server tự gieo lúc khai đạo; có thể tái khai bằng Linh Căn Đan.",
+    "roleHint": "Linh Căn quyết định hệ ngũ hành, tốc độ tu luyện và chỉ số chiến đấu. Dùng Linh Căn Đan để tái khai.",
+    "crossNav": {
+      "label": "Xem thêm",
+      "cultivation": "Tu Luyện",
+      "breakthrough": "Đột Phá"
+    },
     "loading": "Đang tải linh căn…",
     "empty": "Chưa có dữ liệu linh căn — hãy hoàn tất khai đạo trước.",
     "rerollCount": "Đã tái khai: {count} lần",
@@ -3371,6 +3407,12 @@
   "achievements": {
     "title": "Thành Tựu Lục",
     "subtitle": "Mỗi cột mốc trên đường đại đạo. Hoàn thành để nhận linh thạch, tiên ngọc, kinh nghiệm và danh hiệu.",
+    "roleHint": "Thành Tựu là cột mốc trên con đường tu tiên — hoàn thành để nhận thưởng và danh hiệu.",
+    "crossNav": {
+      "label": "Xem thêm",
+      "missions": "Sứ Mệnh",
+      "leaderboard": "Bảng Xếp Hạng"
+    },
     "loading": "Đang tải thành tựu…",
     "empty": "Không có thành tựu nào khớp bộ lọc.",
     "summary": "Hoàn thành: {completed} • Có thể nhận: {claimable}",
@@ -3787,6 +3829,12 @@
   "breakthrough": {
     "title": "Đột Phá Nâng Cao",
     "subtitle": "Đột phá theo cơ chế tỷ lệ — server roll RNG và quyết định thành/bại. Thất bại sẽ chiêu Tâm Ma Khinh.",
+    "roleHint": "Đột Phá là bước nhảy cảnh giới — cần đạt đỉnh cảnh giới và đủ EXP. Thất bại sẽ gặp Tâm Ma.",
+    "crossNav": {
+      "label": "Xem thêm",
+      "cultivation": "Tu Luyện",
+      "tribulation": "Thiên Kiếp"
+    },
     "currentRealm": "Cảnh giới hiện tại: {realm}",
     "action": {
       "title": "Khởi sự đột phá",
@@ -5111,6 +5159,12 @@
   "arena": {
     "title": "Đấu Đài",
     "subtitle": "PvP bất đồng bộ. Server giữ snapshot và tự xử trận theo seed — kết quả deterministic.",
+    "roleHint": "Đấu Đài là PvP bất đồng bộ — thách đấu người chơi khác, kết quả do server tính. Leo hạng để nhận thưởng mùa.",
+    "crossNav": {
+      "label": "Xem thêm",
+      "combat": "Chiến Trường",
+      "leaderboard": "Bảng Xếp Hạng"
+    },
     "profile": {
       "rating": "Điểm xếp hạng",
       "tier": "Bậc",
@@ -6715,6 +6769,12 @@
   "bodyCultivation": {
     "title": "Luyện Thể",
     "subtitle": "Rèn thân thể song song Luyện Khí: tiến chậm hơn nhưng tăng sinh tồn mạnh.",
+    "roleHint": "Luyện Thể là con đường tu luyện thân thể — tăng sinh tồn và HP song song với Luyện Khí.",
+    "crossNav": {
+      "label": "Xem thêm",
+      "cultivation": "Tu Luyện",
+      "breakthrough": "Đột Phá"
+    },
     "loading": "Đang tải trạng thái luyện thể…",
     "empty": "Chưa có trạng thái luyện thể.",
     "realmLabel": "Cảnh giới thể tu",
@@ -6915,6 +6975,12 @@
     "boss": {
       "title": "Boss V2 / Mục Tiêu Tinh Anh",
       "subtitle": "Boss khu vực · boss giờ · boss thế giới · boss tông môn",
+      "roleHint": "Danh sách tất cả boss — xem loại, hệ, yêu cầu cảnh giới và giới hạn lượt.",
+      "crossNav": {
+        "label": "Xem thêm",
+        "boss": "Boss Thế Giới",
+        "combat": "Chiến Trường"
+      },
       "loading": "Đang tải boss…",
       "empty": "Chưa có boss nào.",
       "category": "Loại",
@@ -7490,6 +7556,12 @@
     "subtitle": "Tổng quan tiên lộ, linh lực, tài nguyên, nhật vụ và lối tắt chức năng của XT.",
     "character": {
       "title": "Nhân vật",
+      "roleHint": "Nhân vật là hồ sơ tu tiên — xem cảnh giới, chỉ số, trang bị và tiến trình.",
+      "crossNav": {
+        "label": "Xem thêm",
+        "cultivation": "Tu Luyện",
+        "equipment": "Trang Bị"
+      },
       "name": "Tên",
       "realm": "Cảnh giới",
       "stage": "Tầng",

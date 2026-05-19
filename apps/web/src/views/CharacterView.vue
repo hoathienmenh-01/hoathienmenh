@@ -222,6 +222,31 @@ onMounted(async () => {
         </template>
       </XTLuxHero>
 
+      <!-- Role hint + cross-nav -->
+      <div class="space-y-2 mb-4" data-testid="character-view-role-section">
+        <p class="text-xs text-ink-300 leading-relaxed" data-testid="character-view-role-hint">
+          {{ t('dashboard.character.roleHint') }}
+        </p>
+        <nav class="flex flex-wrap gap-2 text-xs" data-testid="character-view-cross-nav">
+          <span class="text-ink-400">{{ t('dashboard.character.crossNav.label') }}:</span>
+          <router-link
+            to="/cultivation"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="character-view-cross-nav-cultivation"
+          >
+            {{ t('dashboard.character.crossNav.cultivation') }}
+          </router-link>
+          <span class="text-ink-500">·</span>
+          <router-link
+            to="/equipment"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="character-view-cross-nav-equipment"
+          >
+            {{ t('dashboard.character.crossNav.equipment') }}
+          </router-link>
+        </nav>
+      </div>
+
       <!-- Empty state — no character yet. Never fall back to mock VIP. -->
       <section
         v-if="!character"
