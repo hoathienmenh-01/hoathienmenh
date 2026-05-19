@@ -21,6 +21,14 @@
  *   - Khu sâu (3 farm map / khu): `son_coc`, `hac_lam`, `kim_son_mach`.
  *   - Khu nông (1 farm map đại diện): 6 khu còn lại — đủ để smoke test
  *     World Content V2 chạy thật, mở rộng phase sau.
+ *
+ * Phase content-depth expansion:
+ *   - Khu 4-6 (`yeu_thu_dong`, `moc_huyen_lam`, `thuy_long_uyen`): 3 farm
+ *     map / khu, enabled, có monster pool đầy đủ.
+ *   - Khu 7-8 (`hoa_diem_son`, `hoang_tho_huyet`): 3 farm map / khu, 1
+ *     placeholder disabled + 2 enabled với monster pool.
+ *   - Khu 9 (`cuu_la_dien`): 3 farm map / khu, tất cả disabled (chưa có
+ *     monster catalog cho Hoá Thần tier).
  */
 import type { RegionKey } from './map-regions';
 import type { MonsterFamily } from './monster-taxonomy';
@@ -555,8 +563,7 @@ export const FARM_MAPS: readonly FarmMapDef[] = [
   },
 
   // ═══════════════════════════════════════════════════════════════════════
-  // 6 khu đại diện (1 farm map / khu) — đủ để smoke test World Content V2.
-  // Mở rộng phase sau lên 3 farm map / khu theo target spec.
+  // Khu 4 — Yêu Thú Động (Kim Đan, sourceTier 3, 3 farm map)
   // ═══════════════════════════════════════════════════════════════════════
   {
     key: 'yeu_thu_dong_quan_dao',
@@ -594,6 +601,80 @@ export const FARM_MAPS: readonly FarmMapDef[] = [
     enabled: true,
   },
   {
+    key: 'yeu_thu_dong_huyen_quy_dong',
+    nameVi: 'Yêu Thú Động — Huyền Quy Sào',
+    nameEn: 'Beast Cavern — Mystic Tortoise Den',
+    loreVi:
+      'Sâu trong động, Huyền Quy ngàn năm canh giữ ao linh tuyền. Kim Giáp Thú tuần tra quanh mép nước, tu sĩ Kim Đan trung kỳ mới dám đặt chân.',
+    loreEn:
+      'Deep inside the cavern, millennium-old Mystic Tortoises guard a spirit-spring pool; Gold-Armored Beasts patrol the waterline — only mid-stage Golden Core cultivators dare enter.',
+    regionKey: 'yeu_thu_dong',
+    sourceTier: 3,
+    unlockRealmOrder: 3,
+    recommendedRealmOrder: 3,
+    autoFarmAllowed: true,
+    sweepAllowed: true,
+    freeSessionMinutes: 60,
+    monthlyCardSessionMinutes: 480,
+    premiumSessionMinutes: 720,
+    maxSessionMinutes: 1440,
+    staminaCostPerMinute: 3,
+    dailyRewardCapKey: 'farm_session:yeu_thu_dong_huyen_quy_dong',
+    monsterPool: [
+      entry('huyen_quy', 'CO_THU', { weight: 12, minRealmOrder: 3 }),
+      entry('kim_giap_thu', 'YEU_THU', { weight: 6, minRealmOrder: 3 }),
+    ],
+    eliteEncounterPool: [
+      entry('yeu_long_tieu', 'YEU_THU', { weight: 3, canAutoBattle: false, manualOnly: true, dangerLevel: 'DANGEROUS', minRealmOrder: 3 }),
+    ],
+    miniBossEncounterPool: [],
+    higherTierMonsterPool: [],
+    opportunityPool: [],
+    dropProfileKey: 'farm_body_tier_3',
+    sourceHintVi: 'Mai rùa cổ, yêu đan huyền, đoán cốt thạch thượng.',
+    sourceHintEn: 'Ancient tortoise shells, mystic yao pills, superior bone-forging stones.',
+    enabled: true,
+  },
+  {
+    key: 'yeu_thu_dong_san_huyet',
+    nameVi: 'Yêu Thú Động — Sàn Huyết Đấu',
+    nameEn: 'Beast Cavern — Blood Arena Floor',
+    loreVi:
+      'Đấu trường cổ nơi yêu thú thượng cổ đại chiến — máu yêu khí ngưng tụ thành tinh thể. Yêu Long Tiểu canh giữ lối vào tầng sâu nhất.',
+    loreEn:
+      'An ancient arena where primordial beasts clash — congealed yao blood crystallizes on the floor; the Young Yao Dragon guards the entrance to the deepest level.',
+    regionKey: 'yeu_thu_dong',
+    sourceTier: 3,
+    unlockRealmOrder: 3,
+    recommendedRealmOrder: 3,
+    autoFarmAllowed: true,
+    sweepAllowed: true,
+    freeSessionMinutes: 60,
+    monthlyCardSessionMinutes: 480,
+    premiumSessionMinutes: 720,
+    maxSessionMinutes: 1440,
+    staminaCostPerMinute: 4,
+    dailyRewardCapKey: 'farm_session:yeu_thu_dong_san_huyet',
+    monsterPool: [
+      entry('kim_giap_thu', 'YEU_THU', { weight: 8, minRealmOrder: 3 }),
+      entry('huyen_quy', 'CO_THU', { weight: 8, minRealmOrder: 3 }),
+    ],
+    eliteEncounterPool: [
+      entry('yeu_long_tieu', 'YEU_THU', { weight: 4, canAutoBattle: false, manualOnly: true, dangerLevel: 'DANGEROUS', minRealmOrder: 3 }),
+    ],
+    miniBossEncounterPool: [],
+    higherTierMonsterPool: [],
+    opportunityPool: [],
+    dropProfileKey: 'farm_body_tier_3',
+    sourceHintVi: 'Huyết tinh yêu thú, yêu đan, mảnh võ kỹ thượng cổ.',
+    sourceHintEn: 'Beast blood crystals, yao pills, ancient martial-arts shards.',
+    enabled: true,
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Khu 5 — Mộc Huyền Lâm (Trúc Cơ, sourceTier 2, 3 farm map)
+  // ═══════════════════════════════════════════════════════════════════════
+  {
     key: 'moc_huyen_lam_rim',
     nameVi: 'Mộc Huyền Lâm — Bìa Cổ Lâm',
     nameEn: 'Wood-Mystery Forest — Forest Edge',
@@ -628,6 +709,81 @@ export const FARM_MAPS: readonly FarmMapDef[] = [
     sourceHintEn: 'Wood-element herbs, wood-method fragments, millennium-tree leaves.',
     enabled: true,
   },
+  {
+    key: 'moc_huyen_lam_co_thu_tim',
+    nameVi: 'Mộc Huyền Lâm — Tim Cổ Thụ',
+    nameEn: 'Wood-Mystery Forest — Ancient Tree Heart',
+    loreVi:
+      'Lõi cổ thụ vạn năm — Cổ Thụ Chi Linh ngưng tụ mộc tinh hoa ngàn năm. Tịch Linh Quỷ ẩn trong rễ cây, cẩn thận khi chạm vào vỏ cây cổ.',
+    loreEn:
+      'Heart of a ten-thousand-year tree — Ancient Tree Spirits condense millennium wood essence; Tich-Ling Ghosts hide in the roots — beware touching the ancient bark.',
+    regionKey: 'moc_huyen_lam',
+    sourceTier: 2,
+    unlockRealmOrder: 2,
+    recommendedRealmOrder: 2,
+    autoFarmAllowed: true,
+    sweepAllowed: true,
+    freeSessionMinutes: 60,
+    monthlyCardSessionMinutes: 480,
+    premiumSessionMinutes: 720,
+    maxSessionMinutes: 1440,
+    staminaCostPerMinute: 2,
+    dailyRewardCapKey: 'farm_session:moc_huyen_lam_co_thu_tim',
+    monsterPool: [
+      entry('co_thu_chi_linh', 'LINH_THE', { weight: 12, minRealmOrder: 2 }),
+      entry('tich_linh_quy', 'QUY_VAT', { weight: 8, minRealmOrder: 2 }),
+    ],
+    eliteEncounterPool: [
+      entry('thien_la_co_yeu', 'YEU_THU', { weight: 3, canAutoBattle: false, manualOnly: true, dangerLevel: 'CAUTION', minRealmOrder: 2 }),
+    ],
+    miniBossEncounterPool: [],
+    higherTierMonsterPool: [],
+    opportunityPool: [],
+    dropProfileKey: 'farm_alchemy_tier_2',
+    sourceHintVi: 'Mộc tinh hoa, hồn tinh cổ thụ, lá bồ đề cổ.',
+    sourceHintEn: 'Wood essence, ancient-tree soul crystals, primeval bodhi leaves.',
+    enabled: true,
+  },
+  {
+    key: 'moc_huyen_lam_am_bi',
+    nameVi: 'Mộc Huyền Lâm — Âm Bí Cốc',
+    nameEn: 'Wood-Mystery Forest — Yin-Secret Valley',
+    loreVi:
+      'Thung lũng âm bí nơi sương mộc đen che phủ bầu trời — Ký Ức Méo hiện hình từ ký ức cổ, Thiên La Cổ Yêu canh giữ lối vào bí cảnh.',
+    loreEn:
+      'A yin-secret valley shrouded in black wood-mist — Twisted Memories manifest from ancient recollections while Heavenly-Net Old Yao guard the secret-realm entrance.',
+    regionKey: 'moc_huyen_lam',
+    sourceTier: 2,
+    unlockRealmOrder: 2,
+    recommendedRealmOrder: 2,
+    autoFarmAllowed: true,
+    sweepAllowed: true,
+    freeSessionMinutes: 60,
+    monthlyCardSessionMinutes: 480,
+    premiumSessionMinutes: 720,
+    maxSessionMinutes: 1440,
+    staminaCostPerMinute: 2,
+    dailyRewardCapKey: 'farm_session:moc_huyen_lam_am_bi',
+    monsterPool: [
+      entry('thanh_mang_xa', 'YEU_THU', { weight: 8, minRealmOrder: 2 }),
+      entry('tang_diep_yeu_phu', 'YEU_THU', { weight: 6, minRealmOrder: 2 }),
+      entry('ky_uc_meo', 'LINH_THE', { weight: 4, minRealmOrder: 2 }),
+    ],
+    eliteEncounterPool: [
+      entry('thien_la_co_yeu', 'YEU_THU', { weight: 3, canAutoBattle: false, manualOnly: true, dangerLevel: 'DANGEROUS', minRealmOrder: 2 }),
+    ],
+    miniBossEncounterPool: [],
+    higherTierMonsterPool: [],
+    opportunityPool: [],
+    dropProfileKey: 'farm_alchemy_tier_2',
+    sourceHintVi: 'Mảnh ký ức cổ, linh thảo âm hệ, mộc tinh hoa đậm đặc.',
+    sourceHintEn: 'Ancient memory shards, yin spirit herbs, concentrated wood essence.',
+    enabled: true,
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Khu 6 — Thuỷ Long Uyên (Kim Đan, sourceTier 3, 3 farm map)
+  // ═══════════════════════════════════════════════════════════════════════
   {
     key: 'thuy_long_uyen_hong_thuy',
     nameVi: 'Thuỷ Long Uyên — Vùng Hồng Thuỷ',
@@ -664,6 +820,82 @@ export const FARM_MAPS: readonly FarmMapDef[] = [
     enabled: true,
   },
   {
+    key: 'thuy_long_uyen_bang_ha',
+    nameVi: 'Thuỷ Long Uyên — Băng Hà Đáy Hồ',
+    nameEn: 'Water-Dragon Abyss — Lake-Bottom Glacier',
+    loreVi:
+      'Đáy hồ đóng băng vạn năm — Hàn Tinh Quỷ Phách ngưng tụ hàn khí, Thuỷ Lân Yêu bơi trong dòng nước đóng băng nửa chừng.',
+    loreEn:
+      'A lake bottom frozen for ten thousand years — Cold-Soul Ghost Phantasms crystallize chill energy while Water-Orchid Yao swim through half-frozen currents.',
+    regionKey: 'thuy_long_uyen',
+    sourceTier: 3,
+    unlockRealmOrder: 3,
+    recommendedRealmOrder: 3,
+    autoFarmAllowed: true,
+    sweepAllowed: true,
+    freeSessionMinutes: 60,
+    monthlyCardSessionMinutes: 480,
+    premiumSessionMinutes: 720,
+    maxSessionMinutes: 1440,
+    staminaCostPerMinute: 3,
+    dailyRewardCapKey: 'farm_session:thuy_long_uyen_bang_ha',
+    monsterPool: [
+      entry('han_tinh_quy_phach', 'QUY_VAT', { weight: 12, minRealmOrder: 3 }),
+      entry('thuy_lan_yeu', 'YEU_THU', { weight: 6, minRealmOrder: 3 }),
+    ],
+    eliteEncounterPool: [
+      entry('huyen_thuy_giao_long', 'CO_THU', { weight: 3, canAutoBattle: false, manualOnly: true, dangerLevel: 'DANGEROUS', minRealmOrder: 3 }),
+    ],
+    miniBossEncounterPool: [],
+    higherTierMonsterPool: [],
+    opportunityPool: [],
+    dropProfileKey: 'farm_alchemy_tier_3',
+    sourceHintVi: 'Băng tinh hàn, hồn tinh quỷ, thuỷ nguyên tinh.',
+    sourceHintEn: 'Cold ice crystals, ghost soul fragments, water-essence marrow.',
+    enabled: true,
+  },
+  {
+    key: 'thuy_long_uyen_long_cung',
+    nameVi: 'Thuỷ Long Uyên — Long Cung Cổ',
+    nameEn: 'Water-Dragon Abyss — Ancient Dragon Palace',
+    loreVi:
+      'Cung điện ngầm dưới đáy vực — Huyền Thuỷ Giao Long canh giữ ngai rồng cổ. Giao Long cấp cao ẩn trong bóng tối, chờ kẻ xâm nhập.',
+    loreEn:
+      'A submerged palace at the abyss floor — Mystic Water Flood Dragons guard an ancient dragon throne; elder dragons lurk in the shadows, awaiting intruders.',
+    regionKey: 'thuy_long_uyen',
+    sourceTier: 3,
+    unlockRealmOrder: 3,
+    recommendedRealmOrder: 3,
+    autoFarmAllowed: true,
+    sweepAllowed: true,
+    freeSessionMinutes: 60,
+    monthlyCardSessionMinutes: 480,
+    premiumSessionMinutes: 720,
+    maxSessionMinutes: 1440,
+    staminaCostPerMinute: 4,
+    dailyRewardCapKey: 'farm_session:thuy_long_uyen_long_cung',
+    monsterPool: [
+      entry('thuy_lan_yeu', 'YEU_THU', { weight: 8, minRealmOrder: 3 }),
+      entry('han_tinh_quy_phach', 'QUY_VAT', { weight: 8, minRealmOrder: 3 }),
+    ],
+    eliteEncounterPool: [
+      entry('huyen_thuy_giao_long', 'CO_THU', { weight: 4, canAutoBattle: false, manualOnly: true, dangerLevel: 'DANGEROUS', minRealmOrder: 3 }),
+    ],
+    miniBossEncounterPool: [],
+    higherTierMonsterPool: [
+      entry('thuy_thanh_long_vuong', 'CO_THU', { weight: 1, canAutoBattle: false, manualOnly: true, dangerLevel: 'EXTREME', minRealmOrder: 3 }),
+    ],
+    opportunityPool: [],
+    dropProfileKey: 'farm_alchemy_tier_3',
+    sourceHintVi: 'Vẩy giao long cổ, long châu, nguyên liệu pháp bảo thuỷ hệ.',
+    sourceHintEn: 'Ancient flood-dragon scales, dragon pearls, water-artifact materials.',
+    enabled: true,
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Khu 7 — Hoả Diệm Sơn (Nguyên Anh, sourceTier 4, 3 farm map)
+  // ═══════════════════════════════════════════════════════════════════════
+  {
     key: 'hoa_diem_son_dia_nguc',
     nameVi: 'Hoả Diệm Sơn — Cửa Địa Ngục',
     nameEn: 'Flame-Burning Mountain — Underworld Gate',
@@ -695,6 +927,82 @@ export const FARM_MAPS: readonly FarmMapDef[] = [
     enabled: false,
   },
   {
+    key: 'hoa_diem_son_duong_nham',
+    nameVi: 'Hoả Diệm Sơn — Dòng Nham Thạch',
+    nameEn: 'Flame-Burning Mountain — Lava River',
+    loreVi:
+      'Dòng nham chảy xiết giữa hai vách núi lửa — Hoả Yến Thử chạy trên mặt nham nóng, Xích Diệm Yêu Xà ẩn trong khe đá nóng bỏng.',
+    loreEn:
+      'A raging lava river between two volcanic walls — Flame Rats scurry across the molten surface while Red-Flame Yao Serpents hide in scorching crevices.',
+    regionKey: 'hoa_diem_son',
+    sourceTier: 4,
+    unlockRealmOrder: 4,
+    recommendedRealmOrder: 4,
+    autoFarmAllowed: true,
+    sweepAllowed: true,
+    freeSessionMinutes: 60,
+    monthlyCardSessionMinutes: 480,
+    premiumSessionMinutes: 720,
+    maxSessionMinutes: 1440,
+    staminaCostPerMinute: 4,
+    dailyRewardCapKey: 'farm_session:hoa_diem_son_duong_nham',
+    monsterPool: [
+      entry('hoa_yen_thu', 'YEU_THU', { weight: 12, minRealmOrder: 4 }),
+      entry('xich_diem_yeu_xa', 'YEU_THU', { weight: 8, minRealmOrder: 4 }),
+    ],
+    eliteEncounterPool: [
+      entry('hoa_long_chi_linh', 'LINH_THE', { weight: 3, canAutoBattle: false, manualOnly: true, dangerLevel: 'DANGEROUS', minRealmOrder: 4 }),
+    ],
+    miniBossEncounterPool: [],
+    higherTierMonsterPool: [],
+    opportunityPool: [],
+    dropProfileKey: 'farm_alchemy_tier_4',
+    sourceHintVi: 'Hoả tinh, nham tinh, đan sa hoả hệ thượng hạng.',
+    sourceHintEn: 'Flame essence, lava crystals, premium fire alchemical sand.',
+    enabled: true,
+  },
+  {
+    key: 'hoa_diem_son_chu_tuoc_dinh',
+    nameVi: 'Hoả Diệm Sơn — Đỉnh Chu Tước',
+    nameEn: 'Flame-Burning Mountain — Vermillion-Sparrow Peak',
+    loreVi:
+      'Đỉnh núi lửa cao nhất — Chu Tước Huyết Điêu bay lượn trên biển lửa, Hoả Long Chi Linh canh giữ phượng hoàng tổ cổ.',
+    loreEn:
+      'The highest volcanic peak — Vermillion Sparrow Blood Eagles soar above a sea of fire while Flame Dragon Spirits guard an ancient phoenix nest.',
+    regionKey: 'hoa_diem_son',
+    sourceTier: 4,
+    unlockRealmOrder: 4,
+    recommendedRealmOrder: 4,
+    autoFarmAllowed: true,
+    sweepAllowed: true,
+    freeSessionMinutes: 30,
+    monthlyCardSessionMinutes: 240,
+    premiumSessionMinutes: 480,
+    maxSessionMinutes: 720,
+    staminaCostPerMinute: 5,
+    dailyRewardCapKey: 'farm_session:hoa_diem_son_chu_tuoc_dinh',
+    monsterPool: [
+      entry('xich_diem_yeu_xa', 'YEU_THU', { weight: 10, minRealmOrder: 4 }),
+      entry('hoa_yen_thu', 'YEU_THU', { weight: 6, minRealmOrder: 4 }),
+    ],
+    eliteEncounterPool: [
+      entry('hoa_long_chi_linh', 'LINH_THE', { weight: 4, canAutoBattle: false, manualOnly: true, dangerLevel: 'DANGEROUS', minRealmOrder: 4 }),
+    ],
+    miniBossEncounterPool: [
+      entry('chu_tuoc_huyet_dieu', 'YEU_THU', { weight: 1, canAutoBattle: false, manualOnly: true, dangerLevel: 'EXTREME', minRealmOrder: 4 }),
+    ],
+    higherTierMonsterPool: [],
+    opportunityPool: [],
+    dropProfileKey: 'farm_alchemy_tier_4',
+    sourceHintVi: 'Phượng huyết tinh, hoả tinh nguyên thuỷ, mảnh công pháp hoả hệ thượng.',
+    sourceHintEn: 'Phoenix blood essence, primordial flame crystals, premium fire-method fragments.',
+    enabled: true,
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Khu 8 — Hoàng Thổ Huyệt (Nguyên Anh, sourceTier 4, 3 farm map)
+  // ═══════════════════════════════════════════════════════════════════════
+  {
     key: 'hoang_tho_huyet_van_thach',
     nameVi: 'Hoàng Thổ Huyệt — Vạn Thạch Trận',
     nameEn: 'Yellow-Earth Hollow — Stone-Array Field',
@@ -725,6 +1033,83 @@ export const FARM_MAPS: readonly FarmMapDef[] = [
     enabled: false,
   },
   {
+    key: 'hoang_tho_huyet_thach_linh',
+    nameVi: 'Hoàng Thổ Huyệt — Thạch Linh Trận',
+    nameEn: 'Yellow-Earth Hollow — Stone-Spirit Array',
+    loreVi:
+      'Trận thạch ngàn năm — Thạch Quang Yêu Thú gác cổng trận, Chấp Niệm Ảnh lơ lửng giữa các trụ đá phong ấn.',
+    loreEn:
+      'A thousand-year stone array — Stone-Light Yao Beasts guard the array gate while Attachment Specters drift between sealing stone pillars.',
+    regionKey: 'hoang_tho_huyet',
+    sourceTier: 4,
+    unlockRealmOrder: 4,
+    recommendedRealmOrder: 4,
+    autoFarmAllowed: true,
+    sweepAllowed: true,
+    freeSessionMinutes: 60,
+    monthlyCardSessionMinutes: 480,
+    premiumSessionMinutes: 720,
+    maxSessionMinutes: 1440,
+    staminaCostPerMinute: 4,
+    dailyRewardCapKey: 'farm_session:hoang_tho_huyet_thach_linh',
+    monsterPool: [
+      entry('thach_quang_yeu_thu', 'CO_THU', { weight: 10, minRealmOrder: 4 }),
+      entry('chap_niem_anh', 'QUY_VAT', { weight: 6, minRealmOrder: 4 }),
+    ],
+    eliteEncounterPool: [
+      entry('hoang_tho_cu_yeu', 'CO_THU', { weight: 3, canAutoBattle: false, manualOnly: true, dangerLevel: 'DANGEROUS', minRealmOrder: 4 }),
+    ],
+    miniBossEncounterPool: [],
+    higherTierMonsterPool: [],
+    opportunityPool: [],
+    dropProfileKey: 'farm_body_tier_4',
+    sourceHintVi: 'Thạch linh tinh, đất cổ ngàn năm, mảnh trận pháp.',
+    sourceHintEn: 'Stone-spirit essence, thousand-year earth, formation-method shards.',
+    enabled: true,
+  },
+  {
+    key: 'hoang_tho_huyet_long_mach',
+    nameVi: 'Hoàng Thổ Huyệt — Long Mạch Địa Đạo',
+    nameEn: 'Yellow-Earth Hollow — Dragon-Vein Tunnels',
+    loreVi:
+      'Địa đạo xuyên qua long mạch — Tâm Ma Nguyên Anh ẩn trong bóng tối đất, Thổ Địa Lão Tử canh giữ kho tàng cuối đường hầm.',
+    loreEn:
+      'Tunnels running through a dragon vein — Nascent-Soul Inner Demons lurk in the earth shadows while the Earth-Lord Elder guards the treasure at tunnel\'s end.',
+    regionKey: 'hoang_tho_huyet',
+    sourceTier: 4,
+    unlockRealmOrder: 4,
+    recommendedRealmOrder: 4,
+    autoFarmAllowed: true,
+    sweepAllowed: true,
+    freeSessionMinutes: 30,
+    monthlyCardSessionMinutes: 240,
+    premiumSessionMinutes: 480,
+    maxSessionMinutes: 720,
+    staminaCostPerMinute: 5,
+    dailyRewardCapKey: 'farm_session:hoang_tho_huyet_long_mach',
+    monsterPool: [
+      entry('thach_quang_yeu_thu', 'CO_THU', { weight: 8, minRealmOrder: 4 }),
+      entry('chap_niem_anh', 'QUY_VAT', { weight: 6, minRealmOrder: 4 }),
+      entry('tam_ma_nguyen_anh', 'TAM_MA', { weight: 4, minRealmOrder: 4 }),
+    ],
+    eliteEncounterPool: [
+      entry('hoang_tho_cu_yeu', 'CO_THU', { weight: 3, canAutoBattle: false, manualOnly: true, dangerLevel: 'DANGEROUS', minRealmOrder: 4 }),
+    ],
+    miniBossEncounterPool: [
+      entry('thach_long_co_giap', 'CO_THU', { weight: 1, canAutoBattle: false, manualOnly: true, dangerLevel: 'EXTREME', minRealmOrder: 4 }),
+    ],
+    higherTierMonsterPool: [],
+    opportunityPool: [],
+    dropProfileKey: 'farm_body_tier_4',
+    sourceHintVi: 'Long mạch tinh hoa, tâm ma nguyên anh, đá rồng cổ.',
+    sourceHintEn: 'Dragon-vein essence, nascent-soul demon shards, ancient dragon stones.',
+    enabled: true,
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Khu 9 — Cửu La Điện (Hoá Thần, sourceTier 5, 3 farm map)
+  // ═══════════════════════════════════════════════════════════════════════
+  {
     key: 'cuu_la_dien_ma_huyet',
     nameVi: 'Cửu La Điện — Ma Huyệt Bí Cảnh',
     nameEn: 'Nine-Net Hall — Demon Hollow Secret',
@@ -752,6 +1137,66 @@ export const FARM_MAPS: readonly FarmMapDef[] = [
     dropProfileKey: 'farm_tribulation_tier_5',
     sourceHintVi: 'Ma hạch, tâm ma vụn, nguyên liệu vượt kiếp.',
     sourceHintEn: 'Demon cores, inner-demon shards, tribulation materials.',
+    enabled: false,
+  },
+  {
+    key: 'cuu_la_dien_lau_dai',
+    nameVi: 'Cửu La Điện — Lầu Đài Ma Đạo',
+    nameEn: 'Nine-Net Hall — Demon-Path Tower',
+    loreVi:
+      'Lầu đài cổ nơi ma tu thượng cổ luyện ma công — Cửu La Huyền Quân trấn giữ tầng giữa. Dành cho tu sĩ Hoá Thần trung kỳ.',
+    loreEn:
+      'An ancient tower where primordial demon-cultivators refined dark arts — the Nine-Net Mysterious Army guards the middle floors; reserved for mid-stage Spirit-Transformation cultivators.',
+    regionKey: 'cuu_la_dien',
+    sourceTier: 5,
+    unlockRealmOrder: 5,
+    recommendedRealmOrder: 5,
+    autoFarmAllowed: false,
+    sweepAllowed: false,
+    freeSessionMinutes: 30,
+    monthlyCardSessionMinutes: 60,
+    premiumSessionMinutes: 90,
+    maxSessionMinutes: 120,
+    staminaCostPerMinute: 5,
+    dailyRewardCapKey: 'farm_session:cuu_la_dien_lau_dai',
+    monsterPool: [],
+    eliteEncounterPool: [],
+    miniBossEncounterPool: [],
+    higherTierMonsterPool: [],
+    opportunityPool: [],
+    dropProfileKey: 'farm_tribulation_tier_5',
+    sourceHintVi: 'Ma hạch thượng hạng, công pháp ma đạo, mảnh tâm pháp vô thượng.',
+    sourceHintEn: 'Premium demon cores, demon-path methods, supreme mind-method fragments.',
+    enabled: false,
+  },
+  {
+    key: 'cuu_la_dien_thap_dao',
+    nameVi: 'Cửu La Điện — Tháp Đạo Luân Hồi',
+    nameEn: 'Nine-Net Hall — Dao-Reincarnation Pagoda',
+    loreVi:
+      'Tháp thử nghiệm đạo tâm — tầng cao nhất ẩn giấu bí mật của Cửu La Thiên Đế. Chỉ tu sĩ Hoá Thần hậu kỳ mới có thể leo lên đỉnh.',
+    loreEn:
+      'A pagoda testing dao conviction — the topmost floor hides the Heavenly Emperor of Nine Nets\' deepest secret; only late-stage Spirit-Transformation cultivators may attempt the ascent.',
+    regionKey: 'cuu_la_dien',
+    sourceTier: 5,
+    unlockRealmOrder: 5,
+    recommendedRealmOrder: 5,
+    autoFarmAllowed: false,
+    sweepAllowed: false,
+    freeSessionMinutes: 20,
+    monthlyCardSessionMinutes: 40,
+    premiumSessionMinutes: 60,
+    maxSessionMinutes: 90,
+    staminaCostPerMinute: 6,
+    dailyRewardCapKey: 'farm_session:cuu_la_dien_thap_dao',
+    monsterPool: [],
+    eliteEncounterPool: [],
+    miniBossEncounterPool: [],
+    higherTierMonsterPool: [],
+    opportunityPool: [],
+    dropProfileKey: 'farm_tribulation_tier_5',
+    sourceHintVi: 'Đạo tâm tinh hoa, vật liệu vượt kiếp tối thượng, mảnh công pháp thiên đạo.',
+    sourceHintEn: 'Dao-conviction essence, supreme tribulation materials, heavenly-method fragments.',
     enabled: false,
   },
 ];

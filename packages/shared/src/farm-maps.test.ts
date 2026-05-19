@@ -54,6 +54,22 @@ describe('farm-maps — catalog integrity', () => {
     }
   });
 
+  it('mỗi khu có ≥ 3 farm map (enabled + placeholder)', () => {
+    const regions = [
+      'son_coc', 'hac_lam', 'kim_son_mach',
+      'yeu_thu_dong', 'moc_huyen_lam', 'thuy_long_uyen',
+      'hoa_diem_son', 'hoang_tho_huyet', 'cuu_la_dien',
+    ] as const;
+    for (const region of regions) {
+      const maps = FARM_MAPS.filter((m) => m.regionKey === region);
+      expect(maps.length, `region ${region} cần ≥ 3 farm map`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('tổng cộng 27 farm map', () => {
+    expect(FARM_MAPS.length).toBe(27);
+  });
+
   it('monsterPool tham chiếu MONSTERS key tồn tại', () => {
     const monsterKeys = new Set(MONSTERS.map((m) => m.key));
     for (const map of FARM_MAPS) {
