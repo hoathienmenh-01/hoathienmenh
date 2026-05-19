@@ -1789,6 +1789,12 @@
   },
   "sect": {
     "title": "Tông Môn",
+    "roleHint": "Tông Môn là cộng đồng — gia nhập để đóng góp linh thạch, tham gia tông chiến, và nhận thưởng nhóm.",
+    "crossNav": {
+      "label": "Xem thêm",
+      "sectWar": "Tông Chiến",
+      "sectContent": "Nội Dung Tông"
+    },
     "tab": {
       "mine": "Tông Của Tôi",
       "all": "Danh Sách",
@@ -3454,6 +3460,12 @@
   "tribulation": {
     "title": "Thiên Kiếp",
     "subtitle": "Vượt qua kiếp số để bước lên cảnh giới mới. Server quyết định thành bại theo cơ chế deterministic.",
+    "roleHint": "Thiên Kiếp là thử thách khi đạt đỉnh cảnh giới — vượt qua để đột phá cảnh giới mới. Thất bại sẽ mất EXP và bị cooldown.",
+    "crossNav": {
+      "label": "Xem thêm",
+      "breakthrough": "Đột Phá",
+      "cultivation": "Tu Luyện"
+    },
     "currentRealm": "Cảnh giới hiện tại: {name}",
     "notAtPeakHint": "Cần đạt Cửu Trọng (đỉnh cảnh giới) và đủ kinh nghiệm trước khi bắt đầu kiếp.",
     "severity": {
@@ -6191,6 +6203,12 @@
   "partyDungeon": {
     "title": "Phụ Bản Tổ Đội",
     "subtitle": "Tạo phòng, ready cùng đội, đánh phụ bản co-op và nhận thưởng (auto-resolve foundation).",
+    "roleHint": "Phụ Bản Tổ Đội là dungeon co-op — cần tổ đội để tham gia. Leader tạo phòng, thành viên ready, rồi chiến đấu.",
+    "crossNav": {
+      "label": "Xem thêm",
+      "partyHub": "Tổ Đội",
+      "coopBoss": "Co-op Boss"
+    },
     "empty": {
       "subtitle": "Chưa có phòng nào. Trưởng nhóm chọn phụ bản để tạo phòng.",
       "leaderHint": "Cần {min}-{max} thành viên (kể cả trưởng) để bắt đầu."
@@ -6323,6 +6341,12 @@
   "coopBoss": {
     "title": "Boss Tổ Đội",
     "subtitle": "Tổ đội cùng đánh boss, ghi đóng góp, nhận thưởng theo tier (foundation client-report + clamp server).",
+    "roleHint": "Co-op Boss là trận đánh boss tổ đội — đóng góp càng cao, thưởng càng lớn. Cần tổ đội để tham gia.",
+    "crossNav": {
+      "label": "Xem thêm",
+      "partyHub": "Tổ Đội",
+      "partyDungeon": "Phụ Bản Tổ Đội"
+    },
     "empty": {
       "subtitle": "Chưa có run boss tổ đội. Trưởng nhóm chọn boss để bắt đầu.",
       "leaderHint": "Tối đa {max} thành viên/run. Đóng góp dưới ngưỡng sẽ không nhận thưởng."

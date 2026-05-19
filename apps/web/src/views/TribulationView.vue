@@ -562,6 +562,31 @@ onUnmounted(() => {
         </header>
       </XTLuxHero>
 
+      <!-- Role hint + cross-nav -->
+      <div class="space-y-2" data-testid="tribulation-role-section">
+        <p class="text-xs text-ink-300 leading-relaxed" data-testid="tribulation-role-hint">
+          {{ t('tribulation.roleHint') }}
+        </p>
+        <nav class="flex flex-wrap gap-2 text-xs" data-testid="tribulation-cross-nav">
+          <span class="text-ink-400">{{ t('tribulation.crossNav.label') }}:</span>
+          <router-link
+            to="/breakthrough"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="tribulation-cross-nav-breakthrough"
+          >
+            {{ t('tribulation.crossNav.breakthrough') }}
+          </router-link>
+          <span class="text-ink-500">·</span>
+          <router-link
+            to="/cultivation"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="tribulation-cross-nav-cultivation"
+          >
+            {{ t('tribulation.crossNav.cultivation') }}
+          </router-link>
+        </nav>
+      </div>
+
       <!-- Phase 11.6.E — cooldown banner (live countdown) -->
       <section
         v-if="cooldownActive"

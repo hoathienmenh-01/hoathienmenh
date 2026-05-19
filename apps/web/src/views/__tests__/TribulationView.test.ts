@@ -350,6 +350,12 @@ const i18n = createI18n({
       tribulation: {
         title: 'Thiên Kiếp',
         subtitle: 'sub',
+        roleHint: 'Thiên Kiếp là thử thách khi đạt đỉnh cảnh giới.',
+        crossNav: {
+          label: 'Xem thêm',
+          breakthrough: 'Đột Phá',
+          cultivation: 'Tu Luyện',
+        },
         currentRealm: 'Cảnh giới: {name}',
         notAtPeakHint: 'Cần đỉnh cảnh giới',
         severity: {
@@ -2496,5 +2502,22 @@ describe('TribulationView — mini-battle integration (Phase 14.3.E.2)', () => {
     mountView();
     await flushPromises();
     expect(fetchCurrentBattleMock).toHaveBeenCalled();
+  });
+});
+
+describe('TribulationView — role hint + cross-nav', () => {
+  it('renders role hint', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-role-hint"]').exists()).toBe(true);
+    expect(w.text()).toContain('Thiên Kiếp là thử thách');
+  });
+
+  it('renders cross-navigation links', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-cross-nav"]').exists()).toBe(true);
+    expect(w.find('[data-testid="tribulation-cross-nav-breakthrough"]').exists()).toBe(true);
+    expect(w.find('[data-testid="tribulation-cross-nav-cultivation"]').exists()).toBe(true);
   });
 });

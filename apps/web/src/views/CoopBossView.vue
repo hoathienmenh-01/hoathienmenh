@@ -71,6 +71,31 @@ function goToCombatHub(): void {
       <XTPageEyebrow caps="CO-OP BOSS" label="Co-op Boss" class="sr-only" />
     </XTLuxHero>
 
+    <!-- Role hint + cross-nav -->
+    <div class="space-y-2 mb-4" data-testid="coop-boss-role-section">
+      <p class="text-xs text-ink-300 leading-relaxed" data-testid="coop-boss-role-hint">
+        {{ t('coopBoss.roleHint') }}
+      </p>
+      <nav class="flex flex-wrap gap-2 text-xs" data-testid="coop-boss-cross-nav">
+        <span class="text-ink-400">{{ t('coopBoss.crossNav.label') }}:</span>
+        <router-link
+          to="/party"
+          class="text-amber-300 hover:text-amber-100 underline"
+          data-testid="coop-boss-cross-nav-hub"
+        >
+          {{ t('coopBoss.crossNav.partyHub') }}
+        </router-link>
+        <span class="text-ink-500">·</span>
+        <router-link
+          to="/party/dungeon"
+          class="text-amber-300 hover:text-amber-100 underline"
+          data-testid="coop-boss-cross-nav-dungeon"
+        >
+          {{ t('coopBoss.crossNav.partyDungeon') }}
+        </router-link>
+      </nav>
+    </div>
+
     <!-- Loading -->
     <div v-if="!ready" class="text-center py-8 text-ink-400" data-testid="coop-boss-loading">
       {{ t('common.loading', 'Đang tải...') }}

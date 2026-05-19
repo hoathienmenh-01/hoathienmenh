@@ -1789,6 +1789,12 @@
   },
   "sect": {
     "title": "Sect",
+    "roleHint": "Sects are communities — join to contribute resources, participate in sect wars, and earn group rewards.",
+    "crossNav": {
+      "label": "See also",
+      "sectWar": "Sect War",
+      "sectContent": "Sect Content"
+    },
     "tab": {
       "mine": "My Sect",
       "all": "All Sects",
@@ -3454,6 +3460,12 @@
   "tribulation": {
     "title": "Tribulation",
     "subtitle": "Endure the heavens' trial to ascend to the next realm. The server resolves outcomes deterministically.",
+    "roleHint": "Tribulation is the trial at realm peak — succeed to break through to the next realm. Failure costs EXP and triggers a cooldown.",
+    "crossNav": {
+      "label": "See also",
+      "breakthrough": "Breakthrough",
+      "cultivation": "Cultivation"
+    },
     "currentRealm": "Current realm: {name}",
     "notAtPeakHint": "You must reach the 9th sub-realm with sufficient EXP before attempting tribulation.",
     "severity": {
@@ -6191,6 +6203,12 @@
   "partyDungeon": {
     "title": "Party Dungeon",
     "subtitle": "Create a room, ready up with your party, and clear a co-op dungeon (auto-resolve foundation).",
+    "roleHint": "Party Dungeon is co-op PvE — requires a party to enter. Leader creates the room, members ready up, then fight.",
+    "crossNav": {
+      "label": "See also",
+      "partyHub": "Party Hub",
+      "coopBoss": "Co-op Boss"
+    },
     "empty": {
       "subtitle": "No active room. Leader picks a dungeon to start a new room.",
       "leaderHint": "Requires {min}-{max} members (including the leader) to start."
@@ -6323,6 +6341,12 @@
   "coopBoss": {
     "title": "Co-op Boss",
     "subtitle": "Party fights a boss together, contributions tracked server-side, rewards by tier (foundation: client-report + server clamp).",
+    "roleHint": "Co-op Boss is a party boss fight — higher contributions yield better rewards. Requires a party to participate.",
+    "crossNav": {
+      "label": "See also",
+      "partyHub": "Party Hub",
+      "partyDungeon": "Party Dungeon"
+    },
     "empty": {
       "subtitle": "No active co-op boss run. Leader pick a boss to start.",
       "leaderHint": "Up to {max} members per run. Contribution below threshold yields no reward."
