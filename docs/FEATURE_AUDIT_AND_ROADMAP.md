@@ -102,10 +102,9 @@ ActivityView, CodexView, CombatHubView, CosmeticView, CultivationHubView, Cultiv
 **Missing XTLuxHero entirely**: 1 player-facing view (admin-only dev tool)
 EffectsPreviewView.
 
-**Missing test files**: 10 player-facing views
-CultivationMethodV2View, EncounterView, EventsView, InventoryAutoSortView, MonetizationShopView, NpcView, PetsView, PlayerLogsView, SecretRealmView, WalletView.
+**Missing test files**: 0 player-facing views ✅ (all 76 have test files)
 
-**Coverage**: 34/76 player views fully polished (45%). 73/76 have XTLuxHero (96%). All 34 polished views have test files.
+**Coverage**: 34/76 player views fully polished (45%). 73/76 have XTLuxHero (96%). All 76 player-facing views have test files.
 
 ### 4.5 Missing beta proof / smoke tests
 
@@ -215,9 +214,9 @@ CultivationMethodV2View, EncounterView, EventsView, InventoryAutoSortView, Monet
 - ~~Mobile Top Routes QA Pass.~~ ✅
 - ~~Market V2 player UX polish.~~ ✅
 - ~~Sect create/join/contribute positive smoke.~~ ✅
-- UX Polish Pack — roleHint + crossNav for remaining 38 views (batch into ~3 PRs of 12-14 views each).
+- ~~UX Polish Pack — roleHint + crossNav for remaining 38 views~~ ✅ (all 76 player views polished).
 - ~~XTLuxHero for 7 remaining views~~ ✅ (6/7 done; EffectsPreviewView skipped — admin-only dev tool).
-- Test coverage for 10 views missing test files.
+- ~~Test coverage for 10 views missing test files~~ ✅ (all 76 player views have test files).
 
 ### Long term: after beta / commercialization
 
@@ -247,7 +246,7 @@ CultivationMethodV2View, EncounterView, EventsView, InventoryAutoSortView, Monet
 | Combat loop | 9/10 | Combat hub consolidated; recommended action panel |
 | Economy safety | 8/10 | Anti-FE-self-grant verified; ledger invariants intact |
 | Admin/LiveOps | 8/10 | Reload guard fixed; Control Center polished |
-| Test/CI/Smoke | 8.5/10 | 246 test files / 2659 tests; 6 positive smoke scripts |
+| Test/CI/Smoke | 9/10 | 256 test files / 2689 tests; 6 positive smoke scripts |
 | Mobile/PWA | 8/10 | Top routes verified; MissionView responsive fix |
 | Content depth | 7.5/10 | Stable; no new content modules needed for beta |
 | Monetization readiness | 5.5/10 | Policy review needed before expansion |
