@@ -29,6 +29,31 @@ const { t } = useI18n();
       >
         <XTPageEyebrow caps="NHẬT KÝ HUÝ KỶ" label="Nhật Ký Huý Kỷ" class="sr-only" />
       </XTLuxHero>
+
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="player-logs-role-hint">
+        {{ t('playerLogs.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="player-logs-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-settings"
+          @click="$router.push('/settings')"
+        >
+          <span>{{ t('playerLogs.crossNav.settings') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('playerLogs.crossNav.settingsDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-profile"
+          @click="$router.push('/character')"
+        >
+          <span>{{ t('playerLogs.crossNav.profile') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('playerLogs.crossNav.profileDesc') }}</span>
+        </button>
+      </nav>
       <EmptyState
         title-key="playerLogs.emptyTitle"
         description-key="playerLogs.emptyDescription"

@@ -148,6 +148,31 @@ const isMentor = computed(() => !!profile.value);
         <XTPageEyebrow caps="SƯ MÔN TRUYỀN ĐẠO" label="Sư Môn Truyền Đạo" class="sr-only" />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="mentor-role-hint">
+        {{ t('mentor.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="mentor-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-social"
+          @click="$router.push('/social')"
+        >
+          <span>{{ t('mentor.crossNav.social') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('mentor.crossNav.socialDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-cultivation"
+          @click="$router.push('/cultivation')"
+        >
+          <span>{{ t('mentor.crossNav.cultivation') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('mentor.crossNav.cultivationDesc') }}</span>
+        </button>
+      </nav>
+
       <div v-if="loading" data-testid="mentor-loading">{{ t('common.loading') }}</div>
 
       <div v-else class="mentor-panels">

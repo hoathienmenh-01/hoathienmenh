@@ -57,6 +57,31 @@ function goto(name: string): void {
         <XTPageEyebrow caps="THIÊN TIÊN THẾ GIỚI" label="Thiên Tiên Thế Giới" class="sr-only" />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="world-content-role-hint">
+        {{ t('worldContent.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="world-content-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-dungeon"
+          @click="$router.push('/dungeon')"
+        >
+          <span>{{ t('worldContent.crossNav.dungeon') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('worldContent.crossNav.dungeonDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-boss"
+          @click="$router.push('/boss')"
+        >
+          <span>{{ t('worldContent.crossNav.boss') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('worldContent.crossNav.bossDesc') }}</span>
+        </button>
+      </nav>
+
       <nav class="world-content__tabs">
         <button @click="goto('world-farm-maps')">
           {{ t('worldContent.tabs.farm') }}

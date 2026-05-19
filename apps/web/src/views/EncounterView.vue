@@ -105,6 +105,31 @@ onMounted(async () => {
         <XTPageEyebrow caps="KỲ NGỘ MỘNG CẢNH" label="Kỳ Ngộ Mộng Cảnh" class="sr-only" />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="encounter-role-hint">
+        {{ t('encounter.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="encounter-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-dungeon"
+          @click="$router.push('/dungeon')"
+        >
+          <span>{{ t('encounter.crossNav.dungeon') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('encounter.crossNav.dungeonDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-combat"
+          @click="$router.push('/combat')"
+        >
+          <span>{{ t('encounter.crossNav.combat') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('encounter.crossNav.combatDesc') }}</span>
+        </button>
+      </nav>
+
       <p
         v-if="store.loading"
         class="rounded border border-gray-800 bg-gray-900 p-4 text-center text-gray-400"

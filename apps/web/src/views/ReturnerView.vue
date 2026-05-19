@@ -84,6 +84,31 @@ function handleErr(e: unknown): void {
         <XTPageEyebrow caps="CỐ NHÂN QUY HOÀN" label="Cố Nhân Quy Hoàn" class="sr-only" />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="returner-role-hint">
+        {{ t('returner.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="returner-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-dailyLoop"
+          @click="$router.push('/home')"
+        >
+          <span>{{ t('returner.crossNav.dailyLoop') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('returner.crossNav.dailyLoopDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-missions"
+          @click="$router.push('/missions')"
+        >
+          <span>{{ t('returner.crossNav.missions') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('returner.crossNav.missionsDesc') }}</span>
+        </button>
+      </nav>
+
       <div v-if="loading" data-testid="returner-loading">{{ t('common.loading') }}</div>
 
       <div v-else class="panel" data-testid="returner-panel">

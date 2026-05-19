@@ -595,7 +595,14 @@
     "power": "Lực",
     "spirit": "Linh",
     "speed": "Tốc",
-    "luck": "May"
+    "luck": "May",
+    "roleHint": "Hồ sơ đạo hữu — xem cảnh giới, chỉ số, trang bị và tiến trình.",
+    "crossNav": {
+      "character": "Nhân Vật",
+      "characterDesc": "Hồ sơ tu tiên",
+      "achievements": "Thành Tựu",
+      "achievementsDesc": "Cột mốc & Danh hiệu"
+    }
   },
   "characterView": {
     "eyebrow": "Đạo Thân",
@@ -787,6 +794,15 @@
       "huyen": "Huyền Căn",
       "tien": "Tiên Căn",
       "than": "Thần Căn"
+    },
+    "roleHint": "Tu Luyện là cốt lõi — nâng cảnh giới, luyện thuật pháp, đột phá đại đạo.",
+    "crossNav": {
+      "skillBook": "Thuật Pháp",
+      "skillBookDesc": "Pháp Quyển",
+      "equipment": "Trang Bị",
+      "equipmentDesc": "Quản lý trang bị",
+      "breakthrough": "Đột Phá",
+      "breakthroughDesc": "Thử thách cảnh giới"
     }
   },
   "activity": {
@@ -836,6 +852,13 @@
       "BOSS_REWARD": "Thưởng boss",
       "DUNGEON_DROP": "Loot phụ bản",
       "ACHIEVEMENT": "Thành tựu"
+    },
+    "roleHint": "Sứ Mệnh là nhiệm vụ lặp lại — làm mỗi ngày để tối đa phần thưởng.",
+    "crossNav": {
+      "missions": "Sứ Mệnh",
+      "missionsDesc": "Nhiệm vụ hằng ngày",
+      "dailyLoop": "Vòng Luyện",
+      "dailyLoopDesc": "Hoạt động hôm nay"
     }
   },
   "settings": {
@@ -876,6 +899,13 @@
       "UNAUTHENTICATED": "Hết phiên, vui lòng đăng nhập lại.",
       "RATE_LIMITED": "Quá nhiều yêu cầu, thử lại sau.",
       "UNKNOWN": "Có lỗi xảy ra."
+    },
+    "roleHint": "Cài đặt tài khoản — mật khẩu, ngôn ngữ, thông báo, và tuỳ chỉnh.",
+    "crossNav": {
+      "profile": "Nhân Vật",
+      "profileDesc": "Hồ sơ tu tiên",
+      "feedback": "Phản Hồi",
+      "feedbackDesc": "Góp ý & Báo lỗi"
     }
   },
   "mission": {
@@ -985,6 +1015,13 @@
       "INVALID_INPUT": "Mã không hợp lệ.",
       "UNAUTHENTICATED": "Phiên đã hết hạn, vui lòng đăng nhập lại.",
       "UNKNOWN": "Lỗi bất định."
+    },
+    "roleHint": "Đổi mã quà tặng để nhận thưởng. Mỗi mã chỉ dùng được một lần.",
+    "crossNav": {
+      "mail": "Hộp Thư",
+      "mailDesc": "Thiên Đạo Thư Các",
+      "inventory": "Túi Đồ",
+      "inventoryDesc": "Quản lý vật phẩm"
     }
   },
   "chat": {
@@ -1180,6 +1217,13 @@
       "INVALID_INPUT": "Yêu cầu không hợp lệ.",
       "UNKNOWN_ERROR": "Có lỗi xảy ra, mời thử lại.",
       "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
+    },
+    "roleHint": "Mùa Giải — leo rank mỗi mùa để nhận thưởng và danh hiệu độc quyền.",
+    "crossNav": {
+      "leaderboard": "Bảng Xếp Hạng",
+      "leaderboardDesc": "Top lực chiến",
+      "achievements": "Thành Tựu",
+      "achievementsDesc": "Cột mốc & Danh hiệu"
     }
   },
   "roguelike": {
@@ -1263,6 +1307,13 @@
       "INVALID_INPUT": "Yêu cầu không hợp lệ.",
       "UNKNOWN_ERROR": "Có lỗi xảy ra, mời thử lại.",
       "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
+    },
+    "roleHint": "Vô Tận Tháp là chế độ roguelike — leo tháp, nhận buff ngẫu nhiên, chiến đấu.",
+    "crossNav": {
+      "dungeon": "Bí Cảnh",
+      "dungeonDesc": "Dungeon solo",
+      "combat": "Chiến Đấu",
+      "combatDesc": "Trung tâm chiến đấu"
     }
   },
   "storyDungeon": {
@@ -1353,6 +1404,13 @@
       "INVALID_INPUT": "Yêu cầu không hợp lệ.",
       "UNKNOWN_ERROR": "Có lỗi xảy ra, mời thử lại.",
       "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
+    },
+    "roleHint": "Phụ Bản Cốt Truyện là dungeon theo cốt truyện — hoàn thành để tiến chương.",
+    "crossNav": {
+      "story": "Cốt Truyện",
+      "storyDesc": "Hành trình truyện",
+      "dungeon": "Bí Cảnh",
+      "dungeonDesc": "Dungeon solo"
     }
   },
   "inventory": {
@@ -1826,6 +1884,13 @@
       "RATE_LIMITED": "Mua quá nhanh — vui lòng chậm lại và thử lại sau.",
       "UNAUTHENTICATED": "Vui lòng đăng nhập lại.",
       "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
+    },
+    "roleHint": "Tiệm NPC — mua đan dược và trang bị phổ thông từ NPC.",
+    "crossNav": {
+      "market": "Phường Thị",
+      "marketDesc": "Mua bán với người chơi",
+      "inventory": "Túi Đồ",
+      "inventoryDesc": "Quản lý vật phẩm"
     }
   },
   "sect": {
@@ -2063,6 +2128,13 @@
       "INVALID_PACKAGE": "Gói nạp không hợp lệ.",
       "TOO_MANY_PENDING": "Đã có quá nhiều đơn đang chờ — duyệt bớt trước khi tạo mới.",
       "UNKNOWN": "Có lỗi xảy ra."
+    },
+    "roleHint": "Nạp Tiên Ngọc để mua vật phẩm, mở khoá nội dung, và ủng hộ game.",
+    "crossNav": {
+      "wallet": "Ví",
+      "walletDesc": "Xem số dư",
+      "shop": "Tiệm NPC",
+      "shopDesc": "Mua vật phẩm"
     }
   },
   "admin": {
@@ -3127,6 +3199,13 @@
       "CULTIVATION_METHOD_V2_UNAVAILABLE": "Hệ thống công pháp V2 tạm khoá.",
       "IN_FLIGHT": "Đang xử lý…",
       "UNKNOWN": "Thao tác thất bại, thử lại."
+    },
+    "roleHint": "Công Pháp quyết định tốc độ tu luyện và chỉ số bonus cảnh giới.",
+    "crossNav": {
+      "cultivation": "Tu Luyện",
+      "cultivationDesc": "Trung tâm tu luyện",
+      "skillBook": "Thuật Pháp",
+      "skillBookDesc": "Pháp Quyển"
     }
   },
   "artifactV2": {
@@ -3970,6 +4049,13 @@
         "QUEST_NOT_AVAILABLE": "Nhiệm vụ này không thể nhận lúc này.",
         "UNKNOWN": "Không thể nhận nhiệm vụ, thử lại."
       }
+    },
+    "roleHint": "NPC là nhân vật trong truyện — tương tác để mở khoá cốt truyện và nhiệm vụ.",
+    "crossNav": {
+      "story": "Cốt Truyện",
+      "storyDesc": "Hành trình truyện",
+      "quests": "Nhiệm Vụ",
+      "questsDesc": "Nhiệm vụ chính tuyến"
     }
   },
   "storyDialogue": {
@@ -4276,6 +4362,13 @@
       "dungeon": "Bí cảnh",
       "boss": "Boss",
       "sect": "Tông môn"
+    },
+    "roleHint": "Danh Vọng phản ánh uy tín và hành vi xã hội của đạo hữu.",
+    "crossNav": {
+      "social": "Xã Giao",
+      "socialDesc": "Bạn bè & Trò chuyện",
+      "achievements": "Thành Tựu",
+      "achievementsDesc": "Cột mốc & Danh hiệu"
     }
   },
   "buffs": {
@@ -4403,6 +4496,13 @@
       "rewards": "Thưởng tuần",
       "season": "Mùa giải",
       "hallOfFame": "Vinh Danh"
+    },
+    "roleHint": "Tông Chiến là trận chiến giữa các tông môn — đóng góp để giành chiến thắng.",
+    "crossNav": {
+      "sect": "Tông Môn",
+      "sectDesc": "Quản lý tông phái",
+      "leaderboard": "Bảng Xếp Hạng",
+      "leaderboardDesc": "Top lực chiến"
     }
   },
   "sectMission": {
@@ -5184,6 +5284,13 @@
       "ADMIN_ONLY": "Chỉ ADMIN mới được kết toán Lãnh Địa.",
       "UNAUTHENTICATED": "Vui lòng đăng nhập lại.",
       "UNKNOWN": "Không tải được dữ liệu Lãnh Địa, thử lại."
+    },
+    "roleHint": "Lãnh Địa là vùng đất của tông môn — khai thác tài nguyên và phòng thủ.",
+    "crossNav": {
+      "sect": "Tông Môn",
+      "sectDesc": "Quản lý tông phái",
+      "homestead": "Gia Viên",
+      "homesteadDesc": "Lãnh địa cá nhân"
     }
   },
   "arena": {
@@ -6753,6 +6860,13 @@
       "MONTHLY_CARD_INACTIVE": "Nguyệt Tạp chưa kích hoạt.",
       "MONTHLY_CARD_ALREADY_CLAIMED": "Hôm nay đã nhận Nguyệt Tạp.",
       "UNKNOWN": "Có lỗi xảy ra, thử lại."
+    },
+    "roleHint": "Nạp Ngọc — nạp Tiên Ngọc để mua vật phẩm và mở khoá nội dung.",
+    "crossNav": {
+      "topup": "Nạp Ngọc",
+      "topupDesc": "Nạp Tiên Ngọc",
+      "wallet": "Ví",
+      "walletDesc": "Xem số dư"
     }
   },
   "shopPacks": {
@@ -6801,6 +6915,13 @@
       "DUPLICATE_PURCHASE": "Đã mua rồi.",
       "INVALID_INPUT": "Dữ liệu không hợp lệ.",
       "UNKNOWN": "Có lỗi xảy ra."
+    },
+    "roleHint": "Gói Nạp — mua gói giá trị để nhận nhiều Tiên Ngọc và vật phẩm hơn.",
+    "crossNav": {
+      "shop": "Tiệm NPC",
+      "shopDesc": "Mua vật phẩm",
+      "topup": "Nạp Ngọc",
+      "topupDesc": "Nạp Tiên Ngọc"
     }
   },
   "bodyCultivation": {
@@ -6931,6 +7052,13 @@
       "ALREADY_OWNED_PERMANENT": "Đã sở hữu vĩnh viễn.",
       "IN_FLIGHT": "Đang xử lý...",
       "UNKNOWN": "Có lỗi xảy ra."
+    },
+    "roleHint": "Ngoại Trang — tuỳ chỉnh giao diện nhân vật mà không ảnh hưởng chỉ số.",
+    "crossNav": {
+      "character": "Nhân Vật",
+      "characterDesc": "Hồ sơ tu tiên",
+      "inventory": "Túi Đồ",
+      "inventoryDesc": "Quản lý vật phẩm"
     }
   },
   "worldContent": {
@@ -7100,6 +7228,13 @@
       "DAILY_CAP_REACHED": "Đã chạm cap ngày.",
       "WEEKLY_CAP_REACHED": "Đã chạm cap tuần.",
       "INVALID_INPUT": "Tham số không hợp lệ."
+    },
+    "roleHint": "Nội dung thế giới — khám phá bí cảnh, boss, và sự kiện đặc biệt.",
+    "crossNav": {
+      "dungeon": "Bí Cảnh",
+      "dungeonDesc": "Dungeon solo",
+      "boss": "Boss",
+      "bossDesc": "Boss Thế Giới"
     }
   },
   "events": {
@@ -7290,6 +7425,13 @@
       "RELATION_NOT_FOUND": "Không tìm thấy quan hệ.",
       "MENTOR_NOT_ACCEPTING": "Sư phụ tạm ngừng nhận đệ tử.",
       "UNKNOWN": "Có lỗi xảy ra."
+    },
+    "roleHint": "Sư Đồ — tìm sư phụ hoặc đồ đệ để nhận bonus tu luyện và hướng dẫn.",
+    "crossNav": {
+      "social": "Xã Giao",
+      "socialDesc": "Bạn bè & Trò chuyện",
+      "cultivation": "Tu Luyện",
+      "cultivationDesc": "Trung tâm tu luyện"
     }
   },
   "mentorMilestone": {
@@ -7337,7 +7479,14 @@
     "noTier": "Chưa đủ điều kiện hỗ trợ quay lại.",
     "check": "Kiểm tra ngay",
     "checkSuccess": "Đã kích hoạt hỗ trợ quay lại.",
-    "checkNoop": "Chưa cần kích hoạt (đã nhận hoặc chưa đủ điều kiện)."
+    "checkNoop": "Chưa cần kích hoạt (đã nhận hoặc chưa đủ điều kiện).",
+    "roleHint": "Chào mừng đạo hữu quay lại — hoàn thành nhiệm vụ comeback để nhận thưởng.",
+    "crossNav": {
+      "dailyLoop": "Vòng Luyện",
+      "dailyLoopDesc": "Hoạt động hôm nay",
+      "missions": "Sứ Mệnh",
+      "missionsDesc": "Nhiệm vụ hằng ngày"
+    }
   },
   "adminMail": {
     "title": "Quản trị thư",
@@ -7438,6 +7587,13 @@
       "defenseSave": "Không lưu được thế trận ({code}).",
       "challenge": "Khiêu chiến thất bại ({code}).",
       "targetRequired": "Vui lòng nhập ID mục tiêu."
+    },
+    "roleHint": "PvP — thách đấu người chơi khác, leo hạng, và nhận thưởng mùa.",
+    "crossNav": {
+      "arena": "Đấu Trường",
+      "arenaDesc": "PvP xếp hạng",
+      "leaderboard": "Bảng Xếp Hạng",
+      "leaderboardDesc": "Top lực chiến"
     }
   },
   "adminPvp": {
@@ -7548,7 +7704,14 @@
     "marketPriceTitle": "Giá tham khảo chợ",
     "avg24h": "Trung bình 24h",
     "avg7d": "Trung bình 7 ngày",
-    "vol24h": "Volume 24h"
+    "vol24h": "Volume 24h",
+    "roleHint": "Bách Khoa là nơi xem tất cả vật phẩm, trang bị, quái, và nội dung trong game.",
+    "crossNav": {
+      "skillBook": "Thuật Pháp",
+      "skillBookDesc": "Pháp Quyển",
+      "inventory": "Túi Đồ",
+      "inventoryDesc": "Quản lý vật phẩm"
+    }
   },
   "adminMarket": {
     "title": "Quản lý Chợ V2",
@@ -7757,6 +7920,13 @@
       "NO_CHARACTER": "Bạn chưa có nhân vật.",
       "SUPPORT_PERMISSION_DENIED": "Bạn không có quyền xem phản hồi này.",
       "UNAUTHENTICATED": "Vui lòng đăng nhập lại."
+    },
+    "roleHint": "Phản Hồi — gửi góp ý, báo lỗi, hoặc đề xuất cải thiện cho ban quản trị.",
+    "crossNav": {
+      "settings": "Cài Đặt",
+      "settingsDesc": "Tùy chỉnh tài khoản",
+      "mail": "Hộp Thư",
+      "mailDesc": "Thiên Đạo Thư Các"
     }
   },
   "report": {
@@ -7943,7 +8113,14 @@
     "title": "Nhật ký hoạt động",
     "subtitle": "Lịch sử hoạt động liên quan đến tài khoản của bạn.",
     "emptyTitle": "Đang xây dựng",
-    "emptyDescription": "Tính năng nhật ký chi tiết sẽ có ở Phase 41.1+."
+    "emptyDescription": "Tính năng nhật ký chi tiết sẽ có ở Phase 41.1+.",
+    "roleHint": "Nhật Ký ghi lại lịch sử hoạt động, giao dịch, và tiến trình của nhân vật.",
+    "crossNav": {
+      "settings": "Cài Đặt",
+      "settingsDesc": "Tùy chỉnh tài khoản",
+      "profile": "Nhân Vật",
+      "profileDesc": "Hồ sơ tu tiên"
+    }
   },
   "navigation": {
     "commandPalette": {
@@ -8241,6 +8418,13 @@
       "ENCOUNTER_FROZEN": "Kỳ ngộ đã đóng.",
       "ENCOUNTER_HAS_NO_CHOICES": "Kỳ ngộ không có lựa chọn.",
       "ENCOUNTER_CHOICE_INVALID": "Lựa chọn không hợp lệ."
+    },
+    "roleHint": "Gặp Gỡ là trận chiến ngẫu nhiên trong bí cảnh — đánh bại quái để nhận thưởng.",
+    "crossNav": {
+      "dungeon": "Bí Cảnh",
+      "dungeonDesc": "Dungeon solo",
+      "combat": "Chiến Đấu",
+      "combatDesc": "Trung tâm chiến đấu"
     }
   },
   "secretRealm": {
@@ -8278,6 +8462,13 @@
       "SECRET_REALM_OBJECTIVE_INVALID": "Mục tiêu không tồn tại.",
       "SECRET_REALM_OBJECTIVES_INCOMPLETE": "Chưa đạt đủ mục tiêu.",
       "SECRET_REALM_COOLDOWN": "Đang trong thời gian hồi."
+    },
+    "roleHint": "Bí Mật Cảnh là dungeon đặc biệt — thử thách cao, thưởng hiếm.",
+    "crossNav": {
+      "dungeon": "Bí Cảnh",
+      "dungeonDesc": "Dungeon solo",
+      "combat": "Chiến Đấu",
+      "combatDesc": "Trung tâm chiến đấu"
     }
   },
   "inventoryAutoSort": {
@@ -8989,6 +9180,13 @@
       "minutesAgo": "{n} phút trước",
       "hoursAgo": "{n} giờ trước",
       "daysAgo": "{n} ngày trước"
+    },
+    "roleHint": "Trung tâm thông báo — xem sự kiện, boss, thư, và cập nhật mới nhất.",
+    "crossNav": {
+      "mail": "Hộp Thư",
+      "mailDesc": "Thiên Đạo Thư Các",
+      "social": "Xã Giao",
+      "socialDesc": "Bạn bè & Trò chuyện"
     }
   },
   "onlineFriends": {
@@ -9019,7 +9217,14 @@
     "equipFail": "Trang bị thất bại",
     "modalTitle": "Chọn trang bị cho {slot}",
     "modalEmpty": "Không có vật phẩm phù hợp trong kho đồ",
-    "loadFail": "Không tải được trang bị"
+    "loadFail": "Không tải được trang bị",
+    "roleHint": "Trang Bị ảnh hưởng trực tiếp đến sức mạnh chiến đấu — nâng cấp gear để mạnh hơn.",
+    "crossNav": {
+      "inventory": "Túi Đồ",
+      "inventoryDesc": "Quản lý vật phẩm",
+      "loadout": "Bộ Nhanh",
+      "loadoutDesc": "Lưu bộ trang bị"
+    }
   },
   "combatHub": {
     "eyebrow": "CHIẾN TRƯỜNG",
@@ -9087,6 +9292,105 @@
     "dailyTip": {
       "title": "Mẹo Hàng Ngày",
       "body": "Hoàn thành Bí Cảnh Lưu Phát hàng ngày để tối đa hoá EXP và Linh Thạch. Kết hợp đánh World Boss khi spawn để nhận vật phẩm hiếm. Tham gia Co-op Boss cùng tổ đội để nhận thưởng cấp MVP."
+    },
+    "roleHint": "Trung tâm chiến đấu — vào bí cảnh, đánh boss, hoặc thách đấu PvP.",
+    "crossNav": {
+      "dungeon": "Bí Cảnh",
+      "dungeonDesc": "Dungeon solo",
+      "boss": "Boss",
+      "bossDesc": "Boss Thế Giới",
+      "arena": "Đấu Trường",
+      "arenaDesc": "PvP xếp hạng"
+    }
+  },
+  "dungeonHubV2": {
+    "roleHint": "Bí Cảnh là dungeon solo — chọn bí cảnh phù hợp cảnh giới để chiến đấu.",
+    "crossNav": {
+      "dungeon": "Bí Cảnh",
+      "dungeonDesc": "Dungeon solo",
+      "combat": "Chiến Đấu",
+      "combatDesc": "Trung tâm chiến đấu"
+    }
+  },
+  "farmMap": {
+    "roleHint": "Linh Điền là nơi trồng linh thảo — thu hoạch để luyện đan hoặc bán.",
+    "crossNav": {
+      "homestead": "Gia Viên",
+      "homesteadDesc": "Lãnh địa cá nhân",
+      "inventory": "Túi Đồ",
+      "inventoryDesc": "Quản lý vật phẩm"
+    }
+  },
+  "monetizationDacQuyen": {
+    "roleHint": "Đặc Quyền — mở khoá phúc lợi VIP và ưu đãi độc quyền.",
+    "crossNav": {
+      "topup": "Nạp Ngọc",
+      "topupDesc": "Nạp Tiên Ngọc",
+      "wallet": "Ví",
+      "walletDesc": "Xem số dư"
+    }
+  },
+  "monetizationShop": {
+    "roleHint": "Cửa Hàng Ngọc — mua vật phẩm và gói đặc biệt bằng Tiên Ngọc.",
+    "crossNav": {
+      "topup": "Nạp Ngọc",
+      "topupDesc": "Nạp Tiên Ngọc",
+      "inventory": "Túi Đồ",
+      "inventoryDesc": "Quản lý vật phẩm"
+    }
+  },
+  "notificationSettings": {
+    "roleHint": "Tùy chỉnh thông báo — bật/tắt thông báo cho từng loại sự kiện.",
+    "crossNav": {
+      "settings": "Cài Đặt",
+      "settingsDesc": "Tùy chỉnh tài khoản",
+      "notifications": "Thông Báo",
+      "notificationsDesc": "Trung tâm thông báo"
+    }
+  },
+  "reportPlayer": {
+    "roleHint": "Báo Cáo — báo cáo hành vi vi phạm, cheat, hoặc toxic.",
+    "crossNav": {
+      "social": "Xã Giao",
+      "socialDesc": "Bạn bè & Trò chuyện",
+      "settings": "Cài Đặt",
+      "settingsDesc": "Tùy chỉnh tài khoản"
+    }
+  },
+  "sectContent": {
+    "roleHint": "Nội dung tông môn — xem thông tin, thành viên, và hoạt động tông phái.",
+    "crossNav": {
+      "sect": "Tông Môn",
+      "sectDesc": "Quản lý tông phái",
+      "leaderboard": "Bảng Xếp Hạng",
+      "leaderboardDesc": "Top lực chiến"
+    }
+  },
+  "title": {
+    "roleHint": "Danh Hiệu là thành tựu đặc biệt — trang bị để hiển thị trên nhân vật.",
+    "crossNav": {
+      "achievements": "Thành Tựu",
+      "achievementsDesc": "Cột mốc & Danh hiệu",
+      "character": "Nhân Vật",
+      "characterDesc": "Hồ sơ tu tiên"
+    }
+  },
+  "trialTower": {
+    "roleHint": "Thử Tháp là tháp thử thách — leo tầng, đánh boss, nhận thưởng.",
+    "crossNav": {
+      "dungeon": "Bí Cảnh",
+      "dungeonDesc": "Dungeon solo",
+      "combat": "Chiến Đấu",
+      "combatDesc": "Trung tâm chiến đấu"
+    }
+  },
+  "wallet": {
+    "roleHint": "Ví — xem số dư Linh Thạch, Tiên Ngọc, và lịch sử giao dịch.",
+    "crossNav": {
+      "topup": "Nạp Ngọc",
+      "topupDesc": "Nạp Tiên Ngọc",
+      "shop": "Tiệm NPC",
+      "shopDesc": "Mua vật phẩm"
     }
   }
 }

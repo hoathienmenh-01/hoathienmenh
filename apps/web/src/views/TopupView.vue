@@ -109,6 +109,31 @@ function fmtVND(n: number): string {
         <XTPageEyebrow caps="TIÊN NGỌC HƯƠNG HỎA" label="Tiên Ngọc Hương Hỏa" class="sr-only" />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="topup-role-hint">
+        {{ t('topup.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="topup-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-wallet"
+          @click="$router.push('/wallet')"
+        >
+          <span>{{ t('topup.crossNav.wallet') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('topup.crossNav.walletDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-shop"
+          @click="$router.push('/shop')"
+        >
+          <span>{{ t('topup.crossNav.shop') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('topup.crossNav.shopDesc') }}</span>
+        </button>
+      </nav>
+
       <!-- Lưu ý nạp -->
       <section class="rounded border border-amber-300/40 bg-amber-900/20 p-3 text-xs text-amber-100">
         <p>{{ t('topup.rule1') }}</p>

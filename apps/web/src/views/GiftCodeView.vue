@@ -74,6 +74,31 @@ async function onRedeem(): Promise<void> {
         <XTPageEyebrow caps="TỨ PHÚC LONG SAO" label="Tứ Phúc Long Sao" class="sr-only" />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="giftcode-role-hint">
+        {{ t('giftcode.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="giftcode-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-mail"
+          @click="$router.push('/mail')"
+        >
+          <span>{{ t('giftcode.crossNav.mail') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('giftcode.crossNav.mailDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-inventory"
+          @click="$router.push('/inventory')"
+        >
+          <span>{{ t('giftcode.crossNav.inventory') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('giftcode.crossNav.inventoryDesc') }}</span>
+        </button>
+      </nav>
+
       <form class="flex flex-col gap-3" @submit.prevent="onRedeem">
         <input
           v-model="code"

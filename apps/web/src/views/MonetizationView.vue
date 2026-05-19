@@ -189,6 +189,31 @@ onMounted(async () => {
         <XTPageEyebrow caps="TIÊN LỘ PHÚC LỄ" label="Tiên Lộ Phúc Lễ" class="sr-only" />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="monetization-role-hint">
+        {{ t('monetization.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="monetization-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-topup"
+          @click="$router.push('/topup')"
+        >
+          <span>{{ t('monetization.crossNav.topup') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('monetization.crossNav.topupDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-wallet"
+          @click="$router.push('/wallet')"
+        >
+          <span>{{ t('monetization.crossNav.wallet') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('monetization.crossNav.walletDesc') }}</span>
+        </button>
+      </nav>
+
       <nav class="flex flex-wrap gap-2" role="tablist">
         <button
           v-for="tab in tabs"

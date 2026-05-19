@@ -89,6 +89,31 @@ function claimBusy(sessionId: string): boolean {
         <XTPageEyebrow caps="LINH ĐIỀN TỒN DƯỠNG" label="Linh Điền Tồn Dưỡng" class="sr-only" />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="farm-map-role-hint">
+        {{ t('farmMap.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="farm-map-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-homestead"
+          @click="$router.push('/homestead')"
+        >
+          <span>{{ t('farmMap.crossNav.homestead') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('farmMap.crossNav.homesteadDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-inventory"
+          @click="$router.push('/inventory')"
+        >
+          <span>{{ t('farmMap.crossNav.inventory') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('farmMap.crossNav.inventoryDesc') }}</span>
+        </button>
+      </nav>
+
       <div
         v-if="reloadFailed && maps.length === 0"
         class="farm-map__state farm-map__state--error"

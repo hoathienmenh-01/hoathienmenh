@@ -112,6 +112,31 @@ onMounted(() => {
         <XTPageEyebrow caps="PHÁT GIÁC CAO THÙY" label="Phát Giác Cao Thùy" class="sr-only" />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="report-player-role-hint">
+        {{ t('reportPlayer.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="report-player-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-social"
+          @click="$router.push('/social')"
+        >
+          <span>{{ t('reportPlayer.crossNav.social') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('reportPlayer.crossNav.socialDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-settings"
+          @click="$router.push('/settings')"
+        >
+          <span>{{ t('reportPlayer.crossNav.settings') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('reportPlayer.crossNav.settingsDesc') }}</span>
+        </button>
+      </nav>
+
       <section
         class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-3 text-sm"
         data-testid="report-form"

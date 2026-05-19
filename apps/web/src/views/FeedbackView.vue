@@ -125,6 +125,31 @@ onMounted(() => {
         <XTPageEyebrow caps="THỈNH AN NGHI" label="Thỉnh An Nghi" class="sr-only" />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="feedback-role-hint">
+        {{ t('feedback.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="feedback-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-settings"
+          @click="$router.push('/settings')"
+        >
+          <span>{{ t('feedback.crossNav.settings') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('feedback.crossNav.settingsDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-mail"
+          @click="$router.push('/mail')"
+        >
+          <span>{{ t('feedback.crossNav.mail') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('feedback.crossNav.mailDesc') }}</span>
+        </button>
+      </nav>
+
       <!-- Form -->
       <section
         class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-3 text-sm"

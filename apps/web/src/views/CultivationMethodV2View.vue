@@ -303,6 +303,31 @@ onMounted(async () => {
         </template>
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="cultivation-method-v2-role-hint">
+        {{ t('cultivationMethodV2.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="cultivation-method-v2-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-cultivation"
+          @click="$router.push('/cultivation')"
+        >
+          <span>{{ t('cultivationMethodV2.crossNav.cultivation') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('cultivationMethodV2.crossNav.cultivationDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-skillBook"
+          @click="$router.push('/skill-book')"
+        >
+          <span>{{ t('cultivationMethodV2.crossNav.skillBook') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('cultivationMethodV2.crossNav.skillBookDesc') }}</span>
+        </button>
+      </nav>
+
       <XTSealFrame
         tone="jade"
         corner-ornaments="❖✦❖✦"

@@ -261,6 +261,31 @@ onMounted(async () => {
         </header>
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="story-dungeon-role-hint">
+        {{ t('storyDungeon.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="story-dungeon-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-story"
+          @click="$router.push('/story')"
+        >
+          <span>{{ t('storyDungeon.crossNav.story') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('storyDungeon.crossNav.storyDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-dungeon"
+          @click="$router.push('/dungeon')"
+        >
+          <span>{{ t('storyDungeon.crossNav.dungeon') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('storyDungeon.crossNav.dungeonDesc') }}</span>
+        </button>
+      </nav>
+
       <!-- Active run panel (inline) -->
       <StoryDungeonRunPanel
         v-if="activeRun"

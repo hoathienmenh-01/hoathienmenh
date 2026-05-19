@@ -119,6 +119,31 @@ onMounted(() => {
         </div>
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="seasons-role-hint">
+        {{ t('seasons.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="seasons-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-leaderboard"
+          @click="$router.push('/leaderboard')"
+        >
+          <span>{{ t('seasons.crossNav.leaderboard') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('seasons.crossNav.leaderboardDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-achievements"
+          @click="$router.push('/achievements')"
+        >
+          <span>{{ t('seasons.crossNav.achievements') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('seasons.crossNav.achievementsDesc') }}</span>
+        </button>
+      </nav>
+
       <section
         v-if="store.lastError"
         class="rounded-2xl border border-red-400/40 bg-red-950/30 p-4 text-red-100"

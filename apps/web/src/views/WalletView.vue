@@ -99,6 +99,31 @@ function formatDelta(delta: number): string {
         />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="wallet-role-hint">
+        {{ t('wallet.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="wallet-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-topup"
+          @click="$router.push('/topup')"
+        >
+          <span>{{ t('wallet.crossNav.topup') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('wallet.crossNav.topupDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-shop"
+          @click="$router.push('/shop')"
+        >
+          <span>{{ t('wallet.crossNav.shop') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('wallet.crossNav.shopDesc') }}</span>
+        </button>
+      </nav>
+
       <div v-if="loading" class="wallet-loading">Đang tải…</div>
       <template v-else>
         <div class="wallet-grid">
