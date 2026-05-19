@@ -297,9 +297,20 @@ Có thể gom task nhỏ độc lập, rủi ro thấp, cùng loại để tiế
 
 ### Trước khi báo Done
 
-- CI xanh hoặc Pending CI rõ ràng (đã push, chưa polled).
-- Nếu CI chưa xanh, KHÔNG chuyển task khác.
-- Nếu CI đỏ > 3 lần fix → block trên user, không tự ép merge.
+Bắt buộc check TẤT CẢ điều kiện dưới đây trước khi chuyển task sang DONE:
+
+1. **CI xanh** hoặc Pending CI rõ ràng (đã push, chưa polled).
+2. **Quality gates pass** (nếu đụng code): `pnpm typecheck` + `pnpm lint` + `pnpm build` + relevant workspace tests.
+3. **Han gate = 0** (nếu đụng `apps/web/src`): không có ký tự Trung Quốc `[一-鿿]`.
+4. **i18n parity** (nếu đụng UI): mọi key mới có trong cả `vi.json` và `en.json`.
+5. **Docs updated**: `AI_HANDOFF_REPORT.md` cập nhật trong cùng PR.
+6. **Feature Progress Tracker**: task status phản ánh trạng thái thật.
+   - Nếu task hoàn thành 100% → DONE.
+   - Nếu task hoàn thành một phần nhưng đã hết scope PR → **PARTIAL** + liệt kê task con còn lại trong cột Done Criteria hoặc Note.
+   - KHÔNG đánh DONE nếu còn task con chưa xong mà không ghi rõ.
+
+Nếu CI chưa xanh, KHÔNG chuyển task khác.
+Nếu CI đỏ > 3 lần fix → block trên user, không tự ép merge.
 
 ### Không bao giờ làm
 
