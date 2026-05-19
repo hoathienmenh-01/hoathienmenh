@@ -926,8 +926,8 @@ test.describe('Golden path — full stack required', () => {
     await page.goto('/breakthrough');
     await expect(page).toHaveURL(/\/breakthrough/);
 
-    // Title + currentRealm dynamic text từ BreakthroughView.vue.
-    await expect(page.locator('h2')).toContainText('Đột Phá', { timeout: 10_000 });
+    // Title + currentRealm dynamic text từ BreakthroughView.vue (XTLuxHero renders h1).
+    await expect(page.locator('h1')).toContainText('Đột Phá', { timeout: 10_000 });
 
     // atPeak satisfied → attempt button enabled (vs notPeak → disabled).
     const attemptBtn = page.locator('[data-testid="breakthrough-attempt-btn"]');
