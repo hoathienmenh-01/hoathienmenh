@@ -12,6 +12,7 @@
  */
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import {
   adminGetPolicy,
@@ -29,6 +30,7 @@ import MButton from '@/components/ui/MButton.vue';
 import type { PvpBalancePolicy } from '@xuantoi/shared';
 
 const { t } = useI18n();
+const auth = useAuthStore();
 const toast = useToastStore();
 
 const loading = ref(false);
@@ -76,7 +78,8 @@ async function refresh() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await auth.hydrate();
   void refresh();
 });
 

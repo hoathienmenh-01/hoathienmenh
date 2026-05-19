@@ -296,11 +296,11 @@ function rewardSummary(m: MissionProgressView): string {
                 {{ t('mission.reward.label') }}: {{ rewardSummary(m) }}
               </div>
             </div>
-            <div class="flex flex-col items-end gap-2 min-w-[10rem]">
+            <div class="flex flex-col items-end gap-2 min-w-[7rem] sm:min-w-[10rem]">
               <div class="text-[11px] text-ink-300">
                 {{ m.currentAmount }} / {{ m.goalAmount }}
               </div>
-              <div class="w-40 h-1.5 rounded bg-ink-900/60 overflow-hidden">
+              <div class="w-28 sm:w-40 h-1.5 rounded bg-ink-900/60 overflow-hidden">
                 <div
                   class="h-full transition-all"
                   :class="m.claimed ? 'bg-emerald-600' : m.completable ? 'bg-amber-400' : 'bg-ink-300'"

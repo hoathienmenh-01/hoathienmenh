@@ -27,6 +27,7 @@ const authState = vi.hoisted(() => ({
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({
     user: authState.role ? { role: authState.role } : null,
+    hydrate: vi.fn().mockResolvedValue(undefined),
   }),
 }));
 

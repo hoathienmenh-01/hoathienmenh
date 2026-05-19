@@ -6154,6 +6154,28 @@
       "RATE_LIMITED": "Party action too fast — slow down a few seconds.",
       "ABUSE_BLOCKED": "Party action temporarily blocked due to abuse. Retry in a few minutes.",
       "UNKNOWN": "Something went wrong — try again."
+    },
+    "title": "Party",
+    "subtitle": "Manage your party & group activities",
+    "roleHint": "Parties let you tackle Party Dungeons and Co-op Bosses with friends. Create or join a party to unlock group activities.",
+    "noParty": "You are not in a party",
+    "createBtn": "Create Party",
+    "unnamed": "Unnamed Party",
+    "memberCount": "Members",
+    "membersTitle": "Members",
+    "activitiesTitle": "Group Activities",
+    "dungeonEntry": "Party Dungeon",
+    "dungeonDesc": "Explore co-op PvE dungeons with your party",
+    "coopBossEntry": "Co-op Boss",
+    "coopBossDesc": "Team up to fight world bosses with your party",
+    "leaveBtn": "Leave Party",
+    "createdToast": "Party created!",
+    "leftToast": "Left the party",
+    "leaveConfirm": "Leave party?",
+    "crossNav": {
+      "label": "Also see",
+      "dungeon": "Party Dungeon",
+      "coopBoss": "Co-op Boss"
     }
   },
   "partyDungeon": {

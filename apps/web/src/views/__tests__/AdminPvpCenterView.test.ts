@@ -16,6 +16,12 @@ const apiMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/api/pvp', () => apiMocks);
+vi.mock('@/stores/auth', () => ({
+  useAuthStore: () => ({
+    user: { role: 'ADMIN' },
+    hydrate: vi.fn().mockResolvedValue(undefined),
+  }),
+}));
 vi.mock('@/stores/toast', () => ({
   useToastStore: () => ({ push: toastPushMock }),
 }));

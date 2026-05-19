@@ -69,7 +69,8 @@ async function patchStatus(row: PlayerReportRow, status: PlayerReportStatus): Pr
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await auth.hydrate();
   if (isAdmin.value) void load();
   else loading.value = false;
 });

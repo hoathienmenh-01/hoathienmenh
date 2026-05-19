@@ -8,6 +8,7 @@
  */
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import {
   adminListAuctions,
@@ -22,6 +23,7 @@ import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 
 const { t } = useI18n();
+const auth = useAuthStore();
 const toast = useToastStore();
 
 const loading = ref(false);
@@ -90,7 +92,10 @@ async function submitRefund() {
   }
 }
 
-onMounted(refresh);
+onMounted(async () => {
+  await auth.hydrate();
+  void refresh();
+});
 </script>
 
 <template>
