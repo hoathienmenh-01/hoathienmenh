@@ -364,6 +364,33 @@ onMounted(async () => {
         </div>
       </header>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="skill-book-role-hint">
+        {{ t('skillBook.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs" data-testid="skill-book-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-cultivation"
+          @click="$router.push('/cultivation')"
+        >
+          <span class="text-amber-400">&#10038;</span>
+          <span>{{ t('skillBook.crossNav.cultivation') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('skillBook.crossNav.cultivationDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-equipment"
+          @click="$router.push('/equipment')"
+        >
+          <span class="text-emerald-400">&#9876;</span>
+          <span>{{ t('skillBook.crossNav.equipment') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('skillBook.crossNav.equipmentDesc') }}</span>
+        </button>
+      </nav>
+
       <section class="flex flex-wrap gap-3 items-center text-xs">
         <div class="flex items-center gap-2">
           <label class="text-ink-300">{{ t('skillBook.filter.tier') }}</label>

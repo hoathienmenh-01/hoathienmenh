@@ -50,6 +50,33 @@ const tab = ref<Tab>('friends');
       <XTPageEyebrow caps="GIANG HỒ GIAO TẾ" label="Giang Hồ Giao Tế" class="sr-only" />
     </XTLuxHero>
 
+    <!-- Role hint -->
+    <p class="text-sm text-gray-400 px-1" data-testid="social-role-hint">
+      {{ t('social.roleHint') }}
+    </p>
+
+    <!-- Cross-navigation -->
+    <nav class="flex gap-2 text-xs mb-2" data-testid="social-cross-nav">
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-mail"
+        @click="$router.push('/mail')"
+      >
+        <span class="text-amber-400">&#9993;</span>
+        <span>{{ t('social.crossNav.mail') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('social.crossNav.mailDesc') }}</span>
+      </button>
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-party"
+        @click="$router.push('/party')"
+      >
+        <span class="text-emerald-400">&#9733;</span>
+        <span>{{ t('social.crossNav.party') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('social.crossNav.partyDesc') }}</span>
+      </button>
+    </nav>
+
     <nav class="flex flex-wrap gap-2" role="tablist">
       <button
         type="button"

@@ -575,6 +575,15 @@
       "level": "Level",
       "members": "Members",
       "treasury": "Treasury"
+    },
+    "roleHint": "Compare power, wealth, and sect membership across all cultivators in the realm.",
+    "crossNav": {
+      "arena": "Arena",
+      "arenaDesc": "PvP & Rankings",
+      "achievements": "Achievements",
+      "achievementsDesc": "Milestones & Titles",
+      "sect": "Sect",
+      "sectDesc": "Manage your sect"
     }
   },
   "profile": {
@@ -944,6 +953,13 @@
       "ALREADY_CLAIMED": "Mail already claimed.",
       "UNAUTHENTICATED": "Session expired. Please log in again.",
       "UNKNOWN": "Unknown error."
+    },
+    "roleHint": "Heavenly mail — claim gifts, event notifications, and news from the administration.",
+    "crossNav": {
+      "social": "Social",
+      "socialDesc": "Friends & Chat",
+      "market": "Market",
+      "marketDesc": "Trade items"
     }
   },
   "giftcode": {
@@ -1776,6 +1792,13 @@
       "LISTING_NOT_FOUND": "Listing not found.",
       "NOT_OWNER": "This is not your listing.",
       "UNKNOWN": "Something went wrong, please retry."
+    },
+    "roleHint": "Trade equipment and items with other cultivators. List items from your inventory, find bargains, or bid on rare auctions.",
+    "crossNav": {
+      "marketV2": "Auction",
+      "marketV2Desc": "Auction House",
+      "inventory": "Inventory",
+      "inventoryDesc": "Manage items"
     }
   },
   "shop": {
@@ -3402,6 +3425,13 @@
       "field": {
         "realm": "Required"
       }
+    },
+    "roleHint": "Manage learned skills — equip, unequip, upgrade mastery, and preview high-realm skill catalog.",
+    "crossNav": {
+      "cultivation": "Cultivation",
+      "cultivationDesc": "Cultivation center",
+      "equipment": "Equipment",
+      "equipmentDesc": "Manage equipment"
     }
   },
   "achievements": {
@@ -5936,6 +5966,13 @@
       "RATE_LIMITED": "Too fast — please slow down and try again.",
       "ABUSE_BLOCKED": "Social action temporarily blocked due to abuse. Try again in a few minutes.",
       "UNKNOWN": "Something went wrong — please retry."
+    },
+    "roleHint": "Manage friends, private/group chat, join parties and co-op activities.",
+    "crossNav": {
+      "mail": "Mail",
+      "mailDesc": "Heavenly Mail",
+      "party": "Party",
+      "partyDesc": "Group & Activities"
     }
   },
   "coCultivation": {
@@ -8354,6 +8391,13 @@
       "LOADOUT_PRESET_MODE_INVALID": "Invalid mode.",
       "LOADOUT_PRESET_PAYLOAD_INVALID": "Invalid preset payload.",
       "LOADOUT_PRESET_LIMIT_REACHED": "Loadout preset cap reached (20)."
+    },
+    "roleHint": "Save and quickly swap between equipment presets for PvE, PvP, or Boss modes.",
+    "crossNav": {
+      "equipment": "Equipment",
+      "equipmentDesc": "View equipped gear",
+      "inventory": "Inventory",
+      "inventoryDesc": "Manage items"
     }
   },
   "pets": {

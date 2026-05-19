@@ -69,6 +69,15 @@ const i18n = createI18n({
           members: 'Đệ Tử',
           treasury: 'Linh Thạch Khố',
         },
+        roleHint: 'Đối sánh lực chiến, tài sản và tông môn giữa các đạo hữu.',
+        crossNav: {
+          arena: 'Đấu Trường',
+          arenaDesc: 'PvP & Xếp hạng',
+          achievements: 'Thành Tựu',
+          achievementsDesc: 'Cột mốc & Danh hiệu',
+          sect: 'Tông Môn',
+          sectDesc: 'Quản lý tông phái',
+        },
       },
     },
   },
@@ -322,5 +331,25 @@ describe('LeaderboardView', () => {
     expect(
       w.find('[data-testid="leaderboard-tab-sect"]').attributes('aria-selected'),
     ).toBe('true');
+  });
+});
+
+describe('LeaderboardView — cross-navigation', () => {
+  it('render role hint', async () => {
+    fetchPower.mockResolvedValue([]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="leaderboard-role-hint"]').exists()).toBe(true);
+    expect(w.find('[data-testid="leaderboard-role-hint"]').text()).toContain('Đối sánh');
+  });
+
+  it('render cross-navigation links', async () => {
+    fetchPower.mockResolvedValue([]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="leaderboard-cross-nav"]').exists()).toBe(true);
+    expect(w.find('[data-testid="cross-nav-arena"]').exists()).toBe(true);
+    expect(w.find('[data-testid="cross-nav-achievements"]').exists()).toBe(true);
+    expect(w.find('[data-testid="cross-nav-sect"]').exists()).toBe(true);
   });
 });

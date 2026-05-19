@@ -149,6 +149,33 @@ function formatDate(iso: string): string {
       </div>
     </XTLuxHero>
 
+    <!-- Role hint -->
+    <p class="text-sm text-gray-400 px-1" data-testid="mail-role-hint">
+      {{ t('mail.roleHint') }}
+    </p>
+
+    <!-- Cross-navigation -->
+    <nav class="flex gap-2 text-xs mb-4" data-testid="mail-cross-nav">
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-social"
+        @click="router.push('/social')"
+      >
+        <span class="text-amber-400">&#9786;</span>
+        <span>{{ t('mail.crossNav.social') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('mail.crossNav.socialDesc') }}</span>
+      </button>
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-market"
+        @click="router.push('/market')"
+      >
+        <span class="text-emerald-400">&#9878;</span>
+        <span>{{ t('mail.crossNav.market') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('mail.crossNav.marketDesc') }}</span>
+      </button>
+    </nav>
+
     <XTPullRefresh
       :on-refresh="refresh"
       test-id="mail-pull-refresh"

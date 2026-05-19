@@ -161,6 +161,15 @@ Do not rebuild these systems from scratch:
 - Done criteria met: all 12 views have XTLuxHero + roleHint + crossNav; i18n parity; all tests pass.
 - What was not touched: no backend changes, no schema migration, no new gameplay module, no balance changes.
 
+### PR 6: Cross-Navigation Polish Pack (Task #17) ✅ DONE
+
+- Goal: Add roleHint + crossNav to 6 remaining player-facing views missing the standard UX pattern.
+- Scope: (1) roleHint + crossNav added to MarketView, SocialView, MailView, LeaderboardView, SkillBookView, LoadoutView; (2) i18n keys in vi+en for all 6 namespaces; (3) 2 tests per file (12 new tests total); (4) created SocialView.test.ts.
+- Files touched: 6 view files, 6 test files (5 existing + 1 new), `vi.json`, `en.json`, 3 doc files.
+- Tests run: typecheck ✅, lint ✅, build ✅, tests 246/246 files (2659/2659) ✅, Han gate 0 ✅.
+- Done criteria met: all 6 views have roleHint + crossNav; i18n parity; all tests pass.
+- What was not touched: no backend changes, no schema migration, no new gameplay module, no balance changes.
+
 ### Short term: 1-2 weeks
 
 - ~~Daily Loop First Session Polish.~~ ✅

@@ -201,6 +201,13 @@ const i18n = createI18n({
           MASTERY_MAX: 'Max',
           UNKNOWN: 'Lỗi',
         },
+        roleHint: 'Quản lý thuật pháp đã học.',
+        crossNav: {
+          cultivation: 'Tu Luyện',
+          cultivationDesc: 'Trung tâm tu luyện',
+          equipment: 'Trang Bị',
+          equipmentDesc: 'Quản lý trang bị',
+        },
       },
       // Phase 14.2.C — SkillTagBadge i18n keys cho tag dropdown.
       skillTagBadge: {
@@ -453,5 +460,26 @@ describe('SkillBookView — equip / unequip / upgrade actions', () => {
     await flushPromises();
     const btn = w.find('[data-testid="skill-book-equip-kiem_khi_chem"]');
     expect(btn.attributes('disabled')).toBeDefined();
+  });
+});
+
+describe('SkillBookView — cross-navigation', () => {
+  beforeEach(() => {
+    resetStore();
+  });
+
+  it('render role hint', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="skill-book-role-hint"]').exists()).toBe(true);
+    expect(w.find('[data-testid="skill-book-role-hint"]').text()).toContain('Quản lý thuật pháp');
+  });
+
+  it('render cross-navigation links', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="skill-book-cross-nav"]').exists()).toBe(true);
+    expect(w.find('[data-testid="cross-nav-cultivation"]').exists()).toBe(true);
+    expect(w.find('[data-testid="cross-nav-equipment"]').exists()).toBe(true);
   });
 });

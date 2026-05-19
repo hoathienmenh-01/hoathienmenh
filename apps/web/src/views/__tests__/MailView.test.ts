@@ -99,6 +99,13 @@ const i18n = createI18n({
           ALREADY_CLAIMED: 'Thư này đã nhận rồi.',
           UNKNOWN: 'Có lỗi xảy ra.',
         },
+        roleHint: 'Thiên Đạo truyền thư — nhận quà, thông báo sự kiện.',
+        crossNav: {
+          social: 'Xã Giao',
+          socialDesc: 'Bạn bè & Trò chuyện',
+          market: 'Phường Thị',
+          marketDesc: 'Mua bán vật phẩm',
+        },
       },
     },
   },
@@ -398,5 +405,24 @@ describe('MailView — list fetch error', () => {
     });
     // Header vẫn render.
     expect(w.text()).toContain('Hộp Thư');
+  });
+});
+
+describe('MailView — cross-navigation', () => {
+  it('render role hint', async () => {
+    listMailMock.mockResolvedValue([]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="mail-role-hint"]').exists()).toBe(true);
+    expect(w.find('[data-testid="mail-role-hint"]').text()).toContain('Thiên Đạo');
+  });
+
+  it('render cross-navigation links', async () => {
+    listMailMock.mockResolvedValue([]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="mail-cross-nav"]').exists()).toBe(true);
+    expect(w.find('[data-testid="cross-nav-social"]').exists()).toBe(true);
+    expect(w.find('[data-testid="cross-nav-market"]').exists()).toBe(true);
   });
 });
