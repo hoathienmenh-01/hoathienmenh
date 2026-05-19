@@ -553,6 +553,105 @@ describe('AuctionService', () => {
   });
 });
 
+describe('Market V2 — Anomaly detection', () => {
+  it('create logs PRICE_TOO_LOW when pricePerUnit < 10', async () => {
+    const seller = await makeUserChar(prisma);
+    await giveItem(seller.characterId, 'test_item', 5);
+
+    await auctions.create({
+      sellerCharacterId: seller.characterId,
+      itemKey: 'test_item',
+      quantity: 5,
+      currency: 'LINH_THACH',
+      startPrice: 10n, // 2 LT/unit → triggers PRICE_TOO_LOW
+      minBidStep: 1n,
+      durationMinutes: 60,
+    });
+
+    const anomalies = await prisma.marketAnomaly.findMany({
+      where: { anomalyType: 'PRICE_TOO_LOW' },
+    });
+    expect(anomalies.length).toBe(1);
+    expect(anomalies[0].sellerCharacterId).toBe(seller.characterId);
+    expect(anomalies[0].severity).toBe('WARN');
+  });
+
+  it('create logs PRICE_TOO_HIGH when pricePerUnit > 5_000_000', async () => {
+    const seller = await makeUserChar(prisma);
+    await giveItem(seller.characterId, 'rare_item', 1);
+
+    await auctions.create({
+      sellerCharacterId: seller.characterId,
+      itemKey: 'rare_item',
+      quantity: 1,
+      currency: 'LINH_THACH',
+      startPrice: 6_000_000n,
+      minBidStep: 100n,
+      durationMinutes: 60,
+    });
+
+    const anomalies = await prisma.marketAnomaly.findMany({
+      where: { anomalyType: 'PRICE_TOO_HIGH' },
+    });
+    expect(anomalies.length).toBe(1);
+    expect(anomalies[0].severity).toBe('WARN');
+  });
+
+  it('placeBid logs LARGE_VALUE_TRANSFER when bid > 10M', async () => {
+    const seller = await makeUserChar(prisma);
+    const bidder = await makeUserChar(prisma, { linhThach: 20_000_000n });
+    await giveItem(seller.characterId, 'big_item', 1);
+
+    const auction = await auctions.create({
+      sellerCharacterId: seller.characterId,
+      itemKey: 'big_item',
+      quantity: 1,
+      currency: 'LINH_THACH',
+      startPrice: 12_000_000n,
+      minBidStep: 100n,
+      durationMinutes: 60,
+    });
+
+    await auctions.placeBid({
+      auctionId: auction.id,
+      bidderCharacterId: bidder.characterId,
+      bidAmount: 12_000_000n,
+    });
+
+    const anomalies = await prisma.marketAnomaly.findMany({
+      where: { anomalyType: 'LARGE_VALUE_TRANSFER' },
+    });
+    expect(anomalies.length).toBe(1);
+    expect(anomalies[0].buyerCharacterId).toBe(bidder.characterId);
+    expect(anomalies[0].severity).toBe('CRITICAL');
+  });
+
+  it('cancelBySeller logs EXCESSIVE_CANCEL_RELIST after 5 cancels in 24h', async () => {
+    const seller = await makeUserChar(prisma);
+
+    // Create and cancel 5 auctions.
+    for (let i = 0; i < 5; i++) {
+      await giveItem(seller.characterId, `cancel_item_${i}`, 1);
+      const a = await auctions.create({
+        sellerCharacterId: seller.characterId,
+        itemKey: `cancel_item_${i}`,
+        quantity: 1,
+        currency: 'LINH_THACH',
+        startPrice: 100n,
+        minBidStep: 10n,
+        durationMinutes: 60,
+      });
+      await auctions.cancelBySeller(a.id, seller.characterId);
+    }
+
+    const anomalies = await prisma.marketAnomaly.findMany({
+      where: { anomalyType: 'EXCESSIVE_CANCEL_RELIST' },
+    });
+    expect(anomalies.length).toBe(1);
+    expect(anomalies[0].sellerCharacterId).toBe(seller.characterId);
+  });
+});
+
 describe('Market V2 — Currency invariants', () => {
   it('CONG_HIEN_TONG_MON kind exists for SECT_CONTRIBUTION mapping', () => {
     // Sanity: confirms enum mapping for sect-contribution market currency.
