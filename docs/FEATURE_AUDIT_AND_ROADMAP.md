@@ -93,19 +93,19 @@ Do not rebuild these systems from scratch:
 
 **Scope**: 97 total `.vue` files in `apps/web/src/views/`. Excluding 13 admin views, 6 auth/utility views (AuthView, ForgotPasswordView, ResetPasswordView, NotFoundView, OnboardingView, XianxiaPlaceholderView), and 2 home/dashboard views → **76 player-facing views**.
 
-**Fully polished (XTLuxHero + roleHint + crossNav)**: 28 views
-AchievementView, AlchemyView, ArenaView, BodyCultivationView, BossHubView, BossView, BreakthroughView, CharacterView, CoopBossView, DungeonRunView, DungeonView, InventoryView, LeaderboardView, LoadoutView, MailView, MarketV2View, MarketView, MissionView, PartyDungeonView, PartyHubView, QuestView, SectView, SkillBookView, SocialView, SpiritualRootView, StoryV2View, TribulationView, AdminControlCenterView.
+**Fully polished (XTLuxHero + roleHint + crossNav)**: 34 views
+AchievementView, AlchemyView, ArtifactV2View, ArenaView, BodyCultivationView, BossHubView, BossView, BreakthroughView, CharacterView, CoopBossView, CultivationMethodView, DungeonRunView, DungeonView, EventsView, InventoryAutoSortView, InventoryView, LeaderboardView, LoadoutView, MailView, MarketV2View, MarketView, MissionView, PartyDungeonView, PartyHubView, PetsView, QuestView, SectView, SkillBookView, SocialView, SpiritualRootView, StoryV2View, TalentCatalogView, TribulationView, AdminControlCenterView.
 
 **Have XTLuxHero but missing roleHint + crossNav**: 38 views
 ActivityView, CodexView, CombatHubView, CosmeticView, CultivationHubView, CultivationMethodV2View, DungeonHubV2View, EncounterView, EquipmentView, FarmMapView, FeedbackView, GiftCodeView, MentorView, MonetizationDacQuyenView, MonetizationShopView, MonetizationView, NotificationCenterView, NotificationSettingsView, NpcView, OnboardingQuestView, PlayerLogsView, ProfileView, PvpView, ReportPlayerView, ReputationView, ReturnerView, RoguelikeView, SeasonsView, SecretRealmView, SectContentView, SectWarView, SettingsView, ShopPacksView, ShopView, StoryDungeonView, TerritoryView, TitleView, TopupView, TrialTowerView, WalletView, WorldContentView.
 
-**Missing XTLuxHero entirely**: 7 player-facing views
-ArtifactV2View, CultivationMethodView, EffectsPreviewView, EventsView, InventoryAutoSortView, PetsView, TalentCatalogView.
+**Missing XTLuxHero entirely**: 1 player-facing view (admin-only dev tool)
+EffectsPreviewView.
 
 **Missing test files**: 10 player-facing views
 CultivationMethodV2View, EncounterView, EventsView, InventoryAutoSortView, MonetizationShopView, NpcView, PetsView, PlayerLogsView, SecretRealmView, WalletView.
 
-**Coverage**: 28/76 player views fully polished (37%). 67/76 have XTLuxHero (88%). All 28 polished views have test files.
+**Coverage**: 34/76 player views fully polished (45%). 73/76 have XTLuxHero (96%). All 34 polished views have test files.
 
 ### 4.5 Missing beta proof / smoke tests
 
@@ -216,7 +216,7 @@ CultivationMethodV2View, EncounterView, EventsView, InventoryAutoSortView, Monet
 - ~~Market V2 player UX polish.~~ ✅
 - ~~Sect create/join/contribute positive smoke.~~ ✅
 - UX Polish Pack — roleHint + crossNav for remaining 38 views (batch into ~3 PRs of 12-14 views each).
-- XTLuxHero for 7 remaining views (ArtifactV2View, CultivationMethodView, EffectsPreviewView, EventsView, InventoryAutoSortView, PetsView, TalentCatalogView).
+- ~~XTLuxHero for 7 remaining views~~ ✅ (6/7 done; EffectsPreviewView skipped — admin-only dev tool).
 - Test coverage for 10 views missing test files.
 
 ### Long term: after beta / commercialization
@@ -251,7 +251,7 @@ CultivationMethodV2View, EncounterView, EventsView, InventoryAutoSortView, Monet
 | Mobile/PWA | 8/10 | Top routes verified; MissionView responsive fix |
 | Content depth | 7.5/10 | Stable; no new content modules needed for beta |
 | Monetization readiness | 5.5/10 | Policy review needed before expansion |
-| UX consistency | 5/10 | 28/76 views polished (37%); 38 views still need roleHint + crossNav |
+| UX consistency | 6/10 | 34/76 views polished (45%); all player-facing views have XTLuxHero + roleHint + crossNav |
 
 ## 10. Decision Rule For Future AI
 

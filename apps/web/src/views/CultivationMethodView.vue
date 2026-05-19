@@ -41,7 +41,7 @@ import { useCultivationMethodStore } from '@/stores/cultivationMethod';
 import { useToastStore } from '@/stores/toast';
 import type { CultivationMethodLearnedRow } from '@/api/cultivationMethod';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 
 type GradeFilter = 'all' | CultivationMethodGrade;
 
@@ -137,14 +137,33 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="max-w-5xl mx-auto space-y-4">
-      <header class="flex items-baseline justify-between gap-3 flex-wrap">
-        <div>
-          <XTPageEyebrow label="Tâm Pháp Truyền Thừa" />
-          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('cultivationMethod.title') }}</h1>
-          <p class="text-xs text-ink-300 mt-1">
-            {{ t('cultivationMethod.subtitle') }}
-          </p>
+      <XTLuxHero
+        eyebrow="TÂM PHÁP TRUYỀN THỪA"
+        label="Công Pháp"
+        :title="t('cultivationMethod.title')"
+        :subtitle="t('cultivationMethod.subtitle')"
+        tone="gold"
+        watermark-letter="C"
+        breadcrumb="Tu Vi · Công Pháp"
+        test-id="cultivation-method-hero"
+        class="mb-4"
+      />
+
+      <div class="space-y-2 mb-4" data-testid="cultivation-method-role-section">
+        <p class="text-xs text-ink-300 leading-relaxed" data-testid="cultivation-method-role-hint">
+          {{ t('cultivationMethod.roleHint') }}
+        </p>
+        <div class="flex flex-wrap gap-2 text-xs" data-testid="cultivation-method-cross-nav">
+          <router-link to="/cultivation" class="px-2 py-1 rounded bg-gold-900/40 text-gold-200 hover:bg-gold-800/50 transition">
+            {{ t('cultivationMethod.crossNav.cultivation') }} — {{ t('cultivationMethod.crossNav.cultivationDesc') }}
+          </router-link>
+          <router-link to="/breakthrough" class="px-2 py-1 rounded bg-gold-900/40 text-gold-200 hover:bg-gold-800/50 transition">
+            {{ t('cultivationMethod.crossNav.breakthrough') }} — {{ t('cultivationMethod.crossNav.breakthroughDesc') }}
+          </router-link>
         </div>
+      </div>
+
+      <header class="flex items-baseline justify-between gap-3 flex-wrap">
         <div
           class="text-xs text-ink-300 flex items-center gap-2"
           data-testid="cultivation-method-equipped"

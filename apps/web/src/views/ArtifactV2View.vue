@@ -47,6 +47,7 @@ import {
   type ArtifactEquipSlotV2,
 } from '@/api/artifactsV2';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 
 const { t } = useI18n();
 const toast = useToastStore();
@@ -262,10 +263,31 @@ function fmtPercent(v: number): string {
 <template>
   <AppShell>
     <section data-testid="artifact-v2-view" class="artifact-v2">
-      <header class="artifact-v2__header">
-        <h1>{{ t('artifactV2.title') }}</h1>
-        <p>{{ t('artifactV2.subtitle') }}</p>
-      </header>
+      <XTLuxHero
+        eyebrow="PHÁP BẢO ĐƯỜNG"
+        label="Pháp Bảo"
+        :title="t('artifactV2.title')"
+        :subtitle="t('artifactV2.subtitle')"
+        tone="jade"
+        watermark-letter="P"
+        breadcrumb="Tu Vi · Pháp Bảo"
+        test-id="artifact-v2-hero"
+        class="mb-4"
+      />
+
+      <div class="space-y-2 mb-4" data-testid="artifact-v2-role-section">
+        <p class="text-xs text-ink-300 leading-relaxed" data-testid="artifact-v2-role-hint">
+          {{ t('artifactV2.roleHint') }}
+        </p>
+        <div class="flex flex-wrap gap-2 text-xs" data-testid="artifact-v2-cross-nav">
+          <router-link to="/inventory" class="px-2 py-1 rounded bg-jade-900/40 text-jade-200 hover:bg-jade-800/50 transition">
+            {{ t('artifactV2.crossNav.inventory') }} — {{ t('artifactV2.crossNav.inventoryDesc') }}
+          </router-link>
+          <router-link to="/alchemy" class="px-2 py-1 rounded bg-jade-900/40 text-jade-200 hover:bg-jade-800/50 transition">
+            {{ t('artifactV2.crossNav.alchemy') }} — {{ t('artifactV2.crossNav.alchemyDesc') }}
+          </router-link>
+        </div>
+      </div>
 
       <nav class="artifact-v2__tabs" role="tablist">
         <button

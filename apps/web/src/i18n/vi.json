@@ -2745,6 +2745,13 @@
   "talents": {
     "title": "Ngộ Đạo · Thần Thông",
     "subtitle": "Catalog {total} thần thông + thiên phú toàn ngũ hành",
+    "roleHint": "Thần Thông là kỹ năng bị động và chủ động — dùng điểm thiên phú để học, yêu cầu cảnh giới tối thiểu. Chọn theo phong cách chiến đấu.",
+    "crossNav": {
+      "cultivation": "Tu Luyện",
+      "cultivationDesc": "Nâng cảnh giới",
+      "character": "Nhân Vật",
+      "characterDesc": "Hồ sơ tu tiên"
+    },
     "counts": "{passive} bị động · {active} chủ động",
     "empty": "Không có thần thông nào khớp bộ lọc.",
     "filter": {
@@ -3004,6 +3011,13 @@
   "cultivationMethod": {
     "title": "Công Pháp Đường",
     "subtitle": "Quản lý công pháp đã học. Mỗi tu sĩ chỉ vận hành một công pháp tại một thời điểm — chọn theo cảnh giới + linh căn + tông môn.",
+    "roleHint": "Công Pháp quyết định tốc độ tu luyện và chỉ số cộng thêm. Đổi công pháp phù hợp cảnh giới và linh căn để tối đa hoá tiến trình.",
+    "crossNav": {
+      "cultivation": "Tu Luyện",
+      "cultivationDesc": "Nâng cảnh giới",
+      "breakthrough": "Đột Phá",
+      "breakthroughDesc": "Thử thách đột phá"
+    },
     "loading": "Đang tải công pháp…",
     "empty": "Không có công pháp nào khớp bộ lọc.",
     "equippedSummary": "Đang vận: {key}",
@@ -3211,6 +3225,13 @@
   "artifactV2": {
     "title": "Pháp Bảo Đường — V2",
     "subtitle": "Hệ Pháp Bảo V2: 9 tầng phẩm cấp · 6 phẩm chất · 10 loại · ngũ hành · 5 slot. Luyện chế / nâng cấp / luyện hóa / thức tỉnh server-authoritative, kháng lạm phát.",
+    "roleHint": "Pháp Bảo là trang bị đặc biệt — luyện chế từ bản vẽ, nâng cấp tầng, luyện hóa sao, thức tỉnh kỹ năng ẩn. Mỗi slot trang bị một pháp bảo.",
+    "crossNav": {
+      "inventory": "Túi Đồ",
+      "inventoryDesc": "Vật phẩm & Trang bị",
+      "alchemy": "Luyện Đan",
+      "alchemyDesc": "Chế tạo đan dược"
+    },
     "loading": "Đang tải Pháp Bảo…",
     "empty": "Không có Pháp Bảo nào khớp bộ lọc.",
     "reloadError": "Tải dữ liệu thất bại — thử lại.",
@@ -7240,6 +7261,13 @@
   "events": {
     "title": "Sự Kiện",
     "subtitle": "Sự kiện LiveOps tier-balanced (Phase 28.0)",
+    "roleHint": "Sự Kiện là nội dung giới hạn thời gian — hoàn thành nhiệm vụ sự kiện để nhận thưởng độc quyền. Kiểm tra thường xuyên để không bỏ lỡ.",
+    "crossNav": {
+      "missions": "Sứ Mệnh",
+      "missionsDesc": "Nhiệm vụ hằng ngày",
+      "leaderboard": "Bảng Xếp Hạng",
+      "leaderboardDesc": "Xếp hạng đạo hữu"
+    },
     "loading": "Đang tải sự kiện…",
     "empty": "Hiện chưa có sự kiện nào.",
     "eventType": "Loại",
@@ -8474,6 +8502,13 @@
   "inventoryAutoSort": {
     "title": "Túi Đồ — Tự Sắp / Khoá",
     "subtitle": "Lọc, sắp xếp và khoá hàng loạt.",
+    "roleHint": "Công cụ quản lý túi đồ — sắp xếp tự động, khoá vật phẩm quan trọng để tránh bán nhầm, và lọc nhanh theo loại.",
+    "crossNav": {
+      "equipment": "Trang Bị",
+      "equipmentDesc": "Thiết bị & Nâng cấp",
+      "market": "Chợ Đấu Giá",
+      "marketDesc": "Mua bán với đạo hữu"
+    },
     "loading": "Đang tải…",
     "empty": "Không có vật phẩm nào khớp bộ lọc.",
     "searchPlaceholder": "Tìm theo tên / itemKey…",
@@ -8593,6 +8628,13 @@
   },
   "pets": {
     "title": "Linh Thú",
+    "roleHint": "Linh Thú là bạn đồng hành — tăng chỉ số chiến đấu, hỗ trợ kỹ năng đặc biệt. Nuôi dưỡng, nâng sao, và tiến hoá để mở khoá tiềm năng.",
+    "crossNav": {
+      "combat": "Chiến Đấu",
+      "combatDesc": "Dùng linh chiến đấu",
+      "inventory": "Túi Đồ",
+      "inventoryDesc": "Vật phẩm & Trang bị"
+    },
     "tabs": {
       "collection": "Bộ sưu tập",
       "catalog": "Bách khoa Linh Thú",

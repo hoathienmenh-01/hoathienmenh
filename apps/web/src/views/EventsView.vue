@@ -34,6 +34,7 @@ import {
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import type {
   PublicEventSummary,
   EventBracketDef,
@@ -280,10 +281,31 @@ function progressFor(missionKey: string): {
 <template>
   <AppShell>
     <div class="events-view">
-      <header class="events-header">
-        <h1>{{ t('events.title') }}</h1>
-        <p class="muted">{{ t('events.subtitle') }}</p>
-      </header>
+      <XTLuxHero
+        eyebrow="SỰ KIỆN LIVEOPS"
+        label="Sự Kiện"
+        :title="t('events.title')"
+        :subtitle="t('events.subtitle')"
+        tone="seal"
+        watermark-letter="S"
+        breadcrumb="Sự Kiện"
+        test-id="events-hero"
+        class="mb-4"
+      />
+
+      <div class="space-y-2 mb-4" data-testid="events-role-section">
+        <p class="text-xs text-ink-300 leading-relaxed" data-testid="events-role-hint">
+          {{ t('events.roleHint') }}
+        </p>
+        <div class="flex flex-wrap gap-2 text-xs" data-testid="events-cross-nav">
+          <router-link to="/missions" class="px-2 py-1 rounded bg-seal-900/40 text-seal-200 hover:bg-seal-800/50 transition">
+            {{ t('events.crossNav.missions') }} — {{ t('events.crossNav.missionsDesc') }}
+          </router-link>
+          <router-link to="/leaderboard" class="px-2 py-1 rounded bg-seal-900/40 text-seal-200 hover:bg-seal-800/50 transition">
+            {{ t('events.crossNav.leaderboard') }} — {{ t('events.crossNav.leaderboardDesc') }}
+          </router-link>
+        </div>
+      </div>
 
       <nav class="tabs">
         <button
