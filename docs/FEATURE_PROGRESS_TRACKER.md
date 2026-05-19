@@ -39,24 +39,25 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 9 | Beta Checklist Refresh | DONE | Current beta docs are partially stale versus code. | Sync beta/QA docs with current code and tracker. | `docs/BETA_CHECKLIST.md`, `docs/QA_CHECKLIST.md`, `docs/FEATURE_AUDIT_AND_ROADMAP.md`, this file | Checklist reflects current DONE/PARTIAL/DEFERRED state and next smoke gaps. | 2026-05-19 |
 | 10 | Mobile Top Routes QA Pass | DONE | Closed beta users are likely mobile-heavy. | QA top routes on mobile and fix obvious layout blockers. | App shell, `/home`, `/combat`, `/equipment`, `/missions`, `/inventory`, `/mail`, `/admin` | Top routes are usable at common mobile widths; issues documented or fixed. | 2026-05-19 |
 | 11 | Production Ops Polish | DONE | Ops infra exists but restore drill, operator runbook, and drill tracking gaps remain. | Restore drill script, runbook enhancement, drill log, smoke integration. | `scripts/restore-drill.mjs`, `docs/RUNBOOK.md`, `docs/BACKUP_RESTORE.md`, `scripts/smoke-all.mjs` | Restore drill passes end-to-end; runbook has drill procedure + pre-deploy checklist; drill log template exists. | 2026-05-19 |
-| 12 | Market V2 Player UX Polish | IN_PROGRESS | Market V2 (Auction House + Claim Box) is functional but utilitarian — raw table layout, no time remaining, no status badges. | Card layout, time remaining, status badges, role hint, cross-nav, better empty states, i18n keys. | `MarketV2View.vue`, `vi.json`, `en.json`, `MarketV2View.test.ts` | Card layout with time remaining + status badges; role hint + cross-nav; claim box with source descriptions; 7/7 tests pass. | 2026-05-19 |
+| 12 | Market V2 Player UX Polish | DONE | Market V2 (Auction House + Claim Box) is functional but utilitarian — raw table layout, no time remaining, no status badges. | Card layout, time remaining, status badges, role hint, cross-nav, better empty states, i18n keys. | `MarketV2View.vue`, `vi.json`, `en.json`, `MarketV2View.test.ts` | Card layout with time remaining + status badges; role hint + cross-nav; claim box with source descriptions; 7/7 tests pass. | 2026-05-19 |
+| 13 | Admin Control Center Polish | IN_PROGRESS | Admin CC is functional but utilitarian — no luxury hero, no role hint, no cross-navigation, plain stat cards. | XTLuxHero, role hint, cross-nav, overview stat color coding, data-testid, XTPullRefresh. | `AdminControlCenterView.vue`, `vi.json`, `en.json`, `AdminControlCenterView.test.ts` | Hero + role hint + cross-nav rendered; overview stats color-coded; data-testid on all key elements; 10/10 tests pass. | 2026-05-19 |
 
 ## Current Recommended Next Task
 
-`Admin Control Center Polish`
+`Alchemy V2 Polish` or `Party Dungeon / Co-op Boss Polish`
 
 ## Active Task Template
 
 ### Active Task
 
-- Task: Market V2 Player UX Polish
-- Branch: feat/market-v2-ux-polish
+- Task: Admin Control Center Polish
+- Branch: feat/admin-cc-polish
 - Started: 2026-05-19
 - Owner: AI
 - Status: IN_PROGRESS
-- Files touched: `apps/web/src/views/MarketV2View.vue`, `apps/web/src/i18n/vi.json`, `apps/web/src/i18n/en.json`, `apps/web/src/views/__tests__/MarketV2View.test.ts`
-- Tests run: typecheck, lint, build, Han gate, MarketV2View 7/7
-- Remaining risk: low — FE-only polish, no backend changes, no new API endpoints
+- Files touched: `apps/web/src/views/AdminControlCenterView.vue`, `apps/web/src/i18n/vi.json`, `apps/web/src/i18n/en.json`, `apps/web/src/views/__tests__/AdminControlCenterView.test.ts`
+- Tests run: typecheck, lint, build, Han gate, AdminControlCenterView 10/10
+- Remaining risk: low — FE-only polish, no backend changes
 - Next step: commit + push + create PR
 
 ## Completed Tasks
@@ -74,6 +75,7 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 9 | Beta Checklist Refresh | — | feat/beta-polish-pack | 2026-05-19 |
 | 10 | Mobile Top Routes QA Pass | — | feat/beta-polish-pack | 2026-05-19 |
 | 11 | Production Ops Polish | — | feat/production-ops-polish | 2026-05-19 |
+| 12 | Market V2 Player UX Polish | #645 | feat/market-v2-ux-polish | 2026-05-19 |
 
 ## Deferred / Do Not Build
 
