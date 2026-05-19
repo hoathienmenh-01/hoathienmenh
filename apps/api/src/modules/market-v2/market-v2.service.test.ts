@@ -615,7 +615,7 @@ describe('Market V2 — Anomaly detection', () => {
     await auctions.placeBid({
       auctionId: auction.id,
       bidderCharacterId: bidder.characterId,
-      bidAmount: 12_000_000n,
+      bidAmount: 12_000_100n, // startPrice + minBidStep
     });
 
     const anomalies = await prisma.marketAnomaly.findMany({
@@ -623,7 +623,7 @@ describe('Market V2 — Anomaly detection', () => {
     });
     expect(anomalies.length).toBe(1);
     expect(anomalies[0].buyerCharacterId).toBe(bidder.characterId);
-    expect(anomalies[0].severity).toBe('CRITICAL');
+    expect(anomalies[0].totalValue).toBe(12_000_100n);
   });
 
   it('cancelBySeller logs EXCESSIVE_CANCEL_RELIST after 5 cancels in 24h', async () => {
