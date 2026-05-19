@@ -27,8 +27,9 @@
  *     map / khu, enabled, có monster pool đầy đủ.
  *   - Khu 7-8 (`hoa_diem_son`, `hoang_tho_huyet`): 3 farm map / khu, 1
  *     placeholder disabled + 2 enabled với monster pool.
- *   - Khu 9 (`cuu_la_dien`): 3 farm map / khu, tất cả disabled (chưa có
- *     monster catalog cho Hoá Thần tier).
+ *   - Khu 9 (`cuu_la_dien`): 3 farm map / khu, enabled với 4 Hoá Thần-tier
+ *     monsters (cuu_la_ma_quan, cuu_la_tam_ma_binh, cuu_la_dao_anh,
+ *     cuu_la_thien_de_an).
  */
 import type { RegionKey } from './map-regions';
 import type { MonsterFamily } from './monster-taxonomy';
@@ -1114,9 +1115,9 @@ export const FARM_MAPS: readonly FarmMapDef[] = [
     nameVi: 'Cửu La Điện — Ma Huyệt Bí Cảnh',
     nameEn: 'Nine-Net Hall — Demon Hollow Secret',
     loreVi:
-      'Bí cảnh thượng cổ — Cửu La Thiên Đế trấn áp ma đạo. Dành cho tu sĩ Hoá Thần thử nghiệm tâm cảnh.',
+      'Bí cảnh thượng cổ — Cửu La Ma Quân và Tâm Ma Binh canh giữ lối vào. Dành cho tu sĩ Hoá Thần thử nghiệm tâm cảnh.',
     loreEn:
-      'An ancient secret realm — the Heavenly Emperor of Nine Nets suppresses demon-paths; for Spirit-Transformation cultivators to test their dao mind.',
+      'An ancient secret realm — Nine-Net Demon Armies and Inner-Demon Soldiers guard the entrance; for Spirit-Transformation cultivators to test their dao mind.',
     regionKey: 'cuu_la_dien',
     sourceTier: 5,
     unlockRealmOrder: 5,
@@ -1129,24 +1130,29 @@ export const FARM_MAPS: readonly FarmMapDef[] = [
     maxSessionMinutes: 120,
     staminaCostPerMinute: 5,
     dailyRewardCapKey: 'farm_session:cuu_la_dien_ma_huyet',
-    monsterPool: [],
-    eliteEncounterPool: [],
+    monsterPool: [
+      entry('cuu_la_ma_quan', 'MA_TU', { weight: 12, minRealmOrder: 5 }),
+      entry('cuu_la_tam_ma_binh', 'TAM_MA', { weight: 8, minRealmOrder: 5 }),
+    ],
+    eliteEncounterPool: [
+      entry('cuu_la_dao_anh', 'DAO_ANH', { weight: 3, canAutoBattle: false, manualOnly: true, dangerLevel: 'DANGEROUS', minRealmOrder: 5 }),
+    ],
     miniBossEncounterPool: [],
     higherTierMonsterPool: [],
     opportunityPool: [],
     dropProfileKey: 'farm_tribulation_tier_5',
     sourceHintVi: 'Ma hạch, tâm ma vụn, nguyên liệu vượt kiếp.',
     sourceHintEn: 'Demon cores, inner-demon shards, tribulation materials.',
-    enabled: false,
+    enabled: true,
   },
   {
     key: 'cuu_la_dien_lau_dai',
     nameVi: 'Cửu La Điện — Lầu Đài Ma Đạo',
     nameEn: 'Nine-Net Hall — Demon-Path Tower',
     loreVi:
-      'Lầu đài cổ nơi ma tu thượng cổ luyện ma công — Cửu La Huyền Quân trấn giữ tầng giữa. Dành cho tu sĩ Hoá Thần trung kỳ.',
+      'Lầu đài cổ nơi ma tu thượng cổ luyện ma công — Cửu La Đạo Ảnh phản chiếu kẻ xâm nhập. Dành cho tu sĩ Hoá Thần trung kỳ.',
     loreEn:
-      'An ancient tower where primordial demon-cultivators refined dark arts — the Nine-Net Mysterious Army guards the middle floors; reserved for mid-stage Spirit-Transformation cultivators.',
+      'An ancient tower where primordial demon-cultivators refined dark arts — Nine-Net Dao Reflections mirror every intruder; reserved for mid-stage Spirit-Transformation cultivators.',
     regionKey: 'cuu_la_dien',
     sourceTier: 5,
     unlockRealmOrder: 5,
@@ -1159,15 +1165,20 @@ export const FARM_MAPS: readonly FarmMapDef[] = [
     maxSessionMinutes: 120,
     staminaCostPerMinute: 5,
     dailyRewardCapKey: 'farm_session:cuu_la_dien_lau_dai',
-    monsterPool: [],
-    eliteEncounterPool: [],
+    monsterPool: [
+      entry('cuu_la_tam_ma_binh', 'TAM_MA', { weight: 10, minRealmOrder: 5 }),
+      entry('cuu_la_ma_quan', 'MA_TU', { weight: 6, minRealmOrder: 5 }),
+    ],
+    eliteEncounterPool: [
+      entry('cuu_la_dao_anh', 'DAO_ANH', { weight: 4, canAutoBattle: false, manualOnly: true, dangerLevel: 'DANGEROUS', minRealmOrder: 5 }),
+    ],
     miniBossEncounterPool: [],
     higherTierMonsterPool: [],
     opportunityPool: [],
     dropProfileKey: 'farm_tribulation_tier_5',
     sourceHintVi: 'Ma hạch thượng hạng, công pháp ma đạo, mảnh tâm pháp vô thượng.',
     sourceHintEn: 'Premium demon cores, demon-path methods, supreme mind-method fragments.',
-    enabled: false,
+    enabled: true,
   },
   {
     key: 'cuu_la_dien_thap_dao',
@@ -1189,14 +1200,21 @@ export const FARM_MAPS: readonly FarmMapDef[] = [
     maxSessionMinutes: 90,
     staminaCostPerMinute: 6,
     dailyRewardCapKey: 'farm_session:cuu_la_dien_thap_dao',
-    monsterPool: [],
-    eliteEncounterPool: [],
-    miniBossEncounterPool: [],
+    monsterPool: [
+      entry('cuu_la_ma_quan', 'MA_TU', { weight: 8, minRealmOrder: 5 }),
+      entry('cuu_la_tam_ma_binh', 'TAM_MA', { weight: 8, minRealmOrder: 5 }),
+    ],
+    eliteEncounterPool: [
+      entry('cuu_la_dao_anh', 'DAO_ANH', { weight: 4, canAutoBattle: false, manualOnly: true, dangerLevel: 'DANGEROUS', minRealmOrder: 5 }),
+    ],
+    miniBossEncounterPool: [
+      entry('cuu_la_thien_de_an', 'THU_VE_BI_CANH', { weight: 1, canAutoBattle: false, manualOnly: true, dangerLevel: 'EXTREME', minRealmOrder: 5 }),
+    ],
     higherTierMonsterPool: [],
     opportunityPool: [],
     dropProfileKey: 'farm_tribulation_tier_5',
     sourceHintVi: 'Đạo tâm tinh hoa, vật liệu vượt kiếp tối thượng, mảnh công pháp thiên đạo.',
     sourceHintEn: 'Dao-conviction essence, supreme tribulation materials, heavenly-method fragments.',
-    enabled: false,
+    enabled: true,
   },
 ];

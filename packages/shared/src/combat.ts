@@ -329,6 +329,81 @@ export const MONSTERS: readonly MonsterDef[] = [
   },
 
   // ═════════════════════════════════════════════════════════════════════
+  // Cửu La Điện — Hoá Thần tier (regionKey: cuu_la_dien, order 5)
+  //
+  // 4 monster cho farm map cuu_la_dien. Theme: ma đạo cổ, tâm cảnh,
+  // đạo ảnh. Stats scaling theo endgame Hoá Thần (level 21-26).
+  // ═════════════════════════════════════════════════════════════════════
+  {
+    key: 'cuu_la_ma_quan',
+    name: 'Cửu La Ma Quân',
+    level: 21,
+    hp: 2050,
+    atk: 175,
+    def: 85,
+    speed: 14,
+    expDrop: 1600,
+    linhThachDrop: 450,
+    element: 'kim',
+    monsterType: 'BEAST',
+    regionKey: 'cuu_la_dien',
+    elementalResist: { kim: 0.85 },
+  },
+  {
+    key: 'cuu_la_tam_ma_binh',
+    name: 'Cửu La Tâm Ma Binh',
+    level: 22,
+    hp: 2300,
+    atk: 190,
+    def: 90,
+    speed: 13,
+    expDrop: 1800,
+    linhThachDrop: 510,
+    element: null,
+    monsterType: 'SPIRIT',
+    regionKey: 'cuu_la_dien',
+  },
+  {
+    key: 'cuu_la_dao_anh',
+    name: 'Cửu La Đạo Ảnh',
+    level: 24,
+    hp: 2800,
+    atk: 220,
+    def: 100,
+    speed: 15,
+    expDrop: 2200,
+    linhThachDrop: 620,
+    element: null,
+    monsterType: 'ELITE',
+    regionKey: 'cuu_la_dien',
+    elementalResist: { kim: 0.85, moc: 0.9 },
+  },
+  {
+    key: 'cuu_la_thien_de_an',
+    name: 'Cửu La Thiên Đế Ảnh',
+    level: 26,
+    hp: 3600,
+    atk: 270,
+    def: 130,
+    speed: 16,
+    expDrop: 3000,
+    linhThachDrop: 850,
+    element: null,
+    monsterType: 'BOSS',
+    regionKey: 'cuu_la_dien',
+    elementalResist: { kim: 0.8, hoa: 0.85 },
+    lootTable: [
+      { itemKey: 'than_dan', weight: 3, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'tien_huyen_kiem', weight: 4, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'tien_huyen_giap', weight: 4, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'tien_kim_sa', weight: 12, qtyMin: 1, qtyMax: 3 },
+      { itemKey: 'cuu_thien_dan', weight: 10, qtyMin: 1, qtyMax: 2 },
+      { itemKey: 'cuu_la_giap', weight: 3, qtyMin: 1, qtyMax: 1 },
+      { itemKey: 'linh_can_dan', weight: 3, qtyMin: 1, qtyMax: 1 },
+    ],
+  },
+
+  // ═════════════════════════════════════════════════════════════════════
   // Phase 12 Story Foundation Late-game wire — Trúc Cơ → Nguyên Anh story monster
   //
   // Wire 8 placeholder targetId từ Story PR-1/Foundation Extension catalog
@@ -573,12 +648,12 @@ export const DUNGEONS: readonly DungeonDef[] = [
   {
     key: 'cuu_la_dien',
     name: 'Cửu La Điện',
-    description: 'Điện ma đạo cổ — Cửu La Huyền Quân trấn giữ, dành cho tu sĩ kim đan đỉnh thử nghiệm tâm cảnh.',
-    recommendedRealm: 'nguyen_anh',
-    monsters: ['cuu_la_huyen_quan'],
+    description: 'Điện ma đạo cổ — Cửu La Huyền Quân trấn giữ, dành cho tu sĩ Hoá Thần thử nghiệm tâm cảnh.',
+    recommendedRealm: 'hoa_than',
+    monsters: ['cuu_la_ma_quan', 'cuu_la_tam_ma_binh', 'cuu_la_dao_anh', 'cuu_la_huyen_quan', 'cuu_la_thien_de_an'],
     staminaEntry: 60,
     element: 'kim',
-    regionKey: 'kim_son_mach',
+    regionKey: 'cuu_la_dien',
     dailyLimit: 1,
     runReward: { linhThach: 1000, tienNgoc: 5, exp: 2500, items: [{ itemKey: 'cuu_huyen_dan', qty: 1 }] },
   },
