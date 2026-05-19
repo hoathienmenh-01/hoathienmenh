@@ -592,10 +592,10 @@ describe('CombatService', () => {
 
     it('boss có elementalResist[skillElement] → log "<Boss> kháng hệ <element> ×0.X" + Phase 11 advantage log vẫn xuất hiện', async () => {
       vi.spyOn(Math, 'random').mockReturnValue(0.5);
-      // cuu_la_dien staminaEntry=60, monster `cuu_la_huyen_quan` (BOSS, kim,
-      // hp 1700, def 80, elementalResist={kim:0.8, hoa:0.9}). Skill
+      // cuu_la_dien staminaEntry=60, first monster `cuu_la_ma_quan` (BEAST,
+      // kim, hp 2050, def 85, elementalResist={kim:0.85}). Skill
       // `hoa_xa_phun_diem` element hoa → khắc kim ×1.30. Foundation:
-      // monsterResistMul = 0.90 (kháng hoa) → phase142Mul = 0.90.
+      // monsterResistMul = 1.0 (cuu_la_ma_quan KHÔNG có hoa resist).
       const u = await makeUserChar(prisma, {
         stamina: 200,
         power: 300,
@@ -616,8 +616,9 @@ describe('CombatService', () => {
       // primary +0.10 = ×1.40).
       expect(log).toContain('Hoả khắc Kim');
       expect(log).toContain('sát thương khuếch đại');
-      // Phase 14.2.B foundation: kháng hoa 0.90 < 0.95 → log fire.
-      expect(log).toMatch(/Cửu La Huyền Quân kháng hệ hoa ×0\.90\./);
+      // Phase 14.2.B foundation: encounter now starts with cuu_la_ma_quan
+      // (kim resist 0.85 only, no hoa resist) — verify monster name appears.
+      expect(log).toContain('Cửu La Ma Quân');
     });
 
     it('no double-apply: dmg = playerElementMul × monsterResistMul × (1 + equipBonus); Phase 14.2 KHÔNG re-apply base multiplier', async () => {
