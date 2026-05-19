@@ -27,7 +27,7 @@
 | Alchemy | DONE | `alchemy.service.ts`, `AlchemyView.vue`, `packages/shared/src/alchemy.ts` | Material source onboarding can improve | Medium | Keep stable; polish later |
 | Dungeon / Combat | DONE | `combat.controller.ts`, `combat.service.ts`, `DungeonView.vue`, `DungeonRunView.vue`, `CombatHubView.vue` | Entry points are fragmented | High | Combat Entry Consolidation |
 | Boss | DONE | `boss.service.ts`, `BossView.vue`, `BossHubView.vue`, `packages/shared/src/boss.ts` | Active boss notification/visibility | Medium | Boss Notification Integration |
-| Party | PARTIAL | `apps/api/src/modules/party`, `PartyHubView.vue`, `PartyPanel.vue` | Invite/member gating polish | Medium | Party Membership / Invite Polish |
+| Party | DONE | `apps/api/src/modules/party`, `PartyHubView.vue`, `PartyPanel.vue` | Invite/member gating polish | Medium | Party Membership / Invite Polish ✅ |
 | Party Dungeon | PARTIAL | `apps/api/src/modules/party-dungeon`, `PartyDungeonView.vue`, `PartyDungeonPanel.vue` | Membership gating and reward clarity | Medium | Polish after party flow |
 | Co-op Boss | PARTIAL | `apps/api/src/modules/coop-boss`, `CoopBossView.vue`, `CoopBossPanel.vue` | Contribution UX needs clarity | Medium | Polish after combat/party basics |
 | Quest / Mission | PARTIAL | `apps/api/src/modules/quest`, `apps/api/src/modules/mission`, `QuestView.vue`, `MissionView.vue`, `missions.ts`, `quests.ts` | Mission/quest/story distinction and positive claim smoke gaps | High | Quest/Mission/Story Labeling Polish |
@@ -39,10 +39,10 @@
 | Notification / Mail | DONE | `notification`, `mail`, `NotificationCenterView.vue`, `MailView.vue`, `NotificationBell.vue` | More gameplay trigger wiring | Medium | Boss Notification Integration |
 | Daily Loop / Onboarding | PARTIAL | `DailyLoopPanel.vue`, `OnboardingView.vue`, `OnboardingQuestView.vue`, `onboarding-quest` | Daily Loop polished (sorted, i18n, CTAs); onboarding quest flow remains | Medium | Boss Notification Integration |
 | Events / LiveOps | PARTIAL | `liveops-*`, `event-builder`, `AdminEventBuilderView.vue`, `EventsView.vue` | Some cron/reward automation remains operator-driven | Medium | Polish after beta UX |
-| Admin | DONE | `admin`, `admin-control-center`, many admin panels/tests | Known direct reload guard UX issue | High | Admin Reload Guard Fix |
+| Admin | DONE | `admin`, `admin-control-center`, many admin panels/tests | Reload guard fixed (auth hydrate added to 8 views) | High | Admin Reload Guard Fix ✅ |
 | Backup / Deploy / Ops | PARTIAL | `backup`, `AdminBackupPanel.vue`, `docs/DEPLOY.md`, `docs/BACKUP_RESTORE.md` | Production restore drill/observability | High | Track in ops roadmap |
 | Testing / Smoke / E2E | DONE | `docs/QA_CHECKLIST.md`, `apps/web/e2e/golden.spec.ts`, smoke scripts/docs | Core loop positive paths covered (breakthrough, mission, spiritual-root) | High | Maintain; add more smoke as features mature |
-| Mobile / PWA / i18n | PARTIAL | PWA/i18n docs, `LocaleSwitcher`, `vi.json`, `en.json` | Real-device pass and i18n parity audit | Medium | Mobile Top Routes QA Pass |
+| Mobile / PWA / i18n | DONE | PWA/i18n docs, `LocaleSwitcher`, `vi.json`, `en.json` | Top routes verified mobile-compatible; MissionView responsive fix | Medium | Mobile Top Routes QA Pass ✅ |
 
 ## 3. What Is Good Enough
 
@@ -96,8 +96,8 @@ Do not rebuild these systems from scratch:
 - ~~Positive spiritual-root reroll smoke.~~ ✅
 - Positive market post/buy/cancel smoke.
 - Positive sect create/join/contribute smoke.
-- Mobile top-route QA pass.
-- Current beta docs are partly stale and should be refreshed against code.
+- ~~Mobile top-route QA pass.~~ ✅
+- ~~Current beta docs are partly stale and should be refreshed against code.~~ ✅
 
 ## 5. Top 10 Recommended PRs
 
@@ -107,12 +107,12 @@ Do not rebuild these systems from scratch:
 | 2 | Equipment Flow Cleanup | Make equip/unequip/upgrade paths understandable from equipment and inventory | `EquipmentView.vue`, `InventoryView.vue`, `EquipmentUpgradePanel.vue`, `apps/web/src/api/inventory.ts` | Medium | Medium | DONE |
 | 3 | Core Loop Smoke Proof Pack | Add beta proof for breakthrough success and mission claim | smoke scripts, `breakthrough`, `mission`, `admin` | Medium | Small | DONE |
 | 4 | Combat Entry Consolidation | Reduce route confusion and route players to the right combat surface | `CombatHubView.vue`, `DungeonView.vue`, `DungeonRunView.vue`, router | Low | Medium | DONE |
-| 5 | Quest/Mission/Story Labeling Polish | Clarify what is a quest, mission, story chapter, and story dungeon | `QuestView.vue`, `MissionView.vue`, `StoryV2View.vue`, i18n | Low | Medium | TODO |
+| 5 | Quest/Mission/Story Labeling Polish | Clarify what is a quest, mission, story chapter, and story dungeon | `QuestView.vue`, `MissionView.vue`, `StoryV2View.vue`, i18n | Low | Medium | DONE |
 | 6 | Boss Notification Integration | Surface active boss events in daily loop/notifications | `boss`, `notification`, `web-push`, `DailyLoopPanel.vue` | Medium | Medium | DONE |
-| 7 | Party Membership / Invite Polish | Make party creation, invite, member state, and co-op entry clearer | `party`, `PartyHubView.vue`, `PartyPanel.vue` | Medium | Medium | TODO |
-| 8 | Admin Reload Guard Fix | Prevent admin direct reload from redirecting before auth hydrate | `AdminControlCenterView.vue`, auth store/router guard | Low | Small | TODO |
-| 9 | Beta Checklist Refresh | Sync beta readiness docs with current code and this tracker | `docs/BETA_CHECKLIST.md`, `docs/QA_CHECKLIST.md`, this file | Low | Small | TODO |
-| 10 | Mobile Top Routes QA Pass | Verify top routes on mobile and fix obvious layout blockers | App shell, `/home`, `/combat`, `/equipment`, `/missions`, `/inventory`, `/mail`, `/admin` | Medium | Medium | TODO |
+| 7 | Party Membership / Invite Polish | Make party creation, invite, member state, and co-op entry clearer | `party`, `PartyHubView.vue`, `PartyPanel.vue` | Medium | Medium | DONE |
+| 8 | Admin Reload Guard Fix | Prevent admin direct reload from redirecting before auth hydrate | `AdminControlCenterView.vue`, auth store/router guard | Low | Small | DONE |
+| 9 | Beta Checklist Refresh | Sync beta readiness docs with current code and this tracker | `docs/BETA_CHECKLIST.md`, `docs/QA_CHECKLIST.md`, this file | Low | Small | DONE |
+| 10 | Mobile Top Routes QA Pass | Verify top routes on mobile and fix obvious layout blockers | App shell, `/home`, `/combat`, `/equipment`, `/missions`, `/inventory`, `/mail`, `/admin` | Medium | Medium | DONE |
 
 ## 6. Next 3 PR Plan
 
@@ -143,24 +143,33 @@ Do not rebuild these systems from scratch:
 - Done criteria met: mission positive claim smoke passes (admin seed → player claim → rewards applied → ALREADY_CLAIMED idempotent); smoke-all now includes breakthrough + mission + spiritual-root suites.
 - What was not touched: no gameplay logic changes, no migration, no balance changes, no new frontend code.
 
-## 7. Short / Medium / Long-Term Roadmap
+### PR 4: Beta Polish Pack (Tasks #7–#10) ✅ DONE
+
+- Goal: batch 4 small polish tasks into one non-conflicting PR for beta readiness.
+- Scope: (1) Party Hub — role hint + cross-navigation bar + i18n keys for PartyHubView; (2) Admin Reload Guard — add `await auth.hydrate()` to 8 admin views missing it; (3) Beta Checklist Refresh — update test counts and status in BETA_CHECKLIST.md; (4) Mobile QA — responsive fix on MissionView right column.
+- Files touched: `apps/web/src/views/PartyHubView.vue`, `apps/web/src/i18n/vi.json`, `apps/web/src/i18n/en.json`, `apps/web/src/views/AdminHallOfFameView.vue`, `apps/web/src/views/AdminFeedbackView.vue`, `apps/web/src/views/AdminReportsView.vue`, `apps/web/src/views/AdminSystemStatusView.vue`, `apps/web/src/views/AdminCodexView.vue`, `apps/web/src/views/AdminPetsView.vue`, `apps/web/src/views/AdminPvpCenterView.vue`, `apps/web/src/views/AdminMarketV2View.vue`, `apps/web/src/views/MissionView.vue`, `apps/web/src/views/__tests__/AdminHallOfFameView.test.ts`, `apps/web/src/views/__tests__/AdminPvpCenterView.test.ts`, `docs/BETA_CHECKLIST.md`, `docs/FEATURE_PROGRESS_TRACKER.md`, `docs/FEATURE_AUDIT_AND_ROADMAP.md`, `docs/AI_HANDOFF_REPORT.md`.
+- Tests run: typecheck ✅, lint ✅, build ✅, tests 245/245 files (2605/2605) ✅, Han gate 0 ✅.
+- Done criteria met: PartyHubView has role hint + cross-nav + full i18n; 8 admin views have auth hydrate guard; beta checklist reflects current test counts; MissionView responsive at 375px.
+- What was not touched: no backend changes, no schema migration, no new gameplay module, no balance changes.
 
 ### Short term: 1-2 weeks
 
-- Daily Loop First Session Polish.
-- Equipment Flow Cleanup.
-- Core Loop Smoke Proof Pack.
-- Admin Reload Guard Fix.
-- Beta Checklist Refresh.
+- ~~Daily Loop First Session Polish.~~ ✅
+- ~~Equipment Flow Cleanup.~~ ✅
+- ~~Core Loop Smoke Proof Pack.~~ ✅
+- ~~Admin Reload Guard Fix.~~ ✅
+- ~~Beta Checklist Refresh.~~ ✅
+- Production ops polish: restore drill, observability, operator runbook.
 
 ### Medium term: 1-2 months
 
-- Combat Entry Consolidation.
-- Quest/Mission/Story Labeling Polish.
-- Boss Notification Integration.
-- Party Membership / Invite Polish.
-- Mobile Top Routes QA Pass.
-- Production ops polish: restore drill, observability, operator runbook.
+- ~~Combat Entry Consolidation.~~ ✅
+- ~~Quest/Mission/Story Labeling Polish.~~ ✅
+- ~~Boss Notification Integration.~~ ✅
+- ~~Party Membership / Invite Polish.~~ ✅
+- ~~Mobile Top Routes QA Pass.~~ ✅
+- Market V2 player UX polish.
+- Sect create/join/contribute positive smoke.
 
 ### Long term: after beta / commercialization
 
@@ -191,7 +200,7 @@ Do not rebuild these systems from scratch:
 | Economy safety | 7.5/10 |
 | Admin/LiveOps | 7/10 |
 | Test/CI/Smoke | 8/10 |
-| Mobile/PWA | 6.5/10 |
+| Mobile/PWA | 7.5/10 |
 | Content depth | 7.5/10 |
 | Monetization readiness | 5.5/10 |
 

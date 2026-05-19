@@ -6141,6 +6141,28 @@
       "RATE_LIMITED": "Thao tác tổ đội quá nhanh — chậm lại vài giây.",
       "ABUSE_BLOCKED": "Tạm khoá thao tác tổ đội do hành vi bất thường. Thử lại sau vài phút.",
       "UNKNOWN": "Có lỗi xảy ra — thử lại."
+    },
+    "title": "Tổ Đội",
+    "subtitle": "Quản lý tổ đội & hoạt động nhóm",
+    "roleHint": "Tổ đội cho phép bạn cùng bạn bè tham gia Phụ Bản Tổ Đội và Co-op Boss. Tạo hoặc tham gia tổ đội để mở khoá hoạt động nhóm.",
+    "noParty": "Bạn chưa có tổ đội",
+    "createBtn": "Tạo Tổ Đội",
+    "unnamed": "Tổ Đội Không Tên",
+    "memberCount": "Thành viên",
+    "membersTitle": "Thành Viên",
+    "activitiesTitle": "Hoạt Động Nhóm",
+    "dungeonEntry": "Phụ Bản Tổ Đội",
+    "dungeonDesc": "Cùng tổ đội khám phá dungeon co-op PvE",
+    "coopBossEntry": "Co-op Boss",
+    "coopBossDesc": "Hợp lực đánh boss thế giới cùng tổ đội",
+    "leaveBtn": "Rời Tổ Đội",
+    "createdToast": "Đã tạo tổ đội!",
+    "leftToast": "Đã rời tổ đội",
+    "leaveConfirm": "Rời tổ đội?",
+    "crossNav": {
+      "label": "Xem thêm",
+      "dungeon": "Phụ Bản Tổ Đội",
+      "coopBoss": "Co-op Boss"
     }
   },
   "partyDungeon": {

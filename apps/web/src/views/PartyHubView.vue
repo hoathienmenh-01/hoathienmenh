@@ -126,6 +126,23 @@ function goToCoopBoss(): void {
       </template>
     </XTLuxHero>
 
+    <!-- Role hint + cross-nav -->
+    <div class="max-w-4xl mx-auto space-y-2" data-testid="party-role-section">
+      <p class="text-xs text-ink-300 leading-relaxed" data-testid="party-role-hint">
+        {{ t('party.roleHint') }}
+      </p>
+      <nav class="flex flex-wrap gap-2 text-xs" data-testid="party-cross-nav">
+        <span class="text-ink-400">{{ t('party.crossNav.label') }}:</span>
+        <router-link to="/party/dungeon" class="text-amber-300 hover:text-amber-100 underline" data-testid="party-cross-nav-dungeon">
+          {{ t('party.crossNav.dungeon') }}
+        </router-link>
+        <span class="text-ink-500">·</span>
+        <router-link to="/party/coop-boss" class="text-amber-300 hover:text-amber-100 underline" data-testid="party-cross-nav-coop-boss">
+          {{ t('party.crossNav.coopBoss') }}
+        </router-link>
+      </nav>
+    </div>
+
     <!-- Loading -->
     <div v-if="loading" class="text-center py-8 text-ink-400" data-testid="party-hub-loading">
       {{ t('common.loading', 'Loading...') }}
