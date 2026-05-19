@@ -301,6 +301,33 @@ onMounted(refresh);
       </button>
     </header>
 
+    <!-- Role hint -->
+    <p class="text-sm text-gray-400 px-1" data-testid="loadout-role-hint">
+      {{ t('loadout.roleHint') }}
+    </p>
+
+    <!-- Cross-navigation -->
+    <nav class="flex gap-2 text-xs" data-testid="loadout-cross-nav">
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-equipment"
+        @click="$router.push('/equipment')"
+      >
+        <span class="text-amber-400">&#9876;</span>
+        <span>{{ t('loadout.crossNav.equipment') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('loadout.crossNav.equipmentDesc') }}</span>
+      </button>
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-inventory"
+        @click="$router.push('/inventory')"
+      >
+        <span class="text-emerald-400">&#127890;</span>
+        <span>{{ t('loadout.crossNav.inventory') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('loadout.crossNav.inventoryDesc') }}</span>
+      </button>
+    </nav>
+
     <p v-if="toastMsg" class="rounded bg-emerald-700/30 text-emerald-200 px-3 py-2 text-sm">
       {{ toastMsg }}
     </p>

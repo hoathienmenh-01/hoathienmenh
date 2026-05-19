@@ -98,6 +98,13 @@ const i18n = createI18n({
           PRICE_TOO_HIGH: 'Giá cao hơn mức tối đa.',
           UNKNOWN: 'Lỗi không xác định.',
         },
+        roleHint: 'Mua bán trang bị và vật phẩm với đạo hữu khác.',
+        crossNav: {
+          marketV2: 'Đấu Giá',
+          marketV2Desc: 'Nhà Đấu Giá',
+          inventory: 'Túi Đồ',
+          inventoryDesc: 'Quản lý vật phẩm',
+        },
       },
       quality: {},
       listingStatus: { ACTIVE: 'Đang bán', SOLD: 'Đã bán', CANCELLED: 'Huỷ' },
@@ -286,5 +293,37 @@ describe('MarketView — Phase 16.6 price band (L1)', () => {
     );
     expect(errorCall).toBeTruthy();
     expect(errorCall![0].text).toContain('thấp hơn');
+  });
+});
+
+describe('MarketView — cross-navigation', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    listMarketMock.mockReset();
+    listMineMock.mockReset();
+    listInventoryMock.mockReset();
+    postListingMock.mockReset();
+    toastPushMock.mockReset();
+  });
+
+  it('render role hint', async () => {
+    listMarketMock.mockResolvedValue({ listings: [], feePct: 0.05 });
+    listMineMock.mockResolvedValue([]);
+    listInventoryMock.mockResolvedValue([]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="market-role-hint"]').exists()).toBe(true);
+    expect(w.find('[data-testid="market-role-hint"]').text()).toContain('Mua bán');
+  });
+
+  it('render cross-navigation links', async () => {
+    listMarketMock.mockResolvedValue({ listings: [], feePct: 0.05 });
+    listMineMock.mockResolvedValue([]);
+    listInventoryMock.mockResolvedValue([]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="market-cross-nav"]').exists()).toBe(true);
+    expect(w.find('[data-testid="cross-nav-market-v2"]').exists()).toBe(true);
+    expect(w.find('[data-testid="cross-nav-inventory"]').exists()).toBe(true);
   });
 });

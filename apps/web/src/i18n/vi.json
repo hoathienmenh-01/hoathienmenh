@@ -575,6 +575,15 @@
       "level": "Cấp",
       "members": "Đệ Tử",
       "treasury": "Linh Thạch Khố"
+    },
+    "roleHint": "Đối sánh lực chiến, tài sản và tông môn giữa các đạo hữu trong thiên hạ.",
+    "crossNav": {
+      "arena": "Đấu Trường",
+      "arenaDesc": "PvP & Xếp hạng",
+      "achievements": "Thành Tựu",
+      "achievementsDesc": "Cột mốc & Danh hiệu",
+      "sect": "Tông Môn",
+      "sectDesc": "Quản lý tông phái"
     }
   },
   "profile": {
@@ -944,6 +953,13 @@
       "ALREADY_CLAIMED": "Thư này đã được nhận.",
       "UNAUTHENTICATED": "Phiên đã hết hạn, vui lòng đăng nhập lại.",
       "UNKNOWN": "Lỗi bất định."
+    },
+    "roleHint": "Thiên Đạo truyền thư — nhận quà, thông báo sự kiện, và tin tức từ ban quản trị.",
+    "crossNav": {
+      "social": "Xã Giao",
+      "socialDesc": "Bạn bè & Trò chuyện",
+      "market": "Phường Thị",
+      "marketDesc": "Mua bán vật phẩm"
     }
   },
   "giftcode": {
@@ -1776,6 +1792,13 @@
       "LISTING_NOT_FOUND": "Tin đăng không tồn tại.",
       "NOT_OWNER": "Đây không phải tin đăng của bạn.",
       "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
+    },
+    "roleHint": "Mua bán trang bị và vật phẩm với đạo hữu khác. Đăng bán vật phẩm từ túi đồ, tìm kiếm món hời, hoặc đấu giá hiếm.",
+    "crossNav": {
+      "marketV2": "Đấu Giá",
+      "marketV2Desc": "Nhà Đấu Giá",
+      "inventory": "Túi Đồ",
+      "inventoryDesc": "Quản lý vật phẩm"
     }
   },
   "shop": {
@@ -3402,6 +3425,13 @@
       "field": {
         "realm": "Yêu cầu"
       }
+    },
+    "roleHint": "Quản lý thuật pháp đã học — vận, gỡ, nâng thuần thục, và xem trước pháp quyển cảnh giới cao.",
+    "crossNav": {
+      "cultivation": "Tu Luyện",
+      "cultivationDesc": "Trung tâm tu luyện",
+      "equipment": "Trang Bị",
+      "equipmentDesc": "Quản lý trang bị"
     }
   },
   "achievements": {
@@ -5936,6 +5966,13 @@
       "RATE_LIMITED": "Đạo hữu thao tác quá nhanh — vui lòng nghỉ tay rồi thử lại.",
       "ABUSE_BLOCKED": "Tạm khoá thao tác xã giao do hành vi bất thường. Thử lại sau vài phút.",
       "UNKNOWN": "Có lỗi xảy ra — thử lại."
+    },
+    "roleHint": "Quản lý bạn bè, trò chuyện riêng/nhóm, tham gia tổ đội và hoạt động hợp tác.",
+    "crossNav": {
+      "mail": "Hộp Thư",
+      "mailDesc": "Thiên Đạo Thư Các",
+      "party": "Tổ Đội",
+      "partyDesc": "Nhóm & Hoạt động"
     }
   },
   "coCultivation": {
@@ -8354,6 +8391,13 @@
       "LOADOUT_PRESET_MODE_INVALID": "Chế độ không hợp lệ.",
       "LOADOUT_PRESET_PAYLOAD_INVALID": "Dữ liệu bộ trang bị không hợp lệ.",
       "LOADOUT_PRESET_LIMIT_REACHED": "Đã đạt giới hạn 20 bộ trang bị nhanh."
+    },
+    "roleHint": "Lưu và chuyển nhanh giữa các bộ trang bị theo chế độ PvE, PvP, hoặc Boss.",
+    "crossNav": {
+      "equipment": "Trang Bị",
+      "equipmentDesc": "Xem trang bị đang mặc",
+      "inventory": "Túi Đồ",
+      "inventoryDesc": "Quản lý vật phẩm"
     }
   },
   "pets": {

@@ -115,6 +115,13 @@ function buildI18n() {
             ARTIFACT_MISSING: 'Pháp bảo slot {slot} thiếu.',
           },
           errors: {},
+          roleHint: 'Lưu và chuyển nhanh giữa các bộ trang bị.',
+          crossNav: {
+            equipment: 'Trang Bị',
+            equipmentDesc: 'Xem trang bị đang mặc',
+            inventory: 'Túi Đồ',
+            inventoryDesc: 'Quản lý vật phẩm',
+          },
         },
       },
     },
@@ -253,5 +260,24 @@ describe('Phase QOL-2 — LoadoutView', () => {
     await flushPromises();
     expect(deleteLoadoutPresetMock).toHaveBeenCalledWith('pD');
     confirmSpy.mockRestore();
+  });
+});
+
+describe('LoadoutView — cross-navigation', () => {
+  it('render role hint', async () => {
+    listLoadoutPresetsMock.mockResolvedValue([]);
+    const wrapper = mount(LoadoutView, { global: { plugins: [buildI18n()] } });
+    await flushPromises();
+    expect(wrapper.find('[data-testid="loadout-role-hint"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="loadout-role-hint"]').text()).toContain('Lưu và chuyển');
+  });
+
+  it('render cross-navigation links', async () => {
+    listLoadoutPresetsMock.mockResolvedValue([]);
+    const wrapper = mount(LoadoutView, { global: { plugins: [buildI18n()] } });
+    await flushPromises();
+    expect(wrapper.find('[data-testid="loadout-cross-nav"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="cross-nav-equipment"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="cross-nav-inventory"]').exists()).toBe(true);
   });
 });

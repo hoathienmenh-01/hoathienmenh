@@ -204,6 +204,33 @@ function handleErr(e: unknown): void {
       <XTPageEyebrow caps="THIÊN HẠNH THƯƠNG PHỐ" label="Thiên Hạnh Thương Phố" class="sr-only" />
     </XTLuxHero>
 
+    <!-- Role hint -->
+    <p class="text-sm text-gray-400 px-1" data-testid="market-role-hint">
+      {{ t('market.roleHint') }}
+    </p>
+
+    <!-- Cross-navigation -->
+    <nav class="flex gap-2 text-xs mb-4" data-testid="market-cross-nav">
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-market-v2"
+        @click="router.push('/market-v2')"
+      >
+        <span class="text-amber-400">&#9878;</span>
+        <span>{{ t('market.crossNav.marketV2') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('market.crossNav.marketV2Desc') }}</span>
+      </button>
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-inventory"
+        @click="router.push('/inventory')"
+      >
+        <span class="text-emerald-400">&#127890;</span>
+        <span>{{ t('market.crossNav.inventory') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('market.crossNav.inventoryDesc') }}</span>
+      </button>
+    </nav>
+
     <div class="flex gap-2 mb-4">
       <MButton :class="tab === 'buy' ? '!bg-ink-50 !text-ink-900' : ''" @click="tab = 'buy'">
         {{ t('market.tab.buy') }}
