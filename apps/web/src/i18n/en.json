@@ -871,6 +871,13 @@
   },
   "mission": {
     "title": "Mission Log",
+    "subtitle": "Repeating tasks — complete daily/weekly for rewards. Resets when timer expires.",
+    "roleHint": "Missions are repeatable tasks (daily, weekly, one-time) — do them every day to maximize rewards.",
+    "crossNav": {
+      "label": "Also see",
+      "quest": "Story Quests",
+      "story": "Story Chapters"
+    },
     "empty": "No missions in this category.",
     "claim": "Claim",
     "claimToast": "Claimed: {name}",
@@ -4000,6 +4007,12 @@
   "quest": {
     "title": "Story Quests",
     "subtitle": "Track and complete the main storyline chains of Hoa Thiên Lộ.",
+    "roleHint": "Story Quests are one-time chains — complete them to unlock story chapters, realms, and new features.",
+    "crossNav": {
+      "label": "Also see",
+      "mission": "Daily/Weekly Missions",
+      "story": "Story Chapters"
+    },
     "totalCount": "Visible: {n}",
     "filteredCount": "Filtered: {n}",
     "completedCount": "Completed: {n}",
@@ -7891,6 +7904,12 @@
   "storyV2": {
     "title": "Tu Tien Lo — Volume II–IV",
     "subtitle": "Journey through Immortal Realm → Holy Way → Eternal Origin (Chapters 9 to 27).",
+    "roleHint": "Story Chapters are a chapter-based journey — accept quests, complete objectives, then claim rewards to progress.",
+    "crossNav": {
+      "label": "Also see",
+      "quest": "Story Quests",
+      "mission": "Daily/Weekly Missions"
+    },
     "totalCount": "Chapters: {n}",
     "inProgressCount": "In progress: {n}",
     "completedCount": "Completed: {n}",

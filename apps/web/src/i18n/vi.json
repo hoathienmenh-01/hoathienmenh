@@ -871,6 +871,13 @@
   },
   "mission": {
     "title": "Bảng Nhiệm Vụ",
+    "subtitle": "Nhiệm vụ lặp lại — hoàn thành hàng ngày/tuần để nhận thưởng, reset khi hết hạn.",
+    "roleHint": "Sứ Mệnh là nhiệm vụ lặp lại (hằng ngày, hằng tuần, một lần) — làm mỗi ngày để tối đa phần thưởng.",
+    "crossNav": {
+      "label": "Xem thêm",
+      "quest": "Nhiệm Vụ Cốt Truyện",
+      "story": "Cốt Truyện chương"
+    },
     "empty": "Không có nhiệm vụ trong mục này.",
     "claim": "Nhận Thưởng",
     "claimToast": "Đã nhận thưởng: {name}",
@@ -4000,6 +4007,12 @@
   "quest": {
     "title": "Nhiệm Vụ Cốt Truyện",
     "subtitle": "Theo dõi và hoàn thành các chuỗi nhiệm vụ chính tuyến của Hoa Thiên Lộ.",
+    "roleHint": "Nhiệm Vụ Cốt Truyện là chuỗi nhiệm vụ một lần — hoàn thành để mở khoá cốt truyện, cảnh giới, và tính năng mới.",
+    "crossNav": {
+      "label": "Xem thêm",
+      "mission": "Sứ Mệnh hàng ngày",
+      "story": "Cốt Truyện chương"
+    },
     "totalCount": "Đã hiện: {n}",
     "filteredCount": "Đang lọc: {n}",
     "completedCount": "Đã hoàn tất: {n}",
@@ -7891,6 +7904,12 @@
   "storyV2": {
     "title": "Tu Tiên Lộ — Quyển II–IV",
     "subtitle": "Hành trình Tiên Giới → Thánh Đạo → Bản Nguyên (Chương 9 đến 27).",
+    "roleHint": "Cốt Truyện là hành trình theo chương — Accept từng nhiệm vụ, hoàn thành bước, rồi Claim thưởng để tiến chương.",
+    "crossNav": {
+      "label": "Xem thêm",
+      "quest": "Nhiệm Vụ Cốt Truyện",
+      "mission": "Sứ Mệnh hàng ngày"
+    },
     "totalCount": "Chương: {n}",
     "inProgressCount": "Đang tiến: {n}",
     "completedCount": "Đã viên mãn: {n}",
