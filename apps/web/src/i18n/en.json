@@ -144,6 +144,18 @@
       "tho": "Earth"
     }
   },
+  "effectsPreview": {
+    "title": "Effects Preview",
+    "subtitle": "Visual effects preview tool",
+    "roleHint": "Preview and test visual effects at different quality levels.",
+    "forbidden": "Admin area only.",
+    "crossNav": {
+      "adminCC": "Control Center",
+      "adminCCDesc": "System overview",
+      "settings": "Settings",
+      "settingsDesc": "Adjust effects"
+    }
+  },
   "elementIdentity": {
     "dominantLabel": "Dominant",
     "recommendedCounterLabel": "Recommended counter",

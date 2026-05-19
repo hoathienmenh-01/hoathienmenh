@@ -144,6 +144,18 @@
       "tho": "Thổ"
     }
   },
+  "effectsPreview": {
+    "title": "Hiệu Ứng",
+    "subtitle": "Xem trước hiệu ứng hình ảnh",
+    "roleHint": "Xem trước và kiểm tra hiệu ứng hình ảnh ở các mức khác nhau.",
+    "forbidden": "Khu vực dành cho quản trị viên.",
+    "crossNav": {
+      "adminCC": "Chủ Khiển",
+      "adminCCDesc": "Tổng quan hệ thống",
+      "settings": "Cài Đặt",
+      "settingsDesc": "Chỉnh sửa hiệu ứng"
+    }
+  },
   "elementIdentity": {
     "dominantLabel": "Hệ chính",
     "recommendedCounterLabel": "Khuyến nghị dùng hệ",

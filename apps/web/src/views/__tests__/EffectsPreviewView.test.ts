@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
+import { createI18n } from 'vue-i18n';
 import { setActivePinia, createPinia } from 'pinia';
 import { DEFAULT_PLAYER_SETTINGS } from '@xuantoi/shared';
 
@@ -43,6 +44,13 @@ vi.mock('@/components/shell/AppShell.vue', () => ({
     template: '<div data-testid="app-shell-stub"><slot /></div>',
   },
 }));
+vi.mock('@/components/xianxia/XTLuxHero.vue', () => ({
+  default: {
+    name: 'XTLuxHeroStub',
+    props: ['eyebrow', 'label', 'title', 'subtitle', 'tone', 'watermarkLetter', 'testId'],
+    template: '<div :data-testid="testId"><slot /></div>',
+  },
+}));
 vi.mock('@/components/visual-effects/EffectPreviewPanel.vue', () => ({
   default: {
     name: 'EffectPreviewPanelStub',
@@ -52,8 +60,32 @@ vi.mock('@/components/visual-effects/EffectPreviewPanel.vue', () => ({
 
 import EffectsPreviewView from '@/views/EffectsPreviewView.vue';
 
+const i18n = createI18n({
+  legacy: false,
+  locale: 'vi',
+  fallbackLocale: 'vi',
+  missingWarn: false,
+  fallbackWarn: false,
+  messages: {
+    vi: {
+      effectsPreview: {
+        title: 'Hiệu Ứng',
+        subtitle: 'sub',
+        roleHint: 'Xem trước hiệu ứng.',
+        forbidden: 'Khu vực dành cho quản trị viên.',
+        crossNav: {
+          adminCC: 'Chủ Khiển',
+          adminCCDesc: 'Tổng quan',
+          settings: 'Cài Đặt',
+          settingsDesc: 'Chỉnh sửa',
+        },
+      },
+    },
+  },
+});
+
 function mountView() {
-  return mount(EffectsPreviewView, { attachTo: document.body });
+  return mount(EffectsPreviewView, { global: { plugins: [i18n] }, attachTo: document.body });
 }
 
 describe('EffectsPreviewView — admin gate', () => {
@@ -108,6 +140,36 @@ describe('EffectsPreviewView — admin gate', () => {
     expect(
       document.querySelector('[data-testid="effect-preview-panel-stub"]'),
     ).not.toBeNull();
+    w.unmount();
+  });
+
+  it('render hero', async () => {
+    authState.isAuthenticated = true;
+    authState.isAdmin = true;
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="effects-preview-hero"]').exists()).toBe(true);
+    w.unmount();
+  });
+
+  it('render role hint', async () => {
+    authState.isAuthenticated = true;
+    authState.isAdmin = true;
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="effects-preview-role-hint"]').exists()).toBe(true);
+    expect(w.find('[data-testid="effects-preview-role-hint"]').text()).toBeTruthy();
+    w.unmount();
+  });
+
+  it('render cross-nav', async () => {
+    authState.isAuthenticated = true;
+    authState.isAdmin = true;
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="effects-preview-cross-nav"]').exists()).toBe(true);
+    expect(w.find('[data-testid="cross-nav-admin-cc"]').exists()).toBe(true);
+    expect(w.find('[data-testid="cross-nav-settings"]').exists()).toBe(true);
     w.unmount();
   });
 });
