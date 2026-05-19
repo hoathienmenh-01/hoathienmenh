@@ -41,7 +41,7 @@
 | Events / LiveOps | PARTIAL | `liveops-*`, `event-builder`, `AdminEventBuilderView.vue`, `EventsView.vue` | Some cron/reward automation remains operator-driven | Medium | Polish after beta UX |
 | Admin | DONE | `admin`, `admin-control-center`, many admin panels/tests | Reload guard fixed; Control Center polished (hero, role hint, cross-nav, stat color coding, data-testid, pull-to-refresh) | High | Maintain |
 | Backup / Deploy / Ops | DONE | `backup`, `AdminBackupPanel.vue`, `docs/DEPLOY.md`, `docs/BACKUP_RESTORE.md`, `scripts/restore-drill.mjs`, `docs/RUNBOOK.md` | Restore drill automated; operator runbook enhanced with drill procedure + pre-deploy checklist | High | Maintain; run drill monthly |
-| Testing / Smoke / E2E | DONE | `docs/QA_CHECKLIST.md`, `apps/web/e2e/golden.spec.ts`, smoke scripts/docs | Core loop positive paths covered (breakthrough, mission, spiritual-root) | High | Maintain; add more smoke as features mature |
+| Testing / Smoke / E2E | DONE | `docs/QA_CHECKLIST.md`, `apps/web/e2e/golden.spec.ts`, smoke scripts/docs | Core loop positive paths covered (breakthrough, mission, spiritual-root, sect contribute/join, market post/buy/cancel) | High | Maintain; add more smoke as features mature |
 | Mobile / PWA / i18n | DONE | PWA/i18n docs, `LocaleSwitcher`, `vi.json`, `en.json` | Top routes verified mobile-compatible; MissionView responsive fix | Medium | Mobile Top Routes QA Pass ✅ |
 
 ## 3. What Is Good Enough
@@ -94,8 +94,8 @@ Do not rebuild these systems from scratch:
 - ~~Positive breakthrough success smoke.~~ ✅
 - ~~Positive mission claim smoke.~~ ✅
 - ~~Positive spiritual-root reroll smoke.~~ ✅
-- Positive market post/buy/cancel smoke.
-- Positive sect create/join/contribute smoke.
+- ~~Positive market post/buy/cancel smoke.~~ ✅
+- ~~Positive sect create/join/contribute smoke.~~ ✅
 - ~~Mobile top-route QA pass.~~ ✅
 - ~~Current beta docs are partly stale and should be refreshed against code.~~ ✅
 

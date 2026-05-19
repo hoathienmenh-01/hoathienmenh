@@ -43,10 +43,11 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 13 | Admin Control Center Polish | DONE | Admin CC is functional but utilitarian — no luxury hero, no role hint, no cross-navigation, plain stat cards. | XTLuxHero, role hint, cross-nav, overview stat color coding, data-testid, XTPullRefresh. | `AdminControlCenterView.vue`, `vi.json`, `en.json`, `AdminControlCenterView.test.ts` | Hero + role hint + cross-nav rendered; overview stats color-coded; data-testid on all key elements; 10/10 tests pass. | 2026-05-19 |
 | 14 | Co-op & Social Views Polish | DONE | Party Dungeon, Co-op Boss, Sect, Tribulation all have XTLuxHero but lack role hint + cross-navigation — inconsistent with every other polished view. | Add roleHint + crossNav to all 4 views; i18n parity; fix data-testid; update tests. | `PartyDungeonView.vue`, `CoopBossView.vue`, `SectView.vue`, `TribulationView.vue`, `vi.json`, `en.json`, 4 test files | Each view has role hint + cross-nav rendered; i18n keys in vi+en; data-testid on all key elements; all tests pass. | 2026-05-19 |
 | 15 | Views UX Polish Pack | DONE | 12 views still missing roleHint + crossNav; 3 also missing XTLuxHero. All other polished views have this pattern. | Add XTLuxHero (3 views), roleHint + crossNav (12 views), i18n parity, update tests. | `AlchemyView`, `BreakthroughView`, `DungeonView`, `SpiritualRootView`, `BodyCultivationView`, `DungeonRunView`, `BossView`, `BossHubView`, `InventoryView`, `CharacterView`, `AchievementView`, `ArenaView`, `vi.json`, `en.json`, 12 test files | Each view has XTLuxHero + roleHint + crossNav; i18n keys in vi+en; 245 test files / 2647 tests pass. | 2026-05-19 |
+| 16 | Sect & Market Positive-Path Smoke | DONE | Existing sect/market smoke only cover negative paths. Positive paths (sect contribute, market post/buy/cancel) need admin seed endpoints to verify end-to-end happy path. | Add positive-path smoke scripts using admin grant-currency + grant-item seed. Sect: contribute + join. Market: post + buy + cancel + anti-FE-self-grant. | `scripts/smoke-sect-positive.mjs`, `scripts/smoke-market-positive.mjs`, `smoke-all.mjs`, `package.json` | Both scripts pass with 0 failures; anti-FE-self-grant invariants verified; added to smoke-all as opt-in. | 2026-05-19 |
 
 ## Current Recommended Next Task
 
-`Sect Create/Join/Contribute Smoke` or `Market Post/Buy/Cancel Smoke`
+`Content Depth — Realm Tier Expansion` or `Market V2 Abuse Workflow`
 
 ## Active Task Template
 
@@ -76,6 +77,8 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 12 | Market V2 Player UX Polish | #645 | feat/market-v2-ux-polish | 2026-05-19 |
 | 13 | Admin Control Center Polish | #646 | feat/admin-cc-polish | 2026-05-19 |
 | 14 | Co-op & Social Views Polish | — | feat/coop-social-ux-polish | 2026-05-19 |
+| 15 | Views UX Polish Pack | #648 | feat/views-ux-polish-pack | 2026-05-19 |
+| 16 | Sect & Market Positive-Path Smoke | — | feat/sect-market-positive-smoke | 2026-05-19 |
 
 ## Deferred / Do Not Build
 

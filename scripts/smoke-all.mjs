@@ -49,6 +49,8 @@ const ALL_SUITES = [
  */
 const OPT_IN_SUITES = [
   { name: 'restore-drill', script: 'scripts/restore-drill.mjs' },
+  { name: 'sect-positive', script: 'scripts/smoke-sect-positive.mjs' },
+  { name: 'market-positive', script: 'scripts/smoke-market-positive.mjs' },
 ];
 
 const STEP_TIMEOUT_MS = Number(process.env.SMOKE_ALL_TIMEOUT_MS ?? 60_000);
