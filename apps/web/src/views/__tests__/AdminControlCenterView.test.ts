@@ -4,18 +4,10 @@ import { createI18n } from 'vue-i18n';
 import { setActivePinia, createPinia } from 'pinia';
 
 /**
- * AdminControlCenterView — regression test cho QA-004.
+ * AdminControlCenterView — regression test cho QA-004 + UX polish.
  *
- * Trước fix: `onMounted` check `isAdmin.value` ngay lập tức, race với
- * `auth.hydrate()`. Khi user reload trực tiếp `/admin/control-center`,
- * store chưa có `user` → admin hợp lệ bị toast + redirect `/home`.
- *
- * Sau fix: `onMounted` `await auth.hydrate()` trước, sau đó check
- * `isAuthenticated` + `isAdmin`. Test xác nhận:
- *   1. Admin hợp lệ → KHÔNG redirect, load overview + matrix.
- *   2. Non-admin → toast + redirect `/home`.
- *   3. Chưa login → redirect `/auth` (không show "Chỉ admin" toast).
- *   4. `hydrate()` được await trước role check (anti-race regression).
+ * QA-004: hydrate() được await trước role check (anti-race regression).
+ * UX polish: hero, role hint, cross-navigation, data-testid, overview grid.
  */
 
 const overviewMock = vi.fn();
@@ -53,9 +45,6 @@ interface AuthState {
   hydrate: ReturnType<typeof vi.fn>;
 }
 
-// Trạng thái auth có thể mutate trong từng test. `hydrate()` mô phỏng
-// `api.session()` resolve sau khi component mount (đây chính là race
-// condition mà QA-004 phát hiện).
 const authState: AuthState = {
   user: null,
   isAuthenticated: false,
@@ -80,6 +69,29 @@ vi.mock('@/components/ui/MButton.vue', () => ({
   },
 }));
 
+vi.mock('@/components/xianxia/XTLuxHero.vue', () => ({
+  default: {
+    name: 'XTLuxHeroStub',
+    props: ['eyebrow', 'label', 'title', 'subtitle', 'tone', 'watermarkLetter', 'breadcrumb', 'testId'],
+    template: '<div :data-testid="testId"><slot /></div>',
+  },
+}));
+
+vi.mock('@/components/xianxia/XTPullRefresh.vue', () => ({
+  default: {
+    name: 'XTPullRefreshStub',
+    template: '<div><slot /></div>',
+  },
+}));
+
+vi.mock('@/components/xianxia/XTPageEyebrow.vue', () => ({
+  default: { name: 'XTPageEyebrowStub', template: '<div />' },
+}));
+
+vi.mock('@/components/xianxia/XTGlyphBadge.vue', () => ({
+  default: { name: 'XTGlyphBadgeStub', template: '<span><slot /></span>' },
+}));
+
 import AdminControlCenterView from '@/views/AdminControlCenterView.vue';
 
 const i18n = createI18n({
@@ -90,12 +102,22 @@ const i18n = createI18n({
   missingFallbackWarn: false,
   messages: {
     vi: {
-      common: { refresh: 'Tải lại', loading: 'Đang xử lý…' },
+      common: { refresh: 'Tải lại', loading: 'Đang xử lý…', pullToRefresh: 'pull', releaseToRefresh: 'release', refreshing: 'refreshing' },
       adminControlCenter: {
         title: 'Trung Tâm Vận Hành',
         roleLabel: 'Vai trò: {role}',
         notAdminError: 'Chỉ admin được vào trang này.',
         errorLoad: 'Tải dữ liệu thất bại ({code}).',
+        roleHint: 'Bảng điều khiển quản trị.',
+        breadcrumb: 'Trang chủ · Quản trị · Trung tâm vận hành',
+        crossNav: {
+          admin: 'Quản trị',
+          adminDesc: 'Tổng quan',
+          eventBuilder: 'LiveOps',
+          eventBuilderDesc: 'Sự kiện',
+          systemStatus: 'Hệ thống',
+          systemStatusDesc: 'Trạng thái',
+        },
         tab: {
           overview: 'Tổng quan',
           permissions: 'Phân quyền',
@@ -104,7 +126,30 @@ const i18n = createI18n({
           contentStatuses: 'Trạng thái',
           auditActions: 'Audit',
         },
-        overview: { title: 'Tổng quan' },
+        overview: {
+          title: 'Tổng quan',
+          generatedAt: 'Snapshot lúc {ts}',
+          stat: {
+            totalUsers: 'Tài khoản',
+            activeUsersToday: 'User hoạt động',
+            activeCharacters: 'Nhân vật',
+            newUsersToday: 'User mới',
+            mintedToday: 'Linh thạch phát ra',
+            spentToday: 'Linh thạch tiêu thụ',
+            rareDropsToday: 'Vật phẩm hiếm',
+            farmSessionsToday: 'Phiên farm',
+            dungeonRunsToday: 'Lượt phụ bản',
+            bossKillsToday: 'Boss bị hạ',
+            towerAttemptsToday: 'Lượt tháp',
+            battlePassActiveSeason: 'Battle Pass',
+            monthlyCardActiveCount: 'Thẻ tháng',
+            suspiciousEventsCount: 'Bất thường',
+            pendingTopupsCount: 'Topup chờ',
+            activeFeatureFlags: 'Feature flag',
+            activeEvents: 'Sự kiện',
+            maintenanceStatus: 'Bảo trì',
+          },
+        },
         permissions: { title: 'Ma trận' },
         rewardProfiles: { title: 'Reward' },
         dropProfiles: { title: 'Drop' },
@@ -156,9 +201,6 @@ beforeEach(() => {
 
 describe('AdminControlCenterView — QA-004 admin guard hydration', () => {
   it('admin hợp lệ (user resolve sau hydrate): KHÔNG redirect, load overview + matrix', async () => {
-    // Mô phỏng race: tại thời điểm mount, store user = null. Sau khi
-    // `hydrate()` resolve, user trở thành ADMIN. Đây là kịch bản direct
-    // page reload `/admin/control-center` khi đã login.
     authState.hydrate = vi.fn().mockImplementation(async () => {
       authState.user = { id: 'u1', role: 'ADMIN' };
       authState.isAuthenticated = true;
@@ -185,13 +227,12 @@ describe('AdminControlCenterView — QA-004 admin guard hydration', () => {
     authState.hydrate = vi.fn().mockImplementation(async () => {
       authState.user = { id: 'u2', role: 'MOD' };
       authState.isAuthenticated = true;
-      authState.isAdmin = false; // store getter chỉ true cho ADMIN
+      authState.isAdmin = false;
     });
 
     const w = mountView();
     await flushPromises();
 
-    // View dùng computed `isAdmin` riêng cho phép cả MOD.
     expect(routerPushMock).not.toHaveBeenCalled();
     expect(overviewMock).toHaveBeenCalled();
     w.unmount();
@@ -230,7 +271,6 @@ describe('AdminControlCenterView — QA-004 admin guard hydration', () => {
     await flushPromises();
 
     expect(routerPushMock).toHaveBeenCalledWith({ name: 'auth' });
-    // Không leak "Chỉ admin" toast cho guest user.
     expect(toastPushMock).not.toHaveBeenCalledWith(
       expect.objectContaining({
         text: 'Chỉ admin được vào trang này.',
@@ -241,9 +281,6 @@ describe('AdminControlCenterView — QA-004 admin guard hydration', () => {
   });
 
   it('hydrate() được await TRƯỚC role check (anti-race regression)', async () => {
-    // Test trực diện thứ tự: nếu role check chạy trước hydrate, callOrder
-    // sẽ ghi 'role-check' trước 'hydrate'. Sau fix, hydrate phải xong
-    // trước khi role check đọc `isAdmin`.
     const callOrder: string[] = [];
 
     authState.hydrate = vi.fn().mockImplementation(async () => {
@@ -284,6 +321,65 @@ describe('AdminControlCenterView — QA-004 admin guard hydration', () => {
     expect(callOrder.indexOf('hydrate-resolve')).toBeLessThan(
       callOrder.indexOf('overview'),
     );
+    w.unmount();
+  });
+});
+
+describe('AdminControlCenterView — UX polish', () => {
+  beforeEach(() => {
+    authState.hydrate = vi.fn().mockImplementation(async () => {
+      authState.user = { id: 'u1', role: 'ADMIN' };
+      authState.isAuthenticated = true;
+      authState.isAdmin = true;
+    });
+  });
+
+  it('renders hero with title', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="admin-cc-hero"]').exists()).toBe(true);
+    w.unmount();
+  });
+
+  it('renders role hint', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="admin-cc-role-hint"]').exists()).toBe(true);
+    expect(w.text()).toContain('Bảng điều khiển quản trị.');
+    w.unmount();
+  });
+
+  it('renders cross-navigation and navigates on click', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="admin-cc-cross-nav"]').exists()).toBe(true);
+
+    await w.find('[data-testid="cross-nav-admin"]').trigger('click');
+    expect(routerPushMock).toHaveBeenCalledWith('/admin');
+
+    await w.find('[data-testid="cross-nav-event-builder"]').trigger('click');
+    expect(routerPushMock).toHaveBeenCalledWith('/admin/event-builder');
+
+    await w.find('[data-testid="cross-nav-system-status"]').trigger('click');
+    expect(routerPushMock).toHaveBeenCalledWith('/admin/system-status');
+    w.unmount();
+  });
+
+  it('renders overview grid with data-testid after loading', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="overview-grid"]').exists()).toBe(true);
+    expect(w.find('[data-testid="tab-overview"]').exists()).toBe(true);
+    w.unmount();
+  });
+
+  it('tabs have data-testid attributes', async () => {
+    const w = mountView();
+    await flushPromises();
+    const tabNames = ['overview', 'permissions', 'rewardProfiles', 'dropProfiles', 'contentStatuses', 'auditActions'];
+    for (const name of tabNames) {
+      expect(w.find(`[data-testid="tab-${name}"]`).exists()).toBe(true);
+    }
     w.unmount();
   });
 });

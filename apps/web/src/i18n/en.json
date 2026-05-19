@@ -5224,10 +5224,20 @@
     }
   },
   "adminControlCenter": {
-    "title": "Admin Control Center (Phase 27.6)",
+    "title": "Admin Control Center",
     "roleLabel": "Admin role: {role}",
     "notAdminError": "Only admins can access this page.",
     "errorLoad": "Failed to load ({code}).",
+    "roleHint": "Admin operations dashboard — monitor systems, manage permissions, configure rewards/drops, and audit actions.",
+    "breadcrumb": "Home · Admin · Control Center",
+    "crossNav": {
+      "admin": "Admin Hub",
+      "adminDesc": "Overview",
+      "eventBuilder": "LiveOps",
+      "eventBuilderDesc": "Events",
+      "systemStatus": "System",
+      "systemStatusDesc": "Status"
+    },
     "tab": {
       "overview": "Overview",
       "permissions": "Permissions",
