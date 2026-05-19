@@ -30,6 +30,7 @@ import {
   type EncounterView,
 } from '@/api/combat';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import ElementBadge from '@/components/ElementBadge.vue';
@@ -263,8 +264,44 @@ function handleErr(e: unknown): void {
 
 <template>
   <AppShell>
-    <XTPageEyebrow label="Bí Cảnh Thám Tra" />
-    <h2 class="text-xl tracking-widest mb-4 mt-1">{{ t('dungeon.title') }}</h2>
+    <XTLuxHero
+      eyebrow="BÍ CẢNH THÁM TRA"
+      label="Bí Cảnh Thám Tra"
+      :title="t('dungeon.title')"
+      subtitle="Chọn bí cảnh phù hợp cảnh giới, tiêu hao thể lực, đánh quái nhận thưởng."
+      tone="jade"
+      watermark-letter="D"
+      breadcrumb="Chiến Đạo · Bí Cảnh"
+      test-id="dungeon-hero"
+      class="mb-4"
+    >
+      <XTPageEyebrow caps="BÍ CẢNH THÁM TRA" label="Bí Cảnh Thám Tra" class="sr-only" />
+    </XTLuxHero>
+
+    <!-- Role hint + cross-nav -->
+    <div class="space-y-2 mb-4" data-testid="dungeon-role-section">
+      <p class="text-xs text-ink-300 leading-relaxed" data-testid="dungeon-role-hint">
+        {{ t('dungeon.roleHint') }}
+      </p>
+      <nav class="flex flex-wrap gap-2 text-xs" data-testid="dungeon-cross-nav">
+        <span class="text-ink-400">{{ t('dungeon.crossNav.label') }}:</span>
+        <router-link
+          to="/dungeon-run"
+          class="text-amber-300 hover:text-amber-100 underline"
+          data-testid="dungeon-cross-nav-dungeon-run"
+        >
+          {{ t('dungeon.crossNav.dungeonRun') }}
+        </router-link>
+        <span class="text-ink-500">·</span>
+        <router-link
+          to="/combat"
+          class="text-amber-300 hover:text-amber-100 underline"
+          data-testid="dungeon-cross-nav-combat"
+        >
+          {{ t('dungeon.crossNav.combat') }}
+        </router-link>
+      </nav>
+    </div>
 
     <div class="grid gap-6 lg:grid-cols-[1fr_2fr]">
       <!-- Dungeon list -->

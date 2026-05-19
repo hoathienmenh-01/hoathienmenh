@@ -161,6 +161,12 @@ const i18n = createI18n({
           unsocketDriftToast: 'Đã gỡ slot {slot}.',
           combineSuccessToast: 'Hợp thành 1× {result} từ 3× {src}.',
         },
+        roleHint: 'Quản lý trang bị, nguyên liệu và vật phẩm.',
+        crossNav: {
+          label: 'Đi nhanh',
+          equipment: 'Trang bị',
+          alchemy: 'Luyện Đan',
+        },
       },
       element: {
         kim: 'Kim',
@@ -1458,5 +1464,28 @@ describe('InventoryView — Phase 11.4.C combine flow', () => {
       type: 'error',
       text: 'Không đủ linh thạch.',
     });
+  });
+});
+
+describe('InventoryView — role hint + cross-nav', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    listInventoryMock.mockResolvedValue([]);
+  });
+
+  it('render role hint', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="inventory-role-section"]').exists()).toBe(true);
+    expect(w.find('[data-testid="inventory-role-hint"]').text()).toBeTruthy();
+  });
+
+  it('render cross-nav với link đúng', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="inventory-cross-nav"]').exists()).toBe(true);
+    expect(w.find('[data-testid="inventory-cross-nav-equipment"]').exists()).toBe(true);
+    expect(w.find('[data-testid="inventory-cross-nav-alchemy"]').exists()).toBe(true);
   });
 });

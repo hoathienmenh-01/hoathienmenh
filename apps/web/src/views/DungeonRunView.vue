@@ -233,6 +233,31 @@ onMounted(async () => {
         </header>
       </XTLuxHero>
 
+      <!-- Role hint + cross-nav -->
+      <div class="space-y-2 mb-4" data-testid="dungeon-run-role-section">
+        <p class="text-xs text-ink-300 leading-relaxed" data-testid="dungeon-run-role-hint">
+          {{ t('dungeonRun.roleHint') }}
+        </p>
+        <nav class="flex flex-wrap gap-2 text-xs" data-testid="dungeon-run-cross-nav">
+          <span class="text-ink-400">{{ t('dungeonRun.crossNav.label') }}:</span>
+          <router-link
+            to="/dungeon"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="dungeon-run-cross-nav-dungeon"
+          >
+            {{ t('dungeonRun.crossNav.dungeon') }}
+          </router-link>
+          <span class="text-ink-500">·</span>
+          <router-link
+            to="/combat"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="dungeon-run-cross-nav-combat"
+          >
+            {{ t('dungeonRun.crossNav.combat') }}
+          </router-link>
+        </nav>
+      </div>
+
       <!-- Active run card -->
       <section
         v-if="activeRun"

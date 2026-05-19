@@ -200,3 +200,28 @@ describe('BodyCultivationView', () => {
     expect(wrapper.find('[data-testid="body-breakthrough-confirm"]').exists()).toBe(false);
   });
 });
+
+describe('BodyCultivationView — role hint + cross-nav', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    bodyStoreState.loaded = true;
+    bodyStoreState.loading = false;
+    bodyStoreState.actionLoading = false;
+    bodyStoreState.errorCode = null;
+    bodyStoreState.progress = 0.5;
+    bodyStoreState.status = { ...baseStatus };
+  });
+
+  it('render role hint', () => {
+    const { wrapper } = mountView();
+    expect(wrapper.find('[data-testid="body-cultivation-role-section"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="body-cultivation-role-hint"]').text()).toBeTruthy();
+  });
+
+  it('render cross-nav với link đúng', () => {
+    const { wrapper } = mountView();
+    expect(wrapper.find('[data-testid="body-cultivation-cross-nav"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="body-cultivation-cross-nav-cultivation"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="body-cultivation-cross-nav-breakthrough"]').exists()).toBe(true);
+  });
+});

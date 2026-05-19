@@ -550,3 +550,35 @@ describe('BreakthroughView — Phase 11 nâng cao §5 PR3', () => {
     w.unmount();
   });
 });
+
+describe('BreakthroughView — role hint + cross-nav', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    gameState.character = { realmKey: 'truc_co', realmStage: 1, exp: '0', expNext: '1000' };
+    btState.lastOutcome = null;
+    btState.inFlight = false;
+    btState.lastError = null;
+    btState.history = [];
+    btState.historyHasMore = false;
+    btState.historyMaxReached = false;
+    btState.historyError = null;
+  });
+
+  it('render role hint', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="breakthrough-role-section"]').exists()).toBe(true);
+    expect(w.find('[data-testid="breakthrough-role-hint"]').text()).toBeTruthy();
+    w.unmount();
+  });
+
+  it('render cross-nav với link đúng', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="breakthrough-cross-nav"]').exists()).toBe(true);
+    expect(w.find('[data-testid="breakthrough-cross-nav-cultivation"]').exists()).toBe(true);
+    expect(w.find('[data-testid="breakthrough-cross-nav-tribulation"]').exists()).toBe(true);
+    w.unmount();
+  });
+});

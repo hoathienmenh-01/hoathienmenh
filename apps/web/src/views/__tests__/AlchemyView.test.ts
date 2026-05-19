@@ -827,3 +827,32 @@ describe('AlchemyView — Phase 26.2 sourceHint surfacing', () => {
     expect(txt.slice(dropIdx)).not.toContain(',');
   });
 });
+
+describe('AlchemyView — role hint + cross-nav', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    alchemyState.loaded = true;
+    alchemyState.recipes = [];
+    alchemyState.inFlight = new Set();
+    alchemyState.lastOutcome = null;
+    alchemyState.nextUpgrade = null;
+    alchemyState.upgradeInFlight = false;
+    alchemyState.lastUpgradeOutcome = null;
+  });
+
+  it('render role hint', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="alchemy-role-section"]').exists()).toBe(true);
+    expect(w.find('[data-testid="alchemy-role-hint"]').text()).toBeTruthy();
+  });
+
+  it('render cross-nav với link đúng', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="alchemy-cross-nav"]').exists()).toBe(true);
+    expect(w.find('[data-testid="alchemy-cross-nav-inventory"]').exists()).toBe(true);
+    expect(w.find('[data-testid="alchemy-cross-nav-cultivation"]').exists()).toBe(true);
+  });
+});

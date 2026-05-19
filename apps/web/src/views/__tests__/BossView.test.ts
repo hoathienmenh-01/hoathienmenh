@@ -504,3 +504,27 @@ describe('BossView — mực rơi shutter (Cửu Thiên Mộng PR2)', () => {
     expect(findMucRoiOverlay()).toBeNull();
   });
 });
+
+describe('BossView — role hint + cross-nav', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    vi.useRealTimers();
+    getActiveBossesMock.mockResolvedValue([]);
+  });
+
+  it('render role hint', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="boss-role-section"]').exists()).toBe(true);
+    expect(w.find('[data-testid="boss-role-hint"]').text()).toBeTruthy();
+  });
+
+  it('render cross-nav với link đúng', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="boss-cross-nav"]').exists()).toBe(true);
+    expect(w.find('[data-testid="boss-cross-nav-combat"]').exists()).toBe(true);
+    expect(w.find('[data-testid="boss-cross-nav-boss-hub"]').exists()).toBe(true);
+  });
+});

@@ -644,6 +644,31 @@ function handleErr(e: unknown): void {
       </template>
     </XTLuxHero>
 
+    <!-- Role hint + cross-nav -->
+    <div class="space-y-2 mb-4" data-testid="inventory-role-section">
+      <p class="text-xs text-ink-300 leading-relaxed" data-testid="inventory-role-hint">
+        {{ t('inventory.roleHint') }}
+      </p>
+      <nav class="flex flex-wrap gap-2 text-xs" data-testid="inventory-cross-nav">
+        <span class="text-ink-400">{{ t('inventory.crossNav.label') }}:</span>
+        <router-link
+          to="/equipment"
+          class="text-amber-300 hover:text-amber-100 underline"
+          data-testid="inventory-cross-nav-equipment"
+        >
+          {{ t('inventory.crossNav.equipment') }}
+        </router-link>
+        <span class="text-ink-500">·</span>
+        <router-link
+          to="/alchemy"
+          class="text-amber-300 hover:text-amber-100 underline"
+          data-testid="inventory-cross-nav-alchemy"
+        >
+          {{ t('inventory.crossNav.alchemy') }}
+        </router-link>
+      </nav>
+    </div>
+
     <div class="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
       <!-- Bộ trang bị + Phase 23.3 Build summary -->
       <section class="rounded border border-ink-300/40 bg-ink-700/30 p-4 space-y-2">

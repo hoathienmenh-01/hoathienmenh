@@ -523,3 +523,27 @@ describe('DungeonRunView — filter', () => {
     expect(w.find('[data-testid="dungeon-run-row-b"]').exists()).toBe(true);
   });
 });
+
+describe('DungeonRunView — role hint + cross-nav', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+  });
+
+  it('render role hint', async () => {
+    fetchDungeonRunListMock.mockResolvedValue({ available: [], activeRun: null });
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="dungeon-run-role-section"]').exists()).toBe(true);
+    expect(w.find('[data-testid="dungeon-run-role-hint"]').text()).toBeTruthy();
+  });
+
+  it('render cross-nav với link đúng', async () => {
+    fetchDungeonRunListMock.mockResolvedValue({ available: [], activeRun: null });
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="dungeon-run-cross-nav"]').exists()).toBe(true);
+    expect(w.find('[data-testid="dungeon-run-cross-nav-dungeon"]').exists()).toBe(true);
+    expect(w.find('[data-testid="dungeon-run-cross-nav-combat"]').exists()).toBe(true);
+  });
+});
