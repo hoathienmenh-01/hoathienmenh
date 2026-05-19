@@ -45,6 +45,7 @@ import {
 } from '@/api/pet';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 
 const { t } = useI18n();
 const toast = useToastStore();
@@ -308,8 +309,33 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="space-y-4 p-4">
+      <XTLuxHero
+        eyebrow="LINH THÚ ĐỒNG HÀNH"
+        label="Linh Thú"
+        :title="t('pets.title')"
+        tone="jade"
+        watermark-letter="L"
+        breadcrumb="Linh Thú"
+        test-id="pets-hero"
+        class="mb-4"
+      />
+
+      <div class="space-y-2 mb-4" data-testid="pets-role-section">
+        <p class="text-xs text-ink-300 leading-relaxed" data-testid="pets-role-hint">
+          {{ t('pets.roleHint') }}
+        </p>
+        <div class="flex flex-wrap gap-2 text-xs" data-testid="pets-cross-nav">
+          <router-link to="/combat" class="px-2 py-1 rounded bg-jade-900/40 text-jade-200 hover:bg-jade-800/50 transition">
+            {{ t('pets.crossNav.combat') }} — {{ t('pets.crossNav.combatDesc') }}
+          </router-link>
+          <router-link to="/inventory" class="px-2 py-1 rounded bg-jade-900/40 text-jade-200 hover:bg-jade-800/50 transition">
+            {{ t('pets.crossNav.inventory') }} — {{ t('pets.crossNav.inventoryDesc') }}
+          </router-link>
+        </div>
+      </div>
+
       <div class="flex justify-between items-center">
-        <h1 class="text-xl font-bold">{{ t('pets.title') }}</h1>
+        <h1 class="text-xl font-bold sr-only">{{ t('pets.title') }}</h1>
         <div v-if="snapshot" class="text-xs text-gray-400">
           {{ t('pets.snapshot.title') }} ({{ t(`pets.snapshotContexts.${snapshotContext}`) }})
           — {{ t('pets.snapshot.capPercent') }}:

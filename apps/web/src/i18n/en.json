@@ -2745,6 +2745,13 @@
   "talents": {
     "title": "Insight · Talents",
     "subtitle": "Catalog of {total} talents covering all 5 elements",
+    "roleHint": "Talents are passive and active skills — spend talent points to learn, requiring minimum realm levels. Choose based on your combat style.",
+    "crossNav": {
+      "cultivation": "Cultivation",
+      "cultivationDesc": "Raise realm level",
+      "character": "Character",
+      "characterDesc": "Profile & stats"
+    },
     "counts": "{passive} passive · {active} active",
     "empty": "No talents match the current filter.",
     "filter": {
@@ -3004,6 +3011,13 @@
   "cultivationMethod": {
     "title": "Cultivation Method Hall",
     "subtitle": "Manage learned cultivation methods. A cultivator runs only one method at a time — pick by realm, spiritual root, and sect.",
+    "roleHint": "Cultivation methods determine training speed and bonus stats. Switch methods to match your realm and spiritual root for maximum progress.",
+    "crossNav": {
+      "cultivation": "Cultivation",
+      "cultivationDesc": "Raise realm level",
+      "breakthrough": "Breakthrough",
+      "breakthroughDesc": "Realm breakthrough trials"
+    },
     "loading": "Loading cultivation methods…",
     "empty": "No methods match the filter.",
     "equippedSummary": "Active: {key}",
@@ -3211,6 +3225,13 @@
   "artifactV2": {
     "title": "Artifact Hall — V2",
     "subtitle": "Artifact V2 system: 9 tiers, 6 grades, 10 types, 5 elements, 5 equip slots. Craft / upgrade / refine / awaken are server-authoritative and anti-inflation.",
+    "roleHint": "Artifacts are special equipment — craft from blueprints, upgrade tiers, refine stars, and awaken hidden skills. One artifact per equip slot.",
+    "crossNav": {
+      "inventory": "Inventory",
+      "inventoryDesc": "Items & Equipment",
+      "alchemy": "Alchemy",
+      "alchemyDesc": "Craft pills & potions"
+    },
     "loading": "Loading artifacts…",
     "empty": "No artifact matches the filter.",
     "reloadError": "Failed to load — please retry.",
@@ -7240,6 +7261,13 @@
   "events": {
     "title": "Events",
     "subtitle": "Tier-balanced LiveOps events (Phase 28.0)",
+    "roleHint": "Events are time-limited content — complete event missions to earn exclusive rewards. Check often to avoid missing out.",
+    "crossNav": {
+      "missions": "Missions",
+      "missionsDesc": "Daily & weekly tasks",
+      "leaderboard": "Leaderboard",
+      "leaderboardDesc": "Rankings & standings"
+    },
     "loading": "Loading events…",
     "empty": "No active events.",
     "eventType": "Type",
@@ -8474,6 +8502,13 @@
   "inventoryAutoSort": {
     "title": "Inventory — Auto-sort & Lock",
     "subtitle": "Filter, sort, and lock items in bulk.",
+    "roleHint": "Inventory management tool — auto-sort, lock important items to prevent accidental sale, and filter by type.",
+    "crossNav": {
+      "equipment": "Equipment",
+      "equipmentDesc": "Gear & upgrades",
+      "market": "Auction House",
+      "marketDesc": "Trade with other players"
+    },
     "loading": "Loading…",
     "empty": "No items match the filter.",
     "searchPlaceholder": "Search by name / itemKey…",
@@ -8593,6 +8628,13 @@
   },
   "pets": {
     "title": "Spirit Pets",
+    "roleHint": "Spirit Pets are companions that boost combat stats and grant special skills. Feed, star-up, and evolve to unlock their full potential.",
+    "crossNav": {
+      "combat": "Combat",
+      "combatDesc": "Use pets in battle",
+      "inventory": "Inventory",
+      "inventoryDesc": "Items & Equipment"
+    },
     "tabs": {
       "collection": "Collection",
       "catalog": "Catalog",

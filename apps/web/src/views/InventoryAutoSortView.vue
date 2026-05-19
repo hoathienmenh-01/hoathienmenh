@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import {
   fetchInventoryQol,
   lockInventoryBatch,
@@ -164,13 +164,31 @@ onMounted(async () => {
 <template>
   <AppShell>
     <section class="space-y-4 p-4">
-      <header class="space-y-1">
-        <XTPageEyebrow label="Càn Khôn Chỉnh Tư" />
-        <h1 class="text-2xl font-bold mt-1">{{ t('inventoryAutoSort.title') }}</h1>
-        <p class="text-sm text-gray-300">
-          {{ t('inventoryAutoSort.subtitle') }}
+      <XTLuxHero
+        eyebrow="CÀN KHÔN CHỈNH TƯ"
+        label="Túi Đồ"
+        :title="t('inventoryAutoSort.title')"
+        :subtitle="t('inventoryAutoSort.subtitle')"
+        tone="jade"
+        watermark-letter="C"
+        breadcrumb="Túi Đồ · Quản Lý"
+        test-id="inventory-auto-sort-hero"
+        class="mb-4"
+      />
+
+      <div class="space-y-2 mb-4" data-testid="inventory-auto-sort-role-section">
+        <p class="text-xs text-ink-300 leading-relaxed" data-testid="inventory-auto-sort-role-hint">
+          {{ t('inventoryAutoSort.roleHint') }}
         </p>
-      </header>
+        <div class="flex flex-wrap gap-2 text-xs" data-testid="inventory-auto-sort-cross-nav">
+          <router-link to="/equipment" class="px-2 py-1 rounded bg-jade-900/40 text-jade-200 hover:bg-jade-800/50 transition">
+            {{ t('inventoryAutoSort.crossNav.equipment') }} — {{ t('inventoryAutoSort.crossNav.equipmentDesc') }}
+          </router-link>
+          <router-link to="/market" class="px-2 py-1 rounded bg-jade-900/40 text-jade-200 hover:bg-jade-800/50 transition">
+            {{ t('inventoryAutoSort.crossNav.market') }} — {{ t('inventoryAutoSort.crossNav.marketDesc') }}
+          </router-link>
+        </div>
+      </div>
 
       <!-- Filter / sort bar -->
       <div

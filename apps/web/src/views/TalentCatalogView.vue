@@ -42,6 +42,7 @@ import { useGameStore } from '@/stores/game';
 import { useTalentsStore } from '@/stores/talents';
 import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 
 type ElementFilter = ElementKey | 'neutral' | 'all';
 type TypeFilter = TalentType | 'all';
@@ -410,13 +411,33 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="max-w-5xl mx-auto space-y-4">
-      <header class="flex items-baseline justify-between gap-3 flex-wrap">
-        <div>
-          <h1 class="text-2xl tracking-widest font-bold">{{ t('talents.title') }}</h1>
-          <p class="text-xs text-ink-300 mt-1">
-            {{ t('talents.subtitle', { total: counts.total }) }}
-          </p>
+      <XTLuxHero
+        eyebrow="NGỘ ĐẠO THẦN THÔNG"
+        label="Thần Thông"
+        :title="t('talents.title')"
+        :subtitle="t('talents.subtitle', { total: counts.total })"
+        tone="seal"
+        watermark-letter="T"
+        breadcrumb="Tu Vi · Thần Thông"
+        test-id="talents-hero"
+        class="mb-4"
+      />
+
+      <div class="space-y-2 mb-4" data-testid="talents-role-section">
+        <p class="text-xs text-ink-300 leading-relaxed" data-testid="talents-role-hint">
+          {{ t('talents.roleHint') }}
+        </p>
+        <div class="flex flex-wrap gap-2 text-xs" data-testid="talents-cross-nav">
+          <router-link to="/cultivation" class="px-2 py-1 rounded bg-seal-900/40 text-seal-200 hover:bg-seal-800/50 transition">
+            {{ t('talents.crossNav.cultivation') }} — {{ t('talents.crossNav.cultivationDesc') }}
+          </router-link>
+          <router-link to="/character" class="px-2 py-1 rounded bg-seal-900/40 text-seal-200 hover:bg-seal-800/50 transition">
+            {{ t('talents.crossNav.character') }} — {{ t('talents.crossNav.characterDesc') }}
+          </router-link>
         </div>
+      </div>
+
+      <header class="flex items-baseline justify-between gap-3 flex-wrap">
         <div class="text-xs text-ink-300" data-testid="talents-counts">
           {{ t('talents.counts', { passive: counts.passive, active: counts.active }) }}
         </div>
