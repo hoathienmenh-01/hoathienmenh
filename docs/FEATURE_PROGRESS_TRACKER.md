@@ -53,10 +53,11 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 21 | Content Depth — Monster Catalog for Cửu La Điện | DONE | Khu 9 (Cửu La Điện) farm maps were disabled — no Hoá Thần-tier monsters existed. | Add 4 monsters (cuu_la_ma_quan, cuu_la_tam_ma_binh, cuu_la_dao_anh, cuu_la_thien_de_an) with regionKey cuu_la_dien. Enable 3 farm maps with monster pools. Update cuu_la_dien dungeon to use new monsters. | `packages/shared/src/combat.ts`, `packages/shared/src/farm-maps.ts` | 4 new monsters in combat.ts; 3 cuu_la_dien farm maps enabled with pools; dungeon cuu_la_dien updated; typecheck + lint + build + tests pass. | 2026-05-20 |
 | 22 | XTLuxHero for Remaining Views | DONE | 6 player-facing views still missing XTLuxHero + roleHint + crossNav — inconsistent with all other polished views. | Add XTLuxHero + roleHint + crossNav to ArtifactV2View, CultivationMethodView, EventsView, InventoryAutoSortView, PetsView, TalentCatalogView. i18n parity vi+en. | 6 view files, `vi.json`, `en.json` | All 6 views have XTLuxHero + roleHint + crossNav; i18n keys in vi+en; typecheck + lint + build + Han gate + 246 test files (2659 tests) pass. | 2026-05-20 |
 | 23 | Test Coverage for 10 Views Missing Test Files | DONE | 10 views with XTLuxHero + roleHint + crossNav but no test file — test coverage gap. | Add lightweight test files for CultivationMethodV2View, EncounterView, EventsView, InventoryAutoSortView, MonetizationShopView, NpcView, PetsView, PlayerLogsView, SecretRealmView, WalletView. Each tests hero + roleHint + crossNav rendering. | 10 test files in `apps/web/src/views/__tests__/` | All 10 test files pass (30 tests); typecheck + lint + build + Han gate + 256 test files (2689 tests) pass. | 2026-05-20 |
+| 24 | Admin Event Builder UI Polish | DONE | AdminEventBuilderView has no XTLuxHero, roleHint, or crossNav — inconsistent with AdminCC and all other polished views. | Add XTLuxHero (tone=seal, watermark=E), roleHint, crossNav (→adminCC, systemStatus); i18n parity vi+en; add test file. | `AdminEventBuilderView.vue`, `vi.json`, `en.json`, `AdminEventBuilderView.test.ts` | Hero + roleHint + crossNav rendered; i18n keys in vi+en; 3/3 tests pass; typecheck + lint + build + Han gate + 257 test files (2692 tests) pass. | 2026-05-20 |
 
 ## Current Recommended Next Task
 
-`Admin Event Builder UI Polish`
+`EffectsPreviewView UX Polish`
 
 ## Active Task Template
 
@@ -94,7 +95,8 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 20 | Content Depth — Farm Map Expansion | #655 | feat/content-depth-farm-map-expansion | 2026-05-20 |
 | 21 | Content Depth — Monster Catalog for Cửu La Điện | #656 | feat/content-depth-cuu-la-dien-monsters | 2026-05-20 |
 | 22 | XTLuxHero for Remaining Views | — | feat/xt-lux-hero-remaining-views | 2026-05-20 |
-| 23 | Test Coverage for 10 Views Missing Test Files | — | feat/test-coverage-10-views | 2026-05-20 |
+| 23 | Test Coverage for 10 Views Missing Test Files | #658 | feat/test-coverage-10-views | 2026-05-20 |
+| 24 | Admin Event Builder UI Polish | — | feat/admin-event-builder-polish | 2026-05-20 |
 
 ## Deferred / Do Not Build
 
