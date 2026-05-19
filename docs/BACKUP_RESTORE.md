@@ -324,6 +324,69 @@ BACKUP_CRON_ENABLED=true BACKUP_VERIFY_CRON_ENABLED=true pnpm --filter @xuantoi/
 - Idempotency: cron weekly fire trùng tạo 2 file `xuantoi-<TIMESTAMP>.sql.gz` riêng → không corrupt nhau. Acceptable cho closed beta (không cần Redis lease).
 - Restore production thật: vẫn theo §Disaster recovery checklist, **KHÔNG** dùng admin UI.
 
+## Restore Drill
+
+Mục đích: xác nhận backup → restore → verify pipeline hoạt động end-to-end mà KHÔNG cần chờ sự cố thật. Phát hiện sớm vấn đề (script lỗi, permission thiếu, pg_dump version mismatch, disk đầy) trước khi production gặp sự cố.
+
+### Tần suất khuyến nghị
+
+- **Monthly** (closed beta): chạy drill 1 lần/tháng.
+- **Trước major migration**: chạy drill trước khi apply migration lớn.
+- **Sau thay đổi infra**: chạy drill sau khi đổi DB host, upgrade Postgres, đổi backup strategy.
+
+### Automated drill
+
+Script `scripts/restore-drill.mjs` chạy toàn bộ pipeline tự động:
+
+```bash
+# Full drill (backup → create temp DB → restore → verify → cleanup)
+node scripts/restore-drill.mjs
+
+# Dry run (show plan, no changes)
+node scripts/restore-drill.mjs --dry-run
+
+# Production drill (requires explicit opt-in)
+DRILL_ALLOW_PRODUCTION=YES node scripts/restore-drill.mjs
+```
+
+Pipeline:
+1. Backup current DB qua `scripts/backup-db.sh`.
+2. Tạo temp DB `xuantoi_drill_<timestamp>`.
+3. Restore backup vào temp DB.
+4. Verify temp DB qua `scripts/verify-restore.sh`.
+5. Drop temp DB.
+6. Output structured report (PASS/FAIL per step + timing).
+
+**Safety**: KHÔNG bao giờ touch DB gốc. Luôn restore vào temp DB rồi verify + cleanup. `NODE_ENV=production` bị chặn trừ khi `DRILL_ALLOW_PRODUCTION=YES`.
+
+### Manual drill
+
+Nếu muốn drill thủ công (ví dụ trên staging):
+
+```bash
+# 1. Backup
+pnpm backup:db
+
+# 2. Restore vào staging (KHÔNG production)
+CONFIRM_RESTORE=YES \
+  DATABASE_URL=postgresql://user:pass@staging:5432/mtt \
+  pnpm restore:db ./backups/xuantoi-<TS>.sql.gz
+
+# 3. Verify
+DATABASE_URL=postgresql://user:pass@staging:5432/mtt pnpm verify:restore
+
+# 4. Smoke
+pnpm smoke:all
+```
+
+### Drill log
+
+Ghi kết quả drill vào bảng dưới đây để tracking:
+
+| Ngày | Người chạy | Kết quả | Thời gian | Ghi chú |
+|---|---|---|---|---|
+| | | | | |
+
 ## Liên kết
 
 - `docs/RUNBOOK.md` — incident severity P0–P3 + playbook (Phase 17.4).

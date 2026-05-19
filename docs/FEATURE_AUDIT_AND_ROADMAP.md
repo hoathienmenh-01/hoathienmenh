@@ -40,7 +40,7 @@
 | Daily Loop / Onboarding | PARTIAL | `DailyLoopPanel.vue`, `OnboardingView.vue`, `OnboardingQuestView.vue`, `onboarding-quest` | Daily Loop polished (sorted, i18n, CTAs); onboarding quest flow remains | Medium | Boss Notification Integration |
 | Events / LiveOps | PARTIAL | `liveops-*`, `event-builder`, `AdminEventBuilderView.vue`, `EventsView.vue` | Some cron/reward automation remains operator-driven | Medium | Polish after beta UX |
 | Admin | DONE | `admin`, `admin-control-center`, many admin panels/tests | Reload guard fixed (auth hydrate added to 8 views) | High | Admin Reload Guard Fix ✅ |
-| Backup / Deploy / Ops | PARTIAL | `backup`, `AdminBackupPanel.vue`, `docs/DEPLOY.md`, `docs/BACKUP_RESTORE.md` | Production restore drill/observability | High | Track in ops roadmap |
+| Backup / Deploy / Ops | DONE | `backup`, `AdminBackupPanel.vue`, `docs/DEPLOY.md`, `docs/BACKUP_RESTORE.md`, `scripts/restore-drill.mjs`, `docs/RUNBOOK.md` | Restore drill automated; operator runbook enhanced with drill procedure + pre-deploy checklist | High | Maintain; run drill monthly |
 | Testing / Smoke / E2E | DONE | `docs/QA_CHECKLIST.md`, `apps/web/e2e/golden.spec.ts`, smoke scripts/docs | Core loop positive paths covered (breakthrough, mission, spiritual-root) | High | Maintain; add more smoke as features mature |
 | Mobile / PWA / i18n | DONE | PWA/i18n docs, `LocaleSwitcher`, `vi.json`, `en.json` | Top routes verified mobile-compatible; MissionView responsive fix | Medium | Mobile Top Routes QA Pass ✅ |
 
@@ -159,7 +159,7 @@ Do not rebuild these systems from scratch:
 - ~~Core Loop Smoke Proof Pack.~~ ✅
 - ~~Admin Reload Guard Fix.~~ ✅
 - ~~Beta Checklist Refresh.~~ ✅
-- Production ops polish: restore drill, observability, operator runbook.
+- ~~Production ops polish: restore drill, observability, operator runbook.~~ ✅
 
 ### Medium term: 1-2 months
 
