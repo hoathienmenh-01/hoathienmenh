@@ -89,7 +89,34 @@ const i18n = createI18n({
   fallbackLocale: 'vi',
   missingWarn: false,
   fallbackWarn: false,
-  messages: { vi: {} },
+  messages: {
+    vi: {
+      common: { loading: 'Đang tải...' },
+      partyDungeon: {
+        title: 'Phụ Bản Tổ Đội',
+        subtitle: 'Dungeon co-op PvE cùng tổ đội',
+        roleHint: 'Phụ Bản Tổ Đội là dungeon co-op — cần tổ đội để tham gia.',
+        crossNav: {
+          label: 'Xem thêm',
+          partyHub: 'Tổ Đội',
+          coopBoss: 'Co-op Boss',
+        },
+        noCharacter: 'Bạn cần tạo nhân vật',
+        createCharacter: 'Tạo Nhân Vật',
+        backToParty: '← Về Tổ Đội',
+        goToSolo: 'Bí Cảnh Solo',
+        goToCombat: 'Chiến Trường',
+        info: {
+          title: 'Cách Thức Hoạt Động',
+          step1: 'Leader chọn dungeon.',
+          step2: 'Thành viên ready.',
+          step3: 'Leader bắt đầu.',
+          step4: 'Tự động xử lý.',
+          step5: 'Nhận thưởng.',
+        },
+      },
+    },
+  },
 });
 
 let wrapper: ReturnType<typeof mount> | null = null;
@@ -161,6 +188,23 @@ describe('PartyDungeonView — info section', () => {
     mountView();
     await flushPromises();
     expect(wrapper?.find('[data-testid="party-dungeon-info"]').exists()).toBe(true);
+  });
+});
+
+describe('PartyDungeonView — role hint + cross-nav', () => {
+  it('renders role hint', async () => {
+    mountView();
+    await flushPromises();
+    expect(wrapper?.find('[data-testid="party-dungeon-role-hint"]').exists()).toBe(true);
+    expect(wrapper?.text()).toContain('Phụ Bản Tổ Đội là dungeon co-op');
+  });
+
+  it('renders cross-navigation links', async () => {
+    mountView();
+    await flushPromises();
+    expect(wrapper?.find('[data-testid="party-dungeon-cross-nav"]').exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="party-dungeon-cross-nav-hub"]').exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="party-dungeon-cross-nav-coop-boss"]').exists()).toBe(true);
   });
 });
 

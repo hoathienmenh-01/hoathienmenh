@@ -20,7 +20,7 @@
 | Spiritual Root | PARTIAL | `spiritual-root.service.ts`, `SpiritualRootView.vue`, `packages/shared/src/spiritual-root.ts` | Positive reroll smoke and clearer elemental impact | Medium | Add UX explanation and positive smoke later |
 | Body Cultivation | DONE | `apps/api/src/modules/body-cultivation`, `BodyCultivationView.vue`, `packages/shared/src/body-cultivation.ts` | Needs better home/dashboard integration | Medium | Surface as daily/progression option |
 | Breakthrough | PARTIAL | `BreakthroughView.vue`, breakthrough API/client/tests | Success-path smoke needs seeded peak state | High | Add core loop smoke proof |
-| Tribulation | PARTIAL | `tribulation.service.ts`, `tribulation-mini-battle.service.ts`, `TribulationView.vue`, `TribulationMiniBattlePanel.vue` | Mini-battle gating/availability clarity | Medium | Polish only after core loop |
+| Tribulation | PARTIAL | `tribulation.service.ts`, `tribulation-mini-battle.service.ts`, `TribulationView.vue`, `TribulationMiniBattlePanel.vue` | Mini-battle gating/availability clarity | Medium | Role hint + cross-nav added; mini-battle gating clarity next |
 | Skill / Công pháp / Kỹ năng | PARTIAL | `character-skill.service.ts`, `SkillBookView.vue`, `skill-templates.ts`, `combat.ts` | Skill book drop/consume/evolution deferred | Medium | Do not expand until core UX is clearer |
 | Inventory | DONE | `apps/api/src/modules/inventory`, `InventoryView.vue`, `apps/web/src/api/inventory.ts` | UX can be simplified | High | Align with equipment flow |
 | Equipment | PARTIAL | `EquipmentView.vue`, `EquipmentUpgradePanel.vue`, `equipment.service.ts`, `equipment-economy.service.ts` | Badges + upgrade CTA added; full upgrade still in inventory | Medium | Combat Entry Consolidation |
@@ -28,11 +28,11 @@
 | Dungeon / Combat | DONE | `combat.controller.ts`, `combat.service.ts`, `DungeonView.vue`, `DungeonRunView.vue`, `CombatHubView.vue` | Entry points are fragmented | High | Combat Entry Consolidation |
 | Boss | DONE | `boss.service.ts`, `BossView.vue`, `BossHubView.vue`, `packages/shared/src/boss.ts` | Active boss notification/visibility | Medium | Boss Notification Integration |
 | Party | DONE | `apps/api/src/modules/party`, `PartyHubView.vue`, `PartyPanel.vue` | Invite/member gating polish | Medium | Party Membership / Invite Polish ✅ |
-| Party Dungeon | PARTIAL | `apps/api/src/modules/party-dungeon`, `PartyDungeonView.vue`, `PartyDungeonPanel.vue` | Membership gating and reward clarity | Medium | Polish after party flow |
-| Co-op Boss | PARTIAL | `apps/api/src/modules/coop-boss`, `CoopBossView.vue`, `CoopBossPanel.vue` | Contribution UX needs clarity | Medium | Polish after combat/party basics |
+| Party Dungeon | PARTIAL | `apps/api/src/modules/party-dungeon`, `PartyDungeonView.vue`, `PartyDungeonPanel.vue` | Membership gating and reward clarity | Medium | Role hint + cross-nav added; polish reward clarity next |
+| Co-op Boss | PARTIAL | `apps/api/src/modules/coop-boss`, `CoopBossView.vue`, `CoopBossPanel.vue` | Contribution UX needs clarity | Medium | Role hint + cross-nav added; polish contribution UX next |
 | Quest / Mission | PARTIAL | `apps/api/src/modules/quest`, `apps/api/src/modules/mission`, `QuestView.vue`, `MissionView.vue`, `missions.ts`, `quests.ts` | Mission/quest/story distinction and positive claim smoke gaps | High | Quest/Mission/Story Labeling Polish |
 | Story / NPC | PARTIAL | `story-v2`, `story-dialogue`, `story-dungeon`, `npc-affinity`, `NpcView.vue`, `StoryV2View.vue` | Some objective wiring is still deferred | Medium | Keep scoped; polish labels/gates |
-| Sect | PARTIAL | `sect`, `sect-war`, `sect-season`, `territory`, `SectView.vue`, `SectWarView.vue` | Positive create/join/contribute smoke gaps | Medium | Defer deep expansion |
+| Sect | PARTIAL | `sect`, `sect-war`, `sect-season`, `territory`, `SectView.vue`, `SectWarView.vue` | Positive create/join/contribute smoke gaps | Medium | Role hint + cross-nav added; positive smoke gaps remain |
 | Chat / Social / Friend | DONE | `chat`, `social`, `chat-private`, `chat-group`, `SocialView.vue`, `ChatPanel.vue` | Voice chat is intentionally out of scope | Low | Maintain |
 | Market / Auction | PARTIAL | `market`, `market-v2`, `MarketView.vue`, `MarketV2View.vue`, `market-v2.ts` | Market V2 gated; player UX polished (card layout, time remaining, status badges, role hint, cross-nav, claim box source descriptions, i18n parity); positive smoke and abuse workflow remain | Medium | Positive smoke + abuse workflow polish |
 | Monetization / Topup / Wallet | PARTIAL | `topup`, `monetization`, `WalletView.vue`, `MonetizationView.vue`, `TopupView.vue` | Policy review needed before expansion | Medium | Keep conservative |

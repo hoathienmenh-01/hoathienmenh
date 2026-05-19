@@ -37,8 +37,10 @@ vi.mock('@/api/sect', async () => {
 });
 
 const routerReplaceMock = vi.fn();
+const routerPushMock = vi.fn();
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ replace: routerReplaceMock }),
+  useRouter: () => ({ replace: routerReplaceMock, push: routerPushMock }),
+  RouterLink: { name: 'RouterLinkStub', template: '<a><slot /></a>' },
 }));
 
 const toastPushMock = vi.fn();
@@ -83,6 +85,12 @@ const i18n = createI18n({
     vi: {
       sect: {
         title: 'Tông môn',
+        roleHint: 'Tông Môn là cộng đồng — gia nhập để đóng góp linh thạch.',
+        crossNav: {
+          label: 'Xem thêm',
+          sectWar: 'Tông Chiến',
+          sectContent: 'Nội Dung Tông',
+        },
         tab: { mine: 'Tông của tôi', all: 'Danh sách', create: 'Lập tông' },
         myStash: 'Linh thạch: {n}',
         level: 'Lv.{lv}',
@@ -391,5 +399,33 @@ describe('SectView — contribute flow (currency safety)', () => {
 
     expect(contributeSectMock).toHaveBeenCalledTimes(1);
     resolveHolder.current?.(makeDetail({ name: 'Huyền Thủy' }));
+  });
+});
+
+describe('SectView — role hint + cross-nav', () => {
+  beforeEach(() => {
+    listSectsMock.mockResolvedValue([]);
+    mySectMock.mockResolvedValue(null);
+  });
+
+  it('renders role hint', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="sect-role-hint"]').exists()).toBe(true);
+    expect(w.text()).toContain('Tông Môn là cộng đồng');
+  });
+
+  it('renders cross-navigation links', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="sect-cross-nav"]').exists()).toBe(true);
+    expect(w.find('[data-testid="sect-cross-nav-war"]').exists()).toBe(true);
+    expect(w.find('[data-testid="sect-cross-nav-content"]').exists()).toBe(true);
+  });
+
+  it('sect-war-cta uses data-testid (not data-test)', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="sect-war-cta"]').exists()).toBe(true);
   });
 });

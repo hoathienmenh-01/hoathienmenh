@@ -69,6 +69,31 @@ function goToCombatHub(): void {
       <XTPageEyebrow caps="PARTY DUNGEON" label="Party Dungeon" class="sr-only" />
     </XTLuxHero>
 
+    <!-- Role hint + cross-nav -->
+    <div class="space-y-2 mb-4" data-testid="party-dungeon-role-section">
+      <p class="text-xs text-ink-300 leading-relaxed" data-testid="party-dungeon-role-hint">
+        {{ t('partyDungeon.roleHint') }}
+      </p>
+      <nav class="flex flex-wrap gap-2 text-xs" data-testid="party-dungeon-cross-nav">
+        <span class="text-ink-400">{{ t('partyDungeon.crossNav.label') }}:</span>
+        <router-link
+          to="/party"
+          class="text-amber-300 hover:text-amber-100 underline"
+          data-testid="party-dungeon-cross-nav-hub"
+        >
+          {{ t('partyDungeon.crossNav.partyHub') }}
+        </router-link>
+        <span class="text-ink-500">·</span>
+        <router-link
+          to="/party/coop-boss"
+          class="text-amber-300 hover:text-amber-100 underline"
+          data-testid="party-dungeon-cross-nav-coop-boss"
+        >
+          {{ t('partyDungeon.crossNav.coopBoss') }}
+        </router-link>
+      </nav>
+    </div>
+
     <!-- Loading -->
     <div v-if="!ready" class="text-center py-8 text-ink-400" data-testid="party-dungeon-loading">
       {{ t('common.loading', 'Đang tải...') }}

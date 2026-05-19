@@ -203,10 +203,35 @@ const sectAccent = computed<string>(() => {
       </template>
     </XTLuxHero>
 
+    <!-- Role hint + cross-nav -->
+    <div class="space-y-2 mb-4" data-testid="sect-role-section">
+      <p class="text-xs text-ink-300 leading-relaxed" data-testid="sect-role-hint">
+        {{ t('sect.roleHint') }}
+      </p>
+      <nav class="flex flex-wrap gap-2 text-xs" data-testid="sect-cross-nav">
+        <span class="text-ink-400">{{ t('sect.crossNav.label') }}:</span>
+        <router-link
+          to="/sect-war"
+          class="text-amber-300 hover:text-amber-100 underline"
+          data-testid="sect-cross-nav-war"
+        >
+          {{ t('sect.crossNav.sectWar') }}
+        </router-link>
+        <span class="text-ink-500">·</span>
+        <router-link
+          to="/sect/content"
+          class="text-amber-300 hover:text-amber-100 underline"
+          data-testid="sect-cross-nav-content"
+        >
+          {{ t('sect.crossNav.sectContent') }}
+        </router-link>
+      </nav>
+    </div>
+
     <!-- Phase 13.1.B — Sect War CTA. -->
     <section
       class="mb-4 rounded border border-amber-300/30 bg-ink-700/30 p-3 flex items-center justify-between gap-3"
-      data-test="sect-war-cta"
+      data-testid="sect-war-cta"
     >
       <div class="min-w-0">
         <div class="text-sm text-amber-200">{{ t('sectCta.warTitle') }}</div>

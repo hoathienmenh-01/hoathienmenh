@@ -89,7 +89,34 @@ const i18n = createI18n({
   fallbackLocale: 'vi',
   missingWarn: false,
   fallbackWarn: false,
-  messages: { vi: {} },
+  messages: {
+    vi: {
+      common: { loading: 'Đang tải...' },
+      coopBoss: {
+        title: 'Boss Tổ Đội',
+        subtitle: 'Hợp lực đánh boss cùng tổ đội',
+        roleHint: 'Co-op Boss là trận đánh boss tổ đội — đóng góp càng cao, thưởng càng lớn.',
+        crossNav: {
+          label: 'Xem thêm',
+          partyHub: 'Tổ Đội',
+          partyDungeon: 'Phụ Bản Tổ Đội',
+        },
+        noCharacter: 'Bạn cần tạo nhân vật',
+        createCharacter: 'Tạo Nhân Vật',
+        backToParty: '← Về Tổ Đội',
+        goToBoss: 'World Boss',
+        goToCombat: 'Chiến Trường',
+        info: {
+          title: 'Cách Thức Hoạt Động',
+          step1: 'Leader chọn boss.',
+          step2: 'Thành viên ghi sát thương.',
+          step3: 'Leader kết thúc.',
+          step4: 'Thưởng theo đóng góp.',
+          step5: 'Nhận thưởng.',
+        },
+      },
+    },
+  },
 });
 
 let wrapper: ReturnType<typeof mount> | null = null;
@@ -161,6 +188,23 @@ describe('CoopBossView — info section', () => {
     mountView();
     await flushPromises();
     expect(wrapper?.find('[data-testid="coop-boss-info"]').exists()).toBe(true);
+  });
+});
+
+describe('CoopBossView — role hint + cross-nav', () => {
+  it('renders role hint', async () => {
+    mountView();
+    await flushPromises();
+    expect(wrapper?.find('[data-testid="coop-boss-role-hint"]').exists()).toBe(true);
+    expect(wrapper?.text()).toContain('Co-op Boss là trận đánh boss tổ đội');
+  });
+
+  it('renders cross-navigation links', async () => {
+    mountView();
+    await flushPromises();
+    expect(wrapper?.find('[data-testid="coop-boss-cross-nav"]').exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="coop-boss-cross-nav-hub"]').exists()).toBe(true);
+    expect(wrapper?.find('[data-testid="coop-boss-cross-nav-dungeon"]').exists()).toBe(true);
   });
 });
 
