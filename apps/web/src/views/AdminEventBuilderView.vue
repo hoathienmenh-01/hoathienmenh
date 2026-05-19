@@ -34,6 +34,7 @@ import {
 } from '@/api/eventBuilder';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import AdminEventCreateForm from '@/components/admin/AdminEventCreateForm.vue';
@@ -300,11 +301,42 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="admin-event-builder">
-      <header class="header">
-        <XTPageEyebrow caps="SỰ KIỆN TẾ ĐÀN" label="Sự Kiện Tế Đàn" />
-        <h1 class="mt-1">{{ t('adminEvents.title') }}</h1>
-        <p class="muted">{{ t('adminEvents.subtitle') }}</p>
-      </header>
+      <XTLuxHero
+        :eyebrow="t('adminEvents.title')"
+        :label="t('adminEvents.title')"
+        :title="t('adminEvents.title')"
+        :subtitle="t('adminEvents.subtitle')"
+        tone="seal"
+        watermark-letter="E"
+        test-id="admin-event-builder-hero"
+      >
+        <XTPageEyebrow caps="SỰ KIỆN TẾ ĐÀN" label="Sự Kiện Tế Đàn" class="sr-only" />
+      </XTLuxHero>
+
+      <p class="text-sm text-gray-400 px-1" data-testid="admin-event-builder-role-hint">
+        {{ t('adminEvents.roleHint') }}
+      </p>
+
+      <nav class="flex gap-2 text-xs flex-wrap" data-testid="admin-event-builder-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-admin-cc"
+          @click="router.push('/admin/control-center')"
+        >
+          <span class="text-amber-400">&#9878;</span>
+          <span>{{ t('adminEvents.crossNav.adminCC') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('adminEvents.crossNav.adminCCDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-system-status"
+          @click="router.push('/admin/system-status')"
+        >
+          <span class="text-amber-400">&#9878;</span>
+          <span>{{ t('adminEvents.crossNav.systemStatus') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('adminEvents.crossNav.systemStatusDesc') }}</span>
+        </button>
+      </nav>
 
       <nav class="tabs">
         <button

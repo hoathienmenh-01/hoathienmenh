@@ -7313,6 +7313,13 @@
   "adminEvents": {
     "title": "Event Builder & LiveOps V2",
     "subtitle": "Manage tier-balanced events (Phase 28.0)",
+    "roleHint": "Create, manage and track tier-balanced events — rewards, brackets and scheduling.",
+    "crossNav": {
+      "adminCC": "Control Center",
+      "adminCCDesc": "System overview",
+      "systemStatus": "System Status",
+      "systemStatusDesc": "Health checks"
+    },
     "loading": "Loading…",
     "empty": "No events.",
     "selectFirst": "Open an event from the Events tab first.",

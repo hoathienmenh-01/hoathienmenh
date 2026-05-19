@@ -246,7 +246,7 @@ EffectsPreviewView.
 | Combat loop | 9/10 | Combat hub consolidated; recommended action panel |
 | Economy safety | 8/10 | Anti-FE-self-grant verified; ledger invariants intact |
 | Admin/LiveOps | 8/10 | Reload guard fixed; Control Center polished |
-| Test/CI/Smoke | 9/10 | 256 test files / 2689 tests; 6 positive smoke scripts |
+| Test/CI/Smoke | 9/10 | 257 test files / 2692 tests; 6 positive smoke scripts |
 | Mobile/PWA | 8/10 | Top routes verified; MissionView responsive fix |
 | Content depth | 7.5/10 | Stable; no new content modules needed for beta |
 | Monetization readiness | 5.5/10 | Policy review needed before expansion |

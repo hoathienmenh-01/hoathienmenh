@@ -7313,6 +7313,13 @@
   "adminEvents": {
     "title": "Event Builder & LiveOps V2",
     "subtitle": "Quản lý sự kiện tier-balanced (Phase 28.0)",
+    "roleHint": "Tạo, quản lý và theo dõi sự kiện tế đàn — cân bằng tier, phần thưởng và thời gian.",
+    "crossNav": {
+      "adminCC": "Chủ Khiển",
+      "adminCCDesc": "Tổng quan hệ thống",
+      "systemStatus": "Trạng Thái",
+      "systemStatusDesc": "Kiểm tra hệ thống"
+    },
     "loading": "Đang tải…",
     "empty": "Chưa có sự kiện nào.",
     "selectFirst": "Chọn sự kiện ở tab Events trước.",
