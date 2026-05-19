@@ -190,6 +190,31 @@ function rewardSummary(m: MissionProgressView): string {
       <XTPageEyebrow caps="PHỤNG ĐẠO SỨ MỆNH" label="Phụng Đạo Sứ Mệnh" class="sr-only" />
     </XTLuxHero>
 
+    <!-- Role hint + cross-nav -->
+    <div class="space-y-2 mb-4" data-testid="mission-role-section">
+      <p class="text-xs text-ink-300 leading-relaxed" data-testid="mission-role-hint">
+        {{ t('mission.roleHint') }}
+      </p>
+      <nav class="flex flex-wrap gap-2 text-xs" data-testid="mission-cross-nav">
+        <span class="text-ink-400">{{ t('mission.crossNav.label') }}:</span>
+        <router-link
+          to="/quests"
+          class="text-amber-300 hover:text-amber-100 underline"
+          data-testid="mission-cross-nav-quest"
+        >
+          {{ t('mission.crossNav.quest') }}
+        </router-link>
+        <span class="text-ink-500">·</span>
+        <router-link
+          to="/story-v2"
+          class="text-amber-300 hover:text-amber-100 underline"
+          data-testid="mission-cross-nav-story"
+        >
+          {{ t('mission.crossNav.story') }}
+        </router-link>
+      </nav>
+    </div>
+
     <XTPullRefresh
       :on-refresh="refresh"
       test-id="mission-pull-refresh"

@@ -213,6 +213,31 @@ onMounted(async () => {
         </header>
       </XTLuxHero>
 
+      <!-- Role hint + cross-nav -->
+      <div class="space-y-2" data-testid="story-v2-role-section">
+        <p class="text-xs text-ink-300 leading-relaxed" data-testid="story-v2-role-hint">
+          {{ t('storyV2.roleHint') }}
+        </p>
+        <nav class="flex flex-wrap gap-2 text-xs" data-testid="story-v2-cross-nav">
+          <span class="text-ink-400">{{ t('storyV2.crossNav.label') }}:</span>
+          <router-link
+            to="/quests"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="story-v2-cross-nav-quest"
+          >
+            {{ t('storyV2.crossNav.quest') }}
+          </router-link>
+          <span class="text-ink-500">·</span>
+          <router-link
+            to="/missions"
+            class="text-amber-300 hover:text-amber-100 underline"
+            data-testid="story-v2-cross-nav-mission"
+          >
+            {{ t('storyV2.crossNav.mission') }}
+          </router-link>
+        </nav>
+      </div>
+
       <!-- Loading / error -->
       <div
         v-if="loading && !loaded"
