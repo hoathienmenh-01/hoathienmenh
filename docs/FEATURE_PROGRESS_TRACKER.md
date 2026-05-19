@@ -38,24 +38,25 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 8 | Admin Reload Guard Fix | DONE | Admin direct reload is a known UX bug for beta operators. | Ensure auth hydrate finishes before admin role redirect. | `AdminControlCenterView.vue`, auth store/router guard | Direct reload of `/admin/control-center` works for admin and still blocks non-admin. | 2026-05-19 |
 | 9 | Beta Checklist Refresh | DONE | Current beta docs are partially stale versus code. | Sync beta/QA docs with current code and tracker. | `docs/BETA_CHECKLIST.md`, `docs/QA_CHECKLIST.md`, `docs/FEATURE_AUDIT_AND_ROADMAP.md`, this file | Checklist reflects current DONE/PARTIAL/DEFERRED state and next smoke gaps. | 2026-05-19 |
 | 10 | Mobile Top Routes QA Pass | DONE | Closed beta users are likely mobile-heavy. | QA top routes on mobile and fix obvious layout blockers. | App shell, `/home`, `/combat`, `/equipment`, `/missions`, `/inventory`, `/mail`, `/admin` | Top routes are usable at common mobile widths; issues documented or fixed. | 2026-05-19 |
+| 11 | Production Ops Polish | IN_PROGRESS | Ops infra exists but restore drill, operator runbook, and drill tracking gaps remain. | Restore drill script, runbook enhancement, drill log, smoke integration. | `scripts/restore-drill.mjs`, `docs/RUNBOOK.md`, `docs/BACKUP_RESTORE.md`, `scripts/smoke-all.mjs` | Restore drill passes end-to-end; runbook has drill procedure + pre-deploy checklist; drill log template exists. | 2026-05-19 |
 
 ## Current Recommended Next Task
 
-`Production Ops Polish — Restore Drill, Observability, Operator Runbook`
+`Market V2 Player UX Polish`
 
 ## Active Task Template
 
 ### Active Task
 
-- Task:
-- Branch:
-- Started:
-- Owner:
-- Status:
-- Files touched:
-- Tests run:
-- Remaining risk:
-- Next step:
+- Task: Production Ops Polish
+- Branch: feat/production-ops-polish
+- Started: 2026-05-19
+- Owner: AI
+- Status: IN_PROGRESS
+- Files touched: `scripts/restore-drill.mjs`, `docs/RUNBOOK.md`, `docs/BACKUP_RESTORE.md`, `scripts/smoke-all.mjs`, docs
+- Tests run: typecheck, lint, build, Han gate
+- Remaining risk: low — docs + script only, no app code changes
+- Next step: commit + push + create PR
 
 ## Completed Tasks
 

@@ -43,7 +43,17 @@ const ALL_SUITES = [
   { name: 'spiritual-root', script: 'scripts/smoke-spiritual-root.mjs' },
 ];
 
+/**
+ * Opt-in suites — excluded from default `pnpm smoke:all` run.
+ * Only runs when explicitly selected via --only=restore-drill.
+ */
+const OPT_IN_SUITES = [
+  { name: 'restore-drill', script: 'scripts/restore-drill.mjs' },
+];
+
 const STEP_TIMEOUT_MS = Number(process.env.SMOKE_ALL_TIMEOUT_MS ?? 60_000);
+
+const AVAILABLE_SUITES = [...ALL_SUITES, ...OPT_IN_SUITES];
 
 function parseArgs(argv) {
   const opts = { only: null };
@@ -55,12 +65,12 @@ function parseArgs(argv) {
         .map((s) => s.trim())
         .filter(Boolean);
       const unknown = list.filter(
-        (s) => !ALL_SUITES.some((suite) => suite.name === s),
+        (s) => !AVAILABLE_SUITES.some((suite) => suite.name === s),
       );
       if (unknown.length > 0) {
         // eslint-disable-next-line no-console
         console.error(
-          `[smoke:all] Unknown suite(s): ${unknown.join(', ')}. Valid: ${ALL_SUITES.map((s) => s.name).join(', ')}`,
+          `[smoke:all] Unknown suite(s): ${unknown.join(', ')}. Valid: ${AVAILABLE_SUITES.map((s) => s.name).join(', ')}`,
         );
         process.exit(2);
       }
@@ -68,7 +78,11 @@ function parseArgs(argv) {
     } else if (a === '--help' || a === '-h') {
       // eslint-disable-next-line no-console
       console.log(
-        `Usage: pnpm smoke:all [--only=${ALL_SUITES.map((s) => s.name).join(',')}]`,
+        `Usage: pnpm smoke:all [--only=${AVAILABLE_SUITES.map((s) => s.name).join(',')}]`,
+      );
+      // eslint-disable-next-line no-console
+      console.log(
+        `Opt-in suites (excluded from default run): ${OPT_IN_SUITES.map((s) => s.name).join(', ')}`,
       );
       process.exit(0);
     }
@@ -105,7 +119,7 @@ function runStep(name, script) {
 async function main() {
   const opts = parseArgs(process.argv);
   const suites = opts.only
-    ? ALL_SUITES.filter((s) => opts.only.includes(s.name))
+    ? AVAILABLE_SUITES.filter((s) => opts.only.includes(s.name))
     : ALL_SUITES;
 
   // eslint-disable-next-line no-console

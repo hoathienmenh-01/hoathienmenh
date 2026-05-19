@@ -3030,6 +3030,70 @@ pnpm verify:restore
 
 **KHÔNG có endpoint restore.** Khi cần restore production thật → theo §2.10 với maintenance window + sign-off.
 
+### 3.5. Restore Drill (Ops Polish)
+
+Mục đích: xác nhận backup → restore → verify pipeline hoạt động end-to-end mà KHÔNG cần chờ sự cố thật. Phát hiện sớm vấn đề (script lỗi, permission thiếu, disk đầy) trước khi production gặp sự cố.
+
+**Tần suất**: monthly + trước major migration + sau thay đổi infra.
+
+**Automated drill**:
+```bash
+# Full drill (backup → create temp DB → restore → verify → cleanup)
+node scripts/restore-drill.mjs
+
+# Dry run (show plan, no changes)
+node scripts/restore-drill.mjs --dry-run
+
+# Production drill (explicit opt-in)
+DRILL_ALLOW_PRODUCTION=YES node scripts/restore-drill.mjs
+```
+
+Pipeline: backup → create temp DB `xuantoi_drill_<ts>` → restore vào temp → verify → drop temp → structured report. KHÔNG touch DB gốc.
+
+**Manual drill** (staging):
+```bash
+pnpm backup:db
+CONFIRM_RESTORE=YES DATABASE_URL=postgresql://user:pass@staging:5432/mtt \
+  pnpm restore:db ./backups/xuantoi-<TS>.sql.gz
+DATABASE_URL=... pnpm verify:restore
+pnpm smoke:all
+```
+
+**Khi drill fail**:
+- Step 1 (backup) fail → check disk space + pg_dump permission → **mở P2** (backup pipeline broken).
+- Step 3 (restore) fail → check gzip integrity + psql version mismatch → **mở P1** (restore untested = nguy hiểm khi sự cố thật).
+- Step 4 (verify) fail → check schema migration drift → **mở P1**.
+
+**Drill log** — ghi kết quả mỗi drill:
+
+| Ngày | Người chạy | Kết quả | Thời gian | Ghi chú |
+|---|---|---|---|---|
+| | | | | |
+
+### 3.6. Pre-Deploy Quick Checklist
+
+Chạy **trước khi cutover** production:
+
+```bash
+# 1. Deploy verify gate (MUST PASS)
+pnpm verify:deploy
+
+# 2. Backup hiện trạng
+pnpm backup:db
+
+# 3. Smoke
+pnpm smoke:all
+```
+
+Checklist nhanh:
+- [ ] `pnpm verify:deploy` exit 0
+- [ ] Backup file > 0 byte + PostgreSQL marker
+- [ ] `pnpm smoke:all` all PASS
+- [ ] `git log --oneline -5` confirm đúng commit
+- [ ] Migration status clean (`prisma migrate status`)
+- [ ] Env vars production đã set (xem `docs/DEPLOY.md` §2)
+- [ ] On-call đã notify
+
 ---
 
 ## 4. Contact & escalation
