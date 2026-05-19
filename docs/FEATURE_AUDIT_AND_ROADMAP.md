@@ -34,7 +34,7 @@
 | Story / NPC | PARTIAL | `story-v2`, `story-dialogue`, `story-dungeon`, `npc-affinity`, `NpcView.vue`, `StoryV2View.vue` | Some objective wiring is still deferred | Medium | Keep scoped; polish labels/gates |
 | Sect | PARTIAL | `sect`, `sect-war`, `sect-season`, `territory`, `SectView.vue`, `SectWarView.vue` | Positive create/join/contribute smoke gaps | Medium | Defer deep expansion |
 | Chat / Social / Friend | DONE | `chat`, `social`, `chat-private`, `chat-group`, `SocialView.vue`, `ChatPanel.vue` | Voice chat is intentionally out of scope | Low | Maintain |
-| Market / Auction | PARTIAL | `market`, `market-v2`, `MarketView.vue`, `MarketV2View.vue`, `market-v2.ts` | Market V2 gated; positive smoke and abuse workflow polish | Medium | Defer until core loop polish |
+| Market / Auction | PARTIAL | `market`, `market-v2`, `MarketView.vue`, `MarketV2View.vue`, `market-v2.ts` | Market V2 gated; player UX polished (card layout, time remaining, status badges, role hint, cross-nav, claim box source descriptions, i18n parity); positive smoke and abuse workflow remain | Medium | Positive smoke + abuse workflow polish |
 | Monetization / Topup / Wallet | PARTIAL | `topup`, `monetization`, `WalletView.vue`, `MonetizationView.vue`, `TopupView.vue` | Policy review needed before expansion | Medium | Keep conservative |
 | Notification / Mail | DONE | `notification`, `mail`, `NotificationCenterView.vue`, `MailView.vue`, `NotificationBell.vue` | More gameplay trigger wiring | Medium | Boss Notification Integration |
 | Daily Loop / Onboarding | PARTIAL | `DailyLoopPanel.vue`, `OnboardingView.vue`, `OnboardingQuestView.vue`, `onboarding-quest` | Daily Loop polished (sorted, i18n, CTAs); onboarding quest flow remains | Medium | Boss Notification Integration |
