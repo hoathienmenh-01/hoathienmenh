@@ -48,10 +48,11 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 16 | Sect & Market Positive-Path Smoke | DONE | Existing sect/market smoke only cover negative paths. Positive paths (sect contribute, market post/buy/cancel) need admin seed endpoints to verify end-to-end happy path. | Add positive-path smoke scripts using admin grant-currency + grant-item seed. Sect: contribute + join. Market: post + buy + cancel + anti-FE-self-grant. | `scripts/smoke-sect-positive.mjs`, `scripts/smoke-market-positive.mjs`, `smoke-all.mjs`, `package.json` | Both scripts pass with 0 failures; anti-FE-self-grant invariants verified; added to smoke-all as opt-in. | 2026-05-19 |
 | 17 | Cross-Navigation Polish Pack | DONE | 6 player-facing views (Market, Social, Mail, Leaderboard, SkillBook, Loadout) missing roleHint + crossNav — inconsistent with all other polished views. | Add roleHint + crossNav to all 6 views; i18n parity vi+en; update tests. | `MarketView.vue`, `SocialView.vue`, `MailView.vue`, `LeaderboardView.vue`, `SkillBookView.vue`, `LoadoutView.vue`, `vi.json`, `en.json`, 6 test files | Each view has roleHint + crossNav rendered; i18n keys in vi+en; all tests pass. | 2026-05-19 |
 | 18 | UX Polish Pack — Batch 1 | DONE | 40 remaining views missing roleHint + crossNav. After tasks #14, #15, #17, these are the last batch to reach 100% cross-nav coverage. | Add roleHint + crossNav to all 40 views; i18n parity vi+en (40 namespaces); fix namespace mismatches (cosmetics, dacQuyen, etc.); fix GiftCodeView test selector; update tests. | 40 view files, `vi.json`, `en.json`, `GiftCodeView.test.ts` | All 40 views have roleHint + crossNav; i18n keys in 40 namespaces vi+en; 246 test files / 2659 tests pass. | 2026-05-19 |
+| 19 | Market V2 Abuse Workflow | DONE | Market V2 anomaly types defined in shared + admin list/resolve endpoints exist, but no code actually detects + logs anomalies during auction lifecycle. | Wire anomaly detection into AuctionService: PRICE_TOO_LOW/HIGH on create, LARGE_VALUE_TRANSFER on bid, EXCESSIVE_CANCEL_RELIST on cancel, RAPID_RESALE on finalize. | `auction.service.ts`, `market-v2.service.test.ts` | Anomaly records created for each detection scenario; 4 new tests pass; typecheck + lint + build clean. | 2026-05-19 |
 
 ## Current Recommended Next Task
 
-`Content Depth — Realm Tier Expansion` or `Market V2 Abuse Workflow`
+`Content Depth — Realm Tier Expansion`
 
 ## Active Task Template
 
@@ -85,6 +86,7 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 16 | Sect & Market Positive-Path Smoke | — | feat/sect-market-positive-smoke | 2026-05-19 |
 | 17 | Cross-Navigation Polish Pack | #650 | feat/cross-nav-polish-pack | 2026-05-19 |
 | 18 | UX Polish Pack — Batch 1 | #652 | feat/ux-polish-batch-1 | 2026-05-19 |
+| 19 | Market V2 Abuse Workflow | — | feat/market-v2-abuse-workflow | 2026-05-19 |
 
 ## Deferred / Do Not Build
 

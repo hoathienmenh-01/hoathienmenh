@@ -18,9 +18,11 @@ import { CurrencyKind, Prisma } from '@prisma/client';
 import {
   validateAuctionInput,
   validateBid,
+  classifyMarketAnomaly,
   MIN_AUCTION_DURATION_MINUTES,
   MAX_AUCTION_DURATION_MINUTES,
   type MarketCurrency,
+  type MarketAnomalyType,
 } from '@xuantoi/shared';
 
 import { PrismaService } from '../../common/prisma.service';
@@ -135,6 +137,30 @@ export class AuctionService {
           status: 'ACTIVE',
         },
       });
+
+      // Anomaly: price-per-unit outliers (LINH_THACH only, skip if no reference).
+      if (input.currency === 'LINH_THACH' && input.quantity > 0) {
+        const pricePerUnit = Number(input.startPrice) / input.quantity;
+        if (pricePerUnit > 0 && pricePerUnit < 10) {
+          await this.logAnomaly(tx, {
+            type: 'PRICE_TOO_LOW',
+            sellerCharacterId: input.sellerCharacterId,
+            auctionId: auction.id,
+            totalValue: input.startPrice,
+            detail: { pricePerUnit, itemKey: input.itemKey, quantity: input.quantity },
+          });
+        }
+        if (pricePerUnit > 5_000_000) {
+          await this.logAnomaly(tx, {
+            type: 'PRICE_TOO_HIGH',
+            sellerCharacterId: input.sellerCharacterId,
+            auctionId: auction.id,
+            totalValue: input.startPrice,
+            detail: { pricePerUnit, itemKey: input.itemKey, quantity: input.quantity },
+          });
+        }
+      }
+
       return auction;
     });
   }
@@ -244,6 +270,19 @@ export class AuctionService {
       if (isBuyout) {
         await this.finalizeInner(tx, a.id);
       }
+
+      // Anomaly: large value transfer.
+      if (input.bidAmount > 10_000_000n) {
+        await this.logAnomaly(tx, {
+          type: 'LARGE_VALUE_TRANSFER',
+          buyerCharacterId: input.bidderCharacterId,
+          sellerCharacterId: a.sellerCharacterId,
+          auctionId: a.id,
+          totalValue: input.bidAmount,
+          detail: { currency: a.currency, wasBuyout: isBuyout },
+        });
+      }
+
       return bid;
     });
   }
@@ -276,6 +315,24 @@ export class AuctionService {
         itemQty: a.quantity,
         metadata: { reason: 'AUCTION_CANCELLED_BY_SELLER' },
       });
+
+      // Anomaly: excessive cancel-relist (≥5 cancels in 24h).
+      const recentCancels = await tx.marketAuction.count({
+        where: {
+          sellerCharacterId: a.sellerCharacterId,
+          status: 'CANCELLED',
+          finalizedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        },
+      });
+      if (recentCancels >= 5) {
+        await this.logAnomaly(tx, {
+          type: 'EXCESSIVE_CANCEL_RELIST',
+          sellerCharacterId: a.sellerCharacterId,
+          auctionId: a.id,
+          detail: { recentCancels, window: '24h' },
+        });
+      }
+
       return { ok: true as const };
     });
   }
@@ -299,6 +356,42 @@ export class AuctionService {
       }
     }
     return { finalized, candidates: due.length };
+  }
+
+  /**
+   * Fire-and-forget anomaly log. Errors are swallowed to never block the
+   * main transaction path.
+   */
+  private async logAnomaly(
+    tx: Prisma.TransactionClient,
+    params: {
+      type: MarketAnomalyType;
+      sellerCharacterId?: string;
+      buyerCharacterId?: string;
+      auctionId?: string;
+      totalValue?: bigint;
+      detail?: Record<string, unknown>;
+    },
+  ) {
+    const severity = classifyMarketAnomaly({
+      type: params.type,
+      totalValue: params.totalValue ? Number(params.totalValue) : undefined,
+    });
+    try {
+      await tx.marketAnomaly.create({
+        data: {
+          anomalyType: params.type,
+          severity,
+          sellerCharacterId: params.sellerCharacterId ?? null,
+          buyerCharacterId: params.buyerCharacterId ?? null,
+          auctionId: params.auctionId ?? null,
+          totalValue: params.totalValue ?? null,
+          detailJson: (params.detail ?? {}) as Prisma.InputJsonValue,
+        },
+      });
+    } catch {
+      // Anomaly logging must never break the auction flow.
+    }
   }
 
   private async finalizeInner(tx: Prisma.TransactionClient, auctionId: string) {
@@ -378,5 +471,24 @@ export class AuctionService {
       where: { auctionId: a.id, bidderCharacterId: a.currentBidderId, status: 'ACTIVE' },
       data: { status: 'SETTLED' },
     });
+
+    // Anomaly: rapid resale (≥10 sales by same seller in 24h).
+    const recentSales = await tx.marketAuction.count({
+      where: {
+        sellerCharacterId: a.sellerCharacterId,
+        status: 'FINALIZED',
+        finalizedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+    });
+    if (recentSales >= 10) {
+      await this.logAnomaly(tx, {
+        type: 'RAPID_RESALE',
+        sellerCharacterId: a.sellerCharacterId,
+        buyerCharacterId: a.currentBidderId,
+        auctionId: a.id,
+        totalValue: a.currentBid,
+        detail: { recentSales, window: '24h' },
+      });
+    }
   }
 }
