@@ -156,6 +156,31 @@ async function onClaim(): Promise<void> {
       <XTPageEyebrow caps="TÔNG MÔN ĐẠI CHIẾN" label="Tông Môn Đại Chiến" class="sr-only" />
     </XTLuxHero>
 
+    <!-- Role hint -->
+    <p class="text-sm text-gray-400 px-1" data-testid="sect-war-role-hint">
+      {{ t('sectWar.roleHint') }}
+    </p>
+
+    <!-- Cross-navigation -->
+    <nav class="flex gap-2 text-xs mb-2" data-testid="sect-war-cross-nav">
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-sect"
+        @click="$router.push('/sect')"
+      >
+        <span>{{ t('sectWar.crossNav.sect') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('sectWar.crossNav.sectDesc') }}</span>
+      </button>
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-leaderboard"
+        @click="$router.push('/leaderboard')"
+      >
+        <span>{{ t('sectWar.crossNav.leaderboard') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('sectWar.crossNav.leaderboardDesc') }}</span>
+      </button>
+    </nav>
+
     <div v-if="loading" class="text-ink-300 text-sm" data-test="sect-war-loading">
       {{ t('sectWar.loading') }}
     </div>

@@ -136,6 +136,31 @@ const errorMessage = computed(() => {
         <XTPageEyebrow caps="GIẢI TIỆC THỊNH HỘI" label="Giải Tiệc Thịnh Hội" class="sr-only" />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="activity-role-hint">
+        {{ t('activity.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="activity-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-missions"
+          @click="$router.push('/missions')"
+        >
+          <span>{{ t('activity.crossNav.missions') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('activity.crossNav.missionsDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-dailyLoop"
+          @click="$router.push('/home')"
+        >
+          <span>{{ t('activity.crossNav.dailyLoop') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('activity.crossNav.dailyLoopDesc') }}</span>
+        </button>
+      </nav>
+
       <nav class="flex gap-2" data-testid="activity-tabs">
         <button
           type="button"

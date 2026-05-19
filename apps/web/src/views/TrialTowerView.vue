@@ -108,6 +108,31 @@ function attemptBusy(towerKey: string, floor: number): boolean {
         <XTPageEyebrow caps="THÍ LUYỆN THÁP" label="Thí Luyện Tháp" class="sr-only" />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="trial-tower-role-hint">
+        {{ t('trialTower.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="trial-tower-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-dungeon"
+          @click="$router.push('/dungeon')"
+        >
+          <span>{{ t('trialTower.crossNav.dungeon') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('trialTower.crossNav.dungeonDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-combat"
+          @click="$router.push('/combat')"
+        >
+          <span>{{ t('trialTower.crossNav.combat') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('trialTower.crossNav.combatDesc') }}</span>
+        </button>
+      </nav>
+
       <div
         v-if="reloadFailed && towers.length === 0"
         class="trial-tower__state trial-tower__state--error"

@@ -78,6 +78,31 @@ onMounted(refresh);
         <XTPageEyebrow caps="THIÊN HẠNH NGHI PHỔ" label="Thiên Hạnh Nghi Phổ" class="sr-only" />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="codex-role-hint">
+        {{ t('codex.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="codex-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-skillBook"
+          @click="$router.push('/skill-book')"
+        >
+          <span>{{ t('codex.crossNav.skillBook') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('codex.crossNav.skillBookDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-inventory"
+          @click="$router.push('/inventory')"
+        >
+          <span>{{ t('codex.crossNav.inventory') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('codex.crossNav.inventoryDesc') }}</span>
+        </button>
+      </nav>
+
       <!-- Progress summary -->
       <div v-if="progress" class="flex gap-4 text-sm bg-gray-800 rounded p-3">
         <div>{{ t('codex.overallProgress') }}: <span class="font-bold text-amber-300">{{ progress.overallPct }}%</span></div>

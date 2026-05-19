@@ -273,7 +273,7 @@ describe('GiftCodeView — onRedeem flow', () => {
     const submit = w.find('form');
     await submit.trigger('submit.prevent');
     await flushPromises();
-    const btn = w.find('button');
+    const btn = w.find('button[type="submit"]');
     expect(btn.attributes('disabled')).toBeDefined();
     resolveHolder.current?.({
       code: 'LOCK',

@@ -595,7 +595,14 @@
     "power": "Power",
     "spirit": "Spirit",
     "speed": "Speed",
-    "luck": "Luck"
+    "luck": "Luck",
+    "roleHint": "Cultivator profile — view realm, stats, equipment, and progress.",
+    "crossNav": {
+      "character": "Character",
+      "characterDesc": "Cultivator profile",
+      "achievements": "Achievements",
+      "achievementsDesc": "Milestones & titles"
+    }
   },
   "characterView": {
     "eyebrow": "Cultivator",
@@ -787,6 +794,15 @@
       "huyen": "Profound",
       "tien": "Immortal",
       "than": "Divine"
+    },
+    "roleHint": "Cultivation is the core — advance realms, master skills, break through to new heights.",
+    "crossNav": {
+      "skillBook": "Skill Book",
+      "skillBookDesc": "Learned skills",
+      "equipment": "Equipment",
+      "equipmentDesc": "Manage gear",
+      "breakthrough": "Breakthrough",
+      "breakthroughDesc": "Realm challenge"
     }
   },
   "activity": {
@@ -836,6 +852,13 @@
       "BOSS_REWARD": "Boss reward",
       "DUNGEON_DROP": "Dungeon drop",
       "ACHIEVEMENT": "Achievement"
+    },
+    "roleHint": "Missions are repeating tasks — complete them daily to maximize rewards.",
+    "crossNav": {
+      "missions": "Missions",
+      "missionsDesc": "Daily tasks",
+      "dailyLoop": "Daily Loop",
+      "dailyLoopDesc": "Today's activities"
     }
   },
   "settings": {
@@ -876,6 +899,13 @@
       "UNAUTHENTICATED": "Session expired, please sign in again.",
       "RATE_LIMITED": "Too many requests, try again later.",
       "UNKNOWN": "Something went wrong."
+    },
+    "roleHint": "Account settings — password, language, notifications, and preferences.",
+    "crossNav": {
+      "profile": "Character",
+      "profileDesc": "Cultivator profile",
+      "feedback": "Feedback",
+      "feedbackDesc": "Suggestions & bugs"
     }
   },
   "mission": {
@@ -985,6 +1015,13 @@
       "INVALID_INPUT": "Invalid code.",
       "UNAUTHENTICATED": "Session expired. Please log in again.",
       "UNKNOWN": "Unknown error."
+    },
+    "roleHint": "Redeem gift codes for rewards. Each code can only be used once per account.",
+    "crossNav": {
+      "mail": "Mail",
+      "mailDesc": "Heavenly mail",
+      "inventory": "Inventory",
+      "inventoryDesc": "Manage items"
     }
   },
   "chat": {
@@ -1180,6 +1217,13 @@
       "INVALID_INPUT": "Invalid request.",
       "UNKNOWN_ERROR": "Something went wrong. Please try again.",
       "UNKNOWN": "Something went wrong. Please try again."
+    },
+    "roleHint": "Seasons — climb ranks each season for exclusive rewards and titles.",
+    "crossNav": {
+      "leaderboard": "Leaderboard",
+      "leaderboardDesc": "Top power",
+      "achievements": "Achievements",
+      "achievementsDesc": "Milestones & titles"
     }
   },
   "roguelike": {
@@ -1263,6 +1307,13 @@
       "INVALID_INPUT": "Invalid input.",
       "UNKNOWN_ERROR": "Something went wrong, please retry.",
       "UNKNOWN": "Something went wrong, please retry."
+    },
+    "roleHint": "Endless Tower is a roguelike mode — climb floors, get random buffs, fight.",
+    "crossNav": {
+      "dungeon": "Dungeon",
+      "dungeonDesc": "Solo dungeon",
+      "combat": "Combat",
+      "combatDesc": "Combat center"
     }
   },
   "storyDungeon": {
@@ -1353,6 +1404,13 @@
       "INVALID_INPUT": "Invalid input.",
       "UNKNOWN_ERROR": "Something went wrong, please retry.",
       "UNKNOWN": "Something went wrong, please retry."
+    },
+    "roleHint": "Story Dungeon is a story-driven instance — complete to advance the chapter.",
+    "crossNav": {
+      "story": "Story",
+      "storyDesc": "Story journey",
+      "dungeon": "Dungeon",
+      "dungeonDesc": "Solo dungeon"
     }
   },
   "inventory": {
@@ -1826,6 +1884,13 @@
       "RATE_LIMITED": "Buying too fast — please slow down and try again.",
       "UNAUTHENTICATED": "Session expired. Please log in again.",
       "UNKNOWN": "Something went wrong, please retry."
+    },
+    "roleHint": "NPC Shop — buy common pills and equipment from NPCs.",
+    "crossNav": {
+      "market": "Market",
+      "marketDesc": "Trade with players",
+      "inventory": "Inventory",
+      "inventoryDesc": "Manage items"
     }
   },
   "sect": {
@@ -2063,6 +2128,13 @@
       "INVALID_PACKAGE": "Invalid package.",
       "TOO_MANY_PENDING": "Too many pending orders — approve some first.",
       "UNKNOWN": "Something went wrong."
+    },
+    "roleHint": "Purchase Immortal Jade to buy items, unlock content, and support the game.",
+    "crossNav": {
+      "wallet": "Wallet",
+      "walletDesc": "View balance",
+      "shop": "NPC Shop",
+      "shopDesc": "Buy items"
     }
   },
   "admin": {
@@ -3127,6 +3199,13 @@
       "CULTIVATION_METHOD_V2_UNAVAILABLE": "Cultivation method V2 system temporarily unavailable.",
       "IN_FLIGHT": "Processing…",
       "UNKNOWN": "Action failed, please retry."
+    },
+    "roleHint": "Cultivation methods determine your cultivation speed and realm bonus stats.",
+    "crossNav": {
+      "cultivation": "Cultivation",
+      "cultivationDesc": "Cultivation center",
+      "skillBook": "Skill Book",
+      "skillBookDesc": "Learned skills"
     }
   },
   "artifactV2": {
@@ -3970,6 +4049,13 @@
         "QUEST_NOT_AVAILABLE": "Quest is not available right now.",
         "UNKNOWN": "Failed to accept quest, please retry."
       }
+    },
+    "roleHint": "NPCs are story characters — interact to unlock storylines and quests.",
+    "crossNav": {
+      "story": "Story",
+      "storyDesc": "Story journey",
+      "quests": "Quests",
+      "questsDesc": "Main quests"
     }
   },
   "storyDialogue": {
@@ -4276,6 +4362,13 @@
       "dungeon": "Dungeon",
       "boss": "Boss",
       "sect": "Sect"
+    },
+    "roleHint": "Reputation reflects a cultivator's social standing and behavior.",
+    "crossNav": {
+      "social": "Social",
+      "socialDesc": "Friends & chat",
+      "achievements": "Achievements",
+      "achievementsDesc": "Milestones & titles"
     }
   },
   "buffs": {
@@ -4403,6 +4496,13 @@
       "rewards": "Weekly Rewards",
       "season": "Season",
       "hallOfFame": "Hall of Fame"
+    },
+    "roleHint": "Sect War is a battle between sects — contribute to secure victory.",
+    "crossNav": {
+      "sect": "Sect",
+      "sectDesc": "Manage your sect",
+      "leaderboard": "Leaderboard",
+      "leaderboardDesc": "Top power"
     }
   },
   "sectMission": {
@@ -5184,6 +5284,13 @@
       "ADMIN_ONLY": "Only ADMIN can run territory settlement.",
       "UNAUTHENTICATED": "Please sign in again.",
       "UNKNOWN": "Could not load territory data, please retry."
+    },
+    "roleHint": "Territory is sect land — gather resources and defend against invaders.",
+    "crossNav": {
+      "sect": "Sect",
+      "sectDesc": "Manage your sect",
+      "homestead": "Homestead",
+      "homesteadDesc": "Personal territory"
     }
   },
   "arena": {
@@ -6753,6 +6860,13 @@
       "MONTHLY_CARD_INACTIVE": "Monthly Card is inactive.",
       "MONTHLY_CARD_ALREADY_CLAIMED": "Monthly Card already claimed today.",
       "UNKNOWN": "Something went wrong, try again."
+    },
+    "roleHint": "Top Up — purchase Immortal Jade to buy items and unlock content.",
+    "crossNav": {
+      "topup": "Top Up",
+      "topupDesc": "Purchase Jade",
+      "wallet": "Wallet",
+      "walletDesc": "View balance"
     }
   },
   "shopPacks": {
@@ -6801,6 +6915,13 @@
       "DUPLICATE_PURCHASE": "Already purchased.",
       "INVALID_INPUT": "Invalid input.",
       "UNKNOWN": "Something went wrong."
+    },
+    "roleHint": "Top-up packages — buy value packs for more Jade and bonus items.",
+    "crossNav": {
+      "shop": "NPC Shop",
+      "shopDesc": "Buy items",
+      "topup": "Top Up",
+      "topupDesc": "Purchase Jade"
     }
   },
   "bodyCultivation": {
@@ -6931,6 +7052,13 @@
       "ALREADY_OWNED_PERMANENT": "Already owned permanently.",
       "IN_FLIGHT": "Processing...",
       "UNKNOWN": "Something went wrong."
+    },
+    "roleHint": "Cosmetics — customize your character's appearance without affecting stats.",
+    "crossNav": {
+      "character": "Character",
+      "characterDesc": "Cultivator profile",
+      "inventory": "Inventory",
+      "inventoryDesc": "Manage items"
     }
   },
   "worldContent": {
@@ -7100,6 +7228,13 @@
       "DAILY_CAP_REACHED": "Daily cap reached.",
       "WEEKLY_CAP_REACHED": "Weekly cap reached.",
       "INVALID_INPUT": "Invalid input."
+    },
+    "roleHint": "World content — explore dungeons, bosses, and special events.",
+    "crossNav": {
+      "dungeon": "Dungeon",
+      "dungeonDesc": "Solo dungeon",
+      "boss": "Boss",
+      "bossDesc": "World Boss"
     }
   },
   "events": {
@@ -7290,6 +7425,13 @@
       "RELATION_NOT_FOUND": "Relation not found.",
       "MENTOR_NOT_ACCEPTING": "Mentor is not accepting disciples right now.",
       "UNKNOWN": "Something went wrong."
+    },
+    "roleHint": "Mentorship — find a master or disciple for cultivation bonuses and guidance.",
+    "crossNav": {
+      "social": "Social",
+      "socialDesc": "Friends & chat",
+      "cultivation": "Cultivation",
+      "cultivationDesc": "Cultivation center"
     }
   },
   "mentorMilestone": {
@@ -7337,7 +7479,14 @@
     "noTier": "Not yet eligible for returner support.",
     "check": "Check now",
     "checkSuccess": "Returner support activated.",
-    "checkNoop": "No action needed (already claimed or not eligible)."
+    "checkNoop": "No action needed (already claimed or not eligible).",
+    "roleHint": "Welcome back — complete returner tasks to catch up and earn rewards.",
+    "crossNav": {
+      "dailyLoop": "Daily Loop",
+      "dailyLoopDesc": "Today's activities",
+      "missions": "Missions",
+      "missionsDesc": "Daily tasks"
+    }
   },
   "adminMail": {
     "title": "Admin Mail",
@@ -7438,6 +7587,13 @@
       "defenseSave": "Failed to save defense ({code}).",
       "challenge": "Challenge failed ({code}).",
       "targetRequired": "Please enter a target ID."
+    },
+    "roleHint": "PvP — challenge other players, climb rankings, and earn seasonal rewards.",
+    "crossNav": {
+      "arena": "Arena",
+      "arenaDesc": "PvP ranking",
+      "leaderboard": "Leaderboard",
+      "leaderboardDesc": "Top power"
     }
   },
   "adminPvp": {
@@ -7548,7 +7704,14 @@
     "marketPriceTitle": "Market price reference",
     "avg24h": "Avg 24h",
     "avg7d": "Avg 7d",
-    "vol24h": "Volume 24h"
+    "vol24h": "Volume 24h",
+    "roleHint": "The Codex is where you browse all items, equipment, monsters, and game content.",
+    "crossNav": {
+      "skillBook": "Skill Book",
+      "skillBookDesc": "Learned skills",
+      "inventory": "Inventory",
+      "inventoryDesc": "Manage items"
+    }
   },
   "adminMarket": {
     "title": "Market V2 Admin",
@@ -7757,6 +7920,13 @@
       "NO_CHARACTER": "You do not have a character yet.",
       "SUPPORT_PERMISSION_DENIED": "You do not have access to this feedback.",
       "UNAUTHENTICATED": "Please log in again."
+    },
+    "roleHint": "Feedback — send suggestions, report bugs, or propose improvements to the team.",
+    "crossNav": {
+      "settings": "Settings",
+      "settingsDesc": "Account settings",
+      "mail": "Mail",
+      "mailDesc": "Heavenly mail"
     }
   },
   "report": {
@@ -7943,7 +8113,14 @@
     "title": "Activity Logs",
     "subtitle": "Account activity history.",
     "emptyTitle": "Coming soon",
-    "emptyDescription": "Detailed activity logs will land in Phase 41.1+."
+    "emptyDescription": "Detailed activity logs will land in Phase 41.1+.",
+    "roleHint": "Player logs record your activity history, transactions, and character progress.",
+    "crossNav": {
+      "settings": "Settings",
+      "settingsDesc": "Account settings",
+      "profile": "Character",
+      "profileDesc": "Cultivator profile"
+    }
   },
   "navigation": {
     "commandPalette": {
@@ -8241,6 +8418,13 @@
       "ENCOUNTER_FROZEN": "Encounter is closed.",
       "ENCOUNTER_HAS_NO_CHOICES": "Encounter has no choices.",
       "ENCOUNTER_CHOICE_INVALID": "Invalid choice."
+    },
+    "roleHint": "Encounters are random battles in dungeons — defeat monsters to earn rewards.",
+    "crossNav": {
+      "dungeon": "Dungeon",
+      "dungeonDesc": "Solo dungeon",
+      "combat": "Combat",
+      "combatDesc": "Combat center"
     }
   },
   "secretRealm": {
@@ -8278,6 +8462,13 @@
       "SECRET_REALM_OBJECTIVE_INVALID": "Objective not found.",
       "SECRET_REALM_OBJECTIVES_INCOMPLETE": "Objectives not complete.",
       "SECRET_REALM_COOLDOWN": "Cooldown active."
+    },
+    "roleHint": "Secret Realm is a special dungeon — high challenge, rare rewards.",
+    "crossNav": {
+      "dungeon": "Dungeon",
+      "dungeonDesc": "Solo dungeon",
+      "combat": "Combat",
+      "combatDesc": "Combat center"
     }
   },
   "inventoryAutoSort": {
@@ -8989,6 +9180,13 @@
       "minutesAgo": "{n}m ago",
       "hoursAgo": "{n}h ago",
       "daysAgo": "{n}d ago"
+    },
+    "roleHint": "Notification center — view events, boss alerts, mail, and latest updates.",
+    "crossNav": {
+      "mail": "Mail",
+      "mailDesc": "Heavenly mail",
+      "social": "Social",
+      "socialDesc": "Friends & chat"
     }
   },
   "onlineFriends": {
@@ -9019,7 +9217,14 @@
     "equipFail": "Failed to equip",
     "modalTitle": "Select item for {slot}",
     "modalEmpty": "No matching items in inventory",
-    "loadFail": "Failed to load equipment"
+    "loadFail": "Failed to load equipment",
+    "roleHint": "Equipment directly affects combat strength — upgrade your gear to grow stronger.",
+    "crossNav": {
+      "inventory": "Inventory",
+      "inventoryDesc": "Manage items",
+      "loadout": "Loadout",
+      "loadoutDesc": "Save gear presets"
+    }
   },
   "combatHub": {
     "eyebrow": "BATTLEFIELD",
@@ -9087,6 +9292,105 @@
     "dailyTip": {
       "title": "Daily Tip",
       "body": "Complete Dungeon Runs daily to maximize EXP and Linh Thach. Fight World Bosses when they spawn for rare items. Join Co-op Boss with your party for MVP-tier rewards."
+    },
+    "roleHint": "Combat hub — enter dungeons, fight bosses, or challenge other players in PvP.",
+    "crossNav": {
+      "dungeon": "Dungeon",
+      "dungeonDesc": "Solo dungeon",
+      "boss": "Boss",
+      "bossDesc": "World Boss",
+      "arena": "Arena",
+      "arenaDesc": "PvP ranking"
+    }
+  },
+  "dungeonHubV2": {
+    "roleHint": "Dungeons are solo instances — choose one matching your realm to fight and earn rewards.",
+    "crossNav": {
+      "dungeon": "Dungeon",
+      "dungeonDesc": "Solo dungeon",
+      "combat": "Combat",
+      "combatDesc": "Combat center"
+    }
+  },
+  "farmMap": {
+    "roleHint": "Spirit Farm is where you grow spirit herbs — harvest for alchemy or sell for profit.",
+    "crossNav": {
+      "homestead": "Homestead",
+      "homesteadDesc": "Personal territory",
+      "inventory": "Inventory",
+      "inventoryDesc": "Manage items"
+    }
+  },
+  "monetizationDacQuyen": {
+    "roleHint": "Privileges — unlock VIP benefits and exclusive perks.",
+    "crossNav": {
+      "topup": "Top Up",
+      "topupDesc": "Purchase Jade",
+      "wallet": "Wallet",
+      "walletDesc": "View balance"
+    }
+  },
+  "monetizationShop": {
+    "roleHint": "Jade Shop — purchase items and special packages with Immortal Jade.",
+    "crossNav": {
+      "topup": "Top Up",
+      "topupDesc": "Purchase Jade",
+      "inventory": "Inventory",
+      "inventoryDesc": "Manage items"
+    }
+  },
+  "notificationSettings": {
+    "roleHint": "Notification settings — toggle notifications for each event type.",
+    "crossNav": {
+      "settings": "Settings",
+      "settingsDesc": "Account settings",
+      "notifications": "Notifications",
+      "notificationsDesc": "Notification center"
+    }
+  },
+  "reportPlayer": {
+    "roleHint": "Report — report rule violations, cheating, or toxic behavior.",
+    "crossNav": {
+      "social": "Social",
+      "socialDesc": "Friends & chat",
+      "settings": "Settings",
+      "settingsDesc": "Account settings"
+    }
+  },
+  "sectContent": {
+    "roleHint": "Sect content — view sect info, members, and faction activities.",
+    "crossNav": {
+      "sect": "Sect",
+      "sectDesc": "Manage your sect",
+      "leaderboard": "Leaderboard",
+      "leaderboardDesc": "Top power"
+    }
+  },
+  "title": {
+    "roleHint": "Titles are special achievements — equip them to display on your character.",
+    "crossNav": {
+      "achievements": "Achievements",
+      "achievementsDesc": "Milestones & titles",
+      "character": "Character",
+      "characterDesc": "Cultivator profile"
+    }
+  },
+  "trialTower": {
+    "roleHint": "Trial Tower is a challenge tower — climb floors, fight bosses, earn rewards.",
+    "crossNav": {
+      "dungeon": "Dungeon",
+      "dungeonDesc": "Solo dungeon",
+      "combat": "Combat",
+      "combatDesc": "Combat center"
+    }
+  },
+  "wallet": {
+    "roleHint": "Wallet — view Linh Thach, Jade balances, and transaction history.",
+    "crossNav": {
+      "topup": "Top Up",
+      "topupDesc": "Purchase Jade",
+      "shop": "NPC Shop",
+      "shopDesc": "Buy items"
     }
   }
 }

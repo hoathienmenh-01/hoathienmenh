@@ -235,6 +235,31 @@ function formatTime(iso: string): string {
       test-id="notification-center-hero"
     />
 
+    <!-- Role hint -->
+    <p class="text-sm text-gray-400 px-1" data-testid="notification-center-role-hint">
+      {{ t('notificationCenter.roleHint') }}
+    </p>
+
+    <!-- Cross-navigation -->
+    <nav class="flex gap-2 text-xs mb-2" data-testid="notification-center-cross-nav">
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-mail"
+        @click="$router.push('/mail')"
+      >
+        <span>{{ t('notificationCenter.crossNav.mail') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('notificationCenter.crossNav.mailDesc') }}</span>
+      </button>
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-social"
+        @click="$router.push('/social')"
+      >
+        <span>{{ t('notificationCenter.crossNav.social') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('notificationCenter.crossNav.socialDesc') }}</span>
+      </button>
+    </nav>
+
     <!-- Filter tabs -->
     <nav
       class="flex flex-wrap gap-2"

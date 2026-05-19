@@ -347,6 +347,39 @@ onMounted(async () => {
         test-id="cultivation-hub-hero"
       />
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="cultivation-hub-role-hint">
+        {{ t('cultivationHub.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="cultivation-hub-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-skillBook"
+          @click="$router.push('/skill-book')"
+        >
+          <span>{{ t('cultivationHub.crossNav.skillBook') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('cultivationHub.crossNav.skillBookDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-equipment"
+          @click="$router.push('/equipment')"
+        >
+          <span>{{ t('cultivationHub.crossNav.equipment') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('cultivationHub.crossNav.equipmentDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-breakthrough"
+          @click="$router.push('/breakthrough')"
+        >
+          <span>{{ t('cultivationHub.crossNav.breakthrough') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('cultivationHub.crossNav.breakthroughDesc') }}</span>
+        </button>
+      </nav>
+
       <!-- Empty state — no character yet. Never fall back to mock VIP. -->
       <section
         v-if="!character"

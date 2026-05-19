@@ -55,6 +55,31 @@ async function togglePref(
       <XTPageEyebrow caps="ĐÀI TRUYỀN TIN HIỆU" label="Đài Truyền Tin Hiệu" class="sr-only" />
     </XTLuxHero>
 
+    <!-- Role hint -->
+    <p class="text-sm text-gray-400 px-1" data-testid="notification-settings-role-hint">
+      {{ t('notificationSettings.roleHint') }}
+    </p>
+
+    <!-- Cross-navigation -->
+    <nav class="flex gap-2 text-xs mb-2" data-testid="notification-settings-cross-nav">
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-settings"
+        @click="$router.push('/settings')"
+      >
+        <span>{{ t('notificationSettings.crossNav.settings') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('notificationSettings.crossNav.settingsDesc') }}</span>
+      </button>
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-notifications"
+        @click="$router.push('/notifications')"
+      >
+        <span>{{ t('notificationSettings.crossNav.notifications') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('notificationSettings.crossNav.notificationsDesc') }}</span>
+      </button>
+    </nav>
+
     <div
       v-if="!push.supported.value"
       class="rounded-lg border border-amber-700/40 bg-amber-900/20 p-4 text-sm text-amber-100"

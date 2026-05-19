@@ -170,6 +170,31 @@ const policyHints = computed(() => {
         <XTPageEyebrow caps="SÁT PHẠT TRANH HUNG" label="Sát Phạt Tranh Hung" class="sr-only" />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="pvp-role-hint">
+        {{ t('pvp.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="pvp-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-arena"
+          @click="$router.push('/arena')"
+        >
+          <span>{{ t('pvp.crossNav.arena') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('pvp.crossNav.arenaDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-leaderboard"
+          @click="$router.push('/leaderboard')"
+        >
+          <span>{{ t('pvp.crossNav.leaderboard') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('pvp.crossNav.leaderboardDesc') }}</span>
+        </button>
+      </nav>
+
       <div v-if="loading && !policy" class="pvp-view__loading" data-test="pvp-loading">
         {{ t('pvp.loading') }}
       </div>

@@ -188,6 +188,15 @@ CultivationMethodV2View, EncounterView, EventsView, InventoryAutoSortView, Monet
 - Done criteria met: all 6 views have roleHint + crossNav; i18n parity; all tests pass.
 - What was not touched: no backend changes, no schema migration, no new gameplay module, no balance changes.
 
+### PR 7: UX Polish Pack — Batch 1 (Task #18) ✅ DONE
+
+- Goal: Add roleHint + crossNav to all 40 remaining views missing the standard UX pattern. Achieve 100% cross-nav coverage across all player-facing views.
+- Scope: (1) roleHint + crossNav added to 40 views via automation script; (2) i18n keys in vi+en for 40 namespaces (11 new namespaces created: dungeonHubV2, farmMap, monetizationDacQuyen, monetizationShop, notificationSettings, reportPlayer, sectContent, title, trialTower, wallet, + cosmetics fix); (3) fixed 11 namespace mismatches between view t() calls and i18n keys; (4) fixed GiftCodeView test selector (button → button[type="submit"]) to account for cross-nav buttons.
+- Files touched: 40 view files, 1 test file, `vi.json`, `en.json`, 3 doc files.
+- Tests run: typecheck ✅, lint ✅, build ✅, tests 246/246 files (2659/2659) ✅, Han gate 0 ✅.
+- Done criteria met: all player-facing views have roleHint + crossNav; i18n parity; all tests pass.
+- What was not touched: no backend changes, no schema migration, no new gameplay module, no balance changes.
+
 ### Short term: 1-2 weeks
 
 - ~~Daily Loop First Session Polish.~~ ✅

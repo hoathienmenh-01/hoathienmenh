@@ -269,6 +269,39 @@ onMounted(async () => {
       <XTPageEyebrow caps="CHIẾN TRƯỜNG" label="Chiến Trường" class="sr-only" />
     </XTLuxHero>
 
+    <!-- Role hint -->
+    <p class="text-sm text-gray-400 px-1" data-testid="combat-hub-role-hint">
+      {{ t('combatHub.roleHint') }}
+    </p>
+
+    <!-- Cross-navigation -->
+    <nav class="flex gap-2 text-xs mb-2" data-testid="combat-hub-cross-nav">
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-dungeon"
+        @click="$router.push('/dungeon')"
+      >
+        <span>{{ t('combatHub.crossNav.dungeon') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('combatHub.crossNav.dungeonDesc') }}</span>
+      </button>
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-boss"
+        @click="$router.push('/boss')"
+      >
+        <span>{{ t('combatHub.crossNav.boss') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('combatHub.crossNav.bossDesc') }}</span>
+      </button>
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-arena"
+        @click="$router.push('/arena')"
+      >
+        <span>{{ t('combatHub.crossNav.arena') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('combatHub.crossNav.arenaDesc') }}</span>
+      </button>
+    </nav>
+
     <!-- Loading -->
     <div
       v-if="!ready"

@@ -122,6 +122,31 @@ onMounted(async () => {
         </header>
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="npc-role-hint">
+        {{ t('npc.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="npc-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-story"
+          @click="$router.push('/story')"
+        >
+          <span>{{ t('npc.crossNav.story') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('npc.crossNav.storyDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-quests"
+          @click="$router.push('/quests')"
+        >
+          <span>{{ t('npc.crossNav.quests') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('npc.crossNav.questsDesc') }}</span>
+        </button>
+      </nav>
+
       <div
         v-if="loading && !loaded"
         class="text-ink-300 text-sm"

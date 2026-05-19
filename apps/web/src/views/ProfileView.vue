@@ -127,6 +127,31 @@ watch(
         />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="profile-role-hint">
+        {{ t('profile.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="profile-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-character"
+          @click="$router.push('/character')"
+        >
+          <span>{{ t('profile.crossNav.character') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('profile.crossNav.characterDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-achievements"
+          @click="$router.push('/achievements')"
+        >
+          <span>{{ t('profile.crossNav.achievements') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('profile.crossNav.achievementsDesc') }}</span>
+        </button>
+      </nav>
+
       <div v-if="loading" class="space-y-3" data-testid="profile-skeleton">
         <section class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-2">
           <SkeletonBlock height="h-6" width="w-1/3" />

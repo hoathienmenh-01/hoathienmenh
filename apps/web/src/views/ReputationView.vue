@@ -82,6 +82,31 @@ onMounted(async () => {
         </header>
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="reputation-role-hint">
+        {{ t('reputation.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="reputation-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-social"
+          @click="$router.push('/social')"
+        >
+          <span>{{ t('reputation.crossNav.social') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('reputation.crossNav.socialDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-achievements"
+          @click="$router.push('/achievements')"
+        >
+          <span>{{ t('reputation.crossNav.achievements') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('reputation.crossNav.achievementsDesc') }}</span>
+        </button>
+      </nav>
+
       <section
         v-if="!store.loaded"
         class="bg-ink-700/30 border border-ink-300/20 rounded p-6 text-center text-ink-300"

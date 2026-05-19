@@ -119,6 +119,31 @@ onMounted(async () => {
         </template>
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="shop-role-hint">
+        {{ t('shop.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="shop-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-market"
+          @click="$router.push('/market')"
+        >
+          <span>{{ t('shop.crossNav.market') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('shop.crossNav.marketDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-inventory"
+          @click="$router.push('/inventory')"
+        >
+          <span>{{ t('shop.crossNav.inventory') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('shop.crossNav.inventoryDesc') }}</span>
+        </button>
+      </nav>
+
       <div v-if="loading" class="text-ink-300 text-sm">{{ t('common.loading') }}</div>
 
       <div

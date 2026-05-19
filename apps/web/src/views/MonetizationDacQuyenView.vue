@@ -85,6 +85,31 @@ async function onBuy(
       </header>
     </XTLuxHero>
 
+    <!-- Role hint -->
+    <p class="text-sm text-gray-400 px-1" data-testid="monetization-dac-quyen-role-hint">
+      {{ t('monetizationDacQuyen.roleHint') }}
+    </p>
+
+    <!-- Cross-navigation -->
+    <nav class="flex gap-2 text-xs mb-2" data-testid="monetization-dac-quyen-cross-nav">
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-topup"
+        @click="$router.push('/topup')"
+      >
+        <span>{{ t('monetizationDacQuyen.crossNav.topup') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('monetizationDacQuyen.crossNav.topupDesc') }}</span>
+      </button>
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-wallet"
+        @click="$router.push('/wallet')"
+      >
+        <span>{{ t('monetizationDacQuyen.crossNav.wallet') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('monetizationDacQuyen.crossNav.walletDesc') }}</span>
+      </button>
+    </nav>
+
     <nav class="tabs" role="tablist">
       <button
         v-for="tab in TABS"

@@ -292,6 +292,31 @@ function changeLocale(value: string): void {
         />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="settings-role-hint">
+        {{ t('settings.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="settings-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-profile"
+          @click="$router.push('/character')"
+        >
+          <span>{{ t('settings.crossNav.profile') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('settings.crossNav.profileDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-feedback"
+          @click="$router.push('/feedback')"
+        >
+          <span>{{ t('settings.crossNav.feedback') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('settings.crossNav.feedbackDesc') }}</span>
+        </button>
+      </nav>
+
       <!-- Ngày / Đêm theme toggle -->
       <section
         class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-3 text-sm"

@@ -302,6 +302,31 @@ async function onAdminGrantWeeklyTerritoryReward(): Promise<void> {
       </header>
     </XTLuxHero>
 
+    <!-- Role hint -->
+    <p class="text-sm text-gray-400 px-1" data-testid="territory-role-hint">
+      {{ t('territory.roleHint') }}
+    </p>
+
+    <!-- Cross-navigation -->
+    <nav class="flex gap-2 text-xs mb-2" data-testid="territory-cross-nav">
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-sect"
+        @click="$router.push('/sect')"
+      >
+        <span>{{ t('territory.crossNav.sect') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('territory.crossNav.sectDesc') }}</span>
+      </button>
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-homestead"
+        @click="$router.push('/homestead')"
+      >
+        <span>{{ t('territory.crossNav.homestead') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('territory.crossNav.homesteadDesc') }}</span>
+      </button>
+    </nav>
+
     <div
       v-if="territory.regionsLoading || territory.meLoading"
       class="text-ink-300 text-sm"

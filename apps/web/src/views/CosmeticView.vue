@@ -138,6 +138,31 @@ onMounted(async () => {
       <XTPageEyebrow caps="Y BÀO TRANG SỨC" label="Y Bào Trang Sức" class="sr-only" />
     </XTLuxHero>
 
+    <!-- Role hint -->
+    <p class="text-sm text-gray-400 px-1" data-testid="cosmetic-role-hint">
+      {{ t('cosmetics.roleHint') }}
+    </p>
+
+    <!-- Cross-navigation -->
+    <nav class="flex gap-2 text-xs mb-2" data-testid="cosmetic-cross-nav">
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-character"
+        @click="$router.push('/character')"
+      >
+        <span>{{ t('cosmetics.crossNav.character') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('cosmetics.crossNav.characterDesc') }}</span>
+      </button>
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-inventory"
+        @click="$router.push('/inventory')"
+      >
+        <span>{{ t('cosmetics.crossNav.inventory') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('cosmetics.crossNav.inventoryDesc') }}</span>
+      </button>
+    </nav>
+
     <!-- Filters -->
     <div class="flex flex-wrap items-center gap-2 mb-4">
       <div class="flex flex-wrap gap-2">

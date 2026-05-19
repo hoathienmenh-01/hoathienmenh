@@ -59,6 +59,31 @@ onMounted(() => {
         <XTPageEyebrow caps="TÔNG MÔN NỘI VỤ" label="Tông Môn Nội Vụ" class="sr-only" />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="sect-content-role-hint">
+        {{ t('sectContent.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="sect-content-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-sect"
+          @click="$router.push('/sect')"
+        >
+          <span>{{ t('sectContent.crossNav.sect') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('sectContent.crossNav.sectDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-leaderboard"
+          @click="$router.push('/leaderboard')"
+        >
+          <span>{{ t('sectContent.crossNav.leaderboard') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('sectContent.crossNav.leaderboardDesc') }}</span>
+        </button>
+      </nav>
+
       <nav class="sect-content__tabs">
         <button
           :class="{ active: tab === 'dungeon' }"

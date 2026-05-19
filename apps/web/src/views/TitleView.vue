@@ -188,6 +188,31 @@ onMounted(async () => {
         </header>
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="title-role-hint">
+        {{ t('title.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="title-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-achievements"
+          @click="$router.push('/achievements')"
+        >
+          <span>{{ t('title.crossNav.achievements') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('title.crossNav.achievementsDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-character"
+          @click="$router.push('/character')"
+        >
+          <span>{{ t('title.crossNav.character') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('title.crossNav.characterDesc') }}</span>
+        </button>
+      </nav>
+
       <section
         v-if="titles.equipped"
         class="bg-ink-700/40 border border-amber-500/40 rounded p-3 flex items-baseline gap-3 flex-wrap"

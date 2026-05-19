@@ -69,6 +69,31 @@ onMounted(() => {
         <XTPageEyebrow caps="TIÊN HẠCH TỔNG TRẠM" label="Tiên Hạch Tổng Trạm" class="sr-only" />
       </XTLuxHero>
 
+      <!-- Role hint -->
+      <p class="text-sm text-gray-400 px-1" data-testid="dungeon-hub-v2-role-hint">
+        {{ t('dungeonHubV2.roleHint') }}
+      </p>
+
+      <!-- Cross-navigation -->
+      <nav class="flex gap-2 text-xs mb-2" data-testid="dungeon-hub-v2-cross-nav">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-dungeon"
+          @click="$router.push('/dungeon')"
+        >
+          <span>{{ t('dungeonHubV2.crossNav.dungeon') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('dungeonHubV2.crossNav.dungeonDesc') }}</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+          data-testid="cross-nav-combat"
+          @click="$router.push('/combat')"
+        >
+          <span>{{ t('dungeonHubV2.crossNav.combat') }}</span>
+          <span class="text-gray-500 hidden sm:inline">{{ t('dungeonHubV2.crossNav.combatDesc') }}</span>
+        </button>
+      </nav>
+
       <div
         v-if="reloadFailed && dungeons.length === 0"
         class="dungeon-hub__state dungeon-hub__state--error"

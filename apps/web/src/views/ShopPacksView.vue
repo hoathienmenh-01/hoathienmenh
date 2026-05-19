@@ -149,6 +149,31 @@ onMounted(async () => {
     >
       <XTPageEyebrow caps="TIÊN LỄ TRANG BAO" label="Tiên Lễ Trang Bao" class="sr-only" />
     </XTLuxHero>
+
+    <!-- Role hint -->
+    <p class="text-sm text-gray-400 px-1" data-testid="shop-packs-role-hint">
+      {{ t('shopPacks.roleHint') }}
+    </p>
+
+    <!-- Cross-navigation -->
+    <nav class="flex gap-2 text-xs mb-2" data-testid="shop-packs-cross-nav">
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-shop"
+        @click="$router.push('/shop')"
+      >
+        <span>{{ t('shopPacks.crossNav.shop') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('shopPacks.crossNav.shopDesc') }}</span>
+      </button>
+      <button
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/60 hover:bg-gray-700/60 transition"
+        data-testid="cross-nav-topup"
+        @click="$router.push('/topup')"
+      >
+        <span>{{ t('shopPacks.crossNav.topup') }}</span>
+        <span class="text-gray-500 hidden sm:inline">{{ t('shopPacks.crossNav.topupDesc') }}</span>
+      </button>
+    </nav>
     <!-- Category filter -->
     <div class="flex flex-wrap gap-2 mb-4">
       <button
