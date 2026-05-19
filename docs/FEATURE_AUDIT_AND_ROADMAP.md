@@ -221,7 +221,7 @@ CultivationMethodV2View, EncounterView, EventsView, InventoryAutoSortView, Monet
 
 ### Long term: after beta / commercialization
 
-- More realm-tier content depth after UX is stable. **Farm map expansion DONE**: Khu 4-9 now have 3 maps each (27 total); Khu 4-8 enabled with monster pools; Khu 9 disabled (needs Hoá Thần monster catalog).
+- More realm-tier content depth after UX is stable. **Farm map expansion DONE**: all 9 regions have 3 maps each (27 total), all enabled. **Cửu La Điện monsters DONE**: 4 Hoá Thần-tier monsters added (cuu_la_ma_quan, cuu_la_tam_ma_binh, cuu_la_dao_anh, cuu_la_thien_de_an).
 - Async PvP seasons only after economy and anti-wintrade proof.
 - Market V2 expansion after abuse controls and beta feedback.
 - Monetization expansion only after policy/legal review.

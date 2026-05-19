@@ -50,10 +50,11 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 18 | UX Polish Pack — Batch 1 | DONE | 40 remaining views missing roleHint + crossNav. After tasks #14, #15, #17, these are the last batch to reach 100% cross-nav coverage. | Add roleHint + crossNav to all 40 views; i18n parity vi+en (40 namespaces); fix namespace mismatches (cosmetics, dacQuyen, etc.); fix GiftCodeView test selector; update tests. | 40 view files, `vi.json`, `en.json`, `GiftCodeView.test.ts` | All 40 views have roleHint + crossNav; i18n keys in 40 namespaces vi+en; 246 test files / 2659 tests pass. | 2026-05-19 |
 | 19 | Market V2 Abuse Workflow | DONE | Market V2 anomaly types defined in shared + admin list/resolve endpoints exist, but no code actually detects + logs anomalies during auction lifecycle. | Wire anomaly detection into AuctionService: PRICE_TOO_LOW/HIGH on create, LARGE_VALUE_TRANSFER on bid, EXCESSIVE_CANCEL_RELIST on cancel, RAPID_RESALE on finalize. | `auction.service.ts`, `market-v2.service.test.ts` | Anomaly records created for each detection scenario; 4 new tests pass; typecheck + lint + build clean. | 2026-05-19 |
 | 20 | Content Depth — Farm Map Expansion | DONE | Khu 4-9 only had 1 farm map each (placeholder). Need 3 maps per khu for consistent world content depth. | Add 12 new farm maps (2 per khu for Khu 4-9). Khu 4-6 enabled with full monster pools; Khu 7-8 enabled with monsters; Khu 9 disabled placeholder (no Hoá Thần monsters yet). | `packages/shared/src/farm-maps.ts`, `packages/shared/src/farm-maps.test.ts` | All 9 regions have ≥ 3 farm maps; 27 total maps; Khu 4-6 + 7-8 enabled with monster pools; 148 test files / 4178 tests pass. | 2026-05-20 |
+| 21 | Content Depth — Monster Catalog for Cửu La Điện | DONE | Khu 9 (Cửu La Điện) farm maps were disabled — no Hoá Thần-tier monsters existed. | Add 4 monsters (cuu_la_ma_quan, cuu_la_tam_ma_binh, cuu_la_dao_anh, cuu_la_thien_de_an) with regionKey cuu_la_dien. Enable 3 farm maps with monster pools. Update cuu_la_dien dungeon to use new monsters. | `packages/shared/src/combat.ts`, `packages/shared/src/farm-maps.ts` | 4 new monsters in combat.ts; 3 cuu_la_dien farm maps enabled with pools; dungeon cuu_la_dien updated; typecheck + lint + build + tests pass. | 2026-05-20 |
 
 ## Current Recommended Next Task
 
-`Content Depth — Monster Catalog for Khu 7-9 (Hoá Thần tier)`
+`Beta Readiness — Final Smoke & Docs Sync`
 
 ## Active Task Template
 
@@ -88,7 +89,8 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 17 | Cross-Navigation Polish Pack | #650 | feat/cross-nav-polish-pack | 2026-05-19 |
 | 18 | UX Polish Pack — Batch 1 | #652 | feat/ux-polish-batch-1 | 2026-05-19 |
 | 19 | Market V2 Abuse Workflow | — | feat/market-v2-abuse-workflow | 2026-05-19 |
-| 20 | Content Depth — Farm Map Expansion | — | feat/content-depth-farm-map-expansion | 2026-05-20 |
+| 20 | Content Depth — Farm Map Expansion | #655 | feat/content-depth-farm-map-expansion | 2026-05-20 |
+| 21 | Content Depth — Monster Catalog for Cửu La Điện | #656 | feat/content-depth-cuu-la-dien-monsters | 2026-05-20 |
 
 ## Deferred / Do Not Build
 
