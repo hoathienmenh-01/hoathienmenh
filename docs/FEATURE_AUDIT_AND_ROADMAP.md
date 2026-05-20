@@ -99,12 +99,11 @@ AchievementView, AlchemyView, ArtifactV2View, ArenaView, BodyCultivationView, Bo
 **Have XTLuxHero but missing roleHint + crossNav**: 38 views
 ActivityView, CodexView, CombatHubView, CosmeticView, CultivationHubView, CultivationMethodV2View, DungeonHubV2View, EncounterView, EquipmentView, FarmMapView, FeedbackView, GiftCodeView, MentorView, MonetizationDacQuyenView, MonetizationShopView, MonetizationView, NotificationCenterView, NotificationSettingsView, NpcView, OnboardingQuestView, PlayerLogsView, ProfileView, PvpView, ReportPlayerView, ReputationView, ReturnerView, RoguelikeView, SeasonsView, SecretRealmView, SectContentView, SectWarView, SettingsView, ShopPacksView, ShopView, StoryDungeonView, TerritoryView, TitleView, TopupView, TrialTowerView, WalletView, WorldContentView.
 
-**Missing XTLuxHero entirely**: 1 player-facing view (admin-only dev tool)
-EffectsPreviewView.
+**Missing XTLuxHero entirely**: 0 views ✅ (all views have XTLuxHero)
 
 **Missing test files**: 0 player-facing views ✅ (all 76 have test files)
 
-**Coverage**: 34/76 player views fully polished (45%). 73/76 have XTLuxHero (96%). All 76 player-facing views have test files.
+**Coverage**: 34/76 player views fully polished (45%). 76/76 have XTLuxHero (100%). All 76 player-facing views have test files.
 
 ### 4.5 Missing beta proof / smoke tests
 
@@ -246,7 +245,7 @@ EffectsPreviewView.
 | Combat loop | 9/10 | Combat hub consolidated; recommended action panel |
 | Economy safety | 8/10 | Anti-FE-self-grant verified; ledger invariants intact |
 | Admin/LiveOps | 8/10 | Reload guard fixed; Control Center polished |
-| Test/CI/Smoke | 9/10 | 257 test files / 2692 tests; 6 positive smoke scripts |
+| Test/CI/Smoke | 9/10 | 257 test files / 2695 tests; 6 positive smoke scripts |
 | Mobile/PWA | 8/10 | Top routes verified; MissionView responsive fix |
 | Content depth | 7.5/10 | Stable; no new content modules needed for beta |
 | Monetization readiness | 5.5/10 | Policy review needed before expansion |
