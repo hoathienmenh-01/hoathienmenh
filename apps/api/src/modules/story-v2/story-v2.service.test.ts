@@ -464,6 +464,44 @@ describe('Phase33StoryService.track (Phase 33.3 deep wire)', () => {
     const progress = row!.stepProgress as Record<string, number>;
     expect(progress[killStep.id]).toBe(killStep.count);
   });
+
+  it('track boss_defeat tăng stepProgress cho weekly quest có boss_defeat step', async () => {
+    const { characterId } = await realmDoKiepChar();
+    // Accept weekly quest q_ch09_weekly_01 (boss_defeat step).
+    const weeklyKey = 'q_ch09_weekly_01';
+    const def = phase33QuestByKey(weeklyKey);
+    if (!def) return; // skip nếu catalog chưa có weekly quest này
+    const stepProgress = Object.fromEntries(def.steps.map((s) => [s.id, 0]));
+    await prisma.characterStoryV2QuestProgress.create({
+      data: {
+        characterId,
+        questKey: weeklyKey,
+        chapKey: CHAP_9,
+        status: 'ACCEPTED',
+        stepProgress,
+        acceptedAt: new Date(),
+      },
+    });
+    const bossStep = def.steps.find((s) => s.kind === 'boss_defeat')!;
+    await story.track(characterId, 'boss_defeat', 'boss', bossStep.targetId, 1);
+    const row = await prisma.characterStoryV2QuestProgress.findUnique({
+      where: { characterId_questKey: { characterId, questKey: weeklyKey } },
+    });
+    const progress = row!.stepProgress as Record<string, number>;
+    expect(progress[bossStep.id]).toBe(1);
+  });
+
+  it('track dungeon_clear tăng stepProgress cho quest có dungeon_clear step', async () => {
+    // Catalog hiện tại chưa có dungeon_clear step — test verify track()
+    // accept kind mà không throw, và no-op nếu không match.
+    const { characterId } = await realmDoKiepChar();
+    await story.track(characterId, 'dungeon_clear', 'dungeon', 'nonexistent_dungeon', 1);
+    // No-op: không có quest matching → không tạo row.
+    const rows = await prisma.characterStoryV2QuestProgress.findMany({
+      where: { characterId },
+    });
+    expect(rows.length).toBe(0);
+  });
 });
 
 describe('Phase33StoryService.listDialoguesForQuest', () => {

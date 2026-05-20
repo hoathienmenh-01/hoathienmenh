@@ -188,7 +188,7 @@ function readStoryFlags(raw: Prisma.JsonValue | null | undefined): string[] {
   return raw.filter((v): v is string => typeof v === 'string');
 }
 
-/** Step kinds supported by `progressQuest` in Phase 33.1. */
+/** Step kinds supported by `progressQuest` in Phase 33.1 (user-facing). */
 const SUPPORTED_PROGRESS_STEP_KINDS: ReadonlySet<Phase33QuestStepDef['kind']> =
   new Set(['talk', 'explore', 'choice', 'flag_set']);
 
@@ -800,25 +800,23 @@ export class Phase33StoryService {
 
   /**
    * Phase 33.3 — World Objective Deep Wire. Fail-soft hook gọi từ
-   * `DungeonRunService` / `CombatService` / `StoryDungeonService` khi
-   * người chơi kill monster hoặc collect item.
+   * `DungeonRunService` / `CombatService` / `StoryDungeonService` /
+   * `BossService` / `InventoryService` khi người chơi kill monster,
+   * collect item, clear dungeon, hoặc defeat boss.
    *
    * Mirror Phase 12 `QuestService.track` pattern: tìm các quest ACCEPTED
    * có step `kind === kind && targetType === targetType && targetId === targetId`,
    * tăng `stepProgress[step.id]` lên min(step.count, cur + amount), auto-flip
    * COMPLETED nếu all-steps done.
    *
-   * Phase 33.3 mở rộng `SUPPORTED_PROGRESS_STEP_KINDS` (chỉ talk/explore/
-   * choice/flag_set) bằng cách thêm cửa riêng `track()` không kiểm tra
-   * SUPPORTED_PROGRESS_STEP_KINDS, vì caller (combat / dungeon) chỉ gọi
-   * cho kill/collect. `progressQuest()` user-facing vẫn block kill/collect
-   * (player KHÔNG self-track combat — runtime auto-hook).
+   * `progressQuest()` user-facing vẫn block auto-track kinds (player KHÔNG
+   * self-track combat — runtime auto-hook).
    *
    * No-op nếu user chưa accept quest có step match.
    */
   async track(
     characterId: string,
-    kind: 'kill' | 'collect',
+    kind: 'kill' | 'collect' | 'dungeon_clear' | 'boss_defeat',
     targetType: Phase33QuestStepDef['targetType'],
     targetId: string,
     amount = 1,

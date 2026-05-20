@@ -1064,6 +1064,17 @@ export class CombatService {
             }
           }
         }
+        // Phase 33.3 — Story V2 collect step tracking, fail-soft, additive.
+        // Track item grants từ COMBAT_LOOT cho story quests có collect steps.
+        if (this.phase33Story && lootView.length > 0) {
+          for (const l of lootView) {
+            try {
+              await this.phase33Story.track(char.id, 'collect', 'item', l.itemKey, l.qty);
+            } catch {
+              // fail-soft: Story V2 không break Phase 12 combat path.
+            }
+          }
+        }
       }
       if (nextStatus === EncounterStatus.WON) {
         await this.missions.track(char.id, 'CLEAR_DUNGEON', 1);
@@ -1532,6 +1543,17 @@ export class CombatService {
           for (const id of trackIds) {
             try {
               await this.phase33Story.track(char.id, 'kill', 'monster', id, 1);
+            } catch {
+              // fail-soft: Story V2 không break Phase 12 combat path.
+            }
+          }
+        }
+        // Phase 33.3 — Story V2 collect step tracking, fail-soft, additive.
+        // Track item grants từ COMBAT_LOOT cho story quests có collect steps.
+        if (this.phase33Story && lootView.length > 0) {
+          for (const l of lootView) {
+            try {
+              await this.phase33Story.track(char.id, 'collect', 'item', l.itemKey, l.qty);
             } catch {
               // fail-soft: Story V2 không break Phase 12 combat path.
             }
