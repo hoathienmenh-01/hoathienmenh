@@ -12,6 +12,10 @@
 
 - **This PR (Sect 2.0 — Roles & Member Table, branch `feat/sect-2-roles-member-table`)**: Add `SectRole` enum + `SectMember` join table to replace the implicit `Character.sectId` membership model. **Changes**: (1) Added `SectRole` enum (LEADER, ELDER, MEMBER) + `SectMember` model (sectId, characterId UNIQUE, role, joinedAt) to Prisma schema; (2) Migration with backfill — all existing `Character.sectId` rows → MEMBER, then leaders upgraded to LEADER; (3) Updated `SectService.create()` to create `SectMember` with role LEADER; (4) Updated `SectService.join()` to create `SectMember` with role MEMBER; (5) Updated `SectService.leave()` to delete `SectMember` row; (6) Updated `SectService.detail()` to read from `SectMember` join table instead of `Character` filter; (7) Added `role` field to `SectMemberView` interface (kept `isLeader` boolean for backward compat). **Tests**: 5 new tests in `sect.service.test.ts` (create→LEADER, join→MEMBER, leave deletes row, leader leave deletes row+nulls leaderId, detail shows correct role). **Local checks**: typecheck ✅, lint ✅, build ✅, Han gate 0 ✅. **Risk**: low — additive schema + service changes, `Character.sectId` kept as denormalized fast-path.
 
+- **Previous PR (Test Coverage for 6 Admin/Placeholder Views, PR #665, branch `feat/test-coverage-6-admin-views`)**: Add test files for 6 views that had no test coverage. 25 tests across 6 files.
+
+- **Previous PR (Story V2 — World Objective Deep Wire, branch `feat/story-v2-deep-wire`)**: Complete the Phase 33.3 World Objective Deep Wire — Story V2 `track()` now supports all 4 auto-track step kinds (`kill`, `collect`, `dungeon_clear`, `boss_defeat`).
+
 - **Previous PR (Functional Test Coverage for 6 Views, PR #663, branch `feat/test-coverage-functional`)**: Add functional test coverage to 6 large views that previously only had UX polish tests. 257/257 test files (2729/2729) pass.
 
 - **Previous PR (EffectsPreviewView UX Polish, PR #660, branch `feat/effects-preview-polish`)**: Polish EffectsPreviewView (admin-only dev tool) with XTLuxHero + roleHint + crossNav + i18n. 6/6 tests pass.

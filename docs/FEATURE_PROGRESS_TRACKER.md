@@ -59,21 +59,23 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 27 | Equipment Upgrade Hub | DONE | Equipment upgrade UI (refine/reforge/enchant) buried in InventoryView — players must navigate away from EquipmentView to upgrade gear. | Consolidate upgrade UI into EquipmentView with inline upgrade hub; extract RefinePanel; add tab bar (refine/reforge/enchant); add i18n keys; update tests. | `EquipmentView.vue`, `vi.json`, `en.json`, `EquipmentView.test.ts` | "Nâng cấp" button opens inline upgrade hub; refine/reforge/enchant tabs work; i18n keys in vi+en; all tests pass; typecheck + lint + build + Han gate + 257 test files (2698 tests) pass. | 2026-05-20 |
 | 28 | Functional Test Coverage for 6 Views | DONE | 6 views (CultivationMethodV2View, EventsView, PetsView, InventoryAutoSortView, WalletView, MonetizationShopView) had only UX polish tests — no functional test coverage. | Add functional tests for all 6 views: API calls, data rendering, user interactions, error handling. Each view gets 5-10 functional tests. | 6 test files in `apps/web/src/views/__tests__/` | All 6 test files expanded with functional tests; 257 test files / 2729 tests pass; typecheck + lint + build + Han gate pass. | 2026-05-20 |
 | 29 | Story V2 — World Objective Deep Wire | DONE | Story V2 `track()` only supported `kill` and `collect` step kinds. Boss defeat and dungeon clear hooks were missing. Collect tracking not wired at loot grant sites. | Extend `track()` to accept `dungeon_clear` and `boss_defeat` kinds. Wire boss defeat tracking in BossService. Wire collect tracking in combat and dungeon-run loot grants. Wire dungeon clear tracking in DungeonRunService. Add tests. | `story-v2.service.ts`, `boss.service.ts`, `boss.module.ts`, `combat.service.ts`, `dungeon-run.service.ts`, `story-v2.service.test.ts` | `track()` accepts all 4 auto-track kinds; boss defeat hook fires on boss kill; collect hook fires on loot grant; dungeon clear hook fires on run completion; typecheck + lint + build + web tests (257 files / 2698 tests) pass. | 2026-05-20 |
-| 30 | Sect 2.0 — Roles & Member Table | IN_PROGRESS | Sect membership tracked via `Character.sectId` direct FK — no role hierarchy, no join date, no proper join table. | Add `SectRole` enum + `SectMember` model. Backfill from Character.sectId + Sect.leaderId. Update SectService create/join/leave/detail. Add role to SectMemberView. | `schema.prisma`, `sect.service.ts`, `sect.service.test.ts`, migration | SectMember table exists with role + joinedAt; create→LEADER, join→MEMBER, leave deletes row; detail reads from SectMember; typecheck + lint + build + tests pass. | 2026-05-21 |
+| 30 | Story V2 — Daily/Weekly Quest Reset Scheduler | DONE | 19 daily + 19 weekly quests existed in catalog but once claimed, stayed CLAIMED forever — no reset mechanism. | Add BullMQ scheduler (10-min interval) to reset CLAIMED daily/weekly quests when windowEnd expires. Prisma migration: windowStart/windowEnd columns. Service: resetExpiredQuests() + claimReward() window setting. | `story-v2.service.ts`, `story-v2-reset.queue.ts`, `story-v2-reset.scheduler.ts`, `story-v2-reset.processor.ts`, `story-v2.module.ts`, `schema.prisma`, 3 test files | Daily quests reset at next UTC midnight; weekly at next UTC Monday; scheduler runs every 10 min; 11 new tests pass; typecheck + lint + build pass. | 2026-05-20 |
+| 31 | Test Coverage for 6 Admin/Placeholder Views | DONE | 6 views (AdminAchievementReputationView, AdminCodexView, AdminMarketV2View, AdminPetsView, AdminSystemStatusView, XianxiaPlaceholderView) had no test files. | Add test files for all 6 views: mock API/stores/router, verify title rendering, key elements, data-testid, loading/forbidden states. | 6 test files in `apps/web/src/views/__tests__/` | All 6 test files pass (25 tests); 263 test files / 2754 tests pass; typecheck + lint + build + Han gate pass. | 2026-05-21 |
+| 32 | Sect 2.0 — Roles & Member Table | IN_PROGRESS | Sect membership tracked via `Character.sectId` direct FK — no role hierarchy, no join date, no proper join table. | Add `SectRole` enum + `SectMember` model. Backfill from Character.sectId + Sect.leaderId. Update SectService create/join/leave/detail. Add role to SectMemberView. | `schema.prisma`, `sect.service.ts`, `sect.service.test.ts`, migration | SectMember table exists with role + joinedAt; create→LEADER, join→MEMBER, leave deletes row; detail reads from SectMember; typecheck + lint + build + tests pass. | 2026-05-21 |
 
 ## Current Recommended Next Task
 
-`Sect 2.0 Roles & Member Table in progress (task #30). After completion: Sect permission gating, elder promotion UI, sect war contribution tracking with role-aware queries.`
+`Sect 2.0 Roles & Member Table in progress (task #32). After completion: Sect permission gating, elder promotion UI, sect war contribution tracking with role-aware queries.`
 
 ## Active Task Template
 
 ### Active Task
 
-- Task: (none — all tasks complete)
-- Branch: —
-- Started: —
-- Owner: —
-- Status: —
+- Task: Test Coverage for 6 Admin/Placeholder Views
+- Branch: feat/effects-preview-polish
+- Started: 2026-05-21
+- Owner: AI
+- Status: DONE
 
 ## Completed Tasks
 
@@ -108,6 +110,8 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 27 | Equipment Upgrade Hub | #662 | feat/equipment-upgrade-hub | 2026-05-20 |
 | 28 | Functional Test Coverage for 6 Views | #663 | feat/test-coverage-functional | 2026-05-20 |
 | 29 | Story V2 — World Objective Deep Wire | — | feat/story-v2-deep-wire | 2026-05-20 |
+| 30 | Story V2 — Daily/Weekly Quest Reset Scheduler | — | feat/story-v2-daily-weekly-reset | 2026-05-20 |
+| 31 | Test Coverage for 6 Admin/Placeholder Views | — | feat/test-coverage-6-admin-views | 2026-05-21 |
 
 ## Deferred / Do Not Build
 
