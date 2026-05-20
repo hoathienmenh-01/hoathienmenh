@@ -57,10 +57,11 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 25 | EffectsPreviewView UX Polish | DONE | EffectsPreviewView (admin-only dev tool) has no XTLuxHero, roleHint, crossNav, or i18n — hardcoded Vietnamese text. | Add XTLuxHero (tone=seal, watermark=V), roleHint, crossNav (→adminCC, settings); add i18n namespace `effectsPreview` vi+en; replace hardcoded text; add 3 UX tests to existing test file. | `EffectsPreviewView.vue`, `vi.json`, `en.json`, `EffectsPreviewView.test.ts` | Hero + roleHint + crossNav rendered; i18n keys in vi+en; 6/6 tests pass; typecheck + lint + build + Han gate + 257 test files (2695 tests) pass. | 2026-05-20 |
 | 26 | XTLuxHero for Final 3 Views | DONE | LeaderboardView, LoadoutView, SkillBookView have roleHint + crossNav but missing XTLuxHero — 75/76 views polished, 3 gaps remain. | Add XTLuxHero to LeaderboardView (tone=seal, watermark=L), LoadoutView (tone=gold, watermark=T), SkillBookView (tone=jade, watermark=P); add luxHero i18n keys vi+en; add hero tests; update audit doc. | `LeaderboardView.vue`, `LoadoutView.vue`, `SkillBookView.vue`, `vi.json`, `en.json`, 3 test files | Each view has XTLuxHero rendered; luxHero i18n keys in vi+en; all tests pass; typecheck + lint + build + Han gate + 257 test files (2698 tests) pass. | 2026-05-20 |
 | 27 | Equipment Upgrade Hub | DONE | Equipment upgrade UI (refine/reforge/enchant) buried in InventoryView — players must navigate away from EquipmentView to upgrade gear. | Consolidate upgrade UI into EquipmentView with inline upgrade hub; extract RefinePanel; add tab bar (refine/reforge/enchant); add i18n keys; update tests. | `EquipmentView.vue`, `vi.json`, `en.json`, `EquipmentView.test.ts` | "Nâng cấp" button opens inline upgrade hub; refine/reforge/enchant tabs work; i18n keys in vi+en; all tests pass; typecheck + lint + build + Han gate + 257 test files (2698 tests) pass. | 2026-05-20 |
+| 28 | Functional Test Coverage for 6 Views | DONE | 6 views (CultivationMethodV2, Events, Pets, InventoryAutoSort, Wallet, MonetizationShop) had only UX polish tests (hero/roleHint/crossNav) — no functional coverage for data rendering, filters, actions. | Add functional tests: empty state, data rendering, filters, user actions (lock/unlock, buy, equip), error handling. Fix mock data to match actual view expectations. | 6 test files in `apps/web/src/views/__tests__/` | Each view has functional tests covering empty state, data rendering, and key actions; 257 test files / 2729 tests pass; typecheck + lint + build clean. | 2026-05-20 |
 
 ## Current Recommended Next Task
 
-`All 76 player-facing views now fully polished (XTLuxHero + roleHint + crossNav) — no remaining UX gaps. Equipment upgrade UI consolidated into EquipmentView. All 27 tracker tasks DONE.`
+`All 76 player-facing views now fully polished (XTLuxHero + roleHint + crossNav) — no remaining UX gaps. Equipment upgrade UI consolidated into EquipmentView. All 28 tracker tasks DONE. Test coverage expanded for 6 large views.`
 
 ## Active Task Template
 
@@ -103,6 +104,7 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 25 | EffectsPreviewView UX Polish | #660 | feat/effects-preview-polish | 2026-05-20 |
 | 26 | XTLuxHero for Final 3 Views | #661 | feat/xt-lux-hero-final-3-views | 2026-05-20 |
 | 27 | Equipment Upgrade Hub | #662 | feat/equipment-upgrade-hub | 2026-05-20 |
+| 28 | Functional Test Coverage for 6 Views | — | feat/test-coverage-functional | 2026-05-20 |
 
 ## Deferred / Do Not Build
 
