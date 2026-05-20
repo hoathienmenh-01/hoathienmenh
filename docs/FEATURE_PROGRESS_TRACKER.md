@@ -56,10 +56,11 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 24 | Admin Event Builder UI Polish | DONE | AdminEventBuilderView has no XTLuxHero, roleHint, or crossNav — inconsistent with AdminCC and all other polished views. | Add XTLuxHero (tone=seal, watermark=E), roleHint, crossNav (→adminCC, systemStatus); i18n parity vi+en; add test file. | `AdminEventBuilderView.vue`, `vi.json`, `en.json`, `AdminEventBuilderView.test.ts` | Hero + roleHint + crossNav rendered; i18n keys in vi+en; 3/3 tests pass; typecheck + lint + build + Han gate + 257 test files (2692 tests) pass. | 2026-05-20 |
 | 25 | EffectsPreviewView UX Polish | DONE | EffectsPreviewView (admin-only dev tool) has no XTLuxHero, roleHint, crossNav, or i18n — hardcoded Vietnamese text. | Add XTLuxHero (tone=seal, watermark=V), roleHint, crossNav (→adminCC, settings); add i18n namespace `effectsPreview` vi+en; replace hardcoded text; add 3 UX tests to existing test file. | `EffectsPreviewView.vue`, `vi.json`, `en.json`, `EffectsPreviewView.test.ts` | Hero + roleHint + crossNav rendered; i18n keys in vi+en; 6/6 tests pass; typecheck + lint + build + Han gate + 257 test files (2695 tests) pass. | 2026-05-20 |
 | 26 | XTLuxHero for Final 3 Views | DONE | LeaderboardView, LoadoutView, SkillBookView have roleHint + crossNav but missing XTLuxHero — 75/76 views polished, 3 gaps remain. | Add XTLuxHero to LeaderboardView (tone=seal, watermark=L), LoadoutView (tone=gold, watermark=T), SkillBookView (tone=jade, watermark=P); add luxHero i18n keys vi+en; add hero tests; update audit doc. | `LeaderboardView.vue`, `LoadoutView.vue`, `SkillBookView.vue`, `vi.json`, `en.json`, 3 test files | Each view has XTLuxHero rendered; luxHero i18n keys in vi+en; all tests pass; typecheck + lint + build + Han gate + 257 test files (2698 tests) pass. | 2026-05-20 |
+| 27 | Equipment Upgrade Hub | DONE | Equipment upgrade UI (refine/reforge/enchant) buried in InventoryView — players must navigate away from EquipmentView to upgrade gear. | Consolidate upgrade UI into EquipmentView with inline upgrade hub; extract RefinePanel; add tab bar (refine/reforge/enchant); add i18n keys; update tests. | `EquipmentView.vue`, `vi.json`, `en.json`, `EquipmentView.test.ts` | "Nâng cấp" button opens inline upgrade hub; refine/reforge/enchant tabs work; i18n keys in vi+en; all tests pass; typecheck + lint + build + Han gate + 257 test files (2698 tests) pass. | 2026-05-20 |
 
 ## Current Recommended Next Task
 
-`All 76 player-facing views now fully polished (XTLuxHero + roleHint + crossNav) — no remaining UX gaps. All 26 tracker tasks DONE.`
+`All 76 player-facing views now fully polished (XTLuxHero + roleHint + crossNav) — no remaining UX gaps. Equipment upgrade UI consolidated into EquipmentView. All 27 tracker tasks DONE.`
 
 ## Active Task Template
 
@@ -101,6 +102,7 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 24 | Admin Event Builder UI Polish | #659 | feat/admin-event-builder-polish | 2026-05-20 |
 | 25 | EffectsPreviewView UX Polish | #660 | feat/effects-preview-polish | 2026-05-20 |
 | 26 | XTLuxHero for Final 3 Views | #661 | feat/xt-lux-hero-final-3-views | 2026-05-20 |
+| 27 | Equipment Upgrade Hub | #662 | feat/equipment-upgrade-hub | 2026-05-20 |
 
 ## Deferred / Do Not Build
 

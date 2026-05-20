@@ -9300,6 +9300,23 @@
       "inventoryDesc": "Manage items",
       "loadout": "Loadout",
       "loadoutDesc": "Save gear presets"
+    },
+    "upgradeHub": {
+      "title": "Upgrade Equipment",
+      "tab": {
+        "refine": "Refine",
+        "reforge": "Reforge",
+        "enchant": "Enchant"
+      },
+      "refine": "Refine",
+      "refining": "Refining…",
+      "refineCost": "Costs {linhThach} Linh Thach + {materialQty} materials",
+      "refineProtection": "Use protection charm",
+      "refineMax": "Max level reached",
+      "refineSuccess": "Refine success! Level +{level}",
+      "refineFail": "Refine failed — level unchanged",
+      "refineBroken": "Equipment broken!",
+      "refineError": "Error refining equipment"
     }
   },
   "combatHub": {
