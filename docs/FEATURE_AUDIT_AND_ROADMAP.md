@@ -23,7 +23,7 @@
 | Tribulation | PARTIAL | `tribulation.service.ts`, `tribulation-mini-battle.service.ts`, `TribulationView.vue`, `TribulationMiniBattlePanel.vue` | Mini-battle gating/availability clarity | Medium | Role hint + cross-nav added; mini-battle gating clarity next |
 | Skill / Công pháp / Kỹ năng | PARTIAL | `character-skill.service.ts`, `SkillBookView.vue`, `skill-templates.ts`, `combat.ts` | Skill book drop/consume/evolution deferred | Medium | Do not expand until core UX is clearer |
 | Inventory | DONE | `apps/api/src/modules/inventory`, `InventoryView.vue`, `apps/web/src/api/inventory.ts` | UX can be simplified | High | Align with equipment flow |
-| Equipment | PARTIAL | `EquipmentView.vue`, `EquipmentUpgradePanel.vue`, `equipment.service.ts`, `equipment-economy.service.ts` | Badges + upgrade CTA added; full upgrade still in inventory | Medium | Combat Entry Consolidation |
+| Equipment | DONE | `EquipmentView.vue`, `EquipmentUpgradePanel.vue`, `equipment.service.ts`, `equipment-economy.service.ts` | Badges + upgrade CTA added; upgrade hub consolidated into EquipmentView | Medium | Equipment Upgrade Hub (PR #662) |
 | Alchemy | DONE | `alchemy.service.ts`, `AlchemyView.vue`, `packages/shared/src/alchemy.ts` | Material source onboarding can improve | Medium | Keep stable; polish later |
 | Dungeon / Combat | DONE | `combat.controller.ts`, `combat.service.ts`, `DungeonView.vue`, `DungeonRunView.vue`, `CombatHubView.vue` | Entry points are fragmented | High | Combat Entry Consolidation |
 | Boss | DONE | `boss.service.ts`, `BossView.vue`, `BossHubView.vue`, `packages/shared/src/boss.ts` | Active boss notification/visibility | Medium | Boss Notification Integration |

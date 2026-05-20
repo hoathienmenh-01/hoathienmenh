@@ -14,6 +14,8 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import {
   EQUIP_SLOTS,
+  REFINE_MAX_LEVEL,
+  getRefineAttemptCost,
   type EquipSlot,
   type ItemDef,
 } from '@xuantoi/shared';
@@ -24,13 +26,16 @@ import {
   equipItem,
   unequipItem,
   listInventory,
+  refineEquipment,
   type InventoryView as InvItem,
+  type RefineResult,
 } from '@/api/inventory';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
 import XTGlyphBadge from '@/components/xianxia/XTGlyphBadge.vue';
 import EquipmentArtCell from '@/components/xianxia/EquipmentArtCell.vue';
+import EquipmentUpgradePanel from '@/components/EquipmentUpgradePanel.vue';
 import MButton from '@/components/ui/MButton.vue';
 
 const auth = useAuthStore();
@@ -43,6 +48,17 @@ const items = ref<InvItem[]>([]);
 const loading = ref(true);
 const actionInFlight = ref(false);
 const equipModalSlot = ref<EquipSlot | null>(null);
+
+// Upgrade hub state
+const selectedSlot = ref<EquipSlot | null>(null);
+const upgradeTab = ref<'refine' | 'reforge' | 'enchant'>('refine');
+const refineProtection = ref(false);
+const submitting = ref(false);
+
+const selectedItem = computed<InvItem | null>(() => {
+  if (!selectedSlot.value) return null;
+  return equipped.value.get(selectedSlot.value) ?? null;
+});
 
 const equipped = computed(() => {
   const map = new Map<EquipSlot, InvItem>();
@@ -167,6 +183,58 @@ async function onEquip(inventoryItemId: string): Promise<void> {
     toast.push({ type: 'error', text: t('equipment.equipFail') });
   } finally {
     actionInFlight.value = false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Upgrade hub
+// ---------------------------------------------------------------------------
+
+function selectSlotForUpgrade(slot: EquipSlot): void {
+  if (selectedSlot.value === slot) {
+    selectedSlot.value = null;
+  } else {
+    selectedSlot.value = slot;
+    upgradeTab.value = 'refine';
+    refineProtection.value = false;
+  }
+}
+
+function closeUpgrade(): void {
+  selectedSlot.value = null;
+}
+
+function refreshInventory(): void {
+  void listInventory().then((r) => { items.value = r; });
+}
+
+function refineCostText(it: InvItem): string {
+  if (it.refineLevel >= REFINE_MAX_LEVEL) return '';
+  const cost = getRefineAttemptCost(it.refineLevel);
+  return t('equipment.upgradeHub.refineCost', {
+    linhThach: cost.linhThachCost,
+    materialQty: cost.materialQty,
+  });
+}
+
+async function onRefine(): Promise<void> {
+  const it = selectedItem.value;
+  if (!it || submitting.value || it.refineLevel >= REFINE_MAX_LEVEL) return;
+  submitting.value = true;
+  try {
+    const result: RefineResult = await refineEquipment(it.id, refineProtection.value);
+    if (result.broken) {
+      toast.push({ type: 'error', text: t('equipment.upgradeHub.refineBroken') });
+    } else if (result.result.success) {
+      toast.push({ type: 'success', text: t('equipment.upgradeHub.refineSuccess', { level: result.result.nextLevel }) });
+    } else {
+      toast.push({ type: 'warning', text: t('equipment.upgradeHub.refineFail') });
+    }
+    refreshInventory();
+  } catch {
+    toast.push({ type: 'error', text: t('equipment.upgradeHub.refineError') });
+  } finally {
+    submitting.value = false;
   }
 }
 
@@ -316,7 +384,7 @@ async function onEquip(inventoryItemId: string): Promise<void> {
                 class="text-[10px] px-2 py-0.5 rounded border border-emerald-500/40 text-emerald-200 hover:bg-emerald-700/30 disabled:opacity-50 disabled:cursor-not-allowed"
                 :disabled="actionInFlight"
                 :data-testid="`equipment-upgrade-${slot}`"
-                @click="goToInventory()"
+                @click="selectSlotForUpgrade(slot)"
               >
                 {{ t('equipment.upgrade', 'Nâng cấp') }}
               </button>
@@ -338,6 +406,104 @@ async function onEquip(inventoryItemId: string): Promise<void> {
           </template>
         </div>
       </div>
+    </section>
+
+    <!-- Upgrade Hub -->
+    <section
+      v-if="selectedSlot && selectedItem"
+      class="rounded border border-emerald-400/30 bg-ink-700/40 p-4 mb-6 space-y-3"
+      data-testid="equipment-upgrade-hub"
+    >
+      <header class="flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold text-emerald-200">
+            {{ t('equipment.upgradeHub.title', 'Nâng Cấp Trang Bị') }}
+          </h3>
+          <p class="text-xs text-ink-400">
+            {{ selectedItem.item.name }}
+            <span v-if="selectedItem.refineLevel > 0" class="text-amber-300">+{{ selectedItem.refineLevel }}</span>
+            — {{ slotLabel(selectedSlot!) }}
+          </p>
+        </div>
+        <button
+          type="button"
+          class="text-ink-400 hover:text-ink-200 text-lg"
+          data-testid="equipment-upgrade-close"
+          @click="closeUpgrade"
+        >
+          &times;
+        </button>
+      </header>
+
+      <!-- Tab bar -->
+      <div class="flex gap-1 text-xs" data-testid="equipment-upgrade-tabs">
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-t"
+          :class="upgradeTab === 'refine' ? 'bg-emerald-800/60 text-emerald-200 font-bold' : 'text-ink-400 hover:text-ink-200'"
+          data-testid="equipment-upgrade-tab-refine"
+          @click="upgradeTab = 'refine'"
+        >
+          {{ t('equipment.upgradeHub.tab.refine', 'Luyện') }}
+        </button>
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-t"
+          :class="upgradeTab === 'reforge' ? 'bg-emerald-800/60 text-emerald-200 font-bold' : 'text-ink-400 hover:text-ink-200'"
+          data-testid="equipment-upgrade-tab-reforge"
+          @click="upgradeTab = 'reforge'"
+        >
+          {{ t('equipment.upgradeHub.tab.reforge', 'Rèn') }}
+        </button>
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-t"
+          :class="upgradeTab === 'enchant' ? 'bg-emerald-800/60 text-emerald-200 font-bold' : 'text-ink-400 hover:text-ink-200'"
+          data-testid="equipment-upgrade-tab-enchant"
+          @click="upgradeTab = 'enchant'"
+        >
+          {{ t('equipment.upgradeHub.tab.enchant', 'Phù') }}
+        </button>
+      </div>
+
+      <!-- Refine tab -->
+      <div v-if="upgradeTab === 'refine'" class="space-y-2" data-testid="equipment-upgrade-refine">
+        <div v-if="selectedItem.refineLevel >= REFINE_MAX_LEVEL" class="text-sm text-amber-300" data-testid="equipment-refine-max">
+          {{ t('equipment.upgradeHub.refineMax', 'Đã đạt cấp tối đa') }}
+        </div>
+        <template v-else>
+          <p class="text-sm text-ink-300" data-testid="equipment-refine-cost">
+            {{ refineCostText(selectedItem) }}
+          </p>
+          <label class="flex items-center gap-2 text-xs text-ink-400 cursor-pointer">
+            <input
+              v-model="refineProtection"
+              type="checkbox"
+              class="accent-emerald-500"
+              data-testid="equipment-refine-protection"
+            />
+            {{ t('equipment.upgradeHub.refineProtection', 'Dùng hộ phù') }}
+          </label>
+          <button
+            type="button"
+            class="text-xs px-3 py-1.5 rounded border border-emerald-500/40 text-emerald-200 hover:bg-emerald-700/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="submitting"
+            data-testid="equipment-refine-btn"
+            @click="onRefine"
+          >
+            {{ submitting ? t('equipment.upgradeHub.refining', 'Đang luyện…') : t('equipment.upgradeHub.refine', 'Luyện') }}
+          </button>
+        </template>
+      </div>
+
+      <!-- Reforge / Enchant tab — reuse existing component -->
+      <EquipmentUpgradePanel
+        v-if="upgradeTab === 'reforge' || upgradeTab === 'enchant'"
+        :equipment="selectedItem"
+        :initial-tab="upgradeTab"
+        data-testid="equipment-upgrade-panel"
+        @changed="refreshInventory"
+      />
     </section>
 
     <!-- Equip Modal -->

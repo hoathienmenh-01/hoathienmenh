@@ -9300,6 +9300,23 @@
       "inventoryDesc": "Quản lý vật phẩm",
       "loadout": "Bộ Nhanh",
       "loadoutDesc": "Lưu bộ trang bị"
+    },
+    "upgradeHub": {
+      "title": "Nâng Cấp Trang Bị",
+      "tab": {
+        "refine": "Luyện",
+        "reforge": "Rèn",
+        "enchant": "Phù"
+      },
+      "refine": "Luyện",
+      "refining": "Đang luyện…",
+      "refineCost": "Tốn {linhThach} Linh Thạch + {materialQty} vật liệu",
+      "refineProtection": "Dùng hộ phù",
+      "refineMax": "Đã đạt cấp tối đa",
+      "refineSuccess": "Luyện thành công! Cấp +{level}",
+      "refineFail": "Luyện thất bại — cấp không đổi",
+      "refineBroken": "Trang bị bị vỡ!",
+      "refineError": "Lỗi khi luyện trang bị"
     }
   },
   "combatHub": {

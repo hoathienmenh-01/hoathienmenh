@@ -14,8 +14,10 @@ import { setActivePinia, createPinia } from 'pinia';
  */
 
 const listInventoryMock = vi.fn();
+const refineEquipmentMock = vi.fn();
 vi.mock('@/api/inventory', () => ({
   listInventory: (...a: unknown[]) => listInventoryMock(...a),
+  refineEquipment: (...a: unknown[]) => refineEquipmentMock(...a),
 }));
 
 const routerReplaceMock = vi.fn();
@@ -87,9 +89,19 @@ vi.mock('@/components/ui/MButton.vue', () => ({
     template: '<button v-bind="$attrs" @click="$emit(\'click\')"><slot /></button>',
   },
 }));
+vi.mock('@/components/EquipmentUpgradePanel.vue', () => ({
+  default: {
+    name: 'EquipmentUpgradePanelStub',
+    props: ['equipment', 'initialTab'],
+    template: '<div data-testid="equipment-upgrade-panel-stub"></div>',
+    emits: ['changed'],
+  },
+}));
 
 vi.mock('@xuantoi/shared', () => ({
   EQUIP_SLOTS: ['WEAPON', 'ARMOR', 'BELT', 'BOOTS', 'HAT', 'TRAM', 'ARTIFACT_1', 'ARTIFACT_2', 'ARTIFACT_3'],
+  REFINE_MAX_LEVEL: 15,
+  getRefineAttemptCost: () => ({ linhThachCost: 1000, materialQty: 2 }),
 }));
 
 import EquipmentView from '@/views/EquipmentView.vue';
@@ -275,7 +287,7 @@ describe('EquipmentView — badges', () => {
 });
 
 describe('EquipmentView — upgrade button', () => {
-  it('upgrade button navigates to /inventory', async () => {
+  it('upgrade button opens upgrade hub', async () => {
     listInventoryMock.mockResolvedValue([
       makeItem('WEAPON', 'Kiếm', { atk: 10 }),
     ]);
@@ -285,6 +297,10 @@ describe('EquipmentView — upgrade button', () => {
     const btn = wrapper?.find('[data-testid="equipment-upgrade-WEAPON"]');
     expect(btn?.exists()).toBe(true);
     await btn?.trigger('click');
-    expect(routerPushMock).toHaveBeenCalledWith('/inventory');
+
+    // Should show upgrade hub instead of navigating
+    const hub = wrapper?.find('[data-testid="equipment-upgrade-hub"]');
+    expect(hub?.exists()).toBe(true);
+    expect(hub?.text()).toContain('Kiếm');
   });
 });
