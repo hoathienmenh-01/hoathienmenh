@@ -40,6 +40,7 @@ export interface SectMemberView {
   realmKey: string;
   realmStage: number;
   congHien: number;
+  role: 'LEADER' | 'ELDER' | 'MEMBER';
   isLeader: boolean;
   isMe: boolean;
 }
@@ -95,38 +96,47 @@ export class SectService {
       include: { _count: { select: { characters: true } } },
     });
     if (!s) throw new SectError('SECT_NOT_FOUND');
-    const members = await this.prisma.character.findMany({
+
+    // Read members from SectMember join table (role-aware).
+    const memberRows = await this.prisma.sectMember.findMany({
       where: { sectId: s.id },
-      select: { id: true, name: true, realmKey: true, realmStage: true, congHien: true },
-      orderBy: [{ congHien: 'desc' }, { name: 'asc' }],
+      include: {
+        character: {
+          select: { id: true, name: true, realmKey: true, realmStage: true, congHien: true },
+        },
+      },
+      orderBy: [{ role: 'asc' }, { character: { congHien: 'desc' } }],
       take: 100,
     });
-    // Leader có thể không nằm trong top 100 theo congHien; query riêng nếu thiếu.
-    let leaderName: string | null = null;
-    if (s.leaderId) {
-      const inList = members.find((m) => m.id === s.leaderId);
-      if (inList) {
-        leaderName = inList.name;
-      } else {
-        const leader = await this.prisma.character.findUnique({
-          where: { id: s.leaderId },
-          select: { name: true },
-        });
-        leaderName = leader?.name ?? null;
-      }
-    }
-    // isMyMember cũng cần check ngoài top 100 (user vừa join có congHien = 0).
+
+    const members: SectMemberView[] = memberRows.map((m) => ({
+      id: m.character.id,
+      name: m.character.name,
+      realmKey: m.character.realmKey,
+      realmStage: m.character.realmStage,
+      congHien: m.character.congHien,
+      role: m.role,
+      isLeader: m.role === 'LEADER',
+      isMe: m.character.id === viewerCharId,
+    }));
+
+    // Leader name for SectListView compat.
+    const leaderName = s.leaderId
+      ? (members.find((m) => m.id === s.leaderId)?.name ?? null)
+      : null;
+
+    // isMyMember — check in members first, fallback to DB (user may be outside top 100).
     let isMyMember = false;
     if (viewerCharId) {
-      if (members.some((m) => m.id === viewerCharId)) {
-        isMyMember = true;
-      } else {
-        const cnt = await this.prisma.character.count({
-          where: { id: viewerCharId, sectId: s.id },
+      isMyMember = members.some((m) => m.id === viewerCharId);
+      if (!isMyMember) {
+        const cnt = await this.prisma.sectMember.count({
+          where: { characterId: viewerCharId, sectId: s.id },
         });
         isMyMember = cnt > 0;
       }
     }
+
     return {
       id: s.id,
       name: s.name,
@@ -136,15 +146,7 @@ export class SectService {
       memberCount: s._count.characters,
       leaderName,
       createdAt: s.createdAt.toISOString(),
-      members: members.map((m) => ({
-        id: m.id,
-        name: m.name,
-        realmKey: m.realmKey,
-        realmStage: m.realmStage,
-        congHien: m.congHien,
-        isLeader: m.id === s.leaderId,
-        isMe: m.id === viewerCharId,
-      })),
+      members,
       isMyMember,
       isMyLeader: viewerCharId ? viewerCharId === s.leaderId : false,
     };
@@ -167,6 +169,9 @@ export class SectService {
           data: { sectId: sect.id },
         });
         if (upd.count === 0) throw new SectError('ALREADY_IN_SECT');
+        await tx.sectMember.create({
+          data: { sectId: sect.id, characterId: char.id, role: 'LEADER' },
+        });
         return sect;
       });
       createdId = created.id;
@@ -201,6 +206,9 @@ export class SectService {
       data: { sectId: sect.id },
     });
     if (upd.count === 0) throw new SectError('ALREADY_IN_SECT');
+    await this.prisma.sectMember.create({
+      data: { sectId: sect.id, characterId: char.id, role: 'MEMBER' },
+    });
 
     this.realtime.joinUserToRoom(userId, `sect:${sect.id}`);
     await this.refreshState(userId);
@@ -222,6 +230,10 @@ export class SectService {
           data: { leaderId: null },
         });
       }
+      // Delete SectMember row first (has FK to character).
+      await tx.sectMember.deleteMany({
+        where: { characterId: char.id, sectId: oldSectId },
+      });
       // Optimistic lock: chỉ rời nếu user vẫn thuộc oldSectId (chống race
       // với leave/join concurrent từ session khác của cùng user).
       const left = await tx.character.updateMany({

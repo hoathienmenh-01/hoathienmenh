@@ -395,6 +395,7 @@ model Character {
   sect   Sect?   @relation(fields: [sectId], references: [id])
 
   inventory                 InventoryItem[]
+  sectMembers               SectMember[]
   ledger                    CurrencyLedger[]
   itemLedger                ItemLedger[]
   missionProgress           MissionProgress[]
@@ -2161,6 +2162,12 @@ model Listing {
   @@index([sellerId, status])
 }
 
+enum SectRole {
+  LEADER
+  ELDER
+  MEMBER
+}
+
 model Sect {
   id                   String                @id @default(cuid())
   name                 String                @unique
@@ -2169,6 +2176,7 @@ model Sect {
   treasuryLinhThach    BigInt                @default(0)
   leaderId             String?               @unique
   characters           Character[]
+  members              SectMember[]
   /// Phase 29.0 — PvP anomaly backref.
   pvpAnomalyLogs       PvpAnomalyLog[]
   /// Phase 30.0 — Sect treasury items + log + internal auction.
@@ -2176,6 +2184,19 @@ model Sect {
   treasuryLogs         SectTreasuryLog[]
   sectInternalAuctions SectInternalAuction[]
   createdAt            DateTime              @default(now())
+}
+
+model SectMember {
+  id          String    @id @default(cuid())
+  sectId      String
+  sect        Sect      @relation(fields: [sectId], references: [id], onDelete: Cascade)
+  characterId String    @unique
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  role        SectRole  @default(MEMBER)
+  joinedAt    DateTime  @default(now())
+
+  @@index([sectId, role])
+  @@index([sectId, joinedAt])
 }
 
 enum ChatChannel {

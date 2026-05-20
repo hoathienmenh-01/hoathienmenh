@@ -120,4 +120,69 @@ describe('SectService', () => {
       code: 'NOT_IN_SECT',
     });
   });
+
+  it('create: SectMember row created with role LEADER', async () => {
+    const u = await makeUserChar(prisma);
+    const detail = await sect.create(u.userId, `S-${nextSuffix()}`, '');
+    const member = await prisma.sectMember.findUniqueOrThrow({
+      where: { characterId: u.characterId },
+    });
+    expect(member.sectId).toBe(detail.id);
+    expect(member.role).toBe('LEADER');
+    expect(detail.members[0].role).toBe('LEADER');
+    expect(detail.members[0].isLeader).toBe(true);
+  });
+
+  it('join: SectMember row created with role MEMBER', async () => {
+    const leader = await makeUserChar(prisma);
+    const member = await makeUserChar(prisma);
+    const s = await sect.create(leader.userId, `S-${nextSuffix()}`, '');
+    await sect.join(member.userId, s.id);
+
+    const row = await prisma.sectMember.findUniqueOrThrow({
+      where: { characterId: member.characterId },
+    });
+    expect(row.sectId).toBe(s.id);
+    expect(row.role).toBe('MEMBER');
+  });
+
+  it('leave: SectMember row deleted', async () => {
+    const leader = await makeUserChar(prisma);
+    const member = await makeUserChar(prisma);
+    const s = await sect.create(leader.userId, `S-${nextSuffix()}`, '');
+    await sect.join(member.userId, s.id);
+
+    // Verify row exists before leave.
+    expect(await prisma.sectMember.findUnique({ where: { characterId: member.characterId } })).not.toBeNull();
+
+    await sect.leave(member.userId);
+    expect(await prisma.sectMember.findUnique({ where: { characterId: member.characterId } })).toBeNull();
+  });
+
+  it('leave leader: SectMember row deleted + leaderId set to null', async () => {
+    const leader = await makeUserChar(prisma);
+    const s = await sect.create(leader.userId, `S-${nextSuffix()}`, '');
+    expect(await prisma.sectMember.findUnique({ where: { characterId: leader.characterId } })).not.toBeNull();
+
+    await sect.leave(leader.userId);
+    expect(await prisma.sectMember.findUnique({ where: { characterId: leader.characterId } })).toBeNull();
+    const sectRow = await prisma.sect.findUniqueOrThrow({ where: { id: s.id } });
+    expect(sectRow.leaderId).toBeNull();
+  });
+
+  it('detail: members show correct role from SectMember', async () => {
+    const leader = await makeUserChar(prisma);
+    const member = await makeUserChar(prisma);
+    const s = await sect.create(leader.userId, `S-${nextSuffix()}`, '');
+    await sect.join(member.userId, s.id);
+
+    const detail = await sect.detail(s.id, leader.characterId);
+    expect(detail.members).toHaveLength(2);
+    const leaderView = detail.members.find((m) => m.id === leader.characterId)!;
+    const memberView = detail.members.find((m) => m.id === member.characterId)!;
+    expect(leaderView.role).toBe('LEADER');
+    expect(leaderView.isLeader).toBe(true);
+    expect(memberView.role).toBe('MEMBER');
+    expect(memberView.isLeader).toBe(false);
+  });
 });
