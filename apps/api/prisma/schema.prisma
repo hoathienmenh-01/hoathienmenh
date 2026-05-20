@@ -6907,12 +6907,17 @@ model CharacterStoryV2QuestProgress {
   acceptedAt   DateTime?
   completedAt  DateTime?
   claimedAt    DateTime?
+  /// Phase 33.4 — Daily/weekly reset window. Null for non-repeatable quests.
+  windowStart  DateTime?
+  windowEnd    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
   @@unique([characterId, questKey])
   @@index([characterId, chapKey, status])
   @@index([status, completedAt])
+  /// Phase 33.4 — Index cho reset scheduler query: find CLAIMED + windowEnd <= now.
+  @@index([status, windowEnd])
 }
 
 /// Phase 33.1 — Idempotent claim audit ledger. Insert duy nhất 1 row khi
