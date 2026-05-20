@@ -548,3 +548,111 @@ describe('Phase33StoryService.listDialoguesForQuest', () => {
     }
   });
 });
+
+// ============================================================================
+// Phase 33.4 — Daily/Weekly Reset
+// ============================================================================
+
+describe('Phase33StoryService.resetExpiredQuests', () => {
+  it('reset 0 khi không có quest nào hết hạn', async () => {
+    const count = await story.resetExpiredQuests();
+    expect(count).toBe(0);
+  });
+
+  it('reset CLAIMED daily quest có windowEnd <= now', async () => {
+    const { userId, characterId } = await realmDoKiepChar();
+    // Unlock + accept + complete + claim a daily quest manually via DB.
+    await story.listQuestsForChapter(userId, CHAP_9);
+    const dailyKey = 'q_ch09_daily_01';
+    // Force quest to ACCEPTED state.
+    await prisma.characterStoryV2QuestProgress.update({
+      where: { characterId_questKey: { characterId, questKey: dailyKey } },
+      data: { status: 'ACCEPTED', acceptedAt: new Date() },
+    });
+    // Force all steps done.
+    const def = phase33QuestByKey(dailyKey)!;
+    const stepProgress: Record<string, number> = {};
+    for (const step of def.steps) stepProgress[step.id] = step.count;
+    await prisma.characterStoryV2QuestProgress.update({
+      where: { characterId_questKey: { characterId, questKey: dailyKey } },
+      data: { stepProgress, status: 'COMPLETED', completedAt: new Date() },
+    });
+    // Claim — should set windowEnd.
+    await story.claimReward(userId, dailyKey);
+
+    // Verify windowEnd is set.
+    const afterClaim = await prisma.characterStoryV2QuestProgress.findUnique({
+      where: { characterId_questKey: { characterId, questKey: dailyKey } },
+    });
+    expect(afterClaim?.status).toBe('CLAIMED');
+    expect(afterClaim?.windowEnd).not.toBeNull();
+
+    // Force windowEnd to past (simulate time passing).
+    await prisma.characterStoryV2QuestProgress.update({
+      where: { characterId_questKey: { characterId, questKey: dailyKey } },
+      data: { windowEnd: new Date(Date.now() - 1000) },
+    });
+
+    // Reset — should bring quest back to AVAILABLE.
+    const count = await story.resetExpiredQuests();
+    expect(count).toBe(1);
+
+    const afterReset = await prisma.characterStoryV2QuestProgress.findUnique({
+      where: { characterId_questKey: { characterId, questKey: dailyKey } },
+    });
+    expect(afterReset?.status).toBe('AVAILABLE');
+    expect(afterReset?.claimedAt).toBeNull();
+    expect(afterReset?.windowStart).toBeNull();
+    expect(afterReset?.windowEnd).toBeNull();
+  });
+
+  it('KHÔNG reset quest có windowEnd trong tương lai', async () => {
+    const { userId, characterId } = await realmDoKiepChar();
+    await story.listQuestsForChapter(userId, CHAP_9);
+    const dailyKey = 'q_ch09_daily_01';
+    await prisma.characterStoryV2QuestProgress.update({
+      where: { characterId_questKey: { characterId, questKey: dailyKey } },
+      data: { status: 'ACCEPTED', acceptedAt: new Date() },
+    });
+    const def = phase33QuestByKey(dailyKey)!;
+    const stepProgress: Record<string, number> = {};
+    for (const step of def.steps) stepProgress[step.id] = step.count;
+    await prisma.characterStoryV2QuestProgress.update({
+      where: { characterId_questKey: { characterId, questKey: dailyKey } },
+      data: { stepProgress, status: 'COMPLETED', completedAt: new Date() },
+    });
+    await story.claimReward(userId, dailyKey);
+
+    // windowEnd is in the future — should NOT reset.
+    const count = await story.resetExpiredQuests();
+    expect(count).toBe(0);
+  });
+
+  it('KHÔNG reset non-repeatable quest (main) có windowEnd = null', async () => {
+    const { userId, characterId } = await realmDoKiepChar();
+    await story.listQuestsForChapter(userId, CHAP_9);
+    const mainKey = Q_CH09_MAIN_01;
+    await prisma.characterStoryV2QuestProgress.update({
+      where: { characterId_questKey: { characterId, questKey: mainKey } },
+      data: { status: 'ACCEPTED', acceptedAt: new Date() },
+    });
+    const def = phase33QuestByKey(mainKey)!;
+    const stepProgress: Record<string, number> = {};
+    for (const step of def.steps) stepProgress[step.id] = step.count;
+    await prisma.characterStoryV2QuestProgress.update({
+      where: { characterId_questKey: { characterId, questKey: mainKey } },
+      data: { stepProgress, status: 'COMPLETED', completedAt: new Date() },
+    });
+    await story.claimReward(userId, mainKey);
+
+    // Main quest should have windowEnd = null.
+    const afterClaim = await prisma.characterStoryV2QuestProgress.findUnique({
+      where: { characterId_questKey: { characterId, questKey: mainKey } },
+    });
+    expect(afterClaim?.windowEnd).toBeNull();
+
+    // Reset should not affect it.
+    const count = await story.resetExpiredQuests();
+    expect(count).toBe(0);
+  });
+});

@@ -173,6 +173,27 @@ function emptyStepProgress(def: Phase33QuestDef): Record<string, number> {
   return m;
 }
 
+/**
+ * Phase 33.4 — Daily/weekly reset window helpers.
+ *
+ * Daily: next UTC midnight (00:00).
+ * Weekly: next UTC Monday 00:00.
+ */
+function nextUTCDayStart(from: Date): Date {
+  const d = new Date(from);
+  d.setUTCHours(24, 0, 0, 0);
+  return d;
+}
+
+function nextUTCMondayStart(from: Date): Date {
+  const d = new Date(from);
+  const day = d.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const daysUntilMon = day === 0 ? 1 : 8 - day;
+  d.setUTCDate(d.getUTCDate() + daysUntilMon);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
 function isAllStepsDone(
   def: Phase33QuestDef,
   progress: Record<string, number>,
@@ -677,9 +698,16 @@ export class Phase33StoryService {
       }
 
       const claimedAt = new Date();
+      // Phase 33.4 — Set reset window for daily/weekly quests.
+      const windowStart = (def.kind === 'daily' || def.kind === 'weekly') ? claimedAt : null;
+      const windowEnd = def.kind === 'daily'
+        ? nextUTCDayStart(claimedAt)
+        : def.kind === 'weekly'
+          ? nextUTCMondayStart(claimedAt)
+          : null;
       const upd = await tx.characterStoryV2QuestProgress.updateMany({
         where: { id: row.id, status: 'COMPLETED', claimedAt: null },
-        data: { status: 'CLAIMED', claimedAt },
+        data: { status: 'CLAIMED', claimedAt, windowStart, windowEnd },
       });
       if (upd.count !== 1) {
         throw new Phase33StoryError('STORY_V2_QUEST_ALREADY_CLAIMED');
@@ -883,6 +911,35 @@ export class Phase33StoryService {
       where: { id: rowId, status: 'ACCEPTED' },
       data: { status: 'COMPLETED', completedAt },
     });
+  }
+
+  /**
+   * Phase 33.4 — Reset expired daily/weekly quests.
+   *
+   * Find all CLAIMED quests with `windowEnd IS NOT NULL` AND `windowEnd <= now()`.
+   * Reset to AVAILABLE: clear status, stepProgress, acceptedAt, completedAt,
+   * claimedAt, windowStart, windowEnd. Player can re-accept + re-claim.
+   *
+   * Called by `StoryV2ResetProcessor` every 10 minutes via BullMQ.
+   */
+  async resetExpiredQuests(): Promise<number> {
+    const now = new Date();
+    const result = await this.prisma.characterStoryV2QuestProgress.updateMany({
+      where: {
+        status: 'CLAIMED',
+        windowEnd: { not: null, lte: now },
+      },
+      data: {
+        status: 'AVAILABLE',
+        stepProgress: {},
+        acceptedAt: null,
+        completedAt: null,
+        claimedAt: null,
+        windowStart: null,
+        windowEnd: null,
+      },
+    });
+    return result.count;
   }
 }
 
