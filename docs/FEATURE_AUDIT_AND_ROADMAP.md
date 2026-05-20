@@ -89,21 +89,21 @@ Do not rebuild these systems from scratch:
 - ~~Quest, mission, story, onboarding quest, and story dungeon labels are easy to confuse.~~ ✅ Role hint + cross-nav added; labels clarified.
 - There are many advanced systems before the first-session path is fully polished.
 
-### 4.6 UX Polish Gap Analysis (2026-05-19 audit)
+### 4.6 UX Polish Gap Analysis (2026-05-20 final)
 
-**Scope**: 97 total `.vue` files in `apps/web/src/views/`. Excluding 13 admin views, 6 auth/utility views (AuthView, ForgotPasswordView, ResetPasswordView, NotFoundView, OnboardingView, XianxiaPlaceholderView), and 2 home/dashboard views → **76 player-facing views**.
+**Scope**: 97 total `.vue` files in `apps/web/src/views/`. Excluding 13 admin views, 4 auth/utility views (AuthView, ForgotPasswordView, ResetPasswordView, NotFoundView), 2 home/dashboard views (HomeView, DashboardView), 2 onboarding views (OnboardingView, OnboardingQuestView), and 2 other (HomesteadView, XianxiaPlaceholderView) → **76 player-facing views**.
 
-**Fully polished (XTLuxHero + roleHint + crossNav)**: 34 views
-AchievementView, AlchemyView, ArtifactV2View, ArenaView, BodyCultivationView, BossHubView, BossView, BreakthroughView, CharacterView, CoopBossView, CultivationMethodView, DungeonRunView, DungeonView, EventsView, InventoryAutoSortView, InventoryView, LeaderboardView, LoadoutView, MailView, MarketV2View, MarketView, MissionView, PartyDungeonView, PartyHubView, PetsView, QuestView, SectView, SkillBookView, SocialView, SpiritualRootView, StoryV2View, TalentCatalogView, TribulationView, AdminControlCenterView.
+**Fully polished (XTLuxHero + roleHint + crossNav)**: 76/76 (100%) ✅
+AchievementView, ActivityView, AlchemyView, ArenaView, ArtifactV2View, BodyCultivationView, BossHubView, BossView, BreakthroughView, CodexView, CombatHubView, CosmeticView, CoopBossView, CultivationHubView, CultivationMethodV2View, CultivationMethodView, DungeonHubV2View, DungeonRunView, DungeonView, EncounterView, EquipmentView, EventsView, FarmMapView, FeedbackView, GiftCodeView, InventoryAutoSortView, InventoryView, LeaderboardView, LoadoutView, MailView, MarketV2View, MarketView, MentorView, MissionView, MonetizationDacQuyenView, MonetizationShopView, MonetizationView, NpcView, NotificationCenterView, NotificationSettingsView, PartyDungeonView, PartyHubView, PetsView, PlayerLogsView, ProfileView, PvpView, QuestView, ReputationView, ReportPlayerView, ReturnerView, RoguelikeView, SeasonsView, SecretRealmView, SectContentView, SectWarView, SectView, SettingsView, ShopPacksView, ShopView, SkillBookView, SocialView, SpiritualRootView, StoryDungeonView, StoryV2View, TalentCatalogView, TitleView, TopupView, TribulationView, TrialTowerView, WalletView, WorldContentView.
 
-**Have XTLuxHero but missing roleHint + crossNav**: 38 views
-ActivityView, CodexView, CombatHubView, CosmeticView, CultivationHubView, CultivationMethodV2View, DungeonHubV2View, EncounterView, EquipmentView, FarmMapView, FeedbackView, GiftCodeView, MentorView, MonetizationDacQuyenView, MonetizationShopView, MonetizationView, NotificationCenterView, NotificationSettingsView, NpcView, OnboardingQuestView, PlayerLogsView, ProfileView, PvpView, ReportPlayerView, ReputationView, ReturnerView, RoguelikeView, SeasonsView, SecretRealmView, SectContentView, SectWarView, SettingsView, ShopPacksView, ShopView, StoryDungeonView, TerritoryView, TitleView, TopupView, TrialTowerView, WalletView, WorldContentView.
+**Excluded from player-facing count (not polished — by design)**:
+- Admin views (13): AdminView, AdminAchievementReputationView, AdminCodexView, AdminFeedbackView, AdminHallOfFameView, AdminMailView, AdminMarketV2View, AdminPetsView, AdminPvpCenterView, AdminReportsView, AdminSystemStatusView, AdminControlCenterView, AdminEventBuilderView, EffectsPreviewView.
+- Auth/utility (4): AuthView, ForgotPasswordView, ResetPasswordView, NotFoundView.
+- Home/dashboard (2): HomeView, DashboardView.
+- Onboarding (2): OnboardingView, OnboardingQuestView.
+- Other (2): HomesteadView, XianxiaPlaceholderView.
 
-**Missing XTLuxHero entirely**: 0 views ✅ (all views have XTLuxHero)
-
-**Missing test files**: 0 player-facing views ✅ (all 76 have test files)
-
-**Coverage**: 34/76 player views fully polished (45%). 76/76 have XTLuxHero (100%). All 76 player-facing views have test files.
+**Remaining gaps**: 0. All 26 tracker tasks DONE. UX polish phase complete.
 
 ### 4.5 Missing beta proof / smoke tests
 

@@ -49,6 +49,14 @@ vi.mock('@/api/artifactsV2', () => ({
     }),
 }));
 
+vi.mock('@/components/xianxia/XTLuxHero.vue', () => ({
+  default: {
+    name: 'XTLuxHeroStub',
+    props: ['eyebrow', 'label', 'title', 'subtitle', 'tone', 'watermarkLetter', 'testId'],
+    template: '<div :data-testid="testId"><slot /></div>',
+  },
+}));
+
 import LoadoutView from '@/views/LoadoutView.vue';
 
 function buildI18n() {
@@ -122,6 +130,9 @@ function buildI18n() {
             inventory: 'Túi Đồ',
             inventoryDesc: 'Quản lý vật phẩm',
           },
+        },
+        luxHero: {
+          loadout: { eyebrow: 'BỘ NHANH TRANG BỊ', label: 'Bộ Nhanh Trang Bị' },
         },
       },
     },
@@ -264,6 +275,13 @@ describe('Phase QOL-2 — LoadoutView', () => {
 });
 
 describe('LoadoutView — cross-navigation', () => {
+  it('render XTLuxHero', async () => {
+    listLoadoutPresetsMock.mockResolvedValue([]);
+    const wrapper = mount(LoadoutView, { global: { plugins: [buildI18n()] } });
+    await flushPromises();
+    expect(wrapper.find('[data-testid="loadout-hero"]').exists()).toBe(true);
+  });
+
   it('render role hint', async () => {
     listLoadoutPresetsMock.mockResolvedValue([]);
     const wrapper = mount(LoadoutView, { global: { plugins: [buildI18n()] } });

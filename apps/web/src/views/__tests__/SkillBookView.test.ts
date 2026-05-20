@@ -160,6 +160,13 @@ vi.mock('@/components/shell/AppShell.vue', () => ({
     template: '<div data-testid="app-shell"><slot /></div>',
   },
 }));
+vi.mock('@/components/xianxia/XTLuxHero.vue', () => ({
+  default: {
+    name: 'XTLuxHeroStub',
+    props: ['eyebrow', 'label', 'title', 'subtitle', 'tone', 'watermarkLetter', 'testId'],
+    template: '<div :data-testid="testId"><slot /></div>',
+  },
+}));
 
 import SkillBookView from '@/views/SkillBookView.vue';
 
@@ -208,6 +215,9 @@ const i18n = createI18n({
           equipment: 'Trang Bị',
           equipmentDesc: 'Quản lý trang bị',
         },
+      },
+      luxHero: {
+        skillBook: { eyebrow: 'PHÁP QUYÊN BÍCH BẢN', label: 'Pháp Quyển Bích Bản' },
       },
       // Phase 14.2.C — SkillTagBadge i18n keys cho tag dropdown.
       skillTagBadge: {
@@ -466,6 +476,12 @@ describe('SkillBookView — equip / unequip / upgrade actions', () => {
 describe('SkillBookView — cross-navigation', () => {
   beforeEach(() => {
     resetStore();
+  });
+
+  it('render XTLuxHero', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="skill-book-hero"]').exists()).toBe(true);
   });
 
   it('render role hint', async () => {

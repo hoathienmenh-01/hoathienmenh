@@ -21,6 +21,14 @@ vi.mock('@/components/shell/AppShell.vue', () => ({
   },
 }));
 
+vi.mock('@/components/xianxia/XTLuxHero.vue', () => ({
+  default: {
+    name: 'XTLuxHeroStub',
+    props: ['eyebrow', 'label', 'title', 'subtitle', 'tone', 'watermarkLetter', 'testId'],
+    template: '<div :data-testid="testId"><slot /></div>',
+  },
+}));
+
 import LeaderboardView from '@/views/LeaderboardView.vue';
 import type {
   LeaderboardRow,
@@ -78,6 +86,9 @@ const i18n = createI18n({
           sect: 'Tông Môn',
           sectDesc: 'Quản lý tông phái',
         },
+      },
+      luxHero: {
+        leaderboard: { eyebrow: 'PHONG THẦN BẢNG', label: 'Phong Thần Bảng' },
       },
     },
   },
@@ -335,6 +346,13 @@ describe('LeaderboardView', () => {
 });
 
 describe('LeaderboardView — cross-navigation', () => {
+  it('render XTLuxHero', async () => {
+    fetchPower.mockResolvedValue([]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="leaderboard-hero"]').exists()).toBe(true);
+  });
+
   it('render role hint', async () => {
     fetchPower.mockResolvedValue([]);
     const w = mountView();
