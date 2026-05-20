@@ -561,9 +561,18 @@ describe('Phase33StoryService.resetExpiredQuests', () => {
 
   it('reset CLAIMED daily quest có windowEnd <= now', async () => {
     const { userId, characterId } = await realmDoKiepChar();
-    // Unlock + accept + complete + claim a daily quest manually via DB.
-    await story.listQuestsForChapter(userId, CHAP_9);
     const dailyKey = 'q_ch09_daily_01';
+    // Create daily quest row directly (listQuestsForChapter skips daily
+    // because prerequisite main_05 + story flag not met in test).
+    await prisma.characterStoryV2QuestProgress.create({
+      data: {
+        characterId,
+        questKey: dailyKey,
+        chapKey: CHAP_9,
+        status: 'AVAILABLE',
+        stepProgress: {},
+      },
+    });
     // Force quest to ACCEPTED state.
     await prisma.characterStoryV2QuestProgress.update({
       where: { characterId_questKey: { characterId, questKey: dailyKey } },
@@ -608,8 +617,16 @@ describe('Phase33StoryService.resetExpiredQuests', () => {
 
   it('KHÔNG reset quest có windowEnd trong tương lai', async () => {
     const { userId, characterId } = await realmDoKiepChar();
-    await story.listQuestsForChapter(userId, CHAP_9);
     const dailyKey = 'q_ch09_daily_01';
+    await prisma.characterStoryV2QuestProgress.create({
+      data: {
+        characterId,
+        questKey: dailyKey,
+        chapKey: CHAP_9,
+        status: 'AVAILABLE',
+        stepProgress: {},
+      },
+    });
     await prisma.characterStoryV2QuestProgress.update({
       where: { characterId_questKey: { characterId, questKey: dailyKey } },
       data: { status: 'ACCEPTED', acceptedAt: new Date() },
