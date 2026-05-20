@@ -32,7 +32,7 @@ import {
   type ArtifactV2OwnedEntry,
 } from '@/api/artifactsV2';
 import EquipmentArtCell from '@/components/xianxia/EquipmentArtCell.vue';
-import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 
 interface DraftForm {
   id: string | null;
@@ -284,22 +284,25 @@ onMounted(refresh);
 
 <template>
   <main class="page-shell space-y-4 px-3 sm:px-6 py-4">
-    <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-      <div>
-        <XTPageEyebrow label="Giá Đối Nghi Phổ" />
-        <h1 class="text-xl sm:text-2xl font-bold mt-1">{{ t('loadout.title') }}</h1>
-        <p class="text-sm text-ink-400">{{ t('loadout.subtitle') }}</p>
-      </div>
+    <XTLuxHero
+      :eyebrow="t('luxHero.loadout.eyebrow')"
+      :label="t('luxHero.loadout.label')"
+      :title="t('loadout.title')"
+      :subtitle="t('loadout.subtitle')"
+      tone="gold"
+      watermark="T"
+      test-id="loadout-hero"
+    >
       <button
         type="button"
-        class="btn btn-primary"
+        class="btn btn-primary mt-2"
         data-testid="loadout-create-btn"
         :disabled="loading"
         @click="startCreate"
       >
         + {{ t('loadout.actions.create') }}
       </button>
-    </header>
+    </XTLuxHero>
 
     <!-- Role hint -->
     <p class="text-sm text-gray-400 px-1" data-testid="loadout-role-hint">

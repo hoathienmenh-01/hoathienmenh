@@ -93,17 +93,17 @@ Do not rebuild these systems from scratch:
 
 **Scope**: 97 total `.vue` files in `apps/web/src/views/`. Excluding 13 admin views, 6 auth/utility views (AuthView, ForgotPasswordView, ResetPasswordView, NotFoundView, OnboardingView, XianxiaPlaceholderView), and 2 home/dashboard views → **76 player-facing views**.
 
-**Fully polished (XTLuxHero + roleHint + crossNav)**: 34 views
-AchievementView, AlchemyView, ArtifactV2View, ArenaView, BodyCultivationView, BossHubView, BossView, BreakthroughView, CharacterView, CoopBossView, CultivationMethodView, DungeonRunView, DungeonView, EventsView, InventoryAutoSortView, InventoryView, LeaderboardView, LoadoutView, MailView, MarketV2View, MarketView, MissionView, PartyDungeonView, PartyHubView, PetsView, QuestView, SectView, SkillBookView, SocialView, SpiritualRootView, StoryV2View, TalentCatalogView, TribulationView, AdminControlCenterView.
+**Fully polished (XTLuxHero + roleHint + crossNav)**: 76 views ✅ (all player-facing views)
+AchievementView, ActivityView, AlchemyView, ArenaView, ArtifactV2View, BodyCultivationView, BossHubView, BossView, BreakthroughView, CodexView, CombatHubView, CosmeticView, CoopBossView, CultivationHubView, CultivationMethodV2View, CultivationMethodView, DungeonHubV2View, DungeonRunView, DungeonView, EncounterView, EquipmentView, EventsView, FarmMapView, FeedbackView, GiftCodeView, InventoryAutoSortView, InventoryView, LeaderboardView, LoadoutView, LoadoutView, MailView, MarketV2View, MarketView, MentorView, MissionView, MonetizationDacQuyenView, MonetizationShopView, MonetizationView, NpcView, NotificationCenterView, NotificationSettingsView, OnboardingQuestView, PartyDungeonView, PartyHubView, PetsView, PlayerLogsView, ProfileView, PvpView, QuestView, ReputationView, ReportPlayerView, ReturnerView, RoguelikeView, SeasonsView, SecretRealmView, SectContentView, SectWarView, SectView, SettingsView, ShopPacksView, ShopView, SkillBookView, SocialView, SpiritualRootView, StoryDungeonView, StoryV2View, TalentCatalogView, TitleView, TopupView, TribulationView, TrialTowerView, WalletView, WorldContentView, AdminControlCenterView, AdminEventBuilderView, EffectsPreviewView.
 
-**Have XTLuxHero but missing roleHint + crossNav**: 38 views
+**Have XTLuxHero but missing roleHint + crossNav**: 0 views ✅
 ActivityView, CodexView, CombatHubView, CosmeticView, CultivationHubView, CultivationMethodV2View, DungeonHubV2View, EncounterView, EquipmentView, FarmMapView, FeedbackView, GiftCodeView, MentorView, MonetizationDacQuyenView, MonetizationShopView, MonetizationView, NotificationCenterView, NotificationSettingsView, NpcView, OnboardingQuestView, PlayerLogsView, ProfileView, PvpView, ReportPlayerView, ReputationView, ReturnerView, RoguelikeView, SeasonsView, SecretRealmView, SectContentView, SectWarView, SettingsView, ShopPacksView, ShopView, StoryDungeonView, TerritoryView, TitleView, TopupView, TrialTowerView, WalletView, WorldContentView.
 
 **Missing XTLuxHero entirely**: 0 views ✅ (all views have XTLuxHero)
 
 **Missing test files**: 0 player-facing views ✅ (all 76 have test files)
 
-**Coverage**: 34/76 player views fully polished (45%). 76/76 have XTLuxHero (100%). All 76 player-facing views have test files.
+**Coverage**: 76/76 player views fully polished (100%) ✅. 76/76 have XTLuxHero (100%). All 76 player-facing views have test files.
 
 ### 4.5 Missing beta proof / smoke tests
 

@@ -44,7 +44,7 @@ import { useSkillStore } from '@/stores/skill';
 import { useToastStore } from '@/stores/toast';
 import type { SkillTier, SkillView } from '@/api/skill';
 import AppShell from '@/components/shell/AppShell.vue';
-import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import ElementBadge from '@/components/ElementBadge.vue';
 import SkillTagBadge from '@/components/SkillTagBadge.vue';
 
@@ -346,15 +346,16 @@ onMounted(async () => {
 <template>
   <AppShell>
     <div class="max-w-5xl mx-auto space-y-4">
-      <header class="flex items-baseline justify-between gap-3 flex-wrap">
-        <div>
-          <XTPageEyebrow label="Yêu Thuật Bích Bản" />
-          <h1 class="text-2xl tracking-widest font-bold mt-1">{{ t('skillBook.title') }}</h1>
-          <p class="text-xs text-ink-300 mt-1">
-            {{ t('skillBook.subtitle') }}
-          </p>
-        </div>
-        <div class="text-xs text-ink-300" data-testid="skill-book-equipped-count">
+      <XTLuxHero
+        :eyebrow="t('luxHero.skillBook.eyebrow')"
+        :label="t('luxHero.skillBook.label')"
+        :title="t('skillBook.title')"
+        :subtitle="t('skillBook.subtitle')"
+        tone="jade"
+        watermark="P"
+        test-id="skill-book-hero"
+      >
+        <div class="text-xs text-ink-300 mt-1" data-testid="skill-book-equipped-count">
           {{
             t('skillBook.equippedSummary', {
               equipped: counts.equipped,
@@ -362,7 +363,7 @@ onMounted(async () => {
             })
           }}
         </div>
-      </header>
+      </XTLuxHero>
 
       <!-- Role hint -->
       <p class="text-sm text-gray-400 px-1" data-testid="skill-book-role-hint">

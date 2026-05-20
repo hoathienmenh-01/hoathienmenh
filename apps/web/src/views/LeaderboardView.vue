@@ -10,6 +10,7 @@ import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { realmByKey, fullRealmName } from '@xuantoi/shared';
 import AppShell from '@/components/shell/AppShell.vue';
+import XTLuxHero from '@/components/xianxia/XTLuxHero.vue';
 import XTPullRefresh from '@/components/xianxia/XTPullRefresh.vue';
 import SkeletonTable from '@/components/ui/SkeletonTable.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
@@ -90,12 +91,15 @@ onMounted(() => {
 <template>
   <AppShell>
     <section class="rounded border border-ink-300/40 bg-ink-700/30 p-5">
-      <header class="mb-4 flex items-baseline justify-between gap-3">
-        <h2 class="text-2xl tracking-widest">{{ t('leaderboard.title') }}</h2>
-        <span class="text-xs text-ink-300">{{
-          t(`leaderboard.subtitle.${tab}`)
-        }}</span>
-      </header>
+      <XTLuxHero
+        :eyebrow="t('luxHero.leaderboard.eyebrow')"
+        :label="t('luxHero.leaderboard.label')"
+        :title="t('leaderboard.title')"
+        :subtitle="t(`leaderboard.subtitle.${tab}`)"
+        tone="seal"
+        watermark="L"
+        test-id="leaderboard-hero"
+      />
 
       <!-- Role hint -->
       <p class="text-sm text-gray-400 px-1 mb-2" data-testid="leaderboard-role-hint">

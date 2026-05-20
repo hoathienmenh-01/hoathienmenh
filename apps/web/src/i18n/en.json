@@ -9025,6 +9025,16 @@
       "subtitle": "Trang bị, bảo vật, phẩm linh — trang bị thuận đạo, đả tầm mặt.",
       "breadcrumb": "Tông Môn · Túi Đồ"
     },
+    "leaderboard": {
+      "eyebrow": "PHONG THẦN BẢNG",
+      "label": "Phong Thần Bảng",
+      "breadcrumb": "Xã Hội · Bảng Xếp Hạng"
+    },
+    "loadout": {
+      "eyebrow": "BỘ NHANH TRANG BỊ",
+      "label": "Bộ Nhanh Trang Bị",
+      "breadcrumb": "Tông Môn · Bộ Nhanh"
+    },
     "mail": {
       "eyebrow": "PHI CÁP TRUYỀN THƯ",
       "label": "Phi Cáp Truyền Thư",
@@ -9163,6 +9173,11 @@
       "eyebrow": "TIÊN LỄ TRANG BAO",
       "label": "Tiên Lễ Trang Bao",
       "breadcrumb": "Kho Báu · Lễ Bao"
+    },
+    "skillBook": {
+      "eyebrow": "PHÁP QUYÊN BÍCH BẢN",
+      "label": "Pháp Quyển Bích Bản",
+      "breadcrumb": "Tu Tiên Lộ · Thuật Pháp"
     },
     "social": {
       "eyebrow": "GIANG HỒ GIAO TẾ",
