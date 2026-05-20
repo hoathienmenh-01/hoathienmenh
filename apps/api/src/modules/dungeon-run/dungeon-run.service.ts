@@ -579,11 +579,29 @@ export class DungeonRunService {
           // fail-soft: Story V2 không break Phase 12 dungeon-run path.
         }
       }
+      // Phase 33.3 — collect step tracking cho DUNGEON_LOOT items.
+      if (loot.length > 0) {
+        for (const l of loot) {
+          try {
+            await this.phase33Story.track(char.id, 'collect', 'item', l.itemKey, l.qty);
+          } catch {
+            // fail-soft: Story V2 không break Phase 12 dungeon-run path.
+          }
+        }
+      }
     }
 
     // Phase 44.1 — onboarding auto-track dungeon clear. Fire-and-forget.
     if (isLast && this.onboarding) {
       void this.onboarding.notifyAction(char.id, 'DUNGEON_CLEAR');
+    }
+    // Phase 33.3 — Story V2 dungeon_clear step tracking, fail-soft.
+    if (isLast && this.phase33Story) {
+      try {
+        await this.phase33Story.track(char.id, 'dungeon_clear', 'dungeon', dungeon.key, 1);
+      } catch {
+        // fail-soft: Story V2 không break Phase 12 dungeon-run path.
+      }
     }
 
     const fresh = await this.prisma.dungeonRun.findUnique({ where: { id: run.id } });

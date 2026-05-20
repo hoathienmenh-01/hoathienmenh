@@ -55,6 +55,7 @@ import { SectWarService } from '../sect-war/sect-war.service';
 import { TerritoryService } from '../territory/territory.service';
 import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
 import { DropEconomyService } from '../economy/drop-economy.service';
+import { Phase33StoryService } from '../story-v2/story-v2.service';
 import { WebPushService } from '../web-push/web-push.service';
 import { WebPushTriggerService } from '../web-push/web-push-trigger.service';
 
@@ -187,6 +188,9 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     // Phase 44.1 — high-level web push trigger composer. Optional inject
     // — test bootstrap có thể bỏ. Fail-soft trong service.
     @Optional() private readonly webPushTrigger?: WebPushTriggerService,
+    // Phase 33.3 — Story V2 boss_defeat step tracking. Optional inject
+    // — test bootstrap có thể bỏ. Fail-soft trong service.
+    @Optional() private readonly phase33Story?: Phase33StoryService,
   ) {}
 
   onModuleInit(): void {
@@ -607,6 +611,15 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       // Fail-soft — không break boss reward path.
       if (slicesSnapshot.length > 0) {
         void this.applyWorldBossDropEconomy(slicesSnapshot, boss.id, def);
+      }
+      // Phase 33.3 — Story V2 boss_defeat step tracking, fail-soft, additive.
+      // Track cho attacker (người đánh hit cuối). Boss key = targetId.
+      if (this.phase33Story) {
+        try {
+          await this.phase33Story.track(char.id, 'boss_defeat', 'boss', boss.bossKey, 1);
+        } catch {
+          // fail-soft: Story V2 không break boss flow.
+        }
       }
     }
 
