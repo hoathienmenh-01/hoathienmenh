@@ -81,9 +81,8 @@ export class PetSnapshotService {
    * cho consumer (combat tick / preview). Trả `null` nếu user không có pet
    * equipped — caller phải null-guard.
    *
-   * TODO(Phase 44.2): combat.service.ts wire call này sau khi balance team
-   * approve formula. Hiện tại consumer DUY NHẤT là FE preview — combat damage
-   * KHÔNG bị thay đổi bởi pet bonus.
+   * Wired: combat.service.ts (DUNGEON context, PR Phase 44.2) +
+   * boss.service.ts (BOSS context, PR Phase 44.2). FE preview cũng dùng.
    */
   async getCombatBonus(
     characterId: string,

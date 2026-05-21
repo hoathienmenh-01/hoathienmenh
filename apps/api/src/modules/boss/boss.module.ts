@@ -15,6 +15,7 @@ import { EconomyModule } from '../economy/economy.module';
 import { WebPushModule } from '../web-push/web-push.module';
 import { Phase33StoryModule } from '../story-v2/story-v2.module';
 import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
+import { PetModule } from '../pet/pet.module';
 
 // Phase 15.3.A — `LiveOpsEventSchedulerModule` wire để BossService đọc
 // BOSS_REWARD_BOOST runtime modifier (Optional inject — test có thể bỏ).
@@ -35,6 +36,7 @@ import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
     WebPushModule,
     Phase33StoryModule,
     FeatureFlagModule,
+    PetModule,
   ],
   controllers: [BossController],
   providers: [BossService, PrismaService],

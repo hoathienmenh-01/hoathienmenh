@@ -2032,4 +2032,119 @@ describe('BossService', () => {
       );
     });
   });
+
+  describe('Pet BOSS combat bonus (Phase 44.2)', () => {
+    let bossWithPet: BossService;
+    let bossWithBrokenPet: BossService;
+    let bossNoPet: BossService;
+    const petSnapshotStub = {
+      getCombatBonus: vi.fn().mockResolvedValue({
+        damageContributionCapPercent: 8,
+        contributionCapPercent: 8,
+        petStats: { atk: 80, def: 0, hp: 0, speed: 0, spirit: 0 },
+        pvpEffectivenessMultiplier: 0.4,
+        skills: [],
+      }),
+    };
+    const petSnapshotThrow = {
+      getCombatBonus: vi.fn().mockRejectedValue(new Error('pet service down')),
+    };
+    const petSnapshotNull = {
+      getCombatBonus: vi.fn().mockResolvedValue(null),
+    };
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      bossWithPet = new BossService(
+        prisma, realtime, chars, inventory, currency, missions,
+        undefined, undefined, undefined, undefined, undefined, undefined,
+        undefined, undefined, undefined, undefined, undefined,
+        petSnapshotStub as never,
+      );
+      bossWithBrokenPet = new BossService(
+        prisma, realtime, chars, inventory, currency, missions,
+        undefined, undefined, undefined, undefined, undefined, undefined,
+        undefined, undefined, undefined, undefined, undefined,
+        petSnapshotThrow as never,
+      );
+      bossNoPet = new BossService(
+        prisma, realtime, chars, inventory, currency, missions,
+        undefined, undefined, undefined, undefined, undefined, undefined,
+        undefined, undefined, undefined, undefined, undefined,
+        petSnapshotNull as never,
+      );
+    });
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      (bossWithPet as unknown as { cooldowns: Map<string, number> }).cooldowns.clear();
+      (bossWithBrokenPet as unknown as { cooldowns: Map<string, number> }).cooldowns.clear();
+      (bossNoPet as unknown as { cooldowns: Map<string, number> }).cooldowns.clear();
+    });
+
+    it('pet bonus applies: getCombatBonus called with BOSS context + damage > 0', async () => {
+      const u = await makeUserChar(prisma, { mp: 100, stamina: 100, power: 1000 });
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const out = await bossWithPet.attack(u.userId, undefined);
+
+      expect(petSnapshotStub.getCombatBonus).toHaveBeenCalledWith(u.characterId, 'BOSS');
+      expect(BigInt(out.result.damageDealt)).toBeGreaterThan(0n);
+    });
+
+    it('pet bonus cap enforced: petCombatMul ≤ 1.08 (cap 8%)', async () => {
+      // Pet atk=10000 >> charAtk=1000 → rawFrac > cap → clamp to 8%.
+      const highAtkStub = {
+        getCombatBonus: vi.fn().mockResolvedValue({
+          damageContributionCapPercent: 8,
+          contributionCapPercent: 8,
+          petStats: { atk: 10000, def: 0, hp: 0, speed: 0, spirit: 0 },
+          pvpEffectivenessMultiplier: 0.4,
+          skills: [],
+        }),
+      };
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      const bossHighPet = new BossService(
+        prisma, realtime, chars, inventory, currency, missions,
+        undefined, undefined, undefined, undefined, undefined, undefined,
+        undefined, undefined, undefined, undefined, undefined,
+        highAtkStub as never,
+      );
+
+      const u = await makeUserChar(prisma, { mp: 100, stamina: 100, power: 1000 });
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const out = await bossHighPet.attack(u.userId, undefined);
+      expect(BigInt(out.result.damageDealt)).toBeGreaterThan(0n);
+      expect(highAtkStub.getCombatBonus).toHaveBeenCalledWith(u.characterId, 'BOSS');
+    });
+
+    it('pet bonus fallback: petSnapshot throws → damage still > 0 (fail-soft)', async () => {
+      const u = await makeUserChar(prisma, { mp: 100, stamina: 100, power: 1000 });
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const out = await bossWithBrokenPet.attack(u.userId, undefined);
+
+      expect(BigInt(out.result.damageDealt)).toBeGreaterThan(0n);
+      expect(petSnapshotThrow.getCombatBonus).toHaveBeenCalledWith(u.characterId, 'BOSS');
+    });
+
+    it('pet bonus identity: no pet equipped → petSnapshot returns null → damage > 0', async () => {
+      const u = await makeUserChar(prisma, { mp: 100, stamina: 100, power: 1000 });
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const out = await bossNoPet.attack(u.userId, undefined);
+
+      expect(BigInt(out.result.damageDealt)).toBeGreaterThan(0n);
+      expect(petSnapshotNull.getCombatBonus).toHaveBeenCalledWith(u.characterId, 'BOSS');
+    });
+  });
 });
