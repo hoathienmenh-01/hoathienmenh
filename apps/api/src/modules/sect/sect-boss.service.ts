@@ -381,7 +381,7 @@ export class SectBossService {
           characterId: char.id,
           currency: 'LINH_THACH',
           delta: BigInt(rewards.linhThach),
-          reason: 'SECT_BOSS_REWARD',
+          reason: 'BOSS_REWARD',
           refType: 'SectBoss',
           refId: active.id,
         });
@@ -391,7 +391,7 @@ export class SectBossService {
           characterId: char.id,
           currency: 'TIEN_NGOC',
           delta: BigInt(rewards.tienNgoc),
-          reason: 'SECT_BOSS_REWARD',
+          reason: 'BOSS_REWARD',
           refType: 'SectBoss',
           refId: active.id,
         });
@@ -399,9 +399,9 @@ export class SectBossService {
       if (this.currency && rewards.exp) {
         await this.currency.applyTx(tx, {
           characterId: char.id,
-          currency: 'EXP',
+          currency: 'CULTIVATION_EXP',
           delta: BigInt(rewards.exp),
-          reason: 'SECT_BOSS_REWARD',
+          reason: 'BOSS_REWARD',
           refType: 'SectBoss',
           refId: active.id,
         });

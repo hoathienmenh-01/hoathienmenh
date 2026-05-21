@@ -65,7 +65,8 @@
       "Bash(grep -c \"key:\" farm-maps.ts)",
       "Bash(grep -c \"key:\" boss.ts)",
       "Bash(python3 -c ' *)",
-      "Bash(gh api *)"
+      "Bash(gh api *)",
+      "Bash(npx tsc *)"
     ]
   }
 }

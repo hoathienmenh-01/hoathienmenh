@@ -48,19 +48,38 @@ export class SectWarContributionService {
     // Get all contributions for sect in week.
     const contributions = await this.prisma.sectWarContribution.findMany({
       where: { sectId, weekKey },
-      include: {
-        character: {
-          select: {
-            id: true,
-            name: true,
-            sectMembers: {
-              where: { sectId },
-              select: { role: true },
-            },
-          },
+    });
+
+    if (contributions.length === 0) {
+      return {
+        weekKey,
+        sectId,
+        totalPoints: 0,
+        byRole: [],
+        topContributors: [],
+      };
+    }
+
+    // Get character details with roles.
+    const characterIds = [...new Set(contributions.map((c) => c.characterId))];
+    const characters = await this.prisma.character.findMany({
+      where: { id: { in: characterIds } },
+      select: {
+        id: true,
+        name: true,
+        sectMembers: {
+          where: { sectId },
+          select: { role: true },
         },
       },
     });
+
+    const charMap = new Map(
+      characters.map((c) => [
+        c.id,
+        { name: c.name, role: c.sectMembers[0]?.role ?? ('MEMBER' as SectRole) },
+      ]),
+    );
 
     // Aggregate by character with role.
     const byChar = new Map<
@@ -68,14 +87,16 @@ export class SectWarContributionService {
       { name: string; role: SectRole; points: number }
     >();
     for (const c of contributions) {
-      const role = c.character.sectMembers[0]?.role ?? 'MEMBER';
+      const charData = charMap.get(c.characterId);
+      if (!charData) continue;
+
       const existing = byChar.get(c.characterId);
       if (existing) {
         existing.points += c.points;
       } else {
         byChar.set(c.characterId, {
-          name: c.character.name,
-          role,
+          name: charData.name,
+          role: charData.role,
           points: c.points,
         });
       }
