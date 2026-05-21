@@ -151,6 +151,7 @@ function makeDetail(overrides: Partial<SectDetailView> = {}): SectDetailView {
         realmKey: 'luyen_khi',
         realmStage: 1,
         congHien: 50,
+        role: 'MEMBER',
         isLeader: false,
         isMe: true,
       },

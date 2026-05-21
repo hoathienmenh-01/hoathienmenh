@@ -396,6 +396,7 @@ model Character {
 
   inventory                 InventoryItem[]
   sectMembers               SectMember[]
+  sectBossParticipants      SectBossParticipant[]
   ledger                    CurrencyLedger[]
   itemLedger                ItemLedger[]
   missionProgress           MissionProgress[]
@@ -513,10 +514,10 @@ model Character {
   dailyEncounters CharacterDailyEncounter[]
 
   /// Phase 34.2 — Secret Realm Run backrefs.
-  secretRealmRuns CharacterSecretRealmRun[]
+  secretRealmRuns          CharacterSecretRealmRun[]
   /// Phase 38.0 — Roguelike Bí Cảnh backrefs.
-  roguelikeRuns        RoguelikeRun[]
-  roguelikeLeaderboard RoguelikeLeaderboard?
+  roguelikeRuns            RoguelikeRun[]
+  roguelikeLeaderboard     RoguelikeLeaderboard?
   /// Phase 39.0 — Seasonal Server Progression backrefs.
   seasonProgress           SeasonProgress[]
   seasonLeaderboardEntries SeasonLeaderboardEntry[]
@@ -545,14 +546,14 @@ model Character {
 /// server-authoritative theo catalog và bị cap offline-hours để không tạo
 /// nguồn tài nguyên vô hạn.
 model Homestead {
-  id                       String   @id @default(cuid())
-  characterId              String   @unique
+  id                       String    @id @default(cuid())
+  characterId              String    @unique
   character                Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  level                    Int      @default(1)
-  spiritualEnergy          Int      @default(40)
-  spiritualEnergyUpdatedAt DateTime @default(now())
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  level                    Int       @default(1)
+  spiritualEnergy          Int       @default(40)
+  spiritualEnergyUpdatedAt DateTime  @default(now())
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
   fields HomesteadField[]
   garden HomesteadGardenPlot[]
@@ -566,18 +567,18 @@ model Homestead {
 /// Thu hoạch dùng CAS `harvestedAt IS NULL AND readyAt <= now` để chống spam
 /// song song; reward grant qua `InventoryService.grantTx`.
 model HomesteadField {
-  id            String     @id @default(cuid())
+  id            String    @id @default(cuid())
   homesteadId   String
-  homestead     Homestead  @relation(fields: [homesteadId], references: [id], onDelete: Cascade)
+  homestead     Homestead @relation(fields: [homesteadId], references: [id], onDelete: Cascade)
   slotIndex     Int
   cropKey       String
   outputItemKey String
   expectedYield Int
-  plantedAt     DateTime   @default(now())
+  plantedAt     DateTime  @default(now())
   readyAt       DateTime
   harvestedAt   DateTime?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@unique([homesteadId, slotIndex])
   @@index([homesteadId, harvestedAt])
@@ -589,18 +590,18 @@ model HomesteadField {
 /// Tương tự Linh Điền nhưng sản xuất nguyên liệu phụ luyện đan với daily cap
 /// riêng và yield nhỏ hơn để tránh lạm phát nguyên liệu hiếm.
 model HomesteadGardenPlot {
-  id            String     @id @default(cuid())
+  id            String    @id @default(cuid())
   homesteadId   String
-  homestead     Homestead  @relation(fields: [homesteadId], references: [id], onDelete: Cascade)
+  homestead     Homestead @relation(fields: [homesteadId], references: [id], onDelete: Cascade)
   slotIndex     Int
   productionKey String
   outputItemKey String
   expectedYield Int
-  startedAt     DateTime   @default(now())
+  startedAt     DateTime  @default(now())
   readyAt       DateTime
   claimedAt     DateTime?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@unique([homesteadId, slotIndex])
   @@index([homesteadId, claimedAt])
@@ -2183,6 +2184,8 @@ model Sect {
   treasuryItems        SectTreasuryItem[]
   treasuryLogs         SectTreasuryLog[]
   sectInternalAuctions SectInternalAuction[]
+  /// Phase 13.8 — Sect boss instances.
+  bossInstances        SectBossInstance[]
   createdAt            DateTime              @default(now())
 }
 
@@ -2212,6 +2215,38 @@ model SectAuditLog {
 
   @@index([sectId, createdAt])
   @@index([actorCharId, createdAt])
+}
+
+/// Phase 13.8 — Sect boss instance (spawned by ELDER/LEADER).
+model SectBossInstance {
+  id           String                @id @default(cuid())
+  sectId       String
+  sect         Sect                  @relation(fields: [sectId], references: [id], onDelete: Cascade)
+  bossKey      String
+  maxHp        Int
+  currentHp    Int
+  defeated     Boolean               @default(false)
+  spawnedAt    DateTime              @default(now())
+  defeatedAt   DateTime?
+  participants SectBossParticipant[]
+
+  @@index([sectId, defeated])
+  @@index([sectId, bossKey, spawnedAt])
+}
+
+/// Phase 13.8 — Sect boss participant damage + claim tracking.
+model SectBossParticipant {
+  id          String           @id @default(cuid())
+  instanceId  String
+  instance    SectBossInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  characterId String
+  character   Character        @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  damage      Int              @default(0)
+  claimed     Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  @@unique([instanceId, characterId])
+  @@index([characterId, createdAt])
 }
 
 enum ChatChannel {
@@ -2798,29 +2833,29 @@ enum RoguelikeRunStatus {
 /// Rewards are granted once at final claim via CurrencyLedger/ItemLedger and
 /// daily/weekly caps.
 model RoguelikeRun {
-  id             String             @id @default(cuid())
-  characterId    String
-  character      Character          @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  realmKey       String
-  status         RoguelikeRunStatus @default(ACTIVE)
-  seed           String
-  currentFloor   Int                @default(0)
-  hp             Int
-  hpMax          Int
-  resource       Int                @default(0)
-  score          Int                @default(0)
-  rewardMul      Float              @default(1)
-  activeBuffs    Json               @default("[]")
-  floorHistory   Json               @default("[]")
-  rewardPreview  Json               @default("{}")
-  lastChoiceKey  String?
-  startedAt      DateTime           @default(now())
-  completedAt    DateTime?
-  failedAt       DateTime?
-  abandonedAt    DateTime?
-  claimedAt      DateTime?
-  expiresAt      DateTime?
-  updatedAt      DateTime           @updatedAt
+  id            String             @id @default(cuid())
+  characterId   String
+  character     Character          @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  realmKey      String
+  status        RoguelikeRunStatus @default(ACTIVE)
+  seed          String
+  currentFloor  Int                @default(0)
+  hp            Int
+  hpMax         Int
+  resource      Int                @default(0)
+  score         Int                @default(0)
+  rewardMul     Float              @default(1)
+  activeBuffs   Json               @default("[]")
+  floorHistory  Json               @default("[]")
+  rewardPreview Json               @default("{}")
+  lastChoiceKey String?
+  startedAt     DateTime           @default(now())
+  completedAt   DateTime?
+  failedAt      DateTime?
+  abandonedAt   DateTime?
+  claimedAt     DateTime?
+  expiresAt     DateTime?
+  updatedAt     DateTime           @updatedAt
 
   @@index([characterId, status])
   @@index([characterId, startedAt])
@@ -2832,17 +2867,17 @@ model RoguelikeRun {
 /// Stores all-time best per character plus coarse weekly/monthly bucket of the
 /// latest best update. Reward distribution is intentionally deferred.
 model RoguelikeLeaderboard {
-  id               String    @id @default(cuid())
-  characterId      String    @unique
-  character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  bestFloor        Int       @default(0)
-  bestScore        Int       @default(0)
-  fastestClearMs   Int?
-  bestRunId        String?
-  weekBucket       String
-  monthBucket      String
-  updatedAt        DateTime  @updatedAt
-  createdAt        DateTime  @default(now())
+  id             String    @id @default(cuid())
+  characterId    String    @unique
+  character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  bestFloor      Int       @default(0)
+  bestScore      Int       @default(0)
+  fastestClearMs Int?
+  bestRunId      String?
+  weekBucket     String
+  monthBucket    String
+  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime  @default(now())
 
   @@index([weekBucket, bestFloor, bestScore])
   @@index([monthBucket, bestFloor, bestScore])
@@ -2896,20 +2931,20 @@ model ServerSeason {
 
 /// Phase 39.0 — Per-character progress scoped to one season.
 model SeasonProgress {
-  id                String       @id @default(cuid())
-  seasonId          String
-  season            ServerSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
-  characterId       String
-  character         Character    @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  points            Int          @default(0)
-  bestRoguelikeFloor Int         @default(0)
-  bossDefeats       Int          @default(0)
-  dungeonClears     Int          @default(0)
-  craftCount        Int          @default(0)
-  breakthroughCount Int          @default(0)
-  lastPointAt       DateTime?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  id                 String       @id @default(cuid())
+  seasonId           String
+  season             ServerSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  characterId        String
+  character          Character    @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  points             Int          @default(0)
+  bestRoguelikeFloor Int          @default(0)
+  bossDefeats        Int          @default(0)
+  dungeonClears      Int          @default(0)
+  craftCount         Int          @default(0)
+  breakthroughCount  Int          @default(0)
+  lastPointAt        DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
   @@unique([seasonId, characterId])
   @@index([seasonId, points])
@@ -7054,27 +7089,27 @@ model CharacterOnboardingTaskProgress {
 /// (only set when encounter has multi-choice branches). `payloadJson` stores
 /// arbitrary metadata (e.g. reroll seed, rolled reward profile).
 model CharacterDailyEncounter {
-  id           String    @id @default(cuid())
-  characterId  String
-  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  encounterKey String
+  id               String    @id @default(cuid())
+  characterId      String
+  character        Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  encounterKey     String
   /// Server-controlled rarity bucket — common | uncommon | rare | hidden.
-  rarity       String    @default("common")
+  rarity           String    @default("common")
   /// `YYYY-MM-DD` in `MISSION_RESET_TZ`.
-  dateKey      String
+  dateKey          String
   /// AVAILABLE | ACCEPTED | COMPLETED | CLAIMED | SKIPPED.
-  status       String    @default("AVAILABLE")
-  choiceKey    String?
+  status           String    @default("AVAILABLE")
+  choiceKey        String?
   /// Cached linh thach / exp granted on claim (for audit).
-  linhThachGranted Int    @default(0)
-  expGranted       Int    @default(0)
+  linhThachGranted Int       @default(0)
+  expGranted       Int       @default(0)
   /// Optional metadata: rolled reward profile, journal hint, etc.
-  payloadJson  Json      @default("{}")
-  acceptedAt   DateTime?
-  completedAt  DateTime?
-  claimedAt    DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  payloadJson      Json      @default("{}")
+  acceptedAt       DateTime?
+  completedAt      DateTime?
+  claimedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@unique([characterId, dateKey])
   @@index([characterId, status])
@@ -7091,25 +7126,25 @@ model CharacterDailyEncounter {
 ///   ENTERED → CLEARED → CLAIMED (terminal)
 ///        ↘ EXPIRED (background cleanup, not implemented v1)
 model CharacterSecretRealmRun {
-  id            String    @id @default(cuid())
-  characterId   String
-  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  secretRealmKey String
+  id                    String    @id @default(cuid())
+  characterId           String
+  character             Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  secretRealmKey        String
   /// ENTERED | CLEARED | CLAIMED | EXPIRED.
-  status        String    @default("ENTERED")
-  startedAt     DateTime  @default(now())
-  clearedAt     DateTime?
-  claimedAt     DateTime?
-  expiresAt     DateTime?
+  status                String    @default("ENTERED")
+  startedAt             DateTime  @default(now())
+  clearedAt             DateTime?
+  claimedAt             DateTime?
+  expiresAt             DateTime?
   /// Map objectiveKey → currentCount (e.g. `{clear_rooms:2,collect:1}`).
-  objectiveProgressJson Json @default("{}")
+  objectiveProgressJson Json      @default("{}")
   /// Cached linh thach / exp granted on claim.
-  linhThachGranted Int    @default(0)
-  expGranted       Int    @default(0)
+  linhThachGranted      Int       @default(0)
+  expGranted            Int       @default(0)
   /// SHA256 hash of rolled reward profile (for idempotency vs replay).
-  rewardHash    String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  rewardHash            String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   @@index([characterId, secretRealmKey, status])
   @@index([secretRealmKey, status])
@@ -7273,6 +7308,7 @@ model PetBoxOpenLog {
   @@index([characterId, createdAt])
   @@index([boxKey, createdAt])
 }
+
 /// Phase PWA-1 — Web Push subscription endpoint.
 ///
 /// 1 row / browser-device (endpoint là unique). Một user có thể

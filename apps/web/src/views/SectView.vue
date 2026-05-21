@@ -13,6 +13,9 @@ import {
   leaveSect,
   listSects,
   mySect,
+  promoteMember,
+  demoteMember,
+  kickMember,
   type SectDetailView,
   type SectListView,
 } from '@/api/sect';
@@ -123,6 +126,49 @@ async function onContribute(): Promise<void> {
   try {
     me.value = await contributeSect(contribAmount.value);
     toast.push({ type: 'success', text: t('sect.contributeToast') });
+    await refreshAll();
+  } catch (e) {
+    handleErr(e);
+  } finally {
+    submitting.value = false;
+  }
+}
+
+async function onPromote(targetCharacterId: string): Promise<void> {
+  if (submitting.value || !me.value) return;
+  submitting.value = true;
+  try {
+    me.value = await promoteMember(targetCharacterId);
+    toast.push({ type: 'success', text: t('sect.promoteToast') });
+    await refreshAll();
+  } catch (e) {
+    handleErr(e);
+  } finally {
+    submitting.value = false;
+  }
+}
+
+async function onDemote(targetCharacterId: string): Promise<void> {
+  if (submitting.value || !me.value) return;
+  submitting.value = true;
+  try {
+    me.value = await demoteMember(targetCharacterId);
+    toast.push({ type: 'success', text: t('sect.demoteToast') });
+    await refreshAll();
+  } catch (e) {
+    handleErr(e);
+  } finally {
+    submitting.value = false;
+  }
+}
+
+async function onKick(targetCharacterId: string, targetName: string): Promise<void> {
+  if (submitting.value || !me.value) return;
+  if (!confirm(t('sect.kickConfirm', { name: targetName }))) return;
+  submitting.value = true;
+  try {
+    me.value = await kickMember(targetCharacterId);
+    toast.push({ type: 'success', text: t('sect.kickToast', { name: targetName }) });
     await refreshAll();
   } catch (e) {
     handleErr(e);
@@ -351,8 +397,10 @@ const sectAccent = computed<string>(() => {
           <thead class="text-xs text-ink-300/70">
             <tr>
               <th class="text-left px-3 py-1">{{ t('sect.col.name') }}</th>
+              <th class="text-left px-3 py-1">{{ t('sect.col.role') }}</th>
               <th class="text-left px-3 py-1">{{ t('sect.col.realm') }}</th>
               <th class="text-right px-3 py-1">{{ t('sect.col.contrib') }}</th>
+              <th v-if="me.isMyLeader" class="text-right px-3 py-1">{{ t('sect.col.actions') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -365,11 +413,51 @@ const sectAccent = computed<string>(() => {
                 <span :class="m.isLeader ? 'text-amber-300 font-bold' : ''">
                   {{ m.name }}
                 </span>
-                <span v-if="m.isLeader" class="ml-1 text-xs text-amber-300/70">{{ t('sect.leaderTag') }}</span>
                 <span v-if="m.isMe" class="ml-1 text-xs text-ink-300/70">{{ t('sect.you') }}</span>
+              </td>
+              <td class="px-3 py-1">
+                <span
+                  :class="{
+                    'text-amber-300': m.role === 'LEADER',
+                    'text-purple-300': m.role === 'ELDER',
+                    'text-ink-300': m.role === 'MEMBER',
+                  }"
+                >
+                  {{ t(`sect.role.${m.role}`) }}
+                </span>
               </td>
               <td class="px-3 py-1 text-ink-300">{{ realmText(m.realmKey, m.realmStage) }}</td>
               <td class="px-3 py-1 text-right text-amber-300">{{ m.congHien }}</td>
+              <td v-if="me.isMyLeader" class="px-3 py-1 text-right">
+                <div v-if="!m.isMe" class="flex gap-1 justify-end">
+                  <button
+                    v-if="m.role === 'MEMBER'"
+                    type="button"
+                    class="text-xs text-purple-300 hover:text-purple-100 underline"
+                    :disabled="submitting"
+                    @click="onPromote(m.id)"
+                  >
+                    {{ t('sect.promote') }}
+                  </button>
+                  <button
+                    v-if="m.role === 'ELDER'"
+                    type="button"
+                    class="text-xs text-ink-300 hover:text-ink-100 underline"
+                    :disabled="submitting"
+                    @click="onDemote(m.id)"
+                  >
+                    {{ t('sect.demote') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="text-xs text-red-300 hover:text-red-100 underline"
+                    :disabled="submitting"
+                    @click="onKick(m.id, m.name)"
+                  >
+                    {{ t('sect.kick') }}
+                  </button>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>

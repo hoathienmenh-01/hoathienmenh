@@ -1,0 +1,150 @@
+warning: in the working copy of 'CLAUDE.md', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/CLAUDE.md b/CLAUDE.md[m
+[1mindex 756b6e83..431e5e22 100644[m
+[1m--- a/CLAUDE.md[m
+[1m+++ b/CLAUDE.md[m
+[36m@@ -73,6 +73,28 @@[m [mpnpm --filter @xuantoi/api bootstrap                   # re-seed admin + sects[m
+ pnpm backup:db                                          # backup Postgres[m
+ ```[m
+ [m
+[32m+[m[32m### DB migrate reset (dev only!)[m
+[32m+[m
+[32m+[m[32m`prisma migrate reset` xóa toàn bộ data + reapply all migrations. **KHÔNG BAO GIỜ chạy ở production.**[m
+[32m+[m
+[32m+[m[32mSau khi migrate reset, BẮT BUỘC chạy lại:[m
+[32m+[m[32m```bash[m
+[32m+[m[32mpnpm --filter @xuantoi/api bootstrap    # re-create admin + 3 sects[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32mNếu chỉ schema thay đổi (additive), dùng `prisma:migrate` thay vì reset.[m
+[32m+[m
+[32m+[m[32m### Deploy production[m
+[32m+[m
+[32m+[m[32m```bash[m
+[32m+[m[32mpnpm --filter @xuantoi/shared build           # build shared first[m
+[32m+[m[32mpnpm --filter @xuantoi/api exec prisma migrate deploy   # apply migrations (not dev mode)[m
+[32m+[m[32mpnpm --filter @xuantoi/api start              # or: node dist/main.js[m
+[32m+[m[32mpnpm --filter @xuantoi/web build              # static output in apps/web/dist[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32mSeed data: catalog là static trong `packages/shared/src/*.ts`, không cần DB seed script. Chỉ cần `prisma migrate deploy` + `bootstrap` cho admin.[m
+[32m+[m
+ ---[m
+ [m
+ ## Rules[m
+[36m@@ -124,10 +146,69 @@[m [mAt minimum: `pnpm --filter @xuantoi/shared build && pnpm typecheck && pnpm lint[m
+ - FE double-guards: non-admin sees forbidden state, request doesn't fire.[m
+ - MOD !== ADMIN for sensitive endpoints.[m
+ [m
+[32m+[m[32m### DO-NOT-BUILD-YET (deferred features)[m
+[32m+[m
+[32m+[m[32mThese features are explicitly deferred. Do NOT build unless PM explicitly requests + dependencies are ready:[m
+[32m+[m
+[32m+[m[32m| Feature | Reason |[m
+[32m+[m[32m|---|---|[m
+[32m+[m[32m| Real-time PvP | Infra-heavy, async PvP not validated yet |[m
+[32m+[m[32m| Pet/Companion gacha | Legal risk (loot box), needs policy review |[m
+[32m+[m[32m| Voice chat | Out of scope, may never build |[m
+[32m+[m[32m| Mobile native app | PWA sufficient, native = costly rebuild |[m
+[32m+[m[32m| NFT / blockchain | Never |[m
+[32m+[m[32m| Real-money market/trade | Legal — not allowed in VN |[m
+[32m+[m[32m| Multi-region sharding | Too expensive for ROI, needs DAU > 10k |[m
+[32m+[m
+[32m+[m[32m---[m
+[32m+[m
+[32m+[m[32m## Env vars[m
+[32m+[m
+[32m+[m[32m### API (`apps/api/.env`)[m
+[32m+[m
+[32m+[m[32m| Var | Purpose | Default |[m
+[32m+[m[32m|---|---|---|[m
+[32m+[m[32m| `DATABASE_URL` | Postgres connection | `postgresql://mtt:mtt@localhost:5432/mtt` |[m
+[32m+[m[32m| `REDIS_URL` | Redis connection | `redis://localhost:6379` |[m
+[32m+[m[32m| `JWT_ACCESS_SECRET` | JWT access token secret (≥32 chars in prod) | `change-me-access-secret` |[m
+[32m+[m[32m| `JWT_REFRESH_SECRET` | JWT refresh token secret (≥32 chars in prod) | `change-me-refresh-secret` |[m
+[32m+[m[32m| `INITIAL_ADMIN_EMAIL` | Bootstrap admin email | — |[m
+[32m+[m[32m| `INITIAL_ADMIN_PASSWORD` | Bootstrap admin password (≥8 chars) | — |[m
+[32m+[m[32m| `MISSION_RESET_TZ` | Timezone for daily/weekly reset | `Asia/Ho_Chi_Minh` |[m
+[32m+[m[32m| `MARKET_FEE_PCT` | Market transaction fee [0, 0.5] | `0.05` |[m
+[32m+[m[32m| `SENTRY_ENABLED` | Enable Sentry | `false` |[m
+[32m+[m[32m| `PUSH_ENABLED` | Enable web push notifications | `false` |[m
+[32m+[m
+[32m+[m[32m### Web (`apps/web/.env`)[m
+[32m+[m
+[32m+[m[32m| Var | Purpose | Default |[m
+[32m+[m[32m|---|---|---|[m
+[32m+[m[32m| `VITE_API_BASE` | API base path | `/api` |[m
+[32m+[m[32m| `VITE_WS_URL` | WebSocket URL (empty = same origin) | — |[m
+[32m+[m[32m| `VITE_SENTRY_ENABLED` | Enable Sentry frontend | `false` |[m
+[32m+[m
+ ---[m
+ [m
+ ## Architecture[m
+ [m
+[32m+[m[32m### WebSocket[m
+[32m+[m
+[32m+[m[32m- Endpoint: `ws://localhost:3000/ws`[m
+[32m+[m[32m- Auth: cookie-based (same as REST JWT)[m
+[32m+[m[32m- Events: cultivation tick, chat messages, combat updates, notifications[m
+[32m+[m[32m- Client: `socket.io-client` in `apps/web`[m
+[32m+[m[32m- Server: `@nestjs/platform-socket.io` in `apps/api`[m
+[32m+[m
+[32m+[m[32m### BullMQ job queues[m
+[32m+[m
+[32m+[m[32mAPI uses Redis-backed BullMQ for async jobs:[m
+[32m+[m[32m- `cultivation` — cultivation tick (every 30s)[m
+[32m+[m[32m- `body-cultivation` — body cultivation tick[m
+[32m+[m[32m- `liveops-cron` — weekly/daily cycle jobs[m
+[32m+[m[32m- Other module-specific queues[m
+[32m+[m
+[32m+[m[32mWorkers run in-process with the NestJS app.[m
+[32m+[m
+ ### API modules (80+)[m
+ [m
+ Key modules in `apps/api/src/modules/`:[m
+[36m@@ -166,6 +247,15 @@[m [mKey modules in `apps/api/src/modules/`:[m
+ [m
+ Prisma schema at `apps/api/prisma/schema.prisma`. ~100+ models. Migrations in `apps/api/prisma/migrations/`. All schema changes MUST be additive (no field deletion, only deprecation).[m
+ [m
+[32m+[m[32m### Static catalog system[m
+[32m+[m
+[32m+[m[32mContent (items, skills, monsters, dungeons, missions, realms, bosses) lives in `packages/shared/src/*.ts` as static TypeScript — NOT in the database. This means:[m
+[32m+[m[32m- No `prisma db seed` needed for catalog data[m
+[32m+[m[32m- Frontend and backend share the same typed source[m
+[32m+[m[32m- Adding content = editing TS files + building shared + running tests[m
+[32m+[m[32m- DB only stores references (string keys) + runtime state (inventory qty, progress)[m
+[32m+[m[32m- See `docs/CONTENT_PIPELINE.md` for the full process[m
+[32m+[m
+ ---[m
+ [m
+ ## Common local issues[m
+[36m@@ -173,17 +263,61 @@[m [mPrisma schema at `apps/api/prisma/schema.prisma`. ~100+ models. Migrations in `a[m
+ | Issue | Fix |[m
+ |---|---|[m
+ | `Failed to resolve entry for package "@xuantoi/shared"` | Run `pnpm --filter @xuantoi/shared build` first |[m
+[32m+[m[32m| `Cannot find module '@xuantoi/shared'` | Build shared: `pnpm --filter @xuantoi/shared build` |[m
+ | Postgres connection refused | `pnpm infra:up`, check `docker ps` |[m
+ | Redis connection refused | `pnpm infra:up`, check `docker ps` |[m
+ | Test timeout / prisma migration lock | Kill other API/test processes, or use `TEST_DATABASE_URL` with separate DB |[m
+[31m-| `Cannot find module '@xuantoi/shared'` | Build shared: `pnpm --filter @xuantoi/shared build` |[m
+[32m+[m[32m| `prisma already running migrations` | Kill stale process, or `SELECT pid FROM pg_stat_activity WHERE datname='mtt'` then kill |[m
+[32m+[m[32m| `relation already exists` on migrate | Check `_prisma_migrations` table, `prisma migrate resolve --applied <name>` |[m
+ | CORS error in production | Set `CORS_ORIGINS` env to comma-separated origins |[m
+[32m+[m[32m| Cookie not sent (different origin) | Deploy web + api behind same reverse proxy, or set `SameSite=None; Secure` |[m
+[32m+[m[32m| Login 401 after role change | Logout + login again (old token has stale role) |[m
+[32m+[m[32m| WS not connecting / no tick events | Check cookie validity, DevTools WS status, Redis `bull:cultivation:active` queue |[m
+ | PWA stale assets | Hard refresh `Ctrl+Shift+R`, unregister service worker |[m
+[32m+[m[32m| Sentry not sending events | Set `SENTRY_ENABLED=true` + `SENTRY_DSN_API` in API env |[m
+[32m+[m[32m| `INITIAL_ADMIN_PASSWORD chưa được set` | Run via `pnpm --filter @xuantoi/api bootstrap` (reads `.env` automatically) |[m
+[32m+[m[32m| `pnpm install` peer dep error | `corepack enable && corepack prepare pnpm@9.15.1 --activate` |[m
+ [m
+ See `docs/TROUBLESHOOTING.md` for full list.[m
+ [m
+ ---[m
+ [m
+[32m+[m[32m## CI/CD[m
+[32m+[m
+[32m+[m[32mGitHub Actions workflows:[m
+[32m+[m
+[32m+[m[32m| Workflow | Trigger | What it does |[m
+[32m+[m[32m|---|---|---|

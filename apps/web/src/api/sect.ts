@@ -17,6 +17,7 @@ export interface SectMemberView {
   realmKey: string;
   realmStage: number;
   congHien: number;
+  role: 'LEADER' | 'ELDER' | 'MEMBER';
   isLeader: boolean;
   isMe: boolean;
 }
@@ -86,6 +87,30 @@ export async function contributeSect(amount: string): Promise<SectDetailView> {
   const { data } = await apiClient.post<Envelope<{ sect: SectDetailView }>>(
     '/sect/contribute',
     { amount },
+  );
+  return unwrap(data).sect;
+}
+
+export async function promoteMember(targetCharacterId: string): Promise<SectDetailView> {
+  const { data } = await apiClient.post<Envelope<{ sect: SectDetailView }>>(
+    '/sect/promote',
+    { targetCharacterId },
+  );
+  return unwrap(data).sect;
+}
+
+export async function demoteMember(targetCharacterId: string): Promise<SectDetailView> {
+  const { data } = await apiClient.post<Envelope<{ sect: SectDetailView }>>(
+    '/sect/demote',
+    { targetCharacterId },
+  );
+  return unwrap(data).sect;
+}
+
+export async function kickMember(targetCharacterId: string): Promise<SectDetailView> {
+  const { data } = await apiClient.post<Envelope<{ sect: SectDetailView }>>(
+    '/sect/kick',
+    { targetCharacterId },
   );
   return unwrap(data).sect;
 }

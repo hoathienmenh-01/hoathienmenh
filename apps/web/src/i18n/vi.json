@@ -1932,9 +1932,23 @@
     "disciplesTitle": "Đệ Tử ({n})",
     "col": {
       "name": "Đạo Hiệu",
+      "role": "Chức Vụ",
       "realm": "Cảnh Giới",
-      "contrib": "Cống Hiến"
+      "contrib": "Cống Hiến",
+      "actions": "Thao Tác"
     },
+    "role": {
+      "LEADER": "Tông Chủ",
+      "ELDER": "Trưởng Lão",
+      "MEMBER": "Đệ Tử"
+    },
+    "promote": "Thăng Chức",
+    "demote": "Giáng Chức",
+    "kick": "Trục Xuất",
+    "promoteToast": "Đã thăng chức.",
+    "demoteToast": "Đã giáng chức.",
+    "kickToast": "Đã trục xuất {name}.",
+    "kickConfirm": "Trục xuất {name} khỏi tông môn?",
     "leaderTag": "[Tông chủ]",
     "you": "(bạn)",
     "noneList": "Chưa có tông môn nào — hãy lập tông đầu tiên.",
@@ -1960,6 +1974,12 @@
       "INVALID_NAME": "Tên 2–16 ký tự (chữ/số/ _-).",
       "INSUFFICIENT_LINH_THACH": "Không đủ linh thạch.",
       "NAME_TAKEN": "Tên này đã có người dùng.",
+      "NOT_LEADER": "Chỉ tông chủ mới có quyền này.",
+      "NOT_ELDER_OR_LEADER": "Chỉ trưởng lão hoặc tông chủ mới có quyền này.",
+      "CANNOT_KICK_SELF": "Không thể trục xuất chính mình.",
+      "CANNOT_KICK_HIGHER_ROLE": "Không thể trục xuất người có chức cao hơn.",
+      "TARGET_NOT_IN_SECT": "Người này không thuộc tông môn.",
+      "ALREADY_LEADER": "Người này đã là tông chủ.",
       "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
     },
     "mineBadge": {
