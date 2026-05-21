@@ -8,6 +8,7 @@
     "build": "pnpm -r run build",
     "typecheck": "pnpm -r run typecheck",
     "lint": "pnpm -r run lint",
+    "check:i18n": "node scripts/check-i18n-parity.mjs",
     "test": "pnpm -r run test",
     "test:balance": "pnpm --filter @xuantoi/shared test:balance",
     "infra:up": "docker compose -f infra/docker-compose.dev.yml up -d",

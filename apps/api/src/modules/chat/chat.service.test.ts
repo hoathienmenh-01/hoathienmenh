@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import {
@@ -126,19 +126,23 @@ describe('ChatService rate limit (8 tin / 30s / player)', () => {
   });
 
   it('window trượt: sau khi window hết, lại gửi được', async () => {
-    const u = await makeUserChar(prisma);
-    // Window 200ms (rộng hơn để tránh flake trên CI khi event loop bị nghẽn
-    // bởi các test khác); max = 2. Sleep 300ms (1.5× window) trước khi gửi
-    // tin thứ 4 để đảm bảo window đã trượt hoàn toàn.
-    const { svc } = svcWithFreshLimiter(200, 2);
-    await svc.sendWorld(u.userId, '1');
-    await svc.sendWorld(u.userId, '2');
-    await expect(svc.sendWorld(u.userId, '3')).rejects.toMatchObject({
-      code: 'RATE_LIMITED',
-    });
-    await new Promise((r) => setTimeout(r, 300));
-    const view = await svc.sendWorld(u.userId, 'after-window');
-    expect(view.text).toBe('after-window');
+    vi.useFakeTimers();
+    try {
+      const u = await makeUserChar(prisma);
+      // Window 200ms, max = 2. Advance time past window before 4th send.
+      const { svc } = svcWithFreshLimiter(200, 2);
+      await svc.sendWorld(u.userId, '1');
+      await svc.sendWorld(u.userId, '2');
+      await expect(svc.sendWorld(u.userId, '3')).rejects.toMatchObject({
+        code: 'RATE_LIMITED',
+      });
+      // Advance fake clock past window — no real sleep needed.
+      vi.advanceTimersByTime(300);
+      const view = await svc.sendWorld(u.userId, 'after-window');
+      expect(view.text).toBe('after-window');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

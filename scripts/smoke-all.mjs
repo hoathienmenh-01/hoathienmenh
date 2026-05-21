@@ -17,6 +17,7 @@
  *  11. smoke:dungeon-run    — Dungeon run start/next/claim + double-claim guard.
  *  12. smoke:mail           — Mail list/read/claim negative path.
  *  13. smoke:giftcode       — Giftcode redeem negative path + auth guards.
+ *  14. smoke:ws             — WebSocket connect + cultivation tick + mission push.
  *
  * Mỗi module có thể chạy riêng qua `pnpm smoke:<name>`.
  *
@@ -53,6 +54,7 @@ const ALL_SUITES = [
   { name: 'dungeon-run', script: 'scripts/smoke-dungeon-run.mjs' },
   { name: 'mail', script: 'scripts/smoke-mail.mjs' },
   { name: 'giftcode', script: 'scripts/smoke-giftcode.mjs' },
+  { name: 'ws', script: 'scripts/smoke-ws.mjs' },
 ];
 
 /**
