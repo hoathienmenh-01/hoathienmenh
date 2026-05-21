@@ -40,8 +40,20 @@ export class PlayerDashboardService {
     });
     if (!character) throw new DashboardError('NO_CHARACTER');
 
-    const [unreadMail, unreadNotification, activeFeedbackCount, activeReportCount] =
-      await Promise.all([
+    const todayStart = this.getTodayStart();
+
+    const [
+      unreadMail,
+      unreadNotification,
+      activeFeedbackCount,
+      activeReportCount,
+      activeFarmSession,
+      activeDungeonRun,
+      towerAttemptToday,
+      activeAuction,
+      sectContributionToday,
+      pendingMentorRequest,
+    ] = await Promise.all([
         this.safeCount(() =>
           this.prisma.mail.count({
             where: {
@@ -71,6 +83,51 @@ export class PlayerDashboardService {
               status: { in: ['NEW', 'REVIEWING'] },
             },
           }),
+        ),
+        this.safeBool(() =>
+          this.prisma.farmSession.findFirst({
+            where: { characterId: character.id, status: 'ACTIVE' },
+            select: { id: true },
+          }).then((r) => r !== null),
+        ),
+        this.safeBool(() =>
+          this.prisma.dungeonRun.findFirst({
+            where: { characterId: character.id, status: 'ACTIVE' },
+            select: { id: true },
+          }).then((r) => r !== null),
+        ),
+        this.safeBool(() =>
+          this.prisma.trialTowerAttemptLog.findFirst({
+            where: {
+              characterId: character.id,
+              createdAt: { gte: todayStart },
+            },
+            select: { id: true },
+          }).then((r) => r !== null),
+        ),
+        this.safeBool(() =>
+          this.prisma.marketAuction.findFirst({
+            where: { sellerCharacterId: character.id, status: 'ACTIVE' },
+            select: { id: true },
+          }).then((r) => r !== null),
+        ),
+        this.safeBool(() =>
+          this.prisma.sectWarContribution.findFirst({
+            where: {
+              characterId: character.id,
+              createdAt: { gte: todayStart },
+            },
+            select: { id: true },
+          }).then((r) => r !== null),
+        ),
+        this.safeBool(() =>
+          this.prisma.mentorRelation.findFirst({
+            where: {
+              mentorUserId: userId,
+              status: 'PENDING',
+            },
+            select: { id: true },
+          }).then((r) => r !== null),
         ),
       ]);
 
@@ -104,6 +161,12 @@ export class PlayerDashboardService {
     const todayChecklist = this.buildTodayChecklist(character, {
       unreadMail,
       cultivating: character.cultivating,
+      activeFarmSession,
+      activeDungeonRun,
+      towerAttemptToday,
+      activeAuction,
+      sectContributionToday,
+      pendingMentorRequest,
     });
     const warnings = this.buildWarnings({ unreadMail, unreadNotification });
     const quickLinks = this.buildQuickLinks({
@@ -125,7 +188,16 @@ export class PlayerDashboardService {
 
   private buildTodayChecklist(
     character: { cultivating: boolean; bodyCultivating: boolean },
-    ctx: { unreadMail: number; cultivating: boolean },
+    ctx: {
+      unreadMail: number;
+      cultivating: boolean;
+      activeFarmSession: boolean;
+      activeDungeonRun: boolean;
+      towerAttemptToday: boolean;
+      activeAuction: boolean;
+      sectContributionToday: boolean;
+      pendingMentorRequest: boolean;
+    },
   ): TodayChecklistItem[] {
     const items: TodayChecklistItem[] = [];
     const push = (
@@ -154,43 +226,43 @@ export class PlayerDashboardService {
       progressText: ctx.unreadMail > 0 ? String(ctx.unreadMail) : null,
     });
     push('RUN_FARM', {
-      status: 'TODO',
-      priority: 'MEDIUM',
+      status: ctx.activeFarmSession ? 'DONE' : 'TODO',
+      priority: ctx.activeFarmSession ? 'LOW' : 'MEDIUM',
       route: '/farm',
       reasonKey: null,
       progressText: null,
     });
     push('CLEAR_DUNGEON', {
-      status: 'TODO',
-      priority: 'MEDIUM',
+      status: ctx.activeDungeonRun ? 'DONE' : 'TODO',
+      priority: ctx.activeDungeonRun ? 'LOW' : 'MEDIUM',
       route: '/dungeon',
       reasonKey: null,
       progressText: null,
     });
     push('CLIMB_TOWER', {
-      status: 'TODO',
-      priority: 'MEDIUM',
+      status: ctx.towerAttemptToday ? 'DONE' : 'TODO',
+      priority: ctx.towerAttemptToday ? 'LOW' : 'MEDIUM',
       route: '/trial-tower',
       reasonKey: null,
       progressText: null,
     });
     push('CHECK_MARKET', {
-      status: 'TODO',
-      priority: 'LOW',
+      status: ctx.activeAuction ? 'DONE' : 'TODO',
+      priority: ctx.activeAuction ? 'LOW' : 'LOW',
       route: '/market',
       reasonKey: null,
       progressText: null,
     });
     push('JOIN_SECT_ACTIVITY', {
-      status: 'TODO',
-      priority: 'LOW',
+      status: ctx.sectContributionToday ? 'DONE' : 'TODO',
+      priority: ctx.sectContributionToday ? 'LOW' : 'LOW',
       route: '/sect',
       reasonKey: null,
       progressText: null,
     });
     push('READ_MENTOR_REQUEST', {
-      status: 'TODO',
-      priority: 'LOW',
+      status: ctx.pendingMentorRequest ? 'TODO' : 'DONE',
+      priority: ctx.pendingMentorRequest ? 'MEDIUM' : 'LOW',
       route: '/mentor',
       reasonKey: null,
       progressText: null,
@@ -280,6 +352,22 @@ export class PlayerDashboardService {
       );
       return 0;
     }
+  }
+
+  private async safeBool(fn: () => Promise<boolean>): Promise<boolean> {
+    try {
+      return await fn();
+    } catch (e) {
+      this.logger.warn(
+        `dashboard sub-bool failed: ${(e as Error).message}`,
+      );
+      return false;
+    }
+  }
+
+  private getTodayStart(): Date {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   }
 }
 

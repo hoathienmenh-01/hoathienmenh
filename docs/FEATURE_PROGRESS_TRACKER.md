@@ -64,20 +64,21 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 32 | Sect 2.0 — Roles & Member Table | DONE | Sect membership tracked via `Character.sectId` direct FK — no role hierarchy, no join date, no proper join table. | Add `SectRole` enum + `SectMember` model. Backfill from Character.sectId + Sect.leaderId. Update SectService create/join/leave/detail. Add role to SectMemberView. | `schema.prisma`, `sect.service.ts`, `sect.service.test.ts`, migration | SectMember table exists with role + joinedAt; create→LEADER, join→MEMBER, leave deletes row; detail reads from SectMember; typecheck + lint + build + tests pass. | 2026-05-21 |
 | 33 | Sect Permission Guards + Audit Log | DONE | Sect system has roles + permission guards but missing: SectBoss content, sect war contribution tracking with role-aware queries, and elder promotion UI for player-facing role management. | Add promote/demote/kick methods with role checks. SectAuditLog model. Controller endpoints. Tests for all permission paths. | `sect.service.ts`, `sect.controller.ts`, `sect.service.test.ts`, `schema.prisma`, migration | promote/demote/kick work with correct role guards; SectAuditLog records all mutations; 11 new tests pass; typecheck + lint + build pass. | 2026-05-21 |
 | 34 | Sect Epic — Boss, War Contribution & Elder UI | DONE | Sect system has roles + permission guards but missing: SectBoss content, sect war contribution tracking with role-aware queries, and elder promotion UI for player-facing role management. | Add SectBoss catalog + service + controller. Add sect war contribution tracking with role-aware aggregation. Add elder promotion UI in SectView. | `packages/shared/src/sect-content.ts`, `sect-boss.service.ts`, `sect-boss.controller.ts`, `sect-war-contribution.service.ts`, `SectView.vue`, `sect*.test.ts`, `schema.prisma`, migration | SectBossDef catalog entries; SectBoss spawn/fight/claim endpoints; sect war contribution tracked per-member with role-aware leaderboard; elder can promote/demote via UI; 12 boss tests + 9 war-contribution tests pass; migration 20460503000000; typecheck + lint + build pass. | 2026-05-22 |
+| 35 | Phase 44.2 — Player Dashboard Dynamic Checklist | IN_PROGRESS | PlayerDashboardService has 6 hardcoded TODO statuses that never reflect real player activity. | Wire RUN_FARM, CLEAR_DUNGEON, CLIMB_TOWER, CHECK_MARKET, JOIN_SECT_ACTIVITY, READ_MENTOR_REQUEST to real DB queries. Add 12 new tests. | `player-dashboard.service.ts`, `player-dashboard.service.test.ts` | All 6 statuses dynamic; 12 new tests pass; typecheck + lint + build + web tests pass. | 2026-05-22 |
 
 ## Current Recommended Next Task
 
-`Next task: choose from TODO queue — all sect tasks #32-34 DONE. Recommended: next highest-rank TODO in tracker.`
+`Phase 44.2 — Player Dashboard Dynamic Checklist (task #35). Status: IN_PROGRESS — service + tests written, quality gates running.`
 
 ## Active Task Template
 
 ### Active Task
 
-- Task: (none — task #34 completed)
-- Branch: feat/sect-epic-boss-war-elder
-- Started: 2026-05-21
+- Task: Phase 44.2 — Player Dashboard Dynamic Checklist
+- Branch: feat/phase-44-2-dashboard-dynamic-pet-wire
+- Started: 2026-05-22
 - Owner: AI
-- Status: DONE
+- Status: IN_PROGRESS
 
 ## Completed Tasks
 
