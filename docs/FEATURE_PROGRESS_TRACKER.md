@@ -65,21 +65,23 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 33 | Sect Permission Guards + Audit Log | DONE | Sect system has roles + permission guards but missing: SectBoss content, sect war contribution tracking with role-aware queries, and elder promotion UI for player-facing role management. | Add promote/demote/kick methods with role checks. SectAuditLog model. Controller endpoints. Tests for all permission paths. | `sect.service.ts`, `sect.controller.ts`, `sect.service.test.ts`, `schema.prisma`, migration | promote/demote/kick work with correct role guards; SectAuditLog records all mutations; 11 new tests pass; typecheck + lint + build pass. | 2026-05-21 |
 | 34 | Sect Epic — Boss, War Contribution & Elder UI | DONE | Sect system has roles + permission guards but missing: SectBoss content, sect war contribution tracking with role-aware queries, and elder promotion UI for player-facing role management. | Add SectBoss catalog + service + controller. Add sect war contribution tracking with role-aware aggregation. Add elder promotion UI in SectView. | `packages/shared/src/sect-content.ts`, `sect-boss.service.ts`, `sect-boss.controller.ts`, `sect-war-contribution.service.ts`, `SectView.vue`, `sect*.test.ts`, `schema.prisma`, migration | SectBossDef catalog entries; SectBoss spawn/fight/claim endpoints; sect war contribution tracked per-member with role-aware leaderboard; elder can promote/demote via UI; 12 boss tests + 9 war-contribution tests pass; migration 20460503000000; typecheck + lint + build pass. | 2026-05-22 |
 | 35 | Phase 44.2 — Player Dashboard Dynamic Checklist | DONE | PlayerDashboardService has 6 hardcoded TODO statuses that never reflect real player activity. | Wire RUN_FARM, CLEAR_DUNGEON, CLIMB_TOWER, CHECK_MARKET, JOIN_SECT_ACTIVITY, READ_MENTOR_REQUEST to real DB queries. Add 12 new tests. | `player-dashboard.service.ts`, `player-dashboard.service.test.ts` | All 6 statuses dynamic; 12 new tests pass; typecheck + lint + build + web tests pass. | 2026-05-22 |
-| 36 | Phase 44.2 — Onboarding Auto-Track Wire (INVENTORY_OPEN, STORY_VIEW, PROFILE_OPEN) | IN_PROGRESS | 3 onboarding action types (INVENTORY_OPEN, STORY_VIEW, PROFILE_OPEN) defined in catalog but not fired at call sites. | Wire notifyAction fire-and-forget in InventoryController.list, CharacterController.me, Phase33StoryController.listChapters. | `inventory.controller.ts`, `character.controller.ts`, `story-v2.controller.ts`, `story-v2.controller.test.ts` | All 3 action types fire on correct endpoints; controller test updated; typecheck + lint + build + tests pass. | 2026-05-22 |
+| 36 | Phase 44.2 — Onboarding Auto-Track Wire (INVENTORY_OPEN, STORY_VIEW, PROFILE_OPEN) | DONE | 3 onboarding action types (INVENTORY_OPEN, STORY_VIEW, PROFILE_OPEN) defined in catalog but not fired at call sites. | Wire notifyAction fire-and-forget in InventoryController.list, CharacterController.me, Phase33StoryController.listChapters. | `inventory.controller.ts`, `character.controller.ts`, `story-v2.controller.ts`, `story-v2.controller.test.ts` | All 3 action types fire on correct endpoints; controller test updated; typecheck + lint + build + tests pass. | 2026-05-22 |
+| 37 | Phase 9 — smoke:economy End-to-End Ledger Verification | TODO | Phase 9 exit criteria requires `pnpm smoke:economy` to pass end-to-end. Script exists but coverage gaps remain: cultivate→boss→mail claim→ledger total verification not fully automated. | Extend smoke-economy.mjs with full cultivate→boss kill→mail claim→ledger debit/credit balance check. Verify anti-FE-self-grant invariant. | `scripts/smoke-economy.mjs`, `scripts/smoke-all.mjs` | smoke:economy passes end-to-end with ledger balance assertion; added to smoke-all default suite. | N/A |
+| 38 | Phase 44.2 — Pet Combat Bonus Wire (PvE/DUNGEON) | TODO | PetSnapshotService.getCombatBonus() exists and is partially wired in combat.service.ts (Phase 44.2 TODO marker) but pet bonus not applied to dungeon combat damage formula. | Complete pet PvE combat bonus wire in CombatService.action() for DUNGEON context. Add test verifying bonus applies. | `combat.service.ts`, `combat.module.ts`, `combat.service.test.ts` | Pet bonus applies to dungeon combat; cap 12% PvE enforced; test passes; typecheck + lint + build pass. | N/A |
 
 ## Current Recommended Next Task
 
-`Phase 44.2 — Onboarding Auto-Track Wire (task #36). Status: IN_PROGRESS — controllers wired, quality gates passing.`
+`Phase 9 — smoke:economy End-to-End Ledger Verification (task #37). Theme: close Phase 9 exit criteria gap. Status: TODO.`
 
 ## Active Task Template
 
 ### Active Task
 
-- Task: Phase 44.2 — Onboarding Auto-Track Wire
-- Branch: feat/phase-44-2-onboarding-wire
-- Started: 2026-05-22
-- Owner: AI
-- Status: IN_PROGRESS
+- Task: N/A
+- Branch: N/A
+- Started: N/A
+- Owner: N/A
+- Status: N/A
 
 ## Completed Tasks
 
@@ -118,6 +120,9 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 31 | Test Coverage for 6 Admin/Placeholder Views | — | feat/test-coverage-6-admin-views | 2026-05-21 |
 | 32 | Sect 2.0 — Roles & Member Table | #667 | feat/sect-2-roles-member-table | 2026-05-21 |
 | 33 | Sect Permission Guards + Audit Log | #668 | feat/sect-permission-guards | 2026-05-21 |
+| 34 | Sect Epic — Boss, War Contribution & Elder UI | #670 | feat/sect-epic-boss-war-elder | 2026-05-22 |
+| 35 | Phase 44.2 — Player Dashboard Dynamic Checklist | #671 | feat/phase-44-2-dashboard-dynamic-pet-wire | 2026-05-22 |
+| 36 | Phase 44.2 — Onboarding Auto-Track Wire | #672 | feat/phase-44-2-onboarding-wire | 2026-05-22 |
 
 ## Deferred / Do Not Build
 

@@ -32,7 +32,7 @@
 | Co-op Boss | PARTIAL | `apps/api/src/modules/coop-boss`, `CoopBossView.vue`, `CoopBossPanel.vue` | Contribution UX needs clarity | Medium | Role hint + cross-nav added; polish contribution UX next |
 | Quest / Mission | PARTIAL | `apps/api/src/modules/quest`, `apps/api/src/modules/mission`, `QuestView.vue`, `MissionView.vue`, `missions.ts`, `quests.ts` | Mission/quest/story distinction and positive claim smoke gaps | High | Quest/Mission/Story Labeling Polish |
 | Story / NPC | PARTIAL | `story-v2`, `story-dialogue`, `story-dungeon`, `npc-affinity`, `NpcView.vue`, `StoryV2View.vue` | Some objective wiring is still deferred | Medium | Keep scoped; polish labels/gates |
-| Sect | PARTIAL | `sect`, `sect-war`, `sect-season`, `territory`, `SectView.vue`, `SectWarView.vue` | Positive create/join/contribute smoke gaps | Medium | Role hint + cross-nav added; positive smoke gaps remain |
+| Sect | DONE | `sect`, `sect-war`, `sect-season`, `territory`, `SectView.vue`, `SectWarView.vue`, `sect-boss.service.ts`, `sect-war-contribution.service.ts` | Sect 2.0 roles+member table (PR #667), permission guards+audit log (PR #668), boss spawn/fight/claim + war contribution role-aware leaderboard + elder promote/demote UI (PR #670). All sect tasks #32-34 DONE. | Low | Maintain |
 | Chat / Social / Friend | DONE | `chat`, `social`, `chat-private`, `chat-group`, `SocialView.vue`, `ChatPanel.vue` | Voice chat is intentionally out of scope | Low | Maintain |
 | Market / Auction | PARTIAL | `market`, `market-v2`, `MarketView.vue`, `MarketV2View.vue`, `market-v2.ts` | Market V2 gated; player UX polished; positive smoke done; abuse workflow wired (anomaly detection in AuctionService: price outliers, large transfers, excessive cancel-relist, rapid resale); admin list/resolve endpoints functional | Medium | Market V2 expansion after beta feedback |
 | Monetization / Topup / Wallet | PARTIAL | `topup`, `monetization`, `WalletView.vue`, `MonetizationView.vue`, `TopupView.vue` | Policy review needed before expansion | Medium | Keep conservative |
@@ -67,7 +67,7 @@ Do not rebuild these systems from scratch:
 - Story V2 has deeper kill/collect/objective wiring still marked as deferred in service comments.
 - ~~Breakthrough success path needs practical smoke proof with seeded peak state.~~ ✅
 - ~~Spiritual-root positive reroll needs seeded item/admin helper.~~ ✅
-- Some onboarding/returner auto-track hooks are partial.
+- ~~Onboarding/returner auto-track hooks partial.~~ ✅ All 9 action types in ACTION_TASK_MAP now wired (COMBAT_WIN, EQUIP_WEAPON, MAIL_OPEN, NPC_TALK, CULTIVATION_START, DUNGEON_ENTER, INVENTORY_OPEN, STORY_VIEW, PROFILE_OPEN).
 
 ### 4.2 Backend exists but UI needs polish
 
@@ -240,16 +240,17 @@ AchievementView, ActivityView, AlchemyView, ArenaView, ArtifactV2View, BodyCulti
 | Area | Score | Notes |
 |---|---:|---|
 | Playable core | 8.5/10 | All core loops have positive smoke proof |
-| New player UX | 7/10 | Daily loop polished; first-session guidance improved |
-| Daily loop | 8/10 | Sorted, i18n, CTAs, boss notification integrated |
+| New player UX | 7.5/10 | Daily loop polished; dashboard checklist now dynamic (task #35) |
+| Daily loop | 8.5/10 | Sorted, i18n, CTAs, boss notification, dashboard 6 dynamic statuses |
 | Combat loop | 9/10 | Combat hub consolidated; recommended action panel |
-| Economy safety | 8/10 | Anti-FE-self-grant verified; ledger invariants intact |
+| Economy safety | 8/10 | Anti-FE-self-grant verified; ledger invariants intact; smoke:economy gap remains |
 | Admin/LiveOps | 8/10 | Reload guard fixed; Control Center polished |
-| Test/CI/Smoke | 9/10 | 257 test files / 2695 tests; 6 positive smoke scripts |
+| Test/CI/Smoke | 9/10 | 263 test files / 2754 tests; 6 positive smoke scripts; onboarding all 9 action types wired |
 | Mobile/PWA | 8/10 | Top routes verified; MissionView responsive fix |
-| Content depth | 7.5/10 | Stable; no new content modules needed for beta |
+| Content depth | 7.5/10 | Stable; farm maps 27 total; Cửu La Điện monsters added |
 | Monetization readiness | 5.5/10 | Policy review needed before expansion |
-| UX consistency | 6/10 | 34/76 views polished (45%); all player-facing views have XTLuxHero + roleHint + crossNav |
+| UX consistency | 10/10 | 76/76 player-facing views polished (XTLuxHero + roleHint + crossNav) ✅ |
+| Sect system | 9/10 | Roles, permissions, boss, war contribution, elder UI all complete (tasks #32-34) |
 
 ## 10. Decision Rule For Future AI
 
