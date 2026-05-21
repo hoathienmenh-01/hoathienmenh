@@ -63,21 +63,21 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 31 | Test Coverage for 6 Admin/Placeholder Views | DONE | 6 views (AdminAchievementReputationView, AdminCodexView, AdminMarketV2View, AdminPetsView, AdminSystemStatusView, XianxiaPlaceholderView) had no test files. | Add test files for all 6 views: mock API/stores/router, verify title rendering, key elements, data-testid, loading/forbidden states. | 6 test files in `apps/web/src/views/__tests__/` | All 6 test files pass (25 tests); 263 test files / 2754 tests pass; typecheck + lint + build + Han gate pass. | 2026-05-21 |
 | 32 | Sect 2.0 — Roles & Member Table | DONE | Sect membership tracked via `Character.sectId` direct FK — no role hierarchy, no join date, no proper join table. | Add `SectRole` enum + `SectMember` model. Backfill from Character.sectId + Sect.leaderId. Update SectService create/join/leave/detail. Add role to SectMemberView. | `schema.prisma`, `sect.service.ts`, `sect.service.test.ts`, migration | SectMember table exists with role + joinedAt; create→LEADER, join→MEMBER, leave deletes row; detail reads from SectMember; typecheck + lint + build + tests pass. | 2026-05-21 |
 | 33 | Sect Permission Guards + Audit Log | DONE | Sect system has roles + permission guards but missing: SectBoss content, sect war contribution tracking with role-aware queries, and elder promotion UI for player-facing role management. | Add promote/demote/kick methods with role checks. SectAuditLog model. Controller endpoints. Tests for all permission paths. | `sect.service.ts`, `sect.controller.ts`, `sect.service.test.ts`, `schema.prisma`, migration | promote/demote/kick work with correct role guards; SectAuditLog records all mutations; 11 new tests pass; typecheck + lint + build pass. | 2026-05-21 |
-| 34 | Sect Epic — Boss, War Contribution & Elder UI | IN_PROGRESS | Sect system has roles + permission guards but missing: SectBoss content, sect war contribution tracking with role-aware queries, and elder promotion UI for player-facing role management. | Add SectBoss catalog + service + controller. Add sect war contribution tracking with role-aware aggregation. Add elder promotion UI in SectView. | `packages/shared/src/sect-content.ts`, `sect-boss.service.ts`, `sect-boss.controller.ts`, `sect-war-contribution.service.ts`, `SectView.vue`, `sect*.test.ts`, `schema.prisma`, migration | SectBossDef catalog entries; SectBoss spawn/fight/claim endpoints; sect war contribution tracked per-member with role-aware leaderboard; elder can promote/demote via UI; typecheck + lint + build pass. | 2026-05-21 |
+| 34 | Sect Epic — Boss, War Contribution & Elder UI | DONE | Sect system has roles + permission guards but missing: SectBoss content, sect war contribution tracking with role-aware queries, and elder promotion UI for player-facing role management. | Add SectBoss catalog + service + controller. Add sect war contribution tracking with role-aware aggregation. Add elder promotion UI in SectView. | `packages/shared/src/sect-content.ts`, `sect-boss.service.ts`, `sect-boss.controller.ts`, `sect-war-contribution.service.ts`, `SectView.vue`, `sect*.test.ts`, `schema.prisma`, migration | SectBossDef catalog entries; SectBoss spawn/fight/claim endpoints; sect war contribution tracked per-member with role-aware leaderboard; elder can promote/demote via UI; 12 boss tests + 9 war-contribution tests pass; migration 20460503000000; typecheck + lint + build pass. | 2026-05-22 |
 
 ## Current Recommended Next Task
 
-`Sect Epic — Boss, War Contribution & Elder UI (task #34). Theme: complete the sect system after roles + permission guards. Status: IN_PROGRESS — backend services + schema done, elder UI done, needs migration + tests.`
+`Next task: choose from TODO queue — all sect tasks #32-34 DONE. Recommended: next highest-rank TODO in tracker.`
 
 ## Active Task Template
 
 ### Active Task
 
-- Task: Sect Epic — Boss, War Contribution & Elder UI
+- Task: (none — task #34 completed)
 - Branch: feat/sect-epic-boss-war-elder
 - Started: 2026-05-21
 - Owner: AI
-- Status: IN_PROGRESS
+- Status: DONE
 
 ## Completed Tasks
 
