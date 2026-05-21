@@ -205,8 +205,9 @@ Tham chiếu nhanh **tất cả flow lớn cần verify trước mỗi closed-be
 |---|---|---|---|
 | Market post + buy listing | `smoke:market` | §7 | YES |
 | Shop NPC buy | `smoke:shop` | §7 | YES |
-| Currency ledger consistency | `smoke:economy` | Post-smoke check `/healthz` + admin Audit tab | YES |
-| Topup package + QR + giftcode redeem | `smoke:topup` + `smoke:giftcode` | §9 | YES |
+| Currency ledger consistency | `smoke:economy` (default suite — daily-login + shop + mail-reward chain) | Post-smoke check `/healthz` + admin Audit tab | YES |
+| Mail reward claim → ledger row | `smoke:economy` (step 9 mail-reward chain — admin grant → player claim → ledger verify) | §5 | YES |
+| Topup package + QR + giftcode redeem | `smoke:topup` + `smoke:giftcode` (default suite) | §9 | YES |
 | Market trade abuse anomaly | N/A (auto detection only) | §10 Admin → tab Market Abuse | YES |
 
 ### G. Social & Chat

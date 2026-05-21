@@ -66,22 +66,22 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 34 | Sect Epic — Boss, War Contribution & Elder UI | DONE | Sect system has roles + permission guards but missing: SectBoss content, sect war contribution tracking with role-aware queries, and elder promotion UI for player-facing role management. | Add SectBoss catalog + service + controller. Add sect war contribution tracking with role-aware aggregation. Add elder promotion UI in SectView. | `packages/shared/src/sect-content.ts`, `sect-boss.service.ts`, `sect-boss.controller.ts`, `sect-war-contribution.service.ts`, `SectView.vue`, `sect*.test.ts`, `schema.prisma`, migration | SectBossDef catalog entries; SectBoss spawn/fight/claim endpoints; sect war contribution tracked per-member with role-aware leaderboard; elder can promote/demote via UI; 12 boss tests + 9 war-contribution tests pass; migration 20460503000000; typecheck + lint + build pass. | 2026-05-22 |
 | 35 | Phase 44.2 — Player Dashboard Dynamic Checklist | DONE | PlayerDashboardService has 6 hardcoded TODO statuses that never reflect real player activity. | Wire RUN_FARM, CLEAR_DUNGEON, CLIMB_TOWER, CHECK_MARKET, JOIN_SECT_ACTIVITY, READ_MENTOR_REQUEST to real DB queries. Add 12 new tests. | `player-dashboard.service.ts`, `player-dashboard.service.test.ts` | All 6 statuses dynamic; 12 new tests pass; typecheck + lint + build + web tests pass. | 2026-05-22 |
 | 36 | Phase 44.2 — Onboarding Auto-Track Wire (INVENTORY_OPEN, STORY_VIEW, PROFILE_OPEN) | DONE | 3 onboarding action types (INVENTORY_OPEN, STORY_VIEW, PROFILE_OPEN) defined in catalog but not fired at call sites. | Wire notifyAction fire-and-forget in InventoryController.list, CharacterController.me, Phase33StoryController.listChapters. | `inventory.controller.ts`, `character.controller.ts`, `story-v2.controller.ts`, `story-v2.controller.test.ts` | All 3 action types fire on correct endpoints; controller test updated; typecheck + lint + build + tests pass. | 2026-05-22 |
-| 37 | Phase 9 — smoke:economy End-to-End Ledger Verification | TODO | Phase 9 exit criteria requires `pnpm smoke:economy` to pass end-to-end. Script exists but coverage gaps remain: cultivate→boss→mail claim→ledger total verification not fully automated. | Extend smoke-economy.mjs with full cultivate→boss kill→mail claim→ledger debit/credit balance check. Verify anti-FE-self-grant invariant. | `scripts/smoke-economy.mjs`, `scripts/smoke-all.mjs` | smoke:economy passes end-to-end with ledger balance assertion; added to smoke-all default suite. | N/A |
+| 37 | Phase 9 — Smoke Coverage Pack | IN_PROGRESS | Phase 9 exit criteria requires broader smoke coverage. smoke:combat, smoke:cultivation, smoke:boss, smoke:dungeon-run, smoke:mail, smoke:giftcode existed but were not in ALL_SUITES default run. smoke:economy missing mail-reward ledger chain. | Promote 6 scripts to ALL_SUITES. Extend smoke-economy with admin-grant-mail → player-claim → ledger-row chain. Update QA_CHECKLIST. | `scripts/smoke-all.mjs`, `scripts/smoke-economy.mjs`, `docs/QA_CHECKLIST.md` | 6 scripts in default suite; mail-reward ledger chain verified; QA checklist updated; typecheck + lint + build + web tests pass. | 2026-05-22 |
 | 38 | Phase 44.2 — Pet Combat Bonus Wire (PvE/DUNGEON) | TODO | PetSnapshotService.getCombatBonus() exists and is partially wired in combat.service.ts (Phase 44.2 TODO marker) but pet bonus not applied to dungeon combat damage formula. | Complete pet PvE combat bonus wire in CombatService.action() for DUNGEON context. Add test verifying bonus applies. | `combat.service.ts`, `combat.module.ts`, `combat.service.test.ts` | Pet bonus applies to dungeon combat; cap 12% PvE enforced; test passes; typecheck + lint + build pass. | N/A |
 
 ## Current Recommended Next Task
 
-`Phase 9 — smoke:economy End-to-End Ledger Verification (task #37). Theme: close Phase 9 exit criteria gap. Status: TODO.`
+`Phase 9 — Smoke Coverage Pack (task #37). Status: IN_PROGRESS — smoke-all promoted 6 suites, smoke-economy mail-reward chain added, QA checklist updated.`
 
 ## Active Task Template
 
 ### Active Task
 
-- Task: N/A
-- Branch: N/A
-- Started: N/A
-- Owner: N/A
-- Status: N/A
+- Task: Phase 9 — Smoke Coverage Pack
+- Branch: feat/phase-9-smoke-coverage-pack
+- Started: 2026-05-22
+- Owner: AI
+- Status: IN_PROGRESS
 
 ## Completed Tasks
 
