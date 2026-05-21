@@ -81,6 +81,7 @@ import { BuffService } from './buff.service';
 import { getBuffDef, getTitleDef, realmByKey, TITLES } from '@xuantoi/shared';
 import { AuthService } from '../auth/auth.service';
 import { FeatureFlagService } from '../feature-flag/feature-flag.service';
+import { OnboardingQuestService } from '../onboarding-quest/onboarding-quest.service';
 import {
   InMemorySlidingWindowRateLimiter,
   type RateLimiter,
@@ -284,6 +285,7 @@ export class CharacterController {
     @Optional() private readonly artifactV2?: ArtifactV2Service,
     @Optional() private readonly reputation?: ReputationService,
     @Optional() private readonly longTermGoals?: LongTermGoalService,
+    @Optional() private readonly onboarding?: OnboardingQuestService,
   ) {
     this.profileLimiter =
       profileLimiter ??
@@ -303,6 +305,8 @@ export class CharacterController {
   async me(@Req() req: Request) {
     const userId = await this.requireUserId(req);
     const character = await this.chars.findByUser(userId);
+    // Phase 44.2 — Onboarding auto-track PROFILE_OPEN. Fire-and-forget.
+    if (this.onboarding && character) void this.onboarding.notifyAction(character.id, 'PROFILE_OPEN');
     return { ok: true, data: { character } };
   }
 

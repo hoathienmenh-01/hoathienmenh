@@ -131,7 +131,10 @@ function makeController(opts: MakeOpts = {}) {
   const featureFlags = {
     requireEnabled: async () => {},
   } as unknown as import('../feature-flag/feature-flag.service').FeatureFlagService;
-  return new Phase33StoryController(story, auth, featureFlags);
+  const prisma = {
+    character: { findUnique: async () => null },
+  } as unknown as import('../../common/prisma.service').PrismaService;
+  return new Phase33StoryController(story, auth, featureFlags, prisma);
 }
 
 async function expectHttpError(

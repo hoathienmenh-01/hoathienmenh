@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpException,
   HttpStatus,
+  Optional,
   Param,
   Post,
   Query,
@@ -22,6 +23,8 @@ import {
   Phase33StoryService,
 } from './story-v2.service';
 import { FeatureFlagService } from '../feature-flag/feature-flag.service';
+import { OnboardingQuestService } from '../onboarding-quest/onboarding-quest.service';
+import { PrismaService } from '../../common/prisma.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -62,6 +65,8 @@ export class Phase33StoryController {
     private readonly storyV2: Phase33StoryService,
     private readonly auth: AuthService,
     private readonly featureFlags: FeatureFlagService,
+    private readonly prisma: PrismaService,
+    @Optional() private readonly onboarding?: OnboardingQuestService,
   ) {}
 
   @Get('chapters')
@@ -72,6 +77,14 @@ export class Phase33StoryController {
     if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
     try {
       const chapters = await this.storyV2.listChaptersForUser(userId);
+      // Phase 44.2 — Onboarding auto-track STORY_VIEW. Fire-and-forget.
+      if (this.onboarding) {
+        const char = await this.prisma.character.findUnique({
+          where: { userId },
+          select: { id: true },
+        });
+        if (char) void this.onboarding.notifyAction(char.id, 'STORY_VIEW');
+      }
       return { ok: true, data: { chapters } };
     } catch (e) {
       this.handleErr(e);
