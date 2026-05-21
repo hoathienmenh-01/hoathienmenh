@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpException,
   HttpStatus,
+  Optional,
   Param,
   Post,
   Req,
@@ -22,6 +23,7 @@ import {
 import { InventoryService, type InventoryView } from './inventory.service';
 import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../../common/prisma.service';
+import { OnboardingQuestService } from '../onboarding-quest/onboarding-quest.service';
 
 const QolQueryInput = z.object({
   sort: z.enum(INVENTORY_QOL_SORT_KEYS).optional(),
@@ -64,6 +66,7 @@ export class InventoryController {
     private readonly inv: InventoryService,
     private readonly auth: AuthService,
     private readonly prisma: PrismaService,
+    @Optional() private readonly onboarding?: OnboardingQuestService,
   ) {}
 
   private async requireCharacter(req: Request): Promise<{ userId: string; characterId: string }> {
@@ -81,6 +84,8 @@ export class InventoryController {
   async list(@Req() req: Request): Promise<{ ok: true; data: { items: InventoryView[] } }> {
     const { characterId } = await this.requireCharacter(req);
     const items = await this.inv.list(characterId);
+    // Phase 44.2 — Onboarding auto-track INVENTORY_OPEN. Fire-and-forget.
+    if (this.onboarding) void this.onboarding.notifyAction(characterId, 'INVENTORY_OPEN');
     return { ok: true, data: { items } };
   }
 
