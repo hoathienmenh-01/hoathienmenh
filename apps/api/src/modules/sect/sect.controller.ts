@@ -28,6 +28,10 @@ const ContributeInput = z.object({
     .transform((v) => BigInt(v)),
 });
 
+const TargetInput = z.object({
+  targetCharacterId: z.string().min(1),
+});
+
 function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
   throw new HttpException({ ok: false, error: { code, message: code } }, status);
 }
@@ -146,6 +150,51 @@ export class SectController {
     }
   }
 
+  @Post('promote')
+  @HttpCode(200)
+  async promote(@Req() req: Request, @Body() body: unknown) {
+    const { userId } = await this.getViewer(req);
+    if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    const parsed = TargetInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const sect = await this.sect.promote(userId, parsed.data.targetCharacterId);
+      return { ok: true, data: { sect } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  @Post('demote')
+  @HttpCode(200)
+  async demote(@Req() req: Request, @Body() body: unknown) {
+    const { userId } = await this.getViewer(req);
+    if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    const parsed = TargetInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const sect = await this.sect.demote(userId, parsed.data.targetCharacterId);
+      return { ok: true, data: { sect } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  @Post('kick')
+  @HttpCode(200)
+  async kick(@Req() req: Request, @Body() body: unknown) {
+    const { userId } = await this.getViewer(req);
+    if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    const parsed = TargetInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const r = await this.sect.kick(userId, parsed.data.targetCharacterId);
+      return { ok: true, data: r };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
   private handleErr(e: unknown): never {
     if (e instanceof SectError) {
       switch (e.code) {
@@ -161,7 +210,17 @@ export class SectController {
         case 'ALREADY_IN_SECT':
         case 'INSUFFICIENT_LINH_THACH':
         case 'NAME_TAKEN':
+        case 'ALREADY_LEADER':
           fail(e.code, HttpStatus.CONFLICT);
+        // eslint-disable-next-line no-fallthrough
+        case 'NOT_LEADER':
+        case 'NOT_ELDER_OR_LEADER':
+          fail(e.code, HttpStatus.FORBIDDEN);
+        // eslint-disable-next-line no-fallthrough
+        case 'CANNOT_KICK_SELF':
+        case 'CANNOT_KICK_HIGHER_ROLE':
+        case 'TARGET_NOT_IN_SECT':
+          fail(e.code, HttpStatus.BAD_REQUEST);
       }
     }
     throw e;

@@ -185,4 +185,144 @@ describe('SectService', () => {
     expect(memberView.role).toBe('MEMBER');
     expect(memberView.isLeader).toBe(false);
   });
+
+  it('promote: LEADER promotes MEMBER → ELDER', async () => {
+    const leader = await makeUserChar(prisma);
+    const member = await makeUserChar(prisma);
+    const s = await sect.create(leader.userId, `S-${nextSuffix()}`, '');
+    await sect.join(member.userId, s.id);
+
+    await sect.promote(leader.userId, member.characterId);
+    const row = await prisma.sectMember.findUniqueOrThrow({ where: { characterId: member.characterId } });
+    expect(row.role).toBe('ELDER');
+  });
+
+  it('promote: LEADER promotes ELDER → LEADER (old leader becomes ELDER)', async () => {
+    const leader = await makeUserChar(prisma);
+    const elder = await makeUserChar(prisma);
+    const s = await sect.create(leader.userId, `S-${nextSuffix()}`, '');
+    await sect.join(elder.userId, s.id);
+    await sect.promote(leader.userId, elder.characterId); // MEMBER → ELDER
+
+    await sect.promote(leader.userId, elder.characterId); // ELDER → LEADER
+    const elderRow = await prisma.sectMember.findUniqueOrThrow({ where: { characterId: elder.characterId } });
+    const leaderRow = await prisma.sectMember.findUniqueOrThrow({ where: { characterId: leader.characterId } });
+    expect(elderRow.role).toBe('LEADER');
+    expect(leaderRow.role).toBe('ELDER');
+    const sectRow = await prisma.sect.findUniqueOrThrow({ where: { id: s.id } });
+    expect(sectRow.leaderId).toBe(elder.characterId);
+  });
+
+  it('promote: MEMBER cannot promote → NOT_LEADER', async () => {
+    const leader = await makeUserChar(prisma);
+    const member1 = await makeUserChar(prisma);
+    const member2 = await makeUserChar(prisma);
+    const s = await sect.create(leader.userId, `S-${nextSuffix()}`, '');
+    await sect.join(member1.userId, s.id);
+    await sect.join(member2.userId, s.id);
+
+    await expect(sect.promote(member1.userId, member2.characterId)).rejects.toMatchObject({
+      code: 'NOT_LEADER',
+    });
+  });
+
+  it('demote: LEADER demotes ELDER → MEMBER', async () => {
+    const leader = await makeUserChar(prisma);
+    const member = await makeUserChar(prisma);
+    const s = await sect.create(leader.userId, `S-${nextSuffix()}`, '');
+    await sect.join(member.userId, s.id);
+    await sect.promote(leader.userId, member.characterId); // → ELDER
+
+    await sect.demote(leader.userId, member.characterId);
+    const row = await prisma.sectMember.findUniqueOrThrow({ where: { characterId: member.characterId } });
+    expect(row.role).toBe('MEMBER');
+  });
+
+  it('demote: MEMBER cannot demote → NOT_LEADER', async () => {
+    const leader = await makeUserChar(prisma);
+    const member = await makeUserChar(prisma);
+    const s = await sect.create(leader.userId, `S-${nextSuffix()}`, '');
+    await sect.join(member.userId, s.id);
+
+    await expect(sect.demote(member.userId, leader.characterId)).rejects.toMatchObject({
+      code: 'NOT_LEADER',
+    });
+  });
+
+  it('kick: LEADER kicks MEMBER', async () => {
+    const leader = await makeUserChar(prisma);
+    const member = await makeUserChar(prisma);
+    const s = await sect.create(leader.userId, `S-${nextSuffix()}`, '');
+    await sect.join(member.userId, s.id);
+
+    await sect.kick(leader.userId, member.characterId);
+    expect(await prisma.sectMember.findUnique({ where: { characterId: member.characterId } })).toBeNull();
+    const c = await prisma.character.findUniqueOrThrow({ where: { id: member.characterId } });
+    expect(c.sectId).toBeNull();
+  });
+
+  it('kick: ELDER kicks MEMBER', async () => {
+    const leader = await makeUserChar(prisma);
+    const elder = await makeUserChar(prisma);
+    const member = await makeUserChar(prisma);
+    const s = await sect.create(leader.userId, `S-${nextSuffix()}`, '');
+    await sect.join(elder.userId, s.id);
+    await sect.join(member.userId, s.id);
+    await sect.promote(leader.userId, elder.characterId); // → ELDER
+
+    await sect.kick(elder.userId, member.characterId);
+    expect(await prisma.sectMember.findUnique({ where: { characterId: member.characterId } })).toBeNull();
+  });
+
+  it('kick: ELDER cannot kick ELDER → CANNOT_KICK_HIGHER_ROLE', async () => {
+    const leader = await makeUserChar(prisma);
+    const elder1 = await makeUserChar(prisma);
+    const elder2 = await makeUserChar(prisma);
+    const s = await sect.create(leader.userId, `S-${nextSuffix()}`, '');
+    await sect.join(elder1.userId, s.id);
+    await sect.join(elder2.userId, s.id);
+    await sect.promote(leader.userId, elder1.characterId);
+    await sect.promote(leader.userId, elder2.characterId);
+
+    await expect(sect.kick(elder1.userId, elder2.characterId)).rejects.toMatchObject({
+      code: 'CANNOT_KICK_HIGHER_ROLE',
+    });
+  });
+
+  it('kick: MEMBER cannot kick → NOT_ELDER_OR_LEADER', async () => {
+    const leader = await makeUserChar(prisma);
+    const member1 = await makeUserChar(prisma);
+    const member2 = await makeUserChar(prisma);
+    const s = await sect.create(leader.userId, `S-${nextSuffix()}`, '');
+    await sect.join(member1.userId, s.id);
+    await sect.join(member2.userId, s.id);
+
+    await expect(sect.kick(member1.userId, member2.characterId)).rejects.toMatchObject({
+      code: 'NOT_ELDER_OR_LEADER',
+    });
+  });
+
+  it('kick: cannot kick self → CANNOT_KICK_SELF', async () => {
+    const leader = await makeUserChar(prisma);
+    await sect.create(leader.userId, `S-${nextSuffix()}`, '');
+
+    await expect(sect.kick(leader.userId, leader.characterId)).rejects.toMatchObject({
+      code: 'CANNOT_KICK_SELF',
+    });
+  });
+
+  it('leave: audit log created', async () => {
+    const leader = await makeUserChar(prisma);
+    const member = await makeUserChar(prisma);
+    const s = await sect.create(leader.userId, `S-${nextSuffix()}`, '');
+    await sect.join(member.userId, s.id);
+
+    await sect.leave(member.userId);
+    const log = await prisma.sectAuditLog.findFirst({
+      where: { sectId: s.id, action: 'LEAVE', targetCharId: member.characterId },
+    });
+    expect(log).not.toBeNull();
+    expect(log!.actorCharId).toBe(member.characterId);
+    expect(log!.fromRole).toBe('MEMBER');
+  });
 });

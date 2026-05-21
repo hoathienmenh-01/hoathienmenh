@@ -17,7 +17,13 @@ class SectError extends Error {
       | 'INVALID_AMOUNT'
       | 'INSUFFICIENT_LINH_THACH'
       | 'NAME_TAKEN'
-      | 'INVALID_NAME',
+      | 'INVALID_NAME'
+      | 'NOT_LEADER'
+      | 'NOT_ELDER_OR_LEADER'
+      | 'CANNOT_KICK_SELF'
+      | 'CANNOT_KICK_HIGHER_ROLE'
+      | 'TARGET_NOT_IN_SECT'
+      | 'ALREADY_LEADER',
   ) {
     super(code);
   }
@@ -221,6 +227,12 @@ export class SectService {
     if (!char.sectId) throw new SectError('NOT_IN_SECT');
     const oldSectId = char.sectId;
 
+    // Capture role before delete for audit log.
+    const memberRow = await this.prisma.sectMember.findUnique({
+      where: { characterId: char.id },
+      select: { role: true },
+    });
+
     await this.prisma.$transaction(async (tx) => {
       // Leader rời tông → bỏ leader, sect tồn tại đến khi admin xử lý.
       const sect = await tx.sect.findUnique({ where: { id: oldSectId } });
@@ -241,6 +253,7 @@ export class SectService {
         data: { sectId: null },
       });
       if (left.count === 0) throw new SectError('NOT_IN_SECT');
+      await this.logAuditTx(tx, oldSectId, char.id, char.id, 'LEAVE', memberRow?.role ?? null, null);
     });
 
     this.realtime.leaveUserFromRoom(userId, `sect:${oldSectId}`);
@@ -314,6 +327,162 @@ export class SectService {
       // bỏ qua lỗi mission/achievement — contribute đã thành công.
     }
     return this.detail(sectId, char.id);
+  }
+
+  async promote(userId: string, targetCharacterId: string): Promise<SectDetailView> {
+    const char = await this.prisma.character.findUnique({ where: { userId } });
+    if (!char) throw new SectError('NO_CHARACTER');
+    if (!char.sectId) throw new SectError('NOT_IN_SECT');
+    const sectId = char.sectId;
+
+    const actorMember = await this.prisma.sectMember.findUnique({
+      where: { characterId: char.id },
+    });
+    if (!actorMember || actorMember.sectId !== sectId) throw new SectError('NOT_IN_SECT');
+    if (actorMember.role !== 'LEADER') throw new SectError('NOT_LEADER');
+
+    const targetMember = await this.prisma.sectMember.findUnique({
+      where: { characterId: targetCharacterId },
+    });
+    if (!targetMember || targetMember.sectId !== sectId) throw new SectError('TARGET_NOT_IN_SECT');
+    if (targetMember.role === 'LEADER') throw new SectError('ALREADY_LEADER');
+
+    await this.prisma.$transaction(async (tx) => {
+      if (targetMember.role === 'MEMBER') {
+        // MEMBER → ELDER
+        await tx.sectMember.update({
+          where: { characterId: targetCharacterId },
+          data: { role: 'ELDER' },
+        });
+        await this.logAuditTx(tx, sectId, char.id, targetCharacterId, 'PROMOTE', 'MEMBER', 'ELDER');
+      } else {
+        // ELDER → LEADER: demote current leader to ELDER, promote target to LEADER
+        await tx.sectMember.update({
+          where: { characterId: char.id },
+          data: { role: 'ELDER' },
+        });
+        await tx.sectMember.update({
+          where: { characterId: targetCharacterId },
+          data: { role: 'LEADER' },
+        });
+        await tx.sect.update({
+          where: { id: sectId },
+          data: { leaderId: targetCharacterId },
+        });
+        await this.logAuditTx(tx, sectId, char.id, targetCharacterId, 'PROMOTE', 'ELDER', 'LEADER');
+      }
+    });
+
+    await this.refreshState(userId);
+    return this.detail(sectId, char.id);
+  }
+
+  async demote(userId: string, targetCharacterId: string): Promise<SectDetailView> {
+    const char = await this.prisma.character.findUnique({ where: { userId } });
+    if (!char) throw new SectError('NO_CHARACTER');
+    if (!char.sectId) throw new SectError('NOT_IN_SECT');
+    const sectId = char.sectId;
+
+    const actorMember = await this.prisma.sectMember.findUnique({
+      where: { characterId: char.id },
+    });
+    if (!actorMember || actorMember.sectId !== sectId) throw new SectError('NOT_IN_SECT');
+    if (actorMember.role !== 'LEADER') throw new SectError('NOT_LEADER');
+
+    const targetMember = await this.prisma.sectMember.findUnique({
+      where: { characterId: targetCharacterId },
+    });
+    if (!targetMember || targetMember.sectId !== sectId) throw new SectError('TARGET_NOT_IN_SECT');
+    if (targetMember.role !== 'ELDER') throw new SectError('TARGET_NOT_IN_SECT');
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.sectMember.update({
+        where: { characterId: targetCharacterId },
+        data: { role: 'MEMBER' },
+      });
+      await this.logAuditTx(tx, sectId, char.id, targetCharacterId, 'DEMOTE', 'ELDER', 'MEMBER');
+    });
+
+    await this.refreshState(userId);
+    return this.detail(sectId, char.id);
+  }
+
+  async kick(userId: string, targetCharacterId: string): Promise<{ ok: true }> {
+    const char = await this.prisma.character.findUnique({ where: { userId } });
+    if (!char) throw new SectError('NO_CHARACTER');
+    if (!char.sectId) throw new SectError('NOT_IN_SECT');
+    if (char.id === targetCharacterId) throw new SectError('CANNOT_KICK_SELF');
+    const sectId = char.sectId;
+
+    const actorMember = await this.prisma.sectMember.findUnique({
+      where: { characterId: char.id },
+    });
+    if (!actorMember || actorMember.sectId !== sectId) throw new SectError('NOT_IN_SECT');
+    if (actorMember.role !== 'LEADER' && actorMember.role !== 'ELDER') {
+      throw new SectError('NOT_ELDER_OR_LEADER');
+    }
+
+    const targetMember = await this.prisma.sectMember.findUnique({
+      where: { characterId: targetCharacterId },
+    });
+    if (!targetMember || targetMember.sectId !== sectId) throw new SectError('TARGET_NOT_IN_SECT');
+
+    // ELDER can only kick MEMBER; LEADER can kick anyone.
+    if (actorMember.role === 'ELDER' && targetMember.role !== 'MEMBER') {
+      throw new SectError('CANNOT_KICK_HIGHER_ROLE');
+    }
+
+    const targetUserId = await this.prisma.character.findUnique({
+      where: { id: targetCharacterId },
+      select: { userId: true },
+    });
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.sectMember.deleteMany({
+        where: { characterId: targetCharacterId, sectId },
+      });
+      // If target was leader (edge case), clear leaderId.
+      if (targetMember.role === 'LEADER') {
+        await tx.sect.update({ where: { id: sectId }, data: { leaderId: null } });
+      }
+      await tx.character.updateMany({
+        where: { id: targetCharacterId, sectId },
+        data: { sectId: null },
+      });
+      await this.logAuditTx(tx, sectId, char.id, targetCharacterId, 'KICK', targetMember.role, null);
+    });
+
+    if (targetUserId) {
+      this.realtime.leaveUserFromRoom(targetUserId.userId, `sect:${sectId}`);
+      await this.refreshState(targetUserId.userId);
+    }
+    await this.refreshState(userId);
+    return { ok: true };
+  }
+
+  private async logAuditTx(
+    tx: Prisma.TransactionClient,
+    sectId: string,
+    actorCharId: string,
+    targetCharId: string,
+    action: string,
+    fromRole: string | null,
+    toRole: string | null,
+  ): Promise<void> {
+    try {
+      await tx.sectAuditLog.create({
+        data: {
+          sectId,
+          actorCharId,
+          targetCharId,
+          action,
+          fromRole: fromRole as never,
+          toRole: toRole as never,
+        },
+      });
+    } catch {
+      // Fire-and-forget: audit failure must not block the mutation.
+    }
   }
 
   private async refreshState(userId: string): Promise<void> {

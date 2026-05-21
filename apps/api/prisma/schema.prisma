@@ -2199,6 +2199,21 @@ model SectMember {
   @@index([sectId, joinedAt])
 }
 
+model SectAuditLog {
+  id           String    @id @default(cuid())
+  sectId       String
+  actorCharId  String
+  targetCharId String
+  action       String
+  fromRole     SectRole?
+  toRole       SectRole?
+  meta         Json      @default("{}")
+  createdAt    DateTime  @default(now())
+
+  @@index([sectId, createdAt])
+  @@index([actorCharId, createdAt])
+}
+
 enum ChatChannel {
   WORLD
   SECT
