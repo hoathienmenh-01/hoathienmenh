@@ -58,6 +58,7 @@ import { DropEconomyService } from '../economy/drop-economy.service';
 import { Phase33StoryService } from '../story-v2/story-v2.service';
 import { WebPushService } from '../web-push/web-push.service';
 import { WebPushTriggerService } from '../web-push/web-push-trigger.service';
+import { PetSnapshotService } from '../pet/pet-snapshot.service';
 
 export class BossError extends Error {
   constructor(
@@ -191,6 +192,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     // Phase 33.3 — Story V2 boss_defeat step tracking. Optional inject
     // — test bootstrap có thể bỏ. Fail-soft trong service.
     @Optional() private readonly phase33Story?: Phase33StoryService,
+    @Optional() private readonly petSnapshot?: PetSnapshotService,
   ) {}
 
   onModuleInit(): void {
@@ -448,14 +450,29 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       skillElement,
       def.element ?? null,
     );
+    // Phase 44.2 — Pet BOSS combat bonus. Symmetric với combat.service.ts DUNGEON path.
+    // context=BOSS, cap 8% (per PetDef.contributionCap BOSS). Identity (1.0) khi
+    // DI thiếu hoặc chưa equip pet. Fail-soft: try-catch → fallback 1.0.
+    let petCombatMul = 1.0;
+    if (this.petSnapshot) {
+      try {
+        const petBonus = await this.petSnapshot.getCombatBonus(char.id, 'BOSS');
+        if (petBonus && charAtk > 0) {
+          const capFrac = petBonus.damageContributionCapPercent / 100;
+          const rawFrac = petBonus.petStats.atk / charAtk;
+          const contribFrac = Math.max(0, Math.min(rawFrac, capFrac));
+          petCombatMul = 1 + contribFrac;
+        }
+      } catch {
+        petCombatMul = 1.0;
+      }
+    }
     const damage = Math.max(
       1,
       Math.round(
-        raw * playerElementMul * talentElementMul * buffElementMul,
+        raw * playerElementMul * talentElementMul * buffElementMul * petCombatMul,
       ),
     );
-
-    // Trừ resource trước (cooldown set ngay để chống burst).
     this.cooldowns.set(char.id, now);
 
     const healRatio = skill.selfHealRatio;

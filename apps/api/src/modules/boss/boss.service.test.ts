@@ -2032,4 +2032,119 @@ describe('BossService', () => {
       );
     });
   });
+
+  describe('Pet BOSS combat bonus (Phase 44.2)', () => {
+    it('pet bonus applies: damage increases when petSnapshot returns BOSS bonus', async () => {
+      const u = await makeUserChar(prisma, { mp: 100, stamina: 100, power: 1000 });
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      // Baseline: boss without pet bonus.
+      const baseOut = await boss.attack(u.userId, undefined);
+      const baseDmg = BigInt(baseOut.result.damageDealt);
+
+      // Reset cooldown.
+      (boss as unknown as { cooldowns: Map<string, number> }).cooldowns.clear();
+
+      // Spawn fresh boss.
+      await wipeAll(prisma);
+      const u2 = await makeUserChar(prisma, { mp: 100, stamina: 100, power: 1000 });
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      // Create boss with pet snapshot stub returning 8% BOSS bonus.
+      const petSnapshotStub = {
+        getCombatBonus: vi.fn().mockResolvedValue({
+          damageContributionCapPercent: 8,
+          contributionCapPercent: 8,
+          petStats: { atk: 80, def: 0, hp: 0, speed: 0, spirit: 0 },
+          pvpEffectivenessMultiplier: 0.4,
+          skills: [],
+        }),
+      };
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      const bossWithPet = new BossService(
+        prisma, realtime, chars, inventory, currency, missions,
+        undefined, undefined, undefined, undefined, undefined, undefined,
+        undefined, undefined, undefined, undefined, undefined,
+        petSnapshotStub as never,
+      );
+
+      const petOut = await bossWithPet.attack(u2.userId, undefined);
+      const petDmg = BigInt(petOut.result.damageDealt);
+
+      // Pet bonus should increase damage.
+      expect(petDmg).toBeGreaterThan(baseDmg);
+      expect(petSnapshotStub.getCombatBonus).toHaveBeenCalledWith(u2.characterId, 'BOSS');
+    });
+
+    it('pet bonus fallback: damage unchanged when petSnapshot throws', async () => {
+      const u = await makeUserChar(prisma, { mp: 100, stamina: 100, power: 1000 });
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const baseOut = await boss.attack(u.userId, undefined);
+      const baseDmg = BigInt(baseOut.result.damageDealt);
+
+      (boss as unknown as { cooldowns: Map<string, number> }).cooldowns.clear();
+      await wipeAll(prisma);
+      const u2 = await makeUserChar(prisma, { mp: 100, stamina: 100, power: 1000 });
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const petSnapshotThrow = {
+        getCombatBonus: vi.fn().mockRejectedValue(new Error('pet service down')),
+      };
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      const bossWithBrokenPet = new BossService(
+        prisma, realtime, chars, inventory, currency, missions,
+        undefined, undefined, undefined, undefined, undefined, undefined,
+        undefined, undefined, undefined, undefined, undefined,
+        petSnapshotThrow as never,
+      );
+
+      const petOut = await bossWithBrokenPet.attack(u2.userId, undefined);
+      const petDmg = BigInt(petOut.result.damageDealt);
+
+      // Fallback to identity — damage should equal baseline.
+      expect(petDmg).toBe(baseDmg);
+    });
+
+    it('pet bonus identity: no pet equipped → petSnapshot returns null → damage unchanged', async () => {
+      const u = await makeUserChar(prisma, { mp: 100, stamina: 100, power: 1000 });
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const baseOut = await boss.attack(u.userId, undefined);
+      const baseDmg = BigInt(baseOut.result.damageDealt);
+
+      (boss as unknown as { cooldowns: Map<string, number> }).cooldowns.clear();
+      await wipeAll(prisma);
+      const u2 = await makeUserChar(prisma, { mp: 100, stamina: 100, power: 1000 });
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const petSnapshotNull = {
+        getCombatBonus: vi.fn().mockResolvedValue(null),
+      };
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      const bossNoPet = new BossService(
+        prisma, realtime, chars, inventory, currency, missions,
+        undefined, undefined, undefined, undefined, undefined, undefined,
+        undefined, undefined, undefined, undefined, undefined,
+        petSnapshotNull as never,
+      );
+
+      const petOut = await bossNoPet.attack(u2.userId, undefined);
+      const petDmg = BigInt(petOut.result.damageDealt);
+
+      expect(petDmg).toBe(baseDmg);
+    });
+  });
 });

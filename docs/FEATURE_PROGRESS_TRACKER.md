@@ -67,18 +67,18 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 35 | Phase 44.2 — Player Dashboard Dynamic Checklist | DONE | PlayerDashboardService has 6 hardcoded TODO statuses that never reflect real player activity. | Wire RUN_FARM, CLEAR_DUNGEON, CLIMB_TOWER, CHECK_MARKET, JOIN_SECT_ACTIVITY, READ_MENTOR_REQUEST to real DB queries. Add 12 new tests. | `player-dashboard.service.ts`, `player-dashboard.service.test.ts` | All 6 statuses dynamic; 12 new tests pass; typecheck + lint + build + web tests pass. | 2026-05-22 |
 | 36 | Phase 44.2 — Onboarding Auto-Track Wire (INVENTORY_OPEN, STORY_VIEW, PROFILE_OPEN) | DONE | 3 onboarding action types (INVENTORY_OPEN, STORY_VIEW, PROFILE_OPEN) defined in catalog but not fired at call sites. | Wire notifyAction fire-and-forget in InventoryController.list, CharacterController.me, Phase33StoryController.listChapters. | `inventory.controller.ts`, `character.controller.ts`, `story-v2.controller.ts`, `story-v2.controller.test.ts` | All 3 action types fire on correct endpoints; controller test updated; typecheck + lint + build + tests pass. | 2026-05-22 |
 | 37 | Phase 9 — Smoke Coverage Pack | IN_PROGRESS | Phase 9 exit criteria requires broader smoke coverage. smoke:combat, smoke:cultivation, smoke:boss, smoke:dungeon-run, smoke:mail, smoke:giftcode existed but were not in ALL_SUITES default run. smoke:economy missing mail-reward ledger chain. | Promote 6 scripts to ALL_SUITES. Extend smoke-economy with admin-grant-mail → player-claim → ledger-row chain. Update QA_CHECKLIST. | `scripts/smoke-all.mjs`, `scripts/smoke-economy.mjs`, `docs/QA_CHECKLIST.md` | 6 scripts in default suite; mail-reward ledger chain verified; QA checklist updated; typecheck + lint + build + web tests pass. | 2026-05-22 |
-| 38 | Phase 44.2 — Pet Combat Bonus Wire (PvE/DUNGEON) | TODO | PetSnapshotService.getCombatBonus() exists and is partially wired in combat.service.ts (Phase 44.2 TODO marker) but pet bonus not applied to dungeon combat damage formula. | Complete pet PvE combat bonus wire in CombatService.action() for DUNGEON context. Add test verifying bonus applies. | `combat.service.ts`, `combat.module.ts`, `combat.service.test.ts` | Pet bonus applies to dungeon combat; cap 12% PvE enforced; test passes; typecheck + lint + build pass. | N/A |
+| 38 | Phase 44.2 — Pet Combat Bonus Wire (BOSS context) | IN_PROGRESS | PetSnapshotService.getCombatBonus() wired in combat.service.ts (DUNGEON) but not in boss.service.ts (BOSS context). Stale TODO comment in pet-snapshot.service.ts. No tests for pet bonus. | Wire pet BOSS bonus in BossService.attack(). Import PetModule in BossModule. Fix stale TODO. Add 3 tests (bonus applies, fallback on throw, identity when null). | `boss.service.ts`, `boss.module.ts`, `pet-snapshot.service.ts`, `boss.service.test.ts` | Pet BOSS bonus wired; 3 tests pass; typecheck + lint + build + web 2754 pass. | 2026-05-22 |
 
 ## Current Recommended Next Task
 
-`Phase 9 — Smoke Coverage Pack (task #37). Status: IN_PROGRESS — smoke-all promoted 6 suites, smoke-economy mail-reward chain added, QA checklist updated.`
+`Phase 44.2 — Pet Combat Bonus Wire BOSS context (task #38). Status: IN_PROGRESS.`
 
 ## Active Task Template
 
 ### Active Task
 
-- Task: Phase 9 — Smoke Coverage Pack
-- Branch: feat/phase-9-smoke-coverage-pack
+- Task: Phase 44.2 — Pet Combat Bonus Wire (BOSS context)
+- Branch: feat/phase-44-2-pet-combat-boss-wire
 - Started: 2026-05-22
 - Owner: AI
 - Status: IN_PROGRESS
