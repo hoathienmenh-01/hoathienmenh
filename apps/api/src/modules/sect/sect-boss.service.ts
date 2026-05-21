@@ -1,8 +1,6 @@
 import { Injectable, Optional } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import {
   SECT_BOSSES,
-  SectBossDef,
   computeSectBossHp,
   getSectBossByKey,
 } from '@xuantoi/shared';
@@ -370,8 +368,18 @@ export class SectBossService {
     });
     const isFirstKill = priorKills === 0;
 
-    const rewards = isFirstKill && boss.firstKillReward
-      ? boss.firstKillReward
+    const rewards: {
+      linhThach?: number;
+      tienNgoc?: number;
+      exp?: number;
+      items?: Array<{ itemKey: string; qty: number }>;
+    } = isFirstKill && boss.firstKillReward
+      ? {
+          linhThach: boss.firstKillReward.linhThach,
+          tienNgoc: boss.firstKillReward.tienNgoc,
+          exp: boss.firstKillReward.exp,
+          items: boss.firstKillReward.items ? [...boss.firstKillReward.items] : undefined,
+        }
       : { linhThach: 50, exp: 100 };
 
     await this.prisma.$transaction(async (tx) => {
@@ -396,14 +404,11 @@ export class SectBossService {
           refId: active.id,
         });
       }
-      if (this.currency && rewards.exp) {
-        await this.currency.applyTx(tx, {
-          characterId: char.id,
-          currency: 'CULTIVATION_EXP',
-          delta: BigInt(rewards.exp),
-          reason: 'BOSS_REWARD',
-          refType: 'SectBoss',
-          refId: active.id,
+      // Grant EXP directly (not a currency).
+      if (rewards.exp) {
+        await tx.character.update({
+          where: { id: char.id },
+          data: { exp: { increment: BigInt(rewards.exp) } },
         });
       }
 
