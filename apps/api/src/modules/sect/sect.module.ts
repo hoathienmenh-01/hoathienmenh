@@ -5,6 +5,9 @@ import { SectMissionService } from './sect-mission.service';
 import { SectMissionController } from './sect-mission.controller';
 import { SectShopService } from './sect-shop.service';
 import { SectShopController } from './sect-shop.controller';
+import { SectBossService } from './sect-boss.service';
+import { SectBossController } from './sect-boss.controller';
+import { SectWarContributionService } from './sect-war-contribution.service';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { AuthModule } from '../auth/auth.module';
@@ -20,6 +23,8 @@ import { LiveOpsEventSchedulerModule } from '../liveops-event-scheduler/liveops-
 //
 // Phase 15.3.A — `LiveOpsEventSchedulerModule` wire để SectShopService đọc
 // SECT_SHOP_DISCOUNT runtime modifier (Optional inject — test có thể bỏ).
+//
+// Phase 13.8 — wire SectBoss service + controller + SectWarContribution service.
 @Module({
   imports: [
     RealtimeModule,
@@ -29,13 +34,15 @@ import { LiveOpsEventSchedulerModule } from '../liveops-event-scheduler/liveops-
     InventoryModule,
     LiveOpsEventSchedulerModule,
   ],
-  controllers: [SectController, SectMissionController, SectShopController],
+  controllers: [SectController, SectMissionController, SectShopController, SectBossController],
   providers: [
     SectService,
     SectMissionService,
     SectShopService,
+    SectBossService,
+    SectWarContributionService,
     PrismaService,
   ],
-  exports: [SectService, SectMissionService, SectShopService],
+  exports: [SectService, SectMissionService, SectShopService, SectBossService, SectWarContributionService],
 })
 export class SectModule {}

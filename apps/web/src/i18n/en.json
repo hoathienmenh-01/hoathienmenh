@@ -1932,9 +1932,23 @@
     "disciplesTitle": "Disciples ({n})",
     "col": {
       "name": "Dao Name",
+      "role": "Role",
       "realm": "Realm",
-      "contrib": "Contribution"
+      "contrib": "Contribution",
+      "actions": "Actions"
     },
+    "role": {
+      "LEADER": "Leader",
+      "ELDER": "Elder",
+      "MEMBER": "Member"
+    },
+    "promote": "Promote",
+    "demote": "Demote",
+    "kick": "Kick",
+    "promoteToast": "Promoted.",
+    "demoteToast": "Demoted.",
+    "kickToast": "Kicked {name}.",
+    "kickConfirm": "Kick {name} from the sect?",
     "leaderTag": "[Leader]",
     "you": "(you)",
     "noneList": "No sect yet — be the first to found one.",
@@ -1960,6 +1974,12 @@
       "INVALID_NAME": "Name 2–16 chars (letters/digits/ _-).",
       "INSUFFICIENT_LINH_THACH": "Not enough spirit stones.",
       "NAME_TAKEN": "This name is already taken.",
+      "NOT_LEADER": "Only the leader can do this.",
+      "NOT_ELDER_OR_LEADER": "Only elders or the leader can do this.",
+      "CANNOT_KICK_SELF": "Cannot kick yourself.",
+      "CANNOT_KICK_HIGHER_ROLE": "Cannot kick someone with a higher role.",
+      "TARGET_NOT_IN_SECT": "This person is not in the sect.",
+      "ALREADY_LEADER": "This person is already the leader.",
       "UNKNOWN": "Something went wrong, please retry."
     },
     "mineBadge": {

@@ -396,6 +396,7 @@ model Character {
 
   inventory                 InventoryItem[]
   sectMembers               SectMember[]
+  sectBossParticipants      SectBossParticipant[]
   ledger                    CurrencyLedger[]
   itemLedger                ItemLedger[]
   missionProgress           MissionProgress[]
@@ -2183,6 +2184,8 @@ model Sect {
   treasuryItems        SectTreasuryItem[]
   treasuryLogs         SectTreasuryLog[]
   sectInternalAuctions SectInternalAuction[]
+  /// Phase 13.8 — Sect boss instances.
+  bossInstances        SectBossInstance[]
   createdAt            DateTime              @default(now())
 }
 
@@ -2212,6 +2215,38 @@ model SectAuditLog {
 
   @@index([sectId, createdAt])
   @@index([actorCharId, createdAt])
+}
+
+/// Phase 13.8 — Sect boss instance (spawned by ELDER/LEADER).
+model SectBossInstance {
+  id           String                 @id @default(cuid())
+  sectId       String
+  sect         Sect                   @relation(fields: [sectId], references: [id], onDelete: Cascade)
+  bossKey      String
+  maxHp        Int
+  currentHp    Int
+  defeated     Boolean                @default(false)
+  spawnedAt    DateTime               @default(now())
+  defeatedAt   DateTime?
+  participants SectBossParticipant[]
+
+  @@index([sectId, defeated])
+  @@index([sectId, bossKey, spawnedAt])
+}
+
+/// Phase 13.8 — Sect boss participant damage + claim tracking.
+model SectBossParticipant {
+  id          String           @id @default(cuid())
+  instanceId  String
+  instance    SectBossInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  characterId String
+  character   Character        @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  damage      Int              @default(0)
+  claimed     Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  @@unique([instanceId, characterId])
+  @@index([characterId, createdAt])
 }
 
 enum ChatChannel {
