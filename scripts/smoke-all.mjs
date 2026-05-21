@@ -7,10 +7,16 @@
  *   1. smoke:health         — Health endpoints (no auth, no DB seed).
  *   2. smoke:auth           — Auth flow (login/register/forgot/reset).
  *   3. smoke:admin          — Admin login + read-only admin endpoints.
- *   4. smoke:economy        — Currency ledger invariants nền.
+ *   4. smoke:economy        — Currency ledger invariants nền + mail-reward chain.
  *   5. smoke:breakthrough   — Breakthrough negative + positive path (admin seed).
  *   6. smoke:mission        — Mission negative + positive claim (admin seed).
  *   7. smoke:spiritual-root — Spiritual root negative + positive reroll (admin seed).
+ *   8. smoke:combat         — Combat encounter negative path + reward shape.
+ *   9. smoke:cultivation    — Cultivation toggle on/off + idempotency.
+ *  10. smoke:boss           — Boss attack negative path + auth guards.
+ *  11. smoke:dungeon-run    — Dungeon run start/next/claim + double-claim guard.
+ *  12. smoke:mail           — Mail list/read/claim negative path.
+ *  13. smoke:giftcode       — Giftcode redeem negative path + auth guards.
  *
  * Mỗi module có thể chạy riêng qua `pnpm smoke:<name>`.
  *
@@ -41,6 +47,12 @@ const ALL_SUITES = [
   { name: 'breakthrough', script: 'scripts/smoke-breakthrough.mjs' },
   { name: 'mission', script: 'scripts/smoke-mission.mjs' },
   { name: 'spiritual-root', script: 'scripts/smoke-spiritual-root.mjs' },
+  { name: 'combat', script: 'scripts/smoke-combat.mjs' },
+  { name: 'cultivation', script: 'scripts/smoke-cultivation.mjs' },
+  { name: 'boss', script: 'scripts/smoke-boss.mjs' },
+  { name: 'dungeon-run', script: 'scripts/smoke-dungeon-run.mjs' },
+  { name: 'mail', script: 'scripts/smoke-mail.mjs' },
+  { name: 'giftcode', script: 'scripts/smoke-giftcode.mjs' },
 ];
 
 /**

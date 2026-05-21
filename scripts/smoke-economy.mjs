@@ -62,6 +62,10 @@ const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS ?? 10_000);
 const VERBOSE = process.env.SMOKE_VERBOSE === '1';
 const SECT_KEY = process.env.SMOKE_SECT_KEY ?? 'thanh_van';
 const BUY_ITEM = process.env.SMOKE_BUY_ITEM ?? 'huyet_chi_dan';
+const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL ?? 'admin@example.com';
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? 'change-me-bootstrap-pass';
+// Mail reward amount for ledger chain test (small, safe).
+const MAIL_REWARD_LT = 50;
 
 // Kỳ vọng từ catalog: huyet_chi_dan giá 25 LT (xem packages/shared/src/items.ts).
 // Daily login grant 100 LT (xem apps/api/src/modules/daily-login/daily-login.service.ts).
@@ -99,6 +103,15 @@ function storeSetCookie(res) {
 function cookieHeader() {
   if (cookieJar.size === 0) return undefined;
   return Array.from(cookieJar, ([k, v]) => `${k}=${v}`).join('; ');
+}
+
+function snapshotCookies() {
+  return new Map(cookieJar);
+}
+
+function restoreCookies(snapshot) {
+  cookieJar.clear();
+  for (const [k, v] of snapshot) cookieJar.set(k, v);
 }
 
 // -----------------------------------------------------------------------------
@@ -668,7 +681,104 @@ async function main() {
     );
   });
 
-  // 8. Final invariants — re-check toàn bộ ledger consistency cho user vừa tạo.
+  // 9. Mail-reward ledger chain — admin sends reward mail → player claims → ledger row verified.
+  // Pattern: snapshot player cookies → admin login → send mail with LT reward → restore player → claim → verify ledger.
+  let playerCookieSnap = null;
+  let mailId = null;
+  let balanceBeforeMail = 0n;
+
+  await step('mail-reward: snapshot player balance before admin grant', async () => {
+    const r = await http('/api/character/me');
+    assertStatus(r, 200, 'character/me pre-mail');
+    balanceBeforeMail = BigInt(r.body?.data?.character?.linhThach ?? '0');
+    assert(balanceBeforeMail >= 0n, `balance trước mail phải >= 0, got ${balanceBeforeMail}`);
+  });
+
+  await step('mail-reward: admin login — swap cookie jar (player → admin)', async () => {
+    playerCookieSnap = snapshotCookies();
+    const r = await http('/api/_auth/login', {
+      method: 'POST',
+      body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    assertStatus(r, 200, 'admin login');
+    const u = r.body?.data?.user;
+    assert(u?.role === 'ADMIN', `admin login: role phải ADMIN, got ${u?.role}. Cần bootstrap admin@example.com trước.`);
+  });
+
+  await step('mail-reward: admin search player + send reward mail', async () => {
+    const search = await http(`/api/admin/users?q=${encodeURIComponent(state.email)}`);
+    assertStatus(search, 200, 'admin search');
+    const target = search.body?.data?.users?.find((u) => u.email === state.email);
+    assert(target, `admin search: user ${state.email} not found`);
+    const targetCharId = target.characterId ?? target.character?.id;
+    assert(targetCharId, `admin search: characterId not found for ${state.email}`);
+
+    const r = await http('/api/admin/mail/send', {
+      method: 'POST',
+      body: {
+        recipientCharacterId: targetCharId,
+        subject: 'Smoke Economy Test Reward',
+        body: 'Ledger chain verification mail.',
+        senderName: 'Smoke',
+        rewardLinhThach: MAIL_REWARD_LT,
+        rewardTienNgoc: 0,
+        rewardExp: 0,
+        rewardItems: [],
+      },
+    });
+    assertStatus(r, 200, 'admin mail/send');
+    mailId = r.body?.data?.mail?.id;
+    assert(mailId, `admin mail/send: missing mail.id`);
+  });
+
+  await step('mail-reward: restore player cookies', async () => {
+    restoreCookies(playerCookieSnap);
+  });
+
+  await step('mail-reward: player claims reward mail → ledger row + balance increase', async () => {
+    assert(mailId, 'mailId phải có từ step admin send');
+    const r = await http(`/api/mail/${mailId}/claim`, { method: 'POST' });
+    assertStatus(r, 200, 'mail claim');
+    assert(r.body?.ok, `mail claim: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+
+    // Verify balance increased by MAIL_REWARD_LT.
+    const me = await http('/api/character/me');
+    assertStatus(me, 200, 'character/me post-mail-claim');
+    const balanceAfter = BigInt(me.body?.data?.character?.linhThach ?? '0');
+    assert(
+      balanceAfter === balanceBeforeMail + BigInt(MAIL_REWARD_LT),
+      `mail claim: balance kỳ vọng ${balanceBeforeMail + BigInt(MAIL_REWARD_LT)}, got ${balanceAfter}`,
+    );
+
+    // Verify ledger row exists with reason MAIL_CLAIM.
+    const entries = await fetchAllLogs('currency');
+    const mailRows = entries.filter((e) => e.reason === 'MAIL_CLAIM' || e.reason === 'MAIL_ATTACHMENT_CLAIM');
+    assert(mailRows.length >= 1, `Expected ≥1 ledger row reason=MAIL_CLAIM/MAIL_ATTACHMENT_CLAIM, got ${mailRows.length}`);
+    const mailRow = mailRows[mailRows.length - 1];
+    assert(
+      BigInt(mailRow.delta) === BigInt(MAIL_REWARD_LT),
+      `mail ledger delta kỳ vọng ${MAIL_REWARD_LT}, got ${mailRow.delta}`,
+    );
+  });
+
+  await step('mail-reward: double-claim → 409 ALREADY_CLAIMED', async () => {
+    assert(mailId, 'mailId phải có');
+    const r = await http(`/api/mail/${mailId}/claim`, { method: 'POST' });
+    assertStatus(r, 409, 'mail double-claim phải 409');
+  });
+
+  await step('mail-reward: final ledger sum == character balance (post mail chain)', async () => {
+    const r = await http('/api/character/me');
+    const balance = BigInt(r.body?.data?.character?.linhThach ?? '0');
+    const entries = await fetchAllLogs('currency');
+    const sum = sumDelta(entries);
+    assert(
+      sum === balance,
+      `INVARIANT post-mail: SUM(CurrencyLedger) = ${sum} ≠ Character.linhThach = ${balance}`,
+    );
+  });
+
+  // 10. Final invariants — re-check toàn bộ ledger consistency cho user vừa tạo.
   await step('final: ledger sum == character balance', async () => {
     const r = await http('/api/character/me');
     const balance = BigInt(r.body?.data?.character?.linhThach ?? '0');
