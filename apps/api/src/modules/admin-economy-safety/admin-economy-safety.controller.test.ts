@@ -73,6 +73,7 @@ interface ControllerStubs {
   scanAll?: EconomyAnomalyScannerService['scanAll'];
   rangeReportGenerate?: (
     range: import('@xuantoi/shared').EconomyReportRange,
+    compareWithPreviousWeek: boolean,
   ) => Promise<import('@xuantoi/shared').EconomyReportResponse>;
   prisma?: PrismaStubs;
   auditCreated?: { count: number; actions: string[] };
@@ -252,11 +253,11 @@ function makeController(stubs: ControllerStubs = {}): {
       ledger,
       scanner,
       stubs.rangeReportGenerate
-        ? ({ generate: stubs.rangeReportGenerate } as unknown as ConstructorParameters<
+        ? ({ generateWithComparison: stubs.rangeReportGenerate } as unknown as ConstructorParameters<
             typeof AdminEconomySafetyController
           >[3])
         : ({
-            generate: async () =>
+            generateWithComparison: async () =>
               ({
                 range: { from: '2026-05-05', to: '2026-05-11', days: 7 },
                 bySource: [],
@@ -597,7 +598,7 @@ describe('AdminEconomySafetyController.rangeReportEndpoint (Phase 16.1.B)', () =
         };
       },
     });
-    const r = await c.rangeReportEndpoint(makeReq(), undefined, undefined);
+    const r = await c.rangeReportEndpoint(makeReq(), undefined, undefined, undefined);
     expect(r.ok).toBe(true);
     expect(r.data.totalInLinhThach).toBe('1234');
     expect(captured.range).not.toBeNull();
@@ -646,7 +647,7 @@ describe('AdminEconomySafetyController.rangeReportEndpoint (Phase 16.1.B)', () =
         };
       },
     });
-    await c.rangeReportEndpoint(makeReq(), '2026-05-01', '2026-05-07');
+    await c.rangeReportEndpoint(makeReq(), '2026-05-01', '2026-05-07', undefined);
     expect(captured.range?.from).toBe('2026-05-01');
     expect(captured.range?.to).toBe('2026-05-07');
     expect(captured.range?.days).toBe(7);
@@ -656,7 +657,7 @@ describe('AdminEconomySafetyController.rangeReportEndpoint (Phase 16.1.B)', () =
     const { c } = makeController();
     let thrown: HttpException | null = null;
     try {
-      await c.rangeReportEndpoint(makeReq(), 'not-a-date', '2026-05-11');
+      await c.rangeReportEndpoint(makeReq(), 'not-a-date', '2026-05-11', undefined);
     } catch (e) {
       thrown = e as HttpException;
     }
@@ -670,7 +671,7 @@ describe('AdminEconomySafetyController.rangeReportEndpoint (Phase 16.1.B)', () =
     const { c } = makeController();
     let thrown: HttpException | null = null;
     try {
-      await c.rangeReportEndpoint(makeReq(), '2026-04-10', '2026-05-11');
+      await c.rangeReportEndpoint(makeReq(), '2026-04-10', '2026-05-11', undefined);
     } catch (e) {
       thrown = e as HttpException;
     }
@@ -683,7 +684,7 @@ describe('AdminEconomySafetyController.rangeReportEndpoint (Phase 16.1.B)', () =
     const { c } = makeController();
     let thrown: HttpException | null = null;
     try {
-      await c.rangeReportEndpoint(makeReq(), '2026-05-11', '2026-05-01');
+      await c.rangeReportEndpoint(makeReq(), '2026-05-11', '2026-05-01', undefined);
     } catch (e) {
       thrown = e as HttpException;
     }

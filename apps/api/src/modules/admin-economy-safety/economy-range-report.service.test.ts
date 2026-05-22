@@ -276,3 +276,66 @@ describe('EconomyRangeReportService.generate', () => {
     expect(topup?.inTienNgoc).toBe(100);
   });
 });
+
+describe('EconomyRangeReportService.generateWithComparison', () => {
+  it('compareWithPreviousWeek=false returns same as generate()', async () => {
+    const c = await makeUserChar(prisma, { linhThach: 0n });
+    await prisma.currencyLedger.create({
+      data: {
+        characterId: c.characterId,
+        currency: CurrencyKind.LINH_THACH,
+        delta: 500n,
+        reason: 'DAILY_LOGIN',
+        createdAt: new Date('2026-05-08T00:00:00.000Z'),
+      },
+    });
+    const r = await svc.generateWithComparison(range(), false);
+    expect(r.totalInLinhThach).toBe('500');
+    expect(r.weekOverWeek).toBeUndefined();
+  });
+
+  it('compareWithPreviousWeek=true returns weekOverWeek delta', async () => {
+    const c = await makeUserChar(prisma, { linhThach: 0n });
+    // Current week (2026-05-05 to 2026-05-11): 1000 LT in
+    await prisma.currencyLedger.create({
+      data: {
+        characterId: c.characterId,
+        currency: CurrencyKind.LINH_THACH,
+        delta: 1000n,
+        reason: 'DAILY_LOGIN',
+        createdAt: new Date('2026-05-08T00:00:00.000Z'),
+      },
+    });
+    // Previous week (2026-04-28 to 2026-05-05): 600 LT in
+    await prisma.currencyLedger.create({
+      data: {
+        characterId: c.characterId,
+        currency: CurrencyKind.LINH_THACH,
+        delta: 600n,
+        reason: 'DAILY_LOGIN',
+        createdAt: new Date('2026-05-01T00:00:00.000Z'),
+      },
+    });
+    const r = await svc.generateWithComparison(range(), true);
+    expect(r.totalInLinhThach).toBe('1000');
+    expect(r.weekOverWeek).not.toBeNull();
+    // netLinhThachDelta = current net (1000) - previous net (600) = 400
+    expect(r.weekOverWeek?.netLinhThachDelta).toBe('400');
+    expect(r.weekOverWeek?.totalInDelta).toBe('400');
+    expect(r.weekOverWeek?.previousFrom).toBe('2026-04-28');
+    expect(r.weekOverWeek?.previousTo).toBe('2026-05-05');
+  });
+
+  it('anomalyOpenDelta reflects change in open anomaly count', async () => {
+    // Create 2 open anomalies
+    await prisma.economyAnomaly.createMany({
+      data: [
+        { source: 'PRICE_TOO_HIGH', severity: 'WARN', status: 'OPEN', windowKey: '2026-W20' },
+        { source: 'LARGE_VALUE_TRANSFER', severity: 'WARN', status: 'OPEN', windowKey: '2026-W20' },
+      ],
+    });
+    const r = await svc.generateWithComparison(range(), true);
+    // Both weeks see same anomaly count (anomaly summary is not range-filtered)
+    expect(r.weekOverWeek?.anomalyOpenDelta).toBe(0);
+  });
+});

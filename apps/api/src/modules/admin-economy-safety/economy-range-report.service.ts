@@ -8,6 +8,7 @@ import {
   type EconomyReportTopDeltaRow,
   type EconomyReportLatestRun,
   type EconomyReportAnomalySummary,
+  type EconomyReportWeekOverWeek,
   ECONOMY_REPORT_SOURCES,
   reasonToReportSource,
 } from '@xuantoi/shared';
@@ -346,6 +347,67 @@ export class EconomyRangeReportService {
       latestLedgerCheckRun,
       generatedAt: new Date().toISOString(),
     };
+  }
+
+  /**
+   * Generate report for `range` + optional week-over-week comparison.
+   * When `compareWithPreviousWeek=true`, runs a second `generate()` for
+   * the 7-day window immediately before `range.fromDate` and computes
+   * key metric deltas (current - previous).
+   */
+  async generateWithComparison(
+    range: EconomyReportRange,
+    compareWithPreviousWeek: boolean,
+  ): Promise<EconomyReportResponse> {
+    const current = await this.generate(range);
+    if (!compareWithPreviousWeek) return current;
+
+    // Build previous-week range: same number of days ending at range.fromDate.
+    const prevTo = new Date(range.fromDate);
+    const prevFrom = new Date(range.fromDate);
+    prevFrom.setDate(prevFrom.getDate() - range.days);
+
+    const prevRange: EconomyReportRange = {
+      from: prevFrom.toISOString().slice(0, 10),
+      to: prevTo.toISOString().slice(0, 10),
+      fromDate: prevFrom,
+      toDateExclusive: prevTo,
+      days: range.days,
+    };
+
+    let previous: EconomyReportResponse;
+    try {
+      previous = await this.generate(prevRange);
+    } catch (e) {
+      this.logger.warn(`generateWithComparison: previous week failed — ${(e as Error).message}`);
+      return current;
+    }
+
+    const netDelta =
+      BigInt(current.totalNetLinhThach) - BigInt(previous.totalNetLinhThach);
+    const marketDelta =
+      BigInt(current.marketVolume) - BigInt(previous.marketVolume);
+    const adminGrantDelta =
+      BigInt(current.adminGrantTotal) - BigInt(previous.adminGrantTotal);
+    const anomalyDelta =
+      current.anomalySummary.openCount - previous.anomalySummary.openCount;
+    const inDelta =
+      BigInt(current.totalInLinhThach) - BigInt(previous.totalInLinhThach);
+    const outDelta =
+      BigInt(current.totalOutLinhThach) - BigInt(previous.totalOutLinhThach);
+
+    const weekOverWeek: EconomyReportWeekOverWeek = {
+      previousFrom: prevRange.from,
+      previousTo: prevRange.to,
+      netLinhThachDelta: netDelta.toString(),
+      marketVolumeDelta: marketDelta.toString(),
+      adminGrantDelta: adminGrantDelta.toString(),
+      anomalyOpenDelta: anomalyDelta,
+      totalInDelta: inDelta.toString(),
+      totalOutDelta: outDelta.toString(),
+    };
+
+    return { ...current, weekOverWeek };
   }
 }
 
