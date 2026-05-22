@@ -151,5 +151,47 @@ describe('catalog integrity', () => {
         expect(hasReward).toBeGreaterThan(0);
       }
     });
+
+    it('has missions for realm orders 6-9 (mid-to-late game coverage)', () => {
+      const highRealmDaily = missionsByPeriod('DAILY').filter(
+        (m) => (m.requiredRealmOrder ?? 0) >= 6,
+      );
+      const highRealmWeekly = missionsByPeriod('WEEKLY').filter(
+        (m) => (m.requiredRealmOrder ?? 0) >= 6,
+      );
+      expect(highRealmDaily.length).toBeGreaterThanOrEqual(5);
+      expect(highRealmWeekly.length).toBeGreaterThanOrEqual(5);
+    });
+
+    it('T5 missions require realm order 6', () => {
+      const t5 = MISSIONS.filter((m) => m.realmTier === 'luyen_hu');
+      expect(t5.length).toBeGreaterThanOrEqual(5);
+      for (const m of t5) {
+        expect(m.requiredRealmOrder).toBeGreaterThanOrEqual(6);
+      }
+    });
+
+    it('T6 missions require realm order 8', () => {
+      const t6 = MISSIONS.filter((m) => m.realmTier === 'dai_thua');
+      expect(t6.length).toBeGreaterThanOrEqual(5);
+      for (const m of t6) {
+        expect(m.requiredRealmOrder).toBeGreaterThanOrEqual(8);
+      }
+    });
+
+    it('T5/T6 reward scale exceeds T4 (linhThach ≥ 18000 daily, ≥ 60000 weekly)', () => {
+      const t5daily = MISSIONS.filter(
+        (m) => m.realmTier === 'luyen_hu' && m.period === 'DAILY',
+      );
+      const t6weekly = MISSIONS.filter(
+        (m) => m.realmTier === 'dai_thua' && m.period === 'WEEKLY',
+      );
+      for (const m of t5daily) {
+        expect(m.rewards.linhThach ?? 0).toBeGreaterThanOrEqual(18000);
+      }
+      for (const m of t6weekly) {
+        expect(m.rewards.linhThach ?? 0).toBeGreaterThanOrEqual(60000);
+      }
+    });
   });
 });
