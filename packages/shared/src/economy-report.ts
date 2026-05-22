@@ -368,4 +368,29 @@ export interface EconomyReportResponse {
   readonly anomalySummary: EconomyReportAnomalySummary;
   readonly latestLedgerCheckRun: EconomyReportLatestRun | null;
   readonly generatedAt: string;
+  /**
+   * Week-over-week delta — present only when `compareWithPreviousWeek=true`
+   * is passed to the report endpoint. Null when not requested or when
+   * previous-week data is unavailable.
+   */
+  readonly weekOverWeek?: EconomyReportWeekOverWeek | null;
+}
+
+/** Week-over-week comparison delta for key economy metrics. */
+export interface EconomyReportWeekOverWeek {
+  /** Previous week range (ISO date strings). */
+  readonly previousFrom: string;
+  readonly previousTo: string;
+  /** Net linhThach delta: current - previous (signed BigInt-as-string). */
+  readonly netLinhThachDelta: string;
+  /** Market volume delta: current - previous. */
+  readonly marketVolumeDelta: string;
+  /** Admin grant delta: current - previous. */
+  readonly adminGrantDelta: string;
+  /** Anomaly open count delta: current - previous. */
+  readonly anomalyOpenDelta: number;
+  /** Total in (source) delta: current - previous. */
+  readonly totalInDelta: string;
+  /** Total out (sink) delta: current - previous. */
+  readonly totalOutDelta: string;
 }

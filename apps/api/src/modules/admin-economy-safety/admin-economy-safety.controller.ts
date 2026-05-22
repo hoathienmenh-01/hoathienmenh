@@ -289,7 +289,7 @@ export class AdminEconomySafetyController {
   // ---------- Range Report (Phase 16.1.B) ----------
 
   /**
-   * `GET /admin/economy/range-report?from=YYYY-MM-DD&to=YYYY-MM-DD`
+   * `GET /admin/economy/range-report?from=YYYY-MM-DD&to=YYYY-MM-DD&compareWithPreviousWeek=true`
    *
    * Date-range Economy Report (Phase 16.1.B). ADMIN-only.
    *
@@ -300,6 +300,8 @@ export class AdminEconomySafetyController {
    *   shop spend, sect shop spend, reforge-enchant, admin grant, topup,
    *   liveops, daily login, dungeon, boss, territory, sect season),
    *   anomaly summary, latest ledger check run, `generatedAt`.
+   * - When `compareWithPreviousWeek=true`: also returns `weekOverWeek`
+   *   delta (current - previous period) for key metrics.
    * - Emits audit `ADMIN_ECONOMY_REPORT_VIEW`.
    */
   @Get('admin/economy/range-report')
@@ -308,6 +310,7 @@ export class AdminEconomySafetyController {
     @Req() req: AdminReq,
     @Query('from') from: string | undefined,
     @Query('to') to: string | undefined,
+    @Query('compareWithPreviousWeek') compareWithPreviousWeek: string | undefined,
   ): Promise<{ ok: true; data: EconomyReportResponse }> {
     const parsed = parseEconomyReportRange(from, to);
     if (!parsed.ok || !parsed.range) {
@@ -316,7 +319,8 @@ export class AdminEconomySafetyController {
         HttpStatus.BAD_REQUEST,
       );
     }
-    const data = await this.rangeReport.generate(parsed.range);
+    const withComparison = compareWithPreviousWeek === 'true' || compareWithPreviousWeek === '1';
+    const data = await this.rangeReport.generateWithComparison(parsed.range, withComparison);
     await this.audit(req.userId, 'ADMIN_ECONOMY_REPORT_VIEW', {
       from: data.range.from,
       to: data.range.to,
@@ -324,6 +328,7 @@ export class AdminEconomySafetyController {
       totalInLinhThach: data.totalInLinhThach,
       totalOutLinhThach: data.totalOutLinhThach,
       openAnomalies: data.anomalySummary.openCount,
+      compareWithPreviousWeek: withComparison,
     });
     return { ok: true, data };
   }
