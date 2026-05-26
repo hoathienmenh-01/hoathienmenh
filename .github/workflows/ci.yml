@@ -62,6 +62,9 @@ jobs:
       - name: Build shared (needed for downstream typecheck/lint/test)
         run: pnpm --filter @xuantoi/shared build
 
+      - name: Build logger (needed for downstream typecheck/lint/test)
+        run: pnpm --filter @xuantoi/logger build
+
       - name: Typecheck
         run: pnpm typecheck
 
@@ -97,6 +100,9 @@ jobs:
 
       - name: Build shared
         run: pnpm --filter @xuantoi/shared build
+
+      - name: Build logger
+        run: pnpm --filter @xuantoi/logger build
 
       - name: Build web
         run: pnpm --filter @xuantoi/web build
@@ -190,6 +196,9 @@ jobs:
 
       - name: Build shared (verify:deploy spawn API qua dist)
         run: pnpm --filter @xuantoi/shared build
+
+      - name: Build logger (verify:deploy spawn API qua dist)
+        run: pnpm --filter @xuantoi/logger build
 
       - name: Build API
         run: pnpm --filter @xuantoi/api build
