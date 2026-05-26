@@ -1,0 +1,121 @@
+{
+  "dashboard": {
+    "title": "Xuantoi API Logs",
+    "uid": "xuantoi-api-logs",
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 0,
+    "refresh": "10s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Log Volume by Level",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "sum(count_over_time({job=\"xuantoi\"} [1m])) by (level)",
+            "legendFormat": "{{level}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "short", "label": "Logs/min" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Log Volume by Module",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "sum(count_over_time({job=\"xuantoi\"} [1m])) by (module)",
+            "legendFormat": "{{module}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          { "format": "short", "label": "Logs/min" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Error Logs (Last 1h)",
+        "type": "logs",
+        "gridPos": { "x": 0, "y": 8, "w": 24, "h": 10 },
+        "targets": [
+          {
+            "expr": "{job=\"xuantoi\", level=\"error\"}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": true,
+          "sortOrder": "Descending"
+        }
+      },
+      {
+        "id": 4,
+        "title": "Warning Logs (Last 1h)",
+        "type": "logs",
+        "gridPos": { "x": 0, "y": 18, "w": 24, "h": 10 },
+        "targets": [
+          {
+            "expr": "{job=\"xuantoi\", level=\"warn\"}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": true,
+          "sortOrder": "Descending"
+        }
+      },
+      {
+        "id": 5,
+        "title": "Security Module Logs",
+        "type": "logs",
+        "gridPos": { "x": 0, "y": 28, "w": 24, "h": 10 },
+        "targets": [
+          {
+            "expr": "{job=\"xuantoi\", module=~\"security.*\"}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": true,
+          "sortOrder": "Descending"
+        }
+      },
+      {
+        "id": 6,
+        "title": "All Logs (Last 1h)",
+        "type": "logs",
+        "gridPos": { "x": 0, "y": 38, "w": 24, "h": 12 },
+        "targets": [
+          {
+            "expr": "{job=\"xuantoi\"}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": true,
+          "sortOrder": "Descending"
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h"]
+    }
+  }
+}
