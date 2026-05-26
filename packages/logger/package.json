@@ -1,0 +1,80 @@
+{
+  "name": "@xuantoi/logger",
+  "version": "0.1.0",
+  "description": "Unified logging infrastructure for Xuân Tôi (backend + frontend)",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "backend": ["./dist/backend/index.d.ts"],
+      "frontend": ["./dist/frontend/index.d.ts"],
+      "types": ["./dist/types.d.ts"],
+      "redact": ["./dist/redact.d.ts"]
+    }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./backend": {
+      "types": "./dist/backend/index.d.ts",
+      "import": "./dist/backend/index.js",
+      "require": "./dist/backend/index.cjs"
+    },
+    "./frontend": {
+      "types": "./dist/frontend/index.d.ts",
+      "import": "./dist/frontend/index.js",
+      "require": "./dist/frontend/index.cjs"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js",
+      "require": "./dist/types.cjs"
+    },
+    "./redact": {
+      "types": "./dist/redact.d.ts",
+      "import": "./dist/redact.js",
+      "require": "./dist/redact.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "pino": "^9.0.0",
+    "pino-http": "^10.0.0"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^10.4.6",
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.5.0"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^10.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@nestjs/common": {
+      "optional": true
+    }
+  },
+  "keywords": [
+    "logger",
+    "logging",
+    "pino",
+    "structured-logging",
+    "redaction"
+  ],
+  "author": "xuantoi",
+  "license": "UNLICENSED",
+  "private": true
+}

@@ -165,6 +165,10 @@ jobs:
       - name: Build shared
         run: pnpm --filter @xuantoi/shared build
 
+      # `@xuantoi/logger` build cần thiết cho API import @xuantoi/logger/backend
+      - name: Build logger
+        run: pnpm --filter @xuantoi/logger build
+
       # API build → `dist/src/main.js`. Chạy node trực tiếp thay vì
       # `nest start` để tránh ts-node overhead trên runner.
       - name: Build API

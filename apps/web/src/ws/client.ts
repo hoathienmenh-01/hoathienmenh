@@ -5,6 +5,7 @@ import type {
   WsFrame,
   WsEventType,
 } from '@xuantoi/shared';
+import { logger } from '@/utils/logger';
 
 let socket: Socket | null = null;
 
@@ -65,10 +66,10 @@ export function connect(): Socket {
 
   // Log lỗi để debug khi handshake fail (auth, CORS, namespace …).
   socket.on('connect_error', (err) => {
-    console.warn('[ws] connect_error', err.message);
+    logger.warn({ err: err.message }, '[ws] connect_error');
   });
   socket.on('error', (err: unknown) => {
-    console.warn('[ws] error', err);
+    logger.warn({ err }, '[ws] error');
   });
 
   // Đăng ký listener cho mỗi loại event ở phía client.
