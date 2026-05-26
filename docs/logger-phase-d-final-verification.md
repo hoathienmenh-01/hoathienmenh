@@ -80,7 +80,7 @@ NODE_ENV=production node scripts/smoke-logger-simple.mjs
 
 | Phase | Commit | Message |
 |---|---|---|
-| A (0-2) | `e5148719` | feat(logger): add Core Logger package and migrate API bootstrap |
+| A (0-2) | `b027cfbe` | feat(logger): add Core Logger package and migrate API bootstrap |
 | B (3) | `1d0caf28` | feat(logger): integrate Core Logger in web app |
 | C (4) | `5ee5b44a` | docs(logger): add smoke tests and update progress documentation |
 

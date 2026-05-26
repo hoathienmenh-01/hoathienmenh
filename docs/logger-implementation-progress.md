@@ -157,7 +157,7 @@ dist/
 - ✅ Smoke tests passing
 
 **Commits:**
-- Phase A (0-2): `e5148719` — feat(logger): add Core Logger package and migrate API bootstrap
+- Phase A (0-2): `b027cfbe` — feat(logger): add Core Logger package and migrate API bootstrap
 - Phase B (3): `1d0caf28` — feat(logger): integrate Core Logger in web app
 
 **Next session:** Continue with Phase 5 (Performance & Verification) and Phase 6 (Final Quality Gates)
