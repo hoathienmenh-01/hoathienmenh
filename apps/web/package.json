@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@sentry/vue": "^10.52.0",
+    "@xuantoi/logger": "workspace:*",
     "@xuantoi/shared": "workspace:*",
     "axios": "^1.7.7",
     "pinia": "^2.2.4",

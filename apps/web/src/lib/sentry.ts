@@ -17,6 +17,7 @@
 import * as Sentry from '@sentry/vue';
 import type { App } from 'vue';
 import type { Router } from 'vue-router';
+import { logger } from '@/utils/logger';
 
 export interface SentryWebConfig {
   dsn: string;
@@ -73,10 +74,7 @@ export function initSentryWeb(
 
   if (!cfg.enabled || !cfg.dsn) {
     enabledFlag = false;
-    // Dùng console.info — chưa có FE logger structured (để open scope).
-    if (typeof console !== 'undefined' && typeof console.info === 'function') {
-      console.info('[sentry/web] disabled', cfg.dsn ? '(VITE_SENTRY_ENABLED=false)' : '(no DSN)');
-    }
+    logger.info(`[sentry/web] disabled ${cfg.dsn ? '(VITE_SENTRY_ENABLED=false)' : '(no DSN)'}`);
     return false;
   }
 
@@ -95,9 +93,7 @@ export function initSentryWeb(
     return true;
   } catch (err) {
     enabledFlag = false;
-    if (typeof console !== 'undefined' && typeof console.warn === 'function') {
-      console.warn('[sentry/web] init failed — continuing without error tracking', err);
-    }
+    logger.warn({ err }, '[sentry/web] init failed — continuing without error tracking');
     return false;
   }
 }
