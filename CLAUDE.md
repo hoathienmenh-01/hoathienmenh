@@ -95,3 +95,6 @@ Real-time PvP, Pet gacha, Voice chat, Mobile native app, NFT/blockchain, Real-mo
 | Postgres/Redis refused | `pnpm infra:up`, check `docker ps` |
 | Test timeout | Kill other API/test processes |
 | Login 401 after role change | Logout + login again |
+
+## Superpowers Rules
+See detailed rules in: ./.claude/superpowers-instructions.md
