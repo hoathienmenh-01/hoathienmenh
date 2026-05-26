@@ -71,6 +71,9 @@ import {
   type SessionStatusFilter,
 } from '@xuantoi/shared';
 import { SecurityAlertService } from './security-alert.service';
+import { createModuleLogger } from '../../common/logger.helper';
+
+const adminSecurityLogger = createModuleLogger('admin-security');
 
 type AdminReq = Request & { userId: string; role: 'ADMIN' | 'MOD' };
 
@@ -666,10 +669,9 @@ export class AdminSecurityController {
         },
       });
     } catch (err) {
-      console.warn(
-        `[AdminSecurityController] audit failed: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
+      adminSecurityLogger.warn(
+        { error: err instanceof Error ? err.message : String(err), action },
+        'audit failed',
       );
     }
   }

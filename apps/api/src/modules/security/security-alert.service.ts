@@ -12,6 +12,9 @@ import {
   type SecurityAlertType,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { createModuleLogger } from '../../common/logger.helper';
+
+const securityAlertLogger = createModuleLogger('security-alert');
 
 /**
  * Phase 18.3 — SecurityAlertService.
@@ -142,10 +145,9 @@ export class SecurityAlertService {
       });
       return this.toSummary(created);
     } catch (err) {
-      console.warn(
-        `[SecurityAlertService] createFromEvent failed (fail-soft): ${
-          err instanceof Error ? err.message : String(err)
-        }`,
+      securityAlertLogger.warn(
+        { error: err instanceof Error ? err.message : String(err) },
+        'createFromEvent failed (fail-soft)',
       );
       return null;
     }
@@ -184,10 +186,9 @@ export class SecurityAlertService {
       });
       return this.toSummary(created);
     } catch (err) {
-      console.warn(
-        `[SecurityAlertService] createDirect failed (fail-soft): ${
-          err instanceof Error ? err.message : String(err)
-        }`,
+      securityAlertLogger.warn(
+        { error: err instanceof Error ? err.message : String(err) },
+        'createDirect failed (fail-soft)',
       );
       return null;
     }
@@ -325,10 +326,9 @@ export class SecurityAlertService {
       try {
         return await runner();
       } catch (err) {
-        console.warn(
-          `[SecurityAlertService] summary count "${label}" failed: ${
-            err instanceof Error ? err.message : String(err)
-          }`,
+        securityAlertLogger.warn(
+          { error: err instanceof Error ? err.message : String(err), label },
+          'summary count failed',
         );
         return 0;
       }
@@ -411,10 +411,9 @@ export class SecurityAlertService {
         createdAt: r.createdAt.toISOString(),
       }));
     } catch (err) {
-      console.warn(
-        `[SecurityAlertService] summary latestCriticalEvents failed: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
+      securityAlertLogger.warn(
+        { error: err instanceof Error ? err.message : String(err) },
+        'summary latestCriticalEvents failed',
       );
       latestCriticalEvents = [];
     }

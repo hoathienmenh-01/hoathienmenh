@@ -8,6 +8,9 @@ import {
 } from '@xuantoi/shared';
 import type { Redis } from 'ioredis';
 import { REDIS_CONNECTION } from '../../common/redis.module';
+import { createModuleLogger } from '../../common/logger.helper';
+
+const rateLimitLogger = createModuleLogger('rate-limit');
 
 /**
  * Phase 18.1 — RateLimitService (Redis-backed, fail-soft).
@@ -127,10 +130,9 @@ export class RateLimitService {
       } catch (err) {
         if (!this.redisWarned) {
           this.redisWarned = true;
-          console.warn(
-            `[RateLimitService] Redis pipeline failed, falling back to in-memory: ${
-              err instanceof Error ? err.message : String(err)
-            }`,
+          rateLimitLogger.warn(
+            { error: err instanceof Error ? err.message : String(err) },
+            'Redis pipeline failed, falling back to in-memory',
           );
         }
         if (!this.failOpen) {
