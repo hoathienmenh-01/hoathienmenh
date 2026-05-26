@@ -4,6 +4,7 @@ import type { RateLimitPolicyKey, RateLimitSeverity } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { IpHashService } from './ip-hash.service';
 import { SecurityAlertService } from './security-alert.service';
+import { createModuleLogger } from '../../common/logger.helper';
 
 /**
  * Phase 18.1 — SecurityAbuseService (Prisma-backed).
@@ -99,6 +100,8 @@ const LOGIN_FAILED_THRESHOLD = 10;
 const LOGIN_FAILED_WINDOW_SEC = 15 * 60;
 const LOGIN_FAILED_BLOCK_SEC = 30 * 60;
 
+const securityAbuseLogger = createModuleLogger('security-abuse');
+
 @Injectable()
 export class SecurityAbuseService {
   private readonly enabled: boolean;
@@ -137,10 +140,9 @@ export class SecurityAbuseService {
     try {
       await this.alerts.createFromEvent(input);
     } catch (err) {
-      console.warn(
-        `[SecurityAbuseService] maybeCreateAlert failed: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
+      securityAbuseLogger.warn(
+        { error: err instanceof Error ? err.message : String(err) },
+        'maybeCreateAlert failed',
       );
     }
   }
@@ -185,10 +187,9 @@ export class SecurityAbuseService {
         reason: block.reason,
       };
     } catch (err) {
-      console.warn(
-        `[SecurityAbuseService] isBlocked failed (fail-open): ${
-          err instanceof Error ? err.message : String(err)
-        }`,
+      securityAbuseLogger.warn(
+        { error: err instanceof Error ? err.message : String(err) },
+        'isBlocked failed (fail-open)',
       );
       return { blocked: false };
     }
@@ -267,10 +268,9 @@ export class SecurityAbuseService {
       }
       return created;
     } catch (err) {
-      console.warn(
-        `[SecurityAbuseService] recordRateLimitViolation failed: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
+      securityAbuseLogger.warn(
+        { error: err instanceof Error ? err.message : String(err) },
+        'recordRateLimitViolation failed',
       );
       return false;
     }
@@ -310,10 +310,9 @@ export class SecurityAbuseService {
       }
       return false;
     } catch (err) {
-      console.warn(
-        `[SecurityAbuseService] recordLoginFailed failed: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
+      securityAbuseLogger.warn(
+        { error: err instanceof Error ? err.message : String(err) },
+        'recordLoginFailed failed',
       );
       return false;
     }
@@ -343,10 +342,9 @@ export class SecurityAbuseService {
       });
       return false;
     } catch (err) {
-      console.warn(
-        `[SecurityAbuseService] recordAdminForbidden failed: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
+      securityAbuseLogger.warn(
+        { error: err instanceof Error ? err.message : String(err) },
+        'recordAdminForbidden failed',
       );
       return false;
     }
@@ -401,10 +399,9 @@ export class SecurityAbuseService {
       });
       return true;
     } catch (err) {
-      console.warn(
-        `[SecurityAbuseService] createBlock failed: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
+      securityAbuseLogger.warn(
+        { error: err instanceof Error ? err.message : String(err) },
+        'createBlock failed',
       );
       return false;
     }
@@ -452,10 +449,9 @@ export class SecurityAbuseService {
         reason: block.reason,
       };
     } catch (err) {
-      console.warn(
-        `[SecurityAbuseService] liftBlock failed: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
+      securityAbuseLogger.warn(
+        { error: err instanceof Error ? err.message : String(err) },
+        'liftBlock failed',
       );
       return null;
     }

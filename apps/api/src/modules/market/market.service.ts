@@ -13,6 +13,7 @@ import { CurrencyError, CurrencyService } from '../character/currency.service';
 import { MissionService } from '../mission/mission.service';
 import { AchievementService } from '../character/achievement.service';
 import { MarketTradeAbuseService } from '../admin-market-abuse/market-trade-abuse.service';
+import { createModuleLogger } from '../../common/logger.helper';
 
 class MarketError extends Error {
   constructor(
@@ -39,9 +40,11 @@ export const DEFAULT_MARKET_FEE_PCT = 0.05; // 5% phí thiên đạo (mặc đ�
 export const MIN_MARKET_FEE_PCT = 0;
 export const MAX_MARKET_FEE_PCT = 0.5; // 50% trần — bảo vệ khỏi gõ nhầm 5 thay vì 0.05
 
+const marketLogger = createModuleLogger('market');
+
 /**
  * Đọc `MARKET_FEE_PCT` từ env. Hợp lệ: số trong khoảng [0, 0.5].
- * Không hợp lệ → silent fallback `DEFAULT_MARKET_FEE_PCT` + console.warn.
+ * Không hợp lệ → silent fallback `DEFAULT_MARKET_FEE_PCT` + structured warning.
  *
  * Cố ý KHÔNG `throw` để app vẫn boot khi ops đặt sai env (config-only,
  * không phải security). Test verify silent fallback behavior.
@@ -50,14 +53,16 @@ export function resolveMarketFeePct(envValue: string | undefined): number {
   if (envValue === undefined || envValue.trim() === '') return DEFAULT_MARKET_FEE_PCT;
   const n = Number(envValue);
   if (!Number.isFinite(n)) {
-    console.warn(
-      `[market] MARKET_FEE_PCT="${envValue}" không phải số hợp lệ — fallback ${DEFAULT_MARKET_FEE_PCT}`,
+    marketLogger.warn(
+      { envValue, fallback: DEFAULT_MARKET_FEE_PCT },
+      'MARKET_FEE_PCT is not a valid number, using default',
     );
     return DEFAULT_MARKET_FEE_PCT;
   }
   if (n < MIN_MARKET_FEE_PCT || n > MAX_MARKET_FEE_PCT) {
-    console.warn(
-      `[market] MARKET_FEE_PCT=${n} ngoài khoảng [${MIN_MARKET_FEE_PCT}, ${MAX_MARKET_FEE_PCT}] — fallback ${DEFAULT_MARKET_FEE_PCT}`,
+    marketLogger.warn(
+      { value: n, min: MIN_MARKET_FEE_PCT, max: MAX_MARKET_FEE_PCT, fallback: DEFAULT_MARKET_FEE_PCT },
+      'MARKET_FEE_PCT out of valid range, using default',
     );
     return DEFAULT_MARKET_FEE_PCT;
   }
