@@ -29,6 +29,7 @@
     "@nestjs/websockets": "^10.4.6",
     "@prisma/client": "^5.22.0",
     "@sentry/node": "^10.52.0",
+    "@xuantoi/logger": "workspace:*",
     "@xuantoi/shared": "workspace:*",
     "argon2": "^0.41.1",
     "bullmq": "^5.21.2",

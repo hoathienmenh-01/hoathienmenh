@@ -10,8 +10,7 @@ import {
   helmetConfig,
 } from './bootstrap-config';
 import { assertProductionEnv } from './config/env.schema';
-import { getLogger } from './observability/logger';
-import { PinoNestLogger } from './observability/nest-logger.adapter';
+import { createBackendLogger, NestLoggerAdapter } from '@xuantoi/logger/backend';
 import { createRequestLoggerMiddleware } from './observability/request-logger.middleware';
 import { createRequestMetricsMiddleware } from './modules/metrics/request-metrics.middleware';
 import { initSentry } from './observability/sentry';
@@ -26,11 +25,12 @@ async function bootstrap(): Promise<void> {
   // REDIS_URL, CORS_ORIGINS, SESSION_COOKIE_DOMAIN, SECURITY_IP_HASH_SALT…)
   // ngoài JWT_*. No-op ở dev/test. Throw fail-fast nếu thiếu / placeholder.
   assertProductionEnv();
+  const logger = createBackendLogger();
   const app = await NestFactory.create(AppModule, {
     cors: corsConfig(),
     bufferLogs: true,
   });
-  app.useLogger(new PinoNestLogger(getLogger()));
+  app.useLogger(new NestLoggerAdapter(logger));
   app.use(helmet(helmetConfig()));
   app.use(cookieParser());
   // Request logger phải sau cookieParser (cookie redact qua Pino) +
@@ -46,7 +46,7 @@ async function bootstrap(): Promise<void> {
 
   const port = Number(process.env.PORT ?? 3000);
   await app.listen(port);
-  getLogger().info({ port }, '[xuantoi/api] listening');
+  logger.info({ port }, '[xuantoi/api] listening');
 }
 
 bootstrap();
