@@ -46,7 +46,8 @@ export function buildLoggerOptions(options: LoggerOptions = {}): PinoLoggerOptio
   // Pretty print for development (requires pino-pretty installed)
   if (pretty && env !== 'production') {
     try {
-      // Dynamic import to avoid bundling pino-pretty in production
+      // Check if pino-pretty is available before setting transport
+      require.resolve('pino-pretty');
       pinoOptions.transport = {
         target: 'pino-pretty',
         options: {
