@@ -67,7 +67,11 @@
       "Bash(python3 -c ' *)",
       "Bash(gh api *)",
       "Bash(npx tsc *)",
-      "Bash(npx prisma *)"
+      "Bash(npx prisma *)",
+      "Bash(docker-compose -f docker-compose.dev.yml up -d loki grafana promtail)",
+      "Bash(docker compose *)",
+      "Bash(python3 -c \"import yaml; yaml.safe_load\\(open\\('infra/loki-config.yaml'\\)\\); yaml.safe_load\\(open\\('infra/promtail-config.yaml'\\)\\); yaml.safe_load\\(open\\('infra/grafana-datasources.yaml'\\)\\); yaml.safe_load\\(open\\('infra/grafana-dashboards.yaml'\\)\\); print\\('✅ All YAML files valid'\\)\")",
+      "Bash(python3 -c \"import json; json.load\\(open\\('infra/grafana-dashboard-logs.json'\\)\\); print\\('✅ Grafana dashboard JSON valid'\\)\")"
     ]
   }
 }
