@@ -258,3 +258,37 @@ describe('Boss tuning constants', () => {
     expect(BOSS_RESPAWN_DELAY_MS).toBeGreaterThanOrEqual(60 * 1000);
   });
 });
+
+// ─── Content Depth Pack Tests ───────────────────────────────────────────
+describe('BOSSES skill book drops (Content Depth Pack)', () => {
+  it('có ít nhất 3 bosses với skill book drops trong loot pools', () => {
+    const bossesWithSkillBooks = BOSSES.filter((b) => {
+      const allDrops = [
+        ...(b.topDropPool ?? []),
+        ...(b.midDropPool ?? []),
+        ...(b.lowDropPool ?? []),
+      ];
+      return allDrops.some((itemKey) => itemKey.startsWith('skill_book_'));
+    });
+    expect(bossesWithSkillBooks.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('skill book items trong boss drops đều tồn tại trong ITEMS catalog', () => {
+    const itemKeys = new Set(ITEMS.map((i) => i.key));
+    for (const b of BOSSES) {
+      const allDrops = [
+        ...(b.topDropPool ?? []),
+        ...(b.midDropPool ?? []),
+        ...(b.lowDropPool ?? []),
+      ];
+      for (const itemKey of allDrops) {
+        if (itemKey.startsWith('skill_book_')) {
+          expect(
+            itemKeys.has(itemKey),
+            `boss ${b.key} drop skill_book '${itemKey}' không tồn tại trong ITEMS`,
+          ).toBe(true);
+        }
+      }
+    }
+  });
+});
