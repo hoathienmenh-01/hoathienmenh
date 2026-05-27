@@ -846,6 +846,18 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     }
     const maxHp = BigInt(def.baseMaxHp) * BigInt(level);
 
+    // Check for existing ACTIVE boss in region before create (defense-in-depth
+    // with partial unique index). Prevents race when index missing/disabled.
+    const existing = await this.prisma.worldBoss.findFirst({
+      where: { status: BossStatus.ACTIVE, regionKey },
+    });
+    if (existing) {
+      this.logger.warn(
+        `boss spawnNew region=${regionKey}: ACTIVE boss already exists (id=${existing.id}), no-op`,
+      );
+      return null;
+    }
+
     let created;
     try {
       created = await this.prisma.worldBoss.create({

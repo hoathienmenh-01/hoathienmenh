@@ -79,13 +79,6 @@ S3_SSE="$(parse_field sse)"
 S3_ACCESS_KEY_ID_MASKED="$(parse_field accessKeyId)"
 S3_SECRET_MASKED="$(parse_field secretMasked)"
 
-# `aws` CLI required.
-if ! command -v aws >/dev/null 2>&1; then
-  echo "FATAL: aws CLI không có trong PATH." >&2
-  echo "Install: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html" >&2
-  exit 3
-fi
-
 # Identify file to upload.
 if [[ -n "$BACKUP_S3_FILE" ]]; then
   if [[ ! -f "$BACKUP_S3_FILE" ]]; then
@@ -124,6 +117,13 @@ echo "  secret      : $S3_SECRET_MASKED"
 if [[ "$DRY_RUN" == "1" ]]; then
   echo "[backup-to-s3] DRY_RUN=1 — skip upload. Exit 0."
   exit 0
+fi
+
+# `aws` CLI required for actual upload.
+if ! command -v aws >/dev/null 2>&1; then
+  echo "FATAL: aws CLI không có trong PATH." >&2
+  echo "Install: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html" >&2
+  exit 3
 fi
 
 # Build aws CLI args. Path style → aws CLI v2 supports `--no-verify-ssl` and
