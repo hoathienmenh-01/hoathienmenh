@@ -7,7 +7,7 @@
     "dev": "pnpm -r --parallel run dev",
     "build": "pnpm -r run build",
     "typecheck": "pnpm -r run typecheck",
-    "lint": "pnpm -r run lint",
+    "lint": "pnpm -r run lint && node scripts/check-i18n-parity.mjs",
     "check:i18n": "node scripts/check-i18n-parity.mjs",
     "test": "pnpm -r run test",
     "test:balance": "pnpm --filter @xuantoi/shared test:balance",
