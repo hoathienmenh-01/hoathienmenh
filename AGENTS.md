@@ -155,3 +155,21 @@ Run smoke scripts for affected runtime flows.
 ## Final Response Checklist
 
 In final responses, report files changed, summary, tests/checks run, current recommended next task when relevant, and PR link or manual PR link if pushed.
+
+## Token Budget Mode
+
+For low-token Claude/AI sessions:
+
+1. Read `docs/AI_QUICK_START.md` first.
+2. Read `docs/AI_HANDOFF_SNAPSHOT.md` for current state.
+3. Read `docs/ai-memory/00_current_context.md` for current context.
+4. Read `docs/ai-memory/11_next_tasks.md` for next task recommendation.
+5. Use `docs/TASK_CONTEXT_MAP.md` to decide which domain memory to read.
+6. Only open long docs when the current task requires them.
+
+Anti-patterns:
+- Do not read 10+ docs at session start "just in case".
+- Do not read full large files when one section is enough — use `rg` to find sections.
+- Do not read `docs/ARCHIVE_HANDOFF.md` (1125 lines) unless debugging history.
+- Do not read full `docs/ECONOMY_MODEL.md` (68k chars) or `docs/BALANCE_MODEL.md` (242k chars) unless task requires deep changes — read memory summaries first.
+- Do not copy long logs into handoff or memory.

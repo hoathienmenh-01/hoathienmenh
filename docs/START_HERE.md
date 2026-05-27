@@ -6,7 +6,15 @@
 
 ## Always read first (mỗi session)
 
-4 file **bắt buộc đọc** khi bắt đầu phiên làm việc mới — đủ context cho hầu hết task:
+**Token Budget Mode** — đọc snapshot files trước (30-80 dòng mỗi file):
+
+1. [`docs/AI_QUICK_START.md`](./AI_QUICK_START.md) — quick startup guide với minimal token usage
+2. [`docs/AI_HANDOFF_SNAPSHOT.md`](./AI_HANDOFF_SNAPSHOT.md) — current state snapshot (50-80 dòng)
+3. [`docs/ai-memory/00_current_context.md`](./ai-memory/00_current_context.md) — current context
+4. [`docs/ai-memory/11_next_tasks.md`](./ai-memory/11_next_tasks.md) — next task recommendation
+5. [`docs/TASK_CONTEXT_MAP.md`](./TASK_CONTEXT_MAP.md) — task type → docs mapping
+
+**Standard Mode** — 4 file bắt buộc đọc khi bắt đầu phiên làm việc mới:
 
 1. [`AGENTS.md`](../AGENTS.md) — universal AI agent instructions: read order, token-saving rules, next-task tracker, progress update rule, test fast path.
 2. [`docs/START_HERE.md`](./START_HERE.md) ← **bạn đang ở đây** — bản đồ điều hướng docs.
