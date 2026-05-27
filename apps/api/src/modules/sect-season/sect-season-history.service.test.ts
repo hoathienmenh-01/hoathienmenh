@@ -42,6 +42,11 @@ beforeEach(async () => {
   await prisma.sectSeasonTopMember.deleteMany({});
   await prisma.sectSeasonSectRank.deleteMany({});
   await prisma.sectSeasonSnapshot.deleteMany({});
+  // Phase 15.8 — Reward grant audit table (không có FK xuống Character/Sect,
+  // `wipeAll` không tự xoá). Wipe explicit để tránh pollution giữa test runs.
+  await prisma.sectSeasonRewardGrant.deleteMany({});
+  // Phase 15.8 — Champion membership snapshot (không có FK xuống Sect/Character).
+  await prisma.sectSeasonChampionSnapshot.deleteMany({});
 });
 
 afterAll(async () => {
