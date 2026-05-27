@@ -10,7 +10,9 @@
 
 ## 1. Current Executive Summary
 
-- **Current branch (`ai/web-ui-20260527-2220`)**: Clean worktree. Task #42 (Playwright E2E Gate — Specs #23–#25, PR #680) merged to main. Next task: Phase 9 Beta Hardening Pack (task #39) — 3 sub-gaps: (1) chat rate-limit test flaky in CI, (2) i18n parity not enforced by lint, (3) smoke:ws not in default suite.
+- **Current branch (`ai/web-ui-20260527-2220`)**: Task #39 (Phase 9 Beta Hardening Pack) PARTIAL complete — sub-gap 2 (i18n parity wired to lint) DONE, sub-gap 3 (smoke:ws) already in ALL_SUITES. Sub-gap 1 (chat rate-limit test) deferred to backend engineer. Next: no frontend tasks in queue — all IN_PROGRESS tasks are backend scope.
+
+- **This PR (Phase 9 Beta Hardening Pack — i18n parity enforcement, branch `ai/web-ui-20260527-2220`, task #39 sub-gap 2+3)**: Wire i18n parity check into `pnpm lint` to prevent EN/VI key drift. **Changes**: (1) `package.json` — update `lint` script to run `pnpm -r run lint && node scripts/check-i18n-parity.mjs`; (2) verify smoke:ws already in `ALL_SUITES` (line 57 of smoke-all.mjs, added in task #37). **Verification**: `pnpm lint` now runs i18n parity check ✅ (7136 keys parity), typecheck ✅, build ✅. **Risk**: low — additive lint check only, no code changes. **Status**: sub-gap 2+3 DONE. Sub-gap 1 (chat.service.test.ts flaky) deferred — backend test scope.
 
 - **Previous PR (Playwright E2E Full-Stack Gate — Specs #23–#25, PR #680, branch `feat/playwright-e2e-gate-specs-23-25`, task #42)**: ✅ **MERGED**. Add 3 new E2E specs to `golden.spec.ts`. Spec #23: sect boss spawn→fight→active state→canSpawn=false. Spec #24: market V2 auction create→list→cancel (feature-flag aware). Spec #25: story V2 daily quest accept→track→claim→double-claim 409 (feature-flag aware). Updated header comment. Sub-gap 4 (CI E2E_FULL gate) deferred — separate infra PR. **Local checks**: typecheck ✅, lint ✅, build ✅, web 2754 ✅, diff --check ✅. **Risk**: low — E2E spec additions only.
 
