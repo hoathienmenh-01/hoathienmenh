@@ -10,7 +10,9 @@
 
 ## 1. Current Executive Summary
 
-- **This integration PR (branch `integrate/claude-team-20260527-2356`)**: Merge 3 parallel Claude agent branches — `ai/gameplay-data-20260527-2220` (task #40 Content Depth Pack), `ai/backend-api-20260527-2220` (task #41 Admin LiveOps Polish Pack), `ai/web-ui-20260527-2220` (task #39 Phase 9 Beta Hardening Pack). **Status**: resolving merge conflicts in docs, CI build in progress.
+- **This PR (Fix Known Issues QA-004 + QA-003, branch `fix/known-issues-qa-004-qa-003`, task #43)**: Resolve 2 known QA issues to unblock admin operators and improve smoke test workflow. **Changes**: (1) QA-004 — already fixed in codebase (`AdminControlCenterView.vue` line 237 has `await auth.hydrate()` before role check, 5 regression tests in place); (2) QA-003 — created `scripts/smoke-flush-rate-limits.mjs` to flush all rate-limit Redis keys (`rl:*` + `ratelimit:*` patterns), wired as `pnpm smoke:flush-rate-limits` in package.json; (3) Updated docs to move QA-004 + QA-003 from "Live (Open)" to "Resolved". **Verification**: AdminControlCenterView tests 10/10 ✅, typecheck ✅, lint ✅. **Risk**: low — QA-004 already fixed, QA-003 is additive helper script only. **Status**: COMPLETE, ready for commit.
+
+- **Previous PR (Integration PR #686 — CLOSED)**: Integration branch merging 3 parallel Claude agent branches was closed as redundant — all work already merged to main via separate PRs #678 (Content Depth Pack), #679 (Admin LiveOps Polish), #685 (Phase 9 Beta Hardening). CI passed before closure.
 
 - **Branch 1 (Content Depth Pack — Mission Expansion + Skill Book Drops, `ai/gameplay-data-20260527-2220`, task #40)**: Add 20 new mid-game missions (10 daily + 10 weekly) for realm 5-9 with appropriate reward scaling. Wire skill book drops into boss/dungeon loot tables. Add comprehensive integrity tests. **Changes**: (1) `missions.ts` — added 20 missions (`daily_midgame_*` + `weekly_midgame_*`) covering all goal kinds (CLEAR_DUNGEON, BOSS_HIT, KILL_MONSTER, CULTIVATE_SECONDS, ALCHEMY_CRAFT, BREAKTHROUGH) for realm orders 5-9, rewards scaled 250-400 LT daily / 1200-2100 LT weekly, all use `realmTier: null` to avoid catalog.test.ts conflicts; (2) `world-dungeons-v2.ts` — added skill book drops to 2 dungeons' firstClearReward (`son_coc_duoc_vien` → `skill_book_moc_linh_truong_dieu`, `son_coc_huyet_tri` → `skill_book_kim_quang_tram`); (3) `missions.test.ts` — added 5 mid-game coverage tests (≥60 daily, ≥50 weekly, ≥10 daily realm 5-9, ≥10 weekly realm 5-9, reward scaling check); (4) `world-dungeons-v2.test.ts` — added 2 skill book drop tests (≥2 dungeons with skill books, cross-ref ITEMS catalog); (5) `boss.test.ts` — added 2 skill book drop tests (≥3 bosses with skill books, cross-ref ITEMS catalog). **Verification**: shared 4191/4191 tests ✅, shared build ✅, boss skill book drops already exceeded requirements (11 bosses vs ≥3 needed). **Risk**: low — pure catalog additions, no schema migration, no economy changes, no backend logic changes.
 
@@ -153,8 +155,6 @@
 | # | Severity | Issue | Status / Plan |
 |---|---|---|---|
 | M7 | Medium | CSP production-ready nhưng chưa test deploy với CDN/asset domain khác. | **Open** — khi deploy production cần review `script-src`, `connect-src`. |
-| QA-004 | Medium | `AdminControlCenterView.vue` `onMounted` guard chạy trước khi Pinia auth store hydrate từ `/api/auth/me` → admin reload trực tiếp `/admin/control-center` bị toạt "Chỉ admin được vào trang này" + redirect `/home`. SPA nav qua sidebar vẫn ok. Server-side `AdminGuard` vẫn bảo vệ `/api/admin/**` nên **không leak payload** — chỉ là UX bug. | **Open** — micro-PR follow-up: `await authStore.ensureUserLoaded()` trong `onMounted` hoặc chuyển role-check sang Vue router `beforeEnter`. Phát hiện qua QA PR #562. |
-| QA-003 | Low | Smoke scripts (`scripts/smoke-*.mjs`) share host IP `127.0.0.1` → chạy nhiều script liên tiếp luũy cộng `AUTH_REGISTER 5/IP/15min` rất nhanh. Per-script `redis FLUSHDB` workaround. | **Open** — add `pnpm smoke:flush-rate-limits` helper. Phát hiện qua QA PR #562. |
 
 ### Implementation notes / debt (open) — không phải bug, là defer
 
@@ -166,6 +166,8 @@
 
 ### Resolved (recent — full list ở ARCHIVE)
 
+- QA-004 Admin reload guard → Resolved (already fixed in codebase): `AdminControlCenterView.vue` line 237 adds `await auth.hydrate()` before role check to prevent race condition on direct page reload. Test coverage added in `AdminControlCenterView.test.ts` with 5 QA-004 regression tests.
+- QA-003 Smoke rate-limit helper → Resolved this PR: Added `scripts/smoke-flush-rate-limits.mjs` to flush all rate-limit Redis keys (`rl:*` + `ratelimit:*` patterns). Wired as `pnpm smoke:flush-rate-limits` in package.json. Prevents cumulative rate-limit errors when running multiple smoke scripts sequentially.
 - Phase 26.0 local runtime gap → Resolved this PR (26.0.1): Postgres/Redis migration + API smoke completed; added service/processor/UI regression tests; body tick now uses its own queue; breakthrough update now CAS-guarded with rollback on concurrent attempts.
 - Phase 23.2 equipment realm gate → Resolved PR #540 draft: `packages/shared/src/equipment-progression.ts` defines 10 tiers, grade mapping, power budgets, socket/enhance/gem/set caps; inventory equip rejects realm-locked equipment; unequip/consumable unaffected.
 - M10 Shop daily limit + per-user rate limit → Resolved PR #450 (`ShopEntryDef.dailyLimit` opt-in + `rl:shop-buy` 30 req/60s qua FailoverRateLimiter; pre-check trước tx, KHÔNG trừ tiền khi reject; +20 vitest).
