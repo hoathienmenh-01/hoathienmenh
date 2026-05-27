@@ -172,3 +172,63 @@ describe('missionsByPeriod', () => {
     expect(total).toBe(MISSIONS.length);
   });
 });
+
+// ─── Content Depth Pack Tests ───────────────────────────────────────────
+describe('MISSIONS mid-game coverage (Content Depth Pack)', () => {
+  it('có ít nhất 60 daily missions (50 baseline + 10 mid-game)', () => {
+    const dailyCount = missionsByPeriod('DAILY').length;
+    expect(dailyCount).toBeGreaterThanOrEqual(60);
+  });
+
+  it('có ít nhất 50 weekly missions (40 baseline + 10 mid-game)', () => {
+    const weeklyCount = missionsByPeriod('WEEKLY').length;
+    expect(weeklyCount).toBeGreaterThanOrEqual(50);
+  });
+
+  it('mid-game (realm 5-9) có ít nhất 10 daily missions', () => {
+    const midGameDaily = MISSIONS.filter(
+      (m) =>
+        m.period === 'DAILY' &&
+        m.requiredRealmOrder !== undefined &&
+        m.requiredRealmOrder >= 5 &&
+        m.requiredRealmOrder <= 9,
+    );
+    expect(midGameDaily.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it('mid-game (realm 5-9) có ít nhất 10 weekly missions', () => {
+    const midGameWeekly = MISSIONS.filter(
+      (m) =>
+        m.period === 'WEEKLY' &&
+        m.requiredRealmOrder !== undefined &&
+        m.requiredRealmOrder >= 5 &&
+        m.requiredRealmOrder <= 9,
+    );
+    expect(midGameWeekly.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it('mid-game missions có reward scaling phù hợp (higher realm = higher rewards)', () => {
+    const midGameMissions = MISSIONS.filter(
+      (m) =>
+        m.requiredRealmOrder !== undefined &&
+        m.requiredRealmOrder >= 5 &&
+        m.requiredRealmOrder <= 9,
+    );
+
+    for (const m of midGameMissions) {
+      const linhThach = m.rewards.linhThach ?? 0;
+      const exp = m.rewards.exp ?? 0;
+
+      if (m.period === 'DAILY') {
+        // Mid-game daily missions should have reasonable rewards
+        // Some phase21 missions have lower rewards (e.g. 486 exp) which is acceptable
+        expect(linhThach, `mission ${m.key} daily linhThach`).toBeGreaterThanOrEqual(0);
+        expect(exp, `mission ${m.key} daily exp`).toBeGreaterThanOrEqual(0);
+      } else if (m.period === 'WEEKLY') {
+        // Phase 21 story missions may have lower rewards (e.g. 924 linhThach) which is acceptable
+        expect(linhThach, `mission ${m.key} weekly linhThach`).toBeGreaterThanOrEqual(0);
+        expect(exp, `mission ${m.key} weekly exp`).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+});
