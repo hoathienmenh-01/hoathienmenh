@@ -54,6 +54,7 @@ import { AdminController } from './admin.controller';
 import { AdminError, type AdminService } from './admin.service';
 import { GiftCodeError, type GiftCodeService } from '../giftcode/giftcode.service';
 import { MailError, type MailService } from '../mail/mail.service';
+import type { SessionService } from '../auth/session.service';
 
 type AdminReq = Request & { userId: string; role: Role };
 
@@ -146,6 +147,7 @@ interface ServiceStubs {
     cadence: 'weekly';
     timezone: string;
   }>;
+  sessionListForAdmin?: SessionService['listForAdmin'];
 }
 
 function makeController(stubs: ServiceStubs = {}): AdminController {
@@ -225,7 +227,11 @@ function makeController(stubs: ServiceStubs = {}): AdminController {
         timezone: 'Asia/Ho_Chi_Minh',
       })),
   } as unknown as import('../arena/arena-season.service').ArenaSeasonService;
-  return new AdminController(adminSvc, giftSvc, mailSvc, config, liveOpsSvc, arenaSeasonSvc);
+  const sessionSvc = {
+    listForAdmin: stubs.sessionListForAdmin ??
+      (async () => ({ sessions: [], nextCursor: null })),
+  } as unknown as SessionService;
+  return new AdminController(adminSvc, giftSvc, mailSvc, config, liveOpsSvc, arenaSeasonSvc, sessionSvc);
 }
 
 async function expectHttpError(
@@ -1496,6 +1502,115 @@ describe('AdminController', () => {
       expect(r.ok).toBe(true);
       expect(r.data.season.seasonKey).toBe('arena_2026-W20');
       expect(r.data.season.status).toBe('ACTIVE');
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Phase 18.2 — GET /admin/users/:id/sessions endpoint
+  // ─────────────────────────────────────────────────────────────────────
+  describe('GET /admin/users/:id/sessions', () => {
+    it('200 + truyền userId/limit/cursor vào sessionService.listForAdmin', async () => {
+      const calls: Array<{ userId?: string; limit: number; cursor?: string; status?: string }> = [];
+      const c = makeController({
+        sessionListForAdmin: (async (input) => {
+          calls.push(input as never);
+          return { sessions: [], nextCursor: null };
+        }) as SessionService['listForAdmin'],
+      });
+      const r = await c.userSessions('user-42', undefined, '25', 'cursor-abc');
+      expect(r.ok).toBe(true);
+      expect(r.data).toEqual({ sessions: [], nextCursor: null });
+      expect(calls).toHaveLength(1);
+      expect(calls[0].userId).toBe('user-42');
+      expect(calls[0].limit).toBe(25);
+      expect(calls[0].cursor).toBe('cursor-abc');
+    });
+
+    it('limit default 50 khi không truyền', async () => {
+      const calls: Array<{ limit: number }> = [];
+      const c = makeController({
+        sessionListForAdmin: (async (input) => {
+          calls.push(input as never);
+          return { sessions: [], nextCursor: null };
+        }) as SessionService['listForAdmin'],
+      });
+      await c.userSessions('u1', undefined, undefined, undefined);
+      expect(calls[0].limit).toBe(50);
+    });
+
+    it('limit clamp 1..200; 0 → 50 (falsy fallback), -5 → 1, 999 → 200', async () => {
+      const calls: Array<number> = [];
+      const c = makeController({
+        sessionListForAdmin: (async (input) => {
+          calls.push(input.limit);
+          return { sessions: [], nextCursor: null };
+        }) as SessionService['listForAdmin'],
+      });
+      // parseInt('0') || 50 → 50 (0 is falsy, falls back to default 50)
+      await c.userSessions('u1', undefined, '0', undefined);
+      // parseInt('-5') → -5, then Math.max(-5, 1) → 1
+      await c.userSessions('u1', undefined, '-5', undefined);
+      // parseInt('999') → 999, then Math.min(999, 200) → 200
+      await c.userSessions('u1', undefined, '999', undefined);
+      await c.userSessions('u1', undefined, '100', undefined);
+      expect(calls).toEqual([50, 1, 200, 100]);
+    });
+
+    it('status filter: ACTIVE/REVOKED/EXPIRED/ALL accepted; invalid → undefined', async () => {
+      const calls: Array<string | undefined> = [];
+      const c = makeController({
+        sessionListForAdmin: (async (input) => {
+          calls.push(input.status);
+          return { sessions: [], nextCursor: null };
+        }) as SessionService['listForAdmin'],
+      });
+      await c.userSessions('u1', 'ACTIVE', undefined, undefined);
+      await c.userSessions('u1', 'REVOKED', undefined, undefined);
+      await c.userSessions('u1', 'EXPIRED', undefined, undefined);
+      await c.userSessions('u1', 'ALL', undefined, undefined);
+      await c.userSessions('u1', 'PENDING', undefined, undefined);
+      await c.userSessions('u1', 'active', undefined, undefined);
+      expect(calls).toEqual(['ACTIVE', 'REVOKED', 'EXPIRED', 'ALL', undefined, undefined]);
+    });
+
+    it('cursor empty string → undefined', async () => {
+      const calls: Array<string | undefined> = [];
+      const c = makeController({
+        sessionListForAdmin: (async (input) => {
+          calls.push(input.cursor);
+          return { sessions: [], nextCursor: null };
+        }) as SessionService['listForAdmin'],
+      });
+      await c.userSessions('u1', undefined, undefined, '');
+      expect(calls[0]).toBeUndefined();
+    });
+
+    it('200 + sessions data shape passthrough', async () => {
+      const now = new Date().toISOString();
+      const mockSessions = [
+        {
+          id: 's1', userId: 'u1', ipHash: null, userAgent: null,
+          createdAt: now, lastSeenAt: now, expiresAt: now,
+          revokedAt: null, revokedReason: null, revokedById: null,
+          suspicious: false, status: 'ACTIVE' as const, current: false,
+        },
+        {
+          id: 's2', userId: 'u1', ipHash: 'hash', userAgent: 'Mozilla/5.0',
+          createdAt: now, lastSeenAt: now, expiresAt: now,
+          revokedAt: now, revokedReason: 'ADMIN_REVOKE' as const, revokedById: 'admin1',
+          suspicious: false, status: 'REVOKED' as const, current: false,
+        },
+      ];
+      const c = makeController({
+        sessionListForAdmin: (async () => ({
+          sessions: mockSessions,
+          nextCursor: 'next-cursor',
+        })) as SessionService['listForAdmin'],
+      });
+      const r = await c.userSessions('u1', 'ALL', '50', undefined);
+      expect(r.ok).toBe(true);
+      expect(r.data.sessions).toHaveLength(2);
+      expect(r.data.nextCursor).toBe('next-cursor');
     });
   });
 });
