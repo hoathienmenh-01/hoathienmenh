@@ -37,6 +37,7 @@ import {
   type ContentStatusType,
   type DropProfileSourceType,
   type DropProfileSpec,
+  type LiveOpsCronHealthOverview,
   type RewardProfileContentType,
   type RewardProfileSpec,
 } from '@xuantoi/shared';
@@ -54,6 +55,10 @@ import {
   type AdminControlCenterMe,
   type AdminControlCenterPermissionMatrix,
 } from '@/api/adminControlCenter';
+import {
+  adminLiveOpsCronHealthOverview,
+  type AdminLiveOpsCronHealthStatus,
+} from '@/api/admin';
 import { extractApiErrorCode } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTPageEyebrow from '@/components/xianxia/XTPageEyebrow.vue';
@@ -72,7 +77,8 @@ type Tab =
   | 'rewardProfiles'
   | 'dropProfiles'
   | 'contentStatuses'
-  | 'auditActions';
+  | 'auditActions'
+  | 'cronHealth';
 
 const tab = ref<Tab>('overview');
 const tabs: readonly Tab[] = [
@@ -82,6 +88,7 @@ const tabs: readonly Tab[] = [
   'dropProfiles',
   'contentStatuses',
   'auditActions',
+  'cronHealth',
 ];
 
 const overview = ref<AdminOverviewSnapshot | null>(null);
@@ -115,6 +122,10 @@ const contentTypeFilter = ref<ContentStatusType | ''>('');
 const auditActions = ref<readonly AdminControlCenterActionMetaRow[]>([]);
 const auditLoading = ref(false);
 const auditError = ref<string | null>(null);
+
+const cronHealth = ref<LiveOpsCronHealthOverview | null>(null);
+const cronHealthLoading = ref(false);
+const cronHealthError = ref<string | null>(null);
 
 const isAdmin = computed(
   () => auth.user?.role === 'ADMIN' || auth.user?.role === 'MOD',
@@ -213,6 +224,25 @@ async function loadAuditActions() {
   }
 }
 
+async function loadCronHealth() {
+  cronHealthLoading.value = true;
+  cronHealthError.value = null;
+  try {
+    cronHealth.value = await adminLiveOpsCronHealthOverview();
+  } catch (e) {
+    cronHealthError.value = extractApiErrorCode(e) ?? null;
+  } finally {
+    cronHealthLoading.value = false;
+  }
+}
+
+function healthBadgeClass(status: AdminLiveOpsCronHealthStatus): string {
+  if (status === 'OK') return 'border-emerald-400/40 text-emerald-300 bg-emerald-900/20';
+  if (status === 'STALE') return 'border-amber-400/40 text-amber-300 bg-amber-900/20';
+  if (status === 'DEGRADED') return 'border-rose-400/40 text-rose-300 bg-rose-900/20';
+  return 'border-gray-500/40 text-gray-400 bg-gray-900/20';
+}
+
 function rolePermsHas(role: AdminRoleKey, perm: AdminPermissionKey): boolean {
   return ADMIN_ROLE_PERMISSIONS[role].includes(perm);
 }
@@ -226,6 +256,7 @@ function selectTab(next: Tab) {
   if (next === 'contentStatuses') void loadContentStatuses();
   if (next === 'auditActions' && auditActions.value.length === 0)
     void loadAuditActions();
+  if (next === 'cronHealth') void loadCronHealth();
 }
 
 onMounted(async () => {
@@ -259,6 +290,7 @@ async function refreshCurrentTab() {
   else if (tab.value === 'dropProfiles') await loadDropProfiles();
   else if (tab.value === 'contentStatuses') await loadContentStatuses();
   else if (tab.value === 'auditActions') await loadAuditActions();
+  else if (tab.value === 'cronHealth') await loadCronHealth();
 }
 
 function overviewStatColor(key: string, value: unknown): string {
@@ -855,6 +887,101 @@ function overviewStatColor(key: string, value: unknown): string {
                 </tr>
               </tbody>
             </table>
+          </div>
+        </section>
+
+        <!-- CRON HEALTH -->
+        <section v-if="tab === 'cronHealth'" class="space-y-3">
+          <div class="flex justify-between items-center">
+            <h2 class="text-lg font-semibold">
+              {{ t('adminControlCenter.cronHealth.title') }}
+            </h2>
+            <MButton
+              size="sm"
+              :disabled="cronHealthLoading"
+              @click="loadCronHealth"
+            >
+              {{ t('common.refresh') }}
+            </MButton>
+          </div>
+
+          <p class="text-xs text-ink-300">
+            {{ t('adminControlCenter.cronHealth.subtitle') }}
+          </p>
+
+          <div v-if="cronHealthLoading" class="text-ink-300">
+            {{ t('common.loading') }}
+          </div>
+          <div v-else-if="cronHealthError" class="text-rose-300">
+            {{ t('adminControlCenter.cronHealth.error', { code: cronHealthError }) }}
+          </div>
+          <div v-else-if="cronHealth" class="space-y-3" data-testid="cron-health-grid">
+            <!-- Worst status badge -->
+            <div class="flex items-center gap-2 flex-wrap">
+              <span
+                class="px-2 py-0.5 rounded border text-xs uppercase tracking-widest"
+                :class="healthBadgeClass(cronHealth.worstStatus)"
+                data-testid="cron-health-worst-badge"
+              >
+                {{ cronHealth.worstStatus }}
+              </span>
+              <span class="text-xs text-ink-300">
+                {{ t('adminControlCenter.cronHealth.checkedAt', { ts: cronHealth.checkedAt }) }}
+              </span>
+            </div>
+
+            <!-- Per-cron table -->
+            <div class="overflow-x-auto">
+              <table class="text-xs w-full" data-testid="cron-health-table">
+                <thead>
+                  <tr class="border-b border-ink-300/30">
+                    <th class="text-left p-2">{{ t('adminControlCenter.cronHealth.colCron') }}</th>
+                    <th class="text-center p-2">{{ t('adminControlCenter.cronHealth.colStatus') }}</th>
+                    <th class="text-center p-2">{{ t('adminControlCenter.cronHealth.colEnabled') }}</th>
+                    <th class="text-left p-2">{{ t('adminControlCenter.cronHealth.colLastRun') }}</th>
+                    <th class="text-left p-2">{{ t('adminControlCenter.cronHealth.colLastSuccess') }}</th>
+                    <th class="text-left p-2">{{ t('adminControlCenter.cronHealth.colLastError') }}</th>
+                    <th class="text-left p-2">{{ t('adminControlCenter.cronHealth.colReason') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="entry in cronHealth.crons"
+                    :key="entry.cronKey"
+                    class="border-b border-ink-300/10"
+                    :data-testid="`cron-health-row-${entry.cronKey}`"
+                  >
+                    <td class="p-2 font-mono text-ink-100">{{ entry.cronKey }}</td>
+                    <td class="p-2 text-center">
+                      <span
+                        class="px-1.5 py-0.5 rounded border text-[10px] uppercase tracking-widest"
+                        :class="healthBadgeClass(entry.status)"
+                        :data-testid="`cron-health-badge-${entry.cronKey}`"
+                      >
+                        {{ entry.status }}
+                      </span>
+                    </td>
+                    <td class="p-2 text-center">
+                      <span :class="entry.enabled ? 'text-emerald-300' : 'text-ink-500'">
+                        {{ entry.enabled ? '✓' : '·' }}
+                      </span>
+                    </td>
+                    <td class="p-2 text-ink-300">
+                      {{ entry.lastRunAt ?? t('adminControlCenter.cronHealth.never') }}
+                    </td>
+                    <td class="p-2 text-ink-300">
+                      {{ entry.lastSuccessAt ?? t('adminControlCenter.cronHealth.never') }}
+                    </td>
+                    <td class="p-2" :class="entry.lastErrorAt ? 'text-rose-300' : 'text-ink-500'">
+                      {{ entry.lastErrorAt ?? '—' }}
+                    </td>
+                    <td class="p-2 text-amber-300/80">
+                      {{ entry.staleReason ?? '—' }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
       </XTPullRefresh>

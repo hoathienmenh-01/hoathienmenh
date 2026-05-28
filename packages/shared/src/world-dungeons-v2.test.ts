@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MONSTERS } from './combat';
 import { MAP_REGIONS } from './map-regions';
 import { REALMS } from './realms';
+import { ITEMS } from './items';
 import {
   DUNGEON_CATEGORIES,
   DUNGEONS_V2,
@@ -122,5 +123,31 @@ describe('world-dungeons-v2 — region / category indexing', () => {
   it('getDungeonsV2ByCategory trả đúng tập', () => {
     const alchemy = getDungeonsV2ByCategory('ALCHEMY_MATERIAL');
     for (const d of alchemy) expect(d.category).toBe('ALCHEMY_MATERIAL');
+  });
+});
+
+// ─── Content Depth Pack Tests ───────────────────────────────────────────
+describe('DUNGEONS_V2 skill book drops (Content Depth Pack)', () => {
+  it('có ít nhất 2 dungeons với skill book drops trong firstClearReward', () => {
+    const dungeonsWithSkillBooks = DUNGEONS_V2.filter((d) => {
+      const items = d.firstClearReward?.items ?? [];
+      return items.some((item) => item.itemKey.startsWith('skill_book_'));
+    });
+    expect(dungeonsWithSkillBooks.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('skill book items trong dungeon rewards đều tồn tại trong ITEMS catalog', () => {
+    const itemKeys = new Set(ITEMS.map((i) => i.key));
+    for (const d of DUNGEONS_V2) {
+      const items = d.firstClearReward?.items ?? [];
+      for (const item of items) {
+        if (item.itemKey.startsWith('skill_book_')) {
+          expect(
+            itemKeys.has(item.itemKey),
+            `dungeon ${d.key} reward skill_book '${item.itemKey}' không tồn tại trong ITEMS`,
+          ).toBe(true);
+        }
+      }
+    }
   });
 });

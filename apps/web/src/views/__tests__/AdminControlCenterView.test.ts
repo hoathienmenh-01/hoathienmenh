@@ -17,6 +17,7 @@ const auditMock = vi.fn();
 const rewardListMock = vi.fn();
 const dropListMock = vi.fn();
 const contentListMock = vi.fn();
+const cronHealthMock = vi.fn();
 
 vi.mock('@/api/adminControlCenter', () => ({
   adminControlCenterOverview: (...a: unknown[]) => overviewMock(...a),
@@ -26,6 +27,10 @@ vi.mock('@/api/adminControlCenter', () => ({
   listRewardProfiles: (...a: unknown[]) => rewardListMock(...a),
   listDropProfiles: (...a: unknown[]) => dropListMock(...a),
   listContentStatuses: (...a: unknown[]) => contentListMock(...a),
+}));
+
+vi.mock('@/api/admin', () => ({
+  adminLiveOpsCronHealthOverview: (...a: unknown[]) => cronHealthMock(...a),
 }));
 
 const routerPushMock = vi.fn();
@@ -125,6 +130,7 @@ const i18n = createI18n({
           dropProfiles: 'Rơi đồ',
           contentStatuses: 'Trạng thái',
           auditActions: 'Audit',
+          cronHealth: 'Sức khỏe Cron',
         },
         overview: {
           title: 'Tổng quan',
@@ -155,6 +161,21 @@ const i18n = createI18n({
         dropProfiles: { title: 'Drop' },
         contentStatuses: { title: 'Status' },
         auditActions: { title: 'Audit' },
+        cronHealth: {
+          title: 'Sức khỏe Cron',
+          subtitle: 'Giám sát cron job.',
+          worstStatus: 'Trạng thái: {status}',
+          checkedAt: 'Lúc {ts}',
+          colCron: 'Cron',
+          colStatus: 'Trạng thái',
+          colEnabled: 'Bật',
+          colLastRun: 'Chạy cuối',
+          colLastSuccess: 'Thành công',
+          colLastError: 'Lỗi',
+          colReason: 'Lý do',
+          never: 'chưa ghi nhận',
+          error: 'Lỗi ({code}).',
+        },
       },
     },
   },
@@ -376,10 +397,128 @@ describe('AdminControlCenterView — UX polish', () => {
   it('tabs have data-testid attributes', async () => {
     const w = mountView();
     await flushPromises();
-    const tabNames = ['overview', 'permissions', 'rewardProfiles', 'dropProfiles', 'contentStatuses', 'auditActions'];
+    const tabNames = ['overview', 'permissions', 'rewardProfiles', 'dropProfiles', 'contentStatuses', 'auditActions', 'cronHealth'];
     for (const name of tabNames) {
       expect(w.find(`[data-testid="tab-${name}"]`).exists()).toBe(true);
     }
+    w.unmount();
+  });
+});
+
+describe('AdminControlCenterView — Cron Health tab', () => {
+  beforeEach(() => {
+    authState.hydrate = vi.fn().mockImplementation(async () => {
+      authState.user = { id: 'u1', role: 'ADMIN' };
+      authState.isAuthenticated = true;
+      authState.isAdmin = true;
+    });
+    cronHealthMock.mockResolvedValue({
+      checkedAt: new Date().toISOString(),
+      worstStatus: 'OK',
+      crons: [
+        {
+          cronKey: 'territory',
+          enabled: true,
+          cron: '5 0 * * 1',
+          timezone: 'Asia/Ho_Chi_Minh',
+          maxSilenceMs: 691200000,
+          status: 'OK',
+          lastRunAt: new Date().toISOString(),
+          lastSuccessAt: new Date().toISOString(),
+          lastErrorAt: null,
+          staleReason: null,
+          nextExpectedRunAt: null,
+        },
+        {
+          cronKey: 'sect-season',
+          enabled: true,
+          cron: '15 0 * * *',
+          timezone: 'Asia/Ho_Chi_Minh',
+          maxSilenceMs: 172800000,
+          status: 'OK',
+          lastRunAt: new Date().toISOString(),
+          lastSuccessAt: new Date().toISOString(),
+          lastErrorAt: null,
+          staleReason: null,
+          nextExpectedRunAt: null,
+        },
+        {
+          cronKey: 'weekly',
+          enabled: true,
+          cron: '5 0 * * 1',
+          timezone: 'Asia/Ho_Chi_Minh',
+          maxSilenceMs: 691200000,
+          status: 'DISABLED',
+          lastRunAt: null,
+          lastSuccessAt: null,
+          lastErrorAt: null,
+          staleReason: 'cron disabled via env',
+          nextExpectedRunAt: null,
+        },
+      ],
+    });
+  });
+
+  it('renders cron health grid with badges after clicking cronHealth tab', async () => {
+    const w = mountView();
+    await flushPromises();
+
+    await w.find('[data-testid="tab-cronHealth"]').trigger('click');
+    await flushPromises();
+
+    expect(cronHealthMock).toHaveBeenCalled();
+    expect(w.find('[data-testid="cron-health-grid"]').exists()).toBe(true);
+    expect(w.find('[data-testid="cron-health-worst-badge"]').text()).toBe('OK');
+    expect(w.find('[data-testid="cron-health-table"]').exists()).toBe(true);
+    expect(w.find('[data-testid="cron-health-row-territory"]').exists()).toBe(true);
+    expect(w.find('[data-testid="cron-health-row-sect-season"]').exists()).toBe(true);
+    expect(w.find('[data-testid="cron-health-row-weekly"]').exists()).toBe(true);
+    w.unmount();
+  });
+
+  it('shows error state when cron health API fails', async () => {
+    cronHealthMock.mockRejectedValue(Object.assign(new Error('fail'), { code: 'NETWORK_ERROR' }));
+
+    const w = mountView();
+    await flushPromises();
+
+    await w.find('[data-testid="tab-cronHealth"]').trigger('click');
+    await flushPromises();
+
+    expect(w.find('[data-testid="cron-health-grid"]').exists()).toBe(false);
+    expect(w.text()).toContain('Lỗi');
+    w.unmount();
+  });
+
+  it('worst badge reflects DEGRADED status', async () => {
+    cronHealthMock.mockResolvedValue({
+      checkedAt: new Date().toISOString(),
+      worstStatus: 'DEGRADED',
+      crons: [
+        {
+          cronKey: 'territory',
+          enabled: true,
+          cron: '5 0 * * 1',
+          timezone: 'Asia/Ho_Chi_Minh',
+          maxSilenceMs: 691200000,
+          status: 'DEGRADED',
+          lastRunAt: new Date().toISOString(),
+          lastSuccessAt: null,
+          lastErrorAt: new Date().toISOString(),
+          staleReason: 'last error newer than last success',
+          nextExpectedRunAt: null,
+        },
+      ],
+    });
+
+    const w = mountView();
+    await flushPromises();
+
+    await w.find('[data-testid="tab-cronHealth"]').trigger('click');
+    await flushPromises();
+
+    expect(w.find('[data-testid="cron-health-worst-badge"]').text()).toBe('DEGRADED');
+    expect(w.find('[data-testid="cron-health-badge-territory"]').text()).toBe('DEGRADED');
     w.unmount();
   });
 });
