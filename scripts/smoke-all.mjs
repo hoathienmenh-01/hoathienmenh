@@ -4,20 +4,30 @@
  *
  * Chạy chuỗi smoke nền phục vụ QA regression + deploy verify:
  *
- *   1. smoke:health         — Health endpoints (no auth, no DB seed).
- *   2. smoke:auth           — Auth flow (login/register/forgot/reset).
- *   3. smoke:admin          — Admin login + read-only admin endpoints.
- *   4. smoke:economy        — Currency ledger invariants nền + mail-reward chain.
- *   5. smoke:breakthrough   — Breakthrough negative + positive path (admin seed).
- *   6. smoke:mission        — Mission negative + positive claim (admin seed).
- *   7. smoke:spiritual-root — Spiritual root negative + positive reroll (admin seed).
- *   8. smoke:combat         — Combat encounter negative path + reward shape.
- *   9. smoke:cultivation    — Cultivation toggle on/off + idempotency.
- *  10. smoke:boss           — Boss attack negative path + auth guards.
- *  11. smoke:dungeon-run    — Dungeon run start/next/claim + double-claim guard.
- *  12. smoke:mail           — Mail list/read/claim negative path.
- *  13. smoke:giftcode       — Giftcode redeem negative path + auth guards.
- *  14. smoke:ws             — WebSocket connect + cultivation tick + mission push.
+ *   1. smoke:health             — Health endpoints (no auth, no DB seed).
+ *   2. smoke:auth               — Auth flow (login/register/forgot/reset).
+ *   3. smoke:admin              — Admin login + read-only admin endpoints.
+ *   4. smoke:economy            — Currency ledger invariants nền + mail-reward chain.
+ *   5. smoke:breakthrough       — Breakthrough negative + positive path (admin seed).
+ *   6. smoke:mission            — Mission negative + positive claim (admin seed).
+ *   7. smoke:spiritual-root     — Spiritual root negative + positive reroll (admin seed).
+ *   8. smoke:combat             — Combat encounter negative path + reward shape.
+ *   9. smoke:cultivation        — Cultivation toggle on/off + idempotency.
+ *  10. smoke:boss               — Boss attack negative path + auth guards.
+ *  11. smoke:dungeon-run        — Dungeon run start/next/claim + double-claim guard.
+ *  12. smoke:mail               — Mail list/read/claim negative path.
+ *  13. smoke:giftcode           — Giftcode redeem negative path + auth guards.
+ *  14. smoke:ws                 — WebSocket connect + cultivation tick + mission push.
+ *  15. smoke:achievement        — Achievement unlock + claim positive path (admin seed).
+ *  16. smoke:daily-login        — Daily login streak + claim positive path.
+ *  17. smoke:cultivation-method — Cultivation method equip + switch.
+ *  18. smoke:skill              — Skill equip + use positive path.
+ *  19. smoke:shop               — Shop buy positive path.
+ *  20. smoke:sect               — Sect create/join/leave/contribute.
+ *  21. smoke:alchemy            — Alchemy recipes + craft positive path (admin seed).
+ *  22. smoke:gem                — Gem socket/unsocket/combine negative paths.
+ *  23. smoke:refine             — Refine equipment positive path (admin seed).
+ *  24. smoke:pet                — Pet box open + collection positive path (admin seed).
  *
  * Mỗi module có thể chạy riêng qua `pnpm smoke:<name>`.
  *
@@ -55,6 +65,17 @@ const ALL_SUITES = [
   { name: 'mail', script: 'scripts/smoke-mail.mjs' },
   { name: 'giftcode', script: 'scripts/smoke-giftcode.mjs' },
   { name: 'ws', script: 'scripts/smoke-ws.mjs' },
+  // Phase 15.8 — Beta readiness smoke expansion.
+  { name: 'achievement', script: 'scripts/smoke-achievement.mjs' },
+  { name: 'daily-login', script: 'scripts/smoke-daily-login.mjs' },
+  { name: 'cultivation-method', script: 'scripts/smoke-cultivation-method.mjs' },
+  { name: 'skill', script: 'scripts/smoke-skill.mjs' },
+  { name: 'shop', script: 'scripts/smoke-shop.mjs' },
+  { name: 'sect', script: 'scripts/smoke-sect.mjs' },
+  { name: 'alchemy', script: 'scripts/smoke-alchemy.mjs' },
+  { name: 'gem', script: 'scripts/smoke-gem.mjs' },
+  { name: 'refine', script: 'scripts/smoke-refine.mjs' },
+  { name: 'pet', script: 'scripts/smoke-pet.mjs' },
 ];
 
 /**
