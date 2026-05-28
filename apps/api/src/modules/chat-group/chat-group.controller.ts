@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpException,
   HttpStatus,
+  Optional,
   Param,
   Post,
   Query,
@@ -21,6 +22,8 @@ import type {
   GroupChatRow,
 } from '@xuantoi/shared';
 import { AuthService } from '../auth/auth.service';
+import { PrismaService } from '../../common/prisma.service';
+import { OnboardingQuestService } from '../onboarding-quest/onboarding-quest.service';
 import { RateLimitPolicy } from '../security/rate-limit-policy.decorator';
 import {
   ChatGroupError,
@@ -78,6 +81,8 @@ export class ChatGroupController {
   constructor(
     private readonly group: ChatGroupService,
     private readonly auth: AuthService,
+    private readonly prisma: PrismaService,
+    @Optional() private readonly onboarding?: OnboardingQuestService,
   ) {}
 
   @Get()
@@ -86,6 +91,16 @@ export class ChatGroupController {
   ): Promise<{ ok: true; data: GroupChatListResponse }> {
     const userId = await this.requireUserId(req);
     const groups = await this.group.listGroups(userId);
+    // Phase 44.2 — Onboarding auto-track CHAT_OPEN. Best-effort.
+    if (this.onboarding) {
+      try {
+        const c = await this.prisma.character.findUnique({
+          where: { userId },
+          select: { id: true },
+        });
+        if (c) void this.onboarding.notifyAction(c.id, 'CHAT_OPEN');
+      } catch { /* fail-soft */ }
+    }
     return { ok: true, data: { groups } };
   }
 

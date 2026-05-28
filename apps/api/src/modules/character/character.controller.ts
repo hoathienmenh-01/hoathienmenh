@@ -464,6 +464,7 @@ export class CharacterController {
     const character = await this.chars.findByUser(userId);
     if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
     const state = await this.spiritualRoot.getState(character.id);
+    if (this.onboarding) void this.onboarding.notifyAction(character.id, 'SPIRITUAL_ROOT_VIEW');
     return { ok: true, data: { spiritualRoot: state } };
   }
 
@@ -727,6 +728,7 @@ export class CharacterController {
     const character = await this.chars.findByUser(userId);
     if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
     const state = await this.artifactV2.getState(character.id);
+    if (this.onboarding) void this.onboarding.notifyAction(character.id, 'ARTIFACT_VIEW');
     return { ok: true, data: { artifactsV2: state } };
   }
 

@@ -5,12 +5,15 @@ import {
   HttpCode,
   HttpException,
   HttpStatus,
+  Optional,
   Post,
   Req,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { z } from 'zod';
 import { AuthService } from '../auth/auth.service';
+import { PrismaService } from '../../common/prisma.service';
+import { OnboardingQuestService } from '../onboarding-quest/onboarding-quest.service';
 import {
   QuestError,
   QuestProgressView,
@@ -42,6 +45,8 @@ export class QuestController {
   constructor(
     private readonly quests: QuestService,
     private readonly auth: AuthService,
+    private readonly prisma: PrismaService,
+    @Optional() private readonly onboarding?: OnboardingQuestService,
   ) {}
 
   @Get('me')
@@ -52,6 +57,16 @@ export class QuestController {
     if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
     try {
       const quests = await this.quests.listForUser(userId);
+      // Phase 44.2 — Onboarding auto-track QUEST_VIEW. Best-effort.
+      if (this.onboarding) {
+        try {
+          const c = await this.prisma.character.findUnique({
+            where: { userId },
+            select: { id: true },
+          });
+          if (c) void this.onboarding.notifyAction(c.id, 'QUEST_VIEW');
+        } catch { /* fail-soft */ }
+      }
       return { ok: true, data: { quests } };
     } catch (e) {
       this.handleErr(e);
