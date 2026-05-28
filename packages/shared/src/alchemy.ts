@@ -678,6 +678,10 @@ const PILL_GRADES: readonly PillGrade[] = [
   'THUONG_PHAM',
   'CUC_PHAM',
   'DAN_VAN',
+  'PHONG_HAU',
+  'DAO_TO',
+  'THAN_THONG',
+  'CHI_TON',
 ];
 
 const PILL_GRADE_ORDER: Record<PillGrade, number> = {
@@ -686,6 +690,10 @@ const PILL_GRADE_ORDER: Record<PillGrade, number> = {
   THUONG_PHAM: 3,
   CUC_PHAM: 4,
   DAN_VAN: 5,
+  PHONG_HAU: 6,
+  DAO_TO: 7,
+  THAN_THONG: 8,
+  CHI_TON: 9,
 };
 
 export function getAlchemyLevelExpRequirement(level: number): bigint {
@@ -725,6 +733,14 @@ export function pillGradeMultiplier(grade: PillGrade): number {
       return 1.3;
     case 'DAN_VAN':
       return 1.5;
+    case 'PHONG_HAU':
+      return 1.7;
+    case 'DAO_TO':
+      return 1.9;
+    case 'THAN_THONG':
+      return 2.1;
+    case 'CHI_TON':
+      return 2.5;
   }
 }
 
@@ -749,11 +765,15 @@ export function rollPillGrade(
       Math.max(0, context.alchemyMastery ?? 0) * 0.0001,
   );
   const weights: Record<PillGrade, number> = {
-    HA_PHAM: Math.max(0.28, 0.45 - qualityShift),
-    TRUNG_PHAM: Math.max(0.24, 0.32 - qualityShift / 2),
-    THUONG_PHAM: 0.16 + qualityShift * 0.7,
-    CUC_PHAM: Math.min(0.18, 0.06 + qualityShift * 0.55),
-    DAN_VAN: Math.min(0.05, 0.01 + qualityShift * 0.2),
+    HA_PHAM: Math.max(0.22, 0.40 - qualityShift),
+    TRUNG_PHAM: Math.max(0.20, 0.28 - qualityShift / 2),
+    THUONG_PHAM: 0.15 + qualityShift * 0.6,
+    CUC_PHAM: Math.min(0.15, 0.06 + qualityShift * 0.45),
+    DAN_VAN: Math.min(0.05, 0.01 + qualityShift * 0.15),
+    PHONG_HAU: Math.min(0.03, 0.005 + qualityShift * 0.08),
+    DAO_TO: Math.min(0.02, 0.002 + qualityShift * 0.04),
+    THAN_THONG: Math.min(0.01, 0.001 + qualityShift * 0.02),
+    CHI_TON: Math.min(0.005, 0.0005 + qualityShift * 0.01),
   };
   for (const grade of PILL_GRADES) {
     if (!allowedGrades(recipe.maxOutputGrade).includes(grade)) weights[grade] = 0;

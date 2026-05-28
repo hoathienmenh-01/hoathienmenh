@@ -151,7 +151,7 @@ export const BOSSES: readonly BossDef[] = [
     monsterType: 'BOSS',
     // Phase 11.2.D+++ — skill_book_thach_giap_ho_than (hệ Thổ) added to
     // lowDropPool (forward-compat phase 12 BossRewardService pity wire).
-    lowDropPool: ['huyet_tinh', 'co_thien_dan', 'skill_book_thach_giap_ho_than'],
+    lowDropPool: ['huyet_tinh', 'co_thien_dan', 'skill_book_thach_giap_ho_than', 'khi_huyet_dan_t1'],
     // Phase 14.2.B — boss hệ Thổ entry-tier kháng nhẹ tấn công Thổ (bản thân
     // affinity), còn trong safe range ≥ floor 0.7.
     elementalResist: { tho: 0.85 },
@@ -172,7 +172,7 @@ export const BOSSES: readonly BossDef[] = [
     regionKey: 'hoa_diem_son',
     monsterType: 'BOSS',
     // Phase 11.2.D+++ — skill_book_hoa_xa_phun_diem (hệ Hỏa) added.
-    lowDropPool: ['huyet_tinh', 'yeu_dan', 'cuu_huyen_dan', 'skill_book_hoa_xa_phun_diem'],
+    lowDropPool: ['huyet_tinh', 'yeu_dan', 'cuu_huyen_dan', 'skill_book_hoa_xa_phun_diem', 'cuong_cot_dan_t2'],
     // Phase 14.2.B — boss hệ Hoả entry-tier kháng nhẹ tấn công Hoả (affinity).
     elementalResist: { hoa: 0.85 },
   },
@@ -275,7 +275,7 @@ export const BOSSES: readonly BossDef[] = [
     topDropPool: ['than_phong_kiem', 'tien_huyen_giap', 'tien_van_dai'],
     midDropPool: ['cuu_u_bi_thuong', 'cuu_thien_dan', 'tien_van_dan'],
     // Phase 11.2.D+++ — skill_book_hoa_xa_phun_diem (hệ Hỏa) added.
-    lowDropPool: ['yeu_dan', 'huyet_tinh', 'cuu_huyen_dan', 'skill_book_hoa_xa_phun_diem'],
+    lowDropPool: ['yeu_dan', 'huyet_tinh', 'cuu_huyen_dan', 'skill_book_hoa_xa_phun_diem', 'tay_tuy_dan_t3'],
     level: 26,
     element: 'hoa',
     regionKey: 'hoa_diem_son',
@@ -343,7 +343,7 @@ export const BOSSES: readonly BossDef[] = [
     // reward (server `pickRandom`), ≈ 1/(N+1) chance per top 2-3 player.
     midDropPool: ['tien_huyen_kiem', 'cuu_thien_dan', 'tien_van_dan', 'linh_can_dan'],
     // Phase 11.2.D+++ — skill_book_kim_quang_tram (hệ Kim, boss element=kim).
-    lowDropPool: ['tien_kim_sa', 'tinh_thiet', 'cuu_huyen_dan', 'skill_book_kim_quang_tram'],
+    lowDropPool: ['tien_kim_sa', 'tinh_thiet', 'cuu_huyen_dan', 'skill_book_kim_quang_tram', 'kim_than_dan_t4'],
     level: 32,
     element: 'kim',
     regionKey: 'cuu_la_dien',

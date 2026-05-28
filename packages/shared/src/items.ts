@@ -65,7 +65,11 @@ export type PillGrade =
   | 'TRUNG_PHAM'
   | 'THUONG_PHAM'
   | 'CUC_PHAM'
-  | 'DAN_VAN';
+  | 'DAN_VAN'
+  | 'PHONG_HAU'
+  | 'DAO_TO'
+  | 'THAN_THONG'
+  | 'CHI_TON';
 
 export type MaterialCategory =
   | 'ALCHEMY_QI'
