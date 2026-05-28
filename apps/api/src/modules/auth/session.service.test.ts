@@ -457,3 +457,103 @@ describe('SessionService privacy', () => {
     expect(stringified).not.toContain('password');
   });
 });
+
+describe('SessionService.detectSuspiciousLogin', () => {
+  const OTHER_IP_HASH = 'b'.repeat(64);
+
+  it('return false khi không có session active khác', async () => {
+    const user = await createUser();
+    const s = await service.createSession({
+      userId: user.id,
+      ipHash: IP_HASH,
+      userAgent: UA,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    const result = await service.detectSuspiciousLogin({
+      userId: user.id,
+      newSessionId: s.id,
+      newIpHash: IP_HASH,
+    });
+    expect(result).toBe(false);
+  });
+
+  it('return false khi session active khác cùng IP', async () => {
+    const user = await createUser();
+    await service.createSession({
+      userId: user.id,
+      ipHash: IP_HASH,
+      userAgent: UA,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    const s2 = await service.createSession({
+      userId: user.id,
+      ipHash: IP_HASH,
+      userAgent: UA,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    const result = await service.detectSuspiciousLogin({
+      userId: user.id,
+      newSessionId: s2.id,
+      newIpHash: IP_HASH,
+    });
+    expect(result).toBe(false);
+  });
+
+  it('detect suspicious khi có session active từ IP khác trong 5 phút', async () => {
+    const user = await createUser();
+    // Session cũ từ IP khác.
+    await service.createSession({
+      userId: user.id,
+      ipHash: OTHER_IP_HASH,
+      userAgent: UA,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    // Session mới từ IP hiện tại.
+    const s2 = await service.createSession({
+      userId: user.id,
+      ipHash: IP_HASH,
+      userAgent: UA,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    const result = await service.detectSuspiciousLogin({
+      userId: user.id,
+      newSessionId: s2.id,
+      newIpHash: IP_HASH,
+    });
+    expect(result).toBe(true);
+
+    // Verify session marked suspicious.
+    const updated = await prisma.userSession.findUnique({ where: { id: s2.id } });
+    expect(updated?.suspicious).toBe(true);
+
+    // Verify SESSION_SUSPICIOUS SecurityEvent emitted.
+    const events = await prisma.securityEvent.findMany({
+      where: { type: 'SESSION_SUSPICIOUS', userId: user.id },
+    });
+    expect(events.length).toBe(1);
+    expect(events[0].severity).toBe('WARN');
+  });
+
+  it('return false khi ipHash là null hoặc unknown', async () => {
+    const user = await createUser();
+    const s = await service.createSession({
+      userId: user.id,
+      ipHash: null,
+      userAgent: UA,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    const result = await service.detectSuspiciousLogin({
+      userId: user.id,
+      newSessionId: s.id,
+      newIpHash: null,
+    });
+    expect(result).toBe(false);
+
+    const result2 = await service.detectSuspiciousLogin({
+      userId: user.id,
+      newSessionId: s.id,
+      newIpHash: 'unknown',
+    });
+    expect(result2).toBe(false);
+  });
+});

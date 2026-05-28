@@ -176,6 +176,13 @@ export type WsEventType =
    * Payload: { encounterKey, rarity, dateKey, titleVi }.
    */
   | 'encounter:new'
+  /**
+   * Phase 18.2 — Security alert realtime push. Server emit khi detect
+   * suspicious login (concurrent session từ IP khác trong 5 phút).
+   * Payload: { alertType: string, sessionId: string, message: string }.
+   * Chỉ emit tới userId chủ session — KHÔNG broadcast.
+   */
+  | 'security:alert'
   | 'pong'
   // client → server
   | 'ping'
