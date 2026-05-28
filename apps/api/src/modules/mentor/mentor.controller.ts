@@ -24,6 +24,7 @@ import {
   MentorMilestoneService,
 } from './mentor-milestone.service';
 import { MentorError, MentorService } from './mentor.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -51,12 +52,14 @@ export class MentorController {
     private readonly svc: MentorService,
     private readonly milestones: MentorMilestoneService,
     private readonly auth: AuthService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   @Get('profile')
   async profile(
     @Req() req: Request,
   ): Promise<{ ok: true; data: { profile: MentorProfileRow | null } }> {
+    await this.featureFlags.requireEnabled('MENTOR_ENABLED');
     const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
     if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
     const profile = await this.svc.getProfile(userId);

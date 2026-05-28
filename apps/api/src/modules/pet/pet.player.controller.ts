@@ -172,6 +172,7 @@ export class PetPlayerController {
     @Req() req: Request,
     @Param('context') context: string,
   ) {
+    await this.featureFlags.requireEnabled('PET_SYSTEM_ENABLED');
     const characterId = await this.requireCharacter(req);
     if (!isPetCombatContext(context)) fail('PET_INVALID_CONTEXT');
     return {

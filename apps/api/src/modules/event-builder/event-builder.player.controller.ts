@@ -21,6 +21,7 @@ import { EventMissionService } from './event-mission.service';
 import { EventShopService } from './event-shop.service';
 import { EventRankingService } from './event-ranking.service';
 import { EventPersonalMilestoneService } from './event-personal-milestone.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -55,6 +56,7 @@ export class EventBuilderPlayerController {
     private readonly personal: EventPersonalMilestoneService,
     private readonly auth: AuthService,
     private readonly prisma: PrismaService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   private async requireCharacter(req: Request): Promise<{
@@ -83,6 +85,7 @@ export class EventBuilderPlayerController {
 
   @Get()
   async listEvents(@Req() req: Request) {
+    await this.featureFlags.requireEnabled('EVENT_BUILDER_ENABLED');
     const { characterId, realmOrder } = await this.requireCharacter(req);
     const playerTier = Math.min(9, Math.max(1, Math.floor(realmOrder / 3) + 1));
     const data = await this.events.listPublicForPlayer({

@@ -18,6 +18,7 @@ import {
   type ClaimAllResult,
   type MailView,
 } from './mail.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -32,12 +33,14 @@ export class MailController {
   constructor(
     private readonly mail: MailService,
     private readonly auth: AuthService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   @Get('me')
   async inbox(
     @Req() req: Request,
   ): Promise<{ ok: true; data: { mails: MailView[] } }> {
+    await this.featureFlags.requireEnabled('MAIL_ENABLED');
     const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
     if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
     try {

@@ -15,6 +15,7 @@ import {
   type RateLimiter,
 } from '../../common/rate-limiter';
 import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 
 /**
  * Phase 13.1.B — Sect Shop service.
@@ -115,6 +116,8 @@ export class SectShopService {
     @Optional() @Inject(SECT_SHOP_BUY_RATE_LIMITER) limiter?: RateLimiter,
     @Optional()
     private readonly liveOpsEvents?: LiveOpsEventSchedulerService,
+    @Optional()
+    private readonly featureFlags?: FeatureFlagService,
   ) {
     this.limiter =
       limiter ??
@@ -230,8 +233,9 @@ export class SectShopService {
     // ≤ 0.5. Fail-soft: lỗi service → discount 0 (no-op), buy tiếp tục.
     let liveOpsDiscount: { multiplier: number; eventKey: string } | null = null;
     let discountMultiplier = 0;
+    const discountEnabled = !this.featureFlags || await this.featureFlags.isEnabled('SECT_SHOP_DISCOUNT_EVENTS_ENABLED');
     try {
-      if (this.liveOpsEvents) {
+      if (this.liveOpsEvents && discountEnabled) {
         const modifiers = await this.liveOpsEvents.getRuntimeModifiers(now);
         const matches = modifiers.filter((m) => m.type === 'SECT_SHOP_DISCOUNT');
         for (const m of matches) {

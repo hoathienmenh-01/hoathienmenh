@@ -14,6 +14,7 @@ import { TerritoryError, TerritoryService } from './territory.service';
 import { TerritorySettlementService } from './territory-settlement.service';
 import { TerritoryWarService } from './territory-war.service';
 import { AuthService } from '../auth/auth.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -45,6 +46,7 @@ export class TerritoryController {
     private readonly settlement: TerritorySettlementService,
     private readonly war: TerritoryWarService,
     private readonly auth: AuthService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   private async getUserId(req: Request): Promise<string> {
@@ -101,6 +103,7 @@ export class TerritoryController {
 
   @Get('war/current')
   async warCurrent() {
+    await this.featureFlags.requireEnabled('TERRITORY_WAR_ENABLED');
     const data = await this.war.getCurrentTerritoryWarState();
     return { ok: true, data };
   }

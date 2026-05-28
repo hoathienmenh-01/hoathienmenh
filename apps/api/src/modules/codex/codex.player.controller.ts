@@ -26,6 +26,7 @@ import { CODEX_ENTRY_TYPES, type CodexEntryType, isCodexEntryType } from '@xuant
 import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../../common/prisma.service';
 import { CodexService, CodexError } from './codex.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -42,6 +43,7 @@ export class CodexPlayerController {
     private readonly auth: AuthService,
     private readonly prisma: PrismaService,
     private readonly codex: CodexService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   private async getCharacterIdMaybe(req: Request): Promise<string | undefined> {
@@ -63,6 +65,7 @@ export class CodexPlayerController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
+    await this.featureFlags.requireEnabled('CODEX_ENABLED');
     const characterId = await this.getCharacterIdMaybe(req);
     const parsedType = type && isCodexEntryType(type) ? (type as CodexEntryType) : undefined;
     return {
