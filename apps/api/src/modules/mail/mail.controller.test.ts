@@ -76,7 +76,8 @@ function makeController(
     markRead: opts.readImpl ?? (async () => STUB_MAIL),
     claim: opts.claimImpl ?? (async () => STUB_MAIL),
   } as unknown as MailService;
-  return new MailController(mail, auth);
+  const featureFlags = { requireEnabled: async () => {} } as any;
+  return new MailController(mail, auth, featureFlags);
 }
 
 async function expectHttpError(
