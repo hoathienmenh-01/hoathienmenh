@@ -28,6 +28,19 @@
  *  22. smoke:gem                — Gem socket/unsocket/combine negative paths.
  *  23. smoke:refine             — Refine equipment positive path (admin seed).
  *  24. smoke:pet                — Pet box open + collection positive path (admin seed).
+ *  25. smoke:inventory          — Inventory equip/unequip/use negative + positive paths.
+ *  26. smoke:leaderboard        — Leaderboard ranking endpoints.
+ *  27. smoke:market             — Market listings/post/buy/cancel/mine.
+ *  28. smoke:chat               — Chat send/receive + scope rate-limit.
+ *  29. smoke:topup              — Topup order state machine (create → approve/reject).
+ *  30. smoke:quest              — Quest list/accept/progress/claim.
+ *  31. smoke:social             — Social system (friends + co-cultivation).
+ *  32. smoke:npc                — NPC dialogue + affinity.
+ *  33. smoke:story-dungeon      — Story dungeon end-to-end flow.
+ *  34. smoke:tribulation        — Tribulation attempt + preview.
+ *  35. smoke:body-cultivation   — Body cultivation (Luyện Thể).
+ *  36. smoke:coop               — Co-op party + party dungeon + co-op boss.
+ *  37. smoke:next-action        — Smart next-action recommendation.
  *
  * Mỗi module có thể chạy riêng qua `pnpm smoke:<name>`.
  *
@@ -76,6 +89,20 @@ const ALL_SUITES = [
   { name: 'gem', script: 'scripts/smoke-gem.mjs' },
   { name: 'refine', script: 'scripts/smoke-refine.mjs' },
   { name: 'pet', script: 'scripts/smoke-pet.mjs' },
+  // Phase 15.8 — Full coverage expansion (inventory, leaderboard, market, chat, topup, quest, social, npc, story-dungeon, tribulation, body-cultivation, coop, next-action).
+  { name: 'inventory', script: 'scripts/smoke-inventory.mjs' },
+  { name: 'leaderboard', script: 'scripts/smoke-leaderboard.mjs' },
+  { name: 'market', script: 'scripts/smoke-market.mjs' },
+  { name: 'chat', script: 'scripts/smoke-chat.mjs' },
+  { name: 'topup', script: 'scripts/smoke-topup.mjs' },
+  { name: 'quest', script: 'scripts/smoke-quest.mjs' },
+  { name: 'social', script: 'scripts/smoke-social.mjs' },
+  { name: 'npc', script: 'scripts/smoke-npc.mjs' },
+  { name: 'story-dungeon', script: 'scripts/smoke-story-dungeon.mjs' },
+  { name: 'tribulation', script: 'scripts/smoke-tribulation.mjs' },
+  { name: 'body-cultivation', script: 'scripts/smoke-body-cultivation.mjs' },
+  { name: 'coop', script: 'scripts/smoke-coop.mjs' },
+  { name: 'next-action', script: 'scripts/smoke-next-action.mjs' },
 ];
 
 /**
