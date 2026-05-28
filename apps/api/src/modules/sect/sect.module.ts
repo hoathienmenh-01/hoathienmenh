@@ -15,6 +15,7 @@ import { CharacterModule } from '../character/character.module';
 import { MissionModule } from '../mission/mission.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { LiveOpsEventSchedulerModule } from '../liveops-event-scheduler/liveops-event-scheduler.module';
+import { OnboardingQuestModule } from '../onboarding-quest/onboarding-quest.module';
 
 // Phase 13.1.B — wire SectMission + SectShop services + controllers vào SectModule.
 // SectMissionService inject Optional `CurrencyService` + `InventoryService`
@@ -33,6 +34,7 @@ import { LiveOpsEventSchedulerModule } from '../liveops-event-scheduler/liveops-
     MissionModule,
     InventoryModule,
     LiveOpsEventSchedulerModule,
+    OnboardingQuestModule,
   ],
   controllers: [SectController, SectMissionController, SectShopController, SectBossController],
   providers: [

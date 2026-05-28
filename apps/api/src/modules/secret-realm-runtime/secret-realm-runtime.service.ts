@@ -202,14 +202,10 @@ export class SecretRealmRuntimeService {
    *   5. (Phase 44.1) daily limit cap (`SECRET_REALM_REWARD_CAPS.dailyRunsPerRealm`)
    *      counted per UTC date — guard against farming/spam.
    *
-   * Phase 44.1 — Active-run guard moved BEFORE create. Combined với
-   * `findFirst({ status: { in: ['ENTERED', 'CLEARED'] } })` đã đủ chống
-   * 2 enter song song create 2 runs. Lưu ý: schema không có composite
-   * UNIQUE — race-window vẫn tồn tại nếu 2 request đồng thời lọt qua
-   * findFirst trước khi create. Để hardening hoàn toàn cần thêm DB
-   * partial unique index `(characterId, secretRealmKey) WHERE status IN
-   * ('ENTERED','CLEARED')`. Trong PR này chấp nhận window vài ms — Spam
-   * test ở suite vẫn cover trường hợp serial submit.
+   * Phase 44.1 — Active-run guard moved BEFORE create. Phase 44.2 —
+   * DB-level partial unique index `(characterId, secretRealmKey) WHERE
+   * status IN ('ENTERED','CLEARED')` closes the race window completely.
+   * P2002 handler below catches the rare concurrent-insert case.
    */
   async enter(userId: string, realmKey: string): Promise<SecretRealmRunView> {
     const def = secretRealmByKey(realmKey);

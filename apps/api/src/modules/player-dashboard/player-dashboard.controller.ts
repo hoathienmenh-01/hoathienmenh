@@ -3,11 +3,14 @@ import {
   Get,
   HttpException,
   HttpStatus,
+  Optional,
   Req,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import type { DashboardResponse } from '@xuantoi/shared';
 import { AuthService } from '../auth/auth.service';
+import { PrismaService } from '../../common/prisma.service';
+import { OnboardingQuestService } from '../onboarding-quest/onboarding-quest.service';
 import {
   DashboardError,
   PlayerDashboardService,
@@ -24,6 +27,8 @@ export class PlayerDashboardController {
   constructor(
     private readonly svc: PlayerDashboardService,
     private readonly auth: AuthService,
+    private readonly prisma: PrismaService,
+    @Optional() private readonly onboarding?: OnboardingQuestService,
   ) {}
 
   @Get()
@@ -32,6 +37,19 @@ export class PlayerDashboardController {
     if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
     try {
       const data = await this.svc.getDashboard(userId);
+      // Phase 44.2 — Onboarding auto-track DASHBOARD_VIEW + NEXT_ACTION_VIEW.
+      if (this.onboarding) {
+        try {
+          const c = await this.prisma.character.findUnique({
+            where: { userId },
+            select: { id: true },
+          });
+          if (c) {
+            void this.onboarding.notifyAction(c.id, 'DASHBOARD_VIEW');
+            void this.onboarding.notifyAction(c.id, 'NEXT_ACTION_VIEW');
+          }
+        } catch { /* fail-soft */ }
+      }
       return { ok: true, data };
     } catch (e) {
       if (e instanceof DashboardError) {
