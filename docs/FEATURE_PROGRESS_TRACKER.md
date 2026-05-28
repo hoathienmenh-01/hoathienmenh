@@ -73,19 +73,21 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 41 | Admin LiveOps Polish Pack — Territory Cron + Economy Report | DONE | 3 admin/liveops gaps remain deferred: (1) territory settle/decay requires manual admin trigger — no weekly cron; (2) admin receives no economy report mail — no week-over-week source/sink summary; (3) ledger report format is bare (no anomaly count, no delta trend). | Sub-gap 1: Wire territory weekly auto-settle + decay cron — DEFERRED (already auto-scheduled). Sub-gap 2: Add weekly economy report mail to admin — DEFERRED (circular dep risk). Sub-gap 3: Improve ledger report format with week-over-week delta — DONE. Sub-gap 4: Add tests for cron trigger + report generation — DONE (3 tests). | `liveops-cron.service.ts`, `territory-decay.service.ts`, `territory-settlement.service.ts`, `economy-integrity-audit.ts`, test files | Sub-gap 3 DONE: week-over-week delta in economy range report. Sub-gap 4 DONE: 3 new tests pass. Sub-gaps 1+2 DEFERRED. | 2026-05-28 |
 | 42 | Playwright E2E Full-Stack Gate — Specs #23–#25 | DONE | Playwright golden path has 22 specs but only spec #1 runs in CI. 3 high-value flows lack E2E coverage: sect boss fight, market V2 auction post/bid, and daily quest reset. | Sub-gap 1: Add golden.spec.ts spec #23 (sect boss spawn→fight→claim). Sub-gap 2: Add spec #24 (market V2 post→bid→finalize). Sub-gap 3: Add spec #25 (daily quest reset after window expiry). Sub-gap 4: Wire E2E_FULL gate in CI for these 3 specs (deferred — separate infra PR). | `apps/web/e2e/golden.spec.ts`, `.github/workflows/ci.yml` | 3 new E2E specs added; specs pass with E2E_FULL=1; typecheck + build pass. PR #680 merged. | 2026-05-28 |
 | 43 | Fix Known Issues — QA-004 + QA-003 | DONE | 2 known QA issues blocking admin operators and smoke test workflow. QA-004: admin reload bug. QA-003: smoke rate-limit cumulative errors. | QA-004: Verify `await auth.hydrate()` fix already in place in AdminControlCenterView.vue. QA-003: Create `scripts/smoke-flush-rate-limits.mjs` to flush all rate-limit Redis keys, wire as `pnpm smoke:flush-rate-limits`. Update docs to move both issues to Resolved. | `scripts/smoke-flush-rate-limits.mjs`, `package.json`, `docs/AI_HANDOFF_REPORT.md`, `docs/FEATURE_PROGRESS_TRACKER.md` | QA-004 already fixed (await hydrate line 237 + 5 tests). QA-003 script created + wired. Docs updated. AdminControlCenterView tests 10/10 pass. | 2026-05-28 |
+| 44 | Phase 45.1 — Feature Flags Wire + Remote Config History | DONE | 12 feature flags defined in catalog but not wired into module controllers/services. VISUAL_EFFECTS flag only in catalog, not FE runtime. | Wire 11 flags into BE modules (territory, shop, sect-shop, mail, mentor, sect-war, codex, event-builder, market-v2, pet). Create `useVisualEffects` composable for FE. | `territory.controller.ts`, `shop.service.ts`, `sect-shop.service.ts`, `mail.controller.ts`, `mentor.controller.ts`, `sect-war.controller.ts`, `codex.player.controller.ts`, `event-builder.player.controller.ts`, `market-v2.player.controller.ts`, `pet.player.controller.ts`, `useVisualEffects.ts` | 11 flags wired in BE; VISUAL_EFFECTS composable for FE; 30/30 flags now wired; quality gates pass. PR #689. | 2026-05-28 |
+| 45 | Phase 18.2 — Suspicious Login Detection + WS Notify | DONE | Session infrastructure (create/revoke/list/rotate) already complete. Missing: suspicious login detection when concurrent sessions from different IP within 5 min window. | Add `detectSuspiciousLogin` to SessionService. Wire into `AuthService.issueTokens` (fire-and-forget). Add `security:alert` WS event type. Import RealtimeModule in AuthModule for WS push. Add 4 tests. | `session.service.ts`, `auth.service.ts`, `auth.module.ts`, `ws-events.ts`, `session.service.test.ts` | Suspicious login detection works (different IP within 5 min → mark suspicious + emit SecurityEvent + WS push). 4 tests cover edge cases. Quality gates pass. | 2026-05-28 |
 
 ## Current Recommended Next Task
 
-**All tracker tasks (#1–#43) are DONE.** Phase 15.8 (LiveOps Maintenance Polish) is the last merged bundle.
+**All tracker tasks (#1–#45) are DONE.** Phase 18.2 (Suspicious Login Detection) is the last completed task.
 
 **Master Roadmap — Next PRs** (see `plans/ancient-wandering-melody.md`):
 
 | PR | Phase | Scope | Risk | Priority |
 |---|---|---|---|---|
-| #1 | Cleanup — Tracker Sync | Sync tracker + deferred backend tasks | low | **NOW** |
-| #2 | Phase 45.1 | Feature Flags Wire + Remote Config History | low-medium | Next |
-| #3 | Phase 18.2 | Security Session Management Hardening | medium | High |
-| #4 | Phase 26.1 | Alchemy V2 + PillGrade + Body Pill | medium | Medium |
+| #1 | Cleanup — Tracker Sync | Sync tracker + deferred backend tasks | low | DONE |
+| #2 | Phase 45.1 | Feature Flags Wire + Remote Config History | low-medium | DONE |
+| #3 | Phase 18.2 | Security Session Management Hardening | medium | DONE |
+| #4 | Phase 26.1 | Alchemy V2 + PillGrade + Body Pill | medium | **NOW** |
 | #5 | Phase 44.2 | Gameplay Follow-up Completion | low-medium | Medium |
 | #6 | Phase 27.1–27.5 | Monetization Systems V1 Completion | medium | Medium |
 | #7 | Phase 17.3 | Monitoring Polish (Sentry + Pino + Loki) | low | Low |
@@ -94,11 +96,11 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 
 ### Active Task
 
-- Task: Cleanup — Tracker Sync + Deferred Backend Tasks (PR #1)
-- Branch: fix/tracker-sync-deferred-tasks
+- Task: Phase 26.1 — Alchemy V2 + PillGrade + Body Pill Expansion (PR #4)
+- Branch: feat/phase-26-1-alchemy-v2
 - Started: 2026-05-28
 - Owner: AI
-- Status: IN_PROGRESS
+- Status: TODO
 
 ## Completed Tasks
 

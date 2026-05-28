@@ -35,6 +35,9 @@ import {
   type UserSessionSummary,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { RealtimeService } from '../realtime/realtime.service';
+
+const SUSPICIOUS_LOGIN_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Detail JSON tối thiểu khi ghi SecurityEvent SESSION_*. Sanitized —
@@ -131,6 +134,13 @@ export class SessionService {
     @Optional()
     @Inject(SESSION_SECURITY_ALERT_SERVICE)
     private readonly alerts: SessionAlertEmitter | null = null,
+    /**
+     * Phase 18.2 — optional realtime push cho suspicious login WS
+     * notification. Khi missing (test / module chưa wire), skip
+     * notification nhưng vẫn ghi SecurityEvent + mark suspicious.
+     */
+    @Optional()
+    private readonly realtime?: RealtimeService,
   ) {}
 
   // -------------------- write --------------------
@@ -169,6 +179,83 @@ export class SessionService {
       where: { id: sessionId, revokedAt: null },
       data: { lastSeenAt: new Date() },
     });
+  }
+
+  /**
+   * Phase 18.2 — Suspicious login detection.
+   *
+   * Sau khi tạo session mới (login/register), kiểm tra xem user có
+   * session active khác từ IP hash khác trong 5 phút gần nhất không.
+   * Nếu có → đánh dấu session mới là suspicious + emit
+   * `SESSION_SUSPICIOUS` SecurityEvent + push WS `security:alert`.
+   *
+   * Heuristic: IP hash khác nhau trong cửa sổ 5 phút = "login từ
+   * quốc gia khác" (proxy cho geo-distance khi chưa có MaxMind).
+   *
+   * Fail-soft: mọi error log warn + return false (không block login).
+   */
+  async detectSuspiciousLogin(input: {
+    userId: string;
+    newSessionId: string;
+    newIpHash: string | null;
+  }): Promise<boolean> {
+    if (!input.newIpHash || input.newIpHash === 'unknown') return false;
+
+    try {
+      const windowStart = new Date(Date.now() - SUSPICIOUS_LOGIN_WINDOW_MS);
+      const concurrent = await this.prisma.userSession.findFirst({
+        where: {
+          userId: input.userId,
+          revokedAt: null,
+          createdAt: { gte: windowStart },
+          id: { not: input.newSessionId },
+          ipHash: { not: null, notIn: [input.newIpHash] },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, ipHash: true },
+      });
+
+      if (!concurrent) return false;
+
+      // Mark session as suspicious.
+      await this.prisma.userSession.update({
+        where: { id: input.newSessionId },
+        data: { suspicious: true },
+      });
+
+      // Emit SecurityEvent.
+      await this.emitEvent({
+        type: 'SESSION_SUSPICIOUS',
+        severity: 'WARN',
+        userId: input.userId,
+        ipHash: input.newIpHash,
+        detail: {
+          sessionId: input.newSessionId,
+        },
+      });
+
+      // Push WS notification (best-effort).
+      if (this.realtime) {
+        try {
+          this.realtime.emitToUser(input.userId, 'security:alert', {
+            alertType: 'SUSPICIOUS_LOGIN',
+            sessionId: input.newSessionId,
+            message: 'Login từ thiết bị/vị trí khác được phát hiện.',
+          });
+        } catch {
+          // Fail-soft: WS push fail không block login flow.
+        }
+      }
+
+      return true;
+    } catch (err) {
+      this.log.warn(
+        `[SessionService] detectSuspiciousLogin failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      return false;
+    }
   }
 
   /**
