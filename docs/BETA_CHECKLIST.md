@@ -121,7 +121,7 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 ### Nội dung (post-beta polish)
 - [ ] Balance 28 realm EXP/drop dựa feedback playtest thực.
 - [ ] Thêm dungeon tier cao (`hoa_than`, `luyen_hu`, `hop_the`, `dai_thua`, `do_kiep`). Hiện chỉ 3 dungeon `luyen_khi`/`truc_co`/`kim_dan`.
-- [ ] Skill cho realm >= `nhan_tien` (hiện skills chỉ sect-based, chưa realm-based).
+- [x] Skill cho realm >= `nhan_tien` — 25 skills across 4 tiers (nhan_tien/huyen_tien/thanh_nhan/vo_chung) × 5 elements, realm gate enforced in `CharacterSkillService.validateOneUnlock`.
 - [ ] Full boss list seed theo tier (hiện model + spawn endpoint có, chưa có seed boss-by-tier ngoài runtime admin spawn).
 - [ ] 60+ xưng hiệu mốc (`titles.json` doc 05 — chưa wire DB).
 - [ ] i18n EN gap audit: grep `t(` keys không có trong `en.json` (`apps/web/src/i18n/en.json`).
