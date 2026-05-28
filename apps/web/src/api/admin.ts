@@ -6,6 +6,7 @@ import type {
   LiveOpsAnnouncementSeverity,
   LiveOpsAnnouncementStatus,
   LiveOpsAnnouncementTarget,
+  LiveOpsCronHealthOverview,
   LongTermGoalDef,
   ReputationGroupDef,
   TitleDef,
@@ -1675,4 +1676,15 @@ export async function adminMarketAbuseResolve(
   await apiClient.post(`/admin/market/abuse/anomalies/${id}/resolve`, {
     note,
   });
+}
+
+/**
+ * Phase 15.8 — Composite cron health snapshot. Returns health for all
+ * cron keys (territory, sect-season, weekly) in a single request.
+ */
+export async function adminLiveOpsCronHealthOverview(): Promise<LiveOpsCronHealthOverview> {
+  const { data } = await apiClient.get<Envelope<LiveOpsCronHealthOverview>>(
+    '/admin/liveops/cron-health',
+  );
+  return unwrap(data);
 }

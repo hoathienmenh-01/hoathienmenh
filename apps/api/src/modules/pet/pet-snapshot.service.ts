@@ -14,8 +14,7 @@
  * Phase 44.1:
  *   - `getCombatBonus(characterId, context)` — adapter trả về flat percent
  *     values cho combat tick / preview consumer. KHÔNG sửa formula combat —
- *     consumer tự apply (hiện tại chỉ FE preview tiêu thụ; combat backend
- *     dùng TODO marker).
+ *     consumer tự apply (FE preview + backend combat/boss/dungeon wired).
  *   - `getPreviewForAllContexts(characterId)` — render-helper trả 5 contexts
  *     trong 1 call (profile/combat preview UI).
  */

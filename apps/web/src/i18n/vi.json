@@ -5500,7 +5500,8 @@
       "rewardProfiles": "Cấu hình thưởng",
       "dropProfiles": "Cấu hình rơi đồ",
       "contentStatuses": "Trạng thái nội dung",
-      "auditActions": "Hành động audit"
+      "auditActions": "Hành động audit",
+      "cronHealth": "Sức khỏe Cron"
     },
     "overview": {
       "title": "Tổng quan vận hành",
@@ -5575,6 +5576,21 @@
       "colAction": "Hành động",
       "colRisk": "Mức rủi ro",
       "colConfirm": "Cần xác nhận"
+    },
+    "cronHealth": {
+      "title": "Sức khỏe Cron tự động",
+      "subtitle": "Giám sát trạng thái các cron job LiveOps — territory, sect season, weekly cycle.",
+      "worstStatus": "Trạng thái chung: {status}",
+      "checkedAt": "Kiểm tra lúc {ts}",
+      "colCron": "Cron",
+      "colStatus": "Trạng thái",
+      "colEnabled": "Bật",
+      "colLastRun": "Lần chạy cuối",
+      "colLastSuccess": "Thành công cuối",
+      "colLastError": "Lỗi cuối",
+      "colReason": "Lý do",
+      "never": "chưa ghi nhận",
+      "error": "Không tải được trạng thái cron ({code})."
     }
   },
   "adminFeatureFlags": {

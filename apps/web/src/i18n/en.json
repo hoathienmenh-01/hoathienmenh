@@ -5500,7 +5500,8 @@
       "rewardProfiles": "Reward Profiles",
       "dropProfiles": "Drop Profiles",
       "contentStatuses": "Content Status",
-      "auditActions": "Audit Actions"
+      "auditActions": "Audit Actions",
+      "cronHealth": "Cron Health"
     },
     "overview": {
       "title": "Operations Overview",
@@ -5575,6 +5576,21 @@
       "colAction": "Action",
       "colRisk": "Risk",
       "colConfirm": "Confirm required"
+    },
+    "cronHealth": {
+      "title": "Cron Health Monitor",
+      "subtitle": "Monitor LiveOps automated cron job health — territory, sect season, weekly cycle.",
+      "worstStatus": "Overall status: {status}",
+      "checkedAt": "Checked at {ts}",
+      "colCron": "Cron",
+      "colStatus": "Status",
+      "colEnabled": "Enabled",
+      "colLastRun": "Last run",
+      "colLastSuccess": "Last success",
+      "colLastError": "Last error",
+      "colReason": "Reason",
+      "never": "never recorded",
+      "error": "Failed to load cron status ({code})."
     }
   },
   "adminFeatureFlags": {
