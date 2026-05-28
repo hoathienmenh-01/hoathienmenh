@@ -21,6 +21,7 @@ import { CurrencyError, CurrencyService } from '../character/currency.service';
 import { EconomyAnomalyScannerService } from '../economy/economy-anomaly-scanner.service';
 import { QuestService } from '../quest/quest.service';
 import { MissionService } from '../mission/mission.service';
+import { AchievementService } from '../character/achievement.service';
 import {
   addDaysLocal,
   getLocalDateString,
@@ -131,6 +132,8 @@ export class AdminService {
      */
     @Optional()
     private readonly anomalyScanner: EconomyAnomalyScannerService | null = null,
+    @Optional()
+    private readonly achievements: AchievementService | null = null,
   ) {}
 
   // ---------- users ----------
@@ -865,6 +868,49 @@ export class AdminService {
       goalKind: input.goalKind,
       amount: input.amount,
       reason: input.reason,
+    });
+  }
+
+  /**
+   * Admin seed harness — track achievement progress directly. Use-case:
+   * positive-path smoke achievement claim (`POST /character/achievement/claim`)
+   * without spinning a real gameplay loop. Reuse
+   * `AchievementService.incrementProgress()` → upsert progress + set
+   * completedAt when goal reached. Audit `admin.achievement.track`.
+   */
+  async grantAchievementTrack(
+    actorId: string,
+    actorRole: Role,
+    targetUserId: string,
+    achievementKey: string,
+  ): Promise<void> {
+    if (actorId === targetUserId) throw new AdminError('CANNOT_TARGET_SELF');
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { role: true },
+    });
+    if (!targetUser) throw new AdminError('NOT_FOUND');
+    if (actorRole !== 'ADMIN' && targetUser.role !== 'PLAYER') {
+      throw new AdminError('FORBIDDEN');
+    }
+    const target = await this.prisma.character.findUnique({
+      where: { userId: targetUserId },
+      select: { id: true },
+    });
+    if (!target) throw new AdminError('NOT_FOUND');
+    if (!this.achievements) throw new AdminError('INVALID_INPUT');
+
+    // incrementProgress with large amount to guarantee completion
+    await this.achievements.incrementProgress(
+      target.id,
+      achievementKey,
+      999_999,
+    );
+
+    await this.audit(actorId, 'admin.achievement.track', {
+      targetUserId,
+      characterId: target.id,
+      achievementKey,
     });
   }
 

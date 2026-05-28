@@ -148,6 +148,7 @@ interface ServiceStubs {
     timezone: string;
   }>;
   sessionListForAdmin?: SessionService['listForAdmin'];
+  grantAchievementTrack?: AdminService['grantAchievementTrack'];
 }
 
 function makeController(stubs: ServiceStubs = {}): AdminController {
@@ -168,6 +169,7 @@ function makeController(stubs: ServiceStubs = {}): AdminController {
     getEconomyAlerts: stubs.getEconomyAlerts ?? (async () => ({} as never)),
     runLedgerAudit: stubs.runLedgerAudit ?? (async () => ({} as never)),
     getEconomyReport: stubs.getEconomyReport ?? (async () => ({} as never)),
+    grantAchievementTrack: stubs.grantAchievementTrack ?? (async () => undefined),
   } as unknown as AdminService;
   const giftSvc = {
     list: stubs.giftList ?? (async () => []),
@@ -1611,6 +1613,56 @@ describe('AdminController', () => {
       expect(r.ok).toBe(true);
       expect(r.data.sessions).toHaveLength(2);
       expect(r.data.nextCursor).toBe('next-cursor');
+    });
+  });
+
+  describe('POST /admin/users/:id/achievement-track', () => {
+    it('200 + truyền actorId/role/userId/achievementKey vào admin.grantAchievementTrack', async () => {
+      const calls: Array<{ actorId: string; actorRole: string; targetUserId: string; achievementKey: string }> = [];
+      const c = makeController({
+        grantAchievementTrack: (async (actorId, actorRole, targetUserId, achievementKey) => {
+          calls.push({ actorId, actorRole: actorRole as string, targetUserId, achievementKey });
+        }) as AdminService['grantAchievementTrack'],
+      });
+      // @ts-expect-error — access private method for testing
+      c['requireUserId'] = async () => 'admin-1';
+      // @ts-expect-error
+      c['requireRole'] = async () => 'ADMIN';
+      const result = await c.grantAchievementTrack(
+        { userId: 'admin-1', role: 'ADMIN' } as never,
+        'target-user-1',
+        { achievementKey: 'first_monster_kill' },
+      );
+      expect(result.ok).toBe(true);
+      expect(calls).toHaveLength(1);
+      expect(calls[0].targetUserId).toBe('target-user-1');
+      expect(calls[0].achievementKey).toBe('first_monster_kill');
+    });
+
+    it('INVALID_INPUT khi body thiếu achievementKey', async () => {
+      const c = makeController();
+      await expectHttpError(
+        c.grantAchievementTrack(
+          { userId: 'admin-1', role: 'ADMIN' } as never,
+          'target-user-1',
+          {},
+        ),
+        400,
+        'INVALID_INPUT',
+      );
+    });
+
+    it('INVALID_INPUT khi achievementKey rỗng', async () => {
+      const c = makeController();
+      await expectHttpError(
+        c.grantAchievementTrack(
+          { userId: 'admin-1', role: 'ADMIN' } as never,
+          'target-user-1',
+          { achievementKey: '' },
+        ),
+        400,
+        'INVALID_INPUT',
+      );
     });
   });
 });

@@ -114,6 +114,9 @@ const MissionTrackInput = z.object({
   amount: z.number().int().positive().max(999),
   reason: z.string().max(200).default(''),
 });
+const AchievementTrackInput = z.object({
+  achievementKey: z.string().min(1).max(64),
+});
 const GrantCurrencyInput = z.object({
   currency: z.enum(['LINH_THACH', 'TIEN_NGOC']),
   /** BigInt-as-string (mirror grant-exp pattern). Có thể âm để trừ. */
@@ -550,6 +553,35 @@ export class AdminController {
         amount: parsed.data.amount,
         reason: parsed.data.reason,
       });
+      return { ok: true, data: { ok: true } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Admin seed harness — track achievement progress directly. Use-case:
+   * positive-path smoke achievement claim without spinning a real gameplay
+   * loop. Calls `AchievementService.incrementProgress` with large amount
+   * to guarantee completion. Audit `admin.achievement.track`.
+   */
+  @Post('users/:id/achievement-track')
+  @HttpCode(200)
+  @RequireAdmin()
+  async grantAchievementTrack(
+    @Req() req: AdminReq,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = AchievementTrackInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      await this.admin.grantAchievementTrack(
+        req.userId,
+        req.role,
+        id,
+        parsed.data.achievementKey,
+      );
       return { ok: true, data: { ok: true } };
     } catch (e) {
       this.handleErr(e);

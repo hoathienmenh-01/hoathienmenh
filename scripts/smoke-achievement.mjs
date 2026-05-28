@@ -3,12 +3,10 @@
  * smoke-achievement.mjs — Achievement state + claim endpoints smoke cho
  * Xuân Tôi.
  *
- * Negative-path-only — positive claim path yêu cầu progress tracked đến
- * completed (`completedAt != null`) qua gameplay event như kill monster /
- * boss / breakthrough / spec elemental cultivate gain → defer cho future
- * smoke với gameplay automation hoặc admin `achievement.incrementProgress`
- * seed. Tương tự ALREADY_CLAIMED 409 (claim 2 lần liên tiếp, atomic CAS
- * `where { id, claimedAt: null }`) cũng defer.
+ * Cover negative path (auth gate, zod validation, controller order,
+ * NO_CHARACTER, ACHIEVEMENT_NOT_FOUND, NOT_FOUND_PROGRESS, anti-FE-self-grant,
+ * logout 401) và positive path (admin seed → claim → verify rewards →
+ * ALREADY_CLAIMED 409 → idempotent anti-FE-self-grant).
  *
  * Mục tiêu: cover 2 achievement endpoints qua HTTP — nằm trong
  * `apps/api/src/modules/character` (Phase 11.10.E + 11.10.C-1):
@@ -17,91 +15,9 @@
  *   - `POST /api/character/achievement/claim`   — atomic CAS claim với
  *                                                 ledger applyTx + title
  *                                                 unlock + item grant.
+ * Positive path dùng admin `POST /admin/users/:id/achievement-track` seed.
  *
- * Verify auth gate (401 unauth × 2), zod validation (400 INVALID_INPUT
- * cho achievementKey missing/empty/>64 chars), controller order
- * (zod → char → service: pre-onboard với valid key → NO_CHARACTER 404,
- * KHÔNG phải ACHIEVEMENT_NOT_FOUND — vì controller `findByUser` check
- * char *trước* khi gọi `claimReward`), NO_CHARACTER 404 fallback (cho
- * /achievements và /achievement/claim valid key pre-onboard),
- * ACHIEVEMENT_NOT_FOUND 404 (key không trong shared catalog
- * `ACHIEVEMENTS`), NOT_FOUND_PROGRESS 404 (fresh char chưa từng track
- * row qua `incrementProgress` cho key đó), shape contract cho /achievements
- * post-onboard (achievementKey/progress/completedAt/claimedAt/def với
- * hidden anti-spoil filter), và anti-FE-self-grant invariant (failed
- * claim attempts KHÔNG đụng linhThach/tienNgoc).
- *
- * 14-step:
- *   1. `GET  /api/character/achievements`     (no auth)             → 401.
- *   2. `POST /api/character/achievement/claim`(no auth)             → 401.
- *   3. `POST /api/_auth/register`                                   — fresh
- *                                                                   user.
- *   4. `GET  /api/character/achievements`     (pre-onboard)         → 404
- *                                                                   NO_CHARACTER.
- *   5. `POST /api/character/achievement/claim`({})                  → 400
- *                                                                   INVALID_INPUT
- *                                                                   (zod
- *                                                                   missing
- *                                                                   achievementKey).
- *   6. `POST /api/character/achievement/claim`({achievementKey:''}) → 400
- *                                                                   INVALID_INPUT
- *                                                                   (zod
- *                                                                   min(1)).
- *   7. `POST /api/character/achievement/claim`({achievementKey:
- *                                              65*'X'})             → 400
- *                                                                   INVALID_INPUT
- *                                                                   (zod
- *                                                                   max(64)).
- *   8. `POST /api/character/achievement/claim`({achievementKey:
- *                                              'first_monster_kill'})
- *                                              (pre-onboard)        → 404
- *                                                                   NO_CHARACTER
- *                                                                   (controller
- *                                                                   char
- *                                                                   check
- *                                                                   trước
- *                                                                   service
- *                                                                   catalog
- *                                                                   check).
- *   9. `POST /api/character/onboard`                                — fresh
- *                                                                   char.
- *  10. `GET  /api/character/achievements`     (post-onboard)        → 200
- *                                                                   achievements
- *                                                                   array
- *                                                                   shape +
- *                                                                   fresh
- *                                                                   char
- *                                                                   progress=0
- *                                                                   /completedAt=null
- *                                                                   /claimedAt=null
- *                                                                   cho
- *                                                                   non-hidden
- *                                                                   achievement.
- *  11. `POST /api/character/achievement/claim`({achievementKey:
- *                                              'invalid'})          → 404
- *                                                                   ACHIEVEMENT_NOT_FOUND
- *                                                                   (post-
- *                                                                   onboard,
- *                                                                   service
- *                                                                   `getAchievementDef`
- *                                                                   returns
- *                                                                   undefined).
- *  12. `POST /api/character/achievement/claim`({achievementKey:
- *                                              'first_monster_kill'})
- *                                              (fresh char)         → 404
- *                                                                   NOT_FOUND_PROGRESS
- *                                                                   (service
- *                                                                   findUnique
- *                                                                   returns
- *                                                                   null
- *                                                                   vì chưa
- *                                                                   incrementProgress).
- *  13. `anti-FE-self-grant` snapshot currency before/after fail attempts
- *                                                                   → linhThach
- *                                                                   /tienNgoc
- *                                                                   KHÔNG
- *                                                                   đụng.
- *  14. `POST /api/_auth/logout` + GET /achievements + POST /claim   → 401.
+ * 22-step: 14 negative + 8 positive (steps 15-22).
  *
  * Chạy:
  *   pnpm smoke:achievement
@@ -116,22 +32,14 @@
  *   SMOKE_ACHIEVEMENT_KEY   — default "first_monster_kill" (key tồn tại
  *                             trong `packages/shared/src/achievements.ts`
  *                             không hidden, chưa completed bởi fresh char).
+ *   SMOKE_ADMIN_EMAIL       — default "admin@example.com".
+ *   SMOKE_ADMIN_PASSWORD    — default "Admin@123".
  *
  * Yêu cầu môi trường (giống smoke:mission):
  *   - `pnpm infra:up` (Postgres + Redis)
  *   - `pnpm --filter @xuantoi/api exec prisma migrate deploy`
  *   - `pnpm --filter @xuantoi/api dev` (API listen :3000)
  *   - Tab khác: `pnpm smoke:achievement`
- *
- * Defer:
- *   - Positive claim path (track progress qua gameplay event đến completed
- *     → POST /achievement/claim → ledger applyTx LINH_THACH+TIEN_NGOC+exp
- *     + InventoryService.grantTx + title unlock → idempotent retry →
- *     ALREADY_CLAIMED 409 atomic CAS guard `claimedAt: null`).
- *   - NOT_COMPLETED 409 (row tồn tại nhưng `completedAt === null`).
- *   - ALREADY_CLAIMED 409 (đã claim 1 lần, claim lại fire CAS guard).
- *   Tất cả yêu cầu admin `achievement.incrementProgress` seed hoặc
- *   gameplay automation → defer.
  *
  * Exit code:
  *   0 — toàn bộ invariant OK.
@@ -149,6 +57,8 @@ const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS ?? 10_000);
 const VERBOSE = process.env.SMOKE_VERBOSE === '1';
 const SECT_KEY = process.env.SMOKE_SECT_KEY ?? 'thanh_van';
 const ACHIEVEMENT_KEY = process.env.SMOKE_ACHIEVEMENT_KEY ?? 'first_monster_kill';
+const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL ?? 'admin@example.com';
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? 'Admin@123';
 
 // -----------------------------------------------------------------------------
 // Cookie jar.
@@ -182,6 +92,17 @@ function storeSetCookie(res) {
 function cookieHeader() {
   if (cookieJar.size === 0) return undefined;
   return Array.from(cookieJar, ([k, v]) => `${k}=${v}`).join('; ');
+}
+
+/** Snapshot cookieJar để switch tạm sang admin rồi restore lại player. */
+function snapshotCookies() {
+  return new Map(cookieJar);
+}
+
+/** @param {Map<string,string>} snapshot */
+function restoreCookies(snapshot) {
+  cookieJar.clear();
+  for (const [k, v] of snapshot) cookieJar.set(k, v);
 }
 
 // -----------------------------------------------------------------------------
@@ -337,6 +258,9 @@ async function main() {
     `[smoke:achievement] API base = ${BASE}, timeout = ${TIMEOUT_MS}ms, sect = ${SECT_KEY}, achievementKey = ${ACHIEVEMENT_KEY}`,
   );
 
+  /** @type {{ userId?: string; email?: string; password?: string }} */
+  const state = {};
+
   // 1. GET /character/achievements chưa auth → 401.
   await step('GET /character/achievements — 401 UNAUTHENTICATED', async () => {
     const r = await http('/api/character/achievements');
@@ -366,6 +290,7 @@ async function main() {
     if (!r.body?.ok)
       throw new Error(`register: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
     assert(r.body?.data?.user?.id, 'register: missing user.id');
+    state.userId = r.body.data.user.id;
   });
 
   // 4. GET /character/achievements pre-onboard → 404 NO_CHARACTER.
@@ -535,6 +460,97 @@ async function main() {
     });
     assertStatus(claim, 401, 'POST /character/achievement/claim post-logout');
     assertErrorCode(claim, 'UNAUTHENTICATED', 'POST /character/achievement/claim post-logout');
+  });
+
+  // =============================================================================
+  // Positive path — admin seed achievement progress → claim → verify rewards.
+  // =============================================================================
+
+  // 15. Snapshot player cookies + admin login.
+  const playerSnapshot = snapshotCookies();
+  await step('admin login', async () => {
+    const r = await http('/api/_auth/login', {
+      method: 'POST',
+      body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    assertStatus(r, 200, 'admin login');
+    assert(r.body?.ok, `admin login: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+  });
+
+  // 16. POST /admin/users/:id/achievement-track → seed first_monster_kill progress.
+  await step('POST /admin/users/:id/achievement-track — seed progress', async () => {
+    const r = await http(`/api/admin/users/${state.userId}/achievement-track`, {
+      method: 'POST',
+      body: { achievementKey: ACHIEVEMENT_KEY },
+    });
+    assertStatus(r, 200, 'admin achievement-track');
+    assert(r.body?.ok, `admin achievement-track: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+  });
+
+  // 17. Admin logout + restore player cookies.
+  await step('admin logout + restore player', async () => {
+    const r = await http('/api/_auth/logout', { method: 'POST' });
+    assertStatus(r, [200, 204], 'admin logout');
+    restoreCookies(playerSnapshot);
+  });
+
+  // 18. GET /character/achievements — verify completedAt != null for ACHIEVEMENT_KEY.
+  await step('GET /character/achievements — completedAt != null', async () => {
+    const r = await http('/api/character/achievements');
+    assertStatus(r, 200, 'GET /character/achievements positive');
+    const achievements = r.body?.data?.achievements;
+    assert(Array.isArray(achievements), 'achievements not array');
+    const target = achievements.find((a) => a.achievementKey === ACHIEVEMENT_KEY);
+    assert(target, `achievement '${ACHIEVEMENT_KEY}' not found`);
+    assert(target.completedAt !== null, `completedAt should not be null, got ${target.completedAt}`);
+    assert(target.claimedAt === null, `claimedAt should be null before claim, got ${target.claimedAt}`);
+  });
+
+  // Snapshot currency BEFORE claim.
+  const beforeClaim = await fetchCharCurrencies();
+
+  // 19. POST /character/achievement/claim — claim rewards.
+  await step('POST /character/achievement/claim — claim rewards', async () => {
+    const r = await http('/api/character/achievement/claim', {
+      method: 'POST',
+      body: { achievementKey: ACHIEVEMENT_KEY },
+    });
+    assertStatus(r, 200, 'POST /character/achievement/claim positive');
+    assert(r.body?.ok, `claim: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const rewards = r.body?.data?.rewards;
+    assert(rewards, 'claim: missing rewards');
+    assert(typeof rewards.linhThach === 'number' && rewards.linhThach > 0, `claim: rewards.linhThach > 0, got ${rewards.linhThach}`);
+  });
+
+  // 20. GET /character/state — verify linhThach increased.
+  await step('GET /character/state — linhThach increased sau claim', async () => {
+    const after = await fetchCharCurrencies();
+    const beforeNum = BigInt(beforeClaim.linhThach);
+    const afterNum = BigInt(after.linhThach);
+    assert(afterNum > beforeNum, `linhThach should increase: before=${beforeClaim.linhThach}, after=${after.linhThach}`);
+  });
+
+  // 21. POST /character/achievement/claim again → ALREADY_CLAIMED 409.
+  await step('POST /character/achievement/claim — ALREADY_CLAIMED 409', async () => {
+    const r = await http('/api/character/achievement/claim', {
+      method: 'POST',
+      body: { achievementKey: ACHIEVEMENT_KEY },
+    });
+    assertStatus(r, 409, 'POST /character/achievement/claim duplicate');
+    assertErrorCode(r, 'ALREADY_CLAIMED', 'POST /character/achievement/claim duplicate');
+  });
+
+  // 22. Anti-FE-self-grant: currency unchanged sau ALREADY_CLAIMED.
+  await step('anti-FE-self-grant — currency unchanged sau ALREADY_CLAIMED', async () => {
+    const after = await fetchCharCurrencies();
+    const claimAfter = await fetchCharCurrencies();
+    // Currency should not change after idempotent retry.
+    const postClaimBigInt = BigInt(after.linhThach);
+    const retryBigInt = BigInt(claimAfter.linhThach);
+    assert(
+      postClaimBigInt === retryBigInt,
+      `linhThach should be unchanged after ALREADY_CLAIMED retry: post-claim=${after.linhThach}, retry=${claimAfter.linhThach}`,
+    );
   });
 
   // -----------------------------------------------------------------------------
