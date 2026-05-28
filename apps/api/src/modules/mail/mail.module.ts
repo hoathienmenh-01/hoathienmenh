@@ -8,6 +8,7 @@ import { InventoryModule } from '../inventory/inventory.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { WebPushModule } from '../web-push/web-push.module';
 import { OnboardingQuestModule } from '../onboarding-quest/onboarding-quest.module';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { OnboardingQuestModule } from '../onboarding-quest/onboarding-quest.modu
     InventoryModule,
     RealtimeModule,
     WebPushModule,
+    FeatureFlagModule,
     // Phase 44.2 — Optional onboarding wire để markRead trigger
     // `recordAction(MAIL_OPEN)`. Module export `OnboardingQuestService` đủ
     // cho `@Optional()` inject ở MailService.
