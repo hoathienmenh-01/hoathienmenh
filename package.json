@@ -36,7 +36,7 @@
     "smoke:daily-login": "node scripts/smoke-daily-login.mjs",
     "smoke:dungeon-run": "node scripts/smoke-dungeon-run.mjs",
     "smoke:economy": "node scripts/smoke-economy.mjs",
-    "smoke:flush-rate-limits": "node scripts/smoke-flush-rate-limits.mjs",
+    "smoke:flush-rate-limits": "node scripts/flush-auth-rate-limits.mjs",
     "smoke:giftcode": "node scripts/smoke-giftcode.mjs",
     "smoke:health": "node scripts/smoke-health.mjs",
     "smoke:inventory": "node scripts/smoke-inventory.mjs",
