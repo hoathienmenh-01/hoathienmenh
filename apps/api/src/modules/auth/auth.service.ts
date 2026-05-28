@@ -560,6 +560,15 @@ export class AuthService {
       userAgent: sanitizeUserAgent(ctx.userAgent ?? null),
       expiresAt: new Date(Date.now() + refreshTtl * 1000),
     });
+
+    // Phase 18.2 — suspicious login detection (fire-and-forget).
+    // Check concurrent sessions from different IP within 5 min window.
+    void this.sessions.detectSuspiciousLogin({
+      userId: user.id,
+      newSessionId: session.id,
+      newIpHash: ctx.ipHash ?? null,
+    });
+
     return this.mintForRotation(user, ctx, null, session.id);
   }
 
