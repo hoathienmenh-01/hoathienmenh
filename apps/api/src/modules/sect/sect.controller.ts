@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpException,
   HttpStatus,
+  Optional,
   Param,
   Post,
   Req,
@@ -14,6 +15,7 @@ import { z } from 'zod';
 import { SectError, SectService } from './sect.service';
 import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../../common/prisma.service';
+import { OnboardingQuestService } from '../onboarding-quest/onboarding-quest.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -42,6 +44,7 @@ export class SectController {
     private readonly sect: SectService,
     private readonly auth: AuthService,
     private readonly prisma: PrismaService,
+    @Optional() private readonly onboarding?: OnboardingQuestService,
   ) {}
 
   private async getViewer(req: Request): Promise<{
@@ -58,8 +61,15 @@ export class SectController {
   }
 
   @Get('list')
-  async list() {
+  async list(@Req() req: Request) {
     const sects = await this.sect.list();
+    // Phase 44.2 — Onboarding auto-track SECT_VIEW. Best-effort.
+    if (this.onboarding) {
+      try {
+        const { characterId } = await this.getViewer(req);
+        if (characterId) void this.onboarding.notifyAction(characterId, 'SECT_VIEW');
+      } catch { /* fail-soft */ }
+    }
     return { ok: true, data: { sects } };
   }
 
