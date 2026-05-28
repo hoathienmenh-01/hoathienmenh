@@ -35,6 +35,15 @@ schema_config:
 
 ruler:
   alertmanager_url: http://localhost:9093
+  storage:
+    type: local
+    local:
+      directory: /loki/rules
+  rule_path: /loki/rules-temp
+  ring:
+    kvstore:
+      store: inmemory
+  enable_api: true
 
 limits_config:
   retention_period: 168h

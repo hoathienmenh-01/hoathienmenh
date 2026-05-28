@@ -1,0 +1,81 @@
+groups:
+  - name: xuantoi-api-alerts
+    interval: 1m
+    rules:
+      # Phase 17.3 — Error rate spike alert.
+      # Fires when error log rate exceeds 10/min for 3 consecutive minutes.
+      - alert: HighErrorRate
+        expr: |
+          sum(count_over_time({job="xuantoi", level="error"} [1m])) > 10
+        for: 3m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "API error rate spike (>10 errors/min)"
+          description: "Error rate {{ $value }} errors/min sustained for 3 minutes."
+
+      # Phase 17.3 — Warning rate spike alert.
+      # Fires when warn log rate exceeds 50/min for 5 consecutive minutes.
+      - alert: HighWarningRate
+        expr: |
+          sum(count_over_time({job="xuantoi", level="warn"} [1m])) > 50
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "API warning rate spike (>50 warnings/min)"
+          description: "Warning rate {{ $value }} warnings/min sustained for 5 minutes."
+
+      # Phase 17.3 — Security event burst alert.
+      # Fires when security module logs exceed 20/min (potential attack).
+      - alert: SecurityEventBurst
+        expr: |
+          sum(count_over_time({job="xuantoi", module=~"security.*"} [1m])) > 20
+        for: 2m
+        labels:
+          severity: critical
+          team: security
+        annotations:
+          summary: "Security event burst (>20 events/min)"
+          description: "Security module logging {{ $value }} events/min — possible attack."
+
+      # Phase 17.3 — No logs alert (service down).
+      # Fires when zero logs are ingested for 5 minutes.
+      - alert: NoLogsIngested
+        expr: |
+          sum(count_over_time({job="xuantoi"} [5m])) == 0
+        for: 5m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "No API logs ingested for 5 minutes"
+          description: "Zero log lines from xuantoi job — service may be down."
+
+      # Phase 17.3 — Backup failure alert.
+      # Fires when backup processor logs an error.
+      - alert: BackupFailure
+        expr: |
+          count_over_time({job="xuantoi", module="BackupProcessor", level="error"} [30m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          team: ops
+        annotations:
+          summary: "Backup job failure detected"
+          description: "BackupProcessor logged an error in the last 30 minutes."
+
+      # Phase 17.3 — Cron health alert.
+      # Fires when any cron-scheduled module logs errors for 10 minutes.
+      - alert: CronJobFailure
+        expr: |
+          sum by (module) (count_over_time({job="xuantoi", module=~".*Scheduler|.*Processor|.*Cron", level="error"} [10m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+          team: ops
+        annotations:
+          summary: "Cron job failure in {{ $labels.module }}"
+          description: "Module {{ $labels.module }} logged {{ $value }} errors in the last 10 minutes."
