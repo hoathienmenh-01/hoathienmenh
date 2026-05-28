@@ -24,6 +24,7 @@ import {
   type QuestService,
 } from './quest.service';
 import type { AuthService } from '../auth/auth.service';
+import type { PrismaService } from '../../common/prisma.service';
 
 const STUB_VIEW: QuestProgressView = {
   key: 'phamnhan_grind_01',
@@ -76,7 +77,8 @@ function makeController(
     progress: opts.progressImpl ?? (async () => STUB_VIEW),
     claim: opts.claimImpl ?? (async () => STUB_CLAIM),
   } as unknown as QuestService;
-  return new QuestController(quests, auth);
+  const prisma = {} as unknown as PrismaService;
+  return new QuestController(quests, auth, prisma);
 }
 
 async function expectHttpError(

@@ -73,18 +73,13 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 41 | Admin LiveOps Polish Pack — Territory Cron + Economy Report | DONE | 3 admin/liveops gaps remain deferred: (1) territory settle/decay requires manual admin trigger — no weekly cron; (2) admin receives no economy report mail — no week-over-week source/sink summary; (3) ledger report format is bare (no anomaly count, no delta trend). | Sub-gap 1: Wire territory weekly auto-settle + decay cron — DEFERRED (already auto-scheduled). Sub-gap 2: Add weekly economy report mail to admin — DEFERRED (circular dep risk). Sub-gap 3: Improve ledger report format with week-over-week delta — DONE. Sub-gap 4: Add tests for cron trigger + report generation — DONE (3 tests). | `liveops-cron.service.ts`, `territory-decay.service.ts`, `territory-settlement.service.ts`, `economy-integrity-audit.ts`, test files | Sub-gap 3 DONE: week-over-week delta in economy range report. Sub-gap 4 DONE: 3 new tests pass. Sub-gaps 1+2 DEFERRED. | 2026-05-28 |
 | 42 | Playwright E2E Full-Stack Gate — Specs #23–#25 | DONE | Playwright golden path has 22 specs but only spec #1 runs in CI. 3 high-value flows lack E2E coverage: sect boss fight, market V2 auction post/bid, and daily quest reset. | Sub-gap 1: Add golden.spec.ts spec #23 (sect boss spawn→fight→claim). Sub-gap 2: Add spec #24 (market V2 post→bid→finalize). Sub-gap 3: Add spec #25 (daily quest reset after window expiry). Sub-gap 4: Wire E2E_FULL gate in CI for these 3 specs (deferred — separate infra PR). | `apps/web/e2e/golden.spec.ts`, `.github/workflows/ci.yml` | 3 new E2E specs added; specs pass with E2E_FULL=1; typecheck + build pass. PR #680 merged. | 2026-05-28 |
 | 43 | Fix Known Issues — QA-004 + QA-003 | DONE | 2 known QA issues blocking admin operators and smoke test workflow. QA-004: admin reload bug. QA-003: smoke rate-limit cumulative errors. | QA-004: Verify `await auth.hydrate()` fix already in place in AdminControlCenterView.vue. QA-003: Create `scripts/smoke-flush-rate-limits.mjs` to flush all rate-limit Redis keys, wire as `pnpm smoke:flush-rate-limits`. Update docs to move both issues to Resolved. | `scripts/smoke-flush-rate-limits.mjs`, `package.json`, `docs/AI_HANDOFF_REPORT.md`, `docs/FEATURE_PROGRESS_TRACKER.md` | QA-004 already fixed (await hydrate line 237 + 5 tests). QA-003 script created + wired. Docs updated. AdminControlCenterView tests 10/10 pass. | 2026-05-28 |
-| 44 | Phase 45.1 — Feature Flags Wire + Remote Config History | DONE | 12 feature flags defined in catalog but not wired into module controllers/services. VISUAL_EFFECTS flag only in catalog, not FE runtime. | Wire 11 flags into BE modules (territory, shop, sect-shop, mail, mentor, sect-war, codex, event-builder, market-v2, pet). Create `useVisualEffects` composable for FE. | `territory.controller.ts`, `shop.service.ts`, `sect-shop.service.ts`, `mail.controller.ts`, `mentor.controller.ts`, `sect-war.controller.ts`, `codex.player.controller.ts`, `event-builder.player.controller.ts`, `market-v2.player.controller.ts`, `pet.player.controller.ts`, `useVisualEffects.ts` | 11 flags wired in BE; VISUAL_EFFECTS composable for FE; 30/30 flags now wired; quality gates pass. PR #689. | 2026-05-28 |
-| 45 | Phase 18.2 — Suspicious Login Detection + WS Notify | DONE | Session infrastructure (create/revoke/list/rotate) already complete. Missing: suspicious login detection when concurrent sessions from different IP within 5 min window. | Add `detectSuspiciousLogin` to SessionService. Wire into `AuthService.issueTokens` (fire-and-forget). Add `security:alert` WS event type. Import RealtimeModule in AuthModule for WS push. Add 4 tests. | `session.service.ts`, `auth.service.ts`, `auth.module.ts`, `ws-events.ts`, `session.service.test.ts` | Suspicious login detection works (different IP within 5 min → mark suspicious + emit SecurityEvent + WS push). 4 tests cover edge cases. Quality gates pass. | 2026-05-28 |
-| 46 | Phase 26.1 — Alchemy V2 + PillGrade + Body Pill | DONE | PillGrade expanded from 5 to 9 grades. Body pill recipes added to boss loot tables. | Expand PillGrade type + multipliers + weights. Add body pill drops to 4 boss loot tables. Update alchemy tests. | `items.ts`, `alchemy.ts`, `boss.ts`, `alchemy.test.ts` | 9 PillGrade levels with correct multipliers/weights. 4 body pills in boss loot. Tests pass. | 2026-05-28 |
-| 47 | Phase 44.2 — Gameplay Follow-up Completion | DONE | 10 onboarding action types defined but not wired at call sites. Secret realm race window. | Wire 7 action types (SPIRITUAL_ROOT_VIEW, ARTIFACT_VIEW, SECT_VIEW, CHAT_OPEN, QUEST_VIEW, DASHBOARD_VIEW, NEXT_ACTION_VIEW). Update secret realm comment (index already applied). | `character.controller.ts`, `sect.controller.ts`, `chat-group.controller.ts`, `quest.controller.ts`, `player-dashboard.controller.ts`, modules, `secret-realm-runtime.service.ts` | 7 action types wired with @Optional() injection. Secret realm index comment updated. Quality gates pass. | 2026-05-28 |
-| 48 | Phase 27.1–27.5 — Monetization Systems V1 | DONE | Battle Pass V2, Growth Fund V2, Limited Shop, Overview, Anti-P2W all implemented in prior work. | No code changes needed — all systems already complete. | `monetization/*.ts`, `monetization-systems.ts`, `monetization-foundation.ts` | 21 player endpoints + 3 admin endpoints. 3902 LOC service code. Anti-P2W validation in shared. Tests pass. | 2026-05-28 |
-| 49 | Phase 17.3 — Monitoring Polish | DONE | Grafana dashboard had basic log panels. Missing: alert rules, cron health panels, backup status panels. | Add Loki alert rules (6 rules: error rate, warning rate, security burst, no-logs, backup failure, cron failure). Add 6 Grafana panels (error rate stat, cron errors, backup status, security events, cron logs, backup logs). Update Loki ruler config. | `infra/loki-alert-rules.yaml`, `infra/grafana-dashboard-logs.json`, `infra/loki-config.yaml` | 6 alert rules defined. 6 new dashboard panels. Quality gates pass. | 2026-05-28 |
+| 47 | Phase 44.2 — Gameplay Follow-up Completion | DONE | 7 onboarding action types not wired (SECT_VIEW, QUEST_VIEW, DASHBOARD_VIEW, NEXT_ACTION_VIEW, CHAT_OPEN, SPIRITUAL_ROOT_VIEW, ARTIFACT_VIEW). Secret realm unique index race window. | Wire 7 remaining onboarding action types into controller endpoints. Harden secret realm unique index. | `character.controller.ts`, `sect.controller.ts`, `quest.controller.ts`, `chat-group.controller.ts`, `player-dashboard.controller.ts`, `secret-realm-runtime.service.ts` | 7 action types wired; secret realm index hardened. Quality gates pass. | 2026-05-28 |
 
 ## Current Recommended Next Task
 
-**All 7 roadmap PRs (#1–#7) are DONE.** Master plan complete.
+**Master Roadmap — PRs #1–#5 DONE.** Next: PR #6 (Phase 27.1–27.5 Monetization).
 
-**Master Roadmap — All PRs** (see `plans/ancient-wandering-melody.md`):
+**Master Roadmap — Next PRs** (see `plans/ancient-wandering-melody.md`):
 
 | PR | Phase | Scope | Risk | Priority |
 |---|---|---|---|---|
@@ -93,18 +88,18 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | #3 | Phase 18.2 | Security Session Management Hardening | medium | DONE |
 | #4 | Phase 26.1 | Alchemy V2 + PillGrade + Body Pill | medium | DONE |
 | #5 | Phase 44.2 | Gameplay Follow-up Completion | low-medium | DONE |
-| #6 | Phase 27.1–27.5 | Monetization Systems V1 Completion | medium | DONE |
-| #7 | Phase 17.3 | Monitoring Polish (Sentry + Pino + Loki) | low | DONE |
+| #6 | Phase 27.1–27.5 | Monetization Systems V1 Completion | medium | **NOW** |
+| #7 | Phase 17.3 | Monitoring Polish (Sentry + Pino + Loki) | low | Low |
 
 ## Active Task Template
 
 ### Active Task
 
-- Task: All roadmap PRs complete
-- Branch: feat/phase-27-monetization-v1 (final)
+- Task: Phase 27.1–27.5 — Monetization Systems V1 Completion (PR #6)
+- Branch: feat/phase-27-monetization-v1
 - Started: 2026-05-28
 - Owner: AI
-- Status: DONE
+- Status: IN_PROGRESS
 
 ## Completed Tasks
 
@@ -153,12 +148,10 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 41 | Admin LiveOps Polish Pack — Territory Cron + Economy Report | — | feat/phase-15-8-liveops-polish | 2026-05-27 |
 | 42 | Playwright E2E Full-Stack Gate — Specs #23–#25 | #680 | feat/playwright-e2e-gate-specs-23-25 | 2026-05-27 |
 | 43 | Fix Known Issues — QA-004 + QA-003 | — | feat/phase-15-8-liveops-polish | 2026-05-28 |
-| 44 | Phase 45.1 — Feature Flags Wire | — | feat/phase-45-1-flags-wire-history | 2026-05-28 |
-| 45 | Phase 18.2 — Suspicious Login Detection | — | feat/phase-18-2-session-hardening | 2026-05-28 |
-| 46 | Phase 26.1 — Alchemy V2 + PillGrade | — | feat/phase-26-1-alchemy-v2 | 2026-05-28 |
-| 47 | Phase 44.2 — Gameplay Follow-up | — | feat/phase-44-2-gameplay-followup | 2026-05-28 |
-| 48 | Phase 27.1–27.5 — Monetization V1 | — | feat/phase-27-monetization-v1 | 2026-05-28 |
-| 49 | Phase 17.3 — Monitoring Polish | — | feat/phase-27-monetization-v1 | 2026-05-28 |
+| 44 | Phase 45.1 — Feature Flags Wire + Remote Config History | — | feat/phase-45-1-flags-wire-history | 2026-05-28 |
+| 45 | Phase 18.2 — Security Session Management Hardening | — | feat/phase-18-2-session-hardening | 2026-05-28 |
+| 46 | Phase 26.1 — Alchemy V2 + PillGrade + Body Pill | — | feat/phase-26-1-alchemy-v2 | 2026-05-28 |
+| 47 | Phase 44.2 — Gameplay Follow-up Completion | — | feat/phase-44-2-gameplay-followup | 2026-05-28 |
 
 ## Deferred / Do Not Build
 
