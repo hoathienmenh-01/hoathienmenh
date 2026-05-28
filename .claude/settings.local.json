@@ -67,7 +67,13 @@
       "Bash(python3 -c ' *)",
       "Bash(gh api *)",
       "Bash(npx tsc *)",
-      "Bash(npx prisma *)"
+      "Bash(npx prisma *)",
+      "Bash(grep -r \"MARKET_PRICE_BAND\\\\|marketPriceBand\\\\|priceBand\" packages/shared/src/ --include=\"*.ts\" -l)",
+      "Bash(grep -r \"ECONOMY_ANOMALY_RULES\\\\|economyAnomalyRule\" packages/shared/src/ --include=\"*.ts\" -l)",
+      "Bash(ls docs/BETA_CHECKLIST.md docs/QA_CHECKLIST.md)",
+      "Bash(head -30 docs/BETA_CHECKLIST.md)",
+      "Bash(grep -rA 15 \"UserSessionSummary\" packages/shared/src/)",
+      "Bash(gh issue *)"
     ]
   }
 }
