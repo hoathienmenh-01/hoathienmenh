@@ -122,7 +122,7 @@ describe('SectController', () => {
   describe('GET /sect/list — PUBLIC', () => {
     it('200 envelope { sects } khi không cookie (no auth)', async () => {
       const c = makeController();
-      const r = await c.list();
+      const r = await c.list(makeReq(undefined));
       expect(r).toEqual({ ok: true, data: { sects: STUB_SECT_LIST } });
     });
     it('list() async → controller await trước khi return', async () => {
@@ -133,7 +133,7 @@ describe('SectController', () => {
           return STUB_SECT_LIST;
         },
       });
-      await c.list();
+      await c.list(makeReq(undefined));
       expect(resolved).toBe(true);
     });
   });
