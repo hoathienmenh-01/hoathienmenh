@@ -74,32 +74,37 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 42 | Playwright E2E Full-Stack Gate — Specs #23–#25 | DONE | Playwright golden path has 22 specs but only spec #1 runs in CI. 3 high-value flows lack E2E coverage: sect boss fight, market V2 auction post/bid, and daily quest reset. | Sub-gap 1: Add golden.spec.ts spec #23 (sect boss spawn→fight→claim). Sub-gap 2: Add spec #24 (market V2 post→bid→finalize). Sub-gap 3: Add spec #25 (daily quest reset after window expiry). Sub-gap 4: Wire E2E_FULL gate in CI for these 3 specs (deferred — separate infra PR). | `apps/web/e2e/golden.spec.ts`, `.github/workflows/ci.yml` | 3 new E2E specs added; specs pass with E2E_FULL=1; typecheck + build pass. PR #680 merged. | 2026-05-28 |
 | 43 | Fix Known Issues — QA-004 + QA-003 | DONE | 2 known QA issues blocking admin operators and smoke test workflow. QA-004: admin reload bug. QA-003: smoke rate-limit cumulative errors. | QA-004: Verify `await auth.hydrate()` fix already in place in AdminControlCenterView.vue. QA-003: Create `scripts/smoke-flush-rate-limits.mjs` to flush all rate-limit Redis keys, wire as `pnpm smoke:flush-rate-limits`. Update docs to move both issues to Resolved. | `scripts/smoke-flush-rate-limits.mjs`, `package.json`, `docs/AI_HANDOFF_REPORT.md`, `docs/FEATURE_PROGRESS_TRACKER.md` | QA-004 already fixed (await hydrate line 237 + 5 tests). QA-003 script created + wired. Docs updated. AdminControlCenterView tests 10/10 pass. | 2026-05-28 |
 | 47 | Phase 44.2 — Gameplay Follow-up Completion | DONE | 7 onboarding action types not wired (SECT_VIEW, QUEST_VIEW, DASHBOARD_VIEW, NEXT_ACTION_VIEW, CHAT_OPEN, SPIRITUAL_ROOT_VIEW, ARTIFACT_VIEW). Secret realm unique index race window. | Wire 7 remaining onboarding action types into controller endpoints. Harden secret realm unique index. | `character.controller.ts`, `sect.controller.ts`, `quest.controller.ts`, `chat-group.controller.ts`, `player-dashboard.controller.ts`, `secret-realm-runtime.service.ts` | 7 action types wired; secret realm index hardened. Quality gates pass. | 2026-05-28 |
+| 50 | Beta Readiness — Smoke Expansion Pack | DONE | 40 smoke scripts but only 14 in default `pnpm smoke:all` suite. Key gameplay modules (alchemy, gem, refine, pet) have no smoke scripts. 6 existing scripts not wired into default suite. | Add 4 new smoke scripts (alchemy, gem, refine, pet) with positive paths using admin seed. Wire 10 scripts (6 existing + 4 new) into ALL_SUITES default suite. | `scripts/smoke-alchemy.mjs`, `scripts/smoke-gem.mjs`, `scripts/smoke-refine.mjs`, `scripts/smoke-pet.mjs`, `scripts/smoke-all.mjs`, `package.json` | 4 new scripts pass; 10 scripts wired into default suite (14→24); typecheck + lint + build pass. | 2026-05-29 |
 
 ## Current Recommended Next Task
 
-**Master Roadmap — PRs #1–#5 DONE.** Next: PR #6 (Phase 27.1–27.5 Monetization).
+**Master Roadmap — ALL 7 PRs DONE.** Phases 9–17 + 26–45 complete. v1.0 roadmap achieved.
 
-**Master Roadmap — Next PRs** (see `plans/ancient-wandering-melody.md`):
+**Master Roadmap — Completed PRs** (see `plans/ancient-wandering-melody.md`):
 
-| PR | Phase | Scope | Risk | Priority |
+| PR | Phase | Scope | Risk | Status |
 |---|---|---|---|---|
 | #1 | Cleanup — Tracker Sync | Sync tracker + deferred backend tasks | low | DONE |
 | #2 | Phase 45.1 | Feature Flags Wire + Remote Config History | low-medium | DONE |
 | #3 | Phase 18.2 | Security Session Management Hardening | medium | DONE |
 | #4 | Phase 26.1 | Alchemy V2 + PillGrade + Body Pill | medium | DONE |
 | #5 | Phase 44.2 | Gameplay Follow-up Completion | low-medium | DONE |
-| #6 | Phase 27.1–27.5 | Monetization Systems V1 Completion | medium | **NOW** |
-| #7 | Phase 17.3 | Monitoring Polish (Sentry + Pino + Loki) | low | Low |
+| #6 | Phase 27.1–27.5 | Monetization Systems V1 Completion | medium | DONE |
+| #7 | Phase 17.3 | Monitoring Polish (Sentry + Pino + Loki) | low | DONE |
+
+**Next: Beta Readiness — Smoke Expansion Pack. DONE.** Default suite expanded from 14→24 scripts. 4 new scripts (alchemy, gem, refine, pet) added with positive paths.
+
+**Next recommended:** Run `pnpm smoke:all` against local stack to verify all 24 suites pass. Then proceed to beta launch checklist.
 
 ## Active Task Template
 
 ### Active Task
 
-- Task: Phase 27.1–27.5 — Monetization Systems V1 Completion (PR #6)
-- Branch: feat/phase-27-monetization-v1
-- Started: 2026-05-28
+- Task: Beta Readiness — Smoke Expansion Pack
+- Branch: (not started)
+- Started: 2026-05-29
 - Owner: AI
-- Status: IN_PROGRESS
+- Status: TODO
 
 ## Completed Tasks
 
@@ -152,6 +157,9 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 45 | Phase 18.2 — Security Session Management Hardening | — | feat/phase-18-2-session-hardening | 2026-05-28 |
 | 46 | Phase 26.1 — Alchemy V2 + PillGrade + Body Pill | — | feat/phase-26-1-alchemy-v2 | 2026-05-28 |
 | 47 | Phase 44.2 — Gameplay Follow-up Completion | — | feat/phase-44-2-gameplay-followup | 2026-05-28 |
+| 48 | Phase 27.1–27.5 — Monetization Systems V1 Completion | #693 | feat/phase-27-monetization-v1 | 2026-05-28 |
+| 49 | Phase 17.3 — Monitoring Polish (Loki alert rules + Grafana log panels) | #691 | feat/phase-15-8-liveops-polish | 2026-05-28 |
+| 50 | Beta Readiness — Smoke Expansion Pack | — | feat/beta-smoke-expansion-pack | 2026-05-29 |
 
 ## Deferred / Do Not Build
 
