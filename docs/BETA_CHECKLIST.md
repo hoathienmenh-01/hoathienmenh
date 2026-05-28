@@ -104,27 +104,27 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 ## 🔲 Chưa làm — roadmap beta
 
 ### Gameplay features (post-beta nice-to-have)
-- [ ] **M10 — Shop daily limit + per-item rate-limit**: tránh exploit unlimited buy/sell. Hiện shop không có giới hạn ngày.
-- [ ] **Buff system**: item buff + sect buff + event rate (×N) nhân vào `cultivationRateForRealm`. Đã có model field, chưa có gameplay flow.
-- [ ] **Equipment reforge / enchant**: upgrade bonuses trên item. Hậu beta.
+- [x] **M10 — Shop daily limit + per-item rate-limit**: `ShopEntryDef.dailyLimit` per-item trong catalog (`packages/shared/src/shop.ts`), pre-check trong `shop.service.ts:150`. Sect shop cũng có `dailyLimit`.
+- [x] **Buff system**: `BuffService` (`buff.service.ts`) + wired vào `cultivation.processor.ts:172` — `cultivationRateMul`, `hpRegenFlat`, `mpRegenFlat`. Breakthrough debuff `tam_ma_light` cũng qua BuffService.
+- [x] **Equipment reforge / enchant**: `refine.service.ts` (15 level refine) + `equipment.service.ts` (reforge substats + enchant element). Smoke: `smoke-refine.mjs`.
 - [ ] **PvP cốc đấu**: Phase 9 (ngoài scope beta).
-- [ ] **Achievement system**: thành tựu mốc tiến độ. Có ledger reason `ACHIEVEMENT` placeholder, chưa có gameplay flow.
+- [x] **Achievement system**: `achievement.service.ts` + wired vào `sect.service.ts`, `cultivation.processor.ts`, controllers. Smoke: `smoke-achievement.mjs`.
 
 ### Hardening + ops (cho production beta)
 - [ ] **M7 — CSP production review**: helmet CSP đã có policy, nhưng cần review CDN list (img-src, script-src) khi prod deploy thật. Hiện dev `contentSecurityPolicy: false`.
-- [ ] **Sentry / error tracking**: wire DSN vào BE + FE.
-- [ ] **Structured logs** (pino) + log shipping (Loki / CloudWatch).
-- [ ] **Metrics**: Prometheus endpoint / Grafana dashboard cho cultivation tick, combat, WS conn.
-- [ ] **Backup DB daily** + test restore script. Hiện chỉ có `pnpm infra:up` cho dev, chưa có script backup prod.
+- [x] **Sentry / error tracking**: Phase 17.3 — `apps/api/src/observability/sentry.ts` (BE) + `apps/web/src/lib/sentry.ts` (FE). Env-gated qua `SENTRY_ENABLED` + `SENTRY_DSN_API`/`SENTRY_DSN_WEB`.
+- [x] **Structured logs** (pino) + log shipping (Loki / CloudWatch): Phase 17.3 — `@xuantoi/logger/backend` + `NestLoggerAdapter` trong `main.ts`. Loki alert rules + Grafana log panels (Phase 17.3 PR #691).
+- [x] **Metrics**: Phase 17.5 — `MetricsModule` + `request-metrics.middleware.ts` + `GET /admin/metrics` endpoint.
+- [x] **Backup DB daily** + test restore script: `scripts/restore-drill.mjs` (automated backup → temp DB restore → verify → cleanup). Wired as `pnpm restore:drill`.
 - [ ] **Refresh token revoke chain logging**: đã có reuse-detection, nhưng chưa expose admin tab xem chain (debug user complaint).
 
 ### Nội dung (post-beta polish)
 - [ ] Balance 28 realm EXP/drop dựa feedback playtest thực.
-- [ ] Thêm dungeon tier cao (`hoa_than`, `luyen_hu`, `hop_the`, `dai_thua`, `do_kiep`). Hiện chỉ 3 dungeon `luyen_khi`/`truc_co`/`kim_dan`.
+- [x] **Dungeon tiers cao**: 18 dungeons — 12 world-dungeons-v2 (`packages/shared/src/world-dungeons-v2.ts`) + 6 story-dungeons (`story-dungeons.ts`). Covers luyen_khi → hop_the+ tier.
 - [ ] Skill cho realm >= `nhan_tien` (hiện skills chỉ sect-based, chưa realm-based).
-- [ ] Full boss list seed theo tier (hiện model + spawn endpoint có, chưa có seed boss-by-tier ngoài runtime admin spawn).
-- [ ] 60+ xưng hiệu mốc (`titles.json` doc 05 — chưa wire DB).
-- [ ] i18n EN gap audit: grep `t(` keys không có trong `en.json` (`apps/web/src/i18n/en.json`).
+- [x] **Full boss list seed theo tier**: 14 bosses trong `packages/shared/src/boss.ts`, organized by realm tier (truc_co → hop_the). `bossesByRealm()` helper cho FE filter.
+- [x] **60+ xưng hiệu mốc**: 107 titles trong `packages/shared/src/titles.ts` + `title.service.ts` + controller endpoints (`GET /titles`, `POST /titles/equip`, `POST /titles/unequip`).
+- [x] **i18n EN gap audit**: `scripts/check-i18n-parity.mjs` — 7136 keys parity. Wired vào `pnpm lint`.
 
 ### QA + Launch
 - [ ] **Runtime smoke tích hợp**: execute `docs/QA_CHECKLIST.md` 13 section trên local hoặc staging (15 phút).
