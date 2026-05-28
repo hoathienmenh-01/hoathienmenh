@@ -107,11 +107,35 @@ describe('ws-events', () => {
         'boss:defeated',
         'mail:new',
         'mission:progress',
+        'liveops:announcement',
+        'liveops:event',
+        'maintenance:status',
+        'private-chat:msg',
+        'group-chat:msg',
+        'notification:new',
+        'notification:unread-count',
+        'presence:update',
+        'party:updated',
+        'party:invite',
+        'party:member-joined',
+        'party:member-left',
+        'party:leader-changed',
+        'party-dungeon:room-updated',
+        'party-dungeon:ready-updated',
+        'party-dungeon:started',
+        'party-dungeon:completed',
+        'party-dungeon:reward-available',
+        'coop-boss:run-updated',
+        'coop-boss:contribution-updated',
+        'coop-boss:finished',
+        'coop-boss:reward-available',
+        'encounter:new',
+        'security:alert',
         'pong',
         'ping',
         'chat:send',
       ];
-      expect(types).toHaveLength(15);
+      expect(types).toHaveLength(39);
       expect(new Set(types).size).toBe(types.length);
     });
   });

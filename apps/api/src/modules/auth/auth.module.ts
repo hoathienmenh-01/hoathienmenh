@@ -15,6 +15,7 @@ import {
 import { SESSION_SECURITY_ALERT_SERVICE, SessionService } from './session.service';
 import { IpHashService } from '../security/ip-hash.service';
 import { SecurityAlertService } from '../security/security-alert.service';
+import { RealtimeModule } from '../realtime/realtime.module';
 import { PrismaService } from '../../common/prisma.service';
 import {
   InMemorySlidingWindowRateLimiter,
@@ -71,6 +72,7 @@ const forgotPasswordLimiterProvider = {
         signOptions: { expiresIn: `${cfg.get<string>('JWT_ACCESS_TTL') ?? '900'}s` },
       }),
     }),
+    RealtimeModule,
   ],
   controllers: [AuthController],
   providers: [
