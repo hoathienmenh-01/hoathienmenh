@@ -76,7 +76,9 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 
 ## Current Recommended Next Task
 
-`Phase 26.1 — Alchemy V2 + PillGrade + Body Pill Expansion (priority 0 from roadmap) OR Phase 15.8 — LiveOps Maintenance Polish Bundle.`
+**Phase 15.8 — LiveOps Maintenance Polish Bundle** is DONE. Cron health panel added to AdminControlCenterView with composite `GET /admin/liveops/cron-health` endpoint, color-coded badges (OK/STALE/DEGRADED/DISABLED), per-cron detail table, and 3 new tests.
+
+**Next priority:** Phase 17.1 + 17.2 — Deploy Verify + Backup/Restore Weekly (Medium PR, high value for production safety).
 
 ## Active Task Template
 
