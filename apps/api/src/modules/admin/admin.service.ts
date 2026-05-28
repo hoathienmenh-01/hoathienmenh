@@ -22,6 +22,7 @@ import { EconomyAnomalyScannerService } from '../economy/economy-anomaly-scanner
 import { QuestService } from '../quest/quest.service';
 import { MissionService } from '../mission/mission.service';
 import { AchievementService } from '../character/achievement.service';
+import { GemService } from '../character/gem.service';
 import {
   addDaysLocal,
   getLocalDateString,
@@ -134,6 +135,8 @@ export class AdminService {
     private readonly anomalyScanner: EconomyAnomalyScannerService | null = null,
     @Optional()
     private readonly achievements: AchievementService | null = null,
+    @Optional()
+    private readonly gems: GemService | null = null,
   ) {}
 
   // ---------- users ----------
@@ -911,6 +914,57 @@ export class AdminService {
       targetUserId,
       characterId: target.id,
       achievementKey,
+    });
+  }
+
+  /**
+   * Grant gems to a player — bypasses normal gameplay gem acquisition.
+   * Gems are NOT in the ITEMS catalog, so `grant-item` cannot grant them.
+   *
+   *  - `gemKey` validated against GEMS catalog (`getGemDef`).
+   *  - `qty` 1..999.
+   *  - Uses `GemService.grantGems` → `InventoryItem` + `ItemLedger` with
+   *    reason `ADMIN_GRANT`.
+   *  - MOD only grant to PLAYER; ADMIN grant to any role.
+   *  - Audit `AdminAuditLog action='admin.gem.grant'`.
+   */
+  async grantGem(
+    actorId: string,
+    actorRole: Role,
+    targetUserId: string,
+    gemKey: string,
+    qty: number,
+  ): Promise<void> {
+    if (actorId === targetUserId) throw new AdminError('CANNOT_TARGET_SELF');
+    if (!Number.isInteger(qty) || qty <= 0 || qty > MAX_GRANT_QTY) {
+      throw new AdminError('INVALID_INPUT');
+    }
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { role: true },
+    });
+    if (!targetUser) throw new AdminError('NOT_FOUND');
+    if (actorRole !== 'ADMIN' && targetUser.role !== 'PLAYER') {
+      throw new AdminError('FORBIDDEN');
+    }
+    const target = await this.prisma.character.findUnique({
+      where: { userId: targetUserId },
+      select: { id: true },
+    });
+    if (!target) throw new AdminError('NOT_FOUND');
+    if (!this.gems) throw new AdminError('INVALID_INPUT');
+
+    await this.gems.grantGems(target.id, gemKey, qty, {
+      reason: 'ADMIN_GRANT',
+      refType: 'User',
+      refId: targetUserId,
+    });
+
+    await this.audit(actorId, 'admin.gem.grant', {
+      targetUserId,
+      characterId: target.id,
+      gemKey,
+      qty,
     });
   }
 

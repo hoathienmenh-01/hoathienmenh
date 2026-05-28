@@ -149,6 +149,7 @@ interface ServiceStubs {
   }>;
   sessionListForAdmin?: SessionService['listForAdmin'];
   grantAchievementTrack?: AdminService['grantAchievementTrack'];
+  grantGem?: AdminService['grantGem'];
 }
 
 function makeController(stubs: ServiceStubs = {}): AdminController {
@@ -170,6 +171,7 @@ function makeController(stubs: ServiceStubs = {}): AdminController {
     runLedgerAudit: stubs.runLedgerAudit ?? (async () => ({} as never)),
     getEconomyReport: stubs.getEconomyReport ?? (async () => ({} as never)),
     grantAchievementTrack: stubs.grantAchievementTrack ?? (async () => undefined),
+    grantGem: stubs.grantGem ?? (async () => undefined),
   } as unknown as AdminService;
   const giftSvc = {
     list: stubs.giftList ?? (async () => []),
@@ -1626,7 +1628,7 @@ describe('AdminController', () => {
       });
       // @ts-expect-error — access private method for testing
       c['requireUserId'] = async () => 'admin-1';
-      // @ts-expect-error
+      // @ts-expect-error — access private method for testing
       c['requireRole'] = async () => 'ADMIN';
       const result = await c.grantAchievementTrack(
         { userId: 'admin-1', role: 'ADMIN' } as never,
@@ -1659,6 +1661,53 @@ describe('AdminController', () => {
           { userId: 'admin-1', role: 'ADMIN' } as never,
           'target-user-1',
           { achievementKey: '' },
+        ),
+        400,
+        'INVALID_INPUT',
+      );
+    });
+  });
+
+  describe('POST /admin/users/:id/grant-gem', () => {
+    it('200 + truyền actorId/role/userId/gemKey/qty vào admin.grantGem', async () => {
+      const calls: Array<{ actorId: string; actorRole: string; targetUserId: string; gemKey: string; qty: number }> = [];
+      const c = makeController({
+        grantGem: (async (actorId, actorRole, targetUserId, gemKey, qty) => {
+          calls.push({ actorId, actorRole: actorRole as string, targetUserId, gemKey, qty });
+        }) as AdminService['grantGem'],
+      });
+      const result = await c.grantGem(
+        { userId: 'admin-1', role: 'ADMIN' } as never,
+        'target-user-1',
+        { gemKey: 'gem_kim_pham', qty: 3 },
+      );
+      expect(result.ok).toBe(true);
+      expect(calls).toHaveLength(1);
+      expect(calls[0].targetUserId).toBe('target-user-1');
+      expect(calls[0].gemKey).toBe('gem_kim_pham');
+      expect(calls[0].qty).toBe(3);
+    });
+
+    it('INVALID_INPUT khi body thiếu gemKey', async () => {
+      const c = makeController();
+      await expectHttpError(
+        c.grantGem(
+          { userId: 'admin-1', role: 'ADMIN' } as never,
+          'target-user-1',
+          { qty: 3 },
+        ),
+        400,
+        'INVALID_INPUT',
+      );
+    });
+
+    it('INVALID_INPUT khi qty = 0', async () => {
+      const c = makeController();
+      await expectHttpError(
+        c.grantGem(
+          { userId: 'admin-1', role: 'ADMIN' } as never,
+          'target-user-1',
+          { gemKey: 'gem_kim_pham', qty: 0 },
         ),
         400,
         'INVALID_INPUT',

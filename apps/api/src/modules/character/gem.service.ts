@@ -249,6 +249,22 @@ export class GemService {
   }
 
   /**
+   * Public wrapper — grant N gem qty outside a transaction (admin use).
+   */
+  async grantGems(
+    characterId: string,
+    gemKey: string,
+    qty: number,
+    meta: { reason: string; refType?: string; refId?: string },
+  ): Promise<void> {
+    const def = getGemDef(gemKey);
+    if (!def) throw new GemError('GEM_NOT_FOUND');
+    await this.prisma.$transaction((tx) =>
+      this.grantGemTx(tx, characterId, gemKey, qty, meta),
+    );
+  }
+
+  /**
    * Grant N gem qty về inventory (stack vào row unequipped sẵn có nếu có,
    * nếu không tạo row mới). Tx-aware.
    */

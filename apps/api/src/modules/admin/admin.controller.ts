@@ -75,6 +75,10 @@ const GrantItemInput = z.object({
   qty: z.number().int().positive().max(999),
   reason: z.string().max(200).default(''),
 });
+const GrantGemInput = z.object({
+  gemKey: z.string().min(1).max(64),
+  qty: z.number().int().positive().max(999),
+});
 const GrantSpiritualRootInput = z.object({
   grade: z.enum(['pham', 'linh', 'huyen', 'tien', 'than']),
   primaryElement: z.enum(['kim', 'moc', 'thuy', 'hoa', 'tho']),
@@ -489,6 +493,30 @@ export class AdminController {
         parsed.data.itemKey,
         parsed.data.qty,
         parsed.data.reason,
+      );
+      return { ok: true, data: { ok: true } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Grant gems to a player — gems are NOT in the ITEMS catalog so
+   * `grant-item` cannot grant them. Uses `GemService.grantGems`.
+   */
+  @Post('users/:id/grant-gem')
+  @HttpCode(200)
+  @RequireAdmin()
+  async grantGem(@Req() req: AdminReq, @Param('id') id: string, @Body() body: unknown) {
+    const parsed = GrantGemInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      await this.admin.grantGem(
+        req.userId,
+        req.role,
+        id,
+        parsed.data.gemKey,
+        parsed.data.qty,
       );
       return { ok: true, data: { ok: true } };
     } catch (e) {

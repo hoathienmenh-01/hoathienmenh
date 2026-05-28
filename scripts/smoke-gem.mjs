@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * smoke-gem.mjs — Gem endpoint smoke (negative paths) cho Xuân Tôi.
+ * smoke-gem.mjs — Gem endpoint smoke (negative + positive paths) cho Xuân Tôi.
  *
- * Cover:
+ * Cover negative path:
  *   1. POST /character/gem/socket (no auth)    → 401 UNAUTHENTICATED.
  *   2. POST /_auth/register                      — fresh user.
  *   3. POST /character/gem/combine (no auth)   → 401 UNAUTHENTICATED.
@@ -15,14 +15,18 @@
  *  10. POST /character/gem/socket { fake ids }  → 404 GEM_NOT_FOUND / EQUIPMENT_NOT_FOUND.
  *  11. Logout + POST /character/gem/combine     → 401.
  *
- * Positive path (combine 3→1) requires gems in inventory — gems are NOT in
- * the `itemByKey` catalog so admin `grant-item` cannot grant them. Positive
- * path deferred to integration test or future admin gem-grant endpoint.
+ * Cover positive path (admin grant-gem → combine 3→1):
+ *  12. Admin login → grant 3× gem_kim_pham.
+ *  13. Admin logout → restore player.
+ *  14. GET /character/inventory — verify gem_kim_pham qty = 3.
+ *  15. POST /character/gem/combine { srcGemKey: gem_kim_pham } → verify next-tier.
+ *  16. GET /character/inventory — verify gem_kim_linh qty = 1, gem_kim_pham = 0.
  *
  * Chạy: pnpm smoke:gem
  *
  * Env vars:
- *   SMOKE_API_BASE, SMOKE_TIMEOUT_MS, SMOKE_VERBOSE, SMOKE_SECT_KEY
+ *   SMOKE_API_BASE, SMOKE_TIMEOUT_MS, SMOKE_VERBOSE, SMOKE_SECT_KEY,
+ *   SMOKE_ADMIN_EMAIL, SMOKE_ADMIN_PASSWORD
  */
 
 // -----------------------------------------------------------------------------
@@ -33,6 +37,8 @@ const BASE = (process.env.SMOKE_API_BASE ?? 'http://localhost:3000').replace(/\/
 const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS ?? 10_000);
 const VERBOSE = process.env.SMOKE_VERBOSE === '1';
 const SECT_KEY = process.env.SMOKE_SECT_KEY ?? 'thanh_van';
+const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL ?? 'admin@example.com';
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? 'Admin@123';
 
 // -----------------------------------------------------------------------------
 // Cookie jar
@@ -65,6 +71,17 @@ function storeSetCookie(res) {
 function cookieHeader() {
   if (cookieJar.size === 0) return undefined;
   return Array.from(cookieJar, ([k, v]) => `${k}=${v}`).join('; ');
+}
+
+/** Snapshot cookieJar để switch tạm sang admin rồi restore lại player. */
+function snapshotCookies() {
+  return new Map(cookieJar);
+}
+
+/** @param {Map<string,string>} snapshot */
+function restoreCookies(snapshot) {
+  cookieJar.clear();
+  for (const [k, v] of snapshot) cookieJar.set(k, v);
 }
 
 // -----------------------------------------------------------------------------
@@ -312,6 +329,72 @@ async function main() {
     });
     assertStatus(r, 401, 'gem/combine post-logout');
     assert(r.body?.error?.code === 'UNAUTHENTICATED', `expect UNAUTHENTICATED, got ${r.body?.error?.code}`);
+  });
+
+  // =============================================================================
+  // Positive path — admin grant gems → combine 3→1 → verify inventory.
+  // =============================================================================
+
+  // 12. Snapshot player cookies + admin login → grant 3× gem_kim_pham.
+  const playerSnapshot = snapshotCookies();
+  await step('admin login + grant 3× gem_kim_pham', async () => {
+    const login = await http('/api/_auth/login', {
+      method: 'POST',
+      body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    assertStatus(login, 200, 'admin login');
+    assert(login.body?.ok, `admin login: ok=false body=${JSON.stringify(login.body).slice(0, 200)}`);
+
+    const grant = await http(`/api/admin/users/${state.userId}/grant-gem`, {
+      method: 'POST',
+      body: { gemKey: 'gem_kim_pham', qty: 3 },
+    });
+    assertStatus(grant, 200, 'admin grant-gem');
+    assert(grant.body?.ok, `admin grant-gem: ok=false body=${JSON.stringify(grant.body).slice(0, 200)}`);
+  });
+
+  // 13. Admin logout + restore player cookies.
+  await step('admin logout + restore player', async () => {
+    const r = await http('/api/_auth/logout', { method: 'POST' });
+    assertStatus(r, [200, 204], 'admin logout');
+    restoreCookies(playerSnapshot);
+  });
+
+  // 14. GET /character/inventory — verify gem_kim_pham qty = 3.
+  /** @param {string} gemKey @returns {Promise<number>} */
+  async function getGemQty(gemKey) {
+    const r = await http('/api/character/inventory');
+    assertStatus(r, 200, 'GET /character/inventory');
+    const items = r.body?.data?.items ?? r.body?.data?.inventory ?? [];
+    const row = items.find((i) => i.itemKey === gemKey);
+    return row ? row.qty : 0;
+  }
+
+  await step('GET /character/inventory — gem_kim_pham qty = 3', async () => {
+    const qty = await getGemQty('gem_kim_pham');
+    assert(qty === 3, `expect gem_kim_pham qty=3, got ${qty}`);
+  });
+
+  // 15. POST /character/gem/combine { srcGemKey: gem_kim_pham } → verify next-tier.
+  await step('POST /character/gem/combine — 3× gem_kim_pham → 1× gem_kim_linh', async () => {
+    const r = await http('/api/character/gem/combine', {
+      method: 'POST',
+      body: { srcGemKey: 'gem_kim_pham' },
+    });
+    assertStatus(r, 200, 'gem/combine positive');
+    assert(r.body?.ok, `gem/combine: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const data = r.body?.data;
+    assert(data?.resultGemKey === 'gem_kim_linh', `expect resultGemKey=gem_kim_linh, got ${data?.resultGemKey}`);
+    assert(data?.srcQtyConsumed === 3, `expect srcQtyConsumed=3, got ${data?.srcQtyConsumed}`);
+    assert(data?.resultQtyGained === 1, `expect resultQtyGained=1, got ${data?.resultQtyGained}`);
+  });
+
+  // 16. GET /character/inventory — verify gem_kim_linh qty = 1, gem_kim_pham = 0.
+  await step('GET /character/inventory — gem_kim_linh=1, gem_kim_pham=0', async () => {
+    const phamQty = await getGemQty('gem_kim_pham');
+    assert(phamQty === 0, `expect gem_kim_pham qty=0 after combine, got ${phamQty}`);
+    const linhQty = await getGemQty('gem_kim_linh');
+    assert(linhQty === 1, `expect gem_kim_linh qty=1 after combine, got ${linhQty}`);
   });
 
   // -----------------------------------------------------------------------------
