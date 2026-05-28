@@ -75,10 +75,11 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 43 | Fix Known Issues — QA-004 + QA-003 | DONE | 2 known QA issues blocking admin operators and smoke test workflow. QA-004: admin reload bug. QA-003: smoke rate-limit cumulative errors. | QA-004: Verify `await auth.hydrate()` fix already in place in AdminControlCenterView.vue. QA-003: Create `scripts/smoke-flush-rate-limits.mjs` to flush all rate-limit Redis keys, wire as `pnpm smoke:flush-rate-limits`. Update docs to move both issues to Resolved. | `scripts/smoke-flush-rate-limits.mjs`, `package.json`, `docs/AI_HANDOFF_REPORT.md`, `docs/FEATURE_PROGRESS_TRACKER.md` | QA-004 already fixed (await hydrate line 237 + 5 tests). QA-003 script created + wired. Docs updated. AdminControlCenterView tests 10/10 pass. | 2026-05-28 |
 | 44 | Phase 45.1 — Feature Flags Wire + Remote Config History | DONE | 12 feature flags defined in catalog but not wired into module controllers/services. VISUAL_EFFECTS flag only in catalog, not FE runtime. | Wire 11 flags into BE modules (territory, shop, sect-shop, mail, mentor, sect-war, codex, event-builder, market-v2, pet). Create `useVisualEffects` composable for FE. | `territory.controller.ts`, `shop.service.ts`, `sect-shop.service.ts`, `mail.controller.ts`, `mentor.controller.ts`, `sect-war.controller.ts`, `codex.player.controller.ts`, `event-builder.player.controller.ts`, `market-v2.player.controller.ts`, `pet.player.controller.ts`, `useVisualEffects.ts` | 11 flags wired in BE; VISUAL_EFFECTS composable for FE; 30/30 flags now wired; quality gates pass. PR #689. | 2026-05-28 |
 | 45 | Phase 18.2 — Suspicious Login Detection + WS Notify | DONE | Session infrastructure (create/revoke/list/rotate) already complete. Missing: suspicious login detection when concurrent sessions from different IP within 5 min window. | Add `detectSuspiciousLogin` to SessionService. Wire into `AuthService.issueTokens` (fire-and-forget). Add `security:alert` WS event type. Import RealtimeModule in AuthModule for WS push. Add 4 tests. | `session.service.ts`, `auth.service.ts`, `auth.module.ts`, `ws-events.ts`, `session.service.test.ts` | Suspicious login detection works (different IP within 5 min → mark suspicious + emit SecurityEvent + WS push). 4 tests cover edge cases. Quality gates pass. | 2026-05-28 |
+| 46 | Phase 26.1 — PillGrade Expansion + Body Pill Boss Drops | DONE | PillGrade had 5 grades (HA_PHAM→DAN_VAN). Body pills didn't drop from bosses. | Expand PillGrade to 9 grades (→CHI_TON). Update multiplier + rollPillGrade weights. Add body pills to 4 boss loot tables. Add 4 multiplier tests. | `items.ts`, `alchemy.ts`, `boss.ts`, `alchemy.test.ts` | 9 PillGrade levels with multipliers 0.85→2.5. Body pills in 4 boss drop pools. All tests pass. PR #691. | 2026-05-28 |
 
 ## Current Recommended Next Task
 
-**All tracker tasks (#1–#45) are DONE.** Phase 18.2 (Suspicious Login Detection) is the last completed task.
+**All tracker tasks (#1–#46) are DONE.** Phase 26.1 (PillGrade + Body Pill Drops) is the last completed task.
 
 **Master Roadmap — Next PRs** (see `plans/ancient-wandering-melody.md`):
 
@@ -87,8 +88,8 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | #1 | Cleanup — Tracker Sync | Sync tracker + deferred backend tasks | low | DONE |
 | #2 | Phase 45.1 | Feature Flags Wire + Remote Config History | low-medium | DONE |
 | #3 | Phase 18.2 | Security Session Management Hardening | medium | DONE |
-| #4 | Phase 26.1 | Alchemy V2 + PillGrade + Body Pill | medium | **NOW** |
-| #5 | Phase 44.2 | Gameplay Follow-up Completion | low-medium | Medium |
+| #4 | Phase 26.1 | Alchemy V2 + PillGrade + Body Pill | medium | DONE |
+| #5 | Phase 44.2 | Gameplay Follow-up Completion | low-medium | **NOW** |
 | #6 | Phase 27.1–27.5 | Monetization Systems V1 Completion | medium | Medium |
 | #7 | Phase 17.3 | Monitoring Polish (Sentry + Pino + Loki) | low | Low |
 
@@ -96,8 +97,8 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 
 ### Active Task
 
-- Task: Phase 26.1 — Alchemy V2 + PillGrade + Body Pill Expansion (PR #4)
-- Branch: feat/phase-26-1-alchemy-v2
+- Task: Phase 44.2 — Gameplay Follow-up Completion (PR #5)
+- Branch: feat/phase-44-2-gameplay-followup
 - Started: 2026-05-28
 - Owner: AI
 - Status: TODO

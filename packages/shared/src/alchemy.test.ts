@@ -173,6 +173,10 @@ describe('Alchemy V2 catalog and balance', () => {
     expect(pillGradeMultiplier('THUONG_PHAM')).toBe(1.15);
     expect(pillGradeMultiplier('CUC_PHAM')).toBe(1.3);
     expect(pillGradeMultiplier('DAN_VAN')).toBe(1.5);
+    expect(pillGradeMultiplier('PHONG_HAU')).toBe(1.7);
+    expect(pillGradeMultiplier('DAO_TO')).toBe(1.9);
+    expect(pillGradeMultiplier('THAN_THONG')).toBe(2.1);
+    expect(pillGradeMultiplier('CHI_TON')).toBe(2.5);
     expect(computeLowerTierCraftBonus(1, 1)).toBe(0);
     expect(computeLowerTierCraftBonus(2, 1)).toBe(0.05);
     expect(computeLowerTierCraftBonus(5, 1)).toBe(0.2);
