@@ -33,7 +33,7 @@
  *                             trong `packages/shared/src/achievements.ts`
  *                             không hidden, chưa completed bởi fresh char).
  *   SMOKE_ADMIN_EMAIL       — default "admin@example.com".
- *   SMOKE_ADMIN_PASSWORD    — default "Admin@123".
+ *   SMOKE_ADMIN_PASSWORD    — default "change-me-bootstrap-pass".
  *
  * Yêu cầu môi trường (giống smoke:mission):
  *   - `pnpm infra:up` (Postgres + Redis)
@@ -58,7 +58,7 @@ const VERBOSE = process.env.SMOKE_VERBOSE === '1';
 const SECT_KEY = process.env.SMOKE_SECT_KEY ?? 'thanh_van';
 const ACHIEVEMENT_KEY = process.env.SMOKE_ACHIEVEMENT_KEY ?? 'first_monster_kill';
 const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? 'Admin@123';
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? 'change-me-bootstrap-pass';
 
 // -----------------------------------------------------------------------------
 // Cookie jar.
