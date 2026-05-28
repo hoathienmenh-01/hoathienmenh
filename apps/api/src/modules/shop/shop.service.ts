@@ -17,6 +17,7 @@ import {
 } from '../../common/rate-limiter';
 import { startOfLocalDay } from '../combat/combat.service';
 import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 
 export class ShopError extends Error {
   constructor(
@@ -65,6 +66,8 @@ export class ShopService {
     @Optional() @Inject(SHOP_BUY_RATE_LIMITER) limiter?: RateLimiter,
     @Optional()
     private readonly liveOpsEvents?: LiveOpsEventSchedulerService,
+    @Optional()
+    private readonly featureFlags?: FeatureFlagService,
   ) {
     this.limiter =
       limiter ??
@@ -180,8 +183,9 @@ export class ShopService {
     // tục. Chống làm chết toàn bộ shop nếu LiveOps service crash.
     let liveOpsDiscount: { multiplier: number; eventKey: string } | null = null;
     let discountMultiplier = 0;
+    const discountEnabled = !this.featureFlags || await this.featureFlags.isEnabled('SHOP_DISCOUNT_EVENTS_ENABLED');
     try {
-      if (this.liveOpsEvents) {
+      if (this.liveOpsEvents && discountEnabled) {
         const modifiers = await this.liveOpsEvents.getRuntimeModifiers();
         const matches = modifiers.filter((m) => m.type === 'SHOP_DISCOUNT');
         for (const m of matches) {

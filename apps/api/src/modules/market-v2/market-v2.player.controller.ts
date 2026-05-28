@@ -34,6 +34,7 @@ import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../../common/prisma.service';
 import { AuctionService, AuctionError } from './auction.service';
 import { ClaimBoxService, ClaimBoxError } from './claim-box.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -74,6 +75,7 @@ export class MarketV2PlayerController {
     private readonly prisma: PrismaService,
     private readonly auctions: AuctionService,
     private readonly claimBox: ClaimBoxService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   private async requireCharacter(req: Request): Promise<string> {
@@ -91,6 +93,7 @@ export class MarketV2PlayerController {
 
   @Get('auctions')
   async listAuctions(@Query('itemKey') itemKey?: string) {
+    await this.featureFlags.requireEnabled('AUCTION_HOUSE_ENABLED');
     const items = await this.auctions.listActive({ itemKey });
     return { ok: true, data: items };
   }

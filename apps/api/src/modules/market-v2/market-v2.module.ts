@@ -9,13 +9,14 @@ import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
 import { AdminControlCenterModule } from '../admin-control-center/admin-control-center.module';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 import { ClaimBoxService } from './claim-box.service';
 import { AuctionService } from './auction.service';
 import { MarketV2PlayerController } from './market-v2.player.controller';
 import { MarketV2AdminController } from './market-v2.admin.controller';
 
 @Module({
-  imports: [AuthModule, CharacterModule, AdminControlCenterModule],
+  imports: [AuthModule, CharacterModule, AdminControlCenterModule, FeatureFlagModule],
   controllers: [MarketV2PlayerController, MarketV2AdminController],
   providers: [PrismaService, ClaimBoxService, AuctionService],
   exports: [ClaimBoxService, AuctionService],

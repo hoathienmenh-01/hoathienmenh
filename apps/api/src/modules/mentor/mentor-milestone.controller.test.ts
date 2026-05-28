@@ -62,7 +62,8 @@ function makeCtrl(opts: MakeOpts = {}) {
       opts.recomputeImpl ??
       (async () => ({ relationId: 'rel_stub', created: 0, promoted: 0 })),
   } as unknown as MentorMilestoneService;
-  return new MentorController(svc, milestones, auth);
+  const featureFlags = { requireEnabled: async () => {} } as any;
+  return new MentorController(svc, milestones, auth, featureFlags);
 }
 
 async function expectHttpError(

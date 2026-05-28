@@ -14,6 +14,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { AdminControlCenterModule } from '../admin-control-center/admin-control-center.module';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 import { PrismaService } from '../../common/prisma.service';
 import { EventService } from './event.service';
 import { BracketService } from './bracket.service';
@@ -27,7 +28,7 @@ import { EventBuilderAdminController } from './event-builder.admin.controller';
 import { EventBuilderPlayerController } from './event-builder.player.controller';
 
 @Module({
-  imports: [AuthModule, AdminControlCenterModule],
+  imports: [AuthModule, AdminControlCenterModule, FeatureFlagModule],
   controllers: [EventBuilderAdminController, EventBuilderPlayerController],
   providers: [
     PrismaService,

@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { SectWarError, SectWarService } from './sect-war.service';
+import { FeatureFlagService } from '../feature-flag/feature-flag.service';
 import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../../common/prisma.service';
 
@@ -37,6 +38,7 @@ export class SectWarController {
     private readonly sectWar: SectWarService,
     private readonly auth: AuthService,
     private readonly prisma: PrismaService,
+    private readonly featureFlags: FeatureFlagService,
   ) {}
 
   private async getUserId(req: Request): Promise<string> {
@@ -47,6 +49,7 @@ export class SectWarController {
 
   @Get('current')
   async current(@Req() req: Request) {
+    await this.featureFlags.requireEnabled('SECT_WAR_ENABLED');
     const userId = await this.getUserId(req);
     try {
       const data = await this.sectWar.getCurrent(userId);

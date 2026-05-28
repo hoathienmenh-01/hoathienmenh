@@ -9,6 +9,7 @@ import { TerritoryWarService } from './territory-war.service';
 import { PrismaService } from '../../common/prisma.service';
 import { AdminModule } from '../admin/admin.module';
 import { AuthModule } from '../auth/auth.module';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 
 /**
  * Phase 14.0.A + 14.0.B + 14.0.C + 14.0.D — Territory module.
@@ -38,7 +39,7 @@ import { AuthModule } from '../auth/auth.module';
  *     `GET /territory/war/history`, `POST /admin/territory/war/settle-current`.
  */
 @Module({
-  imports: [AuthModule, AdminModule],
+  imports: [AuthModule, AdminModule, FeatureFlagModule],
   controllers: [TerritoryController, AdminTerritoryController],
   providers: [
     TerritoryService,

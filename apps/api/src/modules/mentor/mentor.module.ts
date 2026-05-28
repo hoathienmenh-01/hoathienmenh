@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
 import { MailModule } from '../mail/mail.module';
+import { FeatureFlagModule } from '../feature-flag/feature-flag.module';
 import { MentorMilestoneService } from './mentor-milestone.service';
 import { MentorController } from './mentor.controller';
 import { MentorService } from './mentor.service';
@@ -12,7 +13,7 @@ import { MentorService } from './mentor.service';
  * qua `MailService.sendToCharacter` (mailType=SYSTEM, linh thạch only).
  */
 @Module({
-  imports: [AuthModule, MailModule],
+  imports: [AuthModule, MailModule, FeatureFlagModule],
   controllers: [MentorController],
   providers: [MentorService, MentorMilestoneService, PrismaService],
   exports: [MentorService, MentorMilestoneService],
