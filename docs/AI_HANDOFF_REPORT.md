@@ -202,7 +202,7 @@
 
 ### Smoke Scripts (manual, không nằm CI matrix)
 
-44 smoke scripts, ~15 step avg. Default `pnpm smoke:all` runs 24 suites (14 original + 10 expansion). Yêu cầu local stack: `pnpm infra:up` + `pnpm --filter @xuantoi/api exec prisma migrate deploy` + `pnpm --filter @xuantoi/api run bootstrap` + `pnpm --filter @xuantoi/api dev`. Module list includes achievement/admin/auth/alchemy/beta/boss/breakthrough, **body-cultivation** (Phase 26.0.1 register/onboard/status/start/tick/cap/stop/breakthrough fail), combat/cultivation/daily-login/dungeon/economy/gem/pet/refine/sect/shop/skill/ws, and other gameplay modules.
+44 smoke scripts, ~15 step avg. Default `pnpm smoke:all` runs 37 suites (14 original + 10 expansion + 13 full-coverage). Yêu cầu local stack: `pnpm infra:up` + `pnpm --filter @xuantoi/api exec prisma migrate deploy` + `pnpm --filter @xuantoi/api run bootstrap` + `pnpm --filter @xuantoi/api dev`. Module list includes achievement/admin/auth/alchemy/beta/boss/breakthrough, **body-cultivation** (Phase 26.0.1 register/onboard/status/start/tick/cap/stop/breakthrough fail), combat/cultivation/daily-login/dungeon/economy/gem/pet/refine/sect/shop/skill/ws, and other gameplay modules.
 
 **Positive-path coverage** (8 module): skill (PR #388/#390), shop (#390), mail (#391), inventory (#385), spiritual-root (#386), breakthrough (#417), auth (#384), cultivation-method (#394). Còn defer: daily-login multi-day positive — pending admin advance-day endpoint hoặc service helper extension.
 
