@@ -116,7 +116,7 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 - [ ] **Structured logs** (pino) + log shipping (Loki / CloudWatch).
 - [ ] **Metrics**: Prometheus endpoint / Grafana dashboard cho cultivation tick, combat, WS conn.
 - [ ] **Backup DB daily** + test restore script. Hiện chỉ có `pnpm infra:up` cho dev, chưa có script backup prod.
-- [ ] **Refresh token revoke chain logging**: đã có reuse-detection, nhưng chưa expose admin tab xem chain (debug user complaint).
+- [x] **Refresh token revoke chain logging**: đã có reuse-detection + admin endpoint `GET /admin/users/:id/sessions` xem chain (Phase 18.2).
 
 ### Nội dung (post-beta polish)
 - [ ] Balance 28 realm EXP/drop dựa feedback playtest thực.

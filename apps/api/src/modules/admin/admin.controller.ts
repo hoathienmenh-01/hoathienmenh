@@ -33,6 +33,7 @@ import {
 } from './economy-alerts-config';
 import { GiftCodeError, GiftCodeService } from '../giftcode/giftcode.service';
 import { MailError, MailService } from '../mail/mail.service';
+import { SessionService } from '../auth/session.service';
 import {
   ArenaSeasonService,
   ArenaSeasonServiceError,
@@ -194,6 +195,7 @@ export class AdminController {
     private readonly config: ConfigService,
     private readonly liveOps: AdminLiveOpsService,
     private readonly arenaSeason: ArenaSeasonService,
+    private readonly sessions: SessionService,
   ) {
     this.economyAlertsBounds = resolveEconomyAlertsBounds(
       (key) => this.config.get<string>(key),
@@ -358,6 +360,35 @@ export class AdminController {
     try {
       await this.admin.setRole(req.userId, req.role, id, parsed.data.role);
       return { ok: true, data: { ok: true } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Phase 18.2 — Admin xem session list của 1 user.
+   * Read-only, dùng cho debug user complaint (refresh token chain).
+   */
+  @Get('users/:id/sessions')
+  @RateLimitPolicy('ADMIN_REPORT_VIEW')
+  async userSessions(
+    @Param('id') id: string,
+    @Query('status') status: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @Query('cursor') cursor: string | undefined,
+  ) {
+    const lim = Math.min(Math.max(Number.parseInt(limit ?? '50', 10) || 50, 1), 200);
+    const validStatus = ['ACTIVE', 'REVOKED', 'EXPIRED', 'ALL'].includes(status ?? '')
+      ? (status as 'ACTIVE' | 'REVOKED' | 'EXPIRED' | 'ALL')
+      : undefined;
+    try {
+      const r = await this.sessions.listForAdmin({
+        userId: id,
+        status: validStatus,
+        limit: lim,
+        cursor: cursor || undefined,
+      });
+      return { ok: true, data: r };
     } catch (e) {
       this.handleErr(e);
     }
