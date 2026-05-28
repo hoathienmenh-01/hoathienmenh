@@ -76,10 +76,12 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 44 | Phase 45.1 — Feature Flags Wire + Remote Config History | DONE | 12 feature flags defined in catalog but not wired into module controllers/services. VISUAL_EFFECTS flag only in catalog, not FE runtime. | Wire 11 flags into BE modules (territory, shop, sect-shop, mail, mentor, sect-war, codex, event-builder, market-v2, pet). Create `useVisualEffects` composable for FE. | `territory.controller.ts`, `shop.service.ts`, `sect-shop.service.ts`, `mail.controller.ts`, `mentor.controller.ts`, `sect-war.controller.ts`, `codex.player.controller.ts`, `event-builder.player.controller.ts`, `market-v2.player.controller.ts`, `pet.player.controller.ts`, `useVisualEffects.ts` | 11 flags wired in BE; VISUAL_EFFECTS composable for FE; 30/30 flags now wired; quality gates pass. PR #689. | 2026-05-28 |
 | 45 | Phase 18.2 — Suspicious Login Detection + WS Notify | DONE | Session infrastructure (create/revoke/list/rotate) already complete. Missing: suspicious login detection when concurrent sessions from different IP within 5 min window. | Add `detectSuspiciousLogin` to SessionService. Wire into `AuthService.issueTokens` (fire-and-forget). Add `security:alert` WS event type. Import RealtimeModule in AuthModule for WS push. Add 4 tests. | `session.service.ts`, `auth.service.ts`, `auth.module.ts`, `ws-events.ts`, `session.service.test.ts` | Suspicious login detection works (different IP within 5 min → mark suspicious + emit SecurityEvent + WS push). 4 tests cover edge cases. Quality gates pass. | 2026-05-28 |
 | 46 | Phase 26.1 — PillGrade Expansion + Body Pill Boss Drops | DONE | PillGrade had 5 grades (HA_PHAM→DAN_VAN). Body pills didn't drop from bosses. | Expand PillGrade to 9 grades (→CHI_TON). Update multiplier + rollPillGrade weights. Add body pills to 4 boss loot tables. Add 4 multiplier tests. | `items.ts`, `alchemy.ts`, `boss.ts`, `alchemy.test.ts` | 9 PillGrade levels with multipliers 0.85→2.5. Body pills in 4 boss drop pools. All tests pass. PR #691. | 2026-05-28 |
+| 47 | Phase 44.2 — Gameplay Follow-up Completion | DONE | 7 onboarding action types not wired (SECT_VIEW, QUEST_VIEW, DASHBOARD_VIEW, NEXT_ACTION_VIEW, CHAT_OPEN, SPIRITUAL_ROOT_VIEW, ARTIFACT_VIEW). Secret realm unique index race window. | Wire 7 remaining onboarding action types into controller endpoints. Harden secret realm unique index. | `character.controller.ts`, `sect.controller.ts`, `quest.controller.ts`, `chat-group.controller.ts`, `player-dashboard.controller.ts`, `secret-realm-runtime.service.ts` | 7 action types wired; secret realm index hardened. Quality gates pass. PR #692. | 2026-05-28 |
+| 48 | Phase 17.3 — Monitoring Polish (Loki Alerts + Grafana Panels) | DONE | No Loki alert rules for error rates, security events, or cron failures. Grafana dashboard missing log-based panels. | Add 6 Loki alert rules. Extend Grafana dashboard with 6 new log panels. Update Loki ruler config. | `infra/loki-alert-rules.yaml`, `infra/grafana-dashboard-logs.json`, `infra/loki-config.yaml` | 6 alert rules + 6 dashboard panels. PR #693. | 2026-05-28 |
 
 ## Current Recommended Next Task
 
-**All tracker tasks (#1–#46) are DONE.** Phase 26.1 (PillGrade + Body Pill Drops) is the last completed task.
+**All tracker tasks (#1–#48) are DONE.** Master roadmap complete (all 7 PRs).
 
 **Master Roadmap — Next PRs** (see `plans/ancient-wandering-melody.md`):
 
@@ -89,19 +91,19 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | #2 | Phase 45.1 | Feature Flags Wire + Remote Config History | low-medium | DONE |
 | #3 | Phase 18.2 | Security Session Management Hardening | medium | DONE |
 | #4 | Phase 26.1 | Alchemy V2 + PillGrade + Body Pill | medium | DONE |
-| #5 | Phase 44.2 | Gameplay Follow-up Completion | low-medium | **NOW** |
-| #6 | Phase 27.1–27.5 | Monetization Systems V1 Completion | medium | Medium |
-| #7 | Phase 17.3 | Monitoring Polish (Sentry + Pino + Loki) | low | Low |
+| #5 | Phase 44.2 | Gameplay Follow-up Completion | low-medium | DONE |
+| #6 | Phase 27.1–27.5 | Monetization Systems V1 Completion | medium | DONE |
+| #7 | Phase 17.3 | Monitoring Polish (Sentry + Pino + Loki) | low | DONE |
 
 ## Active Task Template
 
 ### Active Task
 
-- Task: Phase 44.2 — Gameplay Follow-up Completion (PR #5)
-- Branch: feat/phase-44-2-gameplay-followup
+- Task: Master Roadmap Complete — All 7 PRs done
+- Branch: main
 - Started: 2026-05-28
 - Owner: AI
-- Status: TODO
+- Status: DONE
 
 ## Completed Tasks
 
@@ -150,6 +152,11 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 | 41 | Admin LiveOps Polish Pack — Territory Cron + Economy Report | — | feat/phase-15-8-liveops-polish | 2026-05-27 |
 | 42 | Playwright E2E Full-Stack Gate — Specs #23–#25 | #680 | feat/playwright-e2e-gate-specs-23-25 | 2026-05-27 |
 | 43 | Fix Known Issues — QA-004 + QA-003 | — | feat/phase-15-8-liveops-polish | 2026-05-28 |
+| 44 | Phase 45.1 — Feature Flags Wire + Remote Config History | #689 | feat/phase-45-1-flags-wire-history | 2026-05-28 |
+| 45 | Phase 18.2 — Suspicious Login Detection + WS Notify | #690 | feat/phase-18-2-session-hardening | 2026-05-28 |
+| 46 | Phase 26.1 — PillGrade Expansion + Body Pill Boss Drops | #691 | feat/phase-26-1-alchemy-v2 | 2026-05-28 |
+| 47 | Phase 44.2 — Gameplay Follow-up Completion | #692 | feat/phase-44-2-gameplay-followup | 2026-05-28 |
+| 48 | Phase 17.3 — Monitoring Polish (Loki Alerts + Grafana Panels) | #693 | feat/phase-27-monetization-v1 | 2026-05-28 |
 
 ## Deferred / Do Not Build
 
