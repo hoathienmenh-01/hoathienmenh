@@ -75,6 +75,10 @@ const GrantItemInput = z.object({
   qty: z.number().int().positive().max(999),
   reason: z.string().max(200).default(''),
 });
+const GrantGemInput = z.object({
+  gemKey: z.string().min(1).max(64),
+  qty: z.number().int().positive().max(999),
+});
 const GrantSpiritualRootInput = z.object({
   grade: z.enum(['pham', 'linh', 'huyen', 'tien', 'than']),
   primaryElement: z.enum(['kim', 'moc', 'thuy', 'hoa', 'tho']),
@@ -113,6 +117,9 @@ const MissionTrackInput = z.object({
   goalKind: z.string().min(1).max(80),
   amount: z.number().int().positive().max(999),
   reason: z.string().max(200).default(''),
+});
+const AchievementTrackInput = z.object({
+  achievementKey: z.string().min(1).max(64),
 });
 const GrantCurrencyInput = z.object({
   currency: z.enum(['LINH_THACH', 'TIEN_NGOC']),
@@ -494,6 +501,30 @@ export class AdminController {
   }
 
   /**
+   * Grant gems to a player — gems are NOT in the ITEMS catalog so
+   * `grant-item` cannot grant them. Uses `GemService.grantGems`.
+   */
+  @Post('users/:id/grant-gem')
+  @HttpCode(200)
+  @RequireAdmin()
+  async grantGem(@Req() req: AdminReq, @Param('id') id: string, @Body() body: unknown) {
+    const parsed = GrantGemInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      await this.admin.grantGem(
+        req.userId,
+        req.role,
+        id,
+        parsed.data.gemKey,
+        parsed.data.qty,
+      );
+      return { ok: true, data: { ok: true } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
    * Phase 12 Story PR-5 — admin seed harness: bypass-track quest progress
    * cho step kind kill/collect. Use-case: positive-flow E2E + smoke main
    * storyline Chapter 1 (`phamnhan_main_01` step_03 kill 3 sơn thử)
@@ -550,6 +581,35 @@ export class AdminController {
         amount: parsed.data.amount,
         reason: parsed.data.reason,
       });
+      return { ok: true, data: { ok: true } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  /**
+   * Admin seed harness — track achievement progress directly. Use-case:
+   * positive-path smoke achievement claim without spinning a real gameplay
+   * loop. Calls `AchievementService.incrementProgress` with large amount
+   * to guarantee completion. Audit `admin.achievement.track`.
+   */
+  @Post('users/:id/achievement-track')
+  @HttpCode(200)
+  @RequireAdmin()
+  async grantAchievementTrack(
+    @Req() req: AdminReq,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = AchievementTrackInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      await this.admin.grantAchievementTrack(
+        req.userId,
+        req.role,
+        id,
+        parsed.data.achievementKey,
+      );
       return { ok: true, data: { ok: true } };
     } catch (e) {
       this.handleErr(e);

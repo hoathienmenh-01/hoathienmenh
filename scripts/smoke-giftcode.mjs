@@ -1,126 +1,21 @@
 #!/usr/bin/env node
 /**
  * smoke-giftcode.mjs — Gift code redeem endpoint smoke cho Xuân Tôi.
- * Negative-path-only (positive redeem path yêu cầu admin
- * `giftcode.create` để seed code → defer cho future smoke với admin
- * secret).
  *
- * Mục tiêu: cover 1 gift code endpoint qua HTTP — `apps/api/src/modules/
- * giftcode`. Verify auth gate (401 unauth), INVALID_INPUT 400 (zod
- * `code` min(1)/max(64) violation, missing field, non-string),
- * NO_CHARACTER fallback (404 cho pre-onboard user kể cả với code
- * không tồn tại — service check `char` trước `row`), CODE_NOT_FOUND
- * 404 (post-onboard với code không tồn tại trong DB), và
- * anti-FE-self-grant invariant (failed redeem attempts KHÔNG đụng
- * linhThach/tienNgoc).
+ * Cover negative path: auth gate (401), INVALID_INPUT 400 (zod violations),
+ * NO_CHARACTER 404 (pre-onboard), CODE_NOT_FOUND 404, service length>32
+ * check, anti-FE-self-grant invariant.
  *
- *   1. `POST /api/giftcodes/redeem`         (no auth)              → 401.
- *   2. `POST /api/_auth/register`                                  — fresh
- *                                                                  user.
- *   3. `POST /api/giftcodes/redeem`         (no body)              → 400
- *                                                                  INVALID_INPUT
- *                                                                  (zod
- *                                                                  parse
- *                                                                  fail).
- *   4. `POST /api/giftcodes/redeem`         ({})                   → 400
- *                                                                  INVALID_INPUT.
- *   5. `POST /api/giftcodes/redeem`         ({ code: '' })         → 400
- *                                                                  INVALID_INPUT
- *                                                                  (zod
- *                                                                  min(1)).
- *   6. `POST /api/giftcodes/redeem`         ({ code: 65*'X' })     → 400
- *                                                                  INVALID_INPUT
- *                                                                  (zod
- *                                                                  max(64)).
- *   7. `POST /api/giftcodes/redeem`         ({ code: 32*'X' })     → 404
- *                                                                  NO_CHARACTER
- *                                                                  (32-char
- *                                                                  boundary
- *                                                                  pass
- *                                                                  cả
- *                                                                  zod
- *                                                                  max(64)
- *                                                                  và
- *                                                                  service
- *                                                                  length
- *                                                                  check
- *                                                                  >32
- *                                                                  →
- *                                                                  reach
- *                                                                  char
- *                                                                  check
- *                                                                  →
- *                                                                  pre-
- *                                                                  onboard
- *                                                                  NO_CHARACTER).
- *   8. `POST /api/giftcodes/redeem`         ({ code: 'NONEXIST' }) → 404
- *                                                                  NO_CHARACTER
- *                                                                  (pre-
- *                                                                  onboard,
- *                                                                  service
- *                                                                  check
- *                                                                  char
- *                                                                  trước
- *                                                                  code).
- *   9. `POST /api/character/onboard`                               — fresh
- *                                                                  char.
- *  10. `POST /api/giftcodes/redeem`         ({ code: 'NONEXIST' }) → 404
- *                                                                  CODE_NOT_FOUND
- *                                                                  (post-
- *                                                                  onboard,
- *                                                                  code
- *                                                                  không
- *                                                                  tồn
- *                                                                  tại).
- *  11. `POST /api/giftcodes/redeem`         ({ code: 33*'X' })     → 400
- *                                                                  INVALID_INPUT
- *                                                                  (post-
- *                                                                  onboard,
- *                                                                  service
- *                                                                  length
- *                                                                  > 32
- *                                                                  check
- *                                                                  fail
- *                                                                  sau
- *                                                                  khi
- *                                                                  qua
- *                                                                  zod).
- *  12. `anti-FE-self-grant` snapshot currency before/after fail attempts
- *                                                                  → linhThach
- *                                                                  /tienNgoc
- *                                                                  KHÔNG
- *                                                                  đụng.
- *  13. `POST /api/_auth/logout` + POST redeem                      → 401.
+ * Cover positive path: admin create giftcode → user redeem → verify rewards
+ * → ALREADY_REDEEMED 409 → anti-FE-self-grant.
  *
- * Chạy:
- *   pnpm smoke:giftcode
- *   # hoặc trực tiếp:
- *   node scripts/smoke-giftcode.mjs
+ * 19-step: 13 negative + 6 positive (steps 14-19).
+ *
+ * Chạy: pnpm smoke:giftcode
  *
  * Env vars:
- *   SMOKE_API_BASE     — default "http://localhost:3000".
- *   SMOKE_TIMEOUT_MS   — default 10000ms / request.
- *   SMOKE_VERBOSE      — "1" để log request/response (debug).
- *   SMOKE_SECT_KEY     — default "thanh_van".
- *
- * Yêu cầu môi trường (giống smoke:mail):
- *   - `pnpm infra:up` (Postgres + Redis)
- *   - `pnpm --filter @xuantoi/api exec prisma migrate deploy`
- *   - `pnpm --filter @xuantoi/api dev` (API listen :3000)
- *   - Tab khác: `pnpm smoke:giftcode`
- *
- * Defer: positive redeem path (admin tạo code → user redeem → ledger
- * applyTx LINH_THACH/TIEN_NGOC + inventory.grantTx + character.exp
- * increment + Redemption row created → idempotent retry → ALREADY_REDEEMED
- * 409) yêu cầu admin `giftcode.create` để seed code → defer cho future
- * smoke với admin secret. Tương tự `CODE_REVOKED` 409, `CODE_EXPIRED`
- * 409, `CODE_EXHAUSTED` 409 cũng defer.
- *
- * Exit code:
- *   0 — toàn bộ invariant OK.
- *   1 — ít nhất 1 invariant fail.
- *
- * Zero-install: chỉ dùng native fetch từ Node 20+.
+ *   SMOKE_API_BASE, SMOKE_TIMEOUT_MS, SMOKE_VERBOSE, SMOKE_SECT_KEY,
+ *   SMOKE_ADMIN_EMAIL, SMOKE_ADMIN_PASSWORD
  */
 
 // -----------------------------------------------------------------------------
@@ -131,6 +26,8 @@ const BASE = (process.env.SMOKE_API_BASE ?? 'http://localhost:3000').replace(/\/
 const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS ?? 10_000);
 const VERBOSE = process.env.SMOKE_VERBOSE === '1';
 const SECT_KEY = process.env.SMOKE_SECT_KEY ?? 'thanh_van';
+const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL ?? 'admin@example.com';
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? 'change-me-bootstrap-pass';
 
 // -----------------------------------------------------------------------------
 // Cookie jar — Node fetch không có cookie jar built-in, tự track set-cookie.
@@ -164,6 +61,17 @@ function storeSetCookie(res) {
 function cookieHeader() {
   if (cookieJar.size === 0) return undefined;
   return Array.from(cookieJar, ([k, v]) => `${k}=${v}`).join('; ');
+}
+
+/** Snapshot cookieJar để switch tạm sang admin rồi restore lại player. */
+function snapshotCookies() {
+  return new Map(cookieJar);
+}
+
+/** @param {Map<string,string>} snapshot */
+function restoreCookies(snapshot) {
+  cookieJar.clear();
+  for (const [k, v] of snapshot) cookieJar.set(k, v);
 }
 
 // -----------------------------------------------------------------------------
@@ -325,6 +233,9 @@ async function main() {
     `[smoke:giftcode] API base = ${BASE}, timeout = ${TIMEOUT_MS}ms, sect = ${SECT_KEY}`,
   );
 
+  /** @type {{ userId?: string }} */
+  const state = {};
+
   // 1. POST /giftcodes/redeem chưa auth → 401.
   await step('POST /giftcodes/redeem — 401 UNAUTHENTICATED', async () => {
     const r = await http('/api/giftcodes/redeem', { method: 'POST', body: { code: 'ANY' } });
@@ -344,6 +255,7 @@ async function main() {
     if (!r.body?.ok)
       throw new Error(`register: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
     assert(r.body?.data?.user?.id, 'register: missing user.id');
+    state.userId = r.body.data.user.id;
   });
 
   // 3. POST /giftcodes/redeem no body → 400 INVALID_INPUT (zod parse fail).
@@ -470,6 +382,90 @@ async function main() {
     const r = await http('/api/giftcodes/redeem', { method: 'POST', body: { code: 'ANY' } });
     assertStatus(r, 401, 'POST /giftcodes/redeem post-logout');
     assertErrorCode(r, 'UNAUTHENTICATED', 'POST /giftcodes/redeem post-logout');
+  });
+
+  // =============================================================================
+  // Positive path — admin create giftcode → redeem → verify rewards.
+  // =============================================================================
+
+  /** Unique giftcode for this smoke run. */
+  const giftcode = `SMOKE_${Date.now().toString(36).toUpperCase()}_${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+
+  // 14. Snapshot player cookies + admin login → create giftcode.
+  const playerSnapshot = snapshotCookies();
+  await step('admin login + create giftcode', async () => {
+    const login = await http('/api/_auth/login', {
+      method: 'POST',
+      body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    assertStatus(login, 200, 'admin login');
+    assert(login.body?.ok, `admin login: ok=false body=${JSON.stringify(login.body).slice(0, 200)}`);
+
+    const create = await http('/api/admin/giftcodes', {
+      method: 'POST',
+      body: {
+        code: giftcode,
+        rewardLinhThach: '500',
+        rewardTienNgoc: 10,
+        maxRedeems: 10,
+      },
+    });
+    assertStatus(create, 200, 'admin create giftcode');
+    assert(create.body?.ok, `admin create giftcode: ok=false body=${JSON.stringify(create.body).slice(0, 200)}`);
+  });
+
+  // 15. Admin logout + restore player cookies.
+  await step('admin logout + restore player', async () => {
+    const r = await http('/api/_auth/logout', { method: 'POST' });
+    assertStatus(r, [200, 204], 'admin logout');
+    restoreCookies(playerSnapshot);
+  });
+
+  // Snapshot currency BEFORE redeem.
+  const beforeRedeem = await fetchCharCurrencies();
+
+  // 16. POST /giftcodes/redeem → verify rewards.
+  await step('POST /giftcodes/redeem — verify rewards', async () => {
+    const r = await http('/api/giftcodes/redeem', {
+      method: 'POST',
+      body: { code: giftcode },
+    });
+    assertStatus(r, 200, 'POST /giftcodes/redeem positive');
+    assert(r.body?.ok, `redeem: ok=false body=${JSON.stringify(r.body).slice(0, 200)}`);
+    const rewards = r.body?.data?.rewards;
+    assert(rewards, 'redeem: missing rewards');
+    assert(typeof rewards.linhThach === 'number' && rewards.linhThach > 0, `redeem: rewards.linhThach > 0, got ${rewards.linhThach}`);
+  });
+
+  // 17. GET /character/state — verify linhThach + tienNgoc increased.
+  await step('GET /character/state — linhThach + tienNgoc increased', async () => {
+    const after = await fetchCharCurrencies();
+    const beforeLT = BigInt(beforeRedeem.linhThach);
+    const afterLT = BigInt(after.linhThach);
+    assert(afterLT > beforeLT, `linhThach should increase: before=${beforeRedeem.linhThach}, after=${after.linhThach}`);
+    assert(after.tienNgoc > beforeRedeem.tienNgoc, `tienNgoc should increase: before=${beforeRedeem.tienNgoc}, after=${after.tienNgoc}`);
+  });
+
+  // 18. POST /giftcodes/redeem again → ALREADY_REDEEMED 409.
+  await step('POST /giftcodes/redeem — ALREADY_REDEEMED 409', async () => {
+    const r = await http('/api/giftcodes/redeem', {
+      method: 'POST',
+      body: { code: giftcode },
+    });
+    assertStatus(r, 409, 'POST /giftcodes/redeem duplicate');
+    assertErrorCode(r, 'ALREADY_REDEEMED', 'POST /giftcodes/redeem duplicate');
+  });
+
+  // 19. Anti-FE-self-grant: currency unchanged sau ALREADY_REDEEMED.
+  await step('anti-FE-self-grant — currency unchanged sau ALREADY_REDEEMED', async () => {
+    const after = await fetchCharCurrencies();
+    const afterRedeem = await fetchCharCurrencies();
+    const postRedeemLT = BigInt(after.linhThach);
+    const retryLT = BigInt(afterRedeem.linhThach);
+    assert(
+      postRedeemLT === retryLT,
+      `linhThach should be unchanged after ALREADY_REDEEMED retry: post-redeem=${after.linhThach}, retry=${afterRedeem.linhThach}`,
+    );
   });
 
   // -----------------------------------------------------------------------------
