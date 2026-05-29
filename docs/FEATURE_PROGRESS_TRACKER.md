@@ -94,17 +94,23 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 
 **Next: Beta Readiness — Smoke Expansion Pack. DONE.** Default suite expanded from 14→24 scripts. 4 new scripts (alchemy, gem, refine, pet) added with positive paths.
 
-**Next recommended:** Run `pnpm smoke:all` against local stack to verify all 24 suites pass. Then proceed to beta launch checklist.
+**Post-Beta Test Coverage + Placeholder Wire Pack. DONE.** 4 PRs closing service test gaps + returner wire:
+- PR 1: Monetization Service Test Coverage (8 services, 50 tests) — DONE
+- PR 2: Pet Service Test Coverage (7 services, already covered by existing tests) — DONE
+- PR 3: Market-V2 Tests + Returner Wire (existing tests + `returner.onLogin()` wired in auth.service.ts) — DONE
+- PR 4: Admin-CC + Event-Builder Tests (4 services, 29 tests) — DONE
+
+**Next recommended:** Run `pnpm smoke:all` against local stack to verify all suites pass. Then proceed to beta launch checklist.
 
 ## Active Task Template
 
 ### Active Task
 
-- Task: Beta Readiness — Smoke Expansion Pack
-- Branch: (not started)
+- Task: Post-Beta Test Coverage + Placeholder Wire Pack
+- Branch: phase-15.8-liveops-polish
 - Started: 2026-05-29
 - Owner: AI
-- Status: TODO
+- Status: DONE
 
 ## Completed Tasks
 

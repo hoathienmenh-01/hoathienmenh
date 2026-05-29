@@ -380,6 +380,11 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // Phase 15.8 — Sect Season Champion membership snapshot (no FK).
   // Wipe trước Character/Sect để reward grant test khởi đầu sạch.
   await prisma.sectSeasonChampionSnapshot.deleteMany({});
+  // Phase 15.8 — Event Builder + Admin Control Center (no FK to Character/User;
+  // wipe explicit để reset state giữa test runs).
+  await prisma.eventBalancePolicy.deleteMany({});
+  await prisma.eventDef.deleteMany({});
+  await prisma.contentStatus.deleteMany({});
   await prisma.adminAuditLog.deleteMany({});
   await prisma.refreshToken.deleteMany({});
   await prisma.loginAttempt.deleteMany({});
