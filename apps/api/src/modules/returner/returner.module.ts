@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
 import { MailModule } from '../mail/mail.module';
@@ -12,7 +12,7 @@ import { ReturnerService } from './returner.service';
  * Phase 31: FE/admin có thể trigger qua `POST /returner/check`.
  */
 @Module({
-  imports: [AuthModule, MailModule],
+  imports: [forwardRef(() => AuthModule), MailModule],
   controllers: [ReturnerController],
   providers: [ReturnerService, PrismaService],
   exports: [ReturnerService],

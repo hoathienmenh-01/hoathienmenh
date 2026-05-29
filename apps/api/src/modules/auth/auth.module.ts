@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import type { Redis } from 'ioredis';
@@ -23,6 +23,7 @@ import {
   type RateLimiter,
 } from '../../common/rate-limiter';
 import { REDIS_CONNECTION } from '../../common/redis.module';
+import { ReturnerModule } from '../returner/returner.module';
 
 const registerLimiterProvider = {
   provide: REGISTER_RATE_LIMITER,
@@ -73,6 +74,7 @@ const forgotPasswordLimiterProvider = {
       }),
     }),
     RealtimeModule,
+    forwardRef(() => ReturnerModule),
   ],
   controllers: [AuthController],
   providers: [

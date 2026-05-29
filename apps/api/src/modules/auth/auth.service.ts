@@ -19,6 +19,7 @@ import {
   type RateLimiter,
 } from '../../common/rate-limiter';
 import { SessionService } from './session.service';
+import { ReturnerService } from '../returner/returner.service';
 
 export type AuthErrorCode =
   | 'INVALID_CREDENTIALS'
@@ -116,6 +117,7 @@ export class AuthService {
     @Optional() @Inject(REGISTER_RATE_LIMITER) registerLimiter?: RateLimiter,
     @Optional() @Inject(FORGOT_PASSWORD_RATE_LIMITER) forgotPasswordLimiter?: RateLimiter,
     @Optional() private readonly email?: EmailService,
+    @Optional() private readonly returner?: ReturnerService,
   ) {
     this.registerLimiter =
       registerLimiter ??
@@ -170,6 +172,12 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
     await this.recordAttempt(input.email, ctx.ip, true);
+
+    // Fire-and-forget returner check — don't block login on failure.
+    if (this.returner) {
+      this.returner.onLogin(user.id).catch(() => {});
+    }
+
     return this.issueTokens(user, ctx);
   }
 
