@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { z } from 'zod';
+import { randomBytes } from 'crypto';
 import {
   BREAKTHROUGH_LOG_DEFAULT_LIMIT,
   BREAKTHROUGH_LOG_MAX_LIMIT,
@@ -21,6 +22,7 @@ import {
   CharacterService,
   type BreakthroughAttemptOutcome,
 } from './character.service';
+import { createSeededRng } from '@xuantoi/shared';
 import { SpiritualRootError, SpiritualRootService } from './spiritual-root.service';
 import {
   CultivationMethodError,
@@ -411,7 +413,10 @@ export class CharacterController {
   async breakthroughAttempt(@Req() req: Request) {
     const userId = await this.requireUserId(req);
     try {
-      const outcome = await this.chars.attemptBreakthrough(userId);
+      // Seeded RNG from randomBytes for deterministic replay + audit.
+      const seed = randomBytes(8).readUInt32LE(0);
+      const rng = createSeededRng(seed).next;
+      const outcome = await this.chars.attemptBreakthrough(userId, rng);
       return { ok: true, data: { outcome: toBreakthroughAttemptView(outcome) } };
     } catch (e) {
       if (e instanceof BreakthroughError) {
@@ -1476,9 +1481,12 @@ export class CharacterController {
     // empty/missing body cho backward-compat (legacy attempt without selection).
     const selectedSupportItemKeys = parseSelectedSupportItemKeys(body);
     try {
+      // Seeded RNG from randomBytes for deterministic replay + audit.
+      const seed = randomBytes(8).readUInt32LE(0);
+      const rng = createSeededRng(seed).next;
       const result = await this.tribulation.attemptTribulation(
         character.id,
-        Math.random,
+        rng,
         new Date(),
         { selectedSupportItemKeys },
       );
@@ -2136,8 +2144,7 @@ export class CharacterController {
    *     output qua `ItemLedger`/`CurrencyLedger`).
    *   - Input + linhThach LUÔN bị consume dù fail (balance intent — khớp
    *     comment trong catalog `simulateAlchemyAttempt`).
-   *   - RNG mặc định `Math.random` — không cho client inject; reuse pattern
-   *     từ `tribulation` endpoint.
+ *   - RNG seeded từ `randomBytes` cho deterministic replay + audit.
    *   - Trả về `outcome` + `furnaceLevel` để frontend render kết quả + refresh
    *     inventory.
    */
@@ -2153,9 +2160,13 @@ export class CharacterController {
     const character = await this.chars.findByUser(userId);
     if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
     try {
+      // Seeded RNG from randomBytes for deterministic replay + audit.
+      const seed = randomBytes(8).readUInt32LE(0);
+      const rng = createSeededRng(seed).next;
       const outcome = await this.alchemy.attemptCraft(
         character.id,
         parsed.data.recipeKey,
+        rng,
       );
       const furnaceLevel = await this.alchemy.getFurnaceLevel(character.id);
       return {
@@ -2796,6 +2807,7 @@ function mapAlchemyErrorStatus(code: AlchemyError['code']): HttpStatus {
     case 'INSUFFICIENT_INGREDIENTS':
     case 'DAILY_CAP_REACHED':
     case 'INSUFFICIENT_FUNDS':
+    case 'RATE_LIMITED':
       return HttpStatus.CONFLICT;
     default:
       return HttpStatus.BAD_REQUEST;

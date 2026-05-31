@@ -30,6 +30,7 @@ import {
   realmByKey,
   realmOrderToMaterialTier,
   rollDamage,
+  sectNameToKey,
   skillByKey,
   type BossDef,
   type BossElementProfile,
@@ -43,6 +44,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
+import { CharacterSkillService } from '../character/character-skill.service';
 import { CurrencyService } from '../character/currency.service';
 import { AchievementService } from '../character/achievement.service';
 import { TalentService } from '../character/talent.service';
@@ -55,6 +57,7 @@ import { SectWarService } from '../sect-war/sect-war.service';
 import { TerritoryService } from '../territory/territory.service';
 import { LiveOpsEventSchedulerService } from '../liveops-event-scheduler/liveops-event-scheduler.service';
 import { DropEconomyService } from '../economy/drop-economy.service';
+import { RewardCapService } from '../economy/reward-cap.service';
 import { Phase33StoryService } from '../story-v2/story-v2.service';
 import { WebPushService } from '../web-push/web-push.service';
 import { WebPushTriggerService } from '../web-push/web-push-trigger.service';
@@ -71,11 +74,13 @@ export class BossError extends Error {
       | 'MP_LOW'
       | 'HP_LOW'
       | 'SKILL_NOT_USABLE'
+      | 'SKILL_NOT_LEARNED'
       | 'BOSS_ALREADY_ACTIVE'
       | 'INVALID_BOSS_KEY'
       | 'INVALID_LEVEL'
       | 'CONTROLLED'
-      | 'CULTIVATION_BLOCKED',
+      | 'CULTIVATION_BLOCKED'
+      | 'ACTIVITY_IN_PROGRESS',
   ) {
     super(code);
   }
@@ -156,8 +161,11 @@ const LEADERBOARD_SIZE = 20;
 @Injectable()
 export class BossService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(BossService.name);
-  /** characterId → last attack ms (rate-limit). */
+  /** characterId → last attack ms (rate-limit). Entries older than
+   *  COOLDOWN_SWEEP_TTL_MS are pruned on each heartbeat tick to prevent
+   *  unbounded memory growth on long-running servers. */
   private readonly cooldowns = new Map<string, number>();
+  private static readonly COOLDOWN_SWEEP_TTL_MS = 60_000;
   private timer: ReturnType<typeof setInterval> | null = null;
   /**
    * Concurrency phase 2 — in-process re-entry guard. Nếu tick trước vẫn
@@ -184,6 +192,9 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     @Optional() private readonly territory?: TerritoryService,
     @Optional()
     private readonly liveOpsEvents?: LiveOpsEventSchedulerService,
+    // Phase 16.5 — Daily Reward Cap cho boss linhThach grants.
+    // Optional → identity (không cap) khi DI thiếu hoặc legacy test setup.
+    @Optional() private readonly rewardCap?: RewardCapService,
     @Optional() private readonly dropEconomy?: DropEconomyService,
     @Optional() private readonly webPush?: WebPushService,
     // Phase 44.1 — high-level web push trigger composer. Optional inject
@@ -193,6 +204,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     // — test bootstrap có thể bỏ. Fail-soft trong service.
     @Optional() private readonly phase33Story?: Phase33StoryService,
     @Optional() private readonly petSnapshot?: PetSnapshotService,
+    @Optional() private readonly characterSkill?: CharacterSkillService,
   ) {}
 
   onModuleInit(): void {
@@ -335,8 +347,30 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     if (skill.sect !== null && skill.sect !== sectKey) {
       throw new BossError('SKILL_NOT_USABLE');
     }
+    // Guard: skill phải đã học mới được dùng khi đánh boss.
+    // basic_attack luôn được phép (auto-granted). Skill khác phải có
+    // CharacterSkill row.
+    if (
+      skillKey &&
+      this.characterSkill &&
+      !await this.characterSkill.isLearned(char.id, skillKey)
+    ) {
+      throw new BossError('SKILL_NOT_LEARNED');
+    }
     if (char.mp < skill.mpCost) throw new BossError('MP_LOW');
     if (char.stamina < BOSS_STAMINA_PER_HIT) throw new BossError('STAMINA_LOW');
+
+    // Cross-guard: player đang trong combat encounter hoặc dungeon run → không cho attack boss
+    const activeEncounter = await this.prisma.encounter.findFirst({
+      where: { characterId: char.id, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    if (activeEncounter) throw new BossError('ACTIVITY_IN_PROGRESS');
+    const activeDungeonRun = await this.prisma.dungeonRun.findFirst({
+      where: { characterId: char.id, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    if (activeDungeonRun) throw new BossError('ACTIVITY_IN_PROGRESS');
 
     // Phase 11.4.E — Equipment atk/spirit bonus wire vào BossService.attack().
     // Trước đây boss attack chỉ dùng `char.power` raw + `char.spirit` raw, bỏ
@@ -595,7 +629,14 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
 
     // Đảm bảo response không bao giờ trả HP âm ngay cả khi tx flip
     // không xảy ra (tránh hiển thị `-95 / 120000` ở client).
-    if (bossHpAfter < 0n) bossHpAfter = 0n;
+    // Clamp negative HP to 0 in DB (Prisma decrement doesn't clamp).
+    if (bossHpAfter < 0n) {
+      bossHpAfter = 0n;
+      await this.prisma.worldBoss.updateMany({
+        where: { id: boss.id, currentHp: { lt: 0n } },
+        data: { currentHp: 0n },
+      }).catch(() => {/* best-effort */});
+    }
 
     // Tính rank ngoài tx (read-only, không cần lock).
     const rankRow = await this.prisma.bossDamage.count({
@@ -671,6 +712,13 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     }
     this.heartbeatRunning = true;
     try {
+      // Sweep stale cooldown entries to prevent unbounded memory growth.
+      // Entries older than COOLDOWN_SWEEP_TTL_MS are pruned on each tick.
+      const sweepThreshold = Date.now() - BossService.COOLDOWN_SWEEP_TTL_MS;
+      for (const [charId, ts] of this.cooldowns) {
+        if (ts < sweepThreshold) this.cooldowns.delete(charId);
+      }
+
       // Phase 12.6 — iterate distinct regions có ≥1 boss spawn-able trong
       // catalog (`bossSpawnRegions()` returns sorted distinct region keys).
       // Mỗi region 1 spawn slot (partial unique
@@ -1266,12 +1314,33 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       const liveOpsBonusDelta = linhThach - linhThachBeforeLiveOps;
       void linhThachBeforeTalent;
 
+      // Phase 16.5 — Daily Reward Cap cho boss linhThach grants.
+      // Apply cap trước khi grant. Identity (không cap) khi service không inject.
+      let grantedLinhThach = linhThach;
+      if (this.rewardCap && linhThach > 0n) {
+        try {
+          const cap = await this.rewardCap.applyCapTx(tx, {
+            characterId: row.characterId,
+            source: 'DUNGEON',
+            requestedExp: 0n,
+            requestedLinhThach: linhThach,
+            realmKey: def.recommendedRealm ?? 'luyenkhi',
+            refType: 'WorldBoss',
+            refId: bossId,
+            meta: { rank, bossKey: def.key },
+          });
+          grantedLinhThach = cap.grantedLinhThach;
+        } catch {
+          // fail-soft: cap service lỗi → grant nguyên gốc.
+        }
+      }
+
       // Trao thưởng character (atomic + ghi ledger).
-      if (linhThach > 0n) {
+      if (grantedLinhThach > 0n) {
         await this.currency.applyTx(tx, {
           characterId: row.characterId,
           currency: CurrencyKind.LINH_THACH,
-          delta: linhThach,
+          delta: grantedLinhThach,
           reason: 'BOSS_REWARD',
           refType: 'WorldBoss',
           refId: bossId,
@@ -1637,10 +1706,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     if (!sectId) return null;
     const sect = await this.prisma.sect.findUnique({ where: { id: sectId } });
     if (!sect) return null;
-    if (sect.name === 'Thanh Vân Môn') return 'thanh_van';
-    if (sect.name === 'Huyền Thuỷ Cung') return 'huyen_thuy';
-    if (sect.name === 'Tu La Tông') return 'tu_la';
-    return null;
+    return sectNameToKey(sect.name);
   }
 
   private async refreshState(userId: string): Promise<void> {

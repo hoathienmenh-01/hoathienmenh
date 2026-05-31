@@ -180,6 +180,7 @@ export class BossController {
         case 'BOSS_ALREADY_ACTIVE':
         case 'CONTROLLED':
         case 'CULTIVATION_BLOCKED':
+        case 'ACTIVITY_IN_PROGRESS':
           fail(e.code, HttpStatus.CONFLICT);
       }
     }

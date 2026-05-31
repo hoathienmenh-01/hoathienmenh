@@ -1,4 +1,4 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { CurrencyKind } from '@prisma/client';
 import {
   ALCHEMY_FURNACE_MAX_LEVEL,
@@ -24,6 +24,10 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from './currency.service';
 import { AchievementService } from './achievement.service';
+import {
+  InMemorySlidingWindowRateLimiter,
+  type RateLimiter,
+} from '../../common/rate-limiter';
 
 /**
  * Phase 11.11.B Alchemy (Luyện Đan) MVP runtime.
@@ -51,28 +55,52 @@ import { AchievementService } from './achievement.service';
  * goalKind `ALCHEMY_CRAFT` (apprentice 10 / master 100). KHÔNG track khi
  * outcome.success === false. KHÔNG throw nếu achievement service lỗi.
  */
+/**
+ * Rate limit cho alchemy attempts. 60 req/phút — đủ cho player thật
+ * craft liên tục, nhưng chặn script abuse spam hàng trăm lần/giây.
+ */
+export const ALCHEMY_RATE_LIMIT_WINDOW_MS = 60_000;
+export const ALCHEMY_RATE_LIMIT_MAX = 60;
+export const ALCHEMY_RATE_LIMITER = Symbol('ALCHEMY_RATE_LIMITER');
+
 @Injectable()
 export class AlchemyService {
+  private readonly limiter: RateLimiter;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
     @Optional() private readonly achievements?: AchievementService,
-  ) {}
+    @Optional() @Inject(ALCHEMY_RATE_LIMITER) limiter?: RateLimiter,
+  ) {
+    this.limiter =
+      limiter ??
+      new InMemorySlidingWindowRateLimiter(
+        ALCHEMY_RATE_LIMIT_WINDOW_MS,
+        ALCHEMY_RATE_LIMIT_MAX,
+      );
+  }
 
   /**
    * Attempt 1 lần luyện đan.
    *
    * @param characterId character thực hiện
    * @param recipeKey recipe từ catalog
-   * @param rng deterministic RNG [0,1) — default Math.random()
+   * @param rng deterministic RNG [0,1) — caller PHẢI truyền seeded RNG,
+   *   KHÔNG dùng Math.random() (non-deterministic, không audit-able).
+   *   Controller nên derive từ attemptId: seedrandom(attemptId).
    */
   async attemptCraft(
     characterId: string,
     recipeKey: string,
-    rng: () => number = Math.random,
+    rng: () => number,
   ): Promise<AlchemyCraftOutcome> {
     const recipe = getAlchemyRecipeDef(recipeKey);
     if (!recipe) throw new AlchemyError('RECIPE_NOT_FOUND');
+
+    // Rate limit check — chạy trước DB lookup để giảm tải khi bị spam.
+    const rl = await this.limiter.check(characterId);
+    if (!rl.allowed) throw new AlchemyError('RATE_LIMITED');
 
     return this.prisma.$transaction(async (tx) => {
       const character = await tx.character.findUnique({
@@ -311,7 +339,9 @@ export class AlchemyService {
       select: { itemKey: true, qty: true },
     });
     const qtyByKey = new Map(inventory.map((item) => [item.itemKey, item.qty]));
-    return [...ALCHEMY_RECIPES].filter((recipe) => recipe.furnaceLevel <= char.alchemyFurnaceLevel).map((recipe) => {
+    // Trả về TẤT CẢ recipes — locked nếu lò/thấp cấp quá, unlocked nếu đủ điều kiện.
+    // FE hiển thị locked state để player biết cần upgrade gì.
+    return [...ALCHEMY_RECIPES].map((recipe) => {
       const missingInputs = recipe.inputs
         .filter((input) => (qtyByKey.get(input.itemKey) ?? 0) < input.qty)
         .map((input) => {
@@ -523,7 +553,8 @@ export type AlchemyErrorCode =
   | 'RECIPE_TIER_TOO_HIGH'
   | 'INSUFFICIENT_INGREDIENTS'
   | 'DAILY_CAP_REACHED'
-  | 'INSUFFICIENT_FUNDS';
+  | 'INSUFFICIENT_FUNDS'
+  | 'RATE_LIMITED';
 
 export class AlchemyError extends Error {
   constructor(public readonly code: AlchemyErrorCode) {

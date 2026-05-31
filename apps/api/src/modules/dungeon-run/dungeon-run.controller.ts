@@ -162,6 +162,7 @@ export class DungeonRunController {
         case 'DUNGEON_DAILY_LIMIT_REACHED':
         case 'STAMINA_LOW':
         case 'ALREADY_IN_RUN':
+        case 'ACTIVITY_IN_PROGRESS':
         case 'RUN_NOT_ACTIVE':
         case 'RUN_NOT_COMPLETED':
         case 'RUN_ALREADY_CLAIMED':

@@ -112,17 +112,6 @@ export class AuctionService {
       });
       if (dec.count === 0) throw new AuctionError('AUCTION_INVENTORY_INSUFFICIENT');
 
-      await tx.itemLedger.create({
-        data: {
-          characterId: input.sellerCharacterId,
-          itemKey: input.itemKey,
-          qtyDelta: -input.quantity,
-          reason: 'MARKET_AUCTION_LIST',
-          refType: 'MarketAuction',
-          refId: 'pending',
-        },
-      });
-
       const auction = await tx.marketAuction.create({
         data: {
           sellerCharacterId: input.sellerCharacterId,
@@ -135,6 +124,18 @@ export class AuctionService {
           startsAt: now,
           endsAt,
           status: 'ACTIVE',
+        },
+      });
+
+      // Audit trail: link item ledger to actual auction ID (was 'pending').
+      await tx.itemLedger.create({
+        data: {
+          characterId: input.sellerCharacterId,
+          itemKey: input.itemKey,
+          qtyDelta: -input.quantity,
+          reason: 'MARKET_AUCTION_LIST',
+          refType: 'MarketAuction',
+          refId: auction.id,
         },
       });
 

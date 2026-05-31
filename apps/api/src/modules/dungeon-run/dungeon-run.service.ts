@@ -82,7 +82,8 @@ export class DungeonRunError extends Error {
       | 'RUN_NOT_ACTIVE'
       | 'RUN_NOT_COMPLETED'
       | 'RUN_ALREADY_CLAIMED'
-      | 'RUN_NO_REWARD',
+      | 'RUN_NO_REWARD'
+      | 'ACTIVITY_IN_PROGRESS',
   ) {
     super(code);
   }
@@ -366,14 +367,25 @@ export class DungeonRunService {
     if (typeof dungeon.dailyLimit === 'number' && dungeon.dailyLimit > 0) {
       const tz = getDungeonRunResetTz();
       const dayStart = startOfLocalDay(new Date(), tz);
-      const todayCount = await this.prisma.dungeonRun.count({
-        where: {
-          characterId: char.id,
-          templateKey,
-          startedAt: { gte: dayStart },
-        },
-      });
-      if (todayCount >= dungeon.dailyLimit) {
+      // Unified daily limit: count BOTH Encounter (combat) + DungeonRun tables
+      // to enforce shared dailyLimit across both modes (Issue #2.1 fix).
+      const [encounterCount, dungeonRunCount] = await Promise.all([
+        this.prisma.encounter.count({
+          where: {
+            characterId: char.id,
+            dungeonKey: templateKey,
+            createdAt: { gte: dayStart },
+          },
+        }),
+        this.prisma.dungeonRun.count({
+          where: {
+            characterId: char.id,
+            templateKey,
+            startedAt: { gte: dayStart },
+          },
+        }),
+      ]);
+      if (encounterCount + dungeonRunCount >= dungeon.dailyLimit) {
         throw new DungeonRunError('DUNGEON_DAILY_LIMIT_REACHED');
       }
     }
@@ -387,6 +399,18 @@ export class DungeonRunService {
       select: { id: true },
     });
     if (existingActive) throw new DungeonRunError('ALREADY_IN_RUN');
+
+    // Cross-guard: player đang trong combat encounter → không cho start dungeon run
+    const activeEncounter = await this.prisma.encounter.findFirst({
+      where: { characterId: char.id, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    if (activeEncounter) throw new DungeonRunError('ACTIVITY_IN_PROGRESS');
+    const activeRoguelike = await this.prisma.roguelikeRun.findFirst({
+      where: { characterId: char.id, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    if (activeRoguelike) throw new DungeonRunError('ACTIVITY_IN_PROGRESS');
 
     // Validate dungeon catalog: ít nhất 1 monster + monster resolve được.
     if (dungeon.monsters.length === 0) {
