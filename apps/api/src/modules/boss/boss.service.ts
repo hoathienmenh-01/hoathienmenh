@@ -371,6 +371,11 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       select: { id: true },
     });
     if (activeDungeonRun) throw new BossError('ACTIVITY_IN_PROGRESS');
+    const activeRoguelike = await this.prisma.roguelikeRun.findFirst({
+      where: { characterId: char.id, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    if (activeRoguelike) throw new BossError('ACTIVITY_IN_PROGRESS');
 
     // Phase 11.4.E — Equipment atk/spirit bonus wire vào BossService.attack().
     // Trước đây boss attack chỉ dùng `char.power` raw + `char.spirit` raw, bỏ
