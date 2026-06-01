@@ -302,7 +302,7 @@ export class ArtifactV2Service {
           refId: bp.key,
         });
       }
-      if (success && resolvedGrade && resolvedSubStats.length > 0 && initialStats) {
+      if (success && resolvedGrade && initialStats) {
         // Use pre-rolled grade + substats (rolled before transaction).
         const created = await tx.characterArtifactV2.create({
           data: {

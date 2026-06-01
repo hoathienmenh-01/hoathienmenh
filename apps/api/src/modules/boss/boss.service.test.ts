@@ -2062,19 +2062,19 @@ describe('BossService', () => {
       bossWithPet = new BossService(
         prisma, realtime, chars, inventory, currency, missions,
         undefined, undefined, undefined, undefined, undefined, undefined,
-        undefined, undefined, undefined, undefined, undefined,
+        undefined, undefined, undefined, undefined, undefined, undefined,
         petSnapshotStub as never,
       );
       bossWithBrokenPet = new BossService(
         prisma, realtime, chars, inventory, currency, missions,
         undefined, undefined, undefined, undefined, undefined, undefined,
-        undefined, undefined, undefined, undefined, undefined,
+        undefined, undefined, undefined, undefined, undefined, undefined,
         petSnapshotThrow as never,
       );
       bossNoPet = new BossService(
         prisma, realtime, chars, inventory, currency, missions,
         undefined, undefined, undefined, undefined, undefined, undefined,
-        undefined, undefined, undefined, undefined, undefined,
+        undefined, undefined, undefined, undefined, undefined, undefined,
         petSnapshotNull as never,
       );
     });
@@ -2115,7 +2115,7 @@ describe('BossService', () => {
       const bossHighPet = new BossService(
         prisma, realtime, chars, inventory, currency, missions,
         undefined, undefined, undefined, undefined, undefined, undefined,
-        undefined, undefined, undefined, undefined, undefined,
+        undefined, undefined, undefined, undefined, undefined, undefined,
         highAtkStub as never,
       );
 
