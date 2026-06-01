@@ -229,6 +229,7 @@ export class ArtifactV2Service {
     characterId: string,
     blueprintKey: string,
     externalSuccessBonus?: number,
+    rng: () => number = Math.random,
   ): Promise<ArtifactV2CraftOut> {
     const bp = getArtifactBlueprint(blueprintKey);
     if (!bp) throw new ArtifactV2Error('BLUEPRINT_NOT_FOUND');
@@ -253,7 +254,8 @@ export class ArtifactV2Service {
     }
 
     const successRate = computeArtifactCraftSuccessRate(bp, craftCtx);
-    const rollValue = Math.random();
+    // H1+H2 fix: roll ALL RNG before transaction for determinism + consistency.
+    const rollValue = rng();
     const success = rollValue <= successRate;
 
     let createdRowId: string | null = null;
@@ -261,6 +263,20 @@ export class ArtifactV2Service {
     let resolvedSubStats: ArtifactSubStatRoll[] = [];
     let initialStats: ReturnType<typeof computeArtifactStats> | null = null;
 
+    // Pre-roll grade + substats outside transaction (deterministic).
+    if (success) {
+      resolvedGrade = rollArtifactGrade(bp, rng);
+      resolvedSubStats = rollArtifactSubStats(art, resolvedGrade, rng);
+      initialStats = computeArtifactStats(art, {
+        grade: resolvedGrade,
+        level: 1,
+        star: 0,
+        refineLevel: 0,
+        awakenLevel: 0,
+        spiritLevel: 0,
+        subStats: resolvedSubStats,
+      });
+    }
     await this.prisma.$transaction(async (tx) => {
       for (const inp of bp.inputs) {
         await this.inventory.consumeManyByItemKeyTx(
@@ -286,18 +302,8 @@ export class ArtifactV2Service {
           refId: bp.key,
         });
       }
-      if (success) {
-        resolvedGrade = rollArtifactGrade(bp, Math.random);
-        resolvedSubStats = rollArtifactSubStats(art, resolvedGrade, Math.random);
-        initialStats = computeArtifactStats(art, {
-          grade: resolvedGrade,
-          level: 1,
-          star: 0,
-          refineLevel: 0,
-          awakenLevel: 0,
-          spiritLevel: 0,
-          subStats: resolvedSubStats,
-        });
+      if (success && resolvedGrade && resolvedSubStats.length > 0 && initialStats) {
+        // Use pre-rolled grade + substats (rolled before transaction).
         const created = await tx.characterArtifactV2.create({
           data: {
             characterId,
@@ -430,35 +436,40 @@ export class ArtifactV2Service {
   async upgradeLevel(
     characterId: string,
     artifactId: string,
+    rng: () => number = Math.random,
   ): Promise<ArtifactV2UpgradeOut> {
-    return this.runUpgrade(characterId, artifactId, 'UPGRADE');
+    return this.runUpgrade(characterId, artifactId, 'UPGRADE', rng);
   }
 
   async starUp(
     characterId: string,
     artifactId: string,
+    rng: () => number = Math.random,
   ): Promise<ArtifactV2UpgradeOut> {
-    return this.runUpgrade(characterId, artifactId, 'STAR_UP');
+    return this.runUpgrade(characterId, artifactId, 'STAR_UP', rng);
   }
 
   async refine(
     characterId: string,
     artifactId: string,
+    rng: () => number = Math.random,
   ): Promise<ArtifactV2UpgradeOut> {
-    return this.runUpgrade(characterId, artifactId, 'REFINE');
+    return this.runUpgrade(characterId, artifactId, 'REFINE', rng);
   }
 
   async awaken(
     characterId: string,
     artifactId: string,
+    rng: () => number = Math.random,
   ): Promise<ArtifactV2UpgradeOut> {
-    return this.runUpgrade(characterId, artifactId, 'AWAKEN');
+    return this.runUpgrade(characterId, artifactId, 'AWAKEN', rng);
   }
 
   private async runUpgrade(
     characterId: string,
     artifactId: string,
     action: 'UPGRADE' | 'STAR_UP' | 'REFINE' | 'AWAKEN',
+    rng: () => number = Math.random,
   ): Promise<ArtifactV2UpgradeOut> {
     const row = await this.prisma.characterArtifactV2.findUnique({
       where: { id: artifactId },
@@ -511,7 +522,8 @@ export class ArtifactV2Service {
       nextAwaken = row.awakenLevel + 1;
     }
 
-    const rollValue = Math.random();
+    // Roll RNG before transaction for determinism.
+    const rollValue = rng();
     const success = rollValue <= successRate;
 
     let newStats = row.statsJson;

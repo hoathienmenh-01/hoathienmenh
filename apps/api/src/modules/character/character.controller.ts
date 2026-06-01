@@ -414,7 +414,7 @@ export class CharacterController {
     const userId = await this.requireUserId(req);
     try {
       // Seeded RNG from randomBytes for deterministic replay + audit.
-      const seed = randomBytes(8).readUInt32LE(0);
+      const seed = randomBytes(4).readUInt32LE(0);
       const rng = createSeededRng(seed).next;
       const outcome = await this.chars.attemptBreakthrough(userId, rng);
       return { ok: true, data: { outcome: toBreakthroughAttemptView(outcome) } };
@@ -719,7 +719,8 @@ export class CharacterController {
     ) {
       fail('INSUFFICIENT_MATERIALS', HttpStatus.UNPROCESSABLE_ENTITY);
     }
-    throw e;
+    // Fallback: wrap as generic error thay vì leak internal error details.
+    fail('INTERNAL_ERROR', HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
   // ────────────────────────────────────────────────────────────────────
@@ -747,10 +748,13 @@ export class CharacterController {
     const character = await this.chars.findByUser(userId);
     if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
     try {
+      const seed = randomBytes(4).readUInt32LE(0);
+      const rng = createSeededRng(seed).next;
       const result = await this.artifactV2.craft(
         character.id,
         parsed.data.blueprintKey,
         parsed.data.externalSuccessBonus,
+        rng,
       );
       const state = await this.artifactV2.getState(character.id);
       return { ok: true, data: { craft: result, artifactsV2: state } };
@@ -833,9 +837,12 @@ export class CharacterController {
     const character = await this.chars.findByUser(userId);
     if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
     try {
+      const seed = randomBytes(4).readUInt32LE(0);
+      const rng = createSeededRng(seed).next;
       const result = await this.artifactV2[method](
         character.id,
         parsed.data.artifactId,
+        rng,
       );
       const state = await this.artifactV2.getState(character.id);
       return { ok: true, data: { upgrade: result, artifactsV2: state } };
@@ -882,7 +889,8 @@ export class CharacterController {
     ) {
       fail('INSUFFICIENT_LINH_THACH', HttpStatus.UNPROCESSABLE_ENTITY);
     }
-    throw e;
+    // Fallback: wrap as generic error thay vì leak internal error details.
+    fail('INTERNAL_ERROR', HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
   /**
@@ -1482,7 +1490,7 @@ export class CharacterController {
     const selectedSupportItemKeys = parseSelectedSupportItemKeys(body);
     try {
       // Seeded RNG from randomBytes for deterministic replay + audit.
-      const seed = randomBytes(8).readUInt32LE(0);
+      const seed = randomBytes(4).readUInt32LE(0);
       const rng = createSeededRng(seed).next;
       const result = await this.tribulation.attemptTribulation(
         character.id,
@@ -2161,7 +2169,7 @@ export class CharacterController {
     if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
     try {
       // Seeded RNG from randomBytes for deterministic replay + audit.
-      const seed = randomBytes(8).readUInt32LE(0);
+      const seed = randomBytes(4).readUInt32LE(0);
       const rng = createSeededRng(seed).next;
       const outcome = await this.alchemy.attemptCraft(
         character.id,
