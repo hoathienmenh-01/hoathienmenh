@@ -390,13 +390,18 @@ describe('getFurnaceLevel', () => {
 // ============================================================================
 
 describe('listAvailableRecipes', () => {
-  it('furnace L1 — returns only PHAM-tier recipes (furnace 1)', async () => {
+  it('furnace L1 — returns ALL recipes, only L1 canCraft=true', async () => {
     const { characterId } = await makeUserChar(prisma);
     const recipes = await svc.listAvailableRecipes(characterId);
+    // Service returns ALL recipes (locked + unlocked) since Phase 26.2.
+    expect(recipes.length).toBe(ALCHEMY_RECIPE_COUNT);
     const l1Recipes = alchemyRecipesAvailableAtFurnace(1);
-    expect(recipes.length).toBe(l1Recipes.length);
+    const craftable = recipes.filter((r) => r.canCraft);
+    expect(craftable.length).toBeLessThanOrEqual(l1Recipes.length);
     for (const r of recipes) {
-      expect(r.furnaceLevel).toBeLessThanOrEqual(1);
+      if (r.furnaceLevel > 1) {
+        expect(r.canCraft).toBe(false);
+      }
     }
   });
 

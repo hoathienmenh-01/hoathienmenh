@@ -861,9 +861,16 @@ describe('CombatService', () => {
         hpMax: 1000,
         sectId: sect.id,
       });
-      // grantStarterIfMissing trong getEffectiveSkillFor — không lazy-grant
-      // cho non-basic_attack skill. Character có 0 row CharacterSkill cho
-      // `kiem_khi_chem` → masteryLevel = 0 → no bonus.
+      // Grant skill with masteryLevel=0 (learned but no mastery bonus).
+      // Combat service requires isLearned check before allowing non-basic skills.
+      await prisma.characterSkill.create({
+        data: {
+          characterId: u.characterId,
+          skillKey: 'kiem_khi_chem',
+          masteryLevel: 0,
+          source: 'starter',
+        },
+      });
       const enc = await combatWithMastery.start(u.userId, 'son_coc');
       const view = await combatWithMastery.action(u.userId, enc.id, {
         skillKey: 'kiem_khi_chem',
