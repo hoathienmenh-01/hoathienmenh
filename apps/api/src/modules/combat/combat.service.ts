@@ -63,11 +63,13 @@ import { MissionService } from '../mission/mission.service';
 import { QuestService } from '../quest/quest.service';
 import { Phase33StoryService } from '../story-v2/story-v2.service';
 import { DropEconomyService } from '../economy/drop-economy.service';
+import { RewardCapService } from '../economy/reward-cap.service';
 import { PetSnapshotService } from '../pet/pet-snapshot.service';
 import {
   inferDropMonsterType,
   realmByKey,
   realmOrderToMaterialTier,
+  sectNameToKey,
 } from '@xuantoi/shared';
 import { composePassiveTalentMods, type PassiveTalentMods } from '@xuantoi/shared';
 import { composeBuffMods, type BuffMods } from '@xuantoi/shared';
@@ -155,11 +157,13 @@ class CombatError extends Error {
       | 'ENCOUNTER_NOT_FOUND'
       | 'ENCOUNTER_ENDED'
       | 'SKILL_NOT_USABLE'
+      | 'SKILL_NOT_LEARNED'
       | 'MP_LOW'
       | 'CONTROLLED'
       | 'TALENT_NOT_LEARNED'
       | 'TALENT_NOT_ACTIVE'
-      | 'TALENT_ON_COOLDOWN',
+      | 'TALENT_ON_COOLDOWN'
+      | 'ACTIVITY_IN_PROGRESS',
   ) {
     super(code);
   }
@@ -241,6 +245,9 @@ export class CombatService {
     // damage cap (12% PvE / 12% DUNGEON / 8% BOSS) + pet stats. Identity
     // (no-op) khi DI thiếu, hoặc khi character chưa equip pet.
     @Optional() private readonly petSnapshot?: PetSnapshotService,
+    // Phase 16.5 — Daily Reward Cap cho combat EXP/linhThach per-encounter.
+    // Optional → identity (không cap) khi DI thiếu hoặc legacy test setup.
+    @Optional() private readonly rewardCap?: RewardCapService,
     @Optional() private readonly onboarding?: OnboardingQuestService,
   ) {}
 
@@ -278,17 +285,28 @@ export class CombatService {
     // BALANCE_MODEL.md §5.2). Đếm encounter row trong cửa sổ DAILY VN tz
     // (00:00 ICT → 00:00 ICT next day) — bao gồm cả status ABANDONED/LOST/
     // WON để slot daily đã "tiêu" không refund khi player rút sớm.
+    // Unified daily limit: count BOTH Encounter (combat) + DungeonRun tables
+    // to enforce shared dailyLimit across both modes (Issue #2.1 fix).
     if (typeof dungeon.dailyLimit === 'number' && dungeon.dailyLimit > 0) {
       const tz = getCombatResetTz();
       const dayStart = startOfLocalDay(new Date(), tz);
-      const todayCount = await this.prisma.encounter.count({
-        where: {
-          characterId: char.id,
-          dungeonKey,
-          createdAt: { gte: dayStart },
-        },
-      });
-      if (todayCount >= dungeon.dailyLimit) {
+      const [encounterCount, dungeonRunCount] = await Promise.all([
+        this.prisma.encounter.count({
+          where: {
+            characterId: char.id,
+            dungeonKey,
+            createdAt: { gte: dayStart },
+          },
+        }),
+        this.prisma.dungeonRun.count({
+          where: {
+            characterId: char.id,
+            templateKey: dungeonKey,
+            startedAt: { gte: dayStart },
+          },
+        }),
+      ]);
+      if (encounterCount + dungeonRunCount >= dungeon.dailyLimit) {
         throw new CombatError('DUNGEON_DAILY_LIMIT_REACHED');
       }
     }
@@ -299,6 +317,18 @@ export class CombatService {
       where: { characterId: char.id, status: EncounterStatus.ACTIVE },
     });
     if (existing) throw new CombatError('ALREADY_IN_FIGHT');
+
+    // Cross-guard: player đang chạy DungeonRun → không cho start combat
+    const activeDungeonRun = await this.prisma.dungeonRun.findFirst({
+      where: { characterId: char.id, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    if (activeDungeonRun) throw new CombatError('ACTIVITY_IN_PROGRESS');
+    const activeRoguelike = await this.prisma.roguelikeRun.findFirst({
+      where: { characterId: char.id, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    if (activeRoguelike) throw new CombatError('ACTIVITY_IN_PROGRESS');
 
     const firstMonster = monsterByKey(dungeon.monsters[0]);
     if (!firstMonster) throw new CombatError('DUNGEON_NOT_FOUND');
@@ -378,6 +408,16 @@ export class CombatService {
       : SKILL_BASIC_ATTACK;
     if (skill.sect !== null && skill.sect !== sectKey) {
       throw new CombatError('SKILL_NOT_USABLE');
+    }
+    // Guard: skill phải đã học mới được dùng trong combat.
+    // basic_attack luôn được phép (auto-granted). Skill khác phải có
+    // CharacterSkill row.
+    if (
+      input.skillKey &&
+      this.characterSkill &&
+      !await this.characterSkill.isLearned(char.id, input.skillKey)
+    ) {
+      throw new CombatError('SKILL_NOT_LEARNED');
     }
 
     // Phase 11.2.B — compose mastery effect. Legacy character (no
@@ -882,33 +922,60 @@ export class CombatService {
       }
     }
 
-    // Persist encounter & character.
-    await this.prisma.encounter.update({
-      where: { id: enc.id },
-      data: {
-        status: nextStatus,
-        state: nextState as unknown as Prisma.InputJsonValue,
-        log: log as unknown as Prisma.InputJsonValue,
-      },
-    });
-
     const newStamina = Math.max(0, char.stamina - STAMINA_PER_ACTION);
     const updateChar: Prisma.CharacterUpdateInput = {
       hp: charHp,
       mp: charMp,
       stamina: newStamina,
     };
-    if (expGain > 0n) updateChar.exp = { increment: expGain };
 
-    // Bao trong tx để character.update + ledger row + talent cooldown
-    // tick cùng commit/rollback.
+    // Atomic tx: encounter status + character update + ledger row + reward cap
+    // + talent cooldown. Encounter status moved INSIDE tx to prevent data
+    // inconsistency (encounter marked WON but character not updated).
     await this.prisma.$transaction(async (tx) => {
+      // Bug #1 fix: persist encounter status INSIDE transaction
+      await tx.encounter.update({
+        where: { id: enc.id },
+        data: {
+          status: nextStatus,
+          state: nextState as unknown as Prisma.InputJsonValue,
+          log: log as unknown as Prisma.InputJsonValue,
+        },
+      });
+
+      // Phase 16.5 — Daily Reward Cap cho combat EXP/linhThach per-encounter.
+      // Apply cap trước khi grant. Identity (không cap) khi service không inject.
+      // IMPORTANT: grantedExp/grantedLinhThach chỉ set INSIDE tx — tránh
+      // bypass cap khi pre-set updateChar.exp = { increment: expGain }.
+      let grantedExp = expGain;
+      let grantedLinhThach = linhThachGain;
+      if (this.rewardCap && (expGain > 0n || linhThachGain > 0n)) {
+        try {
+          const cap = await this.rewardCap.applyCapTx(tx, {
+            characterId: char.id,
+            source: 'DUNGEON',
+            requestedExp: expGain,
+            requestedLinhThach: linhThachGain,
+            realmKey: char.realmKey,
+            refType: 'Encounter',
+            refId: enc.id,
+            meta: { dungeonKey: dungeon.key, status: nextStatus },
+          });
+          grantedExp = cap.grantedExp;
+          grantedLinhThach = cap.grantedLinhThach;
+        } catch {
+          // fail-soft: cap service lỗi → grant nguyên gốc (identity).
+        }
+      }
+
+      // Set exp ONLY after cap check — prevents bypass when cap returns 0.
+      if (grantedExp > 0n) updateChar.exp = { increment: grantedExp };
       await tx.character.update({ where: { id: char.id }, data: updateChar });
-      if (linhThachGain > 0n) {
+      if (grantedLinhThach > 0n) {
         await this.currency.applyTx(tx, {
           characterId: char.id,
           currency: CurrencyKind.LINH_THACH,
-          delta: linhThachGain,
+          delta: grantedLinhThach,
           reason: 'COMBAT_LOOT',
           refType: 'Encounter',
           refId: enc.id,
@@ -1223,6 +1290,23 @@ export class CombatService {
 
     const result = simulateActiveTalent(talent, char.power, char.spirit);
 
+    // Phase 44.2 — Pet PvE/DUNGEON combat bonus cho talent path.
+    // Parity với skill path (action()). Identity (1.0) khi DI thiếu.
+    let petCombatMulTalent = 1.0;
+    if (this.petSnapshot) {
+      try {
+        const petBonus = await this.petSnapshot.getCombatBonus(char.id, 'DUNGEON');
+        if (petBonus && char.power > 0) {
+          const capFrac = petBonus.damageContributionCapPercent / 100;
+          const rawFrac = petBonus.petStats.atk / char.power;
+          const contribFrac = Math.max(0, Math.min(rawFrac, capFrac));
+          petCombatMulTalent = 1 + contribFrac;
+        }
+      } catch {
+        petCombatMulTalent = 1.0;
+      }
+    }
+
     // Apply effect.
     let charHp = char.hp;
     let charMp = char.mp - result.mpConsumed;
@@ -1245,7 +1329,8 @@ export class CombatService {
               playerElementMul *
               talentElementMul *
               buffElementMul *
-              phase142Mul,
+              phase142Mul *
+              petCombatMulTalent,
           ),
         );
         monsterHp = state.monsterHp - dmg;
@@ -1400,12 +1485,63 @@ export class CombatService {
       }
     } else if (!skipMonsterReply) {
       // Monster counter-attack (damage path, monster còn sống).
-      const replyBase = rollDamage(monster.atk, char.spirit + char.power * 0.3, 1);
+      // Full stat parity với skill path (action()): linh căn statMul ×
+      // talent × buff × title × method × methodV2 × artifactV2 def compose.
+      const equip = await this.inventory.equipBonus(char.id);
+      const bodyBonus = computeBodyStatBonus(
+        getBodyRealmByKey(char.bodyRealmKey)?.order ?? 0,
+        char.bodyStage,
+      );
+      // Linh căn statBonusPercent wire (Phase 11.3.C parity).
+      const talentStatMul = isValidSpiritualRootGrade(char.spiritualRootGrade)
+        ? 1 + getSpiritualRootGradeDef(char.spiritualRootGrade).statBonusPercent / 100
+        : 1.0;
+      const titleModsReply: TitleMods = this.titles
+        ? await this.titles.getMods(char.id)
+        : composeTitleMods([]);
+      const methodStatReply = methodStatBonusFor(char.equippedCultivationMethodKey);
+      let methodV2DefReply = 1.0;
+      if (this.cultivationMethodV2) {
+        try {
+          const snapshot = await this.cultivationMethodV2.getEquippedSnapshot(char.id);
+          const v2 = aggregateEquippedMethods(snapshot);
+          methodV2DefReply = 1 + v2.defPercent / 100;
+        } catch { /* identity */ }
+      }
+      let artifactV2DefReply = 0;
+      if (this.artifactV2) {
+        try {
+          const snap = await this.artifactV2.getEquippedSnapshot(char.id);
+          artifactV2DefReply = snap.def;
+        } catch { /* identity */ }
+      }
+      const effDef =
+        (equip.def + bodyBonus.def + artifactV2DefReply) *
+        talentStatMul *
+        (talentMods?.defMul ?? 1) *
+        (buffMods?.defMul ?? 1) *
+        titleModsReply.defMul *
+        methodStatReply.defMul *
+        methodV2DefReply;
+      const effSpirit =
+        (char.spirit + equip.spiritBonus) *
+        (talentMods?.spiritMul ?? 1) *
+        (buffMods?.spiritMul ?? 1) *
+        titleModsReply.spiritMul;
+      const replyBase = rollDamage(monster.atk, effSpirit + char.power * 0.3 + effDef, 1);
       const monsterElementMul = elementMultiplier(
         (monster.element ?? null) as ElementKey | null,
         (char.primaryElement ?? null) as ElementKey | null,
       );
-      const reply = Math.max(1, Math.round(replyBase * monsterElementMul));
+      const monsterElemKey = (monster.element ?? null) as ElementKey | null;
+      const buffDmgReduction =
+        buffMods && monsterElemKey !== null
+          ? buffMods.damageReductionByElement.get(monsterElemKey) ?? 1
+          : 1;
+      const reply = Math.max(
+        1,
+        Math.round(replyBase * monsterElementMul * buffDmgReduction * (1 - bodyBonus.bossDamageReduction)),
+      );
       log.push({
         side: 'monster',
         text: `${monster.name} phản kích, gây ${reply} sát thương.`,
@@ -1423,25 +1559,26 @@ export class CombatService {
       }
     }
 
-    // Persist encounter & character.
-    await this.prisma.encounter.update({
-      where: { id: enc.id },
-      data: {
-        status: nextStatus,
-        state: nextState as unknown as Prisma.InputJsonValue,
-        log: log as unknown as Prisma.InputJsonValue,
-      },
-    });
-
+    // Atomic tx: encounter + character + talent cooldown. Same pattern as
+    // skill path — encounter update INSIDE tx to prevent data inconsistency.
     const newStamina = Math.max(0, char.stamina - STAMINA_PER_ACTION);
     const updateChar: Prisma.CharacterUpdateInput = {
       hp: charHp,
       mp: charMp,
       stamina: newStamina,
     };
-    if (expGain > 0n) updateChar.exp = { increment: expGain };
 
     await this.prisma.$transaction(async (tx) => {
+      // Bug #1 fix (talent path): persist encounter status INSIDE tx
+      await tx.encounter.update({
+        where: { id: enc.id },
+        data: {
+          status: nextStatus,
+          state: nextState as unknown as Prisma.InputJsonValue,
+          log: log as unknown as Prisma.InputJsonValue,
+        },
+      });
+      if (expGain > 0n) updateChar.exp = { increment: expGain };
       await tx.character.update({ where: { id: char.id }, data: updateChar });
       if (linhThachGain > 0n) {
         await this.currency.applyTx(tx, {
@@ -1506,6 +1643,60 @@ export class CombatService {
           where: { id: enc.id },
           data: { log: log as unknown as Prisma.InputJsonValue },
         });
+      }
+    }
+
+    // Phase 26.2 — Drop Economy V2 material grant cho talent combat path.
+    // Parity với skill path (action()). Chạy SAU lootTable grant.
+    // Fail-soft — không break combat flow.
+    if (nextStatus === EncounterStatus.WON && this.dropEconomy) {
+      try {
+        const playerOrder = realmByKey(char.realmKey)?.order ?? 0;
+        const sourceOrder = realmByKey(dungeon.recommendedRealm)?.order ?? playerOrder;
+        const sourceTier = realmOrderToMaterialTier(sourceOrder);
+        const monsterType = inferDropMonsterType(monster.monsterType);
+        const source =
+          monsterType === 'BOSS'
+            ? 'BOSS'
+            : monsterType === 'ELITE'
+              ? 'ELITE'
+              : 'NORMAL_MONSTER';
+        const dropMaterials = await this.dropEconomy.rollAndGrant(char.id, {
+          playerRealmOrder: playerOrder,
+          sourceTier,
+          monsterType,
+          source,
+          refType: 'Encounter',
+          refId: enc.id,
+        });
+        for (const dm of dropMaterials) {
+          const def = itemByKey(dm.itemKey);
+          if (!def) continue;
+          lootView.push({
+            itemKey: dm.itemKey,
+            qty: dm.qty,
+            itemName: def.name,
+            quality: def.quality,
+          });
+        }
+        if (dropMaterials.length > 0) {
+          log.push({
+            side: 'system',
+            text: `Phát hiện nguyên liệu: ${dropMaterials
+              .map((d) => {
+                const def = itemByKey(d.itemKey);
+                return `${def?.name ?? d.itemKey} ×${d.qty}`;
+              })
+              .join(', ')}.`,
+            ts: Date.now(),
+          });
+          await this.prisma.encounter.update({
+            where: { id: enc.id },
+            data: { log: log as unknown as Prisma.InputJsonValue },
+          });
+        }
+      } catch {
+        // fail-soft: drop economy lỗi không break combat flow.
       }
     }
 
@@ -1633,10 +1824,7 @@ export class CombatService {
     if (!sectId) return null;
     const sect = await this.prisma.sect.findUnique({ where: { id: sectId } });
     if (!sect) return null;
-    if (sect.name === 'Thanh Vân Môn') return 'thanh_van';
-    if (sect.name === 'Huyền Thuỷ Cung') return 'huyen_thuy';
-    if (sect.name === 'Tu La Tông') return 'tu_la';
-    return null;
+    return sectNameToKey(sect.name);
   }
 }
 

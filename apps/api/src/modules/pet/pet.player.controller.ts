@@ -60,6 +60,7 @@ import { PetBoxService, PetBoxError } from './pet-box.service';
 import { PetUpgradeService, PetUpgradeError } from './pet-upgrade.service';
 import { PetSourceService } from './pet-source.service';
 import { FeatureFlagService } from '../feature-flag/feature-flag.service';
+import { InventoryError } from '../inventory/inventory.service';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -78,6 +79,19 @@ function handlePetError(e: unknown): never {
     e instanceof PetUpgradeError
   ) {
     fail(e.code);
+  }
+  // Inventory errors (INSUFFICIENT_QTY) from box cost → 409
+  if (e instanceof InventoryError) {
+    fail(e.code, HttpStatus.CONFLICT);
+  }
+  // Currency errors (INSUFFICIENT_FUNDS) from box cost → 409
+  if (
+    typeof e === 'object' &&
+    e !== null &&
+    'code' in e &&
+    (e as { code?: string }).code === 'INSUFFICIENT_FUNDS'
+  ) {
+    fail('INSUFFICIENT_FUNDS', HttpStatus.CONFLICT);
   }
   throw e;
 }

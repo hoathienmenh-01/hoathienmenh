@@ -100,6 +100,15 @@ File này dùng để theo dõi các chức năng cần phát triển/hoàn thi�
 - PR 3: Market-V2 Tests + Returner Wire (existing tests + `returner.onLogin()` wired in auth.service.ts) — DONE
 - PR 4: Admin-CC + Event-Builder Tests (4 services, 29 tests) — DONE
 
+**Code Review Hardening. DONE.** PR #702 — 17 issues fixed across 20 source files + 6 docs:
+- Cross-guard ACTIVE state: Combat↔DungeonRun↔Boss↔Roguelike bidirectional
+- Unified daily limit: count Encounter + DungeonRun from both tables
+- Encounter update moved INSIDE transaction
+- Combat/Boss reward cap via RewardCapService
+- Alchemy rate limiter (60 req/min)
+- Talent defense + pet bonus parity
+- Boss HP negative clamp, Market V2 audit trail, Cultivation pagination, Seeded RNG
+
 **Next recommended:** Run `pnpm smoke:all` against local stack to verify all suites pass. Then proceed to beta launch checklist.
 
 ## Active Task Template

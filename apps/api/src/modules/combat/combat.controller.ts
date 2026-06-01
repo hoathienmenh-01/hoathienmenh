@@ -116,6 +116,7 @@ export class CombatController {
       case 'ALREADY_IN_FIGHT':
       case 'ENCOUNTER_ENDED':
       case 'CONTROLLED':
+      case 'ACTIVITY_IN_PROGRESS':
       case 'TALENT_NOT_LEARNED':
       case 'TALENT_NOT_ACTIVE':
       case 'TALENT_ON_COOLDOWN':

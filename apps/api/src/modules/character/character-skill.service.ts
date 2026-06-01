@@ -8,9 +8,9 @@ import {
   getSkillTierDef,
   itemByKey,
   realmByKey,
+  sectNameToKey,
   skillByKey,
   type EffectiveSkill,
-  type SectKey,
   type SkillDef,
   type SkillTemplate,
   type SkillUnlockRequirement,
@@ -396,6 +396,25 @@ export class CharacterSkillService {
   }
 
   /**
+   * Check xem character đã học skillKey chưa. `basic_attack` luôn trả true
+   * (auto-granted starter). Dùng cho combat/boss validation.
+   */
+  async isLearned(
+    characterId: string,
+    skillKey: string,
+  ): Promise<boolean> {
+    // basic_attack always usable (auto-granted onboarding).
+    if (skillKey === 'basic_attack') return true;
+    const row = await this.prisma.characterSkill.findUnique({
+      where: {
+        characterId_skillKey: { characterId, skillKey },
+      },
+      select: { id: true },
+    });
+    return !!row;
+  }
+
+  /**
    * Pure helper cho CombatService — compose effective skill từ character's
    * mastery row. Legacy character (no row) → masteryLevel = 0 → no bonus.
    * Skill không có template → fallback base.
@@ -516,16 +535,7 @@ export class CharacterSkillService {
 const MAX_EQUIPPED_SKILLS = 4;
 const STARTER_SKILL_KEY = 'basic_attack';
 
-/** Map sect name → SectKey. Đồng bộ với `cultivation-method.service.ts`. */
-const SECT_NAME_TO_KEY: Record<string, SectKey> = {
-  'Thanh Vân Môn': 'thanh_van',
-  'Huyền Thuỷ Cung': 'huyen_thuy',
-  'Tu La Tông': 'tu_la',
-};
-
-function sectNameToKey(name: string): SectKey | null {
-  return SECT_NAME_TO_KEY[name] ?? null;
-}
+// sectNameToKey now imported from @xuantoi/shared (combat.ts).
 
 function buildSkillView(row: {
   skillKey: string;

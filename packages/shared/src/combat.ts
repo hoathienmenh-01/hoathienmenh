@@ -735,6 +735,22 @@ export function findDungeonsForQuestPlaceholder(
 export type SectKey = 'thanh_van' | 'huyen_thuy' | 'tu_la';
 
 /**
+ * Map sect DB name (e.g. "Thanh Vân Môn") → SectKey literal.
+ * Returns null if no match (legacy/unknown sect).
+ */
+export function sectNameToKey(name: string): SectKey | null {
+  const lower = name.toLowerCase();
+  if (lower.includes('thanh') && lower.includes('vân')) return 'thanh_van';
+  if (lower.includes('huyền') && lower.includes('thuỷ')) return 'huyen_thuy';
+  if (lower.includes('tu') && lower.includes('la')) return 'tu_la';
+  // Also handle key-form names directly
+  if (lower === 'thanh_van') return 'thanh_van';
+  if (lower === 'huyen_thuy') return 'huyen_thuy';
+  if (lower === 'tu_la') return 'tu_la';
+  return null;
+}
+
+/**
  * Ngũ Hành — phase 10 PR-2 catalog field, **forward-compat** cho phase 11
  * `Linh căn / Spiritual Root` + `elementMultiplier(skill, target)` ở
  * `BALANCE_MODEL.md` §4.2.

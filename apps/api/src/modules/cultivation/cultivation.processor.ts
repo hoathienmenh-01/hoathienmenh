@@ -128,41 +128,51 @@ export class CultivationProcessor extends WorkerHost {
       })();
     }
 
-    const cultivating = await this.prisma.character.findMany({
-      where: { cultivating: true },
-      select: {
-        id: true,
-        userId: true,
-        realmKey: true,
-        realmStage: true,
-        exp: true,
-        spirit: true,
-        spiritualRootGrade: true,
-        // Phase 11.1.E — primary/secondary cần cho method element affinity
-        // bonus compose. Legacy character (null/[]) → bonus 0 (identity).
-        primaryElement: true,
-        secondaryElements: true,
-        equippedCultivationMethodKey: true,
-      },
-    });
-    if (cultivating.length === 0) return;
+    // Pagination: process cultivating characters in batches of BATCH_SIZE
+    // to prevent memory issues with large player counts. Each tick processes
+    // all characters but in smaller DB queries.
+    const BATCH_SIZE = 200;
+    let cursor: string | undefined;
+    let totalProcessed = 0;
 
-    // Phase 15.2 — LiveOps Event Scheduler `CULTIVATION_EXP_BOOST` fetch
-    // ONCE per tick (snapshot multiplier shared cho mọi character cultivating
-    // để tránh per-character query). Fail-soft: lỗi → multiplier 1.0,
-    // tick vẫn chạy. Multiplier đã clamp ≤ 2.0 (shared `clampLiveOpsMultiplier`).
-    let liveOpsExpMul = 1.0;
-    try {
-      if (this.liveOpsEvents) {
-        liveOpsExpMul = await this.liveOpsEvents.getActiveMultiplier(
-          'CULTIVATION_EXP_BOOST',
-        );
+    for (;;) {
+      const cultivating = await this.prisma.character.findMany({
+        where: { cultivating: true, ...(cursor ? { id: { gt: cursor } } : {}) },
+        select: {
+          id: true,
+          userId: true,
+          realmKey: true,
+          realmStage: true,
+          exp: true,
+          spirit: true,
+          spiritualRootGrade: true,
+          primaryElement: true,
+          secondaryElements: true,
+          equippedCultivationMethodKey: true,
+        },
+        orderBy: { id: 'asc' },
+        take: BATCH_SIZE,
+      });
+      if (cultivating.length === 0) break;
+      cursor = cultivating[cultivating.length - 1].id;
+      totalProcessed += cultivating.length;
+
+      // Phase 15.2 — LiveOps Event Scheduler `CULTIVATION_EXP_BOOST` fetch
+      // ONCE per tick (snapshot multiplier shared cho mọi character cultivating
+      // để tránh per-character query). Fail-soft: lỗi → multiplier 1.0,
+      // tick vẫn chạy. Multiplier đã clamp ≤ 2.0 (shared `clampLiveOpsMultiplier`).
+      let liveOpsExpMul = 1.0;
+      try {
+        if (this.liveOpsEvents) {
+          liveOpsExpMul = await this.liveOpsEvents.getActiveMultiplier(
+            'CULTIVATION_EXP_BOOST',
+          );
+        }
+      } catch {
+        liveOpsExpMul = 1.0;
       }
-    } catch {
-      liveOpsExpMul = 1.0;
-    }
 
-    for (const c of cultivating) {
+      for (const c of cultivating) {
       try {
         // Phase 11.8.D + 11.8.E — Buff mods fetch once per character per tick:
         //   - `cultivationBlocked` (Tâm Ma) → skip toàn bộ EXP gain (continue).
@@ -424,8 +434,12 @@ export class CultivationProcessor extends WorkerHost {
         };
         this.realtime.emitToUser(c.userId, 'cultivate:tick', payload);
       } catch (e) {
-        this.logger.error(`tick failed for char=${c.id}: ${(e as Error).message}`);
+          this.logger.error(`tick failed for char=${c.id}: ${(e as Error).message}`);
+        }
       }
+    } // end for(;;) batch loop
+    if (totalProcessed > 0) {
+      this.logger.debug(`Cultivation tick processed ${totalProcessed} characters`);
     }
   }
 }

@@ -156,6 +156,7 @@ export class RoguelikeController {
       }
       if (
         code === 'ALREADY_IN_RUN' ||
+        code === 'ACTIVITY_IN_PROGRESS' ||
         code === 'DAILY_LIMIT_REACHED' ||
         code === 'WEEKLY_CAP_REACHED' ||
         code === 'RUN_ALREADY_CLAIMED'

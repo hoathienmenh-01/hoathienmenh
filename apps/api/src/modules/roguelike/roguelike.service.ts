@@ -121,7 +121,8 @@ type RoguelikeErrorCode =
   | 'CHOICE_NOT_FOUND'
   | 'DAILY_LIMIT_REACHED'
   | 'WEEKLY_CAP_REACHED'
-  | 'FEATURE_DISABLED';
+  | 'FEATURE_DISABLED'
+  | 'ACTIVITY_IN_PROGRESS';
 
 export class RoguelikeError extends Error {
   constructor(public readonly code: RoguelikeErrorCode) {
@@ -209,6 +210,18 @@ export class RoguelikeService {
       select: { id: true },
     });
     if (active) throw new RoguelikeError('ALREADY_IN_RUN');
+
+    // Cross-guard: player đang trong combat/dungeon/boss → không cho start roguelike
+    const activeEncounter = await this.prisma.encounter.findFirst({
+      where: { characterId: char.id, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    if (activeEncounter) throw new RoguelikeError('ACTIVITY_IN_PROGRESS');
+    const activeDungeonRun = await this.prisma.dungeonRun.findFirst({
+      where: { characterId: char.id, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    if (activeDungeonRun) throw new RoguelikeError('ACTIVITY_IN_PROGRESS');
 
     const run = await this.prisma.$transaction(async (tx) => {
       await this.worldCap.consumeDailyTx(tx, {
